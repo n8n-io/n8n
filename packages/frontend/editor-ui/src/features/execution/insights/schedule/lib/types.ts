@@ -2,6 +2,11 @@ import type { CronExpression } from 'n8n-workflow';
 
 export type ScheduleTriggerSource = 'scheduleTrigger' | 'cron' | 'interval' | 'mixed' | 'unknown';
 export type ScheduleTriggerClass = 'custom-cron' | 'fixed-interval' | 'calendar';
+export type ScheduleRangeMode = 'n8n' | 'custom';
+export type ScheduleCustomWindowPreset = 'today' | 'nextSevenDays' | 'todayPlusMinusThree';
+export type ScheduleCustomTimeMode = 'calculated' | 'realTime';
+export type ScheduleWorkflowTriggerStatus = 'enabled' | 'disabled' | 'mixed';
+export type ScheduleTimezoneSource = 'workflow' | 'instance';
 
 export type ScheduleInterval =
 	| {
@@ -58,6 +63,8 @@ export interface ScheduleTriggerDefinition {
 	workflowActive: boolean;
 	triggerActive: boolean;
 	triggerSource: ScheduleTriggerSource;
+	effectiveTimezone: string;
+	timezoneSource: ScheduleTimezoneSource;
 	interval: ScheduleInterval;
 }
 
@@ -71,9 +78,12 @@ export interface ScheduleTriggerRow {
 	triggerActive: boolean;
 	triggerLogic: string;
 	triggerSource: ScheduleTriggerSource;
+	effectiveTimezone: string;
+	timezoneSource: ScheduleTimezoneSource;
 	cronExpression: CronExpression | null;
-	startTime: string | null;
 	nextActivation: string | null;
+	firstActivationInRange: string | null;
+	lastActivationInRange: string | null;
 	activationsInRange: number;
 }
 
@@ -91,6 +101,38 @@ export interface ScheduleHeatmapCell {
 	activationCount: number;
 	triggerCount: number;
 	triggers: ScheduleHeatmapCellTrigger[];
+}
+
+export interface ScheduleHistoricalExecution {
+	executionId: string;
+	workflowId: string;
+	workflowName: string;
+	startedAt: Date | string;
+}
+
+export interface ScheduleDayPanel {
+	id: string;
+	label: string;
+	heatmapCells: ScheduleHeatmapCell[];
+}
+
+export interface ScheduleExecutionLoadState {
+	isPartial: boolean;
+	loadedExecutionCount: number;
+	maxExecutionCount: number;
+}
+
+export interface ScheduleHistoricalWorkflowRow {
+	workflowId: string;
+	workflowName: string;
+	projectName: string | null;
+	workflowActive: boolean;
+	triggerStatus: ScheduleWorkflowTriggerStatus;
+	startsInRange: number;
+	firstStartedAt: string | null;
+	lastStartedAt: string | null;
+	enabledTriggerCount: number;
+	disabledTriggerCount: number;
 }
 
 export interface ScheduleExecutionRecord {

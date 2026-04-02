@@ -1,15 +1,19 @@
 import { type CronExpression, type INode, type TriggerTime } from 'n8n-workflow';
+import { DateTime } from 'luxon';
 import type {
 	ScheduleExecutionRecord,
 	ScheduleExecutionStats,
 	ScheduleHeatmapCell,
 	ScheduleHeatmapCellTrigger,
+	ScheduleHistoricalExecution,
+	ScheduleHistoricalWorkflowRow,
 	ScheduleInterval,
 	ScheduleOverviewStats,
 	ScheduleTriggerClass,
 	ScheduleTriggerDefinition,
 	ScheduleTriggerRow,
 	ScheduleTriggerSource,
+	ScheduleTimezoneSource,
 } from './types';
 
 interface ParsedCronField {
@@ -37,6 +41,9 @@ interface RawScheduleInterval extends Partial<ScheduleInterval> {
 	field?: unknown;
 	expression?: unknown;
 	cronExpression?: unknown;
+	mode?: unknown;
+	unit?: unknown;
+	value?: unknown;
 	hour?: unknown;
 	minute?: unknown;
 	weekday?: unknown;
@@ -48,6 +55,14 @@ interface HourScheduleInterval {
 	hoursInterval: number;
 	triggerAtHour?: number;
 	triggerAtMinute?: number;
+}
+
+interface ZonedDateTimeParts {
+	month: number;
+	dayOfMonth: number;
+	dayOfWeek: number;
+	hour: number;
+	minute: number;
 }
 
 const MONTH_ALIASES: Record<string, number> = {
@@ -176,6 +191,37 @@ const normalizeCronExpression = (expression: string): string[] => {
 	return parts;
 };
 
+const isValidTimeZone = (value: string) => DateTime.now().setZone(value).isValid;
+
+const normalizeWorkflowTimezone = (value: unknown, instanceTimezone: string) => {
+	if (typeof value === 'string') {
+		const trimmedValue = value.trim();
+		if (trimmedValue !== '' && trimmedValue !== 'DEFAULT' && isValidTimeZone(trimmedValue)) {
+			return {
+				effectiveTimezone: trimmedValue,
+				timezoneSource: 'workflow' as ScheduleTimezoneSource,
+			};
+		}
+	}
+
+	return {
+		effectiveTimezone: isValidTimeZone(instanceTimezone) ? instanceTimezone : 'UTC',
+		timezoneSource: 'instance' as ScheduleTimezoneSource,
+	};
+};
+
+const getZonedDateTimeParts = (date: Date, timeZone: string): ZonedDateTimeParts => {
+	const zonedDateTime = DateTime.fromJSDate(date, { zone: timeZone });
+
+	return {
+		month: zonedDateTime.month,
+		dayOfMonth: zonedDateTime.day,
+		dayOfWeek: normalizeWeekday(zonedDateTime.weekday % 7),
+		hour: zonedDateTime.hour,
+		minute: zonedDateTime.minute,
+	};
+};
+
 const hasMatchingValue = (field: ParsedCronField, value: number) =>
 	field.wildcard || field.values.includes(value);
 
@@ -204,9 +250,9 @@ const hasMatchingSecondInWindow = (
 	secondEndExclusive: number,
 ) => getMatchingSecondsInWindow(field, secondStart, secondEndExclusive).length > 0;
 
-const matchesCalendarDay = (cron: ParsedCronExpression, date: Date) => {
-	const dayOfMonthMatches = hasMatchingValue(cron.dayOfMonth, date.getUTCDate());
-	const dayOfWeekMatches = hasMatchingValue(cron.dayOfWeek, date.getUTCDay());
+const matchesCalendarDay = (cron: ParsedCronExpression, dateParts: ZonedDateTimeParts) => {
+	const dayOfMonthMatches = hasMatchingValue(cron.dayOfMonth, dateParts.dayOfMonth);
+	const dayOfWeekMatches = hasMatchingValue(cron.dayOfWeek, dateParts.dayOfWeek);
 
 	if (!cron.dayOfMonth.wildcard && !cron.dayOfWeek.wildcard) {
 		return dayOfMonthMatches || dayOfWeekMatches;
@@ -223,20 +269,20 @@ const matchesCalendarDay = (cron: ParsedCronExpression, date: Date) => {
 	return true;
 };
 
-const matchesMinute = (cron: ParsedCronExpression, date: Date) => {
-	if (!hasMatchingValue(cron.month, date.getUTCMonth() + 1)) {
+const matchesMinute = (cron: ParsedCronExpression, dateParts: ZonedDateTimeParts) => {
+	if (!hasMatchingValue(cron.month, dateParts.month)) {
 		return false;
 	}
 
-	if (!matchesCalendarDay(cron, date)) {
+	if (!matchesCalendarDay(cron, dateParts)) {
 		return false;
 	}
 
-	if (!hasMatchingValue(cron.hours, date.getUTCHours())) {
+	if (!hasMatchingValue(cron.hours, dateParts.hour)) {
 		return false;
 	}
 
-	return hasMatchingValue(cron.minutes, date.getUTCMinutes());
+	return hasMatchingValue(cron.minutes, dateParts.minute);
 };
 
 const hasIntervalField = (value: unknown): value is ScheduleInterval['field'] =>
@@ -340,12 +386,93 @@ const normalizeWeekdays = (value: unknown) => {
 	return weekdays.length > 0 ? weekdays : [0];
 };
 
+const normalizeLegacyScheduleTriggerInterval = (
+	interval: RawScheduleInterval,
+): ScheduleInterval | null => {
+	if (typeof interval.mode !== 'string') {
+		return null;
+	}
+
+	switch (interval.mode) {
+		case 'custom': {
+			const expressionSource =
+				typeof interval.expression === 'string'
+					? interval.expression
+					: typeof interval.cronExpression === 'string'
+						? interval.cronExpression
+						: '';
+			const expression = expressionSource.trim();
+
+			return expression
+				? { field: 'cronExpression', expression: expression as CronExpression }
+				: null;
+		}
+		case 'everyMinute':
+			return { field: 'minutes', minutesInterval: 1 };
+		case 'everyHour':
+			return {
+				field: 'hours',
+				hoursInterval: 1,
+				triggerAtMinute: normalizeInteger(interval.minute, 0, 0),
+			};
+		case 'everyX':
+			if (interval.unit === 'minutes') {
+				return {
+					field: 'minutes',
+					minutesInterval: normalizeInteger(interval.value, 1, 1),
+				};
+			}
+
+			if (interval.unit === 'hours') {
+				return {
+					field: 'hours',
+					hoursInterval: normalizeInteger(interval.value, 1, 1),
+					triggerAtMinute: 0,
+				};
+			}
+
+			return null;
+		case 'everyDay':
+			return {
+				field: 'days',
+				daysInterval: 1,
+				triggerAtHour: normalizeInteger(interval.hour, 0, 0),
+				triggerAtMinute: normalizeInteger(interval.minute, 0, 0),
+			};
+		case 'everyWeek':
+			return {
+				field: 'weeks',
+				weeksInterval: 1,
+				triggerAtDay: normalizeWeekdays([interval.weekday]),
+				triggerAtHour: normalizeInteger(interval.hour, 0, 0),
+				triggerAtMinute: normalizeInteger(interval.minute, 0, 0),
+			};
+		case 'everyMonth':
+			return {
+				field: 'months',
+				monthsInterval: 1,
+				triggerAtDayOfMonth: normalizeInteger(interval.dayOfMonth, 1, 1),
+				triggerAtHour: normalizeInteger(interval.hour, 0, 0),
+				triggerAtMinute: normalizeInteger(interval.minute, 0, 0),
+			};
+		default:
+			return null;
+	}
+};
+
 const normalizeScheduleTriggerInterval = (value: unknown): ScheduleInterval | null => {
 	if (typeof value !== 'object' || value === null) {
 		return null;
 	}
 
 	const interval = value as RawScheduleInterval;
+	if (!hasIntervalField(interval.field)) {
+		const legacyInterval = normalizeLegacyScheduleTriggerInterval(interval);
+		if (legacyInterval) {
+			return legacyInterval;
+		}
+	}
+
 	const field = hasIntervalField(interval.field)
 		? interval.field
 		: inferScheduleIntervalField(interval);
@@ -512,6 +639,7 @@ const listCronExpressionHitsWithParsed = (
 	cron: ParsedCronExpression,
 	windowStart: Date,
 	windowEnd: Date,
+	timeZone = 'UTC',
 ) => {
 	if (windowEnd.getTime() <= windowStart.getTime()) {
 		return [];
@@ -522,7 +650,7 @@ const listCronExpressionHitsWithParsed = (
 	current.setUTCSeconds(0, 0);
 
 	while (current.getTime() < windowEnd.getTime()) {
-		if (matchesMinute(cron, current)) {
+		if (matchesMinute(cron, getZonedDateTimeParts(current, timeZone))) {
 			const minuteStartMs = current.getTime();
 			const minuteEndMs = minuteStartMs + 60_000;
 			const candidateStartMs = Math.max(windowStart.getTime(), minuteStartMs);
@@ -610,11 +738,17 @@ export const extractScheduleIntervalsFromNode = (
 	if (node.type === SCHEDULE_TRIGGER_NODE_TYPE) {
 		const maybeIntervals = (node.parameters as { rule?: { interval?: unknown } } | undefined)?.rule
 			?.interval;
-		if (!Array.isArray(maybeIntervals) || maybeIntervals.length === 0) {
+		const normalizedIntervals = Array.isArray(maybeIntervals)
+			? maybeIntervals
+			: maybeIntervals && typeof maybeIntervals === 'object'
+				? [maybeIntervals]
+				: [];
+
+		if (normalizedIntervals.length === 0) {
 			return [{ ...DEFAULT_SCHEDULE_TRIGGER_INTERVAL }];
 		}
 
-		return maybeIntervals
+		return normalizedIntervals
 			.map((interval) => normalizeScheduleTriggerInterval(interval))
 			.filter((interval): interval is ScheduleInterval => interval !== null);
 	}
@@ -661,12 +795,18 @@ export const buildScheduleTriggerDefinitions = (
 		name: string;
 		active?: boolean;
 		homeProject?: { name: string } | null;
+		settings?: { timezone?: string };
 		nodes?: unknown;
 	}>,
+	options: { instanceTimezone: string },
 ): ScheduleTriggerDefinition[] =>
 	workflows
 		.flatMap((workflow) => {
 			const nodes = isNodeArray(workflow.nodes) ? workflow.nodes : [];
+			const { effectiveTimezone, timezoneSource } = normalizeWorkflowTimezone(
+				workflow.settings?.timezone,
+				options.instanceTimezone,
+			);
 
 			return nodes.flatMap((node, nodeIndex) => {
 				const intervals = extractScheduleIntervalsFromNode(node);
@@ -689,6 +829,8 @@ export const buildScheduleTriggerDefinitions = (
 					workflowActive: workflow.active ?? false,
 					triggerActive: node.disabled !== true,
 					triggerSource,
+					effectiveTimezone,
+					timezoneSource,
 					interval,
 				}));
 			});
@@ -797,38 +939,33 @@ const listHourIntervalHits = (
 	interval: HourScheduleInterval,
 	windowStart: Date,
 	windowEnd: Date,
+	timeZone = 'UTC',
 ) => {
 	if (windowEnd.getTime() <= windowStart.getTime()) {
 		return [];
 	}
 
 	const hits: Date[] = [];
-	const stepMs = interval.hoursInterval * 60 * 60 * 1000;
 	const anchorHour = typeof interval.triggerAtHour === 'number' ? interval.triggerAtHour : 0;
 	const anchorMinute = interval.triggerAtMinute ?? 0;
-	let current = new Date(
-		Date.UTC(
-			windowStart.getUTCFullYear(),
-			windowStart.getUTCMonth(),
-			windowStart.getUTCDate(),
-			anchorHour,
-			anchorMinute,
-			0,
-			0,
-		),
-	);
+	let current = DateTime.fromJSDate(windowStart, { zone: timeZone }).startOf('day').set({
+		hour: anchorHour,
+		minute: anchorMinute,
+		second: 0,
+		millisecond: 0,
+	});
 
-	while (current.getTime() > windowStart.getTime()) {
-		current = new Date(current.getTime() - stepMs);
+	while (current.toUTC().toMillis() > windowStart.getTime()) {
+		current = current.minus({ hours: interval.hoursInterval });
 	}
 
-	while (current.getTime() < windowStart.getTime()) {
-		current = new Date(current.getTime() + stepMs);
+	while (current.toUTC().toMillis() < windowStart.getTime()) {
+		current = current.plus({ hours: interval.hoursInterval });
 	}
 
-	while (current.getTime() < windowEnd.getTime()) {
-		hits.push(new Date(current.getTime()));
-		current = new Date(current.getTime() + stepMs);
+	while (current.toUTC().toMillis() < windowEnd.getTime()) {
+		hits.push(current.toUTC().toJSDate());
+		current = current.plus({ hours: interval.hoursInterval });
 	}
 
 	return hits;
@@ -838,9 +975,10 @@ const listScheduleIntervalHits = (
 	interval: ScheduleInterval,
 	windowStart: Date,
 	windowEnd: Date,
+	timeZone = 'UTC',
 ) => {
 	if (interval.field === 'hours') {
-		return listHourIntervalHits(interval as HourScheduleInterval, windowStart, windowEnd);
+		return listHourIntervalHits(interval as HourScheduleInterval, windowStart, windowEnd, timeZone);
 	}
 
 	const cronExpression = toScheduleCronExpression(interval);
@@ -848,6 +986,7 @@ const listScheduleIntervalHits = (
 		parseCronExpression(cronExpression),
 		windowStart,
 		windowEnd,
+		timeZone,
 	);
 };
 
@@ -899,33 +1038,45 @@ export const buildScheduleTimelineData = (
 				triggerActive,
 				triggerLogic,
 				triggerSource: trigger.triggerSource,
+				effectiveTimezone: trigger.effectiveTimezone,
+				timezoneSource: trigger.timezoneSource,
 				cronExpression: toScheduleCronExpression(trigger.interval),
-				startTime: null,
 				nextActivation: null,
+				firstActivationInRange: null,
+				lastActivationInRange: null,
 				activationsInRange: 0,
 			};
 		}
 
 		const cronExpression = toScheduleCronExpression(trigger.interval);
 		let activationsInRange = 0;
-		let startTime: string | null = null;
 		let nextActivation: string | null = null;
+		let firstActivationInRange: string | null = null;
+		let lastActivationInRange: string | null = null;
 
 		for (const cell of mutableCells) {
 			const activationTimes = listScheduleIntervalHits(
 				trigger.interval,
 				cell.slotStart,
 				cell.slotEnd,
+				trigger.effectiveTimezone,
 			);
 			if (activationTimes.length === 0) {
 				continue;
 			}
 
+			const firstHitInCell = activationTimes[0]?.toISOString() ?? null;
+			const lastHitInCell = activationTimes[activationTimes.length - 1]?.toISOString() ?? null;
 			const hitCount = activationTimes.length;
 			activationsInRange += hitCount;
 
-			const firstActivationIso = activationTimes[0].toISOString();
-			startTime ??= firstActivationIso;
+			if (firstActivationInRange === null) {
+				firstActivationInRange = firstHitInCell;
+			}
+
+			if (lastHitInCell !== null) {
+				lastActivationInRange = lastHitInCell;
+			}
 
 			if (nextActivation === null) {
 				const nextHit = activationTimes.find(
@@ -960,9 +1111,12 @@ export const buildScheduleTimelineData = (
 			triggerActive,
 			triggerLogic,
 			triggerSource: trigger.triggerSource,
+			effectiveTimezone: trigger.effectiveTimezone,
+			timezoneSource: trigger.timezoneSource,
 			cronExpression,
-			startTime,
 			nextActivation,
+			firstActivationInRange,
+			lastActivationInRange,
 			activationsInRange,
 		};
 	});
@@ -971,6 +1125,188 @@ export const buildScheduleTimelineData = (
 		heatmapCells: serializeScheduleHeatmapCells(mutableCells),
 		rows,
 	};
+};
+
+export const buildScheduleHistoricalTimelineData = (
+	executions: ScheduleHistoricalExecution[],
+	options: { start: Date; end: Date; slotMinutes: number; triggerName?: string },
+): ScheduleHeatmapCell[] => {
+	const mutableCells = createEmptyScheduleHeatmapCells(
+		options.start,
+		options.end,
+		options.slotMinutes,
+	);
+
+	if (mutableCells.length === 0) {
+		return [];
+	}
+
+	const slotDurationMs = options.slotMinutes * 60_000;
+	const timelineStartMs = options.start.getTime();
+	const timelineEndMs = options.end.getTime();
+
+	for (const execution of executions) {
+		const startedAt = new Date(execution.startedAt);
+		const startedAtMs = startedAt.getTime();
+
+		if (
+			!Number.isFinite(startedAtMs) ||
+			startedAtMs < timelineStartMs ||
+			startedAtMs >= timelineEndMs
+		) {
+			continue;
+		}
+
+		const slotIndex = Math.floor((startedAtMs - timelineStartMs) / slotDurationMs);
+		if (slotIndex < 0 || slotIndex >= mutableCells.length) {
+			continue;
+		}
+
+		const cell = mutableCells[slotIndex];
+		cell.activationCount += 1;
+
+		const triggerId = `historical:${execution.workflowId}`;
+		const existingTrigger = cell.triggers.get(triggerId) ?? {
+			triggerId,
+			workflowId: execution.workflowId,
+			workflowName: execution.workflowName,
+			triggerName: options.triggerName ?? 'Historical actuals',
+			activationCount: 0,
+		};
+
+		existingTrigger.activationCount += 1;
+		cell.triggers.set(triggerId, existingTrigger);
+	}
+
+	return serializeScheduleHeatmapCells(mutableCells);
+};
+
+export const mergeScheduleTimelineActuals = (
+	predictedCells: ScheduleHeatmapCell[],
+	actualCells: ScheduleHeatmapCell[],
+	actualThrough: Date,
+): ScheduleHeatmapCell[] => {
+	const actualBySlotStart = new Map(actualCells.map((cell) => [cell.slotStart, cell]));
+
+	return predictedCells.map((predictedCell) => {
+		if (new Date(predictedCell.slotEnd).getTime() > actualThrough.getTime()) {
+			return predictedCell;
+		}
+
+		return (
+			actualBySlotStart.get(predictedCell.slotStart) ?? {
+				...predictedCell,
+				activationCount: 0,
+				triggerCount: 0,
+				triggers: [],
+			}
+		);
+	});
+};
+
+export const buildScheduleHistoricalWorkflowRows = (
+	triggers: ScheduleTriggerDefinition[],
+	executions: ScheduleHistoricalExecution[],
+): ScheduleHistoricalWorkflowRow[] => {
+	const rowsByWorkflowId = new Map<string, ScheduleHistoricalWorkflowRow>();
+
+	for (const trigger of triggers) {
+		const existingRow = rowsByWorkflowId.get(trigger.workflowId) ?? {
+			workflowId: trigger.workflowId,
+			workflowName: trigger.workflowName,
+			projectName: trigger.projectName,
+			workflowActive: trigger.workflowActive,
+			triggerStatus: 'disabled' as const,
+			startsInRange: 0,
+			firstStartedAt: null,
+			lastStartedAt: null,
+			enabledTriggerCount: 0,
+			disabledTriggerCount: 0,
+		};
+
+		existingRow.workflowActive = trigger.workflowActive;
+		existingRow.projectName = existingRow.projectName ?? trigger.projectName;
+
+		if (trigger.triggerActive) {
+			existingRow.enabledTriggerCount += 1;
+		} else {
+			existingRow.disabledTriggerCount += 1;
+		}
+
+		rowsByWorkflowId.set(trigger.workflowId, existingRow);
+	}
+
+	for (const execution of executions) {
+		const existingRow = rowsByWorkflowId.get(execution.workflowId);
+		if (!existingRow) {
+			continue;
+		}
+
+		const startedAt = new Date(execution.startedAt);
+		const startedAtIso = Number.isFinite(startedAt.getTime()) ? startedAt.toISOString() : null;
+		if (!startedAtIso) {
+			continue;
+		}
+
+		existingRow.startsInRange += 1;
+		if (!existingRow.firstStartedAt || startedAtIso < existingRow.firstStartedAt) {
+			existingRow.firstStartedAt = startedAtIso;
+		}
+		if (!existingRow.lastStartedAt || startedAtIso > existingRow.lastStartedAt) {
+			existingRow.lastStartedAt = startedAtIso;
+		}
+	}
+
+	return [...rowsByWorkflowId.values()]
+		.map((row) => ({
+			...row,
+			triggerStatus:
+				row.enabledTriggerCount > 0 && row.disabledTriggerCount > 0
+					? 'mixed'
+					: row.enabledTriggerCount > 0
+						? 'enabled'
+						: 'disabled',
+		}))
+		.sort(
+			(left, right) =>
+				right.startsInRange - left.startsInRange ||
+				Number(right.workflowActive) - Number(left.workflowActive) ||
+				left.workflowName.localeCompare(right.workflowName),
+		);
+};
+
+export const buildScheduleDayPanelsFromTimelineCells = (
+	dayWindows: Array<{ id: string; label: string; start?: Date; end?: Date }>,
+	heatmapCells: ScheduleHeatmapCell[],
+	daySlotCount?: number,
+): ScheduleDayPanel[] => {
+	if (
+		dayWindows.some((dayWindow) => dayWindow.start !== undefined || dayWindow.end !== undefined) &&
+		dayWindows.some((dayWindow) => dayWindow.start === undefined || dayWindow.end === undefined)
+	) {
+		throw new Error('dayWindows must either all define start/end or all use positional slicing');
+	}
+
+	if (
+		dayWindows.every((dayWindow) => dayWindow.start === undefined && dayWindow.end === undefined) &&
+		(daySlotCount === undefined || daySlotCount < 1)
+	) {
+		throw new Error('daySlotCount must be greater than 0 when day windows do not define start/end');
+	}
+
+	return dayWindows.map((dayWindow, index) => ({
+		id: dayWindow.id,
+		label: dayWindow.label,
+		heatmapCells:
+			dayWindow.start !== undefined && dayWindow.end !== undefined
+				? heatmapCells.filter((cell) => {
+						const slotStartMs = new Date(cell.slotStart).getTime();
+						return (
+							slotStartMs >= dayWindow.start.getTime() && slotStartMs < dayWindow.end.getTime()
+						);
+					})
+				: heatmapCells.slice(index * (daySlotCount ?? 0), (index + 1) * (daySlotCount ?? 0)),
+	}));
 };
 
 export const buildScheduleHeatmapCells = (
@@ -987,6 +1323,7 @@ export const cronExpressionHitsWindow = (
 	expression: string,
 	windowStart: Date,
 	windowEnd: Date,
+	timeZone = 'UTC',
 ) => {
 	if (windowEnd.getTime() <= windowStart.getTime()) {
 		return false;
@@ -997,7 +1334,7 @@ export const cronExpressionHitsWindow = (
 	current.setUTCSeconds(0, 0);
 
 	while (current.getTime() < windowEnd.getTime()) {
-		if (matchesMinute(cron, current)) {
+		if (matchesMinute(cron, getZonedDateTimeParts(current, timeZone))) {
 			const minuteStartMs = current.getTime();
 			const minuteEndMs = minuteStartMs + 60_000;
 			const candidateStartMs = Math.max(windowStart.getTime(), minuteStartMs);

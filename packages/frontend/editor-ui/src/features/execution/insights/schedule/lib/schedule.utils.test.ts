@@ -18,6 +18,26 @@ import {
 } from './schedule.utils';
 import type { ScheduleTriggerDefinition } from './types';
 
+const createTriggerDefinition = (
+	overrides: Pick<
+		ScheduleTriggerDefinition,
+		'triggerId' | 'workflowId' | 'workflowName' | 'triggerName' | 'triggerSource' | 'interval'
+	> &
+		Partial<
+			Omit<
+				ScheduleTriggerDefinition,
+				'triggerId' | 'workflowId' | 'workflowName' | 'triggerName' | 'triggerSource' | 'interval'
+			>
+		>,
+): ScheduleTriggerDefinition => ({
+	projectName: null,
+	workflowActive: true,
+	triggerActive: true,
+	effectiveTimezone: 'UTC',
+	timezoneSource: 'instance',
+	...overrides,
+});
+
 describe('schedule.utils', () => {
 	describe('toScheduleCronExpression', () => {
 		it('should create deterministic cron expressions for generated intervals', () => {
@@ -119,28 +139,22 @@ describe('schedule.utils', () => {
 	describe('buildScheduleOverview', () => {
 		it('should aggregate workflow count, predicted activations, and peak slot load', () => {
 			const triggers: ScheduleTriggerDefinition[] = [
-				{
+				createTriggerDefinition({
 					triggerId: 'trigger-a',
 					workflowId: 'workflow-a',
 					workflowName: 'Workflow A',
 					triggerName: 'Trigger A',
-					projectName: null,
-					workflowActive: true,
-					triggerActive: true,
 					triggerSource: 'scheduleTrigger',
 					interval: { field: 'minutes', minutesInterval: 15 },
-				},
-				{
+				}),
+				createTriggerDefinition({
 					triggerId: 'trigger-b',
 					workflowId: 'workflow-b',
 					workflowName: 'Workflow B',
 					triggerName: 'Trigger B',
-					projectName: null,
-					workflowActive: true,
-					triggerActive: true,
 					triggerSource: 'scheduleTrigger',
 					interval: { field: 'days', daysInterval: 1, triggerAtHour: 8 },
-				},
+				}),
 			];
 			const heatmapCells = [
 				{
@@ -246,74 +260,98 @@ describe('schedule.utils', () => {
 		});
 
 		it('should extract one trigger row per schedule-capable trigger interval', () => {
-			const triggers = buildScheduleTriggerDefinitions([
-				{
-					id: 'workflow-a',
-					name: 'Schedule workflow',
-					active: true,
-					nodes: [
-						{
-							name: 'Daily trigger',
-							type: SCHEDULE_TRIGGER_NODE_TYPE,
-							parameters: {
-								rule: {
-									interval: [
-										{
-											field: 'days',
-											daysInterval: 1,
-											triggerAtHour: 8,
-											triggerAtMinute: 15,
-										},
-									],
+			const triggers = buildScheduleTriggerDefinitions(
+				[
+					{
+						id: 'workflow-a',
+						name: 'Schedule workflow',
+						active: true,
+						nodes: [
+							{
+								name: 'Daily trigger',
+								type: SCHEDULE_TRIGGER_NODE_TYPE,
+								parameters: {
+									rule: {
+										interval: [
+											{
+												field: 'days',
+												daysInterval: 1,
+												triggerAtHour: 8,
+												triggerAtMinute: 15,
+											},
+										],
+									},
 								},
 							},
-						},
-					],
-				},
-				{
-					id: 'workflow-b',
-					name: 'Legacy workflow',
-					nodes: [
-						{
-							name: 'Cron trigger',
-							type: CRON_TRIGGER_NODE_TYPE,
-							parameters: {
-								triggerTimes: {
-									item: [{ mode: 'everyDay', hour: 9, minute: 30 }],
+						],
+					},
+					{
+						id: 'workflow-b',
+						name: 'Legacy workflow',
+						nodes: [
+							{
+								name: 'Cron trigger',
+								type: CRON_TRIGGER_NODE_TYPE,
+								parameters: {
+									triggerTimes: {
+										item: [{ mode: 'everyDay', hour: 9, minute: 30 }],
+									},
 								},
 							},
-						},
-						{
-							name: 'Interval trigger',
-							type: INTERVAL_TRIGGER_NODE_TYPE,
-							parameters: {
-								interval: 2,
-								unit: 'hours',
+							{
+								name: 'Interval trigger',
+								type: INTERVAL_TRIGGER_NODE_TYPE,
+								parameters: {
+									interval: 2,
+									unit: 'hours',
+								},
 							},
-						},
-					],
+						],
+					},
+				],
+				{
+					instanceTimezone: 'UTC',
 				},
-			]);
+			);
 
 			expect(triggers).toHaveLength(3);
-			expect(triggers[0]).toMatchObject({
-				workflowId: 'workflow-b',
-				triggerName: 'Cron trigger',
-				triggerSource: 'cron',
-				interval: {
-					field: 'days',
-					daysInterval: 1,
-					triggerAtHour: 9,
-					triggerAtMinute: 30,
-				},
-			});
-			expect(triggers[2]).toMatchObject({
-				workflowId: 'workflow-a',
-				triggerName: 'Daily trigger',
-				workflowActive: true,
-				triggerActive: true,
-				triggerSource: 'scheduleTrigger',
-			});
+			expect(triggers).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						workflowId: 'workflow-a',
+						triggerName: 'Daily trigger',
+						workflowActive: true,
+						triggerActive: true,
+						triggerSource: 'scheduleTrigger',
+						effectiveTimezone: 'UTC',
+						timezoneSource: 'instance',
+					}),
+					expect.objectContaining({
+						workflowId: 'workflow-b',
+						triggerName: 'Cron trigger',
+						triggerSource: 'cron',
+						effectiveTimezone: 'UTC',
+						timezoneSource: 'instance',
+						interval: {
+							field: 'days',
+							daysInterval: 1,
+							triggerAtHour: 9,
+							triggerAtMinute: 30,
+						},
+					}),
+					expect.objectContaining({
+						workflowId: 'workflow-b',
+						triggerName: 'Interval trigger',
+						triggerSource: 'interval',
+						effectiveTimezone: 'UTC',
+						timezoneSource: 'instance',
+						interval: {
+							field: 'hours',
+							hoursInterval: 2,
+						},
+					}),
+				]),
+			);
 		});
 	});
 
@@ -322,17 +360,14 @@ describe('schedule.utils', () => {
 			const timelineStart = new Date('2025-01-01T08:00:00.000Z');
 			const timelineEnd = new Date('2025-01-01T09:00:00.000Z');
 			const triggers: ScheduleTriggerDefinition[] = [
-				{
+				createTriggerDefinition({
 					triggerId: 'trigger-a',
 					workflowId: 'workflow-a',
 					workflowName: 'Schedule workflow',
 					triggerName: 'Quarter-hour trigger',
-					projectName: null,
-					workflowActive: true,
-					triggerActive: true,
 					triggerSource: 'scheduleTrigger',
 					interval: { field: 'minutes', minutesInterval: 15 },
-				},
+				}),
 			];
 
 			const timelineData = buildScheduleTimelineData(triggers, {
@@ -353,9 +388,12 @@ describe('schedule.utils', () => {
 					triggerActive: true,
 					triggerLogic: 'Every 15 minutes',
 					triggerSource: 'scheduleTrigger',
+					effectiveTimezone: 'UTC',
+					timezoneSource: 'instance',
 					cronExpression: '0 */15 * * * *',
-					startTime: '2025-01-01T08:00:00.000Z',
 					nextActivation: '2025-01-01T08:30:00.000Z',
+					firstActivationInRange: '2025-01-01T08:00:00.000Z',
+					lastActivationInRange: '2025-01-01T08:45:00.000Z',
 					activationsInRange: 4,
 				},
 			]);
@@ -371,14 +409,11 @@ describe('schedule.utils', () => {
 		it('should preserve hour-based schedule variants that include an explicit start hour', () => {
 			const timelineData = buildScheduleTimelineData(
 				[
-					{
+					createTriggerDefinition({
 						triggerId: 'trigger-nightly',
 						workflowId: 'workflow-nightly',
 						workflowName: 'Nightly workflow',
 						triggerName: 'Every Night at 8pm',
-						projectName: null,
-						workflowActive: true,
-						triggerActive: true,
 						triggerSource: 'scheduleTrigger',
 						interval: {
 							field: 'hours',
@@ -386,7 +421,7 @@ describe('schedule.utils', () => {
 							triggerAtHour: 20,
 							triggerAtMinute: 0,
 						},
-					},
+					}),
 				],
 				{
 					start: new Date('2025-01-01T00:00:00.000Z'),
@@ -400,9 +435,12 @@ describe('schedule.utils', () => {
 				expect.objectContaining({
 					triggerId: 'trigger-nightly',
 					triggerLogic: 'Every 1 day at 20:00',
+					effectiveTimezone: 'UTC',
+					timezoneSource: 'instance',
 					cronExpression: '0 0 20 * * *',
-					startTime: '2025-01-01T20:00:00.000Z',
 					nextActivation: '2025-01-01T20:00:00.000Z',
+					firstActivationInRange: '2025-01-01T20:00:00.000Z',
+					lastActivationInRange: '2025-01-01T20:00:00.000Z',
 					activationsInRange: 1,
 				}),
 			]);
@@ -412,31 +450,25 @@ describe('schedule.utils', () => {
 	describe('buildScheduleHeatmapCells', () => {
 		it('should place predicted trigger activations into deterministic 15-minute slots', () => {
 			const triggers: ScheduleTriggerDefinition[] = [
-				{
+				createTriggerDefinition({
 					triggerId: 'trigger-a',
 					workflowId: 'workflow-a',
 					workflowName: 'Quarter-hour workflow',
 					triggerName: 'Quarter-hour trigger',
-					projectName: null,
-					workflowActive: true,
-					triggerActive: true,
 					triggerSource: 'scheduleTrigger',
 					interval: { field: 'minutes', minutesInterval: 15 },
-				},
-				{
+				}),
+				createTriggerDefinition({
 					triggerId: 'trigger-b',
 					workflowId: 'workflow-b',
 					workflowName: 'Cron workflow',
 					triggerName: 'Cron trigger',
-					projectName: null,
-					workflowActive: true,
-					triggerActive: true,
 					triggerSource: 'cron',
 					interval: {
 						field: 'cronExpression',
 						expression: '0 15 9 * * MON-FRI' as CronExpression,
 					},
-				},
+				}),
 			];
 
 			const cells = buildScheduleHeatmapCells(triggers, {
@@ -508,17 +540,14 @@ describe('schedule.utils', () => {
 	describe('buildScheduleTriggerRows', () => {
 		it('should return trigger rows without requiring a separate heatmap input', () => {
 			const triggers: ScheduleTriggerDefinition[] = [
-				{
+				createTriggerDefinition({
 					triggerId: 'trigger-a',
 					workflowId: 'workflow-a',
 					workflowName: 'Workflow A',
 					triggerName: 'Trigger A',
-					projectName: null,
-					workflowActive: true,
-					triggerActive: true,
 					triggerSource: 'scheduleTrigger',
 					interval: { field: 'days', daysInterval: 1, triggerAtHour: 8, triggerAtMinute: 15 },
-				},
+				}),
 			];
 
 			const rows = buildScheduleTriggerRows(triggers, {
@@ -533,36 +562,34 @@ describe('schedule.utils', () => {
 				triggerName: 'Trigger A',
 				workflowActive: true,
 				triggerActive: true,
-				startTime: '2025-01-01T08:15:00.000Z',
+				effectiveTimezone: 'UTC',
+				timezoneSource: 'instance',
 				nextActivation: '2025-01-01T08:15:00.000Z',
+				firstActivationInRange: '2025-01-01T08:15:00.000Z',
+				lastActivationInRange: '2025-01-01T08:15:00.000Z',
 				activationsInRange: 1,
 			});
 		});
 
 		it('should keep disabled triggers in rows but exclude them from the timeline load', () => {
 			const triggers: ScheduleTriggerDefinition[] = [
-				{
+				createTriggerDefinition({
 					triggerId: 'trigger-enabled',
 					workflowId: 'workflow-a',
 					workflowName: 'Workflow A',
 					triggerName: 'Enabled Trigger',
-					projectName: null,
-					workflowActive: true,
-					triggerActive: true,
 					triggerSource: 'scheduleTrigger',
 					interval: { field: 'hours', hoursInterval: 1, triggerAtMinute: 0 },
-				},
-				{
+				}),
+				createTriggerDefinition({
 					triggerId: 'trigger-disabled',
 					workflowId: 'workflow-a',
 					workflowName: 'Workflow A',
 					triggerName: 'Disabled Trigger',
-					projectName: null,
-					workflowActive: true,
 					triggerActive: false,
 					triggerSource: 'scheduleTrigger',
 					interval: { field: 'hours', hoursInterval: 1, triggerAtMinute: 15 },
-				},
+				}),
 			];
 
 			const timelineData = buildScheduleTimelineData(triggers, {
@@ -579,13 +606,20 @@ describe('schedule.utils', () => {
 					triggerId: 'trigger-enabled',
 					workflowActive: true,
 					triggerActive: true,
+					effectiveTimezone: 'UTC',
+					timezoneSource: 'instance',
+					firstActivationInRange: '2025-01-01T08:00:00.000Z',
+					lastActivationInRange: '2025-01-01T09:00:00.000Z',
 					activationsInRange: 2,
 				}),
 				expect.objectContaining({
 					triggerId: 'trigger-disabled',
 					workflowActive: true,
 					triggerActive: false,
-					startTime: null,
+					effectiveTimezone: 'UTC',
+					timezoneSource: 'instance',
+					firstActivationInRange: null,
+					lastActivationInRange: null,
 					nextActivation: null,
 					activationsInRange: 0,
 				}),

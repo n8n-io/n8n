@@ -1,4 +1,4 @@
-import { defineComponent, reactive } from 'vue';
+import { defineComponent, reactive, ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import InsightsDashboard from './InsightsDashboard.vue';
 import { createTestingPinia } from '@pinia/testing';
@@ -70,18 +70,19 @@ const mockTelemetry = {
 };
 
 const mockScheduleData = {
-	overview: { value: { trackedWorkflows: 2, scheduledActivations: 12, busiestSlotActivations: 4 } },
-	rows: { value: [] },
-	heatmapCells: { value: [] },
-	forecastWindow: {
-		value: {
-			start: '2025-01-01T00:00:00.000Z',
-			end: '2025-01-02T00:00:00.000Z',
-			slotMinutes: 15,
-		},
-	},
-	isLoading: { value: false },
-	error: { value: null },
+	overview: ref({ trackedWorkflows: 2, scheduledActivations: 12, busiestSlotActivations: 4 }),
+	rows: ref([]),
+	historicalRows: ref([]),
+	executionLoadState: ref(null),
+	heatmapCells: ref([]),
+	dayPanels: ref([]),
+	forecastWindow: ref({
+		start: '2025-01-01T00:00:00.000Z',
+		end: '2025-01-02T00:00:00.000Z',
+		slotMinutes: 15,
+	}),
+	isLoading: ref(false),
+	error: ref(null),
 };
 
 vi.mock('@/app/composables/useTelemetry', () => ({
@@ -386,9 +387,10 @@ describe('InsightsDashboard', () => {
 				props: { insightType: INSIGHT_TYPES.SCHEDULE },
 			});
 
-			await waitFor(() => {
-				expect(screen.getByTestId('schedule-control-panel')).toBeInTheDocument();
-			});
+			await waitAllPromises();
+			expect(
+				await screen.findByTestId('schedule-control-panel', undefined, { timeout: 5_000 }),
+			).toBeInTheDocument();
 
 			expect(screen.queryByTestId('insights-table')).not.toBeInTheDocument();
 		});
