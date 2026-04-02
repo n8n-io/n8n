@@ -539,7 +539,9 @@ watch(
 watch(
 	() => stringify(props.node?.credentials ?? {}),
 	(currentValue, oldValue) => {
-		const isUpdated = oldValue !== undefined && currentValue !== oldValue;
+		const emptyCredentials = stringify({});
+		const isUpdated =
+			oldValue !== undefined && oldValue !== emptyCredentials && currentValue !== oldValue;
 		if (
 			isUpdated &&
 			props.modelValue &&

@@ -1052,6 +1052,60 @@ describe('ParameterInput.vue', () => {
 
 			expect(emitted('update')).toBeUndefined();
 		});
+
+		test('should not reset options value on first credential assignment', async () => {
+			mockNodeTypesState.getNodeParameterOptions = vi.fn(async () => [
+				{ name: 'GPT-4', value: 'gpt-4' },
+				{ name: 'GPT-3.5', value: 'gpt-3.5-turbo' },
+			]);
+
+			const activeNode = reactive({
+				id: faker.string.uuid(),
+				name: 'Test Node',
+				parameters: { model: 'gpt-3.5-turbo' },
+				position: [0, 0] as [number, number],
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				typeVersion: 1,
+				credentials: {} as Record<string, { id: string; name: string }>,
+			});
+
+			mockNdvState = {
+				...getNdvStateMock(),
+				activeNode,
+			};
+
+			const { emitted } = renderComponent({
+				props: {
+					path: 'model',
+					parameter: createTestNodeProperties({
+						displayName: 'Model',
+						name: 'model',
+						type: 'options',
+						default: 'gpt-4',
+						typeOptions: { loadOptionsMethod: 'getModels' },
+					}),
+					modelValue: 'gpt-3.5-turbo',
+				},
+			});
+
+			await waitFor(() => {
+				expect(mockNodeTypesState.getNodeParameterOptions).toHaveBeenCalled();
+			});
+
+			// Assign credentials for the first time (from empty to having credentials)
+			activeNode.credentials = {
+				openAiApi: { id: '1', name: 'OpenAI Account 1' },
+			};
+			await nextTick();
+
+			await waitFor(() => {
+				expect(mockNodeTypesState.getNodeParameterOptions).toHaveBeenCalledTimes(2);
+			});
+
+			// Should NOT reset the value since this is first credential assignment, not a change
+			const updates = emitted('update') ?? [];
+			expect(updates).not.toContainEqual([expect.objectContaining({ name: 'model' })]);
+		});
 	});
 
 	describe('multi-line string handling', () => {

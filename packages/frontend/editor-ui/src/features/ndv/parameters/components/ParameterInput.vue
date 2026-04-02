@@ -1301,8 +1301,9 @@ watch(
 	(_newCredentials, oldCredentials) => {
 		if (hasRemoteMethod.value && node.value) {
 			void loadRemoteParameterOptions();
-			// Reset options value when credentials change (not on initial load)
-			if (oldCredentials !== undefined && props.parameter.type === 'options') {
+			// Reset options value when credentials change (not on initial load or first assignment)
+			const hadCredentials = oldCredentials !== undefined && Object.keys(oldCredentials).length > 0;
+			if (hadCredentials && props.parameter.type === 'options') {
 				emit('update', {
 					node: node.value.name,
 					name: props.path,
