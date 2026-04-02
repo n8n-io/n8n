@@ -69,7 +69,10 @@ function extractFromToolCall(tc: InstanceAiToolCallState, map: Map<string, Resou
 					: undefined;
 
 		const resolvedName = name ?? 'Untitled';
-		map.set(resolvedName.toLowerCase(), {
+		// Key by workflowId when unnamed to avoid collisions between multiple
+		// unnamed workflows that would all map to the "untitled" key.
+		const key = name ? name.toLowerCase() : result.workflowId;
+		map.set(key, {
 			type: 'workflow',
 			id: result.workflowId,
 			name: resolvedName,

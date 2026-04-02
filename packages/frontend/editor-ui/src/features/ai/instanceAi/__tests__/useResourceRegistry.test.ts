@@ -128,9 +128,42 @@ describe('useResourceRegistry', () => {
 			];
 			await nextTick();
 
-			const entry = registry.value.get('untitled');
+			// Keyed by workflowId when unnamed (avoids collisions between multiple unnamed workflows)
+			const entry = registry.value.get('wf-3');
 			expect(entry).toEqual(
 				expect.objectContaining({ type: 'workflow', id: 'wf-3', name: 'Untitled' }),
+			);
+		});
+
+		test('does not collide when multiple workflows have no name', async () => {
+			const { messages, registry } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'build-workflow',
+								args: { patches: [{ op: 'replace' }] },
+								result: { success: true, workflowId: 'wf-a' },
+							}),
+							makeToolCall({
+								toolName: 'build-workflow',
+								args: { patches: [{ op: 'replace' }] },
+								result: { success: true, workflowId: 'wf-b' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			// Both should be registered, keyed by their IDs
+			expect(findById(registry.value, 'wf-a')).toEqual(
+				expect.objectContaining({ type: 'workflow', id: 'wf-a', name: 'Untitled' }),
+			);
+			expect(findById(registry.value, 'wf-b')).toEqual(
+				expect.objectContaining({ type: 'workflow', id: 'wf-b', name: 'Untitled' }),
 			);
 		});
 
@@ -201,8 +234,8 @@ describe('useResourceRegistry', () => {
 			];
 			await nextTick();
 
-			// Should be keyed by the enriched name, not 'untitled'
-			expect(registry.value.has('untitled')).toBe(false);
+			// Should be keyed by the enriched name, not the workflowId
+			expect(registry.value.has('wf-3')).toBe(false);
 			const entry = registry.value.get('insert random city data');
 			expect(entry).toEqual(
 				expect.objectContaining({
