@@ -55,7 +55,7 @@ defineExpose({ isDirty, save });
 		/>
 		<div :class="$style.addButtonRow">
 			<N8nButton
-				type="tertiary"
+				variant="outline"
 				size="small"
 				icon="plus"
 				data-test-id="add-rule-button"
