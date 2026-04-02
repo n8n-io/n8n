@@ -178,7 +178,9 @@
 	--color--background--surface--focus: var(--color--neutral-100);
 	--color--background--surface--disabled: var(--color--neutral-200);
 
-	--border-color: var(--border-color--base, var(--color--black-alpha-200));
+	/* stylelint-disable @n8n/css-var-naming */
+	--border-color: var(--border-color-base, var(--color--black-alpha-200));
+	/* stylelint-enable @n8n/css-var-naming */
 	--border-color--subtle: var(--color--black-alpha-100);
 	--border-color--strong: var(--color--black-alpha-300);
 	--border-color--stronger: var(--color--black-alpha-400);
