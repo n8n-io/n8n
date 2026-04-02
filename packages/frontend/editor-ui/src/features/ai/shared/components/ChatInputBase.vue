@@ -26,7 +26,6 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const inputRef = useTemplateRef<HTMLElement>('inputRef');
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
-const isFocused = ref(false);
 
 // Voice input
 const committedSpokenMessage = ref('');
@@ -109,11 +108,7 @@ defineExpose({
 </script>
 
 <template>
-	<div
-		:class="[$style.inputWrapper, { [$style.focused]: isFocused }]"
-		@click="handleClickWrapper"
-		@paste="handlePaste"
-	>
+	<div :class="$style.inputWrapper" @click="handleClickWrapper" @paste="handlePaste">
 		<input
 			v-if="showAttach"
 			ref="fileInputRef"
@@ -136,8 +131,6 @@ defineExpose({
 			:disabled="disabled"
 			@update:model-value="emit('update:modelValue', $event)"
 			@keydown="handleKeydown"
-			@focus="isFocused = true"
-			@blur="isFocused = false"
 		/>
 
 		<div :class="$style.footer">
@@ -196,26 +189,19 @@ defineExpose({
 <style lang="scss" module>
 .inputWrapper {
 	width: 100%;
-	border-radius: var(--radius--xl);
+	border-radius: 16px;
 	padding: var(--spacing--sm);
-	box-shadow: 0 10px 24px 0 color-mix(in srgb, var(--color--foreground--shade-2) 6%, transparent);
-	background-color: var(--color--background--light-3);
-	border: 1px solid var(--color--foreground--tint-1);
+	box-shadow: 0 10px 24px 0 #00000010;
+	background-color: var(--color--background--light-2);
+	border: 1px solid light-dark(var(--color--black-alpha-200), var(--color--white-alpha-100));
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
-	transition: border-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
-	--input--border-color: transparent;
-	--input--border-color--hover: transparent;
-	--input--border-color--focus: transparent;
-	--input--border--shadow: none;
-	--input--border--shadow--hover: none;
-	--input--border--shadow--focus: none;
-	--input--color--background: transparent;
+	outline: 1px solid transparent;
+	outline-offset: 2px;
 
-	&.focused,
-	&:hover:has(textarea:not(:disabled)) {
-		border-color: var(--color--secondary);
+	&:focus-within {
+		outline-color: var(--focus--border-color);
 	}
 
 	& textarea {
@@ -230,6 +216,7 @@ defineExpose({
 	}
 
 	:global(.n8n-input__wrapper) {
+		--input--radius: 16px;
 		box-shadow: none !important;
 		outline: none !important;
 		background-color: transparent !important;
