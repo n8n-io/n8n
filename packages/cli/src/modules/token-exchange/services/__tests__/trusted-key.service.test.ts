@@ -110,7 +110,7 @@ describe('TrustedKeyService', () => {
 		it.each(['HS256', 'HS384', 'HS512'])('should reject HMAC algorithm %s', async (alg) => {
 			await expect(
 				initWithEntries([staticKeyEntry({ algorithms: [alg as 'RS256'] })]),
-			).rejects.toThrow('not allowed');
+			).rejects.toThrow();
 		});
 
 		it('should reject unknown algorithm', async () => {
@@ -149,18 +149,14 @@ describe('TrustedKeyService', () => {
 		});
 
 		it('should accept Ed25519 key with EdDSA', async () => {
-			// EdDSA is not in the JwtAlgorithmSchema enum on the base branch,
-			// so we test that the Zod schema rejects it at parse time.
-			// When EdDSA support is added to the schema, this test should pass end-to-end.
-			await expect(
-				initWithEntries([
-					staticKeyEntry({
-						kid: 'ed-key',
-						algorithms: ['EdDSA' as 'RS256'],
-						key: ED25519_PUBLIC_KEY,
-					}),
-				]),
-			).rejects.toThrow();
+			const service = await initWithEntries([
+				staticKeyEntry({
+					kid: 'ed-key',
+					algorithms: ['EdDSA'],
+					key: ED25519_PUBLIC_KEY,
+				}),
+			]);
+			expect(service.size).toBe(1);
 		});
 
 		it('should reject EC key with RSA algorithm', async () => {

@@ -25,8 +25,6 @@ const ALGORITHM_FAMILY: Record<string, AlgorithmFamily> = {
 	EdDSA: 'EdDSA',
 };
 
-const REJECTED_ALGORITHMS = new Set(['none', 'HS256', 'HS384', 'HS512']);
-
 /**
  * Loads and validates trusted public keys at startup, then serves
  * them by Key ID (`kid`) for JWT signature verification.
@@ -97,16 +95,7 @@ export class TrustedKeyService {
 	private validateAndStoreStaticKey(source: StaticKeySource): void {
 		const { kid, algorithms, key: pemString, issuer, expectedAudience, allowedRoles } = source;
 
-		// 1. Reject forbidden algorithms
-		for (const alg of algorithms) {
-			if (REJECTED_ALGORITHMS.has(alg)) {
-				throw new UnexpectedError(
-					`Trusted key "${kid}": algorithm "${alg}" is not allowed for token exchange`,
-				);
-			}
-		}
-
-		// 2. Resolve and validate algorithm families
+		// 1. Resolve and validate algorithm families
 		const families = new Set<AlgorithmFamily>();
 		for (const alg of algorithms) {
 			const family = ALGORITHM_FAMILY[alg];
@@ -116,7 +105,7 @@ export class TrustedKeyService {
 			families.add(family);
 		}
 
-		// 3. Reject cross-family mixing
+		// 2. Reject cross-family mixing
 		if (families.size > 1) {
 			throw new UnexpectedError(
 				`Trusted key "${kid}": algorithms must belong to the same family, got ${[...families].join(', ')}`,
@@ -125,7 +114,7 @@ export class TrustedKeyService {
 
 		const family = [...families][0];
 
-		// 4. Parse PEM
+		// 3. Parse PEM
 		let keyObject: ReturnType<typeof createPublicKey>;
 		try {
 			keyObject = createPublicKey(pemString);
@@ -134,7 +123,7 @@ export class TrustedKeyService {
 			throw new UnexpectedError(`Trusted key "${kid}": failed to parse public key — ${message}`);
 		}
 
-		// 5. Validate key type matches algorithm family
+		// 4. Validate key type matches algorithm family
 		const keyType = keyObject.asymmetricKeyType;
 		const expectedTypes: Record<AlgorithmFamily, string[]> = {
 			RSA: ['rsa'],
@@ -148,12 +137,12 @@ export class TrustedKeyService {
 			);
 		}
 
-		// 6. Reject duplicate kid
+		// 5. Reject duplicate kid
 		if (this.keys.has(kid)) {
 			throw new UnexpectedError(`Trusted key "${kid}": duplicate kid`);
 		}
 
-		// 7. Store resolved key
+		// 6. Store resolved key
 		this.keys.set(kid, {
 			kid,
 			algorithms: algorithms as Algorithm[],
