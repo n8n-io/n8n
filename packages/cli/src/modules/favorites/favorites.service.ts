@@ -46,7 +46,7 @@ export class FavoritesService {
 
 		// Workflow, data table, and folder enrichment run in parallel
 		const [workflows, sharedWorkflows, dataTables, folders] = await Promise.all([
-			workflowIds.length > 0
+			workflowIds.length > 0 && accessibleProjectIds.size > 0
 				? this.workflowRepository.findByIds(workflowIds, { fields: ['id', 'name'] })
 				: [],
 			workflowIds.length > 0 && accessibleProjectIds.size > 0
