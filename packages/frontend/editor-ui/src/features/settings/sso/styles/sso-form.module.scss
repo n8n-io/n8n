@@ -103,8 +103,44 @@
 .copyInputGroup {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--4xs);
 	width: 100%;
+	height: 36px;
+	border: var(--border-width) var(--border-style) var(--color--foreground);
+	border-radius: var(--radius);
+	background: var(--color--background--shade-1);
+	cursor: pointer;
+	overflow: hidden;
+
+	&:hover {
+		border-color: var(--color--foreground--shade-1);
+	}
+}
+
+.copyInputValue {
+	flex: 1;
+	padding: 0 var(--spacing--xs);
+	font-size: var(--font-size--xs);
+	font-family: var(--font-family);
+	color: var(--color--text);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.copyInputIcon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 100%;
+	border-left: var(--border-width) var(--border-style) var(--color--foreground);
+	color: var(--color--text--tint-1);
+	flex-shrink: 0;
+
+	&:hover {
+		color: var(--color--text);
+		background: var(--color--foreground--tint-2);
+	}
 }
 
 .ipsBlock {
