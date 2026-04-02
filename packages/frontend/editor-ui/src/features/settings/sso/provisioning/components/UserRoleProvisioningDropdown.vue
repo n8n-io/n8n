@@ -126,9 +126,14 @@ const userRoleProvisioningDescriptions = computed<UserRoleProvisioningDescriptio
 }
 
 .controlColumn {
-	flex: 1;
+	width: 250px;
+	flex-shrink: 0;
 	display: flex;
 	justify-content: flex-end;
+
+	> :deep(*) {
+		width: 100%;
+	}
 }
 
 .noBorder {
