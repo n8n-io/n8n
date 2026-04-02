@@ -15,6 +15,7 @@ import type { BindingContext, PostBindingContext } from 'samlify/types/src/entit
 
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { buildSamlClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { UrlService } from '@/services/url.service';
 import {
@@ -321,7 +322,10 @@ export class SamlService {
 		attributes: SamlUserAttributes;
 		onboardingRequired: boolean;
 	}> {
-		const attributes = await this.getAttributesFromLoginResponse(req, binding);
+		const { mapped: attributes, raw: rawAttributes } = await this.getAttributesFromLoginResponse(
+			req,
+			binding,
+		);
 
 		if (attributes.email) {
 			const lowerCasedEmail = attributes.email.toLowerCase();
@@ -341,7 +345,7 @@ export class SamlService {
 						(e) => e.providerType === 'saml' && e.providerId === attributes.userPrincipalName,
 					)
 				) {
-					await this.applySsoProvisioning(user, attributes);
+					await this.applySsoProvisioning(user, attributes, rawAttributes);
 					return {
 						authenticatedUser: user,
 						attributes,
@@ -351,7 +355,7 @@ export class SamlService {
 					// Login path for existing users that are NOT fully set up for SAML
 					const updatedUser = await updateUserFromSamlAttributes(user, attributes);
 					const onboardingRequired = !updatedUser.firstName || !updatedUser.lastName;
-					await this.applySsoProvisioning(updatedUser, attributes);
+					await this.applySsoProvisioning(updatedUser, attributes, rawAttributes);
 					return {
 						authenticatedUser: updatedUser,
 						attributes,
@@ -362,7 +366,7 @@ export class SamlService {
 				// New users to be created JIT based on SAML attributes
 				if (isSsoJustInTimeProvisioningEnabled()) {
 					const newUser = await createUserFromSamlAttributes(attributes);
-					await this.applySsoProvisioning(newUser, attributes);
+					await this.applySsoProvisioning(newUser, attributes, rawAttributes);
 					return {
 						authenticatedUser: newUser,
 						attributes,
@@ -379,7 +383,16 @@ export class SamlService {
 		};
 	}
 
-	private async applySsoProvisioning(user: User, attributes: SamlPreferencesAttributeMapping) {
+	private async applySsoProvisioning(
+		user: User,
+		attributes: SamlPreferencesAttributeMapping,
+		rawAttributes: Record<string, unknown>,
+	): Promise<void> {
+		if (await this.provisioningService.isExpressionMappingEnabled()) {
+			const context = buildSamlClaimsContext(rawAttributes);
+			await this.provisioningService.provisionExpressionMappedRolesForUser(user, context);
+			return;
+		}
 		if (attributes?.n8nInstanceRole) {
 			await this.provisioningService.provisionInstanceRoleForUser(user, attributes.n8nInstanceRole);
 		}
@@ -647,7 +660,7 @@ export class SamlService {
 	async getAttributesFromLoginResponse(
 		req: express.Request,
 		binding: SamlLoginBinding,
-	): Promise<SamlUserAttributes> {
+	): Promise<{ mapped: SamlUserAttributes; raw: Record<string, unknown> }> {
 		let parsedSamlResponse;
 		if (!this._samlPreferences.mapping)
 			throw new BadRequestError('Error fetching SAML Attributes, no Attribute mapping set');
@@ -665,7 +678,7 @@ export class SamlService {
 				`SAML Authentication failed. Could not parse SAML response. ${error instanceof Error ? error.message : error}`,
 			);
 		}
-		const { attributes, missingAttributes } = getMappedSamlAttributesFromFlowResult(
+		const { attributes, missingAttributes, rawAttributes } = getMappedSamlAttributesFromFlowResult(
 			parsedSamlResponse,
 			this._samlPreferences.mapping,
 			{
@@ -683,7 +696,7 @@ export class SamlService {
 				)}).`,
 			);
 		}
-		return attributes;
+		return { mapped: attributes, raw: rawAttributes };
 	}
 
 	/**
