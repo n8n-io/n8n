@@ -449,13 +449,13 @@ export class OidcService {
 		};
 	}
 
-	private async applySsoProvisioning(user: User, claims: any) {
-    if (await this.provisioningService.isExpressionMappingEnabled()) {
+	private async applySsoProvisioning(user: User, claims: any, userInfo: Record<string, unknown>) {
+		if (await this.provisioningService.isExpressionMappingEnabled()) {
 			const context = buildOidcClaimsContext(claims, userInfo);
 			await this.provisioningService.provisionExpressionMappedRolesForUser(user, context);
 			return;
 		}
-    
+
 		const provisioningConfig = await this.provisioningService.getConfig();
 		const projectRoleMapping = claims[provisioningConfig.scopesProjectsRolesClaimName];
 		const instanceRole = claims[provisioningConfig.scopesInstanceRoleClaimName];
