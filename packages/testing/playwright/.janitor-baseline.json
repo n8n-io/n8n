@@ -1,6 +1,6 @@
 {
 	"version": 1,
-	"generated": "2026-04-02T08:52:41.939Z",
+	"generated": "2026-04-02T08:59:37.430Z",
 	"totalViolations": 496,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
