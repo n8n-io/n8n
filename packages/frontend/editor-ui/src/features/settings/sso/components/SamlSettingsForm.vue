@@ -314,11 +314,15 @@ onMounted(async () => {
 					/>
 				</div>
 			</div>
-			<div :class="$style.group">
-				<div :class="$style.ipsHeader">
+			<div :class="$style.settingsItem">
+				<div :class="$style.settingsItemLabel">
 					<label>{{ i18n.baseText('settings.sso.settings.ips.label') }}</label>
+				</div>
+				<div :class="$style.settingsItemControl">
 					<N8nRadioButtons v-model="ipsType" :options="ipsOptions" />
 				</div>
+			</div>
+			<div :class="$style.group">
 				<div v-if="ipsType === IdentityProviderSettingsType.URL">
 					<N8nInput
 						v-model="metadataUrl"
