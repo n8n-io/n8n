@@ -591,7 +591,7 @@ function handleStop() {
 	min-width: 0;
 	overflow: hidden;
 	position: relative;
-	background-color: var(--color--background--light-1);
+	background-color: var(--color--background--light-2);
 }
 
 .canvasArea {
@@ -631,6 +631,7 @@ function handleStop() {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
+	background-color: var(--color--background--light-2);
 }
 
 .headerTitle {
