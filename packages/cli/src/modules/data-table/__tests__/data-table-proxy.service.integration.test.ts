@@ -44,7 +44,9 @@ describe('DataTableProxyService', () => {
 		ownershipServiceMock = mock<OwnershipService>();
 		loggerMock = mock<Logger>();
 		sourceControlPreferencesServiceMock = mock<SourceControlPreferencesService>();
-		sourceControlPreferencesServiceMock.getPreferences.mockReturnValue({ branchReadOnly: false } as ReturnType<SourceControlPreferencesService['getPreferences']>);
+		sourceControlPreferencesServiceMock.getPreferences.mockReturnValue({
+			branchReadOnly: false,
+		} as ReturnType<SourceControlPreferencesService['getPreferences']>);
 
 		dataTableProxyService = new DataTableProxyService(
 			dataTableServiceMock,
@@ -103,7 +105,6 @@ describe('DataTableProxyService', () => {
 
 			expect(dataTableServiceMock.deleteDataTableByProjectId).toBeCalledWith(PROJECT_ID);
 		});
-
 	});
 	it('should call updateDataTable with correct parameters', async () => {
 		const options = { name: 'updatedDataTable' };
@@ -279,7 +280,6 @@ describe('DataTableProxyService', () => {
 			true,
 		);
 	});
-
 });
 
 describe('makeDataTableOperationsForUser', () => {
@@ -297,7 +297,9 @@ describe('makeDataTableOperationsForUser', () => {
 		dataTableAggregateServiceMock = mock<DataTableAggregateService>();
 		loggerMock = mock<Logger>();
 		sourceControlPreferencesServiceMock = mock<SourceControlPreferencesService>();
-		sourceControlPreferencesServiceMock.getPreferences.mockReturnValue({ branchReadOnly: false } as ReturnType<SourceControlPreferencesService['getPreferences']>);
+		sourceControlPreferencesServiceMock.getPreferences.mockReturnValue({
+			branchReadOnly: false,
+		} as ReturnType<SourceControlPreferencesService['getPreferences']>);
 
 		dataTableProxyService = new DataTableProxyService(
 			dataTableServiceMock,
@@ -545,7 +547,9 @@ describe('makeDataTableOperationsForUser', () => {
 
 	describe('read-only instance protection', () => {
 		beforeEach(() => {
-			sourceControlPreferencesServiceMock.getPreferences.mockReturnValue({ branchReadOnly: true } as ReturnType<SourceControlPreferencesService['getPreferences']>);
+			sourceControlPreferencesServiceMock.getPreferences.mockReturnValue({
+				branchReadOnly: true,
+			} as ReturnType<SourceControlPreferencesService['getPreferences']>);
 		});
 
 		it('should reject createDataTable on a read-only instance', async () => {
@@ -566,7 +570,9 @@ describe('makeDataTableOperationsForUser', () => {
 
 		it('should reject addColumn on a read-only instance', async () => {
 			const ops = dataTableProxyService.makeDataTableOperationsForUser(user);
-			await expect(ops.addColumn('dt-1', PROJECT_ID, { name: 'col', type: 'string' })).rejects.toThrow(
+			await expect(
+				ops.addColumn('dt-1', PROJECT_ID, { name: 'col', type: 'string' }),
+			).rejects.toThrow(
 				'Cannot modify data tables on a protected instance. This instance is in read-only mode.',
 			);
 			expect(dataTableServiceMock.addColumn).not.toHaveBeenCalled();
@@ -582,7 +588,9 @@ describe('makeDataTableOperationsForUser', () => {
 
 		it('should reject renameColumn on a read-only instance', async () => {
 			const ops = dataTableProxyService.makeDataTableOperationsForUser(user);
-			await expect(ops.renameColumn('dt-1', PROJECT_ID, 'col-1', { name: 'new_name' })).rejects.toThrow(
+			await expect(
+				ops.renameColumn('dt-1', PROJECT_ID, 'col-1', { name: 'new_name' }),
+			).rejects.toThrow(
 				'Cannot modify data tables on a protected instance. This instance is in read-only mode.',
 			);
 			expect(dataTableServiceMock.renameColumn).not.toHaveBeenCalled();
