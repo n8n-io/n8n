@@ -761,6 +761,8 @@ const instanceAiPermissionModeSchema = z.enum(['require_approval', 'always_allow
 export type InstanceAiPermissionMode = z.infer<typeof instanceAiPermissionModeSchema>;
 
 const instanceAiPermissionsSchema = z.object({
+	createWorkflow: instanceAiPermissionModeSchema,
+	updateWorkflow: instanceAiPermissionModeSchema,
 	runWorkflow: instanceAiPermissionModeSchema,
 	publishWorkflow: instanceAiPermissionModeSchema,
 	deleteWorkflow: instanceAiPermissionModeSchema,
@@ -770,6 +772,7 @@ const instanceAiPermissionsSchema = z.object({
 	moveWorkflowToFolder: instanceAiPermissionModeSchema,
 	tagWorkflow: instanceAiPermissionModeSchema,
 	createDataTable: instanceAiPermissionModeSchema,
+	deleteDataTable: instanceAiPermissionModeSchema,
 	mutateDataTableSchema: instanceAiPermissionModeSchema,
 	mutateDataTableRows: instanceAiPermissionModeSchema,
 	cleanupTestExecutions: instanceAiPermissionModeSchema,
@@ -781,6 +784,8 @@ const instanceAiPermissionsSchema = z.object({
 export type InstanceAiPermissions = z.infer<typeof instanceAiPermissionsSchema>;
 
 export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
+	createWorkflow: 'require_approval',
+	updateWorkflow: 'require_approval',
 	runWorkflow: 'require_approval',
 	publishWorkflow: 'require_approval',
 	deleteWorkflow: 'require_approval',
@@ -790,6 +795,7 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	moveWorkflowToFolder: 'require_approval',
 	tagWorkflow: 'require_approval',
 	createDataTable: 'require_approval',
+	deleteDataTable: 'require_approval',
 	mutateDataTableSchema: 'require_approval',
 	mutateDataTableRows: 'require_approval',
 	cleanupTestExecutions: 'require_approval',

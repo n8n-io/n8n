@@ -5,8 +5,6 @@ packages:
   - packages/extensions/**
   - packages/testing/**
 
-catalogMode: strict
-
 catalog:
   '@azure/identity': 4.13.0
   '@codemirror/autocomplete': 6.20.0
@@ -51,7 +49,7 @@ catalog:
   '@types/mime-types': 3.0.1
   '@types/uuid': ^10.0.0
   '@types/xml2js': ^0.4.14
-  '@vitest/coverage-v8': 3.2.4
+  '@vitest/coverage-v8': 4.1.1
   axios: 1.13.5
   basic-auth: 2.0.1
   callsites: 3.1.0
@@ -59,7 +57,7 @@ catalog:
   eslint: 9.29.0
   fast-glob: 3.2.12
   fastest-levenshtein: 1.0.16
-  flatted: 3.2.7
+  flatted: 3.4.2
   form-data: 4.0.4
   http-proxy-agent: 7.0.2
   https-proxy-agent: 7.0.6
@@ -80,6 +78,7 @@ catalog:
   picocolors: 1.0.1
   reflect-metadata: 0.2.2
   rimraf: 6.0.1
+  sass-embedded: ^1.98.0
   simple-git: 3.32.3
   stream-json: 1.9.1
   testcontainers: ^11.13.0
@@ -93,9 +92,9 @@ catalog:
   tsx: ^4.19.3
   typescript: 6.0.2
   uuid: 10.0.0
-  vite: npm:rolldown-vite@latest
+  vite: ^8.0.2
   vite-plugin-dts: ^4.5.4
-  vitest: ^3.1.3
+  vitest: ^4.1.1
   vitest-mock-extended: ^3.1.0
   vm2: ^3.10.5
   xml2js: 0.6.2
@@ -103,6 +102,8 @@ catalog:
   zod: 3.25.67
   zod-to-json-schema: 3.23.3
   playwright-core: 1.58.0
+
+catalogMode: strict
 
 catalogs:
   e2e:
@@ -124,7 +125,7 @@ catalogs:
     element-plus: 2.4.3
     highlight.js: 11.8.0
     pinia: ^2.2.4
-    unplugin-icons: ^0.19.0
+    unplugin-icons: ^23.0.1
     vite-svg-loader: 5.1.0
     vue: ^3.5.13
     vue-i18n: ^11.1.2
