@@ -306,7 +306,7 @@ export const enum StatisticsNames {
 	dataLoaded = 'data_loaded',
 }
 
-const ALL_AUTH_PROVIDERS = z.enum(['ldap', 'email', 'saml', 'oidc']);
+const ALL_AUTH_PROVIDERS = z.enum(['ldap', 'email', 'saml', 'oidc', 'token-exchange']);
 
 export type AuthProviderType = z.infer<typeof ALL_AUTH_PROVIDERS>;
 

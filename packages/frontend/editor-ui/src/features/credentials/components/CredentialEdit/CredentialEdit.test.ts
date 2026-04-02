@@ -7,9 +7,11 @@ import { retry, mockedStore } from '@/__tests__/utils';
 import { useCredentialsStore } from '../../credentials.store';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { ICredentialsResponse } from '../../credentials.types';
 import { within, waitFor } from '@testing-library/vue';
-import type { ICredentialType } from 'n8n-workflow';
+import type { ICredentialType, INode, INodeTypeDescription } from 'n8n-workflow';
 
 vi.mock('vue-router', async () => ({
 	...(await vi.importActual('vue-router')),
@@ -447,5 +449,113 @@ describe('CredentialEdit', () => {
 				expect(getByTestId('credential-edit-dialog')).toBeInTheDocument();
 			});
 		});
+	});
+
+	test('should use the requested credential type when node has multiple credential types', async () => {
+		const alphaCredType: ICredentialType = {
+			name: 'alphaApi',
+			displayName: 'Alpha API',
+			properties: [
+				{
+					displayName: 'Alpha Key',
+					name: 'alphaKey',
+					type: 'string',
+					default: '',
+				},
+			],
+		};
+
+		const betaCredType: ICredentialType = {
+			name: 'betaApi',
+			displayName: 'Beta API',
+			properties: [
+				{
+					displayName: 'Beta Token',
+					name: 'betaToken',
+					type: 'string',
+					default: '',
+				},
+			],
+		};
+
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.UI]: {
+					modalsById: {
+						[CREDENTIAL_EDIT_MODAL_KEY]: {
+							open: true,
+							showAuthSelector: true,
+						},
+					},
+				},
+				[STORES.SETTINGS]: {
+					settings: {
+						enterprise: {
+							sharing: true,
+							externalSecrets: false,
+						},
+						templates: {
+							host: '',
+						},
+					},
+				},
+				[STORES.PROJECTS]: {
+					personalProject: {
+						id: 'personal-project',
+						type: 'personal',
+						scopes: ['credential:create', 'credential:read'],
+					},
+				},
+			},
+		});
+
+		const credStore = mockedStore(useCredentialsStore);
+		credStore.state.credentialTypes = {
+			alphaApi: alphaCredType,
+			betaApi: betaCredType,
+		};
+		credStore.getNewCredentialName.mockResolvedValue('Beta API');
+
+		const ndvStore = mockedStore(useNDVStore);
+		ndvStore.activeNode = {
+			name: 'DualCredTest',
+			type: 'n8n-nodes-base.dualCredTest',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		} as INode;
+
+		const nodeTypesStore = mockedStore(useNodeTypesStore);
+		const mockNodeType = {
+			displayName: 'Dual Credential Test',
+			name: 'n8n-nodes-base.dualCredTest',
+			group: ['transform'],
+			version: 1,
+			description: 'Test node',
+			defaults: { name: 'Dual Credential Test' },
+			inputs: ['main'],
+			outputs: ['main'],
+			credentials: [
+				{ name: 'alphaApi', required: true },
+				{ name: 'betaApi', required: true },
+			],
+			properties: [],
+		} as unknown as INodeTypeDescription;
+		nodeTypesStore.getNodeType = () => mockNodeType;
+
+		renderComponent({
+			props: {
+				activeId: 'betaApi',
+				modalName: CREDENTIAL_EDIT_MODAL_KEY,
+				mode: 'new',
+			},
+			pinia,
+		});
+
+		await retry(() =>
+			expect(credStore.getNewCredentialName).toHaveBeenCalledWith({
+				credentialTypeName: 'betaApi',
+			}),
+		);
 	});
 });

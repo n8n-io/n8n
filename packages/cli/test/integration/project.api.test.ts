@@ -62,7 +62,7 @@ beforeEach(async () => {
 });
 
 describe('GET /projects/', () => {
-	test('member should get all personal projects and team projects they are apart of', async () => {
+	test('member should only get their own personal project and team projects they are a part of', async () => {
 		const [testUser1, testUser2, testUser3] = await Promise.all([
 			createUser(),
 			createUser(),
@@ -84,19 +84,20 @@ describe('GET /projects/', () => {
 		const resp = await memberAgent.get('/projects/');
 		expect(resp.status).toBe(200);
 		const respProjects = resp.body.data as Project[];
-		expect(respProjects.length).toBe(4);
+		expect(respProjects.length).toBe(2);
 
-		expect(
-			[personalProject1, personalProject2, personalProject3].every((v, i) => {
-				const p = respProjects.find((p) => p.id === v.id);
-				if (!p) {
-					return false;
-				}
-				const u = [testUser1, testUser2, testUser3][i];
-				return p.name === u.createPersonalProjectName();
-			}),
-		).toBe(true);
+		// testUser1 should see their own personal project
+		const ownPersonalProject = respProjects.find((p) => p.id === personalProject1.id);
+		expect(ownPersonalProject).not.toBeUndefined();
+		expect(ownPersonalProject!.name).toBe(testUser1.createPersonalProjectName());
+
+		// testUser1 should NOT see other users' personal projects
+		expect(respProjects.find((p) => p.id === personalProject2.id)).toBeUndefined();
+		expect(respProjects.find((p) => p.id === personalProject3.id)).toBeUndefined();
+
+		// testUser1 should see team projects they belong to
 		expect(respProjects.find((p) => p.id === teamProject1.id)).not.toBeUndefined();
+		// testUser1 should NOT see team projects they don't belong to
 		expect(respProjects.find((p) => p.id === teamProject2.id)).toBeUndefined();
 	});
 

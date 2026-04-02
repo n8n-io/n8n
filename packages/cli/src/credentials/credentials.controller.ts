@@ -169,6 +169,7 @@ export class CredentialsController {
 			mergedCredentials.data = this.credentialsService.unredact(
 				mergedCredentials.data,
 				decryptedData,
+				this.credentialsService.getCredentialTypeProperties(storedCredential.type),
 			);
 		}
 
