@@ -7,6 +7,9 @@
  * All communication with the relay uses these CDP target IDs.
  */
 
+import type { Protocol } from 'devtools-protocol';
+
+import { buildSnapshot, computeSnapshotDiff, type TreeNode } from './ariaSnapshot';
 import { createLogger } from './logger';
 
 interface ProtocolCommand {
@@ -73,6 +76,11 @@ export class RelayConnection {
 	private readonly agentCreatedChromeTabIds = new Set<number>();
 	/** The primary tab ID (first registered), used as default target */
 	private primaryId: string | undefined;
+	/** Snapshot cache per tab: targetId → { nodes, refs } — no rendered text stored */
+	private readonly tabSnapshotCache = new Map<
+		string,
+		{ nodes: TreeNode[]; refs: Map<string, string> }
+	>();
 
 	private readonly ws: WebSocket;
 	private readonly eventListener: (
@@ -158,6 +166,7 @@ export class RelayConnection {
 		this.tabs.delete(id);
 		this.chromeTabIdToId.delete(chromeTabId);
 		this.agentCreatedChromeTabIds.delete(chromeTabId);
+		this.tabSnapshotCache.delete(id);
 
 		// Update primary
 		if (id === this.primaryId) {
@@ -230,6 +239,7 @@ export class RelayConnection {
 		this.chromeTabIdToId.clear();
 		this.pendingAttaches.clear();
 		this.agentCreatedChromeTabIds.clear();
+		this.tabSnapshotCache.clear();
 		this.onclose?.();
 	}
 
@@ -404,6 +414,10 @@ export class RelayConnection {
 			case 'listTabs':
 			case 'listRegisteredTabs':
 				return await this.handleListTabs();
+			case 'getSnapshot':
+				return await this.handleGetSnapshot(message.params ?? {});
+			case 'resolveRef':
+				return this.handleResolveRef(message.params ?? {});
 			default:
 				log.debug(`unknown command: ${message.method}`);
 				return undefined;
@@ -537,6 +551,91 @@ export class RelayConnection {
 		await this.ensureAttached(id);
 		log.debug(`attachTab: ${id} done`);
 		return { attached: true, id };
+	}
+
+	private async handleGetSnapshot(params: Record<string, unknown>): Promise<unknown> {
+		const {
+			id: rawId,
+			type = 'interactive',
+			depth,
+			scopeSelector,
+		} = params as {
+			id?: string;
+			type?: 'interactive' | 'full';
+			depth?: number;
+			scopeSelector?: string;
+		};
+		const { id, entry } = this.resolveTab(rawId);
+		await this.ensureAttached(id);
+		const debuggee = { tabId: entry.chromeTabId };
+
+		// Enable protocols (idempotent)
+		await Promise.all([
+			chrome.debugger.sendCommand(debuggee, 'DOM.enable'),
+			chrome.debugger.sendCommand(debuggee, 'Accessibility.enable'),
+		]);
+
+		// Fetch full AX tree (one round-trip)
+		const { nodes: axNodes } = (await chrome.debugger.sendCommand(
+			debuggee,
+			'Accessibility.getFullAXTree',
+			{},
+		)) as Protocol.Accessibility.GetFullAXTreeResponse;
+
+		// Resolve scope node if scopeSelector given
+		let scopeNodeId: string | undefined;
+		if (scopeSelector) {
+			const { root } = (await chrome.debugger.sendCommand(debuggee, 'DOM.getDocument', {
+				depth: 0,
+			})) as Protocol.DOM.GetDocumentResponse;
+			const { nodeId } = (await chrome.debugger.sendCommand(debuggee, 'DOM.querySelector', {
+				nodeId: root.nodeId,
+				selector: scopeSelector,
+			})) as Protocol.DOM.QuerySelectorResponse;
+			if (nodeId) {
+				const { node } = (await chrome.debugger.sendCommand(debuggee, 'DOM.describeNode', {
+					nodeId,
+				})) as Protocol.DOM.DescribeNodeResponse;
+				scopeNodeId = axNodes.find((n) => n.backendDOMNodeId === node.backendNodeId)?.nodeId;
+			}
+		}
+
+		// Build snapshot — fetchAttributes drives lazy CDP calls per node
+		const { nodes, refs } = await buildSnapshot({
+			axNodes,
+			fetchAttributes: async (backendNodeId) => {
+				const { nodeIds } = (await chrome.debugger.sendCommand(
+					debuggee,
+					'DOM.pushNodesByBackendIdsToFrontend',
+					{ backendNodeIds: [backendNodeId] },
+				)) as Protocol.DOM.PushNodesByBackendIdsToFrontendResponse;
+				if (!nodeIds[0]) return [];
+				const { attributes } = (await chrome.debugger.sendCommand(debuggee, 'DOM.getAttributes', {
+					nodeId: nodeIds[0],
+				})) as Protocol.DOM.GetAttributesResponse;
+				return attributes;
+			},
+			type,
+			maxDepth: depth,
+			scopeNodeId,
+		});
+
+		// Structural diff against cached previous tree
+		const previous = this.tabSnapshotCache.get(id)?.nodes ?? [];
+		this.tabSnapshotCache.set(id, { nodes, refs });
+		const { diffType, content } = computeSnapshotDiff(previous, nodes);
+
+		log.debug(`getSnapshot: targetId=${id} diffType=${diffType} len=${content.length}\n${content}`);
+		return { snapshot: content, diffType };
+	}
+
+	private handleResolveRef(params: Record<string, unknown>): unknown {
+		const { id: rawId, ref } = params as { id?: string; ref: string };
+		if (!ref) throw new Error('ref is required');
+		const { id } = this.resolveTab(rawId);
+		const selector = this.tabSnapshotCache.get(id)?.refs.get(ref);
+		if (!selector) throw new Error(`Stale ref: ${ref}`);
+		return { selector };
 	}
 
 	private async handleListTabs(): Promise<unknown> {

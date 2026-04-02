@@ -12,7 +12,7 @@ import type {
 import { chromium } from 'playwright-core';
 
 import { CDPRelayServer } from '../cdp-relay';
-import { BrowserExecutableNotFoundError, PageNotFoundError, StaleRefError } from '../errors';
+import { BrowserExecutableNotFoundError, PageNotFoundError } from '../errors';
 import { createLogger } from '../logger';
 import type {
 	ClickOptions,
@@ -35,26 +35,6 @@ import type {
 import { generateId, toError } from '../utils';
 
 const log = createLogger('playwright');
-
-// ---------------------------------------------------------------------------
-// Type augmentation for Playwright's private _snapshotForAI API.
-// This is used internally by Playwright MCP (playwright/lib/mcp/browser/tab.js)
-// and returns a YAML accessibility tree with aria-ref= annotations.
-// ---------------------------------------------------------------------------
-
-interface SnapshotForAIResult {
-	/** Complete YAML accessibility tree with [ref=eN] annotations */
-	full: string;
-	/** Incremental diff (only changed elements), undefined on first call */
-	incremental?: string;
-}
-
-interface PlaywrightPagePrivate extends Page {
-	_snapshotForAI(options?: {
-		timeout?: number;
-		track?: string;
-	}): Promise<SnapshotForAIResult>;
-}
 
 // ---------------------------------------------------------------------------
 // Per-page state tracked by the adapter
@@ -296,12 +276,16 @@ export class PlaywrightAdapter {
 	async back(pageId: string): Promise<NavigateResult> {
 		const { page } = await this.ensurePage(pageId);
 		await page.goBack({ waitUntil: 'load' });
-		return { title: await page.title(), url: page.url(), status: 0 };
+		return await this.getNavigateResult(page);
 	}
 
 	async forward(pageId: string): Promise<NavigateResult> {
 		const { page } = await this.ensurePage(pageId);
 		await page.goForward({ waitUntil: 'load' });
+		return await this.getNavigateResult(page);
+	}
+
+	private async getNavigateResult(page: Page): Promise<NavigateResult> {
 		return { title: await page.title(), url: page.url(), status: 0 };
 	}
 
@@ -323,7 +307,6 @@ export class PlaywrightAdapter {
 	// =========================================================================
 
 	async click(pageId: string, target: ElementTarget, options?: ClickOptions): Promise<void> {
-		await this.ensurePage(pageId);
 		const locator = await this.resolveLocator(pageId, target);
 		await locator.click({
 			button: options?.button,
@@ -338,7 +321,6 @@ export class PlaywrightAdapter {
 		text: string,
 		options?: TypeOptions,
 	): Promise<void> {
-		await this.ensurePage(pageId);
 		const locator = await this.resolveLocator(pageId, target);
 
 		if (options?.clear) {
@@ -353,13 +335,11 @@ export class PlaywrightAdapter {
 	}
 
 	async select(pageId: string, target: ElementTarget, values: string[]): Promise<string[]> {
-		await this.ensurePage(pageId);
 		const locator = await this.resolveLocator(pageId, target);
 		return await locator.selectOption(values);
 	}
 
 	async hover(pageId: string, target: ElementTarget): Promise<void> {
-		await this.ensurePage(pageId);
 		const locator = await this.resolveLocator(pageId, target);
 		await locator.hover();
 	}
@@ -370,7 +350,6 @@ export class PlaywrightAdapter {
 	}
 
 	async drag(pageId: string, from: ElementTarget, to: ElementTarget): Promise<void> {
-		await this.ensurePage(pageId);
 		const fromLocator = await this.resolveLocator(pageId, from);
 		const toLocator = await this.resolveLocator(pageId, to);
 		await fromLocator.dragTo(toLocator);
@@ -413,11 +392,7 @@ export class PlaywrightAdapter {
 		// If a dialog is already pending, handle it immediately
 		if (state.pendingDialog) {
 			const dialogType = state.pendingDialog.type();
-			if (action === 'accept') {
-				await state.pendingDialog.accept(text);
-			} else {
-				await state.pendingDialog.dismiss();
-			}
+			await this.handleDialog(state.pendingDialog, action, text);
 			state.pendingDialog = undefined;
 			return dialogType;
 		}
@@ -432,17 +407,25 @@ export class PlaywrightAdapter {
 				clearTimeout(timeout);
 				try {
 					const dialogType = dlg.type();
-					if (action === 'accept') {
-						await dlg.accept(text);
-					} else {
-						await dlg.dismiss();
-					}
+					await this.handleDialog(dlg, action, text);
 					resolve(dialogType);
 				} catch (error) {
 					reject(toError(error));
 				}
 			});
 		});
+	}
+
+	private async handleDialog(
+		dlg: Dialog,
+		action: 'accept' | 'dismiss',
+		text?: string,
+	): Promise<void> {
+		if (action === 'accept') {
+			await dlg.accept(text);
+		} else {
+			await dlg.dismiss();
+		}
 	}
 
 	// =========================================================================
@@ -470,43 +453,20 @@ export class PlaywrightAdapter {
 		return buffer.toString('base64');
 	}
 
-	async snapshot(pageId: string, target?: ElementTarget): Promise<SnapshotResult> {
-		const { page } = await this.ensurePage(pageId);
+	async snapshot(
+		pageId: string,
+		target?: ElementTarget,
+		type: 'interactive' | 'full' = 'interactive',
+		depth?: number,
+	): Promise<SnapshotResult> {
+		await this.ensurePage(pageId);
+		if (!this.relay) throw new Error('No relay available');
 
-		// Use Playwright's internal _snapshotForAI API which returns a YAML
-		// accessibility tree with [ref=eN] annotations on interactive elements.
-		// This is the same API used by Playwright MCP's Tab.captureSnapshot().
-		let yaml: string;
-		if (target) {
-			const locator = await this.resolveLocator(pageId, target);
-			// Scoped snapshots use the public ariaSnapshot() on the locator
-			yaml = await locator.ariaSnapshot();
-		} else {
-			const privatePage = page as PlaywrightPagePrivate;
-			const result = await privatePage._snapshotForAI({ track: 'response' });
-			yaml = result.full;
-		}
+		const scopeSelector = await this.resolveTargetToSelector(pageId, target);
 
-		if (!yaml) {
-			return { tree: '(empty page)', refCount: 0 };
-		}
+		const { snapshot, diffType } = await this.relay.getSnapshot(pageId, type, depth, scopeSelector);
 
-		// Count refs in the output (format: [ref=eN])
-		const refMatches = yaml.match(/\[ref=e\d+\]/g);
-		const refCount = refMatches?.length ?? 0;
-
-		return { tree: yaml, refCount };
-	}
-
-	async getText(pageId: string, target?: ElementTarget): Promise<string> {
-		const { page } = await this.ensurePage(pageId);
-
-		if (target) {
-			const locator = await this.resolveLocator(pageId, target);
-			return await locator.innerText();
-		}
-
-		return await page.innerText('body');
+		return { tree: snapshot, diffType };
 	}
 
 	async evaluate(pageId: string, script: string): Promise<unknown> {
@@ -807,38 +767,12 @@ export class PlaywrightAdapter {
 	}
 
 	// =========================================================================
-	// Ref resolution — uses Playwright's built-in aria-ref selector engine
-	// =========================================================================
-
-	async resolveRef(pageId: string, ref: string): Promise<unknown> {
-		const { page } = await this.ensurePage(pageId);
-		const locator = page.locator(`aria-ref=${ref}`);
-
-		// Verify the element exists
-		try {
-			const count = await locator.count();
-			if (count === 0) throw new StaleRefError(ref);
-		} catch (error) {
-			if (error instanceof StaleRefError) throw error;
-			throw new StaleRefError(ref);
-		}
-
-		return locator;
-	}
-
-	// =========================================================================
 	// Private helpers
 	// =========================================================================
 
 	private requireContext(): BrowserContext {
 		if (!this.context) throw new Error('Browser context not initialized');
 		return this.context;
-	}
-
-	private requirePage(pageId: string): PageState {
-		const state = this.pageStates.get(pageId);
-		if (!state) throw new PageNotFoundError(pageId);
-		return state;
 	}
 
 	/**
@@ -974,12 +908,27 @@ export class PlaywrightAdapter {
 		}
 	}
 
-	private async resolveLocator(pageId: string, target: ElementTarget): Promise<Locator> {
+	private resolveTargetToSelector(pageId: string, target: ElementTarget): Promise<string>;
+	private resolveTargetToSelector(
+		pageId: string,
+		target?: ElementTarget,
+	): Promise<string | undefined>;
+	private async resolveTargetToSelector(
+		pageId: string,
+		target?: ElementTarget,
+	): Promise<string | undefined> {
+		if (!target) return undefined;
 		if ('ref' in target) {
-			return (await this.resolveRef(pageId, target.ref)) as Locator;
+			if (!this.relay) throw new Error('No relay available');
+			const { selector } = await this.relay.resolveRef(pageId, target.ref);
+			return selector;
 		}
-		const { page } = this.requirePage(pageId);
-		return page.locator(target.selector);
+		return target.selector;
+	}
+
+	private async resolveLocator(pageId: string, target: ElementTarget): Promise<Locator> {
+		const { page } = await this.ensurePage(pageId);
+		return page.locator(await this.resolveTargetToSelector(pageId, target));
 	}
 
 	private globToRegex(pattern: string): RegExp {

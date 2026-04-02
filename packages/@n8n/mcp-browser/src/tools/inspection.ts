@@ -26,6 +26,21 @@ const browserSnapshotSchema = z
 		scope: elementTargetSchema
 			.optional()
 			.describe('Optionally scope to a subtree rooted at this element'),
+		type: z
+			.enum(['interactive', 'full'])
+			.optional()
+			.default('interactive')
+			.describe(
+				"'interactive' (default): interactive elements + semantic containers — token-efficient. 'full': all page content including headings and text. Use 'full' with scope to read text content from a specific element.",
+			),
+		depth: z
+			.number()
+			.int()
+			.min(1)
+			.optional()
+			.describe(
+				'Max nesting depth for structural elements. Interactive elements always shown regardless. Default: 6.',
+			),
 		pageId: pageIdField,
 	})
 	.describe('Get ref-annotated accessibility tree of the page');
@@ -41,7 +56,7 @@ function browserSnapshot(connection: BrowserConnection): ToolDefinition {
 		'Use this tool as your primary way to observe the page. Returns a ref-annotated accessibility tree — a compact text representation of all visible elements. Each interactive element gets a numeric ref for use in subsequent tool calls (browser_click, browser_type, etc.). Snapshots are small and fast. Prefer this over browser_screenshot unless you specifically need visual/layout information.',
 		browserSnapshotSchema,
 		async (state, input, pageId) => {
-			const result = await state.adapter.snapshot(pageId, input.scope);
+			const result = await state.adapter.snapshot(pageId, input.scope, input.type, input.depth);
 			return formatCallToolResult({ snapshot: result.tree });
 		},
 		browserSnapshotOutputSchema,

@@ -21,6 +21,7 @@
 		"@n8n/typescript-config": "workspace:*",
 		"@types/chrome": "0.0.300",
 		"@vitejs/plugin-vue": "catalog:frontend",
+		"devtools-protocol": "catalog:",
 		"sass": "^1.71.1",
 		"vite": "catalog:"
 	}

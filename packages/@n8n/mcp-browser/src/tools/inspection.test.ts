@@ -50,7 +50,7 @@ describe('createInspectionTools', () => {
 			it('calls adapter.snapshot and returns tree', async () => {
 				mockConnection.adapter.snapshot.mockResolvedValue({
 					tree: '- heading "Test" [ref=e1]\n- button "Click" [ref=e2]',
-					refCount: 2,
+					diffType: 'full' as const,
 				});
 
 				const result = await getTool().execute({}, TOOL_CONTEXT);

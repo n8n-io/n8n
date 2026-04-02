@@ -476,6 +476,34 @@ export class CDPRelayServer {
 		}
 	}
 
+	/** Build an accessibility snapshot in the extension and return it. */
+	async getSnapshot(
+		id: string | undefined,
+		type: 'interactive' | 'full' = 'interactive',
+		depth?: number,
+		scopeSelector?: string,
+	): Promise<ExtensionCommands['getSnapshot']['result']> {
+		if (!this.extensionConn) throw new Error('Extension not connected');
+		return (await this.extensionConn.send('getSnapshot', {
+			id,
+			type,
+			depth,
+			scopeSelector,
+		})) as ExtensionCommands['getSnapshot']['result'];
+	}
+
+	/** Resolve a snapshot ref to a CSS selector via the extension. */
+	async resolveRef(
+		id: string | undefined,
+		ref: string,
+	): Promise<ExtensionCommands['resolveRef']['result']> {
+		if (!this.extensionConn) throw new Error('Extension not connected');
+		return (await this.extensionConn.send('resolveRef', {
+			id,
+			ref,
+		})) as ExtensionCommands['resolveRef']['result'];
+	}
+
 	/** Handle tabOpened event from extension. */
 	private handleTabOpened(id: string, title: string, url: string): void {
 		if (this.tabCache.has(id)) return;

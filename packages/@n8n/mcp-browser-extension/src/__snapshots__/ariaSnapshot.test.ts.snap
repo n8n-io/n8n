@@ -1,0 +1,67 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`buildSnapshot deduplicates identical selectors in refs map with >> nth= 1`] = `
+"- button "OK" [ref=btn-ok]
+- button "OK" [ref=btn-ok-2]"
+`;
+
+exports[`buildSnapshot excludes headings in interactive-only mode (default) 1`] = `"- button "Click me" [ref=btn-click-me]"`;
+
+exports[`buildSnapshot falls back to id attr as ref when no test-ID attr present 1`] = `"- button "Save" [ref=my-save-btn]"`;
+
+exports[`buildSnapshot falls back to role+name ref when no stable attr 1`] = `"- button "Save" [ref=btn-save]"`;
+
+exports[`buildSnapshot hoists button out of generic wrapper 1`] = `"- button "Save" [ref=btn-save]"`;
+
+exports[`buildSnapshot includes headings in full mode 1`] = `
+"- heading "Page Title"
+- button "Click me" [ref=btn-click-me]"
+`;
+
+exports[`buildSnapshot includes interactive button and context navigation 1`] = `
+"- navigation [ref=nav-1]:
+  - link "Home" [ref=lnk-home]
+- main [ref=mai-2]:
+  - button "Submit" [ref=btn-submit]"
+`;
+
+exports[`buildSnapshot includes label text in label context 1`] = `
+"- labeltext:
+  - text: "Email"
+  - textbox "Email" [ref=txt-email]"
+`;
+
+exports[`buildSnapshot produces expected inline snapshot 1`] = `
+"- navigation [ref=nav-1]:
+  - link "Home" [ref=home-link]"
+`;
+
+exports[`buildSnapshot promotes contenteditable generic div to textbox 1`] = `"- textbox [ref=txt-1]"`;
+
+exports[`buildSnapshot scopes snapshot to scopeNodeId subtree 1`] = `
+"- main [ref=mai-1]:
+  - button "Main Button" [ref=btn-main-button]"
+`;
+
+exports[`buildSnapshot uses data-testid attr as ref (highest priority) 1`] = `"- button "Save" [ref=save-btn]"`;
+
+exports[`computeSnapshotDiff includes breadcrumb context in diff output 1`] = `"Main nav > ~ link "About us" (was "About")"`;
+
+exports[`computeSnapshotDiff returns diff with + marker for added node 1`] = `"+ button "Export""`;
+
+exports[`computeSnapshotDiff returns diff with ~ marker for changed node name 1`] = `"~ button "Save" (was "Submit")"`;
+
+exports[`computeSnapshotDiff returns diff with - marker for removed node 1`] = `"- button "Delete""`;
+
+exports[`computeSnapshotDiff returns full on empty previous (first call) 1`] = `"- button "Save" [ref=btn-save]"`;
+
+exports[`computeSnapshotDiff returns full when more than 50% of nodes changed 1`] = `
+"- button "X" [ref=btn-x]
+- button "Y" [ref=btn-y]
+- button "Z" [ref=btn-z]"
+`;
+
+exports[`renderSnapshot renders nested tree with correct indentation 1`] = `
+"- navigation:
+  - link "Home""
+`;

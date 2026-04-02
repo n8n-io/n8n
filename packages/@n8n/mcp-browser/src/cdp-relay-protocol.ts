@@ -49,6 +49,47 @@ export interface ExtensionCommands {
 	listTabs: {
 		params: Record<string, never>;
 	};
+	/**
+	 * Build an accessibility snapshot of a tab directly in the extension using
+	 * chrome.debugger CDP APIs (Accessibility + DOM). Avoids relay round-trips.
+	 */
+	getSnapshot: {
+		params: {
+			/** Target tab ID. Omit to use the primary tab. */
+			id?: string;
+			/** Snapshot mode: 'interactive' (default) includes only interactive elements and semantic containers; 'full' includes all content. */
+			type?: 'interactive' | 'full';
+			/** Max nesting depth for structural elements. Default 6. */
+			depth?: number;
+			/** Scope snapshot to a CSS selector subtree. */
+			scopeSelector?: string;
+		};
+		result: SnapshotResult;
+	};
+	/** Resolve a snapshot ref to a CSS selector (single lookup, no bulk transfer). */
+	resolveRef: {
+		params: {
+			/** Target tab ID. Omit to use the primary tab. */
+			id?: string;
+			/** The ref string (e.g. "e3" or "submit-btn") from a previous snapshot. */
+			ref: string;
+		};
+		result: ResolveRefResult;
+	};
+}
+
+/** Returned by getSnapshot. */
+export interface SnapshotResult {
+	/** YAML-like accessibility tree text, or breadcrumb diff lines, or empty string. */
+	snapshot: string;
+	/** How the snapshot content should be interpreted. */
+	diffType: 'no-change' | 'diff' | 'full';
+}
+
+/** Returned by resolveRef. */
+export interface ResolveRefResult {
+	/** CSS selector that can be passed to page.locator(). */
+	selector: string;
 }
 
 // ---------------------------------------------------------------------------
