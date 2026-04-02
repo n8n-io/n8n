@@ -14,30 +14,38 @@ function escapeHtml(text: string): string {
 		.replace(/'/g, '&#39;');
 }
 
-function highlightJson(value: unknown): string {
-	const json = JSON.stringify(value, null, 2);
-	if (!json) return escapeHtml(String(value));
+/**
+ * Recursively build syntax-highlighted HTML from a JSON value.
+ * Uses a structural walk instead of regex to avoid catastrophic
+ * backtracking on large payloads.
+ */
+function highlightJson(value: unknown, indent = 0): string {
+	const pad = '  '.repeat(indent);
+	const padInner = '  '.repeat(indent + 1);
 
-	// First HTML-escape the entire JSON string to neutralize any embedded markup,
-	// then apply syntax-highlighting spans on the safe output.
-	const escaped = escapeHtml(json);
+	if (value === null) return '<span class="json-bool">null</span>';
+	if (typeof value === 'boolean') return `<span class="json-bool">${value}</span>`;
+	if (typeof value === 'number') return `<span class="json-number">${value}</span>`;
+	if (typeof value === 'string')
+		return `<span class="json-string">&quot;${escapeHtml(value)}&quot;</span>`;
 
-	return escaped.replace(
-		/(&quot;(?:\\.|[^&]|&(?!quot;))*?&quot;)\s*:|(&quot;(?:\\.|[^&]|&(?!quot;))*?&quot;)|(true|false|null)|(\d+\.?\d*)/g,
-		(
-			match,
-			key: string | undefined,
-			str: string | undefined,
-			bool: string | undefined,
-			num: string | undefined,
-		) => {
-			if (key) return `<span class="json-key">${key}</span>:`;
-			if (str) return `<span class="json-string">${str}</span>`;
-			if (bool) return `<span class="json-bool">${bool}</span>`;
-			if (num) return `<span class="json-number">${num}</span>`;
-			return match;
-		},
-	);
+	if (Array.isArray(value)) {
+		if (value.length === 0) return '[]';
+		const items = value.map((v) => `${padInner}${highlightJson(v, indent + 1)}`);
+		return `[\n${items.join(',\n')}\n${pad}]`;
+	}
+
+	if (typeof value === 'object') {
+		const entries = Object.entries(value as Record<string, unknown>);
+		if (entries.length === 0) return '{}';
+		const lines = entries.map(
+			([k, v]) =>
+				`${padInner}<span class="json-key">&quot;${escapeHtml(k)}&quot;</span>: ${highlightJson(v, indent + 1)}`,
+		);
+		return `{\n${lines.join(',\n')}\n${pad}}`;
+	}
+
+	return escapeHtml(String(value));
 }
 
 const highlighted = computed(() => highlightJson(props.value));
