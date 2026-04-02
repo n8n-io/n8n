@@ -392,7 +392,6 @@ onMounted(async () => {
 			<RoleMappingRuleEditor
 				v-if="userRoleProvisioning === 'expression_based'"
 				ref="roleMappingRuleEditorRef"
-				@remove-mapping="userRoleProvisioning = 'disabled'"
 			/>
 			<ConfirmProvisioningDialog
 				v-model="showUserRoleProvisioningDialog"

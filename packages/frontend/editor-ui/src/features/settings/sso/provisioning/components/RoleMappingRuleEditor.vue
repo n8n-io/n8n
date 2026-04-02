@@ -8,11 +8,6 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useRoleMappingRules } from '../composables/useRoleMappingRules';
 import RuleSectionHeader from './RuleSectionHeader.vue';
 import RuleList from './RuleList.vue';
-import RemoveMappingButton from './RemoveMappingButton.vue';
-
-const emit = defineEmits<{
-	'remove-mapping': [];
-}>();
 
 const i18n = useI18n();
 const rbacStore = useRBACStore();
@@ -118,8 +113,6 @@ defineExpose({ isDirty, save });
 				{{ i18n.baseText('settings.sso.settings.roleMappingRules.addRule') }}
 			</N8nButton>
 		</div>
-
-		<RemoveMappingButton :disabled="!canEdit" @remove="emit('remove-mapping')" />
 	</div>
 </template>
 <style lang="scss" module>
