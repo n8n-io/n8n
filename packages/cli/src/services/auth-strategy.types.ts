@@ -1,23 +1,16 @@
-import type { Request } from 'express';
-
-/**
- * The resolved identity returned by an AuthStrategy on a successful match.
- * userId is the n8n user ID. scopes are the permissions granted for this
- * request. resource is an optional URN constraining which resource the
- * token may access (e.g. 'urn:n8n:project:abc123').
- */
-export interface AuthResult {
-	userId: string;
-	scopes: string[];
-	resource?: string;
-}
+import type { AuthenticatedRequest } from '@n8n/db';
 
 /**
  * A single authentication strategy for the public API.
- * Return null if the strategy does not apply to the request (e.g. no
- * matching token header present) — this passes control to the next strategy.
- * Return a non-null AuthResult when the request is successfully authenticated.
+ *
+ * Return values:
+ *   null  — strategy does not apply to this request (e.g. no matching header);
+ *           the registry will try the next registered strategy.
+ *   false — strategy recognises this request but authentication failed
+ *           (e.g. expired key, disabled user); the registry stops immediately.
+ *   true  — authentication succeeded; the strategy has set req.user
+ *           (and req.tokenGrant if applicable) before returning.
  */
 export interface AuthStrategy {
-	authenticate(req: Request): Promise<AuthResult | null>;
+	authenticate(req: AuthenticatedRequest): Promise<boolean | null>;
 }

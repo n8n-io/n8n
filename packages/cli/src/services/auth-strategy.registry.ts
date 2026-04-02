@@ -1,19 +1,24 @@
+import type { AuthenticatedRequest } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { Request } from 'express';
 
-import type { AuthResult, AuthStrategy } from './auth-strategy.types';
+import type { AuthStrategy } from './auth-strategy.types';
 
 /**
  * Ordered registry of AuthStrategy implementations for the public API.
- * Strategies are tried in registration order; the first non-null result wins.
- * If all strategies return null the request is treated as unauthenticated.
+ *
+ * Each strategy returns:
+ *   null  — abstain (try next strategy)
+ *   false — fail fast (stop chain, request is unauthenticated)
+ *   true  — success (stop chain, request is authenticated)
+ *
+ * If all strategies abstain the request is treated as unauthenticated.
  *
  * Register a strategy (e.g. from a module init):
  *   Container.get(AuthStrategyRegistry).register(myStrategy);
  *
  * Evaluate strategies (e.g. from auth middleware):
- *   const result = await registry.authenticate(req);
- *   if (!result) return false; // unauthenticated
+ *   const authenticated = await registry.authenticate(req);
+ *   if (!authenticated) return false;
  */
 @Service()
 export class AuthStrategyRegistry {
@@ -23,13 +28,14 @@ export class AuthStrategyRegistry {
 		this.strategies.push(strategy);
 	}
 
-	async authenticate(req: Request): Promise<AuthResult | null> {
+	async authenticate(req: AuthenticatedRequest): Promise<boolean> {
 		for (const strategy of this.strategies) {
 			const result = await strategy.authenticate(req);
 			if (result !== null) {
-				return result;
+				return result; // true = success, false = fail fast
 			}
+			// null = this strategy abstained, continue to next
 		}
-		return null;
+		return false; // all strategies abstained = unauthenticated
 	}
 }

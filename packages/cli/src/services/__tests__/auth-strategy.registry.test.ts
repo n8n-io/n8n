@@ -1,8 +1,8 @@
+import type { AuthenticatedRequest } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
-import type { Request } from 'express';
 
 import { AuthStrategyRegistry } from '../auth-strategy.registry';
-import type { AuthStrategy, AuthResult } from '../auth-strategy.types';
+import type { AuthStrategy } from '../auth-strategy.types';
 
 describe('AuthStrategyRegistry', () => {
 	let registry: AuthStrategyRegistry;
@@ -12,11 +12,11 @@ describe('AuthStrategyRegistry', () => {
 	});
 
 	describe('authenticate', () => {
-		it('returns null when no strategies are registered', async () => {
-			expect(await registry.authenticate(mock<Request>())).toBeNull();
+		it('returns false when no strategies are registered', async () => {
+			expect(await registry.authenticate(mock<AuthenticatedRequest>())).toBe(false);
 		});
 
-		it('returns null when all strategies return null', async () => {
+		it('returns false when all strategies abstain', async () => {
 			const strategy1 = mock<AuthStrategy>();
 			const strategy2 = mock<AuthStrategy>();
 			strategy1.authenticate.mockResolvedValue(null);
@@ -25,20 +25,18 @@ describe('AuthStrategyRegistry', () => {
 			registry.register(strategy1);
 			registry.register(strategy2);
 
-			expect(await registry.authenticate(mock<Request>())).toBeNull();
+			expect(await registry.authenticate(mock<AuthenticatedRequest>())).toBe(false);
 		});
 
-		it('returns the first non-null result', async () => {
-			const firstResult: AuthResult = { userId: 'user-1', scopes: ['workflow:read'] };
+		it('returns true when the first strategy succeeds', async () => {
 			const strategy1 = mock<AuthStrategy>();
 			const strategy2 = mock<AuthStrategy>();
-			strategy1.authenticate.mockResolvedValue(firstResult);
-			strategy2.authenticate.mockResolvedValue({ userId: 'user-2', scopes: [] });
+			strategy1.authenticate.mockResolvedValue(true);
 
 			registry.register(strategy1);
 			registry.register(strategy2);
 
-			expect(await registry.authenticate(mock<Request>())).toBe(firstResult);
+			expect(await registry.authenticate(mock<AuthenticatedRequest>())).toBe(true);
 		});
 
 		it('evaluates strategies in registration order', async () => {
@@ -59,38 +57,63 @@ describe('AuthStrategyRegistry', () => {
 			registry.register(strategy1);
 			registry.register(strategy2);
 
-			await registry.authenticate(mock<Request>());
+			await registry.authenticate(mock<AuthenticatedRequest>());
 
 			expect(order).toEqual([1, 2]);
 		});
 
-		it('passes control to the next strategy when the current one returns null', async () => {
-			const secondResult: AuthResult = { userId: 'user-2', scopes: ['workflow:read'] };
+		it('passes control to the next strategy when the current one abstains', async () => {
 			const strategy1 = mock<AuthStrategy>();
 			const strategy2 = mock<AuthStrategy>();
 			strategy1.authenticate.mockResolvedValue(null);
-			strategy2.authenticate.mockResolvedValue(secondResult);
+			strategy2.authenticate.mockResolvedValue(true);
 
 			registry.register(strategy1);
 			registry.register(strategy2);
 
-			const req = mock<Request>();
-			const result = await registry.authenticate(req);
+			const req = mock<AuthenticatedRequest>();
 
-			expect(result).toBe(secondResult);
+			expect(await registry.authenticate(req)).toBe(true);
 			expect(strategy1.authenticate).toHaveBeenCalledWith(req);
 			expect(strategy2.authenticate).toHaveBeenCalledWith(req);
 		});
 
-		it('does not call subsequent strategies after a match', async () => {
+		it('stops the chain immediately when a strategy returns false', async () => {
 			const strategy1 = mock<AuthStrategy>();
 			const strategy2 = mock<AuthStrategy>();
-			strategy1.authenticate.mockResolvedValue({ userId: 'user-1', scopes: [] });
+			strategy1.authenticate.mockResolvedValue(false);
 
 			registry.register(strategy1);
 			registry.register(strategy2);
 
-			await registry.authenticate(mock<Request>());
+			expect(await registry.authenticate(mock<AuthenticatedRequest>())).toBe(false);
+			expect(strategy2.authenticate).not.toHaveBeenCalled();
+		});
+
+		it('stops the chain after abstain then false, without calling further strategies', async () => {
+			const strategy1 = mock<AuthStrategy>();
+			const strategy2 = mock<AuthStrategy>();
+			const strategy3 = mock<AuthStrategy>();
+			strategy1.authenticate.mockResolvedValue(null);
+			strategy2.authenticate.mockResolvedValue(false);
+
+			registry.register(strategy1);
+			registry.register(strategy2);
+			registry.register(strategy3);
+
+			expect(await registry.authenticate(mock<AuthenticatedRequest>())).toBe(false);
+			expect(strategy3.authenticate).not.toHaveBeenCalled();
+		});
+
+		it('does not call subsequent strategies after success', async () => {
+			const strategy1 = mock<AuthStrategy>();
+			const strategy2 = mock<AuthStrategy>();
+			strategy1.authenticate.mockResolvedValue(true);
+
+			registry.register(strategy1);
+			registry.register(strategy2);
+
+			await registry.authenticate(mock<AuthenticatedRequest>());
 
 			expect(strategy2.authenticate).not.toHaveBeenCalled();
 		});
@@ -100,35 +123,22 @@ describe('AuthStrategyRegistry', () => {
 			strategy.authenticate.mockResolvedValue(null);
 			registry.register(strategy);
 
-			const req = mock<Request>();
+			const req = mock<AuthenticatedRequest>();
 			await registry.authenticate(req);
 
 			expect(strategy.authenticate).toHaveBeenCalledWith(req);
 		});
 
-		it('returns an AuthResult with a resource when the strategy includes one', async () => {
-			const result: AuthResult = {
-				userId: 'user-1',
-				scopes: ['workflow:read'],
-				resource: 'urn:n8n:project:abc123',
-			};
-			const strategy = mock<AuthStrategy>();
-			strategy.authenticate.mockResolvedValue(result);
-			registry.register(strategy);
-
-			expect(await registry.authenticate(mock<Request>())).toEqual(result);
-		});
-
 		it('allows the same strategy instance to be registered multiple times', async () => {
 			const strategy = mock<AuthStrategy>();
-			strategy.authenticate.mockResolvedValue({ userId: 'user-1', scopes: [] });
+			strategy.authenticate.mockResolvedValue(true);
 
 			registry.register(strategy);
 			registry.register(strategy);
 
-			await registry.authenticate(mock<Request>());
+			await registry.authenticate(mock<AuthenticatedRequest>());
 
-			// First registration matched — called exactly once, short-circuited
+			// First registration succeeded — short-circuited
 			expect(strategy.authenticate).toHaveBeenCalledTimes(1);
 		});
 	});
