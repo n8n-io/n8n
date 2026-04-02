@@ -27,7 +27,9 @@ import {
 import { DataTableAggregateService } from './data-table-aggregate.service';
 import { DataTableService } from './data-table.service';
 
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { OwnershipService } from '@/services/ownership.service';
 
 const ALLOWED_NODES = [
@@ -50,8 +52,18 @@ export class DataTableProxyService implements DataTableProxyProvider {
 		private readonly dataTableAggregateService: DataTableAggregateService,
 		private readonly ownershipService: OwnershipService,
 		private readonly logger: Logger,
+		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
 	) {
 		this.logger = this.logger.scoped('data-table');
+	}
+
+	private checkInstanceWriteAccess(): void {
+		const preferences = this.sourceControlPreferencesService.getPreferences();
+		if (preferences.branchReadOnly) {
+			throw new ForbiddenError(
+				'Cannot modify data tables on a protected instance. This instance is in read-only mode.',
+			);
+		}
 	}
 
 	private validateRequest(node: INode) {
@@ -100,6 +112,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 		const dataTableAggregateService = this.dataTableAggregateService;
 		const requireScope = async (scope: Scope, projectId: string) =>
 			await this.requireScope(user, scope, projectId);
+		const checkInstanceWriteAccess = () => this.checkInstanceWriteAccess();
 
 		return {
 			// dataTable:listProject
@@ -109,6 +122,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 
 			// dataTable:create
 			async createDataTable(projectId: string, options: CreateDataTableOptions) {
+				checkInstanceWriteAccess();
 				await requireScope('dataTable:create', projectId);
 				return await dataTableService.createDataTable(projectId, options);
 			},
@@ -125,16 +139,19 @@ export class DataTableProxyService implements DataTableProxyProvider {
 				projectId: string,
 				options: UpdateDataTableOptions,
 			) {
+				checkInstanceWriteAccess();
 				await requireScope('dataTable:update', projectId);
 				return await dataTableService.updateDataTable(dataTableId, projectId, options);
 			},
 
 			async addColumn(dataTableId: string, projectId: string, options: AddDataTableColumnOptions) {
+				checkInstanceWriteAccess();
 				await requireScope('dataTable:update', projectId);
 				return await dataTableService.addColumn(dataTableId, projectId, options);
 			},
 
 			async deleteColumn(dataTableId: string, projectId: string, columnId: string) {
+				checkInstanceWriteAccess();
 				await requireScope('dataTable:update', projectId);
 				return await dataTableService.deleteColumn(dataTableId, projectId, columnId);
 			},
@@ -145,12 +162,14 @@ export class DataTableProxyService implements DataTableProxyProvider {
 				columnId: string,
 				options: { name: string },
 			) {
+				checkInstanceWriteAccess();
 				await requireScope('dataTable:update', projectId);
 				return await dataTableService.renameColumn(dataTableId, projectId, columnId, options);
 			},
 
 			// dataTable:delete
 			async deleteDataTable(dataTableId: string, projectId: string) {
+				checkInstanceWriteAccess();
 				await requireScope('dataTable:delete', projectId);
 				return await dataTableService.deleteDataTable(dataTableId, projectId);
 			},
@@ -172,11 +191,13 @@ export class DataTableProxyService implements DataTableProxyProvider {
 				rows: DataTableRows,
 				returnType: T,
 			) {
+				checkInstanceWriteAccess();
 				await requireScope('dataTable:writeRow', projectId);
 				return await dataTableService.insertRows(dataTableId, projectId, rows, returnType);
 			},
 
 			async updateRows(dataTableId: string, projectId: string, options: UpdateDataTableRowOptions) {
+				checkInstanceWriteAccess();
 				await requireScope('dataTable:writeRow', projectId);
 				return await dataTableService.updateRows(
 					dataTableId,
@@ -192,6 +213,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 				projectId: string,
 				options: DeleteDataTableRowsOptions,
 			) {
+				checkInstanceWriteAccess();
 				await requireScope('dataTable:writeRow', projectId);
 				return await dataTableService.deleteRows(
 					dataTableId,
