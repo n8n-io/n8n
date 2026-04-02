@@ -12,6 +12,7 @@ import { NoHttpRequestWithManualAuthRule } from './no-http-request-with-manual-a
 import { NoRestrictedGlobalsRule } from './no-restricted-globals.js';
 import { NoRestrictedImportsRule } from './no-restricted-imports.js';
 import { NodeClassDescriptionIconMissingRule } from './node-class-description-icon-missing.js';
+import { NodeConnectionTypeLiteralRule } from './node-connection-type-literal.js';
 import { NodeUsableAsToolRule } from './node-usable-as-tool.js';
 import { PackageNameConventionRule } from './package-name-convention.js';
 import { ResourceOperationPatternRule } from './resource-operation-pattern.js';
@@ -32,4 +33,5 @@ export const rules = {
 	'credential-documentation-url': CredentialDocumentationUrlRule,
 	'node-class-description-icon-missing': NodeClassDescriptionIconMissingRule,
 	'cred-class-field-icon-missing': CredClassFieldIconMissingRule,
+	'node-connection-type-literal': NodeConnectionTypeLiteralRule,
 } satisfies Record<string, AnyRuleModule>;
