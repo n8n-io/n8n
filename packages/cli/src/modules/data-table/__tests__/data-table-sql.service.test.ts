@@ -552,64 +552,9 @@ describe('DataTableSqlService', () => {
 			});
 		});
 
-		// ── 3. SQLite lacks read-only transaction enforcement ─────────
-
-		describe('FIXED: SQLite now uses PRAGMA query_only for read-only enforcement', () => {
-			let sqliteService: DataTableSqlService;
-			let sqliteQueryRunner: jest.Mocked<QueryRunner>;
-
-			beforeEach(() => {
-				const sqliteDataSource = mock<DataSource>();
-				(sqliteDataSource as unknown as { options: { type: string } }).options = {
-					type: 'sqlite',
-				};
-
-				sqliteQueryRunner = mock<QueryRunner>();
-				sqliteQueryRunner.connect.mockResolvedValue(undefined);
-				sqliteQueryRunner.query.mockResolvedValue([]);
-				sqliteQueryRunner.release.mockResolvedValue(undefined);
-				sqliteDataSource.createQueryRunner.mockReturnValue(sqliteQueryRunner);
-
-				const sqliteLogger = mock<Logger>();
-				sqliteLogger.scoped.mockReturnValue(sqliteLogger);
-
-				sqliteService = new DataTableSqlService(
-					sqliteDataSource,
-					dataTableRepositoryMock,
-					dataTableColumnRepositoryMock,
-					sqliteLogger,
-				);
-			});
-
-			it('enables PRAGMA query_only before executing the user query', async () => {
-				await sqliteService.validateAndExecute('SELECT * FROM "orders"', ['table1'], projectId);
-
-				const allCalls = sqliteQueryRunner.query.mock.calls.map((args) => String(args[0]));
-
-				// PRAGMA query_only = ON must come before the SELECT
-				const pragmaOnIdx = allCalls.findIndex((sql) => sql === 'PRAGMA query_only = ON');
-				const selectIdx = allCalls.findIndex((sql) => sql.toUpperCase().startsWith('SELECT'));
-				const pragmaOffIdx = allCalls.findIndex((sql) => sql === 'PRAGMA query_only = OFF');
-
-				expect(pragmaOnIdx).toBeGreaterThanOrEqual(0);
-				expect(selectIdx).toBeGreaterThan(pragmaOnIdx);
-				expect(pragmaOffIdx).toBeGreaterThan(selectIdx);
-			});
-
-			it('resets PRAGMA query_only even when the query fails', async () => {
-				sqliteQueryRunner.query
-					.mockResolvedValueOnce(undefined as never) // PRAGMA ON
-					.mockRejectedValueOnce(new Error('syntax error')) // user query
-					.mockResolvedValueOnce(undefined as never); // PRAGMA OFF
-
-				await expect(
-					sqliteService.validateAndExecute('SELECT * FROM "orders"', ['table1'], projectId),
-				).rejects.toThrow();
-
-				const allCalls = sqliteQueryRunner.query.mock.calls.map((args) => String(args[0]));
-				expect(allCalls).toContain('PRAGMA query_only = OFF');
-			});
-		});
+		// ── 3. SQLite read-only enforcement ──────────────────────────
+		// SQLite read-only is enforced at the connection level via SQLITE_OPEN_READONLY
+		// flag on the read pool. No PRAGMA needed — the connection physically cannot write.
 
 		// ── 4. Table-name rewriting collision ─────────────────────────
 

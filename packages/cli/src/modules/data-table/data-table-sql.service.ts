@@ -190,7 +190,8 @@ export class DataTableSqlService {
 			return await this.executePostgresReadOnly(sql, timeoutMs);
 		}
 
-		// SQLite — execute in read-only mode via PRAGMA query_only
+		// SQLite — the read pool opens connections with SQLITE_OPEN_READONLY,
+		// enforcing read-only at the OS level.
 		return await this.executeSqliteReadOnly(sql);
 	}
 
@@ -237,15 +238,11 @@ export class DataTableSqlService {
 		await queryRunner.connect();
 
 		try {
-			await queryRunner.query('PRAGMA query_only = ON');
 			const result = (await queryRunner.query(sql)) as Array<Record<string, unknown>>;
 			return result;
 		} catch (error) {
 			throw this.sanitizeDbError(error);
 		} finally {
-			await queryRunner.query('PRAGMA query_only = OFF').catch((pragmaErr: unknown) => {
-				this.logger.warn('Failed to reset PRAGMA query_only', { pragmaErr });
-			});
 			await queryRunner.release().catch((releaseErr: unknown) => {
 				this.logger.warn('Failed to release query runner', { releaseErr });
 			});
