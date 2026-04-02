@@ -428,6 +428,13 @@ function parseMetadataSchema(
 	}
 
 	for (const field of parsed) {
+		if (typeof field !== 'object' || field === null) {
+			throw new NodeOperationError(
+				context.getNode(),
+				'Invalid metadata schema: each entry must be an object',
+				{ itemIndex, description: SCHEMA_ERROR_DESCRIPTION },
+			);
+		}
 		if (!field.name || typeof field.name !== 'string') {
 			throw new NodeOperationError(
 				context.getNode(),
