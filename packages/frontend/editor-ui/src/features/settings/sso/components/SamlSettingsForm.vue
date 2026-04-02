@@ -406,6 +406,9 @@ onMounted(async () => {
 						data-test-id="sso-toggle"
 						@update:model-value="samlLoginEnabled = $event === 'enabled'"
 					>
+						<template #prefix>
+							<span v-if="samlLoginEnabled" :class="$style.greenDot" />
+						</template>
 						<N8nOption value="enabled" label="Enabled" />
 						<N8nOption value="disabled" label="Disabled" />
 					</N8nSelect>
