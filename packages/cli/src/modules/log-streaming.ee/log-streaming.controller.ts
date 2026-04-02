@@ -87,7 +87,9 @@ export class EventBusController {
 				);
 				break;
 			default:
-				throw new BadRequestError(`Unknown destination type: ${body.__type}`);
+				throw new BadRequestError(
+					`Unknown destination type: ${(body as { __type: string }).__type}`,
+				);
 		}
 
 		return result.serialize();

@@ -675,6 +675,6 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * @returns true if disposed, false otherwise
 	 */
 	isDisposed(): boolean {
-		return this.disposed;
+		return this.disposed || this.isolate.isDisposed;
 	}
 }

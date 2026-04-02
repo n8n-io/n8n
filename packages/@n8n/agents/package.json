@@ -60,6 +60,6 @@
     "@n8n/typescript-config": "workspace:*",
     "@types/json-schema": "^7.0.15",
     "@types/pg": "^8.15.6",
-    "testcontainers": "11.11.0"
+    "testcontainers": "catalog:"
   }
 }

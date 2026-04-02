@@ -8,7 +8,7 @@
     "clean": "rimraf dist .turbo .build",
     "build": "cross-env VUE_APP_PUBLIC_PATH=\"/{{BASE_PATH}}/\" NODE_OPTIONS=\"--max-old-space-size=8192\" vite build",
     "build:coverage": "cross-env VUE_APP_PUBLIC_PATH=\"/{{BASE_PATH}}/\" NODE_OPTIONS=\"--max-old-space-size=14000\" BUILD_WITH_COVERAGE=true vite build",
-    "typecheck": "vue-tsc --noEmit",
+    "typecheck": "cross-env NODE_OPTIONS=\"--max-old-space-size=8192\" vue-tsc --noEmit",
     "typecheck:watch": "vue-tsc --watch --noEmit",
     "dev": "pnpm serve",
     "lint": "eslint src --quiet",

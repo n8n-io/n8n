@@ -977,7 +977,7 @@ describe('OIDC service', () => {
 		it('should generate and verify a valid state', () => {
 			const state = oidcService.generateState();
 			const decoded = oidcService.verifyState(state.signed);
-			expect(decoded).toBe(state.plaintext);
+			expect(decoded).toEqual({ state: state.plaintext, testMode: undefined });
 		});
 
 		it('should generate and verify a valid nonce', () => {
