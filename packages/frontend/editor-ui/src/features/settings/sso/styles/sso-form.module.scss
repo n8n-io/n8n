@@ -100,6 +100,13 @@
 	}
 }
 
+.copyInputGroup {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	width: 100%;
+}
+
 .ipsBlock {
 	padding: 0 0 var(--spacing--xs);
 
