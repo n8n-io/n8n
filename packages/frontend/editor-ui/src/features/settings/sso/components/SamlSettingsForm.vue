@@ -5,7 +5,7 @@ import { SupportedProtocols, useSSOStore } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 import { captureMessage } from '@sentry/vue';
 
-import { N8nButton, N8nCheckbox, N8nInput, N8nRadioButtons } from '@n8n/design-system';
+import { N8nButton, N8nInput, N8nOption, N8nRadioButtons, N8nSelect } from '@n8n/design-system';
 import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { computed, onMounted, ref } from 'vue';
@@ -365,12 +365,22 @@ onMounted(async () => {
 
 		<!-- Card 3: SSO Toggle -->
 		<div :class="$style.card">
-			<div :class="[$style.group, $style.checkboxGroup]">
-				<N8nCheckbox
-					v-model="samlLoginEnabled"
-					data-test-id="sso-toggle"
-					:label="i18n.baseText('settings.sso.activated')"
-				/>
+			<div :class="$style.settingsItem" style="border-bottom: none">
+				<div :class="$style.settingsItemLabel">
+					<label>Single sign-on (SSO)</label>
+					<small>Allow users to sign in through your identity provider</small>
+				</div>
+				<div :class="$style.settingsItemControl">
+					<N8nSelect
+						:model-value="samlLoginEnabled ? 'enabled' : 'disabled'"
+						size="small"
+						data-test-id="sso-toggle"
+						@update:model-value="samlLoginEnabled = $event === 'enabled'"
+					>
+						<N8nOption value="enabled" label="Enabled" />
+						<N8nOption value="disabled" label="Disabled" />
+					</N8nSelect>
+				</div>
 			</div>
 		</div>
 
