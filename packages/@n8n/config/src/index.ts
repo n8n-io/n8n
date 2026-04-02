@@ -24,7 +24,7 @@ import { InstanceSettingsLoaderConfig } from './configs/instance-settings-loader
 import { LicenseConfig } from './configs/license.config';
 import { LoggingConfig } from './configs/logging.config';
 import { MfaConfig } from './configs/mfa.config';
-import { MultiMainSetupConfig } from './configs/multi-main-setup.co	nfig';
+import { MultiMainSetupConfig } from './configs/multi-main-setup.config';
 import { NodesConfig } from './configs/nodes.config';
 import { PersonalizationConfig } from './configs/personalization.config';
 import { PublicApiConfig } from './configs/public-api.config';
