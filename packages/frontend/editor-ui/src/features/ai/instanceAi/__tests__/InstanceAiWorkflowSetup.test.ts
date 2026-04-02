@@ -116,10 +116,11 @@ describe('InstanceAiWorkflowSetup', () => {
 		const credentialsStore = useCredentialsStore();
 		vi.spyOn(credentialsStore, 'fetchAllCredentials').mockResolvedValue([]);
 		vi.spyOn(credentialsStore, 'fetchCredentialTypes').mockResolvedValue(undefined);
-		credentialsStore.getUsableCredentialByType = vi.fn().mockReturnValue([]);
+		// @ts-expect-error Known pinia issue when spying on store getters
+		vi.spyOn(credentialsStore, 'getUsableCredentialByType', 'get').mockReturnValue(() => []);
 
 		const nodeTypesStore = useNodeTypesStore();
-		vi.spyOn(nodeTypesStore, 'getNodesInformation').mockResolvedValue();
+		vi.spyOn(nodeTypesStore, 'getNodesInformation').mockResolvedValue([]);
 
 		const workflowsStore = useWorkflowsStore();
 		workflowsStore.getNodeByName = vi.fn().mockReturnValue(undefined);
@@ -227,9 +228,10 @@ describe('InstanceAiWorkflowSetup', () => {
 		it('auto-applies partial set when clicking Later on last step with some cards completed', async () => {
 			const confirmSpy = vi.spyOn(store, 'confirmAction').mockResolvedValue(true);
 			vi.spyOn(store, 'findToolCallByRequestId').mockReturnValue({
-				id: 'tc-1',
+				toolCallId: 'tc-1',
 				toolName: 'test',
 				args: {},
+				isLoading: false,
 				result: { success: true, partial: true, updatedNodes: [] },
 			});
 
@@ -241,7 +243,7 @@ describe('InstanceAiWorkflowSetup', () => {
 				]),
 			];
 
-			const { getByTestId, getByText } = renderComponent({
+			const { getByTestId } = renderComponent({
 				props: {
 					requestId: 'req-1',
 					setupRequests: requests,
