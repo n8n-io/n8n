@@ -70,13 +70,28 @@ export function useRoleMappingRules() {
 		}
 	}
 
-	function reorder(type: RoleMappingRuleType, fromIndex: number, toIndex: number) {
+	async function reorder(type: RoleMappingRuleType, fromIndex: number, toIndex: number) {
 		const rules = getRulesRef(type);
+		const movedRule = rules.value[fromIndex];
+		if (!movedRule) return;
+
+		// Optimistic local update
 		const [moved] = rules.value.splice(fromIndex, 1);
 		rules.value.splice(toIndex, 0, moved);
 		rules.value.forEach((r, i) => {
 			r.order = i;
 		});
+
+		// Persist via API — if the rule has been saved (not a local-only rule)
+		if (!movedRule.id.startsWith('local-')) {
+			try {
+				await api.moveRule(movedRule.id, toIndex);
+			} catch {
+				// Rollback on error — reload from server
+				await loadRules();
+				return;
+			}
+		}
 		isDirty.value = true;
 	}
 

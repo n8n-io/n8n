@@ -1,99 +1,40 @@
+import { useRootStore } from '@n8n/stores/useRootStore';
+import * as roleMappingRuleApi from '@n8n/rest-api-client/api/roleMappingRule';
 import type {
 	RoleMappingRuleResponse,
-	RoleMappingRuleType,
 	CreateRoleMappingRuleInput,
 	PatchRoleMappingRuleInput,
 } from '../types';
 
-const MOCK_DELAY_MS = 200;
-
-async function delay(): Promise<void> {
-	return await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
-}
-
-function generateId(): string {
-	return crypto.randomUUID();
-}
-
-function nowIso(): string {
-	return new Date().toISOString();
-}
-
 /**
- * Mocked API layer for role mapping rules.
- * Replace the body of each method with real REST calls when the backend is ready.
- * Only this file needs to change — the composable and UI are decoupled.
+ * API layer for role mapping rules.
+ * Delegates to the REST API client in @n8n/rest-api-client.
  */
 export function useRoleMappingRulesApi() {
-	const store: RoleMappingRuleResponse[] = [];
+	const rootStore = useRootStore();
 
 	async function listRules(): Promise<RoleMappingRuleResponse[]> {
-		await delay();
-		return [...store].sort((a, b) => a.order - b.order);
+		return await roleMappingRuleApi.listRoleMappingRules(rootStore.restApiContext);
 	}
 
 	async function createRule(input: CreateRoleMappingRuleInput): Promise<RoleMappingRuleResponse> {
-		await delay();
-		const now = nowIso();
-		const rule: RoleMappingRuleResponse = {
-			id: generateId(),
-			expression: input.expression,
-			role: input.role,
-			type: input.type,
-			order: input.order,
-			projectIds: input.projectIds ?? [],
-			enabled: true,
-			createdAt: now,
-			updatedAt: now,
-		};
-		store.push(rule);
-		return { ...rule };
+		return await roleMappingRuleApi.createRoleMappingRule(rootStore.restApiContext, input);
 	}
 
 	async function updateRule(
 		id: string,
 		patch: PatchRoleMappingRuleInput,
 	): Promise<RoleMappingRuleResponse> {
-		await delay();
-		const index = store.findIndex((r) => r.id === id);
-		if (index === -1) {
-			throw new Error(`Rule ${id} not found`);
-		}
-		const updated: RoleMappingRuleResponse = {
-			...store[index],
-			...patch,
-			updatedAt: nowIso(),
-		};
-		store[index] = updated;
-		return { ...updated };
+		return await roleMappingRuleApi.updateRoleMappingRule(rootStore.restApiContext, id, patch);
 	}
 
 	async function deleteRule(id: string): Promise<void> {
-		await delay();
-		const index = store.findIndex((r) => r.id === id);
-		if (index === -1) {
-			throw new Error(`Rule ${id} not found`);
-		}
-		store.splice(index, 1);
+		await roleMappingRuleApi.deleteRoleMappingRule(rootStore.restApiContext, id);
 	}
 
-	async function reorderRules(
-		type: RoleMappingRuleType,
-		orderedIds: string[],
-	): Promise<RoleMappingRuleResponse[]> {
-		await delay();
-		orderedIds.forEach((id, newOrder) => {
-			const rule = store.find((r) => r.id === id && r.type === type);
-			if (rule) {
-				rule.order = newOrder;
-				rule.updatedAt = nowIso();
-			}
-		});
-		return store
-			.filter((r) => r.type === type)
-			.sort((a, b) => a.order - b.order)
-			.map((r) => ({ ...r }));
+	async function moveRule(id: string, targetIndex: number): Promise<RoleMappingRuleResponse> {
+		return await roleMappingRuleApi.moveRoleMappingRule(rootStore.restApiContext, id, targetIndex);
 	}
 
-	return { listRules, createRule, updateRule, deleteRule, reorderRules };
+	return { listRules, createRule, updateRule, deleteRule, moveRule };
 }

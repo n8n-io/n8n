@@ -1,113 +1,103 @@
+import { createPinia, setActivePinia } from 'pinia';
 import { useRoleMappingRulesApi } from './useRoleMappingRulesApi';
+import * as roleMappingRuleApi from '@n8n/rest-api-client/api/roleMappingRule';
+
+vi.mock('@n8n/rest-api-client/api/roleMappingRule');
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({
+		restApiContext: {},
+	}),
+}));
 
 describe('useRoleMappingRulesApi', () => {
 	let api: ReturnType<typeof useRoleMappingRulesApi>;
 
 	beforeEach(() => {
+		setActivePinia(createPinia());
+		vi.clearAllMocks();
 		api = useRoleMappingRulesApi();
 	});
 
 	describe('listRules', () => {
-		it('should return empty array initially', async () => {
+		it('should call the REST API and return rules', async () => {
+			const mockRules = [
+				{ id: '1', expression: 'test', role: 'global:admin', type: 'instance', order: 0 },
+			];
+			vi.mocked(roleMappingRuleApi.listRoleMappingRules).mockResolvedValue(
+				mockRules as roleMappingRuleApi.RoleMappingRuleResponse[],
+			);
+
 			const rules = await api.listRules();
-			expect(rules).toEqual([]);
+
+			expect(roleMappingRuleApi.listRoleMappingRules).toHaveBeenCalledWith({});
+			expect(rules).toEqual(mockRules);
 		});
 	});
 
 	describe('createRule', () => {
-		it('should create a rule and return it with generated fields', async () => {
-			const rule = await api.createRule({
-				expression: '$claims.groups.includes("admins")',
+		it('should call the REST API with the input', async () => {
+			const input = {
+				expression: '$claims.admin',
 				role: 'global:admin',
-				type: 'instance',
+				type: 'instance' as const,
 				order: 0,
-			});
-
-			expect(rule).toMatchObject({
-				expression: '$claims.groups.includes("admins")',
-				role: 'global:admin',
-				type: 'instance',
-				order: 0,
-				enabled: true,
+			};
+			const mockResponse = {
+				id: '1',
+				...input,
 				projectIds: [],
-			});
-			expect(rule.id).toBeDefined();
-			expect(rule.createdAt).toBeDefined();
-			expect(rule.updatedAt).toBeDefined();
-		});
+				enabled: true,
+				createdAt: '',
+				updatedAt: '',
+			};
+			vi.mocked(roleMappingRuleApi.createRoleMappingRule).mockResolvedValue(
+				mockResponse as roleMappingRuleApi.RoleMappingRuleResponse,
+			);
 
-		it('should persist the created rule in listRules', async () => {
-			await api.createRule({
-				expression: '$claims.role === "admin"',
-				role: 'global:admin',
-				type: 'instance',
-				order: 0,
-			});
+			const result = await api.createRule(input);
 
-			const rules = await api.listRules();
-			expect(rules).toHaveLength(1);
+			expect(roleMappingRuleApi.createRoleMappingRule).toHaveBeenCalledWith({}, input);
+			expect(result.id).toBe('1');
 		});
 	});
 
 	describe('updateRule', () => {
-		it('should update the specified fields', async () => {
-			const created = await api.createRule({
-				expression: '$claims.role === "admin"',
-				role: 'global:admin',
-				type: 'instance',
-				order: 0,
-			});
+		it('should call the REST API with id and patch', async () => {
+			const mockResponse = { id: '1', expression: 'updated', role: 'global:admin' };
+			vi.mocked(roleMappingRuleApi.updateRoleMappingRule).mockResolvedValue(
+				mockResponse as roleMappingRuleApi.RoleMappingRuleResponse,
+			);
 
-			const updated = await api.updateRule(created.id, {
-				expression: '$claims.role === "superadmin"',
-			});
+			const result = await api.updateRule('1', { expression: 'updated' });
 
-			expect(updated.expression).toBe('$claims.role === "superadmin"');
-			expect(updated.role).toBe('global:admin');
+			expect(roleMappingRuleApi.updateRoleMappingRule).toHaveBeenCalledWith({}, '1', {
+				expression: 'updated',
+			});
+			expect(result.expression).toBe('updated');
 		});
 	});
 
 	describe('deleteRule', () => {
-		it('should remove the rule from the store', async () => {
-			const created = await api.createRule({
-				expression: '$claims.test',
-				role: 'global:member',
-				type: 'instance',
-				order: 0,
-			});
+		it('should call the REST API with the id', async () => {
+			vi.mocked(roleMappingRuleApi.deleteRoleMappingRule).mockResolvedValue(undefined);
 
-			await api.deleteRule(created.id);
-			const rules = await api.listRules();
-			expect(rules).toHaveLength(0);
+			await api.deleteRule('1');
+
+			expect(roleMappingRuleApi.deleteRoleMappingRule).toHaveBeenCalledWith({}, '1');
 		});
 	});
 
-	describe('reorderRules', () => {
-		it('should reassign sequential orders based on the provided ID list', async () => {
-			const rule1 = await api.createRule({
-				expression: 'first',
-				role: 'global:admin',
-				type: 'instance',
-				order: 0,
-			});
-			const rule2 = await api.createRule({
-				expression: 'second',
-				role: 'global:member',
-				type: 'instance',
-				order: 1,
-			});
+	describe('moveRule', () => {
+		it('should call the move endpoint with id and targetIndex', async () => {
+			const mockResponse = { id: '1', order: 2 };
+			vi.mocked(roleMappingRuleApi.moveRoleMappingRule).mockResolvedValue(
+				mockResponse as roleMappingRuleApi.RoleMappingRuleResponse,
+			);
 
-			await api.reorderRules('instance', [rule2.id, rule1.id]);
+			const result = await api.moveRule('1', 2);
 
-			const rules = await api.listRules();
-			const instanceRules = rules
-				.filter((r) => r.type === 'instance')
-				.sort((a, b) => a.order - b.order);
-
-			expect(instanceRules[0].id).toBe(rule2.id);
-			expect(instanceRules[0].order).toBe(0);
-			expect(instanceRules[1].id).toBe(rule1.id);
-			expect(instanceRules[1].order).toBe(1);
+			expect(roleMappingRuleApi.moveRoleMappingRule).toHaveBeenCalledWith({}, '1', 2);
+			expect(result.order).toBe(2);
 		});
 	});
 });
