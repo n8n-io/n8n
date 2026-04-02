@@ -1764,8 +1764,17 @@ export class InstanceAiService {
 		data: ConfirmationData,
 	): Promise<boolean> {
 		if (this.runState.resolvePendingConfirmation(requestingUserId, requestId, data)) {
+			this.logger.debug('Resolved pending confirmation (sub-agent HITL)', {
+				requestId,
+				approved: data.approved,
+			});
 			return true;
 		}
+
+		this.logger.debug('Pending confirmation not found, trying suspended run resume', {
+			requestId,
+			approved: data.approved,
+		});
 
 		return await this.resumeSuspendedRun(requestingUserId, requestId, data);
 	}
@@ -1776,7 +1785,13 @@ export class InstanceAiService {
 		data: ConfirmationData,
 	): Promise<boolean> {
 		const suspended = this.runState.findSuspendedByRequestId(requestId);
-		if (!suspended) return false;
+		if (!suspended) {
+			this.logger.warn('Confirmation target not found: no pending confirmation or suspended run', {
+				requestId,
+				approved: data.approved,
+			});
+			return false;
+		}
 
 		const { agent, runId, mastraRunId, threadId, user, toolCallId, abortController, tracing } =
 			suspended;
