@@ -1110,10 +1110,10 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 	};
 
 	const mockRoleService = {
-		rolesWithScope: jest.fn().mockImplementation((namespace: string) => {
-			if (namespace === 'project') return Promise.resolve(['project:editor']);
-			if (namespace === 'workflow') return Promise.resolve(['workflow:owner', 'workflow:editor']);
-			return Promise.resolve([]);
+		rolesWithScope: jest.fn().mockImplementation(async (namespace: string) => {
+			if (namespace === 'project') return ['project:editor'];
+			if (namespace === 'workflow') return ['workflow:owner', 'workflow:editor'];
+			return [];
 		}),
 	};
 
