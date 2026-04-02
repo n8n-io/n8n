@@ -1,4 +1,7 @@
-import { createGetSuggestedNodesTool } from '../get-suggested-nodes.tool';
+import {
+	createGetSuggestedNodesTool,
+	getSuggestedNodesInputSchema,
+} from '../get-suggested-nodes.tool';
 import { categoryList, suggestedNodesData } from '../suggested-nodes-data';
 
 // ---------------------------------------------------------------------------
@@ -24,31 +27,31 @@ describe('get-suggested-nodes tool', () => {
 
 	describe('schema validation', () => {
 		it('accepts an array with 1 category', () => {
-			const result = tool.inputSchema!.safeParse({ categories: ['chatbot'] });
+			const result = getSuggestedNodesInputSchema.safeParse({ categories: ['chatbot'] });
 			expect(result.success).toBe(true);
 		});
 
 		it('accepts an array with up to 3 categories', () => {
-			const result = tool.inputSchema!.safeParse({
+			const result = getSuggestedNodesInputSchema.safeParse({
 				categories: ['chatbot', 'scheduling', 'triage'],
 			});
 			expect(result.success).toBe(true);
 		});
 
 		it('rejects an empty categories array', () => {
-			const result = tool.inputSchema!.safeParse({ categories: [] });
+			const result = getSuggestedNodesInputSchema.safeParse({ categories: [] });
 			expect(result.success).toBe(false);
 		});
 
 		it('rejects more than 3 categories', () => {
-			const result = tool.inputSchema!.safeParse({
+			const result = getSuggestedNodesInputSchema.safeParse({
 				categories: ['chatbot', 'scheduling', 'triage', 'notification'],
 			});
 			expect(result.success).toBe(false);
 		});
 
 		it('rejects missing categories field', () => {
-			const result = tool.inputSchema!.safeParse({});
+			const result = getSuggestedNodesInputSchema.safeParse({});
 			expect(result.success).toBe(false);
 		});
 	});
@@ -58,7 +61,7 @@ describe('get-suggested-nodes tool', () => {
 			const result = (await tool.execute!(
 				{ categories: ['chatbot'] },
 				{} as never,
-			)) as SuggestedNodesResult;
+			)) as unknown as SuggestedNodesResult;
 
 			expect(result.unknownCategories).toEqual([]);
 			expect(result.results).toHaveLength(1);
@@ -74,7 +77,7 @@ describe('get-suggested-nodes tool', () => {
 			const result = (await tool.execute!(
 				{ categories: ['scheduling', 'notification'] },
 				{} as never,
-			)) as SuggestedNodesResult;
+			)) as unknown as SuggestedNodesResult;
 
 			expect(result.unknownCategories).toEqual([]);
 			expect(result.results).toHaveLength(2);
@@ -86,7 +89,7 @@ describe('get-suggested-nodes tool', () => {
 			const result = (await tool.execute!(
 				{ categories: ['nonexistent_category'] },
 				{} as never,
-			)) as SuggestedNodesResult;
+			)) as unknown as SuggestedNodesResult;
 
 			expect(result.results).toEqual([]);
 			expect(result.unknownCategories).toEqual(['nonexistent_category']);
@@ -96,7 +99,7 @@ describe('get-suggested-nodes tool', () => {
 			const result = (await tool.execute!(
 				{ categories: ['triage', 'unknown_cat'] },
 				{} as never,
-			)) as SuggestedNodesResult;
+			)) as unknown as SuggestedNodesResult;
 
 			expect(result.results).toHaveLength(1);
 			expect(result.results[0].category).toBe('triage');
@@ -107,7 +110,7 @@ describe('get-suggested-nodes tool', () => {
 			const result = (await tool.execute!(
 				{ categories: ['fake1', 'fake2', 'fake3'] },
 				{} as never,
-			)) as SuggestedNodesResult;
+			)) as unknown as SuggestedNodesResult;
 
 			expect(result.results).toEqual([]);
 			expect(result.unknownCategories).toEqual(['fake1', 'fake2', 'fake3']);
@@ -117,7 +120,7 @@ describe('get-suggested-nodes tool', () => {
 			const result = (await tool.execute!(
 				{ categories: ['scheduling'] },
 				{} as never,
-			)) as SuggestedNodesResult;
+			)) as unknown as SuggestedNodesResult;
 
 			const scheduling = result.results[0];
 			const waitNode = scheduling.suggestedNodes.find((n) => n.name === 'n8n-nodes-base.wait');
@@ -136,7 +139,7 @@ describe('get-suggested-nodes tool', () => {
 				const result = (await tool.execute!(
 					{ categories: [cat] },
 					{} as never,
-				)) as SuggestedNodesResult;
+				)) as unknown as SuggestedNodesResult;
 
 				expect(result.unknownCategories).toEqual([]);
 				expect(result.results).toHaveLength(1);

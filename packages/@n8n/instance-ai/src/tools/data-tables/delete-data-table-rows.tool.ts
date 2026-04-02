@@ -18,16 +18,22 @@ const filterSchema = z.object({
 		.min(1),
 });
 
+export const deleteDataTableRowsInputSchema = z.object({
+	dataTableId: z.string().describe('ID of the data table'),
+	filter: filterSchema.describe('Which rows to delete (required)'),
+});
+
+export const deleteDataTableRowsResumeSchema = z.object({
+	approved: z.boolean(),
+});
+
 export function createDeleteDataTableRowsTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'delete-data-table-rows',
 		description:
 			'Delete rows matching a filter from a data table. Irreversible. ' +
 			'Filter is required to prevent accidental deletion of all data.',
-		inputSchema: z.object({
-			dataTableId: z.string().describe('ID of the data table'),
-			filter: filterSchema.describe('Which rows to delete (required)'),
-		}),
+		inputSchema: deleteDataTableRowsInputSchema,
 		outputSchema: z.object({
 			success: z.boolean(),
 			deletedCount: z.number().optional(),
@@ -39,18 +45,25 @@ export function createDeleteDataTableRowsTool(context: InstanceAiContext) {
 			message: z.string(),
 			severity: instanceAiConfirmationSeveritySchema,
 		}),
-		resumeSchema: z.object({
-			approved: z.boolean(),
-		}),
-		execute: async (input, ctx) => {
-			const { resumeData, suspend } = ctx?.agent ?? {};
+		resumeSchema: deleteDataTableRowsResumeSchema,
+		execute: async (input: z.infer<typeof deleteDataTableRowsInputSchema>, ctx) => {
+			const resumeData = ctx?.agent?.resumeData as
+				| z.infer<typeof deleteDataTableRowsResumeSchema>
+				| undefined;
+			const suspend = ctx?.agent?.suspend;
 
 			const needsApproval = context.permissions?.mutateDataTableRows !== 'always_allow';
 
 			// State 1: First call — suspend for confirmation (unless always_allow)
 			if (needsApproval && (resumeData === undefined || resumeData === null)) {
 				const filterDesc = input.filter.filters
-					.map((f) => `${f.columnName} ${f.condition} ${String(f.value)}`)
+					.map(
+						(f: {
+							columnName: string;
+							condition: string;
+							value: string | number | boolean | null;
+						}) => `${f.columnName} ${f.condition} ${String(f.value)}`,
+					)
 					.join(` ${input.filter.type} `);
 				await suspend?.({
 					requestId: nanoid(),

@@ -4,6 +4,24 @@ import { z } from 'zod';
 import { sanitizeWebContent } from './sanitize-web-content';
 import type { InstanceAiContext } from '../../types';
 
+export const webSearchInputSchema = z.object({
+	query: z
+		.string()
+		.describe('Search query. Be specific — include service names, API versions, error codes.'),
+	maxResults: z
+		.number()
+		.int()
+		.min(1)
+		.max(20)
+		.default(5)
+		.optional()
+		.describe('Maximum number of results to return (default 5, max 20)'),
+	includeDomains: z
+		.array(z.string())
+		.optional()
+		.describe('Restrict results to these domains, e.g. ["docs.stripe.com"]'),
+});
+
 export function createWebSearchTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'web-search',
@@ -11,23 +29,7 @@ export function createWebSearchTool(context: InstanceAiContext) {
 			'Search the web for information. Returns ranked results with titles, URLs, ' +
 			'and snippets. Use for API docs, integration guides, error messages, and ' +
 			'general technical questions.',
-		inputSchema: z.object({
-			query: z
-				.string()
-				.describe('Search query. Be specific — include service names, API versions, error codes.'),
-			maxResults: z
-				.number()
-				.int()
-				.min(1)
-				.max(20)
-				.default(5)
-				.optional()
-				.describe('Maximum number of results to return (default 5, max 20)'),
-			includeDomains: z
-				.array(z.string())
-				.optional()
-				.describe('Restrict results to these domains, e.g. ["docs.stripe.com"]'),
-		}),
+		inputSchema: webSearchInputSchema,
 		outputSchema: z.object({
 			query: z.string(),
 			results: z.array(
@@ -39,7 +41,11 @@ export function createWebSearchTool(context: InstanceAiContext) {
 				}),
 			),
 		}),
-		execute: async ({ query, maxResults, includeDomains }) => {
+		execute: async ({
+			query,
+			maxResults,
+			includeDomains,
+		}: z.infer<typeof webSearchInputSchema>) => {
 			if (!context.webResearchService?.search) {
 				return {
 					query,

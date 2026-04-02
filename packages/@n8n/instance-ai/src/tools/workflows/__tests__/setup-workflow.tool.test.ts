@@ -128,7 +128,10 @@ describe('createSetupWorkflowTool', () => {
 			});
 
 			const tool = createSetupWorkflowTool(context);
-			const result = await tool.execute!({ workflowId: 'wf-1' }, makeToolCtx());
+			const result = (await tool.execute!({ workflowId: 'wf-1' }, makeToolCtx())) as Record<
+				string,
+				unknown
+			>;
 
 			expect(result).toEqual({ success: true, reason: 'No nodes require setup.' });
 		});
@@ -161,10 +164,10 @@ describe('createSetupWorkflowTool', () => {
 	describe('State 2: user declined', () => {
 		it('returns deferred when user declines', async () => {
 			const tool = createSetupWorkflowTool(context);
-			const result = await tool.execute!(
+			const result = (await tool.execute!(
 				{ workflowId: 'wf-1' },
 				makeToolCtx({ resumeData: { approved: false } }),
-			);
+			)) as Record<string, unknown>;
 
 			expect(result).toEqual({
 				success: true,
@@ -300,7 +303,7 @@ describe('createSetupWorkflowTool', () => {
 			(context.credentialService.test as jest.Mock).mockResolvedValue({ success: true });
 
 			const tool = createSetupWorkflowTool(context);
-			const result = await tool.execute!(
+			const result = (await tool.execute!(
 				{ workflowId: 'wf-1' },
 				makeToolCtx({
 					resumeData: {
@@ -309,7 +312,7 @@ describe('createSetupWorkflowTool', () => {
 						credentials: { Slack: { slackApi: 'cred-1' } },
 					},
 				}),
-			);
+			)) as unknown;
 
 			const res = result as ToolResult;
 			expect(res.success).toBe(true);
@@ -356,7 +359,7 @@ describe('createSetupWorkflowTool', () => {
 			});
 
 			const tool = createSetupWorkflowTool(context);
-			const result = await tool.execute!(
+			const result = (await tool.execute!(
 				{ workflowId: 'wf-1' },
 				makeToolCtx({
 					resumeData: {
@@ -365,7 +368,7 @@ describe('createSetupWorkflowTool', () => {
 						credentials: { Slack: { slackApi: 'cred-1' } },
 					},
 				}),
-			);
+			)) as unknown;
 
 			// The re-analysis returns both nodes, but only Gmail has needsAction=true
 			// (Slack had its credential applied and test passed)
@@ -379,7 +382,7 @@ describe('createSetupWorkflowTool', () => {
 			);
 
 			const tool = createSetupWorkflowTool(context);
-			const result = await tool.execute!(
+			const result = (await tool.execute!(
 				{ workflowId: 'wf-1' },
 				makeToolCtx({
 					resumeData: {
@@ -388,7 +391,7 @@ describe('createSetupWorkflowTool', () => {
 						credentials: { Slack: { slackApi: 'cred-1' } },
 					},
 				}),
-			);
+			)) as unknown;
 
 			const res = result as ToolResult;
 			expect(res.success).toBe(false);

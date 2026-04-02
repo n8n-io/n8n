@@ -196,9 +196,7 @@ function createPauseForUserTool() {
 		description:
 			'Pause and wait for the user to complete an action in the browser (e.g., sign in, ' +
 			'complete 2FA, click a button, copy values, download files). The user sees a message and confirms when done.',
-		inputSchema: z.object({
-			message: z.string().describe('What the user needs to do (shown in the chat UI)'),
-		}),
+		inputSchema: browserCredentialSetupInputSchema,
 		outputSchema: z.object({
 			continued: z.boolean(),
 		}),
@@ -207,11 +205,12 @@ function createPauseForUserTool() {
 			message: z.string(),
 			severity: instanceAiConfirmationSeveritySchema,
 		}),
-		resumeSchema: z.object({
-			approved: z.boolean(),
-		}),
-		execute: async (input, ctx) => {
-			const { resumeData, suspend } = ctx?.agent ?? {};
+		resumeSchema: browserCredentialSetupResumeSchema,
+		execute: async (input: z.infer<typeof browserCredentialSetupInputSchema>, ctx) => {
+			const resumeData = ctx?.agent?.resumeData as
+				| z.infer<typeof browserCredentialSetupResumeSchema>
+				| undefined;
+			const suspend = ctx?.agent?.suspend;
 
 			if (resumeData === undefined || resumeData === null) {
 				await suspend?.({
@@ -227,6 +226,31 @@ function createPauseForUserTool() {
 	});
 }
 
+export const browserCredentialSetupInputSchema = z.object({
+	message: z.string().describe('What the user needs to do (shown in the chat UI)'),
+});
+
+export const browserCredentialSetupResumeSchema = z.object({
+	approved: z.boolean(),
+});
+
+const browserCredentialSetupToolInputSchema = z.object({
+	credentialType: z.string().describe('n8n credential type name'),
+	docsUrl: z.string().optional().describe('n8n documentation URL for this credential'),
+	requiredFields: z
+		.array(
+			z.object({
+				name: z.string(),
+				displayName: z.string(),
+				type: z.string(),
+				required: z.boolean(),
+				description: z.string().optional(),
+			}),
+		)
+		.optional()
+		.describe('Credential fields the user needs to obtain from the service'),
+});
+
 export function createBrowserCredentialSetupTool(context: OrchestrationContext) {
 	return createTool({
 		id: 'browser-credential-setup',
@@ -234,26 +258,11 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 			'Run a browser agent that navigates to credential documentation and helps the user ' +
 			'set up a credential on the external service. The browser is visible to the user. ' +
 			'The agent can pause for user interaction (sign-in, 2FA, etc.).',
-		inputSchema: z.object({
-			credentialType: z.string().describe('n8n credential type name'),
-			docsUrl: z.string().optional().describe('n8n documentation URL for this credential'),
-			requiredFields: z
-				.array(
-					z.object({
-						name: z.string(),
-						displayName: z.string(),
-						type: z.string(),
-						required: z.boolean(),
-						description: z.string().optional(),
-					}),
-				)
-				.optional()
-				.describe('Credential fields the user needs to obtain from the service'),
-		}),
+		inputSchema: browserCredentialSetupToolInputSchema,
 		outputSchema: z.object({
 			result: z.string(),
 		}),
-		execute: async (input) => {
+		execute: async (input: z.infer<typeof browserCredentialSetupToolInputSchema>) => {
 			// Determine tool source: prefer local gateway browser tools over chrome-devtools-mcp
 			const browserTools: ToolsInput = {};
 			let toolSource: BrowserToolSource;
@@ -327,11 +336,19 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 					inputs: {
 						credentialType: input.credentialType,
 						docsUrl: input.docsUrl,
-						requiredFields: input.requiredFields?.map((field) => ({
-							name: field.name,
-							type: field.type,
-							required: field.required,
-						})),
+						requiredFields: input.requiredFields?.map(
+							(field: {
+								name: string;
+								displayName: string;
+								type: string;
+								required: boolean;
+								description?: string;
+							}) => ({
+								name: field.name,
+								type: field.type,
+								required: field.required,
+							}),
+						),
 					},
 				});
 				const tracedBrowserTools = traceSubAgentTools(
@@ -373,7 +390,13 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 					let fieldsSection = '';
 					if (input.requiredFields && input.requiredFields.length > 0) {
 						const fieldLines = input.requiredFields.map(
-							(f) =>
+							(f: {
+								name: string;
+								displayName: string;
+								type: string;
+								required: boolean;
+								description?: string;
+							}) =>
 								`- ${f.displayName} (${f.name})${f.required ? ' [REQUIRED]' : ''}${f.description ? ': ' + f.description : ''}`,
 						);
 						fieldsSection = `\n### Required Fields\n${fieldLines.join('\n')}`;

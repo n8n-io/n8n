@@ -98,7 +98,7 @@ describe('search-template-parameters tool', () => {
 		const result = (await tool.execute!(
 			{ search: 'slack', nodeType: 'n8n-nodes-base.slack' },
 			{} as never,
-		)) as ParametersToolOutput;
+		)) as unknown as ParametersToolOutput;
 
 		expect(result.nodeTypes).toEqual(['n8n-nodes-base.slack']);
 		expect(result.configurations['n8n-nodes-base.httpRequest']).toBeUndefined();
@@ -131,7 +131,7 @@ describe('search-template-parameters tool', () => {
 		const result = (await tool.execute!(
 			{ search: 'slack', nodeType: 'n8n-nodes-base.telegram' },
 			{} as never,
-		)) as ParametersToolOutput;
+		)) as unknown as ParametersToolOutput;
 
 		expect(result.nodeTypes).toHaveLength(0);
 		expect(Object.keys(result.configurations)).toHaveLength(0);

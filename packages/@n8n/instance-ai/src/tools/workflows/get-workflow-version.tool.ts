@@ -3,6 +3,11 @@ import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
 
+export const getWorkflowVersionInputSchema = z.object({
+	workflowId: z.string().describe('ID of the workflow'),
+	versionId: z.string().describe('ID of the version to retrieve'),
+});
+
 export function createGetWorkflowVersionTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'get-workflow-version',
@@ -10,10 +15,7 @@ export function createGetWorkflowVersionTool(context: InstanceAiContext) {
 			'Get full details of a specific workflow version including nodes and connections. ' +
 			'Use to inspect what a version looked like, diff against the current draft, or ' +
 			'answer questions like "when did node X change".',
-		inputSchema: z.object({
-			workflowId: z.string().describe('ID of the workflow'),
-			versionId: z.string().describe('ID of the version to retrieve'),
-		}),
+		inputSchema: getWorkflowVersionInputSchema,
 		outputSchema: z.object({
 			versionId: z.string(),
 			name: z.string().nullable(),
@@ -33,7 +35,7 @@ export function createGetWorkflowVersionTool(context: InstanceAiContext) {
 			),
 			connections: z.record(z.unknown()),
 		}),
-		execute: async (input) => {
+		execute: async (input: z.infer<typeof getWorkflowVersionInputSchema>) => {
 			return await context.workflowService.getVersion!(input.workflowId, input.versionId);
 		},
 	});

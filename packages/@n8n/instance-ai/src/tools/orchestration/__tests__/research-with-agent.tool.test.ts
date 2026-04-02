@@ -14,7 +14,7 @@ jest.mock('../../../stream/map-chunk', () => ({
 	mapMastraChunkToEvent: jest.fn(),
 }));
 
-const { createResearchWithAgentTool } =
+const { createResearchWithAgentTool, researchWithAgentInputSchema } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../research-with-agent.tool') as typeof import('../research-with-agent.tool');
 
@@ -66,18 +66,14 @@ function createMockContext(overrides?: Partial<OrchestrationContext>): Orchestra
 describe('research-with-agent tool', () => {
 	describe('schema validation', () => {
 		it('accepts a valid goal', () => {
-			const context = createMockContext();
-			const tool = createResearchWithAgentTool(context);
-			const result = tool.inputSchema!.safeParse({
+			const result = researchWithAgentInputSchema.safeParse({
 				goal: 'How does Shopify webhook authentication work?',
 			});
 			expect(result.success).toBe(true);
 		});
 
 		it('accepts goal with optional constraints', () => {
-			const context = createMockContext();
-			const tool = createResearchWithAgentTool(context);
-			const result = tool.inputSchema!.safeParse({
+			const result = researchWithAgentInputSchema.safeParse({
 				goal: 'Shopify API auth',
 				constraints: 'Focus on REST API, not GraphQL',
 			});
@@ -85,9 +81,7 @@ describe('research-with-agent tool', () => {
 		});
 
 		it('rejects missing goal', () => {
-			const context = createMockContext();
-			const tool = createResearchWithAgentTool(context);
-			const result = tool.inputSchema!.safeParse({});
+			const result = researchWithAgentInputSchema.safeParse({});
 			expect(result.success).toBe(false);
 		});
 	});

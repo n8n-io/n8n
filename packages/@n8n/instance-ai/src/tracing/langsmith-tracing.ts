@@ -35,21 +35,50 @@ const proxyHeaderStore = new AsyncLocalStorage<Record<string, string>>();
 // can use the correct proxy client for its HTTP calls.
 const traceClients = new Map<string, Client>();
 
+/**
+ * Fetch wrapper for LangSmith clients:
+ * - Forces gzip encoding to avoid brotli decompressors (8.6 MB native memory each).
+ * - Treats 409 Conflict as success — LangSmith returns 409 "payloads already received"
+ *   when a patchRun retry arrives after the first attempt already landed. The data is
+ *   persisted; the SDK's internal catch(console.error) is just noise.
+ */
+const gzipFetch: typeof globalThis.fetch = async (input, init) => {
+	const headers = new Headers(init?.headers);
+	if (!headers.has('Accept-Encoding')) {
+		headers.set('Accept-Encoding', 'gzip, deflate');
+	}
+	const response = await globalThis.fetch(input, { ...init, headers });
+	if (response.status === 409) {
+		return new Response(null, { status: 200, statusText: 'OK (409 suppressed)' });
+	}
+	return response;
+};
+
 let cachedProxyClient: { client: Client; apiUrl: string } | null = null;
+let cachedDirectClient: Client | null = null;
+
+/** Get a LangSmith Client that uses gzip encoding (no brotli). */
+function getOrCreateDirectClient(): Client {
+	if (cachedDirectClient) return cachedDirectClient;
+	cachedDirectClient = new Client({
+		autoBatchTracing: false,
+		fetchImplementation: gzipFetch,
+	});
+	return cachedDirectClient;
+}
 
 function getOrCreateProxyClient(proxyConfig: ServiceProxyConfig): Client {
 	if (cachedProxyClient?.apiUrl === proxyConfig.apiUrl) return cachedProxyClient.client;
 
 	const proxyFetch: typeof globalThis.fetch = async (input, init) => {
+		const merged = new Headers(init?.headers);
 		const contextHeaders = proxyHeaderStore.getStore();
 		if (contextHeaders) {
-			const merged = new Headers(init?.headers);
 			for (const [key, value] of Object.entries(contextHeaders)) {
 				merged.set(key, value);
 			}
-			return await globalThis.fetch(input, { ...init, headers: merged });
 		}
-		return await globalThis.fetch(input, init);
+		return await gzipFetch(input, { ...init, headers: merged });
 	};
 
 	const client = new Client({
@@ -861,7 +890,7 @@ function hydrateRunTree(state: InstanceAiTraceRun): RunTree {
 		outputs: state.outputs,
 		error: state.error,
 		serialized: {},
-		...(client ? { client } : {}),
+		client: client ?? getOrCreateDirectClient(),
 	});
 }
 
@@ -954,7 +983,7 @@ async function createRun(options: {
 		tags: normalizeTags(DEFAULT_TAGS, options.tags),
 		metadata: mergeMetadata(options.metadata),
 		inputs: sanitizeTracePayload(options.inputs),
-		...(options.client ? { client: options.client } : {}),
+		client: options.client ?? getOrCreateDirectClient(),
 	});
 	await runTree.postRun();
 

@@ -21,6 +21,19 @@ const answerSchema = z.object({
 	skipped: z.boolean().optional(),
 });
 
+export const askUserInputSchema = z.object({
+	questions: z
+		.array(questionSchema)
+		.min(1)
+		.describe('Questions to present to the user in a paginated wizard'),
+	introMessage: z.string().optional().describe('Brief intro text shown above the first question'),
+});
+
+export const askUserResumeSchema = z.object({
+	approved: z.boolean(),
+	answers: z.array(answerSchema).optional(),
+});
+
 export function createAskUserTool() {
 	return createTool({
 		id: 'ask-user',
@@ -35,16 +48,7 @@ export function createAskUserTool() {
 			'Also NEVER add a separate follow-up question asking the user to elaborate ' +
 			'on a previous "other" choice. Keep questions concise and ' +
 			'avoid questions that reference answers to previous questions.',
-		inputSchema: z.object({
-			questions: z
-				.array(questionSchema)
-				.min(1)
-				.describe('Questions to present to the user in a paginated wizard'),
-			introMessage: z
-				.string()
-				.optional()
-				.describe('Brief intro text shown above the first question'),
-		}),
+		inputSchema: askUserInputSchema,
 		outputSchema: z.object({
 			answered: z.boolean(),
 			answers: z
@@ -67,12 +71,10 @@ export function createAskUserTool() {
 			questions: z.array(questionSchema),
 			introMessage: z.string().optional(),
 		}),
-		resumeSchema: z.object({
-			approved: z.boolean(),
-			answers: z.array(answerSchema).optional(),
-		}),
-		execute: async (input, ctx) => {
-			const { resumeData, suspend } = ctx?.agent ?? {};
+		resumeSchema: askUserResumeSchema,
+		execute: async (input: z.infer<typeof askUserInputSchema>, ctx) => {
+			const resumeData = ctx?.agent?.resumeData as z.infer<typeof askUserResumeSchema> | undefined;
+			const suspend = ctx?.agent?.suspend;
 
 			// First call — always suspend to show questions
 			if (resumeData === undefined || resumeData === null) {
@@ -94,8 +96,10 @@ export function createAskUserTool() {
 			}
 
 			// Merge question text into answers for LLM context
-			const enrichedAnswers = resumeData.answers.map((a) => {
-				const q = input.questions.find((q2) => q2.id === a.questionId);
+			const enrichedAnswers = resumeData.answers.map((a: z.infer<typeof answerSchema>) => {
+				const q = input.questions.find(
+					(q2: z.infer<typeof questionSchema>) => q2.id === a.questionId,
+				);
 				return {
 					...a,
 					question: q?.question ?? a.questionId,

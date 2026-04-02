@@ -4,18 +4,20 @@ import { z } from 'zod';
 import { documentation } from './index';
 import { TechniqueDescription, type WorkflowTechniqueType } from './techniques';
 
+export const getBestPracticesInputSchema = z.object({
+	technique: z
+		.string()
+		.describe(
+			'The workflow technique to get guidance for (e.g. "chatbot", "scheduling", "triage"). Pass "list" to see all available techniques.',
+		),
+});
+
 export function createGetBestPracticesTool() {
 	return createTool({
 		id: 'get-best-practices',
 		description:
 			'Get workflow building best practices and guidance for a specific technique. Pass "list" to see all available techniques and their descriptions.',
-		inputSchema: z.object({
-			technique: z
-				.string()
-				.describe(
-					'The workflow technique to get guidance for (e.g. "chatbot", "scheduling", "triage"). Pass "list" to see all available techniques.',
-				),
-		}),
+		inputSchema: getBestPracticesInputSchema,
 		outputSchema: z.object({
 			technique: z.string(),
 			documentation: z.string().optional(),
@@ -31,7 +33,7 @@ export function createGetBestPracticesTool() {
 			message: z.string(),
 		}),
 		// eslint-disable-next-line @typescript-eslint/require-await
-		execute: async ({ technique }) => {
+		execute: async ({ technique }: z.infer<typeof getBestPracticesInputSchema>) => {
 			// "list" mode: return all techniques with descriptions
 			if (technique === 'list') {
 				const availableTechniques = Object.entries(TechniqueDescription).map(

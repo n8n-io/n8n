@@ -1,5 +1,5 @@
 import type { InstanceAiContext } from '../../../types';
-import { createListProjectsTool } from '../list-projects.tool';
+import { createListProjectsTool, listProjectsInputSchema } from '../list-projects.tool';
 
 function createMockContext(): InstanceAiContext {
 	return {
@@ -26,8 +26,7 @@ function createMockContext(): InstanceAiContext {
 describe('list-projects tool', () => {
 	describe('schema validation', () => {
 		it('accepts empty input', () => {
-			const tool = createListProjectsTool(createMockContext());
-			const result = tool.inputSchema!.safeParse({});
+			const result = listProjectsInputSchema.safeParse({});
 			expect(result.success).toBe(true);
 		});
 	});
@@ -42,7 +41,7 @@ describe('list-projects tool', () => {
 			(context.workspaceService!.listProjects as jest.Mock).mockResolvedValue(mockProjects);
 
 			const tool = createListProjectsTool(context);
-			const result = await tool.execute!({}, {} as never);
+			const result = (await tool.execute!({}, {} as never)) as Record<string, unknown>;
 
 			expect(context.workspaceService!.listProjects).toHaveBeenCalled();
 			expect(result).toEqual({ projects: mockProjects });
@@ -53,7 +52,7 @@ describe('list-projects tool', () => {
 			(context.workspaceService!.listProjects as jest.Mock).mockResolvedValue([]);
 
 			const tool = createListProjectsTool(context);
-			const result = await tool.execute!({}, {} as never);
+			const result = (await tool.execute!({}, {} as never)) as Record<string, unknown>;
 
 			expect(result).toEqual({ projects: [] });
 		});

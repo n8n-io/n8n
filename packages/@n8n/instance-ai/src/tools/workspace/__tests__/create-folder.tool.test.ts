@@ -1,5 +1,5 @@
 import type { InstanceAiContext } from '../../../types';
-import { createCreateFolderTool } from '../create-folder.tool';
+import { createCreateFolderTool, createFolderInputSchema } from '../create-folder.tool';
 
 function createMockContext(
 	permissionOverrides?: InstanceAiContext['permissions'],
@@ -29,14 +29,12 @@ function createMockContext(
 describe('create-folder tool', () => {
 	describe('schema validation', () => {
 		it('accepts name and projectId', () => {
-			const tool = createCreateFolderTool(createMockContext());
-			const result = tool.inputSchema!.safeParse({ name: 'My Folder', projectId: 'proj-1' });
+			const result = createFolderInputSchema.safeParse({ name: 'My Folder', projectId: 'proj-1' });
 			expect(result.success).toBe(true);
 		});
 
 		it('accepts optional parentFolderId', () => {
-			const tool = createCreateFolderTool(createMockContext());
-			const result = tool.inputSchema!.safeParse({
+			const result = createFolderInputSchema.safeParse({
 				name: 'Sub Folder',
 				projectId: 'proj-1',
 				parentFolderId: 'f-parent',
@@ -45,8 +43,7 @@ describe('create-folder tool', () => {
 		});
 
 		it('rejects missing name', () => {
-			const tool = createCreateFolderTool(createMockContext());
-			const result = tool.inputSchema!.safeParse({ projectId: 'proj-1' });
+			const result = createFolderInputSchema.safeParse({ projectId: 'proj-1' });
 			expect(result.success).toBe(false);
 		});
 	});
@@ -60,7 +57,10 @@ describe('create-folder tool', () => {
 			(context.workspaceService!.createFolder as jest.Mock).mockResolvedValue(created);
 
 			const tool = createCreateFolderTool(context);
-			const result = await tool.execute!({ name: 'Automations', projectId: 'proj-1' }, {} as never);
+			const result = (await tool.execute!(
+				{ name: 'Automations', projectId: 'proj-1' },
+				{} as never,
+			)) as Record<string, unknown>;
 
 			expect(context.workspaceService!.createFolder).toHaveBeenCalledWith(
 				'Automations',
@@ -78,10 +78,10 @@ describe('create-folder tool', () => {
 			(context.workspaceService!.createFolder as jest.Mock).mockResolvedValue(created);
 
 			const tool = createCreateFolderTool(context);
-			const result = await tool.execute!(
+			const result = (await tool.execute!(
 				{ name: 'Sub', projectId: 'proj-1', parentFolderId: 'f-parent' },
 				{} as never,
-			);
+			)) as Record<string, unknown>;
 
 			expect(context.workspaceService!.createFolder).toHaveBeenCalledWith(
 				'Sub',

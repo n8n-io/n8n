@@ -15,6 +15,12 @@ const GENERIC_AUTH_TYPES = new Set([
 	'oAuth2Api',
 ]);
 
+export const searchCredentialTypesInputSchema = z.object({
+	query: z
+		.string()
+		.describe('Search keyword — typically the service name (e.g. "linear", "notion", "slack")'),
+});
+
 export function createSearchCredentialTypesTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'search-credential-types',
@@ -23,11 +29,7 @@ export function createSearchCredentialTypesTool(context: InstanceAiContext) {
 			'Returns matching credential types that can be used with nodes. ' +
 			'Use this BEFORE resorting to genericCredentialType with HTTP Request — ' +
 			'a dedicated credential type almost always exists for popular services.',
-		inputSchema: z.object({
-			query: z
-				.string()
-				.describe('Search keyword — typically the service name (e.g. "linear", "notion", "slack")'),
-		}),
+		inputSchema: searchCredentialTypesInputSchema,
 		outputSchema: z.object({
 			results: z.array(
 				z.object({
@@ -36,7 +38,7 @@ export function createSearchCredentialTypesTool(context: InstanceAiContext) {
 				}),
 			),
 		}),
-		execute: async (input) => {
+		execute: async (input: z.infer<typeof searchCredentialTypesInputSchema>) => {
 			if (!context.credentialService.searchCredentialTypes) {
 				return { results: [] };
 			}

@@ -3,14 +3,16 @@ import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
 
+export const getNodeDescriptionInputSchema = z.object({
+	nodeType: z.string().describe('Node type identifier (e.g. "n8n-nodes-base.httpRequest")'),
+});
+
 export function createGetNodeDescriptionTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'get-node-description',
 		description:
 			'Get detailed description of a node type including its properties, credentials, inputs, and outputs.',
-		inputSchema: z.object({
-			nodeType: z.string().describe('Node type identifier (e.g. "n8n-nodes-base.httpRequest")'),
-		}),
+		inputSchema: getNodeDescriptionInputSchema,
 		outputSchema: z.object({
 			found: z.boolean(),
 			error: z.string().optional(),
@@ -32,7 +34,7 @@ export function createGetNodeDescriptionTool(context: InstanceAiContext) {
 			inputs: z.array(z.string()),
 			outputs: z.array(z.string()),
 		}),
-		execute: async (inputData) => {
+		execute: async (inputData: z.infer<typeof getNodeDescriptionInputSchema>) => {
 			try {
 				const desc = await context.nodeService.getDescription(inputData.nodeType);
 				return { found: true, ...desc };

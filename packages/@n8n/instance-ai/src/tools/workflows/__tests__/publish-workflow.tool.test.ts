@@ -124,9 +124,9 @@ describe('createPublishWorkflowTool', () => {
 		it('publishes the workflow when resumed with approved: true', async () => {
 			const tool = createPublishWorkflowTool(context);
 
-			const result = await tool.execute!({ workflowId: 'wf-123' }, {
+			const result = (await tool.execute!({ workflowId: 'wf-123' }, {
 				agent: { suspend: jest.fn(), resumeData: { approved: true } },
-			} as never);
+			} as never)) as Record<string, unknown>;
 
 			expect(context.workflowService.publish).toHaveBeenCalledWith('wf-123', {
 				versionId: undefined,
@@ -149,9 +149,9 @@ describe('createPublishWorkflowTool', () => {
 		it('returns denied when resumed with approved: false', async () => {
 			const tool = createPublishWorkflowTool(context);
 
-			const result = await tool.execute!({ workflowId: 'wf-123' }, {
+			const result = (await tool.execute!({ workflowId: 'wf-123' }, {
 				agent: { suspend: jest.fn(), resumeData: { approved: false } },
-			} as never);
+			} as never)) as Record<string, unknown>;
 
 			expect(context.workflowService.publish).not.toHaveBeenCalled();
 			expect(result).toEqual({
@@ -176,9 +176,9 @@ describe('createPublishWorkflowTool', () => {
 			const tool = createPublishWorkflowTool(context);
 			const suspend = jest.fn();
 
-			const result = await tool.execute!({ workflowId: 'wf-123' }, {
+			const result = (await tool.execute!({ workflowId: 'wf-123' }, {
 				agent: { suspend, resumeData: undefined },
-			} as never);
+			} as never)) as Record<string, unknown>;
 
 			expect(suspend).not.toHaveBeenCalled();
 			expect(context.workflowService.publish).toHaveBeenCalledWith('wf-123', {
@@ -263,9 +263,9 @@ describe('createPublishWorkflowTool', () => {
 			);
 			const tool = createPublishWorkflowTool(context);
 
-			const result = await tool.execute!({ workflowId: 'wf-123' }, {
+			const result = (await tool.execute!({ workflowId: 'wf-123' }, {
 				agent: { suspend: jest.fn(), resumeData: { approved: true } },
-			} as never);
+			} as never)) as Record<string, unknown>;
 
 			expect(result).toEqual({
 				success: false,

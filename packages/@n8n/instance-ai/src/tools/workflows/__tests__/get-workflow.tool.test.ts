@@ -108,7 +108,10 @@ describe('createGetWorkflowTool', () => {
 		(context.workflowService.get as jest.Mock).mockResolvedValue(expected);
 
 		const tool = createGetWorkflowTool(context);
-		const result = await tool.execute!({ workflowId: 'wf-123' }, {} as never);
+		const result = (await tool.execute!({ workflowId: 'wf-123' }, {} as never)) as Record<
+			string,
+			unknown
+		>;
 
 		expect(context.workflowService.get).toHaveBeenCalledWith('wf-123');
 		expect(result).toEqual(expectedOutputFromDetail(expected));

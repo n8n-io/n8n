@@ -1,5 +1,5 @@
 import type { InstanceAiContext } from '../../../types';
-import { createListFoldersTool } from '../list-folders.tool';
+import { createListFoldersTool, listFoldersInputSchema } from '../list-folders.tool';
 
 function createMockContext(): InstanceAiContext {
 	return {
@@ -26,14 +26,12 @@ function createMockContext(): InstanceAiContext {
 describe('list-folders tool', () => {
 	describe('schema validation', () => {
 		it('accepts a valid projectId', () => {
-			const tool = createListFoldersTool(createMockContext());
-			const result = tool.inputSchema!.safeParse({ projectId: 'proj-123' });
+			const result = listFoldersInputSchema.safeParse({ projectId: 'proj-123' });
 			expect(result.success).toBe(true);
 		});
 
 		it('rejects missing projectId', () => {
-			const tool = createListFoldersTool(createMockContext());
-			const result = tool.inputSchema!.safeParse({});
+			const result = listFoldersInputSchema.safeParse({});
 			expect(result.success).toBe(false);
 		});
 	});
@@ -48,7 +46,10 @@ describe('list-folders tool', () => {
 			(context.workspaceService!.listFolders as jest.Mock).mockResolvedValue(mockFolders);
 
 			const tool = createListFoldersTool(context);
-			const result = await tool.execute!({ projectId: 'proj-123' }, {} as never);
+			const result = (await tool.execute!({ projectId: 'proj-123' }, {} as never)) as Record<
+				string,
+				unknown
+			>;
 
 			expect(context.workspaceService!.listFolders).toHaveBeenCalledWith('proj-123');
 			expect(result).toEqual({ folders: mockFolders });
@@ -59,7 +60,10 @@ describe('list-folders tool', () => {
 			(context.workspaceService!.listFolders as jest.Mock).mockResolvedValue([]);
 
 			const tool = createListFoldersTool(context);
-			const result = await tool.execute!({ projectId: 'proj-123' }, {} as never);
+			const result = (await tool.execute!({ projectId: 'proj-123' }, {} as never)) as Record<
+				string,
+				unknown
+			>;
 
 			expect(result).toEqual({ folders: [] });
 		});

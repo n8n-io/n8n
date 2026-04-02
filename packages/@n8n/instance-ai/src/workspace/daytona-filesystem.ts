@@ -8,7 +8,7 @@
  * Without this adapter, Daytona workspaces only get sandbox tools (execute_command).
  */
 
-import { MastraFilesystem } from '@mastra/core/workspace';
+import { FileNotFoundError, MastraFilesystem } from '@mastra/core/workspace';
 import type {
 	FileContent,
 	FileStat,
@@ -129,7 +129,17 @@ export class DaytonaFilesystem extends MastraFilesystem {
 
 	async stat(path: string): Promise<FileStat> {
 		await this.ensureReady();
-		const info = await this.fs.getFileDetails(path);
+		let info;
+		try {
+			info = await this.fs.getFileDetails(path);
+		} catch (error: unknown) {
+			// Translate Daytona's 404 into Mastra's FileNotFoundError so that
+			// callers like wrapWithReadTracker can handle missing files correctly.
+			if (isDaytona404(error)) {
+				throw new FileNotFoundError(path);
+			}
+			throw error;
+		}
 		return {
 			name: info.name ?? path.split('/').pop() ?? '',
 			path,
@@ -139,4 +149,12 @@ export class DaytonaFilesystem extends MastraFilesystem {
 			modifiedAt: new Date(info.modTime ?? 0),
 		};
 	}
+}
+
+function isDaytona404(error: unknown): boolean {
+	return (
+		error instanceof Error &&
+		'statusCode' in error &&
+		(error as { statusCode: unknown }).statusCode === 404
+	);
 }

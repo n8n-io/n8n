@@ -3,12 +3,14 @@ import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
 
+export const listTagsInputSchema = z.object({});
+
 export function createListTagsTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'list-tags',
 		description:
 			'List all available tags. Use this to check existing tags before creating new ones.',
-		inputSchema: z.object({}),
+		inputSchema: listTagsInputSchema,
 		outputSchema: z.object({
 			tags: z.array(
 				z.object({
