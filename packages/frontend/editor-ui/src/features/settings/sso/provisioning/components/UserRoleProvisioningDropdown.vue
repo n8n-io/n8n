@@ -64,7 +64,7 @@ const userRoleProvisioningDescriptions = computed<UserRoleProvisioningDescriptio
 });
 </script>
 <template>
-	<div :class="$style.settingsItem">
+	<div :class="[$style.settingsItem, { [$style.noBorder]: value !== 'expression_based' }]">
 		<div :class="$style.labelColumn">
 			<label>{{ i18n.baseText('settings.sso.settings.userRoleProvisioning.label') }}</label>
 			<small
@@ -129,5 +129,9 @@ const userRoleProvisioningDescriptions = computed<UserRoleProvisioningDescriptio
 	flex: 1;
 	display: flex;
 	justify-content: flex-end;
+}
+
+.noBorder {
+	border-bottom: none;
 }
 </style>
