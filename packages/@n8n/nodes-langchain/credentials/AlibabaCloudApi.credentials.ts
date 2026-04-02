@@ -5,15 +5,12 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-const REGION_TO_BASE_URL_EXPRESSION =
-	'={{ $credentials.region === "us-east-1" ? "https://dashscope-us.aliyuncs.com/compatible-mode/v1" : $credentials.region === "cn-beijing" ? "https://dashscope.aliyuncs.com/compatible-mode/v1" : $credentials.region === "cn-hongkong" ? "https://cn-hongkong.dashscope.aliyuncs.com/compatible-mode/v1" : $credentials.region === "eu-central-1" ? "https://" + $credentials.workspaceId + ".eu-central-1.maas.aliyuncs.com/compatible-mode/v1" : "https://dashscope-intl.aliyuncs.com/compatible-mode/v1" }}';
+import { BASE_URL_EXPRESSION } from '../nodes/llms/LmChatAlibabaCloud/alibaba-cloud-base-url';
 
 export class AlibabaCloudApi implements ICredentialType {
 	name = 'alibabaCloudApi';
 
 	displayName = 'Alibaba Cloud';
-
-	icon = 'file:icons/alibabaCloud.svg' as const;
 
 	documentationUrl =
 		'https://www.alibabacloud.com/help/en/model-studio/developer-reference/compatibility-of-openai-with-dashscope';
@@ -83,7 +80,7 @@ export class AlibabaCloudApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: REGION_TO_BASE_URL_EXPRESSION,
+			baseURL: BASE_URL_EXPRESSION,
 			url: '/models',
 		},
 	};

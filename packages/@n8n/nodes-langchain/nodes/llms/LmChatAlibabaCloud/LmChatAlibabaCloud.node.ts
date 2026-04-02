@@ -14,21 +14,8 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { BASE_URL_EXPRESSION, getBaseUrl } from './alibaba-cloud-base-url';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
-
-const REGION_BASE_URLS: Record<string, string> = {
-	'ap-southeast-1': 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
-	'us-east-1': 'https://dashscope-us.aliyuncs.com/compatible-mode/v1',
-	'cn-beijing': 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-	'cn-hongkong': 'https://cn-hongkong.dashscope.aliyuncs.com/compatible-mode/v1',
-};
-
-function getBaseUrl(region: string, workspaceId?: string): string {
-	if (region === 'eu-central-1') {
-		return `https://${workspaceId}.eu-central-1.maas.aliyuncs.com/compatible-mode/v1`;
-	}
-	return REGION_BASE_URLS[region] ?? REGION_BASE_URLS['ap-southeast-1'];
-}
 
 export class LmChatAlibabaCloud implements INodeType {
 	description: INodeTypeDescription = {
@@ -70,8 +57,7 @@ export class LmChatAlibabaCloud implements INodeType {
 		],
 		requestDefaults: {
 			ignoreHttpStatusErrors: true,
-			baseURL:
-				'={{ $credentials.region === "us-east-1" ? "https://dashscope-us.aliyuncs.com/compatible-mode/v1" : $credentials.region === "cn-beijing" ? "https://dashscope.aliyuncs.com/compatible-mode/v1" : $credentials.region === "cn-hongkong" ? "https://cn-hongkong.dashscope.aliyuncs.com/compatible-mode/v1" : $credentials.region === "eu-central-1" ? "https://" + $credentials.workspaceId + ".eu-central-1.maas.aliyuncs.com/compatible-mode/v1" : "https://dashscope-intl.aliyuncs.com/compatible-mode/v1" }}',
+			baseURL: BASE_URL_EXPRESSION,
 		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
@@ -156,11 +142,8 @@ export class LmChatAlibabaCloud implements INodeType {
 						name: 'maxTokens',
 						default: -1,
 						description:
-							'The maximum number of tokens to generate in the completion. Most models have a context length of 2048 tokens (except for the newest models, which support 32,768).',
+							'The maximum number of tokens to generate in the completion. The limit depends on the selected model.',
 						type: 'number',
-						typeOptions: {
-							maxValue: 32768,
-						},
 					},
 					{
 						displayName: 'Response Format',
