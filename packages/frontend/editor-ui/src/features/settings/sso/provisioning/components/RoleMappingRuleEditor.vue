@@ -108,7 +108,7 @@ defineExpose({ isDirty, save });
 		/>
 		<div :class="$style.addButtonRow">
 			<N8nButton
-				type="tertiary"
+				variant="outline"
 				size="small"
 				icon="plus"
 				:disabled="!canEdit"
