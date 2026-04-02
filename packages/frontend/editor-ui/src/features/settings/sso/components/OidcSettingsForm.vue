@@ -4,7 +4,7 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { SupportedProtocols, useSSOStore } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 
-import { N8nButton, N8nCheckbox, N8nInput, N8nOption, N8nSelect } from '@n8n/design-system';
+import { N8nButton, N8nInput, N8nOption, N8nSelect } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
 import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
