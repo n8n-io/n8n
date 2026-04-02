@@ -362,27 +362,30 @@ test.describe(
 				expect(execResult.executionId).toBeTruthy();
 
 				// Poll for execution completion since executions are asynchronous
-				let result = await api.mcp.internalMcpGetExecution(
+				await expect
+					.poll(
+						async () => {
+							const r = await api.mcp.internalMcpGetExecution(
+								apiKey,
+								workflowId,
+								execResult.executionId!,
+							);
+							return r.execution?.status;
+						},
+						{ timeout: 30_000, intervals: [1_000] },
+					)
+					.toBe('success');
+
+				const result = await api.mcp.internalMcpGetExecution(
 					apiKey,
 					workflowId,
 					execResult.executionId!,
 					{ includeData: true },
 				);
-				const maxAttempts = 30;
-				for (let i = 0; i < maxAttempts && ['new', 'running', 'waiting'].includes(result.execution?.status ?? 'new'); i++) {
-					await new Promise((resolve) => setTimeout(resolve, 1000));
-					result = await api.mcp.internalMcpGetExecution(
-						apiKey,
-						workflowId,
-						execResult.executionId!,
-						{ includeData: true },
-					);
-				}
 
 				expect(result.execution).toBeDefined();
 				expect(result.execution!.id).toBe(execResult.executionId);
 				expect(result.execution!.workflowId).toBe(workflowId);
-				expect(result.execution!.status).toBe('success');
 				expect(result.data).toBeDefined();
 			});
 		});
