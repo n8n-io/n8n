@@ -36,13 +36,14 @@ export = {
 			workflow.active = false;
 			workflow.versionId = uuid();
 
-			await replaceInvalidCredentials(workflow);
-
-			addNodeIds(workflow);
-
 			const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 				req.user.id,
 			);
+
+			await replaceInvalidCredentials(workflow, project.id);
+
+			addNodeIds(workflow);
+
 			const createdWorkflow = await createWorkflow(workflow, req.user, project, 'workflow:owner');
 
 			await Container.get(WorkflowHistoryService).saveVersion(

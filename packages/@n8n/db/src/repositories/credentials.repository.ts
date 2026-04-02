@@ -181,4 +181,16 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	async findAllCredentialsForProject(projectId: string): Promise<CredentialsEntity[]> {
 		return await this.findBy({ shared: { projectId } });
 	}
+
+	/**
+	 * Find credentials by name and type, scoped to a specific project.
+	 * Used by replaceInvalidCredentials to prevent cross-project credential resolution.
+	 */
+	async findByNameAndTypeInProject(
+		name: string,
+		type: string,
+		projectId: string,
+	): Promise<CredentialsEntity[]> {
+		return await this.findBy({ name, type, shared: { projectId } });
+	}
 }

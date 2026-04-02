@@ -1,3 +1,17 @@
+## [1.123.27](https://github.com/n8n-io/n8n/compare/n8n@1.123.26...n8n@1.123.27) (2026-03-25)
+
+
+
+## [1.123.26](https://github.com/n8n-io/n8n/compare/n8n@1.123.25...n8n@1.123.26) (2026-03-19)
+
+
+### Bug Fixes
+
+* **core:** Old version of workflow still active after pulling [1.x] ([#27017](https://github.com/n8n-io/n8n/issues/27017)) ([13de8df](https://github.com/n8n-io/n8n/commit/13de8dfccccbf6f63b1201c1b3faa7450cac4d53))
+* Fix 16 security issues in hono, simple-git, multer and 5 more ([#27025](https://github.com/n8n-io/n8n/issues/27025)) ([5504844](https://github.com/n8n-io/n8n/commit/5504844633291e1805bc2dc094af306ae7077646))
+
+
+
 ## [1.123.25](https://github.com/n8n-io/n8n/compare/n8n@1.123.24...n8n@1.123.25) (2026-03-13)
 
 
