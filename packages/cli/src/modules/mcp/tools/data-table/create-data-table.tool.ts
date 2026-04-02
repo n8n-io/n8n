@@ -3,20 +3,13 @@ import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
-import { dataTableColumnTypeSchema } from '../schemas';
+import { columnNameSchema, dataTableColumnTypeSchema } from '../schemas';
 
 import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 import type { Telemetry } from '@/telemetry';
 
 const columnSchema = z.object({
-	name: z
-		.string()
-		.min(1)
-		.max(63)
-		.regex(/^[a-zA-Z][a-zA-Z0-9_]*$/)
-		.describe(
-			'Column name. Must start with a letter, contain only letters, numbers, and underscores (max 63 chars)',
-		),
+	name: columnNameSchema,
 	type: dataTableColumnTypeSchema,
 });
 

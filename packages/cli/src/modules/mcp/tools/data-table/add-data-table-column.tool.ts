@@ -3,22 +3,20 @@ import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
-import { dataTableColumnSchema, dataTableColumnTypeSchema } from '../schemas';
+import {
+	columnNameSchema,
+	dataTableColumnSchema,
+	dataTableColumnTypeSchema,
+	dataTableProjectIdSchema,
+} from '../schemas';
 
 import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 import type { Telemetry } from '@/telemetry';
 
 const inputSchema = {
 	dataTableId: z.string().describe('The ID of the data table to add a column to'),
-	projectId: z.string().describe('The project ID the data table belongs to'),
-	name: z
-		.string()
-		.min(1)
-		.max(63)
-		.regex(/^[a-zA-Z][a-zA-Z0-9_]*$/)
-		.describe(
-			'Column name. Must start with a letter, contain only letters, numbers, and underscores (max 63 chars)',
-		),
+	projectId: dataTableProjectIdSchema,
+	name: columnNameSchema,
 	type: dataTableColumnTypeSchema.describe('The data type of the new column'),
 } satisfies z.ZodRawShape;
 

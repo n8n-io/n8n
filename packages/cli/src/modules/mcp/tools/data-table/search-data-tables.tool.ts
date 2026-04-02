@@ -4,7 +4,7 @@ import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
-import { dataTableSchema } from '../schemas';
+import { createLimitSchema, dataTableSchema } from '../schemas';
 
 import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 import type { Telemetry } from '@/telemetry';
@@ -17,13 +17,7 @@ const searchInputSchema = {
 		.optional()
 		.describe('Filter data tables by name (case-insensitive partial match)'),
 	projectId: z.string().optional().describe('Filter by project ID'),
-	limit: z
-		.number()
-		.int()
-		.positive()
-		.max(SEARCH_MAX_RESULTS)
-		.optional()
-		.describe(`Limit the number of results (max ${SEARCH_MAX_RESULTS})`),
+	limit: createLimitSchema(SEARCH_MAX_RESULTS),
 } satisfies z.ZodRawShape;
 
 const searchOutputSchema = {

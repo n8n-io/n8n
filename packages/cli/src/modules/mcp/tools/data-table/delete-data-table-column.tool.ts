@@ -3,20 +3,18 @@ import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { dataTableProjectIdSchema, successMessageOutputSchema } from '../schemas';
 
 import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 import type { Telemetry } from '@/telemetry';
 
 const inputSchema = {
 	dataTableId: z.string().describe('The ID of the data table containing the column'),
-	projectId: z.string().describe('The project ID the data table belongs to'),
+	projectId: dataTableProjectIdSchema,
 	columnId: z.string().describe('The ID of the column to delete'),
 } satisfies z.ZodRawShape;
 
-const outputSchema = {
-	success: z.boolean().describe('Whether the operation succeeded'),
-	message: z.string().describe('Description of the result'),
-} satisfies z.ZodRawShape;
+const outputSchema = successMessageOutputSchema;
 
 export const createDeleteDataTableColumnTool = (
 	user: User,

@@ -40,6 +40,33 @@ export const dataTableSchema = z.object({
 	columns: z.array(dataTableColumnSchema).describe('The columns defined in this data table'),
 });
 
+export const createLimitSchema = (max: number) =>
+	z
+		.number()
+		.int()
+		.positive()
+		.max(max)
+		.optional()
+		.describe(`Limit the number of results (max ${max})`);
+
+export const dataTableProjectIdSchema = z
+	.string()
+	.describe('The project ID the data table belongs to');
+
+export const columnNameSchema = z
+	.string()
+	.min(1)
+	.max(63)
+	.regex(/^[a-zA-Z][a-zA-Z0-9_]*$/)
+	.describe(
+		'Column name. Must start with a letter, contain only letters, numbers, and underscores (max 63 chars)',
+	);
+
+export const successMessageOutputSchema = {
+	success: z.boolean().describe('Whether the operation succeeded'),
+	message: z.string().describe('Description of the result'),
+} satisfies z.ZodRawShape;
+
 export const workflowDetailsOutputSchema = z.object({
 	workflow: z
 		.object({
