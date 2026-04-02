@@ -45,6 +45,10 @@ export function createDeleteDataTableRowsTool(context: InstanceAiContext) {
 		execute: async (input, ctx) => {
 			const { resumeData, suspend } = ctx?.agent ?? {};
 
+			if (context.permissions?.mutateDataTableRows === 'blocked') {
+				return { success: false, denied: true, reason: 'Action blocked by admin' };
+			}
+
 			const needsApproval = context.permissions?.mutateDataTableRows !== 'always_allow';
 
 			// State 1: First call — suspend for confirmation (unless always_allow)

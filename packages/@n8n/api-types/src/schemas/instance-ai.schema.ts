@@ -756,7 +756,7 @@ export interface InstanceAiThreadStatusResponse {
 // Settings types (runtime-configurable subset of InstanceAiConfig)
 // ---------------------------------------------------------------------------
 
-const instanceAiPermissionModeSchema = z.enum(['require_approval', 'always_allow']);
+const instanceAiPermissionModeSchema = z.enum(['require_approval', 'always_allow', 'blocked']);
 
 export type InstanceAiPermissionMode = z.infer<typeof instanceAiPermissionModeSchema>;
 
@@ -809,6 +809,7 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 // ---------------------------------------------------------------------------
 
 export interface InstanceAiAdminSettingsResponse {
+	enabled: boolean;
 	lastMessages: number;
 	embedderModel: string;
 	semanticRecallTopK: number;
@@ -827,6 +828,7 @@ export interface InstanceAiAdminSettingsResponse {
 }
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
+	enabled: z.boolean().optional(),
 	lastMessages: z.number().int().positive().optional(),
 	embedderModel: z.string().optional(),
 	semanticRecallTopK: z.number().int().positive().optional(),

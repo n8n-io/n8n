@@ -33,6 +33,10 @@ export function createDeleteWorkflowTool(context: InstanceAiContext) {
 		execute: async (input, ctx) => {
 			const { resumeData, suspend } = ctx?.agent ?? {};
 
+			if (context.permissions?.deleteWorkflow === 'blocked') {
+				return { success: false, denied: true, reason: 'Action blocked by admin' };
+			}
+
 			const needsApproval = context.permissions?.deleteWorkflow !== 'always_allow';
 
 			// State 1: First call — suspend for confirmation (unless always_allow)

@@ -37,6 +37,10 @@ export function createCleanupTestExecutionsTool(context: InstanceAiContext) {
 		execute: async (input, ctx) => {
 			const { resumeData, suspend } = ctx?.agent ?? {};
 
+			if (context.permissions?.cleanupTestExecutions === 'blocked') {
+				return { deletedCount: 0, denied: true, reason: 'Action blocked by admin' };
+			}
+
 			const needsApproval = context.permissions?.cleanupTestExecutions !== 'always_allow';
 
 			// State 1: First call — suspend for confirmation (unless always_allow)

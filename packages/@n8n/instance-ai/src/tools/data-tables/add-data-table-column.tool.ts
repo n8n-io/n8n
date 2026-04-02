@@ -39,6 +39,10 @@ export function createAddDataTableColumnTool(context: InstanceAiContext) {
 		execute: async (input, ctx) => {
 			const { resumeData, suspend } = ctx?.agent ?? {};
 
+			if (context.permissions?.mutateDataTableSchema === 'blocked') {
+				return { denied: true, reason: 'Action blocked by admin' };
+			}
+
 			const needsApproval = context.permissions?.mutateDataTableSchema !== 'always_allow';
 
 			// State 1: First call — suspend for confirmation (unless always_allow)
