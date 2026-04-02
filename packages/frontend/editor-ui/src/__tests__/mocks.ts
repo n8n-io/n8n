@@ -196,12 +196,12 @@ export function createTestWorkflowObject({
 	return new Workflow({
 		id,
 		name,
-		nodes,
-		connections,
+		nodes: Array.isArray(nodes) ? nodes : [],
+		connections: typeof connections === 'object' && connections !== null ? connections : {},
 		active,
-		staticData,
-		settings,
-		pinData,
+		staticData: typeof staticData === 'object' && staticData !== null ? staticData : {},
+		settings: typeof settings === 'object' && settings !== null ? settings : {},
+		pinData: typeof pinData === 'object' && pinData !== null ? pinData : {},
 		nodeTypes: rest.nodeTypes ?? nodeTypes,
 	});
 }
@@ -254,6 +254,7 @@ export function createTestNode(node: Partial<INode> = {}): INode {
 export function createTestNodeProperties(data: Partial<INodeProperties> = {}): INodeProperties {
 	return {
 		displayName: 'Name',
+		displayOptions: undefined,
 		name: 'name',
 		type: 'string',
 		default: '',
