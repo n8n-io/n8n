@@ -369,7 +369,7 @@ test.describe(
 					{ includeData: true },
 				);
 				const maxAttempts = 30;
-				for (let i = 0; i < maxAttempts && result.execution?.status === 'running'; i++) {
+				for (let i = 0; i < maxAttempts && ['new', 'running', 'waiting'].includes(result.execution?.status ?? 'new'); i++) {
 					await new Promise((resolve) => setTimeout(resolve, 1000));
 					result = await api.mcp.internalMcpGetExecution(
 						apiKey,
