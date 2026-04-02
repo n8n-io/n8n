@@ -211,6 +211,10 @@ const projectSelectLabel = computed(() => {
 	flex-shrink: 0;
 }
 
+.roleSelect {
+	width: 130px;
+}
+
 .cellAction {
 	display: flex;
 	align-items: center;
