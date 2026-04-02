@@ -309,6 +309,7 @@ onMounted(async () => {
 				<div :class="$style.settingsItemControl">
 					<div
 						:class="$style.copyInputGroup"
+						data-test-id="copy-input"
 						@click="
 							copyToClipboard(
 								redirectUrl,
@@ -331,6 +332,7 @@ onMounted(async () => {
 				<div :class="$style.settingsItemControl">
 					<div
 						:class="$style.copyInputGroup"
+						data-test-id="copy-input"
 						@click="
 							copyToClipboard(entityId, i18n.baseText('settings.sso.settings.entityId.copied'))
 						"
