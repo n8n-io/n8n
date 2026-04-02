@@ -30,7 +30,15 @@ const changelogStream = new ConventionalChangelog()
 			const isBenchmarkScope = commit.scope === 'benchmark';
 
 			// Ignore commits that have 'benchmark' scope or '(no-changelog)' in the header
-			return hasNoChangelogInHeader || isBenchmarkScope ? null : commit;
+			if (hasNoChangelogInHeader || isBenchmarkScope) return null;
+
+			// Strip backport information from commit subject, e.g.:
+			// "Fix something (backport to release-candidate/2.12.x) (#123)" → "Fix something (#123)"
+			if (commit.subject) {
+				commit.subject = commit.subject.replace(/\s*\(backport to [^)]+\)/g, '');
+			}
+
+			return commit;
 		},
 	})
 	.writeStream()

@@ -48,13 +48,19 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 
 	/**
 	 * Thin wrapper around `processExecutions` for single-execution callers.
+	 *
+	 * With `keepOriginal: true`, the original execution is never mutated. Returns
+	 * either the original (if no redaction needed) or a structuredClone with
+	 * redaction applied. Callers can check referential equality to determine
+	 * whether redaction occurred.
 	 */
 	async processExecution(
 		execution: RedactableExecution,
 		options: ExecutionRedactionOptions,
 	): Promise<RedactableExecution> {
-		await this.processExecutions([execution], options);
-		return execution;
+		const executions = [execution];
+		await this.processExecutions(executions, options);
+		return executions[0];
 	}
 
 	/**
@@ -106,17 +112,29 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		// Unified pipeline execution. buildPipeline excludes FullItemRedactionStrategy on the
 		// reveal path (redactExecutionData === false). NodeDefinedFieldRedactionStrategy
 		// always runs — node-declared sensitive fields are never revealable.
-		for (const execution of executions) {
+
+		for (let i = 0; i < executions.length; i++) {
+			const execution = executions[i];
 			const policyAllowsReveal = this.policyAllowsReveal(execution);
 			const userCanReveal = policyAllowsReveal || revealableIds.has(execution.workflowId);
 			const context: RedactionContext = {
 				user: options.user,
 				redactExecutionData: options.redactExecutionData,
 				userCanReveal,
+				memo: new Map(),
 			};
 			const pipeline = this.buildPipeline(execution, context, policyAllowsReveal);
+
+			let target = execution;
+			if (options.keepOriginal) {
+				const needsClone = pipeline.some((s) => s.requiresRedaction(execution, context));
+				if (!needsClone) continue;
+				target = structuredClone(execution);
+				executions[i] = target;
+			}
+
 			for (const strategy of pipeline) {
-				await strategy.apply(execution, context);
+				await strategy.apply(target, context);
 			}
 		}
 
