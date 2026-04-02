@@ -168,6 +168,8 @@ export async function execute(
 			],
 		},
 		parameters: {
+			// Always sent explicitly: DashScope defaults prompt_extend to true server-side,
+			// so we must send false to prevent unwanted prompt enhancement.
 			prompt_extend: imageOptions.promptExtend ?? false,
 		},
 	};

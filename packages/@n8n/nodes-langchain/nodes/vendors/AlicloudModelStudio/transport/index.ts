@@ -8,9 +8,8 @@ import { NodeOperationError, UserError, sleep } from 'n8n-workflow';
 
 type RequestParameters = {
 	headers?: IDataObject;
-	body?: IDataObject | string | object;
+	body?: object | string;
 	qs?: IDataObject;
-	uri?: string;
 	option?: IDataObject;
 };
 
@@ -72,6 +71,8 @@ export async function apiRequest(
 		options,
 	);
 
+	// DashScope returns `error: null` on success; normalize to `undefined` so downstream
+	// checks like `if (response.error)` don't see a key that looks like an error field.
 	if (response && response.error === null) {
 		response.error = undefined;
 	}

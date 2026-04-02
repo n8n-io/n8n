@@ -226,7 +226,8 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-// Models that support multimodal input (text + images) and require the multimodal endpoint
+// All current dropdown models are multimodal. This list exists so that non-multimodal models
+// added later (e.g. via dynamic loading) are automatically routed to the text-generation endpoint.
 const MULTIMODAL_MODELS = [
 	'qwen3-max',
 	'qwen3-max-2026-01-23',

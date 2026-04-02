@@ -31,17 +31,7 @@ export const versionDescription: INodeTypeDescription = {
 			],
 		},
 	},
-	inputs: `={{
-		(() => {
-			const resource = $parameter.resource;
-			const operation = $parameter.operation;
-			if (resource === 'text' && operation === 'message') {
-				return [{ type: 'main' }, { type: 'ai_tool', displayName: 'Tools' }];
-			}
-
-			return ['main'];
-		})()
-	}}`,
+	inputs: [NodeConnectionTypes.Main],
 	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{
