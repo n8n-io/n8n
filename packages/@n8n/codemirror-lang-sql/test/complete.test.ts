@@ -1,5 +1,6 @@
 import type { CompletionResult, CompletionSource } from '@codemirror/autocomplete';
 import { CompletionContext } from '@codemirror/autocomplete';
+import { ensureSyntaxTree } from '@codemirror/language';
 import { EditorState } from '@codemirror/state';
 
 import type { SQLConfig } from '../src/sql';
@@ -20,6 +21,7 @@ function get(doc: string, conf: SQLConfig & { explicit?: boolean } = {}) {
 			}),
 		],
 	});
+	ensureSyntaxTree(state, state.doc.length, 1e9);
 	const result = state.languageDataAt<CompletionSource>('autocomplete', cur)[0](
 		new CompletionContext(state, cur, !!conf.explicit),
 	);

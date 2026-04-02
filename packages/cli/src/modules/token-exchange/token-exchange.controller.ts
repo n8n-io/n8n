@@ -1,4 +1,3 @@
-import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -10,12 +9,13 @@ import { AuthlessRequest } from '@/requests';
 
 import { z } from 'zod';
 
+import { TokenExchangeConfig } from './token-exchange.config';
 import { TOKEN_EXCHANGE_GRANT_TYPE, TokenExchangeRequestSchema } from './token-exchange.schemas';
 import { TokenExchangeService } from './token-exchange.service';
 
 @RestController('/auth/oauth')
 export class TokenExchangeController {
-	private readonly globalConfig = Container.get(GlobalConfig);
+	private readonly config = Container.get(TokenExchangeConfig);
 
 	private readonly errorReporter = Container.get(ErrorReporter);
 
@@ -33,7 +33,7 @@ export class TokenExchangeController {
 		ipRateLimit: { limit: 20, windowMs: 1 * Time.minutes.toMilliseconds },
 	})
 	async exchangeToken(req: AuthlessRequest, res: Response): Promise<void> {
-		if (!this.globalConfig.tokenExchange.enabled) {
+		if (!this.config.enabled) {
 			res.status(501).json({
 				error: 'server_error',
 				error_description: 'Token exchange is not enabled on this instance',
@@ -69,29 +69,29 @@ export class TokenExchangeController {
 
 		// Success path: delegate to service.
 		try {
-			await this.tokenExchangeService.exchange(parsed.data);
+			const result = await this.tokenExchangeService.exchange(parsed.data);
 
 			this.eventService.emit('token-exchange-succeeded', {
-				subject: '', // sub claim extracted by service in later ticket
-				actor: undefined, // act.sub claim extracted by service in later ticket
+				subject: result.subject,
+				actor: result.actor,
 				scopes: parsed.data.scope,
 				resource: parsed.data.resource,
 				grantType: parsed.data.grant_type,
 				clientIp,
-				issuer: '', // populated by service in later ticket
+				issuer: result.issuer,
 			});
 
 			res.json({
-				access_token: 'stub-access-token',
+				access_token: result.accessToken,
 				token_type: 'Bearer',
-				expires_in: 3600,
+				expires_in: result.expiresIn,
 				issued_token_type: 'urn:ietf:params:oauth:token-type:access_token',
 			});
 		} catch (error) {
 			this.errorReporter.error(error instanceof Error ? error : new Error(String(error)));
 
 			this.eventService.emit('token-exchange-failed', {
-				subject: '', // sub claim extracted by service in later ticket
+				subject: '',
 				failureReason: 'internal_error',
 				grantType: parsed.data.grant_type,
 				clientIp,

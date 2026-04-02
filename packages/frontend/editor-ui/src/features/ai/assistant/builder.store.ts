@@ -60,8 +60,7 @@ import {
 } from '@/features/ai/assistant/assistant.types';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { useCodeDiff } from '@/features/ai/assistant/composables/useCodeDiff';
-
-const INFINITE_CREDITS = -1;
+import { UNLIMITED_CREDITS } from '@n8n/api-types';
 export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
 
 /** Tool names that indicate the AI modified the workflow (used during session reload) */
@@ -338,7 +337,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			creditsClaimed.value === undefined ||
 			creditsQuota.value === undefined ||
 			// Can be the case if not using proxy service
-			creditsQuota.value === INFINITE_CREDITS
+			creditsQuota.value === UNLIMITED_CREDITS
 		) {
 			return undefined;
 		}
@@ -355,7 +354,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const creditsPercentageRemaining = computed(() => {
 		if (
 			creditsQuota.value === undefined ||
-			creditsQuota.value === INFINITE_CREDITS ||
+			creditsQuota.value === UNLIMITED_CREDITS ||
 			creditsRemaining.value === undefined
 		) {
 			return undefined;
