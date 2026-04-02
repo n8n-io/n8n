@@ -8,7 +8,6 @@ import {
 	type ToolCategory,
 	type TaskList,
 } from '@n8n/api-types';
-import { createAnthropic } from '@ai-sdk/anthropic';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -361,104 +360,19 @@ export class InstanceAiService {
 		};
 	}
 
-	/**
-	 * Prefer gzip over brotli for LLM API responses.
-	 * Brotli decompressors cost ~8.6 MB of native memory each and are retained
-	 * by undici's connection pool. Gzip decompressors are ~1 KB.
-	 */
-	private static readonly LLM_HEADERS: Record<string, string> = {
-		'Accept-Encoding': 'gzip, deflate',
-	};
-
-	/**
-	 * Resolve the LLM model as a LanguageModelV2 instance.
-	 *
-	 * We create AI SDK providers directly (bypassing Mastra's model router)
-	 * for two reasons:
-	 * 1. Mastra's dev gateway drops custom headers — we need Accept-Encoding
-	 *    to avoid 8.6 MB brotli decompressors per HTTP connection.
-	 * 2. The proxy path needs @ai-sdk/anthropic directly because Mastra's
-	 *    router forces OpenAI-compatible endpoints, but the proxy may
-	 *    forward to Vertex AI which only speaks native Anthropic Messages API.
-	 */
 	private async resolveModel(user: User): Promise<ModelConfig> {
 		if (this.aiService.isProxyEnabled()) {
 			const { client, headers } = await this.getProxyAuth(user);
 			const modelName = await this.settingsService.resolveModelName(user);
-			return this.createProvider('anthropic', modelName, {
-				apiKey: 'proxy-managed',
+			const { createAnthropic } = await import('@ai-sdk/anthropic');
+			const provider = createAnthropic({
 				baseURL: client.getApiProxyBaseUrl() + '/anthropic/v1',
-				extraHeaders: headers,
+				apiKey: 'proxy-managed',
+				headers,
 			});
+			return provider(modelName);
 		}
-
-		const config = await this.settingsService.resolveModelConfig(user);
-
-		// Already a LanguageModelV2 instance — return as-is
-		if (typeof config !== 'string' && !('id' in config)) {
-			return config;
-		}
-
-		// Extract provider/model from the config
-		const id = typeof config === 'string' ? config : config.id;
-		const [providerId, ...modelParts] = id.split('/');
-		const modelName = modelParts.join('/');
-		const apiKey = typeof config !== 'string' ? config.apiKey : undefined;
-		const baseURL = typeof config !== 'string' && config.url ? config.url : undefined;
-		const extraHeaders = typeof config !== 'string' ? config.headers : undefined;
-
-		return this.createProvider(providerId, modelName, { apiKey, baseURL, extraHeaders });
-	}
-
-	/**
-	 * Create an AI SDK provider instance with gzip headers baked in.
-	 * Falls back to the original ModelConfig string when the provider
-	 * isn't one we handle directly (lets Mastra's router deal with it).
-	 */
-	private createProvider(
-		providerId: string,
-		modelName: string,
-		options: { apiKey?: string; baseURL?: string; extraHeaders?: Record<string, string> },
-	): ModelConfig {
-		const headers = { ...InstanceAiService.LLM_HEADERS, ...options.extraHeaders };
-		const { apiKey, baseURL } = options;
-
-		console.log(
-			`[INSTANCE-AI] createProvider: ${providerId}/${modelName} headers:`,
-			Object.keys(headers),
-		);
-
-		switch (providerId) {
-			case 'anthropic': {
-				const provider = createAnthropic({
-					...(apiKey ? { apiKey } : {}),
-					...(baseURL ? { baseURL } : {}),
-					headers,
-				});
-				return provider(modelName);
-			}
-			case 'openai': {
-				const { createOpenAI } = require('@ai-sdk/openai') as typeof import('@ai-sdk/openai');
-				const provider = createOpenAI({
-					...(apiKey ? { apiKey } : {}),
-					...(baseURL ? { baseURL } : {}),
-					headers,
-				});
-				// V3 is runtime-compatible with V2; Mastra handles both
-				return provider.responses(modelName) as unknown as ModelConfig;
-			}
-			default:
-				// For providers we don't handle directly, fall back to string config
-				// so Mastra's model router handles it (without gzip optimization)
-				return apiKey
-					? {
-							id: `${providerId}/${modelName}` as `${string}/${string}`,
-							url: baseURL ?? '',
-							apiKey,
-							headers,
-						}
-					: `${providerId}/${modelName}`;
-		}
+		return await this.settingsService.resolveModelConfig(user);
 	}
 
 	/** Build search proxy config when proxy is enabled. */
