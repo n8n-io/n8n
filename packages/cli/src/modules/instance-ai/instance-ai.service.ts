@@ -54,7 +54,6 @@ import {
 	type OrchestrationContext,
 	type InstanceAiTraceContext,
 	type PlannedTaskGraph,
-	type PendingConfirmation,
 	type PlannedTaskRecord,
 	type SandboxConfig,
 	type SpawnBackgroundTaskOptions,
@@ -124,8 +123,6 @@ export class InstanceAiService {
 		string,
 		{ threadId: string; messageGroupId?: string; tracing: InstanceAiTraceContext }
 	>();
-	private readonly pendingSubAgentConfirmations = new Map<string, PendingConfirmation>();
-
 	/** Active sandboxes keyed by thread ID — persisted across messages within a conversation. */
 	private readonly sandboxes = new Map<
 		string,
@@ -971,11 +968,6 @@ export class InstanceAiService {
 		}
 
 		this.gatewayRegistry.disconnectAll();
-
-		for (const [, pending] of this.pendingSubAgentConfirmations) {
-			pending.resolve({ approved: false });
-		}
-		this.pendingSubAgentConfirmations.clear();
 
 		// Destroy all active sandboxes
 		const sandboxCleanups = [...this.sandboxes.keys()].map(
