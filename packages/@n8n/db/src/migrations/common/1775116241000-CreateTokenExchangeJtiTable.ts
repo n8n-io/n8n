@@ -2,7 +2,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const tableName = 'token_exchange_jti';
 
-export class CreateTokenExchangeJtiTable1775000000000 implements ReversibleMigration {
+export class CreateTokenExchangeJtiTable1775116241000 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable(tableName).withColumns(
 			column('jti').varchar(255).primary,
