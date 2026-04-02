@@ -20,9 +20,11 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const rolesStore = useRolesStore();
 
+const EXCLUDED_GLOBAL_ROLES = ['global:owner', 'global:chatUser'];
+
 const instanceRoleOptions = computed(() =>
 	rolesStore.roles.global
-		.filter((role) => !role.systemRole)
+		.filter((role) => !EXCLUDED_GLOBAL_ROLES.includes(role.slug))
 		.map((role) => ({ label: role.displayName, value: role.slug })),
 );
 </script>
