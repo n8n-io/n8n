@@ -8,6 +8,7 @@ import {
 	type ToolCategory,
 	type TaskList,
 } from '@n8n/api-types';
+import { createAnthropic } from '@ai-sdk/anthropic';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
