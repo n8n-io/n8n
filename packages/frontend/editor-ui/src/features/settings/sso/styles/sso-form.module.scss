@@ -165,6 +165,14 @@
 	}
 }
 
+.greenDot {
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background-color: var(--color--success);
+}
+
 .footer {
 	color: var(--color--text);
 	font-size: var(--font-size--2xs);
