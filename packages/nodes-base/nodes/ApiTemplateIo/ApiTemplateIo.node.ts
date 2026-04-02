@@ -440,6 +440,7 @@ export class ApiTemplateIo implements INodeType {
 				displayName: 'Region',
 				name: 'region',
 				type: 'options',
+				noDataExpression: true,
 				default: 'rest',
 				required: true,
 				description: 'Region of the API endpoint',
