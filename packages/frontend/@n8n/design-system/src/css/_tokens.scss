@@ -162,62 +162,68 @@
 	/* stylelint-disable-next-line @n8n/css-var-naming */
 	--border: var(--border-base, var(--border-width) var(--border-style) var(--border-color--light));
 
-	/* stylelint-disable @n8n/css-var-naming */
 	// New semantic tokens (preferred)
 
-	--background--brand: var(--color--orange-400);
-	--background--brand--hover: var(--color--orange-500);
-	--background--brand--active: var(--color--orange-600);
-	--background--brand--focus: var(--color--orange-400);
-	--background--brand--disabled: var(--color--neutral-200);
+	--color--background--brand: var(--color--orange-400);
+	--color--background--brand--hover: var(--color--orange-500);
+	--color--background--brand--active: var(--color--orange-600);
+	--color--background--brand--focus: var(--color--orange-400);
+	--color--background--brand--disabled: var(--color--neutral-200);
 
+	/* stylelint-disable @n8n/css-var-naming */
 	--background--surface: var(--color--neutral-white);
 	--background--surface--hover: var(--color--neutral-100);
-	--background--surface--active: var(--color--neutral-125);
-	--background--surface--focus: var(--color--neutral-100);
-	--background--surface--disabled: var(--color--neutral-200);
+	/* stylelint-enable @n8n/css-var-naming */
+	--color--background--surface--active: var(--color--neutral-125);
+	--color--background--surface--focus: var(--color--neutral-100);
+	--color--background--surface--disabled: var(--color--neutral-200);
 
-	--border-color: var(--border-color-base, var(--color--black-alpha-200));
+	--border-color: var(--border-color--base, var(--color--black-alpha-200));
 	--border-color--subtle: var(--color--black-alpha-100);
 	--border-color--strong: var(--color--black-alpha-300);
 	--border-color--stronger: var(--color--black-alpha-400);
 
 	--icon-color--subtle: var(--color--neutral-200);
-	--icon-color: var(--color--neutral-500);
+	--icon-color--base: var(--color--neutral-500);
 	--icon-color--strong: var(--color--neutral-800);
 
-	--text-color: var(--color--neutral-900);
-	--text-color--subtle: var(--color--neutral-700);
-	--text-color--subtler: var(--color--neutral-500);
+	--color--text: var(--color--neutral-900);
+	--color--text--subtle: var(--color--neutral-700);
+	--color--text--subtler: var(--color--neutral-500);
 
+	/* stylelint-disable @n8n/css-var-naming */
 	--background--success: var(--color--green-50);
+	/* stylelint-enable @n8n/css-var-naming */
 	--border-color--success: var(--color--green-200);
-	--text-color--success: var(--color--green-800);
+	--color--text--success: var(--color--green-800);
 	--icon-color--success: var(--color--green-800);
 
+	/* stylelint-disable @n8n/css-var-naming */
 	--background--warning: var(--color--yellow-100);
+	/* stylelint-enable @n8n/css-var-naming */
 	--border-color--warning: var(--color--yellow-200);
-	--text-color--warning: var(--color--yellow-800);
+	--color--text--warning: var(--color--yellow-800);
 	--icon-color--warning: var(--color--yellow-800);
 
+	/* stylelint-disable @n8n/css-var-naming */
 	--background--danger: var(--color--red-50);
+	/* stylelint-enable @n8n/css-var-naming */
 	--border-color--danger: var(--color--red-200);
-	--text-color--danger: var(--color--red-800);
+	--color--text--danger: var(--color--red-800);
 	--icon-color--danger: var(--color--red-800);
 
-	--background--info: var(--color--blue-50);
+	--color--background--info: var(--color--blue-50);
 	--border-color--info: var(--color--blue-200);
-	--text-color--info: var(--color--blue-800);
+	--color--text--info: var(--color--blue-800);
 	--icon-color--info: var(--color--blue-800);
 
-	--background--inverse: var(--color--neutral-900);
+	--color--background--inverse: var(--color--neutral-900);
 	--border-color--inverse: var(--color--neutral-700);
-	--text-color--inverse: var(--color--neutral-100);
+	--color--text--inverse: var(--color--neutral-100);
 	--icon-color--inverse: var(--color--neutral-100);
 
 	--focus--border-width: 2px;
 	--focus--border-color: var(--color--neutral-900);
-	/* stylelint-enable @n8n/css-var-naming */
 
 	// Secondary tokens
 
@@ -830,55 +836,55 @@
 
 	/* stylelint-disable @n8n/css-var-naming */
 
-	--background--brand: var(--color--orange-300);
-	--background--brand--hover: var(--color--orange-400);
-	--background--brand--active: var(--color--orange-500);
-	--background--brand--focus: var(--color--orange-400);
-	--background--brand--disabled: var(--color--neutral-800);
+	--color--background--brand: var(--color--orange-300);
+	--color--background--brand--hover: var(--color--orange-400);
+	--color--background--brand--active: var(--color--orange-500);
+	--color--background--brand--focus: var(--color--orange-400);
+	--color--background--brand--disabled: var(--color--neutral-800);
 
 	--background--surface: var(--color--neutral-900);
 	--background--surface--hover: var(--color--neutral-750);
-	--background--surface--active: var(--color--neutral-600);
-	--background--surface--focus: var(--color--neutral-750);
-	--background--surface--disabled: var(--color--neutral-800);
+	--color--background--surface--active: var(--color--neutral-600);
+	--color--background--surface--focus: var(--color--neutral-750);
+	--color--background--surface--disabled: var(--color--neutral-800);
 
-	--border-color: var(--border-color-base, var(--color--white-alpha-200));
+	--border-color: var(--border-color--base, var(--color--white-alpha-200));
 	--border-color--subtle: var(--color--white-alpha-100);
 	--border-color--strong: var(--color--white-alpha-300);
 	--border-color--stronger: var(--color--white-alpha-400);
 	--border: var(--border-base, var(--border-width) var(--border-style) var(--border-color));
 
 	--icon-color--subtle: var(--color--neutral-600);
-	--icon-color: var(--color--neutral-300);
+	--icon-color--base: var(--color--neutral-300);
 	--icon-color--strong: var(--color--neutral-white);
 
-	--text-color: var(--color--neutral-white);
-	--text-color--subtle: var(--color--neutral-200);
-	--text-color--subtler: var(--color--neutral-400);
+	--color--text: var(--color--neutral-white);
+	--color--text--subtle: var(--color--neutral-200);
+	--color--text--subtler: var(--color--neutral-400);
 
 	--background--success: var(--color--green-950);
 	--border-color--success: var(--color--green-800);
-	--text-color--success: var(--color--green-50);
+	--color--text--success: var(--color--green-50);
 	--icon-color--success: var(--color--green-50);
 
 	--background--warning: var(--color--yellow-900);
 	--border-color--warning: var(--color--yellow-800);
-	--text-color--warning: var(--color--yellow-100);
+	--color--text--warning: var(--color--yellow-100);
 	--icon-color--warning: var(--color--yellow-100);
 
 	--background--danger: var(--color--red-950);
 	--border-color--danger: var(--color--red-800);
-	--text-color--danger: var(--color--red-50);
+	--color--text--danger: var(--color--red-50);
 	--icon-color--danger: var(--color--red-50);
 
-	--background--info: var(--color--blue-900);
+	--color--background--info: var(--color--blue-900);
 	--border-color--info: var(--color--blue-800);
-	--text-color--info: var(--color--blue-50);
+	--color--text--info: var(--color--blue-50);
 	--icon-color--info: var(--color--blue-50);
 
-	--background--inverse: var(--color--neutral-white);
+	--color--background--inverse: var(--color--neutral-white);
 	--border-color--inverse: var(--color--neutral-200);
-	--text-color--inverse: var(--color--neutral-800);
+	--color--text--inverse: var(--color--neutral-800);
 	--icon-color--inverse: var(--color--neutral-800);
 
 	--focus--border-color: var(--color--neutral-100);
