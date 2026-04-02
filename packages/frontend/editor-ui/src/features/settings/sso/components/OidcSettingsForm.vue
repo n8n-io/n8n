@@ -297,12 +297,22 @@ onMounted(async () => {
 			</div>
 		</div>
 		<div :class="$style.card">
-			<div :class="[$style.group, $style.checkboxGroup]">
-				<N8nCheckbox
-					v-model="ssoStore.isOidcLoginEnabled"
-					data-test-id="sso-oidc-toggle"
-					:label="i18n.baseText('settings.sso.activated')"
-				/>
+			<div :class="$style.settingsItem" style="border-bottom: none">
+				<div :class="$style.settingsItemLabel">
+					<label>Single sign-on (SSO)</label>
+					<small>Allow users to sign in through your identity provider</small>
+				</div>
+				<div :class="$style.settingsItemControl">
+					<N8nSelect
+						:model-value="ssoStore.isOidcLoginEnabled ? 'enabled' : 'disabled'"
+						size="small"
+						data-test-id="sso-oidc-toggle"
+						@update:model-value="ssoStore.isOidcLoginEnabled = $event === 'enabled'"
+					>
+						<N8nOption value="enabled" label="Enabled" />
+						<N8nOption value="disabled" label="Disabled" />
+					</N8nSelect>
+				</div>
 			</div>
 		</div>
 
