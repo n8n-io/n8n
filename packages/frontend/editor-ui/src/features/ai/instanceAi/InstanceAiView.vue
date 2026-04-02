@@ -455,7 +455,7 @@ function handleStop() {
 							<div
 								ref="scrollable"
 								:class="$style.messageList"
-								:style="{ paddingBottom: `${inputAreaHeight}px` }"
+								:style="{ paddingBottom: `calc(${inputAreaHeight}px + var(--spacing--sm))` }"
 							>
 								<TransitionGroup name="message-slide">
 									<InstanceAiMessage
