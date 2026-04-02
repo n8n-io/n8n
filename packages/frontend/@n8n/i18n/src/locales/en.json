@@ -4310,7 +4310,7 @@
 	"settings.sso.settings.redirectUrl.label": "Redirect URL",
 	"settings.sso.settings.redirectUrl.copied": "Redirect URL copied to clipboard",
 	"settings.sso.settings.redirectUrl.help": "Copy the Redirect URL to configure your SAML provider",
-	"settings.sso.settings.entityId.label": "Entity ID",
+	"settings.sso.settings.entityId.label": "Entity ID URL",
 	"settings.sso.settings.entityId.copied": "Entity ID copied to clipboard",
 	"settings.sso.settings.entityId.help": "Copy the Entity ID URL to configure your SAML provider",
 	"settings.sso.settings.ips.label": "Identity Provider Settings",
