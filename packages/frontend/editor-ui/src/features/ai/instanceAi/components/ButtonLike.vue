@@ -10,7 +10,7 @@
 	padding: 0 var(--spacing--xs);
 	border-radius: var(--radius--3xs);
 	font-size: var(--font-size--xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtler);
 	display: flex;
 	align-items: flex-start;
 	gap: var(--spacing--3xs);
