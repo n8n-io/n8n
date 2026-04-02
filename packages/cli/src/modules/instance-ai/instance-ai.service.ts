@@ -370,15 +370,6 @@ export class InstanceAiService {
 	 * The proxy may forward to Vertex AI, which only supports the native Anthropic
 	 * Messages API (`/v1/messages`), not the OpenAI-compatible endpoint.
 	 */
-	/**
-	 * Prefer gzip over brotli for LLM API responses.
-	 * Brotli decompressors cost ~8.6 MB of native memory each and are retained
-	 * by undici's connection pool. Gzip decompressors are ~1 KB.
-	 */
-	private static readonly LLM_HEADERS: Record<string, string> = {
-		'Accept-Encoding': 'gzip, deflate',
-	};
-
 	private async resolveModel(user: User): Promise<ModelConfig> {
 		if (this.aiService.isProxyEnabled()) {
 			const { client, headers } = await this.getProxyAuth(user);
@@ -387,31 +378,11 @@ export class InstanceAiService {
 			const provider = createAnthropic({
 				baseURL: client.getApiProxyBaseUrl() + '/anthropic/v1',
 				apiKey: 'proxy-managed',
-				headers: { ...headers, ...InstanceAiService.LLM_HEADERS },
+				headers,
 			});
 			return provider(modelName);
 		}
-
-		const config = await this.settingsService.resolveModelConfig(user);
-		return this.withGzipEncoding(config);
-	}
-
-	/** Inject Accept-Encoding: gzip into the model config so Mastra's router
-	 *  forwards it to the AI SDK provider's HTTP requests. */
-	private withGzipEncoding(config: ModelConfig): ModelConfig {
-		if (typeof config === 'string') {
-			const id: `${string}/${string}` = config.includes('/')
-				? (config as `${string}/${string}`)
-				: `custom/${config}`;
-			return { id, url: '', headers: InstanceAiService.LLM_HEADERS };
-		}
-
-		if ('id' in config) {
-			return { ...config, headers: { ...config.headers, ...InstanceAiService.LLM_HEADERS } };
-		}
-
-		// LanguageModelV2 instance — headers already baked in at creation time
-		return config;
+		return await this.settingsService.resolveModelConfig(user);
 	}
 
 	/** Build search proxy config when proxy is enabled. */
@@ -1128,14 +1099,6 @@ export class InstanceAiService {
 		}
 
 		const modelId = await this.resolveModel(user); // separate proxy token — see getProxyAuth
-		console.log(
-			'[INSTANCE-AI] resolveModel →',
-			typeof modelId === 'string'
-				? modelId
-				: 'id' in modelId
-					? { id: modelId.id, headers: modelId.headers }
-					: 'LanguageModelV2',
-		);
 		const memory = createMemory(this.createMemoryConfig());
 		await this.ensureThreadExists(memory, threadId, user.id);
 

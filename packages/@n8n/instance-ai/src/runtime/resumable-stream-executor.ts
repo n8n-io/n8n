@@ -1907,19 +1907,6 @@ async function finalizeLlmStepTraces(
 	}
 }
 
-/**
- * Drain pending promises on a stream source to release the underlying HTTP
- * response body and its native decompression stream (Brotli/zlib).
- * Without this, abandoned streams leak ~8.6 MB of native memory each.
- */
-async function drainStreamSource(source: ResumableStreamSource): Promise<void> {
-	await Promise.allSettled([
-		source.text?.catch(() => {}),
-		source.response?.catch(() => {}),
-		source.steps?.catch(() => {}),
-	]);
-}
-
 export async function executeResumableStream(
 	options: ExecuteResumableStreamOptions,
 ): Promise<ExecuteResumableStreamResult> {
@@ -1955,7 +1942,6 @@ export async function executeResumableStream(
 					status: 'cancelled',
 					error: 'Run cancelled while streaming',
 				});
-				void drainStreamSource(activeSource);
 				return { status: 'cancelled', mastraRunId: activeMastraRunId, text };
 			}
 
@@ -2056,17 +2042,14 @@ export async function executeResumableStream(
 		});
 
 		if (options.context.signal.aborted) {
-			void drainStreamSource(activeSource);
 			return { status: 'cancelled', mastraRunId: activeMastraRunId, text };
 		}
 
 		if (!suspension) {
-			void drainStreamSource(activeSource);
 			return { status: hasError ? 'errored' : 'completed', mastraRunId: activeMastraRunId, text };
 		}
 
 		if (options.control.mode === 'manual') {
-			void drainStreamSource(activeSource);
 			return {
 				status: 'suspended',
 				mastraRunId: activeMastraRunId,
@@ -2110,9 +2093,6 @@ export async function executeResumableStream(
 					...resumeOptions,
 					...(options.llmStepTraceHooks?.executionOptions ?? {}),
 				});
-
-		// Drain the old stream source before replacing it — releases HTTP response body
-		void drainStreamSource(activeSource);
 
 		activeMastraRunId =
 			(typeof resumed.runId === 'string' ? resumed.runId : '') || activeMastraRunId;
