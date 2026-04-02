@@ -500,6 +500,46 @@ describe('VectorStoreRedis.node', () => {
 				}),
 			);
 		});
+
+		it('throws NodeOperationError when metadata schema contains non-object entries', async () => {
+			const mockClient = {
+				on: jest.fn(),
+				connect: jest.fn().mockResolvedValue(undefined),
+				disconnect: jest.fn(),
+				quit: jest.fn(),
+				ft: { info: jest.fn().mockResolvedValue(undefined) },
+			} as any;
+			(MockCreateClient as any).mockReturnValue(mockClient);
+
+			const context: any = {
+				getCredentials: jest.fn().mockResolvedValue(baseCredentials),
+				getNodeParameter: (name: string) => {
+					const map: Record<string, any> = {
+						redisIndex: 'idx',
+						'options.keyPrefix': '',
+						'options.metadataKey': '',
+						'options.contentKey': '',
+						'options.vectorKey': '',
+						'options.advancedFilter': '',
+						'options.metadataSchema': '[null, "string", 123]',
+					};
+					return map[name] ?? '';
+				},
+				getNode: () => ({ name: 'VectorStoreRedis', typeVersion: 1.4 }),
+			};
+
+			const node = new RedisNode.VectorStoreRedis();
+			await expect((node as any).getVectorStoreClient(context, undefined, {}, 0)).rejects.toEqual(
+				new NodeOperationError(
+					context.getNode(),
+					'Invalid metadata schema: each entry must be an object',
+					{
+						itemIndex: 0,
+						description: 'Expected format: [{"name": "fieldName", "type": "tag|text|numeric|geo"}]',
+					},
+				),
+			);
+		});
 	});
 
 	describe('populateVectorStore', () => {
