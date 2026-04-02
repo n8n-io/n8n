@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { OperationalError } from 'n8n-workflow';
 
 import { OwnershipService } from '@/services/ownership.service';
 
@@ -18,37 +19,38 @@ export class OwnerInstanceSettingsLoader {
 	}
 
 	async run(): Promise<'created' | 'skipped'> {
-		if (!this.instanceSettingsLoaderConfig.ownerOverride) return 'skipped';
+		const { ownerOverride, ownerEmail, ownerPasswordHash } = this.instanceSettingsLoaderConfig;
 
-		if (!this.instanceSettingsLoaderConfig.ownerEmail) {
-			this.logger.warn(
-				'Instance settings loader: owner loader skipped — INSTANCE_OWNER_EMAIL is required when INSTANCE_OWNER_OVERRIDE is true',
+		// No env vars provided at all — nothing to do
+		if (!ownerOverride && !ownerEmail && !ownerPasswordHash) return 'skipped';
+
+		// Env vars are provided (or override is on) — validate them
+		if (!ownerEmail) {
+			throw new OperationalError(
+				'INSTANCE_OWNER_EMAIL is required when INSTANCE_OWNER_PASSWORD_HASH or INSTANCE_OWNER_OVERRIDE is set',
 			);
-			return 'skipped';
 		}
 
-		if (!this.instanceSettingsLoaderConfig.ownerPasswordHash) {
-			this.logger.warn(
-				'Instance settings loader: owner loader skipped — INSTANCE_OWNER_PASSWORD_HASH is required when INSTANCE_OWNER_OVERRIDE is true',
+		if (!ownerPasswordHash) {
+			throw new OperationalError(
+				'INSTANCE_OWNER_PASSWORD_HASH is required when INSTANCE_OWNER_EMAIL or INSTANCE_OWNER_OVERRIDE is set',
 			);
-			return 'skipped';
 		}
 
-		if (!BCRYPT_HASH_RE.test(this.instanceSettingsLoaderConfig.ownerPasswordHash)) {
-			this.logger.warn(
-				'Instance settings loader: owner loader skipped — INSTANCE_OWNER_PASSWORD_HASH is not a valid bcrypt hash',
+		if (!BCRYPT_HASH_RE.test(ownerPasswordHash)) {
+			throw new OperationalError(
+				'INSTANCE_OWNER_PASSWORD_HASH is not a valid bcrypt hash. Provide a pre-hashed bcrypt string.',
 			);
-			return 'skipped';
 		}
 
 		await this.ownershipService.setupOwner(
 			{
-				email: this.instanceSettingsLoaderConfig.ownerEmail,
+				email: ownerEmail,
 				firstName: this.instanceSettingsLoaderConfig.ownerFirstName,
 				lastName: this.instanceSettingsLoaderConfig.ownerLastName,
-				password: this.instanceSettingsLoaderConfig.ownerPasswordHash,
+				password: ownerPasswordHash,
 			},
-			{ overwriteExisting: true, passwordIsHashed: true },
+			{ overwriteExisting: ownerOverride, passwordIsHashed: true },
 		);
 
 		return 'created';
