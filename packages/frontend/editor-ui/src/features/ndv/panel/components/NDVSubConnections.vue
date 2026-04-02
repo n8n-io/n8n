@@ -190,7 +190,7 @@ function isNodeInputConfiguration(
 function getPossibleSubInputConnections(): INodeInputConfiguration[] {
 	if (!nodeType.value || !props.rootNode) return [];
 
-	const inputs = workflowDocumentStore!.value!.getNodeInputs(props.rootNode, nodeType.value);
+	const inputs = workflowDocumentStore?.value?.getNodeInputs(props.rootNode, nodeType.value) ?? [];
 
 	const nonMainInputs = inputs.filter((input): input is INodeInputConfiguration => {
 		if (!isNodeInputConfiguration(input)) return false;
