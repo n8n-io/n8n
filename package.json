@@ -49,7 +49,9 @@
     "test:show:report": "pnpm --filter=n8n-playwright exec playwright show-report",
     "watch": "turbo run watch --concurrency=32",
     "webhook": "./packages/cli/bin/n8n webhook",
-    "worker": "./packages/cli/bin/n8n worker"
+    "worker": "./packages/cli/bin/n8n worker",
+    "dev:fs-proxy": "pnpm --filter @n8n/fs-proxy build && node packages/@n8n/fs-proxy/dist/cli.js serve",
+    "stop:fs-proxy": "lsof -ti :7655 | xargs kill 2>/dev/null; echo 'fs-proxy stopped'"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.26.0",
@@ -85,6 +87,7 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@vscode/ripgrep",
       "isolated-vm",
       "sqlite3"
     ],
@@ -152,7 +155,8 @@
       "@hono/node-server": "1.19.10",
       "express-rate-limit": "8.2.2",
       "underscore": "1.13.8",
-      "fast-xml-parser": "5.3.8"
+      "fast-xml-parser": "5.3.8",
+      "path-to-regexp@<0.1.13": "0.1.13"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",

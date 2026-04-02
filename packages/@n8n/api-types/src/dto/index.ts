@@ -24,11 +24,16 @@ export type {
 	AiGatewayUsageResponse,
 } from './ai/ai-gateway-usage-response.dto';
 
+export { InstanceAiConfirmRequestDto } from './instance-ai/instance-ai-confirm-request.dto';
+export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
+
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
 export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query.dto';
 
 export { LoginRequestDto } from './auth/login-request.dto';
 export { ResolveSignupTokenQueryDto } from './auth/resolve-signup-token-query.dto';
+export { EmbedLoginQueryDto } from './auth/embed-login-query.dto';
+export { EmbedLoginBodyDto } from './auth/embed-login-body.dto';
 
 export { CreateCredentialResolverDto } from './credential-resolver/create-credential-resolver.dto';
 export { UpdateCredentialResolverDto } from './credential-resolver/update-credential-resolver.dto';
@@ -154,6 +159,7 @@ export {
 } from './roles/role-project-members-response.dto';
 
 export { OidcConfigDto } from './oidc/config.dto';
+export { TestOidcConfigResponseDto } from './oidc/test-oidc-config-response.dto';
 
 export { CreateDataTableDto } from './data-table/create-data-table.dto';
 export { UpdateDataTableDto } from './data-table/update-data-table.dto';

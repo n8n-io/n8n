@@ -68,6 +68,32 @@ describe('SSEPush', () => {
 		});
 	});
 
+	describe('does not remove replaced connection when old connection closes', () => {
+		test.each([
+			['end', 'req'],
+			['close', 'req'],
+			['finish', 'res'],
+		])('on "%s" event from old connection', (event, emitterKey) => {
+			const oldConn = createMockConnection();
+			const newConn = createMockConnection();
+
+			const freshPush = new SSEPush(mock(), mock());
+			freshPush.add(pushRef, userId, oldConn);
+			expect(freshPush.hasPushRef(pushRef)).toBe(true);
+
+			// Replace with new connection
+			freshPush.add(pushRef, userId, newConn);
+
+			// Old connection's event fires — should NOT remove the new connection
+			oldConn[emitterKey as 'req' | 'res'].emit(event);
+			expect(freshPush.hasPushRef(pushRef)).toBe(true);
+
+			// New connection still works
+			freshPush.sendToOne(pushMessage, pushRef);
+			expect(newConn.res.write).toHaveBeenCalledWith(`data: ${expectedMsg}\n\n`);
+		});
+	});
+
 	describe('sends data', () => {
 		beforeEach(() => jest.clearAllMocks());
 

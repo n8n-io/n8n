@@ -62,6 +62,13 @@ type Props = {
 	showAll?: boolean;
 	hideIssues?: boolean;
 	skipAutoSelect?: boolean;
+	/** When true, skip all global store writes (workflowsStore, nodeHelpers).
+	 *  Used by Instance AI to render credential selection without polluting the active workflow. */
+	standalone?: boolean;
+	/** Project ID to scope new credential creation to the correct project. */
+	projectId?: string;
+	/** Pre-fill the credential name when creating a new credential. */
+	suggestedCredentialName?: string;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -70,6 +77,7 @@ const props = withDefaults(defineProps<Props>(), {
 	showAll: false,
 	hideIssues: false,
 	skipAutoSelect: false,
+	standalone: false,
 });
 
 const emit = defineEmits<{
@@ -88,7 +96,7 @@ const ndvStore = useNDVStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
-const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowDocumentStore = props.standalone ? undefined : injectWorkflowDocumentStore();
 const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 
 // Quick connect
@@ -368,12 +376,18 @@ function createNewCredential(
 		subscribedToCredentialType.value = credentialType;
 	}
 
-	uiStore.openNewCredential(credentialType, showAuthOptions, forceManualMode);
+	uiStore.openNewCredential(
+		credentialType,
+		showAuthOptions,
+		forceManualMode,
+		props.projectId,
+		props.suggestedCredentialName,
+	);
 	telemetry.track('User opened Credential modal', {
 		credential_type: credentialType,
 		source: 'node',
 		new_credential: true,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: props.standalone ? '' : workflowsStore.workflowId,
 	});
 }
 
@@ -402,7 +416,7 @@ function onCredentialSelected(
 		credential_type: credentialType,
 		node_type: props.node.type,
 		...(nodeHelpers.hasProxyAuth(props.node) ? { is_service_specific: true } : {}),
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: props.standalone ? '' : workflowsStore.workflowId,
 		credential_id: credentialId,
 	});
 
@@ -417,9 +431,10 @@ function onCredentialSelected(
 
 	// if credentials has been string or neither id matched nor name matched uniquely
 	if (
-		oldCredentials?.id === null ||
-		(oldCredentials?.id &&
-			!credentialsStore.getCredentialByIdAndType(oldCredentials.id, selectedCredentialsType))
+		!props.standalone &&
+		(oldCredentials?.id === null ||
+			(oldCredentials?.id &&
+				!credentialsStore.getCredentialByIdAndType(oldCredentials.id, selectedCredentialsType)))
 	) {
 		// update all nodes in the workflow with the same old/invalid credentials
 		workflowsStore.replaceInvalidWorkflowCredentials({
@@ -442,7 +457,7 @@ function onCredentialSelected(
 
 	// Auto-assign credential to other matching nodes
 	// Skip auto-assign for automatic/system actions (e.g., auto-selecting on mount)
-	if (isUserAction) {
+	if (isUserAction && !props.standalone) {
 		const updatedNodesCount = workflowsStore.assignCredentialToMatchingNodes({
 			credentials: newSelectedCredentials,
 			type: selectedCredentialsType,
@@ -462,7 +477,7 @@ function onCredentialSelected(
 	}
 
 	// If credential is selected from mixed credential dropdown, update node's auth filed based on selected credential
-	if (props.showAll && mainNodeAuthField.value) {
+	if (props.showAll && mainNodeAuthField.value && !props.standalone) {
 		const nodeCredentialDescription = nodeType.value?.credentials?.find(
 			(cred) => cred.name === selectedCredentialsType,
 		);
@@ -558,7 +573,7 @@ function editCredential(credentialType: string): void {
 		credential_type: credentialType,
 		source: 'node',
 		new_credential: false,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: props.standalone ? '' : workflowsStore.workflowId,
 	});
 	subscribedToCredentialType.value = credentialType;
 }
@@ -666,6 +681,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 				</div>
 				<div
 					v-else-if="
+						!standalone &&
 						options.length === 0 &&
 						showQuickConnectEmptyState(type) &&
 						quickConnectCredentialType &&
