@@ -273,7 +273,7 @@ describe('WorkflowBuilderService', () => {
 			const result = await service.getSessions('workflow-123', mockUser);
 
 			expect(MockedAiWorkflowBuilderService).toHaveBeenCalledTimes(1);
-			expect(mockAiService.getSessions).toHaveBeenCalledWith('workflow-123', mockUser, undefined);
+			expect(mockAiService.getSessions).toHaveBeenCalledWith('workflow-123', mockUser);
 			expect(result).toEqual(mockSessions);
 		});
 
