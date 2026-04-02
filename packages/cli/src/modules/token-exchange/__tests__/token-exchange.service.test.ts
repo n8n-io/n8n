@@ -18,7 +18,7 @@ function makeExternalToken(
 		aud: string;
 		exp: number;
 		email?: string;
-		role?: string | string[];
+		role?: string;
 	},
 	secret = 'external-secret',
 ): string {
@@ -306,28 +306,6 @@ describe('TokenExchangeService', () => {
 			await service.exchange({ ...baseRequest, scope: 'project:viewer' });
 
 			expect(delegationAuthService.canDelegate).not.toHaveBeenCalled();
-		});
-
-		test('should use first element when actor role claim is an array', async () => {
-			const actorWithArrayRole = makeExternalToken({
-				sub: 'actor-456',
-				iss: 'https://idp.example.com',
-				aud: 'n8n',
-				exp: farFuture,
-				role: ['project:editor', 'project:admin'],
-			});
-
-			await service.exchange({
-				...baseRequest,
-				actor_token: actorWithArrayRole,
-				scope: 'project:viewer',
-			});
-
-			expect(delegationAuthService.canDelegate).toHaveBeenCalledWith(
-				'project:editor',
-				'project:viewer',
-				undefined,
-			);
 		});
 	});
 

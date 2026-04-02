@@ -39,11 +39,9 @@ export class TokenExchangeService {
 		}
 
 		if (actorClaims) {
-			const actorRole = Array.isArray(actorClaims.role) ? actorClaims.role[0] : actorClaims.role;
-
-			if (actorRole && request.scope) {
+			if (actorClaims.role && request.scope) {
 				const delegationResult = await this.delegationAuthService.canDelegate(
-					actorRole,
+					actorClaims.role,
 					request.scope,
 					request.resource,
 				);
