@@ -92,7 +92,7 @@ describe('useWorkflowDocumentNodeHelpers', () => {
 			const node = createTestNode() as INode;
 			const nodeType = mockNodeTypeDescription({ inputs: [NodeConnectionTypes.Main] });
 
-			expect(nodeHelpers.getNodeInputs(node, nodeType)).toEqual([NodeConnectionTypes.Main]);
+			expect([...nodeHelpers.getNodeInputs(node, nodeType)]).toEqual([NodeConnectionTypes.Main]);
 		});
 
 		it('returns multiple inputs when nodeTypeData defines multiple inputs', () => {
@@ -102,7 +102,7 @@ describe('useWorkflowDocumentNodeHelpers', () => {
 				inputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
 			});
 
-			expect(nodeHelpers.getNodeInputs(node, nodeType)).toEqual([
+			expect([...nodeHelpers.getNodeInputs(node, nodeType)]).toEqual([
 				NodeConnectionTypes.Main,
 				NodeConnectionTypes.Main,
 			]);
