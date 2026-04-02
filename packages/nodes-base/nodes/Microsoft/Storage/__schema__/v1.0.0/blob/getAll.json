@@ -7,7 +7,28 @@
         "properties": {
             "type": "object",
             "properties": {
+                "accessTier": {
+                    "type": "string"
+                },
+                "accessTierInferred": {
+                    "type": "boolean"
+                },
                 "blobType": {
+                    "type": "string"
+                },
+                "cacheControl": {
+                    "type": "string"
+                },
+                "contentCRC64": {
+                    "type": "string"
+                },
+                "contentDisposition": {
+                    "type": "string"
+                },
+                "contentEncoding": {
+                    "type": "string"
+                },
+                "contentLanguage": {
                     "type": "string"
                 },
                 "contentLength": {
@@ -40,5 +61,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }
