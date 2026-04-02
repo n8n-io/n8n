@@ -36,16 +36,22 @@ const proxyHeaderStore = new AsyncLocalStorage<Record<string, string>>();
 const traceClients = new Map<string, Client>();
 
 /**
- * Fetch wrapper that forces gzip encoding to avoid brotli decompressors.
- * Brotli decompressors cost ~8.6 MB of native memory each and are retained
- * by undici's connection pool. Gzip decompressors are ~1 KB.
+ * Fetch wrapper for LangSmith clients:
+ * - Forces gzip encoding to avoid brotli decompressors (8.6 MB native memory each).
+ * - Treats 409 Conflict as success — LangSmith returns 409 "payloads already received"
+ *   when a patchRun retry arrives after the first attempt already landed. The data is
+ *   persisted; the SDK's internal catch(console.error) is just noise.
  */
 const gzipFetch: typeof globalThis.fetch = async (input, init) => {
 	const headers = new Headers(init?.headers);
 	if (!headers.has('Accept-Encoding')) {
 		headers.set('Accept-Encoding', 'gzip, deflate');
 	}
-	return await globalThis.fetch(input, { ...init, headers });
+	const response = await globalThis.fetch(input, { ...init, headers });
+	if (response.status === 409) {
+		return new Response(null, { status: 200, statusText: 'OK (409 suppressed)' });
+	}
+	return response;
 };
 
 let cachedProxyClient: { client: Client; apiUrl: string } | null = null;
