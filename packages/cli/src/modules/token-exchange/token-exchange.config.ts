@@ -9,4 +9,8 @@ export class TokenExchangeConfig {
 	/** Maximum lifetime in seconds for an issued token. */
 	@Env('N8N_TOKEN_EXCHANGE_MAX_TOKEN_TTL')
 	maxTokenTtl: number = 900;
+
+	/** If true (default), delegation scope checks are enforced and under-scoped actors are rejected. If false, failures emit a warning but the request proceeds. */
+	@Env('N8N_TOKEN_EXCHANGE_ENFORCE_DELEGATION')
+	enforceDelegation: boolean = true;
 }
