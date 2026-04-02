@@ -454,7 +454,7 @@ describe('Pipedrive v2 Transport', () => {
 			]);
 		});
 
-		it('should handle case-insensitive sorting', () => {
+		it('should sort options alphabetically', () => {
 			const options = [
 				{ name: 'Banana', value: 'b' },
 				{ name: 'Apple', value: 'a' },

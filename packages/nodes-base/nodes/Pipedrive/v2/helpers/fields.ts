@@ -1,5 +1,7 @@
 import type { IDataObject } from 'n8n-workflow';
 
+import { coerceToNumber } from './typeCoercion';
+
 /**
  * Copies fields from an additionalFields/updateFields collection into the request body.
  * Handles the `customFields` fixed-collection by unpacking its `property` array
@@ -21,6 +23,6 @@ export function addFieldsToBody(body: IDataObject, fields: IDataObject): void {
 
 	// visible_to comes as string from the UI options but the API expects a number
 	if (body.visible_to !== undefined) {
-		body.visible_to = Number(body.visible_to);
+		body.visible_to = coerceToNumber(body.visible_to);
 	}
 }
