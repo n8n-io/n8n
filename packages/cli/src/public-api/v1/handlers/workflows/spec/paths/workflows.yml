@@ -5,20 +5,12 @@ post:
     - Workflow
   summary: Create a workflow
   description: Create a workflow in your instance.
-  parameters:
-    - name: projectId
-      in: query
-      required: false
-      description: Project to create the workflow in. Defaults to the user's personal project.
-      schema:
-        type: string
-        example: VmwOO9HeTEj20kxM
   requestBody:
     description: Created workflow object.
     content:
       application/json:
         schema:
-          $ref: '../schemas/workflow.yml'
+          $ref: '../schemas/workflowCreate.yml'
     required: true
   responses:
     '200':

@@ -1513,10 +1513,10 @@ describe('POST /workflows', () => {
 
 		const payload = mockPostWorkflowPayload('testing-in-project');
 
-		const response = await authMemberAgent
-			.post('/workflows')
-			.query({ projectId: teamProject.id })
-			.send(payload);
+		const response = await authMemberAgent.post('/workflows').send({
+			...payload,
+			projectId: teamProject.id,
+		});
 
 		expect(response.statusCode).toBe(200);
 
@@ -1541,10 +1541,10 @@ describe('POST /workflows', () => {
 	test('should return 404 when projectId does not exist', async () => {
 		const payload = mockPostWorkflowPayload();
 
-		const response = await authMemberAgent
-			.post('/workflows')
-			.query({ projectId: 'non-existing-id' })
-			.send(payload);
+		const response = await authMemberAgent.post('/workflows').send({
+			...payload,
+			projectId: 'non-existing-id',
+		});
 
 		expect(response.statusCode).toBe(404);
 	});
@@ -1554,12 +1554,15 @@ describe('POST /workflows', () => {
 
 		const payload = mockPostWorkflowPayload();
 
-		const response = await authMemberAgent
-			.post('/workflows')
-			.query({ projectId: teamProject.id })
-			.send(payload);
+		const response = await authMemberAgent.post('/workflows').send({
+			...payload,
+			projectId: teamProject.id,
+		});
 
 		expect(response.statusCode).toBe(403);
+		expect(response.body).toMatchObject({
+			message: "You don't have the permissions to save the workflow in this project.",
+		});
 	});
 
 	test('should not add a starting node if the payload has no starting nodes', async () => {
