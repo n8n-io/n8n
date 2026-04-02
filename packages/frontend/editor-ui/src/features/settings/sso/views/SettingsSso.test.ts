@@ -114,8 +114,10 @@ describe('SettingsSso View', () => {
 
 			await waitFor(async () => {
 				const copyInputs = getAllByTestId('copy-input');
-				expect(copyInputs[0].textContent).toContain(samlConfig.returnUrl);
-				expect(copyInputs[1].textContent).toContain(samlConfig.entityID);
+				const redirectInput = copyInputs[0].querySelector('input');
+				const entityInput = copyInputs[1].querySelector('input');
+				expect(redirectInput?.value).toContain(samlConfig.returnUrl);
+				expect(entityInput?.value).toContain(samlConfig.entityID);
 			});
 		});
 
@@ -422,7 +424,7 @@ describe('SettingsSso View', () => {
 
 			ssoStore.getSamlConfig.mockResolvedValue(samlConfig);
 
-			const { container, getByTestId, getByRole } = renderView();
+			const { container, getByTestId } = renderView();
 
 			await userEvent.click(getByTestId('radio-button-xml'));
 
