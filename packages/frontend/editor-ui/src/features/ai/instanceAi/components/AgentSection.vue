@@ -83,6 +83,7 @@ watch(
 .block {
 	width: 100%;
 	justify-content: flex-start;
+	color: var(--color--text--tint-1);
 	:global(.n8n-icon) {
 		flex-shrink: 0;
 	}
