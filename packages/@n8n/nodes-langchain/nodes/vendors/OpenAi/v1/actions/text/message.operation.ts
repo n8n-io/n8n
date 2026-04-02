@@ -6,7 +6,7 @@ import type {
 	INodeExecutionData,
 	IDataObject,
 } from 'n8n-workflow';
-import { jsonParse, updateDisplayOptions } from 'n8n-workflow';
+import { accumulateTokenUsage, jsonParse, updateDisplayOptions } from 'n8n-workflow';
 
 import { getConnectedTools } from '@utils/helpers';
 
@@ -345,6 +345,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			} catch (error) {}
 			return choice;
 		});
+	}
+
+	if (response.usage) {
+		accumulateTokenUsage(this, response.usage.prompt_tokens, response.usage.completion_tokens);
 	}
 
 	const simplify = this.getNodeParameter('simplify', i) as boolean;

@@ -4,6 +4,7 @@ import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeProperties,
+	accumulateTokenUsage,
 	jsonParse,
 	updateDisplayOptions,
 	validateNodeParameters,
@@ -553,6 +554,13 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		})) as GenerateContentResponse;
 		toolCalls = getToolCalls(response);
 		currentIteration++;
+	}
+
+	const usageMetadata = (response as unknown as Record<string, unknown>).usageMetadata as
+		| { promptTokenCount: number; candidatesTokenCount: number }
+		| undefined;
+	if (usageMetadata) {
+		accumulateTokenUsage(this, usageMetadata.promptTokenCount, usageMetadata.candidatesTokenCount);
 	}
 
 	const candidates = options.includeMergedResponse

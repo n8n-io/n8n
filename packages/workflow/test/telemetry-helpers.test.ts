@@ -2389,6 +2389,164 @@ describe('generateNodesGraph', () => {
 			expect(result.nodeGraph.nodes['0'].ai_input_tokens).toBeUndefined();
 			expect(result.nodeGraph.nodes['0'].ai_output_tokens).toBeUndefined();
 		});
+
+		test('should capture tokens from task metadata for standalone vendor nodes', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: { modelId: { value: 'gpt-4o' } },
+						id: 'openai-node-id',
+						name: 'OpenAI',
+						type: '@n8n/n8n-nodes-langchain.openAi',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const runData: IRunData = {
+				OpenAI: [
+					{
+						startTime: 0,
+						executionTime: 100,
+						executionStatus: 'success',
+						data: { main: [[{ json: { content: 'hello' } }]] },
+						metadata: {
+							tokenUsage: { inputTokens: 120, outputTokens: 45 },
+						},
+						source: [],
+					},
+				],
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes, { runData });
+			expect(result.nodeGraph.nodes['0'].ai_model).toBe('gpt-4o');
+			expect(result.nodeGraph.nodes['0'].ai_input_tokens).toBe(120);
+			expect(result.nodeGraph.nodes['0'].ai_output_tokens).toBe(45);
+		});
+
+		test('should sum metadata tokens across multiple task runs for vendor nodes', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: { modelId: { value: 'claude-3-opus' } },
+						id: 'anthropic-node-id',
+						name: 'Anthropic',
+						type: '@n8n/n8n-nodes-langchain.anthropic',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const makeTaskData = (input: number, output: number) => ({
+				startTime: 0,
+				executionTime: 100,
+				executionStatus: 'success' as const,
+				data: { main: [[{ json: { content: 'response' } }]] },
+				metadata: {
+					tokenUsage: { inputTokens: input, outputTokens: output },
+				},
+				source: [],
+			});
+
+			const runData: IRunData = {
+				Anthropic: [makeTaskData(100, 50), makeTaskData(200, 80)],
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes, { runData });
+			expect(result.nodeGraph.nodes['0'].ai_input_tokens).toBe(300);
+			expect(result.nodeGraph.nodes['0'].ai_output_tokens).toBe(130);
+		});
+
+		test('should prefer ai_languageModel data over metadata when both exist', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: { model: 'gpt-4o' },
+						id: 'lm-node-id',
+						name: 'LM Node',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const runData: IRunData = {
+				'LM Node': [
+					{
+						startTime: 0,
+						executionTime: 100,
+						executionStatus: 'success',
+						data: {
+							[NodeConnectionTypes.AiLanguageModel]: [
+								[
+									{
+										json: {
+											tokenUsage: {
+												promptTokens: 150,
+												completionTokens: 80,
+												totalTokens: 230,
+											},
+										},
+									},
+								],
+							],
+						},
+						metadata: {
+							tokenUsage: { inputTokens: 999, outputTokens: 999 },
+						},
+						source: [],
+					},
+				],
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes, { runData });
+			expect(result.nodeGraph.nodes['0'].ai_input_tokens).toBe(150);
+			expect(result.nodeGraph.nodes['0'].ai_output_tokens).toBe(80);
+		});
+
+		test('should not set token fields for vendor node when metadata has no tokenUsage', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: { modelId: { value: 'llama3' } },
+						id: 'ollama-node-id',
+						name: 'Ollama',
+						type: '@n8n/n8n-nodes-langchain.ollama',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const runData: IRunData = {
+				Ollama: [
+					{
+						startTime: 0,
+						executionTime: 100,
+						executionStatus: 'success',
+						data: { main: [[{ json: { content: 'response' } }]] },
+						metadata: {},
+						source: [],
+					},
+				],
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes, { runData });
+			expect(result.nodeGraph.nodes['0'].ai_model).toBe('llama3');
+			expect(result.nodeGraph.nodes['0'].ai_input_tokens).toBeUndefined();
+			expect(result.nodeGraph.nodes['0'].ai_output_tokens).toBeUndefined();
+		});
 	});
 });
 

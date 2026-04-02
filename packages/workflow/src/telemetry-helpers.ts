@@ -81,15 +81,21 @@ function extractNodeTokenUsage(
 	let output = 0;
 	for (const task of nodeRunData) {
 		const lmOutputs = task.data?.[NodeConnectionTypes.AiLanguageModel];
-		if (!lmOutputs) continue;
-		for (const branch of lmOutputs) {
-			for (const item of branch ?? []) {
-				const usage = item?.json?.tokenUsage ?? item?.json?.tokenUsageEstimate;
-				if (usage && typeof usage === 'object') {
-					input += (usage as Record<string, number>).promptTokens ?? 0;
-					output += (usage as Record<string, number>).completionTokens ?? 0;
+		if (lmOutputs) {
+			// LM sub-nodes (connected to Agent/Chain) — token data from N8nLlmTracing
+			for (const branch of lmOutputs) {
+				for (const item of branch ?? []) {
+					const usage = item?.json?.tokenUsage ?? item?.json?.tokenUsageEstimate;
+					if (usage && typeof usage === 'object') {
+						input += (usage as Record<string, number>).promptTokens ?? 0;
+						output += (usage as Record<string, number>).completionTokens ?? 0;
+					}
 				}
 			}
+		} else if (task.metadata?.tokenUsage) {
+			// Standalone vendor nodes — token data captured via setMetadata before simplify
+			input += task.metadata.tokenUsage.inputTokens ?? 0;
+			output += task.metadata.tokenUsage.outputTokens ?? 0;
 		}
 	}
 	return input > 0 || output > 0 ? { input, output } : undefined;

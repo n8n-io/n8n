@@ -2777,6 +2777,15 @@ export interface ITaskMetadata {
 	resumeUrl?: string;
 
 	/**
+	 * AI model token usage captured from vendor node API responses before the simplify step
+	 * strips it. Used by telemetry to populate ai_input_tokens / ai_output_tokens in node_graph_string.
+	 */
+	tokenUsage?: {
+		inputTokens: number;
+		outputTokens: number;
+	};
+
+	/**
 	 * Key-value pairs that can be set for tracing - they will be attached to the OTEL node span
 	 * */
 	tracing?: Record<string, string | number | boolean>;
