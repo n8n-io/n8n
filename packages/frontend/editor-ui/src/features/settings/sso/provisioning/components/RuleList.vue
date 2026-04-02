@@ -26,9 +26,11 @@ const emit = defineEmits<{
 
 const rolesStore = useRolesStore();
 
+const EXCLUDED_GLOBAL_ROLES = ['global:owner', 'global:chatUser'];
+
 const fallbackRoleOptions = computed(() =>
 	rolesStore.roles.global
-		.filter((role) => !role.systemRole)
+		.filter((role) => !EXCLUDED_GLOBAL_ROLES.includes(role.slug))
 		.map((role) => ({ label: role.displayName, value: role.slug })),
 );
 
