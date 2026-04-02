@@ -1,14 +1,14 @@
 import { mock } from 'jest-mock-extended';
 import type { Logger } from '@n8n/backend-common';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
-import { GLOBAL_OWNER_ROLE, type SettingsRepository, type UserRepository } from '@n8n/db';
+
+import type { OwnershipService } from '@/services/ownership.service';
 
 import { OwnerInstanceSettingsLoader } from '../loaders/owner.instance-settings-loader';
 
 describe('OwnerInstanceSettingsLoader', () => {
 	const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
-	const settingsRepository = mock<SettingsRepository>();
-	const userRepository = mock<UserRepository>();
+	const ownershipService = mock<OwnershipService>();
 
 	const validBcryptHash = '$2b$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ01234';
 
@@ -22,7 +22,7 @@ describe('OwnerInstanceSettingsLoader', () => {
 			...configOverrides,
 		} as InstanceSettingsLoaderConfig;
 
-		return new OwnerInstanceSettingsLoader(config, settingsRepository, userRepository, logger);
+		return new OwnerInstanceSettingsLoader(config, ownershipService, logger);
 	};
 
 	beforeEach(() => {
@@ -36,7 +36,7 @@ describe('OwnerInstanceSettingsLoader', () => {
 		const result = await loader.run();
 
 		expect(result).toBe('skipped');
-		expect(userRepository.findOneOrFail).not.toHaveBeenCalled();
+		expect(ownershipService.setupOwner).not.toHaveBeenCalled();
 	});
 
 	it('should skip when ownerEmail is empty', async () => {
@@ -78,20 +78,7 @@ describe('OwnerInstanceSettingsLoader', () => {
 		expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('not a valid bcrypt hash'));
 	});
 
-	it('should update the instance owner when all values are provided', async () => {
-		const shellUser = {
-			id: 'user-id',
-			email: null,
-			firstName: null,
-			lastName: null,
-			password: null,
-			lastActiveAt: null,
-			role: GLOBAL_OWNER_ROLE,
-		};
-
-		userRepository.findOneOrFail.mockResolvedValue(shellUser as never);
-		userRepository.save.mockResolvedValue(shellUser as never);
-
+	it('should delegate to ownershipService.setupOwner with override and preHashed options', async () => {
 		const loader = createLoader({
 			ownerOverride: true,
 			ownerEmail: 'admin@example.com',
@@ -103,35 +90,18 @@ describe('OwnerInstanceSettingsLoader', () => {
 		const result = await loader.run();
 
 		expect(result).toBe('created');
-		expect(userRepository.save).toHaveBeenCalledWith(
-			expect.objectContaining({
+		expect(ownershipService.setupOwner).toHaveBeenCalledWith(
+			{
 				email: 'admin@example.com',
 				firstName: 'Jane',
 				lastName: 'Doe',
 				password: validBcryptHash,
-			}),
-			{ transaction: false },
-		);
-		expect(settingsRepository.update).toHaveBeenCalledWith(
-			{ key: 'userManagement.isInstanceOwnerSetUp' },
-			{ value: JSON.stringify(true) },
+			},
+			{ overwriteExisting: true, passwordIsHashed: true },
 		);
 	});
 
-	it('should update the owner on every startup when override is true', async () => {
-		const existingOwner = {
-			id: 'user-id',
-			email: 'old@example.com',
-			firstName: 'Old',
-			lastName: 'Name',
-			password: '$2b$10$previoushashvaluehere000000000000000000000000000000000',
-			lastActiveAt: new Date('2024-01-01'),
-			role: GLOBAL_OWNER_ROLE,
-		};
-
-		userRepository.findOneOrFail.mockResolvedValue(existingOwner as never);
-		userRepository.save.mockResolvedValue(existingOwner as never);
-
+	it('should delegate on every startup when override is true', async () => {
 		const loader = createLoader({
 			ownerOverride: true,
 			ownerEmail: 'new@example.com',
@@ -143,14 +113,14 @@ describe('OwnerInstanceSettingsLoader', () => {
 		const result = await loader.run();
 
 		expect(result).toBe('created');
-		expect(userRepository.save).toHaveBeenCalledWith(
-			expect.objectContaining({
+		expect(ownershipService.setupOwner).toHaveBeenCalledWith(
+			{
 				email: 'new@example.com',
 				firstName: 'New',
 				lastName: 'Owner',
 				password: validBcryptHash,
-			}),
-			{ transaction: false },
+			},
+			{ overwriteExisting: true, passwordIsHashed: true },
 		);
 	});
 });
