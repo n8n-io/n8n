@@ -221,9 +221,10 @@ const folderActions = computed<
 		disabled: readOnlyEnv.value || !hasPermissionToCreateWorkflows.value,
 	},
 	{
-		label: currentFolder.value && favoritesStore.isFavorite(currentFolder.value.id, 'folder')
-			? i18n.baseText('favorites.remove')
-			: i18n.baseText('favorites.add'),
+		label:
+			currentFolder.value && favoritesStore.isFavorite(currentFolder.value.id, 'folder')
+				? i18n.baseText('favorites.remove')
+				: i18n.baseText('favorites.add'),
 		value: FOLDER_LIST_ITEM_ACTIONS.TOGGLE_FAVORITE,
 		disabled: false,
 		onlyAvailableOn: 'mainBreadcrumbs' as const,

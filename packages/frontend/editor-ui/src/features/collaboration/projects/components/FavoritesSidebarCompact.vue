@@ -51,7 +51,11 @@ const hasFavorites = computed(() => favoritesStore.favorites.length > 0);
 		@update:open="show = $event"
 	>
 		<template #trigger>
-			<div :class="[$style.trigger, isActive && $style.triggerActive]" @mouseenter="onMouseEnter" @mouseleave="onMouseLeave">
+			<div
+				:class="[$style.trigger, isActive && $style.triggerActive]"
+				@mouseenter="onMouseEnter"
+				@mouseleave="onMouseLeave"
+			>
 				<N8nIcon icon="star" size="medium" />
 			</div>
 		</template>

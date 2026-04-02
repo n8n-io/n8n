@@ -63,9 +63,7 @@ const allActions = computed<Array<UserAction<IUser>>>(() => {
 		value: FOLDER_LIST_ITEM_ACTIONS.TOGGLE_FAVORITE,
 		disabled: false,
 	};
-	const renameIndex = props.actions.findIndex(
-		(a) => a.value === FOLDER_LIST_ITEM_ACTIONS.RENAME,
-	);
+	const renameIndex = props.actions.findIndex((a) => a.value === FOLDER_LIST_ITEM_ACTIONS.RENAME);
 	if (renameIndex !== -1) {
 		const result = [...props.actions];
 		result.splice(renameIndex, 0, favoriteAction);
