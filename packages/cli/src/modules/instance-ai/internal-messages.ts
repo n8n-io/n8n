@@ -9,12 +9,11 @@
  * the parser reads it (cleanStoredUserMessage).
  */
 
-/** Legacy sentinel used for old auto-follow-up runs — kept for parsing historical messages. */
 export const AUTO_FOLLOW_UP_MESSAGE = '(continue)';
 
-/** Matches the legacy `<background-tasks>`, current `<running-tasks>`, planned-task follow-up, or background-task-completed prefix. */
+/** Matches `<running-tasks>`, `<planned-task-follow-up>`, or `<background-task-completed>` prefix blocks. */
 const TASK_CONTEXT_BLOCK =
-	/^(?:<background-tasks>\n[\s\S]*?\n<\/background-tasks>|<running-tasks>\n[\s\S]*?\n<\/running-tasks>|<planned-task-follow-up[\s\S]*?\n<\/planned-task-follow-up>|<background-task-completed>\n[\s\S]*?\n<\/background-task-completed>)\n\n/;
+	/^(?:<running-tasks>\n[\s\S]*?\n<\/running-tasks>|<planned-task-follow-up[\s\S]*?\n<\/planned-task-follow-up>|<background-task-completed>\n[\s\S]*?\n<\/background-task-completed>)\n\n/;
 
 /**
  * Recover the original user text from a stored message that may contain

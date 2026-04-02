@@ -15,6 +15,7 @@ import {
 	sanitizerName,
 } from './expression-sandboxing';
 import { isExpression } from './expressions/expression-helpers';
+import * as LoggerProxy from './logger-proxy';
 import { extend, extendOptional } from './extensions';
 import { extendSyntax } from './extensions/expression-extension';
 import { extendedFunctions } from './extensions/extended-functions';
@@ -261,6 +262,7 @@ export class Expression {
 					new IsolatedVmBridge({
 						timeout: options.bridgeTimeout,
 						memoryLimit: options.bridgeMemoryLimit,
+						logger: LoggerProxy,
 					}),
 				maxCodeCacheSize: options.maxCodeCacheSize,
 				poolSize: options.poolSize,
@@ -268,6 +270,7 @@ export class Expression {
 					before: [ThisSanitizer],
 					after: [PrototypeSanitizer, DollarSignValidator],
 				},
+				logger: LoggerProxy,
 			});
 			await this.vmEvaluator.initialize();
 		}
