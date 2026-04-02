@@ -1,5 +1,6 @@
 import { describe, it, mock, before } from 'node:test';
 import assert from 'node:assert/strict';
+import { tagVersionInfoToReleaseCandidateBranchName } from './github-helpers.mjs';
 
 /**
  * Run these tests by running
@@ -18,6 +19,7 @@ mock.module('./github-helpers.mjs', {
 			if (track === 'beta') return { version: '2.10.1', tag: 'n8n@2.10.1' };
 			return { version: '1.123.33', tag: 'n8n@1.123.33' };
 		},
+		tagVersionInfoToReleaseCandidateBranchName,
 		writeGithubOutput: () => {}, // no-op in tests
 		getCommitForRef: () => {}, // no-op
 		localRefExists: () => {}, // no-op
@@ -101,5 +103,17 @@ describe('determine-tracks', () => {
 		assert.equal(output.new_stable_version, null);
 		assert.equal(output.release_type, 'rc');
 		assert.equal(output.rc_branch, 'release-candidate/2.10.x');
+	});
+
+	it('Determines correct branches on 1.x', () => {
+		const output = determineTrack('1.123.34');
+
+		assert.equal(output.track, 'v1');
+		assert.equal(output.version, '1.123.34');
+		assert.equal(output.previous_version, '1.123.33');
+		assert.equal(output.bump, 'patch');
+		assert.equal(output.new_stable_version, null);
+		assert.equal(output.release_type, 'stable');
+		assert.equal(output.rc_branch, '1.x');
 	});
 });
