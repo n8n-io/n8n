@@ -54,13 +54,17 @@ const selectedProjectNames = computed(() => {
 	return props.projects
 		.filter((p) => props.rule.projectIds.includes(p.id))
 		.map((p) => p.name)
-		.join(', ');
+		.join(',\n');
 });
 
-const projectSelectLabel = computed(() => {
+const projectSelectDisplayValue = computed(() => {
 	const count = props.rule.projectIds?.length ?? 0;
 	if (count === 0) return '';
-	return `${count} project${count !== 1 ? 's' : ''}`;
+	if (count === 1) {
+		const project = props.projects.find((p) => p.id === props.rule.projectIds[0]);
+		return project?.name ?? '1 project';
+	}
+	return `${count} projects`;
 });
 </script>
 <template>
@@ -109,29 +113,40 @@ const projectSelectLabel = computed(() => {
 			<span :class="$style.label">{{
 				i18n.baseText('settings.sso.settings.roleMappingRules.rule.in')
 			}}</span>
-			<N8nTooltip :content="selectedProjectNames" :disabled="!selectedProjectNames" placement="top">
-				<N8nSelect
-					:model-value="props.rule.projectIds"
-					size="small"
-					multiple
-					collapse-tags
-					:collapse-tags-tooltip="false"
-					:disabled="props.disabled"
-					:placeholder="i18n.baseText('settings.sso.settings.roleMappingRules.rule.selectProjects')"
-					data-test-id="rule-project-select"
-					@update:model-value="
-						emit('update', props.rule.id, {
-							projectIds: ($event as string[]) ?? [],
-						})
-					"
-				>
-					<N8nOption
-						v-for="project in props.projects"
-						:key="project.id"
-						:label="project.name"
-						:value="project.id"
-					/>
-				</N8nSelect>
+			<N8nTooltip :disabled="!selectedProjectNames" placement="top">
+				<template #content>
+					<span style="white-space: pre-line">{{ selectedProjectNames }}</span>
+				</template>
+				<div :class="$style.projectSelectWrapper">
+					<N8nSelect
+						:model-value="props.rule.projectIds"
+						size="small"
+						multiple
+						collapse-tags
+						:collapse-tags-tooltip="false"
+						:disabled="props.disabled"
+						:placeholder="
+							i18n.baseText('settings.sso.settings.roleMappingRules.rule.selectProjects')
+						"
+						:class="$style.projectSelect"
+						data-test-id="rule-project-select"
+						@update:model-value="
+							emit('update', props.rule.id, {
+								projectIds: ($event as string[]) ?? [],
+							})
+						"
+					>
+						<N8nOption
+							v-for="project in props.projects"
+							:key="project.id"
+							:label="project.name"
+							:value="project.id"
+						/>
+					</N8nSelect>
+					<span v-if="projectSelectDisplayValue" :class="$style.projectSelectOverlay">
+						{{ projectSelectDisplayValue }}
+					</span>
+				</div>
 			</N8nTooltip>
 		</div>
 		<div :class="$style.cellAction">
@@ -207,6 +222,34 @@ const projectSelectLabel = computed(() => {
 	gap: var(--spacing--2xs);
 	padding: 0 var(--spacing--2xs);
 	flex-shrink: 0;
+}
+
+.projectSelectWrapper {
+	position: relative;
+	min-width: 120px;
+}
+
+.projectSelect {
+	:global(.el-select__tags) {
+		display: none !important;
+	}
+}
+
+.projectSelectOverlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 24px;
+	bottom: 0;
+	display: flex;
+	align-items: center;
+	padding: 0 var(--spacing--xs);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text);
+	pointer-events: none;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .cellRole {
