@@ -187,7 +187,7 @@ export async function execute(
 		},
 	);
 
-	const imageUrl = (response.output?.choices[0]?.message?.content[0]?.image as string) || '';
+	const imageUrl = (response.output?.choices?.[0]?.message?.content?.[0]?.image as string) || '';
 
 	if (downloadImage && imageUrl) {
 		const imageResponse = await this.helpers.httpRequest({
