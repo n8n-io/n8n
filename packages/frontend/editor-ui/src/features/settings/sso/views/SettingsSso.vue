@@ -11,7 +11,6 @@ import {
 	N8nActionBox,
 	N8nButton,
 	N8nHeading,
-	N8nInfoTip,
 	N8nOption,
 	N8nSelect,
 	N8nText,
