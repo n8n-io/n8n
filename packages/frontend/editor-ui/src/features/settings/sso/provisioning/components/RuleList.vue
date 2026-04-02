@@ -107,7 +107,7 @@ function onDragEnd(event: { oldIndex?: number; newIndex?: number }) {
 	display: flex;
 	align-items: center;
 	height: 36px;
-	background: var(--color--foreground--tint-2);
+	background: var(--color--background--shade-1);
 	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
 }
 
@@ -123,7 +123,7 @@ function onDragEnd(event: { oldIndex?: number; newIndex?: number }) {
 	display: flex;
 	align-items: center;
 	height: 48px;
-	background: var(--color--background);
+	background: white;
 }
 
 .defaultCellIcon {

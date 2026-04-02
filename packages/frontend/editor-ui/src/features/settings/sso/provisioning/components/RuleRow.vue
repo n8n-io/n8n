@@ -33,9 +33,7 @@ const instanceRoleOptions = computed(() =>
 		<div :class="$style.cellDrag" class="drag-handle" aria-label="Reorder rule">
 			<N8nIcon icon="grip-vertical" size="small" color="text-light" />
 		</div>
-		<div :class="$style.cellPriority">
-			{{ priority }}
-		</div>
+		<div :class="$style.cellPriority">{{ priority }}.</div>
 		<div :class="$style.cellCondition">
 			<span :class="$style.label">If</span>
 			<RuleMappingExpressionInput
@@ -92,7 +90,7 @@ const instanceRoleOptions = computed(() =>
 	display: flex;
 	align-items: center;
 	height: 48px;
-	background: var(--color--background);
+	background: white;
 	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
 
 	&:last-child {
@@ -104,8 +102,8 @@ const instanceRoleOptions = computed(() =>
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 40px;
-	padding: 0 var(--spacing--xs);
+	width: 32px;
+	padding: 0 var(--spacing--2xs) 0 var(--spacing--xs);
 	cursor: grab;
 	flex-shrink: 0;
 
@@ -115,11 +113,9 @@ const instanceRoleOptions = computed(() =>
 }
 
 .cellPriority {
-	width: 50px;
-	padding: 0 var(--spacing--2xs);
+	width: 24px;
 	font-size: var(--font-size--sm);
 	color: var(--color--text);
-	text-align: center;
 	flex-shrink: 0;
 }
 
