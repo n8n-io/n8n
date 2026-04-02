@@ -69,7 +69,7 @@ watch(
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
-	margin-top: var(--spacing--3xs);
+	margin-top: var(--spacing--xs);
 }
 
 .toggleRow {
