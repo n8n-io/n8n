@@ -1,5 +1,5 @@
 export interface IImageOptions {
-	size: string;
+	size?: string;
 	promptExtend?: boolean;
 }
 
@@ -12,7 +12,6 @@ export interface IModelStudioRequestBody {
 	model: string;
 	input: {
 		messages?: IMessage[];
-		prompt?: string;
 		// Image-to-video
 		img_url?: string;
 		// Video audio
