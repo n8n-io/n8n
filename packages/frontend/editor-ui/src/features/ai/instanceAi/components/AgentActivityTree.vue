@@ -30,7 +30,7 @@ const isHovered = useElementHover(triggerRef);
 	<!-- Reasoning (collapsible, root agent only) -->
 	<CollapsibleRoot v-if="isRoot && hasReasoning" v-slot="{ open: isOpen }">
 		<CollapsibleTrigger as-child>
-			<N8nButton ref="triggerRef" variant="ghost" size="small">
+			<N8nButton ref="triggerRef" variant="ghost" size="small" :class="$style.reasoningTrigger">
 				<template #icon>
 					<template v-if="isHovered">
 						<N8nIcon :icon="isOpen ? 'minus' : 'plus'" size="small" />
@@ -50,9 +50,14 @@ const isHovered = useElementHover(triggerRef);
 </template>
 
 <style lang="scss" module>
+.reasoningTrigger {
+	color: var(--color--text--tint-1);
+}
+
 .reasoningContent {
 	padding: var(--spacing--4xs) var(--spacing--xs);
 	border-left: 2px solid var(--color--foreground);
 	margin-left: var(--spacing--4xs);
+	color: var(--color--text--tint-1);
 }
 </style>

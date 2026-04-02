@@ -154,7 +154,7 @@ defineExpose({
 				</N8nTooltip>
 				<N8nIconButton
 					v-if="showVoice && speechInput.isSupported"
-					variant="outline"
+					variant="ghost"
 					:disabled="disabled || isStreaming"
 					:icon="speechInput.isListening.value ? 'square' : 'mic'"
 					:class="{ [$style.recording]: speechInput.isListening.value }"

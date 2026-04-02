@@ -47,7 +47,7 @@ function handleClick(e: MouseEvent) {
 
 <template>
 	<div :class="$style.card" @click="handleClick">
-		<N8nIcon :icon="icon" size="medium" :class="$style.icon" />
+		<N8nIcon :icon="icon" size="large" :class="$style.icon" />
 		<div :class="$style.content">
 			<span :class="$style.name">{{ props.name }}</span>
 			<span v-if="props.metadata" :class="$style.metadata">{{ props.metadata }}</span>
@@ -75,20 +75,20 @@ function handleClick(e: MouseEvent) {
 }
 
 .icon {
-	color: var(--color--text--tint-1);
+	color: var(--icon-color--strong);
 	flex-shrink: 0;
 }
 
 .content {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--5xs);
+	gap: var(--spacing--4xs);
 	min-width: 0;
 }
 
 .name {
-	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--bold);
+	font-size: var(--font-size--md);
+	font-weight: var(--font-weight--regular);
 	color: var(--color--text);
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -96,7 +96,8 @@ function handleClick(e: MouseEvent) {
 }
 
 .metadata {
-	font-size: var(--font-size--2xs);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--lg);
 	color: var(--color--text--tint-1);
 	overflow: hidden;
 	text-overflow: ellipsis;
