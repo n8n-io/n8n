@@ -885,11 +885,15 @@ export class HttpRequestV3 implements INodeType {
 									responseContentType,
 									this.helpers,
 								);
-								response.body = jsonParse(data, {
-									...(neverError
-										? { fallbackValue: {} }
-										: { errorMessage: 'Invalid JSON in response body' }),
-								});
+								if (!data) {
+									response.body = {};
+								} else {
+									response.body = jsonParse(data, {
+										...(neverError
+											? { fallbackValue: {} }
+											: { errorMessage: 'Invalid JSON in response body' }),
+									});
+								}
 							}
 						} else if (binaryContentTypes.some((e) => responseContentType.includes(e))) {
 							responseFormat = 'file';
