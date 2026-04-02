@@ -290,11 +290,7 @@ function handleThreadAction(action: string, threadId: string) {
 	}
 
 	&.active {
-		background-color: var(--color--foreground--tint-2);
-
-		&:hover {
-			background-color: var(--color--foreground--tint-2);
-		}
+		background-color: var(--color--background--light-1);
 	}
 }
 
@@ -312,9 +308,13 @@ function handleThreadAction(action: string, threadId: string) {
 
 	&:hover,
 	&:focus,
-	&:active,
 	&:visited {
 		color: var(--color--text) !important;
+		text-decoration: none !important;
+	}
+
+	&:active {
+		color: var(--color--text--shade-1) !important;
 		text-decoration: none !important;
 	}
 }
@@ -334,6 +334,7 @@ function handleThreadAction(action: string, threadId: string) {
 	white-space: nowrap;
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
+	color: var(--color--text--shade-1);
 }
 
 .actionDropdown {
