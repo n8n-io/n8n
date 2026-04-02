@@ -61,6 +61,14 @@ export class OwnerInstanceSettingsLoader {
 			throw new OperationalError(result.error.issues[0].message);
 		}
 
+		if (
+			!result.data.options.overwriteExisting &&
+			(await this.ownershipService.hasInstanceOwner())
+		) {
+			this.logger.debug('Instance owner already exists, skipping bootstrap');
+			return 'skipped';
+		}
+
 		await this.ownershipService.setupOwner(result.data.payload, result.data.options);
 
 		return 'created';
