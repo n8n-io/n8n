@@ -607,7 +607,9 @@ describe('OidcService', () => {
 			const clientId = 'test-client';
 			const clientSecret = 'test-secret';
 
-			global.fetch = jest.fn().mockResolvedValue(createMockResponse());
+			const discoverySpy = jest.spyOn(client, 'discovery').mockResolvedValue({
+				serverMetadata: () => ({ issuer: 'https://example.com' }),
+			} as unknown as client.Configuration);
 
 			// Call the private method directly using type assertion
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
@@ -619,6 +621,7 @@ describe('OidcService', () => {
 
 			// Verify EnvHttpProxyAgent was instantiated
 			expect(EnvHttpProxyAgent).toHaveBeenCalled();
+			discoverySpy.mockRestore();
 		});
 
 		it('should not instantiate EnvHttpProxyAgent when no proxy env vars are set', async () => {
@@ -631,7 +634,9 @@ describe('OidcService', () => {
 			const clientId = 'test-client';
 			const clientSecret = 'test-secret';
 
-			global.fetch = jest.fn().mockResolvedValue(createMockResponse());
+			const discoverySpy = jest.spyOn(client, 'discovery').mockResolvedValue({
+				serverMetadata: () => ({ issuer: 'https://example.com' }),
+			} as unknown as client.Configuration);
 
 			// Call the private method directly
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
@@ -643,6 +648,7 @@ describe('OidcService', () => {
 
 			// Should not instantiate EnvHttpProxyAgent when no proxy is configured
 			expect(EnvHttpProxyAgent).not.toHaveBeenCalled();
+			discoverySpy.mockRestore();
 		});
 
 		it.each([
@@ -831,7 +837,9 @@ describe('OidcService', () => {
 			const clientId = 'test-client';
 			const clientSecret = 'test-secret';
 
-			global.fetch = jest.fn().mockResolvedValue(createMockResponse());
+			const discoverySpy = jest.spyOn(client, 'discovery').mockResolvedValue({
+				serverMetadata: () => ({ issuer: 'https://example.com' }),
+			} as unknown as client.Configuration);
 
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
 			await (oidcService as any).createProxyAwareConfiguration(
@@ -842,6 +850,7 @@ describe('OidcService', () => {
 
 			// EnvHttpProxyAgent should be instantiated once regardless of how many proxy vars are set
 			expect(EnvHttpProxyAgent).toHaveBeenCalledTimes(1);
+			discoverySpy.mockRestore();
 		});
 
 		it.each([

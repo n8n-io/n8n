@@ -1174,7 +1174,7 @@ export function generateSingleVersionSchemaFile(
 	lines.push('');
 	lines.push(`${INDENT}// Return combined config schema`);
 	lines.push(`${INDENT}return z.object({`);
-	lines.push(`${INDENT.repeat(2)}parameters: parametersSchema.optional(),`);
+	lines.push(`${INDENT.repeat(2)}parameters: parametersSchema.nullable().optional(),`);
 	if (hasAiInputs) {
 		const subnodesOptional = !hasRequiredSubnodeFields(aiInputTypes);
 		if (hasConditionalSubnodeFields(aiInputTypes)) {
