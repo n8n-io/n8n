@@ -4998,6 +4998,7 @@
 	"instanceAi.toolCall.running": "Running...",
 	"instanceAi.toolCall.error": "Error",
 	"instanceAi.toolResult.moreRows": "and {count} more rows...",
+	"instanceAi.toolResult.dataTruncated": "Data truncated for display.",
 	"instanceAi.thread.new": "New chat",
 	"instanceAi.sidebar.back": "Back",
 	"instanceAi.message.reasoning": "Reasoning",
