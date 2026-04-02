@@ -130,9 +130,9 @@ describe('createRestoreWorkflowVersionTool', () => {
 		it('restores the version when resumed with approved: true', async () => {
 			const tool = createRestoreWorkflowVersionTool(context);
 
-			const result = await tool.execute!({ workflowId: 'wf-123', versionId: 'v-42' }, {
+			const result = (await tool.execute!({ workflowId: 'wf-123', versionId: 'v-42' }, {
 				agent: { suspend: jest.fn(), resumeData: { approved: true } },
-			} as never);
+			} as never)) as Record<string, unknown>;
 
 			expect(context.workflowService.restoreVersion).toHaveBeenCalledWith('wf-123', 'v-42');
 			expect(result).toEqual({ success: true });
@@ -141,9 +141,9 @@ describe('createRestoreWorkflowVersionTool', () => {
 		it('returns denied when resumed with approved: false', async () => {
 			const tool = createRestoreWorkflowVersionTool(context);
 
-			const result = await tool.execute!({ workflowId: 'wf-123', versionId: 'v-42' }, {
+			const result = (await tool.execute!({ workflowId: 'wf-123', versionId: 'v-42' }, {
 				agent: { suspend: jest.fn(), resumeData: { approved: false } },
-			} as never);
+			} as never)) as Record<string, unknown>;
 
 			expect(context.workflowService.restoreVersion).not.toHaveBeenCalled();
 			expect(result).toEqual({
@@ -168,9 +168,9 @@ describe('createRestoreWorkflowVersionTool', () => {
 			const tool = createRestoreWorkflowVersionTool(context);
 			const suspend = jest.fn();
 
-			const result = await tool.execute!({ workflowId: 'wf-123', versionId: 'v-42' }, {
+			const result = (await tool.execute!({ workflowId: 'wf-123', versionId: 'v-42' }, {
 				agent: { suspend, resumeData: undefined },
-			} as never);
+			} as never)) as Record<string, unknown>;
 
 			expect(suspend).not.toHaveBeenCalled();
 			expect(context.workflowService.restoreVersion).toHaveBeenCalledWith('wf-123', 'v-42');
@@ -185,9 +185,9 @@ describe('createRestoreWorkflowVersionTool', () => {
 			);
 			const tool = createRestoreWorkflowVersionTool(context);
 
-			const result = await tool.execute!({ workflowId: 'wf-123', versionId: 'v-42' }, {
+			const result = (await tool.execute!({ workflowId: 'wf-123', versionId: 'v-42' }, {
 				agent: { suspend: jest.fn(), resumeData: { approved: true } },
-			} as never);
+			} as never)) as Record<string, unknown>;
 
 			expect(result).toEqual({
 				success: false,

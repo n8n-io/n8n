@@ -1,7 +1,7 @@
 import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
 
 import type { InstanceAiContext } from '../../../types';
-import { createDeleteCredentialTool } from '../delete-credential.tool';
+import { createDeleteCredentialTool, deleteCredentialInputSchema } from '../delete-credential.tool';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -46,14 +46,12 @@ function createToolCtx(options?: { resumeData?: { approved: boolean } }) {
 describe('delete-credential tool', () => {
 	describe('schema validation', () => {
 		it('accepts a valid credentialId', () => {
-			const tool = createDeleteCredentialTool(createMockContext());
-			const result = tool.inputSchema!.safeParse({ credentialId: 'cred-123' });
+			const result = deleteCredentialInputSchema.safeParse({ credentialId: 'cred-123' });
 			expect(result.success).toBe(true);
 		});
 
 		it('rejects missing credentialId', () => {
-			const tool = createDeleteCredentialTool(createMockContext());
-			const result = tool.inputSchema!.safeParse({});
+			const result = deleteCredentialInputSchema.safeParse({});
 			expect(result.success).toBe(false);
 		});
 	});
@@ -87,7 +85,10 @@ describe('delete-credential tool', () => {
 			const tool = createDeleteCredentialTool(context);
 			const ctx = createToolCtx({ resumeData: { approved: true } });
 
-			const result = await tool.execute!({ credentialId: 'cred-123' }, ctx);
+			const result = (await tool.execute!({ credentialId: 'cred-123' }, ctx)) as Record<
+				string,
+				unknown
+			>;
 
 			expect(context.credentialService.delete).toHaveBeenCalledWith('cred-123');
 			expect(result).toEqual({ success: true });
@@ -98,7 +99,10 @@ describe('delete-credential tool', () => {
 			const tool = createDeleteCredentialTool(context);
 			const ctx = createToolCtx({ resumeData: { approved: false } });
 
-			const result = await tool.execute!({ credentialId: 'cred-123' }, ctx);
+			const result = (await tool.execute!({ credentialId: 'cred-123' }, ctx)) as Record<
+				string,
+				unknown
+			>;
 
 			expect(result).toEqual({
 				success: false,
@@ -119,7 +123,10 @@ describe('delete-credential tool', () => {
 			const tool = createDeleteCredentialTool(context);
 			const ctx = createToolCtx(); // no resumeData, but permission overrides
 
-			const result = await tool.execute!({ credentialId: 'cred-456' }, ctx);
+			const result = (await tool.execute!({ credentialId: 'cred-456' }, ctx)) as Record<
+				string,
+				unknown
+			>;
 
 			const suspend = (ctx as unknown as { agent: { suspend: jest.Mock } }).agent.suspend;
 			expect(suspend).not.toHaveBeenCalled();

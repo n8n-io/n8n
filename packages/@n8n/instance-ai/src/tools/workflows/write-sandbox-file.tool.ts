@@ -14,24 +14,26 @@ import { z } from 'zod';
 import { writeFileViaSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
 
+export const writeSandboxFileInputSchema = z.object({
+	filePath: z
+		.string()
+		.describe('Absolute path or path relative to ~/workspace/ (e.g. "src/workflow.ts")'),
+	content: z.string().describe('The file content to write'),
+});
+
 export function createWriteSandboxFileTool(workspace: Workspace) {
 	return createTool({
 		id: 'write-file',
 		description:
 			'Write content to a file in the sandbox workspace. Creates parent directories automatically. ' +
 			'Use this to write workflow code to ~/workspace/src/workflow.ts.',
-		inputSchema: z.object({
-			filePath: z
-				.string()
-				.describe('Absolute path or path relative to ~/workspace/ (e.g. "src/workflow.ts")'),
-			content: z.string().describe('The file content to write'),
-		}),
+		inputSchema: writeSandboxFileInputSchema,
 		outputSchema: z.object({
 			success: z.boolean(),
 			path: z.string(),
 			error: z.string().optional(),
 		}),
-		execute: async ({ filePath, content }) => {
+		execute: async ({ filePath, content }: z.infer<typeof writeSandboxFileInputSchema>) => {
 			try {
 				const root = await getWorkspaceRoot(workspace);
 

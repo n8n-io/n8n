@@ -5,6 +5,43 @@ import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
 
+export const setupCredentialsInputSchema = z.object({
+	credentials: z
+		.array(
+			z.object({
+				credentialType: z
+					.string()
+					.describe('n8n credential type name (e.g. "slackApi", "gmailOAuth2Api")'),
+				reason: z.string().optional().describe('Why this credential is needed (shown to user)'),
+				suggestedName: z
+					.string()
+					.optional()
+					.describe(
+						'Suggested display name for the credential (e.g. "Linear API key"). Pre-fills the name field when creating a new credential.',
+					),
+			}),
+		)
+		.describe('List of credentials to set up'),
+	projectId: z
+		.string()
+		.optional()
+		.describe('Project ID to scope credential creation to. Defaults to personal project.'),
+	credentialFlow: z
+		.object({
+			stage: z.enum(['generic', 'finalize']),
+		})
+		.optional()
+		.describe(
+			'Credential flow stage. "finalize" renders post-verification picker with "Apply credentials" / "Later" buttons.',
+		),
+});
+
+export const setupCredentialsResumeSchema = z.object({
+	approved: z.boolean(),
+	credentials: z.record(z.string()).optional(),
+	autoSetup: z.object({ credentialType: z.string() }).optional(),
+});
+
 export function createSetupCredentialsTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'setup-credentials',
@@ -18,36 +55,7 @@ export function createSetupCredentialsTool(context: InstanceAiContext) {
 			'Returns a mapping of credential type to selected credential ID. ' +
 			'When the result contains needsBrowserSetup=true, delegate to a browser agent ' +
 			'with the provided docsUrl and credentialType.',
-		inputSchema: z.object({
-			credentials: z
-				.array(
-					z.object({
-						credentialType: z
-							.string()
-							.describe('n8n credential type name (e.g. "slackApi", "gmailOAuth2Api")'),
-						reason: z.string().optional().describe('Why this credential is needed (shown to user)'),
-						suggestedName: z
-							.string()
-							.optional()
-							.describe(
-								'Suggested display name for the credential (e.g. "Linear API key"). Pre-fills the name field when creating a new credential.',
-							),
-					}),
-				)
-				.describe('List of credentials to set up'),
-			projectId: z
-				.string()
-				.optional()
-				.describe('Project ID to scope credential creation to. Defaults to personal project.'),
-			credentialFlow: z
-				.object({
-					stage: z.enum(['generic', 'finalize']),
-				})
-				.optional()
-				.describe(
-					'Credential flow stage. "finalize" renders post-verification picker with "Apply credentials" / "Later" buttons.',
-				),
-		}),
+		inputSchema: setupCredentialsInputSchema,
 		outputSchema: z.object({
 			success: z.boolean(),
 			deferred: z.boolean().optional(),
@@ -83,13 +91,12 @@ export function createSetupCredentialsTool(context: InstanceAiContext) {
 			projectId: z.string().optional(),
 			credentialFlow: z.object({ stage: z.enum(['generic', 'finalize']) }).optional(),
 		}),
-		resumeSchema: z.object({
-			approved: z.boolean(),
-			credentials: z.record(z.string()).optional(),
-			autoSetup: z.object({ credentialType: z.string() }).optional(),
-		}),
-		execute: async (input, ctx) => {
-			const { resumeData, suspend } = ctx?.agent ?? {};
+		resumeSchema: setupCredentialsResumeSchema,
+		execute: async (input: z.infer<typeof setupCredentialsInputSchema>, ctx) => {
+			const resumeData = ctx?.agent?.resumeData as
+				| z.infer<typeof setupCredentialsResumeSchema>
+				| undefined;
+			const suspend = ctx?.agent?.suspend;
 			const isFinalize = input.credentialFlow?.stage === 'finalize';
 
 			// State 1: First call — look up existing credentials per type and suspend

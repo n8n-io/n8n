@@ -23,7 +23,7 @@ describe('registerWithMastra', () => {
 		expect(mockMastra).toHaveBeenCalledWith(expect.objectContaining({ storage: mockStorage }));
 		// Must NOT pass agents to the constructor — avoids pinning per-request
 		// agent closures in Mastra's #agents dict.
-		const constructorArg = mockMastra.mock.calls[0][0] as Record<string, unknown>;
+		const constructorArg = (mockMastra.mock.calls[0] as unknown[])[0] as Record<string, unknown>;
 		expect(constructorArg).not.toHaveProperty('agents');
 	});
 

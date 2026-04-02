@@ -1,5 +1,5 @@
 import type { InstanceAiContext, CredentialDetail } from '../../../types';
-import { createGetCredentialTool } from '../get-credential.tool';
+import { createGetCredentialTool, getCredentialInputSchema } from '../get-credential.tool';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -40,14 +40,12 @@ function makeCredentialDetail(overrides?: Partial<CredentialDetail>): Credential
 describe('get-credential tool', () => {
 	describe('schema validation', () => {
 		it('accepts a valid credentialId', () => {
-			const tool = createGetCredentialTool(createMockContext());
-			const result = tool.inputSchema!.safeParse({ credentialId: 'cred-123' });
+			const result = getCredentialInputSchema.safeParse({ credentialId: 'cred-123' });
 			expect(result.success).toBe(true);
 		});
 
 		it('rejects missing credentialId', () => {
-			const tool = createGetCredentialTool(createMockContext());
-			const result = tool.inputSchema!.safeParse({});
+			const result = getCredentialInputSchema.safeParse({});
 			expect(result.success).toBe(false);
 		});
 	});
@@ -59,7 +57,10 @@ describe('get-credential tool', () => {
 			(context.credentialService.get as jest.Mock).mockResolvedValue(credential);
 
 			const tool = createGetCredentialTool(context);
-			const result = await tool.execute!({ credentialId: 'cred-123' }, {} as never);
+			const result = (await tool.execute!({ credentialId: 'cred-123' }, {} as never)) as Record<
+				string,
+				unknown
+			>;
 
 			expect(context.credentialService.get).toHaveBeenCalledWith('cred-123');
 			expect(result).toEqual(credential);
@@ -71,7 +72,10 @@ describe('get-credential tool', () => {
 			(context.credentialService.get as jest.Mock).mockResolvedValue(credential);
 
 			const tool = createGetCredentialTool(context);
-			const result = await tool.execute!({ credentialId: 'cred-456' }, {} as never);
+			const result = (await tool.execute!({ credentialId: 'cred-456' }, {} as never)) as Record<
+				string,
+				unknown
+			>;
 
 			expect(context.credentialService.get).toHaveBeenCalledWith('cred-456');
 			expect(result).toEqual(credential);

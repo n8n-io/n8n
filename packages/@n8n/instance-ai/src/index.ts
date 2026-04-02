@@ -4,7 +4,7 @@
 // getTiktoken() checks globalThis.__mastraTiktoken first and skips the load.
 (globalThis as Record<string, unknown>).__mastraTiktoken = {
 	encode(text: string) {
-		return new Array(Math.ceil(text.length / 4));
+		return new Array<number>(Math.ceil(text.length / 4));
 	},
 };
 

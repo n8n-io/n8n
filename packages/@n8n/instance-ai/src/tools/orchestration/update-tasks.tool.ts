@@ -12,7 +12,7 @@ export function createUpdateTasksTool(context: OrchestrationContext) {
 			'Pass the full task list each time — it replaces the previous one.',
 		inputSchema: taskListSchema,
 		outputSchema: z.object({ saved: z.boolean() }),
-		execute: async (input) => {
+		execute: async (input: z.infer<typeof taskListSchema>) => {
 			await context.taskStorage.save(context.threadId, input);
 			context.eventBus.publish(context.threadId, {
 				type: 'tasks-update',

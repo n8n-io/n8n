@@ -3,6 +3,14 @@ import { z } from 'zod';
 
 import { categoryList, suggestedNodesData } from './suggested-nodes-data';
 
+export const getSuggestedNodesInputSchema = z.object({
+	categories: z
+		.array(z.string())
+		.min(1)
+		.max(3)
+		.describe(`Workflow technique categories: ${categoryList.join(', ')}`),
+});
+
 export function createGetSuggestedNodesTool() {
 	return createTool({
 		id: 'get-suggested-nodes',
@@ -11,13 +19,7 @@ export function createGetSuggestedNodesTool() {
 			'Returns suggested nodes with configuration notes and pattern hints. ' +
 			`Available categories: ${categoryList.join(', ')}. ` +
 			'Call this early in the build process to get relevant nodes and avoid trial-and-error.',
-		inputSchema: z.object({
-			categories: z
-				.array(z.string())
-				.min(1)
-				.max(3)
-				.describe(`Workflow technique categories: ${categoryList.join(', ')}`),
-		}),
+		inputSchema: getSuggestedNodesInputSchema,
 		outputSchema: z.object({
 			results: z.array(
 				z.object({
@@ -35,7 +37,7 @@ export function createGetSuggestedNodesTool() {
 			unknownCategories: z.array(z.string()),
 		}),
 		// eslint-disable-next-line @typescript-eslint/require-await
-		execute: async (input) => {
+		execute: async (input: z.infer<typeof getSuggestedNodesInputSchema>) => {
 			const results: Array<{
 				category: string;
 				description: string;

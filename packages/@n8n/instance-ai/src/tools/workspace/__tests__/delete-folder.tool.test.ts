@@ -1,7 +1,7 @@
 import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
 
 import type { InstanceAiContext } from '../../../types';
-import { createDeleteFolderTool } from '../delete-folder.tool';
+import { createDeleteFolderTool, deleteFolderInputSchema } from '../delete-folder.tool';
 
 function createMockContext(
 	permissionOverrides?: InstanceAiContext['permissions'],
@@ -40,14 +40,12 @@ function createToolCtx(options?: { resumeData?: { approved: boolean } }) {
 describe('delete-folder tool', () => {
 	describe('schema validation', () => {
 		it('accepts folderId and projectId', () => {
-			const tool = createDeleteFolderTool(createMockContext());
-			const result = tool.inputSchema!.safeParse({ folderId: 'f-1', projectId: 'proj-1' });
+			const result = deleteFolderInputSchema.safeParse({ folderId: 'f-1', projectId: 'proj-1' });
 			expect(result.success).toBe(true);
 		});
 
 		it('accepts optional transferToFolderId', () => {
-			const tool = createDeleteFolderTool(createMockContext());
-			const result = tool.inputSchema!.safeParse({
+			const result = deleteFolderInputSchema.safeParse({
 				folderId: 'f-1',
 				projectId: 'proj-1',
 				transferToFolderId: 'f-2',
@@ -84,7 +82,10 @@ describe('delete-folder tool', () => {
 			const tool = createDeleteFolderTool(context);
 			const ctx = createToolCtx({ resumeData: { approved: true } });
 
-			const result = await tool.execute!({ folderId: 'f-1', projectId: 'proj-1' }, ctx);
+			const result = (await tool.execute!({ folderId: 'f-1', projectId: 'proj-1' }, ctx)) as Record<
+				string,
+				unknown
+			>;
 
 			expect(context.workspaceService!.deleteFolder).toHaveBeenCalledWith(
 				'f-1',
@@ -110,7 +111,10 @@ describe('delete-folder tool', () => {
 			const tool = createDeleteFolderTool(context);
 			const ctx = createToolCtx({ resumeData: { approved: false } });
 
-			const result = await tool.execute!({ folderId: 'f-1', projectId: 'proj-1' }, ctx);
+			const result = (await tool.execute!({ folderId: 'f-1', projectId: 'proj-1' }, ctx)) as Record<
+				string,
+				unknown
+			>;
 
 			expect(result).toEqual({ success: false, denied: true, reason: 'User denied the action' });
 			expect(context.workspaceService!.deleteFolder).not.toHaveBeenCalled();
@@ -127,7 +131,10 @@ describe('delete-folder tool', () => {
 			const tool = createDeleteFolderTool(context);
 			const ctx = createToolCtx();
 
-			const result = await tool.execute!({ folderId: 'f-1', projectId: 'proj-1' }, ctx);
+			const result = (await tool.execute!({ folderId: 'f-1', projectId: 'proj-1' }, ctx)) as Record<
+				string,
+				unknown
+			>;
 
 			const suspend = (ctx as unknown as { agent: { suspend: jest.Mock } }).agent.suspend;
 			expect(suspend).not.toHaveBeenCalled();

@@ -1,5 +1,5 @@
 import type { InstanceAiContext, NodeOutputResult } from '../../../types';
-import { createGetNodeOutputTool } from '../get-node-output.tool';
+import { createGetNodeOutputTool, getNodeOutputInputSchema } from '../get-node-output.tool';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -38,8 +38,7 @@ describe('get-node-output tool', () => {
 
 	describe('schema validation', () => {
 		it('accepts executionId and nodeName', () => {
-			const tool = createGetNodeOutputTool(context);
-			const result = tool.inputSchema!.safeParse({
+			const result = getNodeOutputInputSchema.safeParse({
 				executionId: 'exec-1',
 				nodeName: 'HTTP Request',
 			});
@@ -47,8 +46,7 @@ describe('get-node-output tool', () => {
 		});
 
 		it('accepts optional startIndex and maxItems', () => {
-			const tool = createGetNodeOutputTool(context);
-			const result = tool.inputSchema!.safeParse({
+			const result = getNodeOutputInputSchema.safeParse({
 				executionId: 'exec-1',
 				nodeName: 'HTTP Request',
 				startIndex: 10,
@@ -58,20 +56,17 @@ describe('get-node-output tool', () => {
 		});
 
 		it('rejects missing executionId', () => {
-			const tool = createGetNodeOutputTool(context);
-			const result = tool.inputSchema!.safeParse({ nodeName: 'HTTP Request' });
+			const result = getNodeOutputInputSchema.safeParse({ nodeName: 'HTTP Request' });
 			expect(result.success).toBe(false);
 		});
 
 		it('rejects missing nodeName', () => {
-			const tool = createGetNodeOutputTool(context);
-			const result = tool.inputSchema!.safeParse({ executionId: 'exec-1' });
+			const result = getNodeOutputInputSchema.safeParse({ executionId: 'exec-1' });
 			expect(result.success).toBe(false);
 		});
 
 		it('rejects negative startIndex', () => {
-			const tool = createGetNodeOutputTool(context);
-			const result = tool.inputSchema!.safeParse({
+			const result = getNodeOutputInputSchema.safeParse({
 				executionId: 'exec-1',
 				nodeName: 'Node',
 				startIndex: -1,
@@ -80,8 +75,7 @@ describe('get-node-output tool', () => {
 		});
 
 		it('rejects maxItems over 50', () => {
-			const tool = createGetNodeOutputTool(context);
-			const result = tool.inputSchema!.safeParse({
+			const result = getNodeOutputInputSchema.safeParse({
 				executionId: 'exec-1',
 				nodeName: 'Node',
 				maxItems: 51,
@@ -90,8 +84,7 @@ describe('get-node-output tool', () => {
 		});
 
 		it('rejects maxItems of 0', () => {
-			const tool = createGetNodeOutputTool(context);
-			const result = tool.inputSchema!.safeParse({
+			const result = getNodeOutputInputSchema.safeParse({
 				executionId: 'exec-1',
 				nodeName: 'Node',
 				maxItems: 0,
@@ -114,7 +107,7 @@ describe('get-node-output tool', () => {
 			const result = (await tool.execute!(
 				{ executionId: 'exec-1', nodeName: 'HTTP Request' },
 				{} as never,
-			)) as NodeOutputResult;
+			)) as unknown as NodeOutputResult;
 
 			expect(context.executionService.getNodeOutput).toHaveBeenCalledWith(
 				'exec-1',
@@ -143,7 +136,7 @@ describe('get-node-output tool', () => {
 			const result = (await tool.execute!(
 				{ executionId: 'exec-1', nodeName: 'Set', startIndex: 10, maxItems: 2 },
 				{} as never,
-			)) as NodeOutputResult;
+			)) as unknown as NodeOutputResult;
 
 			expect(context.executionService.getNodeOutput).toHaveBeenCalledWith('exec-1', 'Set', {
 				startIndex: 10,

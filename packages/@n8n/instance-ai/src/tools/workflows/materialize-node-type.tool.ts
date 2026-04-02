@@ -43,6 +43,14 @@ function esc(s: string): string {
 	return s.replace(/'/g, "'\\''");
 }
 
+export const materializeNodeTypeInputSchema = z.object({
+	nodeIds: z
+		.array(nodeRequestSchema)
+		.min(1)
+		.max(5)
+		.describe('Node IDs to materialize definitions for (max 5)'),
+});
+
 export function createMaterializeNodeTypeTool(context: InstanceAiContext, workspace: Workspace) {
 	return createTool({
 		id: 'materialize-node-type',
@@ -51,13 +59,7 @@ export function createMaterializeNodeTypeTool(context: InstanceAiContext, worksp
 			'AND writes the files to the sandbox so tsc can reference them. ' +
 			'Use after search-nodes to get exact schemas before writing workflow code. ' +
 			'No need to cat the files afterward — content is returned directly.',
-		inputSchema: z.object({
-			nodeIds: z
-				.array(nodeRequestSchema)
-				.min(1)
-				.max(5)
-				.describe('Node IDs to materialize definitions for (max 5)'),
-		}),
+		inputSchema: materializeNodeTypeInputSchema,
 		outputSchema: z.object({
 			definitions: z.array(
 				z.object({
@@ -68,7 +70,7 @@ export function createMaterializeNodeTypeTool(context: InstanceAiContext, worksp
 				}),
 			),
 		}),
-		execute: async ({ nodeIds }) => {
+		execute: async ({ nodeIds }: z.infer<typeof materializeNodeTypeInputSchema>) => {
 			if (!context.nodeService.getNodeTypeDefinition) {
 				return {
 					definitions: nodeIds.map((req: z.infer<typeof nodeRequestSchema>) => ({

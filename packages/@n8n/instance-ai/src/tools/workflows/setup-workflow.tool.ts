@@ -17,6 +17,11 @@ import {
 } from './setup-workflow.service';
 import type { InstanceAiContext } from '../../types';
 
+export const setupWorkflowInputSchema = z.object({
+	workflowId: z.string().describe('ID of the workflow to set up'),
+	projectId: z.string().optional().describe('Project ID to scope credential creation to'),
+});
+
 export function createSetupWorkflowTool(context: InstanceAiContext) {
 	let currentRequestId: string | null = null;
 	let preTestSnapshot: WorkflowJSON | null = null;
@@ -28,10 +33,7 @@ export function createSetupWorkflowTool(context: InstanceAiContext) {
 			'test triggers for all nodes in a workflow. Always use this instead of setup-credentials ' +
 			'when a workflowId is available. The user handles setup through the UI — you never see ' +
 			'sensitive data. Returns success when the user applies changes.',
-		inputSchema: z.object({
-			workflowId: z.string().describe('ID of the workflow to set up'),
-			projectId: z.string().optional().describe('Project ID to scope credential creation to'),
-		}),
+		inputSchema: setupWorkflowInputSchema,
 		outputSchema: z.object({
 			success: z.boolean(),
 			deferred: z.boolean().optional(),
@@ -83,8 +85,9 @@ export function createSetupWorkflowTool(context: InstanceAiContext) {
 		}),
 		suspendSchema: setupSuspendSchema,
 		resumeSchema: setupResumeSchema,
-		execute: async (input, ctx) => {
-			const { resumeData, suspend } = ctx?.agent ?? {};
+		execute: async (input: z.infer<typeof setupWorkflowInputSchema>, ctx) => {
+			const resumeData = ctx?.agent?.resumeData as z.infer<typeof setupResumeSchema> | undefined;
+			const suspend = ctx?.agent?.suspend;
 
 			// State 1: Analyze workflow and suspend for user setup
 			if (resumeData === undefined || resumeData === null) {

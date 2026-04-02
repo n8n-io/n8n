@@ -47,7 +47,10 @@ describe('search-template-structures tool', () => {
 			templateIds: [1],
 		});
 
-		const result = await tool.execute!({ search: 'http request', rows: 5 }, {} as never);
+		const result = (await tool.execute!(
+			{ search: 'http request', rows: 5 },
+			{} as never,
+		)) as Record<string, unknown>;
 
 		expect(result).toBeDefined();
 		expect(result).toMatchObject({
@@ -77,7 +80,10 @@ describe('search-template-structures tool', () => {
 			templateIds: [],
 		});
 
-		const result = await tool.execute!({ search: 'nonexistent' }, {} as never);
+		const result = (await tool.execute!({ search: 'nonexistent' }, {} as never)) as Record<
+			string,
+			unknown
+		>;
 
 		expect(result).toMatchObject({
 			examples: [],

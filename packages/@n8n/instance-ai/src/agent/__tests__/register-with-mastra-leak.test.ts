@@ -33,7 +33,7 @@ const MockMastra = jest.fn().mockImplementation((config: { agents?: Record<strin
 jest.mock('@mastra/core/mastra', () => ({ Mastra: MockMastra }));
 
 const { registerWithMastra } =
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../register-with-mastra') as typeof import('../register-with-mastra');
 
 // ── Tests ──
@@ -54,7 +54,7 @@ describe('registerWithMastra — no agent accumulation', () => {
 
 		expect(MockMastra).toHaveBeenCalledTimes(1);
 		// Constructor was called WITHOUT agents — #agents stays empty
-		const constructorArg = MockMastra.mock.calls[0][0] as Record<string, unknown>;
+		const constructorArg = (MockMastra.mock.calls[0] as unknown[])[0] as Record<string, unknown>;
 		expect(constructorArg).not.toHaveProperty('agents');
 		expect(Object.keys(agentsDict)).toHaveLength(0);
 	});
