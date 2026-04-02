@@ -1,6 +1,7 @@
 import type { Agent } from '@mastra/core/agent';
 
 import type { InstanceAiEventBus } from '../event-bus/event-bus.interface';
+import type { Logger } from '../logger';
 import {
 	type LlmStepTraceHooks,
 	executeResumableStream,
@@ -13,6 +14,7 @@ export interface ConsumeWithHitlOptions {
 	runId: string;
 	agentId: string;
 	eventBus: InstanceAiEventBus;
+	logger: Logger;
 	threadId: string;
 	abortSignal: AbortSignal;
 	waitForConfirmation?: (requestId: string) => Promise<Record<string, unknown>>;
@@ -51,6 +53,7 @@ export async function consumeStreamWithHitl(
 			agentId: options.agentId,
 			eventBus: options.eventBus,
 			signal: options.abortSignal,
+			logger: options.logger,
 		},
 		control: {
 			mode: 'auto',
