@@ -1,10 +1,21 @@
+import { Logger } from '@n8n/backend-common';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
+const YELLOW = '\x1b[33m';
+const CLEAR = '\x1b[0m';
+const WARNING_MESSAGE =
+	"[Instance AI] 'instance-ai' module is experimental, undocumented and subject to change. " +
+	'Before its official release any features may become inaccessible at any point, ' +
+	'and using the module could compromise the stability of your system. Use at your own risk!';
+
 @BackendModule({ name: 'instance-ai', instanceTypes: ['main'] })
 export class InstanceAiModule implements ModuleInterface {
 	async init() {
+		const logger = Container.get(Logger).scoped('instance-ai');
+		logger.warn(`${YELLOW}${WARNING_MESSAGE}${CLEAR}`);
+
 		const { InstanceAiSettingsService } = await import('./instance-ai-settings.service');
 		await Container.get(InstanceAiSettingsService).loadFromDb();
 		await import('./instance-ai.controller');

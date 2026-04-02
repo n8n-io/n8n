@@ -380,7 +380,7 @@ describe('parseStoredMessages', () => {
 					id: 'msg-u2',
 					role: 'user',
 					content:
-						'<background-tasks>\n[Background task completed — workflow-builder]: Done\n</background-tasks>\n\n(continue)',
+						'<running-tasks>\n[Background task completed — workflow-builder]: Done\n</running-tasks>\n\n(continue)',
 					createdAt: makeDate(2),
 				},
 				{
@@ -400,7 +400,7 @@ describe('parseStoredMessages', () => {
 			expect(result[2]).toMatchObject({ id: 'msg-a2', role: 'assistant' });
 		});
 
-		it('should hide bare (continue) messages without background-tasks block', () => {
+		it('should hide bare (continue) messages without task context block', () => {
 			const messages: MastraDBMessage[] = [
 				{
 					id: 'msg-u',
@@ -413,23 +413,6 @@ describe('parseStoredMessages', () => {
 			const result = parseStoredMessages(messages);
 
 			expect(result).toHaveLength(0);
-		});
-
-		it('should strip background-tasks enrichment from real user messages', () => {
-			const messages: MastraDBMessage[] = [
-				{
-					id: 'msg-u',
-					role: 'user',
-					content:
-						'<background-tasks>\n[Background task completed — workflow-builder]: Done\n</background-tasks>\n\nNow add error handling',
-					createdAt: makeDate(),
-				},
-			];
-
-			const result = parseStoredMessages(messages);
-
-			expect(result).toHaveLength(1);
-			expect(result[0].content).toBe('Now add error handling');
 		});
 
 		it('should strip running-tasks enrichment from real user messages', () => {
@@ -449,12 +432,12 @@ describe('parseStoredMessages', () => {
 			expect(result[0].content).toBe('Use the Redis credential instead');
 		});
 
-		it('should not strip background-tasks text that appears mid-message', () => {
+		it('should not strip running-tasks text that appears mid-message', () => {
 			const messages: MastraDBMessage[] = [
 				{
 					id: 'msg-u',
 					role: 'user',
-					content: 'Tell me about <background-tasks> tags',
+					content: 'Tell me about <running-tasks> tags',
 					createdAt: makeDate(),
 				},
 			];
@@ -462,7 +445,7 @@ describe('parseStoredMessages', () => {
 			const result = parseStoredMessages(messages);
 
 			expect(result).toHaveLength(1);
-			expect(result[0].content).toBe('Tell me about <background-tasks> tags');
+			expect(result[0].content).toBe('Tell me about <running-tasks> tags');
 		});
 	});
 

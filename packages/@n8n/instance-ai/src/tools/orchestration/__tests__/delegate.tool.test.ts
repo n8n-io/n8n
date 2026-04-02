@@ -37,6 +37,7 @@ function createMockContext(domainTools: Record<string, unknown> = {}): Orchestra
 			getEventsForRun: jest.fn().mockReturnValue([]),
 			getEventsForRuns: jest.fn().mockReturnValue([]),
 		},
+		logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
 		domainTools: domainTools as OrchestrationContext['domainTools'],
 		abortSignal: new AbortController().signal,
 		taskStorage: {

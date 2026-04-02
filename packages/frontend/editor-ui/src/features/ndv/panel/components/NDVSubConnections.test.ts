@@ -6,6 +6,7 @@ import type { INodeUi } from '@/Interface';
 import type { INodeTypeDescription, WorkflowParameters } from 'n8n-workflow';
 import { NodeConnectionTypes, Workflow } from 'n8n-workflow';
 import { nextTick } from 'vue';
+import { type Mock } from 'vitest';
 
 const nodeType: INodeTypeDescription = {
 	displayName: 'OpenAI',
@@ -59,7 +60,7 @@ const workflow: WorkflowParameters = {
 
 const getNodeType = vi.fn();
 let mockWorkflowData = workflow;
-let mockGetNodeByName = vi.fn(() => node);
+let mockGetNodeByName: Mock<(name: string) => INodeUi | null> = vi.fn(() => node);
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({

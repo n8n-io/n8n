@@ -737,36 +737,39 @@ function createDataTableAdapterForTests(overrides?: {
 
 	// Construct the service with only the dependencies we need, casting the rest
 	const service = new InstanceAiAdapterService(
-		{ ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
+		{ error: jest.fn(), scoped: jest.fn().mockReturnThis() } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[0],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[1],
+		{ ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[1],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[2],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[3],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[4],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[5],
 		mockProjectRepository as unknown as ProjectRepository,
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[6],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[7],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[8],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[9],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[10],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[11],
 		{
 			collectTypes: jest.fn().mockResolvedValue({ nodes: [], credentials: [] }),
-		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[11],
+		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
 		mockDataTableService as unknown as DataTableService,
 		mockDataTableRepository as unknown as DataTableRepository,
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[15],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[16],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[18],
 		mockSourceControlPreferencesService as unknown as SourceControlPreferencesService,
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		{ isLicensed: jest.fn().mockReturnValue(false) } as unknown as License,
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[24],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[25],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[26],
 	);
 
 	const adapter = service.createContext(mockUser).dataTableService;
@@ -912,34 +915,37 @@ function createWorkflowAdapterForTests(overrides?: {
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
 
 	const service = new InstanceAiAdapterService(
-		{ ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
+		{ error: jest.fn(), scoped: jest.fn().mockReturnThis() } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[0],
+		{ ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[1],
 		mockWorkflowService as unknown as WorkflowService,
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[2],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[3],
 		mockWorkflowRepository as unknown as WorkflowRepository,
 		mockSharedWorkflowRepository as unknown as SharedWorkflowRepository,
 		mockProjectRepository as unknown as ProjectRepository,
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[6],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[7],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[8],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[9],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[10],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[11],
 		{
 			collectTypes: jest.fn().mockResolvedValue({ nodes: [], credentials: [] }),
-		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[11],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
+		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[13],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[15],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[16],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[18],
 		{
 			getPreferences: jest.fn().mockReturnValue({ branchReadOnly: false }),
 		} as unknown as SourceControlPreferencesService,
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		{
 			isLicensed: jest.fn().mockImplementation((feat: string) => {
 				if (feat === 'feat:namedVersions') return overrides?.namedVersionsLicensed ?? false;
@@ -948,9 +954,9 @@ function createWorkflowAdapterForTests(overrides?: {
 			}),
 			isSharingEnabled: jest.fn().mockReturnValue(false),
 		} as unknown as License,
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[24],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[25],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[26],
 	);
 
 	const context = service.createContext(mockUser);
@@ -1125,37 +1131,40 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
 
 	const service = new InstanceAiAdapterService(
-		{ ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
+		{ error: jest.fn(), scoped: jest.fn().mockReturnThis() } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[0],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[1],
+		{ ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[1],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[2],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[3],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[4],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[5],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[6],
 		mockExecutionRepository as unknown as ExecutionRepository,
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[7],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[8],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[9],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[10],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[11],
 		{
 			collectTypes: jest.fn().mockResolvedValue({ nodes: [], credentials: [] }),
-		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[11],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
+		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[13],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[15],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[16],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[18],
 		{
 			getPreferences: jest.fn().mockReturnValue({ branchReadOnly: false }),
 		} as unknown as SourceControlPreferencesService,
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		mockLicense as unknown as License,
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[24],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[25],
 		mockRoleService as unknown as RoleService,
 	);
 
