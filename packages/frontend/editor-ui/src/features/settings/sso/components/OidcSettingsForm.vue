@@ -307,6 +307,9 @@ onMounted(async () => {
 						data-test-id="sso-oidc-toggle"
 						@update:model-value="ssoStore.isOidcLoginEnabled = $event === 'enabled'"
 					>
+						<template #prefix>
+							<span v-if="ssoStore.isOidcLoginEnabled" :class="$style.greenDot" />
+						</template>
 						<N8nOption value="enabled" label="Enabled" />
 						<N8nOption value="disabled" label="Disabled" />
 					</N8nSelect>
