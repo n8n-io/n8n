@@ -4,7 +4,7 @@ import type {
 	RoleMappingRuleResponse,
 	CreateRoleMappingRuleInput,
 	PatchRoleMappingRuleInput,
-} from '../types';
+} from '@n8n/rest-api-client/api/roleMappingRule';
 
 /**
  * API layer for role mapping rules.

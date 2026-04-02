@@ -1,5 +1,8 @@
 import { computed, ref } from 'vue';
-import type { RoleMappingRuleResponse, RoleMappingRuleType } from '../types';
+import type {
+	RoleMappingRuleResponse,
+	RoleMappingRuleType,
+} from '@n8n/rest-api-client/api/roleMappingRule';
 import { useRoleMappingRulesApi } from './useRoleMappingRulesApi';
 
 function generateLocalId(): string {
