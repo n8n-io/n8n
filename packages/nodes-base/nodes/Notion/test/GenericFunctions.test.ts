@@ -256,7 +256,7 @@ describe('Test Notion, notionApiRequest', () => {
 	});
 
 	it('should default to notionApi credential when authentication parameter is not set', async () => {
-		mockExecuteFunctions.getNodeParameter.mockReturnValue('apiKey');
+		mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
 
 		await notionApiRequest.call(mockExecuteFunctions, 'GET', '/users');
 
