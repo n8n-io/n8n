@@ -18,6 +18,7 @@ import { jsonParse } from 'n8n-workflow';
 import { AiService } from '@/services/ai.service';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 
 const ADMIN_SETTINGS_KEY = 'instanceAi.settings';
 const USER_PREFERENCES_KEY_PREFIX = 'instanceAi.preferences.';
@@ -151,7 +152,7 @@ export class InstanceAiSettingsService {
 		update: InstanceAiAdminSettingsUpdateRequest,
 	): Promise<InstanceAiAdminSettingsResponse> {
 		if (this.aiService.isProxyEnabled()) {
-			this.stripProxyManagedAdminFields(update);
+			this.rejectProxyManagedFields(update, InstanceAiSettingsService.PROXY_MANAGED_ADMIN_FIELDS);
 		}
 		const c = this.config;
 		if (update.lastMessages !== undefined) c.lastMessages = update.lastMessages;
@@ -213,7 +214,10 @@ export class InstanceAiSettingsService {
 		update: InstanceAiUserPreferencesUpdateRequest,
 	): Promise<InstanceAiUserPreferencesResponse> {
 		if (this.aiService.isProxyEnabled()) {
-			this.stripProxyManagedPreferenceFields(update);
+			this.rejectProxyManagedFields(
+				update,
+				InstanceAiSettingsService.PROXY_MANAGED_PREFERENCE_FIELDS,
+			);
 		}
 		const prefs = await this.loadUserPreferences(user.id);
 		if (update.credentialId !== undefined) prefs.credentialId = update.credentialId;
@@ -429,17 +433,15 @@ export class InstanceAiSettingsService {
 		'modelName',
 	];
 
-	private stripProxyManagedAdminFields(update: InstanceAiAdminSettingsUpdateRequest): void {
-		const obj = update as Record<string, unknown>;
-		for (const key of InstanceAiSettingsService.PROXY_MANAGED_ADMIN_FIELDS) {
-			delete obj[key];
-		}
-	}
-
-	private stripProxyManagedPreferenceFields(update: InstanceAiUserPreferencesUpdateRequest): void {
-		const obj = update as Record<string, unknown>;
-		for (const key of InstanceAiSettingsService.PROXY_MANAGED_PREFERENCE_FIELDS) {
-			delete obj[key];
+	private rejectProxyManagedFields(
+		update: Record<string, unknown>,
+		managedFields: readonly string[],
+	): void {
+		const present = managedFields.filter((key) => key in update && update[key] !== undefined);
+		if (present.length > 0) {
+			throw new UnprocessableRequestError(
+				`Cannot update proxy-managed fields: ${present.join(', ')}`,
+			);
 		}
 	}
 
