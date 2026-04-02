@@ -818,6 +818,7 @@ export interface InstanceAiAdminSettingsResponse {
 	searchCredentialId: string | null;
 	localGatewayDisabled: boolean;
 	instanceAiEnabled: boolean;
+	optinModalDismissed: boolean;
 }
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
@@ -836,6 +837,7 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	searchCredentialId: z.string().nullable().optional(),
 	localGatewayDisabled: z.boolean().optional(),
 	instanceAiEnabled: z.boolean().optional(),
+	optinModalDismissed: z.boolean().optional(),
 }) {}
 
 // ---------------------------------------------------------------------------

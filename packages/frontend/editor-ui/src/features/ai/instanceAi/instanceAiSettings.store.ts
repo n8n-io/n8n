@@ -78,6 +78,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			localGateway: prev?.localGateway ?? false,
 			localGatewayDisabled: prev?.localGatewayDisabled ?? false,
 			localGatewayFallbackDirectory: prev?.localGatewayFallbackDirectory ?? null,
+			optinModalDismissed: adminRes.optinModalDismissed,
 		};
 		settingsStore.moduleSettings = {
 			...ms,
@@ -148,6 +149,16 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		} finally {
 			isSaving.value = false;
 		}
+	}
+
+	async function persistOptinModalDismissed(): Promise<void> {
+		try {
+			const result = await updateSettings(rootStore.restApiContext, {
+				optinModalDismissed: true,
+			});
+			settings.value = result;
+			syncInstanceAiFlagIntoGlobalModuleSettings(result);
+		} catch (error) {}
 	}
 
 	/** Persists only the Instance AI on/off flag (does not send other admin draft fields). */
@@ -372,6 +383,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		fetch,
 		save,
 		persistInstanceAiEnabled,
+		persistOptinModalDismissed,
 		setField,
 		setPreferenceField,
 		setPermission,

@@ -46,7 +46,7 @@ export class InstanceAiConfig {
 	 * When false, Instance AI chat and related user-facing features are off; admins can
 	 * still open Instance AI settings. Persisted via admin settings API.
 	 */
-	instanceAiEnabled: boolean = true;
+	instanceAiEnabled: boolean = false;
 
 	/** Disable the local gateway (filesystem, shell, browser, etc.) for all users. */
 	@Env('N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED')

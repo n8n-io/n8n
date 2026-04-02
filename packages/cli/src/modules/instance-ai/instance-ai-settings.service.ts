@@ -73,6 +73,7 @@ interface PersistedAdminSettings {
 	searchCredentialId?: string | null;
 	localGatewayDisabled?: boolean;
 	instanceAiEnabled?: boolean;
+	optinModalDismissed?: boolean;
 }
 
 /** Per-user preferences stored under USER_PREFERENCES_KEY_PREFIX + userId. */
@@ -93,6 +94,8 @@ export class InstanceAiSettingsService {
 	private adminDaytonaCredentialId: string | null = null;
 
 	private adminSearchCredentialId: string | null = null;
+
+	private optinModalDismissed: boolean = false;
 
 	/** In-memory cache of per-user preferences keyed by userId. */
 	private readonly userPreferences = new Map<string, PersistedUserPreferences>();
@@ -159,6 +162,7 @@ export class InstanceAiSettingsService {
 			searchCredentialId: this.adminSearchCredentialId,
 			localGatewayDisabled: this.isLocalGatewayDisabled(),
 			instanceAiEnabled: this.isInstanceAiEnabled(),
+			optinModalDismissed: this.optinModalDismissed,
 		};
 	}
 
@@ -186,6 +190,8 @@ export class InstanceAiSettingsService {
 		if (update.localGatewayDisabled !== undefined)
 			c.localGatewayDisabled = update.localGatewayDisabled;
 		if (update.instanceAiEnabled !== undefined) c.instanceAiEnabled = update.instanceAiEnabled;
+		if (update.optinModalDismissed !== undefined)
+			this.optinModalDismissed = update.optinModalDismissed;
 		await this.persistAdminSettings();
 		await this.syncChatHubAccessWithInstanceAi();
 		return this.getAdminSettings();
@@ -443,6 +449,8 @@ export class InstanceAiSettingsService {
 			c.localGatewayDisabled = persisted.localGatewayDisabled;
 		if (persisted.instanceAiEnabled !== undefined)
 			c.instanceAiEnabled = persisted.instanceAiEnabled;
+		if (persisted.optinModalDismissed !== undefined)
+			this.optinModalDismissed = persisted.optinModalDismissed;
 	}
 
 	private async loadUserPreferences(userId: string): Promise<PersistedUserPreferences> {
@@ -477,6 +485,7 @@ export class InstanceAiSettingsService {
 			searchCredentialId: this.adminSearchCredentialId,
 			localGatewayDisabled: c.localGatewayDisabled,
 			instanceAiEnabled: c.instanceAiEnabled,
+			optinModalDismissed: this.optinModalDismissed,
 		};
 
 		await this.settingsRepository.upsert(
