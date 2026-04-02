@@ -449,7 +449,11 @@ export class OidcService {
 		};
 	}
 
-	private async applySsoProvisioning(user: User, claims: any, userInfo: Record<string, unknown>) {
+	private async applySsoProvisioning(
+		user: User,
+		claims: Record<string, unknown>,
+		userInfo: Record<string, unknown>,
+	) {
 		if (await this.provisioningService.isExpressionMappingEnabled()) {
 			const context = buildOidcClaimsContext(claims, userInfo);
 			await this.provisioningService.provisionExpressionMappedRolesForUser(user, context);
