@@ -5,6 +5,10 @@ import type { INodeUi } from '@/Interface';
 import { useNodeExecution, type UseNodeExecutionOptions } from '@/app/composables/useNodeExecution';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useLogsStore } from '@/app/stores/logs.store';
@@ -21,6 +25,11 @@ export function useTriggerExecution(
 	const i18n = useI18n();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 	const logsStore = useLogsStore();
 
 	const {
@@ -77,7 +86,10 @@ export function useTriggerExecution(
 		const parentNames = workflowsStore.workflowObject.getParentNodes(nodeValue.value.name, 'ALL');
 		return parentNames.some((name) => {
 			const parentNode = workflowsStore.getNodeByName(name);
-			return parentNode?.issues?.parameters || parentNode?.issues?.credentials;
+			if (!parentNode) return false;
+			if ((workflowDocumentStore.value?.getNodePinData(parentNode.name)?.length ?? 0) > 0)
+				return false;
+			return parentNode.issues?.parameters || parentNode.issues?.credentials;
 		});
 	});
 

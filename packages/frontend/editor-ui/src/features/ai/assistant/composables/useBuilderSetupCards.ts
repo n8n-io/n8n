@@ -154,8 +154,8 @@ export function useBuilderSetupCards() {
 
 	function skipToFirstIncomplete() {
 		const current = baseCards.value[currentStepIndex.value];
-		if (!current || !isCardEffectivelyComplete(current, false)) return;
-		const firstIncomplete = baseCards.value.findIndex((c) => !isCardEffectivelyComplete(c, false));
+		if (!current || !isCardEffectivelyComplete(current, true)) return;
+		const firstIncomplete = baseCards.value.findIndex((c) => !isCardEffectivelyComplete(c, true));
 		if (firstIncomplete !== -1) {
 			currentStepIndex.value = firstIncomplete;
 		}
@@ -182,6 +182,17 @@ export function useBuilderSetupCards() {
 	function goToNext() {
 		if (currentStepIndex.value < baseCards.value.length - 1) {
 			currentStepIndex.value++;
+		}
+	}
+
+	function goToNextIncompleteCard() {
+		const index = baseCards.value.findIndex(
+			(c, index) => !isCardEffectivelyComplete(c, true) && index > currentStepIndex.value,
+		);
+		if (index !== -1) {
+			currentStepIndex.value = index;
+		} else {
+			goToNext();
 		}
 	}
 
@@ -216,7 +227,7 @@ export function useBuilderSetupCards() {
 		if (isAllComplete.value && currentStepIndex.value === totalCards.value - 1) {
 			builderStore.wizardHasExecutedWorkflow = true;
 		} else {
-			goToNext();
+			goToNextIncompleteCard();
 		}
 	}
 

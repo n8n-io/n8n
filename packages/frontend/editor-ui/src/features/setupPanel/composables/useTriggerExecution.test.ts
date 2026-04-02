@@ -11,6 +11,14 @@ import type { INodeUi } from '@/Interface';
 
 import { useTriggerExecution } from '@/features/setupPanel/composables/useTriggerExecution';
 
+const mockGetNodePinData = vi.fn().mockReturnValue(undefined);
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	useWorkflowDocumentStore: () => ({
+		getNodePinData: mockGetNodePinData,
+	}),
+	createWorkflowDocumentId: (id: string) => id,
+}));
+
 const mockExecutionState = vi.hoisted(() => ({
 	isExecuting: false,
 	isListening: false,
@@ -64,6 +72,7 @@ describe('useTriggerExecution', () => {
 		mockExecutionState.disabledReason = '';
 		mockExecutionState.hasIssues = false;
 		mockExecutionState.execute.mockReset();
+		mockGetNodePinData.mockReturnValue(undefined);
 	});
 
 	describe('label', () => {
@@ -332,6 +341,86 @@ describe('useTriggerExecution', () => {
 			const { listeningHint } = useTriggerExecution(node);
 
 			expect(listeningHint.value).toBe('');
+		});
+	});
+
+	describe('hasUpstreamIssues', () => {
+		function setupUpstreamNodes(parentNodes: Array<Partial<INodeUi> & { name: string }>) {
+			workflowsStore.workflowId = 'test-workflow';
+			workflowsStore.workflowObject = {
+				getParentNodes: vi.fn().mockReturnValue(parentNodes.map((n) => n.name)),
+			} as unknown as ReturnType<typeof useWorkflowsStore>['workflowObject'];
+			workflowsStore.getNodeByName = vi.fn().mockImplementation((name: string) => {
+				return (parentNodes.find((n) => n.name === name) as INodeUi) ?? null;
+			});
+		}
+
+		it('should disable button when upstream node has parameter issues', () => {
+			const parentNode = createNode({
+				name: 'HTTP Request',
+				issues: { parameters: { url: ['URL is required'] } },
+			});
+			setupUpstreamNodes([parentNode]);
+
+			const node = ref<INodeUi | null>(createNode());
+			const { isButtonDisabled } = useTriggerExecution(node);
+
+			expect(isButtonDisabled.value).toBe(true);
+		});
+
+		it('should disable button when upstream node has credential issues', () => {
+			const parentNode = createNode({
+				name: 'HTTP Request',
+				issues: { credentials: { httpBasicAuth: ['Credentials not set'] } },
+			});
+			setupUpstreamNodes([parentNode]);
+
+			const node = ref<INodeUi | null>(createNode());
+			const { isButtonDisabled } = useTriggerExecution(node);
+
+			expect(isButtonDisabled.value).toBe(true);
+		});
+
+		it('should not disable button when upstream node has pin data', () => {
+			const parentNode = createNode({
+				name: 'HTTP Request',
+				issues: { parameters: { url: ['URL is required'] } },
+			});
+			setupUpstreamNodes([parentNode]);
+			mockGetNodePinData.mockImplementation((name: string) =>
+				name === 'HTTP Request' ? [{ json: { key: 'value' } }] : undefined,
+			);
+
+			const node = ref<INodeUi | null>(createNode());
+			const { isButtonDisabled } = useTriggerExecution(node);
+
+			expect(isButtonDisabled.value).toBe(false);
+		});
+
+		it('should include upstream issues message in tooltipItems', () => {
+			const parentNode = createNode({
+				name: 'HTTP Request',
+				issues: { parameters: { url: ['URL is required'] } },
+			});
+			setupUpstreamNodes([parentNode]);
+
+			const node = ref<INodeUi | null>(createNode());
+			const { tooltipItems } = useTriggerExecution(node);
+
+			expect(tooltipItems.value.length).toBeGreaterThan(0);
+		});
+
+		it('should not flag upstream issues when parent node does not exist', () => {
+			workflowsStore.workflowId = 'test-workflow';
+			workflowsStore.workflowObject = {
+				getParentNodes: vi.fn().mockReturnValue(['NonExistent']),
+			} as unknown as ReturnType<typeof useWorkflowsStore>['workflowObject'];
+			workflowsStore.getNodeByName = vi.fn().mockReturnValue(null);
+
+			const node = ref<INodeUi | null>(createNode());
+			const { isButtonDisabled } = useTriggerExecution(node);
+
+			expect(isButtonDisabled.value).toBe(false);
 		});
 	});
 

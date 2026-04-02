@@ -582,7 +582,7 @@ describe('useBuilderSetupCards', () => {
 			);
 		});
 
-		it('isAllComplete treats cards with pin data set as complete', () => {
+		it('isAllComplete does not treat pin data as complete (requires real completion)', () => {
 			mockSetupCards.value = [
 				createCard({
 					node: createNode({ name: 'Node 1', id: 'n1' }),
@@ -591,11 +591,11 @@ describe('useBuilderSetupCards', () => {
 					issues: ['Not set'],
 				}),
 			];
-			// Card is incomplete but has pin data set
+			// Card is incomplete but has pin data set — isAllComplete still requires real completion
 			mockIsNodePinDataSet.mockReturnValue(true);
 
 			const { isAllComplete } = getComposable();
-			expect(isAllComplete.value).toBe(true);
+			expect(isAllComplete.value).toBe(false);
 		});
 
 		it('skipToFirstIncomplete skips past cards with pin data set', () => {
@@ -613,6 +613,90 @@ describe('useBuilderSetupCards', () => {
 
 			const { currentStepIndex } = getComposable();
 			// Node 1 has pin data set (effectively complete), should skip to Node 2
+			expect(currentStepIndex.value).toBe(1);
+		});
+
+		it('onStepExecuted skips over completed cards to next incomplete', async () => {
+			mockSetupCards.value = [
+				createCard({
+					node: createNode({ name: 'Node 1', id: 'n1' }),
+					isComplete: true,
+				}),
+				createCard({
+					node: createNode({ name: 'Node 2', id: 'n2' }),
+					isComplete: true,
+				}),
+				createCard({
+					node: createNode({ name: 'Node 3', id: 'n3' }),
+					isComplete: false,
+				}),
+			];
+
+			const { onStepExecuted, currentStepIndex } = getComposable();
+			// Start on first card (which is complete)
+			currentStepIndex.value = 0;
+			await nextTick();
+
+			onStepExecuted();
+			await nextTick();
+
+			// Should skip Node 2 (complete) and land on Node 3 (incomplete)
+			expect(currentStepIndex.value).toBe(2);
+		});
+
+		it('onStepExecuted skips over pinned cards to next incomplete', async () => {
+			mockIsNodePinDataSet.mockImplementation((name: string) => name === 'Node 2');
+			mockSetupCards.value = [
+				createCard({
+					node: createNode({ name: 'Node 1', id: 'n1' }),
+					isComplete: true,
+				}),
+				createCard({
+					node: createNode({ name: 'Node 2', id: 'n2' }),
+					isComplete: false,
+				}),
+				createCard({
+					node: createNode({ name: 'Node 3', id: 'n3' }),
+					isComplete: false,
+				}),
+			];
+
+			const { onStepExecuted, currentStepIndex } = getComposable();
+			currentStepIndex.value = 0;
+			await nextTick();
+
+			onStepExecuted();
+			await nextTick();
+
+			// Should skip Node 2 (has pin data) and land on Node 3
+			expect(currentStepIndex.value).toBe(2);
+		});
+
+		it('onStepExecuted falls back to goToNext when all remaining cards are complete', async () => {
+			mockSetupCards.value = [
+				createCard({
+					node: createNode({ name: 'Node 1', id: 'n1' }),
+					isComplete: true,
+				}),
+				createCard({
+					node: createNode({ name: 'Node 2', id: 'n2' }),
+					isComplete: true,
+				}),
+				createCard({
+					node: createNode({ name: 'Node 3', id: 'n3' }),
+					isComplete: true,
+				}),
+			];
+
+			const { onStepExecuted, currentStepIndex } = getComposable();
+			// All complete — skipToFirstIncomplete won't move, stays at 0
+			currentStepIndex.value = 0;
+			await nextTick();
+
+			onStepExecuted();
+			await nextTick();
+
+			// No incomplete card after index 0, falls back to goToNext (index 1)
 			expect(currentStepIndex.value).toBe(1);
 		});
 
