@@ -49,6 +49,7 @@ function createMockContext(overrides?: Partial<OrchestrationContext>): Orchestra
 		storage: { id: 'test-storage' } as OrchestrationContext['storage'],
 		subAgentMaxSteps: 10,
 		eventBus: createMockEventBus(),
+		logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
 		domainTools,
 		abortSignal: new AbortController().signal,
 		taskStorage: {} as TaskStorage,
