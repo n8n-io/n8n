@@ -189,6 +189,7 @@ const { arrivedState } = useScroll(scrollContainerRef, {
 	offset: { bottom: 100 },
 });
 const userScrolledUp = ref(false);
+const headerScrolled = computed(() => store.hasMessages && !arrivedState.top);
 
 watch(
 	() => arrivedState.bottom,
@@ -369,7 +370,12 @@ function handleStop() {
 		<!-- Main chat area -->
 		<div :class="$style.chatArea">
 			<!-- Header -->
-			<div :class="$style.header">
+			<div
+				:class="[
+					$style.header,
+					{ [$style.headerOpaque]: !store.hasMessages || headerScrolled },
+				]"
+			>
 				<N8nHeading tag="h2" size="small" :class="$style.headerTitle">
 					{{ currentThreadTitle }}
 				</N8nHeading>
@@ -626,12 +632,25 @@ function handleStop() {
 }
 
 .header {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	z-index: 3;
 	padding: var(--spacing--sm) var(--spacing--lg);
-	flex-shrink: 0;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
+	background-color: transparent;
+	transition:
+		background-color 0.15s ease,
+		border-color 0.15s ease;
+	border-bottom: var(--border-width) var(--border-style) transparent;
+}
+
+.headerOpaque {
 	background-color: var(--color--background--light-2);
+	border-bottom-color: var(--color--foreground--tint-2);
 }
 
 .headerTitle {
@@ -700,7 +719,7 @@ function handleStop() {
 .messageList {
 	max-width: 800px;
 	margin: 0 auto;
-	padding: var(--spacing--sm) var(--spacing--lg);
+	padding: var(--spacing--3xl) var(--spacing--lg) var(--spacing--sm);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
