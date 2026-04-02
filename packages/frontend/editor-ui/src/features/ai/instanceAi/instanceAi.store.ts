@@ -786,6 +786,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			testTriggerNode?: string;
 		},
 		answers?: InstanceAiConfirmResponse['answers'],
+		resourceDecision?: string,
 	): Promise<boolean> {
 		try {
 			await postConfirmation(
@@ -799,12 +800,29 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				domainAccessAction,
 				setupWorkflowData,
 				answers,
+				resourceDecision,
 			);
 			return true;
 		} catch {
 			toast.showError(new Error('Failed to send confirmation. Try again.'), 'Confirmation failed');
 			return false;
 		}
+	}
+
+	async function confirmResourceDecision(requestId: string, decision: string): Promise<void> {
+		resolveConfirmation(requestId, 'approved');
+		await confirmAction(
+			requestId,
+			true,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			decision,
+		);
 	}
 
 	function toggleResearchMode(): void {
@@ -956,6 +974,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		amendAgent,
 		toggleResearchMode,
 		confirmAction,
+		confirmResourceDecision,
 		resolveConfirmation,
 		findToolCallByRequestId,
 		copyFullTrace,

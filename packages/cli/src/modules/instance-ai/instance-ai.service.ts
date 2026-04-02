@@ -119,7 +119,6 @@ export class InstanceAiService {
 		string,
 		{ threadId: string; messageGroupId?: string; tracing: InstanceAiTraceContext }
 	>();
-
 	/** Active sandboxes keyed by thread ID — persisted across messages within a conversation. */
 	private readonly sandboxes = new Map<
 		string,
@@ -1816,6 +1815,7 @@ export class InstanceAiService {
 			...(data.nodeParameters ? { nodeParameters: data.nodeParameters } : {}),
 			...(data.testTriggerNode ? { testTriggerNode: data.testTriggerNode } : {}),
 			...(data.answers ? { answers: data.answers } : {}),
+			...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),
 		};
 
 		void this.processResumedStream(agent, resumeData, {
