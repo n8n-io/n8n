@@ -111,8 +111,8 @@ const userRoleProvisioningDescriptions = computed<UserRoleProvisioningDescriptio
 
 	label {
 		font-size: var(--font-size--sm);
-		font-weight: var(--font-weight--medium);
-		color: var(--color--text);
+		font-weight: var(--font-weight--bold);
+		color: var(--color--text--shade-1);
 	}
 
 	small {
