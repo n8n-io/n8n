@@ -130,7 +130,8 @@ function onDragEnd(event: { oldIndex?: number; newIndex?: number }) {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 40px;
+	// Match drag (32px) + priority (24px) = 56px from RuleRow
+	width: 56px;
 	padding: 0 var(--spacing--xs);
 	flex-shrink: 0;
 }
