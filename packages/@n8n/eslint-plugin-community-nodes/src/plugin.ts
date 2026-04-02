@@ -35,6 +35,7 @@ const configs = {
 			'@n8n/community-nodes/credential-documentation-url': 'error',
 			'@n8n/community-nodes/node-class-description-icon-missing': 'error',
 			'@n8n/community-nodes/cred-class-field-icon-missing': 'error',
+			'@n8n/community-nodes/node-connection-type-literal': 'error',
 		},
 	},
 	recommendedWithoutN8nCloudSupport: {
@@ -56,6 +57,7 @@ const configs = {
 			'@n8n/community-nodes/resource-operation-pattern': 'warn',
 			'@n8n/community-nodes/node-class-description-icon-missing': 'error',
 			'@n8n/community-nodes/cred-class-field-icon-missing': 'error',
+			'@n8n/community-nodes/node-connection-type-literal': 'error',
 		},
 	},
 } satisfies Record<string, Linter.Config>;
