@@ -11,6 +11,10 @@ const favoritesStore = useFavoritesStore();
 const { favoriteGroups, activeTabId, onFavoriteProjectClick, onFavoriteWorkflowClick } =
 	useFavoriteNavItems();
 
+const isActive = computed(() =>
+	favoriteGroups.value.some((group) => group.items.some((item) => item.id === activeTabId.value)),
+);
+
 const show = ref(false);
 let closeTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -47,7 +51,7 @@ const hasFavorites = computed(() => favoritesStore.favorites.length > 0);
 		@update:open="show = $event"
 	>
 		<template #trigger>
-			<div :class="$style.trigger" @mouseenter="onMouseEnter" @mouseleave="onMouseLeave">
+			<div :class="[$style.trigger, isActive && $style.triggerActive]" @mouseenter="onMouseEnter" @mouseleave="onMouseLeave">
 				<N8nIcon icon="star" size="medium" />
 			</div>
 		</template>
@@ -81,6 +85,10 @@ const hasFavorites = computed(() => favoritesStore.favorites.length > 0);
 	cursor: pointer;
 	width: 100%;
 	color: var(--color--text--tint-1);
+}
+
+.triggerActive {
+	color: var(--color--text--shade-1);
 }
 
 .content {

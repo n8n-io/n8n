@@ -55,16 +55,24 @@ const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
 
 const resourceTypeLabel = computed(() => i18n.baseText('generic.folder').toLowerCase());
 
-const allActions = computed<Array<UserAction<IUser>>>(() => [
-	...props.actions,
-	{
+const allActions = computed<Array<UserAction<IUser>>>(() => {
+	const favoriteAction = {
 		label: favoritesStore.isFavorite(props.data.id, 'folder')
 			? i18n.baseText('favorites.remove')
 			: i18n.baseText('favorites.add'),
 		value: FOLDER_LIST_ITEM_ACTIONS.TOGGLE_FAVORITE,
 		disabled: false,
-	},
-]);
+	};
+	const renameIndex = props.actions.findIndex(
+		(a) => a.value === FOLDER_LIST_ITEM_ACTIONS.RENAME,
+	);
+	if (renameIndex !== -1) {
+		const result = [...props.actions];
+		result.splice(renameIndex, 0, favoriteAction);
+		return result;
+	}
+	return [...props.actions, favoriteAction];
+});
 
 const cardUrl = computed(() => {
 	return getFolderUrl(props.data.id);
