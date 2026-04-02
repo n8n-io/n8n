@@ -11,6 +11,7 @@ import {
 	Custom,
 	inferMetadataSchema,
 } from '@langchain/redis';
+import { createVectorStoreNode } from '@n8n/ai-utilities';
 import {
 	type IExecuteFunctions,
 	type ILoadOptionsFunctions,
@@ -21,8 +22,6 @@ import {
 import type { RedisClientOptions } from 'redis';
 import { createClient } from 'redis';
 
-import { createVectorStoreNode } from '@n8n/ai-utilities';
-
 /**
  * Constants for the name of the credentials and Node parameters.
  */
@@ -32,7 +31,7 @@ const REDIS_KEY_PREFIX = 'keyPrefix';
 const REDIS_OVERWRITE_DOCUMENTS = 'overwriteDocuments';
 const REDIS_METADATA_KEY = 'metadataKey';
 const REDIS_METADATA_FILTER = 'metadataFilter';
-const REDIS_CUSTOM_FILTER = 'customFilter';
+const REDIS_ADVANCED_FILTER = 'advancedFilter';
 const REDIS_METADATA_SCHEMA = 'metadataSchema';
 const REDIS_CONTENT_KEY = 'contentKey';
 const REDIS_EMBEDDING_KEY = 'vectorKey';
@@ -76,13 +75,13 @@ const metadataFilterField: INodeProperties = {
 	},
 };
 
-const customFilterField: INodeProperties = {
-	displayName: 'Custom Filter',
-	name: REDIS_CUSTOM_FILTER,
+const advancedFilterField: INodeProperties = {
+	displayName: 'Metadata Filter',
+	name: REDIS_ADVANCED_FILTER,
 	type: 'string',
 	description:
 		'Redis query filter expression. Supports Tag, Numeric, Text, Geo filters with AND/OR logic. Example: <code>@category:{electronics} @price:[0 100]</code>',
-	hint: 'Learn more about Redis vector search filtering <a target="_blank" href="https://docs.langchain.com/oss/javascript/integrations/vectorstores/redis#field-configuration-options">here</a>',
+	hint: 'Learn more about Redis vector search filtering <a target="_blank" href="https://docs.langchain.com/oss/javascript/integrations/vectorstores/redis#advanced-features">here</a>',
 	placeholder: '@category:{electronics} @price:[0 100]',
 	default: '',
 	typeOptions: {
@@ -101,7 +100,7 @@ const metadataSchemaField: INodeProperties = {
 	type: 'string',
 	description:
 		'JSON array defining metadata field types for indexing. If not provided, schema will be inferred from documents. Example: <code>[{"name": "category", "type": "tag"}, {"name": "price", "type": "numeric", "options": {"sortable": true}}]</code>',
-	hint: 'Learn more about metadata schema configuration <a target="_blank" href="https://docs.langchain.com/oss/javascript/integrations/vectorstores/advanced-filtering-with-the-fluent-API">here</a>',
+	hint: 'Learn more about metadata schema configuration <a target="_blank" href="https://docs.langchain.com/oss/javascript/integrations/vectorstores/redis#advanced-features">here</a>',
 	placeholder: '[{"name": "category", "type": "tag"}, {"name": "price", "type": "numeric"}]',
 	default: '',
 	typeOptions: {
@@ -210,7 +209,7 @@ const retrieveFields: INodeProperties[] = [
 		default: {},
 		options: [
 			metadataFilterField,
-			customFilterField,
+			advancedFilterField,
 			metadataSchemaField,
 			keyPrefixField,
 			metadataKeyField,
@@ -388,7 +387,7 @@ const getKeyPrefix = getParameter.bind(null, `options.${REDIS_KEY_PREFIX}`);
 const getOverwrite = getParameter.bind(null, `options.${REDIS_OVERWRITE_DOCUMENTS}`);
 const getContentKey = getParameter.bind(null, `options.${REDIS_CONTENT_KEY}`);
 const getMetadataFilter = getParameter.bind(null, `options.${REDIS_METADATA_FILTER}`);
-const getCustomFilter = getParameter.bind(null, `options.${REDIS_CUSTOM_FILTER}`);
+const getAdvancedFilter = getParameter.bind(null, `options.${REDIS_ADVANCED_FILTER}`);
 const getMetadataSchema = getParameter.bind(null, `options.${REDIS_METADATA_SCHEMA}`);
 const getMetadataKey = getParameter.bind(null, `options.${REDIS_METADATA_KEY}`);
 const getEmbeddingKey = getParameter.bind(null, `options.${REDIS_EMBEDDING_KEY}`);
@@ -496,13 +495,13 @@ export class VectorStoreRedis extends createVectorStoreNode({
 
 		const nodeVersion = context.getNode().typeVersion;
 
-		// Version 1.4+: Use FluentRedisVectorStore with custom filter
+		// Version 1.4+: Use FluentRedisVectorStore with advanced filter and custom metadata schema
 		if (nodeVersion >= 1.4) {
-			const customFilter = getCustomFilter(context, itemIndex).trim();
+			const filter = getAdvancedFilter(context, itemIndex).trim();
 			const metadataSchemaJson = getMetadataSchema(context, itemIndex).trim();
 			const customSchema = parseMetadataSchema(context, metadataSchemaJson, itemIndex);
 
-			const filterExpression = customFilter ? Custom(customFilter) : undefined;
+			const filterExpression = filter ? Custom(filter) : undefined;
 
 			return new ExtendedRedisVectorSearch(
 				embeddings,
