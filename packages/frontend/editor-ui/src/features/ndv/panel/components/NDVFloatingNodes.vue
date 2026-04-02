@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { computed, onMounted, onBeforeUnmount } from 'vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
@@ -17,7 +16,6 @@ const enum FloatingNodePosition {
 	left = 'inputMain',
 }
 const props = defineProps<Props>();
-const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
 const emit = defineEmits<{
@@ -66,21 +64,21 @@ function getINodesFromNames(names: string[]): NodeConfig[] {
 		})
 		.filter((n): n is NodeConfig => n !== null);
 }
+
 const connectedNodes = computed<
 	Record<FloatingNodePosition, Array<{ node: INodeUi; nodeType: INodeTypeDescription }>>
 >(() => {
-	const workflowObject = workflowsStore.workflowObject;
 	const rootName = props.rootNode.name;
 
 	return {
 		[FloatingNodePosition.top]: getINodesFromNames(
-			workflowObject.getChildNodes(rootName, 'ALL_NON_MAIN'),
+			workflowDocumentStore?.value?.getChildNodes(rootName, 'ALL_NON_MAIN') ?? [],
 		),
 		[FloatingNodePosition.right]: getINodesFromNames(
-			workflowObject.getChildNodes(rootName, NodeConnectionTypes.Main, 1),
+			workflowDocumentStore?.value?.getChildNodes(rootName, NodeConnectionTypes.Main, 1) ?? [],
 		).reverse(),
 		[FloatingNodePosition.left]: getINodesFromNames(
-			workflowObject.getParentNodes(rootName, NodeConnectionTypes.Main, 1),
+			workflowDocumentStore?.value?.getParentNodes(rootName, NodeConnectionTypes.Main, 1) ?? [],
 		).reverse(),
 	};
 });
