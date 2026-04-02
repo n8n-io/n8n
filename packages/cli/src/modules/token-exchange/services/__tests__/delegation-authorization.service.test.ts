@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { Role, RoleRepository } from '@n8n/db';
+import type { Role, RoleRepository, Scope } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
 import type { TokenExchangeConfig } from '../../token-exchange.config';
@@ -11,7 +11,7 @@ import {
 const makeRole = (slug: string, scopeSlugs: string[]): Role =>
 	mock<Role>({
 		slug,
-		scopes: scopeSlugs.map((s) => mock({ slug: s })),
+		scopes: scopeSlugs.map((s) => mock<Scope>({ slug: s as Scope['slug'] })),
 	});
 
 const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
