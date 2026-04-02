@@ -793,6 +793,48 @@ describe('ResourceLocator', () => {
 
 			expect(emitted('update:modelValue')).toBeUndefined();
 		});
+
+		it('should not reset value on first credential assignment', async () => {
+			const modelValue: typeof TEST_MODEL_VALUE = {
+				...TEST_MODEL_VALUE,
+				value: 'selected-model',
+				cachedResultName: 'GPT-4',
+				cachedResultUrl: 'https://test.com/gpt-4',
+			};
+
+			// Start with no credentials
+			const node = {
+				...TEST_NODE_MULTI_MODE,
+				credentials: undefined,
+			};
+
+			const { emitted, rerender } = renderComponent({
+				props: {
+					modelValue,
+					parameter: TEST_PARAMETER_MULTI_MODE,
+					path: `parameters.${TEST_PARAMETER_MULTI_MODE.name}`,
+					node,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+					isValueExpression: false,
+				},
+			});
+
+			// Assign credentials for the first time
+			await rerender({
+				node: {
+					...node,
+					credentials: {
+						testAuth: {
+							id: '1234',
+							name: 'Test Account',
+						},
+					},
+				},
+			});
+
+			expect(emitted('update:modelValue')).toBeUndefined();
+		});
 	});
 
 	describe('ExpressionLocalResolveContext injection', () => {
