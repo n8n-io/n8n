@@ -7,10 +7,7 @@
 
 import { createLogger } from './logger';
 import { RelayConnection, isEligibleTab } from './relayConnection';
-import type {
-	ExtensionMessage,
-	TabManagementSettings,
-} from './types';
+import type { ExtensionMessage, TabManagementSettings } from './types';
 
 const log = createLogger('bg');
 
