@@ -19,7 +19,7 @@ import {
 
 export class ApiTemplateIo implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'APITemplate.io',
+		displayName: 'APITemplate.io (PDF & Image Generation API)',
 		name: 'apiTemplateIo',
 		icon: 'file:apiTemplateIo.svg',
 		group: ['transform'],
