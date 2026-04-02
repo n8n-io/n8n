@@ -30,7 +30,7 @@ describe('OwnerInstanceSettingsLoader', () => {
 		logger.scoped.mockReturnThis();
 	});
 
-	it('should skip when ownerOverride is false', async () => {
+	it('should skip when no env vars are provided', async () => {
 		const loader = createLoader({ ownerOverride: false });
 
 		const result = await loader.run();
@@ -39,48 +39,45 @@ describe('OwnerInstanceSettingsLoader', () => {
 		expect(ownershipService.setupOwner).not.toHaveBeenCalled();
 	});
 
-	it('should skip when ownerEmail is empty', async () => {
-		const loader = createLoader({ ownerOverride: true, ownerEmail: '' });
+	it('should throw when ownerEmail is provided without ownerPasswordHash', async () => {
+		const loader = createLoader({ ownerEmail: 'admin@example.com' });
 
-		const result = await loader.run();
-
-		expect(result).toBe('skipped');
-		expect(logger.warn).toHaveBeenCalledWith(
-			expect.stringContaining('INSTANCE_OWNER_EMAIL is required'),
-		);
+		await expect(loader.run()).rejects.toThrow('INSTANCE_OWNER_PASSWORD_HASH is required');
 	});
 
-	it('should skip when ownerPasswordHash is empty', async () => {
+	it('should throw when ownerPasswordHash is provided without ownerEmail', async () => {
+		const loader = createLoader({ ownerPasswordHash: validBcryptHash });
+
+		await expect(loader.run()).rejects.toThrow('INSTANCE_OWNER_EMAIL is required');
+	});
+
+	it('should throw when ownerOverride is true but ownerEmail is empty', async () => {
+		const loader = createLoader({ ownerOverride: true, ownerEmail: '' });
+
+		await expect(loader.run()).rejects.toThrow('INSTANCE_OWNER_EMAIL is required');
+	});
+
+	it('should throw when ownerOverride is true but ownerPasswordHash is empty', async () => {
 		const loader = createLoader({
 			ownerOverride: true,
 			ownerEmail: 'admin@example.com',
 			ownerPasswordHash: '',
 		});
 
-		const result = await loader.run();
-
-		expect(result).toBe('skipped');
-		expect(logger.warn).toHaveBeenCalledWith(
-			expect.stringContaining('INSTANCE_OWNER_PASSWORD_HASH is required'),
-		);
+		await expect(loader.run()).rejects.toThrow('INSTANCE_OWNER_PASSWORD_HASH is required');
 	});
 
-	it('should skip when ownerPasswordHash is not a valid bcrypt hash', async () => {
+	it('should throw when ownerPasswordHash is not a valid bcrypt hash', async () => {
 		const loader = createLoader({
-			ownerOverride: true,
 			ownerEmail: 'admin@example.com',
 			ownerPasswordHash: 'not-a-bcrypt-hash',
 		});
 
-		const result = await loader.run();
-
-		expect(result).toBe('skipped');
-		expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('not a valid bcrypt hash'));
+		await expect(loader.run()).rejects.toThrow('not a valid bcrypt hash');
 	});
 
-	it('should delegate to ownershipService.setupOwner with override and preHashed options', async () => {
+	it('should setup owner without overwrite when override is false', async () => {
 		const loader = createLoader({
-			ownerOverride: true,
 			ownerEmail: 'admin@example.com',
 			ownerFirstName: 'Jane',
 			ownerLastName: 'Doe',
@@ -97,11 +94,11 @@ describe('OwnerInstanceSettingsLoader', () => {
 				lastName: 'Doe',
 				password: validBcryptHash,
 			},
-			{ overwriteExisting: true, passwordIsHashed: true },
+			{ overwriteExisting: false, passwordIsHashed: true },
 		);
 	});
 
-	it('should delegate on every startup when override is true', async () => {
+	it('should setup owner with overwrite when override is true', async () => {
 		const loader = createLoader({
 			ownerOverride: true,
 			ownerEmail: 'new@example.com',
