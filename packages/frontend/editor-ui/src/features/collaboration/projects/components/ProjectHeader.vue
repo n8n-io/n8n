@@ -25,7 +25,6 @@ import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyTo
 import {
 	N8nButton,
 	N8nHeading,
-	N8nIcon,
 	N8nIconButton,
 	N8nText,
 	N8nTooltip,
