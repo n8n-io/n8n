@@ -88,7 +88,7 @@ export async function postConfirmation(
 		testTriggerNode?: string;
 	},
 	answers?: InstanceAiConfirmResponse['answers'],
-	resourceDecisionToken?: string,
+	resourceDecision?: string,
 ): Promise<void> {
 	const payload: InstanceAiConfirmResponse = {
 		approved,
@@ -112,7 +112,7 @@ export async function postConfirmation(
 			? { testTriggerNode: setupWorkflowData.testTriggerNode }
 			: {}),
 		...(answers ? { answers } : {}),
-		...(resourceDecisionToken ? { resourceDecisionToken } : {}),
+		...(resourceDecision ? { resourceDecision } : {}),
 	};
 	await makeRestApiRequest(context, 'POST', `/instance-ai/confirm/${requestId}`, payload);
 }

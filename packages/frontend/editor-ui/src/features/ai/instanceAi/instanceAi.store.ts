@@ -781,7 +781,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			testTriggerNode?: string;
 		},
 		answers?: InstanceAiConfirmResponse['answers'],
-		resourceDecisionToken?: string,
+		resourceDecision?: string,
 	): Promise<boolean> {
 		try {
 			await postConfirmation(
@@ -795,7 +795,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				domainAccessAction,
 				setupWorkflowData,
 				answers,
-				resourceDecisionToken,
+				resourceDecision,
 			);
 			return true;
 		} catch {
@@ -804,7 +804,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
-	async function confirmResourceDecision(requestId: string, token: string): Promise<void> {
+	async function confirmResourceDecision(requestId: string, decision: string): Promise<void> {
 		resolveConfirmation(requestId, 'approved');
 		await confirmAction(
 			requestId,
@@ -816,7 +816,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			undefined,
 			undefined,
 			undefined,
-			token,
+			decision,
 		);
 	}
 

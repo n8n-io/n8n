@@ -1,5 +1,4 @@
 import { EventSource } from 'eventsource';
-import { createHash } from 'node:crypto';
 import * as os from 'node:os';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
@@ -85,15 +84,6 @@ export class GatewayClient {
 
 	private browserModule: BrowserModule | null = null;
 
-	/** Secure one-time tokens for pending instance-mode confirmations.
-	 *  resourcesKey → { token: decision }
-	 *
-	 *  Keyed by a stable hash of the affected resources so that a token issued
-	 *  for resource A cannot be replayed against a call that affects resource B.
-	 *  Cleared on stop/disconnect to prevent stale tokens.
-	 */
-	private readonly pendingDecisionTokens = new Map<string, Record<string, string>>();
-
 	/** Get all registered tool definitions (populated after start). */
 	get tools(): ToolDefinition[] {
 		return this.allDefinitions ?? [];
@@ -119,7 +109,6 @@ export class GatewayClient {
 	/** Stop the client and close the SSE connection. */
 	async stop(): Promise<void> {
 		this.shouldReconnect = false;
-		this.pendingDecisionTokens.clear();
 		if (this.eventSource) {
 			this.eventSource.close();
 			this.eventSource = null;
@@ -156,7 +145,6 @@ export class GatewayClient {
 				error: error instanceof Error ? error.message : String(error),
 			});
 		}
-		this.pendingDecisionTokens.clear();
 		if (this.eventSource) {
 			this.eventSource.close();
 			this.eventSource = null;
@@ -411,48 +399,26 @@ export class GatewayClient {
 		const def = this.definitionMap.get(name);
 		if (!def) throw new Error(`Unknown tool: ${name}`);
 
-		// Strip the hidden confirmation token before schema validation so the AI
-		// agent can never include a forged token that influences permission decisions.
+		// Strip _confirmation from args before schema validation — the agent must
+		// never be able to inject a decision directly into tool arguments.
 		const { _confirmation, ...cleanArgs } = args;
-		const confirmationToken = typeof _confirmation === 'string' ? _confirmation : undefined;
+		const decision =
+			typeof _confirmation === 'string' ? (_confirmation as ResourceDecision) : undefined;
 
 		const typedArgs: unknown = def.inputSchema.parse(cleanArgs);
 		const context = { dir: this.dir };
 
 		const resources = await def.getAffectedResources(typedArgs, context);
-		await this.checkPermissions(resources, confirmationToken);
+		await this.checkPermissions(resources, decision);
 
 		return await def.execute(typedArgs, context);
 	}
 
-	/** Stable key derived from the affected resources for token scoping. */
-	private buildResourcesKey(resources: AffectedResource[]): string {
-		return resources
-			.map((r) => createHash('sha256').update(`${r.toolGroup}:${r.resource}`).digest('hex'))
-			.sort()
-			.join('|');
-	}
-
 	private async checkPermissions(
 		resources: AffectedResource[],
-		confirmationToken?: string,
+		decision?: ResourceDecision,
 	): Promise<void> {
 		const { settingsStore, confirmResourceAccess, config } = this.options;
-		const resourcesKey = this.buildResourcesKey(resources);
-
-		// Resolve a provided token to its ResourceDecision, validated against the
-		// current resource set so a token issued for resource A cannot be replayed
-		// against a call that affects resource B.
-		let resolvedDecision: ResourceDecision | undefined;
-		if (confirmationToken) {
-			const entry = this.pendingDecisionTokens.get(resourcesKey);
-			const decision = entry?.[confirmationToken] as ResourceDecision | undefined;
-			if (!decision) {
-				throw new Error('Invalid confirmation token');
-			}
-			resolvedDecision = decision;
-			this.pendingDecisionTokens.delete(resourcesKey);
-		}
 
 		for (const resource of resources) {
 			const rule = settingsStore.check(resource.toolGroup, resource.resource);
@@ -465,31 +431,24 @@ export class GatewayClient {
 
 			if (rule === 'allow') continue;
 
-			let decision: ResourceDecision;
+			let resolvedDecision: ResourceDecision;
 
-			if (resolvedDecision) {
-				decision = resolvedDecision;
+			if (decision) {
+				resolvedDecision = decision;
 			} else if (config.permissionConfirmation === 'instance') {
-				// Generate one-time tokens for each decision option and throw so the
-				// backend can display the confirmation dialog in the n8n chat UI.
-				const options: Record<string, string> = {};
-				for (const d of RESOURCE_DECISION_KEYS) {
-					options[crypto.randomUUID()] = d;
-				}
-				this.pendingDecisionTokens.set(resourcesKey, options);
 				throw new Error(
 					`${GATEWAY_CONFIRMATION_REQUIRED_PREFIX}${JSON.stringify({
 						toolGroup: resource.toolGroup,
 						resource: resource.resource,
 						description: resource.description,
-						options,
+						options: RESOURCE_DECISION_KEYS,
 					})}`,
 				);
 			} else {
-				decision = await confirmResourceAccess(resource);
+				resolvedDecision = await confirmResourceAccess(resource);
 			}
 
-			switch (decision) {
+			switch (resolvedDecision) {
 				case 'allowOnce':
 					break;
 				case 'allowForSession':

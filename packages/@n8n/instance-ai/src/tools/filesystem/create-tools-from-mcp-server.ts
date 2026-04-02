@@ -29,7 +29,7 @@ const gatewayConfirmationSuspendSchema = z.object({
 
 const gatewayConfirmationResumeSchema = z.object({
 	approved: z.boolean(),
-	resourceDecisionToken: z.string().optional(),
+	resourceDecision: z.string().optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -124,17 +124,17 @@ export function createToolsFromLocalMcpServer(server: LocalMcpServer): ToolsInpu
 
 				// Resume path: user has made a resource-access decision
 				if (resumeData !== undefined && resumeData !== null) {
-					if (!resumeData.resourceDecisionToken) {
-						// User denied — no token provided
+					if (!resumeData.resourceDecision) {
+						// User denied — no decision provided
 						return {
 							content: [{ type: 'text', text: JSON.stringify({ error: 'Access denied by user' }) }],
 							isError: true,
 						};
 					}
-					// Re-call the daemon with the confirmation token
+					// Re-call the daemon with the user's decision
 					return await server.callTool({
 						name: toolName,
-						arguments: { ...args, _confirmation: resumeData.resourceDecisionToken },
+						arguments: { ...args, _confirmation: resumeData.resourceDecision },
 					});
 				}
 

@@ -10,14 +10,14 @@ const props = defineProps<{
 	requestId: string;
 	resource: string;
 	description: string;
-	options: Record<string, string>; // token → decisionKey
+	options: string[];
 }>();
 
 const i18n = useI18n();
 const store = useInstanceAiStore();
 
 interface OptionEntry {
-	token: string;
+	decision: string;
 	label: string;
 }
 
@@ -35,39 +35,40 @@ function getDecisionLabel(decision: string): string {
 	return DECISION_LABELS[decision] ?? decision;
 }
 
-function findByDecision(decision: string): OptionEntry | undefined {
-	const entry = Object.entries(props.options).find(([, d]) => d === decision);
-	return entry ? { token: entry[0], label: getDecisionLabel(decision) } : undefined;
+function optionEntry(decision: string): OptionEntry {
+	return { decision, label: getDecisionLabel(decision) };
 }
 
-const denyPrimary = computed(() => findByDecision('denyOnce'));
+const denyPrimary = computed(() =>
+	props.options.includes('denyOnce') ? optionEntry('denyOnce') : undefined,
+);
 
 const denyDropdownItems = computed(() => {
 	const items: Array<ActionDropdownItem<string>> = [];
-	const alwaysDeny = findByDecision('alwaysDeny');
-	if (alwaysDeny) items.push({ id: alwaysDeny.token, label: alwaysDeny.label });
+	if (props.options.includes('alwaysDeny'))
+		items.push({ id: 'alwaysDeny', label: getDecisionLabel('alwaysDeny') });
 	return items;
 });
 
-const approvePrimary = computed(() => findByDecision('allowForSession'));
+const approvePrimary = computed(() =>
+	props.options.includes('allowForSession') ? optionEntry('allowForSession') : undefined,
+);
 
 const approveDropdownItems = computed(() => {
 	const items: Array<ActionDropdownItem<string>> = [];
-	const allowOnce = findByDecision('allowOnce');
-	const alwaysAllow = findByDecision('alwaysAllow');
-	if (allowOnce) items.push({ id: allowOnce.token, label: allowOnce.label });
-	if (alwaysAllow) items.push({ id: alwaysAllow.token, label: alwaysAllow.label });
+	if (props.options.includes('allowOnce'))
+		items.push({ id: 'allowOnce', label: getDecisionLabel('allowOnce') });
+	if (props.options.includes('alwaysAllow'))
+		items.push({ id: 'alwaysAllow', label: getDecisionLabel('alwaysAllow') });
 	return items;
 });
 
 const otherOptions = computed<OptionEntry[]>(() =>
-	Object.entries(props.options)
-		.filter(([, d]) => !KNOWN_DECISIONS.has(d))
-		.map(([token, decision]) => ({ token, label: getDecisionLabel(decision) })),
+	props.options.filter((d) => !KNOWN_DECISIONS.has(d)).map(optionEntry),
 );
 
-async function confirm(token: string) {
-	await store.confirmResourceDecision(props.requestId, token);
+async function confirm(decision: string) {
+	await store.confirmResourceDecision(props.requestId, decision);
 }
 </script>
 
@@ -88,11 +89,11 @@ async function confirm(token: string) {
 			<!-- Unknown options not in the standard set -->
 			<N8nButton
 				v-for="opt in otherOptions"
-				:key="opt.token"
+				:key="opt.decision"
 				variant="outline"
 				size="small"
 				:label="opt.label"
-				@click="confirm(opt.token)"
+				@click="confirm(opt.decision)"
 			/>
 
 			<!-- Deny side -->
@@ -104,7 +105,7 @@ async function confirm(token: string) {
 						:label="denyPrimary.label"
 						:class="$style.splitButtonMain"
 						data-test-id="gateway-decision-deny"
-						@click="confirm(denyPrimary.token)"
+						@click="confirm(denyPrimary.decision)"
 					/>
 					<N8nActionDropdown
 						:items="denyDropdownItems"
@@ -129,7 +130,7 @@ async function confirm(token: string) {
 					size="small"
 					:label="denyPrimary.label"
 					data-test-id="gateway-decision-deny"
-					@click="confirm(denyPrimary.token)"
+					@click="confirm(denyPrimary.decision)"
 				/>
 			</template>
 
@@ -142,7 +143,7 @@ async function confirm(token: string) {
 						:label="approvePrimary.label"
 						:class="$style.splitButtonMain"
 						data-test-id="gateway-decision-approve"
-						@click="confirm(approvePrimary.token)"
+						@click="confirm(approvePrimary.decision)"
 					/>
 					<N8nActionDropdown
 						:items="approveDropdownItems"
@@ -167,7 +168,7 @@ async function confirm(token: string) {
 					size="small"
 					:label="approvePrimary.label"
 					data-test-id="gateway-decision-approve"
-					@click="confirm(approvePrimary.token)"
+					@click="confirm(approvePrimary.decision)"
 				/>
 			</template>
 		</div>

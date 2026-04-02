@@ -622,7 +622,7 @@ describe('useInstanceAiStore - gateway resource-decision confirmation', () => {
 		vi.clearAllMocks();
 	});
 
-	it('confirmAction passes resourceDecisionToken to postConfirmation', async () => {
+	it('confirmAction passes resourceDecision to postConfirmation', async () => {
 		await store.confirmAction(
 			'req-1',
 			true,
@@ -633,7 +633,7 @@ describe('useInstanceAiStore - gateway resource-decision confirmation', () => {
 			undefined,
 			undefined,
 			undefined,
-			'tok-allow-once',
+			'allowOnce',
 		);
 
 		expect(mockPostConfirmation).toHaveBeenCalledOnce();
@@ -648,12 +648,12 @@ describe('useInstanceAiStore - gateway resource-decision confirmation', () => {
 			undefined,
 			undefined,
 			undefined,
-			'tok-allow-once',
+			'allowOnce',
 		);
 	});
 
-	it('confirmResourceDecision calls postConfirmation with approved=true and the token', async () => {
-		await store.confirmResourceDecision('req-2', 'tok-session');
+	it('confirmResourceDecision calls postConfirmation with approved=true and the decision', async () => {
+		await store.confirmResourceDecision('req-2', 'allowForSession');
 
 		expect(mockPostConfirmation).toHaveBeenCalledOnce();
 		expect(mockPostConfirmation).toHaveBeenCalledWith(
@@ -667,14 +667,14 @@ describe('useInstanceAiStore - gateway resource-decision confirmation', () => {
 			undefined,
 			undefined,
 			undefined,
-			'tok-session',
+			'allowForSession',
 		);
 	});
 
 	it('confirmResourceDecision does not call postConfirmation when confirmAction throws', async () => {
 		mockPostConfirmation.mockRejectedValueOnce(new Error('network error'));
 
-		await store.confirmResourceDecision('req-3', 'tok-x');
+		await store.confirmResourceDecision('req-3', 'denyOnce');
 
 		// postConfirmation was called once (inside confirmAction) but threw
 		expect(mockPostConfirmation).toHaveBeenCalledOnce();

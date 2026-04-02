@@ -37,8 +37,8 @@ export interface ConfirmationData {
 		customText?: string;
 		skipped?: boolean;
 	}>;
-	/** Opaque one-time token issued by the local gateway daemon for resource-access confirmations. */
-	resourceDecisionToken?: string;
+	/** User's resource-access decision (e.g. 'allowForSession'). */
+	resourceDecision?: string;
 }
 
 export interface PendingConfirmation {

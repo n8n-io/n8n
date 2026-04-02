@@ -267,8 +267,8 @@ export const gatewayConfirmationRequiredPayloadSchema = z.object({
 	toolGroup: z.string(),
 	resource: z.string(),
 	description: z.string(),
-	/** Map of opaque one-time token → ResourceDecision key. */
-	options: z.record(z.string()),
+	/** Available decision options. */
+	options: z.array(z.string()),
 });
 
 export type GatewayConfirmationRequiredPayload = z.infer<
@@ -580,7 +580,7 @@ export interface InstanceAiConfirmResponse {
 	autoSetup?: { credentialType: string };
 	userInput?: string;
 	domainAccessAction?: DomainAccessAction;
-	resourceDecisionToken?: string;
+	resourceDecision?: string;
 	action?: 'apply' | 'test-trigger';
 	nodeParameters?: Record<string, Record<string, unknown>>;
 	testTriggerNode?: string;

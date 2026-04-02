@@ -18,7 +18,7 @@ const CONFIRMATION_PAYLOAD = {
 	toolGroup: 'filesystemWrite',
 	resource: 'write_file',
 	description: 'Write to file: test.ts',
-	options: { 'token-allow-once': 'allowOnce', 'token-deny-once': 'denyOnce' },
+	options: ['allowOnce', 'allowForSession', 'alwaysAllow', 'denyOnce', 'alwaysDeny'],
 };
 
 const PLAIN_CONFIRMATION_ERROR: McpToolCallResult = {
@@ -199,20 +199,20 @@ describe('createToolsFromLocalMcpServer', () => {
 	});
 
 	describe('execute — resume path', () => {
-		it('re-calls the daemon with _confirmation token when token is present', async () => {
+		it('re-calls the daemon with _confirmation decision when decision is present', async () => {
 			const server = makeMockServer();
 			server.callTool.mockResolvedValue(SUCCESS_RESULT);
 			const execute = getExecute(server);
 
 			const result = await execute(
 				{ filePath: 'test.ts' },
-				makeCtx({ resumeData: { approved: true, resourceDecisionToken: 'tok-allow' } }),
+				makeCtx({ resumeData: { approved: true, resourceDecision: 'allowForSession' } }),
 			);
 
 			expect(result).toEqual(SUCCESS_RESULT);
 			expect(server.callTool).toHaveBeenCalledWith({
 				name: 'write_file',
-				arguments: { filePath: 'test.ts', _confirmation: 'tok-allow' },
+				arguments: { filePath: 'test.ts', _confirmation: 'allowForSession' },
 			});
 		});
 

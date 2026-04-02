@@ -832,7 +832,7 @@ export interface OrchestrationContext {
 		autoSetup?: { credentialType: string };
 		userInput?: string;
 		domainAccessAction?: string;
-		resourceDecisionToken?: string;
+		resourceDecision?: string;
 		answers?: Array<{
 			questionId: string;
 			selectedOptions: string[];
