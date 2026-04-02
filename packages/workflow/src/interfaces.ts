@@ -1623,6 +1623,7 @@ export interface INodePropertyTypeOptions {
 		layout?: 'inline'; // Render sub-parameters side-by-side in a row
 	};
 	password?: boolean; // Supported by: string
+	redactJsonLeaves?: boolean; // Supported by: json (credential fields only) — redacts leaf values instead of the whole field
 	rows?: number; // Supported by: string
 	showAlpha?: boolean; // Supported by: color
 	sortable?: boolean; // Supported when "multipleValues" set to true
@@ -2774,6 +2775,11 @@ export interface ITaskMetadata {
 	 * Contains token for security validation.
 	 */
 	resumeUrl?: string;
+
+	/**
+	 * Key-value pairs that can be set for tracing - they will be attached to the OTEL node span
+	 * */
+	tracing?: Record<string, string | number | boolean>;
 }
 
 /** The data that gets returned when a node execution starts */

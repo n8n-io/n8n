@@ -1,5 +1,5 @@
 {
-	"extends": ["@n8n/typescript-config/tsconfig.common.json"],
+	"extends": ["@n8n/typescript-config/tsconfig.backend.json"],
 	"compilerOptions": {
 		"rootDir": ".",
 		"baseUrl": "src",

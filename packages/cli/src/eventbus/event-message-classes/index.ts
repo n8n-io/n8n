@@ -106,6 +106,9 @@ export const eventNamesAudit = [
 	'n8n.audit.2fa-enforcement.disabled',
 	'n8n.audit.execution.data.revealed',
 	'n8n.audit.execution.data.reveal_failure',
+	'n8n.audit.token-exchange.succeeded',
+	'n8n.audit.token-exchange.failed',
+	'n8n.audit.token-exchange.embed-login',
 ] as const;
 
 export type EventNamesWorkflowType = (typeof eventNamesWorkflow)[number];

@@ -50,7 +50,7 @@ describe('get-execution MCP tool', () => {
 
 	describe('handler tests', () => {
 		describe('execution retrieval', () => {
-			test('throws error when execution does not exist', async () => {
+			test('returns generic error when execution is not found for workflow', async () => {
 				const tool = createGetExecutionTool(
 					user,
 					executionRepository,
@@ -60,7 +60,6 @@ describe('get-execution MCP tool', () => {
 
 				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
 				(executionRepository.findIfAccessible as jest.Mock).mockResolvedValue(null);
-				(executionRepository.existsBy as jest.Mock).mockResolvedValue(false);
 
 				const result = await tool.handler(
 					{
@@ -76,38 +75,10 @@ describe('get-execution MCP tool', () => {
 				expect(executionRepository.findIfAccessible).toHaveBeenCalledWith('missing-execution', [
 					'workflow-1',
 				]);
+				// Must not leak whether the execution exists in another workflow
 				expect(result.structuredContent).toMatchObject({
 					execution: null,
-					error: "Execution with ID 'missing-execution' does not exist",
-				});
-			});
-
-			test('throws error when execution does not belong to workflow', async () => {
-				const tool = createGetExecutionTool(
-					user,
-					executionRepository,
-					workflowFinderService,
-					telemetry,
-				);
-
-				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(mockWorkflow);
-				(executionRepository.findIfAccessible as jest.Mock).mockResolvedValue(null);
-				(executionRepository.existsBy as jest.Mock).mockResolvedValue(true);
-
-				const result = await tool.handler(
-					{
-						workflowId: 'workflow-1',
-						executionId: 'execution-1',
-						includeData: undefined,
-						nodeNames: undefined,
-						truncateData: undefined,
-					},
-					{} as never,
-				);
-
-				expect(result.structuredContent).toMatchObject({
-					execution: null,
-					error: "Execution 'execution-1' does not belong to workflow 'workflow-1'",
+					error: "Execution 'missing-execution' not found for workflow 'workflow-1'",
 				});
 			});
 

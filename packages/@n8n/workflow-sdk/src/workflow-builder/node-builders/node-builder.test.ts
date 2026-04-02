@@ -372,15 +372,28 @@ describe('Node Builder', () => {
 			const c = newCredential('My Slack Bot');
 			expect(c.__newCredential).toBe(true);
 			expect(c.name).toBe('My Slack Bot');
+			expect(c.id).toBeUndefined();
 		});
 
-		it('should serialize to undefined (not yet implemented)', () => {
+		it('should create a credential marker with name and id', () => {
+			const c = newCredential('My Slack Bot', 'cred-abc');
+			expect(c.__newCredential).toBe(true);
+			expect(c.name).toBe('My Slack Bot');
+			expect(c.id).toBe('cred-abc');
+		});
+
+		it('should serialize to undefined when no id (placeholder)', () => {
 			const c = newCredential('My API Auth');
 			// toJSON returns undefined, which JSON.stringify omits
 			expect(JSON.stringify({ cred: c })).toBe('{}');
 		});
 
-		it('should work in node credentials config', () => {
+		it('should serialize to { id, name } when id is provided', () => {
+			const c = newCredential('Slack Bot', 'cred-123');
+			expect(JSON.stringify({ cred: c })).toBe('{"cred":{"id":"cred-123","name":"Slack Bot"}}');
+		});
+
+		it('should work in node credentials config (placeholder, no id)', () => {
 			const n = node({
 				type: 'n8n-nodes-base.slack',
 				version: 2.2,
@@ -391,8 +404,25 @@ describe('Node Builder', () => {
 			});
 			expect(n.config.credentials).toBeDefined();
 			const credJson = deepCopy(n.config.credentials);
-			// newCredential serializes to undefined, which is omitted from JSON
+			// newCredential without id serializes to undefined, which is omitted from JSON
 			expect(credJson).toEqual({});
+		});
+
+		it('should work in node credentials config (with id)', () => {
+			const n = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.2,
+				config: {
+					parameters: { channel: '#general' },
+					credentials: { slackApi: newCredential('Slack Bot', 'cred-456') },
+				},
+			});
+			expect(n.config.credentials).toBeDefined();
+			const credJson = deepCopy(n.config.credentials);
+			// newCredential with id serializes to { id, name }
+			expect(credJson).toEqual({
+				slackApi: { id: 'cred-456', name: 'Slack Bot' },
+			});
 		});
 
 		it('should work alongside regular credential references', () => {
@@ -408,7 +438,7 @@ describe('Node Builder', () => {
 				},
 			});
 			const credJson = deepCopy(n.config.credentials);
-			// Regular credentials preserved, newCredential omitted (serializes to undefined)
+			// Regular credentials preserved, newCredential without id omitted
 			expect(credJson).toEqual({
 				httpBasicAuth: { id: 'existing-123', name: 'Existing Auth' },
 			});

@@ -16,7 +16,6 @@ import {
 	type WorkflowState,
 } from '@/app/composables/useWorkflowState';
 import { useUIStore } from '@/app/stores/ui.store';
-import { nodeViewEventBus } from '@/app/event-bus';
 import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
 import { generateCodeForAiTransform } from '@/features/ndv/parameters/utils/buttonParameter.utils';
 import type { INodeUi } from '@/Interface';
@@ -37,6 +36,7 @@ const {
 	mockPinnedData,
 	mockMessage,
 	mockWorkflowDocumentStore,
+	mockNodeHelpers,
 } = vi.hoisted(() => ({
 	mockWorkflowsStore: {
 		isWorkflowRunning: false,
@@ -47,6 +47,9 @@ const {
 		checkIfNodeHasChatParent: vi.fn(),
 		getNodeByName: vi.fn(),
 		removeTestWebhook: vi.fn(),
+		workflowObject: {
+			getStartNode: vi.fn(),
+		},
 	},
 	mockNodeTypesStore: {
 		getNodeType: vi.fn(),
@@ -71,6 +74,11 @@ const {
 	},
 	mockWorkflowDocumentStore: {
 		updateNodeProperties: vi.fn(),
+		getNodeByName: vi.fn(),
+		pinData: {} as Record<string, unknown>,
+	},
+	mockNodeHelpers: {
+		getNodeInputData: vi.fn().mockReturnValue([]),
 	},
 }));
 
@@ -108,6 +116,10 @@ vi.mock('@/app/stores/ui.store', () => ({
 
 vi.mock('@/app/composables/useRunWorkflow', () => ({
 	useRunWorkflow: vi.fn().mockReturnValue(mockRunWorkflow),
+}));
+
+vi.mock('@/app/composables/useNodeHelpers', () => ({
+	useNodeHelpers: vi.fn().mockReturnValue(mockNodeHelpers),
 }));
 
 vi.mock('@/app/composables/usePinnedData', () => ({
@@ -161,10 +173,6 @@ vi.mock('@/features/ndv/parameters/utils/buttonParameter.utils', () => ({
 	generateCodeForAiTransform: vi.fn(),
 }));
 
-vi.mock('@/app/event-bus', () => ({
-	nodeViewEventBus: { emit: vi.fn() },
-}));
-
 function createTestNode(overrides: Partial<INodeUi> = {}): INodeUi {
 	return {
 		id: 'test-id',
@@ -198,6 +206,11 @@ describe('useNodeExecution', () => {
 		mockWorkflowsStore.checkIfNodeHasChatParent.mockReturnValue(false);
 		mockWorkflowsStore.removeTestWebhook.mockReset();
 		mockWorkflowsStore.getNodeByName.mockReset();
+		mockWorkflowsStore.workflowObject.getStartNode.mockReset();
+
+		mockNodeHelpers.getNodeInputData.mockReset().mockReturnValue([]);
+		mockWorkflowDocumentStore.getNodeByName.mockReset();
+		mockWorkflowDocumentStore.pinData = {};
 
 		mockNodeTypesStore.getNodeType.mockReturnValue(null);
 		mockNodeTypesStore.isTriggerNode.mockReturnValue(false);
@@ -660,13 +673,18 @@ describe('useNodeExecution', () => {
 
 			expect(result).toBe('opened-chat');
 			expect(mockNdvStore.unsetActiveNodeName).toHaveBeenCalled();
-			expect(nodeViewEventBus.emit).toHaveBeenCalledWith('openChat');
-			expect(mockWorkflowsStore.chatPartialExecutionDestinationNode).toBe('Chat Node');
+			expect(mockRunWorkflow.runWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ destinationNode: { nodeName: 'Chat Node', mode: 'inclusive' } }),
+			);
 		});
 
-		it('should open chat for chat child nodes when input panel is empty', async () => {
+		it('should open chat for chat child nodes when chat trigger has no data', async () => {
 			mockWorkflowsStore.checkIfNodeHasChatParent.mockReturnValue(true);
-			mockNdvStore.isInputPanelEmpty = true;
+			mockWorkflowsStore.workflowObject.getStartNode.mockReturnValue({
+				name: 'Chat Trigger',
+				type: CHAT_TRIGGER_NODE_TYPE,
+			});
+			mockNodeHelpers.getNodeInputData.mockReturnValue([]);
 			const node = ref(createTestNode({ name: 'Child Node' }));
 
 			const { execute } = useNodeExecution(node);
