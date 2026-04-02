@@ -10,19 +10,7 @@
 // ---------------------------------------------------------------------------
 const proxyPaths = new WeakMap<object, string[]>();
 
-/**
- * Serialized error sentinel returned by host-side bridge callbacks.
- * When a callback throws, the bridge catches the error and returns this
- * sentinel instead of letting it cross the isolate boundary (which strips
- * custom class identity and properties).
- */
-export interface ErrorSentinel {
-	__isError: true;
-	name: string;
-	message: string;
-	stack?: string;
-	extra?: Record<string, unknown>;
-}
+import type { ErrorSentinel } from '../shared/serialize';
 
 interface ObjectMetadata {
 	__isObject: true;
@@ -230,6 +218,7 @@ export function createDeepLazyProxy(basePath: string[] = [], knownKeys?: string[
 					},
 				});
 
+				proxyPaths.set(arrayProxy, path);
 				target[prop] = arrayProxy;
 				return target[prop];
 			}

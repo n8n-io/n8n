@@ -284,6 +284,35 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		});
 	});
 
+	it('should not allow __proto__ key to pollute the returned object prototype', () => {
+		const result = evaluator.evaluate(
+			'{{ JSON.parse(\'{"__proto__": {"isAdmin": true}, "name": "test"}\') }}',
+			{ $json: {} },
+			caller,
+		) as Record<string, unknown>;
+
+		expect(result.name).toBe('test');
+		// __proto__ should be a plain data property, not a prototype setter
+		expect(Object.prototype.hasOwnProperty.call(result, '__proto__')).toBe(true);
+		expect(result.isAdmin).toBeUndefined();
+	});
+
+	it('should not leak host-side functions via forged proxy sentinel', () => {
+		const data = {
+			$json: {},
+			$items: () => 'should not be reachable',
+		};
+
+		// A forged sentinel that tries to resolve $items (a function) on the host
+		const result = evaluator.evaluate(
+			'{{ JSON.parse(\'{"__isProxyResult": true, "__path": ["$items"]}\') }}',
+			data,
+			caller,
+		);
+
+		expect(typeof result).not.toBe('function');
+	});
+
 	it('should throw on invalid timezone', async () => {
 		const data = { $json: { x: 1 } };
 
@@ -337,6 +366,62 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		);
 
 		expect(result).toBe(systemOffset);
+	});
+
+	it('should return an entire object (not just a leaf primitive)', () => {
+		const data = {
+			$json: {
+				user: {
+					name: 'Alice',
+					age: 30,
+					address: { city: 'Berlin', zip: '10115' },
+				},
+			},
+		};
+
+		const result = evaluator.evaluate('{{ $json.user }}', data, caller);
+
+		expect(result).toEqual({
+			name: 'Alice',
+			age: 30,
+			address: { city: 'Berlin', zip: '10115' },
+		});
+	});
+
+	it('should return the root $json object', () => {
+		const data = {
+			$json: {
+				name: 'Alice',
+				active: true,
+				tags: ['admin', 'user'],
+			},
+		};
+
+		const result = evaluator.evaluate('{{ $json }}', data, caller);
+
+		expect(result).toEqual({
+			name: 'Alice',
+			active: true,
+			tags: ['admin', 'user'],
+		});
+	});
+
+	it('should return an array of objects', () => {
+		const data = {
+			$json: {
+				items: [
+					{ id: 1, name: 'one' },
+					{ id: 2, name: 'two' },
+				],
+			},
+		};
+
+		const result = evaluator.evaluate('{{ $json.items }}', data, caller);
+
+		expect(result).toEqual([
+			{ id: 1, name: 'one' },
+			{ id: 2, name: 'two' },
+		]);
 	});
 
 	it('should support Object.keys() on root proxy data', () => {

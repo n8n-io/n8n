@@ -3,7 +3,13 @@ import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
-import type { ErrorSentinel } from '../runtime/lazy-proxy';
+import type { ErrorSentinel, IsolateResult } from '../shared/serialize';
+import {
+	prepareForTransfer,
+	isProxyResultSentinel,
+	isDataResultSentinel,
+} from '../shared/serialize';
+import { resolvePathInData } from '../shared/resolve-path';
 
 // Lazy-loaded isolated-vm — avoids loading the native binary when the barrel
 // file is statically imported (e.g. for error classes). The native module is
@@ -350,25 +356,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		// Used by createDeepLazyProxy when accessing properties
 		const getValueAtPath = new (getIvm().Reference)((path: string[]) => {
 			try {
-				// Navigate to value
-				// Special-case: paths starting with ['$item', index] call data.$item(index)
-				// to get the sub-proxy for that item, then continue navigating the rest.
-				let value: unknown = data;
-				let startIndex = 0;
-				const itemFn = (data as Record<string, unknown>).$item;
-				if (path.length >= 2 && path[0] === '$item' && typeof itemFn === 'function') {
-					const itemIndex = parseInt(path[1], 10);
-					if (!isNaN(itemIndex)) {
-						value = (itemFn as (i: number) => unknown)(itemIndex);
-						startIndex = 2;
-					}
-				}
-				for (let i = startIndex; i < path.length; i++) {
-					value = (value as Record<string, unknown>)?.[path[i]];
-					if (value === undefined || value === null) {
-						return value;
-					}
-				}
+				const value = resolvePathInData(data, path);
 
 				// Handle functions - return metadata marker
 				if (typeof value === 'function') {
@@ -382,22 +370,15 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 				// Handle arrays - always lazy, only transfer length
 				if (Array.isArray(value)) {
-					return {
-						__isArray: true,
-						__length: value.length,
-						__data: null,
-					};
+					return { __isArray: true, __length: value.length, __data: null };
 				}
 
 				// Handle objects - return metadata with keys
 				if (value !== null && typeof value === 'object') {
-					return {
-						__isObject: true,
-						__keys: Object.keys(value),
-					};
+					return { __isObject: true, __keys: Object.keys(value) };
 				}
 
-				// Primitive value
+				// Primitive value (or null/undefined from resolvePathInData)
 				return value;
 			} catch (err) {
 				return serializeError(err);
@@ -408,24 +389,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		// Used by array proxy when accessing numeric indices
 		const getArrayElement = new (getIvm().Reference)((path: string[], index: number) => {
 			try {
-				// Navigate to array
-				// Special-case: paths starting with ['$item', index] call data.$item(index)
-				let arr: unknown = data;
-				let startIndex = 0;
-				const itemFn = (data as Record<string, unknown>).$item;
-				if (path.length >= 2 && path[0] === '$item' && typeof itemFn === 'function') {
-					const itemIndex = parseInt(path[1], 10);
-					if (!isNaN(itemIndex)) {
-						arr = (itemFn as (i: number) => unknown)(itemIndex);
-						startIndex = 2;
-					}
-				}
-				for (let i = startIndex; i < path.length; i++) {
-					arr = (arr as Record<string, unknown>)?.[path[i]];
-					if (arr === undefined || arr === null) {
-						return undefined;
-					}
-				}
+				const arr = resolvePathInData(data, path);
 
 				if (!Array.isArray(arr)) {
 					return undefined;
@@ -436,16 +400,9 @@ export class IsolatedVmBridge implements RuntimeBridge {
 				// If element is object/array, return metadata
 				if (element !== null && typeof element === 'object') {
 					if (Array.isArray(element)) {
-						return {
-							__isArray: true,
-							__length: element.length,
-							__data: null,
-						};
+						return { __isArray: true, __length: element.length, __data: null };
 					}
-					return {
-						__isObject: true,
-						__keys: Object.keys(element),
-					};
+					return { __isObject: true, __keys: Object.keys(element) };
 				}
 
 				// Primitive element
@@ -578,7 +535,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			}
 
 			// Step 5: Execute with timeout and copy result back
-			const result = script.runSync(this.context, {
+			const result: IsolateResult = script.runSync(this.context, {
 				timeout: this.config.timeout,
 				copy: true,
 			});
@@ -592,7 +549,22 @@ export class IsolatedVmBridge implements RuntimeBridge {
 				console.log('[IsolatedVmBridge] Expression executed successfully');
 			}
 
-			return result;
+			// Step 7: Unwrap the transfer sentinel.
+			// __prepareForTransfer always wraps results so that user code
+			// cannot forge a ProxyResultSentinel.
+			if (isProxyResultSentinel(result)) {
+				const resolved = resolvePathInData(data, result.__path);
+				return prepareForTransfer(resolved);
+			}
+
+			if (isDataResultSentinel(result)) {
+				return result.__value;
+			}
+
+			// Every code path in the isolate's wrappedCode returns either an
+			// error sentinel, a ProxyResultSentinel, or a DataResultSentinel.
+			// If we reach here, something is wrong with the isolate runtime.
+			throw new Error('Unexpected result from isolate: not a recognized sentinel');
 		} catch (error) {
 			// Re-throw reconstructed errors as-is.
 			// Note: TypeError is intentionally NOT included here — the isolate's
