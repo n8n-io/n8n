@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { N8nIcon, N8nOption, N8nSelect } from '@n8n/design-system';
+import { N8nIcon, N8nOption, N8nSelect, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRolesStore } from '@/app/stores/roles.store';
 import type { RoleMappingRuleResponse } from '@n8n/rest-api-client/api/roleMappingRule';
@@ -48,6 +48,20 @@ const projectRoleOptions = computed(() =>
 const roleOptions = computed(() =>
 	props.type === 'project' ? projectRoleOptions.value : instanceRoleOptions.value,
 );
+
+const selectedProjectNames = computed(() => {
+	if (!props.rule.projectIds?.length) return '';
+	return props.projects
+		.filter((p) => props.rule.projectIds.includes(p.id))
+		.map((p) => p.name)
+		.join(', ');
+});
+
+const projectSelectLabel = computed(() => {
+	const count = props.rule.projectIds?.length ?? 0;
+	if (count === 0) return '';
+	return `${count} project${count !== 1 ? 's' : ''}`;
+});
 </script>
 <template>
 	<div :class="[$style.row, { [$style.disabled]: props.disabled }]" data-test-id="rule-row">
@@ -89,26 +103,30 @@ const roleOptions = computed(() =>
 		</div>
 		<div v-if="props.type === 'project'" :class="$style.cellProject">
 			<span :class="$style.label">in</span>
-			<N8nSelect
-				:model-value="props.rule.projectIds"
-				size="small"
-				multiple
-				:disabled="props.disabled"
-				placeholder="Select proj..."
-				data-test-id="rule-project-select"
-				@update:model-value="
-					emit('update', props.rule.id, {
-						projectIds: ($event as string[]) ?? [],
-					})
-				"
-			>
-				<N8nOption
-					v-for="project in props.projects"
-					:key="project.id"
-					:label="project.name"
-					:value="project.id"
-				/>
-			</N8nSelect>
+			<N8nTooltip :content="selectedProjectNames" :disabled="!selectedProjectNames" placement="top">
+				<N8nSelect
+					:model-value="props.rule.projectIds"
+					size="small"
+					multiple
+					collapse-tags
+					:collapse-tags-tooltip="false"
+					:disabled="props.disabled"
+					placeholder="Select proj..."
+					data-test-id="rule-project-select"
+					@update:model-value="
+						emit('update', props.rule.id, {
+							projectIds: ($event as string[]) ?? [],
+						})
+					"
+				>
+					<N8nOption
+						v-for="project in props.projects"
+						:key="project.id"
+						:label="project.name"
+						:value="project.id"
+					/>
+				</N8nSelect>
+			</N8nTooltip>
 		</div>
 		<div :class="$style.cellAction">
 			<N8nIcon
