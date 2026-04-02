@@ -4,7 +4,14 @@ import { SupportedProtocols, useSSOStore } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 import { captureMessage } from '@sentry/vue';
 
-import { N8nButton, N8nInput, N8nOption, N8nRadioButtons, N8nSelect } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nIcon,
+	N8nInput,
+	N8nOption,
+	N8nRadioButtons,
+	N8nSelect,
+} from '@n8n/design-system';
 import { useClipboard } from '@/app/composables/useClipboard';
 import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
@@ -300,19 +307,19 @@ onMounted(async () => {
 					<small>{{ i18n.baseText('settings.sso.settings.redirectUrl.help') }}</small>
 				</div>
 				<div :class="$style.settingsItemControl">
-					<div :class="$style.copyInputGroup">
-						<N8nInput :model-value="redirectUrl" type="text" readonly size="small" />
-						<N8nButton
-							type="tertiary"
-							size="small"
-							icon="copy"
-							@click="
-								copyToClipboard(
-									redirectUrl,
-									i18n.baseText('settings.sso.settings.redirectUrl.copied'),
-								)
-							"
-						/>
+					<div
+						:class="$style.copyInputGroup"
+						@click="
+							copyToClipboard(
+								redirectUrl,
+								i18n.baseText('settings.sso.settings.redirectUrl.copied'),
+							)
+						"
+					>
+						<span :class="$style.copyInputValue">{{ redirectUrl }}</span>
+						<span :class="$style.copyInputIcon">
+							<N8nIcon icon="copy" size="small" />
+						</span>
 					</div>
 				</div>
 			</div>
@@ -322,16 +329,16 @@ onMounted(async () => {
 					<small>{{ i18n.baseText('settings.sso.settings.entityId.help') }}</small>
 				</div>
 				<div :class="$style.settingsItemControl">
-					<div :class="$style.copyInputGroup">
-						<N8nInput :model-value="entityId" type="text" readonly size="small" />
-						<N8nButton
-							type="tertiary"
-							size="small"
-							icon="copy"
-							@click="
-								copyToClipboard(entityId, i18n.baseText('settings.sso.settings.entityId.copied'))
-							"
-						/>
+					<div
+						:class="$style.copyInputGroup"
+						@click="
+							copyToClipboard(entityId, i18n.baseText('settings.sso.settings.entityId.copied'))
+						"
+					>
+						<span :class="$style.copyInputValue">{{ entityId }}</span>
+						<span :class="$style.copyInputIcon">
+							<N8nIcon icon="copy" size="small" />
+						</span>
 					</div>
 				</div>
 			</div>
