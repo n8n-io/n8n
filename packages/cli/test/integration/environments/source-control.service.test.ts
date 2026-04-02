@@ -446,6 +446,8 @@ describe('SourceControlService', () => {
 		// Skip actual git operations
 		service.sanityCheck = async () => {};
 		statusService['resetWorkfolder'] = async () => undefined;
+		statusService['gitService'] = gitService;
+		gitService.getHistoricallyTrackedFiles.mockResolvedValue(new Set<string>());
 
 		// Git mocking
 		gitFiles = {
