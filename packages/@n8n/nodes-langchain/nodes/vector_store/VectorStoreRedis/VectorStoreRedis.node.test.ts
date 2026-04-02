@@ -258,7 +258,7 @@ describe('VectorStoreRedis.node', () => {
 						'options.metadataKey': 'm',
 						'options.contentKey': 'c',
 						'options.vectorKey': 'v',
-						'options.customFilter': '',
+						'options.advancedFilter': '',
 						'options.metadataSchema': '',
 					};
 					return map[name] ?? '';
@@ -294,11 +294,11 @@ describe('VectorStoreRedis.node', () => {
 			// Call the overridden method and ensure behavior is as expected
 			const res = await client.similaritySearchVectorWithScore([1, 2], 3);
 			expect(res).toBe('ok');
-			// v1.4 with no customFilter should have undefined filter
+			// v1.4 with no advancedFilter should have undefined filter
 			expect(client.defaultFilter).toBeUndefined();
 		});
 
-		it('uses Custom filter when customFilter is provided', async () => {
+		it('uses Custom filter when advancedFilter is provided', async () => {
 			const mockClient = {
 				on: jest.fn(),
 				connect: jest.fn().mockResolvedValue(undefined),
@@ -323,7 +323,7 @@ describe('VectorStoreRedis.node', () => {
 						'options.contentKey': '',
 						'options.vectorKey': '',
 						'options.metadataFilter': 'ignored',
-						'options.customFilter': '@category:{electronics} @price:[0 100]',
+						'options.advancedFilter': '@category:{electronics} @price:[0 100]',
 						'options.metadataSchema': '',
 					};
 					return map[name] ?? '';
@@ -335,7 +335,7 @@ describe('VectorStoreRedis.node', () => {
 			const node = new RedisNode.VectorStoreRedis();
 			const client = await (node as any).getVectorStoreClient(context, undefined, {}, 0);
 
-			// Custom filter takes priority over simple filter
+			// Advanced filter takes priority over simple filter
 			expect(client.defaultFilter).toEqual({
 				type: 'custom',
 				query: '@category:{electronics} @price:[0 100]',
@@ -407,7 +407,7 @@ describe('VectorStoreRedis.node', () => {
 						'options.contentKey': '',
 						'options.vectorKey': ' \t',
 						'options.metadataFilter': '',
-						'options.customFilter': '',
+						'options.advancedFilter': '',
 						'options.metadataSchema': '',
 					};
 					return map[name] ?? '';
@@ -460,7 +460,7 @@ describe('VectorStoreRedis.node', () => {
 						'options.contentKey': '',
 						'options.vectorKey': '',
 						'options.metadataFilter': '  , , ,  ',
-						'options.customFilter': '',
+						'options.advancedFilter': '',
 						'options.metadataSchema': '',
 					};
 					return map[name] ?? '';
