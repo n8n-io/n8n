@@ -31,9 +31,12 @@ describe('TriggerPanel.vue', () => {
 		const node = createTestNode({ id: '0', name: 'Webhook', type: 'n8n-nodes-base.webhook' });
 		workflowsStore.workflow.nodes = [node];
 
-		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(
-			shallowRef(useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))),
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
 		);
+		workflowDocumentStore.addNode(node);
+
+		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(shallowRef(workflowDocumentStore));
 
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		const nodeTypeDescription = mockNodeTypeDescription({

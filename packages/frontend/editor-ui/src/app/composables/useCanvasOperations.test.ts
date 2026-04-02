@@ -5706,6 +5706,8 @@ describe('useCanvasOperations', () => {
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			);
+			// @ts-expect-error -- createTestingPinia makes computed writable
+			workflowDocumentStoreInstance.allNodes = [nodeA, nodeB, nodeC];
 
 			const { getNodesToShift } = useCanvasOperations();
 
@@ -5766,6 +5768,12 @@ describe('useCanvasOperations', () => {
 			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
+			);
+			const testNodes = [sourceNode, targetNode, stickyNote];
+			// @ts-expect-error -- createTestingPinia makes computed writable
+			workflowDocumentStoreInstance.allNodes = testNodes;
+			vi.mocked(workflowDocumentStoreInstance.getNodeByName).mockImplementation(
+				(name: string) => testNodes.find((n) => n.name === name) ?? null,
 			);
 
 			const { getNodesToShift } = useCanvasOperations();
@@ -5831,6 +5839,12 @@ describe('useCanvasOperations', () => {
 			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
+			);
+			const testNodes = [sourceNode, targetNode, stickyNote];
+			// @ts-expect-error -- createTestingPinia makes computed writable
+			workflowDocumentStoreInstance.allNodes = testNodes;
+			vi.mocked(workflowDocumentStoreInstance.getNodeByName).mockImplementation(
+				(name: string) => testNodes.find((n) => n.name === name) ?? null,
 			);
 
 			const { getNodesToShift } = useCanvasOperations();
@@ -5901,6 +5915,12 @@ describe('useCanvasOperations', () => {
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			);
+			const testNodes = [sourceNode, targetNode, stickyNote];
+			// @ts-expect-error -- createTestingPinia makes computed writable
+			workflowDocumentStoreInstance.allNodes = testNodes;
+			vi.mocked(workflowDocumentStoreInstance.getNodeByName).mockImplementation(
+				(name: string) => testNodes.find((n) => n.name === name) ?? null,
+			);
 
 			const { getNodesToShift } = useCanvasOperations();
 			const insertPosition: [number, number] = [250, 100];
@@ -5965,6 +5985,12 @@ describe('useCanvasOperations', () => {
 			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
+			);
+			const testNodes = [sourceNode, targetNode, stickyNote];
+			// @ts-expect-error -- createTestingPinia makes computed writable
+			workflowDocumentStoreInstance.allNodes = testNodes;
+			vi.mocked(workflowDocumentStoreInstance.getNodeByName).mockImplementation(
+				(name: string) => testNodes.find((n) => n.name === name) ?? null,
 			);
 
 			const { getNodesToShift } = useCanvasOperations();
@@ -6047,6 +6073,12 @@ describe('useCanvasOperations', () => {
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
 			);
+			const testNodes = [sourceNode, targetNode, stickyAnchor, stickyWithTarget, stickyMove];
+			// @ts-expect-error -- createTestingPinia makes computed writable
+			workflowDocumentStoreInstance.allNodes = testNodes;
+			vi.mocked(workflowDocumentStoreInstance.getNodeByName).mockImplementation(
+				(name: string) => testNodes.find((n) => n.name === name) ?? null,
+			);
 
 			const { getNodesToShift } = useCanvasOperations();
 			const insertPosition: [number, number] = [250, 100];
@@ -6117,6 +6149,12 @@ describe('useCanvasOperations', () => {
 			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
+			);
+			const testNodes = [sourceNode, targetNode, stickyNote];
+			// @ts-expect-error -- createTestingPinia makes computed writable
+			workflowDocumentStoreInstance.allNodes = testNodes;
+			vi.mocked(workflowDocumentStoreInstance.getNodeByName).mockImplementation(
+				(name: string) => testNodes.find((n) => n.name === name) ?? null,
 			);
 
 			const { getNodesToShift } = useCanvasOperations();
@@ -6201,6 +6239,12 @@ describe('useCanvasOperations', () => {
 			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
 				createWorkflowDocumentId(useWorkflowsStore().workflowId),
+			);
+			const testNodes = [sourceNode, targetNode1, targetNode2, stickyNote];
+			// @ts-expect-error -- createTestingPinia makes computed writable
+			workflowDocumentStoreInstance.allNodes = testNodes;
+			vi.mocked(workflowDocumentStoreInstance.getNodeByName).mockImplementation(
+				(name: string) => testNodes.find((n) => n.name === name) ?? null,
 			);
 
 			const { getNodesToShift } = useCanvasOperations();
