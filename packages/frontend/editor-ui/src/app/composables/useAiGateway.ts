@@ -15,6 +15,7 @@ export function useAiGateway() {
 
 	const creditsRemaining = computed(() => aiGatewayStore.creditsRemaining);
 	const creditsQuota = computed(() => aiGatewayStore.creditsQuota);
+	const fetchError = computed(() => aiGatewayStore.fetchError);
 
 	const isEnabled = computed(
 		() =>
@@ -43,6 +44,7 @@ export function useAiGateway() {
 		isEnabled,
 		creditsRemaining,
 		creditsQuota,
+		fetchError,
 		fetchConfig,
 		fetchCredits,
 		isNodeSupported,

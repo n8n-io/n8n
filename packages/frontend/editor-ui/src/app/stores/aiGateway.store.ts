@@ -18,12 +18,15 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 	const creditsQuota = ref<number | undefined>(undefined);
 	const usageEntries = ref<AiGatewayUsageEntry[]>([]);
 	const usageTotal = ref<number>(0);
+	const fetchError = ref<Error | null>(null);
 
 	async function fetchConfig(): Promise<void> {
 		if (config.value !== null) return;
 		try {
 			config.value = await getGatewayConfig(rootStore.restApiContext);
+			fetchError.value = null;
 		} catch (error) {
+			fetchError.value = error instanceof Error ? error : new Error(String(error));
 			console.error('[aiGatewayStore] Failed to fetch gateway config:', error);
 		}
 	}
@@ -33,7 +36,9 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 			const data = await getGatewayCredits(rootStore.restApiContext);
 			creditsRemaining.value = data.creditsRemaining;
 			creditsQuota.value = data.creditsQuota;
+			fetchError.value = null;
 		} catch (error) {
+			fetchError.value = error instanceof Error ? error : new Error(String(error));
 			console.error('[aiGatewayStore] Failed to fetch credits:', error);
 		}
 	}
@@ -43,7 +48,9 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 			const data = await getGatewayUsage(rootStore.restApiContext, offset, limit);
 			usageEntries.value = data.entries;
 			usageTotal.value = data.total;
+			fetchError.value = null;
 		} catch (error) {
+			fetchError.value = error instanceof Error ? error : new Error(String(error));
 			console.error('[aiGatewayStore] Failed to fetch usage:', error);
 		}
 	}
@@ -53,7 +60,9 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 			const data = await getGatewayUsage(rootStore.restApiContext, offset, limit);
 			usageEntries.value = [...usageEntries.value, ...data.entries];
 			usageTotal.value = data.total;
+			fetchError.value = null;
 		} catch (error) {
+			fetchError.value = error instanceof Error ? error : new Error(String(error));
 			console.error('[aiGatewayStore] Failed to fetch more usage:', error);
 		}
 	}
@@ -72,6 +81,7 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 		creditsQuota,
 		usageEntries,
 		usageTotal,
+		fetchError,
 		fetchConfig,
 		fetchCredits,
 		fetchUsage,

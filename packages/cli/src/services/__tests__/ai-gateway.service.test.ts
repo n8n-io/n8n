@@ -287,4 +287,182 @@ describe('AiGatewayService', () => {
 			await expect(service.getCreditsRemaining(USER_ID)).rejects.toThrow(UserError);
 		});
 	});
+
+	describe('getUsage()', () => {
+		const MOCK_USAGE_RESPONSE = {
+			entries: [
+				{ provider: 'google', model: 'gemini-pro', timestamp: 1700000000, creditsDeducted: 2 },
+			],
+			total: 1,
+		};
+
+		it('throws UserError when baseUrl is not configured', async () => {
+			const service = makeService({ baseUrl: null });
+			await expect(service.getUsage(USER_ID, 0, 10)).rejects.toThrow(UserError);
+		});
+
+		it('returns usage entries and total from gateway', async () => {
+			fetchMock
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
+				})
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue(MOCK_USAGE_RESPONSE),
+				});
+			const service = makeService();
+
+			const result = await service.getUsage(USER_ID, 0, 10);
+
+			expect(result).toEqual(MOCK_USAGE_RESPONSE);
+		});
+
+		it('sends offset and limit as query params with Bearer token', async () => {
+			fetchMock
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
+				})
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue(MOCK_USAGE_RESPONSE),
+				});
+			const service = makeService();
+
+			await service.getUsage(USER_ID, 5, 25);
+
+			const usageCall = fetchMock.mock.calls[1];
+			expect(usageCall[0]).toContain('offset=5');
+			expect(usageCall[0]).toContain('limit=25');
+			expect(usageCall[1]).toEqual({
+				method: 'GET',
+				headers: { Authorization: 'Bearer mock-jwt' },
+			});
+		});
+
+		it('throws UserError when gateway returns non-ok status', async () => {
+			fetchMock
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
+				})
+				.mockResolvedValueOnce({ ok: false, status: 500 });
+			const service = makeService();
+			await expect(service.getUsage(USER_ID, 0, 10)).rejects.toThrow(UserError);
+		});
+
+		it('throws UserError when response has invalid shape', async () => {
+			fetchMock
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
+				})
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue({ entries: 'not-an-array', total: 0 }),
+				});
+			const service = makeService();
+			await expect(service.getUsage(USER_ID, 0, 10)).rejects.toThrow(UserError);
+		});
+	});
+
+	describe('config cache TTL', () => {
+		it('re-fetches config after TTL expires', async () => {
+			fetchMock.mockResolvedValue({
+				ok: true,
+				json: jest.fn().mockResolvedValue(MOCK_GATEWAY_CONFIG),
+			});
+			const service = makeService();
+			const dateSpy = jest.spyOn(Date, 'now');
+
+			dateSpy.mockReturnValue(0);
+			await service.getGatewayConfig();
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+
+			// Still within TTL — no re-fetch
+			dateSpy.mockReturnValue(30 * 60 * 1000);
+			await service.getGatewayConfig();
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+
+			// Past TTL (1 hour + 1 ms)
+			dateSpy.mockReturnValue(60 * 60 * 1000 + 1);
+			await service.getGatewayConfig();
+			expect(fetchMock).toHaveBeenCalledTimes(2);
+
+			dateSpy.mockRestore();
+		});
+	});
+
+	describe('token cache size limit', () => {
+		it('evicts the oldest entry when cache is full', async () => {
+			const service = makeService();
+			// @ts-expect-error — accessing private for test setup
+			const cache = service.tokenCache as Map<
+				string,
+				{ token: string; expiresAt: number; refreshAt: number }
+			>;
+
+			// Fill cache to the 500-entry limit with synthetic entries
+			for (let i = 0; i < 500; i++) {
+				cache.set(`${INSTANCE_ID}:user-${i}`, {
+					token: `token-${i}`,
+					expiresAt: Date.now() + 1_000_000,
+					refreshAt: Date.now() + 900_000,
+				});
+			}
+			expect(cache.size).toBe(500);
+
+			// Fetch for a new user — cache is at max, user-0 should be evicted
+			fetchMock
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue({ token: 'new-token', expiresIn: 3600 }),
+				})
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue({ entries: [], total: 0 }),
+				});
+
+			await service.getUsage('new-user', 0, 1);
+
+			expect(cache.size).toBe(500);
+			expect(cache.has(`${INSTANCE_ID}:new-user`)).toBe(true);
+			expect(cache.has(`${INSTANCE_ID}:user-0`)).toBe(false);
+		});
+	});
+
+	describe('concurrent token requests', () => {
+		it('deduplicates in-flight token fetches for the same user', async () => {
+			const service = makeService();
+
+			// Pre-warm config cache
+			fetchMock.mockResolvedValueOnce({
+				ok: true,
+				json: jest.fn().mockResolvedValue(MOCK_GATEWAY_CONFIG),
+			});
+			await service.getGatewayConfig();
+
+			// Only one token response queued — concurrent calls must share it
+			fetchMock.mockResolvedValueOnce({
+				ok: true,
+				json: jest.fn().mockResolvedValue({ token: 'shared-token', expiresIn: 3600 }),
+			});
+
+			const [r1, r2, r3] = await Promise.all([
+				service.getSyntheticCredential('googlePalmApi', USER_ID),
+				service.getSyntheticCredential('googlePalmApi', USER_ID),
+				service.getSyntheticCredential('googlePalmApi', USER_ID),
+			]);
+
+			expect(r1.apiKey).toBe('shared-token');
+			expect(r2.apiKey).toBe('shared-token');
+			expect(r3.apiKey).toBe('shared-token');
+
+			const credentialsCalls = fetchMock.mock.calls.filter((c) =>
+				(c[0] as string).includes('/v1/gateway/credentials'),
+			);
+			expect(credentialsCalls).toHaveLength(1);
+		});
+	});
 });

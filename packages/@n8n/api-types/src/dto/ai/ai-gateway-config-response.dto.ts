@@ -2,7 +2,6 @@ export interface AiGatewayProviderConfigEntry {
 	gatewayPath: string;
 	urlField: string;
 	apiKeyField: string;
-	[key: string]: unknown;
 }
 
 export interface AiGatewayConfigDto {

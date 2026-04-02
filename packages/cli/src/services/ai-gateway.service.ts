@@ -28,6 +28,7 @@ export class AiGatewayService {
 		{ token: string; expiresAt: number; refreshAt: number }
 	>();
 	private readonly TOKEN_CACHE_MAX_SIZE = 500;
+	private readonly pendingTokenRequests = new Map<string, Promise<string>>();
 
 	/** Cached gateway config (nodes, credential types, provider routing). Refreshed every hour. */
 	private gatewayConfig: AiGatewayConfigDto | null = null;
@@ -110,7 +111,11 @@ export class AiGatewayService {
 			throw new UserError(`Failed to fetch AI Gateway usage: HTTP ${response.status}`);
 		}
 
-		return (await response.json()) as AiGatewayUsageResponse;
+		const data = (await response.json()) as AiGatewayUsageResponse;
+		if (!Array.isArray(data.entries) || typeof data.total !== 'number') {
+			throw new UserError('AI Gateway returned an invalid usage response.');
+		}
+		return data;
 	}
 
 	/**
@@ -193,7 +198,8 @@ export class AiGatewayService {
 
 	/**
 	 * Returns a cached JWT for `instanceId:userId`, fetching a fresh one from the gateway
-	 * if missing or past 90% of its lifetime.
+	 * if missing or past 90% of its lifetime. Deduplicates concurrent requests for the
+	 * same user so only one fetch is in-flight at a time.
 	 */
 	private async getOrFetchToken(userId: string): Promise<string> {
 		const key = `${this.instanceSettings.instanceId}:${userId}`;
@@ -203,6 +209,19 @@ export class AiGatewayService {
 			return cached.token;
 		}
 
+		const pending = this.pendingTokenRequests.get(key);
+		if (pending) return await pending;
+
+		const promise = this.fetchAndCacheToken(userId, key);
+		this.pendingTokenRequests.set(key, promise);
+		try {
+			return await promise;
+		} finally {
+			this.pendingTokenRequests.delete(key);
+		}
+	}
+
+	private async fetchAndCacheToken(userId: string, key: string): Promise<string> {
 		const baseUrl = this.globalConfig.aiAssistant.baseUrl;
 		const licenseCert = await this.license.loadCertStr();
 
