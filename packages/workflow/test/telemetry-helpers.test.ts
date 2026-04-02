@@ -2147,6 +2147,249 @@ describe('generateNodesGraph', () => {
 			expect(result.nodeGraph.nodes['0'].ai_model).toBeUndefined();
 		});
 	});
+
+	describe('ai token usage telemetry', () => {
+		test('should capture tokens for LM node with tokenUsage in runData', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: { model: 'gpt-4o' },
+						id: 'lm-node-id',
+						name: 'LM Node',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const runData: IRunData = {
+				'LM Node': [
+					{
+						startTime: 0,
+						executionTime: 100,
+						executionStatus: 'success',
+						data: {
+							[NodeConnectionTypes.AiLanguageModel]: [
+								[
+									{
+										json: {
+											tokenUsage: {
+												promptTokens: 150,
+												completionTokens: 80,
+												totalTokens: 230,
+											},
+										},
+									},
+								],
+							],
+						},
+						source: [],
+					},
+				],
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes, { runData });
+			expect(result.nodeGraph.nodes['0'].ai_model).toBe('gpt-4o');
+			expect(result.nodeGraph.nodes['0'].ai_input_tokens).toBe(150);
+			expect(result.nodeGraph.nodes['0'].ai_output_tokens).toBe(80);
+		});
+
+		test('should capture tokens from tokenUsageEstimate when tokenUsage is absent', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: { model: 'gpt-4o' },
+						id: 'lm-node-id',
+						name: 'LM Node',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const runData: IRunData = {
+				'LM Node': [
+					{
+						startTime: 0,
+						executionTime: 100,
+						executionStatus: 'success',
+						data: {
+							[NodeConnectionTypes.AiLanguageModel]: [
+								[
+									{
+										json: {
+											tokenUsageEstimate: {
+												promptTokens: 200,
+												completionTokens: 100,
+												totalTokens: 300,
+											},
+										},
+									},
+								],
+							],
+						},
+						source: [],
+					},
+				],
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes, { runData });
+			expect(result.nodeGraph.nodes['0'].ai_input_tokens).toBe(200);
+			expect(result.nodeGraph.nodes['0'].ai_output_tokens).toBe(100);
+		});
+
+		test('should sum tokens across multiple runs (agent multi-call)', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: { model: 'gpt-4o' },
+						id: 'lm-node-id',
+						name: 'LM Node',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const makeTaskData = (prompt: number, completion: number) => ({
+				startTime: 0,
+				executionTime: 100,
+				executionStatus: 'success' as const,
+				data: {
+					[NodeConnectionTypes.AiLanguageModel]: [
+						[
+							{
+								json: {
+									tokenUsage: {
+										promptTokens: prompt,
+										completionTokens: completion,
+										totalTokens: prompt + completion,
+									},
+								},
+							},
+						],
+					],
+				},
+				source: [],
+			});
+
+			const runData: IRunData = {
+				'LM Node': [makeTaskData(150, 80), makeTaskData(200, 120), makeTaskData(100, 50)],
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes, { runData });
+			expect(result.nodeGraph.nodes['0'].ai_input_tokens).toBe(450);
+			expect(result.nodeGraph.nodes['0'].ai_output_tokens).toBe(250);
+		});
+
+		test('should not set token fields when no runData is provided', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: { model: 'gpt-4o' },
+						id: 'lm-node-id',
+						name: 'LM Node',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes);
+			expect(result.nodeGraph.nodes['0'].ai_model).toBe('gpt-4o');
+			expect(result.nodeGraph.nodes['0'].ai_input_tokens).toBeUndefined();
+			expect(result.nodeGraph.nodes['0'].ai_output_tokens).toBeUndefined();
+		});
+
+		test('should not set token fields for non-AI node even with runData', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: {},
+						id: 'manual-trigger-id',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const runData: IRunData = {
+				'Manual Trigger': [
+					{
+						startTime: 0,
+						executionTime: 10,
+						executionStatus: 'success',
+						data: { main: [[{ json: {} }]] },
+						source: [],
+					},
+				],
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes, { runData });
+			expect(result.nodeGraph.nodes['0'].ai_input_tokens).toBeUndefined();
+			expect(result.nodeGraph.nodes['0'].ai_output_tokens).toBeUndefined();
+		});
+
+		test('should not set token fields when runData has no token usage data', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: { model: 'gpt-4o' },
+						id: 'lm-node-id',
+						name: 'LM Node',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const runData: IRunData = {
+				'LM Node': [
+					{
+						startTime: 0,
+						executionTime: 100,
+						executionStatus: 'success',
+						data: {
+							[NodeConnectionTypes.AiLanguageModel]: [
+								[
+									{
+										json: {
+											response: { generations: [] },
+										},
+									},
+								],
+							],
+						},
+						source: [],
+					},
+				],
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes, { runData });
+			expect(result.nodeGraph.nodes['0'].ai_model).toBe('gpt-4o');
+			expect(result.nodeGraph.nodes['0'].ai_input_tokens).toBeUndefined();
+			expect(result.nodeGraph.nodes['0'].ai_output_tokens).toBeUndefined();
+		});
+	});
 });
 
 describe('extractLastExecutedNodeCredentialData', () => {

@@ -74,6 +74,27 @@ function resolveParameterValue(value: unknown): string | undefined {
 	return undefined;
 }
 
+function extractNodeTokenUsage(
+	nodeRunData: ITaskData[],
+): { input: number; output: number } | undefined {
+	let input = 0;
+	let output = 0;
+	for (const task of nodeRunData) {
+		const lmOutputs = task.data?.[NodeConnectionTypes.AiLanguageModel];
+		if (!lmOutputs) continue;
+		for (const branch of lmOutputs) {
+			for (const item of branch ?? []) {
+				const usage = item?.json?.tokenUsage ?? item?.json?.tokenUsageEstimate;
+				if (usage && typeof usage === 'object') {
+					input += (usage as Record<string, number>).promptTokens ?? 0;
+					output += (usage as Record<string, number>).completionTokens ?? 0;
+				}
+			}
+		}
+	}
+	return input > 0 || output > 0 ? { input, output } : undefined;
+}
+
 const countPlaceholders = (text: string) => {
 	const placeholder = /(\{[a-zA-Z0-9_]+\})/g;
 	let returnData = 0;
@@ -610,6 +631,14 @@ export function generateNodesGraph(
 			const resolved = resolveParameterValue(node.parameters?.modelId);
 			if (resolved) {
 				nodeItem.ai_model = resolved;
+			}
+		}
+
+		if (nodeItem.ai_model && runData?.[node.name]) {
+			const tokenUsage = extractNodeTokenUsage(runData[node.name]);
+			if (tokenUsage) {
+				nodeItem.ai_input_tokens = tokenUsage.input;
+				nodeItem.ai_output_tokens = tokenUsage.output;
 			}
 		}
 
