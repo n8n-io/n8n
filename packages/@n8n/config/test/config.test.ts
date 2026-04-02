@@ -4,15 +4,29 @@ import { mock } from 'jest-mock-extended';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import type { UserManagementConfig } from '../src/configs/user-management.config';
 import type { DatabaseConfig } from '../src/index';
-import { GlobalConfig } from '../src/index';
+import { GlobalConfig, SSRF_DEFAULT_BLOCKED_IP_RANGES } from '../src/index';
 
 jest.mock('fs');
 const mockFs = mock<typeof fs>();
 fs.readFileSync = mockFs.readFileSync;
 
 const consoleWarnMock = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+// Ignore the sanitize function from the GlobalConfig nested types
+type ConfigShape<T> = T extends ReadonlyArray<infer U>
+	? Array<ConfigShape<U>>
+	: T extends object
+		? {
+				[K in keyof T as K extends 'sanitize'
+					? never
+					: T[K] extends (...args: unknown[]) => unknown
+						? never
+						: K]: ConfigShape<T[K]>;
+			}
+		: T;
+
+type GlobalConfigShape = ConfigShape<GlobalConfig>;
 
 describe('GlobalConfig', () => {
 	beforeEach(() => {
@@ -25,7 +39,7 @@ describe('GlobalConfig', () => {
 		process.env = originalEnv;
 	});
 
-	const defaultConfig: GlobalConfig = {
+	const defaultConfig = {
 		path: '/',
 		host: 'localhost',
 		port: 5678,
@@ -54,6 +68,7 @@ describe('GlobalConfig', () => {
 		proxy_hops: 0,
 		ssl_key: '',
 		ssl_cert: '',
+		canvasOnly: false,
 		editorBaseUrl: '',
 		dataTable: {
 			maxSize: 50 * 1024 * 1024,
@@ -103,6 +118,7 @@ describe('GlobalConfig', () => {
 				endpoint: '',
 				endpointAuthToken: '',
 				persistence: false,
+				skipTypes: [],
 			},
 		},
 		userManagement: {
@@ -110,6 +126,9 @@ describe('GlobalConfig', () => {
 			jwtSecret: '',
 			jwtSessionDurationHours: 168,
 			jwtRefreshTimeoutHours: 0,
+			password: {
+				minLength: 8,
+			},
 			emails: {
 				mode: 'smtp',
 				smtp: {
@@ -135,7 +154,7 @@ describe('GlobalConfig', () => {
 					'project-shared': '',
 				},
 			},
-		} as UserManagementConfig,
+		},
 		eventBus: {
 			checkUnsentInterval: 0,
 			crashRecoveryMode: 'extensive',
@@ -146,6 +165,7 @@ describe('GlobalConfig', () => {
 			},
 		},
 		externalHooks: {
+			separator: ':',
 			files: [],
 		},
 		nodes: {
@@ -180,6 +200,7 @@ describe('GlobalConfig', () => {
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 			activationBatchSize: 1,
 			indexingEnabled: true,
+			indexingBatchSize: 10,
 			useWorkflowPublicationService: false,
 		},
 		endpoints: {
@@ -198,6 +219,7 @@ describe('GlobalConfig', () => {
 				includeCredentialTypeLabel: false,
 				includeApiStatusCodeLabel: false,
 				includeQueueMetrics: false,
+				includeWorkflowExecutionDuration: true,
 				queueMetricsInterval: 20,
 				activeWorkflowCountInterval: 60,
 				includeWorkflowStatistics: false,
@@ -210,6 +232,8 @@ describe('GlobalConfig', () => {
 			formTest: 'form-test',
 			formWaiting: 'form-waiting',
 			mcp: 'mcp',
+			mcpBuilderEnabled: true,
+			mcpMaxRegisteredClients: 200,
 			mcpTest: 'mcp-test',
 			payloadSizeMax: 16,
 			formDataFileSizeMax: 200,
@@ -217,6 +241,7 @@ describe('GlobalConfig', () => {
 			webhook: 'webhook',
 			webhookTest: 'webhook-test',
 			webhookWaiting: 'webhook-waiting',
+			health: '/healthz',
 		},
 		cache: {
 			backend: 'auto',
@@ -233,6 +258,35 @@ describe('GlobalConfig', () => {
 			executionContextTtl: 3600,
 			maxBufferedChunks: 1000,
 			streamStateTtl: 300,
+		},
+		instanceAi: {
+			model: 'anthropic/claude-sonnet-4-6',
+			modelUrl: '',
+			modelApiKey: '',
+			maxContextWindowTokens: 500_000,
+			mcpServers: '',
+			localGatewayDisabled: false,
+			browserMcp: false,
+			lastMessages: 20,
+			embedderModel: '',
+			semanticRecallTopK: 5,
+			subAgentMaxSteps: 100,
+			sandboxEnabled: false,
+			sandboxProvider: 'daytona',
+			sandboxImage: 'daytonaio/sandbox:0.5.0',
+			daytonaApiUrl: '',
+			daytonaApiKey: '',
+			n8nSandboxServiceUrl: '',
+			n8nSandboxServiceApiKey: '',
+			sandboxTimeout: 300000,
+			braveSearchApiKey: '',
+			searxngUrl: '',
+			filesystemPath: '',
+			gatewayApiKey: '',
+			threadTtlDays: 90,
+			snapshotPruneInterval: 3_600_000,
+			snapshotRetention: 86_400_000,
+			confirmationTimeout: 600_000,
 		},
 		queue: {
 			health: {
@@ -269,7 +323,6 @@ describe('GlobalConfig', () => {
 			},
 		},
 		taskRunners: {
-			enabled: true,
 			mode: 'internal',
 			path: '/runners',
 			authToken: '',
@@ -331,7 +384,9 @@ describe('GlobalConfig', () => {
 			daysAbandonedWorkflow: 90,
 			contentSecurityPolicy: '{}',
 			contentSecurityPolicyReportOnly: false,
+			crossOriginOpenerPolicy: 'same-origin',
 			disableWebhookHtmlSandboxing: false,
+			disableFormHtmlSandboxing: false,
 			disableBareRepos: true,
 			awsSystemCredentialsAccess: false,
 			enableGitNodeHooks: false,
@@ -409,6 +464,13 @@ describe('GlobalConfig', () => {
 				scopesProjectsRolesClaimName: 'n8n_projects',
 			},
 		},
+		ssrfProtection: {
+			enabled: false,
+			blockedIpRanges: [...SSRF_DEFAULT_BLOCKED_IP_RANGES],
+			allowedIpRanges: [],
+			allowedHostnames: [],
+			dnsCacheMaxSize: 1024 * 1024,
+		},
 		redis: {
 			prefix: 'n8n',
 		},
@@ -428,7 +490,12 @@ describe('GlobalConfig', () => {
 			trimmingTimeWindowDays: 2,
 			trimOnStartUp: false,
 		},
-	};
+		expressionEngine: {
+			engine: 'legacy',
+			poolSize: 1,
+			maxCodeCacheSize: 1024,
+		},
+	} satisfies GlobalConfigShape;
 
 	it('should use all default values when no env variables are defined', () => {
 		process.env = {};
@@ -453,6 +520,7 @@ describe('GlobalConfig', () => {
 			N8N_TEMPLATES_ENABLED: '0',
 			N8N_DYNAMIC_BANNERS_ENDPOINT: 'https://localhost:5678/api/banners',
 			N8N_DYNAMIC_BANNERS_ENABLED: 'false',
+			N8N_PASSWORD_MIN_LENGTH: '12',
 		};
 		const config = Container.get(GlobalConfig);
 
@@ -489,6 +557,12 @@ describe('GlobalConfig', () => {
 			dynamicBanners: {
 				endpoint: 'https://localhost:5678/api/banners',
 				enabled: false,
+			},
+			userManagement: {
+				...defaultConfig.userManagement,
+				password: {
+					minLength: 12,
+				},
 			},
 		});
 		expect(mockFs.readFileSync).not.toHaveBeenCalled();
@@ -548,6 +622,18 @@ describe('GlobalConfig', () => {
 		);
 	});
 
+	it('should clamp password min length to valid range', () => {
+		process.env = { N8N_PASSWORD_MIN_LENGTH: '100' };
+		const config = Container.get(GlobalConfig);
+		expect(config.userManagement.password.minLength).toEqual(64);
+	});
+
+	it('should floor password min length at 8', () => {
+		process.env = { N8N_PASSWORD_MIN_LENGTH: '2' };
+		const config = Container.get(GlobalConfig);
+		expect(config.userManagement.password.minLength).toEqual(8);
+	});
+
 	describe('string unions', () => {
 		it('on invalid value, should warn and fall back to default value', () => {
 			process.env = {
@@ -563,8 +649,54 @@ describe('GlobalConfig', () => {
 				),
 			);
 
-			expect(globalConfig.taskRunners.enabled).toEqual(true);
 			expect(globalConfig.database.type).toEqual('postgresdb');
+		});
+
+		it('should validate crossOriginOpenerPolicy enum values', () => {
+			process.env = {
+				N8N_CROSS_ORIGIN_OPENER_POLICY: 'same-origin-allow-popups',
+			};
+
+			const globalConfig = Container.get(GlobalConfig);
+			expect(globalConfig.security.crossOriginOpenerPolicy).toEqual('same-origin-allow-popups');
+		});
+
+		it('should warn and fall back to default for invalid crossOriginOpenerPolicy', () => {
+			process.env = {
+				N8N_CROSS_ORIGIN_OPENER_POLICY: 'invalid-policy',
+			};
+
+			const globalConfig = Container.get(GlobalConfig);
+			expect(globalConfig.security.crossOriginOpenerPolicy).toEqual('same-origin');
+		});
+	});
+
+	describe('health endpoint transformation', () => {
+		it('should add leading slash if not present', () => {
+			process.env = {
+				N8N_ENDPOINT_HEALTH: 'healthz',
+			};
+
+			const config = Container.get(GlobalConfig);
+			expect(config.endpoints.health).toEqual('/healthz');
+		});
+
+		it('should keep leading slash if already present', () => {
+			process.env = {
+				N8N_ENDPOINT_HEALTH: '/custom-health',
+			};
+
+			const config = Container.get(GlobalConfig);
+			expect(config.endpoints.health).toEqual('/custom-health');
+		});
+
+		it('should add leading slash to paths with multiple segments', () => {
+			process.env = {
+				N8N_ENDPOINT_HEALTH: 'api/v1/health',
+			};
+
+			const config = Container.get(GlobalConfig);
+			expect(config.endpoints.health).toEqual('/api/v1/health');
 		});
 	});
 });

@@ -62,6 +62,10 @@ export class ScheduleTrigger implements INodeType {
 					{
 						name: 'interval',
 						displayName: 'Trigger Interval',
+						builderHint: {
+							message:
+								'You can add multiple intervals to trigger at different times. Use "Custom (Cron)" for more specific scheduling patterns.',
+						},
 						values: [
 							{
 								displayName: 'Trigger Interval',
@@ -437,9 +441,11 @@ export class ScheduleTrigger implements INodeType {
 			}
 		}
 
-		const executeTrigger = (recurrence: IRecurrenceRule) => {
-			const shouldTrigger = recurrenceCheck(recurrence, staticData.recurrenceRules, timezone);
-			if (!shouldTrigger) return;
+		const executeTrigger = (recurrence: IRecurrenceRule, skipRecurrenceCheck = false) => {
+			if (!skipRecurrenceCheck) {
+				const shouldTrigger = recurrenceCheck(recurrence, staticData.recurrenceRules, timezone);
+				if (!shouldTrigger) return;
+			}
 
 			const momentTz = moment.tz(timezone);
 			const resultData = {
@@ -496,7 +502,7 @@ export class ScheduleTrigger implements INodeType {
 						});
 					}
 				}
-				executeTrigger(recurrence);
+				executeTrigger(recurrence, true);
 			};
 
 			return { manualTriggerFunction };

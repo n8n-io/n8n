@@ -610,7 +610,7 @@ export class ActiveWorkflowManager {
 
 			void this.publisher.publishCommand({
 				command: 'add-webhooks-triggers-and-pollers',
-				payload: { workflowId, activeVersionId: dbWorkflow.activeVersionId },
+				payload: { workflowId, activeVersionId: dbWorkflow.activeVersionId, activationMode },
 			});
 
 			return added;
@@ -743,9 +743,10 @@ export class ActiveWorkflowManager {
 	async handleAddWebhooksTriggersAndPollers({
 		workflowId,
 		activeVersionId,
+		activationMode,
 	}: PubSubCommandMap['add-webhooks-triggers-and-pollers']) {
 		try {
-			await this.add(workflowId, 'activate', undefined, {
+			await this.add(workflowId, activationMode, undefined, {
 				shouldPublish: false, // prevent leader from re-publishing message
 			});
 
@@ -775,6 +776,11 @@ export class ActiveWorkflowManager {
 
 	/**
 	 * Count all triggers in the workflow, excluding Manual Trigger and other n8n-internal triggers.
+	 *
+	 * TODO: This method calls getWorkflowWebhooks, which evaluates webhook description expressions
+	 * (path, httpMethod, etc.) that may reference user-authored expressions via $parameter. It
+	 * should acquire an isolate before calling getWorkflowWebhooks, but countTriggers is sync.
+	 * addWebhooks and removeWorkflow are async and can be fixed straightforwardly.
 	 */
 	private countTriggers(workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData) {
 		const triggerFilter = (nodeType: INodeType) =>

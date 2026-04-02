@@ -132,17 +132,17 @@ function handleFileImport() {
 					i18n.baseText('emptyStateBuilderPrompt.orStartWith')
 				}}</span>
 				<N8nTooltip :content="i18n.baseText('emptyStateBuilderPrompt.fromScratchTooltip')">
-					<N8nButton type="secondary" size="small" icon="play" @click="onFromScratch">
+					<N8nButton variant="subtle" size="small" icon="play" @click="onFromScratch">
 						{{ i18n.baseText('emptyStateBuilderPrompt.fromScratch') }}
 					</N8nButton>
 				</N8nTooltip>
 				<N8nTooltip :content="i18n.baseText('emptyStateBuilderPrompt.templateTooltip')">
-					<N8nButton type="secondary" size="small" icon="layout-template" @click="onTemplate">
+					<N8nButton variant="subtle" size="small" icon="layout-template" @click="onTemplate">
 						{{ i18n.baseText('emptyStateBuilderPrompt.template') }}
 					</N8nButton>
 				</N8nTooltip>
 				<N8nTooltip :content="i18n.baseText('emptyStateBuilderPrompt.importFromFileTooltip')">
-					<N8nButton type="secondary" size="small" icon="upload" @click="onImportFromFile">
+					<N8nButton variant="subtle" size="small" icon="upload" @click="onImportFromFile">
 						{{ i18n.baseText('emptyStateBuilderPrompt.importFromFile') }}
 					</N8nButton>
 				</N8nTooltip>

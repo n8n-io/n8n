@@ -1,4 +1,7 @@
-// Log wrapper and related utilities
+// AI Node SDK version
+export { AI_NODE_SDK_VERSION } from './ai-node-sdk-version';
+
+// Utils
 export { logWrapper } from './utils/log-wrapper';
 export { logAiEvent } from './utils/log-ai-event';
 export { parseSSEStream } from './utils/sse';
@@ -6,9 +9,50 @@ export {
 	validateEmbedQueryInput,
 	validateEmbedDocumentsInput,
 } from './utils/embeddings-input-validation';
-export { getMetadataFiltersValues } from './utils/helpers';
+export { getMetadataFiltersValues, hasLongSequentialRepeat } from './utils/helpers';
 export { N8nBinaryLoader } from './utils/n8n-binary-loader';
 export { N8nJsonLoader } from './utils/n8n-json-loader';
+export { N8nLlmTracing } from './utils/n8n-llm-tracing';
+export {
+	estimateTokensFromStringList,
+	estimateTokensByCharCount,
+	estimateTextSplitsByTokens,
+} from './utils/tokenizer/token-estimator';
+export { encodingForModel, getEncoding } from './utils/tokenizer/tiktoken';
+export { makeN8nLlmFailedAttemptHandler } from './utils/failed-attempt-handler/n8nLlmFailedAttemptHandler';
+export {
+	getProxyAgent,
+	getNodeProxyAgent,
+	proxyFetch,
+	type AgentTimeoutOptions,
+} from './utils/http-proxy-agent';
+export {
+	getConnectionHintNoticeField,
+	metadataFilterField,
+	getBatchingOptionFields,
+	getTemplateNoticeField,
+} from './utils/shared-fields';
+export {
+	createToolFromNode,
+	createZodSchemaFromArgs,
+	extractFromAIParameters,
+} from './utils/fromai-tool-factory';
+export { createVectorStoreNode } from './utils/vector-store/createVectorStoreNode/createVectorStoreNode';
+export type {
+	VectorStoreNodeConstructorArgs,
+	NodeOperationMode,
+	NodeMeta,
+} from './utils/vector-store/createVectorStoreNode/types';
+export { MemoryVectorStoreManager } from './utils/vector-store/MemoryManager/MemoryVectorStoreManager';
+export {
+	processDocuments,
+	processDocument,
+} from './utils/vector-store/processDocuments';
+export type { ServerSentEventMessage } from './utils/sse';
+
+// Converters
+export { getParametersJsonSchema } from './converters/tool';
+export { fromLcMessage, toLcMessage, toLcContent, fromLcContent } from './converters/message';
 
 // Type guards
 export {
@@ -20,8 +64,9 @@ export {
 
 // Types
 export type { ChatModel, ChatModelConfig } from './types/chat-model';
-export type { GenerateResult, StreamChunk } from './types/output';
-export type { Tool, ToolResult, ToolCall } from './types/tool';
+export type { ChatHistory, ChatMemory } from './types/memory';
+export type { GenerateResult, StreamChunk, TokenUsage, FinishReason } from './types/output';
+export type { Tool, ToolResult, ToolCall, ProviderTool } from './types/tool';
 export type {
 	Message,
 	ContentFile,
@@ -34,11 +79,18 @@ export type {
 	MessageRole,
 } from './types/message';
 export type { JSONArray, JSONObject, JSONValue } from './types/json';
-export type { ServerSentEventMessage } from './utils/sse';
 
-export { LangchainAdapter } from './adapters/langchain';
-
+// Chat model classes
+export { LangchainChatModelAdapter } from './adapters/langchain-chat-model';
 export { BaseChatModel } from './chat-model/base';
 
-export { getParametersJsonSchema } from './converters/tool';
-export { supplyModel } from './suppliers/supplyModel';
+// Memory base classes
+export { BaseChatHistory } from './memory/base-chat-history';
+export { BaseChatMemory } from './memory/base-chat-memory';
+
+// Memory implementations
+export { WindowedChatMemory, type WindowedChatMemoryConfig } from './memory/windowed-chat-memory';
+
+// Suppliers
+export { supplyMemory, type SupplyMemoryOptions } from './suppliers/supplyMemory';
+export { supplyModel, type SupplyModelOptions, type OpenAiModel } from './suppliers/supplyModel';

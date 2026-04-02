@@ -10,19 +10,23 @@ import {
 	WorkflowRepository,
 	WorkflowTagMappingRepository,
 } from '@n8n/db';
+import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { Credentials, InstanceSettings } from 'n8n-core';
-import { UnexpectedError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 import { rm as fsRm, writeFile as fsWriteFile } from 'node:fs/promises';
 import path from 'path';
 
 import { formatWorkflow } from '@/workflows/workflow.formatter';
 
+import chunk from 'lodash/chunk';
+import { VariablesService } from '../../environments.ee/variables/variables.service.ee';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
+	SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER,
 	SOURCE_CONTROL_GIT_FOLDER,
 	SOURCE_CONTROL_PROJECT_EXPORT_FOLDER,
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
@@ -31,6 +35,7 @@ import {
 } from './constants';
 import {
 	getCredentialExportPath,
+	getDataTableExportPath,
 	getFoldersPath,
 	getProjectExportPath,
 	getVariablesPath,
@@ -38,18 +43,17 @@ import {
 	readFoldersFromSourceControlFile,
 	readTagAndMappingsFromSourceControlFile,
 	sourceControlFoldersExistCheck,
-	stringContainsExpression,
+	sanitizeCredentialData,
 } from './source-control-helper.ee';
 import { SourceControlScopedService } from './source-control-scoped.service';
-import { VariablesService } from '../../environments.ee/variables/variables.service.ee';
 import type { ExportResult } from './types/export-result';
 import type { ExportableCredential } from './types/exportable-credential';
+import type { DataTableResourceOwner, ExportableDataTable } from './types/exportable-data-table';
 import { ExportableProject } from './types/exportable-project';
+import { ExportableVariable } from './types/exportable-variable';
 import type { ExportableWorkflow } from './types/exportable-workflow';
 import type { RemoteResourceOwner } from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
-import { ExportableVariable } from './types/exportable-variable';
-import chunk from 'lodash/chunk';
 
 @Service()
 export class SourceControlExportService {
@@ -60,6 +64,8 @@ export class SourceControlExportService {
 	private projectExportFolder: string;
 
 	private credentialExportFolder: string;
+
+	private dataTableExportFolder: string;
 
 	constructor(
 		private readonly logger: Logger,
@@ -73,6 +79,7 @@ export class SourceControlExportService {
 		private readonly folderRepository: FolderRepository,
 		private readonly sourceControlScopedService: SourceControlScopedService,
 		instanceSettings: InstanceSettings,
+		private readonly dataTableRepository: DataTableRepository,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -81,6 +88,7 @@ export class SourceControlExportService {
 			this.gitFolder,
 			SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 		);
+		this.dataTableExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER);
 	}
 
 	getWorkflowPath(workflowId: string): string {
@@ -89,6 +97,10 @@ export class SourceControlExportService {
 
 	getCredentialsPath(credentialsId: string): string {
 		return getCredentialExportPath(credentialsId, this.credentialExportFolder);
+	}
+
+	getDataTablePath(dataTableId: string): string {
+		return getDataTableExportPath(dataTableId, this.dataTableExportFolder);
 	}
 
 	async deleteRepositoryFolder() {
@@ -241,6 +253,128 @@ export class SourceControlExportService {
 		}
 	}
 
+	async exportDataTablesToWorkFolder(
+		candidates: SourceControlledFile[],
+		_context: SourceControlContext,
+	): Promise<ExportResult> {
+		try {
+			sourceControlFoldersExistCheck([this.gitFolder, this.dataTableExportFolder]);
+
+			if (candidates.length === 0) {
+				return {
+					count: 0,
+					folder: this.dataTableExportFolder,
+					files: [],
+				};
+			}
+
+			// Extract data table IDs from candidates
+			const candidateIds = candidates.map((candidate) => candidate.id);
+
+			// Fetch only the selected data tables
+			const dataTables = await this.dataTableRepository.find({
+				where: {
+					id: In(candidateIds),
+				},
+				relations: [
+					'columns',
+					'project',
+					'project.projectRelations',
+					'project.projectRelations.role',
+					'project.projectRelations.user',
+				],
+				select: {
+					id: true,
+					name: true,
+					projectId: true,
+					createdAt: true,
+					updatedAt: true,
+					columns: {
+						id: true,
+						name: true,
+						type: true,
+						index: true,
+					},
+					project: {
+						id: true,
+						name: true,
+						type: true,
+						projectRelations: {
+							userId: true,
+							role: {
+								slug: true,
+							},
+							user: {
+								email: true,
+							},
+						},
+					},
+				},
+			});
+
+			const exportedFiles: Array<{ id: string; name: string }> = [];
+
+			// Write each data table to its own file
+			for (const table of dataTables) {
+				let owner: DataTableResourceOwner | null = null;
+				if (table.project?.type === 'personal') {
+					const ownerRelation = table.project.projectRelations?.find(
+						(pr) => pr.role.slug === PROJECT_OWNER_ROLE_SLUG,
+					);
+					if (ownerRelation) {
+						owner = {
+							type: 'personal',
+							projectId: table.project.id,
+							projectName: table.project.name,
+							personalEmail: ownerRelation.user.email,
+						};
+					}
+				} else if (table.project?.type === 'team') {
+					owner = {
+						type: 'team',
+						teamId: table.project.id,
+						teamName: table.project.name,
+					};
+				}
+
+				const exportableDataTable: ExportableDataTable = {
+					id: table.id,
+					name: table.name,
+					columns: table.columns
+						.sort((a, b) => a.index - b.index)
+						.map((col) => ({
+							id: col.id,
+							name: col.name,
+							type: col.type,
+							index: col.index,
+						})),
+					ownedBy: owner,
+					createdAt: table.createdAt.toISOString(),
+					updatedAt: table.updatedAt.toISOString(),
+				};
+
+				const filePath = this.getDataTablePath(table.id);
+				await fsWriteFile(filePath, JSON.stringify(exportableDataTable, null, 2));
+
+				exportedFiles.push({
+					id: table.id,
+					name: filePath,
+				});
+			}
+
+			return {
+				count: dataTables.length,
+				folder: this.dataTableExportFolder,
+				files: exportedFiles,
+			};
+		} catch (error) {
+			this.logger.error('Failed to export data tables to work folder', { error });
+			throw new UnexpectedError('Failed to export data tables to work folder', {
+				cause: error,
+			});
+		}
+	}
+
 	async exportFoldersToWorkFolder(context: SourceControlContext): Promise<ExportResult> {
 		try {
 			sourceControlFoldersExistCheck([this.gitFolder]);
@@ -381,30 +515,6 @@ export class SourceControlExportService {
 		}
 	}
 
-	private replaceCredentialData = (
-		data: ICredentialDataDecryptedObject,
-	): ICredentialDataDecryptedObject => {
-		for (const [key] of Object.entries(data)) {
-			const value = data[key];
-			try {
-				if (value === null) {
-					delete data[key]; // remove invalid null values
-				} else if (typeof value === 'object') {
-					data[key] = this.replaceCredentialData(value as ICredentialDataDecryptedObject);
-				} else if (typeof value === 'string') {
-					data[key] = stringContainsExpression(value) ? data[key] : '';
-				} else if (typeof data[key] === 'number') {
-					// TODO: leaving numbers in for now, but maybe we should remove them
-					continue;
-				}
-			} catch (error) {
-				this.logger.error(`Failed to sanitize credential data: ${(error as Error).message}`);
-				throw error;
-			}
-		}
-		return data;
-	};
-
 	async exportCredentialsToWorkFolder(candidates: SourceControlledFile[]): Promise<ExportResult> {
 		try {
 			sourceControlFoldersExistCheck([this.credentialExportFolder]);
@@ -446,18 +556,13 @@ export class SourceControlExportService {
 						};
 					}
 
-					/**
-					 * Edge case: Do not export `oauthTokenData`, so that that the
-					 * pulling instance reconnects instead of trying to use stubbed values.
-					 */
-					const credentialData = credentials.getData();
-					const { oauthTokenData, ...rest } = credentialData;
+					const sanitizedData = sanitizeCredentialData(credentials.getData());
 
 					const stub: ExportableCredential = {
 						id,
 						name,
 						type,
-						data: this.replaceCredentialData(rest),
+						data: sanitizedData,
 						ownedBy: owner,
 						isGlobal,
 					};

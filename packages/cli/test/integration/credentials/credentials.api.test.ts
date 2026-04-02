@@ -15,10 +15,11 @@ import type { Scope } from '@sentry/node';
 import * as a from 'assert';
 import { mock } from 'jest-mock-extended';
 import { Credentials } from 'n8n-core';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import { randomString } from 'n8n-workflow';
-
-import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
+import {
+	CREDENTIAL_BLANKING_VALUE,
+	type ICredentialDataDecryptedObject,
+	randomString,
+} from 'n8n-workflow';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { createCredentialsFromCredentialsEntity } from '@/credentials-helper';
 import { CredentialsTester } from '@/services/credentials-tester.service';
@@ -195,6 +196,7 @@ describe('GET /credentials', () => {
 					'credential:read',
 					'credential:update',
 					'credential:share',
+					'credential:unshare',
 					'credential:delete',
 				].sort(),
 			);
@@ -228,6 +230,7 @@ describe('GET /credentials', () => {
 					'credential:move',
 					'credential:read',
 					'credential:share',
+					'credential:unshare',
 					'credential:update',
 				].sort(),
 			);
@@ -254,6 +257,7 @@ describe('GET /credentials', () => {
 					'credential:read',
 					'credential:share',
 					'credential:shareGlobally',
+					'credential:unshare',
 					'credential:update',
 				].sort(),
 			);
@@ -269,6 +273,7 @@ describe('GET /credentials', () => {
 					'credential:read',
 					'credential:share',
 					'credential:shareGlobally',
+					'credential:unshare',
 					'credential:update',
 				].sort(),
 			);
@@ -333,6 +338,7 @@ describe('GET /credentials', () => {
 				'credential:read',
 				'credential:update',
 				'credential:share',
+				'credential:unshare',
 				'credential:delete',
 			].sort(),
 		);
@@ -396,6 +402,7 @@ describe('GET /credentials', () => {
 				'credential:update',
 				'credential:share',
 				'credential:shareGlobally',
+				'credential:unshare',
 				'credential:delete',
 				'credential:create',
 				'credential:list',
@@ -411,6 +418,7 @@ describe('GET /credentials', () => {
 				'credential:update',
 				'credential:share',
 				'credential:shareGlobally',
+				'credential:unshare',
 				'credential:delete',
 				'credential:create',
 				'credential:list',
@@ -429,6 +437,7 @@ describe('GET /credentials', () => {
 				'credential:update',
 				'credential:share',
 				'credential:shareGlobally',
+				'credential:unshare',
 				'credential:delete',
 				'credential:create',
 				'credential:list',
@@ -843,6 +852,7 @@ describe('POST /credentials', () => {
 				'credential:move',
 				'credential:read',
 				'credential:share',
+				'credential:unshare',
 				'credential:update',
 			].sort(),
 		);
@@ -1232,6 +1242,7 @@ describe('PATCH /credentials/:id', () => {
 				'credential:read',
 				'credential:share',
 				'credential:shareGlobally',
+				'credential:unshare',
 				'credential:update',
 			].sort(),
 		);

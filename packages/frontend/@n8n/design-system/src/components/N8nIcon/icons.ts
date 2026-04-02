@@ -74,6 +74,7 @@ import IconLucideChevronsUpDown from '~icons/lucide/chevrons-up-down';
 import IconLucideCircle from '~icons/lucide/circle';
 import IconLucideCircleAlert from '~icons/lucide/circle-alert';
 import IconLucideCircleCheck from '~icons/lucide/circle-check';
+import IconLucideCircleDollarSign from '~icons/lucide/circle-dollar-sign';
 import IconLucideCircleDot from '~icons/lucide/circle-dot';
 import IconLucideCircleEllipsis from '~icons/lucide/circle-ellipsis';
 import IconLucideCircleHelp from '~icons/lucide/circle-help';
@@ -176,6 +177,7 @@ import IconLucidePaperclip from '~icons/lucide/paperclip';
 import IconLucidePause from '~icons/lucide/pause';
 import IconLucidePen from '~icons/lucide/pen';
 import IconLucidePencil from '~icons/lucide/pencil';
+import IconLucidePencilOff from '~icons/lucide/pencil-off';
 import IconLucidePin from '~icons/lucide/pin';
 import IconLucidePlay from '~icons/lucide/play';
 import IconLucidePlug from '~icons/lucide/plug';
@@ -190,6 +192,7 @@ import IconLucideSatelliteDish from '~icons/lucide/satellite-dish';
 import IconLucideSave from '~icons/lucide/save';
 import IconLucideScale from '~icons/lucide/scale';
 import IconLucideScissors from '~icons/lucide/scissors';
+import IconLucideScrollText from '~icons/lucide/scroll-text';
 import IconLucideSearch from '~icons/lucide/search';
 import IconLucideSend from '~icons/lucide/send';
 import IconLucideServer from '~icons/lucide/server';
@@ -198,6 +201,8 @@ import IconLucideSettings2 from '~icons/lucide/settings-2';
 import IconLucideShare from '~icons/lucide/share';
 import IconLucideShield from '~icons/lucide/shield';
 import IconLucideShieldHalf from '~icons/lucide/shield-half';
+import IconLucideShieldUser from '~icons/lucide/shield-user';
+import IconLucideShredder from '~icons/lucide/shredder';
 import IconLucideSlidersHorizontal from '~icons/lucide/sliders-horizontal';
 import IconLucideSmile from '~icons/lucide/smile';
 import IconLucideSparkles from '~icons/lucide/sparkles';
@@ -226,6 +231,7 @@ import IconLucideUpload from '~icons/lucide/upload';
 import IconLucideUser from '~icons/lucide/user';
 import IconLucideUserCheck from '~icons/lucide/user-check';
 import IconLucideUserLock from '~icons/lucide/user-lock';
+import IconLucideUserPen from '~icons/lucide/user-pen';
 import IconLucideUserRound from '~icons/lucide/user-round';
 import IconLucideUsers from '~icons/lucide/users';
 import IconLucideVariable from '~icons/lucide/variable';
@@ -534,6 +540,7 @@ export const updatedIconSet = {
 	circle: IconLucideCircle,
 	'circle-alert': IconLucideCircleAlert,
 	'circle-check': IconLucideCircleCheck,
+	'circle-dollar-sign': IconLucideCircleDollarSign,
 	'circle-dot': IconLucideCircleDot,
 	'circle-ellipsis': IconLucideCircleEllipsis,
 	'circle-help': IconLucideCircleHelp,
@@ -633,6 +640,7 @@ export const updatedIconSet = {
 	pause: IconLucidePause,
 	pen: IconLucidePen,
 	pencil: IconLucidePencil,
+	'pencil-off': IconLucidePencilOff,
 	pin: IconLucidePin,
 	play: IconLucidePlay,
 	plug: IconLucidePlug,
@@ -648,6 +656,7 @@ export const updatedIconSet = {
 	save: IconLucideSave,
 	scale: IconLucideScale,
 	scissors: IconLucideScissors,
+	'scroll-text': IconLucideScrollText,
 	search: IconLucideSearch,
 	settings: IconLucideSettings,
 	settings2: IconLucideSettings2,
@@ -655,8 +664,10 @@ export const updatedIconSet = {
 	server: IconLucideServer,
 	share: IconLucideShare,
 	shield: IconLucideShield,
-	'sliders-horizontal': IconLucideSlidersHorizontal,
 	'shield-half': IconLucideShieldHalf,
+	'shield-user': IconLucideShieldUser,
+	shredder: IconLucideShredder,
+	'sliders-horizontal': IconLucideSlidersHorizontal,
 	smile: IconLucideSmile,
 	sparkles: IconLucideSparkles,
 	split: IconLucideSplit,
@@ -683,6 +694,7 @@ export const updatedIconSet = {
 	user: IconLucideUser,
 	'user-check': IconLucideUserCheck,
 	'user-lock': IconLucideUserLock,
+	'user-pen': IconLucideUserPen,
 	'user-round': IconLucideUserRound,
 	users: IconLucideUsers,
 	vault: IconLucideVault,

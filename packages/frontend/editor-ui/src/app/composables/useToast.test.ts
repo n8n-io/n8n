@@ -3,6 +3,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { h, defineComponent } from 'vue';
 import { useToast } from './useToast';
 import { useTelemetry } from './useTelemetry';
+import { useUIStore } from '@/app/stores/ui.store';
 import { vi } from 'vitest';
 
 vi.mock('./useTelemetry');
@@ -12,6 +13,10 @@ describe('useToast', () => {
 	let telemetryTrackSpy: ReturnType<typeof vi.fn>;
 
 	beforeEach(() => {
+		const appEl = document.createElement('div');
+		appEl.id = 'n8n-app';
+		document.body.appendChild(appEl);
+
 		createTestingPinia();
 
 		telemetryTrackSpy = vi.fn();
@@ -20,6 +25,10 @@ describe('useToast', () => {
 		} as unknown as ReturnType<typeof useTelemetry>);
 
 		toast = useToast();
+	});
+
+	afterEach(() => {
+		document.getElementById('n8n-app')?.remove();
 	});
 
 	it('should show a message', async () => {
@@ -202,6 +211,26 @@ describe('useToast', () => {
 			});
 
 			expect(telemetryTrackSpy).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('notification suppression', () => {
+		it('should not render notification when notifications are suppressed', async () => {
+			const uiStore = useUIStore();
+			uiStore.areNotificationsSuppressed = true;
+
+			toast.showMessage({ message: 'Should not appear', title: 'Suppressed' });
+
+			// If the notification was rendered, waitFor would find it within its timeout.
+			// Since it should be suppressed, we verify it never appears.
+			await expect(
+				waitFor(
+					() => {
+						expect(screen.getByRole('alert')).toBeVisible();
+					},
+					{ timeout: 200 },
+				),
+			).rejects.toThrow();
 		});
 	});
 

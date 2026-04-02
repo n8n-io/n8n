@@ -388,4 +388,118 @@ describe('GET /projects/:projectId/data-tables/:dataTableId/download-csv', () =>
 		expect(lines[0]).toContain('age_2');
 		expect(lines[0]).toContain('email_address');
 	});
+
+	test('should include system columns by default', async () => {
+		const project = await createTeamProject('test project', owner);
+		const dataTable = await createDataTable(project, {
+			name: 'Default Behavior',
+			columns: [{ name: 'data', type: 'string' }],
+		});
+
+		const columns = await dataTableColumnRepository.getColumns(dataTable.id);
+		await dataTableRowsRepository.insertRows(dataTable.id, [{ data: 'test' }], columns, 'id');
+
+		const response = await authOwnerAgent
+			.get(`/projects/${project.id}/data-tables/${dataTable.id}/download-csv`)
+			.expect(200);
+
+		const csvContent = response.body.data.csvContent;
+		const lines = csvContent.split('\n');
+
+		// System columns should be included by default
+		expect(lines[0]).toBe('id,data,createdAt,updatedAt');
+		expect(lines[1]).toMatch(/^\d+,test,/); // id,data,createdAt,...
+	});
+
+	test('should include system columns when includeSystemColumns=true', async () => {
+		const project = await createTeamProject('test project', owner);
+		const dataTable = await createDataTable(project, {
+			name: 'With System Columns',
+			columns: [{ name: 'name', type: 'string' }],
+		});
+
+		const columns = await dataTableColumnRepository.getColumns(dataTable.id);
+		await dataTableRowsRepository.insertRows(dataTable.id, [{ name: 'Alice' }], columns, 'id');
+
+		const response = await authOwnerAgent
+			.get(
+				`/projects/${project.id}/data-tables/${dataTable.id}/download-csv?includeSystemColumns=true`,
+			)
+			.expect(200);
+
+		const csvContent = response.body.data.csvContent;
+		const lines = csvContent.split('\n');
+
+		// System columns should be present
+		expect(lines[0]).toBe('id,name,createdAt,updatedAt');
+		expect(lines[1]).toMatch(/^\d+,Alice,/);
+		expect(lines[1].split(',').length).toBe(4); // id, name, createdAt, updatedAt
+	});
+
+	test('should exclude system columns when includeSystemColumns=false', async () => {
+		const project = await createTeamProject('test project', owner);
+		const dataTable = await createDataTable(project, {
+			name: 'Without System Columns',
+			columns: [
+				{ name: 'firstName', type: 'string' },
+				{ name: 'age', type: 'number' },
+			],
+		});
+
+		const columns = await dataTableColumnRepository.getColumns(dataTable.id);
+		await dataTableRowsRepository.insertRows(
+			dataTable.id,
+			[
+				{ firstName: 'Alice', age: 30 },
+				{ firstName: 'Bob', age: 25 },
+			],
+			columns,
+			'id',
+		);
+
+		const response = await authOwnerAgent
+			.get(
+				`/projects/${project.id}/data-tables/${dataTable.id}/download-csv?includeSystemColumns=false`,
+			)
+			.expect(200);
+
+		const csvContent = response.body.data.csvContent;
+		const lines = csvContent.split('\n');
+
+		// System columns should NOT be present
+		expect(lines[0]).toBe('firstName,age');
+		expect(lines[0]).not.toContain('id');
+		expect(lines[0]).not.toContain('createdAt');
+		expect(lines[0]).not.toContain('updatedAt');
+
+		// Data rows should only contain user columns
+		expect(lines[1]).toBe('Alice,30');
+		expect(lines[2]).toBe('Bob,25');
+		expect(lines[1].split(',').length).toBe(2); // Only firstName and age
+	});
+
+	test('should exclude system columns from empty table when includeSystemColumns=false', async () => {
+		const project = await createTeamProject('test project', owner);
+		const dataTable = await createDataTable(project, {
+			name: 'Empty Without System',
+			columns: [
+				{ name: 'field1', type: 'string' },
+				{ name: 'field2', type: 'string' },
+			],
+		});
+
+		const response = await authOwnerAgent
+			.get(
+				`/projects/${project.id}/data-tables/${dataTable.id}/download-csv?includeSystemColumns=false`,
+			)
+			.expect(200);
+
+		const csvContent = response.body.data.csvContent;
+
+		// Only user columns in header, no system columns
+		expect(csvContent).toBe('field1,field2');
+		expect(csvContent).not.toContain('id');
+		expect(csvContent).not.toContain('createdAt');
+		expect(csvContent).not.toContain('updatedAt');
+	});
 });

@@ -51,6 +51,7 @@ export const mockNode = ({
 	typeVersion = 1,
 	parameters = {},
 	draggable = undefined,
+	placeholder = undefined,
 }: {
 	id?: INodeUi['id'];
 	name: INodeUi['name'];
@@ -61,8 +62,20 @@ export const mockNode = ({
 	typeVersion?: INodeUi['typeVersion'];
 	parameters?: INodeUi['parameters'];
 	draggable?: INodeUi['draggable'];
+	placeholder?: INodeUi['placeholder'];
 }) =>
-	mock<INodeUi>({ id, name, type, position, disabled, issues, typeVersion, parameters, draggable });
+	mock<INodeUi>({
+		id,
+		name,
+		type,
+		position,
+		disabled,
+		issues,
+		typeVersion,
+		parameters,
+		draggable,
+		placeholder,
+	});
 
 export const mockNodeTypeDescription = ({
 	name = SET_NODE_TYPE,
@@ -183,12 +196,12 @@ export function createTestWorkflowObject({
 	return new Workflow({
 		id,
 		name,
-		nodes,
-		connections,
+		nodes: Array.isArray(nodes) ? nodes : [],
+		connections: typeof connections === 'object' && connections !== null ? connections : {},
 		active,
-		staticData,
-		settings,
-		pinData,
+		staticData: typeof staticData === 'object' && staticData !== null ? staticData : {},
+		settings: typeof settings === 'object' && settings !== null ? settings : {},
+		pinData: typeof pinData === 'object' && pinData !== null ? pinData : {},
 		nodeTypes: rest.nodeTypes ?? nodeTypes,
 	});
 }
@@ -241,6 +254,7 @@ export function createTestNode(node: Partial<INode> = {}): INode {
 export function createTestNodeProperties(data: Partial<INodeProperties> = {}): INodeProperties {
 	return {
 		displayName: 'Name',
+		displayOptions: undefined,
 		name: 'name',
 		type: 'string',
 		default: '',
@@ -269,14 +283,16 @@ export function createMockEnterpriseSettings(
 		binaryDataS3: false,
 		workerView: false,
 		advancedPermissions: false,
-		apiKeyScopes: false,
+
 		workflowDiffs: false,
+		namedVersions: false,
 		projects: {
 			team: {
 				limit: 0,
 			},
 		},
 		customRoles: false,
+		personalSpacePolicy: false,
 		...overrides, // Override with any passed properties
 	};
 }

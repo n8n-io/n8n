@@ -19,11 +19,17 @@ import ProjectSharing from '@/features/collaboration/projects/components/Project
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData, Project } from '@/features/collaboration/projects/projects.types';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
+import { useRemoteProjectSearch } from '@/features/collaboration/projects/projects.utils';
+import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { useRolesStore } from '@/app/stores/roles.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useI18n } from '@n8n/i18n';
 import { telemetry } from '@/app/plugins/telemetry';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { I18nT } from 'vue-i18n';
 
 import { N8nButton, N8nInfoTip, N8nText } from '@n8n/design-system';
@@ -87,19 +93,29 @@ const modalTitle = computed(() => {
 	);
 });
 
-const workflowPermissions = computed(() => getResourcePermissions(workflow.value?.scopes).workflow);
+const workflowPermissions = computed(() => {
+	// For existing workflows, scopes come from the API response on the workflow object.
+	// For new unsaved workflows, scopes are only in the workflowDocument store.
+	const scopes =
+		workflow.value?.scopes ??
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflow.value.id)).scopes;
+	return getResourcePermissions(scopes).workflow;
+});
 
-const isPersonalSpace = computed(
-	() => projectsStore.currentProject?.type === ProjectTypes.Personal,
+const isPersonalSpaceRestricted = computed(
+	() =>
+		workflow.value.homeProject?.type === ProjectTypes.Personal &&
+		workflow.value.homeProject?.id === projectsStore.personalProject?.id &&
+		!workflowPermissions.value.share,
 );
 
 const workflowOwnerName = computed(() =>
 	workflowsEEStore.getWorkflowOwnerName(`${workflow.value.id}`),
 );
 
-const projects = computed(() =>
-	projectsStore.personalProjects.filter((project) => project.id !== workflow.value.homeProject?.id),
-);
+const searchFn = useRemoteProjectSearch();
+const filterFn = (project: ProjectListItem) =>
+	project.type === 'personal' && project.id !== workflow.value.homeProject?.id;
 
 const numberOfMembersInHomeTeamProject = computed(() => teamProject.value?.relations.length ?? 0);
 
@@ -211,8 +227,6 @@ const goToUpgrade = () => {
 
 const initialize = async () => {
 	if (isSharingEnabled.value) {
-		await projectsStore.getAllProjects();
-
 		// Fetch workflow if it exists and is not new
 		if (workflowsStore.isWorkflowSaved[workflow.value.id]) {
 			await workflowsListStore.fetchWorkflow(workflow.value.id);
@@ -261,30 +275,31 @@ watch(
 			</div>
 			<div v-else :class="$style.container">
 				<N8nInfoTip
-					v-if="!workflowPermissions.share && !isHomeTeamProject"
+					v-if="!workflowPermissions.share && !isHomeTeamProject && !isPersonalSpaceRestricted"
 					:bold="false"
 					class="mb-s"
 				>
-					<template v-if="isPersonalSpace">
-						{{ i18n.baseText('workflows.shareModal.info.personalSpaceRestricted') }}
-					</template>
-					<template v-else>
-						{{
-							i18n.baseText('workflows.shareModal.info.sharee', {
-								interpolate: { workflowOwnerName },
-							})
-						}}
-					</template>
+					{{
+						i18n.baseText('workflows.shareModal.info.sharee', {
+							interpolate: { workflowOwnerName },
+						})
+					}}
 				</N8nInfoTip>
 				<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]" :class="$style.content">
 					<div>
 						<ProjectSharing
 							v-model="sharedWithProjects"
 							:home-project="workflow.homeProject"
-							:projects="projects"
+							:search-fn="searchFn"
+							:filter-fn="filterFn"
 							:roles="workflowRoles"
 							:readonly="!workflowPermissions.share"
 							:static="isHomeTeamProject || !workflowPermissions.share"
+							:disabled-tooltip="
+								isPersonalSpaceRestricted
+									? i18n.baseText('workflows.shareModal.info.personalSpaceRestricted')
+									: undefined
+							"
 							:placeholder="i18n.baseText('workflows.shareModal.select.placeholder')"
 							:empty-options-text="i18n.baseText('workflows.shareModel.select.notFound')"
 							@project-added="onProjectAdded"
@@ -344,7 +359,7 @@ watch(
 				<N8nText v-show="isDirty" color="text-light" size="small" class="mr-xs">
 					{{ i18n.baseText('workflows.shareModal.changesHint') }}
 				</N8nText>
-				<N8nButton v-if="isHomeTeamProject" type="secondary" @click="modalBus.emit('close')">
+				<N8nButton variant="subtle" v-if="isHomeTeamProject" @click="modalBus.emit('close')">
 					{{ i18n.baseText('generic.close') }}
 				</N8nButton>
 				<N8nButton

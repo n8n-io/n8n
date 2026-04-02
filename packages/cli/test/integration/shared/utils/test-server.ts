@@ -18,6 +18,8 @@ import { rawBodyReader, bodyParser } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
 import { Telemetry } from '@/telemetry';
+import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
+
 import { LicenseMocker } from '@test-integration/license';
 
 import { PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
@@ -138,6 +140,8 @@ export const setupTestServer = ({
 				features: enabledFeatures,
 				quotas,
 			});
+			// Apply defaults before ModuleRegistry.initModules so licensed modules register routes.
+			testServer.license.reset();
 		}
 
 		if (!endpointGroups) return;
@@ -152,7 +156,11 @@ export const setupTestServer = ({
 		}
 
 		if (endpointGroups?.includes('health')) {
-			app.get('/healthz/readiness', async (_req, res) => {
+			const globalConfig = Container.get(GlobalConfig);
+			const healthPath = resolveBackendHealthEndpointPath(globalConfig);
+			const readinessPath = `${healthPath}/readiness`;
+
+			app.get(readinessPath, async (_req, res) => {
 				testDb.isReady()
 					? res.status(200).send({ status: 'ok' })
 					: res.status(503).send({ status: 'error' });
@@ -171,6 +179,10 @@ export const setupTestServer = ({
 
 					case 'workflows':
 						await import('@/workflows/workflows.controller');
+						break;
+
+					case 'workflowDependencies':
+						await import('@/modules/workflow-index/workflow-dependency.controller');
 						break;
 
 					case 'executions':
@@ -276,6 +288,10 @@ export const setupTestServer = ({
 
 					case 'role':
 						await import('@/controllers/role.controller');
+						break;
+
+					case 'roleMappingRule':
+						await import('@/modules/provisioning.ee/role-mapping-rule.controller.ee');
 						break;
 
 					case 'dynamic-node-parameters':

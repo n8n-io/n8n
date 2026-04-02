@@ -159,7 +159,6 @@ describe('WaitTracker', () => {
 
 			await waitTracker.startExecution(execution.id);
 
-			// Verify startedAt is passed to workflowRunner.run()
 			expect(workflowRunner.run).toHaveBeenCalledWith(
 				expect.objectContaining({
 					startedAt: originalStartedAt,

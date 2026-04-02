@@ -36,6 +36,14 @@ import {
 import { randomInt } from '../src/utils';
 import { DEFAULT_EVALUATION_METRIC } from '../src/evaluation-helpers';
 
+vi.mock('../src/node-helpers', async () => {
+	const actual = await vi.importActual<typeof import('../src/node-helpers')>('../src/node-helpers');
+	return {
+		...actual,
+		getNodeParameters: vi.fn().mockImplementation(actual.getNodeParameters),
+	};
+});
+
 describe('getDomainBase should return protocol plus domain', () => {
 	test('in valid URLs', () => {
 		for (const url of validUrls(numericId)) {
@@ -1345,9 +1353,9 @@ describe('generateNodesGraph', () => {
 	});
 
 	test('should not fail on error to resolve a node parameter for sticky node type', () => {
-		const workflow = mock<IWorkflowBase>({ nodes: [{ type: STICKY_NODE_TYPE }] });
+		const workflow = mock<IWorkflowBase>({ nodes: [{ type: STICKY_NODE_TYPE }], connections: {} });
 
-		vi.spyOn(nodeHelpers, 'getNodeParameters').mockImplementationOnce(() => {
+		vi.mocked(nodeHelpers.getNodeParameters).mockImplementationOnce(() => {
 			throw new ApplicationError('Could not find property option');
 		});
 
@@ -2014,6 +2022,129 @@ describe('generateNodesGraph', () => {
 			nameIndices: { 'MCP Client Tool Node': '0' },
 			webhookNodeNames: [],
 			evaluationTriggerNodeNames: [],
+		});
+	});
+
+	describe('ai_model telemetry', () => {
+		test('should capture ai_model for LM node with plain string model param', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: { model: 'test-model' },
+						id: 'lm-node-id',
+						name: 'LM Node',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes);
+			expect(result.nodeGraph.nodes['0'].ai_model).toBe('test-model');
+		});
+
+		test('should capture ai_model for LM node with modelName param', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: { modelName: 'test-model' },
+						id: 'lm-node-id',
+						name: 'LM Node',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes);
+			expect(result.nodeGraph.nodes['0'].ai_model).toBe('test-model');
+		});
+
+		test('should capture ai_model for LM node with resourceLocator model param', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: {
+							model: { __rl: true, mode: 'list', value: 'test-model' },
+						},
+						id: 'lm-node-id',
+						name: 'LM Node',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1.2,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes);
+			expect(result.nodeGraph.nodes['0'].ai_model).toBe('test-model');
+		});
+
+		test.each([
+			{
+				nodeType: '@n8n/n8n-nodes-langchain.openAi',
+				name: 'OpenAI',
+			},
+			{
+				nodeType: '@n8n/n8n-nodes-langchain.anthropic',
+				name: 'Anthropic',
+			},
+			{
+				nodeType: '@n8n/n8n-nodes-langchain.ollama',
+				name: 'Ollama',
+			},
+			{
+				nodeType: '@n8n/n8n-nodes-langchain.googleGemini',
+				name: 'Google Gemini',
+			},
+		])('should capture ai_model for $name vendor node via modelId', ({ nodeType }) => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: {
+							modelId: { __rl: true, mode: 'list', value: 'test-model' },
+						},
+						id: 'vendor-node-id',
+						name: 'Vendor Node',
+						type: nodeType,
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes);
+			expect(result.nodeGraph.nodes['0'].ai_model).toBe('test-model');
+		});
+
+		test('should not capture ai_model for non-AI node', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: {},
+						id: 'manual-trigger-id',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes);
+			expect(result.nodeGraph.nodes['0'].ai_model).toBeUndefined();
 		});
 	});
 });
@@ -3183,7 +3314,7 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 			},
 		});
 		const runData = mockRunData('Agent', new Error('Some error'));
-		vi.spyOn(nodeHelpers, 'getNodeParameters').mockReturnValueOnce(
+		vi.mocked(nodeHelpers.getNodeParameters).mockReturnValueOnce(
 			mock<INodeParameters>({ model: { value: 'gpt-4-turbo' } }),
 		);
 
@@ -3237,7 +3368,7 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 			],
 		});
 
-		vi.spyOn(nodeHelpers, 'getNodeParameters').mockReturnValueOnce(
+		vi.mocked(nodeHelpers.getNodeParameters).mockReturnValueOnce(
 			mock<INodeParameters>({ model: { value: 'gpt-4.1-mini' } }),
 		);
 
@@ -3265,7 +3396,7 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 
 		const runData = mockRunData('Agent', new Error('Some error'));
 
-		vi.spyOn(nodeHelpers, 'getNodeParameters').mockReturnValueOnce(
+		vi.mocked(nodeHelpers.getNodeParameters).mockReturnValueOnce(
 			mock<INodeParameters>({ model: 'gpt-4' }),
 		);
 
@@ -3355,7 +3486,7 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 		});
 		const runData = mockRunData('Agent', new Error('Some error'));
 
-		vi.spyOn(nodeHelpers, 'getNodeParameters').mockReturnValueOnce(
+		vi.mocked(nodeHelpers.getNodeParameters).mockReturnValueOnce(
 			mock<INodeParameters>({ modelName: 'gemini-1.5-pro' }),
 		);
 

@@ -4,8 +4,8 @@ import {
 	UpdateProjectDto,
 	AddUsersToProjectDto,
 	ChangeUserRoleInProject,
+	ListProjectsQueryDto,
 } from '@n8n/api-types';
-import type { Project } from '@n8n/db';
 import { AuthenticatedRequest, ProjectRepository } from '@n8n/db';
 import {
 	Get,
@@ -47,8 +47,24 @@ export class ProjectController {
 	) {}
 
 	@Get('/')
-	async getAllProjects(req: AuthenticatedRequest): Promise<Project[]> {
-		return await this.projectsService.getAccessibleProjects(req.user);
+	async getAllProjects(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Query payload: ListProjectsQueryDto,
+	) {
+		const [data, count] = await this.projectsService.getAccessibleProjectsAndCount(
+			req.user,
+			payload,
+		);
+
+		// When pagination params are provided, return { count, data } envelope
+		// with role and scopes enriched per project.
+		// Otherwise return a bare array for backward compatibility with existing callers.
+		if (payload.take !== undefined || payload.skip !== undefined) {
+			const enriched = await this.projectsService.addUserScopes(req.user, data);
+			return res.json({ count, data: enriched });
+		}
+		return data;
 	}
 
 	@Get('/count')
@@ -279,7 +295,6 @@ export class ProjectController {
 	) {
 		try {
 			await this.projectsService.changeUserRoleInProject(projectId, userId, body.role);
-			await this.projectsService.clearCredentialCanUseExternalSecretsCache(projectId);
 			const relations = await this.projectsService.getProjectRelations(projectId);
 			this.eventService.emit('team-project-updated', {
 				userId: req.user.id,
@@ -305,7 +320,6 @@ export class ProjectController {
 		@Param('userId') userId: string,
 	) {
 		await this.projectsService.deleteUserFromProject(projectId, userId);
-		await this.projectsService.clearCredentialCanUseExternalSecretsCache(projectId);
 		const relations = await this.projectsService.getProjectRelations(projectId);
 		this.eventService.emit('team-project-updated', {
 			userId: req.user.id,

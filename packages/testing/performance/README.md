@@ -21,54 +21,39 @@ Microbenchmarks for measuring and tracking performance of critical code paths.
 
 ```bash
 pnpm --filter=@n8n/performance bench          # Run benchmarks
-pnpm --filter=@n8n/performance bench:baseline # Save new baseline
-pnpm --filter=@n8n/performance bench:ci       # CI check (fails if >10% slower)
+pnpm --filter=@n8n/performance bench:baseline  # Save baseline for local comparison
+pnpm --filter=@n8n/performance bench:compare   # Compare against baseline (>10% = fail)
 ```
 
-## Adding a Benchmark
+## CI Regression Detection
 
-### 1. Create a bench file
+Benchmarks run automatically on PRs that touch `packages/testing/performance/**` or `packages/workflow/src/**`. [CodSpeed](https://codspeed.io) counts CPU instructions instead of wall-clock time, producing deterministic results regardless of runner load. It comments on PRs with results and regression warnings.
+
+You can also trigger benchmarks manually for any branch via **Actions > Test: Benchmarks > Run workflow**.
+
+### Local vs CI
+
+| | Local (`bench`) | CI |
+|---|---|---|
+| **Measurement** | Wall-clock time (Hz, ms) | CPU instruction count |
+| **Noise** | 15-30% variance | Near-zero variance |
+| **Best for** | Quick sanity checks, comparing approaches | Automated regression detection |
+
+Local benchmarks are useful for eyeballing performance during development. Use `bench:baseline` + `bench:compare` for before/after comparisons on the same machine in the same session.
+
+## Adding a Benchmark
 
 ```typescript
 // benchmarks/my-feature/thing.bench.ts
 import { bench, describe } from 'vitest';
 
-describe('My Feature', () => {
-  bench('operation name', () => {
-    // Code to measure - runs thousands of times
-    doTheThing();
-  });
-});
-```
-
-### 2. Add setup outside the bench function
-
-```typescript
 // Setup runs once, not measured
 const data = createTestData();
-const instance = new MyClass();
 
 describe('My Feature', () => {
-  bench('with small input', () => {
-    instance.process(data.small);
+  bench('operation name', () => {
+    doTheThing(data);
   });
-
-  bench('with large input', () => {
-    instance.process(data.large);
-  });
-});
-```
-
-### 3. Add warmup if needed
-
-```typescript
-// Warmup ensures JIT compilation is done before measuring
-for (let i = 0; i < 1000; i++) {
-  instance.process(data.small);
-}
-
-describe('My Feature', () => {
-  // Now benchmarks measure hot path, not JIT compilation
 });
 ```
 
@@ -87,54 +72,12 @@ my operation    20,000   0.04   0.20   0.05   0.10  ±0.5%   10000
 | rme | Margin of error - lower = more reliable |
 | samples | Number of iterations run |
 
-## Regression Detection
-
-Benchmarks are compared against a saved baseline:
-
-- **>10% slower** = regression (CI fails)
-- **>10% faster** = improvement (consider updating baseline)
-
-### Local Workflow
-
-```bash
-# 1. Before making changes, save a baseline
-pnpm --filter=@n8n/performance bench:baseline
-
-# 2. Make your changes/refactors
-
-# 3. Check for regressions
-pnpm --filter=@n8n/performance bench:ci
-```
-
-### After Intentional Improvements
-
-```bash
-# Save new baseline to reflect the improvement
-pnpm --filter=@n8n/performance bench:baseline
-```
-
 ## Current Benchmarks
 
 | Area | What it measures | Why it matters |
 |------|------------------|----------------|
 | Expression Engine | `={{ }}` evaluation speed | Runs for every node parameter |
 
-## Current Status
-
-This is a proof-of-concept for local regression detection.
-
-### CI Integration (TODO)
-
-Baselines are hardware-specific (an 8-core MacBook baseline is meaningless on a 2-core runner). CI needs its own baseline management:
-
-- **Option A:** Store baselines as CI artifacts, restore before comparison
-- **Option B:** External storage (S3, dedicated benchmark service)
-- **Option C:** Compare against previous CI run on same runner type
-
-## Known Limitations
-
-- **Local noise**: Background processes affect results. Run multiple times to verify.
-- **Baselines are machine-specific**: Cannot commit baselines to git - they must be generated on the same hardware they'll be compared against.
 
 ## Tips
 

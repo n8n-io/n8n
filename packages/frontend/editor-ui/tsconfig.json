@@ -10,7 +10,7 @@
 			"../@n8n/chat/src",
 			"../@n8n/design-system/src"
 		],
-		"outDir": "dist",
+		"noEmit": true,
 		"types": [
 			"vitest/globals",
 			"unplugin-icons/types/vue",
@@ -27,7 +27,8 @@
 			"@n8n/i18n*": ["../@n8n/i18n/src*"],
 			"@n8n/stores*": ["../@n8n/stores/src*"],
 			"@n8n/api-types*": ["../../@n8n/api-types/src*"],
-			"@n8n/utils*": ["../../@n8n/utils/src*"]
+			"@n8n/utils*": ["../../@n8n/utils/src*"],
+			"@n8n/expression-runtime": ["./vite/expression-runtime-stub.ts"]
 		},
 		// TODO: remove all options below this line
 		"useUnknownInCatchVariables": false

@@ -110,6 +110,8 @@ const multipleValues = computed(() => !!props.parameter.typeOptions?.multipleVal
 
 const sortable = computed(() => !!props.parameter.typeOptions?.sortable);
 
+const layout = computed(() => props.parameter.typeOptions?.fixedCollection?.layout);
+
 const propertyNames = computed(() => new Set(Object.keys(mutableValues.value ?? {})));
 
 const properties = computed(() =>
@@ -626,6 +628,7 @@ const onAddButtonClick = () => {
 						:get-picker-property-values="getPickerPropertyValues"
 						:is-optional-value-added="isOptionalValueAdded"
 						:add-optional-field-button-text="addOptionalFieldButtonText"
+						:layout="layout"
 						@value-changed="valueChanged"
 						@delete="handleDelete"
 						@drag-change="onDragChange"
@@ -666,9 +669,11 @@ const onAddButtonClick = () => {
 
 			<div v-if="shouldShowAddAtBottom" :class="$style.controls">
 				<N8nButton
+					class="n8n-button--highlightFill"
+					variant="subtle"
 					v-if="hasSingleOption"
-					type="highlightFill"
 					icon="plus"
+					size="small"
 					:data-test-id="`fixed-collection-add-top-level-button`"
 					:label="placeholder"
 					:disabled="isAddDisabled"
@@ -684,8 +689,10 @@ const onAddButtonClick = () => {
 				>
 					<template #trigger>
 						<N8nButton
-							type="highlightFill"
+							class="n8n-button--highlightFill"
+							variant="subtle"
 							icon="plus"
+							size="small"
 							:label="placeholder"
 							:disabled="isAddDisabled"
 						/>
@@ -751,6 +758,7 @@ const onAddButtonClick = () => {
 							:get-picker-property-values="getPickerPropertyValues"
 							:is-optional-value-added="isOptionalValueAdded"
 							:add-optional-field-button-text="addOptionalFieldButtonText"
+							:layout="layout"
 							@value-changed="valueChanged"
 							@delete="handleDelete"
 							@drag-change="onDragChange"
@@ -763,9 +771,11 @@ const onAddButtonClick = () => {
 
 					<div v-if="shouldShowAddAtBottom" :class="$style.controls">
 						<N8nButton
+							class="n8n-button--highlightFill"
+							variant="subtle"
 							v-if="hasSingleOption"
-							type="highlightFill"
 							icon="plus"
+							size="small"
 							:data-test-id="`fixed-collection-add-nested-button`"
 							:label="placeholder"
 							@click="onAddButtonClick"
@@ -778,7 +788,13 @@ const onAddButtonClick = () => {
 							@select="optionSelected"
 						>
 							<template #trigger>
-								<N8nButton type="highlightFill" icon="plus" :label="placeholder" />
+								<N8nButton
+									class="n8n-button--highlightFill"
+									variant="subtle"
+									icon="plus"
+									size="small"
+									:label="placeholder"
+								/>
 							</template>
 						</N8nDropdown>
 					</div>
@@ -819,6 +835,7 @@ const onAddButtonClick = () => {
 						:get-picker-property-values="getPickerPropertyValues"
 						:is-optional-value-added="isOptionalValueAdded"
 						:add-optional-field-button-text="addOptionalFieldButtonText"
+						:layout="layout"
 						@value-changed="valueChanged"
 						@delete="handleDelete"
 						@drag-change="onDragChange"

@@ -414,6 +414,28 @@ describe('v2/components/Select', () => {
 				expect(within(popover).getAllByTestId('custom-trailing')).toHaveLength(2);
 			});
 		});
+
+		it('should render footer slot', async () => {
+			const wrapper = render(Select, {
+				props: {
+					items: [
+						{ value: '1', label: 'Option 1' },
+						{ value: '2', label: 'Option 2' },
+					],
+					defaultOpen: true,
+				},
+				slots: {
+					footer: '<button data-test-id="footer-button">Add custom role</button>',
+				},
+			});
+
+			const trigger = wrapper.container.querySelector('[role="combobox"]');
+			const { popover } = await getPopoverContainer(trigger);
+
+			await waitFor(() => {
+				expect(within(popover).getByTestId('footer-button')).toBeVisible();
+			});
+		});
 	});
 
 	describe('custom keys', () => {

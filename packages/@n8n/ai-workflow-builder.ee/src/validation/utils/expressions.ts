@@ -6,7 +6,7 @@ export function containsExpression(value: unknown): boolean {
 		return false;
 	}
 
-	return /\{\{.*(\$\(.*?\))|(\$\w+).*}}/.test(value);
+	return /\{\{[\s\S]*(?:\$\([\s\S]*?\)|\$\w+)[\s\S]*}}/.test(value);
 }
 
 export function nodeParametersContainExpression(parameters: INodeParameters): boolean {
