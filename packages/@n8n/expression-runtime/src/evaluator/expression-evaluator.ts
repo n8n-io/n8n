@@ -6,6 +6,7 @@ import type {
 	EvaluateOptions,
 	RuntimeBridge,
 } from '../types';
+import { DEFAULT_BRIDGE_CONFIG } from '../types/bridge';
 import { IsolatePool, PoolDisposedError, PoolExhaustedError } from '../pool/isolate-pool';
 import { LruCache } from './lru-cache';
 
@@ -32,15 +33,21 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 		this.codeCache = new LruCache<string, string>(config.maxCodeCacheSize, () => {
 			this.config.observability?.metrics.counter('expression.code_cache.eviction', 1);
 		});
+		const logger = config.logger ?? DEFAULT_BRIDGE_CONFIG.logger;
 		this.createBridge = async () => {
 			const bridge = config.createBridge();
 			await bridge.initialize();
 			return bridge;
 		};
-		this.pool = new IsolatePool(this.createBridge, config.poolSize ?? 1, (error) => {
-			console.error('[IsolatePool] Failed to replenish bridge:', error);
-			config.observability?.metrics.counter('expression.pool.replenish_failed', 1);
-		});
+		this.pool = new IsolatePool(
+			this.createBridge,
+			config.poolSize ?? 1,
+			(error) => {
+				logger.error('[IsolatePool] Failed to replenish bridge', { error });
+				config.observability?.metrics.counter('expression.pool.replenish_failed', 1);
+			},
+			logger,
+		);
 	}
 
 	async initialize(): Promise<void> {
