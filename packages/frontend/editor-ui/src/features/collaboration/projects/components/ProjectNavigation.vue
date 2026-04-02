@@ -14,6 +14,7 @@ import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useFavoriteNavItems } from '../composables/useFavoriteNavItems';
 import FavoritesSidebarCompact from './FavoritesSidebarCompact.vue';
+import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
@@ -44,6 +45,7 @@ const isChatLinkAvailable = computed(
 		settingsStore.isChatFeatureEnabled &&
 		hasPermission(['rbac'], { rbac: { scope: 'chatHub:message' } }),
 );
+const isInstanceAiAvailable = computed(() => settingsStore.isModuleActive('instance-ai'));
 const hasMultipleVerifiedUsers = computed(
 	() => usersStore.allUsers.filter((user) => !user.isPendingUser).length > 1,
 );
@@ -104,6 +106,13 @@ const personalProject = computed<IMenuItem>(() => ({
 
 const hasFavorites = computed(() => favoritesStore.favorites.length > 0);
 
+const instanceAi = computed<IMenuItem>(() => ({
+	id: 'instance-ai',
+	icon: 'sparkles',
+	label: 'Instance AI',
+	route: { to: { name: INSTANCE_AI_VIEW } },
+}));
+
 const chat = computed<IMenuItem>(() => ({
 	id: 'chat',
 	icon: 'message-circle',
@@ -153,6 +162,13 @@ onBeforeUnmount(() => {
 				:compact="props.collapsed"
 				:active="activeTabId === 'shared'"
 				data-test-id="project-shared-menu-item"
+			/>
+			<N8nMenuItem
+				v-if="isInstanceAiAvailable"
+				:item="instanceAi"
+				:compact="props.collapsed"
+				:active="activeTabId === 'instance-ai'"
+				data-test-id="project-instance-ai-menu-item"
 			/>
 			<N8nMenuItem
 				v-if="isChatLinkAvailable"

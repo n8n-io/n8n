@@ -22,7 +22,9 @@ export const MODULE_NAMES = [
 	'favorites',
 	'redaction',
 	'instance-registry',
+	'instance-ai',
 	'otel',
+	'token-exchange',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];

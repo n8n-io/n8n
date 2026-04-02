@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta
+			http-equiv="Content-Security-Policy"
+			content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'"
+		/>
+		<title>n8n Gateway Settings</title>
+		<link rel="stylesheet" href="styles.css" />
+	</head>
+	<body>
+		<div class="app">
+			<div class="header">
+				<span class="header-title">n8n Gateway</span>
+				<div id="statusBadge" class="status-badge">
+					<span id="statusDot" class="status-dot stopped"></span>
+					<span id="statusText">Stopped</span>
+				</div>
+			</div>
+
+			<div class="restart-notice" id="restartNotice" style="display: none">
+				<span class="restart-notice-icon">⚠</span>
+				<span>Saving will apply changes. Port and capability changes will restart the daemon.</span>
+			</div>
+
+			<form class="form" id="settingsForm">
+				<!-- Connection -->
+				<div class="form-section">
+					<div class="form-section-title">Connection</div>
+
+					<div class="form-row">
+						<label class="form-label" for="port">Port</label>
+						<input
+							class="form-input"
+							type="number"
+							id="port"
+							name="port"
+							min="1024"
+							max="65535"
+							placeholder="7655"
+						/>
+					</div>
+
+					<div class="form-row">
+						<label class="form-label">Allowed Origins</label>
+						<textarea
+							class="textarea"
+							id="allowedOrigins"
+							name="allowedOrigins"
+							rows="3"
+							placeholder="https://my-n8n.com&#10;https://another-n8n.example.com"
+						></textarea>
+						<div class="form-hint">URLs that can connect without confirmation (one per line)</div>
+					</div>
+				</div>
+
+				<!-- Filesystem -->
+				<div class="form-section">
+					<div class="form-section-title">Filesystem</div>
+
+					<div class="toggle-row">
+						<div>
+							<div class="toggle-label">Enable filesystem access</div>
+						</div>
+						<label class="toggle">
+							<input type="checkbox" id="filesystemEnabled" name="filesystemEnabled" />
+							<span class="toggle-slider"></span>
+						</label>
+					</div>
+
+					<div class="form-row" id="filesystemDirRow" style="margin-top: 10px">
+						<label class="form-label" for="filesystemDir">Directory</label>
+						<div class="form-input-group">
+							<input
+								class="form-input"
+								type="text"
+								id="filesystemDir"
+								name="filesystemDir"
+								placeholder="/Users/you"
+							/>
+							<button type="button" class="btn-browse" id="browseDirBtn">Browse…</button>
+						</div>
+					</div>
+				</div>
+
+				<!-- Tools -->
+				<div class="form-section">
+					<div class="form-section-title">Tools</div>
+
+					<div class="toggle-row">
+						<div>
+							<div class="toggle-label">Shell execution</div>
+							<div class="toggle-sublabel">Disabled by default for security</div>
+						</div>
+						<label class="toggle">
+							<input type="checkbox" id="shellEnabled" name="shellEnabled" />
+							<span class="toggle-slider"></span>
+						</label>
+					</div>
+
+					<div class="toggle-row">
+						<div>
+							<div class="toggle-label">Screenshots</div>
+						</div>
+						<label class="toggle">
+							<input type="checkbox" id="screenshotEnabled" name="screenshotEnabled" />
+							<span class="toggle-slider"></span>
+						</label>
+					</div>
+
+					<div class="toggle-row">
+						<div>
+							<div class="toggle-label">Mouse &amp; keyboard</div>
+						</div>
+						<label class="toggle">
+							<input type="checkbox" id="mouseKeyboardEnabled" name="mouseKeyboardEnabled" />
+							<span class="toggle-slider"></span>
+						</label>
+					</div>
+
+					<div class="toggle-row">
+						<div>
+							<div class="toggle-label">Browser automation</div>
+						</div>
+						<label class="toggle">
+							<input type="checkbox" id="browserEnabled" name="browserEnabled" />
+							<span class="toggle-slider"></span>
+						</label>
+					</div>
+				</div>
+
+				<!-- Diagnostics -->
+				<div class="form-section">
+					<div class="form-section-title">Diagnostics</div>
+
+					<div class="form-row">
+						<label class="form-label" for="logLevel">Log level</label>
+						<select class="form-input" id="logLevel" name="logLevel">
+							<option value="silent">Silent</option>
+							<option value="error">Error</option>
+							<option value="warn">Warn</option>
+							<option value="info">Info (default)</option>
+							<option value="debug">Debug</option>
+						</select>
+					</div>
+					<div class="form-hint">Logs are written to ~/.n8n-local-gateway/log</div>
+				</div>
+			</form>
+
+			<div class="footer">
+				<button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
+				<button type="button" class="btn btn-secondary" id="applyBtn" disabled>Apply</button>
+				<button type="button" class="btn btn-primary" id="saveBtn" disabled>
+					Save &amp; Close
+				</button>
+			</div>
+		</div>
+		<script>
+			var exports = { __esModule: true };
+		</script>
+
+		<script type="module" src="settings.js"></script>
+	</body>
+</html>

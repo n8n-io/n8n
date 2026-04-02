@@ -1,0 +1,28 @@
+{
+	"manifest_version": 3,
+	"key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsXzYaLfNB/XLloWnXTInZPdRNyNIGYjKzata0Ok930AY7zhEv3T7UvEJ7auYWUhCaGl6Plu6pNjsskH46nC6nYAJGlN81CErQF1o1mxbeXY73gZytFy4aIU2Obp1luzr78DZ/ndHXwWYlzrVIm8d9+X5mx6JDeojbHvmtS3FcBBafj8Ody6nASsPbnAxIjPUVoMFUKz7mQkiAWlkajGF146KS+IGRbDt1iCg8T1PkfDixV95zT1q4v+Kmz/HtWoy5uH3jvOilvjVglxtLasrqiDmw82W/4m/EQPesJlFkX6ZXoM7x4gjCIJhCVH0MBliqx95DdSavp55xXeRmBaHZwIDAQAB",
+	"name": "n8n Browser Bridge",
+	"version": "0.0.1",
+	"description": "Share browser tabs with n8n's AI agent for browser automation",
+	"permissions": ["debugger", "activeTab", "tabs", "storage", "webNavigation"],
+	"host_permissions": ["<all_urls>"],
+	"background": {
+		"service_worker": "dist/background.mjs",
+		"type": "module"
+	},
+	"action": {
+		"default_title": "n8n Browser Bridge",
+		"default_icon": {
+			"16": "icons/icon-16.png",
+			"32": "icons/icon-32.png",
+			"48": "icons/icon-48.png",
+			"128": "icons/icon-128.png"
+		}
+	},
+	"icons": {
+		"16": "icons/icon-16.png",
+		"32": "icons/icon-32.png",
+		"48": "icons/icon-48.png",
+		"128": "icons/icon-128.png"
+	}
+}

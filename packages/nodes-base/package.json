@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "2.14.0",
+  "version": "2.15.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -399,6 +399,7 @@
       "dist/credentials/WiseApi.credentials.js",
       "dist/credentials/WooCommerceApi.credentials.js",
       "dist/credentials/WordpressApi.credentials.js",
+      "dist/credentials/WordpressOAuth2Api.credentials.js",
       "dist/credentials/WorkableApi.credentials.js",
       "dist/credentials/WufooApi.credentials.js",
       "dist/credentials/XeroOAuth2Api.credentials.js",
