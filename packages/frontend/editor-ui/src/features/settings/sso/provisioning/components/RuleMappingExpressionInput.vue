@@ -12,7 +12,13 @@ import {
 import { EditorState, type Range } from '@codemirror/state';
 import { history, historyKeymap } from '@codemirror/commands';
 import { parserWithMetaData as n8nParser } from '@n8n/codemirror-lang';
-import { LanguageSupport, LRLanguage, syntaxTree } from '@codemirror/language';
+import {
+	LanguageSupport,
+	LRLanguage,
+	syntaxHighlighting,
+	defaultHighlightStyle,
+	syntaxTree,
+} from '@codemirror/language';
 import { parseMixed, type SyntaxNodeRef } from '@lezer/common';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 
@@ -90,6 +96,7 @@ const resolvableHighlightPlugin = ViewPlugin.fromClass(
 function createExtensions() {
 	return [
 		new LanguageSupport(n8nLanguage),
+		syntaxHighlighting(defaultHighlightStyle),
 		resolvableHighlightPlugin,
 		history(),
 		keymap.of(historyKeymap),
