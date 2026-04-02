@@ -3176,14 +3176,22 @@ describe('useCanvasOperations', () => {
 				outputs: [NodeConnectionTypes.AiTool],
 			});
 
-			workflowsStore.workflow.nodes = [sourceNode, targetNode];
-			workflowsStore.workflow.connections = {
+			const testNodes = [sourceNode, targetNode];
+			const testConnections = {
 				[sourceNode.name]: {
 					[NodeConnectionTypes.AiTool]: [
 						[{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 0 }],
 					],
 				},
 			};
+
+			workflowsStore.workflow.nodes = testNodes;
+			workflowsStore.workflow.connections = testConnections;
+
+			// @ts-expect-error -- createTestingPinia makes computed writable
+			workflowDocumentStoreInstance.allNodes = testNodes;
+			// @ts-expect-error -- createTestingPinia makes computed writable
+			workflowDocumentStoreInstance.connectionsBySourceNode = testConnections;
 
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id) => {
 				if (id === sourceNodeId) return sourceNode;
@@ -3297,14 +3305,22 @@ describe('useCanvasOperations', () => {
 				outputs: [NodeConnectionTypes.AiLanguageModel],
 			});
 
-			workflowsStore.workflow.nodes = [sourceNode, targetNode];
-			workflowsStore.workflow.connections = {
+			const testNodes = [sourceNode, targetNode];
+			const testConnections = {
 				[sourceNode.name]: {
 					[NodeConnectionTypes.AiLanguageModel]: [
 						[{ node: targetNode.name, type: NodeConnectionTypes.AiLanguageModel, index: 1 }],
 					],
 				},
 			};
+
+			workflowsStore.workflow.nodes = testNodes;
+			workflowsStore.workflow.connections = testConnections;
+
+			// @ts-expect-error -- createTestingPinia makes computed writable
+			workflowDocumentStoreInstance.allNodes = testNodes;
+			// @ts-expect-error -- createTestingPinia makes computed writable
+			workflowDocumentStoreInstance.connectionsBySourceNode = testConnections;
 
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id) => {
 				if (id === sourceNodeId) return sourceNode;
@@ -3451,14 +3467,22 @@ describe('useCanvasOperations', () => {
 				outputs: [NodeConnectionTypes.AiTool],
 			});
 
-			workflowsStore.workflow.nodes = [sourceNode, targetNode];
-			workflowsStore.workflow.connections = {
+			const testNodes = [sourceNode, targetNode];
+			const testConnections = {
 				[sourceNode.name]: {
 					[NodeConnectionTypes.AiTool]: [
 						[{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 0 }],
 					],
 				},
 			};
+
+			workflowsStore.workflow.nodes = testNodes;
+			workflowsStore.workflow.connections = testConnections;
+
+			// @ts-expect-error -- createTestingPinia makes computed writable
+			workflowDocumentStoreInstance.allNodes = testNodes;
+			// @ts-expect-error -- createTestingPinia makes computed writable
+			workflowDocumentStoreInstance.connectionsBySourceNode = testConnections;
 
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id) => {
 				if (id === sourceNodeId) return sourceNode;
