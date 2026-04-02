@@ -1,0 +1,52 @@
+{
+    "type": "object",
+    "properties": {
+        "data": {
+            "type": "object",
+            "properties": {
+                "modelResponse": {
+                    "type": "object",
+                    "properties": {
+                        "scrapedContent": {
+                            "type": "object",
+                            "properties": {
+                                "contentType": {
+                                    "type": "string"
+                                },
+                                "text": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "title": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "meta": {
+            "type": "object",
+            "properties": {
+                "requestId": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "usage": {
+                    "type": "object",
+                    "properties": {
+                        "credits": {
+                            "type": "integer"
+                        },
+                        "id": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "version": 1
+}
