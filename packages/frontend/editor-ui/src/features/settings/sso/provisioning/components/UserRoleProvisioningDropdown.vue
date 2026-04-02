@@ -139,4 +139,8 @@ const userRoleProvisioningDescriptions = computed<UserRoleProvisioningDescriptio
 .noBorder {
 	border-bottom: none;
 }
+
+.noBorder {
+	border-bottom: none;
+}
 </style>
