@@ -100,20 +100,15 @@ async function getBrowserMcpTools(config: McpServerConfig | undefined): Promise<
 }
 
 function ensureMastraRegistered(agent: Agent, storage: MastraCompositeStore): void {
-	// Only recreate Mastra if the storage instance changed
 	const key = storage.id ?? 'default';
-	if (cachedMastra && cachedMastraStorageKey === key) {
-		// Register the new agent with the existing Mastra so it gets
-		// the #mastra back-reference needed for suspend/resume snapshot storage.
-		agent.__registerMastra(cachedMastra);
-		return;
+	if (!cachedMastra || cachedMastraStorageKey !== key) {
+		// Create a storage-only Mastra — no agents registered.
+		// The agent only needs the Mastra back-reference to access getStorage()
+		// for workflow snapshot persistence during suspend/resume.
+		cachedMastra = new Mastra({ storage });
+		cachedMastraStorageKey = key;
 	}
-
-	cachedMastra = new Mastra({
-		agents: { 'n8n-instance-agent': agent },
-		storage,
-	});
-	cachedMastraStorageKey = key;
+	agent.__registerMastra(cachedMastra);
 }
 
 // ── Agent factory ───────────────────────────────────────────────────────────
