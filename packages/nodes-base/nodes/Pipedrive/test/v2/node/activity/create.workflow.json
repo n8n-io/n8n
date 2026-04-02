@@ -15,7 +15,7 @@
 				"resource": "activity",
 				"operation": "create",
 				"subject": "Call client",
-				"done": "0",
+				"done": false,
 				"type": "call",
 				"additionalFields": {
 					"deal_id": 8,

@@ -22,18 +22,8 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Done',
 		name: 'done',
-		type: 'options',
-		options: [
-			{
-				name: 'Not Done',
-				value: '0',
-			},
-			{
-				name: 'Done',
-				value: '1',
-			},
-		],
-		default: '0',
+		type: 'boolean',
+		default: false,
 		description: 'Whether the activity is done or not',
 	},
 	{

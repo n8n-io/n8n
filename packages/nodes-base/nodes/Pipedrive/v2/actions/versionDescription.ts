@@ -50,6 +50,8 @@ export const versionDescription: INodeTypeDescription = {
 			},
 		},
 	],
+	// baseURL is v1 because it's only used by the credential testedBy request (GET /users/me)
+	// which has no v2 equivalent. All v2 operations construct their own URLs via the transport layer.
 	requestDefaults: {
 		baseURL: 'https://api.pipedrive.com/v1',
 		url: '',

@@ -17,7 +17,7 @@
 				"activityId": 10,
 				"updateFields": {
 					"subject": "Updated call",
-					"done": "1"
+					"done": true
 				}
 			},
 			"id": "22222222-3333-4444-5555-666666666666",
