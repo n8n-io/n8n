@@ -6,7 +6,8 @@
  */
 
 import { createLogger } from './logger';
-import { RelayConnection, isEligibleTab, type TabManagementSettings } from './relayConnection';
+import { RelayConnection, isEligibleTab } from './relayConnection';
+import type { ExtensionMessage, TabManagementSettings } from './types';
 
 const log = createLogger('bg');
 
@@ -42,51 +43,6 @@ const RELAY_URL_KEY = 'pendingRelayUrl';
 // ---------------------------------------------------------------------------
 // Message handling from connect.html UI
 // ---------------------------------------------------------------------------
-
-interface GetTabsMessage {
-	type: 'getTabs';
-}
-
-interface ConnectMessage {
-	type: 'connect';
-	relayUrl: string;
-	selectedTabIds: number[];
-}
-
-interface DisconnectMessage {
-	type: 'disconnect';
-}
-
-interface GetStatusMessage {
-	type: 'getStatus';
-}
-
-interface UpdateSettingsMessage {
-	type: 'updateSettings';
-	settings: TabManagementSettings;
-}
-
-interface GetSettingsMessage {
-	type: 'getSettings';
-}
-
-interface GetRelayUrlMessage {
-	type: 'getRelayUrl';
-}
-
-interface ClearRelayUrlMessage {
-	type: 'clearRelayUrl';
-}
-
-type ExtensionMessage =
-	| GetTabsMessage
-	| ConnectMessage
-	| DisconnectMessage
-	| GetStatusMessage
-	| UpdateSettingsMessage
-	| GetSettingsMessage
-	| GetRelayUrlMessage
-	| ClearRelayUrlMessage;
 
 chrome.runtime.onMessage.addListener(
 	(
@@ -229,7 +185,12 @@ chrome.tabs.onCreated.addListener((tab) => {
 	const isExcluded = url.startsWith('chrome://') || url.startsWith('chrome-extension://');
 	if (!isExcluded) {
 		log.debug('[onCreated] adding agent-created tab:', tab.id, url);
-		void relay.addTab(tab.id, tab.title ?? '', url);
+		void relay.addTab(tab.id, tab.title ?? '', url).then(() => {
+			if (relay === activeConnection?.relay) {
+				broadcastStatusChange();
+				updateBadge(relay.getControlledIds().length);
+			}
+		});
 	}
 });
 
@@ -264,7 +225,12 @@ chrome.webNavigation.onCreatedNavigationTarget.addListener((details) => {
 	const url = details.url;
 	if (url && !url.startsWith('chrome://') && !url.startsWith('chrome-extension://')) {
 		log.debug('[onCreatedNavigationTarget] adding spawned tab:', details.tabId, url);
-		void relay.addTab(details.tabId, '', url);
+		void relay.addTab(details.tabId, '', url).then(() => {
+			if (relay === activeConnection?.relay) {
+				broadcastStatusChange();
+				updateBadge(relay.getControlledIds().length);
+			}
+		});
 	} else {
 		log.debug(
 			'[onCreatedNavigationTarget] URL not eligible yet, waiting for onUpdated:',
@@ -354,6 +320,11 @@ async function connectToRelay(
 			activeConnection = null;
 			updateBadge(0);
 			broadcastStatusChange();
+		};
+
+		relay.ontabcreated = () => {
+			broadcastStatusChange();
+			updateBadge(relay.getControlledIds().length);
 		};
 
 		const tabCount = relay.getControlledIds().length;
