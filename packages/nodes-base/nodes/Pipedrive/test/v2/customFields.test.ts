@@ -297,10 +297,10 @@ describe('addFieldsToBody', () => {
 	it('should nest custom fields under custom_fields key', () => {
 		const body: IDataObject = {};
 		addFieldsToBody(body, {
-			customFields: { property: [{ name: 'abc123_hash', value: 'test' }] },
+			customFields: { property: [{ name: 'Abc123 Hash', value: 'test' }] },
 		});
-		expect(body.custom_fields).toEqual({ abc123_hash: 'test' });
-		expect((body as Record<string, unknown>).abc123_hash).toBeUndefined();
+		expect(body.custom_fields).toEqual({ 'Abc123 Hash': 'test' });
+		expect((body as Record<string, unknown>)['Abc123 Hash']).toBeUndefined();
 	});
 
 	it('should merge multiple custom fields', () => {
@@ -308,12 +308,12 @@ describe('addFieldsToBody', () => {
 		addFieldsToBody(body, {
 			customFields: {
 				property: [
-					{ name: 'field_a', value: 'value_a' },
-					{ name: 'field_b', value: 'value_b' },
+					{ name: 'Field A', value: 'value_a' },
+					{ name: 'Field B', value: 'value_b' },
 				],
 			},
 		});
-		expect(body.custom_fields).toEqual({ field_a: 'value_a', field_b: 'value_b' });
+		expect(body.custom_fields).toEqual({ 'Field A': 'value_a', 'Field B': 'value_b' });
 	});
 
 	it('should copy non-custom fields to root level', () => {
