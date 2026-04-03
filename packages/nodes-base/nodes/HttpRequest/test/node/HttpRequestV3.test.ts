@@ -542,4 +542,33 @@ describe('HttpRequestV3', () => {
 			);
 		});
 	});
+
+	describe('Empty JSON Response Handling', () => {
+		it('should return empty object for empty JSON response body', async () => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'POST';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			const response = {
+				headers: { 'content-type': 'application/json', 'content-length': '0' },
+				body: Buffer.from(''),
+			};
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: {}, pairedItem: { item: 0 } }]]);
+		});
+	});
 });
