@@ -340,7 +340,23 @@ export class Git implements INodeType {
 					// Tell git not to ask for any information via the terminal like for
 					// example the username. As nobody will be able to answer it would
 					// n8n keep on waiting forever.
-					.env('GIT_TERMINAL_PROMPT', '0');
+					// Pass proxy environment variables since they are being set here
+					// for every git operation
+					.env({
+						GIT_TERMINAL_PROMPT: '0',
+						...(process.env.http_proxy && { http_proxy: process.env.http_proxy }),
+						...(process.env.HTTP_PROXY && { HTTP_PROXY: process.env.HTTP_PROXY }),
+						...(process.env.https_proxy && { https_proxy: process.env.https_proxy }),
+						...(process.env.HTTPS_PROXY && { HTTPS_PROXY: process.env.HTTPS_PROXY }),
+						...(process.env.no_proxy && { no_proxy: process.env.no_proxy }),
+						...(process.env.NO_PROXY && { NO_PROXY: process.env.NO_PROXY }),
+						...(process.env.all_proxy && { all_proxy: process.env.all_proxy }),
+						...(process.env.ALL_PROXY && { ALL_PROXY: process.env.ALL_PROXY }),
+						...(process.env.GIT_SSL_CAINFO && { GIT_SSL_CAINFO: process.env.GIT_SSL_CAINFO }),
+						...(process.env.GIT_SSL_NO_VERIFY && {
+							GIT_SSL_NO_VERIFY: process.env.GIT_SSL_NO_VERIFY,
+						}),
+					});
 
 				if (operation === 'add') {
 					// ----------------------------------
