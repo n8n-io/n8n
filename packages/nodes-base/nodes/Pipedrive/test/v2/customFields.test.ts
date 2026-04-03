@@ -1,6 +1,7 @@
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { encodeCustomFieldsV2, resolveCustomFieldsV2 } from '../../v2/helpers/customFields';
+import { addFieldsToBody } from '../../v2/helpers/fields';
 import { coerceToBoolean, coerceToNumber, toRfc3339 } from '../../v2/helpers/typeCoercion';
 import type { ICustomProperties } from '../../v2/transport';
 
@@ -48,16 +49,15 @@ const customProperties: ICustomProperties = {
 
 describe('Pipedrive v2 Custom Fields', () => {
 	describe('encodeCustomFieldsV2', () => {
-		it('should place custom fields under custom_fields key', () => {
+		it('should resolve display names to API keys under custom_fields', () => {
 			const item: IDataObject = {
 				title: 'Test Deal',
-				'My Custom Text': 'Hello World',
+				custom_fields: { 'My Custom Text': 'Hello World' },
 			};
 
 			encodeCustomFieldsV2(customProperties, item);
 
 			expect(item.title).toBe('Test Deal');
-			expect(item['My Custom Text']).toBeUndefined();
 			expect(item.custom_fields).toEqual({
 				abc123_text: 'Hello World',
 			});
@@ -65,7 +65,7 @@ describe('Pipedrive v2 Custom Fields', () => {
 
 		it('should resolve enum labels to option IDs', () => {
 			const item: IDataObject = {
-				'My Custom Enum': 'Option B',
+				custom_fields: { 'My Custom Enum': 'Option B' },
 			};
 
 			encodeCustomFieldsV2(customProperties, item);
@@ -77,7 +77,7 @@ describe('Pipedrive v2 Custom Fields', () => {
 
 		it('should keep value as-is if enum label not found', () => {
 			const item: IDataObject = {
-				'My Custom Enum': 'Unknown Option',
+				custom_fields: { 'My Custom Enum': 'Unknown Option' },
 			};
 
 			encodeCustomFieldsV2(customProperties, item);
@@ -89,7 +89,7 @@ describe('Pipedrive v2 Custom Fields', () => {
 
 		it('should handle null values', () => {
 			const item: IDataObject = {
-				'My Custom Text': null,
+				custom_fields: { 'My Custom Text': null },
 			};
 
 			encodeCustomFieldsV2(customProperties, item);
@@ -99,7 +99,7 @@ describe('Pipedrive v2 Custom Fields', () => {
 			});
 		});
 
-		it('should not create custom_fields key if no custom fields present', () => {
+		it('should remove custom_fields key if no custom fields present', () => {
 			const item: IDataObject = {
 				title: 'Test Deal',
 			};
@@ -112,9 +112,11 @@ describe('Pipedrive v2 Custom Fields', () => {
 
 		it('should handle multiple custom fields', () => {
 			const item: IDataObject = {
-				'My Custom Text': 'Hello',
-				'My Custom Enum': 'Option A',
-				'My Number': 42.5,
+				custom_fields: {
+					'My Custom Text': 'Hello',
+					'My Custom Enum': 'Option A',
+					'My Number': 42.5,
+				},
 			};
 
 			encodeCustomFieldsV2(customProperties, item);
@@ -124,6 +126,30 @@ describe('Pipedrive v2 Custom Fields', () => {
 				def456_enum: 10,
 				mno345_double: 42.5,
 			});
+		});
+
+		it('should not touch built-in fields at root level', () => {
+			const item: IDataObject = {
+				name: 'Jane',
+				emails: [{ value: 'jane@test.com' }],
+				custom_fields: { 'My Custom Text': 'Hello' },
+			};
+
+			encodeCustomFieldsV2(customProperties, item);
+
+			expect(item.name).toBe('Jane');
+			expect(item.emails).toBeDefined();
+			expect(item.custom_fields).toEqual({ abc123_text: 'Hello' });
+		});
+
+		it('should pass through unknown keys as-is', () => {
+			const item: IDataObject = {
+				custom_fields: { unknown_key: 'some value' },
+			};
+
+			encodeCustomFieldsV2(customProperties, item);
+
+			expect(item.custom_fields).toEqual({ unknown_key: 'some value' });
 		});
 	});
 
@@ -246,6 +272,38 @@ describe('Pipedrive v2 Custom Fields', () => {
 			expect(item.json.unknown_key).toBe('some value');
 			expect(item.json.custom_fields).toBeUndefined();
 		});
+	});
+});
+
+describe('addFieldsToBody', () => {
+	it('should nest custom fields under custom_fields key', () => {
+		const body: IDataObject = {};
+		addFieldsToBody(body, {
+			customFields: { property: [{ name: 'abc123_hash', value: 'test' }] },
+		});
+		expect(body.custom_fields).toEqual({ abc123_hash: 'test' });
+		expect((body as Record<string, unknown>).abc123_hash).toBeUndefined();
+	});
+
+	it('should merge multiple custom fields', () => {
+		const body: IDataObject = {};
+		addFieldsToBody(body, {
+			customFields: {
+				property: [
+					{ name: 'field_a', value: 'value_a' },
+					{ name: 'field_b', value: 'value_b' },
+				],
+			},
+		});
+		expect(body.custom_fields).toEqual({ field_a: 'value_a', field_b: 'value_b' });
+	});
+
+	it('should copy non-custom fields to root level', () => {
+		const body: IDataObject = {};
+		addFieldsToBody(body, { visible_to: '3', label: 'hot' });
+		expect(body.visible_to).toBe(3);
+		expect(body.label).toBe('hot');
+		expect(body.custom_fields).toBeUndefined();
 	});
 });
 

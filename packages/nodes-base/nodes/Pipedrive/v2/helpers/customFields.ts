@@ -35,36 +35,41 @@ function buildNameMap(customProperties: ICustomProperties): Map<string, ICustomI
  */
 export function encodeCustomFieldsV2(customProperties: ICustomProperties, item: IDataObject): void {
 	const nameMap = buildNameMap(customProperties);
-	const customFields: IDataObject = {};
+	const inputFields = (item.custom_fields as IDataObject) ?? {};
+	const resolved: IDataObject = {};
 
-	for (const key of Object.keys(item)) {
+	for (const [key, value] of Object.entries(inputFields)) {
 		// Look up by display name first, then by raw field key
 		const customPropertyData = nameMap.get(key) ?? customProperties[key];
 
 		if (customPropertyData !== undefined) {
 			if (
-				item[key] !== null &&
-				item[key] !== undefined &&
+				value !== null &&
+				value !== undefined &&
 				customPropertyData.options !== undefined &&
 				Array.isArray(customPropertyData.options)
 			) {
 				const propertyOption = customPropertyData.options.find(
-					(option) => option.label.toString() === item[key]!.toString(),
+					(option) => option.label.toString() === value!.toString(),
 				);
 				if (propertyOption !== undefined) {
-					customFields[customPropertyData.key] = propertyOption.id;
+					resolved[customPropertyData.key] = propertyOption.id;
 				} else {
-					customFields[customPropertyData.key] = item[key];
+					resolved[customPropertyData.key] = value;
 				}
 			} else {
-				customFields[customPropertyData.key] = item[key];
+				resolved[customPropertyData.key] = value;
 			}
-			delete item[key];
+		} else {
+			// Unknown key — pass through as-is
+			resolved[key] = value;
 		}
 	}
 
-	if (Object.keys(customFields).length > 0) {
-		item.custom_fields = customFields;
+	if (Object.keys(resolved).length > 0) {
+		item.custom_fields = resolved;
+	} else {
+		delete item.custom_fields;
 	}
 }
 

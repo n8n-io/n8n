@@ -10,12 +10,14 @@ import { coerceToNumber } from './typeCoercion';
 export function addFieldsToBody(body: IDataObject, fields: IDataObject): void {
 	for (const key of Object.keys(fields)) {
 		if (key === 'customFields' && (fields.customFields as IDataObject)?.property !== undefined) {
+			const customFieldsObj: IDataObject = (body.custom_fields as IDataObject) ?? {};
 			for (const customProperty of (fields.customFields as IDataObject).property as Array<{
 				name: string;
 				value: string;
 			}>) {
-				body[customProperty.name] = customProperty.value;
+				customFieldsObj[customProperty.name] = customProperty.value;
 			}
+			body.custom_fields = customFieldsObj;
 		} else {
 			body[key] = fields[key];
 		}
