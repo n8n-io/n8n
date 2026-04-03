@@ -1,3 +1,5 @@
+import { createHash } from 'crypto';
+
 import moment from 'moment-timezone';
 import { type CronExpression, type INode, NodeOperationError, randomInt } from 'n8n-workflow';
 
@@ -83,11 +85,19 @@ export function recurrenceCheck(
 	return false;
 }
 
-export const toCronExpression = (interval: ScheduleInterval): CronExpression => {
+/**
+ * Derives a deterministic second offset (0–59) from a seed string.
+ * Used to spread executions across the minute while keeping the expression
+ * stable across workflow saves, which prevents duplicate cron registrations.
+ */
+const deterministicSecond = (seed: string): number =>
+	parseInt(createHash('sha256').update(seed).digest('hex').slice(0, 8), 16) % 60;
+
+export const toCronExpression = (interval: ScheduleInterval, seed?: string): CronExpression => {
 	if (interval.field === 'cronExpression') return interval.expression;
 	if (interval.field === 'seconds') return `*/${interval.secondsInterval} * * * * *`;
 
-	const randomSecond = randomInt(0, 60);
+	const randomSecond = seed ? deterministicSecond(seed) : randomInt(0, 60);
 	if (interval.field === 'minutes') return `${randomSecond} */${interval.minutesInterval} * * * *`;
 
 	const minute = interval.triggerAtMinute ?? randomInt(0, 60);
