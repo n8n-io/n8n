@@ -38,6 +38,15 @@ export class TaskRunnersConfig {
 	@Env('N8N_RUNNERS_MAX_OLD_SPACE_SIZE')
 	maxOldSpaceSize: string = '';
 
+	/**
+	 * Node.js `--max-old-space-size-percentage` value in percentage for the runner process.
+	 * Must be a number greater than 0 and up to 100, representing the percentage of available system memory to allocate to the V8 heap.
+	 * This env var takes precedence over N8N_RUNNERS_MAX_OLD_SPACE_SIZE when both are specified, like in specified in node documentation
+	 * https://nodejs.org/api/cli.html#max-old-space-size-percentagepercentage
+	 */
+	@Env('N8N_RUNNERS_MAX_OLD_SPACE_SIZE_PERCENTAGE', z.coerce.number().int().min(0).max(100).nullable().default(null))
+	maxOldSpaceSizePercentage: number | null = null;
+
 	/** Maximum number of tasks a single runner can execute concurrently. */
 	@Env('N8N_RUNNERS_MAX_CONCURRENCY')
 	maxConcurrency: number = 10;
