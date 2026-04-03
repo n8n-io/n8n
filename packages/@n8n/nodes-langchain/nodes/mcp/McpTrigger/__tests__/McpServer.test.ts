@@ -70,6 +70,20 @@ describe('McpServer', () => {
 
 			expect(mcpServer.getSessionId(req)).toBeUndefined();
 		});
+
+		it('should return undefined when sessionId query param is an array', () => {
+			const req = {
+				query: { sessionId: ['session-a', 'session-b'] },
+				headers: {},
+				rawBody: Buffer.from('{}'),
+				params: {},
+				method: 'POST',
+				path: '/mcp',
+				get: jest.fn(),
+			} as unknown as Parameters<typeof mcpServer.getSessionId>[0];
+
+			expect(mcpServer.getSessionId(req)).toBeUndefined();
+		});
 	});
 
 	describe('getMcpMetadata', () => {
