@@ -3,13 +3,11 @@ import {
 	AuthIdentity,
 	AuthIdentityRepository,
 	GLOBAL_ADMIN_ROLE,
-	GLOBAL_OWNER_ROLE,
 	ProjectRepository,
 	UserRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { AuthError } from '@/errors/response-errors/auth.error';
 import type { ExternalTokenClaims } from '@/modules/token-exchange/token-exchange.schemas';
 import { IdentityResolutionService } from '@/modules/token-exchange/services/identity-resolution.service';
 
