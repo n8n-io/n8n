@@ -209,7 +209,8 @@ describe('getConnectedTools', () => {
 		expect(tools).toEqual(mockTools);
 	});
 
-	it('should throw error when duplicate tool names exist and enforceUniqueNames is true', async () => {
+	it('should throw error when duplicate tool names exist without source node name', async () => {
+		// Tools without sourceNodeName metadata should still throw
 		const mockTools = [
 			{ name: 'tool1', description: 'desc1' },
 			{ name: 'tool1', description: 'desc2' },
@@ -340,6 +341,76 @@ describe('getConnectedTools', () => {
 			isFromToolkit: true,
 			sourceNodeName: 'MCP Client Tool',
 		});
+	});
+
+	it('should prefix duplicate tool names with source node name', async () => {
+		const mockParentNodes = [{ name: 'GitHub MCP' }, { name: 'Sentry MCP' }];
+		const mockTools = [
+			new StructuredToolkit([
+				{ name: 'search_issues', description: 'Search GitHub issues' },
+			] as any),
+			new StructuredToolkit([
+				{ name: 'search_issues', description: 'Search Sentry issues' },
+			] as any),
+		];
+
+		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue(mockTools);
+		mockExecuteFunctions.getParentNodes = jest.fn().mockReturnValue(mockParentNodes);
+
+		const tools = await getConnectedTools(mockExecuteFunctions, true);
+
+		expect(tools).toHaveLength(2);
+		// First tool keeps original name
+		expect(tools[0].name).toBe('search_issues');
+		expect(tools[0].metadata?.originalToolName).toBeUndefined();
+		// Second tool gets prefixed
+		expect(tools[1].name).toBe('Sentry_MCP_search_issues');
+		expect(tools[1].metadata?.originalToolName).toBe('search_issues');
+	});
+
+	it('should sanitize special characters in node name prefix', async () => {
+		const mockParentNodes = [
+			{ name: 'MCP Client (Dev)' },
+			{ name: 'MCP Client (Prod)' },
+		];
+		const mockTools = [
+			new StructuredToolkit([{ name: 'list_tools', description: 'dev tools' }] as any),
+			new StructuredToolkit([{ name: 'list_tools', description: 'prod tools' }] as any),
+		];
+
+		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue(mockTools);
+		mockExecuteFunctions.getParentNodes = jest.fn().mockReturnValue(mockParentNodes);
+
+		const tools = await getConnectedTools(mockExecuteFunctions, true);
+
+		expect(tools).toHaveLength(2);
+		expect(tools[0].name).toBe('list_tools');
+		// Special characters replaced with underscores
+		expect(tools[1].name).toBe('MCP_Client__Prod__list_tools');
+		expect(tools[1].metadata?.originalToolName).toBe('list_tools');
+	});
+
+	it('should handle multiple duplicates from different sources', async () => {
+		const mockParentNodes = [
+			{ name: 'Server A' },
+			{ name: 'Server B' },
+			{ name: 'Server C' },
+		];
+		const mockTools = [
+			new StructuredToolkit([{ name: 'run', description: 'A' }] as any),
+			new StructuredToolkit([{ name: 'run', description: 'B' }] as any),
+			new StructuredToolkit([{ name: 'run', description: 'C' }] as any),
+		];
+
+		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue(mockTools);
+		mockExecuteFunctions.getParentNodes = jest.fn().mockReturnValue(mockParentNodes);
+
+		const tools = await getConnectedTools(mockExecuteFunctions, true);
+
+		expect(tools).toHaveLength(3);
+		expect(tools[0].name).toBe('run');
+		expect(tools[1].name).toBe('Server_B_run');
+		expect(tools[2].name).toBe('Server_C_run');
 	});
 });
 

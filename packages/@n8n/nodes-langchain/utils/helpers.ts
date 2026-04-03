@@ -79,7 +79,7 @@ export function getSessionId(
 							itemIndex,
 						) as string;
 					}
-				} catch (error) {}
+				} catch (error) { }
 			}
 		}
 
@@ -166,9 +166,9 @@ export const getConnectedTools = async (
 	const parentNodes =
 		'getParentNodes' in ctx
 			? ctx.getParentNodes(ctx.getNode().name, {
-					connectionType: NodeConnectionTypes.AiTool,
-					depth: 1,
-				})
+				connectionType: NodeConnectionTypes.AiTool,
+				depth: 1,
+			})
 			: [];
 
 	const connectedTools = (toolkitConnections ?? [])
@@ -202,12 +202,30 @@ export const getConnectedTools = async (
 	const finalTools: Tool[] = [];
 
 	for (const tool of connectedTools) {
-		const { name } = tool;
+		let name = tool.name;
+
+		// Handle duplicate tool names by prefixing with source node name
 		if (seenNames.has(name)) {
-			throw new NodeOperationError(
-				ctx.getNode(),
-				`You have multiple tools with the same name: '${name}', please rename them to avoid conflicts`,
-			);
+			const sourceNodeName = tool.metadata?.sourceNodeName;
+			if (typeof sourceNodeName === 'string' && sourceNodeName.length > 0) {
+				// Create a unique prefixed name (sanitize for LLM compatibility)
+				const sanitizedPrefix = sourceNodeName.replace(/[^a-zA-Z0-9]/g, '_');
+				const prefixedName = `${sanitizedPrefix}_${name}`;
+
+				// Store original name in metadata for actual tool calls
+				tool.metadata = {
+					...tool.metadata,
+					originalToolName: name,
+				};
+				tool.name = prefixedName;
+				name = prefixedName;
+			} else {
+				// No source node name available, throw original error
+				throw new NodeOperationError(
+					ctx.getNode(),
+					`You have multiple tools with the same name: '${name}', please rename them to avoid conflicts`,
+				);
+			}
 		}
 		seenNames.add(name);
 
