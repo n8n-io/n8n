@@ -281,6 +281,7 @@ onMounted(async () => {
 			<RoleMappingRuleEditor
 				v-if="provisioningDropdownRef?.showRuleEditor"
 				ref="roleMappingRuleEditorRef"
+				:show-project-rules="roleAssignment === 'instance_and_project'"
 			/>
 			<ConfirmProvisioningDialog
 				v-model="showUserRoleProvisioningDialog"
