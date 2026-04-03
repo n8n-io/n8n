@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { AgentFrameworkConfig } from './configs/agent-framework.config';
 import { AiAssistantConfig } from './configs/ai-assistant.config';
 import { AiBuilderConfig } from './configs/ai-builder.config';
 import { AiConfig } from './configs/ai.config';
@@ -220,10 +221,6 @@ export class GlobalConfig {
 	@Env('N8N_SSL_CERT')
 	ssl_cert: string = '';
 
-	/** Whether to enable canvas-only mode, hiding the chrome UI. */
-	@Env('N8N_CANVAS_ONLY')
-	canvasOnly: boolean = false;
-
 	/** Public URL where the editor is accessible. Also used for emails sent from n8n. */
 	@Env('N8N_EDITOR_BASE_URL')
 	editorBaseUrl: string = '';
@@ -249,6 +246,9 @@ export class GlobalConfig {
 
 	@Nested
 	instanceAi: InstanceAiConfig;
+
+	@Nested
+	agentFramework: AgentFrameworkConfig;
 
 	@Nested
 	expressionEngine: ExpressionEngineConfig;

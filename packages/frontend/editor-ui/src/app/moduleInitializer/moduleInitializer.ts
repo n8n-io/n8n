@@ -8,6 +8,7 @@ import { InsightsModule } from '@/features/execution/insights/module.descriptor'
 import { MCPModule } from '@/features/ai/mcpAccess/module.descriptor';
 import { ChatModule } from '@/features/ai/chatHub/module.descriptor';
 import { InstanceAiModule } from '@/features/ai/instanceAi/module.descriptor';
+import { AgentsModule } from '@/features/agent-framework/module.descriptor';
 import type { FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
 import * as modalRegistry from '@/app/moduleInitializer/modalRegistry';
 
@@ -20,6 +21,7 @@ const modules: FrontendModuleDescription[] = [
 	MCPModule,
 	ChatModule,
 	InstanceAiModule,
+	AgentsModule,
 ];
 
 /**

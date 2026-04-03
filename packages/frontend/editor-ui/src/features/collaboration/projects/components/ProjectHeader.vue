@@ -20,14 +20,19 @@ import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
+import { AGENT_BUILDER_VIEW } from '@/features/agent-framework/constants';
+import { createAgent } from '@/features/agent-framework/composables/useAgentApi';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 
 import { N8nButton, N8nHeading, N8nText, N8nTooltip } from '@n8n/design-system';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
+
 const route = useRoute();
 const router = useRouter();
+const rootStore = useRootStore();
 const i18n = useI18n();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
@@ -133,6 +138,7 @@ const ACTION_TYPES = {
 	FOLDER: 'folder',
 	DATA_TABLE: 'dataTable',
 	VARIABLE: 'variable',
+	AGENT: 'agent',
 } as const;
 type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
 
@@ -176,7 +182,19 @@ const createVariableButton = computed(() => ({
 		(!projectVariablePermissions.value.create && !globalVariablesPermissions.value.create),
 }));
 
-const selectedMainButtonType = computed(() => props.mainButton ?? ACTION_TYPES.WORKFLOW);
+const createAgentButton = computed(() => ({
+	value: ACTION_TYPES.AGENT,
+	label: 'New Agent',
+	size: 'mini' as const,
+	disabled: sourceControlStore.preferences.branchReadOnly,
+}));
+
+const selectedMainButtonType = computed(() => {
+	if (props.mainButton === ACTION_TYPES.AGENT && !settingsStore.isModuleActive('agent-framework')) {
+		return ACTION_TYPES.WORKFLOW;
+	}
+	return props.mainButton ?? ACTION_TYPES.WORKFLOW;
+});
 
 const mainButtonConfig = computed(() => {
 	switch (selectedMainButtonType.value) {
@@ -186,6 +204,8 @@ const mainButtonConfig = computed(() => {
 			return createDataTableButton.value;
 		case ACTION_TYPES.VARIABLE:
 			return createVariableButton.value;
+		case ACTION_TYPES.AGENT:
+			return createAgentButton.value;
 		case ACTION_TYPES.WORKFLOW:
 		default:
 			return createWorkflowButton.value;
@@ -251,6 +271,17 @@ const menu = computed(() => {
 			disabled:
 				sourceControlStore.preferences.branchReadOnly ||
 				!getResourcePermissions(homeProject.value?.scopes)?.dataTable?.create,
+		});
+	}
+
+	if (
+		settingsStore.isModuleActive('agent-framework') &&
+		selectedMainButtonType.value !== ACTION_TYPES.AGENT
+	) {
+		items.push({
+			value: ACTION_TYPES.AGENT,
+			label: 'New Agent',
+			disabled: sourceControlStore.preferences.branchReadOnly,
 		});
 	}
 
@@ -329,6 +360,13 @@ const actions: Record<ActionTypes, (projectId: string) => void> = {
 	[ACTION_TYPES.VARIABLE]: () => {
 		uiStore.openModalWithData({ name: VARIABLE_MODAL_KEY, data: { mode: 'new' } });
 		telemetry.track('User clicked header add variable button');
+	},
+	[ACTION_TYPES.AGENT]: async (projectId: string) => {
+		const agent = await createAgent(rootStore.restApiContext, projectId, 'New Agent');
+		void router.push({
+			name: AGENT_BUILDER_VIEW,
+			params: { projectId, agentId: agent.id },
+		});
 	},
 } as const;
 
