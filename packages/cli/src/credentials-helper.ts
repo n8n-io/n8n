@@ -349,10 +349,13 @@ export class CredentialsHelper extends ICredentialsHelper {
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
 		if (nodeCredentials.__aiGatewayManaged) {
-			return await this.aiGatewayService.getSyntheticCredential(
-				type,
-				additionalData.userId ?? additionalData.activatedByUserId ?? '',
-			);
+			const { userId, workflowId, projectId } = additionalData;
+			return await this.aiGatewayService.getSyntheticCredential({
+				credentialType: type,
+				userId,
+				workflowId,
+				projectId,
+			});
 		}
 
 		const credentialsEntity = await this.getCredentialsEntity(nodeCredentials, type);

@@ -591,7 +591,7 @@ describe('CredentialsHelper', () => {
 			jest.clearAllMocks();
 		});
 
-		it('should fall back to activatedByUserId when userId is absent', async () => {
+		it('should pass workflowId and projectId for owner resolution when userId is absent', async () => {
 			const aiGatewayService = mock<AiGatewayService>();
 			const helperWithGateway = new CredentialsHelper(
 				new CredentialTypes(mockNodesAndCredentials),
@@ -609,7 +609,8 @@ describe('CredentialsHelper', () => {
 
 			const additionalData = mock<IWorkflowExecuteAdditionalData>({
 				userId: undefined,
-				activatedByUserId: 'activated-user-456',
+				workflowId: 'workflow-123',
+				projectId: 'project-456',
 			});
 			const nodeCredentials: INodeCredentialsDetails = {
 				id: null,
@@ -624,10 +625,12 @@ describe('CredentialsHelper', () => {
 				'manual',
 			);
 
-			expect(aiGatewayService.getSyntheticCredential).toHaveBeenCalledWith(
-				'googlePalmApi',
-				'activated-user-456',
-			);
+			expect(aiGatewayService.getSyntheticCredential).toHaveBeenCalledWith({
+				credentialType: 'googlePalmApi',
+				userId: undefined,
+				workflowId: 'workflow-123',
+				projectId: 'project-456',
+			});
 			expect(result).toEqual(syntheticCred);
 		});
 
@@ -647,7 +650,11 @@ describe('CredentialsHelper', () => {
 			const syntheticCred = { apiKey: 'mock-jwt', host: 'http://gateway/v1/gateway/google' };
 			aiGatewayService.getSyntheticCredential.mockResolvedValue(syntheticCred);
 
-			const additionalData = mock<IWorkflowExecuteAdditionalData>({ userId: 'user-123' });
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-123',
+				workflowId: undefined,
+				projectId: undefined,
+			});
 			const nodeCredentials: INodeCredentialsDetails = {
 				id: null,
 				name: '',
@@ -661,10 +668,12 @@ describe('CredentialsHelper', () => {
 				'manual',
 			);
 
-			expect(aiGatewayService.getSyntheticCredential).toHaveBeenCalledWith(
-				'googlePalmApi',
-				'user-123',
-			);
+			expect(aiGatewayService.getSyntheticCredential).toHaveBeenCalledWith({
+				credentialType: 'googlePalmApi',
+				userId: 'user-123',
+				workflowId: undefined,
+				projectId: undefined,
+			});
 			expect(result).toEqual(syntheticCred);
 			// Should NOT attempt to look up a DB credential
 			expect(credentialsRepository.findOneByOrFail).not.toHaveBeenCalled();

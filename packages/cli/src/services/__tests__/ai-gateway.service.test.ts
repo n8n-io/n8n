@@ -8,6 +8,8 @@ import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { License } from '@/license';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import type { Project, User } from '@n8n/db';
+import type { OwnershipService } from '@/services/ownership.service';
 
 const BASE_URL = 'http://gateway.test';
 const INSTANCE_ID = 'test-instance-id';
@@ -27,7 +29,11 @@ const MOCK_GATEWAY_CONFIG = {
 	},
 };
 
-function makeService({ baseUrl = BASE_URL as string | null, isAiGatewayLicensed = true } = {}) {
+function makeService({
+	baseUrl = BASE_URL as string | null,
+	isAiGatewayLicensed = true,
+	ownershipService = mock<OwnershipService>(),
+} = {}) {
 	const globalConfig = {
 		aiAssistant: { baseUrl: baseUrl ?? undefined },
 	} as unknown as GlobalConfig;
@@ -39,7 +45,13 @@ function makeService({ baseUrl = BASE_URL as string | null, isAiGatewayLicensed 
 		isAiGatewayLicensed: jest.fn().mockReturnValue(isAiGatewayLicensed),
 	});
 	const instanceSettings = mock<InstanceSettings>({ instanceId: INSTANCE_ID });
-	return new AiGatewayService(globalConfig, license, licenseState, instanceSettings);
+	return new AiGatewayService(
+		globalConfig,
+		license,
+		licenseState,
+		instanceSettings,
+		ownershipService,
+	);
 }
 
 /** Mock: config fetch succeeds, then credentials fetch returns a token. */
@@ -118,16 +130,16 @@ describe('AiGatewayService', () => {
 	describe('getSyntheticCredential()', () => {
 		it('throws FeatureNotLicensedError when not licensed and dev mode is off', async () => {
 			const service = makeService({ isAiGatewayLicensed: false });
-			await expect(service.getSyntheticCredential('googlePalmApi', USER_ID)).rejects.toThrow(
-				FeatureNotLicensedError,
-			);
+			await expect(
+				service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID }),
+			).rejects.toThrow(FeatureNotLicensedError);
 		});
 
 		it('throws UserError when baseUrl is not configured', async () => {
 			const service = makeService({ baseUrl: null });
-			await expect(service.getSyntheticCredential('googlePalmApi', USER_ID)).rejects.toThrow(
-				UserError,
-			);
+			await expect(
+				service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID }),
+			).rejects.toThrow(UserError);
 		});
 
 		it('throws UserError for unsupported credential type', async () => {
@@ -136,14 +148,19 @@ describe('AiGatewayService', () => {
 				json: jest.fn().mockResolvedValue(MOCK_GATEWAY_CONFIG),
 			});
 			const service = makeService();
-			await expect(service.getSyntheticCredential('openAiApi', USER_ID)).rejects.toThrow(UserError);
+			await expect(
+				service.getSyntheticCredential({ credentialType: 'openAiApi', userId: USER_ID }),
+			).rejects.toThrow(UserError);
 		});
 
 		it('returns synthetic credential with apiKey (JWT) and host (gateway URL)', async () => {
 			mockConfigThenToken(fetchMock, 'mock-jwt-token');
 			const service = makeService();
 
-			const result = await service.getSyntheticCredential('googlePalmApi', USER_ID);
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+			});
 
 			expect(result).toEqual({
 				apiKey: 'mock-jwt-token',
@@ -155,7 +172,7 @@ describe('AiGatewayService', () => {
 			mockConfigThenToken(fetchMock);
 			const service = makeService();
 
-			await service.getSyntheticCredential('googlePalmApi', USER_ID);
+			await service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID });
 
 			expect(fetchMock).toHaveBeenNthCalledWith(
 				2,
@@ -179,8 +196,8 @@ describe('AiGatewayService', () => {
 			mockConfigThenToken(fetchMock);
 			const service = makeService();
 
-			await service.getSyntheticCredential('googlePalmApi', USER_ID);
-			await service.getSyntheticCredential('googlePalmApi', USER_ID);
+			await service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID });
+			await service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID });
 
 			// Config + credentials fetched once each; both cached on second call
 			expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -189,8 +206,82 @@ describe('AiGatewayService', () => {
 		it('throws UserError when config gateway returns non-ok status', async () => {
 			fetchMock.mockResolvedValueOnce({ ok: false, status: 503 });
 			const service = makeService();
-			await expect(service.getSyntheticCredential('googlePalmApi', USER_ID)).rejects.toThrow(
-				UserError,
+			await expect(
+				service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID }),
+			).rejects.toThrow(UserError);
+		});
+
+		it('resolves userId from projectId when userId is absent', async () => {
+			const ownershipService = mock<OwnershipService>();
+			ownershipService.getPersonalProjectOwnerCached.mockResolvedValue(
+				mock<User>({ id: 'owner-from-project' }),
+			);
+			mockConfigThenToken(fetchMock);
+			const service = makeService({ ownershipService });
+
+			await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: undefined,
+				projectId: 'project-123',
+			});
+
+			expect(ownershipService.getPersonalProjectOwnerCached).toHaveBeenCalledWith('project-123');
+			expect(fetchMock).toHaveBeenCalledWith(
+				`${BASE_URL}/v1/gateway/credentials`,
+				expect.objectContaining({
+					headers: expect.objectContaining({ 'x-user-id': 'owner-from-project' }),
+				}),
+			);
+		});
+
+		it('resolves userId from workflowId when userId and projectId are absent', async () => {
+			const ownershipService = mock<OwnershipService>();
+			ownershipService.getWorkflowProjectCached.mockResolvedValue(
+				mock<Project>({ id: 'project-from-wf' }),
+			);
+			ownershipService.getPersonalProjectOwnerCached.mockResolvedValue(
+				mock<User>({ id: 'owner-from-workflow' }),
+			);
+			mockConfigThenToken(fetchMock);
+			const service = makeService({ ownershipService });
+
+			await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: undefined,
+				workflowId: 'workflow-abc',
+			});
+
+			expect(ownershipService.getWorkflowProjectCached).toHaveBeenCalledWith('workflow-abc');
+			expect(ownershipService.getPersonalProjectOwnerCached).toHaveBeenCalledWith(
+				'project-from-wf',
+			);
+			expect(fetchMock).toHaveBeenCalledWith(
+				`${BASE_URL}/v1/gateway/credentials`,
+				expect.objectContaining({
+					headers: expect.objectContaining({ 'x-user-id': 'owner-from-workflow' }),
+				}),
+			);
+		});
+
+		it('falls back to instance owner when project has no personal owner (team project)', async () => {
+			const ownershipService = mock<OwnershipService>();
+			ownershipService.getPersonalProjectOwnerCached.mockResolvedValue(null);
+			ownershipService.getInstanceOwner.mockResolvedValue(mock<User>({ id: 'instance-owner-id' }));
+			mockConfigThenToken(fetchMock);
+			const service = makeService({ ownershipService });
+
+			await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: undefined,
+				projectId: 'project-123',
+			});
+
+			expect(ownershipService.getInstanceOwner).toHaveBeenCalled();
+			expect(fetchMock).toHaveBeenCalledWith(
+				`${BASE_URL}/v1/gateway/credentials`,
+				expect.objectContaining({
+					headers: expect.objectContaining({ 'x-user-id': 'instance-owner-id' }),
+				}),
 			);
 		});
 
@@ -205,9 +296,9 @@ describe('AiGatewayService', () => {
 					json: jest.fn().mockResolvedValue({ expiresIn: 3600 }), // token missing
 				});
 			const service = makeService();
-			await expect(service.getSyntheticCredential('googlePalmApi', USER_ID)).rejects.toThrow(
-				UserError,
-			);
+			await expect(
+				service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID }),
+			).rejects.toThrow(UserError);
 		});
 	});
 
@@ -450,9 +541,9 @@ describe('AiGatewayService', () => {
 			});
 
 			const [r1, r2, r3] = await Promise.all([
-				service.getSyntheticCredential('googlePalmApi', USER_ID),
-				service.getSyntheticCredential('googlePalmApi', USER_ID),
-				service.getSyntheticCredential('googlePalmApi', USER_ID),
+				service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID }),
+				service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID }),
+				service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID }),
 			]);
 
 			expect(r1.apiKey).toBe('shared-token');

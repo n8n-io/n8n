@@ -10,6 +10,7 @@ import type { AiGatewayConfigDto, AiGatewayUsageResponse } from '@n8n/api-types'
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { License } from '@/license';
+import { OwnershipService } from '@/services/ownership.service';
 
 interface GatewayTokenResponse {
 	token: string;
@@ -40,17 +41,53 @@ export class AiGatewayService {
 		private readonly license: License,
 		private readonly licenseState: LicenseState,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly ownershipService: OwnershipService,
 	) {}
+
+	/**
+	 * Returns the userId to use for AI Gateway token issuance.
+	 * If userId is provided it is returned as-is. Otherwise resolves the personal
+	 * project owner via projectId (direct) or workflowId (lookup → project → owner).
+	 * Falls back to the instance owner for team projects or when no context is available.
+	 */
+	private async resolveUserId({
+		userId,
+		projectId,
+		workflowId,
+	}: {
+		userId: string | undefined;
+		projectId: string | undefined;
+		workflowId: string | undefined;
+	}): Promise<string | undefined> {
+		if (userId) return userId;
+		const resolvedProjectId =
+			projectId ??
+			(workflowId
+				? (await this.ownershipService.getWorkflowProjectCached(workflowId))?.id
+				: undefined);
+		const owner = resolvedProjectId
+			? await this.ownershipService.getPersonalProjectOwnerCached(resolvedProjectId)
+			: null;
+		if (owner) return owner.id;
+		return (await this.ownershipService.getInstanceOwner())?.id;
+	}
 
 	/**
 	 * Returns a synthetic credential for the given type, pointing the node at the gateway
 	 * instead of the real provider. Called from `CredentialsHelper.getDecrypted` when
 	 * `nodeCredentials.__aiGatewayManaged` is set.
 	 */
-	async getSyntheticCredential(
-		credentialType: string,
-		userId: string,
-	): Promise<ICredentialDataDecryptedObject> {
+	async getSyntheticCredential({
+		credentialType,
+		userId,
+		workflowId,
+		projectId,
+	}: {
+		credentialType: string;
+		userId: string | undefined;
+		workflowId?: string;
+		projectId?: string;
+	}): Promise<ICredentialDataDecryptedObject> {
 		if (!this.licenseState.isAiGatewayLicensed()) {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.AI_GATEWAY);
 		}
@@ -63,7 +100,11 @@ export class AiGatewayService {
 			throw new UserError(`Credential type "${credentialType}" is not supported by AI Gateway.`);
 		}
 
-		const jwt = await this.getOrFetchToken(userId);
+		const resolvedUserId = await this.resolveUserId({ userId, projectId, workflowId });
+		if (!resolvedUserId) {
+			throw new UserError('Failed to resolve user for AI Gateway attribution.');
+		}
+		const jwt = await this.getOrFetchToken(resolvedUserId);
 		if (!jwt) {
 			throw new UserError('Failed to obtain a valid AI Gateway token.');
 		}

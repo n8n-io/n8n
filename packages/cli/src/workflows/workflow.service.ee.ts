@@ -152,7 +152,9 @@ export class EnterpriseWorkflowService {
 				return;
 			}
 			Object.keys(node.credentials).forEach((credentialType) => {
-				const credentialId = node.credentials?.[credentialType].id;
+				const credential = node.credentials?.[credentialType];
+				if (credential?.__aiGatewayManaged && credential?.id === null) return;
+				const credentialId = credential?.id;
 				if (credentialId === undefined) return;
 				const matchedCredential = allowedCredentials.find(({ id }) => id === credentialId);
 				if (!matchedCredential) {
