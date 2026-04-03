@@ -350,8 +350,6 @@ describe('useBuilderTodos', () => {
 		});
 
 		it('excludes placeholder issues from pinned nodes', () => {
-			const workflowsStore = useWorkflowsStore();
-
 			// Setup a node with placeholder in parameters
 			const nodeWithPlaceholder = createMockNode({
 				name: 'HTTP Request',
@@ -373,8 +371,6 @@ describe('useBuilderTodos', () => {
 		});
 
 		it('includes placeholder issues from non-pinned nodes', () => {
-			const workflowsStore = useWorkflowsStore();
-
 			// Setup a node with placeholder in parameters
 			const nodeWithPlaceholder = createMockNode({
 				name: 'HTTP Request',
@@ -631,8 +627,6 @@ describe('useBuilderTodos', () => {
 		});
 
 		it('handles mixed pinned and non-pinned nodes correctly', () => {
-			const workflowsStore = useWorkflowsStore();
-
 			// Setup two nodes: one pinned with issues, one not pinned with issues
 			const pinnedNode = createMockNode({
 				name: 'Pinned Node',
@@ -662,8 +656,6 @@ describe('useBuilderTodos', () => {
 		});
 
 		it('excludes placeholder issues from disabled nodes', () => {
-			const workflowsStore = useWorkflowsStore();
-
 			// Setup a disabled node with placeholder in parameters
 			const disabledNode = createMockNode({
 				name: 'HTTP Request',
@@ -753,8 +745,6 @@ describe('useBuilderTodos', () => {
 		});
 
 		it('includes issues from enabled nodes', () => {
-			const workflowsStore = useWorkflowsStore();
-
 			// Setup an enabled node with placeholder in parameters
 			const enabledNode = createMockNode({
 				name: 'HTTP Request',
@@ -775,8 +765,6 @@ describe('useBuilderTodos', () => {
 		});
 
 		it('handles mixed disabled and enabled nodes correctly', () => {
-			const workflowsStore = useWorkflowsStore();
-
 			// Setup two nodes: one disabled with issues, one enabled with issues
 			const disabledNode = createMockNode({
 				name: 'Disabled Node',
@@ -806,8 +794,6 @@ describe('useBuilderTodos', () => {
 
 		describe('hasTodosHiddenByPinnedData', () => {
 			it('returns false when there are visible todos', () => {
-				const workflowsStore = useWorkflowsStore();
-
 				// Setup a node with placeholder in parameters (no pinned data)
 				const nodeWithPlaceholder = createMockNode({
 					name: 'HTTP Request',
@@ -827,8 +813,6 @@ describe('useBuilderTodos', () => {
 			});
 
 			it('returns false when there are no todos and no pinned data', () => {
-				const workflowsStore = useWorkflowsStore();
-
 				// Setup a node without any issues
 				const cleanNode = createMockNode({
 					name: 'HTTP Request',
@@ -847,8 +831,6 @@ describe('useBuilderTodos', () => {
 			});
 
 			it('returns true when placeholder todos are hidden by pinned data', () => {
-				const workflowsStore = useWorkflowsStore();
-
 				// Setup a node with placeholder that would show as todo
 				const nodeWithPlaceholder = createMockNode({
 					name: 'HTTP Request',
@@ -902,8 +884,6 @@ describe('useBuilderTodos', () => {
 			});
 
 			it('returns false when todos are hidden by disabled nodes (not pinned)', () => {
-				const workflowsStore = useWorkflowsStore();
-
 				// Setup a disabled node with placeholder
 				const disabledNode = createMockNode({
 					name: 'HTTP Request',
@@ -960,8 +940,6 @@ describe('useBuilderTodos', () => {
 			});
 
 			it('returns false when node is both pinned AND disabled', () => {
-				const workflowsStore = useWorkflowsStore();
-
 				// Setup a node that is both pinned and disabled
 				const pinnedDisabledNode = createMockNode({
 					name: 'HTTP Request',
@@ -984,8 +962,6 @@ describe('useBuilderTodos', () => {
 			});
 
 			it('handles mixed scenarios: some todos visible, some hidden by pin', () => {
-				const workflowsStore = useWorkflowsStore();
-
 				// One node pinned (hiding its todo), another unpinned (showing its todo)
 				const pinnedNode = createMockNode({
 					name: 'Pinned Node',

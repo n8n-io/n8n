@@ -14,8 +14,7 @@ import { waitFor } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import type { TestRunRecord } from '../evaluation.api';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE, NodeHelpers } from 'n8n-workflow';
-import { mockNodeTypeDescription } from '@/__tests__/mocks';
+import { NodeHelpers } from 'n8n-workflow';
 import type { SourceControlPreferences } from '@/features/integrations/sourceControl.ee/sourceControl.types';
 
 vi.mock('vue-router', () => ({
@@ -238,31 +237,11 @@ describe('EvaluationsRootView', () => {
 			const evaluationStore = mockedStore(useEvaluationStore);
 			const usageStore = mockedStore(useUsageStore);
 
-			const workflowWithTrigger = mock<IWorkflowDb>({
-				...mockWorkflow,
-				nodes: [
-					{
-						id: 'trigger1',
-						name: 'Dataset Trigger',
-						type: EVALUATION_TRIGGER_NODE_TYPE,
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-					},
-				],
-			});
-
-			workflowsStore.workflow = workflowWithTrigger;
+			workflowsStore.workflow = mockWorkflow;
 			evaluationStore.testRunsById = {};
+			evaluationStore.evaluationTriggerExists = true;
 			usageStore.workflowsWithEvaluationsLimit = 10;
 			usageStore.workflowsWithEvaluationsCount = 0;
-
-			// Mock dataset trigger node type exists
-			getNodeType.mockImplementation((nodeType) =>
-				nodeType === EVALUATION_TRIGGER_NODE_TYPE
-					? mockNodeTypeDescription({ name: EVALUATION_TRIGGER_NODE_TYPE })
-					: null,
-			);
 
 			renderComponent({ props: { name: mockWorkflow.id } });
 
@@ -284,37 +263,11 @@ describe('EvaluationsRootView', () => {
 			const evaluationStore = mockedStore(useEvaluationStore);
 			const usageStore = mockedStore(useUsageStore);
 
-			const workflowWithOutputNode = mock<IWorkflowDb>({
-				...mockWorkflow,
-				nodes: [
-					{
-						id: 'output1',
-						name: 'Set Outputs',
-						type: EVALUATION_NODE_TYPE,
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {
-							operation: 'setOutputs',
-						},
-					},
-				],
-			});
-
-			vi.spyOn(NodeHelpers, 'getNodeParameters').mockReturnValue({
-				operation: 'setOutputs',
-			});
-
-			workflowsStore.workflow = workflowWithOutputNode;
+			workflowsStore.workflow = mockWorkflow;
 			evaluationStore.testRunsById = {};
+			evaluationStore.evaluationSetOutputsNodeExist = true;
 			usageStore.workflowsWithEvaluationsLimit = 10;
 			usageStore.workflowsWithEvaluationsCount = 0;
-
-			// Mock evaluation node type exists
-			getNodeType.mockImplementation((nodeType) =>
-				nodeType === EVALUATION_NODE_TYPE
-					? mockNodeTypeDescription({ name: EVALUATION_NODE_TYPE })
-					: null,
-			);
 
 			renderComponent({ props: { name: mockWorkflow.id } });
 
@@ -336,37 +289,11 @@ describe('EvaluationsRootView', () => {
 			const evaluationStore = mockedStore(useEvaluationStore);
 			const usageStore = mockedStore(useUsageStore);
 
-			const workflowWithMetricsNode = mock<IWorkflowDb>({
-				...mockWorkflow,
-				nodes: [
-					{
-						id: 'metrics1',
-						name: 'Set Metrics',
-						type: EVALUATION_NODE_TYPE,
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {
-							operation: 'setMetrics',
-						},
-					},
-				],
-			});
-
-			vi.spyOn(NodeHelpers, 'getNodeParameters').mockReturnValue({
-				operation: 'setMetrics',
-			});
-
-			workflowsStore.workflow = workflowWithMetricsNode;
+			workflowsStore.workflow = mockWorkflow;
 			evaluationStore.testRunsById = {};
+			evaluationStore.evaluationSetMetricsNodeExist = true;
 			usageStore.workflowsWithEvaluationsLimit = 10;
 			usageStore.workflowsWithEvaluationsCount = 0;
-
-			// Mock evaluation node type exists
-			getNodeType.mockImplementation((nodeType) =>
-				nodeType === EVALUATION_NODE_TYPE
-					? mockNodeTypeDescription({ name: EVALUATION_NODE_TYPE })
-					: null,
-			);
 
 			renderComponent({ props: { name: mockWorkflow.id } });
 
