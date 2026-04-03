@@ -214,6 +214,12 @@ export const maxContextWindowTokens: Record<ChatHubLLMProvider, Record<string, n
 		'mistral-small-2506': 128000,
 		'mistral-small-latest': 128000,
 	},
+	miniMax: {
+		'MiniMax-M2.7': 1000000,
+		'MiniMax-M2.7-highspeed': 1000000,
+		'MiniMax-M2.5': 204000,
+		'MiniMax-M2.5-highspeed': 204000,
+	},
 };
 
 const CONTEXT_WINDOW_SAFETY_FACTOR = 0.95;

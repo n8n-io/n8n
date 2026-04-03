@@ -93,6 +93,10 @@ export const PROVIDER_NODE_TYPE_MAP: Record<ChatHubLLMProvider, INodeTypeNameVer
 		name: '@n8n/n8n-nodes-langchain.lmChatMistralCloud',
 		version: 1,
 	},
+	miniMax: {
+		name: '@n8n/n8n-nodes-langchain.lmChatMiniMax',
+		version: 1,
+	},
 };
 
 export const NODE_NAMES = {
@@ -635,6 +639,24 @@ const MODEL_METADATA_REGISTRY: Partial<
 		},
 		'relace/relace-apply-3': {
 			available: false, // Not supporting multi-turn conversations
+		},
+	},
+	miniMax: {
+		'MiniMax-M2.7': {
+			inputModalities: ['text'],
+			priority: 100,
+		},
+		'MiniMax-M2.7-highspeed': {
+			inputModalities: ['text'],
+			priority: 90,
+		},
+		'MiniMax-M2.5': {
+			inputModalities: ['text'],
+			priority: 80,
+		},
+		'MiniMax-M2.5-highspeed': {
+			inputModalities: ['text'],
+			priority: 70,
 		},
 	},
 	xAiGrok: {
