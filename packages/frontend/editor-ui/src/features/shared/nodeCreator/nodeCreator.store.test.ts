@@ -20,6 +20,10 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 const workflow_id = 'workflow-id';
 const category_name = 'category-name';
@@ -117,6 +121,14 @@ describe('useNodeCreatorStore', () => {
 
 		vi.setSystemTime(now);
 	});
+
+	function getDocumentStore() {
+		return useWorkflowDocumentStore(createWorkflowDocumentId(mockUseWorkflowsStore.workflowId));
+	}
+
+	function setDocumentNodes(nodes: INodeUi[]) {
+		getDocumentStore().setNodes(nodes);
+	}
 
 	it('tracks when node creator is opened', () => {
 		nodeCreatorStore.onCreatorOpened({
@@ -315,6 +327,27 @@ describe('useNodeCreatorStore', () => {
 			true,
 		);
 
+		beforeEach(() => {
+			setDocumentNodes([
+				{
+					id: 'node-1',
+					name: 'Node 1',
+					type: 'test-type',
+					position: [0, 0],
+					parameters: {},
+					typeVersion: 1,
+				} as INodeUi,
+				{
+					id: 'node-2',
+					name: 'Node 2',
+					type: 'test-type',
+					position: [100, 0],
+					parameters: {},
+					typeVersion: 1,
+				} as INodeUi,
+			]);
+		});
+
 		it('sets nodeCreatorView to AI_UNCATEGORIZED_CATEGORY when connection type is not Main', async () => {
 			mockedParseCanvasConnectionHandleString.mockReturnValue({
 				type: NodeConnectionTypes.AiLanguageModel, // any value that is not NodeConnectionTypes.Main
@@ -430,8 +463,6 @@ describe('useNodeCreatorStore', () => {
 		};
 
 		it('should return early when nodeData is null', async () => {
-			mockUseWorkflowsStore.getNodeByName.mockReturnValue(null);
-
 			mockUseNDVStore.unsetActiveNodeName = vi.fn();
 			mockUseNodeTypesStore.getNodeType = vi.fn();
 			mockUseNodeTypesStore.communityNodeType = vi.fn();
@@ -444,11 +475,16 @@ describe('useNodeCreatorStore', () => {
 		});
 
 		it('should return early when nodeType is null', async () => {
-			mockUseWorkflowsStore.getNodeByName.mockReturnValue({
-				id: 'test-id',
-				name: nodeName,
-				type: 'test-type',
-			} as INodeUi);
+			setDocumentNodes([
+				{
+					id: 'test-id',
+					name: nodeName,
+					type: 'test-type',
+					position: [0, 0],
+					parameters: {},
+					typeVersion: 1,
+				} as INodeUi,
+			]);
 			mockUseNodeTypesStore.getNodeType = vi.fn(() => null);
 			mockUseNodeTypesStore.communityNodeType = vi.fn(() => undefined);
 
@@ -461,11 +497,16 @@ describe('useNodeCreatorStore', () => {
 		});
 
 		it('should successfully open node creator with regular node type', async () => {
-			mockUseWorkflowsStore.getNodeByName.mockReturnValue({
-				id: 'test-id',
-				name: nodeName,
-				type: 'test-type',
-			} as INodeUi);
+			setDocumentNodes([
+				{
+					id: 'test-id',
+					name: nodeName,
+					type: 'test-type',
+					position: [0, 0],
+					parameters: {},
+					typeVersion: 1,
+				} as INodeUi,
+			]);
 			mockUseNodeTypesStore.getNodeType = vi.fn(() => nodeType as INodeTypeDescription);
 			mockUseNodeTypesStore.communityNodeType = vi.fn(() => undefined);
 
@@ -509,11 +550,16 @@ describe('useNodeCreatorStore', () => {
 		});
 
 		it('should successfully open node creator with community node type', async () => {
-			mockUseWorkflowsStore.getNodeByName.mockReturnValue({
-				id: 'test-id',
-				name: nodeName,
-				type: 'test-type',
-			} as INodeUi);
+			setDocumentNodes([
+				{
+					id: 'test-id',
+					name: nodeName,
+					type: 'test-type',
+					position: [0, 0],
+					parameters: {},
+					typeVersion: 1,
+				} as INodeUi,
+			]);
 			mockUseNodeTypesStore.getNodeType = vi.fn(() => null);
 			mockUseNodeTypesStore.communityNodeType = vi.fn(
 				() =>
@@ -554,11 +600,16 @@ describe('useNodeCreatorStore', () => {
 		});
 
 		it('should handle empty actions array', async () => {
-			mockUseWorkflowsStore.getNodeByName.mockReturnValue({
-				id: 'test-id',
-				name: nodeName,
-				type: 'test-type',
-			} as INodeUi);
+			setDocumentNodes([
+				{
+					id: 'test-id',
+					name: nodeName,
+					type: 'test-type',
+					position: [0, 0],
+					parameters: {},
+					typeVersion: 1,
+				} as INodeUi,
+			]);
 			mockUseNodeTypesStore.getNodeType = vi.fn(() => nodeType as INodeTypeDescription);
 			mockUseNodeTypesStore.communityNodeType = vi.fn(() => undefined);
 

@@ -466,6 +466,8 @@ describe(useNodeDirtiness, () => {
 		const workflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId(workflowsStore.workflow.id),
 		);
+		workflowDocumentStore.setNodes(workflow.nodes);
+		workflowDocumentStore.setConnections(workflow.connections);
 		for (const name of nodeNamesWithPinnedData) {
 			workflowDocumentStore.pinNodeData(name, [{ json: {} }]);
 		}

@@ -16,6 +16,10 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useBuilderStore } from '../../builder.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 const workflowValidationIssuesRef = ref<
 	Array<{ node: string; type: string; value: string | string[] }>
@@ -162,7 +166,15 @@ describe('ExecuteMessage', () => {
 		});
 		builderStore.trackWorkflowBuilderJourney = vi.fn();
 
-		renderExecuteMessage = () => renderComponent({ pinia });
+		renderExecuteMessage = () => {
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId('test-workflow'),
+			);
+			for (const node of workflowNodes) {
+				workflowDocumentStore.addNode(node as INodeUi);
+			}
+			return renderComponent({ pinia });
+		};
 	});
 
 	it('disables execution when validation issues exist', () => {

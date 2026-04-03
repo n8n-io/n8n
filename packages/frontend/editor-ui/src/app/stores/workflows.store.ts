@@ -1601,6 +1601,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function setNodePristine(nodeName: string, isPristine: boolean): void {
+		if (!nodeMetadata.value[nodeName]) {
+			nodeMetadata.value[nodeName] = { pristine: isPristine };
+			return;
+		}
 		nodeMetadata.value[nodeName].pristine = isPristine;
 	}
 

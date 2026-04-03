@@ -7,6 +7,10 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import type { INode } from 'n8n-workflow';
 import * as useRunWorkflowModule from '@/app/composables/useRunWorkflow';
 
@@ -162,6 +166,15 @@ describe('useChatState', () => {
 		logsStore = useLogsStore();
 		const rootStore = useRootStore();
 		nodeTypesStore = useNodeTypesStore();
+
+		// Initialize workflowDocumentStore - allNodes must stay reactive so
+		// tests that $patch workflowsStore.workflow.nodes are reflected.
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		vi.spyOn(workflowDocumentStore, 'allNodes', 'get').mockImplementation(
+			() => workflowsStore.workflow.nodes,
+		);
 
 		// Mock computed getters
 		vi.spyOn(logsStore, 'chatSessionId', 'get').mockReturnValue('session-456');

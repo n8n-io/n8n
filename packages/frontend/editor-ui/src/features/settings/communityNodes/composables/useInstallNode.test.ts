@@ -51,6 +51,18 @@ vi.mock('@/features/shared/nodeCreator/nodeCreator.utils', () => ({
 	removePreviewToken: vi.fn((key: string) => key.replace('preview:', '')),
 }));
 
+const mockAllNodes: { value: INode[] } = { value: [] };
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	createWorkflowDocumentId: vi.fn(
+		(workflowId: string, version = 'latest') => `${workflowId}@${version}`,
+	),
+	useWorkflowDocumentStore: vi.fn(() => ({
+		get allNodes() {
+			return mockAllNodes.value;
+		},
+	})),
+}));
+
 let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
 let communityNodesStore: ReturnType<typeof useCommunityNodesStore>;
@@ -64,6 +76,8 @@ const showError = vi.fn();
 const showMessage = vi.fn();
 
 beforeEach(() => {
+	mockAllNodes.value = [];
+
 	const pinia = createTestingPinia();
 	setActivePinia(pinia);
 
@@ -71,6 +85,7 @@ beforeEach(() => {
 	communityNodesStore = useCommunityNodesStore(pinia);
 	credentialsStore = useCredentialsStore(pinia);
 	workflowsStore = useWorkflowsStore(pinia);
+	workflowsStore.workflow.id = 'test-workflow';
 	usersStore = useUsersStore(pinia);
 
 	canvasOperations = {
@@ -260,7 +275,7 @@ describe('useInstallNode', () => {
 					parameters: {},
 				},
 			];
-			workflowsStore.workflow.nodes = mockNodes as INode[];
+			mockAllNodes.value = mockNodes as INode[];
 
 			const { installNode } = useInstallNode();
 
@@ -513,7 +528,7 @@ describe('useInstallNode', () => {
 					parameters: {},
 				},
 			];
-			workflowsStore.workflow.nodes = mockNodes as INode[];
+			mockAllNodes.value = mockNodes as INode[];
 
 			vi.mocked(removePreviewToken).mockReturnValue('test-node');
 
@@ -565,7 +580,7 @@ describe('useInstallNode', () => {
 					parameters: {},
 				},
 			];
-			workflowsStore.workflow.nodes = mockNodes as INode[];
+			mockAllNodes.value = mockNodes as INode[];
 
 			vi.mocked(removePreviewToken).mockReturnValue('test-node');
 

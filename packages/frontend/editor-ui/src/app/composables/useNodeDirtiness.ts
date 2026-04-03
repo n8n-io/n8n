@@ -149,7 +149,9 @@ export function useNodeDirtiness() {
 		nodeName: string,
 		after: number,
 	): CanvasNodeDirtinessType | undefined {
-		if ((workflowsStore.getParametersLastUpdate(nodeName) ?? 0) > after) {
+		if (
+			(workflowDocumentStore.value?.nodeMetadata?.[nodeName]?.parametersLastUpdatedAt ?? 0) > after
+		) {
 			return CanvasNodeDirtiness.PARAMETERS_UPDATED;
 		}
 

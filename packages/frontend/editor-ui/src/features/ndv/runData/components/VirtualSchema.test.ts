@@ -14,7 +14,7 @@ import {
 	SET_NODE_TYPE,
 	SPLIT_IN_BATCHES_NODE_TYPE,
 } from '@/app/constants';
-import type { IWorkflowDb } from '@/Interface';
+import type { INodeUi, IWorkflowDb } from '@/Interface';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -205,6 +205,9 @@ async function setupStore() {
 	]);
 	workflowsStore.workflow = workflow as IWorkflowDb;
 	ndvStore.setActiveNodeName('Test Node Name', 'other');
+
+	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+	workflowDocumentStore.setNodes(workflow.nodes as INodeUi[]);
 
 	return pinia;
 }
