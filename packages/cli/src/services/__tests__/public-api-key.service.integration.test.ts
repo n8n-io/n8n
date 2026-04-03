@@ -1,21 +1,14 @@
 import { testDb } from '@n8n/backend-test-utils';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { ApiKeyRepository, GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
+import { ApiKeyRepository, GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { getOwnerOnlyApiKeyScopes, type ApiKeyScope } from '@n8n/permissions';
 import type { Response, NextFunction } from 'express';
 import { mock, mockDeep } from 'jest-mock-extended';
-import { DateTime } from 'luxon';
 import type { InstanceSettings } from 'n8n-core';
-import { randomString } from 'n8n-workflow';
-import type { OpenAPIV3 } from 'openapi-types';
-
-import type { EventService } from '@/events/event.service';
 import { createAdminWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
-import { retryUntil } from '@test-integration/retry-until';
 
 import { JwtService } from '../jwt.service';
-import { LastActiveAtService } from '../last-active-at.service';
 import { PublicApiKeyService } from '../public-api-key.service';
 
 const mockReqWith = (apiKey: string, path: string, method: string) => {
@@ -30,17 +23,9 @@ const mockReqWith = (apiKey: string, path: string, method: string) => {
 
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 
-const eventService = mock<EventService>();
-
-const securitySchema = mock<OpenAPIV3.ApiKeySecurityScheme>({
-	name: 'X-N8N-API-KEY',
-});
-
 const jwtService = new JwtService(instanceSettings, mock());
 
-let userRepository: UserRepository;
 let apiKeyRepository: ApiKeyRepository;
-let lastActiveAtService: LastActiveAtService;
 let publicApiKeyService: PublicApiKeyService;
 
 describe('PublicApiKeyService', () => {
@@ -51,212 +36,12 @@ describe('PublicApiKeyService', () => {
 
 	beforeAll(async () => {
 		await testDb.init();
-		userRepository = Container.get(UserRepository);
 		apiKeyRepository = Container.get(ApiKeyRepository);
-		lastActiveAtService = Container.get(LastActiveAtService);
-		publicApiKeyService = new PublicApiKeyService(
-			apiKeyRepository,
-			userRepository,
-			jwtService,
-			eventService,
-			lastActiveAtService,
-		);
+		publicApiKeyService = new PublicApiKeyService(apiKeyRepository, jwtService);
 	});
 
 	afterAll(async () => {
 		await testDb.terminate();
-	});
-
-	describe('getAuthMiddleware', () => {
-		it('should return false if api key is invalid', async () => {
-			//Arrange
-
-			const apiKey = 'invalid';
-			const path = '/test';
-			const method = 'GET';
-			const apiVersion = 'v1';
-
-			const middleware = publicApiKeyService.getAuthMiddleware(apiVersion);
-
-			//Act
-
-			const response = await middleware(mockReqWith(apiKey, path, method), {}, securitySchema);
-
-			//Assert
-
-			expect(response).toBe(false);
-		});
-
-		it('should return false if valid api key is not in database', async () => {
-			//Arrange
-
-			const apiKey = jwtService.sign({ sub: '123' });
-			const path = '/test';
-			const method = 'GET';
-			const apiVersion = 'v1';
-
-			const middleware = publicApiKeyService.getAuthMiddleware(apiVersion);
-
-			//Act
-
-			const response = await middleware(mockReqWith(apiKey, path, method), {}, securitySchema);
-
-			//Assert
-
-			expect(response).toBe(false);
-		});
-
-		it('should return true if valid api key exist in the database', async () => {
-			//Arrange
-
-			const path = '/test';
-			const method = 'GET';
-			const apiVersion = 'v1';
-
-			const owner = await createOwnerWithApiKey();
-
-			const [{ apiKey }] = owner.apiKeys;
-
-			const middleware = publicApiKeyService.getAuthMiddleware(apiVersion);
-
-			//Act
-
-			const response = await middleware(mockReqWith(apiKey, path, method), {}, securitySchema);
-
-			//Assert
-
-			expect(response).toBe(true);
-			expect(eventService.emit).toHaveBeenCalledTimes(1);
-			expect(eventService.emit).toHaveBeenCalledWith(
-				'public-api-invoked',
-				expect.objectContaining({
-					userId: owner.id,
-					path,
-					method,
-					apiVersion: 'v1',
-				}),
-			);
-		});
-
-		it('should return false if expired JWT is used', async () => {
-			//Arrange
-
-			const path = '/test';
-			const method = 'GET';
-			const apiVersion = 'v1';
-
-			const dateInThePast = DateTime.now().minus({ days: 1 }).toUnixInteger();
-
-			const owner = await createOwnerWithApiKey({
-				expiresAt: dateInThePast,
-			});
-
-			const [{ apiKey }] = owner.apiKeys;
-
-			const middleware = publicApiKeyService.getAuthMiddleware(apiVersion);
-
-			//Act
-
-			const response = await middleware(mockReqWith(apiKey, path, method), {}, securitySchema);
-
-			//Assert
-
-			expect(response).toBe(false);
-		});
-
-		it('should work with non JWT (legacy) api keys', async () => {
-			//Arrange
-
-			const path = '/test';
-			const method = 'GET';
-			const apiVersion = 'v1';
-			const legacyApiKey = `n8n_api_${randomString(10)}`;
-
-			const owner = await createOwnerWithApiKey();
-
-			const [{ apiKey }] = owner.apiKeys;
-
-			await Container.get(ApiKeyRepository).update({ apiKey }, { apiKey: legacyApiKey });
-
-			const middleware = publicApiKeyService.getAuthMiddleware(apiVersion);
-
-			//Act
-
-			const response = await middleware(
-				mockReqWith(legacyApiKey, path, method),
-				{},
-				securitySchema,
-			);
-
-			//Assert
-
-			expect(response).toBe(true);
-			expect(eventService.emit).toHaveBeenCalledTimes(1);
-			expect(eventService.emit).toHaveBeenCalledWith(
-				'public-api-invoked',
-				expect.objectContaining({
-					userId: owner.id,
-					path,
-					method,
-					apiVersion: 'v1',
-				}),
-			);
-		});
-
-		it('should update last active at for the user', async () => {
-			// Arrange
-			const path = '/test';
-			const method = 'GET';
-			const apiVersion = 'v1';
-
-			const owner = await createOwnerWithApiKey();
-
-			const [{ apiKey }] = owner.apiKeys;
-
-			const middleware = publicApiKeyService.getAuthMiddleware(apiVersion);
-
-			// Act
-
-			await middleware(mockReqWith(apiKey, path, method), {}, securitySchema);
-
-			// Wait for the fire and forget job to complete
-			await new Promise((resolve) => setTimeout(resolve, 1000));
-
-			// Assert
-			// Poll the database to check if lastActiveAt was updated
-			await retryUntil(async () => {
-				const userOnDb = await userRepository.findOneByOrFail({ id: owner.id });
-
-				expect(userOnDb.lastActiveAt).toBeDefined();
-				expect(DateTime.fromSQL(userOnDb.lastActiveAt!.toString()).toJSDate().getTime()).toEqual(
-					DateTime.now().startOf('day').toMillis(),
-				);
-			});
-		});
-
-		it('should return false if user is disabled', async () => {
-			//Arrange
-
-			const path = '/test';
-			const method = 'GET';
-			const apiVersion = 'v1';
-
-			const owner = await createOwnerWithApiKey();
-
-			await userRepository.update({ id: owner.id }, { disabled: true });
-
-			const [{ apiKey }] = owner.apiKeys;
-
-			const middleware = publicApiKeyService.getAuthMiddleware(apiVersion);
-
-			//Act
-
-			const response = await middleware(mockReqWith(apiKey, path, method), {}, securitySchema);
-
-			//Assert
-
-			expect(response).toBe(false);
-		});
 	});
 
 	describe('redactApiKey', () => {
