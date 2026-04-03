@@ -50,6 +50,7 @@ const instanceRoleOptions = computed(() =>
 				:model-value="props.rule.role"
 				size="small"
 				placeholder="Select role"
+				:class="$style.roleSelect"
 				data-test-id="rule-role-select"
 				@update:model-value="emit('update', props.rule.id, { role: String($event) })"
 			>
@@ -59,6 +60,8 @@ const instanceRoleOptions = computed(() =>
 					:label="option.label"
 					:value="option.value"
 				/>
+				<div :class="$style.optionDivider" />
+				<N8nOption label="No role" value="" />
 			</N8nSelect>
 		</div>
 		<div :class="$style.cellAction">
@@ -140,9 +143,18 @@ const instanceRoleOptions = computed(() =>
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 32px;
-	padding: 0 var(--spacing--4xs);
+	width: 24px;
 	flex-shrink: 0;
+}
+
+.roleSelect {
+	width: 130px;
+}
+
+.optionDivider {
+	height: 1px;
+	background: var(--color--foreground);
+	margin: var(--spacing--4xs) var(--spacing--2xs);
 }
 
 .actionIcon {

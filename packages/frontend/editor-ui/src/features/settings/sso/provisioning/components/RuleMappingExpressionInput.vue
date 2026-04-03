@@ -95,7 +95,7 @@ function createExtensions() {
 		bracketHighlightPlugin,
 		history(),
 		keymap.of(historyKeymap),
-		EditorView.lineWrapping,
+		// No line wrapping — keep single-line height in rule rows
 		EditorState.readOnly.of(props.disabled),
 		EditorView.theme({
 			'&': {
@@ -124,7 +124,7 @@ function createExtensions() {
 			},
 			'.cm-scroller': {
 				lineHeight: '1.68',
-				overflow: 'auto',
+				overflow: 'hidden',
 			},
 			'.cm-cursor, .cm-dropCursor': {
 				borderLeftColor: 'var(--code--caret--color)',
@@ -194,6 +194,10 @@ watch(
 	:global(.cm-placeholder) {
 		color: var(--color--text--tint-2);
 		font-style: italic;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		display: block;
 	}
 }
 
