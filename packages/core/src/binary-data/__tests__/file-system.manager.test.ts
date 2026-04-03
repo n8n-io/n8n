@@ -207,9 +207,9 @@ describe('deleteMany()', () => {
 });
 
 describe('rename()', () => {
-	it('should rename a file', async () => {
+	it('should rename a file and try to clean up empty directories', async () => {
 		fsp.rename = jest.fn().mockResolvedValue(undefined);
-		fsp.rm = jest.fn().mockResolvedValue(undefined);
+		fsp.rmdir = jest.fn().mockResolvedValue(undefined);
 
 		const promise = fsManager.rename(fileId, otherFileId);
 
@@ -221,5 +221,26 @@ describe('rename()', () => {
 		expect(fsp.rename).toHaveBeenCalledTimes(2);
 		expect(fsp.rename).toHaveBeenCalledWith(oldPath, newPath);
 		expect(fsp.rename).toHaveBeenCalledWith(`${oldPath}.metadata`, `${newPath}.metadata`);
+
+		// Should use rmdir (not rm -rf) to only remove empty directories
+		expect(fsp.rmdir).toHaveBeenCalledTimes(2);
+		expect(fsp.rmdir).toHaveBeenCalledWith(path.dirname(oldPath));
+		expect(fsp.rmdir).toHaveBeenCalledWith(path.dirname(path.dirname(oldPath)));
+	});
+
+	it('should not throw when temp directory is not empty (concurrent executions)', async () => {
+		fsp.rename = jest.fn().mockResolvedValue(undefined);
+
+		// Simulate ENOTEMPTY — another execution still has files in the temp dir
+		const enotempty = new Error('ENOTEMPTY: directory not empty') as NodeJS.ErrnoException;
+		enotempty.code = 'ENOTEMPTY';
+		fsp.rmdir = jest.fn().mockRejectedValue(enotempty);
+
+		const promise = fsManager.rename(fileId, otherFileId);
+
+		await expect(promise).resolves.not.toThrow();
+
+		expect(fsp.rename).toHaveBeenCalledTimes(2);
+		expect(fsp.rmdir).toHaveBeenCalled();
 	});
 });
