@@ -68,7 +68,7 @@ interface IApiInvocationsBuffer {
 export class Telemetry {
 	private rudderStack?: RudderStack;
 
-	private pulseIntervalReference: NodeJS.Timeout;
+	private pulseIntervalReference!: NodeJS.Timeout;
 
 	private executionCountsBuffer: IExecutionsBuffer = {};
 

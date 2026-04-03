@@ -43,9 +43,9 @@ export class OnePasswordProvider extends SecretsProvider {
 
 	private cachedSecrets: Record<string, IDataObject> = {};
 
-	private client: OPConnect;
+	private client!: OPConnect;
 
-	private settings: { serverUrl: string; accessToken: string };
+	private settings!: { serverUrl: string; accessToken: string };
 
 	constructor(private readonly logger = Container.get(Logger)) {
 		super();

@@ -12,7 +12,7 @@ import { TaskRequester } from './task-requester';
 
 @Service()
 export class LocalTaskRequester extends TaskRequester {
-	taskBroker: TaskBroker;
+	taskBroker!: TaskBroker;
 
 	id = 'local-task-requester';
 

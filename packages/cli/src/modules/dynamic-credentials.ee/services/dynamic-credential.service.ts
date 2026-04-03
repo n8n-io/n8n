@@ -1,8 +1,7 @@
 import { Logger } from '@n8n/backend-common';
-import { AuthenticatedRequest } from '@n8n/db';
 import { CredentialResolverError } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { NextFunction, Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import { Cipher } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
@@ -251,7 +250,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 	getDynamicCredentialsEndpointsMiddleware() {
 		const { endpointAuthToken } = this.dynamicCredentialConfig;
 		if (!endpointAuthToken?.trim()) {
-			return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+			return (req: Request, res: Response, next: NextFunction) => {
 				// If a user was authenticated for this request, we allow access irrelevant of the static authentication
 				if (req.user) {
 					return next();
@@ -271,7 +270,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			'x-authorization',
 		)!;
 
-		return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+		return (req: Request, res: Response, next: NextFunction) => {
 			// If a user was authenticated for this request, we allow access irrelevant of the static authentication
 			if (req.user) {
 				return next();

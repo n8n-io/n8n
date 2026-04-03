@@ -53,11 +53,11 @@ export class LdapService implements IPasswordAuthHandler<User> {
 	private client: Client | undefined;
 
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-	private ldapts: typeof import('ldapts');
+	private ldapts!: typeof import('ldapts');
 
 	private syncTimer: NodeJS.Timeout | undefined = undefined;
 
-	config: LdapConfig;
+	config!: LdapConfig;
 
 	readonly userClass: Constructable<User> = User;
 

@@ -5,15 +5,15 @@ import { InstalledPackages } from './installed-packages.entity';
 @Entity()
 export class InstalledNodes extends BaseEntity {
 	@Column()
-	name: string;
+	name!: string;
 
 	@PrimaryColumn()
-	type: string;
+	type!: string;
 
 	@Column()
-	latestVersion: number;
+	latestVersion!: number;
 
 	@ManyToOne('InstalledPackages', 'installedNodes')
 	@JoinColumn({ name: 'package', referencedColumnName: 'packageName' })
-	package: InstalledPackages;
+	package!: InstalledPackages;
 }

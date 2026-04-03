@@ -24,7 +24,7 @@ export class WaitTracker {
 		};
 	} = {};
 
-	mainTimer: NodeJS.Timeout;
+	mainTimer!: NodeJS.Timeout;
 
 	/** Guards against overlapping poll invocations when DB queries take longer than the poll interval. */
 	private isPolling = false;

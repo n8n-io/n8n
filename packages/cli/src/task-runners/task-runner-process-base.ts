@@ -23,9 +23,9 @@ export type TaskRunnerProcessEventMap = {
 
 @Service()
 export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProcessEventMap> {
-	protected readonly name: string;
+	protected readonly name!: string;
 
-	protected readonly loggerScope: LogScope;
+	protected readonly loggerScope!: LogScope;
 
 	protected process: ChildProcess | null = null;
 

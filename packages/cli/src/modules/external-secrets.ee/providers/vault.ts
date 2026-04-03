@@ -249,15 +249,15 @@ export class VaultProvider extends SecretsProvider {
 
 	private cachedSecrets: Record<string, IDataObject> = {};
 
-	private settings: VaultSettings;
+	private settings!: VaultSettings;
 
 	#currentToken: string | null = null;
 
 	#tokenInfo: VaultTokenInfo | null = null;
 
-	#http: AxiosInstance;
+	#http!: AxiosInstance;
 
-	private refreshTimeout: NodeJS.Timeout | null;
+	private refreshTimeout!: NodeJS.Timeout | null;
 
 	private refreshAbort = new AbortController();
 

@@ -31,7 +31,7 @@ import type {
 
 @Service()
 export class ScalingService {
-	private queue: JobQueue;
+	private queue!: JobQueue;
 
 	private jobResults = new Map<string, JobFinishedProps>();
 

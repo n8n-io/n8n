@@ -19,7 +19,7 @@ export interface EventMessageRunnerOptions extends AbstractEventMessageOptions {
 export class EventMessageRunner extends AbstractEventMessage {
 	readonly __type = EventMessageTypeNames.runner;
 
-	payload: EventPayloadRunner;
+	payload!: EventPayloadRunner;
 
 	constructor(options: EventMessageRunnerOptions) {
 		super(options);

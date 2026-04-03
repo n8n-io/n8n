@@ -59,9 +59,9 @@ export class AzureKeyVault extends SecretsProvider {
 
 	private cachedSecrets: Record<string, string> = {};
 
-	private client: SecretClient;
+	private client!: SecretClient;
 
-	private settings: AzureKeyVaultContext['settings'];
+	private settings!: AzureKeyVaultContext['settings'];
 
 	constructor(private readonly logger = Container.get(Logger)) {
 		super();

@@ -101,8 +101,8 @@ export class AuthService {
 		allowSkipPreviewAuth,
 		allowUnauthenticated,
 	}: CreateAuthMiddlewareOptions) {
-		return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-			const token = req.cookies[AUTH_COOKIE_NAME];
+		return async (req: Request, res: Response, next: NextFunction) => {
+			const token = this.getCookieToken(req);
 
 			if (token) {
 				try {
@@ -326,7 +326,7 @@ export class AuthService {
 
 	async resolveJwt(
 		token: string,
-		req: AuthenticatedRequest,
+		req: Request,
 		res: Response,
 	): Promise<[User, { usedMfa: boolean }]> {
 		const { user, jwtPayload } = await this.validateToken(token);

@@ -36,9 +36,9 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 	 * Taken from env var `N8N_CONCURRENCY_PRODUCTION_LIMIT` if set to a value
 	 * other than -1, else taken from `--concurrency` flag.
 	 */
-	private concurrency: number;
+	private concurrency!: number;
 
-	private scalingService: ScalingService;
+	private scalingService!: ScalingService;
 
 	override needsCommunityPackages = true;
 

@@ -12,6 +12,7 @@ import {
 import type { Tool } from '@langchain/core/tools';
 import type {
 	ExecutionStatus,
+	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
 	IExecuteResponsePromiseData,
@@ -167,7 +168,9 @@ export class JobProcessor {
 
 		if (pushRef) {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({ pushRef });
+			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({
+				pushRef,
+			}) as (type: string, data: IDataObject | IDataObject[]) => void;
 		}
 
 		lifecycleHooks.addHandler('sendResponse', async (response): Promise<void> => {
@@ -542,7 +545,9 @@ export class JobProcessor {
 
 				const result = await nodeType.execute.call(context as unknown as IExecuteFunctions);
 
-				const response = result?.[0]?.flatMap((item: INodeExecutionData) => item.json);
+				const response = (result as INodeExecutionData[][] | undefined)?.[0]?.flatMap(
+					(item: INodeExecutionData) => item.json,
+				);
 
 				context.addOutputData(NodeConnectionTypes.AiTool, 0, [
 					[{ json: { response } as INodeExecutionData['json'] }],

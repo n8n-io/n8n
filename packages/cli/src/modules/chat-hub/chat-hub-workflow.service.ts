@@ -424,7 +424,7 @@ export class ChatHubWorkflowService {
 		const nodeNames = new Set(nodes.map((node) => node.name));
 		const distinctTools = tools.map((tool, i) => {
 			// Spread out the tool nodes so that they don't overlap on the canvas
-			const position = [
+			const position: [number, number] = [
 				700 + Math.floor(i / 3) * 60 + (i % 3) * 120,
 				300 + Math.floor(i / 3) * 120 - (i % 3) * 30,
 			];

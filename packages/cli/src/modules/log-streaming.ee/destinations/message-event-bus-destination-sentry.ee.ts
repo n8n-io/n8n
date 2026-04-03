@@ -31,7 +31,7 @@ export class MessageEventBusDestinationSentry
 
 	tracesSampleRate = 1.0;
 
-	sendPayload: boolean;
+	sendPayload!: boolean;
 
 	sentryClient?: Sentry.NodeClient;
 

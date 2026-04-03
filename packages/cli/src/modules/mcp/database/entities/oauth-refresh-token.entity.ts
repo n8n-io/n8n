@@ -6,27 +6,27 @@ import { OAuthClient } from './oauth-client.entity';
 @Entity('oauth_refresh_tokens')
 export class RefreshToken extends WithTimestamps {
 	@Column({ type: 'varchar', primary: true })
-	token: string;
+	token!: string;
 
 	@ManyToOne(
 		() => OAuthClient,
 		(client) => client.refreshTokens,
 		{ onDelete: 'CASCADE' },
 	)
-	client: OAuthClient;
+	client!: OAuthClient;
 
 	@Index()
 	@Column({ type: String })
-	clientId: string;
+	clientId!: string;
 
 	@ManyToOne(() => User, { onDelete: 'CASCADE' })
-	user: User;
+	user!: User;
 
 	@Index()
 	@Column({ type: String })
-	userId: string;
+	userId!: string;
 
 	@Index()
 	@Column({ type: 'int' })
-	expiresAt: number;
+	expiresAt!: number;
 }

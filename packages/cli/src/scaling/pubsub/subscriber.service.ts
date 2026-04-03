@@ -32,13 +32,13 @@ export interface McpRelayMessage {
 
 @Service()
 export class Subscriber {
-	private readonly client: SingleNodeClient | MultiNodeClient;
+	private readonly client!: SingleNodeClient | MultiNodeClient;
 
-	private readonly commandChannel: string;
+	private readonly commandChannel!: string;
 
-	private readonly workerResponseChannel: string;
+	private readonly workerResponseChannel!: string;
 
-	private readonly mcpRelayChannel: string;
+	private readonly mcpRelayChannel!: string;
 
 	/** Callback for MCP relay messages. Set by ScalingService. */
 	private mcpRelayHandler?: (msg: McpRelayMessage) => void;

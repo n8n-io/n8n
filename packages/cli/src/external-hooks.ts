@@ -163,7 +163,7 @@ export class ExternalHooks {
 
 		for (const hookFunction of hookFunctions) {
 			try {
-				await hookFunction.apply(context, hookParameters);
+				await hookFunction.apply(context, hookParameters!);
 			} catch (cause) {
 				this.logger.error(`There was a problem running hook "${hookName}"`);
 

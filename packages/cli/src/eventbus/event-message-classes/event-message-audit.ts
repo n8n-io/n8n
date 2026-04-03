@@ -44,9 +44,9 @@ export interface EventMessageAuditOptions extends AbstractEventMessageOptions {
 export class EventMessageAudit extends AbstractEventMessage {
 	readonly __type = EventMessageTypeNames.audit;
 
-	eventName: EventNamesAuditType;
+	eventName!: EventNamesAuditType;
 
-	payload: EventPayloadAudit;
+	payload!: EventPayloadAudit;
 
 	constructor(options: EventMessageAuditOptions) {
 		super(options);

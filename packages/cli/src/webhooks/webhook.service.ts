@@ -427,7 +427,7 @@ export class WebhookService {
 			webhookData,
 		);
 
-		return (await webhookFn.call(context)) as boolean;
+		return await webhookFn.call(context);
 	}
 
 	/**
@@ -461,6 +461,6 @@ export class WebhookService {
 
 		return nodeType instanceof Node
 			? await nodeType.webhook(context)
-			: ((await nodeType.webhook.call(context)) as IWebhookResponseData);
+			: await nodeType.webhook.call(context);
 	}
 }

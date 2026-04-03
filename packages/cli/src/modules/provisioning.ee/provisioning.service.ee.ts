@@ -32,7 +32,7 @@ export function isExpressionMappingFlagEnabled(): boolean {
 
 @Service()
 export class ProvisioningService {
-	private provisioningConfig: ProvisioningConfigDto;
+	private provisioningConfig!: ProvisioningConfigDto;
 
 	constructor(
 		private readonly eventService: EventService,

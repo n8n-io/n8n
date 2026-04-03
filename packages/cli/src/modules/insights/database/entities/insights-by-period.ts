@@ -23,26 +23,27 @@ import {
 @Entity()
 export class InsightsByPeriod extends BaseEntity {
 	@PrimaryGeneratedColumn()
-	id: number;
+	id!: number;
 
 	@Column()
-	metaId: number;
+	metaId!: number;
 
 	@ManyToOne(() => InsightsMetadata)
 	@JoinColumn({ name: 'metaId' })
-	metadata: InsightsMetadata;
+	metadata!: InsightsMetadata;
 
 	@Column({ name: 'type', type: 'int' })
-	private type_: number;
+	private type_!: number;
 
 	get type() {
-		if (!isValidTypeNumber(this.type_)) {
+		const typeValue = this.type_;
+		if (!isValidTypeNumber(typeValue)) {
 			throw new UnexpectedError(
-				`Type '${this.type_}' is not a valid type for 'InsightsByPeriod.type'`,
+				`Type '${typeValue}' is not a valid type for 'InsightsByPeriod.type'`,
 			);
 		}
 
-		return NumberToType[this.type_];
+		return NumberToType[typeValue];
 	}
 
 	set type(value: keyof typeof TypeToNumber) {
@@ -55,19 +56,20 @@ export class InsightsByPeriod extends BaseEntity {
 	 * Values exceeding Number.MAX_SAFE_INTEGER will lose precision.
 	 */
 	@Column()
-	value: number;
+	value!: number;
 
 	@Column({ name: 'periodUnit' })
-	private periodUnit_: number;
+	private periodUnit_!: number;
 
 	get periodUnit() {
-		if (!isValidPeriodNumber(this.periodUnit_)) {
+		const periodUnitValue = this.periodUnit_;
+		if (!isValidPeriodNumber(periodUnitValue)) {
 			throw new UnexpectedError(
-				`Period unit '${this.periodUnit_}' is not a valid unit for 'InsightsByPeriod.periodUnit'`,
+				`Period unit '${periodUnitValue}' is not a valid unit for 'InsightsByPeriod.periodUnit'`,
 			);
 		}
 
-		return NumberToPeriodUnit[this.periodUnit_];
+		return NumberToPeriodUnit[periodUnitValue];
 	}
 
 	set periodUnit(value: PeriodUnit) {
@@ -75,5 +77,5 @@ export class InsightsByPeriod extends BaseEntity {
 	}
 
 	@DateTimeColumn()
-	periodStart: Date;
+	periodStart!: Date;
 }

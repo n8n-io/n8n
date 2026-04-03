@@ -28,9 +28,9 @@ export interface EventMessageNodeOptions extends AbstractEventMessageOptions {
 export class EventMessageNode extends AbstractEventMessage {
 	readonly __type = EventMessageTypeNames.node;
 
-	eventName: EventNamesNodeType;
+	eventName!: EventNamesNodeType;
 
-	payload: EventPayloadNode;
+	payload!: EventPayloadNode;
 
 	constructor(options: EventMessageNodeOptions) {
 		super(options);

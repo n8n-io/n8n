@@ -71,7 +71,7 @@ export class DeprecationService {
 			envVar: 'EXECUTIONS_PROCESS',
 			message:
 				'n8n does not support `own` mode since May 2023. Please remove this environment variable to allow n8n to start. If you need the isolation and performance gains, please consider queue mode: https://docs.n8n.io/hosting/scaling/queue-mode/',
-			checkValue: (value: string) => value === 'own',
+			checkValue: (value: string | undefined): value is 'own' => value === 'own',
 		},
 	];
 

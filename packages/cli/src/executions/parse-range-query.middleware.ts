@@ -1,4 +1,4 @@
-import type { NextFunction, Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import { validate } from 'jsonschema';
 import type { JsonObject } from 'n8n-workflow';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
@@ -17,12 +17,8 @@ const isValid = (arg: JsonObject) => validate(arg, SCHEMA).valid;
 /**
  * Middleware to parse the query string in a request to retrieve a range of execution summaries.
  */
-export const parseRangeQuery = (
-	req: ExecutionRequest.GetMany,
-	res: Response,
-	next: NextFunction,
-) => {
-	const { limit, firstId, lastId } = req.query;
+export const parseRangeQuery = (req: Request, res: Response, next: NextFunction) => {
+	const { limit, firstId, lastId } = req.query as Partial<ExecutionRequest.QueryParams.GetMany>;
 
 	try {
 		req.rangeQuery = {
@@ -33,7 +29,7 @@ export const parseRangeQuery = (
 		if (firstId) req.rangeQuery.range.firstId = firstId;
 		if (lastId) req.rangeQuery.range.lastId = lastId;
 
-		if (req.query.filter) {
+		if (typeof req.query.filter === 'string') {
 			const jsonFilter = jsonParse<JsonObject>(req.query.filter, {
 				errorMessage: 'Failed to parse query string',
 			});

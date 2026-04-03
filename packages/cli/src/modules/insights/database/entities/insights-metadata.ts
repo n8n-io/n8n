@@ -3,17 +3,17 @@ import { BaseEntity, Column, Entity, PrimaryGeneratedColumn } from '@n8n/typeorm
 @Entity()
 export class InsightsMetadata extends BaseEntity {
 	@PrimaryGeneratedColumn()
-	metaId: number;
+	metaId!: number;
 
 	@Column({ unique: true, type: 'varchar', length: 36 })
-	workflowId: string;
+	workflowId!: string;
 
 	@Column({ type: 'varchar', length: 36 })
-	projectId: string;
+	projectId!: string;
 
 	@Column({ type: 'varchar', length: 128 })
-	workflowName: string;
+	workflowName!: string;
 
 	@Column({ type: 'varchar', length: 255 })
-	projectName: string;
+	projectName!: string;
 }

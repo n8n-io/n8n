@@ -6,42 +6,42 @@ import { OAuthClient } from './oauth-client.entity';
 @Entity('oauth_authorization_codes')
 export class AuthorizationCode extends WithTimestamps {
 	@Column({ type: 'varchar', primary: true })
-	code: string;
+	code!: string;
 
 	@ManyToOne(
 		() => OAuthClient,
 		(client) => client.authorizationCodes,
 		{ onDelete: 'CASCADE' },
 	)
-	client: OAuthClient;
+	client!: OAuthClient;
 
 	@Index()
 	@Column({ type: String })
-	clientId: string;
+	clientId!: string;
 
 	@ManyToOne(() => User, { onDelete: 'CASCADE' })
-	user: User;
+	user!: User;
 
 	@Index()
 	@Column({ type: String })
-	userId: string;
+	userId!: string;
 
 	@Column({ type: String })
-	redirectUri: string;
+	redirectUri!: string;
 
 	@Column({ type: String })
-	codeChallenge: string;
+	codeChallenge!: string;
 
 	@Column({ type: String })
-	codeChallengeMethod: string;
+	codeChallengeMethod!: string;
 
 	@Column({ type: String, nullable: true })
-	state: string | null;
+	state!: string | null;
 
 	@Index()
 	@Column({ type: 'int' })
-	expiresAt: number;
+	expiresAt!: number;
 
 	@Column({ type: Boolean, default: false })
-	used: boolean;
+	used!: boolean;
 }

@@ -9,15 +9,16 @@ import { toError } from '@/utils';
 
 import { WorkflowSorting } from './dtos/workflow.sort-by.dto';
 
-export const sortByQueryMiddleware: RequestHandler = (req: ListQuery.Request, res, next) => {
-	const { sortBy } = req.query;
+export const sortByQueryMiddleware: RequestHandler = (req, res, next) => {
+	const listQueryReq = req as ListQuery.Request;
+	const { sortBy } = listQueryReq.query;
 
 	if (!sortBy) return next();
 
 	let SortBy;
 
 	try {
-		if (req.baseUrl.endsWith('workflows') || req.path.endsWith('workflows')) {
+		if (listQueryReq.baseUrl.endsWith('workflows') || listQueryReq.path.endsWith('workflows')) {
 			SortBy = WorkflowSorting;
 		} else {
 			return next();
@@ -30,7 +31,7 @@ export const sortByQueryMiddleware: RequestHandler = (req: ListQuery.Request, re
 			throw new UnexpectedError(validationError.constraints?.workflowSortBy ?? '');
 		}
 
-		req.listQueryOptions = { ...req.listQueryOptions, sortBy };
+		listQueryReq.listQueryOptions = { ...listQueryReq.listQueryOptions, sortBy };
 
 		next();
 	} catch (maybeError) {

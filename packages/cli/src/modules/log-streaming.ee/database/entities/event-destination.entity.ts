@@ -5,8 +5,8 @@ import { MessageEventBusDestinationOptions } from 'n8n-workflow';
 @Entity({ name: 'event_destinations' })
 export class EventDestinations extends WithTimestamps {
 	@PrimaryColumn('uuid')
-	id: string;
+	id!: string;
 
 	@JsonColumn()
-	destination: MessageEventBusDestinationOptions;
+	destination!: MessageEventBusDestinationOptions;
 }

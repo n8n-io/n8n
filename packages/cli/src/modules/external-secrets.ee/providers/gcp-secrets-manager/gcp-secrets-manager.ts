@@ -33,9 +33,9 @@ export class GcpSecretsManager extends SecretsProvider {
 
 	private cachedSecrets: Record<string, string> = {};
 
-	private client: GcpClient;
+	private client!: GcpClient;
 
-	private settings: GcpSecretAccountKey;
+	private settings!: GcpSecretAccountKey;
 
 	constructor(private readonly logger = Container.get(Logger)) {
 		super();

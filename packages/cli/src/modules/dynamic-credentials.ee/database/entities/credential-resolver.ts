@@ -5,13 +5,13 @@ import { Column, Entity } from '@n8n/typeorm';
 @Entity()
 export class DynamicCredentialResolver extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 128 })
-	name: string;
+	name!: string;
 
 	@Column({ type: 'varchar', length: 128 })
-	type: string;
+	type!: string;
 
 	@Column({ type: 'text' })
-	config: string;
+	config!: string;
 
 	/** Decrypted config, not persisted to the database */
 	decryptedConfig?: CredentialResolverConfiguration;

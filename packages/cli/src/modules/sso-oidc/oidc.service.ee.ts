@@ -61,7 +61,7 @@ export class OidcService {
 	private oidcConfig: OidcRuntimeConfig = DEFAULT_OIDC_RUNTIME_CONFIG;
 
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-	private openidClient: typeof import('openid-client');
+	private openidClient!: typeof import('openid-client');
 
 	constructor(
 		private readonly settingsRepository: SettingsRepository,

@@ -28,7 +28,7 @@ export class ConcurrencyControlService {
 
 	private readonly limits: Map<ConcurrencyQueueType, number>;
 
-	private readonly queues: Map<ConcurrencyQueueType, ConcurrencyQueue>;
+	private readonly queues!: Map<ConcurrencyQueueType, ConcurrencyQueue>;
 
 	private readonly limitsToReport = CLOUD_TEMP_REPORTABLE_THRESHOLDS.map(
 		(t) => CLOUD_TEMP_PRODUCTION_LIMIT - t,

@@ -24,8 +24,8 @@ import type {
 export class DynamicCredentialsProxy
 	implements IDynamicCredentialStorageProvider, ICredentialResolutionProvider
 {
-	private storageProvider: IDynamicCredentialStorageProvider;
-	private resolvingProvider: ICredentialResolutionProvider;
+	private storageProvider!: IDynamicCredentialStorageProvider;
+	private resolvingProvider!: ICredentialResolutionProvider;
 
 	constructor(private readonly logger: Logger) {}
 
