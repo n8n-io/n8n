@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import { useI18n } from '../../composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import N8nCanvasPill from '../CanvasPill';
 import N8nAvatar from '../N8nAvatar';
 import N8nButton from '../N8nButton';
@@ -29,7 +29,9 @@ const userName = computed(() => {
 const message = computed(() => {
 	return props.isAnotherTab
 		? t('collaboration.canvas.editingAnotherTab')
-		: t('collaboration.canvas.editing', { user: userName.value });
+		: t('collaboration.canvas.editing', {
+				interpolate: { user: userName.value },
+			});
 });
 
 const handleButtonClick = () => {

@@ -4,7 +4,12 @@ import { ref } from 'vue';
 import { createI18n } from 'vue-i18n';
 
 import englishBaseText from './locales/en.json';
-import type { BaseTextKey, LocaleMessages, INodeTranslationHeaders } from './types';
+import type {
+	BaseTextKey,
+	LocaleMessages,
+	INodeTranslationHeaders,
+	BaseTextOptions,
+} from './types';
 import {
 	deriveMiddleKey,
 	isNestedInCollectionLike,
@@ -25,13 +30,12 @@ export const i18nInstance = createI18n({
 // Reactive version to signal i18n message updates to Vue computations
 export const i18nVersion = ref(0);
 
-type BaseTextOptions = {
-	adjustToNumber?: number;
-	interpolate?: Record<string, string | number>;
-};
-
 export class I18nClass {
 	private baseTextCache = new Map<string, string>();
+
+	constructor() {
+		this.t = this.t.bind(this);
+	}
 
 	private get i18n() {
 		return i18nInstance.global;
@@ -85,6 +89,15 @@ export class I18nClass {
 		this.baseTextCache.set(cacheKey, result);
 
 		return result;
+	}
+
+	/**
+	 * Alias for baseText.
+	 *
+	 * @see {@link I18nClass.baseText}
+	 */
+	t(key: BaseTextKey, options?: BaseTextOptions) {
+		return this.baseText(key, options);
 	}
 
 	/**

@@ -7,7 +7,7 @@ import MessageRating from './MessageRating.vue';
 const stubs = ['N8nButton', 'N8nIconButton', 'N8nInput'];
 
 // Mock i18n to return keys instead of translated text
-vi.mock('@n8n/design-system/composables/useI18n', () => ({
+vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		t: (key: string) => key,
 	}),
@@ -75,7 +75,7 @@ describe('MessageRating', () => {
 			expect(
 				wrapper.container.querySelector('[data-test-id="message-thumbs-down-button"]'),
 			).toBeFalsy();
-			expect(wrapper.getByText('assistantChat.rating.success')).toBeTruthy();
+			expect(wrapper.getByText('aiAssistant.rating.success')).toBeTruthy();
 		});
 
 		it('should hide rating buttons and show feedback form after thumbs down when showFeedback is true', async () => {
@@ -119,7 +119,7 @@ describe('MessageRating', () => {
 			expect(
 				wrapper.container.querySelector('[data-test-id="message-feedback-input"]'),
 			).toBeFalsy();
-			expect(wrapper.getByText('assistantChat.rating.success')).toBeTruthy();
+			expect(wrapper.getByText('aiAssistant.rating.success')).toBeTruthy();
 		});
 	});
 
@@ -156,7 +156,7 @@ describe('MessageRating', () => {
 			expect(
 				wrapper.container.querySelector('[data-test-id="message-feedback-input"]'),
 			).toBeFalsy();
-			expect(wrapper.getByText('assistantChat.rating.success')).toBeTruthy();
+			expect(wrapper.getByText('aiAssistant.rating.success')).toBeTruthy();
 		});
 
 		it('should cancel feedback and return to rating buttons', async () => {

@@ -1,5 +1,3 @@
-import * as locale from './locale';
-
 export * from './components';
 export * from './constants';
 export * from './plugin';
@@ -22,4 +20,3 @@ export { default as N8nDropdownMenu } from './v2/components/DropdownMenu/Dropdow
 export type * from './v2/components/DropdownMenu/DropdownMenu.types';
 export { default as N8nSwitch2 } from './v2/components/Switch/Switch.vue';
 export type * from './v2/components/Switch/Switch.types';
-export { locale };

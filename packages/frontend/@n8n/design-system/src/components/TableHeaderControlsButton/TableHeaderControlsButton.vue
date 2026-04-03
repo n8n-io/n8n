@@ -1,7 +1,7 @@
 <script setup lang="ts" generic="ColumnType extends ColumnHeader">
 import { computed, ref } from 'vue';
 
-import { useI18n } from '../../composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import type { ButtonSize, IconSize } from '../../types';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';

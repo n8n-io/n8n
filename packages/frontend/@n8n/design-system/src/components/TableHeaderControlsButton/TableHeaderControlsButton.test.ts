@@ -5,7 +5,7 @@ import type { ColumnHeader } from './TableHeaderControlsButton.vue';
 import TableHeaderControlsButton from './TableHeaderControlsButton.vue';
 
 // Mock the useI18n composable
-vi.mock('@n8n/design-system/composables/useI18n', () => ({
+vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		t: (key: string) => {
 			const translations: Record<string, string> = {

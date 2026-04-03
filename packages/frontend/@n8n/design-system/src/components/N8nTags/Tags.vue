@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
 
-import { useI18n } from '../../composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import N8nLink from '../N8nLink';
 import N8nTag from '../N8nTag';
 
@@ -66,7 +66,11 @@ const onExpand = () => {
 			size="small"
 			@click.stop.prevent="onExpand"
 		>
-			{{ t('tags.showMore', [`${hiddenTagsLength}`]) }}
+			{{
+				t('tags.showMore', {
+					interpolate: { count: hiddenTagsLength },
+				})
+			}}
 		</N8nLink>
 	</div>
 </template>

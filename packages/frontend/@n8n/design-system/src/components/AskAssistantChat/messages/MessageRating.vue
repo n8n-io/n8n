@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 
-import { useI18n } from '../../../composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import type { RatingFeedback } from '../../../types';
 import N8nButton from '../../N8nButton';
 import N8nIconButton from '../../N8nIconButton';
@@ -72,7 +72,7 @@ function onCancelFeedback() {
 				<N8nButton
 					variant="subtle"
 					size="small"
-					:label="t('assistantChat.rating.thumbsUp')"
+					:label="t('aiAssistant.rating.thumbsUp')"
 					data-test-id="message-thumbs-up-button"
 					icon="thumbs-up"
 					@click="onRateButton('up')"
@@ -81,7 +81,7 @@ function onCancelFeedback() {
 					variant="subtle"
 					size="small"
 					data-test-id="message-thumbs-down-button"
-					:label="t('assistantChat.rating.thumbsDown')"
+					:label="t('aiAssistant.rating.thumbsDown')"
 					icon="thumbs-down"
 					@click="onRateButton('down')"
 				/>
@@ -114,7 +114,7 @@ function onCancelFeedback() {
 				v-model="feedback"
 				:class="$style.feedbackInput"
 				type="textarea"
-				:placeholder="t('assistantChat.rating.feedbackPlaceholder')"
+				:placeholder="t('aiAssistant.rating.feedbackPlaceholder')"
 				data-test-id="message-feedback-input"
 				:read-only="false"
 				resize="none"
@@ -130,14 +130,14 @@ function onCancelFeedback() {
 					variant="solid"
 					size="small"
 					data-test-id="message-submit-feedback-button"
-					:label="t('assistantChat.rating.feedbackSubmit')"
+					:label="t('aiAssistant.rating.feedbackSubmit')"
 					@click="onSubmitFeedback"
 				/>
 			</div>
 		</div>
 
 		<p v-if="showSuccess" :class="$style.success">
-			{{ t('assistantChat.rating.success') }}
+			{{ t('aiAssistant.rating.success') }}
 		</p>
 	</div>
 </template>

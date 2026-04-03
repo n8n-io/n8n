@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import BaseMessage from './BaseMessage.vue';
-import { useI18n } from '../../../composables/useI18n';
+import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import InlineAskAssistantButton from '../../InlineAskAssistantButton/InlineAskAssistantButton.vue';
 
 type EventName = 'end-session' | 'session-timeout' | 'session-error';
@@ -23,20 +23,27 @@ interface Props {
 defineProps<Props>();
 const { t } = useI18n();
 
-const eventMessages: Record<EventName, { part1: string; part2: string }> = {
+const eventMessages: Record<EventName, Record<'part1' | 'part2', BaseTextKey>> = {
 	'end-session': {
-		part1: 'assistantChat.sessionEndMessage.1',
-		part2: 'assistantChat.sessionEndMessage.2',
+		part1: 'aiAssistant.sessionEndMessage.1',
+		part2: 'aiAssistant.sessionEndMessage.2',
 	},
 	'session-timeout': {
+		// @ts-expect-error TODO: i18n key doesn't exist
 		part1: 'assistantChat.sessionTimeoutMessage.1',
+		// @ts-expect-error TODO: i18n key doesn't exist
 		part2: 'assistantChat.sessionTimeoutMessage.2',
 	},
 	'session-error': {
+		// @ts-expect-error TODO: i18n key doesn't exist
 		part1: 'assistantChat.sessionErrorMessage.1',
+		// @ts-expect-error TODO: i18n key doesn't exist
 		part2: 'assistantChat.sessionErrorMessage.2',
 	},
 } as const;
+
+// TODO: i18n key doesn't exist
+// `assistantChat.unknownEvent` is affected too.
 </script>
 
 <template>

@@ -3,7 +3,7 @@ import { computed, ref, onMounted, nextTick, watch } from 'vue';
 
 import BaseMessage from './BaseMessage.vue';
 import { useMarkdown } from './useMarkdown';
-import { useI18n } from '../../../composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import type { ChatUI, RatingFeedback } from '../../../types/assistant';
 import BlinkingCursor from '../../BlinkingCursor/BlinkingCursor.vue';
 import N8nButton from '../../N8nButton';
@@ -73,9 +73,9 @@ const fallbackFocusedNodesLabel = computed(() => {
 async function onCopyButtonClick(content: string, e: MouseEvent) {
 	const button = e.target as HTMLButtonElement;
 	await navigator.clipboard.writeText(content);
-	button.innerText = t('assistantChat.copied');
+	button.innerText = t('generic.copied');
 	setTimeout(() => {
-		button.innerText = t('assistantChat.copy');
+		button.innerText = t('generic.copy');
 	}, 2000);
 }
 </script>
@@ -102,7 +102,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 					type="button"
 					@click="toggleExpanded"
 				>
-					{{ isExpanded ? t('notice.showLess') : t('notice.showMore') }}
+					{{ isExpanded ? t('generic.showLess') : t('generic.showMore') }}
 				</button>
 				<div
 					v-if="message.focusedNodeNames?.length"
@@ -135,7 +135,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 						data-test-id="assistant-copy-snippet-button"
 						@click="onCopyButtonClick(message.codeSnippet, $event)"
 					>
-						{{ t('assistantChat.copy') }}
+						{{ t('generic.copy') }}
 					</N8nButton>
 				</header>
 				<div

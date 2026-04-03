@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import { useI18n } from '../../composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
 import AssistantText from '../AskAssistantText/AssistantText.vue';
 
@@ -56,7 +56,7 @@ const onClick = () => {
 		<div :style="{ padding: sizes[size].padding }">
 			<AssistantIcon :size="size" :class="$style.icon" :theme="asked ? 'disabled' : 'default'" />
 			<span v-if="asked">{{ t('inlineAskAssistantButton.asked') }}</span>
-			<AssistantText v-else :size="size" :text="t('askAssistantButton.askAssistant')" />
+			<AssistantText v-else :size="size" :text="t('aiAssistant.name')" />
 		</div>
 	</button>
 </template>

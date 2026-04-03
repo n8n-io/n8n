@@ -12,7 +12,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useClipboard } from '@/app/composables/useClipboard';
-import { useI18n } from '@n8n/i18n';
+import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { I18nT } from 'vue-i18n';
 
@@ -104,7 +104,7 @@ const validateEmails = (value: string | number | boolean | null | undefined) => 
 
 		if (!!parsed.trim() && !VALID_EMAIL_REGEX.test(String(parsed).trim().toLowerCase())) {
 			return {
-				messageKey: 'settings.users.invalidEmailError',
+				messageKey: 'settings.users.invalidEmailError' as BaseTextKey,
 				options: { interpolate: { email: parsed } },
 			};
 		}

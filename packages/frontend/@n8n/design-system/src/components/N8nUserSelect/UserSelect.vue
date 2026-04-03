@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
 
-import { useI18n } from '../../composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import type { IUser, SelectSize } from '../../types';
 import N8nOption from '../N8nOption';
 import N8nSelect from '../N8nSelect';

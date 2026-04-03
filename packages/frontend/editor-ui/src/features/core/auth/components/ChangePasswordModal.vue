@@ -7,7 +7,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { IFormInputs, IFormInput, FormFieldValueUpdate, FormValues } from '@/Interface';
-import { useI18n } from '@n8n/i18n';
+import { type BaseTextKey, useI18n } from '@n8n/i18n';
 
 import { N8nButton, N8nFormInputs } from '@n8n/design-system';
 const config = ref<IFormInputs | null>(null);
@@ -27,7 +27,7 @@ const passwordsMatch = (value: string | number | boolean | null | undefined) => 
 
 	if (value !== password.value) {
 		return {
-			messageKey: 'auth.changePassword.passwordsMustMatchError',
+			messageKey: 'auth.changePassword.passwordsMustMatchError' as BaseTextKey,
 		};
 	}
 
