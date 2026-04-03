@@ -99,7 +99,8 @@ watch(currentCard, () => {
 
 // Auto-scroll so the wizard footer stays visible when switching to a taller card.
 // requestAnimationFrame ensures the new card has been laid out before we read scrollHeight.
-watch(currentStepIndex, () => {
+watch([currentStepIndex, showCard], ([_, showCard]) => {
+	if (!showCard) return;
 	requestAnimationFrame(() => scrollToBottom());
 });
 
