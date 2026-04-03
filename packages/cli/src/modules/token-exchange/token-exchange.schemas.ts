@@ -95,6 +95,9 @@ export interface ResolvedTrustedKey {
 
 	/** Roles allowed for tokens signed with this key, if restricted. */
 	allowedRoles?: string[];
+
+	/** When this key expires (JWKS cache TTL). Undefined for static keys. */
+	expiresAt?: Date;
 }
 
 /**
