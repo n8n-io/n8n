@@ -44,6 +44,7 @@ let publicApiMember: User;
 beforeEach(async () => {
 	await testDb.truncate(['ExecutionEntity', 'WorkflowEntity', 'SharedWorkflow']);
 	testServer.license.reset();
+	testServer.license.enable('feat:dataRedaction');
 	owner = await createOwner();
 	member = await createMember();
 	publicApiOwner = await createOwnerWithApiKey();
