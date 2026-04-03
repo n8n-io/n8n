@@ -60,6 +60,12 @@ export class InstanceRegistryService {
 			this.logger.warn('Failed to unregister during shutdown', { error });
 		}
 
+		try {
+			await this.storage.destroy();
+		} catch (error) {
+			this.logger.warn('Failed to destroy storage during shutdown', { error });
+		}
+
 		this.logger.debug('Instance unregistered');
 	}
 
@@ -108,6 +114,10 @@ export class InstanceRegistryService {
 		const { MemoryInstanceStorage } = await import('./storage/memory-storage');
 		return new MemoryInstanceStorage();
 	}
+
+	// TODO: Wire up periodic cleanupStaleMembers() call (leader-only in multi-main)
+	// to remove stale entries from the Redis membership set. Without this, crashed
+	// instances accumulate in the set until manual intervention.
 
 	private startHeartbeat() {
 		this.heartbeatInterval = setInterval(async () => {
