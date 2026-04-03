@@ -160,8 +160,8 @@ catalogs:
       specifier: 1.2.30
       version: 1.2.30
     lodash:
-      specifier: 4.17.23
-      version: 4.17.23
+      specifier: 4.18.0
+      version: 4.18.0
     luxon:
       specifier: 3.7.2
       version: 3.7.2
@@ -395,7 +395,6 @@ overrides:
   bn.js@4: 5.2.3
   bn.js@5: 5.2.3
   langsmith: '>=0.4.6'
-  lodash-es: 4.17.23
   word-wrap@<=1.2.4: 1.2.4
   minimatch@<=5.1.8: 5.1.8
   minimatch@10: 10.2.3
@@ -410,6 +409,8 @@ overrides:
   picomatch@2: 2.3.2
   picomatch@4: 4.0.4
   brace-expansion@5: 5.0.5
+  lodash-es: 4.18.0
+  yaml@<=2.8.3: 2.8.3
 
 patchedDependencies:
   '@lezer/highlight':
@@ -631,7 +632,7 @@ importers:
         version: 1.0.5(@langchain/core@1.1.34(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.213.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(openai@6.19.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.213.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(cheerio@1.0.0)(openai@6.19.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@langchain/community':
         specifier: 'catalog:'
-        version: 1.1.14(fbdf66973daf776baef4450bb975d576)
+        version: 1.1.14(a9a6240fabec1a6afe041177d9e4d333)
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.1.34(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.213.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(openai@6.19.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
@@ -743,7 +744,7 @@ importers:
         version: 0.4.12(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.213.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(openai@6.19.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
       lodash:
         specifier: 'catalog:'
-        version: 4.17.23
+        version: 4.18.0
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -1159,7 +1160,7 @@ importers:
         version: 3.4.2
       lodash:
         specifier: 'catalog:'
-        version: 4.17.23
+        version: 4.18.0
       n8n-core:
         specifier: workspace:*
         version: link:../../core
@@ -1208,7 +1209,7 @@ importers:
         version: link:../permissions
       lodash:
         specifier: 'catalog:'
-        version: 4.17.23
+        version: 4.18.0
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -1384,7 +1385,7 @@ importers:
         version: 3.3.1
       lodash:
         specifier: 'catalog:'
-        version: 4.17.23
+        version: 4.18.0
       luxon:
         specifier: 'catalog:'
         version: 3.7.2
@@ -1861,7 +1862,7 @@ importers:
         version: 1.0.1(@langchain/core@1.1.34(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.213.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 1.1.14(50c0c259dec1d6a3a58a966b1de383ff)
+        version: 1.1.14(34392aea1dcf1f954c70372671ce5157)
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.1.34(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.213.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
@@ -2008,7 +2009,7 @@ importers:
         version: 1.2.30(@langchain/core@1.1.34(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.213.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.213.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(vue@3.5.26(typescript@6.0.2))(zod-to-json-schema@3.23.3(zod@3.25.67))
       lodash:
         specifier: 'catalog:'
-        version: 4.17.23
+        version: 4.18.0
       mammoth:
         specifier: 1.11.0
         version: 1.11.0
@@ -2192,7 +2193,7 @@ importers:
         version: 8.3.4
       lodash:
         specifier: 'catalog:'
-        version: 4.17.23
+        version: 4.18.0
       luxon:
         specifier: 'catalog:'
         version: 3.7.2
@@ -2528,7 +2529,7 @@ importers:
         version: 4.2.6
       lodash:
         specifier: 'catalog:'
-        version: 4.17.23
+        version: 4.18.0
       luxon:
         specifier: 'catalog:'
         version: 3.7.2
@@ -2829,7 +2830,7 @@ importers:
         version: 9.0.3
       lodash:
         specifier: 'catalog:'
-        version: 4.17.23
+        version: 4.18.0
       luxon:
         specifier: 'catalog:'
         version: 3.7.2
@@ -3084,7 +3085,7 @@ importers:
         version: 0.0.5
       lodash:
         specifier: 'catalog:'
-        version: 4.17.23
+        version: 4.18.0
       markdown-it:
         specifier: ^13.0.2
         version: 13.0.2
@@ -3638,7 +3639,7 @@ importers:
         version: 10.4.0
       lodash:
         specifier: 'catalog:'
-        version: 4.17.23
+        version: 4.18.0
       luxon:
         specifier: 'catalog:'
         version: 3.7.2
@@ -3982,7 +3983,7 @@ importers:
         version: 4.2.6
       lodash:
         specifier: 'catalog:'
-        version: 4.17.23
+        version: 4.18.0
       lossless-json:
         specifier: 1.0.5
         version: 1.0.5
@@ -4081,7 +4082,7 @@ importers:
         version: 3.0.3
       ts-ics:
         specifier: 1.2.2
-        version: 1.2.2(date-fns@2.30.0)(lodash@4.17.23)(zod@3.25.67)
+        version: 1.2.2(date-fns@2.30.0)(lodash@4.18.0)(zod@3.25.67)
       uuid:
         specifier: 'catalog:'
         version: 10.0.0
@@ -4219,7 +4220,7 @@ importers:
         specifier: 'catalog:'
         version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       yaml:
-        specifier: ^2.4.0
+        specifier: 2.8.3
         version: 2.8.3
 
   packages/testing/containers:
@@ -4434,7 +4435,7 @@ importers:
         version: 3.3.1
       lodash:
         specifier: 'catalog:'
-        version: 4.17.23
+        version: 4.18.0
       luxon:
         specifier: 'catalog:'
         version: 3.7.2
@@ -11725,6 +11726,7 @@ packages:
 
   '@xata.io/client@0.28.4':
     resolution: {integrity: sha512-B02WHIA/ViHya84XvH6JCo13rd5h4S5vVyY2aYi6fIcjDIbCpsSLJ4oGWpdodovRYeAZy9Go4OhdyZwMIRC4BQ==}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
     peerDependencies:
       typescript: 6.0.2
 
@@ -11732,8 +11734,8 @@ packages:
     resolution: {integrity: sha512-CJDxIgE5I0FH+ttq/Fxy6nRpxP70+e2O048EPe85J2use3XKdatVM7dDVvFNjQudd9B49NPoZ+8PG49zj4Er8Q==}
     engines: {node: '>= 16'}
 
-  '@xmldom/xmldom@0.8.10':
-    resolution: {integrity: sha512-2WALfTl4xo2SkGCYRt6rDTFfk9R1czmBvUQy12gK2KuRKIpWEhcbbzy8EZXtz/jkRqHX8bFEc6FC1HjX4TUWYw==}
+  '@xmldom/xmldom@0.8.12':
+    resolution: {integrity: sha512-9k/gHF6n/pAi/9tqr3m3aqkuiNosYTurLLUtc7xQ9sxB/wm7WPygCv8GYa6mS0fLJEHhqMC1ATYhz++U/lRHqg==}
     engines: {node: '>=10.0.0'}
 
   '@zilliz/milvus2-sdk-node@2.5.7':
@@ -16703,15 +16705,16 @@ packages:
     resolution: {integrity: sha512-gvVijfZvn7R+2qyPX8mAuKcFGDf6Nc61GdvGafQsHL0sBIxfKzA+usWn4GFC/bk+QdwPUD4kWFJLhElipq+0VA==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
-  lodash-es@4.17.23:
-    resolution: {integrity: sha512-kVI48u3PZr38HdYz98UmfPnXl2DXrpdctLrFLCd3kOx1xUkOmpFPx7gCWWM5MPkL/fD8zb+Ph0QzjGFs4+hHWg==}
+  lodash-es@4.18.0:
+    resolution: {integrity: sha512-koAgswPPA+UTaPN64Etp+PGP+WT6oqOS2NMi5yDkMaiGw9qY4VxQbQF0mtKMyr4BlTznWyzePV5UpECTJQmSUA==}
+    deprecated: Bad release. Please use lodash-es@4.17.23 instead.
 
   lodash-unified@1.0.3:
     resolution: {integrity: sha512-WK9qSozxXOD7ZJQlpSqOT+om2ZfcT4yO+03FuzAHD0wF6S0l0090LRPDx3vhTTLZ8cFKpBn+IOcVXK6qOcIlfQ==}
     peerDependencies:
       '@types/lodash-es': '*'
       lodash: '*'
-      lodash-es: 4.17.23
+      lodash-es: 4.18.0
 
   lodash.camelcase@4.3.0:
     resolution: {integrity: sha512-TwuEnCnxbc3rAvhf/LbG7tJUDzhqXyFnv3dtzLOPgCG/hODL7WFnsbwktkD7yUV0RrreP/l1PALq/YSg6VvjlA==}
@@ -16785,6 +16788,10 @@ packages:
 
   lodash@4.17.23:
     resolution: {integrity: sha512-LgVTMpQtIopCi79SJeDiP0TfWi5CNEc/L/aRdTh3yIvmZXTnheWpKjSZhnvMl8iXbC1tFg9gdHHDMLoV7CnG+w==}
+
+  lodash@4.18.0:
+    resolution: {integrity: sha512-l1mfj2atMqndAHI3ls7XqPxEjV2J9ZkcNyHpoZA3r2T1LLwDB69jgkMWh71YKwhBbK0G2f4WSn05ahmQXVxupA==}
+    deprecated: Bad release. Please use lodash@4.17.21 instead.
 
   log-symbols@4.1.0:
     resolution: {integrity: sha512-8XPvpAA8uyhfteu8pIvQxpJZ7SYYdpUivZpGy6sFsBuKRY/7rQGavedeB8aK+Zkyq6upMFVL/9AW6vOYzfRyLg==}
@@ -21204,7 +21211,7 @@ packages:
       sugarss: ^5.0.0
       terser: ^5.16.0
       tsx: ^4.8.1
-      yaml: ^2.4.2
+      yaml: 2.8.3
     peerDependenciesMeta:
       '@types/node':
         optional: true
@@ -21773,14 +21780,6 @@ packages:
   yaml-ast-parser@0.0.43:
     resolution: {integrity: sha512-2PTINUwsRqSd+s8XxKaJWQlUuEMHJQyEuh2edBbW8KNJz0SJPwUSD2zRWqezFEdN7IzAgeuYHFUCF7o8zRdZ0A==}
 
-  yaml@1.10.2:
-    resolution: {integrity: sha512-r3vXyErRCYJ7wg28yvBY5VSoAF8ZvlcW9/BwUzEtUsjvX/DKs24dIkuwjtuprwJJHsbyUbLApepYTR1BN4uHrg==}
-    engines: {node: '>= 6'}
-
-  yaml@2.3.4:
-    resolution: {integrity: sha512-8aAvwVUSHpfEqTQ4w/KMlf3HcRdt50E5ODIQJBw1fQ5RL34xabzxtUlzTXVqc4rkZsPbvrXKWnABCD7kWSmocA==}
-    engines: {node: '>= 14'}
-
   yaml@2.8.3:
     resolution: {integrity: sha512-AvbaCLOO2Otw/lW5bmh9d/WEdcDFdQp2Z2ZUH3pX9U2ihyUY0nvLv7J6TrWowklRGPYbB/IuIMfYgxaCPg5Bpg==}
     engines: {node: '>= 14.6'}
@@ -22075,7 +22074,7 @@ snapshots:
       '@pondwader/socks5-server': 1.0.10
       '@types/lodash-es': 4.17.12
       commander: 12.1.0
-      lodash-es: 4.17.23
+      lodash-es: 4.18.0
       shell-quote: 1.8.3
       zod: 3.25.67
 
@@ -22122,7 +22121,7 @@ snapshots:
 
   '@authenio/xml-encryption@2.0.2':
     dependencies:
-      '@xmldom/xmldom': 0.8.10
+      '@xmldom/xmldom': 0.8.12
       escape-html: 1.0.3
       xpath: 0.0.32
 
@@ -26725,7 +26724,7 @@ snapshots:
       openapi-types: 12.1.3
       p-retry: 7.1.0
       uuid: 10.0.0
-      yaml: 2.3.4
+      yaml: 2.8.3
       zod: 3.25.67
     optionalDependencies:
       cheerio: 1.0.0
@@ -26748,7 +26747,7 @@ snapshots:
       openapi-types: 12.1.3
       p-retry: 7.1.0
       uuid: 10.0.0
-      yaml: 2.3.4
+      yaml: 2.8.3
       zod: 3.25.67
     optionalDependencies:
       cheerio: 1.0.0
@@ -26769,7 +26768,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@1.1.14(50c0c259dec1d6a3a58a966b1de383ff)':
+  '@langchain/community@1.1.14(34392aea1dcf1f954c70372671ce5157)':
     dependencies:
       '@browserbasehq/stagehand': 1.14.0(@playwright/test@1.58.0)(bufferutil@4.0.9)(deepmerge@4.3.1)(dotenv@17.2.3)(encoding@0.1.13)(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(utf-8-validate@5.0.10)(zod@3.25.67)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -26817,7 +26816,7 @@ snapshots:
       ioredis: 5.3.2
       jsdom: 23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       jsonwebtoken: 9.0.3
-      lodash: 4.17.23
+      lodash: 4.18.0
       mammoth: 1.11.0
       mongodb: 6.21.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0)(socks@2.8.3)
       mysql2: 3.17.0
@@ -26832,7 +26831,7 @@ snapshots:
       - '@opentelemetry/sdk-trace-base'
       - peggy
 
-  '@langchain/community@1.1.14(fbdf66973daf776baef4450bb975d576)':
+  '@langchain/community@1.1.14(a9a6240fabec1a6afe041177d9e4d333)':
     dependencies:
       '@browserbasehq/stagehand': 1.14.0(@playwright/test@1.58.0)(bufferutil@4.0.9)(deepmerge@4.3.1)(dotenv@17.2.3)(encoding@0.1.13)(openai@6.19.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(utf-8-validate@5.0.10)(zod@3.25.67)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -26875,7 +26874,7 @@ snapshots:
       ioredis: 5.3.2
       jsdom: 23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       jsonwebtoken: 9.0.3
-      lodash: 4.17.23
+      lodash: 4.18.0
       mammoth: 1.11.0
       mysql2: 3.17.0
       pdf-parse: 1.1.1
@@ -32212,7 +32211,7 @@ snapshots:
 
   '@xmldom/is-dom-node@1.0.1': {}
 
-  '@xmldom/xmldom@0.8.10': {}
+  '@xmldom/xmldom@0.8.12': {}
 
   '@zilliz/milvus2-sdk-node@2.5.7':
     dependencies:
@@ -32572,7 +32571,7 @@ snapshots:
   array-hyper-unique@2.1.4:
     dependencies:
       deep-eql: 4.0.0
-      lodash: 4.17.23
+      lodash: 4.18.0
 
   array-includes@3.1.9:
     dependencies:
@@ -33241,7 +33240,7 @@ snapshots:
       cron-parser: 4.9.0
       get-port: 5.1.1
       ioredis: 5.3.2
-      lodash: 4.17.23
+      lodash: 4.18.0
       msgpackr: 1.11.2
       semver: 7.7.2
       uuid: 8.3.2
@@ -33253,7 +33252,7 @@ snapshots:
       cron-parser: 4.9.0
       get-port: 5.1.1
       ioredis: 5.3.2
-      lodash: 4.17.23
+      lodash: 4.18.0
       msgpackr: 1.11.2
       semver: 7.7.3
       uuid: 8.3.2
@@ -33846,7 +33845,7 @@ snapshots:
     dependencies:
       chalk: 4.1.2
       date-fns: 2.30.0
-      lodash: 4.17.23
+      lodash: 4.18.0
       rxjs: 7.8.1
       shell-quote: 1.8.1
       spawn-command: 0.0.2
@@ -34827,9 +34826,9 @@ snapshots:
       async-validator: 4.2.5
       dayjs: 1.11.10
       escape-html: 1.0.3
-      lodash: 4.17.23
-      lodash-es: 4.17.23
-      lodash-unified: 1.0.3(@types/lodash-es@4.17.12)(lodash-es@4.17.23)(lodash@4.17.23)
+      lodash: 4.18.0
+      lodash-es: 4.18.0
+      lodash-unified: 1.0.3(@types/lodash-es@4.17.12)(lodash-es@4.18.0)(lodash@4.18.0)
       memoize-one: 6.0.0
       normalize-wheel-es: 1.2.0
       vue: 3.5.26(typescript@6.0.2)
@@ -38639,13 +38638,13 @@ snapshots:
     dependencies:
       p-locate: 6.0.0
 
-  lodash-es@4.17.23: {}
+  lodash-es@4.18.0: {}
 
-  lodash-unified@1.0.3(@types/lodash-es@4.17.12)(lodash-es@4.17.23)(lodash@4.17.23):
+  lodash-unified@1.0.3(@types/lodash-es@4.17.12)(lodash-es@4.18.0)(lodash@4.18.0):
     dependencies:
       '@types/lodash-es': 4.17.12
-      lodash: 4.17.23
-      lodash-es: 4.17.23
+      lodash: 4.18.0
+      lodash-es: 4.18.0
 
   lodash.camelcase@4.3.0: {}
 
@@ -38694,6 +38693,8 @@ snapshots:
   lodash.union@4.6.0: {}
 
   lodash@4.17.23: {}
+
+  lodash@4.18.0: {}
 
   log-symbols@4.1.0:
     dependencies:
@@ -38910,7 +38911,7 @@ snapshots:
 
   mammoth@1.11.0:
     dependencies:
-      '@xmldom/xmldom': 0.8.10
+      '@xmldom/xmldom': 0.8.12
       argparse: 1.0.10
       base64-js: 1.5.1
       bluebird: 3.4.7
@@ -39152,7 +39153,7 @@ snapshots:
     dependencies:
       '@miragejs/pretender-node-polyfill': 0.1.2
       inflected: 2.1.0
-      lodash: 4.17.23
+      lodash: 4.18.0
       pretender: 3.4.7
 
   mitt@2.1.0: {}
@@ -39160,7 +39161,7 @@ snapshots:
   mjml-accordion@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.28.4
-      lodash: 4.17.23
+      lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39168,7 +39169,7 @@ snapshots:
   mjml-body@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.28.4
-      lodash: 4.17.23
+      lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39176,7 +39177,7 @@ snapshots:
   mjml-button@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.28.4
-      lodash: 4.17.23
+      lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39184,7 +39185,7 @@ snapshots:
   mjml-carousel@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.28.4
-      lodash: 4.17.23
+      lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39196,7 +39197,7 @@ snapshots:
       glob: 10.5.0
       html-minifier: 4.0.0
       js-beautify: 1.14.9
-      lodash: 4.17.23
+      lodash: 4.18.0
       minimatch: 9.0.9
       mjml-core: 4.15.3(encoding@0.1.13)
       mjml-migrate: 4.15.3(encoding@0.1.13)
@@ -39209,7 +39210,7 @@ snapshots:
   mjml-column@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.28.4
-      lodash: 4.17.23
+      lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39222,7 +39223,7 @@ snapshots:
       html-minifier: 4.0.0
       js-beautify: 1.14.9
       juice: 10.0.1(encoding@0.1.13)
-      lodash: 4.17.23
+      lodash: 4.18.0
       mjml-migrate: 4.15.3(encoding@0.1.13)
       mjml-parser-xml: 4.15.3
       mjml-validator: 4.15.3
@@ -39232,7 +39233,7 @@ snapshots:
   mjml-divider@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.28.4
-      lodash: 4.17.23
+      lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39240,7 +39241,7 @@ snapshots:
   mjml-group@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.28.4
-      lodash: 4.17.23
+      lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39248,7 +39249,7 @@ snapshots:
   mjml-head-attributes@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.28.4
-      lodash: 4.17.23
+      lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39256,7 +39257,7 @@ snapshots:
   mjml-head-breakpoint@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.28.4
-      lodash: 4.17.23
+      lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39264,7 +39265,7 @@ snapshots:
   mjml-head-font@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.28.4
-      lodash: 4.17.23
+      lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39272,7 +39273,7 @@ snapshots:
   mjml-head-html-attributes@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.28.4
-      lodash: 4.17.23
+      lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39280,7 +39281,7 @@ snapshots:
   mjml-head-preview@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.28.4
-      lodash: 4.17.23
+      lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39288,7 +39289,7 @@ snapshots:
   mjml-head-style@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.28.4
-      lodash: 4.17.23
+      lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39296,7 +39297,7 @@ snapshots:
   mjml-head-title@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.28.4
-      lodash: 4.17.23
+      lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39304,7 +39305,7 @@ snapshots:
   mjml-head@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.28.4
-      lodash: 4.17.23
+      lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39312,7 +39313,7 @@ snapshots:
   mjml-hero@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.28.4
-      lodash: 4.17.23
+      lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39320,7 +39321,7 @@ snapshots:
   mjml-image@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.28.4
-      lodash: 4.17.23
+      lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39329,7 +39330,7 @@ snapshots:
     dependencies:
       '@babel/runtime': 7.28.4
       js-beautify: 1.14.9
-      lodash: 4.17.23
+      lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
       mjml-parser-xml: 4.15.3
       yargs: 17.7.2
@@ -39339,7 +39340,7 @@ snapshots:
   mjml-navbar@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.28.4
-      lodash: 4.17.23
+      lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39349,7 +39350,7 @@ snapshots:
       '@babel/runtime': 7.28.4
       detect-node: 2.1.0
       htmlparser2: 9.1.0
-      lodash: 4.17.23
+      lodash: 4.18.0
 
   mjml-preset-core@4.15.3(encoding@0.1.13):
     dependencies:
@@ -39385,7 +39386,7 @@ snapshots:
   mjml-raw@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.28.4
-      lodash: 4.17.23
+      lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39393,7 +39394,7 @@ snapshots:
   mjml-section@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.28.4
-      lodash: 4.17.23
+      lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39401,7 +39402,7 @@ snapshots:
   mjml-social@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.28.4
-      lodash: 4.17.23
+      lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39409,7 +39410,7 @@ snapshots:
   mjml-spacer@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.28.4
-      lodash: 4.17.23
+      lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39417,7 +39418,7 @@ snapshots:
   mjml-table@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.28.4
-      lodash: 4.17.23
+      lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39425,7 +39426,7 @@ snapshots:
   mjml-text@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.28.4
-      lodash: 4.17.23
+      lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -39437,7 +39438,7 @@ snapshots:
   mjml-wrapper@4.15.3(encoding@0.1.13):
     dependencies:
       '@babel/runtime': 7.28.4
-      lodash: 4.17.23
+      lodash: 4.18.0
       mjml-core: 4.15.3(encoding@0.1.13)
       mjml-section: 4.15.3(encoding@0.1.13)
     transitivePeerDependencies:
@@ -40101,14 +40102,14 @@ snapshots:
     dependencies:
       '@exodus/schemasafe': 1.3.0
       should: 13.2.3
-      yaml: 1.10.2
+      yaml: 2.8.3
 
   oas-resolver@2.5.6:
     dependencies:
       node-fetch-h2: 2.3.0
       oas-kit-common: 1.0.8
       reftools: 1.1.9
-      yaml: 1.10.2
+      yaml: 2.8.3
       yargs: 17.7.2
 
   oas-schema-walker@1.1.5: {}
@@ -40122,7 +40123,7 @@ snapshots:
       oas-schema-walker: 1.1.5
       reftools: 1.1.9
       should: 13.2.3
-      yaml: 1.10.2
+      yaml: 2.8.3
 
   oauth-1.0a@2.2.6: {}
 
@@ -40726,7 +40727,7 @@ snapshots:
 
   plist@3.1.0:
     dependencies:
-      '@xmldom/xmldom': 0.8.10
+      '@xmldom/xmldom': 0.8.12
       base64-js: 1.5.1
       xmlbuilder: 15.1.1
 
@@ -41842,7 +41843,7 @@ snapshots:
   samlify@2.10.0:
     dependencies:
       '@authenio/xml-encryption': 2.0.2
-      '@xmldom/xmldom': 0.8.10
+      '@xmldom/xmldom': 0.8.12
       camelcase: 6.3.0
       node-forge: 1.4.0
       node-rsa: 1.1.1
@@ -42926,7 +42927,7 @@ snapshots:
       oas-schema-walker: 1.1.5
       oas-validator: 5.0.8
       reftools: 1.1.9
-      yaml: 1.10.2
+      yaml: 2.8.3
       yargs: 17.7.2
     transitivePeerDependencies:
       - encoding
@@ -43262,11 +43263,11 @@ snapshots:
       '@ts-graphviz/common': 2.1.5
       '@ts-graphviz/core': 2.0.7
 
-  ts-ics@1.2.2(date-fns@2.30.0)(lodash@4.17.23)(zod@3.25.67):
+  ts-ics@1.2.2(date-fns@2.30.0)(lodash@4.18.0)(zod@3.25.67):
     dependencies:
       date-fns: 2.30.0
       date-fns-tz: 2.0.0(date-fns@2.30.0)
-      lodash: 4.17.23
+      lodash: 4.18.0
       zod: 3.25.67
 
   ts-interface-checker@0.1.13: {}
@@ -44524,7 +44525,7 @@ snapshots:
   xml-crypto@6.1.2:
     dependencies:
       '@xmldom/is-dom-node': 1.0.1
-      '@xmldom/xmldom': 0.8.10
+      '@xmldom/xmldom': 0.8.12
       xpath: 0.0.33
 
   xml-escape@1.1.0: {}
@@ -44590,10 +44591,6 @@ snapshots:
   yallist@5.0.0: {}
 
   yaml-ast-parser@0.0.43: {}
-
-  yaml@1.10.2: {}
-
-  yaml@2.3.4: {}
 
   yaml@2.8.3: {}
 
@@ -44684,8 +44681,8 @@ snapshots:
     dependencies:
       '@babel/runtime': 7.28.4
       '@types/lodash': 4.17.17
-      lodash: 4.17.23
-      lodash-es: 4.17.23
+      lodash: 4.18.0
+      lodash-es: 4.18.0
       nanoclone: 0.2.1
       property-expr: 2.0.5
       toposort: 2.0.2

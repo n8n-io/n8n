@@ -68,7 +68,7 @@ catalog:
   jsonwebtoken: 9.0.3
   kafkajs: 2.2.4
   langchain: 1.2.30
-  lodash: 4.17.23
+  lodash: 4.18.0
   luxon: 3.7.2
   mime-types: 3.0.2
   mysql2: 3.17.0
