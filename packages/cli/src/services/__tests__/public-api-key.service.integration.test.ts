@@ -1,18 +1,14 @@
 import { testDb } from '@n8n/backend-test-utils';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { ApiKeyRepository, GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
+import { ApiKeyRepository, GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { getOwnerOnlyApiKeyScopes, type ApiKeyScope } from '@n8n/permissions';
 import type { Response, NextFunction } from 'express';
 import { mock, mockDeep } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
-import type { OpenAPIV3 } from 'openapi-types';
-
-import type { EventService } from '@/events/event.service';
 import { createAdminWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 
 import { JwtService } from '../jwt.service';
-import { LastActiveAtService } from '../last-active-at.service';
 import { PublicApiKeyService } from '../public-api-key.service';
 
 const mockReqWith = (apiKey: string, path: string, method: string) => {
@@ -27,17 +23,9 @@ const mockReqWith = (apiKey: string, path: string, method: string) => {
 
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 
-const eventService = mock<EventService>();
-
-const securitySchema = mock<OpenAPIV3.ApiKeySecurityScheme>({
-	name: 'X-N8N-API-KEY',
-});
-
 const jwtService = new JwtService(instanceSettings, mock());
 
-let userRepository: UserRepository;
 let apiKeyRepository: ApiKeyRepository;
-let lastActiveAtService: LastActiveAtService;
 let publicApiKeyService: PublicApiKeyService;
 
 describe('PublicApiKeyService', () => {
@@ -48,16 +36,8 @@ describe('PublicApiKeyService', () => {
 
 	beforeAll(async () => {
 		await testDb.init();
-		userRepository = Container.get(UserRepository);
 		apiKeyRepository = Container.get(ApiKeyRepository);
-		lastActiveAtService = Container.get(LastActiveAtService);
-		publicApiKeyService = new PublicApiKeyService(
-			apiKeyRepository,
-			userRepository,
-			jwtService,
-			eventService,
-			lastActiveAtService,
-		);
+		publicApiKeyService = new PublicApiKeyService(apiKeyRepository, jwtService);
 	});
 
 	afterAll(async () => {

@@ -1,6 +1,6 @@
 import type { CreateApiKeyRequestDto, UnixTimestamp, UpdateApiKeyRequestDto } from '@n8n/api-types';
 import type { User } from '@n8n/db';
-import { ApiKey, ApiKeyRepository, UserRepository, withTransaction } from '@n8n/db';
+import { ApiKey, ApiKeyRepository, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ApiKeyScope, AuthPrincipal } from '@n8n/permissions';
 import { getApiKeyScopesForRole, getOwnerOnlyApiKeyScopes } from '@n8n/permissions';
@@ -10,9 +10,6 @@ import { randomUUID } from 'crypto';
 import type { NextFunction, Request, Response } from 'express';
 
 import { JwtService } from './jwt.service';
-import { LastActiveAtService } from './last-active-at.service';
-
-import { EventService } from '@/events/event.service';
 
 export const API_KEY_AUDIENCE = 'public-api';
 export const API_KEY_ISSUER = 'n8n';
@@ -24,10 +21,7 @@ export const PREFIX_LEGACY_API_KEY = 'n8n_api_';
 export class PublicApiKeyService {
 	constructor(
 		private readonly apiKeyRepository: ApiKeyRepository,
-		private readonly userRepository: UserRepository,
 		private readonly jwtService: JwtService,
-		private readonly eventService: EventService,
-		private readonly lastActiveAtService: LastActiveAtService,
 	) {}
 
 	/**
@@ -90,18 +84,6 @@ export class PublicApiKeyService {
 		{ label, scopes }: UpdateApiKeyRequestDto,
 	) {
 		await this.apiKeyRepository.update({ id: apiKeyId, userId: user.id }, { label, scopes });
-	}
-
-	private async getUserForApiKey(apiKey: string) {
-		return await this.userRepository.findOne({
-			where: {
-				apiKeys: {
-					apiKey,
-					audience: API_KEY_AUDIENCE,
-				},
-			},
-			relations: ['role'],
-		});
 	}
 
 	/**
