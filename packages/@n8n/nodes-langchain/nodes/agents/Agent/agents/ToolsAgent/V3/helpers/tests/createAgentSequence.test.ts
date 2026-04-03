@@ -61,6 +61,27 @@ describe('createAgentSequence', () => {
 		expect(result.streamRunnable).toBe(false);
 	});
 
+	it('should enable streamRunnable when enableStreaming is true', () => {
+		const mockAgent = mock<any>();
+		const mockRunnableSequence = mock<any>();
+		const mockStepsParser = jest.fn();
+
+		(createToolCallingAgent as jest.Mock).mockReturnValue(mockAgent);
+		(RunnableSequence.from as jest.Mock).mockReturnValue(mockRunnableSequence);
+		jest.spyOn(commonHelpers, 'getAgentStepsParser').mockReturnValue(mockStepsParser);
+
+		const options = { enableStreaming: true, maxIterations: 10, returnIntermediateSteps: false };
+		const result = createAgentSequence(mockModel, [mockTool], mockPrompt, options);
+
+		expect(createToolCallingAgent).toHaveBeenCalledWith({
+			llm: mockModel,
+			tools: [mockTool],
+			prompt: mockPrompt,
+			streamRunnable: true,
+		});
+		expect(result.streamRunnable).toBe(true);
+	});
+
 	it('should create agent sequence with fallback model', () => {
 		const mockFallbackModel = mock<BaseChatModel>();
 		const mockAgent = mock<any>();
@@ -111,6 +132,47 @@ describe('createAgentSequence', () => {
 		]);
 	});
 
+	it('should pass streamRunnable=true to fallback agent when enableStreaming is true', () => {
+		const mockFallbackModel = mock<BaseChatModel>();
+		const mockAgent = mock<any>();
+		const mockFallbackAgent = mock<any>();
+		const mockAgentWithFallback = mock<any>();
+		const mockRunnableSequence = mock<any>();
+		const mockStepsParser = jest.fn();
+
+		mockAgent.withFallbacks = jest.fn().mockReturnValue(mockAgentWithFallback);
+
+		(createToolCallingAgent as jest.Mock)
+			.mockReturnValueOnce(mockAgent)
+			.mockReturnValueOnce(mockFallbackAgent);
+		(RunnableSequence.from as jest.Mock).mockReturnValue(mockRunnableSequence);
+		jest.spyOn(commonHelpers, 'getAgentStepsParser').mockReturnValue(mockStepsParser);
+
+		const options = { enableStreaming: true, maxIterations: 10, returnIntermediateSteps: false };
+		createAgentSequence(
+			mockModel,
+			[mockTool],
+			mockPrompt,
+			options,
+			undefined,
+			undefined,
+			mockFallbackModel,
+		);
+
+		expect(createToolCallingAgent).toHaveBeenNthCalledWith(1, {
+			llm: mockModel,
+			tools: [mockTool],
+			prompt: mockPrompt,
+			streamRunnable: true,
+		});
+		expect(createToolCallingAgent).toHaveBeenNthCalledWith(2, {
+			llm: mockFallbackModel,
+			tools: [mockTool],
+			prompt: mockPrompt,
+			streamRunnable: true,
+		});
+	});
+
 	it('should pass output parser to getAgentStepsParser', () => {
 		const mockAgent = mock<any>();
 		const mockRunnableSequence = mock<any>();
@@ -143,7 +205,7 @@ describe('createAgentSequence', () => {
 		expect(commonHelpers.getAgentStepsParser).toHaveBeenCalledWith(undefined, mockMemory);
 	});
 
-	it('should set streamRunnable to false for agents', () => {
+	it('should set streamRunnable to false for agents by default', () => {
 		const mockAgent = mock<any>();
 		const mockRunnableSequence = mock<any>();
 		const mockStepsParser = jest.fn();
