@@ -15,6 +15,12 @@ const rsaJwk = rsaKeyPair.publicKey.export({ format: 'jwk' });
 const ecKeyPair = generateKeyPairSync('ec', { namedCurve: 'P-256' });
 const ecJwk = ecKeyPair.publicKey.export({ format: 'jwk' });
 
+const ecP384KeyPair = generateKeyPairSync('ec', { namedCurve: 'P-384' });
+const ecP384Jwk = ecP384KeyPair.publicKey.export({ format: 'jwk' });
+
+const ecP521KeyPair = generateKeyPairSync('ec', { namedCurve: 'P-521' });
+const ecP521Jwk = ecP521KeyPair.publicKey.export({ format: 'jwk' });
+
 const ed25519KeyPair = generateKeyPairSync('ed25519');
 const ed25519Jwk = ed25519KeyPair.publicKey.export({ format: 'jwk' });
 
@@ -109,6 +115,28 @@ describe('resolveJwksKeys', () => {
 			expect(result.keys[0].algorithms).toEqual(['EdDSA']);
 		});
 
+		it('should infer RS256 from RSA JWK without explicit alg', async () => {
+			const fetcher = mockFetchResponse([{ ...rsaJwk, kid: 'rsa-no-alg' }]);
+
+			const result = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher });
+
+			expect(result.keys).toHaveLength(1);
+			expect(result.keys[0].kid).toBe('rsa-no-alg');
+			expect(result.keys[0].algorithms).toEqual(['RS256']);
+		});
+
+		it.each([
+			{ curve: 'P-384', jwk: ecP384Jwk, expectedAlg: 'ES384' },
+			{ curve: 'P-521', jwk: ecP521Jwk, expectedAlg: 'ES512' },
+		])('should infer $expectedAlg from EC $curve JWK', async ({ jwk, expectedAlg }) => {
+			const fetcher = mockFetchResponse([{ ...jwk, kid: 'ec-curve' }]);
+
+			const result = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher });
+
+			expect(result.keys).toHaveLength(1);
+			expect(result.keys[0].algorithms).toEqual([expectedAlg]);
+		});
+
 		it('should propagate expectedAudience and allowedRoles from source', async () => {
 			const source: JwksKeySource = {
 				...DEFAULT_SOURCE,
@@ -161,6 +189,21 @@ describe('resolveJwksKeys', () => {
 			expect(result.keys[0].kid).toBe('rsa-1');
 		});
 
+		it('should skip keys with unsupported explicit alg', async () => {
+			const fetcher = mockFetchResponse([
+				{ ...rsaJwk, kid: 'hmac-key', alg: 'HS256' },
+				{ ...rsaJwk, kid: 'rsa-1', alg: 'RS256' },
+			]);
+
+			const result = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher });
+
+			expect(result.keys).toHaveLength(1);
+			expect(result.keys[0].kid).toBe('rsa-1');
+			expect(result.skipped).toEqual(
+				expect.arrayContaining([expect.objectContaining({ kid: 'hmac-key' })]),
+			);
+		});
+
 		it('should include keys with use: sig and keys without use field', async () => {
 			const fetcher = mockFetchResponse([
 				{ ...rsaJwk, kid: 'explicit-sig', alg: 'RS256', use: 'sig' },
@@ -210,46 +253,102 @@ describe('resolveJwksKeys', () => {
 			const expectedMin = before + 3600 * 1000;
 			expect(result.expiresAt.getTime()).toBeGreaterThanOrEqual(expectedMin);
 		});
+
+		it('should clamp max-age=0 to minimum TTL (60s)', async () => {
+			const fetcher = mockFetchResponse([{ ...rsaJwk, kid: 'rsa-1', alg: 'RS256' }], {
+				cacheControl: 'max-age=0',
+			});
+			const before = Date.now();
+
+			const result = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher });
+
+			const expectedMin = before + 60 * 1000;
+			expect(result.expiresAt.getTime()).toBeGreaterThanOrEqual(expectedMin);
+		});
+
+		it('should clamp very large max-age to maximum TTL (86400s)', async () => {
+			const fetcher = mockFetchResponse([{ ...rsaJwk, kid: 'rsa-1', alg: 'RS256' }], {
+				cacheControl: 'max-age=999999999',
+			});
+			const before = Date.now();
+
+			const result = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher });
+
+			const after = Date.now();
+			const expectedMax = after + 86_400 * 1000;
+			expect(result.expiresAt.getTime()).toBeLessThanOrEqual(expectedMax);
+			expect(result.expiresAt.getTime()).toBeGreaterThanOrEqual(before + 86_400 * 1000);
+		});
+
+		it('should prefer Cache-Control max-age over source cacheTtlSeconds', async () => {
+			const source: JwksKeySource = { ...DEFAULT_SOURCE, cacheTtlSeconds: 120 };
+			const fetcher = mockFetchResponse([{ ...rsaJwk, kid: 'rsa-1', alg: 'RS256' }], {
+				cacheControl: 'max-age=600',
+			});
+			const before = Date.now();
+
+			const result = await resolveJwksKeys(source, { fetcher });
+
+			const expectedMin = before + 600 * 1000;
+			expect(result.expiresAt.getTime()).toBeGreaterThanOrEqual(expectedMin);
+		});
+
+		it('should use custom defaultTtlSeconds when no Cache-Control and no cacheTtlSeconds', async () => {
+			const fetcher = mockFetchResponse([{ ...rsaJwk, kid: 'rsa-1', alg: 'RS256' }]);
+			const before = Date.now();
+
+			const result = await resolveJwksKeys(DEFAULT_SOURCE, {
+				fetcher,
+				defaultTtlSeconds: 300,
+			});
+
+			const after = Date.now();
+			const expectedMin = before + 300 * 1000;
+			const expectedMax = after + 300 * 1000;
+			expect(result.expiresAt.getTime()).toBeGreaterThanOrEqual(expectedMin);
+			expect(result.expiresAt.getTime()).toBeLessThanOrEqual(expectedMax);
+		});
 	});
 
 	describe('error handling', () => {
 		it('should throw OperationalError on network failure', async () => {
 			const fetcher = mockFetchError(new Error('ECONNREFUSED'));
 
-			await expect(resolveJwksKeys(DEFAULT_SOURCE, { fetcher })).rejects.toThrow(OperationalError);
-			await expect(resolveJwksKeys(DEFAULT_SOURCE, { fetcher })).rejects.toThrow(
-				/JWKS fetch failed.*ECONNREFUSED/,
-			);
+			const error = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher }).catch((e) => e);
+			expect(error).toBeInstanceOf(OperationalError);
+			expect(error.message).toMatch(/JWKS fetch failed.*ECONNREFUSED/);
 		});
 
 		it('should throw OperationalError on non-200 response', async () => {
 			const fetcher = mockFetchResponse([], { status: 500 });
 
-			await expect(resolveJwksKeys(DEFAULT_SOURCE, { fetcher })).rejects.toThrow(OperationalError);
-			await expect(resolveJwksKeys(DEFAULT_SOURCE, { fetcher })).rejects.toThrow(/HTTP 500/);
+			const error = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher }).catch((e) => e);
+			expect(error).toBeInstanceOf(OperationalError);
+			expect(error.message).toMatch(/HTTP 500/);
 		});
 
 		it('should throw OperationalError on invalid JSON', async () => {
 			const fetcher = mockFetchInvalidJson();
 
-			await expect(resolveJwksKeys(DEFAULT_SOURCE, { fetcher })).rejects.toThrow(OperationalError);
-			await expect(resolveJwksKeys(DEFAULT_SOURCE, { fetcher })).rejects.toThrow(/not valid JSON/);
+			const error = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher }).catch((e) => e);
+			expect(error).toBeInstanceOf(OperationalError);
+			expect(error.message).toMatch(/not valid JSON/);
 		});
 
 		it('should throw OperationalError on empty keys array', async () => {
 			const fetcher = mockFetchResponse([]);
 
-			await expect(resolveJwksKeys(DEFAULT_SOURCE, { fetcher })).rejects.toThrow(OperationalError);
-			await expect(resolveJwksKeys(DEFAULT_SOURCE, { fetcher })).rejects.toThrow(/no keys/);
+			const error = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher }).catch((e) => e);
+			expect(error).toBeInstanceOf(OperationalError);
+			expect(error.message).toMatch(/no keys/);
 		});
 
 		it('should throw OperationalError when all keys are filtered out', async () => {
 			const fetcher = mockFetchResponse([{ kid: 'enc-only', kty: 'RSA', use: 'enc', ...rsaJwk }]);
 
-			await expect(resolveJwksKeys(DEFAULT_SOURCE, { fetcher })).rejects.toThrow(OperationalError);
-			await expect(resolveJwksKeys(DEFAULT_SOURCE, { fetcher })).rejects.toThrow(
-				/no usable signing keys/,
-			);
+			const error = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher }).catch((e) => e);
+			expect(error).toBeInstanceOf(OperationalError);
+			expect(error.message).toMatch(/no usable signing keys/);
 		});
 	});
 
@@ -276,6 +375,40 @@ describe('resolveJwksKeys', () => {
 
 			expect(result.keys).toHaveLength(1);
 			expect(result.keys[0].kid).toBe('rsa-1');
+		});
+
+		it('should return skipped key diagnostics alongside resolved keys', async () => {
+			const fetcher = mockFetchResponse([
+				{ ...rsaJwk, alg: 'RS256' }, // no kid → schema validation failure
+				{ kid: 'unsupported', kty: 'EC', crv: 'brainpoolP256r1', x: 'x', y: 'y' }, // unsupported curve
+				{ kid: 'bad-material', kty: 'EC', crv: 'P-256', x: '!!!', y: '!!!' }, // invalid key material
+				{ ...rsaJwk, kid: 'rsa-1', alg: 'RS256' }, // valid
+			]);
+
+			const result = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher });
+
+			expect(result.keys).toHaveLength(1);
+			expect(result.skipped).toHaveLength(3);
+			expect(result.skipped).toEqual([
+				expect.objectContaining({ reason: 'failed schema validation' }),
+				expect.objectContaining({
+					kid: 'unsupported',
+					reason: expect.stringContaining('unsupported algorithm'),
+				}),
+				expect.objectContaining({
+					kid: 'bad-material',
+					reason: expect.stringContaining('failed to create public key'),
+				}),
+			]);
+		});
+
+		it('should return empty skipped array when all keys are valid', async () => {
+			const fetcher = mockFetchResponse([{ ...rsaJwk, kid: 'rsa-1', alg: 'RS256' }]);
+
+			const result = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher });
+
+			expect(result.keys).toHaveLength(1);
+			expect(result.skipped).toEqual([]);
 		});
 	});
 });
