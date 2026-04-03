@@ -1202,6 +1202,8 @@ defineExpose({
 	height: 100%;
 	opacity: 0;
 	transition: opacity 300ms ease;
+	-webkit-user-select: none;
+	user-select: none;
 
 	&.ready {
 		opacity: 1;
