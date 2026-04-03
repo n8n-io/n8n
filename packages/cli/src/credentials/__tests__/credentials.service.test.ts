@@ -2642,6 +2642,71 @@ describe('CredentialsService', () => {
 				service.checkCredentialData('apiCredential', data, ownerUser, testProjectId),
 			).rejects.toThrow('The field "apiKey" is mandatory for credentials of type "apiCredential"');
 		});
+
+		describe('OAuth URL validation', () => {
+			beforeEach(() => {
+				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+			});
+
+			it('should not throw for OAuth2 fields that are expressions', async () => {
+				credentialTypes.getParentTypes.mockReturnValue([]);
+
+				const expressionValues = ['={{ $env.OAUTH_URL }}', '={{$secrets.oauthUrl}}'];
+				for (const expr of expressionValues) {
+					const data = {
+						authUrl: expr,
+						accessTokenUrl: expr,
+						serverUrl: expr,
+					};
+					await expect(
+						service.checkCredentialData('oAuth2Api', data, ownerUser, testProjectId),
+					).resolves.not.toThrow();
+				}
+			});
+
+			it('should not throw for OAuth1 fields that are expressions', async () => {
+				credentialTypes.getParentTypes.mockReturnValue([]);
+
+				const data = {
+					authUrl: '={{ $env.AUTH_URL }}',
+					requestTokenUrl: '={{ $env.TOKEN_URL }}',
+					accessTokenUrl: '={{ $env.ACCESS_TOKEN_URL }}',
+				};
+				await expect(
+					service.checkCredentialData('oAuth1Api', data, ownerUser, testProjectId),
+				).resolves.not.toThrow();
+			});
+
+			it('should throw for OAuth2 fields with invalid (non-expression) URLs', async () => {
+				credentialTypes.getParentTypes.mockReturnValue([]);
+
+				const data = { authUrl: 'not-a-valid-url' };
+				await expect(
+					service.checkCredentialData('oAuth2Api', data, ownerUser, testProjectId),
+				).rejects.toThrow('OAuth url is not a valid URL.');
+			});
+
+			it('should throw for OAuth2 fields with disallowed protocol', async () => {
+				credentialTypes.getParentTypes.mockReturnValue([]);
+
+				const data = { authUrl: 'javascript:alert(1)' };
+				await expect(
+					service.checkCredentialData('oAuth2Api', data, ownerUser, testProjectId),
+				).rejects.toThrow('OAuth url must use HTTP or HTTPS protocol.');
+			});
+
+			it('should not throw for OAuth2 fields with valid https URLs', async () => {
+				credentialTypes.getParentTypes.mockReturnValue([]);
+
+				const data = {
+					authUrl: 'https://auth.example.com/authorize',
+					accessTokenUrl: 'https://auth.example.com/token',
+				};
+				await expect(
+					service.checkCredentialData('oAuth2Api', data, ownerUser, testProjectId),
+				).resolves.not.toThrow();
+			});
+		});
 	});
 
 	describe('validateOAuthCredentialUrls', () => {
