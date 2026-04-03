@@ -276,7 +276,7 @@ export async function validateWebhookAuthentication(
 			providedAuth.pass !== expectedAuth.password
 		) {
 			// Provided authentication data is wrong
-			throw new WebhookAuthorizationError(403);
+			throw new WebhookAuthorizationError(401);
 		}
 	} else if (authentication === 'bearerAuth') {
 		let expectedAuth: ICredentialDataDecryptedObject | undefined;
