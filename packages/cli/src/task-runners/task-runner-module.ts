@@ -52,6 +52,8 @@ export class TaskRunnerModule {
 	async start() {
 		const { mode, authToken } = this.runnerConfig;
 
+		this.logger.info(`Starting task runner module in ${mode} mode`);
+
 		if (mode === 'external' && !authToken) throw new MissingAuthTokenError();
 
 		await this.loadTaskRequester();
@@ -61,7 +63,14 @@ export class TaskRunnerModule {
 			this.taskRequester?.cancelTasks(executionId);
 		});
 
-		if (mode === 'internal') await this.startInternalTaskRunners();
+		if (mode === 'internal') {
+			this.logger.info('Starting internal task runners');
+			await this.startInternalTaskRunners();
+		} else {
+			this.logger.info(
+				'Running in external mode - task runners should be started externally and connect to the broker',
+			);
+		}
 	}
 
 	@OnShutdown()
