@@ -146,6 +146,7 @@ describe('WorkflowCreationService', () => {
 			 */
 			projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 			licenseStateMock.isSharingLicensed.mockReturnValue(false);
+			licenseStateMock.isDataRedactionLicensed.mockReturnValue(true);
 			userHasScopesMock.mockResolvedValue(false);
 			const { transactionManager } = setupTransactionMocks();
 
@@ -180,6 +181,7 @@ describe('WorkflowCreationService', () => {
 			 */
 			projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 			licenseStateMock.isSharingLicensed.mockReturnValue(false);
+			licenseStateMock.isDataRedactionLicensed.mockReturnValue(true);
 			userHasScopesMock.mockResolvedValue(true);
 			const { transactionManager } = setupTransactionMocks();
 
@@ -216,6 +218,7 @@ describe('WorkflowCreationService', () => {
 				id: 'personal-project-789',
 			} as never);
 			licenseStateMock.isSharingLicensed.mockReturnValue(false);
+			licenseStateMock.isDataRedactionLicensed.mockReturnValue(true);
 			userHasScopesMock.mockResolvedValue(false);
 			setupTransactionMocks({ personalProjectId: 'personal-project-789' });
 
