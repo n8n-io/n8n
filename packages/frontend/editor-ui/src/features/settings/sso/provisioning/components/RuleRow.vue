@@ -90,7 +90,7 @@ const instanceRoleOptions = computed(() =>
 	display: flex;
 	align-items: center;
 	height: 48px;
-	background: white;
+	background: var(--color--foreground--tint-2);
 	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
 
 	&:last-child {
