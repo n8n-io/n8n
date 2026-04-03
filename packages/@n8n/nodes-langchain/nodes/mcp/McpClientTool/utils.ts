@@ -82,6 +82,15 @@ export const createCallTool =
 			return result.toolResult;
 		}
 
+		if (
+			result.structuredContent !== undefined &&
+			result.structuredContent !== null &&
+			typeof result.structuredContent === 'object' &&
+			!Array.isArray(result.structuredContent)
+		) {
+			return result.structuredContent;
+		}
+
 		if (result.content !== undefined) {
 			return result.content;
 		}

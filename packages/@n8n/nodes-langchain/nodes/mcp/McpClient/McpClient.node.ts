@@ -289,10 +289,26 @@ export class McpClient implements INodeType {
 					content.push(contentItem as IDataObject);
 				}
 
+				const outputJson: IDataObject = {};
+				if (
+					result.structuredContent &&
+					typeof result.structuredContent === 'object' &&
+					!Array.isArray(result.structuredContent)
+				) {
+					for (const key of Object.keys(result.structuredContent)) {
+						if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+							continue;
+						}
+						outputJson[key] = (result.structuredContent as IDataObject)[key];
+					}
+				}
+
+				if (content.length > 0) {
+					outputJson.content = content;
+				}
+
 				returnData.push({
-					json: {
-						content: content.length > 0 ? content : undefined,
-					},
+					json: outputJson,
 					binary: Object.keys(binary).length > 0 ? binary : undefined,
 					pairedItem: {
 						item: itemIndex,
