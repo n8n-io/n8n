@@ -22,6 +22,8 @@ import { file as tmpFile } from 'tmp-promise';
 
 import { formatPrivateKey, generatePairedItemData } from '@utils/utilities';
 
+import { sftpRenameWithPosixFallback } from './utils';
+
 interface ReturnFtpItem {
 	type: string;
 	name: string;
@@ -717,7 +719,7 @@ export class Ftp implements INodeType {
 								await recursivelyCreateSftpDirs(sftp!, newPath);
 							}
 
-							await sftp!.rename(oldPath, newPath);
+							await sftpRenameWithPosixFallback(sftp!, oldPath, newPath);
 							const executionData = this.helpers.constructExecutionMetaData(
 								[{ json: { success: true } }],
 								{ itemData: { item: i } },
