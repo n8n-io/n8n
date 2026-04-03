@@ -62,7 +62,7 @@ defineExpose({ legacyValue, showRuleEditor });
 <template>
 	<div>
 		<!-- Dropdown 1: Role assignment -->
-		<div :class="$style.settingsItem">
+		<div :class="[$style.settingsItem, { [$style.noBorder]: !showMappingMethod }]">
 			<div :class="$style.labelColumn">
 				<label>{{ i18n.baseText('settings.sso.settings.roleAssignment.label') }}</label>
 				<small>{{ i18n.baseText('settings.sso.settings.roleAssignment.description') }} </small>
@@ -162,6 +162,10 @@ defineExpose({ legacyValue, showRuleEditor });
 	> :deep(*) {
 		width: 100%;
 	}
+}
+
+.noBorder {
+	border-bottom: none;
 }
 
 .infoBox {
