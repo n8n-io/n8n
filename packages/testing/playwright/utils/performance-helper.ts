@@ -1,6 +1,14 @@
 import type { Page, TestInfo } from '@playwright/test';
 import type { MetricsHelper } from 'n8n-containers';
 
+interface HeapSnapshotResult {
+	success: boolean;
+	filePath?: string;
+	sizeBytes?: number;
+	sizeMB?: number;
+	message?: string;
+}
+
 const HEAP_USED_QUERY = 'n8n_nodejs_heap_size_used_bytes / 1024 / 1024';
 const HEAP_TOTAL_QUERY = 'n8n_nodejs_heap_size_total_bytes / 1024 / 1024';
 const RSS_QUERY = 'n8n_process_resident_memory_bytes / 1024 / 1024';
@@ -222,4 +230,48 @@ async function waitForStableMemory(
 		`Memory did not stabilize within ${maxWaitMs}ms. ` +
 			`Last: ${lastValue.toFixed(2)} MB (${readingsCount} readings)`,
 	);
+}
+
+/**
+ * Trigger a V8 heap snapshot on the n8n server, download it locally, and
+ * return the local file path for programmatic analysis (e.g., memlab).
+ */
+export async function takeHeapSnapshot(
+	baseUrl: string,
+	testInfo: TestInfo,
+	label: string,
+): Promise<string | null> {
+	// Step 1: Trigger snapshot on server
+	const createRes = await fetch(`${baseUrl}/rest/e2e/heap-snapshot`, { method: 'POST' });
+	if (!createRes.ok) {
+		console.warn(`[HEAP-SNAPSHOT] Create failed: ${createRes.status}`);
+		return null;
+	}
+
+	const result = (await createRes.json()) as { data?: HeapSnapshotResult };
+	const snapshot = result.data;
+
+	if (!snapshot?.success || !snapshot.filePath) {
+		console.warn(`[HEAP-SNAPSHOT] Failed: ${snapshot?.message ?? 'Unknown error'}`);
+		return null;
+	}
+
+	await attachMetric(testInfo, `heap-snapshot-${label}-size`, snapshot.sizeMB ?? 0, 'MB');
+
+	// Step 2: Download the snapshot file from the server
+	const filename = snapshot.filePath.split('/').pop()!;
+	const downloadRes = await fetch(`${baseUrl}/rest/e2e/heap-snapshot/${filename}`);
+	if (!downloadRes.ok || !downloadRes.body) {
+		console.warn(`[HEAP-SNAPSHOT] Download failed: ${downloadRes.status}`);
+		return null;
+	}
+
+	const localPath = `${testInfo.outputDir}/${label}.heapsnapshot`;
+	const { writeFile, mkdir } = await import('node:fs/promises');
+	await mkdir(testInfo.outputDir, { recursive: true });
+	await writeFile(localPath, Buffer.from(await downloadRes.arrayBuffer()));
+
+	console.log(`[HEAP-SNAPSHOT] "${label}" saved: ${localPath} (${snapshot.sizeMB} MB)`);
+
+	return localPath;
 }
