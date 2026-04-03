@@ -156,6 +156,11 @@ export async function resolveJwksKeys(
 	const skipped: SkippedKey[] = [];
 
 	for (const rawJwk of jwkSetResult.data.keys) {
+		if (rawJwk === null || typeof rawJwk !== 'object') {
+			skipped.push({ kid: undefined, reason: 'not an object' });
+			continue;
+		}
+
 		const jwkResult = SigningJwkSchema.safeParse(rawJwk);
 		if (!jwkResult.success) {
 			const raw = rawJwk as Record<string, unknown>;

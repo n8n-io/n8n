@@ -353,6 +353,25 @@ describe('resolveJwksKeys', () => {
 	});
 
 	describe('edge cases', () => {
+		it('should skip null and non-object entries in keys array', async () => {
+			const fetcher = mockFetchResponse([
+				null,
+				'not-an-object',
+				42,
+				{ ...rsaJwk, kid: 'rsa-1', alg: 'RS256' },
+			]);
+
+			const result = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher });
+
+			expect(result.keys).toHaveLength(1);
+			expect(result.keys[0].kid).toBe('rsa-1');
+			expect(result.skipped).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ kid: undefined, reason: 'not an object' }),
+				]),
+			);
+		});
+
 		it('should skip keys with unrecognized kty/crv and return valid keys', async () => {
 			const fetcher = mockFetchResponse([
 				{ kid: 'unknown-curve', kty: 'EC', crv: 'brainpoolP256r1', x: 'x', y: 'y' },
