@@ -1,4 +1,5 @@
 import { Container } from '@n8n/di';
+import type { EntityManager } from '@n8n/typeorm';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
@@ -7,7 +8,7 @@ import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { SharedWorkflowRepository } from '../shared-workflow.repository';
 
 describe('SharedWorkflowRepository', () => {
-	mockEntityManager(SharedWorkflow);
+	const entityManager = mockEntityManager(SharedWorkflow) as jest.Mocked<EntityManager>;
 	const sharedWorkflowRepository = Container.get(SharedWorkflowRepository);
 
 	let queryBuilder: jest.Mocked<SelectQueryBuilder<SharedWorkflow>>;
@@ -58,6 +59,32 @@ describe('SharedWorkflowRepository', () => {
 			const result = await sharedWorkflowRepository.getSharedPersonalWorkflowsCount();
 
 			expect(result).toBe(12);
+		});
+	});
+
+	describe('findWorkflowWithOptions', () => {
+		it('does not load workflowPublishHistory when includeActiveVersionPublishHistory is false', async () => {
+			entityManager.findOne.mockResolvedValue(null);
+
+			await sharedWorkflowRepository.findWorkflowWithOptions('wf-1', {
+				includeActiveVersion: true,
+				includeActiveVersionPublishHistory: false,
+				em: entityManager,
+			});
+
+			expect(entityManager.findOne).toHaveBeenCalledWith(
+				SharedWorkflow,
+				expect.objectContaining({
+					relations: {
+						workflow: {
+							shared: { project: true },
+							tags: false,
+							parentFolder: false,
+							activeVersion: true,
+						},
+					},
+				}),
+			);
 		});
 	});
 });
