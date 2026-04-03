@@ -164,7 +164,7 @@ defineExpose({ legacyValue, showRuleEditor });
 
 		<!-- Info box for IdP-managed mode -->
 		<div v-if="showIdpInfoBox" :class="$style.infoBox">
-			<N8nCallout theme="secondary">
+			<N8nCallout theme="info">
 				<div>
 					{{ idpInfoText }}
 				</div>
