@@ -725,6 +725,8 @@ export type RelayEventMap = {
 		userId: string;
 		sub: string;
 		email: string;
+		kid: string;
+		issuer: string;
 	};
 
 	'token-exchange-user-provisioned': {
@@ -732,12 +734,16 @@ export type RelayEventMap = {
 		sub: string;
 		email: string;
 		role: string;
+		kid: string;
+		issuer: string;
 	};
 
 	'token-exchange-role-updated': {
 		userId: string;
 		previousRole: string;
 		newRole: string;
+		kid: string;
+		issuer: string;
 	};
 
 	// #endregion

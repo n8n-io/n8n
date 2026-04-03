@@ -96,6 +96,9 @@ export class TokenExchangeService {
 		const { claims, resolvedKey } = await this.verifyToken(subjectToken, {
 			maxLifetimeSeconds: MAX_TOKEN_LIFETIME_SECONDS,
 		});
-		return await this.identityResolutionService.resolve(claims, resolvedKey.allowedRoles);
+		return await this.identityResolutionService.resolve(claims, resolvedKey.allowedRoles, {
+			kid: resolvedKey.kid,
+			issuer: resolvedKey.issuer,
+		});
 	}
 }

@@ -60,7 +60,11 @@ export class IdentityResolutionService {
 	 * is preserved when the claimed role is disallowed or absent — login is
 	 * never blocked because of a role mismatch.
 	 */
-	async resolve(claims: ExternalTokenClaims, allowedRoles?: string[]): Promise<User> {
+	async resolve(
+		claims: ExternalTokenClaims,
+		allowedRoles?: string[],
+		tokenContext?: { kid: string; issuer: string },
+	): Promise<User> {
 		const email = claims.email?.toLowerCase();
 
 		// Path 1: known sub
@@ -76,7 +80,7 @@ export class IdentityResolutionService {
 				allowedRoles,
 				identity.user.role?.slug,
 			);
-			return await this.syncProfile(identity.user, claims, resolvedRole);
+			return await this.syncProfile(identity.user, claims, resolvedRole, tokenContext);
 		}
 
 		// Path 2: email fallback
@@ -98,13 +102,15 @@ export class IdentityResolutionService {
 					userId: existingUser.id,
 					sub: claims.sub,
 					email,
+					kid: tokenContext?.kid ?? '',
+					issuer: tokenContext?.issuer ?? claims.iss,
 				});
 				const resolvedRole = this.resolveRoleForExistingUser(
 					claims.role,
 					allowedRoles,
 					existingUser.role?.slug,
 				);
-				return await this.syncProfile(existingUser, claims, resolvedRole);
+				return await this.syncProfile(existingUser, claims, resolvedRole, tokenContext);
 			}
 		}
 
@@ -149,6 +155,8 @@ export class IdentityResolutionService {
 			sub: claims.sub,
 			email,
 			role: targetRole.slug,
+			kid: tokenContext?.kid ?? '',
+			issuer: tokenContext?.issuer ?? claims.iss,
 		});
 
 		return user;
@@ -234,6 +242,7 @@ export class IdentityResolutionService {
 		user: User,
 		claims: ExternalTokenClaims,
 		resolvedRole?: GlobalRoleKey,
+		tokenContext?: { kid: string; issuer: string },
 	): Promise<User> {
 		const updates: Partial<User> = {};
 
@@ -264,6 +273,8 @@ export class IdentityResolutionService {
 					userId: user.id,
 					previousRole,
 					newRole: resolvedRole!,
+					kid: tokenContext?.kid ?? '',
+					issuer: tokenContext?.issuer ?? claims.iss,
 				});
 			}
 

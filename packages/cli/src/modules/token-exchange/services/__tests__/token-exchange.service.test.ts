@@ -79,6 +79,7 @@ describe('TokenExchangeService', () => {
 			expect(identityResolutionService.resolve).toHaveBeenCalledWith(
 				validClaims,
 				resolvedKey.allowedRoles,
+				{ kid: resolvedKey.kid, issuer: resolvedKey.issuer },
 			);
 		});
 
