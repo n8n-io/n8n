@@ -403,8 +403,7 @@ export class SourceControlExportService {
 				};
 			}
 
-			const allowedProjects =
-				await this.sourceControlScopedService.getAuthorizedProjectsFromContext(context);
+			const allowedProjects = context.authorizedProjects;
 
 			const fileName = getFoldersPath(this.gitFolder);
 
