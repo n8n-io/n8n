@@ -1,5 +1,3 @@
-import type { EachBatchPayload } from 'kafkajs';
-import { Kafka as apacheKafka } from 'kafkajs';
 import type {
 	ITriggerFunctions,
 	INodeType,
@@ -379,11 +377,12 @@ export class KafkaTrigger implements INodeType {
 	};
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
+		const { Kafka: apacheKafka } = await import('kafkajs');
 		const nodeVersion = this.getNode().typeVersion;
 
 		const config = await createConfig(this);
 		const kafka = new apacheKafka(config);
-		const registry = setSchemaRegistry(this);
+		const registry = await setSchemaRegistry(this);
 
 		const options = this.getNodeParameter('options', {}) as KafkaTriggerOptions;
 		if (options.keepBinaryData && nodeVersion < 1.2) {
@@ -422,7 +421,7 @@ export class KafkaTrigger implements INodeType {
 						isStale,
 						isRunning,
 						commitOffsetsIfNecessary,
-					}: EachBatchPayload) => {
+					}: any) => {
 						// avoid throwing error in the callback, as it leads to consumer stop, disconnect and crash
 						const messages = batch.messages;
 						const messageTopic = batch.topic;
