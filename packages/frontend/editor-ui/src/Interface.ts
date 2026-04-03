@@ -875,7 +875,8 @@ export type CloudUpdateLinkSourceType =
 	| 'main-sidebar'
 	| 'chat-hub'
 	| 'empty-state-builder-prompt'
-	| 'instance-ai';
+	| 'instance-ai'
+	| 'workflow-settings';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -904,7 +905,8 @@ export type UTMCampaign =
 	| 'upgrade-custom-roles'
 	| 'upgrade-canvas-nav'
 	| 'upgrade-main-sidebar'
-	| 'upgrade-instance-ai';
+	| 'upgrade-instance-ai'
+	| 'upgrade-data-redaction';
 
 export type AddedNode = {
 	type: string;
@@ -953,7 +955,8 @@ export type EnterpriseEditionFeatureKey =
 	| 'NamedVersions'
 	| 'Provisioning'
 	| 'PersonalSpacePolicy'
-	| 'CustomRoles';
+	| 'CustomRoles'
+	| 'DataRedaction';
 
 export type EnterpriseEditionFeatureValue = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
 
