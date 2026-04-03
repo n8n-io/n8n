@@ -178,15 +178,15 @@ describe('IdentityResolutionService (integration)', () => {
 			);
 		});
 
-		it('should ignore unknown role claim and default to global:member for new user', async () => {
-			const result = await service.resolve({
-				...baseClaims,
-				sub: 'ext-jit-unknown-role',
-				email: 'jit-unknown-role@example.com',
-				role: 'global:nonsense',
-			});
-
-			expect(result.role.slug).toBe('global:member');
+		it('should throw on unknown role claim for new user', async () => {
+			await expect(
+				service.resolve({
+					...baseClaims,
+					sub: 'ext-jit-unknown-role',
+					email: 'jit-unknown-role@example.com',
+					role: 'global:nonsense',
+				}),
+			).rejects.toThrow("Unrecognized role 'global:nonsense' cannot be assigned to new user");
 		});
 
 		it('should assign role from allowedRoles when provisioning new user', async () => {

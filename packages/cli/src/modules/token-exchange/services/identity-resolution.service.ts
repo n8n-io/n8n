@@ -189,8 +189,7 @@ export class IdentityResolutionService {
 		}
 
 		if (!isGlobalRole(role)) {
-			this.logger.warn('Unknown role claim ignored for new user', { role });
-			return undefined;
+			throw new AuthError(`Unrecognized role '${role}' cannot be assigned to new user`);
 		}
 
 		if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(role)) {
