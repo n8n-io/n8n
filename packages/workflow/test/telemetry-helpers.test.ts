@@ -2170,6 +2170,7 @@ describe('generateNodesGraph', () => {
 					{
 						startTime: 0,
 						executionTime: 100,
+						executionIndex: 0,
 						executionStatus: 'success',
 						data: {
 							[NodeConnectionTypes.AiLanguageModel]: [
@@ -2218,6 +2219,7 @@ describe('generateNodesGraph', () => {
 					{
 						startTime: 0,
 						executionTime: 100,
+						executionIndex: 0,
 						executionStatus: 'success',
 						data: {
 							[NodeConnectionTypes.AiLanguageModel]: [
@@ -2263,6 +2265,7 @@ describe('generateNodesGraph', () => {
 			const makeTaskData = (prompt: number, completion: number) => ({
 				startTime: 0,
 				executionTime: 100,
+				executionIndex: 0,
 				executionStatus: 'success' as const,
 				data: {
 					[NodeConnectionTypes.AiLanguageModel]: [
@@ -2334,6 +2337,7 @@ describe('generateNodesGraph', () => {
 					{
 						startTime: 0,
 						executionTime: 100,
+						executionIndex: 0,
 						executionStatus: 'success',
 						data: {
 							[NodeConnectionTypes.AiLanguageModel]: [
@@ -2378,6 +2382,7 @@ describe('generateNodesGraph', () => {
 					{
 						startTime: 0,
 						executionTime: 100,
+						executionIndex: 0,
 						executionStatus: 'success',
 						data: { main: [[{ json: { content: 'hello' } }]] },
 						metadata: {
@@ -2413,6 +2418,7 @@ describe('generateNodesGraph', () => {
 			const makeTaskData = (input: number, output: number) => ({
 				startTime: 0,
 				executionTime: 100,
+				executionIndex: 0,
 				executionStatus: 'success' as const,
 				data: { main: [[{ json: { content: 'response' } }]] },
 				metadata: {
@@ -2451,6 +2457,7 @@ describe('generateNodesGraph', () => {
 					{
 						startTime: 0,
 						executionTime: 100,
+						executionIndex: 0,
 						executionStatus: 'success',
 						data: {
 							[NodeConnectionTypes.AiLanguageModel]: [
