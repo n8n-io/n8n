@@ -34,6 +34,7 @@ describe('workflow_success_total', () => {
 					includeMessageEventBusMetrics: true,
 					includeWorkflowIdLabel: true,
 					includeWorkflowNameLabel: false,
+					includeExecutionModeLabel: false,
 				},
 			},
 		});
@@ -78,6 +79,7 @@ workflow_success_total{workflow_id="1234"} 1"
 					includeMessageEventBusMetrics: true,
 					includeWorkflowIdLabel: false,
 					includeWorkflowNameLabel: true,
+					includeExecutionModeLabel: false,
 				},
 			},
 		});
@@ -110,6 +112,51 @@ workflow_success_total{workflow_id="1234"} 1"
 "# HELP workflow_success_total Total number of n8n.workflow.success events.
 # TYPE workflow_success_total counter
 workflow_success_total{workflow_name="wf_1234"} 1"
+`);
+	});
+
+	test('support execution mode labels', async () => {
+		// ARRANGE
+		const globalConfig = mockInstance(GlobalConfig, {
+			endpoints: {
+				metrics: {
+					prefix: '',
+					includeMessageEventBusMetrics: true,
+					includeWorkflowIdLabel: false,
+					includeWorkflowNameLabel: false,
+					includeExecutionModeLabel: true,
+				},
+			},
+		});
+
+		const prometheusMetricsService = new PrometheusMetricsService(
+			mock(),
+			eventBus,
+			globalConfig,
+			eventService,
+			instanceSettings,
+			workflowRepository,
+			mock<LicenseMetricsRepository>(),
+		);
+
+		await prometheusMetricsService.init(app);
+
+		// ACT
+		const event = new EventMessageWorkflow({
+			eventName: 'n8n.workflow.success',
+			payload: { workflowId: '1234', mode: 'manual' },
+		});
+
+		eventBus.emit('metrics.eventBus.event', event);
+
+		// ASSERT
+		const workflowSuccessCounter =
+			await promClient.register.getSingleMetricAsString('workflow_success_total');
+
+		expect(workflowSuccessCounter).toMatchInlineSnapshot(`
+"# HELP workflow_success_total Total number of n8n.workflow.success events.
+# TYPE workflow_success_total counter
+workflow_success_total{execution_mode="manual"} 1"
 `);
 	});
 
