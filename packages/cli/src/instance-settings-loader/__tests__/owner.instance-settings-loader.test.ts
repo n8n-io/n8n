@@ -1,0 +1,162 @@
+import { mock } from 'jest-mock-extended';
+import type { Logger } from '@n8n/backend-common';
+import type { InstanceSettingsLoaderConfig } from '@n8n/config';
+
+import type { OwnershipService } from '@/services/ownership.service';
+
+import { OwnerInstanceSettingsLoader } from '../loaders/owner.instance-settings-loader';
+
+describe('OwnerInstanceSettingsLoader', () => {
+	const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
+	const ownershipService = mock<OwnershipService>();
+
+	const validBcryptHash = '$2b$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ01234';
+
+	const createLoader = (configOverrides: Partial<InstanceSettingsLoaderConfig> = {}) => {
+		const config = {
+			ownerOverride: false,
+			ownerEmail: '',
+			ownerFirstName: '',
+			ownerLastName: '',
+			ownerPasswordHash: '',
+			...configOverrides,
+		} as InstanceSettingsLoaderConfig;
+
+		return new OwnerInstanceSettingsLoader(config, ownershipService, logger);
+	};
+
+	beforeEach(() => {
+		jest.resetAllMocks();
+		logger.scoped.mockReturnThis();
+	});
+
+	it('should skip when no env vars are provided', async () => {
+		const loader = createLoader({ ownerOverride: false });
+
+		const result = await loader.run();
+
+		expect(result).toBe('skipped');
+		expect(ownershipService.setupOwner).not.toHaveBeenCalled();
+	});
+
+	it('should throw when ownerEmail is provided without ownerPasswordHash', async () => {
+		const loader = createLoader({ ownerEmail: 'admin@example.com' });
+
+		await expect(loader.run()).rejects.toThrow('INSTANCE_OWNER_PASSWORD_HASH is required');
+	});
+
+	it('should throw when ownerPasswordHash is provided without ownerEmail', async () => {
+		const loader = createLoader({ ownerPasswordHash: validBcryptHash });
+
+		await expect(loader.run()).rejects.toThrow('INSTANCE_OWNER_EMAIL is required');
+	});
+
+	it('should throw when ownerOverride is true but ownerEmail is empty', async () => {
+		const loader = createLoader({ ownerOverride: true, ownerEmail: '' });
+
+		await expect(loader.run()).rejects.toThrow('INSTANCE_OWNER_EMAIL is required');
+	});
+
+	it('should throw when ownerOverride is true but ownerPasswordHash is empty', async () => {
+		const loader = createLoader({
+			ownerOverride: true,
+			ownerEmail: 'admin@example.com',
+			ownerPasswordHash: '',
+		});
+
+		await expect(loader.run()).rejects.toThrow('INSTANCE_OWNER_PASSWORD_HASH is required');
+	});
+
+	it('should throw when ownerPasswordHash is not a valid bcrypt hash', async () => {
+		const loader = createLoader({
+			ownerEmail: 'admin@example.com',
+			ownerPasswordHash: 'not-a-bcrypt-hash',
+		});
+
+		await expect(loader.run()).rejects.toThrow('not a valid bcrypt hash');
+	});
+
+	it('should skip when owner already exists and override is false', async () => {
+		ownershipService.hasInstanceOwner.mockResolvedValue(true);
+
+		const loader = createLoader({
+			ownerEmail: 'admin@example.com',
+			ownerPasswordHash: validBcryptHash,
+		});
+
+		const result = await loader.run();
+
+		expect(result).toBe('skipped');
+		expect(ownershipService.setupOwner).not.toHaveBeenCalled();
+	});
+
+	it('should setup owner without overwrite when override is false', async () => {
+		const loader = createLoader({
+			ownerEmail: 'admin@example.com',
+			ownerFirstName: 'Jane',
+			ownerLastName: 'Doe',
+			ownerPasswordHash: validBcryptHash,
+		});
+
+		const result = await loader.run();
+
+		expect(result).toBe('created');
+		expect(ownershipService.setupOwner).toHaveBeenCalledWith(
+			{
+				email: 'admin@example.com',
+				firstName: 'Jane',
+				lastName: 'Doe',
+				password: validBcryptHash,
+			},
+			{ overwriteExisting: false, passwordIsHashed: true },
+		);
+	});
+
+	it('should setup owner with overwrite when override is true', async () => {
+		const loader = createLoader({
+			ownerOverride: true,
+			ownerEmail: 'new@example.com',
+			ownerFirstName: 'New',
+			ownerLastName: 'Owner',
+			ownerPasswordHash: validBcryptHash,
+		});
+
+		const result = await loader.run();
+
+		expect(result).toBe('created');
+		expect(ownershipService.setupOwner).toHaveBeenCalledWith(
+			{
+				email: 'new@example.com',
+				firstName: 'New',
+				lastName: 'Owner',
+				password: validBcryptHash,
+			},
+			{ overwriteExisting: true, passwordIsHashed: true },
+		);
+	});
+
+	it('should overwrite existing owner when override is true', async () => {
+		ownershipService.hasInstanceOwner.mockResolvedValue(true);
+
+		const loader = createLoader({
+			ownerOverride: true,
+			ownerEmail: 'new@example.com',
+			ownerFirstName: 'New',
+			ownerLastName: 'Owner',
+			ownerPasswordHash: validBcryptHash,
+		});
+
+		const result = await loader.run();
+
+		expect(result).toBe('created');
+		expect(ownershipService.setupOwner).toHaveBeenCalledWith(
+			{
+				email: 'new@example.com',
+				firstName: 'New',
+				lastName: 'Owner',
+				password: validBcryptHash,
+			},
+			{ overwriteExisting: true, passwordIsHashed: true },
+		);
+	});
+});
