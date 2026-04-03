@@ -140,11 +140,11 @@ function createInlineExtensions() {
 			'.cm-content': {
 				...sharedThemeRules['.cm-content'],
 				caretColor: props.disabled ? 'transparent' : 'var(--code--caret--color)',
-				padding: '0',
+				padding: '0 !important',
 				lineHeight: '28px',
 			},
 			'.cm-line': {
-				padding: '0',
+				padding: '0 !important',
 				whiteSpace: 'nowrap',
 				lineHeight: '28px',
 			},
