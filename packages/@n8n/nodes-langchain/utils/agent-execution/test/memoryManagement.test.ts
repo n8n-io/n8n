@@ -569,6 +569,190 @@ describe('memoryManagement', () => {
 		});
 	});
 
+	describe('saveToMemory round-trip with tool calls', () => {
+		let mockChatHistory: {
+			addMessages: jest.Mock;
+			getMessages: jest.Mock;
+		};
+		let savedMessages: unknown[];
+
+		beforeEach(() => {
+			jest.spyOn(console, 'log').mockImplementation();
+			savedMessages = [];
+			mockChatHistory = {
+				addMessages: jest.fn().mockImplementation(async (msgs: unknown[]) => {
+					savedMessages.push(...msgs);
+				}),
+				getMessages: jest.fn().mockImplementation(() => savedMessages),
+			};
+			mockMemory.chatHistory = mockChatHistory as unknown as BaseChatMemory['chatHistory'];
+		});
+
+		afterEach(() => {
+			jest.restoreAllMocks();
+		});
+
+		it('should save tool calls that can be loaded back with correct message types', async () => {
+			const aiMessage = new AIMessage({
+				content: 'Let me look that up',
+				tool_calls: [
+					{
+						id: 'call-abc',
+						name: 'database_lookup',
+						args: { query: 'contact John' },
+						type: 'tool_call',
+					},
+				],
+			});
+
+			const steps: ToolCallData[] = [
+				{
+					action: {
+						tool: 'database_lookup',
+						toolInput: { query: 'contact John' },
+						log: 'Looking up',
+						messageLog: [aiMessage],
+						toolCallId: 'call-abc',
+						type: 'tool_call',
+					},
+					observation: '{"id": 12345, "name": "John Doe"}',
+				},
+			];
+
+			await saveToMemory(
+				'Find the contact for John',
+				'I found the contact: John Doe (ID: 12345)',
+				mockMemory,
+				steps,
+			);
+
+			// Verify the full message sequence was saved
+			expect(mockChatHistory.addMessages).toHaveBeenCalledTimes(1);
+			const msgs = mockChatHistory.addMessages.mock.calls[0][0];
+
+			// Should be: HumanMessage, AIMessage(tool_calls), ToolMessage, AIMessage(final)
+			expect(msgs).toHaveLength(4);
+			expect(msgs[0]).toBeInstanceOf(HumanMessage);
+			expect(msgs[0].content).toBe('Find the contact for John');
+			expect(msgs[1]).toBeInstanceOf(AIMessage);
+			expect(msgs[1].tool_calls).toHaveLength(1);
+			expect(msgs[1].tool_calls[0].name).toBe('database_lookup');
+			expect(msgs[2]).toBeInstanceOf(ToolMessage);
+			expect(msgs[2].content).toBe('{"id": 12345, "name": "John Doe"}');
+			expect((msgs[2] as ToolMessage).tool_call_id).toBe('call-abc');
+			expect(msgs[3]).toBeInstanceOf(AIMessage);
+			expect(msgs[3].content).toBe('I found the contact: John Doe (ID: 12345)');
+			// Final AI message should NOT have tool_calls
+			expect(msgs[3].tool_calls ?? []).toHaveLength(0);
+		});
+
+		it('should save multiple sequential tool calls in correct order', async () => {
+			const aiMsg1 = new AIMessage({
+				content: 'Looking up contact',
+				tool_calls: [
+					{ id: 'call-1', name: 'find_contact', args: { name: 'John' }, type: 'tool_call' },
+				],
+			});
+			const aiMsg2 = new AIMessage({
+				content: 'Adding email',
+				tool_calls: [
+					{
+						id: 'call-2',
+						name: 'update_contact',
+						args: { id: 12345, email: 'john@example.com' },
+						type: 'tool_call',
+					},
+				],
+			});
+
+			const steps: ToolCallData[] = [
+				{
+					action: {
+						tool: 'find_contact',
+						toolInput: { name: 'John' },
+						log: 'Find',
+						messageLog: [aiMsg1],
+						toolCallId: 'call-1',
+						type: 'tool_call',
+					},
+					observation: '{"id": 12345}',
+				},
+				{
+					action: {
+						tool: 'update_contact',
+						toolInput: { id: 12345, email: 'john@example.com' },
+						log: 'Update',
+						messageLog: [aiMsg2],
+						toolCallId: 'call-2',
+						type: 'tool_call',
+					},
+					observation: '{"success": true}',
+				},
+			];
+
+			await saveToMemory('Add john@example.com to John', 'Done! Email added.', mockMemory, steps);
+
+			const msgs = mockChatHistory.addMessages.mock.calls[0][0];
+			// HumanMessage, AI+tool_calls, ToolMessage, AI+tool_calls, ToolMessage, AI(final)
+			expect(msgs).toHaveLength(6);
+			expect(msgs[0]).toBeInstanceOf(HumanMessage);
+			expect(msgs[1]).toBeInstanceOf(AIMessage);
+			expect(msgs[1].tool_calls[0].name).toBe('find_contact');
+			expect(msgs[2]).toBeInstanceOf(ToolMessage);
+			expect(msgs[2].content).toBe('{"id": 12345}');
+			expect(msgs[3]).toBeInstanceOf(AIMessage);
+			expect(msgs[3].tool_calls[0].name).toBe('update_contact');
+			expect(msgs[4]).toBeInstanceOf(ToolMessage);
+			expect(msgs[4].content).toBe('{"success": true}');
+			expect(msgs[5]).toBeInstanceOf(AIMessage);
+			expect(msgs[5].content).toBe('Done! Email added.');
+		});
+
+		it('should only save new steps when previousStepsCount is provided', async () => {
+			const aiMsg1 = new AIMessage({
+				content: 'First call',
+				tool_calls: [{ id: 'call-old', name: 'old_tool', args: {}, type: 'tool_call' }],
+			});
+			const aiMsg2 = new AIMessage({
+				content: 'Second call',
+				tool_calls: [{ id: 'call-new', name: 'new_tool', args: { x: 1 }, type: 'tool_call' }],
+			});
+
+			const steps: ToolCallData[] = [
+				{
+					action: {
+						tool: 'old_tool',
+						toolInput: {},
+						log: 'Old',
+						messageLog: [aiMsg1],
+						toolCallId: 'call-old',
+						type: 'tool_call',
+					},
+					observation: 'old result',
+				},
+				{
+					action: {
+						tool: 'new_tool',
+						toolInput: { x: 1 },
+						log: 'New',
+						messageLog: [aiMsg2],
+						toolCallId: 'call-new',
+						type: 'tool_call',
+					},
+					observation: 'new result',
+				},
+			];
+
+			// previousStepsCount=1 means the first step was already saved
+			await saveToMemory('Question', 'Answer', mockMemory, steps, 1);
+
+			const msgs = mockChatHistory.addMessages.mock.calls[0][0];
+			// Should only contain: HumanMessage, AI+new_tool, ToolMessage(new), AI(final)
+			expect(msgs).toHaveLength(4);
+			expect(msgs[1].tool_calls[0].name).toBe('new_tool');
+		});
+	});
+
 	describe('buildToolContext', () => {
 		it('should build tool context string from single step', () => {
 			const steps: ToolCallData[] = [
