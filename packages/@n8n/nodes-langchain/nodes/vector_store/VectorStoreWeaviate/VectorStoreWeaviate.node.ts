@@ -105,7 +105,7 @@ const shared_options: Array<INodePropertyOptions | INodeProperties | INodeProper
 		displayName: 'Tenant Name',
 		name: 'tenant',
 		type: 'string',
-		default: undefined,
+		default: '',
 		validateType: 'string',
 		description: 'Tenant Name. Collection must have been created with tenant support enabled.',
 	},
