@@ -38,6 +38,25 @@ exports[`useContextMenu > Read-only mode > should return the correct actions whe
     },
   },
   {
+    "children": [
+      {
+        "id": "select_all",
+        "label": "Child item 1",
+      },
+      {
+        "id": "select_all",
+        "label": "Child item 2",
+      },
+      {
+        "id": "select_all",
+        "label": "Child item 3",
+      },
+    ],
+    "divided": true,
+    "id": "demo_submenu",
+    "label": "Demo submenu",
+  },
+  {
     "disabled": true,
     "id": "toggle_activation",
     "label": "Deactivate",
@@ -266,6 +285,25 @@ exports[`useContextMenu > should return the correct actions opening the menu fro
     },
   },
   {
+    "children": [
+      {
+        "id": "select_all",
+        "label": "Child item 1",
+      },
+      {
+        "id": "select_all",
+        "label": "Child item 2",
+      },
+      {
+        "id": "select_all",
+        "label": "Child item 3",
+      },
+    ],
+    "divided": true,
+    "id": "demo_submenu",
+    "label": "Demo submenu",
+  },
+  {
     "disabled": false,
     "id": "toggle_activation",
     "label": "Deactivate",
@@ -398,6 +436,25 @@ exports[`useContextMenu > should return the correct actions when right clicking 
         "R",
       ],
     },
+  },
+  {
+    "children": [
+      {
+        "id": "select_all",
+        "label": "Child item 1",
+      },
+      {
+        "id": "select_all",
+        "label": "Child item 2",
+      },
+      {
+        "id": "select_all",
+        "label": "Child item 3",
+      },
+    ],
+    "divided": true,
+    "id": "demo_submenu",
+    "label": "Demo submenu",
   },
   {
     "disabled": false,
@@ -640,6 +697,25 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (disabled) whe
     },
   },
   {
+    "children": [
+      {
+        "id": "select_all",
+        "label": "Child item 1",
+      },
+      {
+        "id": "select_all",
+        "label": "Child item 2",
+      },
+      {
+        "id": "select_all",
+        "label": "Child item 3",
+      },
+    ],
+    "divided": true,
+    "id": "demo_submenu",
+    "label": "Demo submenu",
+  },
+  {
     "disabled": false,
     "id": "toggle_activation",
     "label": "Deactivate",
@@ -784,6 +860,25 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (disabled) whe
       "metaKey": true,
       "shiftKey": true,
     },
+  },
+  {
+    "children": [
+      {
+        "id": "select_all",
+        "label": "Child item 1",
+      },
+      {
+        "id": "select_all",
+        "label": "Child item 2",
+      },
+      {
+        "id": "select_all",
+        "label": "Child item 3",
+      },
+    ],
+    "divided": true,
+    "id": "demo_submenu",
+    "label": "Demo submenu",
   },
   {
     "disabled": false,
@@ -932,6 +1027,25 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (enabled) when
     },
   },
   {
+    "children": [
+      {
+        "id": "select_all",
+        "label": "Child item 1",
+      },
+      {
+        "id": "select_all",
+        "label": "Child item 2",
+      },
+      {
+        "id": "select_all",
+        "label": "Child item 3",
+      },
+    ],
+    "divided": true,
+    "id": "demo_submenu",
+    "label": "Demo submenu",
+  },
+  {
     "disabled": false,
     "id": "toggle_activation",
     "label": "Deactivate",
@@ -1076,6 +1190,25 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (enabled) when
       "metaKey": true,
       "shiftKey": true,
     },
+  },
+  {
+    "children": [
+      {
+        "id": "select_all",
+        "label": "Child item 1",
+      },
+      {
+        "id": "select_all",
+        "label": "Child item 2",
+      },
+      {
+        "id": "select_all",
+        "label": "Child item 3",
+      },
+    ],
+    "divided": true,
+    "id": "demo_submenu",
+    "label": "Demo submenu",
   },
   {
     "disabled": false,
