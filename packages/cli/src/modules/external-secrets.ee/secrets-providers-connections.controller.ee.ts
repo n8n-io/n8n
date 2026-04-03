@@ -94,6 +94,7 @@ export class SecretProvidersConnectionsController {
 			// shared with projects will be able to use the connection secrets
 			// but they do not own the connection and can't modify it
 			'secretsProviderConnection:user',
+			req.user.role?.slug,
 		);
 		return this.connectionsService.toPublicConnection(savedConnection);
 	}
@@ -111,6 +112,7 @@ export class SecretProvidersConnectionsController {
 			providerKey,
 			body,
 			req.user.id,
+			req.user.role?.slug,
 		);
 		return this.connectionsService.toPublicConnection(connection);
 	}
@@ -123,7 +125,7 @@ export class SecretProvidersConnectionsController {
 		@Param('providerKey') providerKey: string,
 	) {
 		this.logger.debug('Deleting connection', { providerKey });
-		await this.connectionsService.deleteConnection(providerKey, req.user.id);
+		await this.connectionsService.deleteConnection(providerKey, req.user.id, req.user.role?.slug);
 		res.status(204).send();
 		return;
 	}
@@ -158,7 +160,11 @@ export class SecretProvidersConnectionsController {
 		@Param('providerKey') providerKey: string,
 	): Promise<TestSecretProviderConnectionResponse> {
 		this.logger.debug('Testing provider connection', { providerKey });
-		return await this.connectionsService.testConnection(providerKey, req.user.id);
+		return await this.connectionsService.testConnection(
+			providerKey,
+			req.user.id,
+			req.user.role?.slug,
+		);
 	}
 
 	@Post('/:providerKey/reload')
@@ -169,6 +175,10 @@ export class SecretProvidersConnectionsController {
 		@Param('providerKey') providerKey: string,
 	): Promise<ReloadSecretProviderConnectionResponse> {
 		this.logger.debug('Reloading secrets for secret provider connection', { providerKey });
-		return await this.connectionsService.reloadConnectionSecrets(providerKey, req.user.id);
+		return await this.connectionsService.reloadConnectionSecrets(
+			providerKey,
+			req.user.id,
+			req.user.role?.slug,
+		);
 	}
 }
