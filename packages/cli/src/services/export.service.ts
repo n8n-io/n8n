@@ -148,6 +148,20 @@ export class ExportService {
 
 			this.logger.info(`\n📊 Processing table: ${tableName} (${entityName})`);
 
+			// Check if table exists before trying to export it
+			try {
+				// Test if the table exists by querying it
+				await this.dataSource.query(
+					`SELECT 1 FROM ${this.dataSource.driver.escape(tableName)} LIMIT 1`,
+				);
+			} catch (error) {
+				this.logger.info(
+					`   ⚠️  Table ${tableName} not found or not accessible, skipping...`,
+					{ error },
+				);
+				continue;
+			}
+
 			// Clear existing files for this entity
 			await this.clearExistingEntityFiles(outputDir, entityName);
 
