@@ -118,13 +118,15 @@ function createExtensions() {
 				color: 'var(--input--color--text, var(--color--text--shade-1))',
 				caretColor: props.disabled ? 'transparent' : 'var(--code--caret--color)',
 				padding: 'var(--spacing--4xs) 0',
+				whiteSpace: 'nowrap',
 			},
 			'.cm-line': {
 				padding: '0',
 			},
 			'.cm-scroller': {
 				lineHeight: '1.68',
-				overflow: 'hidden',
+				overflowX: 'auto',
+				overflowY: 'hidden',
 			},
 			'.cm-cursor, .cm-dropCursor': {
 				borderLeftColor: 'var(--code--caret--color)',
