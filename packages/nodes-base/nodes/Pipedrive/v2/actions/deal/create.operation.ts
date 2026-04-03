@@ -90,15 +90,15 @@ const properties: INodeProperties[] = [
 				description: 'The expected close date of the deal in YYYY-MM-DD format',
 			},
 			{
-				displayName: 'Label Name or ID',
-				name: 'label',
-				type: 'options',
+				displayName: 'Label Names or IDs',
+				name: 'label_ids',
+				type: 'multiOptions',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getDealLabels',
 				},
-				default: '',
+				default: [],
 			},
 			{
 				displayName: 'Lost Reason',

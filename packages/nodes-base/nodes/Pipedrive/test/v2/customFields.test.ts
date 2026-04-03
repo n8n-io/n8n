@@ -142,6 +142,26 @@ describe('Pipedrive v2 Custom Fields', () => {
 			expect(item.custom_fields).toEqual({ abc123_text: 'Hello' });
 		});
 
+		it('should resolve set field labels to option IDs', () => {
+			const item: IDataObject = {
+				custom_fields: { 'My Custom Set': 'Tag One, Tag Three' },
+			};
+
+			encodeCustomFieldsV2(customProperties, item);
+
+			expect(item.custom_fields).toEqual({ ghi789_set: [1, 3] });
+		});
+
+		it('should resolve set field array labels to option IDs', () => {
+			const item: IDataObject = {
+				custom_fields: { 'My Custom Set': ['Tag One', 'Tag Three'] },
+			};
+
+			encodeCustomFieldsV2(customProperties, item);
+
+			expect(item.custom_fields).toEqual({ ghi789_set: [1, 3] });
+		});
+
 		it('should pass through unknown keys as-is', () => {
 			const item: IDataObject = {
 				custom_fields: { unknown_key: 'some value' },

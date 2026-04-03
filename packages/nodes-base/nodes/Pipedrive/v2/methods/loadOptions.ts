@@ -164,13 +164,14 @@ async function getLabelsForResource(
 	endpoint: string,
 ): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
-	const operation = this.getCurrentNodeParameter('operation') as string;
 	const { data } = await pipedriveApiRequest.call(this, 'GET', endpoint, {});
 	for (const field of data as Array<{
-		key: string;
+		key?: string;
+		field_code?: string;
 		options?: Array<{ id: number; label: string }>;
 	}>) {
-		if (field.key === 'label' && field.options) {
+		const fieldCode = field.field_code ?? field.key;
+		if ((fieldCode === 'label' || fieldCode === 'label_ids') && field.options) {
 			for (const option of field.options) {
 				returnData.push({
 					name: option.label,
@@ -180,15 +181,7 @@ async function getLabelsForResource(
 		}
 	}
 
-	sortOptionParameters(returnData);
-
-	if (operation === 'update') {
-		returnData.push({
-			name: 'No Label',
-			value: 'null',
-		});
-	}
-	return returnData;
+	return sortOptionParameters(returnData);
 }
 
 export async function getPersonLabels(

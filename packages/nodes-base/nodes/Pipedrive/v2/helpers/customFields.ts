@@ -49,13 +49,30 @@ export function encodeCustomFieldsV2(customProperties: ICustomProperties, item: 
 				customPropertyData.options !== undefined &&
 				Array.isArray(customPropertyData.options)
 			) {
-				const propertyOption = customPropertyData.options.find(
-					(option) => option.label.toString() === value!.toString(),
-				);
-				if (propertyOption !== undefined) {
-					resolved[customPropertyData.key] = propertyOption.id;
+				if (customPropertyData.field_type === 'set') {
+					// Set fields: resolve each label to its option ID
+					const labels: string[] = Array.isArray(value)
+						? (value as string[]).map(String)
+						: String(value)
+								.split(',')
+								.map((s) => s.trim());
+					const ids = labels.map((label) => {
+						const opt = customPropertyData.options!.find(
+							(option) => option.label.toString() === label,
+						);
+						return opt !== undefined ? opt.id : label;
+					});
+					resolved[customPropertyData.key] = ids;
 				} else {
-					resolved[customPropertyData.key] = value;
+					// Enum / visible_to: resolve single label to option ID
+					const propertyOption = customPropertyData.options.find(
+						(option) => option.label.toString() === value!.toString(),
+					);
+					if (propertyOption !== undefined) {
+						resolved[customPropertyData.key] = propertyOption.id;
+					} else {
+						resolved[customPropertyData.key] = value;
+					}
 				}
 			} else {
 				resolved[customPropertyData.key] = value;

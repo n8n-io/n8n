@@ -31,15 +31,15 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Label Name or ID',
-				name: 'label',
-				type: 'options',
+				displayName: 'Label Names or IDs',
+				name: 'label_ids',
+				type: 'multiOptions',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getOrganizationLabels',
 				},
-				default: '',
+				default: [],
 			},
 			{
 				displayName: 'Owner Name or ID',
