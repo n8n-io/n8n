@@ -4,6 +4,10 @@ import { expect } from '@playwright/test';
 import { BasePage } from './BasePage';
 
 export class ProjectSettingsPage extends BasePage {
+	async goto(projectId: string) {
+		await this.page.goto(`/projects/${projectId}/settings`);
+	}
+
 	async fillProjectName(name: string) {
 		await this.page.getByTestId('project-settings-name-input').locator('input').fill(name);
 	}
