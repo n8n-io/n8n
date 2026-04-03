@@ -14,6 +14,15 @@ import { useInstanceAiStore } from '../instanceAi.store';
 import { extractArtifacts, type ArtifactInfo } from '../agentTimeline.utils';
 
 const i18n = useI18n();
+const store = useInstanceAiStore();
+
+/** Resolve artifact name from the enriched registry (falls back to extracted name). */
+function resolveArtifactName(artifact: ArtifactInfo): string {
+	for (const entry of store.resourceRegistry.values()) {
+		if (entry.id === artifact.resourceId) return entry.name;
+	}
+	return artifact.name;
+}
 
 function formatRelativeTime(isoTime: string): string {
 	const diffMs = Date.now() - new Date(isoTime).getTime();
@@ -93,8 +102,6 @@ const childrenById = computed(() => {
 	}
 	return map;
 });
-
-const store = useInstanceAiStore();
 
 function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedback?: string) {
 	const requestId = tc.confirmation?.requestId;
@@ -177,7 +184,7 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 					v-for="artifact in extractArtifacts(childrenById[entry.agentId])"
 					:key="artifact.resourceId"
 					:type="artifact.type"
-					:name="artifact.name"
+					:name="resolveArtifactName(artifact)"
 					:resource-id="artifact.resourceId"
 					:project-id="artifact.projectId"
 					:metadata="formatArtifactMetadata(artifact)"

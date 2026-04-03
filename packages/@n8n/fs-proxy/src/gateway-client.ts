@@ -17,12 +17,15 @@ import type { SettingsStore } from './settings-store';
 import type { BrowserModule } from './tools/browser';
 import { filesystemReadTools, filesystemWriteTools } from './tools/filesystem';
 import { ShellModule } from './tools/shell';
-import type {
-	AffectedResource,
-	CallToolResult,
-	ConfirmResourceAccess,
-	McpTool,
-	ToolDefinition,
+import {
+	type AffectedResource,
+	type CallToolResult,
+	type ConfirmResourceAccess,
+	type McpTool,
+	type ResourceDecision,
+	type ToolDefinition,
+	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
+	RESOURCE_DECISION_KEYS,
 } from './tools/types';
 import { formatErrorResult } from './tools/utils';
 
@@ -395,30 +398,57 @@ export class GatewayClient {
 		await this.getAllDefinitions();
 		const def = this.definitionMap.get(name);
 		if (!def) throw new Error(`Unknown tool: ${name}`);
-		const typedArgs: unknown = def.inputSchema.parse(args);
+
+		// Strip _confirmation from args before schema validation — the agent must
+		// never be able to inject a decision directly into tool arguments.
+		const { _confirmation, ...cleanArgs } = args;
+		const decision =
+			typeof _confirmation === 'string' ? (_confirmation as ResourceDecision) : undefined;
+
+		const typedArgs: unknown = def.inputSchema.parse(cleanArgs);
 		const context = { dir: this.dir };
 
 		const resources = await def.getAffectedResources(typedArgs, context);
-		await this.checkPermissions(resources);
+		await this.checkPermissions(resources, decision);
 
 		return await def.execute(typedArgs, context);
 	}
 
-	private async checkPermissions(resources: AffectedResource[]): Promise<void> {
-		const { settingsStore, confirmResourceAccess } = this.options;
+	private async checkPermissions(
+		resources: AffectedResource[],
+		decision?: ResourceDecision,
+	): Promise<void> {
+		const { settingsStore, confirmResourceAccess, config } = this.options;
 
 		for (const resource of resources) {
 			const rule = settingsStore.check(resource.toolGroup, resource.resource);
 
 			if (rule === 'deny') {
-				throw new Error(`User denied access to ${resource.toolGroup}: ${resource.resource}`);
+				throw new Error(
+					`User permanently denied access to ${resource.toolGroup}: ${resource.resource}`,
+				);
 			}
 
 			if (rule === 'allow') continue;
 
-			const decision = await confirmResourceAccess(resource);
+			let resolvedDecision: ResourceDecision;
 
-			switch (decision) {
+			if (decision) {
+				resolvedDecision = decision;
+			} else if (config.permissionConfirmation === 'instance') {
+				throw new Error(
+					`${GATEWAY_CONFIRMATION_REQUIRED_PREFIX}${JSON.stringify({
+						toolGroup: resource.toolGroup,
+						resource: resource.resource,
+						description: resource.description,
+						options: RESOURCE_DECISION_KEYS,
+					})}`,
+				);
+			} else {
+				resolvedDecision = await confirmResourceAccess(resource);
+			}
+
+			switch (resolvedDecision) {
 				case 'allowOnce':
 					break;
 				case 'allowForSession':

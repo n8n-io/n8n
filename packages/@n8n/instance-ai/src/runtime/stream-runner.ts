@@ -1,6 +1,7 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
 
 import type { InstanceAiEventBus } from '../event-bus';
+import type { Logger } from '../logger';
 import {
 	createLlmStepTraceHooks,
 	executeResumableStream,
@@ -22,6 +23,7 @@ export interface StreamRunOptions {
 	agentId: string;
 	signal: AbortSignal;
 	eventBus: InstanceAiEventBus;
+	logger: Logger;
 }
 
 export interface StreamRunResult {
@@ -110,6 +112,7 @@ async function consumeStream(
 			agentId: options.agentId,
 			eventBus: options.eventBus,
 			signal: options.signal,
+			logger: options.logger,
 		},
 		control: { mode: 'manual' },
 		initialMastraRunId: options.mastraRunId,

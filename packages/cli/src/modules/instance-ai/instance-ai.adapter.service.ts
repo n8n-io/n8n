@@ -38,7 +38,7 @@ import { wrapUntrustedData } from '@n8n/instance-ai';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import type { User, WorkflowEntity } from '@n8n/db';
+import type { User, WorkflowEntity, ExecutionSummaries } from '@n8n/db';
 
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import {
@@ -59,8 +59,9 @@ import {
 	SharedWorkflowRepository,
 	WorkflowRepository,
 } from '@n8n/db';
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { hasGlobalScope, type Scope } from '@n8n/permissions';
+import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { LessThan } from '@n8n/typeorm';
 import {
@@ -100,8 +101,8 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
+import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
-import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -111,6 +112,8 @@ import { getBase } from '@/workflow-execute-additional-data';
 
 @Service()
 export class InstanceAiAdapterService {
+	private readonly logger: Logger;
+
 	private readonly allowSendingParameterValues: boolean;
 
 	/**
@@ -139,10 +142,10 @@ export class InstanceAiAdapterService {
 	}
 
 	constructor(
+		logger: Logger,
 		globalConfig: GlobalConfig,
 		private readonly workflowService: WorkflowService,
 		private readonly workflowFinderService: WorkflowFinderService,
-		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly projectRepository: ProjectRepository,
@@ -165,7 +168,9 @@ export class InstanceAiAdapterService {
 		private readonly license: License,
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly eventService: EventService,
+		private readonly roleService: RoleService,
 	) {
+		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
 	}
 
@@ -508,11 +513,12 @@ export class InstanceAiAdapterService {
 	private createExecutionAdapter(user: User, pushRef?: string): InstanceAiExecutionService {
 		const {
 			workflowFinderService,
-			workflowSharingService,
 			workflowRunner,
 			activeExecutions,
 			executionRepository,
 			allowSendingParameterValues,
+			license,
+			roleService,
 		} = this;
 
 		const DEFAULT_TIMEOUT_MS = 5 * Time.minutes.toMilliseconds;
@@ -545,17 +551,26 @@ export class InstanceAiAdapterService {
 
 		return {
 			async list(options) {
-				const accessibleWorkflowIds = await workflowSharingService.getSharedWorkflowIds(user, {
-					scopes: ['workflow:read'],
-				});
+				const scope: Scope = 'workflow:read';
 
-				if (accessibleWorkflowIds.length === 0) return [];
+				let sharingOptions: ExecutionSummaries.RangeQuery['sharingOptions'];
+				if (license.isSharingEnabled()) {
+					const projectRoles = await roleService.rolesWithScope('project', [scope]);
+					const workflowRoles = await roleService.rolesWithScope('workflow', [scope]);
+					sharingOptions = { scopes: [scope], projectRoles, workflowRoles };
+				} else {
+					sharingOptions = {
+						workflowRoles: ['workflow:owner'],
+						projectRoles: [PROJECT_OWNER_ROLE_SLUG],
+					};
+				}
 
-				const query = {
+				const query: ExecutionSummaries.RangeQuery = {
 					kind: 'range' as const,
 					range: { limit: options?.limit ?? 20, lastId: undefined, firstId: undefined },
 					order: { startedAt: 'DESC' as const },
-					accessibleWorkflowIds,
+					user,
+					sharingOptions,
 					...(options?.workflowId ? { workflowId: options.workflowId } : {}),
 					...(options?.status
 						? {
@@ -648,6 +663,14 @@ export class InstanceAiAdapterService {
 							waitingExecutionSource: {},
 						},
 					});
+				} else if (triggerNode) {
+					// No inputData but we have a trigger node (e.g. test-trigger from
+					// setup-workflow). Tell the execution engine which node to start from
+					// so it doesn't fail to auto-detect webhook-only triggers like ChatTrigger.
+					runData.triggerToStartFrom = { name: triggerNode.name };
+					if (Object.keys(basePinData).length > 0) {
+						runData.pinData = basePinData;
+					}
 				} else if (Object.keys(basePinData).length > 0) {
 					runData.pinData = basePinData;
 				}
@@ -1691,11 +1714,9 @@ export class InstanceAiAdapterService {
 						})),
 					};
 				} catch (error) {
-					console.error(
-						'[explore-resources] ERROR:',
-						error instanceof Error ? error.message : error,
-					);
-					console.error('[explore-resources] stack:', error instanceof Error ? error.stack : 'N/A');
+					this.logger.error('Failed to load options for explore-resources', {
+						error: error instanceof Error ? error.message : String(error),
+					});
 					throw error;
 				}
 			},

@@ -18,6 +18,7 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 			getEventsForRun: jest.fn().mockReturnValue([]),
 			getEventsForRuns: jest.fn().mockReturnValue([]),
 		},
+		logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
 		domainTools: {} as OrchestrationContext['domainTools'],
 		abortSignal: new AbortController().signal,
 		taskStorage: {

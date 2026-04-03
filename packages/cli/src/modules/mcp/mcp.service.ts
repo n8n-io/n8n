@@ -17,6 +17,15 @@ import {
 	type IRun,
 } from 'n8n-workflow';
 
+import {
+	createAddDataTableColumnTool,
+	createAddDataTableRowsTool,
+	createCreateDataTableTool,
+	createDeleteDataTableColumnTool,
+	createRenameDataTableColumnTool,
+	createRenameDataTableTool,
+	createSearchDataTablesTool,
+} from './tools/data-table';
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createGetExecutionTool } from './tools/get-execution.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
@@ -39,6 +48,7 @@ import { WorkflowBuilderToolsService } from './tools/workflow-builder/workflow-b
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeTypes } from '@/node-types';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -91,6 +101,7 @@ export class McpService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly executionService: ExecutionService,
+		private readonly dataTableProxyService: DataTableProxyService,
 	) {}
 
 	async getServer(user: User) {
@@ -121,7 +132,6 @@ export class McpService {
 		const executeWorkflowTool = createExecuteWorkflowTool(
 			user,
 			this.workflowFinderService,
-			this.activeExecutions,
 			this.workflowRunner,
 			this.telemetry,
 			this,
@@ -207,6 +217,66 @@ export class McpService {
 			this,
 		);
 		server.registerTool(testWorkflowTool.name, testWorkflowTool.config, testWorkflowTool.handler);
+
+		// Data table tools
+		const dataTableOps = this.dataTableProxyService.makeDataTableOperationsForUser(user);
+
+		const searchDataTablesTool = createSearchDataTablesTool(user, dataTableOps, this.telemetry);
+		server.registerTool(
+			searchDataTablesTool.name,
+			searchDataTablesTool.config,
+			searchDataTablesTool.handler,
+		);
+
+		const createDataTableTool = createCreateDataTableTool(user, dataTableOps, this.telemetry);
+		server.registerTool(
+			createDataTableTool.name,
+			createDataTableTool.config,
+			createDataTableTool.handler,
+		);
+
+		const renameDataTableTool = createRenameDataTableTool(user, dataTableOps, this.telemetry);
+		server.registerTool(
+			renameDataTableTool.name,
+			renameDataTableTool.config,
+			renameDataTableTool.handler,
+		);
+
+		const addDataTableColumnTool = createAddDataTableColumnTool(user, dataTableOps, this.telemetry);
+		server.registerTool(
+			addDataTableColumnTool.name,
+			addDataTableColumnTool.config,
+			addDataTableColumnTool.handler,
+		);
+
+		const deleteDataTableColumnTool = createDeleteDataTableColumnTool(
+			user,
+			dataTableOps,
+			this.telemetry,
+		);
+		server.registerTool(
+			deleteDataTableColumnTool.name,
+			deleteDataTableColumnTool.config,
+			deleteDataTableColumnTool.handler,
+		);
+
+		const renameDataTableColumnTool = createRenameDataTableColumnTool(
+			user,
+			dataTableOps,
+			this.telemetry,
+		);
+		server.registerTool(
+			renameDataTableColumnTool.name,
+			renameDataTableColumnTool.config,
+			renameDataTableColumnTool.handler,
+		);
+
+		const addDataTableRowsTool = createAddDataTableRowsTool(user, dataTableOps, this.telemetry);
+		server.registerTool(
+			addDataTableRowsTool.name,
+			addDataTableRowsTool.config,
+			addDataTableRowsTool.handler,
+		);
 
 		// Workflow builder tools (enabled via N8N_MCP_BUILDER_ENABLED)
 		if (builderEnabled) {
