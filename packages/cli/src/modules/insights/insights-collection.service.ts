@@ -161,7 +161,7 @@ export class InsightsCollectionService {
 		});
 
 		// run time event
-		if (ctx.runData.stoppedAt) {
+		if (ctx.runData.stoppedAt && ctx.runData.startedAt) {
 			const runtimeMs = ctx.runData.stoppedAt.getTime() - ctx.runData.startedAt.getTime();
 			if (runtimeMs < MIN_RUNTIME || runtimeMs > MAX_RUNTIME) {
 				this.logger.warn(`Invalid runtime detected: ${runtimeMs}ms, clamping to safe range`);
