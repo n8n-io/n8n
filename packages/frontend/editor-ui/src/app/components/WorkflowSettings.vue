@@ -6,7 +6,6 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import type { ITimeoutHMS, IWorkflowSettings, IWorkflowShortResponse } from '@/Interface';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import Modal from '@/app/components/Modal.vue';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import {
 	EnterpriseEditionFeature,
 	WORKFLOW_SETTINGS_MODAL_KEY,
@@ -92,8 +91,6 @@ const workflowDocumentStore = computed(() => {
 const workflowsEEStore = useWorkflowsEEStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const posthogStore = usePostHog();
-const { check } = useEnvFeatureFlag();
-
 const isLoading = ref(true);
 const workflowCallerPolicyOptions = ref<Array<{ key: string; value: string }>>([]);
 const redactionToggleOptions = ref<Array<{ key: string; value: string }>>([
@@ -215,7 +212,6 @@ const isDataRedactionLicensed = computed(
 const isRedactionSettingVisible = computed(
 	() =>
 		settingsStore.isModuleActive('redaction') &&
-		check.value('EXECUTION_REDACTION') &&
 		(isDataRedactionLicensed.value ? workflowPermissions.value.updateRedactionSetting : true),
 );
 
