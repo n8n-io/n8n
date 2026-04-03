@@ -266,6 +266,7 @@ watch(isActive, (active, wasActive) => {
 						variant="outline"
 						size="small"
 						data-test-id="builder-setup-card-skip"
+						:disabled="isExecuting"
 						:class="$style.actionButton"
 						@click="emit('setPinData')"
 					>

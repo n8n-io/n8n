@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, toRef, watch } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import TriggerExecuteButton from '@/features/setupPanel/components/TriggerExecuteButton.vue';
@@ -287,17 +287,21 @@ watch(hoveredSection, (section) => {
 				>
 					{{ i18n.baseText('aiAssistant.builder.setupWizard.clearData' as BaseTextKey) }}
 				</N8nButton>
-				<N8nButton
+				<N8nTooltip
 					v-else-if="showSkip"
-					variant="outline"
-					size="small"
-					data-test-id="builder-node-group-card-skip"
-					:class="$style.actionButton"
-					:title="i18n.baseText('aiAssistant.builder.setupWizard.skipTooltip' as BaseTextKey)"
-					@click="emit('setPinData')"
+					:content="i18n.baseText('aiAssistant.builder.setupWizard.skipTooltip')"
 				>
-					{{ i18n.baseText('aiAssistant.builder.setupWizard.skip' as BaseTextKey) }}
-				</N8nButton>
+					<N8nButton
+						variant="outline"
+						size="small"
+						data-test-id="builder-node-group-card-skip"
+						:disabled="isExecuting"
+						:class="$style.actionButton"
+						@click="emit('setPinData')"
+					>
+						{{ i18n.baseText('aiAssistant.builder.setupWizard.skip' as BaseTextKey) }}
+					</N8nButton>
+				</N8nTooltip>
 
 				<N8nButton
 					v-if="showContinue"
