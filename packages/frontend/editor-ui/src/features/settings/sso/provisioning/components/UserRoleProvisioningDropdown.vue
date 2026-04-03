@@ -165,10 +165,15 @@ defineExpose({ legacyValue, showRuleEditor });
 		<!-- Info box for IdP-managed mode -->
 		<div v-if="showIdpInfoBox" :class="$style.infoBox">
 			<N8nCallout theme="secondary">
-				{{ idpInfoText }}
-				<a :href="`https://docs.n8n.io/user-management/${authProtocol}/setup/`" target="_blank">{{
-					i18n.baseText('settings.sso.settings.roleMappingMethod.idp.learnMore')
-				}}</a>
+				<div>
+					{{ idpInfoText }}
+				</div>
+				<a
+					:href="`https://docs.n8n.io/user-management/${authProtocol}/setup/`"
+					target="_blank"
+					:class="$style.learnMoreLink"
+					>{{ i18n.baseText('settings.sso.settings.roleMappingMethod.idp.learnMore') }}</a
+				>
 			</N8nCallout>
 		</div>
 	</div>
@@ -239,8 +244,17 @@ defineExpose({ legacyValue, showRuleEditor });
 
 .infoBox {
 	padding: var(--spacing--xs) 0;
+}
 
-	a {
+.learnMoreLink {
+	display: block;
+	margin-top: var(--spacing--4xs);
+	color: var(--color--text--shade-1);
+	font-weight: var(--font-weight--bold);
+	font-size: var(--font-size--2xs);
+	text-decoration: underline;
+
+	&:hover {
 		color: var(--color--primary);
 	}
 }
