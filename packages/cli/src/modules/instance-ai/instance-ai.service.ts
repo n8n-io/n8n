@@ -119,11 +119,13 @@ export class InstanceAiService {
 		string,
 		{ threadId: string; messageGroupId?: string; tracing: InstanceAiTraceContext }
 	>();
-
 	/** Active sandboxes keyed by thread ID — persisted across messages within a conversation. */
 	private readonly sandboxes = new Map<
 		string,
-		{ sandbox: ReturnType<typeof createSandbox>; workspace: ReturnType<typeof createWorkspace> }
+		{
+			sandbox: Awaited<ReturnType<typeof createSandbox>>;
+			workspace: ReturnType<typeof createWorkspace>;
+		}
 	>();
 
 	/** Singleton local filesystem provider — created lazily when filesystem config is enabled. */
@@ -318,7 +320,7 @@ export class InstanceAiService {
 		const config = await this.resolveSandboxConfig(user);
 		if (!config.enabled) return undefined;
 
-		const sandbox = createSandbox(config);
+		const sandbox = await createSandbox(config);
 		const workspace = createWorkspace(sandbox);
 		if (!sandbox || !workspace) return undefined;
 
@@ -1813,6 +1815,7 @@ export class InstanceAiService {
 			...(data.nodeParameters ? { nodeParameters: data.nodeParameters } : {}),
 			...(data.testTriggerNode ? { testTriggerNode: data.testTriggerNode } : {}),
 			...(data.answers ? { answers: data.answers } : {}),
+			...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),
 		};
 
 		void this.processResumedStream(agent, resumeData, {

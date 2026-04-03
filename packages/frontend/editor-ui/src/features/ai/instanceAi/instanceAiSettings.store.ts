@@ -60,6 +60,9 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const isLocalGatewayDisabled = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.localGatewayDisabled === true,
 	);
+	const isProxyEnabled = computed(
+		() => settingsStore.moduleSettings?.['instance-ai']?.proxyEnabled === true,
+	);
 
 	const isDirty = computed(() => {
 		if (!settings.value && !preferences.value) return false;
@@ -69,16 +72,20 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	async function fetch(): Promise<void> {
 		isLoading.value = true;
 		try {
-			const [s, p, c, sc] = await Promise.all([
+			const [s, p] = await Promise.all([
 				fetchSettings(rootStore.restApiContext),
 				fetchPreferences(rootStore.restApiContext),
-				fetchModelCredentials(rootStore.restApiContext),
-				fetchServiceCredentials(rootStore.restApiContext),
 			]);
 			settings.value = s;
 			preferences.value = p;
-			credentials.value = c;
-			serviceCredentials.value = sc;
+			if (!isProxyEnabled.value) {
+				const [c, sc] = await Promise.all([
+					fetchModelCredentials(rootStore.restApiContext),
+					fetchServiceCredentials(rootStore.restApiContext),
+				]);
+				credentials.value = c;
+				serviceCredentials.value = sc;
+			}
 			clearDraft();
 		} catch {
 			toast.showError(new Error('Failed to load settings'), 'Settings error');
@@ -297,6 +304,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	}
 
 	async function refreshCredentials(): Promise<void> {
+		if (isProxyEnabled.value) return;
 		try {
 			const [c, sc] = await Promise.all([
 				fetchModelCredentials(rootStore.restApiContext),
@@ -342,6 +350,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		localGatewayFallbackDirectory,
 		activeDirectory,
 		isLocalGatewayDisabled,
+		isProxyEnabled,
 		pollGatewayStatus,
 		stopGatewayPolling,
 		startDaemonProbing,

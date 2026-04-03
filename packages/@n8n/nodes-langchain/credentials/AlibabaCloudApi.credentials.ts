@@ -12,8 +12,7 @@ export class AlibabaCloudApi implements ICredentialType {
 
 	displayName = 'Alibaba Cloud';
 
-	documentationUrl =
-		'https://www.alibabacloud.com/help/en/model-studio/developer-reference/compatibility-of-openai-with-dashscope';
+	documentationUrl = 'alibaba';
 
 	properties: INodeProperties[] = [
 		{

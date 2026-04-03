@@ -16,6 +16,7 @@ import type {
 	INodeOutputConfiguration,
 	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
+	IWorkflowExecutionCustomData,
 	NodeConnectionType,
 	NodeFeatures,
 	NodeInputConnections,
@@ -44,6 +45,7 @@ import { InstanceSettings } from '@/instance-settings';
 import { generateUrlSignature, prepareUrlForSigning } from '@/utils/signature-helpers';
 
 import { cleanupParameterData } from './utils/cleanup-parameter-data';
+import { createExecutionCustomData } from './utils/custom-data';
 import { ensureType } from './utils/ensure-type';
 import { extractValue } from './utils/extract-value';
 import { getAdditionalKeys } from './utils/get-additional-keys';
@@ -66,6 +68,19 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	@Memoized
 	get logger() {
 		return Container.get(Logger);
+	}
+
+	@Memoized
+	get customData(): IWorkflowExecutionCustomData {
+		if (!this.runExecutionData) {
+			throw new ApplicationError(
+				'Cannot access customData: runExecutionData is not available in this context',
+			);
+		}
+		return createExecutionCustomData({
+			runExecutionData: this.runExecutionData,
+			mode: this.mode,
+		});
 	}
 
 	getExecutionContext() {
