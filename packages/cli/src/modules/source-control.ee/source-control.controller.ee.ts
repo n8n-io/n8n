@@ -151,6 +151,17 @@ export class SourceControlController {
 		}
 	}
 
+	@Post('/auto-configure')
+	@GlobalScope('sourceControl:manage')
+	async autoConfigure(): Promise<SourceControlPreferences> {
+		try {
+			await this.sourceControlService.autoConfigureFromEnv();
+			return this.sourceControlPreferencesService.getPreferences();
+		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
 	@Post('/disconnect')
 	@GlobalScope('sourceControl:manage')
 	async disconnect(req: SourceControlRequest.Disconnect) {
