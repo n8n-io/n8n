@@ -16,6 +16,7 @@ describe('GithubTrigger Node', () => {
 
 			mockThis = {
 				getWorkflowStaticData: () => webhookData,
+				getNodeWebhookUrl: () => 'https://example.com/webhook',
 				getNodeParameter: jest.fn().mockImplementation((name: string) => {
 					if (name === 'owner') return 'some-owner';
 					if (name === 'repository') return 'some-repo';
@@ -23,8 +24,19 @@ describe('GithubTrigger Node', () => {
 			};
 		});
 
-		it('should delete webhook data and return false when webhook is not found (404)', async () => {
+		it('should return true when webhook ID lookup succeeds', async () => {
+			jest.spyOn(GenericFunctions, 'githubApiRequest').mockResolvedValueOnce({});
+
+			const trigger = new GithubTrigger();
+			const result = await trigger.webhookMethods.default.checkExists.call(mockThis);
+
+			expect(result).toBe(true);
+			expect(webhookData.webhookId).toBe('123456');
+		});
+
+		it('should fall back to URL check and return false when webhook is not found (404) and no URL match', async () => {
 			jest.spyOn(GenericFunctions, 'githubApiRequest').mockRejectedValue({ httpCode: '404' });
+			jest.spyOn(GenericFunctions, 'githubApiRequestAllItems').mockResolvedValueOnce([]);
 
 			const trigger = new GithubTrigger();
 			const result = await trigger.webhookMethods.default.checkExists.call(mockThis);
@@ -32,6 +44,46 @@ describe('GithubTrigger Node', () => {
 			expect(result).toBe(false);
 			expect(webhookData.webhookId).toBeUndefined();
 			expect(webhookData.webhookEvents).toBeUndefined();
+		});
+
+		it('should find existing webhook by URL when webhook ID is not stored', async () => {
+			webhookData = {};
+			jest.spyOn(GenericFunctions, 'githubApiRequestAllItems').mockResolvedValueOnce([
+				{ id: '999', events: ['push'], config: { url: 'https://example.com/webhook' } },
+			]);
+
+			const trigger = new GithubTrigger();
+			const result = await trigger.webhookMethods.default.checkExists.call(mockThis);
+
+			expect(result).toBe(true);
+			expect(webhookData.webhookId).toBe('999');
+			expect(webhookData.webhookEvents).toEqual(['push']);
+		});
+
+		it('should find existing webhook by URL after stored ID returns 404', async () => {
+			jest.spyOn(GenericFunctions, 'githubApiRequest').mockRejectedValue({ httpCode: '404' });
+			jest.spyOn(GenericFunctions, 'githubApiRequestAllItems').mockResolvedValueOnce([
+				{ id: '777', events: ['push', 'issues'], config: { url: 'https://example.com/webhook' } },
+			]);
+
+			const trigger = new GithubTrigger();
+			const result = await trigger.webhookMethods.default.checkExists.call(mockThis);
+
+			expect(result).toBe(true);
+			expect(webhookData.webhookId).toBe('777');
+			expect(webhookData.webhookEvents).toEqual(['push', 'issues']);
+		});
+
+		it('should return false when no webhooks match the URL', async () => {
+			webhookData = {};
+			jest.spyOn(GenericFunctions, 'githubApiRequestAllItems').mockResolvedValueOnce([
+				{ id: '111', events: ['push'], config: { url: 'https://other.com/webhook' } },
+			]);
+
+			const trigger = new GithubTrigger();
+			const result = await trigger.webhookMethods.default.checkExists.call(mockThis);
+
+			expect(result).toBe(false);
 		});
 	});
 
