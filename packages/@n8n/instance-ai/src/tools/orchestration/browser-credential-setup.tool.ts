@@ -432,6 +432,7 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 									agentId: subAgentId,
 									eventBus: context.eventBus,
 									signal: context.abortSignal,
+									logger: context.logger,
 								},
 								control: {
 									mode: 'auto',
