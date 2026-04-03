@@ -3,7 +3,10 @@ import { computed } from 'vue';
 import Draggable from 'vuedraggable';
 import { N8nIcon, N8nOption, N8nSelect } from '@n8n/design-system';
 import { useRolesStore } from '@/app/stores/roles.store';
-import type { RoleMappingRuleResponse } from '@n8n/rest-api-client/api/roleMappingRule';
+import type {
+	RoleMappingRuleResponse,
+	RoleMappingRuleType,
+} from '@n8n/rest-api-client/api/roleMappingRule';
 import RuleRow from './RuleRow.vue';
 
 const props = withDefaults(
