@@ -123,7 +123,7 @@ function createInlineExtensions() {
 		EditorState.readOnly.of(props.disabled),
 		EditorView.theme({
 			'&': {
-				fontSize: 'var(--font-size--2xs)',
+				fontSize: 'var(--font-size--sm)',
 				borderWidth: 'var(--border-width)',
 				borderStyle: 'var(--border-style)',
 				borderColor: 'var(--input--border-color, var(--border-color))',
@@ -150,6 +150,8 @@ function createInlineExtensions() {
 				lineHeight: '28px',
 				overflowX: 'auto',
 				overflowY: 'hidden',
+				display: 'flex',
+				alignItems: 'center',
 			},
 			...sharedThemeRules,
 		}),
@@ -331,8 +333,8 @@ watch(
 	color: var(--color--text--tint-2);
 	font-style: italic;
 	font-family: var(--font-family--monospace);
-	font-size: var(--font-size--2xs);
-	line-height: 28px;
+	font-size: var(--font-size--sm);
+	line-height: 30px;
 	pointer-events: none;
 	position: absolute;
 	left: var(--spacing--2xs);
