@@ -32,11 +32,15 @@ const clientSecret = ref('');
 const showUserRoleProvisioningDialog = ref(false);
 
 const {
+	roleAssignment,
+	mappingMethod,
 	formValue: userRoleProvisioning,
 	isUserRoleProvisioningChanged,
 	saveProvisioningConfig,
 	shouldPromptUserToConfirmUserRoleProvisioningChange,
 } = useUserRoleProvisioningForm(SupportedProtocols.OIDC);
+
+const provisioningDropdownRef = ref<InstanceType<typeof UserRoleProvisioningDropdown> | null>(null);
 
 type PromptType = 'login' | 'none' | 'consent' | 'select_account' | 'create';
 
@@ -268,9 +272,14 @@ onMounted(async () => {
 			</div>
 		</div>
 		<div :class="$style.card">
-			<UserRoleProvisioningDropdown v-model="userRoleProvisioning" auth-protocol="oidc" />
+			<UserRoleProvisioningDropdown
+				ref="provisioningDropdownRef"
+				v-model:role-assignment="roleAssignment"
+				v-model:mapping-method="mappingMethod"
+				auth-protocol="oidc"
+			/>
 			<RoleMappingRuleEditor
-				v-if="userRoleProvisioning === 'expression_based'"
+				v-if="provisioningDropdownRef?.showRuleEditor"
 				ref="roleMappingRuleEditorRef"
 			/>
 			<ConfirmProvisioningDialog

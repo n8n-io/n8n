@@ -68,11 +68,15 @@ const entityId = ref();
 const showUserRoleProvisioningDialog = ref(false);
 
 const {
+	roleAssignment,
+	mappingMethod,
 	formValue: userRoleProvisioning,
 	isUserRoleProvisioningChanged,
 	saveProvisioningConfig,
 	shouldPromptUserToConfirmUserRoleProvisioningChange,
 } = useUserRoleProvisioningForm(SupportedProtocols.SAML);
+
+const provisioningDropdownRef = ref<InstanceType<typeof UserRoleProvisioningDropdown> | null>(null);
 
 async function loadSamlConfig() {
 	if (!ssoStore.isEnterpriseSamlEnabled) {
@@ -388,9 +392,14 @@ onMounted(async () => {
 
 		<!-- Card 2: Role Mapping -->
 		<div :class="$style.card">
-			<UserRoleProvisioningDropdown v-model="userRoleProvisioning" auth-protocol="saml" />
+			<UserRoleProvisioningDropdown
+				ref="provisioningDropdownRef"
+				v-model:role-assignment="roleAssignment"
+				v-model:mapping-method="mappingMethod"
+				auth-protocol="saml"
+			/>
 			<RoleMappingRuleEditor
-				v-if="userRoleProvisioning === 'expression_based'"
+				v-if="provisioningDropdownRef?.showRuleEditor"
 				ref="roleMappingRuleEditorRef"
 			/>
 			<ConfirmProvisioningDialog

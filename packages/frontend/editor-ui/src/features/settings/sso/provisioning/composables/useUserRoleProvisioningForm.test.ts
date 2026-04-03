@@ -29,6 +29,7 @@ describe('useUserRoleProvisioningForm', () => {
 			scopesProjectsRolesClaimName: 'n8n_projects',
 			scopesProvisionInstanceRole: false,
 			scopesProvisionProjectRoles: false,
+			scopesUseExpressionMapping: false,
 		};
 		return { ...defaultConfig, ...config };
 	};
@@ -86,11 +87,11 @@ describe('useUserRoleProvisioningForm', () => {
 			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
 				mockProvisioningConfig({ scopesProvisionInstanceRole: true }),
 			);
-			const { formValue, shouldPromptUserToConfirmUserRoleProvisioningChange } =
+			const { roleAssignment, formValue, shouldPromptUserToConfirmUserRoleProvisioningChange } =
 				useUserRoleProvisioningForm('oidc');
 			await vi.waitFor(() => expect(formValue.value).toBe('instance_role'));
 
-			formValue.value = 'instance_and_project_roles';
+			roleAssignment.value = 'instance_and_project';
 
 			const result = shouldPromptUserToConfirmUserRoleProvisioningChange({
 				currentLoginEnabled: true,
@@ -107,11 +108,16 @@ describe('useUserRoleProvisioningForm', () => {
 					scopesProvisionProjectRoles: false,
 				}),
 			);
-			const { formValue, shouldPromptUserToConfirmUserRoleProvisioningChange } =
-				useUserRoleProvisioningForm('oidc');
+			const {
+				roleAssignment,
+				mappingMethod,
+				formValue,
+				shouldPromptUserToConfirmUserRoleProvisioningChange,
+			} = useUserRoleProvisioningForm('oidc');
 			await vi.waitFor(() => expect(formValue.value).toBe('disabled'));
 
-			formValue.value = 'expression_based';
+			roleAssignment.value = 'instance_and_project';
+			mappingMethod.value = 'rules_in_n8n';
 
 			const result = shouldPromptUserToConfirmUserRoleProvisioningChange({
 				currentLoginEnabled: false,
