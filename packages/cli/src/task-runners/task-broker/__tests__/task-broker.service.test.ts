@@ -1036,17 +1036,30 @@ describe('TaskBroker', () => {
 			jest.useRealTimers();
 		});
 
-		it('should reset timeout on request deferred', async () => {
+		it('should reset timeout on request deferred without duplicating the request', async () => {
 			jest.useFakeTimers();
 
+			const runnerId = 'runner1';
+			const runner = mock<TaskRunner>({ id: runnerId });
 			const requesterId = 'requester1';
 			const requesterCallback = jest.fn();
 
 			taskBroker.registerRequester(requesterId, requesterCallback);
 
+			// Runner callback that triggers `runner:taskdeferred` when broker accepts an offer
+			const runnerCallback = jest.fn().mockImplementation(async (msg) => {
+				if (msg.type === 'broker:taskofferaccept') {
+					await taskBroker.onRunnerMessage(runnerId, {
+						type: 'runner:taskdeferred',
+						taskId: msg.taskId,
+					});
+				}
+			});
+			taskBroker.registerRunner(runner, runnerCallback);
+
 			const offer: TaskOffer = {
 				offerId: 'offer1',
-				runnerId: 'runner1',
+				runnerId,
 				taskType: 'taskType1',
 				validFor: 1000,
 				validUntil: createValidUntil(1000),
@@ -1056,24 +1069,20 @@ describe('TaskBroker', () => {
 				requestId: 'request1',
 				requesterId,
 				taskType: 'taskType1',
+				timeout: taskBroker['createRequestTimeout']('request1'),
 			};
 
-			taskBroker.setPendingTaskOffers([offer]);
+			// Place request in pendingTaskRequests before calling acceptOffer (as settleTasks would)
 			taskBroker.setPendingTaskRequests([request]);
 
-			const handleTimeoutSpy = jest.spyOn(taskBroker as any, 'handleRequestTimeout');
+			await taskBroker.acceptOffer(offer, request);
 
-			jest.spyOn(taskBroker, 'acceptOffer').mockImplementation(async (_offer, request) => {
-				clearTimeout(request.timeout);
-				request.timeout = taskBroker['createRequestTimeout'](request.requestId);
-				taskBroker.setPendingTaskRequests([request]);
-			});
-
-			taskBroker.settleTasks();
-
+			// Request must NOT be duplicated — still exactly one entry
 			expect(taskBroker.getPendingTaskRequests()).toHaveLength(1);
-			const deferredRequest = taskBroker.getPendingTaskRequests()[0];
-			expect(deferredRequest.timeout).toBeDefined();
+			expect(request.acceptInProgress).toBe(false);
+			expect(request.timeout).toBeDefined();
+
+			const handleTimeoutSpy = jest.spyOn(taskBroker as any, 'handleRequestTimeout');
 
 			jest.advanceTimersByTime(60 * 1000);
 
