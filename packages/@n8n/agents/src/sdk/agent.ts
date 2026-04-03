@@ -654,6 +654,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			}
 
 			memory = {
+				// TODO: each BuiltMemory should have describe() method to return a config showing connection params and other metadata
+				// this config must have enough information to rebuild the memory instance
 				source: null,
 				storage: mc.memory instanceof InMemoryMemory ? 'memory' : 'custom',
 				lastMessages: mc.lastMessages ?? null,
