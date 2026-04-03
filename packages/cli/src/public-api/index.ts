@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Router, ErrorRequestHandler, RequestHandler } from 'express';
 import express from 'express';
@@ -7,8 +8,10 @@ import path from 'path';
 import type { JsonObject } from 'swagger-ui-express';
 import validator from 'validator';
 
+import { EventService } from '@/events/event.service';
 import { License } from '@/license';
-import { PublicApiKeyService } from '@/services/public-api-key.service';
+import { ApiKeyAuthStrategy } from '@/services/api-key-auth.strategy';
+import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { UrlService } from '@/services/url.service';
 
 import { sendPublicApiErrorResponse } from './v1/public-api-error-response';
@@ -104,7 +107,21 @@ function createLazyValidatorMiddleware(
 						},
 						validateSecurity: {
 							handlers: {
-								ApiKeyAuth: Container.get(PublicApiKeyService).getAuthMiddleware(version),
+								ApiKeyAuth: async (req: AuthenticatedRequest) => {
+									const authenticated = await Container.get(AuthStrategyRegistry).authenticate(req);
+
+									if (authenticated) {
+										Container.get(EventService).emit('public-api-invoked', {
+											userId: req.user.id,
+											path: req.path,
+											method: req.method,
+											apiVersion: version,
+											userAgent: req.headers['user-agent'],
+										});
+									}
+
+									return authenticated;
+								},
 							},
 						},
 					}),
@@ -173,6 +190,14 @@ function createApiRouter(
 export const loadPublicApiVersions = async (
 	publicApiEndpoint: string,
 ): Promise<{ apiRouters: express.Router[]; apiLatestVersion: number }> => {
+	// Register auth strategies in priority order. The registry evaluates them
+	// sequentially — the first strategy that returns a non-null result wins.
+	// API key auth is registered first so existing behavior is preserved.
+	// Additional strategies (e.g. scoped JWT from the token-exchange module)
+	// can be appended later during their own module initialization.
+	const registry = Container.get(AuthStrategyRegistry);
+	registry.register(Container.get(ApiKeyAuthStrategy));
+
 	const folders = await fs.readdir(__dirname);
 	const versions = folders.filter((folderName) => folderName.startsWith('v'));
 

@@ -16,11 +16,11 @@ import { LastActiveAtService } from './last-active-at.service';
 
 import { EventService } from '@/events/event.service';
 
-const API_KEY_AUDIENCE = 'public-api';
-const API_KEY_ISSUER = 'n8n';
+export const API_KEY_AUDIENCE = 'public-api';
+export const API_KEY_ISSUER = 'n8n';
 const REDACT_API_KEY_REVEAL_COUNT = 4;
 const REDACT_API_KEY_MAX_LENGTH = 10;
-const PREFIX_LEGACY_API_KEY = 'n8n_api_';
+export const PREFIX_LEGACY_API_KEY = 'n8n_api_';
 
 @Service()
 export class PublicApiKeyService {
@@ -124,6 +124,7 @@ export class PublicApiKeyService {
 		return redactedPart + visiblePart;
 	}
 
+	/** @deprecated Use {@link ApiKeyAuthStrategy} registered via {@link AuthStrategyRegistry} instead. */
 	getAuthMiddleware(version: string) {
 		return async (
 			req: AuthenticatedRequest,
