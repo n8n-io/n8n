@@ -325,6 +325,10 @@ watch(
 
 .container {
 	width: 100%;
+
+	:global(.cm-content) {
+		padding: 0 !important;
+	}
 }
 
 .empty::before {
