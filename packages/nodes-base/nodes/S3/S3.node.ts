@@ -23,7 +23,7 @@ export class S3 implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:s3.png',
 		group: ['output'],
-		version: 1,
+		version: [1, 1.1],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Sends data to any S3-compatible service',
 		defaults: {
@@ -161,6 +161,16 @@ export class S3 implements INodeType {
 						);
 						returnData.push(...executionData);
 						// returnData.push({ success: true });
+					}
+					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteBucket.html
+					if (operation === 'delete') {
+						const name = this.getNodeParameter('name', i) as string;
+						await s3ApiRequestSOAP.call(this, `${name}`, 'DELETE', '');
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ success: true }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListBuckets.html
 					if (operation === 'getAll') {
@@ -548,7 +558,14 @@ export class S3 implements INodeType {
 							).toUpperCase();
 						}
 
-						const destinationParts = destinationPath.split('/');
+						// v1.1+: Normalize destinationPath to accept paths without a leading slash.
+						// Previously, omitting '/' caused the bucket name to be parsed as the file key.
+						const nodeVersion = this.getNode().typeVersion;
+						const normalizedDestination =
+							nodeVersion >= 1.1 && !destinationPath.startsWith('/')
+								? `/${destinationPath}`
+								: destinationPath;
+						const destinationParts = normalizedDestination.split('/');
 
 						const bucketName = destinationParts[1];
 
