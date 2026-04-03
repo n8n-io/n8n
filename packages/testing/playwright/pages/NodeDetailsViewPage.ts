@@ -99,15 +99,15 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getParameterExpressionPreviewValue() {
-		return this.getContainer().getByTestId('parameter-expression-preview-value');
+		return this.page.getByTestId('parameter-expression-preview-value');
 	}
 
 	getParameterExpressionPreviewOutput() {
-		return this.getContainer().getByTestId('parameter-expression-preview-output');
+		return this.page.getByTestId('parameter-expression-preview-output');
 	}
 
 	getInlineExpressionEditorPreview() {
-		return this.getContainer().getByTestId('inline-expression-editor-output');
+		return this.page.getByTestId('inline-expression-editor-output');
 	}
 
 	async activateParameterExpressionEditor(parameterName: string) {
@@ -309,15 +309,15 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getAskAiCtaTooltipNoInputData() {
-		return this.getContainer().getByTestId('ask-ai-cta-tooltip-no-input-data');
+		return this.page.getByTestId('ask-ai-cta-tooltip-no-input-data');
 	}
 
 	getAskAiCtaTooltipNoPrompt() {
-		return this.getContainer().getByTestId('ask-ai-cta-tooltip-no-prompt');
+		return this.page.getByTestId('ask-ai-cta-tooltip-no-prompt');
 	}
 
 	getAskAiCtaTooltipPromptTooShort() {
-		return this.getContainer().getByTestId('ask-ai-cta-tooltip-prompt-too-short');
+		return this.page.getByTestId('ask-ai-cta-tooltip-prompt-too-short');
 	}
 
 	getCodeTabPanel() {
@@ -416,7 +416,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getResourceMapperRemoveAllFieldsOption() {
-		return this.getContainer().getByTestId('action-removeAllFields');
+		return this.page.getByTestId('action-removeAllFields');
 	}
 
 	async refreshResourceMapperColumns() {
@@ -444,19 +444,19 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getInlineExpressionEditorOutput() {
-		return this.getContainer().getByTestId('inline-expression-editor-output');
+		return this.page.getByTestId('inline-expression-editor-output');
 	}
 
 	getInlineExpressionEditorItemInput() {
-		return this.getContainer().getByTestId('inline-expression-editor-item-input').locator('input');
+		return this.page.getByTestId('inline-expression-editor-item-input').locator('input');
 	}
 
 	getInlineExpressionEditorItemPrevButton() {
-		return this.getContainer().getByTestId('inline-expression-editor-item-prev');
+		return this.page.getByTestId('inline-expression-editor-item-prev');
 	}
 
 	getInlineExpressionEditorItemNextButton() {
-		return this.getContainer().getByTestId('inline-expression-editor-item-next');
+		return this.page.getByTestId('inline-expression-editor-item-next');
 	}
 
 	async expressionSelectNextItem() {
