@@ -1,5 +1,6 @@
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import pick from 'lodash/pick';
+import { autoSaveHighlightedDataProperty } from 'n8n-nodes-base/dist/utils/highlightedData';
 import {
 	Node,
 	NodeConnectionTypes,
@@ -7,6 +8,8 @@ import {
 	assertParamIsBoolean,
 	validateNodeParameters,
 	assertParamIsString,
+	getHighlightedInputKey,
+	HIGHLIGHTED_SESSION_KEY,
 } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -567,6 +570,7 @@ export class ChatTrigger extends Node {
 						default: 'lastNode',
 						description: 'When and how to respond to the webhook',
 					},
+					autoSaveHighlightedDataProperty,
 				],
 			},
 			// Options for version 1.2 (with streaming)
@@ -603,6 +607,7 @@ export class ChatTrigger extends Node {
 						description: 'When and how to respond to the webhook',
 						displayOptions: { show: { '/availableInChat': [true] } },
 					},
+					autoSaveHighlightedDataProperty,
 				],
 			},
 			{
@@ -638,6 +643,7 @@ export class ChatTrigger extends Node {
 						description: 'When and how to respond to the chat',
 						displayOptions: { show: { '/availableInChat': [true] } },
 					},
+					autoSaveHighlightedDataProperty,
 				],
 			},
 			{
@@ -691,6 +697,7 @@ export class ChatTrigger extends Node {
 						description: 'When and how to respond to the chat',
 						displayOptions: { show: { '/mode': ['hostedChat'], '/availableInChat': [true] } },
 					},
+					autoSaveHighlightedDataProperty,
 				],
 			},
 		],
@@ -793,6 +800,7 @@ export class ChatTrigger extends Node {
 				allowedFilesMimeTypes: { type: 'string' },
 				customCss: { type: 'string' },
 				responseMode: { type: 'string' },
+				[autoSaveHighlightedDataProperty.name]: { type: 'boolean' },
 			},
 			ctx.getNode(),
 		);
@@ -886,6 +894,15 @@ export class ChatTrigger extends Node {
 				return {
 					webhookResponse: { data: [] },
 				};
+			}
+		}
+
+		if (ctx.getNodeParameter('options.autoSaveHighlightedData', true) !== false) {
+			if (typeof bodyData.chatInput === 'string') {
+				ctx.customData.set(getHighlightedInputKey(ctx.getNode().name), bodyData.chatInput);
+			}
+			if (typeof bodyData.sessionId === 'string') {
+				ctx.customData.set(HIGHLIGHTED_SESSION_KEY, bodyData.sessionId);
 			}
 		}
 
