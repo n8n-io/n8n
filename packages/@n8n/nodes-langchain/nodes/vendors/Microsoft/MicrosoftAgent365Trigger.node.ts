@@ -235,6 +235,13 @@ export class MicrosoftAgent365Trigger implements INodeType {
 
 			await agent.adapter.process(req, res, callback);
 
+			if (
+				activityCapture.activity.type === 'event' ||
+				activityCapture.input.trimStart().startsWith('<addmember>')
+			) {
+				return { noWebhookResponse: true };
+			}
+
 			let returnData;
 
 			if (node.typeVersion === 1) {
