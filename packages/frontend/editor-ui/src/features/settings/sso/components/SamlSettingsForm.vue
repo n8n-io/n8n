@@ -38,6 +38,7 @@ async function handleCopy(value: string, field: string) {
 }
 
 const savingForm = ref<boolean>(false);
+const roleMappingRuleEditorRef = ref<InstanceType<typeof RoleMappingRuleEditor> | null>(null);
 
 const redirectUrl = ref();
 const samlLoginEnabled = ref<boolean>(false);
@@ -114,8 +115,12 @@ const isSaveEnabled = computed(() => {
 		return false;
 	};
 	const isSamlLoginEnabledChanged = ssoStore.isSamlLoginEnabled !== samlLoginEnabled.value;
+	const isRuleMappingDirty = roleMappingRuleEditorRef.value?.isDirty ?? false;
 	return (
-		isUserRoleProvisioningChanged.value || isIdentityProviderChanged() || isSamlLoginEnabledChanged
+		isUserRoleProvisioningChanged.value ||
+		isIdentityProviderChanged() ||
+		isSamlLoginEnabledChanged ||
+		isRuleMappingDirty
 	);
 });
 
@@ -240,6 +245,10 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 		});
 
 		await saveProvisioningConfig(isDisablingSamlLogin);
+
+		if (userRoleProvisioning.value === 'expression_based') {
+			await roleMappingRuleEditorRef.value?.save();
+		}
 
 		// Update store with saved protocol selection
 		ssoStore.selectedAuthProtocol = SupportedProtocols.SAML;
@@ -397,8 +406,8 @@ onMounted(async () => {
 		<div :class="$style.card">
 			<div :class="$style.settingsItem" style="border-bottom: none">
 				<div :class="$style.settingsItemLabel">
-					<label>Single sign-on (SSO)</label>
-					<small>Allow users to sign in through your identity provider</small>
+					<label>{{ i18n.baseText('settings.sso.settings.ssoToggle.label') }}</label>
+					<small>{{ i18n.baseText('settings.sso.settings.ssoToggle.description') }}</small>
 				</div>
 				<div :class="$style.settingsItemControl">
 					<N8nSelect
