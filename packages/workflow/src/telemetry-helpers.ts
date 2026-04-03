@@ -62,6 +62,17 @@ export function isNumber(value: unknown): value is number {
 	return typeof value === 'number';
 }
 
+function isTokenUsage(value: unknown): value is { promptTokens: number; completionTokens: number } {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'promptTokens' in value &&
+		typeof value.promptTokens === 'number' &&
+		'completionTokens' in value &&
+		typeof value.completionTokens === 'number'
+	);
+}
+
 function resolveParameterValue(value: unknown): string | undefined {
 	if (typeof value === 'string') {
 		return value;
@@ -86,10 +97,9 @@ function extractNodeTokenUsage(
 			for (const branch of lmOutputs) {
 				for (const item of branch ?? []) {
 					const usage = item?.json?.tokenUsage ?? item?.json?.tokenUsageEstimate;
-					if (usage && typeof usage === 'object') {
-						input += (usage as Record<string, number>).promptTokens ?? 0;
-						output += (usage as Record<string, number>).completionTokens ?? 0;
-					}
+					if (!isTokenUsage(usage)) continue;
+					input += usage.promptTokens;
+					output += usage.completionTokens;
 				}
 			}
 		} else if (task.metadata?.tokenUsage) {

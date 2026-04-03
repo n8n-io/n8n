@@ -511,6 +511,21 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		body,
 	})) as GenerateContentResponse;
 
+	const captureUsage = () => {
+		const usageMetadata = (response as unknown as Record<string, unknown>).usageMetadata as
+			| { promptTokenCount: number; candidatesTokenCount: number }
+			| undefined;
+		if (usageMetadata) {
+			accumulateTokenUsage(
+				this,
+				usageMetadata.promptTokenCount,
+				usageMetadata.candidatesTokenCount,
+			);
+		}
+	};
+
+	captureUsage();
+
 	const maxToolsIterations = this.getNodeParameter('options.maxToolsIterations', i, 15) as number;
 	const abortSignal = this.getExecutionCancelSignal();
 	let currentIteration = 1;
@@ -552,15 +567,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:generateContent`, {
 			body,
 		})) as GenerateContentResponse;
+		captureUsage();
 		toolCalls = getToolCalls(response);
 		currentIteration++;
-	}
-
-	const usageMetadata = (response as unknown as Record<string, unknown>).usageMetadata as
-		| { promptTokenCount: number; candidatesTokenCount: number }
-		| undefined;
-	if (usageMetadata) {
-		accumulateTokenUsage(this, usageMetadata.promptTokenCount, usageMetadata.candidatesTokenCount);
 	}
 
 	const candidates = options.includeMergedResponse

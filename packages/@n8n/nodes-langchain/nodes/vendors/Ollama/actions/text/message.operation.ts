@@ -404,6 +404,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		body,
 	});
 
+	if (response.prompt_eval_count != null || response.eval_count != null) {
+		accumulateTokenUsage(this, response.prompt_eval_count ?? 0, response.eval_count ?? 0);
+	}
+
 	if (tools.length > 0 && response.message.tool_calls && response.message.tool_calls.length > 0) {
 		const toolCalls = response.message.tool_calls;
 
@@ -449,10 +453,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		response = await apiRequest.call(this, 'POST', '/api/chat', {
 			body: updatedBody,
 		});
-	}
 
-	if (response.prompt_eval_count != null || response.eval_count != null) {
-		accumulateTokenUsage(this, response.prompt_eval_count ?? 0, response.eval_count ?? 0);
+		if (response.prompt_eval_count != null || response.eval_count != null) {
+			accumulateTokenUsage(this, response.prompt_eval_count ?? 0, response.eval_count ?? 0);
+		}
 	}
 
 	if (simplify) {

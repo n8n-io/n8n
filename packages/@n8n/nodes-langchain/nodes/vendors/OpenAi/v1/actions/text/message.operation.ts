@@ -293,6 +293,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	if (!response) return [];
 
+	if (response.usage) {
+		accumulateTokenUsage(this, response.usage.prompt_tokens, response.usage.completion_tokens);
+	}
+
 	let currentIteration = 1;
 	let toolCalls = response?.choices[0]?.message?.tool_calls;
 
@@ -334,6 +338,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			body,
 		})) as ChatCompletion;
 
+		if (response.usage) {
+			accumulateTokenUsage(this, response.usage.prompt_tokens, response.usage.completion_tokens);
+		}
+
 		toolCalls = response.choices[0].message.tool_calls;
 		currentIteration += 1;
 	}
@@ -345,10 +353,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			} catch (error) {}
 			return choice;
 		});
-	}
-
-	if (response.usage) {
-		accumulateTokenUsage(this, response.usage.prompt_tokens, response.usage.completion_tokens);
 	}
 
 	const simplify = this.getNodeParameter('simplify', i) as boolean;
