@@ -31,7 +31,6 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 			fetchError.value = null;
 		} catch (error) {
 			fetchError.value = toError(error);
-			console.error('[aiGatewayStore] Failed to fetch gateway config:', error);
 		}
 	}
 
@@ -43,7 +42,6 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 			fetchError.value = null;
 		} catch (error) {
 			fetchError.value = toError(error);
-			console.error('[aiGatewayStore] Failed to fetch credits:', error);
 		}
 	}
 
@@ -55,7 +53,6 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 			fetchError.value = null;
 		} catch (error) {
 			fetchError.value = toError(error);
-			console.error('[aiGatewayStore] Failed to fetch usage:', error);
 		}
 	}
 
@@ -67,7 +64,6 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 			fetchError.value = null;
 		} catch (error) {
 			fetchError.value = toError(error);
-			console.error('[aiGatewayStore] Failed to fetch more usage:', error);
 		}
 	}
 

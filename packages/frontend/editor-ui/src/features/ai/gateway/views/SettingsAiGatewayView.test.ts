@@ -74,23 +74,13 @@ describe('SettingsAiGatewayView', () => {
 		});
 	});
 
-	describe('providerLabel()', () => {
-		it('should map known provider keys to display names', async () => {
+	describe('provider', () => {
+		it('should render the raw provider string', async () => {
 			mockGetGatewayUsage.mockResolvedValue({ entries: MOCK_ENTRIES, total: 2 });
 			renderComponent();
 
-			await waitFor(() => expect(screen.getByText('Google')).toBeInTheDocument());
-			expect(screen.getByText('Anthropic')).toBeInTheDocument();
-		});
-
-		it('should fall back to the raw provider string for unknown providers', async () => {
-			mockGetGatewayUsage.mockResolvedValue({
-				entries: [{ ...MOCK_ENTRIES[0], provider: 'mystery-ai' }],
-				total: 1,
-			});
-			renderComponent();
-
-			await waitFor(() => expect(screen.getByText('mystery-ai')).toBeInTheDocument());
+			await waitFor(() => expect(screen.getByText('google')).toBeInTheDocument());
+			expect(screen.getByText('anthropic')).toBeInTheDocument();
 		});
 	});
 
@@ -134,6 +124,32 @@ describe('SettingsAiGatewayView', () => {
 			await waitFor(() =>
 				expect(screen.getByRole('button', { name: /load more/i })).toBeInTheDocument(),
 			);
+		});
+
+		it('should ignore rapid clicks while loading', async () => {
+			let resolveFirst!: () => void;
+			const firstCall = new Promise<{ entries: typeof MOCK_ENTRIES; total: number }>(
+				(resolve) => (resolveFirst = () => resolve({ entries: MOCK_ENTRIES, total: 100 })),
+			);
+			mockGetGatewayUsage.mockResolvedValueOnce({ entries: MOCK_ENTRIES, total: 100 });
+			renderComponent();
+
+			await waitFor(() =>
+				expect(screen.getByRole('button', { name: /load more/i })).toBeInTheDocument(),
+			);
+
+			mockGetGatewayUsage.mockReturnValueOnce(firstCall);
+			const loadMoreBtn = screen.getByRole('button', { name: /load more/i });
+
+			// Click twice rapidly
+			await userEvent.click(loadMoreBtn);
+			await userEvent.click(loadMoreBtn);
+
+			resolveFirst();
+
+			// fetchMoreUsage should only have been called once for the rapid double-click
+			await waitFor(() => expect(mockGetGatewayUsage).toHaveBeenCalledTimes(2));
+			expect(mockGetGatewayUsage).toHaveBeenCalledTimes(2); // 1 initial + 1 loadMore
 		});
 
 		it('should fetch the next page and append entries when Load More is clicked', async () => {

@@ -31,15 +31,6 @@ function formatTokens(value?: number): string {
 	return value !== undefined ? String(value) : '—';
 }
 
-function providerLabel(provider: string): string {
-	const map: Record<string, string> = {
-		openai: 'OpenAI',
-		anthropic: 'Anthropic',
-		google: 'Google',
-	};
-	return map[provider.toLowerCase()] ?? provider;
-}
-
 async function load(): Promise<void> {
 	offset.value = 0;
 	isLoading.value = true;
@@ -55,6 +46,7 @@ async function refresh(): Promise<void> {
 }
 
 async function loadMore(): Promise<void> {
+	if (isLoading.value) return;
 	offset.value += PAGE_SIZE;
 	isLoading.value = true;
 	try {
@@ -113,7 +105,7 @@ onMounted(async () => {
 							<td>{{ formatDate(entry.timestamp) }}</td>
 							<td>
 								<span :class="$style.badge">
-									{{ providerLabel(entry.provider) }}
+									{{ entry.provider }}
 								</span>
 							</td>
 							<td>{{ entry.model }}</td>
@@ -192,12 +184,12 @@ onMounted(async () => {
 	tbody tr:last-child td {
 		border-bottom: none;
 	}
-}
 
-.empty {
-	text-align: center;
-	color: var(--color--text--tint-2);
-	padding: var(--spacing--xl) !important;
+	.empty {
+		text-align: center;
+		color: var(--color--text--tint-2);
+		padding: var(--spacing--xl);
+	}
 }
 
 .badge {

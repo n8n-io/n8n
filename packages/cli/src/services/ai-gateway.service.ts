@@ -69,7 +69,11 @@ export class AiGatewayService {
 			? await this.ownershipService.getPersonalProjectOwnerCached(resolvedProjectId)
 			: null;
 		if (owner) return owner.id;
-		return (await this.ownershipService.getInstanceOwner())?.id;
+		try {
+			return (await this.ownershipService.getInstanceOwner()).id;
+		} catch {
+			return undefined;
+		}
 	}
 
 	/**

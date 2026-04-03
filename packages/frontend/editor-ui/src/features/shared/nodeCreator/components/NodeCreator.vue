@@ -15,7 +15,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { DRAG_EVENT_DATA_KEY } from '@/app/constants';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
+import { useAiGateway } from '@/app/composables/useAiGateway';
 import type { NodeTypeSelectedPayload } from '@/Interface';
 import { onClickOutside } from '@vueuse/core';
 
@@ -114,8 +114,10 @@ function onDrop(event: DragEvent) {
 	}
 }
 
+const { fetchConfig: fetchAiGatewayConfig } = useAiGateway();
+
 onMounted(() => {
-	void useAiGatewayStore().fetchConfig();
+	void fetchAiGatewayConfig();
 });
 
 watch(

@@ -285,6 +285,22 @@ describe('AiGatewayService', () => {
 			);
 		});
 
+		it('throws UserError when getInstanceOwner throws (no instance owner found)', async () => {
+			const ownershipService = mock<OwnershipService>();
+			ownershipService.getPersonalProjectOwnerCached.mockResolvedValue(null);
+			ownershipService.getInstanceOwner.mockRejectedValue(new Error('No owner found'));
+			mockConfigThenToken(fetchMock);
+			const service = makeService({ ownershipService });
+
+			await expect(
+				service.getSyntheticCredential({
+					credentialType: 'googlePalmApi',
+					userId: undefined,
+					projectId: 'project-123',
+				}),
+			).rejects.toThrow('Failed to resolve user for AI Gateway attribution.');
+		});
+
 		it('throws UserError when gateway token response is missing token field', async () => {
 			fetchMock
 				.mockResolvedValueOnce({
