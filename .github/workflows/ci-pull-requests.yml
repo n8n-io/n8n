@@ -214,6 +214,9 @@ jobs:
       ]
     if: always()
     runs-on: ubuntu-slim
+    permissions:
+      checks: read
+      contents: read
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -224,3 +227,64 @@ jobs:
         with:
           mode: validate
           job-results: ${{ toJSON(needs) }}
+
+      - name: Enforce Chromatic UI Review when Chromatic runs
+        if: github.event_name == 'pull_request' && needs.install-and-build.outputs.design_system == 'true'
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          CHROMATIC_RESULT: ${{ needs.chromatic.result }}
+          UI_REVIEW_URL: ${{ needs.chromatic.outputs.ui_review_url }}
+        with:
+          script: |
+            const chromaticResult = process.env.CHROMATIC_RESULT;
+            const uiReviewUrl = (process.env.UI_REVIEW_URL ?? '').trim();
+
+            if (chromaticResult !== 'success') {
+              throw new Error(`Chromatic job result must be success, received "${chromaticResult}"`);
+            }
+
+            if (!uiReviewUrl) {
+              throw new Error(
+                'Chromatic UI Review check URL is missing. Ensure Chromatic UI Review checks are configured and emitted for this PR.',
+              );
+            }
+
+            const refsToCheck = [context.sha, context.payload.pull_request?.head?.sha].filter(Boolean);
+            const uniqueRefs = [...new Set(refsToCheck)];
+            const checkRuns = [];
+
+            for (const ref of uniqueRefs) {
+              const { data } = await github.rest.checks.listForRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref,
+                per_page: 100,
+              });
+              checkRuns.push(...data.check_runs);
+            }
+
+            const uiReviewCheck =
+              checkRuns.find((run) => run.details_url === uiReviewUrl) ??
+              checkRuns.find((run) => {
+                const appSlug = run.app?.slug?.toLowerCase() ?? '';
+                const name = run.name ?? '';
+                return appSlug.includes('chromatic') && /ui review/i.test(name);
+              });
+
+            if (!uiReviewCheck) {
+              throw new Error('Chromatic UI Review check run was not found on this PR commit.');
+            }
+
+            if (uiReviewCheck.status !== 'completed') {
+              throw new Error(
+                `Chromatic UI Review check is "${uiReviewCheck.status}". Approve in Chromatic and rerun checks.`,
+              );
+            }
+
+            if (uiReviewCheck.conclusion !== 'success') {
+              throw new Error(
+                `Chromatic UI Review check conclusion is "${uiReviewCheck.conclusion}". Approval is required before merge.`,
+              );
+            }
+
+            console.log('Chromatic UI Review check is successful.');
