@@ -6,6 +6,7 @@ import { OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { JwksKeySource, ResolvedTrustedKey } from '../token-exchange.schemas';
+import { JwtAlgorithmSchema } from '../token-exchange.schemas';
 
 /**
  * Superset of jsonwebtoken's Algorithm that includes EdDSA.
@@ -26,20 +27,7 @@ export interface JwksResolverResult {
 // JWK Set Zod schemas
 // ──────────────────────────────────────────────────────────────────────
 
-const SUPPORTED_ALGORITHMS = [
-	'RS256',
-	'RS384',
-	'RS512',
-	'PS256',
-	'PS384',
-	'PS512',
-	'ES256',
-	'ES384',
-	'ES512',
-	'EdDSA',
-] as const;
-
-const supportedAlgorithmSet = new Set<string>(SUPPORTED_ALGORITHMS);
+const supportedAlgorithmSet = new Set<string>(JwtAlgorithmSchema.options);
 
 /** Schema for a single JWK that we consider usable as a signing key. */
 const SigningJwkSchema = z
