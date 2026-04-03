@@ -100,6 +100,12 @@ const isAnyCredentialTesting = computed(() =>
 	}),
 );
 
+const executeButtonTooltipItems = computed(() => {
+	if (props.isPinDataSet)
+		return [i18n.baseText('aiAssistant.builder.setupWizard.unpinDataToExecute')];
+	return executeTooltipItems.value;
+});
+
 // Notify parent on execution finish
 watch(isActive, (active, wasActive) => {
 	if (wasActive && !active) {
@@ -273,7 +279,7 @@ watch(hoveredSection, (section) => {
 			<div :class="$style.footerActions">
 				<N8nButton
 					v-if="isPinDataSet"
-					variant="secondary"
+					variant="outline"
 					size="small"
 					data-test-id="builder-node-group-card-clear-data"
 					:class="$style.actionButton"
@@ -283,7 +289,7 @@ watch(hoveredSection, (section) => {
 				</N8nButton>
 				<N8nButton
 					v-else-if="showSkip"
-					variant="secondary"
+					variant="outline"
 					size="small"
 					data-test-id="builder-node-group-card-skip"
 					:class="$style.actionButton"
@@ -307,9 +313,9 @@ watch(hoveredSection, (section) => {
 					v-if="showExecuteButton"
 					:label="executeLabel"
 					:icon="executeButtonIcon"
-					:disabled="isButtonDisabled || isAnyCredentialTesting"
+					:disabled="isPinDataSet ? true : isButtonDisabled || isAnyCredentialTesting"
 					:loading="isExecuting"
-					:tooltip-items="executeTooltipItems"
+					:tooltip-items="executeButtonTooltipItems"
 					@click="execute"
 				/>
 			</div>

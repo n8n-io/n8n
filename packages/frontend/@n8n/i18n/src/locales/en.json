@@ -359,6 +359,7 @@
 	"aiAssistant.builder.setupWizard.skipTooltip": "Pins demo data to this node so you can come back to set it up later",
 	"aiAssistant.builder.setupWizard.skipped": "Skipped",
 	"aiAssistant.builder.setupWizard.clearData": "Clear data",
+	"aiAssistant.builder.setupWizard.unpinDataToExecute": "Clear pinned data to execute",
 	"aiAssistant.builder.toast.title": "Send chat message to start the execution",
 	"aiAssistant.builder.toast.description": "Please send a message in the chat panel to start the execution of your workflow",
 	"aiAssistant.builder.restoreError.title": "Failed to restore version",
