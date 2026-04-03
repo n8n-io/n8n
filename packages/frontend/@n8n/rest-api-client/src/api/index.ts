@@ -14,6 +14,7 @@ export * from './nodeTypes';
 export * from './npsSurvey';
 export * from './orchestration';
 export * from './provisioning';
+export * from './roleMappingRule';
 export * from './roles';
 export * from './security-settings';
 export * from './settings';
