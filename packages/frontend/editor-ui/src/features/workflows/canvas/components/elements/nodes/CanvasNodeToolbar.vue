@@ -5,7 +5,7 @@ import { useCanvasNode } from '../../../composables/useCanvasNode';
 import { CanvasNodeRenderType } from '../../../canvas.types';
 import { useCanvas } from '../../../composables/useCanvas';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useExperimentalNdvStore } from '../../../experimental/experimentalNdv.store';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import CanvasNodeStatusIcons from './render-types/parts/CanvasNodeStatusIcons.vue';
@@ -35,12 +35,14 @@ const i18n = useI18n();
 const { isExecuting, isExperimentalNdvActive } = useCanvas();
 const { isDisabled, render, name } = useCanvasNode();
 
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const focusedNodesStore = useFocusedNodesStore();
 
-const node = computed(() => (name.value ? workflowsStore.getNodeByName(name.value) : null));
+const node = computed(() =>
+	name.value ? workflowDocumentStore?.value?.getNodeByName(name.value) : null,
+);
 const isToolNode = computed(() => !!node.value && nodeTypesStore.isToolNode(node.value.type));
 
 const nodeDisabledTitle = computed(() => {
@@ -92,7 +94,7 @@ function onDeleteNode() {
 	emit('delete');
 }
 
-function onChangeStickyColor(color: number) {
+function onChangeStickyColor(color: number | string) {
 	emit('update', {
 		color,
 	});
@@ -140,9 +142,8 @@ function onAddToAi() {
 				:content="i18n.baseText('ndv.execute.deactivated')"
 			>
 				<N8nIconButton
+					variant="ghost"
 					data-test-id="execute-node-button"
-					type="tertiary"
-					text
 					size="small"
 					icon="node-play"
 					:disabled="isExecuting || isDisabled"
@@ -151,31 +152,29 @@ function onAddToAi() {
 				/>
 			</N8nTooltip>
 			<N8nIconButton
+				variant="ghost"
 				v-if="isDisableNodeVisible"
 				data-test-id="disable-node-button"
-				type="tertiary"
-				text
 				size="small"
 				icon="node-power"
 				:title="nodeDisabledTitle"
 				@click.stop="onToggleNode"
 			/>
 			<N8nIconButton
+				variant="ghost"
 				v-if="isDeleteNodeVisible"
 				data-test-id="delete-node-button"
-				type="tertiary"
 				size="small"
-				text
 				icon="node-trash"
 				:title="i18n.baseText('node.delete')"
 				@click.stop="onDeleteNode"
 			/>
 			<N8nIconButton
+				variant="ghost"
 				v-if="isFocusNodeVisible"
-				type="tertiary"
 				size="small"
-				text
 				icon="crosshair"
+				:aria-label="i18n.baseText('node.focusNode')"
 				@click.stop="onFocusNode"
 			/>
 			<CanvasNodeStickyColorSelector
@@ -186,19 +185,20 @@ function onAddToAi() {
 			<N8nTooltip v-if="isAddToAiVisible" placement="top" :content="i18n.baseText('node.addToAi')">
 				<N8nIconButton
 					data-test-id="add-to-ai-button"
-					type="tertiary"
+					variant="ghost"
 					size="small"
 					text
 					icon="sparkles"
+					:aria-label="i18n.baseText('node.addToAi')"
 					@click.stop="onAddToAi"
 				/>
 			</N8nTooltip>
 			<N8nIconButton
+				variant="ghost"
 				data-test-id="overflow-node-button"
-				type="tertiary"
 				size="small"
-				text
 				icon="node-ellipsis"
+				:aria-label="i18n.baseText('node.moreActions')"
 				@click.stop="onOpenContextMenu"
 			/>
 		</div>

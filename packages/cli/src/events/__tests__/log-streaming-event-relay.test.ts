@@ -367,6 +367,7 @@ describe('LogStreamingEventRelay', () => {
 			const event: RelayEventMap['workflow-pre-execute'] = {
 				executionId: 'exec123',
 				data: workflow,
+				mode: 'trigger',
 			};
 
 			eventService.emit('workflow-pre-execute', event);
@@ -378,6 +379,7 @@ describe('LogStreamingEventRelay', () => {
 					userId: undefined,
 					workflowId: 'wf202',
 					isManual: false,
+					mode: 'trigger',
 					workflowName: 'Test Workflow',
 				},
 			});
@@ -406,6 +408,7 @@ describe('LogStreamingEventRelay', () => {
 					...rest,
 					success: true, // same as finished
 					isManual: true,
+					mode: 'manual',
 					workflowName: 'some-name',
 					workflowId: 'some-id',
 				},
@@ -476,6 +479,7 @@ describe('LogStreamingEventRelay', () => {
 					...rest,
 					success: false, // same as finished
 					isManual: true,
+					mode: 'manual',
 					workflowName: 'some-name',
 					workflowId: 'some-id',
 					lastNodeExecuted: 'some-node',
@@ -1313,6 +1317,114 @@ describe('LogStreamingEventRelay', () => {
 				payload: {
 					vaultType: 'aws',
 				},
+			});
+		});
+
+		it('should log on `external-secrets-connection-created`', () => {
+			const event: RelayEventMap['external-secrets-connection-created'] = {
+				userId: 'user123',
+				providerKey: 'my-aws',
+				vaultType: 'awsSecretsManager',
+				projects: [
+					{ id: 'proj1', name: 'Project 1' },
+					{ id: 'proj2', name: 'Project 2' },
+				],
+			};
+
+			eventService.emit('external-secrets-connection-created', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.external-secrets.connection.created',
+				payload: event,
+			});
+		});
+
+		it('should log on `external-secrets-connection-updated`', () => {
+			const event: RelayEventMap['external-secrets-connection-updated'] = {
+				userId: 'user123',
+				providerKey: 'my-aws',
+				vaultType: 'awsSecretsManager',
+				projects: [{ id: 'proj1', name: 'Project 1' }],
+			};
+
+			eventService.emit('external-secrets-connection-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.external-secrets.connection.updated',
+				payload: event,
+			});
+		});
+
+		it('should log on `external-secrets-connection-deleted`', () => {
+			const event: RelayEventMap['external-secrets-connection-deleted'] = {
+				userId: 'user123',
+				providerKey: 'my-aws',
+				vaultType: 'awsSecretsManager',
+				projects: [
+					{ id: 'proj1', name: 'Project 1' },
+					{ id: 'proj2', name: 'Project 2' },
+				],
+			};
+
+			eventService.emit('external-secrets-connection-deleted', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.external-secrets.connection.deleted',
+				payload: event,
+			});
+		});
+
+		it('should log on `external-secrets-connection-tested`', () => {
+			const event: RelayEventMap['external-secrets-connection-tested'] = {
+				userId: 'user123',
+				providerKey: 'my-aws',
+				vaultType: 'awsSecretsManager',
+				projects: [{ id: 'proj1', name: 'Project 1' }],
+				isValid: true,
+			};
+
+			eventService.emit('external-secrets-connection-tested', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.external-secrets.connection.tested',
+				payload: event,
+			});
+		});
+
+		it('should log on `external-secrets-connection-tested` with error', () => {
+			const event: RelayEventMap['external-secrets-connection-tested'] = {
+				userId: 'user123',
+				providerKey: 'my-aws',
+				vaultType: 'awsSecretsManager',
+				projects: [{ id: 'proj1', name: 'Project 1' }],
+				isValid: false,
+				errorMessage: 'Invalid credentials',
+			};
+
+			eventService.emit('external-secrets-connection-tested', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.external-secrets.connection.tested',
+				payload: event,
+			});
+		});
+
+		it('should log on `external-secrets-connection-reloaded`', () => {
+			const event: RelayEventMap['external-secrets-connection-reloaded'] = {
+				userId: 'user123',
+				providerKey: 'my-aws',
+				vaultType: 'awsSecretsManager',
+				projects: [
+					{ id: 'proj1', name: 'Project 1' },
+					{ id: 'proj2', name: 'Project 2' },
+				],
+			};
+
+			eventService.emit('external-secrets-connection-reloaded', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.external-secrets.connection.reloaded',
+				payload: event,
 			});
 		});
 	});

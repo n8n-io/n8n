@@ -1,0 +1,33 @@
+name: 'Test: E2E VM Expressions Nightly'
+
+on:
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'GitHub branch/ref to test'
+        required: false
+        type: string
+        default: 'master'
+
+jobs:
+  e2e-vm-expressions:
+    uses: ./.github/workflows/test-e2e-ci-reusable.yml
+    with:
+      branch: ${{ github.event_name == 'schedule' && 'master' || inputs.branch }}
+      n8n-env: '{"N8N_EXPRESSION_ENGINE":"vm"}'
+    secrets: inherit
+
+  notify-on-failure:
+    name: Notify Slack on failure
+    runs-on: ubuntu-slim
+    needs: [e2e-vm-expressions]
+    if: failure() && github.event_name == 'schedule'
+    steps:
+      - uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
+        with:
+          status: ${{ job.status }}
+          channel: '#project-secure-expression-evaluation'
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          message: "VM expression E2E nightly failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

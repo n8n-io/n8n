@@ -26,8 +26,13 @@ export async function processItem(
 		systemPromptTemplate?: string;
 	};
 
+	const escapedTemplate = (options.systemPromptTemplate ?? SYSTEM_PROMPT_TEMPLATE).replace(
+		/[{}]/g,
+		(match) => match + match,
+	);
+
 	const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
-		`${options.systemPromptTemplate ?? SYSTEM_PROMPT_TEMPLATE}
+		`${escapedTemplate}
 {format_instructions}`,
 	);
 

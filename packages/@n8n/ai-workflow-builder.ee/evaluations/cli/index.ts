@@ -9,6 +9,8 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
 import { CodeWorkflowBuilder } from '@/code-builder';
+import type { HistoryContext } from '@/code-builder';
+import type { ConversationEntry } from '@/code-builder/utils/code-builder-session';
 import type { CoordinationLogEntry } from '@/types/coordination';
 import type { StreamChunk, WorkflowUpdateChunk } from '@/types/streaming';
 import type { SimpleWorkflow } from '@/types/workflow';
@@ -40,20 +42,24 @@ import {
 import { sendWebhookNotification } from './webhook';
 import { WorkflowGenerationError } from '../errors';
 import {
-	consumeGenerator,
+	collectAgentTextResponse,
 	extractSubgraphMetrics,
 	getChatPayload,
 } from '../harness/evaluation-helpers';
+import type { DatasetInputContext } from '../harness/harness-types';
 import { createLogger } from '../harness/logger';
-import type { GenerationCollectors } from '../harness/runner';
+import type { GenerationCollectors, SubgraphMetricsCollector } from '../harness/runner';
 import { TokenUsageTrackingHandler } from '../harness/token-tracking-handler';
 import {
 	runEvaluation,
 	createConsoleLifecycle,
+	mergeLifecycles,
 	createLLMJudgeEvaluator,
 	createProgrammaticEvaluator,
 	createPairwiseEvaluator,
 	createSimilarityEvaluator,
+	createExecutionEvaluator,
+	createBinaryChecksEvaluator,
 	type RunConfig,
 	type TestCase,
 	type Evaluator,
@@ -61,8 +67,15 @@ import {
 	type GenerationResult,
 } from '../index';
 import { generateRunId, isWorkflowStateValues } from '../langsmith/types';
+import { createIntrospectionAnalysisLifecycle } from '../lifecycles/introspection-analysis';
 import { AGENT_TYPES, EVAL_TYPES, EVAL_USERS } from '../support/constants';
-import { setupTestEnvironment, createAgent, type ResolvedStageLLMs } from '../support/environment';
+import {
+	setupTestEnvironment,
+	createAgent,
+	resolveNodesBasePath,
+	type ResolvedStageLLMs,
+} from '../support/environment';
+import { generateEvalPinData } from '../support/pin-data-generator';
 
 /**
  * Type guard for workflow update chunks from streaming output.
@@ -83,6 +96,28 @@ function hasCoordinationLog(
 }
 
 /**
+ * Report subgraph metrics from coordination log and workflow.
+ */
+function reportSubgraphMetrics(
+	collector: SubgraphMetricsCollector,
+	stateValues: unknown,
+	workflow: SimpleWorkflow,
+): void {
+	const coordinationLog = hasCoordinationLog(stateValues) ? stateValues.coordinationLog : undefined;
+	const nodeCount = workflow.nodes?.length;
+	const metrics = extractSubgraphMetrics(coordinationLog, nodeCount);
+
+	if (
+		metrics.discoveryDurationMs !== undefined ||
+		metrics.builderDurationMs !== undefined ||
+		metrics.responderDurationMs !== undefined ||
+		metrics.nodeCount !== undefined
+	) {
+		collector(metrics);
+	}
+}
+
+/**
  * Create a workflow generator function for the multi-agent system.
  * LangSmith tracing is handled via traceable() in the runner.
  * Callbacks are passed explicitly from the runner to ensure correct trace context
@@ -92,8 +127,16 @@ function createWorkflowGenerator(
 	parsedNodeTypes: INodeTypeDescription[],
 	llms: ResolvedStageLLMs,
 	featureFlags?: BuilderFeatureFlags,
-): (prompt: string, collectors?: GenerationCollectors) => Promise<SimpleWorkflow> {
-	return async (prompt: string, collectors?: GenerationCollectors): Promise<SimpleWorkflow> => {
+): (
+	prompt: string,
+	datasetInputContext?: DatasetInputContext,
+	collectors?: GenerationCollectors,
+) => Promise<GenerationResult> {
+	return async (
+		prompt: string,
+		datasetInputContext?: DatasetInputContext,
+		collectors?: GenerationCollectors,
+	): Promise<GenerationResult> => {
 		const runId = generateRunId();
 
 		const agent = createAgent({
@@ -106,17 +149,20 @@ function createWorkflowGenerator(
 		// (supervisor, discovery, builder, responder agents)
 		const tokenTracker = collectors?.tokenUsage ? new TokenUsageTrackingHandler() : undefined;
 
-		await consumeGenerator(
+		const agentTextResponse = await collectAgentTextResponse(
 			agent.chat(
 				getChatPayload({
 					evalType: EVAL_TYPES.LANGSMITH,
 					message: prompt,
 					workflowId: runId,
 					featureFlags,
+					workflowContext: datasetInputContext?.workflowContext,
+					mode: datasetInputContext?.mode,
 				}),
 				EVAL_USERS.LANGSMITH,
 				undefined, // abortSignal
 				tokenTracker ? [tokenTracker] : undefined, // externalCallbacks
+				datasetInputContext?.historicalMessages,
 			),
 		);
 
@@ -138,24 +184,128 @@ function createWorkflowGenerator(
 
 		// Extract and report subgraph metrics from coordination log
 		if (collectors?.subgraphMetrics) {
-			const coordinationLog = hasCoordinationLog(state.values)
-				? state.values.coordinationLog
-				: undefined;
-			const nodeCount = workflow.nodes?.length;
-			const metrics = extractSubgraphMetrics(coordinationLog, nodeCount);
-
-			if (
-				metrics.discoveryDurationMs !== undefined ||
-				metrics.builderDurationMs !== undefined ||
-				metrics.responderDurationMs !== undefined ||
-				metrics.nodeCount !== undefined
-			) {
-				collectors.subgraphMetrics(metrics);
-			}
+			reportSubgraphMetrics(collectors.subgraphMetrics, state.values, workflow);
 		}
 
-		return workflow;
+		// Report introspection events
+		collectors?.introspectionEvents?.(state.values.introspectionEvents ?? []);
+
+		return { workflow, agentTextResponse };
 	};
+}
+
+/**
+ * Create evaluators based on suite type.
+ */
+function createEvaluators(params: {
+	suite: string;
+	judgeLlm: ResolvedStageLLMs['judge'];
+	parsedNodeTypes: Parameters<typeof createProgrammaticEvaluator>[0];
+	numJudges: number;
+	checks?: string[];
+}): Array<Evaluator<EvaluationContext>> {
+	const { suite, judgeLlm, parsedNodeTypes, numJudges, checks } = params;
+	const evaluators: Array<Evaluator<EvaluationContext>> = [];
+
+	switch (suite) {
+		case 'llm-judge':
+			evaluators.push(createLLMJudgeEvaluator(judgeLlm, parsedNodeTypes));
+			evaluators.push(createProgrammaticEvaluator(parsedNodeTypes));
+			break;
+		case 'pairwise':
+			evaluators.push(createPairwiseEvaluator(judgeLlm, { numJudges }));
+			evaluators.push(createProgrammaticEvaluator(parsedNodeTypes));
+			break;
+		case 'programmatic':
+			evaluators.push(createProgrammaticEvaluator(parsedNodeTypes));
+			break;
+		case 'similarity':
+			evaluators.push(createSimilarityEvaluator());
+			break;
+		case 'binary-checks':
+			evaluators.push(
+				createBinaryChecksEvaluator({
+					nodeTypes: parsedNodeTypes,
+					llm: judgeLlm,
+					checks,
+				}),
+			);
+			break;
+	}
+
+	return evaluators;
+}
+
+/**
+ * Convert raw LangChain messages from dataset into HistoryContext for the code builder.
+ * Pairs up human/AI messages as conversation entries.
+ */
+function buildHistoryContextFromMessages(messages: unknown[]): HistoryContext | undefined {
+	if (messages.length === 0) return undefined;
+
+	const entries: ConversationEntry[] = [];
+
+	for (let i = 0; i < messages.length; i++) {
+		const msg = messages[i];
+		if (!isUnknownRecord(msg)) continue;
+
+		const msgId = msg.id;
+		const isHuman = Array.isArray(msgId) && msgId.includes('HumanMessage');
+
+		if (!isHuman) continue;
+
+		const kwargs = msg.kwargs;
+		if (!isUnknownRecord(kwargs) || typeof kwargs.content !== 'string') continue;
+
+		const userContent = kwargs.content;
+
+		// Look for a following AI message to pair with
+		const nextMsg = i + 1 < messages.length ? messages[i + 1] : undefined;
+		const nextIsAI =
+			isUnknownRecord(nextMsg) && Array.isArray(nextMsg.id) && nextMsg.id.includes('AIMessage');
+
+		if (nextIsAI && isUnknownRecord(nextMsg)) {
+			const nextKwargs = nextMsg.kwargs;
+			const aiContent =
+				isUnknownRecord(nextKwargs) && typeof nextKwargs.content === 'string'
+					? nextKwargs.content
+					: '';
+			entries.push({
+				type: 'assistant-exchange',
+				userQuery: userContent,
+				assistantSummary: aiContent,
+			});
+			i++; // Skip the AI message
+		} else {
+			entries.push({ type: 'build-request', message: userContent });
+		}
+	}
+
+	return entries.length > 0 ? { conversationEntries: entries } : undefined;
+}
+
+function isUnknownRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Process a single stream message from CodeWorkflowBuilder, extracting workflow updates and text response */
+function processCodeBuilderMessage(
+	message: StreamChunk,
+	state: { workflow: SimpleWorkflow | null; generatedCode?: string; textParts: string[] },
+) {
+	if (isWorkflowUpdateChunk(message)) {
+		try {
+			const parsed: unknown = JSON.parse(message.codeSnippet);
+			if (isSimpleWorkflow(parsed)) {
+				state.workflow = parsed;
+				state.generatedCode = message.sourceCode;
+			}
+		} catch {
+			// Invalid JSON in codeSnippet — skip this message
+		}
+	} else if (message.type === 'message' && 'text' in message && typeof message.text === 'string') {
+		state.textParts.push(message.text);
+	}
 }
 
 /**
@@ -173,9 +323,17 @@ function createCodeWorkflowBuilderGenerator(
 	llms: ResolvedStageLLMs,
 	timeoutMs?: number,
 	nodeDefinitionDirs?: string[],
-): (prompt: string, collectors?: GenerationCollectors) => Promise<GenerationResult> {
+): (
+	prompt: string,
+	datasetInputContext?: DatasetInputContext,
+	collectors?: GenerationCollectors,
+) => Promise<GenerationResult> {
 	// Subgraph metrics are not applicable since CodeWorkflowBuilder doesn't use coordination logs.
-	return async (prompt: string, collectors?: GenerationCollectors): Promise<GenerationResult> => {
+	return async (
+		prompt: string,
+		datasetInputContext?: DatasetInputContext,
+		collectors?: GenerationCollectors,
+	): Promise<GenerationResult> => {
 		const runId = generateRunId();
 
 		// Accumulate token usage across all LLM calls
@@ -198,11 +356,21 @@ function createCodeWorkflowBuilderGenerator(
 			evalType: EVAL_TYPES.LANGSMITH,
 			message: prompt,
 			workflowId: runId,
-			featureFlags: { codeBuilder: true },
+			featureFlags: {},
+			workflowContext: datasetInputContext?.workflowContext,
+			mode: datasetInputContext?.mode,
 		});
 
-		let workflow: SimpleWorkflow | null = null;
-		let generatedCode: string | undefined;
+		// Build history context from dataset messages if available
+		const historyContext = datasetInputContext?.historicalMessages
+			? buildHistoryContextFromMessages(datasetInputContext.historicalMessages)
+			: undefined;
+
+		const streamState: {
+			workflow: SimpleWorkflow | null;
+			generatedCode?: string;
+			textParts: string[];
+		} = { workflow: null, textParts: [] };
 
 		// Create an AbortController to properly cancel the agent on timeout or error.
 		// Without this, the agent continues running even after Promise.race rejects,
@@ -221,15 +389,10 @@ function createCodeWorkflowBuilderGenerator(
 				payload,
 				EVAL_USERS.LANGSMITH,
 				abortController.signal,
+				historyContext,
 			)) {
 				for (const message of output.messages) {
-					if (isWorkflowUpdateChunk(message)) {
-						const parsed: unknown = JSON.parse(message.codeSnippet);
-						if (isSimpleWorkflow(parsed)) {
-							workflow = parsed;
-							generatedCode = message.sourceCode;
-						}
-					}
+					processCodeBuilderMessage(message, streamState);
 				}
 			}
 		} finally {
@@ -238,7 +401,7 @@ function createCodeWorkflowBuilderGenerator(
 			}
 		}
 
-		if (!workflow) {
+		if (!streamState.workflow) {
 			throw new WorkflowGenerationError('CodeWorkflowBuilder did not produce a workflow');
 		}
 
@@ -247,7 +410,11 @@ function createCodeWorkflowBuilderGenerator(
 			collectors.tokenUsage({ inputTokens: totalInputTokens, outputTokens: totalOutputTokens });
 		}
 
-		return { workflow, generatedCode };
+		return {
+			workflow: streamState.workflow,
+			generatedCode: streamState.generatedCode,
+			agentTextResponse: streamState.textParts.join('') || undefined,
+		};
 	};
 }
 
@@ -314,8 +481,8 @@ export async function runV2Evaluation(): Promise<void> {
 
 	// Setup environment with per-stage model configuration
 	const logger = createLogger(args.verbose);
-	const lifecycle = createConsoleLifecycle({ verbose: args.verbose, logger });
 	const stageModels = argsToStageModels(args);
+
 	const env = await setupTestEnvironment(stageModels, logger);
 
 	// Validate LangSmith client early if langsmith backend is requested
@@ -324,7 +491,6 @@ export async function runV2Evaluation(): Promise<void> {
 	}
 
 	// Create workflow generator based on agent type
-	// CODE_BUILDER uses CodeWorkflowBuilder
 	const generateWorkflow =
 		args.agent === AGENT_TYPES.CODE_BUILDER
 			? createCodeWorkflowBuilderGenerator(
@@ -335,43 +501,53 @@ export async function runV2Evaluation(): Promise<void> {
 				)
 			: createWorkflowGenerator(env.parsedNodeTypes, env.llms, args.featureFlags);
 
-	// Create evaluators based on suite (using judge LLM for evaluation)
-	// The --suite flag is always respected, regardless of agent type
-	const evaluators: Array<Evaluator<EvaluationContext>> = [];
+	// Create evaluators based on suite type
+	const evaluators = createEvaluators({
+		suite: args.suite,
+		judgeLlm: env.llms.judge,
+		parsedNodeTypes: env.parsedNodeTypes,
+		numJudges: args.numJudges,
+		checks: args.checks,
+	});
 
-	switch (args.suite) {
-		case 'llm-judge':
-			evaluators.push(createLLMJudgeEvaluator(env.llms.judge, env.parsedNodeTypes));
-			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
-			break;
-		case 'pairwise':
-			evaluators.push(
-				createPairwiseEvaluator(env.llms.judge, {
-					numJudges: args.numJudges,
-				}),
-			);
-			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
-			break;
-		case 'programmatic':
-			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
-			break;
-		case 'similarity':
-			evaluators.push(createSimilarityEvaluator());
-			break;
-	}
+	// Execution evaluator runs for all suites — validates workflows execute with pin data
+	evaluators.push(createExecutionEvaluator());
 
 	const llmCallLimiter = pLimit(args.concurrency);
+
+	// Merge console lifecycle with optional introspection analysis lifecycle
+	const mergedLifecycle = mergeLifecycles(
+		createConsoleLifecycle({ verbose: args.verbose, logger }),
+		args.suite === 'introspection'
+			? createIntrospectionAnalysisLifecycle({
+					judgeLlm: env.llms.judge,
+					outputDir: args.outputDir,
+					logger,
+				})
+			: undefined,
+	);
+	// Create pin data generator for mocking service node outputs in evaluations
+	const nodesBasePath = resolveNodesBasePath();
+	const pinDataGenerator = async (workflow: SimpleWorkflow) =>
+		await generateEvalPinData(workflow, {
+			llm: env.llms.judge,
+			nodeTypes: env.parsedNodeTypes,
+			nodesBasePath,
+			logger,
+		});
 
 	const baseConfig = {
 		generateWorkflow,
 		evaluators,
-		lifecycle,
+		lifecycle: mergedLifecycle,
 		logger,
 		outputDir: args.outputDir,
 		outputCsv: args.outputCsv,
 		suite: args.suite,
 		timeoutMs: args.timeoutMs,
 		context: { llmCallLimiter },
+		passThreshold: args.suite === 'introspection' || args.suite === 'binary-checks' ? 0 : undefined,
+		pinDataGenerator,
 	};
 
 	const config: RunConfig =
@@ -400,6 +576,7 @@ export async function runV2Evaluation(): Promise<void> {
 					...baseConfig,
 					mode: 'local',
 					dataset: loadTestCases(args),
+					concurrency: args.concurrency,
 				};
 
 	// Run evaluation

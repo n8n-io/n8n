@@ -66,6 +66,15 @@ export class LogStreamingEventRelay extends EventRelay {
 			'external-secrets-provider-settings-saved': (event) =>
 				this.externalSecretsProviderSettingsSaved(event),
 			'external-secrets-provider-reloaded': (event) => this.externalSecretsProviderReloaded(event),
+			'external-secrets-connection-created': (event) =>
+				this.externalSecretsConnectionCreated(event),
+			'external-secrets-connection-updated': (event) =>
+				this.externalSecretsConnectionUpdated(event),
+			'external-secrets-connection-deleted': (event) =>
+				this.externalSecretsConnectionDeleted(event),
+			'external-secrets-connection-tested': (event) => this.externalSecretsConnectionTested(event),
+			'external-secrets-connection-reloaded': (event) =>
+				this.externalSecretsConnectionReloaded(event),
 			'community-package-installed': (event) => this.communityPackageInstalled(event),
 			'community-package-updated': (event) => this.communityPackageUpdated(event),
 			'community-package-deleted': (event) => this.communityPackageDeleted(event),
@@ -73,6 +82,8 @@ export class LogStreamingEventRelay extends EventRelay {
 			'execution-started-during-bootup': (event) => this.executionStartedDuringBootup(event),
 			'execution-cancelled': (event) => this.executionCancelled(event),
 			'execution-deleted': (event) => this.executionDeleted(event),
+			'execution-data-revealed': (event) => this.executionDataRevealed(event),
+			'execution-data-reveal-failure': (event) => this.executionDataRevealFailure(event),
 			'ai-messages-retrieved-from-memory': (event) => this.aiMessagesRetrievedFromMemory(event),
 			'ai-message-added-to-memory': (event) => this.aiMessageAddedToMemory(event),
 			'ai-output-parsed': (event) => this.aiOutputParsed(event),
@@ -93,6 +104,9 @@ export class LogStreamingEventRelay extends EventRelay {
 			'job-dequeued': (event) => this.jobDequeued(event),
 			'job-stalled': (event) => this.jobStalled(event),
 			'instance-policies-updated': (event) => this.instancePoliciesUpdated(event),
+			'token-exchange-succeeded': (event) => this.tokenExchangeSucceeded(event),
+			'token-exchange-failed': (event) => this.tokenExchangeFailed(event),
+			'embed-login': (event) => this.embedLogin(event),
 		});
 	}
 
@@ -200,7 +214,7 @@ export class LogStreamingEventRelay extends EventRelay {
 		});
 	}
 
-	private workflowPreExecute({ data, executionId }: RelayEventMap['workflow-pre-execute']) {
+	private workflowPreExecute({ data, executionId, mode }: RelayEventMap['workflow-pre-execute']) {
 		const payload =
 			'executionData' in data
 				? {
@@ -208,6 +222,7 @@ export class LogStreamingEventRelay extends EventRelay {
 						userId: data.userId,
 						workflowId: data.workflowData.id,
 						isManual: data.executionMode === 'manual',
+						mode,
 						workflowName: data.workflowData.name,
 					}
 				: {
@@ -215,6 +230,7 @@ export class LogStreamingEventRelay extends EventRelay {
 						userId: undefined,
 						workflowId: (data as IWorkflowBase).id,
 						isManual: false,
+						mode,
 						workflowName: (data as IWorkflowBase).name,
 					};
 
@@ -232,6 +248,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			executionId,
 			success: !!runData?.finished, // despite the `success` name, this reports `finished` state
 			isManual: runData?.mode === 'manual',
+			mode: runData?.mode,
 			workflowId: workflow.id,
 			workflowName: workflow.name,
 		};
@@ -602,6 +619,51 @@ export class LogStreamingEventRelay extends EventRelay {
 		});
 	}
 
+	private externalSecretsConnectionCreated(
+		payload: RelayEventMap['external-secrets-connection-created'],
+	) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.external-secrets.connection.created',
+			payload,
+		});
+	}
+
+	private externalSecretsConnectionUpdated(
+		payload: RelayEventMap['external-secrets-connection-updated'],
+	) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.external-secrets.connection.updated',
+			payload,
+		});
+	}
+
+	private externalSecretsConnectionDeleted(
+		payload: RelayEventMap['external-secrets-connection-deleted'],
+	) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.external-secrets.connection.deleted',
+			payload,
+		});
+	}
+
+	private externalSecretsConnectionTested(
+		payload: RelayEventMap['external-secrets-connection-tested'],
+	) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.external-secrets.connection.tested',
+			payload,
+		});
+	}
+
+	private externalSecretsConnectionReloaded(
+		payload: RelayEventMap['external-secrets-connection-reloaded'],
+	) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.external-secrets.connection.reloaded',
+			payload,
+		});
+	}
+
 	// #endregion
 
 	// #region Community package
@@ -682,6 +744,45 @@ export class LogStreamingEventRelay extends EventRelay {
 				...user,
 				executionIds,
 				...(deleteBefore && { deleteBefore: deleteBefore.toISOString() }),
+			},
+		});
+	}
+
+	@Redactable()
+	private executionDataRevealed({
+		user,
+		executionId,
+		workflowId,
+		ipAddress,
+		userAgent,
+		redactionPolicy,
+	}: RelayEventMap['execution-data-revealed']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.execution.data.revealed',
+			payload: { ...user, executionId, workflowId, ipAddress, userAgent, redactionPolicy },
+		});
+	}
+
+	@Redactable()
+	private executionDataRevealFailure({
+		user,
+		executionId,
+		workflowId,
+		ipAddress,
+		userAgent,
+		redactionPolicy,
+		rejectionReason,
+	}: RelayEventMap['execution-data-reveal-failure']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.execution.data.reveal_failure',
+			payload: {
+				...user,
+				executionId,
+				workflowId,
+				ipAddress,
+				userAgent,
+				redactionPolicy,
+				rejectionReason,
 			},
 		});
 	}
@@ -871,6 +972,31 @@ export class LogStreamingEventRelay extends EventRelay {
 			default:
 				assertNever(settingName);
 		}
+	}
+
+	// #endregion
+
+	// #region Token exchange
+
+	private tokenExchangeSucceeded(event: RelayEventMap['token-exchange-succeeded']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.token-exchange.succeeded',
+			payload: event,
+		});
+	}
+
+	private tokenExchangeFailed(event: RelayEventMap['token-exchange-failed']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.token-exchange.failed',
+			payload: event,
+		});
+	}
+
+	private embedLogin(event: RelayEventMap['embed-login']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.token-exchange.embed-login',
+			payload: event,
+		});
 	}
 
 	// #endregion

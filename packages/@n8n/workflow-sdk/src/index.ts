@@ -4,6 +4,7 @@ export type {
 	WorkflowBuilder,
 	WorkflowBuilderStatic,
 	WorkflowBuilderOptions,
+	ToJSONOptions,
 	WorkflowSettings,
 	WorkflowJSON,
 	NodeJSON,
@@ -29,11 +30,6 @@ export type {
 	DocumentLoaderInstance,
 	TextSplitterInstance,
 	// Expression types
-	Expression,
-	ExpressionContext,
-	BinaryContext,
-	BinaryField,
-	InputContext,
 	ExecutionContext,
 	WorkflowContext,
 	// IF else types
@@ -138,7 +134,6 @@ export { nextBatch } from './workflow-builder/control-flow-builders/next-batch';
 
 // Expression utilities
 export {
-	serializeExpression,
 	parseExpression,
 	isExpression,
 	expr,
@@ -150,6 +145,9 @@ export { runOnceForAllItems, runOnceForEachItem } from './utils/code-helpers';
 
 // Utility functions
 export { isPlainObject, getProperty, hasProperty } from './utils/safe-access';
+
+// Layout
+export { layoutWorkflowJSON } from './workflow-builder/layout-utils';
 
 // Validation
 export {
@@ -184,6 +182,15 @@ export {
 	type CompositeHandlerPlugin,
 	type SerializerPlugin,
 } from './workflow-builder/plugins';
+
+// Pin data utilities
+export {
+	needsPinData,
+	discoverOutputSchemaForNode,
+	inferSchemasFromRunData,
+	normalizePinData,
+	type IsTriggerNodeFn,
+} from './pin-data-utils';
 
 // Node type constants
 export {

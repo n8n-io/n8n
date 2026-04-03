@@ -141,6 +141,23 @@ import { CreateSecretsProviderConnectionTables1769433700000 } from '../common/17
 import { CreateWorkflowPublishedVersionTable1769698710000 } from '../common/1769698710000-CreateWorkflowPublishedVersionTable';
 import { ExpandSubjectIDColumnLength1769784356000 } from '../common/1769784356000-ExpandSubjectIDColumnLength';
 import { AddWorkflowUnpublishScopeToCustomRoles1769900001000 } from '../common/1769900001000-AddWorkflowUnpublishScopeToCustomRoles';
+import { CreateChatHubToolsTable1770000000000 } from '../common/1770000000000-CreateChatHubToolsTable';
+import { ExpandProviderIdColumnLength1770000000000 } from '../common/1770000000000-ExpandProviderIdColumnLength';
+import { CreateWorkflowBuilderSessionTable1770220686000 } from '../common/1770220686000-CreateWorkflowBuilderSessionTable';
+import { AddScalingFieldsToTestRun1771417407753 } from '../common/1771417407753-AddScalingFieldsToTestRun';
+import { MigrateExternalSecretsToEntityStorage1771500000000 } from '../common/1771500000000-MigrateExternalSecretsToEntityStorage';
+import { AddUnshareScopeToCustomRoles1771500000001 } from '../common/1771500000001-AddUnshareScopeToCustomRoles';
+import { AddFilesColumnToChatHubAgents1771500000002 } from '../common/1771500000002-AddFilesColumnToChatHubAgents';
+import { AddSuggestedPromptsToAgentTable1772000000000 } from '../common/1772000000000-AddSuggestedPromptsToAgentTable';
+import { AddRoleColumnToProjectSecretsProviderAccess1772619247761 } from '../common/1772619247761-AddRoleColumnToProjectSecretsProviderAccess';
+import { ChangeWorkflowPublishedVersionFKsToRestrict1772619247762 } from '../common/1772619247762-ChangeWorkflowPublishedVersionFKsToRestrict';
+import { AddTypeToChatHubSessions1772700000000 } from '../common/1772700000000-AddTypeToChatHubSessions';
+import { CreateRoleMappingRuleTable1772800000000 } from '../common/1772800000000-CreateRoleMappingRuleTable';
+import { CreateCredentialDependencyTable1773000000000 } from '../common/1773000000000-CreateCredentialDependencyTable';
+import { AddRestoreFieldsToWorkflowBuilderSession1774280963551 } from '../common/1774280963551-AddRestoreFieldsToWorkflowBuilderSession';
+import { CreateInstanceVersionHistoryTable1774854660000 } from '../common/1774854660000-CreateInstanceVersionHistoryTable';
+import { CreateInstanceAiTables1775000000000 } from '../common/1775000000000-CreateInstanceAiTables';
+import { CreateTokenExchangeJtiTable1775116241000 } from '../common/1775116241000-CreateTokenExchangeJtiTable';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -287,4 +304,21 @@ export const postgresMigrations: Migration[] = [
 	CreateWorkflowPublishedVersionTable1769698710000,
 	ExpandSubjectIDColumnLength1769784356000,
 	AddWorkflowUnpublishScopeToCustomRoles1769900001000,
+	CreateChatHubToolsTable1770000000000,
+	ExpandProviderIdColumnLength1770000000000,
+	CreateWorkflowBuilderSessionTable1770220686000,
+	AddScalingFieldsToTestRun1771417407753,
+	MigrateExternalSecretsToEntityStorage1771500000000,
+	AddUnshareScopeToCustomRoles1771500000001,
+	AddFilesColumnToChatHubAgents1771500000002,
+	AddSuggestedPromptsToAgentTable1772000000000,
+	AddRoleColumnToProjectSecretsProviderAccess1772619247761,
+	ChangeWorkflowPublishedVersionFKsToRestrict1772619247762,
+	AddTypeToChatHubSessions1772700000000,
+	CreateRoleMappingRuleTable1772800000000,
+	CreateCredentialDependencyTable1773000000000,
+	AddRestoreFieldsToWorkflowBuilderSession1774280963551,
+	CreateInstanceVersionHistoryTable1774854660000,
+	CreateInstanceAiTables1775000000000,
+	CreateTokenExchangeJtiTable1775116241000,
 ];

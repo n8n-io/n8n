@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { saveAs } from 'file-saver';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants/modals';
 import { ViewableMimeTypes } from '@n8n/api-types';
@@ -17,6 +18,7 @@ const emit = defineEmits<{ preview: [index: number, key: string | number] }>();
 
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const uiStore = useUIStore();
 const posthogStore = usePostHog();
 
@@ -28,7 +30,7 @@ const isV2Enabled = computed(() => {
 });
 
 const isLegacyBinaryMode = computed(
-	() => workflowsStore.workflow.settings?.binaryMode !== BINARY_MODE_COMBINED,
+	() => workflowDocumentStore?.value?.settings?.binaryMode !== BINARY_MODE_COMBINED,
 );
 
 function isViewable(index: number, key: string | number): boolean {
@@ -140,9 +142,9 @@ function openWorkflowSettings() {
 								@click="emit('preview', index, key)"
 							/>
 							<N8nButton
+								variant="subtle"
 								v-if="isDownloadable(index, key)"
 								size="small"
-								type="secondary"
 								:label="i18n.baseText('runData.downloadBinaryData')"
 								data-test-id="ndv-download-binary-data"
 								@click="downloadBinaryData(index, key)"

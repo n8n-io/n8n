@@ -93,12 +93,22 @@ export const eventNamesAudit = [
 	'n8n.audit.variable.deleted',
 	'n8n.audit.external-secrets.provider.settings.saved',
 	'n8n.audit.external-secrets.provider.reloaded',
+	'n8n.audit.external-secrets.connection.created',
+	'n8n.audit.external-secrets.connection.updated',
+	'n8n.audit.external-secrets.connection.deleted',
+	'n8n.audit.external-secrets.connection.tested',
+	'n8n.audit.external-secrets.connection.reloaded',
 	'n8n.audit.personal-publishing-restricted.enabled',
 	'n8n.audit.personal-publishing-restricted.disabled',
 	'n8n.audit.personal-sharing-restricted.enabled',
 	'n8n.audit.personal-sharing-restricted.disabled',
 	'n8n.audit.2fa-enforcement.enabled',
 	'n8n.audit.2fa-enforcement.disabled',
+	'n8n.audit.execution.data.revealed',
+	'n8n.audit.execution.data.reveal_failure',
+	'n8n.audit.token-exchange.succeeded',
+	'n8n.audit.token-exchange.failed',
+	'n8n.audit.token-exchange.embed-login',
 ] as const;
 
 export type EventNamesWorkflowType = (typeof eventNamesWorkflow)[number];

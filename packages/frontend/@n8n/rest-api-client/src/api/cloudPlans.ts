@@ -43,7 +43,9 @@ export declare namespace Cloud {
 			text?: string;
 			icon?: string;
 			size?: 'small' | 'medium';
-			style?: 'primary' | 'success' | 'warning' | 'danger'; // button color, defaults to 'success'
+			/** @deprecated Use variant instead */
+			style?: 'primary' | 'success' | 'warning' | 'danger';
+			variant?: 'solid' | 'subtle' | 'ghost' | 'outline' | 'destructive' | 'success';
 			href?: string; // If provided, navigate to this URL; otherwise use upgrade flow
 		};
 

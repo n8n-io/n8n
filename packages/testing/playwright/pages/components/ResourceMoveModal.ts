@@ -27,7 +27,19 @@ export class ResourceMoveModal {
 	}
 
 	async selectProjectOption(projectNameOrEmail: string): Promise<void> {
-		await this.page.getByRole('option').filter({ hasText: projectNameOrEmail }).click();
+		const options = this.page.getByRole('option');
+		// Try to find by exact text (project name or email)
+		const byExact = options.filter({ hasText: projectNameOrEmail });
+		if ((await byExact.count()) > 0) {
+			await byExact.click();
+		} else {
+			// For personal projects, the email is not shown, so try matching by name part of email
+			const namePart = projectNameOrEmail.split('@')[0].replace(/[.-]/g, ' ');
+			await options
+				.filter({ hasText: new RegExp(namePart, 'i') })
+				.first()
+				.click();
+		}
 	}
 
 	async clickMoveCredentialButton(): Promise<void> {

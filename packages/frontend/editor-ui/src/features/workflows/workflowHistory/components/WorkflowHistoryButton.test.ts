@@ -3,7 +3,7 @@ import WorkflowHistoryButton from './WorkflowHistoryButton.vue';
 import { setActivePinia, createPinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
+import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { AutoSaveState } from '@/app/constants';
 import { nextTick } from 'vue';
 
@@ -34,8 +34,8 @@ const renderComponent = createComponentRenderer(WorkflowHistoryButton, {
 describe('WorkflowHistoryButton', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
-		const autosaveStore = useWorkflowAutosaveStore();
-		autosaveStore.setAutoSaveState(AutoSaveState.Idle);
+		const saveStore = useWorkflowSaveStore();
+		saveStore.setAutoSaveState(AutoSaveState.Idle);
 	});
 
 	describe('button state', () => {
@@ -62,15 +62,15 @@ describe('WorkflowHistoryButton', () => {
 			await nextTick();
 
 			const uiStore = useUIStore();
-			const autosaveStore = useWorkflowAutosaveStore();
+			const saveStore = useWorkflowSaveStore();
 
 			// Autosave scheduled
-			autosaveStore.setAutoSaveState(AutoSaveState.Scheduled);
+			saveStore.setAutoSaveState(AutoSaveState.Scheduled);
 			await nextTick();
 			expect(getByTestId('workflow-history-button')).toHaveAttribute('disabled');
 
 			// Autosave in progress
-			autosaveStore.setAutoSaveState(AutoSaveState.InProgress);
+			saveStore.setAutoSaveState(AutoSaveState.InProgress);
 			uiStore.addActiveAction('workflowSaving');
 			await nextTick();
 			expect(getByTestId('workflow-history-button')).toHaveAttribute('disabled');
@@ -97,14 +97,14 @@ describe('WorkflowHistoryButton', () => {
 			});
 
 			const uiStore = useUIStore();
-			const autosaveStore = useWorkflowAutosaveStore();
+			const saveStore = useWorkflowSaveStore();
 
 			// Initially not loading
 			await nextTick();
 			expect(getByTestId('workflow-history-button').getAttribute('data-loading')).toBe('false');
 
 			// Scheduled - no loading spinner yet
-			autosaveStore.setAutoSaveState(AutoSaveState.Scheduled);
+			saveStore.setAutoSaveState(AutoSaveState.Scheduled);
 			await nextTick();
 			expect(getByTestId('workflow-history-button').getAttribute('data-loading')).toBe('false');
 
@@ -145,8 +145,8 @@ describe('WorkflowHistoryButton', () => {
 		});
 
 		it('should show "will be saved shortly" tooltip when scheduled', async () => {
-			const autosaveStore = useWorkflowAutosaveStore();
-			autosaveStore.setAutoSaveState(AutoSaveState.Scheduled);
+			const saveStore = useWorkflowSaveStore();
+			saveStore.setAutoSaveState(AutoSaveState.Scheduled);
 
 			const { container } = renderComponent({
 				props: { workflowId: '1', isNewWorkflow: false },

@@ -2,16 +2,13 @@ import { TestCaseExecutionRepository, TestRunRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { Delete, Get, Post, RestController } from '@n8n/decorators';
 import express from 'express';
-import { InstanceSettings } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { NotImplementedError } from '@/errors/response-errors/not-implemented.error';
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { TestRunsRequest } from '@/evaluation.ee/test-runs.types.ee';
 import { listQueryMiddleware } from '@/middlewares';
-import { getSharedWorkflowIds } from '@/public-api/v1/handlers/workflows/workflows.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -22,19 +19,24 @@ export class TestRunsController {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly testCaseExecutionRepository: TestCaseExecutionRepository,
 		private readonly testRunnerService: TestRunnerService,
-		private readonly instanceSettings: InstanceSettings,
 		private readonly telemetry: Telemetry,
 	) {}
+
+	private async assertUserHasAccessToWorkflow(workflowId: string, user: User) {
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:read',
+		]);
+
+		if (!workflow) {
+			throw new NotFoundError('Workflow not found');
+		}
+	}
 
 	/**
 	 * Get the test run (or just check that it exists and the user has access to it)
 	 */
 	private async getTestRun(testRunId: string, workflowId: string, user: User) {
-		const sharedWorkflowsIds = await getSharedWorkflowIds(user, ['workflow:read']);
-
-		if (!sharedWorkflowsIds.includes(workflowId)) {
-			throw new NotFoundError('Test run not found');
-		}
+		await this.assertUserHasAccessToWorkflow(workflowId, user);
 
 		const testRun = await this.testRunRepository.findOne({
 			where: { id: testRunId },
@@ -48,6 +50,8 @@ export class TestRunsController {
 	@Get('/:workflowId/test-runs', { middlewares: listQueryMiddleware })
 	async getMany(req: TestRunsRequest.GetMany) {
 		const { workflowId } = req.params;
+
+		await this.assertUserHasAccessToWorkflow(workflowId, req.user);
 
 		return await this.testRunRepository.getMany(workflowId, req.listQueryOptions);
 	}
@@ -90,10 +94,6 @@ export class TestRunsController {
 
 	@Post('/:workflowId/test-runs/:id/cancel')
 	async cancel(req: TestRunsRequest.Cancel, res: express.Response) {
-		if (this.instanceSettings.isMultiMain) {
-			throw new NotImplementedError('Cancelling test runs is not yet supported in multi-main mode');
-		}
-
 		const { id: testRunId } = req.params;
 
 		// Check test definition and test run exist
@@ -113,20 +113,11 @@ export class TestRunsController {
 	async create(req: TestRunsRequest.Create, res: express.Response) {
 		const { workflowId } = req.params;
 
-		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, req.user, [
-			'workflow:read',
-		]);
-
-		if (!workflow) {
-			// user trying to access a workflow they do not own
-			// and was not shared to them
-			// Or does not exist.
-			return res.status(404).json({ message: 'Not Found' });
-		}
+		await this.assertUserHasAccessToWorkflow(workflowId, req.user);
 
 		// We do not await for the test run to complete
-		void this.testRunnerService.runTest(req.user, workflow.id);
+		void this.testRunnerService.runTest(req.user, workflowId);
 
-		return res.status(202).json({ success: true });
+		res.status(202).json({ success: true });
 	}
 }

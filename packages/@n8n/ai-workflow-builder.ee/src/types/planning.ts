@@ -42,7 +42,17 @@ export interface PlanInterruptValue {
 	plan: PlanOutput;
 }
 
-export type HITLInterruptValue = QuestionsInterruptValue | PlanInterruptValue;
+export interface WebFetchApprovalInterruptValue {
+	type: 'web_fetch_approval';
+	requestId: string;
+	url: string;
+	domain: string;
+}
+
+export type HITLInterruptValue =
+	| QuestionsInterruptValue
+	| PlanInterruptValue
+	| WebFetchApprovalInterruptValue;
 
 export type PlanDecision = 'approve' | 'reject' | 'modify';
 
@@ -51,6 +61,8 @@ export type PlanDecision = 'approve' | 'reject' | 'modify';
  * Command.update messages don't survive in the parent checkpoint when
  * a subgraph node interrupts multiple times, so we store them here.
  */
+export type WebFetchDecision = 'allow_once' | 'allow_domain' | 'allow_all' | 'deny';
+
 export type HITLHistoryEntry =
 	| {
 			type: 'questions_answered';
@@ -64,4 +76,11 @@ export type HITLHistoryEntry =
 			plan: PlanOutput;
 			decision: PlanDecision;
 			feedback?: string;
+	  }
+	| {
+			type: 'web_fetch_decided';
+			afterMessageId?: string;
+			url: string;
+			domain: string;
+			decision: WebFetchDecision;
 	  };

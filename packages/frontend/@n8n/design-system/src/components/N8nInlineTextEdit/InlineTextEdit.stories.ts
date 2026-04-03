@@ -3,8 +3,16 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import InlineTextEdit from './InlineTextEdit.vue';
 
 export default {
-	title: 'Atoms/InlineTextEdit',
+	title: 'Core/InlineTextEdit',
 	component: InlineTextEdit,
+
+	parameters: {
+		docs: {
+			description: {
+				component: 'An in-place text editor that toggles between read and edit modes.',
+			},
+		},
+	},
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({

@@ -2,7 +2,12 @@ import type { BaseMessage } from '@langchain/core/messages';
 import { type DynamicStructuredTool, type StructuredTool, Tool } from '@langchain/core/tools';
 import type { JSONSchema7 } from 'json-schema';
 import { StructuredToolkit, type SupplyDataToolResponse } from 'n8n-core';
-import type { IExecuteFunctions, ISupplyDataFunctions, IWebhookFunctions } from 'n8n-workflow';
+import type {
+	ICredentialDataDecryptedObject,
+	IExecuteFunctions,
+	ISupplyDataFunctions,
+	IWebhookFunctions,
+} from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { ZodType } from 'zod';
 
@@ -219,6 +224,28 @@ export const getConnectedTools = async (
 
 	return finalTools;
 };
+
+/**
+ * Merges custom credential headers into an existing defaultHeaders object.
+ * Used by OpenAI and other LangChain nodes that pass `configuration.defaultHeaders`.
+ */
+export function mergeCustomHeaders(
+	credentials: ICredentialDataDecryptedObject,
+	defaultHeaders: Record<string, string>,
+): Record<string, string> {
+	if (
+		credentials.header &&
+		typeof credentials.headerName === 'string' &&
+		credentials.headerName &&
+		typeof credentials.headerValue === 'string'
+	) {
+		return {
+			...defaultHeaders,
+			[credentials.headerName]: credentials.headerValue,
+		};
+	}
+	return defaultHeaders;
+}
 
 /**
  * Sometimes model output is wrapped in an additional object property.

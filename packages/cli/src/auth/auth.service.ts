@@ -90,6 +90,9 @@ export class AuthService {
 
 			// Skip browser ID check for chat hub attachments
 			`/${restEndpoint}/chat/conversations/:sessionId/messages/:messageId/attachments/:index`,
+
+			// Skip browser ID check for Instance AI SSE endpoint — EventSource can't send custom headers
+			`/${restEndpoint}/instance-ai/events/:threadId`,
 		];
 	}
 
@@ -229,6 +232,17 @@ export class AuthService {
 		return this.jwtService.sign(payload, {
 			expiresIn: this.jwtExpiration,
 		});
+	}
+
+	/**
+	 * Validate a cookie auth token: checks revocation, JWT signature/expiry,
+	 * user existence, and hash consistency. Skips browser-id and MFA checks
+	 * since those are not applicable to webhook cookie validation.
+	 */
+	async validateCookieToken(token: string): Promise<void> {
+		const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
+		if (isInvalid) throw new AuthError('Unauthorized');
+		await this.validateToken(token);
 	}
 
 	async authenticateUserBasedOnToken(

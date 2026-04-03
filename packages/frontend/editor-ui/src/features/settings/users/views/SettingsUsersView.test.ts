@@ -16,7 +16,6 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import * as permissions from '@/app/utils/rbac/permissions';
-import { TAMPER_PROOF_INVITE_LINKS } from '@/app/constants/experiments';
 import type { PermissionTypeOptions } from '@/app/types/rbac';
 
 const { emitters, addEmitter } = useEmitters<'settingsUsersTable'>();
@@ -168,6 +167,7 @@ describe('SettingsUsersView', () => {
 		settingsStore.settings.enterprise = {} as FrontendSettings['enterprise'];
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.AdvancedPermissions] = true;
 		ssoStore.isSamlLoginEnabled = false;
+		ssoStore.isOidcLoginEnabled = false;
 	});
 
 	afterEach(() => {
@@ -212,8 +212,17 @@ describe('SettingsUsersView', () => {
 		});
 	});
 
-	it('should disable invite button when SSO is enabled', () => {
+	it('should disable invite button when SAML SSO is enabled', () => {
 		ssoStore.isSamlLoginEnabled = true;
+
+		renderComponent();
+
+		const inviteButton = screen.getByTestId('settings-users-invite-button');
+		expect(inviteButton).toBeDisabled();
+	});
+
+	it('should disable invite button when OIDC SSO is enabled', () => {
+		ssoStore.isOidcLoginEnabled = true;
 
 		renderComponent();
 
@@ -296,6 +305,75 @@ describe('SettingsUsersView', () => {
 		expect(actionsList).toBeInTheDocument();
 		expect(screen.getByTestId('action-delete-2')).toBeInTheDocument();
 		spy.mockRestore();
+	});
+
+	it('should show allow SSO manual login action when SAML is enabled', () => {
+		ssoStore.isSamlLoginEnabled = true;
+		// Ensure user 2 doesn't have allowSSOManualLogin set
+		usersStore.usersList.state.items[1].settings = {};
+
+		renderComponent();
+
+		const actionsList = screen.getByTestId('actions-for-2');
+		expect(actionsList).toBeInTheDocument();
+		expect(screen.getByTestId('action-allowSSOManualLogin-2')).toBeInTheDocument();
+	});
+
+	it('should show allow SSO manual login action when OIDC is enabled', () => {
+		ssoStore.isOidcLoginEnabled = true;
+		// Ensure user 2 doesn't have allowSSOManualLogin set
+		usersStore.usersList.state.items[1].settings = {};
+
+		renderComponent();
+
+		const actionsList = screen.getByTestId('actions-for-2');
+		expect(actionsList).toBeInTheDocument();
+		expect(screen.getByTestId('action-allowSSOManualLogin-2')).toBeInTheDocument();
+	});
+
+	it('should not show allow SSO manual login action when SSO is disabled', () => {
+		ssoStore.isSamlLoginEnabled = false;
+		ssoStore.isOidcLoginEnabled = false;
+
+		renderComponent();
+
+		const actionsList = screen.getByTestId('actions-for-2');
+		expect(actionsList).toBeInTheDocument();
+		expect(screen.queryByTestId('action-allowSSOManualLogin-2')).not.toBeInTheDocument();
+	});
+
+	it('should show disallow SSO manual login action when SAML is enabled and user has allowSSOManualLogin', () => {
+		ssoStore.isSamlLoginEnabled = true;
+		usersStore.usersList.state.items[1].settings = { allowSSOManualLogin: true };
+
+		renderComponent();
+
+		const actionsList = screen.getByTestId('actions-for-2');
+		expect(actionsList).toBeInTheDocument();
+		expect(screen.getByTestId('action-disallowSSOManualLogin-2')).toBeInTheDocument();
+	});
+
+	it('should show disallow SSO manual login action when OIDC is enabled and user has allowSSOManualLogin', () => {
+		ssoStore.isOidcLoginEnabled = true;
+		usersStore.usersList.state.items[1].settings = { allowSSOManualLogin: true };
+
+		renderComponent();
+
+		const actionsList = screen.getByTestId('actions-for-2');
+		expect(actionsList).toBeInTheDocument();
+		expect(screen.getByTestId('action-disallowSSOManualLogin-2')).toBeInTheDocument();
+	});
+
+	it('should not show disallow SSO manual login action when SSO is disabled', () => {
+		ssoStore.isSamlLoginEnabled = false;
+		ssoStore.isOidcLoginEnabled = false;
+		usersStore.usersList.state.items[1].settings = { allowSSOManualLogin: true };
+
+		renderComponent();
+
+		const actionsList = screen.getByTestId('actions-for-2');
+		expect(actionsList).toBeInTheDocument();
+		expect(screen.queryByTestId('action-disallowSSOManualLogin-2')).not.toBeInTheDocument();
 	});
 
 	describe('search functionality', () => {
@@ -458,28 +536,7 @@ describe('SettingsUsersView', () => {
 			});
 		});
 
-		it('should show copy invite link action when feature flag is disabled', () => {
-			// Ensure feature flag is disabled - reset mock to ensure clean state
-			// The beforeEach already sets this, but be explicit to avoid test order issues
-			mockIsVariantEnabled.mockReset();
-			mockIsVariantEnabled.mockReturnValue(false);
-
-			renderComponent();
-
-			// User 3 has inviteAcceptUrl and no firstName, so copyInviteLink should show
-			// when feature flag is disabled
-			const actionsList = screen.getByTestId('actions-for-3');
-			expect(actionsList).toBeInTheDocument();
-			expect(screen.getByTestId('action-copyInviteLink-3')).toBeInTheDocument();
-		});
-
-		it('should handle generate invite link action when feature flag is enabled', async () => {
-			mockIsVariantEnabled.mockImplementation(
-				(experiment: string, variant: string) =>
-					experiment === TAMPER_PROOF_INVITE_LINKS.name &&
-					variant === TAMPER_PROOF_INVITE_LINKS.variant,
-			);
-
+		it('should handle generate invite link action', async () => {
 			const spy = vi
 				.spyOn(permissions, 'hasPermission')
 				.mockImplementation((features: string[], options?: Partial<PermissionTypeOptions>) => {
@@ -508,13 +565,7 @@ describe('SettingsUsersView', () => {
 			spy.mockRestore();
 		});
 
-		it('should handle generate invite link error when feature flag is enabled', async () => {
-			mockIsVariantEnabled.mockImplementation(
-				(experiment: string, variant: string) =>
-					experiment === TAMPER_PROOF_INVITE_LINKS.name &&
-					variant === TAMPER_PROOF_INVITE_LINKS.variant,
-			);
-
+		it('should handle generate invite link error', async () => {
 			usersStore.generateInviteLink = vi
 				.fn()
 				.mockRejectedValue(new Error('Failed to generate link'));
@@ -555,7 +606,9 @@ describe('SettingsUsersView', () => {
 			});
 		});
 
-		it('should handle allow SSO manual login action', async () => {
+		it('should handle allow SSO manual login action when SAML is enabled', async () => {
+			ssoStore.isSamlLoginEnabled = true;
+
 			renderComponent();
 
 			emitters.settingsUsersTable.emit('action', { action: 'allowSSOManualLogin', userId: '2' });
@@ -572,7 +625,48 @@ describe('SettingsUsersView', () => {
 			});
 		});
 
-		it('should handle disallow SSO manual login action', async () => {
+		it('should handle allow SSO manual login action when OIDC is enabled', async () => {
+			ssoStore.isOidcLoginEnabled = true;
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('action', { action: 'allowSSOManualLogin', userId: '2' });
+
+			expect(usersStore.updateOtherUserSettings).toHaveBeenCalledWith('2', {
+				allowSSOManualLogin: true,
+			});
+			await waitFor(() => {
+				expect(mockToast.showToast).toHaveBeenCalledWith({
+					type: 'success',
+					title: expect.any(String),
+					message: expect.any(String),
+				});
+			});
+		});
+
+		it('should handle disallow SSO manual login action when SAML is enabled', async () => {
+			ssoStore.isSamlLoginEnabled = true;
+			// Set user to have SSO manual login enabled
+			usersStore.usersList.state.items[1].settings = { allowSSOManualLogin: true };
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('action', { action: 'disallowSSOManualLogin', userId: '2' });
+
+			expect(usersStore.updateOtherUserSettings).toHaveBeenCalledWith('2', {
+				allowSSOManualLogin: false,
+			});
+			await waitFor(() => {
+				expect(mockToast.showToast).toHaveBeenCalledWith({
+					type: 'success',
+					title: expect.any(String),
+					message: expect.any(String),
+				});
+			});
+		});
+
+		it('should handle disallow SSO manual login action when OIDC is enabled', async () => {
+			ssoStore.isOidcLoginEnabled = true;
 			// Set user to have SSO manual login enabled
 			usersStore.usersList.state.items[1].settings = { allowSSOManualLogin: true };
 
@@ -617,29 +711,7 @@ describe('SettingsUsersView', () => {
 			expect(mockToast.showToast).not.toHaveBeenCalled();
 		});
 
-		it('should hide copy invite link action when feature flag is enabled', () => {
-			mockIsVariantEnabled.mockImplementation(
-				(experiment: string, variant: string) =>
-					experiment === TAMPER_PROOF_INVITE_LINKS.name &&
-					variant === TAMPER_PROOF_INVITE_LINKS.variant,
-			);
-
-			renderComponent();
-
-			// User 3 has inviteAcceptUrl and no firstName, so copyInviteLink would normally show
-			const actionsList = screen.getByTestId('actions-for-3');
-			expect(actionsList).toBeInTheDocument();
-			// Copy invite link should not be in the actions list
-			expect(screen.queryByTestId('action-copyInviteLink-3')).not.toBeInTheDocument();
-		});
-
-		it('should show generate invite link action when feature flag is enabled', () => {
-			mockIsVariantEnabled.mockImplementation(
-				(experiment: string, variant: string) =>
-					experiment === TAMPER_PROOF_INVITE_LINKS.name &&
-					variant === TAMPER_PROOF_INVITE_LINKS.variant,
-			);
-
+		it('should show generate invite link action', () => {
 			const spy = vi
 				.spyOn(permissions, 'hasPermission')
 				.mockImplementation((features: string[], options?: Partial<PermissionTypeOptions>) => {
@@ -659,39 +731,7 @@ describe('SettingsUsersView', () => {
 			spy.mockRestore();
 		});
 
-		it('should hide generate invite link action when feature flag is disabled', () => {
-			mockIsVariantEnabled.mockImplementation(
-				(experiment: string, variant: string) =>
-					!(
-						experiment === TAMPER_PROOF_INVITE_LINKS.name &&
-						variant === TAMPER_PROOF_INVITE_LINKS.variant
-					),
-			);
-
-			const spy = vi
-				.spyOn(permissions, 'hasPermission')
-				.mockImplementation((features: string[], options?: Partial<PermissionTypeOptions>) => {
-					if (features.includes('rbac') && options?.rbac?.scope === 'user:generateInviteLink') {
-						return true;
-					}
-					return false;
-				});
-
-			renderComponent();
-
-			// Generate invite link should not be in the actions list when feature flag is disabled
-			expect(screen.queryByTestId('action-generateInviteLink-3')).not.toBeInTheDocument();
-
-			spy.mockRestore();
-		});
-
 		it('should hide generate invite link action when user has already accepted invite', () => {
-			mockIsVariantEnabled.mockImplementation(
-				(experiment: string, variant: string) =>
-					experiment === TAMPER_PROOF_INVITE_LINKS.name &&
-					variant === TAMPER_PROOF_INVITE_LINKS.variant,
-			);
-
 			const spy = vi
 				.spyOn(permissions, 'hasPermission')
 				.mockImplementation((features: string[], options?: Partial<PermissionTypeOptions>) => {

@@ -23,8 +23,9 @@ import type { StreamOutput } from '../types/streaming';
 import type { ChatPayload } from '../workflow-builder-agent';
 import { CodeBuilderAgent } from './code-builder-agent';
 import { SessionChatHandler } from './handlers/session-chat-handler';
+import type { HistoryContext } from './prompts';
 import type { TokenUsage } from './types';
-export type { TokenUsage };
+export type { HistoryContext, TokenUsage };
 
 /**
  * Configuration for CodeWorkflowBuilder
@@ -67,6 +68,10 @@ export interface CodeWorkflowBuilderConfig {
 	 * Optional callback for emitting telemetry events.
 	 */
 	onTelemetryEvent?: (event: string, properties: ITelemetryTrackProperties) => void;
+	/**
+	 * Whether to generate pin data for new nodes. Defaults to true.
+	 */
+	generatePinData?: boolean;
 }
 
 /**
@@ -95,6 +100,7 @@ export class CodeWorkflowBuilder {
 			callbacks: config.callbacks,
 			runMetadata: config.runMetadata,
 			onTelemetryEvent: config.onTelemetryEvent,
+			generatePinData: config.generatePinData,
 		});
 
 		this.logger = config.logger;
@@ -117,12 +123,14 @@ export class CodeWorkflowBuilder {
 	 * @param payload - Chat payload with message and workflow context
 	 * @param userId - User ID for logging
 	 * @param abortSignal - Optional abort signal
+	 * @param historyContext - Optional conversation history (used in evals when no session handler)
 	 * @yields StreamOutput chunks for messages, tool progress, and workflow updates
 	 */
 	async *chat(
 		payload: ChatPayload,
 		userId: string,
 		abortSignal?: AbortSignal,
+		historyContext?: HistoryContext,
 	): AsyncGenerator<StreamOutput, void, unknown> {
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
 
@@ -145,7 +153,12 @@ export class CodeWorkflowBuilder {
 			// No session handler - track generation success and call callback manually
 			let generationSucceeded = false;
 
-			for await (const chunk of this.codeBuilderAgent.chat(payload, userId, abortSignal)) {
+			for await (const chunk of this.codeBuilderAgent.chat(
+				payload,
+				userId,
+				abortSignal,
+				historyContext,
+			)) {
 				// Check if this chunk indicates successful workflow generation
 				if (chunk.messages?.some((msg) => msg.type === 'workflow-updated')) {
 					generationSucceeded = true;

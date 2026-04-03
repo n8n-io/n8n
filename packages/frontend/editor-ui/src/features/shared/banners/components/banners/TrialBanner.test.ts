@@ -182,4 +182,77 @@ describe('TrialBanner', () => {
 
 		expect(routerPushMock).toHaveBeenCalledWith('/settings/usage');
 	});
+
+	describe('CTA button styling', () => {
+		it('should use variant directly when backend sends variant', () => {
+			cloudPlanStore.state.data = {
+				bannerConfig: {
+					cta: {
+						text: 'Upgrade',
+						variant: 'success',
+					},
+				},
+			} as never;
+
+			const { container } = renderComponent();
+			const button = container.querySelector('button');
+			expect(button?.className).toContain('success');
+			expect(button?.getAttribute('style')).toBeNull();
+		});
+
+		it('should apply legacy style overrides when backend sends style without variant', () => {
+			cloudPlanStore.state.data = {
+				bannerConfig: {
+					cta: {
+						text: 'Upgrade',
+						style: 'success',
+					},
+				},
+			} as never;
+
+			const { container } = renderComponent();
+			const button = container.querySelector('button');
+			expect(button?.style.getPropertyValue('--button--color--background')).toBe(
+				'var(--color--success)',
+			);
+		});
+
+		it('should not apply style overrides when variant is provided', () => {
+			cloudPlanStore.state.data = {
+				bannerConfig: {
+					cta: {
+						text: 'Upgrade',
+						style: 'success',
+						variant: 'destructive',
+					},
+				},
+			} as never;
+
+			const { container } = renderComponent();
+			const button = container.querySelector('button');
+			expect(button?.className).toContain('destructive');
+			expect(button?.style.getPropertyValue('--button--color--background')).toBe('');
+		});
+
+		it.each([
+			['success', 'var(--color--success)'],
+			['warning', 'var(--color--warning)'],
+			['danger', 'var(--color--danger)'],
+			['primary', 'var(--color--primary)'],
+		])('should map legacy style "%s" to correct color override', (style, expectedColor) => {
+			cloudPlanStore.state.data = {
+				bannerConfig: {
+					cta: {
+						text: 'Upgrade',
+						style,
+					},
+				},
+			} as never;
+
+			const { container } = renderComponent();
+			const button = container.querySelector('button');
+			expect(button?.style.getPropertyValue('--button--color--background')).toBe(expectedColor);
+			expect(button?.style.getPropertyValue('--button--color')).toBe('var(--color--neutral-white)');
+		});
+	});
 });

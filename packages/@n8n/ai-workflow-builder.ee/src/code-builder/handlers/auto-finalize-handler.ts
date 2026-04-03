@@ -40,8 +40,8 @@ export interface AutoFinalizeHandlerConfig {
  * Parameters for executing auto-finalize
  */
 export interface AutoFinalizeParams {
-	/** The current workflow code from text editor (null if no code yet) */
-	code: string | null;
+	/** The current workflow code from text editor */
+	code: string;
 	/** The current workflow context for validation */
 	currentWorkflow: WorkflowJSON | undefined;
 	/** Message history to append feedback to */
@@ -56,8 +56,6 @@ export interface AutoFinalizeParams {
 export interface AutoFinalizeResult {
 	/** Whether auto-finalize succeeded */
 	success: boolean;
-	/** Whether we prompted for code creation (no code existed) */
-	promptedForCode?: boolean;
 	/** The validated workflow (only on success) */
 	workflow?: WorkflowJSON;
 	/** Parse duration in milliseconds */
@@ -68,9 +66,8 @@ export interface AutoFinalizeResult {
  * Handles the auto-finalize logic when the LLM stops calling tools.
  *
  * This handler:
- * 1. Prompts for code creation if no code exists
- * 2. Validates the code and returns success on valid workflow
- * 3. Provides feedback for warnings or parse errors
+ * 1. Validates the code and returns success on valid workflow
+ * 2. Provides feedback for warnings or parse errors
  */
 export class AutoFinalizeHandler {
 	private parseAndValidate: ParseAndValidateFn;
@@ -93,15 +90,6 @@ export class AutoFinalizeHandler {
 		params: AutoFinalizeParams,
 	): AsyncGenerator<StreamOutput, AutoFinalizeResult, unknown> {
 		const { code, currentWorkflow, messages, warningTracker } = params;
-
-		// No code yet - prompt to create
-		if (!code) {
-			pushValidationFeedback(
-				messages,
-				'Please use the text editor tool to create or edit the workflow code.',
-			);
-			return { success: false, promptedForCode: true };
-		}
 
 		// Auto-validate and finalize
 		const parseStartTime = Date.now();

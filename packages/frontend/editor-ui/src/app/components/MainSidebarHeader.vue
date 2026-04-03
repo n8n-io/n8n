@@ -18,11 +18,8 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useGlobalEntityCreation } from '@/app/composables/useGlobalEntityCreation';
-import BetaTag from '@n8n/design-system/components/BetaTag/BetaTag.vue';
-
 defineProps<{
 	isCollapsed: boolean;
-	isBeta?: boolean;
 	hideCreate?: boolean;
 }>();
 
@@ -74,7 +71,6 @@ const {
 				:collapsed="isCollapsed"
 				:release-channel="settingsStore.settings.releaseChannel"
 			>
-				<BetaTag v-if="isBeta" :class="$style.beta" data-test-id="beta-icon" />
 				<N8nTooltip
 					v-if="sourceControlStore.preferences.branchReadOnly && !isCollapsed"
 					placement="bottom"
@@ -107,8 +103,9 @@ const {
 			@select="handleMenuSelect"
 		>
 			<N8nIconButton
+				class="n8n-button--highlight"
+				variant="ghost"
 				size="small"
-				type="highlight"
 				icon="plus"
 				icon-size="large"
 				aria-label="Add new item"
@@ -151,10 +148,10 @@ const {
 						size="xsmall"
 					/>
 					<N8nButton
+						variant="subtle"
 						v-else
 						:size="'mini'"
 						:class="$style.upgradeButton"
-						type="tertiary"
 						@click="handleMenuSelect(item.id)"
 					>
 						{{ upgradeLabel }}
@@ -169,8 +166,9 @@ const {
 			:shortcut="{ keys: ['k'], metaKey: true }"
 		>
 			<N8nIconButton
+				class="n8n-button--highlight"
+				variant="ghost"
 				size="small"
-				type="highlight"
 				icon="search"
 				icon-size="large"
 				aria-label="Open command palette"
@@ -189,8 +187,9 @@ const {
 		>
 			<N8nIconButton
 				id="toggle-sidebar-button"
+				class="n8n-button--highlight"
+				variant="ghost"
 				size="small"
-				type="highlight"
 				icon="panel-left"
 				icon-size="large"
 				aria-label="Toggle sidebar"
@@ -223,11 +222,6 @@ const {
 
 .logo {
 	margin-right: auto;
-}
-
-.beta {
-	margin-top: var(--spacing--3xs);
-	margin-left: var(--spacing--3xs);
 }
 
 .readOnlyEnvironmentIcon {

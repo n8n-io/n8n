@@ -16,6 +16,7 @@ import { ExternalHooks } from '@/external-hooks';
 import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
 import { send, sendErrorResponse } from '@/response-helper';
 import { createHandlebarsEngine } from '@/utils/handlebars.util';
+import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 import { LiveWebhooks } from '@/webhooks/live-webhooks';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import { WaitingForms } from '@/webhooks/waiting-forms';
@@ -58,9 +59,13 @@ export abstract class AbstractServer {
 
 	protected endpointMcpTest: string;
 
+	protected endpointHealth: string;
+
 	protected webhooksEnabled = true;
 
 	protected testWebhooksEnabled = false;
+
+	private fullyReady = false;
 
 	readonly uniqueInstanceId: string;
 
@@ -92,6 +97,8 @@ export abstract class AbstractServer {
 		this.endpointMcp = endpoints.mcp;
 		this.endpointMcpTest = endpoints.mcpTest;
 
+		this.endpointHealth = resolveBackendHealthEndpointPath(this.globalConfig);
+
 		this.logger = Container.get(Logger);
 	}
 
@@ -121,17 +128,25 @@ export abstract class AbstractServer {
 
 	protected setupPushServer() {}
 
+	/** Call once after all initialization is complete. Unblocks the /healthz/readiness endpoint. */
+	markAsReady() {
+		this.fullyReady = true;
+	}
+
 	private setupHealthCheck() {
+		const healthPath = this.endpointHealth;
+		const readinessPath = `${healthPath}/readiness`;
+
 		// main health check should not care about DB connections
-		this.app.get('/healthz', (_req, res) => {
+		this.app.get(healthPath, (_req, res) => {
 			res.send({ status: 'ok' });
 		});
 
 		const { connectionState } = this.dbConnection;
 
-		this.app.get('/healthz/readiness', (_req, res) => {
+		this.app.get(readinessPath, (_req, res) => {
 			const { connected, migrated } = connectionState;
-			if (connected && migrated) {
+			if (connected && migrated && this.fullyReady) {
 				res.status(200).send({ status: 'ok' });
 			} else {
 				res.status(503).send({ status: 'error' });

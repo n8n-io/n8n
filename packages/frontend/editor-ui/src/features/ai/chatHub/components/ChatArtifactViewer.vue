@@ -48,8 +48,8 @@ const markdownContent = computed(() => ({
 					@update:model-value="emit('selectArtifact', $event)"
 				/>
 				<div :class="$style.headerActions">
-					<N8nIconButton type="tertiary" text icon="download" @click="emit('download')" />
-					<N8nIconButton type="tertiary" text icon="x" @click="emit('close')" />
+					<N8nIconButton variant="ghost" text icon="download" @click="emit('download')" />
+					<N8nIconButton variant="ghost" text icon="x" @click="emit('close')" />
 				</div>
 			</div>
 
@@ -68,6 +68,7 @@ const markdownContent = computed(() => ({
 					:class="isMarkdown ? $style.markdown : ''"
 					:single-pre="!isMarkdown"
 					:source="markdownContent"
+					footnote-style="normal"
 				/>
 			</div>
 		</div>
@@ -134,6 +135,11 @@ const markdownContent = computed(() => ({
 .content {
 	flex: 1;
 	overflow-x: hidden;
+	// ChatMarkdownChunk uses `inherit` — set the values previously hardcoded
+	// in the chunk so the artifact viewer preserves existing appearance.
+	color: var(--color--text--shade-1);
+	font-size: var(--font-size--md);
+	line-height: var(--line-height--xl);
 }
 
 .iframe {

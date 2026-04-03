@@ -21,7 +21,8 @@ import { FormTrigger } from 'n8n-nodes-base/nodes/Form/FormTrigger.node';
 import { ManualTrigger } from 'n8n-nodes-base/nodes/ManualTrigger/ManualTrigger.node';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 import { Set } from 'n8n-nodes-base/nodes/Set/Set.node';
-import type { INodeTypeData, INode } from 'n8n-workflow';
+import { Webhook as WebhookNode } from 'n8n-nodes-base/nodes/Webhook/Webhook.node';
+import type { INodeType, INodeTypeData, INode } from 'n8n-workflow';
 import type request from 'supertest';
 import { v4 as uuid } from 'uuid';
 
@@ -105,6 +106,10 @@ export async function initNodeTypes(customNodes?: INodeTypeData) {
 		},
 		'n8n-nodes-base.formTrigger': {
 			type: new FormTrigger(),
+			sourcePath: '',
+		},
+		'n8n-nodes-base.webhook': {
+			type: mock<INodeType>({ description: new WebhookNode().description }),
 			sourcePath: '',
 		},
 	};

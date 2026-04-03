@@ -41,6 +41,7 @@ type Props = NodeProps<CanvasNodeData> & {
 	eventBus?: EventBus<CanvasEventBusEvents>;
 	hovered?: boolean;
 	nearbyHovered?: boolean;
+	highlighted?: boolean;
 };
 
 const slots = defineSlots<{
@@ -65,6 +66,7 @@ const emit = defineEmits<{
 	'update:outputs': [id: string];
 	move: [id: string, position: XYPosition];
 	focus: [id: string];
+	'replace:node': [id: string];
 	'add:ai': [id: string];
 }>();
 
@@ -102,6 +104,7 @@ const classes = computed(() => ({
 	[style.canvasNode]: true,
 	[style.showToolbar]: showToolbar.value,
 	hovered: props.hovered,
+	highlighted: props.highlighted,
 	selected: props.selected,
 	waiting: props.data.execution.waiting || props.data.execution.status === 'waiting',
 	running: props.data.execution.running || props.data.execution.waitingForNext,
@@ -283,6 +286,10 @@ function onFocus(id: string) {
 	emit('focus', id);
 }
 
+function onReplaceNode(id: string) {
+	emit('replace:node', id);
+}
+
 function onAddToAi(id: string) {
 	emit('add:ai', id);
 }
@@ -424,6 +431,7 @@ onBeforeUnmount(() => {
 			@update="onUpdate"
 			@open:contextmenu="onOpenContextMenuFromNode"
 			@delete="onDelete"
+			@replace:node="onReplaceNode"
 		/>
 
 		<CanvasNodeTrigger

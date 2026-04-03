@@ -20,7 +20,7 @@ import {
 	N8nLink,
 	N8nText,
 } from '@n8n/design-system';
-import { useQuickConnect } from '@/features/integrations/quickConnect/composables/useQuickConnect';
+import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 
 interface ModalData {
 	packageName?: string;
@@ -43,7 +43,8 @@ const packageName = ref(modalData.value?.packageName ?? '');
 const userAgreed = ref(false);
 const checkboxWarning = ref(false);
 const infoTextErrorMessage = ref('');
-const quickConnect = useQuickConnect({ packageName });
+const { getQuickConnectOptionByPackageName } = useQuickConnect();
+const quickConnect = computed(() => getQuickConnectOptionByPackageName(packageName.value));
 
 const openNPMPage = () => {
 	telemetry.track('user clicked cnr browse button', { source: 'cnr install modal' });
