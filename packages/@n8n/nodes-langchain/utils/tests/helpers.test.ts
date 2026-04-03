@@ -11,6 +11,7 @@ import {
 	mergeCustomHeaders,
 	unwrapNestedOutput,
 	getSessionId,
+	getPromptInputByType,
 } from '../helpers';
 import { N8nTool } from '../N8nTool';
 
@@ -597,5 +598,343 @@ describe('mergeCustomHeaders', () => {
 		const result = mergeCustomHeaders(credentials, defaultHeaders);
 
 		expect(result).toEqual({ Authorization: 'Bearer new-token' });
+	});
+});
+
+describe('getPromptInputByType', () => {
+	let mockCtx: any;
+
+	const defaultOptions = { i: 0, promptTypeKey: 'promptType', inputKey: 'text' };
+
+	beforeEach(() => {
+		mockCtx = {
+			getNodeParameter: jest.fn(),
+			evaluateExpression: jest.fn(),
+			getNode: jest.fn().mockReturnValue({
+				name: 'Test Node',
+				type: 'test',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			}),
+		};
+	});
+
+	function call(i = 0) {
+		return getPromptInputByType({ ctx: mockCtx, ...defaultOptions, i });
+	}
+
+	function setupAuto(chatInputValue: unknown, guardrailsInputValue: unknown = undefined) {
+		mockCtx.getNodeParameter.mockReturnValueOnce('auto');
+		mockCtx.evaluateExpression.mockImplementation((expr: string) => {
+			if (expr.includes('chatInput')) return chatInputValue;
+			if (expr.includes('guardrailsInput')) return guardrailsInputValue;
+			return undefined;
+		});
+	}
+
+	function setupGuardrails(value: unknown) {
+		mockCtx.getNodeParameter.mockReturnValueOnce('guardrails');
+		mockCtx.evaluateExpression.mockReturnValueOnce(value);
+	}
+
+	function setupDefine(value: unknown) {
+		mockCtx.getNodeParameter.mockReturnValueOnce('define').mockReturnValueOnce(value);
+	}
+
+	// ════════════════════════════════════════════════════════════════
+	// GROUP 1 — Happy path
+	// ════════════════════════════════════════════════════════════════
+	describe('Happy path', () => {
+		it('auto + chatInput valid → returns chatInput', () => {
+			setupAuto('Hello from chat');
+			expect(call()).toBe('Hello from chat');
+		});
+
+		it('auto + chatInput null + guardrailsInput valid → returns guardrailsInput (the bug fix)', () => {
+			setupAuto(null, 'Hello from guardrails');
+			expect(call()).toBe('Hello from guardrails');
+		});
+
+		it('auto + chatInput undefined + guardrailsInput valid → returns guardrailsInput', () => {
+			setupAuto(undefined, 'Hello from guardrails');
+			expect(call()).toBe('Hello from guardrails');
+		});
+
+		it('guardrails + valid string → returns it', () => {
+			setupGuardrails('Guarded input');
+			expect(call()).toBe('Guarded input');
+		});
+
+		it('define + valid string → returns it', () => {
+			setupDefine('Manual prompt');
+			expect(call()).toBe('Manual prompt');
+		});
+
+		it('auto + number 42 → silently casts to "42"', () => {
+			setupAuto(42);
+			expect(call()).toBe('42');
+		});
+
+		it('auto + boolean true → silently casts to "true"', () => {
+			setupAuto(true);
+			expect(call()).toBe('true');
+		});
+
+		it('auto + boolean false → silently casts to "false"', () => {
+			setupAuto(false);
+			expect(call()).toBe('false');
+		});
+
+		it('guardrailsInput number → silently casts to string', () => {
+			setupAuto(null, 42);
+			expect(call()).toBe('42');
+		});
+	});
+
+	// ════════════════════════════════════════════════════════════════
+	// GROUP 2 — null and undefined inputs — the bug fix
+	// ════════════════════════════════════════════════════════════════
+	describe('null and undefined inputs — the bug fix', () => {
+		it('auto + both null → throws NodeOperationError', () => {
+			setupAuto(null, null);
+			expect(() => call()).toThrow(NodeOperationError);
+		});
+
+		it('auto + both undefined → throws NodeOperationError', () => {
+			setupAuto(undefined, undefined);
+			expect(() => call()).toThrow(NodeOperationError);
+		});
+
+		it('guardrails + null → throws NodeOperationError', () => {
+			setupGuardrails(null);
+			expect(() => call()).toThrow(NodeOperationError);
+		});
+
+		it('guardrails + undefined → throws NodeOperationError', () => {
+			setupGuardrails(undefined);
+			expect(() => call()).toThrow(NodeOperationError);
+		});
+
+		it('define + null → throws NodeOperationError', () => {
+			setupDefine(null);
+			expect(() => call()).toThrow(NodeOperationError);
+		});
+
+		it('define + undefined → throws NodeOperationError', () => {
+			setupDefine(undefined);
+			expect(() => call()).toThrow(NodeOperationError);
+		});
+	});
+
+	// ════════════════════════════════════════════════════════════════
+	// GROUP 3 — Invalid type inputs
+	// ════════════════════════════════════════════════════════════════
+	describe('Invalid type inputs', () => {
+		it('auto + chatInput object → throws NodeOperationError', () => {
+			setupAuto({ key: 'value' });
+			expect(() => call()).toThrow(NodeOperationError);
+		});
+
+		it('auto + chatInput array → throws NodeOperationError', () => {
+			setupAuto(['item1', 'item2']);
+			expect(() => call()).toThrow(NodeOperationError);
+		});
+
+		it('define + object → throws NodeOperationError', () => {
+			setupDefine({ key: 'value' });
+			expect(() => call()).toThrow(NodeOperationError);
+		});
+	});
+
+	// ════════════════════════════════════════════════════════════════
+	// GROUP 4 — Empty and whitespace-only strings
+	// ════════════════════════════════════════════════════════════════
+	describe('Empty and whitespace-only strings', () => {
+		it('auto + chatInput "" → throws NodeOperationError', () => {
+			setupAuto('');
+			expect(() => call()).toThrow(NodeOperationError);
+		});
+
+		it('auto + chatInput "   " → throws NodeOperationError', () => {
+			setupAuto('   ');
+			expect(() => call()).toThrow(NodeOperationError);
+		});
+
+		it('auto + chatInput "\\n\\t" → throws NodeOperationError', () => {
+			setupAuto('\n\t');
+			expect(() => call()).toThrow(NodeOperationError);
+		});
+
+		it('define + "" → throws NodeOperationError', () => {
+			setupDefine('');
+			expect(() => call()).toThrow(NodeOperationError);
+		});
+	});
+
+	// ════════════════════════════════════════════════════════════════
+	// GROUP 5 — Error message content
+	// ════════════════════════════════════════════════════════════════
+	describe('Error message content', () => {
+		it('auto both null → error.message === "No prompt specified"', () => {
+			setupAuto(null, null);
+			try {
+				call();
+				fail('Expected error to be thrown');
+			} catch (error) {
+				expect(error).toBeInstanceOf(NodeOperationError);
+				expect((error as NodeOperationError).message).toBe('No prompt specified');
+			}
+		});
+
+		it('auto both null → description mentions "Chat Trigger or Guardrails"', () => {
+			setupAuto(null, null);
+			try {
+				call();
+				fail('Expected error to be thrown');
+			} catch (error) {
+				expect(error).toBeInstanceOf(NodeOperationError);
+				expect((error as NodeOperationError).description).toContain('Chat Trigger or Guardrails');
+			}
+		});
+
+		it('auto both null → description mentions "Define below"', () => {
+			setupAuto(null, null);
+			try {
+				call();
+				fail('Expected error to be thrown');
+			} catch (error) {
+				expect(error).toBeInstanceOf(NodeOperationError);
+				expect((error as NodeOperationError).description).toContain('Define below');
+			}
+		});
+
+		it('define null → description mentions "expression"', () => {
+			setupDefine(null);
+			try {
+				call();
+				fail('Expected error to be thrown');
+			} catch (error) {
+				expect(error).toBeInstanceOf(NodeOperationError);
+				expect((error as NodeOperationError).description).toContain('expression');
+			}
+		});
+
+		it('auto object → error.message === "Invalid prompt value"', () => {
+			setupAuto({ key: 'value' });
+			try {
+				call();
+				fail('Expected error to be thrown');
+			} catch (error) {
+				expect(error).toBeInstanceOf(NodeOperationError);
+				expect((error as NodeOperationError).message).toBe('Invalid prompt value');
+			}
+		});
+
+		it('auto object → description mentions "object or array"', () => {
+			setupAuto({ key: 'value' });
+			try {
+				call();
+				fail('Expected error to be thrown');
+			} catch (error) {
+				expect(error).toBeInstanceOf(NodeOperationError);
+				expect((error as NodeOperationError).description).toContain('object or array');
+			}
+		});
+
+		it('auto "" → description mentions "whitespace"', () => {
+			setupAuto('');
+			try {
+				call();
+				fail('Expected error to be thrown');
+			} catch (error) {
+				expect(error).toBeInstanceOf(NodeOperationError);
+				expect((error as NodeOperationError).description).toContain('whitespace');
+			}
+		});
+	});
+
+	// ════════════════════════════════════════════════════════════════
+	// GROUP 6 — itemIndex in errors
+	// ════════════════════════════════════════════════════════════════
+	describe('itemIndex in errors', () => {
+		it('auto both null at i=0 → itemIndex === 0', () => {
+			setupAuto(null, null);
+			try {
+				call(0);
+				fail('Expected error to be thrown');
+			} catch (error) {
+				expect((error as NodeOperationError).context?.itemIndex).toBe(0);
+			}
+		});
+
+		it('auto both null at i=2 → itemIndex === 2', () => {
+			setupAuto(null, null);
+			try {
+				call(2);
+				fail('Expected error to be thrown');
+			} catch (error) {
+				expect((error as NodeOperationError).context?.itemIndex).toBe(2);
+			}
+		});
+
+		it('define null at i=0 → itemIndex === 0', () => {
+			setupDefine(null);
+			try {
+				call(0);
+				fail('Expected error to be thrown');
+			} catch (error) {
+				expect((error as NodeOperationError).context?.itemIndex).toBe(0);
+			}
+		});
+
+		it('define null at i=2 → itemIndex === 2', () => {
+			setupDefine(null);
+			try {
+				call(2);
+				fail('Expected error to be thrown');
+			} catch (error) {
+				expect((error as NodeOperationError).context?.itemIndex).toBe(2);
+			}
+		});
+	});
+
+	// ════════════════════════════════════════════════════════════════
+	// GROUP 7 — Correct method called per promptType
+	// ════════════════════════════════════════════════════════════════
+	describe('Correct method called per promptType', () => {
+		it('auto → evaluateExpression called with chatInput expression first', () => {
+			setupAuto('test');
+			call();
+			expect(mockCtx.evaluateExpression).toHaveBeenCalledWith('{{ $json["chatInput"] }}', 0);
+		});
+
+		it('auto chatInput null → evaluateExpression also called with guardrailsInput', () => {
+			setupAuto(null, 'fallback');
+			call();
+			expect(mockCtx.evaluateExpression).toHaveBeenCalledWith('{{ $json["guardrailsInput"] }}', 0);
+		});
+
+		it('auto chatInput valid → evaluateExpression NOT called with guardrailsInput', () => {
+			setupAuto('hello');
+			call();
+			expect(mockCtx.evaluateExpression).not.toHaveBeenCalledWith(
+				'{{ $json["guardrailsInput"] }}',
+				expect.anything(),
+			);
+		});
+
+		it('guardrails → evaluateExpression called with guardrailsInput expression', () => {
+			setupGuardrails('test');
+			call();
+			expect(mockCtx.evaluateExpression).toHaveBeenCalledWith('{{ $json["guardrailsInput"] }}', 0);
+		});
+
+		it('define → getNodeParameter called twice, evaluateExpression NOT called', () => {
+			setupDefine('test');
+			call();
+			expect(mockCtx.getNodeParameter).toHaveBeenCalledTimes(2);
+			expect(mockCtx.evaluateExpression).not.toHaveBeenCalled();
+		});
 	});
 });
