@@ -118,18 +118,26 @@ const openNdv = () => {
 };
 
 // Hide parameter issues until the user interacts with a parameter.
-const hiddenIssuesInputs = ref<string[]>([]);
+const hideIssuesMap = ref(new Map<string, boolean>());
 
 watch(
 	simpleParameters,
 	(params) => {
-		hiddenIssuesInputs.value = params.map((p) => p.name);
+		for (const p of params) {
+			if (!hideIssuesMap.value.has(p.name)) {
+				hideIssuesMap.value.set(p.name, true);
+			}
+		}
 	},
 	{ immediate: true },
 );
 
+const hiddenIssuesInputs = computed(() =>
+	[...hideIssuesMap.value.entries()].filter(([, hidden]) => hidden).map(([name]) => name),
+);
+
 const revealParameterIssues = (parameterName: string) => {
-	hiddenIssuesInputs.value = hiddenIssuesInputs.value.filter((name) => name !== parameterName);
+	hideIssuesMap.value.set(parameterName, false);
 };
 
 const onCredentialSelected = (updateInfo: INodeUpdatePropertiesInformation) => {
