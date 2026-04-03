@@ -541,6 +541,28 @@ watch(
 	},
 );
 
+watch(
+	() => stringify(props.node?.credentials ?? {}),
+	(currentValue, oldValue) => {
+		const emptyCredentials = stringify({});
+		const isUpdated =
+			oldValue !== undefined && oldValue !== emptyCredentials && currentValue !== oldValue;
+		if (
+			isUpdated &&
+			props.modelValue &&
+			isResourceLocatorValue(props.modelValue) &&
+			props.modelValue.value !== ''
+		) {
+			emit('update:modelValue', {
+				...props.modelValue,
+				cachedResultName: '',
+				cachedResultUrl: '',
+				value: '',
+			});
+		}
+	},
+);
+
 onMounted(() => {
 	props.eventBus.on('refreshList', refreshList);
 	window.addEventListener('resize', setWidth);

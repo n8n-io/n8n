@@ -742,6 +742,179 @@ describe('ResourceLocator', () => {
 		});
 	});
 
+	describe('credential change resets value', () => {
+		it('should reset value when node credentials change', async () => {
+			const modelValue: typeof TEST_MODEL_VALUE = {
+				...TEST_MODEL_VALUE,
+				value: 'selected-model',
+				cachedResultName: 'GPT-4',
+				cachedResultUrl: 'https://test.com/gpt-4',
+			};
+
+			const node = { ...TEST_NODE_MULTI_MODE };
+
+			const { emitted, rerender } = renderComponent({
+				props: {
+					modelValue,
+					parameter: TEST_PARAMETER_MULTI_MODE,
+					path: `parameters.${TEST_PARAMETER_MULTI_MODE.name}`,
+					node,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+					isValueExpression: false,
+				},
+			});
+
+			// Change credentials on the node
+			await rerender({
+				node: {
+					...node,
+					credentials: {
+						testAuth: {
+							id: '5678',
+							name: 'Different Account',
+						},
+					},
+				},
+			});
+
+			expect(emitted('update:modelValue')).toEqual([
+				[
+					{
+						...modelValue,
+						cachedResultName: '',
+						cachedResultUrl: '',
+						value: '',
+					},
+				],
+			]);
+		});
+
+		it('should not reset value when credentials have not changed', async () => {
+			const modelValue: typeof TEST_MODEL_VALUE = {
+				...TEST_MODEL_VALUE,
+				value: 'selected-model',
+			};
+
+			const node = { ...TEST_NODE_MULTI_MODE };
+
+			const { emitted, rerender } = renderComponent({
+				props: {
+					modelValue,
+					parameter: TEST_PARAMETER_MULTI_MODE,
+					path: `parameters.${TEST_PARAMETER_MULTI_MODE.name}`,
+					node,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+					isValueExpression: false,
+				},
+			});
+
+			// Re-render with same credentials but different parameter
+			await rerender({
+				node: {
+					...node,
+					parameters: { ...node.parameters, operation: 'list' },
+				},
+			});
+
+			expect(emitted('update:modelValue')).toBeUndefined();
+		});
+
+		it('should not reset value on initial mount', async () => {
+			const { emitted } = renderComponent({
+				props: {
+					modelValue: TEST_MODEL_VALUE,
+					parameter: TEST_PARAMETER_MULTI_MODE,
+					path: `parameters.${TEST_PARAMETER_MULTI_MODE.name}`,
+					node: TEST_NODE_MULTI_MODE,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+					isValueExpression: false,
+				},
+			});
+
+			expect(emitted('update:modelValue')).toBeUndefined();
+		});
+
+		it('should not reset when value is already empty', async () => {
+			const modelValue: typeof TEST_MODEL_VALUE = {
+				...TEST_MODEL_VALUE,
+				value: '',
+			};
+
+			const node = { ...TEST_NODE_MULTI_MODE };
+
+			const { emitted, rerender } = renderComponent({
+				props: {
+					modelValue,
+					parameter: TEST_PARAMETER_MULTI_MODE,
+					path: `parameters.${TEST_PARAMETER_MULTI_MODE.name}`,
+					node,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+					isValueExpression: false,
+				},
+			});
+
+			await rerender({
+				node: {
+					...node,
+					credentials: {
+						testAuth: {
+							id: '5678',
+							name: 'Different Account',
+						},
+					},
+				},
+			});
+
+			expect(emitted('update:modelValue')).toBeUndefined();
+		});
+
+		it('should not reset value on first credential assignment', async () => {
+			const modelValue: typeof TEST_MODEL_VALUE = {
+				...TEST_MODEL_VALUE,
+				value: 'selected-model',
+				cachedResultName: 'GPT-4',
+				cachedResultUrl: 'https://test.com/gpt-4',
+			};
+
+			// Start with no credentials
+			const node = {
+				...TEST_NODE_MULTI_MODE,
+				credentials: undefined,
+			};
+
+			const { emitted, rerender } = renderComponent({
+				props: {
+					modelValue,
+					parameter: TEST_PARAMETER_MULTI_MODE,
+					path: `parameters.${TEST_PARAMETER_MULTI_MODE.name}`,
+					node,
+					displayTitle: 'Test Resource Locator',
+					expressionComputedValue: '',
+					isValueExpression: false,
+				},
+			});
+
+			// Assign credentials for the first time
+			await rerender({
+				node: {
+					...node,
+					credentials: {
+						testAuth: {
+							id: '1234',
+							name: 'Test Account',
+						},
+					},
+				},
+			});
+
+			expect(emitted('update:modelValue')).toBeUndefined();
+		});
+	});
+
 	describe('ExpressionLocalResolveContext injection', () => {
 		const mockResolveExpression = vi.fn().mockImplementation((val) => val);
 		const mockResolveRequiredParameters = vi.fn().mockImplementation((_, params) => params);
