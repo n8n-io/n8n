@@ -123,169 +123,180 @@ export class ERPNext implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
-			// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/Resources/post_api_resource_Webhook
-			// https://frappeframework.com/docs/user/en/guides/integration/rest_api/manipulating_documents
+			try {
+				// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/Resources/post_api_resource_Webhook
+				// https://frappeframework.com/docs/user/en/guides/integration/rest_api/manipulating_documents
 
-			if (resource === 'document') {
-				// *********************************************************************
-				//                             document
-				// *********************************************************************
+				if (resource === 'document') {
+					// *********************************************************************
+					//                             document
+					// *********************************************************************
 
-				if (operation === 'get') {
-					// ----------------------------------
-					//          document: get
-					// ----------------------------------
+					if (operation === 'get') {
+						// ----------------------------------
+						//          document: get
+						// ----------------------------------
 
-					// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/get_api_resource__DocType___DocumentName_
+						// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/get_api_resource__DocType___DocumentName_
 
-					const docType = this.getNodeParameter('docType', i) as string;
-					const documentName = this.getNodeParameter('documentName', i) as string;
+						const docType = this.getNodeParameter('docType', i) as string;
+						const documentName = this.getNodeParameter('documentName', i) as string;
 
-					responseData = await erpNextApiRequest.call(
-						this,
-						'GET',
-						`/api/resource/${docType}/${documentName}`,
-					);
-					responseData = responseData.data;
-				}
-
-				if (operation === 'getAll') {
-					// ----------------------------------
-					//         document: getAll
-					// ----------------------------------
-
-					// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/get_api_resource__DocType_
-
-					const docType = this.getNodeParameter('docType', i) as string;
-					const endpoint = `/api/resource/${docType}`;
-
-					const { fields, filters } = this.getNodeParameter('options', i) as {
-						fields: string[];
-						filters: {
-							customProperty: Array<{ field: string; operator: string; value: string }>;
-						};
-					};
-
-					// fields=["test", "example", "hi"]
-					if (fields) {
-						if (fields.includes('*')) {
-							qs.fields = JSON.stringify(['*']);
-						} else {
-							qs.fields = JSON.stringify(fields);
-						}
-					}
-					// filters=[["Person","first_name","=","Jane"]]
-					// TODO: filters not working
-					if (filters) {
-						qs.filters = JSON.stringify(
-							filters.customProperty.map((filter) => {
-								return [docType, filter.field, toSQL(filter.operator), filter.value];
-							}),
-						);
-					}
-
-					const returnAll = this.getNodeParameter('returnAll', i);
-
-					if (!returnAll) {
-						const limit = this.getNodeParameter('limit', i);
-						qs.limit_page_length = limit;
-						qs.limit_start = 0;
-						responseData = await erpNextApiRequest.call(this, 'GET', endpoint, {}, qs);
-						responseData = responseData.data;
-					} else {
-						responseData = await erpNextApiRequestAllItems.call(
+						responseData = await erpNextApiRequest.call(
 							this,
-							'data',
 							'GET',
-							endpoint,
-							{},
-							qs,
+							`/api/resource/${docType}/${documentName}`,
 						);
-					}
-				} else if (operation === 'create') {
-					// ----------------------------------
-					//         document: create
-					// ----------------------------------
-
-					// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/post_api_resource__DocType_
-
-					const properties = this.getNodeParameter('properties', i) as DocumentProperties;
-
-					if (!properties.customProperty.length) {
-						throw new NodeOperationError(
-							this.getNode(),
-							'Please enter at least one property for the document to create.',
-							{ itemIndex: i },
-						);
+						responseData = responseData.data;
 					}
 
-					properties.customProperty.forEach((property) => {
-						body[property.field] = property.value;
-					});
+					if (operation === 'getAll') {
+						// ----------------------------------
+						//         document: getAll
+						// ----------------------------------
 
-					const docType = this.getNodeParameter('docType', i) as string;
+						// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/get_api_resource__DocType_
 
-					responseData = await erpNextApiRequest.call(
-						this,
-						'POST',
-						`/api/resource/${docType}`,
-						body,
-					);
-					responseData = responseData.data;
-				} else if (operation === 'delete') {
-					// ----------------------------------
-					//         document: delete
-					// ----------------------------------
+						const docType = this.getNodeParameter('docType', i) as string;
+						const endpoint = `/api/resource/${docType}`;
 
-					// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/delete_api_resource__DocType___DocumentName_
+						const { fields, filters } = this.getNodeParameter('options', i) as {
+							fields: string[];
+							filters: {
+								customProperty: Array<{ field: string; operator: string; value: string }>;
+							};
+						};
 
-					const docType = this.getNodeParameter('docType', i) as string;
-					const documentName = this.getNodeParameter('documentName', i) as string;
+						// fields=["test", "example", "hi"]
+						if (fields) {
+							if (fields.includes('*')) {
+								qs.fields = JSON.stringify(['*']);
+							} else {
+								qs.fields = JSON.stringify(fields);
+							}
+						}
+						// filters=[["Person","first_name","=","Jane"]]
+						// TODO: filters not working
+						if (filters) {
+							qs.filters = JSON.stringify(
+								filters.customProperty.map((filter) => {
+									return [docType, filter.field, toSQL(filter.operator), filter.value];
+								}),
+							);
+						}
 
-					responseData = await erpNextApiRequest.call(
-						this,
-						'DELETE',
-						`/api/resource/${docType}/${documentName}`,
-					);
-				} else if (operation === 'update') {
-					// ----------------------------------
-					//         document: update
-					// ----------------------------------
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-					// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/put_api_resource__DocType___DocumentName_
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', i);
+							qs.limit_page_length = limit;
+							qs.limit_start = 0;
+							responseData = await erpNextApiRequest.call(this, 'GET', endpoint, {}, qs);
+							responseData = responseData.data;
+						} else {
+							responseData = await erpNextApiRequestAllItems.call(
+								this,
+								'data',
+								'GET',
+								endpoint,
+								{},
+								qs,
+							);
+						}
+					} else if (operation === 'create') {
+						// ----------------------------------
+						//         document: create
+						// ----------------------------------
 
-					const properties = this.getNodeParameter('properties', i) as DocumentProperties;
+						// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/post_api_resource__DocType_
 
-					if (!properties.customProperty.length) {
-						throw new NodeOperationError(
-							this.getNode(),
-							'Please enter at least one property for the document to update.',
-							{ itemIndex: i },
+						const properties = this.getNodeParameter('properties', i) as DocumentProperties;
+
+						if (!properties.customProperty.length) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Please enter at least one property for the document to create.',
+								{ itemIndex: i },
+							);
+						}
+
+						properties.customProperty.forEach((property) => {
+							body[property.field] = property.value;
+						});
+
+						const docType = this.getNodeParameter('docType', i) as string;
+
+						responseData = await erpNextApiRequest.call(
+							this,
+							'POST',
+							`/api/resource/${docType}`,
+							body,
 						);
+						responseData = responseData.data;
+					} else if (operation === 'delete') {
+						// ----------------------------------
+						//         document: delete
+						// ----------------------------------
+
+						// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/delete_api_resource__DocType___DocumentName_
+
+						const docType = this.getNodeParameter('docType', i) as string;
+						const documentName = this.getNodeParameter('documentName', i) as string;
+
+						responseData = await erpNextApiRequest.call(
+							this,
+							'DELETE',
+							`/api/resource/${docType}/${documentName}`,
+						);
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//         document: update
+						// ----------------------------------
+
+						// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/put_api_resource__DocType___DocumentName_
+
+						const properties = this.getNodeParameter('properties', i) as DocumentProperties;
+
+						if (!properties.customProperty.length) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Please enter at least one property for the document to update.',
+								{ itemIndex: i },
+							);
+						}
+
+						properties.customProperty.forEach((property) => {
+							body[property.field] = property.value;
+						});
+
+						const docType = this.getNodeParameter('docType', i) as string;
+						const documentName = this.getNodeParameter('documentName', i) as string;
+
+						responseData = await erpNextApiRequest.call(
+							this,
+							'PUT',
+							`/api/resource/${docType}/${documentName}`,
+							body,
+						);
+						responseData = responseData.data;
 					}
-
-					properties.customProperty.forEach((property) => {
-						body[property.field] = property.value;
-					});
-
-					const docType = this.getNodeParameter('docType', i) as string;
-					const documentName = this.getNodeParameter('documentName', i) as string;
-
-					responseData = await erpNextApiRequest.call(
-						this,
-						'PUT',
-						`/api/resource/${docType}/${documentName}`,
-						body,
-					);
-					responseData = responseData.data;
 				}
-			}
 
-			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData as IDataObject[]),
-				{ itemData: { item: i } },
-			);
-			returnData.push(...executionData);
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({
+						json: { error: (error as Error).message },
+						pairedItem: { item: i },
+					});
+					continue;
+				}
+				throw error;
+			}
 		}
 		return [returnData];
 	}
