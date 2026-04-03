@@ -164,7 +164,7 @@ defineExpose({ legacyValue, showRuleEditor });
 
 		<!-- Info box for IdP-managed mode -->
 		<div v-if="showIdpInfoBox" :class="$style.infoBox">
-			<N8nCallout theme="info">
+			<N8nCallout theme="custom" icon="info" :class="$style.callout">
 				<div>
 					{{ idpInfoText }}
 				</div>
@@ -240,6 +240,15 @@ defineExpose({ legacyValue, showRuleEditor });
 
 .noBorder {
 	border-bottom: none;
+}
+
+.callout {
+	background-color: var(--color--background);
+	border-color: var(--color--foreground);
+
+	:global(.n8n-callout-icon svg) {
+		color: var(--color--text--shade-1);
+	}
 }
 
 .infoBox {
