@@ -104,7 +104,7 @@ function createExtensions() {
 				borderStyle: 'var(--border-style)',
 				borderColor: 'var(--input--border-color, var(--border-color))',
 				borderRadius: 'var(--radius)',
-				backgroundColor: 'white',
+				backgroundColor: 'var(--color--foreground--tint-2)',
 				minHeight: '30px',
 				width: '100%',
 				padding: '0 0 0 var(--spacing--2xs)',
