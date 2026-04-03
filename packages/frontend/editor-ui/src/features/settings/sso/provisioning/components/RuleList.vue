@@ -107,7 +107,7 @@ function onDragEnd(event: { oldIndex?: number; newIndex?: number }) {
 	display: flex;
 	align-items: center;
 	height: 36px;
-	background: var(--color--foreground--tint-1);
+	background: var(--color--background);
 	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
 }
 
