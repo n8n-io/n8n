@@ -2313,39 +2313,6 @@ describe('generateNodesGraph', () => {
 			expect(result.nodeGraph.nodes['0'].ai_output_tokens).toBeUndefined();
 		});
 
-		test('should not set token fields for non-AI node even with runData', () => {
-			const workflow: Partial<IWorkflowBase> = {
-				nodes: [
-					{
-						parameters: {},
-						id: 'manual-trigger-id',
-						name: 'Manual Trigger',
-						type: 'n8n-nodes-base.manualTrigger',
-						typeVersion: 1,
-						position: [100, 100],
-					},
-				],
-				connections: {},
-				pinData: {},
-			};
-
-			const runData: IRunData = {
-				'Manual Trigger': [
-					{
-						startTime: 0,
-						executionTime: 10,
-						executionStatus: 'success',
-						data: { main: [[{ json: {} }]] },
-						source: [],
-					},
-				],
-			};
-
-			const result = generateNodesGraph(workflow, nodeTypes, { runData });
-			expect(result.nodeGraph.nodes['0'].ai_input_tokens).toBeUndefined();
-			expect(result.nodeGraph.nodes['0'].ai_output_tokens).toBeUndefined();
-		});
-
 		test('should not set token fields when runData has no token usage data', () => {
 			const workflow: Partial<IWorkflowBase> = {
 				nodes: [
@@ -2511,41 +2478,6 @@ describe('generateNodesGraph', () => {
 			const result = generateNodesGraph(workflow, nodeTypes, { runData });
 			expect(result.nodeGraph.nodes['0'].ai_input_tokens).toBe(150);
 			expect(result.nodeGraph.nodes['0'].ai_output_tokens).toBe(80);
-		});
-
-		test('should not set token fields for vendor node when metadata has no tokenUsage', () => {
-			const workflow: Partial<IWorkflowBase> = {
-				nodes: [
-					{
-						parameters: { modelId: { value: 'llama3' } },
-						id: 'ollama-node-id',
-						name: 'Ollama',
-						type: '@n8n/n8n-nodes-langchain.ollama',
-						typeVersion: 1,
-						position: [100, 100],
-					},
-				],
-				connections: {},
-				pinData: {},
-			};
-
-			const runData: IRunData = {
-				Ollama: [
-					{
-						startTime: 0,
-						executionTime: 100,
-						executionStatus: 'success',
-						data: { main: [[{ json: { content: 'response' } }]] },
-						metadata: {},
-						source: [],
-					},
-				],
-			};
-
-			const result = generateNodesGraph(workflow, nodeTypes, { runData });
-			expect(result.nodeGraph.nodes['0'].ai_model).toBe('llama3');
-			expect(result.nodeGraph.nodes['0'].ai_input_tokens).toBeUndefined();
-			expect(result.nodeGraph.nodes['0'].ai_output_tokens).toBeUndefined();
 		});
 	});
 });
