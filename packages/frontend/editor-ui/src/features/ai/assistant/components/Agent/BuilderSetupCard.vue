@@ -125,6 +125,12 @@ const showTriggerCallout = computed(() => props.state.isTrigger && isInListening
 
 const showSkip = computed(() => !props.isPinDataSet && !!props.hasPinData);
 
+const executeButtonTooltipItems = computed(() => {
+	if (props.isPinDataSet)
+		return [i18n.baseText('aiAssistant.builder.setupWizard.unpinDataToExecute')];
+	return executeTooltipItems.value;
+});
+
 // Notify parent when step execution finishes (for auto-advance / wizard dismissal).
 // Emit when the node ran successfully OR was not reached (e.g. on an inactive branch).
 // Only skip when the node actually errored.
@@ -282,9 +288,9 @@ watch(isActive, (active, wasActive) => {
 					v-if="showExecuteButton"
 					:label="executeLabel"
 					:icon="executeButtonIcon"
-					:disabled="isPinDataSet ? false : isButtonDisabled || isTestingCredential"
+					:disabled="isPinDataSet ? true : isButtonDisabled || isTestingCredential"
 					:loading="isExecuting"
-					:tooltip-items="isPinDataSet ? [] : executeTooltipItems"
+					:tooltip-items="executeButtonTooltipItems"
 					@click="execute"
 				/>
 			</div>
