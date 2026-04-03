@@ -112,6 +112,47 @@ describe('IdentityResolutionService (integration)', () => {
 			expect(secondResult.role).toBeDefined();
 			expect(secondResult.role.slug).toBe('global:member');
 		});
+
+		it('should update role when linking identity via email fallback', async () => {
+			const user = await createUser({ email: 'fallback-role@example.com' });
+
+			const result = await service.resolve(
+				{
+					...baseClaims,
+					sub: 'ext-fallback-role',
+					email: 'fallback-role@example.com',
+					role: 'global:admin',
+				},
+				['global:admin'],
+			);
+
+			expect(result.id).toBe(user.id);
+			expect(result.role.slug).toBe('global:admin');
+
+			const dbUser = await userRepository.findOne({
+				where: { id: user.id },
+				relations: ['role'],
+			});
+			expect(dbUser!.role.slug).toBe('global:admin');
+		});
+
+		it('should match existing user when email claim has different casing', async () => {
+			const user = await createUser({ email: 'casetest@example.com' });
+
+			const result = await service.resolve({
+				...baseClaims,
+				sub: 'ext-case',
+				email: 'CaseTest@Example.COM',
+			});
+
+			expect(result.id).toBe(user.id);
+
+			const identity = await authIdentityRepository.findOne({
+				where: { providerId: 'ext-case', providerType: 'token-exchange' },
+			});
+			expect(identity).toBeDefined();
+			expect(identity!.userId).toBe(user.id);
+		});
 	});
 
 	describe('Path 3 — JIT provisioning', () => {
@@ -187,6 +228,31 @@ describe('IdentityResolutionService (integration)', () => {
 					role: 'global:nonsense',
 				}),
 			).rejects.toThrow("Unrecognized role 'global:nonsense' cannot be assigned to new user");
+		});
+
+		it('should default to global:member when role claim is an empty array', async () => {
+			const result = await service.resolve({
+				...baseClaims,
+				sub: 'ext-jit-empty-role',
+				email: 'jit-empty-role@example.com',
+				role: [],
+			});
+
+			expect(result.role.slug).toBe('global:member');
+		});
+
+		it('should assign role from array claim when provisioning new user', async () => {
+			const result = await service.resolve(
+				{
+					...baseClaims,
+					sub: 'ext-jit-array-role',
+					email: 'jit-array-role@example.com',
+					role: ['global:admin'],
+				},
+				['global:admin'],
+			);
+
+			expect(result.role.slug).toBe('global:admin');
 		});
 
 		it('should assign role from allowedRoles when provisioning new user', async () => {
@@ -269,6 +335,43 @@ describe('IdentityResolutionService (integration)', () => {
 				sub: 'ext-unknown-role',
 				email: 'unknown-role@example.com',
 				role: 'global:nonsense',
+			});
+
+			expect(result.id).toBe(user.id);
+			expect(result.role.slug).toBe('global:member');
+		});
+
+		it('should preserve current role when role claim is an empty array', async () => {
+			const admin = await createUser({
+				email: 'empty-array-role@example.com',
+				role: GLOBAL_ADMIN_ROLE,
+			});
+			await authIdentityRepository.save(
+				AuthIdentity.create(admin, 'ext-empty-array', 'token-exchange'),
+			);
+
+			const result = await service.resolve({
+				...baseClaims,
+				sub: 'ext-empty-array',
+				email: 'empty-array-role@example.com',
+				role: [],
+			});
+
+			expect(result.id).toBe(admin.id);
+			expect(result.role.slug).toBe('global:admin');
+		});
+
+		it('should ignore global:owner role claim for non-owner user', async () => {
+			const user = await createUser({ email: 'escalation@example.com' });
+			await authIdentityRepository.save(
+				AuthIdentity.create(user, 'ext-escalation', 'token-exchange'),
+			);
+
+			const result = await service.resolve({
+				...baseClaims,
+				sub: 'ext-escalation',
+				email: 'escalation@example.com',
+				role: 'global:owner',
 			});
 
 			expect(result.id).toBe(user.id);

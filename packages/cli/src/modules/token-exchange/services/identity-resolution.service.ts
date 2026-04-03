@@ -10,6 +10,7 @@ import {
 import { Service } from '@n8n/di';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
+import { EventService } from '@/events/event.service';
 
 import type { ExternalTokenClaims } from '../token-exchange.schemas';
 
@@ -20,10 +21,17 @@ import type { ExternalTokenClaims } from '../token-exchange.schemas';
  */
 const INVALID_PASSWORD_PLACEHOLDER = '!token-exchange-no-password';
 
+/** Maximum length for first/last name columns in the database. */
+const MAX_NAME_LENGTH = 32;
+
 type GlobalRoleKey = keyof typeof GLOBAL_ROLES;
 
 function isGlobalRole(role: string): role is GlobalRoleKey {
 	return role in GLOBAL_ROLES;
+}
+
+function trimName(value: string | undefined, fallback = ''): string {
+	return (value ?? fallback).slice(0, MAX_NAME_LENGTH);
 }
 
 @Service()
@@ -34,6 +42,7 @@ export class IdentityResolutionService {
 		logger: Logger,
 		private readonly userRepository: UserRepository,
 		private readonly authIdentityRepository: AuthIdentityRepository,
+		private readonly eventService: EventService,
 	) {
 		this.logger = logger.scoped('token-exchange');
 	}
@@ -52,6 +61,8 @@ export class IdentityResolutionService {
 	 * never blocked because of a role mismatch.
 	 */
 	async resolve(claims: ExternalTokenClaims, allowedRoles?: string[]): Promise<User> {
+		const email = claims.email?.toLowerCase();
+
 		// Path 1: known sub
 		const identity = await this.authIdentityRepository.findOne({
 			where: { providerId: claims.sub, providerType: 'token-exchange' },
@@ -69,20 +80,25 @@ export class IdentityResolutionService {
 		}
 
 		// Path 2: email fallback
-		if (claims.email) {
+		if (email) {
 			const existingUser = await this.userRepository.findOne({
-				where: { email: claims.email },
+				where: { email },
 				relations: ['authIdentities', 'role'],
 			});
 
 			if (existingUser) {
 				this.logger.debug('Linking external identity to existing user by email', {
 					sub: claims.sub,
-					email: claims.email,
+					email,
 				});
 				await this.authIdentityRepository.save(
 					AuthIdentity.create(existingUser, claims.sub, 'token-exchange'),
 				);
+				this.eventService.emit('token-exchange-identity-linked', {
+					userId: existingUser.id,
+					sub: claims.sub,
+					email,
+				});
 				const resolvedRole = this.resolveRoleForExistingUser(
 					claims.role,
 					allowedRoles,
@@ -93,24 +109,24 @@ export class IdentityResolutionService {
 		}
 
 		// Path 3: JIT provisioning
-		if (!claims.email) {
+		if (!email) {
 			throw new AuthError('Email claim is required for user provisioning');
 		}
 
 		this.logger.debug('JIT provisioning new user', {
 			sub: claims.sub,
-			email: claims.email,
+			email,
 		});
 
 		const jitRole = this.resolveRoleForNewUser(claims.role, allowedRoles);
 		const targetRole = jitRole ? { slug: jitRole } : GLOBAL_MEMBER_ROLE;
 
-		return await this.userRepository.manager.transaction(async (trx) => {
-			const { user } = await this.userRepository.createUserWithProject(
+		const user = await this.userRepository.manager.transaction(async (trx) => {
+			const { user: newUser } = await this.userRepository.createUserWithProject(
 				{
-					email: claims.email,
-					firstName: claims.given_name ?? '',
-					lastName: claims.family_name ?? '',
+					email,
+					firstName: trimName(claims.given_name),
+					lastName: trimName(claims.family_name),
 					role: targetRole,
 					password: INVALID_PASSWORD_PLACEHOLDER,
 				},
@@ -120,13 +136,22 @@ export class IdentityResolutionService {
 			await trx.save(
 				trx.create(AuthIdentity, {
 					providerId: claims.sub,
-					providerType: 'token-exchange' as const,
-					userId: user.id,
+					providerType: 'token-exchange',
+					userId: newUser.id,
 				}),
 			);
 
-			return user;
+			return newUser;
 		});
+
+		this.eventService.emit('token-exchange-user-provisioned', {
+			userId: user.id,
+			sub: claims.sub,
+			email,
+			role: targetRole.slug,
+		});
+
+		return user;
 	}
 
 	/**
@@ -143,6 +168,7 @@ export class IdentityResolutionService {
 		currentRole: string | undefined,
 	): GlobalRoleKey | undefined {
 		if (roleClaim === undefined) return undefined;
+		if (Array.isArray(roleClaim) && roleClaim.length === 0) return undefined;
 
 		const role = Array.isArray(roleClaim) ? roleClaim[0] : roleClaim;
 
@@ -181,6 +207,7 @@ export class IdentityResolutionService {
 		allowedRoles: string[] | undefined,
 	): GlobalRoleKey | undefined {
 		if (roleClaim === undefined) return undefined;
+		if (Array.isArray(roleClaim) && roleClaim.length === 0) return undefined;
 
 		const role = Array.isArray(roleClaim) ? roleClaim[0] : roleClaim;
 
@@ -208,22 +235,38 @@ export class IdentityResolutionService {
 		claims: ExternalTokenClaims,
 		resolvedRole?: GlobalRoleKey,
 	): Promise<User> {
-		const updates: Record<string, unknown> = {};
+		const updates: Partial<User> = {};
 
-		if (claims.given_name !== undefined && claims.given_name !== user.firstName) {
-			updates.firstName = claims.given_name;
+		if (claims.given_name !== undefined) {
+			const trimmed = trimName(claims.given_name);
+			if (trimmed !== user.firstName) {
+				updates.firstName = trimmed;
+			}
 		}
 
-		if (claims.family_name !== undefined && claims.family_name !== user.lastName) {
-			updates.lastName = claims.family_name;
+		if (claims.family_name !== undefined) {
+			const trimmed = trimName(claims.family_name);
+			if (trimmed !== user.lastName) {
+				updates.lastName = trimmed;
+			}
 		}
 
-		if (resolvedRole && resolvedRole !== user.role?.slug) {
+		const previousRole = user.role?.slug;
+		if (resolvedRole && resolvedRole !== previousRole) {
 			updates.role = GLOBAL_ROLES[resolvedRole];
 		}
 
 		if (Object.keys(updates).length > 0) {
 			await this.userRepository.update(user.id, updates);
+
+			if (updates.role && previousRole) {
+				this.eventService.emit('token-exchange-role-updated', {
+					userId: user.id,
+					previousRole,
+					newRole: resolvedRole!,
+				});
+			}
+
 			return await this.userRepository.findOneOrFail({
 				where: { id: user.id },
 				relations: ['role'],

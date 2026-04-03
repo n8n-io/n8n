@@ -721,6 +721,25 @@ export type RelayEventMap = {
 		clientIp: string;
 	};
 
+	'token-exchange-identity-linked': {
+		userId: string;
+		sub: string;
+		email: string;
+	};
+
+	'token-exchange-user-provisioned': {
+		userId: string;
+		sub: string;
+		email: string;
+		role: string;
+	};
+
+	'token-exchange-role-updated': {
+		userId: string;
+		previousRole: string;
+		newRole: string;
+	};
+
 	// #endregion
 
 	// #region runner
