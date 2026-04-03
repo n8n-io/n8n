@@ -275,10 +275,6 @@ const projectSelectDisplayValue = computed(() => {
 	flex-shrink: 0;
 }
 
-.roleSelect {
-	width: 130px;
-}
-
 .optionDivider {
 	height: 1px;
 	background: var(--color--foreground);

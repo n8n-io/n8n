@@ -85,6 +85,8 @@ defineExpose({ isDirty, save });
 			</N8nButton>
 		</div>
 
+		<hr :class="$style.sectionDivider" />
+
 		<RuleSectionHeader
 			:title="i18n.baseText('settings.sso.settings.roleMappingRules.projectRules.title')"
 			:description="
@@ -117,12 +119,18 @@ defineExpose({ isDirty, save });
 </template>
 <style lang="scss" module>
 .editor {
-	padding: var(--spacing--lg) 0;
+	padding: var(--spacing--sm) 0;
 }
 
 .addButtonRow {
 	display: flex;
 	justify-content: flex-end;
-	padding: var(--spacing--xs) 0;
+	padding: var(--spacing--2xs) 0;
+}
+
+.sectionDivider {
+	border: none;
+	border-top: var(--border-width) var(--border-style) var(--color--foreground);
+	margin: var(--spacing--sm) 0;
 }
 </style>
