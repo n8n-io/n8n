@@ -1,4 +1,3 @@
-import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
@@ -20,7 +19,6 @@ import { AiService } from '@/services/ai.service';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import { ChatHubSettingsService } from '@/modules/chat-hub/chat-hub.settings.service';
 
 const ADMIN_SETTINGS_KEY = 'instanceAi.settings';
 const USER_PREFERENCES_KEY_PREFIX = 'instanceAi.preferences.';
@@ -111,8 +109,6 @@ export class InstanceAiSettingsService {
 		private readonly aiService: AiService,
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinderService: CredentialsFinderService,
-		private readonly chatHubSettingsService: ChatHubSettingsService,
-		private readonly moduleRegistry: ModuleRegistry,
 	) {
 		this.config = globalConfig.instanceAi;
 	}
@@ -130,26 +126,6 @@ export class InstanceAiSettingsService {
 				fallbackValue: {},
 			});
 			this.applyAdminSettings(persisted);
-		}
-
-		await this.syncChatHubAccessWithInstanceAi();
-	}
-
-	/**
-	 * Instance AI and Chat Hub are mutually exclusive: when Instance AI is on,
-	 * Chat Hub access is off; when Instance AI is off, Chat Hub access is restored
-	 * so the editor sidebar and settings can show Chat Hub again.
-	 */
-	private async syncChatHubAccessWithInstanceAi(): Promise<void> {
-		try {
-			if (this.isInstanceAiEnabled()) {
-				await this.chatHubSettingsService.setEnabled(false);
-			} else {
-				await this.chatHubSettingsService.setEnabled(true);
-			}
-			await this.moduleRegistry.refreshModuleSettings('chat-hub');
-		} catch {
-			// Do not fail instance-ai persistence if chat-hub is unavailable
 		}
 	}
 
@@ -210,7 +186,6 @@ export class InstanceAiSettingsService {
 		if (update.optinModalDismissed !== undefined)
 			this.optinModalDismissed = update.optinModalDismissed;
 		await this.persistAdminSettings();
-		await this.syncChatHubAccessWithInstanceAi();
 		return this.getAdminSettings();
 	}
 
