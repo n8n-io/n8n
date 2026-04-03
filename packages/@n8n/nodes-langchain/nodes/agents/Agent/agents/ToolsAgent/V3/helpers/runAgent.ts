@@ -116,7 +116,7 @@ export async function runAgent(
 		// Handle regular execution
 		const chatHistory = await loadMemory(memory, model, options.maxTokensFromMemory);
 
-		const modelResponse = await executor.withConfig(getTracingConfig(ctx)).invoke(
+		const modelResponse = await executorWithTracing.invoke(
 			{
 				...invokeParams,
 				chat_history: chatHistory,
