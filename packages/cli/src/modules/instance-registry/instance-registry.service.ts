@@ -85,6 +85,10 @@ export class InstanceRegistryService {
 		await this.storage.saveLastKnownState(state);
 	}
 
+	async cleanupStaleMembers(): Promise<number> {
+		return await this.storage.cleanupStaleMembers();
+	}
+
 	get storageBackend(): 'redis' | 'memory' {
 		return this.storage.kind;
 	}
@@ -114,10 +118,6 @@ export class InstanceRegistryService {
 		const { MemoryInstanceStorage } = await import('./storage/memory-storage');
 		return new MemoryInstanceStorage();
 	}
-
-	// TODO: Wire up periodic cleanupStaleMembers() call (leader-only in multi-main)
-	// to remove stale entries from the Redis membership set. Without this, crashed
-	// instances accumulate in the set until manual intervention.
 
 	private startHeartbeat() {
 		this.heartbeatInterval = setInterval(async () => {
