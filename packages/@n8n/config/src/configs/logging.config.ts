@@ -38,6 +38,7 @@ export const LOG_SCOPES = [
 	'ssrf-protection',
 	'token-exchange',
 	'instance-ai',
+	'agents',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { AgentsConfig } from './configs/agents.config';
 import { AiAssistantConfig } from './configs/ai-assistant.config';
 import { AiBuilderConfig } from './configs/ai-builder.config';
 import { AiConfig } from './configs/ai.config';
@@ -71,6 +72,7 @@ export { ChatHubConfig } from './configs/chat-hub.config';
 export { InstanceAiConfig } from './configs/instance-ai.config';
 export { ExpressionEngineConfig } from './configs/expression-engine.config';
 export { PasswordConfig } from './configs/password.config';
+export { AgentsConfig } from './configs/agents.config';
 
 const protocolSchema = z.enum(['http', 'https']);
 
@@ -249,6 +251,9 @@ export class GlobalConfig {
 
 	@Nested
 	instanceAi: InstanceAiConfig;
+
+	@Nested
+	agents: AgentsConfig;
 
 	@Nested
 	expressionEngine: ExpressionEngineConfig;
