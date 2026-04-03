@@ -1,27 +1,38 @@
 # n8n Claude Code Plugin
 
-Shared skills, commands, and agents for n8n development.
+Shared skills, commands, and agents for n8n development. All items are
+namespaced under `n8n:` to avoid collisions with personal or third-party
+plugins.
 
 ## Skills
 
-### `n8n:setup-mcps`
+| Skill | Description |
+|-------|-------------|
+| `n8n:setup-mcps` | Configure MCP servers for n8n engineers |
+| `n8n:create-issue` | Create Linear tickets or GitHub issues following n8n conventions |
+| `n8n:create-pr` | Create GitHub PRs with titles that pass CI validation |
+| `n8n:create-skill` | Guide for creating effective Agent Skills |
+| `n8n:content-design` | Product content designer for UI copy |
+| `n8n:linear-issue` | Fetch and analyze Linear issue with all related context |
+| `n8n:loom-transcript` | Fetch transcript from a Loom video URL |
+| `n8n:n8n-conventions` | Quick reference for n8n patterns |
+| `n8n:node-add-oauth` | Add OAuth2 credential support to an existing n8n node |
+| `n8n:reproduce-bug` | Reproduce a bug from a Linear ticket with a failing test |
+| `n8n:spec-driven-development` | Keep implementation and specs in sync |
 
-Configures commonly used MCP servers for n8n engineers.
+## Commands
 
-**Usage:**
-```
-/n8n:setup-mcps
-```
+| Command | Description |
+|---------|-------------|
+| `/n8n:n8n-plan PAY-XXX` | Plan implementation for a Linear ticket |
+| `/n8n:n8n-triage PAY-XXX` | Triage a Linear issue with comprehensive analysis |
 
-**What it does:**
-1. Checks which MCPs are already configured (matches by URL, not name)
-2. Presents a multi-select menu of available MCPs (Linear, Notion, Context7, Figma)
-3. For each selected MCP, asks which scope to install in:
-   - **user** (recommended) — available across all projects
-   - **local** — only in this project (`settings.local.json`)
-4. Installs using official recommended commands
+## Agents
 
-**Note:** Project scope is intentionally not offered since `.claude/settings.json` is tracked in git.
+| Agent | Description |
+|-------|-------------|
+| `n8n:n8n-developer` | Full-stack n8n development (frontend/backend/nodes) |
+| `n8n:n8n-linear-issue-triager` | Issue investigation and triage |
 
 ## Design Decisions
 
@@ -54,9 +65,24 @@ might only be needed for this project (local scope).
 ├── .claude-plugin/
 │   ├── marketplace.json    # Marketplace manifest
 │   └── plugin.json         # Plugin identity
+├── agents/
+│   ├── n8n-developer.md
+│   └── n8n-linear-issue-triager.md
+├── commands/
+│   ├── n8n-plan.md
+│   └── n8n-triage.md
 ├── skills/
-│   └── sample-skill/
-│       └── SKILL.md
+│   ├── content-design/SKILL.md
+│   ├── create-issue/SKILL.md
+│   ├── create-pr/SKILL.md
+│   ├── create-skill/SKILL.md
+│   ├── linear-issue/SKILL.md
+│   ├── loom-transcript/SKILL.md
+│   ├── n8n-conventions/SKILL.md
+│   ├── node-add-oauth/SKILL.md
+│   ├── reproduce-bug/SKILL.md
+│   ├── setup-mcps/SKILL.md
+│   └── spec-driven-development/SKILL.md
 └── README.md
 ```
 
