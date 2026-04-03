@@ -118,10 +118,10 @@ function createExtensions() {
 				color: 'var(--input--color--text, var(--color--text--shade-1))',
 				caretColor: props.disabled ? 'transparent' : 'var(--code--caret--color)',
 				padding: '0',
-				whiteSpace: 'nowrap',
 			},
 			'.cm-line': {
 				padding: '0',
+				whiteSpace: 'nowrap',
 			},
 			'.cm-scroller': {
 				lineHeight: '28px',
