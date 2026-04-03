@@ -223,16 +223,7 @@ describe('SourceControlService', () => {
 
 			// Act
 			const result = await sourceControlService.pushWorkfolder(user, {
-				fileNames: files.map((f) => ({
-					file: f.file,
-					id: f.id,
-					name: f.name,
-					type: f.type,
-					status: f.status,
-					location: f.location,
-					conflict: f.conflict,
-					updatedAt: f.updatedAt,
-				})),
+				fileNames: files.map((f) => ({ id: f.id, type: f.type })),
 				commitMessage,
 			});
 
@@ -290,27 +281,16 @@ describe('SourceControlService', () => {
 			});
 		});
 
-		it('should throw an error if file path validation fails', async () => {
+		it('should throw ForbiddenError when a fileNames selector does not match any allowed resource', async () => {
 			const user = mock<User>();
-			(isContainedWithin as jest.Mock).mockReturnValueOnce(false);
+			// Status service returns no files for this user
+			mockStatusService.getStatus.mockResolvedValueOnce([]);
 
 			await expect(
 				sourceControlService.pushWorkfolder(user, {
-					fileNames: [
-						{
-							file: '/etc/passwd',
-							id: 'test',
-							name: 'secret-file',
-							type: 'file',
-							status: 'modified',
-							location: 'local',
-							conflict: false,
-							updatedAt: new Date().toISOString(),
-							pushed: false,
-						},
-					],
+					fileNames: [{ id: 'wf-999', type: 'workflow' }],
 				}),
-			).rejects.toThrow('File path /etc/passwd is invalid');
+			).rejects.toThrow(ForbiddenError);
 
 			expect(gitService.stage).not.toHaveBeenCalled();
 			expect(gitService.commit).not.toHaveBeenCalled();
@@ -350,7 +330,7 @@ describe('SourceControlService', () => {
 
 			// ACT
 			const result = await sourceControlService.pushWorkfolder(user, {
-				fileNames: [mockFile],
+				fileNames: [{ id: mockFile.id, type: mockFile.type }],
 				commitMessage: 'A commit message',
 			});
 
@@ -393,7 +373,7 @@ describe('SourceControlService', () => {
 			// ACT & ASSERT
 			await expect(
 				sourceControlService.pushWorkfolder(user, {
-					fileNames: [mockFile],
+					fileNames: [{ id: mockFile.id, type: mockFile.type }],
 					commitMessage: 'Test commit',
 				}),
 			).rejects.toThrow(exportError);
@@ -439,7 +419,7 @@ describe('SourceControlService', () => {
 			// ACT & ASSERT
 			await expect(
 				sourceControlService.pushWorkfolder(user, {
-					fileNames: [mockFile],
+					fileNames: [{ id: mockFile.id, type: mockFile.type }],
 					commitMessage: 'Test commit',
 				}),
 			).rejects.toThrow(pushError);
@@ -487,7 +467,7 @@ describe('SourceControlService', () => {
 			// ACT & ASSERT
 			await expect(
 				sourceControlService.pushWorkfolder(user, {
-					fileNames: [mockFile],
+					fileNames: [{ id: mockFile.id, type: mockFile.type }],
 					commitMessage: 'Test commit',
 				}),
 			).rejects.toThrow(commitError);
@@ -499,6 +479,152 @@ describe('SourceControlService', () => {
 
 			// Verify resetBranch was called with HEAD (no commit to undo)
 			expect(gitService.resetBranch).toHaveBeenCalledWith({ hard: true, target: 'HEAD' });
+		});
+
+		describe('ids field', () => {
+			const now = new Date().toISOString();
+
+			const makeFile = (overrides: Partial<SourceControlledFile> = {}): SourceControlledFile => ({
+				file: 'workflow-1.json',
+				id: 'wf-1',
+				name: 'Workflow 1',
+				type: 'workflow',
+				status: 'modified',
+				location: 'local',
+				conflict: false,
+				updatedAt: now,
+				...overrides,
+			});
+
+			beforeEach(() => {
+				sourceControlExportService.exportCredentialsToWorkFolder.mockResolvedValue({
+					count: 0,
+					missingIds: [],
+					folder: '',
+					files: [],
+				});
+				(isContainedWithin as jest.Mock).mockReturnValue(true);
+				gitService.push.mockResolvedValue(mock());
+				eventService.emit.mockReturnValue(true);
+			});
+
+			it('should push only the files matching the provided ids', async () => {
+				// ARRANGE
+				const user = mock<User>();
+				const wf1 = makeFile({ id: 'wf-1', file: 'workflow-1.json', type: 'workflow' });
+				const wf2 = makeFile({ id: 'wf-2', file: 'workflow-2.json', type: 'workflow' });
+
+				mockStatusService.getStatus.mockResolvedValueOnce([wf1, wf2]);
+
+				// ACT
+				const result = await sourceControlService.pushWorkfolder(user, {
+					ids: ['wf-1'],
+					commitMessage: 'push specific workflow',
+				});
+
+				// ASSERT — only wf-1 should be exported, not wf-2
+				expect(sourceControlExportService.exportWorkflowsToWorkFolder).toHaveBeenCalledWith(
+					expect.arrayContaining([expect.objectContaining({ id: 'wf-1' })]),
+				);
+				expect(sourceControlExportService.exportWorkflowsToWorkFolder).toHaveBeenCalledWith(
+					expect.not.arrayContaining([expect.objectContaining({ id: 'wf-2' })]),
+				);
+				expect(result).toHaveProperty('statusCode', 200);
+			});
+
+			it('should push a mix of workflow and credential ids', async () => {
+				// ARRANGE
+				const user = mock<User>();
+				const wf1 = makeFile({ id: 'wf-1', file: 'workflow-1.json', type: 'workflow' });
+				const cred1 = makeFile({
+					id: 'cred-1',
+					file: 'credential-1.json',
+					type: 'credential',
+					status: 'new',
+				});
+
+				mockStatusService.getStatus.mockResolvedValueOnce([wf1, cred1]);
+
+				// ACT
+				const result = await sourceControlService.pushWorkfolder(user, {
+					ids: ['wf-1', 'cred-1'],
+					commitMessage: 'push workflow and credential',
+				});
+
+				// ASSERT
+				expect(sourceControlExportService.exportWorkflowsToWorkFolder).toHaveBeenCalledWith(
+					expect.arrayContaining([expect.objectContaining({ id: 'wf-1' })]),
+				);
+				expect(sourceControlExportService.exportCredentialsToWorkFolder).toHaveBeenCalledWith(
+					expect.arrayContaining([expect.objectContaining({ id: 'cred-1' })]),
+				);
+				expect(result).toHaveProperty('statusCode', 200);
+			});
+
+			it('should throw ForbiddenError when an id is not in allowed resources', async () => {
+				// ARRANGE
+				const user = mock<User>();
+				const wf1 = makeFile({ id: 'wf-1' });
+
+				mockStatusService.getStatus.mockResolvedValueOnce([wf1]);
+
+				// ACT & ASSERT
+				await expect(
+					sourceControlService.pushWorkfolder(user, {
+						ids: ['wf-1', 'non-existent-id'],
+						commitMessage: 'push',
+					}),
+				).rejects.toThrow(ForbiddenError);
+
+				expect(gitService.push).not.toHaveBeenCalled();
+			});
+
+			it('should fall back to all allowed resources when ids is an empty array', async () => {
+				// ARRANGE
+				const user = mock<User>();
+				const wf1 = makeFile({ id: 'wf-1' });
+				const wf2 = makeFile({ id: 'wf-2', file: 'workflow-2.json' });
+
+				mockStatusService.getStatus.mockResolvedValueOnce([wf1, wf2]);
+
+				// ACT
+				await sourceControlService.pushWorkfolder(user, {
+					ids: [],
+					commitMessage: 'push all',
+				});
+
+				// ASSERT — both workflows should be exported
+				expect(sourceControlExportService.exportWorkflowsToWorkFolder).toHaveBeenCalledWith(
+					expect.arrayContaining([
+						expect.objectContaining({ id: 'wf-1' }),
+						expect.objectContaining({ id: 'wf-2' }),
+					]),
+				);
+			});
+
+			it('should give ids priority over fileNames when both are provided', async () => {
+				// ARRANGE
+				const user = mock<User>();
+				const wf1 = makeFile({ id: 'wf-1', file: 'workflow-1.json' });
+				const wf2 = makeFile({ id: 'wf-2', file: 'workflow-2.json' });
+
+				mockStatusService.getStatus.mockResolvedValueOnce([wf1, wf2]);
+
+				// ACT — ids says wf-1 only, fileNames says wf-2 only; ids wins
+				await sourceControlService.pushWorkfolder(user, {
+					ids: ['wf-1'],
+					fileNames: [{ id: wf2.id, type: wf2.type }],
+					commitMessage: 'ids take priority',
+				});
+
+				// ASSERT
+				expect(sourceControlExportService.exportWorkflowsToWorkFolder).toHaveBeenCalledWith(
+					expect.arrayContaining([expect.objectContaining({ id: 'wf-1' })]),
+				);
+				expect(sourceControlExportService.exportWorkflowsToWorkFolder).toHaveBeenCalledWith(
+					expect.not.arrayContaining([expect.objectContaining({ id: 'wf-2' })]),
+				);
+			});
 		});
 	});
 
