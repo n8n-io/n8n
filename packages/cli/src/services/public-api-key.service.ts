@@ -1,5 +1,5 @@
 import type { CreateApiKeyRequestDto, UnixTimestamp, UpdateApiKeyRequestDto } from '@n8n/api-types';
-import type { AuthenticatedRequest, User } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { ApiKey, ApiKeyRepository, UserRepository, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ApiKeyScope, AuthPrincipal } from '@n8n/permissions';
@@ -8,8 +8,6 @@ import { getApiKeyScopesForRole, getOwnerOnlyApiKeyScopes } from '@n8n/permissio
 import type { EntityManager } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
 import type { NextFunction, Request, Response } from 'express';
-import { TokenExpiredError } from 'jsonwebtoken';
-import type { OpenAPIV3 } from 'openapi-types';
 
 import { JwtService } from './jwt.service';
 import { LastActiveAtService } from './last-active-at.service';
@@ -122,52 +120,6 @@ export class PublicApiKeyService {
 		);
 
 		return redactedPart + visiblePart;
-	}
-
-	/** @deprecated Use {@link ApiKeyAuthStrategy} registered via {@link AuthStrategyRegistry} instead. */
-	getAuthMiddleware(version: string) {
-		return async (
-			req: AuthenticatedRequest,
-			_scopes: unknown,
-			schema: OpenAPIV3.ApiKeySecurityScheme,
-		): Promise<boolean> => {
-			const providedApiKey = req.headers[schema.name.toLowerCase()] as string;
-
-			const user = await this.getUserForApiKey(providedApiKey);
-
-			if (!user) return false;
-
-			if (user.disabled) return false;
-
-			// Legacy API keys are not JWTs and do not need to be verified.
-			if (!providedApiKey.startsWith(PREFIX_LEGACY_API_KEY)) {
-				try {
-					this.jwtService.verify(providedApiKey, {
-						issuer: API_KEY_ISSUER,
-						audience: API_KEY_AUDIENCE,
-					});
-				} catch (e) {
-					if (e instanceof TokenExpiredError) return false;
-					throw e;
-				}
-			}
-
-			this.eventService.emit('public-api-invoked', {
-				userId: user.id,
-				path: req.path,
-				method: req.method,
-				apiVersion: version,
-				userAgent: req.headers['user-agent'],
-			});
-
-			req.user = user;
-
-			// TODO: ideally extract that to a dedicated middleware, but express-openapi-validator
-			// does not support middleware between authentication and operators
-			void this.lastActiveAtService.updateLastActiveIfStale(user.id);
-
-			return true;
-		};
 	}
 
 	private generateApiKey(user: User, expiresAt: UnixTimestamp) {
