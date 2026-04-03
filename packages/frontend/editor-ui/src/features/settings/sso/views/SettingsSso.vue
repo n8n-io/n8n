@@ -11,7 +11,6 @@ import {
 	N8nActionBox,
 	N8nButton,
 	N8nHeading,
-	N8nInfoTip,
 	N8nOption,
 	N8nSelect,
 	N8nText,
@@ -105,44 +104,75 @@ onMounted(() => {
 		<div :class="$style.heading">
 			<N8nHeading size="2xlarge">{{ i18n.baseText('settings.sso.title') }}</N8nHeading>
 		</div>
-		<N8nInfoTip>
+		<p :class="$style.description">
 			{{ i18n.baseText('settings.sso.info') }}
-			<a href="https://docs.n8n.io/user-management/saml/" target="_blank">
+			<a :class="$style.docLink" href="https://docs.n8n.io/user-management/saml/" target="_blank">
 				{{ i18n.baseText('settings.sso.info.link') }}
 			</a>
-		</N8nInfoTip>
-		<div v-if="hasAnySsoEnabled" data-test-id="sso-auth-protocol-select" :class="shared.group">
-			<label>Select Authentication Protocol</label>
-			<div>
-				<N8nSelect
-					filterable
-					:model-value="authProtocol"
-					:placeholder="i18n.baseText('parameterInput.select')"
-					@update:model-value="onAuthProtocolUpdated"
-					@keydown.stop
-				>
-					<N8nOption
-						v-for="{ label, value } in options"
-						:key="value"
-						:value="value"
-						:label="label"
-						data-test-id="credential-select-option"
-					>
-					</N8nOption>
-				</N8nSelect>
-			</div>
-		</div>
+		</p>
 		<div
 			v-if="ssoStore.isEnterpriseSamlEnabled && authProtocol === SupportedProtocols.SAML"
 			data-test-id="sso-content-licensed"
 		>
-			<SamlSettingsForm ref="samlForm" />
+			<SamlSettingsForm ref="samlForm">
+				<template #protocol-select>
+					<div data-test-id="sso-auth-protocol-select" :class="shared.settingsItem">
+						<div :class="shared.settingsItemLabel">
+							<label>Authentication protocol</label>
+							<small>Choose your SSO protocol</small>
+						</div>
+						<div :class="shared.settingsItemControl">
+							<N8nSelect
+								filterable
+								:model-value="authProtocol"
+								:placeholder="i18n.baseText('parameterInput.select')"
+								@update:model-value="onAuthProtocolUpdated"
+								@keydown.stop
+							>
+								<N8nOption
+									v-for="{ label, value } in options"
+									:key="value"
+									:value="value"
+									:label="label"
+									data-test-id="credential-select-option"
+								/>
+							</N8nSelect>
+						</div>
+					</div>
+				</template>
+			</SamlSettingsForm>
 		</div>
 		<div
 			v-if="ssoStore.isEnterpriseOidcEnabled && authProtocol === SupportedProtocols.OIDC"
 			data-test-id="sso-content-licensed"
 		>
-			<OidcSettingsForm ref="oidcForm" />
+			<OidcSettingsForm ref="oidcForm">
+				<template #protocol-select>
+					<div data-test-id="sso-auth-protocol-select" :class="shared.settingsItem">
+						<div :class="shared.settingsItemLabel">
+							<label>Authentication protocol</label>
+							<small>Choose your SSO protocol</small>
+						</div>
+						<div :class="shared.settingsItemControl">
+							<N8nSelect
+								filterable
+								:model-value="authProtocol"
+								:placeholder="i18n.baseText('parameterInput.select')"
+								@update:model-value="onAuthProtocolUpdated"
+								@keydown.stop
+							>
+								<N8nOption
+									v-for="{ label, value } in options"
+									:key="value"
+									:value="value"
+									:label="label"
+									data-test-id="credential-select-option"
+								/>
+							</N8nSelect>
+						</div>
+					</div>
+				</template>
+			</OidcSettingsForm>
 		</div>
 		<N8nActionBox
 			v-if="!hasAnySsoEnabled"
@@ -193,7 +223,24 @@ onMounted(() => {
 
 <style lang="scss" module>
 .heading {
-	margin-bottom: var(--spacing--sm);
+	margin-bottom: var(--spacing--2xs);
+}
+
+.description {
+	font-size: var(--font-size--sm);
+	color: var(--color--text--tint-1);
+	line-height: var(--line-height--xl);
+	margin: 0 0 var(--spacing--lg);
+}
+
+.docLink {
+	color: var(--color--text);
+	text-decoration: underline;
+
+	&::after {
+		content: '↗';
+		margin-left: 2px;
+	}
 }
 
 .actionBox {
