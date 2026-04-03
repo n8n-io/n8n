@@ -171,6 +171,43 @@ export class GitlabTrigger implements INodeType {
 				default: [],
 				description: 'The events to listen to',
 			},
+			{
+				displayName: 'Filters',
+				name: 'filters',
+				type: 'collection',
+				placeholder: 'Add Filter',
+				default: {},
+				displayOptions: {
+					show: {
+						events: ['note', '*'],
+					},
+				},
+				options: [
+					{
+						displayName: 'Comment On',
+						name: 'commentOn',
+						type: 'multiOptions',
+						options: [
+							{ name: 'Commit', value: 'commit' },
+							{ name: 'Issue', value: 'issue' },
+							{ name: 'Merge Request', value: 'merge_request' },
+							{ name: 'Snippet', value: 'snippet' },
+						],
+						default: [],
+						description:
+							'Only trigger for comments on the selected resource types. Leave empty to trigger on all comment types.',
+					},
+					{
+						displayName: 'Comment Contains Text',
+						name: 'commentTag',
+						type: 'string',
+						default: '',
+						placeholder: '@review-bot',
+						description:
+							'Only trigger when the comment body contains this text (e.g. <code>@review-bot</code>). Leave empty to trigger on all comments.',
+					},
+				],
+			},
 		],
 	};
 
@@ -297,12 +334,45 @@ export class GitlabTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const bodyData = this.getBodyData();
+		const headers = this.getHeaderData();
+		const eventName = headers['x-gitlab-event'] as string;
+
+		if (eventName === 'Note Hook') {
+			const filters = this.getNodeParameter('filters', {}) as IDataObject;
+			const commentOn = (filters.commentOn ?? []) as string[];
+			const commentText = ((filters.commentTag ?? '') as string).trim();
+
+			if (commentOn.length > 0) {
+				const noteableType = (bodyData.object_attributes as IDataObject)?.noteable_type as string;
+				const typeMap: Record<string, string> = {
+					Issue: 'issue',
+					MergeRequest: 'merge_request',
+					Commit: 'commit',
+					Snippet: 'snippet',
+				};
+				const mappedType = typeMap[noteableType];
+				if (!mappedType || !commentOn.includes(mappedType)) {
+					const res = this.getResponseObject();
+					res.status(200).send('').end();
+					return { noWebhookResponse: true };
+				}
+			}
+
+			if (commentText) {
+				const noteBody = (bodyData.object_attributes as IDataObject)?.note as string;
+				if (!noteBody?.includes(commentText)) {
+					const res = this.getResponseObject();
+					res.status(200).send('').end();
+					return { noWebhookResponse: true };
+				}
+			}
+		}
 
 		const returnData: IDataObject[] = [];
 
 		returnData.push({
 			body: bodyData,
-			headers: this.getHeaderData(),
+			headers,
 			query: this.getQueryData(),
 		});
 
