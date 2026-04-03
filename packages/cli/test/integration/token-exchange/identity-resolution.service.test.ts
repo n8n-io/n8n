@@ -403,6 +403,35 @@ describe('IdentityResolutionService (integration)', () => {
 			expect(dbUser!.role.slug).toBe('global:admin');
 		});
 
+		it('should downgrade admin to member when role claim is global:member', async () => {
+			const admin = await createUser({
+				email: 'downgrade@example.com',
+				role: GLOBAL_ADMIN_ROLE,
+			});
+			await authIdentityRepository.save(
+				AuthIdentity.create(admin, 'ext-downgrade', 'token-exchange'),
+			);
+
+			const result = await service.resolve(
+				{
+					...baseClaims,
+					sub: 'ext-downgrade',
+					email: 'downgrade@example.com',
+					role: 'global:member',
+				},
+				['global:admin', 'global:member'],
+			);
+
+			expect(result.id).toBe(admin.id);
+			expect(result.role.slug).toBe('global:member');
+
+			const dbUser = await userRepository.findOne({
+				where: { id: admin.id },
+				relations: ['role'],
+			});
+			expect(dbUser!.role.slug).toBe('global:member');
+		});
+
 		it('should update profile fields and role, persisting changes to the database', async () => {
 			const user = await createUser({
 				email: 'sync@example.com',

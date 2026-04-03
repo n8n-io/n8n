@@ -11,6 +11,7 @@ import { Service } from '@n8n/di';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { EventService } from '@/events/event.service';
+import { UserService } from '@/services/user.service';
 
 import type { ExternalTokenClaims } from '../token-exchange.schemas';
 
@@ -43,6 +44,7 @@ export class IdentityResolutionService {
 		private readonly userRepository: UserRepository,
 		private readonly authIdentityRepository: AuthIdentityRepository,
 		private readonly eventService: EventService,
+		private readonly userService: UserService,
 	) {
 		this.logger = logger.scoped('token-exchange');
 	}
@@ -235,8 +237,9 @@ export class IdentityResolutionService {
 	}
 
 	/**
-	 * Sync profile fields from claims to user when present and changed.
-	 * Returns the user (potentially refreshed from the save operation).
+	 * Sync profile fields and role from claims to user when present and changed.
+	 * Uses `UserService.changeUserRole` for role changes to ensure side effects
+	 * (API key revocation, project relation cleanup, cache invalidation) are applied.
 	 */
 	private async syncProfile(
 		user: User,
@@ -244,40 +247,48 @@ export class IdentityResolutionService {
 		resolvedRole?: GlobalRoleKey,
 		tokenContext?: { kid: string; issuer: string },
 	): Promise<User> {
-		const updates: Partial<User> = {};
+		let needsReload = false;
+
+		// Sync profile fields (firstName, lastName)
+		const profileUpdates: Partial<User> = {};
 
 		if (claims.given_name !== undefined) {
 			const trimmed = trimName(claims.given_name);
 			if (trimmed !== user.firstName) {
-				updates.firstName = trimmed;
+				profileUpdates.firstName = trimmed;
 			}
 		}
 
 		if (claims.family_name !== undefined) {
 			const trimmed = trimName(claims.family_name);
 			if (trimmed !== user.lastName) {
-				updates.lastName = trimmed;
+				profileUpdates.lastName = trimmed;
 			}
 		}
 
-		const previousRole = user.role?.slug;
-		if (resolvedRole && resolvedRole !== previousRole) {
-			updates.role = GLOBAL_ROLES[resolvedRole];
+		if (Object.keys(profileUpdates).length > 0) {
+			await this.userRepository.update(user.id, profileUpdates);
+			needsReload = true;
 		}
 
-		if (Object.keys(updates).length > 0) {
-			await this.userRepository.update(user.id, updates);
+		// Sync role via UserService.changeUserRole for proper side effects
+		const previousRole = user.role?.slug;
+		if (resolvedRole && resolvedRole !== previousRole) {
+			await this.userService.changeUserRole(user, { newRoleName: resolvedRole });
+			needsReload = true;
 
-			if (updates.role && previousRole) {
+			if (previousRole) {
 				this.eventService.emit('token-exchange-role-updated', {
 					userId: user.id,
 					previousRole,
-					newRole: resolvedRole!,
+					newRole: resolvedRole,
 					kid: tokenContext?.kid ?? '',
 					issuer: tokenContext?.issuer ?? claims.iss,
 				});
 			}
+		}
 
+		if (needsReload) {
 			return await this.userRepository.findOneOrFail({
 				where: { id: user.id },
 				relations: ['role'],
