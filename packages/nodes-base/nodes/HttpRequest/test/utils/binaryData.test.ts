@@ -26,4 +26,12 @@ describe('setFilename', () => {
 		const requestOptions = { uri: 'https://example.com/file.pdf' } as IRequestOptions;
 		expect(setFilename(preparedBinaryData, requestOptions, 'response')).toBe('myfile.pdf');
 	});
+
+	it('does not include basic auth credentials in extracted filename', () => {
+		const preparedBinaryData = { fileExtension: 'png' } as IBinaryData;
+		const requestOptions = {
+			uri: 'https://user:password@example.com/image.png',
+		} as IRequestOptions;
+		expect(setFilename(preparedBinaryData, requestOptions, undefined)).toBe('image.png');
+	});
 });

@@ -269,7 +269,12 @@ export async function prepareBinaryData(
 				filePath =
 					binaryData.contentDisposition?.filename ??
 					((responseUrl && new URL(responseUrl).pathname) ?? binaryData.req?.path)?.slice(1);
-				fullUrl = responseUrl;
+				if (responseUrl) {
+					const url = new URL(responseUrl);
+					url.username = '';
+					url.password = '';
+					fullUrl = url.toString();
+				}
 			} catch {}
 		}
 		if (!mimeType) {

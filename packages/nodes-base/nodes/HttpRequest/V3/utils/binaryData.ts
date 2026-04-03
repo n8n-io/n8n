@@ -11,7 +11,8 @@ export const setFilename = (
 		typeof requestOptions.uri === 'string' &&
 		requestOptions.uri.endsWith(preparedBinaryData.fileExtension)
 	) {
-		return requestOptions.uri.split('/').pop();
+		const url = new URL(requestOptions.uri);
+		return url.pathname.split('/').pop();
 	}
 
 	if (!preparedBinaryData.fileName && preparedBinaryData.fileExtension) {

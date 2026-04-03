@@ -1363,6 +1363,16 @@ describe('prepareBinaryData', () => {
 		expect(result.mimeType).toBe('text/plain');
 	});
 
+	it('strips basic auth credentials from responseUrl in directory field', async () => {
+		const incomingMessage = bufferToIncomingMessage(buffer);
+		incomingMessage.responseUrl = 'http://user:password@example.com/path/file.txt';
+
+		const result = await prepareBinaryData(incomingMessage, executionId, workflowId);
+
+		expect(result.directory).toBe('http://example.com/path/file.txt');
+		expect(result.fileName).toBe('file.txt');
+	});
+
 	it('handles buffer with no detectable mime type', async () => {
 		const buffer = Buffer.from([0x00, 0x01, 0x02, 0x03]);
 
