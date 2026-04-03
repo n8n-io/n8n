@@ -28,7 +28,7 @@ export function accumulateTokenUsage(
 	inputTokens: number,
 	outputTokens: number,
 ): void {
-	const prev = context.getExecuteData().metadata?.tokenUsage;
+	const prev = context.getExecuteData()?.metadata?.tokenUsage;
 	context.setMetadata({
 		tokenUsage: {
 			inputTokens: (prev?.inputTokens ?? 0) + inputTokens,
