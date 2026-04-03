@@ -130,6 +130,9 @@ jobs:
           enable-docker-cache: ${{ inputs.test-mode == 'docker-build' }}
         env:
           INCLUDE_TEST_CONTROLLER: ${{ inputs.test-mode == 'docker-build' && 'true' || '' }}
+          QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
+          QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
+          QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
 
       - name: Install Browsers
         run: pnpm turbo run install-browsers --filter=n8n-playwright
