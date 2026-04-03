@@ -3,7 +3,10 @@ import { computed } from 'vue';
 import { N8nIcon, N8nOption, N8nSelect, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRolesStore } from '@/app/stores/roles.store';
-import type { RoleMappingRuleResponse } from '@n8n/rest-api-client/api/roleMappingRule';
+import type {
+	RoleMappingRuleResponse,
+	RoleMappingRuleType,
+} from '@n8n/rest-api-client/api/roleMappingRule';
 import RuleMappingExpressionInput from './RuleMappingExpressionInput.vue';
 
 const props = withDefaults(
