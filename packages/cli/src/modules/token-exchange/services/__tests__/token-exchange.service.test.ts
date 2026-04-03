@@ -106,6 +106,20 @@ describe('TokenExchangeService', () => {
 			await expect(service.embedLogin('unknown-kid-token')).rejects.toThrow(AuthError);
 		});
 
+		it('should throw when jwt.verify returns unexpected payload format', async () => {
+			jest.spyOn(jwt, 'decode').mockReturnValue({
+				header: { alg: 'RS256', kid: 'test-kid' },
+				payload: validClaims,
+				signature: 'sig',
+			} as unknown as ReturnType<typeof jwt.decode>);
+			jest
+				.spyOn(jwt, 'verify')
+				.mockReturnValue('string-payload' as unknown as ReturnType<typeof jwt.verify>);
+			trustedKeyStore.getByKid.mockResolvedValue(resolvedKey);
+
+			await expect(service.embedLogin('string-payload-token')).rejects.toThrow(AuthError);
+		});
+
 		it('should throw when JWT signature verification fails', async () => {
 			jest.spyOn(jwt, 'decode').mockReturnValue({
 				header: { alg: 'RS256', kid: 'test-kid' },

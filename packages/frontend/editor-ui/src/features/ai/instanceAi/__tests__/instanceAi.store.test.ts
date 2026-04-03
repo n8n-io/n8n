@@ -1,7 +1,7 @@
 import { setActivePinia, createPinia } from 'pinia';
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, test, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { fetchThreadMessages, fetchThreadStatus } from '../instanceAi.memory.api';
-import { ensureThread, postMessage } from '../instanceAi.api';
+import { ensureThread, postMessage, postConfirmation } from '../instanceAi.api';
 import { useInstanceAiStore } from '../instanceAi.store';
 
 // ---------------------------------------------------------------------------
@@ -134,6 +134,7 @@ const mockFetchThreadMessages = vi.mocked(fetchThreadMessages);
 const mockFetchThreadStatus = vi.mocked(fetchThreadStatus);
 const mockEnsureThread = vi.mocked(ensureThread);
 const mockPostMessage = vi.mocked(postMessage);
+const mockPostConfirmation = vi.mocked(postConfirmation);
 
 describe('useInstanceAiStore - onSSEMessage', () => {
 	let store: ReturnType<typeof useInstanceAiStore>;
@@ -595,5 +596,87 @@ describe('useInstanceAiStore - feedback integration', () => {
 			store.creditsClaimed = 75;
 			expect(store.creditsPercentageRemaining).toBe(25);
 		});
+	});
+});
+
+// ---------------------------------------------------------------------------
+// confirmResourceDecision / confirmAction (resource-decision token)
+// ---------------------------------------------------------------------------
+
+describe('useInstanceAiStore - gateway resource-decision confirmation', () => {
+	let store: ReturnType<typeof useInstanceAiStore>;
+
+	beforeEach(async () => {
+		setActivePinia(createPinia());
+		capturedOnMessage = null;
+		store = useInstanceAiStore();
+		store.newThread();
+		await vi.waitFor(() => {
+			expect(capturedOnMessage).not.toBeNull();
+		});
+		mockPostConfirmation.mockResolvedValue(undefined);
+	});
+
+	afterEach(() => {
+		store.closeSSE();
+		vi.clearAllMocks();
+	});
+
+	it('confirmAction passes resourceDecision to postConfirmation', async () => {
+		await store.confirmAction(
+			'req-1',
+			true,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			'allowOnce',
+		);
+
+		expect(mockPostConfirmation).toHaveBeenCalledOnce();
+		expect(mockPostConfirmation).toHaveBeenCalledWith(
+			expect.anything(),
+			'req-1',
+			true,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			'allowOnce',
+		);
+	});
+
+	it('confirmResourceDecision calls postConfirmation with approved=true and the decision', async () => {
+		await store.confirmResourceDecision('req-2', 'allowForSession');
+
+		expect(mockPostConfirmation).toHaveBeenCalledOnce();
+		expect(mockPostConfirmation).toHaveBeenCalledWith(
+			expect.anything(),
+			'req-2',
+			true,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			'allowForSession',
+		);
+	});
+
+	it('confirmResourceDecision does not call postConfirmation when confirmAction throws', async () => {
+		mockPostConfirmation.mockRejectedValueOnce(new Error('network error'));
+
+		await store.confirmResourceDecision('req-3', 'denyOnce');
+
+		// postConfirmation was called once (inside confirmAction) but threw
+		expect(mockPostConfirmation).toHaveBeenCalledOnce();
 	});
 });
