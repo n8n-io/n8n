@@ -583,7 +583,11 @@ function triggerHasNoPinnedData(
 	workflowData: IWorkflowBase,
 	payload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload,
 ) {
-	return workflowData.pinData?.[payload.triggerToStartFrom.name] === undefined;
+	// Check BOTH the database AND the incoming payload data
+	return (
+		workflowData.pinData?.[payload.triggerToStartFrom.name] === undefined &&
+		payload.triggerToStartFrom.data === undefined
+	);
 }
 
 function upgradeToFullManualExecutionFromUnknownTrigger(
