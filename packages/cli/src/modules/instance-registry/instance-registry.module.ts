@@ -25,6 +25,9 @@ export class InstanceRegistryModule implements ModuleInterface {
 
 		const { InstanceRegistryService } = await import('./instance-registry.service');
 		await Container.get(InstanceRegistryService).init();
+
+		const { StaleMemberCleanupService } = await import('./stale-member-cleanup.service');
+		Container.get(StaleMemberCleanupService).init();
 	}
 
 	@OnShutdown()

@@ -321,5 +321,13 @@ describe('InstanceRegistryService', () => {
 
 			expect(service.storageBackend).toBe('memory');
 		});
+
+		it('cleanupStaleMembers should delegate to storage', async () => {
+			service = createService();
+			await service.init();
+
+			const removed = await service.cleanupStaleMembers();
+			expect(removed).toBe(0);
+		});
 	});
 });
