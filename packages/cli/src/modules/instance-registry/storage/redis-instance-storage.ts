@@ -31,11 +31,18 @@ export class RedisInstanceStorage implements InstanceStorage {
 	}
 
 	async register(registration: InstanceRegistration): Promise<void> {
-		await this.upsertRegistration(registration, 'register');
+		await this.upsertRegistration(registration);
 	}
 
 	async heartbeat(registration: InstanceRegistration): Promise<void> {
-		await this.upsertRegistration(registration, 'heartbeat');
+		try {
+			await this.upsertRegistration(registration);
+		} catch (error) {
+			this.logger.warn('Failed to heartbeat instance', {
+				instanceKey: registration.instanceKey,
+				error: ensureError(error).message,
+			});
+		}
 	}
 
 	async unregister(instanceKey: string): Promise<void> {
@@ -178,25 +185,15 @@ export class RedisInstanceStorage implements InstanceStorage {
 		this.redisClient.disconnect();
 	}
 
-	private async upsertRegistration(
-		registration: InstanceRegistration,
-		operation: string,
-	): Promise<void> {
-		try {
-			await this.redisClient.eval(
-				REGISTER_SCRIPT,
-				2,
-				this.instanceKey(registration.instanceKey),
-				this.membershipSetKey(),
-				jsonStringify(registration),
-				String(REGISTRY_CONSTANTS.REGISTRATION_TTL_SECONDS),
-			);
-		} catch (error) {
-			this.logger.warn(`Failed to ${operation} instance`, {
-				instanceKey: registration.instanceKey,
-				error: ensureError(error).message,
-			});
-		}
+	private async upsertRegistration(registration: InstanceRegistration): Promise<void> {
+		await this.redisClient.eval(
+			REGISTER_SCRIPT,
+			2,
+			this.instanceKey(registration.instanceKey),
+			this.membershipSetKey(),
+			jsonStringify(registration),
+			String(REGISTRY_CONSTANTS.REGISTRATION_TTL_SECONDS),
+		);
 	}
 
 	private instanceKey(key: string): string {

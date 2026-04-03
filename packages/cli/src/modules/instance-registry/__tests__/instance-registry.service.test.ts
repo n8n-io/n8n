@@ -239,6 +239,19 @@ describe('InstanceRegistryService', () => {
 			expect(registrations).toHaveLength(0);
 		});
 
+		it('should destroy storage', async () => {
+			service = createService();
+			await service.init();
+
+			const storage = (service as unknown as { storage: MemoryInstanceStorage }).storage;
+			const destroySpy = jest.spyOn(storage, 'destroy');
+
+			await service.shutdown();
+
+			expect(destroySpy).toHaveBeenCalled();
+			destroySpy.mockRestore();
+		});
+
 		it('should not throw if unregister fails', async () => {
 			service = createService();
 			await service.init();

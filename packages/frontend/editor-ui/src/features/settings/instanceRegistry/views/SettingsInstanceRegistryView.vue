@@ -21,7 +21,8 @@ onMounted(async () => {
 	try {
 		clusterInfo.value = await instanceRegistryApi.getClusterInfo(rootStore.restApiContext);
 	} catch (e) {
-		error.value = e instanceof Error ? e.message : String(e);
+		console.error('Failed to load instance registry', e);
+		error.value = i18n.baseText('settings.instanceRegistry.error');
 	} finally {
 		loading.value = false;
 	}
