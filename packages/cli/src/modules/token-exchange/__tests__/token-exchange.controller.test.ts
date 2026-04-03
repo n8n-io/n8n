@@ -32,6 +32,8 @@ describe('TokenExchangeController', () => {
 		jest.resetAllMocks();
 		tokenExchangeConfig.enabled = true;
 		tokenExchangeConfig.maxTokenTtl = 900;
+		tokenExchangeConfig.jtiCleanupIntervalSeconds = 60;
+		tokenExchangeConfig.jtiCleanupBatchSize = 1000;
 		req = mock<AuthlessRequest>({ ip: '127.0.0.1' });
 		res = mock<Response>();
 		res.status.mockReturnThis();
