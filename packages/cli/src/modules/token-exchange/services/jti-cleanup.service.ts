@@ -1,10 +1,11 @@
 import { Logger } from '@n8n/backend-common';
-import { TokenExchangeConfig } from '../token-exchange.config';
 import { Time } from '@n8n/constants';
-import { OnShutdown } from '@n8n/decorators';
+import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
 
 import { TokenExchangeJtiRepository } from '../database/repositories/token-exchange-jti.repository';
+import { TokenExchangeConfig } from '../token-exchange.config';
 
 @Service()
 export class JtiCleanupService {
@@ -18,10 +19,16 @@ export class JtiCleanupService {
 		logger: Logger,
 		private readonly config: TokenExchangeConfig,
 		private readonly jtiRepository: TokenExchangeJtiRepository,
+		private readonly instanceSettings: InstanceSettings,
 	) {
 		this.logger = logger.scoped('token-exchange');
 	}
 
+	init() {
+		if (this.instanceSettings.isLeader) this.startCleanup();
+	}
+
+	@OnLeaderTakeover()
 	startCleanup() {
 		if (this.isShuttingDown) return;
 
@@ -29,6 +36,12 @@ export class JtiCleanupService {
 		this.cleanupInterval = setInterval(async () => await this.cleanup(), intervalMs);
 
 		this.logger.debug(`JTI cleanup scheduled every ${this.config.jtiCleanupIntervalSeconds}s`);
+	}
+
+	@OnLeaderStepdown()
+	stopCleanup() {
+		clearInterval(this.cleanupInterval);
+		this.cleanupInterval = undefined;
 	}
 
 	private async cleanup() {
@@ -51,6 +64,6 @@ export class JtiCleanupService {
 	@OnShutdown()
 	shutdown() {
 		this.isShuttingDown = true;
-		clearInterval(this.cleanupInterval);
+		this.stopCleanup();
 	}
 }

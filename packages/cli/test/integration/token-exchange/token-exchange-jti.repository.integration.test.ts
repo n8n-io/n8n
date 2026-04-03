@@ -53,6 +53,16 @@ describe('TokenExchangeJtiRepository', () => {
 			expect(result1).toBe(true);
 			expect(result2).toBe(true);
 		});
+
+		it('should allow only one consumer when called concurrently with the same JTI', async () => {
+			const results = await Promise.all([
+				repository.atomicConsume('jti-race', futureDate),
+				repository.atomicConsume('jti-race', futureDate),
+			]);
+
+			const consumed = results.filter(Boolean);
+			expect(consumed).toHaveLength(1);
+		});
 	});
 
 	describe('deleteExpiredBatch', () => {

@@ -30,6 +30,6 @@ export class TokenExchangeModule implements ModuleInterface {
 		await import('./controllers/embed-auth.controller');
 
 		const { JtiCleanupService } = await import('./services/jti-cleanup.service');
-		Container.get(JtiCleanupService).startCleanup();
+		Container.get(JtiCleanupService).init();
 	}
 }

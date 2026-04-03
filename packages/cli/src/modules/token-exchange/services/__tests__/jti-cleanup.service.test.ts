@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { TokenExchangeConfig } from '../../token-exchange.config';
 import { mock } from 'jest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 
 import type { TokenExchangeJtiRepository } from '../../database/repositories/token-exchange-jti.repository';
 import { JtiCleanupService } from '../jti-cleanup.service';
@@ -11,13 +12,14 @@ const config = mock<TokenExchangeConfig>({
 	jtiCleanupBatchSize: 500,
 });
 const jtiRepository = mock<TokenExchangeJtiRepository>();
+const instanceSettings = mock<InstanceSettings>({ isLeader: true });
 
 let service: JtiCleanupService;
 
 beforeEach(() => {
 	jest.useFakeTimers();
 	jest.clearAllMocks();
-	service = new JtiCleanupService(logger, config, jtiRepository);
+	service = new JtiCleanupService(logger, config, jtiRepository, instanceSettings);
 });
 
 afterEach(() => {
@@ -26,6 +28,27 @@ afterEach(() => {
 });
 
 describe('JtiCleanupService', () => {
+	describe('init', () => {
+		it('should start cleanup when instance is leader', () => {
+			jtiRepository.deleteExpiredBatch.mockResolvedValue(0);
+			instanceSettings.isLeader = true;
+
+			service.init();
+			jest.advanceTimersByTime(30_000);
+
+			expect(jtiRepository.deleteExpiredBatch).toHaveBeenCalled();
+		});
+
+		it('should not start cleanup when instance is not leader', () => {
+			instanceSettings.isLeader = false;
+
+			service.init();
+			jest.advanceTimersByTime(60_000);
+
+			expect(jtiRepository.deleteExpiredBatch).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('startCleanup', () => {
 		it('should schedule cleanup at configured interval', () => {
 			jtiRepository.deleteExpiredBatch.mockResolvedValue(0);
@@ -95,6 +118,19 @@ describe('JtiCleanupService', () => {
 			await jest.advanceTimersByTimeAsync(0);
 
 			expect(jtiRepository.deleteExpiredBatch).toHaveBeenCalled();
+		});
+	});
+
+	describe('stopCleanup', () => {
+		it('should stop the cleanup interval on leader stepdown', () => {
+			jtiRepository.deleteExpiredBatch.mockResolvedValue(0);
+
+			service.startCleanup();
+			service.stopCleanup();
+
+			jest.advanceTimersByTime(60_000);
+
+			expect(jtiRepository.deleteExpiredBatch).not.toHaveBeenCalled();
 		});
 	});
 
