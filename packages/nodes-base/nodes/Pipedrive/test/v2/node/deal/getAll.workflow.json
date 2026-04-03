@@ -1,0 +1,158 @@
+{
+	"name": "Pipedrive v2 deal getAll test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "a1a1a1a1-1111-2222-3333-444444444444",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"authentication": "apiToken",
+				"resource": "deal",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 2,
+				"filters": {}
+			},
+			"id": "b2b2b2b2-1111-2222-3333-444444444444",
+			"name": "Pipedrive",
+			"type": "n8n-nodes-base.pipedrive",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"credentials": {
+				"pipedriveApi": {
+					"id": "cred-1",
+					"name": "Pipedrive API"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "c3c3c3c3-1111-2222-3333-444444444444",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 0]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"id": 1,
+					"title": "[Sample] iTable",
+					"creator_user_id": 25455458,
+					"value": 7000.0,
+					"person_id": 6,
+					"org_id": 4,
+					"stage_id": 7,
+					"currency": "BGN",
+					"add_time": "2026-04-01T19:00:38Z",
+					"update_time": "2026-04-01T19:00:39Z",
+					"status": "open",
+					"probability": null,
+					"lost_reason": null,
+					"visible_to": 3,
+					"close_time": null,
+					"pipeline_id": 2,
+					"won_time": null,
+					"lost_time": null,
+					"stage_change_time": null,
+					"local_won_date": null,
+					"local_lost_date": null,
+					"local_close_date": null,
+					"expected_close_date": "2026-04-13",
+					"custom_fields": {
+						"test_string": null,
+						"test_enum": null,
+						"test_multi": null
+					},
+					"owner_id": 25455458,
+					"label_ids": [],
+					"is_deleted": false,
+					"origin": "API",
+					"origin_id": null,
+					"channel": null,
+					"channel_id": null,
+					"acv": null,
+					"arr": null,
+					"mrr": null,
+					"is_archived": false,
+					"archive_time": null
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"title": "[Sample] Tony Turner",
+					"creator_user_id": 25455458,
+					"value": 30000.0,
+					"person_id": 7,
+					"org_id": 3,
+					"stage_id": 6,
+					"currency": "BGN",
+					"add_time": "2026-04-01T19:00:38Z",
+					"update_time": "2026-04-01T19:00:39Z",
+					"status": "open",
+					"probability": null,
+					"lost_reason": null,
+					"visible_to": 3,
+					"close_time": null,
+					"pipeline_id": 2,
+					"won_time": null,
+					"lost_time": null,
+					"stage_change_time": null,
+					"local_won_date": null,
+					"local_lost_date": null,
+					"local_close_date": null,
+					"expected_close_date": "2026-04-04",
+					"custom_fields": {
+						"test_string": null,
+						"test_enum": null,
+						"test_multi": null
+					},
+					"owner_id": 25455458,
+					"label_ids": [],
+					"is_deleted": false,
+					"origin": "API",
+					"origin_id": null,
+					"channel": null,
+					"channel_id": null,
+					"acv": null,
+					"arr": null,
+					"mrr": null,
+					"is_archived": false,
+					"archive_time": null
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Pipedrive",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Pipedrive": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

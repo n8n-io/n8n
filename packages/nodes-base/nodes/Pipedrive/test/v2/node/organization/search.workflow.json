@@ -1,0 +1,71 @@
+{
+	"name": "Pipedrive v2 organization search test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "a1000005-0001-4000-8000-000000000001",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"authentication": "apiToken",
+				"resource": "organization",
+				"operation": "search",
+				"term": "Test Org",
+				"exactMatch": false,
+				"returnAll": false,
+				"limit": 100,
+				"additionalFields": {}
+			},
+			"id": "a1000005-0001-4000-8000-000000000002",
+			"name": "Pipedrive",
+			"type": "n8n-nodes-base.pipedrive",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"credentials": {
+				"pipedriveApi": {
+					"id": "cred-1",
+					"name": "Pipedrive API"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "a1000005-0001-4000-8000-000000000003",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 0]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"result_score": 0.35513002,
+					"id": 7,
+					"type": "organization",
+					"name": "Test Org LLC",
+					"address": null,
+					"visible_to": 3,
+					"owner": {
+						"id": 25455458
+					},
+					"custom_fields": [],
+					"notes": []
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [[{ "node": "Pipedrive", "type": "main", "index": 0 }]]
+		},
+		"Pipedrive": {
+			"main": [[{ "node": "No Operation, do nothing", "type": "main", "index": 0 }]]
+		}
+	}
+}

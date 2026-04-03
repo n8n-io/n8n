@@ -1,0 +1,112 @@
+{
+	"name": "Pipedrive v2 organization getAll test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "a1000004-0001-4000-8000-000000000001",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"authentication": "apiToken",
+				"resource": "organization",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 2,
+				"filters": {}
+			},
+			"id": "a1000004-0001-4000-8000-000000000002",
+			"name": "Pipedrive",
+			"type": "n8n-nodes-base.pipedrive",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"credentials": {
+				"pipedriveApi": {
+					"id": "cred-1",
+					"name": "Pipedrive API"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "a1000004-0001-4000-8000-000000000003",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 0]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"id": 1,
+					"name": "[Sample] Phyllis & Cie",
+					"add_time": "2026-04-01T19:00:37Z",
+					"update_time": "2026-04-01T19:00:39Z",
+					"visible_to": 3,
+					"custom_fields": {
+						"test_string": null
+					},
+					"owner_id": 25455458,
+					"label_ids": [],
+					"website": null,
+					"linkedin": null,
+					"industry": null,
+					"annual_revenue": null,
+					"employee_count": null,
+					"is_deleted": false,
+					"address": null
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"name": "[Sample] Lorean",
+					"add_time": "2026-04-01T19:00:37Z",
+					"update_time": "2026-04-01T19:00:39Z",
+					"visible_to": 3,
+					"custom_fields": {
+						"test_string": null
+					},
+					"owner_id": 25455458,
+					"label_ids": [],
+					"website": null,
+					"linkedin": null,
+					"industry": null,
+					"annual_revenue": null,
+					"employee_count": null,
+					"is_deleted": false,
+					"address": null
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Pipedrive",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Pipedrive": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

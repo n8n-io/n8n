@@ -1,0 +1,95 @@
+{
+	"name": "Pipedrive v2 activity create test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"authentication": "apiToken",
+				"resource": "activity",
+				"operation": "create",
+				"subject": "Call client",
+				"done": false,
+				"type": "call",
+				"additionalFields": {
+					"deal_id": 8,
+					"person_id": 10,
+					"org_id": 7
+				}
+			},
+			"id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+			"name": "Pipedrive",
+			"type": "n8n-nodes-base.pipedrive",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"credentials": {
+				"pipedriveApi": {
+					"id": "cred-1",
+					"name": "Pipedrive API"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 0]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"id": 10,
+					"subject": "Call client",
+					"type": "call",
+					"owner_id": 25455458,
+					"creator_user_id": 25455458,
+					"is_deleted": false,
+					"add_time": "2026-04-01T22:03:27Z",
+					"update_time": "2026-04-01T22:03:27Z",
+					"deal_id": 8,
+					"lead_id": null,
+					"person_id": 10,
+					"org_id": 7,
+					"project_id": null,
+					"due_date": "2026-04-01",
+					"due_time": null,
+					"duration": null,
+					"done": false,
+					"busy": false,
+					"marked_as_done_time": null,
+					"location": null,
+					"participants": [
+						{
+							"person_id": 10,
+							"primary": true
+						}
+					],
+					"conference_meeting_client": null,
+					"conference_meeting_url": null,
+					"conference_meeting_id": null,
+					"public_description": null,
+					"priority": null,
+					"note": null
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [[{ "node": "Pipedrive", "type": "main", "index": 0 }]]
+		},
+		"Pipedrive": {
+			"main": [[{ "node": "No Operation, do nothing", "type": "main", "index": 0 }]]
+		}
+	}
+}
