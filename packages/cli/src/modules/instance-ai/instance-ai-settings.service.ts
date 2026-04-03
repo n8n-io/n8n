@@ -1,3 +1,4 @@
+import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
@@ -19,6 +20,7 @@ import { AiService } from '@/services/ai.service';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { ChatHubSettingsService } from '@/modules/chat-hub/chat-hub.settings.service';
 
 const ADMIN_SETTINGS_KEY = 'instanceAi.settings';
 const USER_PREFERENCES_KEY_PREFIX = 'instanceAi.preferences.';
@@ -73,6 +75,8 @@ interface PersistedAdminSettings {
 	n8nSandboxCredentialId?: string | null;
 	searchCredentialId?: string | null;
 	localGatewayDisabled?: boolean;
+	instanceAiEnabled?: boolean;
+	optinModalDismissed?: boolean;
 }
 
 /** Per-user preferences stored under USER_PREFERENCES_KEY_PREFIX + userId. */
@@ -96,6 +100,8 @@ export class InstanceAiSettingsService {
 
 	private adminSearchCredentialId: string | null = null;
 
+	private optinModalDismissed: boolean = false;
+
 	/** In-memory cache of per-user preferences keyed by userId. */
 	private readonly userPreferences = new Map<string, PersistedUserPreferences>();
 
@@ -105,6 +111,8 @@ export class InstanceAiSettingsService {
 		private readonly aiService: AiService,
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly chatHubSettingsService: ChatHubSettingsService,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {
 		this.config = globalConfig.instanceAi;
 	}
@@ -117,12 +125,32 @@ export class InstanceAiSettingsService {
 	/** Load persisted settings from DB and apply to the singleton config. Call on module init. */
 	async loadFromDb(): Promise<void> {
 		const row = await this.settingsRepository.findByKey(ADMIN_SETTINGS_KEY);
-		if (!row) return;
+		if (row) {
+			const persisted = jsonParse<PersistedAdminSettings>(row.value, {
+				fallbackValue: {},
+			});
+			this.applyAdminSettings(persisted);
+		}
 
-		const persisted = jsonParse<PersistedAdminSettings>(row.value, {
-			fallbackValue: {},
-		});
-		this.applyAdminSettings(persisted);
+		await this.syncChatHubAccessWithInstanceAi();
+	}
+
+	/**
+	 * Instance AI and Chat Hub are mutually exclusive: when Instance AI is on,
+	 * Chat Hub access is off; when Instance AI is off, Chat Hub access is restored
+	 * so the editor sidebar and settings can show Chat Hub again.
+	 */
+	private async syncChatHubAccessWithInstanceAi(): Promise<void> {
+		try {
+			if (this.isInstanceAiEnabled()) {
+				await this.chatHubSettingsService.setEnabled(false);
+			} else {
+				await this.chatHubSettingsService.setEnabled(true);
+			}
+			await this.moduleRegistry.refreshModuleSettings('chat-hub');
+		} catch {
+			// Do not fail instance-ai persistence if chat-hub is unavailable
+		}
 	}
 
 	// ── Admin settings ────────────────────────────────────────────────────
@@ -145,6 +173,8 @@ export class InstanceAiSettingsService {
 			n8nSandboxCredentialId: this.adminN8nSandboxCredentialId,
 			searchCredentialId: this.adminSearchCredentialId,
 			localGatewayDisabled: this.isLocalGatewayDisabled(),
+			instanceAiEnabled: this.isInstanceAiEnabled(),
+			optinModalDismissed: this.optinModalDismissed,
 		};
 	}
 
@@ -176,7 +206,11 @@ export class InstanceAiSettingsService {
 			this.adminSearchCredentialId = update.searchCredentialId;
 		if (update.localGatewayDisabled !== undefined)
 			c.localGatewayDisabled = update.localGatewayDisabled;
+		if (update.instanceAiEnabled !== undefined) c.instanceAiEnabled = update.instanceAiEnabled;
+		if (update.optinModalDismissed !== undefined)
+			this.optinModalDismissed = update.optinModalDismissed;
 		await this.persistAdminSettings();
+		await this.syncChatHubAccessWithInstanceAi();
 		return this.getAdminSettings();
 	}
 
@@ -366,6 +400,11 @@ export class InstanceAiSettingsService {
 		return this.config.localGatewayDisabled;
 	}
 
+	/** Whether Instance AI chat and main UI are enabled (settings always available when module loads). */
+	isInstanceAiEnabled(): boolean {
+		return this.config.instanceAiEnabled !== false;
+	}
+
 	/** Resolve just the model name (e.g. 'claude-sonnet-4-20250514') for proxy routing. */
 	async resolveModelName(user: User): Promise<string> {
 		const prefs = await this.loadUserPreferences(user.id);
@@ -494,6 +533,10 @@ export class InstanceAiSettingsService {
 			this.adminSearchCredentialId = persisted.searchCredentialId;
 		if (persisted.localGatewayDisabled !== undefined)
 			c.localGatewayDisabled = persisted.localGatewayDisabled;
+		if (persisted.instanceAiEnabled !== undefined)
+			c.instanceAiEnabled = persisted.instanceAiEnabled;
+		if (persisted.optinModalDismissed !== undefined)
+			this.optinModalDismissed = persisted.optinModalDismissed;
 	}
 
 	private async loadUserPreferences(userId: string): Promise<PersistedUserPreferences> {
@@ -528,6 +571,8 @@ export class InstanceAiSettingsService {
 			n8nSandboxCredentialId: this.adminN8nSandboxCredentialId,
 			searchCredentialId: this.adminSearchCredentialId,
 			localGatewayDisabled: c.localGatewayDisabled,
+			instanceAiEnabled: c.instanceAiEnabled,
+			optinModalDismissed: this.optinModalDismissed,
 		};
 
 		await this.settingsRepository.upsert(
