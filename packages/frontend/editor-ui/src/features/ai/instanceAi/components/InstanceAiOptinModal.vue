@@ -48,6 +48,13 @@ const osTabs = [
 ];
 
 const displayCommand = computed(() => instanceAiSettingsStore.setupCommand ?? 'npx @n8n/fs-proxy');
+
+const isScrolledToEnd = ref(false);
+
+function onCommandScroll(e: Event) {
+	const el = e.target as HTMLElement;
+	isScrolledToEnd.value = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1;
+}
 const copied = ref(false);
 
 const terminalInstructionsKey = computed(() => {
@@ -240,17 +247,13 @@ onUnmounted(() => {
 					</div>
 				</div>
 
-				<div :class="$style.gatewayTextBlock">
-					<N8nText color="text-light">
-						{{ i18n.baseText('instanceAi.welcomeModal.gateway.description.1') }}
-					</N8nText>
-					<N8nText color="text-light">
-						{{ i18n.baseText('instanceAi.welcomeModal.gateway.description.2') }}
-					</N8nText>
+				<div
+					:class="$style.gatewayTextBlock"
+					v-html="i18n.baseText('instanceAi.welcomeModal.gateway.description')"
+				/>
+				<div :class="$style.commandLabel">
+					{{ i18n.baseText('instanceAi.welcomeModal.gateway.commandLabel') }}
 				</div>
-
-				<hr :class="$style.gatewayDivider" />
-
 				<div :class="$style.osTabs">
 					<button
 						v-for="tab in osTabs"
@@ -264,11 +267,12 @@ onUnmounted(() => {
 				</div>
 
 				<div :class="$style.commandCard">
-					<div :class="$style.commandLabel">
-						{{ i18n.baseText('instanceAi.welcomeModal.gateway.commandLabel') }}
-					</div>
 					<div :class="$style.commandRow">
-						<code :class="$style.commandText">{{ displayCommand }}</code>
+						<code
+							:class="[$style.commandText, { [$style.commandTextFaded]: !isScrolledToEnd }]"
+							@scroll="onCommandScroll"
+							>{{ displayCommand }}</code
+						>
 						<button :class="$style.copyButton" @click="copyCommand">
 							<N8nIcon :icon="copied ? 'check' : 'copy'" :size="16" />
 						</button>
@@ -286,8 +290,6 @@ onUnmounted(() => {
 				<N8nText color="text-light" :class="$style.gatewayInstructions">
 					{{ i18n.baseText(terminalInstructionsKey) }}
 				</N8nText>
-
-				<hr :class="$style.gatewayDivider" />
 
 				<div :class="$style.gatewayActions">
 					<N8nButton
@@ -512,6 +514,7 @@ onUnmounted(() => {
 
 .gatewayTitle {
 	margin: 0;
+	font-size: var(--font-size--xl);
 }
 
 .optionalBadge {
@@ -531,6 +534,7 @@ onUnmounted(() => {
 	gap: 10px;
 	font-size: var(--font-size--xs);
 	line-height: var(--line-height--xl);
+	margin-bottom: var(--spacing--sm);
 }
 
 .gatewayDivider {
@@ -576,22 +580,12 @@ onUnmounted(() => {
 }
 
 .commandCard {
-	border: 1px solid var(--border-color--subtle);
 	border-radius: var(--radius--xs);
 	overflow: hidden;
 }
 
 .commandLabel {
-	padding: var(--spacing--xs) 14px;
-	color: var(--color--text--tint-1);
-	background: var(--color--neutral-950);
-	font-size: var(--font-size--2xs);
-	border-radius: var(--radius--xs) var(--radius--xs) 0 0;
-}
-
-:global(body:not([data-theme='dark'])) .commandLabel {
-	background: var(--color--black-alpha-700);
-	color: var(--color--text--tint-2);
+	font-size: var(--font-size--xs);
 }
 
 .commandRow {
@@ -601,7 +595,6 @@ onUnmounted(() => {
 	gap: 10px;
 	padding: var(--spacing--xs) 14px;
 	background: var(--color--neutral-950);
-	border-top: 1px solid var(--border-color--subtle);
 }
 
 .commandText {
@@ -613,7 +606,11 @@ onUnmounted(() => {
 	}
 	-ms-overflow-style: none;
 	scrollbar-width: none;
-	font-size: var(--font-size--2xs);
+	font-size: var(--font-size--xs);
+}
+
+.commandTextFaded {
+	mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%);
 }
 
 .copyButton {
@@ -675,11 +672,17 @@ onUnmounted(() => {
 .gatewayInstructions {
 	font-size: var(--font-size--xs);
 	line-height: var(--line-height--xl);
+	color: var(--color--text--tint-2);
+}
+
+:global(body:not([data-theme='dark'])) .gatewayInstructions {
+	color: var(--color--text);
 }
 
 .gatewayActions {
 	display: flex;
 	justify-content: flex-end;
+	margin-top: var(--spacing--2xs);
 }
 </style>
 
