@@ -333,7 +333,7 @@ onMounted(async () => {
 				<div :class="$style.settingsItemControl">
 					<N8nSelect
 						:model-value="ssoStore.isOidcLoginEnabled ? 'enabled' : 'disabled'"
-						size="small"
+						size="medium"
 						data-test-id="sso-oidc-toggle"
 						@update:model-value="ssoStore.isOidcLoginEnabled = $event === 'enabled'"
 					>

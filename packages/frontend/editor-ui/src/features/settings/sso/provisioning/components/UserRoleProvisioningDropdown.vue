@@ -70,7 +70,7 @@ defineExpose({ legacyValue, showRuleEditor });
 			<div :class="$style.controlColumn">
 				<N8nSelect
 					v-model="roleAssignment"
-					size="small"
+					size="medium"
 					:disabled="!canManage"
 					data-test-id="role-assignment-select"
 				>
@@ -99,7 +99,7 @@ defineExpose({ legacyValue, showRuleEditor });
 			<div :class="$style.controlColumn">
 				<N8nSelect
 					v-model="mappingMethod"
-					size="small"
+					size="medium"
 					:disabled="!canManage"
 					data-test-id="role-mapping-method-select"
 				>
