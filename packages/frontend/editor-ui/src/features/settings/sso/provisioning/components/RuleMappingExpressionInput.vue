@@ -347,14 +347,17 @@ watch(
 .expandButton {
 	position: absolute;
 	right: 1px;
-	top: 1px;
 	bottom: 1px;
+	width: 20px;
+	height: 20px;
 	display: flex;
 	align-items: center;
-	padding: 0 var(--spacing--4xs);
+	justify-content: center;
+	padding: 0;
 	color: var(--color--text--tint-2);
 	cursor: pointer;
-	border-radius: 0 var(--radius) var(--radius) 0;
+	border-radius: 0 0 var(--radius) 0;
+	background-color: var(--color--foreground--tint-2);
 
 	&:hover {
 		color: var(--color--text) !important;
