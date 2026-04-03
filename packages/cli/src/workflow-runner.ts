@@ -337,7 +337,10 @@ export class WorkflowRunner {
 					if (workflowExecution.isCanceled) {
 						fullRunData.finished = false;
 					}
+<<<<<<< HEAD
 
+=======
+>>>>>>> 2bba053d (fix: Fix status overwrite for donePromise (#24897))
 					this.activeExecutions.resolveExecutionResponsePromise(executionId);
 					this.activeExecutions.finalizeExecution(executionId, fullRunData);
 				})
