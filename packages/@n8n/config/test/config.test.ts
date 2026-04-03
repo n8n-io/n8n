@@ -487,7 +487,7 @@ describe('GlobalConfig', () => {
 			batchSize: 100,
 			optimizingMinimumAgeHours: 0.25,
 			optimizingTimeWindowHours: 2,
-			trimmingMinimumAgeDays: 7,
+			trimmingMinimumAgeDays: 6,
 			trimmingTimeWindowDays: 2,
 			trimOnStartUp: false,
 		},
