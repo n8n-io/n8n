@@ -1,3 +1,4 @@
+import { fireEvent } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
 import { createComponentRenderer } from '@n8n/design-system/__tests__/render';
@@ -55,6 +56,27 @@ describe('N8nInlineTextEdit', () => {
 		await userEvent.keyboard('{Enter}');
 
 		expect(preview).toHaveTextContent('Test Value');
+	});
+
+	it('should not submit on Enter during IME composition', async () => {
+		const wrapper = renderComponent({
+			props: {
+				modelValue: 'Test Value',
+			},
+		});
+		const preview = wrapper.getByTestId('inline-edit-preview');
+
+		await userEvent.click(preview);
+		const input = wrapper.getByTestId('inline-edit-input');
+
+		await userEvent.clear(input);
+		await userEvent.type(input, '猫');
+		const emittedCountBeforeEnter = wrapper.emitted('update:model-value')?.length ?? 0;
+		await fireEvent.keyDown(input, { key: 'Enter', isComposing: true });
+
+		const emittedCountAfterEnter = wrapper.emitted('update:model-value')?.length ?? 0;
+		expect(emittedCountAfterEnter).toBe(emittedCountBeforeEnter);
+		expect(input).toHaveFocus();
 	});
 
 	it('should display changes to props.modelValue', async () => {
