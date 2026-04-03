@@ -19,7 +19,7 @@ import type {
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { Workflow, createEmptyRunExecutionData } from 'n8n-workflow';
+import { Workflow, createEmptyRunExecutionData, isResourceLocatorValue } from 'n8n-workflow';
 import type { ICredentialsDecrypted } from 'n8n-workflow/src';
 
 import * as executionContexts from '@/execution-engine/node-execution-context';
@@ -54,9 +54,17 @@ const getExecuteSingleFunctions = (
 ) =>
 	mock<executionContexts.ExecuteSingleContext>({
 		getItemIndex: () => itemIndex,
-		getNodeParameter: (parameterName: string) =>
-			workflow.expression.getParameterValue(
-				get(node.parameters, parameterName),
+		getNodeParameter: (
+			parameterName: string,
+			_fallbackValue?: unknown,
+			options?: { extractValue?: boolean },
+		) => {
+			const rawValue = get(node.parameters, parameterName);
+			if (options?.extractValue && isResourceLocatorValue(rawValue)) {
+				return rawValue.value;
+			}
+			return workflow.expression.getParameterValue(
+				rawValue,
 				runExecutionData,
 				runIndex,
 				itemIndex,
@@ -64,7 +72,8 @@ const getExecuteSingleFunctions = (
 				[],
 				'internal',
 				{},
-			),
+			);
+		},
 		getWorkflow: () => ({
 			id: workflow.id,
 			name: workflow.name,
@@ -707,6 +716,236 @@ describe('RoutingNode', () => {
 					},
 				},
 			},
+			{
+				description: '$parameter, routing.request.url accesses parameter value via $parameter',
+				input: {
+					nodeParameters: {
+						endpoint: 'users',
+					},
+					nodeTypeProperties: {
+						displayName: 'Endpoint',
+						name: 'endpoint',
+						type: 'string',
+						routing: {
+							request: {
+								method: 'GET',
+								url: '=/{{$parameter["endpoint"]}}',
+							},
+						},
+						default: '',
+					},
+				},
+				output: {
+					options: {
+						method: 'GET',
+						url: '/users',
+						qs: {},
+						body: {},
+						headers: {},
+					},
+					preSend: [],
+					postReceive: [],
+					requestOperations: {},
+				},
+			},
+			{
+				description:
+					'$parameter, routing.output.maxResults accesses parameter value via $parameter',
+				input: {
+					nodeParameters: {
+						limit: 50,
+					},
+					nodeTypeProperties: {
+						displayName: 'Limit',
+						name: 'limit',
+						type: 'number',
+						routing: {
+							send: {
+								property: 'limit',
+								type: 'query',
+							},
+							output: {
+								maxResults: '={{$parameter["limit"]}}',
+							},
+						},
+						default: 10,
+					},
+				},
+				output: {
+					maxResults: 50,
+					options: {
+						qs: {
+							limit: 50,
+						},
+						body: {},
+						headers: {},
+					},
+					preSend: [],
+					postReceive: [],
+					requestOperations: {},
+				},
+			},
+			{
+				description: '$parameter, routing.send.paginate accesses parameter value via $parameter',
+				input: {
+					nodeParameters: {
+						returnAll: true,
+					},
+					nodeTypeProperties: {
+						displayName: 'Return All',
+						name: 'returnAll',
+						type: 'boolean',
+						routing: {
+							send: {
+								paginate: '={{$parameter["returnAll"]}}',
+							},
+						},
+						default: false,
+					},
+				},
+				output: {
+					paginate: true,
+					options: {
+						qs: {},
+						body: {},
+						headers: {},
+					},
+					preSend: [],
+					postReceive: [],
+					requestOperations: {},
+				},
+			},
+			{
+				description:
+					'$parameter, routing.output.postReceive enabled expression via $parameter includes action when truthy',
+				input: {
+					nodeParameters: {
+						query: 'active',
+					},
+					nodeTypeProperties: {
+						displayName: 'Query',
+						name: 'query',
+						type: 'string',
+						routing: {
+							output: {
+								postReceive: [
+									{
+										type: 'rootProperty',
+										enabled: '={{!!$parameter["query"]}}',
+										properties: {
+											property: 'data',
+										},
+									},
+								],
+							},
+						},
+						default: '',
+					},
+				},
+				output: {
+					options: {
+						qs: {},
+						body: {},
+						headers: {},
+					},
+					preSend: [],
+					postReceive: [
+						{
+							actions: [
+								{
+									type: 'rootProperty',
+									enabled: '={{!!$parameter["query"]}}',
+									properties: {
+										property: 'data',
+									},
+								},
+							],
+							data: {
+								parameterValue: 'active',
+							},
+						},
+					],
+					requestOperations: {},
+				},
+			},
+			{
+				description:
+					'$parameter, routing.output.postReceive enabled expression via $parameter excludes action when falsy',
+				input: {
+					nodeParameters: {
+						query: '',
+					},
+					nodeTypeProperties: {
+						displayName: 'Query',
+						name: 'query',
+						type: 'string',
+						routing: {
+							output: {
+								postReceive: [
+									{
+										type: 'rootProperty',
+										enabled: '={{!!$parameter["query"]}}',
+										properties: {
+											property: 'data',
+										},
+									},
+								],
+							},
+						},
+						default: '',
+					},
+				},
+				output: {
+					options: {
+						qs: {},
+						body: {},
+						headers: {},
+					},
+					preSend: [],
+					postReceive: [],
+					requestOperations: {},
+				},
+			},
+			{
+				description:
+					'$parameter, routing.request.url extracts value from resourceLocator parameter via $parameter',
+				input: {
+					nodeParameters: {
+						site: { __rl: true, mode: 'id', value: 'site1' },
+					},
+					nodeTypeProperties: {
+						displayName: 'Site',
+						name: 'site',
+						type: 'resourceLocator',
+						default: { mode: 'list', value: '' },
+						modes: [
+							{
+								displayName: 'By ID',
+								name: 'id',
+								type: 'string',
+							},
+						],
+						routing: {
+							request: {
+								method: 'GET',
+								url: '=/sites/{{ $parameter["site"] }}/items',
+							},
+						},
+					},
+				},
+				output: {
+					options: {
+						method: 'GET',
+						url: '/sites/site1/items',
+						qs: {},
+						body: {},
+						headers: {},
+					},
+					preSend: [],
+					postReceive: [],
+					requestOperations: {},
+				},
+			},
 		];
 
 		const nodeTypes = NodeTypes();
@@ -753,6 +992,7 @@ describe('RoutingNode', () => {
 					mode,
 					connectionInputData,
 					runExecutionData,
+					nodeType,
 				});
 				const routingNode = new RoutingNode(executeFunctions, nodeType);
 
@@ -790,7 +1030,7 @@ describe('RoutingNode', () => {
 				nodeType: {
 					properties?: INodeProperties[];
 					credentials?: INodeCredentialDescription[];
-					requestDefaults?: IHttpRequestOptions;
+					requestDefaults?: DeclarativeRestApiSettings.HttpRequestOptions;
 					requestOperations?: IN8nRequestOperations;
 				};
 				node: {
@@ -2052,6 +2292,63 @@ describe('RoutingNode', () => {
 							json: {
 								display1: 'Jim (34)',
 								display2: 'Jim is 34',
+							},
+						},
+					],
+				],
+			},
+			{
+				description:
+					'single parameter, routing.request.url uses $parameter to reference value of another parameter',
+				input: {
+					node: {
+						parameters: {
+							resource: 'contacts',
+							id: '456',
+						},
+					},
+					nodeType: {
+						requestDefaults: {
+							baseURL: 'http://127.0.0.1:5678',
+						},
+						properties: [
+							{
+								displayName: 'Resource',
+								name: 'resource',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'ID',
+								name: 'id',
+								type: 'string',
+								routing: {
+									request: {
+										method: 'GET',
+										url: '=/{{$parameter["resource"]}}/{{$value}}',
+									},
+								},
+								default: '',
+							},
+						],
+					},
+				},
+				output: [
+					[
+						{
+							json: {
+								headers: {},
+								statusCode: 200,
+								requestOptions: {
+									url: '/contacts/456',
+									method: 'GET',
+									headers: {},
+									qs: {},
+									body: {},
+									baseURL: 'http://127.0.0.1:5678',
+									returnFullResponse: true,
+									timeout: 300000,
+								},
 							},
 						},
 					],
