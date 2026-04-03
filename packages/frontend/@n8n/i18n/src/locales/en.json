@@ -4335,7 +4335,7 @@
 	"settings.sso.settings.roleMappingRules.instanceRules.title": "Instance role rules",
 	"settings.sso.settings.roleMappingRules.instanceRules.description": "Define rules to assign instance roles based on IdP claims. First matching rule wins.",
 	"settings.sso.settings.roleMappingRules.addRule": "Add rule",
-	"settings.sso.settings.roleMappingRules.expression.placeholder": "$claims.groups.includes('admins')",
+	"settings.sso.settings.roleMappingRules.expression.placeholder": "{{ $claims.groups.includes('admins') }}",
 	"settings.sso.settings.test": "Test settings",
 	"settings.sso.settings.save": "Save settings",
 	"settings.sso.settings.unsavedChanges.title": "Unsaved changes",
