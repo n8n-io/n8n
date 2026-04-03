@@ -3,7 +3,6 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import {
 	EditorView,
 	keymap,
-	placeholder as cmPlaceholder,
 	ViewPlugin,
 	type ViewUpdate,
 	Decoration,
@@ -39,6 +38,7 @@ const emit = defineEmits<{
 }>();
 
 const editorRef = ref<HTMLDivElement>();
+const isEmpty = ref(true);
 let editorView: EditorView | null = null;
 
 // n8n expression language: parses {{ }} as Resolvable blocks with nested JS inside
@@ -136,10 +136,10 @@ function createExtensions() {
 				fontWeight: '700',
 			},
 		}),
-		...(props.placeholder ? [cmPlaceholder(props.placeholder)] : []),
 		EditorView.updateListener.of((update) => {
 			if (update.docChanged) {
 				const newValue = update.state.doc.toString();
+				isEmpty.value = newValue.length === 0;
 				if (newValue !== props.modelValue) {
 					emit('update:modelValue', newValue);
 				}
@@ -150,6 +150,8 @@ function createExtensions() {
 
 onMounted(() => {
 	if (!editorRef.value) return;
+
+	isEmpty.value = !props.modelValue;
 
 	const state = EditorState.create({
 		doc: props.modelValue,
@@ -184,7 +186,8 @@ watch(
 <template>
 	<div
 		ref="editorRef"
-		:class="[$style.container, { [$style.disabled]: disabled }]"
+		:class="[$style.container, { [$style.disabled]: disabled, [$style.empty]: isEmpty }]"
+		:data-placeholder="placeholder"
 		data-test-id="rule-expression-input"
 	/>
 </template>
@@ -192,15 +195,25 @@ watch(
 .container {
 	flex: 1;
 	min-width: 0;
+	position: relative;
+}
 
-	:global(.cm-placeholder) {
-		color: var(--color--text--tint-2);
-		font-style: italic;
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		display: block;
-	}
+.empty::before {
+	content: attr(data-placeholder);
+	color: var(--color--text--tint-2);
+	font-style: italic;
+	font-family: var(--font-family--monospace);
+	font-size: var(--font-size--2xs);
+	line-height: 28px;
+	pointer-events: none;
+	position: absolute;
+	left: var(--spacing--2xs);
+	top: 0;
+	z-index: 1;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	right: var(--spacing--2xs);
 }
 
 .disabled {
