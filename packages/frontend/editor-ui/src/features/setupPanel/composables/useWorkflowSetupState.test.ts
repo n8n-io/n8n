@@ -1589,7 +1589,7 @@ describe('useWorkflowSetupState', () => {
 			});
 		});
 
-		it('should only show credential picker on first node with same credential type', () => {
+		it('should show credential picker on all nodes when multiple have params', () => {
 			const node1 = createNode({
 				name: 'HTTP Request 1',
 				type: 'n8n-nodes-base.httpRequest',
@@ -1614,10 +1614,12 @@ describe('useWorkflowSetupState', () => {
 
 			expect(state.nodeStates.value).toHaveLength(2);
 			expect(state.nodeStates.value[0].showCredentialPicker).toBe(true);
-			expect(state.nodeStates.value[1].showCredentialPicker).toBe(false);
+			expect(state.nodeStates.value[1].showCredentialPicker).toBe(true);
+			expect(state.nodeStates.value[0].allNodesUsingCredential).toEqual([node1]);
+			expect(state.nodeStates.value[1].allNodesUsingCredential).toEqual([node2]);
 		});
 
-		it('should track all nodes using credential in allNodesUsingCredential', () => {
+		it('should include non-param follower in allNodesUsingCredential when first node has params', () => {
 			const node1 = createNode({
 				name: 'HTTP Request 1',
 				type: 'n8n-nodes-base.httpRequest',
@@ -1644,10 +1646,105 @@ describe('useWorkflowSetupState', () => {
 
 			const state = useWorkflowSetupState();
 
+			// Only 1 per-node card for node1 (has params); node2 is a non-param follower
 			expect(state.nodeStates.value).toHaveLength(1);
-			expect(state.nodeStates.value[0].allNodesUsingCredential).toHaveLength(2);
-			expect(state.nodeStates.value[0].allNodesUsingCredential).toContain(node1);
-			expect(state.nodeStates.value[0].allNodesUsingCredential).toContain(node2);
+			expect(state.nodeStates.value[0].node.name).toBe('HTTP Request 1');
+			expect(state.nodeStates.value[0].showCredentialPicker).toBe(true);
+			expect(state.nodeStates.value[0].allNodesUsingCredential).toEqual([node1, node2]);
+		});
+
+		it('should group non-param followers with credential-only card for 3 nodes with mixed params', () => {
+			const node1 = createNode({
+				name: 'HTTP Request 1',
+				type: 'n8n-nodes-base.httpRequest',
+				issues: { credentials: { httpHeaderAuth: ['Credential is required'] } },
+				parameters: { url: 'https://api.example.com' },
+			});
+			const node2 = createNode({
+				name: 'HTTP Request 2',
+				type: 'n8n-nodes-base.httpRequest',
+				issues: { credentials: { httpHeaderAuth: ['Credential is required'] } },
+				parameters: { url: 'https://api.example.com' },
+			});
+			const node3 = createNode({
+				name: 'HTTP Request 3',
+				type: 'n8n-nodes-base.httpRequest',
+				issues: { credentials: { httpHeaderAuth: ['Credential is required'] } },
+				parameters: { url: 'https://api.example.com' },
+			});
+
+			mockWorkflowDocumentStore.allNodes = [node1, node2, node3];
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			// Only node2 has parameter issues
+			mockGetNodeParametersIssues.mockImplementation((_, node) => {
+				if (node.name === 'HTTP Request 2') return { url: ['URL is required'] };
+				return {};
+			});
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+				properties: [{ name: 'url', required: true }],
+			});
+
+			const state = useWorkflowSetupState();
+
+			// node1 (first, no params) → credential-only card with node3 as follower
+			// node2 (has params) → per-node card with only itself
+			expect(state.nodeStates.value).toHaveLength(2);
+
+			const node1State = state.nodeStates.value.find((s) => s.node.name === 'HTTP Request 1');
+			const node2State = state.nodeStates.value.find((s) => s.node.name === 'HTTP Request 2');
+
+			expect(node1State).toBeDefined();
+			expect(node1State!.parameterIssues).toEqual({});
+			expect(node1State!.showCredentialPicker).toBe(true);
+			expect(node1State!.allNodesUsingCredential).toEqual([node1, node3]);
+
+			expect(node2State).toBeDefined();
+			expect(node2State!.showCredentialPicker).toBe(true);
+			expect(node2State!.allNodesUsingCredential).toEqual([node2]);
+		});
+
+		it('should create credential-only card for first node without params when second has params', () => {
+			const node1 = createNode({
+				name: 'HTTP Request 1',
+				type: 'n8n-nodes-base.httpRequest',
+				issues: { credentials: { httpHeaderAuth: ['Credential is required'] } },
+				parameters: { url: 'https://api.example.com' },
+			});
+			const node2 = createNode({
+				name: 'HTTP Request 2',
+				type: 'n8n-nodes-base.httpRequest',
+				issues: { credentials: { httpHeaderAuth: ['Credential is required'] } },
+				parameters: { url: 'https://api.example.com' },
+			});
+
+			mockWorkflowDocumentStore.allNodes = [node1, node2];
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			// Only node2 has parameter issues
+			mockGetNodeParametersIssues.mockImplementation((_, node) => {
+				if (node.name === 'HTTP Request 2') return { url: ['URL is required'] };
+				return {};
+			});
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+				properties: [{ name: 'url', required: true }],
+			});
+
+			const state = useWorkflowSetupState();
+
+			// node1 gets a credential-only card (first in order, no params)
+			// node2 gets a card with credential picker + params
+			expect(state.nodeStates.value).toHaveLength(2);
+
+			const node1State = state.nodeStates.value.find((s) => s.node.name === 'HTTP Request 1');
+			const node2State = state.nodeStates.value.find((s) => s.node.name === 'HTTP Request 2');
+
+			expect(node1State).toBeDefined();
+			expect(node1State!.showCredentialPicker).toBe(true);
+			expect(node1State!.parameterIssues).toEqual({});
+			expect(node1State!.allNodesUsingCredential).toEqual([node1]);
+
+			expect(node2State).toBeDefined();
+			expect(node2State!.showCredentialPicker).toBe(true);
+			expect(node2State!.allNodesUsingCredential).toEqual([node2]);
 		});
 
 		it('should persist cards even after parameters are filled', async () => {
