@@ -17,10 +17,18 @@ type SupportedAlgorithm = Algorithm | 'EdDSA';
 
 const FETCH_TIMEOUT_MS = 10_000;
 const DEFAULT_TTL_SECONDS = 3600;
+const MIN_TTL_SECONDS = 60;
+const MAX_TTL_SECONDS = 86_400;
+
+export interface SkippedKey {
+	kid?: string;
+	reason: string;
+}
 
 export interface JwksResolverResult {
 	keys: ResolvedTrustedKey[];
 	expiresAt: Date;
+	skipped: SkippedKey[];
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -86,7 +94,9 @@ function inferAlgorithm(jwk: SigningJwk): SupportedAlgorithm | undefined {
 function parseMaxAge(cacheControl: string | null): number | undefined {
 	if (!cacheControl) return undefined;
 	const match = /max-age=(\d+)/.exec(cacheControl);
-	return match ? parseInt(match[1], 10) : undefined;
+	if (!match) return undefined;
+	const value = parseInt(match[1], 10);
+	return Number.isNaN(value) ? undefined : value;
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -113,6 +123,7 @@ export async function resolveJwksKeys(
 		response = await doFetch(url, {
 			signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
 			headers: { Accept: 'application/json' },
+			redirect: 'error',
 		});
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'unknown error';
@@ -135,26 +146,42 @@ export async function resolveJwksKeys(
 		throw new OperationalError(`JWKS response has no keys for "${url}"`);
 	}
 
-	// Compute TTL: Cache-Control max-age > source.cacheTtlSeconds > default
+	// Compute TTL: Cache-Control max-age > source.cacheTtlSeconds > default, clamped to [60s, 24h]
 	const maxAge = parseMaxAge(response.headers.get('cache-control'));
-	const ttlSeconds = maxAge ?? source.cacheTtlSeconds ?? defaultTtl;
+	const rawTtl = maxAge ?? source.cacheTtlSeconds ?? defaultTtl;
+	const ttlSeconds = Math.max(MIN_TTL_SECONDS, Math.min(rawTtl, MAX_TTL_SECONDS));
 	const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
 
 	const keys: ResolvedTrustedKey[] = [];
+	const skipped: SkippedKey[] = [];
 
 	for (const rawJwk of jwkSetResult.data.keys) {
 		const jwkResult = SigningJwkSchema.safeParse(rawJwk);
-		if (!jwkResult.success) continue;
+		if (!jwkResult.success) {
+			const raw = rawJwk as Record<string, unknown>;
+			skipped.push({
+				kid: typeof raw.kid === 'string' ? raw.kid : undefined,
+				reason: 'failed schema validation',
+			});
+			continue;
+		}
 
 		const jwk = jwkResult.data;
 
 		const algorithm = inferAlgorithm(jwk);
-		if (!algorithm) continue;
+		if (!algorithm) {
+			skipped.push({
+				kid: jwk.kid,
+				reason: `unsupported algorithm or key type (kty=${jwk.kty}, alg=${jwk.alg ?? 'none'}, crv=${jwk.crv ?? 'none'})`,
+			});
+			continue;
+		}
 
 		let keyObject: ReturnType<typeof createPublicKey>;
 		try {
 			keyObject = createPublicKey({ format: 'jwk', key: jwk } as crypto.JsonWebKeyInput);
 		} catch {
+			skipped.push({ kid: jwk.kid, reason: 'failed to create public key from JWK material' });
 			continue;
 		}
 
@@ -170,8 +197,11 @@ export async function resolveJwksKeys(
 	}
 
 	if (keys.length === 0) {
-		throw new OperationalError(`JWKS response has no usable signing keys for "${url}"`);
+		const reasons = skipped.map((s) => `${s.kid ?? 'unknown'}: ${s.reason}`).join('; ');
+		throw new OperationalError(
+			`JWKS response has no usable signing keys for "${url}" (${reasons})`,
+		);
 	}
 
-	return { keys, expiresAt };
+	return { keys, expiresAt, skipped };
 }
