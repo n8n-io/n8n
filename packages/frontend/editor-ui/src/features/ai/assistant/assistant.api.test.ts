@@ -8,16 +8,16 @@ import * as apiUtils from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
 import { vi, describe, it, beforeEach, afterEach, expect } from 'vitest';
-import type { MockInstance } from 'vitest';
+import type { Mock, MockInstance } from 'vitest';
 
 vi.mock('@n8n/rest-api-client');
 
 describe('API: ai', () => {
 	describe('chatWithBuilder', () => {
 		let mockContext: IRestApiContext;
-		let mockOnMessageUpdated: ReturnType<typeof vi.fn>;
-		let mockOnDone: ReturnType<typeof vi.fn>;
-		let mockOnError: ReturnType<typeof vi.fn>;
+		let mockOnMessageUpdated: Mock;
+		let mockOnDone: Mock;
+		let mockOnError: Mock;
 		let streamRequestSpy: MockInstance;
 
 		beforeEach(() => {
@@ -306,9 +306,9 @@ describe('API: ai', () => {
 
 	describe('chatWithAssistant', () => {
 		let mockContext: IRestApiContext;
-		let mockOnMessageUpdated: ReturnType<typeof vi.fn>;
-		let mockOnDone: ReturnType<typeof vi.fn>;
-		let mockOnError: ReturnType<typeof vi.fn>;
+		let mockOnMessageUpdated: Mock;
+		let mockOnDone: Mock;
+		let mockOnError: Mock;
 		let streamRequestSpy: MockInstance;
 
 		beforeEach(() => {
@@ -506,7 +506,7 @@ describe('API: ai', () => {
 			const mockResponse = { success: true };
 			makeRestApiRequestSpy.mockResolvedValue(mockResponse);
 
-			await truncateBuilderMessages(mockContext, 'workflow-123', 'message-456', true);
+			await truncateBuilderMessages(mockContext, 'workflow-123', 'message-456', undefined, true);
 
 			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
 				mockContext,
@@ -515,6 +515,7 @@ describe('API: ai', () => {
 				{
 					workflowId: 'workflow-123',
 					messageId: 'message-456',
+					versionCardId: undefined,
 					codeBuilder: true,
 				},
 			);

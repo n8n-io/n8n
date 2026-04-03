@@ -31,6 +31,7 @@ describe('SecuritySettingsService', () => {
 
 	beforeEach(() => {
 		jest.restoreAllMocks();
+		jest.clearAllMocks();
 	});
 
 	describe('setPersonalSpacePublishing', () => {

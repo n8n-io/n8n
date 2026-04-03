@@ -508,6 +508,11 @@ export interface IHttpRequestOptions {
 	 * @default true - for backwards compatibility
 	 */
 	sendCredentialsOnCrossOriginRedirect?: boolean;
+	/**
+	 * Comma-separated list of allowed domains for credential requests.
+	 * If set, requests to domains not in this list will be blocked.
+	 */
+	allowedDomains?: string;
 }
 
 /**
@@ -561,6 +566,11 @@ export interface IRequestOptions {
 	 * @default true - for backwards compatibility
 	 */
 	sendCredentialsOnCrossOriginRedirect?: boolean;
+	/**
+	 * Comma-separated list of allowed domains for credential requests.
+	 * If set, requests to domains not in this list will be blocked.
+	 */
+	allowedDomains?: string;
 }
 
 export interface PaginationOptions {
@@ -947,6 +957,8 @@ export type NodeTypeAndVersion = {
 
 export interface FunctionsBase {
 	logger: Logger;
+	customData: IWorkflowExecutionCustomData;
+
 	getCredentials<T extends object = ICredentialDataDecryptedObject>(
 		type: string,
 		itemIndex?: number,
@@ -1613,6 +1625,7 @@ export interface INodePropertyTypeOptions {
 		layout?: 'inline'; // Render sub-parameters side-by-side in a row
 	};
 	password?: boolean; // Supported by: string
+	redactJsonLeaves?: boolean; // Supported by: json (credential fields only) — redacts leaf values instead of the whole field
 	rows?: number; // Supported by: string
 	showAlpha?: boolean; // Supported by: color
 	sortable?: boolean; // Supported when "multipleValues" set to true
@@ -2560,18 +2573,20 @@ export interface IWorkflowDataProxyData {
 	constructor: any;
 }
 
+export type IWorkflowExecutionCustomData = {
+	set(key: string, value: string): void;
+	setAll(obj: Record<string, string>): void;
+	get(key: string): string;
+	getAll(): Record<string, string>;
+};
+
 export type IWorkflowDataProxyAdditionalKeys = IDataObject & {
 	$execution?: {
 		id: string;
 		mode: 'test' | 'production';
 		resumeUrl: string;
 		resumeFormUrl: string;
-		customData?: {
-			set(key: string, value: string): void;
-			setAll(obj: Record<string, string>): void;
-			get(key: string): string;
-			getAll(): Record<string, string>;
-		};
+		customData?: IWorkflowExecutionCustomData;
 	};
 	$vars?: IDataObject;
 	$secrets?: IDataObject;
@@ -2764,6 +2779,11 @@ export interface ITaskMetadata {
 	 * Contains token for security validation.
 	 */
 	resumeUrl?: string;
+
+	/**
+	 * Key-value pairs that can be set for tracing - they will be attached to the OTEL node span
+	 * */
+	tracing?: Record<string, string | number | boolean>;
 }
 
 /** The data that gets returned when a node execution starts */

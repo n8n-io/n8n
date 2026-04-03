@@ -1,0 +1,91 @@
+import { computed, type Ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { useI18n } from '@n8n/i18n';
+import { N8nIcon } from '@n8n/design-system';
+import type { CommandGroup, CommandBarItem } from '../types';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
+import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW } from '@/features/ai/instanceAi/constants';
+
+export function useInstanceAiCommands(options: { lastQuery: Ref<string> }): CommandGroup {
+	const i18n = useI18n();
+	const { lastQuery } = options;
+	const router = useRouter();
+	const settingsStore = useSettingsStore();
+	const instanceAiStore = useInstanceAiStore();
+
+	const filteredThreads = computed(() => {
+		const trimmed = (lastQuery.value || '').trim().toLowerCase();
+		const allThreads = instanceAiStore.threads;
+
+		if (!trimmed) return allThreads;
+
+		return allThreads.filter((thread) => thread.title?.toLowerCase().includes(trimmed));
+	});
+
+	const openThreadCommands = computed<CommandBarItem[]>(() =>
+		filteredThreads.value.map((thread) => ({
+			id: thread.id,
+			title: thread.title,
+			section: i18n.baseText('commandBar.instanceAi.openThread'),
+			keywords: [thread.title],
+			handler: () => {
+				void router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId: thread.id } });
+			},
+		})),
+	);
+
+	const commands = computed<CommandBarItem[]>(() => {
+		if (!settingsStore.isModuleActive('instance-ai')) return [];
+
+		return [
+			{
+				id: 'instance-ai-open',
+				title: i18n.baseText('commandBar.instanceAi.open'),
+				section: i18n.baseText('commandBar.sections.instanceAi'),
+				handler: () => {
+					void router.push({ name: INSTANCE_AI_VIEW });
+				},
+				icon: {
+					component: N8nIcon,
+					props: { icon: 'sparkles' },
+				},
+				keywords: ['instance ai', 'ai', 'agent', 'assistant'],
+			},
+			{
+				id: 'instance-ai-new-thread',
+				title: i18n.baseText('commandBar.instanceAi.newThread'),
+				section: i18n.baseText('commandBar.sections.instanceAi'),
+				handler: () => {
+					const threadId = instanceAiStore.newThread();
+					void router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
+				},
+				icon: {
+					component: N8nIcon,
+					props: { icon: 'plus' },
+				},
+				keywords: ['instance ai', 'new', 'conversation', 'thread'],
+			},
+			{
+				id: 'instance-ai-open-thread',
+				title: i18n.baseText('commandBar.instanceAi.openThread'),
+				section: i18n.baseText('commandBar.sections.instanceAi'),
+				placeholder: i18n.baseText('commandBar.instanceAi.openThread.searchPlaceholder'),
+				children: openThreadCommands.value,
+				icon: {
+					component: N8nIcon,
+					props: { icon: 'message-square', color: 'text-light' },
+				},
+			},
+		];
+	});
+
+	return {
+		commands,
+		async initialize() {
+			if (settingsStore.isModuleActive('instance-ai')) {
+				await instanceAiStore.loadThreads();
+			}
+		},
+	};
+}

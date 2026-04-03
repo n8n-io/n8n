@@ -957,12 +957,12 @@ describe('Execution Lifecycle Hooks', () => {
 		});
 
 		describe('workflowExecuteAfter', () => {
-			it('should delete successful executions when success saving is disabled', async () => {
+			it('should delete unsaved successful executions when success saving is disabled', async () => {
 				workflowData.settings = {
 					saveDataSuccessExecution: 'none',
 					saveDataErrorExecution: 'all',
 				};
-				const lifecycleHooks = getLifecycleHooksForScalingMain(
+				const testHooks = getLifecycleHooksForScalingMain(
 					{
 						executionMode: 'webhook',
 						workflowData,
@@ -972,21 +972,21 @@ describe('Execution Lifecycle Hooks', () => {
 					executionId,
 				);
 
-				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+				await testHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
 
-				expect(executionPersistence.hardDelete).toHaveBeenCalledWith({
+				expect(executionPersistence.deleteInFlightExecution).toHaveBeenCalledWith({
 					workflowId,
 					executionId,
 					storedAt: 'db',
 				});
 			});
 
-			it('should delete failed executions when error saving is disabled', async () => {
+			it('should delete unsaved failed executions when error saving is disabled', async () => {
 				workflowData.settings = {
 					saveDataSuccessExecution: 'all',
 					saveDataErrorExecution: 'none',
 				};
-				const lifecycleHooks = getLifecycleHooksForScalingMain(
+				const testHooks = getLifecycleHooksForScalingMain(
 					{
 						executionMode: 'webhook',
 						workflowData,
@@ -996,9 +996,9 @@ describe('Execution Lifecycle Hooks', () => {
 					executionId,
 				);
 
-				await lifecycleHooks.runHook('workflowExecuteAfter', [failedRun, {}]);
+				await testHooks.runHook('workflowExecuteAfter', [failedRun, {}]);
 
-				expect(executionPersistence.hardDelete).toHaveBeenCalledWith({
+				expect(executionPersistence.deleteInFlightExecution).toHaveBeenCalledWith({
 					workflowId,
 					executionId,
 					storedAt: 'db',
@@ -1036,7 +1036,7 @@ describe('Execution Lifecycle Hooks', () => {
 					// Metadata should not be saved before deletion
 					expect(executionMetadataService.save).not.toHaveBeenCalled();
 					// Execution should be deleted
-					expect(executionPersistence.hardDelete).toHaveBeenCalledWith({
+					expect(executionPersistence.deleteInFlightExecution).toHaveBeenCalledWith({
 						workflowId,
 						executionId,
 						storedAt: 'db',

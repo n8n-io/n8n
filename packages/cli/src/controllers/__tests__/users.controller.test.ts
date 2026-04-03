@@ -34,6 +34,7 @@ describe('UsersController', () => {
 
 	beforeEach(() => {
 		jest.restoreAllMocks();
+		jest.clearAllMocks();
 	});
 
 	describe('changeGlobalRole', () => {
