@@ -31,7 +31,7 @@ describe('JtiCleanupService', () => {
 	describe('init', () => {
 		it('should start cleanup when instance is leader', () => {
 			jtiRepository.deleteExpiredBatch.mockResolvedValue(0);
-			instanceSettings.isLeader = true;
+			Object.assign(instanceSettings, { isLeader: true });
 
 			service.init();
 			jest.advanceTimersByTime(30_000);
@@ -40,7 +40,7 @@ describe('JtiCleanupService', () => {
 		});
 
 		it('should not start cleanup when instance is not leader', () => {
-			instanceSettings.isLeader = false;
+			Object.assign(instanceSettings, { isLeader: false });
 
 			service.init();
 			jest.advanceTimersByTime(60_000);
