@@ -150,6 +150,13 @@ vi.mock('vue-router', () => ({
 }));
 
 let workflowState: WorkflowState;
+let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
+
+function setDocumentNodes(nodes: Parameters<typeof workflowDocumentStore.setNodes>[0]) {
+	const store = useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId));
+	store.setNodes(nodes);
+}
+
 describe('AI Builder store', () => {
 	beforeEach(() => {
 		mockDocumentState = undefined;
@@ -175,6 +182,8 @@ describe('AI Builder store', () => {
 		credentialsStore = mockedStore(useCredentialsStore);
 
 		workflowsStore.workflowId = 'test-workflow-id';
+		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow-id'));
+
 		workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
 		workflowsStore.workflow.nodes = [];
 		workflowsStore.workflow.connections = {};
@@ -1592,6 +1601,7 @@ describe('AI Builder store', () => {
 		it('returns empty array when no validation issues exist', () => {
 			workflowsStore.workflowValidationIssues = [];
 			workflowsStore.workflow.nodes = [];
+			setDocumentNodes([]);
 
 			const builderStore = useBuilderStore();
 			expect(builderStore.workflowTodos).toEqual([]);
@@ -1622,6 +1632,7 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
+			setDocumentNodes(workflowsStore.workflow.nodes);
 
 			const builderStore = useBuilderStore();
 			expect(builderStore.workflowTodos).toContainEqual(
@@ -1645,6 +1656,7 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
+			setDocumentNodes(workflowsStore.workflow.nodes);
 
 			const builderStore = useBuilderStore();
 			expect(builderStore.workflowTodos.length).toBeGreaterThanOrEqual(2);
@@ -1670,6 +1682,7 @@ describe('AI Builder store', () => {
 					parameters: {},
 				},
 			];
+			setDocumentNodes(workflowsStore.workflow.nodes);
 
 			const builderStore = useBuilderStore();
 			expect(builderStore.workflowTodos).toEqual([]);
@@ -1686,6 +1699,7 @@ describe('AI Builder store', () => {
 					position: [0, 0],
 				} as Parameters<typeof workflowsStore.workflow.nodes.push>[0],
 			];
+			setDocumentNodes(workflowsStore.workflow.nodes);
 
 			const builderStore = useBuilderStore();
 			expect(builderStore.workflowTodos).toEqual([]);
@@ -1709,6 +1723,7 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
+			setDocumentNodes(workflowsStore.workflow.nodes);
 
 			const builderStore = useBuilderStore();
 			const placeholderIssues = builderStore.workflowTodos.filter((t) => t.type === 'parameters');
@@ -1736,6 +1751,7 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
+			setDocumentNodes(workflowsStore.workflow.nodes);
 
 			const builderStore = useBuilderStore();
 			const placeholderIssues = builderStore.workflowTodos.filter((t) => t.type === 'parameters');
@@ -1761,6 +1777,7 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
+			setDocumentNodes(workflowsStore.workflow.nodes);
 
 			const builderStore = useBuilderStore();
 			const placeholderIssues = builderStore.workflowTodos.filter((t) => t.type === 'parameters');
@@ -1791,6 +1808,7 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
+			setDocumentNodes(workflowsStore.workflow.nodes);
 
 			const builderStore = useBuilderStore();
 			const placeholderIssues = builderStore.workflowTodos.filter((t) => t.type === 'parameters');
@@ -1815,6 +1833,7 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
+			setDocumentNodes(workflowsStore.workflow.nodes);
 
 			const builderStore = useBuilderStore();
 			const placeholderIssues = builderStore.workflowTodos.filter((t) => t.type === 'parameters');
@@ -1844,6 +1863,7 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
+			setDocumentNodes(workflowsStore.workflow.nodes);
 
 			workflowsStore.workflowValidationIssues = [];
 
@@ -1871,6 +1891,7 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
+			setDocumentNodes(workflowsStore.workflow.nodes);
 
 			workflowsStore.workflowValidationIssues = [];
 
@@ -1896,6 +1917,7 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
+			setDocumentNodes(workflowsStore.workflow.nodes);
 
 			const builderStore = useBuilderStore();
 			expect(builderStore.workflowTodos).toEqual([]);
@@ -1918,6 +1940,7 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
+			setDocumentNodes(workflowsStore.workflow.nodes);
 
 			const builderStore = useBuilderStore();
 			expect(builderStore.workflowTodos).toEqual([]);
@@ -1938,6 +1961,7 @@ describe('AI Builder store', () => {
 					},
 				},
 			];
+			setDocumentNodes(workflowsStore.workflow.nodes);
 
 			const builderStore = useBuilderStore();
 			expect(builderStore.workflowTodos).toEqual([]);
@@ -1951,6 +1975,7 @@ describe('AI Builder store', () => {
 				{ node: 'HTTP Request', type: 'unknown' as 'parameters', value: 'Unknown issue' },
 			];
 			workflowsStore.workflow.nodes = [];
+			setDocumentNodes([]);
 
 			const builderStore = useBuilderStore();
 			// Should only include credentials and parameters types
@@ -2262,10 +2287,12 @@ describe('AI Builder store', () => {
 
 				// Start with nodes, then clear them (simulates workflow load sequence)
 				workflowsStore.allNodes = [createTestNode({ name: 'Node1' })];
+				setDocumentNodes([createTestNode({ name: 'Node1' })]);
 				await nextTick();
 				expect(builderStore.builderMode).toBe('build');
 
 				workflowsStore.allNodes = [];
+				setDocumentNodes([]);
 				await nextTick();
 				expect(builderStore.builderMode).toBe('plan');
 			});
@@ -2274,17 +2301,20 @@ describe('AI Builder store', () => {
 				enablePlanModeExperiment();
 				// Start with nodes so the watcher can observe changes
 				workflowsStore.allNodes = [createTestNode({ name: 'Node1' })];
+				setDocumentNodes([createTestNode({ name: 'Node1' })]);
 
 				const builderStore = useBuilderStore();
 				await nextTick();
 
 				// Clear nodes to trigger plan mode
 				workflowsStore.allNodes = [];
+				setDocumentNodes([]);
 				await nextTick();
 				expect(builderStore.builderMode).toBe('plan');
 
 				// Add nodes back to trigger build mode
 				workflowsStore.allNodes = [createTestNode({ name: 'Node1' })];
+				setDocumentNodes([createTestNode({ name: 'Node1' })]);
 				await nextTick();
 				expect(builderStore.builderMode).toBe('build');
 			});
@@ -2305,6 +2335,7 @@ describe('AI Builder store', () => {
 
 				// Add nodes first so we can trigger a change later
 				workflowsStore.allNodes = [createTestNode({ name: 'Node1' })];
+				setDocumentNodes([createTestNode({ name: 'Node1' })]);
 				await nextTick();
 
 				// Simulate an active conversation
@@ -2312,6 +2343,7 @@ describe('AI Builder store', () => {
 
 				// Remove nodes — would normally switch to plan, but chat has messages
 				workflowsStore.allNodes = [];
+				setDocumentNodes([]);
 				await nextTick();
 
 				// Should stay at build because chat has messages
@@ -2325,6 +2357,7 @@ describe('AI Builder store', () => {
 				// Simulate navigating to a new empty workflow
 				workflowsStore.workflowId = 'new-empty-workflow';
 				workflowsStore.allNodes = [];
+				setDocumentNodes([]);
 				await nextTick();
 
 				expect(builderStore.builderMode).toBe('plan');
@@ -2340,6 +2373,7 @@ describe('AI Builder store', () => {
 					{ role: 'assistant', type: 'text', text: 'Done' } as never,
 				];
 				workflowsStore.allNodes = [createTestNode({ name: 'Node1' })];
+				setDocumentNodes([createTestNode({ name: 'Node1' })]);
 				await nextTick();
 				expect(builderStore.builderMode).toBe('build');
 
@@ -2347,6 +2381,7 @@ describe('AI Builder store', () => {
 				// and nodes are cleared. The watcher would normally switch to plan mode.
 				builderStore.chatMessages = [];
 				workflowsStore.allNodes = [];
+				setDocumentNodes([]);
 				await nextTick();
 
 				// The watcher fires and sets plan mode
@@ -3756,6 +3791,7 @@ describe('AI Builder store', () => {
 					parameters: {},
 				},
 			];
+			setDocumentNodes(workflowsStore.workflow.nodes);
 			focusedNodesStore.confirmNodes(['test-node-1'], 'context_menu');
 			track.mockReset();
 
@@ -3789,6 +3825,7 @@ describe('AI Builder store', () => {
 					parameters: {},
 				},
 			];
+			setDocumentNodes(workflowsStore.workflow.nodes);
 			focusedNodesStore.confirmNodes(['test-node-1'], 'context_menu');
 			track.mockReset();
 
@@ -3834,6 +3871,7 @@ describe('AI Builder store', () => {
 					parameters: {},
 				},
 			];
+			setDocumentNodes(workflowsStore.workflow.nodes);
 			focusedNodesStore.confirmNodes(['test-node-1'], 'context_menu');
 			track.mockReset();
 
@@ -3866,6 +3904,7 @@ describe('AI Builder store', () => {
 					parameters: {},
 				},
 			];
+			setDocumentNodes(workflowsStore.workflow.nodes);
 			focusedNodesStore.confirmNodes(['test-node-1'], 'context_menu');
 
 			apiSpy.mockImplementationOnce((_ctx, _payload, _onMessage, onDone) => {

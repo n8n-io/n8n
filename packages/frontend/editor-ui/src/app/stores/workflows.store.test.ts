@@ -1198,14 +1198,19 @@ describe('useWorkflowsStore', () => {
 			workflowsStore.workflow.id = 'test-workflow';
 			workflowsStore.workflow.pinData = {};
 			useWorkflowState().setWorkflowExecutionData(executionResponse);
-			workflowsStore.addNode({
+			const nodeData = {
 				parameters: {},
 				id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
 				name: 'Edit Fields',
 				type: 'n8n-nodes-base.set',
-				position: [680, 180],
+				position: [680, 180] as [number, number],
 				typeVersion: 3.4,
-			});
+			};
+			workflowsStore.addNode(nodeData);
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId('test-workflow'),
+			);
+			workflowDocumentStore.addNode(nodeData);
 
 			getNodeType.mockReturnValue(getMockEditFieldsNode());
 

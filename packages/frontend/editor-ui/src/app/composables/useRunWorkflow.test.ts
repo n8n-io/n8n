@@ -211,6 +211,18 @@ vi.mock('@/app/composables/useWorkflowState', async () => {
 	};
 });
 
+const mockWorkflowDocumentStore = vi.hoisted(() => ({
+	getNodeByName: vi.fn().mockReturnValue(null),
+	allNodes: [] as unknown[],
+	nodeMetadata: {} as Record<string, unknown>,
+	incomingConnectionsByNodeName: vi.fn().mockReturnValue({}),
+	outgoingConnectionsByNodeName: vi.fn().mockReturnValue({}),
+}));
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	createWorkflowDocumentId: vi.fn().mockReturnValue('123@latest'),
+	useWorkflowDocumentStore: vi.fn().mockReturnValue(mockWorkflowDocumentStore),
+}));
+
 let workflowState: WorkflowState;
 
 describe('useRunWorkflow({ router })', () => {
@@ -243,6 +255,8 @@ describe('useRunWorkflow({ router })', () => {
 
 	afterEach(() => {
 		workflowState.setActiveExecutionId(undefined);
+		mockWorkflowDocumentStore.allNodes = [];
+		mockWorkflowDocumentStore.nodeMetadata = {};
 		vi.clearAllMocks();
 	});
 
@@ -512,6 +526,27 @@ describe('useRunWorkflow({ router })', () => {
 				return undefined;
 			});
 
+			// Populate workflowDocumentStore so useNodeDirtiness can detect dirty nodes
+			mockWorkflowDocumentStore.nodeMetadata = {
+				[executeName]: { parametersLastUpdatedAt: 2 },
+			};
+			mockWorkflowDocumentStore.allNodes = [
+				createTestNode({ name: parentName }),
+				createTestNode({ name: executeName }),
+			];
+			mockWorkflowDocumentStore.incomingConnectionsByNodeName.mockImplementation(
+				(nodeName: string) =>
+					nodeName === executeName
+						? { main: [[{ node: parentName, type: NodeConnectionTypes.Main, index: 0 }]] }
+						: {},
+			);
+			mockWorkflowDocumentStore.outgoingConnectionsByNodeName.mockImplementation(
+				(nodeName: string) =>
+					nodeName === parentName
+						? { main: [[{ node: executeName, type: NodeConnectionTypes.Main, index: 0 }]] }
+						: {},
+			);
+
 			const { runWorkflow } = composable;
 
 			await runWorkflow({
@@ -686,6 +721,12 @@ describe('useRunWorkflow({ router })', () => {
 			};
 
 			workflow.getParentNodes.mockReturnValue([]);
+
+			mockWorkflowDocumentStore.getNodeByName.mockImplementation((name: string) =>
+				name === 'Test node'
+					? { id: 'Test id', name: 'Test node', type: 'n8n-nodes-base.test', position: [0, 0] }
+					: null,
+			);
 
 			vi.mocked(pushConnectionStore).isConnected = true;
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
@@ -1329,7 +1370,7 @@ describe('useRunWorkflow({ router })', () => {
 			const middleNode = 'middleNode';
 			const bottomNode = 'bottomNode';
 
-			vi.mocked(workflowsStore.getNodeByName).mockImplementation((name) => {
+			mockWorkflowDocumentStore.getNodeByName.mockImplementation((name: string) => {
 				if (name === topNode) return getNodeUi(topNode, [100, 50]);
 				if (name === middleNode) return getNodeUi(middleNode, [200, 200]);
 				if (name === bottomNode) return getNodeUi(bottomNode, [150, 350]);
