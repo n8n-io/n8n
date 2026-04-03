@@ -154,7 +154,8 @@ function onDragEnd(event: { oldIndex?: number; newIndex?: number }) {
 }
 
 .defaultCellSpacer {
-	width: 64px;
+	// Match 2 × cellAction (24px each) from RuleRow
+	width: 48px;
 	flex-shrink: 0;
 }
 
