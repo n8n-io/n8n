@@ -6,10 +6,12 @@
 	"mounts": [
 		"type=bind,source=${localWorkspaceFolder},target=/workspaces,consistency=cached",
 		"type=bind,source=${localEnv:HOME}/.ssh,target=/home/node/.ssh,consistency=cached",
-		"type=bind,source=${localEnv:HOME}/.n8n,target=/home/node/.n8n,consistency=cached"
+		"type=bind,source=${localEnv:HOME}/.gnupg,target=/home/node/.gnupg,consistency=cached",
+		"type=bind,source=${localEnv:HOME}/.n8n,target=/home/node/.n8n,consistency=cached",
+		"type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock"
 	],
 	"forwardPorts": [8080, 5678],
-	"postCreateCommand": "corepack prepare --activate && pnpm install",
+	"postCreateCommand": "corepack prepare --activate && pnpm install && sudo chmod a+rwx /var/run/docker.sock",
 	"postAttachCommand": "pnpm build",
 	"customizations": {
 		"codespaces": {
