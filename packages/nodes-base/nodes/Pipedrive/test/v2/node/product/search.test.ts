@@ -2,8 +2,11 @@ import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 
 import { credentials } from '../credentials';
+import { mockFieldsApi } from '../fieldsApiMock';
 
 describe('Test PipedriveV2, product => search', () => {
+	mockFieldsApi('product');
+
 	nock('https://api.pipedrive.com/v1')
 		.get('/products/search')
 		.query({ term: 'Test Widget', exact_match: false, limit: 100 })

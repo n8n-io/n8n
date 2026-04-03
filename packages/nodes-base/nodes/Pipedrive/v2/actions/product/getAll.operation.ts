@@ -12,7 +12,7 @@ import {
 	pipedriveGetCustomProperties,
 } from '../../transport';
 import { resolveCustomFieldsV2 } from '../../helpers';
-import { resolveCustomFieldsOption } from '../common.description';
+import { rawCustomFieldOutputOption } from '../common.description';
 
 const properties: INodeProperties[] = [
 	{
@@ -38,7 +38,7 @@ const properties: INodeProperties[] = [
 		default: 100,
 		description: 'Max number of results to return',
 	},
-	resolveCustomFieldsOption,
+	rawCustomFieldOutputOption,
 ];
 
 const displayOptions = {
@@ -54,9 +54,9 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	const items = this.getInputData();
 	const returnData: INodeExecutionData[] = [];
 
-	const resolveCustom = this.getNodeParameter('resolveCustomFields', 0, false) as boolean;
+	const rawOutput = this.getNodeParameter('rawCustomFieldOutput', 0, false) as boolean;
 	let customProperties;
-	if (resolveCustom) {
+	if (!rawOutput) {
 		customProperties = await pipedriveGetCustomProperties.call(this, 'product');
 	}
 

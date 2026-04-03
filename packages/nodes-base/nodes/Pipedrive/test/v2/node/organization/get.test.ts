@@ -2,8 +2,11 @@ import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 
 import { credentials } from '../credentials';
+import { mockFieldsApi } from '../fieldsApiMock';
 
 describe('Test PipedriveV2, organization => get', () => {
+	mockFieldsApi('organization');
+
 	nock('https://api.pipedrive.com/api/v2')
 		.get('/organizations/7')
 		.reply(200, {

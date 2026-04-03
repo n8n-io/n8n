@@ -49,7 +49,7 @@
 					"update_time": "2026-04-01T19:00:39Z",
 					"visible_to": 3,
 					"custom_fields": {
-						"a033342fdeb029669a0652a64d1ab8150e48d627": null
+						"test_string": null
 					},
 					"owner_id": 25455458,
 					"label_ids": [],
@@ -70,7 +70,7 @@
 					"update_time": "2026-04-01T19:00:39Z",
 					"visible_to": 3,
 					"custom_fields": {
-						"a033342fdeb029669a0652a64d1ab8150e48d627": null
+						"test_string": null
 					},
 					"owner_id": 25455458,
 					"label_ids": [],
@@ -87,10 +87,26 @@
 	},
 	"connections": {
 		"When clicking \"Execute Workflow\"": {
-			"main": [[{ "node": "Pipedrive", "type": "main", "index": 0 }]]
+			"main": [
+				[
+					{
+						"node": "Pipedrive",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		},
 		"Pipedrive": {
-			"main": [[{ "node": "No Operation, do nothing", "type": "main", "index": 0 }]]
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		}
 	}
 }

@@ -174,7 +174,7 @@ describe('Pipedrive v2 Custom Fields', () => {
 	});
 
 	describe('resolveCustomFieldsV2', () => {
-		it('should read from nested custom_fields and flatten to root', () => {
+		it('should resolve custom_fields keys to human-readable names, keeping nested', () => {
 			const item: INodeExecutionData = {
 				json: {
 					id: 1,
@@ -187,8 +187,7 @@ describe('Pipedrive v2 Custom Fields', () => {
 
 			resolveCustomFieldsV2(customProperties, item);
 
-			expect(item.json['My Custom Text']).toBe('Hello World');
-			expect(item.json.custom_fields).toBeUndefined();
+			expect(item.json.custom_fields).toEqual({ 'My Custom Text': 'Hello World' });
 			expect(item.json.title).toBe('Test Deal');
 		});
 
@@ -203,8 +202,7 @@ describe('Pipedrive v2 Custom Fields', () => {
 
 			resolveCustomFieldsV2(customProperties, item);
 
-			expect(item.json['My Custom Enum']).toBe('Option B');
-			expect(item.json.custom_fields).toBeUndefined();
+			expect(item.json.custom_fields).toEqual({ 'My Custom Enum': 'Option B' });
 		});
 
 		it('should handle set fields as arrays', () => {
@@ -218,7 +216,7 @@ describe('Pipedrive v2 Custom Fields', () => {
 
 			resolveCustomFieldsV2(customProperties, item);
 
-			expect(item.json['My Custom Set']).toEqual(['Tag One', 'Tag Three']);
+			expect(item.json.custom_fields).toEqual({ 'My Custom Set': ['Tag One', 'Tag Three'] });
 		});
 
 		it('should handle set fields as comma-separated strings', () => {
@@ -232,7 +230,9 @@ describe('Pipedrive v2 Custom Fields', () => {
 
 			resolveCustomFieldsV2(customProperties, item);
 
-			expect(item.json['My Custom Set']).toEqual(['Tag One', 'Tag Three']);
+			expect(item.json.custom_fields).toEqual({
+				'My Custom Set': ['Tag One', 'Tag Three'],
+			});
 		});
 
 		it('should handle null custom field values', () => {
@@ -246,8 +246,7 @@ describe('Pipedrive v2 Custom Fields', () => {
 
 			resolveCustomFieldsV2(customProperties, item);
 
-			expect(item.json['My Custom Text']).toBeNull();
-			expect(item.json.custom_fields).toBeUndefined();
+			expect(item.json.custom_fields).toEqual({ 'My Custom Text': null });
 		});
 
 		it('should handle missing custom_fields key', () => {
@@ -275,10 +274,10 @@ describe('Pipedrive v2 Custom Fields', () => {
 
 			resolveCustomFieldsV2(customProperties, item);
 
-			expect(item.json.Visibility).toBe('Entire company');
+			expect(item.json.custom_fields).toEqual({ Visibility: 'Entire company' });
 		});
 
-		it('should preserve unknown custom field keys', () => {
+		it('should preserve unknown custom field keys under custom_fields', () => {
 			const item: INodeExecutionData = {
 				json: {
 					custom_fields: {
@@ -289,8 +288,7 @@ describe('Pipedrive v2 Custom Fields', () => {
 
 			resolveCustomFieldsV2(customProperties, item);
 
-			expect(item.json.unknown_key).toBe('some value');
-			expect(item.json.custom_fields).toBeUndefined();
+			expect(item.json.custom_fields).toEqual({ unknown_key: 'some value' });
 		});
 	});
 });

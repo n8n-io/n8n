@@ -92,7 +92,7 @@ export function encodeCustomFieldsV2(customProperties: ICustomProperties, item: 
 
 /**
  * Resolves custom field keys from v2 API response to human-readable names.
- * Reads from `item.json.custom_fields`, flattens into root, deletes `custom_fields` key.
+ * Reads from `item.json.custom_fields`, resolves in-place keeping nested structure.
  */
 export function resolveCustomFieldsV2(
 	customProperties: ICustomProperties,
@@ -102,26 +102,26 @@ export function resolveCustomFieldsV2(
 	const customFields = json.custom_fields as IDataObject | undefined;
 
 	if (!customFields || typeof customFields !== 'object') {
-		delete json.custom_fields;
-		item.json = json;
 		return;
 	}
 
+	const resolved: IDataObject = {};
+
 	for (const [key, value] of Object.entries(customFields)) {
 		if (customProperties[key] === undefined) {
-			json[key] = value;
+			resolved[key] = value;
 			continue;
 		}
 
 		const customPropertyData = customProperties[key];
 
 		if (value === null) {
-			json[customPropertyData.name] = value;
+			resolved[customPropertyData.name] = value;
 			continue;
 		}
 
 		if ((PASSTHROUGH_FIELD_TYPES as readonly string[]).includes(customPropertyData.field_type)) {
-			json[customPropertyData.name] = value;
+			resolved[customPropertyData.name] = value;
 		} else if (
 			['enum', 'visible_to'].includes(customPropertyData.field_type) &&
 			customPropertyData.options
@@ -130,9 +130,9 @@ export function resolveCustomFieldsV2(
 				(option) => option.id.toString() === value?.toString(),
 			);
 			if (propertyOption !== undefined) {
-				json[customPropertyData.name] = propertyOption.label;
+				resolved[customPropertyData.name] = propertyOption.label;
 			} else {
-				json[customPropertyData.name] = value;
+				resolved[customPropertyData.name] = value;
 			}
 		} else if (customPropertyData.field_type === 'set' && customPropertyData.options) {
 			const ids: string[] = Array.isArray(value)
@@ -141,12 +141,12 @@ export function resolveCustomFieldsV2(
 			const selectedLabels = customPropertyData.options
 				.filter((option) => ids.includes(option.id.toString()))
 				.map((option) => option.label);
-			json[customPropertyData.name] = selectedLabels;
+			resolved[customPropertyData.name] = selectedLabels;
 		} else {
-			json[customPropertyData.name] = value;
+			resolved[customPropertyData.name] = value;
 		}
 	}
 
-	delete json.custom_fields;
+	json.custom_fields = resolved;
 	item.json = json;
 }

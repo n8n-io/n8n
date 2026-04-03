@@ -50,7 +50,7 @@
 					"update_time": "2026-04-01T22:03:32Z",
 					"visible_to": 3,
 					"custom_fields": {
-						"a033342fdeb029669a0652a64d1ab8150e48d627": null
+						"test_string": null
 					},
 					"owner_id": 25455458,
 					"label_ids": [],

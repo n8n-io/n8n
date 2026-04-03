@@ -65,9 +65,9 @@
 					"local_close_date": null,
 					"expected_close_date": null,
 					"custom_fields": {
-						"f5ed368466cf0477371c6ee076252f49a188848e": null,
-						"48233ee3e9d505bbcca8e7e05d9b8df4231021bc": null,
-						"febf5dbb0f1e95d60876abc4638483291b8ef18b": null
+						"test_string": null,
+						"test_enum": null,
+						"test_multi": null
 					},
 					"owner_id": 25455458,
 					"label_ids": [],
@@ -87,10 +87,26 @@
 	},
 	"connections": {
 		"When clicking \"Execute Workflow\"": {
-			"main": [[{ "node": "Pipedrive", "type": "main", "index": 0 }]]
+			"main": [
+				[
+					{
+						"node": "Pipedrive",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		},
 		"Pipedrive": {
-			"main": [[{ "node": "No Operation, do nothing", "type": "main", "index": 0 }]]
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		}
 	}
 }

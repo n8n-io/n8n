@@ -69,7 +69,7 @@
 						}
 					],
 					"custom_fields": {
-						"82d101f4704841048e421cc72ddfef37122e8212": null
+						"test_string": null
 					},
 					"visible_to": 3,
 					"billing_frequency": "one-time",

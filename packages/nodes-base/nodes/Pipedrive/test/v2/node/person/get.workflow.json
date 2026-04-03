@@ -49,9 +49,9 @@
 					"update_time": "2026-04-01T22:03:28Z",
 					"visible_to": 3,
 					"custom_fields": {
-						"56ad1919c14a9089bf02fdca519f6394b0e5d5ab": null,
-						"48f483ac81a7b619c59322931ea839310e987725": null,
-						"7095cf9bf6bdeb457b12a76fdbb0fe06c0ad5151": null
+						"test_number": null,
+						"test_enum": null,
+						"test_multi": null
 					},
 					"owner_id": 25455458,
 					"label_ids": [],
@@ -78,10 +78,26 @@
 	},
 	"connections": {
 		"When clicking \"Execute Workflow\"": {
-			"main": [[{ "node": "Pipedrive", "type": "main", "index": 0 }]]
+			"main": [
+				[
+					{
+						"node": "Pipedrive",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		},
 		"Pipedrive": {
-			"main": [[{ "node": "No Operation, do nothing", "type": "main", "index": 0 }]]
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		}
 	}
 }

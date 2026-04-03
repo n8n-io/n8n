@@ -7,8 +7,14 @@ import type {
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { pipedriveApiRequest, pipedriveGetCustomProperties } from '../../transport';
-import { encodeCustomFieldsV2, coerceToBoolean, toRfc3339, addFieldsToBody } from '../../helpers';
-import { customFieldsCollection, encodeCustomFieldsOption } from '../common.description';
+import {
+	encodeCustomFieldsV2,
+	resolveCustomFieldsV2,
+	coerceToBoolean,
+	toRfc3339,
+	addFieldsToBody,
+} from '../../helpers';
+import { customFieldsCollection, rawCustomFieldKeysOption } from '../common.description';
 
 const properties: INodeProperties[] = [
 	{
@@ -119,7 +125,7 @@ const properties: INodeProperties[] = [
 			customFieldsCollection,
 		],
 	},
-	encodeCustomFieldsOption,
+	rawCustomFieldKeysOption,
 ];
 
 const displayOptions = {
@@ -135,9 +141,9 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	const items = this.getInputData();
 	const returnData: INodeExecutionData[] = [];
 
-	const encodeCustom = this.getNodeParameter('encodeCustomFields', 0, false) as boolean;
+	const rawKeys = this.getNodeParameter('rawCustomFieldKeys', 0, false) as boolean;
 	let customProperties;
-	if (encodeCustom) {
+	if (!rawKeys) {
 		customProperties = await pipedriveGetCustomProperties.call(this, 'activity');
 	}
 
@@ -173,6 +179,13 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				this.helpers.returnJsonArray(responseData.data as IDataObject),
 				{ itemData: { item: i } },
 			);
+
+			if (customProperties) {
+				for (const item of executionData) {
+					resolveCustomFieldsV2(customProperties, item);
+				}
+			}
+
 			returnData.push(...executionData);
 		} catch (error) {
 			if (this.continueOnFail()) {

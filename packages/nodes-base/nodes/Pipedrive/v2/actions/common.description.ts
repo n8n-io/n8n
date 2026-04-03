@@ -33,13 +33,13 @@ export const customFieldsCollection: INodeProperties = {
 	],
 };
 
-export const resolveCustomFieldsOption: INodeProperties = {
-	displayName: 'Resolve Custom Fields',
-	name: 'resolveCustomFields',
+export const rawCustomFieldOutputOption: INodeProperties = {
+	displayName: 'Show Raw Field Keys',
+	name: 'rawCustomFieldOutput',
 	type: 'boolean',
 	default: false,
 	description:
-		'Whether to show custom field names instead of internal keys, and option labels instead of IDs',
+		'Whether to show raw Pipedrive field keys and option IDs instead of human-readable names in output',
 };
 
 export const visibleToOption: INodeProperties = {
@@ -61,11 +61,11 @@ export const visibleToOption: INodeProperties = {
 		'Visibility of the item. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
 };
 
-export const encodeCustomFieldsOption: INodeProperties = {
-	displayName: 'Encode Custom Fields',
-	name: 'encodeCustomFields',
+export const rawCustomFieldKeysOption: INodeProperties = {
+	displayName: 'Use Raw Field Keys',
+	name: 'rawCustomFieldKeys',
 	type: 'boolean',
 	default: false,
 	description:
-		'Whether to automatically convert custom field names and option labels to their Pipedrive internal values',
+		'Whether to provide raw Pipedrive field keys and option IDs instead of human-readable names',
 };
