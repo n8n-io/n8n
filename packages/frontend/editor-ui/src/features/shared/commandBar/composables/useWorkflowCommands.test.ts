@@ -26,7 +26,6 @@ vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
 	...(await importOriginal()),
 	injectWorkflowDocumentStore: vi.fn(),
 }));
-vi.mock('@/app/composables/useTelemetry');
 vi.mock('@/app/composables/useWorkflowSaving');
 vi.mock('@/app/composables/useRunWorkflow');
 vi.mock('@/features/workflows/canvas/canvas.eventBus');
@@ -44,11 +43,13 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 		baseText: (key: string) => key,
 	}),
 }));
-const { saveAsMock } = vi.hoisted(() => ({ saveAsMock: vi.fn() }));
+const { saveAsMock, mockTelemetryTrack } = vi.hoisted(() => ({
+	saveAsMock: vi.fn(),
+	mockTelemetryTrack: vi.fn(),
+}));
 vi.mock('file-saver', () => ({
 	saveAs: saveAsMock,
 }));
-const mockTelemetryTrack = vi.fn();
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: mockTelemetryTrack,
