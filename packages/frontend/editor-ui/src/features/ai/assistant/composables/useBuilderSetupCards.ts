@@ -28,42 +28,6 @@ function getCardNodeType(card: SetupCardItem): string | undefined {
 	return card.nodeGroup ? card.nodeGroup.parentNode.type : card.state?.node.type;
 }
 
-/**
- * Collect all node names that should be pinned when pinning a card.
- * When a card shows the credential picker (showCredentialPicker), it is the
- * primary card for that credential type — pin all nodes sharing it so the user
- * doesn't have to repeat the action for sibling cards that only show parameters.
- *
- * HTTP Request nodes are excluded from shared pinning when their URLs differ,
- * matching the card-grouping logic in `groupCredentialsByType` which treats
- * same-credential-type + different-URL as separate integrations.
- */
-function getNodeNamesToPinForCard(card: SetupCardItem): string[] {
-	const names = getCardNodeNames(card);
-
-	const states: NodeSetupState[] = [];
-	if (card.nodeGroup) {
-		if (card.nodeGroup.parentState) states.push(card.nodeGroup.parentState);
-		states.push(...card.nodeGroup.subnodeCards);
-	} else {
-		states.push(card.state);
-	}
-
-	for (const state of states) {
-		if (!state.showCredentialPicker || !state.allNodesUsingCredential) continue;
-
-		const isHttp = isHttpRequestNodeType(state.node.type);
-		const sourceUrl = isHttp ? String(state.node.parameters.url ?? '') : undefined;
-
-		for (const node of state.allNodesUsingCredential) {
-			if (isHttp && String(node.parameters.url ?? '') !== sourceUrl) continue;
-			names.push(node.name);
-		}
-	}
-
-	return [...new Set(names)];
-}
-
 export function useBuilderSetupCards() {
 	const builderStore = useBuilderStore();
 	const workflowsStore = useWorkflowsStore();
@@ -131,6 +95,35 @@ export function useBuilderSetupCards() {
 	);
 
 	// --- Pin data helpers ---
+
+	function getNodeNamesToPinForCard(card: SetupCardItem): string[] {
+		const names = getCardNodeNames(card);
+
+		const states: NodeSetupState[] = [];
+		if (card.nodeGroup) {
+			if (card.nodeGroup.parentState) states.push(card.nodeGroup.parentState);
+			states.push(...card.nodeGroup.subnodeCards);
+		} else {
+			states.push(card.state);
+		}
+
+		for (const state of states) {
+			if (!state.showCredentialPicker || !state.allNodesUsingCredential) continue;
+
+			const isHttp = isHttpRequestNodeType(state.node.type);
+			const sourceUrl = isHttp ? String(state.node.parameters.url ?? '') : undefined;
+
+			for (const node of state.allNodesUsingCredential) {
+				if (isHttp && String(node.parameters.url ?? '') !== sourceUrl) continue;
+				names.push(node.name);
+				// For sub-nodes (e.g. model/tool of an agent), also pin the host node
+				const hostNames = workflowsStore.workflowObject.getChildNodes(node.name, 'ALL_NON_MAIN', 1);
+				names.push(...hostNames);
+			}
+		}
+
+		return [...new Set(names)];
+	}
 
 	function isCardPinDataSet(card: SetupCardItem): boolean {
 		return getCardNodeNames(card).some((n) => builderStore.isNodePinDataSet(n));

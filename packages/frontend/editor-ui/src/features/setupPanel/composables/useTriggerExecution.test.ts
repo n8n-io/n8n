@@ -1,20 +1,31 @@
 import { ref, computed } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 
-import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
+import { NodeConnectionTypes, type IConnections } from 'n8n-workflow';
+import {
+	createTestNode,
+	createTestWorkflowObject,
+	mockNodeTypeDescription,
+} from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useLogsStore } from '@/app/stores/logs.store';
-import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants/nodeTypes';
+import {
+	AGENT_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
+	OPEN_AI_CHAT_MODEL_NODE_TYPE,
+} from '@/app/constants/nodeTypes';
 import type { INodeUi } from '@/Interface';
 
 import { useTriggerExecution } from '@/features/setupPanel/composables/useTriggerExecution';
 
 const mockGetNodePinData = vi.fn().mockReturnValue(undefined);
+const mockGetNodeByName = vi.fn().mockReturnValue(null);
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: () => ({
 		getNodePinData: mockGetNodePinData,
+		getNodeByName: mockGetNodeByName,
 	}),
 	createWorkflowDocumentId: (id: string) => id,
 }));
@@ -73,6 +84,7 @@ describe('useTriggerExecution', () => {
 		mockExecutionState.hasIssues = false;
 		mockExecutionState.execute.mockReset();
 		mockGetNodePinData.mockReturnValue(undefined);
+		mockGetNodeByName.mockReturnValue(null);
 	});
 
 	describe('label', () => {
@@ -345,22 +357,34 @@ describe('useTriggerExecution', () => {
 	});
 
 	describe('hasUpstreamIssues', () => {
-		function setupUpstreamNodes(parentNodes: Array<Partial<INodeUi> & { name: string }>) {
+		function setupWorkflow(
+			nodes: Array<Partial<INodeUi> & { name: string }>,
+			connections: IConnections,
+		) {
 			workflowsStore.workflowId = 'test-workflow';
-			workflowsStore.workflowObject = {
-				getParentNodes: vi.fn().mockReturnValue(parentNodes.map((n) => n.name)),
-			} as unknown as ReturnType<typeof useWorkflowsStore>['workflowObject'];
-			workflowsStore.getNodeByName = vi.fn().mockImplementation((name: string) => {
-				return (parentNodes.find((n) => n.name === name) as INodeUi) ?? null;
+			workflowsStore.workflowObject = createTestWorkflowObject({
+				nodes: nodes.map((n) => createTestNode(n)),
+				connections,
+			}) as unknown as ReturnType<typeof useWorkflowsStore>['workflowObject'];
+			mockGetNodeByName.mockImplementation((name: string) => {
+				return (nodes.find((n) => n.name === name) as INodeUi) ?? null;
 			});
 		}
 
 		it('should disable button when upstream node has parameter issues', () => {
-			const parentNode = createNode({
-				name: 'HTTP Request',
-				issues: { parameters: { url: ['URL is required'] } },
-			});
-			setupUpstreamNodes([parentNode]);
+			setupWorkflow(
+				[
+					{ name: 'HTTP Request', issues: { parameters: { url: ['URL is required'] } } },
+					{ name: 'SlackTrigger' },
+				],
+				{
+					'HTTP Request': {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'SlackTrigger', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				},
+			);
 
 			const node = ref<INodeUi | null>(createNode());
 			const { isButtonDisabled } = useTriggerExecution(node);
@@ -369,11 +393,22 @@ describe('useTriggerExecution', () => {
 		});
 
 		it('should disable button when upstream node has credential issues', () => {
-			const parentNode = createNode({
-				name: 'HTTP Request',
-				issues: { credentials: { httpBasicAuth: ['Credentials not set'] } },
-			});
-			setupUpstreamNodes([parentNode]);
+			setupWorkflow(
+				[
+					{
+						name: 'HTTP Request',
+						issues: { credentials: { httpBasicAuth: ['Credentials not set'] } },
+					},
+					{ name: 'SlackTrigger' },
+				],
+				{
+					'HTTP Request': {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'SlackTrigger', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				},
+			);
 
 			const node = ref<INodeUi | null>(createNode());
 			const { isButtonDisabled } = useTriggerExecution(node);
@@ -382,11 +417,19 @@ describe('useTriggerExecution', () => {
 		});
 
 		it('should not disable button when upstream node has pin data', () => {
-			const parentNode = createNode({
-				name: 'HTTP Request',
-				issues: { parameters: { url: ['URL is required'] } },
-			});
-			setupUpstreamNodes([parentNode]);
+			setupWorkflow(
+				[
+					{ name: 'HTTP Request', issues: { parameters: { url: ['URL is required'] } } },
+					{ name: 'SlackTrigger' },
+				],
+				{
+					'HTTP Request': {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'SlackTrigger', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				},
+			);
 			mockGetNodePinData.mockImplementation((name: string) =>
 				name === 'HTTP Request' ? [{ json: { key: 'value' } }] : undefined,
 			);
@@ -398,11 +441,19 @@ describe('useTriggerExecution', () => {
 		});
 
 		it('should include upstream issues message in tooltipItems', () => {
-			const parentNode = createNode({
-				name: 'HTTP Request',
-				issues: { parameters: { url: ['URL is required'] } },
-			});
-			setupUpstreamNodes([parentNode]);
+			setupWorkflow(
+				[
+					{ name: 'HTTP Request', issues: { parameters: { url: ['URL is required'] } } },
+					{ name: 'SlackTrigger' },
+				],
+				{
+					'HTTP Request': {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'SlackTrigger', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				},
+			);
 
 			const node = ref<INodeUi | null>(createNode());
 			const { tooltipItems } = useTriggerExecution(node);
@@ -411,13 +462,50 @@ describe('useTriggerExecution', () => {
 		});
 
 		it('should not flag upstream issues when parent node does not exist', () => {
-			workflowsStore.workflowId = 'test-workflow';
-			workflowsStore.workflowObject = {
-				getParentNodes: vi.fn().mockReturnValue(['NonExistent']),
-			} as unknown as ReturnType<typeof useWorkflowsStore>['workflowObject'];
-			workflowsStore.getNodeByName = vi.fn().mockReturnValue(null);
+			setupWorkflow([{ name: 'SlackTrigger' }], {
+				NonExistent: {
+					[NodeConnectionTypes.Main]: [
+						[{ node: 'SlackTrigger', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+			});
+			mockGetNodeByName.mockReturnValue(null);
 
 			const node = ref<INodeUi | null>(createNode());
+			const { isButtonDisabled } = useTriggerExecution(node);
+
+			expect(isButtonDisabled.value).toBe(false);
+		});
+
+		it('should not disable button when sub-node host has pin data', () => {
+			setupWorkflow(
+				[
+					{
+						name: 'OpenAI Model',
+						type: OPEN_AI_CHAT_MODEL_NODE_TYPE,
+						issues: { credentials: { openAiApi: ['Credentials not set'] } },
+					},
+					{ name: 'Agent', type: AGENT_NODE_TYPE },
+					{ name: 'Downstream Node' },
+				],
+				{
+					Agent: {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'Downstream Node', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+					'OpenAI Model': {
+						[NodeConnectionTypes.AiLanguageModel]: [
+							[{ node: 'Agent', type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
+						],
+					},
+				},
+			);
+			mockGetNodePinData.mockImplementation((name: string) =>
+				name === 'Agent' ? [{ json: { key: 'value' } }] : undefined,
+			);
+
+			const node = ref<INodeUi | null>(createNode({ name: 'Downstream Node' }));
 			const { isButtonDisabled } = useTriggerExecution(node);
 
 			expect(isButtonDisabled.value).toBe(false);

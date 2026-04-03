@@ -123,7 +123,7 @@ const isContinueDisabled = computed(() => hasCredential.value && !props.state.se
 
 const showTriggerCallout = computed(() => props.state.isTrigger && isInListeningState.value);
 
-const showSkip = computed(() => !props.isPinDataSet && !!props.hasPinData && !isLastCard.value);
+const showSkip = computed(() => !props.isPinDataSet && !!props.hasPinData);
 
 // Notify parent when step execution finishes (for auto-advance / wizard dismissal).
 // Emit when the node ran successfully OR was not reached (e.g. on an inactive branch).

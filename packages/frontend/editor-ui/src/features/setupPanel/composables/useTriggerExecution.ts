@@ -81,14 +81,24 @@ export function useTriggerExecution(
 		return buttonLabel.value;
 	});
 
+	const isEffectivelyPinned = (nodeName: string): boolean => {
+		if ((workflowDocumentStore.value?.getNodePinData(nodeName)?.length ?? 0) > 0) return true;
+
+		// For sub-nodes (e.g. model connected to agent via ai_languageModel),
+		// the host node is a "child" via non-main connections. Check if it's pinned.
+		const hostNodeNames = workflowsStore.workflowObject.getChildNodes(nodeName, 'ALL_NON_MAIN', 1);
+		return hostNodeNames.some(
+			(name) => (workflowDocumentStore.value?.getNodePinData(name)?.length ?? 0) > 0,
+		);
+	};
+
 	const hasUpstreamIssues = computed(() => {
 		if (!nodeValue.value) return false;
 		const parentNames = workflowsStore.workflowObject.getParentNodes(nodeValue.value.name, 'ALL');
 		return parentNames.some((name) => {
-			const parentNode = workflowsStore.getNodeByName(name);
+			const parentNode = workflowDocumentStore.value?.getNodeByName(name);
 			if (!parentNode) return false;
-			if ((workflowDocumentStore.value?.getNodePinData(parentNode.name)?.length ?? 0) > 0)
-				return false;
+			if (isEffectivelyPinned(parentNode.name)) return false;
 			return parentNode.issues?.parameters || parentNode.issues?.credentials;
 		});
 	});
