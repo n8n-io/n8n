@@ -194,7 +194,7 @@ export class RoleMappingRuleService {
 		return this.toResponse(loaded);
 	}
 
-	async delete(id: string): Promise<void> {
+	async delete(id: string): Promise<{ ruleType: 'instance' | 'project' }> {
 		if (typeof id !== 'string' || id.length === 0) {
 			throw new BadRequestError('Rule id is required');
 		}
@@ -208,6 +208,7 @@ export class RoleMappingRuleService {
 		const ruleType = rule.type as 'instance' | 'project';
 		await this.roleMappingRuleRepository.remove(rule);
 		await this.normalizeOrderForType(ruleType);
+		return { ruleType };
 	}
 
 	async move(id: string, targetIndex: number): Promise<RoleMappingRuleResponse> {
