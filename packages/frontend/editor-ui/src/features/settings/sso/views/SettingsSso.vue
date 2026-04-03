@@ -124,7 +124,7 @@ onMounted(() => {
 						<div :class="shared.settingsItemControl">
 							<N8nSelect
 								filterable
-								size="small"
+								size="medium"
 								:model-value="authProtocol"
 								:placeholder="i18n.baseText('parameterInput.select')"
 								@update:model-value="onAuthProtocolUpdated"
@@ -157,7 +157,7 @@ onMounted(() => {
 						<div :class="shared.settingsItemControl">
 							<N8nSelect
 								filterable
-								size="small"
+								size="medium"
 								:model-value="authProtocol"
 								:placeholder="i18n.baseText('parameterInput.select')"
 								@update:model-value="onAuthProtocolUpdated"

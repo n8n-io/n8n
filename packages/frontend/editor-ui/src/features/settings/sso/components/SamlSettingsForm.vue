@@ -422,7 +422,7 @@ onMounted(async () => {
 				<div :class="$style.settingsItemControl">
 					<N8nSelect
 						:model-value="samlLoginEnabled ? 'enabled' : 'disabled'"
-						size="small"
+						size="medium"
 						data-test-id="sso-toggle"
 						@update:model-value="samlLoginEnabled = $event === 'enabled'"
 					>
