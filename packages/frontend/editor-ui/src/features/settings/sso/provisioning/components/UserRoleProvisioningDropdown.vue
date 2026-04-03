@@ -77,15 +77,44 @@ defineExpose({ legacyValue, showRuleEditor });
 					<N8nOption
 						:label="i18n.baseText('settings.sso.settings.roleAssignment.manual')"
 						value="manual"
-					/>
+					>
+						<div :class="$style.optionContent">
+							<span :class="$style.optionTitle">{{
+								i18n.baseText('settings.sso.settings.roleAssignment.manual')
+							}}</span>
+							<span :class="$style.optionDescription">{{
+								i18n.baseText('settings.sso.settings.roleAssignment.manual.description')
+							}}</span>
+						</div>
+					</N8nOption>
 					<N8nOption
 						:label="i18n.baseText('settings.sso.settings.roleAssignment.instanceRoles')"
 						value="instance"
-					/>
+					>
+						<div :class="$style.optionContent">
+							<span :class="$style.optionTitle">{{
+								i18n.baseText('settings.sso.settings.roleAssignment.instanceRoles')
+							}}</span>
+							<span :class="$style.optionDescription">{{
+								i18n.baseText('settings.sso.settings.roleAssignment.instanceRoles.description')
+							}}</span>
+						</div>
+					</N8nOption>
 					<N8nOption
 						:label="i18n.baseText('settings.sso.settings.roleAssignment.instanceAndProjectRoles')"
 						value="instance_and_project"
-					/>
+					>
+						<div :class="$style.optionContent">
+							<span :class="$style.optionTitle">{{
+								i18n.baseText('settings.sso.settings.roleAssignment.instanceAndProjectRoles')
+							}}</span>
+							<span :class="$style.optionDescription">{{
+								i18n.baseText(
+									'settings.sso.settings.roleAssignment.instanceAndProjectRoles.description',
+								)
+							}}</span>
+						</div>
+					</N8nOption>
 				</N8nSelect>
 			</div>
 		</div>
@@ -106,11 +135,29 @@ defineExpose({ legacyValue, showRuleEditor });
 					<N8nOption
 						:label="i18n.baseText('settings.sso.settings.roleMappingMethod.idp')"
 						value="idp"
-					/>
+					>
+						<div :class="$style.optionContent">
+							<span :class="$style.optionTitle">{{
+								i18n.baseText('settings.sso.settings.roleMappingMethod.idp')
+							}}</span>
+							<span :class="$style.optionDescription">{{
+								i18n.baseText('settings.sso.settings.roleMappingMethod.idp.description')
+							}}</span>
+						</div>
+					</N8nOption>
 					<N8nOption
 						:label="i18n.baseText('settings.sso.settings.roleMappingMethod.rulesInN8n')"
 						value="rules_in_n8n"
-					/>
+					>
+						<div :class="$style.optionContent">
+							<span :class="$style.optionTitle">{{
+								i18n.baseText('settings.sso.settings.roleMappingMethod.rulesInN8n')
+							}}</span>
+							<span :class="$style.optionDescription">{{
+								i18n.baseText('settings.sso.settings.roleMappingMethod.rulesInN8n.description')
+							}}</span>
+						</div>
+					</N8nOption>
 				</N8nSelect>
 			</div>
 		</div>
@@ -164,6 +211,26 @@ defineExpose({ legacyValue, showRuleEditor });
 	> :deep(*) {
 		width: 100%;
 	}
+}
+
+.optionContent {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	padding: var(--spacing--4xs) 0;
+	white-space: normal;
+	line-height: var(--line-height--md);
+}
+
+.optionTitle {
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--bold);
+	color: var(--color--text--shade-1);
+}
+
+.optionDescription {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
 }
 
 .noBorder {
