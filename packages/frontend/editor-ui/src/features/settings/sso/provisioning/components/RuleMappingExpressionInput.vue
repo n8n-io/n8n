@@ -280,7 +280,7 @@ watch(
 		<div
 			ref="editorRef"
 			:class="[$style.container, { [$style.disabled]: disabled, [$style.empty]: isEmpty }]"
-			:data-placeholder="placeholder"
+			:data-placeholder="placeholder ? `{{ ${placeholder} }}` : ''"
 			data-test-id="rule-expression-input"
 		/>
 		<N8nButton
