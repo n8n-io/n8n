@@ -40,7 +40,9 @@ describe('Test AirtableV2, get operation', () => {
 		const nodeParameters = {
 			operation: 'get',
 			id: 'recXXX',
-			options: {},
+			options: {
+				returnFieldsByFieldId: false,
+			},
 		};
 
 		const items = [
@@ -57,7 +59,12 @@ describe('Test AirtableV2, get operation', () => {
 		);
 
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
-		expect(transport.apiRequest).toHaveBeenCalledWith('GET', 'appYoLbase/tblltable/recXXX');
+		expect(transport.apiRequest).toHaveBeenCalledWith(
+			'GET',
+			'appYoLbase/tblltable/recXXX',
+			{},
+			{ returnFieldsByFieldId: false },
+		);
 
 		expect(responce).toEqual([
 			{
