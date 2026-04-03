@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { N8nButton, N8nCallout, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCallout, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants/nodeTypes';
 
 import NodeIcon from '@/app/components/NodeIcon.vue';
@@ -30,6 +30,8 @@ const props = defineProps<{
 	stepIndex: number;
 	totalCards: number;
 	firstTriggerName: string | null;
+	isPinDataSet?: boolean;
+	hasPinData?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -39,6 +41,8 @@ const emit = defineEmits<{
 	stepExecuted: [];
 	credentialSelected: [payload: CredentialSelectedPayload];
 	credentialDeselected: [payload: CredentialDeselectedPayload];
+	setPinData: [];
+	unsetPinData: [];
 }>();
 
 const i18n = useI18n();
@@ -119,6 +123,8 @@ const isContinueDisabled = computed(() => hasCredential.value && !props.state.se
 
 const showTriggerCallout = computed(() => props.state.isTrigger && isInListeningState.value);
 
+const showSkip = computed(() => !props.isPinDataSet && !!props.hasPinData);
+
 // Notify parent when step execution finishes (for auto-advance / wizard dismissal).
 // Emit when the node ran successfully OR was not reached (e.g. on an inactive branch).
 // Only skip when the node actually errored.
@@ -136,7 +142,13 @@ watch(isActive, (active, wasActive) => {
 </script>
 
 <template>
-	<div data-test-id="builder-setup-card" :class="[$style.card, { [$style.completed]: isComplete }]">
+	<div
+		data-test-id="builder-setup-card"
+		:class="[
+			$style.card,
+			{ [$style.completed]: isComplete && !isPinDataSet, [$style.pinned]: isPinDataSet },
+		]"
+	>
 		<!-- Header -->
 		<header :class="$style.header">
 			<CredentialIcon
@@ -148,8 +160,16 @@ watch(isActive, (active, wasActive) => {
 			<N8nText :class="$style.title" size="medium" color="text-dark" bold>
 				{{ state.node.name }}
 			</N8nText>
+			<span
+				v-if="isPinDataSet"
+				data-test-id="builder-setup-card-pin-data-badge"
+				:class="$style.pinDataBadge"
+			>
+				<N8nIcon icon="pin" size="xsmall" />
+				{{ i18n.baseText('aiAssistant.builder.setupWizard.skipped' as BaseTextKey) }}
+			</span>
 			<N8nText
-				v-if="isComplete"
+				v-else-if="isComplete"
 				data-test-id="builder-setup-card-check"
 				:class="$style.completeLabel"
 				size="medium"
@@ -223,13 +243,38 @@ watch(isActive, (active, wasActive) => {
 
 			<div :class="$style.footerActions">
 				<N8nButton
+					v-if="isPinDataSet"
+					variant="outline"
+					size="small"
+					data-test-id="builder-setup-card-clear-data"
+					:class="$style.actionButton"
+					@click="emit('unsetPinData')"
+				>
+					{{ i18n.baseText('aiAssistant.builder.setupWizard.clearData') }}
+				</N8nButton>
+				<N8nTooltip
+					v-else-if="showSkip"
+					:content="i18n.baseText('aiAssistant.builder.setupWizard.skipTooltip')"
+				>
+					<N8nButton
+						variant="outline"
+						size="small"
+						data-test-id="builder-setup-card-skip"
+						:class="$style.actionButton"
+						@click="emit('setPinData')"
+					>
+						{{ i18n.baseText('aiAssistant.builder.setupWizard.skip') }}
+					</N8nButton>
+				</N8nTooltip>
+
+				<N8nButton
 					v-if="showContinue"
 					data-test-id="builder-setup-card-continue"
 					type="primary"
 					size="small"
 					:class="$style.actionButton"
 					:disabled="isContinueDisabled"
-					:label="i18n.baseText('aiAssistant.builder.setupWizard.continue' as BaseTextKey)"
+					:label="i18n.baseText('aiAssistant.builder.setupWizard.continue')"
 					@click="emit('continueCurrent')"
 				/>
 
@@ -237,9 +282,9 @@ watch(isActive, (active, wasActive) => {
 					v-if="showExecuteButton"
 					:label="executeLabel"
 					:icon="executeButtonIcon"
-					:disabled="isButtonDisabled || isTestingCredential"
+					:disabled="isPinDataSet ? false : isButtonDisabled || isTestingCredential"
 					:loading="isExecuting"
-					:tooltip-items="executeTooltipItems"
+					:tooltip-items="isPinDataSet ? [] : executeTooltipItems"
 					@click="execute"
 				/>
 			</div>
@@ -261,6 +306,10 @@ watch(isActive, (active, wasActive) => {
 	&.completed {
 		border-color: var(--color--success);
 	}
+
+	&.pinned {
+		border-color: var(--node--border-color--pinned);
+	}
 }
 
 .header {
@@ -279,6 +328,15 @@ watch(isActive, (active, wasActive) => {
 	align-items: center;
 	gap: var(--spacing--4xs);
 	white-space: nowrap;
+}
+
+.pinDataBadge {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	white-space: nowrap;
+	color: var(--node--border-color--pinned);
+	font-size: var(--font-size--2xs);
 }
 
 .callout {
@@ -305,12 +363,14 @@ watch(isActive, (active, wasActive) => {
 	flex: 1;
 	align-items: center;
 	gap: var(--spacing--4xs);
+	white-space: nowrap;
 }
 
 .footerActions {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+	flex-shrink: 0;
 }
 
 .actionButton {

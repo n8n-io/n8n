@@ -79,13 +79,16 @@ export async function createBuilderPayload(
 
 	// Get feature flags from Posthog
 	const codeBuilderVariant = posthogStore.getVariant(CODE_WORKFLOW_BUILDER_EXPERIMENT.name);
-	const isPinDataEnabled = codeBuilderVariant === CODE_WORKFLOW_BUILDER_EXPERIMENT.codePinData;
+	const isCodeBuilderEnabled =
+		codeBuilderVariant === CODE_WORKFLOW_BUILDER_EXPERIMENT.codeNoPinData ||
+		codeBuilderVariant === CODE_WORKFLOW_BUILDER_EXPERIMENT.codePinData;
 
 	const featureFlags: ChatRequest.BuilderFeatureFlags = {
 		templateExamples:
 			posthogStore.getVariant(AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT.name) ===
 			AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT.variant,
-		pinData: isPinDataEnabled,
+		codeBuilder: isCodeBuilderEnabled,
+		pinData: isCodeBuilderEnabled,
 		planMode: options.isPlanModeEnabled ?? false,
 		mergeAskBuild: posthogStore.isFeatureEnabled(MERGE_ASK_BUILD_EXPERIMENT.name),
 	};

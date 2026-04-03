@@ -103,7 +103,9 @@ export type WorkflowBuilderJourneyEventType =
 	| 'qa_question_skipped'
 	| 'qa_answers_submitted'
 	| 'user_clicked_run_with_test_data'
-	| 'user_clicked_configure_own';
+	| 'user_clicked_configure_own'
+	| 'setup_wizard_pin_data_set'
+	| 'setup_wizard_pin_data_unset';
 
 interface WorkflowBuilderJourneyEventProperties {
 	node_type?: string;
@@ -1344,10 +1346,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				}
 
 				// Restore pin data state if pin data is currently applied on the workflow
-				const isPinDataEnabled =
-					posthogStore.getVariant(CODE_WORKFLOW_BUILDER_EXPERIMENT.name) ===
-					CODE_WORKFLOW_BUILDER_EXPERIMENT.codePinData;
-				if (isPinDataEnabled) {
+				if (isCodeBuilder.value) {
 					const wfDocStore = workflowsStore.workflowId
 						? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
 						: undefined;
@@ -1434,6 +1433,51 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		});
 		uiStore.markStateDirty();
 		pinDataApplied.value = true;
+	}
+
+	/** Whether a node has AI-generated pin data currently applied to the workflow */
+	function isNodePinDataSet(nodeName: string): boolean {
+		const hasPinned = (workflowDocumentStore.value?.getNodePinData(nodeName)?.length ?? 0) > 0;
+		const hasGenerated = (generatedPinData.value?.[nodeName]?.length ?? 0) > 0;
+		return hasPinned && hasGenerated;
+	}
+
+	/** Whether AI-generated pin data is available but not yet applied for a node */
+	function hasAvailablePinData(nodeName: string): boolean {
+		const hasGenerated = (generatedPinData.value?.[nodeName]?.length ?? 0) > 0;
+		const hasPinned = (workflowDocumentStore.value?.getNodePinData(nodeName)?.length ?? 0) > 0;
+		return hasGenerated && !hasPinned;
+	}
+
+	/** Apply AI-generated pin data for a single node */
+	function setPinDataForNode(nodeName: string) {
+		const data = generatedPinData.value?.[nodeName];
+		if (!data?.length) return;
+		workflowDocumentStore.value?.pinNodeData(nodeName, data);
+		uiStore.markStateDirty();
+	}
+
+	/** Apply AI-generated pin data for multiple nodes */
+	function setPinDataForNodes(nodeNames: string[]) {
+		for (const name of nodeNames) {
+			setPinDataForNode(name);
+		}
+	}
+
+	/** Remove pin data for a single node */
+	function unsetPinDataForNode(nodeName: string) {
+		workflowDocumentStore.value?.unpinNodeData(nodeName);
+		if (workflowsStore.nodeMetadata[nodeName]) {
+			workflowsStore.nodeMetadata[nodeName].pinnedDataLastRemovedAt = Date.now();
+		}
+		uiStore.markStateDirty();
+	}
+
+	/** Remove pin data for multiple nodes */
+	function unsetPinDataForNodes(nodeNames: string[]) {
+		for (const name of nodeNames) {
+			unsetPinDataForNode(name);
+		}
 	}
 
 	function clearExistingWorkflow() {
@@ -1698,6 +1742,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		hasDeferredPinData,
 		hasGeneratedPinData,
 		pinDataApplied,
+		isNodePinDataSet,
+		hasAvailablePinData,
 		lastUserMessageId,
 		wizardCurrentStep,
 		wizardClearedPlaceholders,
@@ -1707,6 +1753,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		unpinAllNodes,
 		storeGeneratedPinData,
 		applyGeneratedPinData,
+		setPinDataForNode,
+		setPinDataForNodes,
+		unsetPinDataForNode,
+		unsetPinDataForNodes,
 		abortStreaming,
 		resetBuilderChat,
 		setBuilderMode,

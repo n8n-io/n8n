@@ -445,11 +445,13 @@ async function onWorkflowExecuted() {
 	// The wizard executes individual nodes, not the full workflow,
 	// so there's no full execution data to inspect — just send success.
 	if (builderStore.wizardHasExecutedWorkflow) {
-		await builderStore.sendChatMessage({
-			text: i18n.baseText('aiAssistant.builder.executeMessage.wizardSetupSuccess'),
-			type: 'execution',
-			executionStatus: 'success',
-		});
+		if (!builderStore.pinDataApplied) {
+			await builderStore.sendChatMessage({
+				text: i18n.baseText('aiAssistant.builder.executeMessage.wizardSetupSuccess'),
+				type: 'execution',
+				executionStatus: 'success',
+			});
+		}
 		return;
 	}
 

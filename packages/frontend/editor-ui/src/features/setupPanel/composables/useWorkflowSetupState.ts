@@ -321,7 +321,7 @@ export const useWorkflowSetupState = (
 	 * Sorted by execution order (grouped by trigger, DFS through connections).
 	 */
 	const nodesRequiringSetup = computed(() => {
-		const nodesForSetup = sourceNodes.value
+		const filteredNodes = sourceNodes.value
 			.filter((node) => !node.disabled)
 			.map((node) => ({
 				node,
@@ -338,16 +338,16 @@ export const useWorkflowSetupState = (
 					nodeHasTemplateParams(node.name),
 			);
 
-		const allNodeTypes: Record<string, string> = {};
+		const nodeNameToType: Record<string, string> = {};
 		for (const node of sourceNodes.value) {
-			allNodeTypes[node.name] = node.type;
+			nodeNameToType[node.name] = node.type;
 		}
 
 		return sortNodesByExecutionOrder(
-			nodesForSetup,
+			filteredNodes,
 			workflowDocumentStore.value?.connectionsBySourceNode ?? {},
 			workflowDocumentStore.value?.connectionsByDestinationNode ?? {},
-			allNodeTypes,
+			nodeNameToType,
 		);
 	});
 
@@ -540,9 +540,9 @@ export const useWorkflowSetupState = (
 		const result: NodeSetupState[] = [];
 
 		// --- Parameter-only nodes (no credentials) ---
-		for (const entry of nodesWithMissingParameters.value) {
-			if (entry.credentialTypes.length > 0) continue;
-			const { node, parameterIssues, isTrigger } = entry;
+		for (const setupEntry of nodesWithMissingParameters.value) {
+			if (setupEntry.credentialTypes.length > 0) continue;
+			const { node, parameterIssues, isTrigger } = setupEntry;
 
 			const state: NodeSetupState = {
 				node,
@@ -558,7 +558,8 @@ export const useWorkflowSetupState = (
 		// --- Credential+parameter nodes ---
 		// Build maps: all nodes per cred type + nodes with params per cred type
 		const credTypeToAllNodes = new Map<string, INodeUi[]>();
-		const credTypeToEntries = new Map<
+		const credTypeNodeIds = new Map<string, Set<string>>();
+		const credTypeToNodesWithParams = new Map<
 			string,
 			Array<{
 				node: INodeUi;
@@ -568,16 +569,20 @@ export const useWorkflowSetupState = (
 			}>
 		>();
 
-		for (const entry of nodesRequiringSetup.value) {
-			const { node, credentialTypes, parameterIssues } = entry;
+		for (const setupEntry of nodesRequiringSetup.value) {
+			const { node, credentialTypes, parameterIssues } = setupEntry;
 			if (credentialTypes.length === 0) continue;
 
 			for (const credType of credentialTypes) {
 				if (!perNodeCredTypes.value.has(credType)) continue;
 
-				if (!credTypeToAllNodes.has(credType)) credTypeToAllNodes.set(credType, []);
+				if (!credTypeToAllNodes.has(credType)) {
+					credTypeToAllNodes.set(credType, []);
+					credTypeNodeIds.set(credType, new Set());
+				}
 
-				if (!credTypeToAllNodes.get(credType)!.some((n) => n.id === node.id)) {
+				if (!credTypeNodeIds.get(credType)!.has(node.id)) {
+					credTypeNodeIds.get(credType)!.add(node.id);
 					credTypeToAllNodes.get(credType)!.push(node);
 				}
 
@@ -587,35 +592,104 @@ export const useWorkflowSetupState = (
 				const alreadySeen = stickyNodeCredentials.value.has(combinationKey);
 
 				if (hasParameters || hasTemplateParams || alreadySeen) {
-					if (!credTypeToEntries.has(credType)) credTypeToEntries.set(credType, []);
-					credTypeToEntries.get(credType)!.push(entry);
+					if (!credTypeToNodesWithParams.has(credType)) credTypeToNodesWithParams.set(credType, []);
+					credTypeToNodesWithParams.get(credType)!.push(setupEntry);
 				}
 			}
 		}
 
 		const seenCombinations = new Set<string>();
 
-		for (const [credType, entries] of credTypeToEntries) {
-			let isFirstNode = true;
-			const allNodesUsingCredential = credTypeToAllNodes.get(credType) ?? [];
+		function extractCredentialInfo(node: INodeUi, credType: string) {
+			const credValue = node.credentials?.[credType];
+			const selectedCredentialId =
+				typeof credValue === 'string' ? undefined : (credValue?.id ?? undefined);
+			const credentialIssues = node.issues?.credentials ?? {};
+			const issues = credentialIssues[credType];
+			const issueMessages = [issues ?? []].flat();
+			const isAutoApplied =
+				!!selectedCredentialId && autoAppliedCredentialIds.value.has(selectedCredentialId);
+			return { selectedCredentialId, issueMessages, isAutoApplied };
+		}
 
-			for (const entry of entries) {
-				const { node, parameterIssues, isTrigger } = entry;
+		// Precompute per-credType credTypeInfo data shared by both passes
+		const multiNodeCredTypeInfo = new Map<
+			string,
+			{ paramNodeIds: Set<string>; nonParamFollowers: INodeUi[] }
+		>();
+		for (const [credType, allNodes] of credTypeToAllNodes) {
+			if (allNodes.length <= 1) continue;
+			const paramNodeEntries = credTypeToNodesWithParams.get(credType);
+			const paramNodeIds = new Set(paramNodeEntries?.map((e) => e.node.id) ?? []);
+			const firstNode = allNodes[0];
+			const nonParamFollowers = allNodes.filter(
+				(n) => n.id !== firstNode.id && !paramNodeIds.has(n.id),
+			);
+			multiNodeCredTypeInfo.set(credType, { paramNodeIds, nonParamFollowers });
+		}
+
+		// Credential-only cards for first nodes without params
+		for (const [credType, allNodes] of credTypeToAllNodes) {
+			const credTypeInfo = multiNodeCredTypeInfo.get(credType);
+			if (!credTypeInfo) continue;
+			const nodesWithParams = credTypeToNodesWithParams.get(credType);
+			// if no nodes with params for that credential type, nodes will be handled by credentialTypeStates
+			if (!nodesWithParams || nodesWithParams.length === 0) continue;
+
+			const firstNode = allNodes[0];
+			if (credTypeInfo.paramNodeIds.has(firstNode.id)) continue;
+
+			const combinationKey = `${credType}:${firstNode.id}`;
+			if (seenCombinations.has(combinationKey)) continue;
+			seenCombinations.add(combinationKey);
+
+			const { selectedCredentialId, issueMessages, isAutoApplied } = extractCredentialInfo(
+				firstNode,
+				credType,
+			);
+
+			const state: NodeSetupState = {
+				node: firstNode,
+				credentialType: credType,
+				credentialDisplayName: getCredentialDisplayName(credType),
+				selectedCredentialId,
+				issues: issueMessages,
+				parameterIssues: {},
+				isTrigger: isTriggerNode(firstNode),
+				showCredentialPicker: true,
+				isComplete: false,
+				allNodesUsingCredential: [firstNode, ...credTypeInfo.nonParamFollowers],
+				isAutoApplied,
+			};
+
+			state.isComplete = isNodeSetupComplete(state, buildCompletionContext(credType));
+			result.push(state);
+		}
+
+		// Per-node cards with credential + parameter setup
+		for (const [credType, paramNodeEntries] of credTypeToNodesWithParams) {
+			const allNodes = credTypeToAllNodes.get(credType) ?? [];
+			const credTypeInfo = multiNodeCredTypeInfo.get(credType);
+			const isSharingCredential = !!credTypeInfo;
+
+			for (const setupEntry of paramNodeEntries) {
+				const { node, parameterIssues, isTrigger } = setupEntry;
 				const combinationKey = `${credType}:${node.id}`;
 
 				if (seenCombinations.has(combinationKey)) continue;
 				seenCombinations.add(combinationKey);
 
-				const credValue = node.credentials?.[credType];
-				const selectedCredentialId =
-					typeof credValue === 'string' ? undefined : (credValue?.id ?? undefined);
+				const { selectedCredentialId, issueMessages, isAutoApplied } = extractCredentialInfo(
+					node,
+					credType,
+				);
 
-				const credentialIssues = node.issues?.credentials ?? {};
-				const issues = credentialIssues[credType];
-				const issueMessages = [issues ?? []].flat();
-
-				const isAutoApplied =
-					!!selectedCredentialId && autoAppliedCredentialIds.value.has(selectedCredentialId);
+				const isFirstInOrder = node.id === allNodes[0]?.id;
+				const allNodesUsingCredential = isSharingCredential
+					? isFirstInOrder
+						? [node, ...credTypeInfo!.nonParamFollowers]
+						: [node]
+					: allNodes;
 
 				const state: NodeSetupState = {
 					node,
@@ -626,7 +700,7 @@ export const useWorkflowSetupState = (
 					parameterIssues,
 					additionalParameterNames: templateParametersByNode.value.get(node.name),
 					isTrigger,
-					showCredentialPicker: isFirstNode,
+					showCredentialPicker: true,
 					isComplete: false,
 					allNodesUsingCredential,
 					isAutoApplied,
@@ -635,8 +709,6 @@ export const useWorkflowSetupState = (
 				state.isComplete = isNodeSetupComplete(state, buildCompletionContext(credType));
 
 				result.push(state);
-
-				isFirstNode = false;
 			}
 		}
 
@@ -686,19 +758,23 @@ export const useWorkflowSetupState = (
 			isComplete: trigState.isComplete,
 		}));
 
-		const flatCards: SetupCardItem[] = [...credentialCards, ...triggerCards, ...nodeStates.value]
+		const ungroupedCards: SetupCardItem[] = [
+			...credentialCards,
+			...triggerCards,
+			...nodeStates.value,
+		]
 			.filter((state) => state.node.type !== MANUAL_TRIGGER_NODE_TYPE)
 			.map((state) => ({ state }));
 
 		const executionOrder = nodesRequiringSetup.value.map(({ node }) => node.name);
 
-		flatCards.sort(
+		ungroupedCards.sort(
 			(a, b) =>
 				executionOrder.indexOf(a.state!.node.name) - executionOrder.indexOf(b.state!.node.name),
 		);
 
 		return groupSetupCards(
-			flatCards,
+			ungroupedCards,
 			sourceNodes.value,
 			workflowsStore.connectionsByDestinationNode,
 			executionOrder,

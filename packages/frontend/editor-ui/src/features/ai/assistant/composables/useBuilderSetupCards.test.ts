@@ -22,12 +22,20 @@ vi.mock('@/features/setupPanel/composables/useWorkflowSetupState', () => ({
 }));
 
 const mockTrackJourney = vi.fn();
+const mockIsNodePinDataSet = vi.fn().mockReturnValue(false);
+const mockHasAvailablePinData = vi.fn().mockReturnValue(false);
+const mockSetPinDataForNodes = vi.fn();
+const mockUnsetPinDataForNodes = vi.fn();
 
 // Reactive object so computed properties in the composable can track changes
 const mockBuilderStoreState = reactive({
 	wizardCurrentStep: 0,
 	wizardHasExecutedWorkflow: false,
 	trackWorkflowBuilderJourney: mockTrackJourney,
+	isNodePinDataSet: mockIsNodePinDataSet,
+	hasAvailablePinData: mockHasAvailablePinData,
+	setPinDataForNodes: mockSetPinDataForNodes,
+	unsetPinDataForNodes: mockUnsetPinDataForNodes,
 });
 vi.mock('@/features/ai/assistant/builder.store', () => ({
 	useBuilderStore: () => mockBuilderStoreState,
@@ -119,6 +127,10 @@ describe('useBuilderSetupCards', () => {
 		mockBuilderStoreState.wizardCurrentStep = 0;
 		mockBuilderStoreState.wizardHasExecutedWorkflow = false;
 		mockIsInitialCredentialTestingDone.value = true;
+		mockIsNodePinDataSet.mockReturnValue(false);
+		mockHasAvailablePinData.mockReturnValue(false);
+		mockSetPinDataForNodes.mockClear();
+		mockUnsetPinDataForNodes.mockClear();
 	});
 
 	it('passes through cards from useWorkflowSetupState', () => {
@@ -495,5 +507,392 @@ describe('useBuilderSetupCards', () => {
 		await nextTick();
 
 		expect(mockBuilderStoreState.wizardHasExecutedWorkflow).toBe(true);
+	});
+
+	describe('pin data set/unset', () => {
+		it('isCurrentCardPinDataSet reflects builder store state', () => {
+			mockSetupCards.value = [createCard({ node: createNode({ name: 'Slack', id: 'n1' }) })];
+			mockIsNodePinDataSet.mockReturnValue(true);
+
+			const { isCurrentCardPinDataSet } = getComposable();
+			expect(isCurrentCardPinDataSet.value).toBe(true);
+			expect(mockIsNodePinDataSet).toHaveBeenCalledWith('Slack');
+		});
+
+		it('currentCardHasAvailablePinData reflects builder store state', () => {
+			mockSetupCards.value = [createCard({ node: createNode({ name: 'HTTP Request', id: 'n1' }) })];
+			mockHasAvailablePinData.mockReturnValue(true);
+
+			const { currentCardHasAvailablePinData } = getComposable();
+			expect(currentCardHasAvailablePinData.value).toBe(true);
+			expect(mockHasAvailablePinData).toHaveBeenCalledWith('HTTP Request');
+		});
+
+		it('setCurrentCardPinData calls store and tracks telemetry', () => {
+			mockSetupCards.value = [
+				createCard({
+					node: createNode({ name: 'Slack', id: 'n1', type: 'n8n-nodes-base.slack' }),
+				}),
+				createCard({ node: createNode({ name: 'Node 2', id: 'n2' }) }),
+			];
+
+			const { setCurrentCardPinData } = getComposable();
+			setCurrentCardPinData();
+
+			expect(mockSetPinDataForNodes).toHaveBeenCalledWith(['Slack']);
+			expect(mockTrackJourney).toHaveBeenCalledWith(
+				'setup_wizard_pin_data_set',
+				expect.objectContaining({
+					node_type: 'n8n-nodes-base.slack',
+					step: 1,
+					total: 2,
+				}),
+			);
+		});
+
+		it('setCurrentCardPinData auto-advances to next card', () => {
+			mockSetupCards.value = [
+				createCard({ node: createNode({ name: 'Node 1', id: 'n1' }) }),
+				createCard({ node: createNode({ name: 'Node 2', id: 'n2' }) }),
+			];
+
+			const { setCurrentCardPinData, currentStepIndex } = getComposable();
+			expect(currentStepIndex.value).toBe(0);
+
+			setCurrentCardPinData();
+			expect(currentStepIndex.value).toBe(1);
+		});
+
+		it('unsetCurrentCardPinData calls store and tracks telemetry', () => {
+			mockSetupCards.value = [
+				createCard({
+					node: createNode({ name: 'Slack', id: 'n1', type: 'n8n-nodes-base.slack' }),
+				}),
+			];
+
+			const { unsetCurrentCardPinData } = getComposable();
+			unsetCurrentCardPinData();
+
+			expect(mockUnsetPinDataForNodes).toHaveBeenCalledWith(['Slack']);
+			expect(mockTrackJourney).toHaveBeenCalledWith(
+				'setup_wizard_pin_data_unset',
+				expect.objectContaining({
+					node_type: 'n8n-nodes-base.slack',
+				}),
+			);
+		});
+
+		it('isAllComplete does not treat pin data as complete (requires real completion)', () => {
+			mockSetupCards.value = [
+				createCard({
+					node: createNode({ name: 'Node 1', id: 'n1' }),
+					isComplete: false,
+					credentialType: 'slackApi',
+					issues: ['Not set'],
+				}),
+			];
+			// Card is incomplete but has pin data set — isAllComplete still requires real completion
+			mockIsNodePinDataSet.mockReturnValue(true);
+
+			const { isAllComplete } = getComposable();
+			expect(isAllComplete.value).toBe(false);
+		});
+
+		it('skipToFirstIncomplete skips past cards with pin data set', () => {
+			mockIsNodePinDataSet.mockImplementation((name: string) => name === 'Node 1');
+			mockSetupCards.value = [
+				createCard({
+					node: createNode({ name: 'Node 1', id: 'n1' }),
+					isComplete: false,
+				}),
+				createCard({
+					node: createNode({ name: 'Node 2', id: 'n2' }),
+					isComplete: false,
+				}),
+			];
+
+			const { currentStepIndex } = getComposable();
+			// Node 1 has pin data set (effectively complete), should skip to Node 2
+			expect(currentStepIndex.value).toBe(1);
+		});
+
+		it('onStepExecuted skips over completed cards to next incomplete', async () => {
+			mockSetupCards.value = [
+				createCard({
+					node: createNode({ name: 'Node 1', id: 'n1' }),
+					isComplete: true,
+				}),
+				createCard({
+					node: createNode({ name: 'Node 2', id: 'n2' }),
+					isComplete: true,
+				}),
+				createCard({
+					node: createNode({ name: 'Node 3', id: 'n3' }),
+					isComplete: false,
+				}),
+			];
+
+			const { onStepExecuted, currentStepIndex } = getComposable();
+			// Start on first card (which is complete)
+			currentStepIndex.value = 0;
+			await nextTick();
+
+			onStepExecuted();
+			await nextTick();
+
+			// Should skip Node 2 (complete) and land on Node 3 (incomplete)
+			expect(currentStepIndex.value).toBe(2);
+		});
+
+		it('onStepExecuted skips over pinned cards to next incomplete', async () => {
+			mockIsNodePinDataSet.mockImplementation((name: string) => name === 'Node 2');
+			mockSetupCards.value = [
+				createCard({
+					node: createNode({ name: 'Node 1', id: 'n1' }),
+					isComplete: true,
+				}),
+				createCard({
+					node: createNode({ name: 'Node 2', id: 'n2' }),
+					isComplete: false,
+				}),
+				createCard({
+					node: createNode({ name: 'Node 3', id: 'n3' }),
+					isComplete: false,
+				}),
+			];
+
+			const { onStepExecuted, currentStepIndex } = getComposable();
+			currentStepIndex.value = 0;
+			await nextTick();
+
+			onStepExecuted();
+			await nextTick();
+
+			// Should skip Node 2 (has pin data) and land on Node 3
+			expect(currentStepIndex.value).toBe(2);
+		});
+
+		it('onStepExecuted falls back to goToNext when all remaining cards are complete', async () => {
+			mockSetupCards.value = [
+				createCard({
+					node: createNode({ name: 'Node 1', id: 'n1' }),
+					isComplete: true,
+				}),
+				createCard({
+					node: createNode({ name: 'Node 2', id: 'n2' }),
+					isComplete: true,
+				}),
+				createCard({
+					node: createNode({ name: 'Node 3', id: 'n3' }),
+					isComplete: true,
+				}),
+			];
+
+			const { onStepExecuted, currentStepIndex } = getComposable();
+			// All complete — skipToFirstIncomplete won't move, stays at 0
+			currentStepIndex.value = 0;
+			await nextTick();
+
+			onStepExecuted();
+			await nextTick();
+
+			// No incomplete card after index 0, falls back to goToNext (index 1)
+			expect(currentStepIndex.value).toBe(1);
+		});
+
+		it('setCurrentCardPinData also pins nodes from allNodesUsingCredential when card shows credential picker', () => {
+			const slackSend = createNode({ name: 'Slack Send', id: 'n1', type: 'n8n-nodes-base.slack' });
+			const slackUpdate = createNode({
+				name: 'Slack Update',
+				id: 'n2',
+				type: 'n8n-nodes-base.slack',
+			});
+			mockSetupCards.value = [
+				createCard({
+					node: slackSend,
+					credentialType: 'slackApi',
+					showCredentialPicker: true,
+					allNodesUsingCredential: [slackSend, slackUpdate],
+				}),
+				createCard({
+					node: slackUpdate,
+					credentialType: 'slackApi',
+					showCredentialPicker: false,
+				}),
+			];
+
+			const { setCurrentCardPinData } = getComposable();
+			setCurrentCardPinData();
+
+			expect(mockSetPinDataForNodes).toHaveBeenCalledWith(
+				expect.arrayContaining(['Slack Send', 'Slack Update']),
+			);
+		});
+
+		it('setCurrentCardPinData does not pin shared nodes when card only shows parameters', () => {
+			const slackSend = createNode({ name: 'Slack Send', id: 'n1', type: 'n8n-nodes-base.slack' });
+			const slackUpdate = createNode({
+				name: 'Slack Update',
+				id: 'n2',
+				type: 'n8n-nodes-base.slack',
+			});
+			mockSetupCards.value = [
+				createCard({
+					node: slackSend,
+					credentialType: 'slackApi',
+					showCredentialPicker: true,
+					allNodesUsingCredential: [slackSend, slackUpdate],
+				}),
+				createCard({
+					node: slackUpdate,
+					credentialType: 'slackApi',
+					showCredentialPicker: false,
+					allNodesUsingCredential: [slackSend, slackUpdate],
+				}),
+			];
+
+			const { setCurrentCardPinData, currentStepIndex } = getComposable();
+			// Move to the second card (parameter-only, no credential picker)
+			currentStepIndex.value = 1;
+			setCurrentCardPinData();
+
+			// Should only pin its own node, not the shared credential nodes
+			expect(mockSetPinDataForNodes).toHaveBeenCalledWith(['Slack Update']);
+		});
+
+		it('setCurrentCardPinData does not pin HTTP Request nodes with different URLs', () => {
+			const httpGitHub = createNode({
+				name: 'GitHub API',
+				id: 'n1',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: 'https://api.github.com' },
+			});
+			const httpSlack = createNode({
+				name: 'Slack API',
+				id: 'n2',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: 'https://slack.com/api' },
+			});
+			mockSetupCards.value = [
+				createCard({
+					node: httpGitHub,
+					credentialType: 'httpBasicAuth',
+					showCredentialPicker: true,
+					allNodesUsingCredential: [httpGitHub, httpSlack],
+				}),
+			];
+
+			const { setCurrentCardPinData } = getComposable();
+			setCurrentCardPinData();
+
+			// Should only pin the current node, not the one with a different URL
+			expect(mockSetPinDataForNodes).toHaveBeenCalledWith(['GitHub API']);
+		});
+
+		it('setCurrentCardPinData pins HTTP Request nodes with the same URL', () => {
+			const httpNode1 = createNode({
+				name: 'GitHub Repos',
+				id: 'n1',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: 'https://api.github.com' },
+			});
+			const httpNode2 = createNode({
+				name: 'GitHub Issues',
+				id: 'n2',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: 'https://api.github.com' },
+			});
+			mockSetupCards.value = [
+				createCard({
+					node: httpNode1,
+					credentialType: 'httpBasicAuth',
+					showCredentialPicker: true,
+					allNodesUsingCredential: [httpNode1, httpNode2],
+				}),
+			];
+
+			const { setCurrentCardPinData } = getComposable();
+			setCurrentCardPinData();
+
+			expect(mockSetPinDataForNodes).toHaveBeenCalledWith(
+				expect.arrayContaining(['GitHub Repos', 'GitHub Issues']),
+			);
+		});
+
+		it('unsetCurrentCardPinData unpins shared credential nodes symmetrically', () => {
+			const slackSend = createNode({ name: 'Slack Send', id: 'n1', type: 'n8n-nodes-base.slack' });
+			const slackUpdate = createNode({
+				name: 'Slack Update',
+				id: 'n2',
+				type: 'n8n-nodes-base.slack',
+			});
+			mockSetupCards.value = [
+				createCard({
+					node: slackSend,
+					credentialType: 'slackApi',
+					showCredentialPicker: true,
+					allNodesUsingCredential: [slackSend, slackUpdate],
+				}),
+			];
+
+			const { unsetCurrentCardPinData } = getComposable();
+			unsetCurrentCardPinData();
+
+			expect(mockUnsetPinDataForNodes).toHaveBeenCalledWith(
+				expect.arrayContaining(['Slack Send', 'Slack Update']),
+			);
+		});
+
+		it('handles node group cards for pin data', () => {
+			const parentNode = createNode({ name: 'AI Agent', id: 'agent-1' });
+			const subnodeCard = createCardState({
+				node: createNode({ name: 'OpenAI Chat Model', id: 'model-1' }),
+			});
+			mockSetupCards.value = [
+				{
+					nodeGroup: {
+						parentNode,
+						parentState: createCardState({ node: parentNode }),
+						subnodeCards: [subnodeCard],
+					},
+				},
+			];
+
+			const { setCurrentCardPinData } = getComposable();
+			setCurrentCardPinData();
+
+			expect(mockSetPinDataForNodes).toHaveBeenCalledWith(
+				expect.arrayContaining(['AI Agent', 'OpenAI Chat Model']),
+			);
+		});
+
+		it('node group pins shared credential nodes when a subnode shows the credential picker', () => {
+			const parentNode = createNode({ name: 'AI Agent', id: 'agent-1' });
+			const modelNode = createNode({ name: 'OpenAI Chat Model', id: 'model-1' });
+			const otherModelNode = createNode({ name: 'OpenAI Embeddings', id: 'embed-1' });
+			mockSetupCards.value = [
+				{
+					nodeGroup: {
+						parentNode,
+						parentState: createCardState({ node: parentNode }),
+						subnodeCards: [
+							createCardState({
+								node: modelNode,
+								credentialType: 'openAiApi',
+								showCredentialPicker: true,
+								allNodesUsingCredential: [modelNode, otherModelNode],
+							}),
+						],
+					},
+				},
+			];
+
+			const { setCurrentCardPinData } = getComposable();
+			setCurrentCardPinData();
+
+			expect(mockSetPinDataForNodes).toHaveBeenCalledWith(
+				expect.arrayContaining(['AI Agent', 'OpenAI Chat Model', 'OpenAI Embeddings']),
+			);
+		});
 	});
 });

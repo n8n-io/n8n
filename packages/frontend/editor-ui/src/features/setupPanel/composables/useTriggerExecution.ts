@@ -5,6 +5,10 @@ import type { INodeUi } from '@/Interface';
 import { useNodeExecution, type UseNodeExecutionOptions } from '@/app/composables/useNodeExecution';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useLogsStore } from '@/app/stores/logs.store';
@@ -21,6 +25,11 @@ export function useTriggerExecution(
 	const i18n = useI18n();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 	const logsStore = useLogsStore();
 
 	const {
@@ -72,12 +81,25 @@ export function useTriggerExecution(
 		return buttonLabel.value;
 	});
 
+	const isEffectivelyPinned = (nodeName: string): boolean => {
+		if ((workflowDocumentStore.value?.getNodePinData(nodeName)?.length ?? 0) > 0) return true;
+
+		// For sub-nodes (e.g. model connected to agent via ai_languageModel),
+		// the host node is a "child" via non-main connections. Check if it's pinned.
+		const hostNodeNames = workflowsStore.workflowObject.getChildNodes(nodeName, 'ALL_NON_MAIN', 1);
+		return hostNodeNames.some(
+			(name) => (workflowDocumentStore.value?.getNodePinData(name)?.length ?? 0) > 0,
+		);
+	};
+
 	const hasUpstreamIssues = computed(() => {
 		if (!nodeValue.value) return false;
 		const parentNames = workflowsStore.workflowObject.getParentNodes(nodeValue.value.name, 'ALL');
 		return parentNames.some((name) => {
-			const parentNode = workflowsStore.getNodeByName(name);
-			return parentNode?.issues?.parameters || parentNode?.issues?.credentials;
+			const parentNode = workflowDocumentStore.value?.getNodeByName(name);
+			if (!parentNode) return false;
+			if (isEffectivelyPinned(parentNode.name)) return false;
+			return parentNode.issues?.parameters || parentNode.issues?.credentials;
 		});
 	});
 

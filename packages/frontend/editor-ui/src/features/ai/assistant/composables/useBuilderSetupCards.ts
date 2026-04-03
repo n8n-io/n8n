@@ -1,7 +1,7 @@
 import { computed, ref, watch } from 'vue';
 
-import type { SetupCardItem } from '@/features/setupPanel/setupPanel.types';
-import { isCardComplete } from '@/features/setupPanel/setupPanel.utils';
+import type { SetupCardItem, NodeSetupState } from '@/features/setupPanel/setupPanel.types';
+import { isCardComplete, isHttpRequestNodeType } from '@/features/setupPanel/setupPanel.utils';
 import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -10,6 +10,23 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { findPlaceholderDetails } from '@/features/ai/assistant/composables/useBuilderTodos';
+
+/** Extract all relevant node names from a setup card */
+function getCardNodeNames(card: SetupCardItem): string[] {
+	if (card.nodeGroup) {
+		const names = [card.nodeGroup.parentNode.name];
+		for (const sub of card.nodeGroup.subnodeCards) {
+			names.push(sub.node.name);
+		}
+		return [...new Set(names)];
+	}
+	return [card.state.node.name];
+}
+
+/** Get the primary node type for a card (used in telemetry) */
+function getCardNodeType(card: SetupCardItem): string | undefined {
+	return card.nodeGroup ? card.nodeGroup.parentNode.type : card.state?.node.type;
+}
 
 export function useBuilderSetupCards() {
 	const builderStore = useBuilderStore();
@@ -77,16 +94,98 @@ export function useBuilderSetupCards() {
 		() => baseCards.value[currentStepIndex.value],
 	);
 
+	// --- Pin data helpers ---
+
+	function getNodeNamesToPinForCard(card: SetupCardItem): string[] {
+		const names = getCardNodeNames(card);
+
+		const states: NodeSetupState[] = [];
+		if (card.nodeGroup) {
+			if (card.nodeGroup.parentState) states.push(card.nodeGroup.parentState);
+			states.push(...card.nodeGroup.subnodeCards);
+		} else {
+			states.push(card.state);
+		}
+
+		for (const state of states) {
+			if (!state.showCredentialPicker || !state.allNodesUsingCredential) continue;
+
+			const isHttp = isHttpRequestNodeType(state.node.type);
+			const sourceUrl = isHttp ? String(state.node.parameters.url ?? '') : undefined;
+
+			for (const node of state.allNodesUsingCredential) {
+				if (isHttp && String(node.parameters.url ?? '') !== sourceUrl) continue;
+				names.push(node.name);
+				// For sub-nodes (e.g. model/tool of an agent), also pin the host node
+				const hostNames = workflowsStore.workflowObject.getChildNodes(node.name, 'ALL_NON_MAIN', 1);
+				names.push(...hostNames);
+			}
+		}
+
+		return [...new Set(names)];
+	}
+
+	function isCardPinDataSet(card: SetupCardItem): boolean {
+		return getCardNodeNames(card).some((n) => builderStore.isNodePinDataSet(n));
+	}
+
+	function cardHasAvailablePinData(card: SetupCardItem): boolean {
+		return getCardNodeNames(card).some((n) => builderStore.hasAvailablePinData(n));
+	}
+
+	function isCardEffectivelyComplete(
+		card: SetupCardItem,
+		assumePinDataComplete: boolean = false,
+	): boolean {
+		if (assumePinDataComplete && isCardPinDataSet(card)) return true;
+		return isCardComplete(card);
+	}
+
+	const isCurrentCardPinDataSet = computed(() =>
+		currentCard.value ? isCardPinDataSet(currentCard.value) : false,
+	);
+
+	const currentCardHasAvailablePinData = computed(() =>
+		currentCard.value ? cardHasAvailablePinData(currentCard.value) : false,
+	);
+
+	function setCurrentCardPinData() {
+		const card = currentCard.value;
+		if (!card) return;
+
+		builderStore.setPinDataForNodes(getNodeNamesToPinForCard(card));
+		builderStore.trackWorkflowBuilderJourney('setup_wizard_pin_data_set', {
+			node_type: getCardNodeType(card),
+			step: currentStepIndex.value + 1,
+			total: totalCards.value,
+		});
+		goToNext();
+	}
+
+	function unsetCurrentCardPinData() {
+		const card = currentCard.value;
+		if (!card) return;
+		builderStore.unsetPinDataForNodes(getNodeNamesToPinForCard(card));
+		builderStore.trackWorkflowBuilderJourney('setup_wizard_pin_data_unset', {
+			node_type: getCardNodeType(card),
+			step: currentStepIndex.value + 1,
+			total: totalCards.value,
+		});
+	}
+
+	// --- Completion ---
+
 	const isAllComplete = computed(
 		() =>
 			isInitialCredentialTestingDone.value &&
-			(baseCards.value.length === 0 || baseCards.value.every((card) => isCardComplete(card))),
+			(baseCards.value.length === 0 ||
+				baseCards.value.every((card) => isCardEffectivelyComplete(card, false))),
 	);
 
 	function skipToFirstIncomplete() {
 		const current = baseCards.value[currentStepIndex.value];
-		if (!current || !isCardComplete(current)) return;
-		const firstIncomplete = baseCards.value.findIndex((c) => !isCardComplete(c));
+		if (!current || !isCardEffectivelyComplete(current, true)) return;
+		const firstIncomplete = baseCards.value.findIndex((c) => !isCardEffectivelyComplete(c, true));
 		if (firstIncomplete !== -1) {
 			currentStepIndex.value = firstIncomplete;
 		}
@@ -116,6 +215,17 @@ export function useBuilderSetupCards() {
 		}
 	}
 
+	function goToNextIncompleteCard() {
+		const index = baseCards.value.findIndex(
+			(c, index) => !isCardEffectivelyComplete(c, true) && index > currentStepIndex.value,
+		);
+		if (index !== -1) {
+			currentStepIndex.value = index;
+		} else {
+			goToNext();
+		}
+	}
+
 	function goToPrev() {
 		if (currentStepIndex.value > 0) {
 			currentStepIndex.value--;
@@ -128,7 +238,7 @@ export function useBuilderSetupCards() {
 
 	function continueCurrent() {
 		const card = currentCard.value;
-		const nodeType = card?.nodeGroup ? card.nodeGroup.parentNode.type : card?.state?.node.type;
+		const nodeType = getCardNodeType(card!);
 		builderStore.trackWorkflowBuilderJourney('setup_wizard_step_completed', {
 			step: currentStepIndex.value + 1,
 			total: totalCards.value,
@@ -142,11 +252,12 @@ export function useBuilderSetupCards() {
 	 * Dismisses the wizard when all cards are complete.
 	 */
 	function onStepExecuted() {
-		if (!currentCard.value || !isCardComplete(currentCard.value)) return;
+		if (!currentCard.value || !isCardEffectivelyComplete(currentCard.value, true)) return;
+
 		if (isAllComplete.value && currentStepIndex.value === totalCards.value - 1) {
 			builderStore.wizardHasExecutedWorkflow = true;
 		} else {
-			goToNext();
+			goToNextIncompleteCard();
 		}
 	}
 
@@ -190,5 +301,9 @@ export function useBuilderSetupCards() {
 		goToStep,
 		continueCurrent,
 		onStepExecuted,
+		isCurrentCardPinDataSet,
+		currentCardHasAvailablePinData,
+		setCurrentCardPinData,
+		unsetCurrentCardPinData,
 	};
 }
