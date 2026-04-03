@@ -108,6 +108,7 @@ export async function odooJSONRPCRequest(
 	url: string,
 ): Promise<IDataObject | IDataObject[]> {
 	try {
+		const credentials = await this.getCredentials('odooApi');
 		const options: IRequestOptions = {
 			headers: {
 				'User-Agent': 'n8n',
@@ -119,6 +120,7 @@ export async function odooJSONRPCRequest(
 			body,
 			uri: `${url}/jsonrpc`,
 			json: true,
+			rejectUnauthorized: !credentials.ignoreSSLIssues as boolean,
 		};
 
 		const response = await this.helpers.request(options);
