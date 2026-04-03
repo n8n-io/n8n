@@ -40,6 +40,7 @@ describe('eligibleModules', () => {
 			'instance-registry',
 			'otel',
 			'token-exchange',
+			'instance-version-history',
 		]);
 	});
 
@@ -66,6 +67,7 @@ describe('eligibleModules', () => {
 			'instance-registry',
 			'otel',
 			'token-exchange',
+			'instance-version-history',
 			'instance-ai',
 		]);
 	});
