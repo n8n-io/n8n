@@ -2781,6 +2781,15 @@ export interface ITaskMetadata {
 	resumeUrl?: string;
 
 	/**
+	 * AI model token usage captured from vendor node API responses before the simplify step
+	 * strips it. Used by telemetry to populate ai_input_tokens / ai_output_tokens in node_graph_string.
+	 */
+	tokenUsage?: {
+		inputTokens: number;
+		outputTokens: number;
+	};
+
+	/**
 	 * Key-value pairs that can be set for tracing - they will be attached to the OTEL node span
 	 * */
 	tracing?: Record<string, string | number | boolean>;
@@ -3258,6 +3267,8 @@ export interface INodeGraphItem {
 	used_guardrails?: string[]; // only for @n8n/n8n-nodes-langchain.guardrails
 	mcp_client_auth_method?: string; // for @n8n/n8n-nodes-langchain.mcpClientTool and @n8n/n8n-nodes-langchain.mcpClient
 	ai_model?: string; // AI model for model nodes and standalone AI nodes
+	ai_input_tokens?: number; // AI input (prompt) tokens for model nodes
+	ai_output_tokens?: number; // AI output (completion) tokens for model nodes
 }
 
 export interface INodeNameIndex {
