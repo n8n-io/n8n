@@ -8,7 +8,7 @@ import { Service } from '@n8n/di';
 import { WorkflowRepository } from '@n8n/db';
 import { z } from 'zod';
 
-import { AgentFrameworkService } from './agent-framework.service';
+import { AgentsService } from './agents.service';
 import { AgentSecureRuntime } from './agent-secure-runtime';
 
 let cachedSdkTypes: string | undefined;
@@ -71,10 +71,10 @@ function getSdkTypeDeclarations(): string {
 }
 
 @Service()
-export class AgentFrameworkBuilderService {
+export class AgentsBuilderService {
 	constructor(
 		private readonly logger: Logger,
-		private readonly agentsService: AgentFrameworkService,
+		private readonly agentsService: AgentsService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly secureRuntime: AgentSecureRuntime,
 	) {}

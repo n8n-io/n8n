@@ -1,12 +1,12 @@
 import type { AgentMessage, CredentialProvider, StreamChunk } from '@n8n/agents';
 import type { Logger } from 'n8n-workflow';
 
-import type { AgentFrameworkService } from '../agent-framework.service';
+import type { AgentsService } from '../agents.service';
 import type { RichSuspendPayload } from '../types';
 import type { ComponentMapper } from './component-mapper';
 
 /**
- * Subset of `AgentFrameworkService` consumed by the bridge.
+ * Subset of `AgentsService` consumed by the bridge.
  * Defined as an interface to avoid circular imports and simplify testing.
  */
 interface AgentExecutor {
@@ -105,7 +105,7 @@ export class AgentChatBridge {
 	static create(
 		bot: unknown,
 		agentId: string,
-		agentService: AgentFrameworkService,
+		agentService: AgentsService,
 		credentialProvider: CredentialProvider,
 		componentMapper: ComponentMapper,
 		logger: Logger,

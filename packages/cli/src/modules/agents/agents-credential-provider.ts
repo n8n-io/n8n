@@ -27,7 +27,7 @@ const SUPPORTED_CREDENTIAL_TYPES = [
  * This is not a DI-managed singleton — a new instance is created per request
  * because it is scoped to a specific user.
  */
-export class AgentFrameworkCredentialProvider implements CredentialProvider {
+export class AgentsCredentialProvider implements CredentialProvider {
 	constructor(
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinderService: CredentialsFinderService,

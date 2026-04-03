@@ -1,6 +1,6 @@
 import type { CheckpointStore, SerializableAgentState } from '@n8n/agents';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { AgentFrameworkConfig } from '@n8n/config';
+import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -22,11 +22,11 @@ export class N8NCheckpointStorage {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly agentCheckpointRepository: AgentCheckpointRepository,
 		private readonly logger: Logger,
-		private readonly agentFrameworkConfig: AgentFrameworkConfig,
+		private readonly agentsConfig: AgentsConfig,
 		private readonly moduleRegistry: ModuleRegistry,
 	) {
-		this.logger = this.logger.scoped('agent-framework');
-		this.isInitialized = this.moduleRegistry.isActive('agent-framework');
+		this.logger = this.logger.scoped('agents');
+		this.isInitialized = this.moduleRegistry.isActive('agents');
 	}
 
 	getStorage(agentId: string): CheckpointStore {
@@ -114,7 +114,7 @@ export class N8NCheckpointStorage {
 	}
 
 	private async pruneStaleSuspensions() {
-		const ttlMs = this.agentFrameworkConfig.checkpointTtlSeconds * Time.seconds.toMilliseconds;
+		const ttlMs = this.agentsConfig.checkpointTtlSeconds * Time.seconds.toMilliseconds;
 		const cutoffDate = new Date(Date.now() - ttlMs);
 
 		try {

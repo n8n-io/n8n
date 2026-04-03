@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { AgentFrameworkConfig } from './configs/agent-framework.config';
+import { AgentsConfig } from './configs/agents.config';
 import { AiAssistantConfig } from './configs/ai-assistant.config';
 import { AiBuilderConfig } from './configs/ai-builder.config';
 import { AiConfig } from './configs/ai.config';
@@ -72,6 +72,7 @@ export { ChatHubConfig } from './configs/chat-hub.config';
 export { InstanceAiConfig } from './configs/instance-ai.config';
 export { ExpressionEngineConfig } from './configs/expression-engine.config';
 export { PasswordConfig } from './configs/password.config';
+export { AgentsConfig } from './configs/agents.config';
 
 const protocolSchema = z.enum(['http', 'https']);
 
@@ -221,6 +222,10 @@ export class GlobalConfig {
 	@Env('N8N_SSL_CERT')
 	ssl_cert: string = '';
 
+	/** Whether to enable canvas-only mode, hiding the chrome UI. */
+	@Env('N8N_CANVAS_ONLY')
+	canvasOnly: boolean = false;
+
 	/** Public URL where the editor is accessible. Also used for emails sent from n8n. */
 	@Env('N8N_EDITOR_BASE_URL')
 	editorBaseUrl: string = '';
@@ -248,7 +253,7 @@ export class GlobalConfig {
 	instanceAi: InstanceAiConfig;
 
 	@Nested
-	agentFramework: AgentFrameworkConfig;
+	agents: AgentsConfig;
 
 	@Nested
 	expressionEngine: ExpressionEngineConfig;

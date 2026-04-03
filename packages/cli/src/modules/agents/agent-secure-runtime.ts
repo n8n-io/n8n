@@ -350,7 +350,7 @@ export class AgentSecureRuntime {
 			const schema = this.parseSandboxJson<AgentSchema>(resultJson, 'describeSecurely');
 
 			// Patch source strings from the original TypeScript on the host side.
-			const { extractSources } = await import('./agent-framework-source-parser');
+			const { extractSources } = await import('./agents-source-parser');
 			const extracted = extractSources(tsCode);
 
 			for (const tool of schema.tools) {

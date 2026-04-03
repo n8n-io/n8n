@@ -9,17 +9,17 @@ import {
 	AgentIntegrationDto,
 	CreateAgentDto,
 	UpdateAgentDto,
-} from './agent-framework.dto';
+} from './agents.dto';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { AgentFrameworkBuilderService } from './agent-framework-builder.service';
-import { AgentFrameworkCredentialProvider } from './agent-framework-credential-provider';
-import { AgentFrameworkService } from './agent-framework.service';
+import { AgentsBuilderService } from './agents-builder.service';
+import { AgentsCredentialProvider } from './agents-credential-provider';
+import { AgentsService } from './agents.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
-import { SdkAgentRepository } from './repositories/sdk-agent.repository';
+import { AgentRepository } from './repositories/agent.repository';
 
 type FlushableResponse = Response & { flush?: () => void };
 
@@ -83,15 +83,15 @@ function initSseResponse(res: FlushableResponse): (data: Record<string, unknown>
 	};
 }
 
-@RestController('/projects/:projectId/agent-framework')
-export class AgentFrameworkController {
+@RestController('/projects/:projectId/agents/v2')
+export class AgentsController {
 	constructor(
-		private readonly agentsService: AgentFrameworkService,
-		private readonly agentsBuilderService: AgentFrameworkBuilderService,
+		private readonly agentsService: AgentsService,
+		private readonly agentsBuilderService: AgentsBuilderService,
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly chatIntegrationService: ChatIntegrationService,
-		private readonly sdkAgentRepository: SdkAgentRepository,
+		private readonly agentRepository: AgentRepository,
 	) {}
 
 	@Post('/')
@@ -117,7 +117,7 @@ export class AgentFrameworkController {
 	@Get('/:agentId/schema')
 	async getSchema(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
 		const { projectId, agentId } = req.params;
-		const credentialProvider = new AgentFrameworkCredentialProvider(
+		const credentialProvider = new AgentsCredentialProvider(
 			this.credentialsService,
 			this.credentialsFinderService,
 			req.user,
@@ -129,7 +129,7 @@ export class AgentFrameworkController {
 	async patchSchema(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
 		const { projectId, agentId } = req.params;
 		const { schema, updatedAt } = updateSchemaBody.parse(req.body);
-		const credentialProvider = new AgentFrameworkCredentialProvider(
+		const credentialProvider = new AgentsCredentialProvider(
 			this.credentialsService,
 			this.credentialsFinderService,
 			req.user,
@@ -146,7 +146,7 @@ export class AgentFrameworkController {
 
 	@Get('/:agentId/credentials')
 	async listCredentials(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
-		const credentialProvider = new AgentFrameworkCredentialProvider(
+		const credentialProvider = new AgentsCredentialProvider(
 			this.credentialsService,
 			this.credentialsFinderService,
 			req.user,
@@ -251,7 +251,7 @@ export class AgentFrameworkController {
 		const { projectId } = req.params;
 		const { message } = payload;
 
-		const credentialProvider = new AgentFrameworkCredentialProvider(
+		const credentialProvider = new AgentsCredentialProvider(
 			this.credentialsService,
 			this.credentialsFinderService,
 			req.user,
@@ -289,7 +289,7 @@ export class AgentFrameworkController {
 		const { projectId } = req.params;
 		const { message } = payload;
 
-		const credentialProvider = new AgentFrameworkCredentialProvider(
+		const credentialProvider = new AgentsCredentialProvider(
 			this.credentialsService,
 			this.credentialsFinderService,
 			req.user,
@@ -355,7 +355,7 @@ export class AgentFrameworkController {
 		@Body payload: AgentIntegrationDto,
 	) {
 		const { type, credentialId } = payload;
-		const agent = await this.sdkAgentRepository.findByIdAndProjectId(agentId, req.params.projectId);
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
 		await this.chatIntegrationService.connect(
@@ -371,7 +371,7 @@ export class AgentFrameworkController {
 		const alreadyExists = existing.some((i) => i.type === type && i.credentialId === credentialId);
 		if (!alreadyExists) {
 			agent.integrations = [...existing, { type, credentialId }];
-			await this.sdkAgentRepository.save(agent);
+			await this.agentRepository.save(agent);
 		}
 
 		return { status: 'connected' };
@@ -385,7 +385,7 @@ export class AgentFrameworkController {
 		@Body payload: AgentIntegrationDto,
 	) {
 		const { type, credentialId } = payload;
-		const agent = await this.sdkAgentRepository.findByIdAndProjectId(agentId, req.params.projectId);
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
 		await this.chatIntegrationService.disconnect(agentId, type, credentialId);
@@ -394,7 +394,7 @@ export class AgentFrameworkController {
 		agent.integrations = (agent.integrations ?? []).filter(
 			(i) => !(i.type === type && i.credentialId === credentialId),
 		);
-		await this.sdkAgentRepository.save(agent);
+		await this.agentRepository.save(agent);
 
 		return { status: 'disconnected' };
 	}
@@ -405,7 +405,7 @@ export class AgentFrameworkController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 	) {
-		const agent = await this.sdkAgentRepository.findByIdAndProjectId(agentId, req.params.projectId);
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
 		return this.chatIntegrationService.getStatus(agentId);

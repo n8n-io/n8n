@@ -4,7 +4,7 @@ import { useDebounceFn } from '@vueuse/core';
 import { useRoute, useRouter } from 'vue-router';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { getAgent, updateAgent, type SdkAgentDto } from '../composables/useAgentApi';
+import { getAgent, updateAgent, type AgentDto } from '../composables/useAgentApi';
 import { useAgentSchema } from '../composables/useAgentSchema';
 import type { AgentSchema } from '../types';
 import AgentSidebar from '../components/AgentSidebar.vue';
@@ -41,7 +41,7 @@ watch(
 const chatVisible = ref(true);
 const code = ref('');
 const agentName = ref('');
-const agent = ref<SdkAgentDto | null>(null);
+const agent = ref<AgentDto | null>(null);
 const editingName = ref(false);
 const updatedAt = ref<string>('');
 let skipNextWatch = false;

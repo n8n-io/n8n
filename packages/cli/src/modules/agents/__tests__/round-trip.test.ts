@@ -5,7 +5,7 @@ import { Agent } from '@n8n/agents';
 import * as zod from 'zod';
 import type { AgentSchema } from '@n8n/agents';
 
-import { extractSources } from '../agent-framework-source-parser';
+import { extractSources } from '../agents-source-parser';
 import { WorkflowTool } from '../types';
 import { AgentSecureRuntime } from '../agent-secure-runtime';
 
@@ -104,7 +104,7 @@ async function compileAndDescribe(source: string): Promise<AgentSchema> {
 	const exported = mod.exports.default ?? mod.exports;
 	const schema = (exported as { describe: () => AgentSchema }).describe();
 
-	// Extract and patch source strings (same as agent-framework.service.ts)
+	// Extract and patch source strings (same as agents.service.ts)
 	const extracted = extractSources(source);
 	for (const tool of schema.tools) {
 		const src = extracted.tools.get(tool.name);

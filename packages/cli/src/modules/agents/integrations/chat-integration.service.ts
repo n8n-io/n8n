@@ -6,8 +6,8 @@ import { Container, Service } from '@n8n/di';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 
-import { AgentFrameworkCredentialProvider } from '../agent-framework-credential-provider';
-import { SdkAgentRepository } from '../repositories/sdk-agent.repository';
+import { AgentsCredentialProvider } from '../agents-credential-provider';
+import { AgentRepository } from '../repositories/agent.repository';
 
 import { AgentChatBridge } from './agent-chat-bridge';
 import { ComponentMapper } from './component-mapper';
@@ -52,7 +52,7 @@ export class ChatIntegrationService {
 
 	constructor(
 		private readonly logger: Logger,
-		private readonly sdkAgentRepository: SdkAgentRepository,
+		private readonly agentRepository: AgentRepository,
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinderService: CredentialsFinderService,
 	) {}
@@ -84,7 +84,7 @@ export class ChatIntegrationService {
 		const user = await this.resolveUser(userId);
 
 		// Create credential provider scoped to this user (for agent execution)
-		const credentialProvider = new AgentFrameworkCredentialProvider(
+		const credentialProvider = new AgentsCredentialProvider(
 			this.credentialsService,
 			this.credentialsFinderService,
 			user,
@@ -111,9 +111,9 @@ export class ChatIntegrationService {
 		// Create supporting infrastructure
 		const componentMapper = new ComponentMapper();
 
-		// Lazy-import AgentFrameworkService to avoid circular DI dependency
-		const { AgentFrameworkService } = await import('../agent-framework.service');
-		const agentService = Container.get(AgentFrameworkService);
+		// Lazy-import AgentsService to avoid circular DI dependency
+		const { AgentsService } = await import('../agents.service');
+		const agentService = Container.get(AgentsService);
 
 		const bridge = AgentChatBridge.create(
 			chat,
@@ -214,7 +214,7 @@ export class ChatIntegrationService {
 	 * Called on startup to restore connections.
 	 */
 	async reconnectAll(): Promise<void> {
-		const agents = await this.sdkAgentRepository.find();
+		const agents = await this.agentRepository.find();
 		for (const agent of agents) {
 			if (!agent.integrations || agent.integrations.length === 0) continue;
 			for (const integration of agent.integrations) {

@@ -76,7 +76,7 @@ async function streamFromEndpoint(
 	try {
 		const { baseUrl } = rootStore.restApiContext;
 		const browserId = localStorage.getItem('n8n-browserId') ?? '';
-		const url = `${baseUrl}/projects/${props.projectId}/agent-framework/${props.agentId}/${endpoint}`;
+		const url = `${baseUrl}/projects/${props.projectId}/agents/v2/${props.agentId}/${endpoint}`;
 		const response = await fetch(url, {
 			method: 'POST',
 			headers: {

@@ -3,13 +3,13 @@ import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-@BackendModule({ name: 'agent-framework' })
-export class AgentFrameworkModule implements ModuleInterface {
+@BackendModule({ name: 'agents' })
+export class AgentsModule implements ModuleInterface {
 	async init() {
-		await import('./agent-framework.controller');
+		await import('./agents.controller');
 
-		const { AgentFrameworkService } = await import('./agent-framework.service');
-		Container.get(AgentFrameworkService);
+		const { AgentsService } = await import('./agents.service');
+		Container.get(AgentsService);
 
 		// Register the sandboxed runtime service (lazy — the V8 isolate is only
 		// created on first use, so this import has negligible startup cost).
@@ -21,7 +21,7 @@ export class AgentFrameworkModule implements ModuleInterface {
 		const chatService = Container.get(ChatIntegrationService);
 		const logger = Container.get(Logger);
 		void chatService.reconnectAll().catch((error) => {
-			logger.error('[AgentFramework] Failed to reconnect integrations on startup', {
+			logger.error('[Agents] Failed to reconnect integrations on startup', {
 				error: error instanceof Error ? error.message : String(error),
 			});
 		});
@@ -34,15 +34,15 @@ export class AgentFrameworkModule implements ModuleInterface {
 	}
 
 	async entities() {
-		const { SdkAgent } = await import('./entities/sdk-agent.entity');
+		const { Agent } = await import('./entities/agent.entity');
 		const { AgentCheckpoint } = await import('./entities/agent-checkpoint.entity');
 
-		return [SdkAgent, AgentCheckpoint];
+		return [Agent, AgentCheckpoint];
 	}
 
 	async context() {
-		const { AgentFrameworkService } = await import('./agent-framework.service');
+		const { AgentsService } = await import('./agents.service');
 
-		return { agentsService: Container.get(AgentFrameworkService) };
+		return { agentsService: Container.get(AgentsService) };
 	}
 }

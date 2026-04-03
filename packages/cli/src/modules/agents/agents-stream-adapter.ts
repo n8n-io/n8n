@@ -1,7 +1,7 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
 import type { StreamChunk } from '@n8n/agents';
 
-const DEFAULT_AGENT_ID = 'sdk-agent';
+const DEFAULT_AGENT_ID = 'agent';
 
 /**
  * Translates `@n8n/agents` SDK stream chunks into the Instance AI event
@@ -11,14 +11,14 @@ const DEFAULT_AGENT_ID = 'sdk-agent';
  * bookend events and maps each `StreamChunk` variant to the corresponding
  * `InstanceAiEvent` discriminant.
  */
-export class AgentFrameworkStreamAdapter {
+export class AgentsStreamAdapter {
 	/**
 	 * Consumes an SDK stream and yields Instance AI events.
 	 *
 	 * @param sdkStream  - AsyncIterable of `StreamChunk` from `agent.stream()`
 	 * @param runId      - Unique run identifier for this execution
 	 * @param messageGroupId - Stable group ID across follow-up runs within one user turn
-	 * @param agentId    - Agent identifier (defaults to `'sdk-agent'`)
+	 * @param agentId    - Agent identifier (defaults to `'agent'`)
 	 */
 	async *translate(
 		sdkStream: AsyncIterable<StreamChunk>,

@@ -20,8 +20,8 @@ import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
-import { AGENT_BUILDER_VIEW } from '@/features/agent-framework/constants';
-import { createAgent } from '@/features/agent-framework/composables/useAgentApi';
+import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
+import { createAgent } from '@/features/agents/composables/useAgentApi';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 
 import { N8nButton, N8nHeading, N8nText, N8nTooltip } from '@n8n/design-system';
@@ -190,7 +190,7 @@ const createAgentButton = computed(() => ({
 }));
 
 const selectedMainButtonType = computed(() => {
-	if (props.mainButton === ACTION_TYPES.AGENT && !settingsStore.isModuleActive('agent-framework')) {
+	if (props.mainButton === ACTION_TYPES.AGENT && !settingsStore.isModuleActive('agents')) {
 		return ACTION_TYPES.WORKFLOW;
 	}
 	return props.mainButton ?? ACTION_TYPES.WORKFLOW;
@@ -275,7 +275,7 @@ const menu = computed(() => {
 	}
 
 	if (
-		settingsStore.isModuleActive('agent-framework') &&
+		settingsStore.isModuleActive('agents') &&
 		selectedMainButtonType.value !== ACTION_TYPES.AGENT
 	) {
 		items.push({

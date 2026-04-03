@@ -9,7 +9,7 @@ import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vu
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
-import { listAgents, deleteAgent, type SdkAgentDto } from '../composables/useAgentApi';
+import { listAgents, deleteAgent, type AgentDto } from '../composables/useAgentApi';
 import { AGENT_BUILDER_VIEW } from '../constants';
 
 const route = useRoute();
@@ -19,7 +19,7 @@ const projectsStore = useProjectsStore();
 const insightsStore = useInsightsStore();
 const projectPages = useProjectPages();
 
-const allAgents = ref<SdkAgentDto[]>([]);
+const allAgents = ref<AgentDto[]>([]);
 const loading = ref(true);
 
 const projectId = computed(
@@ -27,12 +27,12 @@ const projectId = computed(
 );
 
 const sortFns = {
-	lastUpdated: (a: SdkAgentDto, b: SdkAgentDto) =>
+	lastUpdated: (a: AgentDto, b: AgentDto) =>
 		new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-	lastCreated: (a: SdkAgentDto, b: SdkAgentDto) =>
+	lastCreated: (a: AgentDto, b: AgentDto) =>
 		new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-	nameAsc: (a: SdkAgentDto, b: SdkAgentDto) => a.name.localeCompare(b.name),
-	nameDesc: (a: SdkAgentDto, b: SdkAgentDto) => b.name.localeCompare(a.name),
+	nameAsc: (a: AgentDto, b: AgentDto) => a.name.localeCompare(b.name),
+	nameDesc: (a: AgentDto, b: AgentDto) => b.name.localeCompare(a.name),
 };
 
 const cardActions = [{ id: 'delete', label: 'Delete' }];
@@ -53,7 +53,7 @@ function onSelectAgent(agentId: string) {
 	});
 }
 
-async function onCardAction(action: string, agent: SdkAgentDto) {
+async function onCardAction(action: string, agent: AgentDto) {
 	if (action === 'delete') {
 		await deleteAgent(rootStore.restApiContext, projectId.value, agent.id);
 		allAgents.value = allAgents.value.filter((a) => a.id !== agent.id);
@@ -82,7 +82,7 @@ onMounted(fetchAgents);
 		:type-props="{ itemSize: 80 }"
 		:shareable="false"
 		:ui-config="{ searchEnabled: true, showFiltersDropdown: false, sortEnabled: true }"
-		:display-name="(agent: SdkAgentDto) => agent.name"
+		:display-name="(agent: AgentDto) => agent.name"
 		tab-key="agents"
 	>
 		<template #header>

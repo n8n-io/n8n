@@ -2,7 +2,7 @@ import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type { AgentSchema } from '../types';
 
-export interface SdkAgentDto {
+export interface AgentDto {
 	id: string;
 	name: string;
 	code: string;
@@ -19,23 +19,19 @@ export interface SdkAgentDto {
 export const listAgents = async (
 	context: IRestApiContext,
 	projectId: string,
-): Promise<SdkAgentDto[]> => {
-	return await makeRestApiRequest<SdkAgentDto[]>(
-		context,
-		'GET',
-		`/projects/${projectId}/agent-framework`,
-	);
+): Promise<AgentDto[]> => {
+	return await makeRestApiRequest<AgentDto[]>(context, 'GET', `/projects/${projectId}/agents/v2`);
 };
 
 export const getAgent = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-): Promise<SdkAgentDto> => {
-	return await makeRestApiRequest<SdkAgentDto>(
+): Promise<AgentDto> => {
+	return await makeRestApiRequest<AgentDto>(
 		context,
 		'GET',
-		`/projects/${projectId}/agent-framework/${agentId}`,
+		`/projects/${projectId}/agents/v2/${agentId}`,
 	);
 };
 
@@ -43,13 +39,10 @@ export const createAgent = async (
 	context: IRestApiContext,
 	projectId: string,
 	name: string,
-): Promise<SdkAgentDto> => {
-	return await makeRestApiRequest<SdkAgentDto>(
-		context,
-		'POST',
-		`/projects/${projectId}/agent-framework`,
-		{ name },
-	);
+): Promise<AgentDto> => {
+	return await makeRestApiRequest<AgentDto>(context, 'POST', `/projects/${projectId}/agents/v2`, {
+		name,
+	});
 };
 
 export const updateAgent = async (
@@ -57,11 +50,11 @@ export const updateAgent = async (
 	projectId: string,
 	agentId: string,
 	data: { code?: string; name?: string },
-): Promise<SdkAgentDto> => {
-	return await makeRestApiRequest<SdkAgentDto>(
+): Promise<AgentDto> => {
+	return await makeRestApiRequest<AgentDto>(
 		context,
 		'PATCH',
-		`/projects/${projectId}/agent-framework/${agentId}`,
+		`/projects/${projectId}/agents/v2/${agentId}`,
 		data,
 	);
 };
@@ -71,7 +64,7 @@ export const deleteAgent = async (
 	projectId: string,
 	agentId: string,
 ): Promise<void> => {
-	await makeRestApiRequest(context, 'DELETE', `/projects/${projectId}/agent-framework/${agentId}`);
+	await makeRestApiRequest(context, 'DELETE', `/projects/${projectId}/agents/v2/${agentId}`);
 };
 
 export const connectSlack = async (
@@ -83,7 +76,7 @@ export const connectSlack = async (
 	return await makeRestApiRequest(
 		context,
 		'POST',
-		`/projects/${projectId}/agent-framework/${agentId}/integrations/connect`,
+		`/projects/${projectId}/agents/v2/${agentId}/integrations/connect`,
 		{ type: 'slack', credentialId },
 	);
 };
@@ -97,7 +90,7 @@ export const disconnectSlack = async (
 	return await makeRestApiRequest(
 		context,
 		'POST',
-		`/projects/${projectId}/agent-framework/${agentId}/integrations/disconnect`,
+		`/projects/${projectId}/agents/v2/${agentId}/integrations/disconnect`,
 		{ type: 'slack', credentialId },
 	);
 };
@@ -110,18 +103,18 @@ export const getSlackStatus = async (
 	return await makeRestApiRequest(
 		context,
 		'GET',
-		`/projects/${projectId}/agent-framework/${agentId}/integrations/status`,
+		`/projects/${projectId}/agents/v2/${agentId}/integrations/status`,
 	);
 };
 
 export const listAllAgents = async (
 	context: IRestApiContext,
 	projectId: string,
-): Promise<SdkAgentDto[]> => {
-	return await makeRestApiRequest<SdkAgentDto[]>(
+): Promise<AgentDto[]> => {
+	return await makeRestApiRequest<AgentDto[]>(
 		context,
 		'GET',
-		`/projects/${projectId}/agent-framework?all=true`,
+		`/projects/${projectId}/agents/v2?all=true`,
 	);
 };
 
@@ -133,7 +126,7 @@ export const getAgentSchema = async (
 	return await makeRestApiRequest<AgentSchema>(
 		context,
 		'GET',
-		`/projects/${projectId}/agent-framework/${agentId}/schema`,
+		`/projects/${projectId}/agents/v2/${agentId}/schema`,
 	);
 };
 
@@ -147,7 +140,7 @@ export const patchAgentSchema = async (
 	return await makeRestApiRequest<{ code: string; schema: AgentSchema; updatedAt: string }>(
 		context,
 		'PATCH',
-		`/projects/${projectId}/agent-framework/${agentId}/schema`,
+		`/projects/${projectId}/agents/v2/${agentId}/schema`,
 		{ schema, updatedAt },
 	);
 };
@@ -174,7 +167,7 @@ export const getModelCatalog = async (
 	return await makeRestApiRequest<ProviderCatalog>(
 		context,
 		'GET',
-		`/projects/${projectId}/agent-framework/catalog/models`,
+		`/projects/${projectId}/agents/v2/catalog/models`,
 	);
 };
 
@@ -186,6 +179,6 @@ export const listAgentCredentials = async (
 	return await makeRestApiRequest<Array<{ id: string; name: string; type: string }>>(
 		context,
 		'GET',
-		`/projects/${projectId}/agent-framework/${agentId}/credentials`,
+		`/projects/${projectId}/agents/v2/${agentId}/credentials`,
 	);
 };

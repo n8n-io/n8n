@@ -18,9 +18,9 @@ import {
 import { In } from '@n8n/typeorm';
 import { OperationalError, UserError } from 'n8n-workflow';
 
-import { SdkAgent } from './entities/sdk-agent.entity';
+import { Agent } from './entities/agent.entity';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
-import { SdkAgentRepository } from './repositories/sdk-agent.repository';
+import { AgentRepository } from './repositories/agent.repository';
 import type { WorkflowToolDescriptor } from './types';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -33,7 +33,7 @@ import { TtlMap } from '@/utils/ttl-map';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowRunner } from '@/workflow-runner';
 
-import { AgentFrameworkCredentialProvider } from './agent-framework-credential-provider';
+import { AgentsCredentialProvider } from './agents-credential-provider';
 import { AgentSecureRuntime } from './agent-secure-runtime';
 
 export interface ExecuteAgentData {
@@ -52,7 +52,7 @@ export default new Agent('my-agent')
 `;
 
 @Service()
-export class AgentFrameworkService {
+export class AgentsService {
 	/**
 	 * Cached agent runtimes keyed by `agentId` or `agentId:userId`.
 	 * TTL = 30 minutes — entries are evicted when the agent is idle so that
@@ -87,7 +87,7 @@ export class AgentFrameworkService {
 
 	constructor(
 		private readonly logger: Logger,
-		private readonly sdkAgentRepository: SdkAgentRepository,
+		private readonly agentRepository: AgentRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly activeExecutions: ActiveExecutions,
@@ -100,8 +100,8 @@ export class AgentFrameworkService {
 		private readonly secureRuntime: AgentSecureRuntime,
 	) {}
 
-	async create(projectId: string, name: string): Promise<SdkAgent> {
-		const agent = this.sdkAgentRepository.create({
+	async create(projectId: string, name: string): Promise<Agent> {
+		const agent = this.agentRepository.create({
 			name,
 			code: STARTER_CODE,
 			projectId,
@@ -116,19 +116,19 @@ export class AgentFrameworkService {
 			});
 		}
 
-		const saved = await this.sdkAgentRepository.save(agent);
+		const saved = await this.agentRepository.save(agent);
 
 		this.logger.debug('Created SDK agent', { agentId: saved.id, projectId });
 
 		return saved;
 	}
 
-	async findByProjectId(projectId: string): Promise<SdkAgent[]> {
-		return await this.sdkAgentRepository.findByProjectId(projectId);
+	async findByProjectId(projectId: string): Promise<Agent[]> {
+		return await this.agentRepository.findByProjectId(projectId);
 	}
 
-	async findById(agentId: string, projectId: string): Promise<SdkAgent | null> {
-		return await this.sdkAgentRepository.findByIdAndProjectId(agentId, projectId);
+	async findById(agentId: string, projectId: string): Promise<Agent | null> {
+		return await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 	}
 
 	async updateCode(
@@ -136,8 +136,8 @@ export class AgentFrameworkService {
 		projectId: string,
 		code: string,
 		updatedAt?: string,
-	): Promise<{ agent: SdkAgent; schemaError: string | null } | null> {
-		const agent = await this.sdkAgentRepository.findByIdAndProjectId(agentId, projectId);
+	): Promise<{ agent: Agent; schemaError: string | null } | null> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 
 		if (!agent) {
 			return null;
@@ -165,22 +165,22 @@ export class AgentFrameworkService {
 			this.logger.warn('Failed to describe agent code', { agentId, error: schemaError });
 		}
 
-		const saved = await this.sdkAgentRepository.save(agent);
+		const saved = await this.agentRepository.save(agent);
 
 		this.logger.debug('Updated SDK agent code', { agentId, projectId });
 
 		return { agent: saved, schemaError };
 	}
 
-	async updateName(agentId: string, projectId: string, name: string): Promise<SdkAgent | null> {
-		const agent = await this.sdkAgentRepository.findByIdAndProjectId(agentId, projectId);
+	async updateName(agentId: string, projectId: string, name: string): Promise<Agent | null> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 
 		if (!agent) {
 			return null;
 		}
 
 		agent.name = name;
-		const saved = await this.sdkAgentRepository.save(agent);
+		const saved = await this.agentRepository.save(agent);
 		this.logger.debug('Updated SDK agent name', { agentId, projectId, name });
 		return saved;
 	}
@@ -190,8 +190,8 @@ export class AgentFrameworkService {
 		projectId: string,
 		description: string,
 		updatedAt?: string,
-	): Promise<SdkAgent | null> {
-		const agent = await this.sdkAgentRepository.findByIdAndProjectId(agentId, projectId);
+	): Promise<Agent | null> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 
 		if (!agent) {
 			return null;
@@ -202,31 +202,31 @@ export class AgentFrameworkService {
 		}
 
 		agent.description = description;
-		const saved = await this.sdkAgentRepository.save(agent);
+		const saved = await this.agentRepository.save(agent);
 		this.logger.debug('Updated SDK agent description', { agentId, projectId });
 		return saved;
 	}
 
-	async findByUser(userId: string): Promise<SdkAgent[]> {
+	async findByUser(userId: string): Promise<Agent[]> {
 		const projectRelations = await this.projectRelationRepository.findAllByUser(userId);
 		const projectIds = projectRelations.map((pr) => pr.projectId);
 
 		if (projectIds.length === 0) return [];
 
-		return await this.sdkAgentRepository.find({
+		return await this.agentRepository.find({
 			where: { projectId: In(projectIds) },
 			order: { updatedAt: 'DESC' },
 		});
 	}
 
 	async delete(agentId: string, projectId: string): Promise<boolean> {
-		const agent = await this.sdkAgentRepository.findByIdAndProjectId(agentId, projectId);
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 
 		if (!agent) {
 			return false;
 		}
 
-		await this.sdkAgentRepository.remove(agent);
+		await this.agentRepository.remove(agent);
 
 		this.clearRuntimes(agentId);
 		this.schemaCache.delete(agentId);
@@ -261,7 +261,7 @@ export class AgentFrameworkService {
 		projectId: string,
 		_credentialProvider: CredentialProvider,
 	): Promise<AgentSchema> {
-		const entity = await this.sdkAgentRepository.findByIdAndProjectId(agentId, projectId);
+		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
 
 		let schema = this.schemaCache.get(agentId);
@@ -289,7 +289,7 @@ export class AgentFrameworkService {
 		updatedAt: string,
 		_credentialProvider: CredentialProvider,
 	): Promise<{ code: string; schema: AgentSchema; updatedAt: string }> {
-		const entity = await this.sdkAgentRepository.findByIdAndProjectId(agentId, projectId);
+		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
 
 		if (entity.updatedAt.toISOString() !== updatedAt) {
@@ -314,7 +314,7 @@ export class AgentFrameworkService {
 			entity.schema = null;
 		}
 
-		const saved = await this.sdkAgentRepository.save(entity);
+		const saved = await this.agentRepository.save(entity);
 
 		const freshSchema = this.schemaCache.get(agentId);
 		if (!freshSchema) {
@@ -400,7 +400,7 @@ export class AgentFrameworkService {
 	 * The runtime is cached for subsequent calls.
 	 */
 	private async reconstructFromSchema(
-		agentEntity: SdkAgent,
+		agentEntity: Agent,
 		credentialProvider: CredentialProvider,
 		userId?: string,
 	): Promise<agents.Agent> {
@@ -449,7 +449,7 @@ export class AgentFrameworkService {
 			throw new UserError(`Agent ${agentId} is not compiled — cannot resume`);
 		}
 
-		const sdkAgent = runtime.agent;
+		const agentInstance = runtime.agent;
 
 		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId);
 		if (checkpointStatus === 'expired') {
@@ -460,7 +460,7 @@ export class AgentFrameworkService {
 			throw new UserError(`Checkpoint ${runId} not found and cannot be resumed`);
 		}
 
-		const resultStream = await sdkAgent.resume('stream', resumeData, {
+		const resultStream = await agentInstance.resume('stream', resumeData, {
 			runId,
 			toolCallId,
 		});
@@ -497,7 +497,7 @@ export class AgentFrameworkService {
 		if (!runtime) {
 			// Scope the lookup to the project so an agent from a different project
 			// cannot be driven by supplying an arbitrary agentId (IDOR).
-			const agentEntity = await this.sdkAgentRepository.findByIdAndProjectId(agentId, projectId);
+			const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 			if (!agentEntity) throw new NotFoundError(`Agent ${agentId} not found`);
 
 			const reconstructed = await this.reconstructFromSchema(
@@ -512,9 +512,9 @@ export class AgentFrameworkService {
 			if (!runtime) throw new Error(`Agent ${agentId} failed to reconstruct`);
 		}
 
-		const sdkAgent = runtime.agent;
+		const agentInstance = runtime.agent;
 
-		const resultStream = await sdkAgent.stream(message, {
+		const resultStream = await agentInstance.stream(message, {
 			persistence: {
 				threadId,
 				resourceId: userId,
@@ -546,7 +546,7 @@ export class AgentFrameworkService {
 	 * are not affected.
 	 */
 	private async compileIsolated(
-		agentEntity: SdkAgent,
+		agentEntity: Agent,
 		credentialProvider: CredentialProvider,
 		userId?: string,
 	): Promise<{ ok: boolean; agent?: BuiltAgent; error?: string }> {
@@ -599,7 +599,7 @@ export class AgentFrameworkService {
 		userId: string,
 		projectId: string,
 	): Promise<ExecuteAgentData> {
-		const agentEntity = await this.sdkAgentRepository.findByIdAndProjectId(agentId, projectId);
+		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agentEntity) {
 			throw new OperationalError('Agent not found or not accessible.');
 		}
@@ -611,7 +611,7 @@ export class AgentFrameworkService {
 			throw new OperationalError('Could not resolve user for credential access.');
 		}
 
-		const credentialProvider = new AgentFrameworkCredentialProvider(
+		const credentialProvider = new AgentsCredentialProvider(
 			Container.get(CredentialsService),
 			Container.get(CredentialsFinderService),
 			user,

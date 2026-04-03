@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { SdkAgentDto } from '../composables/useAgentApi';
+import type { AgentDto } from '../composables/useAgentApi';
 
 defineProps<{
-	agent: SdkAgentDto;
+	agent: AgentDto;
 }>();
 
 const emit = defineEmits<{

@@ -1,17 +1,11 @@
 import { type FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
-import {
-	AGENTS_LIST_VIEW,
-	AGENT_BUILDER_VIEW,
-	PROJECT_AGENTS,
-} from '@/features/agent-framework/constants';
+import { AGENTS_LIST_VIEW, AGENT_BUILDER_VIEW, PROJECT_AGENTS } from '@/features/agents/constants';
 
-const AgentsListView = async () =>
-	await import('@/features/agent-framework/views/AgentsListView.vue');
-const AgentBuilderView = async () =>
-	await import('@/features/agent-framework/views/AgentBuilderView.vue');
+const AgentsListView = async () => await import('@/features/agents/views/AgentsListView.vue');
+const AgentBuilderView = async () => await import('@/features/agents/views/AgentBuilderView.vue');
 
 export const AgentsModule: FrontendModuleDescription = {
-	id: 'agent-framework',
+	id: 'agents',
 	name: 'Agents',
 	description: 'Build and manage AI agents',
 	icon: 'robot',
@@ -67,7 +61,7 @@ export const AgentsModule: FrontendModuleDescription = {
 	},
 	resources: [
 		{
-			key: 'sdkAgent',
+			key: 'agent',
 			displayName: 'Agent',
 		},
 	],
