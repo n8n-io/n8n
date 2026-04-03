@@ -1,7 +1,7 @@
 import { computed, ref, watch } from 'vue';
 
-import type { SetupCardItem } from '@/features/setupPanel/setupPanel.types';
-import { isCardComplete } from '@/features/setupPanel/setupPanel.utils';
+import type { SetupCardItem, NodeSetupState } from '@/features/setupPanel/setupPanel.types';
+import { isCardComplete, isHttpRequestNodeType } from '@/features/setupPanel/setupPanel.utils';
 import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -26,6 +26,42 @@ function getCardNodeNames(card: SetupCardItem): string[] {
 /** Get the primary node type for a card (used in telemetry) */
 function getCardNodeType(card: SetupCardItem): string | undefined {
 	return card.nodeGroup ? card.nodeGroup.parentNode.type : card.state?.node.type;
+}
+
+/**
+ * Collect all node names that should be pinned when pinning a card.
+ * When a card shows the credential picker (showCredentialPicker), it is the
+ * primary card for that credential type — pin all nodes sharing it so the user
+ * doesn't have to repeat the action for sibling cards that only show parameters.
+ *
+ * HTTP Request nodes are excluded from shared pinning when their URLs differ,
+ * matching the card-grouping logic in `groupCredentialsByType` which treats
+ * same-credential-type + different-URL as separate integrations.
+ */
+function getNodeNamesToPinForCard(card: SetupCardItem): string[] {
+	const names = getCardNodeNames(card);
+
+	const states: NodeSetupState[] = [];
+	if (card.nodeGroup) {
+		if (card.nodeGroup.parentState) states.push(card.nodeGroup.parentState);
+		states.push(...card.nodeGroup.subnodeCards);
+	} else {
+		states.push(card.state);
+	}
+
+	for (const state of states) {
+		if (!state.showCredentialPicker || !state.allNodesUsingCredential) continue;
+
+		const isHttp = isHttpRequestNodeType(state.node.type);
+		const sourceUrl = isHttp ? String(state.node.parameters.url ?? '') : undefined;
+
+		for (const node of state.allNodesUsingCredential) {
+			if (isHttp && String(node.parameters.url ?? '') !== sourceUrl) continue;
+			names.push(node.name);
+		}
+	}
+
+	return [...new Set(names)];
 }
 
 export function useBuilderSetupCards() {
@@ -123,7 +159,8 @@ export function useBuilderSetupCards() {
 	function setCurrentCardPinData() {
 		const card = currentCard.value;
 		if (!card) return;
-		builderStore.setPinDataForNodes(getCardNodeNames(card));
+
+		builderStore.setPinDataForNodes(getNodeNamesToPinForCard(card));
 		builderStore.trackWorkflowBuilderJourney('setup_wizard_pin_data_set', {
 			node_type: getCardNodeType(card),
 			step: currentStepIndex.value + 1,
@@ -135,7 +172,7 @@ export function useBuilderSetupCards() {
 	function unsetCurrentCardPinData() {
 		const card = currentCard.value;
 		if (!card) return;
-		builderStore.unsetPinDataForNodes(getCardNodeNames(card));
+		builderStore.unsetPinDataForNodes(getNodeNamesToPinForCard(card));
 		builderStore.trackWorkflowBuilderJourney('setup_wizard_pin_data_unset', {
 			node_type: getCardNodeType(card),
 			step: currentStepIndex.value + 1,

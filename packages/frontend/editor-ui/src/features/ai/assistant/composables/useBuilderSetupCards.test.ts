@@ -700,6 +700,149 @@ describe('useBuilderSetupCards', () => {
 			expect(currentStepIndex.value).toBe(1);
 		});
 
+		it('setCurrentCardPinData also pins nodes from allNodesUsingCredential when card shows credential picker', () => {
+			const slackSend = createNode({ name: 'Slack Send', id: 'n1', type: 'n8n-nodes-base.slack' });
+			const slackUpdate = createNode({
+				name: 'Slack Update',
+				id: 'n2',
+				type: 'n8n-nodes-base.slack',
+			});
+			mockSetupCards.value = [
+				createCard({
+					node: slackSend,
+					credentialType: 'slackApi',
+					showCredentialPicker: true,
+					allNodesUsingCredential: [slackSend, slackUpdate],
+				}),
+				createCard({
+					node: slackUpdate,
+					credentialType: 'slackApi',
+					showCredentialPicker: false,
+				}),
+			];
+
+			const { setCurrentCardPinData } = getComposable();
+			setCurrentCardPinData();
+
+			expect(mockSetPinDataForNodes).toHaveBeenCalledWith(
+				expect.arrayContaining(['Slack Send', 'Slack Update']),
+			);
+		});
+
+		it('setCurrentCardPinData does not pin shared nodes when card only shows parameters', () => {
+			const slackSend = createNode({ name: 'Slack Send', id: 'n1', type: 'n8n-nodes-base.slack' });
+			const slackUpdate = createNode({
+				name: 'Slack Update',
+				id: 'n2',
+				type: 'n8n-nodes-base.slack',
+			});
+			mockSetupCards.value = [
+				createCard({
+					node: slackSend,
+					credentialType: 'slackApi',
+					showCredentialPicker: true,
+					allNodesUsingCredential: [slackSend, slackUpdate],
+				}),
+				createCard({
+					node: slackUpdate,
+					credentialType: 'slackApi',
+					showCredentialPicker: false,
+					allNodesUsingCredential: [slackSend, slackUpdate],
+				}),
+			];
+
+			const { setCurrentCardPinData, currentStepIndex } = getComposable();
+			// Move to the second card (parameter-only, no credential picker)
+			currentStepIndex.value = 1;
+			setCurrentCardPinData();
+
+			// Should only pin its own node, not the shared credential nodes
+			expect(mockSetPinDataForNodes).toHaveBeenCalledWith(['Slack Update']);
+		});
+
+		it('setCurrentCardPinData does not pin HTTP Request nodes with different URLs', () => {
+			const httpGitHub = createNode({
+				name: 'GitHub API',
+				id: 'n1',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: 'https://api.github.com' },
+			});
+			const httpSlack = createNode({
+				name: 'Slack API',
+				id: 'n2',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: 'https://slack.com/api' },
+			});
+			mockSetupCards.value = [
+				createCard({
+					node: httpGitHub,
+					credentialType: 'httpBasicAuth',
+					showCredentialPicker: true,
+					allNodesUsingCredential: [httpGitHub, httpSlack],
+				}),
+			];
+
+			const { setCurrentCardPinData } = getComposable();
+			setCurrentCardPinData();
+
+			// Should only pin the current node, not the one with a different URL
+			expect(mockSetPinDataForNodes).toHaveBeenCalledWith(['GitHub API']);
+		});
+
+		it('setCurrentCardPinData pins HTTP Request nodes with the same URL', () => {
+			const httpNode1 = createNode({
+				name: 'GitHub Repos',
+				id: 'n1',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: 'https://api.github.com' },
+			});
+			const httpNode2 = createNode({
+				name: 'GitHub Issues',
+				id: 'n2',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: 'https://api.github.com' },
+			});
+			mockSetupCards.value = [
+				createCard({
+					node: httpNode1,
+					credentialType: 'httpBasicAuth',
+					showCredentialPicker: true,
+					allNodesUsingCredential: [httpNode1, httpNode2],
+				}),
+			];
+
+			const { setCurrentCardPinData } = getComposable();
+			setCurrentCardPinData();
+
+			expect(mockSetPinDataForNodes).toHaveBeenCalledWith(
+				expect.arrayContaining(['GitHub Repos', 'GitHub Issues']),
+			);
+		});
+
+		it('unsetCurrentCardPinData unpins shared credential nodes symmetrically', () => {
+			const slackSend = createNode({ name: 'Slack Send', id: 'n1', type: 'n8n-nodes-base.slack' });
+			const slackUpdate = createNode({
+				name: 'Slack Update',
+				id: 'n2',
+				type: 'n8n-nodes-base.slack',
+			});
+			mockSetupCards.value = [
+				createCard({
+					node: slackSend,
+					credentialType: 'slackApi',
+					showCredentialPicker: true,
+					allNodesUsingCredential: [slackSend, slackUpdate],
+				}),
+			];
+
+			const { unsetCurrentCardPinData } = getComposable();
+			unsetCurrentCardPinData();
+
+			expect(mockUnsetPinDataForNodes).toHaveBeenCalledWith(
+				expect.arrayContaining(['Slack Send', 'Slack Update']),
+			);
+		});
+
 		it('handles node group cards for pin data', () => {
 			const parentNode = createNode({ name: 'AI Agent', id: 'agent-1' });
 			const subnodeCard = createCardState({
@@ -720,6 +863,35 @@ describe('useBuilderSetupCards', () => {
 
 			expect(mockSetPinDataForNodes).toHaveBeenCalledWith(
 				expect.arrayContaining(['AI Agent', 'OpenAI Chat Model']),
+			);
+		});
+
+		it('node group pins shared credential nodes when a subnode shows the credential picker', () => {
+			const parentNode = createNode({ name: 'AI Agent', id: 'agent-1' });
+			const modelNode = createNode({ name: 'OpenAI Chat Model', id: 'model-1' });
+			const otherModelNode = createNode({ name: 'OpenAI Embeddings', id: 'embed-1' });
+			mockSetupCards.value = [
+				{
+					nodeGroup: {
+						parentNode,
+						parentState: createCardState({ node: parentNode }),
+						subnodeCards: [
+							createCardState({
+								node: modelNode,
+								credentialType: 'openAiApi',
+								showCredentialPicker: true,
+								allNodesUsingCredential: [modelNode, otherModelNode],
+							}),
+						],
+					},
+				},
+			];
+
+			const { setCurrentCardPinData } = getComposable();
+			setCurrentCardPinData();
+
+			expect(mockSetPinDataForNodes).toHaveBeenCalledWith(
+				expect.arrayContaining(['AI Agent', 'OpenAI Chat Model', 'OpenAI Embeddings']),
 			);
 		});
 	});
