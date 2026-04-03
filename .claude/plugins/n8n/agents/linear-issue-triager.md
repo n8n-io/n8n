@@ -1,5 +1,5 @@
 ---
-name: n8n-linear-issue-triager
+name: linear-issue-triager
 description: Use this agent proactively when a Linear issue is created, updated, or needs comprehensive analysis. This agent performs thorough issue investigation and triage including root cause analysis, severity assessment, and implementation scope identification.
 model: inherit
 color: red

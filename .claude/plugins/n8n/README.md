@@ -15,7 +15,7 @@ plugins.
 | `n8n:content-design` | Product content designer for UI copy |
 | `n8n:linear-issue` | Fetch and analyze Linear issue with all related context |
 | `n8n:loom-transcript` | Fetch transcript from a Loom video URL |
-| `n8n:n8n-conventions` | Quick reference for n8n patterns |
+| `n8n:conventions` | Quick reference for n8n patterns |
 | `n8n:node-add-oauth` | Add OAuth2 credential support to an existing n8n node |
 | `n8n:reproduce-bug` | Reproduce a bug from a Linear ticket with a failing test |
 | `n8n:spec-driven-development` | Keep implementation and specs in sync |
@@ -24,15 +24,15 @@ plugins.
 
 | Command | Description |
 |---------|-------------|
-| `/n8n:n8n-plan PAY-XXX` | Plan implementation for a Linear ticket |
-| `/n8n:n8n-triage PAY-XXX` | Triage a Linear issue with comprehensive analysis |
+| `/n8n:plan PAY-XXX` | Plan implementation for a Linear ticket |
+| `/n8n:triage PAY-XXX` | Triage a Linear issue with comprehensive analysis |
 
 ## Agents
 
 | Agent | Description |
 |-------|-------------|
-| `n8n:n8n-developer` | Full-stack n8n development (frontend/backend/nodes) |
-| `n8n:n8n-linear-issue-triager` | Issue investigation and triage |
+| `n8n:developer` | Full-stack n8n development (frontend/backend/nodes) |
+| `n8n:linear-issue-triager` | Issue investigation and triage |
 
 ## Design Decisions
 
@@ -66,11 +66,11 @@ might only be needed for this project (local scope).
 │   ├── marketplace.json    # Marketplace manifest
 │   └── plugin.json         # Plugin identity
 ├── agents/
-│   ├── n8n-developer.md
-│   └── n8n-linear-issue-triager.md
+│   ├── developer.md
+│   └── linear-issue-triager.md
 ├── commands/
-│   ├── n8n-plan.md
-│   └── n8n-triage.md
+│   ├── plan.md
+│   └── triage.md
 ├── skills/
 │   ├── content-design/SKILL.md
 │   ├── create-issue/SKILL.md
@@ -78,7 +78,7 @@ might only be needed for this project (local scope).
 │   ├── create-skill/SKILL.md
 │   ├── linear-issue/SKILL.md
 │   ├── loom-transcript/SKILL.md
-│   ├── n8n-conventions/SKILL.md
+│   ├── conventions/SKILL.md
 │   ├── node-add-oauth/SKILL.md
 │   ├── reproduce-bug/SKILL.md
 │   ├── setup-mcps/SKILL.md
