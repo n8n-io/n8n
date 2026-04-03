@@ -570,7 +570,7 @@ const saveSettings = async () => {
 		toast.showError(
 			new Error(i18n.baseText('workflowSettings.showError.saveSettings1.errorMessage')),
 			i18n.baseText('workflowSettings.showError.saveSettings1.title'),
-			i18n.baseText('workflowSettings.showError.saveSettings1.message') + ':',
+			{ message: i18n.baseText('workflowSettings.showError.saveSettings1.message') + ':' },
 		);
 		return;
 	}
@@ -591,7 +591,7 @@ const saveSettings = async () => {
 				}),
 			),
 			i18n.baseText('workflowSettings.showError.saveSettings2.title'),
-			i18n.baseText('workflowSettings.showError.saveSettings2.message') + ':',
+			{ message: i18n.baseText('workflowSettings.showError.saveSettings2.message') + ':' },
 		);
 		return;
 	}
@@ -738,11 +738,9 @@ onMounted(async () => {
 
 		await Promise.all(promises);
 	} catch (error) {
-		toast.showError(
-			error,
-			'Problem loading settings',
-			'The following error occurred loading the data:',
-		);
+		toast.showError(error, 'Problem loading settings', {
+			message: 'The following error occurred loading the data:',
+		});
 	}
 
 	const workflowSettingsData = (workflowDocumentStore?.value?.getSettingsSnapshot() ??

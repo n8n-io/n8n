@@ -8,15 +8,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useI18n } from '@n8n/i18n';
 import { useExternalHooks } from './useExternalHooks';
 import { VIEWS } from '@/app/constants';
-import type { ApplicationError } from 'n8n-workflow';
 import { useStyles } from './useStyles';
-
-export interface NotificationErrorWithNodeAndDescription extends ApplicationError {
-	node: {
-		name: string;
-	};
-	description: string;
-}
 
 const stickyNotificationQueue: NotificationHandle[] = [];
 
@@ -134,9 +126,7 @@ export function useToast() {
 		return notification;
 	}
 
-	function collapsableDetails({ description, node }: NotificationErrorWithNodeAndDescription) {
-		if (!description) return '';
-
+	function collapsableDetails(description: string) {
 		const errorDescription =
 			description.length > 500 ? `${description.slice(0, 500)}...` : description;
 
@@ -149,13 +139,19 @@ export function useToast() {
 					>
 						${i18n.baseText('showMessage.showDetails')}
 					</summary>
-					<p>${node.name}: ${errorDescription}</p>
+					<p>${errorDescription}</p>
 				</details>
 			`;
 	}
 
-	function showError(e: Error | unknown, title: string, message?: string) {
-		const error = e as NotificationErrorWithNodeAndDescription;
+	function showError(
+		e: Error | unknown,
+		title: string,
+		options?: { message?: string; description?: string },
+	) {
+		const error = e as Error & { description?: string };
+		const message = options?.message;
+		const description = options?.description ?? error.description;
 		const messageLine = message ? `${message}<br/>` : '';
 		showMessage(
 			{
@@ -163,7 +159,7 @@ export function useToast() {
 				message: `
 					${messageLine}
 					<i>${error.message}</i>
-					${collapsableDetails(error)}`,
+					${description ? collapsableDetails(description) : ''}`,
 				type: 'error',
 				duration: 0,
 			},
