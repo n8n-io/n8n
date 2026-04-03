@@ -72,7 +72,6 @@ vi.mock('@/app/composables/useWorkflowState', async () => {
 	return {
 		...actual,
 		injectWorkflowState: vi.fn(() => ({
-			setWorkflowName: vi.fn(),
 			isWorkflowRunning: ref(false),
 		})),
 	};

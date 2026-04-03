@@ -68,7 +68,7 @@ const chatTriggerNode = computed(() =>
 const agentDisplayName = computed(() => {
 	const triggerName = chatTriggerNode.value?.parameters?.agentName;
 	if (typeof triggerName === 'string' && triggerName.trim()) return triggerName.trim();
-	return workflowsStore.workflowName || 'Workflow';
+	return workflowDocumentStore?.value?.name || 'Workflow';
 });
 
 const workflowAgent = computed<ChatModelDto | null>(() => {

@@ -26,7 +26,6 @@ vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
 	...(await importOriginal()),
 	injectWorkflowDocumentStore: vi.fn(),
 }));
-vi.mock('@/app/composables/useTelemetry');
 vi.mock('@/app/composables/useWorkflowSaving');
 vi.mock('@/app/composables/useRunWorkflow');
 vi.mock('@/features/workflows/canvas/canvas.eventBus');

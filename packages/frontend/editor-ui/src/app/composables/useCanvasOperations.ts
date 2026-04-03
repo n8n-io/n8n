@@ -2726,7 +2726,10 @@ export function useCanvasOperations() {
 			}
 
 			if (workflowData.name) {
-				workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty });
+				workflowDocumentStore.value?.setName(workflowData.name);
+				if (setStateDirty) {
+					uiStore.markStateDirty('metadata');
+				}
 			}
 
 			return workflowData;
@@ -3005,7 +3008,11 @@ export function useCanvasOperations() {
 			workflowDocumentStore.value?.setConnections(workflow.connections);
 		}
 		await addNodes(convertedNodes ?? [], { keepPristine: true });
-		await workflowState.getNewWorkflowData(name, projectsStore.currentProjectId);
+		const workflowData = await workflowState.getNewWorkflowData(
+			name,
+			projectsStore.currentProjectId,
+		);
+		workflowDocumentStore.value?.setName(workflowData.name);
 	}
 
 	function tryToOpenSubworkflowInNewTab(nodeId: string): boolean {

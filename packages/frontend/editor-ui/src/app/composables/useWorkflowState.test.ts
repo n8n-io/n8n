@@ -19,21 +19,6 @@ describe('useWorkflowState', () => {
 		workflowState = useWorkflowState();
 	});
 
-	describe('setWorkflowName()', () => {
-		it('should set the workflow name correctly', () => {
-			workflowState.setWorkflowName({
-				newName: 'New Workflow Name',
-				setStateDirty: false,
-			});
-			expect(workflowsStore.workflow.name).toBe('New Workflow Name');
-		});
-
-		it('should propagate name to workflowObject for pre-exec expressions', () => {
-			workflowState.setWorkflowName({ newName: 'WF Title', setStateDirty: false });
-			expect(workflowsStore.workflowObject.name).toBe('WF Title');
-		});
-	});
-
 	describe('markExecutionAsStopped', () => {
 		beforeEach(() => {
 			workflowsStore.workflowExecutionData = createTestWorkflowExecutionResponse({

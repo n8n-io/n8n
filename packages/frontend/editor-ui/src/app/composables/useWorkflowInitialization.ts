@@ -179,7 +179,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	async function handleDebugModeRoute() {
 		if (!isDebugRoute.value) return;
 
-		documentTitle.setDocumentTitle(workflowsStore.workflowName, 'DEBUG');
+		documentTitle.setDocumentTitle(currentWorkflowDocumentStore.value?.name ?? '', 'DEBUG');
 
 		if (!workflowsStore.isInDebugMode) {
 			const executionId = route.params.executionId;
@@ -257,17 +257,23 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 
 		const parentFolderId = route.query.parentFolderId as string | undefined;
 
-		await workflowState.getNewWorkflowData(
+		workflowState.setWorkflowId(workflowId.value);
+
+		const workflowDocumentId = createWorkflowDocumentId(workflowId.value);
+		currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
+
+		// Sync document store name → workflowObject + list cache (mirrors initializeWorkflowDocument)
+		currentWorkflowDocumentStore.value.onNameChange(({ payload }) => {
+			workflowsStore.workflowObject.name = payload.name;
+			workflowsListStore.updateWorkflowInCache(workflowId.value, { name: payload.name });
+		});
+
+		const workflowData = await workflowState.getNewWorkflowData(
 			undefined,
 			projectsStore.currentProjectId,
 			parentFolderId,
 		);
-
-		workflowState.setWorkflowId(workflowId.value);
-
-		// Create document store for new workflow
-		const workflowDocumentId = createWorkflowDocumentId(workflowId.value);
-		currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
+		currentWorkflowDocumentStore.value.setName(workflowData.name);
 		const homeProject = projectsStore.currentProject ?? projectsStore.personalProject ?? null;
 		currentWorkflowDocumentStore.value.setHomeProject(homeProject);
 

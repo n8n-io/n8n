@@ -1,8 +1,8 @@
-import { nextTick, reactive } from 'vue';
+import { reactive } from 'vue';
 import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import type { MockInstance } from 'vitest';
-import { waitFor, within } from '@testing-library/vue';
+import { fireEvent, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { FrontendSettings } from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -71,6 +71,14 @@ const createComponent = createComponentRenderer(WorkflowSettingsVue, {
 				template:
 					'<div role="dialog"><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
 			},
+			// Stub ElSwitch to prevent spurious update:model-value emissions in jsdom.
+			// userEvent.click simulates pointer movement that can trigger the switch
+			// during mouse path traversal, toggling executionTimeout and breaking save.
+			ElSwitch: {
+				props: ['modelValue', 'disabled'],
+				template:
+					'<span :data-test-id="$attrs[\'data-test-id\']" :aria-checked="!!modelValue" role="switch" />',
+			},
 		},
 	},
 });
@@ -100,8 +108,8 @@ describe('WorkflowSettingsVue', () => {
 			releaseChannel: 'stable',
 		});
 		vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
-		workflowsStore.workflowName = 'Test Workflow';
 		workflowsStore.workflowId = '1';
+		workflowDocumentStore.setName('Test Workflow');
 		// Populate workflowsById to mark workflow as existing (not new)
 		const testWorkflow = createTestWorkflow({
 			id: '1',
@@ -121,7 +129,7 @@ describe('WorkflowSettingsVue', () => {
 	it('should render correctly', async () => {
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = false;
 		const { getByTestId } = createComponent({ pinia });
-		await nextTick();
+		await flushPromises();
 		expect(getByTestId('workflow-settings-dialog')).toBeVisible();
 	});
 
@@ -129,7 +137,7 @@ describe('WorkflowSettingsVue', () => {
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = false;
 		const { getByTestId } = createComponent({ pinia });
 
-		await nextTick();
+		await flushPromises();
 
 		expect(
 			within(getByTestId('workflow-settings-dialog')).queryByTestId('workflow-caller-policy'),
@@ -140,7 +148,7 @@ describe('WorkflowSettingsVue', () => {
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
 		const { getByTestId } = createComponent({ pinia });
 
-		await nextTick();
+		await flushPromises();
 
 		expect(getByTestId('workflow-caller-policy')).toBeVisible();
 	});
@@ -149,7 +157,7 @@ describe('WorkflowSettingsVue', () => {
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
 		const { getByTestId } = createComponent({ pinia });
 
-		await nextTick();
+		await flushPromises();
 		const dropdownItems = await getDropdownItems(getByTestId('workflow-caller-policy'));
 		await userEvent.click(dropdownItems[2]);
 
@@ -161,7 +169,7 @@ describe('WorkflowSettingsVue', () => {
 			settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
 			const { getByTestId } = createComponent({ pinia });
 
-			await nextTick();
+			await flushPromises();
 			const dropdownItems = await getDropdownItems(getByTestId('error-workflow'));
 
 			// first is `- No Workflow -`, second is the workflow returned by
@@ -181,7 +189,7 @@ describe('WorkflowSettingsVue', () => {
 			});
 
 			const { getByTestId, getByRole } = createComponent({ pinia });
-			await nextTick();
+			await flushPromises();
 
 			const dropdownItems = await getDropdownItems(getByTestId('error-workflow'));
 			expect(dropdownItems[0]).toHaveTextContent('No Workflow');
@@ -203,12 +211,21 @@ describe('WorkflowSettingsVue', () => {
 			});
 
 			const { getByTestId, getByRole } = createComponent({ pinia });
-			await nextTick();
+			await flushPromises();
 
-			const dropdownItems = await getDropdownItems(getByTestId('error-workflow'));
+			// Open the error workflow dropdown
+			const errorWorkflowRow = getByTestId('error-workflow');
+			const combobox = within(errorWorkflowRow).getByRole('combobox');
+			await userEvent.click(combobox);
 
-			// Select "No Workflow" (first option)
-			await userEvent.click(dropdownItems[0]);
+			// Wait for dropdown to appear and select "No Workflow"
+			await waitFor(async () => {
+				const option = within(document.body as HTMLElement).getAllByRole('option');
+				const noWorkflow = option.find((o) => o.textContent?.includes('No Workflow'));
+				expect(noWorkflow).toBeTruthy();
+				await userEvent.click(noWorkflow!);
+			});
+			await flushPromises();
 
 			await userEvent.click(getByRole('button', { name: 'Save' }));
 
@@ -226,12 +243,20 @@ describe('WorkflowSettingsVue', () => {
 			});
 
 			const { getByTestId, getByRole } = createComponent({ pinia });
-			await nextTick();
+			await flushPromises();
 
-			const dropdownItems = await getDropdownItems(getByTestId('error-workflow'));
+			// Open the error workflow dropdown
+			const errorWorkflowRow = getByTestId('error-workflow');
+			await userEvent.click(within(errorWorkflowRow).getByRole('combobox'));
 
-			// Select the test workflow (second option)
-			await userEvent.click(dropdownItems[1]);
+			// Wait for dropdown and select the test workflow
+			await waitFor(async () => {
+				const options = within(document.body as HTMLElement).getAllByRole('option');
+				const testWorkflow = options.find((o) => o.textContent?.includes('Test Workflow'));
+				expect(testWorkflow).toBeTruthy();
+				await userEvent.click(testWorkflow!);
+			});
+			await flushPromises();
 
 			await userEvent.click(getByRole('button', { name: 'Save' }));
 
@@ -251,7 +276,7 @@ describe('WorkflowSettingsVue', () => {
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
 		const { getByTestId } = createComponent({ pinia });
 
-		await nextTick();
+		await flushPromises();
 
 		const dropdownItems = await getDropdownItems(getByTestId('workflow-caller-policy'));
 		await userEvent.click(dropdownItems[2]);
@@ -268,7 +293,7 @@ describe('WorkflowSettingsVue', () => {
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
 		const { getByTestId } = createComponent({ pinia });
 
-		await nextTick();
+		await flushPromises();
 
 		const dropdownItems = await getDropdownItems(getByTestId('workflow-caller-policy'));
 		await userEvent.click(dropdownItems[2]);
@@ -316,7 +341,7 @@ describe('WorkflowSettingsVue', () => {
 		async (testId, optionText, storeSetter) => {
 			storeSetter();
 			const { getByTestId } = createComponent({ pinia });
-			await nextTick();
+			await flushPromises();
 
 			const dropdownItems = await getDropdownItems(getByTestId(testId));
 
@@ -327,7 +352,7 @@ describe('WorkflowSettingsVue', () => {
 	it('should save time saved per execution correctly', async () => {
 		workflowDocumentStore.setSettings({ timeSavedMode: 'fixed' });
 		const { getByTestId, getByRole } = createComponent({ pinia });
-		await nextTick();
+		await flushPromises();
 		await waitFor(() => {
 			expect(getByTestId('workflow-settings-time-saved-per-execution')).toBeVisible();
 		});
@@ -350,7 +375,7 @@ describe('WorkflowSettingsVue', () => {
 		workflowDocumentStore.setSettings({ timeSavedMode: 'fixed', timeSavedPerExecution: 10 });
 
 		const { getByTestId, getByRole } = createComponent({ pinia });
-		await nextTick();
+		await flushPromises();
 		await waitFor(() => {
 			expect(getByTestId('workflow-settings-time-saved-per-execution')).toBeVisible();
 		});
@@ -377,7 +402,7 @@ describe('WorkflowSettingsVue', () => {
 		sourceControlStore.preferences.branchReadOnly = true;
 
 		const { getByTestId } = createComponent({ pinia });
-		await nextTick();
+		await flushPromises();
 		await waitFor(() => {
 			expect(getByTestId('workflow-settings-time-saved-per-execution')).toBeVisible();
 		});
@@ -402,7 +427,7 @@ describe('WorkflowSettingsVue', () => {
 		workflowsListStore.getWorkflowById.mockImplementation(() => readOnlyWorkflow);
 
 		const { getByTestId } = createComponent({ pinia });
-		await nextTick();
+		await flushPromises();
 		await waitFor(() => {
 			expect(getByTestId('workflow-settings-time-saved-per-execution')).toBeVisible();
 		});
@@ -417,7 +442,7 @@ describe('WorkflowSettingsVue', () => {
 	describe('Execution Order & Binary Mode', () => {
 		it('should render execution order dropdown with correct options', async () => {
 			const { getByTestId } = createComponent({ pinia });
-			await nextTick();
+			await flushPromises();
 
 			const dropdownItems = await getDropdownItems(
 				getByTestId('workflow-settings-execution-order'),
@@ -436,7 +461,7 @@ describe('WorkflowSettingsVue', () => {
 			workflowDocumentStore.setSettings({ executionOrder: 'v1', binaryMode: BINARY_MODE_COMBINED });
 
 			const { getByTestId, getByRole } = createComponent({ pinia });
-			await nextTick();
+			await flushPromises();
 
 			const dropdownItems = await getDropdownItems(
 				getByTestId('workflow-settings-execution-order'),
@@ -460,7 +485,7 @@ describe('WorkflowSettingsVue', () => {
 			workflowDocumentStore.setSettings({ executionOrder: 'v0', binaryMode: BINARY_MODE_COMBINED });
 
 			const { getByTestId, getByRole } = createComponent({ pinia });
-			await nextTick();
+			await flushPromises();
 
 			const dropdownItems = await getDropdownItems(
 				getByTestId('workflow-settings-execution-order'),
@@ -484,7 +509,7 @@ describe('WorkflowSettingsVue', () => {
 			workflowDocumentStore.setSettings({ executionOrder: 'v1', binaryMode: BINARY_MODE_COMBINED });
 
 			const { getByTestId, getByRole } = createComponent({ pinia });
-			await nextTick();
+			await flushPromises();
 
 			const dropdownItems = await getDropdownItems(
 				getByTestId('workflow-settings-execution-order'),
@@ -508,7 +533,7 @@ describe('WorkflowSettingsVue', () => {
 			workflowDocumentStore.setSettings({ executionOrder: 'v0', binaryMode: 'separate' });
 
 			const { getByTestId } = createComponent({ pinia });
-			await nextTick();
+			await flushPromises();
 
 			toast.showMessage.mockClear();
 
@@ -528,7 +553,7 @@ describe('WorkflowSettingsVue', () => {
 			});
 
 			const { getByTestId } = createComponent({ pinia });
-			await nextTick();
+			await flushPromises();
 
 			const dropdownItems = await getDropdownItems(
 				getByTestId('workflow-settings-execution-order'),
@@ -541,7 +566,7 @@ describe('WorkflowSettingsVue', () => {
 			sourceControlStore.preferences.branchReadOnly = true;
 
 			const { getByTestId } = createComponent({ pinia });
-			await nextTick();
+			await flushPromises();
 
 			const executionOrderDropdown = within(
 				getByTestId('workflow-settings-execution-order'),
@@ -566,7 +591,7 @@ describe('WorkflowSettingsVue', () => {
 			}));
 
 			const { getByTestId } = createComponent({ pinia });
-			await nextTick();
+			await flushPromises();
 
 			const executionOrderDropdown = within(
 				getByTestId('workflow-settings-execution-order'),
@@ -628,14 +653,14 @@ describe('WorkflowSettingsVue', () => {
 
 		it('should render credential resolver dropdown', async () => {
 			const { getByTestId } = createComponent({ pinia });
-			await nextTick();
+			await flushPromises();
 
 			expect(getByTestId('workflow-settings-credential-resolver')).toBeVisible();
 		});
 
 		it('should load credential resolvers on mount', async () => {
 			const { getByTestId } = createComponent({ pinia });
-			await nextTick();
+			await flushPromises();
 
 			await waitFor(() => {
 				expect(restApiClient.getCredentialResolvers).toHaveBeenCalled();
@@ -654,7 +679,7 @@ describe('WorkflowSettingsVue', () => {
 
 		it('should show "New" button for creating a new resolver', async () => {
 			const { getByTestId } = createComponent({ pinia });
-			await nextTick();
+			await flushPromises();
 
 			await waitFor(() => {
 				expect(getByTestId('workflow-settings-credential-resolver-create-new')).toBeInTheDocument();
@@ -663,7 +688,7 @@ describe('WorkflowSettingsVue', () => {
 
 		it('should not show "Edit" button when no resolver is selected', async () => {
 			const { queryByTestId } = createComponent({ pinia });
-			await nextTick();
+			await flushPromises();
 
 			await waitFor(() => {
 				expect(queryByTestId('workflow-settings-credential-resolver-edit')).not.toBeInTheDocument();
@@ -674,7 +699,7 @@ describe('WorkflowSettingsVue', () => {
 			workflowDocumentStore.setSettings({ credentialResolverId: 'resolver-1' });
 
 			const { getByTestId } = createComponent({ pinia });
-			await nextTick();
+			await flushPromises();
 
 			await waitFor(() => {
 				expect(getByTestId('workflow-settings-credential-resolver-edit')).toBeInTheDocument();
@@ -685,7 +710,7 @@ describe('WorkflowSettingsVue', () => {
 			workflowDocumentStore.setSettings({ credentialResolverId: 'resolver-n8n' });
 
 			const { queryByTestId } = createComponent({ pinia });
-			await nextTick();
+			await flushPromises();
 
 			await waitFor(() => {
 				expect(restApiClient.getCredentialResolverTypes).toHaveBeenCalled();
@@ -698,7 +723,7 @@ describe('WorkflowSettingsVue', () => {
 
 		it('should select a resolver from dropdown', async () => {
 			const { getByTestId, getByRole } = createComponent({ pinia });
-			await nextTick();
+			await flushPromises();
 
 			await waitFor(() => {
 				expect(restApiClient.getCredentialResolvers).toHaveBeenCalled();
@@ -708,30 +733,44 @@ describe('WorkflowSettingsVue', () => {
 				getByTestId('workflow-settings-credential-resolver'),
 			);
 
-			// Select "Test Resolver 1"
+			expect(dropdownItems).toHaveLength(3);
+			expect(dropdownItems[0]).toHaveTextContent('Test Resolver 1');
+			expect(dropdownItems[1]).toHaveTextContent('Test Resolver 2');
+			expect(dropdownItems[2]).toHaveTextContent('N8n Resolver');
+
 			await userEvent.click(dropdownItems[0]);
+			await flushPromises();
 
 			await userEvent.click(getByRole('button', { name: 'Save' }));
 
-			const callArgs = workflowsStore.updateWorkflow.mock.calls[0];
-			expect(callArgs[0]).toBe('1');
-			expect(callArgs[1].settings?.credentialResolverId).toBe('resolver-1');
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				'1',
+				expect.objectContaining({
+					settings: expect.objectContaining({ credentialResolverId: 'resolver-1' }),
+				}),
+			);
 		});
 
 		it('should save workflow with selected resolver', async () => {
 			const { getByTestId, getByRole } = createComponent({ pinia });
-			await nextTick();
+			await flushPromises();
 
 			await waitFor(() => {
 				expect(restApiClient.getCredentialResolvers).toHaveBeenCalled();
 			});
 
-			const dropdownItems = await getDropdownItems(
-				getByTestId('workflow-settings-credential-resolver'),
-			);
+			// Open the credential resolver dropdown
+			const resolverContainer = getByTestId('workflow-settings-credential-resolver');
+			await userEvent.click(within(resolverContainer).getByRole('combobox'));
 
-			// Select "Test Resolver 2"
-			await userEvent.click(dropdownItems[1]);
+			// Wait for dropdown and select "Test Resolver 2"
+			await waitFor(async () => {
+				const options = within(document.body as HTMLElement).getAllByRole('option');
+				const resolver = options.find((o) => o.textContent?.includes('Test Resolver 2'));
+				expect(resolver).toBeTruthy();
+				await userEvent.click(resolver!);
+			});
+			await flushPromises();
 
 			await userEvent.click(getByRole('button', { name: 'Save' }));
 
@@ -741,29 +780,55 @@ describe('WorkflowSettingsVue', () => {
 		});
 
 		it('should save with empty credentialResolverId when resolver is cleared', async () => {
-			// Element Plus clearable sets the model value to '' when the clear icon is clicked.
-			// The clear icon requires CSS hover state which jsdom cannot simulate,
-			// so we verify the save behavior when the value is already empty.
-			workflowDocumentStore.setSettings({ credentialResolverId: '' });
+			workflowDocumentStore.setSettings({ credentialResolverId: 'resolver-1' });
 
-			const { getByRole } = createComponent({ pinia });
-			// flushPromises drains the full microtask queue, ensuring onMounted's
-			// Promise.all (loadCredentialResolvers, loadWorkflows, etc.) fully resolves
-			// and workflowSettings.value is initialized before we click Save.
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await flushPromises();
+
+			await waitFor(() => {
+				expect(restApiClient.getCredentialResolvers).toHaveBeenCalled();
+			});
+
+			const dropdown = getByTestId('workflow-settings-credential-resolver');
+			const input = dropdown.querySelector('input') as HTMLInputElement;
+
+			// Wait for the select to display the selected resolver
+			await waitFor(() => {
+				expect(input?.value).toBe('Test Resolver 1');
+			});
+
+			// Hover over the select trigger to reveal the clear icon.
+			// Element Plus toggles the clear icon via a JS mouseenter handler on
+			// .select-trigger (not CSS :hover), and Vue re-renders asynchronously.
+			const selectTrigger = dropdown.querySelector('.select-trigger') as HTMLElement;
+			const arrowIcon = dropdown.querySelector('.el-icon');
+			selectTrigger.dispatchEvent(new MouseEvent('mouseenter', { bubbles: false }));
+
+			// Wait for Vue to swap the arrow icon for the clear icon (different VNode keys)
+			await waitFor(() => {
+				expect(dropdown.querySelector('.el-icon')).not.toBe(arrowIcon);
+			});
+
+			// Click the clear icon
+			const clearIcon = dropdown.querySelector('.el-icon') as HTMLElement;
+			await fireEvent.click(clearIcon);
 			await flushPromises();
 
 			await userEvent.click(getByRole('button', { name: 'Save' }));
 
-			const callArgs = workflowsStore.updateWorkflow.mock.calls[0];
-			expect(callArgs[0]).toBe('1');
-			expect(callArgs[1].settings?.credentialResolverId).toBe('');
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				'1',
+				expect.objectContaining({
+					settings: expect.objectContaining({ credentialResolverId: '' }),
+				}),
+			);
 		});
 
 		it('should disable credential resolver dropdown when environment is read-only', async () => {
 			sourceControlStore.preferences.branchReadOnly = true;
 
 			const { getByTestId } = createComponent({ pinia });
-			await nextTick();
+			await flushPromises();
 
 			const dropdownContainer = getByTestId('workflow-settings-credential-resolver');
 			const input = dropdownContainer.querySelector('input');
@@ -786,7 +851,7 @@ describe('WorkflowSettingsVue', () => {
 			}));
 
 			const { getByTestId } = createComponent({ pinia });
-			await nextTick();
+			await flushPromises();
 
 			const dropdownContainer = getByTestId('workflow-settings-credential-resolver');
 			const input = dropdownContainer.querySelector('input');
@@ -799,7 +864,7 @@ describe('WorkflowSettingsVue', () => {
 			});
 
 			const { getByTestId } = createComponent({ pinia });
-			await nextTick();
+			await flushPromises();
 
 			await waitFor(() => {
 				expect(restApiClient.getCredentialResolvers).toHaveBeenCalled();
@@ -903,6 +968,13 @@ describe('WorkflowSettingsVue', () => {
 	});
 
 	describe('Redaction Policy', () => {
+		it('should not render redaction policy when env feature flag is missing', async () => {
+			const { queryByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(queryByTestId('workflow-settings-redaction-policy')).not.toBeInTheDocument();
+		});
+
 		it('should not render redaction policy when redaction module is inactive', async () => {
 			vi.spyOn(settingsStore, 'isModuleActive').mockImplementation(
 				(name: string) => name !== 'redaction',
@@ -918,7 +990,7 @@ describe('WorkflowSettingsVue', () => {
 			workflowsListStore.getWorkflowById.mockImplementation(() => workflowWithRedactionScope);
 
 			const { queryByTestId } = createComponent({ pinia });
-			await nextTick();
+			await flushPromises();
 
 			expect(queryByTestId('workflow-settings-redaction-policy')).not.toBeInTheDocument();
 		});
@@ -927,7 +999,7 @@ describe('WorkflowSettingsVue', () => {
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 
 			const { queryByTestId } = createComponent({ pinia });
-			await nextTick();
+			await flushPromises();
 
 			expect(queryByTestId('workflow-settings-redaction-policy')).not.toBeInTheDocument();
 		});
@@ -944,7 +1016,7 @@ describe('WorkflowSettingsVue', () => {
 			workflowsListStore.getWorkflowById.mockImplementation(() => workflowWithRedactionScope);
 
 			const { getByTestId } = createComponent({ pinia });
-			await nextTick();
+			await flushPromises();
 
 			expect(getByTestId('workflow-settings-redaction-policy')).toBeVisible();
 		});
@@ -962,7 +1034,7 @@ describe('WorkflowSettingsVue', () => {
 			workflowsListStore.getWorkflowById.mockImplementation(() => workflowWithRedactionScope);
 
 			const { getByTestId } = createComponent({ pinia });
-			await nextTick();
+			await flushPromises();
 
 			const productionItems = await getDropdownItems(
 				getByTestId('workflow-settings-redact-production-select'),
@@ -981,6 +1053,7 @@ describe('WorkflowSettingsVue', () => {
 
 		it('should save redaction policy as non-manual when only production is set to redact', async () => {
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+			settingsStore.settings.envFeatureFlags.N8N_ENV_FEAT_REDACTION_POLICY = true;
 
 			const workflowWithRedactionScope = createTestWorkflow({
 				id: '1',
@@ -992,14 +1065,24 @@ describe('WorkflowSettingsVue', () => {
 			workflowsListStore.getWorkflowById.mockImplementation(() => workflowWithRedactionScope);
 
 			const { getByTestId, getByRole } = createComponent({ pinia });
-			await nextTick();
+			await flushPromises();
 
-			const productionItems = await getDropdownItems(
-				getByTestId('workflow-settings-redact-production-select'),
-			);
-			await userEvent.click(productionItems[1]);
+			// Open the production redaction dropdown
+			const productionSelect = getByTestId('workflow-settings-redact-production-select');
+			await userEvent.click(within(productionSelect).getByRole('combobox'));
 
+			// Select "Redact"
+			await waitFor(async () => {
+				const options = within(document.body as HTMLElement).getAllByRole('option');
+				const redactOption = options.find((o) => o.textContent?.trim() === 'Redact');
+				expect(redactOption).toBeTruthy();
+				await userEvent.click(redactOption!);
+			});
+			await flushPromises();
+
+			toast.showError.mockClear();
 			await userEvent.click(getByRole('button', { name: 'Save' }));
+			expect(toast.showError).not.toHaveBeenCalled();
 
 			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
 				expect.any(String),
@@ -1022,17 +1105,31 @@ describe('WorkflowSettingsVue', () => {
 			workflowsListStore.getWorkflowById.mockImplementation(() => workflowWithRedactionScope);
 
 			const { getByTestId, getByRole } = createComponent({ pinia });
-			await nextTick();
+			await flushPromises();
 
-			const productionItems = await getDropdownItems(
-				getByTestId('workflow-settings-redact-production-select'),
-			);
-			await userEvent.click(productionItems[1]);
+			// Open the production redaction dropdown and select "Redact"
+			const productionSelect = getByTestId('workflow-settings-redact-production-select');
+			await userEvent.click(within(productionSelect).getByRole('combobox'));
+			await waitFor(async () => {
+				const options = within(document.body as HTMLElement).getAllByRole('option');
+				const redactOption = options.find((o) => o.textContent?.trim() === 'Redact');
+				expect(redactOption).toBeTruthy();
+				await userEvent.click(redactOption!);
+			});
+			await flushPromises();
 
-			const manualItems = await getDropdownItems(
-				getByTestId('workflow-settings-redact-manual-select'),
-			);
-			await userEvent.click(manualItems[1]);
+			// Open the manual redaction dropdown and select "Redact"
+			const manualSelect = getByTestId('workflow-settings-redact-manual-select');
+			await userEvent.click(within(manualSelect).getByRole('combobox'));
+			await waitFor(async () => {
+				const options = within(document.body as HTMLElement).getAllByRole('option');
+				const redactOption = options.find(
+					(o) => o.textContent?.trim() === 'Redact' && !o.classList.contains('selected'),
+				);
+				expect(redactOption).toBeTruthy();
+				await userEvent.click(redactOption!);
+			});
+			await flushPromises();
 
 			await userEvent.click(getByRole('button', { name: 'Save' }));
 
@@ -1046,6 +1143,22 @@ describe('WorkflowSettingsVue', () => {
 
 		it('should disable production redaction select and force "Redact" when dynamic credentials are configured', async () => {
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+			vi.mocked(restApiClient.getCredentialResolvers).mockResolvedValue([
+				{
+					id: 'resolver-1',
+					name: 'Test Resolver 1',
+					type: 'editable-type',
+					config: '{}',
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				},
+			]);
+			vi.mocked(restApiClient.getCredentialResolverTypes).mockResolvedValue([
+				{ name: 'editable-type', displayName: 'Editable', options: [] },
+			]);
+			const rbacStore = useRBACStore();
+			rbacStore.addGlobalScope('credentialResolver:list');
+
 			const workflowWithRedactionScope = createTestWorkflow({
 				id: '1',
 				name: 'Test Workflow',
@@ -1055,17 +1168,21 @@ describe('WorkflowSettingsVue', () => {
 			workflowsListStore.workflowsById = { '1': workflowWithRedactionScope };
 			workflowsListStore.getWorkflowById.mockImplementation(() => workflowWithRedactionScope);
 
-			workflowDocumentStore.setSettings({ credentialResolverId: 'some-resolver-id' });
+			workflowDocumentStore.setSettings({ credentialResolverId: 'resolver-1' });
 
 			const { getByTestId } = createComponent({ pinia });
 			await flushPromises();
 
-			await nextTick();
+			// Verify the credential resolver dropdown shows the selected resolver
+			await waitFor(() => {
+				const resolverDropdown = getByTestId('workflow-settings-credential-resolver');
+				const resolverInput = resolverDropdown.querySelector('input') as HTMLInputElement;
+				expect(resolverInput.value).toBe('Test Resolver 1');
+			});
 
-			// Verify the dropdown cannot be opened (disabled by workflowHasDynamicCredentials)
 			const productionSelect = getByTestId('workflow-settings-redact-production-select');
-			const dropdownItems = await getDropdownItems(productionSelect).catch(() => null);
-			expect(dropdownItems).toBeNull();
+			const input = productionSelect.querySelector('input');
+			expect(input).toBeDisabled();
 		});
 	});
 });

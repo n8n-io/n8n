@@ -37,8 +37,8 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 		currentProjectId: 'p1',
 	}),
 }));
-vi.mock('@/app/stores/workflows.store', () => ({
-	useWorkflowsStore: () => ({ workflow: { name: 'WF' } }),
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	injectWorkflowDocumentStore: () => ref({ name: 'WF' }),
 }));
 
 // Command groups
