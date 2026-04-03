@@ -399,6 +399,77 @@ describe('useWorkflowSetupState – node grouping', () => {
 		expect(slackCard!.nodeGroup).toBeUndefined();
 	});
 
+	it('should assign shared subnode to the parent that requires setup, not to a no-setup parent', () => {
+		const researchAgent = createNode({
+			name: 'Research Agent',
+			type: '@n8n/n8n-nodes-langchain.agent',
+			parameters: {
+				options: {
+					systemMessage: '<__PLACEHOLDER_VALUE__Enter instructions__>',
+				},
+			},
+		});
+		const factCheckAgent = createNode({
+			name: 'Fact-Check Agent',
+			type: '@n8n/n8n-nodes-langchain.agent',
+		});
+		const llmNode = createNode({
+			name: 'GPT-4.1 Mini Model',
+			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+		});
+
+		mockWorkflowDocumentStore.allNodes = [researchAgent, factCheckAgent, llmNode];
+
+		// LLM node needs openAiApi credential
+		mockGetNodeTypeDisplayableCredentials.mockImplementation((_store, node) => {
+			if ((node as INodeUi).type === '@n8n/n8n-nodes-langchain.lmChatOpenAi')
+				return [{ name: 'openAiApi' }];
+			return [];
+		});
+		credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
+			displayName: 'OpenAI API',
+		});
+		// Research Agent has a placeholder parameter issue
+		mockGetNodeParametersIssues.mockImplementation((_store, node) => {
+			if ((node as INodeUi).name === 'Research Agent')
+				return { systemMessage: ['Parameter is required'] };
+			return {};
+		});
+		mockWorkflowDocumentStore.getNodeByName = vi.fn((name: string) => {
+			if (name === 'Research Agent') return researchAgent;
+			if (name === 'Fact-Check Agent') return factCheckAgent;
+			if (name === 'GPT-4.1 Mini Model') return llmNode;
+			return null;
+		});
+
+		// Both agents share the same LLM subnode
+		workflowsStore.connectionsByDestinationNode = {
+			'Research Agent': {
+				ai_languageModel: [[{ node: 'GPT-4.1 Mini Model', type: 'ai_languageModel', index: 0 }]],
+			},
+			'Fact-Check Agent': {
+				ai_languageModel: [[{ node: 'GPT-4.1 Mini Model', type: 'ai_languageModel', index: 0 }]],
+			},
+		};
+
+		const { setupCards } = useWorkflowSetupState();
+
+		// Should produce ONE group card with Research Agent as parent (not Fact-Check Agent)
+		const groupCards = setupCards.value.filter((c) => c.nodeGroup);
+		expect(groupCards).toHaveLength(1);
+		expect(groupCards[0].nodeGroup!.parentNode.name).toBe('Research Agent');
+		expect(groupCards[0].nodeGroup!.subnodeCards).toHaveLength(1);
+		expect(groupCards[0].nodeGroup!.subnodeCards[0].node.name).toBe('GPT-4.1 Mini Model');
+
+		// Fact-Check Agent should NOT appear as a separate card
+		const factCheckCards = setupCards.value.filter(
+			(c) =>
+				c.state?.node.name === 'Fact-Check Agent' ||
+				c.nodeGroup?.parentNode.name === 'Fact-Check Agent',
+		);
+		expect(factCheckCards).toHaveLength(0);
+	});
+
 	it('should keep parent node as regular card if no sub-nodes need setup', () => {
 		const agentNode = createNode({
 			name: 'AI Agent',

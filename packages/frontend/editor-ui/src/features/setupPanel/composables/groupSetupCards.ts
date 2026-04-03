@@ -108,9 +108,14 @@ export function groupSetupCards(
 	const claimedNodeNames = new Set<string>();
 	const nodeGroups = new Map<string, NodeGroupItem>();
 
-	const sortedRootParents = [...rootParentNames].sort(
-		(a, b) => executionOrder.indexOf(a) - executionOrder.indexOf(b),
-	);
+	const sortedRootParents = [...rootParentNames].sort((a, b) => {
+		const indexA = executionOrder.indexOf(a);
+		const indexB = executionOrder.indexOf(b);
+		if (indexA === -1 && indexB === -1) return 0;
+		if (indexA === -1) return 1;
+		if (indexB === -1) return -1;
+		return indexA - indexB;
+	});
 
 	for (const rootParentName of sortedRootParents) {
 		const rootParentNode = nodes.find((n) => n.name === rootParentName);
