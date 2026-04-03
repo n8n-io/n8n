@@ -640,6 +640,8 @@ export type ModalState = {
 export interface NewCredentialsModal extends ModalState {
 	showAuthSelector?: boolean;
 	forceManualMode?: boolean;
+	projectId?: string;
+	suggestedName?: string;
 }
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';
@@ -872,7 +874,8 @@ export type CloudUpdateLinkSourceType =
 	| 'custom-roles-list'
 	| 'main-sidebar'
 	| 'chat-hub'
-	| 'empty-state-builder-prompt';
+	| 'empty-state-builder-prompt'
+	| 'instance-ai';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -900,7 +903,8 @@ export type UTMCampaign =
 	| 'upgrade-builder'
 	| 'upgrade-custom-roles'
 	| 'upgrade-canvas-nav'
-	| 'upgrade-main-sidebar';
+	| 'upgrade-main-sidebar'
+	| 'upgrade-instance-ai';
 
 export type AddedNode = {
 	type: string;

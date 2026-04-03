@@ -129,7 +129,7 @@ describe('CodeWorkflowBuilder Integration', () => {
 	});
 
 	describe('routing to CodeWorkflowBuilder', () => {
-		it('should route to CodeWorkflowBuilder when codeBuilder feature flag is true', async () => {
+		it('should route to CodeWorkflowBuilder', async () => {
 			const mockStreamOutput: StreamOutput = {
 				messages: [
 					{
@@ -148,9 +148,7 @@ describe('CodeWorkflowBuilder Integration', () => {
 			const payload: ChatPayload = {
 				id: 'test-123',
 				message: 'Create a workflow that sends emails',
-				featureFlags: {
-					codeBuilder: true,
-				},
+				featureFlags: {},
 			};
 
 			const generator = agent.chat(payload, 'user-123');
@@ -172,36 +170,6 @@ describe('CodeWorkflowBuilder Integration', () => {
 			expect(result.value).toEqual(mockStreamOutput);
 		});
 
-		it('should route to CodeWorkflowBuilder when codeBuilder is explicitly true', async () => {
-			const mockStreamOutput: StreamOutput = {
-				messages: [
-					{
-						role: 'assistant',
-						type: 'message',
-						text: 'Generated workflow',
-					},
-				],
-			};
-
-			mockChatFn.mockImplementation(async function* () {
-				yield mockStreamOutput;
-			});
-
-			const payload: ChatPayload = {
-				id: 'test-456',
-				message: 'Create a chatbot workflow',
-				featureFlags: {
-					codeBuilder: true,
-				},
-			};
-
-			const generator = agent.chat(payload, 'user-456');
-			await generator.next();
-
-			expect(CodeWorkflowBuilder).toHaveBeenCalled();
-			expect(mockChatFn).toHaveBeenCalledWith(payload, 'user-456', undefined);
-		});
-
 		it('should pass abort signal to CodeWorkflowBuilder', async () => {
 			const controller = new AbortController();
 
@@ -214,9 +182,7 @@ describe('CodeWorkflowBuilder Integration', () => {
 			const payload: ChatPayload = {
 				id: 'test-789',
 				message: 'Build a workflow',
-				featureFlags: {
-					codeBuilder: true,
-				},
+				featureFlags: {},
 			};
 
 			const generator = agent.chat(payload, 'user-789', controller.signal);
@@ -241,9 +207,7 @@ describe('CodeWorkflowBuilder Integration', () => {
 			const payload: ChatPayload = {
 				id: 'test-types',
 				message: 'Create workflow',
-				featureFlags: {
-					codeBuilder: true,
-				},
+				featureFlags: {},
 			};
 
 			const generator = agentWithDirs.chat(payload, 'user-types');
@@ -295,9 +259,7 @@ describe('CodeWorkflowBuilder Integration', () => {
 			const payload: ChatPayload = {
 				id: 'test-stream',
 				message: 'Create a workflow',
-				featureFlags: {
-					codeBuilder: true,
-				},
+				featureFlags: {},
 			};
 
 			const generator = agent.chat(payload, 'user-stream');
@@ -308,39 +270,6 @@ describe('CodeWorkflowBuilder Integration', () => {
 
 			expect(results).toHaveLength(chunks.length);
 			expect(results).toEqual(chunks);
-		});
-	});
-
-	describe('multi-agent system fallback', () => {
-		it('should NOT route to CodeWorkflowBuilder when codeBuilder is false', async () => {
-			const payload: ChatPayload = {
-				id: 'test-multi-agent',
-				message: 'Create a workflow',
-				featureFlags: {
-					codeBuilder: false,
-				},
-			};
-
-			// For multi-agent system, we need to mock the stream processor
-			// since it won't use CodeWorkflowBuilder
-			// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-			const { createStreamProcessor } = jest.requireMock('@/utils/stream-processor') as {
-				createStreamProcessor: jest.Mock;
-			};
-			createStreamProcessor.mockReturnValue(
-				(async function* () {
-					yield {
-						messages: [{ role: 'assistant', type: 'message', text: 'Multi-agent response' }],
-					};
-				})(),
-			);
-
-			const generator = agent.chat(payload, 'user-multi');
-			await generator.next();
-
-			// CodeWorkflowBuilder should NOT be called
-			expect(CodeWorkflowBuilder).not.toHaveBeenCalled();
-			expect(mockChatFn).not.toHaveBeenCalled();
 		});
 	});
 
@@ -376,9 +305,7 @@ describe('CodeWorkflowBuilder Integration', () => {
 				workflowContext: {
 					currentWorkflow,
 				},
-				featureFlags: {
-					codeBuilder: true,
-				},
+				featureFlags: {},
 			};
 
 			const generator = agent.chat(payload, 'user-context');
@@ -409,9 +336,7 @@ describe('CodeWorkflowBuilder Integration', () => {
 			const payload: ChatPayload = {
 				id: 'test-error',
 				message: 'Create a workflow',
-				featureFlags: {
-					codeBuilder: true,
-				},
+				featureFlags: {},
 			};
 
 			const generator = agent.chat(payload, 'user-error');

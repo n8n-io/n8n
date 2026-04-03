@@ -14,6 +14,7 @@ import { UrlService } from '@/services/url.service';
 
 import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from './constants';
 import { OidcService } from './oidc.service.ee';
+import { renderOidcTestFailure, renderOidcTestSuccess } from './views/oidc-test-result';
 
 @RestController('/sso/oidc')
 export class OidcController {
@@ -49,6 +50,29 @@ export class OidcController {
 		return config;
 	}
 
+	@Post('/config/test')
+	@Licensed('feat:oidc')
+	@GlobalScope('oidc:manage')
+	async testConnection(_req: AuthenticatedRequest, res: Response) {
+		const authorization = await this.oidcService.generateTestLoginUrl();
+		const { samesite, secure } = this.globalConfig.auth.cookie;
+
+		res.cookie(OIDC_STATE_COOKIE_NAME, authorization.state, {
+			maxAge: 15 * Time.minutes.toMilliseconds,
+			httpOnly: true,
+			sameSite: samesite,
+			secure,
+		});
+		res.cookie(OIDC_NONCE_COOKIE_NAME, authorization.nonce, {
+			maxAge: 15 * Time.minutes.toMilliseconds,
+			httpOnly: true,
+			sameSite: samesite,
+			secure,
+		});
+
+		return { url: authorization.url.toString() };
+	}
+
 	@Get('/login', { skipAuth: true })
 	@Licensed('feat:oidc')
 	async redirectToAuthProvider(_req: Request, res: Response) {
@@ -70,7 +94,7 @@ export class OidcController {
 		res.redirect(authorization.url.toString());
 	}
 
-	@Get('/callback', { skipAuth: true })
+	@Get('/callback', { skipAuth: true, usesTemplates: true })
 	@Licensed('feat:oidc')
 	async callbackHandler(req: AuthlessRequest, res: Response) {
 		const fullUrl = `${this.urlService.getInstanceBaseUrl()}${req.originalUrl}`;
@@ -89,12 +113,24 @@ export class OidcController {
 			throw new BadRequestError('Invalid nonce');
 		}
 
-		const user = await this.oidcService.loginUser(callbackUrl, state, nonce);
+		const stateInfo = this.oidcService.verifyState(state);
 
 		res.clearCookie(OIDC_STATE_COOKIE_NAME);
 		res.clearCookie(OIDC_NONCE_COOKIE_NAME);
+
+		if (stateInfo.testMode) {
+			try {
+				const result = await this.oidcService.processTestCallback(callbackUrl, state, nonce);
+				return res.send(renderOidcTestSuccess(result));
+			} catch (error) {
+				return res.send(renderOidcTestFailure(error));
+			}
+		}
+
+		const user = await this.oidcService.loginUser(callbackUrl, state, nonce);
+
 		this.authService.issueCookie(res, user, true, req.browserId);
 
-		res.redirect('/');
+		return res.redirect('/');
 	}
 }
