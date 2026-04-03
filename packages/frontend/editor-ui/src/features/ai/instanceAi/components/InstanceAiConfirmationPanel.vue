@@ -5,6 +5,7 @@ import { computed, ref } from 'vue';
 import { useInstanceAiStore, type PendingConfirmationItem } from '../instanceAi.store';
 import { useToolLabel } from '../toolLabels';
 import DomainAccessApproval from './DomainAccessApproval.vue';
+import GatewayResourceDecision from './GatewayResourceDecision.vue';
 import InstanceAiCredentialSetup from './InstanceAiCredentialSetup.vue';
 import type { QuestionAnswer } from './InstanceAiQuestions.vue';
 import InstanceAiQuestions from './InstanceAiQuestions.vue';
@@ -137,7 +138,7 @@ function handlePlanRequestChanges(requestId: string, feedback: string) {
 	void store.confirmAction(requestId, false, undefined, undefined, undefined, feedback);
 }
 
-/** True when every item in the approval-wrapped group is a generic approval (not domain access). */
+/** True when every item in the group is a generic approval (not domain/cred/text). */
 function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 	return items.every((item) => !item.toolCall.confirmation!.domainAccess);
 }
@@ -248,6 +249,20 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 						</div>
 					</div>
 				</div>
+				<!-- Resource-access decision (gateway permission mode) -->
+				<GatewayResourceDecision
+					v-else-if="
+						chunk.item.toolCall.confirmation!.inputType === 'resource-decision' &&
+						chunk.item.toolCall.confirmation!.resourceDecision
+					"
+					:key="'rd-' + chunk.item.toolCall.confirmation!.requestId"
+					:class="$style.confirmation"
+					data-test-id="instance-ai-gateway-confirmation-panel"
+					:request-id="chunk.item.toolCall.confirmation!.requestId"
+					:resource="chunk.item.toolCall.confirmation!.resourceDecision.resource"
+					:description="chunk.item.toolCall.confirmation!.resourceDecision.description"
+					:options="chunk.item.toolCall.confirmation!.resourceDecision.options"
+				/>
 			</template>
 
 			<!-- ============ Approval-wrapped group ============ -->

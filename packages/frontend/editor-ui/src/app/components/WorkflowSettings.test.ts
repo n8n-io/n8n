@@ -1006,8 +1006,6 @@ describe('WorkflowSettingsVue', () => {
 
 		it('should render redaction policy when module is active and user has scope', async () => {
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
-			settingsStore.settings.envFeatureFlags.N8N_ENV_FEAT_REDACTION_POLICY = true;
-
 			const workflowWithRedactionScope = createTestWorkflow({
 				id: '1',
 				name: 'Test Workflow',
