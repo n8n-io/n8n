@@ -128,7 +128,11 @@ export class MemoryMongoDbChat implements INodeType {
 		}
 
 		try {
-			const client = new MongoClient(connectionString);
+			const client = new MongoClient(connectionString, {
+				minPoolSize: 0,
+				maxPoolSize: 1,
+				maxIdleTimeMS: 30_000,
+			});
 			await client.connect();
 
 			const db = client.db(dbName);
