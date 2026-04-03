@@ -199,7 +199,7 @@ describe('toolsAgentExecute', () => {
 		});
 
 		const mockTracingConfig = {
-			runName: '[Test Workflow] Test Node',
+			runName: 'Test Node',
 			metadata: { execution_id: 'test-123', workflow: {}, node: 'Test Node' },
 		};
 		const tracingSpy = jest.spyOn(tracing, 'getTracingConfig').mockReturnValue(mockTracingConfig);
