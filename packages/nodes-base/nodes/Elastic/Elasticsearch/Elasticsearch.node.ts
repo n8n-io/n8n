@@ -393,7 +393,7 @@ export class Elasticsearch implements INodeType {
 						const errorData = itemData.error as IDataObject;
 						const message = errorData.type as string;
 						const description = errorData.reason as string;
-						const itemIndex = parseInt(Object.keys(bulkBody)[j]);
+						const itemIndex = parseInt(Object.keys(bulkBody)[j], 10);
 						if (this.continueOnFail()) {
 							returnData.push(
 								...this.helpers.constructExecutionMetaData(
@@ -412,7 +412,7 @@ export class Elasticsearch implements INodeType {
 					}
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(itemData),
-						{ itemData: { item: parseInt(Object.keys(bulkBody)[j]) } },
+						{ itemData: { item: parseInt(Object.keys(bulkBody)[j], 10) } },
 					);
 					returnData.push(...executionData);
 				}
@@ -427,7 +427,7 @@ export class Elasticsearch implements INodeType {
 					const errorData = itemData.error as IDataObject;
 					const message = errorData.type as string;
 					const description = errorData.reason as string;
-					const itemIndex = parseInt(Object.keys(bulkBody)[j]);
+					const itemIndex = parseInt(Object.keys(bulkBody)[j], 10);
 					if (this.continueOnFail()) {
 						returnData.push(
 							...this.helpers.constructExecutionMetaData(
@@ -446,7 +446,7 @@ export class Elasticsearch implements INodeType {
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(itemData),
-					{ itemData: { item: parseInt(Object.keys(bulkBody)[j]) } },
+					{ itemData: { item: parseInt(Object.keys(bulkBody)[j], 10) } },
 				);
 				returnData.push(...executionData);
 			}
