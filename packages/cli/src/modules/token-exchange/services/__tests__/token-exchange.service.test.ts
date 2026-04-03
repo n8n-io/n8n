@@ -76,7 +76,10 @@ describe('TokenExchangeService', () => {
 				'unique-jti-1',
 				new Date(validClaims.exp * 1000),
 			);
-			expect(identityResolutionService.resolve).toHaveBeenCalledWith(validClaims);
+			expect(identityResolutionService.resolve).toHaveBeenCalledWith(
+				validClaims,
+				resolvedKey.allowedRoles,
+			);
 		});
 
 		it('should throw when token cannot be decoded', async () => {
