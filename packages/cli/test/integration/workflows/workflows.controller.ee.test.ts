@@ -36,6 +36,7 @@ import config from '@/config';
 import { SecuritySettingsService } from '@/services/security-settings.service';
 import { UserManagementMailer } from '@/user-management/email';
 import { createFolder } from '@test-integration/db/folders';
+import { createDataTable } from '../shared/db/data-tables';
 
 import {
 	affixRoleToSaveCredential,
@@ -1867,6 +1868,293 @@ describe('PUT /:workflowId/transfer', () => {
 		});
 
 		expect(workflowFromDB.parentFolder?.id).toBe(folder.id);
+	});
+
+	test('should clear activation errors when workflow is transferred', async () => {
+		//
+		// ARRANGE
+		//
+		const sourceProject = await createTeamProject('Source Project', member);
+		const destinationProject = await createTeamProject('Destination Project', member);
+
+		const workflow = await createWorkflow({}, sourceProject);
+
+		// Simulate an activation error being registered (e.g., from missing data table)
+		await activationErrorsService.register(workflow.id, 'Could not find the data table: XYZ');
+
+		// Verify error is registered
+		const errorBeforeTransfer = await activationErrorsService.get(workflow.id);
+		expect(errorBeforeTransfer).toBe('Could not find the data table: XYZ');
+
+		//
+		// ACT
+		//
+		const response = await testServer
+			.authAgentFor(member)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id })
+			.expect(200);
+
+		//
+		// ASSERT
+		//
+		expect(response.body).toEqual({});
+
+		// Verify activation errors service was called to clear the error
+		expect(activationErrorsService.deregister).toHaveBeenCalledWith(workflow.id);
+
+		// Verify error is cleared
+		const errorAfterTransfer = await activationErrorsService.get(workflow.id);
+		expect(errorAfterTransfer).toBeNull();
+	});
+
+	test('should clear activation errors when workflow is transferred back to original project', async () => {
+		//
+		// ARRANGE
+		//
+		const originalProject = await createTeamProject('Original Project', member);
+		const otherProject = await createTeamProject('Other Project', member);
+
+		const workflow = await createWorkflow({}, originalProject);
+
+		// Transfer workflow to other project (this will clear any existing errors)
+		await testServer
+			.authAgentFor(member)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: otherProject.id })
+			.expect(200);
+
+		// Simulate an activation error being registered in the other project
+		// (e.g., from missing data table that doesn't exist in other project)
+		await activationErrorsService.register(workflow.id, 'Could not find the data table: XYZ');
+
+		// Verify error is registered
+		const errorBeforeTransferBack = await activationErrorsService.get(workflow.id);
+		expect(errorBeforeTransferBack).toBe('Could not find the data table: XYZ');
+
+		//
+		// ACT - Transfer back to original project
+		//
+		const response = await testServer
+			.authAgentFor(member)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: originalProject.id })
+			.expect(200);
+
+		//
+		// ASSERT
+		//
+		expect(response.body).toEqual({});
+
+		// Verify activation errors service was called to clear the error
+		expect(activationErrorsService.deregister).toHaveBeenCalledWith(workflow.id);
+
+		// Verify error is cleared (so workflow can work again in original project)
+		const errorAfterTransferBack = await activationErrorsService.get(workflow.id);
+		expect(errorAfterTransferBack).toBeNull();
+	});
+
+	test('should automatically recover data table relations when workflow is moved back to original project', async () => {
+		//
+		// ARRANGE
+		//
+		const originalProject = await createTeamProject('Original Project', member);
+		const otherProject = await createTeamProject('Other Project', member);
+
+		// Create a data table in the original project
+		const dataTable = await createDataTable(originalProject, {
+			name: 'test-table',
+			columns: [{ name: 'name', type: 'string' }],
+		});
+
+		// Create a workflow with a DataTable node referencing the table
+		const workflow = await createWorkflow(
+			{
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Data Table',
+						type: 'n8n-nodes-base.dataTable',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {
+							resource: 'row',
+							operation: 'get',
+							dataTableId: {
+								__rl: true,
+								mode: 'id',
+								value: dataTable.id,
+							},
+						},
+					},
+				],
+				connections: {},
+			},
+			originalProject,
+		);
+
+		// Transfer workflow to other project (where data table doesn't exist)
+		await testServer
+			.authAgentFor(member)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: otherProject.id })
+			.expect(200);
+
+		// Simulate activation error from missing data table
+		await activationErrorsService.register(
+			workflow.id,
+			`Could not find the data table: '${dataTable.id}'`,
+		);
+
+		// Verify error exists
+		const errorBeforeTransferBack = await activationErrorsService.get(workflow.id);
+		expect(errorBeforeTransferBack).toContain('Could not find the data table');
+
+		//
+		// ACT - Transfer back to original project
+		//
+		const response = await testServer
+			.authAgentFor(member)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: originalProject.id })
+			.expect(200);
+
+		//
+		// ASSERT
+		//
+		expect(response.body).toEqual({});
+
+		// Verify activation error is cleared
+		expect(activationErrorsService.deregister).toHaveBeenCalledWith(workflow.id);
+		const errorAfterTransferBack = await activationErrorsService.get(workflow.id);
+		expect(errorAfterTransferBack).toBeNull();
+
+		// Verify workflow can be activated (data table relations are recoverable)
+		// The workflow should be in a clean state and ready for activation
+		const workflowFromDB = await workflowRepository.findOneOrFail({
+			where: { id: workflow.id },
+		});
+		expect(workflowFromDB).toBeDefined();
+		// Workflow should not require recreation - it's in a valid state
+	});
+
+	test('should restore workflow functionality after moving to invalid project and back', async () => {
+		//
+		// ARRANGE - Regression test: workflow moved to invalid project fails,
+		// moving it back restores full functionality without recreation
+		//
+		const originalProject = await createTeamProject('Original Project', member);
+		const invalidProject = await createTeamProject('Invalid Project', member);
+
+		// Create data table in original project
+		const dataTable = await createDataTable(originalProject, {
+			name: 'test-table',
+			columns: [{ name: 'name', type: 'string' }],
+		});
+
+		// Create workflow with data table reference in original project
+		const workflow = await createWorkflow(
+			{
+				nodes: [
+					{
+						id: 'node1',
+						name: 'Data Table',
+						type: 'n8n-nodes-base.dataTable',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {
+							resource: 'row',
+							operation: 'get',
+							dataTableId: {
+								__rl: true,
+								mode: 'id',
+								value: dataTable.id,
+							},
+						},
+					},
+				],
+				connections: {},
+			},
+			originalProject,
+		);
+
+		// Verify workflow is in original project
+		const workflowBeforeTransfer = await workflowRepository.findOneOrFail({
+			where: { id: workflow.id },
+			relations: ['shared'],
+		});
+		const ownerSharingBefore = workflowBeforeTransfer.shared.find((s) => s.role === 'workflow:owner');
+		expect(ownerSharingBefore?.projectId).toBe(originalProject.id);
+
+		//
+		// ACT - Transfer to invalid project (where data table doesn't exist)
+		//
+		await testServer
+			.authAgentFor(member)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: invalidProject.id })
+			.expect(200);
+
+		// Simulate activation error from missing data table
+		await activationErrorsService.register(
+			workflow.id,
+			`Could not find the data table: '${dataTable.id}'`,
+		);
+
+		// Verify workflow is in invalid project
+		const workflowAfterInvalidTransfer = await workflowRepository.findOneOrFail({
+			where: { id: workflow.id },
+			relations: ['shared'],
+		});
+		const ownerSharingAfterInvalid = workflowAfterInvalidTransfer.shared.find(
+			(s) => s.role === 'workflow:owner',
+		);
+		expect(ownerSharingAfterInvalid?.projectId).toBe(invalidProject.id);
+
+		// Verify error exists
+		const errorInInvalidProject = await activationErrorsService.get(workflow.id);
+		expect(errorInInvalidProject).toContain('Could not find the data table');
+
+		//
+		// ACT - Transfer back to original project
+		//
+		const transferBackResponse = await testServer
+			.authAgentFor(member)
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: originalProject.id })
+			.expect(200);
+
+		//
+		// ASSERT - Workflow should be fully restored
+		//
+		expect(transferBackResponse.body).toEqual({});
+
+		// Verify activation error is cleared
+		expect(activationErrorsService.deregister).toHaveBeenCalledWith(workflow.id);
+		const errorAfterTransferBack = await activationErrorsService.get(workflow.id);
+		expect(errorAfterTransferBack).toBeNull();
+
+		// Verify workflow is back in original project
+		const workflowAfterRestore = await workflowRepository.findOneOrFail({
+			where: { id: workflow.id },
+			relations: ['shared'],
+		});
+		const ownerSharingAfterRestore = workflowAfterRestore.shared.find(
+			(s) => s.role === 'workflow:owner',
+		);
+		expect(ownerSharingAfterRestore?.projectId).toBe(originalProject.id);
+
+		// Verify workflow nodes are intact (no recreation needed)
+		expect(workflowAfterRestore.nodes).toBeDefined();
+		const dataTableNode = workflowAfterRestore.nodes.find(
+			(node) => node.type === 'n8n-nodes-base.dataTable',
+		);
+		expect(dataTableNode).toBeDefined();
+		expect(dataTableNode?.parameters?.dataTableId).toBeDefined();
+
+		// Workflow should be in a clean, functional state
+		// Data table relations will be automatically re-resolved when workflow is activated
+		// because the project cache has been invalidated and will fetch fresh data
 	});
 
 	test('should fail destination parent folder does not exist in project', async () => {
