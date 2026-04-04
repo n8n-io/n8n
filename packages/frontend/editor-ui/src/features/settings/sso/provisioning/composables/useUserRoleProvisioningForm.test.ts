@@ -1,9 +1,11 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { useUserRoleProvisioningForm } from './useUserRoleProvisioningForm';
 import * as provisioningApi from '@n8n/rest-api-client/api/provisioning';
+import * as roleMappingRuleApi from '@n8n/rest-api-client/api/roleMappingRule';
 import type { ProvisioningConfig } from '@n8n/rest-api-client/api/provisioning';
 
 vi.mock('@n8n/rest-api-client/api/provisioning');
+vi.mock('@n8n/rest-api-client/api/roleMappingRule');
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: vi.fn(),
@@ -20,6 +22,7 @@ describe('useUserRoleProvisioningForm', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
+		vi.mocked(roleMappingRuleApi.listRoleMappingRules).mockResolvedValue([]);
 	});
 
 	const mockProvisioningConfig = (config: Partial<ProvisioningConfig>) => {
