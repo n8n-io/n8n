@@ -845,6 +845,7 @@ describe('RoutingNode', () => {
 									timeout: 300000,
 								},
 							},
+							pairedItem: { item: 0 },
 						},
 					],
 				],
@@ -895,6 +896,7 @@ describe('RoutingNode', () => {
 									timeout: 300000,
 								},
 							},
+							pairedItem: { item: 0 },
 						},
 					],
 				],
@@ -951,6 +953,7 @@ describe('RoutingNode', () => {
 									timeout: 300000,
 								},
 							},
+							pairedItem: { item: 0 },
 						},
 					],
 				],
@@ -1007,6 +1010,7 @@ describe('RoutingNode', () => {
 									timeout: 300000,
 								},
 							},
+							pairedItem: { item: 0 },
 						},
 					],
 				],
@@ -1065,6 +1069,7 @@ describe('RoutingNode', () => {
 									timeout: 300000,
 								},
 							},
+							pairedItem: { item: 0 },
 						},
 					],
 				],
@@ -1120,6 +1125,7 @@ describe('RoutingNode', () => {
 									timeout: 123,
 								},
 							},
+							pairedItem: { item: 0 },
 						},
 						{
 							json: {
@@ -1143,6 +1149,7 @@ describe('RoutingNode', () => {
 									timeout: 123,
 								},
 							},
+							pairedItem: { item: 1 },
 						},
 						{
 							json: {
@@ -1166,6 +1173,7 @@ describe('RoutingNode', () => {
 									timeout: 123,
 								},
 							},
+							pairedItem: { item: 2 },
 						},
 						{
 							json: {
@@ -1189,6 +1197,7 @@ describe('RoutingNode', () => {
 									timeout: 123,
 								},
 							},
+							pairedItem: { item: 3 },
 						},
 						{
 							json: {
@@ -1212,6 +1221,7 @@ describe('RoutingNode', () => {
 									timeout: 123,
 								},
 							},
+							pairedItem: { item: 4 },
 						},
 					],
 				],
@@ -1648,6 +1658,7 @@ describe('RoutingNode', () => {
 								returnFullResponse: true,
 								timeout: 300000,
 							},
+							pairedItem: { item: 0 },
 						},
 					],
 				],
@@ -1747,6 +1758,7 @@ describe('RoutingNode', () => {
 									},
 								},
 							},
+							pairedItem: { item: 0 },
 						},
 					],
 				],
@@ -1814,12 +1826,14 @@ describe('RoutingNode', () => {
 								name: 'Jim',
 								age: 34,
 							},
+							pairedItem: { item: 0 },
 						},
 						{
 							json: {
 								name: 'James',
 								age: 44,
 							},
+							pairedItem: { item: 0 },
 						},
 					],
 				],
@@ -1893,6 +1907,7 @@ describe('RoutingNode', () => {
 								name: 'James',
 								age: 44,
 							},
+							pairedItem: { item: 0 },
 						},
 					],
 				],
@@ -1973,6 +1988,7 @@ describe('RoutingNode', () => {
 								name: 'James',
 								age: 44,
 							},
+							pairedItem: { item: 0 },
 						},
 					],
 				],
@@ -2047,12 +2063,14 @@ describe('RoutingNode', () => {
 								display1: 'James (44)',
 								display2: 'James is 44',
 							},
+							pairedItem: { item: 0 },
 						},
 						{
 							json: {
 								display1: 'Jim (34)',
 								display2: 'Jim is 34',
 							},
+							pairedItem: { item: 0 },
 						},
 					],
 				],
@@ -2314,5 +2332,335 @@ describe('RoutingNode', () => {
 				expect(currentItemIndex).toEqual(expectedItemIndex);
 			});
 		}
+	});
+
+	describe('continueOnFail with pairedItem', () => {
+		const baseNode: INode = {
+			parameters: {},
+			name: 'test',
+			type: 'test.set',
+			typeVersion: 1,
+			id: 'uuid-1234',
+			position: [0, 0],
+		};
+
+		const mode = 'internal';
+		const runIndex = 0;
+		const connectionInputData: INodeExecutionData[] = [];
+		const runExecutionData: IRunExecutionData = createEmptyRunExecutionData();
+		const nodeType = nodeTypes.getByNameAndVersion(baseNode.type);
+
+		const createFailingExecuteSingleFunctions = (
+			workflow: Workflow,
+			_runExecutionData: IRunExecutionData,
+			_runIndex: number,
+			node: INode,
+			itemIndex: number,
+		) =>
+			mock<executionContexts.ExecuteSingleContext>({
+				getItemIndex: () => itemIndex,
+				getNodeParameter: (parameterName: string, _itemIndex?: number, fallback?: unknown) => {
+					if (parameterName === 'requestOptions') {
+						return fallback ?? {};
+					}
+					return workflow.expression.getParameterValue(
+						get(node.parameters, parameterName),
+						_runExecutionData,
+						_runIndex,
+						itemIndex,
+						node.name,
+						[],
+						'internal',
+						{},
+					);
+				},
+				getExecuteData: () =>
+					({
+						data: {},
+						node,
+						source: null,
+					}) as IExecuteData,
+				getWorkflow: () => ({
+					id: workflow.id,
+					name: workflow.name,
+					active: workflow.active,
+				}),
+				continueOnFail: () => true,
+				helpers: mock<IExecuteSingleFunctions['helpers']>({
+					async httpRequest(): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
+						throw new Error('Test error for item');
+					},
+					async httpRequestWithAuthentication(): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
+						throw new Error('Test error for item');
+					},
+				}),
+			});
+
+		it('should include pairedItem in error output when continueOnFail is enabled', async () => {
+			const node: INode = { ...baseNode };
+
+			const workflowData = {
+				nodes: [node],
+				connections: {},
+			};
+
+			nodeType.description = {
+				requestDefaults: {
+					baseURL: 'http://127.0.0.1:5678',
+					url: '/test-url',
+				},
+				properties: [
+					{
+						displayName: 'Email',
+						name: 'email',
+						type: 'string',
+						routing: {
+							send: {
+								property: 'toEmail',
+								type: 'body',
+								value: 'fixedValue',
+							},
+						},
+						default: '',
+					},
+				],
+			} as INodeTypeDescription;
+
+			const workflow = new Workflow({
+				nodes: workflowData.nodes,
+				connections: workflowData.connections,
+				active: false,
+				nodeTypes,
+			});
+
+			const executeData = {
+				data: {},
+				node,
+				source: null,
+			} as IExecuteData;
+
+			const inputData: ITaskDataConnections = {
+				main: [[{ json: { inputField: 'inputValue', id: 123 } }]],
+			};
+
+			const executeFunctions = mock<executionContexts.ExecuteContext>();
+			Object.assign(executeFunctions, {
+				executeData,
+				inputData,
+				runIndex,
+				additionalData,
+				workflow,
+				node,
+				mode,
+				connectionInputData,
+				runExecutionData,
+			});
+
+			const executeSingleFunctions = createFailingExecuteSingleFunctions(
+				workflow,
+				runExecutionData,
+				runIndex,
+				node,
+				0,
+			);
+
+			jest.spyOn(executionContexts, 'ExecuteSingleContext').mockReturnValue(executeSingleFunctions);
+
+			executeFunctions.getNodeParameter.mockImplementation(() => ({}));
+
+			const routingNode = new RoutingNode(executeFunctions, nodeType);
+			const result = await routingNode.runNode();
+
+			expect(result).toBeDefined();
+			expect(result![0]).toHaveLength(1);
+			expect(result![0][0].error).toBeDefined();
+			// pairedItem enables handleNodeErrorOutput to merge input data later in execution pipeline
+			expect(result![0][0].pairedItem).toEqual({ item: 0 });
+		});
+
+		it('should preserve correct pairedItem index for each error item with multiple inputs', async () => {
+			const node: INode = { ...baseNode };
+
+			const workflowData = {
+				nodes: [node],
+				connections: {},
+			};
+
+			nodeType.description = {
+				requestDefaults: {
+					baseURL: 'http://127.0.0.1:5678',
+					url: '/test-url',
+				},
+				properties: [
+					{
+						displayName: 'Email',
+						name: 'email',
+						type: 'string',
+						routing: {
+							send: {
+								property: 'toEmail',
+								type: 'body',
+								value: 'fixedValue',
+							},
+						},
+						default: '',
+					},
+				],
+			} as INodeTypeDescription;
+
+			const workflow = new Workflow({
+				nodes: workflowData.nodes,
+				connections: workflowData.connections,
+				active: false,
+				nodeTypes,
+			});
+
+			const executeData = {
+				data: {},
+				node,
+				source: null,
+			} as IExecuteData;
+
+			const inputData: ITaskDataConnections = {
+				main: [
+					[
+						{ json: { name: 'item0', value: 100 } },
+						{ json: { name: 'item1', value: 200 } },
+						{ json: { name: 'item2', value: 300 } },
+					],
+				],
+			};
+
+			const executeFunctions = mock<executionContexts.ExecuteContext>();
+			Object.assign(executeFunctions, {
+				executeData,
+				inputData,
+				runIndex,
+				additionalData,
+				workflow,
+				node,
+				mode,
+				connectionInputData,
+				runExecutionData,
+			});
+
+			// Mock returns different context for each item index
+			let callCount = 0;
+			jest.spyOn(executionContexts, 'ExecuteSingleContext').mockImplementation(() => {
+				const currentIndex = callCount++;
+				return createFailingExecuteSingleFunctions(
+					workflow,
+					runExecutionData,
+					runIndex,
+					node,
+					currentIndex,
+				);
+			});
+
+			executeFunctions.getNodeParameter.mockImplementation(() => ({}));
+
+			const routingNode = new RoutingNode(executeFunctions, nodeType);
+			const result = await routingNode.runNode();
+
+			expect(result).toBeDefined();
+			expect(result![0]).toHaveLength(3);
+
+			// Each error item should have the correct pairedItem index
+			// handleNodeErrorOutput will merge input data using pairedItem later in execution pipeline
+			expect(result![0][0].error).toBeDefined();
+			expect(result![0][0].pairedItem).toEqual({ item: 0 });
+
+			expect(result![0][1].error).toBeDefined();
+			expect(result![0][1].pairedItem).toEqual({ item: 1 });
+
+			expect(result![0][2].error).toBeDefined();
+			expect(result![0][2].pairedItem).toEqual({ item: 2 });
+		});
+
+		it('should preserve input data in error output json when continueOnFail is enabled', async () => {
+			const node: INode = { ...baseNode };
+
+			const workflowData = {
+				nodes: [node],
+				connections: {},
+			};
+
+			nodeType.description = {
+				requestDefaults: {
+					baseURL: 'http://127.0.0.1:5678',
+					url: '/test-url',
+				},
+				properties: [
+					{
+						displayName: 'Email',
+						name: 'email',
+						type: 'string',
+						routing: {
+							send: {
+								property: 'toEmail',
+								type: 'body',
+								value: 'fixedValue',
+							},
+						},
+						default: '',
+					},
+				],
+			} as INodeTypeDescription;
+
+			const workflow = new Workflow({
+				nodes: workflowData.nodes,
+				connections: workflowData.connections,
+				active: false,
+				nodeTypes,
+			});
+
+			const executeData = {
+				data: {},
+				node,
+				source: null,
+			} as IExecuteData;
+
+			const inputData: ITaskDataConnections = {
+				main: [[{ json: { inputField: 'inputValue', id: 123, nested: { key: 'value' } } }]],
+			};
+
+			const executeFunctions = mock<executionContexts.ExecuteContext>();
+			Object.assign(executeFunctions, {
+				executeData,
+				inputData,
+				runIndex,
+				additionalData,
+				workflow,
+				node,
+				mode,
+				connectionInputData,
+				runExecutionData,
+			});
+
+			const executeSingleFunctions = createFailingExecuteSingleFunctions(
+				workflow,
+				runExecutionData,
+				runIndex,
+				node,
+				0,
+			);
+
+			jest.spyOn(executionContexts, 'ExecuteSingleContext').mockReturnValue(executeSingleFunctions);
+
+			executeFunctions.getNodeParameter.mockImplementation(() => ({}));
+
+			const routingNode = new RoutingNode(executeFunctions, nodeType);
+			const result = await routingNode.runNode();
+
+			expect(result).toBeDefined();
+			expect(result![0]).toHaveLength(1);
+			expect(result![0][0].error).toBeDefined();
+			// Input data should be preserved in error output json
+			expect(result![0][0].json).toEqual({
+				inputField: 'inputValue',
+				id: 123,
+				nested: { key: 'value' },
+			});
+		});
 	});
 });
