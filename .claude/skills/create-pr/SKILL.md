@@ -46,34 +46,46 @@ Creates GitHub PRs with titles that pass n8n's `check-pr-title` CI validation.
 
 ## Steps
 
-1. **Check current state**:
+1. **Check for private/security issues**: Run `git remote -v` (via Bash) and check all remote URLs.
+   If **any** remote URL contains `n8n-io/n8n` without the `-private` suffix, **stop immediately** and tell the user:
+
+   > **PRs for `n8n-private` issues must be opened in the private repository.**
+   >
+   > One or more of your remotes point to the **public** `n8n-io/n8n` repo. Mixed remotes are not allowed — you must work in a **separate local clone** of `n8n-io/n8n-private` with no references to the public repo.
+   > For the full process, see: https://www.notion.so/n8n/Processing-critical-high-security-bugs-vulnerabilities-in-private-2f45b6e0c94f803da806f472111fb1a5
+
+   Do **not** continue with any further steps — return after showing this message.
+
+   If all remotes point exclusively to `n8n-io/n8n-private`, continue normally.
+
+2. **Check current state**:
    ```bash
    git status
    git diff --stat
    git log origin/master..HEAD --oneline
    ```
 
-2. **Check for implementation plan**: Look for a plan file in `.claude/plans/`
+3. **Check for implementation plan**: Look for a plan file in `.claude/plans/`
    that matches the current branch's ticket ID (e.g. if branch is
    `scdekov/PAY-1234-some-feature`, check for `.claude/plans/PAY-1234.md`).
    If a plan file exists, ask the user whether they want to include it in the
    PR description as a collapsible `<details>` section (see Plan Section below).
    Only include the plan if the user explicitly approves.
 
-3. **If this is a security fix**, audit every public-facing artifact before
+4. **If this is a security fix**, audit every public-facing artifact before
    proceeding (see Security Fixes below).
 
-4. **Analyze changes** to determine:
+5. **Analyze changes** to determine:
    - Type: What kind of change is this?
    - Scope: Which package/area is affected?
    - Summary: What does the change do?
 
-5. **Push branch if needed**:
+6. **Push branch if needed**:
    ```bash
    git push -u origin HEAD
    ```
 
-6. **Create PR** using gh CLI with the template from `.github/pull_request_template.md`:
+7. **Create PR** using gh CLI with the template from `.github/pull_request_template.md`:
    ```bash
    gh pr create --draft --title "<type>(<scope>): <summary>" --body "$(cat <<'EOF'
    ## Summary
