@@ -1,0 +1,26 @@
+{
+	"prompt": "Create a workflow that receives webhook notifications with a JSON body containing 'level' (high, medium, or low), 'title', and 'message'. Route them based on level: high priority goes to Microsoft Teams (use team ID '9b4c3a2f-1d8e-4f5b-a6c7-8e9f0b1d2c3a' and channel ID '19:a1b2c3d4e5f6@thread.tacv2'), medium goes to Slack channel #notifications, and low goes to Gmail (send to alerts@ourcompany.com). Each notification should include the title and message from the payload. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"complexity": "medium",
+	"tags": ["build", "webhook", "switch", "microsoft-teams", "slack", "gmail", "routing"],
+	"triggerType": "webhook",
+	"scenarios": [
+		{
+			"name": "high-priority",
+			"description": "A high-priority notification is routed to Microsoft Teams",
+			"dataSetup": "The webhook receives { \"level\": \"high\", \"title\": \"Server Down\", \"message\": \"Production database is unreachable\" }. The Microsoft Teams node returns a success response.",
+			"successCriteria": "The workflow routes the high-priority notification to Microsoft Teams. The Teams message contains 'Server Down' and the database message. No other channels receive the message."
+		},
+		{
+			"name": "medium-priority",
+			"description": "A medium-priority notification is routed to Slack",
+			"dataSetup": "The webhook receives { \"level\": \"medium\", \"title\": \"Deployment Complete\", \"message\": \"Version 2.5.0 deployed to staging\" }. The Slack node returns a success response.",
+			"successCriteria": "The workflow routes the medium-priority notification to Slack #notifications. The Slack message contains the deployment details."
+		},
+		{
+			"name": "low-priority",
+			"description": "A low-priority notification is routed to email",
+			"dataSetup": "The webhook receives { \"level\": \"low\", \"title\": \"Weekly Report Ready\", \"message\": \"The weekly analytics report has been generated\" }. The Gmail node returns a success response.",
+			"successCriteria": "The workflow routes the low-priority notification to Gmail. The email is sent to alerts@ourcompany.com with the report notification."
+		}
+	]
+}
