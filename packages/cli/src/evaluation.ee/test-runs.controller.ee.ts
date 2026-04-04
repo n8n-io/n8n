@@ -56,17 +56,22 @@ export class TestRunsController {
 		return await this.testRunRepository.getMany(workflowId, req.listQueryOptions);
 	}
 
-	@Get('/:workflowId/test-runs/:id')
+@Get('/:workflowId/test-runs/:id')
 	async getOne(req: TestRunsRequest.GetOne) {
 		const { id } = req.params;
 
-		try {
-			await this.getTestRun(req.params.id, req.params.workflowId, req.user); // FIXME: do not fetch test run twice
-			return await this.testRunRepository.getTestRunSummaryById(id);
-		} catch (error) {
-			if (error instanceof UnexpectedError) throw new NotFoundError(error.message);
-			throw error;
+		const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
+
+		const testRun = await this.testRunRepository.getTestRunSummaryByIdWithAuthorization(
+			id,
+			sharedWorkflowsIds,
+		);
+
+		if (!testRun) {
+			throw new NotFoundError('Test run not found');
 		}
+
+		return testRun;
 	}
 
 	@Get('/:workflowId/test-runs/:id/test-cases')
