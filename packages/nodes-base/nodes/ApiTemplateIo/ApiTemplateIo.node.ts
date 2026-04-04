@@ -11,6 +11,7 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import {
 	apiTemplateIoApiRequest,
+	apiTemplateIoApiRequestV2,
 	downloadImage,
 	loadResource,
 	validateJSON,
@@ -18,7 +19,7 @@ import {
 
 export class ApiTemplateIo implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'APITemplate.io',
+		displayName: 'APITemplate.io (PDF/Image Generation)',
 		name: 'apiTemplateIo',
 		icon: 'file:apiTemplateIo.svg',
 		group: ['transform'],
@@ -45,19 +46,31 @@ export class ApiTemplateIo implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Account',
+						name: 'Account V1 (Deprecated)',
 						value: 'account',
 					},
 					{
-						name: 'Image',
+						name: 'Account V2',
+						value: 'accountv2',
+					},
+					{
+						name: 'Image V1 (Deprecated)',
 						value: 'image',
 					},
 					{
-						name: 'PDF',
+						name: 'Image V2',
+						value: 'imagev2',
+					},
+					{
+						name: 'PDF V1 (Deprecated)',
 						value: 'pdf',
 					},
+					{
+						name: 'PDF V2',
+						value: 'pdfv2',
+					},
 				],
-				default: 'image',
+				default: 'pdfv2',
 			},
 			{
 				displayName: 'Operation',
@@ -96,6 +109,81 @@ export class ApiTemplateIo implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['pdf'],
+					},
+				},
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				default: 'create',
+				required: true,
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						action: 'Create an image',
+					},
+				],
+				displayOptions: {
+					show: {
+						resource: ['imagev2'],
+					},
+				},
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				default: 'create',
+				required: true,
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						action: 'Create a PDF from template',
+					},
+					{
+						name: 'Create From HTML',
+						value: 'createFromHtml',
+						action: 'Create a PDF from HTML',
+					},
+					{
+						name: 'Create From Markdown',
+						value: 'createFromMarkdown',
+						action: 'Create a PDF from Markdown',
+					},
+					{
+						name: 'Create From URL',
+						value: 'createFromUrl',
+						action: 'Create a PDF from URL',
+					},
+				],
+				displayOptions: {
+					show: {
+						resource: ['pdfv2'],
+					},
+				},
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				default: 'get',
+				required: true,
+				options: [
+					{
+						name: 'Get',
+						value: 'get',
+						action: 'Query account information',
+					},
+				],
+				displayOptions: {
+					show: {
+						resource: ['accountv2'],
 					},
 				},
 			},
@@ -345,6 +433,575 @@ export class ApiTemplateIo implements INodeType {
 					},
 				],
 			},
+			// ------------------------------------------------------------------
+			//        V2 PDF Operations: Region & Body Parameters
+			// ------------------------------------------------------------------
+			{
+				displayName: 'Region',
+				name: 'region',
+				type: 'options',
+				noDataExpression: true,
+				default: 'rest',
+				required: true,
+				description: 'Region of the API endpoint',
+				displayOptions: {
+					show: {
+						resource: ['pdfv2', 'imagev2', 'accountv2'],
+					},
+				},
+				options: [
+					{
+						name: 'Default Endpoint',
+						value: 'rest',
+						description: 'Default endpoint for the API',
+					},
+					{
+						name: 'Endpoint: Australia',
+						value: 'rest-au',
+						description: 'Endpoint for Australia',
+					},
+					{
+						name: 'Endpoint: Europe (Frankfurt)',
+						value: 'rest-de',
+						description: 'Endpoint for Europe (Frankfurt)',
+					},
+					{
+						name: 'Endpoint: US East (N. Virginia)',
+						value: 'rest-us',
+						description: 'Endpoint for US East (N. Virginia).',
+					},
+					{
+						name: 'Other: Alternative - Europe (Frankfurt)',
+						value: 'rest-alt-de',
+						description: 'Alternative endpoint for Europe (Frankfurt)',
+					},
+					{
+						name: 'Other: Alternative - Singapore',
+						value: 'rest-alt',
+						description: 'Alternative endpoint for Singapore',
+					},
+					{
+						name: 'Other: Alternative - US East (N. Virginia)',
+						value: 'rest-alt-us',
+						description: 'Alternative endpoint for US East (N. Virginia).',
+					},
+					{
+						name: 'Other: Staging',
+						value: 'rest-staging',
+						description: 'Staging endpoint',
+					},
+				],
+			},
+			{
+				displayName: 'Template Name or ID',
+				name: 'imageTemplateId',
+				type: 'options',
+				required: true,
+				default: '',
+				description:
+					'ID of the image template to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+				typeOptions: {
+					loadOptionsMethod: 'getImageTemplates',
+				},
+				displayOptions: {
+					show: {
+						resource: ['imagev2'],
+						operation: ['create'],
+					},
+				},
+			},
+			{
+				displayName: 'Template Name or ID',
+				name: 'pdfTemplateId',
+				type: 'options',
+				required: true,
+				default: '',
+				description:
+					'ID of the PDF template to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+				typeOptions: {
+					loadOptionsMethod: 'getPdfTemplates',
+				},
+				displayOptions: {
+					show: {
+						resource: ['pdfv2'],
+						operation: ['create'],
+					},
+				},
+			},
+			{
+				displayName: 'Data Source',
+				name: 'dataSource',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'JSON Data',
+						value: 'json',
+						description: 'Provide template data as a JSON object in the request body',
+					},
+					{
+						name: 'URL',
+						value: 'url',
+						description: 'Load template data from a remote URL',
+					},
+				],
+				default: 'json',
+				displayOptions: {
+					show: {
+						resource: ['pdfv2'],
+						operation: ['create'],
+					},
+				},
+			},
+			{
+				displayName: 'Data (JSON)',
+				name: 'v2PdfData',
+				type: 'json',
+				default: '{}',
+				placeholder: '{"invoice_number": "INV38379", "date": "2021-09-30"}',
+				description:
+					'JSON object with the template data. Must be a valid JSON object. Sent as the request body.',
+				displayOptions: {
+					show: {
+						resource: ['pdfv2'],
+						operation: ['create'],
+						dataSource: ['json'],
+					},
+				},
+			},
+			{
+				displayName: 'Load Data From URL',
+				name: 'loadDataFrom',
+				type: 'string',
+				required: true,
+				default: '',
+				placeholder: 'https://mydata.com/get-json-data?invoice=123',
+				description:
+					'Load JSON data from a remote URL. The API will fetch data from this URL instead of the request body.',
+				displayOptions: {
+					show: {
+						resource: ['pdfv2'],
+						operation: ['create'],
+						dataSource: ['url'],
+					},
+				},
+			},
+			{
+				displayName: 'Overrides (JSON)',
+				name: 'v2ImageOverrides',
+				type: 'json',
+				default: '[{}]',
+				placeholder:
+					'[{"name": "text_1", "text": "hello world", "textBackgroundColor": "rgba(246, 243, 243, 0)"}]',
+				description: 'JSON array of override objects for template layers',
+				displayOptions: {
+					show: {
+						resource: ['imagev2'],
+						operation: ['create'],
+					},
+				},
+			},
+			{
+				displayName: 'HTML Body',
+				name: 'htmlBody',
+				type: 'string',
+				typeOptions: {
+					rows: 5,
+				},
+				required: true,
+				default: '',
+				placeholder: '<h1>Hello {{name}}</h1>',
+				description: 'HTML content for the PDF. Supports Jinja2 syntax for dynamic content.',
+				displayOptions: {
+					show: {
+						resource: ['pdfv2'],
+						operation: ['createFromHtml'],
+					},
+				},
+			},
+			{
+				displayName: 'URL',
+				name: 'pdfUrl',
+				type: 'string',
+				required: true,
+				default: '',
+				placeholder: 'https://example.com',
+				description: 'The URL to create a PDF from',
+				displayOptions: {
+					show: {
+						resource: ['pdfv2'],
+						operation: ['createFromUrl'],
+					},
+				},
+			},
+			{
+				displayName: 'Markdown Body',
+				name: 'markdownBody',
+				type: 'string',
+				typeOptions: {
+					rows: 5,
+				},
+				required: true,
+				default: '',
+				placeholder: '# {{title}}\n\nContent here...',
+				description: 'Markdown content for the PDF. Supports Jinja2 syntax for dynamic content.',
+				displayOptions: {
+					show: {
+						resource: ['pdfv2'],
+						operation: ['createFromMarkdown'],
+					},
+				},
+			},
+			{
+				displayName: 'CSS',
+				name: 'css',
+				type: 'string',
+				typeOptions: {
+					rows: 3,
+				},
+				default: '',
+				placeholder: '<style>.bg{background: red};</style>',
+				description: 'CSS styles to apply to the PDF. Include the style tag.',
+				displayOptions: {
+					show: {
+						resource: ['pdfv2'],
+						operation: ['createFromHtml', 'createFromMarkdown'],
+					},
+				},
+			},
+			{
+				displayName: 'Data (JSON)',
+				name: 'dataJson',
+				type: 'json',
+				default: '{}',
+				description:
+					'JSON object with values for dynamic content (e.g. {"name": "John"}). Must be a valid JSON object.',
+				displayOptions: {
+					show: {
+						resource: ['pdfv2'],
+						operation: ['createFromHtml', 'createFromMarkdown'],
+					},
+				},
+			},
+			// ------------------------------------------------------------------
+			//        V2 PDF Operations: Export & Expiration
+			// ------------------------------------------------------------------
+			{
+				displayName: 'Export Type',
+				name: 'exportType',
+				type: 'options',
+				options: [
+					{
+						name: 'JSON',
+						value: 'json',
+						description: 'Returns a JSON response with a CDN download URL',
+					},
+					{
+						name: 'File',
+						value: 'file',
+						description: 'Returns binary PDF data directly',
+					},
+				],
+				default: 'json',
+				displayOptions: {
+					show: {
+						resource: ['pdfv2'],
+					},
+				},
+			},
+			{
+				displayName: 'Expiration',
+				name: 'expiration',
+				type: 'number',
+				typeOptions: {
+					minValue: 60,
+					maxValue: 10080,
+				},
+				default: 60,
+				required: true,
+				description: 'Expiration of the generated file in minutes',
+				displayOptions: {
+					show: {
+						resource: ['pdfv2', 'imagev2'],
+					},
+				},
+			},
+			{
+				displayName: 'Put Output File in Field',
+				name: 'v2BinaryProperty',
+				type: 'string',
+				required: true,
+				default: 'data',
+				hint: 'The name of the output binary field to put the file in',
+				displayOptions: {
+					show: {
+						resource: ['pdfv2'],
+						exportType: ['file'],
+					},
+				},
+			},
+			// ------------------------------------------------------------------
+			//        V2 PDF Operations: Async
+			// ------------------------------------------------------------------
+			{
+				displayName: 'Async',
+				name: 'isAsync',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to generate the PDF asynchronously. When enabled, a Webhook URL is required to receive the result.',
+				displayOptions: {
+					show: {
+						resource: ['pdfv2'],
+					},
+				},
+			},
+			{
+				displayName: 'Webhook URL',
+				name: 'webhookUrl',
+				type: 'string',
+				required: true,
+				default: '',
+				placeholder: 'https://yourwebserver.com/webhook',
+				description: 'The URL to receive the async callback when PDF generation is complete',
+				displayOptions: {
+					show: {
+						resource: ['pdfv2'],
+						isAsync: [true],
+					},
+				},
+			},
+			{
+				displayName: 'Webhook Method',
+				name: 'webhookMethod',
+				type: 'options',
+				options: [
+					{ name: 'GET', value: 'GET' },
+					{ name: 'POST', value: 'POST' },
+				],
+				default: 'GET',
+				displayOptions: {
+					show: {
+						resource: ['pdfv2'],
+						isAsync: [true],
+					},
+				},
+			},
+			// ------------------------------------------------------------------
+			//        V2 PDF Operations: Additional Options
+			// ------------------------------------------------------------------
+			{
+				displayName: 'Options',
+				name: 'v2Options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: ['pdfv2'],
+					},
+				},
+				options: [
+					{
+						displayName: 'Filename',
+						name: 'filename',
+						type: 'string',
+						default: '',
+						placeholder: 'invoice_123.pdf',
+						description: 'Custom filename for the generated PDF',
+					},
+					{
+						displayName: 'Generation Delay',
+						name: 'generation_delay',
+						type: 'number',
+						default: 0,
+						description: 'Delay in milliseconds before PDF generation',
+					},
+					{
+						displayName: 'Image Resample Resolution',
+						name: 'image_resample_res',
+						type: 'string',
+						default: '',
+						placeholder: '150',
+						description:
+							'Downsample images to this DPI to reduce file size (e.g. 72, 96, 150, 300, 600)',
+					},
+					{
+						displayName: 'Output Format',
+						name: 'output_format',
+						type: 'options',
+						options: [
+							{ name: 'PDF', value: 'pdf' },
+							{ name: 'HTML', value: 'html' },
+							{ name: 'PNG', value: 'png' },
+							{ name: 'JPEG', value: 'jpeg' },
+						],
+						default: 'pdf',
+						description: 'The desired output format',
+					},
+				],
+			},
+			{
+				displayName: 'Options',
+				name: 'v2ImageOptions',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: ['imagev2'],
+					},
+				},
+				options: [
+					{
+						displayName: 'Generation Delay',
+						name: 'generation_delay',
+						type: 'number',
+						default: 0,
+						description: 'Delay in milliseconds before image generation',
+					},
+				],
+			},
+			// ------------------------------------------------------------------
+			//        V2 PDF Operations: PDF Settings
+			// ------------------------------------------------------------------
+			{
+				displayName: 'PDF Settings',
+				name: 'pdfSettings',
+				type: 'collection',
+				placeholder: 'Add Setting',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: ['pdfv2'],
+						operation: ['createFromHtml', 'createFromUrl', 'createFromMarkdown'],
+					},
+				},
+				options: [
+					{
+						displayName: 'Custom Footer',
+						name: 'custom_footer',
+						type: 'string',
+						typeOptions: { rows: 3 },
+						default: '',
+						description: 'Custom HTML markup for the footer of the PDF',
+					},
+					{
+						displayName: 'Custom Header',
+						name: 'custom_header',
+						type: 'string',
+						typeOptions: { rows: 3 },
+						default: '',
+						description: 'Custom HTML markup for the header of the PDF',
+					},
+					{
+						displayName: 'Custom Height',
+						name: 'custom_height',
+						type: 'string',
+						default: '',
+						placeholder: '30mm',
+						description: 'Custom height when Paper Size is set to Custom. Valid units: mm, px, cm.',
+					},
+					{
+						displayName: 'Custom Width',
+						name: 'custom_width',
+						type: 'string',
+						default: '',
+						placeholder: '30mm',
+						description: 'Custom width when Paper Size is set to Custom. Valid units: mm, px, cm.',
+					},
+					{
+						displayName: 'Display Header Footer',
+						name: 'displayHeaderFooter',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to display the header and footer in the PDF',
+					},
+					{
+						displayName: 'Header Font Size',
+						name: 'header_font_size',
+						type: 'string',
+						default: '',
+						placeholder: '9px',
+						description: 'Font size for the header in the PDF',
+					},
+					{
+						displayName: 'Margin Bottom',
+						name: 'margin_bottom',
+						type: 'string',
+						default: '',
+						placeholder: '40',
+						description: 'Bottom margin in millimeters',
+					},
+					{
+						displayName: 'Margin Left',
+						name: 'margin_left',
+						type: 'string',
+						default: '',
+						placeholder: '10',
+						description: 'Left margin in millimeters',
+					},
+					{
+						displayName: 'Margin Right',
+						name: 'margin_right',
+						type: 'string',
+						default: '',
+						placeholder: '10',
+						description: 'Right margin in millimeters',
+					},
+					{
+						displayName: 'Margin Top',
+						name: 'margin_top',
+						type: 'string',
+						default: '',
+						placeholder: '40',
+						description: 'Top margin in millimeters',
+					},
+					{
+						displayName: 'Orientation',
+						name: 'orientation',
+						type: 'options',
+						options: [
+							{ name: 'Portrait', value: '1' },
+							{ name: 'Landscape', value: '2' },
+						],
+						default: '1',
+						description: 'Page orientation for the PDF',
+					},
+					{
+						displayName: 'Paper Size',
+						name: 'paper_size',
+						type: 'options',
+						options: [
+							{ name: 'A0', value: 'A0' },
+							{ name: 'A1', value: 'A1' },
+							{ name: 'A2', value: 'A2' },
+							{ name: 'A3', value: 'A3' },
+							{ name: 'A4', value: 'A4' },
+							{ name: 'A5', value: 'A5' },
+							{ name: 'A6', value: 'A6' },
+							{ name: 'Custom', value: 'custom' },
+							{ name: 'Ledger', value: 'Ledger' },
+							{ name: 'Legal', value: 'Legal' },
+							{ name: 'Letter', value: 'Letter' },
+							{ name: 'Tabloid', value: 'Tabloid' },
+						],
+						default: 'A4',
+						description: 'Paper size for the PDF',
+					},
+					{
+						displayName: 'Print Background',
+						name: 'print_background',
+						type: 'options',
+						options: [
+							{ name: 'No', value: '0' },
+							{ name: 'Yes', value: '1' },
+						],
+						default: '1',
+						description: 'Whether to print background graphics and colors',
+					},
+				],
+			},
 		],
 	};
 
@@ -570,6 +1227,334 @@ export class ApiTemplateIo implements INodeType {
 					}
 				}
 				if (download) {
+					return [returnData as unknown as INodeExecutionData[]];
+				}
+			}
+		} else if (resource === 'accountv2') {
+			// *********************************************************************
+			//                            accountv2
+			// *********************************************************************
+
+			if (operation === 'get') {
+				for (let i = 0; i < length; i++) {
+					try {
+						const region = this.getNodeParameter('region', i) as string;
+
+						responseData = await apiTemplateIoApiRequestV2.call(
+							this,
+							'GET',
+							region,
+							'/v2/account-information',
+						);
+
+						returnData.push(responseData as IDataObject);
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({ json: { error: error.message } });
+							continue;
+						}
+						throw error;
+					}
+				}
+			}
+		} else if (resource === 'imagev2') {
+			// *********************************************************************
+			//                            imagev2
+			// *********************************************************************
+
+			if (operation === 'create') {
+				for (let i = 0; i < length; i++) {
+					try {
+						const region = this.getNodeParameter('region', i) as string;
+						const expiration = this.getNodeParameter('expiration', i) as number;
+						const v2ImageOptions = this.getNodeParameter('v2ImageOptions', i) as IDataObject;
+
+						const qs: IDataObject = {
+							template_id: this.getNodeParameter('imageTemplateId', i),
+							expiration,
+						};
+
+						for (const [key, value] of Object.entries(v2ImageOptions)) {
+							if (value !== '' && value !== undefined) {
+								qs[key] = value;
+							}
+						}
+
+						const body: IDataObject = { overrides: [] };
+						const overridesRaw = this.getNodeParameter('v2ImageOverrides', i) as string;
+						if (overridesRaw) {
+							const overrides = validateJSON(overridesRaw);
+							if (overrides === undefined) {
+								throw new NodeOperationError(
+									this.getNode(),
+									'The Overrides field must contain valid JSON',
+									{ itemIndex: i },
+								);
+							}
+							body.overrides = overrides;
+						}
+
+						responseData = await apiTemplateIoApiRequestV2.call(
+							this,
+							'POST',
+							region,
+							'/v2/create-image',
+							qs,
+							body,
+						);
+
+						returnData.push(responseData as IDataObject);
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({ json: { error: error.message } });
+							continue;
+						}
+						throw error;
+					}
+				}
+			}
+		} else if (resource === 'pdfv2') {
+			// *********************************************************************
+			//                              pdfv2
+			// *********************************************************************
+
+			if (operation === 'create') {
+				const exportType = this.getNodeParameter('exportType', 0) as string;
+
+				for (let i = 0; i < length; i++) {
+					try {
+						const region = this.getNodeParameter('region', i) as string;
+						const expiration = this.getNodeParameter('expiration', i) as number;
+						const isAsync = this.getNodeParameter('isAsync', i) as boolean;
+						const v2Options = this.getNodeParameter('v2Options', i) as IDataObject;
+
+						const qs: IDataObject = {
+							template_id: this.getNodeParameter('pdfTemplateId', i),
+							export_type: this.getNodeParameter('exportType', i) as string,
+							expiration,
+						};
+
+						if (isAsync) {
+							const webhookUrl = this.getNodeParameter('webhookUrl', i) as string;
+							const webhookMethod = this.getNodeParameter('webhookMethod', i) as string;
+							qs.async = '1';
+							qs.webhook_url = webhookUrl;
+							qs.webhook_method = webhookMethod;
+						}
+
+						for (const [key, value] of Object.entries(v2Options)) {
+							if (value !== '' && value !== undefined) {
+								qs[key] = value;
+							}
+						}
+
+						const dataSource = this.getNodeParameter('dataSource', i) as string;
+						let body: IDataObject = {};
+
+						if (dataSource === 'url') {
+							const loadDataFrom = this.getNodeParameter('loadDataFrom', i) as string;
+							qs.load_data_from = loadDataFrom;
+						} else {
+							const dataJsonRaw = this.getNodeParameter('v2PdfData', i) as string;
+							if (dataJsonRaw) {
+								const parsedData = validateJSON(dataJsonRaw);
+								if (parsedData === undefined) {
+									throw new NodeOperationError(
+										this.getNode(),
+										'The Data field must contain valid JSON',
+										{ itemIndex: i },
+									);
+								}
+								if (typeof parsedData !== 'object' || Array.isArray(parsedData)) {
+									throw new NodeOperationError(
+										this.getNode(),
+										'The Data field must be a JSON object, not an array or primitive',
+										{ itemIndex: i },
+									);
+								}
+								body = parsedData as IDataObject;
+							}
+						}
+
+						const returnBinary = qs.export_type === 'file';
+
+						responseData = await apiTemplateIoApiRequestV2.call(
+							this,
+							'POST',
+							region,
+							'/v2/create-pdf',
+							qs,
+							body,
+							returnBinary,
+						);
+
+						if (returnBinary) {
+							const binaryProperty = this.getNodeParameter('v2BinaryProperty', i) as string;
+							const outputFormat = (v2Options.output_format as string) || 'pdf';
+							const mimeTypes: Record<string, string> = {
+								pdf: 'application/pdf',
+								html: 'text/html',
+								png: 'image/png',
+								jpeg: 'image/jpeg',
+							};
+							const extensions: Record<string, string> = {
+								pdf: 'pdf',
+								html: 'html',
+								png: 'png',
+								jpeg: 'jpeg',
+							};
+							const fileName =
+								(v2Options.filename as string) || `output.${extensions[outputFormat] || 'pdf'}`;
+							const binaryData = await this.helpers.prepareBinaryData(
+								responseData as Buffer,
+								fileName,
+								mimeTypes[outputFormat] || 'application/pdf',
+							);
+							returnData.push({
+								json: {},
+								binary: { [binaryProperty]: binaryData },
+							} as unknown as IDataObject);
+						} else {
+							returnData.push(responseData as IDataObject);
+						}
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({ json: { error: error.message } });
+							continue;
+						}
+						throw error;
+					}
+				}
+
+				if (exportType === 'file') {
+					return [returnData as unknown as INodeExecutionData[]];
+				}
+			} else if (
+				operation === 'createFromHtml' ||
+				operation === 'createFromUrl' ||
+				operation === 'createFromMarkdown'
+			) {
+				const exportType = this.getNodeParameter('exportType', 0) as string;
+
+				for (let i = 0; i < length; i++) {
+					try {
+						const expiration = this.getNodeParameter('expiration', i) as number;
+						const isAsync = this.getNodeParameter('isAsync', i) as boolean;
+						const v2Options = this.getNodeParameter('v2Options', i) as IDataObject;
+
+						const qs: IDataObject = {
+							export_type: this.getNodeParameter('exportType', i) as string,
+							expiration,
+						};
+
+						if (isAsync) {
+							const webhookUrl = this.getNodeParameter('webhookUrl', i) as string;
+							const webhookMethod = this.getNodeParameter('webhookMethod', i) as string;
+							qs.async = '1';
+							qs.webhook_url = webhookUrl;
+							qs.webhook_method = webhookMethod;
+						}
+
+						for (const [key, value] of Object.entries(v2Options)) {
+							if (value !== '' && value !== undefined) {
+								qs[key] = value;
+							}
+						}
+
+						const body: IDataObject = {};
+
+						if (operation === 'createFromHtml' || operation === 'createFromMarkdown') {
+							const rawContent =
+								operation === 'createFromHtml'
+									? (this.getNodeParameter('htmlBody', i) as string)
+									: (this.getNodeParameter('markdownBody', i) as string);
+							body.body = rawContent.replaceAll('\\n', '\n');
+
+							const css = this.getNodeParameter('css', i) as string;
+							if (css) {
+								body.css = css;
+							}
+
+							const dataJsonRaw = this.getNodeParameter('dataJson', i) as string;
+							if (dataJsonRaw) {
+								const parsedData = validateJSON(dataJsonRaw);
+								if (parsedData === undefined) {
+									throw new NodeOperationError(
+										this.getNode(),
+										'The Data field must contain valid JSON',
+										{ itemIndex: i },
+									);
+								}
+								body.data = parsedData;
+							}
+						} else if (operation === 'createFromUrl') {
+							body.url = this.getNodeParameter('pdfUrl', i) as string;
+						}
+
+						const pdfSettings = this.getNodeParameter('pdfSettings', i) as IDataObject;
+						if (Object.keys(pdfSettings).length) {
+							body.settings = pdfSettings;
+						}
+
+						const endpointMap: Record<string, string> = {
+							createFromHtml: '/v2/create-pdf-from-html',
+							createFromUrl: '/v2/create-pdf-from-url',
+							createFromMarkdown: '/v2/create-pdf-from-markdown',
+						};
+						const endpoint = endpointMap[operation as string];
+						const returnBinary = qs.export_type === 'file';
+
+						const region = this.getNodeParameter('region', i) as string;
+
+						responseData = await apiTemplateIoApiRequestV2.call(
+							this,
+							'POST',
+							region,
+							endpoint,
+							qs,
+							body,
+							returnBinary,
+						);
+
+						if (returnBinary) {
+							const binaryProperty = this.getNodeParameter('v2BinaryProperty', i) as string;
+							const outputFormat = (v2Options.output_format as string) || 'pdf';
+							const mimeTypes: Record<string, string> = {
+								pdf: 'application/pdf',
+								html: 'text/html',
+								png: 'image/png',
+								jpeg: 'image/jpeg',
+							};
+							const extensions: Record<string, string> = {
+								pdf: 'pdf',
+								html: 'html',
+								png: 'png',
+								jpeg: 'jpeg',
+							};
+							const fileName =
+								(v2Options.filename as string) || `output.${extensions[outputFormat] || 'pdf'}`;
+							const binaryData = await this.helpers.prepareBinaryData(
+								responseData as Buffer,
+								fileName,
+								mimeTypes[outputFormat] || 'application/pdf',
+							);
+							returnData.push({
+								json: {},
+								binary: { [binaryProperty]: binaryData },
+							} as unknown as IDataObject);
+						} else {
+							returnData.push(responseData as IDataObject);
+						}
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({ json: { error: error.message } });
+							continue;
+						}
+						throw error;
+					}
+				}
+
+				if (exportType === 'file') {
 					return [returnData as unknown as INodeExecutionData[]];
 				}
 			}
