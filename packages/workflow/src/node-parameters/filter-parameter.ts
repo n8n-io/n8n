@@ -195,15 +195,17 @@ function parseFilterConditionValues(
 
 function parseRegexPattern(pattern: string): RegExp {
 	const regexMatch = (pattern || '').match(new RegExp('^/(.*?)/([gimusy]*)$'));
-	let regex: RegExp;
 
-	if (!regexMatch) {
-		regex = new RegExp((pattern || '').toString());
-	} else {
-		regex = new RegExp(regexMatch[1], regexMatch[2]);
+	try {
+		if (!regexMatch) {
+			return new RegExp((pattern || '').toString());
+		}
+		return new RegExp(regexMatch[1], regexMatch[2]);
+	} catch (error) {
+		throw new Error(
+			`Invalid regular expression pattern "${pattern}": ${error instanceof Error ? error.message : String(error)}`,
+		);
 	}
-
-	return regex;
 }
 
 export function arrayContainsValue(array: unknown[], value: unknown, ignoreCase: boolean): boolean {
