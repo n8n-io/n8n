@@ -76,5 +76,36 @@ describe('MongoDB Node: Generic Functions', () => {
 			});
 			expect(result).toEqual([{ 'user.name': 'John' }, { 'user.name': 'Jane' }]);
 		});
+
+		it('should handle jsonMode', () => {
+			const items = [{ json: {} }];
+			const filterObj = { type: 'old' };
+			const updateObj = { $set: { type: 'new' } };
+
+			const result = prepareItems({
+				items,
+				jsonMode: true,
+				filterObj,
+				updateObj,
+			});
+
+			expect(result).toEqual([
+				{
+					filter: { type: 'old' },
+					update: { $set: { type: 'new' } },
+				},
+			]);
+		});
+
+		it('should handle jsonMode with empty objects', () => {
+			const items = [{ json: {} }];
+
+			const result = prepareItems({
+				items,
+				jsonMode: true,
+			});
+
+			expect(result).toEqual([{ filter: {}, update: {} }]);
+		});
 	});
 });
