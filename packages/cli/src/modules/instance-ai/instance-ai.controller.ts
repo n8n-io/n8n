@@ -66,6 +66,12 @@ export class InstanceAiController {
 		this.instanceBaseUrl = globalConfig.editorBaseUrl || `http://localhost:${globalConfig.port}`;
 	}
 
+	private requireInstanceAiEnabled(): void {
+		if (!this.settingsService.isInstanceAiEnabled()) {
+			throw new ForbiddenError('Instance AI is disabled');
+		}
+	}
+
 	@Post('/chat/:threadId')
 	@GlobalScope('instanceAi:message')
 	async chat(
@@ -74,6 +80,7 @@ export class InstanceAiController {
 		@Param('threadId') threadId: string,
 		@Body payload: InstanceAiSendMessageRequest,
 	) {
+		this.requireInstanceAiEnabled();
 		// Verify the requesting user owns this thread (or it's new)
 		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
 
@@ -103,6 +110,7 @@ export class InstanceAiController {
 		@Param('threadId') threadId: string,
 		@Query query: InstanceAiEventsQuery,
 	) {
+		this.requireInstanceAiEnabled();
 		// Verify the requesting user owns this thread before streaming events.
 		// A thread that doesn't exist yet is allowed — the frontend opens the SSE
 		// connection for new conversations before the first message creates the thread.
@@ -258,6 +266,7 @@ export class InstanceAiController {
 		@Param('requestId') requestId: string,
 		@Body body: InstanceAiConfirmRequestDto,
 	) {
+		this.requireInstanceAiEnabled();
 		const resolved = await this.instanceAiService.resolveConfirmation(req.user.id, requestId, {
 			approved: body.approved,
 			credentialId: body.credentialId,
@@ -281,6 +290,7 @@ export class InstanceAiController {
 	@Post('/chat/:threadId/cancel')
 	@GlobalScope('instanceAi:message')
 	async cancel(req: AuthenticatedRequest, _res: Response, @Param('threadId') threadId: string) {
+		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
 		this.instanceAiService.cancelRun(threadId);
 		return { ok: true };
@@ -294,6 +304,7 @@ export class InstanceAiController {
 		@Param('threadId') threadId: string,
 		@Param('taskId') taskId: string,
 	) {
+		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
 		this.instanceAiService.cancelBackgroundTask(threadId, taskId);
 		return { ok: true };
@@ -308,6 +319,7 @@ export class InstanceAiController {
 		@Param('taskId') taskId: string,
 		@Body payload: InstanceAiCorrectTaskRequest,
 	) {
+		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
 		this.instanceAiService.sendCorrectionToTask(threadId, taskId, payload.message);
 		return { ok: true };
@@ -318,6 +330,7 @@ export class InstanceAiController {
 	@Get('/credits')
 	@GlobalScope('instanceAi:message')
 	async getCredits(req: AuthenticatedRequest) {
+		this.requireInstanceAiEnabled();
 		return await this.instanceAiService.getCredits(req.user);
 	}
 
@@ -336,7 +349,9 @@ export class InstanceAiController {
 		_res: Response,
 		@Body payload: InstanceAiAdminSettingsUpdateRequest,
 	) {
-		return await this.settingsService.updateAdminSettings(payload);
+		const result = await this.settingsService.updateAdminSettings(payload);
+		await this.moduleRegistry.refreshModuleSettings('instance-ai');
+		return result;
 	}
 
 	// ── User preferences (per-user, self-service) ──────────────────────────
@@ -376,6 +391,7 @@ export class InstanceAiController {
 	@Get('/memory/:threadId')
 	@GlobalScope('instanceAi:message')
 	async getMemory(req: AuthenticatedRequest, _res: Response, @Param('threadId') threadId: string) {
+		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
 		return await this.memoryService.getWorkingMemory(req.user.id, threadId);
 	}
@@ -388,6 +404,7 @@ export class InstanceAiController {
 		@Param('threadId') threadId: string,
 		@Body payload: InstanceAiUpdateMemoryRequest,
 	) {
+		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
 		await this.memoryService.updateWorkingMemory(req.user.id, threadId, payload.content);
 		return { ok: true };
@@ -396,6 +413,7 @@ export class InstanceAiController {
 	@Get('/threads')
 	@GlobalScope('instanceAi:message')
 	async listThreads(req: AuthenticatedRequest) {
+		this.requireInstanceAiEnabled();
 		return await this.memoryService.listThreads(req.user.id);
 	}
 
@@ -406,6 +424,7 @@ export class InstanceAiController {
 		_res: Response,
 		@Body payload: InstanceAiEnsureThreadRequest,
 	) {
+		this.requireInstanceAiEnabled();
 		const requestedThreadId = payload.threadId ?? randomUUID();
 		await this.assertThreadAccess(req.user.id, requestedThreadId, { allowNew: true });
 		return await this.memoryService.ensureThread(req.user.id, requestedThreadId);
@@ -418,6 +437,7 @@ export class InstanceAiController {
 		_res: Response,
 		@Param('threadId') threadId: string,
 	) {
+		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
 		await this.instanceAiService.clearThreadState(threadId);
 		await this.memoryService.deleteThread(threadId);
@@ -432,6 +452,7 @@ export class InstanceAiController {
 		@Param('threadId') threadId: string,
 		@Body payload: InstanceAiRenameThreadRequestDto,
 	) {
+		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
 		const thread = await this.memoryService.renameThread(threadId, payload.title);
 		return { thread };
@@ -445,6 +466,7 @@ export class InstanceAiController {
 		@Param('threadId') threadId: string,
 		@Query query: InstanceAiThreadMessagesQuery,
 	) {
+		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
 
 		// ?raw=true returns the old format for the thread inspector
@@ -473,6 +495,7 @@ export class InstanceAiController {
 		_res: Response,
 		@Param('threadId') threadId: string,
 	) {
+		this.requireInstanceAiEnabled();
 		// Allow new threads — the frontend polls status before the first message is sent
 		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
 		return this.instanceAiService.getThreadStatus(threadId);
@@ -485,6 +508,7 @@ export class InstanceAiController {
 		_res: Response,
 		@Param('threadId') threadId: string,
 	) {
+		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
 		return await this.memoryService.getThreadContext(req.user.id, threadId);
 	}

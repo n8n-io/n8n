@@ -42,6 +42,12 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_SUB_AGENT_MAX_STEPS')
 	subAgentMaxSteps: number = 100;
 
+	/**
+	 * When false, Instance AI chat and related user-facing features are off; admins can
+	 * still open Instance AI settings. Persisted via admin settings API.
+	 */
+	instanceAiEnabled: boolean = false;
+
 	/** Disable the local gateway (filesystem, shell, browser, etc.) for all users. */
 	@Env('N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED')
 	localGatewayDisabled: boolean = false;

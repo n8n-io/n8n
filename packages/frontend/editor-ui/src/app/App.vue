@@ -12,6 +12,8 @@ import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 import { useTelemetryInitializer } from '@/app/composables/useTelemetryInitializer';
 import { useWorkflowDiffRouting } from '@/app/composables/useWorkflowDiffRouting';
 import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@/app/constants';
+import { INSTANCE_AI_OPTIN_MODAL_KEY } from '@/app/constants/modals';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import LoadingView from '@/app/views/LoadingView.vue';
@@ -30,6 +32,7 @@ const route = useRoute();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const ndvStore = useNDVStore();
+const uiStore = useUIStore();
 const { setAppZIndexes } = useStyles();
 const { toastBottomOffset, toastRightOffset, askAiFloatingButtonBottomOffset } =
 	useFloatingUiOffsets();
@@ -69,6 +72,25 @@ watch(route, (r) => {
 		(matchedRoute) => matchedRoute.components?.footer !== undefined,
 	);
 });
+
+// Instance AI opt-in modal, shown until dismissed (dismissal persisted in admin settings)
+watch(
+	() => {
+		const moduleLoaded = settingsStore.moduleSettings['instance-ai'] !== undefined;
+		return (
+			moduleLoaded &&
+			settingsStore.isModuleActive('instance-ai') &&
+			route.meta.layout !== 'auth' &&
+			!settingsStore.moduleSettings['instance-ai']?.optinModalDismissed
+		);
+	},
+	(shouldShow) => {
+		if (shouldShow) {
+			uiStore.openModal(INSTANCE_AI_OPTIN_MODAL_KEY);
+		}
+	},
+	{ once: true },
+);
 
 watch(
 	defaultLocale,
