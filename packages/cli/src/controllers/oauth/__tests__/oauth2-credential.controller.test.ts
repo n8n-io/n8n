@@ -8,6 +8,7 @@ import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credentia
 import type { OAuthRequest } from '@/requests';
 import { OauthService } from '@/oauth/oauth.service';
 import { ExternalHooks } from '@/external-hooks';
+import { OAuthProviderQuirksService } from '@/oauth/oauth-provider-quirks.service';
 
 jest.mock('axios');
 jest.mock('@n8n/client-oauth2');
@@ -16,6 +17,7 @@ jest.mock('pkce-challenge');
 describe('OAuth2CredentialController', () => {
 	const oauthService = mockInstance(OauthService);
 	const externalHooks = mockInstance(ExternalHooks);
+	const providerQuirksService = mockInstance(OAuthProviderQuirksService);
 
 	mockInstance(Logger);
 
@@ -772,6 +774,440 @@ describe('OAuth2CredentialController', () => {
 				'Token exchange failed',
 				undefined,
 			);
+		});
+
+		it('should extract error_description from HighLevel API error response', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const errorBody = {
+				error: 'invalid_grant',
+				error_description: 'The authorization code has expired or is invalid',
+			};
+			const mockError = new Error('Invalid grant') as Error & { body: unknown; code: string };
+			mockError.body = errorBody;
+			mockError.code = 'EAUTH';
+			const mockGetToken = jest.fn().mockRejectedValue(mockError);
+			jest.mocked(ClientOAuth2).mockImplementation(
+				() =>
+					({
+						code: {
+							getToken: mockGetToken,
+						},
+					}) as any,
+			);
+
+			const mockResolvedCredential = mock<CredentialsEntity>({
+				id: '1',
+				type: 'highLevelOAuth2Api',
+			});
+			const mockState = {
+				token: 'token',
+				cid: '1',
+				userId: '123',
+				origin: 'static-credential' as const,
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			oauthService.resolveCredential.mockResolvedValueOnce([
+				mockResolvedCredential,
+				{ csrfSecret: 'csrf-secret' },
+				{
+					clientId: 'client_id',
+					clientSecret: 'client_secret',
+					authUrl: 'https://marketplace.leadconnectorhq.com/oauth/chooselocation',
+					accessTokenUrl: 'https://services.leadconnectorhq.com/oauth/token',
+					scope: 'contacts.readonly contacts.write',
+					grantType: 'authorizationCode',
+					authentication: 'body',
+				},
+				mockState,
+			]);
+			oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
+			externalHooks.run.mockResolvedValue(undefined);
+
+			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+				query: {
+					code: 'expired_code',
+					state: validState,
+				},
+				originalUrl: '/oauth2-credential/callback?code=expired_code&state=state',
+			});
+
+			await controller.handleCallback(req, res);
+
+			expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+				res,
+				'Invalid grant',
+				'The authorization code has expired or is invalid',
+			);
+		});
+
+		it('should extract error field from API error response when error_description is missing', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const errorBody = {
+				error: 'invalid_client',
+			};
+			const mockError = new Error('Invalid client') as Error & { body: unknown; code: string };
+			mockError.body = errorBody;
+			mockError.code = 'EAUTH';
+			const mockGetToken = jest.fn().mockRejectedValue(mockError);
+			jest.mocked(ClientOAuth2).mockImplementation(
+				() =>
+					({
+						code: {
+							getToken: mockGetToken,
+						},
+					}) as any,
+			);
+
+			const mockResolvedCredential = mock<CredentialsEntity>({
+				id: '1',
+				type: 'highLevelOAuth2Api',
+			});
+			const mockState = {
+				token: 'token',
+				cid: '1',
+				userId: '123',
+				origin: 'static-credential' as const,
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			oauthService.resolveCredential.mockResolvedValueOnce([
+				mockResolvedCredential,
+				{ csrfSecret: 'csrf-secret' },
+				{
+					clientId: 'client_id',
+					clientSecret: 'client_secret',
+					authUrl: 'https://marketplace.leadconnectorhq.com/oauth/chooselocation',
+					accessTokenUrl: 'https://services.leadconnectorhq.com/oauth/token',
+					scope: 'contacts.readonly',
+					grantType: 'authorizationCode',
+					authentication: 'body',
+				},
+				mockState,
+			]);
+			oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
+			externalHooks.run.mockResolvedValue(undefined);
+
+			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+				query: {
+					code: 'auth_code',
+					state: validState,
+				},
+				originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
+			});
+
+			await controller.handleCallback(req, res);
+
+			expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+				res,
+				'Invalid client',
+				'invalid_client',
+			);
+		});
+
+		it('should include full error body when error_description and error are missing', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const errorBody = {
+				message: 'Unexpected error occurred',
+				details: 'Some additional details',
+			};
+			const mockError = new Error('HTTP status 400') as Error & { body: unknown; code: string };
+			mockError.body = errorBody;
+			mockError.code = 'ESTATUS';
+			const mockGetToken = jest.fn().mockRejectedValue(mockError);
+			jest.mocked(ClientOAuth2).mockImplementation(
+				() =>
+					({
+						code: {
+							getToken: mockGetToken,
+						},
+					}) as any,
+			);
+
+			const mockResolvedCredential = mock<CredentialsEntity>({
+				id: '1',
+				type: 'highLevelOAuth2Api',
+			});
+			const mockState = {
+				token: 'token',
+				cid: '1',
+				userId: '123',
+				origin: 'static-credential' as const,
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			oauthService.resolveCredential.mockResolvedValueOnce([
+				mockResolvedCredential,
+				{ csrfSecret: 'csrf-secret' },
+				{
+					clientId: 'client_id',
+					clientSecret: 'client_secret',
+					authUrl: 'https://marketplace.leadconnectorhq.com/oauth/chooselocation',
+					accessTokenUrl: 'https://services.leadconnectorhq.com/oauth/token',
+					scope: 'contacts.readonly',
+					grantType: 'authorizationCode',
+					authentication: 'body',
+				},
+				mockState,
+			]);
+			oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
+			externalHooks.run.mockResolvedValue(undefined);
+
+			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+				query: {
+					code: 'auth_code',
+					state: validState,
+				},
+				originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
+			});
+
+			await controller.handleCallback(req, res);
+
+			expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+				res,
+				'HTTP status 400',
+				expect.stringContaining('Unexpected error occurred'),
+			);
+		});
+
+		describe('HighLevel OAuth2 specific handling', () => {
+			it('should include redirect_uri in token exchange body for HighLevel', async () => {
+				const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+				const mockGetToken = jest.fn().mockResolvedValue({
+					data: { access_token: 'token', refresh_token: 'refresh' },
+				});
+				jest.mocked(ClientOAuth2).mockImplementation(
+					() =>
+						({
+							code: {
+								getToken: mockGetToken,
+							},
+						}) as any,
+				);
+
+				const mockResolvedCredential = mock<CredentialsEntity>({
+					id: '1',
+					type: 'highLevelOAuth2Api',
+				});
+				const mockState = {
+					token: 'token',
+					cid: '1',
+					userId: '123',
+					origin: 'static-credential' as const,
+					createdAt: timestamp,
+					data: 'encrypted-data',
+				};
+				oauthService.resolveCredential.mockResolvedValueOnce([
+					mockResolvedCredential,
+					{ csrfSecret: 'csrf-secret' },
+					{
+						clientId: 'highlevel_client_id',
+						clientSecret: 'highlevel_secret',
+						authUrl: 'https://marketplace.leadconnectorhq.com/oauth/chooselocation',
+						accessTokenUrl: 'https://services.leadconnectorhq.com/oauth/token',
+						scope: 'contacts.readonly contacts.write',
+						grantType: 'authorizationCode',
+						authentication: 'body',
+					},
+					mockState,
+				]);
+				oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
+				externalHooks.run.mockResolvedValue(undefined);
+				providerQuirksService.getQuirks.mockReturnValue({
+					alwaysIncludeRedirectUri: true,
+				});
+
+				const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+					query: {
+						code: 'auth_code',
+						state: validState,
+					},
+					originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
+				});
+
+				await controller.handleCallback(req, res);
+
+				// Verify redirect_uri is included in the token exchange options
+				expect(mockGetToken).toHaveBeenCalledWith(
+					expect.stringContaining('code=auth_code'),
+					expect.objectContaining({
+						body: expect.objectContaining({
+							redirect_uri: 'http://localhost:5678/rest/oauth2-credential/callback',
+							client_id: 'highlevel_client_id',
+							client_secret: 'highlevel_secret',
+						}),
+					}),
+				);
+			});
+
+			it('should classify HighLevel invalid_client error correctly', async () => {
+				const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+				const errorBody = {
+					error: 'invalid_client',
+					error_description: 'Client authentication failed',
+				};
+				const mockError = new Error('Invalid client') as Error & { body: unknown; code: string };
+				mockError.body = errorBody;
+				mockError.code = 'EAUTH';
+				const mockGetToken = jest.fn().mockRejectedValue(mockError);
+				jest.mocked(ClientOAuth2).mockImplementation(
+					() =>
+						({
+							code: {
+								getToken: mockGetToken,
+							},
+						}) as any,
+				);
+
+				const mockResolvedCredential = mock<CredentialsEntity>({
+					id: '1',
+					type: 'highLevelOAuth2Api',
+				});
+				const mockState = {
+					token: 'token',
+					cid: '1',
+					userId: '123',
+					origin: 'static-credential' as const,
+					createdAt: timestamp,
+					data: 'encrypted-data',
+				};
+				oauthService.resolveCredential.mockResolvedValueOnce([
+					mockResolvedCredential,
+					{ csrfSecret: 'csrf-secret' },
+					{
+						clientId: 'client_id',
+						clientSecret: 'client_secret',
+						authUrl: 'https://marketplace.leadconnectorhq.com/oauth/chooselocation',
+						accessTokenUrl: 'https://services.leadconnectorhq.com/oauth/token',
+						scope: 'contacts.readonly',
+						grantType: 'authorizationCode',
+						authentication: 'body',
+					},
+					mockState,
+				]);
+				oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
+				externalHooks.run.mockResolvedValue(undefined);
+				providerQuirksService.getQuirks.mockReturnValue({
+					alwaysIncludeRedirectUri: true,
+					classifyError: (body: unknown) => {
+						if (
+							typeof body === 'object' &&
+							body !== null &&
+							'error' in body &&
+							body.error === 'invalid_client'
+						) {
+							return {
+								type: 'invalid_client' as any,
+								userMessage:
+									'Invalid client credentials. Please verify your Client ID and Client Secret in the HighLevel app settings.',
+								technicalDetails: 'error_description' in body ? String(body.error_description) : undefined,
+							};
+						}
+						return null;
+					},
+				});
+				providerQuirksService.classifyError.mockReturnValue({
+					type: 'invalid_client' as any,
+					userMessage:
+						'Invalid client credentials. Please verify your Client ID and Client Secret in the HighLevel app settings.',
+					technicalDetails: 'Client authentication failed',
+				});
+
+				const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+					query: {
+						code: 'auth_code',
+						state: validState,
+					},
+					originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
+				});
+
+				await controller.handleCallback(req, res);
+
+				expect(providerQuirksService.classifyError).toHaveBeenCalledWith(
+					'highLevelOAuth2Api',
+					errorBody,
+					undefined,
+				);
+				expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+					res,
+					'Invalid client credentials. Please verify your Client ID and Client Secret in the HighLevel app settings.',
+					'Client authentication failed',
+				);
+			});
+
+			it('should classify HighLevel redirect_uri mismatch error correctly', async () => {
+				const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+				const errorBody = {
+					error: 'invalid_grant',
+					error_description: 'The redirect URI does not match',
+				};
+				const mockError = new Error('Invalid grant') as Error & { body: unknown; code: string };
+				mockError.body = errorBody;
+				mockError.code = 'EAUTH';
+				const mockGetToken = jest.fn().mockRejectedValue(mockError);
+				jest.mocked(ClientOAuth2).mockImplementation(
+					() =>
+						({
+							code: {
+								getToken: mockGetToken,
+							},
+						}) as any,
+				);
+
+				const mockResolvedCredential = mock<CredentialsEntity>({
+					id: '1',
+					type: 'highLevelOAuth2Api',
+				});
+				const mockState = {
+					token: 'token',
+					cid: '1',
+					userId: '123',
+					origin: 'static-credential' as const,
+					createdAt: timestamp,
+					data: 'encrypted-data',
+				};
+				oauthService.resolveCredential.mockResolvedValueOnce([
+					mockResolvedCredential,
+					{ csrfSecret: 'csrf-secret' },
+					{
+						clientId: 'client_id',
+						clientSecret: 'client_secret',
+						authUrl: 'https://marketplace.leadconnectorhq.com/oauth/chooselocation',
+						accessTokenUrl: 'https://services.leadconnectorhq.com/oauth/token',
+						scope: 'contacts.readonly',
+						grantType: 'authorizationCode',
+						authentication: 'body',
+					},
+					mockState,
+				]);
+				oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
+				externalHooks.run.mockResolvedValue(undefined);
+				providerQuirksService.getQuirks.mockReturnValue({
+					alwaysIncludeRedirectUri: true,
+				});
+				providerQuirksService.classifyError.mockReturnValue({
+					type: 'redirect_uri_mismatch' as any,
+					userMessage:
+						'Redirect URI mismatch. The redirect URI used in the token exchange must exactly match the one used in the authorization request.',
+					technicalDetails: 'The redirect URI does not match',
+				});
+
+				const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+					query: {
+						code: 'auth_code',
+						state: validState,
+					},
+					originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
+				});
+
+				await controller.handleCallback(req, res);
+
+				expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+					res,
+					'Redirect URI mismatch. The redirect URI used in the token exchange must exactly match the one used in the authorization request.',
+					'The redirect URI does not match',
+				);
+			});
 		});
 	});
 });

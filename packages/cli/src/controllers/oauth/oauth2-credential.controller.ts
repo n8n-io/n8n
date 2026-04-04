@@ -12,6 +12,8 @@ import { OauthService, OauthVersion, skipAuthOnOAuthCallback } from '@/oauth/oau
 import { Logger } from '@n8n/backend-common';
 import { ExternalHooks } from '@/external-hooks';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { OAuthProviderQuirksService } from '@/oauth/oauth-provider-quirks.service';
+import type { ClientOAuth2RequestObject } from '@n8n/client-oauth2';
 
 @RestController('/oauth2-credential')
 export class OAuth2CredentialController {
@@ -19,6 +21,7 @@ export class OAuth2CredentialController {
 		private readonly oauthService: OauthService,
 		private readonly logger: Logger,
 		private readonly externalHooks: ExternalHooks,
+		private readonly providerQuirksService: OAuthProviderQuirksService,
 	) {}
 
 	/** Get Authorization url */
@@ -37,6 +40,8 @@ export class OAuth2CredentialController {
 	/** Verify and store app code. Generate access tokens and store for respective credential */
 	@Get('/callback', { usesTemplates: true, skipAuth: skipAuthOnOAuthCallback })
 	async handleCallback(req: OAuthRequest.OAuth2Credential.Callback, res: Response) {
+		let credential: Awaited<ReturnType<typeof this.oauthService.resolveCredential>>[0] | undefined;
+		
 		try {
 			const { code, state: encodedState } = req.query;
 			if (!code || !encodedState) {
@@ -47,8 +52,9 @@ export class OAuth2CredentialController {
 				);
 			}
 
-			const [credential, decryptedDataOriginal, oauthCredentials, state] =
-				await this.oauthService.resolveCredential<OAuth2CredentialData>(req);
+			const resolvedCredential = await this.oauthService.resolveCredential<OAuth2CredentialData>(req);
+			credential = resolvedCredential[0];
+			const [, decryptedDataOriginal, oauthCredentials, state] = resolvedCredential;
 
 			const oAuthOptions = this.convertCredentialToOptions(oauthCredentials);
 
@@ -81,6 +87,30 @@ export class OAuth2CredentialController {
 			const oAuthObj = new ClientOAuth2(oAuthOptions);
 
 			const queryParameters = req.originalUrl.split('?').splice(1, 1).join('');
+
+			// Log token exchange attempt for debugging
+			this.logger.debug('Attempting OAuth2 token exchange', {
+				credentialId: credential.id,
+				credentialType: credential.type,
+				accessTokenUrl: oAuthOptions.accessTokenUri,
+				redirectUri: oAuthOptions.redirectUri,
+				authentication: oauthCredentials.authentication,
+			});
+
+			// Apply provider-specific quirks before token exchange
+			const quirks = this.providerQuirksService.getQuirks(credential.type);
+			
+			// Ensure redirect_uri is included in body for providers that require it (like HighLevel)
+			// This is critical for body authentication where redirect_uri must match exactly
+			if (quirks?.alwaysIncludeRedirectUri && oAuthOptions.redirectUri) {
+				options = {
+					...options,
+					body: {
+						...(options.body ?? {}),
+						redirect_uri: oAuthOptions.redirectUri,
+					},
+				};
+			}
 
 			const oauthToken = await oAuthObj.code.getToken(
 				`${oAuthOptions.redirectUri as string}?${queryParameters}`,
@@ -133,11 +163,35 @@ export class OAuth2CredentialController {
 			}
 		} catch (e) {
 			const error = ensureError(e);
-			return this.oauthService.renderCallbackError(
-				res,
-				error.message,
-				'body' in error ? jsonStringify(error.body) : undefined,
+			const errorBody = 'body' in error ? error.body : undefined;
+			const statusCode = 'status' in error ? error.status : undefined;
+
+			// Classify error using provider-specific logic
+			const credentialType = credential?.type ?? 'unknown';
+			const classification = this.providerQuirksService.classifyError(
+				credentialType,
+				errorBody,
+				statusCode,
 			);
+
+			// Log detailed error information for debugging
+			this.logger.error('OAuth2 callback failed', {
+				credentialId: credential?.id,
+				credentialType: credentialType,
+				errorType: classification.type,
+				errorMessage: error.message,
+				errorCode: 'code' in error ? error.code : undefined,
+				errorBody: errorBody,
+				errorStack: error.stack,
+				statusCode,
+			});
+
+			// Use classified error message for user-facing error
+			const userMessage = classification.userMessage || error.message;
+			const technicalDetails = classification.technicalDetails || 
+				(errorBody ? jsonStringify(errorBody) : undefined);
+
+			return this.oauthService.renderCallbackError(res, userMessage, technicalDetails);
 		}
 	}
 
