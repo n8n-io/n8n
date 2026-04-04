@@ -505,7 +505,7 @@ describe('prepareMessages', () => {
 		expect(hasHumanMessage).toBe(false);
 	});
 
-	it('should include a PDF binary message when passthroughBinaryImages is true', async () => {
+	it('should not include PDF when only passthroughBinaryImages is true', async () => {
 		const fakeItem = {
 			json: {},
 			binary: {
@@ -516,6 +516,12 @@ describe('prepareMessages', () => {
 			},
 		};
 		mockContext.getInputData.mockReturnValue([fakeItem]);
+		mockContext.logger = {
+			debug: jest.fn(),
+			info: jest.fn(),
+			warn: jest.fn(),
+			error: jest.fn(),
+		};
 
 		const messages = await prepareMessages(mockContext, 0, {
 			systemMessage: 'Test system',
@@ -523,7 +529,8 @@ describe('prepareMessages', () => {
 			passthroughBinaryPdfs: false,
 		});
 		const hasHumanMessage = messages.some((m) => m instanceof HumanMessage);
-		expect(hasHumanMessage).toBe(true);
+		expect(hasHumanMessage).toBe(false);
+		expect(mockContext.logger.debug).toHaveBeenCalledTimes(1);
 	});
 
 	it('should include a binary message for PDF when passthroughBinaryPdfs is true', async () => {

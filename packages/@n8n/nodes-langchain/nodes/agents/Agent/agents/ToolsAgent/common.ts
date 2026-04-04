@@ -479,6 +479,14 @@ export async function prepareMessages(
 	const hasBinaryData = ctx.getInputData()?.[itemIndex]?.binary !== undefined;
 	if (hasBinaryData && (options.passthroughBinaryImages || options.passthroughBinaryPdfs)) {
 		const binaryMessage = await extractBinaryMessages(ctx, itemIndex);
+
+		// Filter out content types the user did not enable
+		binaryMessage.content = (binaryMessage.content as Array<{ type: string }>).filter((part) => {
+			if (part.type === 'image_url' && !options.passthroughBinaryImages) return false;
+			if (part.type === 'file_url' && !options.passthroughBinaryPdfs) return false;
+			return true;
+		});
+
 		if (binaryMessage.content.length !== 0) {
 			messages.push(binaryMessage);
 		} else {
