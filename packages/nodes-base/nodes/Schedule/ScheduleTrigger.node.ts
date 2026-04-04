@@ -430,7 +430,17 @@ export class ScheduleTrigger implements INodeType {
 		const timezone = this.getTimezone();
 		const staticData = this.getWorkflowStaticData('node') as {
 			recurrenceRules: number[];
+			scheduleHash?: string;
 		};
+
+		// Compute a fingerprint of the current schedule configuration so we can
+		// detect when the user changes the schedule and clear stale recurrence
+		// data that would otherwise permanently prevent the trigger from firing.
+		const currentHash = JSON.stringify(intervals);
+		if (staticData.scheduleHash !== currentHash) {
+			staticData.recurrenceRules = [];
+			staticData.scheduleHash = currentHash;
+		}
 		if (!staticData.recurrenceRules) {
 			staticData.recurrenceRules = [];
 		}
