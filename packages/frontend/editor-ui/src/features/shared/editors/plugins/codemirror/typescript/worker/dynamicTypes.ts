@@ -35,7 +35,7 @@ function processSchema(schema: Schema): string {
 				.map((prop) => {
 					const key = prop.key ?? 'unknown';
 					const type = processSchema(prop);
-					return `  ${key}: ${type};`;
+					return `  ${key}?: ${type};`;
 				})
 				.join('\n');
 
