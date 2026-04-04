@@ -40,6 +40,8 @@ export interface AzureOpenAIBaseModelConfig {
 	azureOpenAIApiInstanceName: string;
 	azureOpenAIApiVersion: string;
 	azureOpenAIEndpoint?: string;
+	// we allow a custom transport-header objekt - e.g. to pass an API GW
+	customHeaders?: Record<string, string>;
 }
 
 /**
