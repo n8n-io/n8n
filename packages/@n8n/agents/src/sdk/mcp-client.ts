@@ -67,6 +67,14 @@ export class McpClient {
 	}
 
 	/**
+	 * Returns the names of all configured MCP servers. Does NOT require a
+	 * network connection — safe to call before `listTools()` or `connect()`.
+	 */
+	get serverNames(): string[] {
+		return this.configs.map((cfg) => cfg.name);
+	}
+
+	/**
 	 * Explicitly connect to all servers without listing tools.
 	 * Optional — `listTools()` connects implicitly.
 	 */

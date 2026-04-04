@@ -101,3 +101,11 @@ export type {
 } from './runtime/event';
 
 export type { McpServerConfig, McpVerifyResult } from './sdk/mcp';
+
+export type { AgentBuilder } from './sdk/agent-builder';
+
+export type {
+	CredentialProvider,
+	ResolvedCredential,
+	CredentialListItem,
+} from './sdk/credential-provider';
