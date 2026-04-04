@@ -155,6 +155,7 @@ import { AddTypeToChatHubSessions1772700000000 } from '../common/1772700000000-A
 import { CreateRoleMappingRuleTable1772800000000 } from '../common/1772800000000-CreateRoleMappingRuleTable';
 import { CreateCredentialDependencyTable1773000000000 } from '../common/1773000000000-CreateCredentialDependencyTable';
 import { AddRestoreFieldsToWorkflowBuilderSession1774280963551 } from '../common/1774280963551-AddRestoreFieldsToWorkflowBuilderSession';
+import { ExpandVariablesValueColumn1774500000000 } from './1774500000000-ExpandVariablesValueColumn';
 import { CreateInstanceVersionHistoryTable1774854660000 } from '../common/1774854660000-CreateInstanceVersionHistoryTable';
 import { CreateInstanceAiTables1775000000000 } from '../common/1775000000000-CreateInstanceAiTables';
 import { CreateTokenExchangeJtiTable1775116241000 } from '../common/1775116241000-CreateTokenExchangeJtiTable';
@@ -318,6 +319,7 @@ export const postgresMigrations: Migration[] = [
 	CreateRoleMappingRuleTable1772800000000,
 	CreateCredentialDependencyTable1773000000000,
 	AddRestoreFieldsToWorkflowBuilderSession1774280963551,
+	ExpandVariablesValueColumn1774500000000,
 	CreateInstanceVersionHistoryTable1774854660000,
 	CreateInstanceAiTables1775000000000,
 	CreateTokenExchangeJtiTable1775116241000,
