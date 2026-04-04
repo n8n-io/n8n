@@ -2,10 +2,12 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
 import { useRouter, useRoute } from 'vue-router';
 import SigninView from './SigninView.vue';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { VIEWS } from '@/app/constants';
 
@@ -39,6 +41,7 @@ const renderComponent = createComponentRenderer(SigninView);
 
 let usersStore: ReturnType<typeof mockedStore<typeof useUsersStore>>;
 let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
+let ssoStore: ReturnType<typeof mockedStore<typeof useSSOStore>>;
 
 let router: ReturnType<typeof useRouter>;
 let telemetry: ReturnType<typeof useTelemetry>;
@@ -78,6 +81,7 @@ describe('SigninView', () => {
 		createTestingPinia();
 		usersStore = mockedStore(useUsersStore);
 		settingsStore = mockedStore(useSettingsStore);
+		ssoStore = mockedStore(useSSOStore);
 
 		router = useRouter();
 		telemetry = useTelemetry();
@@ -190,6 +194,99 @@ describe('SigninView', () => {
 
 			expect(hrefSpy).not.toHaveBeenCalled();
 			expect(router.push).toHaveBeenCalledWith({ name: VIEWS.HOMEPAGE });
+		});
+	});
+
+	describe('SSO auto-redirect', () => {
+		let route: ReturnType<typeof useRoute>;
+
+		beforeEach(() => {
+			route = useRoute();
+			global.window = Object.create(window);
+			Object.defineProperty(window, 'location', {
+				value: { href: '', origin: 'https://n8n.local' },
+				writable: true,
+			});
+		});
+
+		it('should auto-redirect to SAML IdP when SAML is default auth', async () => {
+			vi.spyOn(route, 'query', 'get').mockReturnValue({});
+			ssoStore.showSsoLoginButton = true;
+			ssoStore.isDefaultAuthenticationSaml = true;
+			ssoStore.getSSORedirectUrl.mockResolvedValue('https://idp.example.com/saml');
+
+			const hrefSpy = vi.spyOn(window.location, 'href', 'set');
+			const { getByTestId } = renderComponent();
+
+			await vi.waitFor(() => {
+				expect(hrefSpy).toHaveBeenCalledWith('https://idp.example.com/saml');
+			});
+
+			expect(getByTestId('sso-redirecting')).toBeInTheDocument();
+		});
+
+		it('should auto-redirect to OIDC when OIDC is default auth', async () => {
+			vi.spyOn(route, 'query', 'get').mockReturnValue({});
+			ssoStore.showSsoLoginButton = true;
+			ssoStore.isDefaultAuthenticationSaml = false;
+			ssoStore.oidc = { loginEnabled: true, loginUrl: 'https://idp.example.com/oidc' };
+
+			const hrefSpy = vi.spyOn(window.location, 'href', 'set');
+			const { getByTestId } = renderComponent();
+
+			await vi.waitFor(() => {
+				expect(hrefSpy).toHaveBeenCalledWith('https://idp.example.com/oidc');
+			});
+
+			expect(getByTestId('sso-redirecting')).toBeInTheDocument();
+		});
+
+		it('should NOT auto-redirect when noSsoRedirect query param is present', async () => {
+			vi.spyOn(route, 'query', 'get').mockReturnValue({ noSsoRedirect: '' });
+			ssoStore.showSsoLoginButton = true;
+			ssoStore.isDefaultAuthenticationSaml = true;
+
+			const hrefSpy = vi.spyOn(window.location, 'href', 'set');
+			const { queryByTestId, getByTestId } = renderComponent();
+
+			await vi.dynamicImportSettled();
+
+			expect(hrefSpy).not.toHaveBeenCalled();
+			expect(queryByTestId('sso-redirecting')).not.toBeInTheDocument();
+			expect(getByTestId('signin-form')).toBeInTheDocument();
+		});
+
+		it('should fall back to login form on redirect failure', async () => {
+			vi.spyOn(route, 'query', 'get').mockReturnValue({});
+			settingsStore.isCloudDeployment = false;
+			settingsStore.activeModules = [];
+			ssoStore.showSsoLoginButton = true;
+			ssoStore.isDefaultAuthenticationSaml = true;
+			ssoStore.getSSORedirectUrl.mockRejectedValue(new Error('SSO unavailable'));
+
+			const hrefSpy = vi.spyOn(window.location, 'href', 'set');
+			const { getByTestId, queryByTestId } = renderComponent();
+
+			await waitFor(() => {
+				expect(queryByTestId('sso-redirecting')).not.toBeInTheDocument();
+				expect(getByTestId('signin-form')).toBeInTheDocument();
+			});
+
+			expect(hrefSpy).not.toHaveBeenCalled();
+		});
+
+		it('should NOT auto-redirect when SSO is not default auth', async () => {
+			vi.spyOn(route, 'query', 'get').mockReturnValue({});
+			ssoStore.showSsoLoginButton = false;
+
+			const hrefSpy = vi.spyOn(window.location, 'href', 'set');
+			const { queryByTestId, getByTestId } = renderComponent();
+
+			await vi.dynamicImportSettled();
+
+			expect(hrefSpy).not.toHaveBeenCalled();
+			expect(queryByTestId('sso-redirecting')).not.toBeInTheDocument();
+			expect(getByTestId('signin-form')).toBeInTheDocument();
 		});
 	});
 });
