@@ -521,7 +521,7 @@ export class GoogleSheet {
 			);
 		}
 
-		const columnValues: Array<string | number> =
+		let columnValues: Array<string | number> =
 			columnValuesList ||
 			(await this.getColumnValues({ range, keyIndex, dataStartRowIndex, valueRenderMode }));
 
@@ -594,6 +594,54 @@ export class GoogleSheet {
 					range: `${decodedRange.name}!${columnToUpdate}${updateRowIndex}`,
 					values: [[updateValue]],
 				});
+			}
+		}
+		// If no rows were matched but columnValues were provided from earlier in the execution,
+		// they may be stale (e.g. row appended earlier in the same workflow).
+		// Re-fetch column values once and retry matching.
+		if (updateData.length === 0 && inputData.length > 0) {
+			const freshColumnValues = await this.getColumnValues({
+				range,
+				keyIndex,
+				dataStartRowIndex,
+				valueRenderMode,
+			});
+
+			columnValues = freshColumnValues;
+
+			for (const item of inputData) {
+				const inputIndexKey = item[indexKey] as string;
+				if (inputIndexKey === undefined || inputIndexKey === null) continue;
+
+				const indexOfIndexKeyInSheet = freshColumnValues.findIndex(
+					(value) => value?.toString() === inputIndexKey.toString(),
+				);
+
+				if (indexOfIndexKeyInSheet === -1) continue;
+
+				const updateRowIndex = indexOfIndexKeyInSheet + dataStartRowIndex + 1;
+
+				for (const name of columnNames) {
+					if (name === indexKey) continue;
+					if (item[name] === undefined || item[name] === null) continue;
+
+					const columnToUpdate = this.getColumnWithOffset(
+						decodedRange.start?.column || 'A',
+						columnNames.indexOf(name),
+					);
+
+					let updateValue = item[name] as string;
+					if (typeof updateValue === 'object') {
+						try {
+							updateValue = JSON.stringify(updateValue);
+						} catch {}
+					}
+
+					updateData.push({
+						range: `${decodedRange.name}!${columnToUpdate}${updateRowIndex}`,
+						values: [[updateValue]],
+					});
+				}
 			}
 		}
 
