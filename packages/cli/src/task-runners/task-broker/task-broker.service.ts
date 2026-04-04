@@ -567,7 +567,9 @@ export class TaskBroker {
 				this.logger.debug(`Task (${taskId}) deferred until runner is ready`);
 				clearTimeout(request.timeout);
 				request.timeout = this.createRequestTimeout(request.requestId);
-				this.pendingTaskRequests.push(request); // will settle on receiving task offer from runner
+				// Request is already in pendingTaskRequests (it was never removed before acceptOffer
+				// was called). Just reset acceptInProgress so settleTasks() can re-match it when
+				// the runner sends its next offer.
 				return;
 			}
 			if (e instanceof TaskRunnerAcceptTimeoutError) {
