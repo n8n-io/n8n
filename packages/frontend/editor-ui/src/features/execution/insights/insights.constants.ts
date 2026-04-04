@@ -7,7 +7,10 @@ export const INSIGHT_TYPES = {
 	FAILURE_RATE: 'failureRate',
 	TIME_SAVED: 'timeSaved',
 	AVERAGE_RUN_TIME: 'averageRunTime',
+	SCHEDULE: 'schedule',
 } as const;
+
+export type InsightsViewType = InsightsSummaryType | typeof INSIGHT_TYPES.SCHEDULE;
 
 export const INSIGHTS_SUMMARY_ORDER: InsightsSummaryType[] = [
 	INSIGHT_TYPES.TOTAL,
@@ -16,6 +19,12 @@ export const INSIGHTS_SUMMARY_ORDER: InsightsSummaryType[] = [
 	INSIGHT_TYPES.TIME_SAVED,
 	INSIGHT_TYPES.AVERAGE_RUN_TIME,
 ] as const;
+
+export const isInsightsSummaryType = (value: unknown): value is InsightsSummaryType =>
+	typeof value === 'string' && INSIGHTS_SUMMARY_ORDER.includes(value as InsightsSummaryType);
+
+export const isInsightsViewType = (value: unknown): value is InsightsViewType =>
+	value === INSIGHT_TYPES.SCHEDULE || isInsightsSummaryType(value);
 
 export const INSIGHTS_UNIT_MAPPING: Record<InsightsSummaryType, (value: number) => string> = {
 	total: () => '',

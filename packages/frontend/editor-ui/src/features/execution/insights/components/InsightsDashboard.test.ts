@@ -1,4 +1,4 @@
-import { defineComponent, reactive } from 'vue';
+import { defineComponent, reactive, ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import InsightsDashboard from './InsightsDashboard.vue';
 import { createTestingPinia } from '@pinia/testing';
@@ -15,13 +15,11 @@ import { within, screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createProjectListItem } from '@/features/collaboration/projects/__tests__/utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import type {
-	FrontendModuleSettings,
-	InsightsByTime,
-	InsightsByWorkflow,
-	InsightsSummaryType,
-} from '@n8n/api-types';
-import { INSIGHT_TYPES } from '@/features/execution/insights/insights.constants';
+import type { FrontendModuleSettings, InsightsByTime, InsightsByWorkflow } from '@n8n/api-types';
+import {
+	INSIGHT_TYPES,
+	type InsightsViewType,
+} from '@/features/execution/insights/insights.constants';
 import type { InsightsSummaryDisplay } from '@/features/execution/insights/insights.types';
 import { vi } from 'vitest';
 
@@ -29,7 +27,7 @@ const { emitters, addEmitter } = useEmitters<'n8nDataTableServer'>();
 
 const mockRoute = reactive<{
 	params: {
-		insightType: InsightsSummaryType;
+		insightType: InsightsViewType;
 	};
 }>({
 	params: { insightType: INSIGHT_TYPES.TOTAL },
@@ -71,8 +69,28 @@ const mockTelemetry = {
 	track: vi.fn(),
 };
 
+const mockScheduleData = {
+	overview: ref({ trackedWorkflows: 2, scheduledActivations: 12, busiestSlotActivations: 4 }),
+	rows: ref([]),
+	historicalRows: ref([]),
+	executionLoadState: ref(null),
+	heatmapCells: ref([]),
+	dayPanels: ref([]),
+	forecastWindow: ref({
+		start: '2025-01-01T00:00:00.000Z',
+		end: '2025-01-02T00:00:00.000Z',
+		slotMinutes: 15,
+	}),
+	isLoading: ref(false),
+	error: ref(null),
+};
+
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => mockTelemetry,
+}));
+
+vi.mock('@/features/execution/insights/schedule/composables/useScheduleData', () => ({
+	useScheduleData: () => mockScheduleData,
 }));
 
 const renderComponent = createComponentRenderer(InsightsDashboard);
@@ -364,6 +382,19 @@ describe('InsightsDashboard', () => {
 			});
 		});
 
+		it('should render the schedule control panel for the schedule route', async () => {
+			renderComponent({
+				props: { insightType: INSIGHT_TYPES.SCHEDULE },
+			});
+
+			await waitAllPromises();
+			expect(
+				await screen.findByTestId('schedule-control-panel', undefined, { timeout: 5_000 }),
+			).toBeInTheDocument();
+
+			expect(screen.queryByTestId('insights-table')).not.toBeInTheDocument();
+		});
+
 		it('should render paywall when dashboard disabled and not time saved route', async () => {
 			insightsStore.isDashboardEnabled = false;
 			renderComponent({
@@ -482,6 +513,18 @@ describe('InsightsDashboard', () => {
 					...DEFAULT_DATE_RANGE,
 				},
 			});
+		});
+
+		it('should skip chart and table fetching for the schedule route', () => {
+			renderComponent({
+				props: { insightType: INSIGHT_TYPES.SCHEDULE },
+			});
+
+			expectStoreExecutions({
+				summary: DEFAULT_DATE_RANGE,
+			});
+			expect(insightsStore.charts.execute).not.toHaveBeenCalled();
+			expect(insightsStore.table.execute).not.toHaveBeenCalled();
 		});
 
 		it('should refetch data when insight type changes', async () => {
