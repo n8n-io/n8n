@@ -563,6 +563,7 @@ async function onClipboardPaste(plainTextData: string): Promise<void> {
 	const ids = result.nodes?.map((node) => node.id) ?? [];
 
 	canvasRef.value?.ensureNodesAreVisible(ids);
+	fitView();
 }
 
 async function onCutNodes(ids: string[]) {
