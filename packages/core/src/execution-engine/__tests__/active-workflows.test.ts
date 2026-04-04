@@ -141,6 +141,18 @@ describe('ActiveWorkflows', () => {
 			});
 		});
 
+		it('should deregister existing crons before re-activating a workflow', async () => {
+			await addWorkflow({ triggerNodes: [triggerNode] });
+
+			expect(scheduledTaskManager.deregisterCrons).toHaveBeenCalledWith(workflowId);
+			scheduledTaskManager.deregisterCrons.mockClear();
+
+			// Re-activate the same workflow (e.g. on workflow save)
+			await addWorkflow({ triggerNodes: [triggerNode] });
+
+			expect(scheduledTaskManager.deregisterCrons).toHaveBeenCalledWith(workflowId);
+		});
+
 		describe('should throw error', () => {
 			it('if trigger activation fails', async () => {
 				const error = new Error('Trigger activation failed');
