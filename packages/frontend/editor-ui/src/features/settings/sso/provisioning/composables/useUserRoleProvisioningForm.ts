@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue';
 import { useUserRoleProvisioningStore } from './userRoleProvisioning.store';
 import type { ProvisioningConfig } from '@n8n/rest-api-client/api/provisioning';
+import { useRoleMappingRulesApi } from './useRoleMappingRulesApi';
 import type {
 	RoleAssignmentSetting,
 	RoleMappingMethodSetting,
@@ -12,8 +13,16 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 
 /**
  * Derives the two dropdown values from the stored provisioning config.
+ *
+ * When expression mapping is active, both scopes booleans are false (mutually exclusive
+ * code paths on the backend), so we can't distinguish "instance only" from "instance+project"
+ * from config alone. We use `hasProjectRules` as a heuristic: if project-type rules exist
+ * in the DB, the user intended "instance and project"; otherwise "instance only".
  */
-function getDropdownValuesFromConfig(config?: ProvisioningConfig): {
+function getDropdownValuesFromConfig(
+	config?: ProvisioningConfig,
+	hasProjectRules = false,
+): {
 	roleAssignment: RoleAssignmentSetting;
 	mappingMethod: RoleMappingMethodSetting;
 } {
@@ -30,9 +39,12 @@ function getDropdownValuesFromConfig(config?: ProvisioningConfig): {
 	} else if (config.scopesProvisionInstanceRole) {
 		return { roleAssignment: 'instance', mappingMethod };
 	} else if (config.scopesUseExpressionMapping) {
-		// Expression mapping enabled but scopes disabled — treat as instance+project
-		// since expression rules can cover both
-		return { roleAssignment: 'instance_and_project', mappingMethod: 'rules_in_n8n' };
+		// Expression mapping active — scopes booleans are both false.
+		// Use presence of project rules to infer the intended role scope.
+		return {
+			roleAssignment: hasProjectRules ? 'instance_and_project' : 'instance',
+			mappingMethod: 'rules_in_n8n',
+		};
 	}
 
 	return { roleAssignment: 'manual', mappingMethod: 'idp' };
@@ -156,11 +168,18 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 	};
 
 	const initFormValue = () => {
-		void provisioningStore.getProvisioningConfig().then(() => {
-			const values = getDropdownValuesFromConfig(provisioningStore.provisioningConfig);
-			roleAssignment.value = values.roleAssignment;
-			mappingMethod.value = values.mappingMethod;
-		});
+		const api = useRoleMappingRulesApi();
+		void Promise.all([provisioningStore.getProvisioningConfig(), api.listRules()]).then(
+			([, rules]) => {
+				const hasProjectRules = rules.some((r) => r.type === 'project');
+				const values = getDropdownValuesFromConfig(
+					provisioningStore.provisioningConfig,
+					hasProjectRules,
+				);
+				roleAssignment.value = values.roleAssignment;
+				mappingMethod.value = values.mappingMethod;
+			},
+		);
 	};
 
 	initFormValue();
