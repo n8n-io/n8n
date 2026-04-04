@@ -1,0 +1,3 @@
+This branch is ready for Claude Code to fix the issue.
+
+Issue: " + $("Prepare Branch Data").item.json.issueTitle
