@@ -2,18 +2,20 @@
  * Pure utility functions used by AgentRuntime that require no class context.
  * These are extracted here to keep agent-runtime.ts focused on orchestration logic.
  */
-import { toDbMessage } from '../sdk/message';
 import type { GenerateResult, StreamChunk, TokenUsage } from '../types';
 import { toTokenUsage } from './stream';
-import type { AgentDbMessage, AgentMessage, ContentToolResult } from '../types/sdk/message';
+import type { AgentMessage, ContentToolResult } from '../types/sdk/message';
 import type { JSONValue } from '../types/utils/json';
 
-/** Normalize a string input to an AgentDbMessage array, assigning ids where missing. */
-export function normalizeInput(input: AgentMessage[] | string): AgentDbMessage[] {
+/**
+ * Normalize caller input to `AgentMessage[]` for the runtime. String input becomes a
+ * single user message.
+ */
+export function normalizeInput(input: AgentMessage[] | string): AgentMessage[] {
 	if (typeof input === 'string') {
-		return [toDbMessage({ role: 'user', content: [{ type: 'text', text: input }] })];
+		return [{ role: 'user', content: [{ type: 'text', text: input }] }];
 	}
-	return input.map(toDbMessage);
+	return input;
 }
 
 /** Build an AI SDK tool ModelMessage for a tool execution result. */
@@ -21,8 +23,8 @@ export function makeToolResultMessage(
 	toolCallId: string,
 	toolName: string,
 	result: unknown,
-): AgentDbMessage {
-	return toDbMessage({
+): AgentMessage {
+	return {
 		role: 'tool',
 		content: [
 			{
@@ -32,7 +34,7 @@ export function makeToolResultMessage(
 				result: result as JSONValue,
 			},
 		],
-	});
+	};
 }
 
 /**
@@ -44,9 +46,9 @@ export function makeErrorToolResultMessage(
 	toolCallId: string,
 	toolName: string,
 	error: unknown,
-): AgentDbMessage {
+): AgentMessage {
 	const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
-	return toDbMessage({
+	return {
 		role: 'tool',
 		content: [
 			{
@@ -57,11 +59,11 @@ export function makeErrorToolResultMessage(
 				isError: true,
 			},
 		],
-	});
+	};
 }
 
 /** Extract all tool-result content parts from a flat list of agent messages. */
-export function extractToolResults(messages: AgentDbMessage[]): ContentToolResult[] {
+export function extractToolResults(messages: AgentMessage[]): ContentToolResult[] {
 	return messages
 		.flatMap((m) => ('content' in m ? m.content : []))
 		.filter((c): c is ContentToolResult => c.type === 'tool-result');

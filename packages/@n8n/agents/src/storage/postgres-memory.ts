@@ -1,7 +1,6 @@
 import type { Pool, PoolClient } from 'pg';
 import type { ConnectionOptions } from 'tls';
 
-import { toDbMessage } from '../sdk/message';
 import type { BuiltMemory, Thread } from '../types/sdk/memory';
 import type { AgentDbMessage, AgentMessage } from '../types/sdk/message';
 
@@ -314,8 +313,9 @@ export class PostgresMemory implements BuiltMemory {
 				// back as a string for any reason, parse it.
 				const content = typeof row.content === 'string' ? parseJsonSafe(row.content) : row.content;
 				if (!content || typeof content !== 'object') return undefined;
-				const msg = content as AgentMessage & { id?: string };
+				const msg = content as AgentMessage & { id?: string; createdAt?: Date };
 				msg.id = row.id;
+				msg.createdAt = new Date(row.createdAt);
 				return msg as AgentDbMessage;
 			})
 			.filter((m): m is AgentDbMessage => m !== undefined);
@@ -324,19 +324,21 @@ export class PostgresMemory implements BuiltMemory {
 	async saveMessages(args: {
 		threadId: string;
 		resourceId?: string;
-		messages: AgentMessage[];
+		messages: AgentDbMessage[];
 	}): Promise<void> {
 		const pool = await this.ensureInitialized();
 
 		if (args.messages.length === 0) return;
 
-		const dbMessages = args.messages.map(toDbMessage);
 		const client: PoolClient = await pool.connect();
 		try {
 			await client.query('BEGIN');
 
-			for (const msg of dbMessages) {
-				const now = new Date().toISOString();
+			for (const msg of args.messages) {
+				// Use the message's own createdAt (assigned monotonically by AgentMessageList)
+				// so the DB column reflects the authoritative insertion order.
+				const createdAt =
+					msg.createdAt instanceof Date ? msg.createdAt.toISOString() : new Date().toISOString();
 				const role = 'role' in msg ? (msg.role as string) : 'custom';
 				const id = msg.id;
 
@@ -348,7 +350,7 @@ export class PostgresMemory implements BuiltMemory {
 						role = EXCLUDED.role,
 						content = EXCLUDED.content,
 						"createdAt" = EXCLUDED."createdAt"`,
-					[id, args.threadId, role, JSON.stringify(msg), now],
+					[id, args.threadId, role, JSON.stringify(msg), createdAt],
 				);
 			}
 
