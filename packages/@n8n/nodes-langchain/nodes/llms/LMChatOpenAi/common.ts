@@ -137,7 +137,11 @@ export const prepareAdditionalResponsesParams = (options: ModelOptions) => {
 			textConfig.format = removeEmptyProperties(textConfig.format);
 		}
 
-		body.text = textConfig;
+		const cleanedTextConfig =
+			removeEmptyProperties<OpenAIClient.Responses.ResponseTextConfig>(textConfig);
+		if (!isObjectEmpty(cleanedTextConfig)) {
+			body.text = cleanedTextConfig;
+		}
 	}
 
 	if (options.reasoningEffort) {
