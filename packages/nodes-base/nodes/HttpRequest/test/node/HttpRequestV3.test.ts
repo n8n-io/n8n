@@ -542,4 +542,170 @@ describe('HttpRequestV3', () => {
 			);
 		});
 	});
+	describe('Empty JSON Response Handling', () => {
+		it('should return empty object for autodetect JSON response with empty body (content-length: 0)', async () => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+
+			const response = {
+				headers: { 'content-type': 'application/json', 'content-length': '0' },
+				body: Buffer.from(''),
+				statusCode: 201,
+			};
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: {}, pairedItem: { item: 0 } }]]);
+		});
+
+		it('should return empty object for JSON format with empty body', async () => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return {
+							...options,
+							response: {
+								response: {
+									responseFormat: 'json',
+								},
+							},
+						};
+					default:
+						return undefined;
+				}
+			});
+
+			const response = {
+				headers: { 'content-type': 'application/json', 'content-length': '0' },
+				body: '',
+				statusCode: 201,
+			};
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: {}, pairedItem: { item: 0 } }]]);
+		});
+
+		it('should return empty object for full response with empty JSON body', async () => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return {
+							...options,
+							response: {
+								response: {
+									responseFormat: 'json',
+									fullResponse: true,
+								},
+							},
+						};
+					case 'options.response.response.responseFormat':
+						return 'json';
+					case 'options.response.response.fullResponse':
+						return true;
+					default:
+						return undefined;
+				}
+			});
+
+			const response = {
+				headers: { 'content-type': 'application/json', 'content-length': '0' },
+				body: '',
+				statusCode: 201,
+				statusMessage: 'Created',
+			};
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result[0][0].json.body).toEqual({});
+			expect(result[0][0].json.statusCode).toEqual(201);
+		});
+
+		it('should still parse valid JSON response correctly', async () => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+
+			const validData = { message: 'success', data: { id: 123 } };
+			const response = {
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify(validData)),
+				statusCode: 200,
+			};
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result[0][0].json).toEqual(validData);
+		});
+
+		it('should still throw error for invalid JSON (non-empty but malformed)', async () => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+
+			const response = {
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from('{invalid json}'),
+				statusCode: 200,
+			};
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow();
+		});
+	});
 });
