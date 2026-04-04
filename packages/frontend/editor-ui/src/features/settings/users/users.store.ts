@@ -128,26 +128,21 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	// Methods
 
 	const addUsers = (newUsers: User[]) => {
-		newUsers.forEach((userResponse) => {
-			const prevUser = usersById.value[userResponse.id] || {};
-			const updatedUser = {
-				...prevUser,
-				...userResponse,
-			};
-			const user: IUser = {
-				...updatedUser,
+		const updates = newUsers.reduce<Record<string, IUser>>((acc, userResponse) => {
+			const prevUser = usersById.value[userResponse.id] ?? {};
+			const merged = { ...prevUser, ...userResponse };
+			acc[userResponse.id] = {
+				...merged,
 				fullName: userResponse.firstName
-					? `${updatedUser.firstName} ${updatedUser.lastName || ''}`
+					? `${merged.firstName} ${merged.lastName || ''}`
 					: undefined,
-				isDefaultUser: _isDefaultUser(updatedUser),
-				isPendingUser: _isPendingUser(updatedUser),
+				isDefaultUser: _isDefaultUser(merged),
+				isPendingUser: _isPendingUser(merged),
 			};
+			return acc;
+		}, {});
 
-			usersById.value = {
-				...usersById.value,
-				[user.id]: user,
-			};
-		});
+		usersById.value = { ...usersById.value, ...updates };
 	};
 
 	const setCurrentUser = async (user: CurrentUserResponse) => {
