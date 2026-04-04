@@ -630,7 +630,6 @@ function handleSelectAction(params: INodeParameters) {
 			embedded: props.isEmbeddedInCanvas,
 		}"
 		:data-has-output-connection="hasOutputConnection"
-		@keydown.stop
 	>
 		<ExperimentalEmbeddedNdvHeader
 			v-if="isEmbeddedInCanvas && node"
