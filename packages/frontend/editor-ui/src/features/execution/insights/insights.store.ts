@@ -8,11 +8,13 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { transformInsightsSummary } from '@/features/execution/insights/insights.utils';
 import { getResourcePermissions } from '@n8n/permissions';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 export const useInsightsStore = defineStore('insights', () => {
 	const rootStore = useRootStore();
 	const usersStore = useUsersStore();
 	const settingsStore = useSettingsStore();
+	const projectsStore = useProjectsStore();
 
 	const globalInsightsPermissions = computed(
 		() => getResourcePermissions(usersStore.currentUser?.globalScopes).insights,
@@ -44,6 +46,35 @@ export const useInsightsStore = defineStore('insights', () => {
 		{ immediate: false, resetOnExecute: false },
 	);
 
+	const projectSummary = useAsyncState(
+		async (projectId?: string) => {
+			const raw = await insightsApi.fetchInsightsSummary(rootStore.restApiContext, { projectId });
+			return transformInsightsSummary(raw);
+		},
+		[],
+		{ immediate: false, resetOnExecute: false },
+	);
+
+	async function fetchProjectSummary(projectId: string) {
+		return await projectSummary.execute(0, projectId);
+	}
+
+	function hasProjectInsightsAccess(projectId: string): boolean {
+		if (globalInsightsPermissions.value.list) return true;
+		const project = projectsStore.myProjects.find((p) => p.id === projectId);
+		return !!getResourcePermissions(project?.scopes).insights.list;
+	}
+
+	// True when the current user can see any insights at all — either via global
+	// access (owner/admin) or via project-level access on at least one project.
+	// Used by both the route guard and the dashboard component.
+	const canViewInsights = computed(
+		() =>
+			isInsightsEnabled.value &&
+			(globalInsightsPermissions.value.list ||
+				projectsStore.myProjects.some((p) => hasProjectInsightsAccess(p.id))),
+	);
+
 	const charts = useAsyncState(
 		async (filter?: InsightsDateFilterDto) => {
 			const dataFetcher = isDashboardEnabled.value
@@ -73,7 +104,11 @@ export const useInsightsStore = defineStore('insights', () => {
 		isInsightsEnabled,
 		isSummaryEnabled,
 		isDashboardEnabled,
+		canViewInsights,
 		weeklySummary,
+		projectSummary,
+		fetchProjectSummary,
+		hasProjectInsightsAccess,
 		summary,
 		charts,
 		table,

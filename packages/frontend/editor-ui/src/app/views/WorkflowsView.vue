@@ -481,6 +481,16 @@ watch([() => route.params?.projectId, () => route.name], async () => {
 });
 
 watch(
+	() => route.params?.projectId as string | undefined,
+	(projectId) => {
+		if (typeof projectId === 'string' && insightsStore.hasProjectInsightsAccess(projectId)) {
+			void insightsStore.fetchProjectSummary(projectId);
+		}
+	},
+	{ immediate: true },
+);
+
+watch(
 	() => route.params?.folderId,
 	async (newVal) => {
 		currentFolderId.value = newVal as string;
@@ -551,6 +561,16 @@ const showInsights = computed(() => {
 		(workflowListResources.value.length > 0 ||
 			(!personalizedTemplatesV2Store.isFeatureEnabled() &&
 				!personalizedTemplatesV3Store.isFeatureEnabled()))
+	);
+});
+
+const showProjectInsights = computed(() => {
+	const projectId = route.params?.projectId as string | undefined;
+	return (
+		projectPages.isProjectsSubPage &&
+		insightsStore.isInsightsEnabled &&
+		typeof projectId === 'string' &&
+		insightsStore.hasProjectInsightsAccess(projectId)
 	);
 });
 
@@ -1787,6 +1807,12 @@ const onNameSubmit = async (name: string) => {
 					:loading="insightsStore.weeklySummary.isLoading"
 					:summary="insightsStore.weeklySummary.state"
 					time-range="week"
+				/>
+				<InsightsSummary
+					v-if="showProjectInsights"
+					:loading="insightsStore.projectSummary.isLoading"
+					:summary="insightsStore.projectSummary.state"
+					:project-id="route.params.projectId as string"
 				/>
 			</ProjectHeader>
 		</template>

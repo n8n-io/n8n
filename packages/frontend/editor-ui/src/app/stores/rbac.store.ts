@@ -121,7 +121,9 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 			scope,
 			{
 				global: globalScopes.value,
-				project: context?.projectId ? scopesByProjectId.value[context.projectId] : [],
+				// scopesByProjectId is only populated for resources in view, so default to []
+				// to avoid a TypeError when checking a project that hasn't been loaded yet.
+				project: context?.projectId ? (scopesByProjectId.value[context.projectId] ?? []) : [],
 				resource:
 					context?.resourceType && context?.resourceId
 						? scopesByResourceId.value[context.resourceType][context.resourceId]

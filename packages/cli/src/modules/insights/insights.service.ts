@@ -2,9 +2,14 @@ import { type InsightsSummary } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import type { User } from '@n8n/db';
 import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
+import { hasGlobalScope } from '@n8n/permissions';
+
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { getUserProjectIdsWithScope } from '@/permissions.ee/check-access';
 
 import type { PeriodUnit, TypeUnit } from './database/entities/insights-shared';
 import { NumberToType, TypeToNumber } from './database/entities/insights-shared';
@@ -68,19 +73,56 @@ export class InsightsService {
 		this.stopCompactionAndPruningTimers();
 	}
 
+	/**
+	 * Returns the effective project ID filter for insights queries.
+	 *
+	 * - Global `insights:list` scope: returns undefined (no filter — all projects)
+	 * - Project-level `insights:list` scope with specific projectId: returns [projectId]
+	 * - Project-level `insights:list` scope without projectId: returns all accessible project IDs
+	 * - No scope: throws ForbiddenError
+	 */
+	private async getEffectiveProjectIds(
+		user: User,
+		projectId?: string,
+	): Promise<string[] | undefined> {
+		if (hasGlobalScope(user, 'insights:list')) {
+			// Global admin: no projectId = no filter (all projects), specific projectId = filter to that project
+			return projectId ? [projectId] : undefined;
+		}
+
+		const accessibleProjectIds = await getUserProjectIdsWithScope(user, ['insights:list']);
+
+		if (!accessibleProjectIds.length) {
+			throw new ForbiddenError("You don't have access to any project's insights");
+		}
+
+		if (projectId) {
+			if (!accessibleProjectIds.includes(projectId)) {
+				throw new ForbiddenError("You don't have access to this project's insights");
+			}
+			return [projectId];
+		}
+
+		return accessibleProjectIds;
+	}
+
 	async getInsightsSummary({
+		user,
 		startDate,
 		endDate,
 		projectId,
 	}: {
+		user: User;
 		projectId?: string;
 		startDate: Date;
 		endDate: Date;
 	}): Promise<InsightsSummary> {
+		const projectIds = await this.getEffectiveProjectIds(user, projectId);
+
 		const rows = await this.insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates({
 			startDate,
 			endDate,
-			projectId,
+			projectIds,
 		});
 
 		// Initialize data structures for both periods
@@ -163,6 +205,7 @@ export class InsightsService {
 	}
 
 	async getInsightsByWorkflow({
+		user,
 		skip = 0,
 		take = 10,
 		sortBy = 'total:desc',
@@ -170,6 +213,7 @@ export class InsightsService {
 		startDate,
 		endDate,
 	}: {
+		user: User;
 		skip?: number;
 		take?: number;
 		sortBy?: string;
@@ -177,13 +221,15 @@ export class InsightsService {
 		startDate: Date;
 		endDate: Date;
 	}) {
+		const projectIds = await this.getEffectiveProjectIds(user, projectId);
+
 		const { count, rows } = await this.insightsByPeriodRepository.getInsightsByWorkflow({
 			startDate,
 			endDate,
 			skip,
 			take,
 			sortBy,
-			projectId,
+			projectIds,
 		});
 
 		return {
@@ -193,22 +239,26 @@ export class InsightsService {
 	}
 
 	async getInsightsByTime({
+		user,
 		// Default to all insight types
 		insightTypes = Object.keys(TypeToNumber) as TypeUnit[],
 		projectId,
 		startDate,
 		endDate,
 	}: {
+		user: User;
 		insightTypes?: TypeUnit[];
 		projectId?: string;
 		startDate: Date;
 		endDate: Date;
 	}) {
+		const projectIds = await this.getEffectiveProjectIds(user, projectId);
+
 		const periodUnit = this.getDateFiltersGranularity({ startDate, endDate });
 		const rows = await this.insightsByPeriodRepository.getInsightsByTime({
 			periodUnit,
 			insightTypes,
-			projectId,
+			projectIds,
 			startDate,
 			endDate,
 		});

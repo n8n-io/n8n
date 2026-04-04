@@ -1,14 +1,31 @@
 import type { LicenseState } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { User } from '@n8n/db';
+import { hasGlobalScope } from '@n8n/permissions';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { getUserProjectIdsWithScope } from '@/permissions.ee/check-access';
 import { TypeToNumber } from '../database/entities/insights-shared';
 import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
 import type { InsightsCompactionService } from '../insights-compaction.service';
 import type { InsightsPruningService } from '../insights-pruning.service';
 import { InsightsService } from '../insights.service';
+
+// Bypass authorization in all existing tests — auth is tested separately below
+jest.mock('@n8n/permissions', () => ({
+	...jest.requireActual('@n8n/permissions'),
+	hasGlobalScope: jest.fn().mockReturnValue(true),
+}));
+
+jest.mock('@/permissions.ee/check-access', () => ({
+	getUserProjectIdsWithScope: jest.fn().mockResolvedValue(['project-1']),
+}));
+
+// Shared user passed to all service method calls
+const anyUser = mock<User>();
 
 describe('InsightsService', () => {
 	let insightsService: InsightsService;
@@ -55,6 +72,7 @@ describe('InsightsService', () => {
 			]);
 
 			const result = await insightsService.getInsightsSummary({
+				user: anyUser,
 				startDate,
 				endDate,
 			});
@@ -188,6 +206,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user: anyUser,
 						startDate,
 						endDate,
 					});
@@ -210,6 +229,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user: anyUser,
 						startDate,
 						endDate,
 					});
@@ -232,6 +252,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user: anyUser,
 						startDate,
 						endDate,
 					});
@@ -253,6 +274,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user: anyUser,
 						startDate,
 						endDate,
 					});
@@ -277,6 +299,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user: anyUser,
 						startDate,
 						endDate,
 					});
@@ -297,6 +320,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user: anyUser,
 						startDate,
 						endDate,
 					});
@@ -318,6 +342,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user: anyUser,
 						startDate,
 						endDate,
 					});
@@ -342,6 +367,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user: anyUser,
 						startDate,
 						endDate,
 					});
@@ -368,6 +394,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user: anyUser,
 						startDate,
 						endDate,
 					});
@@ -390,6 +417,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user: anyUser,
 						startDate,
 						endDate,
 					});
@@ -414,6 +442,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user: anyUser,
 						startDate,
 						endDate,
 					});
@@ -436,6 +465,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user: anyUser,
 						startDate,
 						endDate,
 					});
@@ -458,6 +488,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user: anyUser,
 						startDate,
 						endDate,
 					});
@@ -477,6 +508,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user: anyUser,
 						startDate,
 						endDate,
 					});
@@ -499,6 +531,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user: anyUser,
 						startDate,
 						endDate,
 					});
@@ -521,6 +554,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user: anyUser,
 						startDate,
 						endDate,
 					});
@@ -544,6 +578,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user: anyUser,
 						startDate,
 						endDate,
 					});
@@ -566,6 +601,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user: anyUser,
 						startDate,
 						endDate,
 					});
@@ -588,6 +624,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user: anyUser,
 						startDate,
 						endDate,
 					});
@@ -610,6 +647,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user: anyUser,
 						startDate,
 						endDate,
 					});
@@ -633,6 +671,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user: anyUser,
 						startDate,
 						endDate,
 					});
@@ -655,6 +694,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user: anyUser,
 						startDate,
 						endDate,
 					});
@@ -677,6 +717,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user: anyUser,
 						startDate,
 						endDate,
 					});
@@ -699,6 +740,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user: anyUser,
 						startDate,
 						endDate,
 					});
@@ -722,6 +764,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user: anyUser,
 						startDate,
 						endDate,
 					});
@@ -744,6 +787,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user: anyUser,
 						startDate,
 						endDate,
 					});
@@ -765,6 +809,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user: anyUser,
 						startDate,
 						endDate,
 					});
@@ -787,6 +832,7 @@ describe('InsightsService', () => {
 					);
 
 					const result = await insightsService.getInsightsSummary({
+						user: anyUser,
 						startDate,
 						endDate,
 					});
@@ -795,6 +841,96 @@ describe('InsightsService', () => {
 					expect(result.timeSaved.deviation).toBeNull();
 				});
 			});
+		});
+	});
+
+	describe('authorization (getEffectiveProjectIds)', () => {
+		const startDate = new Date('2024-01-01');
+		const endDate = new Date('2024-01-07');
+
+		beforeEach(() => {
+			mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+				[],
+			);
+		});
+
+		it('global user with no projectId: passes undefined to repository (no filter)', async () => {
+			jest.mocked(hasGlobalScope).mockReturnValue(true);
+
+			await insightsService.getInsightsSummary({ user: anyUser, startDate, endDate });
+
+			expect(
+				mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates,
+			).toHaveBeenCalledWith(expect.objectContaining({ projectIds: undefined }));
+		});
+
+		it('global user with specific projectId: filters to that project only', async () => {
+			jest.mocked(hasGlobalScope).mockReturnValue(true);
+
+			await insightsService.getInsightsSummary({
+				user: anyUser,
+				startDate,
+				endDate,
+				projectId: 'project-1',
+			});
+
+			expect(
+				mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates,
+			).toHaveBeenCalledWith(expect.objectContaining({ projectIds: ['project-1'] }));
+		});
+
+		it('project user with no projectId: aggregates across all accessible projects', async () => {
+			jest.mocked(hasGlobalScope).mockReturnValue(false);
+			jest
+				.mocked(getUserProjectIdsWithScope)
+				.mockResolvedValue(['project-1', 'project-2', 'project-3']);
+
+			await insightsService.getInsightsSummary({ user: anyUser, startDate, endDate });
+
+			expect(
+				mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates,
+			).toHaveBeenCalledWith(
+				expect.objectContaining({ projectIds: ['project-1', 'project-2', 'project-3'] }),
+			);
+		});
+
+		it('project user with accessible projectId: filters to that project', async () => {
+			jest.mocked(hasGlobalScope).mockReturnValue(false);
+			jest.mocked(getUserProjectIdsWithScope).mockResolvedValue(['project-1', 'project-2']);
+
+			await insightsService.getInsightsSummary({
+				user: anyUser,
+				startDate,
+				endDate,
+				projectId: 'project-1',
+			});
+
+			expect(
+				mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates,
+			).toHaveBeenCalledWith(expect.objectContaining({ projectIds: ['project-1'] }));
+		});
+
+		it('project user requesting a project they lack access to: throws ForbiddenError', async () => {
+			jest.mocked(hasGlobalScope).mockReturnValue(false);
+			jest.mocked(getUserProjectIdsWithScope).mockResolvedValue(['project-2']);
+
+			await expect(
+				insightsService.getInsightsSummary({
+					user: anyUser,
+					startDate,
+					endDate,
+					projectId: 'project-1',
+				}),
+			).rejects.toThrow(ForbiddenError);
+		});
+
+		it('project user with no accessible projects: throws ForbiddenError', async () => {
+			jest.mocked(hasGlobalScope).mockReturnValue(false);
+			jest.mocked(getUserProjectIdsWithScope).mockResolvedValue([]);
+
+			await expect(
+				insightsService.getInsightsSummary({ user: anyUser, startDate, endDate }),
+			).rejects.toThrow(ForbiddenError);
 		});
 	});
 });
