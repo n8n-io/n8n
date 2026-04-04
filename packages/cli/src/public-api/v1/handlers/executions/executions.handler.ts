@@ -4,6 +4,7 @@ import { Container } from '@n8n/di';
 import type express from 'express';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { QueryFailedError } from '@n8n/typeorm';
+import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
 import { type ExecutionStatus, replaceCircularReferences } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -12,6 +13,7 @@ import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.err
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { RedactableExecution } from '@/executions/execution-redaction';
@@ -101,9 +103,29 @@ export = {
 			}
 
 			if (includeData && isRedactableExecution(execution)) {
-				await Container.get(ExecutionRedactionServiceProxy).processExecution(execution, {
-					user: req.user,
-				});
+				const redactQuery = ExecutionRedactionQueryDtoSchema.safeParse(req.query);
+				const redactExecutionData = redactQuery.success
+					? redactQuery.data.redactExecutionData
+					: undefined;
+
+				try {
+					await Container.get(ExecutionRedactionServiceProxy).processExecution(execution, {
+						user: req.user,
+						redactExecutionData,
+						ipAddress: req.ip ?? '',
+						userAgent: req.headers['user-agent'] ?? '',
+					});
+				} catch (error) {
+					if (error instanceof ResponseError) {
+						return res.status(error.httpStatusCode).json({
+							code: error.httpStatusCode,
+							message: error.message,
+							hint: error.hint,
+							meta: 'meta' in error ? error.meta : undefined,
+						});
+					}
+					throw error;
+				}
 			}
 
 			Container.get(EventService).emit('user-retrieved-execution', {
@@ -164,11 +186,33 @@ export = {
 				await Container.get(ExecutionRepository).getExecutionsCountForPublicApi(filters);
 
 			if (includeData) {
+				const redactQuery = ExecutionRedactionQueryDtoSchema.safeParse(req.query);
+				const redactExecutionData = redactQuery.success
+					? redactQuery.data.redactExecutionData
+					: undefined;
+
 				const redactableExecutions = executions.filter(isRedactableExecution);
-				await Container.get(ExecutionRedactionServiceProxy).processExecutions(
-					redactableExecutions,
-					{ user: req.user },
-				);
+				try {
+					await Container.get(ExecutionRedactionServiceProxy).processExecutions(
+						redactableExecutions,
+						{
+							user: req.user,
+							redactExecutionData,
+							ipAddress: req.ip ?? '',
+							userAgent: req.headers['user-agent'] ?? '',
+						},
+					);
+				} catch (error) {
+					if (error instanceof ResponseError) {
+						return res.status(error.httpStatusCode).json({
+							code: error.httpStatusCode,
+							message: error.message,
+							hint: error.hint,
+							meta: 'meta' in error ? error.meta : undefined,
+						});
+					}
+					throw error;
+				}
 			}
 
 			Container.get(EventService).emit('user-retrieved-all-executions', {

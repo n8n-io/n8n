@@ -134,6 +134,10 @@ export class EndpointsConfig {
 	@Env('N8N_MCP_BUILDER_ENABLED')
 	mcpBuilderEnabled: boolean = true;
 
+	/** Maximum number of OAuth clients that can be registered for MCP. */
+	@Env('N8N_MCP_MAX_REGISTERED_CLIENTS')
+	mcpMaxRegisteredClients: number = 200;
+
 	/** Whether to disable n8n's UI (frontend). */
 	@Env('N8N_DISABLE_UI')
 	disableUi: boolean = false;

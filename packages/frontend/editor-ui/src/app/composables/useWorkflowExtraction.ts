@@ -48,7 +48,9 @@ export function useWorkflowExtraction() {
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
 
-	const adjacencyList = computed(() => buildAdjacencyList(workflowsStore.workflow.connections));
+	const adjacencyList = computed(() =>
+		buildAdjacencyList(workflowDocumentStore?.value?.connectionsBySourceNode ?? {}),
+	);
 
 	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 
@@ -496,7 +498,7 @@ export function useWorkflowExtraction() {
 			newWorkflowName,
 			selection,
 			nodes,
-			workflowsStore.workflow.connections,
+			workflowDocumentStore?.value?.connectionsBySourceNode ?? {},
 			variables,
 			afterVariables,
 			startNodeName,

@@ -1,6 +1,7 @@
 import type { IWorkflowDb, INodeUi } from '@/Interface';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
 import type { IConnections } from 'n8n-workflow';
+import { SPLIT_IN_BATCHES_NODE_TYPE } from '@/app/constants';
 
 /**
  * Converts workflow tags from ITag[] (API response format) to string[] (store format)
@@ -57,6 +58,7 @@ interface ExecutionOrderItem {
  * AI sub-nodes (tools, memory, etc.) connected via non-main connection types
  * are discovered through connectionsByDestinationNode, mirroring how the
  * backend discovers them on-demand via getInputConnectionData().
+ * Sub-nodes are placed before their parent node in the result.
  *
  * Orphaned nodes (not reachable from any trigger) are dropped.
  * When there are no triggers, returns an empty array.
@@ -65,6 +67,7 @@ export function sortNodesByExecutionOrder<T extends ExecutionOrderItem>(
 	nodes: T[],
 	connectionsBySourceNode: IConnections,
 	connectionsByDestinationNode: IConnections = {},
+	nodeTypes: Record<string, string> = {},
 ): T[] {
 	const triggers = nodes
 		.filter((item) => item.isTrigger)
@@ -80,50 +83,66 @@ export function sortNodesByExecutionOrder<T extends ExecutionOrderItem>(
 	const result: T[] = [];
 	const visited = new Set<string>();
 
-	const visitNode = (name: string) => {
-		if (visited.has(name)) return;
-		visited.add(name);
+	const addNode = (name: string) => {
 		const item = itemsByName.get(name);
 		if (item) {
 			result.push(item);
 		}
 	};
 
+	// DFS that visits AI sub-nodes before the node itself,
+	// so that sub-nodes (tools, memory, models) appear before their parent (agent).
+	const dfs = (name: string) => {
+		if (visited.has(name)) return;
+		visited.add(name);
+
+		// First, discover AI sub-nodes connected to this node's non-main inputs.
+		// Visit them before adding the current node so sub-nodes appear first.
+		const destConns = connectionsByDestinationNode[name];
+		if (destConns) {
+			for (const type of Object.keys(destConns)) {
+				if (type === 'main') continue;
+				for (const inputs of destConns[type]) {
+					for (const conn of inputs ?? []) {
+						dfs(conn.node);
+					}
+				}
+			}
+		}
+
+		// Add the current node after its sub-nodes
+		addNode(name);
+
+		// Then follow outgoing main connections only.
+		// Non-main outgoing connections (ai_tool, ai_languageModel, etc.) point from
+		// sub-nodes to their parent agents — those are already discovered via
+		// connectionsByDestinationNode. Following them here would traverse the
+		// main chain out of order when sub-nodes are shared across multiple agents.
+		const sourceConns = connectionsBySourceNode[name];
+		if (sourceConns?.main) {
+			const mainOutputs = sourceConns.main;
+
+			// Loop Over Items (SplitInBatches) V3: output 0 = "done", output 1 = "loop".
+			// The execution engine runs the loop body first (repeatedly) and only sends
+			// data to "done" after all iterations complete. Process output 1 before
+			// output 0 so the sorted order matches execution order.
+			if (nodeTypes[name] === SPLIT_IN_BATCHES_NODE_TYPE && mainOutputs.length > 1) {
+				for (const idx of [1, 0]) {
+					for (const conn of mainOutputs[idx] ?? []) {
+						dfs(conn.node);
+					}
+				}
+			} else {
+				for (const outputs of mainOutputs) {
+					for (const conn of outputs ?? []) {
+						dfs(conn.node);
+					}
+				}
+			}
+		}
+	};
+
 	for (const trigger of triggers) {
-		visitNode(trigger.node.name);
-
-		// DFS through all workflow connections from this trigger
-		const dfs = (name: string) => {
-			// Follow outgoing connections (main flow + any source-side connections)
-			const sourceConns = connectionsBySourceNode[name];
-			if (sourceConns) {
-				for (const type of Object.keys(sourceConns)) {
-					for (const outputs of sourceConns[type]) {
-						for (const conn of outputs ?? []) {
-							if (visited.has(conn.node)) continue;
-							visitNode(conn.node);
-							dfs(conn.node);
-						}
-					}
-				}
-			}
-
-			// Discover AI sub-nodes connected to this node's non-main inputs
-			// (e.g. tools, memory, language models connected via ai_tool, ai_memory, etc.)
-			const destConns = connectionsByDestinationNode[name];
-			if (destConns) {
-				for (const type of Object.keys(destConns)) {
-					if (type === 'main') continue;
-					for (const inputs of destConns[type]) {
-						for (const conn of inputs ?? []) {
-							if (visited.has(conn.node)) continue;
-							visitNode(conn.node);
-							dfs(conn.node);
-						}
-					}
-				}
-			}
-		};
 		dfs(trigger.node.name);
 	}
 

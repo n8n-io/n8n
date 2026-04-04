@@ -47,6 +47,12 @@ beforeEach(() => {
 		warn: jest.fn(),
 		error: jest.fn(),
 	};
+	mockContext.customData = {
+		set: jest.fn(),
+		setAll: jest.fn(),
+		get: jest.fn(),
+		getAll: jest.fn(),
+	};
 });
 
 describe('toolsAgentExecute V3 - Execute Function Logic', () => {
