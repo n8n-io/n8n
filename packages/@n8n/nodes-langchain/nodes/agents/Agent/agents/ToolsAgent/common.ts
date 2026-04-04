@@ -7,7 +7,7 @@ import type { ToolsAgentAction } from '@langchain/classic/dist/agents/tool_calli
 import type { BaseChatMemory } from '@langchain/classic/memory';
 import { DynamicStructuredTool, type Tool } from '@langchain/classic/tools';
 import { BINARY_ENCODING, jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
-import type { IExecuteFunctions, ISupplyDataFunctions, IWebhookFunctions } from 'n8n-workflow';
+import type { IBinaryData, IExecuteFunctions, ISupplyDataFunctions, IWebhookFunctions } from 'n8n-workflow';
 import type { ZodObject } from 'zod';
 import { z } from 'zod';
 
@@ -50,11 +50,61 @@ function isImageFile(mimeType: string): boolean {
 	return mimeType.startsWith('image/');
 }
 
+function isPdfFile(mimeType: string): boolean {
+	return mimeType === 'application/pdf';
+}
+
 /**
- * Extracts binary messages (images and text files) from the input data.
+ * Keeps only binary entries the agent could attach.
+ */
+function filterBinaryForAgentPassthrough(
+	data: IBinaryData
+): boolean {
+	return isImageFile(data.mimeType) || isTextFile(data.mimeType) || isPdfFile(data.mimeType)
+}
+
+/**
+ * Processes a binary data to be used in agent passthrough.
+ * @param ctx - The execution context
+ * @param data - The binary data
+ * @param type - The type of the binary data ('image_url' or 'file_url')
+ * @returns The binary data formatted for agent passthrough
+ */
+async function processBinaryForAgentPassthrough(
+	ctx: IExecuteFunctions | ISupplyDataFunctions, 
+	data: IBinaryData,
+	type: 'image_url' | 'file_url'
+)  {
+	let binaryUrlString: string;
+
+	// In filesystem mode we need to get binary stream by id before converting it to buffer
+	if (data.id) {
+		const binaryBuffer = await ctx.helpers.binaryToBuffer(
+			await ctx.helpers.getBinaryStream(data.id),
+		);
+		binaryUrlString = `data:${data.mimeType};base64,${Buffer.from(binaryBuffer).toString(
+			BINARY_ENCODING,
+		)}`;
+	} else {
+		binaryUrlString = data.data.includes('base64')
+			? data.data
+			: `data:${data.mimeType};base64,${data.data}`;
+	}
+
+	return {
+		type: type,
+		[type]: {
+			url: binaryUrlString,
+		},
+	};
+}
+
+/**
+ * Extracts binary messages (images, PDFs, and text files) from the given binary map.
  * When operating in filesystem mode, the binary stream is first converted to a buffer.
  *
  * Images are converted to base64 data URLs.
+ * PDFs are converted to base64 data URLs (for models that natively support PDF input).
  * Text files are read as UTF-8 text and included in the message content.
  *
  * @param ctx - The execution context
@@ -69,57 +119,38 @@ export async function extractBinaryMessages(
 	const binaryMessages = await Promise.all(
 		Object.values(binaryData)
 			// select only the files we can process
-			.filter((data) => isImageFile(data.mimeType) || isTextFile(data.mimeType))
+			.filter((data) => filterBinaryForAgentPassthrough(data))
 			.map(async (data) => {
-				// Handle images
-				if (isImageFile(data.mimeType)) {
-					let binaryUrlString: string;
-
-					// In filesystem mode we need to get binary stream by id before converting it to buffer
-					if (data.id) {
-						const binaryBuffer = await ctx.helpers.binaryToBuffer(
-							await ctx.helpers.getBinaryStream(data.id),
-						);
-						binaryUrlString = `data:${data.mimeType};base64,${Buffer.from(binaryBuffer).toString(
-							BINARY_ENCODING,
-						)}`;
-					} else {
-						binaryUrlString = data.data.includes('base64')
-							? data.data
-							: `data:${data.mimeType};base64,${data.data}`;
+					// Handle images and PDFs
+					if (isImageFile(data.mimeType)) {
+						return await processBinaryForAgentPassthrough(ctx, data, 'image_url');
+					} else if (isPdfFile(data.mimeType)) {
+						return await processBinaryForAgentPassthrough(ctx, data, 'file_url');
 					}
-
-					return {
-						type: 'image_url',
-						image_url: {
-							url: binaryUrlString,
-						},
-					};
-				}
-				// Handle text files
-				else {
-					let textContent: string;
-					if (data.id) {
-						const binaryBuffer = await ctx.helpers.binaryToBuffer(
-							await ctx.helpers.getBinaryStream(data.id),
-						);
-						textContent = binaryBuffer.toString('utf-8');
-					} else {
-						// Data might be base64 encoded with or without data URL prefix
-						if (data.data.includes('base64,')) {
-							const base64Data = data.data.split('base64,')[1];
-							textContent = Buffer.from(base64Data, 'base64').toString('utf-8');
+					else {
+						// Handle text files
+						let textContent: string;
+						if (data.id) {
+							const binaryBuffer = await ctx.helpers.binaryToBuffer(
+								await ctx.helpers.getBinaryStream(data.id),
+							);
+							textContent = binaryBuffer.toString('utf-8');
 						} else {
-							// Default: binary data is base64-encoded without prefix
-							textContent = Buffer.from(data.data, 'base64').toString('utf-8');
+							// Data might be base64 encoded with or without data URL prefix
+							if (data.data.includes('base64,')) {
+								const base64Data = data.data.split('base64,')[1];
+								textContent = Buffer.from(base64Data, 'base64').toString('utf-8');
+							} else {
+								// Default: binary data is base64-encoded without prefix
+								textContent = Buffer.from(data.data, 'base64').toString('utf-8');
+							}
 						}
-					}
 
-					return {
-						type: 'text',
-						text: `File: ${data.fileName ?? 'attachment'}\nContent:\n${textContent}`,
-					};
-				}
+						return {
+							type: 'text',
+							text: `File: ${data.fileName ?? 'attachment'}\nContent:\n${textContent}`,
+						};
+					}
 			}),
 	);
 	return new HumanMessage({
@@ -425,6 +456,7 @@ export async function prepareMessages(
 	options: {
 		systemMessage?: string;
 		passthroughBinaryImages?: boolean;
+		passthroughBinaryPdfs?: boolean;
 		outputParser?: N8nOutputParser;
 	},
 ): Promise<BaseMessagePromptTemplateLike[]> {
@@ -445,7 +477,7 @@ export async function prepareMessages(
 
 	// If there is binary data and the node option permits it, add a binary message
 	const hasBinaryData = ctx.getInputData()?.[itemIndex]?.binary !== undefined;
-	if (hasBinaryData && options.passthroughBinaryImages) {
+	if (hasBinaryData && (options.passthroughBinaryImages || options.passthroughBinaryPdfs)) {
 		const binaryMessage = await extractBinaryMessages(ctx, itemIndex);
 		if (binaryMessage.content.length !== 0) {
 			messages.push(binaryMessage);
