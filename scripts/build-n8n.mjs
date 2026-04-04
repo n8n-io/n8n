@@ -10,7 +10,7 @@
 
 import { $, echo, fs, chalk } from 'zx';
 import path from 'path';
-
+console.log('Building n8n application...');
 // Check if running in a CI environment
 const isCI = process.env.CI === 'true';
 
