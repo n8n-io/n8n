@@ -513,8 +513,10 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		// Ensure that the nodes specified in `stack.forceIncludeNodes` are always included,
 		// regardless of whether the subcategory is matched
 		if ((stack.forceIncludeNodes ?? []).length > 0) {
+			const existing_node_keys = new Set(stackItems.map((item) => item.key));
 			const matchedNodes = nodeCreatorStore.mergedNodes
 				.filter((item) => stack.forceIncludeNodes?.includes(item.name))
+				.filter((item) => !existing_node_keys.has(item.name))
 				.map((item) => transformNodeType(item, stack.subcategory));
 
 			stackItems.push(...matchedNodes);
