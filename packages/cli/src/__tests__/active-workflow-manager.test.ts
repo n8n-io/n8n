@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
+import type { WebhookEntity, WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
-import type { ActiveWorkflows, InstanceSettings } from 'n8n-core';
+import type { ActiveWorkflows, ErrorReporter, InstanceSettings } from 'n8n-core';
 import type {
 	ExecutionError,
 	INodeExecutionData,
 	INode,
+	IWebhookData,
 	IWorkflowExecuteAdditionalData,
 	Workflow,
 	WorkflowActivateMode,
@@ -18,6 +19,8 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { EventService } from '@/events/event.service';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { NodeTypes } from '@/node-types';
+import type { WebhookService } from '@/webhooks/webhook.service';
+import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
@@ -371,4 +374,152 @@ describe('ActiveWorkflowManager', () => {
 			});
 		});
 	});
+
+	describe('addWebhooks', () => {
+		const logger = mockLogger();
+		const errorReporter = mock<ErrorReporter>();
+		const webhookService = mock<WebhookService>();
+		const workflowStaticDataService = mock<WorkflowStaticDataService>();
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+			workflowStaticDataService.saveStaticData.mockResolvedValue(undefined);
+
+			activeWorkflowManager = new ActiveWorkflowManager(
+				logger,
+				errorReporter,
+				mock(),
+				mock(),
+				mock(),
+				nodeTypes,
+				webhookService,
+				workflowRepository,
+				mock(),
+				mock(),
+				workflowStaticDataService,
+				mock(),
+				mock(),
+				instanceSettings,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+			);
+		});
+
+		const makeQueryFailedError = (driverError: { code?: string; message?: string }) => {
+			const err = new Error('DB error') as Error & {
+				name: string;
+				driverError: { code?: string; message?: string };
+			};
+			err.name = 'QueryFailedError';
+			err.driverError = driverError;
+			return err;
+		};
+
+		const setupWebhookMocks = (workflow: Workflow) => {
+			const webhookData = mock<IWebhookData>({
+				node: 'Webhook Node',
+				workflowId: 'wf-1',
+				path: 'test-path',
+				httpMethod: 'GET',
+			});
+			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhookData]);
+			const node = mock<INode>({ name: 'Webhook Node', webhookId: undefined });
+			(workflow.getNode as jest.Mock).mockReturnValue(node);
+			webhookService.createWebhook.mockReturnValue(
+				mock<WebhookEntity>({ webhookPath: 'test-path' }),
+			);
+			return { webhookData, node };
+		};
+
+		test.each<[string, { code?: string; message?: string }]>([
+			['PostgreSQL duplicate-key (23505)', { code: '23505' }],
+			['MySQL duplicate-key (ER_DUP_ENTRY)', { code: 'ER_DUP_ENTRY' }],
+			['SQLite duplicate-key (SQLITE_CONSTRAINT UNIQUE)', { code: 'SQLITE_CONSTRAINT', message: 'UNIQUE constraint failed' }],
+		])(
+			'should silently skip %s during init',
+			async (_label, driverError) => {
+				const workflow = mock<Workflow>({ id: 'wf-1', name: 'Test' });
+				setupWebhookMocks(workflow);
+				webhookService.storeWebhook.mockRejectedValue(makeQueryFailedError(driverError));
+
+				const result = await activeWorkflowManager.addWebhooks(
+					workflow,
+					mock<IWorkflowExecuteAdditionalData>(),
+					'trigger',
+					'init',
+				);
+
+				expect(result).toBe(true);
+				expect(errorReporter.error).not.toHaveBeenCalled();
+				expect(logger.error).not.toHaveBeenCalled();
+			},
+		);
+
+		test.each<WorkflowActivateMode>(['init', 'leadershipChange'])(
+			'should log and report unexpected QueryFailedError during %s without throwing',
+			async (activation) => {
+				const workflow = mock<Workflow>({ id: 'wf-1', name: 'Test' });
+				setupWebhookMocks(workflow);
+				const dbError = makeQueryFailedError({ code: 'ECONNREFUSED' });
+				webhookService.storeWebhook.mockRejectedValue(dbError);
+
+				const result = await activeWorkflowManager.addWebhooks(
+					workflow,
+					mock<IWorkflowExecuteAdditionalData>(),
+					'trigger',
+					activation,
+				);
+
+				expect(result).toBe(true);
+				expect(errorReporter.error).toHaveBeenCalledWith(dbError);
+				expect(logger.error).toHaveBeenCalledWith(
+					expect.stringContaining('Unexpected database error'),
+					expect.objectContaining({ workflowId: 'wf-1', activation }),
+				);
+			},
+		);
+
+		test('should log and report SQLite SQLITE_CONSTRAINT without UNIQUE as unexpected during init', async () => {
+			const workflow = mock<Workflow>({ id: 'wf-1', name: 'Test' });
+			setupWebhookMocks(workflow);
+			const dbError = makeQueryFailedError({ code: 'SQLITE_CONSTRAINT', message: 'CHECK constraint failed' });
+			webhookService.storeWebhook.mockRejectedValue(dbError);
+
+			const result = await activeWorkflowManager.addWebhooks(
+				workflow,
+				mock<IWorkflowExecuteAdditionalData>(),
+				'trigger',
+				'init',
+			);
+
+			expect(result).toBe(true);
+			expect(errorReporter.error).toHaveBeenCalledWith(dbError);
+			expect(logger.error).toHaveBeenCalledWith(
+				expect.stringContaining('Unexpected database error'),
+				expect.objectContaining({ workflowId: 'wf-1', activation: 'init' }),
+			);
+		});
+
+		test('should throw for non-QueryFailedError during init', async () => {
+			const workflow = mock<Workflow>({ id: 'wf-1', name: 'Test' });
+			setupWebhookMocks(workflow);
+			const genericError = Object.assign(new Error('Some other error'), { detail: undefined });
+			webhookService.storeWebhook.mockRejectedValue(genericError);
+			webhookService.clearWebhooks = jest.fn().mockResolvedValue(undefined);
+			jest.spyOn(activeWorkflowManager, 'clearWebhooks').mockResolvedValue(undefined);
+
+			await expect(
+				activeWorkflowManager.addWebhooks(
+					workflow,
+					mock<IWorkflowExecuteAdditionalData>(),
+					'trigger',
+					'init',
+				),
+			).rejects.toThrow('Some other error');
+		});
+	});
+
 });
