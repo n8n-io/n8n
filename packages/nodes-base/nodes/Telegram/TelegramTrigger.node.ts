@@ -288,7 +288,13 @@ export class TelegramTrigger implements INodeType {
 			if (additionalFields.chatIds) {
 				const chatIds = additionalFields.chatIds as string;
 				const splitIds = chatIds.split(',').map((chatId) => chatId.trim());
-				if (!splitIds.includes(String(bodyData.message?.chat?.id))) {
+				const chatId =
+					bodyData.message?.chat?.id ??
+					bodyData.edited_message?.chat?.id ??
+					bodyData.channel_post?.chat?.id ??
+					bodyData.edited_channel_post?.chat?.id ??
+					bodyData.callback_query?.message?.chat?.id;
+				if (chatId && !splitIds.includes(String(chatId))) {
 					return {};
 				}
 			}
@@ -296,7 +302,16 @@ export class TelegramTrigger implements INodeType {
 			if (additionalFields.userIds) {
 				const userIds = additionalFields.userIds as string;
 				const splitIds = userIds.split(',').map((userId) => userId.trim());
-				if (!splitIds.includes(String(bodyData.message?.from?.id))) {
+				const userId =
+					bodyData.message?.from?.id ??
+					bodyData.edited_message?.from?.id ??
+					bodyData.channel_post?.from?.id ??
+					bodyData.edited_channel_post?.from?.id ??
+					bodyData.callback_query?.from?.id ??
+					bodyData.inline_query?.from?.id ??
+					bodyData.pre_checkout_query?.from?.id ??
+					bodyData.shipping_query?.from?.id;
+				if (userId && !splitIds.includes(String(userId))) {
 					return {};
 				}
 			}
