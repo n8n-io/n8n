@@ -65,6 +65,7 @@ const PROPERTY_VOCABULARY = new Set([
 const STANDALONE_PROPERTIES = new Set([
 	'shadow',
 	'radius',
+	'color--text',
 	'border-color',
 	'border-style',
 	'border-width',
