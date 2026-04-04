@@ -1,5 +1,4 @@
 ---
-name: create-skill
 description: >-
   Guides users through creating effective Agent Skills. Use when you want to
   create, write, or author a new skill, or asks about skill structure, best
@@ -13,13 +12,13 @@ Skills are markdown (plus optional scripts) that teach the agent a focused workf
 
 | Location | When to use |
 |----------|-------------|
-| **`.claude/skills/<name>/` in this repo** | Default for n8n: team-shared, versioned. **Cursor picks up project skills from here** when working in the repo (same idea as Claude Code). |
+| **`.claude/plugins/n8n/skills/<name>/`** | Default for n8n: team-shared, versioned, namespaced under `n8n:`. |
 | `~/.claude/skills/<name>/` | Personal skill for Claude Code across all projects. |
 | `~/.cursor/skills/<name>/` | Optional personal skill for Cursor only, global to your machine. |
 
 **Do not** put custom skills in `~/.cursor/skills-cursor/`—that is reserved for Cursor’s built-in skills.
 
-Prefer **repo `.claude/skills/`** for anything that should match how the rest of the team works.
+Prefer **plugin `.claude/plugins/n8n/skills/`** for anything that should match how the rest of the team works.
 
 ## Before you write: gather requirements
 
@@ -29,7 +28,7 @@ Ask (or infer) briefly:
 2. **Triggers** — when should the agent apply this skill?
 3. **Gaps** — what does the agent *not* already know (project rules, URLs, formats)?
 4. **Outputs** — templates, checklists, or strict formats?
-5. **Examples** — follow an existing skill in `.claude/skills/` if one fits.
+5. **Examples** — follow an existing skill in `.claude/plugins/n8n/skills/` if one fits.
 
 Ask the user in plain language when you need more detail.
 
@@ -80,7 +79,7 @@ description: >-         # max 1024 chars, non-empty — see below
 - **MCPs are optional per user** — not everyone has the same servers enabled. If a skill **requires** a specific MCP to work as written, say so explicitly:
   - Put a hint in the **frontmatter description** (e.g. “Requires Linear MCP for …”) so mismatches are obvious early.
   - Add a short **Prerequisites** (or **Requirements**) block near the top: which integration, what it is used for, and a **fallback** (e.g. web UI, `gh`, or “ask the user to paste …”) when it is missing.
-- **Referencing other skills** — give the path from the **repository root** (e.g. `.claude/skills/create-issue/SKILL.md`) so humans and tools can resolve it. From a sibling folder, a relative link works too: `[create-issue](../create-issue/SKILL.md)`. Name the skill and the task; parent skills should delegate steps instead of duplicating long procedures.
+- **Referencing other skills** — use the namespaced invocation name (e.g. `n8n:create-issue`) so the agent resolves the plugin skill. For human-readable links, give the path from the repo root (e.g. `.claude/plugins/n8n/skills/create-issue/SKILL.md`). From a sibling folder, a relative link works too: `[create-issue](../create-issue/SKILL.md)`. Parent skills should delegate steps instead of duplicating long procedures.
 
 ## Patterns (pick what fits)
 

@@ -20,6 +20,13 @@ frontend, and extensible node-based workflow engine.
   Hygiene below)
 - Use mermaid diagrams in MD files when you need to visualise something
 
+## Claude Code Plugin
+
+n8n-specific skills, commands, and agents live in `.claude/plugins/n8n/` and
+are namespaced under `n8n:`. Use `n8n:` prefix when invoking them
+(e.g. `/n8n:create-pr`, `/n8n:plan`, `n8n:developer` agent).
+See [plugin README](.claude/plugins/n8n/README.md) for structure and details.
+
 ## Essential Commands
 
 ### Building
