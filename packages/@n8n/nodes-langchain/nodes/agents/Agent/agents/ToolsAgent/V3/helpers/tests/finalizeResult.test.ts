@@ -143,6 +143,65 @@ describe('finalizeResult', () => {
 		expect(() => finalizeResult(result, 0, mockMemory, mockOutputParser)).toThrow();
 	});
 
+	describe('parseOutput option', () => {
+		it('should parse clean JSON object when parseOutput is true', () => {
+			const result = { output: '{"key": "value"}' };
+			const finalized = finalizeResult(result, 0, undefined, undefined, true);
+			expect(finalized.json.output).toEqual({ key: 'value' });
+		});
+
+		it('should extract JSON from markdown code fence when parseOutput is true', () => {
+			const result = { output: '```json\n{"key": "value"}\n```' };
+			const finalized = finalizeResult(result, 0, undefined, undefined, true);
+			expect(finalized.json.output).toEqual({ key: 'value' });
+		});
+
+		it('should extract JSON from preamble text when parseOutput is true', () => {
+			const result = { output: 'Here\'s the result:\n{"key": "value"}' };
+			const finalized = finalizeResult(result, 0, undefined, undefined, true);
+			expect(finalized.json.output).toEqual({ key: 'value' });
+		});
+
+		it('should fall back to raw text when no JSON found and parseOutput is true', () => {
+			const result = { output: 'Just plain text, no JSON here.' };
+			const finalized = finalizeResult(result, 0, undefined, undefined, true);
+			expect(finalized.json.output).toBe('Just plain text, no JSON here.');
+		});
+
+		it('should not attempt JSON extraction when parseOutput is false', () => {
+			const result = { output: '{"key": "value"}' };
+			const finalized = finalizeResult(result, 0, undefined, undefined, false);
+			expect(typeof finalized.json.output).toBe('string');
+			expect(finalized.json.output).toBe('{"key": "value"}');
+		});
+
+		it('should not attempt JSON extraction when parseOutput is omitted', () => {
+			const result = { output: '{"key": "value"}' };
+			const finalized = finalizeResult(result, 0, undefined, undefined);
+			expect(typeof finalized.json.output).toBe('string');
+		});
+
+		it('should set output to null when JSON null is returned and parseOutput is true', () => {
+			const result = { output: 'null' };
+			const finalized = finalizeResult(result, 0, undefined, undefined, true);
+			expect(finalized.json.output).toBeNull();
+		});
+
+		it('should set output to null when JSON null is inside a code fence and parseOutput is true', () => {
+			const result = { output: '```json\nnull\n```' };
+			const finalized = finalizeResult(result, 0, undefined, undefined, true);
+			expect(finalized.json.output).toBeNull();
+		});
+
+		it('should prefer memory+outputParser parsing over parseOutput', () => {
+			const mockMemory = mock<BaseChatMemory>();
+			const mockOutputParser = mock<N8nOutputParser>();
+			const result = { output: JSON.stringify({ output: { result: 'from memory parser' } }) };
+			const finalized = finalizeResult(result, 0, mockMemory, mockOutputParser, true);
+			expect(finalized.json.output).toEqual({ result: 'from memory parser' });
+		});
+	});
+
 	it('should handle multiple custom fields in result', () => {
 		const result = {
 			output: 'Test output',
