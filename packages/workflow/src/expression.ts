@@ -246,7 +246,8 @@ export class Expression {
 	 */
 	static async initExpressionEngine(options: {
 		engine: 'legacy' | 'vm';
-		timeout?: number;
+		bridgeTimeout: number;
+		bridgeMemoryLimit: number;
 		poolSize: number;
 		maxCodeCacheSize: number;
 	}): Promise<void> {
@@ -258,7 +259,11 @@ export class Expression {
 			const { ExpressionEvaluator, IsolatedVmBridge } = await import('@n8n/expression-runtime');
 			this.vmEvaluator = new ExpressionEvaluator({
 				createBridge: () =>
-					new IsolatedVmBridge({ timeout: options.timeout ?? 5000, logger: LoggerProxy }),
+					new IsolatedVmBridge({
+						timeout: options.bridgeTimeout,
+						memoryLimit: options.bridgeMemoryLimit,
+						logger: LoggerProxy,
+					}),
 				maxCodeCacheSize: options.maxCodeCacheSize,
 				poolSize: options.poolSize,
 				hooks: {

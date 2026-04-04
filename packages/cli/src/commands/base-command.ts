@@ -175,8 +175,15 @@ export abstract class BaseCommand<F = never> {
 		await Container.get(TelemetryEventRelay).init();
 		Container.get(WorkflowFailureNotificationEventRelay).init();
 
-		const { engine, poolSize, maxCodeCacheSize } = this.globalConfig.expressionEngine;
-		await Expression.initExpressionEngine({ engine, poolSize, maxCodeCacheSize });
+		const { engine, poolSize, maxCodeCacheSize, bridgeTimeout, bridgeMemoryLimit } =
+			this.globalConfig.expressionEngine;
+		await Expression.initExpressionEngine({
+			engine,
+			poolSize,
+			maxCodeCacheSize,
+			bridgeTimeout,
+			bridgeMemoryLimit,
+		});
 	}
 
 	protected async stopProcess() {
