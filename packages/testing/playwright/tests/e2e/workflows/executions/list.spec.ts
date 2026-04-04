@@ -47,8 +47,8 @@ test.describe(
 						request.url().includes('/rest/executions?filter=') && request.url().includes('success'),
 				);
 
-				await n8n.page.waitForTimeout(500);
 				// Select an option from the dropdown
+				await n8n.page.getByRole('option', { name: 'Success' }).waitFor({ state: 'visible' });
 				await n8n.page.getByRole('option', { name: 'Success' }).click();
 
 				// Verify the filter request was sent to the backend (confirms selection worked)
