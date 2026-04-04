@@ -29,6 +29,34 @@ interface StubNode {
 describe('Workflow', () => {
 	const nodeTypes = Helpers.NodeTypes();
 
+	it('should preserve existing node parameters when creating a workflow', () => {
+		const parameters: INodeParameters = {
+			resource: 'sheet',
+			operation: 'create',
+			range: 'A:F',
+			sheetId: 'sheet-123',
+			authentication: 'oAuth2',
+		};
+
+		const workflow = new Workflow({
+			nodeTypes,
+			nodes: [
+				{
+					parameters,
+					name: 'Google Sheets',
+					type: 'test.googleSheets',
+					typeVersion: 1,
+					id: 'uuid-1',
+					position: [240, 300],
+				},
+			],
+			connections: {},
+			active: false,
+		});
+
+		expect(workflow.nodes['Google Sheets'].parameters).toEqual(parameters);
+	});
+
 	const SIMPLE_WORKFLOW = new Workflow({
 		nodeTypes,
 		nodes: [
