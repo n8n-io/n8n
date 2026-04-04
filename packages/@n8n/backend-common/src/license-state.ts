@@ -186,6 +186,10 @@ export class LicenseState {
 		return this.isLicensed('feat:workflowDiffs');
 	}
 
+	isDataRedactionLicensed() {
+		return this.isLicensed(LICENSE_FEATURES.DATA_REDACTION);
+	}
+
 	isProvisioningLicensed() {
 		return this.isLicensed(['feat:saml', 'feat:oidc']);
 	}
