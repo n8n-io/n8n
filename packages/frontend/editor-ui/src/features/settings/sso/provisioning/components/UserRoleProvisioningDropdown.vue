@@ -1,94 +1,180 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { N8nOption, N8nSelect } from '@n8n/design-system';
+import { N8nCallout, N8nOption, N8nSelect } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { type SupportedProtocolType } from '../../sso.store';
 import { useRBACStore } from '@/app/stores/rbac.store';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
+export type RoleAssignmentSetting = 'manual' | 'instance' | 'instance_and_project';
+export type RoleMappingMethodSetting = 'idp' | 'rules_in_n8n';
+
+/**
+ * Legacy type kept for backward compatibility with ConfirmProvisioningDialog.
+ * Derived from the two new dropdown values.
+ */
 export type UserRoleProvisioningSetting =
 	| 'disabled'
 	| 'instance_role'
 	| 'instance_and_project_roles'
 	| 'expression_based';
 
-const value = defineModel<UserRoleProvisioningSetting>({ default: 'disabled' });
+const roleAssignment = defineModel<RoleAssignmentSetting>('roleAssignment', {
+	default: 'manual',
+});
+const mappingMethod = defineModel<RoleMappingMethodSetting>('mappingMethod', {
+	default: 'idp',
+});
 
 const { authProtocol } = defineProps<{
 	authProtocol: SupportedProtocolType;
 }>();
 
 const i18n = useI18n();
-const canManageUserProvisioning = useRBACStore().hasScope('provisioning:manage');
-const { check: isEnvFeatEnabled } = useEnvFeatureFlag();
+const canManage = useRBACStore().hasScope('provisioning:manage');
 
-const handleUserRoleProvisioningChange = (newValue: UserRoleProvisioningSetting) => {
-	value.value = newValue;
-};
+const showMappingMethod = computed(() => roleAssignment.value !== 'manual');
 
-type UserRoleProvisioningDescription = {
-	label: string;
-	value: UserRoleProvisioningSetting;
-};
+const showIdpInfoBox = computed(() => showMappingMethod.value && mappingMethod.value === 'idp');
 
-const baseOptions: UserRoleProvisioningDescription[] = [
-	{
-		label: i18n.baseText('settings.sso.settings.userRoleProvisioning.option.disabled.label'),
-		value: 'disabled',
-	},
-	{
-		label: i18n.baseText('settings.sso.settings.userRoleProvisioning.option.instanceRole.label'),
-		value: 'instance_role',
-	},
-	{
-		label: i18n.baseText(
-			'settings.sso.settings.userRoleProvisioning.option.instanceAndProjectRoles.label',
-		),
-		value: 'instance_and_project_roles',
-	},
-];
+const showRuleEditor = computed(
+	() => showMappingMethod.value && mappingMethod.value === 'rules_in_n8n',
+);
 
-const userRoleProvisioningDescriptions = computed<UserRoleProvisioningDescription[]>(() => {
-	if (isEnvFeatEnabled.value('ROLE_MAPPING_RULES')) {
-		return [
-			...baseOptions,
-			{
-				label: i18n.baseText(
-					'settings.sso.settings.userRoleProvisioning.option.expressionBased.label',
-				),
-				value: 'expression_based',
-			},
-		];
-	}
-	return baseOptions;
+const idpInfoText = computed(() =>
+	roleAssignment.value === 'instance_and_project'
+		? i18n.baseText('settings.sso.settings.roleMappingMethod.idp.instanceAndProjectInfo')
+		: i18n.baseText('settings.sso.settings.roleMappingMethod.idp.instanceInfo'),
+);
+
+/**
+ * Derives the legacy single-value setting from the two dropdowns.
+ * Used by ConfirmProvisioningDialog and the save flow.
+ */
+const legacyValue = computed<UserRoleProvisioningSetting>(() => {
+	if (roleAssignment.value === 'manual') return 'disabled';
+	if (mappingMethod.value === 'rules_in_n8n') return 'expression_based';
+	if (roleAssignment.value === 'instance_and_project') return 'instance_and_project_roles';
+	return 'instance_role';
 });
+
+defineExpose({ legacyValue, showRuleEditor });
 </script>
 <template>
-	<div :class="[$style.settingsItem, { [$style.noBorder]: value !== 'expression_based' }]">
-		<div :class="$style.labelColumn">
-			<label>{{ i18n.baseText('settings.sso.settings.userRoleProvisioning.label') }}</label>
-			<small
-				>{{ i18n.baseText('settings.sso.settings.userRoleProvisioning.help') }}
-				<a :href="`https://docs.n8n.io/user-management/${authProtocol}/setup/`" target="_blank">{{
-					i18n.baseText('settings.sso.settings.userRoleProvisioning.help.linkText')
-				}}</a>
-			</small>
+	<div>
+		<!-- Dropdown 1: Role assignment -->
+		<div :class="[$style.settingsItem, { [$style.noBorder]: !showMappingMethod }]">
+			<div :class="$style.labelColumn">
+				<label>{{ i18n.baseText('settings.sso.settings.roleAssignment.label') }}</label>
+				<small>{{ i18n.baseText('settings.sso.settings.roleAssignment.description') }} </small>
+			</div>
+			<div :class="$style.controlColumn">
+				<N8nSelect
+					v-model="roleAssignment"
+					size="medium"
+					:disabled="!canManage"
+					data-test-id="role-assignment-select"
+				>
+					<N8nOption
+						:label="i18n.baseText('settings.sso.settings.roleAssignment.manual')"
+						value="manual"
+					>
+						<div :class="$style.optionContent">
+							<span :class="$style.optionTitle">{{
+								i18n.baseText('settings.sso.settings.roleAssignment.manual')
+							}}</span>
+							<span :class="$style.optionDescription">{{
+								i18n.baseText('settings.sso.settings.roleAssignment.manual.description')
+							}}</span>
+						</div>
+					</N8nOption>
+					<N8nOption
+						:label="i18n.baseText('settings.sso.settings.roleAssignment.instanceRoles')"
+						value="instance"
+					>
+						<div :class="$style.optionContent">
+							<span :class="$style.optionTitle">{{
+								i18n.baseText('settings.sso.settings.roleAssignment.instanceRoles')
+							}}</span>
+							<span :class="$style.optionDescription">{{
+								i18n.baseText('settings.sso.settings.roleAssignment.instanceRoles.description')
+							}}</span>
+						</div>
+					</N8nOption>
+					<N8nOption
+						:label="i18n.baseText('settings.sso.settings.roleAssignment.instanceAndProjectRoles')"
+						value="instance_and_project"
+					>
+						<div :class="$style.optionContent">
+							<span :class="$style.optionTitle">{{
+								i18n.baseText('settings.sso.settings.roleAssignment.instanceAndProjectRoles')
+							}}</span>
+							<span :class="$style.optionDescription">{{
+								i18n.baseText(
+									'settings.sso.settings.roleAssignment.instanceAndProjectRoles.description',
+								)
+							}}</span>
+						</div>
+					</N8nOption>
+				</N8nSelect>
+			</div>
 		</div>
-		<div :class="$style.controlColumn">
-			<N8nSelect
-				:model-value="value"
-				:disabled="!canManageUserProvisioning"
-				data-test-id="oidc-user-role-provisioning"
-				@update:model-value="handleUserRoleProvisioningChange"
-			>
-				<N8nOption
-					v-for="option in userRoleProvisioningDescriptions"
-					:key="option.value"
-					:label="option.label"
-					data-test-id="oidc-user-role-provisioning-option"
-					:value="option.value"
-				/>
-			</N8nSelect>
+
+		<!-- Dropdown 2: Role mapping method (conditional) -->
+		<div v-if="showMappingMethod" :class="$style.settingsItem">
+			<div :class="$style.labelColumn">
+				<label>{{ i18n.baseText('settings.sso.settings.roleMappingMethod.label') }}</label>
+				<small>{{ i18n.baseText('settings.sso.settings.roleMappingMethod.description') }}</small>
+			</div>
+			<div :class="$style.controlColumn">
+				<N8nSelect
+					v-model="mappingMethod"
+					size="medium"
+					:disabled="!canManage"
+					data-test-id="role-mapping-method-select"
+				>
+					<N8nOption
+						:label="i18n.baseText('settings.sso.settings.roleMappingMethod.idp')"
+						value="idp"
+					>
+						<div :class="$style.optionContent">
+							<span :class="$style.optionTitle">{{
+								i18n.baseText('settings.sso.settings.roleMappingMethod.idp')
+							}}</span>
+							<span :class="$style.optionDescription">{{
+								i18n.baseText('settings.sso.settings.roleMappingMethod.idp.description')
+							}}</span>
+						</div>
+					</N8nOption>
+					<N8nOption
+						:label="i18n.baseText('settings.sso.settings.roleMappingMethod.rulesInN8n')"
+						value="rules_in_n8n"
+					>
+						<div :class="$style.optionContent">
+							<span :class="$style.optionTitle">{{
+								i18n.baseText('settings.sso.settings.roleMappingMethod.rulesInN8n')
+							}}</span>
+							<span :class="$style.optionDescription">{{
+								i18n.baseText('settings.sso.settings.roleMappingMethod.rulesInN8n.description')
+							}}</span>
+						</div>
+					</N8nOption>
+				</N8nSelect>
+			</div>
+		</div>
+
+		<!-- Info box for IdP-managed mode -->
+		<div v-if="showIdpInfoBox" :class="$style.infoBox">
+			<N8nCallout theme="custom" icon="info" :class="$style.callout">
+				<div>
+					{{ idpInfoText }}
+				</div>
+				<a
+					:href="`https://docs.n8n.io/user-management/${authProtocol}/setup/`"
+					target="_blank"
+					:class="$style.learnMoreLink"
+					>{{ i18n.baseText('settings.sso.settings.roleMappingMethod.idp.learnMore') }}</a
+				>
+			</N8nCallout>
 		</div>
 	</div>
 </template>
@@ -118,15 +204,11 @@ const userRoleProvisioningDescriptions = computed<UserRoleProvisioningDescriptio
 	small {
 		font-size: var(--font-size--2xs);
 		color: var(--color--text--tint-1);
-
-		a {
-			color: var(--color--primary);
-		}
 	}
 }
 
 .controlColumn {
-	width: 250px;
+	width: 280px;
 	flex-shrink: 0;
 	display: flex;
 	justify-content: flex-end;
@@ -136,7 +218,53 @@ const userRoleProvisioningDescriptions = computed<UserRoleProvisioningDescriptio
 	}
 }
 
+.optionContent {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	padding: var(--spacing--4xs) 0;
+	white-space: normal;
+	line-height: var(--line-height--md);
+}
+
+.optionTitle {
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--bold);
+	color: var(--color--text--shade-1);
+}
+
+.optionDescription {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
+}
+
 .noBorder {
 	border-bottom: none;
+}
+
+.callout {
+	background-color: var(--color--background);
+	border-color: var(--color--foreground);
+
+	:global(.n8n-callout-icon svg) {
+		color: var(--color--text--shade-1);
+	}
+}
+
+.infoBox {
+	padding: var(--spacing--xs) 0;
+}
+
+.learnMoreLink {
+	display: block;
+	margin-top: var(--spacing--4xs);
+	color: var(--color--text--shade-1);
+	font-weight: var(--font-weight--bold);
+	font-size: var(--font-size--2xs);
+	text-decoration: underline;
+
+	&:hover {
+		color: var(--color--primary);
+	}
 }
 </style>

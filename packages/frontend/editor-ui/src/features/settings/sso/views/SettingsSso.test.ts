@@ -61,6 +61,14 @@ vi.mock('../provisioning/composables/userRoleProvisioning.store', () => ({
 	})),
 }));
 
+vi.mock('@n8n/rest-api-client/api/roleMappingRule', () => ({
+	listRoleMappingRules: vi.fn().mockResolvedValue([]),
+	createRoleMappingRule: vi.fn(),
+	updateRoleMappingRule: vi.fn(),
+	deleteRoleMappingRule: vi.fn(),
+	moveRoleMappingRule: vi.fn(),
+}));
+
 // Mock window.open to avoid JSDOM "Not implemented" error
 Object.defineProperty(window, 'open', {
 	writable: true,
