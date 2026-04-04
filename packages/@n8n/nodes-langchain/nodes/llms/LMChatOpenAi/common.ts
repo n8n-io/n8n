@@ -102,7 +102,11 @@ export const prepareAdditionalResponsesParams = (options: ModelOptions) => {
 	}
 
 	if (options.promptConfig) {
-		const prompt = get(options, 'promptConfig.promptOptions', {} as PromptOptions);
+		const prompt = (
+			Array.isArray(options.promptConfig.promptOptions)
+				? options.promptConfig.promptOptions[0]
+				: get(options, 'promptConfig.promptOptions', {})
+		) as PromptOptions;
 		body.prompt = removeEmptyProperties({
 			id: prompt.promptId,
 			version: prompt.version,
@@ -115,7 +119,11 @@ export const prepareAdditionalResponsesParams = (options: ModelOptions) => {
 	}
 
 	if (options.textFormat) {
-		const textOptions = get(options, 'textFormat.textOptions', {} as TextOptions);
+		const textOptions = (
+			Array.isArray(options.textFormat.textOptions)
+				? options.textFormat.textOptions[0]
+				: get(options, 'textFormat.textOptions', {})
+		) as TextOptions;
 		const textConfig: OpenAIClient.Responses.ResponseTextConfig = {
 			verbosity: textOptions.verbosity as OpenAIClient.Responses.ResponseTextConfig['verbosity'],
 		};

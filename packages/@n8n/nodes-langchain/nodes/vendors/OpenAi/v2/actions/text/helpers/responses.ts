@@ -141,7 +141,11 @@ export async function createRequest(
 	}
 
 	if (options.promptConfig) {
-		const prompt = get(options, 'promptConfig.promptOptions') as IDataObject;
+		const prompt = (
+			Array.isArray(options.promptConfig.promptOptions)
+				? options.promptConfig.promptOptions[0]
+				: get(options, 'promptConfig.promptOptions')
+		) as IDataObject;
 		body.prompt = removeEmptyProperties({
 			id: prompt.promptId,
 			version: prompt.version,
@@ -154,7 +158,11 @@ export async function createRequest(
 	}
 
 	if (options.reasoning) {
-		const reasoning = get(options, 'reasoning.reasoningOptions') as IDataObject;
+		const reasoning = (
+			Array.isArray(options.reasoning.reasoningOptions)
+				? options.reasoning.reasoningOptions[0]
+				: get(options, 'reasoning.reasoningOptions')
+		) as IDataObject;
 		body.reasoning = removeEmptyProperties({
 			effort: reasoning.effort,
 			summary: reasoning.summary && reasoning.summary !== 'none' ? reasoning.summary : undefined,
@@ -162,7 +170,11 @@ export async function createRequest(
 	}
 
 	if (options.textFormat) {
-		const textOptions = get(options, 'textFormat.textOptions') as IDataObject;
+		const textOptions = (
+			Array.isArray(options.textFormat.textOptions)
+				? options.textFormat.textOptions[0]
+				: get(options, 'textFormat.textOptions')
+		) as IDataObject;
 		const textConfig: OpenAIClient.Responses.ResponseTextConfig = {
 			verbosity: textOptions.verbosity as OpenAIClient.Responses.ResponseTextConfig['verbosity'],
 		};
