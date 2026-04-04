@@ -55,9 +55,12 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 			icon: args.meta.icon,
 			iconColor: args.meta.iconColor,
 			group: ['transform'],
-			// 1.2 has changes to VectorStoreInMemory node.
-			// 1.3 drops `toolName` and uses node name as the tool name.
-			version: [1, 1.1, 1.2, 1.3],
+			// Base versions for all vector store nodes:
+			// 1.1: Batched embeddings support
+			// 1.2: VectorStoreInMemory resource locator changes
+			// 1.3: Drops `toolName` and uses node name as the tool name
+			// 1.4: VectorStoreRedis FluentRedisVectorStore with custom filters and metadata schema
+			version: [1, 1.1, 1.2, 1.3, 1.4],
 			defaults: {
 				name: args.meta.displayName,
 			},
