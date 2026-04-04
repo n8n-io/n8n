@@ -261,16 +261,78 @@ describe('ExportService', () => {
 			);
 		});
 
-		it('should handle database errors gracefully', async () => {
+		it('should handle per-table database errors gracefully by skipping the table', async () => {
 			const outputDir = '/test/output';
 
-			jest.mocked(mockDataSource.query).mockRejectedValue(new Error('Database connection failed'));
+			// Mock migrations table query to fail (skipped gracefully),
+			// first entity table (User) to throw, and second table (Workflow) to return empty
+			jest
+				.mocked(mockDataSource.query)
+				.mockImplementationOnce(async () => {
+					throw new Error('Table not found');
+				})
+				.mockRejectedValueOnce(new Error('relation "user" does not exist'))
+				.mockResolvedValueOnce([]); // Workflow entities (empty)
 			jest.mocked(readdir).mockResolvedValue([]);
 
-			// The service will throw the error since it's not caught
-			await expect(exportService.exportEntities(outputDir)).rejects.toThrow(
-				'Database connection failed',
+			// A per-table query failure should not abort the entire export
+			await exportService.exportEntities(outputDir);
+
+			// Verify that a warning was logged for the failed table
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('could not be exported'),
+				expect.objectContaining({ error: expect.any(Error) }),
 			);
+			// Verify the overall export still completed successfully
+			expect(mockLogger.info).toHaveBeenCalledWith('✅ Task completed successfully! \n');
+		});
+
+		it('should skip tables that do not exist in the database (Issue #25345)', async () => {
+			const outputDir = '/test/output';
+
+			// Simulate a secrets_provider_connection entity metadata entry
+			// whose underlying table has not been created via migration
+			// @ts-expect-error Accessing private property for testing
+			mockDataSource.entityMetadatas = [
+				{
+					name: 'User',
+					tableName: 'user',
+					columns: [{ databaseName: 'id' }, { databaseName: 'email' }],
+				},
+				{
+					name: 'SecretsProviderConnection',
+					tableName: 'secrets_provider_connection',
+					columns: [
+						{ databaseName: 'providerKey' },
+						{ databaseName: 'type' },
+						{ databaseName: 'isEnabled' },
+					],
+				},
+			];
+
+			jest
+				.mocked(mockDataSource.query)
+				.mockImplementationOnce(async () => {
+					// Migrations table query fails (skipped gracefully)
+					throw new Error('Table not found');
+				})
+				.mockResolvedValueOnce([{ id: 1, email: 'test@example.com' }]) // User first page
+				.mockResolvedValueOnce([]) // User second page (empty, end of data)
+				.mockRejectedValueOnce(new Error('relation "secrets_provider_connection" does not exist')); // secrets_provider_connection table does not exist
+			jest.mocked(readdir).mockResolvedValue([]);
+
+			// The missing table should be skipped and the export should complete
+			await exportService.exportEntities(outputDir);
+
+			// Verify the missing table was skipped with a warning
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('secrets_provider_connection'),
+				expect.objectContaining({ error: expect.any(Error) }),
+			);
+			// Verify the User table was still exported successfully
+			expect(appendFile).toHaveBeenCalled();
+			// Verify the overall export completed
+			expect(mockLogger.info).toHaveBeenCalledWith('✅ Task completed successfully! \n');
 		});
 
 		it('should handle file system errors gracefully', async () => {
