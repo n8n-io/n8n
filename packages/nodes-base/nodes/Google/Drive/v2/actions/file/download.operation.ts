@@ -76,6 +76,11 @@ const properties: INodeProperties[] = [
 									},
 									{
 										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+										name: 'Markdown (md)',
+										value: 'text/markdown',
+									},
+									{
+										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 										name: 'Text (txt)',
 										value: 'text/plain',
 									},
