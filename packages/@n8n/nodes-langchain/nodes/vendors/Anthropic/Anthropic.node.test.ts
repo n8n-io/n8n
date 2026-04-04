@@ -272,6 +272,72 @@ describe('Anthropic Node', () => {
 				enableAnthropicBetas: {},
 			});
 		});
+
+		it('should send output_config and return structured_output when structured output is enabled', async () => {
+			const schema = {
+				type: 'object',
+				properties: {
+					name: { type: 'string' },
+					email: { type: 'string' },
+				},
+				required: ['name', 'email'],
+				additionalProperties: false,
+			};
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'claude-sonnet-4-20250514';
+					case 'messages.values':
+						return [{ role: 'user', content: 'Extract name and email from: John Smith, john@example.com' }];
+					case 'simplify':
+						return true;
+					case 'addAttachments':
+						return false;
+					case 'options':
+						return {
+							structuredOutputSchema: JSON.stringify(schema),
+							maxTokens: 1024,
+						};
+					default:
+						return undefined;
+				}
+			});
+			executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+			getConnectedToolsMock.mockResolvedValue([]);
+			apiRequestMock.mockResolvedValue({
+				content: [{ type: 'text', text: JSON.stringify({ name: 'John Smith', email: 'john@example.com' }) }],
+				stop_reason: 'end_turn',
+			});
+
+			const result = await text.message.execute.call(executeFunctionsMock, 0);
+
+			expect(result).toEqual([
+				{
+					json: {
+						content: [{ type: 'text', text: JSON.stringify({ name: 'John Smith', email: 'john@example.com' }) }],
+						structured_output: { name: 'John Smith', email: 'john@example.com' },
+					},
+					pairedItem: { item: 0 },
+				},
+			]);
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1/messages', {
+				body: {
+					model: 'claude-sonnet-4-20250514',
+					max_tokens: 1024,
+					messages: [{ role: 'user', content: 'Extract name and email from: John Smith, john@example.com' }],
+					tools: [],
+					output_config: {
+						format: {
+							type: 'json_schema',
+							schema,
+						},
+					},
+				},
+				enableAnthropicBetas: {
+					codeExecution: undefined,
+				},
+			});
+		});
 	});
 
 	describe('File -> Upload', () => {

@@ -268,6 +268,15 @@ const properties: INodeProperties[] = [
 					numberPrecision: 0,
 				},
 			},
+			{
+				displayName: 'Structured Output Schema',
+				name: 'structuredOutputSchema',
+				type: 'json',
+				default: '',
+				description:
+					'Provide a JSON Schema to constrain the response format. When set, Claude will always return valid JSON matching this schema. Supported by Claude 3.5+ models.',
+				hint: 'See <a target="_blank" href="https://platform.claude.com/docs/en/build-with-claude/structured-outputs">Anthropic structured outputs docs</a>. All object types in the schema must include <code>"additionalProperties": false</code>.',
+			},
 		],
 	},
 ];
@@ -293,6 +302,7 @@ interface MessageOptions {
 	temperature?: number;
 	topP?: number;
 	topK?: number;
+	structuredOutputSchema?: string;
 }
 
 function getFileTypeOrThrow(this: IExecuteFunctions, mimeType?: string): 'image' | 'document' {
@@ -327,6 +337,25 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		}
 	}
 
+	let structuredOutputConfig: IDataObject = {};
+	if (options.structuredOutputSchema) {
+		try {
+			structuredOutputConfig = {
+				output_config: {
+					format: {
+						type: 'json_schema',
+						schema: JSON.parse(options.structuredOutputSchema),
+					},
+				},
+			};
+		} catch {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Structured Output Schema contains invalid JSON',
+			);
+		}
+	}
+
 	const body = {
 		model,
 		messages,
@@ -336,6 +365,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		temperature: options.temperature,
 		top_p: options.topP,
 		top_k: options.topK,
+		...structuredOutputConfig,
 	};
 
 	let response = (await apiRequest.call(this, 'POST', '/v1/messages', {
@@ -404,12 +434,25 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				.join('')
 		: undefined;
 
+	let structuredOutput: IDataObject | undefined;
+	if (options.structuredOutputSchema) {
+		const textContent = response.content.find((c) => c.type === 'text');
+		if (textContent?.type === 'text') {
+			try {
+				structuredOutput = JSON.parse(textContent.text) as IDataObject;
+			} catch {
+				// Response is not valid JSON; leave structured_output undefined
+			}
+		}
+	}
+
 	if (simplify) {
 		return [
 			{
 				json: {
 					content: response.content,
 					merged_response: mergedResponse,
+					...(structuredOutput !== undefined ? { structured_output: structuredOutput } : {}),
 				},
 				pairedItem: { item: i },
 			},
@@ -418,7 +461,11 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	return [
 		{
-			json: { ...response, merged_response: mergedResponse },
+			json: {
+				...response,
+				merged_response: mergedResponse,
+				...(structuredOutput !== undefined ? { structured_output: structuredOutput } : {}),
+			},
 			pairedItem: { item: i },
 		},
 	];
