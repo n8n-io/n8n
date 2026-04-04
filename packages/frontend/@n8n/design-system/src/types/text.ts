@@ -11,8 +11,8 @@ const TEXT_COLOR = [
 	'danger',
 	'success',
 	'warning',
-	'foreground-dark',
-	'foreground-xdark',
+	'foreground-shade-1',
+	'foreground-shade-2',
 ] as const;
 export type TextColor = (typeof TEXT_COLOR)[number];
 

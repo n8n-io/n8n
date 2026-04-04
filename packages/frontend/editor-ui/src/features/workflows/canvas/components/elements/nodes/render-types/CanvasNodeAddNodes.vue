@@ -62,7 +62,7 @@ async function onClickTemplatesLink() {
 	<div ref="container" :class="$style.addNodes" data-test-id="canvas-add-button">
 		<N8nTooltip placement="top" :visible="isTooltipVisible" :show-after="700">
 			<button :class="$style.button" data-test-id="canvas-plus-button" @click.stop="onClick">
-				<N8nIcon icon="plus" color="foreground-xdark" :size="40" />
+				<N8nIcon icon="plus" color="foreground-shade-2" :size="40" />
 			</button>
 			<template #content>
 				{{ i18n.baseText('nodeView.canvasAddButton.addATriggerNodeBeforeExecuting') }}
