@@ -66,6 +66,7 @@ export async function prepareItemContext(
 	const messages = await prepareMessages(ctx, itemIndex, {
 		systemMessage: options.systemMessage,
 		passthroughBinaryImages: options.passthroughBinaryImages ?? true,
+		passthroughBinaryPdfs: options.passthroughBinaryPdfs ?? false,
 		outputParser,
 	});
 	const prompt: ChatPromptTemplate = preparePrompt(messages);

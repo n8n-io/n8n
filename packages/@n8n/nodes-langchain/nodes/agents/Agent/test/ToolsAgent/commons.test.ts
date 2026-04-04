@@ -183,6 +183,87 @@ describe('extractBinaryMessages', () => {
 		);
 	});
 
+	it('should extract a PDF binary message', async () => {
+		const fakeItem = {
+			json: {},
+			binary: {
+				doc1: {
+					mimeType: 'application/pdf',
+					data: 'data:application/pdf;base64,samplePdfData',
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
+		expect(Array.isArray(humanMsg.content)).toBe(true);
+		expect(humanMsg.content[0]).toEqual({
+			type: 'file_url',
+			file_url: { url: 'data:application/pdf;base64,samplePdfData' },
+		});
+	});
+
+	it('should extract both images and PDFs together', async () => {
+		const fakeItem = {
+			json: {},
+			binary: {
+				image: {
+					mimeType: 'image/png',
+					fileName: 'test.png',
+					data: 'imageData123',
+				},
+				document: {
+					mimeType: 'application/pdf',
+					fileName: 'test.pdf',
+					data: 'pdfData456',
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
+		expect(Array.isArray(humanMsg.content)).toBe(true);
+		expect(humanMsg.content).toHaveLength(2);
+		expect(humanMsg.content).toEqual(
+			expect.arrayContaining([
+				{
+					type: 'image_url',
+					image_url: { url: 'data:image/png;base64,imageData123' },
+				},
+				{
+					type: 'file_url',
+					file_url: { url: 'data:application/pdf;base64,pdfData456' },
+				},
+			]),
+		);
+	});
+
+	it('should extract PDF using binary stream when id is provided', async () => {
+		const fakeItem = {
+			json: {},
+			binary: {
+				doc1: {
+					mimeType: 'application/pdf',
+					id: 'pdf-123',
+					data: 'nonsense',
+				},
+			},
+		};
+
+		mockHelpers.getBinaryStream.mockResolvedValue(mock());
+		mockHelpers.binaryToBuffer.mockResolvedValue(Buffer.from('fakepdfdata'));
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
+		expect(mockHelpers.getBinaryStream).toHaveBeenCalledWith('pdf-123');
+		expect(mockHelpers.binaryToBuffer).toHaveBeenCalled();
+		const expectedUrl = `data:application/pdf;base64,${Buffer.from('fakepdfdata').toString(BINARY_ENCODING)}`;
+		expect(humanMsg.content[0]).toEqual({
+			type: 'file_url',
+			file_url: { url: expectedUrl },
+		});
+	});
+
 	it('should decode base64-encoded text files without prefix', async () => {
 		const textContent = 'Hello world!';
 		const fakeItem = {
@@ -403,11 +484,32 @@ describe('prepareMessages', () => {
 		expect(hasHumanMessage).toBe(false);
 	});
 
-	it('should not include a binary message if no image data is present', async () => {
+	it('should not include a binary message if both passthrough options are off', async () => {
 		const fakeItem = {
 			json: {},
 			binary: {
-				img1: {
+				doc1: {
+					mimeType: 'application/pdf',
+					data: 'data:application/pdf;base64,sampledata',
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const messages = await prepareMessages(mockContext, 0, {
+			systemMessage: 'Test system',
+			passthroughBinaryImages: false,
+			passthroughBinaryPdfs: false,
+		});
+		const hasHumanMessage = messages.some((m) => m instanceof HumanMessage);
+		expect(hasHumanMessage).toBe(false);
+	});
+
+	it('should not include PDF when only passthroughBinaryImages is true', async () => {
+		const fakeItem = {
+			json: {},
+			binary: {
+				doc1: {
 					mimeType: 'application/pdf',
 					data: 'data:application/pdf;base64,sampledata',
 				},
@@ -424,10 +526,34 @@ describe('prepareMessages', () => {
 		const messages = await prepareMessages(mockContext, 0, {
 			systemMessage: 'Test system',
 			passthroughBinaryImages: true,
+			passthroughBinaryPdfs: false,
 		});
 		const hasHumanMessage = messages.some((m) => m instanceof HumanMessage);
 		expect(hasHumanMessage).toBe(false);
 		expect(mockContext.logger.debug).toHaveBeenCalledTimes(1);
+	});
+
+	it('should include a binary message for PDF when passthroughBinaryPdfs is true', async () => {
+		const fakeItem = {
+			json: {},
+			binary: {
+				doc1: {
+					mimeType: 'application/pdf',
+					data: 'data:application/pdf;base64,samplePdfData',
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const messages = await prepareMessages(mockContext, 0, {
+			systemMessage: 'Test system',
+			passthroughBinaryImages: false,
+			passthroughBinaryPdfs: true,
+		});
+		const hasBinaryMessage = messages.some(
+			(m) => typeof m === 'object' && m instanceof HumanMessage,
+		);
+		expect(hasBinaryMessage).toBe(true);
 	});
 
 	it('should not include system_message in prompt templates if not provided after version 1.9', async () => {
