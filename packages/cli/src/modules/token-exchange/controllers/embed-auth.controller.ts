@@ -1,4 +1,5 @@
 import { EmbedLoginBodyDto, EmbedLoginQueryDto } from '@n8n/api-types';
+import { Time } from '@n8n/constants';
 import { Body, Get, Post, Query, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
@@ -16,12 +17,18 @@ export class EmbedAuthController {
 		private readonly urlService: UrlService,
 	) {}
 
-	@Get('/', { skipAuth: true })
+	@Get('/', {
+		skipAuth: true,
+		ipRateLimit: { limit: 20, windowMs: 1 * Time.minutes.toMilliseconds },
+	})
 	async getLogin(req: AuthlessRequest, res: Response, @Query query: EmbedLoginQueryDto) {
 		return await this.handleLogin(query.token, req, res);
 	}
 
-	@Post('/', { skipAuth: true })
+	@Post('/', {
+		skipAuth: true,
+		ipRateLimit: { limit: 20, windowMs: 1 * Time.minutes.toMilliseconds },
+	})
 	async postLogin(req: AuthlessRequest, res: Response, @Body body: EmbedLoginBodyDto) {
 		return await this.handleLogin(body.token, req, res);
 	}
