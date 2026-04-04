@@ -169,6 +169,24 @@ export class WorkflowRunner {
 			this.activeExecutions.attachResponsePromise(executionId, responsePromise);
 		}
 
+		// Set up streaming heartbeat on the main process that holds the HTTP response.
+		// This must happen BEFORE the queue/local decision because in queue mode the
+		// execution runs on a worker process that has no access to the HTTP response.
+		let heartbeatInterval: NodeJS.Timeout | undefined;
+		if (data.streamingEnabled && data.httpResponse) {
+			const STREAMING_HEARTBEAT_INTERVAL_MS = 30_000;
+			const keepaliveChunk = '{"type":"keepalive"}\n';
+			const res = data.httpResponse;
+			heartbeatInterval = setInterval(() => {
+				if (!res.writableEnded) {
+					res.write(keepaliveChunk);
+					if (typeof res.flush === 'function') {
+						(res as unknown as { flush: () => void }).flush();
+					}
+				}
+			}, STREAMING_HEARTBEAT_INTERVAL_MS);
+		}
+
 		// @TODO: Reduce to true branch once feature is stable
 		const shouldEnqueue =
 			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
@@ -210,6 +228,14 @@ export class WorkflowRunner {
 					...(data.projectId && { projectId: data.projectId }),
 					...(data.projectName && { projectName: data.projectName }),
 				});
+			});
+		}
+
+		// Clean up the streaming heartbeat when the execution finishes
+		if (heartbeatInterval) {
+			const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
+			void postExecutePromise.finally(() => {
+				clearInterval(heartbeatInterval);
 			});
 		}
 
@@ -288,7 +314,9 @@ export class WorkflowRunner {
 			if (data.streamingEnabled) {
 				lifecycleHooks.addHandler('sendChunk', (chunk) => {
 					data.httpResponse?.write(JSON.stringify(chunk) + '\n');
-					data.httpResponse?.flush?.();
+					if (typeof data.httpResponse?.flush === 'function') {
+						(data.httpResponse as unknown as { flush: () => void }).flush();
+					}
 				});
 			}
 

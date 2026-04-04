@@ -65,6 +65,10 @@ export async function sendMessage(
 // Create a transform stream that parses newline-delimited JSON
 function createLineParser(): TransformStream<Uint8Array, StructuredChunk> {
 	let buffer = '';
+	// Once an HTML error page is detected (e.g. Cloudflare 524), all subsequent
+	// non-JSON lines are suppressed and a single user-facing error is emitted.
+	let insideHtmlError = false;
+	let htmlErrorEmitted = false;
 	const decoder = new TextDecoder();
 
 	return new TransformStream({
@@ -79,8 +83,23 @@ function createLineParser(): TransformStream<Uint8Array, StructuredChunk> {
 				if (line.trim()) {
 					try {
 						const parsed = JSON.parse(line) as StructuredChunk;
+						insideHtmlError = false;
 						controller.enqueue(parsed);
 					} catch (error) {
+						if (line.includes('<!DOCTYPE') || line.includes('<html') || line.includes('</html>')) {
+							insideHtmlError = true;
+						}
+						if (insideHtmlError) {
+							if (!htmlErrorEmitted) {
+								htmlErrorEmitted = true;
+								controller.enqueue({
+									type: 'error',
+									content:
+										'A proxy timeout occurred while waiting for the response. The workflow may still be running — check the execution list for results.',
+								} as StructuredChunk);
+							}
+							continue;
+						}
 						// Handle non-JSON lines as plain text
 						controller.enqueue({
 							type: 'item',
@@ -93,11 +112,25 @@ function createLineParser(): TransformStream<Uint8Array, StructuredChunk> {
 
 		flush(controller) {
 			// Process any remaining buffer content
-			if (buffer.trim()) {
+			if (buffer.trim() && !insideHtmlError) {
 				try {
 					const parsed = JSON.parse(buffer) as StructuredChunk;
 					controller.enqueue(parsed);
 				} catch (error) {
+					if (
+						buffer.includes('<!DOCTYPE') ||
+						buffer.includes('<html') ||
+						buffer.includes('</html>')
+					) {
+						if (!htmlErrorEmitted) {
+							controller.enqueue({
+								type: 'error',
+								content:
+									'A proxy timeout occurred while waiting for the response. The workflow may still be running — check the execution list for results.',
+							} as StructuredChunk);
+						}
+						return;
+					}
 					controller.enqueue({
 						type: 'item',
 						content: buffer,
