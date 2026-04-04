@@ -11,6 +11,7 @@ import type {
 import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { Builder } from 'xml2js';
 
+import { deleteBucket } from './BucketOperations';
 import { s3ApiRequestREST, s3ApiRequestSOAP, s3ApiRequestSOAPAllItems } from './GenericFunctions';
 import { bucketFields, bucketOperations } from '../Aws/S3/V1/BucketDescription';
 import { fileFields, fileOperations } from '../Aws/S3/V1/FileDescription';
@@ -270,6 +271,18 @@ export class S3 implements INodeType {
 						// } else {
 						// 	returnData.push(responseData);
 						// }
+					}
+
+					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteBucket.html
+					if (operation === 'delete') {
+						const name = this.getNodeParameter('name', i) as string;
+						responseData = await deleteBucket(s3ApiRequestSOAP.call.bind(this), name);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ deleted: true }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					}
 				}
 				if (resource === 'folder') {
