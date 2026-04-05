@@ -1,3 +1,4 @@
+import * as nacl_factory from 'js-nacl';
 import type {
 	IExecuteFunctions,
 	IHookFunctions,
@@ -128,4 +129,53 @@ export function validateJSON(json: string | undefined): any {
 		result = undefined;
 	}
 	return result;
+}
+
+/**
+ * Encrypts a secret value using the repository's public key
+ * GitHub requires secrets to be encrypted using libsodium sealed box
+ *
+ * @param secretValue - The plaintext secret value to encrypt
+ * @param publicKey - The base64-encoded public key from the repository
+ * @returns The base64-encoded encrypted secret
+ */
+export async function encryptSecret(secretValue: string, publicKey: string): Promise<string> {
+	return await new Promise((resolve, reject) => {
+		nacl_factory.instantiate((nacl: ReturnType<typeof nacl_factory.instantiate>) => {
+			try {
+				const secretBytes: Uint8Array = nacl.encode_utf8(secretValue);
+				const keyBytes = Buffer.from(publicKey, 'base64');
+				const encryptedBytes: Uint8Array = nacl.crypto_box_seal(secretBytes, keyBytes);
+				const encryptedBase64 = Buffer.from(encryptedBytes).toString('base64');
+				resolve(encryptedBase64);
+			} catch (error) {
+				reject(error);
+			}
+		});
+	});
+}
+
+/**
+ * Fetches the repository's public key for encrypting secrets
+ *
+ * @param owner - Repository owner
+ * @param repository - Repository name
+ * @returns Object containing the key_id and key (public key)
+ */
+export async function getRepositoryPublicKey(
+	this: IHookFunctions | IExecuteFunctions,
+	owner: string,
+	repository: string,
+): Promise<{ key_id: string; key: string }> {
+	const endpoint = `/repos/${owner}/${repository}/actions/secrets/public-key`;
+	const responseData = await githubApiRequest.call(this, 'GET', endpoint, {});
+
+	if (!responseData.key_id || !responseData.key) {
+		throw new NodeOperationError(this.getNode(), 'Could not retrieve repository public key.');
+	}
+
+	return {
+		key_id: responseData.key_id,
+		key: responseData.key,
+	};
 }
