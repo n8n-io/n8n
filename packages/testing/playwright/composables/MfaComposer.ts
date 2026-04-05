@@ -18,7 +18,7 @@ export class MfaComposer {
 
 		await this.n8n.settingsPersonal.clickEnableMfa();
 
-		await this.n8n.mfaSetupModal.getModalContainer().waitFor({ state: 'visible' });
+		await this.n8n.mfaSetupModal.container.waitFor({ state: 'visible' });
 
 		await this.n8n.mfaSetupModal.clickCopySecretToClipboard();
 

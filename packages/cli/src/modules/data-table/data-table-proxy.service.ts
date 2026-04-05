@@ -1,6 +1,8 @@
-import type { DataTableListOptions } from '@n8n/api-types';
+import type { DataTableListOptions, ListDataTableQueryDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { type Scope } from '@n8n/permissions';
 import {
 	AddDataTableColumnOptions,
 	CreateDataTableOptions,
@@ -22,8 +24,12 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
+import { DataTableAggregateService } from './data-table-aggregate.service';
 import { DataTableService } from './data-table.service';
 
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { userHasScopes } from '@/permissions.ee/check-access';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { OwnershipService } from '@/services/ownership.service';
 
 const ALLOWED_NODES = [
@@ -43,10 +49,21 @@ export function isAllowedNode(s: string): s is AllowedNode {
 export class DataTableProxyService implements DataTableProxyProvider {
 	constructor(
 		private readonly dataTableService: DataTableService,
+		private readonly dataTableAggregateService: DataTableAggregateService,
 		private readonly ownershipService: OwnershipService,
 		private readonly logger: Logger,
+		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
 	) {
 		this.logger = this.logger.scoped('data-table');
+	}
+
+	private checkInstanceWriteAccess(): void {
+		const preferences = this.sourceControlPreferencesService.getPreferences();
+		if (preferences.branchReadOnly) {
+			throw new ForbiddenError(
+				'Cannot modify data tables on a protected instance. This instance is in read-only mode.',
+			);
+		}
 	}
 
 	private validateRequest(node: INode) {
@@ -81,6 +98,132 @@ export class DataTableProxyService implements DataTableProxyProvider {
 		projectId = projectId ?? (await this.getProjectId(workflow));
 
 		return this.makeDataTableOperations(projectId, dataTableId);
+	}
+
+	private async requireScope(user: User, scope: Scope, projectId: string): Promise<void> {
+		const hasScope = await userHasScopes(user, [scope], false, { projectId });
+		if (!hasScope) {
+			throw new Error(`User does not have '${scope}' access on project '${projectId}'`);
+		}
+	}
+
+	makeDataTableOperationsForUser(user: User) {
+		const dataTableService = this.dataTableService;
+		const dataTableAggregateService = this.dataTableAggregateService;
+		const requireScope = async (scope: Scope, projectId: string) =>
+			await this.requireScope(user, scope, projectId);
+		const checkInstanceWriteAccess = () => this.checkInstanceWriteAccess();
+
+		return {
+			// dataTable:listProject
+			async getManyAndCount(options: ListDataTableQueryDto) {
+				return await dataTableAggregateService.getManyAndCount(user, options);
+			},
+
+			// dataTable:create
+			async createDataTable(projectId: string, options: CreateDataTableOptions) {
+				checkInstanceWriteAccess();
+				await requireScope('dataTable:create', projectId);
+				return await dataTableService.createDataTable(projectId, options);
+			},
+
+			// dataTable:read
+			async getColumns(dataTableId: string, projectId: string) {
+				await requireScope('dataTable:read', projectId);
+				return await dataTableService.getColumns(dataTableId, projectId);
+			},
+
+			// dataTable:update
+			async updateDataTable(
+				dataTableId: string,
+				projectId: string,
+				options: UpdateDataTableOptions,
+			) {
+				checkInstanceWriteAccess();
+				await requireScope('dataTable:update', projectId);
+				return await dataTableService.updateDataTable(dataTableId, projectId, options);
+			},
+
+			async addColumn(dataTableId: string, projectId: string, options: AddDataTableColumnOptions) {
+				checkInstanceWriteAccess();
+				await requireScope('dataTable:update', projectId);
+				return await dataTableService.addColumn(dataTableId, projectId, options);
+			},
+
+			async deleteColumn(dataTableId: string, projectId: string, columnId: string) {
+				checkInstanceWriteAccess();
+				await requireScope('dataTable:update', projectId);
+				return await dataTableService.deleteColumn(dataTableId, projectId, columnId);
+			},
+
+			async renameColumn(
+				dataTableId: string,
+				projectId: string,
+				columnId: string,
+				options: { name: string },
+			) {
+				checkInstanceWriteAccess();
+				await requireScope('dataTable:update', projectId);
+				return await dataTableService.renameColumn(dataTableId, projectId, columnId, options);
+			},
+
+			// dataTable:delete
+			async deleteDataTable(dataTableId: string, projectId: string) {
+				checkInstanceWriteAccess();
+				await requireScope('dataTable:delete', projectId);
+				return await dataTableService.deleteDataTable(dataTableId, projectId);
+			},
+
+			// dataTable:readRow
+			async getManyRowsAndCount(
+				dataTableId: string,
+				projectId: string,
+				options: Partial<ListDataTableRowsOptions>,
+			) {
+				await requireScope('dataTable:readRow', projectId);
+				return await dataTableService.getManyRowsAndCount(dataTableId, projectId, options);
+			},
+
+			// dataTable:writeRow
+			async insertRows<T extends DataTableInsertRowsReturnType>(
+				dataTableId: string,
+				projectId: string,
+				rows: DataTableRows,
+				returnType: T,
+			) {
+				checkInstanceWriteAccess();
+				await requireScope('dataTable:writeRow', projectId);
+				return await dataTableService.insertRows(dataTableId, projectId, rows, returnType);
+			},
+
+			async updateRows(dataTableId: string, projectId: string, options: UpdateDataTableRowOptions) {
+				checkInstanceWriteAccess();
+				await requireScope('dataTable:writeRow', projectId);
+				return await dataTableService.updateRows(
+					dataTableId,
+					projectId,
+					{ filter: options.filter, data: options.data },
+					true,
+					options.dryRun,
+				);
+			},
+
+			async deleteRows(
+				dataTableId: string,
+				projectId: string,
+				options: DeleteDataTableRowsOptions,
+			) {
+				checkInstanceWriteAccess();
+				await requireScope('dataTable:writeRow', projectId);
+				return await dataTableService.deleteRows(
+					dataTableId,
+					projectId,
+					{ filter: options.filter },
+					true,
+					options.dryRun,
+				);
+			},
+		};
 	}
 
 	private makeAggregateOperations(projectId: string): IDataTableProjectAggregateService {
@@ -185,3 +328,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 		};
 	}
 }
+
+export type DataTableUserOperations = ReturnType<
+	DataTableProxyService['makeDataTableOperationsForUser']
+>;

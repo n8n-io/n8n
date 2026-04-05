@@ -10,6 +10,7 @@ import type {
 	NodeChain,
 	GeneratePinDataOptions,
 	WorkflowBuilderOptions,
+	ToJSONOptions,
 } from './types/base';
 import { isNodeChain } from './types/base';
 import type { ValidationOptions, ValidationResult, ValidationErrorCode } from './validation/index';
@@ -439,7 +440,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		return undefined;
 	}
 
-	toJSON(): WorkflowJSON {
+	toJSON(options?: ToJSONOptions): WorkflowJSON {
 		// Ensure composite targets from .onError() connections are added to the graph.
 		// This handles cases where a chain node has .onError(ifElseBuilder) — the composite
 		// isn't in the chain's allNodes, so it wasn't dispatched during chain processing.
@@ -456,6 +457,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			settings: this._settings,
 			pinData: this._pinData,
 			meta: this._meta,
+			tidyUp: options?.tidyUp ?? false,
 			resolveTargetNodeName: (target: unknown) => this.resolveTargetNodeName(target),
 		};
 
