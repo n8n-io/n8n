@@ -145,6 +145,7 @@ describe('CredentialSharing.ee', () => {
 				},
 				customRoles: false,
 				personalSpacePolicy: false,
+				dataRedaction: false,
 			});
 	});
 
@@ -289,6 +290,7 @@ describe('CredentialSharing.ee', () => {
 				},
 				customRoles: false,
 				personalSpacePolicy: false,
+				dataRedaction: false,
 			});
 
 			const credential = createCredential();

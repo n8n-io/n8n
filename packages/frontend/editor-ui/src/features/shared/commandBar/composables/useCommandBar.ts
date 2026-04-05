@@ -15,6 +15,7 @@ import { useExecutionCommands } from './useExecutionCommands';
 import { useGenericCommands } from './useGenericCommands';
 import { useRecentResources } from './useRecentResources';
 import { useChatHubCommands } from './useChatHubCommands';
+import { useInstanceAiCommands } from './useInstanceAiCommands';
 import type { CommandGroup } from '../types';
 import { useI18n } from '@n8n/i18n';
 import { PROJECT_DATA_TABLES, DATA_TABLE_VIEW } from '@/features/core/dataTable/constants';
@@ -82,12 +83,16 @@ export function useCommandBar() {
 	const chatHubCommandGroup = useChatHubCommands({
 		lastQuery,
 	});
+	const instanceAiCommandGroup = useInstanceAiCommands({
+		lastQuery,
+	});
 
 	const canvasViewGroups: CommandGroup[] = [
 		recentResourcesGroup,
 		nodeCommandGroup,
 		workflowCommandGroup,
 		workflowNavigationGroup,
+		instanceAiCommandGroup,
 		genericCommandGroup,
 	];
 
@@ -99,6 +104,7 @@ export function useCommandBar() {
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
 		executionNavigationGroup,
+		instanceAiCommandGroup,
 		genericCommandGroup,
 	];
 
@@ -109,6 +115,7 @@ export function useCommandBar() {
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
 		executionNavigationGroup,
+		instanceAiCommandGroup,
 		genericCommandGroup,
 	];
 
@@ -119,6 +126,7 @@ export function useCommandBar() {
 		workflowNavigationGroup,
 		dataTableNavigationGroup,
 		executionNavigationGroup,
+		instanceAiCommandGroup,
 		genericCommandGroup,
 	];
 
@@ -128,6 +136,7 @@ export function useCommandBar() {
 		projectNavigationGroup,
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
+		instanceAiCommandGroup,
 		genericCommandGroup,
 	];
 
@@ -138,6 +147,7 @@ export function useCommandBar() {
 		workflowNavigationGroup,
 		credentialNavigationGroup,
 		executionNavigationGroup,
+		instanceAiCommandGroup,
 		genericCommandGroup,
 	];
 
@@ -148,12 +158,14 @@ export function useCommandBar() {
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
 		executionNavigationGroup,
+		instanceAiCommandGroup,
 		genericCommandGroup,
 	];
 
 	const chatHubViewGroups: CommandGroup[] = [
 		chatHubCommandGroup,
 		recentResourcesGroup,
+		instanceAiCommandGroup,
 		genericCommandGroup,
 		projectNavigationGroup,
 		workflowNavigationGroup,
@@ -169,6 +181,7 @@ export function useCommandBar() {
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
 		executionNavigationGroup,
+		instanceAiCommandGroup,
 		genericCommandGroup,
 	];
 

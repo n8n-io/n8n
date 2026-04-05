@@ -22,6 +22,7 @@ import { useHistoryStore } from '@/app/stores/history.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
 	createTestNode,
+	createTestNodeProperties,
 	createTestWorkflow,
 	createTestWorkflowObject,
 	mockNode,
@@ -3788,6 +3789,31 @@ describe('useCanvasOperations', () => {
 			expect(workflowDocumentStoreInstance.setConnections).toHaveBeenCalled();
 		});
 
+		it('should set connections even when workflowId is initially empty', async () => {
+			const workflowsStore = useWorkflowsStore();
+			// Simulate the state after resetWorkspace() — workflowId is cleared
+			workflowsStore.workflow.id = '';
+
+			const testConnections = {
+				'Node 1': { main: [[{ node: 'Node 2', type: 'main' as const, index: 0 }]] },
+			};
+			const newWorkflowId = 'new-workflow-id';
+			const workflow = createTestWorkflow({
+				id: newWorkflowId,
+				nodes: [createTestNode()],
+				connections: testConnections,
+			});
+
+			const { initializeWorkspace } = useCanvasOperations();
+			await initializeWorkspace(workflow);
+
+			// initState creates a new document store for the workflow ID.
+			// Without the fix, the computed workflowDocumentStore would be undefined
+			// (empty workflowId at start) and setConnections would be silently skipped.
+			const newDocStore = useWorkflowDocumentStore(createWorkflowDocumentId(newWorkflowId));
+			expect(newDocStore.setConnections).toHaveBeenCalledWith(testConnections);
+		});
+
 		it('should initialize node data from node type description', async () => {
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
 			const type = SET_NODE_TYPE;
@@ -3796,12 +3822,12 @@ describe('useCanvasOperations', () => {
 				name: type,
 				version,
 				properties: [
-					{
+					createTestNodeProperties({
 						displayName: 'Value',
 						name: 'value',
 						type: 'boolean',
 						default: true,
-					},
+					}),
 				],
 			});
 

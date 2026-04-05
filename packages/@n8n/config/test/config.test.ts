@@ -68,6 +68,7 @@ describe('GlobalConfig', () => {
 		proxy_hops: 0,
 		ssl_key: '',
 		ssl_cert: '',
+		canvasOnly: false,
 		editorBaseUrl: '',
 		dataTable: {
 			maxSize: 50 * 1024 * 1024,
@@ -125,6 +126,9 @@ describe('GlobalConfig', () => {
 			jwtSecret: '',
 			jwtSessionDurationHours: 168,
 			jwtRefreshTimeoutHours: 0,
+			password: {
+				minLength: 8,
+			},
 			emails: {
 				mode: 'smtp',
 				smtp: {
@@ -229,6 +233,7 @@ describe('GlobalConfig', () => {
 			formWaiting: 'form-waiting',
 			mcp: 'mcp',
 			mcpBuilderEnabled: true,
+			mcpMaxRegisteredClients: 200,
 			mcpTest: 'mcp-test',
 			payloadSizeMax: 16,
 			formDataFileSizeMax: 200,
@@ -253,6 +258,35 @@ describe('GlobalConfig', () => {
 			executionContextTtl: 3600,
 			maxBufferedChunks: 1000,
 			streamStateTtl: 300,
+		},
+		instanceAi: {
+			model: 'anthropic/claude-sonnet-4-6',
+			modelUrl: '',
+			modelApiKey: '',
+			maxContextWindowTokens: 500_000,
+			mcpServers: '',
+			localGatewayDisabled: false,
+			browserMcp: false,
+			lastMessages: 20,
+			embedderModel: '',
+			semanticRecallTopK: 5,
+			subAgentMaxSteps: 100,
+			sandboxEnabled: false,
+			sandboxProvider: 'daytona',
+			sandboxImage: 'daytonaio/sandbox:0.5.0',
+			daytonaApiUrl: '',
+			daytonaApiKey: '',
+			n8nSandboxServiceUrl: '',
+			n8nSandboxServiceApiKey: '',
+			sandboxTimeout: 300000,
+			braveSearchApiKey: '',
+			searxngUrl: '',
+			filesystemPath: '',
+			gatewayApiKey: '',
+			threadTtlDays: 90,
+			snapshotPruneInterval: 3_600_000,
+			snapshotRetention: 86_400_000,
+			confirmationTimeout: 600_000,
 		},
 		queue: {
 			health: {
@@ -352,6 +386,7 @@ describe('GlobalConfig', () => {
 			contentSecurityPolicyReportOnly: false,
 			crossOriginOpenerPolicy: 'same-origin',
 			disableWebhookHtmlSandboxing: false,
+			disableFormHtmlSandboxing: false,
 			disableBareRepos: true,
 			awsSystemCredentialsAccess: false,
 			enableGitNodeHooks: false,
@@ -427,6 +462,7 @@ describe('GlobalConfig', () => {
 				scopesName: 'n8n',
 				scopesInstanceRoleClaimName: 'n8n_instance_role',
 				scopesProjectsRolesClaimName: 'n8n_projects',
+				scopesUseExpressionMapping: false,
 			},
 		},
 		ssrfProtection: {
@@ -443,7 +479,6 @@ describe('GlobalConfig', () => {
 		// @ts-expect-error structuredClone ignores properties defined as a getter
 		ai: {
 			enabled: false,
-			persistBuilderSessions: false,
 			timeout: 3600000,
 			allowSendingParameterValues: true,
 		},
@@ -455,6 +490,11 @@ describe('GlobalConfig', () => {
 			trimmingMinimumAgeDays: 7,
 			trimmingTimeWindowDays: 2,
 			trimOnStartUp: false,
+		},
+		expressionEngine: {
+			engine: 'legacy',
+			poolSize: 1,
+			maxCodeCacheSize: 1024,
 		},
 	} satisfies GlobalConfigShape;
 
@@ -481,6 +521,7 @@ describe('GlobalConfig', () => {
 			N8N_TEMPLATES_ENABLED: '0',
 			N8N_DYNAMIC_BANNERS_ENDPOINT: 'https://localhost:5678/api/banners',
 			N8N_DYNAMIC_BANNERS_ENABLED: 'false',
+			N8N_PASSWORD_MIN_LENGTH: '12',
 		};
 		const config = Container.get(GlobalConfig);
 
@@ -517,6 +558,12 @@ describe('GlobalConfig', () => {
 			dynamicBanners: {
 				endpoint: 'https://localhost:5678/api/banners',
 				enabled: false,
+			},
+			userManagement: {
+				...defaultConfig.userManagement,
+				password: {
+					minLength: 12,
+				},
 			},
 		});
 		expect(mockFs.readFileSync).not.toHaveBeenCalled();
@@ -574,6 +621,18 @@ describe('GlobalConfig', () => {
 		expect(consoleWarnMock).toHaveBeenCalledWith(
 			'Invalid number value for DB_LOGGING_MAX_EXECUTION_TIME: abcd',
 		);
+	});
+
+	it('should clamp password min length to valid range', () => {
+		process.env = { N8N_PASSWORD_MIN_LENGTH: '100' };
+		const config = Container.get(GlobalConfig);
+		expect(config.userManagement.password.minLength).toEqual(64);
+	});
+
+	it('should floor password min length at 8', () => {
+		process.env = { N8N_PASSWORD_MIN_LENGTH: '2' };
+		const config = Container.get(GlobalConfig);
+		expect(config.userManagement.password.minLength).toEqual(8);
 	});
 
 	describe('string unions', () => {

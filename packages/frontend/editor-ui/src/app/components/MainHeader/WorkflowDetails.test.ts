@@ -9,7 +9,6 @@ import {
 	VIEWS,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/app/constants';
-import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
 import { STORES } from '@n8n/stores';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
@@ -716,7 +715,7 @@ describe('WorkflowDetails', () => {
 		});
 
 		it("should call onWorkflowMenuSelect on 'Change owner' option click", async () => {
-			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+			const openMoveToFolderModalSpy = vi.spyOn(uiStore, 'openMoveToFolderModal');
 
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 
@@ -730,10 +729,11 @@ describe('WorkflowDetails', () => {
 			await userEvent.click(getByTestId('workflow-menu'));
 			await userEvent.click(getByTestId('workflow-menu-item-change-owner'));
 
-			expect(openModalSpy).toHaveBeenCalledWith({
-				name: PROJECT_MOVE_RESOURCE_MODAL,
-				data: expect.objectContaining({ resource: expect.objectContaining({ id: workflow.id }) }),
-			});
+			expect(openMoveToFolderModalSpy).toHaveBeenCalledWith(
+				'workflow',
+				expect.objectContaining({ id: workflow.id }),
+				expect.anything(),
+			);
 		});
 	});
 

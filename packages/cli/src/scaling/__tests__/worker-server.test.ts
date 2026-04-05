@@ -64,6 +64,7 @@ describe('WorkerServer', () => {
 			},
 		});
 		jest.restoreAllMocks();
+		jest.clearAllMocks();
 	});
 
 	describe('constructor', () => {

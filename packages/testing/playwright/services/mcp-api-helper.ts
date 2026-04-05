@@ -119,7 +119,7 @@ export interface WorkflowDetailsResult {
 /** Response from execute_workflow tool */
 export interface ExecuteWorkflowResult {
 	executionId: string | null;
-	status: 'success' | 'error' | 'running' | 'waiting' | 'canceled' | 'crashed' | 'new' | 'unknown';
+	status: 'started' | 'error';
 	error?: string;
 }
 

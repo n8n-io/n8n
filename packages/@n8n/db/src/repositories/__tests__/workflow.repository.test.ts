@@ -6,6 +6,7 @@ import { WorkflowEntity } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { mockInstance } from '../../utils/test-utils/mock-instance';
 import { FolderRepository } from '../folder.repository';
+import { SharedWorkflowRepository } from '../shared-workflow.repository';
 import { WorkflowHistoryRepository } from '../workflow-history.repository';
 import { WorkflowRepository } from '../workflow.repository';
 
@@ -15,11 +16,13 @@ describe('WorkflowRepository', () => {
 		database: { type: 'postgresdb' },
 	});
 	const folderRepository = mockInstance(FolderRepository);
+	const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
 	const workflowHistoryRepository = mockInstance(WorkflowHistoryRepository);
 	const workflowRepository = new WorkflowRepository(
 		entityManager.connection,
 		globalConfig,
 		folderRepository,
+		sharedWorkflowRepository,
 		workflowHistoryRepository,
 	);
 
@@ -144,6 +147,7 @@ describe('WorkflowRepository', () => {
 				entityManager.connection,
 				sqliteConfig,
 				folderRepository,
+				sharedWorkflowRepository,
 				workflowHistoryRepository,
 			);
 			jest.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
@@ -364,6 +368,7 @@ describe('WorkflowRepository', () => {
 				entityManager.connection,
 				sqliteConfig,
 				folderRepository,
+				sharedWorkflowRepository,
 				workflowHistoryRepository,
 			);
 			jest.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
@@ -392,6 +397,7 @@ describe('WorkflowRepository', () => {
 				entityManager.connection,
 				sqliteConfig,
 				folderRepository,
+				sharedWorkflowRepository,
 				workflowHistoryRepository,
 			);
 			jest.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
@@ -565,6 +571,109 @@ describe('WorkflowRepository', () => {
 			const result = await workflowRepository.getPublishedPersonalWorkflowsCount();
 
 			expect(result).toBe(3);
+		});
+	});
+
+	describe('findByCredentialResolverId', () => {
+		it('should use PostgreSQL JSON operator for postgresdb', async () => {
+			const workflows = [{ id: 'wf-1', name: 'Workflow 1' }] as WorkflowEntity[];
+			queryBuilder.getMany.mockResolvedValue(workflows);
+
+			const result = await workflowRepository.findByCredentialResolverId('resolver-123');
+
+			expect(queryBuilder.select).toHaveBeenCalledWith(['workflow.id', 'workflow.name']);
+			expect(queryBuilder.where).toHaveBeenCalledWith(
+				"workflow.settings ->> 'credentialResolverId' = :resolverId",
+				{ resolverId: 'resolver-123' },
+			);
+			expect(result).toEqual(workflows);
+		});
+
+		it('should use SQLite JSON_EXTRACT for sqlite', async () => {
+			const sqliteConfig = mockInstance(GlobalConfig, {
+				database: { type: 'sqlite' },
+			});
+			const sqliteWorkflowRepository = new WorkflowRepository(
+				entityManager.connection,
+				sqliteConfig,
+				folderRepository,
+				sharedWorkflowRepository,
+				workflowHistoryRepository,
+			);
+			jest.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
+			queryBuilder.getMany.mockResolvedValue([]);
+
+			const result = await sqliteWorkflowRepository.findByCredentialResolverId('resolver-123');
+
+			expect(queryBuilder.where).toHaveBeenCalledWith(
+				"JSON_EXTRACT(workflow.settings, '$.credentialResolverId') = :resolverId",
+				{ resolverId: 'resolver-123' },
+			);
+			expect(result).toEqual([]);
+		});
+
+		it('should return empty array when no workflows match', async () => {
+			queryBuilder.getMany.mockResolvedValue([]);
+
+			const result = await workflowRepository.findByCredentialResolverId('no-match');
+
+			expect(result).toEqual([]);
+		});
+	});
+
+	describe('clearCredentialResolverId', () => {
+		it('should use PostgreSQL jsonb removal for postgresdb', async () => {
+			const mockExecute = jest.fn().mockResolvedValue({ affected: 1 });
+			const mockUpdateWhere = jest.fn().mockReturnValue({ execute: mockExecute });
+			const mockSet = jest.fn().mockReturnValue({ where: mockUpdateWhere });
+			const mockUpdate = jest.fn().mockReturnValue({ set: mockSet });
+			const updateQb = { update: mockUpdate } as unknown as SelectQueryBuilder<WorkflowEntity>;
+
+			jest.spyOn(workflowRepository, 'createQueryBuilder').mockReturnValue(updateQb);
+
+			await workflowRepository.clearCredentialResolverId('resolver-123');
+
+			expect(mockUpdate).toHaveBeenCalled();
+			expect(mockSet).toHaveBeenCalledWith({
+				settings: expect.any(Function),
+			});
+			expect(mockUpdateWhere).toHaveBeenCalledWith(
+				"settings ->> 'credentialResolverId' = :resolverId",
+				{ resolverId: 'resolver-123' },
+			);
+			expect(mockExecute).toHaveBeenCalled();
+		});
+
+		it('should use SQLite json_remove for sqlite', async () => {
+			const mockExecute = jest.fn().mockResolvedValue({ affected: 1 });
+			const mockUpdateWhere = jest.fn().mockReturnValue({ execute: mockExecute });
+			const mockSet = jest.fn().mockReturnValue({ where: mockUpdateWhere });
+			const mockUpdate = jest.fn().mockReturnValue({ set: mockSet });
+			const updateQb = { update: mockUpdate } as unknown as SelectQueryBuilder<WorkflowEntity>;
+
+			const sqliteConfig = mockInstance(GlobalConfig, {
+				database: { type: 'sqlite' },
+			});
+			const sqliteWorkflowRepository = new WorkflowRepository(
+				entityManager.connection,
+				sqliteConfig,
+				folderRepository,
+				sharedWorkflowRepository,
+				workflowHistoryRepository,
+			);
+			jest.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(updateQb);
+
+			await sqliteWorkflowRepository.clearCredentialResolverId('resolver-123');
+
+			expect(mockUpdate).toHaveBeenCalled();
+			expect(mockSet).toHaveBeenCalledWith({
+				settings: expect.any(Function),
+			});
+			expect(mockUpdateWhere).toHaveBeenCalledWith(
+				"JSON_EXTRACT(settings, '$.credentialResolverId') = :resolverId",
+				{ resolverId: 'resolver-123' },
+			);
+			expect(mockExecute).toHaveBeenCalled();
 		});
 	});
 });

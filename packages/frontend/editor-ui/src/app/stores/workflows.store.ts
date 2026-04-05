@@ -73,7 +73,7 @@ import { i18n } from '@n8n/i18n';
 
 import { computed, ref, watch } from 'vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import type { PushPayload } from '@n8n/api-types';
+import type { ExecutionRedactionQueryDto, PushPayload } from '@n8n/api-types';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useSettingsStore } from './settings.store';
@@ -1181,7 +1181,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function updateNodeExecutionStatus(pushData: PushPayload<'nodeExecuteAfterData'>): void {
 		if (!workflowExecutionData.value?.data) {
-			throw new Error('The "workflowExecutionData" is not initialized!');
+			console.warn(
+				'[workflows.store] updateNodeExecutionStatus called without execution data; ignoring.',
+			);
+			return;
 		}
 
 		const { nodeName, data } = pushData;
@@ -1225,6 +1228,28 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			workflowExecutionResultDataLastUpdate.value = Date.now();
 
 			void trackNodeExecution(pushData);
+		}
+
+		// Synthesize redactionInfo from item-level redaction markers in push events.
+		// The full redactionInfo (with accurate canReveal) arrives later via the
+		// executionFinished REST call; this provides an early signal so the UI can
+		// show the redacted state during live execution.
+		if (!workflowExecutionData.value.data.redactionInfo?.isRedacted && data.data) {
+			for (const connectionType of Object.keys(data.data)) {
+				for (const items of data.data[connectionType]) {
+					if (items?.some((item) => item.redaction?.redacted)) {
+						workflowExecutionData.value.data.redactionInfo = {
+							isRedacted: true,
+							reason:
+								items.find((item) => item.redaction?.redacted)?.redaction?.reason ??
+								'workflow_redaction_policy',
+							canReveal: false, // conservative default; updated when executionFinished fetches full data
+						};
+						break;
+					}
+				}
+				if (workflowExecutionData.value.data.redactionInfo?.isRedacted) break;
+			}
 		}
 	}
 
@@ -1534,8 +1559,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 	}
 
-	async function fetchExecutionDataById(executionId: string): Promise<IExecutionResponse | null> {
-		return await workflowsApi.getExecutionData(rootStore.restApiContext, executionId);
+	async function fetchExecutionDataById(
+		executionId: string,
+		queryParams?: ExecutionRedactionQueryDto,
+	): Promise<IExecutionResponse | null> {
+		const response = await workflowsApi.getExecutionData(
+			rootStore.restApiContext,
+			executionId,
+			queryParams,
+		);
+		return response && unflattenExecutionData(response);
 	}
 
 	function deleteExecution(execution: ExecutionSummary): void {

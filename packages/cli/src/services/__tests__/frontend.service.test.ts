@@ -28,7 +28,7 @@ describe('FrontendService', () => {
 	let originalEnv: NodeJS.ProcessEnv;
 	const globalConfig = mock<GlobalConfig>({
 		database: { type: 'sqlite' },
-		endpoints: { rest: 'rest' },
+		endpoints: { rest: 'rest', health: '/healthz' },
 		diagnostics: { enabled: false },
 		templates: { enabled: false, host: '' },
 		nodes: {},
@@ -54,7 +54,7 @@ describe('FrontendService', () => {
 		mfa: { enabled: false },
 		deployment: { type: 'default' },
 		workflowHistory: { pruneTime: 24 },
-		path: '',
+		path: '/',
 		sso: {
 			ldap: { loginEnabled: false },
 			saml: { loginEnabled: false },
