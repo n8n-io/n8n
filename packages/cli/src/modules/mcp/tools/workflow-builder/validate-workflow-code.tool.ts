@@ -73,6 +73,39 @@ export const createValidateWorkflowCodeTool = (
 			const strippedCode = stripImportStatements(code);
 			const result = await handler.parseAndValidate(strippedCode);
 
+			// Heuristic: detect whether the code was *intended* to define nodes.
+			// String-matching is a fast-path check that covers the common case. It
+			// may produce false positives for comments or variable names that
+			// contain 'node(' (e.g. `// set mynode()`), but this is acceptable:
+			// the worst outcome is surfacing a more-detailed error to the LLM
+			// rather than silently returning an empty workflow.
+			const hasNodesInCode = code.includes('node(') || code.includes('nodes:');
+			if (result.workflow.nodes.length === 0 && hasNodesInCode) {
+				const errorMessage =
+					'The workflow was parsed successfully but contains 0 nodes. This usually indicates a syntax mismatch in the workflow() call.';
+
+				telemetryPayload.results = {
+					success: false,
+					error: errorMessage,
+				};
+				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+
+				const output = {
+					valid: false,
+					nodeCount: 0,
+					errors: [
+						`${errorMessage} Ensure you are using: workflow('Name', [node1, node2], { settings: {...} }). ` +
+							'If passing nodes individually, use the .add() method on the builder instance.',
+					],
+				};
+
+				return {
+					content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
+					structuredContent: output,
+					isError: true,
+				};
+			}
+
 			telemetryPayload.results = {
 				success: true,
 				data: {

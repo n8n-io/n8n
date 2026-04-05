@@ -1175,26 +1175,165 @@ function isWorkflowBuilderOptions(
 }
 
 /**
- * Create a new workflow builder
+ * Minimal structural shape of a node-like object accepted in the positional
+ * array syntax: workflow('Name', [node1, node2]).
+ *
+ * This covers both SDK-created NodeInstance wrappers (which have `config`) and
+ * raw AST-evaluated objects (which have `parameters`). Runtime validation is
+ * performed by isNodeLike(); this interface captures the duck-typing contract
+ * explicitly so the `any` cast in createWorkflow can be avoided.
+ *
+ * `name` is required here because WorkflowBuilderImpl.add() delegates to
+ * addNodeWithSubnodes(), which uses node.name as the internal Map key.
+ * An object missing a top-level name would be silently stored under `undefined`
+ * and then dropped during toJSON(), reintroducing silent node loss.
  */
-function createWorkflow(
-	id: string,
-	name: string,
-	options?: WorkflowSettings | WorkflowBuilderOptions,
-): WorkflowBuilder {
-	if (isWorkflowBuilderOptions(options)) {
-		return new WorkflowBuilderImpl(
-			id,
-			name,
-			options.settings,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			options.registry,
+interface NodeLike {
+	type: string;
+	name: string;
+	config?: unknown;
+	id?: string;
+	parameters?: unknown;
+}
+
+function isNodeLike(item: unknown): item is NodeLike {
+	if (typeof item !== 'object' || item === null) return false;
+	if (!('type' in item) || typeof (item as Record<string, unknown>).type !== 'string') return false;
+	// name is required: addNodeWithSubnodes() uses it as the internal map key.
+	// Without a top-level name the node would be silently stored under `undefined`.
+	if (!('name' in item) || typeof (item as Record<string, unknown>).name !== 'string') return false;
+	return 'config' in item || 'parameters' in item;
+}
+
+/**
+ * Returns true only for non-empty arrays whose first element is node-like.
+ * Empty arrays are intentionally rejected so that workflow('Name', []) falls
+ * through to the legacy (id, name, options?) branch rather than being treated
+ * as an empty nodes list.
+ */
+function isNodeArray(arg: unknown): arg is NodeLike[] {
+	return Array.isArray(arg) && arg.length > 0 && arg.every(isNodeLike);
+}
+
+/** Internal shape returned by normalizeArgs — keeps createWorkflow clean */
+interface NormalizedWorkflowArgs {
+	id: string;
+	name: string;
+	/**
+	 * Node-like objects to be hydrated via builder.add().
+	 * Validated at runtime by isNodeLike(); type is NodeLike[] not unknown[].
+	 */
+	nodesArray: NodeLike[];
+	options: unknown;
+}
+
+function normalizeArgs(args: unknown[]): NormalizedWorkflowArgs {
+	const [first, second, third] = args;
+
+	// Case 1: workflow('Name', [nodes], options?) -> AI Positional Syntax
+	if (typeof first === 'string' && Array.isArray(second)) {
+		if (second.length > 0 && isNodeLike(second[0]) && !isNodeArray(second)) {
+			throw new TypeError(
+				'workflow() received an invalid node array in the second argument. All items must be valid node definitions.',
+			);
+		}
+		if (isNodeArray(second)) {
+			return {
+				name: first,
+				id: first, // AI usually uses same name as id
+				nodesArray: second,
+				options: third,
+			};
+		}
+	}
+
+	// Case 2: workflow([nodes], options?) -> AI Fallback (no name provided)
+	if (Array.isArray(first)) {
+		if (first.length > 0 && isNodeLike(first[0]) && !isNodeArray(first)) {
+			throw new TypeError(
+				'workflow() received an invalid node array in the first argument. All items must be valid node definitions.',
+			);
+		}
+		if (isNodeArray(first)) {
+			return {
+				name: 'AI Generated Workflow',
+				id: 'ai-generated-workflow',
+				nodesArray: first,
+				options: second,
+			};
+		}
+	}
+
+	// Default SDK syntax: workflow(id, name, options?)
+	if (typeof first === 'string' && second === undefined) {
+		throw new TypeError(
+			'workflow requires at least two arguments: id and name or name and options',
 		);
 	}
-	return new WorkflowBuilderImpl(id, name, options);
+
+	// Note: typeof null === 'object', so we must guard against null explicitly
+	// to avoid passing null as the options argument to WorkflowBuilderImpl.
+	return {
+		id: typeof first === 'string' ? first : 'ai-generated-workflow',
+		name:
+			typeof second === 'string'
+				? second
+				: typeof first === 'string'
+					? first
+					: 'AI Generated Workflow',
+		nodesArray: [],
+		options:
+			typeof second === 'object' && second !== null && !Array.isArray(second) ? second : third,
+	};
+}
+
+/**
+ * Create a new workflow builder.
+ * Supports both the standard SDK signature (id, name, options?) and
+ * the AI-generated positional syntax (name, [nodes], options?).
+ */
+function createWorkflow(...args: unknown[]): WorkflowBuilder {
+	const { id, name, nodesArray, options } = normalizeArgs(args);
+
+	let builder: WorkflowBuilderImpl;
+	if (isWorkflowBuilderOptions(options as WorkflowSettings | WorkflowBuilderOptions | undefined)) {
+		builder = new WorkflowBuilderImpl(
+			id,
+			name,
+			(options as WorkflowBuilderOptions).settings,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			(options as WorkflowBuilderOptions).registry,
+		);
+	} else {
+		builder = new WorkflowBuilderImpl(id, name, options as WorkflowSettings | undefined);
+	}
+
+	for (let i = 0; i < nodesArray.length; i++) {
+		const rawNode = nodesArray[i];
+		try {
+			// nodesArray entries are validated as NodeLike (including top-level name)
+			// by isNodeLike(). builder.add() is typed for NodeInstance, but the runtime
+			// accepts raw graph objects matching the NodeLike shape.
+			builder.add(rawNode as Parameters<typeof builder.add>[0]);
+		} catch (e) {
+			const message = e instanceof Error ? e.message : String(e);
+			throw new Error(`Failed to add node at index ${i}: ${message}`, { cause: e });
+		}
+		// Post-add verification: Check that the node actually exists in the builder's map.
+		// We use a direct lookup because _nodes.size may not grow if a node was already
+		// pre-hydrated as a connection target during a previous add() call in the array.
+		if (!(builder as unknown as { _nodes: Map<string, unknown> })._nodes.has(rawNode.name)) {
+			throw new Error(
+				`Node at index ${i} (name: "${rawNode.name}", type: "${rawNode.type}") was not added to the workflow. ` +
+					'Ensure the node object is fully constructed via the node() factory before passing it to workflow().',
+			);
+		}
+	}
+
+	return builder;
 }
 
 /**

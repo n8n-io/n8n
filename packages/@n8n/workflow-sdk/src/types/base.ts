@@ -1018,10 +1018,25 @@ export interface WorkflowBuilderOptions {
 }
 
 /**
- * Static workflow builder methods
+ * Static workflow builder methods.
+ *
+ * The overloads below accept `unknown[]` for the nodes array rather than a
+ * more narrow type (e.g. `NodeInstance[]`). This is intentional: the positional
+ * syntax is primarily used by AI-generated code whose node objects may be raw
+ * AST-evaluated shapes rather than full SDK `NodeInstance` wrappers. Runtime
+ * safety is enforced by `isNodeLike()` inside `normalizeArgs`; invalid elements
+ * will throw a descriptive "Failed to add node at index N" error.
  */
 export interface WorkflowBuilderStatic {
 	(id: string, name: string, options?: WorkflowSettings | WorkflowBuilderOptions): WorkflowBuilder;
+	/** AI positional syntax: workflow('Name', [node1, node2], options?) */
+	(
+		name: string,
+		nodes: unknown[],
+		options?: WorkflowSettings | WorkflowBuilderOptions,
+	): WorkflowBuilder;
+	/** AI fallback – name omitted: workflow([node1, node2], options?) */
+	(nodes: unknown[], options?: WorkflowSettings | WorkflowBuilderOptions): WorkflowBuilder;
 	fromJSON(json: WorkflowJSON): WorkflowBuilder;
 }
 
