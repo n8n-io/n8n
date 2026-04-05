@@ -352,7 +352,7 @@ describe('OperationHandler', () => {
 		});
 
 		describe('MoveHandler', () => {
-			it('should move a task successfully', async () => {
+			it('should move a task to a project successfully', async () => {
 				const handler = new MoveHandler();
 				const mockCtx = createMockContext({
 					taskId: '123456',
@@ -360,22 +360,15 @@ describe('OperationHandler', () => {
 					options: {},
 				});
 
-				mockTodoistSyncRequest.mockResolvedValue(undefined);
+				mockTodoistApiRequest.mockResolvedValue(undefined);
 
 				const result = await handler.handleOperation(mockCtx, 0);
 
-				expect(mockTodoistSyncRequest).toHaveBeenCalledWith(
+				expect(mockTodoistApiRequest).toHaveBeenCalledWith(
+					'POST',
+					'/tasks/123456',
 					expect.objectContaining({
-						commands: [
-							expect.objectContaining({
-								type: 'item_move',
-								uuid: 'mock-uuid-123',
-								args: expect.objectContaining({
-									id: '123456',
-									project_id: '789',
-								}),
-							}),
-						],
+						project_id: '789',
 					}),
 				);
 				expect(result).toEqual({ success: true });
@@ -391,20 +384,38 @@ describe('OperationHandler', () => {
 					},
 				});
 
-				mockTodoistSyncRequest.mockResolvedValue(undefined);
+				mockTodoistApiRequest.mockResolvedValue(undefined);
 
 				await handler.handleOperation(mockCtx, 0);
 
-				expect(mockTodoistSyncRequest).toHaveBeenCalledWith(
+				expect(mockTodoistApiRequest).toHaveBeenCalledWith(
+					'POST',
+					'/tasks/123456',
 					expect.objectContaining({
-						commands: [
-							expect.objectContaining({
-								args: expect.objectContaining({
-									id: '123456',
-									section_id: '456',
-								}),
-							}),
-						],
+						section_id: '456',
+					}),
+				);
+			});
+
+			it('should move a task to a parent task', async () => {
+				const handler = new MoveHandler();
+				const mockCtx = createMockContext({
+					taskId: '123456',
+					project: '789',
+					options: {
+						parent: '999',
+					},
+				});
+
+				mockTodoistApiRequest.mockResolvedValue(undefined);
+
+				await handler.handleOperation(mockCtx, 0);
+
+				expect(mockTodoistApiRequest).toHaveBeenCalledWith(
+					'POST',
+					'/tasks/123456',
+					expect.objectContaining({
+						parent_id: '999',
 					}),
 				);
 			});

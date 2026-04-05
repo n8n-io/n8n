@@ -281,9 +281,6 @@ describe('Execute TodoistV2 Node', () => {
 		todoistNock.delete('/rest/v2/tasks/8888999900').reply(200, successResponse);
 		todoistNock.get('/rest/v2/tasks').query(true).reply(200, tasksListData);
 
-		// Move task uses sync API
-		todoistNock.post('/sync/v9/sync').reply(200, { sync_status: { '8888999900': 'ok' } });
-
 		// Label operations
 		todoistNock.post('/rest/v2/labels').reply(200, labelData);
 		todoistNock.get('/rest/v2/labels/1111222233').reply(200, labelData);
