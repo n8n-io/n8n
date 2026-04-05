@@ -14,6 +14,7 @@ This directory contains Claude Code agent skills and plugins tailored for n8n de
 | [linkedin-post-generator](./linkedin-post-generator/) | Research trending topics and generate LinkedIn posts | Social media content creation |
 | [it-ops](./it-ops/) | Monitor infrastructure and manage incidents | IT operations and incident response |
 | [servicenow-ticket](./servicenow-ticket/) | End-to-end ServiceNow ticket lifecycle management | ITSM ticket operations |
+| [teams-bot](./teams-bot/) | Receive Bot Framework activities from Azure Bot Service and reply via Teams | Building Teams bots backed by n8n workflows |
 
 ---
 
