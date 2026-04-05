@@ -435,7 +435,7 @@ export class UpdateHandler implements OperationHandler {
 
 export class MoveHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
-		//https://api.todoist.com/sync/v9/sync
+		//https://developer.todoist.com/rest/v2/#update-a-task
 		const taskId = ctx.getNodeParameter('taskId', itemIndex);
 		assertValidTodoistId('taskId', taskId, ctx.getNode());
 
@@ -445,29 +445,13 @@ export class MoveHandler implements OperationHandler {
 		assertValidTodoistId('project', projectId, ctx.getNode());
 		const nodeVersion = ctx.getNode().typeVersion;
 
-		const body: SyncRequest = {
-			commands: [
-				{
-					type: CommandTypes.ITEM_MOVE,
-					uuid: uuid(),
-					args: {
-						id: taskId,
-						// Set section_id only if node version is below 2.1
-						...(nodeVersion < 2.1
-							? {
-									section_id: (() => {
-										const section = ctx.getNodeParameter('section', itemIndex);
-										assertValidTodoistId('section', section, ctx.getNode());
-										return section;
-									})(),
-								}
-							: {}),
-					},
-				},
-			],
-		};
+		const body: IDataObject = {};
 
-		if (nodeVersion >= 2.1) {
+		if (nodeVersion < 2.1) {
+			const section = ctx.getNodeParameter('section', itemIndex);
+			assertValidTodoistId('section', section, ctx.getNode());
+			body.section_id = section;
+		} else {
 			const options = ctx.getNodeParameter('options', itemIndex, {}) as IDataObject;
 			validateNodeParameters(
 				options,
@@ -480,15 +464,15 @@ export class MoveHandler implements OperationHandler {
 
 			// Only one of parent_id, section_id, or project_id must be set to move the task
 			if (options.parent) {
-				body.commands[0].args.parent_id = options.parent;
+				body.parent_id = options.parent;
 			} else if (options.section) {
-				body.commands[0].args.section_id = options.section;
+				body.section_id = options.section;
 			} else {
-				body.commands[0].args.project_id = projectId;
+				body.project_id = projectId;
 			}
 		}
 
-		await todoistSyncRequest.call(ctx, body);
+		await todoistApiRequest.call(ctx, 'POST', `/tasks/${taskId}`, body);
 		return { success: true };
 	}
 }
