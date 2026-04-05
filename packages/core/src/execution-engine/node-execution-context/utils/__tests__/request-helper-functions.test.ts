@@ -403,6 +403,42 @@ describe('Request Helper Functions', () => {
 			expect(axiosOptions.data).toBeInstanceOf(FormData);
 		});
 
+		test('should align Content-Type boundary with FormData body when user header had a different boundary', async () => {
+			const formData = new FormData();
+			formData.append('key', 'value');
+
+			const axiosOptions = await parseRequestObject({
+				url: 'https://example.com',
+				formData,
+				headers: {
+					'content-type':
+						'multipart/form-data; boundary=----------------------------wrong-boundary-value',
+				},
+			});
+
+			expect((axiosOptions.headers as Record<string, string>)['content-type']).toBe(
+				formData.getHeaders()['content-type'],
+			);
+			expect(axiosOptions.data).toBe(formData);
+		});
+
+		test('should detect multipart Content-Type case-insensitively for FormData', async () => {
+			const formData = new FormData();
+			formData.append('key', 'value');
+
+			const axiosOptions = await parseRequestObject({
+				url: 'https://example.com',
+				formData,
+				headers: {
+					'content-type': 'Multipart/Form-Data; boundary=----------------------------wrong',
+				},
+			});
+
+			expect((axiosOptions.headers as Record<string, string>)['content-type']).toBe(
+				formData.getHeaders()['content-type'],
+			);
+		});
+
 		test('should not use Host header for SNI', async () => {
 			const axiosOptions = await parseRequestObject({
 				url: 'https://example.de/foo/bar',
@@ -558,6 +594,27 @@ describe('Request Helper Functions', () => {
 						'User-Agent': 'n8n',
 					}),
 				}),
+			);
+		});
+
+		test('should override user multipart Content-Type with FormData boundary for httpRequest', () => {
+			const formData = new FormData();
+			formData.append('key', 'value');
+
+			const requestOptions: IHttpRequestOptions = {
+				method: 'POST',
+				url: 'https://example.com',
+				body: formData,
+				headers: {
+					'content-type':
+						'multipart/form-data; boundary=----------------------------wrong-boundary-value',
+				},
+			};
+
+			const axiosConfig = convertN8nRequestToAxios(requestOptions);
+
+			expect((axiosConfig.headers as Record<string, string>)['content-type']).toBe(
+				formData.getHeaders()['content-type'],
 			);
 		});
 
