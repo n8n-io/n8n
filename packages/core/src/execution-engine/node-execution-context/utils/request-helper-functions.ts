@@ -87,6 +87,27 @@ import {
 } from './request-helpers';
 import { throwIfDomainNotAllowed } from './request-helpers/axios-utils';
 
+function stripContentTypeHeaders(headers: AxiosRequestConfig['headers'] | undefined): void {
+	if (!headers || typeof headers !== 'object') return;
+	for (const key of Object.keys(headers)) {
+		if (key.toLowerCase() === 'content-type') {
+			delete (headers as Record<string, unknown>)[key];
+		}
+	}
+}
+
+function isFormDataInstance(data: unknown): data is FormData {
+	return (
+		data instanceof FormData ||
+		(typeof data === 'object' &&
+			data !== null &&
+			'getHeaders' in data &&
+			typeof (data as { getHeaders: unknown }).getHeaders === 'function' &&
+			'append' in data &&
+			typeof (data as { append: unknown }).append === 'function')
+	);
+}
+
 export async function invokeAxios(
 	axiosConfig: AxiosRequestConfig,
 	authOptions: IRequestOptions['auth'] = {},
@@ -138,6 +159,7 @@ export async function parseRequestObject(requestObject: IRequestOptions, ssrfBri
 	const contentType =
 		contentTypeHeaderKeyName &&
 		(axiosConfig.headers?.[contentTypeHeaderKeyName] as string | undefined);
+	const contentTypeLower = contentType?.toLowerCase() ?? '';
 	if (contentType === 'application/x-www-form-urlencoded' && requestObject.formData === undefined) {
 		// there are nodes incorrectly created, informing the content type header
 		// and also using formData. Request lib takes precedence for the formData.
@@ -156,8 +178,8 @@ export async function parseRequestObject(requestObject: IRequestOptions, ssrfBri
 				axiosConfig.data = stringify(allData);
 			}
 		}
-	} else if (contentType?.includes('multipart/form-data')) {
-		if (requestObject.formData !== undefined && requestObject.formData instanceof FormData) {
+	} else if (contentTypeLower.includes('multipart/form-data')) {
+		if (requestObject.formData !== undefined && isFormDataInstance(requestObject.formData)) {
 			axiosConfig.data = requestObject.formData;
 		} else {
 			const allData: Partial<FormData> = {
@@ -167,9 +189,8 @@ export async function parseRequestObject(requestObject: IRequestOptions, ssrfBri
 
 			axiosConfig.data = createFormDataObject(allData);
 		}
-		// replace the existing header with a new one that
-		// contains the boundary property.
-		delete axiosConfig.headers?.[contentTypeHeaderKeyName!];
+		// Drop every Content-Type variant so the merged header matches this FormData instance's boundary.
+		stripContentTypeHeaders(axiosConfig.headers);
 
 		const headers = axiosConfig.data.getHeaders();
 
@@ -195,17 +216,9 @@ export async function parseRequestObject(requestObject: IRequestOptions, ssrfBri
 				};
 			}
 		} else if (requestObject.formData !== undefined) {
-			// remove any "content-type" that might exist.
-			if (axiosConfig.headers !== undefined) {
-				const headers = Object.keys(axiosConfig.headers);
-				headers.forEach((header) => {
-					if (header.toLowerCase() === 'content-type') {
-						delete axiosConfig.headers?.[header];
-					}
-				});
-			}
+			stripContentTypeHeaders(axiosConfig.headers);
 
-			if (requestObject.formData instanceof FormData) {
+			if (isFormDataInstance(requestObject.formData)) {
 				axiosConfig.data = requestObject.formData;
 			} else {
 				axiosConfig.data = createFormDataObject(requestObject.formData as Record<string, unknown>);
@@ -382,6 +395,7 @@ export async function parseRequestObject(requestObject: IRequestOptions, ssrfBri
 		axiosConfig.data !== undefined &&
 		axiosConfig.data !== '' &&
 		!(axiosConfig.data instanceof Buffer) &&
+		!isFormDataInstance(axiosConfig.data) &&
 		!allHeaders.some((headerKey) => headerKey.toLowerCase() === 'content-type')
 	) {
 		// Use default header for application/json
@@ -568,16 +582,20 @@ export function convertN8nRequestToAxios(
 	if (body) {
 		// Let's add some useful header standards here.
 		const existingContentTypeHeaderKey = searchForHeader(axiosRequest, 'content-type');
-		if (existingContentTypeHeaderKey === undefined) {
+		if (body instanceof FormData) {
 			axiosRequest.headers = axiosRequest.headers || {};
-			// We are only setting content type headers if the user did
-			// not set it already manually. We're not overriding, even if it's wrong.
-			if (body instanceof FormData) {
-				axiosRequest.headers = {
-					...axiosRequest.headers,
-					...body.getHeaders(),
-				};
-			} else if (body instanceof URLSearchParams) {
+			// User-supplied multipart Content-Type (often without a boundary) must not override
+			// FormData.getHeaders(), or the boundary in the header will not match the body.
+			if (existingContentTypeHeaderKey !== undefined) {
+				delete axiosRequest.headers[existingContentTypeHeaderKey];
+			}
+			axiosRequest.headers = {
+				...axiosRequest.headers,
+				...body.getHeaders(),
+			};
+		} else if (existingContentTypeHeaderKey === undefined) {
+			axiosRequest.headers = axiosRequest.headers || {};
+			if (body instanceof URLSearchParams) {
 				axiosRequest.headers['Content-Type'] = 'application/x-www-form-urlencoded';
 			}
 		} else if (

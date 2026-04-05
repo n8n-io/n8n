@@ -508,6 +508,8 @@ export class HttpRequestV3 implements INodeType {
 				} else if (bodyContentType === 'raw') {
 					requestOptions.json = false;
 					requestOptions.useStream = true;
+				} else if (bodyContentType === 'multipart-form-data') {
+					requestOptions.json = false;
 				} else {
 					requestOptions.json = true;
 				}
