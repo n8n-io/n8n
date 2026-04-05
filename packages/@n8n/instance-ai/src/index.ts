@@ -1,4 +1,5 @@
 export { wrapUntrustedData } from './tools/web-research/sanitize-web-content';
+export type { Logger } from './logger';
 export { generateCompactionSummary } from './compaction';
 export type { CompactionInput } from './compaction';
 export { createDomainAccessTracker } from './domain-access';
@@ -102,6 +103,7 @@ export type {
 } from './workflow-loop';
 export { WorkflowLoopRuntime } from './workflow-loop/runtime';
 export { PlannedTaskCoordinator } from './planned-tasks/planned-task-service';
+export { applyPlannedTaskPermissions } from './planned-tasks/planned-task-permissions';
 export type {
 	InstanceAiContext,
 	InstanceAiWorkflowService,

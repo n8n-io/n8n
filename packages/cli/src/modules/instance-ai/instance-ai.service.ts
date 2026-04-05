@@ -14,10 +14,6 @@ import { Time } from '@n8n/constants';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
-import { InstanceSettings } from 'n8n-core';
-import { N8N_VERSION } from '@/constants';
-import { License } from '@/license';
 import { UrlService } from '@/services/url.service';
 import {
 	createInstanceAgent,
@@ -36,6 +32,7 @@ import {
 	MastraTaskStorage,
 	PlannedTaskCoordinator,
 	PlannedTaskStorage,
+	applyPlannedTaskPermissions,
 	resumeAgentRun,
 	RunStateRegistry,
 	startBuildWorkflowAgentTask,
@@ -62,7 +59,6 @@ import {
 	WorkflowTaskCoordinator,
 	WorkflowLoopStorage,
 } from '@n8n/instance-ai';
-import { createAnthropic } from '@ai-sdk/anthropic';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 
@@ -123,11 +119,13 @@ export class InstanceAiService {
 		string,
 		{ threadId: string; messageGroupId?: string; tracing: InstanceAiTraceContext }
 	>();
-
 	/** Active sandboxes keyed by thread ID — persisted across messages within a conversation. */
 	private readonly sandboxes = new Map<
 		string,
-		{ sandbox: ReturnType<typeof createSandbox>; workspace: ReturnType<typeof createWorkspace> }
+		{
+			sandbox: Awaited<ReturnType<typeof createSandbox>>;
+			workspace: ReturnType<typeof createWorkspace>;
+		}
 	>();
 
 	/** Singleton local filesystem provider — created lazily when filesystem config is enabled. */
@@ -151,12 +149,11 @@ export class InstanceAiService {
 	/** Default IANA timezone for the instance (from GENERIC_TIMEZONE env var). */
 	private readonly defaultTimeZone: string;
 
-	/** Lazily-initialized AI assistant client for sandbox proxy integration. */
-	private aiAssistantClient: AiAssistantClient | undefined;
+	private readonly logger: Logger;
 
 	constructor(
-		private readonly logger: Logger,
-		private readonly globalConfig: GlobalConfig,
+		logger: Logger,
+		globalConfig: GlobalConfig,
 		private readonly adapterService: InstanceAiAdapterService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly settingsService: InstanceAiSettingsService,
@@ -166,11 +163,10 @@ export class InstanceAiService {
 		private readonly push: Push,
 		private readonly threadRepo: InstanceAiThreadRepository,
 		private readonly urlService: UrlService,
-		private readonly license: License,
-		private readonly instanceSettings: InstanceSettings,
 		private readonly dbSnapshotStorage: DbSnapshotStorage,
 		private readonly dbIterationLogStorage: DbIterationLogStorage,
 	) {
+		this.logger = logger.scoped('instance-ai');
 		this.instanceAiConfig = globalConfig.instanceAi;
 		this.defaultTimeZone = globalConfig.generic.timezone;
 		const editorBaseUrl = globalConfig.editorBaseUrl || `http://localhost:${globalConfig.port}`;
@@ -254,37 +250,13 @@ export class InstanceAiService {
 		};
 	}
 
-	private async getAiAssistantClient(): Promise<AiAssistantClient | undefined> {
-		if (this.aiAssistantClient) return this.aiAssistantClient;
-
-		const baseUrl = this.globalConfig.aiAssistant.baseUrl;
-		if (!baseUrl) return undefined;
-
-		const licenseCert = await this.license.loadCertStr();
-		const consumerId = this.license.getConsumerId();
-
-		this.aiAssistantClient = new AiAssistantClient({
-			licenseCert,
-			consumerId,
-			baseUrl,
-			n8nVersion: N8N_VERSION,
-			instanceId: this.instanceSettings.instanceId,
-		});
-
-		this.license.onCertRefresh((cert) => {
-			this.aiAssistantClient?.updateLicenseCert(cert);
-		});
-
-		return this.aiAssistantClient;
-	}
-
 	private async resolveSandboxConfig(user: User): Promise<SandboxConfig> {
 		const base = this.getSandboxConfigFromEnv();
 		if (!base.enabled) return base;
 		if (base.provider === 'daytona') {
 			// If AI assistant service is available, route Daytona calls through its sandbox proxy
-			const client = await this.getAiAssistantClient();
-			if (client) {
+			if (this.aiService.isProxyEnabled()) {
+				const client = await this.aiService.getClient();
 				const proxyConfig = await client.getSandboxProxyConfig();
 				return {
 					...base,
@@ -325,7 +297,7 @@ export class InstanceAiService {
 		if (!config.enabled) return undefined;
 
 		if (config.provider === 'daytona') {
-			return new BuilderSandboxFactory(config, new SnapshotManager(config.image));
+			return new BuilderSandboxFactory(config, new SnapshotManager(config.image, this.logger));
 		}
 
 		return new BuilderSandboxFactory(config);
@@ -348,7 +320,7 @@ export class InstanceAiService {
 		const config = await this.resolveSandboxConfig(user);
 		if (!config.enabled) return undefined;
 
-		const sandbox = createSandbox(config);
+		const sandbox = await createSandbox(config);
 		const workspace = createWorkspace(sandbox);
 		if (!sandbox || !workspace) return undefined;
 
@@ -405,6 +377,7 @@ export class InstanceAiService {
 		if (this.aiService.isProxyEnabled()) {
 			const { client, headers } = await this.getProxyAuth(user);
 			const modelName = await this.settingsService.resolveModelName(user);
+			const { createAnthropic } = await import('@ai-sdk/anthropic');
 			const provider = createAnthropic({
 				baseURL: client.getApiProxyBaseUrl() + '/anthropic/v1',
 				apiKey: 'proxy-managed',
@@ -470,7 +443,7 @@ export class InstanceAiService {
 			}
 		} catch (error) {
 			this.creditedThreads.delete(threadId); // Allow retry on failure
-			this.logger.warn('[credits] Failed to count Instance AI credits', {
+			this.logger.warn('Failed to count Instance AI credits', {
 				error: getErrorMessage(error),
 				threadId,
 				runId,
@@ -1158,6 +1131,7 @@ export class InstanceAiService {
 			storage: this.compositeStore,
 			subAgentMaxSteps: this.instanceAiConfig.subAgentMaxSteps,
 			eventBus: this.eventBus,
+			logger: this.logger,
 			domainTools,
 			abortSignal,
 			taskStorage,
@@ -1212,31 +1186,35 @@ export class InstanceAiService {
 		task: PlannedTaskRecord,
 		context: OrchestrationContext,
 	): Promise<void> {
+		// Plan approval authorizes the task-family's non-destructive tools,
+		// so the sub-agent can execute without a redundant second confirmation.
+		const taskContext = this.createPlannedTaskContext(task.kind, context);
+
 		let started: { taskId: string; agentId: string; result: string } | null = null;
 
 		switch (task.kind) {
 			case 'build-workflow':
-				started = await startBuildWorkflowAgentTask(context, {
+				started = await startBuildWorkflowAgentTask(taskContext, {
 					task: task.spec,
 					workflowId: task.workflowId,
 					plannedTaskId: task.id,
 				});
 				break;
 			case 'manage-data-tables':
-				started = await startDataTableAgentTask(context, {
+				started = await startDataTableAgentTask(taskContext, {
 					task: task.spec,
 					plannedTaskId: task.id,
 				});
 				break;
 			case 'research':
-				started = await startResearchAgentTask(context, {
+				started = await startResearchAgentTask(taskContext, {
 					goal: task.title,
 					constraints: task.spec,
 					plannedTaskId: task.id,
 				});
 				break;
 			case 'delegate':
-				started = await startDetachedDelegateTask(context, {
+				started = await startDetachedDelegateTask(taskContext, {
 					title: task.title,
 					spec: task.spec,
 					tools: task.tools ?? [],
@@ -1261,6 +1239,27 @@ export class InstanceAiService {
 		if (nextGraph) {
 			await this.syncPlannedTasksToUi(context.threadId, nextGraph);
 		}
+	}
+
+	/**
+	 * Creates a task-scoped OrchestrationContext with plan-approved permission
+	 * overrides. Rebuilds domain tools so each sub-agent gets its own closure
+	 * with the correct permissions, preventing cross-task leakage.
+	 */
+	private createPlannedTaskContext(
+		kind: PlannedTaskRecord['kind'],
+		context: OrchestrationContext,
+	): OrchestrationContext {
+		if (!context.domainContext) return context;
+
+		const taskDomainContext = applyPlannedTaskPermissions(context.domainContext, kind);
+		if (taskDomainContext === context.domainContext) return context;
+
+		return {
+			...context,
+			domainContext: taskDomainContext,
+			domainTools: createAllTools(taskDomainContext),
+		};
 	}
 
 	private async handlePlannedTaskSettlement(
@@ -1628,6 +1627,7 @@ export class InstanceAiService {
 								agentId: ORCHESTRATOR_AGENT_ID,
 								signal,
 								eventBus: this.eventBus,
+								logger: this.logger,
 							},
 						);
 					})
@@ -1650,6 +1650,7 @@ export class InstanceAiService {
 							agentId: ORCHESTRATOR_AGENT_ID,
 							signal,
 							eventBus: this.eventBus,
+							logger: this.logger,
 						},
 					);
 			mastraRunId = result.mastraRunId;
@@ -1765,8 +1766,17 @@ export class InstanceAiService {
 		data: ConfirmationData,
 	): Promise<boolean> {
 		if (this.runState.resolvePendingConfirmation(requestingUserId, requestId, data)) {
+			this.logger.debug('Resolved pending confirmation (sub-agent HITL)', {
+				requestId,
+				approved: data.approved,
+			});
 			return true;
 		}
+
+		this.logger.debug('Pending confirmation not found, trying suspended run resume', {
+			requestId,
+			approved: data.approved,
+		});
 
 		return await this.resumeSuspendedRun(requestingUserId, requestId, data);
 	}
@@ -1777,7 +1787,13 @@ export class InstanceAiService {
 		data: ConfirmationData,
 	): Promise<boolean> {
 		const suspended = this.runState.findSuspendedByRequestId(requestId);
-		if (!suspended) return false;
+		if (!suspended) {
+			this.logger.warn('Confirmation target not found: no pending confirmation or suspended run', {
+				requestId,
+				approved: data.approved,
+			});
+			return false;
+		}
 
 		const { agent, runId, mastraRunId, threadId, user, toolCallId, abortController, tracing } =
 			suspended;
@@ -1799,6 +1815,7 @@ export class InstanceAiService {
 			...(data.nodeParameters ? { nodeParameters: data.nodeParameters } : {}),
 			...(data.testTriggerNode ? { testTriggerNode: data.testTriggerNode } : {}),
 			...(data.answers ? { answers: data.answers } : {}),
+			...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),
 		};
 
 		void this.processResumedStream(agent, resumeData, {
@@ -1849,6 +1866,7 @@ export class InstanceAiService {
 								agentId: ORCHESTRATOR_AGENT_ID,
 								signal: opts.signal,
 								eventBus: this.eventBus,
+								logger: this.logger,
 								mastraRunId: opts.mastraRunId,
 							},
 						);
@@ -1867,6 +1885,7 @@ export class InstanceAiService {
 							agentId: ORCHESTRATOR_AGENT_ID,
 							signal: opts.signal,
 							eventBus: this.eventBus,
+							logger: this.logger,
 							mastraRunId: opts.mastraRunId,
 						},
 					);

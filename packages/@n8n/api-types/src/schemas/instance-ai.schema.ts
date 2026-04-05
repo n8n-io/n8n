@@ -258,6 +258,25 @@ export const taskListSchema = z.object({
 
 export type TaskList = z.infer<typeof taskListSchema>;
 
+// ── Gateway resource confirmation (instance permission mode) ─────────────────
+
+/** Protocol prefix used by the daemon to signal a resource-access confirmation is required. */
+export const GATEWAY_CONFIRMATION_REQUIRED_PREFIX = 'GATEWAY_CONFIRMATION_REQUIRED::';
+
+export const gatewayConfirmationRequiredPayloadSchema = z.object({
+	toolGroup: z.string(),
+	resource: z.string(),
+	description: z.string(),
+	/** Available decision options. */
+	options: z.array(z.string()),
+});
+
+export type GatewayConfirmationRequiredPayload = z.infer<
+	typeof gatewayConfirmationRequiredPayloadSchema
+>;
+
+// ---------------------------------------------------------------------------
+
 export const confirmationRequestPayloadSchema = z.object({
 	requestId: z.string(),
 	toolCallId: z.string().describe('Correlates to the tool-call that needs approval'),
@@ -273,11 +292,12 @@ export const confirmationRequestPayloadSchema = z.object({
 			'Target project ID — used to scope actions (e.g. credential creation) to the correct project',
 		),
 	inputType: z
-		.enum(['approval', 'text', 'questions', 'plan-review'])
+		.enum(['approval', 'text', 'questions', 'plan-review', 'resource-decision'])
 		.optional()
 		.describe(
 			'UI mode: approval (default) shows approve/deny, text shows a text input, ' +
-				'questions shows structured Q&A wizard, plan-review shows plan approval with feedback',
+				'questions shows structured Q&A wizard, plan-review shows plan approval with feedback, ' +
+				'resource-decision shows 5-option gateway permission dialog',
 		),
 	questions: z
 		.array(
@@ -307,6 +327,9 @@ export const confirmationRequestPayloadSchema = z.object({
 		.optional()
 		.describe('Per-node setup cards for workflow credential/parameter configuration'),
 	workflowId: z.string().optional().describe('Workflow ID for setup-workflow tool'),
+	resourceDecision: gatewayConfirmationRequiredPayloadSchema
+		.optional()
+		.describe('Gateway resource-access decision data (inputType=resource-decision)'),
 });
 
 export const statusPayloadSchema = z.object({
@@ -557,6 +580,7 @@ export interface InstanceAiConfirmResponse {
 	autoSetup?: { credentialType: string };
 	userInput?: string;
 	domainAccessAction?: DomainAccessAction;
+	resourceDecision?: string;
 	action?: 'apply' | 'test-trigger';
 	nodeParameters?: Record<string, Record<string, unknown>>;
 	testTriggerNode?: string;
@@ -586,7 +610,7 @@ export interface InstanceAiToolCallState {
 		message: string;
 		credentialRequests?: InstanceAiCredentialRequest[];
 		projectId?: string;
-		inputType?: 'approval' | 'text' | 'questions' | 'plan-review';
+		inputType?: 'approval' | 'text' | 'questions' | 'plan-review' | 'resource-decision';
 		domainAccess?: DomainAccessMeta;
 		credentialFlow?: InstanceAiCredentialFlow;
 		setupRequests?: InstanceAiWorkflowSetupNode[];
@@ -599,6 +623,7 @@ export interface InstanceAiToolCallState {
 		}>;
 		introMessage?: string;
 		tasks?: TaskList;
+		resourceDecision?: GatewayConfirmationRequiredPayload;
 	};
 	confirmationStatus?: 'pending' | 'approved' | 'denied';
 	startedAt?: string;
@@ -761,6 +786,8 @@ const instanceAiPermissionModeSchema = z.enum(['require_approval', 'always_allow
 export type InstanceAiPermissionMode = z.infer<typeof instanceAiPermissionModeSchema>;
 
 const instanceAiPermissionsSchema = z.object({
+	createWorkflow: instanceAiPermissionModeSchema,
+	updateWorkflow: instanceAiPermissionModeSchema,
 	runWorkflow: instanceAiPermissionModeSchema,
 	publishWorkflow: instanceAiPermissionModeSchema,
 	deleteWorkflow: instanceAiPermissionModeSchema,
@@ -770,6 +797,7 @@ const instanceAiPermissionsSchema = z.object({
 	moveWorkflowToFolder: instanceAiPermissionModeSchema,
 	tagWorkflow: instanceAiPermissionModeSchema,
 	createDataTable: instanceAiPermissionModeSchema,
+	deleteDataTable: instanceAiPermissionModeSchema,
 	mutateDataTableSchema: instanceAiPermissionModeSchema,
 	mutateDataTableRows: instanceAiPermissionModeSchema,
 	cleanupTestExecutions: instanceAiPermissionModeSchema,
@@ -781,6 +809,8 @@ const instanceAiPermissionsSchema = z.object({
 export type InstanceAiPermissions = z.infer<typeof instanceAiPermissionsSchema>;
 
 export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
+	createWorkflow: 'require_approval',
+	updateWorkflow: 'require_approval',
 	runWorkflow: 'require_approval',
 	publishWorkflow: 'require_approval',
 	deleteWorkflow: 'require_approval',
@@ -790,6 +820,7 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	moveWorkflowToFolder: 'require_approval',
 	tagWorkflow: 'require_approval',
 	createDataTable: 'require_approval',
+	deleteDataTable: 'require_approval',
 	mutateDataTableSchema: 'require_approval',
 	mutateDataTableRows: 'require_approval',
 	cleanupTestExecutions: 'require_approval',

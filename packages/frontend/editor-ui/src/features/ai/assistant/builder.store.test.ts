@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi, type Mock, type MockInstance } from 'vitest';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useBuilderStore } from './builder.store';
@@ -121,9 +121,9 @@ let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
 let pinia: ReturnType<typeof createTestingPinia>;
 
-let setWorkflowNameSpy: ReturnType<typeof vi.fn>;
-let getNodeTypeSpy: ReturnType<typeof vi.fn>;
-let getCredentialsByTypeSpy: ReturnType<typeof vi.fn>;
+let setWorkflowNameSpy: Mock;
+let getNodeTypeSpy: Mock;
+let getCredentialsByTypeSpy: Mock;
 
 const apiSpy = vi.spyOn(chatAPI, 'chatWithBuilder');
 
@@ -152,7 +152,6 @@ vi.mock('vue-router', () => ({
 let workflowState: WorkflowState;
 describe('AI Builder store', () => {
 	beforeEach(() => {
-		vi.clearAllMocks();
 		mockDocumentState = undefined;
 		pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
@@ -2088,10 +2087,13 @@ describe('AI Builder store', () => {
 	});
 
 	describe('Version management and revert functionality', () => {
-		const mockGetAiSessions = vi.spyOn(chatAPI, 'getAiSessions');
-		const mockTruncateBuilderMessages = vi.spyOn(chatAPI, 'truncateBuilderMessages');
+		let mockGetAiSessions: MockInstance<typeof chatAPI.getAiSessions>;
+		let mockTruncateBuilderMessages: MockInstance<typeof chatAPI.truncateBuilderMessages>;
 
 		beforeEach(() => {
+			mockGetAiSessions = vi.spyOn(chatAPI, 'getAiSessions');
+			mockTruncateBuilderMessages = vi.spyOn(chatAPI, 'truncateBuilderMessages');
+
 			mockGetAiSessions.mockReset();
 			mockTruncateBuilderMessages.mockReset();
 		});

@@ -183,6 +183,7 @@ export async function startDataTableAgentTask(
 						runId: context.runId,
 						agentId: subAgentId,
 						eventBus: context.eventBus,
+						logger: context.logger,
 						threadId: context.threadId,
 						abortSignal: signal,
 						waitForConfirmation: context.waitForConfirmation,
