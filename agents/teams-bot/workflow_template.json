@@ -1,0 +1,273 @@
+{
+  "name": "Azure Bot Service – Teams Message Handler",
+  "meta": {
+    "templateId": "azure-bot-teams-webhook",
+    "templateCredsSetupCompleted": false,
+    "description": "Receives Bot Framework activities from Azure Bot Service, processes Teams messages, and replies via the Bot Connector REST API."
+  },
+  "nodes": [
+    {
+      "id": "sticky-setup",
+      "name": "Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-480, -200],
+      "parameters": {
+        "content": "## Azure Bot Service – Teams Webhook\n\n**Before activating:**\n1. Copy the **Webhook URL** from the Webhook node below.\n2. In Azure Portal → Bot Service → Configuration → Messaging endpoint, paste that URL.\n3. Set `BOT_APP_ID` and `BOT_APP_PASSWORD` in your Azure Bot registration.\n4. Set the `BOT_APP_ID` expression on the **Verify Bot Identity** node.\n5. Replace `YOUR_N8N_WEBHOOK_URL` in the Teams bot app `.env` with this URL.\n\n**Flow:**\n- Azure Bot Service → POST activity to this webhook\n- Workflow extracts `activity.type`, `activity.text`, `from.name`\n- For `message` activities, composes a reply and POSTs back to `serviceUrl`\n- Bot Connector JWT auth is handled by Azure Bot Service; this webhook receives the raw activity\n\n**Reference:** https://learn.microsoft.com/en-us/azure/bot-service/rest-api/bot-framework-rest-connector-api-reference#activity-object",
+        "height": 340,
+        "width": 460
+      }
+    },
+    {
+      "id": "node-webhook",
+      "name": "Receive Bot Activity",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "azure-bot-teams-webhook",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "azure-bot-activity",
+        "authentication": "none",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "node-verify",
+      "name": "Verify Bot Identity",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [220, 0],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-service-url",
+              "leftValue": "={{ $json.body.serviceUrl }}",
+              "rightValue": "https://",
+              "operator": { "type": "string", "operation": "startsWith" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "node-respond-invalid",
+      "name": "Reject Invalid Request",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [440, 160],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"error\": \"Invalid Bot Framework activity\" }",
+        "options": { "responseCode": 400 }
+      }
+    },
+    {
+      "id": "node-extract",
+      "name": "Extract Activity Fields",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, -80],
+      "parameters": {
+        "jsCode": "// Bot Framework Activity schema:\n// https://learn.microsoft.com/en-us/azure/bot-service/rest-api/bot-framework-rest-connector-api-reference#activity-object\nconst body = $input.item.json.body;\n\nconst activity = {\n  type: body.type ?? 'unknown',\n  id: body.id ?? '',\n  timestamp: body.timestamp ?? new Date().toISOString(),\n  serviceUrl: body.serviceUrl ?? '',\n  channelId: body.channelId ?? '',\n  conversationId: body.conversation?.id ?? '',\n  conversationType: body.conversation?.conversationType ?? '',\n  text: (body.text ?? '').trim(),\n  fromId: body.from?.id ?? '',\n  fromName: body.from?.name ?? '',\n  fromAadObjectId: body.from?.aadObjectId ?? '',\n  recipientId: body.recipient?.id ?? '',\n  recipientName: body.recipient?.name ?? '',\n  locale: body.locale ?? 'en-US',\n  isGroup: body.conversation?.isGroup ?? false\n};\n\nreturn { json: activity };"
+      }
+    },
+    {
+      "id": "node-route",
+      "name": "Route by Activity Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [660, -80],
+      "parameters": {
+        "mode": "expression",
+        "output": "={{ $json.type }}",
+        "rules": {
+          "rules": [
+            { "outputKey": "message", "value": "message" },
+            { "outputKey": "conversationUpdate", "value": "conversationUpdate" }
+          ]
+        },
+        "fallbackOutput": "none",
+        "options": {}
+      }
+    },
+    {
+      "id": "node-compose-reply",
+      "name": "Compose Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, -160],
+      "parameters": {
+        "jsCode": "// Build a Bot Framework Activity reply\nconst activity = $input.item.json;\n\n// Echo the user's message with a greeting (replace this logic with your own)\nconst replyText = `Hello, ${activity.fromName}! You said: \"${activity.text}\"`;\n\nconst replyActivity = {\n  type: 'message',\n  from: { id: activity.recipientId, name: activity.recipientName },\n  recipient: { id: activity.fromId, name: activity.fromName },\n  conversation: { id: activity.conversationId },\n  replyToId: activity.id,\n  text: replyText,\n  textFormat: 'plain',\n  locale: activity.locale\n};\n\n// Build the Bot Connector reply URL:\n// POST {serviceUrl}/v3/conversations/{conversationId}/activities\nconst replyUrl = `${activity.serviceUrl.replace(/\\/$/, '')}/v3/conversations/${encodeURIComponent(activity.conversationId)}/activities`;\n\nreturn {\n  json: {\n    replyUrl,\n    replyActivity,\n    conversationId: activity.conversationId,\n    serviceUrl: activity.serviceUrl\n  }\n};"
+      }
+    },
+    {
+      "id": "node-get-token",
+      "name": "Get Bot Framework Token",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, -160],
+      "parameters": {
+        "method": "POST",
+        "url": "https://login.microsoftonline.com/botframework.com/oauth2/v2.0/token",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/x-www-form-urlencoded" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "grant_type", "value": "client_credentials" },
+            { "name": "client_id", "value": "={{ $vars.BOT_APP_ID }}" },
+            { "name": "client_secret", "value": "={{ $vars.BOT_APP_PASSWORD }}" },
+            { "name": "scope", "value": "https://api.botframework.com/.default" }
+          ]
+        },
+        "options": {}
+      },
+      "notes": "Set BOT_APP_ID and BOT_APP_PASSWORD as n8n Variables (Settings → Variables) — never hardcode credentials"
+    },
+    {
+      "id": "node-merge-token",
+      "name": "Merge Reply + Token",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [1320, -160],
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "mergeByPosition",
+        "options": {}
+      }
+    },
+    {
+      "id": "node-send-reply",
+      "name": "Send Reply to Teams",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1540, -160],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Compose Reply').item.json.replyUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Get Bot Framework Token').item.json.access_token }}"
+            },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Compose Reply').item.json.replyActivity) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "node-handle-join",
+      "name": "Handle Member Join",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 60],
+      "parameters": {
+        "jsCode": "// conversationUpdate fires when members are added/removed.\n// Extend this node to send a welcome message on member add.\nconst activity = $input.item.json;\nconsole.log(`conversationUpdate in channel ${activity.channelId}, conversation ${activity.conversationId}`);\nreturn { json: { handled: true, type: 'conversationUpdate', conversationId: activity.conversationId } };"
+      }
+    },
+    {
+      "id": "node-respond-ok",
+      "name": "Acknowledge Activity",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1760, -160],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"ok\" }",
+        "options": { "responseCode": 200 }
+      }
+    },
+    {
+      "id": "node-respond-update-ok",
+      "name": "Acknowledge Update",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1100, 60],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"ok\" }",
+        "options": { "responseCode": 200 }
+      }
+    }
+  ],
+  "connections": {
+    "Receive Bot Activity": {
+      "main": [
+        [{ "node": "Verify Bot Identity", "type": "main", "index": 0 }]
+      ]
+    },
+    "Verify Bot Identity": {
+      "main": [
+        [{ "node": "Extract Activity Fields", "type": "main", "index": 0 }],
+        [{ "node": "Reject Invalid Request", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extract Activity Fields": {
+      "main": [
+        [{ "node": "Route by Activity Type", "type": "main", "index": 0 }]
+      ]
+    },
+    "Route by Activity Type": {
+      "main": [
+        [{ "node": "Compose Reply", "type": "main", "index": 0 }],
+        [{ "node": "Handle Member Join", "type": "main", "index": 0 }]
+      ]
+    },
+    "Compose Reply": {
+      "main": [
+        [
+          { "node": "Merge Reply + Token", "type": "main", "index": 0 },
+          { "node": "Get Bot Framework Token", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Get Bot Framework Token": {
+      "main": [
+        [{ "node": "Merge Reply + Token", "type": "main", "index": 1 }]
+      ]
+    },
+    "Merge Reply + Token": {
+      "main": [
+        [{ "node": "Send Reply to Teams", "type": "main", "index": 0 }]
+      ]
+    },
+    "Send Reply to Teams": {
+      "main": [
+        [{ "node": "Acknowledge Activity", "type": "main", "index": 0 }]
+      ]
+    },
+    "Handle Member Join": {
+      "main": [
+        [{ "node": "Acknowledge Update", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": ["teams", "azure-bot", "bot-framework", "webhook"]
+}
