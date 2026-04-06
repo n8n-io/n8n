@@ -51,6 +51,15 @@ declare global {
 		var $now: import('luxon').DateTime;
 		var $today: import('luxon').DateTime;
 		var $items: unknown;
+		var $execution: unknown;
+		var $vars: unknown;
+		var $secrets: unknown;
+		var $executionId: string | undefined;
+		var $resumeWebhookUrl: string | undefined;
+		var $webhookId: string | undefined;
+		var $nodeId: string | undefined;
+		var $nodeVersion: number | undefined;
+		var $: (nodeName: string) => unknown;
 	}
 }
 

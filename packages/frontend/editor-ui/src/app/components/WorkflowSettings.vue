@@ -6,7 +6,6 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import type { ITimeoutHMS, IWorkflowSettings, IWorkflowShortResponse } from '@/Interface';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import Modal from '@/app/components/Modal.vue';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import {
 	EnterpriseEditionFeature,
 	WORKFLOW_SETTINGS_MODAL_KEY,
@@ -16,6 +15,7 @@ import {
 
 import { EXECUTION_LOGIC_V2_EXPERIMENT } from '@/app/constants/experiments';
 import {
+	N8nBadge,
 	N8nButton,
 	N8nIcon,
 	N8nInput,
@@ -49,6 +49,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useCredentialResolvers } from '@/features/resolvers/composables/useCredentialResolvers';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
@@ -62,8 +63,9 @@ const externalHooks = useExternalHooks();
 const toast = useToast();
 const modalBus = createEventBus();
 const telemetry = useTelemetry();
-const { isEligibleForMcpAccess, trackMcpAccessEnabledForWorkflow, mcpTriggerMap } = useMcp();
+const { trackMcpAccessEnabledForWorkflow } = useMcp();
 const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
+const pageRedirectionHelper = usePageRedirectionHelper();
 const { isEnabled: isCredentialResolverEnabled } = useDynamicCredentials();
 const canListCredentialResolvers = hasPermission(['rbac'], {
 	rbac: { scope: 'credentialResolver:list' },
@@ -89,8 +91,6 @@ const workflowDocumentStore = computed(() => {
 const workflowsEEStore = useWorkflowsEEStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const posthogStore = usePostHog();
-const { check } = useEnvFeatureFlag();
-
 const isLoading = ref(true);
 const workflowCallerPolicyOptions = ref<Array<{ key: string; value: string }>>([]);
 const redactionToggleOptions = ref<Array<{ key: string; value: string }>>([
@@ -205,12 +205,19 @@ const workflowOwnerName = computed(() => {
 });
 const workflowPermissions = computed(() => getResourcePermissions(workflow.value?.scopes).workflow);
 
+const isDataRedactionLicensed = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction],
+);
+
 const isRedactionSettingVisible = computed(
 	() =>
 		settingsStore.isModuleActive('redaction') &&
-		check.value('EXECUTION_REDACTION') &&
-		workflowPermissions.value.updateRedactionSetting,
+		(isDataRedactionLicensed.value ? workflowPermissions.value.updateRedactionSetting : true),
 );
+
+function goToDataRedactionUpgrade() {
+	void pageRedirectionHelper.goToUpgrade('workflow-settings', 'upgrade-data-redaction');
+}
 
 const workflowHasDynamicCredentials = computed(
 	() => isCredentialResolverEnabled.value && !!workflowSettings.value.credentialResolverId,
@@ -258,21 +265,12 @@ const redactManualData = computed({
 });
 
 const mcpToggleDisabled = computed(() => {
-	return readOnlyEnv.value || !workflowPermissions.value.update || !isEligibleForMcp.value;
+	return readOnlyEnv.value || !workflowPermissions.value.update;
 });
 
 const mcpToggleTooltip = computed(() => {
-	if (!isEligibleForMcp.value) {
-		return i18n.baseText('mcp.workflowNotEligable.description', {
-			interpolate: {
-				triggers: Object.values(mcpTriggerMap).join(', '),
-			},
-		});
-	}
 	return i18n.baseText('workflowSettings.availableInMCP.tooltip');
 });
-
-const isEligibleForMcp = computed(() => isEligibleForMcpAccess(workflow.value));
 
 const savedTimeNodes = computed(() => {
 	if (!workflow?.value?.nodes) return [];
@@ -1179,8 +1177,21 @@ onBeforeUnmount(() => {
 				</ElRow>
 				<template v-if="isRedactionSettingVisible">
 					<ElRow data-test-id="workflow-settings-redaction-policy">
-						<ElCol :span="10" :class="$style['setting-name']">
+						<ElCol
+							:span="10"
+							:class="[
+								$style['setting-name'],
+								{ [$style['setting-name--disabled']]: !isDataRedactionLicensed },
+							]"
+						>
 							{{ i18n.baseText('workflowSettings.redactProductionData') }}
+							<N8nBadge
+								v-if="!isDataRedactionLicensed"
+								:class="[$style['upgrade-badge'], 'ml-4xs']"
+								@click="goToDataRedactionUpgrade"
+							>
+								{{ i18n.baseText('generic.upgrade') }}
+							</N8nBadge>
 							<N8nTooltip placement="top">
 								<template #content>
 									<div v-text="helpTexts.redactProductionData"></div>
@@ -1192,6 +1203,7 @@ onBeforeUnmount(() => {
 							<N8nSelect
 								v-model="redactProductionData"
 								:disabled="
+									!isDataRedactionLicensed ||
 									readOnlyEnv ||
 									!workflowPermissions.updateRedactionSetting ||
 									workflowHasDynamicCredentials
@@ -1220,8 +1232,21 @@ onBeforeUnmount(() => {
 						</ElCol>
 					</ElRow>
 					<ElRow>
-						<ElCol :span="10" :class="$style['setting-name']">
+						<ElCol
+							:span="10"
+							:class="[
+								$style['setting-name'],
+								{ [$style['setting-name--disabled']]: !isDataRedactionLicensed },
+							]"
+						>
 							{{ i18n.baseText('workflowSettings.redactManualData') }}
+							<N8nBadge
+								v-if="!isDataRedactionLicensed"
+								:class="[$style['upgrade-badge'], 'ml-4xs']"
+								@click="goToDataRedactionUpgrade"
+							>
+								{{ i18n.baseText('generic.upgrade') }}
+							</N8nBadge>
 							<N8nTooltip placement="top">
 								<template #content>
 									<div v-text="helpTexts.redactManualData"></div>
@@ -1232,7 +1257,11 @@ onBeforeUnmount(() => {
 						<ElCol :span="14" class="ignore-key-press-canvas">
 							<N8nSelect
 								v-model="redactManualData"
-								:disabled="readOnlyEnv || !workflowPermissions.updateRedactionSetting"
+								:disabled="
+									!isDataRedactionLicensed ||
+									readOnlyEnv ||
+									!workflowPermissions.updateRedactionSetting
+								"
 								:placeholder="i18n.baseText('workflowSettings.selectOption')"
 								filterable
 								:limit-popper-width="true"
@@ -1519,6 +1548,14 @@ onBeforeUnmount(() => {
 			opacity: 1;
 		}
 	}
+}
+
+.setting-name--disabled {
+	opacity: 0.5;
+}
+
+.upgrade-badge {
+	cursor: pointer;
 }
 
 .timeout-input {

@@ -376,12 +376,9 @@ export function useWorkflowUpdate() {
 			await updateConnections(workflowData.connections ?? {});
 			updateWorkflowNameIfNeeded(workflowData.name, options?.isInitialGeneration);
 
-			// Merge pin data from workflow data with existing pin data
-			if (workflowData.pinData && workflowDocumentStore.value) {
-				workflowDocumentStore.value.setPinData({
-					...workflowDocumentStore.value.getPinDataSnapshot(),
-					...workflowData.pinData,
-				});
+			// Defer pin data instead of applying immediately — user chooses via follow-up actions
+			if (workflowData.pinData && Object.keys(workflowData.pinData).length > 0) {
+				builderStore.storeGeneratedPinData(workflowData.pinData);
 			}
 
 			builderStore.setBuilderMadeEdits(true);

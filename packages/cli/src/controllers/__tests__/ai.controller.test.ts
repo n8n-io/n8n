@@ -543,7 +543,7 @@ describe('AiController', () => {
 				payload.workflowId,
 				request.user,
 				payload.messageId,
-				payload.codeBuilder,
+				undefined,
 			);
 			expect(result).toEqual({ success: true });
 		});

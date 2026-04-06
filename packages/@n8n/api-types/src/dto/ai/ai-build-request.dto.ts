@@ -3,6 +3,10 @@ import { z } from 'zod';
 
 import { Z } from '../../zod-class';
 
+export const QUICK_REPLY_TYPES = ['all-good', 'new-suggestion'] as const;
+
+export type QuickReplyType = (typeof QUICK_REPLY_TYPES)[number];
+
 export interface ExpressionValue {
 	expression: string;
 	resolvedValue: unknown;
@@ -103,12 +107,12 @@ export class AiBuilderChatRequestDto extends Z.class({
 		featureFlags: z
 			.object({
 				templateExamples: z.boolean().optional(),
-				codeBuilder: z.boolean().optional(),
 				pinData: z.boolean().optional(),
 				planMode: z.boolean().optional(),
 				mergeAskBuild: z.boolean().optional(),
 			})
 			.optional(),
+		quickReplyType: z.enum(QUICK_REPLY_TYPES).optional(),
 		mode: z.enum(['build', 'plan']).optional(),
 		resumeData: z.union([z.record(z.unknown()), z.array(z.unknown())]).optional(),
 	}),

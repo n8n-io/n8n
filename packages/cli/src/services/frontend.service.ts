@@ -24,7 +24,7 @@ import { PushConfig } from '@/push/push.config';
 import { OwnershipService } from '@/services/ownership.service';
 import { getSamlLoginLabel, getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
-import { resolveHealthEndpointPath } from '@/utils/health-endpoint.util';
+import { resolveFrontendHealthEndpointPath } from '@/utils/health-endpoint.util';
 import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
@@ -195,7 +195,7 @@ export class FrontendService {
 			endpointWebhook: this.globalConfig.endpoints.webhook,
 			endpointWebhookTest: this.globalConfig.endpoints.webhookTest,
 			endpointWebhookWaiting: this.globalConfig.endpoints.webhookWaiting,
-			endpointHealth: resolveHealthEndpointPath(this.globalConfig),
+			endpointHealth: resolveFrontendHealthEndpointPath(this.globalConfig),
 			saveDataErrorExecution: this.globalConfig.executions.saveDataOnError,
 			saveDataSuccessExecution: this.globalConfig.executions.saveDataOnSuccess,
 			saveManualExecutions: this.globalConfig.executions.saveDataManualExecutions,
@@ -330,6 +330,7 @@ export class FrontendService {
 				},
 				customRoles: false,
 				personalSpacePolicy: false,
+				dataRedaction: false,
 			},
 			mfa: {
 				enabled: false,
@@ -475,6 +476,7 @@ export class FrontendService {
 			namedVersions: this.license.isLicensed(LICENSE_FEATURES.NAMED_VERSIONS),
 			customRoles: this.licenseState.isCustomRolesLicensed(),
 			personalSpacePolicy: this.licenseState.isPersonalSpacePolicyLicensed(),
+			dataRedaction: this.licenseState.isDataRedactionLicensed(),
 		});
 
 		if (this.license.isLdapEnabled()) {

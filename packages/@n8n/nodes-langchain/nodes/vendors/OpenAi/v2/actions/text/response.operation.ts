@@ -7,7 +7,12 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { jsonParse, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import {
+	accumulateTokenUsage,
+	jsonParse,
+	NodeOperationError,
+	updateDisplayOptions,
+} from 'n8n-workflow';
 import { MODELS_NOT_SUPPORT_FUNCTION_CALLS } from '../../../helpers/constants';
 import type { ChatResponse } from '../../../helpers/interfaces';
 import { formatToOpenAIResponsesTool } from '../../../helpers/utils';
@@ -630,6 +635,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	if (!response) return [];
 
+	if (response.usage) {
+		accumulateTokenUsage(this, response.usage.input_tokens, response.usage.output_tokens);
+	}
+
 	// reasoning models such as gpt5 include reasoning items that must be included in the request
 	const isToolRelatedCall: (item: { type: string }) => boolean = (item) =>
 		item.type === 'function_call' || item.type === 'reasoning';
@@ -681,6 +690,11 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		response = (await apiRequest.call(this, 'POST', '/responses', {
 			body,
 		})) as ChatResponse;
+
+		if (response.usage) {
+			accumulateTokenUsage(this, response.usage.input_tokens, response.usage.output_tokens);
+		}
+
 		toolCalls = response.output.filter(isToolRelatedCall);
 
 		currentIteration++;

@@ -5,6 +5,10 @@ import { AddResource } from './components/AddResource';
 import { ResourceCards } from './components/ResourceCards';
 
 export class WorkflowsPage extends BasePage {
+	async goto() {
+		await this.page.goto('/home/workflows');
+	}
+
 	readonly addResource = new AddResource(this.page);
 	readonly cards = new ResourceCards(this.page);
 

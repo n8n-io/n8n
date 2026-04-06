@@ -4,7 +4,7 @@ import { extend, extendOptional } from '../extensions/extend';
 import { extendedFunctions } from '../extensions/function-extensions';
 
 import { __sanitize, createSafeErrorSubclass, ExpressionError } from './safe-globals';
-import { createDeepLazyProxy } from './lazy-proxy';
+import { createDeepLazyProxy, throwIfErrorSentinel } from './lazy-proxy';
 
 // Pre-create safe error subclass wrappers (reused across evaluations)
 const SafeTypeError = createSafeErrorSubclass(TypeError);
@@ -17,6 +17,17 @@ const SafeURIError = createSafeErrorSubclass(URIError);
 // ============================================================================
 // Reset Function for Data Proxies
 // ============================================================================
+
+function fetchPrimitive(key: string): unknown {
+	try {
+		return globalThis.__getValueAtPath.applySync(null, [[key]], {
+			arguments: { copy: true },
+			result: { copy: true },
+		});
+	} catch {
+		return undefined;
+	}
+}
 
 /**
  * Reset workflow data proxies before each evaluation.
@@ -72,6 +83,10 @@ export function resetDataProxies(timezone?: string): void {
 	globalThis.__data.$prevNode = createDeepLazyProxy(['$prevNode']);
 	globalThis.__data.$data = createDeepLazyProxy(['$data']);
 	globalThis.__data.$env = createDeepLazyProxy(['$env']);
+	globalThis.__data.process = createDeepLazyProxy(['process']);
+	globalThis.__data.$execution = createDeepLazyProxy(['$execution']);
+	globalThis.__data.$vars = createDeepLazyProxy(['$vars']);
+	globalThis.__data.$secrets = createDeepLazyProxy(['$secrets']);
 
 	// -------------------------------------------------------------------------
 	// Create DateTime values inside the isolate (not lazy-loaded from host,
@@ -87,25 +102,13 @@ export function resetDataProxies(timezone?: string): void {
 	// Fetch primitives directly (no lazy loading needed for simple values)
 	// -------------------------------------------------------------------------
 
-	try {
-		globalThis.__data.$runIndex = globalThis.__getValueAtPath.applySync(null, [['$runIndex']], {
-			arguments: { copy: true },
-			result: { copy: true },
-		});
-	} catch (error) {
-		// Property doesn't exist - set to undefined
-		globalThis.__data.$runIndex = undefined;
-	}
-
-	try {
-		globalThis.__data.$itemIndex = globalThis.__getValueAtPath.applySync(null, [['$itemIndex']], {
-			arguments: { copy: true },
-			result: { copy: true },
-		});
-	} catch (error) {
-		// Property doesn't exist - set to undefined
-		globalThis.__data.$itemIndex = undefined;
-	}
+	globalThis.__data.$runIndex = fetchPrimitive('$runIndex');
+	globalThis.__data.$itemIndex = fetchPrimitive('$itemIndex');
+	globalThis.__data.$executionId = fetchPrimitive('$executionId');
+	globalThis.__data.$resumeWebhookUrl = fetchPrimitive('$resumeWebhookUrl');
+	globalThis.__data.$webhookId = fetchPrimitive('$webhookId');
+	globalThis.__data.$nodeId = fetchPrimitive('$nodeId');
+	globalThis.__data.$nodeVersion = fetchPrimitive('$nodeVersion');
 
 	// -------------------------------------------------------------------------
 	// Expose workflow data to globalThis for expression access
@@ -124,6 +127,14 @@ export function resetDataProxies(timezone?: string): void {
 	globalThis.$env = globalThis.__data.$env;
 	globalThis.$now = globalThis.__data.$now as DateTime;
 	globalThis.$today = globalThis.__data.$today as DateTime;
+	globalThis.$execution = globalThis.__data.$execution;
+	globalThis.$vars = globalThis.__data.$vars;
+	globalThis.$secrets = globalThis.__data.$secrets;
+	globalThis.$executionId = globalThis.__data.$executionId as string | undefined;
+	globalThis.$resumeWebhookUrl = globalThis.__data.$resumeWebhookUrl as string | undefined;
+	globalThis.$webhookId = globalThis.__data.$webhookId as string | undefined;
+	globalThis.$nodeId = globalThis.__data.$nodeId as string | undefined;
+	globalThis.$nodeVersion = globalThis.__data.$nodeVersion as number | undefined;
 
 	// Expose standalone functions (min, max, average, numberList, zip, $ifEmpty, etc.)
 	Object.assign(globalThis.__data, extendedFunctions);
@@ -143,10 +154,12 @@ export function resetDataProxies(timezone?: string): void {
 			// If it's function metadata, create wrapper
 			if (itemsValue && typeof itemsValue === 'object' && itemsValue.__isFunction) {
 				globalThis.$items = function (...args: unknown[]) {
-					return globalThis.__callFunctionAtPath.applySync(null, [['$items'], ...args], {
+					const result = globalThis.__callFunctionAtPath.applySync(null, [['$items'], ...args], {
 						arguments: { copy: true },
 						result: { copy: true },
 					});
+					throwIfErrorSentinel(result);
+					return result;
 				};
 				globalThis.__data.$items = globalThis.$items;
 			} else {
@@ -186,6 +199,11 @@ export function resetDataProxies(timezone?: string): void {
 			$binary: createDeepLazyProxy(['$item', indexStr, '$binary']),
 		};
 	};
+
+	globalThis.$ = function (nodeName: string) {
+		return createDeepLazyProxy(['$', nodeName]);
+	};
+	globalThis.__data.$ = globalThis.$;
 }
 
 // Matches initializeGlobalContext() lines 262-318 in packages/workflow/src/expression.ts

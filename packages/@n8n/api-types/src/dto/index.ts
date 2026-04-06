@@ -2,7 +2,12 @@ export { GetNodeTypesByIdentifierRequestDto } from './node-types/get-node-types-
 
 export { AiAskRequestDto } from './ai/ai-ask-request.dto';
 export { AiChatRequestDto } from './ai/ai-chat-request.dto';
-export { AiBuilderChatRequestDto, type SelectedNodeContext } from './ai/ai-build-request.dto';
+export {
+	AiBuilderChatRequestDto,
+	QUICK_REPLY_TYPES,
+	type QuickReplyType,
+	type SelectedNodeContext,
+} from './ai/ai-build-request.dto';
 export { AiApplySuggestionRequestDto } from './ai/ai-apply-suggestion-request.dto';
 export { AiFreeCreditsRequestDto } from './ai/ai-free-credits-request.dto';
 export { AiSessionRetrievalRequestDto } from './ai/ai-session-retrieval-request.dto';
@@ -10,11 +15,16 @@ export { AiUsageSettingsRequestDto } from './ai/ai-usage-settings-request.dto';
 export { AiTruncateMessagesRequestDto } from './ai/ai-truncate-messages-request.dto';
 export { AiClearSessionRequestDto } from './ai/ai-clear-session-request.dto';
 
+export { InstanceAiConfirmRequestDto } from './instance-ai/instance-ai-confirm-request.dto';
+export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
+
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
 export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query.dto';
 
 export { LoginRequestDto } from './auth/login-request.dto';
 export { ResolveSignupTokenQueryDto } from './auth/resolve-signup-token-query.dto';
+export { EmbedLoginQueryDto } from './auth/embed-login-query.dto';
+export { EmbedLoginBodyDto } from './auth/embed-login-body.dto';
 
 export { CreateCredentialResolverDto } from './credential-resolver/create-credential-resolver.dto';
 export { UpdateCredentialResolverDto } from './credential-resolver/update-credential-resolver.dto';
@@ -121,6 +131,11 @@ export {
 	PatchRoleMappingRuleDto,
 	type PatchRoleMappingRuleInput,
 } from './roles/patch-role-mapping-rule.dto';
+export { MoveRoleMappingRuleDto } from './roles/move-role-mapping-rule.dto';
+export {
+	ListRoleMappingRuleQueryDto,
+	type ListRoleMappingRuleQueryInput,
+} from './roles/list-role-mapping-rule-query.dto';
 export { RoleListQueryDto } from './roles/role-list-query.dto';
 export { RoleGetQueryDto } from './roles/role-get-query.dto';
 export {
@@ -135,6 +150,7 @@ export {
 } from './roles/role-project-members-response.dto';
 
 export { OidcConfigDto } from './oidc/config.dto';
+export { TestOidcConfigResponseDto } from './oidc/test-oidc-config-response.dto';
 
 export { CreateDataTableDto } from './data-table/create-data-table.dto';
 export { UpdateDataTableDto } from './data-table/update-data-table.dto';
