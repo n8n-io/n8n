@@ -12,7 +12,7 @@ const mockResult = ref('');
 const mockIsFinal = ref(false);
 
 vi.mock('@vueuse/core', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('@vueuse/core')>();
+	const actual = await importOriginal<Record<string, unknown>>();
 	return {
 		...actual,
 		useSpeechRecognition: () => ({
@@ -65,37 +65,37 @@ describe('ChatInputBase', () => {
 		expect(queryByTestId('instance-ai-send-button')).not.toBeInTheDocument();
 	});
 
-	it('should emit submit on Enter keydown', async () => {
+	it('should emit submit on Enter keydown', () => {
 		const { getByRole, emitted } = renderComponent({
 			props: makeProps(),
 		});
 
 		const textarea = getByRole('textbox');
-		await textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+		textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
 
 		expect(emitted().submit).toBeTruthy();
 	});
 
-	it('should NOT emit submit on Shift+Enter', async () => {
+	it('should NOT emit submit on Shift+Enter', () => {
 		const { getByRole, emitted } = renderComponent({
 			props: makeProps(),
 		});
 
 		const textarea = getByRole('textbox');
-		await textarea.dispatchEvent(
+		textarea.dispatchEvent(
 			new KeyboardEvent('keydown', { key: 'Enter', shiftKey: true, bubbles: true }),
 		);
 
 		expect(emitted().submit).toBeFalsy();
 	});
 
-	it('should NOT emit submit on Enter during IME composition', async () => {
+	it('should NOT emit submit on Enter during IME composition', () => {
 		const { getByRole, emitted } = renderComponent({
 			props: makeProps(),
 		});
 
 		const textarea = getByRole('textbox');
-		await textarea.dispatchEvent(
+		textarea.dispatchEvent(
 			new KeyboardEvent('keydown', {
 				key: 'Enter',
 				isComposing: true,
@@ -106,13 +106,13 @@ describe('ChatInputBase', () => {
 		expect(emitted().submit).toBeFalsy();
 	});
 
-	it('should emit tab on Tab keydown', async () => {
+	it('should emit tab on Tab keydown', () => {
 		const { getByRole, emitted } = renderComponent({
 			props: makeProps(),
 		});
 
 		const textarea = getByRole('textbox');
-		await textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+		textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
 
 		expect(emitted().tab).toBeTruthy();
 	});
@@ -151,12 +151,12 @@ describe('ChatInputBase', () => {
 		expect(getByTestId('chat-input-voice-button')).toBeInTheDocument();
 	});
 
-	it('should emit stop when stop button is clicked', async () => {
+	it('should emit stop when stop button is clicked', () => {
 		const { getByTestId, emitted } = renderComponent({
 			props: makeProps({ isStreaming: true }),
 		});
 
-		await getByTestId('instance-ai-stop-button').click();
+		getByTestId('instance-ai-stop-button').click();
 		expect(emitted().stop).toBeTruthy();
 	});
 
