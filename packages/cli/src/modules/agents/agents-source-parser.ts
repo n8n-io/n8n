@@ -123,7 +123,7 @@ function getStringLiteral(node: ts.Expression): string | null {
  */
 function walkMethodChain(
 	expr: ts.Expression,
-	callback: (
+	callbackFn: (
 		methodName: string,
 		args: ts.NodeArray<ts.Expression>,
 		call: ts.CallExpression,
@@ -154,7 +154,7 @@ function walkMethodChain(
 
 	// Process from inner to outer (reverse)
 	for (let i = calls.length - 1; i >= 0; i--) {
-		callback(calls[i].methodName, calls[i].args, calls[i].call);
+		callbackFn(calls[i].methodName, calls[i].args, calls[i].call);
 	}
 }
 
