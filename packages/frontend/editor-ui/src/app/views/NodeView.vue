@@ -247,7 +247,6 @@ const {
 	fetchWorkflowDataFromUrl,
 	resetWorkspace,
 	initializeWorkspace,
-	editableWorkflow,
 	editableWorkflowObject,
 	lastClickPosition,
 	startChat,
@@ -295,14 +294,14 @@ const isCanvasReadOnly = computed(() => {
 		isReadOnlyEnvironment.value ||
 		collaborationStore.shouldBeReadOnly ||
 		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update) ||
-		editableWorkflow.value.isArchived ||
+		(workflowDocumentStore?.value?.isArchived ?? false) ||
 		(builderStore.streaming && !builderStore.isHelpStreaming)
 	);
 });
 
 const canExecuteOnCanvas = computed(() => {
 	if (isDemoRoute.value) return false;
-	if (editableWorkflow.value.isArchived) return false;
+	if (workflowDocumentStore?.value?.isArchived ?? false) return false;
 	if (builderStore.streaming) return false;
 	return !!(workflowPermissions.value.execute ?? projectPermissions.value.workflow.execute);
 });
@@ -396,7 +395,9 @@ async function openWorkflow(data: IWorkflowDb) {
  */
 
 const triggerNodes = computed(() => {
-	return editableWorkflow.value.nodes.filter((node) => nodeTypesStore.isTriggerNode(node.type));
+	return (workflowDocumentStore?.value?.allNodes ?? []).filter((node) =>
+		nodeTypesStore.isTriggerNode(node.type),
+	);
 });
 
 const containsTriggerNodes = computed(() => triggerNodes.value.length > 0);
@@ -1197,13 +1198,15 @@ function onRunWorkflowButtonMouseLeave() {
  */
 
 const chatTriggerNode = computed(() => {
-	return editableWorkflow.value.nodes.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
+	return (workflowDocumentStore?.value?.allNodes ?? []).find(
+		(node) => node.type === CHAT_TRIGGER_NODE_TYPE,
+	);
 });
 
 const containsChatTriggerNodes = computed(() => {
 	return (
 		!isExecutionWaitingForWebhook.value &&
-		!!editableWorkflow.value.nodes.find(
+		!!(workflowDocumentStore?.value?.allNodes ?? []).find(
 			(node) =>
 				[MANUAL_CHAT_TRIGGER_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE].includes(node.type) &&
 				node.disabled !== true,
@@ -1265,7 +1268,9 @@ function onToggleChat() {
  * Evaluation
  */
 const evaluationTriggerNode = computed(() => {
-	return editableWorkflow.value.nodes.find((node) => node.type === EVALUATION_TRIGGER_NODE_TYPE);
+	return (workflowDocumentStore?.value?.allNodes ?? []).find(
+		(node) => node.type === EVALUATION_TRIGGER_NODE_TYPE,
+	);
 });
 
 /**
@@ -1560,7 +1565,11 @@ watch([() => route.name, () => route.params.name], () => {
 
 watch(
 	() => {
-		return isLoading.value || isCanvasReadOnly.value || editableWorkflow.value.nodes.length !== 0;
+		return (
+			isLoading.value ||
+			isCanvasReadOnly.value ||
+			(workflowDocumentStore?.value?.allNodes ?? []).length !== 0
+		);
 	},
 	(isReadOnlyOrLoading) => {
 		if (isReadOnlyOrLoading) {
@@ -1773,10 +1782,11 @@ onBeforeUnmount(() => {
 <template>
 	<div :class="$style.wrapper">
 		<WorkflowCanvas
-			v-if="editableWorkflow && editableWorkflowObject && !isLoading"
-			:id="editableWorkflow.id"
+			v-if="workflowDocumentStore && editableWorkflowObject && !isLoading"
+			:id="workflowsStore.workflowId"
 			ref="canvas"
-			:workflow="editableWorkflow"
+			:nodes="workflowDocumentStore.allNodes"
+			:connections="workflowDocumentStore.connectionsBySourceNode"
 			:workflow-object="editableWorkflowObject"
 			:fallback-nodes="fallbackNodes"
 			:show-fallback-nodes="showFallbackNodes"

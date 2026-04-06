@@ -1,7 +1,6 @@
 import { ref } from 'vue';
-import { describe, it, expect, vi, beforeEach, type MockInstance } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useWorkflowCommands } from './useWorkflowCommands';
-import * as useCanvasOperations from '@/app/composables/useCanvasOperations';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -20,8 +19,6 @@ import { shallowRef, type Ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
-vi.mock('@/app/composables/useCanvasOperations');
-vi.mock('@/app/composables/useWorkflowHelpers');
 vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
 	...(await importOriginal()),
 	injectWorkflowDocumentStore: vi.fn(),
@@ -133,34 +130,31 @@ describe('useWorkflowCommands', () => {
 
 		mockSourceControlStore.preferences.branchReadOnly = false;
 
-		const canvasOperationsMock: MockInstance = vi.spyOn(useCanvasOperations, 'useCanvasOperations');
-		canvasOperationsMock.mockReturnValue({ editableWorkflow: mockWorkflow });
-
 		canvasEventBus.emit = vi.fn();
 		nodeViewEventBus.emit = vi.fn();
 	});
 
 	describe('credential commands', () => {
 		it('should return empty array when no credentials exist', () => {
-			mockWorkflow.value.nodes = [];
 			const { commands } = useWorkflowCommands();
 			const credentialCommands = commands.value.filter((cmd) => cmd.id === 'open-credential');
 			expect(credentialCommands).toHaveLength(0);
 		});
 
 		it('should return credential commands when credentials exist', () => {
-			mockWorkflow.value.nodes = [
+			mockWorkflowDocumentStore.setNodes([
 				{
 					id: 'node1',
 					name: 'node1',
 					type: 'n8n-nodes-base.httpRequest',
 					position: [0, 0],
 					parameters: {},
+					typeVersion: 1,
 					credentials: {
 						httpAuth: { id: 'cred1', name: 'My Credential' },
 					},
 				} as unknown as INodeUi,
-			];
+			]);
 
 			const { commands } = useWorkflowCommands();
 			const credentialCommand = commands.value.find((cmd) => cmd.id === 'open-credential');
@@ -171,18 +165,19 @@ describe('useWorkflowCommands', () => {
 		});
 
 		it('should handle credential click', async () => {
-			mockWorkflow.value.nodes = [
+			mockWorkflowDocumentStore.setNodes([
 				{
 					id: 'node1',
 					name: 'node1',
 					type: 'n8n-nodes-base.httpRequest',
 					position: [0, 0],
 					parameters: {},
+					typeVersion: 1,
 					credentials: {
 						httpAuth: { id: 'cred1', name: 'My Credential' },
 					},
 				} as unknown as INodeUi,
-			];
+			]);
 
 			const { commands } = useWorkflowCommands();
 			const credentialCommand = commands.value.find((cmd) => cmd.id === 'open-credential');
@@ -258,7 +253,7 @@ describe('useWorkflowCommands', () => {
 		});
 
 		it('should handle duplicate workflow', async () => {
-			mockWorkflow.value.tags = ['tag1'];
+			mockWorkflowDocumentStore.setTags(['tag1']);
 
 			const { commands } = useWorkflowCommands();
 			const duplicateCommand = commands.value.find((cmd) => cmd.id === 'duplicate-workflow');
@@ -323,8 +318,6 @@ describe('useWorkflowCommands', () => {
 
 	describe('subworkflow commands', () => {
 		it('should return empty array when no subworkflows exist', () => {
-			mockWorkflow.value.nodes = [];
-
 			const { commands } = useWorkflowCommands();
 			const subworkflowCommand = commands.value.find((cmd) => cmd.id === 'open-sub-workflow');
 
@@ -332,11 +325,12 @@ describe('useWorkflowCommands', () => {
 		});
 
 		it('should return subworkflow commands when Execute Workflow nodes exist', () => {
-			mockWorkflow.value.nodes = [
+			mockWorkflowDocumentStore.setNodes([
 				{
 					id: 'node1',
 					name: 'node1',
 					type: 'n8n-nodes-base.executeWorkflow',
+					typeVersion: 1,
 					position: [0, 0],
 					parameters: {
 						workflowId: {
@@ -347,7 +341,7 @@ describe('useWorkflowCommands', () => {
 						},
 					},
 				} as unknown as INodeUi,
-			];
+			]);
 
 			const { commands } = useWorkflowCommands();
 			const subworkflowCommand = commands.value.find((cmd) => cmd.id === 'open-sub-workflow');

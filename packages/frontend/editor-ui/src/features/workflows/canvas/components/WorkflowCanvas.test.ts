@@ -26,12 +26,8 @@ vi.mock('@vueuse/core', async () => {
 const renderComponent = createComponentRenderer(WorkflowCanvas, {
 	props: {
 		id: 'canvas',
-		workflow: createTestWorkflow({
-			id: '1',
-			name: 'Test Workflow',
-			nodes: [],
-			connections: {},
-		}),
+		nodes: [],
+		connections: {},
 		workflowObject: {} as Workflow,
 		eventBus: createEventBus(),
 	},
@@ -57,16 +53,18 @@ describe('WorkflowCanvas', () => {
 	});
 
 	it('should render nodes and connections', async () => {
+		const nodes = [
+			createTestNode({ id: '1', name: 'Node 1' }),
+			createTestNode({ id: '2', name: 'Node 2' }),
+		];
 		const workflow = createTestWorkflow({
-			nodes: [
-				createTestNode({ id: '1', name: 'Node 1' }),
-				createTestNode({ id: '2', name: 'Node 2' }),
-			],
+			nodes,
 			connections: { 'Node 1': { main: [[{ node: 'Node 2', type: 'main', index: 0 }]] } },
 		});
 		const { container } = renderComponent({
 			props: {
-				workflow,
+				nodes,
+				connections: workflow.connections,
 				workflowObject: createTestWorkflowObject(workflow),
 			},
 		});
@@ -108,7 +106,8 @@ describe('WorkflowCanvas', () => {
 
 		const { container } = renderComponent({
 			props: {
-				workflow,
+				nodes: [...stickyNodes],
+				connections: {},
 				workflowObject,
 				fallbackNodes,
 				showFallbackNodes: true,
@@ -122,7 +121,7 @@ describe('WorkflowCanvas', () => {
 	});
 
 	it('should not render fallback nodes when showFallbackNodes is false', async () => {
-		const nodes = [createTestNode({ id: '1', name: 'Non-Sticky Node 1' })];
+		const testNodes = [createTestNode({ id: '1', name: 'Non-Sticky Node 1' })];
 		const fallbackNodes = [
 			createTestNode({
 				id: CanvasNodeRenderType.AddNodes,
@@ -134,7 +133,7 @@ describe('WorkflowCanvas', () => {
 		const workflow = createTestWorkflow({
 			id: '1',
 			name: 'Test Workflow',
-			nodes,
+			nodes: testNodes,
 			connections: {},
 		});
 
@@ -142,7 +141,8 @@ describe('WorkflowCanvas', () => {
 
 		const { container } = renderComponent({
 			props: {
-				workflow,
+				nodes: testNodes,
+				connections: {},
 				workflowObject,
 				fallbackNodes,
 				showFallbackNodes: false,
@@ -151,7 +151,7 @@ describe('WorkflowCanvas', () => {
 
 		await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(1));
 
-		expect(container.querySelector(`[data-id="${nodes[0].id}"]`)).toBeInTheDocument();
+		expect(container.querySelector(`[data-id="${testNodes[0].id}"]`)).toBeInTheDocument();
 		expect(container.querySelector(`[data-id="${fallbackNodes[0].id}"]`)).not.toBeInTheDocument();
 	});
 

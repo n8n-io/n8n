@@ -15,22 +15,10 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 
-const mockEditableWorkflow = {
-	value: {
-		nodes: [] as Array<{
-			id: string;
-			name: string;
-			type: string;
-			typeVersion: number;
-		}>,
-	},
-};
-
 vi.mock('@/app/composables/useCanvasOperations', () => ({
 	useCanvasOperations: () => ({
 		addNodes: vi.fn(),
 		setNodeActive: vi.fn(),
-		editableWorkflow: mockEditableWorkflow,
 	}),
 }));
 
@@ -131,8 +119,6 @@ describe('useNodeCommands', () => {
 		});
 
 		mockAddNodes.mockResolvedValue([{ id: 'node-1' }]);
-
-		mockEditableWorkflow.value.nodes = [];
 
 		vi.clearAllMocks();
 	});
@@ -245,15 +231,25 @@ describe('useNodeCommands', () => {
 		});
 
 		it('should populate open node children with workflow nodes', () => {
-			mockEditableWorkflow.value.nodes = [
-				{ id: 'node-1', name: 'Start', type: 'n8n-nodes-base.manualTrigger', typeVersion: 1 },
+			const docStore = useWorkflowDocumentStore(createWorkflowDocumentId('123'));
+			docStore.setNodes([
+				{
+					id: 'node-1',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
 				{
 					id: 'node-2',
 					name: 'HTTP Request',
 					type: 'n8n-nodes-base.httpRequest',
 					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
 				},
-			];
+			]);
 
 			const { commands } = useNodeCommands({
 				lastQuery: ref(''),
@@ -320,9 +316,17 @@ describe('useNodeCommands', () => {
 
 	describe('root open node items', () => {
 		beforeEach(() => {
-			mockEditableWorkflow.value.nodes = [
-				{ id: 'node-1', name: 'Start', type: 'n8n-nodes-base.manualTrigger', typeVersion: 1 },
-			];
+			const docStore = useWorkflowDocumentStore(createWorkflowDocumentId('123'));
+			docStore.setNodes([
+				{
+					id: 'node-1',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			]);
 		});
 
 		it('should not show root open node items when query is too short', () => {
