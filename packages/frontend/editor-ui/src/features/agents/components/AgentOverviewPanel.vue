@@ -2,7 +2,7 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { useRoute } from 'vue-router';
-import { N8nInput, N8nSelect, N8nText, N8nInputNumber } from '@n8n/design-system';
+import { N8nInput, N8nSelect, N8nText } from '@n8n/design-system';
 import N8nOption from '@n8n/design-system/components/N8nOption';
 import { ElSwitch } from 'element-plus';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -127,7 +127,9 @@ function onCredentialChange(value: string) {
 function onThinkingToggle(value: boolean) {
 	thinkingEnabled.value = value;
 	if (!value) {
-		emit('update:schema', { config: { ...props.schema?.config, thinking: null } });
+		emit('update:schema', {
+			config: { ...props.schema?.config, thinking: null } as AgentSchema['config'],
+		});
 		return;
 	}
 	emitThinkingConfig();
@@ -144,7 +146,7 @@ function emitThinkingConfig() {
 	} else {
 		thinking.reasoningEffort = reasoningEffort.value;
 	}
-	emit('update:schema', { config: { ...props.schema?.config, thinking } });
+	emit('update:schema', { config: { ...props.schema?.config, thinking } as AgentSchema['config'] });
 }
 
 function onBudgetTokensChange(value: number) {
@@ -159,12 +161,16 @@ function onReasoningEffortChange(value: string) {
 
 function onToolCallConcurrencyChange(value: number) {
 	toolCallConcurrency.value = value;
-	emit('update:schema', { config: { ...props.schema?.config, toolCallConcurrency: value } });
+	emit('update:schema', {
+		config: { ...props.schema?.config, toolCallConcurrency: value } as AgentSchema['config'],
+	});
 }
 
 function onRequireToolApprovalChange(value: boolean) {
 	requireToolApproval.value = value;
-	emit('update:schema', { config: { ...props.schema?.config, requireToolApproval: value } });
+	emit('update:schema', {
+		config: { ...props.schema?.config, requireToolApproval: value } as AgentSchema['config'],
+	});
 }
 
 async function loadCredentials() {
@@ -285,7 +291,7 @@ onMounted(() => {
 			<ElSwitch
 				:model-value="thinkingEnabled"
 				data-testid="agent-thinking-toggle"
-				@update:model-value="onThinkingToggle"
+				@update:model-value="(v) => onThinkingToggle(Boolean(v))"
 			/>
 		</div>
 
@@ -345,7 +351,7 @@ onMounted(() => {
 			<ElSwitch
 				:model-value="requireToolApproval"
 				data-testid="agent-require-approval-toggle"
-				@update:model-value="onRequireToolApprovalChange"
+				@update:model-value="(v) => onRequireToolApprovalChange(Boolean(v))"
 			/>
 		</div>
 	</div>

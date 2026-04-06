@@ -135,7 +135,7 @@ const semanticRecallEnabled = computed(
 					<N8nText size="small" :bold="true">Semantic recall</N8nText>
 					<ElSwitch
 						:model-value="semanticRecallEnabled"
-						@update:model-value="onSemanticRecallToggle"
+						@update:model-value="(v) => onSemanticRecallToggle(Boolean(v))"
 					/>
 				</div>
 

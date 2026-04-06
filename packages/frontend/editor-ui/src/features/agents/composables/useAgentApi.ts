@@ -2,7 +2,15 @@ import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type { AgentSchema } from '../types';
 
+// Register AgentDto as a valid Resource so it can be used with ResourcesListLayout
+declare module '@/Interface' {
+	interface ModuleResources {
+		agent: AgentDto;
+	}
+}
+
 export interface AgentDto {
+	readonly resourceType: 'agent';
 	id: string;
 	name: string;
 	code: string;
@@ -99,7 +107,7 @@ export const getSlackStatus = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-): Promise<{ status: string }> => {
+): Promise<{ status: string; integrations?: Array<{ type: string; credentialId: string }> }> => {
 	return await makeRestApiRequest(
 		context,
 		'GET',

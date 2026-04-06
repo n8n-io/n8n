@@ -9,6 +9,7 @@ import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vu
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
+import type { Resource } from '@/Interface';
 import { listAgents, deleteAgent, type AgentDto } from '../composables/useAgentApi';
 import { AGENT_BUILDER_VIEW } from '../constants';
 
@@ -26,14 +27,22 @@ const projectId = computed(
 	() => (route.params.projectId as string) ?? projectsStore.personalProject?.id ?? '',
 );
 
-const sortFns = {
-	lastUpdated: (a: AgentDto, b: AgentDto) =>
-		new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-	lastCreated: (a: AgentDto, b: AgentDto) =>
-		new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-	nameAsc: (a: AgentDto, b: AgentDto) => a.name.localeCompare(b.name),
-	nameDesc: (a: AgentDto, b: AgentDto) => b.name.localeCompare(a.name),
+// Typed adapters for ResourcesListLayout — AgentDto is registered as a Resource via
+// ModuleResources augmentation in useAgentApi.ts, but Volar needs explicit casts here.
+const agentResources = computed(() => allAgents.value as unknown as Resource[]);
+
+const sortFns: Record<string, (a: Resource, b: Resource) => number> = {
+	lastUpdated: (a, b) =>
+		new Date((b as unknown as AgentDto).updatedAt).getTime() -
+		new Date((a as unknown as AgentDto).updatedAt).getTime(),
+	lastCreated: (a, b) =>
+		new Date((b as unknown as AgentDto).createdAt).getTime() -
+		new Date((a as unknown as AgentDto).createdAt).getTime(),
+	nameAsc: (a, b) => a.name.localeCompare(b.name),
+	nameDesc: (a, b) => b.name.localeCompare(a.name),
 };
+
+const displayName = (r: Resource) => (r as unknown as AgentDto).name;
 
 const cardActions = [{ id: 'delete', label: 'Delete' }];
 
@@ -74,7 +83,7 @@ onMounted(fetchAgents);
 <template>
 	<ResourcesListLayout
 		resource-key="agents"
-		:resources="allAgents"
+		:resources="agentResources"
 		:loading="loading"
 		:disabled="false"
 		:sort-fns="sortFns"
@@ -82,7 +91,7 @@ onMounted(fetchAgents);
 		:type-props="{ itemSize: 80 }"
 		:shareable="false"
 		:ui-config="{ searchEnabled: true, showFiltersDropdown: false, sortEnabled: true }"
-		:display-name="(agent: AgentDto) => agent.name"
+		:display-name="displayName"
 		tab-key="agents"
 	>
 		<template #header>

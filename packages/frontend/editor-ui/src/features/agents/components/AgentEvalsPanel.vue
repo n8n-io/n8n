@@ -33,7 +33,7 @@ const evals = computed(() => props.schema?.evaluations ?? []);
 				</div>
 
 				<div v-if="evalItem.hasCredential" :class="$style.credentialRow">
-					<N8nIcon icon="key" size="xsmall" :class="$style.keyIcon" />
+					<N8nIcon icon="lock" size="xsmall" :class="$style.keyIcon" />
 					<N8nText size="xsmall" color="text-light">
 						{{ evalItem.credentialName ?? 'Credential configured' }}
 					</N8nText>
