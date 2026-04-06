@@ -46,6 +46,7 @@ export class InstanceAiModule implements ModuleInterface {
 			localGateway,
 			localGatewayDisabled,
 			localGatewayFallbackDirectory,
+			proxyEnabled: service.isProxyEnabled(),
 		};
 	}
 

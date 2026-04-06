@@ -51,14 +51,16 @@ export type SandboxConfig =
  * - 'daytona': Isolated Docker container via Daytona API (production)
  * - 'local': Direct host execution via LocalSandbox (development only, no isolation)
  */
-export function createSandbox(
+export async function createSandbox(
 	config: SandboxConfig,
-): DaytonaSandbox | LocalSandbox | N8nSandboxServiceSandbox | undefined {
+): Promise<DaytonaSandbox | LocalSandbox | N8nSandboxServiceSandbox | undefined> {
 	if (!config.enabled) return undefined;
 
 	if (config.provider === 'daytona') {
+		// In proxy mode, resolve a fresh token via getAuthToken; in direct mode use the static key.
+		const apiKey = config.getAuthToken ? await config.getAuthToken() : config.daytonaApiKey;
 		return new DaytonaSandbox({
-			apiKey: config.daytonaApiKey,
+			apiKey,
 			apiUrl: config.daytonaApiUrl,
 			...(config.image ? { image: config.image } : {}),
 			language: 'typescript',

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/fs-proxy",
-  "version": "0.1.0-rc2",
+  "version": "0.1.0-rc3",
   "description": "Local AI gateway for n8n Instance AI — filesystem, shell, screenshots, mouse/keyboard, and browser automation",
   "bin": {
     "n8n-fs-proxy": "dist/cli.js"

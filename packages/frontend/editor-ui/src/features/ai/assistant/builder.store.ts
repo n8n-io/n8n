@@ -34,7 +34,6 @@ import {
 } from './builder.utils';
 import { useBuilderTodos, type TodosTrackingPayload } from './composables/useBuilderTodos';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import pick from 'lodash/pick';
 import { type IPinData, type ITelemetryTrackProperties } from 'n8n-workflow';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { stringSizeInBytes } from '@/app/utils/typesUtils';
@@ -1437,12 +1436,15 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	function clearExistingWorkflow() {
-		workflowState.removeAllConnections({ setStateDirty: false });
+		workflowDocumentStore.value?.removeAllConnections();
 		workflowDocumentStore.value?.removeAllNodes();
 	}
 
 	function getWorkflowSnapshot() {
-		return JSON.stringify(pick(workflowsStore.workflow, ['nodes', 'connections']));
+		return JSON.stringify({
+			nodes: workflowDocumentStore.value?.allNodes ?? [],
+			connections: workflowDocumentStore.value?.connectionsBySourceNode ?? {},
+		});
 	}
 
 	/**

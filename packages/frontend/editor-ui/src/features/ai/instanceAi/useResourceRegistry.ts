@@ -68,9 +68,15 @@ function extractFromToolCall(tc: InstanceAiToolCallState, map: Map<string, Resou
 					? tc.args.name
 					: undefined;
 
-		if (typeof name === 'string') {
-			map.set(name.toLowerCase(), { type: 'workflow', id: result.workflowId, name });
-		}
+		const resolvedName = name ?? 'Untitled';
+		// Key by workflowId when unnamed to avoid collisions between multiple
+		// unnamed workflows that would all map to the "untitled" key.
+		const key = name ? name.toLowerCase() : result.workflowId;
+		map.set(key, {
+			type: 'workflow',
+			id: result.workflowId,
+			name: resolvedName,
+		});
 	}
 
 	// Single workflow object: { workflow: { id, name } }
@@ -123,13 +129,29 @@ function collectFromAgentNode(node: InstanceAiAgentNode, map: Map<string, Resour
  * The registry key is the **lowercase** name so lookups during markdown
  * post-processing are case-insensitive.
  */
-export function useResourceRegistry(messages: () => InstanceAiMessage[]) {
+export function useResourceRegistry(
+	messages: () => InstanceAiMessage[],
+	workflowNameLookup?: (id: string) => string | undefined,
+) {
 	const registry = computed(() => {
 		const map = new Map<string, ResourceEntry>();
 
 		for (const msg of messages()) {
 			if (!msg.agentTree) continue;
 			collectFromAgentNode(msg.agentTree, map);
+		}
+
+		// Enrich workflow names from the store when the registry only has a
+		// fallback (e.g. 'Untitled' from a patch-only build-workflow call).
+		if (workflowNameLookup) {
+			for (const [key, entry] of map) {
+				if (entry.type !== 'workflow') continue;
+				const storeName = workflowNameLookup(entry.id);
+				if (storeName && storeName !== entry.name) {
+					map.delete(key);
+					map.set(storeName.toLowerCase(), { ...entry, name: storeName });
+				}
+			}
 		}
 
 		return map;

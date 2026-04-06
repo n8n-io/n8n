@@ -86,6 +86,7 @@ export class SettingsStore {
 				computer: s.screenshotEnabled || s.mouseKeyboardEnabled ? 'ask' : 'deny',
 				browser: s.browserEnabled ? 'ask' : 'deny',
 			},
+			permissionConfirmation: 'instance',
 		};
 	}
 
