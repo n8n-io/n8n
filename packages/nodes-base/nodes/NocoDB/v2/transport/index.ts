@@ -4,11 +4,11 @@ import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	IHttpRequestMethods,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	IPairedItemData,
 	IPollFunctions,
-	IRequestOptions,
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
@@ -42,17 +42,15 @@ export async function apiRequest(
 
 	const baseUrl = credentials.host as string;
 
-	query = query || {};
+	query = query ?? {};
+	uri =
+		uri ?? (baseUrl.endsWith('/') ? `${baseUrl.slice(0, -1)}${endpoint}` : `${baseUrl}${endpoint}`);
 
-	if (!uri) {
-		uri = baseUrl.endsWith('/') ? `${baseUrl.slice(0, -1)}${endpoint}` : `${baseUrl}${endpoint}`;
-	}
-
-	const options: IRequestOptions = {
+	const options: IHttpRequestOptions = {
 		method,
 		body,
 		qs: query,
-		uri,
+		url: uri,
 		json: true,
 	};
 
@@ -64,7 +62,7 @@ export async function apiRequest(
 		delete options.body;
 	}
 
-	return await this.helpers.requestWithAuthentication.call(this, authenticationMethod, options);
+	return await this.helpers.httpRequestWithAuthentication.call(this, authenticationMethod, options);
 }
 
 /**
@@ -80,25 +78,22 @@ export async function apiRequestAllItems(
 	body: IDataObject,
 	query?: IDataObject,
 ): Promise<any> {
-	const version = this.getNode().typeVersion;
-
-	if (query === undefined) {
-		query = {};
-	}
-	query.limit = 100;
-	query.offset = query?.offset ? (query.offset as number) : 0;
+	query = query ?? {};
+	const QUERY_LIMIT = 100;
+	query.limit = QUERY_LIMIT;
+	query.offset = query?.offset ? Number(query.offset) : 0;
 	const returnData: IDataObject[] = [];
 
-	let responseData;
+	let responseData: {
+		records: IDataObject[];
+		next?: string;
+	};
 
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
-		version === 1
-			? returnData.push(...(responseData as IDataObject[]))
-			: returnData.push(...(responseData.list as IDataObject[]));
-
-		query.offset += query.limit;
-	} while (version === 1 ? responseData.length !== 0 : responseData.pageInfo.isLastPage !== true);
+		query.offset += QUERY_LIMIT;
+		returnData.push.apply(returnData, responseData.records);
+	} while (responseData.next);
 
 	return returnData;
 }
@@ -110,6 +105,9 @@ export async function downloadRecordAttachments(
 	pairedItem?: IPairedItemData[],
 ): Promise<INodeExecutionData[]> {
 	const elements: INodeExecutionData[] = [];
+	const getAttachmentField = (record: any, fieldName: string) => {
+		return record.fields[fieldName];
+	};
 
 	for (const record of records) {
 		const element: INodeExecutionData = { json: {}, binary: {} };
@@ -118,16 +116,16 @@ export async function downloadRecordAttachments(
 		}
 		element.json = record as unknown as IDataObject;
 		for (const fieldName of fieldNames) {
-			let attachments = record[fieldName] as IAttachment[];
+			let attachments = getAttachmentField(record, fieldName) as IAttachment[];
 			if (typeof attachments === 'string') {
-				attachments = jsonParse<IAttachment[]>(record[fieldName] as string);
+				attachments = jsonParse<IAttachment[]>(attachments as string);
 			}
-			if (record[fieldName]) {
+			if (attachments) {
 				for (const [index, attachment] of attachments.entries()) {
 					const attachmentUrl = attachment.signedUrl || attachment.url;
 					const file: Buffer = await apiRequest.call(this, 'GET', '', {}, {}, attachmentUrl, {
 						json: false,
-						encoding: null,
+						encoding: 'arraybuffer',
 					});
 					element.binary![`${fieldName}_${index}`] = await this.helpers.prepareBinaryData(
 						Buffer.from(file),
