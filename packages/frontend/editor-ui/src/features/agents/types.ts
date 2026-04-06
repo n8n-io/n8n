@@ -1,3 +1,22 @@
+import type { BaseResource } from '@/Interface';
+import type { Agent } from './agent.types';
+
+/**
+ * Agent resource type definition.
+ * This extends the ModuleResources interface to add Agent as a resource type.
+ */
+export type AgentResource = BaseResource &
+	Agent & {
+		resourceType: 'agent';
+	};
+
+// Extend the ModuleResources interface to include Agent
+declare module '@/Interface' {
+	interface ModuleResources {
+		agent: AgentResource;
+	}
+}
+
 // Frontend-local copies of AgentSchema types from @n8n/agents
 
 export interface AgentSchema {

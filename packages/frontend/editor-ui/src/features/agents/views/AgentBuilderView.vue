@@ -4,9 +4,11 @@ import { useDebounceFn } from '@vueuse/core';
 import { useRoute, useRouter } from 'vue-router';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { getAgent, updateAgent, type AgentDto } from '../composables/useAgentApi';
+import { getAgent, updateAgent } from '../composables/useAgentApi';
+import type { AgentResource } from '../types';
 import { useAgentSchema } from '../composables/useAgentSchema';
 import type { AgentSchema } from '../types';
+import { deepCopy } from 'n8n-workflow';
 import AgentSidebar from '../components/AgentSidebar.vue';
 import AgentCodeEditor from '../components/AgentCodeEditor.vue';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
@@ -41,7 +43,7 @@ watch(
 const chatVisible = ref(true);
 const code = ref('');
 const agentName = ref('');
-const agent = ref<AgentDto | null>(null);
+const agent = ref<AgentResource | null>(null);
 const editingName = ref(false);
 const updatedAt = ref<string>('');
 let skipNextWatch = false;
@@ -52,7 +54,7 @@ const localSchema = ref<AgentSchema | null>(null);
 watch(
 	schema,
 	(s) => {
-		if (s) localSchema.value = JSON.parse(JSON.stringify(s)) as AgentSchema;
+		if (s) localSchema.value = deepCopy(s);
 	},
 	{ immediate: true },
 );

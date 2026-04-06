@@ -9,8 +9,8 @@ import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vu
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
-import type { Resource } from '@/Interface';
-import { listAgents, deleteAgent, type AgentDto } from '../composables/useAgentApi';
+import { listAgents, deleteAgent } from '../composables/useAgentApi';
+import type { AgentResource } from '../types';
 import { AGENT_BUILDER_VIEW } from '../constants';
 
 const route = useRoute();
@@ -20,29 +20,21 @@ const projectsStore = useProjectsStore();
 const insightsStore = useInsightsStore();
 const projectPages = useProjectPages();
 
-const allAgents = ref<AgentDto[]>([]);
+const allAgents = ref<AgentResource[]>([]);
 const loading = ref(true);
 
 const projectId = computed(
 	() => (route.params.projectId as string) ?? projectsStore.personalProject?.id ?? '',
 );
 
-// Typed adapters for ResourcesListLayout — AgentDto is registered as a Resource via
-// ModuleResources augmentation in useAgentApi.ts, but Volar needs explicit casts here.
-const agentResources = computed(() => allAgents.value as unknown as Resource[]);
-
-const sortFns: Record<string, (a: Resource, b: Resource) => number> = {
-	lastUpdated: (a, b) =>
-		new Date((b as unknown as AgentDto).updatedAt).getTime() -
-		new Date((a as unknown as AgentDto).updatedAt).getTime(),
-	lastCreated: (a, b) =>
-		new Date((b as unknown as AgentDto).createdAt).getTime() -
-		new Date((a as unknown as AgentDto).createdAt).getTime(),
-	nameAsc: (a, b) => a.name.localeCompare(b.name),
-	nameDesc: (a, b) => b.name.localeCompare(a.name),
+const sortFns = {
+	lastUpdated: (a: AgentResource, b: AgentResource) =>
+		new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+	lastCreated: (a: AgentResource, b: AgentResource) =>
+		new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+	nameAsc: (a: AgentResource, b: AgentResource) => a.name.localeCompare(b.name),
+	nameDesc: (a: AgentResource, b: AgentResource) => b.name.localeCompare(a.name),
 };
-
-const displayName = (r: Resource) => (r as unknown as AgentDto).name;
 
 const cardActions = [{ id: 'delete', label: 'Delete' }];
 
@@ -62,7 +54,7 @@ function onSelectAgent(agentId: string) {
 	});
 }
 
-async function onCardAction(action: string, agent: AgentDto) {
+async function onCardAction(action: string, agent: AgentResource) {
 	if (action === 'delete') {
 		await deleteAgent(rootStore.restApiContext, projectId.value, agent.id);
 		allAgents.value = allAgents.value.filter((a) => a.id !== agent.id);
@@ -83,7 +75,7 @@ onMounted(fetchAgents);
 <template>
 	<ResourcesListLayout
 		resource-key="agents"
-		:resources="agentResources"
+		:resources="allAgents"
 		:loading="loading"
 		:disabled="false"
 		:sort-fns="sortFns"
@@ -91,7 +83,7 @@ onMounted(fetchAgents);
 		:type-props="{ itemSize: 80 }"
 		:shareable="false"
 		:ui-config="{ searchEnabled: true, showFiltersDropdown: false, sortEnabled: true }"
-		:display-name="displayName"
+		:display-name="(agent: AgentResource) => agent.name"
 		tab-key="agents"
 	>
 		<template #header>

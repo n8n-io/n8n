@@ -1,42 +1,24 @@
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
-import type { AgentSchema } from '../types';
-
-// Register AgentDto as a valid Resource so it can be used with ResourcesListLayout
-declare module '@/Interface' {
-	interface ModuleResources {
-		agent: AgentDto;
-	}
-}
-
-export interface AgentDto {
-	readonly resourceType: 'agent';
-	id: string;
-	name: string;
-	code: string;
-	description: string | null;
-	projectId: string;
-	credentialId: string | null;
-	provider: string | null;
-	model: string | null;
-	isCompiled: boolean;
-	createdAt: string;
-	updatedAt: string;
-}
+import type { AgentSchema, AgentResource } from '../types';
 
 export const listAgents = async (
 	context: IRestApiContext,
 	projectId: string,
-): Promise<AgentDto[]> => {
-	return await makeRestApiRequest<AgentDto[]>(context, 'GET', `/projects/${projectId}/agents/v2`);
+): Promise<AgentResource[]> => {
+	return await makeRestApiRequest<AgentResource[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2`,
+	);
 };
 
 export const getAgent = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-): Promise<AgentDto> => {
-	return await makeRestApiRequest<AgentDto>(
+): Promise<AgentResource> => {
+	return await makeRestApiRequest<AgentResource>(
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}`,
@@ -47,10 +29,13 @@ export const createAgent = async (
 	context: IRestApiContext,
 	projectId: string,
 	name: string,
-): Promise<AgentDto> => {
-	return await makeRestApiRequest<AgentDto>(context, 'POST', `/projects/${projectId}/agents/v2`, {
-		name,
-	});
+): Promise<AgentResource> => {
+	return await makeRestApiRequest<AgentResource>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2`,
+		{ name },
+	);
 };
 
 export const updateAgent = async (
@@ -58,8 +43,8 @@ export const updateAgent = async (
 	projectId: string,
 	agentId: string,
 	data: { code?: string; name?: string },
-): Promise<AgentDto> => {
-	return await makeRestApiRequest<AgentDto>(
+): Promise<AgentResource> => {
+	return await makeRestApiRequest<AgentResource>(
 		context,
 		'PATCH',
 		`/projects/${projectId}/agents/v2/${agentId}`,
@@ -118,8 +103,8 @@ export const getSlackStatus = async (
 export const listAllAgents = async (
 	context: IRestApiContext,
 	projectId: string,
-): Promise<AgentDto[]> => {
-	return await makeRestApiRequest<AgentDto[]>(
+): Promise<AgentResource[]> => {
+	return await makeRestApiRequest<AgentResource[]>(
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2?all=true`,
