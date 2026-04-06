@@ -807,6 +807,8 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		qb.andWhere(`workflow.id IN (${sharedWorkflowSubquery.getQuery()})`);
 		qb.setParameters(sharedWorkflowSubquery.getParameters());
 
+		this.applyEphemeralFilter(qb);
+
 		// Apply other filters
 		// For personal project and shared-with-me cases, projectId is already handled in the subquery
 		// so we need to skip it to avoid double-filtering
@@ -850,6 +852,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	getManyQuery(workflowIds: string[], options: ListQuery.Options = {}) {
 		const qb = this.createBaseQuery(workflowIds);
 
+		this.applyEphemeralFilter(qb);
 		this.applyFilters(qb, options.filter);
 		this.applyTriggerNodeTypesFilter(qb, options.filter?.triggerNodeTypes as string[] | undefined);
 		this.applySelect(qb, options.select);
@@ -858,6 +861,10 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		this.applyPagination(qb, options);
 
 		return qb;
+	}
+
+	private applyEphemeralFilter(qb: SelectQueryBuilder<WorkflowEntity>): void {
+		qb.andWhere('workflow.isEphemeral = :isEphemeral', { isEphemeral: false });
 	}
 
 	private createBaseQuery(workflowIds: string[]): SelectQueryBuilder<WorkflowEntity> {

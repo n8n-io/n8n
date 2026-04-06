@@ -194,7 +194,8 @@ export class WorkflowRunner {
 			this.executionsConfig.mode !== 'queue' ||
 			this.instanceSettings.instanceType === 'worker' ||
 			data.executionMode === 'manual' ||
-			data.executionMode === 'chat'
+			data.executionMode === 'chat' ||
+			data.executionMode === 'ephemeral'
 		) {
 			const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
 			postExecutePromise.catch((error) => {
@@ -242,7 +243,7 @@ export class WorkflowRunner {
 		}
 
 		let pinData: IPinData | undefined;
-		if (['manual', 'evaluation'].includes(data.executionMode)) {
+		if (['manual', 'evaluation', 'ephemeral'].includes(data.executionMode)) {
 			pinData = data.pinData ?? data.workflowData.pinData;
 		}
 
@@ -574,6 +575,7 @@ export class WorkflowRunner {
 
 		return (
 			executionMode === 'integrated' ||
+			executionMode === 'ephemeral' ||
 			this.activeExecutions.getResponseMode(executionId) === 'lastNode' ||
 			this.externalHooks.hasHook('workflow.postExecute')
 		);

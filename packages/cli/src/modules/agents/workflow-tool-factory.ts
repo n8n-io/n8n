@@ -478,29 +478,14 @@ function truncateResultData(data: Record<string, unknown>): Record<string, unkno
 }
 
 // ---------------------------------------------------------------------------
-// 7. resolveWorkflowTools — main entry point
+// 7. resolveWorkflowTool — resolve a single workflow tool descriptor
 // ---------------------------------------------------------------------------
 
-export async function resolveWorkflowTools(
-	workflowNames: string[],
-	workflowToolDescriptors: WorkflowToolDescriptor[],
+export async function resolveWorkflowTool(
+	descriptor: WorkflowToolDescriptor,
 	context: WorkflowToolContext,
-): Promise<BuiltTool[]> {
-	const tools: BuiltTool[] = [];
-
-	// Process plain workflow names (no custom options)
-	for (const name of workflowNames) {
-		const tool = await buildWorkflowTool(name, undefined, context);
-		tools.push(tool);
-	}
-
-	// Process workflow tool descriptors (with custom options)
-	for (const descriptor of workflowToolDescriptors) {
-		const tool = await buildWorkflowTool(descriptor.workflowName, descriptor, context);
-		tools.push(tool);
-	}
-
-	return tools;
+): Promise<BuiltTool> {
+	return await buildWorkflowTool(descriptor.workflowName, descriptor, context);
 }
 
 async function buildWorkflowTool(

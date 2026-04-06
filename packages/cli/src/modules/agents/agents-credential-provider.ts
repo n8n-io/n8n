@@ -5,23 +5,6 @@ import type { CredentialsFinderService } from '@/credentials/credentials-finder.
 import type { CredentialsService } from '@/credentials/credentials.service';
 
 /**
- * Credential types supported by the agent framework as LLM providers.
- * These map to n8n credential type identifiers.
- */
-const SUPPORTED_CREDENTIAL_TYPES = [
-	'anthropicApi',
-	'openAiApi',
-	'googlePalmApi',
-	'xAiApi',
-	'groqApi',
-	'deepSeekApi',
-	'mistralCloudApi',
-	'openRouterApi',
-	'cohereApi',
-	'ollamaApi',
-];
-
-/**
  * Resolves and lists n8n credentials for use by SDK agents.
  *
  * This is not a DI-managed singleton — a new instance is created per request
@@ -72,19 +55,17 @@ export class AgentsCredentialProvider implements CredentialProvider {
 	}
 
 	/**
-	 * List credentials the user can access, filtered to supported LLM provider types.
+	 * List all credentials the user can access.
 	 */
 	async list(): Promise<CredentialListItem[]> {
 		const allCredentials = await this.credentialsFinderService.findCredentialsForUser(this.user, [
 			'credential:read',
 		]);
 
-		return allCredentials
-			.filter((c) => SUPPORTED_CREDENTIAL_TYPES.includes(c.type))
-			.map((c) => ({
-				id: c.id,
-				name: c.name,
-				type: c.type,
-			}));
+		return allCredentials.map((c) => ({
+			id: c.id,
+			name: c.name,
+			type: c.type,
+		}));
 	}
 }

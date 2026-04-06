@@ -120,9 +120,10 @@ export class AgentSecureRuntime {
 		const agentsPath = toSlash(require.resolve('@n8n/agents'));
 		const agentsSrcDir = agentsPath.replace(/dist\/index\.js$/, 'dist/');
 
-		// WorkflowTool is exposed under the virtual '@n8n/agents-utils' package so
-		// that user code can import it without polluting the core '@n8n/agents' namespace.
+		// WorkflowTool and node tools are exposed under the virtual '@n8n/agents-utils' package so
+		// that user code can import them without polluting the core '@n8n/agents' namespace.
 		const workflowToolPath = toSlash(require.resolve('./types/workflow-tool'));
+		const nodeToolPath = toSlash(require.resolve('./types/node-tool'));
 
 		const zodToJsonSchemaPath = toSlash(require.resolve('zod-to-json-schema'));
 
@@ -135,12 +136,21 @@ export class AgentSecureRuntime {
 			const { Telemetry } = require('${agentsSrcDir}sdk/telemetry');
 			const { providerTools } = require('${agentsSrcDir}sdk/provider-tools');
 			const { WorkflowTool } = require('${workflowToolPath}');
+			const { ToolFromNode } = require('${nodeToolPath}');
 			const zod = require('zod');
 			const zodToJsonSchema = require('${zodToJsonSchemaPath}');
 
+			// Lightweight node() mock — same shape as @n8n/workflow-sdk node() so
+			// agent code can build node configs. The full validateNodeConfig() check
+			// runs on the host side inside the typecheck tool.
+			function node(input) {
+				return { type: input.type, version: input.version, config: input.config };
+			}
+
 			globalThis.__modules = {
 				'@n8n/agents': { Agent, Tool, Memory, Eval, Guardrail, Telemetry, providerTools },
-				'@n8n/agents-utils': { WorkflowTool },
+				'@n8n/agents-utils': { WorkflowTool, ToolFromNode },
+				'@n8n/workflow-sdk': { node },
 				'zod': zod,
 				'zod-to-json-schema': zodToJsonSchema,
 			};

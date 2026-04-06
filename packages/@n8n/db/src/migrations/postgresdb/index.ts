@@ -158,6 +158,7 @@ import { AddRestoreFieldsToWorkflowBuilderSession1774280963551 } from '../common
 import { CreateInstanceVersionHistoryTable1774854660000 } from '../common/1774854660000-CreateInstanceVersionHistoryTable';
 import { CreateInstanceAiTables1775000000000 } from '../common/1775000000000-CreateInstanceAiTables';
 import { CreateAgentTables1776000000000 } from '../common/1776000000000-CreateAgentTables';
+import { AddIsEphemeralToWorkflowEntity1776300000000 } from '../common/1776300000000-AddIsEphemeralToWorkflowEntity';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -321,4 +322,5 @@ export const postgresMigrations: Migration[] = [
 	CreateInstanceVersionHistoryTable1774854660000,
 	CreateInstanceAiTables1775000000000,
 	CreateAgentTables1776000000000,
+	AddIsEphemeralToWorkflowEntity1776300000000,
 ];

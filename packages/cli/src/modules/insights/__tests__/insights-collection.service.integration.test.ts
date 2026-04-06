@@ -169,6 +169,8 @@ describe('workflowExecuteAfterHandler', () => {
 		{ mode: 'internal' },
 		{ mode: 'manual' },
 		{ mode: 'integrated' },
+		{ mode: 'chat' },
+		{ mode: 'ephemeral' },
 	])('does not store events for executions with the mode `$mode`', async ({ mode }) => {
 		// ARRANGE
 		const ctx = mock<WorkflowExecuteAfterContext>({ workflow });

@@ -50,6 +50,9 @@ const isModeRootExecution = {
 
 	// n8n Chat hub messages
 	chat: false,
+
+	// Agent tool / internal standalone node executions
+	ephemeral: false,
 } satisfies Record<WorkflowExecuteMode, boolean>;
 
 type WorkflowStatisticsEvents = {
@@ -100,10 +103,11 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		const isError = runData.status === 'error' || runData.status === 'crashed';
 		const manualExecution = runData.mode === 'manual';
 		const chatExecution = runData.mode === 'chat';
+		const ephemeralExecution = runData.mode === 'ephemeral';
 
-		if (chatExecution) {
-			// Chat workflows are short lived and deleted immediately after execution, so we skip statistics for them.
-			// They are also not counted towards execution limits.
+		if (chatExecution || ephemeralExecution) {
+			// Chat and ephemeral workflows are short lived and deleted immediately after execution,
+			// so we skip statistics for them. They are also not counted towards execution limits.
 			return;
 		}
 
