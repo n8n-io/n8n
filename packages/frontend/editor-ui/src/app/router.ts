@@ -22,7 +22,7 @@ import { projectsRoutes } from '@/features/collaboration/projects/projects.route
 import { MfaRequiredError } from '@n8n/rest-api-client';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
+import { TEMPLATE_SETUP_EXPERIENCE, AI_GATEWAY_EXPERIMENT } from '@/app/constants/experiments';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 
 const ChangePasswordView = async () =>
@@ -100,6 +100,8 @@ const TestRunDetailView = async () =>
 const EvaluationRootView = async () =>
 	await import('@/features/ai/evaluation.ee/views/EvaluationsRootView.vue');
 const SettingsAIView = async () => await import('@/features/ai/assistant/views/SettingsAIView.vue');
+const SettingsAiGatewayView = async () =>
+	await import('@/features/ai/gateway/views/SettingsAiGatewayView.vue');
 const ResourceCenterView = async () =>
 	await import('@/experiments/resourceCenter/views/ResourceCenterView.vue');
 const ResourceCenterSectionView = async () =>
@@ -671,6 +673,32 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'assistant',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'n8n-gateway',
+				name: VIEWS.AI_GATEWAY_SETTINGS,
+				component: SettingsAiGatewayView,
+				meta: {
+					middleware: ['authenticated', 'custom'],
+					middlewareOptions: {
+						custom: () => {
+							const settingsStore = useSettingsStore();
+							const postHogStore = usePostHog();
+							return (
+								postHogStore.getVariant(AI_GATEWAY_EXPERIMENT.name) ===
+									AI_GATEWAY_EXPERIMENT.variant && settingsStore.isAiGatewayEnabled
+							);
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'ai-gateway',
 							};
 						},
 					},

@@ -17,6 +17,7 @@ import {
 	AI_CATEGORY_VECTOR_STORES,
 	AI_SUBCATEGORY,
 	AI_TRANSFORM_NODE_TYPE,
+	AI_GATEWAY_EXPERIMENT,
 	BETA_NODES,
 	CORE_NODES_CATEGORY,
 	DEFAULT_SUBCATEGORY,
@@ -34,7 +35,9 @@ import * as changeCase from 'change-case';
 import sortBy from 'lodash/sortBy';
 import type { NodeViewItemSection } from './views/viewsData';
 
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
 import { SampleTemplates } from '@/features/workflows/templates/utils/workflowSamples';
@@ -294,6 +297,15 @@ function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 		element.properties.tag = {
 			type: 'info',
 			text: i18n.baseText('generic.betaProper'),
+		};
+	} else if (
+		usePostHog().getVariant(AI_GATEWAY_EXPERIMENT.name) === AI_GATEWAY_EXPERIMENT.variant &&
+		useSettingsStore().isAiGatewayEnabled &&
+		useAiGatewayStore().isNodeSupported(element.properties.name)
+	) {
+		element.properties.tag = {
+			type: 'success',
+			text: i18n.baseText('generic.freeCredits'),
 		};
 	}
 

@@ -1,7 +1,7 @@
 import type { FrontendSettings, ITelemetrySettings, N8nEnvFeatFlags } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig, SecurityConfig } from '@n8n/config';
-import { LICENSE_FEATURES } from '@n8n/constants';
+import { LICENSE_FEATURES, LICENSE_QUOTAS } from '@n8n/constants';
 import { Container, Service } from '@n8n/di';
 import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
@@ -521,6 +521,15 @@ export class FrontendService {
 			this.settings.aiCredits.enabled = isAiCreditsEnabled;
 			this.settings.aiCredits.credits = this.license.getAiCredits();
 			this.settings.aiCredits.setup = !!this.globalConfig.aiAssistant.baseUrl;
+		}
+
+		const isAiGatewayEnabled =
+			this.licenseState.isAiGatewayLicensed() && !!this.globalConfig.aiAssistant.baseUrl;
+		if (isAiGatewayEnabled) {
+			this.settings.aiGateway = {
+				enabled: true,
+				creditsQuota: this.license.getValue(LICENSE_QUOTAS.AI_GATEWAY_CREDITS) ?? 0,
+			};
 		}
 
 		if (isAiBuilderEnabled) {

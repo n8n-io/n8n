@@ -14,6 +14,15 @@ export { AiSessionRetrievalRequestDto } from './ai/ai-session-retrieval-request.
 export { AiUsageSettingsRequestDto } from './ai/ai-usage-settings-request.dto';
 export { AiTruncateMessagesRequestDto } from './ai/ai-truncate-messages-request.dto';
 export { AiClearSessionRequestDto } from './ai/ai-clear-session-request.dto';
+export type {
+	AiGatewayConfigDto,
+	AiGatewayProviderConfigEntry,
+} from './ai/ai-gateway-config-response.dto';
+export { AiGatewayUsageQueryDto } from './ai/ai-gateway-usage-response.dto';
+export type {
+	AiGatewayUsageEntry,
+	AiGatewayUsageResponse,
+} from './ai/ai-gateway-usage-response.dto';
 
 export { InstanceAiConfirmRequestDto } from './instance-ai/instance-ai-confirm-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';

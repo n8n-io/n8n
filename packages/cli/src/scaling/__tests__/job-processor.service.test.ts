@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { ExecutionsConfig } from '@n8n/config';
 import type { IExecutionResponse, ExecutionRepository, Project } from '@n8n/db';
+import { WorkflowPublishHistoryRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { WorkflowExecute as ActualWorkflowExecute, InstanceSettings } from 'n8n-core';
 import { ExternalSecretsProxy } from 'n8n-core';
@@ -30,6 +31,7 @@ import { WorkflowStatisticsService } from '@/services/workflow-statistics.servic
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
+mockInstance(WorkflowPublishHistoryRepository);
 mockInstance(VariablesService, {
 	getAllCached: jest.fn().mockResolvedValue([]),
 });
