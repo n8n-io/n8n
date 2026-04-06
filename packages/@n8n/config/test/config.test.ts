@@ -496,6 +496,9 @@ describe('GlobalConfig', () => {
 			poolSize: 1,
 			maxCodeCacheSize: 1024,
 		},
+		agents: {
+			checkpointTtlSeconds: 345600,
+		},
 	} satisfies GlobalConfigShape;
 
 	it('should use all default values when no env variables are defined', () => {
