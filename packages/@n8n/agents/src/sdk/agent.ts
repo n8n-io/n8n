@@ -205,7 +205,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return this;
 	}
 
-	/** @internal Read the declared tools (used by the compile step to detect workflow tool markers). */
+	/** @internal Read the declared tools */
 	get declaredTools(): BuiltTool[] {
 		return this.tools;
 	}
@@ -548,15 +548,14 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			model = { provider: null, name: null };
 		}
 
-		// --- Tools (custom / workflow) ---
+		// --- Tools ---
 		const toolSchemas: ToolSchema[] = this.tools.map((tool) => {
-			const isWorkflow = '__workflowTool' in tool && Boolean(tool.__workflowTool);
 			const wrappedForApproval = APPROVAL_WRAPPED in tool && Boolean(tool[APPROVAL_WRAPPED]);
 			return {
 				name: tool.name,
 				description: tool.description,
-				type: isWorkflow ? ('workflow' as const) : ('custom' as const),
-				editable: !isWorkflow,
+				editable: tool.editable !== false,
+				metadata: tool.metadata ?? null,
 				// Source strings — null, CLI patches with original TypeScript
 				inputSchemaSource: null,
 				outputSchemaSource: null,

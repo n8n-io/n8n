@@ -597,9 +597,6 @@ importers:
       pg:
         specifier: 'catalog:'
         version: 8.17.0
-      prettier:
-        specifier: ^3.6.2
-        version: 3.6.2
       zod:
         specifier: 3.25.67
         version: 3.25.67
@@ -2601,6 +2598,9 @@ importers:
       posthog-node:
         specifier: 3.2.1
         version: 3.2.1
+      prettier:
+        specifier: ^3.6.2
+        version: 3.6.2
       prom-client:
         specifier: 15.1.3
         version: 15.1.3

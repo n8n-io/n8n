@@ -15,9 +15,19 @@ import type { AgentSchema, EvalSchema, ToolSchema } from '../types/sdk/schema';
 import type { InterruptibleToolContext, ToolContext } from '../types/sdk/tool';
 import type { JSONObject } from '../types/utils/json';
 
+export type ToolResolver = (toolSchema: ToolSchema) => BuiltTool | null | undefined;
+
 export interface FromSchemaOptions {
 	handlerExecutor: HandlerExecutor;
 	credentialProvider?: CredentialProvider;
+	/**
+	 * Called for each non-editable tool schema entry to produce a `BuiltTool`.
+	 *
+	 * When the callback returns `null` or `undefined`, or when no callback is
+	 * provided, a minimal passthrough marker is created automatically from the
+	 * tool schema's `name`, `description`, and `metadata`.
+	 */
+	resolveTool?: ToolResolver;
 }
 
 /** Sentinel used to signal that a sandboxed handler called ctx.suspend(). */
@@ -90,15 +100,20 @@ export async function fromSchema(
 
 	for (const ts of schema.tools) {
 		if (!ts.editable) {
-			// Non-editable tools are WorkflowTool markers — add a marker BuiltTool
-			// that the CLI's injectRuntimeDependencies() will detect and resolve
-			// into a real workflow-backed tool.
-			agent.tool({
-				name: ts.name,
-				description: ts.description,
-				__workflowTool: true,
-				workflowName: ts.name,
-			} as unknown as BuiltTool);
+			// Non-editable tools are platform-specific markers. The caller supplies
+			// resolveTool() to produce the appropriate BuiltTool for their platform.
+			// Without a resolver, a minimal passthrough marker is created so that
+			// the agent's tool list stays coherent (correct names / descriptions).
+			const resolved = options.resolveTool?.(ts);
+			agent.tool(
+				resolved ??
+					({
+						name: ts.name,
+						description: ts.description,
+						editable: false,
+						metadata: ts.metadata ?? undefined,
+					} as BuiltTool),
+			);
 			continue;
 		}
 		const preEvaluated = toolSchemas.get(ts.name);

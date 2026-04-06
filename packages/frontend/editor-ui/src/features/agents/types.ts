@@ -24,8 +24,8 @@ export interface AgentSchema {
 export interface ToolSchema {
 	name: string;
 	description: string;
-	type: 'custom' | 'workflow' | 'provider' | 'mcp';
 	editable: boolean;
+	metadata: Record<string, unknown> | null;
 	inputSchemaSource: string | null;
 	outputSchemaSource: string | null;
 	handlerSource: string | null;

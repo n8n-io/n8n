@@ -6,18 +6,21 @@ import * as zod from 'zod';
 import type { AgentSchema } from '@n8n/agents';
 
 import { extractSources } from '../agents-source-parser';
+import { generateAgentCode } from '../generate-agent-code';
 import { WorkflowTool } from '../types';
 import { AgentSecureRuntime } from '../agent-secure-runtime';
 import { deepCopy } from 'n8n-workflow';
 
 // No mocking of isolated-vm — use the real V8 isolate for integration testing.
+// generateAgentCode should be called with formatCode: false in tests to avoid importing prettier dynamically
 
 // ---------------------------------------------------------------------------
 // Fixture: a real-world D&D agent with tools, memory, checkpoint, thinking
 // ---------------------------------------------------------------------------
 
 const DND_AGENT_SOURCE = `
-import { Agent, Memory, Tool, WorkflowTool } from '@n8n/agents';
+import { Agent, Memory, Tool } from '@n8n/agents';
+import { WorkflowTool } from '@n8n/agents-utils';
 import { z } from 'zod';
 
 export default new Agent('D&D Agent')
@@ -83,9 +86,9 @@ async function compileAndDescribe(source: string): Promise<AgentSchema> {
 	const result = await transform(source, { loader: 'ts', format: 'cjs', target: 'es2022' });
 
 	const moduleExports: Record<string, unknown> = {};
-	const sandboxedAgents = { ...agents, WorkflowTool };
 	const moduleRequire = (id: string) => {
-		if (id === '@n8n/agents') return sandboxedAgents;
+		if (id === '@n8n/agents') return agents;
+		if (id === '@n8n/agents-utils') return { WorkflowTool };
 		if (id === 'zod') return zod;
 		throw new Error('Unavailable: ' + id);
 	};
@@ -171,10 +174,11 @@ describe('D&D Agent Round-Trip', () => {
 
 	it('generates code containing all original constructs', async () => {
 		const schema = await compileAndDescribe(DND_AGENT_SOURCE);
-		const code = await agents.generateAgentCode(schema, 'D&D Agent');
+		const code = await generateAgentCode(schema, 'D&D Agent', { formatCode: false });
 
 		// Imports
 		expect(code).toContain("from '@n8n/agents'");
+		expect(code).toContain("from '@n8n/agents-utils'");
 		expect(code).toContain("from 'zod'");
 		expect(code).toContain('Agent');
 		expect(code).toContain('Tool');
@@ -319,7 +323,7 @@ export default new Agent('mixed-array-agent')
 		const schemaForGen = deepCopy(schema1);
 		schemaForGen.tools = schemaForGen.tools.filter((t) => t.editable || t.handlerSource);
 
-		const generated = await agents.generateAgentCode(schemaForGen, 'D&D Agent');
+		const generated = await generateAgentCode(schemaForGen, 'D&D Agent', { formatCode: false });
 		const schema2 = await compileAndDescribe(generated);
 
 		// Scalar fields survive

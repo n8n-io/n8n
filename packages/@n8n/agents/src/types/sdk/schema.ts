@@ -34,8 +34,14 @@ export interface AgentSchema {
 export interface ToolSchema {
 	name: string;
 	description: string;
-	type: 'custom' | 'workflow' | 'provider' | 'mcp';
 	editable: boolean;
+	/**
+	 * Arbitrary platform-specific metadata for this tool entry.
+	 * The @n8n/agents package treats this as opaque and round-trips it without
+	 * modification. Consumers (e.g. the n8n CLI) use it to carry workflow tool
+	 * descriptors and other platform concepts.
+	 */
+	metadata: Record<string, unknown> | null;
 	// Source strings — original TypeScript for lossless code generation
 	inputSchemaSource: string | null;
 	outputSchemaSource: string | null;

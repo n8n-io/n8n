@@ -51,24 +51,30 @@ function getState(tool: ToolSchema): EditingState {
 	return editingStates.value[tool.name];
 }
 
-function typeBadgeClass(type: ToolSchema['type']): string {
-	const map: Record<ToolSchema['type'], string> = {
-		custom: 'badgeCustom',
-		workflow: 'badgeWorkflow',
-		provider: 'badgeProvider',
-		mcp: 'badgeMcp',
-	};
-	return map[type] ?? 'badgeMcp';
+type ToolDisplayType = 'custom' | 'workflow' | 'mcp';
+
+function resolveToolDisplayType(tool: ToolSchema): ToolDisplayType {
+	if (tool.metadata?.workflowTool) return 'workflow';
+	if (tool.metadata?.mcpTool) return 'mcp';
+	return 'custom';
 }
 
-function typeLabel(type: ToolSchema['type']): string {
-	const map: Record<ToolSchema['type'], string> = {
+function typeBadgeClass(tool: ToolSchema): string {
+	const map: Record<ToolDisplayType, string> = {
+		custom: 'badgeCustom',
+		workflow: 'badgeWorkflow',
+		mcp: 'badgeMcp',
+	};
+	return map[resolveToolDisplayType(tool)] ?? 'badgeMcp';
+}
+
+function typeLabel(tool: ToolSchema): string {
+	const map: Record<ToolDisplayType, string> = {
 		custom: 'Custom',
 		workflow: 'Workflow',
-		provider: 'Provider',
 		mcp: 'MCP',
 	};
-	return map[type] ?? type;
+	return map[resolveToolDisplayType(tool)] ?? 'Custom';
 }
 
 function inputSchemaProperties(
@@ -118,8 +124,8 @@ function inputSchemaProperties(
 							<N8nText v-else bold :class="$style.toolName">{{ tool.name }}</N8nText>
 						</div>
 						<div :class="$style.badges">
-							<span :class="[$style.badge, $style[typeBadgeClass(tool.type)]]">
-								{{ typeLabel(tool.type) }}
+							<span :class="[$style.badge, $style[typeBadgeClass(tool)]]">
+								{{ typeLabel(tool) }}
 							</span>
 							<span v-if="tool.hasSuspend" :class="[$style.badge, $style.badgeHitl]">HITL</span>
 							<span v-if="tool.hasToMessage" :class="[$style.badge, $style.badgeRichMessage]">
@@ -145,9 +151,12 @@ function inputSchemaProperties(
 						{{ tool.description }}
 					</N8nText>
 
-					<div v-if="tool.type === 'workflow' && tool.workflowName" :class="$style.workflowLink">
+					<div
+						v-if="tool.metadata?.workflowTool && tool.metadata?.workflowName"
+						:class="$style.workflowLink"
+					>
 						<N8nText size="small" :class="$style.workflowLabel">Workflow:</N8nText>
-						<N8nText size="small" bold>{{ tool.workflowName }}</N8nText>
+						<N8nText size="small" bold>{{ tool.metadata?.workflowName }}</N8nText>
 					</div>
 
 					<div v-if="tool.inputSchema" :class="$style.inputSchema">

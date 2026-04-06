@@ -148,7 +148,7 @@ export class AgentsBuilderService {
 		// Tool: list_workflows — lists workflows that can be used as tools (pre-filtered)
 		const listWorkflowsTool = new Tool('list_workflows')
 			.description(
-				'List the n8n workflows that can be attached as tools via .tool(new WorkflowTool(name)). ' +
+				'List the n8n workflows that can be attached as tools via .tool(new WorkflowTool(name)) from @n8n/agents-utils. ' +
 					'ALWAYS call this at the start — workflows are the preferred way to give agents real capabilities ' +
 					'(sending emails, creating calendar events, querying databases, calling APIs, etc.). ' +
 					'Only returns workflows with supported trigger types.',
@@ -240,7 +240,7 @@ ${currentCode}
 
 ## Code rules
 
-- Always import from '@n8n/agents' and 'zod' — these are the only available modules
+- Always import from '@n8n/agents', '@n8n/agents-utils' (for WorkflowTool), and 'zod' — these are the only available modules
 - The code MUST export the agent as the default export: \`export default agent;\`
 - Do NOT call .build() on tools or agents — the engine handles that automatically
 - Every agent MUST have .credential() — it will not compile without one
@@ -350,7 +350,8 @@ This executes the workflow when the agent calls the tool and returns the result.
 
 **Simple — attach by name:**
 \`\`\`typescript
-import { Agent, WorkflowTool } from '@n8n/agents';
+import { Agent } from '@n8n/agents';
+import { WorkflowTool } from '@n8n/agents-utils';
 
 const agent = new Agent('my-agent')
   .model('anthropic/claude-sonnet-4-5')
@@ -362,7 +363,8 @@ const agent = new Agent('my-agent')
 
 **Advanced — with custom options:**
 \`\`\`typescript
-import { Agent, WorkflowTool } from '@n8n/agents';
+import { Agent } from '@n8n/agents';
+import { WorkflowTool } from '@n8n/agents-utils';
 
 const agent = new Agent('my-agent')
   .tool(new WorkflowTool('Send Email', {
@@ -447,7 +449,7 @@ const agent = new Agent('my-agent')
 - Tool handlers are async functions that receive the validated input object
 - Tool .input() and .output() use Zod schemas
 - Agent .instructions() sets the system prompt
-- The only imports available at runtime are '@n8n/agents' and 'zod'
+- The only imports available at runtime are '@n8n/agents', '@n8n/agents-utils', and 'zod'
 - Do NOT import anything else — it will fail at runtime`,
 			)
 			.tool(typecheckTool)

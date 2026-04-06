@@ -120,9 +120,8 @@ export class AgentSecureRuntime {
 		const agentsPath = toSlash(require.resolve('@n8n/agents'));
 		const agentsSrcDir = agentsPath.replace(/dist\/index\.js$/, 'dist/');
 
-		// Also include WorkflowTool from the CLI's types — user code imports
-		// it as `import { WorkflowTool } from '@n8n/agents'` and the existing
-		// direct-mode compile injects it into the sandboxed agents module.
+		// WorkflowTool is exposed under the virtual '@n8n/agents-utils' package so
+		// that user code can import it without polluting the core '@n8n/agents' namespace.
 		const workflowToolPath = toSlash(require.resolve('./types/workflow-tool'));
 
 		const zodToJsonSchemaPath = toSlash(require.resolve('zod-to-json-schema'));
@@ -140,7 +139,8 @@ export class AgentSecureRuntime {
 			const zodToJsonSchema = require('${zodToJsonSchemaPath}');
 
 			globalThis.__modules = {
-				'@n8n/agents': { Agent, Tool, Memory, Eval, Guardrail, Telemetry, providerTools, WorkflowTool },
+				'@n8n/agents': { Agent, Tool, Memory, Eval, Guardrail, Telemetry, providerTools },
+				'@n8n/agents-utils': { WorkflowTool },
 				'zod': zod,
 				'zod-to-json-schema': zodToJsonSchema,
 			};

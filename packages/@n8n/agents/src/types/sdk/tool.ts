@@ -55,6 +55,20 @@ export interface BuiltTool {
 	 * Example: `{ anthropic: { eagerInputStreaming: true } }`
 	 */
 	readonly providerOptions?: Record<string, JSONObject>;
+	/**
+	 * Arbitrary platform-specific metadata attached to the tool.
+	 * The @n8n/agents package treats this as opaque — consumers (e.g. the n8n
+	 * CLI) may store platform-specific marker data here (e.g. workflow tool
+	 * descriptors) without polluting the core tool interface with n8n concepts.
+	 */
+	readonly metadata?: Record<string, unknown>;
+	/**
+	 * Whether the tool has source code that can be introspected.
+	 * When `false`, the tool is treated as a platform-managed marker (e.g. an
+	 * externally-resolved tool) and its source is not introspected.
+	 * Defaults to `true` when absent.
+	 */
+	readonly editable?: boolean;
 }
 
 /**

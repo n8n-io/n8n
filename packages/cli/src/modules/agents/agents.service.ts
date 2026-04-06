@@ -296,7 +296,7 @@ export class AgentsService {
 			throw new ConflictError('Agent has been modified');
 		}
 
-		const { generateAgentCode } = await import('@n8n/agents');
+		const { generateAgentCode } = await import('./generate-agent-code');
 		const code = await generateAgentCode(schema, entity.name);
 
 		// Invalidate caches
@@ -326,6 +326,29 @@ export class AgentsService {
 	}
 
 	/**
+	 * Returns a `resolveTool` callback for `Agent.fromSchema()` that converts
+	 * non-editable tool schema entries into workflow tool marker BuiltTools.
+	 */
+	private makeWorkflowToolResolver(): agents.ToolResolver {
+		return (ts: {
+			name: string;
+			description: string;
+			metadata?: Record<string, unknown> | null;
+		}) => {
+			// Assume all non-editable tools are workflow tools
+			const meta: Record<string, unknown> =
+				typeof ts.metadata?.workflowTool === 'boolean'
+					? ts.metadata
+					: { workflowTool: true, workflowName: ts.name };
+			return {
+				name: ts.name,
+				description: ts.description,
+				metadata: meta,
+			};
+		};
+	}
+
+	/**
 	 * Inject workflow tools, rich interaction tool, and checkpoint storage into
 	 * an agent instance. Shared between reconstructFromSchema() and compileIsolated().
 	 */
@@ -335,12 +358,18 @@ export class AgentsService {
 		projectId: string,
 		userId?: string,
 	): Promise<void> {
-		// Resolve workflow tools — detect WorkflowTool markers in the tools list.
-		// Both direct-mode compile and fromSchema reconstruction add these markers
-		// to declaredTools for non-editable (workflow) tools.
-		const workflowMarkers = agent.declaredTools.filter(
-			(t) => '__workflowTool' in t && t.__workflowTool === true,
-		) as unknown as WorkflowToolDescriptor[];
+		// Resolve workflow tools — detect WorkflowTool markers in the tools list via
+		// tool.metadata.workflowTool. Both direct-mode compile and fromSchema
+		// reconstruction attach this metadata to non-editable (workflow) tools.
+		type ToolWithMeta = { metadata?: Record<string, unknown> };
+		const workflowMarkers: WorkflowToolDescriptor[] = (
+			agent.declaredTools as unknown as ToolWithMeta[]
+		)
+			.filter((t) => t.metadata?.workflowTool === true)
+			.map((t) => ({
+				workflowName: t.metadata!.workflowName as string,
+				options: t.metadata!.options as WorkflowToolDescriptor['options'],
+			}));
 
 		if (workflowMarkers.length > 0) {
 			if (!userId) {
@@ -420,6 +449,7 @@ export class AgentsService {
 		const reconstructed = await agents.Agent.fromSchema(agentEntity.schema, agentEntity.name, {
 			handlerExecutor: executor,
 			credentialProvider,
+			resolveTool: this.makeWorkflowToolResolver(),
 		});
 
 		// Inject workflow tools, rich interaction tool, checkpoint
@@ -563,6 +593,7 @@ export class AgentsService {
 				const reconstructed = await agents.Agent.fromSchema(agentEntity.schema, agentEntity.name, {
 					handlerExecutor: executor,
 					credentialProvider,
+					resolveTool: this.makeWorkflowToolResolver(),
 				});
 
 				// Inject runtime dependencies (workflow tools, rich interaction, checkpoint)

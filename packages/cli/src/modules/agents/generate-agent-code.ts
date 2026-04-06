@@ -1,6 +1,6 @@
 import type prettier from 'prettier';
 
-import type { AgentSchema } from '../types/sdk/schema';
+import type { AgentSchema } from '@n8n/agents';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -44,7 +44,15 @@ function assertAllHandled(_: Record<string, never>): void {
 // Public API
 // ---------------------------------------------------------------------------
 
-export async function generateAgentCode(schema: AgentSchema, agentName: string): Promise<string> {
+interface GenerateAgentCodeOptions {
+	formatCode?: boolean;
+}
+
+export async function generateAgentCode(
+	schema: AgentSchema,
+	agentName: string,
+	options?: GenerateAgentCodeOptions,
+): Promise<string> {
 	// Destructure every top-level property. If a new property is added to
 	// AgentSchema, TypeScript will error on assertAllHandled below until
 	// you handle it here AND add it to the destructure.
@@ -183,7 +191,6 @@ export async function generateAgentCode(schema: AgentSchema, agentName: string):
 	// Build imports
 	const agentImports = new Set<string>(['Agent']);
 	if (tools.some((t) => t.editable)) agentImports.add('Tool');
-	if (needsWorkflowTool) agentImports.add('WorkflowTool');
 	if (memory) agentImports.add('Memory');
 	if (mcp && mcp.length > 0) agentImports.add('McpClient');
 	if (evaluations.length > 0) agentImports.add('Eval');
@@ -197,8 +204,11 @@ export async function generateAgentCode(schema: AgentSchema, agentName: string):
 	const needsZod = toolsNeedZod || structuredOutputNeedsZod;
 
 	let imports = `import { ${Array.from(agentImports).sort().join(', ')} } from '@n8n/agents';`;
+	// WorkflowTool lives in the virtual '@n8n/agents-utils' package, dynamically
+	// created by the execution platform, not in the core '@n8n/agents' module.
+	if (needsWorkflowTool) imports += "\nimport { WorkflowTool } from '@n8n/agents-utils';";
 	if (needsZod) imports += "\nimport { z } from 'zod';";
 
 	const raw = `${imports}\n\n${parts.join('')};\n`;
-	return await formatCode(raw);
+	return options?.formatCode ? await formatCode(raw) : raw;
 }

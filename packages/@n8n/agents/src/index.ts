@@ -82,6 +82,7 @@ export type {
 	AgentDbMessage,
 } from './types/sdk/message';
 export type { HandlerExecutor } from './types/sdk/handler-executor';
+export type { FromSchemaOptions, ToolResolver } from './sdk/from-schema';
 export type {
 	AgentSchema,
 	ToolSchema,
@@ -98,7 +99,6 @@ export {
 	filterLlmMessages,
 	isLlmMessage,
 } from './sdk/message';
-export { generateAgentCode } from './codegen/generate-agent-code';
 export { fetchProviderCatalog } from './sdk/catalog';
 export { providerCapabilities } from './sdk/provider-capabilities';
 export type { ProviderCapability } from './sdk/provider-capabilities';

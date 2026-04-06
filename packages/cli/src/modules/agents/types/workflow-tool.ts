@@ -15,7 +15,6 @@ export interface WorkflowToolOptions {
 }
 
 export interface WorkflowToolDescriptor {
-	readonly __workflowTool: true;
 	readonly workflowName: string;
 	readonly options?: WorkflowToolOptions;
 }
@@ -23,21 +22,21 @@ export interface WorkflowToolDescriptor {
 /**
  * Marker tool for attaching n8n workflows as agent tools.
  *
- * Injected into the agent sandbox at compile time so user code can write:
+ * Exposed as the virtual `@n8n/agents-utils` package in the agent sandbox so
+ * user code can write:
  * ```typescript
- * import { Agent, WorkflowTool } from '@n8n/agents';
+ * import { Agent } from '@n8n/agents';
+ * import { WorkflowTool } from '@n8n/agents-utils';
  *
  * export default new Agent('my-agent')
  *   .tool(new WorkflowTool('Send Welcome Email'))
  *   .tool(new WorkflowTool('Generate Report', { description: 'Creates PDF reports' }));
  * ```
  *
- * The compile step detects these markers in the tools list and replaces them
- * with fully-configured tools backed by actual workflow execution.
+ * The compile step detects these markers via `tool.metadata.workflowTool` and
+ * replaces them with fully-configured tools backed by actual workflow execution.
  */
 export class WorkflowTool {
-	readonly __workflowTool = true as const;
-
 	readonly workflowName: string;
 
 	readonly options?: WorkflowToolOptions;
@@ -47,14 +46,17 @@ export class WorkflowTool {
 		this.options = options;
 	}
 
-	/** Produce a marker BuiltTool. Resolved at compile time by the platform. */
+	/** Produce a marker BuiltTool. Resolved at runtime by the platform via tool.metadata. */
 	build(): BuiltTool {
 		return {
 			name: this.options?.name ?? this.workflowName,
 			description: this.options?.description ?? `Execute the "${this.workflowName}" workflow`,
-			__workflowTool: true,
-			workflowName: this.workflowName,
-			options: this.options,
-		} as unknown as BuiltTool;
+			editable: false,
+			metadata: {
+				workflowTool: true,
+				workflowName: this.workflowName,
+				options: this.options,
+			},
+		};
 	}
 }

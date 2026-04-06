@@ -47,8 +47,8 @@ function makeToolSchema(overrides: Partial<ToolSchema> = {}): ToolSchema {
 	return {
 		name: 'test-tool',
 		description: 'A test tool',
-		type: 'custom',
 		editable: true,
+		metadata: null,
 		inputSchemaSource: null,
 		outputSchemaSource: null,
 		handlerSource: null,
@@ -159,19 +159,48 @@ describe('Agent.fromSchema()', () => {
 		expect(described.tools[0].editable).toBe(true);
 	});
 
-	it('adds WorkflowTool markers for non-editable tools', async () => {
-		const toolSchema = makeToolSchema({ name: 'Send Email', type: 'workflow', editable: false });
+	it('uses passthrough marker for non-editable tools when no resolveTool is provided', async () => {
+		const toolSchema = makeToolSchema({
+			name: 'Send Email',
+			editable: false,
+			metadata: { workflowTool: true, workflowName: 'Send Email' },
+		});
 		const schema = minimalSchema({ tools: [toolSchema] });
 		const agent = await Agent.fromSchema(schema, 'test-agent', {
 			handlerExecutor: mockExecutor(),
 		});
 
-		// Non-editable tools become WorkflowTool markers in declaredTools
-		const markers = agent.declaredTools.filter(
-			(t) => '__workflowTool' in t && (t as Record<string, unknown>).__workflowTool === true,
-		);
+		// Passthrough marker carries the schema metadata unchanged
+		const markers = agent.declaredTools.filter((t) => t.metadata?.workflowTool === true);
 		expect(markers).toHaveLength(1);
 		expect(markers[0].name).toBe('Send Email');
+		expect(markers[0].metadata?.workflowName).toBe('Send Email');
+	});
+
+	it('delegates non-editable tools to resolveTool when provided', async () => {
+		const toolSchema = makeToolSchema({
+			name: 'Send Email',
+			editable: false,
+			metadata: { workflowTool: true, workflowName: 'Send Email' },
+		});
+		const schema = minimalSchema({ tools: [toolSchema] });
+
+		const customMarker = {
+			name: 'Send Email',
+			description: 'resolved by platform',
+			metadata: { platformResolved: true },
+		};
+
+		const resolveTool = jest.fn().mockReturnValue(customMarker);
+
+		const agent = await Agent.fromSchema(schema, 'test-agent', {
+			handlerExecutor: mockExecutor(),
+			resolveTool,
+		});
+
+		expect(resolveTool).toHaveBeenCalledWith(toolSchema);
+		const tool = agent.declaredTools.find((t) => t.name === 'Send Email');
+		expect(tool?.metadata?.platformResolved).toBe(true);
 	});
 
 	it('reconstructs memory from schema fields', async () => {
