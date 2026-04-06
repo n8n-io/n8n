@@ -1,6 +1,18 @@
+import type { Logger } from '@n8n/backend-common';
+import type ivm from 'isolated-vm';
+import { mock } from 'jest-mock-extended';
+
+import {
+	AgentIsolatePool,
+	AgentIsolateSlot,
+	PoolDisposedError,
+	PoolExhaustedError,
+} from '../agent-isolate-pool';
 import { AgentSecureRuntime } from '../agent-secure-runtime';
 
 // No mocking — uses the real isolated-vm V8 isolate.
+
+const logger = mock<Logger>();
 
 const SIMPLE_AGENT_CODE = `
 import { Agent, Tool } from '@n8n/agents';
@@ -20,11 +32,269 @@ export default new Agent('test-agent')
   );
 `;
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Disable auto-replenishment on a pool instance so tests can control exactly
+ * when slots are available. Because `replenish` is private we cast through any.
+ */
+function disableReplenish(pool: AgentIsolatePool): void {
+	(pool as unknown as { replenish: () => void }).replenish = () => {};
+}
+
+// ---------------------------------------------------------------------------
+// AgentIsolatePool — unit tests
+// ---------------------------------------------------------------------------
+
+describe('AgentIsolatePool', () => {
+	let ivmModule: typeof ivm;
+	const libraryBundle = '"use strict"; globalThis.__modules = {};';
+
+	beforeAll(async () => {
+		ivmModule = (await import('isolated-vm')).default;
+	});
+
+	function makePool(options?: ConstructorParameters<typeof AgentIsolatePool>[2]) {
+		return new AgentIsolatePool(ivmModule, libraryBundle, options);
+	}
+
+	it('initialize() creates N slots', async () => {
+		const pool = makePool({ size: 2 });
+		disableReplenish(pool);
+		await pool.initialize();
+
+		const s1 = await pool.acquire();
+		const s2 = await pool.acquire();
+
+		expect(s1).toBeInstanceOf(AgentIsolateSlot);
+		expect(s2).toBeInstanceOf(AgentIsolateSlot);
+
+		pool.release(s1);
+		pool.release(s2);
+		await pool.dispose();
+	});
+
+	it('acquire() returns a healthy slot', async () => {
+		const pool = makePool({ size: 1 });
+		disableReplenish(pool);
+		await pool.initialize();
+
+		const slot = await pool.acquire();
+		expect(slot.isHealthy).toBe(true);
+		expect(slot.isolate.isDisposed).toBe(false);
+
+		pool.release(slot);
+		await pool.dispose();
+	});
+
+	it('acquire() blocks when pool is empty, resolves after release', async () => {
+		const pool = makePool({ size: 1 });
+		disableReplenish(pool);
+		await pool.initialize();
+
+		const slot = await pool.acquire(); // pool now empty, replenishment disabled
+
+		// Pool is empty — next acquire should return a pending Promise.
+		let resolved = false;
+		const pending = pool.acquire().then((s) => {
+			resolved = true;
+			return s;
+		});
+
+		// Flush microtask queue — should NOT resolve yet (no replenish, no release).
+		await Promise.resolve();
+		expect(resolved).toBe(false);
+
+		// Release the slot — the queued acquire should receive it directly.
+		pool.release(slot);
+		const queued = await pending;
+		expect(resolved).toBe(true);
+		expect(queued.isHealthy).toBe(true);
+
+		pool.release(queued);
+		await pool.dispose();
+	});
+
+	it('acquire() rejects when queue depth exceeded', async () => {
+		const pool = makePool({ size: 1, maxQueueDepth: 2 });
+		disableReplenish(pool);
+		await pool.initialize();
+
+		const slot = await pool.acquire(); // exhaust pool
+
+		// Fill the wait queue to capacity.
+		const p1 = pool.acquire();
+		const p2 = pool.acquire();
+
+		// Next acquire exceeds maxQueueDepth.
+		await expect(pool.acquire()).rejects.toBeInstanceOf(PoolExhaustedError);
+
+		pool.release(slot);
+		pool.release(await p1);
+		pool.release(await p2);
+		await pool.dispose();
+	});
+
+	it('release() returns a healthy slot back to the pool', async () => {
+		const pool = makePool({ size: 1 });
+		disableReplenish(pool);
+		await pool.initialize();
+
+		const slot = await pool.acquire();
+		pool.release(slot);
+
+		const same = await pool.acquire();
+		expect(same.isHealthy).toBe(true);
+
+		pool.release(same);
+		await pool.dispose();
+	});
+
+	it('release() discards an unhealthy slot and triggers replenishment', async () => {
+		const pool = makePool({ size: 1 });
+		disableReplenish(pool);
+		await pool.initialize();
+
+		const slot = await pool.acquire();
+		slot.isolate.dispose(); // simulate OOM
+		expect(slot.isHealthy).toBe(false);
+
+		// Re-enable real replenishment before releasing.
+		(pool as unknown as { replenish: (attempt?: number) => void }).replenish = AgentIsolatePool
+			.prototype['replenish' as keyof AgentIsolatePool] as () => void;
+
+		pool.release(slot);
+
+		// Wait for replenishment microtask to complete.
+		await new Promise((r) => setTimeout(r, 50));
+
+		const fresh = pool.tryAcquireSync();
+		expect(fresh).not.toBeNull();
+		expect(fresh!.isHealthy).toBe(true);
+
+		pool.release(fresh!);
+		await pool.dispose();
+	});
+
+	it('tryAcquireSync() returns a slot when the pool is non-empty', async () => {
+		const pool = makePool({ size: 1 });
+		disableReplenish(pool);
+		await pool.initialize();
+
+		const slot = pool.tryAcquireSync();
+		expect(slot).not.toBeNull();
+		expect(slot!.isHealthy).toBe(true);
+
+		pool.release(slot!);
+		await pool.dispose();
+	});
+
+	it('tryAcquireSync() returns null when pool is empty', async () => {
+		const pool = makePool({ size: 1 });
+		disableReplenish(pool);
+		await pool.initialize();
+
+		const slot = await pool.acquire(); // drain pool
+		expect(pool.tryAcquireSync()).toBeNull();
+
+		pool.release(slot);
+		await pool.dispose();
+	});
+
+	it('proactive recycling: high-heap slot is discarded on release', async () => {
+		// highWaterMarkRatio=0 means any heap usage triggers recycling.
+		const pool = makePool({ size: 1, highWaterMarkRatio: 0 });
+		disableReplenish(pool);
+		await pool.initialize();
+
+		const slot = await pool.acquire();
+		pool.release(slot); // should be discarded, not returned to pool
+
+		expect(slot.isolate.isDisposed).toBe(true);
+		// Pool is now empty (slot was discarded, replenish disabled).
+		expect(pool.tryAcquireSync()).toBeNull();
+
+		await pool.dispose();
+	});
+
+	it('dispose() cleans up all slots', async () => {
+		const pool = makePool({ size: 2 });
+		disableReplenish(pool);
+		await pool.initialize();
+
+		const s1 = await pool.acquire();
+		const s2 = await pool.acquire();
+		pool.release(s1);
+		pool.release(s2);
+
+		const iso1 = s1.isolate;
+		const iso2 = s2.isolate;
+
+		await pool.dispose();
+
+		expect(iso1.isDisposed).toBe(true);
+		expect(iso2.isDisposed).toBe(true);
+	});
+
+	it('acquire() after dispose() throws PoolDisposedError', async () => {
+		const pool = makePool({ size: 1 });
+		disableReplenish(pool);
+		await pool.initialize();
+		await pool.dispose();
+
+		await expect(pool.acquire()).rejects.toBeInstanceOf(PoolDisposedError);
+	});
+
+	it('dispose() rejects pending waiters with PoolDisposedError', async () => {
+		const pool = makePool({ size: 1 });
+		disableReplenish(pool);
+		await pool.initialize();
+
+		const slot = await pool.acquire(); // drain pool
+		const pending = pool.acquire(); // will be queued
+
+		await pool.dispose(); // rejects all waiters immediately
+		pool.release(slot); // cleanup (slot is discarded since pool is disposed)
+
+		await expect(pending).rejects.toBeInstanceOf(PoolDisposedError);
+	});
+
+	it('replenish retries on slot creation failure', async () => {
+		// Use size=2 so acquiring 1 slot triggers replenishment of the 2nd.
+		const pool = makePool({ size: 2 });
+		await pool.initialize(); // starts with 2 real slots
+
+		// Patch createSlot to track calls and fail.
+		let attempts = 0;
+		(pool as unknown as { createSlot: () => AgentIsolateSlot }).createSlot = () => {
+			attempts++;
+			throw new Error('simulated slot creation failure');
+		};
+
+		// Acquiring a slot triggers replenish() which calls the patched createSlot.
+		const slot = await pool.acquire();
+
+		// Wait for the replenish microtask (Promise.resolve().then(...)) to run.
+		await new Promise((r) => setTimeout(r, 20));
+
+		expect(attempts).toBeGreaterThan(0);
+
+		pool.release(slot);
+		await pool.dispose();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// AgentSecureRuntime — existing integration tests (adapted for pool)
+// ---------------------------------------------------------------------------
+
 describe('AgentSecureRuntime', () => {
 	let runtime: AgentSecureRuntime;
 
 	beforeEach(() => {
-		runtime = new AgentSecureRuntime();
+		runtime = new AgentSecureRuntime(logger);
 	});
 
 	afterEach(() => {
@@ -90,7 +360,6 @@ export default new Agent('suspend-agent')
 			ctx: {},
 		});
 
-		// Should return the suspend marker
 		const suspendMarker = Symbol.for('n8n.agent.suspend');
 		expect(result).toBeDefined();
 		expect((result as Record<symbol, unknown>)[suspendMarker]).toBe(true);
@@ -126,13 +395,118 @@ export default new Agent('suspend-agent')
 	});
 });
 
+// ---------------------------------------------------------------------------
+// AgentSecureRuntime — pool integration tests
+// ---------------------------------------------------------------------------
+
+describe('AgentSecureRuntime — pool integration', () => {
+	let runtime: AgentSecureRuntime;
+
+	beforeEach(() => {
+		runtime = new AgentSecureRuntime(logger);
+	});
+
+	afterEach(() => {
+		runtime.dispose();
+	});
+
+	it('concurrent describeSecurely calls all resolve (pool size=2, 4 calls)', async () => {
+		await runtime.describeSecurely(SIMPLE_AGENT_CODE); // warm up pool
+
+		// 4 concurrent calls on a pool of size 2. The 3rd and 4th queue.
+		const results = await Promise.all([
+			runtime.describeSecurely(SIMPLE_AGENT_CODE),
+			runtime.describeSecurely(SIMPLE_AGENT_CODE),
+			runtime.describeSecurely(SIMPLE_AGENT_CODE),
+			runtime.describeSecurely(SIMPLE_AGENT_CODE),
+		]);
+
+		expect(results).toHaveLength(4);
+		for (const schema of results) {
+			expect(schema.model.name).toBe('claude-sonnet-4-5');
+			expect(schema.tools[0].name).toBe('double');
+		}
+	});
+
+	it('concurrent mixed operations complete without interfering', async () => {
+		await runtime.describeSecurely(SIMPLE_AGENT_CODE); // warm up
+
+		const [schema, toolResult, zodResult] = await Promise.all([
+			runtime.describeSecurely(SIMPLE_AGENT_CODE),
+			runtime.executeInModule(SIMPLE_AGENT_CODE, 'tool', 'double', { input: { value: 7 } }),
+			runtime.evaluateZodSource('z.object({ x: z.number() })'),
+		]);
+
+		expect(schema.tools[0].name).toBe('double');
+		expect(toolResult).toEqual({ result: 14 });
+		expect(zodResult.type).toBe('object');
+	});
+
+	it('executeToMessageSync throws when pool is not initialized', () => {
+		expect(() => runtime.executeToMessageSync(SIMPLE_AGENT_CODE, 'double', {})).toThrow(
+			/warm up the pool/,
+		);
+	});
+
+	it('executeToMessageSync throws PoolExhaustedError when no slot is available', async () => {
+		await runtime.describeSecurely(SIMPLE_AGENT_CODE); // initialize pool
+
+		// Patch the prototype to make tryAcquireSync return null (empty pool).
+		// eslint-disable-next-line @typescript-eslint/unbound-method
+		const original = AgentIsolatePool.prototype.tryAcquireSync;
+		AgentIsolatePool.prototype.tryAcquireSync = () => null;
+
+		try {
+			expect(() => runtime.executeToMessageSync(SIMPLE_AGENT_CODE, 'double', {})).toThrow(
+				PoolExhaustedError,
+			);
+		} finally {
+			AgentIsolatePool.prototype.tryAcquireSync = original;
+		}
+	});
+
+	it('libraryBundle is not re-bundled after an OOM (cached string is reused)', async () => {
+		await runtime.describeSecurely(SIMPLE_AGENT_CODE);
+
+		// Capture the cached bundle reference.
+		const bundleBefore = (runtime as unknown as { libraryBundle: string }).libraryBundle;
+		expect(bundleBefore).toBeTruthy();
+
+		// Simulate OOM by disposing a slot's isolate and releasing it.
+		const pool = (runtime as unknown as { pool: AgentIsolatePool }).pool;
+		expect(pool).not.toBeNull();
+		const slot = pool?.tryAcquireSync();
+		expect(slot).not.toBeNull();
+		slot?.isolate.dispose(); // mark as unhealthy
+		if (slot) pool?.release(slot); // pool discards it and starts replenishment
+
+		await new Promise((r) => setTimeout(r, 100)); // wait for replenishment
+
+		// Run again — should succeed without rebuilding the bundle.
+		await runtime.describeSecurely(SIMPLE_AGENT_CODE);
+
+		const bundleAfter = (runtime as unknown as { libraryBundle: string }).libraryBundle;
+		// Same reference — the bundle was NOT rebuilt.
+		expect(bundleAfter).toBe(bundleBefore);
+	});
+
+	it('dispose() clears the pool — pool reference is null afterwards', async () => {
+		await runtime.describeSecurely(SIMPLE_AGENT_CODE);
+		runtime.dispose();
+
+		expect((runtime as unknown as { pool: AgentIsolatePool | null }).pool).toBeNull();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// AgentSecureRuntime — MCP externals regression
+// ---------------------------------------------------------------------------
+
 describe('AgentSecureRuntime — does not throw "Not supported"', () => {
 	let rt: AgentSecureRuntime;
 
 	beforeAll(() => {
-		// Fresh instance so libraryBundle is rebuilt from scratch, not shared with
-		// the suite above (which may have already cached a good bundle).
-		rt = new AgentSecureRuntime();
+		rt = new AgentSecureRuntime(logger);
 	});
 
 	afterAll(() => {
@@ -142,8 +516,6 @@ describe('AgentSecureRuntime — does not throw "Not supported"', () => {
 	it('describeSecurely succeeds — fails with "Not supported" if @modelcontextprotocol/* is removed from esbuild externals', async () => {
 		const schema = await rt.describeSecurely(SIMPLE_AGENT_CODE);
 
-		// Basic shape check — the actual regression manifests as a thrown error,
-		// not a wrong schema value, so any successful return proves the fix works.
 		expect(schema.model.name).toBe('claude-sonnet-4-5');
 		expect(schema.tools).toHaveLength(1);
 		expect(schema.tools[0].name).toBe('double');
