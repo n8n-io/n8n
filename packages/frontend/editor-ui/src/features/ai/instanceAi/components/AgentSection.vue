@@ -41,29 +41,30 @@ watch(
 	<!-- eslint-disable vue/no-multiple-template-root -->
 	<!-- Collapsible timeline -->
 	<CollapsibleRoot v-slot="{ open: isOpen }" v-model:open="isExpanded">
-		<CollapsibleTrigger as-child>
-			<TimelineStepButton size="medium">
-				<template #icon="{ isHovered }">
-					<template v-if="!isHovered && isActive">
-						<N8nIcon icon="spinner" color="primary" size="small" transform-origin="center" spin />
+		<div :class="$style.triggerWrapper">
+			<CollapsibleTrigger as-child>
+				<TimelineStepButton size="medium">
+					<template #icon="{ isHovered }">
+						<template v-if="!isHovered && isActive">
+							<N8nIcon icon="spinner" color="primary" size="small" transform-origin="center" spin />
+						</template>
+						<template v-else>
+							<N8nIcon v-if="!isOpen" icon="chevron-right" size="small" />
+							<N8nIcon v-else icon="chevron-down" size="small" />
+						</template>
 					</template>
-					<template v-else>
-						<N8nIcon v-if="!isOpen" icon="chevron-right" size="small" />
-						<N8nIcon v-else icon="chevron-down" size="small" />
-					</template>
-				</template>
-				<span :class="{ [$style.shimmer]: isActive }">{{ sectionTitle }}</span>
-
-				<N8nIconButton
-					v-if="isActive"
-					:class="$style.stopButton"
-					icon="square"
-					size="small"
-					variant="destructive"
-					@click.stop="handleStop"
-				/>
-			</TimelineStepButton>
-		</CollapsibleTrigger>
+					<span :class="{ [$style.shimmer]: isActive }">{{ sectionTitle }}</span>
+				</TimelineStepButton>
+			</CollapsibleTrigger>
+			<N8nIconButton
+				v-if="isActive"
+				:class="$style.stopButton"
+				icon="square"
+				size="small"
+				variant="destructive"
+				@click.stop="handleStop"
+			/>
+		</div>
 		<CollapsibleContent>
 			<SubagentStepTimeline :agent-node="props.agentNode" />
 		</CollapsibleContent>
@@ -75,6 +76,12 @@ watch(
 </template>
 
 <style lang="scss" module>
+.triggerWrapper {
+	position: relative;
+	display: flex;
+	align-items: center;
+}
+
 .stopButton {
 	position: absolute;
 	right: 0;

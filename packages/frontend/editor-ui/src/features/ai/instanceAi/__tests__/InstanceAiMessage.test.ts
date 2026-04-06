@@ -91,7 +91,7 @@ describe('InstanceAiMessage', () => {
 	});
 
 	it('should NOT show error callout when agentTree error text is missing', () => {
-		const { queryByText } = renderComponent({
+		const { queryByRole } = renderComponent({
 			props: {
 				message: makeMessage({
 					agentTree: makeAgentTree({
@@ -103,7 +103,7 @@ describe('InstanceAiMessage', () => {
 		});
 
 		// The callout has v-if="runError" which is null when error text is missing
-		expect(queryByText('instanceAi.error.title')).not.toBeInTheDocument();
+		expect(queryByRole('alert')).not.toBeInTheDocument();
 	});
 
 	it('should prefix error title with provider name when errorDetails.provider is present', () => {

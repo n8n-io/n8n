@@ -191,9 +191,9 @@ defineExpose({
 <style lang="scss" module>
 .inputWrapper {
 	width: 100%;
-	border-radius: 16px;
+	border-radius: var(--radius--xl);
 	padding: var(--spacing--sm);
-	box-shadow: 0 10px 24px 0 #00000010;
+	box-shadow: 0 10px 24px 0 color-mix(in srgb, var(--color--foreground--shade-2) 6%, transparent);
 	background-color: var(--color--background--light-2);
 	border: 1px solid light-dark(var(--color--black-alpha-200), var(--color--white-alpha-100));
 	display: flex;
@@ -218,7 +218,7 @@ defineExpose({
 	}
 
 	:global(.n8n-input__wrapper) {
-		--input--radius: 16px;
+		--input--radius: var(--radius--xl);
 		box-shadow: none !important;
 		outline: none !important;
 		background-color: transparent !important;

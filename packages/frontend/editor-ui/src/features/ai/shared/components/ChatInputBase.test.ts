@@ -178,9 +178,8 @@ describe('ChatInputBase', () => {
 		await rerender({ ...makeProps({ showVoice: true, modelValue: '' }) });
 
 		// The emitted modelValue should NOT start with a space
+		expect(emittedValues.length).toBeGreaterThan(0);
 		const lastValue = emittedValues[emittedValues.length - 1];
-		if (lastValue !== undefined) {
-			expect(lastValue).not.toMatch(/^\s/);
-		}
+		expect(lastValue).not.toMatch(/^\s/);
 	});
 });
