@@ -198,16 +198,4 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 }
-
-// .textContent {
-// 	font-size: var(--font-size--md);
-// 	line-height: var(--line-height--xl);
-// 	color: var(--color--text);
-// 	// margin-bottom: var(--spacing--xs);
-// }
-
-// .compactText {
-// 	font-size: var(--font-size--2xs);
-// 	color: var(--color--text--tint-1);
-// }
 </style>
