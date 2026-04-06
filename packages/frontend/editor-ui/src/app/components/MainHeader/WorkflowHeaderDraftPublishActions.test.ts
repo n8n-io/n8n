@@ -592,11 +592,11 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				versionId: 'version-1',
 				updatedAt: Date.now(),
 			};
-			workflowsStore.versionData = {
+			documentStore.setVersionData({
 				versionId: 'version-1',
 				name: 'Test Version',
 				description: 'Test description',
-			};
+			});
 			workflowHistoryStore.updateWorkflowHistoryVersion = vi.fn().mockResolvedValue(undefined);
 		});
 

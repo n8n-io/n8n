@@ -594,7 +594,7 @@ const saveSettings = async () => {
 	delete data.settings.maxExecutionTimeout;
 
 	isLoading.value = true;
-	data.versionId = workflowsStore.workflowVersionId;
+	data.versionId = workflowDocumentStore?.value?.versionId ?? '';
 	data.expectedChecksum = workflowDocumentStore?.value?.checksum;
 
 	try {
