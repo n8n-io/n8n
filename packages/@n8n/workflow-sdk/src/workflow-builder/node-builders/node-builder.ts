@@ -123,7 +123,7 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 		this.version = version;
 		this.config = { ...config };
 		this.id = id ?? uuid();
-		this.name = name ?? config.name ?? generateNodeName(type);
+		this.name = name ?? config?.name ?? generateNodeName(type);
 		this._connections = connections ?? [];
 	}
 
@@ -763,6 +763,12 @@ class SwitchCaseBuilderImpl<TOutput = unknown> implements SwitchCaseBuilder<TOut
 export function node<TNode extends NodeInput>(
 	input: TNode,
 ): NodeInstance<TNode['type'], `${TNode['version']}`, unknown> {
+	if (typeof input !== 'object' || input === null) {
+		throw new TypeError(
+			`node() requires a configuration object { type, version, config }, but received ${typeof input}. ` +
+				`Example: node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { parameters: {} } })`,
+		);
+	}
 	const versionStr = String(input.version) as `${TNode['version']}`;
 	// Copy top-level output into config if present
 	const config: NodeConfig = input.output
@@ -897,6 +903,12 @@ export function switchCase<TOutput = unknown>(
 export function trigger<TTrigger extends TriggerInput>(
 	input: TTrigger,
 ): TriggerInstance<TTrigger['type'], `${TTrigger['version']}`, unknown> {
+	if (typeof input !== 'object' || input === null) {
+		throw new TypeError(
+			`trigger() requires a configuration object { type, version, config }, but received ${typeof input}. ` +
+				`Example: trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: { parameters: {} } })`,
+		);
+	}
 	const versionStr = String(input.version) as `${TTrigger['version']}`;
 	// Copy top-level output into config if present
 	const config: NodeConfig = input.output
