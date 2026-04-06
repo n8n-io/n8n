@@ -106,11 +106,7 @@ function handleRequestChanges() {
 		<!-- Task accordion -->
 		<div :class="$style.tasks">
 			<div v-for="(task, idx) in plannedTasks" :key="task.id" :class="$style.taskItem">
-				<button
-					:class="[$style.taskRow, expandedIds.has(task.id) && $style.taskRowExpanded]"
-					type="button"
-					@click="toggle(task.id)"
-				>
+				<button :class="$style.taskRow" type="button" @click="toggle(task.id)">
 					<span :class="$style.taskNumber">{{ idx + 1 }}</span>
 					<N8nIcon :icon="getKind(task.kind).icon" size="small" :class="$style.taskKindIcon" />
 					<span :class="$style.taskTitle">{{ task.title }}</span>
@@ -172,7 +168,6 @@ function handleRequestChanges() {
 	border-radius: var(--radius--lg);
 	margin: var(--spacing--2xs) 0;
 	overflow: hidden;
-	// background: var(--color--background);
 }
 
 .header {
@@ -180,7 +175,6 @@ function handleRequestChanges() {
 	align-items: center;
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--xs) var(--spacing--sm);
-	// background: var(--color--foreground--tint-2);
 	border-bottom: var(--border);
 }
 
@@ -233,10 +227,6 @@ function handleRequestChanges() {
 	}
 }
 
-.taskRowExpanded {
-	// background: var(--color--foreground--tint-2);
-}
-
 .taskNumber {
 	display: inline-flex;
 	align-items: center;
@@ -285,7 +275,6 @@ function handleRequestChanges() {
 .taskDetail {
 	padding: 0 var(--spacing--sm) var(--spacing--xs);
 	padding-left: calc(var(--spacing--sm) + 20px + var(--spacing--2xs));
-	// background: var(--color--foreground--tint-2);
 	animation: detail-slide-in 0.15s ease;
 }
 

@@ -65,7 +65,7 @@ watch(
 				@click.stop="handleStop"
 			/>
 		</div>
-		<CollapsibleContent>
+		<CollapsibleContent :class="$style.content">
 			<SubagentStepTimeline :agent-node="props.agentNode" />
 		</CollapsibleContent>
 	</CollapsibleRoot>
@@ -86,6 +86,12 @@ watch(
 	position: absolute;
 	right: 0;
 	top: 0;
+}
+
+.content {
+	padding-left: var(--spacing--2xs);
+	border-left: var(--border);
+	margin-left: var(--spacing--xs);
 }
 
 // Shimmer animation for active section headers
