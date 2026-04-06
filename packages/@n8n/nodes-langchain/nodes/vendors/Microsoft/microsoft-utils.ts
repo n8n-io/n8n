@@ -317,10 +317,15 @@ export const configureActivityCallback = (
 			await invokeAgentScope.withActiveSpanAsync(async () => {
 				invokeAgentScope.recordInputMessages([inputText || 'Unknown text']);
 
+				let addMemberMessage = false;
+				if (inputText.trimStart().startsWith('<addmember>')) {
+					addMemberMessage = true;
+				}
+
 				let mcpClient = undefined;
 				let microsoftMcpToolkits: StructuredToolkit[] | undefined = undefined;
 				let mcpLogs: McpToolCallLog[] | undefined = undefined;
-				if (mcpTokenRef.token) {
+				if (!addMemberMessage && mcpTokenRef.token) {
 					try {
 						const useMcpTools = nodeContext.getNodeParameter('useMcpTools', false) as boolean;
 
@@ -352,15 +357,20 @@ export const configureActivityCallback = (
 				}
 
 				try {
-					const response = await invokeAgent(
-						nodeContext,
-						inputText,
-						systemPrompt,
-						{
-							configurable: { thread_id: turnContext.activity.conversation!.id },
-						},
-						microsoftMcpToolkits,
-					);
+					let response = '';
+					if (addMemberMessage) {
+						response = nodeContext.getNodeParameter('options.welcomeMessage', '') as string;
+					} else {
+						response = await invokeAgent(
+							nodeContext,
+							inputText,
+							systemPrompt,
+							{
+								configurable: { thread_id: turnContext.activity.conversation!.id },
+							},
+							microsoftMcpToolkits,
+						);
+					}
 
 					invokeAgentScope.recordOutputMessages([`n8n Agent Response: ${response}`]);
 
@@ -452,15 +462,6 @@ export function configureAdapterProcessCallback(
 			};
 
 			turnContext.sendActivity = sendActivityWrapper;
-
-			const welcomeMessage = nodeContext.getNodeParameter(
-				'options.welcomeMessage',
-				"Hello! I'm here to help you!",
-			) as string;
-
-			agent.onConversationUpdate('membersAdded', async (context) => {
-				await context.sendActivity(welcomeMessage);
-			});
 
 			const onActivity = configureActivityCallback(
 				nodeContext,
