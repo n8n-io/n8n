@@ -51,13 +51,13 @@ const isHovered = useElementHover(triggerRef);
 
 <style lang="scss" module>
 .reasoningTrigger {
-	color: var(--text-color--subtler);
+	color: var(--color--text--tint-2);
 }
 
 .reasoningContent {
 	padding: var(--spacing--4xs) var(--spacing--xs);
 	border-left: 2px solid var(--color--foreground);
 	margin-left: var(--spacing--4xs);
-	color: var(--text-color--subtler);
+	color: var(--color--text--tint-2);
 }
 </style>

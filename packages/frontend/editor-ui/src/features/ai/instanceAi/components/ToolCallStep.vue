@@ -1,10 +1,10 @@
 <script lang="ts" setup>
 import type { InstanceAiToolCallState } from '@n8n/api-types';
-import { N8nButton, N8nCallout, N8nIcon } from '@n8n/design-system';
-import { useElementHover } from '@vueuse/core';
+import { N8nCallout, N8nIcon } from '@n8n/design-system';
 import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
-import { useTemplateRef } from 'vue';
 import { getToolIcon, useToolLabel } from '../toolLabels';
+import DataSection from './DataSection.vue';
+import TimelineStepButton from './TimelineStepButton.vue';
 import ToolResultJson from './ToolResultJson.vue';
 import ToolResultRenderer from './ToolResultRenderer.vue';
 
@@ -20,10 +20,7 @@ defineSlots<{
 	default?: () => unknown;
 }>();
 
-const { getToolLabel, getToggleLabel, getHideLabel } = useToolLabel();
-
-const triggerRef = useTemplateRef<HTMLElement>('triggerRef');
-const isHovered = useElementHover(triggerRef);
+const { getToolLabel } = useToolLabel();
 
 function getDisplayLabel(tc: InstanceAiToolCallState): string {
 	const label = getToolLabel(tc.toolName) || tc.toolName;
@@ -44,72 +41,36 @@ function getDisplayLabel(tc: InstanceAiToolCallState): string {
 <template>
 	<CollapsibleRoot v-slot="{ open: isOpen }">
 		<CollapsibleTrigger as-child>
-			<N8nButton ref="triggerRef" variant="ghost" size="small" :class="$style.block">
-				<template #icon>
+			<TimelineStepButton>
+				<template #icon="{ isHovered }">
 					<template v-if="isHovered">
 						<N8nIcon v-if="!isOpen" icon="plus" size="small" />
 						<N8nIcon v-else icon="minus" size="small" />
 					</template>
 					<template v-else>
-						<template v-if="props.toolCall.isLoading">
-							<N8nIcon icon="spinner" color="primary" size="small" spin />
-						</template>
+						<N8nIcon
+							v-if="props.toolCall.isLoading"
+							icon="spinner"
+							color="primary"
+							size="small"
+							spin
+						/>
 						<N8nIcon v-else :icon="getToolIcon(props.toolCall.toolName)" size="small" />
 					</template>
 				</template>
-				<span :class="$style.ellipsis">{{ props.label ?? getDisplayLabel(props.toolCall) }}</span>
-			</N8nButton>
+				{{ props.label ?? getDisplayLabel(props.toolCall) }}
+			</TimelineStepButton>
 		</CollapsibleTrigger>
 		<CollapsibleContent>
-			<div v-if="props.toolCall.args" :class="$style.dataSection">
+			<DataSection v-if="props.toolCall.args">
 				<ToolResultJson :value="props.toolCall.args" />
-			</div>
-			<div v-if="props.toolCall.result !== undefined" :class="$style.dataSection">
+			</DataSection>
+			<DataSection v-if="props.toolCall.result !== undefined">
 				<ToolResultRenderer :result="props.toolCall.result" :tool-name="props.toolCall.toolName" />
-			</div>
+			</DataSection>
 			<N8nCallout v-if="props.toolCall.error !== undefined" theme="danger">
 				{{ props.toolCall.error }}
 			</N8nCallout>
 		</CollapsibleContent>
 	</CollapsibleRoot>
 </template>
-
-<style lang="scss" module>
-.block {
-	max-width: 100%;
-	justify-content: flex-start;
-	color: var(--text-color--subtler);
-	:global(.n8n-icon) {
-		flex-shrink: 0;
-	}
-	> *:first-child {
-		max-width: 100%;
-		overflow: hidden;
-	}
-}
-
-.ellipsis {
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-.dataSection {
-	font-size: var(--font-size--2xs);
-	color: var(--text-color--subtler);
-	background: var(--color--foreground--tint-2);
-	border-radius: var(--radius);
-	padding: var(--spacing--2xs);
-	margin-top: var(--spacing--2xs);
-
-	:global(pre) {
-		background: transparent;
-		margin: 0;
-		padding: 0;
-	}
-
-	& + & {
-		margin-top: var(--spacing--4xs);
-	}
-}
-</style>

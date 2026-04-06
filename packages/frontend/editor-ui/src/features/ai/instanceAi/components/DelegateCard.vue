@@ -1,10 +1,10 @@
 <script lang="ts" setup>
-import { N8nBadge, N8nButton, N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nBadge, N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useElementHover } from '@vueuse/core';
 import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
-import { computed, useTemplateRef } from 'vue';
+import { computed } from 'vue';
 import { useToolLabel } from '../toolLabels';
+import TimelineStepButton from './TimelineStepButton.vue';
 
 const props = defineProps<{
 	args: Record<string, unknown>;
@@ -28,27 +28,24 @@ const tools = computed((): string[] => {
 const briefing = computed(() => {
 	return typeof props.args.briefing === 'string' ? props.args.briefing : '';
 });
-
-const triggerRef = useTemplateRef<HTMLElement>('triggerRef');
-const isHovered = useElementHover(triggerRef);
 </script>
 
 <template>
 	<CollapsibleRoot v-slot="{ open: isOpen }">
 		<CollapsibleTrigger as-child>
-			<N8nButton ref="triggerRef" variant="ghost" :class="$style.trigger">
-				<template #icon>
+			<TimelineStepButton size="medium">
+				<template #icon="{ isHovered }">
 					<template v-if="isHovered">
 						<N8nIcon :icon="isOpen ? 'minus' : 'plus'" size="small" />
 					</template>
 					<template v-else>
 						<N8nIcon v-if="props.isLoading" icon="spinner" color="primary" spin size="small" />
-						<N8nIcon v-else icon="check" color="success" :class="$style.successIcon" size="small" />
+						<N8nIcon v-else icon="check" color="success" size="small" />
 					</template>
 				</template>
 				{{ i18n.baseText('instanceAi.delegateCard.delegatingTo') }}:
 				<N8nText bold>{{ role }}</N8nText>
-			</N8nButton>
+			</TimelineStepButton>
 		</CollapsibleTrigger>
 		<CollapsibleContent>
 			<N8nCard>
@@ -66,8 +63,10 @@ const isHovered = useElementHover(triggerRef);
 </template>
 
 <style lang="scss" module>
-.trigger {
-	width: 100%;
-	justify-content: flex-start;
+.toolsRow {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--4xs);
+	margin-top: var(--spacing--4xs);
 }
 </style>

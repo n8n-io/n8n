@@ -1,20 +1,17 @@
 <script lang="ts" setup>
 import type { InstanceAiAgentNode } from '@n8n/api-types';
-import { N8nButton, N8nCallout, N8nIcon, N8nIconButton } from '@n8n/design-system';
-import { useElementHover } from '@vueuse/core';
+import { N8nCallout, N8nIcon, N8nIconButton } from '@n8n/design-system';
 import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
-import { computed, ref, useTemplateRef, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useInstanceAiStore } from '../instanceAi.store';
 import SubagentStepTimeline from './SubagentStepTimeline.vue';
+import TimelineStepButton from './TimelineStepButton.vue';
 
 const props = defineProps<{
 	agentNode: InstanceAiAgentNode;
 }>();
 
 const instanceAiStore = useInstanceAiStore();
-
-const triggerRef = useTemplateRef<HTMLElement>('triggerRef');
-const isHovered = useElementHover(triggerRef);
 
 const isExpanded = ref(false);
 
@@ -45,8 +42,8 @@ watch(
 	<!-- Collapsible timeline -->
 	<CollapsibleRoot v-slot="{ open: isOpen }" v-model:open="isExpanded">
 		<CollapsibleTrigger as-child>
-			<N8nButton ref="triggerRef" variant="ghost" :class="$style.block">
-				<template #icon>
+			<TimelineStepButton size="medium">
+				<template #icon="{ isHovered }">
 					<template v-if="!isHovered && isActive">
 						<N8nIcon icon="spinner" color="primary" size="small" transform-origin="center" spin />
 					</template>
@@ -55,9 +52,7 @@ watch(
 						<N8nIcon v-else icon="chevron-down" size="small" />
 					</template>
 				</template>
-				<span :class="{ [$style.shimmer]: isActive, [$style.ellipsis]: true }">{{
-					sectionTitle
-				}}</span>
+				<span :class="{ [$style.shimmer]: isActive }">{{ sectionTitle }}</span>
 
 				<N8nIconButton
 					v-if="isActive"
@@ -67,7 +62,7 @@ watch(
 					variant="destructive"
 					@click.stop="handleStop"
 				/>
-			</N8nButton>
+			</TimelineStepButton>
 		</CollapsibleTrigger>
 		<CollapsibleContent>
 			<SubagentStepTimeline :agent-node="props.agentNode" />
@@ -80,28 +75,10 @@ watch(
 </template>
 
 <style lang="scss" module>
-.block {
-	width: 100%;
-	justify-content: flex-start;
-	color: var(--text-color--subtler);
-	:global(.n8n-icon) {
-		flex-shrink: 0;
-	}
-	> *:first-child {
-		max-width: 100%;
-		overflow: hidden;
-	}
-}
-
-.ellipsis {
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
 .stopButton {
 	position: absolute;
 	right: 0;
+	top: 0;
 }
 
 // Shimmer animation for active section headers

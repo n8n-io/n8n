@@ -6,6 +6,7 @@ import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui
 import { computed } from 'vue';
 import { getToolIcon, useToolLabel } from '../toolLabels';
 import ButtonLike from './ButtonLike.vue';
+import DataSection from './DataSection.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 import ToolCallStep from './ToolCallStep.vue';
 
@@ -125,9 +126,9 @@ const steps = computed((): TimelineStep[] => {
 						</N8nButton>
 					</CollapsibleTrigger>
 					<CollapsibleContent :class="$style.toggleContent">
-						<div :class="$style.dataSection">
+						<DataSection>
 							<InstanceAiMarkdown :content="step.textContent!" />
-						</div>
+						</DataSection>
 					</CollapsibleContent>
 				</CollapsibleRoot>
 				<ButtonLike v-else>
@@ -154,24 +155,5 @@ const steps = computed((): TimelineStep[] => {
 .toggleContent {
 	max-height: 300px;
 	overflow-y: auto;
-}
-
-.dataSection {
-	font-size: var(--font-size--2xs);
-	color: var(--text-color--subtler);
-	background: var(--color--foreground--tint-2);
-	border-radius: var(--radius);
-	padding: var(--spacing--2xs);
-	margin-top: var(--spacing--2xs);
-
-	:global(pre) {
-		background: transparent;
-		margin: 0;
-		padding: 0;
-	}
-
-	& + & {
-		margin-top: var(--spacing--4xs);
-	}
 }
 </style>

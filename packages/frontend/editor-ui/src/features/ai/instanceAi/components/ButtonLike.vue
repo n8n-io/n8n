@@ -10,9 +10,9 @@
 	padding: 0 var(--spacing--xs);
 	border-radius: var(--radius--3xs);
 	font-size: var(--font-size--xs);
-	color: var(--text-color--subtler);
+	color: var(--color--text--tint-2);
 	display: flex;
-	align-items: flex-start;
+	align-items: center;
 	gap: var(--spacing--3xs);
 
 	:global(.n8n-icon) {

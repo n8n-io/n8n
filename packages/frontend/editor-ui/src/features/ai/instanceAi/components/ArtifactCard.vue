@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { N8nIcon, type IconName } from '@n8n/design-system';
+import { N8nCard, N8nIcon, type IconName } from '@n8n/design-system';
 import { computed, inject } from 'vue';
 
 const props = defineProps<{
@@ -46,32 +46,20 @@ function handleClick(e: MouseEvent) {
 </script>
 
 <template>
-	<div :class="$style.card" @click="handleClick">
-		<N8nIcon :icon="icon" size="large" :class="$style.icon" />
-		<div :class="$style.content">
+	<N8nCard hoverable :class="$style.card" @click="handleClick">
+		<template #prepend>
+			<N8nIcon :icon="icon" size="large" :class="$style.icon" />
+		</template>
+		<template #header>
 			<span :class="$style.name">{{ props.name }}</span>
-			<span v-if="props.metadata" :class="$style.metadata">{{ props.metadata }}</span>
-		</div>
-	</div>
+		</template>
+		<span v-if="props.metadata" :class="$style.metadata">{{ props.metadata }}</span>
+	</N8nCard>
 </template>
 
 <style lang="scss" module>
 .card {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--sm);
-	padding: var(--spacing--sm);
-	border: var(--border);
-	border-radius: var(--radius--lg);
-	background: var(--color--background--light-2);
 	cursor: pointer;
-	// margin: var(--spacing--xs) 0;
-	transition: box-shadow 0.3s ease;
-
-	&:hover {
-		box-shadow: 0 2px 8px rgba(68, 28, 23, 0.1);
-		clip-path: inset(0 -8px -8px -8px);
-	}
 }
 
 .icon {
@@ -79,17 +67,10 @@ function handleClick(e: MouseEvent) {
 	flex-shrink: 0;
 }
 
-.content {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-	min-width: 0;
-}
-
 .name {
 	font-size: var(--font-size--md);
 	font-weight: var(--font-weight--regular);
-	color: var(--text-color);
+	color: var(--color--text);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -98,7 +79,7 @@ function handleClick(e: MouseEvent) {
 .metadata {
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--lg);
-	color: var(--text-color--subtler);
+	color: var(--color--text--tint-2);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;

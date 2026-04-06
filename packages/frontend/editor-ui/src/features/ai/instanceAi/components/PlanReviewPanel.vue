@@ -5,7 +5,7 @@
  * Single-card plan approval UI. Shows planned tasks as an accordion with
  * expandable specs, dependency info, and approve/request-changes controls.
  */
-import { N8nButton, N8nIcon, type IconName } from '@n8n/design-system';
+import { N8nBadge, N8nButton, N8nIcon, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 
@@ -91,15 +91,16 @@ function handleRequestChanges() {
 				{{ i18n.baseText('instanceAi.planReview.title') }}
 			</span>
 			<span :class="$style.taskCount">{{ plannedTasks.length }} tasks</span>
-			<span v-if="props.readOnly" :class="$style.badgeApproved">
+			<N8nBadge
+				v-if="props.readOnly || resolvedAction === 'approved'"
+				theme="success"
+				:class="$style.badgeRight"
+			>
 				{{ i18n.baseText('instanceAi.planReview.approved') }}
-			</span>
-			<span v-else-if="!isResolved" :class="$style.badge">
+			</N8nBadge>
+			<N8nBadge v-else-if="!isResolved" theme="warning" :class="$style.badgeRight">
 				{{ i18n.baseText('instanceAi.planReview.awaitingApproval') }}
-			</span>
-			<span v-else-if="resolvedAction === 'approved'" :class="$style.badgeApproved">
-				{{ i18n.baseText('instanceAi.planReview.approved') }}
-			</span>
+			</N8nBadge>
 		</div>
 
 		<!-- Task accordion -->
@@ -199,26 +200,8 @@ function handleRequestChanges() {
 	color: var(--color--text--tint-1);
 }
 
-.badge {
+.badgeRight {
 	margin-left: auto;
-	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--warning);
-	padding: var(--spacing--5xs) var(--spacing--2xs);
-	background: var(--color--warning--tint-2);
-	border-radius: var(--radius);
-	white-space: nowrap;
-}
-
-.badgeApproved {
-	margin-left: auto;
-	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--success);
-	padding: var(--spacing--5xs) var(--spacing--2xs);
-	background: var(--color--success--tint-4);
-	border-radius: var(--radius);
-	white-space: nowrap;
 }
 
 .tasks {
