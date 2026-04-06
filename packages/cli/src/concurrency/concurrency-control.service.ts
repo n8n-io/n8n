@@ -203,6 +203,7 @@ export class ConcurrencyControlService {
 		if (
 			mode === 'error' ||
 			mode === 'integrated' ||
+			mode === 'ephemeral' ||
 			mode === 'cli' ||
 			mode === 'internal' ||
 			mode === 'manual' ||

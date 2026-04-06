@@ -374,6 +374,7 @@ export class AgentsService {
 	}
 
 	/**
+>>>>>>> 647b806558 (feat: Add ToolFromNode implementation)
 	 * Resume a suspended tool call and yield the resulting stream chunks.
 	 * Used by chat integration handlers to continue an agent run after
 	 * a human-in-the-loop action (button click, modal submission).

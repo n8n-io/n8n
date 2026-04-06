@@ -48,6 +48,9 @@ const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
 
 	// n8n Chat hub messages
 	chat: true,
+
+	// Agent tool standalone node executions
+	ephemeral: true,
 };
 
 const MIN_RUNTIME = 0;

@@ -189,6 +189,7 @@ export namespace ExecutionSummaries {
 		id: string;
 		finished: boolean;
 		mode: WorkflowExecuteMode;
+		excludeModes: WorkflowExecuteMode[];
 		retryOf: string;
 		retrySuccessId: string;
 		status: ExecutionStatus[];
