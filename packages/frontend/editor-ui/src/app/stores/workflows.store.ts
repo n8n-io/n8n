@@ -795,10 +795,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowsListStore.setWorkflowInactiveInCache(targetWorkflowId);
 	}
 
-	function setDescription(description: string | undefined | null) {
-		workflow.value.description = description;
-	}
-
 	async function getDuplicateCurrentWorkflowName(currentWorkflowName: string): Promise<string> {
 		if (
 			currentWorkflowName &&
@@ -1526,7 +1522,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		// Update local store state
 		if (isCurrentWorkflow) {
-			setDescription(updated.description ?? '');
+			const workflowDocStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
+			workflowDocStore.setDescription(updated.description ?? '');
 		}
 
 		return updated;
@@ -1799,7 +1796,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		unarchiveWorkflow,
 		setWorkflowActive,
 		setWorkflowInactive,
-		setDescription,
 		getDuplicateCurrentWorkflowName,
 		setWorkflowExecutionRunData,
 		setWorkflow,
