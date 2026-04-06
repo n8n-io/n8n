@@ -150,12 +150,13 @@ export class AgentSecureRuntime {
 			const { Guardrail } = require('${agentsSrcDir}sdk/guardrail');
 			const { Telemetry } = require('${agentsSrcDir}sdk/telemetry');
 			const { providerTools } = require('${agentsSrcDir}sdk/provider-tools');
+			const { McpClient } = require('${agentsSrcDir}sdk/mcp-client');
 			const { WorkflowTool } = require('${workflowToolPath}');
 			const zod = require('zod');
 			const zodToJsonSchema = require('${zodToJsonSchemaPath}');
 
 			globalThis.__modules = {
-				'@n8n/agents': { Agent, Tool, Memory, Eval, Guardrail, Telemetry, providerTools },
+				'@n8n/agents': { Agent, Tool, Memory, Eval, Guardrail, Telemetry, providerTools, McpClient },
 				'@n8n/agents-utils': { WorkflowTool },
 				'zod': zod,
 				'zod-to-json-schema': zodToJsonSchema,
@@ -179,6 +180,7 @@ export class AgentSecureRuntime {
 				'pg',
 				'better-sqlite3',
 				'@libsql/client',
+				'ajv',
 				'child_process',
 				'fs',
 				'path',
@@ -196,6 +198,9 @@ export class AgentSecureRuntime {
 				'querystring',
 				'cross-spawn',
 				'@modelcontextprotocol/*',
+				'@ai-sdk/*',
+				'@opentelemetry/*',
+				'langsmith/*',
 			],
 			define: {
 				// eslint-disable-next-line @typescript-eslint/naming-convention
@@ -208,6 +213,9 @@ export class AgentSecureRuntime {
 		}
 
 		this.libraryBundle = result.outputFiles[0].text;
+		const sizeKB = (this.libraryBundle.length / 1024).toFixed(1);
+		const sizeMB = (this.libraryBundle.length / (1024 * 1024)).toFixed(2);
+		this.logger.info(`[AgentSecureRuntime] Library bundle built: ${sizeKB} KB (${sizeMB} MB)`);
 		return this.libraryBundle;
 	}
 
