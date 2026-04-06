@@ -9,6 +9,7 @@ import type {
 } from '@/features/ai/assistant/assistant.types';
 import { makeRestApiRequest, streamRequest } from '@n8n/rest-api-client';
 import { getObjectSizeInKB } from '@/app/utils/objectUtils';
+import type { AiGatewayConfigDto, AiGatewayUsageResponse } from '@n8n/api-types';
 import type { IDataObject } from 'n8n-workflow';
 
 export function chatWithBuilder(
@@ -126,6 +127,25 @@ export async function getBuilderCredits(ctx: IRestApiContext): Promise<{
 	creditsClaimed: number;
 }> {
 	return await makeRestApiRequest(ctx, 'GET', '/ai/build/credits');
+}
+
+export async function getGatewayConfig(ctx: IRestApiContext): Promise<AiGatewayConfigDto> {
+	return await makeRestApiRequest(ctx, 'GET', '/ai/gateway/config');
+}
+
+export async function getGatewayCredits(ctx: IRestApiContext): Promise<{
+	creditsQuota: number;
+	creditsRemaining: number;
+}> {
+	return await makeRestApiRequest(ctx, 'GET', '/ai/gateway/credits');
+}
+
+export async function getGatewayUsage(
+	ctx: IRestApiContext,
+	offset = 0,
+	limit = 50,
+): Promise<AiGatewayUsageResponse> {
+	return await makeRestApiRequest(ctx, 'GET', `/ai/gateway/usage?offset=${offset}&limit=${limit}`);
 }
 
 export async function clearBuilderSession(

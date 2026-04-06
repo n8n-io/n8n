@@ -11,6 +11,7 @@ import { mock } from 'jest-mock-extended';
 import { AiController, type FlushableResponse } from '../ai.controller';
 
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiUsageService } from '@/services/ai-usage.service';
 import type { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import type { AiService } from '@/services/ai.service';
@@ -19,12 +20,14 @@ describe('AiController', () => {
 	const aiService = mock<AiService>();
 	const workflowBuilderService = mock<WorkflowBuilderService>();
 	const aiUsageService = mock<AiUsageService>();
+	const aiGatewayService = mock<AiGatewayService>();
 	const controller = new AiController(
 		aiService,
 		workflowBuilderService,
 		mock(),
 		mock(),
 		aiUsageService,
+		aiGatewayService,
 	);
 
 	const request = mock<AuthenticatedRequest>({
@@ -592,6 +595,24 @@ describe('AiController', () => {
 				payload.messageId,
 				undefined,
 			);
+		});
+	});
+
+	describe('getGatewayCredits', () => {
+		it('should return credits from aiGatewayService', async () => {
+			const credits = { creditsQuota: 10, creditsRemaining: 7 };
+			aiGatewayService.getCreditsRemaining.mockResolvedValue(credits);
+
+			const result = await controller.getGatewayCredits(request);
+
+			expect(aiGatewayService.getCreditsRemaining).toHaveBeenCalledWith(request.user.id);
+			expect(result).toEqual(credits);
+		});
+
+		it('should throw InternalServerError when aiGatewayService throws', async () => {
+			aiGatewayService.getCreditsRemaining.mockRejectedValue(new Error('Gateway unreachable'));
+
+			await expect(controller.getGatewayCredits(request)).rejects.toThrow(InternalServerError);
 		});
 	});
 });
