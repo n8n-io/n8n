@@ -225,8 +225,10 @@ async function handlePublish() {
 		// For now, just close the modal after successful activation
 		modalBus.emit('close');
 	} else {
-		// Display activation error if it fails
-		if (!errorHandled) {
+		if (errorHandled) {
+			// Error was handled elsewhere (webhook conflict modal or async push failure)
+			modalBus.emit('close');
+		} else {
 			await displayActivationError();
 		}
 	}
