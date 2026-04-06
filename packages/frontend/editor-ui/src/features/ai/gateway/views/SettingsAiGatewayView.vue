@@ -4,15 +4,19 @@ import { N8nHeading, N8nText, N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
 const aiGatewayStore = useAiGatewayStore();
+const uiStore = useUIStore();
 
 const isLoading = ref(false);
 const offset = ref(0);
 const PAGE_SIZE = 50;
 
+const creditsRemaining = computed(() => aiGatewayStore.creditsRemaining);
 const entries = computed(() => aiGatewayStore.usageEntries);
 const total = computed(() => aiGatewayStore.usageTotal);
 const hasMore = computed(() => offset.value + PAGE_SIZE < total.value);
@@ -58,7 +62,7 @@ async function loadMore(): Promise<void> {
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.n8nGateway.title'));
-	await load();
+	await Promise.all([aiGatewayStore.fetchCredits(), load()]);
 });
 </script>
 
@@ -71,13 +75,32 @@ onMounted(async () => {
 			</N8nText>
 		</div>
 
+		<div :class="$style.creditsCard">
+			<div :class="$style.creditsInfo">
+				<span :class="$style.creditsLabel">
+					{{ i18n.baseText('settings.n8nGateway.credits.title') }}:
+				</span>
+				<span v-if="creditsRemaining !== undefined" :class="$style.creditsNumber">
+					{{ creditsRemaining }}
+				</span>
+			</div>
+			<N8nButton
+				:label="i18n.baseText('settings.n8nGateway.credits.topUp')"
+				icon="hand-coins"
+				variant="success"
+				data-test-id="ai-gateway-topup-button"
+				@click="uiStore.openModal(AI_GATEWAY_TOP_UP_MODAL_KEY)"
+			/>
+		</div>
+
 		<div :class="$style.section">
 			<div :class="$style.sectionHeader">
 				<N8nHeading size="large">{{ i18n.baseText('settings.n8nGateway.usage.title') }}</N8nHeading>
 				<N8nButton
 					:label="i18n.baseText('settings.n8nGateway.usage.refresh')"
 					icon="refresh-cw"
-					type="secondary"
+					variant="ghost"
+					size="small"
 					:loading="isLoading"
 					@click="refresh"
 				/>
@@ -133,13 +156,43 @@ onMounted(async () => {
 .container {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xl);
+	gap: var(--spacing--2xl);
 }
 
 .header {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+}
+
+.creditsCard {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--sm);
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	padding: var(--spacing--md) var(--spacing--lg);
+	background-color: var(--color--background);
+}
+
+.creditsInfo {
+	flex: 1;
+	display: flex;
+	align-items: baseline;
+	gap: var(--spacing--xs);
+}
+
+.creditsLabel {
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--regular);
+	color: var(--color--text--tint-1);
+}
+
+.creditsNumber {
+	font-size: var(--font-size--2xl);
+	font-weight: var(--font-weight--bold);
+	color: var(--color--text--shade-1);
+	line-height: 1;
 }
 
 .section {

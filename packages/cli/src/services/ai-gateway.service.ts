@@ -168,12 +168,47 @@ export class AiGatewayService {
 			throw new UserError(`Failed to fetch AI Gateway credits: HTTP ${response.status}`);
 		}
 
-		const data = (await response.json()) as GatewayCreditsResponse;
-		if (typeof data.creditsQuota !== 'number' || typeof data.creditsRemaining !== 'number') {
-			throw new UserError('AI Gateway returned an invalid credits response.');
+		return this.parseCreditsResponse(await response.json());
+	}
+
+	async topUpCredits(
+		userId: string,
+		amount: number,
+		user: { email: string; firstName: string; lastName: string },
+	): Promise<GatewayCreditsResponse> {
+		const baseUrl = this.requireBaseUrl();
+
+		const jwt = await this.getOrFetchToken(userId);
+		if (!jwt) {
+			throw new UserError('Failed to obtain a valid AI Gateway token.');
 		}
 
-		return data;
+		const response = await fetch(`${baseUrl}/v1/gateway/topup`, {
+			method: 'POST',
+			headers: {
+				Authorization: `Bearer ${jwt}`,
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				amount,
+				userEmail: user.email,
+				userName: `${user.firstName} ${user.lastName}`.trim(),
+			}),
+		});
+
+		if (!response.ok) {
+			throw new UserError(`Failed to top up AI Gateway credits: HTTP ${response.status}`);
+		}
+
+		return this.parseCreditsResponse(await response.json());
+	}
+
+	private parseCreditsResponse(data: unknown): GatewayCreditsResponse {
+		const d = data as GatewayCreditsResponse;
+		if (typeof d.creditsQuota !== 'number' || typeof d.creditsRemaining !== 'number') {
+			throw new UserError('AI Gateway returned an invalid credits response.');
+		}
+		return d;
 	}
 
 	private requireBaseUrl(): string {

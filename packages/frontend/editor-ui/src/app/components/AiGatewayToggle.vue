@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { watch } from 'vue';
+import { ref, watch } from 'vue';
 import { N8nCallout, N8nSwitch2, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
 
 const props = defineProps<{
 	aiGatewayEnabled: boolean;
@@ -16,7 +18,10 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
+const uiStore = useUIStore();
 const { creditsRemaining, fetchCredits } = useAiGateway();
+
+const badgeHovered = ref(false);
 
 // Fetch when enabled (on mount if already enabled, or when toggled on)
 watch(
@@ -59,12 +64,22 @@ watch(
 		<N8nCallout v-if="props.aiGatewayEnabled" theme="success" iconless>
 			{{ i18n.baseText('aiGateway.toggle.description') }}
 			<template v-if="creditsRemaining !== undefined" #trailingContent>
-				<span :class="$style.tokensBadge">
-					{{
-						i18n.baseText('aiGateway.toggle.tokensRemaining', {
-							interpolate: { count: String(creditsRemaining) },
-						})
-					}}
+				<span
+					:class="$style.tokensBadge"
+					@mouseenter="badgeHovered = true"
+					@mouseleave="badgeHovered = false"
+					@click="uiStore.openModal(AI_GATEWAY_TOP_UP_MODAL_KEY)"
+				>
+					<span :class="[$style.badgeLabel, badgeHovered && $style.badgeLabelHidden]">
+						{{
+							i18n.baseText('aiGateway.toggle.tokensRemaining', {
+								interpolate: { count: String(creditsRemaining) },
+							})
+						}}
+					</span>
+					<span :class="[$style.badgeLabel, !badgeHovered && $style.badgeLabelHidden]">
+						{{ i18n.baseText('aiGateway.toggle.topUp') }}
+					</span>
 				</span>
 			</template>
 		</N8nCallout>
@@ -87,12 +102,34 @@ watch(
 
 .tokensBadge {
 	flex-shrink: 0;
+	display: grid;
 	padding: var(--spacing--4xs) var(--spacing--xs);
 	border: var(--border-width) var(--border-style) var(--callout--border-color--success);
 	border-radius: var(--radius);
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--success--shade-1);
+	font-weight: var(--font-weight--regular);
+	color: var(--color--text--tint-1);
 	white-space: nowrap;
+	cursor: pointer;
+	user-select: none;
+	transition:
+		background-color 0.15s,
+		color 0.15s;
+
+	&:hover {
+		background-color: var(--color--success--shade-1);
+		color: var(--color--neutral-white);
+	}
+}
+
+.badgeLabel {
+	grid-area: 1 / 1;
+	text-align: center;
+	transition: opacity 0.15s;
+}
+
+.badgeLabelHidden {
+	opacity: 0;
+	pointer-events: none;
 }
 </style>

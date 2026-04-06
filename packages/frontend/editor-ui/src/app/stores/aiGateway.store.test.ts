@@ -5,11 +5,13 @@ import { useAiGatewayStore } from './aiGateway.store';
 const mockGetGatewayConfig = vi.fn();
 const mockGetGatewayCredits = vi.fn();
 const mockGetGatewayUsage = vi.fn();
+const mockTopUpGatewayCredits = vi.fn();
 
 vi.mock('@/features/ai/assistant/assistant.api', () => ({
 	getGatewayConfig: (...args: unknown[]) => mockGetGatewayConfig(...args),
 	getGatewayCredits: (...args: unknown[]) => mockGetGatewayCredits(...args),
 	getGatewayUsage: (...args: unknown[]) => mockGetGatewayUsage(...args),
+	topUpGatewayCredits: (...args: unknown[]) => mockTopUpGatewayCredits(...args),
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -255,6 +257,52 @@ describe('aiGateway.store', () => {
 			const store = useAiGatewayStore();
 
 			expect(store.isCredentialTypeSupported('googlePalmApi')).toBe(false);
+		});
+	});
+
+	describe('topUpCredits()', () => {
+		it('should update creditsRemaining and creditsQuota on success', async () => {
+			mockTopUpGatewayCredits.mockResolvedValue({ creditsRemaining: 60, creditsQuota: 100 });
+			const store = useAiGatewayStore();
+
+			await store.topUpCredits(50);
+
+			expect(store.creditsRemaining).toBe(60);
+			expect(store.creditsQuota).toBe(100);
+			expect(store.fetchError).toBeNull();
+		});
+
+		it('should set fetchError and not update credits when API throws', async () => {
+			mockTopUpGatewayCredits.mockRejectedValue(new Error('Payment failed'));
+			const store = useAiGatewayStore();
+
+			await store.topUpCredits(50);
+
+			expect(store.fetchError).toBeInstanceOf(Error);
+			expect(store.fetchError?.message).toBe('Payment failed');
+			expect(store.creditsRemaining).toBeUndefined();
+		});
+
+		it('should clear fetchError on success after a previous failure', async () => {
+			mockTopUpGatewayCredits.mockRejectedValueOnce(new Error('fail'));
+			const store = useAiGatewayStore();
+			await store.topUpCredits(10);
+			expect(store.fetchError).not.toBeNull();
+
+			mockTopUpGatewayCredits.mockResolvedValue({ creditsRemaining: 80, creditsQuota: 100 });
+			await store.topUpCredits(20);
+
+			expect(store.fetchError).toBeNull();
+			expect(store.creditsRemaining).toBe(80);
+		});
+
+		it('should coerce non-Error rejections into Error objects', async () => {
+			mockTopUpGatewayCredits.mockRejectedValue('string error');
+			const store = useAiGatewayStore();
+
+			await store.topUpCredits(10);
+
+			expect(store.fetchError).toBeInstanceOf(Error);
 		});
 	});
 });

@@ -395,6 +395,105 @@ describe('AiGatewayService', () => {
 		});
 	});
 
+	describe('topUpCredits()', () => {
+		const USER = { email: 'test@example.com', firstName: 'Test', lastName: 'User' };
+
+		it('throws UserError when baseUrl is not configured', async () => {
+			const service = makeService({ baseUrl: null });
+			await expect(service.topUpCredits(USER_ID, 10, USER)).rejects.toThrow(UserError);
+		});
+
+		it('returns updated creditsQuota and creditsRemaining from gateway', async () => {
+			fetchMock
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
+				})
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue({ creditsQuota: 100, creditsRemaining: 60 }),
+				});
+			const service = makeService();
+
+			const result = await service.topUpCredits(USER_ID, 50, USER);
+
+			expect(result).toEqual({ creditsQuota: 100, creditsRemaining: 60 });
+		});
+
+		it('sends amount, userEmail and userName in the request body', async () => {
+			fetchMock
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
+				})
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue({ creditsQuota: 100, creditsRemaining: 60 }),
+				});
+			const service = makeService();
+
+			await service.topUpCredits(USER_ID, 50, USER);
+
+			expect(fetchMock).toHaveBeenNthCalledWith(2, `${BASE_URL}/v1/gateway/topup`, {
+				method: 'POST',
+				headers: {
+					Authorization: 'Bearer mock-jwt',
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({ amount: 50, userEmail: 'test@example.com', userName: 'Test User' }),
+			});
+		});
+
+		it('trims whitespace from userName when lastName is absent', async () => {
+			fetchMock
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
+				})
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue({ creditsQuota: 100, creditsRemaining: 60 }),
+				});
+			const service = makeService();
+
+			await service.topUpCredits(USER_ID, 10, {
+				email: 'a@b.com',
+				firstName: 'Solo',
+				lastName: '',
+			});
+
+			const body = JSON.parse(fetchMock.mock.calls[1][1].body as string);
+			expect(body.userName).toBe('Solo');
+		});
+
+		it('throws UserError when gateway returns non-ok status', async () => {
+			fetchMock
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
+				})
+				.mockResolvedValueOnce({ ok: false, status: 500 });
+			const service = makeService();
+
+			await expect(service.topUpCredits(USER_ID, 10, USER)).rejects.toThrow(UserError);
+		});
+
+		it('throws UserError when gateway returns invalid response shape', async () => {
+			fetchMock
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
+				})
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue({ creditsQuota: 'not-a-number' }),
+				});
+			const service = makeService();
+
+			await expect(service.topUpCredits(USER_ID, 10, USER)).rejects.toThrow(UserError);
+		});
+	});
+
 	describe('getUsage()', () => {
 		const MOCK_USAGE_RESPONSE = {
 			entries: [
