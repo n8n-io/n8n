@@ -21,6 +21,8 @@ jest.mock('@n8n/ai-utilities', () => {
 	};
 });
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { getProxyAgent: mockGetProxyAgent } = jest.mocked(require('@n8n/ai-utilities'));
 const MockedOpenAIEmbeddings = jest.mocked(OpenAIEmbeddings);
 const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
 
@@ -152,6 +154,86 @@ describe('EmbeddingsOpenAi', () => {
 						defaultHeaders,
 					}),
 				}),
+			);
+		});
+
+		it('should pass TLS options to getProxyAgent when TLS is configured in openAiApi credential', async () => {
+			const mockContext = setupMockContext();
+			const tlsCreds = {
+				ca: '-----BEGIN CERTIFICATE-----\nCA\n-----END CERTIFICATE-----',
+				cert: '-----BEGIN CERTIFICATE-----\nCERT\n-----END CERTIFICATE-----',
+				key: '-----BEGIN PRIVATE KEY-----\nKEY\n-----END PRIVATE KEY-----',
+				passphrase: 'secret',
+			};
+
+			mockContext.getCredentials = jest.fn().mockResolvedValue({
+				apiKey: 'test-api-key',
+				sslCertificatesEnabled: true,
+				...tlsCreds,
+			});
+
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model') return 'text-embedding-3-small';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await embeddingsOpenAi.supplyData.call(mockContext, 0);
+
+			expect(mockGetProxyAgent).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.any(Object),
+				expect.objectContaining({
+					ca: tlsCreds.ca,
+					cert: tlsCreds.cert,
+					key: tlsCreds.key,
+					passphrase: tlsCreds.passphrase,
+				}),
+			);
+		});
+
+		it('should use empty string apiKey when apiKey is empty and TLS is configured', async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getCredentials = jest.fn().mockResolvedValue({
+				apiKey: '',
+				sslCertificatesEnabled: true,
+				cert: '-----BEGIN CERTIFICATE-----\nCERT\n-----END CERTIFICATE-----',
+				key: '-----BEGIN PRIVATE KEY-----\nKEY\n-----END PRIVATE KEY-----',
+			});
+
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model') return 'text-embedding-3-small';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await embeddingsOpenAi.supplyData.call(mockContext, 0);
+
+			expect(MockedOpenAIEmbeddings).toHaveBeenCalledWith(expect.objectContaining({ apiKey: '' }));
+		});
+
+		it('should not pass TLS options to getProxyAgent when sslCertificatesEnabled is false', async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getCredentials = jest.fn().mockResolvedValue({
+				apiKey: 'test-api-key',
+				sslCertificatesEnabled: false,
+			});
+
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model') return 'text-embedding-3-small';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await embeddingsOpenAi.supplyData.call(mockContext, 0);
+
+			// getProxyAgent called without TLS options (third argument is undefined)
+			expect(mockGetProxyAgent).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.any(Object),
+				undefined,
 			);
 		});
 	});

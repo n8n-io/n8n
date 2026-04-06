@@ -69,6 +69,51 @@ export class OpenAiApi implements ICredentialType {
 			},
 			default: '',
 		},
+		{
+			displayName: 'Use SSL Client Certificate (mTLS)',
+			name: 'sslCertificatesEnabled',
+			type: 'boolean',
+			default: false,
+			description:
+				'Whether to authenticate using a client certificate. Required for OpenAI Enterprise mTLS endpoints and self-hosted proxies that require mutual TLS.',
+		},
+		{
+			displayName: 'CA Certificate',
+			name: 'ca',
+			type: 'string',
+			typeOptions: { password: true },
+			displayOptions: { show: { sslCertificatesEnabled: [true] } },
+			default: '',
+			description:
+				'Certificate Authority certificate in PEM format, used to verify the server certificate',
+		},
+		{
+			displayName: 'Client Certificate',
+			name: 'cert',
+			type: 'string',
+			typeOptions: { password: true },
+			displayOptions: { show: { sslCertificatesEnabled: [true] } },
+			default: '',
+			description: 'Client certificate in PEM format for mutual TLS authentication',
+		},
+		{
+			displayName: 'Client Private Key',
+			name: 'key',
+			type: 'string',
+			typeOptions: { password: true },
+			displayOptions: { show: { sslCertificatesEnabled: [true] } },
+			default: '',
+			description: 'Client private key in PEM format',
+		},
+		{
+			displayName: 'Passphrase',
+			name: 'passphrase',
+			type: 'string',
+			typeOptions: { password: true },
+			displayOptions: { show: { sslCertificatesEnabled: [true] } },
+			default: '',
+			description: 'Passphrase to decrypt the client private key, if the key is encrypted',
+		},
 	];
 
 	test: ICredentialTestRequest = {
