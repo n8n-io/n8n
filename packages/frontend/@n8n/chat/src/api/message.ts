@@ -62,6 +62,13 @@ export async function sendMessage(
 	return response;
 }
 
+const PROXY_TIMEOUT_ERROR_MESSAGE =
+	'A proxy timeout occurred while waiting for the response. The workflow may still be running — check the execution list for results.';
+
+function isProxyErrorHtml(line: string): boolean {
+	return line.includes('<!DOCTYPE') || line.includes('<html') || line.includes('</html>');
+}
+
 // Create a transform stream that parses newline-delimited JSON
 function createLineParser(): TransformStream<Uint8Array, StructuredChunk> {
 	let buffer = '';
@@ -86,7 +93,7 @@ function createLineParser(): TransformStream<Uint8Array, StructuredChunk> {
 						insideHtmlError = false;
 						controller.enqueue(parsed);
 					} catch (error) {
-						if (line.includes('<!DOCTYPE') || line.includes('<html') || line.includes('</html>')) {
+						if (isProxyErrorHtml(line)) {
 							insideHtmlError = true;
 						}
 						if (insideHtmlError) {
@@ -94,8 +101,7 @@ function createLineParser(): TransformStream<Uint8Array, StructuredChunk> {
 								htmlErrorEmitted = true;
 								controller.enqueue({
 									type: 'error',
-									content:
-										'A proxy timeout occurred while waiting for the response. The workflow may still be running — check the execution list for results.',
+									content: PROXY_TIMEOUT_ERROR_MESSAGE,
 								} as StructuredChunk);
 							}
 							continue;
@@ -117,16 +123,11 @@ function createLineParser(): TransformStream<Uint8Array, StructuredChunk> {
 					const parsed = JSON.parse(buffer) as StructuredChunk;
 					controller.enqueue(parsed);
 				} catch (error) {
-					if (
-						buffer.includes('<!DOCTYPE') ||
-						buffer.includes('<html') ||
-						buffer.includes('</html>')
-					) {
+					if (isProxyErrorHtml(buffer)) {
 						if (!htmlErrorEmitted) {
 							controller.enqueue({
 								type: 'error',
-								content:
-									'A proxy timeout occurred while waiting for the response. The workflow may still be running — check the execution list for results.',
+								content: PROXY_TIMEOUT_ERROR_MESSAGE,
 							} as StructuredChunk);
 						}
 						return;

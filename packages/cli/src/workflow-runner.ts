@@ -47,6 +47,23 @@ import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.serv
 
 import { EventService } from './events/event.service';
 
+/** Interval between keepalive writes on streaming responses to prevent proxy timeouts */
+const STREAMING_HEARTBEAT_INTERVAL_MS = 30_000;
+
+/** JSON chunk written periodically to keep the streaming connection alive through reverse proxies */
+const STREAMING_KEEPALIVE_CHUNK = '{"type":"keepalive"}\n';
+
+/**
+ * Flush the response through the compression middleware.
+ * The `flush` method is added at runtime by the Express `compression` middleware
+ * and is not part of the standard Response type.
+ */
+function flushResponse(res: { flush?: () => void }) {
+	if (typeof res.flush === 'function') {
+		res.flush();
+	}
+}
+
 @Service()
 export class WorkflowRunner {
 	private scalingService: ScalingService;
@@ -173,16 +190,12 @@ export class WorkflowRunner {
 		// This must happen BEFORE the queue/local decision because in queue mode the
 		// execution runs on a worker process that has no access to the HTTP response.
 		let heartbeatInterval: NodeJS.Timeout | undefined;
-		if (data.streamingEnabled && data.httpResponse) {
-			const STREAMING_HEARTBEAT_INTERVAL_MS = 30_000;
-			const keepaliveChunk = '{"type":"keepalive"}\n';
+		if (data.streamingEnabled === true && data.httpResponse) {
 			const res = data.httpResponse;
 			heartbeatInterval = setInterval(() => {
 				if (!res.writableEnded) {
-					res.write(keepaliveChunk);
-					if (typeof res.flush === 'function') {
-						(res as unknown as { flush: () => void }).flush();
-					}
+					res.write(STREAMING_KEEPALIVE_CHUNK);
+					flushResponse(res);
 				}
 			}, STREAMING_HEARTBEAT_INTERVAL_MS);
 		}
@@ -314,9 +327,7 @@ export class WorkflowRunner {
 			if (data.streamingEnabled) {
 				lifecycleHooks.addHandler('sendChunk', (chunk) => {
 					data.httpResponse?.write(JSON.stringify(chunk) + '\n');
-					if (typeof data.httpResponse?.flush === 'function') {
-						(data.httpResponse as unknown as { flush: () => void }).flush();
-					}
+					if (data.httpResponse) flushResponse(data.httpResponse);
 				});
 			}
 
