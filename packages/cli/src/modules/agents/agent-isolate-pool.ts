@@ -302,8 +302,14 @@ export class AgentIsolatePool {
 			const stats = slot.isolate.getHeapStatisticsSync();
 			const limitBytes = this.memoryLimit * 1024 * 1024;
 			return stats.used_heap_size > limitBytes * this.highWaterMarkRatio;
-		} catch {
-			return false;
+		} catch (error) {
+			this.logger?.warn(
+				'[AgentIsolatePool] Failed to get heap statistics — assuming over high-water mark',
+				{
+					error: error instanceof Error ? error.message : String(error),
+				},
+			);
+			return true;
 		}
 	}
 
