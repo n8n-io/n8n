@@ -37,7 +37,9 @@ const speechInput = useSpeechRecognition({
 
 watch(speechInput.result, (spoken) => {
 	if (props.showVoice) {
-		emit('update:modelValue', committedSpokenMessage.value + ' ' + spoken.trimStart());
+		const prefix = committedSpokenMessage.value;
+		const separator = prefix.length > 0 ? ' ' : '';
+		emit('update:modelValue', prefix + separator + spoken.trimStart());
 	}
 });
 

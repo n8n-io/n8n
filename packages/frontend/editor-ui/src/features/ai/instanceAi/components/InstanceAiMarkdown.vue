@@ -61,15 +61,21 @@ const processedContent = computed(() => {
 		// Escape special regex characters in the resource name
 		const escaped = entry.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-		// Match the resource name as a standalone word, but NOT if it is:
+		// Match the resource name as a standalone token, but NOT if it is:
 		// - Inside backticks (inline code)
 		// - Already inside a markdown link [...](...) or the link URL part
 		// - Preceded by [ or followed by ]( (link text boundaries)
+		//
+		// Use \b when the name edge is a word character; use a whitespace/
+		// punctuation boundary otherwise (handles names like "Test (v2.0)").
+		const startBoundary = /\w/.test(entry.name[0]) ? '\\b' : '(?<=^|[\\s,;:!?])';
+		const endBoundary = /\w/.test(entry.name[entry.name.length - 1]) ? '\\b' : '(?=$|[\\s,;:!?.])';
+
 		const pattern = new RegExp(
 			// Negative lookbehind: not preceded by [ or ` or /
 			'(?<![\\[`\\/])' +
-				// The name itself, as a word boundary
-				`\\b(${escaped})\\b` +
+				// The name with appropriate boundaries
+				`${startBoundary}(${escaped})${endBoundary}` +
 				// Negative lookahead: not followed by ]( or ` or ://
 				'(?![\\]`]|\\(|://)',
 			'g',
