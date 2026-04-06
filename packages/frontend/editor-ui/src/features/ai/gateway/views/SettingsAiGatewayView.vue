@@ -192,7 +192,7 @@ onMounted(async () => {
 	font-size: var(--font-size--2xl);
 	font-weight: var(--font-weight--bold);
 	color: var(--color--text--shade-1);
-	line-height: 1;
+	line-height: var(--line-height--sm);
 }
 
 .section {
