@@ -1,7 +1,7 @@
 import type { Client, InArgs } from '@libsql/client';
 
 import { toDbMessage } from '../sdk/message';
-import type { BuiltMemory, Thread } from '../types/sdk/memory';
+import type { BuiltMemory, MemoryDescriptor, Thread } from '../types/sdk/memory';
 import type { AgentDbMessage, AgentMessage } from '../types/sdk/message';
 
 /** Safe JSON.parse wrapper — returns undefined on failure. */
@@ -428,5 +428,15 @@ export class SqliteMemory implements BuiltMemory {
 			id: r.id as string,
 			score: 1 - (r.distance as number),
 		}));
+	}
+
+	describe(): MemoryDescriptor {
+		return {
+			name: 'sqlite',
+			connectionParams: {
+				url: this.config.url,
+				...(this.config.namespace !== undefined && { namespace: this.config.namespace }),
+			},
+		};
 	}
 }

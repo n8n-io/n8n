@@ -1,5 +1,5 @@
 import { toDbMessage } from '../sdk/message';
-import type { BuiltMemory, Thread } from '../types';
+import type { BuiltMemory, MemoryDescriptor, Thread } from '../types';
 import type { AgentDbMessage, AgentMessage } from '../types/sdk/message';
 
 interface StoredMessage {
@@ -103,6 +103,10 @@ export class InMemoryMemory implements BuiltMemory {
 				messages.filter((s) => !idSet.has(s.message.id)),
 			);
 		}
+	}
+
+	describe(): MemoryDescriptor {
+		return { name: 'memory', connectionParams: {} };
 	}
 }
 

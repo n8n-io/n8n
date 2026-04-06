@@ -12,6 +12,17 @@ export interface CredentialListItem {
 }
 
 /**
+ * A reference to a credential value resolved at build time via CredentialProvider.
+ * Storing this reference (instead of the raw secret) in schemas keeps secrets out of serialized data.
+ */
+export interface CredentialConfig {
+	/** Credential identifier passed to CredentialProvider.resolve(). */
+	name: string;
+	/** Optional dot-path into the resolved credential object (e.g. 'password'). */
+	path?: string;
+}
+
+/**
  * Interface for resolving credentials at build time.
  *
  * The platform injects an implementation that knows how to look up

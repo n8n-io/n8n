@@ -256,7 +256,7 @@ describe('Agent.describe()', () => {
 
 	// --- Memory ---
 
-	it('describes memory configuration', () => {
+	it('describes memory configuration with custom backend (no describe())', () => {
 		const agent = new Agent('test-agent').memory({
 			memory: makeMockMemory(),
 			lastMessages: 20,
@@ -275,6 +275,8 @@ describe('Agent.describe()', () => {
 
 		expect(schema.memory).toBeTruthy();
 		expect(schema.memory!.source).toBeNull();
+		expect(schema.memory!.name).toBe('custom');
+		expect(schema.memory!.connectionParams).toEqual({});
 		expect(schema.memory!.lastMessages).toBe(20);
 		expect(schema.memory!.semanticRecall).toEqual({
 			topK: 5,
@@ -284,6 +286,49 @@ describe('Agent.describe()', () => {
 		expect(schema.memory!.workingMemory).toEqual({
 			type: 'freeform',
 			template: 'Current state: {{state}}',
+		});
+	});
+
+	it('describes memory name and connectionParams from BuiltMemory.describe()', () => {
+		const mockMemoryWithDescribe = {
+			...makeMockMemory(),
+			describe: () => ({
+				name: 'sqlite',
+				connectionParams: { url: 'file:./data.db', namespace: 'test' },
+			}),
+		};
+		const agent = new Agent('test-agent').memory({
+			memory: mockMemoryWithDescribe,
+			lastMessages: 5,
+		});
+		const schema = agent.describe();
+
+		expect(schema.memory!.name).toBe('sqlite');
+		expect(schema.memory!.connectionParams).toEqual({ url: 'file:./data.db', namespace: 'test' });
+	});
+
+	it('captures credentialName from BuiltMemory.describe()', () => {
+		const mockMemoryWithCredential = {
+			...makeMockMemory(),
+			describe: () => ({
+				name: 'postgres',
+				connectionParams: {
+					connectionType: 'url',
+					connection: { name: 'my-pg-cred', path: 'connectionString' },
+				},
+				credentialName: 'my-pg-cred',
+			}),
+		};
+		const agent = new Agent('test-agent').memory({
+			memory: mockMemoryWithCredential,
+			lastMessages: 10,
+		});
+		const schema = agent.describe();
+
+		expect(schema.memory!.name).toBe('postgres');
+		expect(schema.memory!.connectionParams).toEqual({
+			connectionType: 'url',
+			connection: { name: 'my-pg-cred', path: 'connectionString' },
 		});
 	});
 

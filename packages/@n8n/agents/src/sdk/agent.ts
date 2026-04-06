@@ -9,7 +9,6 @@ import { Telemetry } from './telemetry';
 import { Tool, wrapToolForApproval, APPROVAL_WRAPPED } from './tool';
 import { AgentRuntime } from '../runtime/agent-runtime';
 import { AgentEventBus } from '../runtime/event-bus';
-import { InMemoryMemory } from '../runtime/memory-store';
 import { createAgentToolResult } from '../runtime/tool-adapter';
 import type {
 	AgentEvent,
@@ -652,11 +651,11 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				};
 			}
 
+			const memoryDescriptor = mc.memory.describe?.() ?? { name: 'custom', connectionParams: {} };
 			memory = {
-				// TODO: each BuiltMemory should have describe() method to return a config showing connection params and other metadata
-				// this config must have enough information to rebuild the memory instance
 				source: null,
-				storage: mc.memory instanceof InMemoryMemory ? 'memory' : 'custom',
+				name: memoryDescriptor.name,
+				connectionParams: memoryDescriptor.connectionParams,
 				lastMessages: mc.lastMessages ?? null,
 				semanticRecall,
 				workingMemory,

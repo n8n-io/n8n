@@ -2,6 +2,18 @@ import type { z } from 'zod';
 
 import type { ModelConfig, SerializableAgentState } from './agent';
 import type { AgentDbMessage, AgentMessage } from './message';
+import type { ConnectionParams } from './schema';
+
+/**
+ * Serializable descriptor returned by BuiltMemory.describe().
+ * Contains enough information to reconstruct the backend from a schema without exposing secrets.
+ */
+export interface MemoryDescriptor<TParams extends ConnectionParams = ConnectionParams> {
+	/** Backend name (e.g. 'postgres', 'sqlite', 'memory'). Used as key in memoryRegistry. */
+	name: string;
+	/** Non-secret, serializable connection parameters. CredentialConfig refs are safe to store. */
+	connectionParams: TParams;
+}
 
 export interface Thread {
 	id: string;
@@ -76,6 +88,8 @@ export interface BuiltMemory {
 	// --- Lifecycle (optional) ---
 	/** Close the connection pool / release resources. No-op for in-memory backends. */
 	close?(): Promise<void>;
+	/** Return a serializable descriptor of this backend for schema persistence. */
+	describe?(): MemoryDescriptor;
 }
 
 // --- Semantic Recall Config ---

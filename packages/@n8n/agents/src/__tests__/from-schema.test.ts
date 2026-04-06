@@ -2,8 +2,12 @@ import { z } from 'zod';
 
 import { Agent } from '../sdk/agent';
 import { isSuspendResult } from '../sdk/from-schema';
+import { Memory } from '../sdk/memory';
+import { PostgresMemory } from '../storage/postgres-memory';
+import type { PostgresMemoryConfig } from '../storage/postgres-memory';
+import type { CredentialProvider } from '../types/sdk/credential-provider';
 import type { HandlerExecutor } from '../types/sdk/handler-executor';
-import type { AgentSchema, ToolSchema } from '../types/sdk/schema';
+import type { AgentSchema, ConnectionParams, ToolSchema } from '../types/sdk/schema';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -207,7 +211,8 @@ describe('Agent.fromSchema()', () => {
 		const schema = minimalSchema({
 			memory: {
 				source: null,
-				storage: 'memory',
+				name: 'memory',
+				connectionParams: {},
 				lastMessages: 20,
 				semanticRecall: null,
 				workingMemory: null,
@@ -221,7 +226,102 @@ describe('Agent.fromSchema()', () => {
 
 		expect(described.memory).toBeTruthy();
 		expect(described.memory!.lastMessages).toBe(20);
-		expect(described.memory!.storage).toBe('memory');
+	});
+
+	it('uses memoryRegistry factory to reconstruct a custom backend', async () => {
+		const mockBuiltMemory = {
+			getThread: jest.fn(),
+			saveThread: jest.fn(),
+			deleteThread: jest.fn(),
+			getMessages: jest.fn(),
+			saveMessages: jest.fn(),
+			deleteMessages: jest.fn(),
+			describe: () => ({ name: 'sqlite', connectionParams: { url: 'file:./test.db' } }),
+		};
+		const factory = jest.fn().mockResolvedValue(mockBuiltMemory);
+
+		const schema = minimalSchema({
+			memory: {
+				source: null,
+				name: 'sqlite',
+				connectionParams: { url: 'file:./test.db' },
+				lastMessages: 10,
+				semanticRecall: null,
+				workingMemory: null,
+			},
+		});
+		const agent = await Agent.fromSchema(schema, 'test-agent', {
+			handlerExecutor: mockExecutor(),
+			memoryRegistry: { sqlite: factory },
+		});
+
+		expect(factory).toHaveBeenCalledWith({ url: 'file:./test.db' }, undefined);
+
+		const described = agent.describe();
+		expect(described.memory!.name).toBe('sqlite');
+		expect(described.memory!.connectionParams).toEqual({ url: 'file:./test.db' });
+	});
+
+	it('falls back to in-memory when no memoryRegistry entry matches', async () => {
+		const schema = minimalSchema({
+			memory: {
+				source: null,
+				name: 'unknown-backend',
+				connectionParams: {},
+				lastMessages: 5,
+				semanticRecall: null,
+				workingMemory: null,
+			},
+		});
+		const agent = await Agent.fromSchema(schema, 'test-agent', {
+			handlerExecutor: mockExecutor(),
+			memoryRegistry: {},
+		});
+
+		const described = agent.describe();
+		expect(described.memory).toBeTruthy();
+		expect(described.memory!.lastMessages).toBe(5);
+	});
+
+	it('passes credentialProvider to memoryRegistry factory', async () => {
+		const mockBuiltMemory = {
+			getThread: jest.fn(),
+			saveThread: jest.fn(),
+			deleteThread: jest.fn(),
+			getMessages: jest.fn(),
+			saveMessages: jest.fn(),
+			deleteMessages: jest.fn(),
+			describe: () => ({
+				name: 'postgres',
+				connectionParams: { connectionType: 'url', connection: { name: 'pg-cred' } },
+			}),
+		};
+		const factory = jest.fn().mockResolvedValue(mockBuiltMemory);
+		const credentialProvider = {
+			resolve: jest.fn().mockResolvedValue({ apiKey: 'postgresql://localhost/test' }),
+			list: jest.fn().mockResolvedValue([]),
+		};
+
+		const schema = minimalSchema({
+			memory: {
+				source: null,
+				name: 'postgres',
+				connectionParams: { connectionType: 'url', connection: { name: 'pg-cred' } },
+				lastMessages: 10,
+				semanticRecall: null,
+				workingMemory: null,
+			},
+		});
+		await Agent.fromSchema(schema, 'test-agent', {
+			handlerExecutor: mockExecutor(),
+			credentialProvider,
+			memoryRegistry: { postgres: factory },
+		});
+
+		expect(factory).toHaveBeenCalledWith(
+			{ connectionType: 'url', connection: { name: 'pg-cred' } },
+			credentialProvider,
+		);
 	});
 
 	it('sets toolCallConcurrency when specified', async () => {
@@ -631,5 +731,130 @@ describe('Agent.fromSchema()', () => {
 		expect(tools).toHaveLength(1);
 		expect(tools[0].suspendSchema).toBe(suspendSchema);
 		expect(tools[0].resumeSchema).toBe(resumeSchema);
+	});
+
+	// ---------------------------------------------------------------------------
+	// PostgresMemory schema round-trip
+	// ---------------------------------------------------------------------------
+
+	it('round-trips agent with PostgresMemory through describe → fromSchema → describe', async () => {
+		const credentialProvider = {
+			resolve: jest.fn().mockResolvedValue({ apiKey: 'postgresql://localhost:5432/testdb' }),
+			list: jest.fn().mockResolvedValue([]),
+		} as unknown as CredentialProvider;
+
+		// Build an agent with a fully-configured PostgresMemory (URL connection type)
+		const pgConfig: PostgresMemoryConfig = {
+			connectionType: 'url',
+			connection: { url: { name: 'my-pg-cred', path: 'connectionString' } },
+			namespace: 'my_ns',
+			credentialName: 'my-pg-cred',
+			pool: { max: 5, idleTimeoutMillis: 30_000 },
+			ssl: true,
+		};
+		const pgMem = new PostgresMemory(pgConfig, credentialProvider);
+		const memory = new Memory().storage(pgMem).lastMessages(20);
+
+		const agent1 = new Agent('pg-roundtrip').model('anthropic', 'claude-sonnet-4-5').memory(memory);
+
+		// ── First describe ────────────────────────────────────────────────────────
+		const schema1 = agent1.describe();
+
+		expect(schema1.memory).not.toBeNull();
+		expect(schema1.memory!.name).toBe('postgres');
+		expect(schema1.memory!.lastMessages).toBe(20);
+		expect(schema1.memory!.connectionParams).toEqual({
+			connectionType: 'url',
+			connection: { url: { name: 'my-pg-cred', path: 'connectionString' } },
+			namespace: 'my_ns',
+			pool: { max: 5, idleTimeoutMillis: 30_000 },
+			ssl: true,
+		});
+
+		// ── Reconstruct from schema ───────────────────────────────────────────────
+		const postgresFactory = async (
+			params: ConnectionParams,
+			provider: typeof credentialProvider | undefined,
+		) => await Promise.resolve(new PostgresMemory(params as PostgresMemoryConfig, provider));
+
+		const agent2 = await Agent.fromSchema(schema1, 'pg-roundtrip', {
+			handlerExecutor: mockExecutor(),
+			credentialProvider,
+			memoryRegistry: { postgres: postgresFactory },
+		});
+
+		// ── Second describe — must preserve all connection parameters ─────────────
+		const schema2 = agent2.describe();
+
+		expect(schema2.memory!.name).toBe('postgres');
+		expect(schema2.memory!.lastMessages).toBe(20);
+		expect(schema2.memory!.connectionParams).toEqual({
+			connectionType: 'url',
+			connection: { url: { name: 'my-pg-cred', path: 'connectionString' } },
+			namespace: 'my_ns',
+			pool: { max: 5, idleTimeoutMillis: 30_000 },
+			ssl: true,
+		});
+
+		// The two schemas must be identical
+		expect(schema2.memory).toEqual(schema1.memory);
+	});
+
+	it('round-trips agent with PostgresMemory config-type connection through describe → fromSchema → describe', async () => {
+		const credentialProvider = {
+			resolve: jest.fn().mockResolvedValue({ apiKey: 'secret-password' }),
+			list: jest.fn().mockResolvedValue([]),
+		} as unknown as CredentialProvider;
+
+		const pgConfig: PostgresMemoryConfig = {
+			connectionType: 'config',
+			connection: {
+				host: 'db.example.com',
+				port: 5432,
+				database: 'mydb',
+				user: 'alice',
+				password: { name: 'my-pg-cred', path: 'password' },
+			},
+			namespace: 'prod_ns',
+			credentialName: 'my-pg-cred',
+		};
+		const pgMem = new PostgresMemory(pgConfig, credentialProvider);
+		const memory = new Memory().storage(pgMem).lastMessages(10);
+
+		const agent1 = new Agent('pg-config-roundtrip')
+			.model('anthropic', 'claude-sonnet-4-5')
+			.memory(memory);
+
+		// ── First describe ────────────────────────────────────────────────────────
+		const schema1 = agent1.describe();
+
+		expect(schema1.memory!.name).toBe('postgres');
+		expect(schema1.memory!.connectionParams).toMatchObject({
+			connectionType: 'config',
+			connection: {
+				host: 'db.example.com',
+				port: 5432,
+				database: 'mydb',
+				user: 'alice',
+				password: { name: 'my-pg-cred', path: 'password' },
+			},
+			namespace: 'prod_ns',
+		});
+
+		// ── Reconstruct and re-describe ───────────────────────────────────────────
+		const postgresFactory = async (
+			params: ConnectionParams,
+			provider: typeof credentialProvider | undefined,
+		) => await Promise.resolve(new PostgresMemory(params as PostgresMemoryConfig, provider));
+
+		const agent2 = await Agent.fromSchema(schema1, 'pg-config-roundtrip', {
+			handlerExecutor: mockExecutor(),
+			credentialProvider,
+			memoryRegistry: { postgres: postgresFactory },
+		});
+
+		const schema2 = agent2.describe();
+
+		expect(schema2.memory).toEqual(schema1.memory);
 	});
 });

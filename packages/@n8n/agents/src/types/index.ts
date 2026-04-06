@@ -61,6 +61,7 @@ export type {
 export type {
 	Thread,
 	BuiltMemory,
+	MemoryDescriptor,
 	SemanticRecallConfig,
 	MemoryConfig,
 	CheckpointStore,
@@ -106,6 +107,7 @@ export type { AgentBuilder } from './sdk/agent-builder';
 
 export type {
 	CredentialProvider,
+	CredentialConfig,
 	ResolvedCredential,
 	CredentialListItem,
 } from './sdk/credential-provider';

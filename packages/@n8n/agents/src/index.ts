@@ -28,6 +28,8 @@ export type {
 	SerializableAgentState,
 	AgentRunState,
 	MemoryConfig,
+	MemoryDescriptor,
+	CredentialConfig,
 	TitleGenerationConfig,
 	Thread,
 	SemanticRecallConfig,
@@ -112,7 +114,11 @@ export type {
 export { SqliteMemory } from './storage/sqlite-memory';
 export type { SqliteMemoryConfig } from './storage/sqlite-memory';
 export { PostgresMemory } from './storage/postgres-memory';
-export type { PostgresMemoryConfig } from './storage/postgres-memory';
+export type {
+	PostgresMemoryConfig,
+	PostgresConnectionConfig,
+} from './storage/postgres-memory';
+export type { MemoryFactory, FromSchemaOptions } from './sdk/from-schema';
 
 export { Workspace } from './workspace';
 export { BaseFilesystem } from './workspace';

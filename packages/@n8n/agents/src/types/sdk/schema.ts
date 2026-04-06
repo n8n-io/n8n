@@ -1,5 +1,7 @@
 import type { JSONSchema7 } from 'json-schema';
 
+import type { CredentialConfig } from './credential-provider';
+
 export interface AgentSchema {
 	model: {
 		provider: string | null;
@@ -66,10 +68,24 @@ export interface ProviderToolSchema {
 	source: string; // full expression source, e.g. "providerTools.anthropicWebSearch({ maxUses: 5 })"
 }
 
-export interface MemorySchema {
+export type ConnectionParamValue =
+	| string
+	| number
+	| boolean
+	| null
+	| undefined
+	| ConnectionParamsObject
+	| CredentialConfig;
+export type ConnectionParamsObject = {
+	[key: string | number | symbol]: ConnectionParamValue | undefined;
+};
+export type ConnectionParams = ConnectionParamsObject | CredentialConfig;
+
+export interface MemorySchema<TParams extends ConnectionParams = ConnectionParams> {
 	source: string | null; // full Memory builder chain source for lossless regeneration
-	// Parsed fields for UI display/editing
-	storage: 'memory' | 'custom';
+	// Backend descriptor — from BuiltMemory.describe()
+	name: string; // e.g. 'postgres' | 'sqlite' | 'memory' | 'custom'
+	connectionParams: TParams; // serializable, non-secret params (may contain CredentialConfig refs)
 	lastMessages: number | null;
 	semanticRecall: {
 		topK: number;
