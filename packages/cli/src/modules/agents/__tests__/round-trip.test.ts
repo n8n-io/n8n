@@ -8,6 +8,7 @@ import type { AgentSchema } from '@n8n/agents';
 import { extractSources } from '../agents-source-parser';
 import { WorkflowTool } from '../types';
 import { AgentSecureRuntime } from '../agent-secure-runtime';
+import { deepCopy } from 'n8n-workflow';
 
 // No mocking of isolated-vm — use the real V8 isolate for integration testing.
 
@@ -315,7 +316,7 @@ export default new Agent('mixed-array-agent')
 
 		// Strip workflow tool markers for recompilation — they need the real CLI
 		// resolver which isn't available in a test sandbox
-		const schemaForGen = JSON.parse(JSON.stringify(schema1)) as AgentSchema;
+		const schemaForGen = deepCopy(schema1);
 		schemaForGen.tools = schemaForGen.tools.filter((t) => t.editable || t.handlerSource);
 
 		const generated = await agents.generateAgentCode(schemaForGen, 'D&D Agent');
