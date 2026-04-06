@@ -264,7 +264,11 @@ describe('useWorkflowHelpers', () => {
 				setStateDirty: false,
 			});
 			// versionId is now managed by workflowDocumentStore
-			expect(workflowDocumentStore.versionId).toBe('v1');
+			expect(workflowDocumentStore.setVersionData).toHaveBeenCalledWith({
+				versionId: 'v1',
+				name: null,
+				description: null,
+			});
 			expect(setWorkflowSharedWithSpy).toHaveBeenCalledWith({
 				workflowId: '1',
 				sharedWithProjects: [],

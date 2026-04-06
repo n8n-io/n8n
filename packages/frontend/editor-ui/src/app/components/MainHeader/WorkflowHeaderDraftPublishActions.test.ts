@@ -156,6 +156,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			connections: {},
 		};
 		documentStore = useWorkflowDocumentStore(createWorkflowDocumentId('1'));
+		documentStore.setVersionData({ versionId: 'version-1', name: null, description: null });
 		documentStore.setActiveState({ activeVersionId: null, activeVersion: null });
 		workflowsStore.workflowTriggerNodes = [];
 		uiStore.markStateClean();
