@@ -1,0 +1,26 @@
+name: Codex Plugin Quality Gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: codex-plugin-scanner-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Codex plugin scanner
+        uses: hashgraph-online/hol-codex-plugin-scanner-action@e83708a91ae4812872aa2905b99ad559a55c74ab
+        with:
+          plugin_dir: "."
+          mode: scan
+          fail_on_severity: critical

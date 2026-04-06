@@ -1,0 +1,16 @@
+{
+  "name": "n8n",
+  "version": "0.1.0",
+  "description": "Fair-code workflow automation platform with native AI capabilities. Combine visual building with custom code, self-host or cloud, 400+ integrations.",
+  "author": {
+    "name": "n8n-io",
+    "url": "https://github.com/n8n-io"
+  },
+  "homepage": "https://github.com/n8n-io/n8n",
+  "repository": "https://github.com/n8n-io/n8n",
+  "keywords": [
+    "mcp",
+    "codex"
+  ],
+  "mcpServers": "./.mcp.json"
+}

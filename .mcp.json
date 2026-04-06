@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "n8n": {
+      "command": "npx",
+      "args": [
+        "n8n-io-n8n"
+      ]
+    }
+  }
+}
