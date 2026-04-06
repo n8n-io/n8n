@@ -19,7 +19,7 @@ import {
 } from '@n8n/design-system';
 import { useScroll, useWindowSize } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiAttachment, InstanceAiMessage as Message } from '@n8n/api-types';
+import type { InstanceAiAttachment } from '@n8n/api-types';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
