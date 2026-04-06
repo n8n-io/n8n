@@ -6321,9 +6321,9 @@ describe('useCanvasOperations', () => {
 			uiStore.lastInteractedWithNodeHandle = `outputs/${NodeConnectionTypes.AiTool}/0`;
 
 			const { addNode } = useCanvasOperations();
-			const docStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
-			const addConnectionSpy = vi.spyOn(docStore, 'addConnection');
-			const removeConnectionSpy = vi.spyOn(docStore, 'removeConnection');
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			const addConnectionSpy = vi.spyOn(workflowDocumentStore, 'addConnection');
+			const removeConnectionSpy = vi.spyOn(workflowDocumentStore, 'removeConnection');
 
 			// Act: Add HITL node
 			await nextTick();

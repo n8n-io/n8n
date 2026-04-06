@@ -3202,10 +3202,10 @@ describe('AI Builder store', () => {
 	describe('Page title status', () => {
 		it('should set title to AI_BUILDING when streaming starts', async () => {
 			const builderStore = useBuilderStore();
-			const docStore = useWorkflowDocumentStore(
+			const workflowDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId(workflowsStore.workflowId),
 			);
-			docStore.setName('Test Workflow');
+			workflowDocumentStore.setName('Test Workflow');
 
 			// Mock the API to prevent actual calls
 			apiSpy.mockImplementation(() => {});
@@ -3219,10 +3219,10 @@ describe('AI Builder store', () => {
 			Object.defineProperty(document, 'hidden', { value: true, configurable: true });
 
 			const builderStore = useBuilderStore();
-			const docStore = useWorkflowDocumentStore(
+			const workflowDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId(workflowsStore.workflowId),
 			);
-			docStore.setName('Test Workflow');
+			workflowDocumentStore.setName('Test Workflow');
 
 			// Start streaming first
 			builderStore.streaming = true;
@@ -3237,10 +3237,10 @@ describe('AI Builder store', () => {
 			Object.defineProperty(document, 'hidden', { value: false, configurable: true });
 
 			const builderStore = useBuilderStore();
-			const docStore = useWorkflowDocumentStore(
+			const workflowDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId(workflowsStore.workflowId),
 			);
-			docStore.setName('Test Workflow');
+			workflowDocumentStore.setName('Test Workflow');
 
 			// Start streaming first
 			builderStore.streaming = true;
@@ -3255,10 +3255,10 @@ describe('AI Builder store', () => {
 			Object.defineProperty(document, 'hidden', { value: true, configurable: true });
 
 			const builderStore = useBuilderStore();
-			const docStore = useWorkflowDocumentStore(
+			const workflowDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId(workflowsStore.workflowId),
 			);
-			docStore.setName('Test Workflow');
+			workflowDocumentStore.setName('Test Workflow');
 
 			builderStore.streaming = true;
 			builderStore.abortStreaming();
@@ -3274,10 +3274,10 @@ describe('AI Builder store', () => {
 			Object.defineProperty(document, 'hidden', { value: false, configurable: true });
 
 			const builderStore = useBuilderStore();
-			const docStore = useWorkflowDocumentStore(
+			const workflowDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId(workflowsStore.workflowId),
 			);
-			docStore.setName('Test Workflow');
+			workflowDocumentStore.setName('Test Workflow');
 
 			setDocumentTitleMock.mockClear();
 
@@ -3617,8 +3617,10 @@ describe('AI Builder store', () => {
 		const triggerSuccessfulStreamingComplete = async () => {
 			const builderStore = useBuilderStore();
 			workflowsStore.workflowId = 'test-workflow-123';
-			const docStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow-123'));
-			docStore.setName('Test Workflow');
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId('test-workflow-123'),
+			);
+			workflowDocumentStore.setName('Test Workflow');
 			workflowsStore.isNewWorkflow = false;
 			workflowsStore.workflowVersionId = 'version-1';
 
@@ -3680,10 +3682,10 @@ describe('AI Builder store', () => {
 			mockIsNotificationsEnabled.value = true;
 
 			const builderStore = useBuilderStore();
-			const docStore = useWorkflowDocumentStore(
+			const workflowDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId(workflowsStore.workflowId),
 			);
-			docStore.setName('Test Workflow');
+			workflowDocumentStore.setName('Test Workflow');
 
 			builderStore.streaming = true;
 			builderStore.abortStreaming();
@@ -4043,10 +4045,10 @@ describe('AI Builder store', () => {
 			builderStore.storeGeneratedPinData(pinData);
 
 			expect(builderStore.hasDeferredPinData).toBe(true);
-			const wfDocStore = useWorkflowDocumentStore(
+			const workflowDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId(workflowsStore.workflowId),
 			);
-			expect(wfDocStore.pinData).toEqual({});
+			expect(workflowDocumentStore.pinData).toEqual({});
 		});
 
 		it('storeGeneratedPinData merges multiple calls', () => {
@@ -4071,10 +4073,10 @@ describe('AI Builder store', () => {
 			builderStore.storeGeneratedPinData(pinData);
 			builderStore.applyGeneratedPinData();
 
-			const wfDocStore = useWorkflowDocumentStore(
+			const workflowDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId(workflowsStore.workflowId),
 			);
-			expect(wfDocStore.pinData).toEqual(pinData);
+			expect(workflowDocumentStore.pinData).toEqual(pinData);
 			expect(uiStore.stateIsDirty).toBe(true);
 			expect(builderStore.hasDeferredPinData).toBe(false);
 			expect(builderStore.pinDataApplied).toBe(true);

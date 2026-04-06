@@ -646,12 +646,14 @@ describe('useWorkflowUpdate', () => {
 
 		describe('workflow name update', () => {
 			it('should update workflow name on initial generation when name starts with default', async () => {
-				const docStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow'));
-				Object.defineProperty(docStore, 'name', {
+				const workflowDocumentStore = useWorkflowDocumentStore(
+					createWorkflowDocumentId('test-workflow'),
+				);
+				Object.defineProperty(workflowDocumentStore, 'name', {
 					value: DEFAULT_NEW_WORKFLOW_NAME,
 					configurable: true,
 				});
-				const setNameSpy = vi.spyOn(docStore, 'setName');
+				const setNameSpy = vi.spyOn(workflowDocumentStore, 'setName');
 
 				const { updateWorkflow } = useWorkflowUpdate();
 
@@ -668,12 +670,14 @@ describe('useWorkflowUpdate', () => {
 			});
 
 			it('should not update workflow name when not initial generation', async () => {
-				const docStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow'));
-				Object.defineProperty(docStore, 'name', {
+				const workflowDocumentStore = useWorkflowDocumentStore(
+					createWorkflowDocumentId('test-workflow'),
+				);
+				Object.defineProperty(workflowDocumentStore, 'name', {
 					value: DEFAULT_NEW_WORKFLOW_NAME,
 					configurable: true,
 				});
-				const setNameSpy = vi.spyOn(docStore, 'setName');
+				const setNameSpy = vi.spyOn(workflowDocumentStore, 'setName');
 
 				const { updateWorkflow } = useWorkflowUpdate();
 
@@ -690,12 +694,14 @@ describe('useWorkflowUpdate', () => {
 			});
 
 			it('should not update workflow name when current name does not start with default', async () => {
-				const docStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow'));
-				Object.defineProperty(docStore, 'name', {
+				const workflowDocumentStore = useWorkflowDocumentStore(
+					createWorkflowDocumentId('test-workflow'),
+				);
+				Object.defineProperty(workflowDocumentStore, 'name', {
 					value: 'Custom Workflow Name',
 					configurable: true,
 				});
-				const setNameSpy = vi.spyOn(docStore, 'setName');
+				const setNameSpy = vi.spyOn(workflowDocumentStore, 'setName');
 
 				const { updateWorkflow } = useWorkflowUpdate();
 

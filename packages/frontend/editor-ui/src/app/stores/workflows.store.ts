@@ -585,7 +585,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		return new Workflow({
 			id,
-			name: workflowDocumentStore?.name ?? workflow.value.name,
+			name: workflowDocumentStore?.name ?? '',
 			nodes: copyData ? deepCopy(nodes) : nodes,
 			connections: copyData ? deepCopy(connections) : connections,
 			active: false,

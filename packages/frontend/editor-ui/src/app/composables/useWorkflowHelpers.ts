@@ -889,17 +889,17 @@ export function useWorkflowHelpers() {
 			uiStore.markStateClean();
 		}
 
-		const docStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 
 		if (workflow.activeVersion) {
 			workflowsStore.setWorkflowActive(workflowId, workflow.activeVersion, isCurrentWorkflow);
-			docStore.setActiveState({
+			workflowDocumentStore.setActiveState({
 				activeVersionId: workflow.activeVersion.versionId,
 				activeVersion: workflow.activeVersion,
 			});
 		} else {
 			workflowsStore.setWorkflowInactive(workflowId);
-			docStore.setActiveState({
+			workflowDocumentStore.setActiveState({
 				activeVersionId: null,
 				activeVersion: null,
 			});

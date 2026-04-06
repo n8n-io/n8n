@@ -1348,10 +1348,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					posthogStore.getVariant(CODE_WORKFLOW_BUILDER_EXPERIMENT.name) ===
 					CODE_WORKFLOW_BUILDER_EXPERIMENT.codePinData;
 				if (isPinDataEnabled) {
-					const wfDocStore = workflowsStore.workflowId
+					const workflowDocumentStore = workflowsStore.workflowId
 						? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
 						: undefined;
-					const pinData = wfDocStore?.getPinDataSnapshot();
+					const pinData = workflowDocumentStore?.getPinDataSnapshot();
 					if (pinData && Object.keys(pinData).length > 0) {
 						generatedPinData.value = pinData;
 						pinDataApplied.value = true;
