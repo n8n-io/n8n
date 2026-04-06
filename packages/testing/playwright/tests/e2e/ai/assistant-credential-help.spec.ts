@@ -112,7 +112,7 @@ test.describe(
 
 				// Switch to custom OAuth via dropdown — assistant button should appear
 				await n8n.canvas.credentialModal.selectAuthTypeFromDropdown('Custom OAuth2');
-				await expect(n8n.canvas.credentialModal.getCredentialInputs()).toHaveCount(4);
+				await expect(n8n.canvas.credentialModal.getCredentialInputs()).toHaveCount(5);
 				await expect(n8n.aiAssistant.getCredentialEditAssistantButton()).toHaveCount(1);
 			});
 
