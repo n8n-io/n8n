@@ -121,7 +121,9 @@ const steps = computed((): TimelineStep[] => {
 								</template>
 								<N8nIcon v-else :icon="step.icon" size="small" />
 							</template>
-							<template v-if="open"> Thinking </template>
+							<template v-if="open">
+								{{ i18n.baseText('instanceAi.statusBar.thinking') }}
+							</template>
 							<template v-else>{{ step.label }}</template>
 						</N8nButton>
 					</CollapsibleTrigger>

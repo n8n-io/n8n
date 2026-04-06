@@ -98,7 +98,7 @@ function formatJson(value: unknown): string {
 </script>
 
 <template>
-	<div :class="[$style.message, isUser ? $style.userMessage : $style.assistantMessage]">
+	<div :class="[isUser ? $style.userMessage : '']">
 		<!-- User message -->
 		<div v-if="isUser" :class="$style.userBubble" data-test-id="instance-ai-user-message">
 			<div v-if="attachments.length > 0" :class="$style.userAttachments">
@@ -140,11 +140,7 @@ function formatJson(value: unknown): string {
 			</N8nCallout>
 
 			<!-- Text content (shown when no agentTree, or streaming dots) -->
-			<N8nText
-				v-if="showContent && !props.message.agentTree && props.message.content"
-				size="large"
-				:class="$style.textContent"
-			>
+			<N8nText v-if="showContent && !props.message.agentTree && props.message.content" size="large">
 				<InstanceAiMarkdown :content="props.message.content" />
 			</N8nText>
 
@@ -199,6 +195,13 @@ function formatJson(value: unknown): string {
 	align-self: flex-end;
 	display: flex;
 	justify-content: flex-end;
+}
+
+.userAttachments {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
+	margin-bottom: var(--spacing--2xs);
 }
 
 .userBubble {
@@ -322,6 +325,12 @@ function formatJson(value: unknown): string {
 	&:hover {
 		opacity: 1;
 	}
+}
+
+.feedbackSuccess {
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--2xs);
+	margin: var(--spacing--2xs) 0 0;
 }
 
 .debugJson {

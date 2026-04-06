@@ -60,5 +60,6 @@ defineExpose({ isHovered });
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	line-height: normal;
 }
 </style>
