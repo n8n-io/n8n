@@ -752,6 +752,20 @@ describe('checkIfVersionExistsOrThrow', () => {
 	});
 
 	describe('Helper functions', () => {
+		it('should return true when CLI resolves a dist-tag to a semver version', async () => {
+			nock(registryUrl)
+				.get(`/${encodeURIComponent(packageName)}/beta`)
+				.replyWithError('Network failure');
+
+			mockAsyncExec.mockResolvedValue({
+				stdout: JSON.stringify('1.2.3'),
+				stderr: '',
+			});
+
+			const result = await checkIfVersionExistsOrThrow(packageName, 'beta', registryUrl);
+			expect(result).toBe(true);
+		});
+
 		it('should sanitize registry URL by removing trailing slashes', async () => {
 			const registryWithSlashes = 'https://registry.npmjs.org///';
 

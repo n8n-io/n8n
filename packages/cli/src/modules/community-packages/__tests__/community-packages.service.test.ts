@@ -106,11 +106,19 @@ describe('CommunityPackagesService', () => {
 			).toThrowError();
 		});
 
-		test.each(['invalid', '1.a.b'])('should fail with invalid version', (version) => {
+		test.each(['1.a.b', '1invalid'])('should fail with invalid version', (version) => {
 			expect(() =>
 				communityPackagesService.parseNpmPackageName(`n8n-nodes-test@${version}`),
 			).toThrow(`Invalid version: ${version}`);
 		});
+
+		test.each(['beta', 'next', 'latest', 'invalid'])(
+			'should accept npm dist-tag as version',
+			(tag) => {
+				const parsed = communityPackagesService.parseNpmPackageName(`n8n-nodes-test@${tag}`);
+				expect(parsed.version).toBe(tag);
+			},
+		);
 
 		test('should parse valid package name', () => {
 			const name = mockPackageName();

@@ -47,7 +47,7 @@ describe('CommunityPackagesLifecycleService', () => {
 			expect(communityNodeTypesService.findVetted).toHaveBeenCalledWith('n8n-nodes-test');
 		});
 
-		it.each(['foo', 'echo "hello"', '1.a.b', '0.1.29#;ls'])(
+		it.each(['echo "hello"', '1.a.b', '0.1.29#;ls'])(
 			'should throw error if version is invalid',
 			async (version) => {
 				await expect(
@@ -141,7 +141,7 @@ describe('CommunityPackagesLifecycleService', () => {
 			expect(result).toBe(newInstalledPackage);
 		});
 
-		it.each(['foo', 'echo "hello"', '1.a.b', '0.1.29#;ls'])(
+		it.each(['echo "hello"', '1.a.b', '0.1.29#;ls'])(
 			'should throw error if version is invalid',
 			async (version) => {
 				await expect(

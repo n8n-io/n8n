@@ -1,6 +1,7 @@
 import { NPM_COMMAND_TOKENS, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import axios from 'axios';
 import { jsonParse, UnexpectedError, LoggerProxy } from 'n8n-workflow';
+import { valid } from 'semver';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
@@ -185,8 +186,14 @@ export async function checkIfVersionExistsOrThrow(
 				{ doNotHandleError: true },
 			);
 
-			const versionInfo = jsonParse(stdout);
-			if (versionInfo === version) {
+			const resolvedVersion = jsonParse(stdout);
+			// npm resolves dist-tags to concrete versions, so we can only match on exact semver
+			const isDistTag = valid(version) === null;
+			if (
+				typeof resolvedVersion === 'string' &&
+				resolvedVersion.length > 0 &&
+				(isDistTag || resolvedVersion === version)
+			) {
 				return true;
 			}
 

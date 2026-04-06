@@ -12,11 +12,10 @@ import { InternalServerError } from '@/errors/response-errors/internal-server.er
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { Push } from '@/push';
 import { InstanceSettings } from 'n8n-core';
-import { valid } from 'semver';
 import { ensureError, jsonParse, type PublicInstalledPackage } from 'n8n-workflow';
 
 import { CommunityNodeTypesService } from './community-node-types.service';
-import { CommunityPackagesService } from './community-packages.service';
+import { CommunityPackagesService, isValidVersionSpecifier } from './community-packages.service';
 import type { CommunityPackages } from './community-packages.types';
 import type { InstalledPackages } from './installed-packages.entity';
 import { executeNpmCommand, isNpmExecErrorWithStdout } from './npm-utils';
@@ -100,7 +99,7 @@ export class CommunityPackagesLifecycleService {
 			throw new BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
 		}
 
-		if (version && !valid(version)) {
+		if (version && !isValidVersionSpecifier(version)) {
 			throw new BadRequestError(`Invalid version: ${version}`);
 		}
 
@@ -222,7 +221,7 @@ export class CommunityPackagesLifecycleService {
 			throw new BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
 		}
 
-		if (version && !valid(version)) {
+		if (version && !isValidVersionSpecifier(version)) {
 			throw new BadRequestError(`Invalid version: ${version}`);
 		}
 
