@@ -33,6 +33,7 @@
     "ajv": "^8.18.0",
     "@libsql/client": "^0.17.0",
     "ai": "^6.0.116",
+    "prettier": "^3.6.2",
     "pg": "catalog:",
     "zod": "catalog:"
   },

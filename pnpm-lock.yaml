@@ -597,6 +597,9 @@ importers:
       pg:
         specifier: 'catalog:'
         version: 8.17.0
+      prettier:
+        specifier: ^3.6.2
+        version: 3.6.2
       zod:
         specifier: 3.25.67
         version: 3.25.67
