@@ -22,9 +22,6 @@ import {
 } from './shared/db/users';
 import { setupTestServer } from './shared/utils';
 
-// Must be set before setupTestServer() so RedactionModule.init() wires the real service
-process.env.N8N_ENV_FEAT_EXECUTION_REDACTION = 'true';
-
 mockInstance(WaitTracker);
 mockInstance(ConcurrencyControlService, {
 	// @ts-expect-error Private property
