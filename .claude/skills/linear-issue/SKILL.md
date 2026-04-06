@@ -31,7 +31,7 @@ This skill depends on external tools. Before proceeding, verify availability:
 
 **Required (one of):**
 - **Linear CLI** (`linear`): Preferred. Run `linear --version` to verify. Use `linear issue view`, `linear issue comment list`, etc.
-- **Linear MCP** (`mcp__linear`): Fallback if CLI is unavailable. Must be connected.
+- **Linear MCP** (`mcp__linear-server`): Fallback if CLI is unavailable. Must be connected.
 
 **Also required:**
 - **GitHub CLI** (`gh`): Must be installed and authenticated. Run `gh auth status` to verify. Used to fetch linked PRs and issues.
