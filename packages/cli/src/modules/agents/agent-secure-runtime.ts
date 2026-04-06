@@ -32,6 +32,9 @@ export class AgentSecureRuntime {
 	/** Serializes pool initialization across concurrent first-callers. */
 	private poolInitPromise: Promise<AgentIsolatePool> | null = null;
 
+	/** Set by dispose() to prevent a concurrent getPool() from re-installing a disposed pool. */
+	private disposed = false;
+
 	/**
 	 * Pre-bundled JS string containing @n8n/agents + zod for injection into
 	 * isolates. Cached here at the runtime level so it is never cleared on OOM
@@ -53,6 +56,12 @@ export class AgentSecureRuntime {
 					logger: this.logger,
 				});
 				await pool.initialize();
+				// Guard: dispose() may have run while we were awaiting initialization.
+				// If so, discard the freshly-created pool and surface a clear error.
+				if (this.disposed) {
+					void pool.dispose();
+					throw new Error('AgentSecureRuntime was disposed during pool initialization');
+				}
 				this.pool = pool;
 				return pool;
 			} catch (e) {
@@ -83,6 +92,14 @@ export class AgentSecureRuntime {
 				const freshSlot = await pool.acquire();
 				try {
 					return await fn(freshSlot);
+				} catch (retryError) {
+					if (!freshSlot.isHealthy) {
+						// Both slots OOM'd — cap at one retry; both are recycled via release() below.
+						this.logger.error(
+							'[AgentSecureRuntime] Retry slot also OOM — both isolates will be recycled; not retrying further',
+						);
+					}
+					throw retryError;
 				} finally {
 					pool.release(freshSlot);
 				}
@@ -474,7 +491,7 @@ export class AgentSecureRuntime {
 					var agentsModule = require('@n8n/agents');
 					var providerTools = agentsModule.providerTools;
 					var Telemetry = agentsModule.Telemetry;
-					module.exports = JSON.stringify(${source});
+					module.exports = JSON.stringify((function() { return (${source}); })());
 				`;
 
 				const resultJson = this.runInContext<string>(context, slot, wrapper);
@@ -498,7 +515,7 @@ export class AgentSecureRuntime {
 				const wrapper = `
 					var agentsModule = require('@n8n/agents');
 					var providerTools = agentsModule.providerTools;
-					var result = ${source};
+					var result = (function() { return (${source}); })();
 					module.exports = JSON.stringify(result);
 				`;
 
@@ -595,7 +612,7 @@ export class AgentSecureRuntime {
 					if (typeof zodToJsonSchema !== 'function') {
 						throw new Error('zod-to-json-schema is not available in the sandbox bundle');
 					}
-					var schema = ${source};
+					var schema = (function() { return (${source}); })();
 					module.exports = JSON.stringify(zodToJsonSchema(schema));
 				`;
 
@@ -643,6 +660,7 @@ export class AgentSecureRuntime {
 	 * Dispose the pool and all underlying V8 isolates. Safe to call multiple times.
 	 */
 	dispose(): void {
+		this.disposed = true;
 		const poolPromise = this.poolInitPromise;
 		this.pool = null;
 		this.poolInitPromise = null;

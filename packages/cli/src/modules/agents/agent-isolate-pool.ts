@@ -45,35 +45,40 @@ export class AgentIsolateSlot {
 	 */
 	createContext(): ivm.Context {
 		const context = this.isolate.createContextSync();
-		const jail = context.global;
+		try {
+			const jail = context.global;
 
-		jail.setSync('global', jail.derefInto());
+			jail.setSync('global', jail.derefInto());
 
-		context.evalSync(SANDBOX_POLYFILLS, { timeout: 5000 });
+			context.evalSync(SANDBOX_POLYFILLS, { timeout: 5000 });
 
-		context.evalSync(
-			`
-			globalThis.__modules = {};
-			globalThis.require = function(id) {
-				if (globalThis.__modules[id]) {
-					return globalThis.__modules[id];
-				}
-				// Return empty stub for unknown modules (Node built-ins, etc.)
-				return new Proxy({}, {
-					get: function(target, prop) {
-						if (prop === '__esModule') return false;
-						if (prop === 'default') return {};
-						return function() { return {}; };
+			context.evalSync(
+				`
+				globalThis.__modules = {};
+				globalThis.require = function(id) {
+					if (globalThis.__modules[id]) {
+						return globalThis.__modules[id];
 					}
-				});
-			};
-		`,
-			{ timeout: 5000 },
-		);
+					// Return empty stub for unknown modules (Node built-ins, etc.)
+					return new Proxy({}, {
+						get: function(target, prop) {
+							if (prop === '__esModule') return false;
+							if (prop === 'default') return {};
+							return function() { return {}; };
+						}
+					});
+				};
+			`,
+				{ timeout: 5000 },
+			);
 
-		this.bundleScript.runSync(context, { timeout: 10000 });
+			this.bundleScript.runSync(context, { timeout: 10000 });
 
-		return context;
+			return context;
+		} catch (e) {
+			context.release();
+			throw e;
+		}
 	}
 
 	dispose(): void {
@@ -184,6 +189,12 @@ export class AgentIsolatePool {
 				'AgentIsolatePool: failed to create any isolate slots during initialization',
 				{ cause },
 			);
+		}
+
+		// Kick off background replenishment for any slots that failed during init.
+		const missing = this.size - this.slots.length;
+		for (let i = 0; i < missing; i++) {
+			void this.replenish();
 		}
 	}
 
@@ -339,12 +350,27 @@ export class AgentIsolatePool {
 						delayMs: delay,
 						error: error instanceof Error ? error.message : String(error),
 					});
-					setTimeout(() => this.replenish(attempt + 1), delay).unref();
+					// Track the retry timer in replenishPromises so dispose() awaits it.
+					let retryPromise: Promise<void>;
+					// eslint-disable-next-line prefer-const
+					retryPromise = new Promise<void>((resolve) => {
+						setTimeout(resolve, delay).unref();
+					}).then(() => {
+						this.replenishPromises.delete(retryPromise);
+						this.replenish(attempt + 1);
+					});
+					this.replenishPromises.add(retryPromise);
 				} else {
-					// Don't crash — the pool will recover naturally on the next release.
 					this.logger?.warn('[AgentIsolatePool] Replenishment failed after max retries', {
 						error: error instanceof Error ? error.message : String(error),
 					});
+					// Unblock any callers waiting for a slot — they cannot be served.
+					const waitError = new Error(
+						'Isolate slot creation permanently failed — no slots available',
+					);
+					for (const { reject } of this.waitQueue.splice(0)) {
+						reject(waitError);
+					}
 				}
 			});
 		this.replenishPromises.add(promise);
