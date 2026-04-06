@@ -145,7 +145,7 @@ export async function execute(
 		query = query.replace(resolvable, this.evaluateExpression(resolvable, 0) as string);
 	}
 
-	const context = await loadAlaSqlSandbox();
+	let context = await loadAlaSqlSandbox();
 
 	const isSelectQuery = node.typeVersion >= 3.1 ? query.toLowerCase().startsWith('select') : false;
 	const returnSuccessItemIfEmpty =
@@ -169,6 +169,9 @@ export async function execute(
 					workflowId,
 				},
 			});
+			// Reload the sandbox context in case the SELECT execution disposed the isolate
+			// (e.g. timeout on large datasets), so the fallback non-SELECT path can run.
+			context = await loadAlaSqlSandbox();
 		}
 	}
 
