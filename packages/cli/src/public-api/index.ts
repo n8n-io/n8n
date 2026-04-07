@@ -8,6 +8,8 @@ import path from 'path';
 import type { JsonObject } from 'swagger-ui-express';
 import validator from 'validator';
 
+import { Logger } from '@n8n/backend-common';
+
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { ApiKeyAuthStrategy } from '@/services/api-key-auth.strategy';
@@ -112,7 +114,13 @@ function createLazyValidatorMiddleware(
 									const authenticated = await Container.get(AuthStrategyRegistry).authenticate(req);
 
 									if (authenticated) {
-										void Container.get(LastActiveAtService).updateLastActiveIfStale(req.user.id);
+										Container.get(LastActiveAtService)
+											.updateLastActiveIfStale(req.user.id)
+											.catch((error: unknown) => {
+												Container.get(Logger).error('Failed to update last active timestamp', {
+													error,
+												});
+											});
 										Container.get(EventService).emit('public-api-invoked', {
 											userId: req.user.id,
 											path: req.path,
