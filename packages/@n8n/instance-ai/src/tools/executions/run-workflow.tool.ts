@@ -60,6 +60,15 @@ export function createRunWorkflowTool(context: InstanceAiContext) {
 				| undefined;
 			const suspend = ctx?.agent?.suspend;
 
+			if (context.permissions?.runWorkflow === 'blocked') {
+				return {
+					executionId: '',
+					status: 'error' as const,
+					denied: true,
+					reason: 'Action blocked by admin',
+				};
+			}
+
 			const needsApproval = context.permissions?.runWorkflow !== 'always_allow';
 
 			// If approval is required and this is the first call, suspend for confirmation
