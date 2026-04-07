@@ -27,7 +27,6 @@ describe('useRoleMappingRules', () => {
 		type: 'instance',
 		order: 0,
 		projectIds: [],
-		enabled: true,
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
 		...overrides,

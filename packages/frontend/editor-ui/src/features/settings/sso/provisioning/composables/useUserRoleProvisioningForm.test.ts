@@ -45,7 +45,6 @@ describe('useUserRoleProvisioningForm', () => {
 		type: 'project',
 		order: 0,
 		projectIds: ['proj-1'],
-		enabled: true,
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
 	};
@@ -57,7 +56,6 @@ describe('useUserRoleProvisioningForm', () => {
 		type: 'instance',
 		order: 0,
 		projectIds: [],
-		enabled: true,
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
 	};
