@@ -30,8 +30,19 @@ function getConfirmationType(conf: InstanceAiConfirmation): string {
 
 function trackInputCompleted(
 	conf: InstanceAiConfirmation,
-	providedInputs: Array<{ label: string; options: string[]; option_chosen: string }>,
-	skippedInputs: Array<{ label: string; options: string[] }>,
+	providedInputs: Array<{
+		label: string;
+		question?: string;
+		input_type?: string;
+		options: string[];
+		option_chosen: string | string[];
+	}>,
+	skippedInputs: Array<{
+		label: string;
+		question?: string;
+		input_type?: string;
+		options: string[];
+	}>,
 	extra?: Record<string, unknown>,
 ): void {
 	const eventProps = {
@@ -152,28 +163,66 @@ function handleApproveAll(items: PendingConfirmationItem[]) {
 function handleTextSubmit(conf: InstanceAiConfirmation) {
 	const value = (textInputValues.value[conf.requestId] ?? '').trim();
 	if (!value) return;
-	trackInputCompleted(conf, [{ label: conf.message, options: [], option_chosen: value }], []);
+	trackInputCompleted(
+		conf,
+		[
+			{
+				label: conf.message,
+				question: conf.message,
+				input_type: 'text',
+				options: [],
+				option_chosen: value,
+			},
+		],
+		[],
+	);
 	store.resolveConfirmation(conf.requestId, 'approved');
 	void store.confirmAction(conf.requestId, true, undefined, undefined, undefined, value);
 }
 
 function handleTextSkip(conf: InstanceAiConfirmation) {
-	trackInputCompleted(conf, [], [{ label: conf.message, options: [] }]);
+	trackInputCompleted(
+		conf,
+		[],
+		[{ label: conf.message, question: conf.message, input_type: 'text', options: [] }],
+	);
 	store.resolveConfirmation(conf.requestId, 'deferred');
 	void store.confirmAction(conf.requestId, false);
 }
 
 function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAnswer[]) {
-	const provided: Array<{ label: string; options: string[]; option_chosen: string }> = [];
-	const skipped: Array<{ label: string; options: string[] }> = [];
+	const questionsById = new Map((conf.questions ?? []).map((q) => [q.id, q]));
+	const provided: Array<{
+		label: string;
+		question: string;
+		input_type: string;
+		options: string[];
+		option_chosen: string | string[];
+	}> = [];
+	const skipped: Array<{ label: string; question: string; input_type: string; options: string[] }> =
+		[];
 	for (const answer of answers) {
+		const questionDef = questionsById.get(answer.questionId);
+		const allOptions = questionDef?.options ?? [];
+		const inputType = questionDef?.type ?? 'text';
+
 		if (answer.skipped) {
-			skipped.push({ label: answer.questionId, options: answer.selectedOptions });
+			skipped.push({
+				label: answer.questionId,
+				question: answer.question,
+				input_type: inputType,
+				options: allOptions,
+			});
 		} else {
-			const chosen = answer.customText ?? answer.selectedOptions.join(', ');
+			const isMulti = inputType === 'multi';
+			const chosen: string | string[] = isMulti
+				? [...answer.selectedOptions, ...(answer.customText ? [answer.customText] : [])]
+				: answer.customText || answer.selectedOptions[0] || '';
 			provided.push({
 				label: answer.questionId,
-				options: answer.selectedOptions,
+				question: answer.question,
+				input_type: inputType,
+				options: allOptions,
 				option_chosen: chosen,
 			});
 		}
