@@ -11,23 +11,25 @@ import { z } from 'zod';
 
 import type { OrchestrationContext } from '../../types';
 
+export const applyWorkflowCredentialsInputSchema = z.object({
+	workItemId: z.string().describe('The work item ID from the build (wi_XXXXXXXX)'),
+	workflowId: z.string().describe('The workflow ID to update'),
+	credentials: z.record(z.string()).describe('Map of credentialType → credentialId to apply'),
+});
+
 export function createApplyWorkflowCredentialsTool(context: OrchestrationContext) {
 	return createTool({
 		id: 'apply-workflow-credentials',
 		description:
 			'Apply real credentials to a workflow that was built with mocked credentials. ' +
 			'Only updates nodes that were mocked — never overwrites existing real credentials.',
-		inputSchema: z.object({
-			workItemId: z.string().describe('The work item ID from the build (wi_XXXXXXXX)'),
-			workflowId: z.string().describe('The workflow ID to update'),
-			credentials: z.record(z.string()).describe('Map of credentialType → credentialId to apply'),
-		}),
+		inputSchema: applyWorkflowCredentialsInputSchema,
 		outputSchema: z.object({
 			success: z.boolean(),
 			appliedNodes: z.array(z.string()).optional(),
 			error: z.string().optional(),
 		}),
-		execute: async (input) => {
+		execute: async (input: z.infer<typeof applyWorkflowCredentialsInputSchema>) => {
 			if (!context.workflowTaskService || !context.domainContext) {
 				return { success: false, error: 'Credential application support not available.' };
 			}

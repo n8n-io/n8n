@@ -6,7 +6,7 @@ import { useHistoryStore } from '@/app/stores/history.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { AutoSaveState, VIEWS } from '@/app/constants';
-import { computed, watch, ref, nextTick, useSlots } from 'vue';
+import { computed, watch, ref, nextTick, useSlots, provide } from 'vue';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
@@ -54,6 +54,7 @@ import { watchExecutionCompletion } from '@/features/ai/assistant/composables/us
 
 import { N8nAskAssistantChat, N8nInfoTip } from '@n8n/design-system';
 import BuildModeEmptyState from './BuildModeEmptyState.vue';
+import { AiBuilderScrollToBottomKey } from '@/app/constants/injectionKeys';
 import {
 	isPlanModePlanMessage,
 	isPlanModeQuestionsMessage,
@@ -117,6 +118,7 @@ onDocumentVisible(() => {
 const processedWorkflowUpdates = ref(new Set<string>());
 const accumulatedNodeIdsToTidyUp = ref<string[]>([]);
 const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
+provide(AiBuilderScrollToBottomKey, () => n8nChatRef.value?.scrollToBottom());
 const chatInputRef = ref<InstanceType<typeof ChatInputWithMention>>();
 const suggestionsInputRef = ref<InstanceType<typeof ChatInputWithMention>>();
 const inputText = ref('');
