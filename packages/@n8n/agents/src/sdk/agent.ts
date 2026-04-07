@@ -675,6 +675,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		}));
 
 		// --- Structured output ---
+		// TODO: define structured output schema handling better
 		const structuredOutput = {
 			enabled: Boolean(this.outputSchema),
 			schemaSource: null as string | null,
