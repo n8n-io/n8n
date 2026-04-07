@@ -462,7 +462,7 @@ export class McpClientTool implements INodeType {
 					};
 					const result = await client.callTool(params, CallToolResultSchema, {
 						timeout: config.timeout,
-						signal,
+						signal: this.getExecutionCancelSignal(),
 					});
 					returnData.push({
 						json: {
