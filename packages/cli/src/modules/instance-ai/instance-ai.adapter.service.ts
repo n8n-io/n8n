@@ -1013,12 +1013,10 @@ export class InstanceAiAdapterService {
 				try {
 					const decrypted = credentialsService.decrypt(credential, true);
 
-					// 1. Check pre-stored accountIdentifier (set at OAuth callback time)
 					if (typeof decrypted.accountIdentifier === 'string' && decrypted.accountIdentifier) {
 						return { accountIdentifier: decrypted.accountIdentifier };
 					}
 
-					// 2. Fallback: extract from oauthTokenData (for credentials connected before this change)
 					const tokenData = decrypted.oauthTokenData;
 					if (tokenData && typeof tokenData === 'object') {
 						const { OauthService } = await import('@/oauth/oauth.service');
@@ -1030,7 +1028,6 @@ export class InstanceAiAdapterService {
 						}
 					}
 
-					// 3. Check top-level credential fields for account-identifying values
 					for (const key of ['email', 'user', 'username', 'account', 'serviceAccountEmail']) {
 						const value = decrypted[key];
 						if (typeof value === 'string' && value) {
