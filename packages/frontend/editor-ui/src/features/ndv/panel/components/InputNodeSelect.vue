@@ -2,7 +2,6 @@
 import { useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { isPresent } from '@/app/utils/typesUtils';
 import type { IConnectedNode, Workflow } from 'n8n-workflow';
@@ -24,7 +23,6 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
@@ -89,7 +87,7 @@ function getMultipleNodesText(nodeName: string): string {
 		return '';
 
 	const activeNodeConnections =
-		workflowsStore.connectionsByDestinationNode[activeNode.value.name].main || [];
+		workflowDocumentStore?.value?.connectionsByDestinationNode[activeNode.value.name]?.main ?? [];
 	// Collect indexes of connected nodes
 	const connectedInputIndexes = activeNodeConnections.reduce((acc: number[], node, index) => {
 		if (node?.[0] && node[0].node === nodeName) return [...acc, index];

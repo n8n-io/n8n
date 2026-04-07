@@ -3,6 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import {
 	RoleRepository,
+	RoleMappingRuleRepository,
 	SettingsRepository,
 	User,
 	UserRepository,
@@ -22,6 +23,12 @@ import { ZodError } from 'zod';
 import { ProjectService } from '@/services/project.service.ee';
 import { InstanceSettings } from 'n8n-core';
 import { UserService } from '@/services/user.service';
+import { RoleResolverService } from './role-resolver.service.ee';
+import type { RoleMappingConfig, ResolvedRoles, RoleResolverContext } from './role-resolver-types';
+
+export function isExpressionMappingFlagEnabled(): boolean {
+	return process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY === 'true';
+}
 
 @Service()
 export class ProvisioningService {
@@ -39,6 +46,8 @@ export class ProvisioningService {
 		private readonly logger: Logger,
 		private readonly publisher: Publisher,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly roleMappingRuleRepository: RoleMappingRuleRepository,
+		private readonly roleResolverService: RoleResolverService,
 	) {}
 
 	async init() {
@@ -280,6 +289,7 @@ export class ProvisioningService {
 			'scopesName',
 			'scopesInstanceRoleClaimName',
 			'scopesProjectsRolesClaimName',
+			'scopesUseExpressionMapping',
 		] as const;
 
 		const updatedConfig: Record<string, unknown> = {
@@ -291,6 +301,15 @@ export class ProvisioningService {
 			if (patchConfig[supportedPatchField] === null) {
 				delete updatedConfig[supportedPatchField];
 			}
+		}
+
+		if (
+			updatedConfig.scopesUseExpressionMapping &&
+			(updatedConfig.scopesProvisionInstanceRole || updatedConfig.scopesProvisionProjectRoles)
+		) {
+			throw new BadRequestError(
+				'Expression-based mapping and direct-claim provisioning cannot both be enabled at the same time.',
+			);
 		}
 
 		ProvisioningConfigDto.parse(updatedConfig);
@@ -384,5 +403,181 @@ export class ProvisioningService {
 	private async isProjectRolesProvisioningEnabled(): Promise<boolean> {
 		const provisioningConfig = await this.getConfig();
 		return provisioningConfig.scopesProvisionProjectRoles;
+	}
+
+	async isExpressionMappingEnabled(): Promise<boolean> {
+		if (!isExpressionMappingFlagEnabled()) return false;
+		const provisioningConfig = await this.getConfig();
+		return provisioningConfig.scopesUseExpressionMapping;
+	}
+
+	private async buildRoleMappingConfig(): Promise<RoleMappingConfig> {
+		const dbRules = await this.roleMappingRuleRepository.find({
+			relations: ['role', 'projects'],
+			order: { order: 'ASC' },
+		});
+
+		const instanceRoleRules: RoleMappingConfig['instanceRoleRules'] = [];
+		const projectRoleRules: RoleMappingConfig['projectRoleRules'] = [];
+
+		for (const dbRule of dbRules) {
+			if (dbRule.type === 'instance') {
+				instanceRoleRules.push({
+					id: dbRule.id,
+					expression: dbRule.expression,
+					role: dbRule.role.slug,
+					enabled: true,
+				});
+			} else {
+				for (const project of dbRule.projects) {
+					projectRoleRules.push({
+						id: `${dbRule.id}:${project.id}`,
+						expression: dbRule.expression,
+						role: dbRule.role.slug,
+						projectId: project.id,
+						enabled: true,
+					});
+				}
+			}
+		}
+
+		return { instanceRoleRules, projectRoleRules, fallbackInstanceRole: 'global:member' };
+	}
+
+	private async applyExpressionMappedRoles(
+		user: User,
+		resolvedRoles: ResolvedRoles,
+	): Promise<void> {
+		await this.applyExpressionMappedInstanceRole(user, resolvedRoles.instanceRole);
+		await this.applyExpressionMappedProjectRoles(user.id, resolvedRoles.projectRoles);
+	}
+
+	private async applyExpressionMappedInstanceRole(
+		user: User,
+		instanceRoleSlug: string,
+	): Promise<void> {
+		let dbRole: Role;
+		try {
+			dbRole = await this.roleRepository.findOneOrFail({ where: { slug: instanceRoleSlug } });
+		} catch {
+			this.logger.warn(
+				`Expression mapping: skipping instance role, slug "${instanceRoleSlug}" not found`,
+				{ userId: user.id },
+			);
+			return;
+		}
+
+		if (dbRole.roleType !== 'global') {
+			this.logger.warn(
+				`Expression mapping: skipping instance role, "${instanceRoleSlug}" is not a global role`,
+				{ userId: user.id },
+			);
+			return;
+		}
+
+		const globalOwnerRoleSlug = 'global:owner';
+		if (user.role.slug === globalOwnerRoleSlug && dbRole.slug !== globalOwnerRoleSlug) {
+			const otherOwners = await this.userRepository.count({
+				where: { role: { slug: globalOwnerRoleSlug }, id: Not(user.id) },
+			});
+			if (otherOwners === 0) {
+				this.logger.warn(
+					'Expression mapping: skipping instance role update, cannot demote last owner',
+					{ userId: user.id },
+				);
+				return;
+			}
+		}
+
+		if (user.role.slug !== dbRole.slug) {
+			await this.userService.changeUserRole(user, { newRoleName: dbRole.slug });
+			this.eventService.emit('sso-user-instance-role-updated', {
+				userId: user.id,
+				role: dbRole.slug,
+			});
+		}
+	}
+
+	private async applyExpressionMappedProjectRoles(
+		userId: string,
+		projectRoleMap: Map<string, string>,
+	): Promise<void> {
+		// Fetch existing access first so revocation always runs, even when projectRoleMap is empty
+		const currentlyAccessibleProjects = await this.projectRepository.find({
+			where: { type: Not('personal'), projectRelations: { userId } },
+			relations: ['projectRelations'],
+		});
+
+		const validMappings: Array<{ projectId: string; roleSlug: string }> = [];
+
+		if (projectRoleMap.size > 0) {
+			const projectIds = [...projectRoleMap.keys()];
+			const roleSlugs = [...new Set(projectRoleMap.values())];
+
+			const [existingProjects, existingRoles] = await Promise.all([
+				this.projectRepository.find({
+					where: { id: In(projectIds), type: Not('personal') },
+					select: ['id'],
+				}),
+				this.roleRepository.find({
+					where: { slug: In(roleSlugs), roleType: 'project' },
+					select: ['displayName', 'slug'],
+				}),
+			]);
+
+			const existingProjectIds = new Set(existingProjects.map((p) => p.id));
+
+			for (const [projectId, roleSlug] of projectRoleMap.entries()) {
+				if (!existingProjectIds.has(projectId)) {
+					this.logger.warn(
+						`Expression mapping: skipping project ${projectId}, not found or is a personal project`,
+						{ userId, projectId, roleSlug },
+					);
+					continue;
+				}
+				const role = existingRoles.find((r) => r.slug === roleSlug);
+				if (!role) {
+					this.logger.warn(
+						`Expression mapping: skipping role "${roleSlug}", not found or not a project role`,
+						{ userId, projectId, roleSlug },
+					);
+					continue;
+				}
+				validMappings.push({ projectId, roleSlug: role.slug });
+			}
+		}
+
+		const validProjectIds = new Set(validMappings.map((m) => m.projectId));
+		const projectsToRemoveAccessFrom = currentlyAccessibleProjects.filter(
+			(p) => !validProjectIds.has(p.id),
+		);
+
+		if (projectsToRemoveAccessFrom.length === 0 && validMappings.length === 0) return;
+
+		await this.projectRepository.manager.transaction(async (tx) => {
+			for (const project of projectsToRemoveAccessFrom) {
+				await tx.delete(ProjectRelation, { projectId: project.id, userId });
+			}
+			for (const { projectId, roleSlug } of validMappings) {
+				await this.projectService.addUser(projectId, { userId, role: roleSlug }, tx);
+			}
+		});
+
+		this.eventService.emit('sso-user-project-access-updated', {
+			projectsAdded: validProjectIds.size,
+			projectsRemoved: projectsToRemoveAccessFrom.length,
+			userId,
+		});
+	}
+
+	async provisionExpressionMappedRolesForUser(
+		user: User,
+		context: RoleResolverContext,
+	): Promise<void> {
+		if (!(await this.isExpressionMappingEnabled())) return;
+
+		const config = await this.buildRoleMappingConfig();
+		const resolvedRoles = await this.roleResolverService.resolveRoles(config, context);
+		await this.applyExpressionMappedRoles(user, resolvedRoles);
 	}
 }

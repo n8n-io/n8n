@@ -24,12 +24,15 @@ const unnamedWorkflowHistoryDataFactory = (): WorkflowHistory => ({
 
 vi.stubGlobal(
 	'IntersectionObserver',
-	vi.fn(() => ({
-		disconnect: vi.fn(),
-		observe: vi.fn(),
-		takeRecords: vi.fn(),
-		unobserve: vi.fn(),
-	})),
+	class {
+		disconnect = vi.fn();
+
+		observe = vi.fn();
+
+		takeRecords = vi.fn();
+
+		unobserve = vi.fn();
+	},
 );
 
 const actionTypes: WorkflowHistoryActionTypes = ['restore', 'clone', 'open', 'download'];

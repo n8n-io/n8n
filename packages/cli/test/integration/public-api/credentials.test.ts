@@ -826,6 +826,37 @@ describe('PATCH /credentials/:id', () => {
 		isSharingLicensedSpy.mockRestore();
 	});
 
+	test('should allow sending isGlobal with same value when sharing is not licensed', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		// Credential defaults to isGlobal=false, so sending isGlobal=false should succeed
+		const licenseState = Container.get(LicenseState);
+		const isSharingLicensedSpy = jest
+			.spyOn(licenseState, 'isSharingLicensed')
+			.mockReturnValue(false);
+
+		const updatePayload = {
+			name: 'Updated name',
+			isGlobal: false,
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.name).toBe('Updated name');
+
+		// Verify credential was updated
+		const updatedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+		expect(updatedCredential.name).toBe('Updated name');
+		expect(updatedCredential.isGlobal).toBeFalsy();
+
+		isSharingLicensedSpy.mockRestore();
+	});
+
 	test('should fail to update managed credentials', async () => {
 		const managedCredential = await saveCredential(
 			{ ...dbCredential(), isManaged: true },

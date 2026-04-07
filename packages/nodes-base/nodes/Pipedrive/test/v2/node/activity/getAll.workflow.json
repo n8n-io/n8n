@@ -1,0 +1,126 @@
+{
+	"name": "Pipedrive v2 activity getAll test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "d4d4d4d4-e5e5-f6f6-a7a7-b8b8b8b8b8b8",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"authentication": "apiToken",
+				"resource": "activity",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 2,
+				"filters": {}
+			},
+			"id": "e5e5e5e5-f6f6-a7a7-b8b8-c9c9c9c9c9c9",
+			"name": "Pipedrive",
+			"type": "n8n-nodes-base.pipedrive",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"credentials": {
+				"pipedriveApi": {
+					"id": "cred-1",
+					"name": "Pipedrive API"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "f6f6f6f6-a7a7-b8b8-c9c9-d0d0d0d0d0d0",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 0]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"id": 1,
+					"subject": "[Sample] Final attempt",
+					"type": "call",
+					"owner_id": 25455458,
+					"creator_user_id": 25455458,
+					"is_deleted": false,
+					"add_time": "2026-04-01T19:00:38Z",
+					"update_time": "2026-04-01T19:00:38Z",
+					"deal_id": null,
+					"lead_id": null,
+					"person_id": 1,
+					"org_id": null,
+					"project_id": null,
+					"due_date": "2026-04-01",
+					"due_time": null,
+					"duration": null,
+					"done": false,
+					"busy": false,
+					"marked_as_done_time": null,
+					"location": null,
+					"participants": [
+						{
+							"person_id": 1,
+							"primary": true
+						}
+					],
+					"conference_meeting_client": null,
+					"conference_meeting_url": null,
+					"conference_meeting_id": null,
+					"public_description": "[sampledata]",
+					"priority": null,
+					"note": null
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"subject": "[Sample] Context call",
+					"type": "call",
+					"owner_id": 25455458,
+					"creator_user_id": 25455458,
+					"is_deleted": false,
+					"add_time": "2026-04-01T19:00:38Z",
+					"update_time": "2026-04-01T19:00:38Z",
+					"deal_id": 2,
+					"lead_id": null,
+					"person_id": 7,
+					"org_id": 3,
+					"project_id": null,
+					"due_date": "2026-04-01",
+					"due_time": null,
+					"duration": null,
+					"done": false,
+					"busy": false,
+					"marked_as_done_time": null,
+					"location": null,
+					"participants": [
+						{
+							"person_id": 7,
+							"primary": true
+						}
+					],
+					"conference_meeting_client": null,
+					"conference_meeting_url": null,
+					"conference_meeting_id": null,
+					"public_description": "[sampledata]",
+					"priority": null,
+					"note": null
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [[{ "node": "Pipedrive", "type": "main", "index": 0 }]]
+		},
+		"Pipedrive": {
+			"main": [[{ "node": "No Operation, do nothing", "type": "main", "index": 0 }]]
+		}
+	}
+}

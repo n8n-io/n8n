@@ -1,7 +1,8 @@
 import { MAX_PINNED_DATA_SIZE, MAX_WORKFLOW_SIZE, MAX_EXPECTED_REQUEST_SIZE } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { Project, Variables } from '@n8n/db';
-import type { ITaskData, IWorkflowBase, IWorkflowSettings } from 'n8n-workflow';
+import type { CredentialsEntity, Project, Variables } from '@n8n/db';
+import { CredentialsRepository } from '@n8n/db';
+import type { ITaskData, IWorkflowBase, IWorkflowBase, IWorkflowSettings } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
@@ -10,6 +11,7 @@ import {
 	getVariables,
 	preserveInputOverride,
 	removeDefaultValues,
+	replaceInvalidCredentials,
 	shouldRestartParentExecution,
 	validatePinDataSize,
 } from '@/workflow-helpers';
@@ -176,6 +178,94 @@ describe('preserveInputOverride', () => {
 		preserveInputOverride(runDataArray);
 		expect(runDataArray).toHaveLength(1);
 		expect(runDataArray[0]).toBe(first);
+	});
+});
+
+describe('replaceInvalidCredentials', () => {
+	const credentialsRepository = mockInstance(CredentialsRepository);
+
+	afterEach(() => jest.clearAllMocks());
+
+	function makeWorkflow(credentials: Record<string, { id: string | null; name: string }>) {
+		return {
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [0, 0] as [number, number],
+					parameters: {},
+					credentials,
+				},
+			],
+			connections: {},
+		} as unknown as IWorkflowBase;
+	}
+
+	it('should resolve credentials by name scoped to the given project', async () => {
+		const cred = { id: 'cred-1', name: 'My Cred' } as CredentialsEntity;
+		credentialsRepository.findByNameAndTypeInProject.mockResolvedValueOnce([cred]);
+
+		const workflow = makeWorkflow({ httpHeaderAuth: { id: null, name: 'My Cred' } });
+		await replaceInvalidCredentials(workflow, 'project-1');
+
+		expect(credentialsRepository.findByNameAndTypeInProject).toHaveBeenCalledWith(
+			'My Cred',
+			'httpHeaderAuth',
+			'project-1',
+		);
+		expect(workflow.nodes[0].credentials!.httpHeaderAuth).toEqual({
+			id: 'cred-1',
+			name: 'My Cred',
+		});
+	});
+
+	it('should not resolve when no matching credential exists in the project', async () => {
+		credentialsRepository.findByNameAndTypeInProject.mockResolvedValueOnce([]);
+
+		const workflow = makeWorkflow({ httpHeaderAuth: { id: null, name: 'Unknown' } });
+		await replaceInvalidCredentials(workflow, 'project-1');
+
+		expect(workflow.nodes[0].credentials!.httpHeaderAuth).toEqual({
+			id: null,
+			name: 'Unknown',
+		});
+	});
+
+	it('should not resolve when multiple credentials match in the project', async () => {
+		const cred1 = { id: 'cred-1', name: 'Dup' } as CredentialsEntity;
+		const cred2 = { id: 'cred-2', name: 'Dup' } as CredentialsEntity;
+		credentialsRepository.findByNameAndTypeInProject.mockResolvedValueOnce([cred1, cred2]);
+
+		const workflow = makeWorkflow({ httpHeaderAuth: { id: null, name: 'Dup' } });
+		await replaceInvalidCredentials(workflow, 'project-1');
+
+		expect(workflow.nodes[0].credentials!.httpHeaderAuth).toEqual({
+			id: null,
+			name: 'Dup',
+		});
+	});
+
+	it('should fall back to name lookup within project when credential ID is not found', async () => {
+		const cred = { id: 'cred-new', name: 'My Cred' } as CredentialsEntity;
+		credentialsRepository.findOneBy.mockResolvedValueOnce(null);
+		credentialsRepository.findByNameAndTypeInProject.mockResolvedValueOnce([cred]);
+
+		const workflow = makeWorkflow({
+			httpHeaderAuth: { id: 'cred-deleted', name: 'My Cred' },
+		});
+		await replaceInvalidCredentials(workflow, 'project-1');
+
+		expect(credentialsRepository.findByNameAndTypeInProject).toHaveBeenCalledWith(
+			'My Cred',
+			'httpHeaderAuth',
+			'project-1',
+		);
+		expect(workflow.nodes[0].credentials!.httpHeaderAuth).toEqual({
+			id: 'cred-new',
+			name: 'My Cred',
+		});
 	});
 });
 

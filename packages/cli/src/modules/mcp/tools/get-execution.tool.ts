@@ -18,7 +18,7 @@ const inputSchema = z.object({
 		.boolean()
 		.optional()
 		.describe(
-			'Whether to include the full execution result data. Defaults to false (metadata only). Set to true to include node inputs/outputs.',
+			'Whether to include the full execution result data. Defaults to false (metadata only). Set to true to include node inputs/outputs. Use `false` to quickly check execution status',
 		),
 	nodeNames: z
 		.array(z.string())
@@ -110,18 +110,9 @@ export const createGetExecutionTool = (
 			}
 
 			if (!execution) {
-				// Check if execution exists at all
-				const executionExists = await executionRepository.existsBy({ id: executionId });
-				if (!executionExists) {
-					throw new WorkflowAccessError(
-						`Execution with ID '${executionId}' does not exist`,
-						'execution_does_not_exist',
-					);
-				}
-
 				throw new WorkflowAccessError(
-					`Execution '${executionId}' does not belong to workflow '${workflowId}'`,
-					'execution_workflow_mismatch',
+					`Execution '${executionId}' not found for workflow '${workflowId}'`,
+					'execution_not_found',
 				);
 			}
 
@@ -162,7 +153,7 @@ export const createGetExecutionTool = (
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
 			return {
-				content: [{ type: 'text', text: jsonStringify(output) }],
+				content: [{ type: 'text', text: jsonStringify(output, { replaceCircularRefs: true }) }],
 				structuredContent: output,
 			};
 		} catch (er) {
@@ -195,7 +186,7 @@ export const createGetExecutionTool = (
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
 			return {
-				content: [{ type: 'text', text: jsonStringify(output) }],
+				content: [{ type: 'text', text: jsonStringify(output, { replaceCircularRefs: true }) }],
 				structuredContent: output,
 			};
 		}
