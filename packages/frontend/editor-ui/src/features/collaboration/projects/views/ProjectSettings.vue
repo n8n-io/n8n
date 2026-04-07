@@ -530,6 +530,10 @@ const isProjectRoleProvisioningEnabled = computed(
 	() => userRoleProvisioningStore.provisioningConfig?.scopesProvisionProjectRoles || false,
 );
 
+const isExpressionMappingEnabled = computed(
+	() => userRoleProvisioningStore.provisioningConfig?.scopesUseExpressionMapping || false,
+);
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('projects.settings'));
 
@@ -637,7 +641,7 @@ onMounted(async () => {
 							:remote-method="debouncedUserSearch"
 							:loading="isLoadingUsers"
 							@update:model-value="onAddMember"
-							:disabled="isProjectRoleProvisioningEnabled"
+							:disabled="isProjectRoleProvisioningEnabled || isExpressionMappingEnabled"
 						>
 							<template #prefix>
 								<N8nIcon icon="search" />
@@ -657,7 +661,17 @@ onMounted(async () => {
 							</template>
 						</N8nInput>
 					</div>
-					<div v-if="isProjectRoleProvisioningEnabled" class="mb-m">
+					<div v-if="isExpressionMappingEnabled" class="mb-m">
+						<N8nAlert
+							type="info"
+							:title="
+								i18n.baseText(
+									'settings.provisioningProjectRolesHandledByExpressionMapping.description',
+								)
+							"
+						/>
+					</div>
+					<div v-else-if="isProjectRoleProvisioningEnabled" class="mb-m">
 						<N8nAlert
 							type="info"
 							:title="
@@ -673,7 +687,7 @@ onMounted(async () => {
 							:current-user-id="usersStore.currentUser?.id"
 							:project-roles="rolesStore.processedProjectRoles"
 							:actions="projectMembersActions"
-							:can-edit-role="!isProjectRoleProvisioningEnabled"
+							:can-edit-role="!isProjectRoleProvisioningEnabled && !isExpressionMappingEnabled"
 							@update:options="onUpdateMembersTableOptions"
 							@update:role="onUpdateMemberRole"
 							@action="onMembersListAction"
