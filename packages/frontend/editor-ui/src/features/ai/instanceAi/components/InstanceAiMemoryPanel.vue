@@ -1,7 +1,7 @@
 <script lang="ts" setup>
-import { ref, watch } from 'vue';
 import { N8nIcon, N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { ref, watch } from 'vue';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { useInstanceAiMemoryStore } from '../instanceAiMemory.store';
 
@@ -38,7 +38,7 @@ function handleSave() {
 		</div>
 		<div :class="$style.body">
 			<div v-if="memoryStore.isLoading" :class="$style.loading">
-				<N8nIcon icon="spinner" spin />
+				<N8nIcon icon="spinner" color="primary" spin />
 			</div>
 			<textarea
 				v-else

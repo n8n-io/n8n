@@ -3,13 +3,15 @@ import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
 
+export const getDataTableSchemaInputSchema = z.object({
+	dataTableId: z.string().describe('ID of the data table'),
+});
+
 export function createGetDataTableSchemaTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'get-data-table-schema',
 		description: 'Get column definitions for a data table. Returns column names, types, and IDs.',
-		inputSchema: z.object({
-			dataTableId: z.string().describe('ID of the data table'),
-		}),
+		inputSchema: getDataTableSchemaInputSchema,
 		outputSchema: z.object({
 			columns: z.array(
 				z.object({
@@ -20,7 +22,7 @@ export function createGetDataTableSchemaTool(context: InstanceAiContext) {
 				}),
 			),
 		}),
-		execute: async (input) => {
+		execute: async (input: z.infer<typeof getDataTableSchemaInputSchema>) => {
 			const columns = await context.dataTableService.getSchema(input.dataTableId);
 			return { columns };
 		},

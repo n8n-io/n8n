@@ -11,6 +11,7 @@ const BASE_CONFIG: GatewayConfig = {
 		defaultBrowser: 'chrome',
 	},
 	permissions: {},
+	permissionConfirmation: 'instance',
 };
 
 describe('resolveTemplateName', () => {

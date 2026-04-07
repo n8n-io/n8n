@@ -1,6 +1,6 @@
 import { createDomainAccessTracker } from '../../../domain-access';
 import type { InstanceAiContext, FetchedPage, InstanceAiWebResearchService } from '../../../types';
-import { createFetchUrlTool } from '../fetch-url.tool';
+import { createFetchUrlTool, fetchUrlInputSchema } from '../fetch-url.tool';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -56,20 +56,17 @@ function createMockCtx(overrides?: {
 describe('fetch-url tool', () => {
 	describe('schema validation', () => {
 		it('accepts a valid URL', () => {
-			const tool = createFetchUrlTool(createMockContext());
-			const result = tool.inputSchema!.safeParse({ url: 'https://example.com' });
+			const result = fetchUrlInputSchema.safeParse({ url: 'https://example.com' });
 			expect(result.success).toBe(true);
 		});
 
 		it('rejects an invalid URL', () => {
-			const tool = createFetchUrlTool(createMockContext());
-			const result = tool.inputSchema!.safeParse({ url: 'not-a-url' });
+			const result = fetchUrlInputSchema.safeParse({ url: 'not-a-url' });
 			expect(result.success).toBe(false);
 		});
 
 		it('accepts optional maxContentLength', () => {
-			const tool = createFetchUrlTool(createMockContext());
-			const result = tool.inputSchema!.safeParse({
+			const result = fetchUrlInputSchema.safeParse({
 				url: 'https://example.com',
 				maxContentLength: 5000,
 			});
@@ -77,8 +74,7 @@ describe('fetch-url tool', () => {
 		});
 
 		it('rejects maxContentLength over 100000', () => {
-			const tool = createFetchUrlTool(createMockContext());
-			const result = tool.inputSchema!.safeParse({
+			const result = fetchUrlInputSchema.safeParse({
 				url: 'https://example.com',
 				maxContentLength: 200_000,
 			});
@@ -121,12 +117,12 @@ describe('fetch-url tool', () => {
 			const context = createMockContext(undefined);
 			const tool = createFetchUrlTool(context);
 
-			const result = await tool.execute!(
+			const result = (await tool.execute!(
 				{
 					url: 'https://example.com',
 				},
 				{} as never,
-			);
+			)) as Record<string, unknown>;
 
 			expect(result).toMatchObject({
 				url: 'https://example.com',
@@ -209,10 +205,10 @@ describe('fetch-url tool', () => {
 			});
 			const tool = createFetchUrlTool(context);
 
-			const result = await tool.execute!(
+			const result = (await tool.execute!(
 				{ url: 'https://example.com/page' },
 				createMockCtx({ resumeData: { approved: false } }),
-			);
+			)) as Record<string, unknown>;
 
 			expect((result as { content: string }).content).toBe('User denied access to this URL.');
 			expect(service.fetchUrl).not.toHaveBeenCalled();

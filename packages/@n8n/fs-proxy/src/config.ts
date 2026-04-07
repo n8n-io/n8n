@@ -63,6 +63,8 @@ export interface GatewayConfig {
 	};
 	/** Startup permission overrides (ENV/CLI). Merged with persistent settings in SettingsStore. */
 	permissions: Partial<Record<ToolGroup, PermissionMode>>;
+	/** Where resource access confirmation prompts are displayed. */
+	permissionConfirmation: 'client' | 'instance';
 }
 
 // ---------------------------------------------------------------------------
@@ -111,6 +113,7 @@ const structuralConfigSchema = z.object({
 			defaultBrowser: z.string().default('chrome'),
 		})
 		.default({}),
+	permissionConfirmation: z.enum(['client', 'instance']).default('instance'),
 });
 
 // ---------------------------------------------------------------------------
@@ -177,6 +180,9 @@ function buildEnvConfig(): PartialStructural {
 	const defaultBrowser = envString('BROWSER_DEFAULT');
 	if (defaultBrowser) config.browser = { defaultBrowser };
 
+	const permissionConfirmation = envString('PERMISSION_CONFIRMATION');
+	if (permissionConfirmation) config.permissionConfirmation = permissionConfirmation;
+
 	return config as PartialStructural;
 }
 
@@ -198,6 +204,9 @@ function buildCliConfig(args: yargsParser.Arguments): PartialStructural {
 
 	if (args['browser-default'])
 		config.browser = { defaultBrowser: args['browser-default'] as string };
+
+	if (args['permission-confirmation'])
+		config.permissionConfirmation = args['permission-confirmation'];
 
 	return config as PartialStructural;
 }
@@ -273,7 +282,14 @@ export function parseConfig(argv = process.argv.slice(2)): ParsedArgs {
 	const permissionFlags = Object.values(TOOL_GROUP_DEFINITIONS).map((o) => o.cliFlag);
 
 	const args = yargsParser(rawArgs, {
-		string: ['log-level', 'filesystem-dir', 'browser-default', 'allow-origin', ...permissionFlags],
+		string: [
+			'log-level',
+			'filesystem-dir',
+			'browser-default',
+			'allow-origin',
+			'permission-confirmation',
+			...permissionFlags,
+		],
 		boolean: ['auto-confirm', 'non-interactive', 'help'],
 		number: ['port', 'computer-shell-timeout'],
 		alias: { h: 'help', p: 'port' },

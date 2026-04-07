@@ -5,13 +5,19 @@ import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
 
+export const deleteDataTableInputSchema = z.object({
+	dataTableId: z.string().describe('ID of the data table to delete'),
+});
+
+export const deleteDataTableResumeSchema = z.object({
+	approved: z.boolean(),
+});
+
 export function createDeleteDataTableTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'delete-data-table',
 		description: 'Permanently delete a data table and all its rows. Irreversible.',
-		inputSchema: z.object({
-			dataTableId: z.string().describe('ID of the data table to delete'),
-		}),
+		inputSchema: deleteDataTableInputSchema,
 		outputSchema: z.object({
 			success: z.boolean(),
 			denied: z.boolean().optional(),
@@ -22,11 +28,12 @@ export function createDeleteDataTableTool(context: InstanceAiContext) {
 			message: z.string(),
 			severity: instanceAiConfirmationSeveritySchema,
 		}),
-		resumeSchema: z.object({
-			approved: z.boolean(),
-		}),
-		execute: async (input, ctx) => {
-			const { resumeData, suspend } = ctx?.agent ?? {};
+		resumeSchema: deleteDataTableResumeSchema,
+		execute: async (input: z.infer<typeof deleteDataTableInputSchema>, ctx) => {
+			const resumeData = ctx?.agent?.resumeData as
+				| z.infer<typeof deleteDataTableResumeSchema>
+				| undefined;
+			const suspend = ctx?.agent?.suspend;
 
 			// State 1: First call — suspend for confirmation
 			if (resumeData === undefined || resumeData === null) {
