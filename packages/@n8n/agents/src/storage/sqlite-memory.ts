@@ -204,14 +204,11 @@ export class SqliteMemory implements BuiltMemory {
 
 		return result.rows
 			.map((row) => {
-				const msg = parseJsonSafe(row.content as string) as AgentMessage & {
-					id?: string;
-					createdAt?: Date;
-				};
+				const msg = parseJsonSafe(row.content as string) as AgentDbMessage;
 				if (!msg) return undefined;
 				msg.id = row.id as string;
 				msg.createdAt = new Date(row.createdAt as string);
-				return msg as AgentDbMessage;
+				return msg;
 			})
 			.filter((m): m is AgentDbMessage => m !== undefined);
 	}
