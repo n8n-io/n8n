@@ -8,6 +8,11 @@ import {
 	useBuilderTodos,
 } from './useBuilderTodos';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import type { IPinData } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 
 vi.mock('@n8n/i18n', async (importActual) => ({
@@ -323,8 +328,18 @@ describe('useBuilderTodos', () => {
 				...overrides,
 			}) as INodeUi;
 
+		function setPinData(pinData: IPinData) {
+			const workflowsStore = useWorkflowsStore();
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflow.id),
+			);
+			workflowDocumentStore.setPinData(pinData);
+		}
+
 		beforeEach(() => {
 			setActivePinia(createPinia());
+			const workflowsStore = useWorkflowsStore();
+			workflowsStore.workflow.id = 'test-workflow';
 		});
 
 		it('excludes placeholder issues from pinned nodes', () => {
@@ -340,9 +355,9 @@ describe('useBuilderTodos', () => {
 
 			// Set the workflow with the node and pin data for it
 			workflowsStore.workflow.nodes = [nodeWithPlaceholder];
-			workflowsStore.workflow.pinData = {
+			setPinData({
 				'HTTP Request': [{ json: { data: 'pinned result' } }],
-			};
+			});
 
 			const { workflowTodos } = useBuilderTodos();
 
@@ -363,7 +378,7 @@ describe('useBuilderTodos', () => {
 
 			// Set the workflow with the node but NO pin data
 			workflowsStore.workflow.nodes = [nodeWithPlaceholder];
-			workflowsStore.workflow.pinData = {};
+			setPinData({});
 
 			const { workflowTodos } = useBuilderTodos();
 
@@ -392,9 +407,9 @@ describe('useBuilderTodos', () => {
 					main: [[{ node: 'Other Node', type: 'main' as const, index: 0 }]],
 				},
 			};
-			workflowsStore.workflow.pinData = {
+			setPinData({
 				'HTTP Request': [{ json: { data: 'pinned result' } }],
-			};
+			});
 
 			const { workflowTodos } = useBuilderTodos();
 
@@ -432,9 +447,9 @@ describe('useBuilderTodos', () => {
 					],
 				},
 			};
-			workflowsStore.workflow.pinData = {
+			setPinData({
 				'OpenAI GPT-4o-mini': [{ json: { response: 'pinned AI response' } }],
-			};
+			});
 
 			// Verify the issue exists in workflowValidationIssues before filtering
 			const validationIssues = workflowsStore.workflowValidationIssues;
@@ -479,9 +494,9 @@ describe('useBuilderTodos', () => {
 			};
 
 			// Parent node has pinned data, but sub-node does NOT
-			workflowsStore.workflow.pinData = {
+			setPinData({
 				'Analyze Emails': [{ json: { response: 'pinned response' } }],
-			};
+			});
 
 			// Verify validation issue exists for the sub-node
 			const validationIssues = workflowsStore.workflowValidationIssues;
@@ -533,9 +548,9 @@ describe('useBuilderTodos', () => {
 			};
 
 			// Only grandparent has pinned data
-			workflowsStore.workflow.pinData = {
+			setPinData({
 				'AI Agent': [{ json: { response: 'pinned response' } }],
-			};
+			});
 
 			const { workflowTodos } = useBuilderTodos();
 
@@ -567,15 +582,15 @@ describe('useBuilderTodos', () => {
 			const { workflowTodos } = useBuilderTodos();
 
 			// No pinData - should show issue
-			workflowsStore.workflow.pinData = {};
+			setPinData({});
 			expect(workflowTodos.value).toHaveLength(1);
 
 			// Empty array - should still show issue
-			workflowsStore.workflow.pinData = { 'Test Node': [] };
+			setPinData({ 'Test Node': [] });
 			expect(workflowTodos.value).toHaveLength(1);
 
 			// Non-empty array - should hide issue
-			workflowsStore.workflow.pinData = { 'Test Node': [{ json: { data: 'test' } }] };
+			setPinData({ 'Test Node': [{ json: { data: 'test' } }] });
 			expect(workflowTodos.value).toHaveLength(0);
 		});
 
@@ -599,7 +614,7 @@ describe('useBuilderTodos', () => {
 					main: [[{ node: 'Other Node', type: 'main' as const, index: 0 }]],
 				},
 			};
-			workflowsStore.workflow.pinData = {};
+			setPinData({});
 
 			const { workflowTodos } = useBuilderTodos();
 
@@ -627,10 +642,10 @@ describe('useBuilderTodos', () => {
 			});
 
 			workflowsStore.workflow.nodes = [pinnedNode, unpinnedNode];
-			workflowsStore.workflow.pinData = {
+			setPinData({
 				'Pinned Node': [{ json: { data: 'pinned result' } }],
 				// 'Unpinned Node' has no pinned data
-			};
+			});
 
 			const { workflowTodos } = useBuilderTodos();
 
@@ -652,7 +667,7 @@ describe('useBuilderTodos', () => {
 			});
 
 			workflowsStore.workflow.nodes = [disabledNode];
-			workflowsStore.workflow.pinData = {};
+			setPinData({});
 
 			const { workflowTodos } = useBuilderTodos();
 
@@ -680,7 +695,7 @@ describe('useBuilderTodos', () => {
 					main: [[{ node: 'Other Node', type: 'main' as const, index: 0 }]],
 				},
 			};
-			workflowsStore.workflow.pinData = {};
+			setPinData({});
 
 			const { workflowTodos } = useBuilderTodos();
 
@@ -718,7 +733,7 @@ describe('useBuilderTodos', () => {
 					ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel' as const, index: 0 }]],
 				},
 			};
-			workflowsStore.workflow.pinData = {};
+			setPinData({});
 
 			// Verify validation issue exists for the sub-node
 			const validationIssues = workflowsStore.workflowValidationIssues;
@@ -743,7 +758,7 @@ describe('useBuilderTodos', () => {
 			});
 
 			workflowsStore.workflow.nodes = [enabledNode];
-			workflowsStore.workflow.pinData = {};
+			setPinData({});
 
 			const { workflowTodos } = useBuilderTodos();
 
@@ -773,7 +788,7 @@ describe('useBuilderTodos', () => {
 			});
 
 			workflowsStore.workflow.nodes = [disabledNode, enabledNode];
-			workflowsStore.workflow.pinData = {};
+			setPinData({});
 
 			const { workflowTodos } = useBuilderTodos();
 
@@ -795,7 +810,7 @@ describe('useBuilderTodos', () => {
 				});
 
 				workflowsStore.workflow.nodes = [nodeWithPlaceholder];
-				workflowsStore.workflow.pinData = {};
+				setPinData({});
 
 				const { workflowTodos, hasTodosHiddenByPinnedData } = useBuilderTodos();
 
@@ -816,7 +831,7 @@ describe('useBuilderTodos', () => {
 				});
 
 				workflowsStore.workflow.nodes = [cleanNode];
-				workflowsStore.workflow.pinData = {};
+				setPinData({});
 
 				const { workflowTodos, hasTodosHiddenByPinnedData } = useBuilderTodos();
 
@@ -837,9 +852,9 @@ describe('useBuilderTodos', () => {
 
 				workflowsStore.workflow.nodes = [nodeWithPlaceholder];
 				// Pin data hides the todo
-				workflowsStore.workflow.pinData = {
+				setPinData({
 					'HTTP Request': [{ json: { data: 'pinned result' } }],
-				};
+				});
 
 				const { workflowTodos, hasTodosHiddenByPinnedData } = useBuilderTodos();
 
@@ -868,9 +883,9 @@ describe('useBuilderTodos', () => {
 					},
 				};
 				// Pin data hides the credential issue
-				workflowsStore.workflow.pinData = {
+				setPinData({
 					'HTTP Request': [{ json: { data: 'pinned result' } }],
-				};
+				});
 
 				const { workflowTodos, hasTodosHiddenByPinnedData } = useBuilderTodos();
 
@@ -892,7 +907,7 @@ describe('useBuilderTodos', () => {
 				});
 
 				workflowsStore.workflow.nodes = [disabledNode];
-				workflowsStore.workflow.pinData = {};
+				setPinData({});
 
 				const { workflowTodos, hasTodosHiddenByPinnedData } = useBuilderTodos();
 
@@ -926,9 +941,9 @@ describe('useBuilderTodos', () => {
 					},
 				};
 				// Parent node has pinned data
-				workflowsStore.workflow.pinData = {
+				setPinData({
 					'AI Agent': [{ json: { response: 'pinned response' } }],
-				};
+				});
 
 				const { workflowTodos, hasTodosHiddenByPinnedData } = useBuilderTodos();
 
@@ -950,9 +965,9 @@ describe('useBuilderTodos', () => {
 				});
 
 				workflowsStore.workflow.nodes = [pinnedDisabledNode];
-				workflowsStore.workflow.pinData = {
+				setPinData({
 					'HTTP Request': [{ json: { data: 'pinned result' } }],
-				};
+				});
 
 				const { workflowTodos, hasTodosHiddenByPinnedData } = useBuilderTodos();
 
@@ -980,9 +995,9 @@ describe('useBuilderTodos', () => {
 				});
 
 				workflowsStore.workflow.nodes = [pinnedNode, unpinnedNode];
-				workflowsStore.workflow.pinData = {
+				setPinData({
 					'Pinned Node': [{ json: { data: 'pinned result' } }],
-				};
+				});
 
 				const { workflowTodos, hasTodosHiddenByPinnedData } = useBuilderTodos();
 
@@ -1020,15 +1035,15 @@ describe('useBuilderTodos', () => {
 				};
 
 				// Initially parent is pinned - no todos expected
-				workflowsStore.workflow.pinData = {
+				setPinData({
 					'AI Agent': [{ json: { response: 'pinned' } }],
-				};
+				});
 
 				const { workflowTodos } = useBuilderTodos();
 				expect(workflowTodos.value).toHaveLength(0);
 
 				// Unpin the parent
-				workflowsStore.workflow.pinData = {};
+				setPinData({});
 
 				// Should now show the subnode's placeholder todo
 				expect(workflowTodos.value).toHaveLength(1);
@@ -1059,7 +1074,7 @@ describe('useBuilderTodos', () => {
 						ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel' as const, index: 0 }]],
 					},
 				};
-				workflowsStore.workflow.pinData = {};
+				setPinData({});
 
 				const { workflowTodos } = useBuilderTodos();
 

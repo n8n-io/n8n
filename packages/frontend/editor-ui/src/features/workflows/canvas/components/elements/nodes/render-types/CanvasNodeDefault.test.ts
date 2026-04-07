@@ -416,4 +416,80 @@ describe('CanvasNodeDefault', () => {
 
 		expect(emitted()).toHaveProperty('activate');
 	});
+
+	describe('placeholder node', () => {
+		it('should emit "replace:node" event when placeholder node is double-clicked', async () => {
+			const nodeId = 'placeholder-node-id';
+			const { getByText, emitted } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							id: nodeId,
+							data: {
+								render: {
+									type: CanvasNodeRenderType.Default,
+									options: { placeholder: true },
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			await fireEvent.dblClick(getByText('Test Node'));
+
+			expect(emitted()).toHaveProperty('replace:node');
+			expect(emitted('replace:node')?.[0]).toEqual([nodeId]);
+		});
+
+		it('should emit "replace:node" instead of "activate" when placeholder node is double-clicked', async () => {
+			const nodeId = 'placeholder-node-id-2';
+			const { getByText, emitted } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							id: nodeId,
+							data: {
+								render: {
+									type: CanvasNodeRenderType.Default,
+									options: { placeholder: true },
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			await fireEvent.dblClick(getByText('Test Node'));
+
+			// Placeholder nodes should emit replace:node, not activate
+			expect(emitted()).toHaveProperty('replace:node');
+			expect(emitted()).not.toHaveProperty('activate');
+			expect(emitted('replace:node')?.[0]).toEqual([nodeId]);
+		});
+
+		it('should not emit "replace:node" when non-placeholder node is clicked', async () => {
+			const { getByText, emitted } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								render: {
+									type: CanvasNodeRenderType.Default,
+									options: { placeholder: false },
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			await fireEvent.click(getByText('Test Node'));
+
+			expect(emitted()).not.toHaveProperty('replace:node');
+		});
+	});
 });

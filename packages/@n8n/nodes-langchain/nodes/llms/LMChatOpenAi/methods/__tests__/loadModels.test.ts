@@ -156,6 +156,25 @@ describe('searchModels', () => {
 		]);
 	});
 
+	it('should include custom credential headers in the OpenAI client', async () => {
+		mockContext.getCredentials.mockResolvedValueOnce({
+			apiKey: 'test-api-key',
+			header: true,
+			headerName: 'X-Custom-Auth',
+			headerValue: 'custom-value',
+		});
+
+		await searchModels.call(mockContext);
+
+		expect(mockOpenAI).toHaveBeenCalledWith(
+			expect.objectContaining({
+				defaultHeaders: expect.objectContaining({
+					'X-Custom-Auth': 'custom-value',
+				}),
+			}),
+		);
+	});
+
 	it('should return models sorted alphabetically by id', async () => {
 		// Setup a mock with scrambled order
 		const mockUnsortedInstance = {

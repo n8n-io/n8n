@@ -45,9 +45,20 @@ export {
 	createProgrammaticEvaluator,
 	createPairwiseEvaluator,
 	createSimilarityEvaluator,
+	createResponderEvaluator,
+	createExecutionEvaluator,
+	createBinaryChecksEvaluator,
 	type PairwiseEvaluatorOptions,
 	type SimilarityEvaluatorOptions,
+	type BinaryChecksEvaluatorOptions,
+	type ResponderEvaluationContext,
 } from './evaluators';
+
+// Introspection lifecycle
+export {
+	createIntrospectionAnalysisLifecycle,
+	type IntrospectionAnalysisOptions,
+} from './lifecycles/introspection-analysis';
 
 // Output
 export {

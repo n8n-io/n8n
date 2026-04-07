@@ -40,6 +40,11 @@ export function langsmithMetricKey(feedback: Feedback): string {
 		return feedbackKey(feedback);
 	}
 
+	if (feedback.evaluator === 'responder-judge') {
+		// Dimension & overall metrics unprefixed (like llm-judge), judge details prefixed.
+		return feedback.kind === 'detail' ? feedbackKey(feedback) : feedback.metric;
+	}
+
 	// Default: prefix unknown evaluators to avoid collisions with unprefixed `llm-judge` metrics.
 	return feedbackKey(feedback);
 }

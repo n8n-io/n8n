@@ -12,11 +12,19 @@ import {
 	type ISupplyDataFunctions,
 } from 'n8n-workflow';
 
+import { proxyFetch } from '@n8n/ai-utilities';
+
 import { getTools } from '../loadOptions';
 import { McpClientTool } from '../McpClientTool.node';
 
 jest.mock('@modelcontextprotocol/sdk/client/sse.js');
 jest.mock('@modelcontextprotocol/sdk/client/index.js');
+jest.mock('@n8n/ai-utilities', () => ({
+	...jest.requireActual('@n8n/ai-utilities'),
+	proxyFetch: jest.fn(),
+}));
+
+const mockedProxyFetch = proxyFetch as jest.MockedFunction<typeof proxyFetch>;
 
 describe('McpClientTool', () => {
 	describe('loadOptions: getTools', () => {
@@ -202,6 +210,8 @@ describe('McpClientTool', () => {
 				],
 			});
 
+			mockedProxyFetch.mockResolvedValue(new Response('ok', { status: 200 }));
+
 			const supplyDataResult = await new McpClientTool().supplyData.call(
 				mock<ISupplyDataFunctions>({
 					getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
@@ -224,18 +234,17 @@ describe('McpClientTool', () => {
 			expect(supplyDataResult.closeFunction).toBeInstanceOf(Function);
 			expect(supplyDataResult.response).toBeInstanceOf(StructuredToolkit);
 
-			const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(mock());
 			const url = new URL('https://my-mcp-endpoint.ai/sse');
 			expect(SSEClientTransport).toHaveBeenCalledTimes(1);
 			expect(SSEClientTransport).toHaveBeenCalledWith(url, {
 				eventSourceInit: { fetch: expect.any(Function) },
 				fetch: expect.any(Function),
-				requestInit: { headers: { 'my-header': 'header-value' } },
 			});
 
+			// Verify the eventSourceInit fetch injects auth headers and Accept header
 			const customFetch = jest.mocked(SSEClientTransport).mock.calls[0][1]?.eventSourceInit?.fetch;
 			await customFetch?.(url, {} as any);
-			expect(fetchSpy).toHaveBeenCalledWith(url, {
+			expect(mockedProxyFetch).toHaveBeenCalledWith(url, {
 				headers: { Accept: 'text/event-stream', 'my-header': 'header-value' },
 			});
 		});
@@ -251,6 +260,8 @@ describe('McpClientTool', () => {
 					},
 				],
 			});
+
+			mockedProxyFetch.mockResolvedValue(new Response('ok', { status: 200 }));
 
 			const supplyDataResult = await new McpClientTool().supplyData.call(
 				mock<ISupplyDataFunctions>({
@@ -274,18 +285,17 @@ describe('McpClientTool', () => {
 			expect(supplyDataResult.closeFunction).toBeInstanceOf(Function);
 			expect(supplyDataResult.response).toBeInstanceOf(StructuredToolkit);
 
-			const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(mock());
 			const url = new URL('https://my-mcp-endpoint.ai/sse');
 			expect(SSEClientTransport).toHaveBeenCalledTimes(1);
 			expect(SSEClientTransport).toHaveBeenCalledWith(url, {
 				eventSourceInit: { fetch: expect.any(Function) },
 				fetch: expect.any(Function),
-				requestInit: { headers: { Authorization: 'Bearer my-token' } },
 			});
 
+			// Verify the eventSourceInit fetch injects auth headers and Accept header
 			const customFetch = jest.mocked(SSEClientTransport).mock.calls[0][1]?.eventSourceInit?.fetch;
 			await customFetch?.(url, {} as any);
-			expect(fetchSpy).toHaveBeenCalledWith(url, {
+			expect(mockedProxyFetch).toHaveBeenCalledWith(url, {
 				headers: { Accept: 'text/event-stream', Authorization: 'Bearer my-token' },
 			});
 		});
@@ -394,7 +404,7 @@ describe('McpClientTool', () => {
 				0,
 			);
 
-			// Abort after supplyData but before tool invocation
+			// Abort after supplyData returns but before tool invocation
 			abortController.abort();
 
 			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
@@ -1046,11 +1056,166 @@ describe('McpClientTool', () => {
 					arguments: { location: 'Berlin' },
 				},
 				CallToolResultSchema,
-				expect.objectContaining({
-					timeout: 12345,
-					signal: abortController.signal,
-				}),
+				expect.objectContaining({ timeout: 12345, signal: abortController.signal }),
 			);
+		});
+
+		it('should throw when execution is already cancelled', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'get_weather',
+						description: 'Gets the weather',
+						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+					},
+				],
+			});
+
+			const abortController = new AbortController();
+			abortController.abort();
+
+			const mockNode = mock<INode>({ typeVersion: 1, type: 'mcpClientTool' });
+			const mockExecuteFunctions = mock<any>({
+				getNode: jest.fn(() => mockNode),
+				getInputData: jest.fn(() => [{ json: { tool: 'get_weather', location: 'Berlin' } }]),
+				getNodeParameter: jest.fn((key) => {
+					const params: Record<string, any> = {
+						include: 'all',
+						includeTools: [],
+						excludeTools: [],
+						authentication: 'none',
+						sseEndpoint: 'https://test.com/sse',
+						'options.timeout': 60000,
+					};
+					return params[key];
+				}),
+				getExecutionCancelSignal: jest.fn(() => abortController.signal),
+			});
+
+			await expect(new McpClientTool().execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Execution was cancelled',
+			);
+			expect(Client.prototype.callTool).not.toHaveBeenCalled();
+		});
+
+		it('should pass abort signal to client.callTool in execute path', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				content: [{ type: 'text', text: 'Weather is sunny' }],
+			});
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'get_weather',
+						description: 'Gets the weather',
+						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+					},
+				],
+			});
+
+			const abortController = new AbortController();
+
+			const mockNode = mock<INode>({ typeVersion: 1, type: 'mcpClientTool' });
+			const mockExecuteFunctions = mock<any>({
+				getNode: jest.fn(() => mockNode),
+				getInputData: jest.fn(() => [{ json: { tool: 'get_weather', location: 'Berlin' } }]),
+				getNodeParameter: jest.fn((key) => {
+					const params: Record<string, any> = {
+						include: 'all',
+						includeTools: [],
+						excludeTools: [],
+						authentication: 'none',
+						sseEndpoint: 'https://test.com/sse',
+						'options.timeout': 60000,
+					};
+					return params[key];
+				}),
+				getExecutionCancelSignal: jest.fn(() => abortController.signal),
+			});
+
+			await new McpClientTool().execute.call(mockExecuteFunctions);
+
+			expect(Client.prototype.callTool).toHaveBeenCalledWith(
+				expect.any(Object),
+				CallToolResultSchema,
+				expect.objectContaining({ signal: abortController.signal }),
+			);
+		});
+	});
+
+	describe('supplyData cancellation', () => {
+		beforeEach(() => {
+			jest.resetAllMocks();
+		});
+
+		it('should handle mid-flight abort without calling onError', async () => {
+			const abortController = new AbortController();
+
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'callTool').mockImplementation(async () => {
+				// Simulate abort happening during the call
+				abortController.abort();
+				throw new Error('The operation was aborted');
+			});
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'MyTool',
+						description: 'MyTool does something',
+						inputSchema: { type: 'object', properties: { input: { type: 'string' } } },
+					},
+				],
+			});
+
+			const mockSupplyDataFunctions = mock<ISupplyDataFunctions>({
+				getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
+				logger: { debug: jest.fn(), error: jest.fn() },
+				addInputData: jest.fn(() => ({ index: 0 })),
+				getExecutionCancelSignal: jest.fn(() => abortController.signal),
+			});
+
+			const supplyDataResult = await new McpClientTool().supplyData.call(
+				mockSupplyDataFunctions,
+				0,
+			);
+
+			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
+			const result = await tools[0].invoke({ input: 'foo' });
+
+			expect(result).toEqual('Execution was cancelled');
+			// Cancellation should NOT be logged as a tool error
+			expect(mockSupplyDataFunctions.addOutputData).not.toHaveBeenCalled();
+			expect(mockSupplyDataFunctions.logger.error).not.toHaveBeenCalled();
+		});
+
+		it('should not connect to MCP server when execution is already cancelled', async () => {
+			const abortController = new AbortController();
+			abortController.abort();
+
+			const connectSpy = jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'MyTool',
+						description: 'MyTool does something',
+						inputSchema: { type: 'object', properties: { input: { type: 'string' } } },
+					},
+				],
+			});
+
+			const mockSupplyDataFunctions = mock<ISupplyDataFunctions>({
+				getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
+				logger: { debug: jest.fn(), error: jest.fn() },
+				addInputData: jest.fn(() => ({ index: 0 })),
+				addOutputData: jest.fn(),
+				getExecutionCancelSignal: jest.fn(() => abortController.signal),
+			});
+
+			await expect(new McpClientTool().supplyData.call(mockSupplyDataFunctions, 0)).rejects.toThrow(
+				'Execution was cancelled',
+			);
+			expect(connectSpy).not.toHaveBeenCalled();
 		});
 	});
 });

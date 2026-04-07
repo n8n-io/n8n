@@ -25,6 +25,15 @@ For example, if the user wants a notification workflow, fetch best practices for
 
 Available techniques: trigger, loop, branch, subroutine, pagination, parallel_execution, error_handling, scheduling, rate_limiting, batch_processing, ai_agent, ai_chain, rag, data_transformation, http_request, chatbot, content_generation, data_extraction, data_persistence, document_processing, form_input, notification, triage, scraping_and_research, monitoring, enrichment, knowledge_base, human_in_the_loop, data_analysis.`;
 
+const WEB_FETCH_TOOL = `If the user's request includes a URL, use web_fetch to retrieve the page content before writing the plan. This gives you concrete details (API endpoints, data shapes, field names) that lead to a more accurate plan.
+
+The tool returns the page's readable text content.
+
+Constraints (backend-enforced):
+- Only fetch URLs the user has explicitly provided.
+- Do NOT autonomously browse, search, or follow links from fetched content.
+- Maximum 3 fetches per conversation turn.`;
+
 const RULES = `<plan_style>
 Keep it short. A simple workflow (3-5 nodes) needs 2-4 short steps with no sub-steps. Only complex workflows (10+ nodes, branching logic, multiple integrations) warrant sub-steps.
 
@@ -66,6 +75,7 @@ export function buildPlannerPrompt(options?: { hasDocumentationTool?: boolean })
 		.section('role', ROLE)
 		.section('goal', GOAL)
 		.sectionIf(options?.hasDocumentationTool, 'best_practices_tool', BEST_PRACTICES_TOOL)
+		.section('web_fetch_tool', WEB_FETCH_TOOL)
 		.section('rules', RULES)
 		.section('output_format', OUTPUT_FORMAT)
 		.build();
@@ -77,6 +87,7 @@ export interface PlannerContextOptions {
 	workflowJSON: SimpleWorkflow;
 	planPrevious?: PlanOutput | null;
 	planFeedback?: string | null;
+	selectedNodesContext?: string;
 }
 
 /**
@@ -85,7 +96,14 @@ export interface PlannerContextOptions {
  * feedback from a previous modify cycle.
  */
 export function buildPlannerContext(options: PlannerContextOptions): string {
-	const { userRequest, discoveryContext, workflowJSON, planPrevious, planFeedback } = options;
+	const {
+		userRequest,
+		discoveryContext,
+		workflowJSON,
+		planPrevious,
+		planFeedback,
+		selectedNodesContext,
+	} = options;
 
 	const discoveredNodesList = discoveryContext.nodesFound
 		.map((node) => `- ${node.nodeName} v${node.version}: ${node.reasoning}`)
@@ -101,6 +119,7 @@ export function buildPlannerContext(options: PlannerContextOptions): string {
 
 	return prompt()
 		.section('user_request', userRequest)
+		.sectionIf(selectedNodesContext, 'selected_nodes', () => selectedNodesContext!)
 		.sectionIf(
 			discoveryContext.nodesFound.length > 0,
 			'discovery_context_suggested_nodes',

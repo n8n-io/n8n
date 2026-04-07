@@ -1,4 +1,4 @@
-import { testDb } from '@n8n/backend-test-utils';
+import { testDb, createTeamProject, linkUserToProject } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -32,10 +32,8 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	// Note: DataTable entities will be cascade deleted when projects are truncated
 	await testDb.truncate(['ProjectRelation', 'Project']);
 
-	// Recreate personal projects
 	const projectRepository = Container.get(ProjectRepository);
 	const projectRelationRepository = Container.get(ProjectRelationRepository);
 
@@ -115,14 +113,12 @@ describe('GET /data-tables', () => {
 			columns: [{ name: 'col3', type: 'string' }],
 		});
 
-		// First page
 		const response1 = await authOwnerAgent.get('/data-tables').query({ limit: 2 });
 
 		expect(response1.statusCode).toBe(200);
 		expect(response1.body.data).toHaveLength(2);
 		expect(response1.body.nextCursor).toBeTruthy();
 
-		// Second page using cursor
 		const response2 = await authOwnerAgent
 			.get('/data-tables')
 			.query({ cursor: response1.body.nextCursor });
@@ -192,7 +188,6 @@ describe('GET /data-tables', () => {
 	});
 
 	test('should use default limit of 100', async () => {
-		// Create more than 100 tables to test default
 		for (let i = 1; i <= 101; i++) {
 			await createDataTable(ownerPersonalProject, {
 				name: `table${i}`,
@@ -205,6 +200,140 @@ describe('GET /data-tables', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toHaveLength(100);
 		expect(response.body.nextCursor).toBeTruthy();
+	});
+
+	test('should list data tables from personal project and accessible team projects', async () => {
+		testServer.license.setQuota('quota:maxTeamProjects', -1);
+		testServer.license.enable('feat:projectRole:admin');
+
+		const teamProject = await createTeamProject();
+		await linkUserToProject(owner, teamProject, 'project:admin');
+
+		await createDataTable(ownerPersonalProject, {
+			name: 'personal-table',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+		await createDataTable(teamProject, {
+			name: 'team-table',
+			columns: [{ name: 'col2', type: 'string' }],
+		});
+
+		const response = await authOwnerAgent.get('/data-tables');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(2);
+
+		const tableNames = response.body.data.map((table: any) => table.name);
+		expect(tableNames).toContain('personal-table');
+		expect(tableNames).toContain('team-table');
+	});
+
+	test('should not list data tables from team projects user is not member of', async () => {
+		testServer.license.setQuota('quota:maxTeamProjects', -1);
+		testServer.license.enable('feat:projectRole:admin');
+
+		const teamProject = await createTeamProject();
+		await linkUserToProject(owner, teamProject, 'project:admin');
+
+		await createDataTable(memberPersonalProject, {
+			name: 'member-personal-table',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+		await createDataTable(teamProject, {
+			name: 'team-table-no-access',
+			columns: [{ name: 'col2', type: 'string' }],
+		});
+
+		const memberResponse = await authMemberAgent.get('/data-tables');
+
+		expect(memberResponse.statusCode).toBe(200);
+		expect(memberResponse.body.data).toHaveLength(1);
+		expect(memberResponse.body.data[0].name).toBe('member-personal-table');
+
+		const ownerResponse = await authOwnerAgent.get('/data-tables');
+
+		expect(ownerResponse.statusCode).toBe(200);
+		expect(ownerResponse.body.data).toHaveLength(2);
+		const tableNames = ownerResponse.body.data.map((table: any) => table.name);
+		expect(tableNames).toContain('member-personal-table');
+		expect(tableNames).toContain('team-table-no-access');
+	});
+
+	test('should list data tables from multiple team projects user has access to', async () => {
+		testServer.license.setQuota('quota:maxTeamProjects', -1);
+		testServer.license.enable('feat:projectRole:admin');
+
+		const teamProject1 = await createTeamProject('Team A');
+		const teamProject2 = await createTeamProject('Team B');
+		const teamProject3 = await createTeamProject('Team C');
+
+		await linkUserToProject(member, teamProject1, 'project:admin');
+		await linkUserToProject(member, teamProject2, 'project:viewer');
+
+		await createDataTable(memberPersonalProject, {
+			name: 'personal-table',
+			columns: [{ name: 'col', type: 'string' }],
+		});
+		await createDataTable(teamProject1, {
+			name: 'team-a-table',
+			columns: [{ name: 'col', type: 'string' }],
+		});
+		await createDataTable(teamProject2, {
+			name: 'team-b-table',
+			columns: [{ name: 'col', type: 'string' }],
+		});
+		await createDataTable(teamProject3, {
+			name: 'team-c-table-no-explicit-access',
+			columns: [{ name: 'col', type: 'string' }],
+		});
+
+		const memberResponse = await authMemberAgent.get('/data-tables');
+
+		expect(memberResponse.statusCode).toBe(200);
+		expect(memberResponse.body.data).toHaveLength(3);
+
+		const memberTableNames = memberResponse.body.data.map((table: any) => table.name);
+		expect(memberTableNames).toContain('personal-table');
+		expect(memberTableNames).toContain('team-a-table');
+		expect(memberTableNames).toContain('team-b-table');
+		expect(memberTableNames).not.toContain('team-c-table-no-explicit-access');
+
+		const ownerResponse = await authOwnerAgent.get('/data-tables');
+
+		expect(ownerResponse.statusCode).toBe(200);
+		expect(ownerResponse.body.data).toHaveLength(4);
+
+		const ownerTableNames = ownerResponse.body.data.map((table: any) => table.name);
+		expect(ownerTableNames).toContain('personal-table');
+		expect(ownerTableNames).toContain('team-a-table');
+		expect(ownerTableNames).toContain('team-b-table');
+		expect(ownerTableNames).toContain('team-c-table-no-explicit-access');
+	});
+
+	test('should check if global owners can see data tables in other users personal projects', async () => {
+		await createDataTable(ownerPersonalProject, {
+			name: 'owner-personal-table',
+			columns: [{ name: 'col', type: 'string' }],
+		});
+		await createDataTable(memberPersonalProject, {
+			name: 'member-personal-table',
+			columns: [{ name: 'col', type: 'string' }],
+		});
+
+		const ownerResponse = await authOwnerAgent.get('/data-tables');
+
+		expect(ownerResponse.statusCode).toBe(200);
+		expect(ownerResponse.body.data).toHaveLength(2);
+
+		const ownerTableNames = ownerResponse.body.data.map((table: any) => table.name);
+		expect(ownerTableNames).toContain('owner-personal-table');
+		expect(ownerTableNames).toContain('member-personal-table');
+
+		const memberResponse = await authMemberAgent.get('/data-tables');
+
+		expect(memberResponse.statusCode).toBe(200);
+		expect(memberResponse.body.data).toHaveLength(1);
+		expect(memberResponse.body.data[0].name).toBe('member-personal-table');
 	});
 });
 

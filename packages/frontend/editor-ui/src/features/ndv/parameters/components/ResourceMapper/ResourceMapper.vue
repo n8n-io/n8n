@@ -14,7 +14,8 @@ import type {
 	ResourceMapperValue,
 } from 'n8n-workflow';
 import { deepCopy, NodeHelpers } from 'n8n-workflow';
-import { computed, onMounted, reactive, watch } from 'vue';
+import { computed, inject, onMounted, reactive, watch } from 'vue';
+import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import MappingModeSelect from './MappingModeSelect.vue';
 import MatchingColumnsSelect from './MatchingColumnsSelect.vue';
 import MappingFields from './MappingFields.vue';
@@ -49,6 +50,7 @@ const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
+const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 
 const props = withDefaults(defineProps<Props>(), {
 	teleported: true,
@@ -332,11 +334,13 @@ const createRequestParams = async (methodName: string) => {
 		currentNodeParameters: (await resolveRequiredParameters(
 			props.parameter,
 			props.node.parameters,
+			expressionLocalResolveCtx?.value ?? {},
 		)) as INodeParameters,
 		path: props.path,
 		methodName,
 		credentials: props.node.credentials,
 		projectId: projectsStore.currentProjectId,
+		workflowId: workflowsStore.workflow.id,
 	};
 
 	return requestParams;
@@ -347,7 +351,6 @@ async function fetchFields(): Promise<ResourceMapperFields | null> {
 		props.parameter.typeOptions?.resourceMapper ?? {};
 
 	let fetchedFields: ResourceMapperFields | null = null;
-
 	if (typeof resourceMapperMethod === 'string') {
 		const requestParams = (await createRequestParams(
 			resourceMapperMethod,
@@ -659,9 +662,9 @@ defineExpose({
 			{{ locale.baseText('resourceMapper.staleDataWarning.notice') }}
 			<template #trailingContent>
 				<N8nButton
-					size="mini"
+					variant="subtle"
+					size="xsmall"
 					icon="refresh-cw"
-					type="secondary"
 					:loading="state.refreshInProgress"
 					@click="initFetching(true)"
 				>

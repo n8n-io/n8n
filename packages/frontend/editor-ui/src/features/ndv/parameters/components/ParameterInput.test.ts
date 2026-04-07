@@ -1,4 +1,6 @@
+import { computed } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import ParameterInput from './ParameterInput.vue';
 import type { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { CompletionResult } from '@codemirror/autocomplete';
@@ -119,6 +121,11 @@ vi.mock('@/features/ai/assistant/composables/useBuilderTodos', () => {
 
 const renderComponent = createComponentRenderer(ParameterInput, {
 	pinia: createTestingPinia(),
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
+	},
 });
 
 const settingsStore = mockedStore(useSettingsStore);
@@ -900,7 +907,7 @@ describe('ParameterInput.vue', () => {
 	});
 
 	describe('multi-line string handling', () => {
-		test('should replace all newlines with pipes in single-line string display', async () => {
+		test('should render multi-line string value as textarea', async () => {
 			const multiLineValue = 'line1\nline2\nline3';
 			const { container } = renderComponent({
 				props: {
@@ -916,9 +923,9 @@ describe('ParameterInput.vue', () => {
 			});
 
 			await nextTick();
-			const input = container.querySelector('input') as HTMLInputElement;
+			const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
 			await waitFor(() => {
-				expect(input.value).toBe('line1|line2|line3');
+				expect(textarea.value).toBe(multiLineValue);
 			});
 		});
 
@@ -943,7 +950,28 @@ describe('ParameterInput.vue', () => {
 			expect(textarea.value).toBe(multiLineValue);
 		});
 
-		test('should handle consecutive newlines correctly', async () => {
+		test('should keep pipe characters as-is in single-line input', async () => {
+			const { container } = renderComponent({
+				props: {
+					path: 'pattern',
+					parameter: createTestNodeProperties({
+						displayName: 'Pattern',
+						name: 'pattern',
+						type: 'string',
+					}),
+					modelValue: 'foo|bar',
+					expressionEvaluated: undefined,
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input') as HTMLInputElement;
+			await waitFor(() => {
+				expect(input.value).toBe('foo|bar');
+			});
+		});
+
+		test('should render string with consecutive newlines as textarea', async () => {
 			const { container } = renderComponent({
 				props: {
 					path: 'test',
@@ -958,10 +986,105 @@ describe('ParameterInput.vue', () => {
 			});
 
 			await nextTick();
-			const input = container.querySelector('input') as HTMLInputElement;
+			const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
 			await waitFor(() => {
-				expect(input.value).toBe('a|||b');
+				expect(textarea.value).toBe('a\n\n\nb');
 			});
+		});
+	});
+
+	describe('JSON Password Field Validation', () => {
+		const jsonPasswordParameter = createTestNodeProperties({
+			displayName: 'Service Account Key',
+			name: 'serviceAccountKey',
+			type: 'json',
+			default: '',
+			required: true,
+			typeOptions: {
+				password: true,
+			},
+			noDataExpression: true,
+		});
+
+		it('renders as a password input', async () => {
+			const { container } = renderComponent({
+				props: {
+					path: 'serviceAccountKey',
+					parameter: jsonPasswordParameter,
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input[type="password"]');
+			expect(input).toBeInTheDocument();
+		});
+
+		it('shows validation error for invalid JSON input', async () => {
+			const { container, queryByTestId } = renderComponent({
+				props: {
+					path: 'serviceAccountKey',
+					parameter: jsonPasswordParameter,
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input') as HTMLInputElement;
+			await fireEvent.update(input, '{invalid');
+
+			expect(queryByTestId('parameter-issues')).toBeInTheDocument();
+		});
+
+		it('does not show validation error for valid JSON input', async () => {
+			const { container, queryByTestId } = renderComponent({
+				props: {
+					path: 'serviceAccountKey',
+					parameter: jsonPasswordParameter,
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input') as HTMLInputElement;
+			await fireEvent.update(input, '{"type": "service_account"}');
+
+			expect(queryByTestId('parameter-issues')).not.toBeInTheDocument();
+		});
+
+		it('does not show validation error for empty input', async () => {
+			const { container, queryByTestId } = renderComponent({
+				props: {
+					path: 'serviceAccountKey',
+					parameter: jsonPasswordParameter,
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input') as HTMLInputElement;
+			await fireEvent.update(input, '');
+
+			expect(queryByTestId('parameter-issues')).not.toBeInTheDocument();
+		});
+
+		it('clears validation error when invalid JSON is corrected', async () => {
+			const { container, queryByTestId } = renderComponent({
+				props: {
+					path: 'serviceAccountKey',
+					parameter: jsonPasswordParameter,
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input') as HTMLInputElement;
+
+			await fireEvent.update(input, '{invalid');
+			expect(queryByTestId('parameter-issues')).toBeInTheDocument();
+
+			await fireEvent.update(input, '{"valid": true}');
+			expect(queryByTestId('parameter-issues')).not.toBeInTheDocument();
 		});
 	});
 });

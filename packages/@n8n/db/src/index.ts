@@ -38,6 +38,7 @@ export { DbConnection } from './connection/db-connection';
 export { DbConnectionOptions } from './connection/db-connection-options';
 
 export { AuthRolesService } from './services/auth.roles.service';
+export { DbLock, DbLockService } from './services/db-lock.service';
 
 export { In, Like, Not, DataSource } from '@n8n/typeorm';
 export type { FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';

@@ -393,7 +393,7 @@ Container stack telemetry tracks startup timing, configuration, and runner info.
 
 | Variable | Description |
 |----------|-------------|
-| `CONTAINER_TELEMETRY_WEBHOOK` | POST telemetry JSON to this URL |
+| `QA_METRICS_WEBHOOK_URL` | POST telemetry JSON to this URL |
 | `CONTAINER_TELEMETRY_VERBOSE` | Set to `1` for JSON output to console |
 
 ### What's Collected
@@ -419,7 +419,7 @@ Container stack telemetry tracks startup timing, configuration, and runner info.
 CONTAINER_TELEMETRY_VERBOSE=1 pnpm stack
 
 # Send to webhook (CI)
-CONTAINER_TELEMETRY_WEBHOOK=https://n8n.example.com/webhook/telemetry
+QA_METRICS_WEBHOOK_URL=https://n8n.example.com/webhook/telemetry
 ```
 
 ## Cleanup

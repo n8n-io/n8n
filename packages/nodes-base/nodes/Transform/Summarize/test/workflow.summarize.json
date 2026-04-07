@@ -11,11 +11,67 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {\n    category: \"red\",\n    text: \"foo\",\n    char: \"a\",\n    value: 1,\n    \"params.interval\": \"1 day\",\n    params: {\n      interval: \"1 day\",\n    },\n  },\n  {\n    category: \"blue\",\n    text: \"spam\",\n    char: \"b\",\n    value: 2,\n    params: {\n      interval: \"1 hour\",\n    },\n  },\n  {\n    category: \"green\",\n    text: \"bar\",\n    char: \"c\",\n    value: 3,\n  },\n  {\n    category: \"red\",\n    text: \"foo\",\n    char: \"a\",\n    value: 4,\n  },\n  {\n    category: \"red\",\n    text: \"bar\",\n    char: \"a\",\n    value: 5,\n    params: {\n      interval: \"1 minute\",\n    },\n  },\n  {\n    category: \"blue\",\n    text: \"foo\",\n    char: \"a\",\n    value: 6,\n  },\n  {\n    category: \"blue\",\n    text: \"foo\",\n    char: \"a\",\n    value: 7,\n     params: {\n      interval: \"1 second\",\n    },\n  },\n];\n"
+				"data": [
+					{
+						"category": "red",
+						"text": "foo",
+						"char": "a",
+						"value": 1,
+						"params.interval": "1 day",
+						"params": {
+							"interval": "1 day"
+						}
+					},
+					{
+						"category": "blue",
+						"text": "spam",
+						"char": "b",
+						"value": 2,
+						"params": {
+							"interval": "1 hour"
+						}
+					},
+					{
+						"category": "green",
+						"text": "bar",
+						"char": "c",
+						"value": 3
+					},
+					{
+						"category": "red",
+						"text": "foo",
+						"char": "a",
+						"value": 4
+					},
+					{
+						"category": "red",
+						"text": "bar",
+						"char": "a",
+						"value": 5,
+						"params": {
+							"interval": "1 minute"
+						}
+					},
+					{
+						"category": "blue",
+						"text": "foo",
+						"char": "a",
+						"value": 6
+					},
+					{
+						"category": "blue",
+						"text": "foo",
+						"char": "a",
+						"value": 7,
+						"params": {
+							"interval": "1 second"
+						}
+					}
+				]
 			},
 			"id": "5a71d6f2-96fb-4616-94b7-5644c71e3bfb",
 			"name": "Code",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [60, 340]
 		},

@@ -23,9 +23,15 @@ describe('SecuritySettingsController', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		testServer.license.enable('feat:personalSpacePolicy');
 	});
 
 	describe('GET /settings/security', () => {
+		it('should return 403 when personalSpacePolicy license is not active', async () => {
+			testServer.license.disable('feat:personalSpacePolicy');
+			await ownerAgent.get('/settings/security').expect(403);
+		});
+
 		it('should return security settings and all counts', async () => {
 			securitySettingsService.arePersonalSpaceSettingsEnabled.mockResolvedValue({
 				personalSpacePublishing: true,
@@ -78,6 +84,14 @@ describe('SecuritySettingsController', () => {
 	});
 
 	describe('POST /settings/security', () => {
+		it('should return 403 when personalSpacePolicy license is not active', async () => {
+			testServer.license.disable('feat:personalSpacePolicy');
+			await ownerAgent
+				.post('/settings/security')
+				.send({ personalSpacePublishing: true })
+				.expect(403);
+		});
+
 		it('should update only personalSpacePublishing when only that is set in body', async () => {
 			securitySettingsService.setPersonalSpaceSetting.mockResolvedValue(undefined);
 

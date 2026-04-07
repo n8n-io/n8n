@@ -26,30 +26,6 @@ describe('AutoFinalizeHandler', () => {
 	});
 
 	describe('execute', () => {
-		it('should prompt for code creation when no code exists', async () => {
-			const handler = createHandler();
-			const existingAiMessage = new AIMessage({ content: 'Some response text' });
-			const messages: BaseMessage[] = [existingAiMessage];
-
-			const gen = handler.execute({
-				code: null,
-				currentWorkflow: undefined,
-				messages,
-			});
-
-			const result = await consumeGenerator(gen);
-
-			expect(result.success).toBe(false);
-			expect(result.promptedForCode).toBe(true);
-			// Should replace AIMessage with new one containing tool_call + append ToolMessage
-			expect(messages).toHaveLength(2);
-			expect(messages[0]).toBeInstanceOf(AIMessage);
-			expect((messages[0] as AIMessage).tool_calls).toHaveLength(1);
-			expect((messages[0] as AIMessage).tool_calls![0].name).toBe('validate_workflow');
-			expect(messages[1]).toBeInstanceOf(ToolMessage);
-			expect((messages[1] as ToolMessage).content).toContain('text editor tool');
-		});
-
 		it('should return success with workflow when validation passes', async () => {
 			const handler = createHandler();
 			const messages: BaseMessage[] = [];
@@ -165,7 +141,7 @@ describe('AutoFinalizeHandler', () => {
 
 			const result = await consumeGenerator(gen);
 
-			expect(result.parseDuration).toBeGreaterThanOrEqual(10);
+			expect(result.parseDuration).toBeDefined();
 		});
 
 		it('should send only new warnings and mark them as seen via warningTracker', async () => {

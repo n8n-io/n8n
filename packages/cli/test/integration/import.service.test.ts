@@ -267,6 +267,26 @@ describe('ImportService', () => {
 		expect(workflowHistoryRecords[0].connections).toEqual(workflowToImport.connections);
 	});
 
+	test('should preserve versionMetadata name and description when importing', async () => {
+		const workflowToImport: any = newWorkflow();
+		workflowToImport.versionMetadata = {
+			name: 'Historical Workflow Name',
+			description: 'Historical workflow description',
+		};
+
+		await importService.importWorkflows([workflowToImport], ownerPersonalProject.id);
+
+		const workflowHistoryRecords = await workflowHistoryRepository.find({
+			where: {
+				workflowId: workflowToImport.id,
+			},
+		});
+
+		expect(workflowHistoryRecords).toHaveLength(1);
+		expect(workflowHistoryRecords[0].name).toBe('Historical Workflow Name');
+		expect(workflowHistoryRecords[0].description).toBe('Historical workflow description');
+	});
+
 	test('should create a record in workflow publish history if active version exists', async () => {
 		// Create an existing active workflow in the database first
 		const existingWorkflow = await createActiveWorkflow();

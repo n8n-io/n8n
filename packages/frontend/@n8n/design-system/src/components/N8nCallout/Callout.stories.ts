@@ -5,7 +5,7 @@ import N8nLink from '../N8nLink';
 import N8nText from '../N8nText';
 
 export default {
-	title: 'Atoms/Callout',
+	title: 'Core/Callout',
 	component: N8nCallout,
 	argTypes: {
 		theme: {
@@ -26,6 +26,11 @@ export default {
 		},
 	},
 	parameters: {
+		docs: {
+			description: {
+				component: 'A highlighted information panel for announcements, tips, or warnings.',
+			},
+		},
 		design: {
 			type: 'figma',
 			url: 'https://www.figma.com/file/tPpJvbrnHbP8C496cYuwyW/Node-pinning?node-id=15%3A5777',

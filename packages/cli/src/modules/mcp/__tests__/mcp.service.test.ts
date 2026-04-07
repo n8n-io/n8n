@@ -1,22 +1,33 @@
 import type { Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
-import { User, WorkflowRepository } from '@n8n/db';
+import {
+	ExecutionRepository,
+	FolderRepository,
+	ProjectRepository,
+	SharedWorkflowRepository,
+	User,
+} from '@n8n/db';
 import { InstanceSettings } from 'n8n-core';
 import type { IRun } from 'n8n-workflow';
 import { createEmptyRunExecutionData, ManualExecutionCancelledError } from 'n8n-workflow';
 
 import { McpService } from '../mcp.service';
+import { WorkflowBuilderToolsService } from '../tools/workflow-builder/workflow-builder-tools.service';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
+import { NodeTypes } from '@/node-types';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
+import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+import { ExecutionService } from '@/executions/execution.service';
 
 describe('McpService', () => {
 	let mcpService: McpService;
@@ -40,7 +51,6 @@ describe('McpService', () => {
 			executionsConfig,
 			instanceSettings,
 			mockInstance(WorkflowFinderService),
-			mockInstance(WorkflowRepository),
 			mockInstance(WorkflowService),
 			mockInstance(UrlService),
 			mockInstance(CredentialsService),
@@ -52,6 +62,15 @@ describe('McpService', () => {
 			mockInstance(WorkflowRunner),
 			mockInstance(RoleService),
 			mockInstance(ProjectService),
+			mockInstance(WorkflowBuilderToolsService),
+			mockInstance(WorkflowCreationService),
+			mockInstance(NodeTypes),
+			mockInstance(ProjectRepository),
+			mockInstance(FolderRepository),
+			mockInstance(SharedWorkflowRepository),
+			mockInstance(ExecutionRepository),
+			mockInstance(ExecutionService),
+			mockInstance(DataTableProxyService),
 		);
 	});
 
@@ -71,7 +90,6 @@ describe('McpService', () => {
 				queueExecutionsConfig,
 				instanceSettings,
 				mockInstance(WorkflowFinderService),
-				mockInstance(WorkflowRepository),
 				mockInstance(WorkflowService),
 				mockInstance(UrlService),
 				mockInstance(CredentialsService),
@@ -83,6 +101,15 @@ describe('McpService', () => {
 				mockInstance(WorkflowRunner),
 				mockInstance(RoleService),
 				mockInstance(ProjectService),
+				mockInstance(WorkflowBuilderToolsService),
+				mockInstance(WorkflowCreationService),
+				mockInstance(NodeTypes),
+				mockInstance(ProjectRepository),
+				mockInstance(FolderRepository),
+				mockInstance(SharedWorkflowRepository),
+				mockInstance(ExecutionRepository),
+				mockInstance(ExecutionService),
+				mockInstance(DataTableProxyService),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -252,6 +279,88 @@ describe('McpService', () => {
 			expect(typeof server.connect).toBe('function');
 			expect(typeof server.close).toBe('function');
 			expect(typeof server.registerTool).toBe('function');
+		});
+
+		it('should not register builder tools when mcpBuilderEnabled is false', async () => {
+			const user = Object.assign(new User(), { id: 'user-1' });
+			const workflowBuilderToolsService = mockInstance(WorkflowBuilderToolsService);
+
+			const service = new McpService(
+				mockLogger(),
+				executionsConfig,
+				instanceSettings,
+				mockInstance(WorkflowFinderService),
+				mockInstance(WorkflowService),
+				mockInstance(UrlService),
+				mockInstance(CredentialsService),
+				activeExecutions,
+				mockInstance(GlobalConfig, {
+					endpoints: {
+						webhook: '/webhook',
+						webhookTest: '/webhook-test',
+						mcpBuilderEnabled: false,
+					},
+				}),
+				mockInstance(Telemetry),
+				mockInstance(WorkflowRunner),
+				mockInstance(RoleService),
+				mockInstance(ProjectService),
+				workflowBuilderToolsService,
+				mockInstance(WorkflowCreationService),
+				mockInstance(NodeTypes),
+				mockInstance(ProjectRepository),
+				mockInstance(FolderRepository),
+				mockInstance(SharedWorkflowRepository),
+				mockInstance(ExecutionRepository),
+				mockInstance(ExecutionService),
+				mockInstance(DataTableProxyService),
+			);
+
+			const server = await service.getServer(user);
+			expect(server).toBeDefined();
+			// Builder tools service should NOT have been initialized
+			expect(workflowBuilderToolsService.initialize).not.toHaveBeenCalled();
+		});
+
+		it('should register builder tools when mcpBuilderEnabled is true', async () => {
+			const user = Object.assign(new User(), { id: 'user-1' });
+			const workflowBuilderToolsService = mockInstance(WorkflowBuilderToolsService);
+
+			const service = new McpService(
+				mockLogger(),
+				executionsConfig,
+				instanceSettings,
+				mockInstance(WorkflowFinderService),
+				mockInstance(WorkflowService),
+				mockInstance(UrlService),
+				mockInstance(CredentialsService),
+				activeExecutions,
+				mockInstance(GlobalConfig, {
+					endpoints: {
+						webhook: '/webhook',
+						webhookTest: '/webhook-test',
+						mcpBuilderEnabled: true,
+					},
+				}),
+				mockInstance(Telemetry),
+				mockInstance(WorkflowRunner),
+				mockInstance(RoleService),
+				mockInstance(ProjectService),
+				workflowBuilderToolsService,
+				mockInstance(WorkflowCreationService),
+				mockInstance(NodeTypes),
+				mockInstance(ProjectRepository),
+				mockInstance(FolderRepository),
+				mockInstance(SharedWorkflowRepository),
+				mockInstance(ExecutionRepository),
+				mockInstance(ExecutionService),
+				mockInstance(DataTableProxyService),
+			);
+
+			const server = await service.getServer(user);
+			expect(server).toBeDefined();
+			// Builder tools service should have been initialized
+			expect(workflowBuilderToolsService.initialize).toHaveBeenCalled();
 		});
 	});
 });

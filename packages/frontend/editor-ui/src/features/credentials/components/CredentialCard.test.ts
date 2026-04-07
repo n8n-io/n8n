@@ -95,7 +95,7 @@ describe('CredentialCard', () => {
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
-		expect(actions).toHaveTextContent('Change owner');
+		expect(actions).toHaveTextContent('Move');
 	});
 
 	it('should set readOnly variant based on prop', () => {

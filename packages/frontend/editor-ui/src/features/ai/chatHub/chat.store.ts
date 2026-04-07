@@ -1,13 +1,17 @@
 import { defineStore } from 'pinia';
 import { CHAT_SESSIONS_PAGE_SIZE } from './constants';
+import { EnterpriseEditionFeature } from '@/app/constants/enterprise';
 import { computed, ref } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { useI18n } from '@n8n/i18n';
 import {
 	fetchChatModelsApi,
 	sendMessageApi,
+	sendMessageManualApi,
 	editMessageApi,
+	editMessageManualApi,
 	regenerateMessageApi,
+	regenerateMessageManualApi,
 	reconnectToSessionApi,
 	fetchConversationsApi as fetchSessionsApi,
 	fetchSingleConversationApi as fetchMessagesApi,
@@ -19,12 +23,21 @@ import {
 	createAgentApi,
 	updateAgentApi,
 	deleteAgentApi,
+	uploadAgentFilesApi,
+	deleteAgentFileApi,
 	updateConversationApi,
 	fetchChatSettingsApi,
 	fetchChatProviderSettingsApi,
 	updateChatSettingsApi,
+	fetchToolsApi,
+	createToolApi,
+	updateToolApi,
+	deleteToolApi,
 } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	emptyChatModelsResponse,
 	type ChatHubConversationModel,
@@ -48,9 +61,14 @@ import {
 	type ChatHubStreamChunk,
 	type ChatHubStreamEnd,
 	type ChatHubStreamError,
+	type ChatHubToolDto,
 	type ChatHubExecutionBegin,
 	type ChatHubExecutionEnd,
 	type ChatMessageContentChunk,
+	VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP,
+	PROVIDER_CREDENTIAL_TYPE_MAP,
+	type ChatHubN8nModel,
+	type ChatHubSessionType,
 } from '@n8n/api-types';
 import type {
 	CredentialsMap,
@@ -58,6 +76,8 @@ import type {
 	ChatConversation,
 	ChatStreamingState,
 	FetchOptions,
+	SemanticSearchReadiness,
+	SemanticSearchCredentialIssue,
 } from './chat.types';
 import { retry } from '@n8n/utils/retry';
 import {
@@ -68,34 +88,44 @@ import {
 	flattenModel,
 	unflattenModel,
 	createFakeAgent,
+	chunkFilesBySize,
 } from './chat.utils';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { deepCopy, type INode } from 'n8n-workflow';
+import { createRunExecutionData, deepCopy, type INode } from 'n8n-workflow';
+import { IN_PROGRESS_EXECUTION_ID, CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import { ResponseError } from '@n8n/rest-api-client';
 import { STORES } from '@n8n/stores/constants';
-import { appendChunkToParsedMessageItems } from '@n8n/chat-hub';
+import { appendChunkToParsedMessageItems, DEFAULT_SEMANTIC_SEARCH_SETTINGS } from '@n8n/chat-hub';
 
 export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	const rootStore = useRootStore();
+	const settingsStore = useSettingsStore();
+	const credentialsStore = useCredentialsStore();
 	const toast = useToast();
 	const telemetry = useTelemetry();
 	const i18n = useI18n();
 
 	const agents = ref<ChatModelsResponse | null>(null);
+	let pendingAgentsFetch: Promise<ChatModelsResponse> | null = null;
+
 	const customAgents = ref<Partial<Record<string, ChatHubAgentDto>>>({});
 	const sessions = ref<{
 		byId: Partial<Record<string, ChatHubSessionDto>>;
 		ids: string[] | null;
 		hasMore: boolean;
 		nextCursor: string | null;
-	}>({ byId: {}, ids: null, hasMore: false, nextCursor: null });
+		lastFetchedType: ChatHubSessionType | undefined;
+	}>({ byId: {}, ids: null, hasMore: false, nextCursor: null, lastFetchedType: undefined });
 	const sessionsLoadingMore = ref(false);
 
 	const streaming = ref<ChatStreamingState>();
 	const settingsLoading = ref(false);
 	const settings = ref<Record<ChatHubLLMProvider, ChatProviderSettingsDto> | null>(null);
+	const configuredTools = ref<ChatHubToolDto[]>([]);
+	const configuredToolsLoaded = ref(false);
+
 	const conversationsBySession = ref<Map<ChatSessionId, ChatConversation>>(new Map());
 
 	const getConversation = (sessionId: ChatSessionId): ChatConversation | undefined =>
@@ -295,11 +325,49 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		message.updatedAt = new Date().toISOString();
 	}
 
+	async function fetchConfiguredTools() {
+		const tools = await fetchToolsApi(rootStore.restApiContext);
+		configuredTools.value = tools;
+		configuredToolsLoaded.value = true;
+		return tools;
+	}
+
+	async function addConfiguredTool(tool: INode): Promise<ChatHubToolDto> {
+		const created = await createToolApi(rootStore.restApiContext, tool);
+		configuredTools.value = [...configuredTools.value, created];
+		return created;
+	}
+
+	async function updateConfiguredTool(toolId: string, definition: INode): Promise<ChatHubToolDto> {
+		const updated = await updateToolApi(rootStore.restApiContext, toolId, { definition });
+		configuredTools.value = configuredTools.value.map((t) =>
+			t.definition.id === toolId ? updated : t,
+		);
+		return updated;
+	}
+
+	async function toggleToolEnabled(toolId: string, enabled: boolean): Promise<ChatHubToolDto> {
+		const updated = await updateToolApi(rootStore.restApiContext, toolId, { enabled });
+		configuredTools.value = configuredTools.value.map((t) =>
+			t.definition.id === toolId ? updated : t,
+		);
+		return updated;
+	}
+
+	async function removeConfiguredTool(toolId: string): Promise<void> {
+		await deleteToolApi(rootStore.restApiContext, toolId);
+		configuredTools.value = configuredTools.value.filter((t) => t.definition.id !== toolId);
+	}
+
 	async function fetchAgents(credentialMap: CredentialsMap, options: FetchOptions = {}) {
+		pendingAgentsFetch ??= fetchChatModelsApi(rootStore.restApiContext, {
+			credentials: credentialMap,
+		}).finally(() => {
+			pendingAgentsFetch = null;
+		});
+
 		[agents.value] = await Promise.all([
-			fetchChatModelsApi(rootStore.restApiContext, {
-				credentials: credentialMap,
-			}),
+			pendingAgentsFetch,
 			new Promise((r) => setTimeout(r, options.minLoadingTime ?? 0)),
 		]);
 		return agents.value;
@@ -308,6 +376,13 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	async function fetchSessions(reset: boolean, options: FetchOptions = {}) {
 		if (sessionsLoadingMore.value) {
 			return;
+		}
+
+		// Force reset when switching between session types (e.g. manual vs production)
+		const typeChanged =
+			options.type !== undefined && options.type !== sessions.value.lastFetchedType;
+		if (typeChanged) {
+			reset = true;
 		}
 
 		if (
@@ -326,7 +401,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		try {
 			const cursor = reset ? undefined : (sessions.value?.nextCursor ?? undefined);
 			const [response] = await Promise.all([
-				fetchSessionsApi(rootStore.restApiContext, CHAT_SESSIONS_PAGE_SIZE, cursor),
+				fetchSessionsApi(rootStore.restApiContext, CHAT_SESSIONS_PAGE_SIZE, cursor, options.type),
 				new Promise((resolve) => setTimeout(resolve, options.minLoadingTime ?? 0)),
 			]);
 
@@ -336,10 +411,15 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 
 			sessions.value.hasMore = response.hasMore;
 			sessions.value.nextCursor = response.nextCursor;
+			sessions.value.lastFetchedType = options.type;
 
 			for (const session of response.data) {
 				sessions.value.ids.push(session.id);
-				sessions.value.byId[session.id] = session;
+				const existing = sessions.value.byId[session.id];
+				sessions.value.byId[session.id] = {
+					...session,
+					toolIds: existing?.toolIds ?? session.toolIds,
+				};
 			}
 		} finally {
 			sessionsLoadingMore.value = false;
@@ -371,6 +451,10 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 
 	async function fetchConversationTitle(sessionId: ChatSessionId) {
 		const current = sessions.value.byId[sessionId];
+
+		// Manual (draft) executions don't generate titles server-side
+		if (current?.type === 'manual') return;
+
 		if (!current || current.title === 'New Chat') {
 			// wait up to 10 * 2 seconds until conversation title is generated
 			await retry(
@@ -444,12 +528,59 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		await fetchConversationTitle(sessionId);
 	}
 
+	/**
+	 * Check if the current canvas context allows manual execution.
+	 * Returns true when:
+	 * 1. The agent is an n8n workflow
+	 * 2. The workflow is currently open on the canvas
+	 * 3. The workflow has a chat trigger with availableInChat enabled
+	 */
+	function isCanvasManualExecution(model: ChatHubConversationModel): boolean {
+		if (model.provider !== 'n8n') return false;
+
+		const workflowsStore = useWorkflowsStore();
+		if (workflowsStore.workflowId !== model.workflowId) return false;
+
+		const chatTrigger = workflowsStore.allNodes.find(
+			(node) => node.type === CHAT_TRIGGER_NODE_TYPE,
+		);
+		if (!chatTrigger) return false;
+
+		const availableInChat = chatTrigger.parameters?.availableInChat;
+		return availableInChat === true;
+	}
+
+	/**
+	 * Initialize workflowExecutionData scaffold so canvas push handlers can write
+	 * node results (makes nodes turn green during manual execution).
+	 */
+	function initManualExecutionScaffold() {
+		const workflowsStore = useWorkflowsStore();
+
+		workflowsStore.workflowExecutionData = {
+			id: IN_PROGRESS_EXECUTION_ID,
+			finished: false,
+			mode: 'manual',
+			status: 'running',
+			createdAt: new Date(),
+			startedAt: new Date(),
+			stoppedAt: undefined,
+			workflowId: workflowsStore.workflowId,
+			data: createRunExecutionData({
+				resultData: { runData: {} },
+			}),
+			workflowData: workflowsStore.workflow,
+		};
+
+		// Signal canvas that an execution is pending (null = waiting for execution ID)
+		workflowsStore.private.setActiveExecutionId(null);
+	}
+
 	async function sendMessage(
 		sessionId: ChatSessionId,
 		message: string,
 		agent: ChatModelDto,
 		credentials: ChatHubSendMessageRequest['credentials'],
-		tools: INode[],
 		files: File[] = [],
 	) {
 		const messageId = uuidv4();
@@ -472,15 +603,20 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			sessionId,
 			retryOfMessageId: null,
 			revisionOfMessageId: null,
-			tools,
 			attachments,
 			agent,
 		};
+
+		const useManualMode = isCanvasManualExecution(agent.model);
+		const mode = useManualMode ? 'manual' : 'production';
+		const source = useManualMode ? 'canvas' : 'chat_hub';
 
 		telemetry.track('User sent chat hub message', {
 			...flattenModel(agent.model),
 			is_custom: agent.model.provider === 'custom-agent',
 			chat_session_id: sessionId,
+			mode,
+			source,
 		});
 
 		const payload = {
@@ -490,7 +626,6 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			message,
 			credentials,
 			previousMessageId,
-			tools,
 			attachments,
 			agentName: agent.name,
 			timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -499,12 +634,32 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		try {
 			// Create session entry if new
 			if (!sessions.value.byId[sessionId]) {
-				sessions.value.byId[sessionId] = createSessionFromStreamingState(streaming.value);
+				sessions.value.byId[sessionId] = createSessionFromStreamingState(
+					streaming.value,
+					configuredTools.value.filter((t) => t.enabled).map((t) => t.definition.id),
+					useManualMode,
+				);
 				sessions.value.ids ??= [];
 				sessions.value.ids.unshift(sessionId);
 			}
 
-			await sendMessageApi(rootStore.restApiContext, payload);
+			if (useManualMode) {
+				initManualExecutionScaffold();
+
+				// model is guaranteed to be n8n type here (checked in isCanvasManualMode)
+				const { workflowId } = agent.model as ChatHubN8nModel;
+				await sendMessageManualApi(rootStore.restApiContext, workflowId, {
+					messageId,
+					sessionId,
+					message,
+					previousMessageId,
+					attachments,
+					agentName: agent.name,
+					timeZone: payload.timeZone,
+				});
+			} else {
+				await sendMessageApi(rootStore.restApiContext, payload);
+			}
 
 			// Note: Actual streaming content comes via Push events using pushConnection store.
 			// The push handler will call handleWebSocketStreamBegin, handleWebSocketStreamChunk, etc.
@@ -569,23 +724,45 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			agent,
 			retryOfMessageId: null,
 			revisionOfMessageId: editId,
-			tools: [],
 			attachments: [...keptExistingAttachments, ...binaryData],
 		};
+
+		const useManualMode = isCanvasManualExecution(agent.model);
+		const mode = useManualMode ? 'manual' : 'production';
+		const source = useManualMode ? 'canvas' : 'chat_hub';
 
 		telemetry.track('User edited chat hub message', {
 			...flattenModel(agent.model),
 			is_custom: agent.model.provider === 'custom-agent',
 			chat_session_id: sessionId,
 			chat_message_id: editId,
+			mode,
+			source,
 		});
 
 		try {
-			await editMessageApi(rootStore.restApiContext, {
-				sessionId,
-				editId,
-				payload,
-			});
+			if (useManualMode) {
+				initManualExecutionScaffold();
+
+				await editMessageManualApi(rootStore.restApiContext, {
+					workflowId: (agent.model as ChatHubN8nModel).workflowId,
+					sessionId,
+					editId,
+					payload: {
+						messageId: payload.messageId,
+						message: payload.message,
+						newAttachments: payload.newAttachments,
+						keepAttachmentIndices: payload.keepAttachmentIndices,
+						timeZone: payload.timeZone,
+					},
+				});
+			} else {
+				await editMessageApi(rootStore.restApiContext, {
+					sessionId,
+					editId,
+					payload,
+				});
+			}
 
 			// Note: Actual streaming content comes via Push events
 			// The messageId for the AI response will be set by handleWebSocketStreamBegin
@@ -620,23 +797,41 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			agent,
 			retryOfMessageId: retryId,
 			revisionOfMessageId: null,
-			tools: [],
 			attachments: [],
 		};
+
+		const useManualMode = isCanvasManualExecution(agent.model);
+		const mode = useManualMode ? 'manual' : 'production';
+		const source = useManualMode ? 'canvas' : 'chat_hub';
 
 		telemetry.track('User regenerated chat hub message', {
 			...flattenModel(agent.model),
 			is_custom: agent.model.provider === 'custom-agent',
 			chat_session_id: sessionId,
 			chat_message_id: retryId,
+			mode,
+			source,
 		});
 
 		try {
-			await regenerateMessageApi(rootStore.restApiContext, {
-				sessionId,
-				retryId,
-				payload,
-			});
+			if (useManualMode) {
+				initManualExecutionScaffold();
+
+				await regenerateMessageManualApi(rootStore.restApiContext, {
+					workflowId: (agent.model as ChatHubN8nModel).workflowId,
+					sessionId,
+					retryId,
+					payload: {
+						timeZone: payload.timeZone,
+					},
+				});
+			} else {
+				await regenerateMessageApi(rootStore.restApiContext, {
+					sessionId,
+					retryId,
+					payload,
+				});
+			}
 
 			// Note: Actual streaming content comes via Push events
 			// The messageId for the AI response will be set by handleWebSocketStreamBegin
@@ -671,14 +866,32 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		}
 	}
 
-	async function updateToolsInSession(sessionId: ChatSessionId, tools: INode[]) {
+	async function toggleCustomAgentTool(agentId: string, toolId: string) {
+		const agent = customAgents.value[agentId];
+		if (!agent) throw new Error(`Custom agent with ID ${agentId} not found`);
+
+		const currentIds = agent.toolIds ?? [];
+		const newIds = currentIds.includes(toolId)
+			? currentIds.filter((id) => id !== toolId)
+			: [...currentIds, toolId];
+
+		customAgents.value[agentId] = { ...agent, toolIds: newIds };
+		await updateAgentApi(rootStore.restApiContext, agentId, { toolIds: newIds });
+	}
+
+	async function toggleSessionTool(sessionId: ChatSessionId, toolId: string) {
 		const session = sessions.value?.byId[sessionId];
 		if (!session) {
 			throw new Error(`Session with ID ${sessionId} not found`);
 		}
 
+		const currentIds = session.toolIds ?? [];
+		const newIds = currentIds.includes(toolId)
+			? currentIds.filter((id) => id !== toolId)
+			: [...currentIds, toolId];
+
 		const updated = await updateConversationApi(rootStore.restApiContext, sessionId, {
-			tools,
+			toolIds: newIds,
 		});
 
 		updateSession(sessionId, updated.session);
@@ -732,14 +945,34 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		);
 	}
 
+	async function uploadFilesInChunks(agentId: string, files: File[]): Promise<ChatHubAgentDto> {
+		const maxSizeBytes =
+			(settingsStore.moduleSettings['chat-hub']?.agentUploadMaxSizeMb ?? 20) * 1024 * 1024;
+		const chunks = chunkFilesBySize(files, maxSizeBytes);
+
+		let result!: ChatHubAgentDto;
+		for (const chunk of chunks) {
+			result = await uploadAgentFilesApi(rootStore.restApiContext, agentId, chunk);
+		}
+		return result;
+	}
+
 	async function createCustomAgent(
 		payload: ChatHubCreateAgentRequest,
+		files: File[],
 		credentials: CredentialsMap,
 	): Promise<ChatModelDto> {
-		const customAgent = await createAgentApi(rootStore.restApiContext, payload);
+		let customAgent = await createAgentApi(rootStore.restApiContext, payload);
+
+		if (files.length > 0) {
+			customAgent = await uploadFilesInChunks(customAgent.id, files);
+		}
+
 		const baseModel = agents.value?.[customAgent.provider]?.models.find(
 			(model) => model.name === customAgent.model,
 		);
+		const suggestedPrompts = customAgent.suggestedPrompts.filter((p) => p.text.trim().length > 0);
+
 		const agent: ChatModelDto = {
 			model: {
 				provider: 'custom-agent' as const,
@@ -752,11 +985,13 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			updatedAt: customAgent.updatedAt,
 			metadata: baseModel?.metadata ?? {
 				capabilities: { functionCalling: false },
-				inputModalities: [],
+				allowFileUploads: false,
+				allowedFilesMimeTypes: '',
 				available: true,
 			},
 			groupName: null,
 			groupIcon: null,
+			...(suggestedPrompts.length > 0 ? { suggestedPrompts } : {}),
 		};
 		agents.value?.['custom-agent'].models.push(agent);
 		customAgents.value[customAgent.id] = customAgent;
@@ -771,15 +1006,37 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	async function updateCustomAgent(
 		agentId: string,
 		payload: ChatHubUpdateAgentRequest,
+		newFiles: File[],
+		fileKnowledgeIdsToDelete: string[],
 		credentials: CredentialsMap,
 	): Promise<ChatHubAgentDto> {
-		const customAgent = await updateAgentApi(rootStore.restApiContext, agentId, payload);
+		await updateAgentApi(rootStore.restApiContext, agentId, payload);
+
+		for (const fileKnowledgeId of fileKnowledgeIdsToDelete) {
+			await deleteAgentFileApi(rootStore.restApiContext, agentId, fileKnowledgeId);
+		}
+
+		if (newFiles.length > 0) {
+			await uploadFilesInChunks(agentId, newFiles);
+		}
+
+		const customAgent = await fetchAgentApi(rootStore.restApiContext, agentId);
 
 		// Update the agent in models as well
 		if (agents.value?.['custom-agent']) {
+			const updatedSuggestedPrompts = customAgent.suggestedPrompts.filter(
+				(p) => p.text.trim().length > 0,
+			);
+
 			agents.value['custom-agent'].models = agents.value['custom-agent'].models.map((model) =>
 				'agentId' in model && model.agentId === agentId
-					? { ...model, name: customAgent.name }
+					? {
+							...model,
+							name: customAgent.name,
+							...(updatedSuggestedPrompts.length > 0
+								? { suggestedPrompts: updatedSuggestedPrompts }
+								: { suggestedPrompts: undefined }),
+						}
 					: model,
 			);
 		}
@@ -995,7 +1252,6 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			sessionId,
 			retryOfMessageId: null,
 			revisionOfMessageId: null,
-			tools: session.tools ?? [],
 			attachments: [],
 			agent,
 		};
@@ -1022,6 +1278,13 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 					updateMessage(sessionId, streaming.value.messageId, status);
 				}
 			}
+
+			// For manual mode (canvas execution), do NOT clear activeExecutionId here.
+			// The standard `executionFinished` push handler (sent via pushRef) will:
+			// 1. Fetch the complete execution data from the API
+			// 2. Update workflowExecutionData with full results
+			// 3. Clear activeExecutionId
+			// Clearing it here would cause executionFinished to skip processing.
 
 			streaming.value = undefined;
 
@@ -1168,6 +1431,68 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		addMessage(data.sessionId, message);
 	}
 
+	const vectorStoreIssue = computed<SemanticSearchCredentialIssue | undefined>(() => {
+		const isSharingEnabled =
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing];
+		const semanticSearch =
+			settingsStore.moduleSettings['chat-hub']?.semanticSearch ?? DEFAULT_SEMANTIC_SEARCH_SETTINGS;
+		const vectorStoreCredentialId = semanticSearch?.vectorStore.credentialId ?? '';
+		const vectorStoreCredential = credentialsStore.getCredentialById(vectorStoreCredentialId);
+
+		if (!vectorStoreCredentialId) {
+			return 'unspecified';
+		}
+
+		if (
+			!vectorStoreCredential ||
+			vectorStoreCredential?.type !==
+				VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP[semanticSearch.vectorStore.provider]
+		) {
+			return 'notFound';
+		}
+
+		if (isSharingEnabled && !vectorStoreCredential.isGlobal) {
+			return 'notShared';
+		}
+
+		return undefined;
+	});
+
+	const embeddingIssue = computed<SemanticSearchCredentialIssue | undefined>(() => {
+		const isSharingEnabled =
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing];
+		const semanticSearch =
+			settingsStore.moduleSettings['chat-hub']?.semanticSearch ?? DEFAULT_SEMANTIC_SEARCH_SETTINGS;
+		const embeddingCredentialId = semanticSearch?.embeddingModel.credentialId ?? '';
+		const embeddingCredential = credentialsStore.getCredentialById(embeddingCredentialId);
+
+		if (!embeddingCredentialId) {
+			return 'unspecified';
+		}
+
+		if (
+			!embeddingCredential ||
+			embeddingCredential?.type !==
+				PROVIDER_CREDENTIAL_TYPE_MAP[semanticSearch.embeddingModel.provider]
+		) {
+			return 'notFound';
+		}
+
+		if (isSharingEnabled && !embeddingCredential.isGlobal) {
+			return 'notShared';
+		}
+
+		return undefined;
+	});
+
+	const semanticSearchReadiness = computed<SemanticSearchReadiness>(() => ({
+		isReadyForCurrentUser:
+			(!vectorStoreIssue.value || vectorStoreIssue.value === 'notShared') &&
+			(!embeddingIssue.value || embeddingIssue.value === 'notShared'),
+		vectorStoreIssue: vectorStoreIssue.value,
+		embeddingIssue: embeddingIssue.value,
+	}));
+
 	return {
 		/**
 		 * models and agents
@@ -1184,6 +1509,17 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		deleteCustomAgent,
 
 		/**
+		 * configured tools (tool library)
+		 */
+		configuredTools,
+		configuredToolsLoaded,
+		fetchConfiguredTools,
+		addConfiguredTool,
+		updateConfiguredTool,
+		toggleToolEnabled,
+		removeConfiguredTool,
+
+		/**
 		 * conversations
 		 */
 		sessions,
@@ -1194,7 +1530,8 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		renameSession,
 		updateSessionModel,
 		deleteSession,
-		updateToolsInSession,
+		toggleSessionTool,
+		toggleCustomAgentTool,
 		conversationsBySession,
 
 		/**
@@ -1224,6 +1561,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		fetchAllChatSettings,
 		fetchProviderSettings,
 		updateProviderSettings,
+		semanticSearchReadiness,
 
 		/**
 		 * WebSocket streaming handlers

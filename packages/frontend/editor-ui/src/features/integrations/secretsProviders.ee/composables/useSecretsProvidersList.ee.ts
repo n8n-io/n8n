@@ -49,6 +49,18 @@ export function useSecretsProvidersList() {
 		}
 	}
 
+	async function fetchConnection(providerKey: string) {
+		const connection = await secretsProviderApi.getSecretProviderConnectionByKey(
+			rootStore.restApiContext,
+			providerKey,
+		);
+
+		const index = activeConnections.value.findIndex((c) => c.name === providerKey);
+		if (index !== -1) {
+			activeConnections.value[index] = connection;
+		}
+	}
+
 	const isLoading = computed(
 		() => isLoadingProviderTypes.value || isLoadingActiveConnections.value,
 	);
@@ -66,6 +78,7 @@ export function useSecretsProvidersList() {
 		fetchProviderTypes,
 		activeProviders,
 		fetchActiveConnections,
+		fetchConnection,
 		canCreate,
 		canUpdate,
 		isLoading,

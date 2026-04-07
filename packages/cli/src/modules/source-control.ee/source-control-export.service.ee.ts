@@ -16,12 +16,14 @@ import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { Credentials, InstanceSettings } from 'n8n-core';
-import { UnexpectedError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 import { rm as fsRm, writeFile as fsWriteFile } from 'node:fs/promises';
 import path from 'path';
 
 import { formatWorkflow } from '@/workflows/workflow.formatter';
 
+import chunk from 'lodash/chunk';
+import { VariablesService } from '../../environments.ee/variables/variables.service.ee';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 	SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER,
@@ -41,19 +43,17 @@ import {
 	readFoldersFromSourceControlFile,
 	readTagAndMappingsFromSourceControlFile,
 	sourceControlFoldersExistCheck,
-	stringContainsExpression,
+	sanitizeCredentialData,
 } from './source-control-helper.ee';
 import { SourceControlScopedService } from './source-control-scoped.service';
-import { VariablesService } from '../../environments.ee/variables/variables.service.ee';
 import type { ExportResult } from './types/export-result';
 import type { ExportableCredential } from './types/exportable-credential';
 import type { DataTableResourceOwner, ExportableDataTable } from './types/exportable-data-table';
 import { ExportableProject } from './types/exportable-project';
+import { ExportableVariable } from './types/exportable-variable';
 import type { ExportableWorkflow } from './types/exportable-workflow';
 import type { RemoteResourceOwner } from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
-import { ExportableVariable } from './types/exportable-variable';
-import chunk from 'lodash/chunk';
 
 @Service()
 export class SourceControlExportService {
@@ -515,30 +515,6 @@ export class SourceControlExportService {
 		}
 	}
 
-	private replaceCredentialData = (
-		data: ICredentialDataDecryptedObject,
-	): ICredentialDataDecryptedObject => {
-		for (const [key] of Object.entries(data)) {
-			const value = data[key];
-			try {
-				if (value === null) {
-					delete data[key]; // remove invalid null values
-				} else if (typeof value === 'object') {
-					data[key] = this.replaceCredentialData(value as ICredentialDataDecryptedObject);
-				} else if (typeof value === 'string') {
-					data[key] = stringContainsExpression(value) ? data[key] : '';
-				} else if (typeof data[key] === 'number') {
-					// TODO: leaving numbers in for now, but maybe we should remove them
-					continue;
-				}
-			} catch (error) {
-				this.logger.error(`Failed to sanitize credential data: ${(error as Error).message}`);
-				throw error;
-			}
-		}
-		return data;
-	};
-
 	async exportCredentialsToWorkFolder(candidates: SourceControlledFile[]): Promise<ExportResult> {
 		try {
 			sourceControlFoldersExistCheck([this.credentialExportFolder]);
@@ -580,18 +556,13 @@ export class SourceControlExportService {
 						};
 					}
 
-					/**
-					 * Edge case: Do not export `oauthTokenData`, so that that the
-					 * pulling instance reconnects instead of trying to use stubbed values.
-					 */
-					const credentialData = credentials.getData();
-					const { oauthTokenData, ...rest } = credentialData;
+					const sanitizedData = sanitizeCredentialData(credentials.getData());
 
 					const stub: ExportableCredential = {
 						id,
 						name,
 						type,
-						data: this.replaceCredentialData(rest),
+						data: sanitizedData,
 						ownedBy: owner,
 						isGlobal,
 					};

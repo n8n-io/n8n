@@ -73,6 +73,7 @@
 	/* Input Area */
 	--chat--textarea--height: 50px;
 	--chat--textarea--max-height: 30rem;
+	--chat--input--width: 100%;
 	--chat--input--font-size: inherit;
 	--chat--input--border: 0;
 	--chat--input--border-radius: 0;
@@ -83,6 +84,11 @@
 	--chat--input--placeholder--font-size: var(--chat--input--font-size);
 	--chat--input--border-active: 0;
 	--chat--input--left--panel--width: 2rem;
+	--chat--input--container--background: var(--chat--color-white);
+	--chat--input--container--border: 0;
+	--chat--input--container--border-radius: 0;
+	--chat--input--container--padding: 0;
+	--chat--input--button--border-radius: 16px;
 
 	/* Button Styles */
 	--chat--button--padding: calc(var(--chat--spacing) * 5 / 8) var(--chat--spacing);
@@ -109,6 +115,10 @@
 	--chat--button--border--secondary--disabled: none;
 	--chat--close--button--color-hover: var(--chat--color--primary);
 
+	/* Message Action Buttons */
+	--chat--message--actions--color: var(--chat--color--primary);
+	--chat--message--actions--gap: var(--chat--spacing);
+
 	/* Send and File Buttons */
 	--chat--input--send--button--background: var(--chat--color-white);
 	--chat--input--send--button--color: var(--chat--color--secondary);
@@ -122,6 +132,8 @@
 
 	/* Body and Footer */
 	--chat--body--background: var(--chat--color-light);
+	--chat--footer--padding: 0;
 	--chat--footer--background: var(--chat--color-light);
 	--chat--footer--color: var(--chat--color-dark);
+	--chat--footer--border-top: 1px solid var(--chat--color-light-shade-100);
 }

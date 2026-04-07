@@ -11,7 +11,7 @@ import type {
 	ITaskData,
 } from 'n8n-workflow';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
-import type { FrontendSettings } from '@n8n/api-types';
+import type { FrontendSettings, QuickReplyType } from '@n8n/api-types';
 
 export namespace ChatRequest {
 	export interface NodeExecutionSchema {
@@ -125,8 +125,9 @@ export namespace ChatRequest {
 
 	export interface BuilderFeatureFlags {
 		templateExamples?: boolean;
-		codeBuilder?: boolean;
+		pinData?: boolean;
 		planMode?: boolean;
+		mergeAskBuild?: boolean;
 	}
 
 	export interface UserChatMessage {
@@ -134,7 +135,7 @@ export namespace ChatRequest {
 		type: 'message';
 		text: string;
 		id: string;
-		quickReplyType?: string;
+		quickReplyType?: QuickReplyType;
 		context?: UserContext;
 		workflowContext?: WorkflowContext;
 		featureFlags?: BuilderFeatureFlags;
@@ -179,6 +180,8 @@ export namespace ChatRequest {
 
 	// API-specific types that extend UI types
 	export interface CodeDiffMessage extends ChatUI.CodeDiffMessage {
+		sdkSessionId?: string;
+		nodeName?: string;
 		solution_count?: number;
 		quickReplies?: ChatUI.QuickReply[];
 	}
@@ -205,6 +208,8 @@ export namespace ChatRequest {
 			id: string;
 			createdAt: string;
 		};
+		/** Short AI-generated title summarising the user's prompt (5-7 words) */
+		versionTitle?: string;
 	}
 
 	export interface SummaryMessage {
@@ -242,6 +247,18 @@ export namespace ChatRequest {
 		answers: PlanMode.QuestionResponse[];
 	}
 
+	export interface ApiWebFetchApprovalMessage {
+		role: 'assistant';
+		type: 'web_fetch_approval';
+		requestId: string;
+		url: string;
+		domain: string;
+	}
+
+	export interface MessagesCompactedEvent {
+		type: 'messages-compacted';
+	}
+
 	// API-only types
 	export type MessageResponse =
 		| ((
@@ -256,10 +273,12 @@ export namespace ChatRequest {
 				| ApiQuestionsMessage
 				| ApiPlanMessage
 				| ApiUserAnswersMessage
+				| ApiWebFetchApprovalMessage
 		  ) & {
 				quickReplies?: ChatUI.QuickReply[];
 		  })
-		| ChatUI.EndSessionMessage;
+		| ChatUI.EndSessionMessage
+		| MessagesCompactedEvent;
 
 	export interface ResponsePayload {
 		sessionId?: string;
@@ -368,6 +387,75 @@ export namespace PlanMode {
 	export type PlanModeMessage = QuestionsMessage | PlanMessage | UserAnswersMessage;
 }
 
+// ============================================================================
+// Web Fetch Approval Types
+// ============================================================================
+
+export namespace WebFetchApproval {
+	export interface MessageData {
+		requestId: string;
+		url: string;
+		domain: string;
+	}
+
+	export type Message = ChatUI.CustomMessage & {
+		customType: 'web_fetch_approval';
+		data: MessageData;
+	};
+}
+
+// ============================================================================
+// Version Card Types
+// ============================================================================
+
+export interface VersionCardMessageData {
+	versionId: string;
+	/** Absent when the version has been pruned from history */
+	createdAt?: string;
+	/** Truncated AI summary describing what changed in this generation */
+	title?: string;
+}
+
+export type VersionCardMessage = ChatUI.CustomMessage & {
+	customType: 'version_card';
+	data: VersionCardMessageData;
+};
+
+export function isVersionCardMessage(msg: ChatUI.AssistantMessage): msg is VersionCardMessage {
+	return msg.type === 'custom' && 'customType' in msg && msg.customType === 'version_card';
+}
+
+// ============================================================================
+// Collapsed Group Types (for non-destructive version restore)
+// ============================================================================
+
+export interface CollapsedGroupMessageData {
+	collapsedMessages: ChatUI.AssistantMessage[];
+}
+
+export type CollapsedGroupMessage = ChatUI.CustomMessage & {
+	customType: 'collapsed_group';
+	data: CollapsedGroupMessageData;
+};
+
+export function isCollapsedGroupMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is CollapsedGroupMessage {
+	return msg.type === 'custom' && 'customType' in msg && msg.customType === 'collapsed_group';
+}
+
+export function createCollapsedGroupMessage(
+	messages: ChatUI.AssistantMessage[],
+): CollapsedGroupMessage {
+	return {
+		id: `collapsed-group-${messages[0]?.id ?? 'unknown'}`,
+		role: 'assistant',
+		type: 'custom',
+		customType: 'collapsed_group',
+		data: { collapsedMessages: messages },
+	};
+}
+
 // Type guards for Plan Mode custom messages
 export function isPlanModeQuestionsMessage(
 	msg: ChatUI.AssistantMessage,
@@ -470,4 +558,28 @@ export function isUserAnswersMessage(
 	msg: ChatRequest.MessageResponse,
 ): msg is ChatRequest.ApiUserAnswersMessage {
 	return 'type' in msg && msg.type === 'user_answers' && 'answers' in msg;
+}
+
+export function isWebFetchApprovalMessage(
+	msg: ChatRequest.MessageResponse,
+): msg is ChatRequest.ApiWebFetchApprovalMessage {
+	return (
+		'type' in msg &&
+		msg.type === 'web_fetch_approval' &&
+		'requestId' in msg &&
+		'url' in msg &&
+		'domain' in msg
+	);
+}
+
+export function isWebFetchApprovalCustomMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is WebFetchApproval.Message {
+	return msg.type === 'custom' && 'customType' in msg && msg.customType === 'web_fetch_approval';
+}
+
+export function isMessagesCompactedEvent(
+	msg: ChatRequest.MessageResponse,
+): msg is ChatRequest.MessagesCompactedEvent {
+	return 'type' in msg && msg.type === 'messages-compacted';
 }

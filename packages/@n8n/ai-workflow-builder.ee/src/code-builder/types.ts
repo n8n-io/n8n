@@ -125,4 +125,8 @@ export interface CodeBuilderAgentConfig {
 	 * Optional callback for emitting telemetry events.
 	 */
 	onTelemetryEvent?: (event: string, properties: ITelemetryTrackProperties) => void;
+	/**
+	 * Whether to generate pin data for new nodes. Defaults to true.
+	 */
+	generatePinData?: boolean;
 }

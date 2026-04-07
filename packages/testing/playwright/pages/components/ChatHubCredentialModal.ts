@@ -7,10 +7,6 @@ export class ChatHubCredentialModal extends BaseModal {
 		super(root.page());
 	}
 
-	getRoot(): Locator {
-		return this.root;
-	}
-
 	getCredentialSelector(): Locator {
 		return this.root.getByRole('combobox');
 	}

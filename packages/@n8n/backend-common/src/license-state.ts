@@ -62,6 +62,10 @@ export class LicenseState {
 		return this.isLicensed(LICENSE_FEATURES.DYNAMIC_CREDENTIALS);
 	}
 
+	isPersonalSpacePolicyLicensed() {
+		return this.isLicensed(LICENSE_FEATURES.PERSONAL_SPACE_POLICY);
+	}
+
 	isSharingLicensed() {
 		return this.isLicensed('feat:sharing');
 	}
@@ -176,6 +180,10 @@ export class LicenseState {
 
 	isWorkflowDiffsLicensed() {
 		return this.isLicensed('feat:workflowDiffs');
+	}
+
+	isDataRedactionLicensed() {
+		return this.isLicensed(LICENSE_FEATURES.DATA_REDACTION);
 	}
 
 	isProvisioningLicensed() {

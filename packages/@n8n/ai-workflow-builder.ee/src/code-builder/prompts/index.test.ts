@@ -160,7 +160,7 @@ export default workflow('', 'Test').add(start);`;
 			expect(content).toContain('Use metric units for temperature');
 		});
 
-		it('includes plan_mode_instructions in system prompt when planOutput is provided', async () => {
+		it('replaces step 1 with plan-specific version when planOutput is provided', async () => {
 			const prompt = buildCodeBuilderPrompt(undefined, undefined, {
 				planOutput: mockPlan,
 			});
@@ -171,11 +171,96 @@ export default workflow('', 'Test').add(start);`;
 				? systemMessage.content.map((b) => ('text' in b ? b.text : '')).join('')
 				: String(systemMessage?.content ?? '');
 
-			expect(content).toContain('<plan_mode_instructions>');
-			expect(content).toContain('</plan_mode_instructions>');
+			// Should NOT contain the default step 1 (requirements analysis)
+			expect(content).not.toContain('<step_1_analyze_user_request>');
+			// Should contain a plan-specific step 1
+			expect(content).toContain('<step_1_read_approved_plan>');
+			expect(content).toContain('</step_1_read_approved_plan>');
 		});
 
-		it('does not include plan sections when planOutput is not provided', async () => {
+		it('renumbers step 2 sub-steps in plan mode: search=2a, review=2b', async () => {
+			const prompt = buildCodeBuilderPrompt(undefined, undefined, {
+				planOutput: mockPlan,
+			});
+
+			const messages = await prompt.formatMessages({ userMessage: 'Build weather workflow' });
+			const systemMessage = messages.find((m) => m._getType() === 'system');
+			const content = Array.isArray(systemMessage?.content)
+				? systemMessage.content.map((b) => ('text' in b ? b.text : '')).join('')
+				: String(systemMessage?.content ?? '');
+
+			// Should NOT contain get_suggested_nodes (default-only step)
+			expect(content).not.toContain('<step_2a_get_suggested_nodes>');
+			expect(content).not.toContain('get_suggested_nodes');
+			// Search is 2a in plan mode (not 2b)
+			expect(content).toContain('<step_2a_search_for_nodes>');
+			expect(content).toContain('search_nodes');
+			// Review is 2b in plan mode (not 2c)
+			expect(content).toContain('<step_2b_review_search_results>');
+		});
+
+		it('includes node_search_results in user message when preSearchResults is provided', async () => {
+			const prompt = buildCodeBuilderPrompt(undefined, undefined, {
+				planOutput: mockPlan,
+				preSearchResults: 'httpRequest: version 4.3, slack: version 2.3',
+			});
+
+			const messages = await prompt.formatMessages({ userMessage: 'Build weather workflow' });
+			const humanMessage = messages.find((m) => m._getType() === 'human');
+			const content = humanMessage?.content as string;
+
+			expect(content).toContain('<node_search_results>');
+			expect(content).toContain('httpRequest: version 4.3');
+			expect(content).toContain('</node_search_results>');
+		});
+
+		it('does NOT include node_search_results when preSearchResults is absent', async () => {
+			const prompt = buildCodeBuilderPrompt(undefined, undefined, {
+				planOutput: mockPlan,
+			});
+
+			const messages = await prompt.formatMessages({ userMessage: 'Build weather workflow' });
+			const humanMessage = messages.find((m) => m._getType() === 'human');
+			const content = humanMessage?.content as string;
+
+			expect(content).not.toContain('<node_search_results>');
+		});
+
+		it('uses prefetched Step 2b variant in system prompt when preSearchResults is provided', async () => {
+			const prompt = buildCodeBuilderPrompt(undefined, undefined, {
+				planOutput: mockPlan,
+				preSearchResults: 'some search results',
+			});
+
+			const messages = await prompt.formatMessages({ userMessage: 'Build weather workflow' });
+			const systemMessage = messages.find((m) => m._getType() === 'system');
+			const content = Array.isArray(systemMessage?.content)
+				? systemMessage.content.map((b) => ('text' in b ? b.text : '')).join('')
+				: String(systemMessage?.content ?? '');
+
+			expect(content).toContain('pre-fetched in <node_search_results>');
+			// Should NOT contain the plan search variant's specific instruction about suggestedNodes discriminators
+			expect(content).not.toContain('suggestedNodes to get discriminators');
+		});
+
+		it('uses plan Step 2b variant when planOutput but no preSearchResults', async () => {
+			const prompt = buildCodeBuilderPrompt(undefined, undefined, {
+				planOutput: mockPlan,
+			});
+
+			const messages = await prompt.formatMessages({ userMessage: 'Build weather workflow' });
+			const systemMessage = messages.find((m) => m._getType() === 'system');
+			const content = Array.isArray(systemMessage?.content)
+				? systemMessage.content.map((b) => ('text' in b ? b.text : '')).join('')
+				: String(systemMessage?.content ?? '');
+
+			// Should contain the plan search variant
+			expect(content).toContain('suggestedNodes to get discriminators');
+			// Should NOT contain the prefetched variant
+			expect(content).not.toContain('pre-fetched in <node_search_results>');
+		});
+
+		it('includes default steps 1 and 2a when planOutput is not provided', async () => {
 			const prompt = buildCodeBuilderPrompt();
 
 			const messages = await prompt.formatMessages({ userMessage: 'test' });
@@ -188,7 +273,11 @@ export default workflow('', 'Test').add(start);`;
 				: String(systemMessage?.content ?? '');
 
 			expect(humanContent).not.toContain('<approved_plan>');
-			expect(systemContent).not.toContain('<plan_mode_instructions>');
+			// Should contain the default steps
+			expect(systemContent).toContain('<step_1_analyze_user_request>');
+			expect(systemContent).toContain('<step_2a_get_suggested_nodes>');
+			// Should NOT contain plan-specific step
+			expect(systemContent).not.toContain('<step_1_read_approved_plan>');
 		});
 	});
 });

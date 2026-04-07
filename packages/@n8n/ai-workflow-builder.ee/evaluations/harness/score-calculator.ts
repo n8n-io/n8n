@@ -48,6 +48,7 @@ export const DEFAULT_EVALUATOR_WEIGHTS: ScoreWeights = {
 	programmatic: 0.25,
 	pairwise: 0.25,
 	similarity: 0.15,
+	'binary-checks': 0,
 };
 
 /**
@@ -174,6 +175,33 @@ export function calculateWeightedScore(
 	}
 
 	return totalWeight > 0 ? weightedSum / totalWeight : 0;
+}
+
+/**
+ * Compute per-evaluator average scores from a set of example results.
+ *
+ * Groups feedback by evaluator, selects scoring items, and averages
+ * across all examples. Shared between local and LangSmith evaluation runners.
+ */
+export function computeEvaluatorAverages(
+	results: Array<{ feedback: Feedback[] }>,
+): Record<string, number> {
+	const evaluatorStats: Record<string, number[]> = {};
+
+	for (const result of results) {
+		const byEvaluator = groupByEvaluator(result.feedback);
+		for (const [evaluator, items] of Object.entries(byEvaluator)) {
+			if (!evaluatorStats[evaluator]) evaluatorStats[evaluator] = [];
+			const scoringItems = selectScoringItems(items);
+			evaluatorStats[evaluator].push(calculateFiniteAverage(scoringItems));
+		}
+	}
+
+	const averages: Record<string, number> = {};
+	for (const [name, scores] of Object.entries(evaluatorStats)) {
+		averages[name] = scores.reduce((a, b) => a + b, 0) / scores.length;
+	}
+	return averages;
 }
 
 /**

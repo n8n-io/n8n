@@ -267,6 +267,16 @@ describe('AST Interpreter', () => {
 			expect(interpretSDKCode('export default 7 % 3;', sdkFunctions)).toBe(1);
 		});
 
+		it('should support string concatenation with +', () => {
+			expect(interpretSDKCode("export default 'hello' + ' world';", sdkFunctions)).toBe(
+				'hello world',
+			);
+			expect(interpretSDKCode("export default 'count: ' + 5;", sdkFunctions)).toBe('count: 5');
+			expect(interpretSDKCode("export default 1 + ' item';", sdkFunctions)).toBe('1 item');
+			// Multi-part concat
+			expect(interpretSDKCode("export default 'a' + 'b' + 'c';", sdkFunctions)).toBe('abc');
+		});
+
 		it('should interpret comparison operators', () => {
 			expect(interpretSDKCode('export default 5 > 3;', sdkFunctions)).toBe(true);
 			expect(interpretSDKCode('export default 5 < 3;', sdkFunctions)).toBe(false);
@@ -374,6 +384,21 @@ describe('AST Interpreter', () => {
 			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
 		});
 
+		it('should reject __proto__ access via literal key', () => {
+			const code = 'export default {}["__proto__"];';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('should reject prototype access via literal key', () => {
+			const code = 'export default {}["prototype"];';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('should reject constructor access via literal key', () => {
+			const code = 'export default {}["constructor"];';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
 		it('should reject dynamic property access with expressions', () => {
 			const code = "const prop = 'constructor'; export default {}[prop];";
 			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
@@ -433,9 +458,49 @@ describe('AST Interpreter', () => {
 			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(UnsupportedNodeError);
 		});
 
-		it('should reject assignment expressions', () => {
-			const code = 'const x = {}; x.y = 1;';
+		it('should reject bare variable reassignment', () => {
+			const code = 'const x = 1; x = 2;';
 			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(UnsupportedNodeError);
+		});
+
+		it('should reject compound assignment operators', () => {
+			const code = 'const x = { count: 0 }; x.count += 1;';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(UnsupportedNodeError);
+		});
+
+		it('should reject assignment to __proto__', () => {
+			const code = 'const x = {}; x.__proto__ = {};';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('should reject assignment to prototype', () => {
+			const code = 'const x = {}; x.prototype = {};';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('should reject assignment to constructor', () => {
+			const code = 'const x = {}; x.constructor = {};';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('should reject assignment to __proto__ via literal key', () => {
+			const code = 'const x = {}; x["__proto__"] = {};';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('should reject assignment to prototype via literal key', () => {
+			const code = 'const x = {}; x["prototype"] = {};';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('should reject assignment to constructor via literal key', () => {
+			const code = 'const x = {}; x["constructor"] = {};';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('should reject assignment with dynamic property', () => {
+			const code = 'const x = {}; const k = "a"; x[k] = 1;';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
 		});
 
 		it('should reject named exports', () => {
@@ -446,6 +511,39 @@ describe('AST Interpreter', () => {
 		it('should reject return statements', () => {
 			const code = 'return 42;';
 			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow();
+		});
+	});
+
+	describe('Property assignment', () => {
+		let sdkFunctions: SDKFunctions;
+
+		beforeEach(() => {
+			sdkFunctions = createMockSDKFunctions();
+		});
+
+		it('should allow single-level property assignment', () => {
+			const code = 'const x = { a: 1 }; x.config = { key: "value" }; export default x;';
+			const result = interpretSDKCode(code, sdkFunctions) as Record<string, unknown>;
+			expect(result.config).toEqual({ key: 'value' });
+		});
+
+		it('should allow nested property assignment (e.g. config.subnodes)', () => {
+			const code = `
+				const splitter = textSplitter({ type: 'test', version: 1, config: {} });
+				const docLoader = documentLoader({ type: 'test', version: 1, config: { subnodes: {} } });
+				docLoader.config.subnodes = { textSplitter: splitter };
+				export default docLoader;
+			`;
+			const result = interpretSDKCode(code, sdkFunctions) as {
+				config: { subnodes: { textSplitter: unknown } };
+			};
+			expect(result.config.subnodes.textSplitter).toBeDefined();
+		});
+
+		it('should allow literal key property assignment', () => {
+			const code = 'const x = {}; x["key"] = 42; export default x;';
+			const result = interpretSDKCode(code, sdkFunctions) as Record<string, unknown>;
+			expect(result.key).toBe(42);
 		});
 	});
 
@@ -475,6 +573,70 @@ describe('AST Interpreter', () => {
 			const code = "const myWorkflow = workflow('id', 'name'); export default myWorkflow;";
 			const result = interpretSDKCode(code, sdkFunctions) as { id: string };
 			expect(result.id).toBe('id');
+		});
+	});
+
+	describe('Auto-rename subnode SDK function names used as variables', () => {
+		let sdkFunctions: SDKFunctions;
+
+		beforeEach(() => {
+			sdkFunctions = createMockSDKFunctions();
+		});
+
+		it('should auto-rename embeddings used as variable name', () => {
+			const code =
+				"const embeddings = embedding({ model: 'text-embedding-3-small' }); export default embeddings;";
+			const result = interpretSDKCode(code, sdkFunctions) as { type: string };
+			expect(result.type).toBe('embedding');
+		});
+
+		it('should auto-rename textSplitter used as variable name', () => {
+			const code =
+				'const textSplitter = textSplitter({ chunkSize: 1000 }); export default textSplitter;';
+			const result = interpretSDKCode(code, sdkFunctions) as { type: string };
+			expect(result.type).toBe('textSplitter');
+		});
+
+		it('should auto-rename memory used as variable name', () => {
+			const code = "const memory = memory({ sessionId: '123' }); export default memory;";
+			const result = interpretSDKCode(code, sdkFunctions) as { type: string };
+			expect(result.type).toBe('memory');
+		});
+
+		it('should auto-rename vectorStore used as variable name', () => {
+			const code =
+				"const vectorStore = vectorStore({ mode: 'insert' }); export default vectorStore;";
+			const result = interpretSDKCode(code, sdkFunctions) as { type: string };
+			expect(result.type).toBe('vectorStore');
+		});
+
+		it('should auto-rename multiple subnode variables in the same code', () => {
+			const code = [
+				"const embeddings = embedding({ model: 'text-embedding-3-small' });",
+				'const textSplitter = textSplitter({ chunkSize: 1000 });',
+				'export default { embeddings, textSplitter };',
+			].join('\n');
+			const result = interpretSDKCode(code, sdkFunctions) as {
+				embeddings: { type: string };
+				textSplitter: { type: string };
+			};
+			expect(result.embeddings.type).toBe('embedding');
+			expect(result.textSplitter.type).toBe('textSplitter');
+		});
+
+		it('should still reject core SDK names like workflow as variable name', () => {
+			const code = 'const workflow = 1; export default workflow;';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('should still reject core SDK names like node as variable name', () => {
+			const code = 'const node = 1; export default node;';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
+		});
+
+		it('should still reject core SDK names like trigger as variable name', () => {
+			const code = 'const trigger = 1; export default trigger;';
+			expect(() => interpretSDKCode(code, sdkFunctions)).toThrow(SecurityError);
 		});
 	});
 
@@ -550,6 +712,33 @@ describe('AST Interpreter', () => {
 				sdkFunctions.node as jest.Mock,
 			);
 			expect(nodeCallArgs.config.subnodes.model).toBeDefined();
+		});
+
+		it('should interpret workflow with subnodes assigned after creation', () => {
+			const code = `
+				const splitter = textSplitter({
+					type: '@n8n/n8n-nodes-langchain.textSplitterTokenSplitter',
+					version: 1,
+					config: { parameters: { chunkSize: 500 } }
+				});
+				const loader = documentLoader({
+					type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
+					version: 1,
+					config: { subnodes: {} }
+				});
+				loader.config.subnodes = { textSplitter: splitter };
+				export default loader;
+			`;
+			// Mock returns { type: 'documentLoader', config: <arg> }
+			// so loader.config is the full arg object passed to documentLoader()
+			const result = interpretSDKCode(code, sdkFunctions) as {
+				type: string;
+				config: { config: { subnodes: { textSplitter: { type: string } } }; subnodes: unknown };
+			};
+			// The assignment sets loader.config.subnodes (a new prop on the arg object)
+			// splitter mock wraps as { type: 'textSplitter', config: <full-arg> }
+			const subnodes = result.config.subnodes as { textSplitter: { type: string } };
+			expect(subnodes.textSplitter.type).toBe('textSplitter');
 		});
 
 		it('should interpret workflow with fromAi', () => {

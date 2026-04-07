@@ -30,6 +30,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
 import { useCredentialsStore } from '../credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
+import { useDependencies } from '@/app/composables/useDependencies';
 
 import { N8nActionBox, N8nCheckbox, N8nInputLabel, N8nOption, N8nSelect } from '@n8n/design-system';
 const props = defineProps<{
@@ -44,6 +45,7 @@ const externalSecretsStore = useExternalSecretsStore();
 const projectsStore = useProjectsStore();
 const usersStore = useUsersStore();
 const insightsStore = useInsightsStore();
+const { fetchDependencyCounts } = useDependencies();
 
 const documentTitle = useDocumentTitle();
 const route = useRoute();
@@ -52,7 +54,11 @@ const telemetry = useTelemetry();
 const i18n = useI18n();
 const overview = useProjectPages();
 
-type Filters = BaseFilters & { type?: string[]; setupNeeded?: boolean };
+type Filters = BaseFilters & {
+	type?: string[];
+	setupNeeded?: boolean;
+	externalSecretsStore?: string;
+};
 const updateFilter = (state: Filters) => {
 	void router.replace({ query: pickBy(state) as LocationQueryRaw });
 };
@@ -64,6 +70,9 @@ const onSearchUpdated = (search: string) => {
 const filters = ref<Filters>({
 	...route.query,
 	setupNeeded: route.query.setupNeeded?.toString() === 'true',
+	...(route.query.externalSecretsStore
+		? { externalSecretsStore: route.query.externalSecretsStore.toString() }
+		: {}),
 } as Filters);
 const loading = ref(false);
 
@@ -111,6 +120,12 @@ const projectPermissions = computed(() =>
 
 const personalProject = computed<Project | null>(() => {
 	return projectsStore.personalProject;
+});
+
+const showSecretStoreFilter = computed(() => {
+	return (
+		!!route.query.externalSecretsStore && externalSecretsStore.isEnterpriseExternalSecretsEnabled
+	);
 });
 
 const setRouteCredentialId = (credentialId?: string) => {
@@ -199,22 +214,15 @@ const initialize = async () => {
 		overview.isProjectsSubPage &&
 		route?.params?.projectId === projectsStore.personalProject?.id;
 
-	// this ensures that the data for secrets is there when user types secret expressions
-	const externalSecretRequests = [externalSecretsStore.fetchGlobalSecrets()];
-	const shouldFetchProjectSecrets = route?.params?.projectId !== projectsStore.personalProject?.id;
-	if (shouldFetchProjectSecrets && typeof route?.params?.projectId === 'string') {
-		externalSecretRequests.push(externalSecretsStore.fetchProjectSecrets(route.params.projectId));
-	}
-
 	const loadPromises = [
-		credentialsStore.fetchAllCredentials(
-			route?.params?.projectId as string | undefined,
-			true,
-			overview.isSharedSubPage,
-			!isPersonalView, // don't include global credentials if personal
-		),
+		credentialsStore.fetchAllCredentials({
+			projectId: route?.params?.projectId as string | undefined,
+			includeScopes: true,
+			onlySharedWithMe: overview.isSharedSubPage,
+			includeGlobal: !isPersonalView, // don't include global credentials if personal
+			externalSecretsStore: filters.value.externalSecretsStore,
+		}),
 		credentialsStore.fetchCredentialTypes(false),
-		...externalSecretRequests,
 		nodeTypesStore.loadNodeTypesIfNotLoaded(),
 		isVarsEnabled ? useEnvironmentsStore().fetchAllVariables() : Promise.resolve(), // for expression resolution
 	];
@@ -223,12 +231,20 @@ const initialize = async () => {
 	maybeCreateCredential();
 	await maybeEditCredential();
 	loading.value = false;
+
+	// Fire-and-forget: fetch which workflows use these credentials
+	const credentialIds = credentialsStore.allCredentials.map((c) => c.id);
+	void fetchDependencyCounts(credentialIds, 'credential');
 };
 
 credentialsStore.$onAction(({ name, after }) => {
-	if (name === 'createNewCredential') {
+	if (name === 'createNewCredential' || name === 'updateCredential') {
 		after(() => {
-			void credentialsStore.fetchAllCredentials(route?.params?.projectId as string | undefined);
+			void credentialsStore.fetchAllCredentials({
+				projectId: route?.params?.projectId as string | undefined,
+				includeScopes: true,
+				externalSecretsStore: filters.value.externalSecretsStore,
+			});
 		});
 	}
 });
@@ -247,6 +263,18 @@ watch(
 	() => {
 		maybeCreateCredential();
 		void maybeEditCredential();
+	},
+);
+
+// Watch for changes to externalSecretsStore filter and refetch data
+// since this is a backend filter that affects what credentials are returned
+watch(
+	() => filters.value.externalSecretsStore,
+	async (newValue, oldValue) => {
+		// Only refetch if the filter actually changed (not on initial mount)
+		if (newValue !== oldValue && (newValue !== undefined || oldValue !== undefined)) {
+			void initialize();
+		}
 	},
 );
 
@@ -331,6 +359,27 @@ onMounted(() => {
 					@update:model-value="setKeyValue('setupNeeded', $event)"
 				>
 				</N8nCheckbox>
+			</div>
+
+			<!-- secret store filter is only shown if query parameter is set in url
+			 -  needed for handling deletion of enterprise external secrets -->
+			<div v-if="showSecretStoreFilter && filters.externalSecretsStore" class="mb-s">
+				<N8nInputLabel
+					:label="i18n.baseText('credentials.filters.secretStore')"
+					:bold="false"
+					size="small"
+					color="text-base"
+					class="mb-3xs"
+				/>
+				<N8nSelect
+					:model-value="filters.externalSecretsStore"
+					size="medium"
+					disabled
+					data-test-id="credential-filter-secret-store"
+					:class="$style['type-input']"
+				>
+					<N8nOption :value="filters.externalSecretsStore" :label="filters.externalSecretsStore" />
+				</N8nSelect>
 			</div>
 		</template>
 		<template #empty>

@@ -1,8 +1,13 @@
+import type { Locator } from '@playwright/test';
 import { expect } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 
 export class ProjectSettingsPage extends BasePage {
+	async goto(projectId: string) {
+		await this.page.goto(`/projects/${projectId}/settings`);
+	}
+
 	async fillProjectName(name: string) {
 		await this.page.getByTestId('project-settings-name-input').locator('input').fill(name);
 	}
@@ -63,11 +68,6 @@ export class ProjectSettingsPage extends BasePage {
 		expect(actualCount).toBe(expectedCount);
 	}
 
-	async expectSearchInputValue(expectedValue: string) {
-		const searchInput = this.getMembersSearchInput();
-		await expect(searchInput).toHaveValue(expectedValue);
-	}
-
 	getTitle() {
 		return this.page.getByTestId('project-name');
 	}
@@ -114,5 +114,20 @@ export class ProjectSettingsPage extends BasePage {
 
 	async selectFirstEmoji() {
 		await this.page.getByTestId('icon-picker-emoji').first().click();
+	}
+
+	getExternalSecretsSection(): Locator {
+		return this.page.getByTestId('external-secrets-section');
+	}
+
+	/**
+	 * The data table listing project-scoped secret provider connections.
+	 */
+	getExternalSecretsTable(): Locator {
+		return this.page.getByTestId('external-secrets-table');
+	}
+
+	getExternalSecretsTableRow(name: string): Locator {
+		return this.getExternalSecretsTable().getByText(name);
 	}
 }

@@ -5,7 +5,7 @@ import { ref } from 'vue';
 import Switch from './Switch.vue';
 
 const meta = {
-	title: 'Components v2/Switch',
+	title: 'Experimental/Switch',
 	component: Switch,
 	parameters: {
 		docs: {

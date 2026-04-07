@@ -1,0 +1,94 @@
+import type { InstanceAiContext, CredentialDetail } from '../../../types';
+import { createGetCredentialTool } from '../get-credential.tool';
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function createMockContext(): InstanceAiContext {
+	return {
+		userId: 'test-user',
+		workflowService: {} as InstanceAiContext['workflowService'],
+		executionService: {} as InstanceAiContext['executionService'],
+		credentialService: {
+			list: jest.fn(),
+			get: jest.fn(),
+			delete: jest.fn(),
+			test: jest.fn(),
+		},
+		nodeService: {} as InstanceAiContext['nodeService'],
+		dataTableService: {} as InstanceAiContext['dataTableService'],
+	};
+}
+
+function makeCredentialDetail(overrides?: Partial<CredentialDetail>): CredentialDetail {
+	return {
+		id: 'cred-123',
+		name: 'My Slack Token',
+		type: 'slackApi',
+		createdAt: '2025-01-01T00:00:00.000Z',
+		updatedAt: '2025-06-15T12:00:00.000Z',
+		nodesWithAccess: [{ nodeType: 'n8n-nodes-base.slack' }],
+		...overrides,
+	};
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+describe('get-credential tool', () => {
+	describe('schema validation', () => {
+		it('accepts a valid credentialId', () => {
+			const tool = createGetCredentialTool(createMockContext());
+			const result = tool.inputSchema!.safeParse({ credentialId: 'cred-123' });
+			expect(result.success).toBe(true);
+		});
+
+		it('rejects missing credentialId', () => {
+			const tool = createGetCredentialTool(createMockContext());
+			const result = tool.inputSchema!.safeParse({});
+			expect(result.success).toBe(false);
+		});
+	});
+
+	describe('execute', () => {
+		it('returns credential detail for a valid credential', async () => {
+			const context = createMockContext();
+			const credential = makeCredentialDetail();
+			(context.credentialService.get as jest.Mock).mockResolvedValue(credential);
+
+			const tool = createGetCredentialTool(context);
+			const result = await tool.execute!({ credentialId: 'cred-123' }, {} as never);
+
+			expect(context.credentialService.get).toHaveBeenCalledWith('cred-123');
+			expect(result).toEqual(credential);
+		});
+
+		it('returns credential without nodesWithAccess when absent', async () => {
+			const context = createMockContext();
+			const credential = makeCredentialDetail({ nodesWithAccess: undefined });
+			(context.credentialService.get as jest.Mock).mockResolvedValue(credential);
+
+			const tool = createGetCredentialTool(context);
+			const result = await tool.execute!({ credentialId: 'cred-456' }, {} as never);
+
+			expect(context.credentialService.get).toHaveBeenCalledWith('cred-456');
+			expect(result).toEqual(credential);
+		});
+
+		it('propagates error when credential is not found', async () => {
+			const context = createMockContext();
+			(context.credentialService.get as jest.Mock).mockRejectedValue(
+				new Error('Credential not found'),
+			);
+
+			const tool = createGetCredentialTool(context);
+
+			await expect(tool.execute!({ credentialId: 'nonexistent' }, {} as never)).rejects.toThrow(
+				'Credential not found',
+			);
+			expect(context.credentialService.get).toHaveBeenCalledWith('nonexistent');
+		});
+	});
+});

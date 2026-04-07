@@ -226,11 +226,7 @@ const DEFAULT_TABLE_PARAMS = {
 };
 
 // Helper functions
-const expectStoreExecutions = (params: {
-	summary?: object;
-	charts?: object;
-	table?: object;
-}) => {
+const expectStoreExecutions = (params: { summary?: object; charts?: object; table?: object }) => {
 	if (params.summary) {
 		expect(insightsStore.summary.execute).toHaveBeenCalledWith(0, params.summary);
 	}
@@ -242,8 +238,8 @@ const expectStoreExecutions = (params: {
 	}
 };
 
-const openDatePicker = async (getByText: (text: string, options?: object) => HTMLElement) => {
-	const trigger = getByText('12 Dec - 19 Dec, 2000', { selector: 'button' });
+const openDatePicker = async (getByRole: (role: string, options?: object) => HTMLElement) => {
+	const trigger = getByRole('button', { name: '12 Dec - 19 Dec, 2000' });
 	expect(trigger).toBeInTheDocument();
 	await userEvent.click(trigger);
 
@@ -288,6 +284,8 @@ describe('InsightsDashboard', () => {
 		// Mock projects store
 		projectsStore.availableProjects = projects;
 		projectsStore.getAvailableProjects = vi.fn().mockResolvedValue(projects);
+		projectsStore.searchProjects.mockResolvedValue({ count: projects.length, data: projects });
+		projectsStore.globalProjectPermissions = { list: true };
 
 		// Mock async states
 		insightsStore.summary = {
@@ -387,11 +385,11 @@ describe('InsightsDashboard', () => {
 
 	describe('Date Range Selection', () => {
 		it('should update the selected time range', async () => {
-			const { getByText } = renderComponent({
+			const { getByRole } = renderComponent({
 				props: { insightType: INSIGHT_TYPES.TOTAL },
 			});
 
-			const picker = await openDatePicker(getByText);
+			const picker = await openDatePicker(getByRole);
 			const dayOption = within(picker).getByText('Last 24 hours');
 			await userEvent.click(dayOption);
 
@@ -414,11 +412,11 @@ describe('InsightsDashboard', () => {
 		});
 
 		it('should show upgrade modal when unlicensed time range selected ', async () => {
-			const { getByText } = renderComponent({
+			const { getByRole } = renderComponent({
 				props: { insightType: INSIGHT_TYPES.TOTAL },
 			});
 
-			const picker = await openDatePicker(getByText);
+			const picker = await openDatePicker(getByRole);
 			const dayOption = within(picker).getByText('Last 90 days');
 			await userEvent.click(dayOption);
 
@@ -433,13 +431,13 @@ describe('InsightsDashboard', () => {
 			const currentTime = new Date('2000-12-19T14:30:45.000Z');
 			vi.setSystemTime(currentTime);
 
-			const { getByText } = renderComponent({
+			const { getByRole } = renderComponent({
 				props: { insightType: INSIGHT_TYPES.TOTAL },
 			});
 
 			vi.clearAllMocks();
 
-			const picker = await openDatePicker(getByText);
+			const picker = await openDatePicker(getByRole);
 			// Select month option to get a multi-day range
 			const monthOption = within(picker).getByText('Last 30 days');
 			await userEvent.click(monthOption);
@@ -648,14 +646,14 @@ describe('InsightsDashboard', () => {
 		});
 
 		it('should combine project filter with date range changes', async () => {
-			const { getByText } = renderComponent({
+			const { getByRole } = renderComponent({
 				props: { insightType: INSIGHT_TYPES.TOTAL },
 			});
 
 			await selectProject(teamProjects[0].name);
 			vi.clearAllMocks();
 
-			const picker = await openDatePicker(getByText);
+			const picker = await openDatePicker(getByRole);
 			const dayOption = within(picker).getByText('Last 24 hours');
 			await userEvent.click(dayOption);
 

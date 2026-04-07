@@ -63,7 +63,8 @@ export const createCallTool =
 		getAbortSignal?: () => AbortSignal | undefined,
 	) =>
 	async (args: IDataObject) => {
-		if (getAbortSignal?.()?.aborted) {
+		const signal = getAbortSignal?.();
+		if (signal?.aborted) {
 			return 'Execution was cancelled';
 		}
 
@@ -82,6 +83,7 @@ export const createCallTool =
 				signal: getAbortSignal?.(),
 			});
 		} catch (error) {
+			// If the execution was cancelled mid-flight, treat it as cancellation, not a tool error
 			if (getAbortSignal?.()?.aborted) {
 				return 'Execution was cancelled';
 			}

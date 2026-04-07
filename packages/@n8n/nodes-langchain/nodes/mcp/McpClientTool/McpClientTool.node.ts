@@ -12,8 +12,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { logWrapper } from '@n8n/ai-utilities';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import { getTools } from './loadOptions';
 import type { McpToolIncludeMode } from './types';
@@ -356,7 +355,8 @@ export class McpClientTool implements INodeType {
 			throw error;
 		};
 
-		if (this.getExecutionCancelSignal()?.aborted) {
+		const signal = this.getExecutionCancelSignal();
+		if (signal?.aborted) {
 			return setError(new NodeOperationError(node, 'Execution was cancelled', { itemIndex }));
 		}
 
@@ -414,8 +414,9 @@ export class McpClientTool implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			if (this.getExecutionCancelSignal()?.aborted) {
-				return [returnData];
+			const signal = this.getExecutionCancelSignal();
+			if (signal?.aborted) {
+				throw new NodeOperationError(node, 'Execution was cancelled', { itemIndex });
 			}
 
 			const item = items[itemIndex];

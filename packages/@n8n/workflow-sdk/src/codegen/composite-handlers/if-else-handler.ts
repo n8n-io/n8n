@@ -6,7 +6,14 @@
 
 import type { CompositeNode, IfElseCompositeNode } from '../composite-tree';
 import type { SemanticNode } from '../types';
-import { type BuildContext, createLeaf, createVarRef, shouldBeVariable } from './build-utils';
+import {
+	type BuildContext,
+	createLeaf,
+	createVarRef,
+	shouldBeVariable,
+	hasErrorOutput,
+	getErrorOutputTargets,
+} from './build-utils';
 
 // Re-export BuildContext for consumers
 export type { BuildContext } from './build-utils';
@@ -88,10 +95,29 @@ export function buildIfElseComposite(node: SemanticNode, ctx: BuildContext): IfE
 	const trueBranch = buildBranchTargets(trueBranchTargets, branchCtx, node.name, 0);
 	const falseBranch = buildBranchTargets(falseBranchTargets, branchCtx, node.name, 1);
 
+	// Build error handler if node has error output
+	let errorHandler: CompositeNode | undefined;
+	if (hasErrorOutput(node)) {
+		const errorTargets = getErrorOutputTargets(node);
+		if (errorTargets.length > 0) {
+			const firstErrorTarget = errorTargets[0];
+			if (ctx.visited.has(firstErrorTarget)) {
+				const errorTargetNode = ctx.graph.nodes.get(firstErrorTarget);
+				if (errorTargetNode) {
+					ctx.variables.set(firstErrorTarget, errorTargetNode);
+					errorHandler = createVarRef(firstErrorTarget);
+				}
+			} else {
+				errorHandler = buildFromNodeSimple(firstErrorTarget, ctx);
+			}
+		}
+	}
+
 	return {
 		kind: 'ifElse',
 		ifNode: node,
 		trueBranch,
 		falseBranch,
+		errorHandler,
 	};
 }

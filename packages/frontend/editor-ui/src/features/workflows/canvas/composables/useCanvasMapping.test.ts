@@ -22,6 +22,11 @@ import {
 import type { INodeUi } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import type { IPinData } from 'n8n-workflow';
+import {
 	CanvasConnectionMode,
 	CanvasNodeRenderType,
 	type CanvasNodeDefaultRender,
@@ -70,6 +75,7 @@ let workflowState: WorkflowState;
 
 beforeEach(() => {
 	const pinia = createTestingPinia({
+		stubActions: false,
 		initialState: {
 			[STORES.WORKFLOWS]: {
 				workflowExecutionData: {},
@@ -102,11 +108,23 @@ beforeEach(() => {
 
 	workflowState = useWorkflowState();
 	vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
+
+	// Set workflow ID so document store can be created
+	const workflowsStore = useWorkflowsStore();
+	workflowsStore.workflow.id = 'test-workflow';
 });
 
 afterEach(() => {
 	vi.clearAllMocks();
 });
+
+function setPinData(pinData: IPinData) {
+	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = useWorkflowDocumentStore(
+		createWorkflowDocumentId(workflowsStore.workflow.id),
+	);
+	workflowDocumentStore.setPinData(pinData);
+}
 
 describe('useCanvasMapping', () => {
 	it('should initialize with default props', () => {
@@ -1558,7 +1576,7 @@ describe('useCanvasMapping', () => {
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
 				workflowsStore.getWorkflowRunData = {};
-				workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+				setPinData({});
 
 				const { nodeHasIssuesById } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -1587,7 +1605,7 @@ describe('useCanvasMapping', () => {
 						},
 					],
 				};
-				workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+				setPinData({});
 
 				const { nodeHasIssuesById } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -1616,7 +1634,7 @@ describe('useCanvasMapping', () => {
 						},
 					],
 				};
-				workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+				setPinData({});
 
 				const { nodeHasIssuesById } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -1640,7 +1658,7 @@ describe('useCanvasMapping', () => {
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
 				workflowsStore.getWorkflowRunData = {};
-				workflowsStore.pinDataByNodeName.mockReturnValue([{ json: {} }]);
+				setPinData({ 'Test Node': [{ json: {} }] });
 
 				const { nodeHasIssuesById } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -1664,7 +1682,7 @@ describe('useCanvasMapping', () => {
 				const workflowObject = createTestWorkflowObject({ nodes, connections });
 
 				workflowsStore.getWorkflowRunData = {};
-				workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+				setPinData({});
 
 				const { nodeHasIssuesById } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -1702,7 +1720,7 @@ describe('useCanvasMapping', () => {
 						},
 					],
 				};
-				workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+				setPinData({});
 
 				const { nodeHasIssuesById } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -1747,9 +1765,7 @@ describe('useCanvasMapping', () => {
 						},
 					],
 				};
-				workflowsStore.pinDataByNodeName.mockImplementation((nodeName: string) => {
-					return nodeName === 'Node 1' ? [{ json: {} }] : undefined;
-				});
+				setPinData({ 'Node 1': [{ json: {} }] });
 
 				const { nodeHasIssuesById } = useCanvasMapping({
 					nodes: ref(nodes),
@@ -1929,7 +1945,7 @@ describe('useCanvasMapping', () => {
 
 			workflowsStore.isWorkflowRunning = true;
 			workflowsStore.getWorkflowRunData = {};
-			workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+			setPinData({});
 
 			const { nodes: mappedNodes } = useCanvasMapping({
 				nodes: ref(nodesList),
@@ -1958,7 +1974,7 @@ describe('useCanvasMapping', () => {
 
 				workflowsStore.isWorkflowRunning = true;
 				workflowsStore.getWorkflowRunData = {};
-				workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+				setPinData({});
 
 				const { nodes: mappedNodes } = useCanvasMapping({
 					nodes: ref(nodesList),
@@ -1987,7 +2003,7 @@ describe('useCanvasMapping', () => {
 
 			workflowsStore.isWorkflowRunning = true;
 			workflowsStore.getWorkflowRunData = {};
-			workflowsStore.pinDataByNodeName.mockReturnValue([{ json: {} }]); // Node has pinned data
+			setPinData({ 'Manual Trigger': [{ json: {} }] }); // Node has pinned data
 
 			const { nodes: mappedNodes } = useCanvasMapping({
 				nodes: ref(nodesList),
@@ -2015,7 +2031,7 @@ describe('useCanvasMapping', () => {
 
 			workflowsStore.isWorkflowRunning = false;
 			workflowsStore.getWorkflowRunData = {};
-			workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+			setPinData({});
 
 			const { nodes: mappedNodes } = useCanvasMapping({
 				nodes: ref(nodesList),
@@ -2434,7 +2450,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should return pinned data count label when node has pinned data', () => {
-				const workflowsStore = mockedStore(useWorkflowsStore);
 				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
 				const nodes = [manualTriggerNode, setNode];
 				const connections = {
@@ -2450,10 +2465,8 @@ describe('useCanvasMapping', () => {
 				});
 
 				// Mock pinned data with 3 items
-				workflowsStore.pinDataByNodeName.mockImplementation((nodeName: string) => {
-					return nodeName === manualTriggerNode.name
-						? [{ json: { id: 1 } }, { json: { id: 2 } }, { json: { id: 3 } }]
-						: undefined;
+				setPinData({
+					[manualTriggerNode.name]: [{ json: { id: 1 } }, { json: { id: 2 } }, { json: { id: 3 } }],
 				});
 
 				const { connections: mappedConnections } = useCanvasMapping({
@@ -2466,7 +2479,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should return singular item label when pinned data has 1 item', () => {
-				const workflowsStore = mockedStore(useWorkflowsStore);
 				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
 				const nodes = [manualTriggerNode, setNode];
 				const connections = {
@@ -2482,8 +2494,8 @@ describe('useCanvasMapping', () => {
 				});
 
 				// Mock pinned data with 1 item
-				workflowsStore.pinDataByNodeName.mockImplementation((nodeName: string) => {
-					return nodeName === manualTriggerNode.name ? [{ json: { id: 1 } }] : undefined;
+				setPinData({
+					[manualTriggerNode.name]: [{ json: { id: 1 } }],
 				});
 
 				const { connections: mappedConnections } = useCanvasMapping({
@@ -2496,7 +2508,6 @@ describe('useCanvasMapping', () => {
 			});
 
 			it('should return empty string when pinned data is empty array', () => {
-				const workflowsStore = mockedStore(useWorkflowsStore);
 				const [manualTriggerNode, setNode] = mockNodes.slice(0, 2);
 				const nodes = [manualTriggerNode, setNode];
 				const connections = {
@@ -2512,8 +2523,8 @@ describe('useCanvasMapping', () => {
 				});
 
 				// Mock pinned data with empty array
-				workflowsStore.pinDataByNodeName.mockImplementation((nodeName: string) => {
-					return nodeName === manualTriggerNode.name ? [] : undefined;
+				setPinData({
+					[manualTriggerNode.name]: [],
 				});
 
 				const { connections: mappedConnections } = useCanvasMapping({
@@ -2541,7 +2552,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+				setPinData({});
 				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
 					if (nodeName === manualTriggerNode.name) {
 						return [
@@ -2584,7 +2595,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+				setPinData({});
 				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
 					if (nodeName === manualTriggerNode.name) {
 						return [
@@ -2627,7 +2638,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+				setPinData({});
 				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
 					if (nodeName === manualTriggerNode.name) {
 						return [
@@ -2670,7 +2681,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+				setPinData({});
 				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
 					if (nodeName === manualTriggerNode.name) {
 						return [
@@ -2713,7 +2724,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+				setPinData({});
 				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
 					if (nodeName === manualTriggerNode.name) {
 						return [
@@ -2765,7 +2776,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+				setPinData({});
 				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
 					if (nodeName === manualTriggerNode.name) {
 						return [
@@ -2824,10 +2835,8 @@ describe('useCanvasMapping', () => {
 				});
 
 				// Mock both pinned data and execution data
-				workflowsStore.pinDataByNodeName.mockImplementation((nodeName: string) => {
-					return nodeName === manualTriggerNode.name
-						? [{ json: { id: 1 } }, { json: { id: 2 } }]
-						: undefined;
+				setPinData({
+					[manualTriggerNode.name]: [{ json: { id: 1 } }, { json: { id: 2 } }],
 				});
 				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
 					if (nodeName === manualTriggerNode.name) {
@@ -2872,7 +2881,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+				setPinData({});
 				workflowsStore.getWorkflowResultDataByNodeName.mockReturnValue(null);
 
 				const { connections: mappedConnections } = useCanvasMapping({
@@ -2901,7 +2910,7 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+				setPinData({});
 				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
 					if (nodeName === manualTriggerNode.name) {
 						return [
@@ -2982,8 +2991,8 @@ describe('useCanvasMapping', () => {
 					connections,
 				});
 
-				workflowsStore.pinDataByNodeName.mockImplementation((nodeName: string) => {
-					return nodeName === manualTriggerNode.name ? [{ json: {} }] : undefined;
+				setPinData({
+					[manualTriggerNode.name]: [{ json: {} }],
 				});
 				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
 					if (nodeName === manualTriggerNode.name) {
@@ -3099,7 +3108,7 @@ describe('useCanvasMapping', () => {
 				});
 
 				workflowsStore.getWorkflowResultDataByNodeName.mockReturnValue(null);
-				workflowsStore.pinDataByNodeName.mockReturnValue(undefined);
+				setPinData({});
 
 				const { connections: mappedConnections } = useCanvasMapping({
 					nodes: ref(nodes),

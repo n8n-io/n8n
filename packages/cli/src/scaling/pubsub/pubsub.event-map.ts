@@ -1,5 +1,5 @@
 import type { ChatHubMessageStatus, PushMessage, WorkerStatus } from '@n8n/api-types';
-import type { IWorkflowBase } from 'n8n-workflow';
+import type { IWorkflowBase, WorkflowActivateMode } from 'n8n-workflow';
 
 export type PubSubCommandMap = {
 	// #region Lifecycle
@@ -61,6 +61,7 @@ export type PubSubCommandMap = {
 	'add-webhooks-triggers-and-pollers': {
 		workflowId: string;
 		activeVersionId: string;
+		activationMode: WorkflowActivateMode;
 	};
 
 	'remove-triggers-and-pollers': {
@@ -157,6 +158,18 @@ export type PubSubCommandMap = {
 		content: string;
 		/** Attachments on the new message */
 		attachments: Array<{ id: string; fileName: string; mimeType: string }>;
+	};
+
+	// #endregion
+
+	// #region Evaluation
+
+	/**
+	 * Cancel a test run across all main instances.
+	 * Used in multi-main mode to signal cancellation to the instance running the test.
+	 */
+	'cancel-test-run': {
+		testRunId: string;
 	};
 
 	// #endregion

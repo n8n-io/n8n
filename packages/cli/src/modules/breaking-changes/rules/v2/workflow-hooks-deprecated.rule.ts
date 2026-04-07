@@ -1,5 +1,4 @@
-import { Service } from '@n8n/di';
-
+import { BreakingChangeRule } from '@n8n/decorators';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
@@ -7,7 +6,7 @@ import type {
 } from '../../types';
 import { BreakingChangeCategory } from '../../types';
 
-@Service()
+@BreakingChangeRule({ version: 'v2' })
 export class WorkflowHooksDeprecatedRule implements IBreakingChangeInstanceRule {
 	id: string = 'workflow-hooks-deprecated-v2';
 

@@ -33,7 +33,6 @@ jest.mock('langsmith/traceable', () => ({
 	),
 }));
 
-// Mock core/environment module (dynamically imported in runner.ts)
 function createMockWorkflow(name = 'Test Workflow'): SimpleWorkflow {
 	return { name, nodes: [], connections: {} };
 }
@@ -177,6 +176,7 @@ describe('Runner - LangSmith Mode', () => {
 			// Collectors are passed explicitly from the traceable wrapper to capture token usage and subgraph metrics
 			expect(generateWorkflow).toHaveBeenCalledWith(
 				'Create a workflow',
+				undefined,
 				expect.objectContaining({
 					tokenUsage: expect.any(Function),
 					subgraphMetrics: expect.any(Function),

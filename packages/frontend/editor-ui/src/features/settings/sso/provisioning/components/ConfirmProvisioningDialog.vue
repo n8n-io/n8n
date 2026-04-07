@@ -119,14 +119,14 @@ const onConfirmProvisioningSetting = () => {
 						locale.baseText('settings.provisioningConfirmDialog.button.downloadInstanceRolesCsv')
 					}}</N8nText>
 					<N8nButton
+						variant="ghost"
 						v-if="!hasDownloadedInstanceRoleCsv"
-						type="highlight"
 						native-type="button"
 						:icon="'file-download' as any"
 						data-test-id="provisioning-download-instance-roles-csv-button"
 						:disabled="downloadingInstanceRolesCsv"
 						:loading="downloadingInstanceRolesCsv"
-						:class="$style.button"
+						:class="[$style.button, 'n8n-button--highlight']"
 						@click="onDownloadInstanceRolesCsv"
 					></N8nButton>
 					<N8nIcon v-else icon="check" color="success" :class="$style.icon"></N8nIcon>
@@ -136,14 +136,14 @@ const onConfirmProvisioningSetting = () => {
 						locale.baseText('settings.provisioningConfirmDialog.button.downloadProjectRolesCsv')
 					}}</N8nText>
 					<N8nButton
+						variant="ghost"
 						v-if="!hasDownloadedProjectRoleCsv"
-						type="highlight"
 						native-type="button"
 						:icon="'file-download' as any"
 						data-test-id="provisioning-download-project-roles-csv-button"
 						:disabled="downloadingProjectRolesCsv"
 						:loading="downloadingProjectRolesCsv"
-						:class="$style.button"
+						:class="[$style.button, 'n8n-button--highlight']"
 						@click="onDownloadProjectRolesCsv"
 					></N8nButton>
 					<N8nIcon v-else icon="check" color="success" :class="$style.icon"></N8nIcon>
@@ -188,15 +188,15 @@ const onConfirmProvisioningSetting = () => {
 
 		<template #footer>
 			<N8nButton
-				type="tertiary"
-				native-type="button"
+				variant="ghost"
+				type="button"
 				data-test-id="provisioning-cancel-button"
 				@click="emit('cancel')"
 				>{{ locale.baseText('settings.provisioningConfirmDialog.button.cancel') }}</N8nButton
 			>
 			<N8nButton
-				type="primary"
-				native-type="button"
+				variant="solid"
+				type="button"
 				:disabled="
 					loading ||
 					!confirmationChecked ||

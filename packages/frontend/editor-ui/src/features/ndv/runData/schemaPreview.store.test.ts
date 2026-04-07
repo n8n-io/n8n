@@ -6,7 +6,6 @@ import { mock } from 'vitest-mock-extended';
 import type { PushPayload } from '@n8n/api-types';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import type { INode } from 'n8n-workflow';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 vi.mock('./schemaPreview.api');
 vi.mock('@/app/composables/useTelemetry', () => {
@@ -24,15 +23,22 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	})),
 }));
 
-vi.mock('@/app/stores/workflows.store', () => {
-	const getNodeByName = vi.fn();
-	return {
-		useWorkflowsStore: vi.fn(() => ({
-			workflowId: '123',
-			getNodeByName,
-		})),
-	};
-});
+vi.mock('@/app/stores/workflows.store', () => ({
+	useWorkflowsStore: vi.fn(() => ({
+		workflowId: '123',
+	})),
+}));
+
+const { mockGetNodeByName } = vi.hoisted(() => ({
+	mockGetNodeByName: vi.fn(),
+}));
+
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	useWorkflowDocumentStore: vi.fn(() => ({
+		getNodeByName: mockGetNodeByName,
+	})),
+	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
+}));
 
 describe('schemaPreview.store', () => {
 	beforeEach(() => {
@@ -110,7 +116,7 @@ describe('schemaPreview.store', () => {
 
 		it('should track both the preview schema and the output one', async () => {
 			const store = useSchemaPreviewStore();
-			vi.mocked(useWorkflowsStore().getNodeByName).mockReturnValueOnce(
+			mockGetNodeByName.mockReturnValueOnce(
 				mock<INode>({
 					id: 'test-node-id',
 					type: options.nodeType,
@@ -143,7 +149,7 @@ describe('schemaPreview.store', () => {
 
 		it('should not track nodes without a schema preview', async () => {
 			const store = useSchemaPreviewStore();
-			vi.mocked(useWorkflowsStore().getNodeByName).mockReturnValueOnce(mock<INode>());
+			mockGetNodeByName.mockReturnValueOnce(mock<INode>());
 			await store.trackSchemaPreviewExecution(
 				mock<PushPayload<'nodeExecuteAfterData'>>({
 					nodeName: 'Test',

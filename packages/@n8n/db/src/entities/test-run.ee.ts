@@ -50,6 +50,20 @@ export class TestRun extends WithTimestampsAndStringId {
 	workflowId: string;
 
 	/**
+	 * ID of the instance that is running this test run.
+	 * Used for coordinating cancellation across multiple main instances.
+	 */
+	@Column('varchar', { length: 255, nullable: true })
+	runningInstanceId: string | null;
+
+	/**
+	 * Flag to request cancellation of the test run.
+	 * Used as a fallback mechanism when the running instance cannot be reached via pub/sub.
+	 */
+	@Column('boolean', { default: false })
+	cancelRequested: boolean;
+
+	/**
 	 * Calculated property to determine the final result of the test run
 	 * depending on the statuses of test case executions
 	 */

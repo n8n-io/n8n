@@ -689,6 +689,82 @@ describe('SourceControlImportService', () => {
 
 			expect(versions).toBeEmptyArray();
 		});
+
+		it('should include isGlobal flag in returned credentials', async () => {
+			// Create a global credential
+			const globalCredential = await createCredentials(
+				{
+					name: 'global-credential',
+					data: '',
+					type: 'test',
+					isGlobal: true,
+				},
+				teamProjectA,
+			);
+
+			// Create a non-global credential
+			const nonGlobalCredential = await createCredentials(
+				{
+					name: 'non-global-credential',
+					data: '',
+					type: 'test',
+					isGlobal: false,
+				},
+				teamProjectA,
+			);
+
+			const credentials = await service.getLocalCredentialsFromDb(
+				new SourceControlContext(instanceOwner),
+			);
+
+			const globalCred = credentials.find((c) => c.id === globalCredential.id);
+			const nonGlobalCred = credentials.find((c) => c.id === nonGlobalCredential.id);
+
+			expect(globalCred).toBeDefined();
+			expect(globalCred?.isGlobal).toBe(true);
+
+			expect(nonGlobalCred).toBeDefined();
+			expect(nonGlobalCred?.isGlobal).toBe(false);
+		});
+
+		it('should default isGlobal to false when not specified', async () => {
+			// Create a credential without specifying isGlobal (should default to false)
+			const credential = await createCredentials(
+				{
+					name: 'credential-without-flag',
+					data: '',
+					type: 'test',
+				},
+				teamProjectA,
+			);
+
+			const credentials = await service.getLocalCredentialsFromDb(
+				new SourceControlContext(instanceOwner),
+			);
+
+			const cred = credentials.find((c) => c.id === credential.id);
+
+			expect(cred).toBeDefined();
+			expect(cred?.isGlobal).toBe(false);
+		});
+
+		it('should include required properties in returned credentials', async () => {
+			const credentials = await service.getLocalCredentialsFromDb(
+				new SourceControlContext(instanceOwner),
+			);
+
+			expect(credentials.length).toBeGreaterThan(0);
+
+			credentials.forEach((credential) => {
+				expect(credential).toHaveProperty('id');
+				expect(credential).toHaveProperty('name');
+				expect(credential).toHaveProperty('type');
+				expect(credential).toHaveProperty('data');
+				expect(credential).toHaveProperty('filename');
+				expect(credential).toHaveProperty('isGlobal');
+				expect(typeof credential.isGlobal).toBe('boolean');
+			});
+		});
 	});
 
 	describe('getLocalFoldersAndMappingsFromDb()', () => {

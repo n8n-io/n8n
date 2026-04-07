@@ -1,3 +1,8 @@
+// NOTE: This file is intentionally mirrored in @n8n/expression-runtime/src/extensions/
+// for use inside the isolated VM. Changes here must be reflected there and vice versa.
+// TODO: Eliminate the duplication. The blocker is that @n8n/expression-runtime is
+// Vite-stubbed for browser builds (to exclude isolated-vm), which prevents n8n-workflow
+// from importing these extension utilities directly from the runtime package.
 import { average as aAverage } from './array-extensions';
 import { ExpressionExtensionError } from '../errors/expression-extension.error';
 import { ExpressionError } from '../errors/expression.error';

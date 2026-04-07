@@ -193,6 +193,77 @@ describe('message round-trip: n8n -> LC -> n8n', () => {
 			expect(toolCalls[1]).toMatchObject({ toolCallId: 'call-2', toolName: 'calculator' });
 		});
 
+		it('should round-trip an invalid tool call', () => {
+			const original: Message = {
+				role: 'assistant',
+				content: [
+					{ type: 'text', text: 'I tried to call a tool but it failed.' },
+					{
+						type: 'invalid-tool-call',
+						toolCallId: 'call-1',
+						error: 'Invalid JSON in arguments',
+						args: '{"malformed": }',
+						name: 'search',
+					},
+				],
+			};
+
+			const result = roundTrip(original);
+
+			expect(result.role).toBe('assistant');
+			expect(result.content).toHaveLength(2);
+
+			const textBlock = result.content.find((c) => c.type === 'text');
+			expect(textBlock).toEqual({ type: 'text', text: 'I tried to call a tool but it failed.' });
+
+			const invalidToolCallBlock = result.content.find((c) => c.type === 'invalid-tool-call');
+			expect(invalidToolCallBlock).toMatchObject({
+				type: 'invalid-tool-call',
+				toolCallId: 'call-1',
+				error: 'Invalid JSON in arguments',
+				args: '{"malformed": }',
+				name: 'search',
+			});
+		});
+
+		it('should round-trip multiple invalid tool calls', () => {
+			const original: Message = {
+				role: 'assistant',
+				content: [
+					{
+						type: 'invalid-tool-call',
+						toolCallId: 'call-1',
+						error: 'Tool not found',
+						args: '{}',
+						name: 'nonexistent_tool',
+					},
+					{
+						type: 'invalid-tool-call',
+						toolCallId: 'call-2',
+						error: 'Invalid arguments',
+						args: '{"foo": "bar"}',
+						name: 'search',
+					},
+				],
+			};
+
+			const result = roundTrip(original);
+
+			expect(result.role).toBe('assistant');
+			const invalidToolCalls = result.content.filter((c) => c.type === 'invalid-tool-call');
+			expect(invalidToolCalls).toHaveLength(2);
+			expect(invalidToolCalls[0]).toMatchObject({
+				toolCallId: 'call-1',
+				error: 'Tool not found',
+				name: 'nonexistent_tool',
+			});
+			expect(invalidToolCalls[1]).toMatchObject({
+				toolCallId: 'call-2',
+				error: 'Invalid arguments',
+				name: 'search',
+			});
+		});
+
 		it('should preserve id and name', () => {
 			const original: Message = {
 				role: 'assistant',
@@ -408,13 +479,44 @@ describe('message round-trip: LC -> n8n -> LC', () => {
 		it('should round-trip an AIMessage with tool_calls', () => {
 			const original = new AIMessage({
 				content: 'Let me search for that.',
-				tool_calls: [{ id: 'call-1', name: 'search', args: { query: 'weather' } }],
+				tool_calls: [
+					{ type: 'tool_call', id: 'call-1', name: 'search', args: { query: 'weather' } },
+				],
 			});
 
 			const result = roundTrip(original);
 
 			expect(result).toBeInstanceOf(AIMessage);
 			expect((result as AIMessage).tool_calls).toEqual(original.tool_calls);
+		});
+
+		it('should round-trip an AIMessage with invalid_tool_call content', () => {
+			const original = new AIMessage({
+				content: [
+					{ type: 'text', text: 'I tried to call a tool but encountered an error.' },
+					{
+						type: 'invalid_tool_call',
+						id: 'call-1',
+						error: 'Invalid JSON in arguments',
+						args: '{"malformed": }',
+						name: 'search',
+					},
+				],
+			});
+
+			const result = roundTrip(original);
+
+			expect(result).toBeInstanceOf(AIMessage);
+			const content = normalizeContent(result.content as string | Array<Record<string, unknown>>);
+
+			const invalidToolCall = content.find((c) => c.type === 'invalid_tool_call');
+			expect(invalidToolCall).toMatchObject({
+				type: 'invalid_tool_call',
+				id: 'call-1',
+				error: 'Invalid JSON in arguments',
+				args: '{"malformed": }',
+				name: 'search',
+			});
 		});
 	});
 

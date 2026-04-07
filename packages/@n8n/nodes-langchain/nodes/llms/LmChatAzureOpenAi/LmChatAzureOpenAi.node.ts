@@ -102,6 +102,10 @@ export class LmChatAzureOpenAi implements INodeType {
 
 			const timeout = options.timeout;
 			const model = new AzureChatOpenAI({
+				// Force completions API — Azure's SDK doesn't rewrite the /responses path,
+				// so the Responses API hits an invalid endpoint and causes a connection error.
+				// See: https://github.com/langchain-ai/langchainjs/issues/9038
+				useResponsesApi: false,
 				// Model name is required so logs are correct
 				// Also ensures internal logic (like mapping "maxTokens" to "maxCompletionTokens") is correct
 				model: modelName,

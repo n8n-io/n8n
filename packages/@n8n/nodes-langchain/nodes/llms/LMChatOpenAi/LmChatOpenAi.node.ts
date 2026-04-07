@@ -11,10 +11,15 @@ import {
 } from 'n8n-workflow';
 
 import { checkDomainRestrictions } from '@utils/checkDomainRestrictions';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { mergeCustomHeaders } from '@utils/helpers';
 
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
-import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing, getProxyAgent } from '@n8n/ai-utilities';
+import {
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getProxyAgent,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
 import { formatBuiltInTools, prepareAdditionalResponsesParams } from './common';
 import { searchModels } from './methods/loadModels';
 import type { ModelOptions } from './types';
@@ -762,17 +767,10 @@ export class LmChatOpenAi implements INodeType {
 				bodyTimeout: timeout,
 			}),
 		};
-		if (
-			credentials.header &&
-			typeof credentials.headerName === 'string' &&
-			credentials.headerName &&
-			typeof credentials.headerValue === 'string'
-		) {
-			configuration.defaultHeaders = {
-				...configuration.defaultHeaders,
-				[credentials.headerName]: credentials.headerValue,
-			};
-		}
+		configuration.defaultHeaders = mergeCustomHeaders(
+			credentials,
+			(configuration.defaultHeaders ?? {}) as Record<string, string>,
+		);
 
 		// Extra options to send to OpenAI, that are not directly supported by LangChain
 		const modelKwargs: Record<string, unknown> = {};

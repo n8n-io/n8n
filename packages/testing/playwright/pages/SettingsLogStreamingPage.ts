@@ -3,6 +3,10 @@ import type { Locator } from '@playwright/test';
 import { BasePage } from './BasePage';
 
 export class SettingsLogStreamingPage extends BasePage {
+	async goto(): Promise<void> {
+		await this.page.goto('/settings/log-streaming');
+	}
+
 	getActionBoxUnlicensed(): Locator {
 		return this.page.getByTestId('action-box-unlicensed');
 	}
@@ -53,22 +57,6 @@ export class SettingsLogStreamingPage extends BasePage {
 
 	getDestinationCards(): Locator {
 		return this.page.getByTestId('destination-card');
-	}
-
-	getInlineEditPreview(): Locator {
-		return this.page.getByTestId('inline-edit-preview');
-	}
-
-	getInlineEditInput(): Locator {
-		return this.page.getByTestId('inline-edit-input');
-	}
-
-	getModalOverlay(): Locator {
-		return this.page.locator('.el-overlay');
-	}
-
-	getDropdownMenu(): Locator {
-		return this.page.locator('.el-dropdown-menu');
 	}
 
 	getDropdownMenuItem(index: number): Locator {
