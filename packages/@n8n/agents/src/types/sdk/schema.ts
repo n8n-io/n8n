@@ -82,6 +82,8 @@ export type ConnectionParamsObject = {
 export type ConnectionParams = ConnectionParamsObject | CredentialConfig;
 
 export interface MemorySchema<TParams extends ConnectionParams = ConnectionParams> {
+	// TODO: Remove, once MemorySchema is expressive enough to represent all memory types as configs
+	source: string | null; // full Memory builder chain source for lossless regeneration
 	// Backend descriptor — from BuiltMemory.describe()
 	name: string; // e.g. 'n8n' | 'sqlite' | 'postgres' | 'memory'
 	constructorName: string; // constructor name of the memory backend, e.g. 'SqliteMemory', 'PostgresMemory'

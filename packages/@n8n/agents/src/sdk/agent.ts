@@ -674,6 +674,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 			const memoryDescriptor = mc.memory.describe();
 			memory = {
+				source: null,
 				name: memoryDescriptor.name,
 				constructorName: memoryDescriptor.constructorName,
 				connectionParams: memoryDescriptor.connectionParams,
