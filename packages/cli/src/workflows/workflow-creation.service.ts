@@ -226,8 +226,8 @@ export class WorkflowCreationService {
 			user,
 			workflow: newWorkflow,
 			publicApi,
-			projectId: project!.id,
-			projectType: project!.type,
+			projectId: project.id,
+			projectType: project.type,
 			uiContext,
 		});
 
