@@ -1,0 +1,83 @@
+type: object
+required:
+  - total
+  - failed
+  - failureRate
+  - timeSaved
+  - averageRunTime
+properties:
+  total:
+    type: object
+    required:
+      - value
+      - deviation
+      - unit
+    properties:
+      value:
+        type: number
+      deviation:
+        type: number
+        nullable: true
+      unit:
+        type: string
+        enum: ['count']
+  failed:
+    type: object
+    required:
+      - value
+      - deviation
+      - unit
+    properties:
+      value:
+        type: number
+      deviation:
+        type: number
+        nullable: true
+      unit:
+        type: string
+        enum: ['count']
+  failureRate:
+    type: object
+    required:
+      - value
+      - deviation
+      - unit
+    properties:
+      value:
+        type: number
+      deviation:
+        type: number
+        nullable: true
+      unit:
+        type: string
+        enum: ['ratio']
+  timeSaved:
+    type: object
+    required:
+      - value
+      - deviation
+      - unit
+    properties:
+      value:
+        type: number
+      deviation:
+        type: number
+        nullable: true
+      unit:
+        type: string
+        enum: ['minute']
+  averageRunTime:
+    type: object
+    required:
+      - value
+      - deviation
+      - unit
+    properties:
+      value:
+        type: number
+      deviation:
+        type: number
+        nullable: true
+      unit:
+        type: string
+        enum: ['millisecond']

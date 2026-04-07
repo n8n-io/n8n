@@ -1,9 +1,9 @@
 {
-  "name": "@n8n/fs-proxy",
-  "version": "0.1.0",
+  "name": "@n8n/computer-use",
+  "version": "0.2.0",
   "description": "Local AI gateway for n8n Instance AI — filesystem, shell, screenshots, mouse/keyboard, and browser automation",
   "bin": {
-    "n8n-fs-proxy": "dist/cli.js"
+    "n8n-computer-use": "dist/cli.js"
   },
   "scripts": {
     "clean": "rimraf dist .turbo",

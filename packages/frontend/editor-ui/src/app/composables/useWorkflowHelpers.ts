@@ -983,7 +983,6 @@ export function useWorkflowHelpers() {
 	async function initState(workflowData: IWorkflowDb, overrideWorkflowState?: WorkflowState) {
 		const ws = overrideWorkflowState ?? workflowState;
 		workflowsListStore.addWorkflow(workflowData);
-		workflowsStore.setDescription(workflowData.description);
 		ws.setWorkflowId(workflowData.id);
 		const initializedWorkflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId(workflowData.id),
@@ -1060,6 +1059,7 @@ export function useWorkflowHelpers() {
 		initializedWorkflowDocumentStore.setMeta(workflowData.meta);
 		initializedWorkflowDocumentStore.setParentFolder(workflowData.parentFolder ?? null);
 		initializedWorkflowDocumentStore.setScopes(workflowData.scopes ?? []);
+		initializedWorkflowDocumentStore.setDescription(workflowData.description);
 		tagsStore.upsertTags(tags);
 
 		return { workflowDocumentStore: initializedWorkflowDocumentStore };

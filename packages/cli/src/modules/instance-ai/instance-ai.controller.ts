@@ -530,7 +530,7 @@ export class InstanceAiController {
 	async createGatewayLink(req: AuthenticatedRequest) {
 		const token = this.instanceAiService.generatePairingToken(req.user.id);
 		const baseUrl = this.instanceBaseUrl.replace(/\/$/, '');
-		const command = `npx @n8n/fs-proxy ${baseUrl} ${token}`;
+		const command = `npx @n8n/computer-use ${baseUrl} ${token}`;
 		return { token, command };
 	}
 

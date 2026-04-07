@@ -1,7 +1,7 @@
-import type { GatewayConfig } from '@n8n/fs-proxy/config';
-import type { DaemonOptions } from '@n8n/fs-proxy/daemon';
-import { startDaemon } from '@n8n/fs-proxy/daemon';
-import { logger } from '@n8n/fs-proxy/logger';
+import type { GatewayConfig } from '@n8n/computer-use/config';
+import type { DaemonOptions } from '@n8n/computer-use/daemon';
+import { startDaemon } from '@n8n/computer-use/daemon';
+import { logger } from '@n8n/computer-use/logger';
 import { EventEmitter } from 'node:events';
 import type * as http from 'node:http';
 
