@@ -1,7 +1,6 @@
 import { computed } from 'vue';
 import { createEventHook } from '@vueuse/core';
 import type {
-	IConnectedNode,
 	INodeIssueData,
 	INodeIssueObjectProperty,
 	INodeParameters,
@@ -139,10 +138,6 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 
 	function getNodesByIds(ids: string[]): INodeUi[] {
 		return workflowsStore.getNodesByIds(ids);
-	}
-
-	function getParentNodesByDepth(nodeName: string, maxDepth = -1): IConnectedNode[] {
-		return workflowsStore.workflowObject.getParentNodesByDepth(nodeName, maxDepth);
 	}
 
 	// -----------------------------------------------------------------------
@@ -335,7 +330,6 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		getNodes,
 		findNodeByPartialId,
 		getNodesByIds,
-		getParentNodesByDepth,
 
 		// Write
 		setNodes,
