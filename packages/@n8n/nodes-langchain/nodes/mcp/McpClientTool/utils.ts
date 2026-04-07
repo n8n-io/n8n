@@ -55,8 +55,19 @@ export const getErrorDescriptionFromToolCall = (result: unknown): string | undef
 };
 
 export const createCallTool =
-	(name: string, client: Client, timeout: number, onError: (error: string) => void) =>
+	(
+		name: string,
+		client: Client,
+		timeout: number,
+		onError: (error: string) => void,
+		getAbortSignal?: () => AbortSignal | undefined,
+	) =>
 	async (args: IDataObject) => {
+		const signal = getAbortSignal?.();
+		if (signal?.aborted) {
+			return 'Execution was cancelled';
+		}
+
 		let result: Awaited<ReturnType<Client['callTool']>>;
 
 		function handleError(error: unknown) {
@@ -69,8 +80,13 @@ export const createCallTool =
 		try {
 			result = await client.callTool({ name, arguments: args }, CompatibilityCallToolResultSchema, {
 				timeout,
+				signal: getAbortSignal?.(),
 			});
 		} catch (error) {
+			// If the execution was cancelled mid-flight, treat it as cancellation, not a tool error
+			if (getAbortSignal?.()?.aborted) {
+				return 'Execution was cancelled';
+			}
 			return handleError(error);
 		}
 
