@@ -1678,10 +1678,6 @@ export class InstanceAiService {
 				// Track intermediate message (text streamed before suspension)
 				const intermediateText = await (result.text ?? Promise.resolve(''));
 				if (intermediateText) {
-					this.logger.debug('[Telemetry] Builder sent message (intermediate)', {
-						threadId,
-						message: intermediateText,
-					});
 					this.telemetry.track('Builder sent message', {
 						thread_id: threadId,
 						message: intermediateText,
@@ -1722,15 +1718,10 @@ export class InstanceAiService {
 			// Count credits on first completed run per thread
 			if (result.status === 'completed') {
 				await this.countCreditsIfFirst(user, threadId, runId);
-				this.logger.debug('[Telemetry] Builder sent message', {
-					threadId,
-					message: outputText,
-				});
 				this.telemetry.track('Builder sent message', {
 					thread_id: threadId,
 					message: outputText,
 				});
-				this.logger.debug('[Telemetry] Builder satisfied user intent', { threadId });
 				this.telemetry.track('Builder satisfied user intent', {
 					thread_id: threadId,
 				});
@@ -1941,10 +1932,6 @@ export class InstanceAiService {
 				// Track intermediate message (text streamed before suspension)
 				const intermediateText = await (result.text ?? Promise.resolve(''));
 				if (intermediateText) {
-					this.logger.debug('[Telemetry] Builder sent message (intermediate, resumed)', {
-						threadId: opts.threadId,
-						message: intermediateText,
-					});
 					this.telemetry.track('Builder sent message', {
 						thread_id: opts.threadId,
 						message: intermediateText,
@@ -1974,16 +1961,9 @@ export class InstanceAiService {
 			await this.finalizeRun(opts.threadId, opts.runId, result.status, opts.snapshotStorage);
 
 			if (result.status === 'completed') {
-				this.logger.debug('[Telemetry] Builder sent message (resumed)', {
-					threadId: opts.threadId,
-					message: outputText,
-				});
 				this.telemetry.track('Builder sent message', {
 					thread_id: opts.threadId,
 					message: outputText,
-				});
-				this.logger.debug('[Telemetry] Builder satisfied user intent (resumed)', {
-					threadId: opts.threadId,
 				});
 				this.telemetry.track('Builder satisfied user intent', {
 					thread_id: opts.threadId,
@@ -2193,12 +2173,6 @@ export class InstanceAiService {
 			numSteps = payload.setupRequests.length;
 		}
 
-		this.logger.debug('[Telemetry] Builder asked for input', {
-			threadId,
-			inputThreadId,
-			type,
-			numSteps,
-		});
 		this.telemetry.track('Builder asked for input', {
 			thread_id: threadId,
 			input_thread_id: inputThreadId,
