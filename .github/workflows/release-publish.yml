@@ -58,6 +58,9 @@ jobs:
           N8N_FAIL_ON_POPULARITY_FETCH_ERROR: true
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
+      - name: Install script dependencies
+        run: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+
       - name: Check for new unpublished packages
         run: node .github/scripts/detect-new-packages.mjs
 
