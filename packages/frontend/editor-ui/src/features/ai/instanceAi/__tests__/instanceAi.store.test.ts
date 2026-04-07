@@ -494,7 +494,8 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 		store.closeSSE();
 		expect(store.sseState).toBe('disconnected');
 
-		mockClose.mockClear();
+		// Clear capturedInstance so we can verify a *new* EventSource is created
+		capturedInstance = null;
 
 		await store.sendMessage('hello');
 
