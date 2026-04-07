@@ -10,6 +10,7 @@ import type {
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import {
+	createCronDayConstraintEvaluator,
 	intervalToRecurrence,
 	recurrenceCheck,
 	toCronExpression,
@@ -405,6 +406,31 @@ export class ScheduleTrigger implements INodeType {
 								default: '',
 							},
 							{
+								displayName:
+									'When both Day of Month and Day of Week are constrained, cron matches either field (OR).',
+								name: 'dayConstraintNotice',
+								type: 'notice',
+								displayOptions: {
+									show: {
+										field: ['cronExpression'],
+									},
+								},
+								default: '',
+							},
+							{
+								displayName: 'Require both Day of Month and Day of Week',
+								name: 'requireDayOfMonthAndDayOfWeekMatch',
+								type: 'boolean',
+								displayOptions: {
+									show: {
+										field: ['cronExpression'],
+									},
+								},
+								default: false,
+								description:
+									'If enabled, trigger only when both fields match (AND). Has no effect if either field is wildcard (*)',
+							},
+							{
 								displayName: 'Expression',
 								name: 'expression',
 								type: 'string',
@@ -465,20 +491,35 @@ export class ScheduleTrigger implements INodeType {
 			this.emit([this.helpers.returnJsonArray([resultData])]);
 		};
 
-		const rules = intervals.map((interval, i) => ({
-			interval,
-			cronExpression: toCronExpression(interval),
-			recurrence: intervalToRecurrence(interval, i),
-		}));
+		const rules = intervals.map((interval, i) => {
+			const cronExpression = toCronExpression(interval);
+
+			return {
+				interval,
+				cronExpression,
+				recurrence: intervalToRecurrence(interval, i),
+				shouldExecute:
+					interval.field === 'cronExpression'
+						? createCronDayConstraintEvaluator(
+								cronExpression,
+								timezone,
+								interval.requireDayOfMonthAndDayOfWeekMatch,
+							)
+						: () => true,
+			};
+		});
 
 		if (this.getMode() !== 'manual') {
-			for (const { interval, cronExpression, recurrence } of rules) {
+			for (const { interval, cronExpression, recurrence, shouldExecute } of rules) {
 				try {
 					const cron: Cron = {
 						expression: cronExpression,
 						recurrence,
 					};
-					this.helpers.registerCron(cron, () => executeTrigger(recurrence));
+					this.helpers.registerCron(cron, () => {
+						if (!shouldExecute()) return;
+						executeTrigger(recurrence);
+					});
 				} catch (error) {
 					if (interval.field === 'cronExpression') {
 						throw new NodeOperationError(this.getNode(), 'Invalid cron expression', {

@@ -2,6 +2,7 @@ import type { INode } from 'n8n-workflow';
 import * as n8nWorkflow from 'n8n-workflow';
 
 import {
+	createCronDayConstraintEvaluator,
 	intervalToRecurrence,
 	recurrenceCheck,
 	toCronExpression,
@@ -325,5 +326,32 @@ describe('intervalToRecurrence', () => {
 			intervalSize: 3,
 			typeInterval: 'months',
 		});
+	});
+});
+
+describe('createCronDayConstraintEvaluator', () => {
+	beforeEach(() => {
+		jest.useFakeTimers();
+	});
+
+	it('should always pass when option is disabled', () => {
+		jest.setSystemTime(new Date('2026-03-18T12:00:00.000Z'));
+		const evaluator = createCronDayConstraintEvaluator('0 22 11 2-31 * 1', 'UTC', false);
+		expect(evaluator()).toBe(true);
+	});
+
+	it('should enforce AND semantics when both DOM and DOW are constrained', () => {
+		jest.setSystemTime(new Date('2026-03-18T12:00:00.000Z')); // Wednesday, day 18
+		const evaluator = createCronDayConstraintEvaluator('0 22 11 2-31 * 1', 'UTC', true);
+		expect(evaluator()).toBe(false);
+
+		jest.setSystemTime(new Date('2026-03-23T12:00:00.000Z')); // Monday, day 23
+		expect(evaluator()).toBe(true);
+	});
+
+	it('should be a no-op when DOM normalizes to wildcard', () => {
+		jest.setSystemTime(new Date('2026-03-18T12:00:00.000Z')); // Not Monday
+		const evaluator = createCronDayConstraintEvaluator('0 22 11 1-31 * 1', 'UTC', true);
+		expect(evaluator()).toBe(true);
 	});
 });
