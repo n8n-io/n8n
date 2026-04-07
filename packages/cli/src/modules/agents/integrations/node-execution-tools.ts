@@ -18,12 +18,13 @@ export function createListToolsTool(
 ) {
 	return new Tool('list_tools')
 		.description(
-			'List the n8n node tools available to add to this agent. ' +
-				'Each entry includes: name (display name), nodeType (the type identifier to use in code), ' +
-				'nodeTypeVersion, description, hasCredentials, and credentials (array of { slot, id, name } ' +
-				'for any credentials the user has configured). ' +
-				'To add a tool, call get_my_code, insert a ToolFromNode block, then typecheck and set_code. ' +
-				'Example ToolFromNode usage:\n' +
+			'List the n8n node tools available to this agent. ' +
+				'Each entry includes: displayName, nodeType (identifier for run_node_tool / ToolFromNode), ' +
+				'nodeTypeVersion, description, hasCredentials, and credentials ({ id, name, type } for each ' +
+				'credential the user has configured). ' +
+				'Use this to find a nodeType, then call run_node_tool to execute it immediately. ' +
+				'To permanently add a tool to your schema, call get_my_code, insert a ToolFromNode block, ' +
+				'then typecheck and set_code. Example ToolFromNode usage:\n' +
 				"  import { ToolFromNode } from '@n8n/agents-utils';\n" +
 				"  import { node } from '@n8n/workflow-sdk';\n" +
 				"  import { z } from 'zod';\n" +
