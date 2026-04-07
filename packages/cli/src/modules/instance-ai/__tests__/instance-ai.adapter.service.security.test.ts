@@ -131,6 +131,9 @@ const user = mock<User>({
 beforeEach(() => {
 	jest.clearAllMocks();
 	license.isLicensed.mockReturnValue(true);
+	sourceControlPreferencesService.getPreferences.mockReturnValue({
+		branchReadOnly: false,
+	} as never);
 });
 
 // ---------------------------------------------------------------------------
