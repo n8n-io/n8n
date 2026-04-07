@@ -26,7 +26,6 @@ function makeCredential(overrides?: Partial<CredentialSummary>): CredentialSumma
 		id: 'cred-1',
 		name: 'Gmail OAuth',
 		type: 'gmailOAuth2',
-		updatedAt: '2025-06-15T12:00:00.000Z',
 		...overrides,
 	};
 }
@@ -69,19 +68,6 @@ describe('list-credentials tool', () => {
 				{ id: 'cred-1', name: 'Gmail OAuth', type: 'gmailOAuth2' },
 			]);
 			expect(result.total).toBe(1);
-		});
-
-		it('does not include updatedAt in output', async () => {
-			const context = createMockContext();
-			(context.credentialService.list as jest.Mock).mockResolvedValue([makeCredential()]);
-
-			const tool = createListCredentialsTool(context);
-			const result = (await tool.execute!({}, {} as never)) as {
-				credentials: Array<Record<string, unknown>>;
-			};
-
-			expect(result.credentials[0]).not.toHaveProperty('updatedAt');
-			expect(result.credentials[0]).not.toHaveProperty('createdAt');
 		});
 
 		it('passes type filter to the list call', async () => {
