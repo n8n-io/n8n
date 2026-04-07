@@ -62,11 +62,14 @@ const workflow = ref(
 		? workflowsListStore.workflowsById[data.id]
 		: workflowsStore.workflow,
 );
+const workflowDocumentStore = computed(() =>
+	useWorkflowDocumentStore(createWorkflowDocumentId(data.id)),
+);
 const loading = ref(true);
 const isDirty = ref(false);
 const modalBus = createEventBus();
 const sharedWithProjects = ref([
-	...(workflow.value.sharedWithProjects ?? []),
+	...(workflowDocumentStore.value.sharedWithProjects ?? workflow.value.sharedWithProjects ?? []),
 ] as ProjectSharingData[]);
 const teamProject = ref(null as Project | null);
 
@@ -188,6 +191,7 @@ const onSave = async () => {
 			workflowId,
 			sharedWithProjects: sharedWithProjects.value,
 		});
+		workflowDocumentStore.value.setSharedWithProjects(sharedWithProjects.value);
 
 		toast.showMessage({
 			title: i18n.baseText('workflows.shareModal.onSave.success.title'),

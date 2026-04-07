@@ -4,6 +4,7 @@ import { inject } from 'vue';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowDocumentActive } from './workflowDocument/useWorkflowDocumentActive';
 import { useWorkflowDocumentHomeProject } from './workflowDocument/useWorkflowDocumentHomeProject';
+import { useWorkflowDocumentSharedWithProjects } from './workflowDocument/useWorkflowDocumentSharedWithProjects';
 import { useWorkflowDocumentChecksum } from './workflowDocument/useWorkflowDocumentChecksum';
 import { useWorkflowDocumentMeta } from './workflowDocument/useWorkflowDocumentMeta';
 import { useWorkflowDocumentPinData } from './workflowDocument/useWorkflowDocumentPinData';
@@ -62,6 +63,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 
 		const workflowDocumentActive = useWorkflowDocumentActive();
 		const workflowDocumentHomeProject = useWorkflowDocumentHomeProject();
+		const workflowDocumentSharedWithProjects = useWorkflowDocumentSharedWithProjects();
 		const workflowDocumentChecksum = useWorkflowDocumentChecksum();
 		const workflowDocumentMeta = useWorkflowDocumentMeta();
 		const workflowDocumentTags = useWorkflowDocumentTags();
@@ -103,6 +105,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			workflowVersion,
 			...workflowDocumentActive,
 			...workflowDocumentHomeProject,
+			...workflowDocumentSharedWithProjects,
 			...workflowDocumentChecksum,
 			...workflowDocumentIsArchived,
 			...workflowDocumentMeta,
