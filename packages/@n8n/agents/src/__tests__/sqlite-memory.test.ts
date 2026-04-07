@@ -543,7 +543,7 @@ describe('SqliteMemory — queryEmbeddings', () => {
 describe('SqliteMemory — namespace', () => {
 	it('rejects invalid namespace characters', () => {
 		expect(() => new SqliteMemory({ url: 'file::memory:', namespace: 'bad-ns!' })).toThrow(
-			/Invalid namespace/,
+			/invalid_string/,
 		);
 	});
 

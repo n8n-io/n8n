@@ -18,6 +18,7 @@ function makeMockMemory(): BuiltMemory {
 		getMessages: jest.fn(),
 		saveMessages: jest.fn(),
 		deleteMessages: jest.fn(),
+		describe: () => ({ name: 'custom', constructorName: 'CustomMemory', connectionParams: {} }),
 	} as unknown as BuiltMemory;
 }
 
@@ -279,11 +280,13 @@ describe('Agent.describe()', () => {
 		expect(schema.memory!.connectionParams).toEqual({});
 		expect(schema.memory!.lastMessages).toBe(20);
 		expect(schema.memory!.semanticRecall).toEqual({
+			scope: null,
 			topK: 5,
 			messageRange: { before: 2, after: 2 },
 			embedder: 'openai/text-embedding-3-small',
 		});
 		expect(schema.memory!.workingMemory).toEqual({
+			scope: 'resource',
 			type: 'freeform',
 			template: 'Current state: {{state}}',
 		});
@@ -294,6 +297,7 @@ describe('Agent.describe()', () => {
 			...makeMockMemory(),
 			describe: () => ({
 				name: 'sqlite',
+				constructorName: 'SqliteMemory',
 				connectionParams: { url: 'file:./data.db', namespace: 'test' },
 			}),
 		};
@@ -312,6 +316,7 @@ describe('Agent.describe()', () => {
 			...makeMockMemory(),
 			describe: () => ({
 				name: 'postgres',
+				constructorName: 'PostgresMemory',
 				connectionParams: {
 					connectionType: 'url',
 					connection: { name: 'my-pg-cred', path: 'connectionString' },

@@ -212,6 +212,8 @@ describe('Agent.fromSchema()', () => {
 			memory: {
 				source: null,
 				name: 'memory',
+				constructorName: 'Memory',
+				titleGeneration: null,
 				connectionParams: {},
 				lastMessages: 20,
 				semanticRecall: null,
@@ -236,7 +238,11 @@ describe('Agent.fromSchema()', () => {
 			getMessages: jest.fn(),
 			saveMessages: jest.fn(),
 			deleteMessages: jest.fn(),
-			describe: () => ({ name: 'sqlite', connectionParams: { url: 'file:./test.db' } }),
+			describe: () => ({
+				name: 'sqlite',
+				constructorName: 'SqliteMemory',
+				connectionParams: { url: 'file:./test.db' },
+			}),
 		};
 		const factory = jest.fn().mockResolvedValue(mockBuiltMemory);
 
@@ -244,6 +250,8 @@ describe('Agent.fromSchema()', () => {
 			memory: {
 				source: null,
 				name: 'sqlite',
+				constructorName: 'SqliteMemory',
+				titleGeneration: null,
 				connectionParams: { url: 'file:./test.db' },
 				lastMessages: 10,
 				semanticRecall: null,
@@ -267,6 +275,8 @@ describe('Agent.fromSchema()', () => {
 			memory: {
 				source: null,
 				name: 'unknown-backend',
+				constructorName: 'Memory',
+				titleGeneration: null,
 				connectionParams: {},
 				lastMessages: 5,
 				semanticRecall: null,
@@ -293,6 +303,8 @@ describe('Agent.fromSchema()', () => {
 			deleteMessages: jest.fn(),
 			describe: () => ({
 				name: 'postgres',
+				constructorName: 'PostgresMemory',
+				titleGeneration: null,
 				connectionParams: { connectionType: 'url', connection: { name: 'pg-cred' } },
 			}),
 		};
@@ -306,6 +318,8 @@ describe('Agent.fromSchema()', () => {
 			memory: {
 				source: null,
 				name: 'postgres',
+				constructorName: 'PostgresMemory',
+				titleGeneration: null,
 				connectionParams: { connectionType: 'url', connection: { name: 'pg-cred' } },
 				lastMessages: 10,
 				semanticRecall: null,
