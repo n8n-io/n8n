@@ -11,6 +11,8 @@ import type { ConnectionParams } from './schema';
 export interface MemoryDescriptor<TParams extends ConnectionParams = ConnectionParams> {
 	/** Backend name (e.g. 'postgres', 'sqlite', 'memory'). Used as key in memoryRegistry. */
 	name: string;
+	/** Constructor name (e.g. 'PostgresMemory', 'SqliteMemory'). Used to construct the backend. */
+	constructorName: string;
 	/** Non-secret, serializable connection parameters. CredentialConfig refs are safe to store. */
 	connectionParams: TParams;
 }

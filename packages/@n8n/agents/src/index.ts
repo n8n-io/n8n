@@ -110,7 +110,7 @@ export type {
 	ModelCost,
 	ModelLimits,
 } from './sdk/catalog';
-export { SqliteMemory } from './storage/sqlite-memory';
+export { SqliteMemory, SqliteMemoryConfigSchema } from './storage/sqlite-memory';
 export type { SqliteMemoryConfig } from './storage/sqlite-memory';
 export { PostgresMemory } from './storage/postgres-memory';
 export type {

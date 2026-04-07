@@ -682,6 +682,7 @@ export class PostgresMemory implements BuiltMemory {
 		const { connectionType, connection, pool, ssl, namespace, credentialName } = this.config;
 		return {
 			name: 'postgres',
+			constructorName: this.constructor.name,
 			connectionParams: {
 				connectionType,
 				connection,

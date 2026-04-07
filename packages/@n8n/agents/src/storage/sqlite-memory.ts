@@ -1,4 +1,5 @@
 import type { Client, InArgs } from '@libsql/client';
+import { z } from 'zod';
 
 import { toDbMessage } from '../sdk/message';
 import type { BuiltMemory, MemoryDescriptor, Thread } from '../types/sdk/memory';
@@ -19,10 +20,17 @@ function float32ToBuffer(arr: number[]): Buffer {
 	return Buffer.from(f32.buffer);
 }
 
-export interface SqliteMemoryConfig {
-	url: string; // e.g. 'file:./data.db'
-	namespace?: string; // table name prefix
-}
+export const SqliteMemoryConfigSchema = z.object({
+	/** libsql connection URL. Use `'file:./path/to/db.sqlite'` for a local file. */
+	url: z.string().min(1),
+	/** Optional table name prefix for multi-tenant isolation. Alphanumeric and underscores only. */
+	namespace: z
+		.string()
+		.regex(/^[a-zA-Z0-9_]+$/)
+		.optional(),
+});
+
+export type SqliteMemoryConfig = z.infer<typeof SqliteMemoryConfigSchema>;
 
 export class SqliteMemory implements BuiltMemory {
 	private initPromise: Promise<Client> | null = null;
@@ -34,14 +42,7 @@ export class SqliteMemory implements BuiltMemory {
 	private readonly ns: string;
 
 	constructor(config: SqliteMemoryConfig) {
-		if (config.namespace !== undefined) {
-			if (!/^[a-zA-Z0-9_]+$/.test(config.namespace)) {
-				throw new Error(
-					`Invalid namespace "${config.namespace}": must be alphanumeric and underscores only`,
-				);
-			}
-		}
-		this.config = config;
+		this.config = SqliteMemoryConfigSchema.parse(config);
 		this.ns = config.namespace ? `${config.namespace}_` : '';
 	}
 
@@ -433,6 +434,7 @@ export class SqliteMemory implements BuiltMemory {
 	describe(): MemoryDescriptor {
 		return {
 			name: 'sqlite',
+			constructorName: this.constructor.name,
 			connectionParams: {
 				url: this.config.url,
 				...(this.config.namespace !== undefined && { namespace: this.config.namespace }),
