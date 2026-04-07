@@ -49,7 +49,13 @@
     "test:show:report": "pnpm --filter=n8n-playwright exec playwright show-report",
     "watch": "turbo run watch --concurrency=32",
     "webhook": "./packages/cli/bin/n8n webhook",
+<<<<<<< HEAD
     "worker": "./packages/cli/bin/n8n worker"
+=======
+    "worker": "./packages/cli/bin/n8n worker",
+    "dev:computer-use": "pnpm --filter @n8n/computer-use build && node packages/@n8n/computer-use/dist/cli.js serve",
+    "stop:computer-use": "lsof -ti :7655 | xargs kill 2>/dev/null; echo 'computer-use stopped'"
+>>>>>>> b841c736df (feat: Update naming of local gateway to computer use (#28111))
   },
   "devDependencies": {
     "@babel/preset-env": "^7.26.0",
