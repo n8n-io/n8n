@@ -29,6 +29,7 @@ describe('useUserRoleProvisioningForm', () => {
 			scopesProjectsRolesClaimName: 'n8n_projects',
 			scopesProvisionInstanceRole: false,
 			scopesProvisionProjectRoles: false,
+			scopesUseExpressionMapping: false,
 		};
 		return { ...defaultConfig, ...config };
 	};
