@@ -58,7 +58,7 @@ export const InstanceAiModule: FrontendModuleDescription = {
 		{
 			id: 'settings-instance-ai',
 			icon: 'sparkles',
-			label: i18n.baseText('settings.instanceAi'),
+			label: i18n.baseText('settings.n8nAgent'),
 			position: 'top',
 			route: { to: { name: INSTANCE_AI_SETTINGS_VIEW } },
 			get available() {
