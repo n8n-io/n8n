@@ -97,9 +97,9 @@ export default defineConfig<CurrentsFixtures, CurrentsWorkerFixtures>({
 
 	use: {
 		baseURL: WEB_SERVER_URL,
-		trace: 'on',
-		video: 'on',
-		screenshot: 'on',
+		trace: IS_CI ? 'retain-on-failure' : 'on',
+		video: IS_CI ? 'retain-on-failure' : 'on',
+		screenshot: IS_CI ? 'only-on-failure' : 'on',
 		testIdAttribute: 'data-test-id',
 		headless: process.env.SHOW_BROWSER !== 'true',
 		viewport: MACBOOK_WINDOW_SIZE,
