@@ -79,7 +79,7 @@ function tryParseGatewayConfirmationRequired(
 
 /**
  * Build Mastra tools dynamically from the MCP tools advertised by a connected
- * local MCP server (e.g. the fs-proxy daemon).
+ * local MCP server (e.g. the computer-use daemon).
  *
  * Each tool's input schema is converted from the daemon's JSON Schema definition
  * to a Zod schema so the LLM receives accurate parameter information. Falls back
