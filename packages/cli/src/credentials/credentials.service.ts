@@ -44,6 +44,7 @@ import { createCredentialsFromCredentialsEntity, CredentialsHelper } from '@/cre
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
@@ -75,6 +76,7 @@ export type CredentialsGetSharedOptions =
 
 type CreateCredentialOptions = CreateCredentialDto & {
 	isManaged: boolean;
+	publicApi?: boolean;
 };
 
 type GetManyCredentialsOptions = {
@@ -107,6 +109,7 @@ export class CredentialsService {
 		private readonly credentialsHelper: CredentialsHelper,
 		private readonly externalSecretsConfig: ExternalSecretsConfig,
 		private readonly externalSecretsProviderAccessCheckService: SecretsProviderAccessCheckService,
+		private readonly eventService: EventService,
 	) {}
 
 	private async addGlobalCredentials(
@@ -746,7 +749,10 @@ export class CredentialsService {
 			);
 
 			if (project === null) {
-				throw new BadRequestError(
+				if (!(await this.projectRepository.exists({ where: { id: projectId } }))) {
+					throw new NotFoundError('Project not found');
+				}
+				throw new ForbiddenError(
 					"You don't have the permissions to save the credential in this project.",
 				);
 			}
@@ -773,10 +779,10 @@ export class CredentialsService {
 				);
 			}
 
-			return savedCredential;
+			return { credential: savedCredential, project };
 		});
 		this.logger.debug('New credential created', {
-			credentialId: newCredential.id,
+			credentialId: result.credential.id,
 			ownerId: user.id,
 		});
 		return result;
@@ -1137,8 +1143,15 @@ export class CredentialsService {
 	 * Create a new credential in user's account and return it along the scopes
 	 * If a projectId is send, then it also binds the credential to that specific project
 	 */
-	async createUnmanagedCredential(dto: CreateCredentialDto, user: User) {
-		return await this.createCredential({ ...dto, isManaged: false }, user);
+	async createUnmanagedCredential(
+		dto: CreateCredentialDto,
+		user: User,
+		options?: { publicApi?: boolean },
+	) {
+		return await this.createCredential(
+			{ ...dto, isManaged: false, publicApi: options?.publicApi },
+			user,
+		);
 	}
 
 	/**
@@ -1213,7 +1226,7 @@ export class CredentialsService {
 	 * Managed credentials are managed by n8n and cannot be edited by the user.
 	 */
 	async createManagedCredential(dto: CreateCredentialDto, user: User) {
-		return await this.createCredential({ ...dto, isManaged: true }, user);
+		return await this.createCredential({ ...dto, isManaged: true, publicApi: false }, user);
 	}
 
 	private async createCredential(opts: CreateCredentialOptions, user: User) {
@@ -1256,13 +1269,27 @@ export class CredentialsService {
 			isResolvable: opts.isResolvable ?? false,
 		});
 
-		const { shared, ...credential } = await this.save(
+		const {
+			credential: { shared, ...credential },
+			project,
+		} = await this.save(
 			credentialEntity,
 			encryptedCredential,
 			user,
 			opts.projectId,
 			opts.data as ICredentialDataDecryptedObject,
 		);
+
+		this.eventService.emit('credentials-created', {
+			user,
+			credentialType: credential.type,
+			credentialId: credential.id,
+			publicApi: opts.publicApi ?? false,
+			projectId: project?.id,
+			projectType: project?.type,
+			uiContext: opts.uiContext,
+			isDynamic: credential.isResolvable ?? false,
+		});
 
 		const scopes = await this.getCredentialScopes(user, credential.id);
 

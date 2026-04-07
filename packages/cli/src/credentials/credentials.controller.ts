@@ -182,27 +182,7 @@ export class CredentialsController {
 		_: Response,
 		@Body payload: CreateCredentialDto,
 	) {
-		const newCredential = await this.credentialsService.createUnmanagedCredential(
-			payload,
-			req.user,
-		);
-
-		const project = await this.sharedCredentialsRepository.findCredentialOwningProject(
-			newCredential.id,
-		);
-
-		this.eventService.emit('credentials-created', {
-			user: req.user,
-			credentialType: newCredential.type,
-			credentialId: newCredential.id,
-			publicApi: false,
-			projectId: project?.id,
-			projectType: project?.type,
-			uiContext: payload.uiContext,
-			isDynamic: newCredential.isResolvable ?? false,
-		});
-
-		return newCredential;
+		return await this.credentialsService.createUnmanagedCredential(payload, req.user);
 	}
 
 	@Patch('/:credentialId')

@@ -2,6 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type {
 	CredentialsEntity,
 	CredentialsRepository,
+	Project,
 	SharedCredentialsRepository,
 	ProjectRepository,
 	UserRepository,
@@ -27,6 +28,7 @@ import type { CredentialsFinderService } from '@/credentials/credentials-finder.
 import { CredentialsService } from '@/credentials/credentials.service';
 import * as validation from '@/credentials/validation';
 import type { CredentialsHelper } from '@/credentials-helper';
+import type { EventService } from '@/events/event.service';
 import type { ExternalHooks } from '@/external-hooks';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
@@ -75,6 +77,7 @@ describe('CredentialsService', () => {
 	const credentialsHelper = mock<CredentialsHelper>();
 	const externalSecretsConfig = mock<ExternalSecretsConfig>();
 	const externalSecretsProviderAccessCheckService = mock<SecretsProviderAccessCheckService>();
+	const eventService = mock<EventService>();
 
 	const service = new CredentialsService(
 		credentialsRepository,
@@ -94,6 +97,7 @@ describe('CredentialsService', () => {
 		credentialsHelper,
 		externalSecretsConfig,
 		externalSecretsProviderAccessCheckService,
+		eventService,
 	);
 
 	beforeEach(() => {
@@ -1832,6 +1836,32 @@ describe('CredentialsService', () => {
 			projectService.getProjectRelationsForUser.mockResolvedValue([]);
 			credentialsHelper.getCredentialsProperties.mockReturnValue([]);
 			jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+		});
+
+		describe('credentials-created event', () => {
+			const owningProject = { id: 'project-1', type: 'team' } as Project;
+
+			beforeEach(() => {
+				mockTransactionManager();
+				projectService.getProjectWithScope.mockResolvedValue(owningProject as any);
+			});
+
+			it('should emit credentials-created event with correct payload', async () => {
+				await service.createUnmanagedCredential({ ...credentialData }, ownerUser);
+
+				expect(eventService.emit).toHaveBeenCalledTimes(1);
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'credentials-created',
+					expect.objectContaining({
+						credentialType: credentialData.type,
+						credentialId: 'new-cred-id',
+						publicApi: false,
+						projectId: owningProject.id,
+						projectType: owningProject.type,
+						isDynamic: false,
+					}),
+				);
+			});
 		});
 
 		it('should allow owner to create global credential', async () => {

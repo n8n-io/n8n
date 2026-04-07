@@ -6,7 +6,6 @@ import type { LicenseState } from '@n8n/backend-common';
 import type {
 	AuthenticatedRequest,
 	ICredentialsDb,
-	Project,
 	SharedCredentials,
 	SharedCredentialsRepository,
 	CredentialsEntity,
@@ -57,6 +56,7 @@ describe('CredentialsController', () => {
 		mock(), // credentialsHelper
 		mock(), // externalSecretsConfig
 		mock(), // externalSecretsProviderAccessCheckService
+		mock(), // eventService
 	);
 
 	// Spy on methods that need to be mocked in tests
@@ -67,10 +67,6 @@ describe('CredentialsController', () => {
 	const getCredentialScopesSpy = jest.spyOn(credentialsService, 'getCredentialScopes');
 	const updateSpy = jest.spyOn(credentialsService, 'update');
 	const createUnmanagedCredentialSpy = jest.spyOn(credentialsService, 'createUnmanagedCredential');
-	const findCredentialOwningProjectSpy = jest.spyOn(
-		sharedCredentialsRepository,
-		'findCredentialOwningProject',
-	);
 	const emitSpy = jest.spyOn(eventService, 'emit');
 
 	const credentialsController = new CredentialsController(
@@ -100,23 +96,16 @@ describe('CredentialsController', () => {
 	});
 
 	describe('createCredentials', () => {
-		it('should create new credentials and emit "credentials-created"', async () => {
+		it('should create new credentials via CredentialsService (event emitted in service)', async () => {
 			const newCredentialsPayload = createNewCredentialsPayload();
 
 			req.body = newCredentialsPayload;
 
-			const { data, ...payloadWithoutData } = newCredentialsPayload;
+			const { data: _data, ...payloadWithoutData } = newCredentialsPayload;
 
 			const createdCredentials = createdCredentialsWithScopes(payloadWithoutData);
 
-			const projectOwningCredentialData = mock<Project>({
-				id: newCredentialsPayload.projectId,
-				type: 'team',
-			});
-
 			createUnmanagedCredentialSpy.mockResolvedValue(createdCredentials);
-
-			findCredentialOwningProjectSpy.mockResolvedValue(projectOwningCredentialData);
 
 			// Act
 
@@ -129,20 +118,6 @@ describe('CredentialsController', () => {
 			// Assert
 
 			expect(createUnmanagedCredentialSpy).toHaveBeenCalledWith(newCredentialsPayload, req.user);
-			expect(findCredentialOwningProjectSpy).toHaveBeenCalledWith(createdCredentials.id);
-			expect(emitSpy).toHaveBeenCalledTimes(1);
-			const [eventName, eventPayload] = emitSpy.mock.calls[0];
-			expect(eventName).toBe('credentials-created');
-			expect(eventPayload).toMatchObject({
-				credentialId: createdCredentials.id,
-				credentialType: createdCredentials.type,
-				projectId: projectOwningCredentialData.id,
-				projectType: projectOwningCredentialData.type,
-				publicApi: false,
-				uiContext: newCredentialsPayload.uiContext,
-				isDynamic: false,
-			});
-			expect((eventPayload as { user: { id: string } }).user.id).toBe('123');
 
 			expect(newApiKey).toEqual(createdCredentials);
 		});
