@@ -1,5 +1,5 @@
 import type { InstanceAiContext, ExecutionSummary } from '../../../types';
-import { createListExecutionsTool } from '../list-executions.tool';
+import { createListExecutionsTool, listExecutionsInputSchema } from '../list-executions.tool';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -71,50 +71,42 @@ describe('list-executions tool', () => {
 
 	describe('schema validation', () => {
 		it('accepts empty input (all fields optional)', () => {
-			const tool = createListExecutionsTool(context);
-			const result = tool.inputSchema!.safeParse({});
+			const result = listExecutionsInputSchema.safeParse({});
 			expect(result.success).toBe(true);
 		});
 
 		it('accepts workflowId filter', () => {
-			const tool = createListExecutionsTool(context);
-			const result = tool.inputSchema!.safeParse({ workflowId: 'wf-1' });
+			const result = listExecutionsInputSchema.safeParse({ workflowId: 'wf-1' });
 			expect(result.success).toBe(true);
 		});
 
 		it('accepts status filter', () => {
-			const tool = createListExecutionsTool(context);
-			const result = tool.inputSchema!.safeParse({ status: 'error' });
+			const result = listExecutionsInputSchema.safeParse({ status: 'error' });
 			expect(result.success).toBe(true);
 		});
 
 		it('accepts limit', () => {
-			const tool = createListExecutionsTool(context);
-			const result = tool.inputSchema!.safeParse({ limit: 10 });
+			const result = listExecutionsInputSchema.safeParse({ limit: 10 });
 			expect(result.success).toBe(true);
 		});
 
 		it('rejects limit over 100', () => {
-			const tool = createListExecutionsTool(context);
-			const result = tool.inputSchema!.safeParse({ limit: 101 });
+			const result = listExecutionsInputSchema.safeParse({ limit: 101 });
 			expect(result.success).toBe(false);
 		});
 
 		it('rejects limit of 0', () => {
-			const tool = createListExecutionsTool(context);
-			const result = tool.inputSchema!.safeParse({ limit: 0 });
+			const result = listExecutionsInputSchema.safeParse({ limit: 0 });
 			expect(result.success).toBe(false);
 		});
 
 		it('rejects non-integer limit', () => {
-			const tool = createListExecutionsTool(context);
-			const result = tool.inputSchema!.safeParse({ limit: 5.5 });
+			const result = listExecutionsInputSchema.safeParse({ limit: 5.5 });
 			expect(result.success).toBe(false);
 		});
 
 		it('accepts all filters combined', () => {
-			const tool = createListExecutionsTool(context);
-			const result = tool.inputSchema!.safeParse({
+			const result = listExecutionsInputSchema.safeParse({
 				workflowId: 'wf-1',
 				status: 'success',
 				limit: 50,
@@ -149,7 +141,7 @@ describe('list-executions tool', () => {
 			const result = (await tool.execute!(
 				{ workflowId: 'wf-1' },
 				{} as never,
-			)) as ListExecutionsOutput;
+			)) as unknown as ListExecutionsOutput;
 
 			expect(context.executionService.list).toHaveBeenCalledWith({
 				workflowId: 'wf-1',
@@ -168,7 +160,7 @@ describe('list-executions tool', () => {
 			const result = (await tool.execute!(
 				{ status: 'error' },
 				{} as never,
-			)) as ListExecutionsOutput;
+			)) as unknown as ListExecutionsOutput;
 
 			expect(context.executionService.list).toHaveBeenCalledWith({
 				workflowId: undefined,
@@ -200,7 +192,7 @@ describe('list-executions tool', () => {
 			const result = (await tool.execute!(
 				{ workflowId: 'nonexistent' },
 				{} as never,
-			)) as ListExecutionsOutput;
+			)) as unknown as ListExecutionsOutput;
 
 			expect(result.executions).toEqual([]);
 		});

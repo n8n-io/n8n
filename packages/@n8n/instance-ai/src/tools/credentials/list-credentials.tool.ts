@@ -3,13 +3,15 @@ import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
 
+export const listCredentialsInputSchema = z.object({
+	type: z.string().optional().describe('Filter by credential type (e.g. "notionApi")'),
+});
+
 export function createListCredentialsTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'list-credentials',
 		description: 'List credentials accessible to the current user. Never exposes secret data.',
-		inputSchema: z.object({
-			type: z.string().optional().describe('Filter by credential type (e.g. "notionApi")'),
-		}),
+		inputSchema: listCredentialsInputSchema,
 		outputSchema: z.object({
 			credentials: z.array(
 				z.object({
@@ -21,7 +23,7 @@ export function createListCredentialsTool(context: InstanceAiContext) {
 				}),
 			),
 		}),
-		execute: async (inputData) => {
+		execute: async (inputData: z.infer<typeof listCredentialsInputSchema>) => {
 			const credentials = await context.credentialService.list({
 				type: inputData.type,
 			});
