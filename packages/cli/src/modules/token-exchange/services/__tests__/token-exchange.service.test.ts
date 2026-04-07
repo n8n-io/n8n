@@ -29,6 +29,7 @@ const resolvedKey: ResolvedTrustedKey = {
 	algorithms: ['RS256'],
 	key: 'test-public-key',
 	issuer: 'https://issuer.example.com',
+	allowedRoles: ['global:member', 'global:admin'],
 };
 
 const mockUser = mock<User>({
@@ -76,7 +77,11 @@ describe('TokenExchangeService', () => {
 				'unique-jti-1',
 				new Date(validClaims.exp * 1000),
 			);
-			expect(identityResolutionService.resolve).toHaveBeenCalledWith(validClaims);
+			expect(identityResolutionService.resolve).toHaveBeenCalledWith(
+				validClaims,
+				resolvedKey.allowedRoles,
+				{ kid: resolvedKey.kid, issuer: resolvedKey.issuer },
+			);
 		});
 
 		it('should throw when token cannot be decoded', async () => {

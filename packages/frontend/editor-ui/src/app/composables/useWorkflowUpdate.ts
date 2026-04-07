@@ -14,7 +14,6 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { computed } from 'vue';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -44,7 +43,6 @@ export type UpdateWorkflowResult =
 
 export function useWorkflowUpdate() {
 	const workflowsStore = useWorkflowsStore();
-	const workflowState = injectWorkflowState();
 	const credentialsStore = useCredentialsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const builderStore = useBuilderStore();
@@ -323,12 +321,13 @@ export function useWorkflowUpdate() {
 	 * Update workflow name if initial generation and name starts with default
 	 */
 	function updateWorkflowNameIfNeeded(name?: string, isInitialGeneration?: boolean): void {
-		if (
-			name &&
-			isInitialGeneration &&
-			workflowsStore.workflow.name.startsWith(DEFAULT_NEW_WORKFLOW_NAME)
-		) {
-			workflowState.setWorkflowName({ newName: name, setStateDirty: false });
+		if (!name || !isInitialGeneration || !workflowsStore.workflowId) return;
+
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		if (workflowDocumentStore.name.startsWith(DEFAULT_NEW_WORKFLOW_NAME)) {
+			workflowDocumentStore.setName(name);
 		}
 	}
 

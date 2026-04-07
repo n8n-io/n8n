@@ -90,7 +90,10 @@ describe('createDelegateTool', () => {
 		const context = createMockContext({ 'tool-a': {} });
 		const tool = createDelegateTool(context);
 
-		const output = await tool.execute!({ ...makeValidInput(), tools: ['plan'] }, {} as never);
+		const output = (await tool.execute!(
+			{ ...makeValidInput(), tools: ['plan'] },
+			{} as never,
+		)) as Record<string, unknown>;
 
 		expect('result' in output).toBe(true);
 		expect((output as { result: string }).result).toContain('plan');
@@ -101,7 +104,10 @@ describe('createDelegateTool', () => {
 		const context = createMockContext({ 'tool-a': {} });
 		const tool = createDelegateTool(context);
 
-		const output = await tool.execute!({ ...makeValidInput(), tools: ['delegate'] }, {} as never);
+		const output = (await tool.execute!(
+			{ ...makeValidInput(), tools: ['delegate'] },
+			{} as never,
+		)) as Record<string, unknown>;
 
 		expect('result' in output).toBe(true);
 		expect((output as { result: string }).result).toContain('delegate');
@@ -112,10 +118,10 @@ describe('createDelegateTool', () => {
 		const context = createMockContext({ 'tool-a': {} });
 		const tool = createDelegateTool(context);
 
-		const output = await tool.execute!(
+		const output = (await tool.execute!(
 			{ ...makeValidInput(), tools: ['nonexistent'] },
 			{} as never,
-		);
+		)) as Record<string, unknown>;
 
 		expect('result' in output).toBe(true);
 		expect((output as { result: string }).result).toContain('nonexistent');

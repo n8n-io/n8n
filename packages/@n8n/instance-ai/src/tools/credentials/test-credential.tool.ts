@@ -3,18 +3,20 @@ import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
 
+export const testCredentialInputSchema = z.object({
+	credentialId: z.string().describe('ID of the credential to test'),
+});
+
 export function createTestCredentialTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'test-credential',
 		description: 'Test whether a credential is valid and can connect to its service.',
-		inputSchema: z.object({
-			credentialId: z.string().describe('ID of the credential to test'),
-		}),
+		inputSchema: testCredentialInputSchema,
 		outputSchema: z.object({
 			success: z.boolean(),
 			message: z.string().optional(),
 		}),
-		execute: async (inputData) => {
+		execute: async (inputData: z.infer<typeof testCredentialInputSchema>) => {
 			try {
 				return await context.credentialService.test(inputData.credentialId);
 			} catch (error) {

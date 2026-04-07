@@ -99,5 +99,26 @@ describe('useUserRoleProvisioningForm', () => {
 
 			expect(result).toEqual(true);
 		});
+
+		it('should return true when enabling SSO with expression_based provisioning enabled', async () => {
+			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
+				mockProvisioningConfig({
+					scopesProvisionInstanceRole: false,
+					scopesProvisionProjectRoles: false,
+				}),
+			);
+			const { formValue, shouldPromptUserToConfirmUserRoleProvisioningChange } =
+				useUserRoleProvisioningForm('oidc');
+			await vi.waitFor(() => expect(formValue.value).toBe('disabled'));
+
+			formValue.value = 'expression_based';
+
+			const result = shouldPromptUserToConfirmUserRoleProvisioningChange({
+				currentLoginEnabled: false,
+				loginEnabledFormValue: true,
+			});
+
+			expect(result).toEqual(true);
+		});
 	});
 });

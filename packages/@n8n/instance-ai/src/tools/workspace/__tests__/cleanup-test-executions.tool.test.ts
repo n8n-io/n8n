@@ -1,7 +1,10 @@
 import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
 
 import type { InstanceAiContext } from '../../../types';
-import { createCleanupTestExecutionsTool } from '../cleanup-test-executions.tool';
+import {
+	createCleanupTestExecutionsTool,
+	cleanupTestExecutionsInputSchema,
+} from '../cleanup-test-executions.tool';
 
 function createMockContext(
 	permissionOverrides?: InstanceAiContext['permissions'],
@@ -40,14 +43,15 @@ function createToolCtx(options?: { resumeData?: { approved: boolean } }) {
 describe('cleanup-test-executions tool', () => {
 	describe('schema validation', () => {
 		it('accepts workflowId', () => {
-			const tool = createCleanupTestExecutionsTool(createMockContext());
-			const result = tool.inputSchema!.safeParse({ workflowId: 'wf-1' });
+			const result = cleanupTestExecutionsInputSchema.safeParse({ workflowId: 'wf-1' });
 			expect(result.success).toBe(true);
 		});
 
 		it('accepts optional olderThanHours', () => {
-			const tool = createCleanupTestExecutionsTool(createMockContext());
-			const result = tool.inputSchema!.safeParse({ workflowId: 'wf-1', olderThanHours: 24 });
+			const result = cleanupTestExecutionsInputSchema.safeParse({
+				workflowId: 'wf-1',
+				olderThanHours: 24,
+			});
 			expect(result.success).toBe(true);
 		});
 	});
@@ -81,7 +85,10 @@ describe('cleanup-test-executions tool', () => {
 			const tool = createCleanupTestExecutionsTool(context);
 			const ctx = createToolCtx({ resumeData: { approved: true } });
 
-			const result = await tool.execute!({ workflowId: 'wf-1', olderThanHours: 2 }, ctx);
+			const result = (await tool.execute!(
+				{ workflowId: 'wf-1', olderThanHours: 2 },
+				ctx,
+			)) as Record<string, unknown>;
 
 			expect(context.workspaceService!.cleanupTestExecutions).toHaveBeenCalledWith('wf-1', {
 				olderThanHours: 2,
@@ -94,7 +101,7 @@ describe('cleanup-test-executions tool', () => {
 			const tool = createCleanupTestExecutionsTool(context);
 			const ctx = createToolCtx({ resumeData: { approved: false } });
 
-			const result = await tool.execute!({ workflowId: 'wf-1' }, ctx);
+			const result = (await tool.execute!({ workflowId: 'wf-1' }, ctx)) as Record<string, unknown>;
 
 			expect(result).toEqual({
 				deletedCount: 0,
@@ -117,7 +124,7 @@ describe('cleanup-test-executions tool', () => {
 			const tool = createCleanupTestExecutionsTool(context);
 			const ctx = createToolCtx();
 
-			const result = await tool.execute!({ workflowId: 'wf-1' }, ctx);
+			const result = (await tool.execute!({ workflowId: 'wf-1' }, ctx)) as Record<string, unknown>;
 
 			const suspend = (ctx as unknown as { agent: { suspend: jest.Mock } }).agent.suspend;
 			expect(suspend).not.toHaveBeenCalled();
