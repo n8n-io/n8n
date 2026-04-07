@@ -63,11 +63,8 @@ export const createCallTool =
 		getAbortSignal?: () => AbortSignal | undefined,
 	) =>
 	async (args: IDataObject) => {
-		const signal = getAbortSignal?.();
-		if (signal?.aborted) {
-			const errorMessage = 'Execution was cancelled';
-			onError(errorMessage);
-			return errorMessage;
+		if (getAbortSignal?.()?.aborted) {
+			return 'Execution was cancelled';
 		}
 
 		let result: Awaited<ReturnType<Client['callTool']>>;
@@ -85,6 +82,9 @@ export const createCallTool =
 				signal: getAbortSignal?.(),
 			});
 		} catch (error) {
+			if (getAbortSignal?.()?.aborted) {
+				return 'Execution was cancelled';
+			}
 			return handleError(error);
 		}
 

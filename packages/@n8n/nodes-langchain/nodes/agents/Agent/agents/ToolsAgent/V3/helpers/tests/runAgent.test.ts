@@ -301,7 +301,10 @@ describe('runAgent - tracing configuration', () => {
 
 		expect(tracing.getTracingConfig).toHaveBeenCalledWith(mockContext);
 		expect(mockWithConfig).toHaveBeenCalledWith(mockTracingConfig);
-		expect(mockInvoke).toHaveBeenCalled();
+		expect(mockInvoke).toHaveBeenCalledWith(
+			expect.any(Object),
+			expect.objectContaining({ signal: expect.any(AbortSignal) }),
+		);
 	});
 
 	it('should apply tracing config in streaming mode', async () => {

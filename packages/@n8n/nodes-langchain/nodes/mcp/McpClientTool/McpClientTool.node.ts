@@ -356,6 +356,10 @@ export class McpClientTool implements INodeType {
 			throw error;
 		};
 
+		if (this.getExecutionCancelSignal()?.aborted) {
+			return setError(new NodeOperationError(node, 'Execution was cancelled', { itemIndex }));
+		}
+
 		const { client, mcpTools, error } = await connectAndGetTools(this, config);
 
 		if (error) {
@@ -410,6 +414,10 @@ export class McpClientTool implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			if (this.getExecutionCancelSignal()?.aborted) {
+				return [returnData];
+			}
+
 			const item = items[itemIndex];
 			const config = getNodeConfig(this, itemIndex);
 
@@ -453,6 +461,7 @@ export class McpClientTool implements INodeType {
 					};
 					const result = await client.callTool(params, CallToolResultSchema, {
 						timeout: config.timeout,
+						signal: this.getExecutionCancelSignal(),
 					});
 					returnData.push({
 						json: {
