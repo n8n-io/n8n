@@ -5,6 +5,7 @@ import { hasStartNode } from './has-start-node';
 import { noEmptySetNodes } from './no-empty-set-nodes';
 import { noUnnecessaryCodeNodes } from './no-unnecessary-code-nodes';
 import { noUnreachableNodes } from './no-unreachable-nodes';
+import { workflowActuallyChanged } from './workflow-actually-changed';
 import {
 	agentHasDynamicPrompt,
 	agentHasLanguageModel,
@@ -37,4 +38,5 @@ export const DETERMINISTIC_CHECKS: BinaryCheck[] = [
 	validOptionsValues,
 	noInvalidFromAi,
 	toolsHaveParameters,
+	workflowActuallyChanged,
 ];
