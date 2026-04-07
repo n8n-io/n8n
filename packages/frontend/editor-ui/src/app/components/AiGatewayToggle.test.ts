@@ -8,6 +8,8 @@ import AiGatewayToggle from './AiGatewayToggle.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
 
 const mockFetchCredits = vi.fn().mockResolvedValue(undefined);
 const mockCreditsRemaining = ref<number | undefined>(undefined);
@@ -173,6 +175,27 @@ describe('AiGatewayToggle', () => {
 
 			await new Promise((r) => setTimeout(r, 10));
 			expect(mockFetchCredits).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('top-up badge', () => {
+		it('opens top-up modal when badge is clicked', async () => {
+			mockCreditsRemaining.value = 5;
+			renderComponent({ props: { aiGatewayEnabled: true, readonly: false } });
+
+			const uiStore = useUIStore();
+			vi.spyOn(uiStore, 'openModal');
+
+			await userEvent.click(screen.getByText('5 credits remaining'));
+
+			expect(uiStore.openModal).toHaveBeenCalledWith(AI_GATEWAY_TOP_UP_MODAL_KEY);
+		});
+
+		it('renders "Top up" label alongside the credits label in the badge', () => {
+			mockCreditsRemaining.value = 5;
+			renderComponent({ props: { aiGatewayEnabled: true, readonly: false } });
+
+			expect(screen.getByText('Top up')).toBeInTheDocument();
 		});
 	});
 });

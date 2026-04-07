@@ -24,6 +24,8 @@ export type {
 	AiGatewayUsageResponse,
 } from './ai/ai-gateway-usage-response.dto';
 
+export { AiGatewayTopUpRequestDto } from './ai/ai-gateway-topup-request.dto';
+
 export { InstanceAiConfirmRequestDto } from './instance-ai/instance-ai-confirm-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
 
