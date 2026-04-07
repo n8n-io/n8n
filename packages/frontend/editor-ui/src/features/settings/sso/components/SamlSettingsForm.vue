@@ -397,8 +397,8 @@ onMounted(async () => {
 		<div :class="$style.card">
 			<div :class="[$style.settingsItem, $style.settingsItemNoBorder]">
 				<div :class="$style.settingsItemLabel">
-					<label>Single sign-on (SSO)</label>
-					<small>Allow users to sign in through your identity provider</small>
+					<label>{{ i18n.baseText('settings.sso.settings.ssoToggle.label') }}</label>
+					<small>{{ i18n.baseText('settings.sso.settings.ssoToggle.description') }}</small>
 				</div>
 				<div :class="$style.settingsItemControl">
 					<N8nSelect
@@ -409,8 +409,14 @@ onMounted(async () => {
 						<template #prefix>
 							<span v-if="samlLoginEnabled" :class="$style.greenDot" />
 						</template>
-						<N8nOption value="enabled" label="Enabled" />
-						<N8nOption value="disabled" label="Disabled" />
+						<N8nOption
+							value="enabled"
+							:label="i18n.baseText('settings.sso.settings.ssoToggle.enabled')"
+						/>
+						<N8nOption
+							value="disabled"
+							:label="i18n.baseText('settings.sso.settings.ssoToggle.disabled')"
+						/>
 					</N8nSelect>
 				</div>
 			</div>
