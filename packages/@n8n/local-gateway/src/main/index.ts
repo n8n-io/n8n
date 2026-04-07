@@ -1,4 +1,4 @@
-import { configure, logger } from '@n8n/fs-proxy/logger';
+import { configure, logger } from '@n8n/computer-use/logger';
 import { app, dialog } from 'electron';
 import * as path from 'node:path';
 

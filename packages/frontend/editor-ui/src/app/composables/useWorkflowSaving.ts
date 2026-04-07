@@ -212,12 +212,12 @@ export function useWorkflowSaving({
 					throw new Error('Attempted to save a workflow different from the current workflow');
 				}
 
-				workflowDataRequest.versionId = workflowsStore.workflowVersionId;
 				// Check if AI Builder made edits since last save
 				workflowDataRequest.aiBuilderAssisted = builderStore.getAiBuilderMadeEdits();
 				const workflowDocumentStore = useWorkflowDocumentStore(
 					createWorkflowDocumentId(currentWorkflow),
 				);
+				workflowDataRequest.versionId = workflowDocumentStore.versionId;
 				workflowDataRequest.expectedChecksum = workflowDocumentStore.checksum;
 				workflowDataRequest.autosaved = autosaved;
 
@@ -229,7 +229,7 @@ export function useWorkflowSaving({
 				if (!workflowData.checksum) {
 					throw new Error('Failed to update workflow');
 				}
-				workflowsStore.setWorkflowVersionData({
+				workflowDocumentStore.setVersionData({
 					versionId: workflowData.versionId,
 					name: null,
 					description: null,
@@ -482,7 +482,7 @@ export function useWorkflowSaving({
 				workflowDocumentStore.setChecksum(workflowData.checksum);
 			}
 			workflowState.setWorkflowId(workflowData.id);
-			workflowsStore.setWorkflowVersionData({
+			workflowDocumentStore.setVersionData({
 				versionId: workflowData.versionId,
 				name: null,
 				description: null,

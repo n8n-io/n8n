@@ -75,11 +75,7 @@ export type {
 	CustomAgentMessages,
 	AgentDbMessage,
 } from './types/sdk/message';
-export {
-	toDbMessage,
-	filterLlmMessages,
-	isLlmMessage,
-} from './sdk/message';
+export { filterLlmMessages, isLlmMessage } from './sdk/message';
 export { fetchProviderCatalog } from './sdk/catalog';
 export type {
 	ProviderCatalog,
