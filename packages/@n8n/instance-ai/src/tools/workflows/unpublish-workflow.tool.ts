@@ -5,19 +5,22 @@ import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
 
+export const unpublishWorkflowInputSchema = z.object({
+	workflowId: z.string().describe('ID of the workflow to unpublish'),
+	workflowName: z.string().optional().describe('Name of the workflow (for confirmation message)'),
+});
+
+export const unpublishWorkflowResumeSchema = z.object({
+	approved: z.boolean(),
+});
+
 export function createUnpublishWorkflowTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'unpublish-workflow',
 		description:
 			'Unpublish a workflow — stops it from running in production. ' +
 			'The draft is preserved and can be re-published later.',
-		inputSchema: z.object({
-			workflowId: z.string().describe('ID of the workflow to unpublish'),
-			workflowName: z
-				.string()
-				.optional()
-				.describe('Name of the workflow (for confirmation message)'),
-		}),
+		inputSchema: unpublishWorkflowInputSchema,
 		outputSchema: z.object({
 			success: z.boolean(),
 			error: z.string().optional(),
@@ -29,11 +32,12 @@ export function createUnpublishWorkflowTool(context: InstanceAiContext) {
 			message: z.string(),
 			severity: instanceAiConfirmationSeveritySchema,
 		}),
-		resumeSchema: z.object({
-			approved: z.boolean(),
-		}),
-		execute: async (input, ctx) => {
-			const { resumeData, suspend } = ctx?.agent ?? {};
+		resumeSchema: unpublishWorkflowResumeSchema,
+		execute: async (input: z.infer<typeof unpublishWorkflowInputSchema>, ctx) => {
+			const resumeData = ctx?.agent?.resumeData as
+				| z.infer<typeof unpublishWorkflowResumeSchema>
+				| undefined;
+			const suspend = ctx?.agent?.suspend;
 
 			const needsApproval = context.permissions?.publishWorkflow !== 'always_allow';
 

@@ -5,22 +5,25 @@ import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
 
+export const moveWorkflowToFolderInputSchema = z.object({
+	workflowId: z.string().describe('ID of the workflow to move'),
+	workflowName: z.string().optional().describe('Name of the workflow (for confirmation message)'),
+	folderId: z.string().describe('ID of the destination folder'),
+	folderName: z
+		.string()
+		.optional()
+		.describe('Name of the destination folder (for confirmation message)'),
+});
+
+export const moveWorkflowToFolderResumeSchema = z.object({
+	approved: z.boolean(),
+});
+
 export function createMoveWorkflowToFolderTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'move-workflow-to-folder',
 		description: 'Move a workflow into a folder. Non-destructive — the workflow is not modified.',
-		inputSchema: z.object({
-			workflowId: z.string().describe('ID of the workflow to move'),
-			workflowName: z
-				.string()
-				.optional()
-				.describe('Name of the workflow (for confirmation message)'),
-			folderId: z.string().describe('ID of the destination folder'),
-			folderName: z
-				.string()
-				.optional()
-				.describe('Name of the destination folder (for confirmation message)'),
-		}),
+		inputSchema: moveWorkflowToFolderInputSchema,
 		outputSchema: z.object({
 			success: z.boolean(),
 			denied: z.boolean().optional(),
@@ -31,11 +34,12 @@ export function createMoveWorkflowToFolderTool(context: InstanceAiContext) {
 			message: z.string(),
 			severity: instanceAiConfirmationSeveritySchema,
 		}),
-		resumeSchema: z.object({
-			approved: z.boolean(),
-		}),
-		execute: async (input, ctx) => {
-			const { resumeData, suspend } = ctx?.agent ?? {};
+		resumeSchema: moveWorkflowToFolderResumeSchema,
+		execute: async (input: z.infer<typeof moveWorkflowToFolderInputSchema>, ctx) => {
+			const resumeData = ctx?.agent?.resumeData as
+				| z.infer<typeof moveWorkflowToFolderResumeSchema>
+				| undefined;
+			const suspend = ctx?.agent?.suspend;
 
 			const needsApproval = context.permissions?.moveWorkflowToFolder !== 'always_allow';
 

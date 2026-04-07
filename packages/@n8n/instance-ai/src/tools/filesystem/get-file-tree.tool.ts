@@ -5,28 +5,34 @@ import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
 
+export const getFileTreeInputSchema = z.object({
+	dirPath: z
+		.string()
+		.describe(
+			'Absolute directory path or ~/relative path (e.g. "/home/user/project" or "~/project/src"). Call with subdirectory paths to explore deeper.',
+		),
+	maxDepth: z
+		.number()
+		.int()
+		.positive()
+		.max(5)
+		.default(2)
+		.optional()
+		.describe(
+			'Maximum directory depth to show (default 2, max 5). Start low and increase only if needed.',
+		),
+});
+
+export const getFileTreeResumeSchema = z.object({
+	approved: z.boolean(),
+});
+
 export function createGetFileTreeTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'get-file-tree',
 		description:
 			'Get a shallow directory tree. Start at depth 1-2 for an overview, then call again on specific subdirectories to drill deeper. Always use absolute paths or ~/relative paths.',
-		inputSchema: z.object({
-			dirPath: z
-				.string()
-				.describe(
-					'Absolute directory path or ~/relative path (e.g. "/home/user/project" or "~/project/src"). Call with subdirectory paths to explore deeper.',
-				),
-			maxDepth: z
-				.number()
-				.int()
-				.positive()
-				.max(5)
-				.default(2)
-				.optional()
-				.describe(
-					'Maximum directory depth to show (default 2, max 5). Start low and increase only if needed.',
-				),
-		}),
+		inputSchema: getFileTreeInputSchema,
 		outputSchema: z.object({
 			tree: z.string().describe('Directory tree as indented text'),
 			truncated: z.boolean(),
@@ -38,11 +44,12 @@ export function createGetFileTreeTool(context: InstanceAiContext) {
 			message: z.string(),
 			severity: instanceAiConfirmationSeveritySchema,
 		}),
-		resumeSchema: z.object({
-			approved: z.boolean(),
-		}),
-		execute: async ({ dirPath, maxDepth }, ctx) => {
-			const { resumeData, suspend } = ctx?.agent ?? {};
+		resumeSchema: getFileTreeResumeSchema,
+		execute: async ({ dirPath, maxDepth }: z.infer<typeof getFileTreeInputSchema>, ctx) => {
+			const resumeData = ctx?.agent?.resumeData as
+				| z.infer<typeof getFileTreeResumeSchema>
+				| undefined;
+			const suspend = ctx?.agent?.suspend;
 			const needsApproval = context.permissions?.readFilesystem !== 'always_allow';
 
 			if (needsApproval && (resumeData === undefined || resumeData === null)) {
