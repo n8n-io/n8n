@@ -1285,8 +1285,8 @@ export class CredentialsService {
 			credentialType: credential.type,
 			credentialId: credential.id,
 			publicApi: opts.publicApi ?? false,
-			projectId: project?.id,
-			projectType: project?.type,
+			projectId: project.id,
+			projectType: project.type,
 			uiContext: opts.uiContext,
 			isDynamic: credential.isResolvable ?? false,
 		});
