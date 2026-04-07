@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, watch, computed, onBeforeUnmount, useTemplateRef } from 'vue';
-import { N8nSpinner, N8nText } from '@n8n/design-system';
+import { N8nText, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { PushMessage } from '@n8n/api-types';
 import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
@@ -125,7 +125,7 @@ defineExpose({ relayPushEvent });
 
 		<!-- Loading overlay (shown during initial load or when no workflow yet) -->
 		<div v-if="isLoading && !workflow" :class="$style.centerState">
-			<N8nSpinner type="dots" />
+			<N8nIcon icon="spinner" color="primary" size="xxlarge" spin />
 		</div>
 	</div>
 </template>

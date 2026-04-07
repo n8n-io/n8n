@@ -241,6 +241,13 @@ watch(
 // --- Chat input ref for auto-focus ---
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
 
+// Focus input on initial render (ref rebinds when messages load and layout switches)
+watch(chatInputRef, (el) => {
+	if (el) {
+		void nextTick(() => el.focus());
+	}
+});
+
 // --- Floating input dynamic padding ---
 const inputContainerRef = useTemplateRef<HTMLElement>('inputContainer');
 const inputAreaHeight = ref(120);
