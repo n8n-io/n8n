@@ -18,7 +18,7 @@ describe('Test EmailSendV1', () => {
 			description: {
 				displayName: 'Send Email',
 				name: 'emailSend',
-				icon: 'fa:envelope',
+				icon: 'node:send-mail',
 				group: ['output'],
 				description: 'Sends an Email',
 				version: 1,
