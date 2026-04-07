@@ -24,6 +24,7 @@ export const defaultSettings: FrontendSettings = {
 	endpointWebhook: '',
 	endpointWebhookTest: '',
 	endpointWebhookWaiting: '',
+	endpointHealth: '/healthz',
 	enterprise: {
 		sharing: false,
 		ldap: false,
@@ -41,7 +42,7 @@ export const defaultSettings: FrontendSettings = {
 		externalSecrets: false,
 		workerView: false,
 		advancedPermissions: false,
-		apiKeyScopes: false,
+
 		workflowDiffs: false,
 		namedVersions: false,
 		provisioning: true,
@@ -51,6 +52,8 @@ export const defaultSettings: FrontendSettings = {
 			},
 		},
 		customRoles: false,
+		personalSpacePolicy: false,
+		dataRedaction: false,
 	},
 	executionMode: 'regular',
 	isMultiMain: false,
@@ -167,6 +170,7 @@ export const defaultSettings: FrontendSettings = {
 		quota: 0,
 	},
 	activeModules: [],
+	canvasOnly: false,
 	envFeatureFlags: {},
 	dynamicBanners: {
 		endpoint: 'https://api.n8n.io/api/banners',

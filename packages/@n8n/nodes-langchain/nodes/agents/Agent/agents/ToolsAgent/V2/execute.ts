@@ -16,11 +16,13 @@ import { jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData, ISupplyDataFunctions } from 'n8n-workflow';
 import assert from 'node:assert';
 
+import { loadMemory } from '@utils/agent-execution';
 import { getPromptInputByType } from '@utils/helpers';
 import {
 	getOptionalOutputParser,
 	type N8nOutputParser,
 } from '@utils/output_parsers/N8nOutputParser';
+import { buildTracingMetadata, getTracingConfig } from '@utils/tracing';
 
 import {
 	fixEmptyContentMessage,
@@ -78,6 +80,12 @@ export function createAgentExecutor(
 		returnIntermediateSteps: options.returnIntermediateSteps === true,
 		maxIterations: options.maxIterations ?? 10,
 	});
+}
+
+function isExecuteFunctions(
+	context: IExecuteFunctions | ISupplyDataFunctions,
+): context is IExecuteFunctions {
+	return 'getExecuteData' in context;
 }
 
 async function processEventStream(
@@ -255,6 +263,7 @@ export async function toolsAgentExecute(
 				maxIterations?: number;
 				returnIntermediateSteps?: boolean;
 				passthroughBinaryImages?: boolean;
+				tracingMetadata?: { values?: Array<{ key: string; value: unknown }> };
 			};
 
 			// Prepare the prompt messages and prompt template.
@@ -275,6 +284,14 @@ export async function toolsAgentExecute(
 				memory,
 				fallbackModel,
 			);
+			const additionalMetadata = buildTracingMetadata(options.tracingMetadata?.values, this.logger);
+			if (Object.keys(additionalMetadata).length > 0) {
+				this.logger.debug('Tracing metadata', { additionalMetadata });
+			}
+			const tracingConfig = isExecuteFunctions(this)
+				? getTracingConfig(this, { additionalMetadata })
+				: undefined;
+			const executorWithTracing = tracingConfig ? executor.withConfig(tracingConfig) : executor;
 			// Invoke with fallback logic
 			const invokeParams = {
 				input,
@@ -294,12 +311,7 @@ export async function toolsAgentExecute(
 				this.getNode().typeVersion >= 2.1
 			) {
 				// Get chat history respecting the context window length configured in memory
-				let chatHistory;
-				if (memory) {
-					// Load memory variables to respect context window length
-					const memoryVariables = await memory.loadMemoryVariables({});
-					chatHistory = memoryVariables['chat_history'];
-				}
+				const chatHistory = memory ? await loadMemory(memory, model) : undefined;
 				const eventStream = executor.streamEvents(
 					{
 						...invokeParams,
@@ -319,7 +331,7 @@ export async function toolsAgentExecute(
 				);
 			} else {
 				// Handle regular execution
-				return await executor.invoke(invokeParams, executeOptions);
+				return await executorWithTracing.invoke(invokeParams, executeOptions);
 			}
 		});
 

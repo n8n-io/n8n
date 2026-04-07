@@ -19,37 +19,67 @@ import type { MemorySaver, Checkpoint } from '@langchain/langgraph';
 import { conversationCompactChain } from '../../chains/conversation-compact';
 import { generateThreadId } from '../../utils/thread-id';
 
-/** Maximum number of user messages to retain before compaction */
+/** Maximum number of conversation entries to retain before compaction */
 const MAX_USER_MESSAGES = 20;
 
-/** Number of oldest messages to compact when threshold is exceeded */
+/** Number of oldest entries to compact when threshold is exceeded */
 const MESSAGES_TO_COMPACT = 10;
+
+/**
+ * Typed conversation entry — discriminated union for different interaction types.
+ */
+export type ConversationEntry =
+	| { type: 'build-request'; message: string }
+	| { type: 'assistant-exchange'; userQuery: string; assistantSummary: string }
+	| { type: 'plan'; userQuery: string; plan: string };
+
+/**
+ * Convert a ConversationEntry to a human-readable string.
+ * Reused by compaction and prompt rendering.
+ */
+export function entryToString(entry: ConversationEntry): string {
+	switch (entry.type) {
+		case 'build-request':
+			return entry.message;
+		case 'assistant-exchange':
+			return `[Help] Q: ${entry.userQuery} → A: ${entry.assistantSummary}`;
+		case 'plan':
+			return `[Plan] Q: ${entry.userQuery} → ${entry.plan}`;
+	}
+}
 
 /**
  * Session state for the CodeBuilder
  */
 export interface CodeBuilderSession {
-	/** Array of raw user messages (most recent conversation history) */
-	userMessages: string[];
+	/** Typed conversation entries (most recent conversation history) */
+	conversationEntries: ConversationEntry[];
 	/** Compacted summary of older conversations (if any compaction has occurred) */
 	previousSummary?: string;
+	/** SDK session ID for continuing assistant conversations */
+	sdkSessionId?: string;
 }
 
 /**
- * Internal checkpoint structure for session storage
+ * Internal checkpoint structure for session storage.
+ * Accepts both new (conversationEntries) and legacy (userMessages) formats.
  */
 interface SessionCheckpoint {
-	userMessages: string[];
+	conversationEntries?: ConversationEntry[];
+	sdkSessionId?: string;
+	/** @deprecated Legacy format — migrated on load */
+	userMessages?: string[];
 	previousSummary?: string;
 }
 
 function isSessionCheckpoint(value: unknown): value is SessionCheckpoint {
-	return (
-		typeof value === 'object' &&
-		value !== null &&
-		'userMessages' in value &&
-		Array.isArray((value as SessionCheckpoint).userMessages)
-	);
+	if (typeof value !== 'object' || value === null) return false;
+	const obj = value as SessionCheckpoint;
+	// New format
+	if ('conversationEntries' in obj && Array.isArray(obj.conversationEntries)) return true;
+	// Legacy format
+	if ('userMessages' in obj && Array.isArray(obj.userMessages)) return true;
+	return false;
 }
 
 /**
@@ -73,23 +103,37 @@ export async function loadCodeBuilderSession(
 		const checkpointTuple = await checkpointer.getTuple(config);
 
 		if (!checkpointTuple?.checkpoint) {
-			return { userMessages: [] };
+			return { conversationEntries: [] };
 		}
 
 		const channelValues = checkpointTuple.checkpoint.channel_values;
 		const sessionData = channelValues?.codeBuilderSession;
 
 		if (isSessionCheckpoint(sessionData)) {
-			return {
-				userMessages: sessionData.userMessages,
-				previousSummary: sessionData.previousSummary,
-			};
+			// New format
+			if (sessionData.conversationEntries) {
+				return {
+					conversationEntries: sessionData.conversationEntries,
+					previousSummary: sessionData.previousSummary,
+					sdkSessionId: sessionData.sdkSessionId,
+				};
+			}
+			// Legacy format — migrate each string to build-request
+			if (sessionData.userMessages) {
+				return {
+					conversationEntries: sessionData.userMessages.map((msg) => ({
+						type: 'build-request' as const,
+						message: msg,
+					})),
+					previousSummary: sessionData.previousSummary,
+				};
+			}
 		}
 
-		return { userMessages: [] };
+		return { conversationEntries: [] };
 	} catch {
 		// Thread doesn't exist yet or error reading
-		return { userMessages: [] };
+		return { conversationEntries: [] };
 	}
 }
 
@@ -115,6 +159,12 @@ export async function saveCodeBuilderSession(
 	const existingTuple = await checkpointer.getTuple(config).catch(() => undefined);
 	const existingCheckpoint = existingTuple?.checkpoint;
 
+	const sessionPayload: SessionCheckpoint = {
+		conversationEntries: session.conversationEntries,
+		previousSummary: session.previousSummary,
+		sdkSessionId: session.sdkSessionId,
+	};
+
 	// Create checkpoint with session data, preserving existing checkpoint properties
 	const checkpoint: Checkpoint = existingCheckpoint
 		? {
@@ -122,10 +172,7 @@ export async function saveCodeBuilderSession(
 				ts: new Date().toISOString(),
 				channel_values: {
 					...existingCheckpoint.channel_values,
-					codeBuilderSession: {
-						userMessages: session.userMessages,
-						previousSummary: session.previousSummary,
-					},
+					codeBuilderSession: sessionPayload,
 				},
 			}
 		: {
@@ -133,10 +180,7 @@ export async function saveCodeBuilderSession(
 				id: crypto.randomUUID(),
 				ts: new Date().toISOString(),
 				channel_values: {
-					codeBuilderSession: {
-						userMessages: session.userMessages,
-						previousSummary: session.previousSummary,
-					},
+					codeBuilderSession: sessionPayload,
 				},
 				channel_versions: {},
 				versions_seen: {},
@@ -152,17 +196,17 @@ export async function saveCodeBuilderSession(
 }
 
 /**
- * Compact session if the number of user messages exceeds the threshold
+ * Compact session if the number of conversation entries exceeds the threshold
  *
- * When userMessages.length > MAX_USER_MESSAGES:
- * 1. Takes the oldest MESSAGES_TO_COMPACT messages
+ * When conversationEntries.length > MAX_USER_MESSAGES:
+ * 1. Takes the oldest MESSAGES_TO_COMPACT entries
  * 2. Summarizes them using conversationCompactChain
  * 3. Appends the summary to previousSummary
- * 4. Keeps only the most recent messages
+ * 4. Keeps only the most recent entries
  *
  * @param session - Current session state
  * @param llm - Language model for generating summaries
- * @param maxMessages - Maximum messages before compaction (default: 20)
+ * @param maxMessages - Maximum entries before compaction (default: 20)
  * @returns Updated session (may be unchanged if no compaction needed)
  */
 export async function compactSessionIfNeeded(
@@ -170,16 +214,15 @@ export async function compactSessionIfNeeded(
 	llm: BaseChatModel,
 	maxMessages: number = MAX_USER_MESSAGES,
 ): Promise<CodeBuilderSession> {
-	if (session.userMessages.length <= maxMessages) {
+	if (session.conversationEntries.length <= maxMessages) {
 		return session;
 	}
 
-	// Get the oldest messages to compact
-	const oldMessages = session.userMessages.slice(0, MESSAGES_TO_COMPACT);
-	const recentMessages = session.userMessages.slice(MESSAGES_TO_COMPACT);
+	const oldEntries = session.conversationEntries.slice(0, MESSAGES_TO_COMPACT);
+	const recentEntries = session.conversationEntries.slice(MESSAGES_TO_COMPACT);
 
 	// Convert to HumanMessage format for the compact chain
-	const messages = oldMessages.map((msg) => new HumanMessage(msg));
+	const messages = oldEntries.map((entry) => new HumanMessage(entryToString(entry)));
 
 	// Run compaction with existing summary
 	const result = await conversationCompactChain(llm, messages, session.previousSummary ?? '');
@@ -193,8 +236,9 @@ export async function compactSessionIfNeeded(
 	}
 
 	return {
-		userMessages: recentMessages,
+		conversationEntries: recentEntries,
 		previousSummary: newSummary,
+		sdkSessionId: session.sdkSessionId,
 	};
 }
 

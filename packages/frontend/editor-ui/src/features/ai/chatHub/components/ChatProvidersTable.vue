@@ -130,7 +130,7 @@ const onTableAction = (action: string, settings: ChatProviderSettingsDto) => {
 			<N8nLoading :loading="props.loading" variant="h1" :class="$style.header" />
 			<N8nLoading :loading="props.loading" variant="p" :rows="5" :shrink-last="false" />
 		</div>
-		<div v-else :class="$style.container">
+		<div v-else>
 			<div :class="$style.header">
 				<N8nHeading size="medium" :bold="true">
 					{{ i18n.baseText('settings.chatHub.providers.table.title') }}
@@ -138,10 +138,11 @@ const onTableAction = (action: string, settings: ChatProviderSettingsDto) => {
 				<div :class="$style.actions">
 					<N8nTooltip :content="i18n.baseText('settings.chatHub.providers.table.refresh.tooltip')">
 						<N8nButton
+							variant="subtle"
+							iconOnly
 							size="small"
-							type="tertiary"
 							icon="refresh-cw"
-							:square="true"
+							:aria-label="i18n.baseText('generic.refresh')"
 							@click="$emit('refresh')"
 						/>
 					</N8nTooltip>
@@ -209,11 +210,6 @@ const onTableAction = (action: string, settings: ChatProviderSettingsDto) => {
 </template>
 
 <style lang="scss" module>
-.container {
-	margin-top: var(--spacing--sm);
-	margin-bottom: var(--spacing--xl);
-}
-
 .tableContainer {
 	:global(.table-pagination) {
 		display: none;

@@ -150,6 +150,19 @@ class TestAttributeAccessValidation(TestTaskAnalyzer):
                 analyzer.validate(code)
             assert "name-mangled" in exc_info.value.description.lower()
 
+    def test_objclass_attribute_blocked(self, analyzer: TaskAnalyzer) -> None:
+        exploit_attempts = [
+            "str.__or__.__objclass__",
+            "str.__init__.__objclass__",
+            "type_ref = str.__or__.__objclass__",
+            "object_ref = str.__init__.__objclass__",
+        ]
+
+        for code in exploit_attempts:
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            assert "__objclass__" in exc_info.value.description
+
     def test_attribute_error_obj_blocked(self, analyzer: TaskAnalyzer) -> None:
         exploit_attempts = [
             "e.obj",

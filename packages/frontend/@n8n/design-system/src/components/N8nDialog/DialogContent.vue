@@ -83,6 +83,22 @@ const sizeClass = computed(() => sizeClasses[props.size]);
 /** ARIA Fallbacks: These are visually hidden but accessible to screen readers **/
 const needsFallbackTitle = computed(() => !!props.ariaLabel);
 const needsFallbackDescription = computed(() => !!props.ariaDescription);
+
+/**
+ * Handles outside interaction events to prevent Reka UI from closing the dialog
+ * when interacting with Element Plus teleported elements (dropdowns, selects, overlays).
+ * These elements are teleported to body as siblings of the dialog, so Reka UI's
+ * DismissableLayer detects clicks on them as "outside" clicks.
+ *
+ * TODO: Remove once Element Plus components are migrated to Reka UI, and replace with a simple emit.
+ */
+function handleInteractOutside(e: Event) {
+	const target = e.target as HTMLElement | null;
+	if (target?.closest('.el-popper, .el-select-dropdown, .el-overlay')) {
+		e.preventDefault();
+	}
+	emit('interactOutside', e);
+}
 </script>
 
 <template>
@@ -92,7 +108,7 @@ const needsFallbackDescription = computed(() => !!props.ariaDescription);
 		:disable-outside-pointer-events="disableOutsidePointerEvents"
 		:class="[$style.content, sizeClass]"
 		@escape-key-down="emit('escapeKeyDown', $event)"
-		@interact-outside="emit('interactOutside', $event)"
+		@interact-outside="handleInteractOutside"
 		@open-auto-focus="emit('openAutoFocus', $event)"
 		@close-auto-focus="emit('closeAutoFocus', $event)"
 	>
@@ -150,7 +166,7 @@ const needsFallbackDescription = computed(() => !!props.ariaDescription);
 		0 8px 8px light-dark(var(--color--black-alpha-100), var(--color--black-alpha-300)),
 		0 32px 32px light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200)),
 		0 64px 64px light-dark(rgba(0, 0, 0, 0.06), var(--color--black-alpha-100));
-	z-index: 999999;
+	z-index: 1950; // See APP_Z_INDEXES in useStyles.ts
 	max-width: var(--dialog--max-width);
 
 	&:focus {
@@ -220,5 +236,14 @@ const needsFallbackDescription = computed(() => !!props.ariaDescription);
 	height: 100%;
 	max-width: calc(100dvw - var(--spacing--lg));
 	max-height: calc(100dvh - var(--spacing--lg));
+}
+</style>
+
+<style lang="scss">
+/* Workaround: reka-ui DismissableLayer sets pointer-events: none on body,
+   which breaks Element Plus poppers teleported to body.
+   TODO: Remove once Element Plus components are migrated to Reka UI. */
+.el-popper {
+	pointer-events: auto;
 }
 </style>

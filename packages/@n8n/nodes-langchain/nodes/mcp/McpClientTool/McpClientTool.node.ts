@@ -12,8 +12,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { logWrapper } from '@n8n/ai-utilities';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import { getTools } from './loadOptions';
 import type { McpToolIncludeMode } from './types';
@@ -361,6 +360,11 @@ export class McpClientTool implements INodeType {
 			throw error;
 		};
 
+		const signal = this.getExecutionCancelSignal();
+		if (signal?.aborted) {
+			return setError(new NodeOperationError(node, 'Execution was cancelled', { itemIndex }));
+		}
+
 		const { client, mcpTools, error } = await connectAndGetTools(this, config);
 
 		if (error) {
@@ -384,11 +388,19 @@ export class McpClientTool implements INodeType {
 			logWrapper(
 				mcpToolToDynamicTool(
 					tool,
-					createCallTool(tool.name, client, config.timeout, (errorMessage) => {
-						const error = new NodeOperationError(node, errorMessage, { itemIndex });
-						void this.addOutputData(NodeConnectionTypes.AiTool, itemIndex, error);
-						this.logger.error(`McpClientTool: Tool "${tool.name}" failed to execute`, { error });
-					}),
+					createCallTool(
+						tool.name,
+						client,
+						config.timeout,
+						(errorMessage) => {
+							const error = new NodeOperationError(node, errorMessage, { itemIndex });
+							void this.addOutputData(NodeConnectionTypes.AiTool, itemIndex, error);
+							this.logger.error(`McpClientTool: Tool "${tool.name}" failed to execute`, {
+								error,
+							});
+						},
+						() => this.getExecutionCancelSignal(),
+					),
 				),
 				this,
 			),
@@ -398,12 +410,7 @@ export class McpClientTool implements INodeType {
 
 		const toolkit = new StructuredToolkit(tools);
 
-		return {
-			response: toolkit,
-			closeFunction: async () => {
-				await client.close();
-			},
-		};
+		return { response: toolkit, closeFunction: async () => await client.close() };
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -412,6 +419,11 @@ export class McpClientTool implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			const signal = this.getExecutionCancelSignal();
+			if (signal?.aborted) {
+				throw new NodeOperationError(node, 'Execution was cancelled', { itemIndex });
+			}
+
 			const item = items[itemIndex];
 			const config = getNodeConfig(this, itemIndex);
 
@@ -460,6 +472,7 @@ export class McpClientTool implements INodeType {
 						};
 						const result = await client.callTool(params, CallToolResultSchema, {
 							timeout: config.timeout,
+							signal: this.getExecutionCancelSignal(),
 						});
 						returnData.push({
 							json: {

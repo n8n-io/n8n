@@ -3,6 +3,7 @@
 	z-index: var(--codemirror-tooltip--z);
 	max-width: 0;
 	max-height: 0;
+	contain: layout;
 }
 
 .code-node-editor .cm-editor .cm-tooltip-autocomplete > ul[role='listbox'] {

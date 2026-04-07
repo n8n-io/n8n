@@ -3,11 +3,13 @@
  * Uses createServiceStack from n8n-containers for unified service management.
  */
 const { createServiceStack } = require('n8n-containers');
+const { randomBytes } = require('crypto');
 
 module.exports = async () => {
+	const suffix = randomBytes(4).toString('hex');
 	const stack = await createServiceStack({
 		services: ['postgres'],
-		projectName: 'n8n-integration-test',
+		projectName: `n8n-integration-test-${suffix}`,
 	});
 
 	const pgResult = stack.serviceResults.postgres;

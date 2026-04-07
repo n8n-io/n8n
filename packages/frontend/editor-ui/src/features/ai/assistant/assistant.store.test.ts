@@ -23,6 +23,18 @@ import * as chatAPI from '@/features/ai/assistant/assistant.api';
 import * as telemetryModule from '@/app/composables/useTelemetry';
 import type { Telemetry } from '@/app/plugins/telemetry';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
+import type { INodeUi } from '@/Interface';
+
+const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
+	mockWorkflowDocumentStore: {
+		allNodes: [] as INodeUi[],
+	},
+}));
+
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	useWorkflowDocumentStore: vi.fn().mockReturnValue(mockWorkflowDocumentStore),
+	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
+}));
 
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let posthogStore: ReturnType<typeof usePostHog>;
@@ -64,11 +76,13 @@ describe('AI Assistant store', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		currentRouteParams = {};
+		mockWorkflowDocumentStore.allNodes = [];
 		setActivePinia(createPinia());
 		settingsStore = useSettingsStore();
 		settingsStore.setSettings(
 			merge({}, defaultSettings, {
 				posthog: DEFAULT_POSTHOG_SETTINGS,
+				aiAssistant: { enabled: true, setup: true },
 			}),
 		);
 		window.posthog = {
@@ -277,7 +291,7 @@ describe('AI Assistant store', () => {
 		assistantStore.addAssistantMessages([message], '1');
 		expect(assistantStore.chatMessages.length).toBe(1);
 
-		assistantStore.resetAssistantChat();
+		assistantStore.resetAssistantChat('test-workflow-id');
 		expect(assistantStore.chatMessages).toEqual([]);
 		expect(assistantStore.currentSessionId).toBeUndefined();
 	});
@@ -371,7 +385,7 @@ describe('AI Assistant store', () => {
 			},
 		};
 		const assistantStore = useAssistantStore();
-		await assistantStore.initErrorHelper(context);
+		await assistantStore.initErrorHelper('test-workflow', context);
 		expect(apiSpy).toHaveBeenCalled();
 	});
 
@@ -401,7 +415,7 @@ describe('AI Assistant store', () => {
 			});
 		});
 
-		await assistantStore.initErrorHelper(context);
+		await assistantStore.initErrorHelper('test-workflow', context);
 		expect(apiSpy).toHaveBeenCalled();
 		expect(assistantStore.currentSessionId).toEqual(mockSessionId);
 
@@ -464,8 +478,11 @@ describe('AI Assistant store', () => {
 		const assistantStore = useAssistantStore();
 		const workflowsStore = useWorkflowsStore();
 
+		// Set workflow id so workflowDocumentStore is created
+		workflowsStore.workflow.id = 'test-wf';
+
 		// Add a node to the workflow
-		workflowsStore.workflow.nodes = [
+		mockWorkflowDocumentStore.allNodes = [
 			{
 				id: '1',
 				type: 'n8n-nodes-base.start',
@@ -474,7 +491,7 @@ describe('AI Assistant store', () => {
 				position: [250, 250],
 				parameters: {},
 			},
-		];
+		] as INodeUi[];
 
 		assistantStore.trackUserOpenedAssistant({
 			task: 'placeholder',
@@ -487,7 +504,7 @@ describe('AI Assistant store', () => {
 			task: 'placeholder',
 			has_existing_session: false,
 			instance_id: '',
-			workflow_id: '',
+			workflow_id: 'test-wf',
 			canvas_status: 'existing_workflow',
 			node_type: undefined,
 			error: undefined,
@@ -512,6 +529,81 @@ describe('AI Assistant store', () => {
 		await errorMessage.retry?.();
 
 		expect(mockFn).toHaveBeenCalled();
+	});
+
+	it('should not add error message when handleServiceError receives an AbortError', () => {
+		const assistantStore = useAssistantStore();
+		const abortError = new Error('The operation was aborted');
+		abortError.name = 'AbortError';
+
+		assistantStore.handleServiceError(abortError, '125');
+		expect(assistantStore.chatMessages.length).toBe(0);
+		expect(assistantStore.streaming).toBe(false);
+	});
+
+	it('should pass abort signal to chatWithAssistant when initializing support chat', async () => {
+		const assistantStore = useAssistantStore();
+		setAssistantEnabled(true);
+
+		await assistantStore.initSupportChat('test-workflow', 'hello');
+
+		expect(apiSpy).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.anything(),
+			expect.any(Function),
+			expect.any(Function),
+			expect.any(Function),
+			expect.any(AbortSignal),
+		);
+	});
+
+	it('should pass abort signal to chatWithAssistant when initializing error helper', async () => {
+		const context: ChatRequest.ErrorContext = {
+			error: {
+				description: '',
+				message: 'Hey',
+				name: 'NodeOperationError',
+			},
+			node: {
+				id: '1',
+				type: 'n8n-nodes-base.stopAndError',
+				typeVersion: 1,
+				name: 'Stop and Error',
+				position: [250, 250],
+				parameters: {},
+			},
+		};
+
+		const assistantStore = useAssistantStore();
+		await assistantStore.initErrorHelper('test-workflow', context);
+
+		expect(apiSpy).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.anything(),
+			expect.any(Function),
+			expect.any(Function),
+			expect.any(Function),
+			expect.any(AbortSignal),
+		);
+	});
+
+	it('should abort streaming and stop when abortStreaming is called', async () => {
+		const assistantStore = useAssistantStore();
+		const mockSessionId = 'test-session';
+
+		apiSpy.mockImplementationOnce((_ctx, _payload, onMessage) => {
+			onMessage({
+				messages: [{ type: 'message', role: 'assistant', text: 'Hello!' }],
+				sessionId: mockSessionId,
+			});
+			// Don't call onDone to simulate ongoing streaming
+		});
+
+		await assistantStore.initSupportChat('test-workflow', 'hello');
+		expect(assistantStore.streaming).toBe(true);
+
+		assistantStore.abortStreaming();
+		expect(assistantStore.streaming).toBe(false);
 	});
 
 	it('should properly clear messages on retry in a chat session', async () => {
@@ -540,13 +632,13 @@ describe('AI Assistant store', () => {
 			onDone();
 		});
 
-		await assistantStore.initSupportChat('hello');
+		await assistantStore.initSupportChat('test-workflow', 'hello');
 
 		expect(assistantStore.chatMessages.length).toBe(2);
 		expect(assistantStore.chatMessages[0].type).toBe('text');
 		expect(assistantStore.chatMessages[1].type).toBe('text');
 
-		await assistantStore.sendMessage({ text: 'test' });
+		await assistantStore.sendMessage('test-workflow', { text: 'test' });
 
 		expect(assistantStore.chatMessages.length).toBe(4);
 		expect(assistantStore.chatMessages[0].type).toBe('text');

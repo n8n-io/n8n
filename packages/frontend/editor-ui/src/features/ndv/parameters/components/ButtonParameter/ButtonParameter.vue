@@ -246,10 +246,10 @@ async function updateCursorPositionOnMouseMove(event: MouseEvent, activeDrop: bo
 			<N8nTooltip :disabled="isSubmitEnabled">
 				<div>
 					<N8nButton
+						variant="subtle"
 						:disabled="!isSubmitEnabled"
 						size="small"
 						:loading="isLoading"
-						type="secondary"
 						@click="onSubmit"
 					>
 						{{ buttonLabel }}

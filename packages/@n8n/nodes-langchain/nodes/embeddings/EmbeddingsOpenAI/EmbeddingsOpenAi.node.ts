@@ -12,8 +12,8 @@ import {
 import type { ClientOptions } from 'openai';
 
 import { checkDomainRestrictions } from '@utils/checkDomainRestrictions';
-import { getProxyAgent, logWrapper } from '@n8n/ai-utilities';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { mergeCustomHeaders } from '@utils/helpers';
+import { getProxyAgent, logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 const modelParameter: INodeProperties = {
 	displayName: 'Model',
@@ -261,6 +261,11 @@ export class EmbeddingsOpenAi implements INodeType {
 		configuration.fetchOptions = {
 			dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1', {}),
 		};
+
+		configuration.defaultHeaders = mergeCustomHeaders(
+			credentials,
+			(configuration.defaultHeaders ?? {}) as Record<string, string>,
+		);
 
 		const embeddings = new OpenAIEmbeddings({
 			model: this.getNodeParameter('model', itemIndex, 'text-embedding-3-small') as string,

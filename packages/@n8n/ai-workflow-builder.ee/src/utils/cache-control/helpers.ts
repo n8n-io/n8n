@@ -20,7 +20,9 @@ function isTextBlock(
 /**
  * Type guard to check if a block has cache_control property.
  */
-function hasCacheControl(block: unknown): block is { cache_control?: { type: 'ephemeral' } } {
+export function hasCacheControl(
+	block: unknown,
+): block is { cache_control?: { type: 'ephemeral' } } {
 	return typeof block === 'object' && block !== null && 'cache_control' in block;
 }
 
@@ -214,6 +216,27 @@ export function applySubgraphCacheMarkers(messages: BaseMessage[]): void {
 		const lastBlock = lastMessage.content[lastMessage.content.length - 1];
 		if (isTextBlock(lastBlock)) {
 			lastBlock.cache_control = { type: 'ephemeral' };
+		}
+	}
+}
+
+/**
+ * Remove all cache_control markers from messages.
+ *
+ * This is used when loading historical messages from persistence to ensure
+ * we don't exceed Anthropic's 4 cache_control block limit when combined
+ * with fresh system prompts that also have cache_control markers.
+ *
+ * @param messages - Array of LangChain messages to clean (modified in place)
+ */
+export function stripAllCacheControlMarkers(messages: BaseMessage[]): void {
+	for (const message of messages) {
+		if (Array.isArray(message.content)) {
+			for (const block of message.content) {
+				if (hasCacheControl(block) && block.cache_control) {
+					delete block.cache_control;
+				}
+			}
 		}
 	}
 }

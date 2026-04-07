@@ -10,7 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { OpenAI as OpenAIClient } from 'openai';
 
-import { getConnectedTools } from '@utils/helpers';
+import { getConnectedTools, mergeCustomHeaders } from '@utils/helpers';
 import { getTracingConfig } from '@utils/tracing';
 
 import { formatToOpenAIAssistantTool } from './utils';
@@ -347,7 +347,8 @@ export class OpenAiAssistant implements INodeType {
 					throw new NodeOperationError(this.getNode(), 'The ‘text‘ parameter is empty.');
 				}
 
-				const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
+				const { openAiDefaultHeaders } = Container.get(AiConfig);
+				const defaultHeaders = mergeCustomHeaders(credentials, openAiDefaultHeaders ?? {});
 
 				if (options.baseURL) {
 					checkDomainRestrictions(this, credentials, options.baseURL);

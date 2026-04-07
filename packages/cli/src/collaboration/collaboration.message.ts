@@ -25,6 +25,7 @@ export const writeAccessRequestedMessageSchema = z
 	.object({
 		type: z.literal('writeAccessRequested'),
 		workflowId: z.string().min(1),
+		force: z.boolean().optional(),
 	})
 	.strict();
 

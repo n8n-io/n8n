@@ -3,7 +3,7 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import N8nMarkdown from './Markdown.vue';
 
 export default {
-	title: 'Atoms/Markdown',
+	title: 'Core/Markdown',
 	component: N8nMarkdown,
 	argTypes: {
 		content: {
@@ -27,6 +27,14 @@ export default {
 				type: 'select',
 			},
 			options: [1, 2, 3, 4, 5],
+		},
+	},
+
+	parameters: {
+		docs: {
+			description: {
+				component: 'A renderer for Markdown content with n8n-compatible formatting behavior.',
+			},
 		},
 	},
 };

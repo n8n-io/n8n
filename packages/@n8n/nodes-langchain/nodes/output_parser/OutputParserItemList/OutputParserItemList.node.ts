@@ -7,7 +7,7 @@ import {
 } from 'n8n-workflow';
 
 import { N8nItemListOutputParser } from '@utils/output_parsers/N8nItemListOutputParser';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 export class OutputParserItemList implements INodeType {
 	description: INodeTypeDescription = {

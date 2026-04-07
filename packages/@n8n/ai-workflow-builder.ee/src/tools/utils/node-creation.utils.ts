@@ -1,5 +1,6 @@
 import {
 	assert,
+	resolveNodeWebhookId,
 	type INode,
 	type INodeTypeDescription,
 	type NodeParameterValueType,
@@ -55,23 +56,6 @@ export function generateNodeId(): string {
 }
 
 /**
- * Generate a webhook ID for nodes that require it
- * @returns A unique webhook identifier
- */
-export function generateWebhookId(): string {
-	return crypto.randomUUID();
-}
-
-/**
- * Check if a node type requires a webhook
- * @param nodeType - The node type description
- * @returns True if the node requires a webhook
- */
-export function requiresWebhook(nodeType: INodeTypeDescription): boolean {
-	return !!(nodeType.webhooks && nodeType.webhooks.length > 0);
-}
-
-/**
  * Create a new node instance with all required properties
  * @param nodeType - The node type description
  * @param typeVersion - The node type version - nodeType can have multiple versions
@@ -108,9 +92,7 @@ export function createNodeInstance(
 	};
 
 	// Add webhook ID if required
-	if (requiresWebhook(nodeType)) {
-		node.webhookId = generateWebhookId();
-	}
+	resolveNodeWebhookId(node, nodeType);
 
 	return node;
 }

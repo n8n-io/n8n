@@ -95,7 +95,8 @@ export class ValidateToolHandler {
 			messages.push(
 				new ToolMessage({
 					tool_call_id: toolCallId,
-					content: 'Error: No workflow code to validate. Use text editor tools to add code first.',
+					content:
+						'No workflow code exists. You MUST create the workflow code using str_replace_based_edit_tool with command "create" before validating. Do NOT call validate_workflow again until you have written code. If empty workflow is expected, stop calling tools to finish.',
 				}),
 			);
 			yield this.createToolProgressChunk('completed', toolCallId);

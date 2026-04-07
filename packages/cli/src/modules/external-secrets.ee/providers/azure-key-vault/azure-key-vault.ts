@@ -4,7 +4,7 @@ import { Container } from '@n8n/di';
 import type { INodeProperties } from 'n8n-workflow';
 
 import type { AzureKeyVaultContext } from './types';
-import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '../../constants';
+import { DOCS_HELP_NOTICE } from '../../constants';
 import { SecretsProvider } from '../../types';
 
 export class AzureKeyVault extends SecretsProvider {
@@ -108,12 +108,10 @@ export class AzureKeyVault extends SecretsProvider {
 			secretNames.push(secret.name);
 		}
 
-		const promises = secretNames
-			.filter((name) => EXTERNAL_SECRETS_NAME_REGEX.test(name))
-			.map(async (name) => {
-				const { value } = await this.client.getSecret(name);
-				return { name, value };
-			});
+		const promises = secretNames.map(async (name) => {
+			const { value } = await this.client.getSecret(name);
+			return { name, value };
+		});
 
 		const secrets = await Promise.all(promises);
 

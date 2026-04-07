@@ -4,7 +4,12 @@ import type { IExecuteFunctions, INode, INodeParameterResourceLocator } from 'n8
 import { NodeOperationError } from 'n8n-workflow';
 
 import { databasePageUrlExtractionRegexp } from '../shared/constants';
-import { extractPageId, formatBlocks, getPageId } from '../shared/GenericFunctions';
+import {
+	extractPageId,
+	formatBlocks,
+	getPageId,
+	notionApiRequest,
+} from '../shared/GenericFunctions';
 
 describe('Test NotionV2, formatBlocks', () => {
 	it('should format to_do block', () => {
@@ -88,6 +93,14 @@ describe('Test Notion', () => {
 		test('should return the id when there is no instance name', () => {
 			for (const testId of testIds) {
 				const page = `https://www.notion.so/${testId}`;
+				const result = extractPageId(extractIdFromUrl(page));
+				expect(result).toBe(testId);
+			}
+		});
+
+		test('should return the id when page slug contains underscores', () => {
+			for (const testId of testIds) {
+				const page = `https://www.notion.so/url_with-underscore-${testId}`;
 				const result = extractPageId(extractIdFromUrl(page));
 				expect(result).toBe(testId);
 			}
@@ -201,6 +214,55 @@ describe('Test Notion, getPageId', () => {
 		expect(() => getPageId.call(mockExecuteFunctions, 0)).toThrow(NodeOperationError);
 		expect(() => getPageId.call(mockExecuteFunctions, 0)).toThrow(
 			'Could not extract page ID from URL: 123',
+		);
+	});
+});
+
+describe('Test Notion, notionApiRequest', () => {
+	let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
+
+	beforeEach(() => {
+		mockExecuteFunctions = mock<IExecuteFunctions>();
+		mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2 }));
+		mockExecuteFunctions.helpers = {
+			requestWithAuthentication: jest.fn().mockResolvedValue({}),
+		} as any;
+	});
+
+	afterEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('should use notionApi credential when authentication is apiKey', async () => {
+		mockExecuteFunctions.getNodeParameter.mockReturnValue('apiKey');
+
+		await notionApiRequest.call(mockExecuteFunctions, 'GET', '/users');
+
+		expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+			'notionApi',
+			expect.objectContaining({ method: 'GET', uri: 'https://api.notion.com/v1/users' }),
+		);
+	});
+
+	it('should use notionOAuth2Api credential when authentication is oAuth2', async () => {
+		mockExecuteFunctions.getNodeParameter.mockReturnValue('oAuth2');
+
+		await notionApiRequest.call(mockExecuteFunctions, 'GET', '/users');
+
+		expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+			'notionOAuth2Api',
+			expect.objectContaining({ method: 'GET', uri: 'https://api.notion.com/v1/users' }),
+		);
+	});
+
+	it('should default to notionApi credential when authentication parameter is not set', async () => {
+		mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
+
+		await notionApiRequest.call(mockExecuteFunctions, 'GET', '/users');
+
+		expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+			'notionApi',
+			expect.objectContaining({ method: 'GET' }),
 		);
 	});
 });

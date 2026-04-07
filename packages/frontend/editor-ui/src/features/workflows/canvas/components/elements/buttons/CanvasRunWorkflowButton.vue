@@ -87,12 +87,14 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 			:disabled="executing || hideTooltip"
 		>
 			<N8nButton
+				variant="solid"
 				:class="$style.button"
 				:loading="executing"
+				:iconOnly="executing"
+				:aria-label="i18n.baseText('nodeView.runButtonText.executeWorkflow')"
 				:disabled="disabled"
 				:size="size ?? 'large'"
 				icon="flask-conical"
-				type="primary"
 				data-test-id="execute-workflow-button"
 				@mouseenter="$emit('mouseenter', $event)"
 				@mouseleave="$emit('mouseleave', $event)"
@@ -124,7 +126,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 			>
 				<template #activator>
 					<N8nButton
-						type="primary"
+						variant="solid"
 						icon-size="large"
 						:disabled="disabled"
 						:class="$style.chevron"
@@ -158,12 +160,17 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 
 .button {
 	.split & {
-		height: var(--spacing--2xl);
+		height: var(--height--xl);
 
 		padding-inline-start: var(--spacing--xs);
 		padding-block: 0;
 		border-top-right-radius: 0;
 		border-bottom-right-radius: 0;
+	}
+
+	.split &[data-icon-only] {
+		padding-inline-start: 0;
+		width: var(--height--xl);
 	}
 }
 
@@ -174,6 +181,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 
 .chevron {
 	width: 40px;
+	height: var(--height--xl);
 	border-top-left-radius: 0;
 	border-bottom-left-radius: 0;
 }

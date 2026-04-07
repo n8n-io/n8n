@@ -12,17 +12,21 @@ import type {
 import type { AIMessage, BaseMessage } from '@langchain/core/messages';
 import type { Runnable } from '@langchain/core/runnables';
 import type { StructuredToolInterface } from '@langchain/core/tools';
+import type { Logger } from '@n8n/backend-common';
 import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
-import type { ChatPayload } from '../../workflow-builder-agent';
 import { TEXT_EDITOR_TOOL, VALIDATE_TOOL, BATCH_STR_REPLACE_TOOL } from '../constants';
 import { buildCodeBuilderPrompt, type HistoryContext } from '../prompts';
 import { TextEditorHandler } from './text-editor-handler';
 import { TextEditorToolHandler } from './text-editor-tool-handler';
 import type { TextEditorCommand } from './text-editor.types';
+import type { PlanOutput } from '../../types/planning';
+import type { ChatPayload } from '../../workflow-builder-agent';
+import { formatNodeResult } from '../tools/code-builder-search.tool';
 import type { ParseAndValidateResult } from '../types';
 import { SDK_IMPORT_STATEMENT } from '../utils/extract-code';
+import type { NodeTypeParser } from '../utils/node-type-parser';
 
 /**
  * Parse and validate function type
@@ -46,6 +50,8 @@ export interface ChatSetupHandlerConfig {
 	enableTextEditorConfig?: boolean;
 	parseAndValidate: ParseAndValidateFn;
 	getErrorContext: GetErrorContextFn;
+	nodeTypeParser?: NodeTypeParser;
+	logger?: Logger;
 }
 
 /**
@@ -91,6 +97,8 @@ export class ChatSetupHandler {
 	private enableTextEditorConfig?: boolean;
 	private parseAndValidate: ParseAndValidateFn;
 	private getErrorContext: GetErrorContextFn;
+	private nodeTypeParser?: NodeTypeParser;
+	private logger?: Logger;
 
 	constructor(config: ChatSetupHandlerConfig) {
 		this.llm = config.llm;
@@ -98,6 +106,8 @@ export class ChatSetupHandler {
 		this.enableTextEditorConfig = config.enableTextEditorConfig;
 		this.parseAndValidate = config.parseAndValidate;
 		this.getErrorContext = config.getErrorContext;
+		this.nodeTypeParser = config.nodeTypeParser;
+		this.logger = config.logger;
 	}
 
 	/**
@@ -118,6 +128,11 @@ export class ChatSetupHandler {
 		// Pre-generate workflow code for consistency between prompt and text editor
 		const preGeneratedWorkflowCode = this.preGenerateWorkflowCode(payload, workflowForCodeContext);
 
+		// Pre-fetch search results for plan's suggestedNodes to save an LLM round-trip
+		const preSearchResults = payload.planOutput
+			? this.prefetchSearchResults(payload.planOutput)
+			: undefined;
+
 		// Check if text editor mode should be enabled
 		const textEditorEnabled = this.shouldEnableTextEditor();
 
@@ -131,10 +146,11 @@ export class ChatSetupHandler {
 			valuesExcluded: payload.workflowContext?.valuesExcluded,
 			pinnedNodes: payload.workflowContext?.pinnedNodes,
 			planOutput: payload.planOutput,
+			preSearchResults,
 		});
 
-		// Bind tools to LLM
-		const llmWithTools = this.bindToolsToLlm(textEditorEnabled);
+		// Bind tools to LLM (exclude get_suggested_nodes when plan provides node suggestions)
+		const llmWithTools = this.bindToolsToLlm(textEditorEnabled, !!payload.planOutput);
 
 		// Format initial messages
 		const messages = await this.formatInitialMessages(prompt, payload.message);
@@ -199,16 +215,25 @@ export class ChatSetupHandler {
 	 *
 	 * @returns LLM with tools bound, typed for use with AgentIterationHandler
 	 */
-	private bindToolsToLlm(textEditorEnabled: boolean): LlmWithTools {
+	private bindToolsToLlm(textEditorEnabled: boolean, hasPlanOutput: boolean): LlmWithTools {
 		if (!this.llm.bindTools) {
 			throw new Error('LLM does not support bindTools - cannot use tools for node discovery');
 		}
 
-		const toolsToUse = textEditorEnabled
-			? [...this.tools, TEXT_EDITOR_TOOL, VALIDATE_TOOL, BATCH_STR_REPLACE_TOOL]
-			: this.tools;
+		// When an approved plan is provided, exclude get_suggested_nodes
+		// because the plan already contains curated node suggestions per step
+		let tools: Array<
+			| StructuredToolInterface
+			| typeof TEXT_EDITOR_TOOL
+			| typeof VALIDATE_TOOL
+			| typeof BATCH_STR_REPLACE_TOOL
+		> = hasPlanOutput ? this.tools.filter((t) => t.name !== 'get_suggested_nodes') : this.tools;
 
-		return this.llm.bindTools(toolsToUse) as LlmWithTools;
+		if (textEditorEnabled) {
+			tools = [...tools, TEXT_EDITOR_TOOL, VALIDATE_TOOL, BATCH_STR_REPLACE_TOOL];
+		}
+
+		return this.llm.bindTools(tools) as LlmWithTools;
 	}
 
 	/**
@@ -255,4 +280,44 @@ export class ChatSetupHandler {
 
 		return { textEditorHandler, textEditorToolHandler };
 	}
+
+	/**
+	 * Pre-fetch node info for the plan's suggestedNodes using direct NodeTypeParser lookup.
+	 * Returns the formatted result string, or undefined if not applicable.
+	 */
+	private prefetchSearchResults(plan: PlanOutput): string | undefined {
+		const nodeNames = extractNodeNamesFromPlan(plan);
+		if (nodeNames.length === 0) return undefined;
+		if (!this.nodeTypeParser) {
+			this.logger?.warn('nodeTypeParser not available, skipping pre-fetch of plan suggestedNodes');
+			return undefined;
+		}
+
+		const formattedResults: string[] = [];
+		for (const nodeName of nodeNames) {
+			const result = formatNodeResult(this.nodeTypeParser, nodeName);
+			if (result) {
+				formattedResults.push(result);
+			}
+		}
+
+		if (formattedResults.length === 0) return undefined;
+
+		return `Found ${formattedResults.length} nodes:\n\n${formattedResults.join('\n\n')}`;
+	}
+}
+
+/**
+ * Extract deduplicated full node type names from a plan's suggestedNodes.
+ */
+export function extractNodeNamesFromPlan(plan: PlanOutput): string[] {
+	const nodeSet = new Set<string>();
+	for (const step of plan.steps) {
+		if (step.suggestedNodes) {
+			for (const nodeName of step.suggestedNodes) {
+				nodeSet.add(nodeName);
+			}
+		}
+	}
+	return [...nodeSet];
 }

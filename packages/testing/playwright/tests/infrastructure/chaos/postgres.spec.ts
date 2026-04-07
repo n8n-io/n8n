@@ -10,10 +10,10 @@ test.use({ capability: 'observability' });
 test.skip(
 	'Database connection timeout health check bug @mode:postgres @chaostest @capability:observability',
 	{
-		annotation: {
-			type: 'issue',
-			description: 'CAT-1018',
-		},
+		annotation: [
+			{ type: 'owner', description: 'Catalysts' },
+			{ type: 'issue', description: 'CAT-1018' },
+		],
 	},
 	async ({ api, n8nContainer, services }) => {
 		test.setTimeout(300000);

@@ -13,6 +13,15 @@ import { parseWorkflowCode } from '../codegen/parse-workflow-code';
 import { validateWorkflow } from '../validation';
 import { setupTestSchemas, teardownTestSchemas } from './test-schema-setup';
 
+function requireSchema(nodeType: string, version: number): void {
+	if (!loadSchema(nodeType, version)) {
+		throw new Error(
+			`Schema for ${nodeType}@${version} not found. ` +
+				'Ensure the package is built (dist/types/nodes.json must exist).',
+		);
+	}
+}
+
 describe('Schema Validation Integration', () => {
 	beforeAll(setupTestSchemas, 120_000);
 	afterAll(teardownTestSchemas);
@@ -464,6 +473,10 @@ export default workflow('test-id', 'Test Workflow')
 	describe('Subnode Validation (strict mode)', () => {
 		// OpenAI v2.1 text/response only accepts tools and memory subnodes (not outputParser)
 		// Schema: nodes/n8n-nodes-langchain/openAi/v21/resource_text/operation_response.schema.js
+
+		beforeAll(() => {
+			requireSchema('@n8n/n8n-nodes-langchain.openAi', 2.1);
+		});
 
 		it('accepts valid subnodes (tools, memory) for OpenAI text/response', () => {
 			const result = validateNodeConfig('@n8n/n8n-nodes-langchain.openAi', 2.1, {

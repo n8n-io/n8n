@@ -27,7 +27,7 @@ import { v4 as uuid } from 'uuid';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UsersController } from '@/controllers/users.controller';
 import { ExecutionService } from '@/executions/execution.service';
-import { CacheService } from '@/services/cache/cache.service';
+import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
 import { createFolder } from '@test-integration/db/folders';
 
@@ -647,7 +647,7 @@ describe('GET /users', () => {
 				await userRepository.delete({ id: pendingUser.id });
 			});
 
-			test('should include inviteAcceptUrl for pending users', async () => {
+			test('should not include inviteAcceptUrl when listing users', async () => {
 				const response = await ownerAgent.get('/users').expect(200);
 
 				const responseData = response.body.data as {
@@ -658,10 +658,7 @@ describe('GET /users', () => {
 				const pendingUserInResponse = responseData.items.find((user) => user.id === pendingUser.id);
 
 				expect(pendingUserInResponse).toBeDefined();
-				expect(pendingUserInResponse!.inviteAcceptUrl).toBeDefined();
-				expect(pendingUserInResponse!.inviteAcceptUrl).toMatch(
-					new RegExp(`/signup\\?inviterId=${owner.id}&inviteeId=${pendingUser.id}`),
-				);
+				expect(pendingUserInResponse!.inviteAcceptUrl).toBeUndefined();
 
 				const nonPendingUser = responseData.items.find((user) => user.id === member1.id);
 
@@ -1111,8 +1108,6 @@ describe('DELETE /users/:id', () => {
 			createFolder(transfereePersonalProject, { name: 'folder1' }),
 		]);
 
-		const deleteSpy = jest.spyOn(Container.get(CacheService), 'deleteMany');
-
 		//
 		// ACT
 		//
@@ -1124,14 +1119,6 @@ describe('DELETE /users/:id', () => {
 		//
 		// ASSERT
 		//
-
-		expect(deleteSpy).toBeCalledWith(
-			expect.arrayContaining([
-				`credential-can-use-secrets:${sharedByTransfereeCredential.id}`,
-				`credential-can-use-secrets:${ownedCredential.id}`,
-			]),
-		);
-		deleteSpy.mockClear();
 
 		const userRepository = Container.get(UserRepository);
 		const projectRepository = Container.get(ProjectRepository);
@@ -1270,8 +1257,6 @@ describe('DELETE /users/:id', () => {
 			createFolder(teamProject, { name: 'folder1' }),
 		]);
 
-		const deleteSpy = jest.spyOn(Container.get(CacheService), 'deleteMany');
-
 		//
 		// ACT
 		//
@@ -1283,8 +1268,6 @@ describe('DELETE /users/:id', () => {
 		//
 		// ASSERT
 		//
-
-		deleteSpy.mockClear();
 
 		const sharedWorkflowRepository = Container.get(SharedWorkflowRepository);
 		const sharedCredentialRepository = Container.get(SharedCredentialsRepository);
@@ -1675,16 +1658,33 @@ describe('PATCH /users/:id/role', () => {
 			linkUserToProject(user, project2, 'project:editor'),
 		]);
 
-		const deleteSpy = jest.spyOn(Container.get(CacheService), 'deleteMany');
 		const response = await ownerAgent.patch(`/users/${user.id}/role`).send({
 			newRoleName: 'global:member',
 		});
 
-		expect(deleteSpy).toBeCalledTimes(2);
-		deleteSpy.mockClear();
-
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toStrictEqual({ success: true });
+	});
+
+	test('should invalidate project-owner cache when changing user role', async () => {
+		const user = await createMember();
+		const personalProject = await getPersonalProject(user);
+		const ownershipService = Container.get(OwnershipService);
+
+		// Prime the cache
+		const cachedBefore = await ownershipService.getPersonalProjectOwnerCached(personalProject.id);
+		expect(cachedBefore?.role.slug).toBe(GLOBAL_MEMBER_ROLE.slug);
+
+		// Change role from member to admin
+		const response = await ownerAgent.patch(`/users/${user.id}/role`).send({
+			newRoleName: 'global:admin',
+		});
+
+		expect(response.statusCode).toBe(200);
+
+		// Cache should have been invalidated, so the next call fetches fresh data
+		const cachedAfter = await ownershipService.getPersonalProjectOwnerCached(personalProject.id);
+		expect(cachedAfter?.role.slug).toBe(GLOBAL_ADMIN_ROLE.slug);
 	});
 
 	test('should fail to change to non-existing role', async () => {

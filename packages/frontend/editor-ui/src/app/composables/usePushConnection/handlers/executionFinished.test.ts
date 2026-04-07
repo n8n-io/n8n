@@ -8,8 +8,9 @@ import {
 	handleExecutionFinishedWithErrorOrCanceled,
 	type SimplifiedExecution,
 } from './executionFinished';
-import type { IRunExecutionData, ITaskData } from 'n8n-workflow';
+import type { IRunExecutionData, ITaskData, INodeTypeDescription } from 'n8n-workflow';
 import { EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { Router } from 'vue-router';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
@@ -21,11 +22,25 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { mockedStore } from '@/__tests__/utils';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 const opts = {
 	workflowState: mock<WorkflowState>(),
 	router: mock<Router>(),
 };
+
+const mockShowMessage = vi.fn();
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({
+		showMessage: mockShowMessage,
+	}),
+}));
+
+vi.mock('@/app/composables/useDocumentTitle', () => ({
+	useDocumentTitle: () => ({
+		setDocumentTitle: vi.fn(),
+	}),
+}));
 
 const runWorkflow = vi.fn();
 
@@ -575,6 +590,98 @@ describe('manual execution stats tracking', () => {
 			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'error', false);
 
 			expect(incrementSpy).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('toast messages', () => {
+		beforeEach(() => {
+			mockShowMessage.mockClear();
+		});
+
+		it('shows success toast when executed node has run data', () => {
+			const pinia = createTestingPinia();
+			setActivePinia(pinia);
+
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			const nodeName = 'Send Telegram';
+			vi.spyOn(workflowsStore, 'getWorkflowExecution', 'get').mockReturnValue({
+				executedNode: nodeName,
+				data: {
+					resultData: {
+						runData: {
+							[nodeName]: [mock<ITaskData>()],
+						},
+					},
+				},
+			} as unknown as IExecutionResponse);
+
+			vi.spyOn(workflowsStore, 'getNodeByName').mockReturnValue(
+				mock<INodeUi>({ type: 'n8n-nodes-base.telegram', typeVersion: 1 }),
+			);
+
+			nodeTypesStore.getNodeType = () => mock<INodeTypeDescription>({ polling: undefined });
+
+			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'success', false);
+
+			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+		});
+
+		it('shows warning toast when executed node was not reached', () => {
+			const pinia = createTestingPinia();
+			setActivePinia(pinia);
+
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			const nodeName = 'Send a text message';
+			vi.spyOn(workflowsStore, 'getWorkflowExecution', 'get').mockReturnValue({
+				executedNode: nodeName,
+				data: {
+					resultData: {
+						runData: {},
+					},
+				},
+			} as unknown as IExecutionResponse);
+
+			vi.spyOn(workflowsStore, 'getNodeByName').mockReturnValue(
+				mock<INodeUi>({ type: 'n8n-nodes-base.vonage', typeVersion: 1 }),
+			);
+
+			nodeTypesStore.getNodeType = () => mock<INodeTypeDescription>({ polling: undefined });
+
+			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'success', false);
+
+			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }));
+		});
+
+		it('does not show warning toast when successToastAlreadyShown is true', () => {
+			const pinia = createTestingPinia();
+			setActivePinia(pinia);
+
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			const nodeName = 'Send a text message';
+			vi.spyOn(workflowsStore, 'getWorkflowExecution', 'get').mockReturnValue({
+				executedNode: nodeName,
+				data: {
+					resultData: {
+						runData: {},
+					},
+				},
+			} as unknown as IExecutionResponse);
+
+			vi.spyOn(workflowsStore, 'getNodeByName').mockReturnValue(
+				mock<INodeUi>({ type: 'n8n-nodes-base.vonage', typeVersion: 1 }),
+			);
+
+			nodeTypesStore.getNodeType = () => mock<INodeTypeDescription>({ polling: undefined });
+
+			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'success', true);
+
+			expect(mockShowMessage).not.toHaveBeenCalled();
 		});
 	});
 

@@ -2,6 +2,10 @@ import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import {
 	injectWorkflowState,
 	useWorkflowState,
 	type WorkflowState,
@@ -32,11 +36,20 @@ vi.mock('@/app/composables/useWorkflowState', async () => {
 let workflowState: WorkflowState;
 let executionDebugging: ReturnType<typeof useExecutionDebugging>;
 let toast: ReturnType<typeof useToast>;
+let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 
 describe('useExecutionDebugging()', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		createTestingPinia();
+
+		const workflowStore = mockedStore(useWorkflowsStore);
+		workflowStore.workflow.id = 'test-workflow';
+
+		workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowStore.workflowId),
+		);
+
 		toast = useToast();
 
 		workflowState = useWorkflowState();
@@ -57,7 +70,7 @@ describe('useExecutionDebugging()', () => {
 		} as unknown as IExecutionResponse;
 
 		const workflowStore = mockedStore(useWorkflowsStore);
-		workflowStore.getNodes.mockReturnValue([{ name: 'testNode' }] as INodeUi[]);
+		vi.mocked(workflowDocumentStore.getNodes).mockReturnValue([{ name: 'testNode' }] as INodeUi[]);
 		workflowStore.getExecution.mockResolvedValueOnce(mockExecution);
 		workflowStore.workflowObject = {
 			pinData: {},
@@ -98,7 +111,9 @@ describe('useExecutionDebugging()', () => {
 		} as unknown as IExecutionResponse;
 
 		const workflowStore = mockedStore(useWorkflowsStore);
-		workflowStore.getNodes.mockReturnValue([{ name: 'TriggerNode' }] as INodeUi[]);
+		vi.mocked(workflowDocumentStore.getNodes).mockReturnValue([
+			{ name: 'TriggerNode' },
+		] as INodeUi[]);
 		workflowStore.getExecution.mockResolvedValueOnce(mockExecution);
 		workflowStore.workflowObject = {
 			pinData: {},
@@ -107,22 +122,18 @@ describe('useExecutionDebugging()', () => {
 
 		await executionDebugging.applyExecutionData('1');
 
-		expect(workflowStore.pinData).toHaveBeenCalledWith({
-			node: { name: 'TriggerNode' },
-			data: [
-				{
-					json: { test: 'data' },
-					binary: {
-						data: {
-							fileName: 'test.txt',
-							mimeType: 'text/plain',
-							data: 'dGVzdCBkYXRh',
-						},
+		expect(workflowDocumentStore.pinNodeData).toHaveBeenCalledWith('TriggerNode', [
+			{
+				json: { test: 'data' },
+				binary: {
+					data: {
+						fileName: 'test.txt',
+						mimeType: 'text/plain',
+						data: 'dGVzdCBkYXRh',
 					},
 				},
-			],
-			isRestoration: true,
-		});
+			},
+		]);
 	});
 
 	it('should handle nodes with multiple main outputs during debug restoration', async () => {
@@ -146,7 +157,9 @@ describe('useExecutionDebugging()', () => {
 		} as unknown as IExecutionResponse;
 
 		const workflowStore = mockedStore(useWorkflowsStore);
-		workflowStore.getNodes.mockReturnValue([{ name: 'TriggerNode' }] as INodeUi[]);
+		vi.mocked(workflowDocumentStore.getNodes).mockReturnValue([
+			{ name: 'TriggerNode' },
+		] as INodeUi[]);
 		workflowStore.getExecution.mockResolvedValueOnce(mockExecution);
 		workflowStore.workflowObject = {
 			pinData: {},
@@ -155,11 +168,9 @@ describe('useExecutionDebugging()', () => {
 
 		await executionDebugging.applyExecutionData('1');
 
-		expect(workflowStore.pinData).toHaveBeenCalledWith({
-			node: { name: 'TriggerNode' },
-			data: [{ json: { test: 'data' } }],
-			isRestoration: true,
-		});
+		expect(workflowDocumentStore.pinNodeData).toHaveBeenCalledWith('TriggerNode', [
+			{ json: { test: 'data' } },
+		]);
 	});
 
 	it('should show missing nodes warning toast', async () => {
@@ -178,7 +189,7 @@ describe('useExecutionDebugging()', () => {
 		} as unknown as IExecutionResponse;
 
 		const workflowStore = mockedStore(useWorkflowsStore);
-		workflowStore.getNodes.mockReturnValue([{ name: 'testNode2' }] as INodeUi[]);
+		vi.mocked(workflowDocumentStore.getNodes).mockReturnValue([{ name: 'testNode2' }] as INodeUi[]);
 		workflowStore.getExecution.mockResolvedValueOnce(mockExecution);
 		workflowStore.workflowObject = {
 			pinData: {},
@@ -209,7 +220,7 @@ describe('useExecutionDebugging()', () => {
 		} as unknown as IExecutionResponse;
 
 		const workflowStore = mockedStore(useWorkflowsStore);
-		workflowStore.getNodes.mockReturnValue([{ name: 'testNode' }] as INodeUi[]);
+		vi.mocked(workflowDocumentStore.getNodes).mockReturnValue([{ name: 'testNode' }] as INodeUi[]);
 		workflowStore.getExecution.mockResolvedValueOnce(mockExecution);
 		workflowStore.workflowObject = {
 			pinData: {},

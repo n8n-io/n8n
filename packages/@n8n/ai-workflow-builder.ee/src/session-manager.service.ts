@@ -7,7 +7,9 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import { generateCodeBuilderThreadId } from '@/code-builder/utils/code-builder-session';
 import { getBuilderToolsForDisplay } from '@/tools/builder-tools';
 import type { HITLHistoryEntry, HITLInterruptValue } from '@/types/planning';
+import { ISessionStorage } from '@/types/session-storage';
 import { isLangchainMessagesArray, LangchainMessage, Session } from '@/types/sessions';
+import { stripAllCacheControlMarkers } from '@/utils/cache-control/helpers';
 import { formatMessages } from '@/utils/stream-processor';
 import { generateThreadId as generateThreadIdUtil } from '@/utils/thread-id';
 
@@ -33,10 +35,24 @@ export class SessionManagerService {
 
 	constructor(
 		parsedNodeTypes: INodeTypeDescription[],
+		private readonly storage?: ISessionStorage,
 		private readonly logger?: Logger,
 	) {
 		this.nodeTypes = parsedNodeTypes;
 		this.checkpointer = new MemorySaver();
+
+		if (storage) {
+			this.logger?.debug('Using persistent session storage');
+		} else {
+			this.logger?.debug('Using in-memory session storage (MemorySaver)');
+		}
+	}
+
+	/**
+	 * Whether persistent storage is configured
+	 */
+	get usesPersistence(): boolean {
+		return !!this.storage;
 	}
 
 	/**
@@ -108,6 +124,33 @@ export class SessionManagerService {
 			return undefined;
 		}
 		return entry.value;
+	}
+
+	/**
+	 * Convert a pending HITL interrupt into a formatted message for the session.
+	 */
+	private formatPendingHitlMessage(hitl: HITLInterruptValue): Record<string, unknown> | undefined {
+		if (hitl.type === 'questions') {
+			return {
+				role: 'assistant',
+				type: hitl.type,
+				questions: hitl.questions,
+				...(hitl.introMessage ? { introMessage: hitl.introMessage } : {}),
+			};
+		}
+		if (hitl.type === 'plan') {
+			return { role: 'assistant', type: hitl.type, plan: hitl.plan };
+		}
+		if (hitl.type === 'web_fetch_approval') {
+			return {
+				role: 'assistant',
+				type: hitl.type,
+				requestId: hitl.requestId,
+				url: hitl.url,
+				domain: hitl.domain,
+			};
+		}
+		return undefined;
 	}
 
 	/**
@@ -193,6 +236,11 @@ export class SessionManagerService {
 			];
 		}
 
+		// web_fetch_decided — no messages to replay (approval is handled inline)
+		if (entry.type === 'web_fetch_decided') {
+			return [];
+		}
+
 		// plan_decided (reject or modify — approved plans survive in the checkpoint)
 		const messages: Array<Record<string, unknown>> = [
 			{
@@ -242,6 +290,148 @@ export class SessionManagerService {
 	}
 
 	/**
+	 * Load session messages from persistent storage.
+	 * Called before starting a chat to get historical messages to include in the initial state.
+	 * Returns the messages so they can be passed explicitly to the stream's initial state.
+	 *
+	 * Note: Strips all cache_control markers from loaded messages to prevent exceeding
+	 * Anthropic's 4 cache_control block limit when combined with fresh system prompts.
+	 */
+	async loadSessionMessages(threadId: string): Promise<LangchainMessage[]> {
+		if (!this.storage) return [];
+
+		const stored = await this.storage.getSession(threadId);
+		if (!stored || stored.messages.length === 0) return [];
+
+		let { messages } = stored;
+
+		// If a restore was active, truncate messages at the restore point
+		// so the LLM doesn't see collapsed messages from after the restore.
+		if (stored.activeVersionCardId) {
+			const restoreIdx = messages.findIndex(
+				(msg) => msg.additional_kwargs?.messageId === stored.activeVersionCardId,
+			);
+			if (restoreIdx !== -1) {
+				messages = messages.slice(0, restoreIdx);
+			}
+		}
+
+		// Strip cache_control markers from historical messages to prevent exceeding
+		// Anthropic's 4 cache_control block limit when combined with new system prompts
+		stripAllCacheControlMarkers(messages);
+
+		this.logger?.debug('Loaded session messages from storage', {
+			threadId,
+			messageCount: messages.length,
+		});
+
+		return messages;
+	}
+
+	/**
+	 * Save the current checkpointer state to persistent storage.
+	 * Called after a chat completes to persist the final state.
+	 */
+	async saveSessionFromCheckpointer(threadId: string, previousSummary?: string): Promise<void> {
+		if (!this.storage) return;
+
+		const threadConfig: RunnableConfig = {
+			configurable: { thread_id: threadId },
+		};
+
+		const checkpointTuple = await this.checkpointer.getTuple(threadConfig);
+		if (!checkpointTuple?.checkpoint) return;
+
+		const rawMessages = checkpointTuple.checkpoint.channel_values?.messages;
+		const messages: LangchainMessage[] = isLangchainMessagesArray(rawMessages) ? rawMessages : [];
+
+		await this.storage.saveSession(threadId, {
+			messages,
+			previousSummary,
+			updatedAt: new Date(),
+		});
+
+		this.logger?.debug('Saved session from checkpointer', {
+			threadId,
+			messageCount: messages.length,
+		});
+	}
+
+	/**
+	 * Get the previous summary from persistent storage
+	 */
+	async getPreviousSummary(threadId: string): Promise<string | undefined> {
+		if (!this.storage) return undefined;
+
+		const stored = await this.storage.getSession(threadId);
+		return stored?.previousSummary;
+	}
+
+	/**
+	 * Clear session from both persistent storage and in-memory checkpointer.
+	 *
+	 * Important: We must clear the in-memory checkpointer state because LangGraph's
+	 * messagesStateReducer merges/appends new messages to existing state. Without
+	 * clearing, old messages would resurface when the user sends a new message
+	 * without refreshing the page (state resurrection).
+	 */
+	async clearSession(threadId: string): Promise<void> {
+		// Clear from persistent storage if available
+		if (this.storage) {
+			await this.storage.deleteSession(threadId);
+		}
+
+		// Clear in-memory checkpointer state by overwriting with empty checkpoint
+		// This prevents state resurrection when user sends new messages
+		const threadConfig: RunnableConfig = {
+			configurable: { thread_id: threadId },
+		};
+
+		try {
+			const existingTuple = await this.checkpointer.getTuple(threadConfig);
+			if (existingTuple?.checkpoint) {
+				// Overwrite with empty messages to clear the state
+				const emptyCheckpoint: Checkpoint = {
+					...existingTuple.checkpoint,
+					channel_values: {
+						...existingTuple.checkpoint.channel_values,
+						messages: [],
+					},
+				};
+
+				const metadata = existingTuple.metadata ?? {
+					source: 'update' as const,
+					step: -1,
+					parents: {},
+				};
+
+				await this.checkpointer.put(threadConfig, emptyCheckpoint, metadata);
+			}
+		} catch (error) {
+			// Log but don't fail - clearing persistent storage is the critical path
+			this.logger?.debug('Failed to clear in-memory checkpointer state', { threadId, error });
+		}
+
+		// Clear HITL state for this thread
+		this.pendingHitlByThreadId.delete(threadId);
+		this.hitlHistoryByThreadId.delete(threadId);
+
+		this.logger?.debug('Session cleared', { threadId });
+	}
+
+	/**
+	 * Clear all sessions for a given workflow and user.
+	 * Currently clears the regular multi-agent thread only.
+	 * Code-builder session clearing will be handled in a follow-up.
+	 */
+	async clearAllSessions(workflowId: string, userId: string): Promise<void> {
+		const mainThreadId = SessionManagerService.generateThreadId(workflowId, userId);
+		await this.clearSession(mainThreadId);
+
+		this.logger?.debug('All sessions cleared for workflow', { workflowId, userId });
+	}
+
+	/**
 	 * Get sessions for a given workflow and user
 	 * @param workflowId - The workflow ID
 	 * @param userId - The user ID
@@ -252,139 +442,191 @@ export class SessionManagerService {
 		userId: string | undefined,
 		agentType?: 'code-builder',
 	): Promise<{ sessions: Session[] }> {
-		// For now, we'll return the current session if we have a workflowId
-		// MemorySaver doesn't expose a way to list all threads, so we'll need to
-		// track this differently if we want to list all sessions
 		const sessions: Session[] = [];
 
-		if (workflowId) {
-			const threadId = SessionManagerService.generateThreadId(workflowId, userId, agentType);
-			const threadConfig: RunnableConfig = {
-				configurable: {
-					thread_id: threadId,
-				},
-			};
+		if (!workflowId) {
+			return { sessions };
+		}
 
-			try {
-				// Try to get the checkpoint for this thread
-				const checkpoint = await this.checkpointer.getTuple(threadConfig);
+		const threadId = SessionManagerService.generateThreadId(workflowId, userId, agentType);
 
-				if (checkpoint?.checkpoint) {
-					const rawMessages = checkpoint.checkpoint.channel_values?.messages;
-					const messages: LangchainMessage[] = isLangchainMessagesArray(rawMessages)
-						? rawMessages
-						: [];
+		// Try persistent storage first if available
+		if (this.storage) {
+			const stored = await this.storage.getSession(threadId);
+			if (stored && stored.messages.length > 0) {
+				const formattedMessages = formatMessages(
+					stored.messages,
+					getBuilderToolsForDisplay({ nodeTypes: this.nodeTypes }),
+				);
 
-					const formattedMessages = formatMessages(
-						messages,
-						getBuilderToolsForDisplay({
-							nodeTypes: this.nodeTypes,
-						}),
-					);
+				// Inject HITL history that isn't in the checkpoint.
+				// Command.update messages don't persist when a subgraph node
+				// interrupts multiple times, so we replay them from stored history.
+				this.injectHitlHistory(threadId, formattedMessages);
 
-					// Inject HITL history that isn't in the checkpoint.
-					// Command.update messages don't persist when a subgraph node
-					// interrupts multiple times, so we replay them from stored history.
-					this.injectHitlHistory(threadId, formattedMessages);
-
-					const pendingHitl = this.getPendingHitl(threadId);
-					if (pendingHitl) {
-						formattedMessages.push({
-							role: 'assistant',
-							type: pendingHitl.type,
-							...(pendingHitl.type === 'questions'
-								? {
-										questions: pendingHitl.questions,
-										...(pendingHitl.introMessage ? { introMessage: pendingHitl.introMessage } : {}),
-									}
-								: {
-										plan: pendingHitl.plan,
-									}),
-						});
-					}
-
-					sessions.push({
-						sessionId: threadId,
-						messages: formattedMessages,
-						lastUpdated: checkpoint.checkpoint.ts,
-					});
+				const pendingHitl = this.getPendingHitl(threadId);
+				if (pendingHitl) {
+					const hitlMessage = this.formatPendingHitlMessage(pendingHitl);
+					if (hitlMessage) formattedMessages.push(hitlMessage);
 				}
-			} catch (error) {
-				// Thread doesn't exist yet
-				this.logger?.debug('No session found for workflow:', { workflowId, error });
+
+				sessions.push({
+					sessionId: threadId,
+					messages: formattedMessages,
+					lastUpdated: stored.updatedAt.toISOString(),
+					activeVersionCardId: stored.activeVersionCardId,
+					resumeAfterRestoreMessageId: stored.resumeAfterRestoreMessageId,
+				});
+
+				return { sessions };
 			}
+		}
+
+		// Fall back to in-memory checkpointer
+		const threadConfig: RunnableConfig = {
+			configurable: { thread_id: threadId },
+		};
+
+		try {
+			const checkpoint = await this.checkpointer.getTuple(threadConfig);
+
+			if (checkpoint?.checkpoint) {
+				const rawMessages = checkpoint.checkpoint.channel_values?.messages;
+				const messages: LangchainMessage[] = isLangchainMessagesArray(rawMessages)
+					? rawMessages
+					: [];
+
+				const formattedMessages = formatMessages(
+					messages,
+					getBuilderToolsForDisplay({ nodeTypes: this.nodeTypes }),
+				);
+
+				// Inject HITL history that isn't in the checkpoint.
+				// Command.update messages don't persist when a subgraph node
+				// interrupts multiple times, so we replay them from stored history.
+				this.injectHitlHistory(threadId, formattedMessages);
+
+				const pendingHitl = this.getPendingHitl(threadId);
+				if (pendingHitl) {
+					const hitlMessage = this.formatPendingHitlMessage(pendingHitl);
+					if (hitlMessage) formattedMessages.push(hitlMessage);
+				}
+
+				sessions.push({
+					sessionId: threadId,
+					messages: formattedMessages,
+					lastUpdated: checkpoint.checkpoint.ts,
+				});
+			}
+		} catch (error) {
+			this.logger?.debug('No session found for workflow:', { workflowId, error });
 		}
 
 		return { sessions };
 	}
 
 	/**
+	 * Load messages from storage or checkpointer for truncation operations.
+	 * Returns null if no messages are found.
+	 */
+	private async loadMessagesForTruncation(
+		threadId: string,
+	): Promise<{ messages: LangchainMessage[]; previousSummary?: string } | null> {
+		if (this.storage) {
+			const stored = await this.storage.getSession(threadId);
+			if (!stored) {
+				return null;
+			}
+			return { messages: stored.messages, previousSummary: stored.previousSummary };
+		}
+
+		const threadConfig: RunnableConfig = {
+			configurable: { thread_id: threadId },
+		};
+
+		const checkpointTuple = await this.checkpointer.getTuple(threadConfig);
+		if (!checkpointTuple?.checkpoint) {
+			return null;
+		}
+
+		const rawMessages = checkpointTuple.checkpoint.channel_values?.messages;
+		if (!isLangchainMessagesArray(rawMessages)) {
+			return null;
+		}
+
+		return { messages: rawMessages };
+	}
+
+	/**
 	 * Truncate all messages including and after the message with the specified messageId in metadata.
 	 * Used when restoring to a previous version.
-	 *
-	 * @param workflowId - The workflow ID
-	 * @param userId - The user ID
-	 * @param messageId - The messageId to find in HumanMessage's additional_kwargs. Messages from this
-	 *                    point onward (including the message with this messageId) will be removed.
-	 * @returns True if truncation was successful, false if thread or message not found
 	 */
 	async truncateMessagesAfter(
 		workflowId: string,
 		userId: string | undefined,
 		messageId: string,
 		agentType?: 'code-builder',
+		versionCardId?: string,
 	): Promise<boolean> {
 		const threadId = SessionManagerService.generateThreadId(workflowId, userId, agentType);
-		const threadConfig: RunnableConfig = {
-			configurable: {
-				thread_id: threadId,
-			},
-		};
 
 		try {
-			const checkpointTuple = await this.checkpointer.getTuple(threadConfig);
-
-			if (!checkpointTuple?.checkpoint) {
-				this.logger?.debug('No checkpoint found for truncation', { threadId, messageId });
+			const loaded = await this.loadMessagesForTruncation(threadId);
+			if (!loaded) {
+				this.logger?.debug('No messages found for truncation', { threadId, messageId });
 				return false;
 			}
 
-			const rawMessages = checkpointTuple.checkpoint.channel_values?.messages;
-			if (!isLangchainMessagesArray(rawMessages)) {
-				this.logger?.debug('No valid messages found for truncation', { threadId, messageId });
-				return false;
-			}
+			const { messages, previousSummary } = loaded;
 
-			// Find the index of the message with the target messageId in additional_kwargs
-			const msgIndex = rawMessages.findIndex(
-				(msg) => msg.additional_kwargs?.messageId === messageId,
-			);
+			// Find the index of the message with the target messageId
+			const msgIndex = messages.findIndex((msg) => msg.additional_kwargs?.messageId === messageId);
 
 			if (msgIndex === -1) {
 				this.logger?.debug('Message with messageId not found', { threadId, messageId });
 				return false;
 			}
 
-			// Keep messages before the target message (excluding the target message)
-			const truncatedMessages = rawMessages.slice(0, msgIndex);
+			// Keep messages before the target message (for LLM context)
+			const truncatedMessages = messages.slice(0, msgIndex);
 
-			// Create updated checkpoint with truncated messages
-			const updatedCheckpoint: Checkpoint = {
-				...checkpointTuple.checkpoint,
-				channel_values: {
-					...checkpointTuple.checkpoint.channel_values,
-					messages: truncatedMessages,
-				},
+			// Update persistent storage with FULL messages + restore markers.
+			// The DB keeps all messages so the frontend can render collapsed versions.
+			// Only the LLM checkpointer is truncated.
+			if (this.storage) {
+				await this.storage.saveSession(threadId, {
+					messages,
+					previousSummary,
+					updatedAt: new Date(),
+					activeVersionCardId: versionCardId ?? null,
+					resumeAfterRestoreMessageId: null,
+				});
+			}
+
+			// Update the in-memory checkpointer with truncated messages
+			// so the LLM doesn't see collapsed messages
+			const threadConfig: RunnableConfig = {
+				configurable: { thread_id: threadId },
 			};
 
-			// Put the updated checkpoint back with metadata indicating this is an update
-			const metadata = checkpointTuple.metadata ?? {
-				source: 'update' as const,
-				step: -1,
-				parents: {},
-			};
+			const checkpointTuple = await this.checkpointer.getTuple(threadConfig);
+			if (checkpointTuple?.checkpoint) {
+				const updatedCheckpoint: Checkpoint = {
+					...checkpointTuple.checkpoint,
+					channel_values: {
+						...checkpointTuple.checkpoint.channel_values,
+						messages: truncatedMessages,
+					},
+				};
 
-			await this.checkpointer.put(threadConfig, updatedCheckpoint, metadata);
+				const metadata = checkpointTuple.metadata ?? {
+					source: 'update' as const,
+					step: -1,
+					parents: {},
+				};
+
+				await this.checkpointer.put(threadConfig, updatedCheckpoint, metadata);
+			}
 
 			// Also prune HITL history entries that reference removed messages.
 			// Entries whose afterMessageId no longer exists in the surviving
@@ -397,7 +639,7 @@ export class SessionManagerService {
 			this.logger?.debug('Messages truncated successfully', {
 				threadId,
 				messageId,
-				originalCount: rawMessages.length,
+				originalCount: messages.length,
 				newCount: truncatedMessages.length,
 			});
 
@@ -408,14 +650,18 @@ export class SessionManagerService {
 
 			return true;
 		} catch (error) {
-			this.logger?.error('Failed to truncate messages', { threadId, messageId, error });
+			this.logger?.error('Failed to truncate messages', {
+				threadId,
+				messageId,
+				error,
+			});
 			return false;
 		}
 	}
 
 	/**
 	 * Reset the code-builder agent context session.
-	 * Called during restore to clear stale agent context (userMessages + summary).
+	 * Called during restore to clear stale agent context (conversationEntries + summary).
 	 */
 	private async resetCodeBuilderSession(workflowId: string, userId: string): Promise<void> {
 		const sessionThreadId = generateCodeBuilderThreadId(workflowId, userId);
@@ -435,7 +681,7 @@ export class SessionManagerService {
 					channel_values: {
 						...existingCheckpoint.channel_values,
 						codeBuilderSession: {
-							userMessages: [],
+							conversationEntries: [],
 							previousSummary: undefined,
 						},
 					},
@@ -446,7 +692,7 @@ export class SessionManagerService {
 					ts: new Date().toISOString(),
 					channel_values: {
 						codeBuilderSession: {
-							userMessages: [],
+							conversationEntries: [],
 							previousSummary: undefined,
 						},
 					},

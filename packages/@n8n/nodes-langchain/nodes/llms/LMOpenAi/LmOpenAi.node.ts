@@ -11,6 +11,7 @@ import type {
 
 import { Container } from '@n8n/di';
 import { AiConfig } from '@n8n/config';
+import { mergeCustomHeaders } from '@utils/helpers';
 
 type LmOpenAiOptions = {
 	baseURL?: string;
@@ -248,7 +249,8 @@ export class LmOpenAi implements INodeType {
 			topP?: number;
 		};
 
-		const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
+		const { openAiDefaultHeaders } = Container.get(AiConfig);
+		const defaultHeaders = mergeCustomHeaders(credentials, openAiDefaultHeaders ?? {});
 		const timeout = options.timeout;
 		const configuration: ClientOptions = {
 			fetchOptions: {

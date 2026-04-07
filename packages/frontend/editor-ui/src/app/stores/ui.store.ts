@@ -34,9 +34,12 @@ import {
 	STOP_MANY_EXECUTIONS_MODAL_KEY,
 	WORKFLOW_DESCRIPTION_MODAL_KEY,
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
+	WORKFLOW_HISTORY_DIFF_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 	WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
 	CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
+	AI_BUILDER_DIFF_MODAL_KEY,
+	INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY,
 } from '@/app/constants';
 import {
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -58,6 +61,7 @@ import {
 	DELETE_FOLDER_MODAL_KEY,
 	MOVE_FOLDER_MODAL_KEY,
 } from '@/features/core/folders/folders.constants';
+import type { WorkflowListEventMap } from '@/features/core/folders/folders.types';
 import {
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
@@ -84,6 +88,10 @@ import type {
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { applyThemeToBody, getThemeOverride, isValidTheme } from './ui.utils';
 import { computed, ref } from 'vue';
@@ -159,9 +167,12 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				WORKFLOW_DESCRIPTION_MODAL_KEY,
 				WORKFLOW_PUBLISH_MODAL_KEY,
 				WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
+				WORKFLOW_HISTORY_DIFF_MODAL_KEY,
 				WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 				WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
 				CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
+				AI_BUILDER_DIFF_MODAL_KEY,
+				INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
 		[DELETE_USER_MODAL_KEY]: {
@@ -275,12 +286,15 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	});
 	const currentView = ref<string>('');
 	const stateIsDirty = ref<boolean>(false);
+	// This tracks only structural changes without metadata (name or tags)
+	const hasUnsavedWorkflowChanges = ref<boolean>(false);
 	const dirtyStateSetCount = ref<number>(0);
 	const lastSelectedNode = ref<string | null>(null);
 	const nodeViewOffsetPosition = ref<[number, number]>([0, 0]);
 	const nodeViewInitialized = ref<boolean>(false);
 	const addFirstStepOnLoad = ref<boolean>(false);
 	const pendingNotificationsForViews = ref<{ [key in VIEWS]?: NotificationOptions[] }>({});
+	const areNotificationsSuppressed = ref(false);
 	const processingExecutionResults = ref<boolean>(false);
 	const isBlankRedirect = ref<boolean>(false);
 
@@ -325,6 +339,11 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const settingsStore = useSettingsStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 
 	const isDarkThemePreferred = useMediaQuery('(prefers-color-scheme: dark)');
 	const preferredSystemTheme = computed<AppliedThemeOption>(() =>
@@ -395,7 +414,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const lastInteractedWithNode = computed(() => {
 		if (lastInteractedWithNodeId.value) {
-			return workflowsStore.getNodeById(lastInteractedWithNodeId.value);
+			return workflowDocumentStore.value?.getNodeById(lastInteractedWithNodeId.value) ?? null;
 		}
 
 		return null;
@@ -514,12 +533,28 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const openExistingCredential = (id: string) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, id);
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'edit');
+		modalsById.value[CREDENTIAL_EDIT_MODAL_KEY] = {
+			...modalsById.value[CREDENTIAL_EDIT_MODAL_KEY],
+			projectId: undefined,
+		} as NewCredentialsModal;
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
 	};
 
-	const openNewCredential = (type: string, showAuthOptions = false) => {
+	const openNewCredential = (
+		type: string,
+		showAuthOptions = false,
+		forceManualMode = false,
+		projectId?: string,
+		suggestedName?: string,
+	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, type);
 		setShowAuthSelector(CREDENTIAL_EDIT_MODAL_KEY, showAuthOptions);
+		modalsById.value[CREDENTIAL_EDIT_MODAL_KEY] = {
+			...modalsById.value[CREDENTIAL_EDIT_MODAL_KEY],
+			forceManualMode,
+			projectId,
+			suggestedName,
+		} as NewCredentialsModal;
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
 	};
@@ -542,7 +577,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const openDeleteFolderModal = (
 		id: string,
-		workflowListEventBus: EventBus,
+		workflowListEventBus: EventBus<WorkflowListEventMap>,
 		content: { workflowCount: number; subFolderCount: number },
 	) => {
 		setActiveId(DELETE_FOLDER_MODAL_KEY, id);
@@ -558,7 +593,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			sharedWithProjects?: ProjectSharingData[];
 			homeProjectId?: string;
 		},
-		workflowListEventBus: EventBus,
+		workflowListEventBus: EventBus<WorkflowListEventMap>,
 	) => {
 		openModalWithData({
 			name: MOVE_FOLDER_MODAL_KEY,
@@ -581,10 +616,17 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const toggleSidebarMenuCollapse = () => {
 		sidebarMenuCollapsed.value = !sidebarMenuCollapsed.value;
+		telemetry.track('User toggled sidebar', {
+			expanded: !sidebarMenuCollapsed.value,
+		});
 	};
 
 	const setNotificationsForView = (view: VIEWS, notifications: NotificationOptions[]) => {
 		pendingNotificationsForViews.value[view] = notifications;
+	};
+
+	const setNotificationsSuppressed = (suppressed: boolean) => {
+		areNotificationsSuppressed.value = suppressed;
 	};
 
 	function resetLastInteractedWith() {
@@ -617,13 +659,17 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		processingExecutionResults.value = value;
 	};
 
-	const markStateDirty = () => {
+	const markStateDirty = (type: 'workflow' | 'metadata' = 'workflow') => {
 		dirtyStateSetCount.value++;
 		stateIsDirty.value = true;
+		if (type === 'workflow') {
+			hasUnsavedWorkflowChanges.value = true;
+		}
 	};
 
 	const markStateClean = () => {
 		stateIsDirty.value = false;
+		hasUnsavedWorkflowChanges.value = false;
 	};
 
 	/**
@@ -686,6 +732,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		headerHeight,
 		dirtyStateSetCount: computed(() => dirtyStateSetCount.value),
 		stateIsDirty: computed(() => stateIsDirty.value),
+		hasUnsavedWorkflowChanges: computed(() => hasUnsavedWorkflowChanges.value),
 		isBlankRedirect,
 		activeCredentialType,
 		lastSelectedNode,
@@ -703,6 +750,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		currentView,
 		isAnyModalOpen,
 		pendingNotificationsForViews,
+		areNotificationsSuppressed,
 		activeModals,
 		isProcessingExecutionResults,
 		setTheme,
@@ -719,6 +767,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		removeActiveAction,
 		toggleSidebarMenuCollapse,
 		setNotificationsForView,
+		setNotificationsSuppressed,
 		resetLastInteractedWith,
 		setProcessingExecutionResults,
 		markStateDirty,

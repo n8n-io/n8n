@@ -33,6 +33,7 @@ import { toolsAgentExecute } from '../agents/ToolsAgent/V1/execute';
 
 // Function used in the inputs expression to figure out which inputs to
 // display based on the agent type
+/* istanbul ignore next */
 function getInputs(
 	agent:
 		| 'toolsAgent'

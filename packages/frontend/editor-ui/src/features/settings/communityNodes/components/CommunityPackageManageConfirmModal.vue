@@ -268,22 +268,22 @@ onMounted(async () => {
 			/>
 		</template>
 		<template #footer>
-			<N8nButton
-				:label="i18n.baseText('settings.communityNodes.confirmModal.cancel')"
-				size="large"
-				float="left"
-				type="secondary"
-				data-test-id="close-button"
-				@click="onClick"
-			/>
-			<N8nButton
-				:loading="loading"
-				:disabled="loading"
-				:label="loading ? getModalContent.buttonLoadingLabel : getModalContent.buttonLabel"
-				size="large"
-				float="right"
-				@click="onConfirmButtonClick"
-			/>
+			<div :class="$style.footerContainer">
+				<N8nButton
+					variant="subtle"
+					:label="i18n.baseText('settings.communityNodes.confirmModal.cancel')"
+					size="large"
+					data-test-id="close-button"
+					@click="onClick"
+				/>
+				<N8nButton
+					:loading="loading"
+					:disabled="loading"
+					:label="loading ? getModalContent.buttonLoadingLabel : getModalContent.buttonLabel"
+					size="large"
+					@click="onConfirmButtonClick"
+				/>
+			</div>
 		</template>
 	</Modal>
 </template>
@@ -293,6 +293,12 @@ onMounted(async () => {
 	display: flex;
 	margin: var(--spacing--sm) 0;
 	flex-direction: column;
+}
+
+.footerContainer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
 }
 
 .descriptionIcon {

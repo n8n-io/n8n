@@ -33,6 +33,8 @@ export namespace ChatUI {
 		replaced?: boolean;
 		error?: boolean;
 		suggestionId: string;
+		sdkSessionId?: string;
+		nodeName?: string;
 	}
 
 	export interface EndSessionMessage {

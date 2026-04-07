@@ -2,7 +2,8 @@ import type { Callbacks } from '@langchain/core/callbacks/manager';
 import { getLangchainCallbacks } from 'langsmith/langchain';
 import { v4 as uuid } from 'uuid';
 
-import type { LlmCallLimiter } from './harness-types';
+import type { Evaluator, EvaluationContext, Feedback, LlmCallLimiter } from './harness-types';
+import type { SimpleWorkflow } from '../../src/types/workflow';
 import type { BuilderFeatureFlags, ChatPayload } from '../../src/workflow-builder-agent';
 import { DEFAULTS } from '../support/constants';
 
@@ -22,6 +23,26 @@ export async function consumeGenerator<T>(gen: AsyncGenerator<T>) {
 	for await (const _ of gen) {
 		/* consume all */
 	}
+}
+
+/**
+ * Consume an async generator of StreamOutput, collecting AgentMessageChunk text.
+ * Returns the concatenated text from all message chunks.
+ */
+export async function collectAgentTextResponse<
+	T extends { messages?: Array<{ type: string; text?: string }> },
+>(gen: AsyncGenerator<T>): Promise<string> {
+	const textParts: string[] = [];
+	for await (const output of gen) {
+		if (output.messages) {
+			for (const chunk of output.messages) {
+				if (chunk.type === 'message' && chunk.text) {
+					textParts.push(chunk.text);
+				}
+			}
+		}
+	}
+	return textParts.join('');
 }
 
 export async function runWithOptionalLimiter<T>(
@@ -66,18 +87,35 @@ export interface GetChatPayloadOptions {
 	message: string;
 	workflowId: string;
 	featureFlags?: BuilderFeatureFlags;
+	/** Full workflowContext from dataset (overrides default empty context) */
+	workflowContext?: ChatPayload['workflowContext'];
+	/** Builder mode from dataset */
+	mode?: 'build' | 'plan';
 }
 
 export function getChatPayload(options: GetChatPayloadOptions): ChatPayload {
-	const { evalType, message, workflowId, featureFlags } = options;
+	const { evalType, message, workflowId, featureFlags, workflowContext, mode } = options;
+
+	// Always use the eval runId as currentWorkflow.id so getState() can find the thread.
+	// When workflowContext is provided from a dataset, override its currentWorkflow.id.
+	const resolvedContext = workflowContext
+		? {
+				...workflowContext,
+				currentWorkflow: {
+					nodes: [],
+					connections: {},
+					...((workflowContext.currentWorkflow as Record<string, unknown>) ?? {}),
+					id: workflowId,
+				},
+			}
+		: { currentWorkflow: { id: workflowId, nodes: [], connections: {} } };
 
 	return {
 		id: `${evalType}-${uuid()}`,
 		featureFlags: featureFlags ?? DEFAULTS.FEATURE_FLAGS,
 		message,
-		workflowContext: {
-			currentWorkflow: { id: workflowId, nodes: [], connections: {} },
-		},
+		workflowContext: resolvedContext,
+		...(mode ? { mode } : {}),
 	};
 }
 
@@ -86,7 +124,7 @@ export function getChatPayload(options: GetChatPayloadOptions): ChatPayload {
  * Matches the CoordinationLogEntry type from src/types/coordination.ts
  */
 interface CoordinationLogEntry {
-	phase: 'discovery' | 'builder' | 'state_management' | 'responder' | 'planner';
+	phase: 'discovery' | 'builder' | 'assistant' | 'state_management' | 'responder' | 'planner';
 	status: 'completed' | 'in_progress' | 'error';
 	timestamp: number;
 }
@@ -161,4 +199,40 @@ export function extractSubgraphMetrics(
 	}
 
 	return metrics;
+}
+
+/**
+ * Run all evaluators on a workflow + context pair, with per-evaluator timeouts.
+ * Returns flattened feedback; errors are captured as feedback items.
+ */
+export async function runEvaluatorsOnExample(
+	evaluators: Array<Evaluator<EvaluationContext>>,
+	workflow: SimpleWorkflow,
+	context: EvaluationContext,
+	timeoutMs?: number,
+): Promise<Feedback[]> {
+	return (
+		await Promise.all(
+			evaluators.map(async (evaluator): Promise<Feedback[]> => {
+				try {
+					return await withTimeout({
+						promise: evaluator.evaluate(workflow, context),
+						timeoutMs,
+						label: `evaluator:${evaluator.name}`,
+					});
+				} catch (error) {
+					const msg = error instanceof Error ? error.message : String(error);
+					return [
+						{
+							evaluator: evaluator.name,
+							metric: 'error',
+							score: 0,
+							kind: 'score' as const,
+							comment: msg,
+						},
+					];
+				}
+			}),
+		)
+	).flat();
 }

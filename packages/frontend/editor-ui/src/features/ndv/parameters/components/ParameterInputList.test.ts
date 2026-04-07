@@ -64,6 +64,19 @@ const testNodeTypes: INodeTypeData = {
 };
 const formWorkflowNodeTypes = createMockNodeTypes(testNodeTypes);
 
+const mockConfirm = vi.fn();
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({
+		confirm: mockConfirm,
+		alert: vi.fn(),
+		message: vi.fn(),
+	}),
+}));
+
+vi.mock('@n8n/rest-api-client/api/users', () => ({
+	updateCurrentUserSettings: vi.fn(),
+}));
+
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
 	return {
@@ -863,6 +876,29 @@ describe('ParameterInputList', () => {
 			});
 
 			expect(await findByText('AI Agent Starter Callout')).toBeInTheDocument();
+		});
+
+		it('should hide callout immediately when dismissed', async () => {
+			mockConfirm.mockResolvedValueOnce('confirm');
+
+			ndvStore.activeNode = TEST_NODE_NO_ISSUES;
+			const { findByText, findByTestId, queryByText } = renderComponent({
+				props: {
+					parameters: TEST_PARAMETERS,
+					nodeValues: TEST_NODE_VALUES,
+				},
+			});
+
+			// Callout should be visible initially
+			expect(await findByText('Tip: This is a callout with')).toBeInTheDocument();
+
+			// Click dismiss icon
+			const dismissIcon = await findByTestId('callout-dismiss-icon');
+			await fireEvent.click(dismissIcon);
+			await flushPromises();
+
+			// Callout should be hidden immediately without re-opening NDV
+			expect(queryByText('Tip: This is a callout with')).not.toBeInTheDocument();
 		});
 	});
 

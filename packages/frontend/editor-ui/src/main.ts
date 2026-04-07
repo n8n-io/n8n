@@ -11,6 +11,7 @@ import '@n8n/design-system/css/index.scss';
 // import '@n8n/design-system/css/tailwind/index.css';
 
 import '@/main.scss';
+import '@/features/ai/assistant/aiBuilderDiff.scss';
 // Ensure i18n HMR owner is evaluated as early as possible in dev
 import '@/app/dev/i18nHmr';
 

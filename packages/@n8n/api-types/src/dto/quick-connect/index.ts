@@ -1,1 +1,1 @@
-export { CreateQuickConnectCredentialDto } from './create-quick-connect-credential.dto';
+export { GetQuickConnectApiKeyDto } from './create-quick-connect-credential.dto';

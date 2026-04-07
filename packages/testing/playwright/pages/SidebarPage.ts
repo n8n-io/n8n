@@ -7,10 +7,6 @@ export class SidebarPage {
 		this.page = page;
 	}
 
-	async clickAddProjectButton() {
-		await this.page.getByTestId('project-plus-button').click();
-	}
-
 	async clickHomeButton() {
 		await this.page.getByTestId('project-home-menu-item').click();
 	}
@@ -33,11 +29,6 @@ export class SidebarPage {
 
 	async clickCredentialsLink(): Promise<void> {
 		await this.page.getByRole('link', { name: 'Credentials' }).click();
-	}
-
-	async addProjectFromUniversalAdd() {
-		await this.universalAdd();
-		await this.page.getByTestId('navigation-menu-item').filter({ hasText: 'Project' }).click();
 	}
 
 	getProjectButtonInUniversalAdd(): Locator {
@@ -63,10 +54,6 @@ export class SidebarPage {
 	async clickProjectMenuItem(projectName: string) {
 		await this.expand();
 		await this.getProjectMenuItems().filter({ hasText: projectName }).click();
-	}
-
-	getAddFirstProjectButton(): Locator {
-		return this.page.getByTestId('add-first-project-button');
 	}
 
 	getSettings(): Locator {
@@ -143,10 +130,6 @@ export class SidebarPage {
 	async signOutFromWorkflows(): Promise<void> {
 		await this.page.goto('/workflows');
 		await this.clickSignout();
-	}
-
-	async goToWorkflows(): Promise<void> {
-		await this.page.goto('/workflows');
 	}
 
 	async expand() {

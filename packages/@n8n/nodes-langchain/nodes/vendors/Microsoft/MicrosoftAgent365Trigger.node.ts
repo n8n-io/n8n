@@ -1,5 +1,6 @@
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
+	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookFunctions,
@@ -33,7 +34,7 @@ export class MicrosoftAgent365Trigger implements INodeType {
 				],
 			},
 		},
-		version: [1],
+		version: [1, 1.1],
 		defaults: {
 			name: 'Microsoft Agent 365',
 		},
@@ -191,7 +192,7 @@ export class MicrosoftAgent365Trigger implements INodeType {
 						name: 'welcomeMessage',
 						type: 'string',
 						placeholder: "e.g. Hello! I'm here to help you!",
-						default: '',
+						default: "Hello! I'm here to help you!",
 					},
 				],
 			},
@@ -201,6 +202,7 @@ export class MicrosoftAgent365Trigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		const res = this.getResponseObject();
+		const node = this.getNode();
 
 		const method = req.method;
 		if (method === 'HEAD') {
@@ -233,9 +235,35 @@ export class MicrosoftAgent365Trigger implements INodeType {
 
 			await agent.adapter.process(req, res, callback);
 
+			if (
+				activityCapture.activity.type === 'event' ||
+				activityCapture.input.trimStart().startsWith('<addmember>')
+			) {
+				return { noWebhookResponse: true };
+			}
+
+			let returnData;
+
+			if (node.typeVersion === 1) {
+				returnData = activityCapture;
+			} else {
+				const { conversationId, ...activity }: IDataObject = activityCapture.activity;
+				activity.conversation = {
+					id: conversationId,
+				};
+				returnData = {
+					input: activityCapture.input,
+					output: activityCapture.output,
+					...activity,
+					...(activityCapture.mcpToolLogs?.length
+						? { microsoftMcpToolLogs: activityCapture.mcpToolLogs }
+						: {}),
+				};
+			}
+
 			return {
 				noWebhookResponse: true,
-				workflowData: [this.helpers.returnJsonArray({ ...activityCapture })],
+				workflowData: [this.helpers.returnJsonArray({ ...returnData })],
 			};
 		} catch (error) {
 			const errorData = error.response?.data;
@@ -243,10 +271,10 @@ export class MicrosoftAgent365Trigger implements INodeType {
 				const message = 'Error: ' + String(errorData.error);
 				const description = (errorData.error_description as string) ?? error.message;
 
-				throw new NodeOperationError(this.getNode(), message, { description });
+				throw new NodeOperationError(node, message, { description });
 			}
 
-			throw new NodeOperationError(this.getNode(), error.message);
+			throw new NodeOperationError(node, error.message);
 		}
 	}
 }

@@ -14,7 +14,7 @@ export const MAX_VALIDATE_ATTEMPTS = 10;
 
 /** Instruction appended to validation/parse error messages with steps to fix */
 export const FIX_VALIDATION_ERRORS_INSTRUCTION = `
-Use the think tool to analyze ALL errors at once, then act:
+Analyze the errors, then use the editor tool to apply fixes:
 1. Which errors are relevant to the last user request? If NONE, stop — do not fix unrelated warnings.
 2. Use search_nodes and get_node_types to look up the correct node schema (if not already fetched)
 3. Use batch_str_replace to fix ALL identified issues atomically in one call (preferred), or use individual str_replace/insert calls
@@ -108,7 +108,23 @@ export const CODE_BUILDER_GET_SUGGESTED_NODES_TOOL: BuilderToolBase = {
 	displayTitle: 'Getting suggested nodes',
 };
 
-export const CODE_BUILDER_THINK_TOOL: BuilderToolBase = {
-	toolName: 'think',
-	displayTitle: 'Reasoning',
+/** MCP tools — not used by the code-builder agent, only exposed via the MCP server. */
+export const MCP_GET_SDK_REFERENCE_TOOL: BuilderToolBase = {
+	toolName: 'get_sdk_reference',
+	displayTitle: 'Getting SDK reference',
+};
+
+export const MCP_CREATE_WORKFLOW_FROM_CODE_TOOL: BuilderToolBase = {
+	toolName: 'create_workflow_from_code',
+	displayTitle: 'Creating workflow from code',
+};
+
+export const MCP_ARCHIVE_WORKFLOW_TOOL: BuilderToolBase = {
+	toolName: 'archive_workflow',
+	displayTitle: 'Archiving workflow',
+};
+
+export const MCP_UPDATE_WORKFLOW_TOOL: BuilderToolBase = {
+	toolName: 'update_workflow',
+	displayTitle: 'Updating workflow',
 };

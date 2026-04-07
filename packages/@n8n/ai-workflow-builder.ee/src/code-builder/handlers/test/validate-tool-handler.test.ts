@@ -124,7 +124,7 @@ describe('ValidateToolHandler', () => {
 			}
 		});
 
-		it('should return workflowReady false when no code provided', async () => {
+		it('should return workflowReady false and inject directive when no code provided', async () => {
 			const generator = handler.execute({
 				...baseParams,
 				code: null,
@@ -133,16 +133,26 @@ describe('ValidateToolHandler', () => {
 			});
 
 			const chunks: unknown[] = [];
-			for await (const chunk of generator) {
-				chunks.push(chunk);
+			let result: unknown;
+			while (true) {
+				const next = await generator.next();
+				if (next.done) {
+					result = next.value;
+					break;
+				}
+				chunks.push(next.value);
 			}
 
 			// Should yield running and completed status
 			expect(chunks.length).toBeGreaterThanOrEqual(2);
 
-			// Should add error message to messages
+			// Should add directive ToolMessage
 			expect(messages.length).toBe(1);
 			expect(messages[0]).toBeInstanceOf(ToolMessage);
+			expect((messages[0] as ToolMessage).content).toContain('MUST create the workflow code');
+
+			// workflowReady must be false — there is no workflow
+			expect(result).toEqual({ workflowReady: false });
 		});
 
 		it('should return workflowReady true on successful validation', async () => {

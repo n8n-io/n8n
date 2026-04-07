@@ -43,6 +43,31 @@ export const ALLOWED_SDK_FUNCTIONS = new Set([
 ]);
 
 /**
+ * Subset of SDK functions whose names can be auto-renamed when used as variables.
+ * Only subnode builder names are auto-renameable — core builders and control flow still throw.
+ */
+export const AUTO_RENAMEABLE_SDK_FUNCTIONS = new Set([
+	'languageModel',
+	'memory',
+	'tool',
+	'outputParser',
+	'embedding',
+	'embeddings',
+	'vectorStore',
+	'retriever',
+	'documentLoader',
+	'textSplitter',
+	'reranker',
+]);
+
+/**
+ * Check if an identifier is an auto-renameable SDK function.
+ */
+export function isAutoRenameableSDKFunction(name: string): boolean {
+	return AUTO_RENAMEABLE_SDK_FUNCTIONS.has(name);
+}
+
+/**
  * Allowlist of method names that can be called on SDK objects.
  */
 export const ALLOWED_METHODS = new Set([
@@ -171,6 +196,9 @@ const ALLOWED_NODE_TYPES = new Set([
 	'SpreadElement',
 	'Property',
 
+	// Assignment (constrained to property assignment only)
+	'AssignmentExpression',
+
 	// Operators (for simple expressions like array access)
 	'UnaryExpression',
 	'BinaryExpression',
@@ -196,7 +224,6 @@ const FORBIDDEN_NODE_TYPES: Record<string, string> = {
 	TryStatement: 'Try-catch is not allowed in SDK code',
 	ThrowStatement: 'Throw statements are not allowed in SDK code',
 	WithStatement: 'With statements are not allowed in SDK code',
-	AssignmentExpression: 'Assignments are not allowed. Use const declarations only.',
 	UpdateExpression: 'Update expressions (++, --) are not allowed in SDK code',
 	NewExpression: 'new expressions are not allowed. Use SDK factory functions instead.',
 	ImportDeclaration: 'Import declarations are not allowed in SDK code',
@@ -290,16 +317,23 @@ export function validateMemberExpression(node: MemberExpression, sourceCode: str
 		}
 	}
 
-	// Check for dangerous property names
-	if (node.property.type === 'Identifier') {
-		const propName = node.property.name;
-		if (propName === '__proto__' || propName === 'prototype' || propName === 'constructor') {
-			throw new SecurityError(
-				`Access to '${propName}' is not allowed`,
-				node.loc ?? undefined,
-				sourceCode,
-			);
-		}
+	// Check for dangerous property names (both dot notation and literal keys)
+	const propName =
+		node.property.type === 'Identifier'
+			? node.property.name
+			: node.property.type === 'Literal' && typeof node.property.value === 'string'
+				? node.property.value
+				: undefined;
+
+	if (
+		propName !== undefined &&
+		(propName === '__proto__' || propName === 'prototype' || propName === 'constructor')
+	) {
+		throw new SecurityError(
+			`Access to '${propName}' is not allowed`,
+			node.loc ?? undefined,
+			sourceCode,
+		);
 	}
 }
 

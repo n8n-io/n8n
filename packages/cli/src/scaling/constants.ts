@@ -30,4 +30,5 @@ export const IMMEDIATE_COMMANDS = new Set<PubSub.Command['command']>([
 	'remove-triggers-and-pollers',
 	'relay-execution-lifecycle-event',
 	'relay-chat-stream-event',
+	'cancel-test-run',
 ]);
