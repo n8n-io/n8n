@@ -1,4 +1,7 @@
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
+import type { JSONSchema7 } from 'json-schema';
+import pick from 'lodash/pick';
 import { StructuredToolkit } from 'n8n-core';
 import {
 	type IDataObject,
@@ -18,7 +21,7 @@ import { getTools } from './loadOptions';
 import type { McpToolIncludeMode } from './types';
 import { createCallTool, getSelectedTools, mcpToolToDynamicTool } from './utils';
 import { credentials, transportSelect } from '../shared/descriptions';
-import type { McpAuthenticationOption, McpServerTransport } from '../shared/types';
+import type { McpAuthenticationOption, McpServerTransport, McpTool } from '../shared/types';
 import {
 	connectMcpClient,
 	getAllTools,
@@ -26,8 +29,36 @@ import {
 	mapToNodeOperationError,
 	tryRefreshOAuth2Token,
 } from '../shared/utils';
-import type { JSONSchema7 } from 'json-schema';
-import pick from 'lodash/pick';
+
+const CLIENT_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+interface CachedClient {
+	client: Client;
+	mcpTools: McpTool[];
+	createdAt: number;
+}
+
+/**
+ * Cache of live MCP clients keyed by `executionId:nodeName`.
+ * Keeps the transport alive between tool calls within the same execution,
+ * which is required for stateful MCP servers (e.g. Playwright).
+ */
+export const activeClients = new Map<string, CachedClient>();
+
+function getCacheKey(executionId: string, nodeName: string): string {
+	return `${executionId}:${nodeName}`;
+}
+
+/** Remove cache entries older than CLIENT_CACHE_TTL_MS as a safety net against leaks. */
+function evictStaleClients(): void {
+	const now = Date.now();
+	for (const [key, entry] of activeClients) {
+		if (now - entry.createdAt > CLIENT_CACHE_TTL_MS) {
+			void entry.client.close().catch(() => {});
+			activeClients.delete(key);
+		}
+	}
+}
 
 /**
  * Get node parameters for MCP client configuration
@@ -120,7 +151,7 @@ export class McpClientTool implements INodeType {
 			dark: 'file:../mcp.dark.svg',
 		},
 		group: ['output'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
 		description: 'Connect tools from an MCP Server',
 		defaults: {
 			name: 'MCP Client',
@@ -399,24 +430,75 @@ export class McpClientTool implements INodeType {
 		const node = this.getNode();
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
+		const useClientCache = node.typeVersion >= 1.3;
+
+		let client: Client;
+		let mcpTools: McpTool[];
+
+		if (useClientCache) {
+			evictStaleClients();
+
+			const cacheKey = getCacheKey(this.getExecutionId(), node.name);
+			const cached = activeClients.get(cacheKey);
+
+			if (cached) {
+				client = cached.client;
+				mcpTools = cached.mcpTools;
+			} else {
+				const config = getNodeConfig(this, 0);
+				const result = await connectAndGetTools(this, config);
+
+				if (result.error) {
+					throw new NodeOperationError(node, result.error.error, { itemIndex: 0 });
+				}
+
+				if (!result.mcpTools?.length) {
+					throw new NodeOperationError(node, 'MCP Server returned no tools', { itemIndex: 0 });
+				}
+
+				client = result.client;
+				mcpTools = result.mcpTools;
+
+				activeClients.set(cacheKey, { client, mcpTools, createdAt: Date.now() });
+
+				// Clean up when the execution ends
+				const cancelSignal = this.getExecutionCancelSignal();
+				if (cancelSignal) {
+					cancelSignal.addEventListener(
+						'abort',
+						() => {
+							const entry = activeClients.get(cacheKey);
+							if (entry) {
+								void entry.client.close().catch(() => {});
+								activeClients.delete(cacheKey);
+							}
+						},
+						{ once: true },
+					);
+				}
+			}
+		} else {
+			// v1.2 and below: fresh connection per execute call (existing behavior)
+			const config = getNodeConfig(this, 0);
+			const result = await connectAndGetTools(this, config);
+
+			if (result.error) {
+				throw new NodeOperationError(node, result.error.error, { itemIndex: 0 });
+			}
+
+			if (!result.mcpTools?.length) {
+				throw new NodeOperationError(node, 'MCP Server returned no tools', { itemIndex: 0 });
+			}
+
+			client = result.client;
+			mcpTools = result.mcpTools;
+		}
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const item = items[itemIndex];
 			const config = getNodeConfig(this, itemIndex);
 
-			const { client, mcpTools, error } = await connectAndGetTools(this, config);
-
-			if (error) {
-				throw new NodeOperationError(node, error.error, { itemIndex });
-			}
-
-			if (!mcpTools?.length) {
-				throw new NodeOperationError(node, 'MCP Server returned no tools', { itemIndex });
-			}
-
 			for (const tool of mcpTools) {
-				// Check for tool name in item.json.tool (for toolkit execution from agent)
-				// or item.tool (for direct execution)
 				if (!item.json.tool || typeof item.json.tool !== 'string') {
 					throw new NodeOperationError(node, 'Tool name not found in item.json.tool or item.tool', {
 						itemIndex,
@@ -425,11 +507,8 @@ export class McpClientTool implements INodeType {
 
 				const toolName = item.json.tool;
 				if (toolName === tool.name) {
-					// Extract the tool name from arguments before passing to MCP
 					const { tool: _, ...toolArguments } = item.json;
 					const schema: JSONSchema7 = tool.inputSchema;
-					// When additionalProperties is not explicitly true, filter to schema-defined properties.
-					// Otherwise, pass all arguments through
 					const sanitizedToolArguments: IDataObject =
 						schema.additionalProperties !== true
 							? pick(toolArguments, Object.keys(schema.properties ?? {}))

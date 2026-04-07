@@ -15,7 +15,7 @@ import {
 import { proxyFetch } from '@n8n/ai-utilities';
 
 import { getTools } from '../loadOptions';
-import { McpClientTool } from '../McpClientTool.node';
+import { McpClientTool, activeClients } from '../McpClientTool.node';
 
 jest.mock('@modelcontextprotocol/sdk/client/sse.js');
 jest.mock('@modelcontextprotocol/sdk/client/index.js');
@@ -861,6 +861,197 @@ describe('McpClientTool', () => {
 				CallToolResultSchema,
 				{ timeout: 12345 },
 			);
+		});
+	});
+
+	describe('execute v1.3 (client caching)', () => {
+		const executionId = 'test-execution-123';
+		const nodeName = 'MCP Client';
+
+		function createV13MockExecuteFunctions(overrides: Record<string, unknown> = {}) {
+			const abortController = new AbortController();
+			const mockNode = mock<INode>({
+				typeVersion: 1.3,
+				type: 'mcpClientTool',
+				name: nodeName,
+			});
+			const mockExecuteFunctions = mock<any>({
+				getNode: jest.fn(() => mockNode),
+				getExecutionId: jest.fn(() => executionId),
+				getExecutionCancelSignal: jest.fn(() => abortController.signal),
+				getInputData: jest.fn(() => [
+					{
+						json: {
+							tool: 'get_weather',
+							location: 'Berlin',
+						},
+					},
+				]),
+				getNodeParameter: jest.fn((key) => {
+					const params: Record<string, unknown> = {
+						include: 'all',
+						includeTools: [],
+						excludeTools: [],
+						authentication: 'none',
+						serverTransport: 'httpStreamable',
+						endpointUrl: 'https://test.com/mcp',
+						'options.timeout': 60000,
+						...overrides,
+					};
+					return params[key as string];
+				}),
+			});
+			return { mockExecuteFunctions, abortController, mockNode };
+		}
+
+		beforeEach(() => {
+			jest.resetAllMocks();
+			activeClients.clear();
+		});
+
+		it('should cache client and reuse on subsequent execute calls', async () => {
+			const connectSpy = jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				content: [{ type: 'text', text: 'Sunny' }],
+			});
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'get_weather',
+						description: 'Gets the weather',
+						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+					},
+				],
+			});
+
+			const { mockExecuteFunctions } = createV13MockExecuteFunctions();
+
+			// First call: should connect and cache
+			await new McpClientTool().execute.call(mockExecuteFunctions);
+			expect(connectSpy).toHaveBeenCalledTimes(1);
+			expect(activeClients.size).toBe(1);
+
+			// Second call: should reuse cached client, not connect again
+			await new McpClientTool().execute.call(mockExecuteFunctions);
+			expect(connectSpy).toHaveBeenCalledTimes(1);
+			expect(Client.prototype.callTool).toHaveBeenCalledTimes(2);
+		});
+
+		it('should not share cache across different executions', async () => {
+			const connectSpy = jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				content: [{ type: 'text', text: 'Sunny' }],
+			});
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'get_weather',
+						description: 'Gets the weather',
+						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+					},
+				],
+			});
+
+			const { mockExecuteFunctions: exec1 } = createV13MockExecuteFunctions();
+			await new McpClientTool().execute.call(exec1);
+
+			// Different execution ID
+			const abortController2 = new AbortController();
+			const mockNode2 = mock<INode>({
+				typeVersion: 1.3,
+				type: 'mcpClientTool',
+				name: nodeName,
+			});
+			const exec2 = mock<any>({
+				getNode: jest.fn(() => mockNode2),
+				getExecutionId: jest.fn(() => 'different-execution-456'),
+				getExecutionCancelSignal: jest.fn(() => abortController2.signal),
+				getInputData: jest.fn(() => [{ json: { tool: 'get_weather', location: 'London' } }]),
+				getNodeParameter: jest.fn((key) => {
+					const params: Record<string, unknown> = {
+						include: 'all',
+						includeTools: [],
+						excludeTools: [],
+						authentication: 'none',
+						serverTransport: 'httpStreamable',
+						endpointUrl: 'https://test.com/mcp',
+						'options.timeout': 60000,
+					};
+					return params[key as string];
+				}),
+			});
+
+			await new McpClientTool().execute.call(exec2);
+			expect(connectSpy).toHaveBeenCalledTimes(2);
+			expect(activeClients.size).toBe(2);
+		});
+
+		it('should clean up cached client when execution is cancelled', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			const closeSpy = jest.spyOn(Client.prototype, 'close').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				content: [{ type: 'text', text: 'Sunny' }],
+			});
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'get_weather',
+						description: 'Gets the weather',
+						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+					},
+				],
+			});
+
+			const { mockExecuteFunctions, abortController } = createV13MockExecuteFunctions();
+
+			await new McpClientTool().execute.call(mockExecuteFunctions);
+			expect(activeClients.size).toBe(1);
+
+			// Simulate execution cancellation
+			abortController.abort();
+
+			expect(closeSpy).toHaveBeenCalledTimes(1);
+			expect(activeClients.size).toBe(0);
+		});
+
+		it('should not use client cache for v1.2 nodes', async () => {
+			const connectSpy = jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				content: [{ type: 'text', text: 'Sunny' }],
+			});
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'get_weather',
+						description: 'Gets the weather',
+						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+					},
+				],
+			});
+
+			const mockNode = mock<INode>({ typeVersion: 1.2, type: 'mcpClientTool', name: nodeName });
+			const mockExecuteFunctions = mock<any>({
+				getNode: jest.fn(() => mockNode),
+				getInputData: jest.fn(() => [{ json: { tool: 'get_weather', location: 'Berlin' } }]),
+				getNodeParameter: jest.fn((key) => {
+					const params: Record<string, unknown> = {
+						include: 'all',
+						includeTools: [],
+						excludeTools: [],
+						authentication: 'none',
+						serverTransport: 'httpStreamable',
+						endpointUrl: 'https://test.com/mcp',
+						'options.timeout': 60000,
+					};
+					return params[key as string];
+				}),
+			});
+
+			// Call twice - should connect each time (no caching)
+			await new McpClientTool().execute.call(mockExecuteFunctions);
+			await new McpClientTool().execute.call(mockExecuteFunctions);
+			expect(connectSpy).toHaveBeenCalledTimes(2);
+			expect(activeClients.size).toBe(0);
 		});
 	});
 });
