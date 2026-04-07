@@ -8,7 +8,7 @@ import * as video from './video';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Alibaba Cloud Model Studio',
-	name: 'alicloudModelStudio',
+	name: 'alibabaCloudModelStudio',
 	icon: 'file:alibaba.svg',
 	group: ['transform'],
 	version: 1,

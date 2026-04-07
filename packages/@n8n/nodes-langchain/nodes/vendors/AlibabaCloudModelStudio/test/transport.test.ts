@@ -24,7 +24,7 @@ describe('AlicloudModelStudio Transport', () => {
 		mockExecuteFunctions.getNode.mockReturnValue({
 			id: 'test-node-id',
 			name: 'Test Node',
-			type: '@n8n/n8n-nodes-langchain.alicloudModelStudio',
+			type: '@n8n/n8n-nodes-langchain.alibabaCloudModelStudio',
 			typeVersion: 1,
 			position: [0, 0],
 			parameters: {},

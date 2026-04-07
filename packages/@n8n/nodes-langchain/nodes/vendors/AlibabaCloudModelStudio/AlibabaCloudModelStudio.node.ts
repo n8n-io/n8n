@@ -3,7 +3,7 @@ import type { IExecuteFunctions, INodeExecutionData, INodeType } from 'n8n-workf
 import { router } from './actions/router';
 import { versionDescription } from './actions/versionDescription';
 
-export class AlicloudModelStudio implements INodeType {
+export class AlibabaCloudModelStudio implements INodeType {
 	description = versionDescription;
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
