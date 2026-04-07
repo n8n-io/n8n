@@ -17,11 +17,9 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 
-const { creditsRemaining, fetchCredits } = useAiGateway();
-
-const uiStore = useUIStore();
 const { creditsRemaining, fetchCredits } = useAiGateway();
 
 const badgeHovered = ref(false);
