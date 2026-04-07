@@ -1,9 +1,8 @@
 import { mockDeep } from 'jest-mock-extended';
 import { webhook } from '../../../actions/webhook';
 import * as sendAndWaitUtils from '@utils/sendAndWait/utils';
-import { IWebhookFunctions } from 'n8n-workflow';
-import { Request, Response } from 'express';
-import { kMaxLength } from 'buffer';
+import type { IWebhookFunctions } from 'n8n-workflow';
+import type { Request, Response } from 'express';
 
 describe('webhook', () => {
 	const mockSend = jest.fn();
