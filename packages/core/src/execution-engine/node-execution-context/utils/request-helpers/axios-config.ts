@@ -1,6 +1,8 @@
 import axios from 'axios';
 import { stringify } from 'qs';
 
+import { setAxiosAgents } from './axios-utils';
+
 // Global axios defaults
 
 axios.defaults.timeout = 300000;
@@ -17,3 +19,15 @@ axios.defaults.paramsSerializer = (params) => {
 // Disable axios proxy, we handle it ourselves
 // Axios proxy option has problems: https://github.com/axios/axios/issues/4531
 axios.defaults.proxy = false;
+
+// Interceptor (side effect)
+axios.interceptors.request.use((config) => {
+	// If no content-type is set by us, prevent axios from force-setting the content-type to `application/x-www-form-urlencoded`
+	if (config.data === undefined) {
+		config.headers.setContentType(false, false);
+	}
+
+	setAxiosAgents(config);
+
+	return config;
+});
