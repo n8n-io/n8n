@@ -204,6 +204,20 @@ export async function startDataTableAgentTask(
 	};
 }
 
+export const dataTableAgentInputSchema = z.object({
+	task: z
+		.string()
+		.describe(
+			'What to do: describe the data table operation. Include table names, column details, data to insert, or query criteria.',
+		),
+	conversationContext: z
+		.string()
+		.optional()
+		.describe(
+			'Brief summary of the conversation so far — what was discussed, decisions made, and information gathered. The agent uses this to avoid repeating information the user already knows.',
+		),
+});
+
 export function createDataTableAgentTool(context: OrchestrationContext) {
 	return createTool({
 		id: 'manage-data-tables-with-agent',
@@ -211,24 +225,12 @@ export function createDataTableAgentTool(context: OrchestrationContext) {
 			'Manage data tables using a specialized agent. ' +
 			'The agent handles listing, creating, deleting tables, modifying schemas, ' +
 			'and querying/inserting/updating/deleting rows.',
-		inputSchema: z.object({
-			task: z
-				.string()
-				.describe(
-					'What to do: describe the data table operation. Include table names, column details, data to insert, or query criteria.',
-				),
-			conversationContext: z
-				.string()
-				.optional()
-				.describe(
-					'Brief summary of the conversation so far — what was discussed, decisions made, and information gathered. The agent uses this to avoid repeating information the user already knows.',
-				),
-		}),
+		inputSchema: dataTableAgentInputSchema,
 		outputSchema: z.object({
 			result: z.string(),
 			taskId: z.string(),
 		}),
-		execute: async (input) => {
+		execute: async (input: z.infer<typeof dataTableAgentInputSchema>) => {
 			const result = await startDataTableAgentTask(context, input);
 			return await Promise.resolve({ result: result.result, taskId: result.taskId });
 		},

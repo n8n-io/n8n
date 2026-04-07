@@ -484,10 +484,10 @@ export class SourceControlGitService {
 	}
 
 	async getFileContent(filePath: string, commit: string = 'HEAD'): Promise<string> {
-		if (!this.git) {
-			throw new UnexpectedError('Git is not initialized (getFileContent)');
-		}
 		try {
+			if (!this.git) {
+				throw new UnexpectedError('Git is not initialized (getFileContent)');
+			}
 			const content = await this.git.show([`${commit}:${filePath}`]);
 			return content;
 		} catch (error) {

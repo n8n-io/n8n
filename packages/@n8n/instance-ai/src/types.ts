@@ -88,8 +88,6 @@ export interface CredentialSummary {
 	id: string;
 	name: string;
 	type: string;
-	createdAt: string;
-	updatedAt: string;
 }
 
 export interface CredentialDetail extends CredentialSummary {
@@ -567,7 +565,7 @@ export interface InstanceAiContext {
 	filesystemService?: InstanceAiFilesystemService;
 	workspaceService?: InstanceAiWorkspaceService;
 	/**
-	 * Connected remote MCP server (e.g. fs-proxy daemon). When set, dynamic tools are created from its advertised capabilities. Takes precedence over `filesystemService`.
+	 * Connected remote MCP server (e.g. computer-use daemon). When set, dynamic tools are created from its advertised capabilities. Takes precedence over `filesystemService`.
 	 */
 	localMcpServer?: LocalMcpServer;
 	/** Connection state of the local gateway — drives system prompt guidance. */
@@ -844,7 +842,7 @@ export interface OrchestrationContext {
 	}>;
 	/** Chrome DevTools MCP config — only present when browser automation is enabled */
 	browserMcpConfig?: McpServerConfig;
-	/** Local MCP server (fs-proxy daemon) — when connected and advertising browser_* tools,
+	/** Local MCP server (computer-use daemon) — when connected and advertising browser_* tools,
 	 *  browser-credential-setup prefers these over chrome-devtools-mcp. */
 	localMcpServer?: LocalMcpServer;
 	/** MCP tools loaded from external servers — available for delegation to sub-agents */

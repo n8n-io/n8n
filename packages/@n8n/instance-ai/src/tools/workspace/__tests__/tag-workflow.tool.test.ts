@@ -1,5 +1,5 @@
 import type { InstanceAiContext } from '../../../types';
-import { createTagWorkflowTool } from '../tag-workflow.tool';
+import { createTagWorkflowTool, tagWorkflowInputSchema } from '../tag-workflow.tool';
 
 function createMockContext(
 	permissionOverrides?: InstanceAiContext['permissions'],
@@ -29,8 +29,7 @@ function createMockContext(
 describe('tag-workflow tool', () => {
 	describe('schema validation', () => {
 		it('accepts workflowId and tags array', () => {
-			const tool = createTagWorkflowTool(createMockContext());
-			const result = tool.inputSchema!.safeParse({
+			const result = tagWorkflowInputSchema.safeParse({
 				workflowId: 'wf-1',
 				tags: ['ai-built', 'gmail'],
 			});
@@ -38,14 +37,12 @@ describe('tag-workflow tool', () => {
 		});
 
 		it('rejects empty tags array', () => {
-			const tool = createTagWorkflowTool(createMockContext());
-			const result = tool.inputSchema!.safeParse({ workflowId: 'wf-1', tags: [] });
+			const result = tagWorkflowInputSchema.safeParse({ workflowId: 'wf-1', tags: [] });
 			expect(result.success).toBe(false);
 		});
 
 		it('rejects missing tags', () => {
-			const tool = createTagWorkflowTool(createMockContext());
-			const result = tool.inputSchema!.safeParse({ workflowId: 'wf-1' });
+			const result = tagWorkflowInputSchema.safeParse({ workflowId: 'wf-1' });
 			expect(result.success).toBe(false);
 		});
 	});
@@ -58,10 +55,10 @@ describe('tag-workflow tool', () => {
 			(context.workspaceService!.tagWorkflow as jest.Mock).mockResolvedValue(['ai-built', 'gmail']);
 
 			const tool = createTagWorkflowTool(context);
-			const result = await tool.execute!(
+			const result = (await tool.execute!(
 				{ workflowId: 'wf-1', tags: ['ai-built', 'gmail'] },
 				{} as never,
-			);
+			)) as Record<string, unknown>;
 
 			expect(context.workspaceService!.tagWorkflow).toHaveBeenCalledWith('wf-1', [
 				'ai-built',
