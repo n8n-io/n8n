@@ -32,6 +32,11 @@ const planOutputSchema = z.object({
 	taskCount: z.number(),
 });
 
+export const planResumeSchema = z.object({
+	approved: z.boolean(),
+	userInput: z.string().optional(),
+});
+
 export function createPlanTool(context: OrchestrationContext) {
 	return createTool({
 		id: 'plan',
@@ -51,11 +56,8 @@ export function createPlanTool(context: OrchestrationContext) {
 			inputType: z.literal('plan-review'),
 			tasks: taskListSchema,
 		}),
-		resumeSchema: z.object({
-			approved: z.boolean(),
-			userInput: z.string().optional(),
-		}),
-		execute: async (input, ctx) => {
+		resumeSchema: planResumeSchema,
+		execute: async (input: z.infer<typeof planInputSchema>, ctx) => {
 			if (!context.plannedTaskService || !context.schedulePlannedTasks) {
 				return {
 					result: 'Planning failed: planned task scheduling is not available.',
@@ -63,7 +65,8 @@ export function createPlanTool(context: OrchestrationContext) {
 				};
 			}
 
-			const { resumeData, suspend } = ctx?.agent ?? {};
+			const resumeData = ctx?.agent?.resumeData as z.infer<typeof planResumeSchema> | undefined;
+			const suspend = ctx?.agent?.suspend;
 
 			// First call — persist plan, show to user, suspend for approval
 			if (resumeData === undefined || resumeData === null) {
@@ -77,7 +80,7 @@ export function createPlanTool(context: OrchestrationContext) {
 				);
 
 				// Emit tasks-update so the checklist appears in the chat immediately
-				const taskItems = input.tasks.map((t) => ({
+				const taskItems = input.tasks.map((t: z.infer<typeof plannedTaskSchema>) => ({
 					id: t.id,
 					description: t.title,
 					status: 'todo' as const,

@@ -1,5 +1,8 @@
 import type { InstanceAiContext, CredentialTypeSearchResult } from '../../../types';
-import { createSearchCredentialTypesTool } from '../search-credential-types.tool';
+import {
+	createSearchCredentialTypesTool,
+	searchCredentialTypesInputSchema,
+} from '../search-credential-types.tool';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -39,14 +42,12 @@ function createMockContext(
 describe('search-credential-types tool', () => {
 	describe('schema validation', () => {
 		it('accepts a valid query', () => {
-			const tool = createSearchCredentialTypesTool(createMockContext());
-			const result = tool.inputSchema!.safeParse({ query: 'linear' });
+			const result = searchCredentialTypesInputSchema.safeParse({ query: 'linear' });
 			expect(result.success).toBe(true);
 		});
 
 		it('rejects missing query', () => {
-			const tool = createSearchCredentialTypesTool(createMockContext());
-			const result = tool.inputSchema!.safeParse({});
+			const result = searchCredentialTypesInputSchema.safeParse({});
 			expect(result.success).toBe(false);
 		});
 	});
@@ -59,7 +60,10 @@ describe('search-credential-types tool', () => {
 			const context = createMockContext(searchResults);
 			const tool = createSearchCredentialTypesTool(context);
 
-			const result = await tool.execute!({ query: 'linear' }, {} as never);
+			const result = (await tool.execute!({ query: 'linear' }, {} as never)) as Record<
+				string,
+				unknown
+			>;
 
 			expect(context.credentialService.searchCredentialTypes).toHaveBeenCalledWith('linear');
 			expect(result).toEqual({ results: searchResults });
@@ -80,7 +84,10 @@ describe('search-credential-types tool', () => {
 			const context = createMockContext(searchResults);
 			const tool = createSearchCredentialTypesTool(context);
 
-			const result = await tool.execute!({ query: 'auth' }, {} as never);
+			const result = (await tool.execute!({ query: 'auth' }, {} as never)) as Record<
+				string,
+				unknown
+			>;
 
 			expect(result).toEqual({
 				results: [{ type: 'linearApi', displayName: 'Linear API' }],
@@ -91,7 +98,10 @@ describe('search-credential-types tool', () => {
 			const context = createMockContext([], false);
 			const tool = createSearchCredentialTypesTool(context);
 
-			const result = await tool.execute!({ query: 'linear' }, {} as never);
+			const result = (await tool.execute!({ query: 'linear' }, {} as never)) as Record<
+				string,
+				unknown
+			>;
 
 			expect(result).toEqual({ results: [] });
 		});
@@ -100,7 +110,10 @@ describe('search-credential-types tool', () => {
 			const context = createMockContext([]);
 			const tool = createSearchCredentialTypesTool(context);
 
-			const result = await tool.execute!({ query: 'nonexistent' }, {} as never);
+			const result = (await tool.execute!({ query: 'nonexistent' }, {} as never)) as Record<
+				string,
+				unknown
+			>;
 
 			expect(result).toEqual({ results: [] });
 		});

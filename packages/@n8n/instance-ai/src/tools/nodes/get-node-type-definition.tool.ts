@@ -14,18 +14,20 @@ const nodeRequestSchema = z.union([
 	}),
 ]);
 
+export const getNodeTypeDefinitionInputSchema = z.object({
+	nodeIds: z
+		.array(nodeRequestSchema)
+		.min(1)
+		.max(5)
+		.describe('Node IDs to get definitions for (max 5)'),
+});
+
 export function createGetNodeTypeDefinitionTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'get-node-type-definition',
 		description:
 			'Get TypeScript type definitions for nodes. Returns the SDK type definition that shows all available parameters, their types, and valid values. Use after search-nodes to get exact schemas before calling build-workflow.',
-		inputSchema: z.object({
-			nodeIds: z
-				.array(nodeRequestSchema)
-				.min(1)
-				.max(5)
-				.describe('Node IDs to get definitions for (max 5)'),
-		}),
+		inputSchema: getNodeTypeDefinitionInputSchema,
 		outputSchema: z.object({
 			definitions: z.array(
 				z.object({
@@ -36,10 +38,10 @@ export function createGetNodeTypeDefinitionTool(context: InstanceAiContext) {
 				}),
 			),
 		}),
-		execute: async ({ nodeIds }) => {
+		execute: async ({ nodeIds }: z.infer<typeof getNodeTypeDefinitionInputSchema>) => {
 			if (!context.nodeService.getNodeTypeDefinition) {
 				return {
-					definitions: nodeIds.map((req) => ({
+					definitions: nodeIds.map((req: z.infer<typeof nodeRequestSchema>) => ({
 						nodeId: typeof req === 'string' ? req : req.nodeId,
 						content: '',
 						error: 'Node type definitions are not available.',
@@ -48,7 +50,7 @@ export function createGetNodeTypeDefinitionTool(context: InstanceAiContext) {
 			}
 
 			const definitions = await Promise.all(
-				nodeIds.map(async (req) => {
+				nodeIds.map(async (req: z.infer<typeof nodeRequestSchema>) => {
 					const nodeId = typeof req === 'string' ? req : req.nodeId;
 					const options = typeof req === 'string' ? undefined : req;
 
