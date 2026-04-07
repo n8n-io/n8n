@@ -138,7 +138,8 @@ function createInlineExtensions() {
 				borderColor: 'var(--color--foreground--shade-1, var(--input--border-color))',
 			},
 			'.cm-content': {
-				...sharedThemeRules['.cm-content'],
+				fontFamily: 'var(--font-family--monospace)',
+				color: 'var(--input--color--text, var(--color--text--shade-1))',
 				caretColor: props.disabled ? 'transparent' : 'var(--code--caret--color)',
 				padding: '0 !important',
 				lineHeight: '28px',
@@ -152,7 +153,8 @@ function createInlineExtensions() {
 				overflowX: 'auto',
 				overflowY: 'hidden',
 			},
-			...sharedThemeRules,
+			'.cm-cursor, .cm-dropCursor': sharedThemeRules['.cm-cursor, .cm-dropCursor'],
+			'.cm-expression-bracket': sharedThemeRules['.cm-expression-bracket'],
 		}),
 		EditorView.updateListener.of((update) => {
 			if (update.docChanged) {
@@ -191,7 +193,9 @@ function createExpandedExtensions() {
 				borderColor: 'var(--color--foreground--shade-1, var(--input--border-color))',
 			},
 			'.cm-content': {
-				...sharedThemeRules['.cm-content'],
+				fontFamily: 'var(--font-family--monospace)',
+				color: 'var(--input--color--text, var(--color--text--shade-1))',
+				caretColor: 'var(--code--caret--color)',
 				padding: 'var(--spacing--4xs) 0',
 			},
 			'.cm-line': {
@@ -201,7 +205,8 @@ function createExpandedExtensions() {
 				lineHeight: '1.68',
 				overflow: 'auto',
 			},
-			...sharedThemeRules,
+			'.cm-cursor, .cm-dropCursor': sharedThemeRules['.cm-cursor, .cm-dropCursor'],
+			'.cm-expression-bracket': sharedThemeRules['.cm-expression-bracket'],
 		}),
 		EditorView.updateListener.of((update) => {
 			if (update.docChanged) {
@@ -286,7 +291,7 @@ watch(
 		/>
 		<N8nButton
 			v-if="!disabled"
-			variant="text"
+			variant="ghost"
 			size="mini"
 			:class="$style.expandButton"
 			:aria-label="i18n.baseText('expressionEdit.editExpression')"
