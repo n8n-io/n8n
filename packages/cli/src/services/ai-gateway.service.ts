@@ -2,6 +2,7 @@ import { LicenseState } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { Service } from '@n8n/di';
+import { UserRepository } from '@n8n/db';
 import { InstanceSettings } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
@@ -42,6 +43,7 @@ export class AiGatewayService {
 		private readonly licenseState: LicenseState,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly ownershipService: OwnershipService,
+		private readonly userRepository: UserRepository,
 	) {}
 
 	/**
@@ -168,12 +170,47 @@ export class AiGatewayService {
 			throw new UserError(`Failed to fetch AI Gateway credits: HTTP ${response.status}`);
 		}
 
-		const data = (await response.json()) as GatewayCreditsResponse;
-		if (typeof data.creditsQuota !== 'number' || typeof data.creditsRemaining !== 'number') {
-			throw new UserError('AI Gateway returned an invalid credits response.');
+		return this.parseCreditsResponse(await response.json());
+	}
+
+	async topUpCredits(
+		userId: string,
+		amount: number,
+		user: { email: string; firstName: string; lastName: string },
+	): Promise<GatewayCreditsResponse> {
+		const baseUrl = this.requireBaseUrl();
+
+		const jwt = await this.getOrFetchToken(userId);
+		if (!jwt) {
+			throw new UserError('Failed to obtain a valid AI Gateway token.');
 		}
 
-		return data;
+		const response = await fetch(`${baseUrl}/v1/gateway/topup`, {
+			method: 'POST',
+			headers: {
+				Authorization: `Bearer ${jwt}`,
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				amount,
+				userEmail: user.email,
+				userName: `${user.firstName} ${user.lastName}`.trim(),
+			}),
+		});
+
+		if (!response.ok) {
+			throw new UserError(`Failed to top up AI Gateway credits: HTTP ${response.status}`);
+		}
+
+		return this.parseCreditsResponse(await response.json());
+	}
+
+	private parseCreditsResponse(data: unknown): GatewayCreditsResponse {
+		const d = data as GatewayCreditsResponse;
+		if (typeof d.creditsQuota !== 'number' || typeof d.creditsRemaining !== 'number') {
+			throw new UserError('AI Gateway returned an invalid credits response.');
+		}
+		return d;
 	}
 
 	private requireBaseUrl(): string {
@@ -254,12 +291,21 @@ export class AiGatewayService {
 
 	private async fetchAndCacheToken(userId: string, key: string): Promise<string> {
 		const baseUrl = this.requireBaseUrl();
-		const licenseCert = await this.license.loadCertStr();
+		const [licenseCert, user] = await Promise.all([
+			this.license.loadCertStr(),
+			this.userRepository.findOneBy({ id: userId }),
+		]);
 
 		const response = await fetch(`${baseUrl}/v1/gateway/credentials`, {
 			method: 'POST',
 			headers: this.buildGatewayCredentialsHeaders(userId),
-			body: JSON.stringify({ licenseCert }),
+			body: JSON.stringify({
+				licenseCert,
+				...(user?.email && { userEmail: user.email }),
+				...(user && {
+					userName: [user.firstName, user.lastName].filter(Boolean).join(' ') || undefined,
+				}),
+			}),
 		});
 
 		if (!response.ok) {

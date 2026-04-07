@@ -615,4 +615,38 @@ describe('AiController', () => {
 			await expect(controller.getGatewayCredits(request)).rejects.toThrow(InternalServerError);
 		});
 	});
+
+	describe('topUpGatewayCredits', () => {
+		const topUpRequest = mock<AuthenticatedRequest>({
+			user: {
+				id: 'user123',
+				email: 'user@example.com',
+				firstName: 'Test',
+				lastName: 'User',
+			},
+		});
+		const body = { amount: 50 };
+
+		it('should return updated credits from aiGatewayService', async () => {
+			const credits = { creditsQuota: 100, creditsRemaining: 60 };
+			aiGatewayService.topUpCredits.mockResolvedValue(credits);
+
+			const result = await controller.topUpGatewayCredits(topUpRequest, response, body);
+
+			expect(aiGatewayService.topUpCredits).toHaveBeenCalledWith('user123', 50, {
+				email: 'user@example.com',
+				firstName: 'Test',
+				lastName: 'User',
+			});
+			expect(result).toEqual(credits);
+		});
+
+		it('should throw InternalServerError when aiGatewayService throws', async () => {
+			aiGatewayService.topUpCredits.mockRejectedValue(new Error('Gateway error'));
+
+			await expect(controller.topUpGatewayCredits(topUpRequest, response, body)).rejects.toThrow(
+				InternalServerError,
+			);
+		});
+	});
 });
