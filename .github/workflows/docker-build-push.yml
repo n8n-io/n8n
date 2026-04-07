@@ -243,33 +243,31 @@ jobs:
           VERSION="${{ needs.determine-build-context.outputs.n8n_version }}"
           DOCKER_BASE="${{ secrets.DOCKER_USERNAME }}"
 
-          # Create manifests for each image type
-          declare -A images=(
-            ["n8n"]="${VERSION}"
-            ["runners"]="${VERSION}"
-            ["runners-distroless"]="${VERSION}-distroless"
-          )
-
           SHORT_SHA="${GITHUB_SHA::7}"
 
-          for image in "${!images[@]}"; do
-            TAG_SUFFIX="${images[$image]}"
-            IMAGE_NAME="${image//-distroless/}"  # Remove -distroless from image name
+          create_dockerhub_manifests() {
+            local IMAGE_NAME=$1
+            local VERSION_TAG=$2
+            local VERSION_SUFFIX=$3
 
-            echo "Creating Docker Hub manifest for $image"
+            local FULL_TAG="${VERSION_TAG}${VERSION_SUFFIX}"
+            echo "Creating Docker Hub manifest for ${IMAGE_NAME}: ${FULL_TAG}"
             docker buildx imagetools create \
-              --tag "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}" \
-              "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-amd64" \
-              "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-arm64"
+              --tag "${DOCKER_BASE}/${IMAGE_NAME}:${FULL_TAG}" \
+              "${DOCKER_BASE}/${IMAGE_NAME}:${FULL_TAG}-amd64" \
+              "${DOCKER_BASE}/${IMAGE_NAME}:${FULL_TAG}-arm64"
 
-            # Create SHA-tagged manifest (immutable reference)
-            SHA_SUFFIX="${TAG_SUFFIX}-${SHORT_SHA}"
-            echo "Creating Docker Hub SHA manifest for $image: ${SHA_SUFFIX}"
+            local SHA_TAG="${VERSION_TAG}-${SHORT_SHA}${VERSION_SUFFIX}"
+            echo "Creating Docker Hub SHA manifest for ${IMAGE_NAME}: ${SHA_TAG}"
             docker buildx imagetools create \
-              --tag "${DOCKER_BASE}/${IMAGE_NAME}:${SHA_SUFFIX}" \
-              "${DOCKER_BASE}/${IMAGE_NAME}:${SHA_SUFFIX}-amd64" \
-              "${DOCKER_BASE}/${IMAGE_NAME}:${SHA_SUFFIX}-arm64"
-          done
+              --tag "${DOCKER_BASE}/${IMAGE_NAME}:${SHA_TAG}" \
+              "${DOCKER_BASE}/${IMAGE_NAME}:${SHA_TAG}-amd64" \
+              "${DOCKER_BASE}/${IMAGE_NAME}:${SHA_TAG}-arm64"
+          }
+
+          create_dockerhub_manifests "n8n" "${VERSION}" ""
+          create_dockerhub_manifests "runners" "${VERSION}" ""
+          create_dockerhub_manifests "runners" "${VERSION}" "-distroless"
 
       - name: Get manifest digests for attestation
         id: get-digests
