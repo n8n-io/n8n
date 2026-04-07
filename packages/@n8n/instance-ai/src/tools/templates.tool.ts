@@ -8,11 +8,11 @@ import { documentation } from './best-practices/index';
 import { TechniqueDescription, type WorkflowTechniqueType } from './best-practices/techniques';
 import { fetchWorkflowsFromTemplates } from './templates/template-api';
 import { categories } from './templates/types';
+import { mermaidStringify } from './utils/mermaid.utils';
 import {
 	collectNodeConfigurationsFromWorkflows,
 	formatNodeConfigurationExamples,
 } from './utils/node-configuration.utils';
-import { mermaidStringify } from './utils/mermaid.utils';
 
 // -- Action schemas -----------------------------------------------------------
 
