@@ -87,7 +87,7 @@ export class InstanceVersionHistoryService {
 		let min: VersionEntry | undefined;
 		for (const entry of cache) {
 			if (entry.createdAt >= since) {
-				if (!min || compareVersions(entry, min) < 0) {
+				if (!min || versionGte(min, entry)) {
 					min = entry;
 				}
 			}
