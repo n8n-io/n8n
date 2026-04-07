@@ -52,7 +52,16 @@ export class TokenExchangeService {
 			throw new BadRequestError('Token header missing kid');
 		}
 
-		const resolvedKey = await this.trustedKeyStore.getByKid(kid);
+		const decodedPayload = decoded.payload;
+		const iss =
+			typeof decodedPayload === 'object' && decodedPayload !== null
+				? (decodedPayload as Record<string, unknown>).iss
+				: undefined;
+		if (typeof iss !== 'string' || !iss) {
+			throw new BadRequestError('Token payload missing iss');
+		}
+
+		const resolvedKey = await this.trustedKeyStore.getByKidAndIss(kid, iss);
 		if (!resolvedKey) {
 			throw new AuthError('Unknown key id');
 		}
