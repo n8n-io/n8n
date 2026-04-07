@@ -368,6 +368,15 @@ export class WorkflowService {
 		WorkflowHelpers.addNodeIds(workflowUpdateData);
 		WorkflowHelpers.resolveNodeWebhookIds(workflowUpdateData, this.nodeTypes);
 
+		// Strip redactionPolicy if instance lacks data-redaction license
+		if (
+			workflowUpdateData.settings?.redactionPolicy !== undefined &&
+			workflowUpdateData.settings.redactionPolicy !== workflow.settings?.redactionPolicy &&
+			!this.licenseState.isDataRedactionLicensed()
+		) {
+			delete workflowUpdateData.settings.redactionPolicy;
+		}
+
 		// Strip redactionPolicy if user lacks scope and value is changing
 		if (
 			workflowUpdateData.settings?.redactionPolicy !== undefined &&
@@ -592,7 +601,12 @@ export class WorkflowService {
 			workflowId: workflow.id,
 		});
 
-		return await this.webhookService.findWebhookConflicts(workflow, additionalData);
+		await workflow.expression.acquireIsolate();
+		try {
+			return await this.webhookService.findWebhookConflicts(workflow, additionalData);
+		} finally {
+			await workflow.expression.releaseIsolate();
+		}
 	}
 
 	private async _detectWebhookConflicts(

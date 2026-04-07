@@ -128,6 +128,7 @@ exports[`Scope Information ensure scopes are defined correctly 1`] = `
   "folder:move",
   "folder:*",
   "insights:list",
+  "insights:read",
   "insights:*",
   "oidc:manage",
   "oidc:*",

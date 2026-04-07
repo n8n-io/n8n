@@ -283,6 +283,8 @@ export {
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
 	credentialFlowSchema,
+	gatewayConfirmationRequiredPayloadSchema,
+	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	InstanceAiSendMessageRequest,
 	instanceAiGatewayKeySchema,
 	InstanceAiGatewayEventsQuery,
@@ -353,6 +355,7 @@ export type {
 	DomainAccessAction,
 	DomainAccessMeta,
 	InstanceAiCredentialFlow,
+	GatewayConfirmationRequiredPayload,
 	ToolCategory,
 	InstanceAiWorkflowSetupNode,
 } from './schemas/instance-ai.schema';

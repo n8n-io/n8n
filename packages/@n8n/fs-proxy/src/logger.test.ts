@@ -11,6 +11,7 @@ const BASE_CONFIG: GatewayConfig = {
 		defaultBrowser: 'chrome',
 	},
 	permissions: {},
+	permissionConfirmation: 'instance',
 };
 
 /** Find the message logged for a specific module by inspecting the meta argument. */

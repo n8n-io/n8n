@@ -940,11 +940,17 @@ async function handleApply() {
 	}
 }
 
-function handleLater() {
+async function handleLater() {
 	isSubmitted.value = true;
 	isDeferred.value = true;
-	store.resolveConfirmation(props.requestId, 'deferred');
-	void store.confirmAction(props.requestId, false);
+
+	const success = await store.confirmAction(props.requestId, false);
+	if (success) {
+		store.resolveConfirmation(props.requestId, 'deferred');
+	} else {
+		isSubmitted.value = false;
+		isDeferred.value = false;
+	}
 }
 </script>
 
