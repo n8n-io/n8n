@@ -56,6 +56,44 @@ const textareaTip = computed(() =>
 		: i18n.baseText('workflow.description.nomcp'),
 );
 
+async function saveWorkflowDescription(id: string, description: string | null) {
+	let currentVersionId = '';
+	let currentChecksum = '';
+	const isCurrentWorkflow = id === workflowsStore.workflowId;
+
+	if (isCurrentWorkflow) {
+		currentVersionId = workflowsStore.workflowVersionId;
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
+		currentChecksum = workflowDocumentStore.checksum;
+	} else {
+		const cached = workflowsListStore.getWorkflowById(id);
+		if (cached?.versionId) {
+			currentVersionId = cached.versionId;
+		} else {
+			const fetched = await workflowsListStore.fetchWorkflow(id);
+			currentVersionId = fetched.versionId;
+		}
+	}
+
+	const updated = await workflowsStore.updateWorkflow(id, {
+		versionId: currentVersionId,
+		description,
+		expectedChecksum: currentChecksum,
+	});
+
+	if (workflowsListStore.getWorkflowById(id)) {
+		workflowsListStore.updateWorkflowInCache(id, {
+			description: updated.description,
+			versionId: updated.versionId,
+		});
+	}
+
+	if (isCurrentWorkflow) {
+		const workflowDocStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
+		workflowDocStore.setDescription(updated.description ?? '');
+	}
+}
+
 const saveDescription = async () => {
 	isSaving.value = true;
 
@@ -63,41 +101,7 @@ const saveDescription = async () => {
 		const id = props.data.workflowId;
 		const description = normalizedCurrentValue.value ?? null;
 
-		let currentVersionId = '';
-		let currentChecksum = '';
-		const isCurrentWorkflow = id === workflowsStore.workflowId;
-
-		if (isCurrentWorkflow) {
-			currentVersionId = workflowsStore.workflowVersionId;
-			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
-			currentChecksum = workflowDocumentStore.checksum;
-		} else {
-			const cached = workflowsListStore.getWorkflowById(id);
-			if (cached?.versionId) {
-				currentVersionId = cached.versionId;
-			} else {
-				const fetched = await workflowsListStore.fetchWorkflow(id);
-				currentVersionId = fetched.versionId;
-			}
-		}
-
-		const updated = await workflowsStore.updateWorkflow(id, {
-			versionId: currentVersionId,
-			description,
-			expectedChecksum: currentChecksum,
-		});
-
-		if (workflowsListStore.getWorkflowById(id)) {
-			workflowsListStore.updateWorkflowInCache(id, {
-				description: updated.description,
-				versionId: updated.versionId,
-			});
-		}
-
-		if (isCurrentWorkflow) {
-			const workflowDocStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
-			workflowDocStore.setDescription(updated.description ?? '');
-		}
+		await saveWorkflowDescription(id, description);
 
 		props.data.onSave?.(description);
 
