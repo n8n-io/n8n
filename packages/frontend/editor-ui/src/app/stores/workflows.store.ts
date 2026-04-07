@@ -1485,50 +1485,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return updated;
 	}
 
-	async function saveWorkflowDescription(
-		id: string,
-		description: string | null,
-	): Promise<IWorkflowDb> {
-		let currentVersionId = '';
-		let currentChecksum = '';
-		const isCurrentWorkflow = id === workflow.value.id;
-
-		if (isCurrentWorkflow) {
-			currentVersionId = workflow.value.versionId;
-			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
-			currentChecksum = workflowDocumentStore.checksum;
-		} else {
-			const cached = workflowsListStore.getWorkflowById(id);
-			if (cached?.versionId) {
-				currentVersionId = cached.versionId;
-			} else {
-				const fetched = await workflowsListStore.fetchWorkflow(id);
-				currentVersionId = fetched.versionId;
-			}
-		}
-
-		const updated = await updateWorkflow(id, {
-			versionId: currentVersionId,
-			description,
-			expectedChecksum: currentChecksum,
-		});
-
-		if (workflowsListStore.getWorkflowById(id)) {
-			workflowsListStore.updateWorkflowInCache(id, {
-				description: updated.description,
-				versionId: updated.versionId,
-			});
-		}
-
-		// Update local store state
-		if (isCurrentWorkflow) {
-			const workflowDocStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
-			workflowDocStore.setDescription(updated.description ?? '');
-		}
-
-		return updated;
-	}
-
 	async function runWorkflow(startRunData: IStartRunData): Promise<IExecutionPushResponse> {
 		try {
 			return await makeRestApiRequest(
@@ -1816,7 +1772,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		publishWorkflow,
 		deactivateWorkflow,
 		updateWorkflowSetting,
-		saveWorkflowDescription,
 		runWorkflow,
 		removeTestWebhook,
 		fetchExecutionDataById,
