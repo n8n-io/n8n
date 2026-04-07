@@ -22,10 +22,6 @@ import {
 	WorkflowTagMapping,
 	WorkflowTagMappingRepository,
 } from '@n8n/db';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
-import { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
-import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
 import { Service } from '@n8n/di';
 import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
@@ -46,6 +42,10 @@ import path from 'path';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { IWorkflowToImport } from '@/interfaces';
+import { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
+import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
+import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
+import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { isUniqueConstraintError } from '@/response-helper';
 import { TagService } from '@/services/tag.service';
 import { assertNever } from '@/utils';
@@ -62,6 +62,7 @@ import {
 	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
+import { SourceControlContextFactory } from './source-control-context.factory';
 import {
 	getCredentialExportPath,
 	getDataTableExportPath,
@@ -71,7 +72,6 @@ import {
 	mergeRemoteCrendetialDataIntoLocalCredentialData,
 	sanitizeCredentialData,
 } from './source-control-helper.ee';
-import { SourceControlContextFactory } from './source-control-context.factory';
 import { SourceControlScopedService } from './source-control-scoped.service';
 import type {
 	ExportableCredential,
@@ -90,41 +90,6 @@ import type {
 import { SourceControlContext } from './types/source-control-context';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 import { VariablesService } from '../../environments.ee/variables/variables.service.ee';
-
-/**
- * Pre-built indexes for O(1) project lookups instead of O(n) scans per resource.
- */
-class ProjectIndex {
-	private byTeamId = new Map<string, Project>();
-
-	private byOwnerEmail = new Map<string, Project>();
-
-	constructor(accessibleProjects: Project[]) {
-		for (const project of accessibleProjects) {
-			if (project.type === 'team') {
-				this.byTeamId.set(project.id, project);
-			}
-			if (project.type === 'personal') {
-				const ownerEmail = project.projectRelations?.find(
-					(r) => r.role.slug === PROJECT_OWNER_ROLE_SLUG,
-				)?.user?.email;
-				if (ownerEmail) {
-					this.byOwnerEmail.set(ownerEmail, project);
-				}
-			}
-		}
-	}
-
-	findByOwner(owner: RemoteResourceOwner): Project | undefined {
-		if (typeof owner === 'string') {
-			return this.byOwnerEmail.get(owner);
-		}
-		if (owner.type === 'personal') {
-			return this.byOwnerEmail.get(owner.personalEmail);
-		}
-		return this.byTeamId.get(owner.teamId);
-	}
-}
 
 const toStatusOwner = (project: Project | undefined): StatusResourceOwner | undefined => {
 	if (project?.type) {
@@ -189,9 +154,6 @@ export class SourceControlImportService {
 			absolute: true,
 		});
 
-		const accessibleProjects = context.authorizedProjects;
-		const projectIndex = new ProjectIndex(accessibleProjects);
-
 		const remoteWorkflowsRead = await Promise.all(
 			remoteWorkflowFiles.map(async (file) => await this.parseWorkflowFromFile(file)),
 		);
@@ -203,11 +165,13 @@ export class SourceControlImportService {
 				}
 				return (
 					context.hasAccessToAllProjects() ||
-					(remote.owner && projectIndex.findByOwner(remote.owner))
+					(remote.owner && context.findAuthorizedProjectByOwner(remote.owner))
 				);
 			})
 			.map((remote) => {
-				const project = remote.owner ? projectIndex.findByOwner(remote.owner) : undefined;
+				const project = remote.owner
+					? context.findAuthorizedProjectByOwner(remote.owner)
+					: undefined;
 				return {
 					id: remote.id,
 					versionId: remote.versionId ?? '',
@@ -328,9 +292,6 @@ export class SourceControlImportService {
 			absolute: true,
 		});
 
-		const accessibleProjects = context.authorizedProjects;
-		const projectIndex = new ProjectIndex(accessibleProjects);
-
 		const remoteCredentialFilesRead = await Promise.all(
 			remoteCredentialFiles.map(async (file) => {
 				this.logger.debug(`Parsing credential file ${file}`);
@@ -347,10 +308,14 @@ export class SourceControlImportService {
 					return false;
 				}
 				const owner = remote.ownedBy;
-				return !owner || context.hasAccessToAllProjects() || projectIndex.findByOwner(owner);
+				return (
+					!owner || context.hasAccessToAllProjects() || context.findAuthorizedProjectByOwner(owner)
+				);
 			})
 			.map((remote) => {
-				const project = remote.ownedBy ? projectIndex.findByOwner(remote.ownedBy) : null;
+				const project = remote.ownedBy
+					? context.findAuthorizedProjectByOwner(remote.ownedBy)
+					: null;
 				return {
 					...remote,
 					ownedBy: project
@@ -545,11 +510,8 @@ export class SourceControlImportService {
 			});
 
 			if (!context.hasAccessToAllProjects()) {
-				const accessibleProjects = context.authorizedProjects;
-				const accessibleProjectIds = new Set(accessibleProjects.map((p) => p.id));
-
 				mappedFolders.folders = mappedFolders.folders.filter((folder) =>
-					accessibleProjectIds.has(folder.homeProjectId),
+					context.canAccessProject(folder.homeProjectId),
 				);
 			}
 
@@ -652,11 +614,8 @@ export class SourceControlImportService {
 			return remoteProjects;
 		}
 
-		const accessibleProjects = context.authorizedProjects;
-		const projectIndex = new ProjectIndex(accessibleProjects);
-
 		return remoteProjects.filter((remoteProject) => {
-			return projectIndex.findByOwner(remoteProject.owner);
+			return context.findAuthorizedProjectByOwner(remoteProject.owner);
 		});
 	}
 
