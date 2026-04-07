@@ -84,7 +84,6 @@ export type {
 	AgentDbMessage,
 } from './types/sdk/message';
 export type { HandlerExecutor } from './types/sdk/handler-executor';
-export type { FromSchemaOptions, ToolResolver } from './sdk/from-schema';
 export type {
 	AgentSchema,
 	ToolSchema,
@@ -118,7 +117,7 @@ export type {
 	PostgresMemoryConfig,
 	PostgresConnectionConfig,
 } from './storage/postgres-memory';
-export type { MemoryFactory, FromSchemaOptions } from './sdk/from-schema';
+export type { MemoryFactory, FromSchemaOptions, ToolResolver } from './sdk/from-schema';
 
 export { Workspace } from './workspace';
 export { BaseFilesystem } from './workspace';
