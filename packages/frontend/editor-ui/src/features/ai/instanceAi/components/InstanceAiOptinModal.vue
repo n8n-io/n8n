@@ -5,7 +5,6 @@ import { N8nButton, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import MacOsIcon from '../assets/os-icons/macos-icon.svg';
@@ -28,21 +27,25 @@ const step = ref<'intro' | 'gateway'>('intro');
 const selectedOs = ref<'mac' | 'windows' | 'linux'>('mac');
 
 const featureItems = [
-	{ key: 'instanceAi.welcomeModal.feature.build', icon: 'workflow' },
-	{ key: 'instanceAi.welcomeModal.feature.debug', icon: 'flask-conical' },
-	{ key: 'instanceAi.welcomeModal.feature.ask', icon: 'circle-help' },
+	{ key: 'instanceAi.welcomeModal.feature.build' as const, icon: 'workflow' as const },
+	{ key: 'instanceAi.welcomeModal.feature.debug' as const, icon: 'flask-conical' as const },
+	{ key: 'instanceAi.welcomeModal.feature.ask' as const, icon: 'circle-help' as const },
 ];
 
 const osTabs = [
-	{ id: 'mac' as const, labelKey: 'instanceAi.welcomeModal.gateway.os.mac', icon: MacOsIcon },
+	{
+		id: 'mac' as const,
+		labelKey: 'instanceAi.welcomeModal.gateway.os.mac' as const,
+		icon: MacOsIcon,
+	},
 	{
 		id: 'windows' as const,
-		labelKey: 'instanceAi.welcomeModal.gateway.os.windows',
+		labelKey: 'instanceAi.welcomeModal.gateway.os.windows' as const,
 		icon: WindowsIcon,
 	},
 	{
 		id: 'linux' as const,
-		labelKey: 'instanceAi.welcomeModal.gateway.os.linux',
+		labelKey: 'instanceAi.welcomeModal.gateway.os.linux' as const,
 		icon: LinuxIcon,
 	},
 ];
@@ -120,6 +123,7 @@ onUnmounted(() => {
 });
 </script>
 
+<!-- eslint-disable vue/no-v-html -->
 <template>
 	<Modal
 		:name="props.modalName"
@@ -158,7 +162,7 @@ onUnmounted(() => {
 				</ul>
 
 				<div :class="$style.warningBox">
-					<N8nIcon icon="exclamation-triangle" :size="16" :class="$style.warningIcon" />
+					<N8nIcon icon="triangle-alert" :size="16" :class="$style.warningIcon" />
 					<N8nText
 						:class="$style.warningText"
 						size="small"

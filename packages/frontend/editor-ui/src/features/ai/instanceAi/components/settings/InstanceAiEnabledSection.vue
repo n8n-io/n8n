@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { N8nHeading, N8nText } from '@n8n/design-system';
+import { N8nText } from '@n8n/design-system';
 import { ElSwitch } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsField } from './useSettingsField';

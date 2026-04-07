@@ -377,7 +377,7 @@ export class InstanceAiSettingsService {
 
 	/** Whether Instance AI chat and main UI are enabled (settings always available when module loads). */
 	isInstanceAiEnabled(): boolean {
-		return this.config.instanceAiEnabled !== false;
+		return this.config.instanceAiEnabled;
 	}
 
 	/** Resolve just the model name (e.g. 'claude-sonnet-4-20250514') for proxy routing. */

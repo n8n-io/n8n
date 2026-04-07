@@ -81,6 +81,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			localGateway: prev?.localGateway ?? false,
 			localGatewayDisabled: prev?.localGatewayDisabled ?? false,
 			localGatewayFallbackDirectory: prev?.localGatewayFallbackDirectory ?? null,
+			proxyEnabled: prev?.proxyEnabled ?? false,
 			optinModalDismissed: adminRes.optinModalDismissed,
 		};
 		settingsStore.moduleSettings = {
