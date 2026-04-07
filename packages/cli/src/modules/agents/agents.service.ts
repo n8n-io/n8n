@@ -380,8 +380,13 @@ export class AgentsService {
 		}
 
 		// Self-schema tools: let the agent read and rewrite its own code, and discover node tools.
-		const { createGetMyCodeTool, createTypecheckTool, createSetCodeTool, createListToolsTool } =
-			await import('./integrations/self-schema-tools');
+		const {
+			createGetMyCodeTool,
+			createTypecheckTool,
+			createSetCodeTool,
+			createListToolsTool,
+			createRunNodeTool,
+		} = await import('./integrations/self-schema-tools');
 
 		agent.tool(
 			createGetMyCodeTool(async () => {
@@ -411,6 +416,21 @@ export class AgentsService {
 			createListToolsTool(async () => {
 				return await this.nodeToolRepository.listTools(credentialProvider);
 			}),
+		);
+
+		agent.tool(
+			createRunNodeTool(
+				async ({ nodeType, nodeTypeVersion, nodeParameters, credentials, inputData }) => {
+					return await this.ephemeralNodeExecutor.executeInline({
+						nodeType,
+						nodeTypeVersion,
+						nodeParameters: (nodeParameters ?? {}) as never,
+						credentialDetails: credentials,
+						inputData: [{ json: (inputData ?? {}) as never }],
+						projectId,
+					});
+				},
+			),
 		);
 
 		// Inject checkpoint storage

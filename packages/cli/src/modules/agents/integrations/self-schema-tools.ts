@@ -95,75 +95,53 @@ export function createListToolsTool(listTools: () => Promise<ToolDescriptor[]>) 
 		});
 }
 
-export interface AddToolParameter {
-	description: string;
-	type?: 'string' | 'number' | 'boolean';
-	required?: boolean;
-}
-
-export interface AddToolArgs {
+export interface RunNodeArgs {
 	nodeType: string;
 	nodeTypeVersion: number;
-	name: string;
-	description: string;
-	/** Node parameter values. Use n8n expressions like ={{ $json.url }} to map agent inputs. */
 	nodeParameters?: Record<string, unknown>;
-	/**
-	 * Input parameters the LLM will provide when calling this tool.
-	 * Each key becomes a $json.<key> expression usable in nodeParameters.
-	 */
-	parameters?: Record<string, AddToolParameter>;
+	credentials?: Record<string, { id: string; name: string }>;
+	inputData?: Record<string, unknown>;
 }
 
 /**
- * Tool that adds an n8n node tool to the agent without requiring the agent to
- * write ToolFromNode TypeScript manually. The server handles schema patching
- * and code generation.
+ * Tool that executes any n8n node directly for the current turn, without
+ * requiring it to be in the agent's schema first.
+ *
+ * After a successful call, the agent should also persist the tool by writing
+ * a ToolFromNode block and calling set_code — so that on the next rehydration
+ * the tool is part of the schema and run_node_tool is no longer needed for it.
  */
-export function createAddToolTool(addTool: (args: AddToolArgs) => Promise<void>) {
-	return new Tool('add_tool')
+export function createRunNodeTool(runNode: (args: RunNodeArgs) => Promise<unknown>) {
+	return new Tool('run_node_tool')
 		.description(
-			'Add an n8n node tool to this agent. ' +
-				'Call list_tools first to find available tools and their nodeTypeVersion. ' +
-				'This is the correct way to add node tools — do NOT write ToolFromNode code manually.',
+			'Execute an n8n node immediately for the current request, even before it is in your schema. ' +
+				'Use nodeType and nodeTypeVersion from list_tools. ' +
+				'nodeParameters holds static node config; use n8n expressions like ={{ $json.url }} to map inputData fields. ' +
+				'credentials maps slot names to { id, name } — copy from the credentials array in list_tools. ' +
+				'inputData is the runtime payload available as $json inside expressions. ' +
+				'After getting the result, present it to the user and ask: ' +
+				'"Would you like me to add this tool permanently so I can use it directly next time?" ' +
+				'If yes: call get_my_code, add a matching ToolFromNode block, typecheck, then set_code.',
 		)
 		.input(
 			z.object({
-				nodeType: z.string().describe('Node type identifier, e.g. "n8n-nodes-base.httpRequest"'),
+				nodeType: z.string().describe('Node type identifier from list_tools'),
 				nodeTypeVersion: z.number().describe('Node type version from list_tools'),
-				name: z.string().describe('Tool name the agent will use when calling it'),
-				description: z.string().describe('What this tool does'),
 				nodeParameters: z
 					.record(z.unknown())
 					.optional()
 					.describe(
-						'Node parameter values. Use n8n expressions like ={{ $json.url }} to map agent inputs to node fields. ' +
-							'Example for HTTP Request: { "url": "={{ $json.url }}", "method": "={{ $json.method || \\"GET\\" }}" }',
+						'Static node config. Use expressions like ={{ $json.url }} to reference inputData fields.',
 					),
-				parameters: z
-					.record(
-						z.object({
-							description: z.string().describe('What this parameter is for'),
-							type: z
-								.enum(['string', 'number', 'boolean'])
-								.optional()
-								.describe('Parameter type, defaults to string'),
-							required: z
-								.boolean()
-								.optional()
-								.describe('Whether the LLM must provide this parameter, defaults to true'),
-						}),
-					)
+				credentials: z
+					.record(z.object({ id: z.string(), name: z.string() }))
 					.optional()
-					.describe(
-						'Input parameters the LLM provides when calling this tool. ' +
-							'Each key is available as $json.<key> in nodeParameters expressions. ' +
-							'Example: { "url": { "description": "URL to fetch", "type": "string" } }',
-					),
+					.describe('Credential slot → { id, name }. Copy from list_tools credentials array.'),
+				inputData: z
+					.record(z.unknown())
+					.optional()
+					.describe('Runtime input, available as $json inside nodeParameters expressions.'),
 			}),
 		)
-		.handler(async (args: AddToolArgs) => {
-			await addTool(args);
-			return { ok: true };
-		});
+		.handler(async (args: RunNodeArgs) => runNode(args));
 }
