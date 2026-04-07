@@ -5,10 +5,12 @@ import { DateTime } from 'luxon';
 import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { apiKeyHasScope } from '../../shared/middlewares/global.middleware';
-
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InsightsService } from '@/modules/insights/insights.service';
 import type { InsightsRequest } from '@/public-api/types';
+
+import { apiKeyHasScope } from '../../shared/middlewares/global.middleware';
 
 const dateFilterValidationSchema = z
 	.object({
@@ -35,16 +37,12 @@ export = {
 		async (req: InsightsRequest.GetSummary, res: express.Response): Promise<express.Response> => {
 			const query = InsightsDateFilterDto.safeParse(req.query);
 			if (!query.success) {
-				return res
-					.status(400)
-					.json({ message: query.error.errors.map(({ message }) => message).join(' ') });
+				throw new BadRequestError(query.error.errors.map(({ message }) => message).join('; '));
 			}
 
 			const validation = dateFilterValidationSchema.safeParse(query.data);
 			if (!validation.success) {
-				return res
-					.status(400)
-					.json({ message: validation.error.errors.map(({ message }) => message).join(' ') });
+				throw new BadRequestError(validation.error.errors.map(({ message }) => message).join('; '));
 			}
 
 			const endDate = query.data.endDate ?? new Date();
@@ -54,7 +52,7 @@ export = {
 				Container.get(InsightsService).validateDateFiltersLicense({ startDate, endDate });
 			} catch (error) {
 				if (error instanceof UserError) {
-					return res.status(403).json({ message: error.message });
+					throw new ForbiddenError(error.message);
 				}
 
 				throw error;
