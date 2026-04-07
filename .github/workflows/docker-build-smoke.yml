@@ -20,6 +20,10 @@ on:
       - 'scripts/dockerize-n8n.mjs'
   workflow_dispatch:
 
+concurrency:
+  group: docker-smoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   docker-smoke-test:
     name: 'Docker Build (no cache)'
