@@ -10,6 +10,7 @@ import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { STORES } from '@n8n/stores';
 import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '../constants';
+import type { IWorkflowDb } from '@/Interface';
 
 vi.mock('@/app/composables/useToast', () => {
 	const showError = vi.fn();
@@ -83,7 +84,7 @@ describe('WorkflowDescriptionModal', () => {
 			id: 'test-workflow-id',
 			description: '',
 			versionId: '2',
-		});
+		} as IWorkflowDb);
 		workflowsStore.workflow = {
 			id: 'test-workflow-id',
 			name: 'Test Workflow',
@@ -169,7 +170,7 @@ describe('WorkflowDescriptionModal', () => {
 				id: 'test-workflow-id',
 				description: 'New description',
 				versionId: '2',
-			});
+			} as IWorkflowDb);
 
 			const { getByTestId } = renderModal({
 				props: {
@@ -205,7 +206,7 @@ describe('WorkflowDescriptionModal', () => {
 				id: 'test-workflow-id',
 				description: '',
 				versionId: '2',
-			});
+			} as IWorkflowDb);
 
 			const { getByTestId } = renderModal({
 				props: {
