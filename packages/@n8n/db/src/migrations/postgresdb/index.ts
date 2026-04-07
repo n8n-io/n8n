@@ -157,6 +157,7 @@ import { CreateCredentialDependencyTable1773000000000 } from '../common/17730000
 import { AddRestoreFieldsToWorkflowBuilderSession1774280963551 } from '../common/1774280963551-AddRestoreFieldsToWorkflowBuilderSession';
 import { CreateInstanceVersionHistoryTable1774854660000 } from '../common/1774854660000-CreateInstanceVersionHistoryTable';
 import { CreateInstanceAiTables1775000000000 } from '../common/1775000000000-CreateInstanceAiTables';
+import { CreateTokenExchangeJtiTable1775116241000 } from '../common/1775116241000-CreateTokenExchangeJtiTable';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -319,4 +320,5 @@ export const postgresMigrations: Migration[] = [
 	AddRestoreFieldsToWorkflowBuilderSession1774280963551,
 	CreateInstanceVersionHistoryTable1774854660000,
 	CreateInstanceAiTables1775000000000,
+	CreateTokenExchangeJtiTable1775116241000,
 ];
