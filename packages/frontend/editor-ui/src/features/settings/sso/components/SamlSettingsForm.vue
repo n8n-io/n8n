@@ -345,7 +345,7 @@ onMounted(async () => {
 				</div>
 			</div>
 			<div :class="$style.ipsBlock">
-				<div :class="$style.settingsItem" style="border-bottom: none">
+				<div :class="[$style.settingsItem, $style.settingsItemNoBorder]">
 					<div :class="$style.settingsItemLabel">
 						<label>{{ i18n.baseText('settings.sso.settings.ips.label') }}</label>
 					</div>
@@ -395,7 +395,7 @@ onMounted(async () => {
 
 		<!-- Card 3: SSO Toggle -->
 		<div :class="$style.card">
-			<div :class="$style.settingsItem" style="border-bottom: none">
+			<div :class="[$style.settingsItem, $style.settingsItemNoBorder]">
 				<div :class="$style.settingsItemLabel">
 					<label>Single sign-on (SSO)</label>
 					<small>Allow users to sign in through your identity provider</small>

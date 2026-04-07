@@ -69,6 +69,10 @@
 	}
 }
 
+.settingsItemNoBorder {
+	border-bottom: none;
+}
+
 .settingsItemLabel {
 	display: flex;
 	flex-direction: column;

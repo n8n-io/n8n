@@ -4380,6 +4380,8 @@
 	"settings.sso.settings.roleMappingRules.instanceRules.description": "Define rules to assign instance roles based on IdP claims. First matching rule wins.",
 	"settings.sso.settings.roleMappingRules.addRule": "Add rule",
 	"settings.sso.settings.roleMappingRules.expression.placeholder": "$claims.groups.includes('admins')",
+	"settings.sso.settings.authProtocol.label": "Authentication protocol",
+	"settings.sso.settings.authProtocol.description": "Choose your SSO protocol",
 	"settings.sso.settings.test": "Test connection",
 	"settings.sso.settings.test.error": "Error testing OIDC SSO configuration",
 	"settings.sso.settings.save": "Save settings",

@@ -118,8 +118,8 @@ onMounted(() => {
 				<template #protocol-select>
 					<div data-test-id="sso-auth-protocol-select" :class="shared.settingsItem">
 						<div :class="shared.settingsItemLabel">
-							<label>Authentication protocol</label>
-							<small>Choose your SSO protocol</small>
+							<label>{{ i18n.baseText('settings.sso.settings.authProtocol.label') }}</label>
+							<small>{{ i18n.baseText('settings.sso.settings.authProtocol.description') }}</small>
 						</div>
 						<div :class="shared.settingsItemControl">
 							<N8nSelect
@@ -150,8 +150,8 @@ onMounted(() => {
 				<template #protocol-select>
 					<div data-test-id="sso-auth-protocol-select" :class="shared.settingsItem">
 						<div :class="shared.settingsItemLabel">
-							<label>Authentication protocol</label>
-							<small>Choose your SSO protocol</small>
+							<label>{{ i18n.baseText('settings.sso.settings.authProtocol.label') }}</label>
+							<small>{{ i18n.baseText('settings.sso.settings.authProtocol.description') }}</small>
 						</div>
 						<div :class="shared.settingsItemControl">
 							<N8nSelect
