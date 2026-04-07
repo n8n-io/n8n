@@ -43,7 +43,10 @@ export function validatePinDataSize(workflow: IWorkflowBase): void {
 		Buffer.byteLength(JSON.stringify(workflowWithoutPinData), 'utf8') + pinDataSize;
 	const limit = MAX_WORKFLOW_SIZE - MAX_EXPECTED_REQUEST_SIZE;
 	if (workflowSize > limit) {
-		throw new BadRequestError('Workflow with pinned data exceeds the maximum allowed size');
+		const limitMB = Math.floor(limit / (1024 * 1024));
+		throw new BadRequestError(
+			`Workflow with pinned data exceeds the maximum allowed size of ${limitMB} MB`,
+		);
 	}
 }
 

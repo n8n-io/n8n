@@ -2,9 +2,8 @@ import { MAX_PINNED_DATA_SIZE, MAX_WORKFLOW_SIZE, MAX_EXPECTED_REQUEST_SIZE } fr
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { CredentialsEntity, Project, Variables } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
-import type { ITaskData, IWorkflowBase, IWorkflowBase, IWorkflowSettings } from 'n8n-workflow';
+import type { ITaskData, IWorkflowBase, IWorkflowSettings } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { OwnershipService } from '@/services/ownership.service';
 import {
@@ -418,7 +417,9 @@ describe('validatePinDataSize', () => {
 				...baseWorkflow,
 				pinData: { myNode: [{ json: { data: largeValue } }] },
 			}),
-		).toThrow(BadRequestError);
+		).toThrow(
+			`Pinned data exceeds the maximum allowed size of ${MAX_PINNED_DATA_SIZE / (1024 * 1024)} MB`,
+		);
 	});
 
 	it('should throw when workflow + pinData exceeds total size limit', () => {
@@ -434,6 +435,8 @@ describe('validatePinDataSize', () => {
 				staticData: { filler: largeNodes },
 				pinData: { myNode: [{ json: { data: largeValue } }] },
 			}),
-		).toThrow(BadRequestError);
+		).toThrow(
+			`Workflow with pinned data exceeds the maximum allowed size of ${Math.floor(limit / (1024 * 1024))} MB`,
+		);
 	});
 });
