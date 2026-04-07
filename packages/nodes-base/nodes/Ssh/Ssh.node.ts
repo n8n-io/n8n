@@ -55,7 +55,7 @@ export class Ssh implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'SSH',
 		name: 'ssh',
-		icon: 'fa:terminal',
+		icon: 'node:ssh',
 		iconColor: 'black',
 		group: ['input'],
 		version: 1,

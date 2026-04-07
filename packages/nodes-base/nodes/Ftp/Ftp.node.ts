@@ -125,7 +125,7 @@ export class Ftp implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'FTP',
 		name: 'ftp',
-		icon: 'fa:server',
+		icon: 'node:ftp',
 		iconColor: 'dark-blue',
 		group: ['input'],
 		version: 1,

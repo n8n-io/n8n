@@ -765,7 +765,7 @@ export class EditImage implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Edit Image',
 		name: 'editImage',
-		icon: 'fa:image',
+		icon: 'node:edit-image',
 		iconColor: 'purple',
 		group: ['transform'],
 		version: 1,

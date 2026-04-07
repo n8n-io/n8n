@@ -13,7 +13,7 @@ export class LocalFileTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Local File Trigger',
 		name: 'localFileTrigger',
-		icon: 'fa:folder-open',
+		icon: 'node:local-file-trigger',
 		iconColor: 'black',
 		group: ['trigger'],
 		version: 1,

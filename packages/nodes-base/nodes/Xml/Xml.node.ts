@@ -11,7 +11,7 @@ export class Xml implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'XML',
 		name: 'xml',
-		icon: 'fa:file-code',
+		icon: 'node:xml',
 		iconColor: 'purple',
 		group: ['transform'],
 		version: 1,

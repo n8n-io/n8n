@@ -12,7 +12,7 @@ export class ErrorTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Error Trigger',
 		name: 'errorTrigger',
-		icon: 'fa:bug',
+		icon: 'node:error-trigger',
 		iconColor: 'blue',
 		group: ['trigger'],
 		version: 1,

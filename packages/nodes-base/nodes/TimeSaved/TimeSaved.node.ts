@@ -10,7 +10,8 @@ export class TimeSaved implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Track Time Saved',
 		name: 'timeSaved',
-		icon: 'fa:timer',
+		icon: 'node:track-time-saved',
+		iconColor: 'black',
 		group: ['organization'],
 		version: 1,
 		description:

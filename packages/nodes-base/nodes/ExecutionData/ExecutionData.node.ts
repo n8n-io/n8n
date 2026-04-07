@@ -14,7 +14,7 @@ export class ExecutionData implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Execution Data',
 		name: 'executionData',
-		icon: 'fa:tasks',
+		icon: 'node:execution-data',
 		group: ['input'],
 		iconColor: 'light-green',
 		version: [1, 1.1],

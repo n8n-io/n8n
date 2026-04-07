@@ -12,7 +12,7 @@ export class SseTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'SSE Trigger',
 		name: 'sseTrigger',
-		icon: 'fa:cloud-download-alt',
+		icon: 'node:sse-trigger',
 		iconColor: 'dark-blue',
 		group: ['trigger'],
 		version: 1,
