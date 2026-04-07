@@ -1,6 +1,6 @@
 import type { BuiltTool } from '@n8n/agents';
 import { Tool } from '@n8n/agents';
-import type { IDataObject, INodeParameters } from 'n8n-workflow';
+import type { IDataObject, INodeCredentialsDetails, INodeParameters } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { EphemeralNodeExecutor } from '@/node-execution';
@@ -35,7 +35,7 @@ export function resolveNodeTool(
 		.description(toolSchema.description ?? `Execute the ${metadata.nodeType} node`)
 		.input(inputSchema)
 		.handler(async (input: Record<string, unknown>) => {
-			const credentialDetails: Record<string, { id: string; name: string }> = {};
+			const credentialDetails: Record<string, INodeCredentialsDetails> = {};
 			for (const [slot, ref] of Object.entries(metadata.credentials ?? {})) {
 				if (ref.id) {
 					credentialDetails[slot] = { id: ref.id, name: ref.name };

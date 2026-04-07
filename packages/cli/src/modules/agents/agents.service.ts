@@ -22,7 +22,7 @@ import { v4 as uuid } from 'uuid';
 import { Agent } from './entities/agent.entity';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { AgentRepository } from './repositories/agent.repository';
-import { NodeToolRepository } from './tool-repository';
+import { NodeToolRegistry } from './node-tool-registry';
 import type { WorkflowToolDescriptor } from './types';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -117,7 +117,7 @@ export class AgentsService {
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
 		private readonly secureRuntime: AgentSecureRuntime,
 		private readonly ephemeralNodeExecutor: EphemeralNodeExecutor,
-		private readonly nodeToolRepository: NodeToolRepository,
+		private readonly nodeNodeToolRegistry: NodeToolRegistry,
 		private readonly n8nMemory: N8nMemory,
 		private readonly agentPublishedVersionRepository: AgentPublishedVersionRepository,
 	) {}
@@ -379,14 +379,13 @@ export class AgentsService {
 			});
 		}
 
-		// Self-schema tools: let the agent read and rewrite its own code, and discover node tools.
-		const {
-			createGetMyCodeTool,
-			createTypecheckTool,
-			createSetCodeTool,
-			createListToolsTool,
-			createRunNodeTool,
-		} = await import('./integrations/self-schema-tools');
+		// Self-management tools: let the agent read/rewrite its own code and discover/run node tools.
+		const { createGetMyCodeTool, createTypecheckTool, createSetCodeTool } = await import(
+			'./integrations/agent-code-tools'
+		);
+		const { createListToolsTool, createRunNodeTool } = await import(
+			'./integrations/node-execution-tools'
+		);
 
 		agent.tool(
 			createGetMyCodeTool(async () => {
@@ -414,7 +413,7 @@ export class AgentsService {
 
 		agent.tool(
 			createListToolsTool(async () => {
-				return await this.nodeToolRepository.listTools(credentialProvider);
+				return await this.nodeNodeToolRegistry.listTools(credentialProvider);
 			}),
 		);
 
