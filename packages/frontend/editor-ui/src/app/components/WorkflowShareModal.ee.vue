@@ -79,9 +79,7 @@ const workflowScopes = computed(
 );
 const workflowSharedWithProjects = computed(
 	() =>
-		workflowDocumentStore.value?.sharedWithProjects ??
-		workflowListEntry.value?.sharedWithProjects ??
-		workflowsStore.workflow.sharedWithProjects,
+		workflowDocumentStore.value?.sharedWithProjects ?? workflowListEntry.value?.sharedWithProjects,
 );
 const loading = ref(true);
 const isDirty = ref(false);
