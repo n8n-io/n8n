@@ -58,7 +58,7 @@ const containsTrigger = computed((): boolean => {
 
 const wfHasAnyChanges = computed(() => {
 	return (
-		workflowsStore.workflow.versionId !== workflowDocumentStore.value?.activeVersion?.versionId
+		workflowDocumentStore.value?.versionId !== workflowDocumentStore.value?.activeVersion?.versionId
 	);
 });
 
@@ -97,18 +97,18 @@ function onModalOpened() {
 }
 
 onMounted(() => {
-	const versionData = workflowsStore.versionData;
+	const currentVersionData = workflowDocumentStore.value?.versionData;
 
 	if (!versionName.value) {
-		if (versionData?.name) {
-			versionName.value = versionData.name;
+		if (currentVersionData?.name) {
+			versionName.value = currentVersionData.name;
 		} else {
-			versionName.value = generateVersionLabelFromId(workflowsStore.workflow.versionId);
+			versionName.value = generateVersionLabelFromId(workflowDocumentStore.value?.versionId ?? '');
 		}
 	}
 
-	if (!description.value && versionData?.description) {
-		description.value = versionData.description;
+	if (!description.value && currentVersionData?.description) {
+		description.value = currentVersionData.description;
 	}
 
 	modalBus.on('opened', onModalOpened);
@@ -194,7 +194,7 @@ async function handlePublish() {
 	// Activate the workflow
 	const { success, errorHandled } = await workflowActivate.publishWorkflow(
 		workflowsStore.workflow.id,
-		workflowsStore.workflow.versionId,
+		workflowDocumentStore.value?.versionId ?? '',
 		{
 			name: versionName.value,
 			description: description.value,
@@ -202,8 +202,8 @@ async function handlePublish() {
 	);
 
 	if (success) {
-		workflowsStore.setWorkflowVersionData({
-			versionId: workflowsStore.workflow.versionId,
+		workflowDocumentStore.value?.setVersionData({
+			versionId: workflowDocumentStore.value?.versionId ?? '',
 			name: versionName.value,
 			description: description.value,
 		});
