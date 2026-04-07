@@ -18,7 +18,6 @@ export class SplitInBatchesV3 implements INodeType {
 		description: 'Split data into batches and iterate over each batch',
 		defaults: {
 			name: 'Loop Over Items',
-			color: '#007755',
 		},
 		inputs: [NodeConnectionTypes.Main],
 

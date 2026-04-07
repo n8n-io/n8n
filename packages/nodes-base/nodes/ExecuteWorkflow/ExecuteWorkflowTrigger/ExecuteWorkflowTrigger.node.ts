@@ -34,7 +34,6 @@ export class ExecuteWorkflowTrigger implements INodeType {
 		maxNodes: 1,
 		defaults: {
 			name: 'When Executed by Another Workflow',
-			color: '#ff6d5a',
 		},
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],

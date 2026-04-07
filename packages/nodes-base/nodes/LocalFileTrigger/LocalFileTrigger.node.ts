@@ -22,7 +22,6 @@ export class LocalFileTrigger implements INodeType {
 		eventTriggerDescription: '',
 		defaults: {
 			name: 'Local File Trigger',
-			color: '#404040',
 		},
 		triggerPanel: {
 			header: '',

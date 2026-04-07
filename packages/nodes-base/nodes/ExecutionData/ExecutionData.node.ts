@@ -21,7 +21,6 @@ export class ExecutionData implements INodeType {
 		description: 'Add execution data for search',
 		defaults: {
 			name: 'Execution Data',
-			color: '#29A568',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],

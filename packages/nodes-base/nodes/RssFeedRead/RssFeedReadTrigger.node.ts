@@ -26,7 +26,6 @@ export class RssFeedReadTrigger implements INodeType {
 		subtitle: '={{$parameter["event"]}}',
 		defaults: {
 			name: 'RSS Feed Trigger',
-			color: '#b02020',
 		},
 		polling: true,
 		inputs: [],

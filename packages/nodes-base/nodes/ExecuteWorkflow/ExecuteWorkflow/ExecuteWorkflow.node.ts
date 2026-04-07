@@ -25,7 +25,6 @@ export class ExecuteWorkflow implements INodeType {
 		description: 'Execute another workflow',
 		defaults: {
 			name: 'Execute Workflow',
-			color: '#ff6d5a',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],

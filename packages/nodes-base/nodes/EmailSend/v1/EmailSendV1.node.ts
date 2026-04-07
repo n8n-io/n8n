@@ -21,7 +21,6 @@ const versionDescription: INodeTypeDescription = {
 	description: 'Sends an Email',
 	defaults: {
 		name: 'Send Email',
-		color: '#00bb88',
 	},
 	inputs: [NodeConnectionTypes.Main],
 	outputs: [NodeConnectionTypes.Main],

@@ -26,7 +26,6 @@ export const versionDescription: INodeTypeDescription = {
 	description: 'Sends an email using SMTP protocol',
 	defaults: {
 		name: 'Send Email',
-		color: '#00bb88',
 	},
 	inputs: [NodeConnectionTypes.Main],
 	outputs: [NodeConnectionTypes.Main],

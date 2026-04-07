@@ -18,7 +18,6 @@ export class TimeSaved implements INodeType {
 			'Dynamically track time saved based on the workflow’s execution path and the number of items processed',
 		defaults: {
 			name: 'Time Saved',
-			color: '#1E90FF',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],

@@ -53,7 +53,6 @@ export class ExecuteCommand implements INodeType {
 		description: 'Executes a command on the host',
 		defaults: {
 			name: 'Execute Command',
-			color: '#886644',
 		},
 		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],

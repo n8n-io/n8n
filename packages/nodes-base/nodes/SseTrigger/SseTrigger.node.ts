@@ -21,7 +21,6 @@ export class SseTrigger implements INodeType {
 		activationMessage: 'You can now make calls to your SSE URL to trigger executions.',
 		defaults: {
 			name: 'SSE Trigger',
-			color: '#225577',
 		},
 		triggerPanel: {
 			header: '',

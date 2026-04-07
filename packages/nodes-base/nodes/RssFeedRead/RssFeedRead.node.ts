@@ -33,7 +33,6 @@ export class RssFeedRead implements INodeType {
 		description: 'Reads data from an RSS Feed',
 		defaults: {
 			name: 'RSS Read',
-			color: '#b02020',
 		},
 		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],

@@ -277,7 +277,6 @@ export class Wait extends Webhook {
 		description: 'Wait before continue with execution',
 		defaults: {
 			name: 'Wait',
-			color: '#804050',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],

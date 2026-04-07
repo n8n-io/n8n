@@ -22,7 +22,6 @@ export class ErrorTrigger implements INodeType {
 		maxNodes: 1,
 		defaults: {
 			name: 'Error Trigger',
-			color: '#0000FF',
 		},
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],

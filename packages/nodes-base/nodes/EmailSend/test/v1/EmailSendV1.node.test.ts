@@ -24,7 +24,6 @@ describe('Test EmailSendV1', () => {
 				version: 1,
 				defaults: {
 					name: 'Send Email',
-					color: '#00bb88',
 				},
 			},
 		} as any);

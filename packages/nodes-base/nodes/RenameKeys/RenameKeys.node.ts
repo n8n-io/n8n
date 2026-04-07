@@ -25,7 +25,6 @@ export class RenameKeys implements INodeType {
 		description: 'Update item field names',
 		defaults: {
 			name: 'Rename Keys',
-			color: '#772244',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],

@@ -19,7 +19,6 @@ export class Xml implements INodeType {
 		description: 'Convert data from and to XML',
 		defaults: {
 			name: 'XML',
-			color: '#333377',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],

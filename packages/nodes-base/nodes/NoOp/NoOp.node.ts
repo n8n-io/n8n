@@ -17,7 +17,6 @@ export class NoOp implements INodeType {
 		description: 'No Operation',
 		defaults: {
 			name: 'No Operation, do nothing',
-			color: '#b0b0b0',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],

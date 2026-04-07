@@ -55,7 +55,6 @@ export class Compression implements INodeType {
 		description: 'Compress and decompress files',
 		defaults: {
 			name: 'Compression',
-			color: '#408000',
 		},
 		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],

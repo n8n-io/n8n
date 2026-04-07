@@ -31,7 +31,6 @@ export class ScheduleTrigger implements INodeType {
 			'Your schedule trigger will now trigger executions on the schedule you have defined.',
 		defaults: {
 			name: 'Schedule Trigger',
-			color: '#31C49F',
 		},
 
 		inputs: [],

@@ -772,7 +772,6 @@ export class EditImage implements INodeType {
 		description: 'Edits an image like blur, resize or adding border and text',
 		defaults: {
 			name: 'Edit Image',
-			color: '#553399',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
