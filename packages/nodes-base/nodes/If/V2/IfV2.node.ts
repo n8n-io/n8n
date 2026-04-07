@@ -33,8 +33,8 @@ export class IfV2 implements INodeType {
 				message: `parameters.conditions must always contain these three sibling keys:
 - "combinator": "and" or "or", default to "and"
 - "conditions": [ {a list of condition objects } ]
-- "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 1 }
-e.g.: { "conditions": { "combinator": "and", "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 1 }, "conditions": [{ "leftValue": "={{ $json.field }}", "rightValue": "value", "operator": { "type": "string", "operation": "equals" } }] } }`,
+- "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 1 }
+e.g.: { "conditions": { "combinator": "and", "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 }, "conditions": [{ "leftValue": "={{ $json.field }}", "rightValue": "value", "operator": { "type": "string", "operation": "equals" } }] } }`,
 			},
 			properties: [
 				{
