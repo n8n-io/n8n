@@ -88,12 +88,12 @@ export interface CredentialSummary {
 	id: string;
 	name: string;
 	type: string;
-	createdAt: string;
 	updatedAt: string;
 }
 
 export interface CredentialDetail extends CredentialSummary {
 	// NOTE: never include decrypted credential data
+	createdAt: string;
 	nodesWithAccess?: Array<{ nodeType: string }>;
 }
 

@@ -824,7 +824,6 @@ export class InstanceAiAdapterService {
 						id: c.id,
 						name: c.name,
 						type: c.type,
-						createdAt: c.createdAt.toISOString(),
 						updatedAt: c.updatedAt.toISOString(),
 					}),
 				);
