@@ -48,4 +48,24 @@ describe('NodeToolRepository — real node registry', () => {
 			tools.slice(0, 5).map((t) => t.name),
 		);
 	});
+
+	it('getTool returns a BuiltTool for a real usableAsTool node', async () => {
+		const tool = await repo.getTool('n8n-nodes-base.slack');
+
+		expect(tool).toBeDefined();
+		expect(tool!.name).toBe('n8n-nodes-base.slack');
+		expect(typeof tool!.description).toBe('string');
+		expect(tool!.description.length).toBeGreaterThan(0);
+		expect(typeof tool!.handler).toBe('function');
+		expect(tool!.inputSchema).toBeDefined();
+
+		console.log('Slack tool description:', tool!.description);
+		console.log('Slack input schema:', JSON.stringify(tool!.inputSchema, null, 2));
+	});
+
+	it('getTool returns undefined for an unknown node', async () => {
+		const tool = await repo.getTool('n8n-nodes-base.doesNotExist');
+
+		expect(tool).toBeUndefined();
+	});
 });

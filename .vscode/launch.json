@@ -8,7 +8,7 @@
 			"type": "node",
 			"request": "launch",
 			"name": "Jest: tool-repository",
-			"program": "${workspaceFolder}/node_modules/.bin/jest",
+			"program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
 			"args": [
 				"--config", "jest.config.agents.js",
 				"--testPathPattern", "tool-repository",
