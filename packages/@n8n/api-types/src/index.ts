@@ -247,6 +247,11 @@ export {
 } from './schemas/community-package.schema';
 
 export {
+	publicApiCreatedCredentialSchema,
+	type PublicApiCreatedCredential,
+} from './schemas/credential-created.schema';
+
+export {
 	instanceAiEventTypeSchema,
 	instanceAiRunStatusSchema,
 	instanceAiConfirmationSeveritySchema,

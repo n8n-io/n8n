@@ -1,7 +1,7 @@
 import type { CreateCredentialDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { Project, User, ICredentialsDb, ScopesField } from '@n8n/db';
 import {
+	Project,
 	CredentialsEntity,
 	SharedCredentials,
 	CredentialsRepository,
@@ -9,6 +9,7 @@ import {
 	SharedCredentialsRepository,
 	UserRepository,
 } from '@n8n/db';
+import type { User, ICredentialsDb, ScopesField } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -746,7 +747,10 @@ export class CredentialsService {
 			);
 
 			if (project === null) {
-				throw new BadRequestError(
+				if (!(await transactionManager.existsBy(Project, { id: projectId }))) {
+					throw new NotFoundError('Project not found');
+				}
+				throw new ForbiddenError(
 					"You don't have the permissions to save the credential in this project.",
 				);
 			}
