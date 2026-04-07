@@ -2,6 +2,7 @@ import { LicenseState } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { Service } from '@n8n/di';
+import { UserRepository } from '@n8n/db';
 import { InstanceSettings } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
@@ -42,6 +43,7 @@ export class AiGatewayService {
 		private readonly licenseState: LicenseState,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly ownershipService: OwnershipService,
+		private readonly userRepository: UserRepository,
 	) {}
 
 	/**
@@ -289,12 +291,21 @@ export class AiGatewayService {
 
 	private async fetchAndCacheToken(userId: string, key: string): Promise<string> {
 		const baseUrl = this.requireBaseUrl();
-		const licenseCert = await this.license.loadCertStr();
+		const [licenseCert, user] = await Promise.all([
+			this.license.loadCertStr(),
+			this.userRepository.findOneBy({ id: userId }),
+		]);
 
 		const response = await fetch(`${baseUrl}/v1/gateway/credentials`, {
 			method: 'POST',
 			headers: this.buildGatewayCredentialsHeaders(userId),
-			body: JSON.stringify({ licenseCert }),
+			body: JSON.stringify({
+				licenseCert,
+				...(user?.email && { userEmail: user.email }),
+				...(user && {
+					userName: [user.firstName, user.lastName].filter(Boolean).join(' ') || undefined,
+				}),
+			}),
 		});
 
 		if (!response.ok) {
