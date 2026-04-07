@@ -85,7 +85,7 @@ describe('createDeleteWorkflowTool', () => {
 				name: 'Quarterly Cleanup',
 			});
 
-			await tool.execute!({ workflowId: 'wf-123' }, {
+			await tool.execute!({ workflowId: 'wf-123', workflowName: 'Quarterly Cleanup' }, {
 				agent: { suspend, resumeData: undefined },
 			} as never);
 
