@@ -9,10 +9,12 @@ import type express from 'express';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
-import { addNodeIds, replaceInvalidCredentials } from '@/workflow-helpers';
+import { NodeTypes } from '@/node-types';
+import { addNodeIds, replaceInvalidCredentials, resolveNodeWebhookIds } from '@/workflow-helpers';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -36,13 +38,16 @@ export = {
 			workflow.active = false;
 			workflow.versionId = uuid();
 
-			await replaceInvalidCredentials(workflow);
-
-			addNodeIds(workflow);
-
 			const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 				req.user.id,
 			);
+
+			await replaceInvalidCredentials(workflow, project.id);
+
+			addNodeIds(workflow);
+			resolveNodeWebhookIds(workflow, Container.get(NodeTypes));
+
+			addNodeIds(workflow);
 			const createdWorkflow = await createWorkflow(workflow, req.user, project, 'workflow:owner');
 
 			await Container.get(WorkflowHistoryService).saveVersion(
@@ -442,6 +447,47 @@ export = {
 			}
 
 			return res.json(tags);
+		},
+	],
+	archiveWorkflow: [
+		apiKeyHasScope('workflow:delete'),
+		projectScope('workflow:delete', 'workflow'),
+		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
+			const { id } = req.params;
+			try {
+				const workflow = await Container.get(WorkflowService).archiveForPublicApi(req.user, id);
+				if (!workflow) {
+					throw new NotFoundError('Workflow not found');
+				}
+				return res.json(workflow);
+			} catch (error) {
+				if (error instanceof NotFoundError) {
+					return res.status(404).json({ message: 'Workflow Not Found' });
+				}
+				throw error;
+			}
+		},
+	],
+	unarchiveWorkflow: [
+		apiKeyHasScope('workflow:delete'),
+		projectScope('workflow:delete', 'workflow'),
+		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
+			const { id } = req.params;
+			try {
+				const workflow = await Container.get(WorkflowService).unarchiveForPublicApi(req.user, id);
+				if (!workflow) {
+					throw new NotFoundError('Workflow not found');
+				}
+				return res.json(workflow);
+			} catch (error) {
+				if (error instanceof NotFoundError) {
+					return res.status(404).json({ message: 'Workflow Not Found' });
+				}
+				if (error instanceof BadRequestError) {
+					return res.status(error.httpStatusCode).json({ message: error.message });
+				}
+				throw error;
+			}
 		},
 	],
 };

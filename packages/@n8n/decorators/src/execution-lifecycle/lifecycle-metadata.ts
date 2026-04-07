@@ -20,6 +20,7 @@ export type NodeExecuteBeforeContext = {
 	workflow: IWorkflowBase;
 	nodeName: string;
 	taskData: ITaskStartedData;
+	executionId: string;
 };
 
 export type NodeExecuteAfterContext = {
@@ -28,6 +29,7 @@ export type NodeExecuteAfterContext = {
 	nodeName: string;
 	taskData: ITaskData;
 	executionData: IRunExecutionData;
+	executionId: string;
 };
 
 export type WorkflowExecuteBeforeContext = {
@@ -44,6 +46,7 @@ export type WorkflowExecuteAfterContext = {
 	runData: IRun;
 	newStaticData: IDataObject;
 	executionId: string;
+	retryOf?: string;
 };
 
 export type WorkflowExecuteResumeContext = {

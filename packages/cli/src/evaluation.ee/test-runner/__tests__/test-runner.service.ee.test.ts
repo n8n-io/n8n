@@ -890,21 +890,24 @@ describe('TestRunnerService', () => {
 						triggerToStartFrom: {
 							name: triggerNodeName,
 						},
-						executionData: createRunExecutionData({
-							executionData: null,
-							resultData: {
-								pinData: {
-									[triggerNodeName]: [testCase],
+						executionData: {
+							...createRunExecutionData({
+								executionData: null,
+								resultData: {
+									pinData: {
+										[triggerNodeName]: [testCase],
+									},
+									runData: {},
 								},
-								runData: {},
-							},
-							manualData: {
-								userId: metadata.userId,
-								triggerToStartFrom: {
-									name: triggerNodeName,
+								manualData: {
+									userId: metadata.userId,
+									triggerToStartFrom: {
+										name: triggerNodeName,
+									},
 								},
-							},
-						}),
+							}),
+							resumeToken: expect.any(String),
+						},
 					}),
 				);
 			});

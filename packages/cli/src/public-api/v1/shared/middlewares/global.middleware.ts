@@ -4,7 +4,6 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope, Scope } from '@n8n/permissions';
 import type express from 'express';
-import type { NextFunction } from 'express';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -87,9 +86,6 @@ export const validCursor = (
 	return next();
 };
 
-const emptyMiddleware = (_req: express.Request, _res: express.Response, next: NextFunction) =>
-	next();
-
 export type ScopeTaggedMiddleware = ((...args: unknown[]) => unknown) & {
 	__apiKeyScope: ApiKeyScope;
 };
@@ -106,24 +102,15 @@ function tagMiddleware(
 }
 
 export const apiKeyHasScope = (apiKeyScope: ApiKeyScope) => {
-	const middleware = Container.get(License).isApiKeyScopesEnabled()
-		? Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(apiKeyScope)
-		: emptyMiddleware;
+	const middleware = Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(apiKeyScope);
 	return tagMiddleware(middleware, apiKeyScope);
 };
 
 export const apiKeyHasScopeWithGlobalScopeFallback = (
 	config: { scope: ApiKeyScope & Scope } | { apiKeyScope: ApiKeyScope; globalScope: Scope },
 ) => {
-	const apiKeyScope = 'scope' in config ? config.scope : config.apiKeyScope;
-	if (!Container.get(License).isApiKeyScopesEnabled()) {
-		const fallbackScope = 'scope' in config ? config.scope : config.globalScope;
-		return tagMiddleware(globalScope(fallbackScope), apiKeyScope);
-	}
-	return tagMiddleware(
-		Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(apiKeyScope),
-		apiKeyScope,
-	);
+	const scope = 'scope' in config ? config.scope : config.apiKeyScope;
+	return tagMiddleware(Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(scope), scope);
 };
 
 export const validLicenseWithUserQuota = (

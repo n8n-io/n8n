@@ -78,10 +78,16 @@ jobs:
           PUBLISH_BRANCH: ${{ github.event.pull_request.base.ref }}
         run: pnpm --filter n8n publish --publish-branch "$PUBLISH_BRANCH" --access public --tag rc --no-git-checks
 
-      - name: Publish other packages to NPM with latest tag
+      - name: Publish other packages to NPM
         env:
           PUBLISH_BRANCH: ${{ github.event.pull_request.base.ref }}
-        run: pnpm publish -r --filter '!n8n' --publish-branch "$PUBLISH_BRANCH" --access public --no-git-checks
+          PUBLISH_TAG: ${{ needs.determine-version-info.outputs.track == 'stable' && 'latest' || needs.determine-version-info.outputs.track }}
+        run: |
+          # Prefix version-like track names (e.g. "1", "v1") to avoid npm rejecting them as semver ranges
+          if [[ "$PUBLISH_TAG" =~ ^v?[0-9] ]]; then
+            PUBLISH_TAG="release-${PUBLISH_TAG}"
+          fi
+          pnpm publish -r --filter '!n8n' --publish-branch "$PUBLISH_BRANCH" --access public --tag "$PUBLISH_TAG" --no-git-checks
 
       - name: Cleanup rc tag
         run: npm dist-tag rm n8n rc

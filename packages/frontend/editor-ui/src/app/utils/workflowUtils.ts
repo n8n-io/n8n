@@ -1,6 +1,7 @@
 import type { IWorkflowDb, INodeUi } from '@/Interface';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
 import type { IConnections } from 'n8n-workflow';
+import { SPLIT_IN_BATCHES_NODE_TYPE } from '@/app/constants';
 
 /**
  * Converts workflow tags from ITag[] (API response format) to string[] (store format)
@@ -66,6 +67,7 @@ export function sortNodesByExecutionOrder<T extends ExecutionOrderItem>(
 	nodes: T[],
 	connectionsBySourceNode: IConnections,
 	connectionsByDestinationNode: IConnections = {},
+	nodeTypes: Record<string, string> = {},
 ): T[] {
 	const triggers = nodes
 		.filter((item) => item.isTrigger)
@@ -118,9 +120,23 @@ export function sortNodesByExecutionOrder<T extends ExecutionOrderItem>(
 		// main chain out of order when sub-nodes are shared across multiple agents.
 		const sourceConns = connectionsBySourceNode[name];
 		if (sourceConns?.main) {
-			for (const outputs of sourceConns.main) {
-				for (const conn of outputs ?? []) {
-					dfs(conn.node);
+			const mainOutputs = sourceConns.main;
+
+			// Loop Over Items (SplitInBatches) V3: output 0 = "done", output 1 = "loop".
+			// The execution engine runs the loop body first (repeatedly) and only sends
+			// data to "done" after all iterations complete. Process output 1 before
+			// output 0 so the sorted order matches execution order.
+			if (nodeTypes[name] === SPLIT_IN_BATCHES_NODE_TYPE && mainOutputs.length > 1) {
+				for (const idx of [1, 0]) {
+					for (const conn of mainOutputs[idx] ?? []) {
+						dfs(conn.node);
+					}
+				}
+			} else {
+				for (const outputs of mainOutputs) {
+					for (const conn of outputs ?? []) {
+						dfs(conn.node);
+					}
 				}
 			}
 		}

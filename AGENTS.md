@@ -16,7 +16,8 @@ frontend, and extensible node-based workflow engine.
 - When starting to work on a new ticket – create a new branch from fresh
   master with the name specified in Linear ticket
 - When creating a new branch for a ticket in Linear - use the branch name
-  suggested by linear
+  suggested by Linear, **unless it is a security fix** (see Security Fix
+  Hygiene below)
 - Use mermaid diagrams in MD files when you need to visualise something
 
 ## Essential Commands
@@ -189,6 +190,29 @@ handling), apply these checks:
 - **Security layers on top, not in competition:** Great UX and strong security
   are not trade-offs. They're both required. If a design forces a choice
   between them, the design needs more work.
+
+### Security Fix Hygiene
+
+**This is a public repository.** When working on security fixes, never expose
+the attack vector or vulnerability type in any public-facing artifact. Attackers
+monitor open-source repos for signals like branch names, commit messages, PR
+titles, test descriptions, and Linear URLs.
+
+**Rules for security fixes:**
+
+- **Branch names:** Do NOT use the Linear-suggested branch name if it reveals
+  the vulnerability. Rename to describe the fix neutrally
+  (e.g. `node-1234-improve-request-handling`, not
+  `node-1234-fix-ddos-vulnerability`).
+- **Commit messages:** Describe what the code now does, not the threat it
+  prevents (e.g. `fix: add payload size validation`, not
+  `fix: prevent denial of service`).
+- **Test descriptions:** Use neutral, functional language
+  (e.g. `'should sanitize query parameters'`, not
+  `'should prevent SQL injection'`).
+- **Code comments:** Do not describe the attack scenario in comments.
+- **Linear references:** Never include the URL slug
+  (e.g. `.../N8N-1234/fix-ssrf-vulnerability`).
 
 ## Github Guidelines
 - When creating a PR, use the conventions in
