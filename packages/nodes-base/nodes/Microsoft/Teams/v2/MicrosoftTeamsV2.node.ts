@@ -7,8 +7,8 @@ import type {
 
 import { router } from './actions/router';
 import { versionDescription } from './actions/versionDescription';
+import { webhook } from './actions/webhook';
 import { listSearch } from './methods';
-import { sendAndWaitWebhook } from '../../../../utils/sendAndWait/utils';
 
 export class MicrosoftTeamsV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -23,7 +23,7 @@ export class MicrosoftTeamsV2 implements INodeType {
 
 	methods = { listSearch };
 
-	webhook = sendAndWaitWebhook;
+	webhook = webhook;
 
 	async execute(this: IExecuteFunctions) {
 		return await router.call(this);
