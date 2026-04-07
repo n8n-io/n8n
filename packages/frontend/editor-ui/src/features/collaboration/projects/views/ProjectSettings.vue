@@ -116,14 +116,19 @@ const firstLicensedRole = computed(
 	() => rolesStore.processedProjectRoles.find((role) => role.licensed)?.slug,
 );
 
-const projectMembersActions = computed<Array<UserAction<ProjectMemberData>>>(() => [
-	{
-		label: i18n.baseText('projects.settings.table.row.removeUser'),
-		value: 'remove',
-		guard: (member) =>
-			member.id !== usersStore.currentUser?.id && member.role !== 'project:personalOwner',
-	},
-]);
+const projectMembersActions = computed<Array<UserAction<ProjectMemberData>>>(() => {
+	if (isProjectRoleProvisioningEnabled.value || isExpressionMappingEnabled.value) {
+		return [];
+	}
+	return [
+		{
+			label: i18n.baseText('projects.settings.table.row.removeUser'),
+			value: 'remove',
+			guard: (member) =>
+				member.id !== usersStore.currentUser?.id && member.role !== 'project:personalOwner',
+		},
+	];
+});
 
 const onAddMember = async (userId: string) => {
 	if (!projectsStore.currentProject) return;
