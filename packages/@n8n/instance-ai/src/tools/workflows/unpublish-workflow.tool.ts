@@ -39,6 +39,10 @@ export function createUnpublishWorkflowTool(context: InstanceAiContext) {
 				| undefined;
 			const suspend = ctx?.agent?.suspend;
 
+			if (context.permissions?.publishWorkflow === 'blocked') {
+				return { success: false, denied: true, reason: 'Action blocked by admin' };
+			}
+
 			const needsApproval = context.permissions?.publishWorkflow !== 'always_allow';
 
 			if (needsApproval && (resumeData === undefined || resumeData === null)) {
