@@ -50,14 +50,39 @@ function getCacheKey(executionId: string, nodeName: string): string {
 }
 
 /** Remove cache entries older than CLIENT_CACHE_TTL_MS as a safety net against leaks. */
+let lastEvictionAt = 0;
+const EVICTION_INTERVAL_MS = 30_000;
+
 function evictStaleClients(): void {
 	const now = Date.now();
+	if (now - lastEvictionAt < EVICTION_INTERVAL_MS) return;
+	lastEvictionAt = now;
+
 	for (const [key, entry] of activeClients) {
 		if (now - entry.createdAt > CLIENT_CACHE_TTL_MS) {
 			void entry.client.close().catch(() => {});
 			activeClients.delete(key);
 		}
 	}
+}
+
+/** Connect to MCP server and return client + tools, or throw on failure. */
+async function connectOrThrow(
+	ctx: IExecuteFunctions,
+): Promise<{ client: Client; mcpTools: McpTool[] }> {
+	const node = ctx.getNode();
+	const config = getNodeConfig(ctx, 0);
+	const result = await connectAndGetTools(ctx, config);
+
+	if (result.error) {
+		throw new NodeOperationError(node, result.error.error, { itemIndex: 0 });
+	}
+
+	if (!result.mcpTools?.length) {
+		throw new NodeOperationError(node, 'MCP Server returned no tools', { itemIndex: 0 });
+	}
+
+	return { client: result.client, mcpTools: result.mcpTools };
 }
 
 /**
@@ -445,23 +470,10 @@ export class McpClientTool implements INodeType {
 				client = cached.client;
 				mcpTools = cached.mcpTools;
 			} else {
-				const config = getNodeConfig(this, 0);
-				const result = await connectAndGetTools(this, config);
-
-				if (result.error) {
-					throw new NodeOperationError(node, result.error.error, { itemIndex: 0 });
-				}
-
-				if (!result.mcpTools?.length) {
-					throw new NodeOperationError(node, 'MCP Server returned no tools', { itemIndex: 0 });
-				}
-
-				client = result.client;
-				mcpTools = result.mcpTools;
+				({ client, mcpTools } = await connectOrThrow(this));
 
 				activeClients.set(cacheKey, { client, mcpTools, createdAt: Date.now() });
 
-				// Clean up when the execution ends
 				const cancelSignal = this.getExecutionCancelSignal();
 				if (cancelSignal) {
 					cancelSignal.addEventListener(
@@ -478,25 +490,12 @@ export class McpClientTool implements INodeType {
 				}
 			}
 		} else {
-			// v1.2 and below: fresh connection per execute call (existing behavior)
-			const config = getNodeConfig(this, 0);
-			const result = await connectAndGetTools(this, config);
-
-			if (result.error) {
-				throw new NodeOperationError(node, result.error.error, { itemIndex: 0 });
-			}
-
-			if (!result.mcpTools?.length) {
-				throw new NodeOperationError(node, 'MCP Server returned no tools', { itemIndex: 0 });
-			}
-
-			client = result.client;
-			mcpTools = result.mcpTools;
+			({ client, mcpTools } = await connectOrThrow(this));
 		}
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const item = items[itemIndex];
-			const config = getNodeConfig(this, itemIndex);
+			const timeout = this.getNodeParameter('options.timeout', itemIndex, 60000) as number;
 
 			for (const tool of mcpTools) {
 				if (!item.json.tool || typeof item.json.tool !== 'string') {
@@ -514,16 +513,11 @@ export class McpClientTool implements INodeType {
 							? pick(toolArguments, Object.keys(schema.properties ?? {}))
 							: toolArguments;
 
-					const params: {
-						name: string;
-						arguments: IDataObject;
-					} = {
-						name: tool.name,
-						arguments: sanitizedToolArguments,
-					};
-					const result = await client.callTool(params, CallToolResultSchema, {
-						timeout: config.timeout,
-					});
+					const result = await client.callTool(
+						{ name: tool.name, arguments: sanitizedToolArguments },
+						CallToolResultSchema,
+						{ timeout },
+					);
 					returnData.push({
 						json: {
 							response: result.content as IDataObject,
