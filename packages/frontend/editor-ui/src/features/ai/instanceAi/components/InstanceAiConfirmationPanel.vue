@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { N8nButton } from '@n8n/design-system';
+import { N8nButton, N8nCard, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 import { useInstanceAiStore, type PendingConfirmationItem } from '../instanceAi.store';
@@ -216,15 +216,13 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 					:key="'text-' + chunk.item.toolCall.confirmation!.requestId"
 					:class="$style.confirmation"
 				>
-					<div :class="$style.textInputContainer">
-						<div :class="$style.confirmMessage">
-							{{ chunk.item.toolCall.confirmation!.message }}
-						</div>
+					<N8nCard :class="$style.textCard">
+						<N8nText tag="div">{{ chunk.item.toolCall.confirmation!.message }}</N8nText>
 						<div :class="$style.textInputRow">
-							<input
+							<N8nInput
 								v-model="textInputValues[chunk.item.toolCall.confirmation!.requestId]"
-								:class="$style.textInput"
 								type="text"
+								size="small"
 								:placeholder="i18n.baseText('instanceAi.askUser.placeholder')"
 								@keydown.enter="handleTextSubmit(chunk.item.toolCall.confirmation!.requestId)"
 							/>
@@ -247,7 +245,7 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 								{{ i18n.baseText('instanceAi.askUser.submit') }}
 							</N8nButton>
 						</div>
-					</div>
+					</N8nCard>
 				</div>
 				<!-- Resource-access decision (gateway permission mode) -->
 				<GatewayResourceDecision
@@ -274,20 +272,21 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 			>
 				<!-- Group header -->
 				<template v-if="isAllGenericApproval(chunk.items) && chunk.items.length > 1">
-					<div style="margin-bottom: 10px">
-						<span :class="$style.headerLabel">
+					<div :class="$style.generic">
+						<N8nText>
 							{{
 								i18n.baseText('instanceAi.confirmation.agentContext', {
 									interpolate: { agent: getRoleLabel(chunk.role) },
 								})
 							}}
-						</span>
-						<button
-							:class="[$style.btn, $style.approveBtn, $style.batchBtn]"
+						</N8nText>
+						<N8nButton
+							data-test-id="instance-ai-panel-confirm-approve-all"
+							size="small"
 							@click="handleApproveAll(chunk.items)"
 						>
 							{{ i18n.baseText('instanceAi.confirmation.approveAll') }}
-						</button>
+						</N8nButton>
 					</div>
 				</template>
 
@@ -308,7 +307,7 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 						/>
 
 						<!-- Generic approval -->
-						<div v-else :class="$style.confirmBody">
+						<div v-else>
 							<div :class="$style.approvalRow">
 								<div :class="$style.approvalRowBody">
 									<span :class="$style.toolLabel">
@@ -350,8 +349,6 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 
 <style lang="scss" module>
 .confirmation {
-	margin-top: var(--spacing--xs);
-	margin-bottom: var(--spacing--sm);
 	max-width: 90%;
 	width: 90%;
 }
@@ -359,27 +356,6 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 .root {
 	border: var(--border);
 	border-radius: var(--radius--lg);
-}
-
-.header {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--2xs) var(--spacing--xs);
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
-	background: var(--color--warning--tint-2);
-}
-
-.headerIcon {
-	color: var(--color--warning);
-	flex-shrink: 0;
-}
-
-.headerLabel {
-	// font-weight: var(--font-weight--bold);
-	flex: 1;
-	min-width: 0;
 }
 
 .items {
@@ -395,12 +371,6 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 
 .itemBordered {
 	// Only applies when there are multiple items — visual grouping
-}
-
-.confirmMessage {
-	font-size: var(--font-size--2xs);
-	color: var(--color--text);
-	margin-bottom: var(--spacing--2xs);
 }
 
 .approvalRow {
@@ -420,11 +390,6 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 	color: var(--color--text);
 	margin-bottom: var(--spacing--xs);
 	font-weight: var(--font-weight--medium);
-}
-
-.approvalMessage {
-	color: var(--color--text--tint-1);
-	word-break: break-word;
 }
 
 .approvalRowBody {
@@ -454,87 +419,23 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 	border: var(--border);
 }
 
-.destructiveIcon {
-	color: var(--color--danger);
-	flex-shrink: 0;
-}
-
-.warningIcon {
-	color: var(--color--warning);
-	flex-shrink: 0;
-}
-
-.infoIcon {
-	color: var(--color--primary);
-	flex-shrink: 0;
-}
-
 .textInputRow {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--2xs);
 }
 
-.textInputContainer {
-	padding: var(--spacing--xs) var(--spacing--sm);
-	border: var(--border);
-	border-radius: var(--radius--lg);
+.generic {
+	padding: var(--spacing--sm);
+	border-bottom: var(--border);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
 }
 
-.textInput {
-	flex: 1;
-	min-width: 0;
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border: var(--border);
-	border-radius: var(--radius);
-	font-size: var(--font-size--2xs);
-	font-family: var(--font-family);
-	background: var(--color--background);
-	color: var(--color--text);
-	outline: none;
-
-	&:focus {
-		border-color: var(--color--primary);
-	}
-
-	&::placeholder {
-		color: var(--color--text--tint-1);
-	}
-}
-
-.btn {
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border-radius: var(--radius);
-	font-size: var(--font-size--2xs);
-	font-family: var(--font-family);
-	cursor: pointer;
-	border: var(--border);
-	background: var(--color--background);
-	color: var(--color--text);
-	white-space: nowrap;
-
-	&:hover {
-		background: var(--color--background--shade-1);
-	}
-
-	&:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-}
-
-.approveBtn {
-	background: var(--color--primary);
-	color: var(--button--color--text--primary);
-	border-color: var(--color--primary);
-
-	&:hover:not(:disabled) {
-		background: var(--color--primary--shade-1);
-	}
-}
-
-.batchBtn {
-	margin-left: auto;
+.textCard {
+	background-color: transparent;
 }
 </style>
 
