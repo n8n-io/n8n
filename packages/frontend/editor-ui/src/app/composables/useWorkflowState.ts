@@ -54,7 +54,6 @@ export function useWorkflowState() {
 	const uiStore = useUIStore();
 	const rootStore = useRootStore();
 	const nodeTypesStore = useNodeTypesStore();
-	const favoritesStore = useFavoritesStore();
 
 	////
 	// Workflow editing state
