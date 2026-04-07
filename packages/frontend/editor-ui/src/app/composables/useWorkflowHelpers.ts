@@ -890,7 +890,6 @@ export function useWorkflowHelpers() {
 
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 
-
 		if (workflow.activeVersion) {
 			workflowsStore.setWorkflowActive(workflowId, workflow.activeVersion, isCurrentWorkflow);
 			workflowDocumentStore.setActiveState({
