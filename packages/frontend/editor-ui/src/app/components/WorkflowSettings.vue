@@ -129,6 +129,8 @@ const workflowSettings = ref<IWorkflowSettings>({} as IWorkflowSettings);
 const workflows = ref<IWorkflowShortResponse[]>([]);
 const credentialResolverSelectRef = ref<InstanceType<typeof N8nSelect> | null>(null);
 const originalBinaryMode = ref<undefined | WorkflowSettingsBinaryMode>(undefined);
+const originalSettings = ref<IWorkflowSettings | null>(null);
+const originalTimeoutHMS = ref<ITimeoutHMS>({ hours: 0, minutes: 0, seconds: 0 });
 
 const {
 	resolvers: credentialResolvers,
@@ -141,6 +143,14 @@ const {
 const executionTimeout = ref(0);
 const maxExecutionTimeout = ref(0);
 const timeoutHMS = ref<ITimeoutHMS>({ hours: 0, minutes: 0, seconds: 0 });
+
+const isDirty = computed(() => {
+	if (!originalSettings.value) return false;
+	return (
+		JSON.stringify(workflowSettings.value) !== JSON.stringify(originalSettings.value) ||
+		JSON.stringify(timeoutHMS.value) !== JSON.stringify(originalTimeoutHMS.value)
+	);
+});
 
 const isSelectedResolverEditable = computed(() => {
 	const resolverId = workflowSettings.value.credentialResolverId;
@@ -802,6 +812,8 @@ onMounted(async () => {
 	}
 
 	timeoutHMS.value = convertToHMS(workflowSettingsData.executionTimeout);
+	originalSettings.value = { ...workflowSettings.value };
+	originalTimeoutHMS.value = { ...timeoutHMS.value };
 	isLoading.value = false;
 
 	void externalHooks.run('workflowSettings.dialogVisibleChanged', {
@@ -1469,6 +1481,8 @@ onBeforeUnmount(() => {
 				<N8nButton
 					:disabled="readOnlyEnv || !workflowPermissions.update"
 					:label="i18n.baseText('workflowSettings.save')"
+					:variant="isDirty ? 'solid' : 'outline'"
+					:class="$style['save-button']"
 					size="large"
 					float="right"
 					@click="saveSettings"
@@ -1493,6 +1507,13 @@ onBeforeUnmount(() => {
 	:global(.el-switch) {
 		padding: var(--spacing--md) 0;
 	}
+}
+
+.save-button {
+	transition:
+		background-color 150ms ease,
+		box-shadow 150ms ease,
+		color 150ms ease;
 }
 
 .dataRedactionHint {
