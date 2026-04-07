@@ -8,7 +8,7 @@ import type { INode, IWebhookFunctions } from 'n8n-workflow';
 import { ChatTrigger } from '../ChatTrigger.node';
 
 jest.mock('../GenericFunctions', () => ({
-	validateAuth: jest.fn().mockResolvedValue(undefined),
+	validateAuth: jest.fn().mockResolvedValue(undefined as never),
 }));
 
 describe('ChatTrigger Node', () => {
@@ -43,7 +43,7 @@ describe('ChatTrigger Node', () => {
 		mockContext.getBodyData.mockReturnValue({ message: 'Hello' });
 		mockContext.helpers = {
 			returnJsonArray: jest.fn().mockReturnValue([]),
-		} as IWebhookFunctions['helpers'];
+		} as unknown as IWebhookFunctions['helpers'];
 		mockContext.getNodeParameter.mockImplementation(
 			(
 				paramName: string,
