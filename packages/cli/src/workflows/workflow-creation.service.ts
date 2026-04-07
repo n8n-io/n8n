@@ -66,8 +66,6 @@ export class WorkflowCreationService {
 
 		await validateEntity(newWorkflow);
 
-		await this.externalHooks.run('workflow.create', [newWorkflow]);
-
 		if (tagIds?.length && !this.globalConfig.tags.disabled) {
 			newWorkflow.tags = await this.tagRepository.findMany(tagIds);
 		}
@@ -104,6 +102,9 @@ export class WorkflowCreationService {
 				);
 			}
 		}
+
+		// Run external hook after all validation has passed, right before persisting
+		await this.externalHooks.run('workflow.create', [newWorkflow]);
 
 		const { manager: dbManager } = this.projectRepository;
 
