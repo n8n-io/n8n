@@ -40,7 +40,6 @@ import ResourceMapper from './ResourceMapper/ResourceMapper.vue';
 
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	getParameterTypeOption,
 	type ParameterOptionsOverrides,
@@ -103,7 +102,6 @@ const emit = defineEmits<{
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
-const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const message = useMessage();
