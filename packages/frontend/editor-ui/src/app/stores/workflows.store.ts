@@ -142,8 +142,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const chatPartialExecutionDestinationNode = ref<string | null>(null);
 	const selectedTriggerNodeName = ref<string>();
 
-	const workflowName = computed(() => workflow.value.name);
-
 	const workflowId = computed(() => workflow.value.id);
 
 	// A workflow is new if it hasn't been saved to the backend yet
@@ -578,7 +576,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		return new Workflow({
 			id,
-			name: workflow.value.name,
+			name: workflowDocumentStore?.name ?? '',
 			nodes: copyData ? deepCopy(nodes) : nodes,
 			connections: copyData ? deepCopy(connections) : connections,
 			active: false,
@@ -1724,7 +1722,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		isInDebugMode,
 		chatMessages,
 		chatPartialExecutionDestinationNode,
-		workflowName,
 		workflowId,
 		isNewWorkflow,
 		isWorkflowSaved,

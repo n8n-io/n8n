@@ -610,7 +610,7 @@ export function useWorkflowHelpers() {
 		const connections = deepCopy(workflowConnections);
 
 		const data: WorkflowData = {
-			name: workflowsStore.workflowName,
+			name: workflowDocumentStore.name,
 			nodes,
 			pinData: workflowDocumentStore.getPinDataSnapshot(),
 			connections,
@@ -888,15 +888,18 @@ export function useWorkflowHelpers() {
 			uiStore.markStateClean();
 		}
 
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+
+
 		if (workflow.activeVersion) {
 			workflowsStore.setWorkflowActive(workflowId, workflow.activeVersion, isCurrentWorkflow);
-			docStore.setActiveState({
+			workflowDocumentStore.setActiveState({
 				activeVersionId: workflow.activeVersion.versionId,
 				activeVersion: workflow.activeVersion,
 			});
 		} else {
 			workflowsStore.setWorkflowInactive(workflowId);
-			docStore.setActiveState({
+			workflowDocumentStore.setActiveState({
 				activeVersionId: null,
 				activeVersion: null,
 			});
@@ -1033,12 +1036,17 @@ export function useWorkflowHelpers() {
 		initializedWorkflowDocumentStore.onSettingsChange(({ payload }) => {
 			workflowsStore.workflowObject.setSettings(payload.settings);
 		});
+		initializedWorkflowDocumentStore.onNameChange(({ payload }) => {
+			workflowsStore.workflowObject.name = payload.name;
+			workflowsListStore.updateWorkflowInCache(workflowData.id, { name: payload.name });
+		});
 
 		// Sync document store versionId → workflow ref (for IWorkflowDb compatibility)
 		initializedWorkflowDocumentStore.onVersionDataChange(({ payload }) => {
 			workflowsStore.workflow.versionId = payload.versionId;
 		});
 
+		initializedWorkflowDocumentStore.setName(workflowData.name);
 		initializedWorkflowDocumentStore.setTags(tagIds);
 		initializedWorkflowDocumentStore.setActiveState({
 			activeVersionId: workflowData.activeVersionId,
