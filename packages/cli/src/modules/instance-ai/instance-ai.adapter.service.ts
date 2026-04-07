@@ -767,12 +767,13 @@ export class InstanceAiAdapterService {
 					console.debug('[Telemetry] Builder executed workflow', {
 						threadId,
 						pinnedNodeCount: Object.keys(runData.pinData ?? {}).length,
+						execType: runData.executionMode,
 					});
 					telemetry.track('Builder executed workflow', {
 						thread_id: threadId,
 						executed_by: 'ai',
 						pinned_node_count: Object.keys(runData.pinData ?? {}).length,
-						exec_type: 'manual',
+						exec_type: runData.executionMode,
 					});
 				}
 

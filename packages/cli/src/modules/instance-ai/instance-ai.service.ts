@@ -1674,6 +1674,21 @@ export class InstanceAiService {
 						tracing,
 					});
 				}
+
+				// Track intermediate message (text streamed before suspension)
+				const intermediateText = await (result.text ?? Promise.resolve(''));
+				if (intermediateText) {
+					this.logger.debug('[Telemetry] Builder sent message (intermediate)', {
+						threadId,
+						message: intermediateText,
+					});
+					this.telemetry.track('Builder sent message', {
+						thread_id: threadId,
+						message: intermediateText,
+						is_intermediate: true,
+					});
+				}
+
 				if (result.confirmationEvent) {
 					this.trackConfirmationRequest(threadId, result.confirmationEvent);
 					this.eventBus.publish(threadId, result.confirmationEvent);
@@ -1709,11 +1724,11 @@ export class InstanceAiService {
 				await this.countCreditsIfFirst(user, threadId, runId);
 				this.logger.debug('[Telemetry] Builder sent message', {
 					threadId,
-					message: outputText.slice(0, 100),
+					message: outputText,
 				});
 				this.telemetry.track('Builder sent message', {
 					thread_id: threadId,
-					message: outputText.slice(0, 1000),
+					message: outputText,
 				});
 				this.logger.debug('[Telemetry] Builder satisfied user intent', { threadId });
 				this.telemetry.track('Builder satisfied user intent', {
@@ -1922,6 +1937,21 @@ export class InstanceAiService {
 						tracing: opts.tracing,
 					});
 				}
+
+				// Track intermediate message (text streamed before suspension)
+				const intermediateText = await (result.text ?? Promise.resolve(''));
+				if (intermediateText) {
+					this.logger.debug('[Telemetry] Builder sent message (intermediate, resumed)', {
+						threadId: opts.threadId,
+						message: intermediateText,
+					});
+					this.telemetry.track('Builder sent message', {
+						thread_id: opts.threadId,
+						message: intermediateText,
+						is_intermediate: true,
+					});
+				}
+
 				if (result.confirmationEvent) {
 					this.trackConfirmationRequest(opts.threadId, result.confirmationEvent);
 					this.eventBus.publish(opts.threadId, result.confirmationEvent);
@@ -1946,11 +1976,11 @@ export class InstanceAiService {
 			if (result.status === 'completed') {
 				this.logger.debug('[Telemetry] Builder sent message (resumed)', {
 					threadId: opts.threadId,
-					message: outputText.slice(0, 100),
+					message: outputText,
 				});
 				this.telemetry.track('Builder sent message', {
 					thread_id: opts.threadId,
-					message: outputText.slice(0, 1000),
+					message: outputText,
 				});
 				this.logger.debug('[Telemetry] Builder satisfied user intent (resumed)', {
 					threadId: opts.threadId,

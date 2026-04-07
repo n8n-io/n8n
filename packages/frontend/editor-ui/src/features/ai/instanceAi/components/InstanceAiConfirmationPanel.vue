@@ -28,32 +28,23 @@ function getConfirmationType(conf: InstanceAiConfirmation): string {
 	return 'approval';
 }
 
-function trackInputStep(
+function trackInputCompleted(
 	conf: InstanceAiConfirmation,
 	providedInputs: Array<{ label: string; options: string[]; option_chosen: string }>,
 	skippedInputs: Array<{ label: string; options: string[] }>,
+	extra?: Record<string, unknown>,
 ): void {
-	const props = {
+	const eventProps = {
 		thread_id: store.currentThreadId,
 		input_thread_id: conf.inputThreadId ?? '',
 		instance_id: rootStore.instanceId,
 		type: getConfirmationType(conf),
 		provided_inputs: providedInputs,
 		skipped_inputs: skippedInputs,
+		...extra,
 	};
-	console.debug('[Telemetry] User completed input step', props);
-	telemetry.track('User completed input step', props);
-}
-
-function trackInputFinished(conf: InstanceAiConfirmation): void {
-	const props = {
-		thread_id: store.currentThreadId,
-		input_thread_id: conf.inputThreadId ?? '',
-		instance_id: rootStore.instanceId,
-		type: getConfirmationType(conf),
-	};
-	console.debug('[Telemetry] User finished providing input', props);
-	telemetry.track('User finished providing input', props);
+	console.debug('[Telemetry] User finished providing input', eventProps);
+	telemetry.track('User finished providing input', eventProps);
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -129,7 +120,7 @@ const textInputValues = ref<Record<string, string>>({});
 function handleConfirm(item: PendingConfirmationItem, approved: boolean) {
 	const conf = item.toolCall.confirmation;
 	if (store.resolvedConfirmationIds.has(conf.requestId)) return;
-	trackInputStep(
+	trackInputCompleted(
 		conf,
 		[
 			{
@@ -148,7 +139,7 @@ function handleApproveAll(items: PendingConfirmationItem[]) {
 	for (const item of items) {
 		const conf = item.toolCall.confirmation;
 		if (store.resolvedConfirmationIds.has(conf.requestId)) continue;
-		trackInputStep(
+		trackInputCompleted(
 			conf,
 			[{ label: conf.message, options: ['approve', 'deny'], option_chosen: 'approve' }],
 			[],
@@ -161,31 +152,33 @@ function handleApproveAll(items: PendingConfirmationItem[]) {
 function handleTextSubmit(conf: InstanceAiConfirmation) {
 	const value = (textInputValues.value[conf.requestId] ?? '').trim();
 	if (!value) return;
-	trackInputStep(conf, [{ label: conf.message, options: [], option_chosen: value }], []);
+	trackInputCompleted(conf, [{ label: conf.message, options: [], option_chosen: value }], []);
 	store.resolveConfirmation(conf.requestId, 'approved');
 	void store.confirmAction(conf.requestId, true, undefined, undefined, undefined, value);
 }
 
 function handleTextSkip(conf: InstanceAiConfirmation) {
-	trackInputStep(conf, [], [{ label: conf.message, options: [] }]);
+	trackInputCompleted(conf, [], [{ label: conf.message, options: [] }]);
 	store.resolveConfirmation(conf.requestId, 'deferred');
 	void store.confirmAction(conf.requestId, false);
 }
 
 function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAnswer[]) {
+	const provided: Array<{ label: string; options: string[]; option_chosen: string }> = [];
+	const skipped: Array<{ label: string; options: string[] }> = [];
 	for (const answer of answers) {
-		const chosen = answer.customText ?? answer.selectedOptions.join(', ');
 		if (answer.skipped) {
-			trackInputStep(conf, [], [{ label: answer.questionId, options: answer.selectedOptions }]);
+			skipped.push({ label: answer.questionId, options: answer.selectedOptions });
 		} else {
-			trackInputStep(
-				conf,
-				[{ label: answer.questionId, options: answer.selectedOptions, option_chosen: chosen }],
-				[],
-			);
+			const chosen = answer.customText ?? answer.selectedOptions.join(', ');
+			provided.push({
+				label: answer.questionId,
+				options: answer.selectedOptions,
+				option_chosen: chosen,
+			});
 		}
 	}
-	trackInputFinished(conf);
+	trackInputCompleted(conf, provided, skipped);
 	store.resolveConfirmation(conf.requestId, 'approved');
 	void store.confirmAction(
 		conf.requestId,
@@ -200,21 +193,27 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 	);
 }
 
-function handlePlanApprove(conf: InstanceAiConfirmation) {
-	trackInputStep(
+function handlePlanApprove(conf: InstanceAiConfirmation, numTasks: number) {
+	trackInputCompleted(
 		conf,
 		[{ label: 'plan', options: ['approve', 'request-changes'], option_chosen: 'approve' }],
 		[],
+		{ num_tasks: numTasks },
 	);
 	store.resolveConfirmation(conf.requestId, 'approved');
 	void store.confirmAction(conf.requestId, true);
 }
 
-function handlePlanRequestChanges(conf: InstanceAiConfirmation, feedback: string) {
-	trackInputStep(
+function handlePlanRequestChanges(
+	conf: InstanceAiConfirmation,
+	feedback: string,
+	numTasks: number,
+) {
+	trackInputCompleted(
 		conf,
 		[{ label: 'plan', options: ['approve', 'request-changes'], option_chosen: 'request-changes' }],
 		[],
+		{ num_tasks: numTasks, feedback },
 	);
 	store.resolveConfirmation(conf.requestId, 'denied');
 	void store.confirmAction(conf.requestId, false, undefined, undefined, undefined, feedback);
@@ -283,9 +282,19 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 					:class="$style.confirmation"
 					:planned-tasks="(chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []"
 					:message="chunk.item.toolCall.confirmation.message"
-					@approve="handlePlanApprove(chunk.item.toolCall.confirmation)"
+					@approve="
+						handlePlanApprove(
+							chunk.item.toolCall.confirmation,
+							((chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length,
+						)
+					"
 					@request-changes="
-						(feedback) => handlePlanRequestChanges(chunk.item.toolCall.confirmation, feedback)
+						(feedback) =>
+							handlePlanRequestChanges(
+								chunk.item.toolCall.confirmation,
+								feedback,
+								((chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length,
+							)
 					"
 				/>
 

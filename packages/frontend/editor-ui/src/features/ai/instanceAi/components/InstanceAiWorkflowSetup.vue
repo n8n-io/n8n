@@ -470,31 +470,11 @@ function wrappedGoToPrev() {
 watch(
 	() => currentCard.value && isCardComplete(currentCard.value),
 	(complete, prevComplete) => {
-		// Only auto-advance on a false->true transition (credential was just selected)
-		// Skip if user just navigated to a card that was already complete
+		// Auto-advance only when not manually navigating
 		if (!complete || prevComplete || userNavigated.value) {
 			userNavigated.value = false;
 			return;
 		}
-
-		// Track per-step completion as the user clicks through the wizard
-		const card = currentCard.value;
-		if (card) {
-			const tc = store.findToolCallByRequestId(props.requestId);
-			const stepProps = {
-				thread_id: store.currentThreadId,
-				input_thread_id: tc?.confirmation?.inputThreadId ?? '',
-				instance_id: useRootStore().instanceId,
-				type: 'setup',
-				provided_inputs: [
-					{ label: card.nodes[0]?.node.name ?? card.id, options: [], option_chosen: 'configured' },
-				],
-				skipped_inputs: [],
-			};
-			console.debug('[Telemetry] User completed input step (setup watcher)', stepProps);
-			telemetry.track('User completed input step', stepProps);
-		}
-
 		const nextIncomplete = cards.value.findIndex(
 			(c, idx) => idx > currentStepIndex.value && !isCardComplete(c),
 		);
@@ -909,31 +889,28 @@ async function handleApply() {
 	const nodeCredentials = buildNodeCredentials();
 	const nodeParameters = buildNodeParameters();
 
-	// Track any incomplete cards as skipped, then mark the flow as finished
 	const tc = store.findToolCallByRequestId(props.requestId);
 	const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
+	const provided: Array<{ label: string; options: string[]; option_chosen: string }> = [];
+	const skipped: Array<{ label: string; options: string[] }> = [];
 	for (const card of cards.value) {
-		if (!isCardComplete(card)) {
-			const skipProps = {
-				thread_id: store.currentThreadId,
-				input_thread_id: inputThreadId,
-				instance_id: useRootStore().instanceId,
-				type: 'setup',
-				provided_inputs: [],
-				skipped_inputs: [{ label: card.nodes[0]?.node.name ?? card.id, options: [] }],
-			};
-			console.debug('[Telemetry] User completed input step (setup skipped on apply)', skipProps);
-			telemetry.track('User completed input step', skipProps);
+		const name = card.nodes[0]?.node.name ?? card.id;
+		if (isCardComplete(card)) {
+			provided.push({ label: name, options: [], option_chosen: 'configured' });
+		} else {
+			skipped.push({ label: name, options: [] });
 		}
 	}
-	const finishProps = {
+	const eventProps = {
 		thread_id: store.currentThreadId,
 		input_thread_id: inputThreadId,
 		instance_id: useRootStore().instanceId,
 		type: 'setup',
+		provided_inputs: provided,
+		skipped_inputs: skipped,
 	};
-	console.debug('[Telemetry] User finished providing input (setup apply)', finishProps);
-	telemetry.track('User finished providing input', finishProps);
+	console.debug('[Telemetry] User finished providing input (setup apply)', eventProps);
+	telemetry.track('User finished providing input', eventProps);
 
 	isApplying.value = true;
 	applyError.value = null;
@@ -988,31 +965,28 @@ async function handleApply() {
 }
 
 async function handleLater() {
-	// Track all remaining incomplete cards as skipped
 	const tc = store.findToolCallByRequestId(props.requestId);
 	const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
+	const provided: Array<{ label: string; options: string[]; option_chosen: string }> = [];
+	const skipped: Array<{ label: string; options: string[] }> = [];
 	for (const card of cards.value) {
-		if (!isCardComplete(card)) {
-			const skipProps = {
-				thread_id: store.currentThreadId,
-				input_thread_id: inputThreadId,
-				instance_id: useRootStore().instanceId,
-				type: 'setup',
-				provided_inputs: [],
-				skipped_inputs: [{ label: card.nodes[0]?.node.name ?? card.id, options: [] }],
-			};
-			console.debug('[Telemetry] User completed input step (setup skipped on later)', skipProps);
-			telemetry.track('User completed input step', skipProps);
+		const name = card.nodes[0]?.node.name ?? card.id;
+		if (isCardComplete(card)) {
+			provided.push({ label: name, options: [], option_chosen: 'configured' });
+		} else {
+			skipped.push({ label: name, options: [] });
 		}
 	}
-	const finishProps = {
+	const eventProps = {
 		thread_id: store.currentThreadId,
 		input_thread_id: inputThreadId,
 		instance_id: useRootStore().instanceId,
 		type: 'setup',
+		provided_inputs: provided,
+		skipped_inputs: skipped,
 	};
-	console.debug('[Telemetry] User finished providing input (setup later)', finishProps);
-	telemetry.track('User finished providing input', finishProps);
+	console.debug('[Telemetry] User finished providing input (setup later)', eventProps);
+	telemetry.track('User finished providing input', eventProps);
 
 	isSubmitted.value = true;
 	isDeferred.value = true;
