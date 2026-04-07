@@ -127,7 +127,7 @@ class ProjectIndex {
 }
 
 const toStatusOwner = (project: Project | undefined): StatusResourceOwner | undefined => {
-	if (project?.type === 'team' || project?.type === 'personal') {
+	if (project?.type) {
 		return { type: project.type, projectId: project.id, projectName: project.name };
 	}
 	return undefined;
