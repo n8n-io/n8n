@@ -546,17 +546,21 @@ export function useCanvasOperations() {
 		if (!previousNode || !newNode) {
 			return;
 		}
-		const workflowObject = workflowsStore.workflowObject;
 
 		const inputNodeNames = replaceInputs
-			? uniq(workflowObject.getParentNodes(previousNode.name, 'ALL', 1))
+			? uniq(workflowDocumentStore.value?.getParentNodes(previousNode.name, 'ALL', 1))
 			: [];
 		const outputNodeNames = replaceOutputs
-			? uniq(workflowObject.getChildNodes(previousNode.name, 'ALL', 1))
+			? uniq(workflowDocumentStore.value?.getChildNodes(previousNode.name, 'ALL', 1))
 			: [];
 		const connectionPairs = [
-			...workflowObject.getConnectionsBetweenNodes(inputNodeNames, [previousNode.name]),
-			...workflowObject.getConnectionsBetweenNodes([previousNode.name], outputNodeNames),
+			...(workflowDocumentStore.value?.getConnectionsBetweenNodes(inputNodeNames, [
+				previousNode.name,
+			]) ?? []),
+			...(workflowDocumentStore.value?.getConnectionsBetweenNodes(
+				[previousNode.name],
+				outputNodeNames,
+			) ?? []),
 		];
 
 		if (trackHistory && trackBulk) {

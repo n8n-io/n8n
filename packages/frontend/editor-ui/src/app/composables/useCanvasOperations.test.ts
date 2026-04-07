@@ -217,17 +217,25 @@ describe('useCanvasOperations', () => {
 
 		// These actions are stubbed by createTestingPinia, so delegate them to workflowsStore.workflowObject
 		// (which tests set up individually). Tests that need custom behavior can override via vi.spyOn.
-		workflowDocumentStoreInstance.getNodeByName = vi
-			.fn()
-			.mockImplementation(
-				(name: string) => useWorkflowsStore().workflowObject?.getNode(name) ?? null,
-			);
-		workflowDocumentStoreInstance.getParentNodesByDepth = vi
-			.fn()
-			.mockImplementation(
-				(name: string, depth?: number) =>
-					useWorkflowsStore().workflowObject?.getParentNodesByDepth(name, depth) ?? [],
-			);
+		vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockImplementation(
+			(name: string) => useWorkflowsStore().workflowObject?.getNode(name) ?? null,
+		);
+		vi.spyOn(workflowDocumentStoreInstance, 'getParentNodesByDepth').mockImplementation(
+			(name: string, depth?: number) =>
+				useWorkflowsStore().workflowObject?.getParentNodesByDepth(name, depth) ?? [],
+		);
+		vi.spyOn(workflowDocumentStoreInstance, 'getParentNodes').mockImplementation(
+			(name: string, type, depth) =>
+				useWorkflowsStore().workflowObject?.getParentNodes(name, type, depth) ?? [],
+		);
+		vi.spyOn(workflowDocumentStoreInstance, 'getChildNodes').mockImplementation(
+			(name: string, type, depth) =>
+				useWorkflowsStore().workflowObject?.getChildNodes(name, type, depth) ?? [],
+		);
+		vi.spyOn(workflowDocumentStoreInstance, 'getConnectionsBetweenNodes').mockImplementation(
+			(sources, targets) =>
+				useWorkflowsStore().workflowObject?.getConnectionsBetweenNodes(sources, targets) ?? [],
+		);
 	});
 
 	describe('requireNodeTypeDescription', () => {
