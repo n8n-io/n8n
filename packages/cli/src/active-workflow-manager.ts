@@ -855,7 +855,7 @@ export class ActiveWorkflowManager {
 			} catch (error) {
 				this.errorReporter.error(error);
 				let lastTimeout = this.queuedActivations[workflowId].lastTimeout;
-				if ((!error) instanceof IsolateError && lastTimeout < WORKFLOW_REACTIVATE_MAX_TIMEOUT) {
+				if (!(error instanceof IsolateError) && lastTimeout < WORKFLOW_REACTIVATE_MAX_TIMEOUT) {
 					lastTimeout = Math.min(lastTimeout * 2, WORKFLOW_REACTIVATE_MAX_TIMEOUT);
 				}
 
