@@ -1,13 +1,21 @@
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import { N8nIcon, N8nMarkdown, N8nPromptInput } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
-const props = defineProps<{
-	visible: boolean;
-	projectId: string;
-	agentId: string;
-}>();
+const props = withDefaults(
+	defineProps<{
+		visible?: boolean;
+		projectId: string;
+		agentId: string;
+		mode?: 'panel' | 'inline';
+		initialMessage?: string;
+	}>(),
+	{
+		visible: true,
+		mode: 'panel',
+	},
+);
 
 const emit = defineEmits<{
 	close: [];
@@ -57,6 +65,20 @@ async function sendMessage() {
 		await streamFromEndpoint('chat', text, testMessages);
 	}
 }
+
+function sendMessageFromOutside(message: string) {
+	inputText.value = message;
+	void sendMessage();
+}
+
+defineExpose({ sendMessageFromOutside });
+
+// Handle initial message prop
+onMounted(() => {
+	if (props.initialMessage) {
+		sendMessageFromOutside(props.initialMessage);
+	}
+});
 
 async function streamFromEndpoint(
 	endpoint: 'build' | 'chat',
@@ -184,7 +206,7 @@ async function streamFromEndpoint(
 </script>
 
 <template>
-	<aside v-if="visible" :class="$style.panel">
+	<aside v-if="visible" :class="[mode === 'inline' ? $style.inlinePanel : $style.panel]">
 		<div :class="$style.header">
 			<div :class="$style.tabs">
 				<button
@@ -552,5 +574,13 @@ async function streamFromEndpoint(
 .inputArea {
 	padding: var(--spacing--2xs) var(--spacing--sm);
 	border-top: var(--border-width) var(--border-style) var(--color--foreground);
+}
+
+.inlinePanel {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	background-color: var(--color--background);
+	min-width: 0;
 }
 </style>

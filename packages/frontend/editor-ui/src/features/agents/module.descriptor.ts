@@ -1,8 +1,14 @@
 import { type FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
-import { AGENTS_LIST_VIEW, AGENT_BUILDER_VIEW, PROJECT_AGENTS } from '@/features/agents/constants';
+import {
+	AGENTS_LIST_VIEW,
+	AGENT_BUILDER_VIEW,
+	NEW_AGENT_VIEW,
+	PROJECT_AGENTS,
+} from '@/features/agents/constants';
 
 const AgentsListView = async () => await import('@/features/agents/views/AgentsListView.vue');
 const AgentBuilderView = async () => await import('@/features/agents/views/AgentBuilderView.vue');
+const NewAgentView = async () => await import('@/features/agents/views/NewAgentView.vue');
 
 export const AgentsModule: FrontendModuleDescription = {
 	id: 'agents',
@@ -34,6 +40,14 @@ export const AgentsModule: FrontendModuleDescription = {
 			component: AgentBuilderView,
 			meta: {
 				projectRoute: true,
+				middleware: ['authenticated', 'custom'],
+			},
+		},
+		{
+			name: NEW_AGENT_VIEW,
+			path: '/new-agent',
+			component: NewAgentView,
+			meta: {
 				middleware: ['authenticated', 'custom'],
 			},
 		},

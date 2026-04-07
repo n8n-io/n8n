@@ -2,6 +2,8 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { useRoute, useRouter } from 'vue-router';
+import { N8nIcon, N8nText } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { getAgent, updateAgent } from '../composables/useAgentApi';
@@ -9,18 +11,13 @@ import type { AgentResource } from '../types';
 import { useAgentSchema } from '../composables/useAgentSchema';
 import type { AgentSchema } from '../types';
 import { deepCopy } from 'n8n-workflow';
-import AgentSidebar from '../components/AgentSidebar.vue';
-import AgentCodeEditor from '../components/AgentCodeEditor.vue';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
-import AgentIntegrationsPanel from '../components/AgentIntegrationsPanel.vue';
-import AgentOverviewPanel from '../components/AgentOverviewPanel.vue';
-import AgentToolsPanel from '../components/AgentToolsPanel.vue';
-import AgentPromptsPanel from '../components/AgentPromptsPanel.vue';
-import AgentMemoryPanel from '../components/AgentMemoryPanel.vue';
-import AgentEvalsPanel from '../components/AgentEvalsPanel.vue';
+import AgentHomeContent from '../components/AgentHomeContent.vue';
+import AgentSettingsSidebar from '../components/AgentSettingsSidebar.vue';
 
 const route = useRoute();
 const router = useRouter();
+const locale = useI18n();
 const rootStore = useRootStore();
 const projectsStore = useProjectsStore();
 
@@ -29,25 +26,20 @@ const projectId = computed(
 );
 const agentId = route.params.agentId as string;
 
-const activeTab = ref((route.query.tab as string) || 'code');
-
-watch(activeTab, (tab) => {
-	void router.replace({ query: { ...route.query, tab } });
-});
-watch(
-	() => route.query.tab as string | undefined,
-	(tab) => {
-		if (tab && tab !== activeTab.value) activeTab.value = tab;
-	},
-);
-const chatVisible = ref(true);
+// UI state
+const chatActive = ref(false);
+const settingsVisible = ref(true);
 const code = ref('');
 const agentName = ref('');
+const agentDescription = ref<string | null>(null);
 const agent = ref<AgentResource | null>(null);
-const editingName = ref(false);
 const updatedAt = ref<string>('');
 let skipNextWatch = false;
 
+// Auto-trigger from creation flow prompt
+const initialPrompt = ref<string | undefined>(undefined);
+
+// Schema
 const { schema, fetchSchema, updateSchema } = useAgentSchema();
 const localSchema = ref<AgentSchema | null>(null);
 
@@ -66,6 +58,7 @@ async function fetchAgent() {
 	skipNextWatch = true;
 	code.value = data.code;
 	agentName.value = data.name;
+	agentDescription.value = data.description ?? null;
 }
 
 const autoSave = useDebounceFn(async () => {
@@ -87,28 +80,23 @@ watch(code, () => {
 	void autoSave();
 });
 
-// Builder code streaming — accumulates codeDelta fragments from the set_code tool
+// Builder code streaming
 let codeStreamBuffer = '';
 let isCodeStreaming = false;
 
 function onCodeDelta(delta: string) {
 	if (!isCodeStreaming) {
-		// First delta — start fresh
 		isCodeStreaming = true;
 		codeStreamBuffer = '';
 	}
 	codeStreamBuffer += delta;
 
-	// Try to extract the "code" field value from the partial JSON
-	// The builder streams JSON like: {"code":"import { Agent }...
 	const match = codeStreamBuffer.match(/"code"\s*:\s*"((?:[^"\\]|\\.)*)(?:"|$)/s);
 	if (match) {
-		// Unescape the JSON string
 		try {
 			const parsed = JSON.parse(`"${match[1]}"`);
 			code.value = parsed;
 		} catch {
-			// Partial string, show what we have (replace common escapes)
 			code.value = match[1].replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\"/g, '"');
 		}
 	}
@@ -120,26 +108,29 @@ function onCodeUpdated() {
 	void fetchAgent();
 }
 
-async function saveName() {
-	if (!agentName.value.trim()) return;
+async function updateName(name: string) {
 	const updated = await updateAgent(rootStore.restApiContext, projectId.value, agentId, {
-		name: agentName.value.trim(),
+		name,
 	});
 	if (updated) {
 		agent.value = updated;
 		agentName.value = updated.name;
 	}
-	editingName.value = false;
 }
 
-function onNameKeydown(event: KeyboardEvent) {
-	if (event.key === 'Enter') {
-		event.preventDefault();
-		void saveName();
-	} else if (event.key === 'Escape') {
-		agentName.value = agent.value?.name ?? '';
-		editingName.value = false;
+async function updateDescription(description: string) {
+	const updated = await updateAgent(rootStore.restApiContext, projectId.value, agentId, {
+		description,
+	} as Record<string, unknown>);
+	if (updated) {
+		agent.value = updated;
+		agentDescription.value = updated.description ?? null;
 	}
+}
+
+function startChat(message: string) {
+	initialPrompt.value = message;
+	chatActive.value = true;
 }
 
 function onSchemaFieldUpdate(updates: Partial<AgentSchema>) {
@@ -159,121 +150,166 @@ const debouncedSchemaSave = useDebounceFn(async () => {
 		code.value = result.code;
 		updatedAt.value = result.updatedAt;
 	} else {
-		// 409 conflict — schema was refetched; also refresh agent to get latest updatedAt
 		await fetchAgent();
 	}
 }, 1000);
 
+async function saveSchema() {
+	if (!localSchema.value) return;
+	const result = await updateSchema(projectId.value, agentId, localSchema.value, updatedAt.value);
+	if (result) {
+		skipNextWatch = true;
+		code.value = result.code;
+		updatedAt.value = result.updatedAt;
+	}
+}
+
+function cancelSchema() {
+	if (schema.value) {
+		localSchema.value = deepCopy(schema.value);
+	}
+}
+
+function onCodeUpdate(newCode: string) {
+	code.value = newCode;
+}
+
 onMounted(async () => {
 	await fetchAgent();
 	await fetchSchema(projectId.value, agentId);
+
+	// Auto-trigger chat from creation flow
+	const prompt = route.query.prompt as string | undefined;
+	if (prompt) {
+		void router.replace({ query: { ...route.query, prompt: undefined } });
+		startChat(prompt);
+	}
 });
 </script>
 
 <template>
 	<div :class="$style.builder">
-		<AgentSidebar :active-tab="activeTab" @select="activeTab = $event" />
-		<div :class="$style.main">
-			<div :class="$style.nameBar">
-				<input
-					v-if="editingName"
-					v-model="agentName"
-					:class="$style.nameInput"
-					autofocus
-					@blur="saveName"
-					@keydown="onNameKeydown"
-				/>
-				<h2 v-else :class="$style.nameDisplay" @click="editingName = true">
-					{{ agentName || 'Untitled Agent' }}
-				</h2>
+		<!-- Top bar -->
+		<div :class="$style.topBar">
+			<div :class="$style.topBarLeft">
+				<N8nIcon icon="robot" :size="16" />
+				<N8nText tag="span" bold>{{
+					agentName || locale.baseText('agents.home.untitledAgent')
+				}}</N8nText>
 			</div>
-			<AgentCodeEditor v-if="activeTab === 'code'" v-model="code" />
-			<AgentOverviewPanel
-				v-else-if="activeTab === 'overview'"
-				:schema="localSchema"
-				@update:schema="onSchemaFieldUpdate"
-			/>
-			<AgentPromptsPanel
-				v-else-if="activeTab === 'prompts'"
-				:schema="localSchema"
-				@update:schema="onSchemaFieldUpdate"
-			/>
-			<AgentToolsPanel
-				v-else-if="activeTab === 'tools'"
-				:schema="localSchema"
-				@update:schema="onSchemaFieldUpdate"
-			/>
-			<AgentMemoryPanel
-				v-else-if="activeTab === 'memory'"
-				:schema="localSchema"
-				@update:schema="onSchemaFieldUpdate"
-			/>
-			<AgentEvalsPanel v-else-if="activeTab === 'evaluations'" :schema="localSchema" />
-			<AgentIntegrationsPanel
-				v-else-if="activeTab === 'integrations'"
+			<div :class="$style.topBarRight">
+				<button
+					:class="[$style.toggleBtn, settingsVisible && $style.toggleBtnActive]"
+					data-testid="toggle-settings"
+					@click="settingsVisible = !settingsVisible"
+				>
+					<N8nIcon icon="sliders-horizontal" :size="16" />
+				</button>
+			</div>
+		</div>
+
+		<!-- Main content area -->
+		<div :class="$style.content">
+			<!-- Center column: home or chat -->
+			<AgentHomeContent
+				v-if="!chatActive"
+				:agent-name="agentName"
+				:agent-description="agentDescription"
 				:project-id="projectId"
 				:agent-id="agentId"
+				@send-message="startChat"
+				@update:name="updateName"
+				@update:description="updateDescription"
 			/>
-			<AgentCodeEditor v-else v-model="code" />
+			<AgentChatPanel
+				v-else
+				:project-id="projectId"
+				:agent-id="agentId"
+				mode="inline"
+				:initial-message="initialPrompt"
+				@code-updated="onCodeUpdated"
+				@code-delta="onCodeDelta"
+			/>
+
+			<!-- Settings sidebar -->
+			<AgentSettingsSidebar
+				v-if="settingsVisible"
+				:schema="localSchema"
+				:code="code"
+				:updated-at="updatedAt"
+				@update:schema="onSchemaFieldUpdate"
+				@update:code="onCodeUpdate"
+				@save="saveSchema"
+				@cancel="cancelSchema"
+			/>
 		</div>
-		<AgentChatPanel
-			:visible="chatVisible"
-			:project-id="projectId"
-			:agent-id="agentId"
-			@close="chatVisible = false"
-			@code-updated="onCodeUpdated"
-			@code-delta="onCodeDelta"
-		/>
 	</div>
 </template>
 
 <style module>
 .builder {
 	display: flex;
+	flex-direction: column;
 	height: 100%;
 	width: 100%;
 	overflow: hidden;
 }
 
-.main {
-	flex: 1;
-	display: flex;
-	flex-direction: column;
-	min-width: 0;
-	min-height: 0;
-}
-
-.nameBar {
+.topBar {
 	display: flex;
 	align-items: center;
+	justify-content: space-between;
 	padding: var(--spacing--2xs) var(--spacing--sm);
 	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
-	background-color: var(--color--foreground--tint-2);
+	background-color: var(--color--background);
+	flex-shrink: 0;
 }
 
-.nameDisplay {
-	font-size: var(--font-size--md);
-	font-weight: var(--font-weight--bold);
+.topBarLeft {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 	color: var(--color--text);
-	margin: 0;
+}
+
+.topBarRight {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+
+.toggleBtn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	border: none;
+	background: none;
 	cursor: pointer;
-	padding: var(--spacing--4xs) var(--spacing--3xs);
+	color: var(--color--text--tint-2);
 	border-radius: var(--radius);
+	transition: background-color 0.15s ease;
 }
 
-.nameDisplay:hover {
-	background-color: var(--color--foreground--tint-1);
-}
-
-.nameInput {
-	font-size: var(--font-size--md);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--text);
+.toggleBtn:hover {
 	background-color: var(--color--foreground--tint-2);
-	border: var(--border-width) var(--border-style) var(--color--primary);
-	border-radius: var(--radius);
-	padding: var(--spacing--4xs) var(--spacing--3xs);
-	outline: none;
-	font-family: var(--font-family);
+	color: var(--color--text);
+}
+
+.toggleBtnActive {
+	color: var(--color--primary);
+	background-color: var(--color--primary--tint-3);
+}
+
+.toggleBtnActive:hover {
+	background-color: var(--color--primary--tint-2);
+}
+
+.content {
+	display: flex;
+	flex: 1;
+	min-height: 0;
+	overflow: hidden;
 }
 </style>
