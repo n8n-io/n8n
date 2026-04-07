@@ -615,6 +615,26 @@ export async function startBuildWorkflowAgentTask(
 	};
 }
 
+export const buildWorkflowAgentInputSchema = z.object({
+	task: z
+		.string()
+		.describe(
+			'What to build and any context: user requirements, available credential names/types.',
+		),
+	workflowId: z
+		.string()
+		.optional()
+		.describe(
+			'Existing workflow ID to modify. When provided, the agent starts with the current workflow code pre-loaded.',
+		),
+	conversationContext: z
+		.string()
+		.optional()
+		.describe(
+			'Brief summary of the conversation so far — what was discussed, decisions made, and information gathered (e.g., which credentials are available). The builder uses this to avoid repeating information the user already knows.',
+		),
+});
+
 export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 	return createTool({
 		id: 'build-workflow-with-agent',
@@ -622,30 +642,12 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 			'Build or modify an n8n workflow using a specialized builder agent. ' +
 			'The agent handles node discovery, schema lookups, code generation, ' +
 			'and validation internally.',
-		inputSchema: z.object({
-			task: z
-				.string()
-				.describe(
-					'What to build and any context: user requirements, available credential names/types.',
-				),
-			workflowId: z
-				.string()
-				.optional()
-				.describe(
-					'Existing workflow ID to modify. When provided, the agent starts with the current workflow code pre-loaded.',
-				),
-			conversationContext: z
-				.string()
-				.optional()
-				.describe(
-					'Brief summary of the conversation so far — what was discussed, decisions made, and information gathered (e.g., which credentials are available). The builder uses this to avoid repeating information the user already knows.',
-				),
-		}),
+		inputSchema: buildWorkflowAgentInputSchema,
 		outputSchema: z.object({
 			result: z.string(),
 			taskId: z.string(),
 		}),
-		execute: async (input) => {
+		execute: async (input: z.infer<typeof buildWorkflowAgentInputSchema>) => {
 			const result = await startBuildWorkflowAgentTask(context, input);
 			return { result: result.result, taskId: result.taskId };
 		},

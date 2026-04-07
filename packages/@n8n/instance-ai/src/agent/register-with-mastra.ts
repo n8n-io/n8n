@@ -3,8 +3,10 @@
  * Without this, tools that use suspend() will fail on resumeStream() because
  * Mastra has no storage to persist/retrieve the execution snapshot.
  *
- * Reuses a single Mastra instance per storage key to avoid creating throwaway
- * registration objects on every sub-agent call.
+ * Caches a single storage-only Mastra instance per storage key. The Mastra is
+ * created WITHOUT agents so its internal #agents dict stays empty — avoiding
+ * unbounded growth from unique per-request sub-agent IDs and cross-user
+ * retention of stale agent closures.
  */
 
 import type { Agent } from '@mastra/core/agent';
@@ -14,19 +16,16 @@ import type { MastraCompositeStore } from '@mastra/core/storage';
 let cachedSubAgentMastra: Mastra | null = null;
 let cachedSubAgentStorageKey = '';
 
-export function registerWithMastra(agentId: string, agent: Agent, storage: MastraCompositeStore) {
+export function registerWithMastra(_agentId: string, agent: Agent, storage: MastraCompositeStore) {
 	const key = storage.id ?? 'default';
 
-	if (cachedSubAgentMastra && cachedSubAgentStorageKey === key) {
-		// Mastra.__registerMastra sets the mastra back-reference on the agent,
-		// which is what enables suspend/resume snapshot storage.
-		agent.__registerMastra(cachedSubAgentMastra);
-		return;
+	if (!cachedSubAgentMastra || cachedSubAgentStorageKey !== key) {
+		// Create a storage-only Mastra — no agents registered.
+		// The agent only needs the Mastra back-reference to access getStorage()
+		// for workflow snapshot persistence during suspend/resume.
+		cachedSubAgentMastra = new Mastra({ storage });
+		cachedSubAgentStorageKey = key;
 	}
 
-	cachedSubAgentMastra = new Mastra({
-		agents: { [agentId]: agent },
-		storage,
-	});
-	cachedSubAgentStorageKey = key;
+	agent.__registerMastra(cachedSubAgentMastra);
 }

@@ -5,15 +5,21 @@ import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
 
+export const renameDataTableColumnInputSchema = z.object({
+	dataTableId: z.string().describe('ID of the data table'),
+	columnId: z.string().describe('ID of the column to rename'),
+	newName: z.string().describe('New column name'),
+});
+
+export const renameDataTableColumnResumeSchema = z.object({
+	approved: z.boolean(),
+});
+
 export function createRenameDataTableColumnTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'rename-data-table-column',
 		description: 'Rename a column in a data table.',
-		inputSchema: z.object({
-			dataTableId: z.string().describe('ID of the data table'),
-			columnId: z.string().describe('ID of the column to rename'),
-			newName: z.string().describe('New column name'),
-		}),
+		inputSchema: renameDataTableColumnInputSchema,
 		outputSchema: z.object({
 			success: z.boolean(),
 			denied: z.boolean().optional(),
@@ -24,11 +30,12 @@ export function createRenameDataTableColumnTool(context: InstanceAiContext) {
 			message: z.string(),
 			severity: instanceAiConfirmationSeveritySchema,
 		}),
-		resumeSchema: z.object({
-			approved: z.boolean(),
-		}),
-		execute: async (input, ctx) => {
-			const { resumeData, suspend } = ctx?.agent ?? {};
+		resumeSchema: renameDataTableColumnResumeSchema,
+		execute: async (input: z.infer<typeof renameDataTableColumnInputSchema>, ctx) => {
+			const resumeData = ctx?.agent?.resumeData as
+				| z.infer<typeof renameDataTableColumnResumeSchema>
+				| undefined;
+			const suspend = ctx?.agent?.suspend;
 
 			const needsApproval = context.permissions?.mutateDataTableSchema !== 'always_allow';
 

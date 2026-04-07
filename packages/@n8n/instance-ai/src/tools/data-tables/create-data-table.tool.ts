@@ -7,6 +7,27 @@ import type { InstanceAiContext } from '../../types';
 
 const columnTypeSchema = z.enum(['string', 'number', 'boolean', 'date']);
 
+export const createDataTableInputSchema = z.object({
+	name: z.string().min(1).max(128).describe('Table name'),
+	projectId: z
+		.string()
+		.optional()
+		.describe('Project ID to create the table in. Defaults to personal project.'),
+	columns: z
+		.array(
+			z.object({
+				name: z.string().describe('Column name (alphanumeric + underscores)'),
+				type: columnTypeSchema.describe('Column data type'),
+			}),
+		)
+		.min(1)
+		.describe('Column definitions'),
+});
+
+export const createDataTableResumeSchema = z.object({
+	approved: z.boolean(),
+});
+
 export function createCreateDataTableTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'create-data-table',
@@ -15,22 +36,7 @@ export function createCreateDataTableTool(context: InstanceAiContext) {
 			'Column names must be alphanumeric with underscores, no leading numbers. ' +
 			'RESERVED names: "id", "createdAt", "updatedAt" — these are system columns ' +
 			'and will be rejected. Prefix with a context-appropriate name instead.',
-		inputSchema: z.object({
-			name: z.string().min(1).max(128).describe('Table name'),
-			projectId: z
-				.string()
-				.optional()
-				.describe('Project ID to create the table in. Defaults to personal project.'),
-			columns: z
-				.array(
-					z.object({
-						name: z.string().describe('Column name (alphanumeric + underscores)'),
-						type: columnTypeSchema.describe('Column data type'),
-					}),
-				)
-				.min(1)
-				.describe('Column definitions'),
-		}),
+		inputSchema: createDataTableInputSchema,
 		outputSchema: z.object({
 			table: z
 				.object({
@@ -50,11 +56,12 @@ export function createCreateDataTableTool(context: InstanceAiContext) {
 			message: z.string(),
 			severity: instanceAiConfirmationSeveritySchema,
 		}),
-		resumeSchema: z.object({
-			approved: z.boolean(),
-		}),
-		execute: async (input, ctx) => {
-			const { resumeData, suspend } = ctx?.agent ?? {};
+		resumeSchema: createDataTableResumeSchema,
+		execute: async (input: z.infer<typeof createDataTableInputSchema>, ctx) => {
+			const resumeData = ctx?.agent?.resumeData as
+				| z.infer<typeof createDataTableResumeSchema>
+				| undefined;
+			const suspend = ctx?.agent?.suspend;
 
 			const needsApproval = context.permissions?.createDataTable !== 'always_allow';
 

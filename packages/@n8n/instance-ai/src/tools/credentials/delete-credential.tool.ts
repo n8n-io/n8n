@@ -5,17 +5,23 @@ import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
 
+export const deleteCredentialInputSchema = z.object({
+	credentialId: z.string().describe('ID of the credential to delete'),
+	credentialName: z
+		.string()
+		.optional()
+		.describe('Name of the credential (for confirmation message)'),
+});
+
+export const deleteCredentialResumeSchema = z.object({
+	approved: z.boolean(),
+});
+
 export function createDeleteCredentialTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'delete-credential',
 		description: 'Permanently delete a credential by ID. Irreversible.',
-		inputSchema: z.object({
-			credentialId: z.string().describe('ID of the credential to delete'),
-			credentialName: z
-				.string()
-				.optional()
-				.describe('Name of the credential (for confirmation message)'),
-		}),
+		inputSchema: deleteCredentialInputSchema,
 		outputSchema: z.object({
 			success: z.boolean(),
 			denied: z.boolean().optional(),
@@ -26,11 +32,12 @@ export function createDeleteCredentialTool(context: InstanceAiContext) {
 			message: z.string(),
 			severity: instanceAiConfirmationSeveritySchema,
 		}),
-		resumeSchema: z.object({
-			approved: z.boolean(),
-		}),
-		execute: async (input, ctx) => {
-			const { resumeData, suspend } = ctx?.agent ?? {};
+		resumeSchema: deleteCredentialResumeSchema,
+		execute: async (input: z.infer<typeof deleteCredentialInputSchema>, ctx) => {
+			const resumeData = ctx?.agent?.resumeData as
+				| z.infer<typeof deleteCredentialResumeSchema>
+				| undefined;
+			const suspend = ctx?.agent?.suspend;
 
 			const needsApproval = context.permissions?.deleteCredential !== 'always_allow';
 

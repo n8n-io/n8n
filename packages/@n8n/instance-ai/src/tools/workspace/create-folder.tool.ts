@@ -5,18 +5,24 @@ import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
 
+export const createFolderInputSchema = z.object({
+	name: z.string().describe('Name for the new folder'),
+	projectId: z.string().describe('ID of the project to create the folder in'),
+	parentFolderId: z
+		.string()
+		.optional()
+		.describe('ID of the parent folder for nesting. Omit for root-level folder.'),
+});
+
+export const createFolderResumeSchema = z.object({
+	approved: z.boolean(),
+});
+
 export function createCreateFolderTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'create-folder',
 		description: 'Create a new folder in a project. Supports nesting via parentFolderId.',
-		inputSchema: z.object({
-			name: z.string().describe('Name for the new folder'),
-			projectId: z.string().describe('ID of the project to create the folder in'),
-			parentFolderId: z
-				.string()
-				.optional()
-				.describe('ID of the parent folder for nesting. Omit for root-level folder.'),
-		}),
+		inputSchema: createFolderInputSchema,
 		outputSchema: z.object({
 			id: z.string(),
 			name: z.string(),
@@ -29,11 +35,12 @@ export function createCreateFolderTool(context: InstanceAiContext) {
 			message: z.string(),
 			severity: instanceAiConfirmationSeveritySchema,
 		}),
-		resumeSchema: z.object({
-			approved: z.boolean(),
-		}),
-		execute: async (input, ctx) => {
-			const { resumeData, suspend } = ctx?.agent ?? {};
+		resumeSchema: createFolderResumeSchema,
+		execute: async (input: z.infer<typeof createFolderInputSchema>, ctx) => {
+			const resumeData = ctx?.agent?.resumeData as
+				| z.infer<typeof createFolderResumeSchema>
+				| undefined;
+			const suspend = ctx?.agent?.suspend;
 
 			const needsApproval = context.permissions?.createFolder !== 'always_allow';
 
