@@ -29,6 +29,7 @@ const resolvedKey: ResolvedTrustedKey = {
 	algorithms: ['RS256'],
 	key: 'test-public-key',
 	issuer: 'https://issuer.example.com',
+	allowedRoles: ['global:member', 'global:admin'],
 };
 
 const mockUser = mock<User>({

@@ -180,6 +180,12 @@ export class IdentityResolutionService {
 		if (roleClaim === undefined) return undefined;
 		if (Array.isArray(roleClaim) && roleClaim.length === 0) return undefined;
 
+		// Never modify the role of an existing owner via token exchange
+		if (currentRole === 'global:owner') {
+			this.logger.debug('Skipping role sync for existing owner');
+			return undefined;
+		}
+
 		const role = Array.isArray(roleClaim) ? roleClaim[0] : roleClaim;
 
 		// Never change a user's role to global:owner via token exchange
