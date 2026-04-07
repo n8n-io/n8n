@@ -99,7 +99,6 @@
 				"/usr/local/lib/node_modules/n8n/*": "${workspaceFolder}/packages/cli/*"
 			}
 		}
-	
 	]
 
 	/**
