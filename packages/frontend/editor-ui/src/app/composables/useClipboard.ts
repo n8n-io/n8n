@@ -21,15 +21,32 @@ export function useClipboard({
 
 	// Find the correct navigator at copy-time so it works even when the
 	// pop-out window opens after the composable was created.
-	async function copy(value: string) {
+	async function copy(value: string | Promise<string>) {
 		const nav = popOutWindow?.value?.navigator;
-		if (nav?.clipboard) {
+		const targetClipboard = (nav?.clipboard ?? navigator?.clipboard) as Clipboard | undefined;
+
+		// Use ClipboardItem with Promise support for Safari compatibility.
+		// navigator.clipboard.writeText() fails in Safari when called after an async
+		// operation (e.g. a fetch). ClipboardItem accepts a Promise as content, so the
+		// clipboard-write permission is requested synchronously within the user gesture
+		// while the actual text is resolved asynchronously.
+		if (targetClipboard && typeof ClipboardItem !== 'undefined') {
 			try {
-				await nav.clipboard.writeText(value);
+				const textPromise = value instanceof Promise ? value : Promise.resolve(value);
+				await targetClipboard.write([new ClipboardItem({ 'text/plain': textPromise })]);
 				return;
 			} catch {}
 		}
-		await coreCopy(value);
+
+		// Legacy fallback for environments without ClipboardItem support.
+		const text = await Promise.resolve(value);
+		if (nav?.clipboard) {
+			try {
+				await nav.clipboard.writeText(text);
+				return;
+			} catch {}
+		}
+		await coreCopy(text);
 	}
 
 	const ignoreClasses = ['el-messsage-box', 'ignore-key-press-canvas'];

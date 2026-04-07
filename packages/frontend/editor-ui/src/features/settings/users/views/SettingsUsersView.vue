@@ -241,8 +241,12 @@ async function onGenerateInviteLink(userId: string) {
 	try {
 		const user = usersStore.usersList.state.items.find((u) => u.id === userId);
 		if (user) {
-			const url = await usersStore.generateInviteLink({ id: userId });
-			void clipboard.copy(url.link);
+			// Start the API call but pass its result as a Promise to clipboard.copy so
+			// that the clipboard-write permission is requested synchronously within the
+			// user-gesture context. This is required for Safari compatibility.
+			const urlPromise = usersStore.generateInviteLink({ id: userId });
+			void clipboard.copy(urlPromise.then((url) => url.link));
+			await urlPromise;
 
 			showToast({
 				type: 'success',
@@ -258,8 +262,9 @@ async function onCopyPasswordResetLink(userId: string) {
 	try {
 		const user = usersStore.usersList.state.items.find((u) => u.id === userId);
 		if (user) {
-			const url = await usersStore.getUserPasswordResetLink(user);
-			void clipboard.copy(url.link);
+			const urlPromise = usersStore.getUserPasswordResetLink(user);
+			void clipboard.copy(urlPromise.then((url) => url.link));
+			await urlPromise;
 
 			showToast({
 				type: 'success',

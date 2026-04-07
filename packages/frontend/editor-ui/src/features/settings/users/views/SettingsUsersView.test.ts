@@ -551,8 +551,10 @@ describe('SettingsUsersView', () => {
 			emitters.settingsUsersTable.emit('action', { action: 'generateInviteLink', userId: '3' });
 
 			expect(usersStore.generateInviteLink).toHaveBeenCalledWith({ id: '3' });
-			await waitFor(() => {
-				expect(mockClipboard.copy).toHaveBeenCalledWith(
+			await waitFor(async () => {
+				expect(mockClipboard.copy).toHaveBeenCalled();
+				const copyArg = mockClipboard.copy.mock.calls[0]?.[0] as unknown;
+				expect(await Promise.resolve(copyArg)).toBe(
 					'https://example.com/signup?token=generated-token',
 				);
 				expect(mockToast.showToast).toHaveBeenCalledWith({
@@ -596,8 +598,10 @@ describe('SettingsUsersView', () => {
 			emitters.settingsUsersTable.emit('action', { action: 'copyPasswordResetLink', userId: '2' });
 
 			expect(usersStore.getUserPasswordResetLink).toHaveBeenCalledWith(mockUsersList.items[1]);
-			await waitFor(() => {
-				expect(mockClipboard.copy).toHaveBeenCalledWith('https://example.com/reset/123');
+			await waitFor(async () => {
+				expect(mockClipboard.copy).toHaveBeenCalled();
+				const copyArg = mockClipboard.copy.mock.calls[0]?.[0] as unknown;
+				expect(await Promise.resolve(copyArg)).toBe('https://example.com/reset/123');
 				expect(mockToast.showToast).toHaveBeenCalledWith({
 					type: 'success',
 					title: expect.any(String),
