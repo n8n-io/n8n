@@ -223,14 +223,6 @@ function formatJson(value: unknown): string {
 	}
 }
 
-.actionButtons {
-	position: absolute;
-	top: 0;
-	right: 0;
-	display: flex;
-	gap: var(--spacing--4xs);
-}
-
 .actionBtn {
 	opacity: 0;
 	transition: opacity 0.15s ease;

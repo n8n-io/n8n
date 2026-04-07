@@ -12,8 +12,6 @@ const props = defineProps<{
 	toolCall: InstanceAiToolCallState;
 	/** Override the default label derived from toolName. */
 	label?: string;
-	/** Whether to show the vertical connector line below the icon. */
-	showConnector?: boolean;
 }>();
 
 defineSlots<{
