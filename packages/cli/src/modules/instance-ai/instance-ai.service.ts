@@ -2171,6 +2171,8 @@ export class InstanceAiService {
 			numSteps = payload.questions.length;
 		} else if (Array.isArray(payload.setupRequests)) {
 			numSteps = payload.setupRequests.length;
+		} else if (Array.isArray(payload.credentialRequests)) {
+			numSteps = payload.credentialRequests.length;
 		}
 
 		this.telemetry.track('Builder asked for input', {
