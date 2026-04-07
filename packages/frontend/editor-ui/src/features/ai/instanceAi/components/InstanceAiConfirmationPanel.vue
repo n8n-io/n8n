@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { N8nButton, N8nCard, N8nInput } from '@n8n/design-system';
+import { N8nButton, N8nCard, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 import { useInstanceAiStore, type PendingConfirmationItem } from '../instanceAi.store';
