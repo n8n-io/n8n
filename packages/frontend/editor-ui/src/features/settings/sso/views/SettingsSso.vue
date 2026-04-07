@@ -110,69 +110,46 @@ onMounted(() => {
 				{{ i18n.baseText('settings.sso.info.link') }}
 			</a>
 		</p>
+		<!-- Protocol selector — rendered independently, like pre-PR2 -->
+		<div
+			v-if="hasAnySsoEnabled"
+			data-test-id="sso-auth-protocol-select"
+			:class="shared.settingsItem"
+		>
+			<div :class="shared.settingsItemLabel">
+				<label>{{ i18n.baseText('settings.sso.settings.authProtocol.label') }}</label>
+				<small>{{ i18n.baseText('settings.sso.settings.authProtocol.description') }}</small>
+			</div>
+			<div :class="shared.settingsItemControl">
+				<N8nSelect
+					filterable
+					size="medium"
+					:model-value="authProtocol"
+					:placeholder="i18n.baseText('parameterInput.select')"
+					@update:model-value="onAuthProtocolUpdated"
+					@keydown.stop
+				>
+					<N8nOption
+						v-for="{ label, value } in options"
+						:key="value"
+						:value="value"
+						:label="label"
+						data-test-id="credential-select-option"
+					/>
+				</N8nSelect>
+			</div>
+		</div>
 		<div
 			v-if="ssoStore.isEnterpriseSamlEnabled && authProtocol === SupportedProtocols.SAML"
 			data-test-id="sso-content-licensed"
 		>
-			<SamlSettingsForm ref="samlForm">
-				<template #protocol-select>
-					<div data-test-id="sso-auth-protocol-select" :class="shared.settingsItem">
-						<div :class="shared.settingsItemLabel">
-							<label>{{ i18n.baseText('settings.sso.settings.authProtocol.label') }}</label>
-							<small>{{ i18n.baseText('settings.sso.settings.authProtocol.description') }}</small>
-						</div>
-						<div :class="shared.settingsItemControl">
-							<N8nSelect
-								filterable
-								:model-value="authProtocol"
-								:placeholder="i18n.baseText('parameterInput.select')"
-								@update:model-value="onAuthProtocolUpdated"
-								@keydown.stop
-							>
-								<N8nOption
-									v-for="{ label, value } in options"
-									:key="value"
-									:value="value"
-									:label="label"
-									data-test-id="credential-select-option"
-								/>
-							</N8nSelect>
-						</div>
-					</div>
-				</template>
-			</SamlSettingsForm>
+			<SamlSettingsForm ref="samlForm" />
 		</div>
 		<div
 			v-if="ssoStore.isEnterpriseOidcEnabled && authProtocol === SupportedProtocols.OIDC"
 			data-test-id="sso-content-licensed"
 		>
-			<OidcSettingsForm ref="oidcForm">
-				<template #protocol-select>
-					<div data-test-id="sso-auth-protocol-select" :class="shared.settingsItem">
-						<div :class="shared.settingsItemLabel">
-							<label>{{ i18n.baseText('settings.sso.settings.authProtocol.label') }}</label>
-							<small>{{ i18n.baseText('settings.sso.settings.authProtocol.description') }}</small>
-						</div>
-						<div :class="shared.settingsItemControl">
-							<N8nSelect
-								filterable
-								:model-value="authProtocol"
-								:placeholder="i18n.baseText('parameterInput.select')"
-								@update:model-value="onAuthProtocolUpdated"
-								@keydown.stop
-							>
-								<N8nOption
-									v-for="{ label, value } in options"
-									:key="value"
-									:value="value"
-									:label="label"
-									data-test-id="credential-select-option"
-								/>
-							</N8nSelect>
-						</div>
-					</div>
-				</template>
-			</OidcSettingsForm>
+			<OidcSettingsForm ref="oidcForm" />
 		</div>
 		<N8nActionBox
 			v-if="!hasAnySsoEnabled"
