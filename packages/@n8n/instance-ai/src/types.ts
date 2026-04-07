@@ -88,8 +88,6 @@ export interface CredentialSummary {
 	id: string;
 	name: string;
 	type: string;
-	createdAt: string;
-	updatedAt: string;
 }
 
 export interface CredentialDetail extends CredentialSummary {
@@ -834,6 +832,7 @@ export interface OrchestrationContext {
 		autoSetup?: { credentialType: string };
 		userInput?: string;
 		domainAccessAction?: string;
+		resourceDecision?: string;
 		answers?: Array<{
 			questionId: string;
 			selectedOptions: string[];

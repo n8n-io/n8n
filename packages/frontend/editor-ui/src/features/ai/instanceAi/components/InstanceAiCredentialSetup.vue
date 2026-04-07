@@ -254,16 +254,22 @@ async function handleContinue() {
 	}
 }
 
-function handleLater() {
+async function handleLater() {
 	isSubmitted.value = true;
 	isDeferred.value = true;
-	store.resolveConfirmation(props.requestId, 'deferred');
-	void store.confirmAction(props.requestId, false);
+
+	const success = await store.confirmAction(props.requestId, false);
+	if (success) {
+		store.resolveConfirmation(props.requestId, 'deferred');
+	} else {
+		isSubmitted.value = false;
+		isDeferred.value = false;
+	}
 }
 </script>
 
 <template>
-	<div :class="$style.root">
+	<div>
 		<template v-if="!isSubmitted">
 			<div
 				v-if="currentRequest"
@@ -395,17 +401,12 @@ function handleLater() {
 </template>
 
 <style lang="scss" module>
-.root {
-	// padding: var(--spacing--xs);
-}
-
 .card {
 	width: 100%;
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	padding: 0;
-	// background-color: var(--color--background--light-3);
 	border: var(--border);
 	border-radius: var(--radius);
 

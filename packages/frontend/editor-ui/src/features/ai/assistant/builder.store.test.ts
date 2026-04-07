@@ -121,7 +121,6 @@ let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
 let pinia: ReturnType<typeof createTestingPinia>;
 
-let setWorkflowNameSpy: Mock;
 let getNodeTypeSpy: Mock;
 let getCredentialsByTypeSpy: Mock;
 
@@ -183,11 +182,6 @@ describe('AI Builder store', () => {
 
 		workflowState = useWorkflowState();
 		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
-
-		setWorkflowNameSpy = vi.fn().mockImplementation(({ newName }: { newName: string }) => {
-			workflowsStore.workflow.name = newName;
-		});
-		vi.spyOn(workflowState, 'setWorkflowName').mockImplementation(setWorkflowNameSpy);
 
 		getNodeTypeSpy = vi.fn();
 		vi.spyOn(nodeTypesStore, 'getNodeType', 'get').mockReturnValue(getNodeTypeSpy);
@@ -3208,7 +3202,10 @@ describe('AI Builder store', () => {
 	describe('Page title status', () => {
 		it('should set title to AI_BUILDING when streaming starts', async () => {
 			const builderStore = useBuilderStore();
-			workflowsStore.workflowName = 'Test Workflow';
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setName('Test Workflow');
 
 			// Mock the API to prevent actual calls
 			apiSpy.mockImplementation(() => {});
@@ -3222,7 +3219,10 @@ describe('AI Builder store', () => {
 			Object.defineProperty(document, 'hidden', { value: true, configurable: true });
 
 			const builderStore = useBuilderStore();
-			workflowsStore.workflowName = 'Test Workflow';
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setName('Test Workflow');
 
 			// Start streaming first
 			builderStore.streaming = true;
@@ -3237,7 +3237,10 @@ describe('AI Builder store', () => {
 			Object.defineProperty(document, 'hidden', { value: false, configurable: true });
 
 			const builderStore = useBuilderStore();
-			workflowsStore.workflowName = 'Test Workflow';
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setName('Test Workflow');
 
 			// Start streaming first
 			builderStore.streaming = true;
@@ -3252,7 +3255,10 @@ describe('AI Builder store', () => {
 			Object.defineProperty(document, 'hidden', { value: true, configurable: true });
 
 			const builderStore = useBuilderStore();
-			workflowsStore.workflowName = 'Test Workflow';
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setName('Test Workflow');
 
 			builderStore.streaming = true;
 			builderStore.abortStreaming();
@@ -3268,7 +3274,10 @@ describe('AI Builder store', () => {
 			Object.defineProperty(document, 'hidden', { value: false, configurable: true });
 
 			const builderStore = useBuilderStore();
-			workflowsStore.workflowName = 'Test Workflow';
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setName('Test Workflow');
 
 			setDocumentTitleMock.mockClear();
 
@@ -3297,7 +3306,14 @@ describe('AI Builder store', () => {
 			const builderStore = useBuilderStore();
 			workflowsStore.workflowId = 'test-workflow-123';
 			workflowsStore.isNewWorkflow = false;
-			workflowsStore.workflowVersionId = 'version-1';
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setVersionData({
+				versionId: 'version-1',
+				name: null,
+				description: null,
+			});
 
 			await builderStore.sendChatMessage({ text: 'Build a workflow' });
 
@@ -3311,10 +3327,14 @@ describe('AI Builder store', () => {
 			const builderStore = useBuilderStore();
 			workflowsStore.workflowId = 'test-workflow-123';
 			workflowsStore.isNewWorkflow = false;
-			workflowsStore.workflowVersionId = 'version-1';
 			const workflowDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId(workflowsStore.workflowId),
 			);
+			workflowDocumentStore.setVersionData({
+				versionId: 'version-1',
+				name: null,
+				description: null,
+			});
 			workflowDocumentStore.setUpdatedAt('2024-01-01T00:00:00Z');
 
 			// Mock the workflow history API to return the version as existing
@@ -3370,7 +3390,14 @@ describe('AI Builder store', () => {
 			const builderStore = useBuilderStore();
 			workflowsStore.workflowId = 'test-workflow-123';
 			workflowsStore.isNewWorkflow = false;
-			workflowsStore.workflowVersionId = 'version-1';
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setVersionData({
+				versionId: 'version-1',
+				name: null,
+				description: null,
+			});
 
 			await builderStore.sendChatMessage({ text: 'What can you help me with?' });
 
@@ -3607,10 +3634,17 @@ describe('AI Builder store', () => {
 
 		const triggerSuccessfulStreamingComplete = async () => {
 			const builderStore = useBuilderStore();
-			workflowsStore.workflowName = 'Test Workflow';
 			workflowsStore.workflowId = 'test-workflow-123';
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId('test-workflow-123'),
+			);
+			workflowDocumentStore.setName('Test Workflow');
 			workflowsStore.isNewWorkflow = false;
-			workflowsStore.workflowVersionId = 'version-1';
+			workflowDocumentStore.setVersionData({
+				versionId: 'version-1',
+				name: null,
+				description: null,
+			});
 
 			// Mock version check for saveWorkflowAndGetRevertVersion + savePostModificationVersion
 			const workflowHistoryModule = await import('@n8n/rest-api-client/api/workflowHistory');
@@ -3670,7 +3704,10 @@ describe('AI Builder store', () => {
 			mockIsNotificationsEnabled.value = true;
 
 			const builderStore = useBuilderStore();
-			workflowsStore.workflowName = 'Test Workflow';
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setName('Test Workflow');
 
 			builderStore.streaming = true;
 			builderStore.abortStreaming();
@@ -4030,10 +4067,10 @@ describe('AI Builder store', () => {
 			builderStore.storeGeneratedPinData(pinData);
 
 			expect(builderStore.hasDeferredPinData).toBe(true);
-			const wfDocStore = useWorkflowDocumentStore(
+			const workflowDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId(workflowsStore.workflowId),
 			);
-			expect(wfDocStore.pinData).toEqual({});
+			expect(workflowDocumentStore.pinData).toEqual({});
 		});
 
 		it('storeGeneratedPinData merges multiple calls', () => {
@@ -4058,10 +4095,10 @@ describe('AI Builder store', () => {
 			builderStore.storeGeneratedPinData(pinData);
 			builderStore.applyGeneratedPinData();
 
-			const wfDocStore = useWorkflowDocumentStore(
+			const workflowDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId(workflowsStore.workflowId),
 			);
-			expect(wfDocStore.pinData).toEqual(pinData);
+			expect(workflowDocumentStore.pinData).toEqual(pinData);
 			expect(uiStore.stateIsDirty).toBe(true);
 			expect(builderStore.hasDeferredPinData).toBe(false);
 			expect(builderStore.pinDataApplied).toBe(true);

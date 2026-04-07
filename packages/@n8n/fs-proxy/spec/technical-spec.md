@@ -269,12 +269,14 @@ interface UserGatewayState {
 
 ## 6. Tool Call Dispatch
 
+### 6.1 Normal tool call (no confirmation required)
+
 When the AI agent needs to invoke a local tool the call flows through
 `LocalGateway`:
 
 ```mermaid
 sequenceDiagram
-    participant A as AI Agent
+    participant A as AI Agent (Mastra tool)
     participant GW as LocalGateway
     participant SRV as Controller (SSE)
     participant D as fs-proxy Daemon
@@ -296,6 +298,55 @@ the agent receives a tool-error event.
 
 If the gateway disconnects while requests are pending, `LocalGateway.disconnect()`
 rejects all outstanding promises immediately with `"Local gateway disconnected"`.
+
+### 6.2 Tool call with resource-access confirmation
+
+When a tool group operates in `Ask` mode and no stored rule matches the
+resource, the daemon returns a `GATEWAY_CONFIRMATION_REQUIRED` error instead
+of a result. The Mastra tool layer handles this by suspending the agent —
+persisting its state to the database — and resuming it after the user
+responds. This means the confirmation survives page reloads and server
+restarts.
+
+```mermaid
+sequenceDiagram
+    participant FE as Browser (Frontend)
+    participant SRV as n8n Server
+    participant DB as Database
+    participant D as fs-proxy Daemon
+
+    Note over SRV: First invocation — tool execute() called by Mastra
+    SRV->>D: callTool({ name, args }) via LocalGateway
+    D-->>SRV: { isError: true, content: ["GATEWAY_CONFIRMATION_REQUIRED::..."] }
+    SRV->>SRV: parse GatewayConfirmationRequiredPayload
+    SRV->>DB: suspend() — persist agent snapshot + confirmation payload
+    SRV-->>FE: SSE confirmation-request event<br/>{ inputType: "resource-decision", resourceDecision: { resource, description, options: [...] } }
+
+    FE->>FE: show GatewayResourceDecision panel
+    Note over FE: User clicks a decision button (e.g. Allow for session)
+    FE->>SRV: POST /confirm/:requestId { approved: true, resourceDecision: "allowForSession" }
+    SRV->>DB: load agent snapshot, resume with resumeData
+
+    Note over SRV: Second invocation — tool execute() called with resumeData
+    SRV->>D: callTool({ name, args, _confirmation: "allowForSession" }) via LocalGateway
+    D->>D: apply decision, execute tool
+    D-->>SRV: { content: [...], isError: false }
+    SRV-->>FE: SSE tool-result / text-delta events
+```
+
+**Key properties of this design:**
+
+- Agent state is persisted to the database on suspension — the confirmation
+  dialog survives page reloads and server restarts.
+- The daemon returns `options` as a plain list of decision names (e.g.
+  `["allowOnce", "allowForSession", "alwaysAllow", "denyOnce", "alwaysDeny"]`).
+  The user's choice is sent back as the decision string directly — no token
+  indirection.
+- `_confirmation` is always stripped from LLM-provided args on the first-call
+  path, so the agent cannot bypass the HITL flow by injecting a decision.
+- If the user denies without providing a decision, `resumeData.resourceDecision`
+  is absent and the tool returns an access-denied error to the agent
+  without re-calling the daemon.
 
 ---
 

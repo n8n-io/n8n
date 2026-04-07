@@ -16,7 +16,7 @@ import type { InstanceAiContext } from '../../types';
 /** Cache for deduplicating credential fetches across nodes with the same types. */
 export interface CredentialCache {
 	/** Credential list promises, keyed by credential type. */
-	lists: Map<string, Promise<Array<{ id: string; name: string; updatedAt: string }>>>;
+	lists: Map<string, Promise<Array<{ id: string; name: string }>>>;
 	/** Testability check promises, keyed by credential type. */
 	testability: Map<string, Promise<boolean>>;
 	/** Credential test result promises, keyed by credential ID. */
@@ -136,11 +136,7 @@ export async function buildSetupRequests(
 			if (!listPromise) {
 				listPromise = context.credentialService
 					.list({ type: credentialType })
-					.then((creds) =>
-						creds
-							.map((c) => ({ id: c.id, name: c.name, updatedAt: c.updatedAt }))
-							.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
-					);
+					.then((creds) => creds.map((c) => ({ id: c.id, name: c.name })));
 				cache?.lists.set(credentialType, listPromise);
 			}
 			const sortedCreds = await listPromise;

@@ -99,9 +99,9 @@ describe('createUnpublishWorkflowTool', () => {
 			(context.workflowService.unpublish as jest.Mock).mockResolvedValue(undefined);
 			const tool = createUnpublishWorkflowTool(context);
 
-			const result = await tool.execute!({ workflowId: 'wf-123' }, {
+			const result = (await tool.execute!({ workflowId: 'wf-123' }, {
 				agent: { suspend: jest.fn(), resumeData: { approved: true } },
-			} as never);
+			} as never)) as Record<string, unknown>;
 
 			expect(context.workflowService.unpublish).toHaveBeenCalledWith('wf-123');
 			expect(result).toEqual({ success: true });
@@ -110,9 +110,9 @@ describe('createUnpublishWorkflowTool', () => {
 		it('returns denied when resumed with approved: false', async () => {
 			const tool = createUnpublishWorkflowTool(context);
 
-			const result = await tool.execute!({ workflowId: 'wf-123' }, {
+			const result = (await tool.execute!({ workflowId: 'wf-123' }, {
 				agent: { suspend: jest.fn(), resumeData: { approved: false } },
-			} as never);
+			} as never)) as Record<string, unknown>;
 
 			expect(context.workflowService.unpublish).not.toHaveBeenCalled();
 			expect(result).toEqual({
@@ -138,9 +138,9 @@ describe('createUnpublishWorkflowTool', () => {
 			const tool = createUnpublishWorkflowTool(context);
 			const suspend = jest.fn();
 
-			const result = await tool.execute!({ workflowId: 'wf-123' }, {
+			const result = (await tool.execute!({ workflowId: 'wf-123' }, {
 				agent: { suspend, resumeData: undefined },
-			} as never);
+			} as never)) as Record<string, unknown>;
 
 			expect(suspend).not.toHaveBeenCalled();
 			expect(context.workflowService.unpublish).toHaveBeenCalledWith('wf-123');
@@ -155,9 +155,9 @@ describe('createUnpublishWorkflowTool', () => {
 			);
 			const tool = createUnpublishWorkflowTool(context);
 
-			const result = await tool.execute!({ workflowId: 'wf-123' }, {
+			const result = (await tool.execute!({ workflowId: 'wf-123' }, {
 				agent: { suspend: jest.fn(), resumeData: { approved: true } },
-			} as never);
+			} as never)) as Record<string, unknown>;
 
 			expect(result).toEqual({
 				success: false,

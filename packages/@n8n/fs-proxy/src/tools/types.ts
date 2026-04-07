@@ -47,6 +47,18 @@ export type ResourceDecision =
 	| 'denyOnce'
 	| 'alwaysDeny';
 
+/** Ordered list of all ResourceDecision values — used for iteration (e.g. token generation). */
+export const RESOURCE_DECISION_KEYS: ResourceDecision[] = [
+	'allowOnce',
+	'allowForSession',
+	'alwaysAllow',
+	'denyOnce',
+	'alwaysDeny',
+];
+
+/** Prefix used to signal a gateway confirmation is required (instance mode). */
+export const GATEWAY_CONFIRMATION_REQUIRED_PREFIX = 'GATEWAY_CONFIRMATION_REQUIRED::';
+
 export type ConfirmResourceAccess = (
 	resource: AffectedResource,
 ) => ResourceDecision | Promise<ResourceDecision>;

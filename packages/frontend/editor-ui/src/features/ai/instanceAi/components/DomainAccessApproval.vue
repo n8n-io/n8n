@@ -70,7 +70,7 @@ function onDropdownSelect(action: DomainAction) {
 </script>
 
 <template>
-	<div v-if="!resolved" :class="$style.root">
+	<div v-if="!resolved">
 		<div :class="$style.body">
 			<div :class="$style.message">
 				<span>{{
@@ -120,10 +120,6 @@ function onDropdownSelect(action: DomainAction) {
 </template>
 
 <style lang="scss" module>
-.root {
-	// padding: var(--spacing--xs);
-}
-
 .message {
 	display: flex;
 	align-items: flex-start;
