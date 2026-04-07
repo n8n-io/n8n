@@ -38,7 +38,8 @@ const isChatLinkAvailable = computed(
 );
 const isInstanceAiNavVisible = computed(() => {
 	if (!settingsStore.isModuleActive('instance-ai')) return false;
-	return settingsStore.moduleSettings['instance-ai']?.instanceAiEnabled !== false;
+	const ms = settingsStore.moduleSettings['instance-ai'];
+	return ms?.enabled !== false && ms?.instanceAiEnabled !== false;
 });
 const hasMultipleVerifiedUsers = computed(
 	() => usersStore.allUsers.filter((user) => !user.isPendingUser).length > 1,

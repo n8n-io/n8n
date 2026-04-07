@@ -71,7 +71,7 @@ async function selectChoice(value: 'enable' | 'disable') {
 	choice.value = value;
 	isSaving.value = true;
 	try {
-		await instanceAiSettingsStore.persistInstanceAiEnabled(value === 'enable');
+		await instanceAiSettingsStore.persistEnabled(value === 'enable');
 	} finally {
 		isSaving.value = false;
 	}

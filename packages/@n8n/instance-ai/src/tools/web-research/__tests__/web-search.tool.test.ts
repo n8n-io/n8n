@@ -3,7 +3,7 @@ import type {
 	InstanceAiWebResearchService,
 	WebSearchResponse,
 } from '../../../types';
-import { createWebSearchTool } from '../web-search.tool';
+import { createWebSearchTool, webSearchInputSchema } from '../web-search.tool';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -59,20 +59,17 @@ function createMockContext(webResearchService?: InstanceAiWebResearchService): I
 describe('web-search tool', () => {
 	describe('schema validation', () => {
 		it('accepts a valid query', () => {
-			const tool = createWebSearchTool(createMockContext());
-			const result = tool.inputSchema!.safeParse({ query: 'stripe webhooks' });
+			const result = webSearchInputSchema.safeParse({ query: 'stripe webhooks' });
 			expect(result.success).toBe(true);
 		});
 
 		it('rejects missing query', () => {
-			const tool = createWebSearchTool(createMockContext());
-			const result = tool.inputSchema!.safeParse({});
+			const result = webSearchInputSchema.safeParse({});
 			expect(result.success).toBe(false);
 		});
 
 		it('accepts optional maxResults', () => {
-			const tool = createWebSearchTool(createMockContext());
-			const result = tool.inputSchema!.safeParse({
+			const result = webSearchInputSchema.safeParse({
 				query: 'test',
 				maxResults: 10,
 			});
@@ -80,8 +77,7 @@ describe('web-search tool', () => {
 		});
 
 		it('rejects maxResults over 20', () => {
-			const tool = createWebSearchTool(createMockContext());
-			const result = tool.inputSchema!.safeParse({
+			const result = webSearchInputSchema.safeParse({
 				query: 'test',
 				maxResults: 25,
 			});
@@ -89,8 +85,7 @@ describe('web-search tool', () => {
 		});
 
 		it('accepts optional includeDomains', () => {
-			const tool = createWebSearchTool(createMockContext());
-			const result = tool.inputSchema!.safeParse({
+			const result = webSearchInputSchema.safeParse({
 				query: 'test',
 				includeDomains: ['docs.stripe.com'],
 			});
@@ -111,7 +106,7 @@ describe('web-search tool', () => {
 					includeDomains: ['docs.stripe.com'],
 				},
 				{} as never,
-			)) as { query: string; results: Array<{ title: string }> };
+			)) as Record<string, unknown> as { query: string; results: Array<{ title: string }> };
 
 			expect(service.search).toHaveBeenCalledWith('stripe webhooks', {
 				maxResults: 3,
@@ -126,7 +121,10 @@ describe('web-search tool', () => {
 			const context = createMockContext(undefined);
 			const tool = createWebSearchTool(context);
 
-			const result = await tool.execute!({ query: 'test query' }, {} as never);
+			const result = (await tool.execute!({ query: 'test query' }, {} as never)) as Record<
+				string,
+				unknown
+			>;
 
 			expect(result).toEqual({
 				query: 'test query',
@@ -149,7 +147,10 @@ describe('web-search tool', () => {
 			const context = createMockContext(service);
 			const tool = createWebSearchTool(context);
 
-			const result = await tool.execute!({ query: 'test query' }, {} as never);
+			const result = (await tool.execute!({ query: 'test query' }, {} as never)) as Record<
+				string,
+				unknown
+			>;
 
 			expect(result).toEqual({
 				query: 'test query',

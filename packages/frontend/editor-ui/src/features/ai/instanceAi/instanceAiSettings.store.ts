@@ -76,7 +76,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		const ms = settingsStore.moduleSettings;
 		const prev = ms['instance-ai'];
 		const merged: NonNullable<FrontendModuleSettings['instance-ai']> = {
-			enabled: prev?.enabled ?? false,
+			enabled: adminRes.enabled,
 			instanceAiEnabled: adminRes.instanceAiEnabled,
 			localGateway: prev?.localGateway ?? false,
 			localGatewayDisabled: prev?.localGatewayDisabled ?? false,
@@ -170,12 +170,12 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	}
 
 	/** Persists only the Instance AI on/off flag (does not send other admin draft fields). */
-	async function persistInstanceAiEnabled(enabled: boolean): Promise<void> {
+	async function persistEnabled(value: boolean): Promise<void> {
 		isSaving.value = true;
 		try {
-			const result = await updateSettings(rootStore.restApiContext, { instanceAiEnabled: enabled });
+			const result = await updateSettings(rootStore.restApiContext, { enabled: value });
 			settings.value = result;
-			delete draft.instanceAiEnabled;
+			delete draft.enabled;
 			await settingsStore.getModuleSettings();
 			syncInstanceAiFlagIntoGlobalModuleSettings(result);
 			toast.showMessage({ title: 'Settings saved', type: 'success' });
@@ -391,7 +391,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		isDirty,
 		fetch,
 		save,
-		persistInstanceAiEnabled,
+		persistEnabled,
 		persistOptinModalDismissed,
 		setField,
 		setPreferenceField,
