@@ -909,7 +909,6 @@ async function handleApply() {
 		provided_inputs: provided,
 		skipped_inputs: skipped,
 	};
-	console.debug('[Telemetry] User finished providing input (setup apply)', eventProps);
 	telemetry.track('User finished providing input', eventProps);
 
 	isApplying.value = true;
@@ -1006,7 +1005,6 @@ async function handleLater() {
 		provided_inputs: provided,
 		skipped_inputs: skipped,
 	};
-	console.debug('[Telemetry] User finished providing input (setup later)', eventProps);
 	telemetry.track('User finished providing input', eventProps);
 	isSubmitted.value = true;
 	isDeferred.value = true;

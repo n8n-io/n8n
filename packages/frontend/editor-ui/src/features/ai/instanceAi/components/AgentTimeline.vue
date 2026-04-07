@@ -129,7 +129,6 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 		num_tasks: numTasks,
 		...(feedback ? { feedback } : {}),
 	};
-	console.debug('[Telemetry] User finished providing input (plan)', eventProps);
 	telemetry.track('User finished providing input', eventProps);
 
 	store.resolveConfirmation(requestId, approved ? 'approved' : 'denied');

@@ -54,7 +54,6 @@ function trackInputCompleted(
 		skipped_inputs: skippedInputs,
 		...extra,
 	};
-	console.debug('[Telemetry] User finished providing input', eventProps);
 	telemetry.track('User finished providing input', eventProps);
 }
 

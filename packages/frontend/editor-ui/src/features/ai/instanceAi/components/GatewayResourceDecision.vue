@@ -82,7 +82,6 @@ async function confirm(decision: string) {
 		provided_inputs: [{ label: props.resource, options: props.options, option_chosen: decision }],
 		skipped_inputs: [],
 	};
-	console.debug('[Telemetry] User finished providing input (resource-decision)', eventProps);
 	telemetry.track('User finished providing input', eventProps);
 	await store.confirmResourceDecision(props.requestId, decision);
 }

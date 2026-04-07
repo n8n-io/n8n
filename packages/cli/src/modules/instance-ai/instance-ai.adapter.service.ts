@@ -324,7 +324,6 @@ export class InstanceAiAdapterService {
 				}
 
 				if (threadId) {
-					console.debug('[Telemetry] Builder published workflow', { threadId, workflowId });
 					telemetry.track('Builder published workflow', {
 						thread_id: threadId,
 						executed_by: 'ai',
@@ -406,10 +405,6 @@ export class InstanceAiAdapterService {
 				const updated = await workflowService.update(user, updateData, saved.id);
 
 				if (threadId) {
-					console.debug('[Telemetry] Builder created workflow', {
-						threadId,
-						workflowId: updated.id,
-					});
 					telemetry.track('Builder created workflow', {
 						thread_id: threadId,
 						workflow_id: updated.id,
@@ -460,7 +455,6 @@ export class InstanceAiAdapterService {
 				const updated = await workflowService.update(user, updateData, workflowId);
 
 				if (threadId) {
-					console.debug('[Telemetry] Builder modified workflow', { threadId, workflowId });
 					telemetry.track('Builder modified workflow', {
 						thread_id: threadId,
 						workflow_id: workflowId,
@@ -764,11 +758,6 @@ export class InstanceAiAdapterService {
 				}
 
 				if (threadId) {
-					console.debug('[Telemetry] Builder executed workflow', {
-						threadId,
-						pinnedNodeCount: Object.keys(runData.pinData ?? {}).length,
-						execType: runData.executionMode,
-					});
 					telemetry.track('Builder executed workflow', {
 						thread_id: threadId,
 						executed_by: 'ai',

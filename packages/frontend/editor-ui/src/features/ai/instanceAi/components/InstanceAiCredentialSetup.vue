@@ -270,7 +270,6 @@ async function handleContinue() {
 		provided_inputs: provided,
 		skipped_inputs: skipped,
 	};
-	console.debug('[Telemetry] User finished providing input (credential continue)', eventProps);
 	telemetry.track('User finished providing input', eventProps);
 
 	isSubmitted.value = true;
@@ -304,7 +303,6 @@ async function handleLater() {
 		provided_inputs: provided,
 		skipped_inputs: skipped,
 	};
-	console.debug('[Telemetry] User finished providing input (credential later)', eventProps);
 	telemetry.track('User finished providing input', eventProps);
 
 	isSubmitted.value = true;

@@ -716,7 +716,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			instance_id: rootStore.instanceId,
 			is_first_message: isFirstMessage,
 		};
-		console.debug('[Telemetry] User sent builder message', sentProps);
 		telemetry.track('User sent builder message', sentProps);
 
 		// 2. POST to backend — returns { runId }
