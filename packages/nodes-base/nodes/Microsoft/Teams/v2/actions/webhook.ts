@@ -19,7 +19,7 @@ export async function webhook(this: IWebhookFunctions) {
 	const userAgent = (req.headers['user-agent'] ?? '').toLowerCase();
 	if (
 		responseType === 'approval' &&
-		(!userAgent || PREVIEW_SERVICE_USER_AGENT_STRINGS.includes(userAgent))
+		(!userAgent || PREVIEW_SERVICE_USER_AGENT_STRINGS.some((str) => userAgent.includes(str)))
 	) {
 		res.send('');
 		return { noWebhookResponse: true };
