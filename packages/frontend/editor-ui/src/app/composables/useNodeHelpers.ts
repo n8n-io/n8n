@@ -520,6 +520,8 @@ export function useNodeHelpers() {
 			} else {
 				// If they are set check if the value is valid
 				selectedCredentials = node.credentials[credentialTypeDescription.name];
+				// Gateway-managed credentials have no real DB record — treat as properly configured
+				if (selectedCredentials.__aiGatewayManaged) continue;
 				if (typeof selectedCredentials === 'string') {
 					selectedCredentials = {
 						id: null,

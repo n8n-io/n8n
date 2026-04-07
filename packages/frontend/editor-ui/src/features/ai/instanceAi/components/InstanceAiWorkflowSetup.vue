@@ -976,7 +976,7 @@ async function handleLater() {
 </script>
 
 <template>
-	<div :class="$style.root">
+	<div>
 		<template v-if="!isSubmitted && !isApplying">
 			<!-- Streamlined confirm mode: all items pre-resolved by AI -->
 			<div
@@ -1061,6 +1061,7 @@ async function handleLater() {
 					<N8nIcon
 						v-if="getCredTestIcon(currentCard) === 'spinner'"
 						icon="spinner"
+						color="primary"
 						size="small"
 						:class="$style.loading"
 					/>
@@ -1172,7 +1173,7 @@ async function handleLater() {
 					"
 					:class="$style.listeningCallout"
 				>
-					<N8nIcon icon="spinner" size="small" :class="$style.loading" />
+					<N8nIcon icon="spinner" color="primary" spin size="small" :class="$style.loading" />
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('instanceAi.workflowSetup.triggerListening') }}
 					</N8nText>
@@ -1250,7 +1251,7 @@ async function handleLater() {
 		</template>
 
 		<div v-else-if="isApplying" :class="$style.submitted">
-			<N8nIcon icon="spinner" size="small" :class="$style.loading" />
+			<N8nIcon icon="spinner" color="primary" spin size="small" :class="$style.loading" />
 			<span>{{ i18n.baseText('instanceAi.workflowSetup.applying') }}</span>
 		</div>
 
@@ -1272,19 +1273,12 @@ async function handleLater() {
 </template>
 
 <style lang="scss" module>
-.root {
-	// border-top: var(--border);
-	// background: var(--color--background--shade-1);
-	// padding: var(--spacing--xs);
-}
-
 .card {
 	width: 100%;
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	padding: 0;
-	// background-color: var(--color--background--light-3);
 	border: var(--border);
 	border-radius: var(--radius);
 
@@ -1299,7 +1293,6 @@ async function handleLater() {
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	padding: 0;
-	background-color: var(--color--background--light-3);
 	border: var(--border);
 	border-color: var(--color--success);
 	border-radius: var(--radius);

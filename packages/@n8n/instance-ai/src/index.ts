@@ -1,3 +1,13 @@
+// Prevent Mastra from loading the 66 MB tiktoken BPE table.
+// Mastra's workspace tools use tiktoken for token-accurate output truncation,
+// but a character-based estimate (~4 chars/token) is sufficient for our use case.
+// getTiktoken() checks globalThis.__mastraTiktoken first and skips the load.
+(globalThis as Record<string, unknown>).__mastraTiktoken = {
+	encode(text: string) {
+		return new Array<number>(Math.ceil(text.length / 4));
+	},
+};
+
 export { wrapUntrustedData } from './tools/web-research/sanitize-web-content';
 export type { Logger } from './logger';
 export { generateCompactionSummary } from './compaction';

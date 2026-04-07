@@ -59,6 +59,7 @@ export default [
 | [node-class-description-icon-missing](docs/rules/node-class-description-icon-missing.md) | Node class description must have an `icon` property defined                                                                                 | ✅ ☑️ |      |    | 💡 |
 | [node-connection-type-literal](docs/rules/node-connection-type-literal.md)               | Disallow string literals in node description `inputs`/`outputs` — use `NodeConnectionTypes` enum instead                                    | ✅ ☑️ |      | 🔧 |    |
 | [node-usable-as-tool](docs/rules/node-usable-as-tool.md)                                 | Ensure node classes have usableAsTool property                                                                                              | ✅ ☑️ |      | 🔧 |    |
+| [options-sorted-alphabetically](docs/rules/options-sorted-alphabetically.md)             | Enforce alphabetical ordering of options arrays in n8n node properties                                                                      |      | ✅ ☑️ |    |    |
 | [package-name-convention](docs/rules/package-name-convention.md)                         | Enforce correct package naming convention for n8n community nodes                                                                           | ✅ ☑️ |      |    | 💡 |
 | [resource-operation-pattern](docs/rules/resource-operation-pattern.md)                   | Enforce proper resource/operation pattern for better UX in n8n nodes                                                                        |      | ✅ ☑️ |    |    |
 
