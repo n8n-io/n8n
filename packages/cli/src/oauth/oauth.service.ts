@@ -195,7 +195,7 @@ export class OauthService {
 	static extractAccountIdentifier(tokenData: Record<string, unknown>): string | undefined {
 		for (const key of ['email', 'login', 'username', 'user', 'account']) {
 			if (typeof tokenData[key] === 'string' && tokenData[key]) {
-				return tokenData[key] as string;
+				return tokenData[key];
 			}
 		}
 
@@ -203,7 +203,9 @@ export class OauthService {
 			const parts = tokenData.id_token.split('.');
 			if (parts.length === 3) {
 				try {
-					const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
+					const payload: Record<string, unknown> = JSON.parse(
+						Buffer.from(parts[1], 'base64url').toString(),
+					);
 					if (typeof payload.email === 'string' && payload.email) {
 						return payload.email;
 					}
