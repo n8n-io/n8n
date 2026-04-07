@@ -26,7 +26,8 @@ export class InstanceVersionHistoryService {
 		this.logger = this.logger.scoped('instance-version-history');
 	}
 
-	async init(): Promise<void> {
+	async init(retries = 3): Promise<void> {
+		if (retries === 0) return;
 		if (!this.instanceSettings.isLeader) return;
 
 		try {
@@ -35,9 +36,9 @@ export class InstanceVersionHistoryService {
 			this._cache = null;
 			await this.checkAndRecordCurrentVersion();
 		} catch (error) {
-			this.logger.warn('Failed to initialize version history, retrying in 10s', { error });
+			this.logger.warn('Failed to initialize version history', { error });
 
-			setTimeout(async () => await this.init(), 10_000);
+			setTimeout(async () => await this.init(retries - 1), 10_000);
 		}
 	}
 

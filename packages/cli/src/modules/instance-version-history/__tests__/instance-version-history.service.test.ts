@@ -88,6 +88,15 @@ describe('InstanceVersionHistoryService', () => {
 			expect(repository.find).not.toHaveBeenCalled();
 			expect(repository.save).not.toHaveBeenCalled();
 		});
+
+		it('should skip init when not retries is 0', async () => {
+			instanceSettings = mock<InstanceSettings>({ isLeader: false });
+			service = createService();
+			await service.init(0);
+
+			expect(repository.find).not.toHaveBeenCalled();
+			expect(repository.save).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('getMinVersionSince', () => {
