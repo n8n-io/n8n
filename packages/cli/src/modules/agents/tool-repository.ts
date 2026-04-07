@@ -1,36 +1,32 @@
-import type { ToolDescriptor, ToolRepository } from '@n8n/agents';
-import { Tool } from '@n8n/agents';
 import type { BuiltTool } from '@n8n/agents';
+import { Tool } from '@n8n/agents';
+import { Service } from '@n8n/di';
 import type { INodeTypeDescription, INodeParameters } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 
-/**
- * Resolves the latest version number from a node description.
- * `version` may be a single number or an array; we always want the highest.
- */
-function resolveLatestVersion(version: number | number[]): number {
-	return Array.isArray(version) ? Math.max(...version) : version;
+// ---------------------------------------------------------------------------
+// Public contracts
+// ---------------------------------------------------------------------------
+
+export interface ToolDescriptor {
+	name: string;
+	description: string;
 }
 
-/**
- * Build an optional enum schema from a list of option values.
- * Falls back to z.string().optional() if no options are present.
- */
-function buildEnumField(
-	options: Array<{ value: unknown }> | undefined,
-): z.ZodOptional<z.ZodString> | z.ZodOptional<z.ZodEnum<[string, ...string[]]>> {
-	const values = (options ?? [])
-		.map((o) => o.value)
-		.filter((v): v is string => typeof v === 'string');
+export interface ToolRepository {
+	listTools(): Promise<ToolDescriptor[]>;
+	getTool(name: string): Promise<BuiltTool | undefined>;
+}
 
-	if (values.length >= 2) {
-		return z.enum(values as [string, ...string[]]).optional();
-	}
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
 
-	return z.string().optional();
+function resolveLatestVersion(version: number | number[]): number {
+	return Array.isArray(version) ? Math.max(...version) : version;
 }
 
 /**
@@ -38,27 +34,37 @@ function buildEnumField(
  *
  * Extracts `resource` and `operation` as optional enum fields (giving the LLM
  * valid option values to choose from), then adds a passthrough `parameters`
- * catch-all for everything else. This is intentionally minimal — the agent
- * reads the node description to understand what to pass.
+ * catch-all for everything else.
  */
 function buildInputSchema(nodeDesc: INodeTypeDescription): z.ZodObject<z.ZodRawShape> {
 	const shape: z.ZodRawShape = {};
 
 	const resourceProp = nodeDesc.properties.find((p) => p.name === 'resource');
 	if (resourceProp?.options) {
-		shape.resource = buildEnumField(resourceProp.options as Array<{ value: unknown }>).describe(
-			'The resource to operate on.',
-		);
+		const values = (resourceProp.options as Array<{ value: unknown }>)
+			.map((o) => o.value)
+			.filter((v): v is string => typeof v === 'string');
+
+		shape.resource = (
+			values.length >= 2
+				? z.enum(values as [string, ...string[]]).optional()
+				: z.string().optional()
+		).describe('The resource to operate on.');
 	}
 
 	const operationProp = nodeDesc.properties.find((p) => p.name === 'operation');
 	if (operationProp?.options) {
-		shape.operation = buildEnumField(operationProp.options as Array<{ value: unknown }>).describe(
-			'The operation to perform on the resource.',
-		);
+		const values = (operationProp.options as Array<{ value: unknown }>)
+			.map((o) => o.value)
+			.filter((v): v is string => typeof v === 'string');
+
+		shape.operation = (
+			values.length >= 2
+				? z.enum(values as [string, ...string[]]).optional()
+				: z.string().optional()
+		).describe('The operation to perform on the resource.');
 	}
 
-	// Passthrough catch-all for all other node parameters the agent wants to set.
 	shape.parameters = z
 		.record(z.string(), z.unknown())
 		.optional()
@@ -70,20 +76,21 @@ function buildInputSchema(nodeDesc: INodeTypeDescription): z.ZodObject<z.ZodRawS
 	return z.object(shape);
 }
 
+// ---------------------------------------------------------------------------
+// Implementation
+// ---------------------------------------------------------------------------
+
 /**
  * A {@link ToolRepository} backed by n8n's node registry.
  *
  * Lists all nodes marked `usableAsTool` and produces executable {@link BuiltTool}
  * instances on demand via {@link EphemeralNodeExecutor}.
- *
- * Credential filtering is intentionally skipped in this initial version —
- * all `usableAsTool` nodes are surfaced regardless of credential state.
  */
+@Service()
 export class NodeToolRepository implements ToolRepository {
 	constructor(
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly executor: EphemeralNodeExecutor,
-		private readonly projectId: string,
 	) {}
 
 	async listTools(): Promise<ToolDescriptor[]> {
@@ -91,11 +98,7 @@ export class NodeToolRepository implements ToolRepository {
 
 		return types.nodes
 			.filter((n): n is INodeTypeDescription => Boolean(n.usableAsTool))
-			.map((n) => ({
-				name: n.name,
-				description: n.description,
-				hasCredentials: true,
-			}));
+			.map((n) => ({ name: n.name, description: n.description }));
 	}
 
 	async getTool(name: string): Promise<BuiltTool | undefined> {
@@ -127,7 +130,7 @@ export class NodeToolRepository implements ToolRepository {
 					nodeTypeVersion: version,
 					nodeParameters,
 					inputData: [{ json: nodeParameters }],
-					projectId: this.projectId,
+					projectId: '',
 				});
 			})
 			.build();

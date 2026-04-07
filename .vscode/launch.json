@@ -7,6 +7,19 @@
 		{
 			"type": "node",
 			"request": "launch",
+			"name": "Jest: tool-repository",
+			"program": "${workspaceFolder}/node_modules/.bin/jest",
+			"args": [
+				"--config", "jest.config.agents.js",
+				"--testPathPattern", "tool-repository",
+				"--runInBand"
+			],
+			"cwd": "${workspaceFolder}/packages/cli",
+			"console": "integratedTerminal"
+		},
+		{
+			"type": "node",
+			"request": "launch",
 			"name": "Jest: current file",
 			"program": "${workspaceFolder}/node_modules/.bin/jest",
 			"args": ["${fileBasenameNoExtension}"],
@@ -99,6 +112,7 @@
 				"/usr/local/lib/node_modules/n8n/*": "${workspaceFolder}/packages/cli/*"
 			}
 		}
+	
 	]
 
 	/**
