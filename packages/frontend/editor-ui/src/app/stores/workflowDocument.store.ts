@@ -19,7 +19,6 @@ import { useWorkflowDocumentViewport } from './workflowDocument/useWorkflowDocum
 import { useWorkflowDocumentConnections } from './workflowDocument/useWorkflowDocumentConnections';
 import { useWorkflowDocumentGraph } from './workflowDocument/useWorkflowDocumentGraph';
 import { useWorkflowDocumentExpression } from './workflowDocument/useWorkflowDocumentExpression';
-import { useWorkflowDocumentNodeHelpers } from './workflowDocument/useWorkflowDocumentNodeHelpers';
 import { useWorkflowDocumentName } from './workflowDocument/useWorkflowDocumentName';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -60,7 +59,6 @@ type NodesReturn = ReturnType<typeof useWorkflowDocumentNodes>;
 type ConnectionsReturn = ReturnType<typeof useWorkflowDocumentConnections>;
 type GraphReturn = ReturnType<typeof useWorkflowDocumentGraph>;
 type ExpressionReturn = ReturnType<typeof useWorkflowDocumentExpression>;
-type NodeHelpersReturn = ReturnType<typeof useWorkflowDocumentNodeHelpers>;
 type MetaReturn = ReturnType<typeof useWorkflowDocumentMeta>;
 type PinDataReturn = ReturnType<typeof useWorkflowDocumentPinData>;
 type SettingsReturn = ReturnType<typeof useWorkflowDocumentSettings>;
@@ -76,8 +74,6 @@ void (0 as unknown as [
 	AssertNoOverlap<ConnectionsReturn, GraphReturn>,
 	AssertNoOverlap<ConnectionsReturn, ExpressionReturn>,
 	AssertNoOverlap<GraphReturn, ExpressionReturn>,
-	AssertNoOverlap<ExpressionReturn, NodeHelpersReturn>,
-	AssertNoOverlap<NodesReturn, NodeHelpersReturn>,
 	AssertNoOverlap<MetaReturn, NodesReturn>,
 	AssertNoOverlap<MetaReturn, ConnectionsReturn>,
 	AssertNoOverlap<PinDataReturn, NodesReturn>,
@@ -138,7 +134,6 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			});
 		const workflowDocumentGraph = useWorkflowDocumentGraph();
 		const workflowDocumentExpression = useWorkflowDocumentExpression();
-		const workflowDocumentNodeHelpers = useWorkflowDocumentNodeHelpers();
 
 		// --- Cross-cut orchestration ---
 		// Each composable is self-contained and unaware of its siblings. This
@@ -177,7 +172,6 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentConnections,
 			...workflowDocumentGraph,
 			...workflowDocumentExpression,
-			...workflowDocumentNodeHelpers,
 			removeAllNodes,
 		};
 	})();
