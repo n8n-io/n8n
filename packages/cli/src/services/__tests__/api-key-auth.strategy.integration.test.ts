@@ -8,11 +8,9 @@ import type { InstanceSettings } from 'n8n-core';
 import { randomString } from 'n8n-workflow';
 
 import { createOwnerWithApiKey } from '@test-integration/db/users';
-import { retryUntil } from '@test-integration/retry-until';
 
 import { ApiKeyAuthStrategy } from '../api-key-auth.strategy';
 import { JwtService } from '../jwt.service';
-import { LastActiveAtService } from '../last-active-at.service';
 
 const mockReqWith = (apiKey: string, path: string, method: string): AuthenticatedRequest =>
 	mock<AuthenticatedRequest>({
@@ -38,7 +36,6 @@ const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 const jwtService = new JwtService(instanceSettings, mock());
 
 let userRepository: UserRepository;
-let lastActiveAtService: LastActiveAtService;
 let strategy: ApiKeyAuthStrategy;
 
 describe('ApiKeyAuthStrategy', () => {
@@ -49,8 +46,7 @@ describe('ApiKeyAuthStrategy', () => {
 	beforeAll(async () => {
 		await testDb.init();
 		userRepository = Container.get(UserRepository);
-		lastActiveAtService = Container.get(LastActiveAtService);
-		strategy = new ApiKeyAuthStrategy(userRepository, jwtService, lastActiveAtService);
+		strategy = new ApiKeyAuthStrategy(userRepository, jwtService);
 	});
 
 	afterAll(async () => {
@@ -92,6 +88,19 @@ describe('ApiKeyAuthStrategy', () => {
 		expect(await strategy.authenticate(req)).toBe(false);
 	});
 
+	it('should rethrow non-TokenExpiredError from JWT verification', async () => {
+		const owner = await createOwnerWithApiKey();
+		const [{ apiKey }] = owner.apiKeys;
+		const req = mockReqWith(apiKey, '/test', 'GET');
+
+		const verifyError = new Error('Unexpected JWT error');
+		jest.spyOn(jwtService, 'verify').mockImplementationOnce(() => {
+			throw verifyError;
+		});
+
+		await expect(strategy.authenticate(req)).rejects.toThrow(verifyError);
+	});
+
 	it('should work with non JWT (legacy) api keys', async () => {
 		const legacyApiKey = `n8n_api_${randomString(10)}`;
 		const owner = await createOwnerWithApiKey();
@@ -104,22 +113,6 @@ describe('ApiKeyAuthStrategy', () => {
 		expect(await strategy.authenticate(req)).toBe(true);
 		expect(req.user).toBeDefined();
 		expect(req.user.id).toBe(owner.id);
-	});
-
-	it('should update last active at for the user', async () => {
-		const owner = await createOwnerWithApiKey();
-		const [{ apiKey }] = owner.apiKeys;
-		const req = mockReqWith(apiKey, '/test', 'GET');
-
-		await strategy.authenticate(req);
-
-		await retryUntil(async () => {
-			const userOnDb = await userRepository.findOneByOrFail({ id: owner.id });
-			expect(userOnDb.lastActiveAt).toBeDefined();
-			expect(DateTime.fromSQL(userOnDb.lastActiveAt!.toString()).toJSDate().getTime()).toEqual(
-				DateTime.now().startOf('day').toMillis(),
-			);
-		});
 	});
 
 	it('should return false if user is disabled', async () => {

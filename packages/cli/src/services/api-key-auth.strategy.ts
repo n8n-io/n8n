@@ -5,7 +5,6 @@ import { TokenExpiredError } from 'jsonwebtoken';
 
 import type { AuthStrategy } from './auth-strategy.types';
 import { JwtService } from './jwt.service';
-import { LastActiveAtService } from './last-active-at.service';
 import { API_KEY_AUDIENCE, API_KEY_ISSUER, PREFIX_LEGACY_API_KEY } from './public-api-key.service';
 
 const API_KEY_HEADER = 'x-n8n-api-key';
@@ -15,13 +14,12 @@ export class ApiKeyAuthStrategy implements AuthStrategy {
 	constructor(
 		private readonly userRepository: UserRepository,
 		private readonly jwtService: JwtService,
-		private readonly lastActiveAtService: LastActiveAtService,
 	) {}
 
 	async authenticate(req: AuthenticatedRequest): Promise<boolean | null> {
-		const providedApiKey = req.headers[API_KEY_HEADER] as string | undefined;
+		const providedApiKey = req.headers[API_KEY_HEADER];
 
-		if (!providedApiKey) return null;
+		if (typeof providedApiKey !== 'string' || !providedApiKey) return null;
 
 		const user = await this.userRepository.findOne({
 			where: {
@@ -50,8 +48,6 @@ export class ApiKeyAuthStrategy implements AuthStrategy {
 		}
 
 		req.user = user;
-
-		void this.lastActiveAtService.updateLastActiveIfStale(user.id);
 
 		return true;
 	}

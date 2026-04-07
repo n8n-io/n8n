@@ -12,6 +12,7 @@ import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { ApiKeyAuthStrategy } from '@/services/api-key-auth.strategy';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
+import { LastActiveAtService } from '@/services/last-active-at.service';
 import { UrlService } from '@/services/url.service';
 
 import { sendPublicApiErrorResponse } from './v1/public-api-error-response';
@@ -111,6 +112,7 @@ function createLazyValidatorMiddleware(
 									const authenticated = await Container.get(AuthStrategyRegistry).authenticate(req);
 
 									if (authenticated) {
+										void Container.get(LastActiveAtService).updateLastActiveIfStale(req.user.id);
 										Container.get(EventService).emit('public-api-invoked', {
 											userId: req.user.id,
 											path: req.path,
