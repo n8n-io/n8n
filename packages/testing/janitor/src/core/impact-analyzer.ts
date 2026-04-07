@@ -19,7 +19,13 @@ import { type Project, type SourceFile } from 'ts-morph';
 import { type FileDiffResult, type MethodChange } from './ast-diff-analyzer.js';
 import { FacadeResolver } from './facade-resolver.js';
 import { MethodUsageAnalyzer, type MethodUsageIndex } from './method-usage-analyzer.js';
-import { getRootDir, findFilesRecursive, getRelativePath, isTestFile } from '../utils/paths.js';
+import {
+	findFilesRecursive,
+	getRelativePath,
+	getRootDir,
+	isTestFile,
+	resolvePath,
+} from '../utils/paths.js';
 
 export type ResolutionStrategy = 'method-level' | 'property-level' | 'skipped';
 
@@ -69,7 +75,7 @@ export class ImpactAnalyzer {
 		const testFiles: string[] = [];
 
 		for (const file of changedFiles) {
-			const relative = this.toRelative(file);
+			const relative = getRelativePath(resolvePath(file));
 			if (isTestFile(relative)) {
 				testFiles.push(relative);
 			} else if (file.endsWith('.ts')) {
@@ -93,8 +99,8 @@ export class ImpactAnalyzer {
 		};
 
 		for (const file of sourceFiles) {
-			const abs = this.toAbsolute(file);
-			const relative = this.toRelative(file);
+			const abs = resolvePath(file);
+			const relative = getRelativePath(resolvePath(file));
 			const diff = diffMap.get(abs);
 
 			if (!diff) {
@@ -144,7 +150,7 @@ export class ImpactAnalyzer {
 		}
 
 		return {
-			changedFiles: changedFiles.map((f) => this.toRelative(f)),
+			changedFiles: changedFiles.map((f) => getRelativePath(resolvePath(f))),
 			affectedFiles: Array.from(affectedFilesSet).sort((a, b) => a.localeCompare(b)),
 			affectedTests: Array.from(affectedTests).sort((a, b) => a.localeCompare(b)),
 			graph,
@@ -160,8 +166,8 @@ export class ImpactAnalyzer {
 		affectedFilesSet: Set<string>,
 		graph: Record<string, string[]>,
 	): void {
-		const abs = this.toAbsolute(file);
-		const relative = this.toRelative(file);
+		const abs = resolvePath(file);
+		const relative = getRelativePath(resolvePath(file));
 		const sourceFile = this.project.getSourceFile(abs);
 		if (!sourceFile) return;
 
@@ -359,34 +365,27 @@ export class ImpactAnalyzer {
 
 		return tests;
 	}
-
-	// --- Path Helpers ---
-
-	private toRelative(filePath: string): string {
-		if (path.isAbsolute(filePath)) {
-			return getRelativePath(filePath);
-		}
-		return filePath;
-	}
-
-	private toAbsolute(filePath: string): string {
-		if (path.isAbsolute(filePath)) {
-			return filePath;
-		}
-		return path.join(this.root, filePath);
-	}
 }
 
 /**
  * Format impact result for console output
  */
+function formatChangedFileEntry(
+	file: string,
+	strategies: Record<string, ResolutionStrategy>,
+): string {
+	const strategy = strategies[file];
+	const label = strategy ? ` [${strategy}]` : '';
+	return `  - ${file}${label}`;
+}
+
 export function formatImpactConsole(result: ImpactResult, verbose = false): void {
 	console.log('\n====================================');
 	console.log('       IMPACT ANALYSIS REPORT');
 	console.log('====================================\n');
 
 	console.log(`Changed files: ${result.changedFiles.length}`);
-	result.changedFiles.forEach((f) => console.log(`  - ${f}`));
+	result.changedFiles.forEach((f) => console.log(formatChangedFileEntry(f, result.strategies)));
 
 	console.log(`\nAffected test files: ${result.affectedTests.length}`);
 	if (result.affectedTests.length === 0) {

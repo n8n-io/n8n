@@ -29,7 +29,7 @@ import { useRouter } from 'vue-router';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import {
 	getLastPublishedVersion,
-	generateVersionNameFromId,
+	generateVersionLabelFromId,
 } from '@/features/workflows/workflowHistory/utils';
 import { nodeViewEventBus } from '@/app/event-bus';
 import CollaborationPane from '@/features/collaboration/collaboration/components/CollaborationPane.vue';
@@ -308,7 +308,7 @@ const activeVersionName = computed(() => {
 	if (!activeVersion.value) {
 		return '';
 	}
-	return activeVersion.value.name ?? generateVersionNameFromId(activeVersion.value.versionId);
+	return activeVersion.value.name ?? generateVersionLabelFromId(activeVersion.value.versionId);
 });
 
 const latestPublishDate = computed(() => {
@@ -476,7 +476,7 @@ useKeybindings({
 	},
 	'ctrl+u': {
 		disabled: () =>
-			!activeVersion.value || !hasPublishPermission.value || collaborationReadOnly.value,
+			!activeVersion.value || !hasUnpublishPermission.value || collaborationReadOnly.value,
 		run: onUnpublish,
 	},
 });

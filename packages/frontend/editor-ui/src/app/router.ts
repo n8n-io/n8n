@@ -681,8 +681,17 @@ export const routes: RouteRecordRaw[] = [
 				name: VIEWS.RESOLVERS,
 				component: SettingsResolversView,
 				meta: {
-					middleware: ['authenticated', 'custom'],
+					middleware: ['authenticated', 'rbac', 'custom'],
 					middlewareOptions: {
+						rbac: {
+							scope: [
+								'credentialResolver:read',
+								'credentialResolver:list',
+								'credentialResolver:create',
+								'credentialResolver:update',
+								'credentialResolver:delete',
+							],
+						},
 						custom: () => {
 							const { isEnabled } = useDynamicCredentials();
 							return isEnabled.value;

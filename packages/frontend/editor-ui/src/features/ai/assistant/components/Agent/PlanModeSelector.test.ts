@@ -17,19 +17,19 @@ describe('PlanModeSelector', () => {
 
 	it('shows "Build" label when modelValue is build', () => {
 		const { getByTestId } = render('build');
-		const button = getByTestId('plan-mode-selector').querySelector('button');
-		expect(button?.textContent).toContain('Build');
+		const trigger = getByTestId('plan-mode-selector').querySelector('[role="combobox"]');
+		expect(trigger?.textContent).toContain('Build');
 	});
 
 	it('shows "Plan" label when modelValue is plan', () => {
 		const { getByTestId } = render('plan');
-		const button = getByTestId('plan-mode-selector').querySelector('button');
-		expect(button?.textContent).toContain('Plan');
+		const trigger = getByTestId('plan-mode-selector').querySelector('[role="combobox"]');
+		expect(trigger?.textContent).toContain('Plan');
 	});
 
-	it('button is never disabled', () => {
+	it('trigger is never disabled', () => {
 		const { getByTestId } = render('build');
-		const button = getByTestId('plan-mode-selector').querySelector('button');
-		expect(button?.hasAttribute('disabled')).toBe(false);
+		const trigger = getByTestId('plan-mode-selector').querySelector('[role="combobox"]');
+		expect(trigger?.hasAttribute('data-disabled')).toBe(false);
 	});
 });

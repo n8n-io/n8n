@@ -80,7 +80,7 @@ const loadOidcConfig = async () => {
 	try {
 		await getOidcConfig();
 	} catch (error) {
-		toast.showError(error, 'error');
+		toast.showError(error, i18n.baseText('settings.sso.settings.save.error_oidc'));
 	}
 };
 
@@ -182,6 +182,25 @@ function sendTrackingEvent(config: OidcConfigDto) {
 	};
 	telemetry.track('User updated single sign on settings', trackingMetadata);
 }
+
+const isTestEnabled = computed(
+	() =>
+		!!ssoStore.oidcConfig?.discoveryEndpoint &&
+		ssoStore.oidcConfig.discoveryEndpoint !== '' &&
+		!!ssoStore.oidcConfig?.clientId &&
+		!!ssoStore.oidcConfig?.clientSecret,
+);
+
+const onTest = async () => {
+	try {
+		const { url } = await ssoStore.testOidcConfig();
+		if (typeof window !== 'undefined') {
+			window.open(url, '_blank');
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.sso.settings.test.error'));
+	}
+};
 
 const hasUnsavedChanges = computed(() => !cannotSaveOidcSettings.value && !savingForm.value);
 
@@ -291,6 +310,15 @@ onMounted(async () => {
 				@click="onOidcSettingsSave(false)"
 			>
 				{{ i18n.baseText('settings.sso.settings.save') }}
+			</N8nButton>
+			<N8nButton
+				variant="subtle"
+				:disabled="!isTestEnabled"
+				size="large"
+				data-test-id="sso-oidc-test"
+				@click="onTest"
+			>
+				{{ i18n.baseText('settings.sso.settings.test') }}
 			</N8nButton>
 		</div>
 	</div>

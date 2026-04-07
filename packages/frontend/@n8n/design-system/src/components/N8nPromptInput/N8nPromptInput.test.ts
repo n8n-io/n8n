@@ -525,95 +525,20 @@ describe('N8nPromptInput', () => {
 		});
 	});
 
-	describe('credits bar', () => {
-		it('should hide credit bar when quota is -1', () => {
-			const { container } = renderComponent({
-				props: {
-					creditsQuota: -1,
-					creditsRemaining: 0,
-				},
-				global: {
-					stubs: [
-						'N8nCallout',
-						'N8nScrollArea',
-						'N8nSendStopButton',
-						'N8nTooltip',
-						'N8nLink',
-						'N8nIcon',
-					],
-				},
-			});
-
-			// Credit bar should not be rendered
-			const creditsBar = container.querySelector('.creditsBar');
-			expect(creditsBar).toBeFalsy();
-		});
-
-		it('should show credit bar when quota is a valid positive number', () => {
+	describe('credits behavior', () => {
+		it('should not render credits bar (credits bar has been removed)', () => {
 			const { container } = renderComponent({
 				props: {
 					creditsQuota: 100,
 					creditsRemaining: 80,
 				},
 				global: {
-					stubs: [
-						'N8nCallout',
-						'N8nScrollArea',
-						'N8nSendStopButton',
-						'N8nTooltip',
-						'N8nLink',
-						'N8nIcon',
-					],
-				},
-			});
-
-			// Credit bar should be rendered
-			const creditsBar = container.querySelector('.creditsBar');
-			expect(creditsBar).toBeTruthy();
-		});
-
-		it('should show credits bar when creditsQuota and creditsRemaining are provided', () => {
-			const { container } = renderComponent({
-				props: {
-					creditsQuota: 100,
-					creditsRemaining: 75,
-				},
-				global: {
-					stubs: [
-						'N8nCallout',
-						'N8nScrollArea',
-						'N8nSendStopButton',
-						'N8nTooltip',
-						'N8nLink',
-						'N8nIcon',
-					],
+					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton', 'N8nTooltip'],
 				},
 			});
 
 			const creditsBar = container.querySelector('.creditsBar');
-			expect(creditsBar).toBeTruthy();
-		});
-
-		it('should show no credits warning when creditsRemaining is 0', () => {
-			const { container } = renderComponent({
-				props: {
-					creditsQuota: 100,
-					creditsRemaining: 0,
-				},
-				global: {
-					stubs: [
-						'N8nCallout',
-						'N8nScrollArea',
-						'N8nSendStopButton',
-						'N8nTooltip',
-						'N8nLink',
-						'N8nIcon',
-					],
-				},
-			});
-
-			const noCredits = container.querySelector('.noCredits');
-			expect(noCredits).toBeTruthy();
+			expect(creditsBar).toBeFalsy();
 		});
 
 		it('should disable textarea and send button when no credits remain', () => {
@@ -634,8 +559,6 @@ describe('N8nPromptInput', () => {
 						N8nTooltip: {
 							template: '<div><slot /></div>',
 						},
-						N8nLink: true,
-						N8nIcon: true,
 					},
 				},
 			});
@@ -656,122 +579,12 @@ describe('N8nPromptInput', () => {
 					creditsRemaining: 0,
 				},
 				global: {
-					stubs: [
-						'N8nCallout',
-						'N8nScrollArea',
-						'N8nSendStopButton',
-						'N8nTooltip',
-						'N8nLink',
-						'N8nIcon',
-					],
+					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton', 'N8nTooltip'],
 				},
 			});
 
 			const textarea = container.querySelector('textarea');
 			expect(textarea).toHaveAttribute('placeholder', '');
-		});
-	});
-
-	describe('upgrade-click event', () => {
-		it('should emit upgrade-click event when upgrade link is clicked', async () => {
-			const wrapper = mount(N8nPromptInput, {
-				props: {
-					creditsQuota: 100,
-					creditsRemaining: 10,
-				},
-				global: {
-					stubs: {
-						N8nCallout: true,
-						N8nScrollArea: true,
-						N8nSendStopButton: true,
-						N8nTooltip: {
-							template: '<n8n-tooltip-stub><slot></slot></n8n-tooltip-stub>',
-						},
-						N8nLink: true,
-						N8nIcon: true,
-					},
-				},
-			});
-
-			// Find and click the upgrade link
-			const upgradeLink = wrapper.find('n8n-link-stub');
-			await upgradeLink.trigger('click');
-
-			// Verify the upgrade-click event was emitted
-			expect(wrapper.emitted('upgrade-click')).toBeTruthy();
-			expect(wrapper.emitted('upgrade-click')).toHaveLength(1);
-
-			wrapper.unmount();
-		});
-	});
-
-	describe('showAskOwnerTooltip prop', () => {
-		it('should enable tooltip when showAskOwnerTooltip is true', () => {
-			const wrapper = mount(N8nPromptInput, {
-				props: {
-					creditsQuota: 100,
-					creditsRemaining: 10,
-					showAskOwnerTooltip: true,
-				},
-				global: {
-					stubs: {
-						N8nCallout: true,
-						N8nScrollArea: true,
-						N8nSendStopButton: true,
-						N8nTooltip: {
-							props: ['disabled', 'content', 'placement'],
-							template:
-								'<div :class="`tooltip-${placement || \'top\'}`" :data-disabled="String(disabled)"><slot /></div>',
-						},
-						N8nLink: true,
-						N8nIcon: true,
-					},
-				},
-			});
-
-			// Find tooltips: [0]=outer wrapper, [1]=credits info, [2]=ask owner
-			const tooltips = wrapper.findAll('.tooltip-top');
-			const askOwnerTooltip = tooltips[2];
-
-			expect(tooltips.length).toBe(3);
-			expect(askOwnerTooltip.exists()).toBe(true);
-			expect(askOwnerTooltip.attributes('data-disabled')).toBe('false');
-
-			wrapper.unmount();
-		});
-
-		it('should disable tooltip when showAskOwnerTooltip is false', () => {
-			const wrapper = mount(N8nPromptInput, {
-				props: {
-					creditsQuota: 100,
-					creditsRemaining: 10,
-					showAskOwnerTooltip: false,
-				},
-				global: {
-					stubs: {
-						N8nCallout: true,
-						N8nScrollArea: true,
-						N8nSendStopButton: true,
-						N8nTooltip: {
-							props: ['disabled', 'content', 'placement'],
-							template:
-								'<div :class="`tooltip-${placement || \'top\'}`" :data-disabled="String(disabled)"><slot /></div>',
-						},
-						N8nLink: true,
-						N8nIcon: true,
-					},
-				},
-			});
-
-			// Find tooltips: [0]=outer wrapper, [1]=credits info, [2]=ask owner
-			const tooltips = wrapper.findAll('.tooltip-top');
-			const askOwnerTooltip = tooltips[2];
-
-			expect(tooltips.length).toBe(3);
-			expect(askOwnerTooltip.exists()).toBe(true);
-			expect(askOwnerTooltip.attributes('data-disabled')).toBe('true');
-
-			wrapper.unmount();
 		});
 	});
 

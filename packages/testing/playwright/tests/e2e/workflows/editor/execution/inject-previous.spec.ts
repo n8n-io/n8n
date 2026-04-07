@@ -57,7 +57,7 @@ test.describe(
 			await n8n.canvas.openNode('DebugHelper');
 
 			await n8n.ndv.getEditPinnedDataButton().click();
-			const editor = n8n.ndv.outputPanel.get().locator('[contenteditable="true"]');
+			const editor = n8n.ndv.outputPanel.getContentEditableEditor();
 			await expect(editor).toContainText('"password":');
 			await expect(editor).toContainText('"uid":');
 		});

@@ -143,3 +143,7 @@ export function setMicrosoftObservabilityDefaults(): void {
 export function containsExpression(testString: string): boolean {
 	return /^=.*\{\{.+\}\}/.test(testString);
 }
+
+export function isObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}

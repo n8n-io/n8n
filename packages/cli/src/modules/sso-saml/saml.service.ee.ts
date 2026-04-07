@@ -6,14 +6,16 @@ import { isValidEmail, SettingsRepository, UserRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import axios from 'axios';
+import { createPublicKey, X509Certificate } from 'crypto';
 import type express from 'express';
-import { createHttpProxyAgent, createHttpsProxyAgent, InstanceSettings } from 'n8n-core';
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { Cipher, createHttpProxyAgent, createHttpsProxyAgent, InstanceSettings } from 'n8n-core';
+import { CREDENTIAL_BLANKING_VALUE, jsonParse, UnexpectedError } from 'n8n-workflow';
 import { type IdentityProviderInstance, type ServiceProviderInstance } from 'samlify';
 import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { buildSamlClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { UrlService } from '@/services/url.service';
 import {
@@ -58,6 +60,8 @@ export class SamlService {
 		loginBinding: 'redirect',
 		acsBinding: 'post',
 		authnRequestsSigned: false,
+		signingPrivateKey: undefined,
+		signingCertificate: undefined,
 		loginEnabled: false,
 		loginLabel: 'SAML',
 		wantAssertionsSigned: true,
@@ -88,7 +92,116 @@ export class SamlService {
 		private readonly settingsRepository: SettingsRepository,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly provisioningService: ProvisioningService,
+		private readonly cipher: Cipher,
 	) {}
+
+	/**
+	 * Checks if SAML request signing is enabled via feature flag.
+	 * @returns true if N8N_ENV_FEAT_SIGNED_SAML_REQUESTS is set to 'true', false otherwise
+	 */
+	isSignedSamlRequestsEnabled(): boolean {
+		return process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS === 'true';
+	}
+
+	/**
+	 * Returns the decrypted signing private key for internal use (e.g., signing SAML requests).
+	 * @throws BadRequestError if decryption fails
+	 */
+	private getDecryptedSigningPrivateKey(): string | undefined {
+		if (!this.isSignedSamlRequestsEnabled()) return undefined;
+		if (!this._samlPreferences.signingPrivateKey) return undefined;
+		try {
+			return this.cipher.decrypt(this._samlPreferences.signingPrivateKey);
+		} catch {
+			throw new BadRequestError(
+				'Failed to decrypt SAML signing private key. The key may be corrupted.',
+			);
+		}
+	}
+
+	private isValidPemPrivateKey(pem: string): boolean {
+		return /^-----BEGIN (?:RSA |EC )?PRIVATE KEY-----[\s\S]+-----END (?:RSA |EC )?PRIVATE KEY-----/.test(
+			pem.trim(),
+		);
+	}
+
+	private isValidPemCertificate(pem: string): boolean {
+		return /^-----BEGIN CERTIFICATE-----[\s\S]+-----END CERTIFICATE-----/.test(pem.trim());
+	}
+
+	private validateKeyPairMatch(privateKeyPem: string, certificatePem: string): boolean {
+		try {
+			const pubKeyFromPrivate = createPublicKey(privateKeyPem);
+			const cert = new X509Certificate(certificatePem);
+			const pubKeyFromCert = cert.publicKey;
+
+			return pubKeyFromPrivate
+				.export({ type: 'spki', format: 'der' })
+				.equals(pubKeyFromCert.export({ type: 'spki', format: 'der' }));
+		} catch {
+			return false;
+		}
+	}
+
+	private validateSigningKeyConfiguration(prefs: Partial<SamlPreferences>): void {
+		// Treat the blanking value as "keep existing" — the UI sends it back for redacted fields
+		// Treat empty string as "clear this field"
+		const isClearingKey = prefs.signingPrivateKey === '';
+		const isClearingCert = prefs.signingCertificate === '';
+		const isNewKey =
+			!!prefs.signingPrivateKey && prefs.signingPrivateKey !== CREDENTIAL_BLANKING_VALUE;
+		const isNewCert = !!prefs.signingCertificate;
+		const hasNewSigningFields = isNewKey || isNewCert;
+
+		if (hasNewSigningFields && !this.isSignedSamlRequestsEnabled()) {
+			throw new BadRequestError(
+				'SAML request signing is not enabled. Set N8N_ENV_FEAT_SIGNED_SAML_REQUESTS=true to enable this feature.',
+			);
+		}
+
+		if (!this.isSignedSamlRequestsEnabled()) return;
+
+		if (isNewKey && !this.isValidPemPrivateKey(prefs.signingPrivateKey!)) {
+			throw new BadRequestError(
+				'Invalid signing private key format. Must be a PEM-encoded private key.',
+			);
+		}
+
+		if (isNewCert && !this.isValidPemCertificate(prefs.signingCertificate!)) {
+			throw new BadRequestError(
+				'Invalid signing certificate format. Must be a PEM-encoded certificate.',
+			);
+		}
+
+		const willHaveAuthnRequestsSigned =
+			prefs.authnRequestsSigned ?? this._samlPreferences.authnRequestsSigned;
+
+		if (willHaveAuthnRequestsSigned) {
+			// Determine the effective key/cert after this update would be applied
+			const effectiveKey = isClearingKey
+				? undefined
+				: isNewKey
+					? prefs.signingPrivateKey!
+					: this.getDecryptedSigningPrivateKey();
+			const effectiveCert = isClearingCert
+				? undefined
+				: isNewCert
+					? prefs.signingCertificate!
+					: this._samlPreferences.signingCertificate;
+
+			if (!effectiveKey || !effectiveCert) {
+				throw new BadRequestError(
+					'Both signingPrivateKey and signingCertificate are required when authnRequestsSigned is enabled.',
+				);
+			}
+
+			if (!this.validateKeyPairMatch(effectiveKey, effectiveCert)) {
+				throw new BadRequestError(
+					'The signing private key and certificate do not match. Please provide a matching key/certificate pair.',
+				);
+			}
+		}
+	}
 
 	async init(): Promise<void> {
 		try {
@@ -209,7 +322,10 @@ export class SamlService {
 		attributes: SamlUserAttributes;
 		onboardingRequired: boolean;
 	}> {
-		const attributes = await this.getAttributesFromLoginResponse(req, binding);
+		const { mapped: attributes, raw: rawAttributes } = await this.getAttributesFromLoginResponse(
+			req,
+			binding,
+		);
 
 		if (attributes.email) {
 			const lowerCasedEmail = attributes.email.toLowerCase();
@@ -229,7 +345,7 @@ export class SamlService {
 						(e) => e.providerType === 'saml' && e.providerId === attributes.userPrincipalName,
 					)
 				) {
-					await this.applySsoProvisioning(user, attributes);
+					await this.applySsoProvisioning(user, attributes, rawAttributes);
 					return {
 						authenticatedUser: user,
 						attributes,
@@ -239,7 +355,7 @@ export class SamlService {
 					// Login path for existing users that are NOT fully set up for SAML
 					const updatedUser = await updateUserFromSamlAttributes(user, attributes);
 					const onboardingRequired = !updatedUser.firstName || !updatedUser.lastName;
-					await this.applySsoProvisioning(updatedUser, attributes);
+					await this.applySsoProvisioning(updatedUser, attributes, rawAttributes);
 					return {
 						authenticatedUser: updatedUser,
 						attributes,
@@ -250,7 +366,7 @@ export class SamlService {
 				// New users to be created JIT based on SAML attributes
 				if (isSsoJustInTimeProvisioningEnabled()) {
 					const newUser = await createUserFromSamlAttributes(attributes);
-					await this.applySsoProvisioning(newUser, attributes);
+					await this.applySsoProvisioning(newUser, attributes, rawAttributes);
 					return {
 						authenticatedUser: newUser,
 						attributes,
@@ -267,7 +383,16 @@ export class SamlService {
 		};
 	}
 
-	private async applySsoProvisioning(user: User, attributes: SamlPreferencesAttributeMapping) {
+	private async applySsoProvisioning(
+		user: User,
+		attributes: SamlPreferencesAttributeMapping,
+		rawAttributes: Record<string, unknown>,
+	): Promise<void> {
+		if (await this.provisioningService.isExpressionMappingEnabled()) {
+			const context = buildSamlClaimsContext(rawAttributes);
+			await this.provisioningService.provisionExpressionMappedRolesForUser(user, context);
+			return;
+		}
 		if (attributes?.n8nInstanceRole) {
 			await this.provisioningService.provisionInstanceRoleForUser(user, attributes.n8nInstanceRole);
 		}
@@ -321,8 +446,23 @@ export class SamlService {
 		broadcastReload: boolean = true,
 	): Promise<SamlPreferences | undefined> {
 		await this.loadSamlify();
+		this.validateSigningKeyConfiguration(prefs);
 		const previousMetadataUrl = this._samlPreferences.metadataUrl;
 		await this.loadPreferencesWithoutValidation(prefs);
+		await this.applyLoadedPreferences(prefs, previousMetadataUrl, tryFallback);
+		const result = await this.saveSamlPreferencesToDb();
+
+		if (broadcastReload) {
+			await this.broadcastReloadSAMLConfigurationCommand();
+		}
+		return result;
+	}
+
+	private async applyLoadedPreferences(
+		prefs: Partial<SamlPreferences>,
+		previousMetadataUrl: string | undefined,
+		tryFallback: boolean = true,
+	): Promise<void> {
 		if (prefs.metadataUrl) {
 			try {
 				const fetchedMetadata = await this.fetchMetadataFromUrl();
@@ -372,12 +512,6 @@ export class SamlService {
 			}
 		}
 		this.getIdentityProviderInstance(true);
-		const result = await this.saveSamlPreferencesToDb();
-
-		if (broadcastReload) {
-			await this.broadcastReloadSAMLConfigurationCommand();
-		}
-		return result;
 	}
 
 	async loadPreferencesWithoutValidation(prefs: Partial<SamlPreferences>) {
@@ -394,6 +528,27 @@ export class SamlService {
 			prefs.wantAssertionsSigned ?? this._samlPreferences.wantAssertionsSigned;
 		this._samlPreferences.wantMessageSigned =
 			prefs.wantMessageSigned ?? this._samlPreferences.wantMessageSigned;
+		if (prefs.signingCertificate === '') {
+			this._samlPreferences.signingCertificate = undefined;
+		} else {
+			this._samlPreferences.signingCertificate =
+				prefs.signingCertificate ?? this._samlPreferences.signingCertificate;
+		}
+		if (
+			prefs.signingPrivateKey !== undefined &&
+			prefs.signingPrivateKey !== CREDENTIAL_BLANKING_VALUE
+		) {
+			if (prefs.signingPrivateKey === '') {
+				// Empty string clears the stored key
+				this._samlPreferences.signingPrivateKey = undefined;
+			} else if (this.isValidPemPrivateKey(prefs.signingPrivateKey)) {
+				// Plaintext PEM from API → encrypt
+				this._samlPreferences.signingPrivateKey = this.cipher.encrypt(prefs.signingPrivateKey);
+			} else {
+				// Already-encrypted from DB → store as-is
+				this._samlPreferences.signingPrivateKey = prefs.signingPrivateKey;
+			}
+		}
 		if (prefs.metadataUrl) {
 			this._samlPreferences.metadataUrl = prefs.metadataUrl;
 		} else if (prefs.metadata) {
@@ -417,7 +572,18 @@ export class SamlService {
 
 			if (prefs) {
 				if (apply) {
-					await this.setSamlPreferences(prefs, true, broadcastReload);
+					// DB data was already validated when originally saved via setSamlPreferences().
+					// We must NOT re-validate here because signing keys are stored encrypted
+					// and would fail PEM validation. Instead, load preferences directly and
+					// apply the SAML configuration (metadata, identity provider, etc.).
+					await this.loadSamlify();
+					const previousMetadataUrl = this._samlPreferences.metadataUrl;
+					await this.loadPreferencesWithoutValidation(prefs);
+					await this.applyLoadedPreferences(prefs, previousMetadataUrl);
+
+					if (broadcastReload) {
+						await this.broadcastReloadSAMLConfigurationCommand();
+					}
 				} else {
 					await this.loadPreferencesWithoutValidation(prefs);
 				}
@@ -494,7 +660,7 @@ export class SamlService {
 	async getAttributesFromLoginResponse(
 		req: express.Request,
 		binding: SamlLoginBinding,
-	): Promise<SamlUserAttributes> {
+	): Promise<{ mapped: SamlUserAttributes; raw: Record<string, unknown> }> {
 		let parsedSamlResponse;
 		if (!this._samlPreferences.mapping)
 			throw new BadRequestError('Error fetching SAML Attributes, no Attribute mapping set');
@@ -512,7 +678,7 @@ export class SamlService {
 				`SAML Authentication failed. Could not parse SAML response. ${error instanceof Error ? error.message : error}`,
 			);
 		}
-		const { attributes, missingAttributes } = getMappedSamlAttributesFromFlowResult(
+		const { attributes, missingAttributes, rawAttributes } = getMappedSamlAttributesFromFlowResult(
 			parsedSamlResponse,
 			this._samlPreferences.mapping,
 			{
@@ -530,7 +696,7 @@ export class SamlService {
 				)}).`,
 			);
 		}
-		return attributes;
+		return { mapped: attributes, raw: rawAttributes };
 	}
 
 	/**

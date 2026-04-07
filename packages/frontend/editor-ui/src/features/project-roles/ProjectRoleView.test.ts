@@ -612,7 +612,12 @@ describe('ProjectRoleView', () => {
 
 		it('should render externalSecretsProvider scope type when roleBasedAccess is on', () => {
 			settingsStore.moduleSettings = {
-				'external-secrets': { roleBasedAccess: true, forProjects: true, multipleConnections: true },
+				'external-secrets': {
+					roleBasedAccess: true,
+					forProjects: true,
+					multipleConnections: true,
+					systemRolesEnabled: false,
+				},
 			};
 			const { getByText } = renderComponent();
 
@@ -622,7 +627,12 @@ describe('ProjectRoleView', () => {
 
 		it('should show secrets checkboxes when roleBasedAccess is on', async () => {
 			settingsStore.moduleSettings = {
-				'external-secrets': { roleBasedAccess: true, forProjects: true, multipleConnections: true },
+				'external-secrets': {
+					roleBasedAccess: true,
+					forProjects: true,
+					multipleConnections: true,
+					systemRolesEnabled: false,
+				},
 			};
 			const { getByTestId } = renderComponent();
 

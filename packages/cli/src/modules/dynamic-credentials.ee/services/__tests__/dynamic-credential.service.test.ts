@@ -161,7 +161,7 @@ describe('DynamicCredentialService', () => {
 		});
 
 		mockExpressionService = {
-			resolve: jest.fn(async (config, canUseExternalSecrets) => {
+			resolve: jest.fn(async (config) => {
 				// Simple mock that resolves expressions using global data only (vars, secrets)
 				// Not using runtime data like $execution.id or $execution.mode
 				const resolveValue = (value: unknown): unknown => {
@@ -177,7 +177,7 @@ describe('DynamicCredentialService', () => {
 
 					// Resolve $secrets expressions (external secrets)
 					const secretsMatch = value.match(/^=\{\{\$secrets\.(\w+)\.(\w+)\}\}$/);
-					if (secretsMatch && canUseExternalSecrets) {
+					if (secretsMatch) {
 						const [, provider, secretName] = secretsMatch;
 						// Get secrets from test context
 						return (global as any).testSecrets?.[`${provider}.${secretName}`] ?? value;
@@ -821,7 +821,6 @@ describe('DynamicCredentialService', () => {
 					staticData,
 					additionalData.executionContext,
 					undefined,
-					false,
 				);
 
 				// Verify the resolver was called with resolved config
@@ -838,7 +837,7 @@ describe('DynamicCredentialService', () => {
 				delete (global as any).testVars;
 			});
 
-			it('should resolve $secrets expressions when canUseExternalSecrets is true', async () => {
+			it('should resolve $secrets expressions', async () => {
 				const credentialsEntity = createMockCredentialsMetadata();
 				const resolverEntity = createMockResolverEntity();
 				const executionContext = createMockExecutionContext('encrypted-credentials');
@@ -863,61 +862,16 @@ describe('DynamicCredentialService', () => {
 					.mockReturnValueOnce(JSON.stringify(credentialContext))
 					.mockReturnValueOnce(JSON.stringify(resolverConfig));
 
-				// Test with canUseExternalSecrets = true
 				await service.resolveIfNeeded(
 					credentialsEntity,
 					staticData,
 					additionalData.executionContext,
 					undefined,
-					true, // canUseExternalSecrets = true (enables $secrets support)
 				);
 
 				// Verify the resolver was called with resolved config
 				const callArgs = mockResolver.getSecret.mock.calls[0][2];
 				expect(callArgs.configuration.apiToken).toBe('secret-token-from-infisical');
-				expect(callArgs.configuration.prefix).toBe('cred');
-
-				// Cleanup
-				delete (global as any).testSecrets;
-			});
-
-			it('should not resolve $secrets expressions when canUseExternalSecrets is false', async () => {
-				const credentialsEntity = createMockCredentialsMetadata();
-				const resolverEntity = createMockResolverEntity();
-				const executionContext = createMockExecutionContext('encrypted-credentials');
-				const credentialContext = createMockCredentialContext();
-				const additionalData = createMockAdditionalData('exec-123', {}, executionContext);
-
-				// Set up test secrets for the mock (but they should NOT be used)
-				(global as any).testSecrets = {
-					'infisical.apiToken': 'secret-token-from-infisical',
-				};
-
-				// Resolver config with $secrets expression
-				const resolverConfig = {
-					apiToken: '={{$secrets.infisical.apiToken}}',
-					prefix: 'cred',
-				};
-
-				const mockResolver = createMockResolver();
-				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
-				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
-				mockCipher.decrypt
-					.mockReturnValueOnce(JSON.stringify(credentialContext))
-					.mockReturnValueOnce(JSON.stringify(resolverConfig));
-
-				// Test with canUseExternalSecrets = false
-				await service.resolveIfNeeded(
-					credentialsEntity,
-					staticData,
-					additionalData.executionContext,
-					undefined,
-					false, // canUseExternalSecrets = false (disables $secrets support)
-				);
-
-				// Verify the resolver was called with config where $secrets expression is NOT resolved
-				const callArgs = mockResolver.getSecret.mock.calls[0][2];
-				expect(callArgs.configuration.apiToken).toBe('={{$secrets.infisical.apiToken}}');
 				expect(callArgs.configuration.prefix).toBe('cred');
 
 				// Cleanup
@@ -960,7 +914,6 @@ describe('DynamicCredentialService', () => {
 					staticData,
 					additionalData.executionContext,
 					undefined,
-					false,
 				);
 
 				// Verify only global expressions were resolved, runtime expressions remain as-is

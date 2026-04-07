@@ -13,7 +13,7 @@ test.describe(
 			await n8n.ndv.close();
 
 			await n8n.canvas.addNode('Edit Fields (Set)');
-			await n8n.ndv.inputPanel.get().getByText('No input data').waitFor();
+			await n8n.ndv.inputPanel.getNoInputDataMessage().waitFor();
 			await n8n.ndv.close();
 
 			await n8n.canvas.addNode('Hacker News', { action: 'Get an article' });

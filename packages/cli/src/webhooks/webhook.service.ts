@@ -61,13 +61,11 @@ export class WebhookService {
 		const dbStaticWebhook = await this.findStaticWebhook(method, path);
 
 		if (dbStaticWebhook) {
-			try {
-				await this.cacheService.set(cacheKey, dbStaticWebhook);
-			} catch (error) {
+			void this.cacheService.set(cacheKey, dbStaticWebhook).catch((error) => {
 				this.logger.warn('Failed to cache webhook', {
 					error: ensureError(error).message,
 				});
-			}
+			});
 			return dbStaticWebhook;
 		}
 

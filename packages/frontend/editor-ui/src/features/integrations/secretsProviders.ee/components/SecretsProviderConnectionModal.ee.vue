@@ -328,7 +328,7 @@ onMounted(async () => {
 									data-test-id="secrets-provider-read-only-notice"
 									:content="
 										i18n.baseText(
-											modal.canShareGlobally.value
+											modal.isSharedGlobally.value && modal.canShareGlobally.value
 												? 'settings.secretsProviderConnections.modal.readOnly.notice.admin'
 												: 'settings.secretsProviderConnections.modal.readOnly.notice.noPermission',
 										)
@@ -549,8 +549,8 @@ onMounted(async () => {
 
 .mainContent {
 	flex: 1;
-	overflow: auto;
 	padding-bottom: 60px;
+	padding-inline: var(--spacing--xs);
 }
 
 .icon {

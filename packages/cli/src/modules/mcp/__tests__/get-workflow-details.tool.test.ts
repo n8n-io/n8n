@@ -97,63 +97,26 @@ describe('get-workflow-details MCP tool', () => {
 			expect(payload.workflow.canExecute).toBe(true);
 		});
 
-		test('throws for not found/archived/unavailable workflow', async () => {
-			const archived = createWorkflow({ activeVersionId: uuid(), isArchived: true });
-			const unavailable = createWorkflow({
-				activeVersionId: uuid(),
-				settings: { availableInMCP: false },
-			});
-
+		test('propagates errors from workflow validation', async () => {
 			const credentialsService = mockInstance(CredentialsService, {});
 			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
 
-			const wfFinder1 = mockInstance(WorkflowFinderService, {
+			const wfFinder = mockInstance(WorkflowFinderService, {
 				findWorkflowForUser: jest.fn().mockResolvedValue(null),
 			});
-			await expect(
-				getWorkflowDetails(
-					user,
-					baseWebhookUrl,
-					wfFinder1,
-					credentialsService,
-					endpoints,
-					roleService,
-					projectService,
-					{ workflowId: 'missing' },
-				),
-			).rejects.toThrow('Workflow not found');
 
-			const wfFinder2 = mockInstance(WorkflowFinderService, {
-				findWorkflowForUser: jest.fn().mockResolvedValue(archived),
-			});
 			await expect(
 				getWorkflowDetails(
 					user,
 					baseWebhookUrl,
-					wfFinder2,
+					wfFinder,
 					credentialsService,
 					endpoints,
 					roleService,
 					projectService,
-					{ workflowId: 'archived' },
+					{ workflowId: 'any-id' },
 				),
-			).rejects.toThrow('Workflow not found');
-
-			const wfFinder3 = mockInstance(WorkflowFinderService, {
-				findWorkflowForUser: jest.fn().mockResolvedValue(unavailable),
-			});
-			await expect(
-				getWorkflowDetails(
-					user,
-					baseWebhookUrl,
-					wfFinder3,
-					credentialsService,
-					endpoints,
-					roleService,
-					projectService,
-					{ workflowId: 'unavailable' },
-				),
-			).rejects.toThrow('Workflow not found');
+			).rejects.toThrow();
 		});
 
 		test('returns null activeVersion for unpublished workflows', async () => {

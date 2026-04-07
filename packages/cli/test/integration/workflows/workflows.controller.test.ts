@@ -830,6 +830,7 @@ describe('POST /workflows', () => {
 		});
 
 		test('should persist redactionPolicy setting to the database on create', async () => {
+			testServer.license.enable('feat:dataRedaction');
 			const payload = {
 				name: 'Redaction Policy Workflow',
 				nodes: [],
@@ -1207,6 +1208,7 @@ describe('GET /workflows', () => {
 					'workflow:list',
 					'workflow:move',
 					'workflow:publish',
+					'workflow:unpublish',
 					'workflow:read',
 					'workflow:share',
 					'workflow:unshare',
@@ -1226,6 +1228,7 @@ describe('GET /workflows', () => {
 					'workflow:list',
 					'workflow:move',
 					'workflow:publish',
+					'workflow:unpublish',
 					'workflow:read',
 					'workflow:share',
 					'workflow:unshare',
@@ -2385,6 +2388,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:list',
 					'workflow:move',
 					'workflow:publish',
+					'workflow:unpublish',
 					'workflow:read',
 					'workflow:share',
 					'workflow:unshare',
@@ -2404,6 +2408,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:list',
 					'workflow:move',
 					'workflow:publish',
+					'workflow:unpublish',
 					'workflow:read',
 					'workflow:share',
 					'workflow:unshare',
@@ -3533,6 +3538,7 @@ describe('PATCH /workflows/:workflowId', () => {
 	});
 
 	test('should persist updated redactionPolicy setting to the database', async () => {
+		testServer.license.enable('feat:dataRedaction');
 		const workflow = await createWorkflowWithHistory(
 			{
 				settings: {

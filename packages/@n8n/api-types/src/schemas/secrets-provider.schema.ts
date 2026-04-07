@@ -10,6 +10,7 @@ export const secretsProviderTypeSchema = z.enum([
 	'vault',
 	'azureKeyVault',
 	'infisical',
+	'onePassword',
 ]);
 export type SecretsProviderType = z.infer<typeof secretsProviderTypeSchema>;
 
@@ -37,14 +38,22 @@ export type SecretsProviderConnectionTestState = z.infer<
 //#region SHARED / NESTED TYPES
 // ============================
 
+export const secretsProviderAccessRoleSchema = z.enum([
+	'secretsProviderConnection:owner',
+	'secretsProviderConnection:user',
+]);
+export type SecretsProviderAccessRole = z.infer<typeof secretsProviderAccessRoleSchema>;
+
 /**
  * Owner of a secret provider connection
  * Re-uses project schemas defined in project.schema.ts
  */
-const projectSummarySchema = z.object({
+const connectionProjectSummarySchema = z.object({
 	id: z.string(),
 	name: z.string(),
+	role: secretsProviderAccessRoleSchema.optional(),
 });
+export type ConnectionProjectSummary = z.infer<typeof connectionProjectSummarySchema>;
 
 /**
  * Secret with its name and optional credentials count
@@ -70,15 +79,15 @@ export const secretProviderConnectionSchema = z.object({
 	type: secretsProviderTypeSchema,
 	state: secretsProviderStateSchema,
 	isEnabled: z.boolean(),
-	projects: z.array(projectSummarySchema),
+	projects: z.array(connectionProjectSummarySchema),
 	settings: z.object({}).catchall(z.any()) satisfies z.ZodType<IDataObject>,
 	secretsCount: z.number(),
 	secrets: z.array(secretSummarySchema).optional(),
+	scopes: z.array(z.string()).optional(),
 	createdAt: z.string(),
 	updatedAt: z.string(),
 });
-type SecretProviderConnectionWithIsEnabled = z.infer<typeof secretProviderConnectionSchema>;
-export type SecretProviderConnection = Omit<SecretProviderConnectionWithIsEnabled, 'isEnabled'>;
+export type SecretProviderConnection = z.infer<typeof secretProviderConnectionSchema>;
 export type SecretProviderConnectionListItem = Omit<
 	SecretProviderConnection,
 	'settings' | 'secrets'

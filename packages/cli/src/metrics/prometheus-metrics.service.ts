@@ -10,7 +10,7 @@ import promBundle from 'express-prom-bundle';
 import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
 import { EventMessageTypeNames, jsonParse } from 'n8n-workflow';
-import promClient, { type Counter, type Gauge } from 'prom-client';
+import promClient, { type Counter, type Gauge, type Histogram } from 'prom-client';
 import semverParse from 'semver/functions/parse';
 
 import { N8N_VERSION } from '@/constants';
@@ -37,6 +37,8 @@ export class PrometheusMetricsService {
 
 	private readonly gauges: Record<string, Gauge<string>> = {};
 
+	private readonly histograms: Record<string, Histogram<string>> = {};
+
 	private readonly prefix = this.globalConfig.endpoints.metrics.prefix;
 
 	private readonly includes: Includes = {
@@ -46,6 +48,8 @@ export class PrometheusMetricsService {
 			cache: this.globalConfig.endpoints.metrics.includeCacheMetrics,
 			logs: this.globalConfig.endpoints.metrics.includeMessageEventBusMetrics,
 			queue: this.globalConfig.endpoints.metrics.includeQueueMetrics,
+			workflowExecutionDuration:
+				this.globalConfig.endpoints.metrics.includeWorkflowExecutionDuration,
 			workflowStatistics: this.globalConfig.endpoints.metrics.includeWorkflowStatistics,
 		},
 		labels: {
@@ -69,6 +73,7 @@ export class PrometheusMetricsService {
 		this.initEventBusMetrics();
 		this.initRouteMetrics(app);
 		this.initQueueMetrics();
+		this.initWorkflowExecutionDurationMetric();
 		this.initActiveWorkflowCountMetric();
 		this.initWorkflowStatisticsMetrics();
 		this.mountMetricsEndpoint(app);
@@ -339,6 +344,43 @@ export class PrometheusMetricsService {
 			this.gauges.active.set(jobCounts.active);
 			this.counters.completed?.inc(jobCounts.completed);
 			this.counters.failed?.inc(jobCounts.failed);
+		});
+	}
+
+	/**
+	 * Set up histogram for workflow execution duration: `n8n_workflow_execution_duration_seconds`
+	 *
+	 * Observes duration from `startedAt` to `stoppedAt` on each completed workflow execution.
+	 * Labels: `status` (success/failed), `mode` (manual/trigger/webhook/etc.),
+	 * and optionally `workflow_id` (gated by existing config flag).
+	 */
+	private initWorkflowExecutionDurationMetric() {
+		if (!this.includes.metrics.workflowExecutionDuration) return;
+
+		const labelNames = ['status', 'mode'];
+		if (this.includes.labels.workflowId) labelNames.push('workflow_id');
+
+		this.histograms.workflowExecutionDuration = new promClient.Histogram({
+			name: this.prefix + 'workflow_execution_duration_seconds',
+			help: 'Workflow execution duration in seconds.',
+			labelNames,
+			buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 120, 300, 600],
+		});
+
+		this.eventService.on('workflow-post-execute', ({ runData, workflow }) => {
+			if (!runData?.stoppedAt) return;
+
+			const durationSeconds = (runData.stoppedAt.getTime() - runData.startedAt.getTime()) / 1000;
+			const labels: Record<string, string> = {
+				status: runData.status === 'success' ? 'success' : 'failed',
+				mode: runData.mode,
+			};
+
+			if (this.includes.labels.workflowId) {
+				labels.workflow_id = String(workflow.id ?? 'unknown');
+			}
+
+			this.histograms.workflowExecutionDuration?.observe(labels, durationSeconds);
 		});
 	}
 

@@ -147,6 +147,26 @@
 					"root_id": "90e03468f8aa457695da02ccad963040",
 					"content": ""
 				}
+			},
+			{
+				"json": {
+					"object": "block",
+					"parent_id": "90e03468f8aa457695da02ccad963040",
+					"id": "aabbccdd-1234-5678-9012-abcdef123456",
+					"parent": {
+						"type": "block_id",
+						"block_id": "90e03468-f8aa-4576-95da-02ccad963040"
+					},
+					"last_edited_by": {
+						"object": "user",
+						"id": "88f72c1a-07ed-4bae-9fa0-231365d813d9"
+					},
+					"has_children": true,
+					"archived": false,
+					"in_trash": false,
+					"type": "unsupported",
+					"root_id": "90e03468f8aa457695da02ccad963040"
+				}
 			}
 		]
 	},

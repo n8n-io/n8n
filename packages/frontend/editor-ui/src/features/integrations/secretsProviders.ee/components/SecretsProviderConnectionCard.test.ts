@@ -45,6 +45,7 @@ describe('SecretsProviderConnectionCard', () => {
 		id: 'test-id-123',
 		name: 'aws-production',
 		type: 'awsSecretsManager',
+		isEnabled: true,
 		state: 'connected',
 		projects: [],
 		secretsCount: 5,
@@ -235,6 +236,109 @@ describe('SecretsProviderConnectionCard', () => {
 		renderComponent({
 			pinia,
 			props: { provider: errorProvider, providerTypeInfo, canUpdate: true },
+		});
+
+		expect(screen.queryByTestId('action-reload')).not.toBeInTheDocument();
+	});
+
+	it('should hide sharing badge when provider is disabled', () => {
+		const disabledProvider: SecretProviderConnection = {
+			...mockProvider,
+			isEnabled: false,
+		};
+		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
+
+		renderComponent({
+			pinia,
+			props: { provider: disabledProvider, providerTypeInfo, canUpdate: true },
+		});
+
+		expect(screen.queryByTestId('secrets-provider-global-badge')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('secrets-provider-project-badge')).not.toBeInTheDocument();
+	});
+
+	it('should show sharing badge when provider is enabled', () => {
+		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
+
+		renderComponent({
+			pinia,
+			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
+		});
+
+		const globalBadge = screen.queryByTestId('secrets-provider-global-badge');
+		const projectBadge = screen.queryByTestId('secrets-provider-project-badge');
+		expect(globalBadge ?? projectBadge).toBeInTheDocument();
+	});
+
+	it('should show activate option in context menu when provider is disabled and user can update', () => {
+		const disabledProvider: SecretProviderConnection = {
+			...mockProvider,
+			isEnabled: false,
+		};
+		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
+
+		renderComponent({
+			pinia,
+			props: { provider: disabledProvider, providerTypeInfo, canUpdate: true },
+		});
+
+		expect(screen.getByTestId('action-activate')).toBeInTheDocument();
+	});
+
+	it('should not show activate option in context menu when provider is already enabled', () => {
+		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
+
+		renderComponent({
+			pinia,
+			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
+		});
+
+		expect(screen.queryByTestId('action-activate')).not.toBeInTheDocument();
+	});
+
+	it('should not show activate option in context menu when user lacks update permission', () => {
+		const disabledProvider: SecretProviderConnection = {
+			...mockProvider,
+			isEnabled: false,
+		};
+		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
+
+		renderComponent({
+			pinia,
+			props: { provider: disabledProvider, providerTypeInfo, canUpdate: false },
+		});
+
+		expect(screen.queryByTestId('action-activate')).not.toBeInTheDocument();
+	});
+
+	it('should show inactive badge text when provider is disabled', () => {
+		const disabledProvider: SecretProviderConnection = {
+			...mockProvider,
+			isEnabled: false,
+		};
+		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
+
+		renderComponent({
+			pinia,
+			props: { provider: disabledProvider, providerTypeInfo, canUpdate: true },
+		});
+
+		expect(screen.getByTestId('disabled-badge')).toHaveTextContent('Inactive');
+	});
+
+	it('should not show reload action when provider is disabled', () => {
+		const rbacStore = useRBACStore();
+		rbacStore.globalScopes = ['externalSecretsProvider:sync'];
+		const disabledProvider: SecretProviderConnection = {
+			...mockProvider,
+			state: 'connected',
+			isEnabled: false,
+		};
+		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
+
+		renderComponent({
+			pinia,
+			props: { provider: disabledProvider, providerTypeInfo, canUpdate: true },
 		});
 
 		expect(screen.queryByTestId('action-reload')).not.toBeInTheDocument();

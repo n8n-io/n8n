@@ -32,6 +32,8 @@ export class Column {
 
 	private commentValue: string | undefined;
 
+	private enumCheckValues: string[] | undefined;
+
 	constructor(private name: string) {}
 
 	get bool() {
@@ -149,6 +151,18 @@ export class Column {
 	comment(comment: string) {
 		this.commentValue = comment;
 		return this;
+	}
+
+	withEnumCheck(values: string[]) {
+		this.enumCheckValues = values;
+		return this;
+	}
+
+	getEnumCheck(): { columnName: string; values: string[] } | undefined {
+		if (this.enumCheckValues) {
+			return { columnName: this.name, values: this.enumCheckValues };
+		}
+		return undefined;
 	}
 
 	toOptions(driver: Driver): TableColumnOptions {

@@ -7,9 +7,9 @@ description: 'Configures Node.js with pnpm, installs Aikido SafeChain for supply
 
 inputs:
   node-version:
-    description: 'Node.js version to use. Pinned to 24.13.1 by default for reproducible builds.'
+    description: 'Node.js version to use. Pinned to 24.14.1 by default for reproducible builds.'
     required: false
-    default: '24.13.1'
+    default: '24.14.1'
   enable-docker-cache:
     description: 'Whether to set up Blacksmith Buildx for Docker layer caching (Blacksmith runners only).'
     required: false
@@ -27,21 +27,31 @@ runs:
   using: 'composite'
   steps:
     - name: Setup pnpm
-      uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
+      uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
 
     - name: Setup Node.js
-      uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+      uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
       with:
         node-version: ${{ inputs.node-version }}
         cache: 'pnpm'
+
+    # To avoid setup-node cache failure.
+    # see: https://github.com/actions/setup-node/issues/1137
+    - name: Verify PNPM Cache Directory
+      shell: bash
+      run: |
+        PNPM_STORE_PATH="$( pnpm store path --silent )"
+        if [ ! -d "$PNPM_STORE_PATH" ]; then
+            mkdir -p "$PNPM_STORE_PATH"
+        fi
 
     - name: Install Aikido SafeChain
       if: runner.os != 'Windows'
       run: |
         VERSION="1.4.1"
         EXPECTED_SHA256="628235987175072a4255aa3f5f0128f31795b63970f1970ae8a04d07bf8527b0"
-        curl -fsSL -o install-safe-chain.sh \
-          "https://github.com/AikidoSec/safe-chain/releases/download/${VERSION}/install-safe-chain.sh"
+        node .github/scripts/retry.mjs --attempts 3 --delay 10 \
+          "curl -fsSL -o install-safe-chain.sh https://github.com/AikidoSec/safe-chain/releases/download/${VERSION}/install-safe-chain.sh"
         echo "${EXPECTED_SHA256}  install-safe-chain.sh" | sha256sum -c -
         sh install-safe-chain.sh --ci
         rm install-safe-chain.sh
@@ -59,15 +69,15 @@ runs:
       shell: bash
 
     - name: Configure Turborepo Cache
-      uses: rharkor/caching-for-turbo@cda201ff2b32699a2ae9f59704db029e3dde4fbd # v2.3.5
+      uses: rharkor/caching-for-turbo@0abc2381e688c4d2832f0665a68a01c6e82f0d6c # v2.3.11
 
     - name: Setup Docker Builder for Docker Cache (Blacksmith)
-      if: ${{ inputs.enable-docker-cache == 'true' && vars.RUNNER_PROVIDER != 'github' }}
-      uses: useblacksmith/setup-docker-builder@53647ab5afe8827af5623b35bd4302eabd41619f # v1.2.0
+      if: ${{ inputs.enable-docker-cache == 'true' && contains(runner.name, 'blacksmith') }}
+      uses: useblacksmith/setup-docker-builder@ef12d5b165b596e3aa44ea8198d8fde563eab402 # v1.4.0
 
     - name: Setup Docker Builder (GitHub fallback)
-      if: ${{ inputs.enable-docker-cache == 'true' && vars.RUNNER_PROVIDER == 'github' }}
-      uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
+      if: ${{ inputs.enable-docker-cache == 'true' && !contains(runner.name, 'blacksmith') }}
+      uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
     - name: Build Project
       if: ${{ inputs.build-command != '' }}

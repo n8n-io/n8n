@@ -17,6 +17,8 @@ import {
 	defaultNodeDescriptions,
 } from '@/__tests__/mocks';
 import type { Workflow } from 'n8n-workflow';
+import { computed } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({}),
@@ -49,12 +51,14 @@ const setupStore = (nodes: Array<ReturnType<typeof createTestNode>>) => {
 
 	return {
 		pinia,
+		workflow,
 		workflowObject: workflowsStore.workflowObject as Workflow,
 	};
 };
 
 describe('NodeDetailsViewV2', () => {
 	let pinia: ReturnType<typeof createTestingPinia>;
+	let workflowId: string;
 	let workflowObject: Workflow;
 	const manualTriggerNode = createTestNode({
 		name: 'Manual Trigger',
@@ -79,6 +83,9 @@ describe('NodeDetailsViewV2', () => {
 				...componentProps,
 			},
 			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => workflowId),
+				},
 				mocks: {
 					$route: {
 						name: VIEWS.WORKFLOW,
@@ -112,6 +119,7 @@ describe('NodeDetailsViewV2', () => {
 		beforeEach(() => {
 			const store = setupStore([manualTriggerNode, setNode, stickyNode]);
 			pinia = store.pinia;
+			workflowId = store.workflow.id;
 			workflowObject = store.workflowObject;
 		});
 
@@ -155,6 +163,7 @@ describe('NodeDetailsViewV2', () => {
 		beforeEach(() => {
 			const store = setupStore([manualTriggerNode, setNode, stickyNode]);
 			pinia = store.pinia;
+			workflowId = store.workflow.id;
 			workflowObject = store.workflowObject;
 		});
 
@@ -188,6 +197,7 @@ describe('NodeDetailsViewV2', () => {
 		beforeEach(() => {
 			const store = setupStore([manualTriggerNode, setNode, stickyNode]);
 			pinia = store.pinia;
+			workflowId = store.workflow.id;
 			workflowObject = store.workflowObject;
 		});
 
@@ -224,6 +234,7 @@ describe('NodeDetailsViewV2', () => {
 		beforeEach(() => {
 			const store = setupStore([manualTriggerNode, setNode, stickyNode]);
 			pinia = store.pinia;
+			workflowId = store.workflow.id;
 			workflowObject = store.workflowObject;
 		});
 

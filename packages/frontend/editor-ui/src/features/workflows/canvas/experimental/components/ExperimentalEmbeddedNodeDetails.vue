@@ -2,7 +2,6 @@
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useVueFlow } from '@vue-flow/core';
 import { watchOnce } from '@vueuse/core';
 import { computed, provide, ref } from 'vue';
@@ -15,6 +14,7 @@ import ExperimentalEmbeddedNdvActions from '@/features/workflows/canvas/experime
 import { useCanvas } from '@/features/workflows/canvas/composables/useCanvas';
 import { useExpressionResolveCtx } from '@/features/workflows/canvas/experimental/composables/useExpressionResolveCtx';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { N8nText } from '@n8n/design-system';
 const { nodeId, isReadOnly } = defineProps<{
@@ -27,11 +27,11 @@ const ndvStore = useNDVStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const isExpanded = computed(() => !experimentalNdvStore.collapsedNodes[nodeId]);
 const nodeTypesStore = useNodeTypesStore();
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 useTelemetryContext({ view_shown: 'zoomed_view' });
 
-const node = computed(() => workflowsStore.getNodeById(nodeId) ?? null);
+const node = computed(() => workflowDocumentStore?.value?.getNodeById(nodeId) ?? null);
 const nodeType = computed(() => {
 	if (node.value) {
 		return nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion);

@@ -13,6 +13,7 @@ import type {
 	Hash,
 } from '@/services/cache/cache.types';
 import { TypedEmitter } from '@/typed-emitter';
+import { isObject } from '@/utils';
 
 type CacheEvents = {
 	'metrics.cache.hit': never;
@@ -188,9 +189,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		if (key?.length === 0) return;
 
 		const value = await this.cache.store.get<T>(key);
-
-		const hasValue = value !== undefined;
-		const cacheHit = hasValue && !(await this.isValueAMissingKeyPlaceholder(key, value));
+		const cacheHit = await this.isAValidCacheHit(key, value);
 		if (cacheHit) {
 			this.emit('metrics.cache.hit');
 
@@ -228,7 +227,8 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		const hash: MaybeHash<T> =
 			this.cache.kind === 'redis' ? await this.cache.store.hgetall(key) : await this.get(key);
 
-		if (hash !== undefined) {
+		const cacheHit = await this.isAValidCacheHit(key, hash);
+		if (cacheHit) {
 			this.emit('metrics.cache.hit');
 
 			return hash;
@@ -336,20 +336,28 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		await this.cache.store.set(cacheKey, hashObject);
 	}
 
-	/**
-	 * Check if a value is a Redis missing key placeholder.
-	 * After a cache loss (e.g. Redis restart), some adapters may return [] for a missing key.
-	 * @param key - The key to check.
-	 * @param value - The value to check.
-	 * @returns True if the value is a Redis missing key placeholder, false otherwise.
-	 */
-	private async isValueAMissingKeyPlaceholder(key: string, value: unknown): Promise<boolean> {
-		// Memory cache uses `undefined` for misses and [] can be a valid cached value, so this check is only needed for Redis cache.
-		if (this.isRedis() && Array.isArray(value) && value.length === 0) {
-			const ttl = await this.cache.store.ttl(key);
-			return ttl === REDIS_TTL_KEY_MISSING;
+	private async isAValidCacheHit(key: string, value: unknown): Promise<boolean> {
+		if (value === undefined) {
+			return false;
 		}
 
-		return false;
+		const isEmptyArray = Array.isArray(value) && value.length === 0;
+		const isEmptyObject = isObject(value) && Object.keys(value).length === 0;
+		if (isEmptyArray || isEmptyObject) {
+			// Redis adapters may return [] or {} for missing string or hash keys after restart.
+			const keyExists = await this.doesRedisKeyExist(key);
+			return keyExists;
+		}
+
+		return true;
+	}
+
+	private async doesRedisKeyExist(key: string): Promise<boolean> {
+		if (this.isRedis()) {
+			const ttl = await this.cache.store.ttl(key);
+			return ttl !== REDIS_TTL_KEY_MISSING;
+		}
+
+		return true;
 	}
 }

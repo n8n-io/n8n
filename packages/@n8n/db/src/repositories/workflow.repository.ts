@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
+import type { Scope } from '@n8n/permissions';
 import { DataSource, Repository, In, Like, Not, IsNull } from '@n8n/typeorm';
 import type {
 	SelectQueryBuilder,
@@ -14,6 +14,7 @@ import type {
 import { PROJECT_ROOT, UserError } from 'n8n-workflow';
 
 import { FolderRepository } from './folder.repository';
+import { SharedWorkflowRepository } from './shared-workflow.repository';
 import { WorkflowHistoryRepository } from './workflow-history.repository';
 import {
 	WebhookEntity,
@@ -22,9 +23,6 @@ import {
 	WorkflowTagMapping,
 	WorkflowDependency,
 	User,
-	SharedWorkflow,
-	Project,
-	ProjectRelation,
 } from '../entities';
 import type {
 	ListQueryDb,
@@ -60,6 +58,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		dataSource: DataSource,
 		private readonly globalConfig: GlobalConfig,
 		private readonly folderRepository: FolderRepository,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
 	) {
 		super(WorkflowEntity, dataSource.manager);
@@ -123,6 +122,67 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 		const count = await qb.getCount();
 		return count > 0;
+	}
+
+	async findByCredentialResolverId(
+		resolverId: string,
+	): Promise<Array<Pick<WorkflowEntity, 'id' | 'name'>>> {
+		const qb = this.createQueryBuilder('workflow').select(['workflow.id', 'workflow.name']);
+		this.addCredentialResolverFilter(qb, resolverId);
+		return await qb.getMany();
+	}
+
+	/**
+	 * Finds IDs of active workflows that reference a credential resolver.
+	 */
+	async findActiveByCredentialResolverId(resolverId: string): Promise<string[]> {
+		const qb = this.createQueryBuilder('workflow')
+			.select(['workflow.id'])
+			.where('workflow.activeVersionId IS NOT NULL');
+		this.addCredentialResolverFilter(qb, resolverId, 'andWhere');
+		const workflows = await qb.getMany();
+		return workflows.map((w) => w.id);
+	}
+
+	private addCredentialResolverFilter(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		resolverId: string,
+		method: 'where' | 'andWhere' = 'where',
+	): void {
+		const dbType = this.globalConfig.database.type;
+
+		if (dbType === 'postgresdb') {
+			qb[method]("workflow.settings ->> 'credentialResolverId' = :resolverId", { resolverId });
+		} else if (dbType === 'sqlite') {
+			qb[method]("JSON_EXTRACT(workflow.settings, '$.credentialResolverId') = :resolverId", {
+				resolverId,
+			});
+		}
+	}
+
+	async clearCredentialResolverId(resolverId: string, trx?: EntityManager): Promise<void> {
+		const dbType = this.globalConfig.database.type;
+		const qb = trx
+			? trx.createQueryBuilder().update(WorkflowEntity)
+			: this.createQueryBuilder('workflow').update();
+
+		if (dbType === 'postgresdb') {
+			await qb
+				.set({
+					settings: () => "settings::jsonb - 'credentialResolverId'",
+				})
+				.where("settings ->> 'credentialResolverId' = :resolverId", { resolverId })
+				.execute();
+		} else if (dbType === 'sqlite') {
+			await qb
+				.set({
+					settings: () => "json_remove(settings, '$.credentialResolverId')",
+				})
+				.where("JSON_EXTRACT(settings, '$.credentialResolverId') = :resolverId", {
+					resolverId,
+				})
+				.execute();
+		}
 	}
 
 	async findById(workflowId: string) {
@@ -769,7 +829,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 	/**
 	 * Build a subquery that returns workflow IDs based on sharing permissions.
-	 * This replicates the logic from WorkflowSharingService but as a subquery.
+	 * Delegates to SharedWorkflowRepository.buildSharedWorkflowIdsSubquery.
 	 */
 	private buildSharedWorkflowIdsSubquery(
 		user: User,
@@ -784,64 +844,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		},
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	): SelectQueryBuilder<any> {
-		const {
-			projectRoles,
-			workflowRoles,
-			isPersonalProject,
-			personalProjectOwnerId,
-			onlySharedWithMe,
-			projectId,
-		} = sharingOptions;
-
-		const subquery = this.manager
-			.createQueryBuilder()
-			.select('sw.workflowId')
-			.from(SharedWorkflow, 'sw');
-
-		// Handle different sharing scenarios
-		// Check explicit filters first (isPersonalProject, onlySharedWithMe) before falling back to user's global permissions
-		if (isPersonalProject) {
-			// Personal project - get owned workflows using the project owner's ID (not the requesting user's)
-			const ownerUserId = personalProjectOwnerId ?? user.id;
-			subquery
-				.innerJoin(Project, 'p', 'sw.projectId = p.id')
-				.innerJoin(ProjectRelation, 'pr', 'pr.projectId = p.id')
-				.where('sw.role = :ownerRole', { ownerRole: 'workflow:owner' })
-				.andWhere('pr.userId = :subqueryUserId', { subqueryUserId: ownerUserId })
-				.andWhere('pr.role = :projectOwnerRole', { projectOwnerRole: PROJECT_OWNER_ROLE_SLUG });
-
-			// Filter by the specific project ID when specified
-			if (projectId && typeof projectId === 'string' && projectId !== '') {
-				subquery.andWhere('sw.projectId = :subqueryProjectId', { subqueryProjectId: projectId });
-			}
-		} else if (onlySharedWithMe) {
-			// Shared with me - workflows shared (as editor) to user's personal project
-			subquery
-				.innerJoin(Project, 'p', 'sw.projectId = p.id')
-				.innerJoin(ProjectRelation, 'pr', 'pr.projectId = p.id')
-				.where('sw.role = :editorRole', { editorRole: 'workflow:editor' })
-				.andWhere('pr.userId = :subqueryUserId', { subqueryUserId: user.id })
-				.andWhere('pr.role = :projectOwnerRole', { projectOwnerRole: PROJECT_OWNER_ROLE_SLUG });
-		} else if (hasGlobalScope(user, 'workflow:read')) {
-			// User has global scope - return all workflow IDs in the specified project (if any)
-			if (projectId && typeof projectId === 'string' && projectId !== '') {
-				subquery.where('sw.projectId = :subqueryProjectId', { subqueryProjectId: projectId });
-			}
-		} else {
-			// Standard sharing based on roles
-			if (!workflowRoles || !projectRoles) {
-				throw new Error('workflowRoles and projectRoles are required when not using special cases');
-			}
-
-			subquery
-				.innerJoin(Project, 'p', 'sw.projectId = p.id')
-				.innerJoin(ProjectRelation, 'pr', 'pr.projectId = p.id')
-				.where('sw.role IN (:...workflowRoles)', { workflowRoles })
-				.andWhere('pr.userId = :subqueryUserId', { subqueryUserId: user.id })
-				.andWhere('pr.role IN (:...projectRoles)', { projectRoles });
-		}
-
-		return subquery;
+		return this.sharedWorkflowRepository.buildSharedWorkflowIdsSubquery(user, sharingOptions);
 	}
 
 	getManyQuery(workflowIds: string[], options: ListQuery.Options = {}) {
@@ -1413,6 +1416,15 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		const maxVersionIdAlias = 'maxVersionId';
 		const depAlias = 'dep';
 
+		// Only select columns needed for indexing to avoid loading large unused
+		// JSON columns (connections, staticData, pinData) that can cause OOM.
+		qb.select([
+			'workflow.id',
+			'workflow.versionCounter',
+			'workflow.activeVersionId',
+			'workflow.nodes',
+		]);
+
 		qb.leftJoin(
 			(subQuery) => {
 				return (
@@ -1457,6 +1469,12 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		const depAlias = 'dep';
 		const publishedVersionIdAlias = 'publishedVersionId';
 
+		// Only select columns needed for indexing to avoid loading large unused
+		// JSON columns (connections, staticData, pinData) that can cause OOM.
+		// For published version indexing we need the published version's nodes
+		// (from activeVersion), not the draft nodes.
+		qb.select(['workflow.id', 'workflow.versionCounter', 'workflow.activeVersionId']);
+
 		// Left join to find matching published version dependencies
 		qb.leftJoin(
 			(subQuery) => {
@@ -1477,8 +1495,10 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			`${qb.escape(depAlias)}.${qb.escape(publishedVersionIdAlias)} IS NULL`,
 		);
 
-		// Include activeVersion relation for efficiency
-		qb.leftJoinAndSelect('workflow.activeVersion', 'activeVersion');
+		// Include the published version's nodes for indexing (skip connections to save memory).
+		// The primary key (versionId) must be selected for TypeORM to hydrate the relation.
+		qb.leftJoin('workflow.activeVersion', 'activeVersion');
+		qb.addSelect(['activeVersion.versionId', 'activeVersion.nodes']);
 
 		if (batchSize) {
 			qb.limit(batchSize);
