@@ -1013,33 +1013,24 @@ export class InstanceAiAdapterService {
 				try {
 					const decrypted = credentialsService.decrypt(credential, true);
 
-					// 1. Check oauthTokenData for account identifiers (email, login, username)
+					// 1. Check pre-stored accountIdentifier (set at OAuth callback time)
+					if (typeof decrypted.accountIdentifier === 'string' && decrypted.accountIdentifier) {
+						return { accountIdentifier: decrypted.accountIdentifier };
+					}
+
+					// 2. Fallback: extract from oauthTokenData (for credentials connected before this change)
 					const tokenData = decrypted.oauthTokenData;
 					if (tokenData && typeof tokenData === 'object') {
-						const token = tokenData as Record<string, unknown>;
-						for (const key of ['email', 'login', 'username', 'user', 'account']) {
-							if (typeof token[key] === 'string' && token[key]) {
-								return { accountIdentifier: token[key] as string };
-							}
-						}
-
-						// Decode JWT id_token to extract email (used by Google, Microsoft, etc.)
-						if (typeof token.id_token === 'string') {
-							const parts = token.id_token.split('.');
-							if (parts.length === 3) {
-								try {
-									const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
-									if (typeof payload.email === 'string' && payload.email) {
-										return { accountIdentifier: payload.email };
-									}
-								} catch {
-									// Malformed JWT — skip
-								}
-							}
+						const { OauthService } = await import('@/oauth/oauth.service');
+						const identifier = OauthService.extractAccountIdentifier(
+							tokenData as Record<string, unknown>,
+						);
+						if (identifier) {
+							return { accountIdentifier: identifier };
 						}
 					}
 
-					// 2. Check top-level credential fields for account-identifying values
+					// 3. Check top-level credential fields for account-identifying values
 					for (const key of ['email', 'user', 'username', 'account', 'serviceAccountEmail']) {
 						const value = decrypted[key];
 						if (typeof value === 'string' && value) {
