@@ -3640,9 +3640,6 @@ describe('AI Builder store', () => {
 			);
 			workflowDocumentStore.setName('Test Workflow');
 			workflowsStore.isNewWorkflow = false;
-			const workflowDocumentStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(workflowsStore.workflowId),
-			);
 			workflowDocumentStore.setVersionData({
 				versionId: 'version-1',
 				name: null,
