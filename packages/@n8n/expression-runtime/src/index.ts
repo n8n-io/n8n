@@ -30,6 +30,7 @@ export {
 	SecurityViolationError,
 	SyntaxError,
 } from './types';
+export { IsolateError } from './errors/isolate-error';
 
 // Extension runtime exports
 export { extend, extendOptional, EXTENSION_OBJECTS } from './extensions/extend';

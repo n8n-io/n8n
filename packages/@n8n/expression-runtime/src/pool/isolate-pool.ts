@@ -1,14 +1,15 @@
 import type { RuntimeBridge } from '../types';
 import type { Logger } from '../types/bridge';
+import { IsolateError } from '../errors/isolate-error';
 
-export class PoolDisposedError extends Error {
+export class PoolDisposedError extends IsolateError {
 	constructor() {
 		super('Pool is disposed');
 		this.name = 'PoolDisposedError';
 	}
 }
 
-export class PoolExhaustedError extends Error {
+export class PoolExhaustedError extends IsolateError {
 	constructor() {
 		super('No isolate bridge available in pool');
 		this.name = 'PoolExhaustedError';
