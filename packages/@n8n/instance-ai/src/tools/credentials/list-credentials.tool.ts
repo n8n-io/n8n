@@ -10,7 +10,9 @@ export const listCredentialsInputSchema = z.object({
 export function createListCredentialsTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'list-credentials',
-		description: 'List credentials accessible to the current user. Never exposes secret data.',
+		description:
+			'List credentials accessible to the current user. Never exposes secret data. ' +
+			'Returns an accountIdentifier (e.g. email address) when available, so you know which account each credential is connected to.',
 		inputSchema: listCredentialsInputSchema,
 		outputSchema: z.object({
 			credentials: z.array(
@@ -20,6 +22,7 @@ export function createListCredentialsTool(context: InstanceAiContext) {
 					type: z.string(),
 					createdAt: z.string(),
 					updatedAt: z.string(),
+					accountIdentifier: z.string().optional(),
 				}),
 			),
 		}),
@@ -27,7 +30,19 @@ export function createListCredentialsTool(context: InstanceAiContext) {
 			const credentials = await context.credentialService.list({
 				type: inputData.type,
 			});
-			return { credentials };
+
+			if (!context.credentialService.getAccountContext) {
+				return { credentials };
+			}
+
+			const enriched = await Promise.all(
+				credentials.map(async (cred) => {
+					const ctx = await context.credentialService.getAccountContext!(cred.id);
+					return { ...cred, accountIdentifier: ctx?.accountIdentifier };
+				}),
+			);
+
+			return { credentials: enriched };
 		},
 	});
 }

@@ -998,6 +998,60 @@ export class InstanceAiAdapterService {
 
 				return results;
 			},
+
+			async getAccountContext(credentialId: string) {
+				const credential = await credentialsFinderService.findCredentialForUser(
+					credentialId,
+					user,
+					['credential:read'],
+				);
+
+				if (!credential) {
+					return { accountIdentifier: undefined };
+				}
+
+				try {
+					const decrypted = credentialsService.decrypt(credential, true);
+
+					// 1. Check oauthTokenData for account identifiers (email, login, username)
+					const tokenData = decrypted.oauthTokenData;
+					if (tokenData && typeof tokenData === 'object') {
+						const token = tokenData as Record<string, unknown>;
+						for (const key of ['email', 'login', 'username', 'user', 'account']) {
+							if (typeof token[key] === 'string' && token[key]) {
+								return { accountIdentifier: token[key] as string };
+							}
+						}
+
+						// Decode JWT id_token to extract email (used by Google, Microsoft, etc.)
+						if (typeof token.id_token === 'string') {
+							const parts = token.id_token.split('.');
+							if (parts.length === 3) {
+								try {
+									const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
+									if (typeof payload.email === 'string' && payload.email) {
+										return { accountIdentifier: payload.email };
+									}
+								} catch {
+									// Malformed JWT — skip
+								}
+							}
+						}
+					}
+
+					// 2. Check top-level credential fields for account-identifying values
+					for (const key of ['email', 'user', 'username', 'account', 'serviceAccountEmail']) {
+						const value = decrypted[key];
+						if (typeof value === 'string' && value) {
+							return { accountIdentifier: value };
+						}
+					}
+
+					return { accountIdentifier: undefined };
+				} catch {
+					return { accountIdentifier: undefined };
+				}
+			},
 		};
 	}
 

@@ -90,6 +90,9 @@ export interface CredentialSummary {
 	type: string;
 	createdAt: string;
 	updatedAt: string;
+	/** Non-secret account identifier (e.g. email address for OAuth credentials).
+	 *  Helps the agent understand which account a credential is connected to. */
+	accountIdentifier?: string;
 }
 
 export interface CredentialDetail extends CredentialSummary {
@@ -236,6 +239,10 @@ export interface InstanceAiCredentialService {
 	): CredentialFieldInfo[] | Promise<CredentialFieldInfo[]>;
 	/** Search available credential types by keyword. Returns matching types with display names. */
 	searchCredentialTypes?(query: string): Promise<CredentialTypeSearchResult[]>;
+	/** Extract non-secret account identifier (e.g. email, username) from a credential.
+	 *  Used to help the agent understand which account a credential is connected to
+	 *  without exposing secrets like tokens or passwords. */
+	getAccountContext?(credentialId: string): Promise<{ accountIdentifier?: string }>;
 }
 
 export interface CredentialFieldInfo {
