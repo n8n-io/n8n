@@ -16,22 +16,22 @@ import {
  * Each targets a different workflow name to avoid conflicts when run in parallel.
  */
 export const BENCHMARK_PROMPTS = [
-	`Build a workflow without asking any questions, go straight to building. ` +
-		`Schedule Trigger that runs every hour, then an HTTP Request node that ` +
-		`GETs httpbin.org/get, then a Set node that keeps only the origin field. ` +
-		`Name the workflow "Bench Hourly IP Check".`,
+	'Build a workflow without asking any questions, go straight to building. ' +
+		'Schedule Trigger that runs every hour, then an HTTP Request node that ' +
+		'GETs httpbin.org/get, then a Set node that keeps only the origin field. ' +
+		'Name the workflow "Bench Hourly IP Check".',
 
-	`Build a workflow without asking any questions, go straight to building. ` +
-		`Webhook trigger at path /bench-sample-data, then a Code node that ` +
-		`generates 5 sample records with name and email fields, then Respond ` +
-		`to Webhook returning the records as JSON. ` +
-		`Name the workflow "Bench Sample API".`,
+	'Build a workflow without asking any questions, go straight to building. ' +
+		'Webhook trigger at path /bench-sample-data, then a Code node that ' +
+		'generates 5 sample records with name and email fields, then Respond ' +
+		'to Webhook returning the records as JSON. ' +
+		'Name the workflow "Bench Sample API".',
 
-	`Build a workflow without asking any questions, go straight to building. ` +
-		`Schedule Trigger every 5 minutes, then a Code node that returns ` +
-		`the current timestamp and a status field set to ok, then a Set node ` +
-		`that adds a version field with value 1. ` +
-		`Name the workflow "Bench Health Ping".`,
+	'Build a workflow without asking any questions, go straight to building. ' +
+		'Schedule Trigger every 5 minutes, then a Code node that returns ' +
+		'the current timestamp and a status field set to ok, then a Set node ' +
+		'that adds a version field with value 1. ' +
+		'Name the workflow "Bench Health Ping".',
 ] as const;
 
 export interface InstanceAiDriverConfig {
@@ -209,9 +209,9 @@ export class InstanceAiDriver {
 					}
 
 					completed = quiet;
-				} catch (err) {
+				} catch (error) {
 					console.warn(
-						`[INSTANCE-AI] Tab ${i + 1}: timed out — ${(err as Error).message?.slice(0, 100)}`,
+						`[INSTANCE-AI] Tab ${i + 1}: timed out — ${(error as Error).message?.slice(0, 100)}`,
 					);
 				}
 

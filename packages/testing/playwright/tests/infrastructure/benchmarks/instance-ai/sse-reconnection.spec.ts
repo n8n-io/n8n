@@ -1,7 +1,7 @@
-import { BENCHMARK_PROMPTS } from '../../../../utils/benchmark/instance-ai-driver';
-import { InstanceAiPage } from '../../../../pages/InstanceAiPage';
-import { runMemoryBenchmark, type MemoryPhase } from '../harness/memory-harness';
 import { test, instanceAiTestConfig } from './fixtures';
+import { InstanceAiPage } from '../../../../pages/InstanceAiPage';
+import { BENCHMARK_PROMPTS } from '../../../../utils/benchmark/instance-ai-driver';
+import { runMemoryBenchmark, type MemoryPhase } from '../harness/memory-harness';
 
 test.use(instanceAiTestConfig);
 
@@ -39,7 +39,7 @@ test.describe(
 					name: `reconnect-${i + 1}`,
 					action: async () => {
 						await threadPage.goto('/home/workflows');
-						await threadPage.waitForLoadState('networkidle');
+						await threadPage.waitForLoadState('load');
 						await threadPage.goto(`/instance-ai/${threadId}`);
 						const ai = new InstanceAiPage(threadPage);
 						await ai.getChatInput().waitFor({ state: 'visible', timeout: 10_000 });

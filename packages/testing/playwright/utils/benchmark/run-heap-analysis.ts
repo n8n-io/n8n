@@ -147,8 +147,8 @@ export async function runGrowthAnalysis(
 		});
 		unboundGrowthOutput = await readFile(or.analysisOutputFile, 'utf-8');
 		console.log('[ANALYSIS]   Object growth analysis complete');
-	} catch (err) {
-		console.warn(`[ANALYSIS]   Object growth failed: ${(err as Error).message}`);
+	} catch (error) {
+		console.warn(`[ANALYSIS]   Object growth failed: ${(error as Error).message}`);
 	}
 
 	try {
@@ -158,8 +158,8 @@ export async function runGrowthAnalysis(
 		});
 		shapeGrowthOutput = await readFile(sr.analysisOutputFile, 'utf-8');
 		console.log('[ANALYSIS]   Shape growth analysis complete');
-	} catch (err) {
-		console.warn(`[ANALYSIS]   Shape growth failed: ${(err as Error).message}`);
+	} catch (error) {
+		console.warn(`[ANALYSIS]   Shape growth failed: ${(error as Error).message}`);
 	}
 
 	return { unboundGrowthOutput, shapeGrowthOutput };
@@ -192,9 +192,9 @@ export async function runFullHeapAnalysis(
 	};
 
 	// Print summary
-	console.log(`\n[ANALYSIS] ═══ Report ═══`);
+	console.log('\n[ANALYSIS] ═══ Report ═══');
 	console.log(`  memlab suspects: ${report.memlabSuspects}`);
-	console.log(`  Heap diff (top 25 by retained size growth):`);
+	console.log('  Heap diff (top 25 by retained size growth):');
 	for (const entry of heapDiff.slice(0, 25)) {
 		const sizeMB = (entry.sizeDeltaBytes / 1024 / 1024).toFixed(2);
 		console.log(`    +${entry.countDelta} × ${entry.name} (${entry.type}) — ${sizeMB} MB`);
@@ -217,10 +217,10 @@ async function main() {
 		process.exit(1);
 	}
 
-	const [baseline, target, final_] = args;
-	const report = await runFullHeapAnalysis(baseline, target, final_, outputDir);
+	const [baseline, target, finalSnapshot] = args;
+	const report = await runFullHeapAnalysis(baseline, target, finalSnapshot, outputDir);
 
-	const reportPath = join(outputDir ?? dirname(final_), 'heap-analysis-report.json');
+	const reportPath = join(outputDir ?? dirname(finalSnapshot), 'heap-analysis-report.json');
 	await writeFile(reportPath, JSON.stringify(report, null, 2));
 	console.log(`\n[ANALYSIS] Full report saved to ${reportPath}`);
 }
@@ -228,8 +228,8 @@ async function main() {
 // Run if executed directly
 const isDirectExecution = process.argv[1]?.includes('run-heap-analysis');
 if (isDirectExecution) {
-	main().catch((err) => {
-		console.error(err);
+	main().catch((error) => {
+		console.error(error);
 		process.exit(1);
 	});
 }

@@ -170,7 +170,7 @@ export async function runMemoryBenchmark(
 		}
 
 		console.log(
-			`\n[MEMORY] ═══ Summary ═══\n` +
+			'\n[MEMORY] ═══ Summary ═══\n' +
 				`  Baseline:     ${baseline.heapUsedMB.toFixed(1)} MB\n` +
 				`  Post-cleanup: ${postCleanup.heapUsedMB.toFixed(1)} MB\n` +
 				`  Leak delta:   ${leakMB >= 0 ? '+' : ''}${leakMB.toFixed(1)} MB\n` +
@@ -178,7 +178,7 @@ export async function runMemoryBenchmark(
 				`  Phases:       ${phaseResults.length} measured\n`,
 		);
 	} else {
-		console.log(`\n[MEMORY] ═══ Dry run complete ═══`);
+		console.log('\n[MEMORY] ═══ Dry run complete ═══');
 	}
 
 	return { baseline, phases: phaseResults, postCleanup, leakMB, snapshots: snapshotPaths };

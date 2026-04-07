@@ -1,7 +1,7 @@
-import { BENCHMARK_PROMPTS } from '../../../../utils/benchmark/instance-ai-driver';
-import { analyzeHeapLeaks } from '../../../../utils/benchmark/heap-analysis';
-import { runMemoryBenchmark } from '../harness/memory-harness';
 import { test, instanceAiTestConfig } from './fixtures';
+import { analyzeHeapLeaks } from '../../../../utils/benchmark/heap-analysis';
+import { BENCHMARK_PROMPTS } from '../../../../utils/benchmark/instance-ai-driver';
+import { runMemoryBenchmark } from '../harness/memory-harness';
 
 test.use(instanceAiTestConfig);
 
@@ -57,6 +57,7 @@ test.describe(
 
 			// Run memlab analysis if all three snapshots were captured
 			const { baseline, target, final: finalSnap } = result.snapshots;
+			// eslint-disable-next-line playwright/no-conditional-in-test
 			if (baseline && target && finalSnap) {
 				await analyzeHeapLeaks(baseline, target, finalSnap, testInfo);
 			}

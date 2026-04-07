@@ -1,6 +1,6 @@
+import { test, instanceAiTestConfig } from './fixtures';
 import { BENCHMARK_PROMPTS } from '../../../../utils/benchmark/instance-ai-driver';
 import { runMemoryBenchmark } from '../harness/memory-harness';
-import { test, instanceAiTestConfig } from './fixtures';
 
 test.use(instanceAiTestConfig);
 
