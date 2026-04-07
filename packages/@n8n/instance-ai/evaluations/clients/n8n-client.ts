@@ -289,10 +289,19 @@ export class N8nClient {
 	}
 
 	/**
-	 * Delete a workflow by ID.
+	 * Archive a workflow (soft-delete). Required before hard-deleting.
+	 * POST /rest/workflows/:id/archive
+	 */
+	async archiveWorkflow(id: string): Promise<void> {
+		await this.fetch(`/rest/workflows/${id}/archive`, { method: 'POST' });
+	}
+
+	/**
+	 * Delete a workflow by ID. The workflow must be archived first.
 	 * DELETE /rest/workflows/:id
 	 */
 	async deleteWorkflow(id: string): Promise<void> {
+		await this.archiveWorkflow(id);
 		await this.fetch(`/rest/workflows/${id}`, { method: 'DELETE' });
 	}
 
