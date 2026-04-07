@@ -20,7 +20,7 @@ export class Sort implements INodeType {
 		displayName: 'Sort',
 		name: 'sort',
 		icon: 'node:sort',
-		iconColor: 'black',
+		iconColor: 'lavender',
 		group: ['transform'],
 		subtitle: '',
 		version: 1,

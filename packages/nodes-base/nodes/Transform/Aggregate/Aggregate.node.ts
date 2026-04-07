@@ -21,7 +21,7 @@ export class Aggregate implements INodeType {
 		displayName: 'Aggregate',
 		name: 'aggregate',
 		icon: 'node:aggregate',
-		iconColor: 'black',
+		iconColor: 'orange-red',
 		group: ['transform'],
 		subtitle: '',
 		version: 1,

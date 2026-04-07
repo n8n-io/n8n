@@ -11,7 +11,7 @@ export class Limit implements INodeType {
 		displayName: 'Limit',
 		name: 'limit',
 		icon: 'node:limit',
-		iconColor: 'black',
+		iconColor: 'emerald',
 		group: ['transform'],
 		subtitle: '',
 		version: 1,

@@ -16,7 +16,7 @@ export class N8n implements INodeType {
 		displayName: 'n8n',
 		name: 'n8n',
 		icon: 'node:n8n',
-		iconColor: 'black',
+		iconColor: 'pink-red',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

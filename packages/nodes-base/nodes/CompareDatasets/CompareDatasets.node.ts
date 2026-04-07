@@ -19,7 +19,7 @@ export class CompareDatasets implements INodeType {
 		displayName: 'Compare Datasets',
 		name: 'compareDatasets',
 		icon: 'node:compare-datasets',
-		iconColor: 'black',
+		iconColor: 'lime',
 		group: ['transform'],
 		version: [1, 2, 2.1, 2.2, 2.3],
 		description: 'Compare two inputs for changes',

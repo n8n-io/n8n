@@ -37,7 +37,7 @@ const descriptionV2: INodeTypeDescription = {
 	displayName: 'n8n Form Trigger',
 	name: 'formTrigger',
 	icon: 'node:form-trigger',
-	iconColor: 'black',
+	iconColor: 'teal',
 	group: ['trigger'],
 	// since trigger and node are sharing descriptions and logic we need to sync the versions
 	// and keep them aligned in both nodes

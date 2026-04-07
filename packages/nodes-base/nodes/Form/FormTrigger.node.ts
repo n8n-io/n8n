@@ -10,7 +10,7 @@ export class FormTrigger extends VersionedNodeType {
 			displayName: 'n8n Form Trigger',
 			name: 'formTrigger',
 			icon: 'node:form-trigger',
-			iconColor: 'black',
+			iconColor: 'teal',
 			group: ['trigger'],
 			description: 'Generate webforms in n8n and pass their responses to the workflow',
 			defaultVersion: 2.5,

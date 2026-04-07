@@ -22,7 +22,7 @@ const descriptionV1: INodeTypeDescription = {
 	displayName: 'n8n Form Trigger',
 	name: 'formTrigger',
 	icon: 'node:form-trigger',
-	iconColor: 'black',
+	iconColor: 'teal',
 	group: ['trigger'],
 	version: 1,
 	description: 'Generate webforms in n8n and pass their responses to the workflow',

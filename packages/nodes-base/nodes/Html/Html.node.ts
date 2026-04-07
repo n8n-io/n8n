@@ -128,7 +128,7 @@ export class Html implements INodeType {
 		displayName: 'HTML',
 		name: 'html',
 		icon: 'node:html',
-		iconColor: 'black',
+		iconColor: 'rust',
 		group: ['transform'],
 		version: [1, 1.1, 1.2],
 		subtitle: '={{ $parameter["operation"] }}',

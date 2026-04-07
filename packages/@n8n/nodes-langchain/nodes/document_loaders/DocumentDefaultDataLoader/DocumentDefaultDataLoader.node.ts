@@ -41,7 +41,7 @@ export class DocumentDefaultDataLoader implements INodeType {
 		displayName: 'Default Data Loader',
 		name: 'documentDefaultDataLoader',
 		icon: 'node:default-data-loader',
-		iconColor: 'black',
+		iconColor: 'gray',
 		group: ['transform'],
 		version: [1, 1.1],
 		defaultVersion: 1.1,

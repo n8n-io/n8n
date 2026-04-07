@@ -24,7 +24,7 @@ export class Summarize implements INodeType {
 		displayName: 'Summarize',
 		name: 'summarize',
 		icon: 'node:summarize',
-		iconColor: 'black',
+		iconColor: 'amber',
 		group: ['transform'],
 		subtitle: '',
 		version: [1, 1.1],

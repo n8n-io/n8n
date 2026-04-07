@@ -18,7 +18,7 @@ export class SplitOut implements INodeType {
 		displayName: 'Split Out',
 		name: 'splitOut',
 		icon: 'node:split-out',
-		iconColor: 'black',
+		iconColor: 'violet',
 		group: ['transform'],
 		subtitle: '',
 		version: 1,

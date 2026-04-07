@@ -13,7 +13,7 @@ export class Guardrails extends VersionedNodeType {
 			displayName: 'Guardrails',
 			name: 'guardrails',
 			icon: 'node:guardrails',
-			iconColor: 'black',
+			iconColor: 'sky-blue',
 			group: ['transform'],
 			defaultVersion: 2,
 			description:

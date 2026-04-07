@@ -9,7 +9,7 @@ export class RemoveDuplicates extends VersionedNodeType {
 			displayName: 'Remove Duplicates',
 			name: 'removeDuplicates',
 			icon: 'node:remove-duplicates',
-			iconColor: 'black',
+			iconColor: 'azure',
 			group: ['transform'],
 			defaultVersion: 2,
 			description: 'Delete items with matching field values',
