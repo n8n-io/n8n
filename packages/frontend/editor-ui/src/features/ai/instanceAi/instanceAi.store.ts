@@ -69,7 +69,11 @@ function collectPendingConfirmations(
 			// Plan review renders inline in the timeline, not in the confirmation panel
 			tc.confirmation.inputType !== 'plan-review'
 		) {
-			out.push({ toolCall: tc, agentNode: node, messageId });
+			out.push({
+				toolCall: tc as InstanceAiToolCallState & { confirmation: InstanceAiConfirmation },
+				agentNode: node,
+				messageId,
+			});
 		}
 	}
 	for (const child of node.children) {
