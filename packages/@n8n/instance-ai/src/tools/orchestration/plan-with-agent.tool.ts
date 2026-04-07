@@ -282,6 +282,7 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 							runId: context.runId,
 							agentId: subAgentId,
 							eventBus: context.eventBus,
+							logger: context.logger,
 							threadId: context.threadId,
 							abortSignal: context.abortSignal,
 							waitForConfirmation: context.waitForConfirmation,
