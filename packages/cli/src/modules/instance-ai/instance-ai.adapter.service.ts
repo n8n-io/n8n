@@ -87,6 +87,7 @@ import {
 	WEBHOOK_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	TimeoutExecutionCancelledError,
+	jsonParse,
 } from 'n8n-workflow';
 
 import { InstanceSettings } from 'n8n-core';
@@ -138,8 +139,8 @@ export class InstanceAiAdapterService {
 			return await this.nodesCache.promise;
 		}
 		const filePath = path.join(this.instanceSettings.staticCacheDir, 'types/nodes.json');
-		const promise = readFile(filePath, 'utf-8').then(
-			(json) => JSON.parse(json) as INodeTypeDescription[],
+		const promise = readFile(filePath, 'utf-8').then((json) =>
+			jsonParse<INodeTypeDescription[]>(json),
 		);
 		this.nodesCache = { promise, expiresAt: Date.now() + this.NODES_CACHE_TTL_MS };
 		promise.catch(() => {
