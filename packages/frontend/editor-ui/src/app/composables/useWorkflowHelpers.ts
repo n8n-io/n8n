@@ -964,13 +964,13 @@ export function useWorkflowHelpers() {
 
 	function getWorkflowProjectRole(workflowId: string): 'owner' | 'sharee' | 'member' {
 		const workflow = workflowsListStore.getWorkflowById(workflowId);
-		const documentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 
 		// Check if workflow is new (not saved) or belongs to personal project
 		if (workflow?.homeProject?.id === projectsStore.personalProject?.id || !workflow?.id) {
 			return 'owner';
 		} else if (
-			documentStore.sharedWithProjects?.some(
+			workflowDocumentStore.sharedWithProjects?.some(
 				(project) => project.id === projectsStore.personalProject?.id,
 			)
 		) {
