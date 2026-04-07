@@ -33,7 +33,10 @@ import {
 	N8nText,
 	type ResizeData,
 } from '@n8n/design-system';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 const DEFAULT_LEFT_SIDEBAR_WIDTH = 360;
 
 type Props = {
@@ -59,7 +62,9 @@ const emit = defineEmits<{
 
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
-const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowDocumentStore = computed(() =>
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflow.id)),
+);
 
 const telemetry = useTelemetry();
 const i18n = useI18n();
