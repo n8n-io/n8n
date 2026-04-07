@@ -98,8 +98,6 @@ export interface MemorySchema<TParams extends ConnectionParams = ConnectionParam
 	workingMemory: {
 		type: 'structured' | 'freeform';
 		scope: 'resource' | 'thread';
-		/** Original Zod source string for structured working memory — enables lossless code generation. */
-		schemaSource: string | null;
 		schema?: JSONSchema7;
 		template?: string;
 	} | null;

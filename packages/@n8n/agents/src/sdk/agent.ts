@@ -646,7 +646,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				workingMemory = {
 					type: mc.workingMemory.structured ? 'structured' : 'freeform',
 					scope: mc.workingMemory.scope,
-					schemaSource: null,
 					...(mc.workingMemory.schema
 						? { schema: zodToJsonSchema(mc.workingMemory.schema) ?? undefined }
 						: {}),
