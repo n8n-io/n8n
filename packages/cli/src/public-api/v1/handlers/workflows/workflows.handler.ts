@@ -14,7 +14,12 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { NodeTypes } from '@/node-types';
-import { addNodeIds, replaceInvalidCredentials, resolveNodeWebhookIds, validatePinDataSize } from '@/workflow-helpers';
+import {
+	addNodeIds,
+	replaceInvalidCredentials,
+	resolveNodeWebhookIds,
+	validatePinDataSize,
+} from '@/workflow-helpers';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
