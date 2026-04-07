@@ -48,7 +48,7 @@ Follow these steps to gather comprehensive context about the issue:
 
 Use the Linear MCP tools to fetch the issue details and comments together:
 
-- Use `mcp__linear-server__get_issue` with the issue ID to get full details including attachments
+- Use the active Linear MCP issue tool (`mcp__linear-server__get_issue` in Claude Code or the equivalent `user-Linear` issue tool in Cursor) with the issue ID to get full details including attachments
 - Include relations to see blocking/related/duplicate issues
 - **Immediately after**, use `mcp__linear-server__list_comments` with the issue ID to fetch all comments
 
