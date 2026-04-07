@@ -617,7 +617,7 @@ export function useWorkflowHelpers() {
 			active: workflowDocumentStore.active,
 			settings: workflowDocumentStore.settings,
 			tags: [...workflowDocumentStore.tags],
-			versionId: workflowsStore.workflow.versionId,
+			versionId: workflowDocumentStore.versionId,
 			meta: workflowDocumentStore.meta,
 		};
 
@@ -866,10 +866,11 @@ export function useWorkflowHelpers() {
 	) {
 		let data: WorkflowDataUpdate = {};
 
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 		const isCurrentWorkflow = workflowId === workflowsStore.workflowId;
 		if (isCurrentWorkflow) {
 			data = partialData
-				? { versionId: workflowsStore.workflowVersionId }
+				? { versionId: workflowDocumentStore.versionId }
 				: await getWorkflowDataToSave();
 		} else {
 			const { versionId } = await workflowsListStore.fetchWorkflow(workflowId);
@@ -888,8 +889,6 @@ export function useWorkflowHelpers() {
 		if (isCurrentWorkflow) {
 			uiStore.markStateClean();
 		}
-
-		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 
 		if (workflow.activeVersion) {
 			workflowsStore.setWorkflowActive(workflowId, workflow.activeVersion, isCurrentWorkflow);
@@ -986,7 +985,11 @@ export function useWorkflowHelpers() {
 		workflowsListStore.addWorkflow(workflowData);
 		workflowsStore.setDescription(workflowData.description);
 		ws.setWorkflowId(workflowData.id);
-		workflowsStore.setWorkflowVersionData({
+		const initializedWorkflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowData.id),
+		);
+
+		initializedWorkflowDocumentStore.setVersionData({
 			versionId: workflowData.versionId,
 			name: null,
 			description: null,
@@ -999,15 +1002,15 @@ export function useWorkflowHelpers() {
 		// Fetch current version details if versionId exists
 		if (workflowData.versionId) {
 			try {
-				const versionData = await workflowHistoryApi.getWorkflowVersion(
+				const fetchedVersionData = await workflowHistoryApi.getWorkflowVersion(
 					rootStore.restApiContext,
 					workflowData.id,
 					workflowData.versionId,
 				);
-				workflowsStore.setWorkflowVersionData({
-					versionId: versionData.versionId,
-					name: versionData.name,
-					description: versionData.description,
+				initializedWorkflowDocumentStore.setVersionData({
+					versionId: fetchedVersionData.versionId,
+					name: fetchedVersionData.name,
+					description: fetchedVersionData.description,
 				});
 			} catch {
 				// Do nothing
@@ -1024,10 +1027,6 @@ export function useWorkflowHelpers() {
 		const tags = (workflowData.tags ?? []) as ITag[];
 		const tagIds = convertWorkflowTagsToIds(tags);
 
-		const initializedWorkflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowData.id),
-		);
-
 		// Sync document store settings → workflowObject (runtime Workflow instance)
 		initializedWorkflowDocumentStore.onSettingsChange(({ payload }) => {
 			workflowsStore.workflowObject.setSettings(payload.settings);
@@ -1035,6 +1034,11 @@ export function useWorkflowHelpers() {
 		initializedWorkflowDocumentStore.onNameChange(({ payload }) => {
 			workflowsStore.workflowObject.name = payload.name;
 			workflowsListStore.updateWorkflowInCache(workflowData.id, { name: payload.name });
+		});
+
+		// Sync document store versionId → workflow ref (for IWorkflowDb compatibility)
+		initializedWorkflowDocumentStore.onVersionDataChange(({ payload }) => {
+			workflowsStore.workflow.versionId = payload.versionId;
 		});
 
 		initializedWorkflowDocumentStore.setName(workflowData.name);
