@@ -109,6 +109,7 @@ onMounted(() => {
 	void store.loadThreads();
 	void store.fetchCredits();
 	store.startCreditsPushListener();
+	void nextTick(() => chatInputRef.value?.focus());
 
 	// Auto-connect local gateway if enabled
 	void settingsStore
@@ -240,6 +241,13 @@ watch(
 
 // --- Chat input ref for auto-focus ---
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
+
+// Focus input on initial render (ref rebinds when messages load and layout switches)
+watch(chatInputRef, (el) => {
+	if (el) {
+		void nextTick(() => el.focus());
+	}
+});
 
 // --- Floating input dynamic padding ---
 const inputContainerRef = useTemplateRef<HTMLElement>('inputContainer');
@@ -455,13 +463,14 @@ function handleStop() {
 							<div
 								ref="scrollable"
 								:class="$style.messageList"
-								:style="{ paddingBottom: `${inputAreaHeight}px` }"
+								:style="{ paddingBottom: `calc(${inputAreaHeight}px + var(--spacing--sm))` }"
 							>
 								<TransitionGroup name="message-slide">
 									<InstanceAiMessage
 										v-for="message in store.messages"
 										:key="message.id"
 										:message="message"
+										:class="$style.message"
 									/>
 								</TransitionGroup>
 								<InstanceAiConfirmationPanel />
@@ -590,7 +599,7 @@ function handleStop() {
 	min-width: 0;
 	overflow: hidden;
 	position: relative;
-	background-color: var(--color--background--light-1);
+	background-color: var(--color--background--light-2);
 }
 
 .canvasArea {
@@ -630,6 +639,7 @@ function handleStop() {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
+	background-color: var(--color--background--light-2);
 }
 
 .headerTitle {
@@ -699,6 +709,13 @@ function handleStop() {
 	max-width: 800px;
 	margin: 0 auto;
 	padding: var(--spacing--sm) var(--spacing--lg);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+}
+
+.message {
+	width: 90%;
 }
 
 .scrollButtonContainer {
@@ -729,7 +746,7 @@ function handleStop() {
 	left: 0;
 	right: 0;
 	padding: 0 var(--spacing--lg) var(--spacing--sm);
-	background: linear-gradient(transparent 0%, var(--color--background--light-1) 30%);
+	background: linear-gradient(transparent 0%, var(--color--background--light-2) 30%);
 	pointer-events: none;
 	z-index: 2;
 

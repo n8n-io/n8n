@@ -76,6 +76,17 @@ export function createSearchFilesTool(context: InstanceAiContext) {
 				| z.infer<typeof searchFilesResumeSchema>
 				| undefined;
 			const suspend = ctx?.agent?.suspend;
+			if (context.permissions?.readFilesystem === 'blocked') {
+				return {
+					query,
+					matches: [],
+					truncated: false,
+					totalMatches: 0,
+					denied: true,
+					reason: 'Action blocked by admin',
+				};
+			}
+
 			const needsApproval = context.permissions?.readFilesystem !== 'always_allow';
 
 			if (needsApproval && (resumeData === undefined || resumeData === null)) {
