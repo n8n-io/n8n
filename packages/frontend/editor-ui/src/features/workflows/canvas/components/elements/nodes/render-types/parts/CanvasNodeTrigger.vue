@@ -163,6 +163,11 @@ async function handleClickExecute() {
 		transform-origin: center right;
 	}
 
+	/* Override N8nButton's .disabled { opacity: 0.5 } which has higher specificity */
+	& button[disabled] {
+		opacity: 0;
+	}
+
 	&.interactive.hovered button {
 		opacity: 1;
 		translate: 0 0;

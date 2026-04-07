@@ -57,8 +57,17 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 
 	testInfo.setTimeout(timeoutMs + 120_000);
 
-	const profile = testInfo.project.name.replace(':infrastructure', '').replace('benchmark-', '');
+	const mode = testInfo.project.name.replace(':infrastructure', '').replace('benchmark-', '');
 	const obs = services.observability;
+
+	const dimensions: Record<string, string | number> = {
+		trigger: 'webhook',
+		nodes: nodeCount,
+		output: nodeOutputSize,
+		connections,
+		duration_s: durationSeconds,
+		mode,
+	};
 
 	// Phase 1: Create + activate workflow
 	// createWorkflowFromDefinition overwrites the webhook path and sets webhookId for proper registration
@@ -116,50 +125,43 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 	const diagnostics = await collectDiagnostics(obs.metrics, throughputResult.durationMs);
 
 	// Phase 6: Attach metrics — VictoriaMetrics throughput + autocannon HTTP stats + diagnostics
-	await attachThroughputResults(testInfo, testInfo.title, throughputResult);
+	await attachThroughputResults(testInfo, dimensions, throughputResult);
+	await attachMetric(testInfo, 'http-latency-p50', cannonResult.latency.p50, 'ms', dimensions);
+	await attachMetric(testInfo, 'http-latency-p99', cannonResult.latency.p99, 'ms', dimensions);
 	await attachMetric(
 		testInfo,
-		`${testInfo.title}-http-latency-p50`,
-		cannonResult.latency.p50,
-		'ms',
-	);
-	await attachMetric(
-		testInfo,
-		`${testInfo.title}-http-latency-p99`,
-		cannonResult.latency.p99,
-		'ms',
-	);
-	await attachMetric(
-		testInfo,
-		`${testInfo.title}-http-requests-total`,
+		'http-requests-total',
 		cannonResult.requests.total,
 		'count',
+		dimensions,
 	);
 	await attachMetric(
 		testInfo,
-		`${testInfo.title}-http-requests-avg`,
+		'http-requests-avg',
 		cannonResult.requests.average,
 		'req/s',
+		dimensions,
 	);
 	await attachMetric(
 		testInfo,
-		`${testInfo.title}-http-errors`,
+		'http-errors',
 		cannonResult.errors + cannonResult.non2xx,
 		'count',
+		dimensions,
 	);
-	await attachDiagnostics(testInfo, testInfo.title, diagnostics);
+	await attachDiagnostics(testInfo, dimensions, diagnostics);
 
 	// Phase 7: Log summary
 	const fmt = formatDiagnosticValue;
 	console.log(
-		`[DIAG-${profile}] ${testInfo.title}\n` +
+		`[DIAG-${mode}] ${testInfo.title}\n` +
 			`  Event Loop Lag: ${fmt(diagnostics.eventLoopLag, 's')}\n` +
 			`  PG Transactions/s: ${fmt(diagnostics.pgTxRate, ' tx/s')}\n` +
 			`  PG Active Connections: ${fmt(diagnostics.pgActiveConnections)}`,
 	);
 
 	console.log(
-		`[WEBHOOK-${profile} RESULT] ${testInfo.title}\n` +
+		`[WEBHOOK-${mode} RESULT] ${testInfo.title}\n` +
 			`  n8n Throughput: ${throughputResult.avgExecPerSec.toFixed(1)} exec/s | ` +
 			`${throughputResult.actionsPerSec.toFixed(1)} actions/s\n` +
 			`  Peak: ${throughputResult.peakExecPerSec.toFixed(1)} exec/s | ` +

@@ -82,7 +82,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 
 	const targetNodes = computed(() =>
 		targetNodeIds.value
-			.map((nodeId) => workflowDocumentStore?.value?.getNodeById(nodeId) ?? null)
+			.map((nodeId) => workflowDocumentStore?.value?.getNodeById(nodeId))
 			.filter(isPresent),
 	);
 

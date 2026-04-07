@@ -21,6 +21,7 @@ const props = withDefaults(
 		hideNodeIssues?: boolean;
 		focusOnLoad?: boolean;
 		hideControls?: boolean;
+		suppressNotifications?: boolean;
 	}>(),
 	{
 		loading: false,
@@ -34,6 +35,7 @@ const props = withDefaults(
 		hideNodeIssues: false,
 		focusOnLoad: true,
 		hideControls: false,
+		suppressNotifications: false,
 	},
 );
 
@@ -85,6 +87,7 @@ const loadWorkflow = () => {
 				workflow: props.workflow,
 				canOpenNDV: props.canOpenNDV,
 				hideNodeIssues: props.hideNodeIssues,
+				suppressNotifications: props.suppressNotifications,
 				projectId: projectsStore.currentProjectId,
 			}),
 			'*',
@@ -233,6 +236,8 @@ watch(
 		}
 	},
 );
+
+defineExpose({ iframeRef });
 </script>
 
 <template>

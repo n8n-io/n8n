@@ -3,8 +3,12 @@ import type { Locator } from '@playwright/test';
 import { BasePage } from './BasePage';
 
 export class WorkflowActivationModal extends BasePage {
-	getModal(): Locator {
+	get container(): Locator {
 		return this.page.getByTestId('activation-modal');
+	}
+
+	getModal(): Locator {
+		return this.container;
 	}
 
 	getDontShowAgainCheckbox(): Locator {

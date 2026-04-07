@@ -4,7 +4,6 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope, Scope } from '@n8n/permissions';
 import type express from 'express';
-import type { NextFunction } from 'express';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -87,25 +86,31 @@ export const validCursor = (
 	return next();
 };
 
-const emptyMiddleware = (_req: Request, _res: Response, next: NextFunction) => next();
+export type ScopeTaggedMiddleware = ((...args: unknown[]) => unknown) & {
+	__apiKeyScope: ApiKeyScope;
+};
+
+function tagMiddleware(
+	middleware: (...args: unknown[]) => unknown,
+	apiKeyScope: ApiKeyScope,
+): ScopeTaggedMiddleware {
+	const tagged: ScopeTaggedMiddleware = Object.assign(
+		(req: unknown, res: unknown, next: unknown) => middleware(req, res, next),
+		{ __apiKeyScope: apiKeyScope },
+	);
+	return tagged;
+}
+
 export const apiKeyHasScope = (apiKeyScope: ApiKeyScope) => {
-	return Container.get(License).isApiKeyScopesEnabled()
-		? Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(apiKeyScope)
-		: emptyMiddleware;
+	const middleware = Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(apiKeyScope);
+	return tagMiddleware(middleware, apiKeyScope);
 };
 
 export const apiKeyHasScopeWithGlobalScopeFallback = (
 	config: { scope: ApiKeyScope & Scope } | { apiKeyScope: ApiKeyScope; globalScope: Scope },
 ) => {
-	if ('scope' in config) {
-		return Container.get(License).isApiKeyScopesEnabled()
-			? Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(config.scope)
-			: globalScope(config.scope);
-	} else {
-		return Container.get(License).isApiKeyScopesEnabled()
-			? Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(config.apiKeyScope)
-			: globalScope(config.globalScope);
-	}
+	const scope = 'scope' in config ? config.scope : config.apiKeyScope;
+	return tagMiddleware(Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(scope), scope);
 };
 
 export const validLicenseWithUserQuota = (

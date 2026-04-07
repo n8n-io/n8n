@@ -13,6 +13,11 @@ on:
         required: true
         type: string
 
+    outputs:
+      pull-request-number:
+        description: 'Number of the created pull request'
+        value: ${{ jobs.create-release-pr.outputs.pull-request-number }}
+
   workflow_dispatch:
     inputs:
       base-branch:

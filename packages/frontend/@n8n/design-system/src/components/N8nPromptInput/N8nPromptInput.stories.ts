@@ -3,6 +3,8 @@ import { action } from 'storybook/actions';
 import { ref } from 'vue';
 
 import N8nPromptInput from './N8nPromptInput.vue';
+import type { WorkflowSuggestion } from '../../types/assistant';
+import N8nPromptInputSuggestions from '../N8nPromptInputSuggestions/N8nPromptInputSuggestions.vue';
 
 export default {
 	title: 'Core/PromptInput',
@@ -35,6 +37,12 @@ export default {
 	},
 	parameters: {
 		backgrounds: { default: '--color--background--light-2' },
+		docs: {
+			description: {
+				component:
+					'A multiline prompt input with submit and stop actions plus optional credits UI.',
+			},
+		},
 	},
 };
 
@@ -377,3 +385,75 @@ CreditsInteractive.args = {
 	creditsRemaining: 2,
 };
 CreditsInteractive.storyName = 'Credits Interactive Demo';
+
+const workflowSuggestions: WorkflowSuggestion[] = [
+	{
+		id: 'invoice-pipeline',
+		summary: 'Invoice processing pipeline',
+		prompt:
+			'Create an invoice parsing workflow using n8n forms. Extract key information and store in Airtable.',
+	},
+	{
+		id: 'ai-news-digest',
+		summary: 'Daily AI news digest',
+		prompt:
+			'Create a workflow that fetches the latest AI news every morning at 8 AM and sends a summary via Telegram.',
+	},
+	{
+		id: 'email-summary',
+		summary: 'Summarize emails with AI',
+		prompt:
+			'Build a workflow that retrieves emails, performs AI analysis, and sends a summary to Slack.',
+	},
+];
+
+const SuggestionsTemplate: StoryFn = (args) => ({
+	setup: () => ({ args }),
+	components: {
+		N8nPromptInputSuggestions,
+		N8nPromptInput,
+	},
+	template: `
+		<div style="max-width: 710px; margin: 0 auto; padding: 20px;">
+			<N8nPromptInputSuggestions
+				:suggestions="args.suggestions"
+				:disabled="args.disabled"
+				:streaming="args.streaming"
+				:credits-quota="args.creditsQuota"
+				:credits-remaining="args.creditsRemaining"
+				:show-ask-owner-tooltip="args.showAskOwnerTooltip"
+				@suggestion-click="onSuggestionClick"
+			>
+				<template #prompt-input>
+					<N8nPromptInput
+						placeholder="Describe the workflow you want to build..."
+						:min-lines="2"
+						:streaming="args.streaming"
+						:disabled="args.disabled"
+						:credits-quota="args.creditsQuota"
+						:credits-remaining="args.creditsRemaining"
+						:show-ask-owner-tooltip="args.showAskOwnerTooltip"
+						@submit="onSubmit"
+						@upgrade-click="onUpgradeClick"
+					/>
+				</template>
+			</N8nPromptInputSuggestions>
+		</div>
+	`,
+	methods: {
+		onSuggestionClick: action('suggestion-clicked'),
+		onSubmit: methods.onSubmit,
+		onUpgradeClick: methods.onUpgradeClick,
+	},
+});
+
+export const WithWorkflowSuggestions = SuggestionsTemplate.bind({});
+WithWorkflowSuggestions.args = {
+	suggestions: workflowSuggestions,
+};
+
+export const SuggestionsDisabled = SuggestionsTemplate.bind({});
+SuggestionsDisabled.args = {
+	suggestions: workflowSuggestions,
+	disabled: true,
+};

@@ -36,9 +36,21 @@ export async function attachMetric(
 	metricName: string,
 	value: number,
 	unit?: string,
+	dimensions?: Record<string, string | number>,
 ): Promise<void> {
 	await testInfo.attach(`metric:${metricName}`, {
-		body: JSON.stringify({ value, unit }),
+		body: JSON.stringify({ value, unit, dimensions }),
+	});
+
+	// Currents native format — surfaces metrics in their analytics dashboard
+	testInfo.annotations.push({
+		type: 'currents:metric',
+		description: JSON.stringify({
+			name: metricName,
+			value,
+			type: Number.isInteger(value) ? 'integer' : 'float',
+			...(unit && { unit: unit.toLowerCase() }),
+		}),
 	});
 }
 

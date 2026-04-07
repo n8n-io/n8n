@@ -120,7 +120,7 @@ test.describe(
 
 			await n8n.canvas.addNode('Pipedrive', { trigger: 'On new Pipedrive event' });
 			await n8n.ndv.selectOptionInParameterDropdown('incomingAuthentication', 'Basic Auth');
-			await expect(n8n.ndv.getNodeCredentialsSelect()).toHaveCount(2);
+			await expect(n8n.ndv.getNodeCredentialsEmptyState()).toHaveCount(2);
 
 			await n8n.ndv.clickCreateNewCredential(0);
 			// First credential type has multiple auth options → mode selector visible
@@ -173,7 +173,7 @@ test.describe(
 				n8n.notifications.getNotificationByTitleOrContent('Credential deleted'),
 			).toBeVisible();
 
-			await expect(n8n.ndv.getCredentialSelect()).not.toHaveValue(credentialName);
+			await expect(n8n.ndv.getNodeCredentialsEmptyState()).toBeVisible();
 		});
 
 		test('should rename credentials from NDV', async ({ n8n }) => {

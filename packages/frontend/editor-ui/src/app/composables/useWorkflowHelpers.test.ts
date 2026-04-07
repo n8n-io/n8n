@@ -247,7 +247,6 @@ describe('useWorkflowHelpers', () => {
 			});
 			const addWorkflowSpy = vi.spyOn(workflowsListStore, 'addWorkflow');
 			const setWorkflowIdSpy = vi.spyOn(workflowState, 'setWorkflowId');
-			const setWorkflowNameSpy = vi.spyOn(workflowState, 'setWorkflowName');
 			const setWorkflowVersionDataSpy = vi.spyOn(workflowsStore, 'setWorkflowVersionData');
 			const setWorkflowSharedWithSpy = vi.spyOn(workflowsEEStore, 'setWorkflowSharedWith');
 			const upsertTagsSpy = vi.spyOn(tagsStore, 'upsertTags');
@@ -256,10 +255,6 @@ describe('useWorkflowHelpers', () => {
 
 			expect(addWorkflowSpy).toHaveBeenCalledWith(workflowData);
 			expect(setWorkflowIdSpy).toHaveBeenCalledWith('1');
-			expect(setWorkflowNameSpy).toHaveBeenCalledWith({
-				newName: 'Test Workflow',
-				setStateDirty: false,
-			});
 			expect(setWorkflowVersionDataSpy).toHaveBeenCalledWith({
 				versionId: 'v1',
 				name: null,
@@ -322,13 +317,16 @@ describe('useWorkflowHelpers', () => {
 			};
 
 			workflowsStore.workflowId = workflowId;
-			workflowsStore.workflowName = 'Test Workflow';
 			workflowsStore.allNodes = [];
-			workflowsStore.allConnections = initialConnections;
 			workflowsStore.workflow.versionId = 'v1';
 
 			const documentId = createWorkflowDocumentId(workflowId);
 			const workflowDocumentStore = useWorkflowDocumentStore(documentId);
+			Object.defineProperty(workflowDocumentStore, 'name', { value: 'Test Workflow' });
+			Object.defineProperty(workflowDocumentStore, 'connectionsBySourceNode', {
+				value: initialConnections,
+				configurable: true,
+			});
 			vi.mocked(workflowDocumentStore.getSettingsSnapshot).mockReturnValue({
 				executionOrder: 'v1',
 			});
@@ -351,9 +349,7 @@ describe('useWorkflowHelpers', () => {
 			const tagIds = ['tag1', 'tag2'];
 
 			workflowsStore.workflowId = workflowId;
-			workflowsStore.workflowName = 'Test Workflow';
 			workflowsStore.allNodes = [];
-			workflowsStore.allConnections = {};
 			workflowsStore.isWorkflowActive = false;
 			workflowsStore.workflow.settings = { executionOrder: 'v1' };
 			workflowsStore.workflow.versionId = 'v1';
@@ -361,8 +357,13 @@ describe('useWorkflowHelpers', () => {
 
 			const documentId = createWorkflowDocumentId(workflowId);
 			const workflowDocumentStore = useWorkflowDocumentStore(documentId);
+			Object.defineProperty(workflowDocumentStore, 'connectionsBySourceNode', {
+				value: {},
+				configurable: true,
+			});
 
-			// Note: createTestingPinia() stubs actions by default, so setTags()/setSettings() won't work
+			// Note: createTestingPinia() stubs actions by default, so setTags()/setSettings()/setName() won't work
+			Object.defineProperty(workflowDocumentStore, 'name', { value: 'Test Workflow' });
 			Object.defineProperty(workflowDocumentStore, 'tags', {
 				value: tagIds,
 			});
