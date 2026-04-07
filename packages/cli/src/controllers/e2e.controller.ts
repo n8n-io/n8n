@@ -1,5 +1,6 @@
 import type { PushMessage } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { ExecutionsConfig } from '@n8n/config';
 import type { BooleanLicenseFeature, NumericLicenseFeature } from '@n8n/constants';
 import { LICENSE_FEATURES, LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import {
@@ -14,6 +15,9 @@ import {
 import { Get, Patch, Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Request } from 'express';
+import type nodeFs from 'node:fs';
+import type nodePath from 'node:path';
+import type nodeV8 from 'node:v8';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -21,12 +25,11 @@ import { inE2ETests } from '@/constants';
 import type { FeatureReturnType } from '@/license';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
+import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
 import { Push } from '@/push';
 import { CacheService } from '@/services/cache/cache.service';
 import { FrontendService } from '@/services/frontend.service';
 import { PasswordUtility } from '@/services/password.utility';
-import { ExecutionsConfig } from '@n8n/config';
-import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
 
 if (!inE2ETests) {
 	Container.get(Logger).error('E2E endpoints only allowed during E2E tests');
@@ -296,8 +299,8 @@ export class E2EController {
 	 */
 	@Post('/heap-snapshot', { skipAuth: true })
 	takeHeapSnapshot() {
-		const v8 = require('node:v8') as typeof import('node:v8');
-		const fs = require('node:fs') as typeof import('node:fs');
+		const v8 = require('node:v8') as typeof nodeV8;
+		const fs = require('node:fs') as typeof nodeFs;
 
 		if (typeof global.gc === 'function') {
 			global.gc();
@@ -309,7 +312,7 @@ export class E2EController {
 			return { success: false, message: 'Failed to write heap snapshot' };
 		}
 
-		const path = require('node:path') as typeof import('node:path');
+		const path = require('node:path') as typeof nodePath;
 		const stats = fs.statSync(filePath);
 		const filename = path.basename(filePath);
 		this.heapSnapshotPaths.set(filename, filePath);
@@ -330,8 +333,8 @@ export class E2EController {
 	 */
 	@Get('/heap-snapshot/:filename', { skipAuth: true })
 	downloadHeapSnapshot(req: Request) {
-		const fs = require('node:fs') as typeof import('node:fs');
-		const path = require('node:path') as typeof import('node:path');
+		const fs = require('node:fs') as typeof nodeFs;
+		const path = require('node:path') as typeof nodePath;
 
 		const filename = path.basename(req.params.filename);
 		if (!filename.endsWith('.heapsnapshot')) {
