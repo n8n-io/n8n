@@ -57,9 +57,7 @@ export function createOrchestratorDomainTools(context: InstanceAiContext) {
 		workspace: createWorkspaceTool(context),
 		research: createResearchTool(context),
 		nodes: createNodesTool(context, 'orchestrator'),
-		// templates: builder-only, excluded from orchestrator
 		'ask-user': createAskUserTool(),
-		// build-workflow: builder-only, excluded from orchestrator
 		...(context.localMcpServer
 			? createToolsFromLocalMcpServer(context.localMcpServer)
 			: context.filesystemService
