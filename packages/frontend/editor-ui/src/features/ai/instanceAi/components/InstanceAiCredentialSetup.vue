@@ -244,12 +244,7 @@ function onCredentialSelected(
 	}
 }
 
-async function handleContinue() {
-	const credentials: Record<string, string> = {};
-	for (const [type, id] of Object.entries(selections.value)) {
-		if (id) credentials[type] = id;
-	}
-
+function trackCredentialInput() {
 	const tc = store.findToolCallByRequestId(props.requestId);
 	const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
 	const provided: Array<{ label: string; options: string[]; option_chosen: string }> = [];
@@ -262,7 +257,7 @@ async function handleContinue() {
 			skipped.push({ label: req.credentialType, options: [] });
 		}
 	}
-	const eventProps = {
+	telemetry.track('User finished providing input', {
 		thread_id: store.currentThreadId,
 		input_thread_id: inputThreadId,
 		instance_id: rootStore.instanceId,
@@ -270,8 +265,16 @@ async function handleContinue() {
 		provided_inputs: provided,
 		skipped_inputs: skipped,
 		num_tasks: props.credentialRequests.length,
-	};
-	telemetry.track('User finished providing input', eventProps);
+	});
+}
+
+async function handleContinue() {
+	const credentials: Record<string, string> = {};
+	for (const [type, id] of Object.entries(selections.value)) {
+		if (id) credentials[type] = id;
+	}
+
+	trackCredentialInput();
 
 	isSubmitted.value = true;
 
@@ -284,28 +287,7 @@ async function handleContinue() {
 }
 
 async function handleLater() {
-	const tc = store.findToolCallByRequestId(props.requestId);
-	const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
-	const provided: Array<{ label: string; options: string[]; option_chosen: string }> = [];
-	const skipped: Array<{ label: string; options: string[] }> = [];
-	for (const req of props.credentialRequests) {
-		const selected = selections.value[req.credentialType];
-		if (selected) {
-			provided.push({ label: req.credentialType, options: [], option_chosen: selected });
-		} else {
-			skipped.push({ label: req.credentialType, options: [] });
-		}
-	}
-	const eventProps = {
-		thread_id: store.currentThreadId,
-		input_thread_id: inputThreadId,
-		instance_id: rootStore.instanceId,
-		type: 'credential-setup',
-		provided_inputs: provided,
-		skipped_inputs: skipped,
-		num_tasks: props.credentialRequests.length,
-	};
-	telemetry.track('User finished providing input', eventProps);
+	trackCredentialInput();
 
 	isSubmitted.value = true;
 	isDeferred.value = true;

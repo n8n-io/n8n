@@ -885,10 +885,7 @@ onUnmounted(() => {
 	cancelApplyWait?.();
 });
 
-async function handleApply() {
-	const nodeCredentials = buildNodeCredentials();
-	const nodeParameters = buildNodeParameters();
-
+function trackSetupInput() {
 	const tc = store.findToolCallByRequestId(props.requestId);
 	const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
 	const provided: Array<{ label: string; options: string[]; option_chosen: string }> = [];
@@ -901,7 +898,7 @@ async function handleApply() {
 			skipped.push({ label: name, options: [] });
 		}
 	}
-	const eventProps = {
+	telemetry.track('User finished providing input', {
 		thread_id: store.currentThreadId,
 		input_thread_id: inputThreadId,
 		instance_id: useRootStore().instanceId,
@@ -909,8 +906,14 @@ async function handleApply() {
 		provided_inputs: provided,
 		skipped_inputs: skipped,
 		num_tasks: cards.value.length,
-	};
-	telemetry.track('User finished providing input', eventProps);
+	});
+}
+
+async function handleApply() {
+	const nodeCredentials = buildNodeCredentials();
+	const nodeParameters = buildNodeParameters();
+
+	trackSetupInput();
 
 	isApplying.value = true;
 	applyError.value = null;
@@ -986,28 +989,7 @@ async function handleLater() {
 	}
 
 	// No cards completed at all (or confirm mode) — defer the whole setup
-	const tc = store.findToolCallByRequestId(props.requestId);
-	const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
-	const provided: Array<{ label: string; options: string[]; option_chosen: string }> = [];
-	const skipped: Array<{ label: string; options: string[] }> = [];
-	for (const card of cards.value) {
-		const name = card.nodes[0]?.node.name ?? card.id;
-		if (isCardComplete(card)) {
-			provided.push({ label: name, options: [], option_chosen: 'configured' });
-		} else {
-			skipped.push({ label: name, options: [] });
-		}
-	}
-	const eventProps = {
-		thread_id: store.currentThreadId,
-		input_thread_id: inputThreadId,
-		instance_id: useRootStore().instanceId,
-		type: 'setup',
-		provided_inputs: provided,
-		skipped_inputs: skipped,
-		num_tasks: cards.value.length,
-	};
-	telemetry.track('User finished providing input', eventProps);
+	trackSetupInput();
 	isSubmitted.value = true;
 	isDeferred.value = true;
 
