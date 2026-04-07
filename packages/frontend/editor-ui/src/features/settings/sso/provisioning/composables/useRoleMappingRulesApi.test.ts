@@ -46,7 +46,6 @@ describe('useRoleMappingRulesApi', () => {
 				id: '1',
 				...input,
 				projectIds: [],
-				enabled: true,
 				createdAt: '',
 				updatedAt: '',
 			};

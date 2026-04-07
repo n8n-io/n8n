@@ -18,7 +18,6 @@ function createEmptyRule(type: RoleMappingRuleType, order: number): RoleMappingR
 		type,
 		order,
 		projectIds: [],
-		enabled: true,
 		createdAt: now,
 		updatedAt: now,
 	};

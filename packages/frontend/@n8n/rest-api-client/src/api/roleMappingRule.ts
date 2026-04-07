@@ -10,7 +10,6 @@ export type RoleMappingRuleResponse = {
 	type: RoleMappingRuleType;
 	order: number;
 	projectIds: string[];
-	enabled: boolean;
 	description?: string;
 	createdAt: string;
 	updatedAt: string;
