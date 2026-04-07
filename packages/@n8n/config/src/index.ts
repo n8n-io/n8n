@@ -251,6 +251,8 @@ export class GlobalConfig {
 
 	@Nested
 	chatTrigger: ChatTriggerConfig;
+
+	@Nested
 	instanceAi: InstanceAiConfig;
 
 	@Nested
