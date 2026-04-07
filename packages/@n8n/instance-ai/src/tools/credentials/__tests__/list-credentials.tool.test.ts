@@ -70,10 +70,10 @@ describe('list-credentials tool', () => {
 				makeCredential({ id: 'cred-2', name: 'Slack API', type: 'slackApi' }),
 			];
 			(context.credentialService.list as jest.Mock).mockResolvedValue(credentials);
-			context.credentialService.getAccountContext = jest.fn().mockImplementation((id: string) => {
-				if (id === 'cred-1') return Promise.resolve({ accountIdentifier: 'user@gmail.com' });
-				return Promise.resolve({ accountIdentifier: undefined });
-			});
+			context.credentialService.getAccountContext = jest
+				.fn()
+				.mockResolvedValueOnce({ accountIdentifier: 'user@gmail.com' })
+				.mockResolvedValueOnce({ accountIdentifier: undefined });
 
 			const tool = createListCredentialsTool(context);
 			const result = (await tool.execute!({}, {} as never)) as {
