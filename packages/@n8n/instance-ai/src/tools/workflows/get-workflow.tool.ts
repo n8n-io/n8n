@@ -3,14 +3,16 @@ import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
 
+export const getWorkflowInputSchema = z.object({
+	workflowId: z.string().describe('The ID of the workflow to retrieve'),
+});
+
 export function createGetWorkflowTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'get-workflow',
 		description:
 			'Get full details of a specific workflow including nodes, connections, settings, and publish state. A workflow is published (running in production) when activeVersionId is not null.',
-		inputSchema: z.object({
-			workflowId: z.string().describe('The ID of the workflow to retrieve'),
-		}),
+		inputSchema: getWorkflowInputSchema,
 		outputSchema: z.object({
 			id: z.string(),
 			name: z.string(),
@@ -33,7 +35,7 @@ export function createGetWorkflowTool(context: InstanceAiContext) {
 			connections: z.record(z.unknown()),
 			settings: z.record(z.unknown()).optional(),
 		}),
-		execute: async (inputData) => {
+		execute: async (inputData: z.infer<typeof getWorkflowInputSchema>) => {
 			return await context.workflowService.get(inputData.workflowId);
 		},
 	});

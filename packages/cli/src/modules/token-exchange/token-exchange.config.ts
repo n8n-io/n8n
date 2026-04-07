@@ -19,4 +19,12 @@ export class TokenExchangeConfig {
 	 */
 	@Env('N8N_TOKEN_EXCHANGE_TRUSTED_KEYS')
 	trustedKeys: string = '';
+
+	/** Interval in seconds between JTI cleanup runs. */
+	@Env('N8N_TOKEN_EXCHANGE_JTI_CLEANUP_INTERVAL_SECONDS')
+	jtiCleanupIntervalSeconds: number = 60;
+
+	/** Maximum number of expired JTI rows to delete per cleanup run. */
+	@Env('N8N_TOKEN_EXCHANGE_JTI_CLEANUP_BATCH_SIZE')
+	jtiCleanupBatchSize: number = 1000;
 }
