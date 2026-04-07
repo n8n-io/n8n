@@ -14,30 +14,32 @@ const filterSchema = z.object({
 	),
 });
 
+export const queryDataTableRowsInputSchema = z.object({
+	dataTableId: z.string().describe('ID of the data table'),
+	filter: filterSchema.optional().describe('Row filter conditions'),
+	limit: z
+		.number()
+		.int()
+		.positive()
+		.max(100)
+		.optional()
+		.describe('Max rows to return (default 50)'),
+	offset: z.number().int().min(0).optional().describe('Number of rows to skip'),
+});
+
 export function createQueryDataTableRowsTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'query-data-table-rows',
 		description:
 			'Query rows from a data table with optional filtering. ' +
 			'Returns matching rows and total count.',
-		inputSchema: z.object({
-			dataTableId: z.string().describe('ID of the data table'),
-			filter: filterSchema.optional().describe('Row filter conditions'),
-			limit: z
-				.number()
-				.int()
-				.positive()
-				.max(100)
-				.optional()
-				.describe('Max rows to return (default 50)'),
-			offset: z.number().int().min(0).optional().describe('Number of rows to skip'),
-		}),
+		inputSchema: queryDataTableRowsInputSchema,
 		outputSchema: z.object({
 			count: z.number(),
 			data: z.array(z.record(z.unknown())),
 			hint: z.string().optional(),
 		}),
-		execute: async (input) => {
+		execute: async (input: z.infer<typeof queryDataTableRowsInputSchema>) => {
 			const result = await context.dataTableService.queryRows(input.dataTableId, {
 				filter: input.filter,
 				limit: input.limit,

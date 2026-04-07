@@ -58,6 +58,7 @@ const SERVICE_CREDENTIAL_TYPES = [...SANDBOX_CREDENTIAL_TYPES, ...SEARCH_CREDENT
 
 /** Admin settings stored in DB under ADMIN_SETTINGS_KEY. */
 interface PersistedAdminSettings {
+	enabled?: boolean;
 	lastMessages?: number;
 	embedderModel?: string;
 	semanticRecallTopK?: number;
@@ -85,6 +86,9 @@ interface PersistedUserPreferences {
 @Service()
 export class InstanceAiSettingsService {
 	private readonly config: InstanceAiConfig;
+
+	/** Whether n8n Agent is enabled for this instance. */
+	private enabled = true;
 
 	/** Per-action HITL permission overrides. */
 	private permissions: InstanceAiPermissions = { ...DEFAULT_INSTANCE_AI_PERMISSIONS };
@@ -130,6 +134,7 @@ export class InstanceAiSettingsService {
 	getAdminSettings(): InstanceAiAdminSettingsResponse {
 		const c = this.config;
 		return {
+			enabled: this.enabled,
 			lastMessages: c.lastMessages,
 			embedderModel: c.embedderModel,
 			semanticRecallTopK: c.semanticRecallTopK,
@@ -155,6 +160,7 @@ export class InstanceAiSettingsService {
 			this.rejectProxyManagedFields(update, InstanceAiSettingsService.PROXY_MANAGED_ADMIN_FIELDS);
 		}
 		const c = this.config;
+		if (update.enabled !== undefined) this.enabled = update.enabled;
 		if (update.lastMessages !== undefined) c.lastMessages = update.lastMessages;
 		if (update.embedderModel !== undefined) c.embedderModel = update.embedderModel;
 		if (update.semanticRecallTopK !== undefined) c.semanticRecallTopK = update.semanticRecallTopK;
@@ -361,6 +367,11 @@ export class InstanceAiSettingsService {
 		return prefs?.localGatewayDisabled ?? false;
 	}
 
+	/** Whether the n8n Agent is enabled by the admin. */
+	isAgentEnabled(): boolean {
+		return this.enabled;
+	}
+
 	/** Whether the local gateway is disabled globally by the admin. */
 	isLocalGatewayDisabled(): boolean {
 		return this.config.localGatewayDisabled;
@@ -469,6 +480,7 @@ export class InstanceAiSettingsService {
 
 	private applyAdminSettings(persisted: PersistedAdminSettings): void {
 		const c = this.config;
+		if (persisted.enabled !== undefined) this.enabled = persisted.enabled;
 		if (persisted.lastMessages !== undefined) c.lastMessages = persisted.lastMessages;
 		if (persisted.embedderModel !== undefined) c.embedderModel = persisted.embedderModel;
 		if (persisted.semanticRecallTopK !== undefined)
@@ -513,6 +525,7 @@ export class InstanceAiSettingsService {
 	private async persistAdminSettings(): Promise<void> {
 		const c = this.config;
 		const value: PersistedAdminSettings = {
+			enabled: this.enabled,
 			lastMessages: c.lastMessages,
 			embedderModel: c.embedderModel,
 			semanticRecallTopK: c.semanticRecallTopK,

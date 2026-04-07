@@ -5,9 +5,10 @@
   "private": true,
   "main": "dist/main/index.js",
   "scripts": {
-    "build": "tsc -p tsconfig.renderer.json && tsc -p tsconfig.build.json && pnpm copy:renderer && cp -r ./assets ./dist/main",
-    "copy:renderer": "node -e \"const fs=require('fs');['index.html','styles.css'].forEach(f=>fs.copyFileSync('src/renderer/'+f,'dist/renderer/'+f));\"",
-    "dev": "cp -r ./assets ./dist/main && pnpm copy:renderer && tsc -p tsconfig.renderer.json --watch & tsc -p tsconfig.build.json --watch ",
+    "build": "tsc -p tsconfig.renderer.json && tsc -p tsconfig.build.json && pnpm copy:renderer && pnpm copy:assets",
+    "copy:assets": "node scripts/copy-assets.js",
+    "copy:renderer": "node scripts/copy-renderer.js",
+    "dev": "pnpm copy:assets && pnpm copy:renderer && concurrently \"tsc -p tsconfig.renderer.json --watch\" \"tsc -p tsconfig.build.json --watch\"",
     "start": "electron dist/main/index.js",
     "dist:mac": "pnpm build && electron-builder --mac --config electron-builder.config.js",
     "dist:win": "pnpm build && electron-builder --win --config electron-builder.config.js",
@@ -30,6 +31,7 @@
     "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@types/node": "catalog:",
+    "concurrently": "^8.2.0",
     "electron": "^36.0.0",
     "electron-builder": "^25.0.0",
     "rimraf": "catalog:"
