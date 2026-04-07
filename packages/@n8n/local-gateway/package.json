@@ -6,8 +6,8 @@
   "main": "dist/main/index.js",
   "scripts": {
     "build": "tsc -p tsconfig.renderer.json && tsc -p tsconfig.build.json && pnpm copy:renderer && pnpm copy:assets",
-    "copy:assets": "node -e \"const fs=require('fs');fs.mkdirSync('./dist/main',{recursive:true});fs.cpSync('./assets','./dist/main/assets',{recursive:true})\"",
-    "copy:renderer": "node -e \"const fs=require('fs');['index.html','styles.css'].forEach(f=>fs.copyFileSync('src/renderer/'+f,'dist/renderer/'+f));\"",
+    "copy:assets": "node scripts/copy-assets.js",
+    "copy:renderer": "node scripts/copy-renderer.js",
     "dev": "pnpm copy:assets && pnpm copy:renderer && concurrently \"tsc -p tsconfig.renderer.json --watch\" \"tsc -p tsconfig.build.json --watch\"",
     "start": "electron dist/main/index.js",
     "dist:mac": "pnpm build && electron-builder --mac --config electron-builder.config.js",
