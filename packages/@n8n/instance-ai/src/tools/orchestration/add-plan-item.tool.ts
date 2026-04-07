@@ -68,7 +68,7 @@ export function createAddPlanItemTool(
 			'Set summary and assumptions on your first call.',
 		inputSchema: addPlanItemInputSchema,
 		outputSchema: z.object({ result: z.string() }),
-		execute: async (input) => {
+		execute: async (input: z.infer<typeof addPlanItemInputSchema>) => {
 			if (input.summary !== undefined || input.assumptions !== undefined) {
 				accumulator.updateMeta(input.summary, input.assumptions);
 			}
@@ -100,7 +100,7 @@ export function createRemovePlanItemTool(
 			id: z.string().describe('ID of the plan item to remove'),
 		}),
 		outputSchema: z.object({ result: z.string() }),
-		execute: async (input) => {
+		execute: async (input: { id: string }) => {
 			const removed = accumulator.removeItem(input.id);
 
 			await context.taskStorage.save(context.threadId, {

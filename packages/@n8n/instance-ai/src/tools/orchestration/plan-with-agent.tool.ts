@@ -173,7 +173,7 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 		outputSchema: z.object({
 			result: z.string(),
 		}),
-		execute: async (input) => {
+		execute: async (input: { guidance?: string }) => {
 			// ── Collect planner tools ──────────────────────────────────────
 			const plannerTools: ToolsInput = {};
 

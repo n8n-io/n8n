@@ -44,7 +44,10 @@ export function createSubmitPlanTool(
 			userInput: z.string().optional(),
 		}),
 		execute: async (_input, ctx) => {
-			const { resumeData, suspend } = ctx?.agent ?? {};
+			const { suspend } = ctx?.agent ?? {};
+			const resumeData = ctx?.agent?.resumeData as
+				| { approved: boolean; userInput?: string }
+				| undefined;
 
 			// Resume — return the user's decision to the planner
 			if (resumeData !== undefined && resumeData !== null) {
