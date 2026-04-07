@@ -6,18 +6,13 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError, UserError, sleep } from 'n8n-workflow';
 
+import { REGION_BASE_HOSTS } from '../../../llms/LmChatAlibabaCloud/alibaba-cloud-base-url';
+
 type RequestParameters = {
 	headers?: IDataObject;
 	body?: object | string;
 	qs?: IDataObject;
 	option?: IDataObject;
-};
-
-const REGION_BASE_URLS: Record<string, string> = {
-	'ap-southeast-1': 'https://dashscope-intl.aliyuncs.com',
-	'us-east-1': 'https://dashscope-us.aliyuncs.com',
-	'cn-beijing': 'https://dashscope.aliyuncs.com',
-	'cn-hongkong': 'https://cn-hongkong.dashscope.aliyuncs.com',
 };
 
 export function getBaseUrl(credentials: IDataObject): string {
@@ -31,7 +26,7 @@ export function getBaseUrl(credentials: IDataObject): string {
 		return `https://${workspaceId}.eu-central-1.maas.aliyuncs.com`;
 	}
 
-	return REGION_BASE_URLS[region] ?? REGION_BASE_URLS['ap-southeast-1'];
+	return REGION_BASE_HOSTS[region] ?? REGION_BASE_HOSTS['ap-southeast-1'];
 }
 
 const TERMINAL_STATUSES = ['SUCCEEDED', 'FAILED', 'CANCELED'];
@@ -71,10 +66,8 @@ export async function apiRequest(
 		options,
 	);
 
-	// DashScope returns `error: null` on success; normalize to `undefined` so downstream
-	// checks like `if (response.error)` don't see a key that looks like an error field.
 	if (response && response.error === null) {
-		response.error = undefined;
+		delete response.error;
 	}
 
 	return response;

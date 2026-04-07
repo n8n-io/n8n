@@ -1,9 +1,8 @@
 import type { INodeProperties } from 'n8n-workflow';
 import * as textToVideo from './generate.t2v.operation';
 import * as imageToVideo from './generate.i2v.operation';
-import * as download from './download.operation';
 
-export { textToVideo, imageToVideo, download };
+export { textToVideo, imageToVideo };
 
 export const description: INodeProperties[] = [
 	{
@@ -29,16 +28,9 @@ export const description: INodeProperties[] = [
 				action: 'Generate video from image',
 				description: 'Generate a video from one or more images using Wan models',
 			},
-			{
-				name: 'Download Video',
-				value: 'download',
-				action: 'Download a generated video',
-				description: 'Download a generated video from a URL',
-			},
 		],
 		default: 'textToVideo',
 	},
 	...textToVideo.description,
 	...imageToVideo.description,
-	...download.description,
 ];

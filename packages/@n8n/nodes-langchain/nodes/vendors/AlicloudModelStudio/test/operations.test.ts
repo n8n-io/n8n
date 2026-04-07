@@ -6,12 +6,28 @@ jest.mock('../transport', () => ({
 	pollTaskResult: jest.fn(),
 }));
 
+jest.mock('@utils/helpers', () => ({
+	getConnectedTools: jest.fn().mockResolvedValue([]),
+}));
+
+jest.mock('zod-to-json-schema', () => ({
+	__esModule: true,
+	default: jest.fn(),
+}));
+
+jest.mock('n8n-workflow', () => {
+	const actual = jest.requireActual('n8n-workflow');
+	return {
+		...actual,
+		accumulateTokenUsage: jest.fn(),
+	};
+});
+
 import { execute as textMessageExecute } from '../actions/text/message.operation';
 import { execute as imageAnalyzeExecute } from '../actions/image/analyze.operation';
 import { execute as imageGenerateExecute } from '../actions/image/generate.operation';
 import { execute as videoT2VExecute } from '../actions/video/generate.t2v.operation';
 import { execute as videoI2VExecute } from '../actions/video/generate.i2v.operation';
-import { execute as videoDownloadExecute } from '../actions/video/download.operation';
 import { apiRequest, pollTaskResult } from '../transport';
 
 const mockApiRequest = apiRequest as jest.Mock;
@@ -22,6 +38,8 @@ describe('AlicloudModelStudio Operations', () => {
 
 	beforeEach(() => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
+		mockExecuteFunctions.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+		mockExecuteFunctions.getExecutionCancelSignal.mockReturnValue(undefined);
 	});
 
 	afterEach(() => {
@@ -30,19 +48,13 @@ describe('AlicloudModelStudio Operations', () => {
 
 	describe('Text: message', () => {
 		it('should send correct request body to text-generation endpoint for non-multimodal model', async () => {
-			// qwen3-max IS in MULTIMODAL_MODELS, so we need a model that is NOT in the list.
-			// All current models are multimodal, so this test verifies multimodal path.
-			// We'll test with a hypothetical non-multimodal model by checking
-			// that the text-generation endpoint is used when model is not in the MULTIMODAL_MODELS list.
-			// Since there's no non-multimodal model in the current options, let's mock as if
-			// a model is not in the list to test the non-multimodal path.
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(param: string, _index: number, fallback?: any) => {
 					const params: Record<string, unknown> = {
 						modelId: 'some-text-only-model',
 						messages: { messageValues: [{ role: 'user', content: 'Hello' }] },
 						options: {},
-						simplifyOutput: true,
+						simplify: true,
 					};
 					return params[param] ?? fallback;
 				},
@@ -77,13 +89,11 @@ describe('AlicloudModelStudio Operations', () => {
 					const params: Record<string, unknown> = {
 						modelId: 'qwen3.5-flash',
 						messages: {
-							messageValues: [
-								{ role: 'system', content: 'You are helpful' },
-								{ role: 'user', content: 'What is 2+2?' },
-							],
+							messageValues: [{ role: 'user', content: 'What is 2+2?' }],
 						},
-						options: {},
-						simplifyOutput: true,
+						options: { system: 'You are helpful' },
+						simplify: true,
+						'options.maxToolsIterations': 15,
 					};
 					return params[param] ?? fallback;
 				},
@@ -117,14 +127,15 @@ describe('AlicloudModelStudio Operations', () => {
 			expect(result.json).toEqual({ text: '4' });
 		});
 
-		it('should return full response object when simplifyOutput is false', async () => {
+		it('should return full response object when simplify is false', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(param: string, _index: number, fallback?: any) => {
 					const params: Record<string, unknown> = {
 						modelId: 'some-text-only-model',
 						messages: { messageValues: [{ role: 'user', content: 'Hello' }] },
 						options: {},
-						simplifyOutput: false,
+						simplify: false,
+						'options.maxToolsIterations': 15,
 					};
 					return params[param] ?? fallback;
 				},
@@ -139,8 +150,8 @@ describe('AlicloudModelStudio Operations', () => {
 			const result = await textMessageExecute.call(mockExecuteFunctions, 0);
 
 			expect(result.json).toEqual({
+				text: 'Hi there!',
 				model: 'some-text-only-model',
-				response: 'Hi there!',
 				usage: { input_tokens: 5, output_tokens: 3 },
 				fullResponse: mockResponse,
 			});
@@ -152,11 +163,12 @@ describe('AlicloudModelStudio Operations', () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(param: string, _index: number, fallback?: any) => {
 					const params: Record<string, unknown> = {
-						visionModel: 'qwen3-vl-flash',
+						modelId: 'qwen3-vl-flash',
+						inputType: 'url',
 						imageUrl: 'https://example.com/photo.jpg',
 						question: 'What is in this image?',
 						visionOptions: {},
-						simplifyOutput: true,
+						simplify: true,
 					};
 					return params[param] ?? fallback;
 				},
@@ -201,7 +213,7 @@ describe('AlicloudModelStudio Operations', () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(param: string, _index: number, fallback?: any) => {
 					const params: Record<string, unknown> = {
-						imageModel: 'z-image-turbo',
+						modelId: 'z-image-turbo',
 						prompt: 'A sunset over mountains',
 						imageOptions: {},
 						downloadImage: false,
@@ -249,7 +261,7 @@ describe('AlicloudModelStudio Operations', () => {
 			deepMock.getNodeParameter.mockImplementation(
 				(param: string, _index: number, fallback?: any) => {
 					const params: Record<string, unknown> = {
-						imageModel: 'z-image-turbo',
+						modelId: 'z-image-turbo',
 						prompt: 'A sunset over mountains',
 						imageOptions: {},
 						downloadImage: true,
@@ -313,12 +325,13 @@ describe('AlicloudModelStudio Operations', () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(param: string, _index: number, fallback?: any) => {
 					const params: Record<string, unknown> = {
-						videoModel: 'wan2.6-t2v',
+						modelId: 'wan2.6-t2v',
 						prompt: 'A cat playing with yarn',
 						resolution: '1080P',
 						duration: 5,
 						shotType: 'single',
-						simplifyOutput: false,
+						simplify: false,
+						downloadVideo: false,
 						videoOptions: {},
 					};
 					return params[param] ?? fallback;
@@ -373,13 +386,15 @@ describe('AlicloudModelStudio Operations', () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(param: string, _index: number, fallback?: any) => {
 					const params: Record<string, unknown> = {
-						i2vModel: 'wan2.6-i2v-flash',
+						modelId: 'wan2.6-i2v-flash',
+						inputType: 'url',
 						imgUrl: 'https://example.com/first-frame.png',
 						prompt: 'A bird taking flight',
 						resolution: '720P',
 						duration: 3,
 						shotType: 'single',
-						simplifyOutput: true,
+						simplify: true,
+						downloadVideo: false,
 						imageToVideoOptions: {},
 					};
 					return params[param] ?? fallback;
@@ -416,46 +431,6 @@ describe('AlicloudModelStudio Operations', () => {
 			expect(result.json).toEqual({
 				videoUrl: 'https://result.aliyuncs.com/i2v-video.mp4',
 			});
-		});
-	});
-
-	describe('Video: download', () => {
-		it('should download binary video data and return it as video.mp4', async () => {
-			const deepMock = mockDeep<IExecuteFunctions>();
-			deepMock.getNodeParameter.mockImplementation(
-				(param: string, _index: number, fallback?: any) => {
-					const params: Record<string, unknown> = {
-						url: 'https://result.aliyuncs.com/video.mp4',
-						'options.binaryPropertyOutput': 'data',
-					};
-					return params[param] ?? fallback;
-				},
-			);
-
-			const videoBuffer = Buffer.from('fake-video-data');
-			deepMock.helpers.httpRequest.mockResolvedValue({
-				body: videoBuffer,
-				headers: { 'content-type': 'video/mp4' },
-			});
-
-			const mockBinaryData: IBinaryData = {
-				mimeType: 'video/mp4',
-				fileType: 'video',
-				fileExtension: 'mp4',
-				data: '',
-				fileName: 'video.mp4',
-			};
-			deepMock.helpers.prepareBinaryData.mockResolvedValue(mockBinaryData);
-
-			const result = await videoDownloadExecute.call(deepMock, 0);
-
-			expect(deepMock.helpers.prepareBinaryData).toHaveBeenCalledWith(
-				expect.any(Buffer),
-				'video.mp4',
-				'video/mp4',
-			);
-			expect(result.binary).toBeDefined();
-			expect(result.binary!.data).toEqual(mockBinaryData);
 		});
 	});
 });

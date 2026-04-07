@@ -14,7 +14,6 @@ jest.mock('../actions/image', () => ({
 jest.mock('../actions/video', () => ({
 	textToVideo: { execute: jest.fn() },
 	imageToVideo: { execute: jest.fn() },
-	download: { execute: jest.fn() },
 }));
 
 import { router } from '../actions/router';

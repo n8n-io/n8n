@@ -1,5 +1,15 @@
-import type { INodeProperties, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
+import type { Tool } from '@langchain/core/tools';
+import type {
+	IDataObject,
+	INodeProperties,
+	IExecuteFunctions,
+	INodeExecutionData,
+} from 'n8n-workflow';
+import { accumulateTokenUsage, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import zodToJsonSchema from 'zod-to-json-schema';
+
+import { getConnectedTools } from '@utils/helpers';
+
 import { apiRequest } from '../../transport';
 import type { IMessage, IModelStudioRequestBody } from '../../helpers/interfaces';
 
@@ -64,14 +74,6 @@ const properties: INodeProperties[] = [
 		description: 'The model to use for generation',
 	},
 	{
-		displayName: 'Simplify Output',
-		name: 'simplifyOutput',
-		type: 'boolean',
-		default: true,
-		description:
-			'Whether to return only the generated text response instead of the full response object with usage data',
-	},
-	{
 		displayName: 'Messages',
 		name: 'messages',
 		type: 'fixedCollection',
@@ -112,10 +114,6 @@ const properties: INodeProperties[] = [
 								value: 'user',
 							},
 							{
-								name: 'System',
-								value: 'system',
-							},
-							{
 								name: 'Assistant',
 								value: 'assistant',
 							},
@@ -126,6 +124,13 @@ const properties: INodeProperties[] = [
 				],
 			},
 		],
+	},
+	{
+		displayName: 'Simplify Output',
+		name: 'simplify',
+		type: 'boolean',
+		default: true,
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Options',
@@ -152,6 +157,14 @@ const properties: INodeProperties[] = [
 				description: 'Maximum number of tokens to generate',
 			},
 			{
+				displayName: 'Max Tools Iterations',
+				name: 'maxToolsIterations',
+				type: 'number',
+				default: 15,
+				description:
+					'Maximum number of tool-calling iterations before stopping. Set to 0 for unlimited.',
+			},
+			{
 				displayName: 'Repetition Penalty',
 				name: 'repetitionPenalty',
 				type: 'number',
@@ -176,6 +189,13 @@ const properties: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'Comma-separated list of sequences where the API will stop generating',
+			},
+			{
+				displayName: 'System Message',
+				name: 'system',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. You are a helpful assistant',
 			},
 			{
 				displayName: 'Temperature',
@@ -241,6 +261,15 @@ const MULTIMODAL_MODELS = [
 	'qwen3.5-35b-a3b',
 ];
 
+interface DashScopeToolCall {
+	id: string;
+	type: 'function';
+	function: {
+		name: string;
+		arguments: string;
+	};
+}
+
 export async function execute(
 	this: IExecuteFunctions,
 	itemIndex: number,
@@ -250,10 +279,12 @@ export async function execute(
 		messageValues: IMessage[];
 	};
 	const messages = messagesParam.messageValues || [];
-	const options = this.getNodeParameter('options', itemIndex, {});
-	const simplifyOutput = this.getNodeParameter('simplifyOutput', itemIndex, true) as boolean;
+	const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+	const simplify = this.getNodeParameter('simplify', itemIndex, true) as boolean;
 
 	const isMultimodal = MULTIMODAL_MODELS.includes(model);
+
+	const { tools, connectedTools } = await getTools.call(this);
 
 	// For multimodal models, convert plain-text message content to the array format
 	// expected by the multimodal-generation endpoint: [{ text: "..." }]
@@ -263,6 +294,13 @@ export async function execute(
 				content: typeof msg.content === 'string' ? [{ text: msg.content }] : msg.content,
 			}))
 		: messages;
+
+	if (options.system) {
+		formattedMessages.unshift({
+			role: 'system',
+			content: isMultimodal ? [{ text: options.system as string }] : (options.system as string),
+		});
+	}
 
 	const body: IModelStudioRequestBody = {
 		model,
@@ -296,30 +334,139 @@ export async function execute(
 	if (options.seed !== undefined) {
 		body.parameters.seed = options.seed as number;
 	}
+	if (tools.length) {
+		body.parameters.tools = tools;
+	}
 
-	// Pick the correct endpoint based on whether the model is multimodal
 	const endpoint = isMultimodal
 		? '/api/v1/services/aigc/multimodal-generation/generation'
 		: '/api/v1/services/aigc/text-generation/generation';
 
-	const response = await apiRequest.call(this, 'POST', endpoint, {
-		body,
-	});
+	let response = await apiRequest.call(this, 'POST', endpoint, { body });
 
-	// Multimodal endpoint returns content as an array of objects, text endpoint returns plain text
+	const captureUsage = () => {
+		const usage = response?.usage as { input_tokens: number; output_tokens: number } | undefined;
+		if (usage) {
+			accumulateTokenUsage(this, usage.input_tokens, usage.output_tokens);
+		}
+	};
+
+	captureUsage();
+
+	const maxToolsIterations = this.getNodeParameter(
+		'options.maxToolsIterations',
+		itemIndex,
+		15,
+	) as number;
+	const abortSignal = this.getExecutionCancelSignal();
+	let currentIteration = 0;
+
+	while (true) {
+		if (abortSignal?.aborted) {
+			break;
+		}
+
+		const choice = response.output?.choices?.[0];
+		const finishReason = choice?.finish_reason as string | undefined;
+
+		if (finishReason === 'tool_calls') {
+			if (maxToolsIterations > 0 && currentIteration >= maxToolsIterations) {
+				break;
+			}
+
+			const assistantMessage = choice.message;
+			formattedMessages.push(assistantMessage);
+			await handleToolUse.call(
+				this,
+				assistantMessage.tool_calls,
+				formattedMessages,
+				connectedTools,
+			);
+			currentIteration++;
+		} else {
+			break;
+		}
+
+		response = await apiRequest.call(this, 'POST', endpoint, { body });
+		captureUsage();
+	}
+
 	const output = isMultimodal
 		? (response.output?.choices?.[0]?.message?.content?.[0]?.text as string) || ''
 		: response.output?.text || response.output?.choices?.[0]?.message?.content || '';
 
 	return {
-		json: simplifyOutput
+		json: simplify
 			? { text: output }
 			: {
+					text: output,
 					model,
-					response: output,
 					usage: response.usage,
 					fullResponse: response,
 				},
 		pairedItem: itemIndex,
 	};
+}
+
+async function getTools(this: IExecuteFunctions) {
+	let connectedTools: Tool[] = [];
+	const nodeInputs = this.getNodeInputs();
+	if (nodeInputs.some((i) => i.type === 'ai_tool')) {
+		connectedTools = await getConnectedTools(this, true);
+	}
+
+	const tools = connectedTools.map((t) => ({
+		type: 'function' as const,
+		function: {
+			name: t.name,
+			description: t.description,
+			parameters: zodToJsonSchema(t.schema),
+		},
+	}));
+
+	return { tools, connectedTools };
+}
+
+async function handleToolUse(
+	this: IExecuteFunctions,
+	toolCalls: DashScopeToolCall[],
+	messages: IMessage[],
+	connectedTools: Tool[],
+) {
+	if (!toolCalls?.length) {
+		return;
+	}
+
+	for (const toolCall of toolCalls) {
+		const toolName = toolCall.function.name;
+		let toolInput: unknown;
+		try {
+			toolInput = JSON.parse(toolCall.function.arguments);
+		} catch {
+			toolInput = toolCall.function.arguments;
+		}
+
+		let toolResponse: unknown;
+		for (const connectedTool of connectedTools) {
+			if (connectedTool.name === toolName) {
+				toolResponse = await connectedTool.invoke(toolInput);
+			}
+		}
+
+		if (toolResponse === undefined) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`Tool "${toolName}" was called but not found among connected tools`,
+			);
+		}
+
+		messages.push({
+			role: 'tool',
+			content:
+				typeof toolResponse === 'object'
+					? JSON.stringify(toolResponse)
+					: String(toolResponse ?? ''),
+			name: toolName,
+		});
+	}
 }

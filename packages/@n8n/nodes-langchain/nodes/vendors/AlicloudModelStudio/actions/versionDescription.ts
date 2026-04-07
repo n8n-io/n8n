@@ -27,12 +27,22 @@ export const versionDescription: INodeTypeDescription = {
 		resources: {
 			primaryDocumentation: [
 				{
-					url: 'https://www.alibabacloud.com/help/en/model-studio',
+					url: 'https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-langchain.alibabacloud/',
 				},
 			],
 		},
 	},
-	inputs: [NodeConnectionTypes.Main],
+	inputs: `={{
+		(() => {
+			const resource = $parameter.resource;
+			const operation = $parameter.operation;
+			if (resource === 'text' && operation === 'message') {
+				return [{ type: 'main' }, { type: 'ai_tool', displayName: 'Tools' }];
+			}
+
+			return ['main'];
+		})()
+	}}`,
 	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{

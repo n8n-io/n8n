@@ -6,7 +6,7 @@ import type { IModelStudioRequestBody } from '../../helpers/interfaces';
 const properties: INodeProperties[] = [
 	{
 		displayName: 'Model',
-		name: 'visionModel',
+		name: 'modelId',
 		type: 'options',
 		options: [
 			{
@@ -24,6 +24,23 @@ const properties: INodeProperties[] = [
 		description: 'The model to use for image analysis',
 	},
 	{
+		displayName: 'Input Type',
+		name: 'inputType',
+		type: 'options',
+		options: [
+			{
+				name: 'URL',
+				value: 'url',
+			},
+			{
+				name: 'Binary Data',
+				value: 'binary',
+			},
+		],
+		default: 'url',
+		description: 'How to provide the image for analysis',
+	},
+	{
 		displayName: 'Image URL',
 		name: 'imageUrl',
 		type: 'string',
@@ -31,6 +48,25 @@ const properties: INodeProperties[] = [
 		description: 'The URL of the image to analyze',
 		required: true,
 		placeholder: 'https://example.com/image.jpg',
+		displayOptions: {
+			show: {
+				inputType: ['url'],
+			},
+		},
+	},
+	{
+		displayName: 'Input Data Field Name',
+		name: 'binaryPropertyName',
+		type: 'string',
+		default: 'data',
+		required: true,
+		placeholder: 'e.g. data',
+		hint: 'The name of the input field containing the binary file data to be processed',
+		displayOptions: {
+			show: {
+				inputType: ['binary'],
+			},
+		},
 	},
 	{
 		displayName: 'Question',
@@ -46,10 +82,10 @@ const properties: INodeProperties[] = [
 	},
 	{
 		displayName: 'Simplify Output',
-		name: 'simplifyOutput',
+		name: 'simplify',
 		type: 'boolean',
 		default: true,
-		description: 'Whether to return only the text response instead of the full response object',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Options',
@@ -98,24 +134,35 @@ export async function execute(
 	this: IExecuteFunctions,
 	itemIndex: number,
 ): Promise<INodeExecutionData> {
-	const visionModel = this.getNodeParameter('visionModel', itemIndex) as string;
-	const imageUrl = this.getNodeParameter('imageUrl', itemIndex) as string;
+	const model = this.getNodeParameter('modelId', itemIndex) as string;
+	const inputType = this.getNodeParameter('inputType', itemIndex) as string;
 	const question = this.getNodeParameter('question', itemIndex) as string;
 	const visionOptions = this.getNodeParameter('visionOptions', itemIndex, {}) as Record<
 		string,
 		unknown
 	>;
-	const simplifyOutput = this.getNodeParameter('simplifyOutput', itemIndex, true) as boolean;
+	const simplify = this.getNodeParameter('simplify', itemIndex, true) as boolean;
+
+	let imageContent: string;
+	if (inputType === 'binary') {
+		const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex) as string;
+		const binaryData = this.helpers.assertBinaryData(itemIndex, binaryPropertyName);
+		const buffer = await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
+		const mimeType = binaryData.mimeType || 'image/png';
+		imageContent = `data:${mimeType};base64,${buffer.toString('base64')}`;
+	} else {
+		imageContent = this.getNodeParameter('imageUrl', itemIndex) as string;
+	}
 
 	const body: IModelStudioRequestBody = {
-		model: visionModel,
+		model,
 		input: {
 			messages: [
 				{
 					role: 'user',
 					content: [
 						{
-							image: imageUrl,
+							image: imageContent,
 						},
 						{
 							text: question,
@@ -146,11 +193,11 @@ export async function execute(
 	const output = (response.output?.choices?.[0]?.message?.content?.[0]?.text as string) || '';
 
 	return {
-		json: simplifyOutput
+		json: simplify
 			? { text: output }
 			: {
-					model: visionModel,
-					response: output,
+					text: output,
+					model,
 					usage: response.usage,
 					fullResponse: response,
 				},

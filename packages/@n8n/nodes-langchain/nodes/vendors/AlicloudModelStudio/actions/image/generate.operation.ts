@@ -6,7 +6,7 @@ import type { IImageOptions, IModelStudioRequestBody } from '../../helpers/inter
 const properties: INodeProperties[] = [
 	{
 		displayName: 'Model',
-		name: 'imageModel',
+		name: 'modelId',
 		type: 'options',
 		options: [
 			{
@@ -70,7 +70,7 @@ const properties: INodeProperties[] = [
 				type: 'options',
 				displayOptions: {
 					show: {
-						'/imageModel': ['z-image-turbo', 'wan2.6-t2i'],
+						'/modelId': ['z-image-turbo', 'wan2.6-t2i'],
 					},
 				},
 				options: [
@@ -96,7 +96,7 @@ const properties: INodeProperties[] = [
 				type: 'options',
 				displayOptions: {
 					show: {
-						'/imageModel': ['qwen-image', 'qwen-image-plus', 'qwen-image-max'],
+						'/modelId': ['qwen-image', 'qwen-image-plus', 'qwen-image-max'],
 					},
 				},
 				options: [
@@ -148,13 +148,13 @@ export async function execute(
 	this: IExecuteFunctions,
 	itemIndex: number,
 ): Promise<INodeExecutionData> {
-	const imageModel = this.getNodeParameter('imageModel', itemIndex) as string;
+	const model = this.getNodeParameter('modelId', itemIndex) as string;
 	const prompt = this.getNodeParameter('prompt', itemIndex) as string;
 	const imageOptions = this.getNodeParameter('imageOptions', itemIndex, {}) as IImageOptions;
 	const downloadImage = this.getNodeParameter('downloadImage', itemIndex, true) as boolean;
 
 	const body: IModelStudioRequestBody = {
-		model: imageModel,
+		model,
 		input: {
 			messages: [
 				{
@@ -168,8 +168,6 @@ export async function execute(
 			],
 		},
 		parameters: {
-			// Always sent explicitly: DashScope defaults prompt_extend to true server-side,
-			// so we must send false to prevent unwanted prompt enhancement.
 			prompt_extend: imageOptions.promptExtend ?? false,
 		},
 	};
@@ -209,7 +207,7 @@ export async function execute(
 		return {
 			binary: { data: binaryData },
 			json: {
-				model: imageModel,
+				model,
 				imageUrl,
 				usage: response.usage,
 			},
@@ -219,7 +217,7 @@ export async function execute(
 
 	return {
 		json: {
-			model: imageModel,
+			model,
 			imageUrl,
 			usage: response.usage,
 		},
