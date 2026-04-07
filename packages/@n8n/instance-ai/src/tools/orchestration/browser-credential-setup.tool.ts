@@ -26,8 +26,7 @@ import {
 import type { OrchestrationContext } from '../../types';
 import { createToolsFromLocalMcpServer } from '../filesystem/create-tools-from-mcp-server';
 import { createAskUserTool } from '../shared/ask-user.tool';
-import { createFetchUrlTool } from '../web-research/fetch-url.tool';
-import { createWebSearchTool } from '../web-research/web-search.tool';
+import { createResearchTool } from '../research.tool';
 
 const BROWSER_AGENT_MAX_STEPS = 300;
 
@@ -306,12 +305,9 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 			browserTools['pause-for-user'] = createPauseForUserTool();
 			browserTools['ask-user'] = createAskUserTool();
 
-			// Add research tools (fetch-url, web-search) from the domain context
+			// Add consolidated research tool (web-search + fetch-url) from the domain context
 			if (context.domainContext) {
-				browserTools['fetch-url'] = createFetchUrlTool(context.domainContext);
-				if (context.domainContext.webResearchService?.search) {
-					browserTools['web-search'] = createWebSearchTool(context.domainContext);
-				}
+				browserTools.research = createResearchTool(context.domainContext);
 			}
 
 			const subAgentId = `agent-browser-${nanoid(6)}`;
