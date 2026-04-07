@@ -11,7 +11,7 @@ export type SharedWithProjectsPayload = {
 export type SharedWithProjectsChangeEvent = ChangeEvent<SharedWithProjectsPayload>;
 
 export function useWorkflowDocumentSharedWithProjects() {
-	const sharedWithProjects = ref<ProjectSharingData[]>([]);
+	const sharedWithProjects = ref<ProjectSharingData[] | null>(null);
 
 	const onSharedWithProjectsChange = createEventHook<SharedWithProjectsChangeEvent>();
 

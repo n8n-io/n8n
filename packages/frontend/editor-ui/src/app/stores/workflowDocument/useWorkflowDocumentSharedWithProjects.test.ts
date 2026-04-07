@@ -20,9 +20,9 @@ function createProject(overrides: Partial<ProjectSharingData> = {}): ProjectShar
 
 describe('useWorkflowDocumentSharedWithProjects', () => {
 	describe('initial state', () => {
-		it('should start with empty array', () => {
+		it('should start with null', () => {
 			const { sharedWithProjects } = createSharedWithProjects();
-			expect(sharedWithProjects.value).toEqual([]);
+			expect(sharedWithProjects.value).toBeNull();
 		});
 	});
 
