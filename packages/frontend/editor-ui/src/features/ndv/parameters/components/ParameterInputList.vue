@@ -388,11 +388,10 @@ function updateWaitParameters(parameters: INodeProperties[], nodeName: string) {
 }
 
 function updateFormParameters(parameters: INodeProperties[], nodeName: string) {
-	const workflowObject = workflowsStore.workflowObject;
-	const parentNodes = workflowObject.getParentNodes(nodeName);
+	const parentNodes = workflowDocumentStore?.value?.getParentNodes(nodeName) ?? [];
 
 	const formTriggerName = parentNodes.find(
-		(_node) => workflowObject.nodes[_node].type === FORM_TRIGGER_NODE_TYPE,
+		(_node) => workflowDocumentStore?.value?.getNodeByName(_node)?.type === FORM_TRIGGER_NODE_TYPE,
 	);
 
 	if (formTriggerName) return parameters.filter((parameter) => parameter.name !== 'triggerNotice');
