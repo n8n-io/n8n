@@ -36,7 +36,7 @@ export const ExternalTokenClaimsSchema = z.object({
 	email: z.string().email().optional(),
 	given_name: z.string().optional(),
 	family_name: z.string().optional(),
-	role: z.union([z.string(), z.array(z.string())]).optional(),
+	role: z.string().optional(),
 });
 
 export type ExternalTokenClaims = z.infer<typeof ExternalTokenClaimsSchema>;

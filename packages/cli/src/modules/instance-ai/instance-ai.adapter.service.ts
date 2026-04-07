@@ -876,8 +876,6 @@ export class InstanceAiAdapterService {
 						id: c.id,
 						name: c.name,
 						type: c.type,
-						createdAt: c.createdAt.toISOString(),
-						updatedAt: c.updatedAt.toISOString(),
 					}),
 				);
 			},
@@ -888,8 +886,6 @@ export class InstanceAiAdapterService {
 					id: credential.id,
 					name: credential.name,
 					type: credential.type,
-					createdAt: credential.createdAt.toISOString(),
-					updatedAt: credential.updatedAt.toISOString(),
 				} satisfies CredentialDetail;
 			},
 

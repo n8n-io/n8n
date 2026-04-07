@@ -15,8 +15,11 @@ import { useWorkflowDocumentTimestamps } from './workflowDocument/useWorkflowDoc
 import { useWorkflowDocumentParentFolder } from './workflowDocument/useWorkflowDocumentParentFolder';
 import { useWorkflowDocumentUsedCredentials } from './workflowDocument/useWorkflowDocumentUsedCredentials';
 import { useWorkflowDocumentNodes } from './workflowDocument/useWorkflowDocumentNodes';
+import { useWorkflowDocumentVersionData } from './workflowDocument/useWorkflowDocumentVersionData';
 import { useWorkflowDocumentViewport } from './workflowDocument/useWorkflowDocumentViewport';
 import { useWorkflowDocumentConnections } from './workflowDocument/useWorkflowDocumentConnections';
+import { useWorkflowDocumentGraph } from './workflowDocument/useWorkflowDocumentGraph';
+import { useWorkflowDocumentExpression } from './workflowDocument/useWorkflowDocumentExpression';
 import { useWorkflowDocumentName } from './workflowDocument/useWorkflowDocumentName';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -30,6 +33,53 @@ export {
 type PiniaInternal = ReturnType<typeof getActivePinia> & {
 	_s: Map<string, StoreGeneric>;
 };
+
+// ---------------------------------------------------------------------------
+// Compile-time guard: detect key collisions between composable return types.
+// If two composables export the same key, the spread pattern silently
+// overwrites. This utility type makes that a compile error instead.
+// ---------------------------------------------------------------------------
+
+// Keys that are intentionally shared across composables (destructured before
+// spreading in the store factory). Exclude them from collision checks.
+type SharedKeys = 'onStateDirty';
+
+type CommonKeys<A, B> = Exclude<keyof A & keyof B, SharedKeys>;
+
+/**
+ * Evaluates to `true` when A and B share no keys (ignoring SharedKeys),
+ * otherwise produces a readable compile error listing the colliding keys.
+ */
+type AssertNoOverlap<A, B> = CommonKeys<A, B> extends never
+	? true
+	: { error: 'Key collision between composables'; keys: CommonKeys<A, B> };
+
+// Return types of each composable. Only composables with mutation/query
+// methods need checking — simple value composables are unlikely to collide.
+type NodesReturn = ReturnType<typeof useWorkflowDocumentNodes>;
+type ConnectionsReturn = ReturnType<typeof useWorkflowDocumentConnections>;
+type GraphReturn = ReturnType<typeof useWorkflowDocumentGraph>;
+type ExpressionReturn = ReturnType<typeof useWorkflowDocumentExpression>;
+type MetaReturn = ReturnType<typeof useWorkflowDocumentMeta>;
+type PinDataReturn = ReturnType<typeof useWorkflowDocumentPinData>;
+type SettingsReturn = ReturnType<typeof useWorkflowDocumentSettings>;
+
+// Pairwise collision checks — add new composables here when they are created.
+// If any pair shares a key, the corresponding tuple slot becomes an error type
+// and the 'true' assertion below fails at compile time.
+// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+void (0 as unknown as [
+	AssertNoOverlap<NodesReturn, GraphReturn>,
+	AssertNoOverlap<NodesReturn, ExpressionReturn>,
+	AssertNoOverlap<NodesReturn, ConnectionsReturn>,
+	AssertNoOverlap<ConnectionsReturn, GraphReturn>,
+	AssertNoOverlap<ConnectionsReturn, ExpressionReturn>,
+	AssertNoOverlap<GraphReturn, ExpressionReturn>,
+	AssertNoOverlap<MetaReturn, NodesReturn>,
+	AssertNoOverlap<MetaReturn, ConnectionsReturn>,
+	AssertNoOverlap<PinDataReturn, NodesReturn>,
+	AssertNoOverlap<SettingsReturn, NodesReturn>,
+]);
 
 export type WorkflowDocumentId = `${string}@${string}`;
 
@@ -74,6 +124,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const workflowDocumentSettings = useWorkflowDocumentSettings();
 		const workflowDocumentParentFolder = useWorkflowDocumentParentFolder();
 		const workflowDocumentUsedCredentials = useWorkflowDocumentUsedCredentials();
+		const workflowDocumentVersionData = useWorkflowDocumentVersionData();
 		const workflowDocumentViewport = useWorkflowDocumentViewport();
 		const nodeTypesStore = useNodeTypesStore();
 		const { onStateDirty: onNodesStateDirty, ...workflowDocumentNodes } = useWorkflowDocumentNodes({
@@ -83,6 +134,8 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			useWorkflowDocumentConnections({
 				getNodeById: (id) => workflowDocumentNodes.getNodeById(id),
 			});
+		const workflowDocumentGraph = useWorkflowDocumentGraph();
+		const workflowDocumentExpression = useWorkflowDocumentExpression();
 
 		// --- Cross-cut orchestration ---
 		// Each composable is self-contained and unaware of its siblings. This
@@ -116,9 +169,12 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentTimestamps,
 			...workflowDocumentParentFolder,
 			...workflowDocumentUsedCredentials,
+			...workflowDocumentVersionData,
 			...workflowDocumentViewport,
 			...workflowDocumentNodes,
 			...workflowDocumentConnections,
+			...workflowDocumentGraph,
+			...workflowDocumentExpression,
 			removeAllNodes,
 		};
 	})();

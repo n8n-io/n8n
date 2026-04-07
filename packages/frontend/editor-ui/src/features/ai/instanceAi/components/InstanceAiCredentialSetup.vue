@@ -321,7 +321,7 @@ async function handleLater() {
 </script>
 
 <template>
-	<div :class="$style.root">
+	<div>
 		<template v-if="!isSubmitted">
 			<div
 				v-if="currentRequest"
@@ -453,17 +453,12 @@ async function handleLater() {
 </template>
 
 <style lang="scss" module>
-.root {
-	// padding: var(--spacing--xs);
-}
-
 .card {
 	width: 100%;
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	padding: 0;
-	// background-color: var(--color--background--light-3);
 	border: var(--border);
 	border-radius: var(--radius);
 
