@@ -78,7 +78,7 @@ async function saveWorkflowDescription(id: string, description: string | null) {
 	const updated = await workflowsStore.updateWorkflow(id, {
 		versionId: currentVersionId,
 		description,
-		expectedChecksum: currentChecksum,
+		...(currentChecksum ? { expectedChecksum: currentChecksum } : {}),
 	});
 
 	if (workflowsListStore.getWorkflowById(id)) {
