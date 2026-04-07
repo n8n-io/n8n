@@ -1166,8 +1166,8 @@ describe('useWorkflowsStore', () => {
 			executionResponse = events.executionResponse;
 		});
 
-		it('should throw error if not initialized', () => {
-			expect(() => workflowsStore.updateNodeExecutionStatus(successEvent)).toThrowError();
+		it('should silently return when workflowExecutionData is not initialized', () => {
+			expect(() => workflowsStore.updateNodeExecutionStatus(successEvent)).not.toThrow();
 		});
 
 		it('should add node success run data', () => {
@@ -1195,6 +1195,7 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should add node error event and track errored executions', async () => {
+			workflowsStore.workflow.id = 'test-workflow';
 			workflowsStore.workflow.pinData = {};
 			useWorkflowState().setWorkflowExecutionData(executionResponse);
 			workflowsStore.addNode({

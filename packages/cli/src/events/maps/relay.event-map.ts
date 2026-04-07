@@ -694,6 +694,35 @@ export type RelayEventMap = {
 		userId: string;
 	};
 
+	// #region Token exchange
+
+	'token-exchange-succeeded': {
+		subject: string;
+		actor?: string;
+		scopes?: string;
+		resource?: string;
+		grantType: string;
+		kid?: string;
+		issuer: string;
+		tokenId?: string;
+		clientIp: string;
+	};
+
+	'token-exchange-failed': {
+		subject?: string;
+		failureReason: string;
+		grantType: string;
+		clientIp: string;
+	};
+
+	'embed-login': {
+		subject: string;
+		issuer: string;
+		clientIp: string;
+	};
+
+	// #endregion
+
 	// #region runner
 
 	'runner-task-requested': {

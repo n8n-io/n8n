@@ -1,5 +1,10 @@
 import { createCanvasGraphNode } from '@/features/workflows/canvas/__tests__/utils';
-import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
+import {
+	createTestNode,
+	createTestNodeProperties,
+	createTestWorkflow,
+	mockNodeTypeDescription,
+} from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { SET_NODE_TYPE } from '@/app/constants';
@@ -44,22 +49,22 @@ describe('FocusSidebar', () => {
 		},
 	});
 
-	const parameter0: INodeProperties = {
+	const parameter0: INodeProperties = createTestNodeProperties({
 		displayName: 'P0',
 		name: 'p0',
 		type: 'string',
 		default: '',
 		description: '',
 		validateType: 'string',
-	};
-	const parameter1: INodeProperties = {
+	});
+	const parameter1: INodeProperties = createTestNodeProperties({
 		displayName: 'P1',
 		name: 'p1',
 		type: 'string',
 		default: '',
 		description: '',
 		validateType: 'string',
-	};
+	});
 
 	let experimentalNdvStore: ReturnType<typeof mockedStore<typeof useExperimentalNdvStore>>;
 	let focusPanelStore: ReturnType<typeof useFocusPanelStore>;
