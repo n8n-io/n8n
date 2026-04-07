@@ -126,6 +126,11 @@ export class IdentityResolutionService {
 			sub: claims.sub,
 			email,
 		});
+		const resolvedRole = this.resolveRoleForExistingUser(
+			claims.role,
+			allowedRoles,
+			existingUser.role?.slug,
+		);
 		await this.authIdentityRepository.save(
 			AuthIdentity.create(existingUser, claims.sub, 'token-exchange'),
 		);
@@ -136,11 +141,6 @@ export class IdentityResolutionService {
 			kid: tokenContext?.kid ?? '',
 			issuer: tokenContext?.issuer ?? claims.iss,
 		});
-		const resolvedRole = this.resolveRoleForExistingUser(
-			claims.role,
-			allowedRoles,
-			existingUser.role?.slug,
-		);
 		return await this.syncProfile(existingUser, claims, resolvedRole, tokenContext);
 	}
 

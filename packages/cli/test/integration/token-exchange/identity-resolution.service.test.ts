@@ -306,6 +306,12 @@ describe('IdentityResolutionService (integration)', () => {
 					['global:member'],
 				),
 			).rejects.toThrow("Role 'global:admin' is not allowed for this token exchange key");
+
+			// Ensure no orphaned AuthIdentity was persisted before the role check
+			const orphanedIdentity = await authIdentityRepository.findOne({
+				where: { providerId: 'ext-admin-email', providerType: 'token-exchange' },
+			});
+			expect(orphanedIdentity).toBeNull();
 		});
 
 		it('should ignore unknown role claim for existing user', async () => {
