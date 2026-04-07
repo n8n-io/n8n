@@ -825,7 +825,7 @@ export function useCanvasOperations() {
 	}
 
 	function updatePositionForNodeWithMultipleInputs(node: INodeUi) {
-		const inputNodes = editableWorkflowObject.value.getParentNodesByDepth(node.name, 1);
+		const inputNodes = workflowDocumentStore.value?.getParentNodesByDepth(node.name, 1) ?? [];
 
 		if (inputNodes.length > 1) {
 			inputNodes.slice(1).forEach((inputNode, index) => {
@@ -1247,7 +1247,7 @@ export function useCanvasOperations() {
 				lastInteractedWithNode.type,
 				lastInteractedWithNode.typeVersion,
 			);
-			const lastInteractedWithNodeObject = editableWorkflowObject.value.getNode(
+			const lastInteractedWithNodeObject = workflowDocumentStore.value?.getNodeByName(
 				lastInteractedWithNode.name,
 			);
 
@@ -2182,7 +2182,7 @@ export function useCanvasOperations() {
 		}
 
 		const sourceNodeType = getNodeType(sourceNode);
-		const sourceWorkflowNode = editableWorkflowObject.value.getNode(sourceNode.name);
+		const sourceWorkflowNode = workflowDocumentStore.value?.getNodeByName(sourceNode.name);
 		if (!sourceWorkflowNode) {
 			return false;
 		}
@@ -2215,7 +2215,7 @@ export function useCanvasOperations() {
 		}
 
 		const targetNodeType = getNodeType(targetNode);
-		const targetWorkflowNode = editableWorkflowObject.value.getNode(targetNode.name);
+		const targetWorkflowNode = workflowDocumentStore.value?.getNodeByName(targetNode.name);
 		if (!targetWorkflowNode) {
 			return false;
 		}
@@ -2974,12 +2974,10 @@ export function useCanvasOperations() {
 			return;
 		}
 
-		const workflowObject = workflowsStore.workflowObject; // @TODO Check if we actually need workflowObject here
-
 		logsStore.toggleOpen(true);
 
 		const payload = {
-			workflow_id: workflowObject.id,
+			workflow_id: workflowDocumentStore.value?.workflowId,
 			button_type: source,
 		};
 
