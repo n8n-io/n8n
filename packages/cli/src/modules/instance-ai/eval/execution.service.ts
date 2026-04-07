@@ -242,8 +242,20 @@ export class EvalExecutionService {
 			};
 		}
 
-		const result = await this.runWorkflow(workflow, additionalData, executionData);
-		return this.buildResult(executionId, result, nodeResults, hints);
+		try {
+			const result = await this.runWorkflow(workflow, additionalData, executionData);
+			return this.buildResult(executionId, result, nodeResults, hints);
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : String(error);
+			this.logger.error(`[EvalMock] Workflow execution failed: ${message}`);
+			return {
+				executionId,
+				success: false,
+				nodeResults,
+				errors: [`Execution failed: ${message}`],
+				hints,
+			};
+		}
 	}
 
 	// ── Workflow construction ──────────────────────────────────────────────
