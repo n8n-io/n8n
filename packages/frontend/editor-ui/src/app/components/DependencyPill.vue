@@ -48,7 +48,7 @@ const effectiveCount = computed(() => {
 const hasHiddenDeps = computed(() => (depsResult.value?.inaccessibleCount ?? 0) > 0);
 
 const tooltipText = computed(() =>
-	i18n.baseText(`workflows.dependencies.tooltip.${props.resourceType}` as BaseTextKey),
+	i18n.baseText(`workflows.dependencies.tooltip.${props.resourceType}` satisfies BaseTextKey),
 );
 
 const hasFullDeps = computed(() => depsResult.value !== undefined);
@@ -249,6 +249,7 @@ async function onDropdownToggle(open: boolean) {
 	border-radius: var(--spacing--4xs);
 	border-color: var(--color--foreground);
 	color: var(--color--text);
+	height: 25px;
 }
 
 .badgeText {
