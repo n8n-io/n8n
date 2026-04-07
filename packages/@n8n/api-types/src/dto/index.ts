@@ -209,3 +209,6 @@ export {
 	ExecutionRedactionQueryDtoSchema,
 	type ExecutionRedactionQueryDto,
 } from './executions/execution-redaction-query.dto';
+
+export { VersionSinceDateQueryDto } from './instance-version-history/version-since-date-query.dto';
+export { VersionQueryDto } from './instance-version-history/version-query.dto';

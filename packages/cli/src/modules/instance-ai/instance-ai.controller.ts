@@ -12,6 +12,7 @@ import {
 	InstanceAiThreadMessagesQuery,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
+	InstanceAiEvalExecutionRequest,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -33,6 +34,7 @@ import type { StoredEvent } from '@n8n/instance-ai';
 import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
+import { EvalExecutionService } from './eval/execution.service';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
@@ -58,6 +60,7 @@ export class InstanceAiController {
 		private readonly instanceAiService: InstanceAiService,
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly settingsService: InstanceAiSettingsService,
+		private readonly evalExecutionService: EvalExecutionService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly push: Push,
@@ -505,6 +508,19 @@ export class InstanceAiController {
 	) {
 		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
 		return await this.memoryService.getThreadContext(req.user.id, threadId);
+	}
+
+	// ── Evaluation endpoints ──────────────────────────────────────────────────
+
+	@Post('/eval/execute-with-llm-mock/:workflowId')
+	@GlobalScope('instanceAi:message')
+	async executeWithLlmMock(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+		@Body payload: InstanceAiEvalExecutionRequest,
+	) {
+		return await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, payload);
 	}
 
 	// ── Gateway endpoints (daemon ↔ server) ──────────────────────────────────

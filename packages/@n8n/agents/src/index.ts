@@ -93,12 +93,8 @@ export type {
 	McpServerSchema,
 	TelemetrySchema,
 } from './types/sdk/schema';
-export {
-	toDbMessage,
-	filterLlmMessages,
-	isLlmMessage,
-} from './sdk/message';
 export { generateAgentCode } from './codegen/generate-agent-code';
+export { filterLlmMessages, isLlmMessage } from './sdk/message';
 export { fetchProviderCatalog } from './sdk/catalog';
 export { providerCapabilities } from './sdk/provider-capabilities';
 export type { ProviderCapability } from './sdk/provider-capabilities';
