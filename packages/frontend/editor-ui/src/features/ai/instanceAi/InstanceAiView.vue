@@ -109,6 +109,7 @@ onMounted(() => {
 	void store.loadThreads();
 	void store.fetchCredits();
 	store.startCreditsPushListener();
+	void nextTick(() => chatInputRef.value?.focus());
 
 	// Auto-connect local gateway if enabled
 	void settingsStore
