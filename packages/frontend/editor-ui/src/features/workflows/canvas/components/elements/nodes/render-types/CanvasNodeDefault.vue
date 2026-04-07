@@ -83,8 +83,8 @@ const classes = computed(() => {
 });
 
 const iconSize = computed(() => {
-	if (renderOptions.value.configuration) return 30;
 	const iconName = iconSource.value?.type === 'icon' ? iconSource.value.name : undefined;
+	if (renderOptions.value.configuration) return getNodeIconSize('configuration', iconName);
 	return getNodeIconSize('canvas', iconName);
 });
 

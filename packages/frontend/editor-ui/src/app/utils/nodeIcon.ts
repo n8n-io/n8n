@@ -192,10 +192,11 @@ export function getNodeIconSource(
 	return undefined;
 }
 
-export type NodeIconContext = 'canvas' | 'nodeList' | 'ndvHeader';
+export type NodeIconContext = 'canvas' | 'configuration' | 'nodeList' | 'ndvHeader';
 
 export const NODE_ICON_SIZES = {
 	canvas: { new: 48, old: 40 },
+	configuration: { new: 36, old: 30 },
 	nodeList: { new: 24, old: 20 },
 	ndvHeader: { new: 24, old: 20 },
 } as const;
