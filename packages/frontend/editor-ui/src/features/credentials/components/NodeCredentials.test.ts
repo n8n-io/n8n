@@ -967,6 +967,36 @@ describe('NodeCredentials', () => {
 				expect(screen.queryByTestId('node-credentials-select')).not.toBeInTheDocument();
 			});
 
+			it('should show the toggle when gateway is managed but config has not loaded yet', () => {
+				// Simulates the case where the AI gateway backend is unreachable and fetchConfig
+				// fails, leaving isCredentialTypeSupported returning false. The toggle must still
+				// appear so the user can disable AI gateway on existing nodes.
+				vi.mocked(useAiGateway).mockReturnValue({
+					isEnabled: computed(() => true),
+					isCredentialTypeSupported: vi.fn(() => false),
+					creditsRemaining: computed(() => undefined),
+					creditsQuota: computed(() => undefined),
+					fetchError: computed(() => null),
+					fetchConfig: vi.fn().mockResolvedValue(undefined),
+					fetchCredits: vi.fn().mockResolvedValue(undefined),
+					saveAfterToggle: vi.fn().mockResolvedValue(undefined),
+				});
+
+				const nodeWithGateway: INodeUi = {
+					...googleAiNode,
+					credentials: { googlePalmApi: { id: null, name: '', __aiGatewayManaged: true } },
+				};
+				ndvStore.activeNode = nodeWithGateway;
+
+				renderComponent({
+					props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' },
+					global: { stubs: { AiGatewayToggle: aiGatewayToggleStub } },
+				});
+
+				expect(screen.getByTestId('ai-gateway-toggle')).toBeInTheDocument();
+				expect(screen.queryByTestId('node-credentials-select')).not.toBeInTheDocument();
+			});
+
 			it('should not show the toggle when gateway feature is disabled', () => {
 				vi.mocked(useAiGateway).mockReturnValue({
 					isEnabled: computed(() => false),
@@ -1005,7 +1035,7 @@ describe('NodeCredentials', () => {
 				expect(screen.queryByTestId('node-credentials-select')).not.toBeInTheDocument();
 			});
 
-			it('should show the readonly disabled input (not the toggle) when readonly and not managed', () => {
+			it('should show the readonly disabled input and the toggle when readonly and not managed', () => {
 				const nodeWithCred: INodeUi = {
 					...googleAiNode,
 					credentials: { googlePalmApi: { id: 'cred-1', name: 'My Google Key' } },
@@ -1017,7 +1047,8 @@ describe('NodeCredentials', () => {
 					global: { stubs: { AiGatewayToggle: aiGatewayToggleStub } },
 				});
 
-				expect(screen.queryByTestId('ai-gateway-toggle')).not.toBeInTheDocument();
+				// Toggle is shown (disabled) so users can see the gateway is supported for this type
+				expect(screen.getByTestId('ai-gateway-toggle')).toBeInTheDocument();
 				expect(screen.getByTestId('node-credentials-select')).toBeInTheDocument();
 			});
 		});
