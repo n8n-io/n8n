@@ -509,15 +509,14 @@ function onCredentialSelected(
 	emit('credentialSelected', updateInformation);
 }
 
-function isAiGatewayManaged(credentialType: string): boolean {
+function isAiGatewayManagedCredentials(credentialType: string): boolean {
 	return aiGateway.isEnabled.value && selected.value[credentialType]?.__aiGatewayManaged === true;
 }
 
 function showAiGatewayToggle(credentialType: string): boolean {
-	if (!aiGateway.isEnabled.value || !aiGateway.isCredentialTypeSupported(credentialType))
-		return false;
-	// In readonly mode only show when currently managed (so the active state is visible)
-	if (props.readonly) return isAiGatewayManaged(credentialType);
+	if (!aiGateway.isEnabled.value) return false;
+	if (isAiGatewayManagedCredentials(credentialType)) return true;
+	if (!aiGateway.isCredentialTypeSupported(credentialType)) return false;
 	return true;
 }
 
@@ -671,7 +670,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 				<template v-if="$slots['label-postfix']" #options>
 					<slot name="label-postfix" />
 				</template>
-				<div v-if="readonly && !isAiGatewayManaged(type.name)">
+				<div v-if="readonly && !isAiGatewayManagedCredentials(type.name)">
 					<N8nInput
 						:model-value="getSelectedName(type.name)"
 						disabled
@@ -685,7 +684,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 						options.length === 0 &&
 						showQuickConnectEmptyState(type) &&
 						quickConnectCredentialType &&
-						!isAiGatewayManaged(type.name)
+						!isAiGatewayManagedCredentials(type.name)
 					"
 					:class="[$style.quickConnectContainer]"
 					data-test-id="quick-connect-empty-state"
@@ -736,7 +735,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					</N8nButton>
 				</div>
 				<div
-					v-else-if="!isAiGatewayManaged(type.name)"
+					v-else-if="!isAiGatewayManagedCredentials(type.name)"
 					:class="getIssues(type.name).length && !hideIssues ? $style.hasIssues : $style.input"
 					data-test-id="node-credentials-select"
 				>
@@ -862,7 +861,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 			</N8nInputLabel>
 			<AiGatewayToggle
 				v-if="showAiGatewayToggle(type.name)"
-				:ai-gateway-enabled="isAiGatewayManaged(type.name)"
+				:ai-gateway-enabled="isAiGatewayManagedCredentials(type.name)"
 				:readonly="readonly"
 				@toggle="onAiGatewayToggle(type.name, $event)"
 			/>
