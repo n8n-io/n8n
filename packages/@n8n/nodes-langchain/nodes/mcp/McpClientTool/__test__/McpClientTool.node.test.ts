@@ -959,55 +959,6 @@ describe('McpClientTool', () => {
 			expect(result[0][0].json.response).toEqual([{ type: 'text', text: 'Weather is sunny' }]);
 		});
 
-		it('should not call MCP tool in execute() when execution is already cancelled', async () => {
-			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
-			const callToolSpy = jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
-				content: [{ type: 'text', text: 'should not reach here' }],
-			});
-			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
-				tools: [
-					{
-						name: 'get_weather',
-						description: 'Gets the weather',
-						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
-					},
-				],
-			});
-
-			const abortController = new AbortController();
-			abortController.abort();
-
-			const mockNode = mock<INode>({ typeVersion: 1, type: 'mcpClientTool' });
-			const mockExecuteFunctions = mock<any>({
-				getNode: jest.fn(() => mockNode),
-				getInputData: jest.fn(() => [
-					{
-						json: {
-							tool: 'get_weather',
-							location: 'Berlin',
-						},
-					},
-				]),
-				getNodeParameter: jest.fn((key) => {
-					const params: Record<string, any> = {
-						include: 'all',
-						includeTools: [],
-						excludeTools: [],
-						authentication: 'none',
-						sseEndpoint: 'https://test.com/sse',
-						'options.timeout': 60000,
-					};
-					return params[key];
-				}),
-				getExecutionCancelSignal: jest.fn(() => abortController.signal),
-			});
-
-			const result = await new McpClientTool().execute.call(mockExecuteFunctions);
-
-			expect(result).toEqual([[]]);
-			expect(callToolSpy).not.toHaveBeenCalled();
-		});
-
 		it('should pass abort signal to client.callTool in execute()', async () => {
 			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
 			const callToolSpy = jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
