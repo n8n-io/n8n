@@ -31,7 +31,6 @@ export class ChainLlm implements INodeType {
 		description: 'A simple chain to prompt a large language model',
 		defaults: {
 			name: 'Basic LLM Chain',
-			color: '#909298',
 		},
 		codex: {
 			alias: ['LangChain'],
