@@ -216,6 +216,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		licenseHints: context.licenseHints,
 		timeZone: options.timeZone,
 		browserAvailable: browserToolNames.size > 0,
+		branchReadOnly: context.branchReadOnly,
 	});
 
 	const agent = new Agent({

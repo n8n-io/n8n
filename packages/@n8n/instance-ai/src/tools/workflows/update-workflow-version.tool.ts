@@ -27,6 +27,10 @@ export function createUpdateWorkflowVersionTool(context: InstanceAiContext) {
 			error: z.string().optional(),
 		}),
 		execute: async (input: z.infer<typeof updateWorkflowVersionInputSchema>) => {
+			if (context.permissions?.updateWorkflow === 'blocked') {
+				return { success: false, error: 'Action blocked by admin' };
+			}
+
 			await context.workflowService.updateVersion!(input.workflowId, input.versionId, {
 				name: input.name,
 				description: input.description,

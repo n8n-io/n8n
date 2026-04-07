@@ -292,6 +292,7 @@ export {
 	InstanceAiThreadMessagesQuery,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
+	applyBranchReadOnlyOverrides,
 } from './schemas/instance-ai.schema';
 
 export type {
