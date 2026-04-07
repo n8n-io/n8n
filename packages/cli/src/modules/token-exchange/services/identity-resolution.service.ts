@@ -58,9 +58,8 @@ export class IdentityResolutionService {
 	 * 3. JIT provision — create user + personal project + identity in a transaction
 	 *
 	 * Role handling: the role claim is only applied when it is both valid and
-	 * permitted by the key's allowedRoles. For existing users the current role
-	 * is preserved when the claimed role is disallowed or absent — login is
-	 * never blocked because of a role mismatch.
+	 * permitted by the key's allowedRoles. A disallowed role claim throws —
+	 * OAuth flows are strict to avoid silent misconfiguration.
 	 */
 	async resolve(
 		claims: ExternalTokenClaims,
@@ -76,13 +75,7 @@ export class IdentityResolutionService {
 		});
 
 		if (identity) {
-			this.logger.debug('Resolved user by auth identity', { sub: claims.sub });
-			const resolvedRole = this.resolveRoleForExistingUser(
-				claims.role,
-				allowedRoles,
-				identity.user.role?.slug,
-			);
-			return await this.syncProfile(identity.user, claims, resolvedRole, tokenContext);
+			return await this.resolveByIdentity(claims, identity, allowedRoles, tokenContext);
 		}
 
 		// Path 2: email fallback
@@ -93,26 +86,7 @@ export class IdentityResolutionService {
 			});
 
 			if (existingUser) {
-				this.logger.debug('Linking external identity to existing user by email', {
-					sub: claims.sub,
-					email,
-				});
-				await this.authIdentityRepository.save(
-					AuthIdentity.create(existingUser, claims.sub, 'token-exchange'),
-				);
-				this.eventService.emit('token-exchange-identity-linked', {
-					userId: existingUser.id,
-					sub: claims.sub,
-					email,
-					kid: tokenContext?.kid ?? '',
-					issuer: tokenContext?.issuer ?? claims.iss,
-				});
-				const resolvedRole = this.resolveRoleForExistingUser(
-					claims.role,
-					allowedRoles,
-					existingUser.role?.slug,
-				);
-				return await this.syncProfile(existingUser, claims, resolvedRole, tokenContext);
+				return await this.resolveByEmail(claims, email, existingUser, allowedRoles, tokenContext);
 			}
 		}
 
@@ -121,10 +95,63 @@ export class IdentityResolutionService {
 			throw new AuthError('Email claim is required for user provisioning');
 		}
 
-		this.logger.debug('JIT provisioning new user', {
+		return await this.provisionUser(claims, email, allowedRoles, tokenContext);
+	}
+
+	/** Path 1: resolve an already-linked identity and sync profile/role. */
+	private async resolveByIdentity(
+		claims: ExternalTokenClaims,
+		identity: AuthIdentity,
+		allowedRoles: string[] | undefined,
+		tokenContext: { kid: string; issuer: string } | undefined,
+	): Promise<User> {
+		this.logger.debug('Resolved user by auth identity', { sub: claims.sub });
+		const resolvedRole = this.resolveRoleForExistingUser(
+			claims.role,
+			allowedRoles,
+			identity.user.role?.slug,
+		);
+		return await this.syncProfile(identity.user, claims, resolvedRole, tokenContext);
+	}
+
+	/** Path 2: link an external identity to an existing user found by email. */
+	private async resolveByEmail(
+		claims: ExternalTokenClaims,
+		email: string,
+		existingUser: User,
+		allowedRoles: string[] | undefined,
+		tokenContext: { kid: string; issuer: string } | undefined,
+	): Promise<User> {
+		this.logger.debug('Linking external identity to existing user by email', {
 			sub: claims.sub,
 			email,
 		});
+		await this.authIdentityRepository.save(
+			AuthIdentity.create(existingUser, claims.sub, 'token-exchange'),
+		);
+		this.eventService.emit('token-exchange-identity-linked', {
+			userId: existingUser.id,
+			sub: claims.sub,
+			email,
+			kid: tokenContext?.kid ?? '',
+			issuer: tokenContext?.issuer ?? claims.iss,
+		});
+		const resolvedRole = this.resolveRoleForExistingUser(
+			claims.role,
+			allowedRoles,
+			existingUser.role?.slug,
+		);
+		return await this.syncProfile(existingUser, claims, resolvedRole, tokenContext);
+	}
+
+	/** Path 3: JIT-provision a new user with a personal project and identity link. */
+	private async provisionUser(
+		claims: ExternalTokenClaims,
+		email: string,
+		allowedRoles: string[] | undefined,
+		tokenContext: { kid: string; issuer: string } | undefined,
+	): Promise<User> {
+		this.logger.debug('JIT provisioning new user', { sub: claims.sub, email });
 
 		const jitRole = this.resolveRoleForNewUser(claims.role, allowedRoles);
 		const targetRole = jitRole ? { slug: jitRole } : GLOBAL_MEMBER_ROLE;
@@ -168,9 +195,9 @@ export class IdentityResolutionService {
 	 * Resolve the role claim for an existing user.
 	 *
 	 * Returns the role slug to sync to, or `undefined` to keep the current
-	 * role unchanged. Existing users are never blocked from logging in — if
-	 * the claimed role is invalid or not allowed, we simply skip the role
-	 * update and let them keep their current role.
+	 * role unchanged. Throws when the claimed role is valid but not permitted
+	 * by the key's allowedRoles — OAuth flows must be strict to surface
+	 * misconfiguration early.
 	 */
 	private resolveRoleForExistingUser(
 		roleClaim: ExternalTokenClaims['role'],
@@ -178,7 +205,6 @@ export class IdentityResolutionService {
 		currentRole: string | undefined,
 	): GlobalRoleKey | undefined {
 		if (roleClaim === undefined) return undefined;
-		if (Array.isArray(roleClaim) && roleClaim.length === 0) return undefined;
 
 		// Never modify the role of an existing owner via token exchange
 		if (currentRole === 'global:owner') {
@@ -186,7 +212,7 @@ export class IdentityResolutionService {
 			return undefined;
 		}
 
-		const role = Array.isArray(roleClaim) ? roleClaim[0] : roleClaim;
+		const role = roleClaim;
 
 		// Never change a user's role to global:owner via token exchange
 		if (role === 'global:owner') {
@@ -199,13 +225,8 @@ export class IdentityResolutionService {
 			return undefined;
 		}
 
-		// If the claimed role is not in the allowed list, skip the update
 		if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(role)) {
-			this.logger.debug('Role claim not in allowedRoles, keeping current role', {
-				claimed: role,
-				current: currentRole,
-			});
-			return undefined;
+			throw new AuthError(`Role '${role}' is not allowed for this token exchange key`);
 		}
 
 		return role;
@@ -223,9 +244,8 @@ export class IdentityResolutionService {
 		allowedRoles: string[] | undefined,
 	): GlobalRoleKey | undefined {
 		if (roleClaim === undefined) return undefined;
-		if (Array.isArray(roleClaim) && roleClaim.length === 0) return undefined;
 
-		const role = Array.isArray(roleClaim) ? roleClaim[0] : roleClaim;
+		const role = roleClaim;
 
 		if (role === 'global:owner') {
 			throw new AuthError('Cannot provision global:owner role via token exchange');

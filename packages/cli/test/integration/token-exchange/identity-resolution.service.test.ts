@@ -230,31 +230,6 @@ describe('IdentityResolutionService (integration)', () => {
 			).rejects.toThrow("Unrecognized role 'global:nonsense' cannot be assigned to new user");
 		});
 
-		it('should default to global:member when role claim is an empty array', async () => {
-			const result = await service.resolve({
-				...baseClaims,
-				sub: 'ext-jit-empty-role',
-				email: 'jit-empty-role@example.com',
-				role: [],
-			});
-
-			expect(result.role.slug).toBe('global:member');
-		});
-
-		it('should assign role from array claim when provisioning new user', async () => {
-			const result = await service.resolve(
-				{
-					...baseClaims,
-					sub: 'ext-jit-array-role',
-					email: 'jit-array-role@example.com',
-					role: ['global:admin'],
-				},
-				['global:admin'],
-			);
-
-			expect(result.role.slug).toBe('global:admin');
-		});
-
 		it('should assign role from allowedRoles when provisioning new user', async () => {
 			const result = await service.resolve(
 				{
@@ -298,30 +273,39 @@ describe('IdentityResolutionService (integration)', () => {
 			expect(dbUser!.role.slug).toBe('global:owner');
 		});
 
-		it('should keep current role when claimed role is not in allowedRoles', async () => {
+		it('should throw when claimed role is not in allowedRoles for known identity', async () => {
 			const admin = await createUser({ email: 'admin-keep@example.com', role: GLOBAL_ADMIN_ROLE });
 			await authIdentityRepository.save(
 				AuthIdentity.create(admin, 'ext-admin-keep', 'token-exchange'),
 			);
 
-			const result = await service.resolve(
-				{
-					...baseClaims,
-					sub: 'ext-admin-keep',
-					email: 'admin-keep@example.com',
-					role: 'global:admin',
-				},
-				['global:member'],
-			);
+			await expect(
+				service.resolve(
+					{
+						...baseClaims,
+						sub: 'ext-admin-keep',
+						email: 'admin-keep@example.com',
+						role: 'global:admin',
+					},
+					['global:member'],
+				),
+			).rejects.toThrow("Role 'global:admin' is not allowed for this token exchange key");
+		});
 
-			expect(result.id).toBe(admin.id);
-			expect(result.role.slug).toBe('global:admin');
+		it('should throw when claimed role is not in allowedRoles for email fallback', async () => {
+			await createUser({ email: 'admin-email@example.com', role: GLOBAL_ADMIN_ROLE });
 
-			const dbUser = await userRepository.findOne({
-				where: { id: admin.id },
-				relations: ['role'],
-			});
-			expect(dbUser!.role.slug).toBe('global:admin');
+			await expect(
+				service.resolve(
+					{
+						...baseClaims,
+						sub: 'ext-admin-email',
+						email: 'admin-email@example.com',
+						role: 'global:admin',
+					},
+					['global:member'],
+				),
+			).rejects.toThrow("Role 'global:admin' is not allowed for this token exchange key");
 		});
 
 		it('should ignore unknown role claim for existing user', async () => {
@@ -341,26 +325,6 @@ describe('IdentityResolutionService (integration)', () => {
 			expect(result.role.slug).toBe('global:member');
 		});
 
-		it('should preserve current role when role claim is an empty array', async () => {
-			const admin = await createUser({
-				email: 'empty-array-role@example.com',
-				role: GLOBAL_ADMIN_ROLE,
-			});
-			await authIdentityRepository.save(
-				AuthIdentity.create(admin, 'ext-empty-array', 'token-exchange'),
-			);
-
-			const result = await service.resolve({
-				...baseClaims,
-				sub: 'ext-empty-array',
-				email: 'empty-array-role@example.com',
-				role: [],
-			});
-
-			expect(result.id).toBe(admin.id);
-			expect(result.role.slug).toBe('global:admin');
-		});
-
 		it('should ignore global:owner role claim for non-owner user', async () => {
 			const user = await createUser({ email: 'escalation@example.com' });
 			await authIdentityRepository.save(
@@ -376,31 +340,6 @@ describe('IdentityResolutionService (integration)', () => {
 
 			expect(result.id).toBe(user.id);
 			expect(result.role.slug).toBe('global:member');
-		});
-
-		it('should use first element when role claim is an array', async () => {
-			const user = await createUser({ email: 'array-role@example.com' });
-			await authIdentityRepository.save(
-				AuthIdentity.create(user, 'ext-array-role', 'token-exchange'),
-			);
-
-			const result = await service.resolve(
-				{
-					...baseClaims,
-					sub: 'ext-array-role',
-					email: 'array-role@example.com',
-					role: ['global:admin', 'global:member'],
-				},
-				['global:admin'],
-			);
-
-			expect(result.role.slug).toBe('global:admin');
-
-			const dbUser = await userRepository.findOne({
-				where: { id: user.id },
-				relations: ['role'],
-			});
-			expect(dbUser!.role.slug).toBe('global:admin');
 		});
 
 		it('should downgrade admin to member when role claim is global:member', async () => {
