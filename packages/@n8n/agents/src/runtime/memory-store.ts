@@ -106,7 +106,7 @@ export class InMemoryMemory implements BuiltMemory {
 	}
 
 	describe(): MemoryDescriptor {
-		return { name: 'memory', connectionParams: {} };
+		return { name: 'memory', constructorName: this.constructor.name, connectionParams: {} };
 	}
 }
 

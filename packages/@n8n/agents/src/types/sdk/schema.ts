@@ -82,20 +82,28 @@ export type ConnectionParamsObject = {
 export type ConnectionParams = ConnectionParamsObject | CredentialConfig;
 
 export interface MemorySchema<TParams extends ConnectionParams = ConnectionParams> {
-	source: string | null; // full Memory builder chain source for lossless regeneration
 	// Backend descriptor — from BuiltMemory.describe()
-	name: string; // e.g. 'postgres' | 'sqlite' | 'memory' | 'custom'
+	name: string; // e.g. 'n8n' | 'sqlite' | 'postgres' | 'memory'
+	constructorName: string; // constructor name of the memory backend, e.g. 'SqliteMemory', 'PostgresMemory'
 	connectionParams: TParams; // serializable, non-secret params (may contain CredentialConfig refs)
 	lastMessages: number | null;
 	semanticRecall: {
 		topK: number;
+		scope: 'thread' | 'resource' | null;
 		messageRange: { before: number; after: number } | null;
 		embedder: string | null;
 	} | null;
 	workingMemory: {
 		type: 'structured' | 'freeform';
+		scope: 'resource' | 'thread';
+		/** Original Zod source string for structured working memory — enables lossless code generation. */
+		schemaSource: string | null;
 		schema?: JSONSchema7;
 		template?: string;
+	} | null;
+	titleGeneration: {
+		model?: string;
+		instructions?: string;
 	} | null;
 }
 

@@ -630,6 +630,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			if (mc.semanticRecall) {
 				semanticRecall = {
 					topK: mc.semanticRecall.topK,
+					scope: mc.semanticRecall.scope ?? null,
 					messageRange: mc.semanticRecall.messageRange
 						? {
 								before: mc.semanticRecall.messageRange.before,
@@ -644,6 +645,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			if (mc.workingMemory) {
 				workingMemory = {
 					type: mc.workingMemory.structured ? 'structured' : 'freeform',
+					scope: mc.workingMemory.scope,
+					schemaSource: null,
 					...(mc.workingMemory.schema
 						? { schema: zodToJsonSchema(mc.workingMemory.schema) ?? undefined }
 						: {}),
@@ -651,14 +654,33 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				};
 			}
 
-			const memoryDescriptor = mc.memory.describe?.() ?? { name: 'custom', connectionParams: {} };
+			let titleGeneration: MemorySchema['titleGeneration'] = null;
+			if (mc.titleGeneration) {
+				let modelStr: string | undefined;
+				if (mc.titleGeneration.model !== undefined) {
+					if (typeof mc.titleGeneration.model === 'string') {
+						modelStr = mc.titleGeneration.model;
+					} else if ('id' in mc.titleGeneration.model) {
+						modelStr = mc.titleGeneration.model.id;
+					}
+				}
+				titleGeneration = {
+					...(modelStr !== undefined && { model: modelStr }),
+					...(mc.titleGeneration.instructions !== undefined && {
+						instructions: mc.titleGeneration.instructions,
+					}),
+				};
+			}
+
+			const memoryDescriptor = mc.memory.describe();
 			memory = {
-				source: null,
 				name: memoryDescriptor.name,
+				constructorName: memoryDescriptor.constructorName,
 				connectionParams: memoryDescriptor.connectionParams,
 				lastMessages: mc.lastMessages ?? null,
 				semanticRecall,
 				workingMemory,
+				titleGeneration,
 			};
 		}
 

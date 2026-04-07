@@ -94,6 +94,9 @@ export type {
 	GuardrailSchema,
 	McpServerSchema,
 	TelemetrySchema,
+	ConnectionParams,
+	ConnectionParamValue,
+	ConnectionParamsObject,
 } from './types/sdk/schema';
 export {
 	toDbMessage,

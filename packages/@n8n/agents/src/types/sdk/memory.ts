@@ -91,7 +91,7 @@ export interface BuiltMemory {
 	/** Close the connection pool / release resources. No-op for in-memory backends. */
 	close?(): Promise<void>;
 	/** Return a serializable descriptor of this backend for schema persistence. */
-	describe?(): MemoryDescriptor;
+	describe(): MemoryDescriptor;
 }
 
 // --- Semantic Recall Config ---

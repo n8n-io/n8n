@@ -176,6 +176,7 @@ export async function fromSchema(
 	// --- Memory ---
 	if (schema.memory !== null) {
 		const memory = new Memory();
+
 		if (schema.memory.lastMessages !== null) {
 			memory.lastMessages(schema.memory.lastMessages);
 		}
@@ -185,6 +186,39 @@ export async function fromSchema(
 		if (factory) {
 			const builtMemory: BuiltMemory = await factory(connectionParams, options.credentialProvider);
 			memory.storage(builtMemory);
+		}
+
+		if (schema.memory.semanticRecall) {
+			const sr = schema.memory.semanticRecall as {
+				topK: number;
+				scope: 'thread' | 'resource' | null;
+				messageRange: { before: number; after: number } | null;
+				embedder: string | null;
+			};
+			memory.semanticRecall({
+				topK: sr.topK,
+				...(sr.embedder !== null && { embedder: sr.embedder }),
+				...(sr.messageRange !== null && { messageRange: sr.messageRange }),
+				...(sr.scope !== null && { scope: sr.scope }),
+			});
+		}
+
+		if (schema.memory.workingMemory) {
+			const wm = schema.memory.workingMemory as {
+				type: 'structured' | 'freeform';
+				scope: 'resource' | 'thread';
+				template?: string;
+			};
+			if (wm.type === 'freeform' && wm.template) {
+				memory.freeform(wm.template);
+			}
+			memory.scope(wm.scope);
+		}
+
+		if (schema.memory.titleGeneration) {
+			memory.titleGeneration(
+				schema.memory.titleGeneration as { model?: string; instructions?: string },
+			);
 		}
 
 		agent.memory(memory);
