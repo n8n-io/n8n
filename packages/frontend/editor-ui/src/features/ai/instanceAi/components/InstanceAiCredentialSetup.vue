@@ -145,7 +145,7 @@ watch(
 		const req = currentRequest.value;
 		if (req) {
 			const tc = store.findToolCallByRequestId(props.requestId);
-			telemetry.track('User completed input step', {
+			const stepProps = {
 				thread_id: store.currentThreadId,
 				input_thread_id: tc?.confirmation?.inputThreadId ?? '',
 				instance_id: rootStore.instanceId,
@@ -158,7 +158,9 @@ watch(
 					},
 				],
 				skipped_inputs: [],
-			});
+			};
+			console.debug('[Telemetry] User completed input step (credential watcher)', stepProps);
+			telemetry.track('User completed input step', stepProps);
 		}
 
 		const nextIncomplete = props.credentialRequests.findIndex(
@@ -273,22 +275,29 @@ async function handleContinue() {
 	const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
 	for (const req of props.credentialRequests) {
 		if (!isStepComplete(req.credentialType)) {
-			telemetry.track('User completed input step', {
+			const skipProps = {
 				thread_id: store.currentThreadId,
 				input_thread_id: inputThreadId,
 				instance_id: rootStore.instanceId,
 				type: 'credential-setup',
 				provided_inputs: [],
 				skipped_inputs: [{ label: req.credentialType, options: [] }],
-			});
+			};
+			console.debug(
+				'[Telemetry] User completed input step (credential skipped on continue)',
+				skipProps,
+			);
+			telemetry.track('User completed input step', skipProps);
 		}
 	}
-	telemetry.track('User finished providing input', {
+	const finishProps = {
 		thread_id: store.currentThreadId,
 		input_thread_id: inputThreadId,
 		instance_id: rootStore.instanceId,
 		type: 'credential-setup',
-	});
+	};
+	console.debug('[Telemetry] User finished providing input (credential continue)', finishProps);
+	telemetry.track('User finished providing input', finishProps);
 
 	isSubmitted.value = true;
 
@@ -305,22 +314,29 @@ async function handleLater() {
 	const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
 	for (const req of props.credentialRequests) {
 		if (!isStepComplete(req.credentialType)) {
-			telemetry.track('User completed input step', {
+			const skipProps = {
 				thread_id: store.currentThreadId,
 				input_thread_id: inputThreadId,
 				instance_id: rootStore.instanceId,
 				type: 'credential-setup',
 				provided_inputs: [],
 				skipped_inputs: [{ label: req.credentialType, options: [] }],
-			});
+			};
+			console.debug(
+				'[Telemetry] User completed input step (credential skipped on later)',
+				skipProps,
+			);
+			telemetry.track('User completed input step', skipProps);
 		}
 	}
-	telemetry.track('User finished providing input', {
+	const laterFinishProps = {
 		thread_id: store.currentThreadId,
 		input_thread_id: inputThreadId,
 		instance_id: rootStore.instanceId,
 		type: 'credential-setup',
-	});
+	};
+	console.debug('[Telemetry] User finished providing input (credential later)', laterFinishProps);
+	telemetry.track('User finished providing input', laterFinishProps);
 
 	isSubmitted.value = true;
 	isDeferred.value = true;

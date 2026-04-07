@@ -33,23 +33,27 @@ function trackInputStep(
 	providedInputs: Array<{ label: string; options: string[]; option_chosen: string }>,
 	skippedInputs: Array<{ label: string; options: string[] }>,
 ): void {
-	telemetry.track('User completed input step', {
+	const props = {
 		thread_id: store.currentThreadId,
 		input_thread_id: conf.inputThreadId ?? '',
 		instance_id: rootStore.instanceId,
 		type: getConfirmationType(conf),
 		provided_inputs: providedInputs,
 		skipped_inputs: skippedInputs,
-	});
+	};
+	console.debug('[Telemetry] User completed input step', props);
+	telemetry.track('User completed input step', props);
 }
 
 function trackInputFinished(conf: InstanceAiConfirmation): void {
-	telemetry.track('User finished providing input', {
+	const props = {
 		thread_id: store.currentThreadId,
 		input_thread_id: conf.inputThreadId ?? '',
 		instance_id: rootStore.instanceId,
 		type: getConfirmationType(conf),
-	});
+	};
+	console.debug('[Telemetry] User finished providing input', props);
+	telemetry.track('User finished providing input', props);
 }
 
 const ROLE_LABELS: Record<string, string> = {

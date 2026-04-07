@@ -74,20 +74,24 @@ const otherOptions = computed<OptionEntry[]>(() =>
 async function confirm(decision: string) {
 	const tc = store.findToolCallByRequestId(props.requestId);
 	const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
-	telemetry.track('User completed input step', {
+	const stepProps = {
 		thread_id: store.currentThreadId,
 		input_thread_id: inputThreadId,
 		instance_id: rootStore.instanceId,
 		type: 'resource-decision',
 		provided_inputs: [{ label: props.resource, options: props.options, option_chosen: decision }],
 		skipped_inputs: [],
-	});
-	telemetry.track('User finished providing input', {
+	};
+	console.debug('[Telemetry] User completed input step (resource-decision)', stepProps);
+	telemetry.track('User completed input step', stepProps);
+	const finishProps = {
 		thread_id: store.currentThreadId,
 		input_thread_id: inputThreadId,
 		instance_id: rootStore.instanceId,
 		type: 'resource-decision',
-	});
+	};
+	console.debug('[Telemetry] User finished providing input (resource-decision)', finishProps);
+	telemetry.track('User finished providing input', finishProps);
 	await store.confirmResourceDecision(props.requestId, decision);
 }
 </script>

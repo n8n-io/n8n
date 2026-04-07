@@ -481,7 +481,7 @@ watch(
 		const card = currentCard.value;
 		if (card) {
 			const tc = store.findToolCallByRequestId(props.requestId);
-			telemetry.track('User completed input step', {
+			const stepProps = {
 				thread_id: store.currentThreadId,
 				input_thread_id: tc?.confirmation?.inputThreadId ?? '',
 				instance_id: useRootStore().instanceId,
@@ -490,7 +490,9 @@ watch(
 					{ label: card.nodes[0]?.node.name ?? card.id, options: [], option_chosen: 'configured' },
 				],
 				skipped_inputs: [],
-			});
+			};
+			console.debug('[Telemetry] User completed input step (setup watcher)', stepProps);
+			telemetry.track('User completed input step', stepProps);
 		}
 
 		const nextIncomplete = cards.value.findIndex(
@@ -912,22 +914,26 @@ async function handleApply() {
 	const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
 	for (const card of cards.value) {
 		if (!isCardComplete(card)) {
-			telemetry.track('User completed input step', {
+			const skipProps = {
 				thread_id: store.currentThreadId,
 				input_thread_id: inputThreadId,
 				instance_id: useRootStore().instanceId,
 				type: 'setup',
 				provided_inputs: [],
 				skipped_inputs: [{ label: card.nodes[0]?.node.name ?? card.id, options: [] }],
-			});
+			};
+			console.debug('[Telemetry] User completed input step (setup skipped on apply)', skipProps);
+			telemetry.track('User completed input step', skipProps);
 		}
 	}
-	telemetry.track('User finished providing input', {
+	const finishProps = {
 		thread_id: store.currentThreadId,
 		input_thread_id: inputThreadId,
 		instance_id: useRootStore().instanceId,
 		type: 'setup',
-	});
+	};
+	console.debug('[Telemetry] User finished providing input (setup apply)', finishProps);
+	telemetry.track('User finished providing input', finishProps);
 
 	isApplying.value = true;
 	applyError.value = null;
@@ -987,22 +993,26 @@ async function handleLater() {
 	const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
 	for (const card of cards.value) {
 		if (!isCardComplete(card)) {
-			telemetry.track('User completed input step', {
+			const skipProps = {
 				thread_id: store.currentThreadId,
 				input_thread_id: inputThreadId,
 				instance_id: useRootStore().instanceId,
 				type: 'setup',
 				provided_inputs: [],
 				skipped_inputs: [{ label: card.nodes[0]?.node.name ?? card.id, options: [] }],
-			});
+			};
+			console.debug('[Telemetry] User completed input step (setup skipped on later)', skipProps);
+			telemetry.track('User completed input step', skipProps);
 		}
 	}
-	telemetry.track('User finished providing input', {
+	const finishProps = {
 		thread_id: store.currentThreadId,
 		input_thread_id: inputThreadId,
 		instance_id: useRootStore().instanceId,
 		type: 'setup',
-	});
+	};
+	console.debug('[Telemetry] User finished providing input (setup later)', finishProps);
+	telemetry.track('User finished providing input', finishProps);
 
 	isSubmitted.value = true;
 	isDeferred.value = true;
