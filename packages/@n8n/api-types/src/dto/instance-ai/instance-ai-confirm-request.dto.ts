@@ -24,4 +24,5 @@ export class InstanceAiConfirmRequestDto extends Z.class({
 			}),
 		)
 		.optional(),
+	resourceDecision: z.string().optional(),
 }) {}

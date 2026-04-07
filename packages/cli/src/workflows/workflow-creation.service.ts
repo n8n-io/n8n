@@ -1,6 +1,6 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import type { User, Project } from '@n8n/db';
 import {
 	WorkflowEntity,
 	SharedWorkflow,
@@ -88,9 +88,11 @@ export class WorkflowCreationService {
 		const effectiveProjectId =
 			projectId ?? (await this.projectRepository.getPersonalProjectForUserOrFail(user.id)).id;
 
-		const project = await this.projectService.getProjectWithScope(user, effectiveProjectId, [
-			'workflow:create',
-		]);
+		let project: Project | null = await this.projectService.getProjectWithScope(
+			user,
+			effectiveProjectId,
+			['workflow:create'],
+		);
 		if (!project) {
 			if (!(await this.projectRepository.exists({ where: { id: effectiveProjectId } }))) {
 				throw new NotFoundError('Project not found');
@@ -130,6 +132,29 @@ export class WorkflowCreationService {
 		const { manager: dbManager } = this.projectRepository;
 
 		const savedWorkflow = await dbManager.transaction(async (transactionManager) => {
+			project = await this.projectService.getProjectWithScope(
+				user,
+				effectiveProjectId,
+				['workflow:create'],
+				transactionManager,
+			);
+
+			if (project === null) {
+				const message = "You don't have the permissions to save the workflow in this project.";
+				if (publicApi) {
+					throw new ForbiddenError(message);
+				}
+				throw new BadRequestError(message);
+			}
+
+			// Strip redactionPolicy if instance lacks data-redaction license
+			if (
+				newWorkflow.settings?.redactionPolicy !== undefined &&
+				!this.licenseState.isDataRedactionLicensed()
+			) {
+				delete newWorkflow.settings.redactionPolicy;
+			}
+
 			// Strip redactionPolicy if user lacks scope (projectId is already resolved here)
 			if (newWorkflow.settings?.redactionPolicy !== undefined) {
 				const canUpdateRedaction = await userHasScopes(
@@ -201,8 +226,8 @@ export class WorkflowCreationService {
 			user,
 			workflow: newWorkflow,
 			publicApi,
-			projectId: project.id,
-			projectType: project.type,
+			projectId: project!.id,
+			projectType: project!.type,
 			uiContext,
 		});
 

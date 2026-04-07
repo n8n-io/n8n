@@ -144,7 +144,7 @@ jobs:
   e2e-tests:
     name: E2E Tests
     needs: install-and-build
-    if: (needs.install-and-build.outputs.ci == 'true' || needs.install-and-build.outputs.e2e == 'true') && github.repository == 'n8n-io/n8n'
+    if: (needs.install-and-build.outputs.ci == 'true' || needs.install-and-build.outputs.e2e == 'true') && github.repository == 'n8n-io/n8n' && github.event_name != 'merge_group'
     uses: ./.github/workflows/test-e2e-ci-reusable.yml
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}

@@ -1,9 +1,20 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
+import { saveAs } from 'file-saver';
+import { N8nButton } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+
+/**
+ * Maximum number of characters to render in the DOM.
+ * Beyond this threshold the JSON is truncated to prevent browser freezes.
+ */
+const MAX_JSON_DISPLAY_LENGTH = 100_000;
 
 const props = defineProps<{
 	value: unknown;
 }>();
+
+const i18n = useI18n();
 
 function escapeHtml(text: string): string {
 	return text
@@ -14,13 +25,8 @@ function escapeHtml(text: string): string {
 		.replace(/'/g, '&#39;');
 }
 
-function highlightJson(value: unknown): string {
-	const json = JSON.stringify(value, null, 2);
-	if (!json) return escapeHtml(String(value));
-
-	// First HTML-escape the entire JSON string to neutralize any embedded markup,
-	// then apply syntax-highlighting spans on the safe output.
-	const escaped = escapeHtml(json);
+function highlightJsonString(text: string): string {
+	const escaped = escapeHtml(text);
 
 	return escaped.replace(
 		/(&quot;(?:\\.|[^&]|&(?!quot;))*?&quot;)\s*:|(&quot;(?:\\.|[^&]|&(?!quot;))*?&quot;)|(true|false|null)|(\d+\.?\d*)/g,
@@ -40,12 +46,42 @@ function highlightJson(value: unknown): string {
 	);
 }
 
-const highlighted = computed(() => highlightJson(props.value));
+const jsonString = computed(() => {
+	const json = JSON.stringify(props.value, null, 2);
+	return json ?? String(props.value);
+});
+
+const isTruncated = computed(() => jsonString.value.length > MAX_JSON_DISPLAY_LENGTH);
+
+const highlighted = computed(() => {
+	const text = isTruncated.value
+		? jsonString.value.slice(0, MAX_JSON_DISPLAY_LENGTH)
+		: jsonString.value;
+	return highlightJsonString(text);
+});
+
+function downloadFullJson() {
+	const blob = new Blob([jsonString.value], { type: 'application/json' });
+	saveAs(blob, 'tool-result.json');
+}
 </script>
 
 <template>
-	<!-- eslint-disable-next-line vue/no-v-html -->
-	<pre :class="$style.json" v-html="highlighted" />
+	<div>
+		<!-- eslint-disable-next-line vue/no-v-html -->
+		<pre :class="$style.json" v-html="highlighted" />
+		<div v-if="isTruncated" :class="$style.truncatedNotice">
+			<span :class="$style.truncatedText">{{
+				i18n.baseText('instanceAi.toolResult.dataTruncated')
+			}}</span>
+			<N8nButton
+				variant="outline"
+				size="mini"
+				:label="i18n.baseText('runData.downloadBinaryData')"
+				@click="downloadFullJson"
+			/>
+		</div>
+	</div>
 </template>
 
 <style lang="scss" module>
@@ -59,6 +95,18 @@ const highlighted = computed(() => highlightJson(props.value));
 	max-height: 200px;
 	overflow-y: auto;
 	color: var(--color--text--tint-1);
+}
+
+.truncatedNotice {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--4xs) 0;
+}
+
+.truncatedText {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-2);
 }
 </style>
 

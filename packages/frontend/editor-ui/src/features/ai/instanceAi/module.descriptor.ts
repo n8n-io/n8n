@@ -1,5 +1,6 @@
 import { i18n } from '@n8n/i18n';
 import type { FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_SETTINGS_VIEW } from './constants';
 
 const InstanceAiView = async () => await import('./InstanceAiView.vue');
@@ -35,7 +36,12 @@ export const InstanceAiModule: FrontendModuleDescription = {
 			component: SettingsInstanceAiView,
 			meta: {
 				layout: 'settings',
-				middleware: ['authenticated', 'custom'],
+				middleware: ['authenticated', 'rbac', 'custom'],
+				middlewareOptions: {
+					rbac: {
+						scope: 'instanceAi:manage',
+					},
+				},
 				telemetry: {
 					pageCategory: 'settings',
 				},
@@ -55,6 +61,9 @@ export const InstanceAiModule: FrontendModuleDescription = {
 			label: i18n.baseText('settings.instanceAi'),
 			position: 'top',
 			route: { to: { name: INSTANCE_AI_SETTINGS_VIEW } },
+			get available() {
+				return hasPermission(['rbac'], { rbac: { scope: 'instanceAi:manage' } });
+			},
 		},
 	],
 };
