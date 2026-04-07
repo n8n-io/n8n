@@ -34,7 +34,6 @@ import {
 } from './builder.utils';
 import { useBuilderTodos, type TodosTrackingPayload } from './composables/useBuilderTodos';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import pick from 'lodash/pick';
 import { type IPinData, type ITelemetryTrackProperties } from 'n8n-workflow';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { stringSizeInBytes } from '@/app/utils/typesUtils';
@@ -60,8 +59,7 @@ import {
 } from '@/features/ai/assistant/assistant.types';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { useCodeDiff } from '@/features/ai/assistant/composables/useCodeDiff';
-
-const INFINITE_CREDITS = -1;
+import { UNLIMITED_CREDITS } from '@n8n/api-types';
 export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
 
 /** Tool names that indicate the AI modified the workflow (used during session reload) */
@@ -338,7 +336,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			creditsClaimed.value === undefined ||
 			creditsQuota.value === undefined ||
 			// Can be the case if not using proxy service
-			creditsQuota.value === INFINITE_CREDITS
+			creditsQuota.value === UNLIMITED_CREDITS
 		) {
 			return undefined;
 		}
@@ -355,7 +353,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const creditsPercentageRemaining = computed(() => {
 		if (
 			creditsQuota.value === undefined ||
-			creditsQuota.value === INFINITE_CREDITS ||
+			creditsQuota.value === UNLIMITED_CREDITS ||
 			creditsRemaining.value === undefined
 		) {
 			return undefined;
@@ -550,7 +548,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			return;
 		}
 
-		const workflowName = workflowsStore.workflowName;
+		const workflowName = workflowDocumentStore.value?.name ?? '';
 
 		const titleKey =
 			completionType === 'workflow-ready'
@@ -643,7 +641,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		// Update page title on completion. We show Done when the user is not on the page
 		// Browser notifications are only shown when the tab is hidden
 		if (document.hidden) {
-			documentTitle.setDocumentTitle(workflowsStore.workflowName, 'AI_DONE');
+			documentTitle.setDocumentTitle(workflowDocumentStore.value?.name ?? '', 'AI_DONE');
 			if (!wasAborted && userMessageId) {
 				const completionType = hasWorkflowUpdateInCurrentBatch(userMessageId)
 					? 'workflow-ready'
@@ -651,7 +649,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				notifyOnCompletion(completionType);
 			}
 		} else {
-			documentTitle.setDocumentTitle(workflowsStore.workflowName, 'IDLE');
+			documentTitle.setDocumentTitle(workflowDocumentStore.value?.name ?? '', 'IDLE');
 		}
 	}
 
@@ -728,7 +726,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		// Updates page title to show AI is building (skip for help questions)
 		if (!isHelpStreaming.value) {
-			documentTitle.setDocumentTitle(workflowsStore.workflowName, 'AI_BUILDING');
+			documentTitle.setDocumentTitle(workflowDocumentStore.value?.name ?? '', 'AI_BUILDING');
 		}
 	}
 
@@ -1349,10 +1347,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					posthogStore.getVariant(CODE_WORKFLOW_BUILDER_EXPERIMENT.name) ===
 					CODE_WORKFLOW_BUILDER_EXPERIMENT.codePinData;
 				if (isPinDataEnabled) {
-					const wfDocStore = workflowsStore.workflowId
+					const workflowDocumentStore = workflowsStore.workflowId
 						? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
 						: undefined;
-					const pinData = wfDocStore?.getPinDataSnapshot();
+					const pinData = workflowDocumentStore?.getPinDataSnapshot();
 					if (pinData && Object.keys(pinData).length > 0) {
 						generatedPinData.value = pinData;
 						pinDataApplied.value = true;
@@ -1438,12 +1436,15 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	function clearExistingWorkflow() {
-		workflowState.removeAllConnections({ setStateDirty: false });
+		workflowDocumentStore.value?.removeAllConnections();
 		workflowDocumentStore.value?.removeAllNodes();
 	}
 
 	function getWorkflowSnapshot() {
-		return JSON.stringify(pick(workflowsStore.workflow, ['nodes', 'connections']));
+		return JSON.stringify({
+			nodes: workflowDocumentStore.value?.allNodes ?? [],
+			connections: workflowDocumentStore.value?.connectionsBySourceNode ?? {},
+		});
 	}
 
 	/**
@@ -1657,7 +1658,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 */
 	function clearDoneIndicatorTitle() {
 		if (documentTitle.getDocumentState() === 'AI_DONE') {
-			documentTitle.setDocumentTitle(workflowsStore.workflowName, 'IDLE');
+			documentTitle.setDocumentTitle(workflowDocumentStore.value?.name ?? '', 'IDLE');
 		}
 	}
 

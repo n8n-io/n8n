@@ -13,6 +13,28 @@ on:
         required: false
         type: boolean
         default: false
+      n8n-env:
+        description: 'JSON string of n8n env vars to inject into test containers, e.g. {"N8N_EXPRESSION_ENGINE":"vm"}'
+        required: false
+        type: string
+        default: ''
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'GitHub branch/ref to test'
+        required: false
+        type: string
+        default: ''
+      playwright-only:
+        description: 'Only Playwright files changed — run impacted tests only'
+        required: false
+        type: boolean
+        default: false
+      n8n-env:
+        description: 'JSON string of n8n env vars to inject into test containers (e.g. {"N8N_EXPRESSION_ENGINE":"vm"})'
+        required: false
+        type: string
+        default: ''
 
 env:
   DOCKER_IMAGE: ghcr.io/${{ github.repository }}:ci-${{ github.run_id }}
@@ -90,6 +112,7 @@ jobs:
       runner: blacksmith-2vcpu-ubuntu-2204
       workers: '1'
       pre-generated-matrix: '[{"shard":1,"images":""}]'
+      n8n-env: ${{ inputs.n8n-env }}
 
   # Multi-main: postgres + redis + caddy + 2 mains + 1 worker
   # Only runs for internal PRs (not community/fork PRs)
@@ -109,6 +132,7 @@ jobs:
       workers: '1'
       use-custom-orchestration: true
       pre-generated-matrix: ${{ needs.prepare.outputs.matrix }}
+      n8n-env: ${{ inputs.n8n-env }}
     secrets: inherit
 
   # Community PR tests: Local mode with SQLite (no container building, no secrets required)

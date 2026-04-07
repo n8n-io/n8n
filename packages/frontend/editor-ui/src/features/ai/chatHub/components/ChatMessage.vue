@@ -452,6 +452,13 @@ onBeforeMount(() => {
 }
 
 .markdownContent {
+	// ChatMarkdownChunk uses `inherit` for these properties so each consumer
+	// can control sizing. Set the values that were previously hardcoded in the
+	// chunk component to preserve ChatHub's appearance.
+	color: var(--color--text--shade-1);
+	font-size: var(--font-size--md);
+	line-height: var(--line-height--xl);
+
 	> *:last-child > *:last-child {
 		margin-bottom: 0;
 	}

@@ -5,10 +5,10 @@ import { Expression } from '../src/expression';
 // and disposes it after.
 if (process.env.N8N_EXPRESSION_ENGINE === 'vm') {
 	beforeAll(async () => {
-		await Expression.initializeVmEvaluator();
+		await Expression.initExpressionEngine({ engine: 'vm', poolSize: 1, maxCodeCacheSize: 1024 });
 	});
 
 	afterAll(async () => {
-		await Expression.disposeVmEvaluator();
+		await Expression.disposeExpressionEngine();
 	});
 }

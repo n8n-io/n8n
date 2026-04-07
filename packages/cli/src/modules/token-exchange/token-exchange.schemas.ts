@@ -1,7 +1,25 @@
+import type { Algorithm, Secret } from 'jsonwebtoken';
 import { z } from 'zod';
 
 /** RFC 8693 grant type URN for token exchange */
 export const TOKEN_EXCHANGE_GRANT_TYPE = 'urn:ietf:params:oauth:grant-type:token-exchange' as const;
+
+/**
+ * Asymmetric-only JWT algorithms accepted for trusted key sources.
+ * Symmetric (HMAC) and 'none' are excluded by design.
+ */
+const JwtAlgorithmSchema = z.enum([
+	'RS256',
+	'RS384',
+	'RS512',
+	'ES256',
+	'ES384',
+	'ES512',
+	'PS256',
+	'PS384',
+	'PS512',
+	'EdDSA',
+]);
 
 /**
  * Validates JWT claims originating from an external identity provider.
@@ -33,15 +51,17 @@ export const TrustedKeySourceSchema = z.discriminatedUnion('type', [
 	z.object({
 		type: z.literal('static'),
 		kid: z.string().min(1),
-		algorithms: z.array(z.string()).min(1),
+		algorithms: z.array(JwtAlgorithmSchema).min(1),
 		key: z.string().min(1),
 		issuer: z.string().min(1),
+		expectedAudience: z.string().optional(),
 		allowedRoles: z.array(z.string()).optional(),
 	}),
 	z.object({
 		type: z.literal('jwks'),
 		url: z.string().url(),
 		issuer: z.string().min(1),
+		expectedAudience: z.string().optional(),
 		allowedRoles: z.array(z.string()).optional(),
 		cacheTtlSeconds: z.number().int().positive().optional(),
 	}),
@@ -50,6 +70,32 @@ export const TrustedKeySourceSchema = z.discriminatedUnion('type', [
 export type TrustedKeySource = z.infer<typeof TrustedKeySourceSchema>;
 export type StaticKeySource = Extract<TrustedKeySource, { type: 'static' }>;
 export type JwksKeySource = Extract<TrustedKeySource, { type: 'jwks' }>;
+
+/**
+ * A trusted key that has been normalized and resolved to an in-memory
+ * representation ready for JWT verification. The raw key material from
+ * the config/persistence layer (string PEM, JWKS endpoint, etc.) has
+ * already been parsed into a type accepted by `jwt.verify()`.
+ */
+export interface ResolvedTrustedKey {
+	/** The Key ID that identifies this key in JWT headers. */
+	kid: string;
+
+	/** Allowed signing algorithms for tokens using this key. */
+	algorithms: Algorithm[];
+
+	/** The resolved key material, ready to pass to `jwt.verify()`. */
+	key: Secret;
+
+	/** Expected `iss` claim value for tokens signed with this key. */
+	issuer: string;
+
+	/** Expected `aud` claim value, if restricted. */
+	expectedAudience?: string;
+
+	/** Roles allowed for tokens signed with this key, if restricted. */
+	allowedRoles?: string[];
+}
 
 /**
  * Validates an RFC 8693 token exchange request form body.

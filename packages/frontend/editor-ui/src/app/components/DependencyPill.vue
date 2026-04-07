@@ -150,6 +150,12 @@ function onSelect(value: string) {
 	const dep = (depsResult.value?.dependencies ?? []).find((d) => d.type === type && d.id === id);
 	if (!dep) return;
 
+	telemetry.track('User clicked dependency pill item', {
+		source: props.source,
+		dependency_type: dep.type,
+		dependency_count: effectiveCount.value,
+	});
+
 	switch (dep.type) {
 		case 'credentialId':
 			uiStore.openExistingCredential(dep.id);

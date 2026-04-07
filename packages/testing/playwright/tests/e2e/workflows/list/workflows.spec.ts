@@ -225,7 +225,7 @@ test.describe(
 			await n8n.goHome();
 
 			await n8n.workflows.shareWorkflow(workflowName);
-			await expect(n8n.workflowSharingModal.getModal()).toBeVisible();
+			await expect(n8n.workflowSharingModal.container).toBeVisible();
 		});
 	},
 );
