@@ -3810,8 +3810,10 @@ describe('useCanvasOperations', () => {
 			// initState creates a new document store for the workflow ID.
 			// Without the fix, the computed workflowDocumentStore would be undefined
 			// (empty workflowId at start) and setConnections would be silently skipped.
-			const newDocStore = useWorkflowDocumentStore(createWorkflowDocumentId(newWorkflowId));
-			expect(newDocStore.setConnections).toHaveBeenCalledWith(testConnections);
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(newWorkflowId),
+			);
+			expect(workflowDocumentStore.setConnections).toHaveBeenCalledWith(testConnections);
 		});
 
 		it('should initialize node data from node type description', async () => {

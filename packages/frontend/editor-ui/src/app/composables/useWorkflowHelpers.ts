@@ -866,10 +866,12 @@ export function useWorkflowHelpers() {
 	) {
 		let data: WorkflowDataUpdate = {};
 
-		const docStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 		const isCurrentWorkflow = workflowId === workflowsStore.workflowId;
 		if (isCurrentWorkflow) {
-			data = partialData ? { versionId: docStore.versionId } : await getWorkflowDataToSave();
+			data = partialData
+				? { versionId: workflowDocumentStore.versionId }
+				: await getWorkflowDataToSave();
 		} else {
 			const { versionId } = await workflowsListStore.fetchWorkflow(workflowId);
 			data.versionId = versionId;
@@ -887,8 +889,6 @@ export function useWorkflowHelpers() {
 		if (isCurrentWorkflow) {
 			uiStore.markStateClean();
 		}
-
-		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 
 		if (workflow.activeVersion) {
 			workflowsStore.setWorkflowActive(workflowId, workflow.activeVersion, isCurrentWorkflow);
