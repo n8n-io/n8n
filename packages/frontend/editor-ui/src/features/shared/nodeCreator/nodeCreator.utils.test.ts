@@ -112,6 +112,10 @@ describe('NodeCreator - utils', () => {
 	});
 
 	describe('filterAndSearchNodes', () => {
+		beforeEach(() => {
+			setActivePinia(createTestingPinia());
+		});
+
 		const mergedNodes: SimplifiedNodeType[] = [
 			{
 				displayName: 'Sample Node',
