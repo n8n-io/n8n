@@ -26,6 +26,18 @@
 		"PUT /credentials/{id}/transfer": {
 			"status": "gap"
 		},
+		"GET /community-packages": {
+			"status": "gap"
+		},
+		"POST /community-packages": {
+			"status": "gap"
+		},
+		"PATCH /community-packages/{name}": {
+			"status": "gap"
+		},
+		"DELETE /community-packages/{name}": {
+			"status": "gap"
+		},
 		"GET /discover": {
 			"status": "gap"
 		},

@@ -128,6 +128,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const workflowsListStore = useWorkflowsListStore();
 
 	const workflow = ref<IWorkflowDb>(createEmptyWorkflow());
+	/** @deprecated Use `workflowDocumentStore` graph/expression methods instead. */
 	const workflowObject = ref<Workflow>(
 		// eslint-disable-next-line @typescript-eslint/no-use-before-define
 		createWorkflowObject(workflow.value.nodes, workflow.value.connections),
@@ -148,8 +149,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const chatMessages = ref<string[]>([]);
 	const chatPartialExecutionDestinationNode = ref<string | null>(null);
 	const selectedTriggerNodeName = ref<string>();
-
-	const workflowName = computed(() => workflow.value.name);
 
 	const workflowId = computed(() => workflow.value.id);
 
@@ -587,7 +586,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		return new Workflow({
 			id,
-			name: workflow.value.name,
+			name: workflowDocumentStore?.name ?? '',
 			nodes: copyData ? deepCopy(nodes) : nodes,
 			connections: copyData ? deepCopy(connections) : connections,
 			active: false,
@@ -1181,7 +1180,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function updateNodeExecutionStatus(pushData: PushPayload<'nodeExecuteAfterData'>): void {
 		if (!workflowExecutionData.value?.data) {
-			throw new Error('The "workflowExecutionData" is not initialized!');
+			console.warn(
+				'[workflows.store] updateNodeExecutionStatus called without execution data; ignoring.',
+			);
+			return;
 		}
 
 		const { nodeName, data } = pushData;
@@ -1737,7 +1739,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		isInDebugMode,
 		chatMessages,
 		chatPartialExecutionDestinationNode,
-		workflowName,
 		workflowId,
 		workflowVersionId,
 		isNewWorkflow,

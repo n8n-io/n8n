@@ -1,13 +1,16 @@
 <script lang="ts" setup>
+import { computed } from 'vue';
 import { N8nOption, N8nSelect } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { type SupportedProtocolType } from '../../sso.store';
 import { useRBACStore } from '@/app/stores/rbac.store';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 export type UserRoleProvisioningSetting =
 	| 'disabled'
 	| 'instance_role'
-	| 'instance_and_project_roles';
+	| 'instance_and_project_roles'
+	| 'expression_based';
 
 const value = defineModel<UserRoleProvisioningSetting>({ default: 'disabled' });
 
@@ -17,6 +20,7 @@ const { authProtocol } = defineProps<{
 
 const i18n = useI18n();
 const canManageUserProvisioning = useRBACStore().hasScope('provisioning:manage');
+const { check: isEnvFeatEnabled } = useEnvFeatureFlag();
 
 const handleUserRoleProvisioningChange = (newValue: UserRoleProvisioningSetting) => {
 	value.value = newValue;
@@ -27,7 +31,7 @@ type UserRoleProvisioningDescription = {
 	value: UserRoleProvisioningSetting;
 };
 
-const userRoleProvisioningDescriptions: UserRoleProvisioningDescription[] = [
+const baseOptions: UserRoleProvisioningDescription[] = [
 	{
 		label: i18n.baseText('settings.sso.settings.userRoleProvisioning.option.disabled.label'),
 		value: 'disabled',
@@ -43,6 +47,21 @@ const userRoleProvisioningDescriptions: UserRoleProvisioningDescription[] = [
 		value: 'instance_and_project_roles',
 	},
 ];
+
+const userRoleProvisioningDescriptions = computed<UserRoleProvisioningDescription[]>(() => {
+	if (isEnvFeatEnabled.value('ROLE_MAPPING_RULES')) {
+		return [
+			...baseOptions,
+			{
+				label: i18n.baseText(
+					'settings.sso.settings.userRoleProvisioning.option.expressionBased.label',
+				),
+				value: 'expression_based',
+			},
+		];
+	}
+	return baseOptions;
+});
 </script>
 <template>
 	<div :class="$style.group">

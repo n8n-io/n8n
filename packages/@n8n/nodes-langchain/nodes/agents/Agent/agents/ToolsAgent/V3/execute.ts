@@ -6,7 +6,7 @@ import type {
 	INodeExecutionData,
 	ISupplyDataFunctions,
 } from 'n8n-workflow';
-import { sleep } from 'n8n-workflow';
+import { getHighlightedResponseKey, sleep } from 'n8n-workflow';
 
 import { buildExecutionContext, executeBatch } from './helpers';
 
@@ -74,6 +74,14 @@ export async function toolsAgentExecute(
 	// Return tool call request if any tools need to be executed
 	if (request) {
 		return request;
+	}
+
+	// Auto-highlight the agent's response output
+	if (this.getNodeParameter('options.autoSaveHighlightedData', 0, true) !== false) {
+		const firstOutput = returnData[0]?.json?.output;
+		if (typeof firstOutput === 'string') {
+			this.customData.set(getHighlightedResponseKey(this.getNode().name), firstOutput);
+		}
 	}
 
 	// Otherwise return execution data

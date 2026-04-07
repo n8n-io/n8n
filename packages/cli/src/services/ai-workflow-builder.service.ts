@@ -187,9 +187,9 @@ export class WorkflowBuilderService {
 		yield* service.chat(payload, user, abortSignal);
 	}
 
-	async getSessions(workflowId: string | undefined, user: IUser, codeBuilder?: boolean) {
+	async getSessions(workflowId: string | undefined, user: IUser) {
 		const service = await this.getService();
-		const sessions = await service.getSessions(workflowId, user, codeBuilder);
+		const sessions = await service.getSessions(workflowId, user);
 		return sessions;
 	}
 
@@ -208,15 +208,8 @@ export class WorkflowBuilderService {
 		user: IUser,
 		messageId: string,
 		versionCardId?: string,
-		codeBuilder?: boolean,
 	): Promise<boolean> {
 		const service = await this.getService();
-		return await service.truncateMessagesAfter(
-			workflowId,
-			user,
-			messageId,
-			versionCardId,
-			codeBuilder,
-		);
+		return await service.truncateMessagesAfter(workflowId, user, messageId, versionCardId);
 	}
 }
