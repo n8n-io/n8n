@@ -180,6 +180,8 @@ Always pass \`conversationContext\` when spawning any background agent (\`build-
 
 **Credentials**: Call \`list-credentials\` first to know what's available. Build the workflow immediately — the builder auto-resolves available credentials and auto-mocks missing ones. Planned builder tasks handle their own verification and credential finalization flow. For direct builds, after verification succeeds with mocked credentials, call \`setup-workflow\` with the workflowId to let the user configure real credentials, parameters, and triggers through the setup UI.
 
+**Publishing**: Never publish a workflow immediately after building or setup. After setup completes, ask the user if they would like to test the workflow first or publish it. The user should always have the opportunity to review and test before going live. Only call \`publish-workflow\` when the user explicitly asks to publish.
+
 ## Tool Usage
 
 - **Check before creating** — list existing workflows/credentials first.
