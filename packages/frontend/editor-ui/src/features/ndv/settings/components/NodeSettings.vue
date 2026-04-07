@@ -184,6 +184,8 @@ const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNod
 
 const isToolNode = computed(() => !!node.value && nodeTypesStore.isToolNode(node.value.type));
 
+const isModelNode = computed(() => !!node.value && nodeTypesStore.isModelNode(node.value.type));
+
 const isExecutable = computed(() =>
 	nodeHelpers.isNodeExecutable(node.value, props.executable, props.foreignCredentials),
 );
@@ -483,7 +485,7 @@ const populateHiddenIssuesSet = () => {
 };
 
 const nodeSettings = computed(() =>
-	createCommonNodeSettings(isToolNode.value, i18n.baseText.bind(i18n)),
+	createCommonNodeSettings(isToolNode.value || isModelNode.value, i18n.baseText.bind(i18n)),
 );
 
 const iconSource = computed(() =>

@@ -16,9 +16,11 @@ import { DynamicBannersConfig } from './configs/dynamic-banners.config';
 import { EndpointsConfig } from './configs/endpoints.config';
 import { EventBusConfig } from './configs/event-bus.config';
 import { ExecutionsConfig } from './configs/executions.config';
+import { ExpressionEngineConfig } from './configs/expression-engine.config';
 import { ExternalHooksConfig } from './configs/external-hooks.config';
 import { GenericConfig } from './configs/generic.config';
 import { HiringBannerConfig } from './configs/hiring-banner.config';
+import { InstanceAiConfig } from './configs/instance-ai.config';
 import { LicenseConfig } from './configs/license.config';
 import { LoggingConfig } from './configs/logging.config';
 import { MfaConfig } from './configs/mfa.config';
@@ -68,6 +70,9 @@ export { CronLoggingConfig } from './configs/logging.config';
 export { WorkflowHistoryCompactionConfig } from './configs/workflow-history-compaction.config';
 export { ChatHubConfig } from './configs/chat-hub.config';
 export { ChatTriggerConfig } from './configs/chat-trigger.config';
+export { InstanceAiConfig } from './configs/instance-ai.config';
+export { ExpressionEngineConfig } from './configs/expression-engine.config';
+export { PasswordConfig } from './configs/password.config';
 
 const protocolSchema = z.enum(['http', 'https']);
 
@@ -246,4 +251,8 @@ export class GlobalConfig {
 
 	@Nested
 	chatTrigger: ChatTriggerConfig;
+	instanceAi: InstanceAiConfig;
+
+	@Nested
+	expressionEngine: ExpressionEngineConfig;
 }

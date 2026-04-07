@@ -830,6 +830,7 @@ describe('POST /workflows', () => {
 		});
 
 		test('should persist redactionPolicy setting to the database on create', async () => {
+			testServer.license.enable('feat:dataRedaction');
 			const payload = {
 				name: 'Redaction Policy Workflow',
 				nodes: [],
@@ -3537,6 +3538,7 @@ describe('PATCH /workflows/:workflowId', () => {
 	});
 
 	test('should persist updated redactionPolicy setting to the database', async () => {
+		testServer.license.enable('feat:dataRedaction');
 		const workflow = await createWorkflowWithHistory(
 			{
 				settings: {
