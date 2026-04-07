@@ -20,6 +20,7 @@ import type {
 import { GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
+import type { InstanceSettings } from 'n8n-core';
 
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
@@ -47,6 +48,9 @@ import type { RoleService } from '@/services/role.service';
 jest.mock('@/permissions.ee/check-access');
 jest.mock('@/workflow-execute-additional-data', () => ({
 	getBase: jest.fn().mockResolvedValue({}),
+}));
+jest.mock('node:fs/promises', () => ({
+	readFile: jest.fn().mockResolvedValue('[]'),
 }));
 
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -99,6 +103,7 @@ const service = new InstanceAiAdapterService(
 	activeExecutions,
 	workflowRunner,
 	loadNodesAndCredentials,
+	mock<InstanceSettings>({ staticCacheDir: '/tmp/test-cache' }),
 	dataTableService,
 	dataTableRepository,
 	dynamicNodeParametersService,
