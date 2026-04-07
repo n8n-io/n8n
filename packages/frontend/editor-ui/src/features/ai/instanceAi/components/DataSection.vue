@@ -12,6 +12,7 @@
 	border-radius: var(--radius);
 	padding: var(--spacing--2xs);
 	margin-top: var(--spacing--2xs);
+	border: var(--border);
 
 	:global(pre) {
 		background: transparent;

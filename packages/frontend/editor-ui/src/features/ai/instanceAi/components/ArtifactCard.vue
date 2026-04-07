@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { N8nCard, N8nIcon, type IconName } from '@n8n/design-system';
+import { N8nCard, N8nIcon, N8nText, type IconName } from '@n8n/design-system';
 import { computed, inject } from 'vue';
 
 const props = defineProps<{
@@ -51,9 +51,9 @@ function handleClick(e: MouseEvent) {
 			<N8nIcon :icon="icon" size="large" :class="$style.icon" />
 		</template>
 		<template #header>
-			<span :class="$style.name">{{ props.name }}</span>
+			<N8nText>{{ props.name }}</N8nText>
 		</template>
-		<span v-if="props.metadata" :class="$style.metadata">{{ props.metadata }}</span>
+		<N8nText v-if="props.metadata" :class="$style.metadata">{{ props.metadata }}</N8nText>
 	</N8nCard>
 </template>
 
@@ -77,8 +77,6 @@ function handleClick(e: MouseEvent) {
 }
 
 .metadata {
-	font-size: var(--font-size--sm);
-	line-height: var(--line-height--lg);
 	color: var(--color--text--tint-2);
 	overflow: hidden;
 	text-overflow: ellipsis;

@@ -50,11 +50,11 @@ function getAnswers(): DisplayAnswer[] {
 <template>
 	<N8nCard data-test-id="instance-ai-answered-questions">
 		<div v-for="(item, idx) in getAnswers()" :key="idx" :class="$style.answerItem">
-			<N8nText :bold="true" :class="$style.question">
+			<N8nText :bold="true" size="large" :class="$style.question">
 				{{ item.question }}
 			</N8nText>
-			<N8nText v-if="item.skipped" :class="$style.skipped">Skipped</N8nText>
-			<N8nText v-else>{{ item.answer }}</N8nText>
+			<N8nText v-if="item.skipped" :class="$style.skipped" size="large">Skipped</N8nText>
+			<N8nText v-else size="large">{{ item.answer }}</N8nText>
 		</div>
 	</N8nCard>
 </template>

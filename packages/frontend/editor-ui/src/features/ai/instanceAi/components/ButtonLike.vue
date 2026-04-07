@@ -9,7 +9,8 @@
 	min-height: var(--height--sm);
 	padding: 0 var(--spacing--xs);
 	border-radius: var(--radius--3xs);
-	font-size: var(--font-size--xs);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--xl);
 	color: var(--color--text--tint-1);
 	display: flex;
 	align-items: center;
