@@ -50,7 +50,7 @@ Use the Linear MCP tools to fetch the issue details and comments together:
 
 - Use the active Linear MCP issue tool (`mcp__linear-server__get_issue` in Claude Code or the equivalent `user-Linear` issue tool in Cursor) with the issue ID to get full details including attachments
 - Include relations to see blocking/related/duplicate issues
-- **Immediately after**, use `mcp__linear-server__list_comments` with the issue ID to fetch all comments
+- **Immediately after**, use the Linear MCP list_comments tool (`mcp__linear-server__list_comments` in Claude Code, equivalent in Cursor) with the issue ID to fetch all comments
 
 Both calls should be made together in the same step to gather the complete context upfront.
 
@@ -81,7 +81,7 @@ Both calls should be made together in the same step to gather the complete conte
 ### 3. Fetch Related Context
 
 **Related Linear Issues:**
-- Use `mcp__linear-server__get_issue` for any issues mentioned in relations (blocking, blocked by, related, duplicates)
+- Use the Linear MCP get_issue tool (`mcp__linear-server__get_issue` in Claude Code, equivalent in Cursor) for any issues mentioned in relations (blocking, blocked by, related, duplicates)
 - Summarize how they relate to the main issue
 
 **GitHub PRs and Issues:**
