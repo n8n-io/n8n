@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import type {
 	InstanceAiContext,
 	InstanceAiWorkflowService,
@@ -85,7 +87,10 @@ import {
 	WEBHOOK_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	TimeoutExecutionCancelledError,
+	jsonParse,
 } from 'n8n-workflow';
+
+import { InstanceSettings } from 'n8n-core';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -117,24 +122,27 @@ export class InstanceAiAdapterService {
 	private readonly allowSendingParameterValues: boolean;
 
 	/**
-	 * Service-level cache for collectTypes().  Shared across all node adapters
-	 * to avoid loading ~31 MB of node descriptions per run.  Expires after
+	 * Service-level cache for node type descriptions. Reads from the static JSON
+	 * file that FrontendService writes at startup, avoiding the expensive
+	 * collectTypes() → postProcessLoaders() rebuild cycle. Expires after
 	 * 5 minutes so hot-reloaded nodes are picked up without a restart.
 	 */
 	private nodesCache: {
-		promise: Promise<Awaited<ReturnType<LoadNodesAndCredentials['collectTypes']>>['nodes']>;
+		promise: Promise<INodeTypeDescription[]>;
 		expiresAt: number;
 	} | null = null;
 
 	private readonly NODES_CACHE_TTL_MS = 5 * 60 * 1000;
 
-	private async getNodesFromCache() {
+	private async getNodesFromCache(): Promise<INodeTypeDescription[]> {
 		if (this.nodesCache && Date.now() < this.nodesCache.expiresAt) {
 			return await this.nodesCache.promise;
 		}
-		const promise = this.loadNodesAndCredentials.collectTypes().then((result) => result.nodes);
+		const filePath = path.join(this.instanceSettings.staticCacheDir, 'types/nodes.json');
+		const promise = readFile(filePath, 'utf-8').then((json) =>
+			jsonParse<INodeTypeDescription[]>(json),
+		);
 		this.nodesCache = { promise, expiresAt: Date.now() + this.NODES_CACHE_TTL_MS };
-		// If the promise rejects, invalidate the cache so the next call retries
 		promise.catch(() => {
 			this.nodesCache = null;
 		});
@@ -155,6 +163,7 @@ export class InstanceAiAdapterService {
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableRepository: DataTableRepository,
 		private readonly dynamicNodeParametersService: DynamicNodeParametersService,

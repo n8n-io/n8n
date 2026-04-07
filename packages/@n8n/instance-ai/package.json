@@ -1,6 +1,6 @@
 {
   "name": "@n8n/instance-ai",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",

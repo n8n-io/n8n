@@ -14,6 +14,26 @@ const patchSchema = z.object({
 	new_str: z.string().describe('Replacement string'),
 });
 
+export const buildWorkflowInputSchema = z.object({
+	code: z
+		.string()
+		.optional()
+		.describe('Full TypeScript workflow code using @n8n/workflow-sdk. Required for new workflows.'),
+	patches: z
+		.array(patchSchema)
+		.optional()
+		.describe(
+			'Array of {old_str, new_str} replacements to apply to existing workflow code. ' +
+				'Requires workflowId. More efficient than resending full code for small fixes.',
+		),
+	workflowId: z.string().optional().describe('Existing workflow ID to update (omit to create new)'),
+	projectId: z
+		.string()
+		.optional()
+		.describe('Project ID to create the workflow in. Defaults to personal project.'),
+	name: z.string().optional().describe('Workflow name (required for new workflows)'),
+});
+
 export function createBuildWorkflowTool(context: InstanceAiContext) {
 	// Keeps the last code submitted (or patched) so patches work even before save,
 	// and always match the LLM's own code — not a roundtripped version.
@@ -26,37 +46,14 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			'1. Full code: pass `code` to create/update a workflow from scratch.\n' +
 			'2. Patch mode: pass `patches` (+ optional `workflowId`) to apply str_replace fixes. ' +
 			'Patches apply to last submitted code, or auto-fetch from saved workflow if workflowId given.',
-		inputSchema: z.object({
-			code: z
-				.string()
-				.optional()
-				.describe(
-					'Full TypeScript workflow code using @n8n/workflow-sdk. Required for new workflows.',
-				),
-			patches: z
-				.array(patchSchema)
-				.optional()
-				.describe(
-					'Array of {old_str, new_str} replacements to apply to existing workflow code. ' +
-						'Requires workflowId. More efficient than resending full code for small fixes.',
-				),
-			workflowId: z
-				.string()
-				.optional()
-				.describe('Existing workflow ID to update (omit to create new)'),
-			projectId: z
-				.string()
-				.optional()
-				.describe('Project ID to create the workflow in. Defaults to personal project.'),
-			name: z.string().optional().describe('Workflow name (required for new workflows)'),
-		}),
+		inputSchema: buildWorkflowInputSchema,
 		outputSchema: z.object({
 			success: z.boolean(),
 			workflowId: z.string().optional(),
 			errors: z.array(z.string()).optional(),
 			warnings: z.array(z.string()).optional(),
 		}),
-		execute: async (input) => {
+		execute: async (input: z.infer<typeof buildWorkflowInputSchema>) => {
 			const { code, patches, workflowId, projectId, name } = input;
 			let finalCode: string;
 
