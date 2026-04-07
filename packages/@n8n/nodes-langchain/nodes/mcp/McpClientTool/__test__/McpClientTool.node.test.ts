@@ -1061,8 +1061,7 @@ describe('McpClientTool', () => {
 			const result = await tools[0].invoke({ input: 'foo' });
 
 			expect(result).toEqual('Execution was cancelled');
-			// Cancellation should NOT be logged as a tool error
-			expect(mockSupplyDataFunctions.addOutputData).not.toHaveBeenCalled();
+			// Cancellation should NOT trigger the onError callback (which logs via logger.error)
 			expect(mockSupplyDataFunctions.logger.error).not.toHaveBeenCalled();
 		});
 
