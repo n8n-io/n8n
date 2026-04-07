@@ -7,31 +7,46 @@ const ctx = {
 };
 
 describe('createGetMyCodeTool', () => {
-	it('returns the code from the callback wrapped in { code }', async () => {
-		const getCode = jest.fn().mockResolvedValue('const x = 1;');
-		const tool = createGetMyCodeTool(getCode).build();
+	it('returns the code from the repository wrapped in { code }', async () => {
+		const agentRepository = {
+			findByIdAndProjectId: jest.fn().mockResolvedValue({ code: 'const x = 1;' }),
+		};
+		const tool = createGetMyCodeTool(agentRepository, 'agent-1', 'project-1').build();
 
 		const result = await tool.handler!({}, ctx);
 
-		expect(getCode).toHaveBeenCalledTimes(1);
+		expect(agentRepository.findByIdAndProjectId).toHaveBeenCalledWith('agent-1', 'project-1');
 		expect(result).toEqual({ code: 'const x = 1;' });
+	});
+
+	it('returns an empty string when the agent entity is not found', async () => {
+		const agentRepository = {
+			findByIdAndProjectId: jest.fn().mockResolvedValue(null),
+		};
+		const tool = createGetMyCodeTool(agentRepository, 'agent-1', 'project-1').build();
+
+		const result = await tool.handler!({}, ctx);
+
+		expect(result).toEqual({ code: '' });
 	});
 });
 
 describe('createTypecheckTool', () => {
 	it('returns { ok: true, error: null } when validation passes', async () => {
-		const validate = jest.fn().mockResolvedValue({ ok: true, error: null });
-		const tool = createTypecheckTool(validate).build();
+		const secureRuntime = { describeSecurely: jest.fn().mockResolvedValue(undefined) };
+		const tool = createTypecheckTool(secureRuntime).build();
 
 		const result = await tool.handler!({ code: 'const x = 1;' }, ctx);
 
-		expect(validate).toHaveBeenCalledWith('const x = 1;');
+		expect(secureRuntime.describeSecurely).toHaveBeenCalledWith('const x = 1;');
 		expect(result).toEqual({ ok: true, error: null });
 	});
 
 	it('returns { ok: false, error } when validation fails', async () => {
-		const validate = jest.fn().mockResolvedValue({ ok: false, error: 'Unexpected token' });
-		const tool = createTypecheckTool(validate).build();
+		const secureRuntime = {
+			describeSecurely: jest.fn().mockRejectedValue(new Error('Unexpected token')),
+		};
+		const tool = createTypecheckTool(secureRuntime).build();
 
 		const result = await tool.handler!({ code: 'bad code!!!' }, ctx);
 

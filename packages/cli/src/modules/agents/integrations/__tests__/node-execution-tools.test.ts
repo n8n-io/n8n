@@ -1,7 +1,9 @@
 import { mock } from 'jest-mock-extended';
 
+import type { CredentialProvider } from '@n8n/agents';
+
 import type { ToolDescriptor } from '../../node-tool-registry';
-import { createListToolsTool, createRunNodeTool, type RunNodeArgs } from '../node-execution-tools';
+import { createListToolsTool, createRunNodeTool } from '../node-execution-tools';
 
 const ctx = {
 	resumeData: undefined,
@@ -10,50 +12,65 @@ const ctx = {
 };
 
 describe('createListToolsTool', () => {
-	it('returns { tools } from the callback', async () => {
+	it('returns { tools } from the registry', async () => {
 		const descriptor = mock<ToolDescriptor>({ nodeType: 'n8n-nodes-base.httpRequest' });
-		const listTools = jest.fn().mockResolvedValue([descriptor]);
-		const tool = createListToolsTool(listTools).build();
+		const registry = { listTools: jest.fn().mockResolvedValue([descriptor]) };
+		const credentialProvider = mock<CredentialProvider>();
+		const tool = createListToolsTool(registry, credentialProvider).build();
 
 		const result = await tool.handler!({}, ctx);
 
-		expect(listTools).toHaveBeenCalledTimes(1);
+		expect(registry.listTools).toHaveBeenCalledWith(credentialProvider);
 		expect(result).toEqual({ tools: [descriptor] });
 	});
 });
 
 describe('createRunNodeTool', () => {
-	it('passes all args to runNode and returns its result', async () => {
+	it('maps RunNodeArgs to executeInline and returns its result', async () => {
 		const executionResult = { status: 'success', data: [{ json: { ip: '1.2.3.4' } }] };
-		const runNode = jest.fn().mockResolvedValue(executionResult);
-		const tool = createRunNodeTool(runNode).build();
+		const executor = { executeInline: jest.fn().mockResolvedValue(executionResult) };
+		const tool = createRunNodeTool(executor, 'project-1').build();
 
-		const args: RunNodeArgs = {
+		const result = await tool.handler!(
+			{
+				nodeType: 'n8n-nodes-base.httpRequest',
+				nodeTypeVersion: 4.2,
+				nodeParameters: { url: 'https://httpbin.org/get' },
+				inputData: { query: 'hello' },
+			},
+			ctx,
+		);
+
+		expect(executor.executeInline).toHaveBeenCalledWith({
 			nodeType: 'n8n-nodes-base.httpRequest',
 			nodeTypeVersion: 4.2,
 			nodeParameters: { url: 'https://httpbin.org/get' },
-			inputData: {},
-		};
-
-		const result = await tool.handler!(args, ctx);
-
-		expect(runNode).toHaveBeenCalledWith(args);
+			credentialDetails: undefined,
+			inputData: [{ json: { query: 'hello' } }],
+			projectId: 'project-1',
+		});
 		expect(result).toEqual(executionResult);
 	});
 
-	it('passes credentials through to runNode', async () => {
-		const runNode = jest.fn().mockResolvedValue({});
-		const tool = createRunNodeTool(runNode).build();
+	it('passes credentials through to executeInline', async () => {
+		const executor = { executeInline: jest.fn().mockResolvedValue({}) };
+		const tool = createRunNodeTool(executor, 'project-1').build();
 
-		const args: RunNodeArgs = {
-			nodeType: 'n8n-nodes-base.gmail',
-			nodeTypeVersion: 2.1,
-			credentials: { gmailOAuth2: { id: 'cred-1', name: 'My Gmail' } },
-			inputData: { to: 'user@example.com' },
-		};
+		await tool.handler!(
+			{
+				nodeType: 'n8n-nodes-base.gmail',
+				nodeTypeVersion: 2.1,
+				credentials: { gmailOAuth2: { id: 'cred-1', name: 'My Gmail' } },
+				inputData: { to: 'user@example.com' },
+			},
+			ctx,
+		);
 
-		await tool.handler!(args, ctx);
-
-		expect(runNode).toHaveBeenCalledWith(args);
+		expect(executor.executeInline).toHaveBeenCalledWith(
+			expect.objectContaining({
+				credentialDetails: { gmailOAuth2: { id: 'cred-1', name: 'My Gmail' } },
+				projectId: 'project-1',
+			}),
+		);
 	});
 });

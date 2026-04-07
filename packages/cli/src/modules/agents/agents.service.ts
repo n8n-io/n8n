@@ -380,57 +380,29 @@ export class AgentsService {
 		}
 
 		// Self-management tools: let the agent read/rewrite its own code and discover/run node tools.
-		const { createGetMyCodeTool, createTypecheckTool, createSetCodeTool } = await import(
-			'./integrations/agent-code-tools'
-		);
-		const { createListToolsTool, createRunNodeTool } = await import(
-			'./integrations/node-execution-tools'
-		);
+		try {
+			const { createGetMyCodeTool, createTypecheckTool, createSetCodeTool } = await import(
+				'./integrations/agent-code-tools'
+			);
+			const { createListToolsTool, createRunNodeTool } = await import(
+				'./integrations/node-execution-tools'
+			);
 
-		agent.tool(
-			createGetMyCodeTool(async () => {
-				const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-				return entity?.code ?? '';
-			}),
-		);
-
-		agent.tool(
-			createTypecheckTool(async (code: string) => {
-				try {
-					await this.secureRuntime.describeSecurely(code);
-					return { ok: true, error: null };
-				} catch (e) {
-					return { ok: false, error: e instanceof Error ? e.message : String(e) };
-				}
-			}),
-		);
-
-		agent.tool(
-			createSetCodeTool(async (code: string) => {
-				await this.updateCode(agentId, projectId, code);
-			}),
-		);
-
-		agent.tool(
-			createListToolsTool(async () => {
-				return await this.nodeNodeToolRegistry.listTools(credentialProvider);
-			}),
-		);
-
-		agent.tool(
-			createRunNodeTool(
-				async ({ nodeType, nodeTypeVersion, nodeParameters, credentials, inputData }) => {
-					return await this.ephemeralNodeExecutor.executeInline({
-						nodeType,
-						nodeTypeVersion,
-						nodeParameters: (nodeParameters ?? {}) as never,
-						credentialDetails: credentials,
-						inputData: [{ json: (inputData ?? {}) as never }],
-						projectId,
-					});
-				},
-			),
-		);
+			agent.tool(createGetMyCodeTool(this.agentRepository, agentId, projectId));
+			agent.tool(createTypecheckTool(this.secureRuntime));
+			agent.tool(
+				createSetCodeTool(async (code) => {
+					await this.updateCode(agentId, projectId, code);
+				}),
+			);
+			agent.tool(createListToolsTool(this.nodeNodeToolRegistry, credentialProvider));
+			agent.tool(createRunNodeTool(this.ephemeralNodeExecutor, projectId));
+		} catch (toolError) {
+			this.logger.warn('Failed to inject self-management tools', {
+				agentId,
+				error: toolError instanceof Error ? toolError.message : String(toolError),
+			});
+		}
 
 		// Inject checkpoint storage
 		if (!agent.hasCheckpointStorage()) {

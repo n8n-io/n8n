@@ -1,14 +1,21 @@
 import { Tool } from '@n8n/agents';
+import type { CredentialProvider } from '@n8n/agents';
+import type { IDataObject, INodeCredentialsDetails, INodeParameters } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { ToolDescriptor } from '../node-tool-registry';
+import type { EphemeralNodeExecutor } from '@/node-execution';
+
+import type { NodeToolRegistry, ToolDescriptor } from '../node-tool-registry';
 
 /**
  * Tool that returns the list of n8n node tools the agent can add to itself.
  * The credential provider is used to filter to tools the user actually has
  * credentials configured for.
  */
-export function createListToolsTool(listTools: () => Promise<ToolDescriptor[]>) {
+export function createListToolsTool(
+	registry: Pick<NodeToolRegistry, 'listTools'>,
+	credentialProvider: CredentialProvider,
+) {
 	return new Tool('list_tools')
 		.description(
 			'List the n8n node tools available to add to this agent. ' +
@@ -29,7 +36,7 @@ export function createListToolsTool(listTools: () => Promise<ToolDescriptor[]>) 
 		)
 		.input(z.object({}))
 		.handler(async () => {
-			const tools = await listTools();
+			const tools = await registry.listTools(credentialProvider);
 			return { tools };
 		});
 }
@@ -50,7 +57,10 @@ export interface RunNodeArgs {
  * a ToolFromNode block and calling set_code — so that on the next rehydration
  * the tool is part of the schema and run_node_tool is no longer needed for it.
  */
-export function createRunNodeTool(runNode: (args: RunNodeArgs) => Promise<unknown>) {
+export function createRunNodeTool(
+	executor: Pick<EphemeralNodeExecutor, 'executeInline'>,
+	projectId: string,
+) {
 	return new Tool('run_node_tool')
 		.description(
 			'Execute an n8n node immediately for the current request, even before it is in your schema. ' +
@@ -82,5 +92,17 @@ export function createRunNodeTool(runNode: (args: RunNodeArgs) => Promise<unknow
 					.describe('Runtime input, available as $json inside nodeParameters expressions.'),
 			}),
 		)
-		.handler(async (args: RunNodeArgs) => await runNode(args));
+		.handler(
+			async ({ nodeType, nodeTypeVersion, nodeParameters, credentials, inputData }: RunNodeArgs) =>
+				executor.executeInline({
+					nodeType,
+					nodeTypeVersion,
+					nodeParameters: (nodeParameters ?? {}) as INodeParameters,
+					credentialDetails: credentials as Record<string, INodeCredentialsDetails> | undefined,
+					inputData: [{ json: (inputData ?? {}) as IDataObject }],
+					projectId,
+				}),
+		);
 }
+
+export type { ToolDescriptor };
