@@ -54,7 +54,24 @@ const activeForm = computed(() => {
 	return null;
 });
 
-const authProtocol = ref<SupportedProtocolType>(SupportedProtocols.SAML);
+const selectedProtocol = ref<SupportedProtocolType>(SupportedProtocols.SAML);
+
+// Ensure authProtocol always points to a licensed protocol so the form + selector render.
+const authProtocol = computed<SupportedProtocolType>({
+	get() {
+		const sel = selectedProtocol.value;
+		if (sel === SupportedProtocols.SAML && ssoStore.isEnterpriseSamlEnabled) return sel;
+		if (sel === SupportedProtocols.OIDC && ssoStore.isEnterpriseOidcEnabled) return sel;
+		// Selected protocol not licensed — fall back to the other one
+		if (ssoStore.isEnterpriseOidcEnabled) return SupportedProtocols.OIDC;
+		if (ssoStore.isEnterpriseSamlEnabled) return SupportedProtocols.SAML;
+		return sel;
+	},
+	set(value: SupportedProtocolType) {
+		selectedProtocol.value = value;
+	},
+});
+
 function onAuthProtocolUpdated(value: SupportedProtocolType) {
 	authProtocol.value = value;
 }
@@ -95,7 +112,7 @@ function onKeepEditing() {
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.sso.title'));
 	ssoStore.initializeSelectedProtocol();
-	authProtocol.value = ssoStore.selectedAuthProtocol || SupportedProtocols.SAML;
+	selectedProtocol.value = ssoStore.selectedAuthProtocol || SupportedProtocols.SAML;
 });
 </script>
 
