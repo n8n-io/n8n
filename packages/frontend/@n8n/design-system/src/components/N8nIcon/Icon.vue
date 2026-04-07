@@ -86,20 +86,19 @@ const styles = computed(() => {
 
 	return stylesToApply;
 });
+
+const resolvedComponent = computed(
+	() =>
+		nodeIconSet[props.icon as keyof typeof nodeIconSet] ??
+		updatedIconSet[props.icon as keyof typeof updatedIconSet] ??
+		deprecatedIconSet[props.icon as keyof typeof deprecatedIconSet],
+);
 </script>
 
 <template>
 	<Component
-		:is="
-			nodeIconSet[icon as keyof typeof nodeIconSet] ??
-			updatedIconSet[icon as keyof typeof updatedIconSet] ??
-			deprecatedIconSet[icon as keyof typeof deprecatedIconSet]
-		"
-		v-if="
-			nodeIconSet[icon as keyof typeof nodeIconSet] ??
-			updatedIconSet[icon as keyof typeof updatedIconSet] ??
-			deprecatedIconSet[icon as keyof typeof deprecatedIconSet]
-		"
+		:is="resolvedComponent"
+		v-if="resolvedComponent"
 		:class="classes"
 		aria-hidden="true"
 		focusable="false"

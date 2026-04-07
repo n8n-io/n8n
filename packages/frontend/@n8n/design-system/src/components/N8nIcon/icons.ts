@@ -39,7 +39,6 @@ import NodeAggregate from './nodes/aggregate.svg';
 import NodeAiAgent from './nodes/ai-agent.svg';
 import NodeAiTransform from './nodes/ai-transform.svg';
 import NodeBasicLlmChain from './nodes/basic-llm-chain.svg';
-import NodeCalculatorAlt from './nodes/calculator-alt.svg';
 import NodeCalculator from './nodes/calculator.svg';
 import NodeCallN8nSubWorkflowTool from './nodes/call-n8n-sub-workflow-tool.svg';
 import NodeCharacterTextSplitter from './nodes/character-text-splitter.svg';
@@ -48,7 +47,6 @@ import NodeChatTrigger from './nodes/chat-trigger.svg';
 import NodeCode from './nodes/code.svg';
 import NodeCompareDatasets from './nodes/compare-datasets.svg';
 import NodeCompression from './nodes/compression.svg';
-import NodeContextualCompressionRetrieverAlt from './nodes/contextual-compression-retriever-alt.svg';
 import NodeContextualCompressionRetriever from './nodes/contextual-compression-retriever.svg';
 import NodeConvertToFile from './nodes/convert-to-file.svg';
 import NodeCrypto from './nodes/crypto.svg';
@@ -83,7 +81,6 @@ import NodeMultiqueryRetriever from './nodes/multiquery-retriever.svg';
 import NodeN8nTrigger from './nodes/n8n-trigger.svg';
 import NodeN8n from './nodes/n8n.svg';
 import NodeNoOperation from './nodes/no-operation.svg';
-import NodeQuestionAndAnswerChainAlt from './nodes/question-and-answer-chain-alt.svg';
 import NodeQuestionAndAnswerChain from './nodes/question-and-answer-chain.svg';
 import NodeReadWriteFilesFromDisk from './nodes/read-write-files-from-disk.svg';
 import NodeRecursiveCharacterTextSplitter from './nodes/recursive-character-text-splitter.svg';
@@ -96,7 +93,6 @@ import NodeScheduleTrigger from './nodes/schedule-trigger.svg';
 import NodeSendMail from './nodes/send-mail.svg';
 import NodeSentimentAnalysis from './nodes/sentiment-analysis.svg';
 import NodeSimpleMemory from './nodes/simple-memory.svg';
-import NodeSimpleVectorStoreAlt from './nodes/simple-vector-store-alt.svg';
 import NodeSimpleVectorStore from './nodes/simple-vector-store.svg';
 import NodeSort from './nodes/sort.svg';
 import NodeSplitOut from './nodes/split-out.svg';
@@ -113,7 +109,6 @@ import NodeThinkTool from './nodes/think-tool.svg';
 import NodeTokenSplitter from './nodes/token-splitter.svg';
 import NodeTotp from './nodes/totp.svg';
 import NodeTrackTimeSaved from './nodes/track-time-saved.svg';
-import NodeVectorStoreQuestionAnswerToolAlt from './nodes/vector-store-question-answer-tool-alt.svg';
 import NodeVectorStoreQuestionAnswerTool from './nodes/vector-store-question-answer-tool.svg';
 import NodeVectorStoreRetriever from './nodes/vector-store-retriever.svg';
 import NodeWait from './nodes/wait.svg';
@@ -805,7 +800,6 @@ export const nodeIconSet = {
 	'node:ai-transform': NodeAiTransform,
 	'node:basic-llm-chain': NodeBasicLlmChain,
 	'node:calculator': NodeCalculator,
-	'node:calculator-alt': NodeCalculatorAlt,
 	'node:call-n8n-sub-workflow-tool': NodeCallN8nSubWorkflowTool,
 	'node:character-text-splitter': NodeCharacterTextSplitter,
 	'node:chat-memory-manager': NodeChatMemoryManager,
@@ -814,7 +808,6 @@ export const nodeIconSet = {
 	'node:compare-datasets': NodeCompareDatasets,
 	'node:compression': NodeCompression,
 	'node:contextual-compression-retriever': NodeContextualCompressionRetriever,
-	'node:contextual-compression-retriever-alt': NodeContextualCompressionRetrieverAlt,
 	'node:convert-to-file': NodeConvertToFile,
 	'node:crypto': NodeCrypto,
 	'node:data-table': NodeDataTable,
@@ -849,7 +842,6 @@ export const nodeIconSet = {
 	'node:n8n-trigger': NodeN8nTrigger,
 	'node:no-operation': NodeNoOperation,
 	'node:question-and-answer-chain': NodeQuestionAndAnswerChain,
-	'node:question-and-answer-chain-alt': NodeQuestionAndAnswerChainAlt,
 	'node:read-write-files-from-disk': NodeReadWriteFilesFromDisk,
 	'node:recursive-character-text-splitter': NodeRecursiveCharacterTextSplitter,
 	'node:remove-duplicates': NodeRemoveDuplicates,
@@ -862,7 +854,6 @@ export const nodeIconSet = {
 	'node:sentiment-analysis': NodeSentimentAnalysis,
 	'node:simple-memory': NodeSimpleMemory,
 	'node:simple-vector-store': NodeSimpleVectorStore,
-	'node:simple-vector-store-alt': NodeSimpleVectorStoreAlt,
 	'node:sort': NodeSort,
 	'node:split-out': NodeSplitOut,
 	'node:sse-trigger': NodeSseTrigger,
@@ -879,7 +870,6 @@ export const nodeIconSet = {
 	'node:totp': NodeTotp,
 	'node:track-time-saved': NodeTrackTimeSaved,
 	'node:vector-store-question-answer-tool': NodeVectorStoreQuestionAnswerTool,
-	'node:vector-store-question-answer-tool-alt': NodeVectorStoreQuestionAnswerToolAlt,
 	'node:vector-store-retriever': NodeVectorStoreRetriever,
 	'node:wait': NodeWait,
 	'node:webhook': NodeWebhook,

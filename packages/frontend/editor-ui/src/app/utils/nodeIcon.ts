@@ -205,5 +205,3 @@ export function getNodeIconSize(context: NodeIconContext, iconName?: string): nu
 	const sizes = NODE_ICON_SIZES[context];
 	return isNodeIcon(iconName) ? sizes.new : sizes.old;
 }
-
-export { isNodeIcon };
