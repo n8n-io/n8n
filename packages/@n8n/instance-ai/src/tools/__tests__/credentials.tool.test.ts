@@ -1,9 +1,14 @@
+import type { InstanceAiPermissions } from '@n8n/api-types';
 import type { InstanceAiContext, CredentialSummary, CredentialDetail } from '../../types';
 import { createCredentialsTool } from '../credentials.tool';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function createMockContext(overrides: Partial<InstanceAiContext> = {}): InstanceAiContext {
+function createMockContext(
+	overrides: Partial<Omit<InstanceAiContext, 'permissions'>> & {
+		permissions?: Partial<InstanceAiPermissions>;
+	} = {},
+): InstanceAiContext {
 	return {
 		userId: 'user-1',
 		workflowService: {} as InstanceAiContext['workflowService'],
@@ -199,7 +204,7 @@ describe('credentials tool', () => {
 
 		it('should suspend for confirmation when permission needs approval', async () => {
 			const context = createMockContext({
-				permissions: { deleteCredential: 'needs_approval' },
+				permissions: { deleteCredential: 'require_approval' },
 			});
 			const suspendFn = jest.fn();
 
@@ -222,7 +227,7 @@ describe('credentials tool', () => {
 
 		it('should use credentialId in message when credentialName is not provided', async () => {
 			const context = createMockContext({
-				permissions: { deleteCredential: 'needs_approval' },
+				permissions: { deleteCredential: 'require_approval' },
 			});
 			const suspendFn = jest.fn();
 
@@ -253,7 +258,7 @@ describe('credentials tool', () => {
 
 		it('should delete after user approves on resume', async () => {
 			const context = createMockContext({
-				permissions: { deleteCredential: 'needs_approval' },
+				permissions: { deleteCredential: 'require_approval' },
 			});
 
 			const tool = createCredentialsTool(context);
@@ -268,7 +273,7 @@ describe('credentials tool', () => {
 
 		it('should return denied when user denies on resume', async () => {
 			const context = createMockContext({
-				permissions: { deleteCredential: 'needs_approval' },
+				permissions: { deleteCredential: 'require_approval' },
 			});
 
 			const tool = createCredentialsTool(context);

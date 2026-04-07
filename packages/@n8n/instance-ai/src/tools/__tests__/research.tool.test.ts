@@ -1,9 +1,14 @@
+import type { InstanceAiPermissions } from '@n8n/api-types';
 import type { InstanceAiContext } from '../../types';
 import { createResearchTool } from '../research.tool';
 
 // ── Mock helpers ───────────────────────────────────────────────────────────────
 
-function createMockContext(overrides: Partial<InstanceAiContext> = {}): InstanceAiContext {
+function createMockContext(
+	overrides: Partial<Omit<InstanceAiContext, 'permissions'>> & {
+		permissions?: Partial<InstanceAiPermissions>;
+	} = {},
+): InstanceAiContext {
 	return {
 		userId: 'user-1',
 		workflowService: {} as never,

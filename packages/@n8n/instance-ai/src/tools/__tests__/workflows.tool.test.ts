@@ -1,3 +1,4 @@
+import type { InstanceAiPermissions } from '@n8n/api-types';
 import type { InstanceAiContext } from '../../types';
 import { createWorkflowsTool } from '../workflows.tool';
 
@@ -17,7 +18,11 @@ jest.mock('@n8n/workflow-sdk', () => ({
 
 import { analyzeWorkflow } from '../workflows/setup-workflow.service';
 
-function createMockContext(overrides: Partial<InstanceAiContext> = {}): InstanceAiContext {
+function createMockContext(
+	overrides: Partial<Omit<InstanceAiContext, 'permissions'>> & {
+		permissions?: Partial<InstanceAiPermissions>;
+	} = {},
+): InstanceAiContext {
 	return {
 		userId: 'user-1',
 		workflowService: {

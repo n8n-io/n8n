@@ -124,7 +124,7 @@ describe('nodes tool', () => {
 			(context.nodeService.listAvailable as jest.Mock).mockResolvedValue(nodes);
 
 			const tool = createNodesTool(context, 'full');
-			const result = await tool.execute!({ action: 'list', query: 'http' }, {} as never);
+			const result = await tool.execute!({ action: 'list', query: 'http' } as never, {} as never);
 
 			expect(context.nodeService.listAvailable).toHaveBeenCalledWith({ query: 'http' });
 			expect(result).toEqual({ nodes });
@@ -190,7 +190,7 @@ describe('nodes tool', () => {
 
 			const tool = createNodesTool(context, 'full');
 			const result = await tool.execute!(
-				{ action: 'describe', nodeType: 'unknown.node' },
+				{ action: 'describe', nodeType: 'unknown.node' } as never,
 				{} as never,
 			);
 

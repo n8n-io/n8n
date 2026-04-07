@@ -1,7 +1,12 @@
+import type { InstanceAiPermissions } from '@n8n/api-types';
 import type { InstanceAiContext } from '../../types';
 import { createFilesystemTool } from '../filesystem.tool';
 
-function createMockContext(overrides: Partial<InstanceAiContext> = {}): InstanceAiContext {
+function createMockContext(
+	overrides: Partial<Omit<InstanceAiContext, 'permissions'>> & {
+		permissions?: Partial<InstanceAiPermissions>;
+	} = {},
+): InstanceAiContext {
 	return {
 		userId: 'user-1',
 		workflowService: {
