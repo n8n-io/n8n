@@ -222,17 +222,22 @@ watch(sortBy, (newValue) => {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	line-height: 1.2;
-	width: fit-content;
 	max-width: 100%;
 }
 
 .link {
-	display: inline-flex;
+	display: flex;
 	height: 100%;
 	align-items: center;
 	color: var(--color--text);
 	text-decoration: underline;
 	max-width: 100%;
+	overflow: hidden;
+	min-width: 0;
+	& > * {
+		min-width: 0;
+		overflow: hidden;
+	}
 	&:hover {
 		color: var(--color--text--shade-1);
 	}

@@ -316,4 +316,59 @@ describe('DependencyPill', () => {
 
 		expect(queryByText(/not accessible to you/)).not.toBeInTheDocument();
 	});
+
+	it('should open error workflow in new tab on select', () => {
+		mockDepsResult = {
+			dependencies: [{ type: 'errorWorkflow', id: 'err-wf-1', name: 'Error Handler' }],
+			inaccessibleCount: 0,
+		};
+		renderComponent({ props: defaultProps });
+
+		capturedSelectHandler?.('errorWorkflow:err-wf-1');
+
+		expect(router.resolve).toHaveBeenCalledWith({
+			name: VIEWS.WORKFLOW,
+			params: { name: 'err-wf-1' },
+		});
+		expect(windowOpenSpy).toHaveBeenCalledWith('/mock-href', '_blank');
+	});
+
+	it('should open error workflow parent in new tab on select', () => {
+		mockDepsResult = {
+			dependencies: [
+				{ type: 'errorWorkflowParent', id: 'parent-wf-1', name: 'Parent Using Error Handler' },
+			],
+			inaccessibleCount: 0,
+		};
+		renderComponent({ props: defaultProps });
+
+		capturedSelectHandler?.('errorWorkflowParent:parent-wf-1');
+
+		expect(router.resolve).toHaveBeenCalledWith({
+			name: VIEWS.WORKFLOW,
+			params: { name: 'parent-wf-1' },
+		});
+		expect(windowOpenSpy).toHaveBeenCalledWith('/mock-href', '_blank');
+	});
+
+	it('should group error workflow dependencies in menu items', () => {
+		mockDepsResult = {
+			dependencies: [
+				{ type: 'errorWorkflow', id: 'err-wf-1', name: 'Error Handler' },
+				{ type: 'errorWorkflowParent', id: 'parent-wf-1', name: 'Parent WF' },
+			],
+			inaccessibleCount: 0,
+		};
+		renderComponent({ props: defaultProps });
+
+		const items = capturedItems as Array<{ id: string; label: string; disabled?: boolean }>;
+
+		// Should have 2 headers + 2 items = 4 total
+		expect(items).toHaveLength(4);
+		expect(items[0].id).toBe('header-errorWorkflow');
+		expect(items[0].disabled).toBe(true);
+		expect(items[1].id).toBe('errorWorkflow:err-wf-1');
+		expect(items[2].id).toBe('header-errorWorkflowParent');
+		expect(items[3].id).toBe('errorWorkflowParent:parent-wf-1');
+	});
 });

@@ -1,0 +1,27 @@
+{
+	"name": "@n8n/mcp-browser-extension",
+	"version": "0.0.1",
+	"private": true,
+	"description": "Chrome extension that bridges n8n AI to browser tabs via CDP",
+	"scripts": {
+		"clean": "rimraf dist .turbo",
+		"build": "vite build --config vite.sw.config.mts && vite build --config vite.ui.config.mts",
+		"typecheck": "tsc --noEmit",
+		"lint": "eslint . --quiet",
+		"lint:fix": "eslint . --fix",
+		"test": "jest",
+		"test:unit": "jest",
+		"format": "biome format --write src",
+		"format:check": "biome ci src"
+	},
+	"dependencies": {
+		"vue": "catalog:frontend"
+	},
+	"devDependencies": {
+		"@n8n/typescript-config": "workspace:*",
+		"@types/chrome": "0.0.300",
+		"@vitejs/plugin-vue": "catalog:frontend",
+		"sass": "^1.71.1",
+		"vite": "catalog:"
+	}
+}

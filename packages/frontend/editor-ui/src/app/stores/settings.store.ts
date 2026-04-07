@@ -80,6 +80,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isPreviewMode = computed(() => settings.value.previewMode);
 
+	const isCanvasOnly = computed(() => settings.value.canvasOnly);
+
 	const publicApiLatestVersion = computed(() => api.value.latestVersion);
 
 	const publicApiPath = computed(() => api.value.path);
@@ -119,6 +121,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const isAiDataSharingEnabled = computed(
 		() => settings.value.ai?.allowSendingParameterValues ?? true,
 	);
+
+	const isAiGatewayEnabled = computed(() => settings.value.aiGateway?.enabled ?? false);
+
+	const aiGatewayCreditsQuota = computed(() => settings.value.aiGateway?.creditsQuota ?? 0);
 
 	const isSmtpSetup = computed(() => userManagement.value.smtpSetup);
 
@@ -368,6 +374,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isPublicApiEnabled,
 		isSwaggerUIEnabled,
 		isPreviewMode,
+		isCanvasOnly,
 		publicApiLatestVersion,
 		publicApiPath,
 		showSetupPage,
@@ -407,6 +414,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAiCreditsEnabled,
 		aiCreditsQuota,
 		isAiDataSharingEnabled,
+		isAiGatewayEnabled,
+		aiGatewayCreditsQuota,
 		reset,
 		getTimezones,
 		testTemplatesEndpoint,

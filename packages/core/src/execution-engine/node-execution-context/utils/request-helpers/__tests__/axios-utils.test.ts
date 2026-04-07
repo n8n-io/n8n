@@ -149,6 +149,7 @@ describe('getBeforeRedirectFn', () => {
 			axiosConfig,
 			undefined,
 			false,
+			undefined,
 			ssrfBridge,
 		);
 		const redirectedRequest: Record<string, unknown> = {

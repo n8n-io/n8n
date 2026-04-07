@@ -150,8 +150,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const chatPartialExecutionDestinationNode = ref<string | null>(null);
 	const selectedTriggerNodeName = ref<string>();
 
-	const workflowName = computed(() => workflow.value.name);
-
 	const workflowId = computed(() => workflow.value.id);
 
 	const workflowVersionId = computed(() => workflow.value.versionId);
@@ -588,7 +586,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		return new Workflow({
 			id,
-			name: workflow.value.name,
+			name: workflowDocumentStore?.name ?? '',
 			nodes: copyData ? deepCopy(nodes) : nodes,
 			connections: copyData ? deepCopy(connections) : connections,
 			active: false,
@@ -1182,7 +1180,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function updateNodeExecutionStatus(pushData: PushPayload<'nodeExecuteAfterData'>): void {
 		if (!workflowExecutionData.value?.data) {
-			throw new Error('The "workflowExecutionData" is not initialized!');
+			console.warn(
+				'[workflows.store] updateNodeExecutionStatus called without execution data; ignoring.',
+			);
+			return;
 		}
 
 		const { nodeName, data } = pushData;
@@ -1738,7 +1739,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		isInDebugMode,
 		chatMessages,
 		chatPartialExecutionDestinationNode,
-		workflowName,
 		workflowId,
 		workflowVersionId,
 		isNewWorkflow,

@@ -207,10 +207,10 @@ describe('microsoft-utils', () => {
 			};
 		});
 
-		test('should configure agent with welcome message', async () => {
+		test('should not register installationUpdate handler', async () => {
 			const mockTurnContext = {
 				activity: {
-					type: 'conversationUpdate',
+					type: 'message',
 					text: 'Hello',
 					recipient: { agenticAppId: 'agent-id', name: 'Agent', tenantId: 'tenant-id' },
 					conversation: { id: 'conversation-id' },
@@ -236,7 +236,7 @@ describe('microsoft-utils', () => {
 
 			await callback(mockTurnContext as any);
 
-			expect(agent.onConversationUpdate).toHaveBeenCalled();
+			expect(agent.onActivity).not.toHaveBeenCalledWith('installationUpdate', expect.any(Function));
 		});
 
 		test('should set up activity callback that invokes agent', async () => {
@@ -470,6 +470,39 @@ describe('microsoft-utils', () => {
 			await callback(mockTurnContext as any);
 
 			expect(agent.run).toHaveBeenCalled();
+		});
+
+		test('should set activityCapture.input to addmember XML so webhook can suppress execution', async () => {
+			const addmemberXml =
+				'<addmember><eventtime>1775195471530</eventtime><initiator>28:app:abc</initiator></addmember>';
+			const mockTurnContext = {
+				activity: {
+					type: 'message',
+					text: addmemberXml,
+					recipient: { agenticAppId: 'agent-id', name: 'Agent', tenantId: 'tenant-id' },
+					conversation: { id: 'conversation-id' },
+				},
+				sendActivity: jest.fn().mockResolvedValue({}),
+				turnState: { set: jest.fn() },
+			};
+
+			(nodeContext.getNodeParameter as jest.Mock).mockImplementation((param: string) => {
+				if (param === 'options.welcomeMessage') return 'Hello!';
+				if (param === 'systemPrompt') return 'Test prompt';
+				return undefined;
+			});
+
+			const callback = configureAdapterProcessCallback(
+				nodeContext,
+				agent,
+				credentials,
+				activityCapture,
+			);
+
+			await callback(mockTurnContext as any);
+
+			expect(activityCapture.input).toBe(addmemberXml);
+			expect(activityCapture.input.trimStart().startsWith('<addmember>')).toBe(true);
 		});
 
 		test('should capture activity input and output', async () => {
@@ -1442,6 +1475,93 @@ describe('microsoft-utils', () => {
 			await callback(contextWithoutRecipient as any);
 
 			expect(invokeAgent).toHaveBeenCalled();
+		});
+
+		test('should send welcome message and skip LLM when input is addmember XML', async () => {
+			const addmemberContext = {
+				...mockTurnContext,
+				activity: {
+					...mockTurnContext.activity,
+					text: '<addmember><eventtime>1775195471530</eventtime><initiator>28:app:abc</initiator><rosterVersion>123</rosterVersion><target>8:orgid:user-id</target></addmember>',
+				},
+			};
+
+			(nodeContext.getNodeParameter as jest.Mock).mockImplementation((param: string) => {
+				if (param === 'options.welcomeMessage') return 'Hello! Welcome!';
+				if (param === 'systemPrompt') return 'Test prompt';
+				return undefined;
+			});
+
+			const activityCapture = { input: '', output: [], activity: {} };
+			const callback = configureActivityCallback(
+				nodeContext,
+				credentials,
+				mcpTokenRef,
+				mockAuthorization,
+				activityCapture,
+			);
+			await callback(addmemberContext);
+
+			expect(addmemberContext.sendActivity).toHaveBeenCalledWith('Hello! Welcome!');
+			expect(invokeAgent).not.toHaveBeenCalled();
+		});
+
+		test('should skip LLM and send empty string when addmember XML arrives but welcome message is empty', async () => {
+			const addmemberContext = {
+				...mockTurnContext,
+				activity: {
+					...mockTurnContext.activity,
+					text: '<addmember><eventtime>1775195471530</eventtime></addmember>',
+				},
+			};
+
+			(nodeContext.getNodeParameter as jest.Mock).mockImplementation((param: string) => {
+				if (param === 'options.welcomeMessage') return '';
+				if (param === 'systemPrompt') return 'Test prompt';
+				return undefined;
+			});
+
+			const activityCapture = { input: '', output: [], activity: {} };
+			const callback = configureActivityCallback(
+				nodeContext,
+				credentials,
+				mcpTokenRef,
+				mockAuthorization,
+				activityCapture,
+			);
+			await callback(addmemberContext);
+
+			expect(invokeAgent).not.toHaveBeenCalled();
+			expect(addmemberContext.sendActivity).toHaveBeenCalledWith('');
+		});
+
+		test('should send welcome message when addmember XML has leading whitespace', async () => {
+			const addmemberContext = {
+				...mockTurnContext,
+				activity: {
+					...mockTurnContext.activity,
+					text: '  \n<addmember><eventtime>1775195471530</eventtime></addmember>',
+				},
+			};
+
+			(nodeContext.getNodeParameter as jest.Mock).mockImplementation((param: string) => {
+				if (param === 'options.welcomeMessage') return 'Hi there!';
+				if (param === 'systemPrompt') return 'Test prompt';
+				return undefined;
+			});
+
+			const activityCapture = { input: '', output: [], activity: {} };
+			const callback = configureActivityCallback(
+				nodeContext,
+				credentials,
+				mcpTokenRef,
+				mockAuthorization,
+				activityCapture,
+			);
+			await callback(addmemberContext);
+
+			expect(addmemberContext.sendActivity).toHaveBeenCalledWith('Hi there!');
+			expect(invokeAgent).not.toHaveBeenCalled();
 		});
 	});
 

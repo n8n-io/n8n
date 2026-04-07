@@ -1,4 +1,9 @@
-import { createPage, getSanitizedInitialMessages, getSanitizedI18nConfig } from '../templates';
+import {
+	createPage,
+	getSanitizedCustomCss,
+	getSanitizedInitialMessages,
+	getSanitizedI18nConfig,
+} from '../templates';
 
 describe('ChatTrigger Templates Security', () => {
 	const defaultParams = {
@@ -114,6 +119,76 @@ describe('ChatTrigger Templates Security', () => {
 
 			// Should only include non-empty, trimmed lines
 			expect(result).toContain('initialMessages: ["First message","Second message"]');
+		});
+	});
+
+	describe('XSS Prevention in customCss', () => {
+		it('should strip </style to prevent breakout with onload', () => {
+			const result = createPage({
+				...defaultParams,
+				customCss: '</style><style onload=alert(origin)>',
+			});
+
+			// The </style sequence is stripped, so the payload stays trapped as CSS text
+			expect(result).not.toContain('</style><style');
+		});
+
+		it('should strip </style to prevent breakout with script injection', () => {
+			const result = createPage({
+				...defaultParams,
+				customCss: '</style><script>alert(1)</script>',
+			});
+
+			expect(result).not.toContain('</style><script');
+		});
+
+		it('should strip </style/> to prevent parser differential XSS', () => {
+			const result = createPage({
+				...defaultParams,
+				customCss: '</style/><script>alert(1)</script>',
+			});
+
+			// </style/> is recognized as a closing tag by browsers but not sanitize-html
+			expect(result).not.toContain('</style/>');
+			expect(result).not.toContain('</style/');
+		});
+
+		it('should strip </style//> variant', () => {
+			const result = createPage({
+				...defaultParams,
+				customCss: '</style//><img src=x onerror=alert(1)>',
+			});
+
+			expect(result).not.toContain('</style/');
+		});
+
+		it('should strip </style case-insensitively', () => {
+			const result = createPage({
+				...defaultParams,
+				customCss: '</STYLE><script>alert(1)</script>',
+			});
+
+			expect(result).not.toContain('</STYLE>');
+		});
+
+		it('should preserve legitimate CSS', () => {
+			const css = '.chat { color: red; font-size: 14px; }';
+			const result = createPage({
+				...defaultParams,
+				customCss: css,
+			});
+
+			expect(result).toContain(css);
+		});
+
+		it('should preserve CSS with special characters', () => {
+			const css = 'div > span + p ~ .class:hover { background: #fff; }';
+			const result = createPage({
+				...defaultParams,
+				customCss: css,
+			});
+
+			expect(result).toContain(css);
 		});
 	});
 
@@ -259,6 +334,43 @@ describe('ChatTrigger Templates Security', () => {
 			});
 
 			expect(result).toContain(legitimateMimeTypes);
+		});
+	});
+
+	describe('getSanitizedCustomCss function', () => {
+		it('should strip </style to prevent breakout', () => {
+			expect(getSanitizedCustomCss('</style><script>alert(1)</script>')).toBe(
+				'><script>alert(1)</script>',
+			);
+		});
+
+		it('should strip </style/> parser differential variant', () => {
+			expect(getSanitizedCustomCss('</style/><script>alert(1)</script>')).toBe(
+				'/><script>alert(1)</script>',
+			);
+		});
+
+		it('should strip </style case-insensitively', () => {
+			expect(getSanitizedCustomCss('</STYLE>')).toBe('>');
+			expect(getSanitizedCustomCss('</Style>')).toBe('>');
+			expect(getSanitizedCustomCss('</sTyLe>')).toBe('>');
+		});
+
+		it('should strip multiple </style occurrences', () => {
+			expect(getSanitizedCustomCss('</style>x</style>')).toBe('>x>');
+		});
+
+		it('should strip partial </style without closing >', () => {
+			expect(getSanitizedCustomCss('</style')).toBe('');
+		});
+
+		it('should handle empty string', () => {
+			expect(getSanitizedCustomCss('')).toBe('');
+		});
+
+		it('should preserve legitimate CSS', () => {
+			const css = '.chat { color: red; } div > span + p ~ .class:hover { background: #fff; }';
+			expect(getSanitizedCustomCss(css)).toBe(css);
 		});
 	});
 
