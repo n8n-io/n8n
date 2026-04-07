@@ -53,17 +53,27 @@ Creates GitHub PRs with titles that pass n8n's `check-pr-title` CI validation.
    git log origin/master..HEAD --oneline
    ```
 
-2. **Analyze changes** to determine:
+2. **Check for implementation plan**: Look for a plan file in `.claude/plans/`
+   that matches the current branch's ticket ID (e.g. if branch is
+   `scdekov/PAY-1234-some-feature`, check for `.claude/plans/PAY-1234.md`).
+   If a plan file exists, ask the user whether they want to include it in the
+   PR description as a collapsible `<details>` section (see Plan Section below).
+   Only include the plan if the user explicitly approves.
+
+3. **If this is a security fix**, audit every public-facing artifact before
+   proceeding (see Security Fixes below).
+
+4. **Analyze changes** to determine:
    - Type: What kind of change is this?
    - Scope: Which package/area is affected?
    - Summary: What does the change do?
 
-3. **Push branch if needed**:
+5. **Push branch if needed**:
    ```bash
    git push -u origin HEAD
    ```
 
-4. **Create PR** using gh CLI with the template from `.github/pull_request_template.md`:
+6. **Create PR** using gh CLI with the template from `.github/pull_request_template.md`:
    ```bash
    gh pr create --draft --title "<type>(<scope>): <summary>" --body "$(cat <<'EOF'
    ## Summary
@@ -152,3 +162,35 @@ Key validation rules:
 - Exclamation mark for breaking changes goes before the colon
 - Summary must start with capital letter
 - Summary must not end with a period
+
+## Plan Section
+
+If a matching plan file was found in `.claude/plans/` and the user has approved
+including it, add a collapsible section at the end of the PR body (after the
+checklist, before `EOF`):
+
+```markdown
+<details>
+<summary>Implementation plan</summary>
+
+<!-- paste plan file contents here -->
+
+</details>
+```
+
+## Security Fixes
+
+**This repo is public.** Never expose the attack vector in any public artifact.
+Describe **what the code does**, not what threat it prevents.
+
+| Artifact | BAD | GOOD |
+|---|---|---|
+| Branch | `fix-sql-injection-in-webhook` | `fix-webhook-input-validation` |
+| PR title | `fix(core): Prevent SSRF` | `fix(core): Validate outgoing URLs` |
+| Commit msg | `fix: prevent denial of service` | `fix: add payload size validation` |
+| PR body | *"attacker could trigger SSRF…"* | *"validates URL protocol and host"* |
+| Linear ref | URL with slug (leaks title) | URL without slug or ticket ID only |
+| Test name | `'should prevent SQL injection'` | `'should sanitize query parameters'` |
+
+**Before pushing a security fix, verify:** no branch name, commit, PR title,
+PR body, Linear URL, test name, or code comment hints at the vulnerability.

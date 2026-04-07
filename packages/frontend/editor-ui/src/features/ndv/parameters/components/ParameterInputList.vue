@@ -558,6 +558,11 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 	}
 
 	await dismissCallout(parameter.name);
+
+	const item = parameterItems.value.find((i) => i.parameter.name === parameter.name);
+	if (item) {
+		item.isCalloutVisible = false;
+	}
 }
 
 const parameterRefItems = ref<Map<string, HTMLElement>>(new Map());

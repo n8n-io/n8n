@@ -80,6 +80,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isPreviewMode = computed(() => settings.value.previewMode);
 
+	const isCanvasOnly = computed(() => settings.value.canvasOnly);
+
 	const publicApiLatestVersion = computed(() => api.value.latestVersion);
 
 	const publicApiPath = computed(() => api.value.path);
@@ -368,6 +370,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isPublicApiEnabled,
 		isSwaggerUIEnabled,
 		isPreviewMode,
+		isCanvasOnly,
 		publicApiLatestVersion,
 		publicApiPath,
 		showSetupPage,

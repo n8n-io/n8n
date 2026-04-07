@@ -16,6 +16,8 @@ import { useWorkflowDocumentParentFolder } from './workflowDocument/useWorkflowD
 import { useWorkflowDocumentUsedCredentials } from './workflowDocument/useWorkflowDocumentUsedCredentials';
 import { useWorkflowDocumentNodes } from './workflowDocument/useWorkflowDocumentNodes';
 import { useWorkflowDocumentViewport } from './workflowDocument/useWorkflowDocumentViewport';
+import { useWorkflowDocumentConnections } from './workflowDocument/useWorkflowDocumentConnections';
+import { useWorkflowDocumentName } from './workflowDocument/useWorkflowDocumentName';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
@@ -59,6 +61,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 	return defineStore(getWorkflowDocumentStoreId(id), () => {
 		const [workflowId, workflowVersion] = id.split('@');
 
+		const workflowDocumentName = useWorkflowDocumentName();
 		const workflowDocumentActive = useWorkflowDocumentActive();
 		const workflowDocumentHomeProject = useWorkflowDocumentHomeProject();
 		const workflowDocumentChecksum = useWorkflowDocumentChecksum();
@@ -73,28 +76,34 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const workflowDocumentUsedCredentials = useWorkflowDocumentUsedCredentials();
 		const workflowDocumentViewport = useWorkflowDocumentViewport();
 		const nodeTypesStore = useNodeTypesStore();
-		const { onStateDirty, ...workflowDocumentNodes } = useWorkflowDocumentNodes({
+		const { onStateDirty: onNodesStateDirty, ...workflowDocumentNodes } = useWorkflowDocumentNodes({
 			getNodeType: (typeName, version) => nodeTypesStore.getNodeType(typeName, version),
 		});
+		const { onStateDirty: onConnectionsStateDirty, ...workflowDocumentConnections } =
+			useWorkflowDocumentConnections({
+				getNodeById: (id) => workflowDocumentNodes.getNodeById(id),
+			});
 
 		// --- Cross-cut orchestration ---
 		// Each composable is self-contained and unaware of its siblings. This
 		// store is where cross-concern side effects are wired. When adding new
-		// composables (e.g. connections), check workflowsStore for hidden
-		// cross-cuts that need to surface here. Known future ones:
+		// composables, check workflowsStore for hidden cross-cuts that need to
+		// surface here. Known future ones:
 		//   - removeNode → unpinNodeData (currently in workflowsStore.removeNode)
-		//   - removeAllNodes → removeAllConnections (when connections composable exists)
 
-		onStateDirty(() => useUIStore().markStateDirty());
+		onNodesStateDirty(() => useUIStore().markStateDirty());
+		onConnectionsStateDirty(() => useUIStore().markStateDirty());
 
 		function removeAllNodes() {
 			workflowDocumentNodes.removeAllNodes();
+			workflowDocumentConnections.removeAllConnections();
 			workflowDocumentPinData.setPinData({});
 		}
 
 		return {
 			workflowId,
 			workflowVersion,
+			...workflowDocumentName,
 			...workflowDocumentActive,
 			...workflowDocumentHomeProject,
 			...workflowDocumentChecksum,
@@ -109,6 +118,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentUsedCredentials,
 			...workflowDocumentViewport,
 			...workflowDocumentNodes,
+			...workflowDocumentConnections,
 			removeAllNodes,
 		};
 	})();

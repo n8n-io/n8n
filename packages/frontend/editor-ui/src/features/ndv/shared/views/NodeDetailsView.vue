@@ -178,7 +178,7 @@ const inputNodeName = computed<string | undefined>(() => {
 
 const inputNode = computed(() => {
 	if (inputNodeName.value) {
-		return workflowsStore.getNodeByName(inputNodeName.value);
+		return workflowDocumentStore?.value?.getNodeByName(inputNodeName.value) ?? null;
 	}
 	return null;
 });
@@ -614,7 +614,7 @@ watch(
 
 			setTimeout(() => {
 				if (activeNode.value) {
-					const outgoingConnections = workflowsStore.outgoingConnectionsByNodeName(
+					const outgoingConnections = workflowDocumentStore?.value?.outgoingConnectionsByNodeName(
 						activeNode.value?.name,
 					);
 

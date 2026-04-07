@@ -1,6 +1,7 @@
 import { Logger, parseFlatted } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { hasGlobalScope } from '@n8n/permissions';
 import type {
 	FindManyOptions,
 	FindOneOptions,
@@ -49,6 +50,7 @@ import {
 	SharedWorkflow,
 	WorkflowEntity,
 } from '../entities';
+import { SharedWorkflowRepository } from './shared-workflow.repository';
 import type {
 	ExecutionSummaries,
 	IExecutionBase,
@@ -158,6 +160,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 		private readonly binaryDataService: BinaryDataService,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 	) {
 		super(ExecutionEntity, dataSource.manager);
 	}
@@ -340,6 +343,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			...rest,
 			data,
 			workflowData: executionData.workflowData,
+			workflowVersionId: executionData.workflowVersionId ?? null,
 			customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 			...(options?.includeAnnotation &&
 				serializedAnnotation && { annotation: serializedAnnotation }),
@@ -368,9 +372,20 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async setRunning(executionId: string) {
 		const startedAt = new Date();
 
-		await this.update({ id: executionId }, { status: 'running', startedAt });
+		return await this.manager.transaction(async (manager) => {
+			const existing = await manager.findOneBy(ExecutionEntity, { id: executionId });
 
-		return startedAt;
+			// Preserve original startedAt for resumed executions
+			const effectiveStartedAt = existing?.startedAt ?? startedAt;
+
+			await manager.update(
+				ExecutionEntity,
+				{ id: executionId },
+				{ status: 'running', startedAt: effectiveStartedAt },
+			);
+
+			return effectiveStartedAt;
+		});
 	}
 
 	/**
@@ -396,6 +411,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			data,
 			workflowId,
 			workflowData,
+			workflowVersionId, // must never change
 			createdAt, // must never change
 			startedAt, // must never change
 			customData,
@@ -586,28 +602,21 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return await this.delete({ id: In(executionIds) });
 	}
 
-	async getWaitingExecutions() {
-		// Find all the executions which should be triggered in the next 70 seconds
-		const waitTill = new Date(Date.now() + 70000);
-		const where: FindOptionsWhere<ExecutionEntity> = {
-			waitTill: LessThanOrEqual(waitTill),
-			status: Not('crashed'),
-		};
-
+	async getWaitingExecutions(): Promise<Array<Pick<ExecutionEntity, 'id' | 'waitTill'>>> {
+		// DB-clock lookahead: 5s poll + 10s buffer = 15s window.
 		const dbType = this.globalConfig.database.type;
-		if (dbType === 'sqlite') {
-			// This is needed because of issue in TypeORM <> SQLite:
-			// https://github.com/typeorm/typeorm/issues/2286
-			where.waitTill = LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(waitTill));
-		}
 
-		return await this.findMultipleExecutions({
-			select: ['id', 'waitTill'],
-			where,
-			order: {
-				waitTill: 'ASC',
-			},
-		});
+		const lookaheadCondition =
+			dbType === 'postgresdb'
+				? "e.waitTill <= NOW() + INTERVAL '15 seconds'"
+				: "e.waitTill <= datetime('now', '+15 seconds')";
+
+		return await this.createQueryBuilder('e')
+			.select(['e.id', 'e.waitTill'])
+			.where(lookaheadCondition)
+			.andWhere('e.status = :status', { status: 'waiting' })
+			.orderBy('e.waitTill', 'ASC')
+			.getMany();
 	}
 
 	async getExecutionsCountForPublicApi(params: {
@@ -868,10 +877,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async findManyByRangeQuery(query: ExecutionSummaries.RangeQuery): Promise<ExecutionSummary[]> {
-		if (query?.accessibleWorkflowIds?.length === 0) {
-			throw new UnexpectedError('Expected accessible workflow IDs');
-		}
-
 		// Due to performance reasons, we use custom query builder with raw SQL.
 		// IMPORTANT: it produces duplicate rows for executions with multiple tags, which we need to reduce manually
 		const qb = this.toQueryBuilderWithAnnotations(query);
@@ -962,7 +967,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	private toQueryBuilder(query: ExecutionSummaries.Query) {
 		const {
-			accessibleWorkflowIds,
+			user,
+			sharingOptions,
 			status,
 			finished,
 			workflowId,
@@ -972,6 +978,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			annotationTags,
 			vote,
 			projectId,
+			workflowVersionId,
 		} = query;
 
 		const fields = Object.keys(this.summaryFields)
@@ -981,8 +988,23 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		const qb = this.createQueryBuilder('execution')
 			.select(fields)
-			.innerJoin('execution.workflow', 'workflow')
-			.where('execution.workflowId IN (:...accessibleWorkflowIds)', { accessibleWorkflowIds });
+			.innerJoin('execution.workflow', 'workflow');
+
+		if (user && sharingOptions) {
+			// EXISTS-based access control — correlated subquery for better query plans
+			const subquery = this.sharedWorkflowRepository.buildSharedWorkflowIdsSubquery(
+				user,
+				sharingOptions,
+			);
+			subquery.andWhere('"sw"."workflowId" = execution."workflowId"');
+			qb.where(`EXISTS (${subquery.getQuery()})`);
+			qb.setParameters(subquery.getParameters());
+		} else if (user && hasGlobalScope(user, 'workflow:read')) {
+			// Global-scope admin without sharingOptions — no access-control filter needed
+		} else {
+			// No user or insufficient scope — deny all to prevent unscoped queries
+			qb.where('1 = 0');
+		}
 
 		if (query.kind === 'range') {
 			const { limit, firstId, lastId } = query.range;
@@ -1020,6 +1042,15 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 			qb.setParameter('key', key);
 			qb.setParameter('value', exactMatch ? value : `%${value}%`);
+		}
+
+		if (workflowVersionId) {
+			qb.innerJoin(
+				'execution.executionData',
+				'executionData',
+				'executionData.workflowVersionId = :workflowVersionId',
+			);
+			qb.setParameter('workflowVersionId', workflowVersionId);
 		}
 
 		if (annotationTags?.length || vote) {
@@ -1101,6 +1132,17 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		}
 
 		return qb;
+	}
+
+	async getDistinctVersionIds(workflowId: string): Promise<string[]> {
+		const result = await this.createQueryBuilder('execution')
+			.innerJoin('execution.executionData', 'ed')
+			.select('DISTINCT ed.workflowVersionId', 'workflowVersionId')
+			.where('execution.workflowId = :workflowId', { workflowId })
+			.andWhere('ed.workflowVersionId IS NOT NULL')
+			.getRawMany<{ workflowVersionId: string }>();
+
+		return result.map((r) => r.workflowVersionId);
 	}
 
 	async getAllIds() {

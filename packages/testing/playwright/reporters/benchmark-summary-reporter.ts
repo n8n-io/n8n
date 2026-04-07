@@ -76,11 +76,8 @@ function extractSuite(filePath: string): string {
 	return 'other';
 }
 
-function extractMetricSuffix(metricName: string, scenario: string): string | null {
-	if (metricName.startsWith(`${scenario}-`)) {
-		return metricName.slice(scenario.length + 1);
-	}
-	return null;
+function extractMetricSuffix(metricName: string): string {
+	return metricName;
 }
 
 class BenchmarkSummaryReporter implements Reporter {
@@ -98,14 +95,12 @@ class BenchmarkSummaryReporter implements Reporter {
 
 		for (const attachment of metricAttachments) {
 			const fullName = attachment.name.replace('metric:', '');
-			const suffix = extractMetricSuffix(fullName, scenario);
-			if (suffix) {
-				try {
-					const data = JSON.parse(attachment.body?.toString() ?? '');
-					metrics.set(suffix, data.value);
-				} catch (error) {
-					console.warn(`[BenchmarkReporter] Malformed metric attachment "${fullName}":`, error);
-				}
+			const suffix = extractMetricSuffix(fullName);
+			try {
+				const data = JSON.parse(attachment.body?.toString() ?? '');
+				metrics.set(suffix, data.value);
+			} catch (error) {
+				console.warn(`[BenchmarkReporter] Malformed metric attachment "${fullName}":`, error);
 			}
 		}
 

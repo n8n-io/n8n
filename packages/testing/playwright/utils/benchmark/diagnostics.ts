@@ -125,16 +125,16 @@ export async function collectDiagnostics(
  */
 export async function attachDiagnostics(
 	testInfo: TestInfo,
-	label: string,
+	dimensions: Record<string, string | number>,
 	diagnostics: DiagnosticsResult,
 ): Promise<void> {
 	if (diagnostics.eventLoopLag !== undefined) {
-		await attachMetric(testInfo, `${label}-event-loop-lag`, diagnostics.eventLoopLag, 's');
+		await attachMetric(testInfo, 'event-loop-lag', diagnostics.eventLoopLag, 's', dimensions);
 	}
 	if (diagnostics.pgTxRate !== undefined) {
-		await attachMetric(testInfo, `${label}-pg-tx-rate`, diagnostics.pgTxRate, 'tx/s');
+		await attachMetric(testInfo, 'pg-tx-rate', diagnostics.pgTxRate, 'tx/s', dimensions);
 	}
 	if (diagnostics.queueWaiting !== undefined) {
-		await attachMetric(testInfo, `${label}-queue-waiting`, diagnostics.queueWaiting, 'count');
+		await attachMetric(testInfo, 'queue-waiting', diagnostics.queueWaiting, 'count', dimensions);
 	}
 }

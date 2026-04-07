@@ -41,13 +41,16 @@ reviews:
 
     Approve if reasonably tested. Let humans handle edge cases.
 
-    ## Step 4: Design System Tokens
+    ## Step 4: Design System Style Rules
 
-    For any hard-coded visual values in CSS (colors, shadows, spacing), check
-    `@n8n/design-system/src/css/_primitives.scss` and
-    `@n8n/design-system/src/css/_tokens.scss` for an appropriate alternative.
-    If one exists, suggest using it. If none exist, ask why the hard-coded
-    value is required.
+    Follow `.agents/design-system-style-rules.md` for all CSS/SCSS/Vue style
+    review guidance.
+
+    Enforcement level:
+    - Strong warning: hard-coded visual values, legacy token usage, deprecated
+      style/component surfaces
+    - Soft warning: token-to-token substitutions (ask for intent to avoid
+      accidental regressions)
   custom_rules:
     - name: Security Review
       description: |-
@@ -210,11 +213,12 @@ reviews:
         humans handle edge cases.
     - name: Design System Tokens
       description: |-
-        For any hard-coded visual values in CSS (colors, shadows, spacing),
-        check `@n8n/design-system/src/css/_primitives.scss` and
-        `@n8n/design-system/src/css/_tokens.scss` for an appropriate alternative.
-        If one exists, suggest using it. If none exist, ask why the hard-coded
-        value is required.
+        Follow `.agents/design-system-style-rules.md`.
+
+        Apply balanced enforcement:
+        - Strong warning: hard-coded visual values, legacy token usage, and
+          deprecated style/component surfaces.
+        - Soft warning: token-to-token substitutions (request intent/rationale).
     - name: Use workflowDocumentStore for Migrated Workflow Fields
       description: |-
         We are actively migrating workflow state from `workflowsStore` (Pinia store defined in

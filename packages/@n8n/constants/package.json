@@ -10,7 +10,8 @@
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
-    "watch": "tsc -p tsconfig.build.json --watch"
+    "watch": "tsc -p tsconfig.build.json --watch",
+    "test": "jest"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",

@@ -5,6 +5,7 @@ import { useRoute } from 'vue-router';
 import { FLOATING_CHAT_HUB_PANEL_EXPERIMENT } from '@/app/constants';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { EDITABLE_CANVAS_VIEWS } from '@/app/constants';
 import type { VIEWS } from '@/app/constants';
 
@@ -19,6 +20,7 @@ export const useChatHubPanelStore = defineStore(STORES.CHAT_HUB_PANEL, () => {
 	const route = useRoute();
 	const posthogStore = usePostHog();
 	const settingsStore = useSettingsStore();
+	const telemetry = useTelemetry();
 
 	// State
 	const isOpen = ref(false);
@@ -37,6 +39,7 @@ export const useChatHubPanelStore = defineStore(STORES.CHAT_HUB_PANEL, () => {
 	function open() {
 		if (!isEnabledView(route?.name, EDITABLE_CANVAS_VIEWS)) return;
 		isOpen.value = true;
+		telemetry.track('User opened floating chat panel', { source: 'canvas' });
 	}
 
 	function close() {
@@ -56,6 +59,7 @@ export const useChatHubPanelStore = defineStore(STORES.CHAT_HUB_PANEL, () => {
 
 	function popOut() {
 		isPoppedOut.value = true;
+		telemetry.track('User popped out floating chat panel', { source: 'canvas' });
 	}
 
 	// Close when navigating away from enabled views

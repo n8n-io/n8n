@@ -125,7 +125,7 @@ test.describe(
 			// pull
 			await n8n.navigate.toHome();
 			await n8n.sideBar.getSourceControlPullButton().click();
-			await expect(n8n.sourceControlPullModal.getModal()).toBeVisible();
+			await expect(n8n.sourceControlPullModal.container).toBeVisible();
 
 			// check that conflicts are detected
 			await n8n.sourceControlPullModal.selectWorkflowsTab();

@@ -119,14 +119,9 @@ export class UsersController {
 
 		const [users, count] = response;
 
-		const withInviteUrl = hasGlobalScope(req.user, 'user:create');
-
 		const publicUsers = await Promise.all(
 			users.map(async (u) => {
-				const user = await this.userService.toPublic(u, {
-					withInviteUrl,
-					inviterId: req.user.id,
-				});
+				const user = await this.userService.toPublic(u);
 				if (listQueryOptions.select && !listQueryOptions.select?.includes('role')) {
 					delete user.role;
 				}

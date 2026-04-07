@@ -112,11 +112,6 @@ const usersList = computed(() =>
 	}),
 );
 
-const projects = computed(() =>
-	projectsStore.availableProjects.filter(
-		(project) => project.id !== projectsStore.currentProjectId,
-	),
-);
 const firstLicensedRole = computed(
 	() => rolesStore.processedProjectRoles.find((role) => role.licensed)?.slug,
 );
@@ -368,8 +363,6 @@ const onSubmit = async () => {
 };
 
 const onDelete = async () => {
-	await projectsStore.getAvailableProjects();
-
 	if (projectsStore.currentProjectId) {
 		resourceCounts.value = await projectsStore.getResourceCounts(projectsStore.currentProjectId);
 	}
@@ -707,7 +700,6 @@ onMounted(async () => {
 			v-model="dialogVisible"
 			:current-project="projectsStore.currentProject"
 			:resource-counts="resourceCounts"
-			:projects="projects"
 			@confirm-delete="onConfirmDelete"
 		/>
 		<ProjectRoleUpgradeDialog

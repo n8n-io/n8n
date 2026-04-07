@@ -345,6 +345,7 @@ export type RelayEventMap = {
 		path: string;
 		method: string;
 		apiVersion: string;
+		userAgent?: string;
 	};
 
 	// #endregion
@@ -692,6 +693,35 @@ export type RelayEventMap = {
 		role: string;
 		userId: string;
 	};
+
+	// #region Token exchange
+
+	'token-exchange-succeeded': {
+		subject: string;
+		actor?: string;
+		scopes?: string;
+		resource?: string;
+		grantType: string;
+		kid?: string;
+		issuer: string;
+		tokenId?: string;
+		clientIp: string;
+	};
+
+	'token-exchange-failed': {
+		subject?: string;
+		failureReason: string;
+		grantType: string;
+		clientIp: string;
+	};
+
+	'embed-login': {
+		subject: string;
+		issuer: string;
+		clientIp: string;
+	};
+
+	// #endregion
 
 	// #region runner
 

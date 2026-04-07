@@ -1,17 +1,20 @@
-import type { InstanceSettings } from 'n8n-core';
 import type { CommunityNodeType } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
+import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'jest-mock-extended';
 
-import { CommunityPackagesController } from '@/modules/community-packages/community-packages.controller';
+import type { EventService } from '@/events/event.service';
+import type { Push } from '@/push';
 import type { NodeRequest } from '@/requests';
 
-import type { EventService } from '../../../events/event.service';
-import type { Push } from '../../../push';
 import type { CommunityNodeTypesService } from '../community-node-types.service';
+import { CommunityPackagesController } from '../community-packages.controller';
+import { CommunityPackagesLifecycleService } from '../community-packages.lifecycle.service';
 import type { CommunityPackagesService } from '../community-packages.service';
 import type { InstalledPackages } from '../installed-packages.entity';
 
 describe('CommunityPackagesController', () => {
+	const logger = mock<Logger>();
 	const push = mock<Push>();
 	const communityPackagesService = mock<CommunityPackagesService>();
 	const eventService = mock<EventService>();
@@ -19,13 +22,16 @@ describe('CommunityPackagesController', () => {
 	const instanceSettings = mock<InstanceSettings>();
 	(instanceSettings as any).nodesDownloadDir = '/tmp/n8n-nodes-download';
 
-	const controller = new CommunityPackagesController(
+	const lifecycle = new CommunityPackagesLifecycleService(
+		logger,
 		push,
 		communityPackagesService,
 		eventService,
 		communityNodeTypesService,
 		instanceSettings,
 	);
+
+	const controller = new CommunityPackagesController(lifecycle);
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -124,6 +130,11 @@ describe('CommunityPackagesController', () => {
 
 			communityPackagesService.findInstalledPackage.mockResolvedValue(previouslyInstalledPackage);
 			communityPackagesService.updatePackage.mockResolvedValue(newInstalledPackage);
+			communityPackagesService.parseNpmPackageName.mockReturnValue({
+				rawString: 'n8n-nodes-test',
+				packageName: 'n8n-nodes-test',
+				version: undefined,
+			});
 
 			const result = await controller.updatePackage(req);
 

@@ -9,7 +9,10 @@ import {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { TimeZoneSchema } from './schemas/timezone.schema';
 import { Z } from './zod-class';
+
+export { isValidTimeZone, StrictTimeZoneSchema, TimeZoneSchema } from './schemas/timezone.schema';
 
 /**
  * Supported AI model providers
@@ -315,27 +318,6 @@ export const chatAttachmentSchema = z.object({
 	fileName: z.string(),
 });
 
-export const isValidTimeZone = (tz: string): boolean => {
-	try {
-		// Throws if invalid timezone
-		new Intl.DateTimeFormat('en-US', { timeZone: tz });
-		return true;
-	} catch {
-		return false;
-	}
-};
-
-export const StrictTimeZoneSchema = z
-	.string()
-	.min(1)
-	.max(50)
-	.regex(/^[A-Za-z0-9_/+-]+$/)
-	.refine(isValidTimeZone, {
-		message: 'Unknown or invalid time zone',
-	});
-
-export const TimeZoneSchema = StrictTimeZoneSchema.optional().catch(undefined);
-
 export type ChatAttachment = z.infer<typeof chatAttachmentSchema>;
 
 export class ChatHubSendMessageRequest extends Z.class({
@@ -590,6 +572,8 @@ const chatProviderSettingsSchema = z.object({
 			isManual: z.boolean().optional(),
 		}),
 	),
+	responsesApiEnabled: z.boolean().optional(),
+	contextWindowLength: z.number().int().min(1).max(256).optional(),
 	createdAt: z.string(),
 	updatedAt: z.string().nullable(),
 });

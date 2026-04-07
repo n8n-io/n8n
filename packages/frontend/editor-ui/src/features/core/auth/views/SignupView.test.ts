@@ -64,7 +64,7 @@ describe('SignupView', () => {
 		expect(() => renderComponent()).not.toThrow();
 	});
 
-	it('should redirect to Signin when no inviterId and inviteeId', async () => {
+	it('should redirect to Signin when no token in URL', async () => {
 		renderComponent();
 
 		expect(toast.showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
@@ -72,47 +72,7 @@ describe('SignupView', () => {
 	});
 
 	it('should validate signup token if there is any', async () => {
-		route.query.inviterId = '123';
-		route.query.inviteeId = '456';
-
-		renderComponent();
-
-		expect(usersStore.validateSignupToken).toHaveBeenCalledWith({
-			inviterId: '123',
-			inviteeId: '456',
-		});
-	});
-
-	it('should not accept invitation when missing tokens', async () => {
-		const { getByRole } = renderComponent();
-
-		const acceptButton = getByRole('button', { name: 'Finish account setup' });
-
-		await userEvent.click(acceptButton);
-
-		expect(toast.showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
-		expect(usersStore.acceptInvitation).not.toHaveBeenCalled();
-	});
-
-	it('should not accept invitation when form is unfilled', async () => {
-		route.query.inviterId = '123';
-		route.query.inviteeId = '456';
-
-		const { getByRole } = renderComponent();
-
-		const acceptButton = getByRole('button', { name: 'Finish account setup' });
-
-		await userEvent.click(acceptButton);
-
-		expect(toast.showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
-		expect(usersStore.acceptInvitation).not.toHaveBeenCalled();
-	});
-
-	it('should validate signup token with JWT token', async () => {
-		const mockToken =
-			'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpbnZpdGVySWQiOiIxMjMiLCJpbnZpdGVlSWQiOiI0NTYifQ.test';
-		// Only set token, not inviterId or inviteeId
-		// beforeEach already clears the query, so we just set what we need
+		const mockToken = 'test-signup-token';
 		route.query.token = mockToken;
 
 		usersStore.validateSignupToken.mockResolvedValueOnce({
@@ -126,15 +86,22 @@ describe('SignupView', () => {
 
 		expect(usersStore.validateSignupToken).toHaveBeenCalledWith({
 			token: mockToken,
-			inviterId: undefined,
-			inviteeId: undefined,
 		});
 	});
 
-	it('should accept invitation with legacy inviterId and inviteeId', async () => {
-		route.query.inviterId = '123';
-		route.query.inviteeId = '456';
-		// beforeEach already clears the query, so token won't be set
+	it('should not accept invitation when missing token', async () => {
+		const { getByRole } = renderComponent();
+
+		const acceptButton = getByRole('button', { name: 'Finish account setup' });
+
+		await userEvent.click(acceptButton);
+
+		expect(toast.showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
+		expect(usersStore.acceptInvitation).not.toHaveBeenCalled();
+	});
+
+	it('should not accept invitation when form is unfilled', async () => {
+		route.query.token = 'test-token';
 
 		usersStore.validateSignupToken.mockResolvedValueOnce({
 			inviter: {
@@ -143,38 +110,45 @@ describe('SignupView', () => {
 			},
 		});
 
-		const { getByRole, container } = renderComponent();
+		const { getByRole } = renderComponent();
 
 		const acceptButton = getByRole('button', { name: 'Finish account setup' });
 
-		const firstNameInput = container.querySelector('input[name="firstName"]');
-		const lastNameInput = container.querySelector('input[name="lastName"]');
-		const passwordInput = container.querySelector('input[type="password"]');
-
-		if (!firstNameInput || !lastNameInput || !passwordInput) {
-			throw new Error('Inputs not found');
-		}
-
-		// TODO: Remove manual tabbing when the following issue is fixed (it should fail the test anyway)
-		// https://github.com/testing-library/vue-testing-library/issues/317
-		await userEvent.tab();
-		expect(document.activeElement).toBe(firstNameInput);
-
-		await userEvent.type(firstNameInput, 'Jane');
-		await userEvent.type(lastNameInput, 'Doe');
-		await userEvent.type(passwordInput, '324R435gfg5fgj!');
-
 		await userEvent.click(acceptButton);
 
-		expect(toast.showError).not.toHaveBeenCalled();
-		expect(usersStore.acceptInvitation).toHaveBeenCalledWith({
-			inviterId: '123',
-			inviteeId: '456',
-			token: undefined,
-			firstName: 'Jane',
-			lastName: 'Doe',
-			password: '324R435gfg5fgj!',
+		// Form validation may prevent submit; either way acceptInvitation must not be called
+		expect(usersStore.acceptInvitation).not.toHaveBeenCalled();
+	});
+
+	it('should validate signup token with JWT token', async () => {
+		const mockToken =
+			'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpbnZpdGVySWQiOiIxMjMiLCJpbnZpdGVlSWQiOiI0NTYifQ.test';
+		route.query.token = mockToken;
+
+		usersStore.validateSignupToken.mockResolvedValueOnce({
+			inviter: {
+				firstName: 'John',
+				lastName: 'Doe',
+			},
 		});
+
+		renderComponent();
+
+		expect(usersStore.validateSignupToken).toHaveBeenCalledWith({
+			token: mockToken,
+		});
+	});
+
+	it('should show error and redirect when URL has only legacy inviterId and inviteeId (no token)', async () => {
+		route.query.inviterId = '123';
+		route.query.inviteeId = '456';
+
+		renderComponent();
+
+		expect(toast.showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
+		expect(router.replace).toHaveBeenCalledWith({ name: VIEWS.SIGNIN });
+		expect(usersStore.validateSignupToken).not.toHaveBeenCalled();
+		expect(usersStore.acceptInvitation).not.toHaveBeenCalled();
 	});
 
 	it('should accept invitation with JWT token', async () => {
@@ -209,47 +183,26 @@ describe('SignupView', () => {
 		await userEvent.click(acceptButton);
 
 		expect(toast.showError).not.toHaveBeenCalled();
-		expect(usersStore.acceptInvitation).toHaveBeenCalledWith({
+		expect(usersStore.acceptInvitation).toHaveBeenCalledTimes(1);
+		const payload = usersStore.acceptInvitation.mock.calls[0][0];
+		expect(payload).toMatchObject({
 			token: mockToken,
-			inviterId: undefined,
-			inviteeId: undefined,
 			firstName: 'Jane',
 			lastName: 'Doe',
 			password: '324R435gfg5fgj!',
 		});
+		// IAM-403: invite acceptance is token-only; must not send legacy params
+		expect(payload).not.toHaveProperty('inviterId');
+		expect(payload).not.toHaveProperty('inviteeId');
 	});
 
-	it('should not accept invitation when missing inviterId or inviteeId in legacy format', async () => {
+	it('should show error and redirect when URL has inviterId but no token', async () => {
 		route.query.inviterId = '123';
-		// beforeEach already clears the query, so inviteeId and token won't be set
 
-		usersStore.validateSignupToken.mockResolvedValueOnce({
-			inviter: {
-				firstName: 'John',
-				lastName: 'Doe',
-			},
-		});
-
-		const { getByRole, container } = renderComponent();
-
-		const acceptButton = getByRole('button', { name: 'Finish account setup' });
-
-		const firstNameInput = container.querySelector('input[name="firstName"]');
-		const lastNameInput = container.querySelector('input[name="lastName"]');
-		const passwordInput = container.querySelector('input[type="password"]');
-
-		if (!firstNameInput || !lastNameInput || !passwordInput) {
-			throw new Error('Inputs not found');
-		}
-
-		// Fill out the form so onSubmit is called
-		await userEvent.type(firstNameInput, 'Jane');
-		await userEvent.type(lastNameInput, 'Doe');
-		await userEvent.type(passwordInput, '324R435gfg5fgj!');
-
-		await userEvent.click(acceptButton);
+		renderComponent();
 
 		expect(toast.showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
+		expect(router.replace).toHaveBeenCalledWith({ name: VIEWS.SIGNIN });
 		expect(usersStore.acceptInvitation).not.toHaveBeenCalled();
 	});
 });

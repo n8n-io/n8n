@@ -2,10 +2,14 @@ import { useCommunityNodesStore } from '../communityNodes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { nextTick, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { i18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -39,6 +43,11 @@ export function useInstallNode() {
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 	const userStore = useUsersStore();
 	const loading = ref(false);
 	const toast = useToast();
@@ -93,10 +102,9 @@ export function useInstallNode() {
 			// update parameters and webhooks for freshly installed nodes
 			// rename types from preview version to the actual version
 			const nodeType = props.nodeType;
-			if (nodeType && workflowsStore.workflow.nodes?.length) {
-				const nodesToUpdate = workflowsStore.workflow.nodes.filter(
-					(node) => node.type === removePreviewToken(nodeType),
-				);
+			const allNodes = workflowDocumentStore.value?.allNodes ?? [];
+			if (nodeType && allNodes.length) {
+				const nodesToUpdate = allNodes.filter((node) => node.type === removePreviewToken(nodeType));
 				canvasOperations.initializeUnknownNodes(nodesToUpdate);
 			}
 			toast.showMessage({

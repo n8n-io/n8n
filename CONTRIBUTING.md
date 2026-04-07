@@ -187,6 +187,26 @@ To start n8n execute:
 pnpm start
 ```
 
+### Environment variables (optional)
+
+Most environment variables have default values, but if you needed to modify any a template for local environment variables is provided at `.env.local.example`. Copy it and fill in any values you need.
+
+```bash
+cp .env.local.example .env.local
+```
+
+Then prefix any dev command with `dotenvx` to load it, for example:
+
+```bash
+cd packages/cli && pnpm exec dotenvx run -f ../../.env.local -- pnpm dev
+
+pnpm exec dotenvx run -f .env.local -- pnpm dev:be
+```
+
+> **Note:** dotenvx supports variable expansion (e.g. `$HOME`) but not shell
+> tilde expansion. Use `$HOME` instead of `~` for paths
+> (e.g. `N8N_USER_FOLDER=$HOME/.n8n-dev`).
+
 ## Development cycle
 
 While iterating on n8n modules code, you can run `pnpm dev`. It will then

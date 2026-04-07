@@ -16,7 +16,6 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import * as permissions from '@/app/utils/rbac/permissions';
-import { TAMPER_PROOF_INVITE_LINKS } from '@/app/constants/experiments';
 import type { PermissionTypeOptions } from '@/app/types/rbac';
 
 const { emitters, addEmitter } = useEmitters<'settingsUsersTable'>();
@@ -537,28 +536,7 @@ describe('SettingsUsersView', () => {
 			});
 		});
 
-		it('should show copy invite link action when feature flag is disabled', () => {
-			// Ensure feature flag is disabled - reset mock to ensure clean state
-			// The beforeEach already sets this, but be explicit to avoid test order issues
-			mockIsVariantEnabled.mockReset();
-			mockIsVariantEnabled.mockReturnValue(false);
-
-			renderComponent();
-
-			// User 3 has inviteAcceptUrl and no firstName, so copyInviteLink should show
-			// when feature flag is disabled
-			const actionsList = screen.getByTestId('actions-for-3');
-			expect(actionsList).toBeInTheDocument();
-			expect(screen.getByTestId('action-copyInviteLink-3')).toBeInTheDocument();
-		});
-
-		it('should handle generate invite link action when feature flag is enabled', async () => {
-			mockIsVariantEnabled.mockImplementation(
-				(experiment: string, variant: string) =>
-					experiment === TAMPER_PROOF_INVITE_LINKS.name &&
-					variant === TAMPER_PROOF_INVITE_LINKS.variant,
-			);
-
+		it('should handle generate invite link action', async () => {
 			const spy = vi
 				.spyOn(permissions, 'hasPermission')
 				.mockImplementation((features: string[], options?: Partial<PermissionTypeOptions>) => {
@@ -587,13 +565,7 @@ describe('SettingsUsersView', () => {
 			spy.mockRestore();
 		});
 
-		it('should handle generate invite link error when feature flag is enabled', async () => {
-			mockIsVariantEnabled.mockImplementation(
-				(experiment: string, variant: string) =>
-					experiment === TAMPER_PROOF_INVITE_LINKS.name &&
-					variant === TAMPER_PROOF_INVITE_LINKS.variant,
-			);
-
+		it('should handle generate invite link error', async () => {
 			usersStore.generateInviteLink = vi
 				.fn()
 				.mockRejectedValue(new Error('Failed to generate link'));
@@ -739,29 +711,7 @@ describe('SettingsUsersView', () => {
 			expect(mockToast.showToast).not.toHaveBeenCalled();
 		});
 
-		it('should hide copy invite link action when feature flag is enabled', () => {
-			mockIsVariantEnabled.mockImplementation(
-				(experiment: string, variant: string) =>
-					experiment === TAMPER_PROOF_INVITE_LINKS.name &&
-					variant === TAMPER_PROOF_INVITE_LINKS.variant,
-			);
-
-			renderComponent();
-
-			// User 3 has inviteAcceptUrl and no firstName, so copyInviteLink would normally show
-			const actionsList = screen.getByTestId('actions-for-3');
-			expect(actionsList).toBeInTheDocument();
-			// Copy invite link should not be in the actions list
-			expect(screen.queryByTestId('action-copyInviteLink-3')).not.toBeInTheDocument();
-		});
-
-		it('should show generate invite link action when feature flag is enabled', () => {
-			mockIsVariantEnabled.mockImplementation(
-				(experiment: string, variant: string) =>
-					experiment === TAMPER_PROOF_INVITE_LINKS.name &&
-					variant === TAMPER_PROOF_INVITE_LINKS.variant,
-			);
-
+		it('should show generate invite link action', () => {
 			const spy = vi
 				.spyOn(permissions, 'hasPermission')
 				.mockImplementation((features: string[], options?: Partial<PermissionTypeOptions>) => {
@@ -781,39 +731,7 @@ describe('SettingsUsersView', () => {
 			spy.mockRestore();
 		});
 
-		it('should hide generate invite link action when feature flag is disabled', () => {
-			mockIsVariantEnabled.mockImplementation(
-				(experiment: string, variant: string) =>
-					!(
-						experiment === TAMPER_PROOF_INVITE_LINKS.name &&
-						variant === TAMPER_PROOF_INVITE_LINKS.variant
-					),
-			);
-
-			const spy = vi
-				.spyOn(permissions, 'hasPermission')
-				.mockImplementation((features: string[], options?: Partial<PermissionTypeOptions>) => {
-					if (features.includes('rbac') && options?.rbac?.scope === 'user:generateInviteLink') {
-						return true;
-					}
-					return false;
-				});
-
-			renderComponent();
-
-			// Generate invite link should not be in the actions list when feature flag is disabled
-			expect(screen.queryByTestId('action-generateInviteLink-3')).not.toBeInTheDocument();
-
-			spy.mockRestore();
-		});
-
 		it('should hide generate invite link action when user has already accepted invite', () => {
-			mockIsVariantEnabled.mockImplementation(
-				(experiment: string, variant: string) =>
-					experiment === TAMPER_PROOF_INVITE_LINKS.name &&
-					variant === TAMPER_PROOF_INVITE_LINKS.variant,
-			);
-
 			const spy = vi
 				.spyOn(permissions, 'hasPermission')
 				.mockImplementation((features: string[], options?: Partial<PermissionTypeOptions>) => {

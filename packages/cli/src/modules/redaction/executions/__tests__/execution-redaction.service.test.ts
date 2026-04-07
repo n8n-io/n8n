@@ -1,7 +1,7 @@
-import { Logger } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
-import type { IRunExecutionData, WorkflowExecuteMode } from 'n8n-workflow';
+import type { IRunExecutionData, ITaskData, WorkflowExecuteMode } from 'n8n-workflow';
 import { mock } from 'jest-mock-extended';
 
 import type {
@@ -9,6 +9,7 @@ import type {
 	RedactableExecution,
 } from '@/executions/execution-redaction';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ScopeForbiddenError } from '@/errors/response-errors/scope-forbidden.error';
 import type { EventService } from '@/events/event.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -18,6 +19,7 @@ import { NodeDefinedFieldRedactionStrategy } from '../strategies/node-defined-fi
 
 describe('ExecutionRedactionService', () => {
 	const logger = mockInstance(Logger);
+	const licenseState = mockInstance(LicenseState);
 	const workflowFinderService = mockInstance(WorkflowFinderService);
 	const eventService = mock<EventService>();
 	const fullItemRedactionStrategy = mockInstance(FullItemRedactionStrategy);
@@ -35,8 +37,10 @@ describe('ExecutionRedactionService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		licenseState.isDataRedactionLicensed.mockReturnValue(true);
 		service = new ExecutionRedactionService(
 			logger,
+			licenseState,
 			workflowFinderService,
 			eventService,
 			fullItemRedactionStrategy,
@@ -55,6 +59,7 @@ describe('ExecutionRedactionService', () => {
 			policy?: 'none' | 'all' | 'non-manual';
 			workflowSettingsPolicy?: 'none' | 'all' | 'non-manual';
 			withRuntimeData?: boolean;
+			withDynamicCredentials?: boolean;
 		} = {},
 	): RedactableExecution => {
 		const {
@@ -63,6 +68,7 @@ describe('ExecutionRedactionService', () => {
 			policy,
 			workflowSettingsPolicy,
 			withRuntimeData = true,
+			withDynamicCredentials = false,
 		} = overrides;
 
 		const executionData: IRunExecutionData['executionData'] = {
@@ -79,8 +85,22 @@ describe('ExecutionRedactionService', () => {
 				establishedAt: Date.now(),
 				source: mode,
 				redaction: { version: 1 as const, policy },
+				...(withDynamicCredentials ? { credentials: 'encrypted-credential-context' } : {}),
+			};
+		} else if (withDynamicCredentials) {
+			executionData.runtimeData = {
+				version: 1 as const,
+				establishedAt: Date.now(),
+				source: mode,
+				credentials: 'encrypted-credential-context',
 			};
 		}
+
+		const runData = withDynamicCredentials
+			? {
+					SomeNode: [{ startTime: 0, executionTime: 0, usedDynamicCredentials: true } as ITaskData],
+				}
+			: {};
 
 		return {
 			id: 'execution-123',
@@ -88,7 +108,7 @@ describe('ExecutionRedactionService', () => {
 			workflowId,
 			data: {
 				version: 1,
-				resultData: { runData: {} },
+				resultData: { runData },
 				executionData,
 			},
 			workflowData: {
@@ -190,6 +210,45 @@ describe('ExecutionRedactionService', () => {
 
 			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).toHaveBeenCalledTimes(1);
 			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('keepOriginal mode', () => {
+		it('clones only executions that need redaction, preserving original references for others', async () => {
+			const noneExecution = makeExecution({
+				policy: 'none',
+				mode: 'trigger',
+				workflowId: 'wf-none',
+			});
+			const allExecution = makeExecution({
+				policy: 'all',
+				mode: 'trigger',
+				workflowId: 'wf-all',
+			});
+			const nonManualManual = makeExecution({
+				policy: 'non-manual',
+				mode: 'manual',
+				workflowId: 'wf-nm',
+			});
+
+			// FullItemRedactionStrategy.requiresRedaction always returns true when in the pipeline
+			fullItemRedactionStrategy.requiresRedaction.mockReturnValue(true);
+			// NodeDefinedFieldRedactionStrategy.requiresRedaction returns false (no sensitive fields)
+			nodeDefinedFieldRedactionStrategy.requiresRedaction.mockReturnValue(false);
+
+			const executions = [noneExecution, allExecution, nonManualManual];
+			const options: ExecutionRedactionOptions = { user: mockUser, keepOriginal: true };
+
+			await service.processExecutions(executions, options);
+
+			// policy=none → FullItemRedaction not in pipeline → no requiresRedaction=true → same reference
+			expect(executions[0]).toBe(noneExecution);
+
+			// policy=all → FullItemRedaction in pipeline → requiresRedaction=true → cloned
+			expect(executions[1]).not.toBe(allExecution);
+
+			// policy=non-manual + mode=manual → FullItemRedaction not in pipeline → same reference
+			expect(executions[2]).toBe(nonManualManual);
 		});
 	});
 
@@ -332,11 +391,17 @@ describe('ExecutionRedactionService', () => {
 	});
 
 	describe('reveal path (redactExecutionData === false)', () => {
-		it('throws ForbiddenError when neither policy nor user allows reveal', async () => {
+		it('throws ScopeForbiddenError with structured error when neither policy nor user allows reveal', async () => {
 			const execution = makeExecution({ policy: 'all', mode: 'trigger' });
-			await expect(
-				service.processExecution(execution, { user: mockUser, redactExecutionData: false }),
-			).rejects.toThrow(ForbiddenError);
+			const error: ScopeForbiddenError = await service
+				.processExecution(execution, { user: mockUser, redactExecutionData: false })
+				.catch((e) => e);
+
+			expect(error).toBeInstanceOf(ScopeForbiddenError);
+			expect(error.httpStatusCode).toBe(403);
+			expect(error.meta.errorCode).toBe('EXECUTION_REVEAL_FORBIDDEN');
+			expect(error.meta.requiredScope).toBe('execution:reveal');
+			expect(error.hint).toBeDefined();
 		});
 
 		it('does not throw when policy allows reveal (policy=none)', async () => {
@@ -396,7 +461,7 @@ describe('ExecutionRedactionService', () => {
 					ipAddress: '1.2.3.4',
 					userAgent: 'TestAgent/1.0',
 				}),
-			).rejects.toThrow(ForbiddenError);
+			).rejects.toThrow(ScopeForbiddenError);
 
 			expect(eventService.emit).toHaveBeenCalledWith('execution-data-reveal-failure', {
 				user: mockUser,
@@ -424,7 +489,7 @@ describe('ExecutionRedactionService', () => {
 			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
 		});
 
-		it('throws ForbiddenError if any execution in batch is not allowed and emits reveal-failure event', async () => {
+		it('throws ScopeForbiddenError if any execution in batch is not allowed and emits reveal-failure event', async () => {
 			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf-1']));
 
 			const executions = [
@@ -438,7 +503,9 @@ describe('ExecutionRedactionService', () => {
 				userAgent: 'TestAgent/1.0',
 			};
 
-			await expect(service.processExecutions(executions, options)).rejects.toThrow(ForbiddenError);
+			await expect(service.processExecutions(executions, options)).rejects.toThrow(
+				ScopeForbiddenError,
+			);
 			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).toHaveBeenCalledTimes(1);
 
 			expect(eventService.emit).toHaveBeenCalledWith('execution-data-reveal-failure', {
@@ -504,6 +571,111 @@ describe('ExecutionRedactionService', () => {
 			const execution = makeExecution({ withRuntimeData: false, mode: 'trigger' });
 			await service.processExecution(execution, { user: mockUser });
 			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('license enforcement', () => {
+		it('should treat policy as none when data-redaction license is missing', async () => {
+			licenseState.isDataRedactionLicensed.mockReturnValue(false);
+
+			const execution = makeExecution({ policy: 'all', mode: 'trigger' });
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
+		});
+
+		it('should apply policy when data-redaction license is present', async () => {
+			licenseState.isDataRedactionLicensed.mockReturnValue(true);
+
+			const execution = makeExecution({ policy: 'all', mode: 'trigger' });
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('dynamic credentials forced redaction', () => {
+		it('includes FullItemRedactionStrategy even when policy is none', async () => {
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				withDynamicCredentials: true,
+			});
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
+		});
+
+		it('passes userCanReveal: false regardless of permissions', async () => {
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
+				new Set(['workflow-123']),
+			);
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				withDynamicCredentials: true,
+			});
+			await service.processExecution(execution, { user: mockUser });
+
+			const [, context] = fullItemRedactionStrategy.apply.mock.calls[0];
+			expect(context.userCanReveal).toBe(false);
+		});
+
+		it('passes hasDynamicCredentials: true in context so strategy sets correct reason', async () => {
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				withDynamicCredentials: true,
+			});
+			await service.processExecution(execution, { user: mockUser });
+
+			const [, context] = fullItemRedactionStrategy.apply.mock.calls[0];
+			expect(context.hasDynamicCredentials).toBe(true);
+		});
+
+		it('throws ForbiddenError on reveal path', async () => {
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
+				new Set(['workflow-123']),
+			);
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				withDynamicCredentials: true,
+			});
+
+			await expect(
+				service.processExecution(execution, { user: mockUser, redactExecutionData: false }),
+			).rejects.toThrow(ForbiddenError);
+		});
+
+		it('does not force-redact when execution has no dynamic credentials', async () => {
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				withDynamicCredentials: false,
+			});
+			await service.processExecution(execution, { user: mockUser });
+
+			// policy=none, no dynamic creds → no FullItemRedactionStrategy
+			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
+		});
+
+		it('scrubs runtimeData.credentials from the execution data', async () => {
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				withDynamicCredentials: true,
+			});
+
+			// Verify credentials exist before processing
+			expect(execution.data.executionData?.runtimeData?.credentials).toBe(
+				'encrypted-credential-context',
+			);
+
+			await service.processExecution(execution, { user: mockUser });
+
+			// Credentials must be scrubbed from the response
+			expect(execution.data.executionData?.runtimeData?.credentials).toBeUndefined();
 		});
 	});
 });

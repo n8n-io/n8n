@@ -531,7 +531,7 @@ describe('AiWorkflowBuilderService', () => {
 			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
 				undefined,
 				'test-user-id',
-				undefined,
+				'code-builder',
 			);
 		});
 
@@ -562,7 +562,7 @@ describe('AiWorkflowBuilderService', () => {
 			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
 				workflowId,
 				'test-user-id',
-				undefined,
+				'code-builder',
 			);
 		});
 
@@ -578,7 +578,7 @@ describe('AiWorkflowBuilderService', () => {
 			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
 				workflowId,
 				'test-user-id',
-				undefined,
+				'code-builder',
 			);
 		});
 
@@ -602,7 +602,7 @@ describe('AiWorkflowBuilderService', () => {
 			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
 				workflowId,
 				'test-user-id',
-				undefined,
+				'code-builder',
 			);
 		});
 
@@ -626,7 +626,7 @@ describe('AiWorkflowBuilderService', () => {
 			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
 				workflowId,
 				'test-user-id',
-				undefined,
+				'code-builder',
 			);
 		});
 
@@ -639,32 +639,10 @@ describe('AiWorkflowBuilderService', () => {
 			const result = await service.getSessions(workflowId);
 
 			expect(result.sessions).toEqual([]);
-			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(workflowId, undefined, undefined);
-		});
-
-		it('should pass codeBuilder flag to sessionManager', async () => {
-			const workflowId = 'test-workflow';
-			(mockSessionManager.getSessions as jest.Mock).mockResolvedValue({ sessions: [] });
-
-			await service.getSessions(workflowId, mockUser, true);
-
 			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
 				workflowId,
-				'test-user-id',
-				'code-builder',
-			);
-		});
-
-		it('should not pass code-builder agentType when codeBuilder is false', async () => {
-			const workflowId = 'test-workflow';
-			(mockSessionManager.getSessions as jest.Mock).mockResolvedValue({ sessions: [] });
-
-			await service.getSessions(workflowId, mockUser, false);
-
-			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
-				workflowId,
-				'test-user-id',
 				undefined,
+				'code-builder',
 			);
 		});
 	});
@@ -712,7 +690,7 @@ describe('AiWorkflowBuilderService', () => {
 			expect(mockSessionManager.getSessions).toHaveBeenCalledWith(
 				workflowId,
 				'test-user-id',
-				undefined,
+				'code-builder',
 			);
 		});
 	});
