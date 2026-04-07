@@ -113,8 +113,11 @@ export class Supabase implements INodeType {
 					header,
 				);
 				for (const path of Object.keys(paths as IDataObject)) {
-					//omit introspection path
-					if (path === '/') continue;
+					// omit introspection path and skip RPCs, leaving only tables
+					if (path === '/' || path.startsWith('/rpc/')) {
+						continue;
+					}
+
 					returnData.push({
 						name: path.replace('/', ''),
 						value: path.replace('/', ''),
