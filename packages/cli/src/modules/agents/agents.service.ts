@@ -19,6 +19,12 @@ import { In } from '@n8n/typeorm';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import { Agent } from './entities/agent.entity';
+import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
+import { AgentRepository } from './repositories/agent.repository';
+import { NodeToolRepository } from './tool-repository';
+import type { WorkflowToolDescriptor } from './types';
+
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -111,6 +117,7 @@ export class AgentsService {
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
 		private readonly secureRuntime: AgentSecureRuntime,
 		private readonly ephemeralNodeExecutor: EphemeralNodeExecutor,
+		private readonly nodeToolRepository: NodeToolRepository,
 		private readonly n8nMemory: N8nMemory,
 		private readonly agentPublishedVersionRepository: AgentPublishedVersionRepository,
 	) {}
@@ -355,7 +362,12 @@ export class AgentsService {
 	 * Workflow and node tools are resolved earlier via `makeToolResolver()` inside
 	 * `fromSchema()`, so this method only handles host-side singletons.
 	 */
-	private async injectRuntimeDependencies(agent: agents.Agent, agentId: string): Promise<void> {
+	private async injectRuntimeDependencies(
+		agent: agents.Agent,
+		agentId: string,
+		projectId: string,
+		credentialProvider: CredentialProvider,
+	): Promise<void> {
 		// Inject the rich_interaction tool for ad-hoc UI in chat integrations.
 		try {
 			const { createRichInteractionTool } = await import('./integrations/rich-interaction-tool');
@@ -367,6 +379,40 @@ export class AgentsService {
 			});
 		}
 
+		// Self-schema tools: let the agent read and rewrite its own code, and discover node tools.
+		const { createGetMyCodeTool, createTypecheckTool, createSetCodeTool, createListToolsTool } =
+			await import('./integrations/self-schema-tools');
+
+		agent.tool(
+			createGetMyCodeTool(async () => {
+				const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+				return entity?.code ?? '';
+			}),
+		);
+
+		agent.tool(
+			createTypecheckTool(async (code: string) => {
+				try {
+					await this.secureRuntime.describeSecurely(code);
+					return { ok: true, error: null };
+				} catch (e) {
+					return { ok: false, error: e instanceof Error ? e.message : String(e) };
+				}
+			}),
+		);
+
+		agent.tool(
+			createSetCodeTool(async (code: string) => {
+				await this.updateCode(agentId, projectId, code);
+			}),
+		);
+
+		agent.tool(
+			createListToolsTool(async () => {
+				return await this.nodeToolRepository.listTools(credentialProvider);
+			}),
+		);
+
 		// Inject checkpoint storage
 		if (!agent.hasCheckpointStorage()) {
 			agent.checkpoint(this.n8nCheckpointStorage);
@@ -374,7 +420,40 @@ export class AgentsService {
 	}
 
 	/**
->>>>>>> 647b806558 (feat: Add ToolFromNode implementation)
+	 * Reconstruct an agent from its persisted DB schema using Agent.fromSchema().
+	 * This is the execution-time path — no compile() call needed.
+	 * The runtime is cached for subsequent calls.
+	 */
+	private async reconstructFromSchema(
+		agentEntity: Agent,
+		credentialProvider: CredentialProvider,
+		userId?: string,
+	): Promise<agents.Agent> {
+		if (!agentEntity.schema) {
+			throw new UserError(
+				'Agent schema is not available. The agent may need to be re-saved to generate its schema.',
+			);
+		}
+
+		const source = agentEntity.code;
+		if (!source?.trim()) {
+			throw new UserError('Agent has no source code.');
+		}
+
+		const executor = this.secureRuntime.createExecutor(source);
+
+		const reconstructed = await agents.Agent.fromSchema(agentEntity.schema, agentEntity.name, {
+			handlerExecutor: executor,
+			credentialProvider,
+			resolveTool: this.makeToolResolver(agentEntity.projectId, userId),
+		});
+
+		await this.injectRuntimeDependencies(reconstructed, agentEntity.id);
+
+		return reconstructed;
+	}
+
+	/**
 	 * Resume a suspended tool call and yield the resulting stream chunks.
 	 * Used by chat integration handlers to continue an agent run after
 	 * a human-in-the-loop action (button click, modal submission).
