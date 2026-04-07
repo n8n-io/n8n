@@ -908,6 +908,7 @@ async function handleApply() {
 		type: 'setup',
 		provided_inputs: provided,
 		skipped_inputs: skipped,
+		num_tasks: cards.value.length,
 	};
 	telemetry.track('User finished providing input', eventProps);
 
@@ -1004,6 +1005,7 @@ async function handleLater() {
 		type: 'setup',
 		provided_inputs: provided,
 		skipped_inputs: skipped,
+		num_tasks: cards.value.length,
 	};
 	telemetry.track('User finished providing input', eventProps);
 	isSubmitted.value = true;

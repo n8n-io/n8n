@@ -269,6 +269,7 @@ async function handleContinue() {
 		type: 'credential-setup',
 		provided_inputs: provided,
 		skipped_inputs: skipped,
+		num_tasks: props.credentialRequests.length,
 	};
 	telemetry.track('User finished providing input', eventProps);
 
@@ -302,6 +303,7 @@ async function handleLater() {
 		type: 'credential-setup',
 		provided_inputs: provided,
 		skipped_inputs: skipped,
+		num_tasks: props.credentialRequests.length,
 	};
 	telemetry.track('User finished providing input', eventProps);
 

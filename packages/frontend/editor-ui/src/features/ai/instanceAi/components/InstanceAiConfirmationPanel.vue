@@ -226,7 +226,7 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 			});
 		}
 	}
-	trackInputCompleted(conf, provided, skipped);
+	trackInputCompleted(conf, provided, skipped, { num_tasks: answers.length });
 	store.resolveConfirmation(conf.requestId, 'approved');
 	void store.confirmAction(
 		conf.requestId,
