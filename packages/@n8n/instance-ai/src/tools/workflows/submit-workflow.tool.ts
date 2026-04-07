@@ -131,6 +131,19 @@ export {
 	type CredentialResolutionResult,
 } from './resolve-credentials';
 
+export const submitWorkflowInputSchema = z.object({
+	filePath: z
+		.string()
+		.optional()
+		.describe('Path to the TypeScript workflow file (default: ~/workspace/src/workflow.ts)'),
+	workflowId: z.string().optional().describe('Existing workflow ID to update (omit to create new)'),
+	projectId: z
+		.string()
+		.optional()
+		.describe('Project ID to create the workflow in. Defaults to personal project.'),
+	name: z.string().optional().describe('Workflow name (required for new workflows)'),
+});
+
 export function createSubmitWorkflowTool(
 	context: InstanceAiContext,
 	workspace: Workspace,
@@ -143,21 +156,7 @@ export function createSubmitWorkflowTool(
 			'Submit a workflow from a TypeScript file in the sandbox. Reads the file, validates it, ' +
 			'and saves it to n8n as a draft. The workflow must be explicitly published via ' +
 			'publish-workflow before it will run on its triggers in production.',
-		inputSchema: z.object({
-			filePath: z
-				.string()
-				.optional()
-				.describe('Path to the TypeScript workflow file (default: ~/workspace/src/workflow.ts)'),
-			workflowId: z
-				.string()
-				.optional()
-				.describe('Existing workflow ID to update (omit to create new)'),
-			projectId: z
-				.string()
-				.optional()
-				.describe('Project ID to create the workflow in. Defaults to personal project.'),
-			name: z.string().optional().describe('Workflow name (required for new workflows)'),
-		}),
+		inputSchema: submitWorkflowInputSchema,
 		outputSchema: z.object({
 			success: z.boolean(),
 			workflowId: z.string().optional(),
@@ -172,7 +171,12 @@ export function createSubmitWorkflowTool(
 			errors: z.array(z.string()).optional(),
 			warnings: z.array(z.string()).optional(),
 		}),
-		execute: async ({ filePath: rawFilePath, workflowId, projectId, name }) => {
+		execute: async ({
+			filePath: rawFilePath,
+			workflowId,
+			projectId,
+			name,
+		}: z.infer<typeof submitWorkflowInputSchema>) => {
 			// Resolve file path: relative paths resolve against workspace root, ~ is expanded
 			const root = await getWorkspaceRoot(workspace);
 			let filePath: string;

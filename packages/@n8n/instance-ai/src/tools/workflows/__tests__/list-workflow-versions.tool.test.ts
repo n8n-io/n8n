@@ -100,7 +100,10 @@ describe('createListWorkflowVersionsTool', () => {
 	it('returns versions from the service', async () => {
 		const tool = createListWorkflowVersionsTool(context);
 
-		const result = await tool.execute!({ workflowId: 'wf-123' }, {} as never);
+		const result = (await tool.execute!({ workflowId: 'wf-123' }, {} as never)) as Record<
+			string,
+			unknown
+		>;
 
 		expect(context.workflowService.listVersions).toHaveBeenCalledWith('wf-123', {
 			limit: undefined,
