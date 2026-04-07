@@ -1,7 +1,10 @@
 <script lang="ts" setup>
 import { N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import type { InstanceAiConfirmation } from '@n8n/api-types';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref } from 'vue';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useInstanceAiStore, type PendingConfirmationItem } from '../instanceAi.store';
 import { useToolLabel } from '../toolLabels';
 import DomainAccessApproval from './DomainAccessApproval.vue';
@@ -14,7 +17,40 @@ import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
 
 const store = useInstanceAiStore();
 const i18n = useI18n();
+const rootStore = useRootStore();
+const telemetry = useTelemetry();
 const { getToolLabel } = useToolLabel();
+
+function getConfirmationType(conf: InstanceAiConfirmation): string {
+	if (conf.inputType) return conf.inputType;
+	if (conf.setupRequests?.length) return 'setup';
+	if (conf.credentialRequests?.length) return 'credential-setup';
+	return 'approval';
+}
+
+function trackInputStep(
+	conf: InstanceAiConfirmation,
+	providedInputs: Array<{ label: string; options: string[]; option_chosen: string }>,
+	skippedInputs: Array<{ label: string; options: string[] }>,
+): void {
+	telemetry.track('User completed input step', {
+		thread_id: store.currentThreadId,
+		input_thread_id: conf.inputThreadId ?? '',
+		instance_id: rootStore.instanceId,
+		type: getConfirmationType(conf),
+		provided_inputs: providedInputs,
+		skipped_inputs: skippedInputs,
+	});
+}
+
+function trackInputFinished(conf: InstanceAiConfirmation): void {
+	telemetry.track('User finished providing input', {
+		thread_id: store.currentThreadId,
+		input_thread_id: conf.inputThreadId ?? '',
+		instance_id: rootStore.instanceId,
+		type: getConfirmationType(conf),
+	});
+}
 
 const ROLE_LABELS: Record<string, string> = {
 	orchestrator: 'Agent',
@@ -43,7 +79,7 @@ type ConfirmationChunk = ApprovalWrappedGroup | StandaloneChunk;
 
 /** Items that need the "Agent needs approval" wrapper (generic approvals, domain access). */
 function isApprovalWrapped(item: PendingConfirmationItem): boolean {
-	const conf = item.toolCall.confirmation!;
+	const conf = item.toolCall.confirmation;
 	if (conf.domainAccess) return true;
 	// Generic approval: no special fields and no inputType
 	if (
@@ -86,37 +122,69 @@ const chunks = computed((): ConfirmationChunk[] => {
 // Text input state per requestId
 const textInputValues = ref<Record<string, string>>({});
 
-function handleConfirm(requestId: string, approved: boolean) {
-	if (store.resolvedConfirmationIds.has(requestId)) return;
-	store.resolveConfirmation(requestId, approved ? 'approved' : 'denied');
-	void store.confirmAction(requestId, approved);
+function handleConfirm(item: PendingConfirmationItem, approved: boolean) {
+	const conf = item.toolCall.confirmation;
+	if (store.resolvedConfirmationIds.has(conf.requestId)) return;
+	trackInputStep(
+		conf,
+		[
+			{
+				label: conf.message,
+				options: ['approve', 'deny'],
+				option_chosen: approved ? 'approve' : 'deny',
+			},
+		],
+		[],
+	);
+	store.resolveConfirmation(conf.requestId, approved ? 'approved' : 'denied');
+	void store.confirmAction(conf.requestId, approved);
 }
 
 function handleApproveAll(items: PendingConfirmationItem[]) {
 	for (const item of items) {
-		const rid = item.toolCall.confirmation!.requestId;
-		if (store.resolvedConfirmationIds.has(rid)) continue;
-		store.resolveConfirmation(rid, 'approved');
-		void store.confirmAction(rid, true);
+		const conf = item.toolCall.confirmation;
+		if (store.resolvedConfirmationIds.has(conf.requestId)) continue;
+		trackInputStep(
+			conf,
+			[{ label: conf.message, options: ['approve', 'deny'], option_chosen: 'approve' }],
+			[],
+		);
+		store.resolveConfirmation(conf.requestId, 'approved');
+		void store.confirmAction(conf.requestId, true);
 	}
 }
 
-function handleTextSubmit(requestId: string) {
-	const value = (textInputValues.value[requestId] ?? '').trim();
+function handleTextSubmit(conf: InstanceAiConfirmation) {
+	const value = (textInputValues.value[conf.requestId] ?? '').trim();
 	if (!value) return;
-	store.resolveConfirmation(requestId, 'approved');
-	void store.confirmAction(requestId, true, undefined, undefined, undefined, value);
+	trackInputStep(conf, [{ label: conf.message, options: [], option_chosen: value }], []);
+	store.resolveConfirmation(conf.requestId, 'approved');
+	void store.confirmAction(conf.requestId, true, undefined, undefined, undefined, value);
 }
 
-function handleTextSkip(requestId: string) {
-	store.resolveConfirmation(requestId, 'deferred');
-	void store.confirmAction(requestId, false);
+function handleTextSkip(conf: InstanceAiConfirmation) {
+	trackInputStep(conf, [], [{ label: conf.message, options: [] }]);
+	store.resolveConfirmation(conf.requestId, 'deferred');
+	void store.confirmAction(conf.requestId, false);
 }
 
-function handleQuestionsSubmit(requestId: string, answers: QuestionAnswer[]) {
-	store.resolveConfirmation(requestId, 'approved');
+function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAnswer[]) {
+	for (const answer of answers) {
+		const chosen = answer.customText ?? answer.selectedOptions.join(', ');
+		if (answer.skipped) {
+			trackInputStep(conf, [], [{ label: answer.questionId, options: answer.selectedOptions }]);
+		} else {
+			trackInputStep(
+				conf,
+				[{ label: answer.questionId, options: answer.selectedOptions, option_chosen: chosen }],
+				[],
+			);
+		}
+	}
+	trackInputFinished(conf);
+	store.resolveConfirmation(conf.requestId, 'approved');
 	void store.confirmAction(
-		requestId,
+		conf.requestId,
 		true,
 		undefined,
 		undefined,
@@ -128,19 +196,29 @@ function handleQuestionsSubmit(requestId: string, answers: QuestionAnswer[]) {
 	);
 }
 
-function handlePlanApprove(requestId: string) {
-	store.resolveConfirmation(requestId, 'approved');
-	void store.confirmAction(requestId, true);
+function handlePlanApprove(conf: InstanceAiConfirmation) {
+	trackInputStep(
+		conf,
+		[{ label: 'plan', options: ['approve', 'request-changes'], option_chosen: 'approve' }],
+		[],
+	);
+	store.resolveConfirmation(conf.requestId, 'approved');
+	void store.confirmAction(conf.requestId, true);
 }
 
-function handlePlanRequestChanges(requestId: string, feedback: string) {
-	store.resolveConfirmation(requestId, 'denied');
-	void store.confirmAction(requestId, false, undefined, undefined, undefined, feedback);
+function handlePlanRequestChanges(conf: InstanceAiConfirmation, feedback: string) {
+	trackInputStep(
+		conf,
+		[{ label: 'plan', options: ['approve', 'request-changes'], option_chosen: 'request-changes' }],
+		[],
+	);
+	store.resolveConfirmation(conf.requestId, 'denied');
+	void store.confirmAction(conf.requestId, false, undefined, undefined, undefined, feedback);
 }
 
 /** True when every item in the group is a generic approval (not domain/cred/text). */
 function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
-	return items.every((item) => !item.toolCall.confirmation!.domainAccess);
+	return items.every((item) => !item.toolCall.confirmation.domainAccess);
 }
 </script>
 
@@ -151,88 +229,85 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 			:key="
 				chunk.type === 'approvalWrapped'
 					? 'group-' + chunk.agentId
-					: chunk.item.toolCall.confirmation!.requestId
+					: chunk.item.toolCall.confirmation.requestId
 			"
 		>
 			<!-- ============ Standalone items (no approval wrapper) ============ -->
 			<template v-if="chunk.type === 'standalone'">
 				<!-- Workflow setup -->
 				<InstanceAiWorkflowSetup
-					v-if="chunk.item.toolCall.confirmation!.setupRequests?.length"
-					:key="'setup-' + chunk.item.toolCall.confirmation!.requestId"
+					v-if="chunk.item.toolCall.confirmation.setupRequests?.length"
+					:key="'setup-' + chunk.item.toolCall.confirmation.requestId"
 					:class="$style.confirmation"
-					:request-id="chunk.item.toolCall.confirmation!.requestId"
-					:setup-requests="chunk.item.toolCall.confirmation!.setupRequests!"
-					:workflow-id="chunk.item.toolCall.confirmation!.workflowId ?? ''"
-					:message="chunk.item.toolCall.confirmation!.message"
-					:project-id="chunk.item.toolCall.confirmation!.projectId"
-					:credential-flow="chunk.item.toolCall.confirmation!.credentialFlow"
+					:request-id="chunk.item.toolCall.confirmation.requestId"
+					:setup-requests="chunk.item.toolCall.confirmation.setupRequests!"
+					:workflow-id="chunk.item.toolCall.confirmation.workflowId ?? ''"
+					:message="chunk.item.toolCall.confirmation.message"
+					:project-id="chunk.item.toolCall.confirmation.projectId"
+					:credential-flow="chunk.item.toolCall.confirmation.credentialFlow"
 				/>
 
 				<!-- Credential setup -->
 				<InstanceAiCredentialSetup
-					v-else-if="chunk.item.toolCall.confirmation!.credentialRequests?.length"
-					:key="'cred-' + chunk.item.toolCall.confirmation!.requestId"
+					v-else-if="chunk.item.toolCall.confirmation.credentialRequests?.length"
+					:key="'cred-' + chunk.item.toolCall.confirmation.requestId"
 					:class="$style.confirmation"
-					:request-id="chunk.item.toolCall.confirmation!.requestId"
-					:credential-requests="chunk.item.toolCall.confirmation!.credentialRequests!"
-					:message="chunk.item.toolCall.confirmation!.message"
-					:project-id="chunk.item.toolCall.confirmation!.projectId"
-					:credential-flow="chunk.item.toolCall.confirmation!.credentialFlow"
+					:request-id="chunk.item.toolCall.confirmation.requestId"
+					:credential-requests="chunk.item.toolCall.confirmation.credentialRequests!"
+					:message="chunk.item.toolCall.confirmation.message"
+					:project-id="chunk.item.toolCall.confirmation.projectId"
+					:credential-flow="chunk.item.toolCall.confirmation.credentialFlow"
 				/>
 
 				<!-- Structured questions -->
 				<InstanceAiQuestions
 					v-else-if="
-						chunk.item.toolCall.confirmation!.inputType === 'questions' &&
-						chunk.item.toolCall.confirmation!.questions
+						chunk.item.toolCall.confirmation.inputType === 'questions' &&
+						chunk.item.toolCall.confirmation.questions
 					"
-					:key="'q-' + chunk.item.toolCall.confirmation!.requestId"
+					:key="'q-' + chunk.item.toolCall.confirmation.requestId"
 					:class="$style.confirmation"
-					:questions="chunk.item.toolCall.confirmation!.questions!"
-					:intro-message="chunk.item.toolCall.confirmation!.introMessage"
-					@submit="
-						(answers) => handleQuestionsSubmit(chunk.item.toolCall.confirmation!.requestId, answers)
-					"
+					:questions="chunk.item.toolCall.confirmation.questions!"
+					:intro-message="chunk.item.toolCall.confirmation.introMessage"
+					@submit="(answers) => handleQuestionsSubmit(chunk.item.toolCall.confirmation, answers)"
 				/>
 
 				<!-- Plan review -->
 				<PlanReviewPanel
-					v-else-if="chunk.item.toolCall.confirmation!.inputType === 'plan-review'"
-					:key="'plan-' + chunk.item.toolCall.confirmation!.requestId"
+					v-else-if="chunk.item.toolCall.confirmation.inputType === 'plan-review'"
+					:key="'plan-' + chunk.item.toolCall.confirmation.requestId"
 					:class="$style.confirmation"
 					:planned-tasks="(chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []"
-					:message="chunk.item.toolCall.confirmation!.message"
-					@approve="handlePlanApprove(chunk.item.toolCall.confirmation!.requestId)"
+					:message="chunk.item.toolCall.confirmation.message"
+					@approve="handlePlanApprove(chunk.item.toolCall.confirmation)"
 					@request-changes="
-						(feedback) =>
-							handlePlanRequestChanges(chunk.item.toolCall.confirmation!.requestId, feedback)
+						(feedback) => handlePlanRequestChanges(chunk.item.toolCall.confirmation, feedback)
 					"
 				/>
 
 				<!-- Text input (ask-user) -->
 				<div
-					v-else-if="chunk.item.toolCall.confirmation!.inputType === 'text'"
-					:key="'text-' + chunk.item.toolCall.confirmation!.requestId"
+					v-else-if="chunk.item.toolCall.confirmation.inputType === 'text'"
+					:key="'text-' + chunk.item.toolCall.confirmation.requestId"
 					:class="$style.confirmation"
 				>
 					<div :class="$style.textInputContainer">
 						<div :class="$style.confirmMessage">
-							{{ chunk.item.toolCall.confirmation!.message }}
+							{{ chunk.item.toolCall.confirmation.message }}
 						</div>
 						<div :class="$style.textInputRow">
 							<input
-								v-model="textInputValues[chunk.item.toolCall.confirmation!.requestId]"
+								v-model="textInputValues[chunk.item.toolCall.confirmation.requestId]"
 								:class="$style.textInput"
 								type="text"
 								:placeholder="i18n.baseText('instanceAi.askUser.placeholder')"
-								@keydown.enter="handleTextSubmit(chunk.item.toolCall.confirmation!.requestId)"
+								@keydown.enter="handleTextSubmit(chunk.item.toolCall.confirmation)"
 							/>
 							<N8nButton
-								v-if="!(textInputValues[chunk.item.toolCall.confirmation!.requestId] ?? '').trim()"
+								v-if="!(textInputValues[chunk.item.toolCall.confirmation.requestId] ?? '').trim()"
 								size="small"
 								variant="outline"
-								@click="handleTextSkip(chunk.item.toolCall.confirmation!.requestId)"
+								@click="handleTextSkip(chunk.item.toolCall.confirmation)"
 							>
 								{{ i18n.baseText('instanceAi.askUser.skip') }}
 							</N8nButton>
@@ -240,9 +315,9 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 								size="small"
 								variant="solid"
 								:disabled="
-									!(textInputValues[chunk.item.toolCall.confirmation!.requestId] ?? '').trim()
+									!(textInputValues[chunk.item.toolCall.confirmation.requestId] ?? '').trim()
 								"
-								@click="handleTextSubmit(chunk.item.toolCall.confirmation!.requestId)"
+								@click="handleTextSubmit(chunk.item.toolCall.confirmation)"
 							>
 								{{ i18n.baseText('instanceAi.askUser.submit') }}
 							</N8nButton>
@@ -252,16 +327,16 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 				<!-- Resource-access decision (gateway permission mode) -->
 				<GatewayResourceDecision
 					v-else-if="
-						chunk.item.toolCall.confirmation!.inputType === 'resource-decision' &&
-						chunk.item.toolCall.confirmation!.resourceDecision
+						chunk.item.toolCall.confirmation.inputType === 'resource-decision' &&
+						chunk.item.toolCall.confirmation.resourceDecision
 					"
-					:key="'rd-' + chunk.item.toolCall.confirmation!.requestId"
+					:key="'rd-' + chunk.item.toolCall.confirmation.requestId"
 					:class="$style.confirmation"
 					data-test-id="instance-ai-gateway-confirmation-panel"
-					:request-id="chunk.item.toolCall.confirmation!.requestId"
-					:resource="chunk.item.toolCall.confirmation!.resourceDecision.resource"
-					:description="chunk.item.toolCall.confirmation!.resourceDecision.description"
-					:options="chunk.item.toolCall.confirmation!.resourceDecision.options"
+					:request-id="chunk.item.toolCall.confirmation.requestId"
+					:resource="chunk.item.toolCall.confirmation.resourceDecision.resource"
+					:description="chunk.item.toolCall.confirmation.resourceDecision.description"
+					:options="chunk.item.toolCall.confirmation.resourceDecision.options"
 				/>
 			</template>
 
@@ -295,16 +370,16 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 				<div :class="$style.items">
 					<div
 						v-for="item in chunk.items"
-						:key="item.toolCall.confirmation!.requestId"
+						:key="item.toolCall.confirmation.requestId"
 						:class="[$style.item, chunk.items.length > 1 ? $style.itemBordered : '']"
 					>
 						<!-- Domain access -->
 						<DomainAccessApproval
-							v-if="item.toolCall.confirmation!.domainAccess"
-							:request-id="item.toolCall.confirmation!.requestId"
-							:url="item.toolCall.confirmation!.domainAccess!.url"
-							:host="item.toolCall.confirmation!.domainAccess!.host"
-							:severity="item.toolCall.confirmation!.severity"
+							v-if="item.toolCall.confirmation.domainAccess"
+							:request-id="item.toolCall.confirmation.requestId"
+							:url="item.toolCall.confirmation.domainAccess!.url"
+							:host="item.toolCall.confirmation.domainAccess!.host"
+							:severity="item.toolCall.confirmation.severity"
 						/>
 
 						<!-- Generic approval -->
@@ -314,7 +389,7 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 									<span :class="$style.toolLabel">
 										{{ getToolLabel(item.toolCall.toolName) }}
 									</span>
-									<span :class="$style.preview">{{ item.toolCall.confirmation!.message }}</span>
+									<span :class="$style.preview">{{ item.toolCall.confirmation.message }}</span>
 								</div>
 
 								<div :class="$style.approvalActions">
@@ -322,19 +397,19 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 										data-test-id="instance-ai-panel-confirm-deny"
 										size="small"
 										variant="outline"
-										@click="handleConfirm(item.toolCall.confirmation!.requestId, false)"
+										@click="handleConfirm(item, false)"
 									>
 										{{ i18n.baseText('instanceAi.confirmation.deny') }}
 									</N8nButton>
 									<N8nButton
 										:variant="
-											item.toolCall.confirmation!.severity === 'destructive'
+											item.toolCall.confirmation.severity === 'destructive'
 												? 'destructive'
 												: 'solid'
 										"
 										data-test-id="instance-ai-panel-confirm-approve"
 										size="small"
-										@click="handleConfirm(item.toolCall.confirmation!.requestId, true)"
+										@click="handleConfirm(item, true)"
 									>
 										{{ i18n.baseText('instanceAi.confirmation.approve') }}
 									</N8nButton>

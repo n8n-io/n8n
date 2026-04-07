@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { getWorkflow as fetchWorkflowApi } from '@/app/api/workflows';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -61,6 +62,7 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const telemetry = useTelemetry();
 const store = useInstanceAiStore();
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
@@ -474,6 +476,23 @@ watch(
 			userNavigated.value = false;
 			return;
 		}
+
+		// Track per-step completion as the user clicks through the wizard
+		const card = currentCard.value;
+		if (card) {
+			const tc = store.findToolCallByRequestId(props.requestId);
+			telemetry.track('User completed input step', {
+				thread_id: store.currentThreadId,
+				input_thread_id: tc?.confirmation?.inputThreadId ?? '',
+				instance_id: useRootStore().instanceId,
+				type: 'setup',
+				provided_inputs: [
+					{ label: card.nodes[0]?.node.name ?? card.id, options: [], option_chosen: 'configured' },
+				],
+				skipped_inputs: [],
+			});
+		}
+
 		const nextIncomplete = cards.value.findIndex(
 			(c, idx) => idx > currentStepIndex.value && !isCardComplete(c),
 		);
@@ -888,6 +907,28 @@ async function handleApply() {
 	const nodeCredentials = buildNodeCredentials();
 	const nodeParameters = buildNodeParameters();
 
+	// Track any incomplete cards as skipped, then mark the flow as finished
+	const tc = store.findToolCallByRequestId(props.requestId);
+	const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
+	for (const card of cards.value) {
+		if (!isCardComplete(card)) {
+			telemetry.track('User completed input step', {
+				thread_id: store.currentThreadId,
+				input_thread_id: inputThreadId,
+				instance_id: useRootStore().instanceId,
+				type: 'setup',
+				provided_inputs: [],
+				skipped_inputs: [{ label: card.nodes[0]?.node.name ?? card.id, options: [] }],
+			});
+		}
+	}
+	telemetry.track('User finished providing input', {
+		thread_id: store.currentThreadId,
+		input_thread_id: inputThreadId,
+		instance_id: useRootStore().instanceId,
+		type: 'setup',
+	});
+
 	isApplying.value = true;
 	applyError.value = null;
 
@@ -941,6 +982,28 @@ async function handleApply() {
 }
 
 async function handleLater() {
+	// Track all remaining incomplete cards as skipped
+	const tc = store.findToolCallByRequestId(props.requestId);
+	const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
+	for (const card of cards.value) {
+		if (!isCardComplete(card)) {
+			telemetry.track('User completed input step', {
+				thread_id: store.currentThreadId,
+				input_thread_id: inputThreadId,
+				instance_id: useRootStore().instanceId,
+				type: 'setup',
+				provided_inputs: [],
+				skipped_inputs: [{ label: card.nodes[0]?.node.name ?? card.id, options: [] }],
+			});
+		}
+	}
+	telemetry.track('User finished providing input', {
+		thread_id: store.currentThreadId,
+		input_thread_id: inputThreadId,
+		instance_id: useRootStore().instanceId,
+		type: 'setup',
+	});
+
 	isSubmitted.value = true;
 	isDeferred.value = true;
 

@@ -9,7 +9,9 @@ import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import type { InstanceAiCredentialFlow, InstanceAiCredentialRequest } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useInstanceAiStore } from '../instanceAi.store';
 
 const props = defineProps<{
@@ -21,6 +23,8 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const telemetry = useTelemetry();
+const rootStore = useRootStore();
 const store = useInstanceAiStore();
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
@@ -137,6 +141,26 @@ watch(
 			userNavigated.value = false;
 			return;
 		}
+
+		const req = currentRequest.value;
+		if (req) {
+			const tc = store.findToolCallByRequestId(props.requestId);
+			telemetry.track('User completed input step', {
+				thread_id: store.currentThreadId,
+				input_thread_id: tc?.confirmation?.inputThreadId ?? '',
+				instance_id: rootStore.instanceId,
+				type: 'credential-setup',
+				provided_inputs: [
+					{
+						label: req.credentialType,
+						options: [],
+						option_chosen: selections.value[req.credentialType] ?? '',
+					},
+				],
+				skipped_inputs: [],
+			});
+		}
+
 		const nextIncomplete = props.credentialRequests.findIndex(
 			(r, idx) => idx > currentStepIndex.value && !isStepComplete(r.credentialType),
 		);
@@ -244,6 +268,28 @@ async function handleContinue() {
 	for (const [type, id] of Object.entries(selections.value)) {
 		if (id) credentials[type] = id;
 	}
+
+	const tc = store.findToolCallByRequestId(props.requestId);
+	const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
+	for (const req of props.credentialRequests) {
+		if (!isStepComplete(req.credentialType)) {
+			telemetry.track('User completed input step', {
+				thread_id: store.currentThreadId,
+				input_thread_id: inputThreadId,
+				instance_id: rootStore.instanceId,
+				type: 'credential-setup',
+				provided_inputs: [],
+				skipped_inputs: [{ label: req.credentialType, options: [] }],
+			});
+		}
+	}
+	telemetry.track('User finished providing input', {
+		thread_id: store.currentThreadId,
+		input_thread_id: inputThreadId,
+		instance_id: rootStore.instanceId,
+		type: 'credential-setup',
+	});
+
 	isSubmitted.value = true;
 
 	const success = await store.confirmAction(props.requestId, true, undefined, credentials);
@@ -255,6 +301,27 @@ async function handleContinue() {
 }
 
 async function handleLater() {
+	const tc = store.findToolCallByRequestId(props.requestId);
+	const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
+	for (const req of props.credentialRequests) {
+		if (!isStepComplete(req.credentialType)) {
+			telemetry.track('User completed input step', {
+				thread_id: store.currentThreadId,
+				input_thread_id: inputThreadId,
+				instance_id: rootStore.instanceId,
+				type: 'credential-setup',
+				provided_inputs: [],
+				skipped_inputs: [{ label: req.credentialType, options: [] }],
+			});
+		}
+	}
+	telemetry.track('User finished providing input', {
+		thread_id: store.currentThreadId,
+		input_thread_id: inputThreadId,
+		instance_id: rootStore.instanceId,
+		type: 'credential-setup',
+	});
+
 	isSubmitted.value = true;
 	isDeferred.value = true;
 
