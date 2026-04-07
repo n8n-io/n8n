@@ -62,8 +62,8 @@ async function saveWorkflowDescription(id: string, description: string | null) {
 	const isCurrentWorkflow = id === workflowsStore.workflowId;
 
 	if (isCurrentWorkflow) {
-		currentVersionId = workflowsStore.workflowVersionId;
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
+		currentVersionId = workflowDocumentStore.versionId;
 		currentChecksum = workflowDocumentStore.checksum;
 	} else {
 		const cached = workflowsListStore.getWorkflowById(id);
