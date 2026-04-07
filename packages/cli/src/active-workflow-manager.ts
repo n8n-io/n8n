@@ -48,6 +48,7 @@ import {
 import { strict } from 'node:assert';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ActiveExecutions } from '@/active-executions';
 import { EventService } from '@/events/event.service';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
@@ -96,6 +97,7 @@ export class ActiveWorkflowManager {
 		private readonly push: Push,
 		private readonly eventService: EventService,
 		private readonly storageConfig: StorageConfig,
+		private readonly eventBus: MessageEventBus,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -525,6 +527,15 @@ export class ActiveWorkflowManager {
 					workflowName: dbWorkflow.name,
 					workflowId: dbWorkflow.id,
 				});
+
+				void this.eventBus.sendAuditEvent({
+					eventName: 'n8n.audit.workflow.activated-on-bootup',
+					payload: {
+						workflowId: dbWorkflow.id,
+						workflowName: dbWorkflow.name,
+						activeVersionId: dbWorkflow.activeVersionId,
+					},
+				});
 			}
 		} catch (error) {
 			this.errorReporter.error(error);
@@ -777,7 +788,20 @@ export class ActiveWorkflowManager {
 			const error = ensureError(e);
 			const { message } = error;
 
+			const dbWorkflow = await this.workflowRepository.findById(workflowId);
+
 			await this.workflowRepository.update(workflowId, { active: false, activeVersionId: null });
+
+			if (dbWorkflow) {
+				void this.eventBus.sendAuditEvent({
+					eventName: 'n8n.audit.workflow.deactivated-on-bootup',
+					payload: {
+						workflowId,
+						workflowName: dbWorkflow.name,
+						deactivatedVersionId: dbWorkflow.activeVersionId ?? null,
+					},
+				});
+			}
 
 			this.push.broadcast({
 				type: 'workflowFailedToActivate',
