@@ -1,7 +1,7 @@
 import type { Client, InArgs } from '@libsql/client';
 
 import type { BuiltMemory, Thread } from '../types/sdk/memory';
-import type { AgentDbMessage, AgentMessage } from '../types/sdk/message';
+import type { AgentDbMessage } from '../types/sdk/message';
 
 /** Safe JSON.parse wrapper — returns undefined on failure. */
 function parseJsonSafe(text: string): unknown {
