@@ -1,4 +1,5 @@
 import type { RuntimeBridge } from '../types';
+import type { Logger } from '../types/bridge';
 
 export class PoolDisposedError extends Error {
 	constructor() {
@@ -26,6 +27,7 @@ export class IsolatePool {
 		private readonly createBridge: () => Promise<RuntimeBridge>,
 		private readonly size: number,
 		private readonly onReplenishFailed?: (error: unknown) => void,
+		private readonly logger?: Logger,
 	) {}
 
 	async initialize() {
@@ -37,7 +39,9 @@ export class IsolatePool {
 			if (result.status === 'fulfilled') {
 				this.bridges.push(result.value);
 			} else {
-				console.error('[IsolatePool] Failed to create bridge during init:', result.reason);
+				this.logger?.error('[IsolatePool] Failed to create bridge during init', {
+					error: result.reason,
+				});
 			}
 		}
 

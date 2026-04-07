@@ -64,6 +64,7 @@ export interface IEnterpriseSettings {
 	};
 	customRoles: boolean;
 	personalSpacePolicy: boolean;
+	dataRedaction: boolean;
 }
 
 export interface FrontendSettings {
@@ -276,6 +277,7 @@ export type FrontendModuleSettings = {
 		localGateway: boolean;
 		localGatewayDisabled: boolean;
 		localGatewayFallbackDirectory: string | null;
+		proxyEnabled: boolean;
 	};
 
 	/**

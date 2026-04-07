@@ -16,17 +16,23 @@ const filterSchema = z.object({
 	),
 });
 
+export const updateDataTableRowsInputSchema = z.object({
+	dataTableId: z.string().describe('ID of the data table'),
+	filter: filterSchema.describe('Which rows to update'),
+	data: z.record(z.unknown()).describe('Column values to set on matching rows'),
+});
+
+export const updateDataTableRowsResumeSchema = z.object({
+	approved: z.boolean(),
+});
+
 export function createUpdateDataTableRowsTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'update-data-table-rows',
 		description:
 			'Update rows matching a filter in a data table. ' +
 			'All matching rows receive the same new values.',
-		inputSchema: z.object({
-			dataTableId: z.string().describe('ID of the data table'),
-			filter: filterSchema.describe('Which rows to update'),
-			data: z.record(z.unknown()).describe('Column values to set on matching rows'),
-		}),
+		inputSchema: updateDataTableRowsInputSchema,
 		outputSchema: z.object({
 			updatedCount: z.number().optional(),
 			denied: z.boolean().optional(),
@@ -37,11 +43,12 @@ export function createUpdateDataTableRowsTool(context: InstanceAiContext) {
 			message: z.string(),
 			severity: instanceAiConfirmationSeveritySchema,
 		}),
-		resumeSchema: z.object({
-			approved: z.boolean(),
-		}),
-		execute: async (input, ctx) => {
-			const { resumeData, suspend } = ctx?.agent ?? {};
+		resumeSchema: updateDataTableRowsResumeSchema,
+		execute: async (input: z.infer<typeof updateDataTableRowsInputSchema>, ctx) => {
+			const resumeData = ctx?.agent?.resumeData as
+				| z.infer<typeof updateDataTableRowsResumeSchema>
+				| undefined;
+			const suspend = ctx?.agent?.suspend;
 
 			const needsApproval = context.permissions?.mutateDataTableRows !== 'always_allow';
 

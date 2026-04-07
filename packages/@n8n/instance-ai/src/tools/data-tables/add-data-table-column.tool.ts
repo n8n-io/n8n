@@ -7,15 +7,21 @@ import type { InstanceAiContext } from '../../types';
 
 const columnTypeSchema = z.enum(['string', 'number', 'boolean', 'date']);
 
+export const addDataTableColumnInputSchema = z.object({
+	dataTableId: z.string().describe('ID of the data table'),
+	name: z.string().describe('Column name (alphanumeric + underscores)'),
+	type: columnTypeSchema.describe('Column data type'),
+});
+
+export const addDataTableColumnResumeSchema = z.object({
+	approved: z.boolean(),
+});
+
 export function createAddDataTableColumnTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'add-data-table-column',
 		description: 'Add a new column to an existing data table.',
-		inputSchema: z.object({
-			dataTableId: z.string().describe('ID of the data table'),
-			name: z.string().describe('Column name (alphanumeric + underscores)'),
-			type: columnTypeSchema.describe('Column data type'),
-		}),
+		inputSchema: addDataTableColumnInputSchema,
 		outputSchema: z.object({
 			column: z
 				.object({
@@ -33,11 +39,12 @@ export function createAddDataTableColumnTool(context: InstanceAiContext) {
 			message: z.string(),
 			severity: instanceAiConfirmationSeveritySchema,
 		}),
-		resumeSchema: z.object({
-			approved: z.boolean(),
-		}),
-		execute: async (input, ctx) => {
-			const { resumeData, suspend } = ctx?.agent ?? {};
+		resumeSchema: addDataTableColumnResumeSchema,
+		execute: async (input: z.infer<typeof addDataTableColumnInputSchema>, ctx) => {
+			const resumeData = ctx?.agent?.resumeData as
+				| z.infer<typeof addDataTableColumnResumeSchema>
+				| undefined;
+			const suspend = ctx?.agent?.suspend;
 
 			const needsApproval = context.permissions?.mutateDataTableSchema !== 'always_allow';
 

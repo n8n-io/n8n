@@ -315,6 +315,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					questions: event.payload.questions,
 					introMessage: event.payload.introMessage,
 					tasks: event.payload.tasks,
+					resourceDecision: event.payload.resourceDecision,
 				};
 			}
 			break;

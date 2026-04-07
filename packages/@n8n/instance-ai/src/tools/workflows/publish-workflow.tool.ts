@@ -5,30 +5,36 @@ import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
 
+export const publishWorkflowResumeSchema = z.object({
+	approved: z.boolean(),
+});
+
+const publishWorkflowBaseSchema = z.object({
+	workflowId: z.string().describe('ID of the workflow'),
+	workflowName: z.string().optional().describe('Name of the workflow (for confirmation message)'),
+	versionId: z
+		.string()
+		.optional()
+		.describe('Specific version to publish (omit to publish the latest draft)'),
+});
+
+const publishWorkflowExtendedSchema = publishWorkflowBaseSchema.extend({
+	name: z
+		.string()
+		.optional()
+		.describe('Name for this published version (e.g. "v1.2 — added retry logic")'),
+	description: z
+		.string()
+		.optional()
+		.describe('Description of what this version does or what changed'),
+});
+
+type PublishWorkflowInput = z.infer<typeof publishWorkflowExtendedSchema>;
+
 export function createPublishWorkflowTool(context: InstanceAiContext) {
 	const hasNamedVersions = !!context.workflowService.updateVersion;
 
-	const baseSchema = z.object({
-		workflowId: z.string().describe('ID of the workflow'),
-		workflowName: z.string().optional().describe('Name of the workflow (for confirmation message)'),
-		versionId: z
-			.string()
-			.optional()
-			.describe('Specific version to publish (omit to publish the latest draft)'),
-	});
-
-	const inputSchema = hasNamedVersions
-		? baseSchema.extend({
-				name: z
-					.string()
-					.optional()
-					.describe('Name for this published version (e.g. "v1.2 — added retry logic")'),
-				description: z
-					.string()
-					.optional()
-					.describe('Description of what this version does or what changed'),
-			})
-		: baseSchema;
+	const inputSchema = hasNamedVersions ? publishWorkflowExtendedSchema : publishWorkflowBaseSchema;
 
 	return createTool({
 		id: 'publish-workflow',
@@ -52,11 +58,12 @@ export function createPublishWorkflowTool(context: InstanceAiContext) {
 			message: z.string(),
 			severity: instanceAiConfirmationSeveritySchema,
 		}),
-		resumeSchema: z.object({
-			approved: z.boolean(),
-		}),
-		execute: async (input, ctx) => {
-			const { resumeData, suspend } = ctx?.agent ?? {};
+		resumeSchema: publishWorkflowResumeSchema,
+		execute: async (input: PublishWorkflowInput, ctx) => {
+			const resumeData = ctx?.agent?.resumeData as
+				| z.infer<typeof publishWorkflowResumeSchema>
+				| undefined;
+			const suspend = ctx?.agent?.suspend;
 
 			const needsApproval = context.permissions?.publishWorkflow !== 'always_allow';
 
@@ -82,8 +89,8 @@ export function createPublishWorkflowTool(context: InstanceAiContext) {
 					versionId: input.versionId,
 					...(hasNamedVersions
 						? {
-								name: (input as { name?: string }).name,
-								description: (input as { description?: string }).description,
+								name: input.name,
+								description: input.description,
 							}
 						: {}),
 				});

@@ -4,10 +4,11 @@ import { z } from 'zod';
 /** RFC 8693 grant type URN for token exchange */
 export const TOKEN_EXCHANGE_GRANT_TYPE = 'urn:ietf:params:oauth:grant-type:token-exchange' as const;
 
+/**
+ * Asymmetric-only JWT algorithms accepted for trusted key sources.
+ * Symmetric (HMAC) and 'none' are excluded by design.
+ */
 const JwtAlgorithmSchema = z.enum([
-	'HS256',
-	'HS384',
-	'HS512',
 	'RS256',
 	'RS384',
 	'RS512',
@@ -17,7 +18,8 @@ const JwtAlgorithmSchema = z.enum([
 	'PS256',
 	'PS384',
 	'PS512',
-]) satisfies z.ZodType<Algorithm>;
+	'EdDSA',
+]);
 
 /**
  * Validates JWT claims originating from an external identity provider.

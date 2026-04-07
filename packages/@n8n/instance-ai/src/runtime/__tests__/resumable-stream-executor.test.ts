@@ -271,6 +271,7 @@ describe('executeResumableStream', () => {
 				agentId: 'agent-1',
 				eventBus,
 				signal: new AbortController().signal,
+				logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
 			},
 			control: { mode: 'manual' },
 		});
@@ -323,6 +324,7 @@ describe('executeResumableStream', () => {
 				agentId: 'agent-1',
 				eventBus,
 				signal: new AbortController().signal,
+				logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
 			},
 			control: { mode: 'manual' },
 		});
@@ -365,6 +367,7 @@ describe('executeResumableStream', () => {
 				agentId: 'agent-1',
 				eventBus,
 				signal: new AbortController().signal,
+				logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
 			},
 			control: {
 				mode: 'auto',
@@ -432,6 +435,7 @@ describe('executeResumableStream', () => {
 				agentId: 'agent-1',
 				eventBus,
 				signal: new AbortController().signal,
+				logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
 			},
 			control: {
 				mode: 'auto',
@@ -514,6 +518,7 @@ describe('executeResumableStream', () => {
 					agentId: 'agent-1',
 					eventBus,
 					signal: new AbortController().signal,
+					logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
 				},
 				control: {
 					mode: 'auto',
@@ -633,6 +638,7 @@ describe('executeResumableStream', () => {
 					agentId: 'agent-1',
 					eventBus,
 					signal: new AbortController().signal,
+					logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
 				},
 				control: { mode: 'manual' },
 			});
@@ -1108,6 +1114,7 @@ describe('executeResumableStream', () => {
 					agentId: 'agent-3',
 					eventBus,
 					signal: new AbortController().signal,
+					logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
 				},
 				control: { mode: 'manual' },
 			});
@@ -1220,6 +1227,7 @@ describe('executeResumableStream', () => {
 					agentId: 'agent-turn-1',
 					eventBus,
 					signal: new AbortController().signal,
+					logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
 				},
 				control: { mode: 'manual' },
 				llmStepTraceHooks: hooks,
@@ -1283,6 +1291,7 @@ describe('executeResumableStream', () => {
 					agentId: 'agent-memory',
 					eventBus,
 					signal: new AbortController().signal,
+					logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
 				},
 				control: { mode: 'manual' },
 			});
@@ -1412,6 +1421,7 @@ describe('executeResumableStream', () => {
 					agentId: 'agent-memory-active-llm',
 					eventBus,
 					signal: new AbortController().signal,
+					logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
 				},
 				control: { mode: 'manual' },
 				llmStepTraceHooks: hooks,
@@ -1492,6 +1502,7 @@ describe('executeResumableStream', () => {
 					agentId: 'agent-2',
 					eventBus,
 					signal: new AbortController().signal,
+					logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
 				},
 				control: { mode: 'manual' },
 			});
@@ -1615,6 +1626,7 @@ describe('executeResumableStream', () => {
 					agentId: 'agent-5',
 					eventBus,
 					signal: new AbortController().signal,
+					logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
 				},
 				control: { mode: 'manual' },
 				llmStepTraceHooks,
@@ -1717,6 +1729,7 @@ describe('executeResumableStream', () => {
 					agentId: 'agent-usage-v3',
 					eventBus,
 					signal: new AbortController().signal,
+					logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
 				},
 				control: { mode: 'manual' },
 			});
@@ -1954,6 +1967,7 @@ describe('executeResumableStream', () => {
 					agentId: 'agent-suspended-usage',
 					eventBus,
 					signal: new AbortController().signal,
+					logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
 				},
 				control: { mode: 'manual' },
 				llmStepTraceHooks,

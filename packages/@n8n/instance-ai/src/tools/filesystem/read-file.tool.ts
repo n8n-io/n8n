@@ -6,32 +6,38 @@ import { z } from 'zod';
 import type { InstanceAiContext } from '../../types';
 import { wrapUntrustedData } from '../web-research/sanitize-web-content';
 
+export const readFileInputSchema = z.object({
+	filePath: z
+		.string()
+		.describe(
+			'Absolute file path or ~/relative path (e.g. "/home/user/project/file.ts" or "~/project/file.ts"). Do NOT use bare relative paths.',
+		),
+	startLine: z
+		.number()
+		.int()
+		.positive()
+		.optional()
+		.describe('Start reading from this line (1-indexed, default: 1)'),
+	maxLines: z
+		.number()
+		.int()
+		.positive()
+		.max(500)
+		.default(200)
+		.optional()
+		.describe('Maximum number of lines to read (default 200, max 500)'),
+});
+
+export const readFileResumeSchema = z.object({
+	approved: z.boolean(),
+});
+
 export function createReadFileTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'read-file',
 		description:
 			'Read the contents of a file. Returns the text content with optional line range. Use after list-files or search-files to read specific files. Always use absolute paths or ~/relative paths.',
-		inputSchema: z.object({
-			filePath: z
-				.string()
-				.describe(
-					'Absolute file path or ~/relative path (e.g. "/home/user/project/file.ts" or "~/project/file.ts"). Do NOT use bare relative paths.',
-				),
-			startLine: z
-				.number()
-				.int()
-				.positive()
-				.optional()
-				.describe('Start reading from this line (1-indexed, default: 1)'),
-			maxLines: z
-				.number()
-				.int()
-				.positive()
-				.max(500)
-				.default(200)
-				.optional()
-				.describe('Maximum number of lines to read (default 200, max 500)'),
-		}),
+		inputSchema: readFileInputSchema,
 		outputSchema: z.object({
 			path: z.string(),
 			content: z.string(),
@@ -45,11 +51,13 @@ export function createReadFileTool(context: InstanceAiContext) {
 			message: z.string(),
 			severity: instanceAiConfirmationSeveritySchema,
 		}),
-		resumeSchema: z.object({
-			approved: z.boolean(),
-		}),
-		execute: async ({ filePath, startLine, maxLines }, ctx) => {
-			const { resumeData, suspend } = ctx?.agent ?? {};
+		resumeSchema: readFileResumeSchema,
+		execute: async (
+			{ filePath, startLine, maxLines }: z.infer<typeof readFileInputSchema>,
+			ctx,
+		) => {
+			const resumeData = ctx?.agent?.resumeData as z.infer<typeof readFileResumeSchema> | undefined;
+			const suspend = ctx?.agent?.suspend;
 			const needsApproval = context.permissions?.readFilesystem !== 'always_allow';
 
 			if (needsApproval && (resumeData === undefined || resumeData === null)) {

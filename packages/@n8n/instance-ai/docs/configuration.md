@@ -11,7 +11,7 @@ All Instance AI configuration is done via environment variables.
 | `N8N_INSTANCE_AI_MODEL` | string | `anthropic/claude-sonnet-4-6` | LLM model in `provider/model` format. Must be set for the module to enable. |
 | `N8N_INSTANCE_AI_MODEL_URL` | string | `''` | Base URL for an OpenAI-compatible endpoint (e.g. `http://localhost:1234/v1` for LM Studio). When set, model requests go to this URL instead of the built-in provider. |
 | `N8N_INSTANCE_AI_MODEL_API_KEY` | string | `''` | API key for the custom model endpoint. Optional — some local servers don't require one. |
-| `N8N_INSTANCE_AI_MAX_CONTEXT_WINDOW_TOKENS` | number | `500000` | Hard cap on context window size (tokens). 0 = use model's full context window. |
+| `N8N_INSTANCE_AI_MAX_CONTEXT_WINDOW_TOKENS` | number | `500000` | Hard cap on the context window size (in tokens). The effective window is the lesser of this value and the model's native capability. `0` = use the model's full context window. |
 | `N8N_INSTANCE_AI_MCP_SERVERS` | string | `''` | Comma-separated MCP server configs. Format: `name=url,name=url` |
 | `N8N_INSTANCE_AI_SUB_AGENT_MAX_STEPS` | number | `100` | Maximum LLM reasoning steps for sub-agents spawned via delegate tool |
 | `N8N_INSTANCE_AI_BROWSER_MCP` | boolean | `false` | Enable Chrome DevTools MCP for browser-assisted credential setup |

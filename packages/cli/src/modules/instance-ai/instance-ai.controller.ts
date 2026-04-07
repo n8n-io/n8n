@@ -20,6 +20,7 @@ import { AuthenticatedRequest } from '@n8n/db';
 import {
 	RestController,
 	GlobalScope,
+	Middleware,
 	Get,
 	Post,
 	Put,
@@ -31,7 +32,7 @@ import {
 } from '@n8n/decorators';
 import type { StoredEvent } from '@n8n/instance-ai';
 import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
-import type { Request, Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
@@ -97,6 +98,19 @@ export class InstanceAiController {
 		this.instanceBaseUrl = globalConfig.editorBaseUrl || `http://localhost:${globalConfig.port}`;
 	}
 
+	// Each BrotliCompress stream allocates ~8.6 MB of native memory for its
+	// dictionary, and the compression middleware retains streams via closures on
+	// the response object for the lifetime of the HTTP keep-alive connection.
+	// Downgrade to gzip (~few KB per stream) for all instance-ai endpoints.
+	@Middleware()
+	stripBrotli(req: Request, _res: Response, next: NextFunction) {
+		const ae = req.headers['accept-encoding'];
+		if (typeof ae === 'string' && ae.includes('br')) {
+			req.headers['accept-encoding'] = ae.replace(/\bbr\b,?\s*/g, '').replace(/,\s*$/, '');
+		}
+		next();
+	}
+
 	@Post('/chat/:threadId')
 	@GlobalScope('instanceAi:message')
 	async chat(
@@ -151,7 +165,11 @@ export class InstanceAiController {
 		const pendingEvents: StoredEvent[] = [];
 		const userId = req.user.id;
 
-		// 1. Set SSE headers
+		// 1. Set SSE headers.
+		// Disable response compression — SSE streams small chunks where compression
+		// overhead exceeds the benefit, and each Brotli compressor retains ~8.6 MB
+		// of native memory for the lifetime of the connection.
+		(res as unknown as { compress: boolean }).compress = false;
 		res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
 		res.setHeader('Cache-Control', 'no-cache');
 		res.setHeader('Connection', 'keep-alive');
@@ -309,6 +327,7 @@ export class InstanceAiController {
 			nodeParameters: body.nodeParameters,
 			testTriggerNode: body.testTriggerNode,
 			answers: body.answers,
+			resourceDecision: body.resourceDecision,
 		});
 		if (!resolved) {
 			throw new NotFoundError('Confirmation request not found or not authorized');
@@ -554,6 +573,7 @@ export class InstanceAiController {
 	async gatewayEvents(req: Request, res: FlushableResponse) {
 		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
 
+		(res as unknown as { compress: boolean }).compress = false;
 		res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
 		res.setHeader('Cache-Control', 'no-cache');
 		res.setHeader('Connection', 'keep-alive');

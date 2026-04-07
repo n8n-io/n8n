@@ -18,6 +18,7 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 			getEventsForRun: jest.fn().mockReturnValue([]),
 			getEventsForRuns: jest.fn().mockReturnValue([]),
 		},
+		logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
 		domainTools: {} as OrchestrationContext['domainTools'],
 		abortSignal: new AbortController().signal,
 		taskStorage: {
@@ -34,10 +35,10 @@ describe('createCorrectBackgroundTaskTool', () => {
 		const context = createMockContext({ sendCorrectionToTask });
 		const tool = createCorrectBackgroundTaskTool(context);
 
-		const result = await tool.execute!(
+		const result = (await tool.execute!(
 			{ taskId: 'build-abc123', correction: 'Use the Projects database' },
 			{} as never,
-		);
+		)) as Record<string, unknown>;
 
 		expect(sendCorrectionToTask).toHaveBeenCalledWith('build-abc123', 'Use the Projects database');
 		expect((result as { result: string }).result).toContain('Correction sent');
@@ -47,10 +48,10 @@ describe('createCorrectBackgroundTaskTool', () => {
 		const context = createMockContext({ sendCorrectionToTask: undefined });
 		const tool = createCorrectBackgroundTaskTool(context);
 
-		const result = await tool.execute!(
+		const result = (await tool.execute!(
 			{ taskId: 'build-abc123', correction: 'Use the Projects database' },
 			{} as never,
-		);
+		)) as Record<string, unknown>;
 
 		expect((result as { result: string }).result).toContain('Error');
 	});
@@ -60,10 +61,10 @@ describe('createCorrectBackgroundTaskTool', () => {
 		const context = createMockContext({ sendCorrectionToTask });
 		const tool = createCorrectBackgroundTaskTool(context);
 
-		const result = await tool.execute!(
+		const result = (await tool.execute!(
 			{ taskId: 'build-abc123', correction: 'Use the Projects database' },
 			{} as never,
-		);
+		)) as Record<string, unknown>;
 
 		expect((result as { result: string }).result).toContain('already completed');
 		expect((result as { result: string }).result).toContain('follow-up task');
@@ -74,10 +75,10 @@ describe('createCorrectBackgroundTaskTool', () => {
 		const context = createMockContext({ sendCorrectionToTask });
 		const tool = createCorrectBackgroundTaskTool(context);
 
-		const result = await tool.execute!(
+		const result = (await tool.execute!(
 			{ taskId: 'build-unknown', correction: 'Use the Projects database' },
 			{} as never,
-		);
+		)) as Record<string, unknown>;
 
 		expect((result as { result: string }).result).toContain('not found');
 	});
