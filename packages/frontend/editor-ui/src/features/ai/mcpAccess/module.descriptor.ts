@@ -19,10 +19,9 @@ export const MCPModule: FrontendModuleDescription = {
 		{
 			path: 'mcp',
 			name: MCP_SETTINGS_VIEW,
-			components: {
-				settingsView: SettingsMCPView,
-			},
+			component: SettingsMCPView,
 			meta: {
+				layout: 'settings',
 				middleware: ['authenticated', 'custom'],
 				telemetry: {
 					pageCategory: 'settings',
@@ -37,6 +36,7 @@ export const MCPModule: FrontendModuleDescription = {
 			label: i18n.baseText('settings.mcp'),
 			position: 'top',
 			route: { to: { name: MCP_SETTINGS_VIEW } },
+			preview: true,
 			get available() {
 				return hasPermission(['rbac'], {
 					rbac: { scope: ['mcp:oauth', 'mcpApiKey:create', 'mcpApiKey:rotate'] },

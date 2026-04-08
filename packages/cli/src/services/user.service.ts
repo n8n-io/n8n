@@ -1,8 +1,16 @@
 import type { RoleChangeRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { PublicUser } from '@n8n/db';
-import { ProjectRelation, User, UserRepository, ProjectRepository, Not, In } from '@n8n/db';
+import type { AuthIdentity, PublicUser } from '@n8n/db';
+import {
+	ProjectRelation,
+	User,
+	UserRepository,
+	ProjectRepository,
+	Not,
+	In,
+	GLOBAL_OWNER_ROLE,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	getGlobalScopes,
@@ -12,16 +20,19 @@ import {
 	type AssignableGlobalRole,
 } from '@n8n/permissions';
 import type { IUserSettings } from 'n8n-workflow';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
 import type { Invitation } from '@/interfaces';
-import type { PostHogClient } from '@/posthog';
+import { PostHogClient } from '@/posthog';
 import type { UserRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 import { UserManagementMailer } from '@/user-management/email';
 
+import { JwtService } from './jwt.service';
+import { OwnershipService } from './ownership.service';
 import { PublicApiKeyService } from './public-api-key.service';
 import { RoleService } from './role.service';
 
@@ -34,9 +45,11 @@ export class UserService {
 		private readonly mailer: UserManagementMailer,
 		private readonly urlService: UrlService,
 		private readonly eventService: EventService,
+		private readonly ownershipService: OwnershipService,
 		private readonly publicApiKeyService: PublicApiKeyService,
 		private readonly roleService: RoleService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly jwtService: JwtService,
 	) {}
 
 	async update(userId: string, data: Partial<User>) {
@@ -65,11 +78,31 @@ export class UserService {
 		await this.userRepository.save(user);
 	}
 
+	async findUserWithAuthIdentities(userId: string): Promise<User> {
+		return await this.userRepository.findOneOrFail({
+			where: { id: userId },
+			relations: ['role', 'authIdentities'],
+		});
+	}
+
+	/**
+	 * Check if a user is authenticated via LDAP or OIDC.
+	 * These users should not be able to change their profile information.
+	 */
+	async findSsoIdentity(userId: string): Promise<AuthIdentity | undefined> {
+		const user = await this.userRepository.findOne({
+			where: { id: userId },
+			relations: ['authIdentities'],
+		});
+
+		const ssoIdentity = user?.authIdentities?.find((identity) => identity.providerType !== 'email');
+
+		return ssoIdentity;
+	}
+
 	async toPublic(
 		user: User,
 		options?: {
-			withInviteUrl?: boolean;
-			inviterId?: string;
 			posthog?: PostHogClient;
 			withScopes?: boolean;
 			mfaAuthenticated?: boolean;
@@ -87,21 +120,6 @@ export class UserService {
 			isOwner: user.role.slug === 'global:owner',
 		};
 
-		if (options?.withInviteUrl && !options?.inviterId) {
-			throw new UnexpectedError('Inviter ID is required to generate invite URL');
-		}
-
-		const inviteLinksEmailOnly = this.globalConfig.userManagement.inviteLinksEmailOnly;
-
-		if (
-			!inviteLinksEmailOnly &&
-			options?.withInviteUrl &&
-			options?.inviterId &&
-			publicUser.isPending
-		) {
-			publicUser = this.addInviteUrl(options.inviterId, publicUser);
-		}
-
 		if (options?.posthog) {
 			publicUser = await this.addFeatureFlags(publicUser, options.posthog);
 		}
@@ -114,17 +132,6 @@ export class UserService {
 		publicUser.mfaAuthenticated = options?.mfaAuthenticated ?? false;
 
 		return publicUser;
-	}
-
-	private addInviteUrl(inviterId: string, invitee: PublicUser) {
-		const url = new URL(this.urlService.getInstanceBaseUrl());
-		url.pathname = '/signup';
-		url.searchParams.set('inviterId', inviterId);
-		url.searchParams.set('inviteeId', invitee.id);
-
-		invitee.inviteAcceptUrl = url.toString();
-
-		return invitee;
 	}
 
 	private async addFeatureFlags(publicUser: PublicUser, posthog: PostHogClient) {
@@ -155,7 +162,17 @@ export class UserService {
 
 		return await Promise.all(
 			Object.entries(toInviteUsers).map(async ([email, id]) => {
-				const inviteAcceptUrl = `${domain}/signup?inviterId=${owner.id}&inviteeId=${id}`;
+				// Always use JWT-based tamper-proof invite links
+				const token = this.jwtService.sign(
+					{
+						inviterId: owner.id,
+						inviteeId: id,
+					},
+					{
+						expiresIn: '90d',
+					},
+				);
+				const inviteAcceptUrl = `${domain}/signup?token=${token}`;
 				const invitedUser: UserRequest.InviteResponse = {
 					user: {
 						id,
@@ -202,9 +219,9 @@ export class UserService {
 							messageType: 'New user invite',
 							publicApi: false,
 						});
+						// Do not log inviteAcceptUrl: it contains a live JWT that must not appear in logs
 						this.logger.error('Failed to send email', {
 							userId: owner.id,
-							inviteAcceptUrl,
 							email,
 						});
 						invitedUser.error = e.message;
@@ -280,7 +297,7 @@ export class UserService {
 		// Check that new role exists
 		await this.roleService.checkRolesExist([newRole.newRoleName], 'global');
 
-		return await this.userRepository.manager.transaction(async (trx) => {
+		await this.userRepository.manager.transaction(async (trx) => {
 			await trx.update(User, { id: user.id }, { role: { slug: newRole.newRoleName } });
 
 			const isAdminRole = (roleName: string) => {
@@ -362,5 +379,55 @@ export class UserService {
 				);
 			}
 		});
+
+		// Invalidate ownership cache for the user to ensure their new permissions are reflected in subsequent requests
+		await this.ownershipService.invalidateProjectOwnerCacheByUserId(user.id);
+	}
+
+	/**
+	 * Extract inviterId and inviteeId from JWT token
+	 * @param token - JWT token containing inviterId and inviteeId
+	 * @returns Object with inviterId and inviteeId
+	 * @throws BadRequestError if JWT is invalid or required parameters are missing
+	 */
+	private async processTokenBasedInvite(
+		token: string,
+	): Promise<{ inviterId: string; inviteeId: string }> {
+		try {
+			const decoded = this.jwtService.verify<{ inviterId: string; inviteeId: string }>(token);
+			if (!decoded.inviterId || !decoded.inviteeId) {
+				this.logger.debug('Invalid JWT token payload - missing inviterId or inviteeId');
+				throw new BadRequestError('Invalid invite URL');
+			}
+
+			return { inviterId: decoded.inviterId, inviteeId: decoded.inviteeId };
+		} catch (error) {
+			if (error instanceof BadRequestError) {
+				throw error;
+			}
+			this.logger.debug('Failed to verify JWT token', { error });
+			throw new BadRequestError('Invalid invite URL');
+		}
+	}
+
+	/**
+	 * Extract inviterId and inviteeId from JWT token
+	 * @param token - JWT token containing inviterId and inviteeId
+	 * @returns Object with inviterId and inviteeId
+	 * @throws BadRequestError if JWT is invalid or required parameters are missing
+	 */
+	async getInvitationIdsFromPayload(
+		token: string,
+	): Promise<{ inviterId: string; inviteeId: string }> {
+		const instanceOwner = await this.userRepository.findOne({
+			where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
+		});
+
+		if (!instanceOwner) {
+			throw new BadRequestError('Instance owner not found');
+		}
+
+		// Only support token-based invites (tamper-proof)
+		return await this.processTokenBasedInvite(token);
 	}
 }

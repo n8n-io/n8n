@@ -1,5 +1,6 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import { emptyChatModelsResponse, type EnrichedStructuredChunk } from '@n8n/api-types';
+import { emptyChatModelsResponse } from '@n8n/api-types';
+import { within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -11,8 +12,8 @@ import {
 	createMockMessageDto,
 	createMockModelsResponse,
 	createMockSession,
-	createMockStreamChunk,
 } from './__test__/data';
+import type { useChatStore } from './chat.store';
 import * as chatApi from './chat.api';
 import ChatView from './ChatView.vue';
 
@@ -56,8 +57,22 @@ vi.mock('@/app/stores/settings.store', () => ({
 		moduleSettings: {
 			'chat-hub': createChatHubModuleSettings(),
 		},
+		isChatFeatureEnabled: true,
+		isModuleActive: vi.fn().mockReturnValue(false),
 	}),
 }));
+
+const { mockHasRole } = vi.hoisted(() => ({
+	mockHasRole: vi.fn(() => true),
+}));
+
+vi.mock('@/app/utils/rbac/checks', async (importOriginal) => {
+	const actual = await importOriginal();
+	return {
+		...(actual as object),
+		hasRole: mockHasRole,
+	};
+});
 
 vi.mock('@/features/collaboration/projects/projects.store', () => ({
 	useProjectsStore: () => ({
@@ -70,6 +85,15 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({
 		loadNodeTypesIfNotLoaded: vi.fn().mockResolvedValue(undefined),
 		nodeTypes: [],
+	}),
+}));
+
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: () => ({
+		pushConnect: vi.fn(),
+		pushDisconnect: vi.fn(),
+		addEventListener: vi.fn(() => vi.fn()),
+		isConnected: { value: true },
 	}),
 }));
 
@@ -103,40 +127,91 @@ const renderComponent = createComponentRenderer(ChatView);
 
 describe('ChatView', () => {
 	let pinia: ReturnType<typeof createPinia>;
-	let sendMessageUpdated: (chunk: EnrichedStructuredChunk) => void;
-	let sendDone: () => void;
+	let chatStore: ReturnType<typeof useChatStore>;
 
-	beforeEach(() => {
+	// Helper to simulate WebSocket stream events
+	function simulateStreamChunk(
+		type: 'begin' | 'item' | 'end',
+		content: string,
+		metadata: {
+			messageId: string;
+			previousMessageId: string | null;
+			retryOfMessageId?: string | null;
+		},
+	) {
+		if (type === 'begin') {
+			chatStore.handleWebSocketStreamBegin({
+				sessionId: chatStore.streaming?.sessionId ?? '',
+				messageId: metadata.messageId,
+				previousMessageId: metadata.previousMessageId,
+				retryOfMessageId: metadata.retryOfMessageId ?? null,
+			});
+		} else if (type === 'item') {
+			chatStore.handleWebSocketStreamChunk({
+				sessionId: chatStore.streaming?.sessionId ?? '',
+				messageId: metadata.messageId,
+				content,
+			});
+		} else if (type === 'end') {
+			chatStore.handleWebSocketStreamEnd({
+				sessionId: chatStore.streaming?.sessionId ?? '',
+				messageId: metadata.messageId,
+				status: 'success',
+			});
+		}
+	}
+
+	function simulateStreamDone() {
+		chatStore.handleWebSocketExecutionEnd({
+			sessionId: chatStore.streaming?.sessionId ?? '',
+			status: 'success',
+		});
+	}
+
+	// Helper to simulate human message created event (sent from backend when message is accepted)
+	function simulateHumanMessageCreated(metadata: {
+		sessionId: string;
+		messageId: string;
+		previousMessageId: string | null;
+		content: string;
+	}) {
+		chatStore.handleHumanMessageCreated({
+			sessionId: metadata.sessionId,
+			messageId: metadata.messageId,
+			previousMessageId: metadata.previousMessageId,
+			content: metadata.content,
+			attachments: [],
+			timestamp: Date.now(),
+		});
+	}
+
+	beforeEach(async () => {
 		pinia = createPinia();
 		setActivePinia(pinia);
-		sendMessageUpdated = () => {};
-		sendDone = () => {};
+
+		// Import chat store dynamically to get fresh instance with active pinia
+		const { useChatStore: useChatStoreImport } = await import('./chat.store');
+		chatStore = useChatStoreImport();
 
 		mockRoute.params = {};
 		mockRoute.query = {};
 		mockRouterPush.mockClear();
+		mockHasRole.mockClear();
+		mockHasRole.mockReturnValue(true);
 		localStorage.clear();
+		// Skip welcome screen in tests by marking user as having had a conversation before
+		localStorage.setItem('user-123_N8N_CHAT_HUB_HAD_CONVERSATION_BEFORE', 'true');
 
 		vi.mocked(chatApi.sendMessageApi).mockClear();
-		vi.mocked(chatApi.sendMessageApi).mockImplementation((_ctx, _, onMessageUpdated_, onDone_) => {
-			sendMessageUpdated = onMessageUpdated_;
-			sendDone = onDone_;
-		});
+		vi.mocked(chatApi.sendMessageApi).mockResolvedValue({ status: 'streaming' });
 		vi.mocked(chatApi.editMessageApi).mockClear();
-		vi.mocked(chatApi.editMessageApi).mockImplementation(
-			(_ctx, _request, onMessageUpdated_, onDone_) => {
-				sendMessageUpdated = onMessageUpdated_;
-				sendDone = onDone_;
-			},
-		);
+		vi.mocked(chatApi.editMessageApi).mockResolvedValue({ status: 'streaming' });
 		vi.mocked(chatApi.regenerateMessageApi).mockClear();
-		vi.mocked(chatApi.regenerateMessageApi).mockImplementation(
-			(_ctx, _request, onMessageUpdated_, onDone_) => {
-				sendMessageUpdated = onMessageUpdated_;
-				sendDone = onDone_;
-			},
-		);
+		vi.mocked(chatApi.regenerateMessageApi).mockResolvedValue({
+			status: 'streaming',
+		});
 		vi.mocked(chatApi.stopGenerationApi).mockClear();
+		vi.mocked(chatApi.fetchToolsApi).mockResolvedValue([]);
 
 		vi.mocked(chatApi.fetchChatModelsApi).mockResolvedValue(
 			createMockModelsResponse({
@@ -212,7 +287,13 @@ describe('ChatView', () => {
 		it('displays greeting message', async () => {
 			const rendered = renderComponent({ pinia });
 
-			expect(await rendered.findByText('Hello, Test!')).toBeInTheDocument();
+			const greetingText = await rendered.findByText('Start a chat with');
+			expect(greetingText).toBeInTheDocument();
+
+			// Find the agent name within the greetings container
+			const greetingsContainer = greetingText.closest('.greetings') as HTMLElement;
+			expect(greetingsContainer).not.toBeNull();
+			expect(within(greetingsContainer).getByText('GPT-4')).toBeInTheDocument();
 		});
 
 		it('preselects agent from agentId query parameter', async () => {
@@ -279,6 +360,40 @@ describe('ChatView', () => {
 			expect(await rendered.findByText('select a model')).toBeInTheDocument();
 			expect(await rendered.findByRole('textbox')).toBeDisabled();
 		});
+
+		it('displays welcome screen for first-time users and allows dismissing it', async () => {
+			const user = userEvent.setup();
+
+			// Make welcome screen visible for first-time user
+			localStorage.removeItem('user-123_N8N_CHAT_HUB_HAD_CONVERSATION_BEFORE');
+			mockHasRole.mockReturnValue(false);
+
+			const rendered = renderComponent({ pinia });
+
+			// Manually trigger sessions fetch since the sidebar (which normally does this) isn't rendered in this test
+			const { useChatStore } = await import('./chat.store');
+			const chatStore = useChatStore();
+			await chatStore.fetchSessions(true);
+
+			// Verify welcome screen is displayed
+			expect(await rendered.findByText('Your agents, any model')).toBeInTheDocument();
+			expect(
+				rendered.getByText("One place to talk to everything you've built or connected"),
+			).toBeInTheDocument();
+			expect(rendered.getByTestId('welcome-card-workflow-agents')).toBeInTheDocument();
+			expect(rendered.getByTestId('welcome-card-personal-agents')).toBeInTheDocument();
+			expect(rendered.getByTestId('welcome-card-base-models')).toBeInTheDocument();
+
+			// Verify chat input is not visible while welcome screen is shown
+			expect(rendered.queryByRole('textbox')).not.toBeInTheDocument();
+
+			// Click "Start new chat" to dismiss welcome screen
+			await user.click(rendered.getByTestId('welcome-start-new-chat'));
+
+			// Verify chat interface is now shown
+			expect(await rendered.findByRole('textbox')).toBeInTheDocument();
+			expect(rendered.queryByText('Your agents, any model')).not.toBeInTheDocument();
+		});
 	});
 
 	describe('Rendering existing sessions', () => {
@@ -299,14 +414,14 @@ describe('ChatView', () => {
 							'msg-1': createMockMessageDto({
 								id: 'msg-1',
 								sessionId: 'existing-session-123',
-								content: 'What is the weather today?',
+								content: [{ type: 'text', content: 'What is the weather today?' }],
 							}),
 							'msg-2': createMockMessageDto({
 								id: 'msg-2',
 								sessionId: 'existing-session-123',
 								type: 'ai',
 								name: 'Assistant',
-								content: 'The weather is sunny today.',
+								content: [{ type: 'text', content: 'The weather is sunny today.' }],
 								provider: 'custom-agent',
 								agentId: 'agent-123',
 								previousMessageId: 'msg-1',
@@ -383,78 +498,53 @@ describe('ChatView', () => {
 					sessionId: expect.any(String),
 					credentials: {},
 				}),
-				expect.any(Function),
-				expect.any(Function),
-				expect.any(Function),
 			);
 
 			const apiCallArgs = vi.mocked(chatApi.sendMessageApi).mock.calls[0];
 			const messageIdFromApi = apiCallArgs[1].messageId;
 			const sessionIdFromApi = apiCallArgs[1].sessionId;
 
-			sendMessageUpdated(
-				createMockStreamChunk({
-					type: 'begin',
-					content: '',
-					metadata: {
-						messageId: 'ai-message-123',
-						previousMessageId: messageIdFromApi,
-					},
-				}),
-			);
+			// Simulate human message created event (sent from backend when message is accepted)
+			simulateHumanMessageCreated({
+				sessionId: sessionIdFromApi,
+				messageId: messageIdFromApi,
+				previousMessageId: null,
+				content: 'What is n8n?',
+			});
+
+			simulateStreamChunk('begin', '', {
+				messageId: 'ai-message-123',
+				previousMessageId: messageIdFromApi,
+			});
 
 			await vi.waitFor(() => expect(textarea).toHaveValue(''));
 			await rendered.findByText('What is n8n?');
 
-			sendMessageUpdated(
-				createMockStreamChunk({
-					type: 'item',
-					content: 'n8n is',
-					metadata: {
-						messageId: 'ai-message-123',
-						previousMessageId: messageIdFromApi,
-					},
-				}),
-			);
+			simulateStreamChunk('item', 'n8n is', {
+				messageId: 'ai-message-123',
+				previousMessageId: messageIdFromApi,
+			});
 
 			expect(await rendered.findByText(/n8n is/)).toBeInTheDocument();
 
-			sendMessageUpdated(
-				createMockStreamChunk({
-					type: 'item',
-					content: ' a workflow',
-					metadata: {
-						messageId: 'ai-message-123',
-						previousMessageId: messageIdFromApi,
-					},
-				}),
-			);
+			simulateStreamChunk('item', ' a workflow', {
+				messageId: 'ai-message-123',
+				previousMessageId: messageIdFromApi,
+			});
 
 			expect(await rendered.findByText(/n8n is a workflow/)).toBeInTheDocument();
 
-			sendMessageUpdated(
-				createMockStreamChunk({
-					type: 'item',
-					content: ' automation tool.',
-					metadata: {
-						messageId: 'ai-message-123',
-						previousMessageId: messageIdFromApi,
-					},
-				}),
-			);
+			simulateStreamChunk('item', ' automation tool.', {
+				messageId: 'ai-message-123',
+				previousMessageId: messageIdFromApi,
+			});
 
-			sendMessageUpdated(
-				createMockStreamChunk({
-					type: 'end',
-					content: '',
-					metadata: {
-						messageId: 'ai-message-123',
-						previousMessageId: messageIdFromApi,
-					},
-				}),
-			);
+			simulateStreamChunk('end', '', {
+				messageId: 'ai-message-123',
+				previousMessageId: messageIdFromApi,
+			});
 
-			sendDone();
+			simulateStreamDone();
 
 			expect(await rendered.findByText('n8n is a workflow automation tool.')).toBeInTheDocument();
 			expect(mockRouterPush).toHaveBeenCalledWith({
@@ -488,14 +578,14 @@ describe('ChatView', () => {
 							'msg-1': createMockMessageDto({
 								id: 'msg-1',
 								sessionId: 'existing-session-123',
-								content: 'Previous question',
+								content: [{ type: 'text', content: 'Previous question' }],
 							}),
 							'msg-2': createMockMessageDto({
 								id: 'msg-2',
 								sessionId: 'existing-session-123',
 								type: 'ai',
 								name: 'Assistant',
-								content: 'Previous answer',
+								content: [{ type: 'text', content: 'Previous answer' }],
 								provider: 'openai',
 								model: 'gpt-4',
 								previousMessageId: 'msg-1',
@@ -521,50 +611,35 @@ describe('ChatView', () => {
 					credentials: {},
 					previousMessageId: 'msg-2',
 				}),
-				expect.any(Function),
-				expect.any(Function),
-				expect.any(Function),
 			);
 
 			const apiCallArgs = vi.mocked(chatApi.sendMessageApi).mock.calls[0];
 			const messageIdFromApi = apiCallArgs[1].messageId;
 
-			sendMessageUpdated(
-				createMockStreamChunk({
-					type: 'begin',
-					content: '',
-					metadata: {
-						messageId: 'ai-message-456',
-						previousMessageId: messageIdFromApi,
-					},
-				}),
-			);
+			// Simulate human message created event (sent from backend when message is accepted)
+			simulateHumanMessageCreated({
+				sessionId: 'existing-session-123',
+				messageId: messageIdFromApi,
+				previousMessageId: 'msg-2',
+				content: 'New question',
+			});
+
+			simulateStreamChunk('begin', '', {
+				messageId: 'ai-message-456',
+				previousMessageId: messageIdFromApi,
+			});
 
 			await vi.waitFor(() => expect(textarea).toHaveValue(''));
 
-			sendMessageUpdated(
-				createMockStreamChunk({
-					type: 'item',
-					content: 'AI response here',
-					metadata: {
-						messageId: 'ai-message-456',
-						previousMessageId: messageIdFromApi,
-					},
-				}),
-			);
-
-			sendMessageUpdated(
-				createMockStreamChunk({
-					type: 'end',
-					content: '',
-					metadata: {
-						messageId: 'ai-message-456',
-						previousMessageId: messageIdFromApi,
-					},
-				}),
-			);
-
-			sendDone();
+			simulateStreamChunk('item', 'AI response here', {
+				messageId: 'ai-message-456',
+				previousMessageId: messageIdFromApi,
+			});
+			simulateStreamChunk('end', '', {
+				messageId: 'ai-message-456',
+				previousMessageId: messageIdFromApi,
+			});
+			simulateStreamDone();
 
 			expect(await rendered.findByText('AI response here')).toBeInTheDocument();
 
@@ -595,27 +670,15 @@ describe('ChatView', () => {
 			const messageIdFromApi = sendApiCall[1].messageId;
 			const sessionId = sendApiCall[1].sessionId;
 
-			sendMessageUpdated(
-				createMockStreamChunk({
-					type: 'begin',
-					content: '',
-					metadata: {
-						messageId: 'ai-message-123',
-						previousMessageId: messageIdFromApi,
-					},
-				}),
-			);
+			simulateStreamChunk('begin', '', {
+				messageId: 'ai-message-123',
+				previousMessageId: messageIdFromApi,
+			});
 
-			sendMessageUpdated(
-				createMockStreamChunk({
-					type: 'item',
-					content: 'Starting response...',
-					metadata: {
-						messageId: 'ai-message-123',
-						previousMessageId: messageIdFromApi,
-					},
-				}),
-			);
+			simulateStreamChunk('item', 'Starting response...', {
+				messageId: 'ai-message-123',
+				previousMessageId: messageIdFromApi,
+			});
 
 			await user.click(await rendered.findByRole('button', { name: /stop generating/i }));
 
@@ -624,6 +687,227 @@ describe('ChatView', () => {
 				sessionId,
 				'ai-message-123',
 			);
+		});
+	});
+
+	describe('Suggested prompts', () => {
+		it('clicking a suggested prompt populates the input with the prompt text', async () => {
+			const user = userEvent.setup();
+
+			mockRoute.query = { workflowId: 'workflow-with-prompts' };
+
+			vi.mocked(chatApi.fetchChatModelsApi).mockResolvedValueOnce(
+				createMockModelsResponse({
+					n8n: {
+						models: [
+							createMockAgent({
+								name: 'Prompt Agent',
+								model: { provider: 'n8n', workflowId: 'workflow-with-prompts' },
+								suggestedPrompts: [
+									{ text: 'Summarize this document' },
+									{ text: 'Translate to Spanish' },
+								],
+							}),
+						],
+					},
+				}),
+			);
+
+			const rendered = renderComponent({ pinia });
+
+			// Wait for the suggested prompts to appear
+			const promptButton = await rendered.findByRole('button', {
+				name: /Summarize this document/,
+			});
+
+			await user.click(promptButton);
+
+			const textarea = rendered.getByRole('textbox');
+			expect(textarea).toHaveValue('Summarize this document');
+		});
+
+		it('renders all suggested prompts for the selected agent', async () => {
+			mockRoute.query = { workflowId: 'workflow-with-prompts' };
+
+			vi.mocked(chatApi.fetchChatModelsApi).mockResolvedValueOnce(
+				createMockModelsResponse({
+					n8n: {
+						models: [
+							createMockAgent({
+								name: 'Multi Prompt Agent',
+								model: { provider: 'n8n', workflowId: 'workflow-with-prompts' },
+								suggestedPrompts: [
+									{ text: 'Help me write an email' },
+									{ text: 'Explain this code' },
+									{ text: 'Create a summary' },
+								],
+							}),
+						],
+					},
+				}),
+			);
+
+			const rendered = renderComponent({ pinia });
+
+			expect(
+				await rendered.findByRole('button', { name: /Help me write an email/ }),
+			).toBeInTheDocument();
+			expect(rendered.getByRole('button', { name: /Explain this code/ })).toBeInTheDocument();
+			expect(rendered.getByRole('button', { name: /Create a summary/ })).toBeInTheDocument();
+		});
+
+		it('does not render suggested prompts for base LLM models', async () => {
+			mockRoute.query = {};
+
+			vi.mocked(chatApi.fetchChatModelsApi).mockResolvedValueOnce(
+				createMockModelsResponse({
+					openai: {
+						models: [
+							createMockAgent({
+								name: 'GPT-4',
+								model: { provider: 'openai', model: 'gpt-4' },
+								suggestedPrompts: [{ text: 'Should not appear' }], // Perhaps we'll implement this one day
+							}),
+						],
+					},
+				}),
+			);
+
+			const rendered = renderComponent({ pinia });
+
+			// Wait for the greeting to appear (LLM models show "Start a chat with")
+			await rendered.findByText('Start a chat with');
+
+			expect(rendered.queryByRole('button', { name: /Should not appear/ })).not.toBeInTheDocument();
+		});
+
+		it('does not render suggested prompts when agent has none', async () => {
+			mockRoute.query = { agentId: 'agent-no-prompts' };
+
+			vi.mocked(chatApi.fetchChatModelsApi).mockResolvedValueOnce(
+				createMockModelsResponse({
+					'custom-agent': {
+						models: [
+							createMockAgent({
+								name: 'No Prompt Agent',
+								model: { provider: 'custom-agent', agentId: 'agent-no-prompts' },
+							}),
+						],
+					},
+				}),
+			);
+
+			const rendered = renderComponent({ pinia });
+
+			// Wait for the agent card to render with the agent name
+			await rendered.findAllByText('No Prompt Agent');
+
+			// No suggested prompt buttons should exist (only non-prompt buttons like send, model selector)
+			expect(
+				rendered.queryByRole('button', { name: /Summarize|Translate|Help|Explain|Create/ }),
+			).not.toBeInTheDocument();
+		});
+	});
+
+	describe('Editing messages', () => {
+		beforeEach(() => {
+			mockRoute.params = { id: 'existing-session-123' };
+
+			vi.mocked(chatApi.fetchSingleConversationApi).mockResolvedValue(
+				createMockConversationResponse({
+					session: createMockSession({
+						id: 'existing-session-123',
+						provider: 'custom-agent',
+						agentId: 'agent-123',
+					}),
+					conversation: {
+						messages: {
+							'msg-1': createMockMessageDto({
+								id: 'msg-1',
+								sessionId: 'existing-session-123',
+								content: [{ type: 'text', content: 'Please analyze these files' }],
+								attachments: [
+									{ fileName: 'file1.txt', mimeType: 'text/plain' },
+									{ fileName: 'file2.pdf', mimeType: 'application/pdf' },
+									{ fileName: 'file3.jpg', mimeType: 'image/jpeg' },
+								],
+							}),
+							'msg-2': createMockMessageDto({
+								id: 'msg-2',
+								sessionId: 'existing-session-123',
+								type: 'ai',
+								name: 'Assistant',
+								content: [{ type: 'text', content: 'Analysis complete' }],
+								provider: 'custom-agent',
+								agentId: 'agent-123',
+								previousMessageId: 'msg-1',
+							}),
+						},
+					},
+				}),
+			);
+		});
+
+		it('edits message with adding and removing files', async () => {
+			const user = userEvent.setup();
+			const rendered = renderComponent({ pinia });
+
+			await rendered.findByText('Please analyze these files');
+
+			const humanMessage = rendered.getByTestId('chat-message-msg-1');
+
+			await user.click(within(humanMessage).getByTestId('chat-message-edit'));
+
+			const attachments = within(humanMessage).getAllByTestId('chat-file');
+			const fileInput = within(humanMessage).getByTestId('message-edit-file-input');
+			const newFile = new File(['new content'], 'new-file.md', { type: 'text/markdown' });
+
+			expect(within(humanMessage).getByRole('textbox')).toHaveValue('Please analyze these files');
+			expect(attachments).toHaveLength(3);
+
+			await user.click(within(attachments[1]).getByTestId('chat-file-remove'));
+			await user.upload(fileInput, newFile);
+			await user.click(within(humanMessage).getByText('Send'));
+
+			await vi.waitFor(() => expect(chatApi.editMessageApi).toHaveBeenCalled());
+
+			expect(chatApi.editMessageApi).toHaveBeenCalledWith(expect.anything(), {
+				sessionId: 'existing-session-123',
+				editId: 'msg-1',
+				payload: expect.objectContaining({
+					message: 'Please analyze these files',
+					model: { provider: 'custom-agent', agentId: 'agent-123' },
+					keepAttachmentIndices: [0, 2], // Kept file1.txt (index 0) and file3.jpg (index 2)
+					newAttachments: [
+						expect.objectContaining({
+							fileName: 'new-file.md',
+							mimeType: 'text/markdown',
+							data: expect.any(String), // base64 data
+						}),
+					],
+				}),
+			});
+
+			const promptId = vi.mocked(chatApi.editMessageApi).mock.calls[0][1].payload.messageId;
+
+			simulateStreamChunk('begin', '', {
+				messageId: 'ai-message-revised',
+				previousMessageId: promptId,
+			});
+
+			simulateStreamChunk('item', 'Updated analysis complete', {
+				messageId: 'ai-message-revised',
+				previousMessageId: promptId,
+			});
+
+			simulateStreamChunk('end', '', {
+				messageId: 'ai-message-revised',
+				previousMessageId: promptId,
+			});
+
+			simulateStreamDone();
+
+			expect(await rendered.findByText('Updated analysis complete')).toBeInTheDocument();
 		});
 	});
 });

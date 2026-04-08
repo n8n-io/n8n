@@ -61,4 +61,14 @@ export class TagApiHelper {
 		const result = await response.json();
 		return Array.isArray(result) ? result : (result.data ?? []);
 	}
+
+	/**
+	 * Delete all tags, optionally filtered by prefix
+	 * @param prefix - If provided, only delete tags whose names start with this prefix
+	 */
+	async deleteAll(prefix?: string): Promise<void> {
+		const tags = await this.getAll();
+		const toDelete = prefix ? tags.filter((tag) => tag.name.startsWith(prefix)) : tags;
+		await Promise.all(toDelete.map((tag) => this.delete(tag.id)));
+	}
 }

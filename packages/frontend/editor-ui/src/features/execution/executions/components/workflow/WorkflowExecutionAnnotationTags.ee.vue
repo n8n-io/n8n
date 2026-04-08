@@ -99,12 +99,11 @@ const onTagsEditEsc = () => {
 			/>
 			<div v-else-if="tagIds.length === 0">
 				<N8nButton
+					variant="ghost"
 					:class="[$style.addTagButton, 'clickable']"
 					:label="locale.baseText('executionAnnotationView.addTag')"
-					type="secondary"
-					size="mini"
+					size="xsmall"
 					:outline="false"
-					:text="true"
 					data-test-id="new-tag-link"
 					icon="plus"
 					@click="onTagsEditEnable"
@@ -127,11 +126,10 @@ const onTagsEditEsc = () => {
 				</span>
 				<span :class="$style.addTagWrapper">
 					<N8nButton
+						variant="ghost"
 						:class="[$style.addTagButton, $style.addTagButtonIconOnly, 'clickable']"
-						type="secondary"
-						size="mini"
+						size="xsmall"
 						:outline="false"
-						:text="true"
 						data-test-id="new-tag-link"
 						icon="plus"
 						@click="onTagsEditEnable"

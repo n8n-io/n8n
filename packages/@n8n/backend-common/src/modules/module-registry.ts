@@ -37,8 +37,20 @@ export class ModuleRegistry {
 		'mcp',
 		'provisioning',
 		'breaking-changes',
+		'source-control',
 		'dynamic-credentials',
 		'chat-hub',
+		'sso-oidc',
+		'sso-saml',
+		'log-streaming',
+		'ldap',
+		'quick-connect',
+		'workflow-builder',
+		'redaction',
+		'instance-registry',
+		'otel',
+		'token-exchange',
+		'instance-version-history',
 	];
 
 	private readonly activeModules: string[] = [];
@@ -99,6 +111,8 @@ export class ModuleRegistry {
 			const loadDir = await Container.get(ModuleClass).loadDir?.();
 
 			if (loadDir) this.loadDirs.push(loadDir);
+
+			await Container.get(ModuleClass).commands?.();
 		}
 	}
 

@@ -90,14 +90,14 @@ export class CustomerIo implements INodeType {
 						const campaignId = this.getNodeParameter('campaignId', i) as number;
 						const endpoint = `/campaigns/${campaignId}`;
 
-						responseData = await customerIoApiRequest.call(this, 'GET', endpoint, body, 'beta');
+						responseData = await customerIoApiRequest.call(this, 'GET', endpoint, body, 'app');
 						responseData = responseData.campaign;
 					}
 
 					if (operation === 'getAll') {
 						const endpoint = '/campaigns';
 
-						responseData = await customerIoApiRequest.call(this, 'GET', endpoint, body, 'beta');
+						responseData = await customerIoApiRequest.call(this, 'GET', endpoint, body, 'app');
 						responseData = responseData.campaigns;
 					}
 
@@ -141,7 +141,7 @@ export class CustomerIo implements INodeType {
 								}
 							}
 
-							responseData = await customerIoApiRequest.call(this, 'GET', endpoint, body, 'beta');
+							responseData = await customerIoApiRequest.call(this, 'GET', endpoint, body, 'app');
 							responseData = responseData.metric;
 						}
 					}

@@ -24,6 +24,7 @@ const subcategoryName = computed(() => camelCase(props.item.subcategory || props
 			i18n.baseText(`nodeCreator.subcategoryDescriptions.${subcategoryName}` as BaseTextKey)
 		"
 		:show-action-arrow="true"
+		:is-new="item.new"
 	>
 		<template #icon>
 			<N8nNodeIcon
@@ -40,6 +41,7 @@ const subcategoryName = computed(() => camelCase(props.item.subcategory || props
 <style lang="scss" module>
 .subCategory {
 	--action--arrow--color: var(--color--text--tint-1);
+	--node--icon--color: var(--node-creator--icon--color);
 	margin-left: 15px;
 	margin-right: 12px;
 }

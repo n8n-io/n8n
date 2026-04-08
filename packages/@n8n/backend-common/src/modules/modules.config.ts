@@ -10,8 +10,21 @@ export const MODULE_NAMES = [
 	'mcp',
 	'provisioning',
 	'breaking-changes',
+	'source-control',
 	'dynamic-credentials',
 	'chat-hub',
+	'sso-oidc',
+	'sso-saml',
+	'log-streaming',
+	'ldap',
+	'quick-connect',
+	'workflow-builder',
+	'redaction',
+	'instance-registry',
+	'instance-ai',
+	'otel',
+	'token-exchange',
+	'instance-version-history',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];

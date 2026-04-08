@@ -13,10 +13,9 @@ import type {
 	InputTypePropType,
 	SwitchModelValuePropType,
 	CheckboxModelValuePropType,
-	CheckboxLabelSizePropType,
 	InputAutocompletePropType,
 } from '../../types';
-import N8nCheckbox from '../N8nCheckbox';
+import N8nCheckbox from '../../v2/components/Checkbox/Checkbox.vue';
 import N8nInput from '../N8nInput';
 import N8nInputLabel from '../N8nInputLabel';
 import N8nLink from '../N8nLink';
@@ -182,7 +181,6 @@ defineExpose({ inputRef });
 		ref="inputRef"
 		:label="label"
 		:disabled="disabled"
-		:label-size="labelSize as CheckboxLabelSizePropType"
 		:model-value="modelValue as CheckboxModelValuePropType"
 		@update:model-value="onUpdateModelValue"
 		@focus="onFocus"
@@ -199,6 +197,7 @@ defineExpose({ inputRef });
 			{{ tooltipText }}
 		</template>
 		<ElSwitch
+			:id="name"
 			:model-value="modelValue as SwitchModelValuePropType"
 			:active-color="activeColor"
 			:inactive-color="inactiveColor"
@@ -218,6 +217,7 @@ defineExpose({ inputRef });
 			<N8nSelect
 				v-else-if="type === 'select' || type === 'multi-select'"
 				ref="inputRef"
+				:id="name"
 				:class="{ [$style.multiSelectSmallTags]: tagSize === 'small' }"
 				:model-value="modelValue"
 				:placeholder="placeholder"
@@ -242,6 +242,7 @@ defineExpose({ inputRef });
 			<N8nInput
 				v-else
 				ref="inputRef"
+				:id="name"
 				:name="name"
 				:type="type as InputTypePropType"
 				:placeholder="placeholder"

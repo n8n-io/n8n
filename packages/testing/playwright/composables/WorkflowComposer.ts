@@ -1,6 +1,4 @@
-import type { Request } from '@playwright/test';
 import { expect } from '@playwright/test';
-import type { IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import type { n8nPage } from '../pages/n8nPage';
@@ -34,36 +32,28 @@ export class WorkflowComposer {
 
 	/**
 	 * Creates a new workflow by clicking the add workflow button and setting the name
+	 * Workflow is autosaved after a name update
 	 * @param workflowName - The name of the workflow to create
 	 */
 	async createWorkflow(workflowName = 'My New Workflow') {
 		await this.n8n.workflows.addResource.workflow();
 		await this.n8n.canvas.setWorkflowName(workflowName);
+		await this.n8n.page.keyboard.press('Enter');
 
-		const responsePromise = this.n8n.page.waitForResponse(
-			(response) =>
-				response.url().includes('/rest/workflows') && response.request().method() === 'POST',
-		);
-		await this.n8n.canvas.saveWorkflow();
-
-		await responsePromise;
+		await this.n8n.canvas.waitForSaveWorkflowCompleted();
 	}
 
 	/**
 	 * Creates a new workflow by clicking the add workflow button
+	 * Workflow is autosaved after a name update
 	 * @param workflowName - The name of the workflow to create
 	 */
 	async createWorkflowFromSidebar(workflowName = 'My New Workflow') {
 		await this.n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
 		await this.n8n.canvas.setWorkflowName(workflowName);
+		await this.n8n.page.keyboard.press('Enter');
 
-		const responsePromise = this.n8n.page.waitForResponse(
-			(response) =>
-				response.url().includes('/rest/workflows') && response.request().method() === 'POST',
-		);
-		await this.n8n.canvas.saveWorkflow();
-
-		await responsePromise;
+		await this.n8n.canvas.waitForSaveWorkflowCompleted();
 	}
 
 	/**
@@ -81,51 +71,6 @@ export class WorkflowComposer {
 		await this.n8n.workflows.addResource.workflow();
 		await this.n8n.canvas.importWorkflow(fileName, workflowName);
 		return { workflowName };
-	}
-
-	/**
-	 * Creates a new workflow by importing from a URL
-	 * @param url - The URL to import the workflow from
-	 * @returns Promise that resolves when the import is complete
-	 */
-	async importWorkflowFromURL(url: string): Promise<void> {
-		await this.n8n.workflows.addResource.workflow();
-		await this.n8n.canvas.clickWorkflowMenu();
-		await this.n8n.canvas.clickImportFromURL();
-		await this.n8n.canvas.fillImportURLInput(url);
-		await this.n8n.canvas.clickConfirmImportURL();
-	}
-
-	/**
-	 * Opens the import from URL dialog and then dismisses it by clicking outside
-	 */
-	async openAndDismissImportFromURLDialog(): Promise<void> {
-		await this.n8n.workflows.addResource.workflow();
-		await this.n8n.canvas.clickWorkflowMenu();
-		await this.n8n.canvas.clickImportFromURL();
-		await this.n8n.canvas.clickOutsideModal();
-	}
-
-	/**
-	 * Opens the import from URL dialog and then cancels it
-	 */
-	async openAndCancelImportFromURLDialog(): Promise<void> {
-		await this.n8n.workflows.addResource.workflow();
-		await this.n8n.canvas.clickWorkflowMenu();
-		await this.n8n.canvas.clickImportFromURL();
-		await this.n8n.canvas.clickCancelImportURL();
-	}
-
-	/**
-	 * Saves the current workflow and waits for the POST request to complete
-	 * @returns The Request object containing the save request details
-	 */
-	async saveWorkflowAndWaitForRequest(): Promise<Request> {
-		const saveRequestPromise = this.n8n.page.waitForRequest(
-			(req) => req.url().includes('/rest/workflows') && req.method() === 'POST',
-		);
-		await this.n8n.canvas.clickSaveWorkflowButton();
-		return await saveRequestPromise;
 	}
 
 	/**
@@ -157,19 +102,6 @@ export class WorkflowComposer {
 		const saveButton = this.n8n.workflowSettingsModal.getDuplicateSaveButton();
 		await expect(saveButton).toBeVisible();
 		await saveButton.click();
-	}
-
-	/**
-	 * Get workflow by name via API
-	 * @param workflowName - Name of the workflow to find
-	 * @returns Workflow object with id, name, and other properties
-	 */
-	async getWorkflowByName(workflowName: string): Promise<IWorkflowBase> {
-		const response = await this.n8n.api.request.get('/rest/workflows', {
-			params: new URLSearchParams({ filter: JSON.stringify({ name: workflowName }) }),
-		});
-		const workflows = await response.json();
-		return workflows.data[0];
 	}
 
 	/**

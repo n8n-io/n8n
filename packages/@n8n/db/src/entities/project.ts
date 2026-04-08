@@ -1,7 +1,17 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany, Relation } from '@n8n/typeorm';
+import {
+	Column,
+	Entity,
+	JoinColumn,
+	ManyToMany,
+	ManyToOne,
+	OneToMany,
+	Relation,
+} from '@n8n/typeorm';
 
 import { WithTimestampsAndStringId } from './abstract-entity';
 import type { ProjectRelation } from './project-relation';
+import type { ProjectSecretsProviderAccess } from './project-secrets-provider-access';
+import type { RoleMappingRule } from './role-mapping-rule';
 import type { SharedCredentials } from './shared-credentials';
 import type { SharedWorkflow } from './shared-workflow';
 import { User } from './user';
@@ -30,8 +40,14 @@ export class Project extends WithTimestampsAndStringId {
 	@OneToMany('SharedWorkflow', 'project')
 	sharedWorkflows: SharedWorkflow[];
 
+	@OneToMany('ProjectSecretsProviderAccess', 'project')
+	secretsProviderAccess: ProjectSecretsProviderAccess[];
+
 	@OneToMany('Variables', 'project')
 	variables: Variables[];
+
+	@ManyToMany('RoleMappingRule', (rule: RoleMappingRule) => rule.projects)
+	roleMappingRules: RoleMappingRule[];
 
 	@Column({ type: String, nullable: true })
 	creatorId: string | null;

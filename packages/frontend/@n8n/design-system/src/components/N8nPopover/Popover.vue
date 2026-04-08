@@ -18,12 +18,25 @@ defineOptions({ name: 'N8nPopover' });
 import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 
 interface Props
-	extends Pick<PopoverContentProps, 'side' | 'align' | 'sideFlip' | 'sideOffset' | 'reference'>,
+	extends Pick<
+			PopoverContentProps,
+			| 'side'
+			| 'align'
+			| 'sideFlip'
+			| 'sideOffset'
+			| 'reference'
+			| 'positionStrategy'
+			| 'collisionPadding'
+		>,
 		Pick<PopoverRootProps, 'open'> {
 	/**
 	 * Whether to enable scrolling in the popover content
 	 */
 	enableScrolling?: boolean;
+	/**
+	 * Whether to force mount the content even when closed
+	 */
+	forceMount?: boolean;
 	/**
 	 * Whether to enable slide-in animation
 	 */
@@ -73,14 +86,17 @@ const props = withDefaults(defineProps<Props>(), {
 	maxHeight: undefined,
 	width: undefined,
 	enableScrolling: true,
+	forceMount: false,
 	enableSlideIn: true,
 	scrollType: 'hover',
 	sideOffset: 5,
 	sideFlip: undefined,
+	collisionPadding: 5,
 	suppressAutoFocus: false,
 	zIndex: 999,
 	showArrow: false,
 	teleported: true,
+	positionStrategy: undefined,
 });
 
 const emit = defineEmits<Emits>();
@@ -131,9 +147,12 @@ watch(
 				:side-flip="sideFlip"
 				:align="align"
 				:side-offset="sideOffset"
+				:collision-padding="collisionPadding"
 				:class="[$style.popoverContent, contentClass, { [$style.enableSlideIn]: enableSlideIn }]"
 				:style="{ width, zIndex }"
 				:reference="reference"
+				:force-mount="forceMount"
+				:position-strategy="positionStrategy"
 				@open-auto-focus="handleOpenAutoFocus"
 				@pointer-down-outside="handleOutsideInteraction"
 				@interact-outside="handleOutsideInteraction"
@@ -169,6 +188,10 @@ watch(
 	&.enableSlideIn {
 		animation-duration: 400ms;
 		animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+	}
+
+	&[data-state='closed'] {
+		display: none;
 	}
 }
 

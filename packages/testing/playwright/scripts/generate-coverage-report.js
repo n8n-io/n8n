@@ -16,14 +16,10 @@ const NYC_CONFIG = path.join(__dirname, '..', 'nyc.config.ts');
 // Project names come from playwright-projects.ts
 const COVERAGE_PROJECT_PATTERNS = [
 	'e2e', // Local mode project
-	'standard:e2e', // Container mode projects
-	'standard:e2e:isolated',
+	'sqlite:e2e', // Container mode projects
 	'postgres:e2e',
-	'postgres:e2e:isolated',
 	'queue:e2e',
-	'queue:e2e:isolated',
 	'multi-main:e2e',
-	'multi-main:e2e:isolated',
 ];
 
 /**
@@ -62,7 +58,7 @@ function main() {
 			'1. Build editor-ui with coverage: BUILD_WITH_COVERAGE=true pnpm --filter n8n-editor-ui build',
 		);
 		console.log(
-			'2. Run Playwright tests with coverage: BUILD_WITH_COVERAGE=true pnpm test:container:standard',
+			'2. Run Playwright tests with coverage: BUILD_WITH_COVERAGE=true pnpm test:container:sqlite',
 		);
 		process.exit(1);
 	}

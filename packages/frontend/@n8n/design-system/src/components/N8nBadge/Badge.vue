@@ -33,10 +33,10 @@ withDefaults(defineProps<BadgeProps>(), {
 	align-items: center;
 	padding: var(--spacing--5xs) var(--spacing--4xs);
 	white-space: nowrap;
+}
 
-	&.border {
-		border: var(--border);
-	}
+.border {
+	border: var(--border);
 }
 
 .default {

@@ -171,6 +171,11 @@ export class Snowflake implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = await this.getCredentials<SnowflakeCredential>('snowflake');
+		// Disable logging - https://docs.snowflake.com/en/developer-guide/node-js/nodejs-driver-logs#configure-the-default-logging-behavior
+		snowflake.configure({
+			logFilePath: 'STDOUT',
+			logLevel: 'OFF',
+		});
 
 		const connectionOptions = getConnectionOptions(credentials);
 		const connection = snowflake.createConnection(connectionOptions);

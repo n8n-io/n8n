@@ -56,3 +56,12 @@ export async function createLdapClient(
 	}
 	return client;
 }
+
+export function escapeValue(value: string) {
+	return value
+		.replace(/\\/g, '\\5c')
+		.replace(/\*/g, '\\2a')
+		.replace(/\(/g, '\\28')
+		.replace(/\)/g, '\\29')
+		.replace(/\x00/g, '\\00');
+}

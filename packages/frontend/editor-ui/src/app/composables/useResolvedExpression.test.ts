@@ -6,6 +6,10 @@ import { renderComponent } from '@/__tests__/render';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { injectWorkflowState, useWorkflowState, type WorkflowState } from './useWorkflowState';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 vi.mock('@/app/composables/useWorkflowState', async () => {
 	const actual = await vi.importActual('@/app/composables/useWorkflowState');
@@ -59,12 +63,13 @@ describe('useResolvedExpression', () => {
 	});
 
 	it('should resolve a simple expression', async () => {
-		mockResolveExpression().mockReturnValue(4);
+		mockResolveExpression().mockResolvedValue(4);
 		const { isExpression, resolvedExpression, resolvedExpressionString } =
 			await renderTestComponent({
 				expression: '={{ testValue }}',
 			});
 
+		await nextTick();
 		expect(toValue(isExpression)).toBe(true);
 		expect(toValue(resolvedExpression)).toBe(4);
 		expect(toValue(resolvedExpressionString)).toBe('4');
@@ -82,25 +87,25 @@ describe('useResolvedExpression', () => {
 	});
 
 	it('should handle errors', async () => {
-		mockResolveExpression().mockImplementation(() => {
-			throw new Error('Test error');
-		});
+		mockResolveExpression().mockRejectedValue(new Error('Test error'));
 		const { isExpression, resolvedExpression, resolvedExpressionString } =
 			await renderTestComponent({
 				expression: '={{ testValue }}',
 			});
 
+		await nextTick();
 		expect(toValue(isExpression)).toBe(true);
 		expect(toValue(resolvedExpression)).toBe(null);
 		expect(toValue(resolvedExpressionString)).toBe('[ERROR: Test error]');
 	});
 
 	it('should debounce updates', async () => {
-		const resolveExpressionSpy = mockResolveExpression().mockReturnValue(4);
+		const resolveExpressionSpy = mockResolveExpression().mockResolvedValue(4);
 		const expression = ref('={{ testValue }}');
 
 		await renderTestComponent({ expression });
 
+		await nextTick();
 		expect(resolveExpressionSpy).toHaveBeenCalledTimes(1);
 
 		// Multiple fast updates should only resolve the expression once
@@ -111,28 +116,38 @@ describe('useResolvedExpression', () => {
 
 		expect(resolveExpressionSpy).toHaveBeenCalledTimes(1);
 		vi.advanceTimersByTime(200);
+		await nextTick();
 		expect(resolveExpressionSpy).toHaveBeenCalledTimes(2);
 	});
 
 	it('should re-resolve when workflow name changes', async () => {
 		const workflowsStore = useWorkflowsStore();
+		workflowsStore.workflow.id = 'test-workflow';
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId('test-workflow'),
+		);
 		const resolveExpressionSpy = mockResolveExpression();
-		resolveExpressionSpy.mockImplementation(() => workflowsStore.workflow.name);
+		resolveExpressionSpy.mockImplementation(async () => workflowDocumentStore.name);
 
-		workflowState.setWorkflowName({ newName: 'Old Name', setStateDirty: false });
+		workflowDocumentStore.setName('Old Name');
 
 		const { resolvedExpressionString } = await renderTestComponent({
 			expression: '={{ $workflow.name }}',
 		});
 
-		// Initial resolve
+		// Initial resolve - need multiple nextTick calls to handle async resolution
+		await nextTick();
 		vi.advanceTimersByTime(200);
+		await nextTick();
+		await nextTick();
 		expect(toValue(resolvedExpressionString)).toBe('Old Name');
 
 		// Update name and expect re-resolution
-		workflowState.setWorkflowName({ newName: 'New Name', setStateDirty: false });
+		workflowDocumentStore.setName('New Name');
 		await nextTick();
 		vi.advanceTimersByTime(200);
+		await nextTick();
+		await nextTick();
 		expect(toValue(resolvedExpressionString)).toBe('New Name');
 	});
 });

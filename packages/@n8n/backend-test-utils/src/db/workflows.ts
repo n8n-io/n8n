@@ -1,4 +1,4 @@
-import type { SharedWorkflow, IWorkflowDb, WorkflowPublishHistory } from '@n8n/db';
+import type { SharedWorkflow, IWorkflowDb, WorkflowPublishHistory, WorkflowHistory } from '@n8n/db';
 import {
 	Project,
 	User,
@@ -247,7 +247,7 @@ export async function createWorkflowHistory(
 	workflow: IWorkflowDb,
 	userOrProject?: User | Project,
 	withPublishHistory?: Partial<WorkflowPublishHistory>,
-	autosaved = false,
+	overrides: Partial<WorkflowHistory> = {},
 ): Promise<void> {
 	const authors =
 		userOrProject instanceof User
@@ -262,7 +262,8 @@ export async function createWorkflowHistory(
 		nodes: workflow.nodes,
 		connections: workflow.connections,
 		authors,
-		autosaved,
+		autosaved: false,
+		...overrides,
 	});
 
 	if (withPublishHistory) {

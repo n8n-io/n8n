@@ -1,34 +1,34 @@
 import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
+import type { OAuth2CredentialData } from '@n8n/client-oauth2';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { mockInstance } from '@n8n/backend-test-utils';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb, User } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import type { Response } from 'express';
+import { mock } from 'jest-mock-extended';
+import type { Cipher } from 'n8n-core';
+import { Credentials } from 'n8n-core';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
-import type { Cipher } from 'n8n-core';
 
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
+import { CredentialsHelper } from '@/credentials-helper';
+import { AuthError } from '@/errors/response-errors/auth.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ExternalHooks } from '@/external-hooks';
 import {
 	OauthService,
 	OauthVersion,
 	shouldSkipAuthOnOAuthCallback,
 	type OAuth1CredentialData,
 } from '@/oauth/oauth.service';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { CredentialsHelper } from '@/credentials-helper';
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { OAuthRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { ExternalHooks } from '@/external-hooks';
-import type { OAuth2CredentialData } from '@n8n/client-oauth2';
-import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
-import { Credentials } from 'n8n-core';
 
 jest.mock('@/workflow-execute-additional-data');
 jest.mock('axios');
@@ -254,7 +254,6 @@ describe('OauthService', () => {
 			expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
 				additionalData,
 				decryptedData,
-				credential,
 				credential.type,
 				'internal',
 				undefined,
@@ -341,25 +340,24 @@ describe('OauthService', () => {
 			};
 			jest.setSystemTime(new Date(timestamp));
 
-			const [csrfSecret, encodedState, base64State] = service.createCsrfState(data);
+			const [csrfSecret, base64State] = service.createCsrfState(data);
 
 			expect(typeof csrfSecret).toBe('string');
 			expect(csrfSecret.length).toBeGreaterThan(0);
 			expect(cipher.encrypt).toHaveBeenCalled();
 
-			const decoded = JSON.parse(cipher.decrypt(encodedState));
-			expect(decoded.cid).toBe('credential-id');
-			expect(decoded.userId).toBe('user-id');
-			expect(decoded.token).toBeDefined();
-			expect(decoded.createdAt).toBe(timestamp);
-
-			// Verify base64State is a valid base64 string that decodes to the same state
+			// Verify base64State is a valid base64 string
 			expect(typeof base64State).toBe('string');
 			const base64Decoded = JSON.parse(Buffer.from(base64State, 'base64').toString());
-			expect(base64Decoded.cid).toBe('credential-id');
-			expect(base64Decoded.userId).toBe('user-id');
-			expect(base64Decoded.token).toBe(decoded.token);
+			expect(base64Decoded.token).toBeDefined();
 			expect(base64Decoded.createdAt).toBe(timestamp);
+			expect(base64Decoded.data).toBeDefined();
+
+			// Decrypt the data field to verify CSRF data
+			const decryptedData = JSON.parse(cipher.decrypt(base64Decoded.data));
+			expect(decryptedData.cid).toBe('credential-id');
+			expect(decryptedData.userId).toBe('user-id');
+			expect(decryptedData.origin).toBe('static-credential');
 		});
 
 		it('should include additional data in state', () => {
@@ -370,37 +368,55 @@ describe('OauthService', () => {
 			};
 			jest.setSystemTime(new Date(timestamp));
 
-			const [, encodedState, base64State] = service.createCsrfState(data);
+			const [, base64State] = service.createCsrfState(data);
 
 			expect(cipher.encrypt).toHaveBeenCalled();
-			const decoded = JSON.parse(cipher.decrypt(encodedState));
-			expect(decoded.customField).toBe('custom-value');
 
-			// Verify base64State includes the same custom field
+			// Verify base64State structure
 			const base64Decoded = JSON.parse(Buffer.from(base64State, 'base64').toString());
-			expect(base64Decoded.customField).toBe('custom-value');
+			expect(base64Decoded.token).toBeDefined();
+			expect(base64Decoded.createdAt).toBeDefined();
+			expect(base64Decoded.data).toBeDefined();
+
+			// Decrypt and verify the customField is in the encrypted data
+			const decryptedData = JSON.parse(cipher.decrypt(base64Decoded.data));
+			expect(decryptedData.customField).toBe('custom-value');
 		});
 	});
 
 	describe('decodeCsrfState', () => {
+		// Auth logic: dynamic credentials (origin === 'dynamic-credential') always skip user validation.
+		// Static credentials: skip user validation only when N8N_SKIP_AUTH_ON_OAUTH_CALLBACK is true
+		// (e.g. embed/iframe); otherwise req.user.id must match decryptedState.userId (BOLA prevention).
+		// skipAuthOnOAuthCallback is read at module load, so the "skip for static" path is not tested here.
+
 		it('should decode valid CSRF state', () => {
-			const state = {
-				token: 'token',
+			const csrfData = {
 				cid: 'credential-id',
 				userId: 'user-id',
 				origin: 'static-credential' as const,
-				createdAt: timestamp,
 			};
-			const stateString = JSON.stringify(state);
-			const encodedState = cipher.encrypt(stateString);
+			const state = {
+				token: 'token',
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+			cipher.decrypt.mockReturnValue(JSON.stringify(csrfData));
 			const req = mock<AuthenticatedRequest>({
 				user: mock<User>({ id: 'user-id' }),
 			});
 
 			const result = (service as any).decodeCsrfState(encodedState, req);
 
-			expect(cipher.decrypt).toHaveBeenCalledWith(encodedState);
-			expect(result).toEqual(state);
+			expect(cipher.decrypt).toHaveBeenCalledWith('encrypted-data');
+			expect(result).toMatchObject({
+				token: 'token',
+				createdAt: timestamp,
+				cid: 'credential-id',
+				userId: 'user-id',
+				origin: 'static-credential',
+			});
 		});
 
 		it('should throw error when state format is invalid', () => {
@@ -415,12 +431,17 @@ describe('OauthService', () => {
 		});
 
 		it('should throw UnexpectedError when cid is missing', () => {
+			const csrfData = {
+				userId: 'user-id',
+				origin: 'static-credential' as const,
+			};
 			const state = {
 				token: 'token',
 				createdAt: timestamp,
+				data: 'encrypted-data',
 			};
-			const stateString = JSON.stringify(state);
-			const encodedState = cipher.encrypt(stateString);
+			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+			cipher.decrypt.mockReturnValue(JSON.stringify(csrfData));
 			const req = mock<AuthenticatedRequest>({
 				user: mock<User>({ id: 'user-id' }),
 			});
@@ -429,12 +450,17 @@ describe('OauthService', () => {
 		});
 
 		it('should throw UnexpectedError when token is missing', () => {
-			const state = {
+			const csrfData = {
 				cid: 'credential-id',
-				createdAt: timestamp,
+				userId: 'user-id',
+				origin: 'static-credential' as const,
 			};
-			const stateString = JSON.stringify(state);
-			const encodedState = cipher.encrypt(stateString);
+			const state = {
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+			cipher.decrypt.mockReturnValue(JSON.stringify(csrfData));
 			const req = mock<AuthenticatedRequest>({
 				user: mock<User>({ id: 'user-id' }),
 			});
@@ -443,15 +469,18 @@ describe('OauthService', () => {
 		});
 
 		it('should throw AuthError when userId does not match', () => {
-			const state = {
-				token: 'token',
+			const csrfData = {
 				cid: 'credential-id',
 				userId: 'different-user-id',
 				origin: 'static-credential' as const,
-				createdAt: timestamp,
 			};
-			const stateString = JSON.stringify(state);
-			const encodedState = cipher.encrypt(stateString);
+			const state = {
+				token: 'token',
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+			cipher.decrypt.mockReturnValue(JSON.stringify(csrfData));
 			const req = mock<AuthenticatedRequest>({
 				user: mock<User>({ id: 'user-id' }),
 			});
@@ -461,15 +490,18 @@ describe('OauthService', () => {
 		});
 
 		it('should throw AuthError when req.user is undefined', () => {
-			const state = {
-				token: 'token',
+			const csrfData = {
 				cid: 'credential-id',
 				userId: 'user-id',
 				origin: 'static-credential' as const,
-				createdAt: timestamp,
 			};
-			const stateString = JSON.stringify(state);
-			const encodedState = cipher.encrypt(stateString);
+			const state = {
+				token: 'token',
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+			cipher.decrypt.mockReturnValue(JSON.stringify(csrfData));
 			const req = mock<AuthenticatedRequest>({
 				user: undefined,
 			});
@@ -477,56 +509,77 @@ describe('OauthService', () => {
 			expect(() => (service as any).decodeCsrfState(encodedState, req)).toThrow(AuthError);
 		});
 
-		it('should bypass user validation for dynamic-credential origin', () => {
-			const state = {
-				token: 'token',
+		it('should bypass user validation for dynamic-credential origin (no userId check)', () => {
+			const csrfData = {
 				cid: 'credential-id',
 				userId: 'different-user-id',
 				origin: 'dynamic-credential' as const,
-				createdAt: timestamp,
 			};
-			const stateString = JSON.stringify(state);
-			const encodedState = cipher.encrypt(stateString);
+			const state = {
+				token: 'token',
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+			cipher.decrypt.mockReturnValue(JSON.stringify(csrfData));
 			const req = mock<AuthenticatedRequest>({
 				user: mock<User>({ id: 'user-id' }),
 			});
 
 			const result = (service as any).decodeCsrfState(encodedState, req);
 
-			expect(result).toEqual(state);
-			expect(cipher.decrypt).toHaveBeenCalledWith(encodedState);
+			expect(result).toMatchObject({
+				token: 'token',
+				createdAt: timestamp,
+				cid: 'credential-id',
+				userId: 'different-user-id',
+				origin: 'dynamic-credential',
+			});
+			expect(cipher.decrypt).toHaveBeenCalledWith('encrypted-data');
 		});
 
 		it('should bypass user validation for dynamic-credential origin even when req.user is undefined', () => {
-			const state = {
-				token: 'token',
+			const csrfData = {
 				cid: 'credential-id',
 				userId: 'user-id',
 				origin: 'dynamic-credential' as const,
-				createdAt: timestamp,
 			};
-			const stateString = JSON.stringify(state);
-			const encodedState = cipher.encrypt(stateString);
+			const state = {
+				token: 'token',
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+			cipher.decrypt.mockReturnValue(JSON.stringify(csrfData));
 			const req = mock<AuthenticatedRequest>({
 				user: undefined,
 			});
 
 			const result = (service as any).decodeCsrfState(encodedState, req);
 
-			expect(result).toEqual(state);
-			expect(cipher.decrypt).toHaveBeenCalledWith(encodedState);
+			expect(result).toMatchObject({
+				token: 'token',
+				createdAt: timestamp,
+				cid: 'credential-id',
+				userId: 'user-id',
+				origin: 'dynamic-credential',
+			});
+			expect(cipher.decrypt).toHaveBeenCalledWith('encrypted-data');
 		});
 
 		it('should require user validation for static-credential origin', () => {
-			const state = {
-				token: 'token',
+			const csrfData = {
 				cid: 'credential-id',
 				userId: 'different-user-id',
 				origin: 'static-credential' as const,
-				createdAt: timestamp,
 			};
-			const stateString = JSON.stringify(state);
-			const encodedState = cipher.encrypt(stateString);
+			const state = {
+				token: 'token',
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+			cipher.decrypt.mockReturnValue(JSON.stringify(csrfData));
 			const req = mock<AuthenticatedRequest>({
 				user: mock<User>({ id: 'user-id' }),
 			});
@@ -536,14 +589,17 @@ describe('OauthService', () => {
 		});
 
 		it('should require user validation when origin is undefined', () => {
-			const state = {
-				token: 'token',
+			const csrfData = {
 				cid: 'credential-id',
 				userId: 'different-user-id',
-				createdAt: timestamp,
 			};
-			const stateString = JSON.stringify(state);
-			const encodedState = cipher.encrypt(stateString);
+			const state = {
+				token: 'token',
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+			cipher.decrypt.mockReturnValue(JSON.stringify(csrfData));
 			const req = mock<AuthenticatedRequest>({
 				user: mock<User>({ id: 'user-id' }),
 			});
@@ -553,15 +609,18 @@ describe('OauthService', () => {
 		});
 
 		it('should require user validation for invalid origin values', () => {
-			const state = {
-				token: 'token',
+			const csrfData = {
 				cid: 'credential-id',
 				userId: 'different-user-id',
 				origin: 'invalid-origin' as any,
-				createdAt: timestamp,
 			};
-			const stateString = JSON.stringify(state);
-			const encodedState = cipher.encrypt(stateString);
+			const state = {
+				token: 'token',
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+			cipher.decrypt.mockReturnValue(JSON.stringify(csrfData));
 			const req = mock<AuthenticatedRequest>({
 				user: mock<User>({ id: 'user-id' }),
 			});
@@ -662,28 +721,32 @@ describe('OauthService', () => {
 
 	describe('resolveCredential', () => {
 		it('should resolve credential successfully', async () => {
-			const state = {
-				token: 'token',
+			const token = new (require('csrf'))();
+			const stateToken = token.create('csrf-secret');
+
+			const csrfData = {
 				cid: 'credential-id',
 				userId: 'user-id',
-				origin: 'static-credential',
-				createdAt: timestamp,
+				origin: 'static-credential' as const,
 			};
+			const state = {
+				token: stateToken,
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
 
 			const mockCredential = mock<CredentialsEntity>({ id: 'credential-id' });
 			const mockDecryptedData = { csrfSecret: 'csrf-secret' };
 			const mockOAuthCredentials = { clientId: 'client-id' };
 			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
 
-			const token = new (require('csrf'))();
-			const stateToken = token.create('csrf-secret');
-			state.token = stateToken;
-
 			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
-				query: { state: cipher.encrypt(JSON.stringify(state)) },
+				query: { state: encodedState },
 				user: mock<User>({ id: 'user-id' }),
 			});
 
+			cipher.decrypt.mockReturnValue(JSON.stringify(csrfData));
 			credentialsRepository.findOneBy.mockResolvedValue(mockCredential);
 			jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
 			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
@@ -693,19 +756,31 @@ describe('OauthService', () => {
 
 			const result = await service.resolveCredential(req);
 
-			expect(result).toEqual([mockCredential, mockDecryptedData, mockOAuthCredentials, state]);
-		});
-
-		it('should throw UnexpectedError when credential is not found', async () => {
-			const state = {
-				token: 'token',
+			expect(result[0]).toEqual(mockCredential);
+			expect(result[1]).toEqual(mockDecryptedData);
+			expect(result[2]).toEqual(mockOAuthCredentials);
+			expect(result[3]).toMatchObject({
+				token: stateToken,
+				createdAt: timestamp,
 				cid: 'credential-id',
 				userId: 'user-id',
 				origin: 'static-credential',
-				createdAt: timestamp,
+			});
+		});
+
+		it('should throw UnexpectedError when credential is not found', async () => {
+			const csrfData = {
+				cid: 'credential-id',
+				userId: 'user-id',
+				origin: 'static-credential' as const,
 			};
-			const stateString = JSON.stringify(state);
-			const encodedState = cipher.encrypt(stateString);
+			const state = {
+				token: 'token',
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+			cipher.decrypt.mockReturnValue(JSON.stringify(csrfData));
 
 			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
 				query: { state: encodedState },
@@ -721,15 +796,18 @@ describe('OauthService', () => {
 		});
 
 		it('should throw UnexpectedError when CSRF state is invalid', async () => {
-			const state = {
-				token: 'token',
+			const csrfData = {
 				cid: 'credential-id',
 				userId: 'user-id',
-				origin: 'static-credential',
-				createdAt: timestamp,
+				origin: 'static-credential' as const,
 			};
-			const stateString = JSON.stringify(state);
-			const encodedState = cipher.encrypt(stateString);
+			const state = {
+				token: 'token',
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+			cipher.decrypt.mockReturnValue(JSON.stringify(csrfData));
 
 			const mockCredential = mock<CredentialsEntity>({ id: 'credential-id' });
 			const mockDecryptedData = { csrfSecret: 'csrf-secret' };
@@ -755,79 +833,105 @@ describe('OauthService', () => {
 		});
 
 		it('should resolve dynamic credential without user validation but still verify CSRF', async () => {
-			const state = {
-				token: 'token',
+			const token = new (require('csrf'))();
+			const stateToken = token.create('csrf-secret');
+
+			const csrfData = {
 				cid: 'credential-id',
 				userId: 'different-user-id',
 				origin: 'dynamic-credential' as const,
-				createdAt: timestamp,
 			};
+			const state = {
+				token: stateToken,
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
 
 			const mockCredential = mock<CredentialsEntity>({ id: 'credential-id' });
 			const mockDecryptedData = { csrfSecret: 'csrf-secret' };
 			const mockOAuthCredentials = { clientId: 'client-id' };
 			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
 
-			const token = new (require('csrf'))();
-			const stateToken = token.create('csrf-secret');
-			state.token = stateToken;
-
 			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
-				query: { state: cipher.encrypt(JSON.stringify(state)) },
+				query: { state: encodedState },
 				user: mock<User>({ id: 'user-id' }), // Different user ID - should be bypassed
 			});
 
+			cipher.decrypt.mockReturnValue(JSON.stringify(csrfData));
 			credentialsRepository.findOneBy.mockResolvedValue(mockCredential);
 			jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
 			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
 			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
 
-			jest.spyOn(service as any, 'verifyCsrfState').mockReturnValue(true);
+			const verifySpy = jest.spyOn(service as any, 'verifyCsrfState').mockReturnValue(true);
 
 			const result = await service.resolveCredential(req);
 
 			// Should succeed despite different user ID because origin is dynamic-credential
-			expect(result).toEqual([mockCredential, mockDecryptedData, mockOAuthCredentials, state]);
+			expect(result[0]).toEqual(mockCredential);
+			expect(result[1]).toEqual(mockDecryptedData);
+			expect(result[2]).toEqual(mockOAuthCredentials);
+			expect(result[3]).toMatchObject({
+				token: stateToken,
+				createdAt: timestamp,
+				cid: 'credential-id',
+				userId: 'different-user-id',
+				origin: 'dynamic-credential',
+			});
 			// CSRF validation should still be called
-			expect((service as any).verifyCsrfState).toHaveBeenCalledWith(mockDecryptedData, state);
+			expect(verifySpy).toHaveBeenCalled();
 		});
 
 		it('should still verify CSRF for dynamic credentials even when req.user is undefined', async () => {
-			const state = {
-				token: 'token',
+			const token = new (require('csrf'))();
+			const stateToken = token.create('csrf-secret');
+
+			const csrfData = {
 				cid: 'credential-id',
 				userId: 'user-id',
 				origin: 'dynamic-credential' as const,
-				createdAt: timestamp,
 			};
+			const state = {
+				token: stateToken,
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
 
 			const mockCredential = mock<CredentialsEntity>({ id: 'credential-id' });
 			const mockDecryptedData = { csrfSecret: 'csrf-secret' };
 			const mockOAuthCredentials = { clientId: 'client-id' };
 			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
 
-			const token = new (require('csrf'))();
-			const stateToken = token.create('csrf-secret');
-			state.token = stateToken;
-
 			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
-				query: { state: cipher.encrypt(JSON.stringify(state)) },
+				query: { state: encodedState },
 				user: undefined, // No user - should be bypassed for dynamic credentials
 			});
 
+			cipher.decrypt.mockReturnValue(JSON.stringify(csrfData));
 			credentialsRepository.findOneBy.mockResolvedValue(mockCredential);
 			jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
 			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
 			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
 
-			jest.spyOn(service as any, 'verifyCsrfState').mockReturnValue(true);
+			const verifySpy = jest.spyOn(service as any, 'verifyCsrfState').mockReturnValue(true);
 
 			const result = await service.resolveCredential(req);
 
 			// Should succeed despite no user because origin is dynamic-credential
-			expect(result).toEqual([mockCredential, mockDecryptedData, mockOAuthCredentials, state]);
+			expect(result[0]).toEqual(mockCredential);
+			expect(result[1]).toEqual(mockDecryptedData);
+			expect(result[2]).toEqual(mockOAuthCredentials);
+			expect(result[3]).toMatchObject({
+				token: stateToken,
+				createdAt: timestamp,
+				cid: 'credential-id',
+				userId: 'user-id',
+				origin: 'dynamic-credential',
+			});
 			// CSRF validation should still be called
-			expect((service as any).verifyCsrfState).toHaveBeenCalledWith(mockDecryptedData, state);
+			expect(verifySpy).toHaveBeenCalled();
 		});
 	});
 
@@ -875,7 +979,7 @@ describe('OauthService', () => {
 					resolverId: 'resolver-id',
 				},
 				oauthTokenData,
-				{ version: 1, identity: authToken },
+				{ version: 1, identity: authToken, metadata: {} },
 				expect.any(Object),
 				{ credentialResolverId: 'resolver-id' },
 			);
@@ -994,7 +1098,6 @@ describe('OauthService', () => {
 			expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
 				mockAdditionalData,
 				{ clientId: 'client-id' },
-				credential,
 				credential.type,
 				'internal',
 				undefined,
@@ -1020,7 +1123,31 @@ describe('OauthService', () => {
 			expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
 				mockAdditionalData,
 				{ clientId: 'client-id', scope: 'old-scope' },
-				credential,
+				credential.type,
+				'internal',
+				undefined,
+				undefined,
+			);
+		});
+
+		it('should not delete scope for wordpressOAuth2Api credentials', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: '1',
+				type: 'wordpressOAuth2Api',
+			});
+			const mockDecryptedData = { clientId: 'client-id', scope: 'custom-scope' };
+			const mockOAuthCredentials = { clientId: 'client-id', scope: 'custom-scope' };
+			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+
+			jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
+			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
+
+			await service.getOAuthCredentials(credential);
+
+			expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
+				mockAdditionalData,
+				{ clientId: 'client-id', scope: 'custom-scope' },
 				credential.type,
 				'internal',
 				undefined,
@@ -1046,7 +1173,6 @@ describe('OauthService', () => {
 			expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
 				mockAdditionalData,
 				{ clientId: 'client-id', scope: 'old-scope' },
-				credential,
 				credential.type,
 				'internal',
 				undefined,
@@ -1085,7 +1211,8 @@ describe('OauthService', () => {
 			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
 
-			const authUri = await service.generateAOauth2AuthUri(credential, {
+			const generateAOuth2AuthUriBound = service.generateAOauth2AuthUri.bind(service);
+			const authUri = await generateAOuth2AuthUriBound(credential, {
 				cid: credential.id,
 				origin: 'static-credential',
 				userId: 'user-id',
@@ -1103,6 +1230,31 @@ describe('OauthService', () => {
 					state: expect.any(String), // base64State
 				}),
 			]);
+
+			// Reject javascript: and data: protocols in OAuth2 URLs (XSS)
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
+				...oauthCredentials,
+				authUrl: "javascript:alert('Hacked')//",
+			});
+			const promiseJs = generateAOuth2AuthUriBound(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+			await expect(promiseJs).rejects.toThrow(BadRequestError);
+			await expect(promiseJs).rejects.toThrow(/OAuth url must use HTTP or HTTPS protocol/);
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
+				...oauthCredentials,
+				accessTokenUrl: 'data:text/html,<script>alert(1)</script>',
+			});
+			const promiseData = generateAOuth2AuthUriBound(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+			await expect(promiseData).rejects.toThrow(BadRequestError);
+			await expect(promiseData).rejects.toThrow(/OAuth url must use HTTP or HTTPS protocol/);
 		});
 
 		it('should generate auth URI with PKCE flow', async () => {
@@ -1195,7 +1347,7 @@ describe('OauthService', () => {
 			expect(mockGetUri).toHaveBeenCalled();
 		});
 
-		it('should handle dynamic client registration', async () => {
+		it('should handle dynamic client registration with root-level server URL', async () => {
 			const axios = require('axios');
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const mockGetUri = jest.fn().mockReturnValue({
@@ -1248,6 +1400,7 @@ describe('OauthService', () => {
 			expect(authUri).toContain('https://example.domain/oauth2/auth');
 			expect(axios.get).toHaveBeenCalledWith(
 				'https://example.domain/.well-known/oauth-authorization-server',
+				expect.any(Object),
 			);
 			expect(axios.post).toHaveBeenCalledWith(
 				'https://example.domain/oauth2/register',
@@ -1433,9 +1586,7 @@ describe('OauthService', () => {
 
 			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
-			jest
-				.spyOn(service, 'createCsrfState')
-				.mockReturnValue(['csrf-secret', 'encoded-state', 'base64-state']);
+			jest.spyOn(service, 'createCsrfState').mockReturnValue(['csrf-secret', 'base64-state']);
 
 			await service.generateAOauth2AuthUri(credential, {
 				cid: credential.id,
@@ -1449,6 +1600,815 @@ describe('OauthService', () => {
 					cid: '1',
 				}),
 			);
+		});
+	});
+
+	describe('generateAOauth2AuthUri with DCR and RFC 8414 compliance', () => {
+		it('should insert .well-known between host and path per RFC 8414', async () => {
+			const axios = require('axios');
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const mockGetUri = jest.fn().mockReturnValue({
+				toString: () =>
+					'https://example.domain/authorize?client_id=registered_client_id&redirect_uri=http://localhost:5678/rest/oauth2-credential/callback&response_type=code&state=state',
+			});
+			jest.mocked(ClientOAuth2).mockImplementation(
+				() =>
+					({
+						code: {
+							getUri: mockGetUri,
+						},
+					}) as any,
+			);
+
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
+			const oauthCredentials = {
+				serverUrl: 'https://example.domain/issuer1',
+				useDynamicClientRegistration: true,
+			} as OAuth2CredentialData;
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+			jest.mocked(axios.get).mockResolvedValue({
+				data: {
+					authorization_endpoint: 'https://example.domain/issuer1/authorize',
+					token_endpoint: 'https://example.domain/issuer1/token',
+					registration_endpoint: 'https://example.domain/issuer1/register',
+					grant_types_supported: ['authorization_code', 'refresh_token'],
+					token_endpoint_auth_methods_supported: ['client_secret_basic'],
+					code_challenge_methods_supported: ['S256'],
+					scopes_supported: ['openid', 'profile'],
+				},
+			} as any);
+
+			jest.mocked(axios.post).mockResolvedValue({
+				data: {
+					client_id: 'registered_client_id',
+					client_secret: 'registered_client_secret',
+				},
+			} as any);
+
+			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			await service.generateAOauth2AuthUri(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+
+			// Verify RFC 8414: .well-known inserted between host and path
+			expect(axios.get).toHaveBeenCalledWith(
+				'https://example.domain/.well-known/oauth-authorization-server/issuer1',
+				expect.any(Object),
+			);
+		});
+
+		it('should handle root-level issuer URLs (no path)', async () => {
+			const axios = require('axios');
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const mockGetUri = jest.fn().mockReturnValue({
+				toString: () =>
+					'https://example.domain/authorize?client_id=test_id&redirect_uri=http://localhost:5678/rest/oauth2-credential/callback&response_type=code&state=state',
+			});
+			jest.mocked(ClientOAuth2).mockImplementation(
+				() =>
+					({
+						code: {
+							getUri: mockGetUri,
+						},
+					}) as any,
+			);
+
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
+			const oauthCredentials = {
+				serverUrl: 'https://example.domain',
+				useDynamicClientRegistration: true,
+			} as OAuth2CredentialData;
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+			jest.mocked(axios.get).mockResolvedValue({
+				data: {
+					authorization_endpoint: 'https://example.domain/authorize',
+					token_endpoint: 'https://example.domain/token',
+					registration_endpoint: 'https://example.domain/register',
+					grant_types_supported: ['authorization_code', 'refresh_token'],
+					token_endpoint_auth_methods_supported: ['client_secret_basic'],
+					code_challenge_methods_supported: ['S256'],
+				},
+			} as any);
+
+			jest.mocked(axios.post).mockResolvedValue({
+				data: {
+					client_id: 'test_id',
+					client_secret: 'test_secret',
+				},
+			} as any);
+
+			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			await service.generateAOauth2AuthUri(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+
+			// Root-level issuer: .well-known directly after origin
+			expect(axios.get).toHaveBeenCalledWith(
+				'https://example.domain/.well-known/oauth-authorization-server',
+				expect.any(Object),
+			);
+		});
+
+		it('should handle issuer URLs with trailing slashes', async () => {
+			const axios = require('axios');
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const mockGetUri = jest.fn().mockReturnValue({
+				toString: () => 'https://example.domain/authorize?client_id=test_id',
+			});
+			jest.mocked(ClientOAuth2).mockImplementation(
+				() =>
+					({
+						code: {
+							getUri: mockGetUri,
+						},
+					}) as any,
+			);
+
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
+			const oauthCredentials = {
+				serverUrl: 'https://example.domain/issuer1/',
+				useDynamicClientRegistration: true,
+			} as OAuth2CredentialData;
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+			jest.mocked(axios.get).mockResolvedValue({
+				data: {
+					authorization_endpoint: 'https://example.domain/authorize',
+					token_endpoint: 'https://example.domain/token',
+					registration_endpoint: 'https://example.domain/register',
+					grant_types_supported: ['authorization_code', 'refresh_token'],
+					token_endpoint_auth_methods_supported: ['client_secret_basic'],
+					code_challenge_methods_supported: ['S256'],
+				},
+			} as any);
+
+			jest.mocked(axios.post).mockResolvedValue({
+				data: { client_id: 'test_id', client_secret: 'test_secret' },
+			} as any);
+
+			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			await service.generateAOauth2AuthUri(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+
+			// Should strip trailing slash: /issuer1/ becomes /issuer1
+			expect(axios.get).toHaveBeenCalledWith(
+				'https://example.domain/.well-known/oauth-authorization-server/issuer1',
+				expect.any(Object),
+			);
+		});
+
+		it('should handle multi-segment paths correctly', async () => {
+			const axios = require('axios');
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const mockGetUri = jest.fn().mockReturnValue({
+				toString: () => 'https://oauth.example.com/authorize?client_id=test_id',
+			});
+			jest.mocked(ClientOAuth2).mockImplementation(
+				() =>
+					({
+						code: {
+							getUri: mockGetUri,
+						},
+					}) as any,
+			);
+
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
+			const oauthCredentials = {
+				serverUrl: 'https://oauth.example.com/tenant/auth/provider',
+				useDynamicClientRegistration: true,
+			} as OAuth2CredentialData;
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+			jest.mocked(axios.get).mockResolvedValue({
+				data: {
+					authorization_endpoint: 'https://oauth.example.com/tenant/auth/provider/authorize',
+					token_endpoint: 'https://oauth.example.com/tenant/auth/provider/token',
+					registration_endpoint: 'https://oauth.example.com/tenant/auth/provider/register',
+					grant_types_supported: ['authorization_code', 'refresh_token'],
+					token_endpoint_auth_methods_supported: ['client_secret_basic'],
+					code_challenge_methods_supported: ['S256'],
+				},
+			} as any);
+
+			jest.mocked(axios.post).mockResolvedValue({
+				data: { client_id: 'test_id', client_secret: 'test_secret' },
+			} as any);
+
+			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			await service.generateAOauth2AuthUri(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+
+			// Multi-segment path per RFC 8414
+			expect(axios.get).toHaveBeenCalledWith(
+				'https://oauth.example.com/.well-known/oauth-authorization-server/tenant/auth/provider',
+				expect.any(Object),
+			);
+		});
+
+		it('should fall back to OpenID Connect path insertion when RFC 8414 fails', async () => {
+			const axios = require('axios');
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const mockGetUri = jest.fn().mockReturnValue({
+				toString: () => 'https://example.domain/authorize?client_id=test_id',
+			});
+			jest.mocked(ClientOAuth2).mockImplementation(
+				() =>
+					({
+						code: {
+							getUri: mockGetUri,
+						},
+					}) as any,
+			);
+
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
+			const oauthCredentials = {
+				serverUrl: 'https://example.domain/issuer1',
+				useDynamicClientRegistration: true,
+			} as OAuth2CredentialData;
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+
+			// Protected resource discovery fails (both calls)
+			// Then RFC 8414 fails, OpenID Connect succeeds
+			jest
+				.mocked(axios.get)
+				.mockRejectedValueOnce(new Error('404 Not Found')) // protected resource path-specific
+				.mockRejectedValueOnce(new Error('404 Not Found')) // protected resource root
+				.mockRejectedValueOnce(new Error('404 Not Found')) // RFC 8414
+				.mockResolvedValueOnce({
+					data: {
+						authorization_endpoint: 'https://example.domain/issuer1/authorize',
+						token_endpoint: 'https://example.domain/issuer1/token',
+						registration_endpoint: 'https://example.domain/issuer1/register',
+						grant_types_supported: ['authorization_code', 'refresh_token'],
+						token_endpoint_auth_methods_supported: ['client_secret_basic'],
+						code_challenge_methods_supported: ['S256'],
+					},
+				} as any);
+
+			jest.mocked(axios.post).mockResolvedValue({
+				data: { client_id: 'test_id', client_secret: 'test_secret' },
+			} as any);
+
+			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			await service.generateAOauth2AuthUri(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+
+			// Verify it tried protected resource discovery, then fell back to auth server discovery
+			expect(axios.get).toHaveBeenCalledTimes(4);
+			expect(axios.get).toHaveBeenNthCalledWith(
+				3, // After 2 protected resource calls
+				'https://example.domain/.well-known/oauth-authorization-server/issuer1',
+				expect.any(Object),
+			);
+			expect(axios.get).toHaveBeenNthCalledWith(
+				4, // OpenID Connect path insertion succeeds
+				'https://example.domain/.well-known/openid-configuration/issuer1',
+				expect.any(Object),
+			);
+		});
+
+		it('should fall back to OpenID Connect path appending when first two fail', async () => {
+			const axios = require('axios');
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const mockGetUri = jest.fn().mockReturnValue({
+				toString: () => 'https://example.domain/authorize?client_id=test_id',
+			});
+			jest.mocked(ClientOAuth2).mockImplementation(
+				() =>
+					({
+						code: {
+							getUri: mockGetUri,
+						},
+					}) as any,
+			);
+
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
+			const oauthCredentials = {
+				serverUrl: 'https://example.domain/issuer1',
+				useDynamicClientRegistration: true,
+			} as OAuth2CredentialData;
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+
+			// Protected resource discovery fails, then RFC 8414 and OpenID Connect path insertion fail, path appending succeeds
+			jest
+				.mocked(axios.get)
+				.mockRejectedValueOnce(new Error('404 Not Found')) // protected resource path-specific
+				.mockRejectedValueOnce(new Error('404 Not Found')) // protected resource root
+				.mockRejectedValueOnce(new Error('404 Not Found')) // RFC 8414
+				.mockRejectedValueOnce(new Error('404 Not Found')) // OpenID Connect path insertion
+				.mockResolvedValueOnce({
+					data: {
+						authorization_endpoint: 'https://example.domain/issuer1/authorize',
+						token_endpoint: 'https://example.domain/issuer1/token',
+						registration_endpoint: 'https://example.domain/issuer1/register',
+						grant_types_supported: ['authorization_code', 'refresh_token'],
+						token_endpoint_auth_methods_supported: ['client_secret_basic'],
+						code_challenge_methods_supported: ['S256'],
+					},
+				} as any);
+
+			jest.mocked(axios.post).mockResolvedValue({
+				data: { client_id: 'test_id', client_secret: 'test_secret' },
+			} as any);
+
+			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			await service.generateAOauth2AuthUri(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+
+			// Verify all endpoints were tried (2 protected resource + 3 auth server)
+			expect(axios.get).toHaveBeenCalledTimes(5);
+			expect(axios.get).toHaveBeenNthCalledWith(
+				3, // After 2 protected resource calls
+				'https://example.domain/.well-known/oauth-authorization-server/issuer1',
+				expect.any(Object),
+			);
+			expect(axios.get).toHaveBeenNthCalledWith(
+				4,
+				'https://example.domain/.well-known/openid-configuration/issuer1',
+				expect.any(Object),
+			);
+			expect(axios.get).toHaveBeenNthCalledWith(
+				5, // OpenID Connect path appending succeeds
+				'https://example.domain/issuer1/.well-known/openid-configuration',
+				expect.any(Object),
+			);
+		});
+
+		it('should throw error when all discovery endpoints fail', async () => {
+			const axios = require('axios');
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
+			const oauthCredentials = {
+				serverUrl: 'https://example.domain/issuer1',
+				useDynamicClientRegistration: true,
+			} as OAuth2CredentialData;
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+
+			// All three endpoints fail
+			jest.mocked(axios.get).mockRejectedValue(new Error('404 Not Found'));
+
+			await expect(
+				service.generateAOauth2AuthUri(credential, {
+					cid: credential.id,
+					origin: 'static-credential',
+					userId: 'user-id',
+				}),
+			).rejects.toThrow(BadRequestError);
+
+			await expect(
+				service.generateAOauth2AuthUri(credential, {
+					cid: credential.id,
+					origin: 'static-credential',
+					userId: 'user-id',
+				}),
+			).rejects.toThrow('Failed to discover OAuth2 authorization server metadata');
+
+			// Should have tried all endpoints (2 protected resource + 3 auth server per invocation)
+			expect(axios.get).toHaveBeenCalledTimes(10); // 5 calls per invocation × 2 invocations
+		});
+
+		it('should discover authorization server via protected resource metadata (MCP flow)', async () => {
+			const axios = require('axios');
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const mockGetUri = jest.fn().mockReturnValue({
+				toString: () => 'https://auth.example.com/authorize?client_id=test_id',
+			});
+			jest.mocked(ClientOAuth2).mockImplementation(
+				() =>
+					({
+						code: { getUri: mockGetUri },
+					}) as any,
+			);
+
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
+			const oauthCredentials = {
+				serverUrl: 'https://mcp.notion.com/mcp',
+				useDynamicClientRegistration: true,
+			} as OAuth2CredentialData;
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+
+			// Protected resource discovery (path-specific fails, root succeeds)
+			jest
+				.mocked(axios.get)
+				.mockRejectedValueOnce(new Error('404')) // path-specific protected resource
+				.mockResolvedValueOnce({
+					data: {
+						authorization_servers: ['https://auth.example.com'],
+					},
+				} as any) // root protected resource ✅
+				// Authorization server metadata discovery
+				.mockResolvedValueOnce({
+					data: {
+						authorization_endpoint: 'https://auth.example.com/authorize',
+						token_endpoint: 'https://auth.example.com/token',
+						registration_endpoint: 'https://auth.example.com/register',
+						grant_types_supported: ['authorization_code', 'refresh_token'],
+						token_endpoint_auth_methods_supported: ['client_secret_basic'],
+						code_challenge_methods_supported: ['S256'],
+					},
+				} as any);
+
+			jest.mocked(axios.post).mockResolvedValue({
+				data: { client_id: 'test_id', client_secret: 'test_secret' },
+			} as any);
+
+			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			await service.generateAOauth2AuthUri(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+
+			// Verify protected resource discovery was attempted
+			expect(axios.get).toHaveBeenNthCalledWith(
+				1,
+				'https://mcp.notion.com/.well-known/oauth-protected-resource/mcp',
+				expect.any(Object),
+			);
+			expect(axios.get).toHaveBeenNthCalledWith(
+				2,
+				'https://mcp.notion.com/.well-known/oauth-protected-resource',
+				expect.any(Object),
+			);
+
+			// Verify authorization server discovery used the extracted URL
+			expect(axios.get).toHaveBeenNthCalledWith(
+				3,
+				'https://auth.example.com/.well-known/oauth-authorization-server',
+				expect.any(Object),
+			);
+		});
+
+		it('should fall back to direct authorization server discovery when protected resource fails', async () => {
+			const axios = require('axios');
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const mockGetUri = jest.fn().mockReturnValue({
+				toString: () => 'https://example.domain/authorize?client_id=test_id',
+			});
+			jest.mocked(ClientOAuth2).mockImplementation(
+				() =>
+					({
+						code: { getUri: mockGetUri },
+					}) as any,
+			);
+
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
+			const oauthCredentials = {
+				serverUrl: 'https://example.domain/issuer1',
+				useDynamicClientRegistration: true,
+			} as OAuth2CredentialData;
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+
+			// Protected resource discovery fails (both path-specific and root)
+			jest
+				.mocked(axios.get)
+				.mockRejectedValueOnce(new Error('404')) // path-specific protected resource
+				.mockRejectedValueOnce(new Error('404')) // root protected resource
+				// Fall back to direct authorization server discovery
+				.mockResolvedValueOnce({
+					data: {
+						authorization_endpoint: 'https://example.domain/issuer1/authorize',
+						token_endpoint: 'https://example.domain/issuer1/token',
+						registration_endpoint: 'https://example.domain/issuer1/register',
+						grant_types_supported: ['authorization_code', 'refresh_token'],
+						token_endpoint_auth_methods_supported: ['client_secret_basic'],
+						code_challenge_methods_supported: ['S256'],
+					},
+				} as any);
+
+			jest.mocked(axios.post).mockResolvedValue({
+				data: { client_id: 'test_id', client_secret: 'test_secret' },
+			} as any);
+
+			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			await service.generateAOauth2AuthUri(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+
+			// Verify protected resource discovery was attempted (and failed)
+			expect(axios.get).toHaveBeenNthCalledWith(
+				1,
+				'https://example.domain/.well-known/oauth-protected-resource/issuer1',
+				expect.any(Object),
+			);
+			expect(axios.get).toHaveBeenNthCalledWith(
+				2,
+				'https://example.domain/.well-known/oauth-protected-resource',
+				expect.any(Object),
+			);
+
+			// Verify fallback to direct authorization server discovery
+			expect(axios.get).toHaveBeenNthCalledWith(
+				3,
+				'https://example.domain/.well-known/oauth-authorization-server/issuer1',
+				expect.any(Object),
+			);
+		});
+
+		it('should handle Smithery MCP server with path-specific protected resource discovery', async () => {
+			const axios = require('axios');
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const mockGetUri = jest.fn().mockReturnValue({
+				toString: () => 'https://auth.smithery.ai/authorize?client_id=test_id',
+			});
+			jest.mocked(ClientOAuth2).mockImplementation(
+				() =>
+					({
+						code: { getUri: mockGetUri },
+					}) as any,
+			);
+
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'mcpOAuth2Api' });
+			const oauthCredentials = {
+				serverUrl: 'https://server.smithery.ai/@AnkitDigitalsherpa/weather_mcp',
+				useDynamicClientRegistration: true,
+			} as OAuth2CredentialData;
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+
+			// Path-specific protected resource discovery succeeds
+			jest
+				.mocked(axios.get)
+				.mockResolvedValueOnce({
+					data: {
+						authorization_servers: ['https://auth.smithery.ai/AnkitDigitalsherpa/weather_mcp'],
+						resource: 'https://server.smithery.ai/@AnkitDigitalsherpa/weather_mcp',
+					},
+				} as any)
+				// Authorization server metadata discovery
+				.mockResolvedValueOnce({
+					data: {
+						authorization_endpoint:
+							'https://auth.smithery.ai/AnkitDigitalsherpa/weather_mcp/authorize',
+						token_endpoint: 'https://auth.smithery.ai/AnkitDigitalsherpa/weather_mcp/token',
+						registration_endpoint:
+							'https://auth.smithery.ai/AnkitDigitalsherpa/weather_mcp/register',
+						grant_types_supported: ['authorization_code', 'refresh_token'],
+						token_endpoint_auth_methods_supported: ['client_secret_basic'],
+						code_challenge_methods_supported: ['S256'],
+					},
+				} as any);
+
+			jest.mocked(axios.post).mockResolvedValue({
+				data: { client_id: 'test_id', client_secret: 'test_secret' },
+			} as any);
+
+			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			await service.generateAOauth2AuthUri(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+
+			// Verify protected resource discovery (path-specific succeeded)
+			expect(axios.get).toHaveBeenNthCalledWith(
+				1,
+				'https://server.smithery.ai/.well-known/oauth-protected-resource/@AnkitDigitalsherpa/weather_mcp',
+				expect.any(Object),
+			);
+
+			// Verify authorization server discovery used extracted URL
+			expect(axios.get).toHaveBeenNthCalledWith(
+				2,
+				'https://auth.smithery.ai/.well-known/oauth-authorization-server/AnkitDigitalsherpa/weather_mcp',
+				expect.any(Object),
+			);
+		});
+
+		it('should handle Notion MCP server with root protected resource discovery', async () => {
+			const axios = require('axios');
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const mockGetUri = jest.fn().mockReturnValue({
+				toString: () => 'https://mcp.notion.com/authorize?client_id=test_id',
+			});
+			jest.mocked(ClientOAuth2).mockImplementation(
+				() =>
+					({
+						code: { getUri: mockGetUri },
+					}) as any,
+			);
+
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'mcpOAuth2Api' });
+			const oauthCredentials = {
+				serverUrl: 'https://mcp.notion.com/mcp',
+				useDynamicClientRegistration: true,
+			} as OAuth2CredentialData;
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+
+			// Path-specific fails, root protected resource discovery succeeds
+			jest
+				.mocked(axios.get)
+				.mockRejectedValueOnce(new Error('404')) // path-specific
+				.mockResolvedValueOnce({
+					data: {
+						resource: 'https://mcp.notion.com',
+						resource_name: 'Notion MCP (Beta)',
+						resource_documentation: 'https://developers.notion.com/docs/mcp',
+						authorization_servers: ['https://mcp.notion.com'],
+						bearer_methods_supported: ['header'],
+					},
+				} as any)
+				// Authorization server metadata discovery (root-level)
+				.mockResolvedValueOnce({
+					data: {
+						authorization_endpoint: 'https://mcp.notion.com/authorize',
+						token_endpoint: 'https://mcp.notion.com/token',
+						registration_endpoint: 'https://mcp.notion.com/register',
+						grant_types_supported: ['authorization_code', 'refresh_token'],
+						token_endpoint_auth_methods_supported: ['client_secret_basic'],
+						code_challenge_methods_supported: ['S256'],
+					},
+				} as any);
+
+			jest.mocked(axios.post).mockResolvedValue({
+				data: { client_id: 'test_id', client_secret: 'test_secret' },
+			} as any);
+
+			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			await service.generateAOauth2AuthUri(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+
+			// Verify protected resource discovery
+			expect(axios.get).toHaveBeenNthCalledWith(
+				1,
+				'https://mcp.notion.com/.well-known/oauth-protected-resource/mcp',
+				expect.any(Object),
+			);
+			expect(axios.get).toHaveBeenNthCalledWith(
+				2,
+				'https://mcp.notion.com/.well-known/oauth-protected-resource',
+				expect.any(Object),
+			);
+
+			// Verify authorization server discovery (root-level issuer)
+			expect(axios.get).toHaveBeenNthCalledWith(
+				3,
+				'https://mcp.notion.com/.well-known/oauth-authorization-server',
+				expect.any(Object),
+			);
+		});
+
+		it('should handle VEED.io with fallback to authorization server discovery', async () => {
+			const axios = require('axios');
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const mockGetUri = jest.fn().mockReturnValue({
+				toString: () => 'https://www.veed.io/authorize?client_id=test_id',
+			});
+			jest.mocked(ClientOAuth2).mockImplementation(
+				() =>
+					({
+						code: { getUri: mockGetUri },
+					}) as any,
+			);
+
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'oAuth2Api' });
+			const oauthCredentials = {
+				serverUrl: 'https://www.veed.io/api/v1/oauth2',
+				useDynamicClientRegistration: true,
+			} as OAuth2CredentialData;
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+
+			// Protected resource discovery fails (not an MCP server)
+			jest
+				.mocked(axios.get)
+				.mockRejectedValueOnce(new Error('404')) // path-specific protected resource
+				.mockRejectedValueOnce(new Error('404')) // root protected resource
+				// Fallback to authorization server discovery (RFC 8414 succeeds)
+				.mockResolvedValueOnce({
+					data: {
+						authorization_endpoint: 'https://www.veed.io/api/v1/oauth2/authorize',
+						token_endpoint: 'https://www.veed.io/api/v1/oauth2/token',
+						registration_endpoint: 'https://www.veed.io/api/v1/oauth2/register',
+						grant_types_supported: ['authorization_code', 'refresh_token'],
+						token_endpoint_auth_methods_supported: ['client_secret_basic'],
+						code_challenge_methods_supported: ['S256'],
+					},
+				} as any);
+
+			jest.mocked(axios.post).mockResolvedValue({
+				data: { client_id: 'test_id', client_secret: 'test_secret' },
+			} as any);
+
+			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			await service.generateAOauth2AuthUri(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+
+			// Verify protected resource discovery was attempted
+			expect(axios.get).toHaveBeenNthCalledWith(
+				1,
+				'https://www.veed.io/.well-known/oauth-protected-resource/api/v1/oauth2',
+				expect.any(Object),
+			);
+			expect(axios.get).toHaveBeenNthCalledWith(
+				2,
+				'https://www.veed.io/.well-known/oauth-protected-resource',
+				expect.any(Object),
+			);
+
+			// Verify fallback to RFC 8414 authorization server discovery
+			expect(axios.get).toHaveBeenNthCalledWith(
+				3,
+				'https://www.veed.io/.well-known/oauth-authorization-server/api/v1/oauth2',
+				expect.any(Object),
+			);
+		});
+
+		it('should reject malicious authorization server URL from protected resource (SSRF protection)', async () => {
+			const axios = require('axios');
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'mcpOAuth2Api' });
+			const oauthCredentials = {
+				serverUrl: 'https://malicious-mcp.example.com/mcp',
+				useDynamicClientRegistration: true,
+			} as OAuth2CredentialData;
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+
+			// Malicious protected resource returns javascript: protocol URL
+			jest.mocked(axios.get).mockResolvedValue({
+				data: {
+					authorization_servers: ['javascript:alert(1)'],
+					resource: 'https://malicious-mcp.example.com/mcp',
+				},
+			} as any);
+
+			try {
+				await service.generateAOauth2AuthUri(credential, {
+					cid: credential.id,
+					origin: 'static-credential',
+					userId: 'user-id',
+				});
+				// Should not reach here
+				expect(true).toBe(false);
+			} catch (error) {
+				expect(error).toBeInstanceOf(BadRequestError);
+				expect((error as Error).message).toContain('OAuth url must use HTTP or HTTPS protocol');
+			}
+		});
+
+		it('should reject malicious serverUrl before making any requests (SSRF protection)', async () => {
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'mcpOAuth2Api' });
+			const oauthCredentials = {
+				serverUrl: 'file:///etc/passwd',
+				useDynamicClientRegistration: true,
+			} as OAuth2CredentialData;
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+
+			try {
+				await service.generateAOauth2AuthUri(credential, {
+					cid: credential.id,
+					origin: 'static-credential',
+					userId: 'user-id',
+				});
+				// Should not reach here
+				expect(true).toBe(false);
+			} catch (error) {
+				expect(error).toBeInstanceOf(BadRequestError);
+				expect((error as Error).message).toContain('OAuth url must use HTTP or HTTPS protocol');
+			}
 		});
 	});
 
@@ -1484,6 +2444,28 @@ describe('OauthService', () => {
 				[],
 			);
 			expect(externalHooks.run).toHaveBeenCalledWith('oauth1.authenticate', expect.any(Array));
+		});
+
+		it('should reject javascript: protocol in OAuth1 URL (XSS)', async () => {
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'twitterOAuth1Api' });
+			const oauthCredentials: OAuth1CredentialData = {
+				consumerKey: 'consumer_key',
+				consumerSecret: 'consumer_secret',
+				requestTokenUrl: 'https://example.domain/oauth/request_token',
+				authUrl: "javascript:alert('Hacked')//",
+				accessTokenUrl: 'https://example.domain/oauth/access_token',
+				signatureMethod: 'HMAC-SHA1',
+			};
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+
+			const promise = service.generateAOauth1AuthUri(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+			await expect(promise).rejects.toThrow(BadRequestError);
+			await expect(promise).rejects.toThrow(/OAuth url must use HTTP or HTTPS protocol/);
 		});
 
 		it('should generate auth URI with different signature methods', async () => {

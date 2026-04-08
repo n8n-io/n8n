@@ -1,14 +1,12 @@
 import { ChatVertexAI } from '@langchain/google-vertexai';
+import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 
-import { makeN8nLlmFailedAttemptHandler } from '../../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../../N8nLlmTracing';
 import { LmChatGoogleVertex } from '../LmChatGoogleVertex.node';
 
 jest.mock('@langchain/google-vertexai');
-jest.mock('../../N8nLlmTracing');
-jest.mock('../../n8nLlmFailedAttemptHandler');
+jest.mock('@n8n/ai-utilities');
 jest.mock('n8n-nodes-base/dist/utils/utilities', () => ({
 	formatPrivateKey: jest.fn().mockImplementation((key: string) => key),
 }));

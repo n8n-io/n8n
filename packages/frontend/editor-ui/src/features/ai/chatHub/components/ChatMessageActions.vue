@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { VIEWS } from '@/app/constants';
-import { hasPermission } from '@/app/utils/rbac/permissions';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { ChatMessage } from '@/features/ai/chatHub/chat.types';
 import CopyButton from '@/features/ai/chatHub/components/CopyButton.vue';
 import type { ChatMessageId } from '@n8n/api-types';
@@ -8,9 +8,11 @@ import { N8nIconButton, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system'
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { isEditable, isRegenerable } from '../chat.utils';
 
 const i18n = useI18n();
 const router = useRouter();
+const workflowsStore = useWorkflowsStore();
 
 const { message, isSpeaking, isSpeechSynthesisAvailable, hasSessionStreaming } = defineProps<{
 	message: ChatMessage;
@@ -30,14 +32,15 @@ const currentAlternativeIndex = computed(() => {
 	return message.alternatives.findIndex((id) => id === message.id);
 });
 
-const showExecutionUrl = computed(() => {
-	return hasPermission(['rbac'], { rbac: { scope: 'workflow:read' } });
-});
+const text = computed(() => message.content.map((c) => c.content).join('\n\n'));
 
 const executionUrl = computed(() => {
-	if (!showExecutionUrl.value) return undefined;
-
-	if (message.type === 'ai' && message.provider === 'n8n' && message.executionId) {
+	if (
+		workflowsStore.canViewWorkflows &&
+		message.type === 'ai' &&
+		message.provider === 'n8n' &&
+		message.executionId
+	) {
 		return router.resolve({
 			name: VIEWS.EXECUTION_PREVIEW,
 			params: { name: message.workflowId, executionId: message.executionId },
@@ -45,6 +48,9 @@ const executionUrl = computed(() => {
 	}
 	return undefined;
 });
+
+const canEdit = computed(() => isEditable(message));
+const canRegenerate = computed(() => isRegenerable(message));
 
 function handleEdit() {
 	emit('edit');
@@ -60,18 +66,17 @@ function handleReadAloud() {
 </script>
 
 <template>
-	<div :class="$style.actions">
-		<CopyButton :content="message.content" data-test-id="chat-message-copy" />
+	<div :class="$style.actions" data-test-id="chat-message-actions">
+		<CopyButton :content="text" data-test-id="chat-message-copy" />
 		<N8nTooltip
 			v-if="isSpeechSynthesisAvailable && message.type === 'ai'"
 			placement="bottom"
 			:show-after="300"
 		>
 			<N8nIconButton
+				variant="ghost"
 				:icon="isSpeaking ? 'volume-x' : 'volume-2'"
-				type="tertiary"
 				size="medium"
-				text
 				@click="handleReadAloud"
 			/>
 			<template #content>{{
@@ -80,24 +85,22 @@ function handleReadAloud() {
 					: i18n.baseText('chatHub.message.actions.readAloud')
 			}}</template>
 		</N8nTooltip>
-		<N8nTooltip v-if="message.status === 'success'" placement="bottom" :show-after="300">
+		<N8nTooltip v-if="canEdit" placement="bottom" :show-after="300">
 			<N8nIconButton
+				variant="ghost"
 				icon="pen"
-				type="tertiary"
 				size="medium"
-				text
 				data-test-id="chat-message-edit"
 				:disabled="hasSessionStreaming"
 				@click="handleEdit"
 			/>
 			<template #content>{{ i18n.baseText('chatHub.message.actions.edit') }}</template>
 		</N8nTooltip>
-		<N8nTooltip v-if="message.type === 'ai'" placement="bottom" :show-after="300">
+		<N8nTooltip v-if="canRegenerate" placement="bottom" :show-after="300">
 			<N8nIconButton
+				variant="ghost"
 				icon="refresh-cw"
-				type="tertiary"
 				size="medium"
-				text
 				data-test-id="chat-message-regenerate"
 				:disabled="hasSessionStreaming"
 				@click="handleRegenerate"
@@ -105,13 +108,7 @@ function handleReadAloud() {
 			<template #content>{{ i18n.baseText('chatHub.message.actions.regenerate') }}</template>
 		</N8nTooltip>
 		<N8nTooltip v-if="executionUrl" placement="bottom" :show-after="300">
-			<N8nIconButton
-				icon="info"
-				type="tertiary"
-				size="medium"
-				text
-				data-test-id="chat-message-info"
-			/>
+			<N8nIconButton variant="ghost" icon="info" size="medium" data-test-id="chat-message-info" />
 			<template #content>
 				{{ i18n.baseText('chatHub.message.actions.executionId') }}:
 				<N8nLink :to="executionUrl" :new-window="true">
@@ -121,10 +118,9 @@ function handleReadAloud() {
 		</N8nTooltip>
 		<template v-if="message.alternatives.length > 1">
 			<N8nIconButton
+				variant="ghost"
 				icon="chevron-left"
-				type="tertiary"
 				size="medium"
-				text
 				:disabled="hasSessionStreaming || currentAlternativeIndex === 0"
 				data-test-id="chat-message-prev-alternative"
 				@click="$emit('switchAlternative', message.alternatives[currentAlternativeIndex - 1])"
@@ -133,10 +129,9 @@ function handleReadAloud() {
 				{{ `${currentAlternativeIndex + 1}/${message.alternatives.length}` }}
 			</N8nText>
 			<N8nIconButton
+				variant="ghost"
 				icon="chevron-right"
-				type="tertiary"
 				size="medium"
-				text
 				:disabled="
 					hasSessionStreaming || currentAlternativeIndex === message.alternatives.length - 1
 				"

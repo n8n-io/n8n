@@ -201,6 +201,18 @@ describe('InstanceSettings', () => {
 		});
 	});
 
+	describe('nodeDefinitionsDir', () => {
+		it('should return the path to the node definitions directory', () => {
+			const encryptionKey = 'test_key';
+			mockFs.existsSync.mockReturnValueOnce(true);
+			mockFs.readFileSync.mockReturnValueOnce(JSON.stringify({ encryptionKey }));
+
+			const settings = createInstanceSettings({ encryptionKey });
+
+			expect(settings.nodeDefinitionsDir).toEqual('/test/.n8n/node-definitions');
+		});
+	});
+
 	describe('isDocker', () => {
 		it('should return true if /.dockerenv exists', () => {
 			mockFs.existsSync.mockImplementation((path) => path === '/.dockerenv');

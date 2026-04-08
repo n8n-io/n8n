@@ -11,11 +11,19 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {\n    json: {\n      a: {\n        b: {\n          c: 1\n        }\n      }\n    }\n  }\n];\n"
+				"data": [
+					{
+						"a": {
+							"b": {
+								"c": 1
+							}
+						}
+					}
+				]
 			},
 			"id": "be80ce82-d312-460d-ac79-05c0626845ad",
 			"name": "Code",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [1080, 380]
 		},

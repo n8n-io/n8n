@@ -33,7 +33,7 @@ import {
 	checkResponseModeConfiguration,
 	configuredOutputs,
 	handleFormData,
-	isIpWhitelisted,
+	isIpAllowed,
 	setupOutputConnection,
 	validateWebhookAuthentication,
 } from './utils';
@@ -71,6 +71,7 @@ export class Webhook extends Node {
 		outputs: `={{(${configuredOutputs})($parameter)}}`,
 		credentials: credentialsProperty(this.authPropertyName),
 		webhooks: [defaultWebhookDescription],
+		sensitiveOutputFields: ['headers.authorization', 'headers.cookie'],
 		properties: [
 			{
 				displayName: 'Allow Multiple HTTP Methods',
@@ -132,6 +133,10 @@ export class Webhook extends Node {
 				type: 'string',
 				default: '',
 				placeholder: 'webhook',
+				builderHint: {
+					message: 'The webhook path that triggers this workflow',
+					placeholderSupported: false,
+				},
 				description:
 					"The path to listen to, dynamic values could be specified by using ':', e.g. 'your-path/:dynamic-value'. If dynamic values are set 'webhookId' would be prepended to path.",
 			},
@@ -222,9 +227,9 @@ export class Webhook extends Node {
 		const resp = context.getResponseObject();
 		const requestMethod = context.getRequestObject().method;
 
-		if (!isIpWhitelisted(options.ipWhitelist, req.ips, req.ip)) {
+		if (!isIpAllowed(options.ipWhitelist, req.ips, req.ip)) {
 			resp.writeHead(403);
-			resp.end('IP is not whitelisted to access the webhook!');
+			resp.end('IP is not allowed to access the webhook!');
 			return { noWebhookResponse: true };
 		}
 

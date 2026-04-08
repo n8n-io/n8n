@@ -43,7 +43,8 @@ async function onConfirmEmailClick() {
 		</template>
 		<template #trailingContent>
 			<N8nButton
-				type="success"
+				class="n8n-button--success"
+				variant="solid"
 				icon="mail"
 				size="small"
 				data-test-id="confirm-email-button"

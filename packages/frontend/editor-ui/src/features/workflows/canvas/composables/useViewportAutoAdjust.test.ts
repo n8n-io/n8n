@@ -10,11 +10,21 @@ describe(useViewportAutoAdjust, () => {
 	it('should set viewport when canvas is resized', async () => {
 		let resizeHandler: ResizeObserverCallback = () => {};
 
-		vi.spyOn(window, 'ResizeObserver').mockImplementation((handler) => {
-			resizeHandler = handler;
+		class ResizeObserverMock extends ResizeObserver {
+			constructor(handler: ResizeObserverCallback) {
+				super(handler);
+				resizeHandler = handler;
+			}
 
-			return { observe() {}, disconnect() {}, unobserve() {} } as ResizeObserver;
-		});
+			observe = vi.fn();
+
+			disconnect = vi.fn();
+
+			unobserve = vi.fn();
+		}
+
+		vi.stubGlobal('ResizeObserver', ResizeObserverMock);
+
 		const container = document.createElement('div');
 
 		Object.defineProperty(container, 'offsetWidth', {

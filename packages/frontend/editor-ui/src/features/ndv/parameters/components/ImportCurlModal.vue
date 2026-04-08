@@ -18,7 +18,7 @@ const ndvStore = useNDVStore();
 const curlCommand = ref('');
 const modalBus = createEventBus();
 
-const inputRef = ref<HTMLTextAreaElement | null>(null);
+const inputRef = ref<{ focus: () => void; blur: () => void; select: () => void } | null>(null);
 
 onMounted(() => {
 	const curlCommands = uiStore.modalsById[IMPORT_CURL_MODAL_KEY].data?.curlCommands as Record<
@@ -35,6 +35,10 @@ onMounted(() => {
 
 function onInput(value: string): void {
 	curlCommand.value = value;
+}
+
+function onFocus(): void {
+	inputRef.value?.select();
 }
 
 function closeDialog(): void {
@@ -105,7 +109,7 @@ async function onImport() {
 						data-test-id="import-curl-modal-input"
 						:placeholder="i18n.baseText('importCurlModal.input.placeholder')"
 						@update:model-value="onInput"
-						@focus="$event.target.select()"
+						@focus="onFocus"
 					/>
 				</N8nInputLabel>
 			</div>

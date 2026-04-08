@@ -56,6 +56,7 @@ describe('OAuth1CredentialController', () => {
 				cid: '1',
 				origin: 'static-credential',
 				createdAt: timestamp,
+				data: 'encrypted-data',
 			}),
 		).toString('base64');
 
@@ -87,6 +88,7 @@ describe('OAuth1CredentialController', () => {
 				cid: '1',
 				origin: 'static-credential' as const,
 				createdAt: timestamp,
+				data: 'encrypted-data',
 			};
 			oauthService.getCredential.mockResolvedValueOnce(mockResolvedCredential);
 			// @ts-ignore
@@ -130,6 +132,7 @@ describe('OAuth1CredentialController', () => {
 				credentialResolverId: 'resolver-id',
 				authorizationHeader: 'Bearer token123',
 				createdAt: timestamp,
+				data: 'encrypted-data',
 			};
 			const dynamicState = Buffer.from(JSON.stringify(mockState)).toString('base64');
 			const dynamicReq = mock<OAuthRequest.OAuth1Credential.Callback>({
@@ -161,6 +164,7 @@ describe('OAuth1CredentialController', () => {
 				}),
 				'token123',
 				'resolver-id',
+				{},
 			);
 			expect(oauthService.encryptAndSaveData).not.toHaveBeenCalled();
 			expect(res.render).toHaveBeenCalledWith('oauth-callback');
@@ -174,6 +178,7 @@ describe('OAuth1CredentialController', () => {
 				origin: 'dynamic-credential' as const,
 				authorizationHeader: 'Bearer token123',
 				createdAt: timestamp,
+				data: 'encrypted-data',
 			};
 			const dynamicState = Buffer.from(JSON.stringify(mockState)).toString('base64');
 			const dynamicReq = mock<OAuthRequest.OAuth1Credential.Callback>({
@@ -211,6 +216,7 @@ describe('OAuth1CredentialController', () => {
 				origin: 'dynamic-credential' as const,
 				credentialResolverId: 'resolver-id',
 				createdAt: timestamp,
+				data: 'encrypted-data',
 			};
 			const dynamicState = Buffer.from(JSON.stringify(mockState)).toString('base64');
 			const dynamicReq = mock<OAuthRequest.OAuth1Credential.Callback>({
@@ -249,6 +255,7 @@ describe('OAuth1CredentialController', () => {
 				credentialResolverId: 'resolver-id',
 				authorizationHeader: 'Invalid token123',
 				createdAt: timestamp,
+				data: 'encrypted-data',
 			};
 			const dynamicState = Buffer.from(JSON.stringify(mockState)).toString('base64');
 			const dynamicReq = mock<OAuthRequest.OAuth1Credential.Callback>({
@@ -285,6 +292,7 @@ describe('OAuth1CredentialController', () => {
 				cid: '1',
 				origin: 'static-credential' as const,
 				createdAt: timestamp,
+				data: 'encrypted-data',
 			};
 			const undefinedOriginState = Buffer.from(JSON.stringify(mockState)).toString('base64');
 			const undefinedOriginReq = mock<OAuthRequest.OAuth1Credential.Callback>({

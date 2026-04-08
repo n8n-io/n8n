@@ -136,8 +136,8 @@ const onConnectClick = () => {
 							{{ i18n.baseText('settings.mcp.workflows.table.empty.description') }}
 						</N8nText>
 						<N8nButton
+							variant="solid"
 							data-test-id="mcp-workflow-table-empty-state-button"
-							type="primary"
 							:label="i18n.baseText('settings.mcp.connectWorkflows')"
 							@click="onConnectClick"
 						/>

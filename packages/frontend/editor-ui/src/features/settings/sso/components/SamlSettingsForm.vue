@@ -1,12 +1,11 @@
 <script lang="ts" setup>
 import type { SamlPreferences } from '@n8n/api-types';
-import CopyInput from '@/app/components/CopyInput.vue';
 import { SupportedProtocols, useSSOStore } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 import { captureMessage } from '@sentry/vue';
 
-import { ElCheckbox } from 'element-plus';
-import { N8nButton, N8nInput, N8nRadioButtons } from '@n8n/design-system';
+import { N8nButton, N8nInput, N8nOption, N8nRadioButtons, N8nSelect } from '@n8n/design-system';
+import { useClipboard } from '@/app/composables/useClipboard';
 import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { computed, onMounted, ref } from 'vue';
@@ -15,6 +14,7 @@ import { useUserRoleProvisioningForm } from '../provisioning/composables/useUser
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import ConfirmProvisioningDialog from '../provisioning/components/ConfirmProvisioningDialog.vue';
+import RoleMappingRuleEditor from '../provisioning/components/RoleMappingRuleEditor.vue';
 import { MODAL_CONFIRM } from '@/app/constants/modals';
 
 const i18n = useI18n();
@@ -22,8 +22,23 @@ const ssoStore = useSSOStore();
 const telemetry = useTelemetry();
 const toast = useToast();
 const message = useMessage();
+const clipboard = useClipboard();
+const redirectUrlCopied = ref(false);
+const entityIdCopied = ref(false);
+
+async function handleCopy(value: string, field: string) {
+	await clipboard.copy(value);
+	if (field === 'redirectUrl') {
+		redirectUrlCopied.value = true;
+		setTimeout(() => (redirectUrlCopied.value = false), 2000);
+	} else if (field === 'entityId') {
+		entityIdCopied.value = true;
+		setTimeout(() => (entityIdCopied.value = false), 2000);
+	}
+}
 
 const savingForm = ref<boolean>(false);
+const roleMappingRuleEditorRef = ref<InstanceType<typeof RoleMappingRuleEditor> | null>(null);
 
 const redirectUrl = ref();
 const samlLoginEnabled = ref<boolean>(false);
@@ -100,8 +115,12 @@ const isSaveEnabled = computed(() => {
 		return false;
 	};
 	const isSamlLoginEnabledChanged = ssoStore.isSamlLoginEnabled !== samlLoginEnabled.value;
+	const isRuleMappingDirty = roleMappingRuleEditorRef.value?.isDirty ?? false;
 	return (
-		isUserRoleProvisioningChanged.value || isIdentityProviderChanged() || isSamlLoginEnabledChanged
+		isUserRoleProvisioningChanged.value ||
+		isIdentityProviderChanged() ||
+		isSamlLoginEnabledChanged ||
+		isRuleMappingDirty
 	);
 });
 
@@ -227,6 +246,10 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 
 		await saveProvisioningConfig(isDisablingSamlLogin);
 
+		if (userRoleProvisioning.value === 'expression_based') {
+			await roleMappingRuleEditorRef.value?.save();
+		}
+
 		// Update store with saved protocol selection
 		ssoStore.selectedAuthProtocol = SupportedProtocols.SAML;
 
@@ -242,7 +265,11 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 
 const onTest = async () => {
 	try {
-		const url = await ssoStore.testSamlConfig();
+		const metaDataConfig: Partial<SamlPreferences> =
+			ipsType.value === IdentityProviderSettingsType.URL
+				? { metadataUrl: metadataUrl.value }
+				: { metadata: metadata.value };
+		const url = await ssoStore.testSamlConfig(metaDataConfig);
 
 		if (typeof window !== 'undefined') {
 			window.open(url, '_blank');
@@ -271,57 +298,102 @@ const validateSamlInput = () => {
 	}
 };
 
+const hasUnsavedChanges = computed(() => isSaveEnabled.value);
+
+defineExpose({ hasUnsavedChanges, onSave });
+
 onMounted(async () => {
 	await loadSamlConfig();
 });
 </script>
 <template>
 	<div>
-		<div :class="$style.group">
-			<label>{{ i18n.baseText('settings.sso.settings.redirectUrl.label') }}</label>
-			<CopyInput
-				:value="redirectUrl"
-				:copy-button-text="i18n.baseText('generic.clickToCopy')"
-				:toast-title="i18n.baseText('settings.sso.settings.redirectUrl.copied')"
-			/>
-			<small>{{ i18n.baseText('settings.sso.settings.redirectUrl.help') }}</small>
+		<!-- Card 1: SSO Configuration -->
+		<div :class="$style.card">
+			<slot name="protocol-select" />
+			<div :class="$style.settingsItem">
+				<div :class="$style.settingsItemLabel">
+					<label>{{ i18n.baseText('settings.sso.settings.redirectUrl.label') }}</label>
+					<small>{{ i18n.baseText('settings.sso.settings.redirectUrl.help') }}</small>
+				</div>
+				<div :class="$style.settingsItemControl">
+					<div :class="$style.copyInputGroup" data-test-id="copy-input">
+						<div :class="$style.copyInputField">
+							<N8nInput :model-value="redirectUrl" type="text" :readonly="true" />
+						</div>
+						<div :class="$style.copyButtonWrapper">
+							<N8nButton
+								variant="subtle"
+								icon-only
+								:icon="redirectUrlCopied ? 'check' : 'copy'"
+								@click="handleCopy(redirectUrl, 'redirectUrl')"
+							/>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div :class="$style.settingsItem">
+				<div :class="$style.settingsItemLabel">
+					<label>{{ i18n.baseText('settings.sso.settings.entityId.label') }}</label>
+					<small>{{ i18n.baseText('settings.sso.settings.entityId.help') }}</small>
+				</div>
+				<div :class="$style.settingsItemControl">
+					<div :class="$style.copyInputGroup" data-test-id="copy-input">
+						<div :class="$style.copyInputField">
+							<N8nInput :model-value="entityId" type="text" :readonly="true" />
+						</div>
+						<div :class="$style.copyButtonWrapper">
+							<N8nButton
+								variant="subtle"
+								icon-only
+								:icon="entityIdCopied ? 'check' : 'copy'"
+								@click="handleCopy(entityId, 'entityId')"
+							/>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div :class="$style.ipsBlock">
+				<div :class="[$style.settingsItem, $style.settingsItemNoBorder]">
+					<div :class="$style.settingsItemLabel">
+						<label>{{ i18n.baseText('settings.sso.settings.ips.label') }}</label>
+					</div>
+					<div :class="$style.settingsItemControl">
+						<N8nRadioButtons v-model="ipsType" :options="ipsOptions" />
+					</div>
+				</div>
+				<div v-if="ipsType === IdentityProviderSettingsType.URL">
+					<N8nInput
+						v-model="metadataUrl"
+						type="text"
+						name="metadataUrl"
+						size="large"
+						:placeholder="i18n.baseText('settings.sso.settings.ips.url.placeholder')"
+						data-test-id="sso-provider-url"
+					/>
+					<small>{{ i18n.baseText('settings.sso.settings.ips.url.help') }}</small>
+				</div>
+				<div v-if="ipsType === IdentityProviderSettingsType.XML">
+					<N8nInput
+						v-model="metadata"
+						type="textarea"
+						name="metadata"
+						:rows="4"
+						data-test-id="sso-provider-xml"
+					/>
+					<small>{{ i18n.baseText('settings.sso.settings.ips.xml.help') }}</small>
+				</div>
+			</div>
 		</div>
-		<div :class="$style.group">
-			<label>{{ i18n.baseText('settings.sso.settings.entityId.label') }}</label>
-			<CopyInput
-				:value="entityId"
-				:copy-button-text="i18n.baseText('generic.clickToCopy')"
-				:toast-title="i18n.baseText('settings.sso.settings.entityId.copied')"
-			/>
-			<small>{{ i18n.baseText('settings.sso.settings.entityId.help') }}</small>
-		</div>
-		<div :class="$style.group">
-			<label>{{ i18n.baseText('settings.sso.settings.ips.label') }}</label>
-			<div class="mt-2xs mb-s">
-				<N8nRadioButtons v-model="ipsType" :options="ipsOptions" />
-			</div>
-			<div v-if="ipsType === IdentityProviderSettingsType.URL">
-				<N8nInput
-					v-model="metadataUrl"
-					type="text"
-					name="metadataUrl"
-					size="large"
-					:placeholder="i18n.baseText('settings.sso.settings.ips.url.placeholder')"
-					data-test-id="sso-provider-url"
-				/>
-				<small>{{ i18n.baseText('settings.sso.settings.ips.url.help') }}</small>
-			</div>
-			<div v-if="ipsType === IdentityProviderSettingsType.XML">
-				<N8nInput
-					v-model="metadata"
-					type="textarea"
-					name="metadata"
-					:rows="4"
-					data-test-id="sso-provider-xml"
-				/>
-				<small>{{ i18n.baseText('settings.sso.settings.ips.xml.help') }}</small>
-			</div>
+
+		<!-- Card 2: Role Mapping -->
+		<div :class="$style.card">
 			<UserRoleProvisioningDropdown v-model="userRoleProvisioning" auth-protocol="saml" />
+			<RoleMappingRuleEditor
+				v-if="userRoleProvisioning === 'expression_based'"
+				ref="roleMappingRuleEditorRef"
+				@remove-mapping="userRoleProvisioning = 'disabled'"
+			/>
 			<ConfirmProvisioningDialog
 				v-model="showUserRoleProvisioningDialog"
 				:new-provisioning-setting="userRoleProvisioning"
@@ -329,12 +401,37 @@ onMounted(async () => {
 				@confirm-provisioning="onSave(true)"
 				@cancel="showUserRoleProvisioningDialog = false"
 			/>
-			<div :class="[$style.group, $style.checkboxGroup]">
-				<ElCheckbox v-model="samlLoginEnabled" data-test-id="sso-toggle">{{
-					i18n.baseText('settings.sso.activated')
-				}}</ElCheckbox>
+		</div>
+
+		<!-- Card 3: SSO Toggle -->
+		<div :class="$style.card">
+			<div :class="[$style.settingsItem, $style.settingsItemNoBorder]">
+				<div :class="$style.settingsItemLabel">
+					<label>{{ i18n.baseText('settings.sso.settings.ssoToggle.label') }}</label>
+					<small>{{ i18n.baseText('settings.sso.settings.ssoToggle.description') }}</small>
+				</div>
+				<div :class="$style.settingsItemControl">
+					<N8nSelect
+						:model-value="samlLoginEnabled ? 'enabled' : 'disabled'"
+						data-test-id="sso-toggle"
+						@update:model-value="samlLoginEnabled = $event === 'enabled'"
+					>
+						<template #prefix>
+							<span v-if="samlLoginEnabled" :class="$style.greenDot" />
+						</template>
+						<N8nOption
+							value="enabled"
+							:label="i18n.baseText('settings.sso.settings.ssoToggle.enabled')"
+						/>
+						<N8nOption
+							value="disabled"
+							:label="i18n.baseText('settings.sso.settings.ssoToggle.disabled')"
+						/>
+					</N8nSelect>
+				</div>
 			</div>
 		</div>
+
 		<div :class="$style.buttons">
 			<N8nButton
 				:disabled="!isSaveEnabled"
@@ -346,9 +443,9 @@ onMounted(async () => {
 				{{ i18n.baseText('settings.sso.settings.save') }}
 			</N8nButton>
 			<N8nButton
+				variant="subtle"
 				:disabled="!isTestEnabled"
 				size="large"
-				type="tertiary"
 				data-test-id="sso-test"
 				@click="onTest"
 			>

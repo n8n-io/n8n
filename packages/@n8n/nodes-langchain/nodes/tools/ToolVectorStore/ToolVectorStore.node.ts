@@ -12,8 +12,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, nodeNameToToolName } from 'n8n-workflow';
 
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 async function getTool(
 	ctx: ISupplyDataFunctions | IExecuteFunctions,
@@ -93,6 +92,12 @@ export class ToolVectorStore implements INodeType {
 
 		outputs: [NodeConnectionTypes.AiTool],
 		outputNames: ['Tool'],
+		builderHint: {
+			inputs: {
+				ai_vectorStore: { required: true },
+				ai_languageModel: { required: true },
+			},
+		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{

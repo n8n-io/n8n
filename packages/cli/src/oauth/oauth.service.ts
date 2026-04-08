@@ -19,6 +19,7 @@ import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { OAuthRequest } from '@/requests';
+import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
 import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import {
@@ -74,6 +75,15 @@ export class OauthService {
 		private readonly cipher: Cipher,
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 	) {}
+
+	private validateOAuthUrlOrThrow(url: string): void {
+		try {
+			validateOAuthUrl(url);
+		} catch (e) {
+			this.logger.error('Invalid OAuth URL', { url, error: e });
+			throw e;
+		}
+	}
 
 	getBaseUrl(oauthVersion: OauthVersion) {
 		const restUrl = `${this.urlService.getInstanceBaseUrl()}/${this.globalConfig.endpoints.rest}`;
@@ -153,7 +163,6 @@ export class OauthService {
 		return (await this.credentialsHelper.applyDefaultsAndOverwrites(
 			additionalData,
 			decryptedData,
-			credential,
 			credential.type,
 			'internal',
 			undefined,
@@ -181,42 +190,61 @@ export class OauthService {
 		return await this.credentialsRepository.findOneBy({ id: credentialId });
 	}
 
-	createCsrfState(data: CreateCsrfStateData): [string, string, string] {
+	createCsrfState(data: CreateCsrfStateData): [string, string] {
 		const token = new Csrf();
 		const csrfSecret = token.secretSync();
 		const state: CsrfState = {
 			token: token.create(csrfSecret),
 			createdAt: Date.now(),
-			...data,
+			data: this.cipher.encrypt(JSON.stringify(data)),
 		};
 
 		const base64State = Buffer.from(JSON.stringify(state)).toString('base64');
-		const encryptedState = this.cipher.encrypt(JSON.stringify(state));
-		return [csrfSecret, encryptedState, base64State];
+		return [csrfSecret, base64State];
 	}
 
-	protected decodeCsrfState(encodedState: string, req: AuthenticatedRequest): CsrfState {
+	protected decodeCsrfState(
+		encodedState: string,
+		req: AuthenticatedRequest,
+	): CsrfState & CreateCsrfStateData {
 		const errorMessage = 'Invalid state format';
-		const decryptedState = this.cipher.decrypt(encodedState);
-		const decoded = jsonParse<CsrfState>(decryptedState, {
+		const decodedState = Buffer.from(encodedState, 'base64').toString();
+		const decoded = jsonParse<CsrfState>(decodedState, {
 			errorMessage,
 		});
 
-		if (typeof decoded.cid !== 'string' || typeof decoded.token !== 'string') {
+		const decryptedState = jsonParse<CreateCsrfStateData>(this.cipher.decrypt(decoded.data), {
+			errorMessage,
+		});
+
+		if (typeof decryptedState.cid !== 'string' || typeof decoded.token !== 'string') {
 			throw new UnexpectedError(errorMessage);
 		}
 
-		// user validation not required for dynamic credentials
-		if (decoded.origin === 'dynamic-credential') {
-			return decoded;
+		// Dynamic credentials: skip user validation (e.g. embed/iframe flows) as they do not contain an n8n user
+		if (decryptedState.origin === 'dynamic-credential') {
+			return {
+				...decoded,
+				...decryptedState,
+			};
 		}
 
-		// if we skip auth on oauth callback, we cannot validate user id
-		if (!skipAuthOnOAuthCallback && decoded.userId !== req.user?.id) {
+		// Static credentials: skip user validation only when N8N_SKIP_AUTH_ON_OAUTH_CALLBACK is true (e.g. embed/iframe)
+		if (skipAuthOnOAuthCallback) {
+			return {
+				...decoded,
+				...decryptedState,
+			};
+		}
+
+		if (req.user?.id === undefined || decryptedState.userId !== req.user.id) {
 			throw new AuthError('Unauthorized');
 		}
 
-		return decoded;
+		return {
+			...decoded,
+			...decryptedState,
+		};
 	}
 
 	protected verifyCsrfState(
@@ -234,7 +262,9 @@ export class OauthService {
 
 	async resolveCredential<T>(
 		req: OAuthRequest.OAuth1Credential.Callback | OAuthRequest.OAuth2Credential.Callback,
-	): Promise<[CredentialsEntity, ICredentialDataDecryptedObject, T, CsrfState]> {
+	): Promise<
+		[CredentialsEntity, ICredentialDataDecryptedObject, T, CsrfState & CreateCsrfStateData]
+	> {
 		const { state: encodedState } = req.query;
 		const state = this.decodeCsrfState(encodedState, req);
 		const credential = await this.getCredentialWithoutUser(state.cid);
@@ -299,10 +329,94 @@ export class OauthService {
 		const toUpdate: ICredentialDataDecryptedObject = {};
 
 		if (oauthCredentials.useDynamicClientRegistration && oauthCredentials.serverUrl) {
-			const serverUrl = new URL(oauthCredentials.serverUrl);
-			const { data } = await axios.get<unknown>(
-				`${serverUrl.origin}/.well-known/oauth-authorization-server`,
-			);
+			// Validate serverUrl to prevent SSRF attacks before any HTTP requests
+			this.validateOAuthUrlOrThrow(oauthCredentials.serverUrl);
+
+			// Step 1: Discover Protected Resource Metadata (RFC 9728 / MCP)
+			// Try to discover the authorization server URL from protected resource metadata
+			let authorizationServerUrl: string;
+
+			try {
+				const protectedResourceMetadata = await this.discoverProtectedResourceMetadata(
+					oauthCredentials.serverUrl,
+				);
+
+				// Use first authorization server from the list
+				// MCP spec allows multiple; we use the first one
+				authorizationServerUrl = protectedResourceMetadata.authorization_servers[0];
+
+				// Validate authorization server URL to prevent SSRF attacks
+				this.validateOAuthUrlOrThrow(authorizationServerUrl);
+
+				this.logger.debug('Protected resource discovery succeeded', {
+					resourceUrl: oauthCredentials.serverUrl,
+					authorizationServerUrl,
+				});
+			} catch (error) {
+				// Re-throw security validation errors immediately (don't fall back)
+				if (error instanceof BadRequestError && (error as Error).message.includes('OAuth url')) {
+					throw error;
+				}
+
+				// Fallback: If protected resource discovery fails,
+				// assume serverUrl IS the authorization server (backwards compatibility)
+				this.logger.debug(
+					'Protected resource discovery failed, assuming serverUrl is authorization server',
+					{
+						serverUrl: oauthCredentials.serverUrl,
+						error: (error as Error).message,
+					},
+				);
+				authorizationServerUrl = oauthCredentials.serverUrl;
+			}
+
+			// Step 2: Discover Authorization Server Metadata (RFC 8414 / OpenID Connect)
+			const issuerUrl = new URL(authorizationServerUrl);
+			const pathComponent = issuerUrl.pathname.replace(/\/$/, ''); // Remove trailing slash
+
+			// Build discovery URLs in priority order per MCP specification
+			const discoveryUrls = pathComponent
+				? [
+						// 1. RFC 8414: OAuth 2.0 Authorization Server Metadata (path insertion)
+						`${issuerUrl.origin}/.well-known/oauth-authorization-server${pathComponent}`,
+						// 2. OpenID Connect Discovery 1.0 (path insertion)
+						`${issuerUrl.origin}/.well-known/openid-configuration${pathComponent}`,
+						// 3. OpenID Connect Discovery 1.0 (path appending)
+						`${authorizationServerUrl}/.well-known/openid-configuration`,
+					]
+				: [
+						// For root-level issuers (no path)
+						`${issuerUrl.origin}/.well-known/oauth-authorization-server`,
+						`${issuerUrl.origin}/.well-known/openid-configuration`,
+					];
+
+			let data: unknown;
+			let lastError: Error | undefined;
+
+			// Try each discovery URL until one succeeds
+			for (const url of discoveryUrls) {
+				try {
+					// Validate each URL before making request (defense-in-depth)
+					this.validateOAuthUrlOrThrow(url);
+
+					const response = await axios.get<unknown>(url, {
+						validateStatus: (status) => status === 200,
+					});
+					data = response.data;
+					break; // Success - exit loop
+				} catch (error) {
+					lastError = error as Error;
+					// Continue to next URL
+				}
+			}
+
+			if (!data) {
+				throw new BadRequestError(
+					`Failed to discover OAuth2 authorization server metadata. Tried: ${discoveryUrls.join(', ')}. Last error: ${lastError?.message}`,
+				);
+			}
+
+			// Validate the metadata response
 			const metadataValidation = oAuthAuthorizationServerMetadataSchema.safeParse(data);
 			if (!metadataValidation.success) {
 				throw new BadRequestError(
@@ -371,8 +485,11 @@ export class OauthService {
 			}
 		}
 
+		this.validateOAuthUrlOrThrow(oauthCredentials.authUrl ?? '');
+		this.validateOAuthUrlOrThrow(oauthCredentials.accessTokenUrl ?? '');
+
 		// Generate a CSRF prevention token and send it as an OAuth2 state string
-		const [csrfSecret, state, base64State] = this.createCsrfState(csrfData);
+		const [csrfSecret, state] = this.createCsrfState(csrfData);
 
 		const oAuthOptions = {
 			...this.convertCredentialToOptions(oauthCredentials),
@@ -383,7 +500,7 @@ export class OauthService {
 			oAuthOptions.query = qs.parse(oauthCredentials.authQueryParameters);
 		}
 
-		await this.externalHooks.run('oauth2.authenticate', [{ ...oAuthOptions, state: base64State }]);
+		await this.externalHooks.run('oauth2.authenticate', [oAuthOptions]);
 
 		toUpdate.csrfSecret = csrfSecret;
 		if (oauthCredentials.grantType === 'pkce') {
@@ -415,6 +532,10 @@ export class OauthService {
 	): Promise<string> {
 		const oauthCredentials: OAuth1CredentialData =
 			await this.getOAuthCredentials<OAuth1CredentialData>(credential);
+
+		this.validateOAuthUrlOrThrow(oauthCredentials.authUrl ?? '');
+		this.validateOAuthUrlOrThrow(oauthCredentials.requestTokenUrl ?? '');
+		this.validateOAuthUrlOrThrow(oauthCredentials.accessTokenUrl ?? '');
 
 		const [csrfSecret, state] = this.createCsrfState(csrfData);
 
@@ -514,6 +635,60 @@ export class OauthService {
 		return options;
 	}
 
+	/**
+	 * Discovers OAuth 2.0 Protected Resource Metadata per RFC 9728.
+	 * This is the first step in MCP-compliant OAuth discovery.
+	 * Returns the authorization_servers array from the metadata.
+	 */
+	private async discoverProtectedResourceMetadata(
+		resourceUrl: string,
+	): Promise<{ authorization_servers: string[] }> {
+		// Validate input to prevent SSRF (defense-in-depth)
+		this.validateOAuthUrlOrThrow(resourceUrl);
+
+		const url = new URL(resourceUrl);
+		const pathComponent = url.pathname.replace(/\/$/, ''); // Remove trailing slash
+
+		// Try discovery URLs per MCP spec and RFC 9728
+		const discoveryUrls = pathComponent
+			? [
+					// Path-specific first (e.g., https://mcp.notion.com/.well-known/oauth-protected-resource/mcp)
+					`${url.origin}/.well-known/oauth-protected-resource${pathComponent}`,
+					// Root fallback (e.g., https://mcp.notion.com/.well-known/oauth-protected-resource)
+					`${url.origin}/.well-known/oauth-protected-resource`,
+				]
+			: [
+					// Root only for root-level URLs
+					`${url.origin}/.well-known/oauth-protected-resource`,
+				];
+
+		for (const discoveryUrl of discoveryUrls) {
+			try {
+				// Validate each URL before making request (defense-in-depth)
+				this.validateOAuthUrlOrThrow(discoveryUrl);
+
+				const { data } = await axios.get(discoveryUrl, {
+					validateStatus: (status) => status === 200,
+				});
+
+				// Validate has authorization_servers field per RFC 9728
+				if (
+					data &&
+					Array.isArray(data.authorization_servers) &&
+					data.authorization_servers.length > 0
+				) {
+					return data as { authorization_servers: string[] };
+				}
+			} catch (error) {
+				// Continue to next URL
+			}
+		}
+
+		throw new BadRequestError(
+			`Failed to discover protected resource metadata. Tried: ${discoveryUrls.join(', ')}`,
+		);
+	}
+
 	private selectGrantTypeAndAuthenticationMethod(
 		grantTypes: string[],
 		tokenEndpointAuthMethods: string[],
@@ -577,6 +752,7 @@ export class OauthService {
 		oauthTokenData: ICredentialDataDecryptedObject,
 		authHeader: string,
 		credentialResolverId: string,
+		authMetadata: Record<string, unknown> = {},
 	) {
 		const credentials = new Credentials(credential, credential.type, credential.data);
 		credentials.updateData(oauthTokenData, ['csrfSecret']);
@@ -592,8 +768,7 @@ export class OauthService {
 		await this.dynamicCredentialsProxy.storeIfNeeded(
 			credentialStoreMetadata,
 			oauthTokenData,
-			//  todo parse this
-			{ version: 1, identity: authHeader },
+			{ version: 1, identity: authHeader, metadata: authMetadata },
 			credentials.getData(),
 			{ credentialResolverId },
 		);
