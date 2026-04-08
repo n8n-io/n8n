@@ -1,5 +1,5 @@
-import type { GatewayConfig } from '@n8n/fs-proxy/config';
-import { logger } from '@n8n/fs-proxy/logger';
+import type { GatewayConfig } from '@n8n/computer-use/config';
+import { logger } from '@n8n/computer-use/logger';
 import { app } from 'electron';
 import Store from 'electron-store';
 import * as os from 'node:os';
@@ -86,6 +86,7 @@ export class SettingsStore {
 				computer: s.screenshotEnabled || s.mouseKeyboardEnabled ? 'ask' : 'deny',
 				browser: s.browserEnabled ? 'ask' : 'deny',
 			},
+			permissionConfirmation: 'instance',
 		};
 	}
 

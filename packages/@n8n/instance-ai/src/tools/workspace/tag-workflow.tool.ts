@@ -5,19 +5,22 @@ import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
 
+export const tagWorkflowInputSchema = z.object({
+	workflowId: z.string().describe('ID of the workflow to tag'),
+	workflowName: z.string().optional().describe('Name of the workflow (for confirmation message)'),
+	tags: z.array(z.string()).min(1).describe('Tag names to assign to the workflow'),
+});
+
+export const tagWorkflowResumeSchema = z.object({
+	approved: z.boolean(),
+});
+
 export function createTagWorkflowTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'tag-workflow',
 		description:
 			'Assign tags to a workflow by name. Creates tags that do not exist yet. Replaces all existing tags on the workflow.',
-		inputSchema: z.object({
-			workflowId: z.string().describe('ID of the workflow to tag'),
-			workflowName: z
-				.string()
-				.optional()
-				.describe('Name of the workflow (for confirmation message)'),
-			tags: z.array(z.string()).min(1).describe('Tag names to assign to the workflow'),
-		}),
+		inputSchema: tagWorkflowInputSchema,
 		outputSchema: z.object({
 			appliedTags: z.array(z.string()),
 			denied: z.boolean().optional(),
@@ -28,11 +31,16 @@ export function createTagWorkflowTool(context: InstanceAiContext) {
 			message: z.string(),
 			severity: instanceAiConfirmationSeveritySchema,
 		}),
-		resumeSchema: z.object({
-			approved: z.boolean(),
-		}),
-		execute: async (input, ctx) => {
-			const { resumeData, suspend } = ctx?.agent ?? {};
+		resumeSchema: tagWorkflowResumeSchema,
+		execute: async (input: z.infer<typeof tagWorkflowInputSchema>, ctx) => {
+			const resumeData = ctx?.agent?.resumeData as
+				| z.infer<typeof tagWorkflowResumeSchema>
+				| undefined;
+			const suspend = ctx?.agent?.suspend;
+
+			if (context.permissions?.tagWorkflow === 'blocked') {
+				return { appliedTags: [], denied: true, reason: 'Action blocked by admin' };
+			}
 
 			const needsApproval = context.permissions?.tagWorkflow !== 'always_allow';
 

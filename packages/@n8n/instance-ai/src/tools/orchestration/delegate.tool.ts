@@ -2,7 +2,7 @@ import type { ToolsInput } from '@mastra/core/agent';
 import { createTool } from '@mastra/core/tools';
 import { nanoid } from 'nanoid';
 
-import { delegateInputSchema, delegateOutputSchema } from './delegate.schemas';
+import { delegateInputSchema, delegateOutputSchema, type DelegateInput } from './delegate.schemas';
 import { truncateLabel } from './display-utils';
 import {
 	createDetachedSubAgentTracing,
@@ -260,7 +260,7 @@ export function createDelegateTool(context: OrchestrationContext) {
 			'benefit from a clean context window.',
 		inputSchema: delegateInputSchema,
 		outputSchema: delegateOutputSchema,
-		execute: async (input) => {
+		execute: async (input: DelegateInput) => {
 			if (input.tools.length === 0) {
 				return { result: 'Delegation failed: "tools" must contain at least one tool name' };
 			}

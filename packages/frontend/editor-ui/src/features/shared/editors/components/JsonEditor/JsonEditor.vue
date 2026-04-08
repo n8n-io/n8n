@@ -88,7 +88,7 @@ watch(
 		const editorValue = editor.value?.state?.doc.toString();
 
 		// If model value changes from outside the component
-		if (editorValue && editorValue.length !== newValue.length && editorValue !== newValue) {
+		if (editorValue !== undefined && editorValue !== newValue) {
 			destroyEditor();
 			createEditor();
 		}
