@@ -1,4 +1,4 @@
-import { RelayConnection } from '../relayConnection';
+import { RelayConnection } from './relayConnection';
 
 // ---------------------------------------------------------------------------
 // Chrome API mock — single object, access mocks via chrome.debugger.attach etc.
@@ -21,31 +21,30 @@ function mockTarget(chromeTabId: number) {
 
 const chrome = {
 	debugger: {
-		attach: jest.fn().mockResolvedValue(undefined),
-		detach: jest.fn().mockResolvedValue(undefined),
-		sendCommand: jest.fn<
-			Promise<unknown>,
-			[debuggee: { tabId: number }, method: string, params?: object]
-		>(async (debuggee, method) => {
+		attach: vi.fn().mockResolvedValue(undefined),
+		detach: vi.fn().mockResolvedValue(undefined),
+		sendCommand: vi.fn(async (debuggee: { tabId: number }, method: string, _params?: object) => {
 			if (method === 'Target.getTargetInfo') {
-				return await Promise.resolve({ targetInfo: { targetId: targetIdForTab(debuggee.tabId) } });
+				return await Promise.resolve({
+					targetInfo: { targetId: targetIdForTab(debuggee.tabId) },
+				});
 			}
 			return await Promise.resolve({});
 		}),
-		getTargets: jest.fn().mockResolvedValue([]),
-		onEvent: { addListener: jest.fn(), removeListener: jest.fn() },
-		onDetach: { addListener: jest.fn(), removeListener: jest.fn() },
+		getTargets: vi.fn().mockResolvedValue([]),
+		onEvent: { addListener: vi.fn(), removeListener: vi.fn() },
+		onDetach: { addListener: vi.fn(), removeListener: vi.fn() },
 	},
 	tabs: {
-		create: jest.fn().mockResolvedValue({ id: 999, title: 'New Tab', url: 'about:blank' }),
-		remove: jest.fn().mockResolvedValue(undefined),
-		get: jest.fn().mockResolvedValue({ id: 42, title: 'Test Tab', url: 'https://example.com' }),
-		query: jest.fn().mockResolvedValue([]),
+		create: vi.fn().mockResolvedValue({ id: 999, title: 'New Tab', url: 'about:blank' }),
+		remove: vi.fn().mockResolvedValue(undefined),
+		get: vi.fn().mockResolvedValue({ id: 42, title: 'Test Tab', url: 'https://example.com' }),
+		query: vi.fn().mockResolvedValue([]),
 	},
 	storage: {
 		local: {
-			get: jest.fn().mockResolvedValue({}),
-			set: jest.fn().mockResolvedValue(undefined),
+			get: vi.fn().mockResolvedValue({}),
+			set: vi.fn().mockResolvedValue(undefined),
 		},
 	},
 };
@@ -105,6 +104,11 @@ Object.assign(globalThis, { WebSocket: MockWebSocket });
 
 const tick = async () => await new Promise((resolve) => setTimeout(resolve, 10));
 
+/** Parse a sent WebSocket frame and return the object for assertions. */
+function parseSent(ws: MockWebSocket, index = 0): unknown {
+	return JSON.parse(ws.sent[index]);
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -114,7 +118,7 @@ describe('RelayConnection', () => {
 	let relay: RelayConnection;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		ws = new MockWebSocket();
 		relay = new RelayConnection(ws as unknown as WebSocket);
@@ -196,12 +200,18 @@ describe('RelayConnection', () => {
 			// Should NOT attach (lazy)
 			expect(chrome.debugger.attach).not.toHaveBeenCalled();
 
-			const sent = JSON.parse(ws.sent[0]);
-			expect(sent.method).toBe('tabOpened');
-			expect(sent.params.id).toBe(targetIdForTab(42));
-			expect(sent.params.title).toBe('Test');
-			expect(sent.params.url).toBe('https://test.com');
-			expect(sent.params.tabId).toBeUndefined();
+			expect(ws.sent[0]).toEqual(expect.stringContaining('"method":"tabOpened"'));
+			expect(parseSent(ws)).toEqual(
+				expect.objectContaining({
+					method: 'tabOpened',
+					params: expect.objectContaining({
+						id: targetIdForTab(42),
+						title: 'Test',
+						url: 'https://test.com',
+					}),
+				}),
+			);
+			expect(parseSent(ws)).not.toHaveProperty('params.tabId');
 		});
 
 		it('should not add duplicate tabs', async () => {
@@ -221,9 +231,12 @@ describe('RelayConnection', () => {
 			relay.removeTab(42);
 			expect(relay.getControlledIds()).toEqual([]);
 
-			const sent = JSON.parse(ws.sent[0]);
-			expect(sent.method).toBe('tabClosed');
-			expect(sent.params.id).toBe(targetIdForTab(42));
+			expect(parseSent(ws)).toEqual(
+				expect.objectContaining({
+					method: 'tabClosed',
+					params: expect.objectContaining({ id: targetIdForTab(42) }),
+				}),
+			);
 		});
 
 		it('should not detach debugger for unattached tabs', async () => {
@@ -236,7 +249,7 @@ describe('RelayConnection', () => {
 		it('should close connection when last tab is removed', async () => {
 			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(42)]);
 			await relay.addTab(42, 'Test', 'https://test.com');
-			const onclose = jest.fn();
+			const onclose = vi.fn();
 			relay.onclose = onclose;
 
 			relay.removeTab(42);
@@ -279,14 +292,21 @@ describe('RelayConnection', () => {
 
 			expect(chrome.debugger.attach).not.toHaveBeenCalled();
 			expect(ws.sent).toHaveLength(1);
-			const response = JSON.parse(ws.sent[0]);
-			expect(response.id).toBe(1);
-			const tabs = response.result.tabs;
-			expect(tabs).toHaveLength(1);
-			expect(tabs[0].id).toBe(targetIdForTab(42));
-			expect(tabs[0].title).toBe('Example');
-			expect(tabs[0].url).toBe('https://example.com');
-			expect(tabs[0].tabId).toBeUndefined();
+			expect(parseSent(ws)).toEqual(
+				expect.objectContaining({
+					id: 1,
+					result: expect.objectContaining({
+						tabs: [
+							expect.objectContaining({
+								id: targetIdForTab(42),
+								title: 'Example',
+								url: 'https://example.com',
+							}),
+						],
+					}),
+				}),
+			);
+			expect(parseSent(ws)).not.toHaveProperty('result.tabs.0.tabId');
 		});
 	});
 
@@ -380,8 +400,9 @@ describe('RelayConnection', () => {
 			});
 			await tick();
 
-			const response = JSON.parse(ws.sent[0]);
-			expect(response.error).toContain('No tab is connected');
+			expect(parseSent(ws)).toEqual(
+				expect.objectContaining({ error: expect.stringContaining('No tab is connected') }),
+			);
 		});
 	});
 
@@ -394,7 +415,7 @@ describe('RelayConnection', () => {
 
 		it('should return true for agent-created tabs after createTab', async () => {
 			relay.setSettings({ allowTabCreation: true, allowTabClosing: false });
-			(globalThis.chrome.tabs.create as jest.Mock).mockResolvedValueOnce({
+			(globalThis.chrome.tabs.create as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
 				id: 999,
 				title: 'New',
 				url: 'https://new.com',
@@ -414,9 +435,12 @@ describe('RelayConnection', () => {
 			expect(chrome.debugger.attach).toHaveBeenCalledWith({ tabId: 999 }, '1.3');
 
 			// Response should have CDP targetId, not chromeTabId
-			const response = JSON.parse(ws.sent[0]);
-			expect(response.result.id).toBe(targetIdForTab(999));
-			expect(response.result.tabId).toBeUndefined();
+			expect(parseSent(ws)).toEqual(
+				expect.objectContaining({
+					result: expect.objectContaining({ id: targetIdForTab(999) }),
+				}),
+			);
+			expect(parseSent(ws)).not.toHaveProperty('result.tabId');
 		});
 	});
 
@@ -425,8 +449,7 @@ describe('RelayConnection', () => {
 		await tick();
 
 		expect(ws.sent).toHaveLength(1);
-		const response = JSON.parse(ws.sent[0]);
-		expect(response.error).toBeDefined();
+		expect(parseSent(ws)).toEqual(expect.objectContaining({ error: expect.anything() }));
 	});
 
 	it('should only detach attached debuggees on close', async () => {
@@ -464,11 +487,16 @@ describe('RelayConnection', () => {
 		fireDebuggerEvent({ tabId: 42 }, 'Page.loadEventFired', { timestamp: 123 });
 
 		expect(ws.sent).toHaveLength(1);
-		const event = JSON.parse(ws.sent[0]);
-		expect(event.method).toBe('forwardCDPEvent');
-		expect(event.params.method).toBe('Page.loadEventFired');
-		expect(event.params.id).toBe(targetIdForTab(42));
-		expect(event.params.tabId).toBeUndefined();
+		expect(parseSent(ws)).toEqual(
+			expect.objectContaining({
+				method: 'forwardCDPEvent',
+				params: expect.objectContaining({
+					method: 'Page.loadEventFired',
+					id: targetIdForTab(42),
+				}),
+			}),
+		);
+		expect(parseSent(ws)).not.toHaveProperty('params.tabId');
 	});
 
 	it('should ignore debugger events for uncontrolled tabs', async () => {
@@ -484,7 +512,7 @@ describe('RelayConnection', () => {
 	it('should remove tab on debugger detach and close if no tabs left', async () => {
 		chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(42)]);
 		await relay.addTab(42, 'Test', 'https://test.com');
-		const onclose = jest.fn();
+		const onclose = vi.fn();
 		relay.onclose = onclose;
 
 		fireDebuggerDetach({ tabId: 42 }, 'target_closed');
@@ -517,8 +545,9 @@ describe('RelayConnection', () => {
 		});
 		await tick();
 
-		const response = JSON.parse(ws.sent[0]);
-		expect(response.error).toContain('Tab creation is disabled');
+		expect(parseSent(ws)).toEqual(
+			expect.objectContaining({ error: expect.stringContaining('Tab creation is disabled') }),
+		);
 	});
 
 	it('should reject closeTab when tab closing is disabled', async () => {
@@ -537,8 +566,9 @@ describe('RelayConnection', () => {
 		});
 		await tick();
 
-		const response = JSON.parse(ws.sent[0]);
-		expect(response.error).toContain('Tab closing is disabled');
+		expect(parseSent(ws)).toEqual(
+			expect.objectContaining({ error: expect.stringContaining('Tab closing is disabled') }),
+		);
 	});
 
 	describe('spawned tab helpers', () => {
@@ -642,9 +672,15 @@ describe('RelayConnection', () => {
 			});
 
 			expect(ws.sent).toHaveLength(1);
-			const event = JSON.parse(ws.sent[0]);
-			expect(event.method).toBe('forwardCDPEvent');
-			expect(event.params.method).toBe('Target.attachedToTarget');
+
+			expect(parseSent(ws)).toEqual(
+				expect.objectContaining({
+					method: 'forwardCDPEvent',
+					params: expect.objectContaining({
+						method: 'Target.attachedToTarget',
+					}),
+				}),
+			);
 		});
 	});
 
@@ -757,7 +793,8 @@ describe('RelayConnection', () => {
 
 			// Response should not be sent yet — waiting for the context event.
 			await tick();
-			expect(ws.sent.some((s) => JSON.parse(s).id === 1)).toBe(false);
+
+			expect(ws.sent.some((_, i) => (parseSent(ws, i) as { id: number }).id === 1)).toBe(false);
 
 			// Fire the executionContextCreated event via the one-shot listener.
 			// It is the last listener registered (after the constructor's permanent listener).
@@ -776,7 +813,7 @@ describe('RelayConnection', () => {
 			expect(methods).not.toContain('Runtime.disable');
 			expect(methods).toContain('Runtime.enable');
 			// Response was sent after context confirmed
-			expect(ws.sent.some((s) => JSON.parse(s).id === 1)).toBe(true);
+			expect(ws.sent.some((_, i) => (parseSent(ws, i) as { id: number }).id === 1)).toBe(true);
 		});
 
 		it('should resolve Runtime.enable after timeout if executionContextCreated never fires', async () => {
@@ -784,7 +821,7 @@ describe('RelayConnection', () => {
 
 			// Install fake timers before sending the message so the 3 000 ms
 			// timeout inside contextReady is created under fake time control.
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 			try {
 				ws.onmessage?.({
 					data: JSON.stringify({
@@ -796,9 +833,9 @@ describe('RelayConnection', () => {
 				// Drain microtasks (sendCommand resolves immediately), then advance
 				// past the 3 000 ms fallback timeout.
 				await Promise.resolve();
-				await jest.advanceTimersByTimeAsync(3_100);
+				await vi.advanceTimersByTimeAsync(3_100);
 			} finally {
-				jest.useRealTimers();
+				vi.useRealTimers();
 			}
 
 			const methods = chrome.debugger.sendCommand.mock.calls.map((c: unknown[]) => c[1]);

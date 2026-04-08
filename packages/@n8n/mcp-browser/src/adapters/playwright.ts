@@ -80,7 +80,7 @@ interface PageState {
 // This ensures the same ID whether loaded unpacked or installed from the Chrome Web Store.
 // ---------------------------------------------------------------------------
 
-const BROWSER_BRIDGE_EXTENSION_ID = 'agklaocphkdbepcjccjpnbcglmpebhpo';
+const BROWSER_USE_EXTENSION_ID = 'cegmdpndekdfpnafgacidejijecomlhh';
 
 // ---------------------------------------------------------------------------
 // Adapter
@@ -118,7 +118,7 @@ export class PlaywrightAdapter {
 
 		// Open the extension's connect page with the relay URL so it auto-connects.
 		const connectUrl =
-			`chrome-extension://${BROWSER_BRIDGE_EXTENSION_ID}/dist/connect.html` +
+			`chrome-extension://${BROWSER_USE_EXTENSION_ID}/connect.html` +
 			`?mcpRelayUrl=${encodeURIComponent(extensionEndpoint)}`;
 		const browserInfo = this.resolvedConfig.browsers.get(config.browser);
 		const chromePath = browserInfo?.executablePath;

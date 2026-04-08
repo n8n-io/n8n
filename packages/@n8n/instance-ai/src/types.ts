@@ -234,6 +234,7 @@ export interface InstanceAiCredentialService {
 	): CredentialFieldInfo[] | Promise<CredentialFieldInfo[]>;
 	/** Search available credential types by keyword. Returns matching types with display names. */
 	searchCredentialTypes?(query: string): Promise<CredentialTypeSearchResult[]>;
+	getAccountContext?(credentialId: string): Promise<{ accountIdentifier?: string }>;
 }
 
 export interface CredentialFieldInfo {
