@@ -372,37 +372,58 @@ function mapNestedPropertyToZodSchemaInner(prop: NodeProperty): string {
 		return 'resourceMapperValueSchema';
 	}
 
+	// When multipleValues is set, the runtime value is an array of the base type.
+	// Wrap the element schema in z.array(...) and also accept an expression.
+	const isMultipleValues = prop.typeOptions?.multipleValues === true;
+
 	// Handle dynamic options (but not for types with specific structure)
 	if (prop.typeOptions?.loadOptionsMethod || prop.typeOptions?.loadOptionsDependsOn) {
 		if (prop.type === 'multiOptions') {
 			return 'z.array(z.string())';
 		}
-		return 'stringOrExpression';
+		const elementSchema = 'stringOrExpression';
+		return isMultipleValues
+			? `z.union([z.array(${elementSchema}), expressionSchema])`
+			: elementSchema;
 	}
 
 	switch (prop.type) {
 		case 'string':
 		case 'dateTime':
 		case 'color':
-		case 'credentialsSelect':
-			return 'stringOrExpression';
+		case 'credentialsSelect': {
+			const elementSchema = 'stringOrExpression';
+			return isMultipleValues
+				? `z.union([z.array(${elementSchema}), expressionSchema])`
+				: elementSchema;
+		}
 
-		case 'number':
-			return 'numberOrExpression';
+		case 'number': {
+			const elementSchema = 'numberOrExpression';
+			return isMultipleValues
+				? `z.union([z.array(${elementSchema}), expressionSchema])`
+				: elementSchema;
+		}
 
 		case 'boolean':
 			return 'booleanOrExpression';
 
-		case 'options':
+		case 'options': {
 			if (prop.options && prop.options.length > 0) {
 				const literals = prop.options
 					.filter((opt) => opt.value !== undefined)
 					.map((opt) => `z.literal(${formatZodLiteral(opt.value)})`);
 				if (literals.length > 0) {
-					return `z.union([${literals.join(', ')}, expressionSchema])`;
+					const elementSchema = `z.union([${literals.join(', ')}, expressionSchema])`;
+					return isMultipleValues
+						? `z.union([z.array(${elementSchema}), expressionSchema])`
+						: elementSchema;
 				}
 			}
-			return 'stringOrExpression';
+			return isMultipleValues
+				? `z.union([z.array(stringOrExpression), expressionSchema])`
+				: 'stringOrExpression';
+		}
 
 		case 'multiOptions':
 			if (prop.options && prop.options.length > 0) {
