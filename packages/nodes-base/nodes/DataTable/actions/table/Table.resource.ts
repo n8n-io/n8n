@@ -46,10 +46,10 @@ export const description: INodeProperties[] = [
 				action: 'List data tables',
 			},
 			{
-				name: 'Update',
+				name: 'Rename',
 				value: update.FIELD,
-				description: 'Update a data table name',
-				action: 'Update a data table',
+				description: 'Rename a data table',
+				action: 'Rename a data table',
 			},
 		],
 		default: 'list',
