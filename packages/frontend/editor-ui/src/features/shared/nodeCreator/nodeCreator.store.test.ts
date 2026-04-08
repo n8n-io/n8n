@@ -10,7 +10,7 @@ import {
 import type { ActionsRecord, INodeCreateElement, INodeUi, SimplifiedNodeType } from '@/Interface';
 import { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.types';
 import { parseCanvasConnectionHandleString } from '@/features/workflows/canvas/canvas.utils';
-import { useNodeIconSource } from '@/app/utils/nodeIcon';
+import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import type { CommunityNodeType } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import type { INodeTypeDescription } from 'n8n-workflow';
@@ -65,7 +65,7 @@ vi.mock('@/app/utils/nodeIcon', () => {
 });
 
 const mockedPrepareCommunityNodeDetailsViewStack = vi.mocked(prepareCommunityNodeDetailsViewStack);
-const mockedGetNodeIconSource = vi.mocked(useNodeIconSource);
+const mockedGetNodeIconSource = vi.mocked(getNodeIconSource);
 
 describe('useNodeCreatorStore', () => {
 	let nodeCreatorStore: ReturnType<typeof useNodeCreatorStore>;
