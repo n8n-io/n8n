@@ -19,6 +19,8 @@ export interface CliArgs {
 	verbose: boolean;
 	/** Filter workflow test cases by filename substring (e.g. "contact-form") */
 	filter?: string;
+	/** Keep built workflows after evaluation instead of deleting them */
+	keepWorkflows: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -32,6 +34,7 @@ const cliArgsSchema = z.object({
 	password: z.string().optional(),
 	verbose: z.boolean().default(false),
 	filter: z.string().optional(),
+	keepWorkflows: z.boolean().default(false),
 });
 
 // ---------------------------------------------------------------------------
@@ -49,6 +52,7 @@ export function parseCliArgs(argv: string[]): CliArgs {
 		password: validated.password,
 		verbose: validated.verbose,
 		filter: validated.filter,
+		keepWorkflows: validated.keepWorkflows,
 	};
 }
 
@@ -63,6 +67,7 @@ interface RawArgs {
 	password?: string;
 	verbose: boolean;
 	filter?: string;
+	keepWorkflows: boolean;
 }
 
 function parseRawArgs(argv: string[]): RawArgs {
@@ -70,6 +75,7 @@ function parseRawArgs(argv: string[]): RawArgs {
 		timeoutMs: 600_000,
 		baseUrl: 'http://localhost:5678',
 		verbose: false,
+		keepWorkflows: false,
 	};
 
 	for (let i = 0; i < argv.length; i++) {
@@ -103,6 +109,10 @@ function parseRawArgs(argv: string[]): RawArgs {
 			case '--filter':
 				result.filter = nextArg(argv, i, '--filter');
 				i++;
+				break;
+
+			case '--keep-workflows':
+				result.keepWorkflows = true;
 				break;
 
 			default:
