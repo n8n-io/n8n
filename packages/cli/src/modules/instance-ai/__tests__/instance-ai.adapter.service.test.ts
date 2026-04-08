@@ -771,6 +771,7 @@ function createDataTableAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[25],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[26],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[27],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
 	);
 
 	const adapter = service.createContext(mockUser).dataTableService;
@@ -959,6 +960,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[25],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[26],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[27],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
 	);
 
 	const context = service.createContext(mockUser);
@@ -1169,6 +1171,7 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[25],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[26],
 		mockRoleService as unknown as RoleService,
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
 	);
 
 	const adapter = service.createContext(mockUser).executionService;

@@ -9,7 +9,9 @@ import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import type { InstanceAiCredentialFlow, InstanceAiCredentialRequest } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useInstanceAiStore } from '../instanceAi.store';
 
 const props = defineProps<{
@@ -21,6 +23,8 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const telemetry = useTelemetry();
+const rootStore = useRootStore();
 const store = useInstanceAiStore();
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
@@ -133,6 +137,7 @@ function wrappedGoToPrev() {
 watch(
 	() => currentRequest.value && isStepComplete(currentRequest.value.credentialType),
 	(complete, prevComplete) => {
+		// Auto-advance only when not manually navigating
 		if (!complete || prevComplete || userNavigated.value) {
 			userNavigated.value = false;
 			return;
@@ -239,11 +244,38 @@ function onCredentialSelected(
 	}
 }
 
+function trackCredentialInput() {
+	const tc = store.findToolCallByRequestId(props.requestId);
+	const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
+	const provided: Array<{ label: string; options: string[]; option_chosen: string }> = [];
+	const skipped: Array<{ label: string; options: string[] }> = [];
+	for (const req of props.credentialRequests) {
+		const selected = selections.value[req.credentialType];
+		if (selected) {
+			provided.push({ label: req.credentialType, options: [], option_chosen: selected });
+		} else {
+			skipped.push({ label: req.credentialType, options: [] });
+		}
+	}
+	telemetry.track('User finished providing input', {
+		thread_id: store.currentThreadId,
+		input_thread_id: inputThreadId,
+		instance_id: rootStore.instanceId,
+		type: 'credential-setup',
+		provided_inputs: provided,
+		skipped_inputs: skipped,
+		num_tasks: props.credentialRequests.length,
+	});
+}
+
 async function handleContinue() {
 	const credentials: Record<string, string> = {};
 	for (const [type, id] of Object.entries(selections.value)) {
 		if (id) credentials[type] = id;
 	}
+
+	trackCredentialInput();
+
 	isSubmitted.value = true;
 
 	const success = await store.confirmAction(props.requestId, true, undefined, credentials);
@@ -255,6 +287,8 @@ async function handleContinue() {
 }
 
 async function handleLater() {
+	trackCredentialInput();
+
 	isSubmitted.value = true;
 	isDeferred.value = true;
 
