@@ -1,6 +1,6 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import { generateText, Output, streamText } from 'ai';
-import Ajv from 'ajv';
+import { generateText, streamText, Output } from 'ai';
+import type AjvType from 'ajv';
 import type { z } from 'zod';
 import { zodToJsonSchema, type JsonSchema7Type } from 'zod-to-json-schema';
 
@@ -116,7 +116,17 @@ export interface AgentRuntimeConfig {
 
 const MAX_LOOP_ITERATIONS = 20;
 
-const ajv = new Ajv({ strict: false });
+let ajvInstance: InstanceType<typeof AjvType> | undefined;
+
+/** Return the shared Ajv instance, initializing it on first call. */
+function getAjv(): InstanceType<typeof AjvType> {
+	if (!ajvInstance) {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		const { default: Ajv } = require('ajv') as { default: typeof AjvType };
+		ajvInstance = new Ajv({ strict: false });
+	}
+	return ajvInstance;
+}
 
 const EMPTY_MESSAGE_LIST: SerializedMessageList = {
 	messages: [],
@@ -1615,6 +1625,7 @@ export class AgentRuntime {
 				}
 				toolInput = result.data as JSONValue;
 			} else {
+				const ajv = getAjv();
 				const validate = ajv.compile(builtTool.inputSchema);
 				const valid = validate(toolInput);
 				if (!valid) {
