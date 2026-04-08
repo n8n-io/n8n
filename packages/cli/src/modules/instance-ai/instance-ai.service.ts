@@ -734,6 +734,13 @@ export class InstanceAiService {
 				agentId: task.agentId,
 				payload: { role: task.role, result: '', error: 'Cancelled by user' },
 			});
+			void this.saveAgentTreeSnapshot(
+				threadId,
+				task.runId,
+				this.dbSnapshotStorage,
+				true,
+				task.messageGroupId,
+			);
 			if (user) {
 				void this.handlePlannedTaskSettlement(user, task, 'cancelled');
 			}
@@ -789,6 +796,17 @@ export class InstanceAiService {
 			agentId: task.agentId,
 			payload: { role: task.role, result: '', error: 'Cancelled by user' },
 		});
+
+		// Persist the updated agent tree so cancelled status survives page reload.
+		// The onSettled callback in executeTask is skipped for aborted tasks,
+		// so we must save the snapshot explicitly here.
+		void this.saveAgentTreeSnapshot(
+			threadId,
+			task.runId,
+			this.dbSnapshotStorage,
+			true,
+			task.messageGroupId,
+		);
 
 		const user = this.runState.getThreadUser(threadId);
 		if (user) {
