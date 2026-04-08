@@ -55,6 +55,7 @@ async function main(): Promise<void> {
 					preRunWorkflowIds,
 					claimedWorkflowIds,
 					logger,
+					keepWorkflows: args.keepWorkflows,
 				}),
 			MAX_CONCURRENT_TEST_CASES,
 		);
