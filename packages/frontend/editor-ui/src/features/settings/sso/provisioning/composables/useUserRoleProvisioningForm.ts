@@ -43,6 +43,8 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 				scopesProvisionProjectRoles: true,
 			};
 		} else {
+			// 'disabled' and 'expression_based' both disable scopes-based provisioning.
+			// Expression-based mapping uses role mapping rules instead.
 			return {
 				scopesProvisionInstanceRole: false,
 				scopesProvisionProjectRoles: false,

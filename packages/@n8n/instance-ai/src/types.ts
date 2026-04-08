@@ -88,8 +88,6 @@ export interface CredentialSummary {
 	id: string;
 	name: string;
 	type: string;
-	createdAt: string;
-	updatedAt: string;
 }
 
 export interface CredentialDetail extends CredentialSummary {
