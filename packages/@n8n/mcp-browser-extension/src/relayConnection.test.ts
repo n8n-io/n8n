@@ -21,31 +21,30 @@ function mockTarget(chromeTabId: number) {
 
 const chrome = {
 	debugger: {
-		attach: jest.fn().mockResolvedValue(undefined),
-		detach: jest.fn().mockResolvedValue(undefined),
-		sendCommand: jest.fn<
-			Promise<unknown>,
-			[debuggee: { tabId: number }, method: string, params?: object]
-		>(async (debuggee, method) => {
+		attach: vi.fn().mockResolvedValue(undefined),
+		detach: vi.fn().mockResolvedValue(undefined),
+		sendCommand: vi.fn(async (debuggee: { tabId: number }, method: string, _params?: object) => {
 			if (method === 'Target.getTargetInfo') {
-				return await Promise.resolve({ targetInfo: { targetId: targetIdForTab(debuggee.tabId) } });
+				return await Promise.resolve({
+					targetInfo: { targetId: targetIdForTab(debuggee.tabId) },
+				});
 			}
 			return await Promise.resolve({});
 		}),
-		getTargets: jest.fn().mockResolvedValue([]),
-		onEvent: { addListener: jest.fn(), removeListener: jest.fn() },
-		onDetach: { addListener: jest.fn(), removeListener: jest.fn() },
+		getTargets: vi.fn().mockResolvedValue([]),
+		onEvent: { addListener: vi.fn(), removeListener: vi.fn() },
+		onDetach: { addListener: vi.fn(), removeListener: vi.fn() },
 	},
 	tabs: {
-		create: jest.fn().mockResolvedValue({ id: 999, title: 'New Tab', url: 'about:blank' }),
-		remove: jest.fn().mockResolvedValue(undefined),
-		get: jest.fn().mockResolvedValue({ id: 42, title: 'Test Tab', url: 'https://example.com' }),
-		query: jest.fn().mockResolvedValue([]),
+		create: vi.fn().mockResolvedValue({ id: 999, title: 'New Tab', url: 'about:blank' }),
+		remove: vi.fn().mockResolvedValue(undefined),
+		get: vi.fn().mockResolvedValue({ id: 42, title: 'Test Tab', url: 'https://example.com' }),
+		query: vi.fn().mockResolvedValue([]),
 	},
 	storage: {
 		local: {
-			get: jest.fn().mockResolvedValue({}),
-			set: jest.fn().mockResolvedValue(undefined),
+			get: vi.fn().mockResolvedValue({}),
+			set: vi.fn().mockResolvedValue(undefined),
 		},
 	},
 };
@@ -119,7 +118,7 @@ describe('RelayConnection', () => {
 	let relay: RelayConnection;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		ws = new MockWebSocket();
 		relay = new RelayConnection(ws as unknown as WebSocket);
@@ -673,9 +672,15 @@ describe('RelayConnection', () => {
 			});
 
 			expect(ws.sent).toHaveLength(1);
-			const event = JSON.parse(ws.sent[0]);
-			expect(event.method).toBe('forwardCDPEvent');
-			expect(event.params.method).toBe('Target.attachedToTarget');
+
+			expect(parseSent(ws)).toEqual(
+				expect.objectContaining({
+					method: 'forwardCDPEvent',
+					params: expect.objectContaining({
+						method: 'Target.attachedToTarget',
+					}),
+				}),
+			);
 		});
 	});
 
@@ -788,7 +793,8 @@ describe('RelayConnection', () => {
 
 			// Response should not be sent yet — waiting for the context event.
 			await tick();
-			expect(ws.sent.some((s) => JSON.parse(s).id === 1)).toBe(false);
+
+			expect(ws.sent.some((_, i) => (parseSent(ws, i) as { id: number }).id === 1)).toBe(false);
 
 			// Fire the executionContextCreated event via the one-shot listener.
 			// It is the last listener registered (after the constructor's permanent listener).
@@ -807,7 +813,7 @@ describe('RelayConnection', () => {
 			expect(methods).not.toContain('Runtime.disable');
 			expect(methods).toContain('Runtime.enable');
 			// Response was sent after context confirmed
-			expect(ws.sent.some((s) => JSON.parse(s).id === 1)).toBe(true);
+			expect(ws.sent.some((_, i) => (parseSent(ws, i) as { id: number }).id === 1)).toBe(true);
 		});
 
 		it('should resolve Runtime.enable after timeout if executionContextCreated never fires', async () => {
@@ -815,7 +821,7 @@ describe('RelayConnection', () => {
 
 			// Install fake timers before sending the message so the 3 000 ms
 			// timeout inside contextReady is created under fake time control.
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 			try {
 				ws.onmessage?.({
 					data: JSON.stringify({
@@ -827,9 +833,9 @@ describe('RelayConnection', () => {
 				// Drain microtasks (sendCommand resolves immediately), then advance
 				// past the 3 000 ms fallback timeout.
 				await Promise.resolve();
-				await jest.advanceTimersByTimeAsync(3_100);
+				await vi.advanceTimersByTimeAsync(3_100);
 			} finally {
-				jest.useRealTimers();
+				vi.useRealTimers();
 			}
 
 			const methods = chrome.debugger.sendCommand.mock.calls.map((c: unknown[]) => c[1]);
