@@ -107,7 +107,6 @@ export type { AgentBuilder } from './sdk/agent-builder';
 
 export type {
 	CredentialProvider,
-	CredentialConfig,
 	ResolvedCredential,
 	CredentialListItem,
 } from './sdk/credential-provider';

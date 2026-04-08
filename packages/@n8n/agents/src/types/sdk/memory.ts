@@ -2,13 +2,13 @@ import type { z } from 'zod';
 
 import type { ModelConfig, SerializableAgentState } from './agent';
 import type { AgentDbMessage, AgentMessage } from './message';
-import type { ConnectionParams } from './schema';
+import type { JSONObject } from '../utils/json';
 
 /**
  * Serializable descriptor returned by BuiltMemory.describe().
  * Contains enough information to reconstruct the backend from a schema without exposing secrets.
  */
-export interface MemoryDescriptor<TParams extends ConnectionParams = ConnectionParams> {
+export interface MemoryDescriptor<TParams extends JSONObject = JSONObject> {
 	/** Backend name (e.g. 'postgres', 'sqlite', 'memory'). Used as key in memoryRegistry. */
 	name: string;
 	/** Constructor name (e.g. 'PostgresMemory', 'SqliteMemory'). Used to construct the backend. */

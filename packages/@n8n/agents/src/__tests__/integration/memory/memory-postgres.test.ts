@@ -65,10 +65,11 @@ afterAll(async () => {
  * Uses a simple inline CredentialProvider that returns the raw URL.
  */
 function makePostgresMemory(namespace: string): PostgresMemory {
-	return new PostgresMemory(
-		{ connectionType: 'url', connection: { url: { name: 'test-pg' } }, namespace },
-		{ resolve: async () => ({ apiKey: connectionString }), list: async () => [] },
-	);
+	return new PostgresMemory({
+		type: 'connection',
+		connection: { connectionType: 'url', connection: { url: connectionString } },
+		options: { namespace },
+	});
 }
 
 /** describe that requires Docker — tests are no-ops without it. */

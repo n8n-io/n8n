@@ -29,7 +29,6 @@ export type {
 	AgentRunState,
 	MemoryConfig,
 	MemoryDescriptor,
-	CredentialConfig,
 	TitleGenerationConfig,
 	Thread,
 	SemanticRecallConfig,
@@ -94,9 +93,6 @@ export type {
 	GuardrailSchema,
 	McpServerSchema,
 	TelemetrySchema,
-	ConnectionParams,
-	ConnectionParamValue,
-	ConnectionParamsObject,
 } from './types/sdk/schema';
 export {
 	toDbMessage,
@@ -117,8 +113,9 @@ export { SqliteMemory, SqliteMemoryConfigSchema } from './storage/sqlite-memory'
 export type { SqliteMemoryConfig } from './storage/sqlite-memory';
 export { PostgresMemory } from './storage/postgres-memory';
 export type {
-	PostgresMemoryConfig,
-	PostgresConnectionConfig,
+	PostgresMemoryDescriptorParams,
+	PostgresConnectionOptions,
+	PostgresConstructorOptions,
 } from './storage/postgres-memory';
 export type { MemoryFactory, FromSchemaOptions, ToolResolver } from './sdk/from-schema';
 

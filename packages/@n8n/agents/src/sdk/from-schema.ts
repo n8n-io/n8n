@@ -12,7 +12,7 @@ import type { HandlerExecutor } from '../types/sdk/handler-executor';
 import type { McpServerConfig } from '../types/sdk/mcp';
 import type { BuiltMemory } from '../types/sdk/memory';
 import type { AgentMessage } from '../types/sdk/message';
-import type { AgentSchema, ConnectionParams, EvalSchema, ToolSchema } from '../types/sdk/schema';
+import type { AgentSchema, EvalSchema, ToolSchema } from '../types/sdk/schema';
 import type { InterruptibleToolContext, ToolContext } from '../types/sdk/tool';
 import type { JSONObject } from '../types/utils/json';
 
@@ -22,10 +22,7 @@ export type ToolResolver = (toolSchema: ToolSchema) => BuiltTool | null | undefi
  * Factory function that reconstructs a BuiltMemory backend from serialized connectionParams.
  * Registered in `FromSchemaOptions.memoryRegistry` keyed by the backend name (e.g. 'postgres').
  */
-export type MemoryFactory = (
-	params: ConnectionParams,
-	credentialProvider?: CredentialProvider,
-) => BuiltMemory | Promise<BuiltMemory>;
+export type MemoryFactory = (params: JSONObject) => BuiltMemory | Promise<BuiltMemory>;
 
 export interface FromSchemaOptions {
 	handlerExecutor: HandlerExecutor;
@@ -41,7 +38,7 @@ export interface FromSchemaOptions {
 	/**
 	 * Registry of memory backend factories keyed by name (e.g. 'postgres', 'sqlite').
 	 * When a schema contains `memory.name`, the matching factory is called with
-	 * `connectionParams` and `credentialProvider` to reconstruct the backend.
+	 * `connectionParams` to reconstruct the backend.
 	 * Falls back to in-memory if no matching factory is found.
 	 */
 	memoryRegistry?: Record<string, MemoryFactory>;
@@ -184,7 +181,7 @@ export async function fromSchema(
 		const { name, connectionParams } = schema.memory;
 		const factory = options.memoryRegistry?.[name];
 		if (factory) {
-			const builtMemory: BuiltMemory = await factory(connectionParams, options.credentialProvider);
+			const builtMemory: BuiltMemory = await factory(connectionParams);
 			memory.storage(builtMemory);
 		}
 

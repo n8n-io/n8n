@@ -1,6 +1,6 @@
 import type { JSONSchema7 } from 'json-schema';
 
-import type { CredentialConfig } from './credential-provider';
+import type { JSONObject } from '../utils/json';
 
 export interface AgentSchema {
 	model: {
@@ -68,20 +68,7 @@ export interface ProviderToolSchema {
 	source: string; // full expression source, e.g. "providerTools.anthropicWebSearch({ maxUses: 5 })"
 }
 
-export type ConnectionParamValue =
-	| string
-	| number
-	| boolean
-	| null
-	| undefined
-	| ConnectionParamsObject
-	| CredentialConfig;
-export type ConnectionParamsObject = {
-	[key: string | number | symbol]: ConnectionParamValue | undefined;
-};
-export type ConnectionParams = ConnectionParamsObject | CredentialConfig;
-
-export interface MemorySchema<TParams extends ConnectionParams = ConnectionParams> {
+export interface MemorySchema<TParams extends JSONObject = JSONObject> {
 	// TODO: Remove, once MemorySchema is expressive enough to represent all memory types as configs
 	source: string | null; // full Memory builder chain source for lossless regeneration
 	// Backend descriptor — from BuiltMemory.describe()

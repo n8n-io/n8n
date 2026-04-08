@@ -1,10 +1,8 @@
 import type { Pool, PoolClient } from 'pg';
 
 import { toDbMessage } from '../sdk/message';
-import type { CredentialConfig, CredentialProvider } from '../types/sdk/credential-provider';
 import type { BuiltMemory, MemoryDescriptor, Thread } from '../types/sdk/memory';
 import type { AgentDbMessage, AgentMessage } from '../types/sdk/message';
-import type { ConnectionParamsObject } from '../types/sdk/schema';
 
 interface ThreadRow {
 	id: string;
@@ -42,54 +40,24 @@ function parseJsonSafe(text: string): unknown {
 	}
 }
 
-export interface PostgresConnectionConfig extends ConnectionParamsObject {
-	/** Postgres host. Defaults to 'localhost'. */
-	host?: string | CredentialConfig;
-	/** Postgres port. Defaults to 5432. */
-	port?: number | CredentialConfig;
-	/** Database name. */
-	database?: string | CredentialConfig;
-	/** Database user. */
-	user?: string | CredentialConfig;
-	/** Database password. Always credential-backed — never a raw string. */
-	password?: CredentialConfig;
-}
-type SecureVersion = 'TLSv1.3' | 'TLSv1.2' | 'TLSv1.1' | 'TLSv1';
+export type PostgresConnectionOptions =
+	| { connectionType: 'url'; connection: { url: string } }
+	| {
+			connectionType: 'config';
+			connection: {
+				/** Postgres host. Defaults to 'localhost'. */ host?: string;
+				/** Postgres port. Defaults to 5432. */
+				port?: number;
+				/** Database name. */
+				database?: string;
+				/** Database user. */
+				user?: string;
+				/** Database password. Always credential-backed — never a raw string. */
+				password?: string;
+			};
+	  };
 
-type SSLConfig = {
-	host?: string | undefined;
-	port?: number | undefined;
-	path?: string | undefined;
-	servername?: string | undefined;
-	minDHSize?: number | undefined;
-	timeout?: number | undefined;
-	ca?: string | undefined;
-	cert?: string | undefined;
-	sigalgs?: string | undefined;
-	ciphers?: string | undefined;
-	clientCertEngine?: string | undefined;
-	crl?: string | undefined;
-	dhparam?: string | undefined;
-	ecdhCurve?: string | undefined;
-	honorCipherOrder?: boolean | undefined;
-	key?: string | undefined;
-	privateKeyEngine?: string | undefined;
-	privateKeyIdentifier?: string | undefined;
-	maxVersion?: SecureVersion | undefined;
-	minVersion?: SecureVersion | undefined;
-	passphrase?: string | undefined;
-	pfx?: string | undefined;
-	secureOptions?: number | undefined;
-	secureProtocol?: string | undefined;
-	sessionIdContext?: string | undefined;
-	sessionTimeout?: number | undefined;
-	rejectUnauthorized?: boolean | undefined;
-};
-
-export type PostgresMemoryConfig = (
-	| { connectionType: 'url'; connection: { url: CredentialConfig } }
-	| { connectionType: 'config'; connection: PostgresConnectionConfig }
-) & {
+export type PostgresMemoryOptions = {
 	// --- Pool settings ---
 	/** Connection pool configuration. */
 	pool?: {
@@ -107,75 +75,52 @@ export type PostgresMemoryConfig = (
 
 	// --- Security ---
 	/** SSL configuration. `true` for default SSL, or a TLS ConnectionOptions object. */
-	ssl?: boolean | SSLConfig;
+	ssl?: boolean;
 
 	// --- SDK options ---
 	/** Table name prefix for multi-tenant isolation. Alphanumeric and underscores only. */
 	namespace?: string;
-
-	/** Optional credential identifier stored for schema serialization. */
-	credentialName?: string;
 };
 
-/** Returns true when a value is a CredentialConfig ref (has a `name` string and no extra pg fields). */
-function isCredentialConfig(value: unknown): value is CredentialConfig {
-	return (
-		typeof value === 'object' &&
-		value !== null &&
-		typeof (value as Record<string, unknown>).name === 'string' &&
-		!('host' in value) &&
-		!('port' in value) &&
-		!('database' in value) &&
-		!('user' in value) &&
-		!('password' in value)
-	);
-}
+export type PostgresConstructorOptions = (
+	| {
+			type: 'credential';
+			credential: string;
+	  }
+	| {
+			type: 'connection';
+			connection: PostgresConnectionOptions;
+	  }
+) & {
+	options?: PostgresMemoryOptions;
+};
 
-/** Resolve a single field that may be a raw primitive or a CredentialConfig. */
-async function resolveField<T extends string | number>(
-	value: T | CredentialConfig,
-	credentialProvider: CredentialProvider | undefined,
-): Promise<T | undefined> {
-	if (isCredentialConfig(value)) {
-		if (!credentialProvider) {
-			throw new Error(
-				`CredentialConfig "${value.name}" cannot be resolved: no CredentialProvider was supplied`,
-			);
-		}
-		const resolved = await credentialProvider.resolve(value.name);
-		const path = value.path ?? 'apiKey';
-		const parts = path.split('.');
-		let current: unknown = resolved;
-		for (const part of parts) {
-			current = (current as Record<string, unknown>)[part];
-		}
-		return current as T;
-	}
-	return value;
-}
+export type PostgresMemoryDescriptorParams = {
+	credential?: string;
+	connection?: PostgresConnectionOptions;
+	options?: PostgresMemoryOptions;
+};
 
 export class PostgresMemory implements BuiltMemory {
 	private initPromise: Promise<Pool> | null = null;
 
 	private embeddingsInitPromise: Promise<void> | null = null;
 
-	private readonly config: PostgresMemoryConfig;
-
-	private readonly credentialProvider: CredentialProvider | undefined;
-
 	private readonly ns: string;
 
-	constructor(config: PostgresMemoryConfig, credentialProvider?: CredentialProvider) {
-		if (config.namespace !== undefined) {
-			if (!/^[a-zA-Z0-9_]+$/.test(config.namespace)) {
+	constructor(
+		private readonly constructorOptions: PostgresConstructorOptions,
+		private readonly resolveConfig?: (credential: string) => Promise<PostgresConnectionOptions>,
+	) {
+		const namespace = constructorOptions.options?.namespace;
+		if (namespace !== undefined) {
+			if (!/^[a-zA-Z0-9_]+$/.test(namespace)) {
 				throw new Error(
-					`Invalid namespace "${config.namespace}": must be alphanumeric and underscores only`,
+					`Invalid namespace "${namespace}": must be alphanumeric and underscores only`,
 				);
 			}
 		}
-		this.config = config;
-		this.credentialProvider = credentialProvider;
-		this.ns = config.namespace ? `${config.namespace}_` : '';
+		this.ns = namespace ? `${namespace}_` : '';
 	}
 
 	// ── Lazy initialisation ──────────────────────────────────────────────
@@ -192,22 +137,25 @@ export class PostgresMemory implements BuiltMemory {
 		const { Pool: PgPool } = await import('pg');
 		let connectionOpts: Record<string, unknown>;
 
-		if (this.config.connectionType === 'url') {
-			// conn is a CredentialConfig resolving to the connection URL string
-			const url = await resolveField(this.config.connection.url, this.credentialProvider);
+		if (this.constructorOptions.type === 'credential' && !this.resolveConfig) {
+			throw new Error('resolveConfig() was not provided in constructor options');
+		}
+
+		const config =
+			this.constructorOptions.type === 'credential'
+				? await this.resolveConfig!(this.constructorOptions.credential)
+				: this.constructorOptions.connection;
+
+		if (config.connectionType === 'url') {
+			const url = config.connection.url;
 			connectionOpts = { connectionString: url };
 		} else {
-			// conn is a PostgresConnectionConfig — resolve each field independently
-			const cfg = this.config.connection;
-			const host = cfg.host ? await resolveField(cfg.host, this.credentialProvider) : undefined;
-			const port = cfg.port ? await resolveField(cfg.port, this.credentialProvider) : undefined;
-			const database = cfg.database
-				? await resolveField(cfg.database, this.credentialProvider)
-				: undefined;
-			const user = cfg.user ? await resolveField(cfg.user, this.credentialProvider) : undefined;
-			const password = cfg.password
-				? await resolveField(cfg.password, this.credentialProvider)
-				: undefined;
+			const cfg = config.connection;
+			const host = cfg.host;
+			const port = cfg.port;
+			const database = cfg.database;
+			const user = cfg.user;
+			const password = cfg.password;
 			connectionOpts = {
 				...(host !== undefined && { host }),
 				...(port !== undefined && { port }),
@@ -217,22 +165,23 @@ export class PostgresMemory implements BuiltMemory {
 			};
 		}
 
+		const opts = this.constructorOptions.options;
 		const pool = new PgPool({
 			...connectionOpts,
 			// Pool
-			...(this.config.pool?.max !== undefined && { max: this.config.pool.max }),
-			...(this.config.pool?.min !== undefined && { min: this.config.pool.min }),
-			...(this.config.pool?.idleTimeoutMillis !== undefined && {
-				idleTimeoutMillis: this.config.pool.idleTimeoutMillis,
+			...(opts?.pool?.max !== undefined && { max: opts.pool.max }),
+			...(opts?.pool?.min !== undefined && { min: opts.pool.min }),
+			...(opts?.pool?.idleTimeoutMillis !== undefined && {
+				idleTimeoutMillis: opts.pool.idleTimeoutMillis,
 			}),
-			...(this.config.pool?.connectionTimeoutMillis !== undefined && {
-				connectionTimeoutMillis: this.config.pool.connectionTimeoutMillis,
+			...(opts?.pool?.connectionTimeoutMillis !== undefined && {
+				connectionTimeoutMillis: opts.pool.connectionTimeoutMillis,
 			}),
-			...(this.config.pool?.allowExitOnIdle !== undefined && {
-				allowExitOnIdle: this.config.pool.allowExitOnIdle,
+			...(opts?.pool?.allowExitOnIdle !== undefined && {
+				allowExitOnIdle: opts.pool.allowExitOnIdle,
 			}),
 			// Security
-			...(this.config.ssl !== undefined && { ssl: this.config.ssl }),
+			...(opts?.ssl !== undefined && { ssl: opts.ssl }),
 		});
 
 		await pool.query(
@@ -678,19 +627,22 @@ export class PostgresMemory implements BuiltMemory {
 
 	// ── Descriptor ──────────────────────────────────────────────────────
 
-	describe(): MemoryDescriptor {
-		const { connectionType, connection, pool, ssl, namespace, credentialName } = this.config;
+	describe(): MemoryDescriptor<PostgresMemoryDescriptorParams> {
+		const connectionParams: Partial<PostgresMemoryDescriptorParams> =
+			this.constructorOptions.type === 'credential'
+				? {
+						credential: this.constructorOptions.credential,
+					}
+				: {
+						connection: this.constructorOptions.connection,
+					};
 		return {
 			name: 'postgres',
 			constructorName: this.constructor.name,
 			connectionParams: {
-				connectionType,
-				connection,
-				...(pool !== undefined && { pool }),
-				...(ssl !== undefined && { ssl }),
-				...(namespace !== undefined && { namespace }),
+				...connectionParams,
+				options: this.constructorOptions.options,
 			},
-			...(credentialName !== undefined && { credentialName }),
 		};
 	}
 

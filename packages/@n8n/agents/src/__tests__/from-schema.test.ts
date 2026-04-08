@@ -3,11 +3,16 @@ import { z } from 'zod';
 import { Agent } from '../sdk/agent';
 import { isSuspendResult } from '../sdk/from-schema';
 import { Memory } from '../sdk/memory';
-import { PostgresMemory } from '../storage/postgres-memory';
-import type { PostgresMemoryConfig } from '../storage/postgres-memory';
+import {
+	PostgresMemory,
+	type PostgresMemoryDescriptorParams,
+	type PostgresConnectionOptions,
+	type PostgresConstructorOptions,
+} from '../storage/postgres-memory';
 import type { CredentialProvider } from '../types/sdk/credential-provider';
 import type { HandlerExecutor } from '../types/sdk/handler-executor';
-import type { AgentSchema, ConnectionParams, ToolSchema } from '../types/sdk/schema';
+import type { AgentSchema, ToolSchema } from '../types/sdk/schema';
+import type { JSONObject } from '../types/utils/json';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -263,7 +268,7 @@ describe('Agent.fromSchema()', () => {
 			memoryRegistry: { sqlite: factory },
 		});
 
-		expect(factory).toHaveBeenCalledWith({ url: 'file:./test.db' }, undefined);
+		expect(factory).toHaveBeenCalledWith({ url: 'file:./test.db' });
 
 		const described = agent.describe();
 		expect(described.memory!.name).toBe('sqlite');
@@ -320,7 +325,7 @@ describe('Agent.fromSchema()', () => {
 				name: 'postgres',
 				constructorName: 'PostgresMemory',
 				titleGeneration: null,
-				connectionParams: { connectionType: 'url', connection: { name: 'pg-cred' } },
+				connectionParams: { credential: 'pg-cred' },
 				lastMessages: 10,
 				semanticRecall: null,
 				workingMemory: null,
@@ -332,10 +337,7 @@ describe('Agent.fromSchema()', () => {
 			memoryRegistry: { postgres: factory },
 		});
 
-		expect(factory).toHaveBeenCalledWith(
-			{ connectionType: 'url', connection: { name: 'pg-cred' } },
-			credentialProvider,
-		);
+		expect(factory).toHaveBeenCalledWith({ credential: 'pg-cred' });
 	});
 
 	it('sets toolCallConcurrency when specified', async () => {
@@ -758,15 +760,22 @@ describe('Agent.fromSchema()', () => {
 		} as unknown as CredentialProvider;
 
 		// Build an agent with a fully-configured PostgresMemory (URL connection type)
-		const pgConfig: PostgresMemoryConfig = {
-			connectionType: 'url',
-			connection: { url: { name: 'my-pg-cred', path: 'connectionString' } },
-			namespace: 'my_ns',
-			credentialName: 'my-pg-cred',
-			pool: { max: 5, idleTimeoutMillis: 30_000 },
-			ssl: true,
+		const pgConfig: PostgresConstructorOptions = {
+			type: 'credential',
+			credential: 'my-pg-cred',
+			options: {
+				namespace: 'my_ns',
+				pool: { max: 5, idleTimeoutMillis: 30_000 },
+				ssl: true,
+			},
 		};
-		const pgMem = new PostgresMemory(pgConfig, credentialProvider);
+		const resolveConfig = async () => {
+			return await Promise.resolve<PostgresConnectionOptions>({
+				connectionType: 'url',
+				connection: { url: 'postgresql://localhost:5432/testdb' },
+			});
+		};
+		const pgMem = new PostgresMemory(pgConfig, resolveConfig);
 		const memory = new Memory().storage(pgMem).lastMessages(20);
 
 		const agent1 = new Agent('pg-roundtrip').model('anthropic', 'claude-sonnet-4-5').memory(memory);
@@ -778,18 +787,28 @@ describe('Agent.fromSchema()', () => {
 		expect(schema1.memory!.name).toBe('postgres');
 		expect(schema1.memory!.lastMessages).toBe(20);
 		expect(schema1.memory!.connectionParams).toEqual({
-			connectionType: 'url',
-			connection: { url: { name: 'my-pg-cred', path: 'connectionString' } },
-			namespace: 'my_ns',
-			pool: { max: 5, idleTimeoutMillis: 30_000 },
-			ssl: true,
+			credential: 'my-pg-cred',
+			options: {
+				namespace: 'my_ns',
+				pool: { max: 5, idleTimeoutMillis: 30_000 },
+				ssl: true,
+			},
 		});
 
 		// ── Reconstruct from schema ───────────────────────────────────────────────
-		const postgresFactory = async (
-			params: ConnectionParams,
-			provider: typeof credentialProvider | undefined,
-		) => await Promise.resolve(new PostgresMemory(params as PostgresMemoryConfig, provider));
+		const postgresFactory = async (params: JSONObject) => {
+			const descriptorParams = params as PostgresMemoryDescriptorParams;
+			return await Promise.resolve(
+				new PostgresMemory(
+					{
+						type: 'credential',
+						credential: descriptorParams.credential!,
+						options: descriptorParams.options,
+					},
+					resolveConfig,
+				),
+			);
+		};
 
 		const agent2 = await Agent.fromSchema(schema1, 'pg-roundtrip', {
 			handlerExecutor: mockExecutor(),
@@ -803,72 +822,15 @@ describe('Agent.fromSchema()', () => {
 		expect(schema2.memory!.name).toBe('postgres');
 		expect(schema2.memory!.lastMessages).toBe(20);
 		expect(schema2.memory!.connectionParams).toEqual({
-			connectionType: 'url',
-			connection: { url: { name: 'my-pg-cred', path: 'connectionString' } },
-			namespace: 'my_ns',
-			pool: { max: 5, idleTimeoutMillis: 30_000 },
-			ssl: true,
+			credential: 'my-pg-cred',
+			options: {
+				namespace: 'my_ns',
+				pool: { max: 5, idleTimeoutMillis: 30_000 },
+				ssl: true,
+			},
 		});
 
 		// The two schemas must be identical
-		expect(schema2.memory).toEqual(schema1.memory);
-	});
-
-	it('round-trips agent with PostgresMemory config-type connection through describe → fromSchema → describe', async () => {
-		const credentialProvider = {
-			resolve: jest.fn().mockResolvedValue({ apiKey: 'secret-password' }),
-			list: jest.fn().mockResolvedValue([]),
-		} as unknown as CredentialProvider;
-
-		const pgConfig: PostgresMemoryConfig = {
-			connectionType: 'config',
-			connection: {
-				host: 'db.example.com',
-				port: 5432,
-				database: 'mydb',
-				user: 'alice',
-				password: { name: 'my-pg-cred', path: 'password' },
-			},
-			namespace: 'prod_ns',
-			credentialName: 'my-pg-cred',
-		};
-		const pgMem = new PostgresMemory(pgConfig, credentialProvider);
-		const memory = new Memory().storage(pgMem).lastMessages(10);
-
-		const agent1 = new Agent('pg-config-roundtrip')
-			.model('anthropic', 'claude-sonnet-4-5')
-			.memory(memory);
-
-		// ── First describe ────────────────────────────────────────────────────────
-		const schema1 = agent1.describe();
-
-		expect(schema1.memory!.name).toBe('postgres');
-		expect(schema1.memory!.connectionParams).toMatchObject({
-			connectionType: 'config',
-			connection: {
-				host: 'db.example.com',
-				port: 5432,
-				database: 'mydb',
-				user: 'alice',
-				password: { name: 'my-pg-cred', path: 'password' },
-			},
-			namespace: 'prod_ns',
-		});
-
-		// ── Reconstruct and re-describe ───────────────────────────────────────────
-		const postgresFactory = async (
-			params: ConnectionParams,
-			provider: typeof credentialProvider | undefined,
-		) => await Promise.resolve(new PostgresMemory(params as PostgresMemoryConfig, provider));
-
-		const agent2 = await Agent.fromSchema(schema1, 'pg-config-roundtrip', {
-			handlerExecutor: mockExecutor(),
-			credentialProvider,
-			memoryRegistry: { postgres: postgresFactory },
-		});
-
-		const schema2 = agent2.describe();
-
 		expect(schema2.memory).toEqual(schema1.memory);
 	});
 });
