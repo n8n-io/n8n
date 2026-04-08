@@ -136,9 +136,7 @@ describe('workspace tool', () => {
 			);
 
 			expect(suspend).toHaveBeenCalled();
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(suspend.mock.calls[0][0]).toMatchObject({
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				message: expect.stringContaining('My WF'),
 				severity: 'info',
 			});
@@ -239,10 +237,8 @@ describe('workspace tool', () => {
 			);
 
 			expect(suspend).toHaveBeenCalled();
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(suspend.mock.calls[0][0]).toMatchObject({
 				severity: 'destructive',
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				message: expect.stringContaining('Old Folder'),
 			});
 		});

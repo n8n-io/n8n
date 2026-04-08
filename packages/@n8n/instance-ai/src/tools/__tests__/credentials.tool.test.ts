@@ -216,10 +216,8 @@ describe('credentials tool', () => {
 			);
 
 			expect(suspendFn).toHaveBeenCalledTimes(1);
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					requestId: expect.any(String),
 					message: 'Delete credential "My Cred"? This cannot be undone.',
 					severity: 'destructive',
@@ -241,7 +239,6 @@ describe('credentials tool', () => {
 			);
 
 			expect(suspendFn).toHaveBeenCalledTimes(1);
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
 					message: 'Delete credential "cred-99"? This cannot be undone.',
@@ -382,10 +379,8 @@ describe('credentials tool', () => {
 
 			expect(context.credentialService.list).toHaveBeenCalledWith({ type: 'slackApi' });
 			expect(suspendFn).toHaveBeenCalledTimes(1);
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					requestId: expect.any(String),
 					message: 'Select or create a slackApi credential',
 					severity: 'info',
@@ -421,7 +416,6 @@ describe('credentials tool', () => {
 			);
 
 			expect(suspendFn).toHaveBeenCalledTimes(1);
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
 					credentialRequests: [
@@ -448,7 +442,6 @@ describe('credentials tool', () => {
 			);
 
 			expect(suspendFn).toHaveBeenCalledTimes(1);
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
 					message: 'Select or create credentials: slackApi, notionApi',
@@ -472,7 +465,6 @@ describe('credentials tool', () => {
 			);
 
 			expect(suspendFn).toHaveBeenCalledTimes(1);
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(suspendFn.mock.calls[0][0]).toEqual(expect.objectContaining({ projectId: 'proj-1' }));
 		});
 
@@ -492,10 +484,8 @@ describe('credentials tool', () => {
 			);
 
 			expect(suspendFn).toHaveBeenCalledTimes(1);
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					message: expect.stringContaining('Your workflow is verified'),
 					credentialFlow: { stage: 'finalize' },
 				}),
@@ -535,7 +525,6 @@ describe('credentials tool', () => {
 			expect(result).toEqual({
 				success: true,
 				deferred: true,
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				reason: expect.stringContaining('User skipped credential setup'),
 			});
 		});
@@ -607,7 +596,6 @@ describe('credentials tool', () => {
 			);
 
 			expect(suspendFn).toHaveBeenCalledTimes(1);
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
 					credentialRequests: [

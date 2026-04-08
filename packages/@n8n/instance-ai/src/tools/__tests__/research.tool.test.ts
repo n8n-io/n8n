@@ -168,7 +168,6 @@ describe('research tool', () => {
 				'https://example.com',
 				expect.objectContaining({
 					maxContentLength: undefined,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					authorizeUrl: expect.any(Function),
 				}),
 			);
@@ -216,14 +215,11 @@ describe('research tool', () => {
 			);
 
 			expect(suspendFn).toHaveBeenCalled();
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			const suspendPayload = suspendFn.mock.calls[0][0] as Record<string, unknown>;
 			expect(suspendPayload).toEqual(
 				expect.objectContaining({
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					message: expect.stringContaining('unknown-site.com'),
 					severity: 'info',
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					domainAccess: expect.objectContaining({
 						url: 'https://unknown-site.com/page',
 						host: 'unknown-site.com',

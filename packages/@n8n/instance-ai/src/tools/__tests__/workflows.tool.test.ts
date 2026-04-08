@@ -206,9 +206,7 @@ describe('workflows tool', () => {
 			} as never);
 
 			expect(suspend).toHaveBeenCalled();
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(suspend.mock.calls[0][0]).toMatchObject({
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				message: expect.stringContaining('My WF'),
 				severity: 'warning',
 			});
@@ -297,7 +295,6 @@ describe('workflows tool', () => {
 
 			expect(analyzeWorkflow).toHaveBeenCalledWith(context, 'wf1');
 			expect(suspend).toHaveBeenCalled();
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(suspend.mock.calls[0][0]).toMatchObject({
 				message: 'Configure credentials for your workflow',
 				severity: 'info',

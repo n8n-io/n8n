@@ -155,14 +155,11 @@ describe('executions tool', () => {
 			);
 
 			expect(suspendFn).toHaveBeenCalled();
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			const suspendPayload = suspendFn.mock.calls[0][0] as Record<string, unknown>;
 			expect(suspendPayload).toEqual(
 				expect.objectContaining({
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					message: expect.stringContaining('My Workflow'),
 					severity: 'warning',
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					requestId: expect.any(String),
 				}),
 			);
@@ -179,11 +176,9 @@ describe('executions tool', () => {
 			);
 
 			expect(suspendFn).toHaveBeenCalled();
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			const suspendPayload = suspendFn.mock.calls[0][0] as Record<string, unknown>;
 			expect(suspendPayload).toEqual(
 				expect.objectContaining({
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					message: expect.stringContaining('wf-42'),
 				}),
 			);

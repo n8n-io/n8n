@@ -210,8 +210,12 @@ export function createExecutionsTool(context: InstanceAiContext) {
 				case 'get':
 					return await handleGet(context, input);
 				case 'run': {
-					const resumeData = ctx?.agent?.resumeData;
-					const suspend = ctx?.agent?.suspend;
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unnecessary-type-assertion -- ctx types resolve to error in CI
+					const resumeData = ctx?.agent?.resumeData as z.infer<typeof resumeSchema> | undefined;
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/no-unsafe-argument -- ctx types resolve to error in CI
+					const suspend = ctx?.agent?.suspend as
+						| ((payload: z.infer<typeof suspendSchema>) => Promise<void>)
+						| undefined;
 					return await handleRun(context, input, resumeData, suspend);
 				}
 				case 'debug':

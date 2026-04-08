@@ -196,7 +196,6 @@ describe('nodes tool', () => {
 
 			expect(result).toMatchObject({
 				found: false,
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				error: expect.stringContaining('unknown.node'),
 			});
 		});
