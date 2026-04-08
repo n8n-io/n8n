@@ -63,16 +63,17 @@ export function createListCredentialsTool(context: InstanceAiContext) {
 
 			const concurrencyLimit = pLimit(10);
 			const enriched = await Promise.all(
-				page.map((cred) =>
-					concurrencyLimit(async () => {
-						const ctx = await context.credentialService.getAccountContext!(cred.id);
-						return {
-							id: cred.id,
-							name: cred.name,
-							type: cred.type,
-							accountIdentifier: ctx?.accountIdentifier,
-						};
-					}),
+				page.map(
+					async (cred) =>
+						await concurrencyLimit(async () => {
+							const ctx = await context.credentialService.getAccountContext!(cred.id);
+							return {
+								id: cred.id,
+								name: cred.name,
+								type: cred.type,
+								accountIdentifier: ctx?.accountIdentifier,
+							};
+						}),
 				),
 			);
 
