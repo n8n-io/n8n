@@ -4,8 +4,6 @@ import type { ModelConfig, SerializableAgentState } from './agent';
 import type { AgentDbMessage } from './message';
 import type { JSONObject } from '../utils/json';
 
-
-
 /**
  * Serializable descriptor returned by BuiltMemory.describe().
  * Contains enough information to reconstruct the backend from a schema without exposing secrets.
