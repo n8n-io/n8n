@@ -5375,7 +5375,7 @@
 	"instanceAi.welcomeModal.feature.ask": "Ask anything about n8n and get contextual help",
 	"instanceAi.welcomeModal.toggle.cardTitle": "Enable AI assistant on this instance",
 	"instanceAi.welcomeModal.toggle.enableCardDescription": "For all users on this instance",
-	"instanceAi.welcomeModal.toggle.disableCardDescription": "You can enable later on settings",
+	"instanceAi.welcomeModal.toggle.disableCardDescription": "You can enable later in settings",
 	"instanceAi.welcomeModal.toggle.dontEnable": "Don't enable",
 	"instanceAi.welcomeModal.toggle.enabled": "Enabled",
 	"instanceAi.welcomeModal.toggle.disabled": "Disabled",

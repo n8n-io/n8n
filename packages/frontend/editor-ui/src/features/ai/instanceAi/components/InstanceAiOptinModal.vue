@@ -52,7 +52,9 @@ const osTabs = [
 	},
 ];
 
-const displayCommand = computed(() => instanceAiSettingsStore.setupCommand ?? 'npx @n8n/fs-proxy');
+const displayCommand = computed(
+	() => instanceAiSettingsStore.setupCommand ?? 'npx @n8n/computer-use',
+);
 
 const isScrolledToEnd = ref(false);
 
