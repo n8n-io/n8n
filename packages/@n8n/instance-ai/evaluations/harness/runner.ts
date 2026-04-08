@@ -51,6 +51,7 @@ interface WorkflowTestCaseConfig {
 	preRunWorkflowIds: Set<string>;
 	claimedWorkflowIds: Set<string>;
 	logger: EvalLogger;
+	keepWorkflows: boolean;
 }
 
 export async function runWorkflowTestCase(
@@ -199,12 +200,14 @@ export async function runWorkflowTestCase(
 			MAX_CONCURRENT_SCENARIOS,
 		);
 
-		// 4. Cleanup — delete workflows created during build
-		for (const wf of outcome.workflowsCreated) {
-			try {
-				await client.deleteWorkflow(wf.id);
-			} catch {
-				// Best-effort cleanup
+		// 4. Cleanup — delete workflows created during build (unless --keep-workflows)
+		if (!config.keepWorkflows) {
+			for (const wf of outcome.workflowsCreated) {
+				try {
+					await client.deleteWorkflow(wf.id);
+				} catch {
+					// Best-effort cleanup
+				}
 			}
 		}
 

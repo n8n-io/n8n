@@ -1,5 +1,5 @@
 {
-	"prompt": "Every day, get the posts made in the past day on 3 different Slack channels (#general, #engineering, #product), summarize them using AI, and post the summary on #daily-digest. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"prompt": "Every day, get the posts made in the past day on 3 different Slack channels: #general (C04GENERAL01), #engineering (C04ENGINEER1), and #product (C04PRODUCT01). Summarize them using AI, and post the summary on #daily-digest (C04DAILYDG01). Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
 	"complexity": "medium",
 	"tags": ["build", "slack", "ai", "schedule"],
 	"triggerType": "schedule",

@@ -1460,7 +1460,7 @@ importers:
         specifier: 'catalog:'
         version: 3.23.3(zod@3.25.67)
 
-  packages/@n8n/fs-proxy:
+  packages/@n8n/computer-use:
     dependencies:
       '@anthropic-ai/sandbox-runtime':
         specifier: ^0.0.42
@@ -1648,9 +1648,9 @@ importers:
 
   packages/@n8n/local-gateway:
     dependencies:
-      '@n8n/fs-proxy':
+      '@n8n/computer-use':
         specifier: workspace:*
-        version: link:../fs-proxy
+        version: link:../computer-use
       electron-store:
         specifier: ^8.2.0
         version: 8.2.0
