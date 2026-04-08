@@ -13,6 +13,7 @@ import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 import type { PaginatedRequest } from '../../../types';
 import { decodeCursor } from '../services/pagination.service';
+import { NextFunction, Request, Response } from 'express';
 
 const UNLIMITED_USERS_QUOTA = -1;
 
@@ -86,16 +87,15 @@ export const validCursor = (
 	return next();
 };
 
-export type ScopeTaggedMiddleware = ((...args: unknown[]) => unknown) & {
+export type ScopeTaggedMiddleware = Middleware & {
 	__apiKeyScope: ApiKeyScope;
 };
 
-function tagMiddleware(
-	middleware: (...args: unknown[]) => unknown,
-	apiKeyScope: ApiKeyScope,
-): ScopeTaggedMiddleware {
+export type Middleware = (req: Request, res: Response, next: NextFunction) => unknown;
+
+function tagMiddleware(middleware: Middleware, apiKeyScope: ApiKeyScope): ScopeTaggedMiddleware {
 	const tagged: ScopeTaggedMiddleware = Object.assign(
-		(req: unknown, res: unknown, next: unknown) => middleware(req, res, next),
+		(req: Request, res: Response, next: NextFunction) => middleware(req, res, next),
 		{ __apiKeyScope: apiKeyScope },
 	);
 	return tagged;
@@ -103,7 +103,7 @@ function tagMiddleware(
 
 export const apiKeyHasScope = (apiKeyScope: ApiKeyScope) => {
 	const middleware = Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(apiKeyScope);
-	return tagMiddleware(middleware as (...args: unknown[]) => unknown, apiKeyScope);
+	return tagMiddleware(middleware, apiKeyScope);
 };
 
 export const apiKeyHasScopeWithGlobalScopeFallback = (
