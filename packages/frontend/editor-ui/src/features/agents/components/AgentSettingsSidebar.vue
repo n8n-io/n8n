@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-import { N8nCallout, N8nIcon, N8nInput, N8nSelect, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCallout, N8nIcon, N8nInput, N8nSelect, N8nText } from '@n8n/design-system';
 import N8nOption from '@n8n/design-system/components/N8nOption';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -30,6 +30,8 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'update:schema': [changes: Partial<AgentSchema>];
 	'update:code': [code: string];
+	save: [];
+	cancel: [];
 }>();
 
 // --- Model & credential state ---
@@ -44,21 +46,22 @@ const instructions = ref(props.schema?.instructions ?? '');
 
 const availableModels = computed<ModelInfo[]>(() => getModelsForProvider(provider.value || ''));
 
-// Combined model display: "Model Name  Credential Name"
-const modelOptions = computed(() => {
-	return availableModels.value.map((m) => ({
-		value: m.id,
-		label: m.name,
-	}));
+// Display labels for the combined model selector
+const modelDisplayName = computed(() => {
+	if (!modelName.value) return locale.baseText('agents.settings.model.selectModel');
+	const model = availableModels.value.find((m) => m.id === modelName.value);
+	return model?.name ?? modelName.value;
 });
 
-const credentialLabel = computed(() => {
+const credentialDisplayName = computed(() => {
 	if (!credential.value) return '';
 	const cred = credentials.value.find((c) => c.id === credential.value);
 	return cred?.name ?? '';
 });
 
-// Sync local state when schema prop changes externally
+// Model config modal state
+const modelConfigOpen = ref(false);
+
 watch(
 	() => props.schema,
 	(schema) => {
@@ -73,9 +76,13 @@ watch(
 
 function onModelSelect(value: string) {
 	modelName.value = value;
-	emit('update:schema', {
-		model: { provider: provider.value || '', name: value },
-	});
+	emit('update:schema', { model: { provider: provider.value || '', name: value } });
+}
+
+function onProviderChange(value: string) {
+	provider.value = value;
+	modelName.value = '';
+	emit('update:schema', { model: { provider: value, name: '' } });
 }
 
 function onCredentialChange(value: string) {
@@ -103,6 +110,19 @@ async function loadCredentials() {
 		credentialsLoading.value = false;
 	}
 }
+
+const PROVIDERS = [
+	'anthropic',
+	'openai',
+	'google',
+	'xai',
+	'groq',
+	'deepseek',
+	'mistral',
+	'openrouter',
+	'cohere',
+	'ollama',
+] as const;
 
 // --- Collapsible sections ---
 const expandedSections = ref<Record<string, boolean>>({
@@ -158,6 +178,23 @@ onMounted(() => {
 		<!-- Resize handle -->
 		<div :class="$style.resizeHandle" @mousedown="onResizeStart" />
 
+		<!-- Sidebar header (aligned with main column header height) -->
+		<div :class="$style.header">
+			<N8nText tag="span" bold>{{ locale.baseText('agents.settings.title') }}</N8nText>
+			<div :class="$style.headerActions">
+				<button :class="$style.cancelBtn" :disabled="!isDirty" @click="emit('cancel')">
+					{{ locale.baseText('agents.settings.cancel') }}
+				</button>
+				<N8nButton
+					type="primary"
+					size="small"
+					:label="locale.baseText('agents.settings.save')"
+					:disabled="!isDirty"
+					@click="emit('save')"
+				/>
+			</div>
+		</div>
+
 		<!-- Unsaved changes banner -->
 		<N8nCallout v-if="isDirty" theme="warning" :class="$style.unsavedBanner">
 			{{ locale.baseText('agents.settings.unsavedChanges') }}
@@ -170,47 +207,67 @@ onMounted(() => {
 					<N8nText tag="span" bold size="small">{{
 						locale.baseText('agents.settings.model')
 					}}</N8nText>
+					<button :class="$style.menuBtn">
+						<N8nIcon icon="ellipsis" :size="16" />
+					</button>
 				</div>
 
-				<!-- Combined model + credential selector -->
-				<div :class="$style.modelSelector">
-					<N8nSelect
-						:model-value="modelName"
-						filterable
-						:placeholder="locale.baseText('agents.settings.model.selectModel')"
-						size="medium"
-						:class="$style.modelSelect"
-						data-testid="agent-model-select"
-						@update:model-value="onModelSelect"
-					>
-						<N8nOption v-for="m in modelOptions" :key="m.value" :value="m.value" :label="m.label" />
-					</N8nSelect>
-					<N8nText
-						v-if="credentialLabel"
-						:class="$style.credentialInline"
-						size="small"
-						color="text-light"
-					>
-						{{ credentialLabel }}
-					</N8nText>
-				</div>
+				<!-- Combined model display — single clickable row -->
+				<button :class="$style.modelDisplay" @click="modelConfigOpen = !modelConfigOpen">
+					<div :class="$style.modelDisplayContent">
+						<N8nText tag="span" bold size="small">{{ modelDisplayName }}</N8nText>
+						<N8nText v-if="credentialDisplayName" tag="span" size="small" color="text-light">
+							{{ credentialDisplayName }}
+						</N8nText>
+					</div>
+					<N8nIcon icon="chevron-down" :size="14" />
+				</button>
 
-				<!-- Credential selector (separate row) -->
-				<N8nSelect
-					:model-value="credential"
-					:placeholder="locale.baseText('agents.settings.model.selectCredential')"
-					:loading="credentialsLoading"
-					size="small"
-					data-testid="agent-credential-select"
-					@update:model-value="onCredentialChange"
-				>
-					<N8nOption
-						v-for="cred in credentials"
-						:key="cred.id"
-						:value="cred.id"
-						:label="cred.name"
-					/>
-				</N8nSelect>
+				<!-- Model config panel (expandable) -->
+				<div v-if="modelConfigOpen" :class="$style.modelConfig">
+					<div :class="$style.modelConfigRow">
+						<div :class="$style.modelConfigField">
+							<N8nText size="xsmall" color="text-light" bold>Provider</N8nText>
+							<N8nSelect
+								:model-value="provider"
+								placeholder="Provider..."
+								size="small"
+								@update:model-value="onProviderChange"
+							>
+								<N8nOption v-for="p in PROVIDERS" :key="p" :value="p" :label="p" />
+							</N8nSelect>
+						</div>
+						<div :class="$style.modelConfigField">
+							<N8nText size="xsmall" color="text-light" bold>Model</N8nText>
+							<N8nSelect
+								:model-value="modelName"
+								filterable
+								placeholder="Model..."
+								size="small"
+								@update:model-value="onModelSelect"
+							>
+								<N8nOption v-for="m in availableModels" :key="m.id" :value="m.id" :label="m.name" />
+							</N8nSelect>
+						</div>
+					</div>
+					<div :class="$style.modelConfigField">
+						<N8nText size="xsmall" color="text-light" bold>Credential</N8nText>
+						<N8nSelect
+							:model-value="credential"
+							:placeholder="locale.baseText('agents.settings.model.selectCredential')"
+							:loading="credentialsLoading"
+							size="small"
+							@update:model-value="onCredentialChange"
+						>
+							<N8nOption
+								v-for="cred in credentials"
+								:key="cred.id"
+								:value="cred.id"
+								:label="cred.name"
+							/>
+						</N8nSelect>
+					</div>
+				</div>
 			</div>
 
 			<!-- Instructions section -->
@@ -341,6 +398,47 @@ onMounted(() => {
 	background-color: var(--color--primary--tint-2);
 }
 
+.header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	height: 56px;
+	min-height: 56px;
+	padding: 0 var(--spacing--sm);
+	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
+}
+
+.headerActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.cancelBtn {
+	background: none;
+	border: none;
+	cursor: pointer;
+	font-size: var(--font-size--sm);
+	font-family: var(--font-family);
+	font-weight: var(--font-weight--bold);
+	color: var(--color--text);
+	padding: var(--spacing--4xs) var(--spacing--xs);
+	border-radius: var(--radius);
+}
+
+.cancelBtn:hover {
+	background-color: var(--color--foreground--tint-2);
+}
+
+.cancelBtn:disabled {
+	color: var(--color--text--tint-2);
+	cursor: default;
+}
+
+.cancelBtn:disabled:hover {
+	background: none;
+}
+
 .unsavedBanner {
 	flex-shrink: 0;
 	text-align: center;
@@ -356,7 +454,7 @@ onMounted(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
-	padding: var(--spacing--sm) var(--spacing--sm);
+	padding: var(--spacing--sm);
 	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
 }
 
@@ -366,16 +464,76 @@ onMounted(() => {
 	justify-content: space-between;
 }
 
-.modelSelector {
-	position: relative;
+.menuBtn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border: none;
+	background: none;
+	cursor: pointer;
+	color: var(--color--text--tint-1);
+	border-radius: var(--radius);
 }
 
-.modelSelect {
+.menuBtn:hover {
+	background-color: var(--color--foreground--tint-1);
+}
+
+/* Combined model display — looks like a single dropdown */
+.modelDisplay {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
 	width: 100%;
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	border: var(--border-width) var(--border-style) var(--color--foreground);
+	border-radius: var(--radius--lg);
+	background-color: var(--color--background);
+	cursor: pointer;
+	gap: var(--spacing--2xs);
 }
 
-.credentialInline {
-	margin-top: var(--spacing--4xs);
+.modelDisplay:hover {
+	border-color: var(--color--foreground--shade-1);
+}
+
+.modelDisplayContent {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+	overflow: hidden;
+}
+
+.modelDisplayContent span:last-child {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* Model config panel (inline expandable) */
+.modelConfig {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--xs);
+	border: var(--border-width) var(--border-style) var(--color--foreground);
+	border-radius: var(--radius--lg);
+	background-color: var(--color--foreground--tint-2);
+}
+
+.modelConfigRow {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: var(--spacing--2xs);
+}
+
+.modelConfigField {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
 }
 
 .section {

@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { useRoute, useRouter } from 'vue-router';
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -36,14 +36,12 @@ const agent = ref<AgentResource | null>(null);
 const updatedAt = ref<string>('');
 let skipNextWatch = false;
 
-// Auto-trigger from creation flow prompt
 const initialPrompt = ref<string | undefined>(undefined);
 
 // Schema
 const { schema, fetchSchema, updateSchema } = useAgentSchema();
 const localSchema = ref<AgentSchema | null>(null);
 
-// Dirty state (shared between view and sidebar)
 const originalSchemaJson = ref('');
 const isDirty = ref(false);
 
@@ -88,7 +86,6 @@ watch(code, () => {
 	void autoSave();
 });
 
-// Builder code streaming
 let codeStreamBuffer = '';
 let isCodeStreaming = false;
 
@@ -98,12 +95,10 @@ function onCodeDelta(delta: string) {
 		codeStreamBuffer = '';
 	}
 	codeStreamBuffer += delta;
-
 	const match = codeStreamBuffer.match(/"code"\s*:\s*"((?:[^"\\]|\\.)*)(?:"|$)/s);
 	if (match) {
 		try {
-			const parsed = JSON.parse(`"${match[1]}"`);
-			code.value = parsed;
+			code.value = JSON.parse(`"${match[1]}"`);
 		} catch {
 			code.value = match[1].replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\"/g, '"');
 		}
@@ -117,9 +112,7 @@ function onCodeUpdated() {
 }
 
 async function updateName(name: string) {
-	const updated = await updateAgent(rootStore.restApiContext, projectId.value, agentId, {
-		name,
-	});
+	const updated = await updateAgent(rootStore.restApiContext, projectId.value, agentId, { name });
 	if (updated) {
 		agent.value = updated;
 		agentName.value = updated.name;
@@ -176,8 +169,6 @@ function onCodeUpdate(newCode: string) {
 onMounted(async () => {
 	await fetchAgent();
 	await fetchSchema(projectId.value, agentId);
-
-	// Auto-trigger chat from creation flow
 	const prompt = route.query.prompt as string | undefined;
 	if (prompt) {
 		void router.replace({ query: { ...route.query, prompt: undefined } });
@@ -188,56 +179,29 @@ onMounted(async () => {
 
 <template>
 	<div :class="$style.builder">
-		<!-- Unified top bar spanning full width -->
-		<div :class="$style.topBar">
-			<!-- Left: agent breadcrumb (for center column) -->
-			<div :class="$style.topBarLeft">
-				<N8nIcon icon="robot" :size="16" />
-				<N8nText tag="span" bold>{{
-					agentName || locale.baseText('agents.home.untitledAgent')
-				}}</N8nText>
-			</div>
-
-			<!-- Center spacer -->
-			<div :class="$style.topBarCenter">
-				<button
-					:class="[$style.toggleBtn, settingsVisible && $style.toggleBtnActive]"
-					data-testid="toggle-settings"
-					@click="settingsVisible = !settingsVisible"
-				>
-					<N8nIcon icon="sliders-horizontal" :size="16" />
-				</button>
-				<button
-					:class="[$style.toggleBtn, !settingsVisible && $style.toggleBtnActive]"
-					data-testid="toggle-activity"
-				>
-					<N8nIcon icon="panel-right" :size="16" />
-				</button>
-			</div>
-
-			<!-- Right: settings header (Cancel + Save) — visible when sidebar is open -->
-			<div v-if="settingsVisible" :class="$style.topBarRight">
-				<div :class="$style.settingsHeaderDivider" />
-				<N8nText tag="span" bold>{{ locale.baseText('agents.settings.title') }}</N8nText>
-				<div :class="$style.settingsHeaderActions">
-					<button :class="$style.cancelBtn" :disabled="!isDirty" @click="cancelSchema">
-						{{ locale.baseText('agents.settings.cancel') }}
+		<!-- Left column: center content with its own header -->
+		<div :class="$style.mainColumn">
+			<div :class="$style.mainHeader">
+				<div :class="$style.mainHeaderLeft">
+					<N8nIcon icon="robot" :size="16" />
+					<N8nText tag="span" bold>{{
+						agentName || locale.baseText('agents.home.untitledAgent')
+					}}</N8nText>
+				</div>
+				<div :class="$style.mainHeaderRight">
+					<button
+						:class="[$style.toggleBtn, settingsVisible && $style.toggleBtnActive]"
+						data-testid="toggle-settings"
+						@click="settingsVisible = !settingsVisible"
+					>
+						<N8nIcon icon="sliders-horizontal" :size="16" />
 					</button>
-					<N8nButton
-						type="primary"
-						size="small"
-						:label="locale.baseText('agents.settings.save')"
-						:disabled="!isDirty"
-						@click="saveSchema"
-					/>
+					<button :class="$style.toggleBtn" data-testid="toggle-activity">
+						<N8nIcon icon="panel-right" :size="16" />
+					</button>
 				</div>
 			</div>
-		</div>
-
-		<!-- Main content area -->
-		<div :class="$style.content">
-			<!-- Center column: home or chat -->
-			<div :class="$style.center">
+			<div :class="$style.mainBody">
 				<AgentHomeContent
 					v-if="!chatActive"
 					:agent-name="agentName"
@@ -258,33 +222,43 @@ onMounted(async () => {
 					@code-delta="onCodeDelta"
 				/>
 			</div>
-
-			<!-- Settings sidebar (no own header — header is in top bar) -->
-			<AgentSettingsSidebar
-				v-if="settingsVisible"
-				:schema="localSchema"
-				:code="code"
-				:updated-at="updatedAt"
-				:is-dirty="isDirty"
-				@update:schema="onSchemaFieldUpdate"
-				@update:code="onCodeUpdate"
-			/>
 		</div>
+
+		<!-- Right column: settings sidebar with its own header -->
+		<AgentSettingsSidebar
+			v-if="settingsVisible"
+			:schema="localSchema"
+			:code="code"
+			:updated-at="updatedAt"
+			:is-dirty="isDirty"
+			@update:schema="onSchemaFieldUpdate"
+			@update:code="onCodeUpdate"
+			@save="saveSchema"
+			@cancel="cancelSchema"
+		/>
 	</div>
 </template>
 
 <style module>
 .builder {
 	display: flex;
-	flex-direction: column;
 	height: 100%;
 	width: 100%;
 	overflow: hidden;
 }
 
-.topBar {
+.mainColumn {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	overflow: hidden;
+}
+
+.mainHeader {
 	display: flex;
 	align-items: center;
+	justify-content: space-between;
 	height: 56px;
 	min-height: 56px;
 	padding: 0 var(--spacing--sm);
@@ -292,65 +266,25 @@ onMounted(async () => {
 	background-color: var(--color--background);
 }
 
-.topBarLeft {
+.mainHeaderLeft {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
 	color: var(--color--text);
 }
 
-.topBarCenter {
-	flex: 1;
+.mainHeaderRight {
 	display: flex;
 	align-items: center;
-	justify-content: flex-end;
 	gap: var(--spacing--4xs);
 }
 
-.topBarRight {
+.mainBody {
+	flex: 1;
 	display: flex;
-	align-items: center;
-	gap: var(--spacing--sm);
-	margin-left: var(--spacing--sm);
-}
-
-.settingsHeaderDivider {
-	width: 1px;
-	height: 24px;
-	background-color: var(--color--foreground);
-	margin-right: var(--spacing--2xs);
-}
-
-.settingsHeaderActions {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	margin-left: auto;
-}
-
-.cancelBtn {
-	background: none;
-	border: none;
-	cursor: pointer;
-	font-size: var(--font-size--sm);
-	font-family: var(--font-family);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--text);
-	padding: var(--spacing--4xs) var(--spacing--xs);
-	border-radius: var(--radius);
-}
-
-.cancelBtn:hover {
-	background-color: var(--color--foreground--tint-2);
-}
-
-.cancelBtn:disabled {
-	color: var(--color--text--tint-2);
-	cursor: default;
-}
-
-.cancelBtn:disabled:hover {
-	background: none;
+	flex-direction: column;
+	min-height: 0;
+	overflow: hidden;
 }
 
 .toggleBtn {
@@ -364,7 +298,6 @@ onMounted(async () => {
 	cursor: pointer;
 	color: var(--color--text--tint-2);
 	border-radius: var(--radius);
-	transition: background-color 0.15s ease;
 }
 
 .toggleBtn:hover {
@@ -375,19 +308,5 @@ onMounted(async () => {
 .toggleBtnActive {
 	color: var(--color--text);
 	background-color: var(--color--foreground--tint-1);
-}
-
-.content {
-	display: flex;
-	flex: 1;
-	min-height: 0;
-	overflow: hidden;
-}
-
-.center {
-	flex: 1;
-	display: flex;
-	flex-direction: column;
-	min-width: 0;
 }
 </style>
