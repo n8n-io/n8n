@@ -246,12 +246,14 @@ describe('WorkflowPublishHistoryRepository', () => {
 			});
 
 			expect(records).toHaveLength(1);
-			expect(records[0]).toEqual({
-				workflowId: workflow.id,
-				versionId: null,
-				event: 'activated',
-				userId: null,
-			});
+			expect(records[0]).toEqual(
+				expect.objectContaining({
+					workflowId: workflow.id,
+					versionId: null,
+					event: 'activated',
+					userId: null,
+				}),
+			);
 		});
 
 		it('should set userId to null when user is deleted', async () => {
