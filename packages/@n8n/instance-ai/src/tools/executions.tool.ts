@@ -6,6 +6,7 @@ import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -83,14 +84,16 @@ const stopAction = z.object({
 	executionId: z.string().describe('ID of the execution to cancel'),
 });
 
-const inputSchema = z.discriminatedUnion('action', [
-	listAction,
-	getAction,
-	runAction,
-	debugAction,
-	getNodeOutputAction,
-	stopAction,
-]);
+const inputSchema = sanitizeInputSchema(
+	z.discriminatedUnion('action', [
+		listAction,
+		getAction,
+		runAction,
+		debugAction,
+		getNodeOutputAction,
+		stopAction,
+	]),
+);
 
 type Input = z.infer<typeof inputSchema>;
 

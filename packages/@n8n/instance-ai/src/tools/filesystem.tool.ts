@@ -6,6 +6,7 @@ import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 import { wrapUntrustedData } from './web-research/sanitize-web-content';
 
@@ -115,12 +116,9 @@ const treeAction = z.object({
 		),
 });
 
-const inputSchema = z.discriminatedUnion('action', [
-	listAction,
-	readAction,
-	searchAction,
-	treeAction,
-]);
+const inputSchema = sanitizeInputSchema(
+	z.discriminatedUnion('action', [listAction, readAction, searchAction, treeAction]),
+);
 
 type Input = z.infer<typeof inputSchema>;
 

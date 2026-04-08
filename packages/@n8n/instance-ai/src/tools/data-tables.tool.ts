@@ -7,6 +7,7 @@ import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 
 // ── Shared schemas ─────────────────────────────────────────────────────────
@@ -501,7 +502,7 @@ export function createDataTablesTool(
 	surface: 'full' | 'orchestrator' = 'full',
 ) {
 	if (surface === 'orchestrator') {
-		const inputSchema = z.discriminatedUnion('action', [...readOnlyActions]);
+		const inputSchema = sanitizeInputSchema(z.discriminatedUnion('action', [...readOnlyActions]));
 
 		return createTool({
 			id: 'data-tables',
@@ -524,7 +525,7 @@ export function createDataTablesTool(
 		});
 	}
 
-	const inputSchema = z.discriminatedUnion('action', [...allActions]);
+	const inputSchema = sanitizeInputSchema(z.discriminatedUnion('action', [...allActions]));
 
 	return createTool({
 		id: 'data-tables',

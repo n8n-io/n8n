@@ -4,6 +4,7 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 
+import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 import { NodeSearchEngine } from './nodes/node-search-engine';
 import { categoryList, suggestedNodesData } from './nodes/suggested-nodes-data';
@@ -106,14 +107,16 @@ const exploreResourcesAction = z.object({
 		),
 });
 
-const fullInputSchema = z.discriminatedUnion('action', [
-	listAction,
-	searchAction,
-	describeAction,
-	typeDefinitionAction,
-	suggestedAction,
-	exploreResourcesAction,
-]);
+const fullInputSchema = sanitizeInputSchema(
+	z.discriminatedUnion('action', [
+		listAction,
+		searchAction,
+		describeAction,
+		typeDefinitionAction,
+		suggestedAction,
+		exploreResourcesAction,
+	]),
+);
 
 type FullInput = z.infer<typeof fullInputSchema>;
 

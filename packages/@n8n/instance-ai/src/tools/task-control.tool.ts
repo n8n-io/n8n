@@ -5,6 +5,7 @@ import { createTool } from '@mastra/core/tools';
 import { taskListSchema } from '@n8n/api-types';
 import { z } from 'zod';
 
+import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { OrchestrationContext } from '../types';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
@@ -29,11 +30,9 @@ const correctTaskAction = z.object({
 		.describe("The correction message from the user (e.g. 'use the Projects database')"),
 });
 
-const inputSchema = z.discriminatedUnion('action', [
-	updateChecklistAction,
-	cancelTaskAction,
-	correctTaskAction,
-]);
+const inputSchema = sanitizeInputSchema(
+	z.discriminatedUnion('action', [updateChecklistAction, cancelTaskAction, correctTaskAction]),
+);
 
 type Input = z.infer<typeof inputSchema>;
 

@@ -6,6 +6,7 @@ import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -108,14 +109,16 @@ const testAction = z.object({
 	credentialId: z.string().describe('ID of the credential to test'),
 });
 
-const inputSchema = z.discriminatedUnion('action', [
-	listAction,
-	getAction,
-	deleteAction,
-	searchTypesAction,
-	setupAction,
-	testAction,
-]);
+const inputSchema = sanitizeInputSchema(
+	z.discriminatedUnion('action', [
+		listAction,
+		getAction,
+		deleteAction,
+		searchTypesAction,
+		setupAction,
+		testAction,
+	]),
+);
 
 type Input = z.infer<typeof inputSchema>;
 

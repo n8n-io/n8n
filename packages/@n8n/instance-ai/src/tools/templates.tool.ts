@@ -4,6 +4,7 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 
+import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import { documentation } from './best-practices/index';
 import { TechniqueDescription, type WorkflowTechniqueType } from './best-practices/techniques';
 import { fetchWorkflowsFromTemplates } from './templates/template-api';
@@ -61,11 +62,13 @@ const bestPracticesAction = z.object({
 		),
 });
 
-const inputSchema = z.discriminatedUnion('action', [
-	searchStructuresAction,
-	searchParametersAction,
-	bestPracticesAction,
-]);
+const inputSchema = sanitizeInputSchema(
+	z.discriminatedUnion('action', [
+		searchStructuresAction,
+		searchParametersAction,
+		bestPracticesAction,
+	]),
+);
 
 type Input = z.infer<typeof inputSchema>;
 

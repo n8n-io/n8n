@@ -188,11 +188,6 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 			tags: ['orchestrator'],
 		}) ?? allOrchestratorTools;
 
-	// Sanitize all tool schemas for Anthropic compatibility. Consolidated domain tools
-	// use z.discriminatedUnion which produces JSON Schema without top-level `type: "object"`.
-	// Must happen after tracing wraps tools (wrapTools creates new tool objects).
-	sanitizeMcpToolSchemas(tracedOrchestratorTools);
-
 	const coreTools: ToolsInput = {};
 	const deferrableTools: ToolsInput = {};
 	for (const [name, tool] of Object.entries(tracedOrchestratorTools)) {

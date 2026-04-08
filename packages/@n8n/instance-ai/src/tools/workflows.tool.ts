@@ -7,6 +7,7 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 import { formatTimestamp } from '../utils/format-timestamp';
 import { setupSuspendSchema, setupResumeSchema } from './workflows/setup-workflow.schema';
@@ -180,7 +181,7 @@ function buildInputSchema(context: InstanceAiContext, surface: 'full' | 'orchest
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	return z.discriminatedUnion('action', actions as any);
+	return sanitizeInputSchema(z.discriminatedUnion('action', actions as any));
 }
 
 // ── Handlers ────────────────────────────────────────────────────────────────

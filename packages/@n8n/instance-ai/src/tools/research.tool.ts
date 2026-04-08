@@ -4,6 +4,7 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 
+import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import {
 	checkDomainAccess,
 	applyDomainAccessResume,
@@ -47,7 +48,9 @@ const fetchUrlAction = z.object({
 		.describe('Maximum content length in characters (default 30000)'),
 });
 
-const inputSchema = z.discriminatedUnion('action', [webSearchAction, fetchUrlAction]);
+const inputSchema = sanitizeInputSchema(
+	z.discriminatedUnion('action', [webSearchAction, fetchUrlAction]),
+);
 
 type Input = z.infer<typeof inputSchema>;
 

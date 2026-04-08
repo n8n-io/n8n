@@ -6,6 +6,7 @@ import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
@@ -105,16 +106,18 @@ function buildInputSchema(context: InstanceAiContext) {
 	] as const;
 
 	if (context.workspaceService?.listFolders) {
-		return z.discriminatedUnion('action', [
-			...baseActions,
-			listFoldersAction,
-			createFolderAction,
-			deleteFolderAction,
-			moveWorkflowToFolderAction,
-		]);
+		return sanitizeInputSchema(
+			z.discriminatedUnion('action', [
+				...baseActions,
+				listFoldersAction,
+				createFolderAction,
+				deleteFolderAction,
+				moveWorkflowToFolderAction,
+			]),
+		);
 	}
 
-	return z.discriminatedUnion('action', [...baseActions]);
+	return sanitizeInputSchema(z.discriminatedUnion('action', [...baseActions]));
 }
 
 type Input = z.infer<ReturnType<typeof buildInputSchema>>;

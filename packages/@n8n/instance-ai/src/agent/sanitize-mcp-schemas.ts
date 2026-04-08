@@ -18,7 +18,7 @@ import { z } from 'zod';
 /**
  * Recursively walk a Zod schema tree and replace Anthropic-incompatible types.
  */
-function sanitizeZodType(schema: z.ZodTypeAny): z.ZodTypeAny {
+export function sanitizeZodType(schema: z.ZodTypeAny): z.ZodTypeAny {
 	// ZodNull → replace with optional undefined (shouldn't appear standalone, but handle it)
 	if (schema instanceof z.ZodNull) {
 		return z.string().optional();
@@ -123,13 +123,26 @@ function sanitizeZodType(schema: z.ZodTypeAny): z.ZodTypeAny {
  * If the sanitized schema isn't an object type, fall back to z.record(z.unknown())
  * which accepts any object — same fallback used when schema conversion fails.
  */
-function ensureTopLevelObject(schema: z.ZodTypeAny): z.ZodTypeAny {
+export function ensureTopLevelObject(schema: z.ZodTypeAny): z.ZodTypeAny {
 	if (schema instanceof z.ZodObject || schema instanceof z.ZodRecord) {
 		return schema;
 	}
 	// Fallback: accept any object rather than sending a non-object schema that
 	// Anthropic would reject with "input_schema.type: Field required"
 	return z.record(z.unknown());
+}
+
+/**
+ * Sanitize a single Zod input schema for Anthropic compatibility.
+ * Must be called BEFORE passing to `createTool()`, because Mastra captures
+ * the schema in a closure at construction time — post-creation mutation
+ * does not affect the JSON Schema sent to the API.
+ *
+ * Preserves the original TypeScript type via the generic parameter so that
+ * `z.infer<typeof sanitizedSchema>` still produces the discriminated union type.
+ */
+export function sanitizeInputSchema<T extends z.ZodTypeAny>(schema: T): T {
+	return ensureTopLevelObject(sanitizeZodType(schema)) as T;
 }
 
 /**
