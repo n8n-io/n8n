@@ -33,10 +33,10 @@ import {
 const DEFAULT_CACHE_TTL_MS = 300_000;
 const DEFAULT_CACHE_MAX_SIZE = 500;
 
-const MCP_CLIENT_CACHE_TTL_MS =
-	parseInt(process.env.MCP_CLIENT_CACHE_TTL_MS ?? '', 10) || DEFAULT_CACHE_TTL_MS;
-const MCP_CLIENT_CACHE_MAX_SIZE =
-	parseInt(process.env.MCP_CLIENT_CACHE_MAX_SIZE ?? '', 10) || DEFAULT_CACHE_MAX_SIZE;
+const N8N_MCP_CLIENT_CACHE_TTL_MS =
+	parseInt(process.env.N8N_MCP_CLIENT_CACHE_TTL_MS ?? '', 10) || DEFAULT_CACHE_TTL_MS;
+const N8N_MCP_CLIENT_CACHE_MAX_SIZE =
+	parseInt(process.env.N8N_MCP_CLIENT_CACHE_MAX_SIZE ?? '', 10) || DEFAULT_CACHE_MAX_SIZE;
 
 interface CachedClient {
 	client: Client;
@@ -78,15 +78,15 @@ export function evictStaleClients(): void {
 	lastEvictionAt = now;
 
 	for (const [key, entry] of activeClients) {
-		if (now - entry.createdAt > MCP_CLIENT_CACHE_TTL_MS) {
+		if (now - entry.createdAt > N8N_MCP_CLIENT_CACHE_TTL_MS) {
 			closeAndRemove(key);
 		}
 	}
 
 	// Map preserves insertion order, which matches createdAt order since
 	// entries are only inserted (never re-set) with Date.now() timestamps.
-	if (activeClients.size > MCP_CLIENT_CACHE_MAX_SIZE) {
-		let excess = activeClients.size - MCP_CLIENT_CACHE_MAX_SIZE;
+	if (activeClients.size > N8N_MCP_CLIENT_CACHE_MAX_SIZE) {
+		let excess = activeClients.size - N8N_MCP_CLIENT_CACHE_MAX_SIZE;
 		for (const [key] of activeClients) {
 			if (excess <= 0) break;
 			closeAndRemove(key);
