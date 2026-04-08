@@ -131,7 +131,7 @@ async function applyTools(
 			// resolveTool() to produce the appropriate BuiltTool for their platform.
 			// Without a resolver, a minimal passthrough marker is created so that
 			// the agent's tool list stays coherent (correct names / descriptions).
-			const resolved = resolveTool?.(ts);
+			const resolved = await resolveTool?.(ts);
 			agent.tool(
 				resolved ??
 					({
