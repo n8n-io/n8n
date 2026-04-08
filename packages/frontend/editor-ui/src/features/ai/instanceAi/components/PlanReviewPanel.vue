@@ -92,7 +92,7 @@ function handleRequestChanges() {
 				{{ i18n.baseText('instanceAi.planReview.title') }}
 			</span>
 			<span :class="$style.taskCount">{{ plannedTasks.length }} tasks</span>
-			<N8nBadge v-if="props.loading" theme="info" :class="$style.badgeRight">
+			<N8nBadge v-if="props.loading" theme="secondary" :class="$style.badgeRight">
 				{{ i18n.baseText('instanceAi.planReview.building') }}
 			</N8nBadge>
 			<N8nBadge
