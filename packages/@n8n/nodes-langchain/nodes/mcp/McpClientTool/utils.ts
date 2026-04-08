@@ -105,6 +105,18 @@ export const createCallTool =
 		return result;
 	};
 
+const MAX_MCP_TOOL_NAME_LENGTH = 64;
+
+export function buildMcpToolName(serverName: string, toolName: string): string {
+	const sanitizedServerName = serverName.replace(/[^a-zA-Z0-9]/g, '_');
+	const fullName = `${sanitizedServerName}_${toolName}`;
+	if (fullName.length <= MAX_MCP_TOOL_NAME_LENGTH) {
+		return fullName;
+	}
+	const maxPrefixLen = MAX_MCP_TOOL_NAME_LENGTH - toolName.length - 1;
+	return maxPrefixLen > 0 ? `${sanitizedServerName.slice(0, maxPrefixLen)}_${toolName}` : toolName;
+}
+
 export function mcpToolToDynamicTool(
 	tool: McpTool,
 	onCallTool: DynamicStructuredToolInput['func'],

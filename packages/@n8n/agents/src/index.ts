@@ -55,6 +55,12 @@ export { Telemetry } from './sdk/telemetry';
 export { LangSmithTelemetry } from './integrations/langsmith';
 export type { LangSmithTelemetryConfig } from './integrations/langsmith';
 export { Agent } from './sdk/agent';
+export type {
+	AgentBuilder,
+	CredentialProvider,
+	ResolvedCredential,
+	CredentialListItem,
+} from './types';
 export { McpClient } from './sdk/mcp-client';
 export { Network } from './sdk/network';
 export { providerTools } from './sdk/provider-tools';
@@ -75,8 +81,23 @@ export type {
 	CustomAgentMessages,
 	AgentDbMessage,
 } from './types/sdk/message';
+export type { HandlerExecutor } from './types/sdk/handler-executor';
+export type {
+	AgentSchema,
+	ToolSchema,
+	MemorySchema,
+	EvalSchema,
+	ThinkingSchema,
+	ProviderToolSchema,
+	GuardrailSchema,
+	McpServerSchema,
+	TelemetrySchema,
+} from './types/sdk/schema';
+export { generateAgentCode } from './codegen/generate-agent-code';
 export { filterLlmMessages, isLlmMessage } from './sdk/message';
 export { fetchProviderCatalog } from './sdk/catalog';
+export { providerCapabilities } from './sdk/provider-capabilities';
+export type { ProviderCapability } from './sdk/provider-capabilities';
 export type {
 	ProviderCatalog,
 	ProviderInfo,

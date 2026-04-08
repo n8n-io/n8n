@@ -12,8 +12,8 @@ export class NodeDetailsViewPage extends BasePage {
 	readonly setupHelper: NodeParameterHelper;
 	readonly editFields: EditFieldsNode;
 	readonly clipboard: ClipboardHelper;
-	readonly inputPanel = new RunDataPanel(this.page.getByTestId('ndv-input-panel'));
-	readonly outputPanel = new RunDataPanel(this.page.getByTestId('output-panel'));
+	readonly inputPanel = new RunDataPanel(this.getContainer().getByTestId('ndv-input-panel'));
+	readonly outputPanel = new RunDataPanel(this.getContainer().getByTestId('output-panel'));
 
 	constructor(page: Page) {
 		super(page);
@@ -23,11 +23,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getNodeCredentialsSelect() {
-		return this.page.getByTestId('node-credentials-select');
+		return this.getContainer().getByTestId('node-credentials-select');
 	}
 
 	getNodeCredentialsEmptyState() {
-		return this.page.getByTestId('node-credentials-empty-state');
+		return this.getContainer().getByTestId('node-credentials-empty-state');
 	}
 
 	credentialDropdownCreateNewCredential() {
@@ -87,7 +87,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getOutputPanel() {
-		return this.page.getByTestId('output-panel');
+		return this.getContainer().getByTestId('output-panel');
 	}
 
 	getContainer() {
@@ -95,7 +95,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getInputPanel() {
-		return this.page.getByTestId('ndv-input-panel');
+		return this.getContainer().getByTestId('ndv-input-panel');
 	}
 
 	getParameterExpressionPreviewValue() {
@@ -120,11 +120,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getEditPinnedDataButton() {
-		return this.page.getByTestId('ndv-edit-pinned-data');
+		return this.getContainer().getByTestId('ndv-edit-pinned-data');
 	}
 
 	getRunDataPaneHeader() {
-		return this.page.getByTestId('run-data-pane-header');
+		return this.getContainer().getByTestId('run-data-pane-header');
 	}
 
 	getEditOutputButton() {
@@ -158,7 +158,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getAssignmentCollectionDropArea() {
-		return this.page.getByTestId('assignment-collection-drop-area');
+		return this.getContainer().getByTestId('assignment-collection-drop-area');
 	}
 
 	async clickAssignmentCollectionDropArea() {
@@ -185,15 +185,15 @@ export class NodeDetailsViewPage extends BasePage {
 			const parameterInput = this.getParameterInput(parameterName);
 			return parameterInput.getByTestId('inline-expression-editor-input');
 		}
-		return this.page.getByTestId('inline-expression-editor-input');
+		return this.getContainer().getByTestId('inline-expression-editor-input');
 	}
 
 	getNodeParameters() {
-		return this.page.getByTestId('node-parameters');
+		return this.getContainer().getByTestId('node-parameters');
 	}
 
 	getParameterInputHint() {
-		return this.page.getByTestId('parameter-input-hint');
+		return this.getContainer().getByTestId('parameter-input-hint');
 	}
 
 	getParameterInputHintWithText(text: string) {
@@ -201,7 +201,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getInputLabel() {
-		return this.page.getByTestId('input-label');
+		return this.getContainer().getByTestId('input-label');
 	}
 
 	getNthParameter(index: number) {
@@ -209,7 +209,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getCredentialsLabel() {
-		return this.page.getByTestId('credentials-label');
+		return this.getContainer().getByTestId('credentials-label');
 	}
 
 	async makeWebhookRequest(path: string) {
@@ -230,7 +230,10 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getParameterInput(parameterName: string, index?: number) {
-		return locatorByIndex(this.page.getByTestId(`parameter-input-${parameterName}`), index);
+		return locatorByIndex(
+			this.getContainer().getByTestId(`parameter-input-${parameterName}`),
+			index,
+		);
 	}
 
 	getParameterInputTextbox(parameterName: string, index?: number) {
@@ -252,7 +255,10 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async clickParameterDropdown(parameterName: string, index = 0): Promise<void> {
-		await locatorByIndex(this.page.getByTestId(`parameter-input-${parameterName}`), index).click();
+		await locatorByIndex(
+			this.getContainer().getByTestId(`parameter-input-${parameterName}`),
+			index,
+		).click();
 	}
 
 	async selectFromVisibleDropdown(optionText: string): Promise<void> {
@@ -266,7 +272,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async clickParameterOptions(): Promise<void> {
-		await this.page.getByTestId('collection-parameter-add').click();
+		await this.getContainer().getByTestId('collection-parameter-add').click();
 	}
 
 	async addParameterOptionByName(optionName: string): Promise<void> {
@@ -287,19 +293,19 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getAskAiTabPanel() {
-		return this.page.getByTestId('code-node-tab-ai');
+		return this.getContainer().getByTestId('code-node-tab-ai');
 	}
 
 	getAskAiCtaButton() {
-		return this.page.getByTestId('ask-ai-cta');
+		return this.getContainer().getByTestId('ask-ai-cta');
 	}
 
 	getAskAiPromptInput() {
-		return this.page.getByTestId('ask-ai-prompt-input');
+		return this.getContainer().getByTestId('ask-ai-prompt-input');
 	}
 
 	getAskAiPromptCounter() {
-		return this.page.getByTestId('ask-ai-prompt-counter');
+		return this.getContainer().getByTestId('ask-ai-prompt-counter');
 	}
 
 	getAskAiCtaTooltipNoInputData() {
@@ -315,7 +321,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getCodeTabPanel() {
-		return this.page.getByTestId('code-node-tab-code');
+		return this.getContainer().getByTestId('code-node-tab-code');
 	}
 
 	getCodeTab() {
@@ -373,7 +379,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getAssignmentCollectionContainer(paramName: string) {
-		return this.page.getByTestId(`assignment-collection-${paramName}`);
+		return this.getContainer().getByTestId(`assignment-collection-${paramName}`);
 	}
 
 	async selectInputNode(nodeName: string) {
@@ -390,7 +396,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getResourceMapperFieldsContainer() {
-		return this.page.getByTestId('mapping-fields-container');
+		return this.getContainer().getByTestId('mapping-fields-container');
 	}
 
 	getResourceMapperParameterInputs() {
@@ -398,15 +404,15 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getResourceMapperSelectColumn() {
-		return this.page.getByTestId('matching-column-select');
+		return this.getContainer().getByTestId('matching-column-select');
 	}
 
 	getResourceMapperColumnsOptionsButton() {
-		return this.page.getByTestId('columns-parameter-input-options-container');
+		return this.getContainer().getByTestId('columns-parameter-input-options-container');
 	}
 
 	getResourceMapperRemoveFieldButton(fieldName: string) {
-		return this.page.getByTestId(`remove-field-button-${fieldName}`);
+		return this.getContainer().getByTestId(`remove-field-button-${fieldName}`);
 	}
 
 	getResourceMapperRemoveAllFieldsOption() {
@@ -498,7 +504,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getCopyInputButton() {
-		return this.page.getByTestId('copy-input');
+		return this.getContainer().getByTestId('copy-input');
 	}
 
 	getOutputPagination() {
@@ -527,7 +533,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getRunDataInfoCallout() {
-		return this.page.getByTestId('run-data-callout');
+		return this.getContainer().getByTestId('run-data-callout');
 	}
 
 	async checkParameterCheckboxInputByName(name: string): Promise<void> {
@@ -537,9 +543,9 @@ export class NodeDetailsViewPage extends BasePage {
 
 	// Credentials modal helpers
 	async clickCreateNewCredential(eq: number = 0): Promise<void> {
-		const setupManually = this.page.getByTestId('setup-manually-link').nth(eq);
-		const setupCredential = this.page.getByTestId('setup-credential-button').nth(eq);
-		const credentialSelect = this.page.getByTestId('node-credentials-select').nth(eq);
+		const setupManually = this.getContainer().getByTestId('setup-manually-link').nth(eq);
+		const setupCredential = this.getContainer().getByTestId('setup-credential-button').nth(eq);
+		const credentialSelect = this.getContainer().getByTestId('node-credentials-select').nth(eq);
 
 		// Wait for one of the three credential UI states to appear
 		await Promise.race([
@@ -576,11 +582,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getNodeRunErrorMessage() {
-		return this.page.getByTestId('node-error-message');
+		return this.getContainer().getByTestId('node-error-message');
 	}
 
 	getNodeRunErrorDescription() {
-		return this.page.getByTestId('node-error-description');
+		return this.getContainer().getByTestId('node-error-description');
 	}
 
 	async isOutputRunLinkingEnabled() {
@@ -617,15 +623,15 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getExecuteNodeButton() {
-		return this.page.getByTestId('node-execute-button');
+		return this.getContainer().getByTestId('node-execute-button');
 	}
 
 	getTriggerPanelExecuteButton() {
-		return this.page.getByTestId('trigger-execute-button');
+		return this.getContainer().getByTestId('trigger-execute-button');
 	}
 
 	async openCodeEditorFullscreen() {
-		await this.page.getByTestId('code-editor-fullscreen-button').click();
+		await this.getContainer().getByTestId('code-editor-fullscreen-button').click();
 	}
 
 	getCodeEditorFullscreen() {
@@ -641,23 +647,23 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getNodeRunSuccessIndicator() {
-		return this.page.getByTestId('node-run-status-success');
+		return this.getContainer().getByTestId('node-run-status-success');
 	}
 
 	getNodeRunErrorIndicator() {
-		return this.page.getByTestId('node-run-status-danger');
+		return this.getContainer().getByTestId('node-run-status-danger');
 	}
 
 	getNodeRunTooltipIndicator() {
-		return this.page.getByTestId('node-run-info');
+		return this.getContainer().getByTestId('node-run-info');
 	}
 
 	getStaleNodeIndicator() {
-		return this.page.getByTestId('node-run-info-stale');
+		return this.getContainer().getByTestId('node-run-info-stale');
 	}
 
 	getExecuteStepButton() {
-		return this.page.getByTestId('node-execute-button');
+		return this.getContainer().getByTestId('node-execute-button');
 	}
 
 	async clickExecuteStep() {
@@ -665,11 +671,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async openSettings() {
-		await this.page.getByTestId('tab-settings').click();
+		await this.getContainer().getByTestId('tab-settings').click();
 	}
 
 	getNodeVersion() {
-		return this.page.getByTestId('node-version');
+		return this.getContainer().getByTestId('node-version');
 	}
 
 	async searchOutputData(searchTerm: string) {
@@ -731,7 +737,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getAddSubNodeButton(connectionType: string, index: number = 0) {
-		return this.page.getByTestId(`add-subnode-${connectionType}-${index}`);
+		return this.getContainer().getByTestId(`add-subnode-${connectionType}-${index}`);
 	}
 
 	getNodesWithIssues() {
@@ -745,11 +751,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getFloatingNode() {
-		return this.page.getByTestId('floating-node');
+		return this.getContainer().getByTestId('floating-node');
 	}
 
 	async addItemToFixedCollection(collectionName: string) {
-		const collection = this.page.getByTestId(`fixed-collection-${collectionName}`);
+		const collection = this.getContainer().getByTestId(`fixed-collection-${collectionName}`);
 		const explicitAddControl = collection
 			.locator(
 				[
@@ -789,7 +795,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getParameterItemWithText(text: string) {
-		return this.page.getByTestId('parameter-item').getByText(text);
+		return this.getContainer().getByTestId('parameter-item').getByText(text);
 	}
 
 	getParameterInputWithIssues(parameterPath: string) {
@@ -799,7 +805,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getResourceLocator(paramName: string) {
-		return this.page.getByTestId(`resource-locator-${paramName}`);
+		return this.getContainer().getByTestId(`resource-locator-${paramName}`);
 	}
 
 	getResourceLocatorInput(paramName: string) {
@@ -827,7 +833,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getParameterInputIssues() {
-		return this.page.getByTestId('parameter-issues');
+		return this.getContainer().getByTestId('parameter-issues');
 	}
 
 	getResourceLocatorItems() {
@@ -839,7 +845,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getExpressionModeToggle(index: number = 1) {
-		return this.page.getByTestId('radio-button-expression').nth(index);
+		return this.getContainer().getByTestId('radio-button-expression').nth(index);
 	}
 
 	async setRLCValue(paramName: string, value: string, index = 0): Promise<void> {
@@ -854,7 +860,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getInputSelect() {
-		return this.page.getByTestId('ndv-input-select').locator('input');
+		return this.getContainer().getByTestId('ndv-input-select').locator('input');
 	}
 
 	getOutputRunSelectorInput() {
@@ -862,7 +868,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getAiOutputModeToggle() {
-		return this.page.getByTestId('ai-output-mode-select');
+		return this.getContainer().getByTestId('ai-output-mode-select');
 	}
 
 	getCredentialLabel(credentialType: string) {
@@ -870,7 +876,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getFilterComponent(paramName: string) {
-		return this.page.getByTestId(`filter-${paramName}`);
+		return this.getContainer().getByTestId(`filter-${paramName}`);
 	}
 
 	getFilterConditions(paramName: string) {
