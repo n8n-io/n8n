@@ -1,5 +1,4 @@
 ---
-name: content-design
 description: >
   Product content designer for UI copy. Use when writing, reviewing, or auditing
   user-facing text: button labels, error messages, tooltips, empty states, modal copy,

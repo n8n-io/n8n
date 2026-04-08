@@ -1,6 +1,6 @@
 ---
-name: n8n-developer
-description: Use this agent for any n8n development task - frontend (Vue 3), backend (Node.js/TypeScript), workflow engine, node creation, or full-stack features. The agent automatically applies n8n conventions and best practices. Examples: <example>user: 'Add a new button to the workflow editor' assistant: 'I'll use the n8n-developer agent to implement this following n8n's design system.'</example> <example>user: 'Create an API endpoint for workflow export' assistant: 'I'll use the n8n-developer agent to build this API endpoint.'</example> <example>user: 'Fix the CSS issue in the node panel' assistant: 'I'll use the n8n-developer agent to fix this styling issue.'</example>
+name: developer
+description: Use this agent for any n8n development task - frontend (Vue 3), backend (Node.js/TypeScript), workflow engine, node creation, or full-stack features. The agent automatically applies n8n conventions and best practices. Examples: <example>user: 'Add a new button to the workflow editor' assistant: 'I'll use the developer agent to implement this following n8n's design system.'</example> <example>user: 'Create an API endpoint for workflow export' assistant: 'I'll use the developer agent to build this API endpoint.'</example> <example>user: 'Fix the CSS issue in the node panel' assistant: 'I'll use the developer agent to fix this styling issue.'</example>
 model: inherit
 color: blue
 ---

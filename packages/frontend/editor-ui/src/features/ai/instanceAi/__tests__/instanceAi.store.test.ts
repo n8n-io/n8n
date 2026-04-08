@@ -485,6 +485,24 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 			undefined,
 		);
 	});
+
+	test('sendMessage reconnects SSE when connection was closed', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+
+		// SSE is connected after beforeEach setup. Close it to simulate
+		// Suspense unmount killing the connection during layout transition.
+		store.closeSSE();
+		expect(store.sseState).toBe('disconnected');
+
+		// Clear capturedInstance so we can verify a *new* EventSource is created
+		capturedInstance = null;
+
+		await store.sendMessage('hello');
+
+		// sendMessage should have re-opened an EventSource before posting
+		expect(capturedInstance).not.toBeNull();
+		expect(mockPostMessage).toHaveBeenCalled();
+	});
 });
 
 // ---------------------------------------------------------------------------
