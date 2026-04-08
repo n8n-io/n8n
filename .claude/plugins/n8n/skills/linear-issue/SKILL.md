@@ -50,7 +50,25 @@ Use the Linear MCP tools to fetch the issue details and comments together:
 
 Both calls should be made together in the same step to gather the complete context upfront.
 
-### 2. Analyze Attachments and Media (MANDATORY)
+### 2. Check for Private/Security Issues (MANDATORY — do this before anything else)
+
+After fetching the issue, immediately check its labels:
+
+1. Look at the labels returned with the issue.
+2. If any label is **`n8n-private`**:
+   a. Run `git remote -v` (via Bash) to list all configured remotes.
+   b. If **any** remote URL contains `n8n-io/n8n` without the `-private` suffix (i.e. matches the public repo), **stop immediately** and tell the user:
+
+   > **This issue is marked `n8n-private` and must be developed in a clean clone of the private repository.**
+   >
+   > One or more of your remotes point to the **public** `n8n-io/n8n` repo. Mixed remotes are not allowed — you must work in a **separate local clone** of `n8n-io/n8n-private` with no references to the public repo.
+   > For the full process, see: https://www.notion.so/n8n/Processing-critical-high-security-bugs-vulnerabilities-in-private-2f45b6e0c94f803da806f472111fb1a5
+
+   Do **not** continue with any further steps — return after showing this message.
+
+3. If the label is not present, or all remotes point exclusively to `n8n-io/n8n-private`, continue normally.
+
+### 3. Analyze Attachments and Media (MANDATORY)
 
 **IMPORTANT:** This step is NOT optional. You MUST scan and fetch all visual content from BOTH the issue description AND all comments.
 
@@ -74,7 +92,7 @@ Both calls should be made together in the same step to gather the complete conte
 	- Summarize key points, timestamps, and any demonstrated issues
 3. Loom videos often contain crucial reproduction steps and context that text alone cannot convey
 
-### 3. Fetch Related Context
+### 4. Fetch Related Context
 
 **Related Linear Issues:**
 - Use `mcp__linear__get_issue` for any issues mentioned in relations (blocking, blocked by, related, duplicates)
@@ -90,14 +108,14 @@ Both calls should be made together in the same step to gather the complete conte
 - If Notion links are present, use `mcp__notion__notion-fetch` with the Notion URL or page ID to retrieve document content
 - Summarize relevant documentation
 
-### 4. Review Comments
+### 5. Review Comments
 
 Comments were already fetched in Step 1. Review them for:
 - Additional context and discussion history
-- Any attachments or media linked in comments (process in Step 2)
+- Any attachments or media linked in comments (process in Step 3)
 - Clarifications or updates to the original issue description
 
-### 5. Identify Affected Node (if applicable)
+### 6. Identify Affected Node (if applicable)
 
 Determine whether this issue is specific to a particular n8n node (e.g. a trigger, action, or tool node). Look for clues in:
 - The issue title (e.g. "Linear trigger", "Slack node", "HTTP Request")
@@ -113,7 +131,11 @@ If the issue is node-specific:
    - Tool variants: `n8n-nodes-base.<name>Tool` (e.g. "Google Sheets Tool" → `n8n-nodes-base.googleSheetsTool`)
    - LangChain/AI nodes: `@n8n/n8n-nodes-langchain.<camelCaseName>` (e.g. "OpenAI Chat Model" → `@n8n/n8n-nodes-langchain.lmChatOpenAi`)
 
-2. **Look up the node's popularity score** from `packages/frontend/editor-ui/data/node-popularity.json`. Use `Grep` to search for the node ID in that file. The popularity score is a log-scale value between 0 and 1. Use these thresholds to classify:
+2. **Look up the node's popularity score** — first check for a Flaky assessment (see below), otherwise use the popularity file:
+
+   **Primary: Check for Flaky's assessment in Linear comments.** Flaky is an auto-triage agent that posts issue analysis as a comment. Search the comments already fetched in Step 1 for a comment from a user named "Flaky" (or containing "Flaky" in the author name) — do not re-fetch comments. If found, extract the popularity score and level directly from Flaky's analysis and use those values.
+
+   **Fallback (if no Flaky comment exists):** Look up the node's popularity score from `packages/frontend/editor-ui/data/node-popularity.json`. Use `Grep` to search for the node ID in that file. The popularity score is a log-scale value between 0 and 1. Use these thresholds to classify:
 
    | Score | Level | Description | Examples |
    |-------|-------|-------------|----------|
@@ -121,13 +143,15 @@ If the issue is node-specific:
    | 0.4–0.8 | **Medium** | Regularly used integrations | Slack (0.78), GitHub (0.64), Jira (0.65), MongoDB (0.63) |
    | < 0.4 | **Low** | Niche or rarely used nodes | Amqp (0.34), Wise (0.36), CraftMyPdf (0.33) |
 
-   Include the raw score and the level (high/medium/low) in the summary.
+   Include the raw score and the level (high/medium/low) in the summary, and note whether it came from Flaky or the popularity file.
 
-3. If the node is **not found** in the popularity file, note that it may be a community node or a very new/niche node.
+3. If the node is **not found** in the popularity file (and no Flaky comment exists), note that it may be a community node or a very new/niche node.
 
-### 6. Assess Effort/Complexity
+### 7. Assess Effort/Complexity
 
-After gathering all context, assess the effort required to fix/implement the issue. Use the following T-shirt sizes:
+**Primary: Check for Flaky's effort estimate in Linear comments.** Search the comments already fetched in Step 1 for a Flaky comment — do not re-fetch. If found, extract the effort/complexity estimate directly from it and use that as your assessment.
+
+**Fallback (if no Flaky comment exists):** After gathering all context, assess the effort required to fix/implement the issue. Use the following T-shirt sizes:
 
 | Size | Approximate effort |
 |------|--------------------|
@@ -145,9 +169,9 @@ To make this assessment, consider:
 - **Dependencies**: Are there external API changes, new packages, or cross-team coordination needed?
 - **Documentation**: Does this require docs updates, migration guides, or changelog entries?
 
-Provide the T-shirt size along with a brief justification explaining the key factors that drove the estimate.
+Provide the T-shirt size along with a brief justification explaining the key factors that drove the estimate. Note whether it came from Flaky or your own assessment.
 
-### 7. Present Summary
+### 8. Present Summary
 
 **Before presenting, verify you have completed:**
 - [ ] Downloaded and viewed ALL images in the description AND comments
