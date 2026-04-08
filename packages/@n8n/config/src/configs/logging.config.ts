@@ -39,6 +39,7 @@ export const LOG_SCOPES = [
 	'token-exchange',
 	'instance-ai',
 	'agents',
+	'instance-version-history',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

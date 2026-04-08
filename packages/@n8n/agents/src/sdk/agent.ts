@@ -6,7 +6,7 @@ import { fromSchema, type FromSchemaOptions } from './from-schema';
 import type { McpClient } from './mcp-client';
 import { Memory } from './memory';
 import { Telemetry } from './telemetry';
-import { Tool, wrapToolForApproval, APPROVAL_WRAPPED } from './tool';
+import { Tool, wrapToolForApproval } from './tool';
 import { AgentRuntime } from '../runtime/agent-runtime';
 import { AgentEventBus } from '../runtime/event-bus';
 import { createAgentToolResult } from '../runtime/tool-adapter';
@@ -549,7 +549,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 		// --- Tools ---
 		const toolSchemas: ToolSchema[] = this.tools.map((tool) => {
-			const wrappedForApproval = APPROVAL_WRAPPED in tool && Boolean(tool[APPROVAL_WRAPPED]);
 			return {
 				name: tool.name,
 				description: tool.description,
@@ -562,7 +561,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				suspendSchemaSource: null,
 				resumeSchemaSource: null,
 				toMessageSource: null,
-				requireApproval: wrappedForApproval,
+				requireApproval: tool.withDefaultApproval ?? false,
 				needsApprovalFnSource: null,
 				providerOptions: tool.providerOptions ?? null,
 				// Display fields — JSON Schema for UI rendering
@@ -570,8 +569,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				outputSchema: zodToJsonSchema(tool.outputSchema),
 				// UI badge indicators — for approval-wrapped tools, hasSuspend/hasResume
 				// reflect the approval mechanism, not user-declared suspend/resume
-				hasSuspend: !wrappedForApproval && Boolean(tool.suspendSchema),
-				hasResume: !wrappedForApproval && Boolean(tool.resumeSchema),
+				hasSuspend: Boolean(tool.suspendSchema),
+				hasResume: Boolean(tool.resumeSchema),
 				hasToMessage: Boolean(tool.toMessage),
 			};
 		});
@@ -696,6 +695,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		}));
 
 		// --- Structured output ---
+		// TODO: define structured output schema handling better
 		const structuredOutput = {
 			enabled: Boolean(this.outputSchema),
 			schemaSource: null as string | null,

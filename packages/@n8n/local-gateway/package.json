@@ -23,7 +23,7 @@
     "postinstall": "node node_modules/electron/install.js"
   },
   "dependencies": {
-    "@n8n/fs-proxy": "workspace:*",
+    "@n8n/computer-use": "workspace:*",
     "electron-store": "^8.2.0"
   },
   "devDependencies": {

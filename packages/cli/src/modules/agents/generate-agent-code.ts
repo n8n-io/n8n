@@ -1,4 +1,10 @@
-import type { AgentSchema, MemorySchema } from '@n8n/agents';
+import type {
+	AgentSchema,
+	MemorySchema,
+	EvalSchema,
+	GuardrailSchema,
+	ToolSchema,
+} from '@n8n/agents';
 import type prettier from 'prettier';
 
 // All supported memory backends should be declared here
@@ -21,7 +27,7 @@ function escapeTemplateLiteral(str: string): string {
 }
 
 function escapeSingleQuote(str: string): string {
-	return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+	return JSON.stringify(str).slice(1, -1).replace(/'/g, "\\'");
 }
 
 let prettierInstance: typeof prettier | undefined;
@@ -162,6 +168,110 @@ function buildMemoryChain(memory: MemorySchema): {
 }
 
 // ---------------------------------------------------------------------------
+// Section builders — each returns `.method(...)` chain fragments
+// ---------------------------------------------------------------------------
+
+function modelParts(model: AgentSchema['model']): string[] {
+	if (model.provider && model.name) {
+		return [`.model('${escapeSingleQuote(model.provider)}', '${escapeSingleQuote(model.name)}')`];
+	}
+	if (model.name) {
+		return [`.model('${escapeSingleQuote(model.name)}')`];
+	}
+	return [];
+}
+
+function toolPart(tool: ToolSchema): { part: string; usesWorkflowTool: boolean } {
+	if (!tool.editable) {
+		return {
+			part: `.tool(new WorkflowTool('${escapeSingleQuote(tool.name)}'))`,
+			usesWorkflowTool: true,
+		};
+	}
+	const parts = [`new Tool('${escapeSingleQuote(tool.name)}')`];
+	parts.push(`.description('${escapeSingleQuote(tool.description)}')`);
+	if (tool.inputSchemaSource) parts.push(`.input(${tool.inputSchemaSource})`);
+	if (tool.outputSchemaSource) parts.push(`.output(${tool.outputSchemaSource})`);
+	if (tool.suspendSchemaSource) parts.push(`.suspend(${tool.suspendSchemaSource})`);
+	if (tool.resumeSchemaSource) parts.push(`.resume(${tool.resumeSchemaSource})`);
+	if (tool.handlerSource) parts.push(`.handler(${tool.handlerSource})`);
+	if (tool.toMessageSource) parts.push(`.toMessage(${tool.toMessageSource})`);
+	if (tool.requireApproval) parts.push('.requireApproval()');
+	if (tool.needsApprovalFnSource) parts.push(`.needsApprovalFn(${tool.needsApprovalFnSource})`);
+	return { part: `.tool(${parts.join('')})`, usesWorkflowTool: false };
+}
+
+function evalPart(ev: EvalSchema): string {
+	const parts = [`new Eval('${escapeSingleQuote(ev.name)}')`];
+	if (ev.description) parts.push(`.description('${escapeSingleQuote(ev.description)}')`);
+	if (ev.modelId) parts.push(`.model('${escapeSingleQuote(ev.modelId)}')`);
+	if (ev.credentialName) parts.push(`.credential('${escapeSingleQuote(ev.credentialName)}')`);
+	if (ev.handlerSource) {
+		parts.push(ev.type === 'check' ? `.check(${ev.handlerSource})` : `.judge(${ev.handlerSource})`);
+	}
+	return `.eval(${parts.join('')})`;
+}
+
+function guardrailPart(g: GuardrailSchema): string {
+	const method = g.position === 'input' ? 'inputGuardrail' : 'outputGuardrail';
+	return `.${method}(${g.source})`;
+}
+
+function memoryPart(memory: MemorySchema): string {
+	const mc = buildMemoryChain(memory);
+	return `.memory(${mc.chain})`;
+}
+
+function thinkingPart(thinking: NonNullable<AgentSchema['config']['thinking']>): string {
+	const props: string[] = [];
+	if (thinking.budgetTokens !== undefined) props.push(`budgetTokens: ${thinking.budgetTokens}`);
+	if (thinking.reasoningEffort) props.push(`reasoningEffort: '${thinking.reasoningEffort}'`);
+	if (props.length > 0) {
+		return `.thinking('${thinking.provider}', { ${props.join(', ')} })`;
+	}
+	return `.thinking('${thinking.provider}')`;
+}
+
+function buildImports(schema: AgentSchema, needsWorkflowTool: boolean): string {
+	const agentImports = new Set<string>(['Agent']);
+	const agentUtilsImports = new Set<string>();
+	if (schema.tools.some((t) => t.editable)) agentImports.add('Tool');
+	if (needsWorkflowTool) agentUtilsImports.add('WorkflowTool');
+	if (schema.memory) agentImports.add('Memory');
+
+	if (schema.memory?.name) {
+		const memoryImport = MemoryImportMap[schema.memory.name];
+		if (!memoryImport) {
+			throw new Error(`Unknown memory name: ${schema.memory.name}`);
+		}
+		if (memoryImport !== 'no-import') {
+			if (memoryImport.source === '@n8n/agents') {
+				agentImports.add(memoryImport.importName);
+			} else if (memoryImport.source === '@n8n/agents-utils') {
+				agentUtilsImports.add(memoryImport.importName);
+			}
+		}
+	}
+
+	if (schema.mcp && schema.mcp.length > 0) agentImports.add('McpClient');
+	if (schema.evaluations.length > 0) agentImports.add('Eval');
+
+	const toolsNeedZod = schema.tools.some(
+		(t) =>
+			(t.inputSchemaSource?.includes('z.') ?? false) ||
+			(t.outputSchemaSource?.includes('z.') ?? false),
+	);
+	const structuredOutputNeedsZod =
+		schema.config.structuredOutput.schemaSource?.includes('z.') ?? false;
+
+	let imports = `import { ${Array.from(agentImports).sort().join(', ')} } from '@n8n/agents';`;
+	if (agentUtilsImports.size > 0)
+		imports += `\nimport { ${Array.from(agentUtilsImports).sort().join(', ')} } from '@n8n/agents-utils';`;
+	if (toolsNeedZod || structuredOutputNeedsZod) imports += "\nimport { z } from 'zod';";
+	return imports;
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -198,72 +308,38 @@ export async function generateAgentCode(
 	// destructure it above. Add it to the destructure and handle it below.
 	assertAllHandled(rest);
 
+	const { thinking, toolCallConcurrency, requireToolApproval, structuredOutput, ...configRest } =
+		config;
+	assertAllHandled(configRest);
+
 	// No manual indentation — Prettier formats at the end.
 	const parts: string[] = [];
 	let needsWorkflowTool = false;
+
 	parts.push(`export default new Agent('${escapeSingleQuote(agentName)}')`);
+	parts.push(...modelParts(model));
 
-	if (model.provider && model.name) {
-		parts.push(
-			`.model('${escapeSingleQuote(model.provider)}', '${escapeSingleQuote(model.name)}')`,
-		);
-	} else if (model.name) {
-		parts.push(`.model('${escapeSingleQuote(model.name)}')`);
-	}
-
-	if (credential) {
-		parts.push(`.credential('${escapeSingleQuote(credential)}')`);
-	}
-
-	if (instructions) {
-		parts.push(`.instructions(\`${escapeTemplateLiteral(instructions)}\`)`);
-	}
+	if (credential) parts.push(`.credential('${escapeSingleQuote(credential)}')`);
+	if (instructions) parts.push(`.instructions(\`${escapeTemplateLiteral(instructions)}\`)`);
 
 	for (const tool of tools) {
-		if (!tool.editable) {
-			needsWorkflowTool = true;
-			parts.push(`.tool(new WorkflowTool('${escapeSingleQuote(tool.name)}'))`);
-			continue;
-		}
-		const toolParts = [`new Tool('${escapeSingleQuote(tool.name)}')`];
-		toolParts.push(`.description('${escapeSingleQuote(tool.description)}')`);
-		if (tool.inputSchemaSource) toolParts.push(`.input(${tool.inputSchemaSource})`);
-		if (tool.outputSchemaSource) toolParts.push(`.output(${tool.outputSchemaSource})`);
-		if (tool.suspendSchemaSource) toolParts.push(`.suspend(${tool.suspendSchemaSource})`);
-		if (tool.resumeSchemaSource) toolParts.push(`.resume(${tool.resumeSchemaSource})`);
-		if (tool.handlerSource) toolParts.push(`.handler(${tool.handlerSource})`);
-		if (tool.toMessageSource) toolParts.push(`.toMessage(${tool.toMessageSource})`);
-		if (tool.requireApproval) toolParts.push('.requireApproval()');
-		if (tool.needsApprovalFnSource)
-			toolParts.push(`.needsApprovalFn(${tool.needsApprovalFnSource})`);
-		parts.push(`.tool(${toolParts.join('')})`);
+		const { part, usesWorkflowTool } = toolPart(tool);
+		if (usesWorkflowTool) needsWorkflowTool = true;
+		parts.push(part);
 	}
 
 	for (const pt of providerTools) {
 		parts.push(`.providerTool(${pt.source})`);
 	}
 
-	if (memory) {
-		const mc = buildMemoryChain(memory);
-		parts.push(`.memory(${mc.chain})`);
-	}
+	if (memory) parts.push(memoryPart(memory));
 
 	for (const ev of evaluations) {
-		const evalParts = [`new Eval('${escapeSingleQuote(ev.name)}')`];
-		if (ev.description) evalParts.push(`.description('${escapeSingleQuote(ev.description)}')`);
-		if (ev.modelId) evalParts.push(`.model('${escapeSingleQuote(ev.modelId)}')`);
-		if (ev.credentialName) evalParts.push(`.credential('${escapeSingleQuote(ev.credentialName)}')`);
-		if (ev.handlerSource) {
-			evalParts.push(
-				ev.type === 'check' ? `.check(${ev.handlerSource})` : `.judge(${ev.handlerSource})`,
-			);
-		}
-		parts.push(`.eval(${evalParts.join('')})`);
+		parts.push(evalPart(ev));
 	}
 
 	for (const g of guardrails) {
-		const method = g.position === 'input' ? 'inputGuardrail' : 'outputGuardrail';
-		parts.push(`.${method}(${g.source})`);
+		parts.push(guardrailPart(g));
 	}
 
 	if (mcp && mcp.length > 0) {
@@ -271,82 +347,57 @@ export async function generateAgentCode(
 		parts.push(`.mcp(new McpClient([${configs}]))`);
 	}
 
-	if (telemetry) {
-		parts.push(`.telemetry(${telemetry.source})`);
-	}
-
-	if (checkpoint) {
-		parts.push(`.checkpoint('${escapeSingleQuote(checkpoint)}')`);
-	}
-
-	const { thinking, toolCallConcurrency, requireToolApproval, structuredOutput, ...configRest } =
-		config;
-	assertAllHandled(configRest);
-
-	if (thinking) {
-		const props: string[] = [];
-		if (thinking.budgetTokens !== undefined) props.push(`budgetTokens: ${thinking.budgetTokens}`);
-		if (thinking.reasoningEffort) props.push(`reasoningEffort: '${thinking.reasoningEffort}'`);
-		if (props.length > 0) {
-			parts.push(`.thinking('${thinking.provider}', { ${props.join(', ')} })`);
-		} else {
-			parts.push(`.thinking('${thinking.provider}')`);
-		}
-	}
-
-	if (toolCallConcurrency) {
-		parts.push(`.toolCallConcurrency(${toolCallConcurrency})`);
-	}
-
-	if (requireToolApproval) {
-		parts.push('.requireToolApproval()');
-	}
-
+	if (telemetry) parts.push(`.telemetry(${telemetry.source})`);
+	if (checkpoint) parts.push(`.checkpoint('${escapeSingleQuote(checkpoint)}')`);
+	if (thinking) parts.push(thinkingPart(thinking));
+	if (toolCallConcurrency) parts.push(`.toolCallConcurrency(${toolCallConcurrency})`);
+	if (requireToolApproval) parts.push('.requireToolApproval()');
 	if (structuredOutput.enabled && structuredOutput.schemaSource) {
 		parts.push(`.structuredOutput(${structuredOutput.schemaSource})`);
 	}
 
-	// Build imports
-	const agentImports = new Set<string>(['Agent']);
-	const agentsUtilsImports: Set<string> = new Set();
-	if (tools.some((t) => t.editable)) agentImports.add('Tool');
-	if (memory) agentImports.add('Memory');
+	// // Build imports
+	// const agentImports = new Set<string>(['Agent']);
+	// const agentsUtilsImports: Set<string> = new Set();
+	// if (tools.some((t) => t.editable)) agentImports.add('Tool');
+	// if (memory) agentImports.add('Memory');
 
-	if (memory?.name) {
-		const memoryImport = MemoryImportMap[memory.name];
-		if (!memoryImport) {
-			throw new Error(`Unknown memory name: ${memory.name}`);
-		}
-		if (memoryImport !== 'no-import') {
-			if (memoryImport.source === '@n8n/agents') {
-				agentImports.add(memoryImport.importName);
-			} else if (memoryImport.source === '@n8n/agents-utils') {
-				agentsUtilsImports.add(memoryImport.importName);
-			}
-		}
-	}
-	if (mcp && mcp.length > 0) agentImports.add('McpClient');
-	if (evaluations.length > 0) agentImports.add('Eval');
+	// if (memory?.name) {
+	// 	const memoryImport = MemoryImportMap[memory.name];
+	// 	if (!memoryImport) {
+	// 		throw new Error(`Unknown memory name: ${memory.name}`);
+	// 	}
+	// 	if (memoryImport !== 'no-import') {
+	// 		if (memoryImport.source === '@n8n/agents') {
+	// 			agentImports.add(memoryImport.importName);
+	// 		} else if (memoryImport.source === '@n8n/agents-utils') {
+	// 			agentsUtilsImports.add(memoryImport.importName);
+	// 		}
+	// 	}
+	// }
+	// if (mcp && mcp.length > 0) agentImports.add('McpClient');
+	// if (evaluations.length > 0) agentImports.add('Eval');
 
-	const toolsNeedZod = tools.some((t) => {
-		const inputHasZod = t.inputSchemaSource?.includes('z.') === true;
-		const outputHasZod = t.outputSchemaSource?.includes('z.') === true;
-		return inputHasZod || outputHasZod;
-	});
-	const structuredOutputNeedsZod = structuredOutput.schemaSource?.includes('z.') ?? false;
-	const structuredWorkingMemoryNeedsZod =
-		memory?.workingMemory?.type === 'structured' &&
-		!!(memory.workingMemory as { schemaSource?: string | null }).schemaSource;
-	const needsZod = toolsNeedZod || structuredOutputNeedsZod || structuredWorkingMemoryNeedsZod;
+	// const toolsNeedZod = tools.some((t) => {
+	// 	const inputHasZod = t.inputSchemaSource?.includes('z.') === true;
+	// 	const outputHasZod = t.outputSchemaSource?.includes('z.') === true;
+	// 	return inputHasZod || outputHasZod;
+	// });
+	// const structuredOutputNeedsZod = structuredOutput.schemaSource?.includes('z.') ?? false;
+	// const structuredWorkingMemoryNeedsZod =
+	// 	memory?.workingMemory?.type === 'structured' &&
+	// 	!!(memory.workingMemory as { schemaSource?: string | null }).schemaSource;
+	// const needsZod = toolsNeedZod || structuredOutputNeedsZod || structuredWorkingMemoryNeedsZod;
 
-	let imports = `import { ${Array.from(agentImports).sort().join(', ')} } from '@n8n/agents';`;
+	// let imports = `import { ${Array.from(agentImports).sort().join(', ')} } from '@n8n/agents';`;
 
-	if (needsWorkflowTool) agentsUtilsImports.add('WorkflowTool');
-	if (agentsUtilsImports.size > 0) {
-		imports += `\nimport { ${Array.from(agentsUtilsImports).sort().join(', ')} } from '@n8n/agents-utils';`;
-	}
-	if (needsZod) imports += "\nimport { z } from 'zod';";
+	// if (needsWorkflowTool) agentsUtilsImports.add('WorkflowTool');
+	// if (agentsUtilsImports.size > 0) {
+	// 	imports += `\nimport { ${Array.from(agentsUtilsImports).sort().join(', ')} } from '@n8n/agents-utils';`;
+	// }
+	// if (needsZod) imports += "\nimport { z } from 'zod';";
 
+	const imports = buildImports(schema, needsWorkflowTool);
 	const raw = `${imports}\n\n${parts.join('')};\n`;
 	return options?.formatCode ? await formatCode(raw) : raw;
 }

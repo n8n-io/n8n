@@ -47,7 +47,7 @@ function formatDate(dateString: string): string {
 	border-radius: var(--radius--lg);
 	padding: var(--spacing--lg);
 	cursor: pointer;
-	transition: border-color 0.2s ease;
+	transition: border-color var(--duration--snappy) var(--easing--ease-out);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
