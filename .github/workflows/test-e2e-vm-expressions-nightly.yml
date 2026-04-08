@@ -30,4 +30,4 @@ jobs:
           status: ${{ job.status }}
           channel: '#project-secure-expression-evaluation'
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
-          message: 'VM expression E2E nightly failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+          message: "VM expression E2E nightly failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
