@@ -6,7 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError, UserError, sleep } from 'n8n-workflow';
 
-import { REGION_BASE_HOSTS } from '../../../llms/LmChatAlibabaCloud/alibaba-cloud-base-url';
+import { getBaseHost } from '../../../llms/LmChatAlibabaCloud/alibaba-cloud-base-url';
 
 type RequestParameters = {
 	headers?: IDataObject;
@@ -17,16 +17,10 @@ type RequestParameters = {
 
 export function getBaseUrl(credentials: IDataObject): string {
 	const region = (credentials.region as string) || 'ap-southeast-1';
-
-	if (region === 'eu-central-1') {
-		const workspaceId = credentials.workspaceId as string;
-		if (!workspaceId) {
-			throw new UserError('Workspace ID is required for the Germany (Frankfurt) region');
-		}
-		return `https://${workspaceId}.eu-central-1.maas.aliyuncs.com`;
+	if (region === 'eu-central-1' && !credentials.workspaceId) {
+		throw new UserError('Workspace ID is required for the Germany (Frankfurt) region');
 	}
-
-	return REGION_BASE_HOSTS[region] ?? REGION_BASE_HOSTS['ap-southeast-1'];
+	return getBaseHost(region, credentials.workspaceId as string);
 }
 
 const TERMINAL_STATUSES = ['SUCCEEDED', 'FAILED', 'CANCELED'];
