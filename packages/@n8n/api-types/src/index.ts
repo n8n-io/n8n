@@ -303,6 +303,7 @@ export type {
 	ToolCallId,
 	InstanceAiEventType,
 	InstanceAiRunStatus,
+	InstanceAiConfirmation,
 	InstanceAiConfirmationSeverity,
 	InstanceAiCredentialRequest,
 	InstanceAiAgentStatus,

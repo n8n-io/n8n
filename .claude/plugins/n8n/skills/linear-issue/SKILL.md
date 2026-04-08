@@ -131,7 +131,11 @@ If the issue is node-specific:
    - Tool variants: `n8n-nodes-base.<name>Tool` (e.g. "Google Sheets Tool" → `n8n-nodes-base.googleSheetsTool`)
    - LangChain/AI nodes: `@n8n/n8n-nodes-langchain.<camelCaseName>` (e.g. "OpenAI Chat Model" → `@n8n/n8n-nodes-langchain.lmChatOpenAi`)
 
-2. **Look up the node's popularity score** from `packages/frontend/editor-ui/data/node-popularity.json`. Use `Grep` to search for the node ID in that file. The popularity score is a log-scale value between 0 and 1. Use these thresholds to classify:
+2. **Look up the node's popularity score** — first check for a Flaky assessment (see below), otherwise use the popularity file:
+
+   **Primary: Check for Flaky's assessment in Linear comments.** Flaky is an auto-triage agent that posts issue analysis as a comment. Search the comments already fetched in Step 1 for a comment from a user named "Flaky" (or containing "Flaky" in the author name) — do not re-fetch comments. If found, extract the popularity score and level directly from Flaky's analysis and use those values.
+
+   **Fallback (if no Flaky comment exists):** Look up the node's popularity score from `packages/frontend/editor-ui/data/node-popularity.json`. Use `Grep` to search for the node ID in that file. The popularity score is a log-scale value between 0 and 1. Use these thresholds to classify:
 
    | Score | Level | Description | Examples |
    |-------|-------|-------------|----------|
@@ -139,13 +143,15 @@ If the issue is node-specific:
    | 0.4–0.8 | **Medium** | Regularly used integrations | Slack (0.78), GitHub (0.64), Jira (0.65), MongoDB (0.63) |
    | < 0.4 | **Low** | Niche or rarely used nodes | Amqp (0.34), Wise (0.36), CraftMyPdf (0.33) |
 
-   Include the raw score and the level (high/medium/low) in the summary.
+   Include the raw score and the level (high/medium/low) in the summary, and note whether it came from Flaky or the popularity file.
 
-3. If the node is **not found** in the popularity file, note that it may be a community node or a very new/niche node.
+3. If the node is **not found** in the popularity file (and no Flaky comment exists), note that it may be a community node or a very new/niche node.
 
 ### 7. Assess Effort/Complexity
 
-After gathering all context, assess the effort required to fix/implement the issue. Use the following T-shirt sizes:
+**Primary: Check for Flaky's effort estimate in Linear comments.** Search the comments already fetched in Step 1 for a Flaky comment — do not re-fetch. If found, extract the effort/complexity estimate directly from it and use that as your assessment.
+
+**Fallback (if no Flaky comment exists):** After gathering all context, assess the effort required to fix/implement the issue. Use the following T-shirt sizes:
 
 | Size | Approximate effort |
 |------|--------------------|
@@ -163,7 +169,7 @@ To make this assessment, consider:
 - **Dependencies**: Are there external API changes, new packages, or cross-team coordination needed?
 - **Documentation**: Does this require docs updates, migration guides, or changelog entries?
 
-Provide the T-shirt size along with a brief justification explaining the key factors that drove the estimate.
+Provide the T-shirt size along with a brief justification explaining the key factors that drove the estimate. Note whether it came from Flaky or your own assessment.
 
 ### 8. Present Summary
 

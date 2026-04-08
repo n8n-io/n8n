@@ -1068,6 +1068,58 @@ importers:
         specifier: 'catalog:'
         version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
+  packages/@n8n/computer-use:
+    dependencies:
+      '@anthropic-ai/sandbox-runtime':
+        specifier: ^0.0.42
+        version: 0.0.42
+      '@inquirer/prompts':
+        specifier: ^8.3.2
+        version: 8.3.2(@types/node@20.19.21)
+      '@jitsi/robotjs':
+        specifier: ^0.6.21
+        version: 0.6.21
+      '@modelcontextprotocol/sdk':
+        specifier: 1.26.0
+        version: 1.26.0(zod@3.25.67)
+      '@n8n/mcp-browser':
+        specifier: workspace:*
+        version: link:../mcp-browser
+      '@vscode/ripgrep':
+        specifier: ^1.17.1
+        version: 1.17.1
+      eventsource:
+        specifier: ^3.0.6
+        version: 3.0.6
+      node-screenshots:
+        specifier: ^0.2.8
+        version: 0.2.8
+      picocolors:
+        specifier: 'catalog:'
+        version: 1.0.1
+      sharp:
+        specifier: npm:empty-npm-package@1.0.0
+        version: empty-npm-package@1.0.0
+      yargs-parser:
+        specifier: 21.1.1
+        version: 21.1.1
+      zod:
+        specifier: 3.25.67
+        version: 3.25.67
+      zod-to-json-schema:
+        specifier: 'catalog:'
+        version: 3.23.3(zod@3.25.67)
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/node':
+        specifier: ^20.17.50
+        version: 20.19.21
+      '@types/yargs-parser':
+        specifier: 21.0.0
+        version: 21.0.0
+
   packages/@n8n/config:
     dependencies:
       '@n8n/di':
@@ -1370,6 +1422,9 @@ importers:
 
   packages/@n8n/expression-runtime:
     dependencies:
+      '@n8n/errors':
+        specifier: workspace:*
+        version: link:../errors
       '@n8n/tournament':
         specifier: 1.0.6
         version: 1.0.6
@@ -1459,58 +1514,6 @@ importers:
       zod-to-json-schema:
         specifier: 'catalog:'
         version: 3.23.3(zod@3.25.67)
-
-  packages/@n8n/computer-use:
-    dependencies:
-      '@anthropic-ai/sandbox-runtime':
-        specifier: ^0.0.42
-        version: 0.0.42
-      '@inquirer/prompts':
-        specifier: ^8.3.2
-        version: 8.3.2(@types/node@20.19.21)
-      '@jitsi/robotjs':
-        specifier: ^0.6.21
-        version: 0.6.21
-      '@modelcontextprotocol/sdk':
-        specifier: 1.26.0
-        version: 1.26.0(zod@3.25.67)
-      '@n8n/mcp-browser':
-        specifier: workspace:*
-        version: link:../mcp-browser
-      '@vscode/ripgrep':
-        specifier: ^1.17.1
-        version: 1.17.1
-      eventsource:
-        specifier: ^3.0.6
-        version: 3.0.6
-      node-screenshots:
-        specifier: ^0.2.8
-        version: 0.2.8
-      picocolors:
-        specifier: 'catalog:'
-        version: 1.0.1
-      sharp:
-        specifier: npm:empty-npm-package@1.0.0
-        version: empty-npm-package@1.0.0
-      yargs-parser:
-        specifier: 21.1.1
-        version: 21.1.1
-      zod:
-        specifier: 3.25.67
-        version: 3.25.67
-      zod-to-json-schema:
-        specifier: 'catalog:'
-        version: 3.23.3(zod@3.25.67)
-    devDependencies:
-      '@n8n/typescript-config':
-        specifier: workspace:*
-        version: link:../typescript-config
-      '@types/node':
-        specifier: ^20.17.50
-        version: 20.19.21
-      '@types/yargs-parser':
-        specifier: 21.0.0
-        version: 21.0.0
 
   packages/@n8n/imap:
     dependencies:

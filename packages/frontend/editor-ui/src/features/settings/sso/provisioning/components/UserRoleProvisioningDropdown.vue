@@ -64,52 +64,79 @@ const userRoleProvisioningDescriptions = computed<UserRoleProvisioningDescriptio
 });
 </script>
 <template>
-	<div :class="$style.group">
-		<label>{{ i18n.baseText('settings.sso.settings.userRoleProvisioning.label') }}</label>
-		<N8nSelect
-			:model-value="value"
-			:disabled="!canManageUserProvisioning"
-			data-test-id="oidc-user-role-provisioning"
-			:class="$style.userRoleProvisioningSelect"
-			@update:model-value="handleUserRoleProvisioningChange"
-		>
-			<N8nOption
-				v-for="option in userRoleProvisioningDescriptions"
-				:key="option.value"
-				:label="option.label"
-				data-test-id="oidc-user-role-provisioning-option"
-				:value="option.value"
-			/>
-		</N8nSelect>
-		<small
-			>{{ i18n.baseText('settings.sso.settings.userRoleProvisioning.help') }}
-			<a :href="`https://docs.n8n.io/user-management/${authProtocol}/setup/`" target="_blank">{{
-				i18n.baseText('settings.sso.settings.userRoleProvisioning.help.linkText')
-			}}</a></small
-		>
+	<div :class="[$style.settingsItem, { [$style.noBorder]: value !== 'expression_based' }]">
+		<div :class="$style.labelColumn">
+			<label>{{ i18n.baseText('settings.sso.settings.userRoleProvisioning.label') }}</label>
+			<small
+				>{{ i18n.baseText('settings.sso.settings.userRoleProvisioning.help') }}
+				<a :href="`https://docs.n8n.io/user-management/${authProtocol}/setup/`" target="_blank">{{
+					i18n.baseText('settings.sso.settings.userRoleProvisioning.help.linkText')
+				}}</a>
+			</small>
+		</div>
+		<div :class="$style.controlColumn">
+			<N8nSelect
+				:model-value="value"
+				:disabled="!canManageUserProvisioning"
+				data-test-id="oidc-user-role-provisioning"
+				@update:model-value="handleUserRoleProvisioningChange"
+			>
+				<N8nOption
+					v-for="option in userRoleProvisioningDescriptions"
+					:key="option.value"
+					:label="option.label"
+					data-test-id="oidc-user-role-provisioning-option"
+					:value="option.value"
+				/>
+			</N8nSelect>
+		</div>
 	</div>
 </template>
 <style lang="scss" module>
-.group {
-	padding: var(--spacing--xl) 0 0;
+.settingsItem {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	min-height: 64px;
+	padding: var(--spacing--xs) 0;
+	border-bottom: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
+}
 
-	> label {
-		display: inline-block;
+.labelColumn {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+	flex-shrink: 0;
+	width: 320px;
+
+	label {
 		font-size: var(--font-size--sm);
-		font-weight: var(--font-weight--medium);
-		padding: 0 0 var(--spacing--2xs);
+		font-weight: var(--font-weight--bold);
+		color: var(--color--text--shade-1);
 	}
 
 	small {
-		display: block;
-		padding: var(--spacing--2xs) 0 0;
 		font-size: var(--font-size--2xs);
-		color: var(--color--text);
+		color: var(--color--text--tint-1);
+
+		a {
+			color: var(--color--primary);
+		}
 	}
 }
 
-.userRoleProvisioningSelect {
-	display: block;
-	max-width: 400px;
+.controlColumn {
+	width: 250px;
+	flex-shrink: 0;
+	display: flex;
+	justify-content: flex-end;
+
+	> :deep(*) {
+		width: 100%;
+	}
+}
+
+.noBorder {
+	border-bottom: none;
 }
 </style>

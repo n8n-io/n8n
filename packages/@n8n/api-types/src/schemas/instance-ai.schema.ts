@@ -279,6 +279,10 @@ export type GatewayConfirmationRequiredPayload = z.infer<
 
 export const confirmationRequestPayloadSchema = z.object({
 	requestId: z.string(),
+	inputThreadId: z
+		.string()
+		.optional()
+		.describe('Unique ID linking input-related telemetry events in a confirmation session'),
 	toolCallId: z.string().describe('Correlates to the tool-call that needs approval'),
 	toolName: z.string(),
 	args: z.record(z.unknown()),
@@ -596,6 +600,29 @@ export interface InstanceAiConfirmResponse {
 // Frontend store types (shared so both sides agree on structure)
 // ---------------------------------------------------------------------------
 
+export interface InstanceAiConfirmation {
+	requestId: string;
+	inputThreadId?: string;
+	severity: InstanceAiConfirmationSeverity;
+	message: string;
+	credentialRequests?: InstanceAiCredentialRequest[];
+	projectId?: string;
+	inputType?: 'approval' | 'text' | 'questions' | 'plan-review' | 'resource-decision';
+	domainAccess?: DomainAccessMeta;
+	credentialFlow?: InstanceAiCredentialFlow;
+	setupRequests?: InstanceAiWorkflowSetupNode[];
+	workflowId?: string;
+	questions?: Array<{
+		id: string;
+		question: string;
+		type: 'single' | 'multi' | 'text';
+		options?: string[];
+	}>;
+	introMessage?: string;
+	tasks?: TaskList;
+	resourceDecision?: GatewayConfirmationRequiredPayload;
+}
+
 export interface InstanceAiToolCallState {
 	toolCallId: string;
 	toolName: string;
@@ -604,27 +631,7 @@ export interface InstanceAiToolCallState {
 	error?: string;
 	isLoading: boolean;
 	renderHint?: 'tasks' | 'delegate' | 'builder' | 'data-table' | 'researcher' | 'default';
-	confirmation?: {
-		requestId: string;
-		severity: InstanceAiConfirmationSeverity;
-		message: string;
-		credentialRequests?: InstanceAiCredentialRequest[];
-		projectId?: string;
-		inputType?: 'approval' | 'text' | 'questions' | 'plan-review' | 'resource-decision';
-		domainAccess?: DomainAccessMeta;
-		credentialFlow?: InstanceAiCredentialFlow;
-		setupRequests?: InstanceAiWorkflowSetupNode[];
-		workflowId?: string;
-		questions?: Array<{
-			id: string;
-			question: string;
-			type: 'single' | 'multi' | 'text';
-			options?: string[];
-		}>;
-		introMessage?: string;
-		tasks?: TaskList;
-		resourceDecision?: GatewayConfirmationRequiredPayload;
-	};
+	confirmation?: InstanceAiConfirmation;
 	confirmationStatus?: 'pending' | 'approved' | 'denied';
 	startedAt?: string;
 	completedAt?: string;

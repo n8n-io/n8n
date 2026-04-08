@@ -37,6 +37,8 @@ const configs = {
 			'@n8n/community-nodes/node-class-description-icon-missing': 'error',
 			'@n8n/community-nodes/cred-class-field-icon-missing': 'error',
 			'@n8n/community-nodes/node-connection-type-literal': 'error',
+			'@n8n/community-nodes/missing-paired-item': 'error',
+			'@n8n/community-nodes/require-continue-on-fail': 'error',
 		},
 	},
 	recommendedWithoutN8nCloudSupport: {
@@ -60,6 +62,8 @@ const configs = {
 			'@n8n/community-nodes/node-class-description-icon-missing': 'error',
 			'@n8n/community-nodes/cred-class-field-icon-missing': 'error',
 			'@n8n/community-nodes/node-connection-type-literal': 'error',
+			'@n8n/community-nodes/missing-paired-item': 'error',
+			'@n8n/community-nodes/require-continue-on-fail': 'error',
 		},
 	},
 } satisfies Record<string, Linter.Config>;
