@@ -120,7 +120,10 @@ export function createToolsFromLocalMcpServer(server: LocalMcpServer): ToolsInpu
 			suspendSchema: gatewayConfirmationSuspendSchema,
 			resumeSchema: gatewayConfirmationResumeSchema,
 			execute: async (args: Record<string, unknown>, ctx) => {
-				const { resumeData, suspend } = ctx?.agent ?? {};
+				const resumeData = ctx?.agent?.resumeData as
+					| z.infer<typeof gatewayConfirmationResumeSchema>
+					| undefined;
+				const suspend = ctx?.agent?.suspend;
 
 				// Resume path: user has made a resource-access decision
 				if (resumeData !== undefined && resumeData !== null) {

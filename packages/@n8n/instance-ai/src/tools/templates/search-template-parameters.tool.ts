@@ -8,27 +8,29 @@ import {
 	formatNodeConfigurationExamples,
 } from '../utils/node-configuration.utils';
 
+export const searchTemplateParametersInputSchema = z.object({
+	search: z.string().optional().describe('Free-text search query for templates'),
+	category: z.enum(categories).optional().describe('Filter by template category'),
+	rows: z
+		.number()
+		.min(1)
+		.max(10)
+		.optional()
+		.describe('Number of templates to search (default: 5, max: 10)'),
+	nodeType: z
+		.string()
+		.optional()
+		.describe(
+			'Filter to show configurations for a specific node type only (e.g. "n8n-nodes-base.telegram")',
+		),
+});
+
 export function createSearchTemplateParametersTool() {
 	return createTool({
 		id: 'search-template-parameters',
 		description:
 			'Search n8n workflow templates and return node parameter configurations showing how specific nodes are typically set up. Use this to understand how nodes should be configured.',
-		inputSchema: z.object({
-			search: z.string().optional().describe('Free-text search query for templates'),
-			category: z.enum(categories).optional().describe('Filter by template category'),
-			rows: z
-				.number()
-				.min(1)
-				.max(10)
-				.optional()
-				.describe('Number of templates to search (default: 5, max: 10)'),
-			nodeType: z
-				.string()
-				.optional()
-				.describe(
-					'Filter to show configurations for a specific node type only (e.g. "n8n-nodes-base.telegram")',
-				),
-		}),
+		inputSchema: searchTemplateParametersInputSchema,
 		outputSchema: z.object({
 			configurations: z.record(
 				z.string(),
@@ -43,7 +45,12 @@ export function createSearchTemplateParametersTool() {
 			totalTemplatesSearched: z.number(),
 			formatted: z.string(),
 		}),
-		execute: async ({ search, category, rows, nodeType }) => {
+		execute: async ({
+			search,
+			category,
+			rows,
+			nodeType,
+		}: z.infer<typeof searchTemplateParametersInputSchema>) => {
 			const result = await fetchWorkflowsFromTemplates({ search, category, rows });
 
 			const allConfigurations = collectNodeConfigurationsFromWorkflows(result.workflows);

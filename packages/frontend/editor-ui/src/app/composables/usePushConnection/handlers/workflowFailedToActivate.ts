@@ -10,14 +10,14 @@ export async function workflowFailedToActivate(
 	_options: { workflowState: WorkflowState },
 ) {
 	const workflowsStore = useWorkflowsStore();
-	const documentStore = injectWorkflowDocumentStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	if (workflowsStore.workflowId !== data.workflowId) {
 		return;
 	}
 
 	workflowsStore.setWorkflowInactive(data.workflowId);
-	documentStore?.value?.setActiveState({ activeVersionId: null, activeVersion: null });
+	workflowDocumentStore?.value?.setActiveState({ activeVersionId: null, activeVersion: null });
 
 	const toast = useToast();
 	const i18n = useI18n();

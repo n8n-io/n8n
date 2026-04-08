@@ -28,6 +28,7 @@ export interface BuiltTool {
 	readonly description: string;
 	readonly suspendSchema?: ZodType;
 	readonly resumeSchema?: ZodType;
+	readonly withDefaultApproval?: boolean;
 	readonly toMessage?: (output: unknown) => AgentMessage | undefined;
 	/**
 	 * Transform the handler output before sending it to the LLM as a tool result.
@@ -57,9 +58,6 @@ export interface BuiltTool {
 	readonly providerOptions?: Record<string, JSONObject>;
 	/**
 	 * Arbitrary platform-specific metadata attached to the tool.
-	 * The @n8n/agents package treats this as opaque — consumers (e.g. the n8n
-	 * CLI) may store platform-specific marker data here (e.g. workflow tool
-	 * descriptors) without polluting the core tool interface with n8n concepts.
 	 */
 	readonly metadata?: Record<string, unknown>;
 	/**

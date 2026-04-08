@@ -29,6 +29,7 @@ const resolvedKey: ResolvedTrustedKey = {
 	algorithms: ['RS256'],
 	key: 'test-public-key',
 	issuer: 'https://issuer.example.com',
+	allowedRoles: ['global:member', 'global:admin'],
 };
 
 const mockUser = mock<User>({
@@ -76,7 +77,11 @@ describe('TokenExchangeService', () => {
 				'unique-jti-1',
 				new Date(validClaims.exp * 1000),
 			);
-			expect(identityResolutionService.resolve).toHaveBeenCalledWith(validClaims);
+			expect(identityResolutionService.resolve).toHaveBeenCalledWith(
+				validClaims,
+				resolvedKey.allowedRoles,
+				{ kid: resolvedKey.kid, issuer: resolvedKey.issuer },
+			);
 		});
 
 		it('should throw when token cannot be decoded', async () => {
@@ -104,6 +109,20 @@ describe('TokenExchangeService', () => {
 			trustedKeyStore.getByKid.mockResolvedValue(undefined);
 
 			await expect(service.embedLogin('unknown-kid-token')).rejects.toThrow(AuthError);
+		});
+
+		it('should throw when jwt.verify returns unexpected payload format', async () => {
+			jest.spyOn(jwt, 'decode').mockReturnValue({
+				header: { alg: 'RS256', kid: 'test-kid' },
+				payload: validClaims,
+				signature: 'sig',
+			} as unknown as ReturnType<typeof jwt.decode>);
+			jest
+				.spyOn(jwt, 'verify')
+				.mockReturnValue('string-payload' as unknown as ReturnType<typeof jwt.verify>);
+			trustedKeyStore.getByKid.mockResolvedValue(resolvedKey);
+
+			await expect(service.embedLogin('string-payload-token')).rejects.toThrow(AuthError);
 		});
 
 		it('should throw when JWT signature verification fails', async () => {
