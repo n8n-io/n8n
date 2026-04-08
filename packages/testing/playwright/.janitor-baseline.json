@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-04-03T08:35:50.142Z",
-	"totalViolations": 440,
+	"generated": "2026-04-08T09:41:27.477Z",
+	"totalViolations": 408,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -56,25 +56,7 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 46,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
 				"line": 94,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 102,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 106,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
@@ -92,265 +74,199 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 284,
+				"line": 314,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 292,
+				"line": 318,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 312,
+				"line": 322,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 316,
+				"line": 342,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 320,
+				"line": 346,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 328,
+				"line": 350,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 340,
+				"line": 354,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 344,
+				"line": 358,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 348,
+				"line": 364,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 352,
+				"line": 390,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 356,
+				"line": 421,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 362,
+				"line": 449,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 388,
+				"line": 453,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 419,
+				"line": 453,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 447,
+				"line": 457,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 451,
+				"line": 461,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 451,
+				"line": 479,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 455,
+				"line": 483,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 459,
+				"line": 483,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 477,
+				"line": 494,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 481,
+				"line": 503,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 481,
+				"line": 565,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 492,
+				"line": 610,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 501,
+				"line": 616,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 563,
+				"line": 640,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 569,
+				"line": 640,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 573,
+				"line": 644,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 608,
+				"line": 751,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 614,
+				"line": 796,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 638,
+				"line": 842,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 638,
+				"line": 846,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 642,
+				"line": 855,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 704,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 744,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 749,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 794,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 802,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 840,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 844,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 853,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 859,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 875,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 915,
-				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "4087a9cf20cb"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 919,
+				"line": 861,
 				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "4087a9cf20cb"
 			}
@@ -399,124 +315,6 @@
 				"line": 5,
 				"message": "EditFieldsNode: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
 				"hash": "7db586b8b01c"
-			}
-		],
-		"composables/NodeDetailsViewComposer.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 17,
-				"message": "Direct page locator call: this.n8n.page.getByTestId('rlc-item')",
-				"hash": "2aa5c72aea4e"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 36,
-				"message": "Direct page locator call: this.n8n.page.getByTestId('rlc-item')",
-				"hash": "2aa5c72aea4e"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 51,
-				"message": "Direct page locator call: this.n8n.page.getByTestId('radio-button-expression').nth(...",
-				"hash": "b87a959cb067"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 51,
-				"message": "Direct page locator call: this.n8n.page.getByTestId('radio-button-expression').nth(1)",
-				"hash": "95a193dcb92a"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 51,
-				"message": "Direct page locator call: this.n8n.page.getByTestId('radio-button-expression')",
-				"hash": "a68d91b4bb32"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 61,
-				"message": "Direct page locator call: this.n8n.page.getByTestId('rlc-item-add-resource').first()",
-				"hash": "d2a1326ce1f8"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 61,
-				"message": "Direct page locator call: this.n8n.page.getByTestId('rlc-item-add-resource')",
-				"hash": "aaaa8d866baf"
-			},
-			{
-				"rule": "no-page-in-flow",
-				"line": 17,
-				"message": "Direct page access in composable: this.n8n.page.getByTestId",
-				"hash": "d260f66f84ed"
-			},
-			{
-				"rule": "no-page-in-flow",
-				"line": 36,
-				"message": "Direct page access in composable: this.n8n.page.getByTestId",
-				"hash": "d260f66f84ed"
-			},
-			{
-				"rule": "no-page-in-flow",
-				"line": 51,
-				"message": "Direct page access in composable: this.n8n.page.getByTestId",
-				"hash": "d260f66f84ed"
-			},
-			{
-				"rule": "no-page-in-flow",
-				"line": 61,
-				"message": "Direct page access in composable: this.n8n.page.getByTestId",
-				"hash": "d260f66f84ed"
-			}
-		],
-		"composables/ProjectComposer.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 14,
-				"message": "Direct page locator call: this.n8n.page.getByTestId('universal-add').click()",
-				"hash": "6ba1346d8a87"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 14,
-				"message": "Direct page locator call: this.n8n.page.getByTestId('universal-add')",
-				"hash": "1eadb5dc33c6"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 15,
-				"message": "Direct page locator call: this.n8n.page.getByTestId('navigation-menu-item').filter(...",
-				"hash": "7c1b5b729b77"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 15,
-				"message": "Direct page locator call: this.n8n.page.getByTestId('navigation-menu-item').filter(...",
-				"hash": "7c1b5b729b77"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 15,
-				"message": "Direct page locator call: this.n8n.page.getByTestId('navigation-menu-item')",
-				"hash": "fdb046804b16"
-			},
-			{
-				"rule": "no-page-in-flow",
-				"line": 14,
-				"message": "Direct page access in composable: this.n8n.page.getByTestId",
-				"hash": "3fadd307e5b5"
-			},
-			{
-				"rule": "no-page-in-flow",
-				"line": 15,
-				"message": "Direct page access in composable: this.n8n.page.getByTestId",
-				"hash": "3fadd307e5b5"
-			},
-			{
-				"rule": "no-page-in-flow",
-				"line": 51,
-				"message": "Direct page access in composable: this.n8n.page.url",
-				"hash": "378ec8b3ce94"
 			}
 		],
 		"composables/WorkflowComposer.ts": [
@@ -2523,6 +2321,14 @@
 				"line": 47,
 				"message": "Direct page access in composable: this.n8n.page.waitForRequest",
 				"hash": "ff02b5de4505"
+			}
+		],
+		"composables/ProjectComposer.ts": [
+			{
+				"rule": "no-page-in-flow",
+				"line": 51,
+				"message": "Direct page access in composable: this.n8n.page.url",
+				"hash": "378ec8b3ce94"
 			}
 		],
 		"composables/TestEntryComposer.ts": [
