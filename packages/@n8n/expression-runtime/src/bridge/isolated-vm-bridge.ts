@@ -253,10 +253,15 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * Inject the E() error handler into the isolate context.
 	 *
 	 * Tournament wraps expressions with try-catch that calls E(error, this).
-	 * This handler:
-	 * - Re-throws security violations from __sanitize
-	 * - Swallows TypeErrors (failed attack attempts return undefined)
-	 * - Re-throws all other errors
+	 * This handler must match the legacy engine's behavior (set in
+	 * expression.ts via setErrorHandler):
+	 * - Re-throw ExpressionError / ExpressionExtensionError
+	 * - Re-throw security violations from __sanitize
+	 * - Swallow everything else (TypeErrors, generic Errors, etc.)
+	 *
+	 * Inside the isolate, errors from host callbacks arrive as sentinel
+	 * objects ({ __isError, name, message, ... }) rather than class instances,
+	 * so we match by name instead of instanceof.
 	 *
 	 * @private
 	 * @throws {Error} If context not initialized
@@ -273,11 +278,15 @@ export class IsolatedVmBridge implements RuntimeBridge {
 					if (error && error.message && error.message.includes('due to security concerns')) {
 						throw error;
 					}
-					// Swallow TypeErrors (failed attack attempts return undefined)
-					if (error instanceof TypeError) {
-						return undefined;
+					// Re-throw ExpressionError / ExpressionExtensionError to match
+					// the legacy handler in expression.ts. Errors from host callbacks
+					// arrive as sentinels (not class instances), so check by name.
+					var name = error && error.name;
+					if (name === 'ExpressionError' || name === 'ExpressionExtensionError') {
+						throw error;
 					}
-					throw error;
+					// Swallow everything else (TypeErrors, generic Errors, etc.)
+					return undefined;
 				};
 			}
 		`);

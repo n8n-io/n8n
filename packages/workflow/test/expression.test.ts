@@ -10,6 +10,7 @@ import { ExpressionReservedVariableError } from '../src/errors/expression-reserv
 import { ExpressionError } from '../src/errors/expression.error';
 import { Expression } from '../src/expression';
 import { extendSyntax } from '../src/extensions/expression-extension';
+import { createRunExecutionData } from '../src';
 import type { INodeExecutionData } from '../src/interfaces';
 import { Workflow } from '../src/workflow';
 import { WorkflowDataProxy } from '../src/workflow-data-proxy';
@@ -921,6 +922,109 @@ describe('Expression', () => {
 			);
 			expect(expression.resolveSimpleParameterValue(123, data, false)).toBe(123);
 			expect(expression.resolveSimpleParameterValue(true, data, false)).toBe(true);
+		});
+	});
+
+	describe('$() node reference through expression engine', () => {
+		const nodeTypes = Helpers.NodeTypes();
+
+		function createTestWorkflow(connected: boolean) {
+			return new Workflow({
+				id: 'test-dollar-ref',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'source-id',
+						name: 'Source',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'consumer-id',
+						name: 'Consumer',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [200, 0],
+						parameters: {},
+					},
+				],
+				connections: connected
+					? { Source: { main: [[{ node: 'Consumer', type: 'main' as any, index: 0 }]] } }
+					: {},
+				active: false,
+				nodeTypes,
+			});
+		}
+
+		const runExecutionData = createRunExecutionData({
+			resultData: {
+				runData: {
+					Source: [
+						{
+							startTime: 1,
+							executionTime: 1,
+							executionIndex: 0,
+							source: [],
+							data: {
+								main: [[{ json: { city: 'Prague' }, pairedItem: { item: 0 } }]],
+							},
+						},
+					],
+				},
+			},
+		});
+
+		it("should resolve $('Source').item.json.city", async () => {
+			const testWorkflow = createTestWorkflow(true);
+
+			await testWorkflow.expression.acquireIsolate();
+			try {
+				const result = testWorkflow.expression.getParameterValue(
+					"={{ $('Source').item.json.city }}",
+					runExecutionData,
+					0,
+					0,
+					'Consumer',
+					[{ json: { city: 'Prague' }, pairedItem: { item: 0 } }],
+					'manual',
+					{},
+					{
+						node: testWorkflow.getNode('Consumer')!,
+						data: {},
+						source: {
+							main: [{ previousNode: 'Source', previousNodeOutput: 0, previousNodeRun: 0 }],
+						},
+					},
+				);
+
+				expect(result).toBe('Prague');
+			} finally {
+				await testWorkflow.expression.releaseIsolate();
+			}
+		});
+
+		it('should throw ExpressionError when nodes are not connected', async () => {
+			const testWorkflow = createTestWorkflow(false);
+
+			await testWorkflow.expression.acquireIsolate();
+			try {
+				expect(() =>
+					testWorkflow.expression.getParameterValue(
+						"={{ $('Source').item.json.city }}",
+						runExecutionData,
+						0,
+						0,
+						'Consumer',
+						[{ json: {} }],
+						'manual',
+						{},
+					),
+				).toThrow(ExpressionError);
+			} finally {
+				await testWorkflow.expression.releaseIsolate();
+			}
 		});
 	});
 
