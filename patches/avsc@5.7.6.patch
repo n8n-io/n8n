@@ -1,0 +1,14 @@
+diff --git a/lib/types.js b/lib/types.js
+index 8070de0a475147d27d783320bd4cea4e3e9a0b2b..a52b71842390f352a46202125f698430e5de3242 100644
+--- a/lib/types.js
++++ b/lib/types.js
+@@ -19,7 +19,8 @@ var utils = require('./utils'),
+     util = require('util');
+
+ var Buffer = buffer.Buffer;
+-var SlowBuffer = buffer.SlowBuffer;
++// buffer.SlowBuffer was removed in Node.js 22+; fall back to Buffer.allocUnsafeSlow
++var SlowBuffer = buffer.SlowBuffer || function SlowBuffer(size) { return Buffer.allocUnsafeSlow(size); };
+
+ // Convenience imports.
+ var Tap = utils.Tap;
