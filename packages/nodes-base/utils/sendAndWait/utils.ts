@@ -334,6 +334,21 @@ const getFormResponseCustomizations = (context: IWebhookFunctions) => {
 	};
 };
 
+// Block requests from Microsoft Preview Service to prevent accidental
+// approval/disapproval when sending links in Teams
+const isMicrosoftPreviewService = (userAgent?: string) => {
+	// The request that the Preview Service makes when the message is sent in
+	// Teams does not have a user-agent header
+	if (!userAgent) {
+		return true;
+	}
+
+	userAgent = userAgent.toLowerCase();
+	// The request that the Preview Service makes when the link is pasted in
+	// Teams does have a user-agent header that can be used to identify it
+	return ['teams', 'skype', 'preview'].some((str) => userAgent.includes(str));
+};
+
 export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 	const method = this.getRequestObject().method;
 	const res = this.getResponseObject();
@@ -344,7 +359,10 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 		| 'freeText'
 		| 'customForm';
 
-	if (responseType === 'approval' && isbot(req.headers['user-agent'])) {
+	if (
+		responseType === 'approval' &&
+		(isbot(req.headers['user-agent']) || isMicrosoftPreviewService(req.headers['user-agent']))
+	) {
 		res.send('');
 		return { noWebhookResponse: true };
 	}

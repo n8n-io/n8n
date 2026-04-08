@@ -5,9 +5,10 @@ import type {
 	INodeTypeBaseDescription,
 } from 'n8n-workflow';
 
+import { sendAndWaitWebhook } from '@utils/sendAndWait/utils';
+
 import { router } from './actions/router';
 import { versionDescription } from './actions/versionDescription';
-import { webhook } from './actions/webhook';
 import { listSearch } from './methods';
 
 export class MicrosoftTeamsV2 implements INodeType {
@@ -23,7 +24,7 @@ export class MicrosoftTeamsV2 implements INodeType {
 
 	methods = { listSearch };
 
-	webhook = webhook;
+	webhook = sendAndWaitWebhook;
 
 	async execute(this: IExecuteFunctions) {
 		return await router.call(this);
