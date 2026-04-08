@@ -85,7 +85,7 @@ export async function fromSchema(
 		agent.instructions(schema.instructions);
 	}
 
-	await applyTools(agent, schema.tools, handlerExecutor);
+	await applyTools(agent, schema.tools, handlerExecutor, options.resolveTool);
 	await applyProviderTools(agent, schema.providerTools, handlerExecutor);
 	applyConfig(agent, schema.config);
 	applyMemory(agent, schema);
@@ -117,6 +117,7 @@ async function applyTools(
 	agent: AgentBuilder,
 	tools: ToolSchema[],
 	executor: HandlerExecutor,
+	resolveTool?: ToolResolver,
 ): Promise<void> {
 	const addedTools = new Set<string>();
 	for (const ts of tools) {
@@ -130,7 +131,7 @@ async function applyTools(
 			// resolveTool() to produce the appropriate BuiltTool for their platform.
 			// Without a resolver, a minimal passthrough marker is created so that
 			// the agent's tool list stays coherent (correct names / descriptions).
-			const resolved = options.resolveTool?.(ts);
+			const resolved = resolveTool?.(ts);
 			agent.tool(
 				resolved ??
 					({

@@ -247,7 +247,7 @@ const semanticRecallEnabled = computed(
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	min-height: 32px;
+	min-height: var(--spacing--xl);
 }
 
 .sectionLabel {

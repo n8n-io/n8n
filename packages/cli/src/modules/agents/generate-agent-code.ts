@@ -131,7 +131,8 @@ function buildImports(schema: AgentSchema, needsWorkflowTool: boolean): string {
 		schema.config.structuredOutput.schemaSource?.includes('z.') ?? false;
 
 	let imports = `import { ${Array.from(agentImports).sort().join(', ')} } from '@n8n/agents';`;
-	if (agentUtilsImports.size > 0) imports += `\nimport { ${Array.from(agentUtilsImports).sort().join(', ')} } from '@n8n/agents-utils';`;
+	if (agentUtilsImports.size > 0)
+		imports += `\nimport { ${Array.from(agentUtilsImports).sort().join(', ')} } from '@n8n/agents-utils';`;
 	if (toolsNeedZod || structuredOutputNeedsZod) imports += "\nimport { z } from 'zod';";
 	return imports;
 }
