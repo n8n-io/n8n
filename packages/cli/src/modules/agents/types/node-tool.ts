@@ -24,18 +24,13 @@ export interface NodeToolDescriptor {
  * ```typescript
  * import { Agent } from '@n8n/agents';
  * import { ToolFromNode } from '@n8n/agents-utils';
- * import { node } from '@n8n/workflow-sdk';
  *
- * const gmailNode = node({
+ * const sendEmail = new ToolFromNode({
  *   type: 'n8n-nodes-base.gmail',
  *   version: 2.1,
- *   config: {
- *     parameters: { resource: 'message', operation: 'send', sendTo: '={{ $json.to }}' },
- *     credentials: { gmailOAuth2: { id: 'cred-id', name: 'My Gmail' } },
- *   },
- * });
- *
- * const sendEmail = new ToolFromNode(gmailNode)
+ *   parameters: { resource: 'message', operation: 'send', sendTo: '={{ $json.to }}' },
+ *   credentials: { gmailOAuth2: { id: 'cred-id', name: 'My Gmail' } },
+ * })
  *   .name('send-email')
  *   .description('Send an email via Gmail')
  *   .input(z.object({ to: z.string() }));
@@ -59,22 +54,17 @@ export class ToolFromNode {
 
 	private _inputSchema?: Record<string, unknown>;
 
-	constructor(nodeInstance: {
+	constructor(nodeSchema: {
 		type: string;
 		version: string | number;
-		config?: {
-			parameters?: Record<string, unknown>;
-			credentials?: Record<string, { id?: string; name?: string }>;
-		};
+		parameters?: Record<string, unknown>;
+		credentials?: Record<string, { id?: string; name?: string }>;
 	}) {
-		this._nodeType = nodeInstance.type;
-		this._nodeTypeVersion = Number(nodeInstance.version);
-		this._nodeParameters = (nodeInstance.config?.parameters ?? {}) as unknown as Record<
-			string,
-			unknown
-		>;
+		this._nodeType = nodeSchema.type;
+		this._nodeTypeVersion = Number(nodeSchema.version);
+		this._nodeParameters = nodeSchema.parameters ?? {};
 
-		const rawCreds = nodeInstance.config?.credentials ?? {};
+		const rawCreds = nodeSchema.credentials ?? {};
 		this._credentials = {} as Record<string, NodeToolCredential>;
 		for (const [slot, ref] of Object.entries(rawCreds)) {
 			if (ref && (ref.id || ref.name)) {

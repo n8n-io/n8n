@@ -60,13 +60,38 @@ function modelParts(model: AgentSchema['model']): string[] {
 	return [];
 }
 
-function toolPart(tool: ToolSchema): { part: string; usesWorkflowTool: boolean } {
-	if (!tool.editable) {
+function toolPart(tool: ToolSchema): {
+	part: string;
+	usesWorkflowTool: boolean;
+	usesNodeTool: boolean;
+} {
+	if (!tool.editable && tool.metadata?.nodeTool === true) {
+		const meta = tool.metadata as {
+			nodeType: string;
+			nodeTypeVersion: number;
+			nodeParameters?: Record<string, unknown>;
+			credentials?: Record<string, { id: string; name: string }>;
+		};
+		const { nodeType, nodeTypeVersion, nodeParameters = {}, credentials = {} } = meta;
+
+		const schemaObj: Record<string, unknown> = { type: nodeType, version: nodeTypeVersion };
+		if (Object.keys(nodeParameters).length > 0) schemaObj.parameters = nodeParameters;
+		if (Object.keys(credentials).length > 0) schemaObj.credentials = credentials;
+
+		const parts = [`new ToolFromNode(${JSON.stringify(schemaObj, null, 2)})`];
+		parts.push(`.name('${escapeSingleQuote(tool.name)}')`);
+		parts.push(`.description('${escapeSingleQuote(tool.description)}')`);
+		return { part: `.tool(${parts.join('')})`, usesWorkflowTool: false, usesNodeTool: true };
+	}
+
+	if (!tool.editable && tool.metadata?.workflowTool === true) {
 		return {
 			part: `.tool(new WorkflowTool('${escapeSingleQuote(tool.name)}'))`,
 			usesWorkflowTool: true,
+			usesNodeTool: false,
 		};
 	}
+
 	const parts = [`new Tool('${escapeSingleQuote(tool.name)}')`];
 	parts.push(`.description('${escapeSingleQuote(tool.description)}')`);
 	if (tool.inputSchemaSource) parts.push(`.input(${tool.inputSchemaSource})`);
@@ -77,7 +102,7 @@ function toolPart(tool: ToolSchema): { part: string; usesWorkflowTool: boolean }
 	if (tool.toMessageSource) parts.push(`.toMessage(${tool.toMessageSource})`);
 	if (tool.requireApproval) parts.push('.requireApproval()');
 	if (tool.needsApprovalFnSource) parts.push(`.needsApprovalFn(${tool.needsApprovalFnSource})`);
-	return { part: `.tool(${parts.join('')})`, usesWorkflowTool: false };
+	return { part: `.tool(${parts.join('')})`, usesWorkflowTool: false, usesNodeTool: false };
 }
 
 function evalPart(ev: EvalSchema): string {
@@ -113,11 +138,16 @@ function thinkingPart(thinking: NonNullable<AgentSchema['config']['thinking']>):
 	return `.thinking('${thinking.provider}')`;
 }
 
-function buildImports(schema: AgentSchema, needsWorkflowTool: boolean): string {
+function buildImports(
+	schema: AgentSchema,
+	needsWorkflowTool: boolean,
+	needsNodeTool: boolean,
+): string {
 	const agentImports = new Set<string>(['Agent']);
 	const agentUtilsImports = new Set<string>();
 	if (schema.tools.some((t) => t.editable)) agentImports.add('Tool');
 	if (needsWorkflowTool) agentUtilsImports.add('WorkflowTool');
+	if (needsNodeTool) agentUtilsImports.add('ToolFromNode');
 	if (schema.memory) agentImports.add('Memory');
 	if (schema.mcp && schema.mcp.length > 0) agentImports.add('McpClient');
 	if (schema.evaluations.length > 0) agentImports.add('Eval');
@@ -181,6 +211,7 @@ export async function generateAgentCode(
 	// No manual indentation — Prettier formats at the end.
 	const parts: string[] = [];
 	let needsWorkflowTool = false;
+	let needsNodeTool = false;
 
 	parts.push(`export default new Agent('${escapeSingleQuote(agentName)}')`);
 	parts.push(...modelParts(model));
@@ -189,8 +220,9 @@ export async function generateAgentCode(
 	if (instructions) parts.push(`.instructions(\`${escapeTemplateLiteral(instructions)}\`)`);
 
 	for (const tool of tools) {
-		const { part, usesWorkflowTool } = toolPart(tool);
+		const { part, usesWorkflowTool, usesNodeTool } = toolPart(tool);
 		if (usesWorkflowTool) needsWorkflowTool = true;
+		if (usesNodeTool) needsNodeTool = true;
 		parts.push(part);
 	}
 
@@ -222,7 +254,7 @@ export async function generateAgentCode(
 		parts.push(`.structuredOutput(${structuredOutput.schemaSource})`);
 	}
 
-	const imports = buildImports(schema, needsWorkflowTool);
+	const imports = buildImports(schema, needsWorkflowTool, needsNodeTool);
 	const raw = `${imports}\n\n${parts.join('')};\n`;
 	return options?.formatCode ? await formatCode(raw) : raw;
 }

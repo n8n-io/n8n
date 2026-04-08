@@ -252,7 +252,7 @@ ${currentCode}
 
 ## Code rules
 
-- Allowed imports: \`'@n8n/agents'\`, \`'@n8n/agents-utils'\` (\`WorkflowTool\`, \`ToolFromNode\`), \`'@n8n/workflow-sdk'\` (\`node\` only), \`'zod'\` — do NOT import anything else
+- Allowed imports: \`'@n8n/agents'\`, \`'@n8n/agents-utils'\` (\`WorkflowTool\`, \`ToolFromNode\`), \`'zod'\` — do NOT import anything else
 - The code MUST export the agent as the default export: \`export default agent;\`
 - Do NOT call .build() on tools or agents — the engine handles that automatically
 - Every agent MUST have .credential() — it will not compile without one
@@ -461,7 +461,7 @@ const agent = new Agent('my-agent')
 - Tool handlers are async functions that receive the validated input object
 - Tool .input() and .output() use Zod schemas
 - Agent .instructions() sets the system prompt
-- Allowed imports: '@n8n/agents', '@n8n/agents-utils' (WorkflowTool, ToolFromNode), '@n8n/workflow-sdk' (node only), 'zod'
+- Allowed imports: '@n8n/agents', '@n8n/agents-utils' (WorkflowTool, ToolFromNode), 'zod'
 - Do NOT import anything else — it will fail at runtime`,
 			)
 			.tool(typecheckTool)
