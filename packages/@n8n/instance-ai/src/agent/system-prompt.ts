@@ -13,6 +13,8 @@ interface SystemPromptOptions {
 	/** IANA time zone identifier for the current user (e.g. "Europe/Helsinki"). */
 	timeZone?: string;
 	browserAvailable?: boolean;
+	/** When true, the instance is in read-only mode (source control branchReadOnly). */
+	branchReadOnly?: boolean;
 }
 
 function getDateTimeSection(timeZone?: string): string {
@@ -121,6 +123,28 @@ After the user confirms they're done, take a snapshot to verify before continuin
 **NEVER include passwords, API keys, tokens, or secrets in your chat messages** — even if visible on a page. If the user asks you to retrieve a secret, tell them to read it directly from their browser.`;
 }
 
+function getReadOnlySection(branchReadOnly?: boolean): string {
+	if (!branchReadOnly) return '';
+	return `
+## Read-Only Instance
+
+This n8n instance is in **read-only mode** (protected by source control settings). Write tools for the following operations are blocked and will return errors:
+- Creating, modifying, or deleting workflows
+- Creating data tables, modifying their schema, or mutating their rows
+- Creating or deleting folders, moving or tagging workflows
+- Running or stopping workflow executions
+
+The following operations remain available:
+- Listing, searching, and reading all resources
+- Publishing/unpublishing (activating/deactivating) workflows
+- Setting up, editing, and deleting credentials
+- Restoring workflow versions
+- Browsing the filesystem and fetching URLs
+
+If the user asks for a blocked operation, explain that the instance is in read-only mode. Suggest they make the changes on a development or writable environment, push to version control, and pull the changes to this instance.
+`;
+}
+
 export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 	const {
 		researchMode,
@@ -131,6 +155,7 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 		licenseHints,
 		timeZone,
 		browserAvailable,
+		branchReadOnly,
 	} = options;
 
 	return `You are the n8n Instance Agent — an AI assistant embedded in an n8n instance. You help users build, run, debug, and manage workflows through natural language.
@@ -224,7 +249,7 @@ ${licenseHints.map((h) => `- ${h}`).join('\n')}
 
 `
 		: ''
-}## Conversation Summary
+}${getReadOnlySection(branchReadOnly)}## Conversation Summary
 
 When \`<conversation-summary>\` is present in your input, treat it as compressed prior context from earlier turns. Use the recent raw messages for exact wording and details; use the summary for long-range continuity (user goals, past decisions, workflow state). Do not repeat the summary back to the user.
 

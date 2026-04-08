@@ -864,6 +864,31 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	restoreWorkflowVersion: 'require_approval',
 };
 
+/** Permission keys that remain active when branchReadOnly is enabled.
+ *  When changing this set, also update the read-only section in
+ *  `packages/@n8n/instance-ai/src/agent/system-prompt.ts` (`getReadOnlySection`). */
+const BRANCH_READ_ONLY_SAFE_PERMISSIONS: ReadonlySet<keyof InstanceAiPermissions> = new Set([
+	'readFilesystem',
+	'fetchUrl',
+	'publishWorkflow',
+	'deleteCredential',
+	'restoreWorkflowVersion',
+]);
+
+/** Returns a copy of permissions with all write operations set to 'blocked',
+ *  except for the safelisted ones that are allowed on read-only instances. */
+export function applyBranchReadOnlyOverrides(
+	permissions: InstanceAiPermissions,
+): InstanceAiPermissions {
+	const overridden = { ...permissions };
+	for (const key of Object.keys(overridden) as Array<keyof InstanceAiPermissions>) {
+		if (!BRANCH_READ_ONLY_SAFE_PERMISSIONS.has(key)) {
+			overridden[key] = 'blocked';
+		}
+	}
+	return overridden;
+}
+
 // ---------------------------------------------------------------------------
 // Admin settings — instance-scoped, admin-only
 // ---------------------------------------------------------------------------
