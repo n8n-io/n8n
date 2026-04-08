@@ -64,6 +64,7 @@ import { nanoid } from 'nanoid';
 
 import { AiService } from '@/services/ai.service';
 import { Push } from '@/push';
+import { Telemetry } from '@/telemetry';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import type { LocalGateway } from './filesystem';
 import { LocalGatewayRegistry, LocalFilesystemProvider } from './filesystem';
@@ -165,6 +166,7 @@ export class InstanceAiService {
 		private readonly urlService: UrlService,
 		private readonly dbSnapshotStorage: DbSnapshotStorage,
 		private readonly dbIterationLogStorage: DbIterationLogStorage,
+		private readonly telemetry: Telemetry,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.instanceAiConfig = globalConfig.instanceAi;
@@ -1075,6 +1077,7 @@ export class InstanceAiService {
 			filesystemService: localFilesystemService,
 			searchProxyConfig,
 			pushRef,
+			threadId,
 		});
 		if (!localGatewayDisabled && userGateway?.isConnected) {
 			context.localMcpServer = userGateway;
@@ -1671,7 +1674,19 @@ export class InstanceAiService {
 						tracing,
 					});
 				}
+
+				// Track intermediate message (text streamed before suspension)
+				const intermediateText = await (result.text ?? Promise.resolve(''));
+				if (intermediateText) {
+					this.telemetry.track('Builder sent message', {
+						thread_id: threadId,
+						message: intermediateText,
+						is_intermediate: true,
+					});
+				}
+
 				if (result.confirmationEvent) {
+					this.trackConfirmationRequest(threadId, result.confirmationEvent);
 					this.eventBus.publish(threadId, result.confirmationEvent);
 				}
 
@@ -1703,6 +1718,13 @@ export class InstanceAiService {
 			// Count credits on first completed run per thread
 			if (result.status === 'completed') {
 				await this.countCreditsIfFirst(user, threadId, runId);
+				this.telemetry.track('Builder sent message', {
+					thread_id: threadId,
+					message: outputText,
+				});
+				this.telemetry.track('Builder satisfied user intent', {
+					thread_id: threadId,
+				});
 			}
 		} catch (error) {
 			if (signal.aborted) {
@@ -1906,7 +1928,19 @@ export class InstanceAiService {
 						tracing: opts.tracing,
 					});
 				}
+
+				// Track intermediate message (text streamed before suspension)
+				const intermediateText = await (result.text ?? Promise.resolve(''));
+				if (intermediateText) {
+					this.telemetry.track('Builder sent message', {
+						thread_id: opts.threadId,
+						message: intermediateText,
+						is_intermediate: true,
+					});
+				}
+
 				if (result.confirmationEvent) {
+					this.trackConfirmationRequest(opts.threadId, result.confirmationEvent);
 					this.eventBus.publish(opts.threadId, result.confirmationEvent);
 				}
 
@@ -1925,6 +1959,16 @@ export class InstanceAiService {
 				metadata: { completion_source: 'orchestrator' },
 			};
 			await this.finalizeRun(opts.threadId, opts.runId, result.status, opts.snapshotStorage);
+
+			if (result.status === 'completed') {
+				this.telemetry.track('Builder sent message', {
+					thread_id: opts.threadId,
+					message: outputText,
+				});
+				this.telemetry.track('Builder satisfied user intent', {
+					thread_id: opts.threadId,
+				});
+			}
 		} catch (error) {
 			if (opts.signal.aborted) {
 				await this.finalizeRunTracing(opts.runId, opts.tracing, {
@@ -2100,6 +2144,43 @@ export class InstanceAiService {
 					`[Running task — ${task.role}]: taskId=${task.taskId}`,
 			},
 		);
+	}
+
+	private trackConfirmationRequest(
+		threadId: string,
+		confirmationEvent: { payload: Record<string, unknown> },
+	): void {
+		const payload = confirmationEvent.payload;
+		const inputThreadId = nanoid();
+		payload.inputThreadId = inputThreadId;
+
+		const inputType = payload.inputType as string | undefined;
+		let type: string;
+		if (inputType) {
+			type = inputType;
+		} else if (Array.isArray(payload.setupRequests) && payload.setupRequests.length > 0) {
+			type = 'setup';
+		} else if (Array.isArray(payload.credentialRequests) && payload.credentialRequests.length > 0) {
+			type = 'credential-setup';
+		} else {
+			type = 'approval';
+		}
+
+		let numSteps = 1;
+		if (Array.isArray(payload.questions)) {
+			numSteps = payload.questions.length;
+		} else if (Array.isArray(payload.setupRequests)) {
+			numSteps = payload.setupRequests.length;
+		} else if (Array.isArray(payload.credentialRequests)) {
+			numSteps = payload.credentialRequests.length;
+		}
+
+		this.telemetry.track('Builder asked for input', {
+			thread_id: threadId,
+			input_thread_id: inputThreadId,
+			type,
+			num_steps: numSteps,
+		});
 	}
 
 	private publishRunFinish(
