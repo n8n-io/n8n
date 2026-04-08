@@ -1345,9 +1345,8 @@ export class InstanceAiService {
 
 	private async schedulePlannedTasks(user: User, threadId: string): Promise<void> {
 		const prev = this.schedulerLocks.get(threadId) ?? Promise.resolve();
-		const current = prev
-			.then(async () => this.doSchedulePlannedTasks(user, threadId))
-			.catch(() => {});
+		// eslint-disable-next-line @typescript-eslint/promise-function-async
+		const current = prev.then(() => this.doSchedulePlannedTasks(user, threadId)).catch(() => {});
 		this.schedulerLocks.set(threadId, current);
 		await current;
 	}
