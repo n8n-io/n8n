@@ -18,6 +18,7 @@ import { type MockedStore, mockedStore } from '@/__tests__/utils';
 const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	mockWorkflowDocumentStore: {
 		getNodeByName: vi.fn(),
+		getChildNodes: vi.fn().mockReturnValue([]),
 	},
 }));
 

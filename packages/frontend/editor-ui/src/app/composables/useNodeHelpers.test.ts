@@ -19,6 +19,7 @@ import { faker } from '@faker-js/faker';
 import type { INodeUi } from '@/Interface';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const mockDocumentStoreUsedCredentials: Record<string, IUsedCredential> = {};
 
@@ -74,7 +75,15 @@ describe('useNodeHelpers()', () => {
 				getNode: () => node,
 			});
 
+			mockedStore(useWorkflowsStore).workflowId = 'workflow-id';
 			mockedStore(useWorkflowsStore).workflowObject = mockWorkflow;
+			vi.mocked(useWorkflowDocumentStore).mockReturnValueOnce({
+				usedCredentials: mockDocumentStoreUsedCredentials,
+				allNodes: [],
+				getNodeByName: vi.fn().mockReturnValue(node),
+				setNodeIssue: vi.fn(),
+				updateNodeProperties: vi.fn(),
+			} as unknown as ReturnType<typeof useWorkflowDocumentStore>);
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
 			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(false);
 			mockedStore(useNodeTypesStore).isToolNode = vi.fn().mockReturnValue(false);
