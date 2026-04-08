@@ -58,7 +58,7 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 	// Save activeTabId to thread metadata when it changes (skip during restore)
 	watch(activeTabId, (tabId) => {
 		if (pendingRestore.value) return;
-		debouncedSavePreviewState(tabId);
+		void debouncedSavePreviewState(tabId);
 	});
 
 	// Execution results extracted from historical chat messages (survives page refresh).
