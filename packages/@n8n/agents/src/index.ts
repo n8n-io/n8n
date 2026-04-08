@@ -113,10 +113,10 @@ export { SqliteMemory, SqliteMemoryConfigSchema } from './storage/sqlite-memory'
 export type { SqliteMemoryConfig } from './storage/sqlite-memory';
 export { PostgresMemory } from './storage/postgres-memory';
 export type {
-	PostgresMemoryDescriptorParams,
 	PostgresConnectionOptions,
 	PostgresConstructorOptions,
 } from './storage/postgres-memory';
+export { BaseMemory } from './storage/base-memory';
 export type { MemoryFactory, FromSchemaOptions, ToolResolver } from './sdk/from-schema';
 
 export { Workspace } from './workspace';

@@ -428,7 +428,6 @@ const agent = new Agent('my-agent')
 **Rules:**
 - Always use \`new Memory()\` — never pass a plain object
 - Always use \`.storage(new N8nMemory())\` — it is the n8n-native persistent backend and requires no configuration
-- \`.semanticRecall()\` works with \`N8nMemory\`
 - \`.freeform()\` and \`.structured()\` are mutually exclusive
 
 ## Important

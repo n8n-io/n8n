@@ -1,8 +1,9 @@
 import type { Client, InArgs } from '@libsql/client';
 import { z } from 'zod';
 
+import { BaseMemory } from './base-memory';
 import { toDbMessage } from '../sdk/message';
-import type { BuiltMemory, MemoryDescriptor, Thread } from '../types/sdk/memory';
+import type { Thread } from '../types/sdk/memory';
 import type { AgentDbMessage, AgentMessage } from '../types/sdk/message';
 
 /** Safe JSON.parse wrapper — returns undefined on failure. */
@@ -32,7 +33,7 @@ export const SqliteMemoryConfigSchema = z.object({
 
 export type SqliteMemoryConfig = z.infer<typeof SqliteMemoryConfigSchema>;
 
-export class SqliteMemory implements BuiltMemory {
+export class SqliteMemory extends BaseMemory<SqliteMemoryConfig> {
 	private initPromise: Promise<Client> | null = null;
 
 	private embeddingsInitPromise: Promise<void> | null = null;
@@ -41,9 +42,10 @@ export class SqliteMemory implements BuiltMemory {
 
 	private readonly ns: string;
 
-	constructor(config: SqliteMemoryConfig) {
-		this.config = SqliteMemoryConfigSchema.parse(config);
-		this.ns = config.namespace ? `${config.namespace}_` : '';
+	constructor(protected readonly constructorOptions: SqliteMemoryConfig) {
+		super('sqlite', constructorOptions);
+		this.config = SqliteMemoryConfigSchema.parse(constructorOptions);
+		this.ns = constructorOptions.namespace ? `${constructorOptions.namespace}_` : '';
 	}
 
 	// ── Lazy initialisation ──────────────────────────────────────────────
@@ -429,16 +431,5 @@ export class SqliteMemory implements BuiltMemory {
 			id: r.id as string,
 			score: 1 - (r.distance as number),
 		}));
-	}
-
-	describe(): MemoryDescriptor {
-		return {
-			name: 'sqlite',
-			constructorName: this.constructor.name,
-			connectionParams: {
-				url: this.config.url,
-				...(this.config.namespace !== undefined && { namespace: this.config.namespace }),
-			},
-		};
 	}
 }

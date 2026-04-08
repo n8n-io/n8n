@@ -1,7 +1,8 @@
 import type { Pool, PoolClient } from 'pg';
 
+import { BaseMemory } from './base-memory';
 import { toDbMessage } from '../sdk/message';
-import type { BuiltMemory, MemoryDescriptor, Thread } from '../types/sdk/memory';
+import type { Thread } from '../types/sdk/memory';
 import type { AgentDbMessage, AgentMessage } from '../types/sdk/message';
 
 interface ThreadRow {
@@ -95,13 +96,7 @@ export type PostgresConstructorOptions = (
 	options?: PostgresMemoryOptions;
 };
 
-export type PostgresMemoryDescriptorParams = {
-	credential?: string;
-	connection?: PostgresConnectionOptions;
-	options?: PostgresMemoryOptions;
-};
-
-export class PostgresMemory implements BuiltMemory {
+export class PostgresMemory extends BaseMemory<PostgresConstructorOptions> {
 	private initPromise: Promise<Pool> | null = null;
 
 	private embeddingsInitPromise: Promise<void> | null = null;
@@ -109,9 +104,10 @@ export class PostgresMemory implements BuiltMemory {
 	private readonly ns: string;
 
 	constructor(
-		private readonly constructorOptions: PostgresConstructorOptions,
+		protected readonly constructorOptions: PostgresConstructorOptions,
 		private readonly resolveConfig?: (credential: string) => Promise<PostgresConnectionOptions>,
 	) {
+		super('postgres', constructorOptions);
 		const namespace = constructorOptions.options?.namespace;
 		if (namespace !== undefined) {
 			if (!/^[a-zA-Z0-9_]+$/.test(namespace)) {
@@ -623,27 +619,6 @@ export class PostgresMemory implements BuiltMemory {
 			id: r.id,
 			score: 1 - r.distance,
 		}));
-	}
-
-	// ── Descriptor ──────────────────────────────────────────────────────
-
-	describe(): MemoryDescriptor<PostgresMemoryDescriptorParams> {
-		const connectionParams: Partial<PostgresMemoryDescriptorParams> =
-			this.constructorOptions.type === 'credential'
-				? {
-						credential: this.constructorOptions.credential,
-					}
-				: {
-						connection: this.constructorOptions.connection,
-					};
-		return {
-			name: 'postgres',
-			constructorName: this.constructor.name,
-			connectionParams: {
-				...connectionParams,
-				options: this.constructorOptions.options,
-			},
-		};
 	}
 
 	// ── Cleanup ──────────────────────────────────────────────────────────

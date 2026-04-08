@@ -9,6 +9,7 @@ import { extractSources } from '../agents-source-parser';
 import { generateAgentCode } from '../generate-agent-code';
 import { WorkflowTool } from '../types';
 import { AgentSecureRuntime } from '../agent-secure-runtime';
+import { N8nMemoryMarker } from '../types/n8n-memory-marker';
 import { deepCopy } from 'n8n-workflow';
 
 // No mocking of isolated-vm — use the real V8 isolate for integration testing.
@@ -20,7 +21,7 @@ import { deepCopy } from 'n8n-workflow';
 
 const DND_AGENT_SOURCE = `
 import { Agent, Memory, Tool } from '@n8n/agents';
-import { WorkflowTool } from '@n8n/agents-utils';
+import { WorkflowTool, N8nMemory } from '@n8n/agents-utils';
 import { z } from 'zod';
 
 export default new Agent('D&D Agent')
@@ -73,7 +74,7 @@ export default new Agent('D&D Agent')
   )
   .tool(new WorkflowTool('Send D&D Calendar Invite'))
   .tool(new WorkflowTool('Get D&D Feedback'))
-  .memory(new Memory().lastMessages(100))
+  .memory(new Memory().storage(new N8nMemory()).lastMessages(100))
   .checkpoint('memory')
   .thinking('anthropic', { budgetTokens: 1024 });
 `;
@@ -88,7 +89,7 @@ async function compileAndDescribe(source: string): Promise<AgentSchema> {
 	const moduleExports: Record<string, unknown> = {};
 	const moduleRequire = (id: string) => {
 		if (id === '@n8n/agents') return agents;
-		if (id === '@n8n/agents-utils') return { WorkflowTool };
+		if (id === '@n8n/agents-utils') return { WorkflowTool, N8nMemory: N8nMemoryMarker };
 		if (id === 'zod') return zod;
 		throw new Error('Unavailable: ' + id);
 	};
@@ -122,7 +123,6 @@ async function compileAndDescribe(source: string): Promise<AgentSchema> {
 			tool.needsApprovalFnSource = src.needsApprovalFnSource;
 		}
 	}
-	if (schema.memory) schema.memory.source = extracted.memory;
 
 	return schema;
 }
@@ -166,8 +166,9 @@ describe('D&D Agent Round-Trip', () => {
 
 		// Memory, checkpoint, thinking
 		expect(schema.memory).not.toBeNull();
+		expect(schema.memory!.name).toBe('n8n');
+		expect(schema.memory!.constructorName).toBe('N8nMemory');
 		expect(schema.memory!.lastMessages).toBe(100);
-		expect(schema.memory!.source).toContain('lastMessages(100)');
 		expect(schema.checkpoint).toBe('memory');
 		expect(schema.config.thinking).toEqual({ provider: 'anthropic', budgetTokens: 1024 });
 	});
@@ -203,7 +204,9 @@ describe('D&D Agent Round-Trip', () => {
 		expect(code).toContain("new WorkflowTool('Send D&D Calendar Invite')");
 		expect(code).toContain("new WorkflowTool('Get D&D Feedback')");
 
-		// Memory, checkpoint, thinking
+		// Memory: N8nMemory imported and used as storage backend
+		expect(code).toContain('N8nMemory');
+		expect(code).toContain('.storage(new N8nMemory())');
 		expect(code).toContain('.memory(');
 		expect(code).toContain(".checkpoint('memory')");
 		expect(code).toContain('budgetTokens: 1024');

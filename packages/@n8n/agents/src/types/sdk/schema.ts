@@ -74,7 +74,7 @@ export interface MemorySchema<TParams extends JSONObject = JSONObject> {
 	// Backend descriptor — from BuiltMemory.describe()
 	name: string; // e.g. 'n8n' | 'sqlite' | 'postgres' | 'memory'
 	constructorName: string; // constructor name of the memory backend, e.g. 'SqliteMemory', 'PostgresMemory'
-	connectionParams: TParams; // serializable, non-secret params (may contain CredentialConfig refs)
+	connectionParams: TParams | null; // serializable, params
 	lastMessages: number | null;
 	semanticRecall: {
 		topK: number;

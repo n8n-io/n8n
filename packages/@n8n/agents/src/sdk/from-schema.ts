@@ -22,7 +22,7 @@ export type ToolResolver = (toolSchema: ToolSchema) => BuiltTool | null | undefi
  * Factory function that reconstructs a BuiltMemory backend from serialized connectionParams.
  * Registered in `FromSchemaOptions.memoryRegistry` keyed by the backend name (e.g. 'postgres').
  */
-export type MemoryFactory = (params: JSONObject) => BuiltMemory | Promise<BuiltMemory>;
+export type MemoryFactory = (params: JSONObject | null) => BuiltMemory | Promise<BuiltMemory>;
 
 export interface FromSchemaOptions {
 	handlerExecutor: HandlerExecutor;

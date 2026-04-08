@@ -18,6 +18,8 @@ import {
 import { In } from '@n8n/typeorm';
 import { OperationalError, UserError } from 'n8n-workflow';
 
+import { SqliteMemory, SqliteMemoryConfigSchema } from '@n8n/agents/dist/storage/sqlite-memory';
+
 import { Agent } from './entities/agent.entity';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
@@ -330,6 +332,10 @@ export class AgentsService {
 	private getMemoryRegistry(): Record<string, agents.MemoryFactory> {
 		return {
 			n8n: () => this.n8nMemory,
+			sqlite: (params) => new SqliteMemory(SqliteMemoryConfigSchema.parse(params)),
+			postgres: () => {
+				throw new Error('Not implemented');
+			},
 		};
 	}
 

@@ -136,13 +136,15 @@ export class AgentSecureRuntime {
 			const { Guardrail } = require('${agentsSrcDir}sdk/guardrail');
 			const { Telemetry } = require('${agentsSrcDir}sdk/telemetry');
 			const { providerTools } = require('${agentsSrcDir}sdk/provider-tools');
+			const { SqliteMemory } = require('${agentsSrcDir}storage/sqlite-memory');
+			const { PostgresMemory } = require('${agentsSrcDir}storage/postgres-memory');
 			const { WorkflowTool } = require('${workflowToolPath}');
 			const { N8nMemoryMarker: N8nMemory } = require('${n8nMemoryMarkerPath}');
 			const zod = require('zod');
 			const zodToJsonSchema = require('${zodToJsonSchemaPath}');
 
 			globalThis.__modules = {
-				'@n8n/agents': { Agent, Tool, Memory, Eval, Guardrail, Telemetry, providerTools },
+				'@n8n/agents': { Agent, Tool, Memory, Eval, Guardrail, Telemetry, providerTools, SqliteMemory, PostgresMemory },
 				'@n8n/agents-utils': { WorkflowTool, N8nMemory },
 				'zod': zod,
 				'zod-to-json-schema': zodToJsonSchema,
@@ -371,9 +373,6 @@ export class AgentSecureRuntime {
 			for (const pt of schema.providerTools) {
 				const ptSource = extracted.providerTools.get(pt.name);
 				if (ptSource) pt.source = ptSource;
-			}
-			if (schema.memory) {
-				schema.memory.source = extracted.memory;
 			}
 			for (const ev of schema.evaluations) {
 				const evalSource = extracted.evals.get(ev.name);

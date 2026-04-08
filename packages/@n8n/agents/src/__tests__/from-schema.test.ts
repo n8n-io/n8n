@@ -5,7 +5,6 @@ import { isSuspendResult } from '../sdk/from-schema';
 import { Memory } from '../sdk/memory';
 import {
 	PostgresMemory,
-	type PostgresMemoryDescriptorParams,
 	type PostgresConnectionOptions,
 	type PostgresConstructorOptions,
 } from '../storage/postgres-memory';
@@ -787,6 +786,7 @@ describe('Agent.fromSchema()', () => {
 		expect(schema1.memory!.name).toBe('postgres');
 		expect(schema1.memory!.lastMessages).toBe(20);
 		expect(schema1.memory!.connectionParams).toEqual({
+			type: 'credential',
 			credential: 'my-pg-cred',
 			options: {
 				namespace: 'my_ns',
@@ -797,16 +797,8 @@ describe('Agent.fromSchema()', () => {
 
 		// ── Reconstruct from schema ───────────────────────────────────────────────
 		const postgresFactory = async (params: JSONObject) => {
-			const descriptorParams = params as PostgresMemoryDescriptorParams;
 			return await Promise.resolve(
-				new PostgresMemory(
-					{
-						type: 'credential',
-						credential: descriptorParams.credential!,
-						options: descriptorParams.options,
-					},
-					resolveConfig,
-				),
+				new PostgresMemory(params as PostgresConstructorOptions, resolveConfig),
 			);
 		};
 
@@ -822,6 +814,7 @@ describe('Agent.fromSchema()', () => {
 		expect(schema2.memory!.name).toBe('postgres');
 		expect(schema2.memory!.lastMessages).toBe(20);
 		expect(schema2.memory!.connectionParams).toEqual({
+			type: 'credential',
 			credential: 'my-pg-cred',
 			options: {
 				namespace: 'my_ns',

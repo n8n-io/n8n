@@ -14,7 +14,7 @@ export interface MemoryDescriptor<TParams extends JSONObject = JSONObject> {
 	/** Constructor name (e.g. 'PostgresMemory', 'SqliteMemory'). Used to construct the backend. */
 	constructorName: string;
 	/** Non-secret, serializable connection parameters. CredentialConfig refs are safe to store. */
-	connectionParams: TParams;
+	connectionParams: TParams | null;
 }
 
 export interface Thread {
