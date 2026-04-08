@@ -216,6 +216,41 @@ describe('TrustedKeyService (integration)', () => {
 			expect(await sourceRepo.find()).toHaveLength(0);
 			expect(await keyRepo.find()).toHaveLength(0);
 		});
+
+		it('should remove all sources and keys when config becomes empty', async () => {
+			config.trustedKeys = JSON.stringify([staticKeyEntry({ kid: 'old-key' })]);
+			await service.initialize();
+
+			expect(await sourceRepo.find()).toHaveLength(1);
+			expect(await keyRepo.find()).toHaveLength(1);
+
+			config.trustedKeys = '';
+			await service.initialize();
+
+			expect(await sourceRepo.find()).toHaveLength(0);
+			expect(await keyRepo.find()).toHaveLength(0);
+		});
+	});
+
+	describe('onLeaderTakeover', () => {
+		it('should sync sources and refresh keys on leader takeover', async () => {
+			Object.defineProperty(instanceSettings, 'isLeader', { value: false, configurable: true });
+			config.trustedKeys = JSON.stringify([staticKeyEntry({ kid: 'takeover-key' })]);
+			await service.initialize();
+
+			expect(await sourceRepo.find()).toHaveLength(0);
+
+			Object.defineProperty(instanceSettings, 'isLeader', { value: true, configurable: true });
+			await service.onLeaderTakeover();
+
+			const sources = await sourceRepo.find();
+			expect(sources).toHaveLength(1);
+			expect(sources[0].status).toBe('healthy');
+
+			const keys = await keyRepo.find();
+			expect(keys).toHaveLength(1);
+			expect(keys[0].kid).toBe('takeover-key');
+		});
 	});
 
 	describe('getByKidAndIss', () => {

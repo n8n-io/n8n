@@ -93,13 +93,21 @@ export class TrustedKeyService {
 			return;
 		}
 
+		await this.initializeAsLeader();
+	}
+
+	@OnLeaderTakeover()
+	async onLeaderTakeover() {
+		await this.initializeAsLeader();
+	}
+
+	private async initializeAsLeader(): Promise<void> {
 		const sources = this.parseConfigSources();
 		await this.syncSourcesToDb(sources);
 		await this.refreshAllSources();
 		this.startRefresh();
 	}
 
-	@OnLeaderTakeover()
 	startRefresh() {
 		if (this.isShuttingDown || this.refreshInterval) return;
 
@@ -273,6 +281,8 @@ export class TrustedKeyService {
 				await tx.delete(TrustedKeySourceEntity, {
 					id: Not(In([...expectedSourceIds])),
 				});
+			} else {
+				await tx.delete(TrustedKeySourceEntity, {});
 			}
 		});
 	}
