@@ -5,8 +5,8 @@ disable-model-invocation: true
 argument-hint: "[issue-id]"
 compatibility:
   requires:
-    - mcp: mcp__linear-server
-      description: Linear MCP — use `mcp__linear-server__*` tools
+    - mcp: linear
+      description: Core dependency — used to fetch issue details, relations, and comments
     - cli: gh
       description: GitHub CLI — used to fetch linked PRs and issues. Must be authenticated (gh auth login)
   optional:
@@ -27,7 +27,7 @@ Start work on Linear issue **$ARGUMENTS**
 This skill depends on external tools. Before proceeding, verify availability:
 
 **Required:**
-- **Linear MCP** (`mcp__linear-server`): Must be connected. Without it the skill cannot function at all.
+- **Linear MCP** (`mcp__linear`): Must be connected. Without it the skill cannot function at all.
 - **GitHub CLI** (`gh`): Must be installed and authenticated. Run `gh auth status` to verify. Used to fetch linked PRs and issues.
 
 **Optional (graceful degradation):**
@@ -45,9 +45,9 @@ Follow these steps to gather comprehensive context about the issue:
 
 Use the Linear MCP tools to fetch the issue details and comments together:
 
-- Use the Linear MCP issue tool (`mcp__linear-server__get_issue`) with the issue ID to get full details including attachments
+- Use `mcp__linear__get_issue` with the issue ID to get full details including attachments
 - Include relations to see blocking/related/duplicate issues
-- **Immediately after**, use the Linear MCP list_comments tool (`mcp__linear-server__list_comments`) with the issue ID to fetch all comments
+- **Immediately after**, use `mcp__linear__list_comments` with the issue ID to fetch all comments
 
 Both calls should be made together in the same step to gather the complete context upfront.
 
@@ -78,7 +78,7 @@ Both calls should be made together in the same step to gather the complete conte
 ### 3. Fetch Related Context
 
 **Related Linear Issues:**
-- Use the Linear MCP get_issue tool (`mcp__linear-server__get_issue`) for any issues mentioned in relations (blocking, blocked by, related, duplicates)
+- Use `mcp__linear__get_issue` for any issues mentioned in relations (blocking, blocked by, related, duplicates)
 - Summarize how they relate to the main issue
 
 **GitHub PRs and Issues:**
