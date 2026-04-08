@@ -110,6 +110,8 @@ paths:
     $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.update.yml'
   /data-tables/{dataTableId}/rows/upsert:
     $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.upsert.yml'
+  /data-tables/{dataTableId}/rows/clear:
+    $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.clear.yml'
   /data-tables/{dataTableId}/rows/delete:
     $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.delete.yml'
   /projects:

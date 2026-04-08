@@ -285,6 +285,8 @@ export declare namespace DataTableRequest {
 
 	type UpsertRow = AuthenticatedRequest<{ dataTableId: string }, {}, UpsertDataTableRowDto, {}>;
 
+	type Clear = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
+
 	type DeleteRows = AuthenticatedRequest<
 		{ dataTableId: string },
 		{},

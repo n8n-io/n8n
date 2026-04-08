@@ -204,6 +204,21 @@ export = {
 		},
 	],
 
+	clearDataTableRows: [
+		apiKeyHasScope('dataTableRow:delete'),
+		projectScope('dataTable:writeRow', 'dataTable'),
+		async (req: DataTableRequest.Clear, res: express.Response): Promise<express.Response> => {
+			try {
+				const { dataTableId } = req.params;
+				const projectId = await getProjectIdForDataTable(dataTableId);
+				const result = await Container.get(DataTableService).clearRows(dataTableId, projectId);
+				return res.json(result);
+			} catch (error) {
+				return handleError(error, res);
+			}
+		},
+	],
+
 	deleteDataTableRows: [
 		apiKeyHasScope('dataTableRow:delete'),
 		projectScope('dataTable:writeRow', 'dataTable'),

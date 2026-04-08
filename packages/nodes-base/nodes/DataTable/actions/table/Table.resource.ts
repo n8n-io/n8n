@@ -1,12 +1,13 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+import * as clear from './clear.operation';
 import * as create from './create.operation';
 import * as deleteTable from './delete.operation';
 import * as list from './list.operation';
 import * as update from './update.operation';
 import { DATA_TABLE_RESOURCE_LOCATOR_BASE } from '../../common/fields';
 
-export { create, deleteTable, list, update };
+export { clear, create, deleteTable, list, update };
 
 export const description: INodeProperties[] = [
 	{
@@ -20,6 +21,12 @@ export const description: INodeProperties[] = [
 			},
 		},
 		options: [
+			{
+				name: 'Clear',
+				value: clear.FIELD,
+				description: 'Clear all rows from a data table',
+				action: 'Clear a data table',
+			},
 			{
 				name: 'Create',
 				value: create.FIELD,
@@ -52,10 +59,11 @@ export const description: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['table'],
-				operation: [deleteTable.FIELD, update.FIELD],
+				operation: [clear.FIELD, deleteTable.FIELD, update.FIELD],
 			},
 		},
 	},
+	...clear.description,
 	...create.description,
 	...deleteTable.description,
 	...list.description,
