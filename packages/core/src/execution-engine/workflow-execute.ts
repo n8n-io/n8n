@@ -1036,6 +1036,7 @@ export class WorkflowExecute {
 
 		let data: INodeExecutionData[][] | EngineRequest | null;
 		let executionSucceeded = false;
+		let closeFunctionsResults: Array<PromiseSettledResult<void>> | undefined;
 
 		try {
 			if (customOperation) {
@@ -1053,27 +1054,27 @@ export class WorkflowExecute {
 			executionSucceeded = true;
 		} finally {
 			if (closeFunctions.length > 0) {
-				const closeFunctionsResults = await Promise.allSettled(
+				closeFunctionsResults = await Promise.allSettled(
 					closeFunctions.map(async (fn) => await fn()),
 				);
+			}
+		}
 
-				// Only throw close function errors if the execution itself succeeded,
-				// to avoid masking the original execution error.
-				if (executionSucceeded) {
-					const closingErrors = closeFunctionsResults
-						.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-						.map((result) => result.reason);
+		// Only throw close function errors if the execution itself succeeded,
+		// to avoid masking the original execution error.
+		if (executionSucceeded && closeFunctionsResults) {
+			const closingErrors = closeFunctionsResults
+				.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+				.map((result) => result.reason);
 
-					if (closingErrors.length > 0) {
-						if (closingErrors[0] instanceof Error) throw closingErrors[0];
-						throw new ApplicationError("Error on execution node's close function(s)", {
-							extra: { nodeName: node.name },
-							tags: { nodeType: node.type },
-							cause: closingErrors,
-						});
-					}
-				}
+			if (closingErrors.length > 0) {
+				if (closingErrors[0] instanceof Error) throw closingErrors[0];
+				throw new ApplicationError("Error on execution node's close function(s)", {
+					extra: { nodeName: node.name },
+					tags: { nodeType: node.type },
+					cause: closingErrors,
+				});
 			}
 		}
 
