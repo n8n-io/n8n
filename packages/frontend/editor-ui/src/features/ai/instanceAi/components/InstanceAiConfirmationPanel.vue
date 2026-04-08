@@ -311,7 +311,7 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 							<div :class="$style.approvalRow">
 								<div :class="$style.approvalRowBody">
 									<span :class="$style.toolLabel">
-										{{ getToolLabel(item.toolCall.toolName) }}
+										{{ getToolLabel(item.toolCall.toolName, item.toolCall.args) }}
 									</span>
 									<span :class="$style.preview">{{ item.toolCall.confirmation!.message }}</span>
 								</div>
