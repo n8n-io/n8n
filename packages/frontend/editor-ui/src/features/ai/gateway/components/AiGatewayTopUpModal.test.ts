@@ -29,7 +29,8 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 vi.mock('@/app/components/Modal.vue', () => ({
 	default: {
 		props: ['name', 'title'],
-		template: `<div :data-modal-name="name" :data-modal-title="title"><slot name="content" /><slot name="footer" /></div>`,
+		template:
+			'<div :data-modal-name="name" :data-modal-title="title"><slot name="content" /><slot name="footer" /></div>',
 	},
 }));
 
