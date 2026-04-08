@@ -244,6 +244,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		// wait for the node creator state to be set
 		await nextTick();
 		const nodeActions = actions.value[nodeType.name];
+		const expressionHandler = workflowDocumentStore.value?.getExpressionHandler();
 		const viewStack = prepareCommunityNodeDetailsViewStack(
 			{
 				key: nodeType.name,
@@ -251,7 +252,10 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 				type: 'node',
 				subcategory: '*',
 			},
-			getNodeIconSource(nodeType.name),
+			getNodeIconSource(
+				nodeType.name,
+				expressionHandler ? { expressionHandler, node: null } : undefined,
+			),
 			'Regular',
 			nodeActions ?? [],
 		);
