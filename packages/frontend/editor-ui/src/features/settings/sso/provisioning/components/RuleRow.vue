@@ -59,12 +59,6 @@ const selectedProjectNames = computed(() => {
 		.map((p) => p.name)
 		.join(', ');
 });
-
-const projectSelectLabel = computed(() => {
-	const count = props.rule.projectIds?.length ?? 0;
-	if (count === 0) return '';
-	return `${count} project${count !== 1 ? 's' : ''}`;
-});
 </script>
 <template>
 	<div :class="[$style.row, { [$style.disabled]: props.disabled }]" data-test-id="rule-row">
