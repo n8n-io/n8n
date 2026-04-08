@@ -796,7 +796,7 @@ describe('Agent.fromSchema()', () => {
 		});
 
 		// ── Reconstruct from schema ───────────────────────────────────────────────
-		const postgresFactory = async (params: JSONObject) => {
+		const postgresFactory = async (params: JSONObject | null) => {
 			return await Promise.resolve(
 				new PostgresMemory(params as PostgresConstructorOptions, resolveConfig),
 			);
