@@ -31,6 +31,7 @@ describe('useNpsSurvey', () => {
 
 	beforeEach(() => {
 		vi.restoreAllMocks();
+		vi.clearAllMocks();
 		setActivePinia(createPinia());
 		useSettingsStore().settings.telemetry = { enabled: true };
 		npsSurveyStore = useNpsSurveyStore();

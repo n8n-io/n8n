@@ -19,7 +19,8 @@
     "lint": "eslint src --quiet",
     "lint:fix": "eslint src --fix",
     "prepack": "echo \"Building project...\" && rm -rf dist && tsc -b",
-    "watch": "tsc --watch"
+    "watch": "tsc --watch",
+    "test": "jest"
   },
   "bin": {
     "n8n-node-dev": "./bin/n8n-node-dev"

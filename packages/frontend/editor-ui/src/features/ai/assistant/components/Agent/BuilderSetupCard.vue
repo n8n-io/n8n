@@ -1,37 +1,29 @@
 <script setup lang="ts">
-import { computed, provide, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { N8nButton, N8nCallout, N8nIcon, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nCallout, N8nIcon, N8nText } from '@n8n/design-system';
+import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants/nodeTypes';
 
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
-import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
-import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import TriggerExecuteButton from '@/features/setupPanel/components/TriggerExecuteButton.vue';
 import WebhookUrlPreview from '@/features/setupPanel/components/WebhookUrlPreview.vue';
+import SetupCardSection from '@/features/setupPanel/components/cards/SetupCardSection.vue';
+import SetupCardBody from '@/features/setupPanel/components/cards/SetupCardBody.vue';
 
-import type { NodeSetupState } from '@/features/setupPanel/setupPanel.types';
-import type { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
-import { type INodeProperties, NodeHelpers } from 'n8n-workflow';
+import type {
+	NodeSetupState,
+	CredentialSelectedPayload,
+	CredentialDeselectedPayload,
+} from '@/features/setupPanel/setupPanel.types';
+import type { INodeUi } from '@/Interface';
+import type { INodeProperties } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
-import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
-import { isHttpRequestNodeType } from '@/features/setupPanel/setupPanel.utils';
-import { useExpressionResolveCtx } from '@/features/workflows/canvas/experimental/composables/useExpressionResolveCtx';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useTriggerExecution } from '@/features/setupPanel/composables/useTriggerExecution';
 import { useWebhookUrls } from '@/features/setupPanel/composables/useWebhookUrls';
-
-const NESTED_PARAM_TYPES = new Set([
-	'collection',
-	'fixedCollection',
-	'resourceMapper',
-	'filter',
-	'assignmentCollection',
-]);
 
 const props = defineProps<{
 	state: NodeSetupState;
@@ -45,8 +37,8 @@ const emit = defineEmits<{
 	goToPrev: [];
 	continueCurrent: [];
 	stepExecuted: [];
-	credentialSelected: [payload: { credentialType: string; credentialId: string; nodeName: string }];
-	credentialDeselected: [payload: { credentialType: string; nodeName: string }];
+	credentialSelected: [payload: CredentialSelectedPayload];
+	credentialDeselected: [payload: CredentialDeselectedPayload];
 }>();
 
 const i18n = useI18n();
@@ -54,19 +46,13 @@ const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 const credentialsStore = useCredentialsStore();
 const nodeHelpers = useNodeHelpers();
-const workflowState = injectWorkflowState();
-const ndvStore = useNDVStore();
 
-// Expression context for ParameterInputList
-const node = computed<INodeUi | null>(() => props.state.node);
-const expressionResolveCtx = useExpressionResolveCtx(node);
-provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
+// Sticky parameter tracking — prevents inputs from flickering mid-edit
+const shownParameters = ref<INodeProperties[]>([]);
 
 const nodeType = computed(() =>
 	nodeTypesStore.getNodeType(props.state.node.type, props.state.node.typeVersion),
 );
-
-const isHttpRequestNode = computed(() => isHttpRequestNodeType(props.state.node.type));
 
 const hasCredential = computed(() => !!props.state.credentialType);
 
@@ -100,36 +86,11 @@ const isTestingCredential = computed(() => {
 	return !!id && credentialsStore.isCredentialTestPending(id);
 });
 
-const allParameters = computed<INodeProperties[]>(() => {
-	if (!nodeType.value?.properties) return [];
-
+const hasShownParameters = computed(() => {
 	const issueParamNames = Object.keys(props.state.parameterIssues);
 	const additionalParamNames = props.state.additionalParameterNames ?? [];
-	const allParamNames = new Set([...issueParamNames, ...additionalParamNames]);
-
-	return nodeType.value.properties.filter(
-		(prop) =>
-			allParamNames.has(prop.name) &&
-			NodeHelpers.displayParameter(
-				props.state.node.parameters,
-				prop,
-				props.state.node,
-				nodeType.value,
-			),
-	);
+	return issueParamNames.length > 0 || additionalParamNames.length > 0;
 });
-
-const isNestedParam = (p: INodeProperties) =>
-	NESTED_PARAM_TYPES.has(p.type) || p.typeOptions?.multipleValues === true;
-
-const simpleParameters = computed(() => allParameters.value.filter((p) => !isNestedParam(p)));
-const nestedParameterCount = computed(() => allParameters.value.filter(isNestedParam).length);
-
-const hasShownParameters = computed(() => allParameters.value.length > 0);
-
-const openNdv = () => {
-	ndvStore.setActiveNodeName(props.state.node.name, 'other');
-};
 
 const isTriggerOnly = computed(
 	() => props.state.isTrigger && !hasCredential.value && !hasShownParameters.value,
@@ -139,12 +100,16 @@ const useCredentialIcon = computed(
 	() => hasCredential.value && !hasShownParameters.value && !isTriggerOnly.value,
 );
 
-const nodeNames = computed(() => (props.state.allNodesUsingCredential ?? []).map((n) => n.name));
-const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
-
 const isComplete = computed(() => props.state.isComplete);
 const isExecutable = computed(() => executableNode.value !== null);
+const showExecuteButton = computed(() => {
+	if (nodeType.value?.name === CHAT_TRIGGER_NODE_TYPE && isInListeningState.value) return false;
+	return isExecutable.value;
+});
 const isLastCard = computed(() => props.stepIndex === props.totalCards - 1);
+const showArrows = computed(() => props.totalCards > 1);
+const isPrevDisabled = computed(() => props.stepIndex === 0);
+const isNextDisabled = computed(() => isLastCard.value);
 
 const showContinue = computed(
 	() => !isExecutable.value && props.totalCards > 1 && !isLastCard.value,
@@ -152,45 +117,7 @@ const showContinue = computed(
 
 const isContinueDisabled = computed(() => hasCredential.value && !props.state.selectedCredentialId);
 
-const showArrows = computed(() => props.totalCards > 1);
-const isPrevDisabled = computed(() => props.stepIndex === 0);
-const isNextDisabled = computed(() => isLastCard.value);
-
 const showTriggerCallout = computed(() => props.state.isTrigger && isInListeningState.value);
-
-const onCredentialSelected = (updateInfo: INodeUpdatePropertiesInformation) => {
-	if (!props.state.credentialType) return;
-
-	const credentialData = updateInfo.properties.credentials?.[props.state.credentialType];
-	const credentialId = credentialData?.id;
-
-	if (credentialId) {
-		emit('credentialSelected', {
-			credentialType: props.state.credentialType,
-			credentialId,
-			nodeName: props.state.node.name,
-		});
-	} else {
-		emit('credentialDeselected', {
-			credentialType: props.state.credentialType,
-			nodeName: props.state.node.name,
-		});
-	}
-};
-
-const onValueChanged = (parameterData: IUpdateInformation) => {
-	const paramName = parameterData.name.replace(/^parameters\./, '');
-	workflowState.updateNodeProperties({
-		name: props.state.node.name,
-		properties: {
-			parameters: {
-				...props.state.node.parameters,
-				[paramName]: parameterData.value,
-			},
-		},
-	});
-	nodeHelpers.updateNodesParameterIssues();
-};
 
 // Notify parent when step execution finishes (for auto-advance / wizard dismissal).
 // Emit when the node ran successfully OR was not reached (e.g. on an inactive branch).
@@ -251,60 +178,18 @@ watch(isActive, (active, wasActive) => {
 		/>
 
 		<!-- Content -->
-		<div v-if="!isTriggerOnly" :class="$style.content">
-			<div v-if="state.showCredentialPicker" :class="$style.credentialContainer">
-				<NodeCredentials
-					:node="state.node"
-					:override-cred-type="state.credentialType ?? ''"
-					:skip-auto-select="isHttpRequestNode"
-					hide-issues
-					@credential-selected="onCredentialSelected"
-				>
-					<template v-if="nodeNames.length > 1" #label-postfix>
-						<N8nTooltip placement="top">
-							<template #content>
-								{{ nodeNamesTooltip }}
-							</template>
-							<N8nText data-test-id="builder-setup-card-nodes-hint" size="small" color="text-light">
-								{{
-									i18n.baseText('setupPanel.usedInNodes' as BaseTextKey, {
-										interpolate: { count: String(nodeNames.length) },
-									})
-								}}
-							</N8nText>
-						</N8nTooltip>
-					</template>
-				</NodeCredentials>
+		<SetupCardSection v-if="!isTriggerOnly" :state="state">
+			<div :class="$style.content">
+				<SetupCardBody
+					:state="state"
+					:sticky-parameters="shownParameters"
+					:is-wizard="true"
+					@credential-selected="(p) => emit('credentialSelected', p)"
+					@credential-deselected="(p) => emit('credentialDeselected', p)"
+					@parameters-discovered="(params) => shownParameters.push(...params)"
+				/>
 			</div>
-
-			<ParameterInputList
-				v-if="simpleParameters.length > 0"
-				:parameters="simpleParameters"
-				:node-values="{ parameters: state.node.parameters }"
-				:remove-first-parameter-margin="true"
-				:node="state.node"
-				:hide-delete="true"
-				path="parameters"
-				:options-overrides="{ hideExpressionSelector: true, hideFocusPanelButton: true }"
-				@value-changed="onValueChanged"
-			/>
-
-			<N8nLink
-				v-if="nestedParameterCount > 0"
-				data-test-id="builder-setup-card-configure-link"
-				:underline="true"
-				theme="text"
-				size="medium"
-				@click="openNdv"
-			>
-				{{
-					i18n.baseText('aiAssistant.builder.setupWizard.configureParameters' as BaseTextKey, {
-						adjustToNumber: nestedParameterCount,
-						interpolate: { count: String(nestedParameterCount) },
-					})
-				}}
-			</N8nLink>
-		</div>
+		</SetupCardSection>
 
 		<!-- Footer -->
 		<footer :class="$style.footer">
@@ -315,7 +200,7 @@ watch(isActive, (active, wasActive) => {
 					size="xsmall"
 					icon-only
 					:disabled="isPrevDisabled"
-					data-test-id="builder-setup-card-prev"
+					data-test-id="wizard-card-footer-prev"
 					aria-label="Previous step"
 					@click="emit('goToPrev')"
 				>
@@ -328,7 +213,7 @@ watch(isActive, (active, wasActive) => {
 					size="xsmall"
 					icon-only
 					:disabled="isNextDisabled"
-					data-test-id="builder-setup-card-next"
+					data-test-id="wizard-card-footer-next"
 					aria-label="Next step"
 					@click="emit('goToNext')"
 				>
@@ -349,7 +234,7 @@ watch(isActive, (active, wasActive) => {
 				/>
 
 				<TriggerExecuteButton
-					v-if="isExecutable"
+					v-if="showExecuteButton"
 					:label="executeLabel"
 					:icon="executeButtonIcon"
 					:disabled="isButtonDisabled || isTestingCredential"
@@ -405,15 +290,6 @@ watch(isActive, (active, wasActive) => {
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	padding: 0 var(--spacing--sm);
-}
-
-.credentialContainer {
-	display: flex;
-	flex-direction: column;
-
-	:global(.node-credentials) {
-		margin-top: 0;
-	}
 }
 
 .footer {

@@ -2,7 +2,7 @@ import { type User, type ProjectRepository, WorkflowEntity } from '@n8n/db';
 import z from 'zod';
 
 import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
-import { autoPopulateNodeCredentials } from './credentials-auto-assign';
+import { autoPopulateNodeCredentials, stripNullCredentialStubs } from './credentials-auto-assign';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 
@@ -149,6 +149,8 @@ export const createCreateWorkflowFromCodeTool = (
 			});
 
 			resolveNodeWebhookIds(newWorkflow, nodeTypes);
+
+			stripNullCredentialStubs(newWorkflow.nodes);
 
 			// Resolve the effective project ID — default to the user's personal project
 			let effectiveProjectId = projectId;

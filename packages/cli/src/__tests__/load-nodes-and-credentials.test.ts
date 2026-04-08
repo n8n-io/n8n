@@ -53,7 +53,7 @@ describe('NODE_PATH preservation (issue #24191)', () => {
 	});
 
 	it('should preserve existing NODE_PATH when setting module paths', () => {
-		const existingPath = '/opt/nodejs/node-v24.13.1/lib/node_modules';
+		const existingPath = '/opt/nodejs/node-v24.14.1/lib/node_modules';
 		process.env.NODE_PATH = existingPath;
 
 		// This is the exact logic from LoadNodesAndCredentials.init()

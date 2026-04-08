@@ -38,6 +38,7 @@ describe('ProvisioningController', () => {
 				scopesName: 'n8n_test_scope',
 				scopesInstanceRoleClaimName: 'n8n_test_instance_role',
 				scopesProjectsRolesClaimName: 'n8n_test_projects_roles',
+				scopesUseExpressionMapping: false,
 			};
 
 			licenseState.isProvisioningLicensed.mockReturnValue(true);
@@ -70,6 +71,7 @@ describe('ProvisioningController', () => {
 				scopesName: 'n8n_test_scope',
 				scopesInstanceRoleClaimName: 'n8n_test_instance_role',
 				scopesProjectsRolesClaimName: 'n8n_test_projects_roles',
+				scopesUseExpressionMapping: false,
 			};
 
 			licenseState.isProvisioningLicensed.mockReturnValue(true);

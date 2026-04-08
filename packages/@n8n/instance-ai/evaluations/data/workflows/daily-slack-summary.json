@@ -1,0 +1,40 @@
+{
+	"prompt": "Every day, get the posts made in the past day on 3 different Slack channels: #general (C04GENERAL01), #engineering (C04ENGINEER1), and #product (C04PRODUCT01). Summarize them using AI, and post the summary on #daily-digest (C04DAILYDG01). Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"complexity": "medium",
+	"tags": ["build", "slack", "ai", "schedule"],
+	"triggerType": "schedule",
+	"scenarios": [
+		{
+			"name": "happy-path",
+			"description": "All 3 channels return messages, AI summarizes, posts to channel",
+			"dataSetup": "Each Slack channel history node should return 2-3 messages. Channel 1: messages about sprint planning for next week and a production deployment completed successfully. Channel 2: a design review request for the new dashboard and positive feedback on the mockups. Channel 3: a critical bug report about login failures and a customer escalation from Acme Corp. The AI/LLM node should return a summary organized by topic that references these specific discussions. The final Slack post-message node returns a success response.",
+			"successCriteria": "The workflow executes without errors. The summary mentions sprint planning, the deployment, the design review, and the bug report. The summary reaches the final posting node."
+		},
+		{
+			"name": "empty-channel",
+			"description": "One channel returns no messages, others return normally",
+			"dataSetup": "Two Slack channel history nodes return 2-3 messages each — one about a team offsite being planned, another about API performance improvements. The third channel returns an empty array. The AI/LLM node should return a summary covering only the available content. The Slack post-message node returns a success response.",
+			"successCriteria": "The workflow handles the empty channel without errors. The merge step completes with partial data. A summary is generated covering the team offsite and API performance topics. The workflow completes end-to-end."
+		},
+		{
+			"name": "high-volume",
+			"description": "Channels return many messages, testing merge and aggregation",
+			"dataSetup": "Each Slack channel history node returns 8-10 messages covering diverse topics: hiring updates, infrastructure changes, feature launches, customer feedback, and team announcements. The AI/LLM node should return a comprehensive summary. The Slack post-message node returns a success response.",
+			"successCriteria": "The workflow handles the volume without errors. All messages are merged/aggregated correctly. The summary covers the major topics and is posted successfully. No data is lost in the merge step."
+		},
+		{
+			"name": "channel-not-found",
+			"description": "One Slack channel does not exist or has been deleted",
+			"dataSetup": "Two Slack channel history nodes return 2-3 messages each with normal content. The third returns an error indicating the channel was not found. The AI/LLM node should return a summary if it receives any input. The Slack post-message node returns a success response.",
+			"successCriteria": "The workflow handles the channel error gracefully — either by skipping the failed channel and summarizing the rest, or by surfacing a clear error. It should not silently drop all data due to one channel failing.",
+			"requires": "mock-server"
+		},
+		{
+			"name": "insufficient-permissions",
+			"description": "Slack credentials lack permission to read one channel",
+			"dataSetup": "Two Slack channel history nodes return 2-3 messages each. The third returns an error indicating the bot is not a member of that channel. The AI/LLM node should return a summary if it receives any input. The Slack post-message node returns a success response.",
+			"successCriteria": "The workflow handles the permission error gracefully. It should either continue with available data or clearly report the access issue. It should not crash or lose data from the accessible channels.",
+			"requires": "mock-server"
+		}
+	]
+}
