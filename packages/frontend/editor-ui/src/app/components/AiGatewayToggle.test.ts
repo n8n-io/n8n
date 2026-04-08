@@ -184,11 +184,14 @@ describe('AiGatewayToggle', () => {
 			renderComponent({ props: { aiGatewayEnabled: true, readonly: false } });
 
 			const uiStore = useUIStore();
-			vi.spyOn(uiStore, 'openModal');
+			vi.spyOn(uiStore, 'openModalWithData');
 
 			await userEvent.click(screen.getByText('5 credits remaining'));
 
-			expect(uiStore.openModal).toHaveBeenCalledWith(AI_GATEWAY_TOP_UP_MODAL_KEY);
+			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+				name: AI_GATEWAY_TOP_UP_MODAL_KEY,
+				data: { credentialType: undefined },
+			});
 		});
 
 		it('renders "Top up" label alongside the credits label in the badge', () => {
