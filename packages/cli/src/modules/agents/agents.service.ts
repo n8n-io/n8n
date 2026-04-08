@@ -379,26 +379,17 @@ export class AgentsService {
 			});
 		}
 
-		// Self-management tools: let the agent read/rewrite its own code and discover/run node tools.
+		// Node-discovery tools: let the agent discover and run n8n nodes on demand.
 		try {
-			const { createGetMyCodeTool, createTypecheckTool, createSetCodeTool } = await import(
-				'./integrations/agent-code-tools'
-			);
-			const { createListToolsTool, createRunNodeTool } = await import(
+			const { createListToolsTool, createGetNodeSchemaTool, createRunNodeTool } = await import(
 				'./integrations/node-execution-tools'
 			);
 
-			agent.tool(createGetMyCodeTool(this.agentRepository, agentId, projectId));
-			agent.tool(createTypecheckTool(this.secureRuntime));
-			agent.tool(
-				createSetCodeTool(async (code) => {
-					await this.updateCode(agentId, projectId, code);
-				}),
-			);
 			agent.tool(createListToolsTool(this.nodeNodeToolRegistry, credentialProvider));
+			agent.tool(createGetNodeSchemaTool(this.nodeNodeToolRegistry));
 			agent.tool(createRunNodeTool(this.ephemeralNodeExecutor, projectId));
 		} catch (toolError) {
-			this.logger.warn('Failed to inject self-management tools', {
+			this.logger.warn('Failed to inject node-discovery tools', {
 				agentId,
 				error: toolError instanceof Error ? toolError.message : String(toolError),
 			});

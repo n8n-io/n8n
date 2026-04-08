@@ -1,11 +1,34 @@
 import { Tool } from '@n8n/agents';
 import type { CredentialProvider } from '@n8n/agents';
+import { validateNodeConfig, setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import type { IDataObject, INodeCredentialsDetails, INodeParameters } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { EphemeralNodeExecutor } from '@/node-execution';
+import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
 
 import type { NodeToolRegistry, ToolDescriptor } from '../node-tool-registry';
+
+export interface RunNodeArgs {
+	nodeType: string;
+	nodeTypeVersion: number;
+	nodeParameters?: Record<string, unknown>;
+	credentials?: Record<string, { id: string; name: string }>;
+	inputData?: Record<string, unknown>;
+}
+
+let schemaBaseDirsInitialized = false;
+
+/**
+ * Ensures the workflow-sdk schema validator knows where to find pre-generated
+ * node schemas. Safe to call multiple times — only resolves dirs once.
+ */
+function ensureSchemaBaseDirsSet(): void {
+	if (schemaBaseDirsInitialized) return;
+	schemaBaseDirsInitialized = true;
+	const dirs = resolveBuiltinNodeDefinitionDirs();
+	if (dirs.length > 0) setSchemaBaseDirs(dirs);
+}
 
 /**
  * Tool that returns the list of n8n node tools the agent can add to itself.
@@ -19,21 +42,11 @@ export function createListToolsTool(
 	return new Tool('list_tools')
 		.description(
 			'List the n8n node tools available to this agent. ' +
-				'Each entry includes: displayName, nodeType (identifier for run_node_tool / ToolFromNode), ' +
+				'Each entry includes: displayName, nodeType (identifier for run_node_tool), ' +
 				'nodeTypeVersion, description, hasCredentials, and credentials ({ id, name, type } for each ' +
 				'credential the user has configured). ' +
-				'Use this to find a nodeType, then call run_node_tool to execute it immediately. ' +
-				'To permanently add a tool to your schema, call get_my_code, insert a ToolFromNode block, ' +
-				'then typecheck and set_code. Example ToolFromNode usage:\n' +
-				"  import { ToolFromNode } from '@n8n/agents-utils';\n" +
-				"  import { node } from '@n8n/workflow-sdk';\n" +
-				"  import { z } from 'zod';\n" +
-				'  // Then in the agent chain:\n' +
-				"  .tool(new ToolFromNode(node({ type: 'n8n-nodes-base.httpRequest', version: 4.2,\n" +
-				"    config: { parameters: { url: '={{ $json.url }}' } } }))\n" +
-				"    .name('fetch_webpage').description('Fetch a URL')\n" +
-				"    .input(z.object({ url: z.string().describe('URL to fetch') })))\n" +
-				'For nodes that need credentials, include config.credentials using slot/id/name from this list.',
+				'Use this to find a nodeType, then call get_node_schema to see what nodeParameters ' +
+				'the node accepts, and run_node_tool to execute it.',
 		)
 		.input(z.object({}))
 		.handler(async () => {
@@ -42,21 +55,42 @@ export function createListToolsTool(
 		});
 }
 
-export interface RunNodeArgs {
-	nodeType: string;
-	nodeTypeVersion: number;
-	nodeParameters?: Record<string, unknown>;
-	credentials?: Record<string, { id: string; name: string }>;
-	inputData?: Record<string, unknown>;
+/**
+ * Tool that returns the full parameter schema for a single n8n node type.
+ *
+ * Call this after list_tools to understand what nodeParameters a node accepts
+ * before calling run_node_tool.
+ */
+export function createGetNodeSchemaTool(registry: Pick<NodeToolRegistry, 'getNodeSchema'>) {
+	return new Tool('get_node_schema')
+		.description(
+			'Return the parameter schema for a specific n8n node type. ' +
+				'Each entry describes a parameter the node accepts: type, displayName, description, ' +
+				'required, default, and (for options/multiOptions) the allowed values. ' +
+				'Nested types: collection → fields, fixedCollection → groups with fields inside. ' +
+				'Parameters marked conditional only apply under certain resource/operation combinations. ' +
+				'Use this before run_node_tool to understand what to put in nodeParameters.',
+		)
+		.input(
+			z.object({
+				nodeType: z.string().describe('Node type identifier from list_tools'),
+			}),
+		)
+		.handler(async ({ nodeType }: { nodeType: string }) => {
+			const schema = await registry.getNodeSchema(nodeType);
+			if (!schema) {
+				return { error: `No schema found for node type "${nodeType}"` };
+			}
+			return { nodeType, schema };
+		});
 }
 
 /**
- * Tool that executes any n8n node directly for the current turn, without
- * requiring it to be in the agent's schema first.
+ * Tool that executes an n8n node for the current request.
  *
- * After a successful call, the agent should also persist the tool by writing
- * a ToolFromNode block and calling set_code — so that on the next rehydration
- * the tool is part of the schema and run_node_tool is no longer needed for it.
+ * nodeParameters are validated against the node's pre-generated Zod schema
+ * (from @n8n/workflow-sdk) before execution. n8n expression strings are
+ * accepted for any field and validated at runtime by the node itself.
  */
 export function createRunNodeTool(
 	executor: Pick<EphemeralNodeExecutor, 'executeInline'>,
@@ -64,14 +98,13 @@ export function createRunNodeTool(
 ) {
 	return new Tool('run_node_tool')
 		.description(
-			'Execute an n8n node immediately for the current request, even before it is in your schema. ' +
+			'Execute an n8n node for the current request. ' +
 				'Use nodeType and nodeTypeVersion from list_tools. ' +
+				'Call get_node_schema first to understand what nodeParameters the node accepts. ' +
 				'nodeParameters holds static node config; use n8n expressions like ={{ $json.url }} to map inputData fields. ' +
 				'credentials maps slot names to { id, name } — copy from the credentials array in list_tools. ' +
 				'inputData is the runtime payload available as $json inside expressions. ' +
-				'After getting the result, present it to the user and ask: ' +
-				'"Would you like me to add this tool permanently so I can use it directly next time?" ' +
-				'If yes: call get_my_code, add a matching ToolFromNode block, typecheck, then set_code.',
+				'Parameters are validated against the node schema before execution.',
 		)
 		.input(
 			z.object({
@@ -94,15 +127,35 @@ export function createRunNodeTool(
 			}),
 		)
 		.handler(
-			async ({ nodeType, nodeTypeVersion, nodeParameters, credentials, inputData }: RunNodeArgs) =>
-				executor.executeInline({
+			async ({
+				nodeType,
+				nodeTypeVersion,
+				nodeParameters,
+				credentials,
+				inputData,
+			}: RunNodeArgs) => {
+				if (nodeParameters) {
+					ensureSchemaBaseDirsSet();
+					const { valid, errors } = validateNodeConfig(nodeType, nodeTypeVersion, {
+						parameters: nodeParameters,
+					});
+					if (!valid) {
+						return {
+							status: 'error',
+							message: `Invalid nodeParameters: ${errors.map((e) => e.message).join('; ')}`,
+						};
+					}
+				}
+
+				return await executor.executeInline({
 					nodeType,
 					nodeTypeVersion,
 					nodeParameters: (nodeParameters ?? {}) as INodeParameters,
 					credentialDetails: credentials as Record<string, INodeCredentialsDetails> | undefined,
 					inputData: [{ json: (inputData ?? {}) as IDataObject }],
 					projectId,
-				}),
+				});
+			},
 		);
 }
 

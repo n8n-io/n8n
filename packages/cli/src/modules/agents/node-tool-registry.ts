@@ -4,6 +4,8 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
+import { extractNodeParametersSchema, type NodeParametersSchema } from './node-schema-utils';
+
 export interface ToolDescriptor {
 	/** Human-readable display name, e.g. "HTTP Request" */
 	displayName: string;
@@ -35,6 +37,13 @@ export class NodeToolRegistry {
 		const { nodes } = await this.loadNodesAndCredentials.collectTypes();
 		this.toolNodes = nodes.filter((n) => n.usableAsTool);
 		return this.toolNodes;
+	}
+
+	async getNodeSchema(nodeType: string): Promise<NodeParametersSchema | undefined> {
+		const nodes = await this.ensureLoaded();
+		const node = nodes.find((n) => n.name === nodeType);
+		if (!node) return undefined;
+		return extractNodeParametersSchema(node.properties);
 	}
 
 	async listTools(credentialProvider?: CredentialProvider): Promise<ToolDescriptor[]> {
