@@ -13,4 +13,6 @@ export const enum WORKFLOW_MENU_ACTIONS {
 	CHANGE_OWNER = 'change-owner',
 	UNPUBLISH = 'unpublish',
 	SHARE = 'share',
+	EXPORT_BUNDLE = 'export-bundle',
+	IMPORT_BUNDLE = 'import-bundle',
 }

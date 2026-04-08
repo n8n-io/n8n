@@ -2,6 +2,8 @@
 import { computed, ref, useCssModule } from 'vue';
 import { type ActionDropdownItem, N8nActionDropdown } from '@n8n/design-system';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client';
+import { makeRestApiRequest } from '@n8n/rest-api-client';
+import type { WorkflowBundle, ImportBundleResult } from '@n8n/api-types';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -52,6 +54,7 @@ const props = defineProps<{
 }>();
 
 const importFileRef = ref<HTMLInputElement | undefined>();
+const importBundleFileRef = ref<HTMLInputElement | undefined>();
 const toast = useToast();
 const locale = useI18n();
 const route = useRoute();
@@ -115,12 +118,75 @@ function handleFileImport() {
 	}
 }
 
+function handleBundleImport() {
+	const inputRef = importBundleFileRef.value;
+	if (!inputRef?.files || inputRef.files.length === 0) return;
+
+	const reader = new FileReader();
+	reader.onload = () => {
+		void (async () => {
+			try {
+				const bundle = JSON.parse(reader.result as string) as WorkflowBundle;
+				if (bundle.bundleVersion !== 1) {
+					toast.showError(
+						new Error('Unsupported bundle version'),
+						locale.baseText('menuActions.importBundle.error'),
+					);
+					return;
+				}
+
+				const projectId = projectsStore.currentProjectId ?? projectsStore.personalProject?.id ?? '';
+				const result = await makeRestApiRequest<ImportBundleResult>(
+					rootStore.restApiContext,
+					'POST',
+					'/workflow-bundles/import',
+					{ bundle, projectId },
+				);
+
+				toast.showMessage({
+					title: locale.baseText('menuActions.importBundle.success', {
+						interpolate: {
+							subWorkflows: String(Object.keys(bundle.subWorkflows).length),
+							dataTables: String(bundle.dataTableSchemas.length),
+						},
+					}),
+					type: 'success',
+				});
+
+				if (result.warnings.length > 0) {
+					toast.showMessage({
+						title: 'Import warnings',
+						message: result.warnings.join('\n'),
+						type: 'warning',
+					});
+				}
+
+				await router.push({
+					name: VIEWS.WORKFLOW,
+					params: { name: result.mainWorkflowId },
+				});
+			} catch (e) {
+				toast.showError(e, locale.baseText('menuActions.importBundle.error'));
+			} finally {
+				reader.onload = null;
+				if (inputRef) inputRef.value = '';
+			}
+		})();
+	};
+	reader.readAsText(inputRef.files[0]);
+}
+
 const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTIONS>>>(() => {
 	const actions: Array<ActionDropdownItem<WORKFLOW_MENU_ACTIONS>> = [
 		{
 			id: WORKFLOW_MENU_ACTIONS.DOWNLOAD,
 			label: locale.baseText('menuActions.download'),
 			disabled: !onWorkflowPage.value,
+		},
+		{
+			id: WORKFLOW_MENU_ACTIONS.EXPORT_BUNDLE,
+			label: locale.baseText('menuActions.exportBundle'),
+			disabled: !onWorkflowPage.value || props.isNewWorkflow,
 		},
 	];
 
@@ -179,6 +245,11 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 			{
 				id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE,
 				label: locale.baseText('menuActions.importFromFile'),
+				disabled: !onWorkflowPage.value || onExecutionsTab.value,
+			},
+			{
+				id: WORKFLOW_MENU_ACTIONS.IMPORT_BUNDLE,
+				label: locale.baseText('menuActions.importBundle'),
 				disabled: !onWorkflowPage.value || onExecutionsTab.value,
 			},
 		);
@@ -304,6 +375,33 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			nodeViewEventBus.emit('importWorkflowFromFile');
 			break;
 		}
+		case WORKFLOW_MENU_ACTIONS.EXPORT_BUNDLE: {
+			try {
+				const bundle = await makeRestApiRequest<WorkflowBundle>(
+					rootStore.restApiContext,
+					'POST',
+					'/workflow-bundles/export',
+					{ workflowId: props.id },
+				);
+
+				const blob = new Blob([JSON.stringify(bundle, null, 2)], {
+					type: 'application/json;charset=utf-8',
+				});
+
+				let name = props.name || 'unsaved_workflow';
+				name = sanitizeFilename(name);
+
+				telemetry.track('User exported workflow bundle', { workflow_id: props.id });
+				saveAs(blob, name + '.bundle.json');
+			} catch (error) {
+				toast.showError(error, 'Export failed');
+			}
+			break;
+		}
+		case WORKFLOW_MENU_ACTIONS.IMPORT_BUNDLE: {
+			importBundleFileRef.value?.click();
+			break;
+		}
 		case WORKFLOW_MENU_ACTIONS.PUSH: {
 			try {
 				// Navigate to route with sourceControl param - modal will handle data loading and loading states
@@ -411,6 +509,14 @@ defineExpose({
 			type="file"
 			data-test-id="workflow-import-input"
 			@change="handleFileImport()"
+		/>
+		<input
+			ref="importBundleFileRef"
+			:class="$style.hiddenInput"
+			type="file"
+			accept=".json"
+			data-test-id="workflow-bundle-import-input"
+			@change="handleBundleImport()"
 		/>
 		<N8nActionDropdown
 			:items="workflowMenuItems"

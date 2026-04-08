@@ -4,15 +4,11 @@ import type { IWorkflowDb } from '@n8n/db';
 import { WorkflowDependencies, WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter, SpanStatus, Tracing } from 'n8n-core';
-import {
-	DATA_TABLE_NODE_TYPES,
-	ensureError,
-	INode,
-	IWorkflowBase,
-	IWorkflowSettings,
-} from 'n8n-workflow';
+import { ensureError, INode, IWorkflowBase, IWorkflowSettings } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
+
+import { getCalledWorkflowIdFromNode, getDataTableIdFromNode } from './workflow-dependency-utils';
 
 // A safety limit to prevent infinite loops in indexing.
 const LOOP_LIMIT = 1_000_000_000;
@@ -282,32 +278,26 @@ export class WorkflowIndexService {
 	}
 
 	private addDataTableDependencies(node: INode, dependencyUpdates: WorkflowDependencies): void {
-		if (!DATA_TABLE_NODE_TYPES.includes(node.type)) {
+		const dataTableId = getDataTableIdFromNode(node);
+		if (!dataTableId) {
 			return;
 		}
-		const dataTableId = node.parameters?.['dataTableId'] as
+		const dataTableParam = node.parameters?.['dataTableId'] as
 			| { mode?: string; value?: string }
 			| undefined;
-		if (!dataTableId?.value || typeof dataTableId.value !== 'string') {
-			return;
-		}
-		// Skip expression-based IDs that can't be statically resolved
-		if (dataTableId.value.includes('{')) {
-			return;
-		}
-
 		dependencyUpdates.add({
 			dependencyType: 'dataTableId',
-			dependencyKey: dataTableId.value,
-			dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion, mode: dataTableId.mode },
+			dependencyKey: dataTableId,
+			dependencyInfo: {
+				nodeId: node.id,
+				nodeVersion: node.typeVersion,
+				mode: dataTableParam?.mode,
+			},
 		});
 	}
 
 	private addWorkflowCallDependencies(node: INode, dependencyUpdates: WorkflowDependencies): void {
-		if (node.type !== 'n8n-nodes-base.executeWorkflow') {
-			return;
-		}
-		const calledWorkflowId: string | undefined = this.getCalledWorkflowIdFrom(node);
+		const calledWorkflowId = getCalledWorkflowIdFromNode(node);
 		if (!calledWorkflowId) {
 			return;
 		}
@@ -345,39 +335,5 @@ export class WorkflowIndexService {
 			dependencyKey: errorWorkflowId,
 			dependencyInfo: null,
 		});
-	}
-
-	private getCalledWorkflowIdFrom(node: INode): string | undefined {
-		if (node.parameters?.['source'] === 'parameter') {
-			return undefined; // The sub-workflow is provided directly in the parameters, so no dependency to track.
-		}
-		if (node.parameters?.['source'] === 'localFile') {
-			return undefined; // The sub-workflow is provided via a local file, so no dependency to track.
-		}
-		if (node.parameters?.['source'] === 'url') {
-			return undefined; // The sub-workflow is provided via a URL, so no dependency to track.
-		}
-		if (!('workflowId' in node.parameters)) {
-			// This happens when the node is first added to the canvas.
-			return undefined; // The workflowId is not present in the parameters, so no dependency to track.
-		}
-		// We have a workflowId. This might be either directly as a string, or an object.
-		if (typeof node.parameters?.['workflowId'] === 'string') {
-			return node.parameters?.['workflowId'];
-		}
-		if (
-			node.parameters &&
-			typeof node.parameters['workflowId'] === 'object' &&
-			node.parameters['workflowId'] !== null &&
-			'value' in node.parameters['workflowId'] &&
-			typeof node.parameters['workflowId']['value'] === 'string'
-		) {
-			return node.parameters['workflowId']['value'];
-		}
-		this.errorReporter.warn(
-			`While indexing, could not determine called workflow ID from executeWorkflow node ${node.id}`,
-			{ extra: node.parameters },
-		);
-		return undefined;
 	}
 }

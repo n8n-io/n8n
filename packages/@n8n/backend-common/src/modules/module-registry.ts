@@ -51,6 +51,7 @@ export class ModuleRegistry {
 		'otel',
 		'token-exchange',
 		'instance-version-history',
+		'workflow-bundle',
 	];
 
 	private readonly activeModules: string[] = [];

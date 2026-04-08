@@ -212,3 +212,14 @@ export {
 
 export { VersionSinceDateQueryDto } from './instance-version-history/version-since-date-query.dto';
 export { VersionQueryDto } from './instance-version-history/version-query.dto';
+
+export {
+	ImportWorkflowBundleDto,
+	ExportWorkflowBundleDto,
+} from './workflow-bundle/import-workflow-bundle.dto';
+export type {
+	WorkflowBundle,
+	BundleWorkflow,
+	BundleDataTableSchema,
+	ImportBundleResult,
+} from './workflow-bundle/workflow-bundle.types';
