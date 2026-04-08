@@ -8,8 +8,6 @@ import { useUIStore } from '../stores/ui.store';
 import { useSettingsStore } from '../stores/settings.store';
 import { hasPermission } from '../utils/rbac/permissions';
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
-import { usePostHog } from '../stores/posthog.store';
-import { AI_GATEWAY_EXPERIMENT } from '../constants/experiments';
 
 export function useSettingsItems() {
 	const router = useRouter();
@@ -17,7 +15,6 @@ export function useSettingsItems() {
 	const uiStore = useUIStore();
 	const settingsStore = useSettingsStore();
 	const { canUserAccessRouteByName } = useUserHelpers(router);
-	const postHogStore = usePostHog();
 
 	const settingsItems = computed<IMenuItem[]>(() => {
 		const menuItems: IMenuItem[] = [
@@ -60,9 +57,7 @@ export function useSettingsItems() {
 				label: i18n.baseText('settings.n8nGateway'),
 				position: 'top',
 				available:
-					postHogStore.getVariant(AI_GATEWAY_EXPERIMENT.name) === AI_GATEWAY_EXPERIMENT.variant &&
-					settingsStore.isAiGatewayEnabled &&
-					canUserAccessRouteByName(VIEWS.AI_GATEWAY_SETTINGS),
+					settingsStore.isAiGatewayEnabled && canUserAccessRouteByName(VIEWS.AI_GATEWAY_SETTINGS),
 				route: { to: { name: VIEWS.AI_GATEWAY_SETTINGS } },
 			},
 			{

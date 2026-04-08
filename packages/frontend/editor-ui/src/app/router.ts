@@ -22,7 +22,7 @@ import { projectsRoutes } from '@/features/collaboration/projects/projects.route
 import { MfaRequiredError } from '@n8n/rest-api-client';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { TEMPLATE_SETUP_EXPERIENCE, AI_GATEWAY_EXPERIMENT } from '@/app/constants/experiments';
+import { TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 
 const ChangePasswordView = async () =>
@@ -687,11 +687,7 @@ export const routes: RouteRecordRaw[] = [
 					middlewareOptions: {
 						custom: () => {
 							const settingsStore = useSettingsStore();
-							const postHogStore = usePostHog();
-							return (
-								postHogStore.getVariant(AI_GATEWAY_EXPERIMENT.name) ===
-									AI_GATEWAY_EXPERIMENT.variant && settingsStore.isAiGatewayEnabled
-							);
+							return settingsStore.isAiGatewayEnabled;
 						},
 					},
 					telemetry: {
