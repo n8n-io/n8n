@@ -344,13 +344,7 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 		| 'freeText'
 		| 'customForm';
 
-	if (
-		responseType === 'approval' &&
-		(isbot(req.headers['user-agent']) ||
-			// Microsoft Teams link preview service (SkypeSpaces) automatically fetches
-			// URLs in chat messages for rich previews, which would trigger the approval
-			req.headers['user-agent']?.includes('SkypeSpaces'))
-	) {
+	if (responseType === 'approval' && isbot(req.headers['user-agent'])) {
 		res.send('');
 		return { noWebhookResponse: true };
 	}
