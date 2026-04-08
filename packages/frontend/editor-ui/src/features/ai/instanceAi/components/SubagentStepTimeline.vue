@@ -19,6 +19,9 @@ const { getToolLabel, getToggleLabel, getHideLabel } = useToolLabel();
 
 const CODE_BLOCK_PATTERN = /```/;
 
+/** Tool calls that are internal and should not be shown in the step timeline. */
+const HIDDEN_TOOLS = new Set(['updateWorkingMemory']);
+
 interface TimelineStep {
 	type: 'tool-call' | 'text' | 'done';
 	icon: IconName;
@@ -73,7 +76,7 @@ const steps = computed((): TimelineStep[] => {
 			});
 		} else if (entry.type === 'tool-call') {
 			const tc = toolCallsById.value[entry.toolCallId];
-			if (!tc) continue;
+			if (!tc || HIDDEN_TOOLS.has(tc.toolName)) continue;
 			result.push({
 				type: 'tool-call',
 				icon: tc.isLoading ? 'spinner' : getToolIcon(tc.toolName),

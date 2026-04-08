@@ -161,6 +161,7 @@ function patchNodeInPlace(node: InstanceAiAgentNode, state: AgentRunState): bool
 	node.result = agent.result;
 	node.error = agent.error;
 	node.tasks = agent.tasks;
+	node.planItems = agent.planItems;
 	node.kind = agent.kind;
 	node.title = agent.title;
 	node.subtitle = agent.subtitle;
@@ -309,6 +310,7 @@ function populateRunStateFromNode(
 		textContent: node.textContent,
 		reasoning: node.reasoning,
 		tasks: node.tasks,
+		planItems: node.planItems,
 		result: node.result,
 		error: node.error,
 	};

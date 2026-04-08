@@ -222,6 +222,38 @@ describe('agent-run-reducer', () => {
 			expect(state.agentsById['root'].status).toBe('error');
 		});
 
+		it('run-finish(cancelled) clears isLoading on all tool calls', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'publish-workflow'));
+			reduceEvent(state, makeConfirmationRequest('run-1', 'root', 'tc-1'));
+
+			expect(state.toolCallsById['tc-1'].isLoading).toBe(true);
+
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'cancelled'));
+
+			expect(state.toolCallsById['tc-1'].isLoading).toBe(false);
+		});
+
+		it('run-finish(error) clears isLoading on all tool calls', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'some-tool'));
+
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'error'));
+
+			expect(state.toolCallsById['tc-1'].isLoading).toBe(false);
+		});
+
+		it('run-finish(completed) does not clear isLoading on tool calls', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
+			reduceEvent(state, makeToolCall('run-1', 'sub-1', 'tc-1', 'background-tool'));
+
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'completed'));
+
+			// A completed run may still have background tasks with in-flight tool calls
+			expect(state.toolCallsById['tc-1'].isLoading).toBe(true);
+		});
+
 		it('run-start with unsafe agentId is ignored', () => {
 			const state = createInitialState();
 
@@ -392,6 +424,32 @@ describe('agent-run-reducer', () => {
 
 			expect(state.agentsById['sub-1'].status).toBe('error');
 			expect(state.agentsById['sub-1'].error).toBe('failed');
+		});
+
+		it('agent-completed clears isLoading on agent tool calls', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
+			reduceEvent(state, makeToolCall('run-1', 'sub-1', 'tc-1', 'some-tool'));
+			reduceEvent(state, makeConfirmationRequest('run-1', 'sub-1', 'tc-1'));
+
+			expect(state.toolCallsById['tc-1'].isLoading).toBe(true);
+
+			reduceEvent(state, makeAgentCompleted('run-1', 'sub-1', '', 'Cancelled by user'));
+
+			expect(state.toolCallsById['tc-1'].isLoading).toBe(false);
+		});
+
+		it('agent-completed does not clear tool calls of other agents', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
+			reduceEvent(state, makeAgentSpawned('run-1', 'sub-2', 'root'));
+			reduceEvent(state, makeToolCall('run-1', 'sub-1', 'tc-1', 'tool-a'));
+			reduceEvent(state, makeToolCall('run-1', 'sub-2', 'tc-2', 'tool-b'));
+
+			reduceEvent(state, makeAgentCompleted('run-1', 'sub-1', '', 'Cancelled by user'));
+
+			expect(state.toolCallsById['tc-1'].isLoading).toBe(false);
+			expect(state.toolCallsById['tc-2'].isLoading).toBe(true);
 		});
 
 		it('agent-spawned with unsafe ids is ignored', () => {

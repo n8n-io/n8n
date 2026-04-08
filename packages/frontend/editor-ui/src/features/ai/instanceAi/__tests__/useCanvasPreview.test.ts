@@ -63,11 +63,17 @@ function createMockStore() {
 	const messages = ref<InstanceAiMessage[]>([]) as Ref<InstanceAiMessage[]>;
 	const isStreaming = ref(false);
 	const resourceRegistry = ref(new Map<string, ResourceEntry>());
+	const threadMetadata = new Map<string, Record<string, unknown>>();
 
 	return reactive({
 		messages,
 		isStreaming,
 		resourceRegistry,
+		currentThreadId: 'thread-1',
+		getThreadMetadata: (threadId: string) => threadMetadata.get(threadId),
+		updateThreadMetadata: async (threadId: string, metadata: Record<string, unknown>) => {
+			threadMetadata.set(threadId, { ...threadMetadata.get(threadId), ...metadata });
+		},
 	});
 }
 

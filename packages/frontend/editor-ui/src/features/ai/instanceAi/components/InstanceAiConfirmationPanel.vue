@@ -328,7 +328,11 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 					v-else-if="chunk.item.toolCall.confirmation.inputType === 'plan-review'"
 					:key="'plan-' + chunk.item.toolCall.confirmation.requestId"
 					:class="$style.confirmation"
-					:planned-tasks="(chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []"
+					:planned-tasks="
+						chunk.item.toolCall.confirmation?.planItems ??
+						(chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ??
+						[]
+					"
 					:message="chunk.item.toolCall.confirmation.message"
 					@approve="
 						handlePlanApprove(

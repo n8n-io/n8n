@@ -220,6 +220,7 @@ describe('ExecutionPersistence', () => {
 			const executionPersistence = createPersistenceService('db');
 
 			await executionPersistence.deleteInFlightExecution(target);
+			const after = Date.now();
 
 			expect(executionRepository.update).toHaveBeenCalledWith('exec-1', {
 				deletedAt: expect.any(Date),
@@ -227,7 +228,7 @@ describe('ExecutionPersistence', () => {
 
 			const { deletedAt } = executionRepository.update.mock.calls[0][1] as { deletedAt: Date };
 			// deletedAt should be backdated by ~1 hour (the buffer)
-			const after = Date.now();
+			// Use `after` to tolerate clock progression between before/after snapshots
 			expect(deletedAt.getTime()).toBeLessThanOrEqual(after - 3600_000);
 			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
 		});

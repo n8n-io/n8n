@@ -109,7 +109,7 @@ export async function startResearchAgentTask(
 		role: 'web-researcher',
 		traceContext,
 		plannedTaskId: input.plannedTaskId,
-		run: async (signal, drainCorrections) => {
+		run: async (signal, drainCorrections, waitForCorrection) => {
 			return await withTraceContextActor(traceContext, async () => {
 				const subAgent = new Agent({
 					id: subAgentId,
@@ -158,6 +158,7 @@ export async function startResearchAgentTask(
 						abortSignal: signal,
 						waitForConfirmation: context.waitForConfirmation,
 						drainCorrections,
+						waitForCorrection,
 						llmStepTraceHooks,
 					});
 
