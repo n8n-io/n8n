@@ -7,6 +7,7 @@ import {
 	executeResumableStream,
 	type LlmStepTraceHooks,
 	type ResumableStreamSource,
+	type TraceStatus,
 } from './resumable-stream-executor';
 import { traceWorkingMemoryContext } from './working-memory-tracing';
 import { getTraceParentRun, withTraceParentContext } from '../tracing/langsmith-tracing';
@@ -27,7 +28,7 @@ export interface StreamRunOptions {
 }
 
 export interface StreamRunResult {
-	status: 'completed' | 'cancelled' | 'suspended' | 'errored';
+	status: TraceStatus;
 	mastraRunId: string;
 	text?: Promise<string>;
 	suspension?: SuspensionInfo;
