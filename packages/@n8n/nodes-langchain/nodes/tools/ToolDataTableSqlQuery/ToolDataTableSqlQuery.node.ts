@@ -119,10 +119,8 @@ export class ToolDataTableSqlQuery implements INodeType {
 			}
 
 			const tableIds = this.getNodeParameter('tables', i) as string[];
-			const options = this.getNodeParameter('options', i, {}) as {
-				maxRows?: number;
-				neverError?: boolean;
-			};
+			const options = this.getNodeParameter('options', i, {}) as { maxRows?: number };
+			const neverError = this.getNodeParameter('options.neverError', i, true) as boolean;
 
 			if (!this.helpers.executeSqlQuery) {
 				throw new NodeOperationError(this.getNode(), 'Data table module is not available');
@@ -142,7 +140,7 @@ export class ToolDataTableSqlQuery implements INodeType {
 					pairedItem: { item: i },
 				});
 			} catch (error) {
-				if (options.neverError) {
+				if (neverError) {
 					const message = error instanceof Error ? error.message : String(error);
 					result.push({
 						json: { error: message },
