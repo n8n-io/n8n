@@ -54,7 +54,6 @@ vi.mock('@n8n/permissions', () => ({
 
 const mockWorkflowState = {
 	setWorkflowProperty: vi.fn(),
-	setWorkflowName: vi.fn(),
 	setActive: vi.fn(),
 	setWorkflowId: vi.fn(),
 	setNodeValue: vi.fn(),
@@ -173,7 +172,6 @@ describe('useWorkflowSaving', () => {
 			modalConfirmSpy.mockResolvedValue(MODAL_CONFIRM);
 
 			const mockWorkflowState: Partial<WorkflowState> = {
-				setWorkflowName: vi.fn(),
 				setWorkflowProperty: vi.fn(),
 			};
 
@@ -590,7 +588,6 @@ describe('useWorkflowSaving', () => {
 			workflowDocumentStore.setTags(tagIds);
 
 			const testWorkflowState: Partial<WorkflowState> = {
-				setWorkflowName: vi.fn(),
 				setWorkflowProperty: vi.fn(),
 			};
 
@@ -666,7 +663,6 @@ describe('useWorkflowSaving', () => {
 			const initialDirtyCount = uiStore.dirtyStateSetCount;
 
 			const mockWorkflowState: Partial<WorkflowState> = {
-				setWorkflowName: vi.fn(),
 				setWorkflowProperty: vi.fn(),
 			};
 
@@ -712,7 +708,6 @@ describe('useWorkflowSaving', () => {
 			uiStore.markStateDirty();
 
 			const mockWorkflowState: Partial<WorkflowState> = {
-				setWorkflowName: vi.fn(),
 				setWorkflowProperty: vi.fn(),
 			};
 
@@ -748,7 +743,6 @@ describe('useWorkflowSaving', () => {
 			const saveStore = useWorkflowSaveStore();
 
 			const mockWorkflowState: Partial<WorkflowState> = {
-				setWorkflowName: vi.fn(),
 				setWorkflowProperty: vi.fn(),
 			};
 
@@ -813,7 +807,6 @@ describe('useWorkflowSaving', () => {
 			workflowsStore.workflowId = workflow.id;
 
 			const testWorkflowState: Partial<WorkflowState> = {
-				setWorkflowName: vi.fn(),
 				setWorkflowProperty: vi.fn(),
 			};
 
@@ -873,7 +866,6 @@ describe('useWorkflowSaving', () => {
 			const saveStore = useWorkflowSaveStore();
 
 			const testWorkflowState: Partial<WorkflowState> = {
-				setWorkflowName: vi.fn(),
 				setWorkflowProperty: vi.fn(),
 			};
 
@@ -936,7 +928,6 @@ describe('useWorkflowSaving', () => {
 			const saveStore = useWorkflowSaveStore();
 
 			const testWorkflowState: Partial<WorkflowState> = {
-				setWorkflowName: vi.fn(),
 				setWorkflowProperty: vi.fn(),
 			};
 
@@ -1015,7 +1006,6 @@ describe('useWorkflowSaving', () => {
 			const saveStore = useWorkflowSaveStore();
 
 			const testWorkflowState: Partial<WorkflowState> = {
-				setWorkflowName: vi.fn(),
 				setWorkflowProperty: vi.fn(),
 			};
 
@@ -1080,7 +1070,6 @@ describe('useWorkflowSaving', () => {
 			const saveStore = useWorkflowSaveStore();
 
 			const testWorkflowState: Partial<WorkflowState> = {
-				setWorkflowName: vi.fn(),
 				setWorkflowProperty: vi.fn(),
 			};
 
@@ -1117,7 +1106,6 @@ describe('useWorkflowSaving', () => {
 				const initialRetryCount = saveStore.retryCount;
 
 				const testWorkflowState: Partial<WorkflowState> = {
-					setWorkflowName: vi.fn(),
 					setWorkflowProperty: vi.fn(),
 				};
 

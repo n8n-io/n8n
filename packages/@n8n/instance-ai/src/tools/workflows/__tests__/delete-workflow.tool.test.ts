@@ -85,7 +85,7 @@ describe('createDeleteWorkflowTool', () => {
 				name: 'Quarterly Cleanup',
 			});
 
-			await tool.execute!({ workflowId: 'wf-123' }, {
+			await tool.execute!({ workflowId: 'wf-123', workflowName: 'Quarterly Cleanup' }, {
 				agent: { suspend, resumeData: undefined },
 			} as never);
 
@@ -117,9 +117,9 @@ describe('createDeleteWorkflowTool', () => {
 			(context.workflowService.archive as jest.Mock).mockResolvedValue(undefined);
 			const tool = createDeleteWorkflowTool(context);
 
-			const result = await tool.execute!({ workflowId: 'wf-123' }, {
+			const result = (await tool.execute!({ workflowId: 'wf-123' }, {
 				agent: { suspend: jest.fn(), resumeData: { approved: true } },
-			} as never);
+			} as never)) as Record<string, unknown>;
 
 			expect(context.workflowService.archive).toHaveBeenCalledWith('wf-123');
 			expect(result).toEqual({ success: true });
@@ -128,9 +128,9 @@ describe('createDeleteWorkflowTool', () => {
 		it('returns denied when resumed with approved: false', async () => {
 			const tool = createDeleteWorkflowTool(context);
 
-			const result = await tool.execute!({ workflowId: 'wf-123' }, {
+			const result = (await tool.execute!({ workflowId: 'wf-123' }, {
 				agent: { suspend: jest.fn(), resumeData: { approved: false } },
-			} as never);
+			} as never)) as Record<string, unknown>;
 
 			expect(context.workflowService.archive).not.toHaveBeenCalled();
 			expect(result).toEqual({
@@ -166,9 +166,9 @@ describe('createDeleteWorkflowTool', () => {
 			const tool = createDeleteWorkflowTool(context);
 			const suspend = jest.fn();
 
-			const result = await tool.execute!({ workflowId: 'wf-123' }, {
+			const result = (await tool.execute!({ workflowId: 'wf-123' }, {
 				agent: { suspend, resumeData: undefined },
-			} as never);
+			} as never)) as Record<string, unknown>;
 
 			expect(suspend).not.toHaveBeenCalled();
 			expect(context.workflowService.archive).toHaveBeenCalledWith('wf-123');

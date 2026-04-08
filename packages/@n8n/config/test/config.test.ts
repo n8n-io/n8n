@@ -488,7 +488,7 @@ describe('GlobalConfig', () => {
 			batchSize: 100,
 			optimizingMinimumAgeHours: 0.25,
 			optimizingTimeWindowHours: 2,
-			trimmingMinimumAgeDays: 7,
+			trimmingMinimumAgeDays: 6,
 			trimmingTimeWindowDays: 2,
 			trimOnStartUp: false,
 		},
@@ -496,6 +496,15 @@ describe('GlobalConfig', () => {
 			engine: 'legacy',
 			poolSize: 1,
 			maxCodeCacheSize: 1024,
+			bridgeTimeout: 5000,
+			bridgeMemoryLimit: 128,
+		},
+		instanceSettingsLoader: {
+			ownerManagedByEnv: false,
+			ownerEmail: '',
+			ownerFirstName: 'Instance',
+			ownerLastName: 'Owner',
+			ownerPasswordHash: '',
 		},
 	} satisfies GlobalConfigShape;
 
