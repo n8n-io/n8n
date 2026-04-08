@@ -272,15 +272,9 @@ export const useWorkflowSetupState = (
 	 */
 	const resolveExpressionUrl = (expressionUrl: string, nodeName: string): string | null => {
 		try {
-			const result = workflowsStore.workflowObject.expression.getParameterValue(
-				expressionUrl,
-				null,
-				0,
-				0,
-				nodeName,
-				[],
-				'manual',
-				{
+			const result = workflowDocumentStore.value
+				?.getExpressionHandler()
+				.getParameterValue(expressionUrl, null, 0, 0, nodeName, [], 'manual', {
 					$execution: {
 						id: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 						mode: 'test',
@@ -288,8 +282,7 @@ export const useWorkflowSetupState = (
 						resumeFormUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 					},
 					$vars: environmentsStore.variablesAsObject,
-				},
-			);
+				});
 			return typeof result === 'string' ? result : null;
 		} catch {
 			return null;
