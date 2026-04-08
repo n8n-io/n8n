@@ -9,15 +9,19 @@ import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
 import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/app/event-bus';
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
-import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
-import { useReadyToRunWorkflowsV2Store } from '@/experiments/readyToRunWorkflowsV2/stores/readyToRunWorkflowsV2.store';
+import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useBuilderStore } from '@/features/ai/assistant/builder.store';
+import {
 	SampleTemplates,
-	isPrebuiltAgentTemplateId,
 	isTutorialTemplateId,
 } from '@/features/workflows/templates/utils/workflowSamples';
 import {
@@ -28,9 +32,18 @@ import {
 import { getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
 import type { ExecutionFinished } from '@n8n/api-types/push/execution';
 import { useI18n } from '@n8n/i18n';
-import { parse } from 'flatted';
-import type { ExpressionError, IDataObject, IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
-import { EVALUATION_TRIGGER_NODE_TYPE, TelemetryHelpers } from 'n8n-workflow';
+import type {
+	ExecutionStatus,
+	ExpressionError,
+	IDataObject,
+	IRunExecutionData,
+	IWorkflowBase,
+} from 'n8n-workflow';
+import {
+	EVALUATION_TRIGGER_NODE_TYPE,
+	TelemetryHelpers,
+	createRunExecutionData,
+} from 'n8n-workflow';
 import type { useRouter } from 'vue-router';
 import { type WorkflowState } from '@/app/composables/useWorkflowState';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -53,10 +66,10 @@ export async function executionFinished(
 	options: ExecutionFinishedOptions,
 ) {
 	const workflowsStore = useWorkflowsStore();
+	const workflowsListStore = useWorkflowsListStore();
 	const uiStore = useUIStore();
 	const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
-	const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
-	const readyToRunWorkflowsV2Store = useReadyToRunWorkflowsV2Store();
+	const readyToRunStore = useReadyToRunStore();
 
 	options.workflowState.executingNode.lastAddedExecutingNode = null;
 
@@ -69,7 +82,7 @@ export async function executionFinished(
 
 	clearPopupWindowState();
 
-	const workflow = workflowsStore.getWorkflowById(data.workflowId);
+	const workflow = workflowsListStore.getWorkflowById(data.workflowId);
 	const templateId = workflow?.meta?.templateId;
 
 	if (templateId) {
@@ -83,24 +96,16 @@ export async function executionFinished(
 				templateId.split('-').pop() ?? '',
 				data.status,
 			);
-		} else if (templateId.startsWith('37_onboarding_experiments_batch_aug11')) {
-			readyToRunWorkflowsStore.trackExecuteWorkflow(templateId.split('-').pop() ?? '', data.status);
 		} else if (
-			templateId === 'ready-to-run-ai-workflow-v1' ||
-			templateId === 'ready-to-run-ai-workflow-v2' ||
-			templateId === 'ready-to-run-ai-workflow-v3' ||
-			templateId === 'ready-to-run-ai-workflow-v4'
+			templateId === 'ready-to-run-ai-workflow' ||
+			templateId === 'ready-to-run-ai-workflow-v5' ||
+			templateId === 'ready-to-run-ai-workflow-v6'
 		) {
 			if (data.status === 'success') {
-				readyToRunWorkflowsV2Store.trackExecuteAiWorkflowSuccess();
+				readyToRunStore.trackExecuteAiWorkflowSuccess();
 			} else {
-				readyToRunWorkflowsV2Store.trackExecuteAiWorkflow(data.status);
+				readyToRunStore.trackExecuteAiWorkflow(data.status);
 			}
-		} else if (isPrebuiltAgentTemplateId(templateId)) {
-			telemetry.track('User executed pre-built Agent', {
-				template: templateId,
-				status: data.status,
-			});
 		} else if (isTutorialTemplateId(templateId)) {
 			telemetry.track('User executed tutorial template', {
 				template: templateId,
@@ -114,7 +119,11 @@ export async function executionFinished(
 	let successToastAlreadyShown = false;
 
 	if (data.status === 'success') {
-		handleExecutionFinishedWithSuccessOrOther(options.workflowState, successToastAlreadyShown);
+		handleExecutionFinishedWithSuccessOrOther(
+			options.workflowState,
+			data.status,
+			successToastAlreadyShown,
+		);
 		successToastAlreadyShown = true;
 	}
 
@@ -135,11 +144,15 @@ export async function executionFinished(
 	uiStore.setProcessingExecutionResults(false);
 
 	if (execution.data?.waitTill !== undefined) {
-		handleExecutionFinishedWithWaitTill(options);
+		handleExecutionFinishedWithWaitTill(data.workflowId, options);
 	} else if (execution.status === 'error' || execution.status === 'canceled') {
 		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData);
 	} else {
-		handleExecutionFinishedWithSuccessOrOther(options.workflowState, successToastAlreadyShown);
+		handleExecutionFinishedWithSuccessOrOther(
+			options.workflowState,
+			execution.status,
+			successToastAlreadyShown,
+		);
 	}
 
 	setRunExecutionData(execution, runExecutionData, options.workflowState);
@@ -203,7 +216,7 @@ export async function fetchExecutionData(
 			id: executionId,
 			workflowId: executionResponse.workflowId,
 			workflowData: workflowsStore.workflow,
-			data: parse(executionResponse.data as unknown as string),
+			data: executionResponse.data,
 			status: executionResponse.status,
 			startedAt: workflowsStore.workflowExecutionData?.startedAt as Date,
 			stoppedAt: new Date(),
@@ -217,12 +230,12 @@ export async function fetchExecutionData(
  * Returns the run execution data from the execution object in a normalized format
  */
 export function getRunExecutionData(execution: SimplifiedExecution): IRunExecutionData {
-	return {
+	return createRunExecutionData({
 		...execution.data,
 		startData: execution.data?.startData,
 		resultData: execution.data?.resultData ?? { runData: {} },
 		executionData: execution.data?.executionData,
-	};
+	});
 }
 
 /**
@@ -252,15 +265,21 @@ export function getRunDataExecutedErrorMessage(execution: SimplifiedExecution) {
  * Handle the case when the workflow execution finished with `waitTill`,
  * meaning that it's in a waiting state.
  */
-export function handleExecutionFinishedWithWaitTill(options: {
-	router: ReturnType<typeof useRouter>;
-}) {
+export function handleExecutionFinishedWithWaitTill(
+	workflowId: string,
+	options: {
+		router: ReturnType<typeof useRouter>;
+	},
+) {
 	const workflowsStore = useWorkflowsStore();
 	const settingsStore = useSettingsStore();
 	const workflowSaving = useWorkflowSaving(options);
 	const workflowObject = workflowsStore.workflowObject;
 
-	const workflowSettings = workflowsStore.workflowSettings;
+	const workflowDocumentStore = workflowId
+		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowId))
+		: undefined;
+	const workflowSettings = workflowDocumentStore?.settings ?? {};
 	const saveManualExecutions =
 		workflowSettings.saveManualExecutions ?? settingsStore.saveManualExecutions;
 
@@ -270,7 +289,8 @@ export function handleExecutionFinishedWithWaitTill(options: {
 		globalLinkActionsEventBus.emit('registerGlobalLinkAction', {
 			key: 'open-settings',
 			action: async () => {
-				if (workflowsStore.isNewWorkflow) await workflowSaving.saveAsNewWorkflow();
+				if (!workflowsStore.isWorkflowSaved[workflowsStore.workflowId])
+					await workflowSaving.saveAsNewWorkflow();
 				uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 			},
 		});
@@ -325,7 +345,10 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 				const node = workflowObject.getNode(error.context.nodeCause as string);
 
 				if (node) {
-					eventData.is_pinned = !!workflowObject.getPinDataOfNode(node.name);
+					const workflowDocumentStore = workflowsStore.workflowId
+						? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+						: undefined;
+					eventData.is_pinned = !!workflowDocumentStore?.pinData?.[node.name];
 					eventData.mode = node.parameters.mode;
 					eventData.node_type = node.type;
 					eventData.operation = node.parameters.operation;
@@ -350,6 +373,8 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 		});
 
 		toast.showMessage({ title, message, type: 'error', duration: 0 });
+
+		useBuilderStore().incrementManualExecutionStats('error');
 	}
 }
 
@@ -380,6 +405,7 @@ function handleExecutionFinishedSuccessfully(
  */
 export function handleExecutionFinishedWithSuccessOrOther(
 	workflowState: WorkflowState,
+	executionStatus: ExecutionStatus,
 	successToastAlreadyShown: boolean,
 ) {
 	const workflowsStore = useWorkflowsStore();
@@ -389,11 +415,15 @@ export function handleExecutionFinishedWithSuccessOrOther(
 	const workflowObject = workflowsStore.workflowObject;
 	const workflowName = workflowObject.name ?? '';
 
+	const workflowDocumentStore = workflowsStore.workflowId
+		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+		: undefined;
+
 	useDocumentTitle().setDocumentTitle(workflowName, 'IDLE');
 
 	const workflowExecution = workflowsStore.getWorkflowExecution;
 	if (workflowExecution?.executedNode) {
-		const node = workflowsStore.getNodeByName(workflowExecution.executedNode);
+		const node = workflowDocumentStore?.getNodeByName(workflowExecution.executedNode) ?? null;
 		const nodeType = node && nodeTypesStore.getNodeType(node.type, node.typeVersion);
 		const nodeOutput =
 			workflowExecution.data?.resultData?.runData?.[workflowExecution.executedNode];
@@ -412,6 +442,12 @@ export function handleExecutionFinishedWithSuccessOrOther(
 				}),
 				type: 'success',
 			});
+		} else if (!nodeOutput && !successToastAlreadyShown) {
+			toast.showMessage({
+				title: i18n.baseText('pushConnection.nodeNotExecuted'),
+				message: i18n.baseText('pushConnection.nodeNotExecuted.message'),
+				type: 'warning',
+			});
 		} else if (!successToastAlreadyShown) {
 			handleExecutionFinishedSuccessfully(
 				workflowName,
@@ -426,6 +462,12 @@ export function handleExecutionFinishedWithSuccessOrOther(
 			workflowState,
 		);
 	}
+
+	// Execution finished is triggered multiple times
+	// use "successToastAlreadyShown" flag to avoid double counting executions
+	if (executionStatus === 'success' && !successToastAlreadyShown) {
+		useBuilderStore().incrementManualExecutionStats('success');
+	}
 }
 
 export function setRunExecutionData(
@@ -434,7 +476,7 @@ export function setRunExecutionData(
 	workflowState: WorkflowState,
 ) {
 	const workflowsStore = useWorkflowsStore();
-	const nodeHelpers = useNodeHelpers({ workflowState });
+	const nodeHelpers = useNodeHelpers();
 	const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution);
 	const workflowExecution = workflowsStore.getWorkflowExecution;
 

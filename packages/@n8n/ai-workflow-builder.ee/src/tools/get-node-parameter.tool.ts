@@ -5,11 +5,7 @@ import type { INode, NodeParameterValueType } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { MAX_PARAMETER_VALUE_LENGTH } from '@/constants';
-import {
-	createNodeParameterTooLargeError,
-	getCurrentWorkflow,
-	getWorkflowState,
-} from '@/tools/helpers';
+import { createNodeParameterTooLargeError, getEffectiveWorkflow } from '@/tools/helpers';
 import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
 
 import { ValidationError, ToolExecutionError } from '../errors';
@@ -86,9 +82,8 @@ export function createGetNodeParameterTool(logger?: Logger): BuilderTool {
 				logger?.debug(`Looking up parameter ${path} for ${nodeId}...`);
 				reportProgress(reporter, `Looking up parameter ${path} for ${nodeId}...`);
 
-				// Get current state
-				const state = getWorkflowState();
-				const workflow = getCurrentWorkflow(state);
+				// Get effective workflow (includes pending operations from this turn)
+				const workflow = getEffectiveWorkflow();
 
 				// Find the node
 				const node = validateNodeExists(nodeId, workflow.nodes);

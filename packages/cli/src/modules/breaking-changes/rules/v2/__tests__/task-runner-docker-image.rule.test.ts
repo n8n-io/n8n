@@ -1,10 +1,16 @@
+import type { GlobalConfig } from '@n8n/config';
+import { mock } from 'jest-mock-extended';
+
 import { TaskRunnerDockerImageRule } from '../task-runner-docker-image.rule';
 
 describe('TaskRunnerDockerImageRule', () => {
 	let rule: TaskRunnerDockerImageRule;
 
 	beforeEach(() => {
-		rule = new TaskRunnerDockerImageRule();
+		const mockGlobalConfig = mock<GlobalConfig>({
+			deployment: { type: 'default' },
+		});
+		rule = new TaskRunnerDockerImageRule(mockGlobalConfig);
 	});
 
 	describe('getMetadata()', () => {
@@ -18,6 +24,19 @@ describe('TaskRunnerDockerImageRule', () => {
 	});
 
 	describe('detect()', () => {
+		it('should not be affected on cloud deployments', async () => {
+			const mockGlobalConfig = mock<GlobalConfig>({
+				deployment: { type: 'cloud' },
+			});
+			const cloudRule = new TaskRunnerDockerImageRule(mockGlobalConfig);
+
+			const result = await cloudRule.detect();
+
+			expect(result.isAffected).toBe(false);
+			expect(result.instanceIssues).toHaveLength(0);
+			expect(result.recommendations).toHaveLength(0);
+		});
+
 		it('should always be affected (informational)', async () => {
 			const result = await rule.detect();
 

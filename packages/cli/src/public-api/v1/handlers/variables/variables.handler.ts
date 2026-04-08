@@ -1,20 +1,18 @@
-import { CreateVariableRequestDto } from '@n8n/api-types';
+import { CreateVariableRequestDto, UpdateVariableRequestDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { VariablesRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { IsNull } from '@n8n/typeorm';
 import type { Response } from 'express';
+
+import { VariablesController } from '@/environments.ee/variables/variables.controller.ee';
+import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
+import type { VariablesRequest } from '@/requests';
 
 import {
 	apiKeyHasScopeWithGlobalScopeFallback,
 	isLicensed,
 	validCursor,
 } from '../../shared/middlewares/global.middleware';
-import { encodeNextCursor } from '../../shared/services/pagination.service';
-
-import { VariablesController } from '@/environments.ee/variables/variables.controller.ee';
-import type { VariablesRequest } from '@/requests';
+import { paginateArray } from '../../shared/services/pagination.service';
 
 export = {
 	createVariable: [
@@ -34,7 +32,7 @@ export = {
 		isLicensed('feat:variables'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'variable:update' }),
 		async (req: AuthenticatedRequest<{ id: string }>, res: Response) => {
-			const payload = CreateVariableRequestDto.safeParse(req.body);
+			const payload = UpdateVariableRequestDto.safeParse(req.body);
 			if (payload.error) {
 				return res.status(400).json(payload.error.errors[0]);
 			}
@@ -59,24 +57,12 @@ export = {
 		async (req: VariablesRequest.GetAll, res: Response) => {
 			const { offset = 0, limit = 100, projectId, state } = req.query;
 
-			const [variables, count] = await Container.get(VariablesRepository).findAndCount({
-				skip: offset,
-				take: limit,
-				where: {
-					project: projectId === 'null' ? IsNull() : { id: projectId },
-					value: state === 'empty' ? '' : undefined,
-				},
-				relations: ['project'],
+			const variables = await Container.get(VariablesService).getAllForUser(req.user, {
+				state,
+				projectId: projectId === 'null' ? null : projectId,
 			});
 
-			return res.json({
-				data: variables,
-				nextCursor: encodeNextCursor({
-					offset,
-					limit,
-					numberOfTotalRecords: count,
-				}),
-			});
+			return res.json(paginateArray(variables, { offset, limit }));
 		},
 	],
 };

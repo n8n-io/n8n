@@ -1,15 +1,32 @@
 import type { INodeUi } from '@/Interface';
 import { useContextMenu } from './useContextMenu';
-import { BASIC_CHAIN_NODE_TYPE, NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/app/constants';
+import {
+	BASIC_CHAIN_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
+	NO_OP_NODE_TYPE,
+	STICKY_NODE_TYPE,
+} from '@/app/constants';
 import { faker } from '@faker-js/faker';
+import { shallowRef } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+	injectWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+
+vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
+	...(await importOriginal()),
+	injectWorkflowDocumentStore: vi.fn(),
+}));
+import {
 	EXECUTE_WORKFLOW_NODE_TYPE,
 	NodeConnectionTypes,
 	NodeHelpers,
+	WEBHOOK_NODE_TYPE,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 } from 'n8n-workflow';
 
@@ -27,8 +44,10 @@ describe('useContextMenu', () => {
 	let sourceControlStore: ReturnType<typeof useSourceControlStore>;
 	let uiStore: ReturnType<typeof useUIStore>;
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 	const nodes = [nodeFactory(), nodeFactory(), nodeFactory()];
 	const selectedNodes = nodes.slice(0, 2);
+	const testWorkflowId = 'test-workflow-id';
 
 	beforeAll(() => {
 		setActivePinia(createPinia());
@@ -41,8 +60,11 @@ describe('useContextMenu', () => {
 		vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(false);
 
 		workflowsStore = useWorkflowsStore();
+		workflowsStore.workflow.id = testWorkflowId;
 		workflowsStore.workflow.nodes = nodes;
-		workflowsStore.workflow.scopes = ['workflow:update'];
+		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(testWorkflowId));
+		workflowDocumentStore.setScopes(['workflow:update']);
+		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(shallowRef(workflowDocumentStore));
 		workflowsStore.workflowObject = {
 			nodes,
 			getNode: (_: string) => {
@@ -208,6 +230,112 @@ describe('useContextMenu', () => {
 		expect(targetNodeIds.value).toEqual([node.id]);
 	});
 
+	describe('Webhook URL copy actions', () => {
+		it('should show copy test URL for regular webhook node when workflow is inactive', () => {
+			const { open, isOpen, actions, targetNodeIds } = useContextMenu();
+			const webhookNode = nodeFactory({ type: WEBHOOK_NODE_TYPE, webhookId: 'test-webhook' });
+			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(webhookNode);
+			workflowDocumentStore.setActiveState({ activeVersionId: null, activeVersion: null });
+
+			open(mockEvent, { source: 'node-right-click', nodeId: webhookNode.id });
+
+			expect(isOpen.value).toBe(true);
+			expect(targetNodeIds.value).toEqual([webhookNode.id]);
+			const copyTestUrlAction = actions.value.find((action) => action.id === 'copy_test_url');
+			expect(copyTestUrlAction).toBeDefined();
+			expect(copyTestUrlAction?.disabled).toBe(false);
+			expect(copyTestUrlAction?.divided).toBe(true);
+			const copyProductionUrlAction = actions.value.find(
+				(action) => action.id === 'copy_production_url',
+			);
+			expect(copyProductionUrlAction).toBeUndefined();
+		});
+
+		it('should show both test and production URLs for regular webhook node when workflow is active', () => {
+			const { open, isOpen, actions, targetNodeIds } = useContextMenu();
+			const webhookNode = nodeFactory({ type: WEBHOOK_NODE_TYPE, webhookId: 'test-webhook' });
+			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(webhookNode);
+			workflowDocumentStore.setActiveState({ activeVersionId: 'v1', activeVersion: null });
+
+			open(mockEvent, { source: 'node-right-click', nodeId: webhookNode.id });
+
+			expect(isOpen.value).toBe(true);
+			expect(targetNodeIds.value).toEqual([webhookNode.id]);
+			const copyTestUrlAction = actions.value.find((action) => action.id === 'copy_test_url');
+			expect(copyTestUrlAction).toBeDefined();
+			expect(copyTestUrlAction?.disabled).toBe(false);
+			expect(copyTestUrlAction?.divided).toBe(true);
+			const copyProductionUrlAction = actions.value.find(
+				(action) => action.id === 'copy_production_url',
+			);
+			expect(copyProductionUrlAction).toBeDefined();
+			expect(copyProductionUrlAction?.disabled).toBe(false);
+			expect(copyProductionUrlAction?.divided).toBe(false);
+		});
+
+		it('should not show any webhook URL actions for production-only webhook when workflow is inactive', () => {
+			const { open, isOpen, actions, targetNodeIds } = useContextMenu();
+			const chatTriggerNode = nodeFactory({
+				type: CHAT_TRIGGER_NODE_TYPE,
+				webhookId: 'chat-webhook',
+			});
+			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(chatTriggerNode);
+			workflowDocumentStore.setActiveState({ activeVersionId: null, activeVersion: null });
+
+			open(mockEvent, { source: 'node-right-click', nodeId: chatTriggerNode.id });
+
+			expect(isOpen.value).toBe(true);
+			expect(targetNodeIds.value).toEqual([chatTriggerNode.id]);
+			const copyTestUrlAction = actions.value.find((action) => action.id === 'copy_test_url');
+			expect(copyTestUrlAction).toBeUndefined();
+			const copyProductionUrlAction = actions.value.find(
+				(action) => action.id === 'copy_production_url',
+			);
+			expect(copyProductionUrlAction).toBeUndefined();
+		});
+
+		it('should show only production URL for production-only webhook when workflow is active', () => {
+			const { open, isOpen, actions, targetNodeIds } = useContextMenu();
+			const chatTriggerNode = nodeFactory({
+				type: CHAT_TRIGGER_NODE_TYPE,
+				webhookId: 'chat-webhook',
+			});
+			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(chatTriggerNode);
+			workflowDocumentStore.setActiveState({ activeVersionId: 'v1', activeVersion: null });
+
+			open(mockEvent, { source: 'node-right-click', nodeId: chatTriggerNode.id });
+
+			expect(isOpen.value).toBe(true);
+			expect(targetNodeIds.value).toEqual([chatTriggerNode.id]);
+			const copyTestUrlAction = actions.value.find((action) => action.id === 'copy_test_url');
+			expect(copyTestUrlAction).toBeUndefined();
+			const copyProductionUrlAction = actions.value.find(
+				(action) => action.id === 'copy_production_url',
+			);
+			expect(copyProductionUrlAction).toBeDefined();
+			expect(copyProductionUrlAction?.disabled).toBe(false);
+			expect(copyProductionUrlAction?.divided).toBe(true);
+		});
+
+		it('should not show webhook URL actions for non-webhook node', () => {
+			const { open, isOpen, actions, targetNodeIds } = useContextMenu();
+			const regularNode = nodeFactory({ type: NO_OP_NODE_TYPE });
+			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(regularNode);
+			workflowDocumentStore.setActiveState({ activeVersionId: 'v1', activeVersion: null });
+
+			open(mockEvent, { source: 'node-right-click', nodeId: regularNode.id });
+
+			expect(isOpen.value).toBe(true);
+			expect(targetNodeIds.value).toEqual([regularNode.id]);
+			const copyTestUrlAction = actions.value.find((action) => action.id === 'copy_test_url');
+			expect(copyTestUrlAction).toBeUndefined();
+			const copyProductionUrlAction = actions.value.find(
+				(action) => action.id === 'copy_production_url',
+			);
+			expect(copyProductionUrlAction).toBeUndefined();
+		});
+	});
+
 	it('should return the correct actions opening the menu from the button', () => {
 		const { open, isOpen, actions, targetNodeIds } = useContextMenu();
 		const node = nodeFactory();
@@ -222,7 +350,7 @@ describe('useContextMenu', () => {
 	describe('Read-only mode', () => {
 		it('should return the correct actions when right clicking a sticky', () => {
 			vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(true);
-			workflowsStore.workflow.scopes = ['workflow:read'];
+			workflowDocumentStore.setScopes(['workflow:read']);
 			const { open, isOpen, actions, targetNodeIds } = useContextMenu();
 			const sticky = nodeFactory({ type: STICKY_NODE_TYPE });
 			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(sticky);

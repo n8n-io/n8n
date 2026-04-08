@@ -226,6 +226,29 @@ describe('VariableModal', () => {
 			expect(saveButton).toBeDisabled();
 		});
 
+		it('should show error when key starts with number', async () => {
+			const { getByTestId } = renderModal({
+				props: {
+					mode: 'new',
+				},
+				global,
+				pinia,
+			});
+
+			const keyInputContainer = getByTestId('variable-modal-key-input');
+			const saveButton = getByTestId('variable-modal-save-button');
+
+			const keyInput = keyInputContainer.querySelector('input');
+			if (!keyInput) throw new Error('Input not found');
+
+			// Enter key that starts with number
+			await userEvent.type(keyInput, '1startswithnumber');
+			await userEvent.click(saveButton); // simulate blur on input
+
+			expect(saveButton).toBeDisabled();
+			expect(keyInputContainer).toHaveTextContent('The key cannot start with a number');
+		});
+
 		it('should show warning overriding global variable in project context', async () => {
 			projectsStore.currentProjectId = 'project-1';
 			const { getByTestId, queryByTestId } = renderModal({
@@ -368,8 +391,9 @@ describe('VariableModal', () => {
 			if (!valueInput) throw new Error('Input not found');
 
 			// Just change the value, not the key
+			await userEvent.click(valueInput);
 			await userEvent.clear(valueInput);
-			await userEvent.type(valueInput, 'new value');
+			await userEvent.type(valueInput, 'new value', { delay: 10 });
 
 			// Should not show duplicate error for own key
 			expect(saveButton).toBeEnabled();
@@ -488,7 +512,7 @@ describe('VariableModal', () => {
 			if (!keyInput || !valueInput) throw new Error('Inputs not found');
 
 			await userEvent.type(keyInput, 'NEW_VAR');
-			await userEvent.type(valueInput, 'value');
+			await userEvent.type(valueInput, 'value', { delay: 10 });
 			await userEvent.click(saveButton);
 
 			// Give time for the async operation to complete
@@ -525,7 +549,7 @@ describe('VariableModal', () => {
 			if (!valueInput) throw new Error('Input not found');
 
 			await userEvent.clear(valueInput);
-			await userEvent.type(valueInput, 'new value');
+			await userEvent.type(valueInput, 'new value', { delay: 10 });
 			await userEvent.click(saveButton);
 
 			// Give time for the async operation to complete

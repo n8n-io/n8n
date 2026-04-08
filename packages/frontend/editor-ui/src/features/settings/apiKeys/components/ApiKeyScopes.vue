@@ -3,11 +3,9 @@ import { ref, computed, watch } from 'vue';
 
 import { capitalCase } from 'change-case';
 import { useI18n } from '@n8n/i18n';
-import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { I18nT } from 'vue-i18n';
 
-import { ElCheckbox, ElOption, ElOptionGroup, ElSelect } from 'element-plus';
-import { N8nInputLabel, N8nLink, N8nNotice } from '@n8n/design-system';
+import { ElOption, ElOptionGroup, ElSelect } from 'element-plus';
+import { N8nCheckbox, N8nInputLabel } from '@n8n/design-system';
 // Define props
 const props = defineProps({
 	modelValue: {
@@ -18,17 +16,12 @@ const props = defineProps({
 		type: Array,
 		default: () => [],
 	},
-	enabled: {
-		type: Boolean,
-		default: false,
-	},
 });
 
 const emit = defineEmits(['update:modelValue']);
 const selectedScopes = ref(props.modelValue);
 
 const i18n = useI18n();
-const { goToUpgrade } = usePageRedirectionHelper();
 
 const checkAll = ref(false);
 const indeterminate = ref(false);
@@ -72,10 +65,6 @@ watch(checkAll, (newValue) => {
 		selectedScopes.value = [];
 	}
 });
-
-function goToUpgradeApiKeyScopes() {
-	void goToUpgrade('api-key-scopes', 'upgrade-api-key-scopes');
-}
 </script>
 
 <template>
@@ -96,18 +85,16 @@ function goToUpgradeApiKeyScopes() {
 				:append-to="popperContainer"
 			>
 				<template #header>
-					<ElCheckbox
+					<N8nCheckbox
 						v-model="checkAll"
-						:disabled="!enabled"
 						:class="$style['scopes-checkbox']"
 						:indeterminate="indeterminate"
-					>
-						{{ i18n.baseText('settings.api.scopes.selectAll') }}
-					</ElCheckbox>
+						:label="i18n.baseText('settings.api.scopes.selectAll')"
+					/>
 				</template>
 
 				<template v-for="(actions, resource) in groupedScopes" :key="resource">
-					<ElOptionGroup :disabled="!enabled" :label="capitalCase(resource).toUpperCase()">
+					<ElOptionGroup :label="capitalCase(resource).toUpperCase()">
 						<ElOption
 							v-for="action in actions"
 							:key="`${resource}:${action}`"
@@ -118,15 +105,6 @@ function goToUpgradeApiKeyScopes() {
 				</template>
 			</ElSelect>
 		</N8nInputLabel>
-		<N8nNotice v-if="!enabled">
-			<I18nT keypath="settings.api.scopes.upgrade" scope="global">
-				<template #link>
-					<N8nLink size="small" @click="goToUpgradeApiKeyScopes">
-						{{ i18n.baseText('generic.upgrade') }}
-					</N8nLink>
-				</template>
-			</I18nT>
-		</N8nNotice>
 	</div>
 </template>
 
@@ -139,10 +117,6 @@ function goToUpgradeApiKeyScopes() {
 	color: white;
 	margin-left: var(--spacing--3xs);
 	background-color: var(--color--text);
-}
-
-.api-key-scopes :global(.el-checkbox) {
-	margin-left: var(--spacing--xs);
 }
 
 .scopes-dropdown-container :global(.el-select-group__title) {
@@ -169,10 +143,6 @@ function goToUpgradeApiKeyScopes() {
 	margin-bottom: var(--spacing--xs);
 }
 
-.scopes-dropdown-container :global(.el-checkbox) {
-	margin-left: var(--spacing--2xs);
-}
-
 .scopes-dropdown-container :global(.el-select-dropdown__header) {
 	margin-top: var(--spacing--xs);
 	padding-bottom: var(--spacing--xs);
@@ -181,6 +151,7 @@ function goToUpgradeApiKeyScopes() {
 
 .scopes-checkbox {
 	display: flex;
+	margin-left: var(--spacing--2xs);
 }
 
 .scopes-dropdown-container :global(.el-select-group__wrap::after) {

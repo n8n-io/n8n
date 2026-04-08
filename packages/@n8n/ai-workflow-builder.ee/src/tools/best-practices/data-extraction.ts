@@ -15,6 +15,13 @@ Use Information Extractor or AI nodes for extracting structured data from unstru
 
 For binary data, ensure you use nodes like Extract From File to handle files properly.
 
+### Referencing Binary Data from Other Nodes
+When you need to reference binary data from a previous node, use this syntax:
+- Expression: '{{ $('Node Name').item.binary.property_name }}' or {{ $binary.property_name }} if previous item
+- Example for Gmail attachments: '{{ $('Gmail Trigger').item.binary.attachment_0 }}' or {{ $binary.attachment_0 }} if previous item
+- Example for webhook data: '{{ $('Webhook').item.binary.data }}' or {{ $binary.data }} if previous item
+- Important: The property name depends on how the previous node names the binary data
+
 ## Data Structure & Type Management
 
 Normalize data structure early in your workflow. Use transformation nodes like Split Out, Aggregate, or Set to ensure your data matches n8n's expected structure: an array of objects with a json key.
@@ -38,6 +45,12 @@ Leverage AI for unstructured data using nodes like Information Extractor or Summ
 
 ## Recommended Nodes
 
+### Loop Over Items (n8n-nodes-base.splitInBatches)
+
+Purpose: Looping over a set of items extracted from a data set, for example if pulling a lot of data
+from a Google Sheet or database then looping over the items is required. This node MUST be used
+if the user mentions a large amount of data, it is necessary to batch the data to process all of it.
+
 ### Extract From File (n8n-nodes-base.extractFromFile)
 
 Purpose: Converts binary data from CSV, Excel, PDF, and text files to JSON for processing
@@ -53,7 +66,11 @@ Purpose: Scrapes data from web pages using CSS selectors
 
 ### Split Out (n8n-nodes-base.splitOut)
 
-Purpose: Processes arrays of items individually for sequential operations
+Purpose: Processes arrays of items individually for sequential operations.
+Example: If retrieving a JSON array using a HTTP request, this will return a single item,
+containing that array. If you wish to use a Loop Over Items (n8n-nodes-base.splitInBatches) node]
+then you will need to split out the array into items before looping over it. In a scenario like
+this a split out node MUST be used before looping over the items.
 
 ### Edit Fields (Set) (n8n-nodes-base.set)
 

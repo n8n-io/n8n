@@ -1,8 +1,12 @@
+export * from './breaking-change-rule';
 export * from './controller';
 export * from './command';
 export { Debounce } from './debounce';
 export * from './execution-lifecycle';
 export { Memoized } from './memoized';
+export * from './auth-handler';
+export * from './context-establishment';
+export * from './credential-resolver';
 export * from './module';
 export * from './multi-main';
 export * from './pubsub';

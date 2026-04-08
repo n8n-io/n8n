@@ -17,6 +17,7 @@ import type { WorkerServerEndpointsConfig } from '@/scaling/worker-server';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
 
 import { BaseCommand } from './base-command';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 const flagsSchema = z.object({
 	concurrency: z.number().int().default(10).describe('How many jobs can run in parallel.'),
@@ -91,6 +92,7 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.initLicense();
 		this.logger.debug('License init complete');
+		await this.initCommunityPackages();
 		await Container.get(CredentialsOverwrites).init();
 		this.logger.debug('Credentials overwrites init complete');
 		await this.initBinaryDataService();
@@ -114,7 +116,14 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 			}),
 		);
 
-		await this.moduleRegistry.initModules();
+		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
+
+		// Re-register pubsub event handlers after modules have been initialized
+		// As modules can add new event handlers we need to make sure they are registered
+		Container.get(PubSubRegistry).init();
+
+		await this.executionContextHookRegistry.init();
+		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
 	}
 
 	async initEventBus() {
@@ -134,7 +143,9 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 		Container.get(Publisher);
 
 		Container.get(PubSubRegistry).init();
-		await Container.get(Subscriber).subscribe('n8n.commands');
+
+		const subscriber = Container.get(Subscriber);
+		await subscriber.subscribe(subscriber.getCommandChannel());
 		Container.get(WorkerStatusService);
 	}
 
@@ -162,11 +173,6 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 	}
 
 	async run() {
-		this.logger.info('\nn8n worker is now ready');
-		this.logger.info(` * Version: ${N8N_VERSION}`);
-		this.logger.info(` * Concurrency: ${this.concurrency}`);
-		this.logger.info('');
-
 		const endpointsConfig: WorkerServerEndpointsConfig = {
 			health: this.globalConfig.queue.health.active,
 			overwrites: this.globalConfig.credentials.overwrite.endpoint !== '',
@@ -175,8 +181,15 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		if (Object.values(endpointsConfig).some((e) => e)) {
 			const { WorkerServer } = await import('@/scaling/worker-server');
-			await Container.get(WorkerServer).init(endpointsConfig);
+			const workerServer = Container.get(WorkerServer);
+			await workerServer.init(endpointsConfig);
+			workerServer.markAsReady();
 		}
+
+		this.logger.info('\nn8n worker is now ready');
+		this.logger.info(` * Version: ${N8N_VERSION}`);
+		this.logger.info(` * Concurrency: ${this.concurrency}`);
+		this.logger.info('');
 
 		if (!inTest && process.stdout.isTTY) {
 			process.stdin.setRawMode(true);
@@ -187,6 +200,8 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 				if (key.charCodeAt(0) === 3) process.kill(process.pid, 'SIGINT'); // ctrl+c
 			});
 		}
+
+		Container.get(LoadNodesAndCredentials).releaseTypes();
 
 		// Make sure that the process does not close
 		if (!inTest) await new Promise(() => {});

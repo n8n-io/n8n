@@ -29,6 +29,10 @@ export class Phantombuster implements INodeType {
 		defaults: {
 			name: 'Phantombuster',
 		},
+		builderHint: {
+			message:
+				'Recommended for scraping LinkedIn profiles and social media for leads, and company data. Use with AI Agent for lead generation workflows.',
+		},
 		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
@@ -216,19 +220,31 @@ export class Phantombuster implements INodeType {
 							const argumentParameters =
 								((additionalFields.argumentsUi as IDataObject)?.argumentValues as IDataObject[]) ||
 								[];
-							body.arguments = argumentParameters.reduce((object, currentValue) => {
+
+							const argumentsObj = argumentParameters.reduce((object, currentValue) => {
 								object[currentValue.key as string] = currentValue.value;
 								return object;
 							}, {});
+
+							// Only set arguments if not empty as per API requirements
+							if (Object.keys(argumentsObj).length > 0) {
+								body.arguments = argumentsObj;
+							}
 							delete additionalFields.argumentsUi;
 
 							const bonusParameters =
 								((additionalFields.bonusArgumentUi as IDataObject)
 									?.bonusArgumentValue as IDataObject[]) || [];
-							body.bonusArgument = bonusParameters.reduce((object, currentValue) => {
+
+							const bonusArgumentObj = bonusParameters.reduce((object, currentValue) => {
 								object[currentValue.key as string] = currentValue.value;
 								return object;
 							}, {});
+
+							// Only set bonusArgument if not empty as per API requirements
+							if (Object.keys(bonusArgumentObj).length > 0) {
+								body.bonusArgument = bonusArgumentObj;
+							}
 							delete additionalFields.bonusArgumentUi;
 						}
 

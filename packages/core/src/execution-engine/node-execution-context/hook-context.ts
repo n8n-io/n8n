@@ -31,10 +31,6 @@ export class HookContext extends NodeExecutionContext implements IHookFunctions 
 		this.helpers = getRequestHelperFunctions(workflow, node, additionalData);
 	}
 
-	getExecutionContext() {
-		return undefined;
-	}
-
 	getActivationMode() {
 		return this.activation;
 	}

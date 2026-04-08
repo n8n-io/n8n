@@ -1,14 +1,22 @@
 <script setup lang="ts">
-import { computed, watch, onBeforeMount } from 'vue';
+import { computed, watch } from 'vue';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
+import { useAvailableProjectSearch } from '@/features/collaboration/projects/projects.utils';
 import type { BaseFilters } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 
-import { N8nBadge, N8nButton, N8nInputLabel, N8nLink, N8nPopover } from '@n8n/design-system';
+import {
+	N8nBadge,
+	N8nButton,
+	N8nInputLabel,
+	N8nLink,
+	N8nPopover,
+	N8nTooltip,
+} from '@n8n/design-system';
 type IResourceFiltersType = Record<string, boolean | string | string[]>;
 
 const props = withDefaults(
@@ -37,6 +45,8 @@ const projectsStore = useProjectsStore();
 
 const i18n = useI18n();
 
+const searchFn = useAvailableProjectSearch();
+
 const selectedProject = computed<ProjectSharingData | null>({
 	get: () => {
 		return (
@@ -45,7 +55,9 @@ const selectedProject = computed<ProjectSharingData | null>({
 			) ?? null
 		);
 	},
-	set: (value) => setKeyValue('homeProject', value?.id ?? ''),
+	set: (value) => {
+		setKeyValue('homeProject', value?.id ?? '');
+	},
 });
 
 const filtersLength = computed(() => {
@@ -100,90 +112,86 @@ const resetFilters = () => {
 	selectedProject.value = null;
 };
 
-watch(filtersLength, (value) => {
-	emit('update:filtersLength', value);
+const shouldBeIconButton = computed(() => {
+	return !hasFilters.value;
 });
 
-onBeforeMount(async () => {
-	await projectsStore.getAvailableProjects();
+watch(filtersLength, (value) => {
+	emit('update:filtersLength', value);
 });
 </script>
 
 <template>
-	<N8nPopover trigger="click" width="304" size="large">
-		<template #reference>
-			<N8nButton
-				icon="funnel"
-				type="tertiary"
-				size="small"
-				:active="hasFilters"
-				:class="{
-					[$style['filter-button']]: true,
-					[$style['no-label']]: justIcon && filtersLength === 0,
-				}"
-				data-test-id="resources-list-filters-trigger"
-			>
-				<N8nBadge
-					v-if="filtersLength > 0"
-					:class="$style['filter-button-count']"
-					data-test-id="resources-list-filters-count"
-					theme="primary"
-				>
-					{{ filtersLength }}
-				</N8nBadge>
-				<span v-if="!justIcon" :class="$style['filter-button-text']">
-					{{ i18n.baseText('forms.resourceFiltersDropdown.filters') }}
-				</span>
-			</N8nButton>
+	<N8nPopover width="304px" :content-class="$style['popover-content']" align="end">
+		<template #trigger>
+			<span :class="$style['trigger-wrapper']">
+				<N8nTooltip>
+					<template #content> Filters </template>
+					<N8nButton
+						variant="outline"
+						icon="funnel"
+						size="medium"
+						:iconOnly="shouldBeIconButton"
+						:active="hasFilters"
+						:aria-label="i18n.baseText('forms.resourceFiltersDropdown.filters')"
+						:class="{
+							[$style['filter-button']]: true,
+							[$style['no-label']]: justIcon && filtersLength === 0,
+						}"
+						data-test-id="resources-list-filters-trigger"
+					>
+						<N8nBadge
+							v-if="filtersLength > 0"
+							:class="$style['filter-button-count']"
+							data-test-id="resources-list-filters-count"
+							theme="primary"
+						>
+							{{ filtersLength }}
+						</N8nBadge>
+						<span v-if="!justIcon" :class="$style['filter-button-text']">
+							{{ i18n.baseText('forms.resourceFiltersDropdown.filters') }}
+						</span>
+					</N8nButton>
+				</N8nTooltip>
+			</span>
 		</template>
-		<div :class="$style['filters-dropdown']" data-test-id="resources-list-filters-dropdown">
-			<slot :filters="modelValue" :set-key-value="setKeyValue" />
-			<EnterpriseEdition
-				v-if="shareable && projectsStore.isProjectHome"
-				:features="[EnterpriseEditionFeature.Sharing]"
-			>
-				<N8nInputLabel
-					:label="i18n.baseText('forms.resourceFiltersDropdown.owner')"
-					:bold="false"
-					size="small"
-					color="text-base"
-					class="mb-3xs"
-				/>
-				<ProjectSharing
-					v-model="selectedProject"
-					:projects="projectsStore.availableProjects"
-					:placeholder="i18n.baseText('forms.resourceFiltersDropdown.owner.placeholder')"
-					:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
-					@update:model-value="setKeyValue('homeProject', ($event as ProjectSharingData).id)"
-				/>
-			</EnterpriseEdition>
-			<div v-if="hasFilters" :class="[$style['filters-dropdown-footer'], 'mt-s']">
-				<N8nLink @click="resetFilters">
-					{{ i18n.baseText('forms.resourceFiltersDropdown.reset') }}
-				</N8nLink>
+		<template #content>
+			<div :class="$style['filters-dropdown']" data-test-id="resources-list-filters-dropdown">
+				<slot :filters="modelValue" :set-key-value="setKeyValue" />
+				<EnterpriseEdition
+					v-if="shareable && projectsStore.isProjectHome"
+					:features="[EnterpriseEditionFeature.Sharing]"
+				>
+					<N8nInputLabel
+						:label="i18n.baseText('forms.resourceFiltersDropdown.owner')"
+						:bold="false"
+						size="small"
+						color="text-base"
+						class="mb-3xs"
+					/>
+					<ProjectSharing
+						v-model="selectedProject"
+						:search-fn="searchFn"
+						:placeholder="i18n.baseText('forms.resourceFiltersDropdown.owner.placeholder')"
+						:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
+						@update:model-value="setKeyValue('homeProject', ($event as ProjectSharingData).id)"
+					/>
+				</EnterpriseEdition>
+				<div v-if="hasFilters" :class="[$style['filters-dropdown-footer'], 'mt-s']">
+					<N8nLink @click="resetFilters">
+						{{ i18n.baseText('forms.resourceFiltersDropdown.reset') }}
+					</N8nLink>
+				</div>
 			</div>
-		</div>
+		</template>
 	</N8nPopover>
 </template>
 
 <style lang="scss" module>
 .filter-button {
-	height: 30px;
-	align-items: center;
-
-	&.no-label {
-		width: 30px;
-		span + span {
-			margin: 0;
-		}
-	}
-
-	.filter-button-count {
-		margin-right: var(--spacing--4xs);
-
-		@include mixins.breakpoint('xs-only') {
-			margin-right: 0;
-		}
+	.filter-button-count > span {
+		font-size: var(--font-size--3xs);
+		font-weight: var(--font-weight--semibold);
 	}
 
 	@media screen and (max-width: 480px) {
@@ -198,13 +206,21 @@ onBeforeMount(async () => {
 	}
 }
 
-.filters-dropdown {
-	width: 280px;
-}
-
 .filters-dropdown-footer {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+}
+
+.popover-content {
+	padding: var(--spacing--sm);
+}
+
+.trigger-wrapper {
+	display: inline-flex;
+
+	&[data-state='open'] button {
+		background-color: var(--button--color--background-active);
+	}
 }
 </style>

@@ -1,9 +1,14 @@
 import type { BedrockRuntimeClientConfig } from '@aws-sdk/client-bedrock-runtime';
 import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
 import { ChatBedrockConverse } from '@langchain/aws';
+import {
+	getNodeProxyAgent,
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
-import { getNodeProxyAgent } from '@utils/httpProxyAgent';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -11,9 +16,6 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-
-import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatAwsBedrock implements INodeType {
 	description: INodeTypeDescription = {
@@ -236,10 +238,18 @@ export class LmChatAwsBedrock implements INodeType {
 			maxTokensToSample: number;
 		};
 
+		// If the model is specified as a full ARN, extract the region from it
+		// ARN format: arn:aws:bedrock:<region>:<account-id>:inference-profile/<profile-id>
+		let region = credentials.region;
+		const arnMatch = modelName.match(/^arn:aws:bedrock:([a-z0-9-]+):/);
+		if (arnMatch) {
+			region = arnMatch[1];
+		}
+
 		// We set-up client manually to pass httpAgent and httpsAgent
 		const proxyAgent = getNodeProxyAgent();
 		const clientConfig: BedrockRuntimeClientConfig = {
-			region: credentials.region,
+			region,
 			credentials: {
 				secretAccessKey: credentials.secretAccessKey,
 				accessKeyId: credentials.accessKeyId,
@@ -260,7 +270,7 @@ export class LmChatAwsBedrock implements INodeType {
 		const model = new ChatBedrockConverse({
 			client,
 			model: modelName,
-			region: credentials.region,
+			region,
 			temperature: options.temperature,
 			maxTokens: options.maxTokensToSample,
 			callbacks: [new N8nLlmTracing(this)],

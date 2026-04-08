@@ -7,7 +7,6 @@ import {
 } from '@n8n/backend-test-utils';
 import {
 	CredentialsEntity,
-	SettingsRepository,
 	CredentialsRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
@@ -54,12 +53,6 @@ test('user-management:reset should reset DB to default user state', async () => 
 		await encryptCredentialData(Object.assign(new CredentialsEntity(), randomCredentialPayload())),
 	);
 
-	// mark instance as set up
-	await Container.get(SettingsRepository).update(
-		{ key: 'userManagement.isInstanceOwnerSetUp' },
-		{ value: 'true' },
-	);
-
 	//
 	// ACT
 	//
@@ -100,9 +93,4 @@ test('user-management:reset should reset DB to default user state', async () => 
 	await expect(
 		Container.get(SharedCredentialsRepository).findBy({ credentialsId: danglingCredential.id }),
 	).resolves.toMatchObject([{ projectId: ownerProject.id, role: 'credential:owner' }]);
-
-	// the instance is marked as not set up:
-	await expect(
-		Container.get(SettingsRepository).findBy({ key: 'userManagement.isInstanceOwnerSetUp' }),
-	).resolves.toMatchObject([{ value: 'false' }]);
 });

@@ -8,6 +8,7 @@ import type {
 	DataTableRow,
 } from '@/features/core/dataTable/dataTable.types';
 import type { DataTablesSizeResult } from 'n8n-workflow';
+import type { DataTableListSortBy } from '@n8n/api-types';
 
 export const fetchDataTablesApi = async (
 	context: IRestApiContext,
@@ -19,8 +20,9 @@ export const fetchDataTablesApi = async (
 	filter?: {
 		id?: string | string[];
 		name?: string | string[];
-		projectId: string | string[];
+		projectId?: string | string[];
 	},
+	sortBy?: DataTableListSortBy,
 ) => {
 	const apiEndpoint = projectId ? `/projects/${projectId}/data-tables` : '/data-tables-global';
 	return await makeRestApiRequest<{ count: number; data: DataTable[] }>(
@@ -30,6 +32,7 @@ export const fetchDataTablesApi = async (
 		{
 			...options,
 			filter: filter ?? undefined,
+			sortBy,
 		},
 	);
 };
@@ -39,6 +42,8 @@ export const createDataTableApi = async (
 	name: string,
 	projectId: string,
 	columns?: DataTableColumnCreatePayload[],
+	fileId?: string,
+	hasHeaders: boolean = true,
 ) => {
 	return await makeRestApiRequest<DataTable>(
 		context,
@@ -47,6 +52,8 @@ export const createDataTableApi = async (
 		{
 			name,
 			columns: columns ?? [],
+			hasHeaders,
+			...(fileId ? { fileId } : {}),
 		},
 	);
 };
@@ -125,6 +132,23 @@ export const moveDataTableColumnApi = async (
 		`/projects/${projectId}/data-tables/${dataTableId}/columns/${columnId}/move`,
 		{
 			targetIndex,
+		},
+	);
+};
+
+export const renameDataTableColumnApi = async (
+	context: IRestApiContext,
+	dataTableId: string,
+	projectId: string,
+	columnId: string,
+	name: string,
+) => {
+	return await makeRestApiRequest<DataTableColumn>(
+		context,
+		'PATCH',
+		`/projects/${projectId}/data-tables/${dataTableId}/columns/${columnId}/rename`,
+		{
+			name,
 		},
 	);
 };
@@ -217,4 +241,59 @@ export const fetchDataTableGlobalLimitInBytes = async (context: IRestApiContext)
 		'GET',
 		'/data-tables-global/limits',
 	);
+};
+
+export const downloadDataTableCsvApi = async (
+	context: IRestApiContext,
+	dataTableId: string,
+	projectId: string,
+	includeSystemColumns = true,
+): Promise<{ csvContent: string; filename: string }> => {
+	const response = await makeRestApiRequest<{ csvContent: string; dataTableName: string }>(
+		context,
+		'GET',
+		`/projects/${projectId}/data-tables/${dataTableId}/download-csv`,
+		{
+			includeSystemColumns,
+		},
+	);
+
+	// Use just the data table name as filename
+	const filename = `${response.dataTableName}.csv`;
+
+	return {
+		csvContent: response.csvContent,
+		filename,
+	};
+};
+export const importCsvToDataTableApi = async (
+	context: IRestApiContext,
+	dataTableId: string,
+	projectId: string,
+	fileId: string,
+) => {
+	return await makeRestApiRequest<{ importedRowCount: number; systemColumnsIgnored: string[] }>(
+		context,
+		'POST',
+		`/projects/${projectId}/data-tables/${dataTableId}/import-csv`,
+		{ fileId },
+	);
+};
+
+export const uploadCsvFileApi = async (
+	context: IRestApiContext,
+	file: File,
+	hasHeaders: boolean = true,
+) => {
+	const formData = new FormData();
+	formData.append('file', file);
+	formData.append('hasHeaders', String(hasHeaders));
+
+	return await makeRestApiRequest<{
+		originalName: string;
+		id: string;
+		rowCount: number;
+		columnCount: number;
+		columns: Array<{ name: string; type: string; compatibleTypes: string[] }>;
+	}>(context, 'POST', '/data-tables/uploads', formData);
 };

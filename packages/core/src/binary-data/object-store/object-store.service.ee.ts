@@ -55,7 +55,7 @@ export class ObjectStoreService {
 		const endpoint = host ? `${protocol}://${host}` : undefined;
 		if (endpoint) {
 			clientConfig.endpoint = endpoint;
-			clientConfig.forcePathStyle = true; // Needed for non-AWS S3 compatible services
+			clientConfig.forcePathStyle = this.s3Config.forcePathStyle;
 		}
 		if (bucket.region.length) {
 			clientConfig.region = bucket.region;
@@ -114,7 +114,8 @@ export class ObjectStoreService {
 				params.ContentType = metadata.mimeType;
 			}
 
-			this.logger.debug('Sending PUT request to S3', { params });
+			const { Body: _body, ...logParams } = params;
+			this.logger.debug('Sending PUT request to S3', { params: logParams });
 			const command = new PutObjectCommand(params);
 			return await this.s3Client.send(command);
 		} catch (e) {

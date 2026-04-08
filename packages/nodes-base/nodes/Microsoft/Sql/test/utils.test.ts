@@ -6,6 +6,8 @@ import type { IDataObject } from 'n8n-workflow';
 import {
 	configurePool,
 	deleteOperation,
+	escapeIdentifier,
+	escapeTableName,
 	executeSqlQueryAndPrepareResults,
 	insertOperation,
 	mssqlChunk,
@@ -87,6 +89,30 @@ describe('MSSQL tests', () => {
 		]);
 	});
 
+	it('should perform insert operation with escaped identifiers', async () => {
+		const pool = configurePool({});
+		const tables = {
+			"users] set text='asdf' where id=1;": {
+				'id, name, age, active]': [
+					{
+						id: 1,
+						name: 'Sam',
+						age: 31,
+						active: false,
+					},
+				],
+			},
+		};
+
+		await insertOperation(tables, pool);
+
+		expect(querySpy).toHaveBeenCalledTimes(1);
+		expect(querySpy).toHaveBeenCalledWith(
+			"INSERT INTO [users]] set text='asdf' where id=1;] ([id], [name], [age], [active]]]) VALUES (@r0v0, @r0v1, @r0v2, @r0v3);",
+		);
+		assertParameters([[1, 'Sam', 31, false]]);
+	});
+
 	it('should perform update operation', async () => {
 		const pool = configurePool({});
 		const tables = {
@@ -107,7 +133,7 @@ describe('MSSQL tests', () => {
 
 		expect(querySpy).toHaveBeenCalledTimes(1);
 		expect(querySpy).toHaveBeenCalledWith(
-			'UPDATE [users] SET [name] = @v0, [age] = @v1, [active] = @v2 WHERE id = @condition;',
+			'UPDATE [users] SET [name] = @v0, [age] = @v1, [active] = @v2 WHERE [id] = @condition;',
 		);
 		assertParameters({
 			v0: 'Greg',
@@ -115,6 +141,54 @@ describe('MSSQL tests', () => {
 			v2: 0,
 			condition: 2,
 		});
+	});
+
+	it('should perform update operation with escaped identifiers', async () => {
+		const pool = configurePool({});
+		const tables = {
+			"users] set text='asdf' where id=1;": {
+				'name, age, active]': [
+					{
+						name: 'Greg',
+						age: 43,
+						active: 0,
+						updateKey: 'id] -- -',
+						id: 2,
+					},
+				],
+			},
+		};
+
+		await updateOperation(tables, pool);
+
+		expect(querySpy).toHaveBeenCalledTimes(1);
+		expect(querySpy).toHaveBeenCalledWith(
+			"UPDATE [users]] set text='asdf' where id=1;] SET [name] = @v0, [age] = @v1, [active]]] = @v2 WHERE [id]] -- -] = @condition;",
+		);
+	});
+
+	it('should perform update operation with enclosed key', async () => {
+		const pool = configurePool({});
+		const tables = {
+			users: {
+				'name, age, active': [
+					{
+						name: 'Greg',
+						age: 43,
+						active: 0,
+						updateKey: '[id]',
+						id: 2,
+					},
+				],
+			},
+		};
+
+		await updateOperation(tables, pool);
+
+		expect(querySpy).toHaveBeenCalledTimes(1);
+		expect(querySpy).toHaveBeenCalledWith(
+			'UPDATE [users] SET [name] = @v0, [age] = @v1, [active] = @v2 WHERE [id] = @condition;',
+		);
 	});
 
 	it('should perform delete operation', async () => {
@@ -140,6 +214,32 @@ describe('MSSQL tests', () => {
 		expect(querySpy).toHaveBeenCalledTimes(1);
 		expect(querySpy).toHaveBeenCalledWith('DELETE FROM [users] WHERE [id] IN (@v0);');
 		assertParameters({ v0: 2 });
+	});
+
+	it('should perform delete operation with escaped identifiers', async () => {
+		const pool = configurePool({});
+		const tables = {
+			"users] set text='asdf' where id=1;": {
+				'id]': [
+					{
+						json: {
+							id: 2,
+						},
+						pairedItem: {
+							item: 0,
+							input: undefined,
+						},
+					},
+				],
+			},
+		};
+
+		await deleteOperation(tables, pool);
+
+		expect(querySpy).toHaveBeenCalledTimes(1);
+		expect(querySpy).toHaveBeenCalledWith(
+			"DELETE FROM [users]] set text='asdf' where id=1;] WHERE [id]]] IN (@v0);",
+		);
 	});
 
 	describe('mssqlChunk', () => {
@@ -240,6 +340,93 @@ describe('MSSQL tests', () => {
 			await expect(executeSqlQueryAndPrepareResults(pool, 'INVALID SQL', 4)).rejects.toThrow(
 				errorMessage,
 			);
+		});
+
+		it('should replace $1 with @p1 and bind the value', async () => {
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			await executeSqlQueryAndPrepareResults(pool, 'SELECT * FROM users WHERE id = $1', 0, [42]);
+
+			expect(querySpy).toHaveBeenCalledWith('SELECT * FROM users WHERE id = @p1');
+			assertParameters({ p1: 42 });
+		});
+
+		it('should replace multiple $N placeholders and bind all values', async () => {
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			await executeSqlQueryAndPrepareResults(
+				pool,
+				'SELECT * FROM users WHERE age > $1 AND name = $2',
+				0,
+				[18, 'John'],
+			);
+
+			expect(querySpy).toHaveBeenCalledWith('SELECT * FROM users WHERE age > @p1 AND name = @p2');
+			assertParameters({ p1: 18, p2: 'John' });
+		});
+
+		it('should replace the same $N placeholder used multiple times', async () => {
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			await executeSqlQueryAndPrepareResults(
+				pool,
+				'SELECT * FROM t WHERE id = $1 OR parent_id = $1',
+				0,
+				['abc'],
+			);
+
+			expect(querySpy).toHaveBeenCalledWith('SELECT * FROM t WHERE id = @p1 OR parent_id = @p1');
+			assertParameters({ p1: 'abc' });
+		});
+
+		it('should not confuse $1 with $10 when replacing parameters', async () => {
+			const values = ['v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10'];
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			await executeSqlQueryAndPrepareResults(
+				pool,
+				'SELECT * FROM t WHERE c1 = $1 AND c10 = $10',
+				0,
+				values,
+			);
+
+			expect(querySpy).toHaveBeenCalledWith('SELECT * FROM t WHERE c1 = @p1 AND c10 = @p10');
+			assertParameters({ p1: 'v1', p10: 'v10' });
+		});
+
+		it('should execute query without parameters when queryValues is empty', async () => {
+			const pool = { request: () => new Request() } as any as mssql.ConnectionPool;
+			await executeSqlQueryAndPrepareResults(pool, 'SELECT * FROM users', 0, []);
+
+			expect(querySpy).toHaveBeenCalledWith('SELECT * FROM users');
+		});
+	});
+
+	describe('escapeIdentifier', () => {
+		it('keeps outer brackets', () => {
+			expect(escapeIdentifier('[test]')).toEqual('[test]');
+		});
+
+		it('escapes content while using outer brackets', () => {
+			expect(escapeIdentifier('[test.hello]]')).toEqual('[test.hello]]]');
+		});
+
+		it('escapes content while not using outer brackets', () => {
+			expect(escapeIdentifier('test.hello]]')).toEqual('[test.hello]]]]]');
+		});
+	});
+
+	describe('escapeTableName', () => {
+		it('should escape table name correctly', () => {
+			expect(escapeTableName('test')).toEqual('[test]');
+			expect(escapeTableName('[test]')).toEqual('[test]');
+			expect(escapeTableName('test.test')).toEqual('[test.test]');
+			expect(escapeTableName('[test].[test]')).toEqual('[test].[test]');
+			expect(escapeTableName('[test]--.ok].[[test]]')).toEqual('[test]]--.ok].[[test]]]');
+			expect(escapeTableName("test] SET mytext='1' where id=2; -- -")).toEqual(
+				"[test]] SET mytext='1' where id=2; -- -]",
+			);
+			expect(escapeTableName("[[test] (id,text) values(1,'123'); DROP TABLE users; -- ]")).toEqual(
+				"[[test]] (id,text) values(1,'123'); DROP TABLE users; -- ]",
+			);
+			expect(escapeTableName('schema.[table]')).toEqual('[schema.[table]]]');
+			expect(escapeTableName('[schema].table')).toEqual('[[schema]].table]');
 		});
 	});
 });

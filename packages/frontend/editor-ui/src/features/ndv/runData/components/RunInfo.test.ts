@@ -2,6 +2,8 @@ import { describe, it, expect, vi } from 'vitest';
 import type { ITaskData } from 'n8n-workflow';
 import RunInfo from './RunInfo.vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
+import { waitFor } from '@testing-library/vue';
 import { mock } from 'vitest-mock-extended';
 
 vi.mock('@/app/utils/formatters/dateFormatter', () => ({
@@ -33,7 +35,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => {
 const renderComponent = createComponentRenderer(RunInfo);
 
 describe('RunInfo', () => {
-	it('should display success status when execution status is success', () => {
+	it('should display success status when execution status is success', async () => {
 		const successTaskData: ITaskData = mock<ITaskData>({
 			startTime: Date.now(),
 			executionTime: 1500,
@@ -65,15 +67,17 @@ describe('RunInfo', () => {
 		// Verify the component renders with success status
 		expect(statusIcon).toHaveAttribute('data-test-id', 'node-run-status-success');
 
-		// Check tooltip content exists in the DOM (even if hidden)
-		expect(document.body).toHaveTextContent('Success');
-		expect(document.body).toHaveTextContent('Start time:');
-		expect(document.body).toHaveTextContent('Jan 15 at 10:30:00');
-		expect(document.body).toHaveTextContent('Execution time:');
-		expect(document.body).toHaveTextContent('1500 ms');
+		// Verify tooltip shows execution details on hover
+		await hoverTooltipTrigger(infoIcon);
+		await waitFor(() => {
+			const tooltip = getTooltip();
+			expect(tooltip).toHaveTextContent('Success');
+			expect(tooltip).toHaveTextContent('Start time');
+			expect(tooltip).toHaveTextContent('Execution time');
+		});
 	});
 
-	it('should display cancelled status when execution status is canceled', () => {
+	it('should display cancelled status when execution status is canceled', async () => {
 		const cancelledTaskData: ITaskData = mock<ITaskData>({
 			startTime: 1757506978099,
 			executionTime: 800,
@@ -102,15 +106,17 @@ describe('RunInfo', () => {
 		// For cancelled status, only info tooltip is shown (no status icon)
 		expect(infoIcon).toHaveAttribute('data-test-id', 'node-run-info');
 
-		// Check tooltip content exists in the DOM (even if hidden)
-		expect(document.body).toHaveTextContent('Canceled');
-		expect(document.body).toHaveTextContent('Start time:');
-		expect(document.body).toHaveTextContent('Jan 15 at 10:30:00');
-		expect(document.body).toHaveTextContent('Execution time:');
-		expect(document.body).toHaveTextContent('800 ms');
+		// Verify tooltip shows canceled status on hover
+		await hoverTooltipTrigger(infoIcon);
+		await waitFor(() => {
+			const tooltip = getTooltip();
+			expect(tooltip).toHaveTextContent('Canceled');
+			expect(tooltip).toHaveTextContent('Start time');
+			expect(tooltip).toHaveTextContent('Execution time');
+		});
 	});
 
-	it('should display error status when there is an error', () => {
+	it('should display error status when there is an error', async () => {
 		const errorTaskData: ITaskData = mock<ITaskData>({
 			startTime: 1757506978099,
 			executionTime: 1200,
@@ -145,11 +151,13 @@ describe('RunInfo', () => {
 		// Verify the component renders with error status
 		expect(statusIcon).toHaveAttribute('data-test-id', 'node-run-status-danger');
 
-		// Check tooltip content exists in the DOM (even if hidden)
-		expect(document.body).toHaveTextContent('Failed');
-		expect(document.body).toHaveTextContent('Start time:');
-		expect(document.body).toHaveTextContent('Jan 15 at 10:30:00');
-		expect(document.body).toHaveTextContent('Execution time:');
-		expect(document.body).toHaveTextContent('1200 ms');
+		// Verify tooltip shows failed status on hover
+		await hoverTooltipTrigger(infoIcon);
+		await waitFor(() => {
+			const tooltip = getTooltip();
+			expect(tooltip).toHaveTextContent('Failed');
+			expect(tooltip).toHaveTextContent('Start time');
+			expect(tooltip).toHaveTextContent('Execution time');
+		});
 	});
 });

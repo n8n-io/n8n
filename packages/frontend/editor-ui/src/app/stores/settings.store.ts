@@ -9,6 +9,7 @@ import type {
 import * as eventsApi from '@n8n/rest-api-client/api/events';
 import * as settingsApi from '@n8n/rest-api-client/api/settings';
 import * as moduleSettingsApi from '@n8n/rest-api-client/api/module-settings';
+import * as aiUsageApi from '@n8n/rest-api-client/api/ai-usage';
 import { testHealthEndpoint } from '@n8n/rest-api-client/api/templates';
 import { INSECURE_CONNECTION_WARNING } from '@/app/constants';
 import { STORES } from '@n8n/stores';
@@ -71,8 +72,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const concurrency = computed(() => settings.value.concurrency);
 
-	const isNativePythonRunnerEnabled = computed(() => settings.value.isNativePythonRunnerEnabled);
-
 	const isConcurrencyEnabled = computed(() => concurrency.value !== -1);
 
 	const isPublicApiEnabled = computed(() => api.value.enabled);
@@ -80,6 +79,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const isSwaggerUIEnabled = computed(() => api.value.swaggerUi.enabled);
 
 	const isPreviewMode = computed(() => settings.value.previewMode);
+
+	const isCanvasOnly = computed(() => settings.value.canvasOnly);
 
 	const publicApiLatestVersion = computed(() => api.value.latestVersion);
 
@@ -111,9 +112,19 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		return activeModules.value?.includes(moduleName);
 	};
 
-	const isAiCreditsEnabled = computed(() => settings.value.aiCredits?.enabled);
+	const isAiCreditsEnabled = computed(
+		() => settings.value.aiCredits?.enabled && settings.value.aiCredits?.setup,
+	);
 
 	const aiCreditsQuota = computed(() => settings.value.aiCredits?.credits);
+
+	const isAiDataSharingEnabled = computed(
+		() => settings.value.ai?.allowSendingParameterValues ?? true,
+	);
+
+	const isAiGatewayEnabled = computed(() => settings.value.aiGateway?.enabled ?? false);
+
+	const aiGatewayCreditsQuota = computed(() => settings.value.aiGateway?.creditsQuota ?? 0);
 
 	const isSmtpSetup = computed(() => userManagement.value.smtpSetup);
 
@@ -182,6 +193,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isDevRelease = computed(() => settings.value.releaseChannel === 'dev');
 
+	const endpointHealth = computed(() => settings.value.endpointHealth);
+
 	const setSettings = (newSettings: FrontendSettings) => {
 		settings.value = newSettings;
 
@@ -234,33 +247,24 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		saveDataProgressExecution.value = newValue;
 	};
 
-	const setPublicSettings = (fetchedSettings: FrontendSettings) => {
-		const rootStore = useRootStore();
-		setSettings(fetchedSettings);
-
-		isMFAEnforced.value = settings.value.mfa?.enforced ?? false;
-
-		rootStore.setOauthCallbackUrls(fetchedSettings.oauthCallbackUrls);
-		rootStore.setDefaultLocale(fetchedSettings.defaultLocale);
-		rootStore.setInstanceId(fetchedSettings.instanceId);
-
-		if (fetchedSettings.telemetry.enabled) {
-			void eventsApi.sessionStarted(rootStore.restApiContext);
-		}
-	};
-
 	const getSettings = async () => {
 		const rootStore = useRootStore();
 		const fetchedSettings = await settingsApi.getSettings(rootStore.restApiContext);
 
+		setSettings(fetchedSettings);
+		rootStore.setDefaultLocale(fetchedSettings.defaultLocale);
+
+		// Set MFA enforced state even for public settings mode
+		// as it is needed to determine if the MFA setup page should be shown
+		isMFAEnforced.value = settings.value.mfa?.enforced ?? false;
+
 		if (fetchedSettings.settingsMode === 'public') {
 			// public settings mode is typically used for unauthenticated users
-			// when public settings are returned only critical setup is needed
-			setPublicSettings(fetchedSettings);
+			// when public settings are returned we can skip the rest of the setup
+			// that need the full set of authenticated settings
 			return;
 		}
 
-		setSettings(fetchedSettings);
 		settings.value.communityNodesEnabled = fetchedSettings.communityNodesEnabled;
 		settings.value.unverifiedCommunityNodesEnabled =
 			fetchedSettings.unverifiedCommunityNodesEnabled;
@@ -269,8 +273,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		setSaveDataSuccessExecution(fetchedSettings.saveDataSuccessExecution);
 		setSaveDataProgressExecution(fetchedSettings.saveExecutionProgress);
 		setSaveManualExecutions(fetchedSettings.saveManualExecutions);
-
-		isMFAEnforced.value = settings.value.mfa?.enforced ?? false;
 
 		rootStore.setUrlBaseWebhook(fetchedSettings.urlBaseWebhook);
 		rootStore.setUrlBaseEditor(fetchedSettings.urlBaseEditor);
@@ -288,7 +290,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setInstanceId(fetchedSettings.instanceId);
 		rootStore.setOauthCallbackUrls(fetchedSettings.oauthCallbackUrls);
 		rootStore.setN8nMetadata(fetchedSettings.n8nMetadata || {});
-		rootStore.setDefaultLocale(fetchedSettings.defaultLocale);
 		rootStore.setBinaryDataMode(fetchedSettings.binaryDataMode);
 
 		if (fetchedSettings.telemetry.enabled) {
@@ -340,6 +341,16 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		moduleSettings.value = fetched;
 	};
 
+	const updateAiDataSharingSettings = async (allowSendingParameterValues: boolean) => {
+		const rootStore = useRootStore();
+		await aiUsageApi.updateAiUsageSettings(rootStore.restApiContext, {
+			allowSendingParameterValues,
+		});
+		if (settings.value.ai) {
+			settings.value.ai.allowSendingParameterValues = allowSendingParameterValues;
+		}
+	};
+
 	return {
 		settings,
 		userManagement,
@@ -348,6 +359,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		mfa,
 		isDocker,
 		isDevRelease,
+		endpointHealth,
 		isEnterpriseFeatureEnabled,
 		databaseType,
 		planName,
@@ -358,11 +370,11 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		nodeJsVersion,
 		nodeEnv,
 		concurrency,
-		isNativePythonRunnerEnabled,
 		isConcurrencyEnabled,
 		isPublicApiEnabled,
 		isSwaggerUIEnabled,
 		isPreviewMode,
+		isCanvasOnly,
 		publicApiLatestVersion,
 		publicApiPath,
 		showSetupPage,
@@ -401,6 +413,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAiAssistantOrBuilderEnabled,
 		isAiCreditsEnabled,
 		aiCreditsQuota,
+		isAiDataSharingEnabled,
+		isAiGatewayEnabled,
+		aiGatewayCreditsQuota,
 		reset,
 		getTimezones,
 		testTemplatesEndpoint,
@@ -411,6 +426,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		initialize,
 		getModuleSettings,
 		moduleSettings,
+		updateAiDataSharingSettings,
 		isMFAEnforcementLicensed,
 		isMFAEnforced,
 		activeModules,

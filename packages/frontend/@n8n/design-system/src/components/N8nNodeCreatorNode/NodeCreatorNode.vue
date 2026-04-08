@@ -3,6 +3,7 @@ import { ElTag } from 'element-plus';
 
 import { useI18n } from '../../composables/useI18n';
 import type { NodeCreatorTag } from '../../types/node-creator-node';
+import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
 
 export interface Props {
@@ -15,6 +16,7 @@ export interface Props {
 	showActionArrow?: boolean;
 	isOfficial?: boolean;
 	hideNodeIcon?: boolean;
+	isNew?: boolean;
 }
 
 defineProps<Props>();
@@ -42,9 +44,17 @@ const { t } = useI18n();
 		<div>
 			<div :class="$style.details">
 				<span :class="$style.name" data-test-id="node-creator-item-name" v-text="title" />
-				<ElTag v-if="tag" :class="$style.tag" size="small" round :type="tag.type ?? 'success'">
+				<ElTag
+					v-if="tag"
+					:class="$style.tag"
+					disable-transitions
+					size="small"
+					round
+					:type="tag.type ?? 'success'"
+				>
 					{{ tag.text }}
 				</ElTag>
+				<N8nBadge v-if="isNew" theme="success">{{ t('nodeCreatorNode.new') }}</N8nBadge>
 				<N8nIcon
 					v-if="isTrigger"
 					icon="bolt-filled"

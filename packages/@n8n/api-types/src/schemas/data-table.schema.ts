@@ -52,6 +52,8 @@ export type DataTableListOptions = Partial<ListDataTableQueryDto> & {
 	filter: { projectId: string };
 };
 
+export type DataTableListSortBy = ListDataTableQueryDto['sortBy'];
+
 export const dateTimeSchema = z
 	.string()
 	.datetime({ offset: true })

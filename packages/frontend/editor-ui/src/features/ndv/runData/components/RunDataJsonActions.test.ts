@@ -1,6 +1,7 @@
-import { reactive } from 'vue';
+import { reactive, computed } from 'vue';
 import { mock } from 'vitest-mock-extended';
 import { createPinia, setActivePinia } from 'pinia';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { waitFor, cleanup, fireEvent, within, screen } from '@testing-library/vue';
 
 import RunDataJsonActions from './RunDataJsonActions.vue';
@@ -14,6 +15,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
 import { defaultNodeDescriptions, mockNodes } from '@/__tests__/mocks';
 import { useI18n } from '@n8n/i18n';
+import { createRunExecutionData } from 'n8n-workflow';
 
 vi.mock('vue-router', () => {
 	return {
@@ -63,7 +65,7 @@ async function createPiniaWithActiveNode() {
 		createdAt: new Date(),
 		startedAt: new Date(),
 		workflowData: workflow,
-		data: {
+		data: createRunExecutionData({
 			resultData: {
 				runData: {
 					[node.name]: [
@@ -112,7 +114,7 @@ async function createPiniaWithActiveNode() {
 					],
 				},
 			},
-		},
+		}),
 	};
 
 	ndvStore.setActiveNodeName(node.name, 'other');
@@ -160,6 +162,9 @@ describe('RunDataJsonActions', () => {
 				runIndex: 1,
 			},
 			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+				},
 				mocks: {
 					$route: {
 						name: VIEWS.WORKFLOW,
@@ -211,6 +216,9 @@ describe('RunDataJsonActions', () => {
 				runIndex: 0,
 			},
 			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+				},
 				mocks: {
 					$route: {
 						name: VIEWS.WORKFLOW,
@@ -266,6 +274,9 @@ describe('RunDataJsonActions', () => {
 				runIndex: 1,
 			},
 			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+				},
 				mocks: {
 					$route: {
 						name: VIEWS.WORKFLOW,
@@ -308,6 +319,9 @@ describe('RunDataJsonActions', () => {
 				runIndex: 1,
 			},
 			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+				},
 				mocks: {
 					$route: {
 						name: VIEWS.WORKFLOW,
@@ -350,6 +364,9 @@ describe('RunDataJsonActions', () => {
 				runIndex: 1,
 			},
 			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+				},
 				mocks: {
 					$route: {
 						name: VIEWS.WORKFLOW,

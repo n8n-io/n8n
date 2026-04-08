@@ -1,8 +1,11 @@
-import type { AuthenticatedRequest, WorkflowEntity } from '@n8n/db';
+import type { AuthenticatedRequest } from '@n8n/db';
 import type { Request } from 'express';
+import type { INode } from 'n8n-workflow';
 
-import { SUPPORTED_MCP_TRIGGERS } from './mcp.constants';
+import { SUPPORTED_MCP_TRIGGERS, SUPPORTED_PRODUCTION_MCP_TRIGGERS } from './mcp.constants';
 import { isRecord, isJSONRPCRequest } from './mcp.typeguards';
+
+type McpExecutionMode = 'manual' | 'production';
 
 export const getClientInfo = (req: Request | AuthenticatedRequest) => {
 	let clientInfo: { name?: string; version?: string } | undefined;
@@ -47,17 +50,22 @@ export const getToolArguments = (body: unknown): Record<string, unknown> => {
 };
 
 /**
- * Determines if MCP access can be toggled for a given workflow.
- * Workflow is eligible if it contains at least one of these (enabled) trigger nodes:
+ * Finds the first supported trigger node in the provided nodes array.
+ * Supported MCP triggers for production mode:
  * - Schedule trigger
  * - Webhook trigger
  * - Form trigger
  * - Chat trigger
- * @param workflow
+ *
+ * In manual mode, Manual Trigger is also supported.
  */
-export const isWorkflowEligibleForMCPAccess = (workflow: WorkflowEntity): boolean => {
-	const triggerNodeTypes = Object.keys(SUPPORTED_MCP_TRIGGERS);
-	return workflow.nodes.some(
-		(node) => triggerNodeTypes.includes(node.type) && node.disabled !== true,
-	);
+export const findMcpSupportedTrigger = (
+	nodes: INode[],
+	mode: McpExecutionMode = 'production',
+): INode | undefined => {
+	const triggerNodeTypes =
+		mode === 'production'
+			? Object.keys(SUPPORTED_PRODUCTION_MCP_TRIGGERS)
+			: Object.keys(SUPPORTED_MCP_TRIGGERS);
+	return nodes.find((node) => triggerNodeTypes.includes(node.type) && !node.disabled);
 };

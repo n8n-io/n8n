@@ -1,17 +1,19 @@
 <script lang="ts" setup>
-import type { ButtonType } from '../../types/button';
+import type { ButtonVariant } from '../../types/button';
 import N8nButton from '../N8nButton';
 import N8nCallout, { type CalloutTheme } from '../N8nCallout';
 import N8nHeading from '../N8nHeading';
+import N8nIcon from '../N8nIcon';
 import { type IconName } from '../N8nIcon/icons';
+import type { IconOrEmoji } from '../N8nIconPicker/types';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 
 interface ActionBoxProps {
-	emoji?: string;
+	icon?: IconOrEmoji;
 	heading?: string;
 	buttonText?: string;
-	buttonType?: ButtonType;
+	buttonVariant?: ButtonVariant;
 	buttonDisabled?: boolean;
 	buttonIcon?: IconName;
 	description?: string;
@@ -29,8 +31,15 @@ withDefaults(defineProps<ActionBoxProps>(), {
 
 <template>
 	<div :class="['n8n-action-box', $style.container]" data-test-id="action-box">
-		<div v-if="emoji" :class="$style.emoji">
-			{{ emoji }}
+		<div v-if="icon" :class="$style.icon">
+			<N8nIcon
+				v-if="icon.type === 'icon'"
+				:icon="icon.value"
+				:size="40"
+				:stroke-width="1.5"
+				color="foreground-xdark"
+			/>
+			<span v-else>{{ icon.value }}</span>
 		</div>
 		<div v-if="heading || $slots.heading" :class="$style.heading">
 			<N8nHeading size="xlarge" align="center">
@@ -44,14 +53,13 @@ withDefaults(defineProps<ActionBoxProps>(), {
 				</slot>
 			</N8nText>
 		</div>
-		<N8nTooltip :disabled="!buttonDisabled">
+		<N8nTooltip v-if="buttonText" :disabled="!buttonDisabled">
 			<template #content>
 				<slot name="disabledButtonTooltip"></slot>
 			</template>
 			<N8nButton
-				v-if="buttonText"
 				:label="buttonText"
-				:type="buttonType"
+				:variant="buttonVariant"
 				:disabled="buttonDisabled"
 				:icon="buttonIcon"
 				size="large"
@@ -59,6 +67,9 @@ withDefaults(defineProps<ActionBoxProps>(), {
 				@click="$emit('click:button', $event)"
 			/>
 		</N8nTooltip>
+		<div v-if="$slots.additionalContent" :class="$style['additional-content']">
+			<slot name="additionalContent"></slot>
+		</div>
 		<N8nCallout
 			v-if="calloutText"
 			:theme="calloutTheme"
@@ -90,7 +101,7 @@ withDefaults(defineProps<ActionBoxProps>(), {
 	}
 }
 
-.emoji {
+.icon {
 	font-size: 40px;
 }
 
@@ -108,5 +119,11 @@ withDefaults(defineProps<ActionBoxProps>(), {
 .callout {
 	width: 100%;
 	text-align: left;
+}
+
+.additional-content {
+	display: flex;
+	margin-top: 0;
+	justify-content: center;
 }
 </style>

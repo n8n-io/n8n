@@ -1,8 +1,4 @@
-import {
-	HTTP_REQUEST_NODE_TYPE,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-} from '@/app/constants';
+import { HTTP_REQUEST_NODE_TYPE, PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/app/constants';
 
 import type {
 	IConnections,
@@ -17,7 +13,6 @@ import type {
 	INodeTypes,
 	IPinData,
 	IRunData,
-	IRunExecutionData,
 	IWebhookDescription,
 	IWorkflowDataProxyAdditionalKeys,
 	NodeParameterValue,
@@ -25,7 +20,10 @@ import type {
 } from 'n8n-workflow';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
+	createEmptyRunExecutionData,
+	deepCopy,
 	FORM_TRIGGER_NODE_TYPE,
+	isHitlToolType,
 	NodeConnectionTypes,
 	NodeHelpers,
 	WEBHOOK_NODE_TYPE,
@@ -48,15 +46,23 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { getSourceItems } from '@/app/utils/pairedItemUtils';
+import * as workflowHistoryApi from '@n8n/rest-api-client/api/workflowHistory';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/app/utils/credentialOnlyNodes';
+import { convertWorkflowTagsToIds } from '@/app/utils/workflowUtils';
 import { useI18n } from '@n8n/i18n';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
 import { findWebhook } from '@n8n/rest-api-client/api/webhooks';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import { computed } from 'vue';
 
 export type ResolveParameterOptions = {
 	targetItem?: TargetItem;
@@ -69,12 +75,12 @@ export type ResolveParameterOptions = {
 	connections?: IConnections;
 };
 
-export function resolveParameter<T = IDataObject>(
+export async function resolveParameter<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
 	opts: ResolveParameterOptions | ExpressionLocalResolveContext = {},
-): T | null {
+): Promise<T | null> {
 	if ('localResolve' in opts && opts.localResolve) {
-		return resolveParameterImpl(
+		return await resolveParameterImpl(
 			parameter,
 			opts.workflow,
 			opts.connections,
@@ -92,15 +98,18 @@ export function resolveParameter<T = IDataObject>(
 	}
 
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = workflowsStore.workflowId
+		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+		: undefined;
 
-	return resolveParameterImpl(
+	return await resolveParameterImpl(
 		parameter,
 		workflowsStore.workflowObject as Workflow,
-		workflowsStore.connectionsBySourceNode,
+		workflowDocumentStore?.connectionsBySourceNode ?? {},
 		useEnvironmentsStore().variablesAsObject,
 		useNDVStore().activeNode,
 		workflowsStore.workflowExecutionData,
-		workflowsStore.pinnedWorkflowData,
+		workflowDocumentStore?.getPinDataSnapshot(),
 		opts,
 	);
 }
@@ -117,6 +126,7 @@ function resolveParameterImpl<T = IDataObject>(
 	opts: ResolveParameterOptions = {},
 ): T | null {
 	let itemIndex = opts?.targetItem?.itemIndex || 0;
+	const activeNode = ndvActiveNode ?? workflowObject.getNode(opts.contextNodeName || '');
 
 	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
 		$execution: {
@@ -126,6 +136,12 @@ function resolveParameterImpl<T = IDataObject>(
 			resumeFormUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 		},
 		$vars: envVars,
+		$tool: isHitlToolType(activeNode?.type)
+			? {
+					name: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+					parameters: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+				}
+			: undefined,
 
 		// deprecated
 		$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
@@ -154,7 +170,6 @@ function resolveParameterImpl<T = IDataObject>(
 
 	const inputName = NodeConnectionTypes.Main;
 
-	const activeNode = ndvActiveNode ?? workflowObject.getNode(opts.contextNodeName || '');
 	let contextNode = activeNode;
 
 	if (activeNode) {
@@ -219,16 +234,7 @@ function resolveParameterImpl<T = IDataObject>(
 		_connectionInputData = get(_executeData, ['data', inputName, 0], null);
 	}
 
-	let runExecutionData: IRunExecutionData;
-	if (!executionData?.data) {
-		runExecutionData = {
-			resultData: {
-				runData: {},
-			},
-		};
-	} else {
-		runExecutionData = executionData.data;
-	}
+	const runExecutionData = executionData?.data ?? createEmptyRunExecutionData();
 
 	if (_connectionInputData === null) {
 		_connectionInputData = [];
@@ -296,28 +302,23 @@ function resolveParameterImpl<T = IDataObject>(
 	) as T;
 }
 
-export function resolveRequiredParameters(
+export async function resolveRequiredParameters(
 	currentParameter: INodeProperties,
 	parameters: INodeParameters,
-	opts: {
-		connections?: IConnections;
-		targetItem?: TargetItem;
-		inputNodeName?: string;
-		inputRunIndex?: number;
-		inputBranchIndex?: number;
-	} = {},
-): IDataObject | null {
+	opts: ResolveParameterOptions | ExpressionLocalResolveContext = {},
+): Promise<IDataObject | null> {
 	const loadOptionsDependsOn = new Set(currentParameter?.typeOptions?.loadOptionsDependsOn ?? []);
 
-	const resolvedParameters = Object.fromEntries(
-		Object.entries(parameters).map(([name, parameter]): [string, IDataObject | null] => {
+	const entries = Object.entries(parameters);
+	const resolvedEntries = await Promise.all(
+		entries.map(async ([name, parameter]): Promise<[string, IDataObject | null]> => {
 			const required = loadOptionsDependsOn.has(name);
 
 			if (required) {
-				return [name, resolveParameter(parameter as NodeParameterValue, opts)];
+				return [name, await resolveParameter(parameter as NodeParameterValue, opts)];
 			} else {
 				try {
-					return [name, resolveParameter(parameter as NodeParameterValue, opts)];
+					return [name, await resolveParameter(parameter as NodeParameterValue, opts)];
 				} catch (error) {
 					// ignore any expressions errors for non required parameters
 					return [name, null];
@@ -326,7 +327,7 @@ export function resolveRequiredParameters(
 		}),
 	);
 
-	return resolvedParameters;
+	return Object.fromEntries(resolvedEntries);
 }
 
 function getConnectedNodes(
@@ -419,6 +420,9 @@ export function executeData(
 	parentRunIndex?: number,
 ): IExecuteData {
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = workflowsStore.workflowId
+		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+		: undefined;
 
 	return executeDataImpl(
 		connections,
@@ -426,7 +430,7 @@ export function executeData(
 		currentNode,
 		inputName,
 		runIndex,
-		workflowsStore.pinnedWorkflowData,
+		workflowDocumentStore?.getPinDataSnapshot(),
 		workflowsStore.getWorkflowRunData,
 		parentRunIndex,
 	);
@@ -526,6 +530,7 @@ export function useWorkflowHelpers() {
 	const nodeTypesStore = useNodeTypesStore();
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowsListStore = useWorkflowsListStore();
 	const workflowState = injectWorkflowState();
 	const workflowsEEStore = useWorkflowsEEStore();
 	const uiStore = useUIStore();
@@ -535,8 +540,14 @@ export function useWorkflowHelpers() {
 
 	const i18n = useI18n();
 
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
+
 	function getNodeTypesMaxCount() {
-		const nodes = workflowsStore.allNodes;
+		const nodes = workflowDocumentStore.value?.allNodes ?? [];
 
 		const returnData: INodeTypesMaxCount = {};
 
@@ -562,7 +573,7 @@ export function useWorkflowHelpers() {
 	}
 
 	function getNodeTypeCount(nodeType: string) {
-		const nodes = workflowsStore.allNodes;
+		const nodes = workflowDocumentStore.value?.allNodes ?? [];
 
 		let count = 0;
 
@@ -576,8 +587,12 @@ export function useWorkflowHelpers() {
 	}
 
 	async function getWorkflowDataToSave() {
-		const workflowNodes = workflowsStore.allNodes;
-		const workflowConnections = workflowsStore.allConnections;
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+
+		const workflowNodes = workflowDocumentStore.allNodes;
+		const workflowConnections = workflowDocumentStore.connectionsBySourceNode;
 
 		let nodeData;
 
@@ -588,20 +603,27 @@ export function useWorkflowHelpers() {
 			nodes.push(nodeData);
 		}
 
+		// Deep-copy connections to create an in-time snapshot consistent with nodes.
+		// Without this, connections is a reference to the reactive store object, so
+		// mutations between now and request serialization can include connections to
+		// nodes not present in the nodes snapshot, violating a BE invariant.
+		const connections = deepCopy(workflowConnections);
+
 		const data: WorkflowData = {
-			name: workflowsStore.workflowName,
+			name: workflowDocumentStore.name,
 			nodes,
-			pinData: workflowsStore.pinnedWorkflowData,
-			connections: workflowConnections,
-			active: workflowsStore.isWorkflowActive,
-			settings: workflowsStore.workflow.settings,
-			tags: workflowsStore.workflowTags,
-			versionId: workflowsStore.workflow.versionId,
-			meta: workflowsStore.workflow.meta,
+			pinData: workflowDocumentStore.getPinDataSnapshot(),
+			connections,
+			active: workflowDocumentStore.active,
+			settings: workflowDocumentStore.settings,
+			tags: [...workflowDocumentStore.tags],
+			versionId: workflowDocumentStore.versionId,
+			meta: workflowDocumentStore.meta,
 		};
 
 		const workflowId = workflowsStore.workflowId;
-		if (workflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+		// Always include workflow ID if it exists
+		if (workflowId) {
 			data.id = workflowId;
 		}
 
@@ -718,32 +740,32 @@ export function useWorkflowHelpers() {
 		return nodeData;
 	}
 
-	function getWebhookExpressionValue(
+	async function getWebhookExpressionValue(
 		webhookData: IWebhookDescription,
 		key: string,
 		stringify = true,
 		nodeName?: string,
-	): string {
+	): Promise<string> {
 		if (webhookData[key] === undefined) {
 			return 'empty';
 		}
 		try {
-			return resolveExpression(
+			return (await resolveExpression(
 				webhookData[key] as string,
 				undefined,
 				{ contextNodeName: nodeName },
 				stringify,
-			) as string;
+			)) as string;
 		} catch (e) {
 			return i18n.baseText('nodeWebhooks.invalidExpression');
 		}
 	}
 
-	function getWebhookUrl(
+	async function getWebhookUrl(
 		webhookData: IWebhookDescription,
 		node: INode,
 		showUrlFor: 'test' | 'production',
-	): string {
+	): Promise<string> {
 		const { nodeType, restartWebhook } = webhookData;
 		if (restartWebhook === true) {
 			return nodeType === 'form' ? '$execution.resumeFormUrl' : '$execution.resumeUrl';
@@ -763,14 +785,14 @@ export function useWorkflowHelpers() {
 		} as const;
 		const baseUrl = baseUrls[showUrlFor][nodeType ?? 'webhook'];
 		const workflowId = workflowsStore.workflowId;
-		const path = getWebhookExpressionValue(webhookData, 'path', true, node.name) ?? '';
+		const path = (await getWebhookExpressionValue(webhookData, 'path', true, node.name)) ?? '';
 		const isFullPath =
-			(getWebhookExpressionValue(
+			((await getWebhookExpressionValue(
 				webhookData,
 				'isFullPath',
 				true,
 				node.name,
-			) as unknown as boolean) || false;
+			)) as unknown as boolean) || false;
 
 		return NodeHelpers.getNodeWebhookUrl(baseUrl, workflowId, node, path, isFullPath);
 	}
@@ -780,21 +802,24 @@ export function useWorkflowHelpers() {
 	 * @param nodeParameters
 	 * @returns
 	 */
-	function getNodeParametersWithResolvedExpressions(
+	async function getNodeParametersWithResolvedExpressions(
 		nodeParameters: INodeParameters,
-	): INodeParameters {
-		function recurse(currentObj: INodeParameters, currentPath: string): INodeParameters {
+	): Promise<INodeParameters> {
+		async function recurse(
+			currentObj: INodeParameters,
+			currentPath: string,
+		): Promise<INodeParameters> {
 			const newObj: INodeParameters = {};
 			for (const key in currentObj) {
 				const value = currentObj[key as keyof typeof currentObj];
 				const path = currentPath ? `${currentPath}.${key}` : key;
 				if (typeof value === 'object' && value !== null) {
-					newObj[key] = recurse(value as INodeParameters, path);
+					newObj[key] = await recurse(value as INodeParameters, path);
 				} else if (typeof value === 'string' && String(value).startsWith('=')) {
 					// Resolve the expression if it is one
 					let resolved;
 					try {
-						resolved = resolveExpression(value, undefined, { isForCredential: false });
+						resolved = await resolveExpression(value, undefined, { isForCredential: false });
 					} catch (error) {
 						resolved = `Error in expression: "${error.message}"`;
 					}
@@ -808,20 +833,20 @@ export function useWorkflowHelpers() {
 			}
 			return newObj;
 		}
-		return recurse(nodeParameters, '');
+		return await recurse(nodeParameters, '');
 	}
 
-	function resolveExpression(
+	async function resolveExpression(
 		expression: string,
 		siblingParameters: INodeParameters = {},
 		opts: ResolveParameterOptions | ExpressionLocalResolveContext = {},
 		stringifyObject = true,
-	) {
+	): Promise<unknown> {
 		const parameters = {
 			__xxxxxxx__: expression,
 			...siblingParameters,
 		};
-		const returnData: IDataObject | null = resolveParameter(parameters, opts);
+		const returnData: IDataObject | null = await resolveParameter(parameters, opts);
 		if (!returnData) {
 			return null;
 		}
@@ -841,13 +866,14 @@ export function useWorkflowHelpers() {
 	) {
 		let data: WorkflowDataUpdate = {};
 
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 		const isCurrentWorkflow = workflowId === workflowsStore.workflowId;
 		if (isCurrentWorkflow) {
 			data = partialData
-				? { versionId: workflowsStore.workflowVersionId }
+				? { versionId: workflowDocumentStore.versionId }
 				: await getWorkflowDataToSave();
 		} else {
-			const { versionId } = await workflowsStore.fetchWorkflow(workflowId);
+			const { versionId } = await workflowsListStore.fetchWorkflow(workflowId);
 			data.versionId = versionId;
 		}
 
@@ -856,17 +882,26 @@ export function useWorkflowHelpers() {
 		}
 
 		const workflow = await workflowsStore.updateWorkflow(workflowId, data);
-		workflowsStore.setWorkflowVersionId(workflow.versionId);
-
-		if (isCurrentWorkflow) {
-			workflowState.setActive(!!workflow.active);
-			uiStore.stateIsDirty = false;
+		if (!workflow.checksum) {
+			throw new Error('Failed to update workflow');
 		}
 
-		if (workflow.active) {
-			workflowsStore.setWorkflowActive(workflowId);
+		if (isCurrentWorkflow) {
+			uiStore.markStateClean();
+		}
+
+		if (workflow.activeVersion) {
+			workflowsStore.setWorkflowActive(workflowId, workflow.activeVersion, isCurrentWorkflow);
+			workflowDocumentStore.setActiveState({
+				activeVersionId: workflow.activeVersion.versionId,
+				activeVersion: workflow.activeVersion,
+			});
 		} else {
 			workflowsStore.setWorkflowInactive(workflowId);
+			workflowDocumentStore.setActiveState({
+				activeVersionId: null,
+				activeVersion: null,
+			});
 		}
 	}
 
@@ -929,12 +964,10 @@ export function useWorkflowHelpers() {
 	}
 
 	function getWorkflowProjectRole(workflowId: string): 'owner' | 'sharee' | 'member' {
-		const workflow = workflowsStore.workflowsById[workflowId];
+		const workflow = workflowsListStore.getWorkflowById(workflowId);
 
-		if (
-			workflow?.homeProject?.id === projectsStore.personalProject?.id ||
-			workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID
-		) {
+		// Check if workflow is new (not saved) or belongs to personal project
+		if (workflow?.homeProject?.id === projectsStore.personalProject?.id || !workflow?.id) {
 			return 'owner';
 		} else if (
 			workflow?.sharedWithProjects?.some(
@@ -947,24 +980,40 @@ export function useWorkflowHelpers() {
 		}
 	}
 
-	function initState(workflowData: IWorkflowDb) {
-		workflowsStore.addWorkflow(workflowData);
-		workflowState.setActive(workflowData.active || false);
-		workflowsStore.setIsArchived(workflowData.isArchived);
-		workflowsStore.setDescription(workflowData.description);
-		workflowState.setWorkflowId(workflowData.id);
-		workflowState.setWorkflowName({
-			newName: workflowData.name,
-			setStateDirty: uiStore.stateIsDirty,
-		});
-		workflowState.setWorkflowSettings(workflowData.settings ?? {});
-		workflowsStore.setWorkflowPinData(workflowData.pinData ?? {});
-		workflowsStore.setWorkflowVersionId(workflowData.versionId);
-		workflowsStore.setWorkflowMetadata(workflowData.meta);
-		workflowsStore.setWorkflowScopes(workflowData.scopes);
+	async function initState(workflowData: IWorkflowDb, overrideWorkflowState?: WorkflowState) {
+		const ws = overrideWorkflowState ?? workflowState;
+		workflowsListStore.addWorkflow(workflowData);
+		ws.setWorkflowId(workflowData.id);
+		const initializedWorkflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowData.id),
+		);
 
-		if (workflowData.usedCredentials) {
-			workflowsStore.setUsedCredentials(workflowData.usedCredentials);
+		initializedWorkflowDocumentStore.setVersionData({
+			versionId: workflowData.versionId,
+			name: null,
+			description: null,
+		});
+
+		if ('activeVersion' in workflowData) {
+			workflowsStore.setWorkflowActiveVersion(workflowData.activeVersion ?? null);
+		}
+
+		// Fetch current version details if versionId exists
+		if (workflowData.versionId) {
+			try {
+				const fetchedVersionData = await workflowHistoryApi.getWorkflowVersion(
+					rootStore.restApiContext,
+					workflowData.id,
+					workflowData.versionId,
+				);
+				initializedWorkflowDocumentStore.setVersionData({
+					versionId: fetchedVersionData.versionId,
+					name: fetchedVersionData.name,
+					description: fetchedVersionData.description,
+				});
+			} catch {
+				// Do nothing
+			}
 		}
 
 		if (workflowData.sharedWithProjects) {
@@ -975,9 +1024,45 @@ export function useWorkflowHelpers() {
 		}
 
 		const tags = (workflowData.tags ?? []) as ITag[];
-		const tagIds = tags.map((tag) => tag.id);
-		workflowState.setWorkflowTagIds(tagIds || []);
+		const tagIds = convertWorkflowTagsToIds(tags);
+
+		// Sync document store settings → workflowObject (runtime Workflow instance)
+		initializedWorkflowDocumentStore.onSettingsChange(({ payload }) => {
+			workflowsStore.workflowObject.setSettings(payload.settings);
+		});
+		initializedWorkflowDocumentStore.onNameChange(({ payload }) => {
+			workflowsStore.workflowObject.name = payload.name;
+			workflowsListStore.updateWorkflowInCache(workflowData.id, { name: payload.name });
+		});
+
+		// Sync document store versionId → workflow ref (for IWorkflowDb compatibility)
+		initializedWorkflowDocumentStore.onVersionDataChange(({ payload }) => {
+			workflowsStore.workflow.versionId = payload.versionId;
+		});
+
+		initializedWorkflowDocumentStore.setName(workflowData.name);
+		initializedWorkflowDocumentStore.setTags(tagIds);
+		initializedWorkflowDocumentStore.setActiveState({
+			activeVersionId: workflowData.activeVersionId,
+			activeVersion: workflowData.activeVersion ?? null,
+		});
+		initializedWorkflowDocumentStore.setSettings(workflowData.settings ?? {});
+		initializedWorkflowDocumentStore.setPinData(workflowData.pinData ?? {});
+		initializedWorkflowDocumentStore.setCreatedAt(workflowData.createdAt);
+		initializedWorkflowDocumentStore.setUpdatedAt(workflowData.updatedAt);
+		initializedWorkflowDocumentStore.setHomeProject(workflowData.homeProject ?? null);
+		if (workflowData.checksum) {
+			initializedWorkflowDocumentStore.setChecksum(workflowData.checksum);
+		}
+		initializedWorkflowDocumentStore.setIsArchived(workflowData.isArchived);
+		initializedWorkflowDocumentStore.setUsedCredentials(workflowData.usedCredentials ?? []);
+		initializedWorkflowDocumentStore.setMeta(workflowData.meta);
+		initializedWorkflowDocumentStore.setParentFolder(workflowData.parentFolder ?? null);
+		initializedWorkflowDocumentStore.setScopes(workflowData.scopes ?? []);
+		initializedWorkflowDocumentStore.setDescription(workflowData.description);
 		tagsStore.upsertTags(tags);
+
+		return { workflowDocumentStore: initializedWorkflowDocumentStore };
 	}
 
 	/**
@@ -1016,7 +1101,7 @@ export function useWorkflowHelpers() {
 		if (uiStore.stateIsDirty) {
 			data = await getWorkflowDataToSave();
 		} else {
-			data = await workflowsStore.fetchWorkflow(workflowId);
+			data = await workflowsListStore.fetchWorkflow(workflowId);
 		}
 
 		const triggers = data.nodes.filter(

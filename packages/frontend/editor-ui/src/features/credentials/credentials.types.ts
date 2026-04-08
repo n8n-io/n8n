@@ -14,6 +14,8 @@ export interface ICredentialsResponse extends ICredentialsEncrypted {
 	scopes?: Scope[];
 	ownedBy?: Pick<IUserResponse, 'id' | 'firstName' | 'lastName' | 'email'>;
 	isManaged: boolean;
+	isGlobal?: boolean;
+	isResolvable?: boolean;
 }
 
 export interface IUsedCredential {
@@ -32,6 +34,7 @@ export interface ICredentialsBase {
 
 export interface ICredentialsDecryptedResponse extends ICredentialsBase, ICredentialsDecrypted {
 	id: string;
+	isResolvable?: boolean;
 }
 
 export interface ICredentialTypeMap {

@@ -7,6 +7,7 @@ import {
 	createTestWorkflowExecutionResponse,
 } from '@/__tests__/mocks';
 import type { IWorkflowDb } from '@/Interface';
+import { createRunExecutionData } from 'n8n-workflow';
 
 describe('useWorkflowState', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
@@ -18,28 +19,13 @@ describe('useWorkflowState', () => {
 		workflowState = useWorkflowState();
 	});
 
-	describe('setWorkflowName()', () => {
-		it('should set the workflow name correctly', () => {
-			workflowState.setWorkflowName({
-				newName: 'New Workflow Name',
-				setStateDirty: false,
-			});
-			expect(workflowsStore.workflow.name).toBe('New Workflow Name');
-		});
-
-		it('should propagate name to workflowObject for pre-exec expressions', () => {
-			workflowState.setWorkflowName({ newName: 'WF Title', setStateDirty: false });
-			expect(workflowsStore.workflowObject.name).toBe('WF Title');
-		});
-	});
-
 	describe('markExecutionAsStopped', () => {
 		beforeEach(() => {
 			workflowsStore.workflowExecutionData = createTestWorkflowExecutionResponse({
 				status: 'running',
 				startedAt: new Date('2023-01-01T09:00:00Z'),
 				stoppedAt: undefined,
-				data: {
+				data: createRunExecutionData({
 					resultData: {
 						runData: {
 							node1: [
@@ -53,7 +39,7 @@ describe('useWorkflowState', () => {
 							],
 						},
 					},
-				},
+				}),
 			});
 		});
 
@@ -213,6 +199,99 @@ describe('useWorkflowState', () => {
 		it('should throw error if out of bounds', () => {
 			workflowsStore.workflow.nodes = [];
 			expect(() => workflowState.updateNodeAtIndex(0, { name: 'Updated Node' })).toThrowError();
+		});
+	});
+
+	describe('updateNodeById', () => {
+		beforeEach(() => {
+			workflowsStore.setNodes([
+				createTestNode({ id: 'node-1', name: 'First Node', parameters: { key: 'value1' } }),
+				createTestNode({ id: 'node-2', name: 'Second Node', parameters: { key: 'value2' } }),
+			]);
+		});
+
+		it('should update node by ID and return true', () => {
+			const result = workflowState.updateNodeById('node-1', { name: 'Updated First Node' });
+
+			expect(result).toBe(true);
+			expect(workflowsStore.workflow.nodes[0].name).toBe('Updated First Node');
+		});
+
+		it('should return false if node ID is not found', () => {
+			const result = workflowState.updateNodeById('non-existent-id', { name: 'Updated Node' });
+
+			expect(result).toBe(false);
+			// Nodes should remain unchanged
+			expect(workflowsStore.workflow.nodes[0].name).toBe('First Node');
+			expect(workflowsStore.workflow.nodes[1].name).toBe('Second Node');
+		});
+
+		it('should update only specified properties', () => {
+			const result = workflowState.updateNodeById('node-2', {
+				name: 'Updated Second Node',
+				disabled: true,
+			});
+
+			expect(result).toBe(true);
+			expect(workflowsStore.workflow.nodes[1].name).toBe('Updated Second Node');
+			expect(workflowsStore.workflow.nodes[1].disabled).toBe(true);
+			// Other properties should remain unchanged
+			expect(workflowsStore.workflow.nodes[1].id).toBe('node-2');
+		});
+
+		it('should return false if node data is unchanged', () => {
+			const result = workflowState.updateNodeById('node-1', { name: 'First Node' });
+
+			expect(result).toBe(false);
+		});
+	});
+
+	describe('resetParametersLastUpdatedAt', () => {
+		it('should set parametersLastUpdatedAt on existing metadata', () => {
+			const nodeName = 'Test Node';
+			workflowsStore.addNode({
+				parameters: {},
+				id: 'test-node-id',
+				name: nodeName,
+				type: 'n8n-nodes-base.set',
+				position: [0, 0],
+				typeVersion: 1,
+			});
+
+			expect(workflowsStore.nodeMetadata[nodeName].parametersLastUpdatedAt).toBeUndefined();
+
+			workflowState.resetParametersLastUpdatedAt(nodeName);
+
+			expect(workflowsStore.nodeMetadata[nodeName].parametersLastUpdatedAt).toEqual(
+				expect.any(Number),
+			);
+		});
+
+		it('should create metadata if it does not exist', () => {
+			const nodeName = 'New Node Without Metadata';
+			// Node metadata doesn't exist yet
+			expect(workflowsStore.nodeMetadata[nodeName]).toBeUndefined();
+
+			workflowState.resetParametersLastUpdatedAt(nodeName);
+
+			expect(workflowsStore.nodeMetadata[nodeName]).toBeDefined();
+			expect(workflowsStore.nodeMetadata[nodeName].parametersLastUpdatedAt).toEqual(
+				expect.any(Number),
+			);
+		});
+
+		it('should preserve existing metadata properties when updating', () => {
+			const nodeName = 'Node With Existing Metadata';
+			workflowsStore.nodeMetadata[nodeName] = {
+				pristine: true,
+			};
+
+			workflowState.resetParametersLastUpdatedAt(nodeName);
+
+			expect(workflowsStore.nodeMetadata[nodeName].pristine).toBe(true);
+			expect(workflowsStore.nodeMetadata[nodeName].parametersLastUpdatedAt).toEqual(
+				expect.any(Number),
+			);
 		});
 	});
 });

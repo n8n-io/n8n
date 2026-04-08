@@ -587,5 +587,15 @@
 		"workflowId": "259",
 		"status": "ACTIVE",
 		"skipReason": "Please return an array of objects, one for each item you would like to output. on node Code"
+	},
+	{
+		"workflowId": "267",
+		"status": "ACTIVE",
+		"enableSchemaValidation": true
+	},
+	{
+		"workflowId": "268",
+		"status": "ACTIVE",
+		"enableSchemaValidation": true
 	}
 ]

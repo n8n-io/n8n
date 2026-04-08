@@ -8,6 +8,7 @@
 
 // Mock all external dependencies first, before any imports
 jest.mock('@n8n/config', () => ({
+	...jest.requireActual('@n8n/config'),
 	GlobalConfig: jest.fn().mockImplementation(() => ({
 		sentry: { backendDsn: '' },
 	})),
@@ -26,11 +27,6 @@ jest.mock('@/errors/error-reporter', () => ({
 			error: jest.fn(),
 		};
 	},
-}));
-
-const mockIsJsonCompatible = jest.fn().mockReturnValue({ isValid: true });
-jest.mock('@/utils/is-json-compatible', () => ({
-	isJsonCompatible: mockIsJsonCompatible,
 }));
 
 jest.mock('../node-execution-context', () => ({
@@ -54,6 +50,10 @@ jest.mock('@/node-execute-functions', () => ({
 	getExecuteTriggerFunctions: jest.fn(),
 }));
 
+jest.mock('../../utils/convert-binary-data.ts', () => ({
+	convertBinaryData: jest.fn(),
+}));
+
 // Now import the real classes
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
@@ -68,7 +68,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	Workflow,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, Node } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, Node, createRunExecutionData } from 'n8n-workflow';
 
 import { ExecuteContext, PollContext } from '../node-execution-context';
 import { RoutingNode } from '../routing-node';
@@ -114,20 +114,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			executionId: 'test-execution-id',
 		});
 
-		mockRunExecutionData = {
-			startData: {},
-			resultData: {
-				runData: {},
-				pinData: {},
-			},
-			executionData: {
-				contextData: {},
-				nodeExecutionStack: [],
-				metadata: {},
-				waitingExecution: {},
-				waitingExecutionSource: {},
-			},
-		};
+		mockRunExecutionData = createRunExecutionData();
 
 		mockNode = {
 			id: 'test-node-id',
@@ -479,75 +466,6 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			expect(mockNodeType.execute).not.toHaveBeenCalled();
 		});
 
-		it('should report node execution with invalid JSON data when Sentry is configured', async () => {
-			// Create data that is not JSON compatible (circular reference)
-			const circularData: { json: { result: string; circular?: unknown } } = {
-				json: { result: 'test' },
-			};
-			circularData.json.circular = circularData; // Create circular reference
-			const invalidJsonData = [[circularData]];
-
-			mockNodeType.execute = jest.fn().mockResolvedValue(invalidJsonData);
-
-			// Mock isJsonCompatible to return invalid for this test
-			mockIsJsonCompatible.mockReturnValueOnce({
-				isValid: false,
-				errorPath: 'json.circular',
-				errorMessage: 'Circular reference detected',
-			});
-
-			// Mock GlobalConfig to have Sentry backend DSN
-			const mockGlobalConfigInstance = {
-				sentry: { backendDsn: 'https://test-sentry-dsn' },
-			};
-
-			// Mock ErrorReporter
-			const mockErrorReporter = {
-				error: jest.fn(),
-			};
-
-			mockContainer.get.mockImplementation((token) => {
-				if (token === GlobalConfig) {
-					return mockGlobalConfigInstance;
-				}
-				if (token === TriggersAndPollers) {
-					return { runTrigger: jest.fn() };
-				}
-				// Mock ErrorReporter
-				return mockErrorReporter;
-			});
-
-			const mockContextInstance = { hints: [] };
-			mockExecuteContext.mockImplementation(() => mockContextInstance as unknown as ExecuteContext);
-
-			const result = await workflowExecute.runNode(
-				mockWorkflow,
-				mockExecutionData,
-				mockRunExecutionData,
-				0,
-				mockAdditionalData,
-				'manual',
-			);
-
-			// Verify that ErrorReporter.error was called due to invalid JSON data
-			expect(mockErrorReporter.error).toHaveBeenCalledWith(
-				'node execution returned incorrect output',
-				expect.objectContaining({
-					shouldBeLogged: false,
-					extra: expect.objectContaining({
-						nodeName: mockNode.name,
-						nodeType: mockNode.type,
-						nodeVersion: mockNode.typeVersion,
-						errorPath: 'json.circular',
-						errorMessage: 'Circular reference detected',
-					}),
-				}),
-			);
-
-			// Execution should still succeed despite the invalid data
-			expect(result).toEqual({ data: invalidJsonData, hints: [] });
-		});
-
 		it('should handle close functions and their errors', async () => {
 			const mockData = [[{ json: { result: 'test' } }]];
 			const closeFunction1 = jest.fn().mockResolvedValue(undefined);
@@ -873,6 +791,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 		it('should pass through input data for non-declarative webhook nodes', async () => {
 			mockNodeType.webhook = jest.fn();
 			mockNodeType.execute = undefined;
+			mockNodeType.supplyData = undefined;
 			mockNodeType.poll = undefined;
 			mockNodeType.trigger = undefined;
 			mockNodeType.description.requestDefaults = undefined; // Non-declarative
@@ -893,6 +812,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			const mockData = [[{ json: { webhook: 'result' } }]];
 			mockNodeType.webhook = jest.fn();
 			mockNodeType.execute = undefined;
+			mockNodeType.supplyData = undefined;
 			mockNodeType.poll = undefined;
 			mockNodeType.trigger = undefined;
 			mockNodeType.description.requestDefaults = {}; // Declarative node
@@ -925,6 +845,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			const mockData = [[{ json: { routed: 'result' } }]];
 			// Node with no execute, poll, trigger, or webhook methods
 			mockNodeType.execute = undefined;
+			mockNodeType.supplyData = undefined;
 			mockNodeType.poll = undefined;
 			mockNodeType.trigger = undefined;
 			mockNodeType.webhook = undefined;
@@ -949,6 +870,27 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			expect(mockRoutingNode).toHaveBeenCalledWith(mockContextInstance, mockNodeType);
 			expect(mockRoutingNodeInstance.runNode).toHaveBeenCalled();
 			expect(result).toEqual({ data: mockData });
+		});
+	});
+
+	describe('supplyData node handling', () => {
+		it('should throw a clear error when a supplyData node has no execute method', async () => {
+			mockNodeType.execute = undefined;
+			mockNodeType.supplyData = jest.fn();
+			mockNodeType.poll = undefined;
+			mockNodeType.trigger = undefined;
+			mockNodeType.webhook = undefined;
+
+			await expect(
+				workflowExecute.runNode(
+					mockWorkflow,
+					mockExecutionData,
+					mockRunExecutionData,
+					0,
+					mockAdditionalData,
+					'manual',
+				),
+			).rejects.toThrow('has a "supplyData" method but no "execute" method');
 		});
 	});
 

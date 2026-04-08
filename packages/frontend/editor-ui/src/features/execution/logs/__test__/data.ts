@@ -7,7 +7,12 @@ import {
 	MANUAL_TRIGGER_NODE_TYPE,
 } from '@/app/constants';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
-import { WorkflowOperationError, type IRunData, type Workflow } from 'n8n-workflow';
+import {
+	createRunExecutionData,
+	WorkflowOperationError,
+	type IRunData,
+	type Workflow,
+} from 'n8n-workflow';
 import type { LogTreeCreationContext } from '../logs.types';
 
 export function createTestLogTreeCreationContext(
@@ -21,11 +26,11 @@ export function createTestLogTreeCreationContext(
 		subWorkflowData: {},
 		executionId: 'test-execution-id',
 		ancestorRunIndexes: [],
-		data: {
+		data: createRunExecutionData({
 			resultData: {
 				runData,
 			},
-		},
+		}),
 		isSubExecution: false,
 	};
 }
@@ -86,7 +91,7 @@ export const aiChatExecutionResponse: IExecutionResponse = {
 	finished: true,
 	mode: 'manual',
 	status: 'success',
-	data: {
+	data: createRunExecutionData({
 		resultData: {
 			lastNodeExecuted: 'AI Agent',
 			runData: {
@@ -129,7 +134,7 @@ export const aiChatExecutionResponse: IExecutionResponse = {
 				],
 			},
 		},
-	},
+	}),
 	workflowData: aiChatWorkflow,
 	createdAt: new Date('2025-03-26T00:00:00.000Z'),
 	startedAt: new Date('2025-03-26T00:00:00.001Z'),
@@ -141,7 +146,7 @@ export const aiManualExecutionResponse: IExecutionResponse = {
 	finished: true,
 	mode: 'manual',
 	status: 'success',
-	data: {
+	data: createRunExecutionData({
 		resultData: {
 			runData: {
 				'AI Agent': [
@@ -180,7 +185,7 @@ export const aiManualExecutionResponse: IExecutionResponse = {
 				],
 			},
 		},
-	},
+	}),
 	workflowData: aiManualWorkflow,
 	createdAt: new Date('2025-03-30T00:00:00.000Z'),
 	startedAt: new Date('2025-03-30T00:00:00.001Z'),

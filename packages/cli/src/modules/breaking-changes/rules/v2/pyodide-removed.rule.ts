@@ -1,8 +1,8 @@
 import type { BreakingChangeAffectedWorkflow, BreakingChangeRecommendation } from '@n8n/api-types';
 import type { WorkflowEntity } from '@n8n/db';
-import { Service } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 
+import { BreakingChangeRule } from '@n8n/decorators';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeWorkflowRule,
@@ -10,7 +10,7 @@ import type {
 } from '../../types';
 import { BreakingChangeCategory } from '../../types';
 
-@Service()
+@BreakingChangeRule({ version: 'v2' })
 export class PyodideRemovedRule implements IBreakingChangeWorkflowRule {
 	id: string = 'pyodide-removed-v2';
 
@@ -55,13 +55,14 @@ export class PyodideRemovedRule implements IBreakingChangeWorkflowRule {
 	): Promise<WorkflowDetectionReport> {
 		// Get all Code nodes (the Code node supports both JavaScript and Python)
 		const codeNodes = nodesGroupedByType.get('n8n-nodes-base.code') ?? [];
+		const codeToolNodes = nodesGroupedByType.get('@n8n/n8n-nodes-langchain.toolCode') ?? [];
 
 		// Filter for Code nodes using the Pyodide-based Python implementation
 		// The 'language' parameter determines which language/implementation is used:
 		// - 'python' = Pyodide (being removed)
 		// - 'pythonNative' = Task runner (new implementation)
 		// - 'javaScript' = JavaScript (not affected)
-		const affectedNodes = codeNodes.filter((node) => {
+		const affectedNodes = codeNodes.concat(codeToolNodes).filter((node) => {
 			const language = node.parameters?.language;
 			// Nodes with language='python' use Pyodide and are affected
 			return language === 'python';

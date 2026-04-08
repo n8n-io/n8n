@@ -1,15 +1,14 @@
 import { safeJoinPath, type Logger } from '@n8n/backend-common';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import type { CredentialsRepository, TagRepository } from '@n8n/db';
 import { type DataSource, type EntityManager } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
 import { readdir, readFile } from 'fs/promises';
+import { mock } from 'jest-mock-extended';
 import type { Cipher } from 'n8n-core';
 
-import { ImportService } from '../import.service';
-import type { CredentialsRepository, TagRepository } from '@n8n/db';
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
-import type { DatabaseConfig } from '@n8n/config';
+
+import { ImportService } from '../import.service';
 
 // Mock fs/promises
 jest.mock('fs/promises');
@@ -41,7 +40,6 @@ describe('ImportService', () => {
 	let mockCipher: Cipher;
 	let mockActiveWorkflowManager: ActiveWorkflowManager;
 	let mockWorkflowIndexService: WorkflowIndexService;
-	let mockDatabaseConfig: DatabaseConfig;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -54,7 +52,6 @@ describe('ImportService', () => {
 		mockCipher = mock<Cipher>();
 		mockActiveWorkflowManager = mock<ActiveWorkflowManager>();
 		mockWorkflowIndexService = mock<WorkflowIndexService>();
-		mockDatabaseConfig = mock<DatabaseConfig>();
 
 		// Set up cipher mock
 		mockCipher.decrypt = jest.fn((data: string) => data.replace('encrypted:', ''));
@@ -87,6 +84,7 @@ describe('ImportService', () => {
 		});
 		mockEntityManager.query = jest.fn().mockResolvedValue(undefined);
 		mockEntityManager.insert = jest.fn().mockResolvedValue(undefined);
+		mockEntityManager.upsert = jest.fn().mockResolvedValue(undefined);
 
 		// Mock transaction method
 		mockDataSource.transaction = jest.fn().mockImplementation(async (callback) => {
@@ -101,7 +99,6 @@ describe('ImportService', () => {
 			mockCipher,
 			mockActiveWorkflowManager,
 			mockWorkflowIndexService,
-			mockDatabaseConfig,
 		);
 	});
 
@@ -562,7 +559,7 @@ describe('ImportService', () => {
 			await importService.enableForeignKeyConstraints(mockEntityManager);
 
 			expect(mockEntityManager.query).toHaveBeenCalledWith(
-				'SET session_replication_role = DEFAULT;',
+				'SET session_replication_role = ORIGIN;',
 			);
 		});
 	});

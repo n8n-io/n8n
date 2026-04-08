@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
+import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useAvailableProjectSearch } from '@/features/collaboration/projects/projects.utils';
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import type { DateValue } from '@internationalized/date';
-import { getLocalTimeZone, now, toCalendarDateTime, today } from '@internationalized/date';
-import type { InsightsDateRange, InsightsSummaryType } from '@n8n/api-types';
+import { getLocalTimeZone, today } from '@internationalized/date';
+import type { InsightsSummaryType } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import {
 	computed,
@@ -20,7 +22,7 @@ import {
 } from 'vue';
 import { useRoute } from 'vue-router';
 import { INSIGHT_TYPES } from '../insights.constants';
-import { getTimeRangeLabels, timeRangeMappings } from '../insights.utils';
+import { getAdjustedDateRange, getTimeRangeLabels, timeRangeMappings } from '../insights.utils';
 import InsightsDataRangePicker from './InsightsDataRangePicker.vue';
 
 import { N8nHeading, N8nSpinner } from '@n8n/design-system';
@@ -61,7 +63,6 @@ const i18n = useI18n();
 
 const insightsStore = useInsightsStore();
 const projectsStore = useProjectsStore();
-
 const isTimeSavedRoute = computed(() => route.params.insightType === INSIGHT_TYPES.TIME_SAVED);
 
 const chartComponents = computed(() => ({
@@ -80,7 +81,6 @@ const transformFilter = ({ id, desc }: { id: string; desc: boolean }) => {
 
 const sortTableBy = ref([{ id: props.insightType, desc: true }]);
 
-const selectedDateRange = ref<InsightsDateRange['key']>('week');
 const granularity = computed(() => {
 	const { start, end } = range.value;
 	if (!start || !end) return 'day';
@@ -123,17 +123,10 @@ const range = shallowRef<{
 });
 
 /**
- * Converts the range to a UTC date range with the current time
+ * Converts the range to adjusted Date objects for API calls
  */
 const getFilteredRange = () => {
-	const timezone = getLocalTimeZone();
-	const startDate = toCalendarDateTime(range.value.start, now(timezone)).toDate(timezone);
-	const endDate = toCalendarDateTime(range.value.end, now(timezone)).toDate(timezone);
-
-	return {
-		startDate,
-		endDate,
-	};
+	return getAdjustedDateRange(range.value);
 };
 
 const fetchPaginatedTableData = ({
@@ -164,7 +157,7 @@ const fetchPaginatedTableData = ({
 };
 
 watch(
-	() => [props.insightType, selectedDateRange.value, selectedProject.value, range.value],
+	() => [props.insightType, selectedProject.value, range.value],
 	() => {
 		sortTableBy.value = [{ id: props.insightType, desc: true }];
 
@@ -199,18 +192,20 @@ watch(
 onMounted(() => {
 	useDocumentTitle().set(i18n.baseText('insights.heading'));
 });
-onBeforeMount(async () => {
-	await projectsStore.getAvailableProjects();
-});
-
 // Must be *only* <email> — no extra text before or after
 const emailPattern = /^<([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})>$/;
 
-const projects = computed(() =>
-	projectsStore.availableProjects.filter(
-		(project) => project.name && !emailPattern.test(project.name.trim()),
-	),
-);
+const searchFn = useAvailableProjectSearch();
+const filterFn = (project: ProjectListItem) =>
+	!!project.name && !emailPattern.test(project.name.trim());
+
+onBeforeMount(async () => {
+	// Members filter locally over myProjects — preload them.
+	// Admins use remote search, so skip the unpaginated GET /projects call.
+	if (!projectsStore.globalProjectPermissions.list) {
+		await projectsStore.getAvailableProjects();
+	}
+});
 </script>
 
 <template>
@@ -223,7 +218,8 @@ const projects = computed(() =>
 			<div class="mt-s" style="display: flex; gap: 12px; align-items: center">
 				<ProjectSharing
 					v-model="selectedProject"
-					:projects="projects"
+					:search-fn="searchFn"
+					:filter-fn="filterFn"
 					:placeholder="i18n.baseText('insights.dashboard.search.placeholder')"
 					:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
 					size="mini"
@@ -244,7 +240,8 @@ const projects = computed(() =>
 				v-if="insightsStore.isSummaryEnabled"
 				:summary="insightsStore.summary.state"
 				:loading="insightsStore.summary.isLoading"
-				:time-range="selectedDateRange"
+				:start-date="range.start"
+				:end-date="range.end"
 				:class="$style.insightsBanner"
 			/>
 			<div :class="$style.insightsContent">
@@ -308,7 +305,7 @@ const projects = computed(() =>
 }
 
 .insightsBanner {
-	padding-bottom: 0;
+	margin-bottom: 0;
 
 	ul {
 		border-bottom-left-radius: 0;

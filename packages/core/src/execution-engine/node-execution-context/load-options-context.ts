@@ -33,10 +33,6 @@ export class LoadOptionsContext extends NodeExecutionContext implements ILoadOpt
 		};
 	}
 
-	getExecutionContext() {
-		return undefined;
-	}
-
 	async getCredentials<T extends object = ICredentialDataDecryptedObject>(type: string) {
 		return await this._getCredentials<T>(type);
 	}

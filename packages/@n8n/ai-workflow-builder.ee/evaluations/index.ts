@@ -1,69 +1,110 @@
-import { runCliEvaluation } from './cli/runner.js';
-import { runLangsmithEvaluation } from './langsmith/runner.js';
-import { loadTestCasesFromCsv } from './utils/csv-prompt-loader.js';
-
-// Re-export for external use if needed
-export { runCliEvaluation } from './cli/runner.js';
-export { runLangsmithEvaluation } from './langsmith/runner.js';
-export { runSingleTest } from './core/test-runner.js';
-export { setupTestEnvironment, createAgent } from './core/environment.js';
-
 /**
- * Main entry point for evaluation
- * Determines which evaluation mode to run based on environment variables
+ * V2 Evaluation Harness
+ *
+ * A factory-based, testable evaluation system for AI workflow generation.
+ *
+ * Key features:
+ * - Factory pattern for evaluator creation
+ * - Parallel evaluator execution
+ * - Both local and LangSmith modes
+ * - Centralized lifecycle hooks for logging
+ * - Pre-computed feedback pattern for LangSmith compatibility
  */
-async function main(): Promise<void> {
-	const useLangsmith = process.env.USE_LANGSMITH_EVAL === 'true';
 
-	// Parse command line arguments for single test case
-	const testCaseId = process.argv.includes('--test-case')
-		? process.argv[process.argv.indexOf('--test-case') + 1]
-		: undefined;
+// Core runner
+export { runEvaluation } from './harness/runner';
 
-	// Parse command line argument for CSV prompts file path
-	const promptsCsvPath = getFlagValue('--prompts-csv') ?? process.env.PROMPTS_CSV_FILE;
+// Types
+export {
+	isGenerationResult,
+	type Feedback,
+	type EvaluationContext,
+	type TestCaseContext,
+	type GlobalRunContext,
+	type Evaluator,
+	type TestCase,
+	type RunConfig,
+	type ExampleResult,
+	type RunSummary,
+	type EvaluationLifecycle,
+	type LangsmithOptions,
+	type GenerationResult,
+} from './harness/harness-types';
 
-	if (promptsCsvPath && useLangsmith) {
-		console.warn('CSV-driven evaluations are only supported in CLI mode. Ignoring --prompts-csv.');
-	}
+// Lifecycle
+export {
+	createConsoleLifecycle,
+	createQuietLifecycle,
+	mergeLifecycles,
+	type ConsoleLifecycleOptions,
+} from './harness/lifecycle';
 
-	// Parse command line arguments for a number of repetitions (applies to both modes)
-	const repetitionsArg = process.argv.includes('--repetitions')
-		? parseInt(process.argv[process.argv.indexOf('--repetitions') + 1], 10)
-		: 1;
-	const repetitions = Number.isNaN(repetitionsArg) ? 1 : repetitionsArg;
+// Evaluator factories
+export {
+	createLLMJudgeEvaluator,
+	createProgrammaticEvaluator,
+	createPairwiseEvaluator,
+	createSimilarityEvaluator,
+	createResponderEvaluator,
+	createExecutionEvaluator,
+	createBinaryChecksEvaluator,
+	type PairwiseEvaluatorOptions,
+	type SimilarityEvaluatorOptions,
+	type BinaryChecksEvaluatorOptions,
+	type ResponderEvaluationContext,
+} from './evaluators';
 
-	if (useLangsmith) {
-		await runLangsmithEvaluation(repetitions);
-	} else {
-		const csvTestCases = promptsCsvPath ? loadTestCasesFromCsv(promptsCsvPath) : undefined;
-		await runCliEvaluation({ testCases: csvTestCases, testCaseFilter: testCaseId, repetitions });
-	}
-}
+// Introspection lifecycle
+export {
+	createIntrospectionAnalysisLifecycle,
+	type IntrospectionAnalysisOptions,
+} from './lifecycles/introspection-analysis';
 
-function getFlagValue(flag: string): string | undefined {
-	const exactMatchIndex = process.argv.findIndex((arg) => arg === flag);
-	if (exactMatchIndex !== -1) {
-		const value = process.argv[exactMatchIndex + 1];
-		if (!value || value.startsWith('--')) {
-			throw new Error(`Flag ${flag} requires a value`);
-		}
-		return value;
-	}
+// Output
+export {
+	createArtifactSaver,
+	type ArtifactSaver,
+	type ArtifactSaverOptions,
+} from './harness/output';
 
-	const withValue = process.argv.find((arg) => arg.startsWith(`${flag}=`));
-	if (withValue) {
-		const value = withValue.slice(flag.length + 1);
-		if (!value) {
-			throw new Error(`Flag ${flag} requires a value`);
-		}
-		return value;
-	}
+// Trace filtering (re-exported from v1 for convenience)
+export {
+	createTraceFilters,
+	isMinimalTracingEnabled,
+	type TraceFilters,
+} from './langsmith/trace-filters';
 
-	return undefined;
-}
+// Score calculation utilities
+export {
+	parseFeedbackKey,
+	extractCategory,
+	groupByEvaluator,
+	calculateWeightedScore,
+	aggregateScores,
+	DEFAULT_EVALUATOR_WEIGHTS,
+	DEFAULT_WEIGHTS,
+	type ScoreWeights,
+	type AggregatedScore,
+	type FeedbackKeyParts,
+} from './harness/score-calculator';
 
-// Run if called directly
-if (require.main === module) {
-	main().catch(console.error);
-}
+// Report generation
+export {
+	extractViolationSeverity,
+	calculateReportMetrics,
+	generateMarkdownReport,
+	type ViolationSeverity,
+	type ReportOptions,
+	type ReportMetrics,
+} from './support/report-generator';
+
+// Test case generation
+export {
+	createTestCaseGenerator,
+	type TestCaseGeneratorOptions,
+	type GeneratedTestCase,
+	type TestCaseGenerator,
+} from './support/test-case-generator';
+
+// CSV loader utilities
+export { loadDefaultTestCases, getDefaultTestCaseIds } from './cli/csv-prompt-loader';

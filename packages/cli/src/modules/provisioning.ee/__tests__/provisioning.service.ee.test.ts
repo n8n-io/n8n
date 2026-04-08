@@ -7,6 +7,7 @@ import {
 	type UserRepository,
 	type SettingsRepository,
 	type RoleRepository,
+	type RoleMappingRuleRepository,
 	type Role,
 	type Project,
 	type ProjectRepository,
@@ -19,29 +20,40 @@ import { type Publisher } from '@/scaling/pubsub/publisher.service';
 import { type ProjectService } from '@/services/project.service.ee';
 import type { EntityManager } from '@n8n/typeorm';
 import { type InstanceSettings } from 'n8n-core';
+import { type EventService } from '@/events/event.service';
+import { type UserService } from '@/services/user.service';
+import { type RoleResolverService } from '@/modules/provisioning.ee/role-resolver.service.ee';
 
 const globalConfig = mock<GlobalConfig>();
 const settingsRepository = mock<SettingsRepository>();
 const userRepository = mock<UserRepository>();
+const userService = mock<UserService>();
 const entityManager = mock<EntityManager>();
 const projectRepository = mock<ProjectRepository>({ manager: entityManager });
 const projectService = mock<ProjectService>();
+const eventService = mock<EventService>();
 
 const logger = mock<Logger>();
 const publisher = mock<Publisher>();
 const roleRepository = mock<RoleRepository>();
 const instanceSettings = mock<InstanceSettings>();
+const roleMappingRuleRepository = mock<RoleMappingRuleRepository>();
+const roleResolverService = mock<RoleResolverService>();
 
 const provisioningService = new ProvisioningService(
+	eventService,
 	globalConfig,
 	settingsRepository,
 	projectRepository,
 	projectService,
 	roleRepository,
 	userRepository,
+	userService,
 	logger,
 	publisher,
 	instanceSettings,
+	roleMappingRuleRepository,
+	roleResolverService,
 );
 
 describe('ProvisioningService', () => {
@@ -59,6 +71,7 @@ describe('ProvisioningService', () => {
 		scopesName: 'n8n_test_scope',
 		scopesInstanceRoleClaimName: 'n8n_test_instance_role',
 		scopesProjectsRolesClaimName: 'n8n_test_projects_roles',
+		scopesUseExpressionMapping: false,
 	};
 
 	describe('init', () => {
@@ -145,6 +158,7 @@ describe('ProvisioningService', () => {
 				scopesName: 'n8n_test_scope_overridden',
 				scopesInstanceRoleClaimName: 'n8n_test_instance_role_overridden',
 				scopesProjectsRolesClaimName: 'n8n_test_projects_roles_overridden',
+				scopesUseExpressionMapping: false,
 			};
 			settingsRepository.findByKey.mockResolvedValue({
 				key: PROVISIONING_PREFERENCES_DB_KEY,
@@ -227,60 +241,76 @@ describe('ProvisioningService', () => {
 			roleRepository.findOneOrFail.mockResolvedValue(
 				mock<Role>({ slug: 'global:member', roleType: 'global' }),
 			);
-
 			provisioningService['isInstanceRoleProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
-			expect(userRepository.update).toHaveBeenCalledWith(user.id, { role: { slug: roleSlug } });
+
+			expect(userService.changeUserRole).toHaveBeenCalledWith(user, { newRoleName: roleSlug });
 			expect(logger.warn).not.toHaveBeenCalled();
 		});
 
 		it('should provision the instance role for the user', async () => {
 			const user = mock<User>({ role: { slug: 'global:member' } });
 			const roleSlug = 'global:owner';
-
 			roleRepository.findOneOrFail.mockResolvedValue(
 				mock<Role>({ slug: 'global:owner', roleType: 'global' }),
 			);
-
 			provisioningService['isInstanceRoleProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
-			expect(userRepository.update).toHaveBeenCalledWith(user.id, { role: { slug: roleSlug } });
+
+			expect(userService.changeUserRole).toHaveBeenCalledWith(user, { newRoleName: roleSlug });
 		});
 
 		it('should do nothing if the role has not changed', async () => {
 			const user = mock<User>({ role: { slug: 'global:owner' } });
 			const roleSlug = 'global:owner';
-
 			roleRepository.findOneOrFail.mockResolvedValue(
 				mock<Role>({ slug: 'global:owner', roleType: 'global' }),
 			);
-
 			provisioningService['isInstanceRoleProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
-			expect(userRepository.update).not.toHaveBeenCalled();
+
+			expect(userService.changeUserRole).not.toHaveBeenCalled();
 			expect(logger.warn).not.toHaveBeenCalled();
 		});
 
 		it('should do nothing if the role is not a global role', async () => {
 			const user = mock<User>({ role: { slug: 'global:member' } });
 			const roleSlug = 'global:owner';
-
 			roleRepository.findOneOrFail.mockResolvedValue(
 				mock<Role>({ slug: 'global:owner', roleType: 'project' }),
 			);
-
 			provisioningService['isInstanceRoleProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
-			expect(userRepository.update).not.toHaveBeenCalled();
+
+			expect(userService.changeUserRole).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledTimes(1);
 			expect(logger.warn).toHaveBeenCalledWith(
 				`Skipping instance role provisioning. Role ${roleSlug} is not a global role`,
 				{ userId: user.id, roleSlug: 'global:owner' },
 			);
+		});
+
+		it('sends telemetry event', async () => {
+			const user = mock<User>({ id: 'user-123', role: { slug: 'global:member' } });
+			const roleSlug = 'global:owner';
+
+			roleRepository.findOneOrFail.mockResolvedValue(
+				mock<Role>({ slug: 'global:owner', roleType: 'global' }),
+			);
+
+			provisioningService['isInstanceRoleProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+
+			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
+
+			expect(eventService.emit).toHaveBeenCalledTimes(1);
+			expect(eventService.emit).toHaveBeenCalledWith('sso-user-instance-role-updated', {
+				userId: user.id,
+				role: roleSlug,
+			});
 		});
 	});
 
@@ -491,6 +521,86 @@ describe('ProvisioningService', () => {
 				{ userId, role: 'project:viewer' },
 				entityManager,
 			);
+		});
+
+		it('sends telemetry event', async () => {
+			const userId = 'user-id-123';
+			const projectIdToRole = ['project-1:viewer', 'project-2:editor'];
+			projectRepository.find.mockResolvedValueOnce([
+				mock<Project>({ id: 'project-1' }),
+				mock<Project>({ id: 'project-2' }),
+			]);
+			projectRepository.find.mockResolvedValueOnce([
+				mock<Project>({ id: 'project-3', type: 'team' }),
+			]);
+			roleRepository.find.mockResolvedValue([
+				mock<Role>({ displayName: 'viewer', slug: 'project:viewer' }),
+				mock<Role>({ displayName: 'editor', slug: 'project:editor' }),
+			]);
+
+			provisioningService['isProjectRolesProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+
+			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
+
+			expect(eventService.emit).toHaveBeenCalledTimes(1);
+			expect(eventService.emit).toHaveBeenCalledWith('sso-user-project-access-updated', {
+				projectsAdded: 2,
+				projectsRemoved: 1,
+				userId,
+			});
+		});
+	});
+
+	describe('applyExpressionMappedProjectRoles', () => {
+		it('should revoke all existing project access when projectRoleMap is empty', async () => {
+			const userId = 'user-id-123';
+			const existingProject = mock<Project>({ id: 'project-1' });
+			projectRepository.find.mockResolvedValueOnce([existingProject]);
+
+			await provisioningService['applyExpressionMappedProjectRoles'](userId, new Map());
+
+			expect(entityManager.delete).toHaveBeenCalledWith(ProjectRelation, {
+				projectId: 'project-1',
+				userId,
+			});
+			expect(projectService.addUser).not.toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith('sso-user-project-access-updated', {
+				projectsAdded: 0,
+				projectsRemoved: 1,
+				userId,
+			});
+		});
+
+		it('should revoke existing access when all mapped projects are invalid', async () => {
+			const userId = 'user-id-123';
+			const existingProject = mock<Project>({ id: 'project-existing' });
+			// First find: currentlyAccessibleProjects
+			projectRepository.find.mockResolvedValueOnce([existingProject]);
+			// Second find: existingProjects lookup (none found — all invalid)
+			projectRepository.find.mockResolvedValueOnce([]);
+			roleRepository.find.mockResolvedValue([]);
+
+			await provisioningService['applyExpressionMappedProjectRoles'](
+				userId,
+				new Map([['nonExistentProject', 'project:viewer']]),
+			);
+
+			expect(entityManager.delete).toHaveBeenCalledWith(ProjectRelation, {
+				projectId: 'project-existing',
+				userId,
+			});
+			expect(projectService.addUser).not.toHaveBeenCalled();
+		});
+
+		it('should do nothing when projectRoleMap is empty and user has no existing access', async () => {
+			const userId = 'user-id-123';
+			projectRepository.find.mockResolvedValueOnce([]);
+
+			await provisioningService['applyExpressionMappedProjectRoles'](userId, new Map());
+
+			expect(entityManager.delete).not.toHaveBeenCalled();
+			expect(projectService.addUser).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 	});
 

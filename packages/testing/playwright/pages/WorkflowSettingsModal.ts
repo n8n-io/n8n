@@ -59,12 +59,32 @@ export class WorkflowSettingsModal extends BasePage {
 		return this.page.getByTestId('workflow-menu-item-archive');
 	}
 
+	getArchiveMenuItemWrapper(): Locator {
+		return this.getArchiveMenuItem().locator('..');
+	}
+
 	getUnarchiveMenuItem(): Locator {
 		return this.page.getByTestId('workflow-menu-item-unarchive');
 	}
 
 	getPushToGitMenuItem(): Locator {
 		return this.page.getByTestId('workflow-menu-item-push');
+	}
+
+	getUnpublishMenuItem(): Locator {
+		return this.page.getByTestId('workflow-menu-item-unpublish');
+	}
+
+	getUnpublishModal(): Locator {
+		return this.page.getByTestId('workflow-history-version-unpublish-modal');
+	}
+
+	async clickUnpublishMenuItem(): Promise<void> {
+		await this.getUnpublishMenuItem().click();
+	}
+
+	async confirmUnpublishModal(): Promise<void> {
+		await this.getUnpublishModal().getByRole('button', { name: 'Unpublish' }).click();
 	}
 
 	getSaveButton(): Locator {

@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { N8nButton, type ButtonProps } from '@n8n/design-system';
 
-export type Props = Pick<ButtonProps, 'label' | 'type'>;
+export type Props = Pick<ButtonProps, 'label' | 'variant'>;
 
 defineProps<Props>();
 </script>
@@ -10,7 +10,7 @@ defineProps<Props>();
 		:label="label"
 		size="large"
 		icon="message-circle"
-		:type="type"
+		:variant="variant"
 		data-test-id="workflow-chat-button"
 	/>
 </template>

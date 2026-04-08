@@ -238,7 +238,7 @@ export async function execute(
 		return prepareReturnItem(this, assignmentCollection, i, item, node, options);
 	} catch (error) {
 		if (this.continueOnFail()) {
-			return { json: { error: (error as Error).message, pairedItem: { item: i } } };
+			return { json: { error: (error as Error).message }, pairedItem: { item: i } };
 		}
 		throw new NodeOperationError(this.getNode(), error as Error, {
 			itemIndex: i,

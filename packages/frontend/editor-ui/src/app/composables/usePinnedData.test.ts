@@ -5,13 +5,20 @@ import { usePinnedData } from '@/app/composables/usePinnedData';
 import type { INodeUi } from '@/Interface';
 import { HTTP_REQUEST_NODE_TYPE, IF_NODE_TYPE, MAX_PINNED_DATA_SIZE } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { NodeConnectionTypes, STICKY_NODE_TYPE } from 'n8n-workflow';
 import type { NodeConnectionType, INodeTypeDescription } from 'n8n-workflow';
 
 vi.mock('@/app/composables/useToast', () => ({ useToast: vi.fn(() => ({ showError: vi.fn() })) }));
-vi.mock('@n8n/i18n', () => ({
-	useI18n: vi.fn(() => ({ baseText: vi.fn((key) => key) })),
+vi.mock('@n8n/i18n', async (importActual) => ({
+	...(await importActual()),
+	useI18n: () => ({
+		baseText: (key: string) => key,
+	}),
 }));
 vi.mock('@/app/composables/useExternalHooks', () => ({
 	useExternalHooks: vi.fn(() => ({
@@ -78,18 +85,23 @@ describe('usePinnedData', () => {
 
 		it('should set data correctly for valid inputs', () => {
 			const workflowsStore = useWorkflowsStore();
+			workflowsStore.workflow.id = 'test-workflow';
 			const node = ref({ name: 'testNode' } as INodeUi);
 			const { setData } = usePinnedData(node);
 			const testData = [{ json: { key: 'value' } }];
 
 			expect(() => setData(testData, 'pin-icon-click')).not.toThrow();
-			expect(workflowsStore.workflow.pinData?.[node.value.name]).toEqual(testData);
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflow.id),
+			);
+			expect(workflowDocumentStore.pinData?.[node.value.name]).toEqual(testData);
 		});
 	});
 
 	describe('unsetData()', () => {
 		it('should unset data correctly', () => {
 			const workflowsStore = useWorkflowsStore();
+			workflowsStore.workflow.id = 'test-workflow';
 			const node = ref({ name: 'testNode' } as INodeUi);
 			const { setData, unsetData } = usePinnedData(node);
 			const testData = [{ json: { key: 'value' } }];
@@ -97,21 +109,43 @@ describe('usePinnedData', () => {
 			setData(testData, 'pin-icon-click');
 			unsetData('context-menu');
 
-			expect(workflowsStore.workflow.pinData?.[node.value.name]).toBeUndefined();
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflow.id),
+			);
+			expect(workflowDocumentStore.pinData?.[node.value.name]).toBeUndefined();
 		});
 	});
 
 	describe('onSetDataSuccess()', () => {
-		it('should trigger telemetry on successful data setting', async () => {
+		it('should trigger telemetry on successful data setting with correct payload values', async () => {
+			const workflowsStore = useWorkflowsStore();
+			workflowsStore.workflow.id = 'test-workflow-id';
+
 			const telemetry = useTelemetry();
 			const spy = vi.spyOn(telemetry, 'track');
-			const pinnedData = usePinnedData(ref({ name: 'testNode', type: 'someType' } as INodeUi), {
+			const node = ref({
+				name: 'testNode',
+				type: 'n8n-nodes-base.httpRequest',
+				id: 'test-node-id',
+			} as INodeUi);
+			const pinnedData = usePinnedData(node, {
 				displayMode: ref('json'),
-				runIndex: ref(0),
+				runIndex: ref(2),
 			});
 
 			pinnedData.onSetDataSuccess({ source: 'pin-icon-click' });
-			expect(spy).toHaveBeenCalled();
+
+			expect(spy).toHaveBeenCalledWith(
+				'Ndv data pinning success',
+				expect.objectContaining({
+					pinning_source: 'pin-icon-click',
+					node_type: 'n8n-nodes-base.httpRequest',
+					view: 'json',
+					run_index: 2,
+					workflow_id: 'test-workflow-id',
+					node_id: 'test-node-id',
+				}),
+			);
 		});
 	});
 

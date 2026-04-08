@@ -131,6 +131,10 @@ const roles = computed<Record<Role, RoleContent>>(() => ({
 		name: i18n.baseText('auth.roles.member'),
 		description: i18n.baseText('settings.personal.role.tooltip.member'),
 	},
+	[ROLE.ChatUser]: {
+		name: i18n.baseText('auth.roles.chatUser'),
+		description: i18n.baseText('settings.personal.role.tooltip.chatUser'),
+	},
 	[ROLE.Admin]: {
 		name: i18n.baseText('auth.roles.admin'),
 		description: i18n.baseText('settings.personal.role.tooltip.admin'),
@@ -406,17 +410,17 @@ onBeforeUnmount(() => {
 				/>
 
 				<N8nButton
+					variant="subtle"
 					v-if="mfaDisabled"
 					:class="$style.button"
-					type="tertiary"
 					:label="i18n.baseText('settings.personal.mfa.button.enabled')"
 					data-test-id="enable-mfa-button"
 					@click="onMfaEnableClick"
 				/>
 				<N8nButton
+					variant="subtle"
 					v-else
 					:class="$style.disableMfaButton"
-					type="tertiary"
 					:label="i18n.baseText('settings.personal.mfa.button.disabled')"
 					data-test-id="disable-mfa-button"
 					@click="onMfaDisableClick"

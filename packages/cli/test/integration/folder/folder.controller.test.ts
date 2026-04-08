@@ -8,6 +8,7 @@ import {
 	linkUserToProject,
 	testDb,
 	mockInstance,
+	createActiveWorkflow,
 } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { FolderRepository, ProjectRepository, WorkflowRepository } from '@n8n/db';
@@ -31,6 +32,7 @@ import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { OwnershipService } from '@/services/ownership.service';
 
 let owner: User;
 let member: User;
@@ -53,7 +55,16 @@ const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 beforeEach(async () => {
 	testServer.license.enable('feat:folders');
 
-	await testDb.truncate(['Folder', 'SharedWorkflow', 'TagEntity', 'Project', 'ProjectRelation']);
+	await testDb.truncate([
+		'Folder',
+		'SharedWorkflow',
+		'TagEntity',
+		'Project',
+		'ProjectRelation',
+		'WorkflowEntity',
+		'WorkflowHistory',
+		'WorkflowPublishHistory',
+	]);
 
 	projectRepository = Container.get(ProjectRepository);
 	folderRepository = Container.get(FolderRepository);
@@ -388,7 +399,6 @@ describe('GET /projects/:projectId/folders/:folderId/credentials', () => {
 				{
 					name: 'Test Workflow',
 					parentFolder: folder,
-					active: false,
 					nodes: [
 						{
 							parameters: {},
@@ -480,7 +490,6 @@ describe('GET /projects/:projectId/folders/:folderId/credentials', () => {
 				{
 					name: 'Test Workflow',
 					parentFolder: folder,
-					active: false,
 					nodes: [
 						{
 							parameters: {},
@@ -498,7 +507,7 @@ describe('GET /projects/:projectId/folders/:folderId/credentials', () => {
 						},
 					],
 				},
-				owner,
+				project,
 			);
 		}
 
@@ -1093,8 +1102,8 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 		});
 
 		// Create workflows in the folders
-		const workflow1 = await createWorkflow({ parentFolder: rootFolder, active: false }, owner);
-		const workflow2 = await createWorkflow({ parentFolder: childFolder, active: true }, owner);
+		const workflow1 = await createWorkflow({ parentFolder: rootFolder }, owner);
+		const workflow2 = await createActiveWorkflow({ parentFolder: childFolder }, owner);
 
 		await authOwnerAgent.delete(`/projects/${project.id}/folders/${rootFolder.id}`);
 
@@ -1115,6 +1124,7 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 		expect(workflow1InDb?.isArchived).toBe(true);
 		expect(workflow1InDb?.parentFolder).toBe(null);
 		expect(workflow1InDb?.active).toBe(false);
+		expect(workflow1InDb?.activeVersionId).toBeNull();
 
 		const workflow2InDb = await workflowRepository.findOne({
 			where: { id: workflow2.id },
@@ -1124,6 +1134,7 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 		expect(workflow2InDb?.isArchived).toBe(true);
 		expect(workflow2InDb?.parentFolder).toBe(null);
 		expect(workflow2InDb?.active).toBe(false);
+		expect(workflow2InDb?.activeVersionId).toBeNull();
 	});
 
 	test('should transfer folder contents when transferToFolderId is specified', async () => {
@@ -1823,7 +1834,7 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 
 		const sourceFolder1 = await createFolder(sourceProject, { name: 'Source Folder 1' });
 
-		await createWorkflow({ active: true, parentFolder: sourceFolder1 }, destinationProject);
+		await createActiveWorkflow({ parentFolder: sourceFolder1 }, destinationProject);
 
 		await testServer
 			.authAgentFor(member)
@@ -1856,7 +1867,7 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 
 		const sourceFolder1 = await createFolder(sourceProject, { name: 'Source Folder 1' });
 
-		await createWorkflow({ active: true }, destinationProject);
+		await createActiveWorkflow({}, destinationProject);
 
 		await testServer
 			.authAgentFor(member)
@@ -2599,7 +2610,7 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 			parentFolder: sourceFolder1,
 		});
 
-		await createWorkflow({ active: true, parentFolder: sourceFolder1 }, sourceProject);
+		await createActiveWorkflow({ parentFolder: sourceFolder1 }, sourceProject);
 		await createWorkflow({ parentFolder: sourceFolder2 }, sourceProject);
 
 		activeWorkflowManager.add.mockRejectedValue(new ApplicationError('Oh no!'));
@@ -2615,5 +2626,44 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 				destinationParentFolderId: '0',
 			})
 			.expect(500);
+	});
+
+	test('should update workflow project cache entries when transferring folder', async () => {
+		// ARRANGE
+		const sourceProject = await createTeamProject('source project', member);
+		const destinationProject = await createTeamProject('destination project', member);
+
+		const sourceFolder = await createFolder(sourceProject, { name: 'Source Folder' });
+		const nestedFolder = await createFolder(sourceProject, {
+			name: 'Nested Folder',
+			parentFolder: sourceFolder,
+		});
+
+		const workflow1 = await createWorkflow({ parentFolder: sourceFolder }, sourceProject);
+		const workflow2 = await createWorkflow({ parentFolder: nestedFolder }, sourceProject);
+
+		const ownershipService = Container.get(OwnershipService);
+
+		// Populate the cache with source project by calling getWorkflowProjectCached
+		const cachedProject1Before = await ownershipService.getWorkflowProjectCached(workflow1.id);
+		const cachedProject2Before = await ownershipService.getWorkflowProjectCached(workflow2.id);
+		expect(cachedProject1Before.id).toBe(sourceProject.id);
+		expect(cachedProject2Before.id).toBe(sourceProject.id);
+
+		// ACT
+		await testServer
+			.authAgentFor(member)
+			.put(`/projects/${sourceProject.id}/folders/${sourceFolder.id}/transfer`)
+			.send({
+				destinationProjectId: destinationProject.id,
+				destinationParentFolderId: '0',
+			})
+			.expect(200);
+
+		// ASSERT - cache should now return destination project
+		const cachedProject1After = await ownershipService.getWorkflowProjectCached(workflow1.id);
+		const cachedProject2After = await ownershipService.getWorkflowProjectCached(workflow2.id);
+		expect(cachedProject1After.id).toBe(destinationProject.id);
+		expect(cachedProject2After.id).toBe(destinationProject.id);
 	});
 });

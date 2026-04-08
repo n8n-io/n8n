@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from typing import Literal, Any
-from ..constants import RUNNER_RPC_CALL
 
 from src.constants import (
     RUNNER_INFO,
+    RUNNER_RPC_CALL,
     RUNNER_TASK_ACCEPTED,
     RUNNER_TASK_DONE,
     RUNNER_TASK_ERROR,

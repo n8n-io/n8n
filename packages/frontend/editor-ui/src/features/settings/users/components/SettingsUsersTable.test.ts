@@ -20,10 +20,13 @@ vi.mock('@/app/utils/rbac/permissions', () => ({
 
 vi.mock('./SettingsUsersRoleCell.vue', () => ({
 	default: defineComponent({
+		props: {
+			loading: { type: Boolean, default: false },
+		},
 		setup(_, { emit }) {
 			addEmitter('settingsUsersRoleCell', emit);
 		},
-		template: '<div data-test-id="user-role" />',
+		template: '<div data-test-id="user-role" :data-loading="loading" />',
 	}),
 }));
 
@@ -134,6 +137,7 @@ describe('SettingsUsersTable', () => {
 				data: mockUsersList,
 				actions: mockActions,
 				loading: false,
+				canEditRole: true,
 			},
 		});
 		hasPermission.mockReturnValue(true); // Default to having permission
@@ -176,12 +180,32 @@ describe('SettingsUsersTable', () => {
 			});
 		});
 
+		it('should not render role update component when canEditRole is false', () => {
+			renderComponent({
+				props: {
+					canEditRole: false,
+				},
+			});
+
+			expect(screen.queryByTestId('user-role')).not.toBeInTheDocument();
+		});
+
 		it('should emit "update:role" when a new role is selected', () => {
 			const { emitted } = renderComponent();
 			emitters.settingsUsersRoleCell.emit('update:role', { role: 'global:admin', userId: '2' });
 
 			expect(emitted()).toHaveProperty('update:role');
 			expect(emitted()['update:role'][0]).toEqual([{ role: 'global:admin', userId: '2' }]);
+		});
+
+		it('should pass loading to the role cell matching updatingRoleUserId', () => {
+			renderComponent({ props: { updatingRoleUserId: '2' } });
+
+			const roleCells = screen.getAllByTestId('user-role');
+			// Cells are for id=1 (owner), id=2 (member), id=3 (pending)
+			expect(roleCells[0].dataset.loading).toBe('false');
+			expect(roleCells[1].dataset.loading).toBe('true');
+			expect(roleCells[2].dataset.loading).toBe('false');
 		});
 
 		it('should render role as plain text when user lacks permission', () => {

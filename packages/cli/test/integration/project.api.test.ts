@@ -10,7 +10,6 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import {
 	FolderRepository,
@@ -40,7 +39,6 @@ import * as utils from './shared/utils/';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { getWorkflowById } from '@/public-api/v1/handlers/workflows/workflows.service';
-import { CacheService } from '@/services/cache/cache.service';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['project'],
@@ -64,7 +62,7 @@ beforeEach(async () => {
 });
 
 describe('GET /projects/', () => {
-	test('member should get all personal projects and team projects they are apart of', async () => {
+	test('member should only get their own personal project and team projects they are a part of', async () => {
 		const [testUser1, testUser2, testUser3] = await Promise.all([
 			createUser(),
 			createUser(),
@@ -86,19 +84,20 @@ describe('GET /projects/', () => {
 		const resp = await memberAgent.get('/projects/');
 		expect(resp.status).toBe(200);
 		const respProjects = resp.body.data as Project[];
-		expect(respProjects.length).toBe(4);
+		expect(respProjects.length).toBe(2);
 
-		expect(
-			[personalProject1, personalProject2, personalProject3].every((v, i) => {
-				const p = respProjects.find((p) => p.id === v.id);
-				if (!p) {
-					return false;
-				}
-				const u = [testUser1, testUser2, testUser3][i];
-				return p.name === u.createPersonalProjectName();
-			}),
-		).toBe(true);
+		// testUser1 should see their own personal project
+		const ownPersonalProject = respProjects.find((p) => p.id === personalProject1.id);
+		expect(ownPersonalProject).not.toBeUndefined();
+		expect(ownPersonalProject!.name).toBe(testUser1.createPersonalProjectName());
+
+		// testUser1 should NOT see other users' personal projects
+		expect(respProjects.find((p) => p.id === personalProject2.id)).toBeUndefined();
+		expect(respProjects.find((p) => p.id === personalProject3.id)).toBeUndefined();
+
+		// testUser1 should see team projects they belong to
 		expect(respProjects.find((p) => p.id === teamProject1.id)).not.toBeUndefined();
+		// testUser1 should NOT see team projects they don't belong to
 		expect(respProjects.find((p) => p.id === teamProject2.id)).toBeUndefined();
 	});
 
@@ -313,7 +312,7 @@ describe('GET /projects/my-projects', () => {
 			const p = respProjects.find((p) => p.id === project.id)!;
 
 			expect(p.role).toBe(expected.role);
-			expect(expected.scopes.every((s) => p.scopes?.includes(s as Scope))).toBe(true);
+			expect(expected.scopes.every((s) => p.scopes?.includes(s))).toBe(true);
 		}
 
 		expect(respProjects).not.toContainEqual(expect.objectContaining({ id: personalProject2.id }));
@@ -440,7 +439,7 @@ describe('GET /projects/my-projects', () => {
 			const p = respProjects.find((p) => p.id === project.id)!;
 
 			expect(p.role).toBe(expected.role);
-			expect(expected.scopes.every((s) => p.scopes?.includes(s as Scope))).toBe(true);
+			expect(expected.scopes.every((s) => p.scopes?.includes(s))).toBe(true);
 		}
 
 		expect(respProjects).not.toContainEqual(expect.objectContaining({ id: personalProject1.id }));
@@ -551,42 +550,29 @@ describe('POST /projects/', () => {
 		expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(2);
 	});
 
-	const globalConfig = Container.get(GlobalConfig);
-	// Preventing this relies on transactions and we can't use them with the
-	// sqlite legacy driver due to data loss risks.
-	if (!globalConfig.database.isLegacySqlite) {
-		test('should respect the quota when trying to create multiple projects in parallel (no race conditions)', async () => {
-			expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(0);
-			const maxTeamProjects = 3;
-			testServer.license.setQuota('quota:maxTeamProjects', maxTeamProjects);
-			const ownerUser = await createOwner();
-			const ownerAgent = testServer.authAgentFor(ownerUser);
-			await expect(
-				Container.get(ProjectRepository).count({ where: { type: 'team' } }),
-			).resolves.toBe(0);
+	test('should respect the quota when trying to create multiple projects in parallel (no race conditions)', async () => {
+		expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(0);
+		const maxTeamProjects = 3;
+		testServer.license.setQuota('quota:maxTeamProjects', maxTeamProjects);
+		const ownerUser = await createOwner();
+		const ownerAgent = testServer.authAgentFor(ownerUser);
+		await expect(Container.get(ProjectRepository).count({ where: { type: 'team' } })).resolves.toBe(
+			0,
+		);
 
-			await Promise.all([
-				ownerAgent.post('/projects/').send({ name: 'Test Team Project 1' }),
-				ownerAgent.post('/projects/').send({ name: 'Test Team Project 2' }),
-				ownerAgent.post('/projects/').send({ name: 'Test Team Project 3' }),
-				ownerAgent.post('/projects/').send({ name: 'Test Team Project 4' }),
-				ownerAgent.post('/projects/').send({ name: 'Test Team Project 5' }),
-				ownerAgent.post('/projects/').send({ name: 'Test Team Project 6' }),
-			]);
+		await Promise.all([
+			ownerAgent.post('/projects/').send({ name: 'Test Team Project 1' }),
+			ownerAgent.post('/projects/').send({ name: 'Test Team Project 2' }),
+			ownerAgent.post('/projects/').send({ name: 'Test Team Project 3' }),
+			ownerAgent.post('/projects/').send({ name: 'Test Team Project 4' }),
+			ownerAgent.post('/projects/').send({ name: 'Test Team Project 5' }),
+			ownerAgent.post('/projects/').send({ name: 'Test Team Project 6' }),
+		]);
 
-			// Some of the calls above will interleave and may fail with a deadlock
-			// error on MySQL (this is not an issue on PG or MariaDB).
-			// That can lead to less projects being created than the quota allows.
-			// So we're only checking here that we didn't create more projects than
-			// are allowed instead of checking for a specific number.
-			// We only want to prevent that this endpoint is exploited. A normal user
-			// using the FE would almost never hit this and if they do they can retry
-			// the action. No need to implement rety logic in the controller.
-			await expect(
-				Container.get(ProjectRepository).count({ where: { type: 'team' } }),
-			).resolves.toBeLessThanOrEqual(maxTeamProjects);
-		});
-	}
+		await expect(Container.get(ProjectRepository).count({ where: { type: 'team' } })).resolves.toBe(
+			maxTeamProjects,
+		);
+	});
 });
 
 describe('PATCH /projects/:projectId', () => {
@@ -645,7 +631,7 @@ describe('PATCH /projects/:projectId', () => {
 				createTeamProject(undefined, testUser1),
 				createTeamProject(undefined, testUser2),
 			]);
-			const [credential1, credential2] = await Promise.all([
+			const [_credential1, credential2] = await Promise.all([
 				saveCredential(randomCredentialPayload(), {
 					role: 'credential:owner',
 					project: teamProject1,
@@ -666,22 +652,14 @@ describe('PATCH /projects/:projectId', () => {
 
 			const memberAgent = testServer.authAgentFor(testUser1);
 
-			const deleteSpy = jest.spyOn(Container.get(CacheService), 'deleteMany');
 			// Add two members to teamProject1
 			const addResp = await memberAgent.post(`/projects/${teamProject1.id}/users`).send({
 				relations: [
 					{ userId: testUser3.id, role: 'project:editor' },
 					{ userId: ownerUser.id, role: 'project:viewer' },
-				] as Array<{
-					userId: string;
-					role: ProjectRole;
-				}>,
+				],
 			});
 			expect(addResp.status).toBe(201);
-
-			// External secrets cache must be cleared for credentials owned by teamProject1
-			expect(deleteSpy).toBeCalledWith([`credential-can-use-secrets:${credential1.id}`]);
-			deleteSpy.mockClear();
 
 			const [tp1Relations, tp2Relations] = await Promise.all([
 				getProjectRelations({ projectId: teamProject1.id }),
@@ -734,10 +712,7 @@ describe('PATCH /projects/:projectId', () => {
 							// add a user to the project
 							{ userId: userToBeInvited.id, role: 'project:editor' },
 							// implicitly remove the project editor
-						] as Array<{
-							userId: string;
-							role: ProjectRole;
-						}>,
+						],
 					});
 				//.expect(403);
 
@@ -780,10 +755,7 @@ describe('PATCH /projects/:projectId', () => {
 					.authAgentFor(projectAdmin)
 					.post(`/projects/${teamProject.id}/users`)
 					.send({
-						relations: [{ userId: userToBeInvited.id, role }] as Array<{
-							userId: string;
-							role: ProjectRole;
-						}>,
+						relations: [{ userId: userToBeInvited.id, role }],
 					})
 					.expect(400);
 
@@ -871,10 +843,7 @@ describe('PATCH /projects/:projectId', () => {
 			const memberAgent = testServer.authAgentFor(testUser1);
 
 			const resp = await memberAgent.post(`/projects/${personalProject.id}/users`).send({
-				relations: [{ userId: testUser2.id, role: 'project:admin' }] as Array<{
-					userId: string;
-					role: ProjectRole;
-				}>,
+				relations: [{ userId: testUser2.id, role: 'project:admin' }],
 			});
 			expect(resp.status).toBe(403);
 

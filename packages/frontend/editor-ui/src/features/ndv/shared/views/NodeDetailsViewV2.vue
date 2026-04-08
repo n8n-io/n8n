@@ -17,21 +17,22 @@ import { useNodeDocsUrl } from '@/app/composables/useNodeDocsUrl';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { usePinnedData } from '@/app/composables/usePinnedData';
 import { useStyles } from '@/app/composables/useStyles';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import {
 	APP_MODALS_ELEMENT_ID,
 	EXECUTABLE_TRIGGER_NODE_TYPES,
 	MODAL_CONFIRM,
-	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/app/constants';
 import type { DataPinningDiscoveryEvent } from '@/app/event-bus';
 import { dataPinningEventBus } from '@/app/event-bus';
+import { ndvEventBus } from '../ndv.eventBus';
 import { useNDVStore } from '../ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useI18n } from '@n8n/i18n';
@@ -41,11 +42,10 @@ import OutputPanel from '../../panel/components/OutputPanel.vue';
 import PanelDragButtonV2 from '../../panel/components/PanelDragButtonV2.vue';
 import TriggerPanel from '../../panel/components/TriggerPanel.vue';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
-
+import { nodeViewEventBus } from '@/app/event-bus';
 import { N8nResizeWrapper } from '@n8n/design-system';
 import NDVFloatingNodes from '@/features/ndv/panel/components/NDVFloatingNodes.vue';
 const emit = defineEmits<{
-	saveKeyboardShortcut: [event: KeyboardEvent];
 	valueChanged: [parameterData: IUpdateInformation];
 	switchSelectedNode: [nodeTypeName: string];
 	openConnectionNodeCreator: [nodeTypeName: string, connectionType: NodeConnectionType];
@@ -70,11 +70,12 @@ const externalHooks = useExternalHooks();
 const nodeHelpers = useNodeHelpers();
 const { activeNode } = storeToRefs(ndvStore);
 const pinnedData = usePinnedData(activeNode);
-const workflowActivate = useWorkflowActivate();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const deviceSupport = useDeviceSupport();
+const workflowId = useInjectWorkflowId();
 const telemetry = useTelemetry();
 const telemetryContext = useTelemetryContext({ view_shown: 'ndv' });
 const i18n = useI18n();
@@ -83,7 +84,7 @@ const { APP_Z_INDEXES } = useStyles();
 
 const settingsEventBus = createEventBus();
 const runInputIndex = ref(-1);
-const runOutputIndex = ref(-1);
+const runOutputIndex = computed(() => ndvStore.output.run ?? -1);
 const isLinkingEnabled = ref(true);
 const selectedInput = ref<string | undefined>();
 const triggerWaitingWarningEnabled = ref(false);
@@ -141,7 +142,7 @@ const parentNodes = computed(() => {
 
 const parentNode = computed(() => {
 	for (const parentNodeName of parentNodes.value) {
-		if (workflowsStore?.pinnedWorkflowData?.[parentNodeName]) {
+		if (workflowDocumentStore?.value?.pinData?.[parentNodeName]) {
 			return parentNodeName;
 		}
 
@@ -181,7 +182,7 @@ const inputNodeName = computed<string | undefined>(() => {
 
 const inputNode = computed(() => {
 	if (inputNodeName.value) {
-		return workflowsStore.getNodeByName(inputNodeName.value);
+		return workflowDocumentStore?.value?.getNodeByName(inputNodeName.value) ?? null;
 	}
 	return null;
 });
@@ -189,10 +190,7 @@ const inputNode = computed(() => {
 const inputSize = computed(() => ndvStore.ndvInputDataWithPinnedData.length);
 
 const isTriggerNode = computed(
-	() =>
-		!!activeNodeType.value &&
-		(activeNodeType.value.group.includes('trigger') ||
-			activeNodeType.value.name === START_NODE_TYPE),
+	() => !!activeNodeType.value && activeNodeType.value.group.includes('trigger'),
 );
 
 const showTriggerPanel = computed(() => {
@@ -326,7 +324,6 @@ const nodeSettingsProps = computed(() => ({
 	eventBus: settingsEventBus,
 	dragging: isDragging.value,
 	pushRef: pushRef.value,
-	nodeType: activeNodeType.value,
 	foreignCredentials: foreignCredentials.value,
 	readOnly: props.readOnly,
 	blockUI: blockUi.value && showTriggerPanel.value,
@@ -348,19 +345,14 @@ const setIsTooltipVisible = ({ isTooltipVisible }: DataPinningDiscoveryEvent) =>
 	pinDataDiscoveryTooltipVisible.value = isTooltipVisible;
 };
 
-const onKeyDown = (e: KeyboardEvent) => {
-	if (e.key === 's' && deviceSupport.isCtrlKeyPressed(e)) {
-		onSaveWorkflow(e);
-	}
+const setSelectedInput = (value: string | undefined) => {
+	selectedInput.value = value;
 };
 
-const onSaveWorkflow = (e: KeyboardEvent) => {
-	e.stopPropagation();
-	e.preventDefault();
-
-	if (props.readOnly) return;
-
-	emit('saveKeyboardShortcut', e);
+const onKeyDown = (e: KeyboardEvent) => {
+	if (e.key === 's' && deviceSupport.isCtrlKeyPressed(e)) {
+		e.preventDefault();
+	}
 };
 
 const onInputItemHover = (e: { itemIndex: number; outputIndex: number } | null) => {
@@ -384,9 +376,7 @@ const onInputTableMounted = (e: { avgRowHeight: number }) => {
 
 const onWorkflowActivate = () => {
 	ndvStore.unsetActiveNodeName();
-	setTimeout(() => {
-		void workflowActivate.activateCurrentWorkflow('ndv');
-	}, 1000);
+	nodeViewEventBus.emit('publishWorkflow');
 };
 
 const onOutputItemHover = (e: { itemIndex: number; outputIndex: number } | null) => {
@@ -415,7 +405,7 @@ const onDragEnd = () => {
 		// end_position: mainPanelDimensions.value.relativeLeft,
 		node_type: activeNodeType.value ? activeNodeType.value.name : '',
 		push_ref: pushRef.value,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 	});
 };
 
@@ -457,7 +447,7 @@ const trackLinking = (pane: string) => {
 };
 
 const onLinkRunToInput = () => {
-	runOutputIndex.value = runInputIndex.value;
+	ndvStore.setOutputRunIndex(runInputIndex.value);
 	isLinkingEnabled.value = true;
 	trackLinking('input');
 };
@@ -501,7 +491,7 @@ const close = async () => {
 	telemetry.track('User closed node modal', {
 		node_type: activeNodeType.value ? activeNodeType.value?.name : '',
 		push_ref: pushRef.value,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 	});
 	triggerWaitingWarningEnabled.value = false;
 	ndvStore.unsetActiveNodeName();
@@ -520,14 +510,14 @@ const trackRunChange = (run: number, pane: string) => {
 };
 
 const onRunOutputIndexChange = (run: number) => {
-	runOutputIndex.value = run;
+	ndvStore.setOutputRunIndex(run);
 	trackRunChange(run, 'output');
 };
 
 const onRunInputIndexChange = (run: number) => {
 	runInputIndex.value = run;
 	if (linked.value) {
-		runOutputIndex.value = run;
+		ndvStore.setOutputRunIndex(run);
 	}
 	trackRunChange(run, 'input');
 };
@@ -544,7 +534,7 @@ const onInputNodeChange = (value: string, index: number) => {
 	telemetry.track('User changed ndv input dropdown', {
 		node_type: activeNode.value ? activeNode.value.type : '',
 		push_ref: pushRef.value,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 		selection_value: index,
 		input_node_type: inputNode.value ? inputNode.value.type : '',
 	});
@@ -597,7 +587,7 @@ watch(
 
 		if (node && node.name !== oldNode?.name && !isActiveStickyNode.value) {
 			runInputIndex.value = -1;
-			runOutputIndex.value = -1;
+			ndvStore.setOutputRunIndex(-1);
 			isLinkingEnabled.value = true;
 			selectedInput.value = undefined;
 			triggerWaitingWarningEnabled.value = false;
@@ -616,14 +606,14 @@ watch(
 
 			setTimeout(() => {
 				if (activeNode.value) {
-					const outgoingConnections = workflowsStore.outgoingConnectionsByNodeName(
+					const outgoingConnections = workflowDocumentStore?.value?.outgoingConnectionsByNodeName(
 						activeNode.value?.name,
 					);
 
 					telemetry.track('User opened node modal', {
 						node_id: activeNode.value?.id,
 						node_type: activeNodeType.value ? activeNodeType.value?.name : '',
-						workflow_id: workflowsStore.workflowId,
+						workflow_id: workflowId.value,
 						push_ref: pushRef.value,
 						is_editable: !hasForeignCredential.value,
 						parameters_pane_position: mainPanelPosition.value,
@@ -651,7 +641,7 @@ watch(
 );
 
 watch(maxOutputRun, () => {
-	runOutputIndex.value = -1;
+	ndvStore.setOutputRunIndex(-1);
 });
 
 watch(maxInputRun, () => {
@@ -702,10 +692,12 @@ watch(mainPanelRef, (mainPanel) => {
 onMounted(() => {
 	dialogRef.value?.show();
 	dataPinningEventBus.on('data-pinning-discovery', setIsTooltipVisible);
+	ndvEventBus.on('updateInputNodeName', setSelectedInput);
 });
 
 onBeforeUnmount(() => {
 	dataPinningEventBus.off('data-pinning-discovery', setIsTooltipVisible);
+	ndvEventBus.off('updateInputNodeName', setSelectedInput);
 	unregisterKeyboardListener();
 });
 </script>
@@ -728,7 +720,13 @@ onBeforeUnmount(() => {
 			:style="{ zIndex: APP_Z_INDEXES.NDV }"
 		>
 			<NDVFloatingNodes :root-node="activeNode" @switch-selected-node="onSwitchSelectedNode" />
-			<div ref="containerRef" :class="$style.container">
+			<div
+				ref="containerRef"
+				:class="{
+					[$style.container]: true,
+					[$style.webhookWaiting]: isExecutionWaitingForWebhook,
+				}"
+			>
 				<NDVHeader
 					:class="$style.header"
 					:node-name="activeNode.name"
@@ -789,7 +787,10 @@ onBeforeUnmount(() => {
 						:min-width="260"
 						:supported-directions="supportedResizeDirections"
 						:grid-size="8"
-						:class="$style.column"
+						:class="{
+							[$style.column]: !isExecutionWaitingForWebhook,
+							[$style.webhookWaiting]: isExecutionWaitingForWebhook,
+						}"
 						:style="{ width: `${panelWidthPercentage.main}%` }"
 						outset
 						@resize="onResize"
@@ -926,6 +927,7 @@ onBeforeUnmount(() => {
 }
 
 .header {
+	background-color: var(--ndv--background--color);
 	border-bottom: var(--border);
 	border-top-left-radius: var(--radius--lg);
 	border-top-right-radius: var(--radius--lg);
@@ -943,5 +945,9 @@ onBeforeUnmount(() => {
 	left: 50%;
 	transform: translateX(-50%);
 	height: var(--draggable--height);
+}
+
+.webhookWaiting {
+	border: none;
 }
 </style>

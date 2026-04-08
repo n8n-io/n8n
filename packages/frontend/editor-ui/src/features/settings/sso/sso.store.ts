@@ -88,7 +88,6 @@ export const useSSOStore = defineStore('sso', () => {
 		get: () => saml.value.loginEnabled,
 		set: (value: boolean) => {
 			saml.value.loginEnabled = value;
-			void toggleLoginEnabled(value);
 		},
 	});
 
@@ -98,21 +97,21 @@ export const useSSOStore = defineStore('sso', () => {
 		() => authenticationMethod.value === UserManagementAuthenticationMethod.Saml,
 	);
 
-	const toggleLoginEnabled = async (enabled: boolean) =>
-		await ssoApi.toggleSamlConfig(rootStore.restApiContext, { loginEnabled: enabled });
-
 	const getSamlMetadata = async () => await ssoApi.getSamlMetadata(rootStore.restApiContext);
 
 	const getSamlConfig = async () => {
 		const config = await ssoApi.getSamlConfig(rootStore.restApiContext);
 		samlConfig.value = config;
+		saml.value.loginEnabled = config.loginEnabled;
+		saml.value.loginLabel = config.loginLabel;
 		return config;
 	};
 
 	const saveSamlConfig = async (config: Partial<SamlPreferences>) =>
 		await ssoApi.saveSamlConfig(rootStore.restApiContext, config);
 
-	const testSamlConfig = async () => await ssoApi.testSamlConfig(rootStore.restApiContext);
+	const testSamlConfig = async (config: Partial<SamlPreferences>) =>
+		await ssoApi.testSamlConfig(rootStore.restApiContext, config);
 
 	/**
 	 * OIDC
@@ -144,6 +143,8 @@ export const useSSOStore = defineStore('sso', () => {
 		oidcConfig.value = savedConfig;
 		return savedConfig;
 	};
+
+	const testOidcConfig = async () => await ssoApi.testOidcConfig(rootStore.restApiContext);
 
 	const isOidcLoginEnabled = computed({
 		get: () => oidc.value.loginEnabled,
@@ -228,6 +229,7 @@ export const useSSOStore = defineStore('sso', () => {
 		isDefaultAuthenticationOidc,
 		getOidcConfig,
 		saveOidcConfig,
+		testOidcConfig,
 
 		ldap,
 		isLdapLoginEnabled,

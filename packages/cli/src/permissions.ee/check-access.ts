@@ -1,9 +1,11 @@
 import type { User } from '@n8n/db';
 import { ProjectRepository, SharedCredentialsRepository, SharedWorkflowRepository } from '@n8n/db';
+import { ModuleRegistry } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { RoleService } from '@/services/role.service';
 
@@ -23,7 +25,13 @@ export async function userHasScopes(
 		credentialId,
 		workflowId,
 		projectId,
-	}: { credentialId?: string; workflowId?: string; projectId?: string } /* only one */,
+		dataTableId,
+	}: {
+		credentialId?: string;
+		workflowId?: string;
+		projectId?: string;
+		dataTableId?: string;
+	} /* only one */,
 ): Promise<boolean> {
 	if (hasGlobalScope(user, scopes, { mode: 'allOf' })) return true;
 
@@ -60,9 +68,26 @@ export async function userHasScopes(
 
 		const validRoles = await roleService.rolesWithScope('credential', scopes);
 
-		return credentials.some(
+		const hasValidRoles = credentials.some(
 			(c) => userProjectIds.includes(c.projectId) && validRoles.includes(c.role),
 		);
+
+		if (hasValidRoles) {
+			return true;
+		}
+
+		// Check for global credentials with read-only access
+		const credentialsFinderService = Container.get(CredentialsFinderService);
+		if (credentialsFinderService.hasGlobalReadOnlyAccess(scopes)) {
+			const globalCredential =
+				await credentialsFinderService.findGlobalCredentialById(credentialId);
+
+			if (globalCredential) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	if (workflowId) {
@@ -81,9 +106,29 @@ export async function userHasScopes(
 		);
 	}
 
+	if (dataTableId) {
+		const moduleRegistry = Container.get(ModuleRegistry);
+		if (!moduleRegistry.isActive('data-table')) {
+			throw new NotFoundError(`Data table with ID "${dataTableId}" not found.`);
+		}
+
+		const { DataTableRepository } = await import('@/modules/data-table/data-table.repository');
+		const dataTable = await Container.get(DataTableRepository).findOne({
+			where: { id: dataTableId },
+			relations: ['project'],
+		});
+
+		if (!dataTable) {
+			throw new NotFoundError(`Data table with ID "${dataTableId}" not found.`);
+		}
+
+		// Data tables don't have resource-level roles, only project-level access
+		return userProjectIds.includes(dataTable.project.id);
+	}
+
 	if (projectId) return userProjectIds.includes(projectId);
 
 	throw new UnexpectedError(
-		"`@ProjectScope` decorator was used but does not have a `credentialId`, `workflowId`, or `projectId` in its URL parameters. This is likely an implementation error. If you're a developer, please check your URL is correct or that this should be using `@GlobalScope`.",
+		"`@ProjectScope` decorator was used but does not have a `credentialId`, `workflowId`, `dataTableId`, or `projectId` in its URL parameters. This is likely an implementation error. If you're a developer, please check your URL is correct or that this should be using `@GlobalScope`.",
 	);
 }

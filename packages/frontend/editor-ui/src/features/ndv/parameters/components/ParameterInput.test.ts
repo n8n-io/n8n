@@ -1,4 +1,6 @@
+import { computed } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import ParameterInput from './ParameterInput.vue';
 import type { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { CompletionResult } from '@codemirror/autocomplete';
@@ -17,7 +19,7 @@ import {
 	createTestWorkflowObject,
 	createTestNodeProperties,
 } from '@/__tests__/mocks';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { NodeConnectionTypes, type INodeParameterResourceLocator } from 'n8n-workflow';
 import type { IWorkflowDb, WorkflowListResource } from '@/Interface';
 import { mock } from 'vitest-mock-extended';
@@ -61,6 +63,9 @@ beforeEach(() => {
 	mockNdvState = getNdvStateMock();
 	mockNodeTypesState = getNodeTypesStateMock();
 	mockCompletionResult = {};
+	mockBuilderState.trackWorkflowBuilderJourney.mockClear();
+	mockIsPlaceholderValue.mockClear();
+	mockBuilderState.isAIBuilderEnabled = true;
 });
 
 vi.mock('@/features/ndv/shared/ndv.store', () => {
@@ -95,12 +100,36 @@ vi.mock('vue-router', () => {
 	};
 });
 
+const mockBuilderState = {
+	trackWorkflowBuilderJourney: vi.fn(),
+	isAIBuilderEnabled: true,
+};
+
+vi.mock('@/features/ai/assistant/builder.store', () => {
+	return {
+		useBuilderStore: vi.fn(() => mockBuilderState),
+	};
+});
+
+const mockIsPlaceholderValue = vi.fn();
+
+vi.mock('@/features/ai/assistant/composables/useBuilderTodos', () => {
+	return {
+		isPlaceholderValue: (value: unknown) => mockIsPlaceholderValue(value),
+	};
+});
+
 const renderComponent = createComponentRenderer(ParameterInput, {
 	pinia: createTestingPinia(),
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
+	},
 });
 
 const settingsStore = mockedStore(useSettingsStore);
-const workflowsStore = mockedStore(useWorkflowsStore);
+const workflowsListStore = mockedStore(useWorkflowsListStore);
 
 describe('ParameterInput.vue', () => {
 	beforeEach(() => {
@@ -403,7 +432,7 @@ describe('ParameterInput.vue', () => {
 			value: workflowId,
 		};
 
-		workflowsStore.fetchWorkflowsPage.mockResolvedValue([
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([
 			mock<WorkflowListResource>({
 				id: workflowId,
 				name: 'Test',
@@ -465,8 +494,10 @@ describe('ParameterInput.vue', () => {
 			updatedAt: new Date().toISOString(),
 			versionId: faker.string.uuid(),
 		};
-		workflowsStore.allWorkflows = [mock<IWorkflowDb>(workflowBase)];
-		workflowsStore.fetchWorkflowsPage.mockResolvedValue([mock<WorkflowListResource>(workflowBase)]);
+		workflowsListStore.allWorkflows = [mock<IWorkflowDb>(workflowBase)];
+		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([
+			mock<WorkflowListResource>(workflowBase),
+		]);
 
 		const { emitted, container, getByTestId } = renderComponent({
 			props: {
@@ -560,10 +591,24 @@ describe('ParameterInput.vue', () => {
 	});
 
 	test('should reset string on eventBus:removeExpression', async () => {
+		mockNdvState = {
+			...getNdvStateMock(),
+			activeNode: {
+				id: faker.string.uuid(),
+				name: 'Test Node',
+				parameters: {
+					aStr: 'test',
+				},
+				position: [0, 0],
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 1,
+			},
+		};
+
 		const eventBus = createEventBus();
 		const { emitted } = renderComponent({
 			props: {
-				path: 'aStr',
+				path: 'parameters.aStr',
 				parameter: {
 					displayName: 'A Str',
 					name: 'aStr',
@@ -756,6 +801,290 @@ describe('ParameterInput.vue', () => {
 			await fireEvent.focusIn(rendered.container.querySelector('.parameter-input')!);
 
 			expect(rendered.queryByTestId('ndv-input-panel')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('placeholder tracking', () => {
+		it('tracks field_focus_placeholder_in_ndv when focusing placeholder value', async () => {
+			mockIsPlaceholderValue.mockReturnValue(true);
+			mockNdvState = {
+				...getNdvStateMock(),
+				activeNode: {
+					id: faker.string.uuid(),
+					name: 'Test Node',
+					parameters: {},
+					position: [0, 0],
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+				},
+			};
+
+			const rendered = renderComponent({
+				props: {
+					path: 'url',
+					parameter: createTestNodeProperties({ name: 'url', type: 'string' }),
+					modelValue: '<__PLACEHOLDER_VALUE__API URL__>',
+				},
+			});
+
+			await nextTick();
+			const input = rendered.container.querySelector('input');
+			if (input) {
+				await fireEvent.focus(input);
+			}
+
+			// Wait for debounced tracking call
+			await waitFor(() => {
+				expect(mockBuilderState.trackWorkflowBuilderJourney).toHaveBeenCalledWith(
+					'field_focus_placeholder_in_ndv',
+					{ node_type: 'n8n-nodes-base.httpRequest' },
+				);
+			});
+		});
+
+		it('does not track when value is not a placeholder', async () => {
+			mockIsPlaceholderValue.mockReturnValue(false);
+			mockNdvState = {
+				...getNdvStateMock(),
+				activeNode: {
+					id: faker.string.uuid(),
+					name: 'Test Node',
+					parameters: {},
+					position: [0, 0],
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+				},
+			};
+
+			const rendered = renderComponent({
+				props: {
+					path: 'url',
+					parameter: createTestNodeProperties({ name: 'url', type: 'string' }),
+					modelValue: 'https://api.example.com',
+				},
+			});
+
+			await nextTick();
+			const input = rendered.container.querySelector('input');
+			if (input) {
+				await fireEvent.focus(input);
+			}
+
+			expect(mockBuilderState.trackWorkflowBuilderJourney).not.toHaveBeenCalled();
+		});
+
+		it('does not track when AI builder is disabled', async () => {
+			mockIsPlaceholderValue.mockReturnValue(true);
+			mockBuilderState.isAIBuilderEnabled = false;
+			mockNdvState = {
+				...getNdvStateMock(),
+				activeNode: {
+					id: faker.string.uuid(),
+					name: 'Test Node',
+					parameters: {},
+					position: [0, 0],
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+				},
+			};
+
+			const rendered = renderComponent({
+				props: {
+					path: 'url',
+					parameter: createTestNodeProperties({ name: 'url', type: 'string' }),
+					modelValue: '<__PLACEHOLDER_VALUE__API URL__>',
+				},
+			});
+
+			await nextTick();
+			const input = rendered.container.querySelector('input');
+			if (input) {
+				await fireEvent.focus(input);
+			}
+
+			expect(mockBuilderState.trackWorkflowBuilderJourney).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('multi-line string handling', () => {
+		test('should render multi-line string value as textarea', async () => {
+			const multiLineValue = 'line1\nline2\nline3';
+			const { container } = renderComponent({
+				props: {
+					path: 'description',
+					parameter: createTestNodeProperties({
+						displayName: 'Description',
+						name: 'description',
+						type: 'string',
+					}),
+					modelValue: multiLineValue,
+					expressionEvaluated: undefined,
+				},
+			});
+
+			await nextTick();
+			const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+			await waitFor(() => {
+				expect(textarea.value).toBe(multiLineValue);
+			});
+		});
+
+		test('should preserve newlines in multi-row textarea', async () => {
+			const multiLineValue = 'line1\nline2\nline3';
+			const { container } = renderComponent({
+				props: {
+					path: 'description',
+					parameter: createTestNodeProperties({
+						displayName: 'Description',
+						name: 'description',
+						type: 'string',
+						typeOptions: { rows: 5 },
+					}),
+					modelValue: multiLineValue,
+					expressionEvaluated: undefined,
+				},
+			});
+
+			await nextTick();
+			const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+			expect(textarea.value).toBe(multiLineValue);
+		});
+
+		test('should keep pipe characters as-is in single-line input', async () => {
+			const { container } = renderComponent({
+				props: {
+					path: 'pattern',
+					parameter: createTestNodeProperties({
+						displayName: 'Pattern',
+						name: 'pattern',
+						type: 'string',
+					}),
+					modelValue: 'foo|bar',
+					expressionEvaluated: undefined,
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input') as HTMLInputElement;
+			await waitFor(() => {
+				expect(input.value).toBe('foo|bar');
+			});
+		});
+
+		test('should render string with consecutive newlines as textarea', async () => {
+			const { container } = renderComponent({
+				props: {
+					path: 'test',
+					parameter: createTestNodeProperties({
+						displayName: 'Test',
+						name: 'test',
+						type: 'string',
+					}),
+					modelValue: 'a\n\n\nb',
+					expressionEvaluated: undefined,
+				},
+			});
+
+			await nextTick();
+			const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+			await waitFor(() => {
+				expect(textarea.value).toBe('a\n\n\nb');
+			});
+		});
+	});
+
+	describe('JSON Password Field Validation', () => {
+		const jsonPasswordParameter = createTestNodeProperties({
+			displayName: 'Service Account Key',
+			name: 'serviceAccountKey',
+			type: 'json',
+			default: '',
+			required: true,
+			typeOptions: {
+				password: true,
+			},
+			noDataExpression: true,
+		});
+
+		it('renders as a password input', async () => {
+			const { container } = renderComponent({
+				props: {
+					path: 'serviceAccountKey',
+					parameter: jsonPasswordParameter,
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input[type="password"]');
+			expect(input).toBeInTheDocument();
+		});
+
+		it('shows validation error for invalid JSON input', async () => {
+			const { container, queryByTestId } = renderComponent({
+				props: {
+					path: 'serviceAccountKey',
+					parameter: jsonPasswordParameter,
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input') as HTMLInputElement;
+			await fireEvent.update(input, '{invalid');
+
+			expect(queryByTestId('parameter-issues')).toBeInTheDocument();
+		});
+
+		it('does not show validation error for valid JSON input', async () => {
+			const { container, queryByTestId } = renderComponent({
+				props: {
+					path: 'serviceAccountKey',
+					parameter: jsonPasswordParameter,
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input') as HTMLInputElement;
+			await fireEvent.update(input, '{"type": "service_account"}');
+
+			expect(queryByTestId('parameter-issues')).not.toBeInTheDocument();
+		});
+
+		it('does not show validation error for empty input', async () => {
+			const { container, queryByTestId } = renderComponent({
+				props: {
+					path: 'serviceAccountKey',
+					parameter: jsonPasswordParameter,
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input') as HTMLInputElement;
+			await fireEvent.update(input, '');
+
+			expect(queryByTestId('parameter-issues')).not.toBeInTheDocument();
+		});
+
+		it('clears validation error when invalid JSON is corrected', async () => {
+			const { container, queryByTestId } = renderComponent({
+				props: {
+					path: 'serviceAccountKey',
+					parameter: jsonPasswordParameter,
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			const input = container.querySelector('input') as HTMLInputElement;
+
+			await fireEvent.update(input, '{invalid');
+			expect(queryByTestId('parameter-issues')).toBeInTheDocument();
+
+			await fireEvent.update(input, '{"valid": true}');
+			expect(queryByTestId('parameter-issues')).not.toBeInTheDocument();
 		});
 	});
 });

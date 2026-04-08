@@ -1,0 +1,1231 @@
+{
+	"name": "Merge node patterns",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-112, 0],
+			"id": "b45596ce-e817-4a30-add8-f5848d32c36e",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3.2,
+			"position": [112, 0],
+			"id": "deddf70d-5d4d-4775-ad02-036e39b24349",
+			"name": "Merge"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3.2,
+			"position": [-112, 2336],
+			"id": "14b9db32-ddc5-4ae7-bc44-378fc39e80e4",
+			"name": "Merge1"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3.2,
+			"position": [-112, 2560],
+			"id": "629b579f-4379-477f-a9ac-3c562258fc2d",
+			"name": "Merge2"
+		},
+		{
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 3
+								},
+								"conditions": [
+									{
+										"leftValue": "",
+										"rightValue": "",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										},
+										"id": "7f6bf566-f16c-420f-b1fc-a21a9f5acdcf"
+									}
+								],
+								"combinator": "and"
+							}
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 3.4,
+			"position": [112, 2560],
+			"id": "b6627d56-33d7-4a34-8335-75a0067234f4",
+			"name": "Switch"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3.2,
+			"position": [-112, 2784],
+			"id": "c81a6463-2a91-469f-895a-0cea5bf3d8d8",
+			"name": "Merge3"
+		},
+		{
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 3
+								},
+								"conditions": [
+									{
+										"leftValue": "",
+										"rightValue": "",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										},
+										"id": "7f6bf566-f16c-420f-b1fc-a21a9f5acdcf"
+									}
+								],
+								"combinator": "and"
+							}
+						},
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 3
+								},
+								"conditions": [
+									{
+										"id": "bc1f4b75-e5a2-4d76-8cac-c3b572fd9571",
+										"leftValue": "",
+										"rightValue": "",
+										"operator": {
+											"type": "string",
+											"operation": "equals",
+											"name": "filter.operator.equals"
+										}
+									}
+								],
+								"combinator": "and"
+							}
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 3.4,
+			"position": [112, 2784],
+			"id": "33a33331-deb7-47a9-adfe-b2e53c50ddac",
+			"name": "Switch1"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3.2,
+			"position": [112, 3024],
+			"id": "031b879c-951e-48a1-80ee-d4182f80d854",
+			"name": "Merge4"
+		},
+		{
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 3
+								},
+								"conditions": [
+									{
+										"leftValue": "",
+										"rightValue": "",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										},
+										"id": "7f6bf566-f16c-420f-b1fc-a21a9f5acdcf"
+									}
+								],
+								"combinator": "and"
+							}
+						},
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 3
+								},
+								"conditions": [
+									{
+										"id": "bc1f4b75-e5a2-4d76-8cac-c3b572fd9571",
+										"leftValue": "",
+										"rightValue": "",
+										"operator": {
+											"type": "string",
+											"operation": "equals",
+											"name": "filter.operator.equals"
+										}
+									}
+								],
+								"combinator": "and"
+							}
+						},
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 3
+								},
+								"conditions": [
+									{
+										"id": "ac8a85de-3dce-4758-8f6a-c99f66e5a6a3",
+										"leftValue": "",
+										"rightValue": "",
+										"operator": {
+											"type": "string",
+											"operation": "equals",
+											"name": "filter.operator.equals"
+										}
+									}
+								],
+								"combinator": "and"
+							}
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 3.4,
+			"position": [-112, 3008],
+			"id": "7b72b373-7b5a-40ed-a72b-b18e69a9286f",
+			"name": "Switch2"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3.2,
+			"position": [112, 3280],
+			"id": "13bc28a0-6e0c-486b-8ec7-08126d0ba699",
+			"name": "Merge5"
+		},
+		{
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 3
+								},
+								"conditions": [
+									{
+										"leftValue": "",
+										"rightValue": "",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										},
+										"id": "7f6bf566-f16c-420f-b1fc-a21a9f5acdcf"
+									}
+								],
+								"combinator": "and"
+							}
+						},
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 3
+								},
+								"conditions": [
+									{
+										"id": "bc1f4b75-e5a2-4d76-8cac-c3b572fd9571",
+										"leftValue": "",
+										"rightValue": "",
+										"operator": {
+											"type": "string",
+											"operation": "equals",
+											"name": "filter.operator.equals"
+										}
+									}
+								],
+								"combinator": "and"
+							}
+						},
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 3
+								},
+								"conditions": [
+									{
+										"id": "ac8a85de-3dce-4758-8f6a-c99f66e5a6a3",
+										"leftValue": "",
+										"rightValue": "",
+										"operator": {
+											"type": "string",
+											"operation": "equals",
+											"name": "filter.operator.equals"
+										}
+									}
+								],
+								"combinator": "and"
+							}
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 3.4,
+			"position": [-112, 3264],
+			"id": "cb4e322f-06fe-471f-80dd-dd6ae82f9a35",
+			"name": "Switch3"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3.2,
+			"position": [112, 3536],
+			"id": "002b3c1f-8fc1-4951-ae8f-14dc95ad126b",
+			"name": "Merge6"
+		},
+		{
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 3
+								},
+								"conditions": [
+									{
+										"leftValue": "",
+										"rightValue": "",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										},
+										"id": "7f6bf566-f16c-420f-b1fc-a21a9f5acdcf"
+									}
+								],
+								"combinator": "and"
+							}
+						},
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 3
+								},
+								"conditions": [
+									{
+										"id": "bc1f4b75-e5a2-4d76-8cac-c3b572fd9571",
+										"leftValue": "",
+										"rightValue": "",
+										"operator": {
+											"type": "string",
+											"operation": "equals",
+											"name": "filter.operator.equals"
+										}
+									}
+								],
+								"combinator": "and"
+							}
+						},
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 3
+								},
+								"conditions": [
+									{
+										"id": "ac8a85de-3dce-4758-8f6a-c99f66e5a6a3",
+										"leftValue": "",
+										"rightValue": "",
+										"operator": {
+											"type": "string",
+											"operation": "equals",
+											"name": "filter.operator.equals"
+										}
+									}
+								],
+								"combinator": "and"
+							}
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 3.4,
+			"position": [-112, 3520],
+			"id": "bada0090-6183-4b52-aea8-2155e12fe7db",
+			"name": "Switch4"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3.2,
+			"position": [112, 240],
+			"id": "68a0c48b-df03-444b-83a4-2419feb457a2",
+			"name": "Merge7"
+		},
+		{
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 3
+								},
+								"conditions": [
+									{
+										"leftValue": "",
+										"rightValue": "",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										},
+										"id": "7f6bf566-f16c-420f-b1fc-a21a9f5acdcf"
+									}
+								],
+								"combinator": "and"
+							}
+						},
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 3
+								},
+								"conditions": [
+									{
+										"id": "bc1f4b75-e5a2-4d76-8cac-c3b572fd9571",
+										"leftValue": "",
+										"rightValue": "",
+										"operator": {
+											"type": "string",
+											"operation": "equals",
+											"name": "filter.operator.equals"
+										}
+									}
+								],
+								"combinator": "and"
+							}
+						},
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 3
+								},
+								"conditions": [
+									{
+										"id": "ac8a85de-3dce-4758-8f6a-c99f66e5a6a3",
+										"leftValue": "",
+										"rightValue": "",
+										"operator": {
+											"type": "string",
+											"operation": "equals",
+											"name": "filter.operator.equals"
+										}
+									}
+								],
+								"combinator": "and"
+							}
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 3.4,
+			"position": [-112, 224],
+			"id": "39ee4453-3253-4b72-ac8e-6e23e545c4f5",
+			"name": "Switch5"
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 3
+					},
+					"conditions": [
+						{
+							"id": "29c24d42-9f55-4171-9493-af1386693fc6",
+							"leftValue": "",
+							"rightValue": "",
+							"operator": {
+								"type": "string",
+								"operation": "equals",
+								"name": "filter.operator.equals"
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.3,
+			"position": [-112, 480],
+			"id": "ab932fbe-7e65-403c-a85b-6a0a1e0ef2a8",
+			"name": "If"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3.2,
+			"position": [112, 480],
+			"id": "1ce3fd04-cd92-49db-a6fe-fd62d04c4659",
+			"name": "Merge8"
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 3
+					},
+					"conditions": [
+						{
+							"id": "29c24d42-9f55-4171-9493-af1386693fc6",
+							"leftValue": "",
+							"rightValue": "",
+							"operator": {
+								"type": "string",
+								"operation": "equals",
+								"name": "filter.operator.equals"
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.3,
+			"position": [-112, 704],
+			"id": "876cda8b-c641-4aab-afa9-84dcd818e267",
+			"name": "If1"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3.2,
+			"position": [112, 704],
+			"id": "8de0de37-eb23-4730-8310-624b46257a72",
+			"name": "Merge9"
+		},
+		{
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 3
+								},
+								"conditions": [
+									{
+										"leftValue": "",
+										"rightValue": "",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										},
+										"id": "7f6bf566-f16c-420f-b1fc-a21a9f5acdcf"
+									}
+								],
+								"combinator": "and"
+							}
+						},
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 3
+								},
+								"conditions": [
+									{
+										"id": "bc1f4b75-e5a2-4d76-8cac-c3b572fd9571",
+										"leftValue": "",
+										"rightValue": "",
+										"operator": {
+											"type": "string",
+											"operation": "equals",
+											"name": "filter.operator.equals"
+										}
+									}
+								],
+								"combinator": "and"
+							}
+						},
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 3
+								},
+								"conditions": [
+									{
+										"id": "ac8a85de-3dce-4758-8f6a-c99f66e5a6a3",
+										"leftValue": "",
+										"rightValue": "",
+										"operator": {
+											"type": "string",
+											"operation": "equals",
+											"name": "filter.operator.equals"
+										}
+									}
+								],
+								"combinator": "and"
+							}
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 3.4,
+			"position": [-112, 3776],
+			"id": "5b31746c-b475-457a-99cd-00d2bec363c6",
+			"name": "Switch6"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3.2,
+			"position": [112, 3792],
+			"id": "d4693885-b782-423c-84a2-faf298c1fda0",
+			"name": "Merge10"
+		},
+		{
+			"parameters": {
+				"mode": "combine",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3.2,
+			"position": [-112, 4032],
+			"id": "82fdf0fa-a7ba-48cf-a0a4-af8bff080ea9",
+			"name": "Merge11"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [112, 4032],
+			"id": "1bc79dfa-99ff-46ef-b1b8-8ffb98a14a75",
+			"name": "Edit Fields"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [-112, 960],
+			"id": "1033b598-c83f-4a91-9673-97c8158931ee",
+			"name": "Edit Fields1"
+		},
+		{
+			"parameters": {
+				"mode": "combine",
+				"combineBy": "combineByPosition",
+				"numberInputs": 4,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3.2,
+			"position": [112, 928],
+			"id": "4575cd9a-9690-4713-9f11-3f9e869b940b",
+			"name": "Merge12"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [-112, 1248],
+			"id": "2910217e-b17b-4476-87db-0536222af832",
+			"name": "Edit Fields2"
+		},
+		{
+			"parameters": {
+				"mode": "combine",
+				"combineBy": "combineByPosition",
+				"numberInputs": 4,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3.2,
+			"position": [112, 1216],
+			"id": "62cbacf0-b0ef-4b51-8373-2d4cfc16c5b6",
+			"name": "Merge13"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [-112, 1504],
+			"id": "b307cb57-e1cf-4375-9ab3-0b0c28e859ee",
+			"name": "Edit Fields3"
+		},
+		{
+			"parameters": {
+				"mode": "combine",
+				"combineBy": "combineByPosition",
+				"numberInputs": 4,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3.2,
+			"position": [112, 1568],
+			"id": "967ea836-2d10-417c-bb46-a5b0be013722",
+			"name": "Merge14"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [-112, 1696],
+			"id": "5db46f14-d28f-4ef3-b909-01fd4c18dd4a",
+			"name": "Edit Fields4"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [-112, 1920],
+			"id": "3e465d11-4974-4dff-bb27-277b51312933",
+			"name": "Edit Fields5"
+		},
+		{
+			"parameters": {
+				"mode": "combine",
+				"combineBy": "combineByPosition",
+				"numberInputs": 4,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3.2,
+			"position": [112, 1984],
+			"id": "ad5599a8-21a7-4c0d-8b44-a5a753b370f8",
+			"name": "Merge15"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [-112, 2112],
+			"id": "72c81b9e-c7d2-42fd-bdd5-a62972e80376",
+			"name": "Edit Fields6"
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Merge1": {
+			"main": [
+				[
+					{
+						"node": "Merge1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge1",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Merge2": {
+			"main": [
+				[
+					{
+						"node": "Switch",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Switch": {
+			"main": [
+				[
+					{
+						"node": "Merge2",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge2",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Merge3": {
+			"main": [
+				[
+					{
+						"node": "Switch1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Switch1": {
+			"main": [
+				[
+					{
+						"node": "Merge3",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge3",
+						"type": "main",
+						"index": 1
+					}
+				],
+				[
+					{
+						"node": "Merge3",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge4": {
+			"main": [
+				[
+					{
+						"node": "Switch2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Switch2": {
+			"main": [
+				[],
+				[
+					{
+						"node": "Merge4",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge4",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[]
+			]
+		},
+		"Merge5": {
+			"main": [
+				[
+					{
+						"node": "Switch3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Switch3": {
+			"main": [
+				[
+					{
+						"node": "Merge5",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[],
+				[
+					{
+						"node": "Merge5",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Merge6": {
+			"main": [
+				[
+					{
+						"node": "Switch4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Switch4": {
+			"main": [
+				[
+					{
+						"node": "Merge6",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Merge6",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[]
+			]
+		},
+		"Merge7": {
+			"main": [[]]
+		},
+		"Switch5": {
+			"main": [
+				[
+					{
+						"node": "Merge7",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[]
+			]
+		},
+		"If": {
+			"main": [
+				[
+					{
+						"node": "Merge8",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Merge8",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"If1": {
+			"main": [
+				[
+					{
+						"node": "Merge9",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge9",
+						"type": "main",
+						"index": 1
+					}
+				],
+				[
+					{
+						"node": "Merge9",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge9",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Switch6": {
+			"main": [
+				[
+					{
+						"node": "Merge10",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Merge10",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge10": {
+			"main": [
+				[
+					{
+						"node": "Switch6",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge11": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "Merge11",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge11",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Edit Fields1": {
+			"main": [
+				[
+					{
+						"node": "Merge12",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Edit Fields2": {
+			"main": [
+				[
+					{
+						"node": "Merge13",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge13",
+						"type": "main",
+						"index": 3
+					}
+				]
+			]
+		},
+		"Edit Fields3": {
+			"main": [
+				[
+					{
+						"node": "Merge14",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge14",
+						"type": "main",
+						"index": 3
+					}
+				]
+			]
+		},
+		"Edit Fields4": {
+			"main": [
+				[
+					{
+						"node": "Merge14",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge14",
+						"type": "main",
+						"index": 2
+					}
+				]
+			]
+		},
+		"Edit Fields5": {
+			"main": [
+				[
+					{
+						"node": "Merge15",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge15",
+						"type": "main",
+						"index": 3
+					},
+					{
+						"node": "Merge15",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge15",
+						"type": "main",
+						"index": 2
+					}
+				]
+			]
+		},
+		"Edit Fields6": {
+			"main": [
+				[
+					{
+						"node": "Merge15",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge15",
+						"type": "main",
+						"index": 2
+					},
+					{
+						"node": "Merge15",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge15",
+						"type": "main",
+						"index": 3
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1",
+		"binaryMode": "separate",
+		"availableInMCP": false
+	},
+	"versionId": "bc2d3639-c84c-4782-a3e3-1a368c41f536",
+	"meta": {
+		"instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+	},
+	"id": "enTg2XikVDGWHuH7ez_nI",
+	"tags": []
+}

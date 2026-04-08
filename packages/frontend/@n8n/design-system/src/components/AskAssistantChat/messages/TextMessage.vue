@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, onMounted, nextTick, watch } from 'vue';
 
 import BaseMessage from './BaseMessage.vue';
 import { useMarkdown } from './useMarkdown';
@@ -20,7 +20,7 @@ interface Props {
 	color?: string;
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 
 const emit = defineEmits<{
 	feedback: [RatingFeedback];
@@ -30,6 +30,44 @@ const { t } = useI18n();
 
 const isClipboardSupported = computed(() => {
 	return navigator.clipboard?.writeText;
+});
+
+// User message expand/collapse functionality
+const isExpanded = ref(false);
+const userContentRef = ref<HTMLElement | null>(null);
+const isOverflowing = ref(false);
+// Should match --assistant--text-message--collapsed--max-height in _tokens.scss
+const MAX_HEIGHT = 200;
+
+function checkOverflow() {
+	if (userContentRef.value) {
+		isOverflowing.value = userContentRef.value.scrollHeight > MAX_HEIGHT;
+	}
+}
+
+function toggleExpanded() {
+	isExpanded.value = !isExpanded.value;
+}
+
+onMounted(() => {
+	void nextTick(() => {
+		checkOverflow();
+	});
+});
+
+watch(
+	() => props.message.content,
+	() => {
+		void nextTick(() => {
+			checkOverflow();
+		});
+	},
+);
+
+const fallbackFocusedNodesLabel = computed(() => {
+	const names = props.message.focusedNodeNames;
+	if (!names?.length) return '';
+	return `Focusing on ${names.map((n) => `'${n}'`).join(', ')}`;
 });
 
 async function onCopyButtonClick(content: string, e: MouseEvent) {
@@ -49,12 +87,36 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 		:user="user"
 		@feedback="(feedback) => emit('feedback', feedback)"
 	>
-		<div :class="$style.textMessage">
-			<span
-				v-if="message.role === 'user'"
-				v-n8n-html="renderMarkdown(message.content)"
-				:class="$style.renderedContent"
-			></span>
+		<div :class="[$style.textMessage, { [$style.userMessage]: message.role === 'user' }]">
+			<!-- User message with container -->
+			<div v-if="message.role === 'user'" :class="$style.userMessageContainer">
+				<div
+					ref="userContentRef"
+					:class="[$style.userContent, { [$style.collapsed]: !isExpanded && isOverflowing }]"
+				>
+					<span v-n8n-html="renderMarkdown(message.content)" :class="$style.renderedContent"></span>
+				</div>
+				<button
+					v-if="isOverflowing"
+					:class="$style.showMoreButton"
+					type="button"
+					@click="toggleExpanded"
+				>
+					{{ isExpanded ? t('notice.showLess') : t('notice.showMore') }}
+				</button>
+				<div
+					v-if="message.focusedNodeNames?.length"
+					:class="$style.focusedNodesSlotWrapper"
+					data-test-id="message-focused-nodes"
+				>
+					<slot name="focused-nodes-chips" :message="message">
+						<span :class="$style.focusedNodesFallback">
+							{{ fallbackFocusedNodesLabel }}
+						</span>
+					</slot>
+				</div>
+			</div>
+			<!-- Assistant message -->
 			<div
 				v-else
 				v-n8n-html="renderMarkdown(message.content)"
@@ -68,9 +130,8 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 			>
 				<header v-if="isClipboardSupported">
 					<N8nButton
-						type="tertiary"
-						:text="true"
-						size="mini"
+						variant="ghost"
+						size="xsmall"
 						data-test-id="assistant-copy-snippet-button"
 						@click="onCopyButtonClick(message.codeSnippet, $event)"
 					>
@@ -92,10 +153,47 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 .textMessage {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
-	font-size: var(--font-size--2xs);
-	line-height: 1.6;
+	gap: var(--spacing--2xs);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--xl);
 	word-break: break-word;
+}
+
+// User messages align right
+.userMessage {
+	align-items: flex-end;
+}
+
+// User message container styles per Figma
+.userMessageContainer {
+	background-color: var(--assistant--color--background--user-bubble);
+	border-radius: var(--radius--lg);
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	color: var(--assistant--color--text--user-bubble);
+	max-width: calc(100% - 40px);
+}
+
+.userContent {
+	&.collapsed {
+		max-height: var(--assistant--text-message--collapsed--max-height);
+		overflow: hidden;
+	}
+}
+
+.showMoreButton {
+	background: none;
+	border: none;
+	padding: 0;
+	margin-top: var(--spacing--2xs);
+	color: var(--assistant--color--text--subtle);
+	font-size: var(--font-size--sm);
+	font-weight: 500;
+	cursor: pointer;
+	text-align: left;
+
+	&:hover {
+		text-decoration: underline;
+	}
 }
 
 .codeSnippet {
@@ -135,15 +233,24 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 	}
 }
 
+// Assistant message - simple text
 .assistantText {
 	display: inline-flex;
 	flex-direction: column;
+	color: var(--assistant--color--text);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--xl);
+	max-width: calc(100% - 40px);
 }
 
 .renderedContent {
 	p {
 		margin: 0;
-		margin: var(--spacing--4xs) 0;
+	}
+
+	// Hide horizontal rules - they don't look good in chat messages
+	hr {
+		display: none;
 	}
 
 	h1,
@@ -195,5 +302,18 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 			padding: var(--spacing--4xs);
 		}
 	}
+}
+
+.focusedNodesSlotWrapper {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--4xs);
+	margin-top: var(--spacing--4xs);
+}
+
+.focusedNodesFallback {
+	font-size: var(--font-size--3xs);
+	color: var(--color--text--tint-2);
+	font-style: italic;
 }
 </style>

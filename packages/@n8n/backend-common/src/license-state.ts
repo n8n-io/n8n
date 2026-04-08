@@ -58,6 +58,14 @@ export class LicenseState {
 		return this.isLicensed(LICENSE_FEATURES.CUSTOM_ROLES);
 	}
 
+	isDynamicCredentialsLicensed() {
+		return this.isLicensed(LICENSE_FEATURES.DYNAMIC_CREDENTIALS);
+	}
+
+	isPersonalSpacePolicyLicensed() {
+		return this.isLicensed(LICENSE_FEATURES.PERSONAL_SPACE_POLICY);
+	}
+
 	isSharingLicensed() {
 		return this.isLicensed('feat:sharing');
 	}
@@ -96,6 +104,10 @@ export class LicenseState {
 
 	isAiCreditsLicensed() {
 		return this.isLicensed('feat:aiCredits');
+	}
+
+	isAiGatewayLicensed() {
+		return this.isLicensed('feat:aiGateway');
 	}
 
 	isAdvancedExecutionFiltersLicensed() {
@@ -174,8 +186,12 @@ export class LicenseState {
 		return this.isLicensed('feat:workflowDiffs');
 	}
 
+	isDataRedactionLicensed() {
+		return this.isLicensed(LICENSE_FEATURES.DATA_REDACTION);
+	}
+
 	isProvisioningLicensed() {
-		return this.isLicensed(['feat:saml', 'feat:oidc', 'feat:ldap']);
+		return this.isLicensed(['feat:saml', 'feat:oidc']);
 	}
 
 	// --------------------

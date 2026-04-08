@@ -1,5 +1,4 @@
 import iconv from 'iconv-lite';
-import get from 'lodash/get';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
 import type {
@@ -7,8 +6,15 @@ import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeProperties,
+	IBinaryData,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeOperationError, deepCopy, jsonParse } from 'n8n-workflow';
+import {
+	BINARY_ENCODING,
+	NodeOperationError,
+	deepCopy,
+	jsonParse,
+	BINARY_MODE_COMBINED,
+} from 'n8n-workflow';
 import { icsCalendarToObject } from 'ts-ics';
 
 import { encodeDecodeOptions } from '@utils/descriptions';
@@ -102,19 +108,22 @@ export async function execute(
 	operation: string,
 ) {
 	const returnData: INodeExecutionData[] = [];
+	const { binaryMode } = this.getWorkflowSettings();
 
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 		try {
 			const item = items[itemIndex];
 			const options = this.getNodeParameter('options', itemIndex);
-			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex);
+			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex) as
+				| string
+				| IBinaryData;
 
 			const newItem: INodeExecutionData = {
 				json: {},
 				pairedItem: { item: itemIndex },
 			};
 
-			const value = get(item.binary, binaryPropertyName);
+			const value = this.helpers.assertBinaryData(itemIndex, binaryPropertyName);
 
 			if (!value) continue;
 
@@ -149,13 +158,15 @@ export async function execute(
 			const destinationKey = this.getNodeParameter('destinationKey', itemIndex, '') as string;
 			set(newItem.json, destinationKey, convertedValue);
 
-			if (options.keepSource === 'binary' || options.keepSource === 'both') {
-				newItem.binary = item.binary;
-			} else {
-				// this binary data would not be included, but there also might be other binary data
-				// which should be included, copy it over and unset current binary data
-				newItem.binary = deepCopy(item.binary);
-				unset(newItem.binary, binaryPropertyName);
+			if (typeof binaryPropertyName === 'string' && binaryMode !== BINARY_MODE_COMBINED) {
+				if (options.keepSource === 'binary' || options.keepSource === 'both') {
+					newItem.binary = item.binary;
+				} else {
+					// this binary data would not be included, but there also might be other binary data
+					// which should be included, copy it over and unset current binary data
+					newItem.binary = deepCopy(item.binary);
+					unset(newItem.binary, binaryPropertyName);
+				}
 			}
 
 			returnData.push(newItem);

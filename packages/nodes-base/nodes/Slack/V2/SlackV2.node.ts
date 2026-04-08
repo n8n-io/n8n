@@ -30,11 +30,13 @@ import {
 	getTarget,
 	createSendAndWaitMessageBody,
 	processThreadOptions,
+	slackApiRequestAllItemsWithRateLimit,
 } from './GenericFunctions';
 import {
 	channelRLC,
 	messageFields,
 	messageOperations,
+	replyToMessageField,
 	sendToSelector,
 	userRLC,
 } from './MessageDescription';
@@ -56,7 +58,7 @@ export class SlackV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [2, 2.1, 2.2, 2.3],
+			version: [2, 2.1, 2.2, 2.3, 2.4],
 			defaults: {
 				name: 'Slack',
 			},
@@ -145,25 +147,30 @@ export class SlackV2 implements INodeType {
 				...channelFields,
 				...messageOperations,
 				...messageFields,
-				...getSendAndWaitProperties([
-					{ ...sendToSelector, default: 'user' },
-					{
-						...channelRLC,
-						displayOptions: {
-							show: {
-								select: ['channel'],
+				...getSendAndWaitProperties(
+					[
+						{ ...sendToSelector, default: 'user' },
+						{
+							...channelRLC,
+							displayOptions: {
+								show: {
+									select: ['channel'],
+								},
 							},
 						},
-					},
-					{
-						...userRLC,
-						displayOptions: {
-							show: {
-								select: ['user'],
+						{
+							...userRLC,
+							displayOptions: {
+								show: {
+									select: ['user'],
+								},
 							},
 						},
-					},
-				]).filter((p) => p.name !== 'subject'),
+					],
+					undefined,
+					undefined,
+					{ extraOptions: [replyToMessageField] },
+				).filter((p) => p.name !== 'subject'),
 				...starOperations,
 				...starFields,
 				...fileOperations,
@@ -190,16 +197,15 @@ export class SlackV2 implements INodeType {
 					limit: 1000,
 					cursor: paginationToken,
 				};
-				const { channels, response_metadata } = (await slackApiRequest.call(
-					this,
-					'GET',
-					'/conversations.list',
-					{},
-					qs,
-				)) as {
-					channels: Array<{ id: string; name: string }>;
-					response_metadata?: { next_cursor?: string };
-				};
+				// in case of too many rate limit errors, return cursor and allow user to lazy load by scrolling
+				const { data: channels, cursor } = await slackApiRequestAllItemsWithRateLimit<{
+					id: string;
+					name: string;
+				}>(this, 'channels', 'GET', '/conversations.list', {}, qs, {
+					onFail: 'stop',
+					maxRetries: 2,
+					fallbackDelay: 30_000,
+				});
 				const results: INodeListSearchItems[] = channels
 					.map((c) => ({
 						name: c.name,
@@ -216,8 +222,7 @@ export class SlackV2 implements INodeType {
 						if (a.name.toLowerCase() > b.name.toLowerCase()) return 1;
 						return 0;
 					});
-				const nextPaginationToken = response_metadata?.next_cursor || undefined;
-				return { results, paginationToken: nextPaginationToken };
+				return { results, paginationToken: cursor };
 			},
 			async getUsers(this: ILoadOptionsFunctions, filter?: string): Promise<INodeListSearchResult> {
 				const users = (await slackApiRequestAllItems.call(
@@ -573,6 +578,12 @@ export class SlackV2 implements INodeType {
 								qs,
 							);
 							responseData = responseData.messages;
+						}
+
+						// Slack API "feature" - messages sorting breaks in-between pages when oldest is provided
+						// Always sort manually in descending order to ensure consistent sorting
+						if (nodeVersion >= 2.4) {
+							responseData.sort((a: IDataObject, b: IDataObject) => +(b.ts ?? 0) - +(a.ts ?? 0));
 						}
 					}
 					//https://api.slack.com/methods/conversations.invite
@@ -1417,6 +1428,101 @@ export class SlackV2 implements INodeType {
 						responseData = await slackApiRequest.call(this, 'POST', '/usergroups.update', body, qs);
 
 						responseData = responseData.usergroup;
+					}
+					//https://api.slack.com/methods/usergroups.users.update
+					if (operation === 'updateUsers') {
+						const userGroupId = this.getNodeParameter('userGroupId', i) as string;
+
+						const usersToAdd = this.getNodeParameter('users', i) as string[];
+
+						const options = this.getNodeParameter('options', i);
+
+						// First, get the current list of users in the group
+						const currentGroupData = await slackApiRequest.call(
+							this,
+							'GET',
+							'/usergroups.list',
+							{},
+							{ ...qs, include_users: true, usergroup: userGroupId },
+						);
+
+						// Find the specific user group from the list
+						const currentGroup = currentGroupData.usergroups.find(
+							(group: IDataObject) => group.id === userGroupId,
+						);
+
+						// Get existing users or default to empty array
+						const existingUsers = (currentGroup?.users as string[]) || [];
+
+						// Merge existing users with new users, removing duplicates
+						const allUsers = [...new Set([...existingUsers, ...usersToAdd])];
+
+						const body: IDataObject = {
+							usergroup: userGroupId,
+							users: allUsers.join(','),
+						};
+
+						Object.assign(body, options);
+
+						responseData = await slackApiRequest.call(
+							this,
+							'POST',
+							'/usergroups.users.update',
+							body,
+							qs,
+						);
+
+						responseData = responseData.usergroup;
+					}
+					//https://api.slack.com/methods/usergroups.list
+					if (operation === 'getUsers') {
+						const userGroupId = this.getNodeParameter('userGroupId', i) as string;
+
+						const options = this.getNodeParameter('options', i);
+
+						const resolveData = options.resolveData ?? true;
+
+						// Get the user group with user list
+						const groupData = await slackApiRequest.call(
+							this,
+							'GET',
+							'/usergroups.list',
+							{},
+							{ ...qs, include_users: true, usergroup: userGroupId },
+						);
+
+						// Find the specific user group
+						const userGroup = groupData.usergroups.find(
+							(group: IDataObject) => group.id === userGroupId,
+						);
+
+						if (!userGroup) {
+							throw new NodeOperationError(
+								this.getNode(),
+								`User group with ID "${userGroupId}" not found`,
+							);
+						}
+
+						const userIds = (userGroup.users as string[]) || [];
+
+						if (resolveData && userIds.length > 0) {
+							// Fetch full user details for each user
+							const users: IDataObject[] = [];
+							for (const userId of userIds) {
+								const { user } = await slackApiRequest.call(
+									this,
+									'GET',
+									'/users.info',
+									{},
+									{ user: userId },
+								);
+								users.push(user as IDataObject);
+							}
+							responseData = users;
+						} else {
+							// Return just the user IDs
+							responseData = userIds.map((userId: string) => ({ id: userId }));
+						}
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(

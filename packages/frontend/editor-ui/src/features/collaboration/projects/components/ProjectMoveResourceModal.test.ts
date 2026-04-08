@@ -9,7 +9,7 @@ import { PROJECT_MOVE_RESOURCE_MODAL } from '../projects.constants';
 import ProjectMoveResourceModal from './ProjectMoveResourceModal.vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useProjectsStore } from '../projects.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { ComponentProps } from 'vue-component-type-helpers';
 import { ResourceType } from '../projects.utils';
@@ -29,7 +29,7 @@ const renderComponent = createComponentRenderer(ProjectMoveResourceModal, {
 
 let telemetry: ReturnType<typeof useTelemetry>;
 let projectsStore: MockedStore<typeof useProjectsStore>;
-let workflowsStore: MockedStore<typeof useWorkflowsStore>;
+let workflowsListStore: MockedStore<typeof useWorkflowsListStore>;
 let credentialsStore: MockedStore<typeof useCredentialsStore>;
 
 describe('ProjectMoveResourceModal', () => {
@@ -37,15 +37,20 @@ describe('ProjectMoveResourceModal', () => {
 		vi.clearAllMocks();
 		telemetry = useTelemetry();
 		projectsStore = mockedStore(useProjectsStore);
-		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsListStore = mockedStore(useWorkflowsListStore);
 		credentialsStore = mockedStore(useCredentialsStore);
+
+		// Default: no results
+		projectsStore.searchProjects.mockResolvedValue({ count: 0, data: [] });
+		projectsStore.globalProjectPermissions = { list: true };
 	});
 
 	it('should send telemetry when mounted', async () => {
 		const telemetryTrackSpy = vi.spyOn(telemetry, 'track');
 
-		projectsStore.availableProjects = [createProjectListItem()];
-		workflowsStore.fetchWorkflow.mockResolvedValueOnce(createTestWorkflow());
+		const projects = [createProjectListItem()];
+		projectsStore.searchProjects.mockResolvedValue({ count: projects.length, data: projects });
+		workflowsListStore.fetchWorkflow.mockResolvedValueOnce(createTestWorkflow());
 
 		const props: ComponentProps<typeof ProjectMoveResourceModal> = {
 			modalName: PROJECT_MOVE_RESOURCE_MODAL,
@@ -69,9 +74,9 @@ describe('ProjectMoveResourceModal', () => {
 		);
 	});
 
-	it('should show no available projects message', async () => {
-		projectsStore.availableProjects = [];
-		workflowsStore.fetchWorkflow.mockResolvedValueOnce(createTestWorkflow());
+	it('should show empty options text when no projects available', async () => {
+		projectsStore.searchProjects.mockResolvedValue({ count: 0, data: [] });
+		workflowsListStore.fetchWorkflow.mockResolvedValueOnce(createTestWorkflow());
 
 		const props: ComponentProps<typeof ProjectMoveResourceModal> = {
 			modalName: PROJECT_MOVE_RESOURCE_MODAL,
@@ -88,13 +93,14 @@ describe('ProjectMoveResourceModal', () => {
 				}),
 			},
 		};
-		const { getByText } = renderComponent({ props });
-		expect(getByText(/Currently there are not any projects or users available/)).toBeVisible();
+		const { getByTestId } = renderComponent({ props });
+		// The ProjectSharing select should be rendered
+		expect(getByTestId('project-sharing-select')).toBeVisible();
 	});
 
 	it('should not hide project select if filter has no result', async () => {
 		const projects = Array.from({ length: 5 }, createProjectListItem);
-		projectsStore.availableProjects = projects;
+		projectsStore.searchProjects.mockResolvedValue({ count: projects.length, data: projects });
 
 		const props: ComponentProps<typeof ProjectMoveResourceModal> = {
 			modalName: PROJECT_MOVE_RESOURCE_MODAL,
@@ -114,12 +120,13 @@ describe('ProjectMoveResourceModal', () => {
 
 		const { getByTestId, getByRole } = renderComponent({ props });
 
-		const projectSelect = getByTestId('project-move-resource-modal-select');
+		const projectSelect = getByTestId('project-sharing-select');
 		const projectSelectInput: HTMLInputElement = getByRole('combobox');
 		expect(projectSelectInput).toBeVisible();
 		expect(projectSelect).toBeVisible();
 
 		const projectSelectDropdownItems = await getDropdownItems(projectSelect);
+		// Home project is excluded by ProjectSharing
 		expect(projectSelectDropdownItems).toHaveLength(projects.length - 1);
 
 		await userEvent.click(projectSelectInput);
@@ -130,7 +137,8 @@ describe('ProjectMoveResourceModal', () => {
 
 	it('should not load workflow if the resource is a credential', async () => {
 		const telemetryTrackSpy = vi.spyOn(telemetry, 'track');
-		projectsStore.availableProjects = [createProjectListItem()];
+		const projects = [createProjectListItem()];
+		projectsStore.searchProjects.mockResolvedValue({ count: projects.length, data: projects });
 
 		const props: ComponentProps<typeof ProjectMoveResourceModal> = {
 			modalName: PROJECT_MOVE_RESOURCE_MODAL,
@@ -153,7 +161,7 @@ describe('ProjectMoveResourceModal', () => {
 			'User clicked to move a credential',
 			expect.objectContaining({ credential_id: '1' }),
 		);
-		expect(workflowsStore.fetchWorkflow).not.toHaveBeenCalled();
+		expect(workflowsListStore.fetchWorkflow).not.toHaveBeenCalled();
 		expect(getByText(/Moving will remove any existing sharing for this credential/)).toBeVisible();
 	});
 
@@ -179,8 +187,11 @@ describe('ProjectMoveResourceModal', () => {
 		};
 
 		projectsStore.currentProjectId = currentProjectId;
-		projectsStore.availableProjects = [destinationProject];
-		workflowsStore.fetchWorkflow.mockResolvedValueOnce(movedWorkflow);
+		projectsStore.searchProjects.mockResolvedValue({
+			count: 1,
+			data: [destinationProject],
+		});
+		workflowsListStore.fetchWorkflow.mockResolvedValueOnce(movedWorkflow);
 		credentialsStore.fetchAllCredentials.mockResolvedValueOnce([
 			{
 				id: '1',
@@ -223,7 +234,7 @@ describe('ProjectMoveResourceModal', () => {
 		expect(getByTestId('project-move-resource-modal-button')).toBeDisabled();
 		expect(getByText(/Moving will remove any existing sharing for this workflow/)).toBeVisible();
 
-		const projectSelect = getByTestId('project-move-resource-modal-select');
+		const projectSelect = getByTestId('project-sharing-select');
 		expect(projectSelect).toBeVisible();
 
 		const projectSelectDropdownItems = await getDropdownItems(projectSelect);
@@ -245,8 +256,11 @@ describe('ProjectMoveResourceModal', () => {
 
 	it('should prevent duplicate submissions when button clicked multiple times', async () => {
 		const destinationProject = createProjectListItem();
-		projectsStore.availableProjects = [destinationProject];
-		workflowsStore.fetchWorkflow.mockResolvedValueOnce(createTestWorkflow());
+		projectsStore.searchProjects.mockResolvedValue({
+			count: 1,
+			data: [destinationProject],
+		});
+		workflowsListStore.fetchWorkflow.mockResolvedValueOnce(createTestWorkflow());
 
 		// Make moveResourceToProject take time to simulate slow operation
 		let resolveMove: () => void;
@@ -270,7 +284,7 @@ describe('ProjectMoveResourceModal', () => {
 		const { getByTestId } = renderComponent({ props });
 
 		// Select a project
-		const projectSelect = getByTestId('project-move-resource-modal-select');
+		const projectSelect = getByTestId('project-sharing-select');
 		const projectSelectDropdownItems = await getDropdownItems(projectSelect);
 		await userEvent.click(projectSelectDropdownItems[0]);
 

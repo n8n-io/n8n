@@ -10,6 +10,10 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 const mockEditableWorkflow = {
 	value: {
@@ -34,6 +38,11 @@ vi.mock('@/features/workflows/canvas/canvas.eventBus', () => ({
 	canvasEventBus: {
 		emit: vi.fn(),
 	},
+}));
+
+vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
+	...(await importOriginal()),
+	injectWorkflowDocumentStore: vi.fn().mockReturnValue(null),
 }));
 
 const mockGenerateMergedNodesAndActionsFn = vi.fn().mockReturnValue({ mergedNodes: [] });
@@ -76,7 +85,7 @@ describe('useNodeCommands', () => {
 	});
 
 	beforeEach(() => {
-		setActivePinia(createTestingPinia());
+		setActivePinia(createTestingPinia({ stubActions: false }));
 
 		mockGetResourcePermissions = vi.mocked(getResourcePermissions);
 		const canvasOps = useCanvasOperations();
@@ -111,6 +120,16 @@ describe('useNodeCommands', () => {
 			value: false,
 		});
 
+		Object.defineProperty(mockWorkflowsStore, 'workflowId', {
+			value: '123',
+			writable: true,
+		});
+
+		Object.defineProperty(mockWorkflowsStore, 'isWorkflowSaved', {
+			value: { '123': true },
+			writable: true,
+		});
+
 		mockAddNodes.mockResolvedValue([{ id: 'node-1' }]);
 
 		mockEditableWorkflow.value.nodes = [];
@@ -125,7 +144,6 @@ describe('useNodeCommands', () => {
 				activeNodeId: ref(null),
 			});
 
-			console.log('commands', commands.value);
 			const addCommand = commands.value.find((cmd) => cmd.id === 'add-node');
 			expect(addCommand).toBeDefined();
 		});
@@ -159,9 +177,8 @@ describe('useNodeCommands', () => {
 		});
 
 		it('should not include add node command when workflow is archived', () => {
-			Object.defineProperty(mockWorkflowsStore, 'workflow', {
-				value: { isArchived: true, scopes: [] },
-			});
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('123'));
+			workflowDocumentStore.setIsArchived(true);
 
 			const { commands } = useNodeCommands({
 				lastQuery: ref(''),
@@ -177,8 +194,9 @@ describe('useNodeCommands', () => {
 				workflow: { update: false, execute: false },
 			});
 
-			Object.defineProperty(mockWorkflowsStore, 'isNewWorkflow', {
-				value: true,
+			Object.defineProperty(mockWorkflowsStore, 'isWorkflowSaved', {
+				value: {},
+				writable: true,
 			});
 
 			const { commands } = useNodeCommands({
@@ -228,7 +246,7 @@ describe('useNodeCommands', () => {
 
 		it('should populate open node children with workflow nodes', () => {
 			mockEditableWorkflow.value.nodes = [
-				{ id: 'node-1', name: 'Start', type: 'n8n-nodes-base.start', typeVersion: 1 },
+				{ id: 'node-1', name: 'Start', type: 'n8n-nodes-base.manualTrigger', typeVersion: 1 },
 				{
 					id: 'node-2',
 					name: 'HTTP Request',
@@ -303,7 +321,7 @@ describe('useNodeCommands', () => {
 	describe('root open node items', () => {
 		beforeEach(() => {
 			mockEditableWorkflow.value.nodes = [
-				{ id: 'node-1', name: 'Start', type: 'n8n-nodes-base.start', typeVersion: 1 },
+				{ id: 'node-1', name: 'Start', type: 'n8n-nodes-base.manualTrigger', typeVersion: 1 },
 			];
 		});
 

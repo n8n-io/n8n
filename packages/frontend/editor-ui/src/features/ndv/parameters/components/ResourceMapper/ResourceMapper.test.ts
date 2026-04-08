@@ -309,8 +309,8 @@ describe('ResourceMapper.vue', () => {
 			{ merge: true },
 		);
 		await waitAllPromises();
-		// Should have one option in the bottom dropdown for one removed field
-		expect(getByTestId('add-fields-select').querySelectorAll('li').length).toBe(1);
+		// Should show an add button for one removed field
+		expect(getByTestId('add-fields-select').querySelector('button')).toBeTruthy();
 	});
 
 	it('should fetch fields if there is no cached schema', async () => {
@@ -394,6 +394,41 @@ describe('ResourceMapper.vue', () => {
 		await waitAllPromises();
 
 		expect(getByTestId('matching-column-select').querySelector('input')).toHaveValue('name');
+	});
+
+	it('should set default value for the fields if provided', async () => {
+		fetchFieldsSpy.mockResolvedValue({
+			fields: [
+				{
+					id: 'foo',
+					displayName: 'Foo',
+					match: false,
+					required: true,
+					defaultMatch: false,
+					canBeUsedToMatch: false,
+					removed: false,
+					display: true,
+					type: 'string',
+					defaultValue: 'bar',
+				},
+			],
+		});
+
+		const { container } = renderComponent({
+			props: {
+				node: createTestNode({
+					parameters: {
+						columns: {
+							schema: null,
+						},
+					},
+				}),
+			},
+		});
+		await waitAllPromises();
+
+		const input = container.querySelectorAll('input')[1]; // the first input is the mapping mode selector
+		expect(input).toHaveValue('bar');
 	});
 });
 

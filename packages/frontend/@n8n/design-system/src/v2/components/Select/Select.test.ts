@@ -1,8 +1,21 @@
 import userEvent from '@testing-library/user-event';
 import { render, waitFor, within } from '@testing-library/vue';
 
-import type { SelectItem } from './Select.types';
+import type { SelectItem, SelectSizes, SelectVariants } from './Select.types';
 import Select from './Select.vue';
+
+const sizeCases: Array<[SelectSizes | undefined, string]> = [
+	[undefined, 'small'],
+	['xsmall', 'xsmall'],
+	['small', 'small'],
+	['medium', 'medium'],
+];
+
+const variantCases: Array<[SelectVariants | undefined, string]> = [
+	[undefined, 'default'],
+	['default', 'default'],
+	['ghost', 'ghost'],
+];
 
 async function getPopoverContainer(trigger: Element | null) {
 	const popoverId = trigger?.getAttribute('aria-controls');
@@ -52,12 +65,7 @@ describe('v2/components/Select', () => {
 	});
 
 	describe('sizes', () => {
-		test.each([
-			[undefined, 'Small'],
-			['xsmall' as const, 'XSmall'],
-			['small' as const, 'Small'],
-			['medium' as const, 'Medium'],
-		])('variant %s should apply %s class', (size, expected) => {
+		test.each(sizeCases)('size %s should apply %s class', (size, expected) => {
 			const wrapper = render(Select, {
 				props: {
 					items: ['Option 1'],
@@ -70,11 +78,7 @@ describe('v2/components/Select', () => {
 	});
 
 	describe('variants', () => {
-		test.each([
-			[undefined, 'Default'],
-			['default' as const, 'Default'],
-			['ghost' as const, 'Ghost'],
-		])('variant %s should apply %s class', (variant, expected) => {
+		test.each(variantCases)('variant %s should apply %s class', (variant, expected) => {
 			const wrapper = render(Select, {
 				props: {
 					items: ['Option 1'],
@@ -408,6 +412,28 @@ describe('v2/components/Select', () => {
 
 			await waitFor(() => {
 				expect(within(popover).getAllByTestId('custom-trailing')).toHaveLength(2);
+			});
+		});
+
+		it('should render footer slot', async () => {
+			const wrapper = render(Select, {
+				props: {
+					items: [
+						{ value: '1', label: 'Option 1' },
+						{ value: '2', label: 'Option 2' },
+					],
+					defaultOpen: true,
+				},
+				slots: {
+					footer: '<button data-test-id="footer-button">Add custom role</button>',
+				},
+			});
+
+			const trigger = wrapper.container.querySelector('[role="combobox"]');
+			const { popover } = await getPopoverContainer(trigger);
+
+			await waitFor(() => {
+				expect(within(popover).getByTestId('footer-button')).toBeVisible();
 			});
 		});
 	});

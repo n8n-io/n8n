@@ -4,6 +4,7 @@ import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 import * as audio from './audio';
 import * as document from './document';
 import * as file from './file';
+import * as fileSearch from './fileSearch';
 import * as image from './image';
 import * as text from './text';
 import * as video from './video';
@@ -13,7 +14,8 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'googleGemini',
 	icon: 'file:gemini.svg',
 	group: ['transform'],
-	version: 1,
+	version: [1, 1.1],
+	defaultVersion: 1.1,
 	subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
 	description: 'Interact with Google Gemini AI models',
 	defaults: {
@@ -68,12 +70,16 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'document',
 				},
 				{
-					name: 'File',
-					value: 'file',
+					name: 'File Search',
+					value: 'fileSearch',
 				},
 				{
 					name: 'Image',
 					value: 'image',
+				},
+				{
+					name: 'Media File',
+					value: 'file',
 				},
 				{
 					name: 'Text',
@@ -89,6 +95,7 @@ export const versionDescription: INodeTypeDescription = {
 		...audio.description,
 		...document.description,
 		...file.description,
+		...fileSearch.description,
 		...image.description,
 		...text.description,
 		...video.description,

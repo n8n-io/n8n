@@ -1,0 +1,224 @@
+{
+	"$comment": "Coverage manifest: n8n node vs n8n public API. When a new endpoint is added to the OpenAPI spec, add it here with status covered/gap/excluded. See test/N8n.api-coverage.test.ts.",
+	"endpoints": {
+		"POST /audit": {
+			"status": "covered",
+			"nodeOperation": "audit:generate"
+		},
+		"GET /credentials": {
+			"status": "gap"
+		},
+		"POST /credentials": {
+			"status": "covered",
+			"nodeOperation": "credential:create"
+		},
+		"PATCH /credentials/{id}": {
+			"status": "gap"
+		},
+		"DELETE /credentials/{id}": {
+			"status": "covered",
+			"nodeOperation": "credential:delete"
+		},
+		"GET /credentials/schema/{credentialTypeName}": {
+			"status": "covered",
+			"nodeOperation": "credential:getSchema"
+		},
+		"PUT /credentials/{id}/transfer": {
+			"status": "gap"
+		},
+		"GET /community-packages": {
+			"status": "gap"
+		},
+		"POST /community-packages": {
+			"status": "gap"
+		},
+		"PATCH /community-packages/{name}": {
+			"status": "gap"
+		},
+		"DELETE /community-packages/{name}": {
+			"status": "gap"
+		},
+		"GET /discover": {
+			"status": "gap"
+		},
+		"GET /insights/summary": {
+			"status": "gap"
+		},
+		"GET /executions": {
+			"status": "covered",
+			"nodeOperation": "execution:getAll"
+		},
+		"GET /executions/{id}": {
+			"status": "covered",
+			"nodeOperation": "execution:get"
+		},
+		"DELETE /executions/{id}": {
+			"status": "covered",
+			"nodeOperation": "execution:delete"
+		},
+		"POST /executions/{id}/retry": {
+			"status": "gap"
+		},
+		"POST /executions/{id}/stop": {
+			"status": "gap"
+		},
+		"POST /executions/stop": {
+			"status": "gap"
+		},
+		"GET /executions/{id}/tags": {
+			"status": "gap"
+		},
+		"PUT /executions/{id}/tags": {
+			"status": "gap"
+		},
+		"POST /tags": {
+			"status": "gap"
+		},
+		"GET /tags": {
+			"status": "gap"
+		},
+		"GET /tags/{id}": {
+			"status": "gap"
+		},
+		"DELETE /tags/{id}": {
+			"status": "gap"
+		},
+		"PUT /tags/{id}": {
+			"status": "gap"
+		},
+		"POST /workflows": {
+			"status": "covered",
+			"nodeOperation": "workflow:create"
+		},
+		"GET /workflows": {
+			"status": "covered",
+			"nodeOperation": "workflow:getAll"
+		},
+		"GET /workflows/{id}": {
+			"status": "covered",
+			"nodeOperation": "workflow:get"
+		},
+		"DELETE /workflows/{id}": {
+			"status": "covered",
+			"nodeOperation": "workflow:delete"
+		},
+		"PUT /workflows/{id}": {
+			"status": "covered",
+			"nodeOperation": "workflow:update"
+		},
+		"GET /workflows/{id}/{versionId}": {
+			"status": "covered",
+			"nodeOperation": "workflow:getVersion"
+		},
+		"POST /workflows/{id}/activate": {
+			"status": "covered",
+			"nodeOperation": "workflow:activate"
+		},
+		"POST /workflows/{id}/deactivate": {
+			"status": "covered",
+			"nodeOperation": "workflow:deactivate"
+		},
+		"POST /workflows/{id}/archive": {
+			"status": "gap"
+		},
+		"POST /workflows/{id}/unarchive": {
+			"status": "gap"
+		},
+		"PUT /workflows/{id}/transfer": {
+			"status": "gap"
+		},
+		"GET /workflows/{id}/tags": {
+			"status": "gap"
+		},
+		"PUT /workflows/{id}/tags": {
+			"status": "gap"
+		},
+		"GET /users": {
+			"status": "gap"
+		},
+		"POST /users": {
+			"status": "gap"
+		},
+		"GET /users/{id}": {
+			"status": "gap"
+		},
+		"DELETE /users/{id}": {
+			"status": "gap"
+		},
+		"PATCH /users/{id}/role": {
+			"status": "gap"
+		},
+		"POST /source-control/pull": {
+			"status": "gap"
+		},
+		"POST /variables": {
+			"status": "gap"
+		},
+		"GET /variables": {
+			"status": "gap"
+		},
+		"DELETE /variables/{id}": {
+			"status": "gap"
+		},
+		"PUT /variables/{id}": {
+			"status": "gap"
+		},
+		"GET /data-tables": {
+			"status": "gap"
+		},
+		"POST /data-tables": {
+			"status": "gap"
+		},
+		"GET /data-tables/{dataTableId}": {
+			"status": "gap"
+		},
+		"PATCH /data-tables/{dataTableId}": {
+			"status": "gap"
+		},
+		"DELETE /data-tables/{dataTableId}": {
+			"status": "gap"
+		},
+		"GET /data-tables/{dataTableId}/rows": {
+			"status": "gap"
+		},
+		"POST /data-tables/{dataTableId}/rows": {
+			"status": "gap"
+		},
+		"PATCH /data-tables/{dataTableId}/rows/update": {
+			"status": "gap"
+		},
+		"POST /data-tables/{dataTableId}/rows/upsert": {
+			"status": "gap"
+		},
+		"DELETE /data-tables/{dataTableId}/rows/delete": {
+			"status": "gap"
+		},
+		"GET /insights/summary": {
+			"status": "gap"
+		},
+		"POST /projects": {
+			"status": "gap"
+		},
+		"GET /projects": {
+			"status": "gap"
+		},
+		"DELETE /projects/{projectId}": {
+			"status": "gap"
+		},
+		"PUT /projects/{projectId}": {
+			"status": "gap"
+		},
+		"GET /projects/{projectId}/users": {
+			"status": "gap"
+		},
+		"POST /projects/{projectId}/users": {
+			"status": "gap"
+		},
+		"DELETE /projects/{projectId}/users/{userId}": {
+			"status": "gap"
+		},
+		"PATCH /projects/{projectId}/users/{userId}": {
+			"status": "gap"
+		}
+	}
+}

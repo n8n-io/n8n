@@ -2,7 +2,7 @@ import { computed, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { COMMAND_BAR_EXPERIMENT, VIEWS } from '@/app/constants';
+import { VIEWS } from '@/app/constants';
 import { type CommandBarItem } from '@n8n/design-system/components/N8nCommandBar/types';
 import { useNodeCommands } from './useNodeCommands';
 import { useWorkflowCommands } from './useWorkflowCommands';
@@ -14,28 +14,30 @@ import { useProjectNavigationCommands } from './useProjectNavigationCommands';
 import { useExecutionCommands } from './useExecutionCommands';
 import { useGenericCommands } from './useGenericCommands';
 import { useRecentResources } from './useRecentResources';
+import { useChatHubCommands } from './useChatHubCommands';
+import { useInstanceAiCommands } from './useInstanceAiCommands';
 import type { CommandGroup } from '../types';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { useI18n } from '@n8n/i18n';
 import { PROJECT_DATA_TABLES, DATA_TABLE_VIEW } from '@/features/core/dataTable/constants';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import {
+	CHAT_CONVERSATION_VIEW,
+	CHAT_PERSONAL_AGENTS_VIEW,
+	CHAT_VIEW,
+	CHAT_WORKFLOW_AGENTS_VIEW,
+} from '@/features/ai/chatHub/constants';
 
 export function useCommandBar() {
 	const nodeTypesStore = useNodeTypesStore();
 	const projectsStore = useProjectsStore();
-	const workflowStore = useWorkflowsStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const router = useRouter();
 	const route = useRoute();
-	const postHog = usePostHog();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
 
 	const placeholder = i18n.baseText('commandBar.placeholder');
-
-	const isEnabled = computed(() =>
-		postHog.isVariantEnabled(COMMAND_BAR_EXPERIMENT.name, COMMAND_BAR_EXPERIMENT.variant),
-	);
 
 	const activeNodeId = ref<string | null>(null);
 	const lastQuery = ref('');
@@ -78,12 +80,19 @@ export function useCommandBar() {
 	});
 	const genericCommandGroup = useGenericCommands();
 	const recentResourcesGroup = useRecentResources();
+	const chatHubCommandGroup = useChatHubCommands({
+		lastQuery,
+	});
+	const instanceAiCommandGroup = useInstanceAiCommands({
+		lastQuery,
+	});
 
 	const canvasViewGroups: CommandGroup[] = [
 		recentResourcesGroup,
 		nodeCommandGroup,
 		workflowCommandGroup,
 		workflowNavigationGroup,
+		instanceAiCommandGroup,
 		genericCommandGroup,
 	];
 
@@ -95,6 +104,7 @@ export function useCommandBar() {
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
 		executionNavigationGroup,
+		instanceAiCommandGroup,
 		genericCommandGroup,
 	];
 
@@ -105,6 +115,7 @@ export function useCommandBar() {
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
 		executionNavigationGroup,
+		instanceAiCommandGroup,
 		genericCommandGroup,
 	];
 
@@ -115,6 +126,7 @@ export function useCommandBar() {
 		workflowNavigationGroup,
 		dataTableNavigationGroup,
 		executionNavigationGroup,
+		instanceAiCommandGroup,
 		genericCommandGroup,
 	];
 
@@ -124,6 +136,7 @@ export function useCommandBar() {
 		projectNavigationGroup,
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
+		instanceAiCommandGroup,
 		genericCommandGroup,
 	];
 
@@ -134,6 +147,7 @@ export function useCommandBar() {
 		workflowNavigationGroup,
 		credentialNavigationGroup,
 		executionNavigationGroup,
+		instanceAiCommandGroup,
 		genericCommandGroup,
 	];
 
@@ -144,7 +158,20 @@ export function useCommandBar() {
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
 		executionNavigationGroup,
+		instanceAiCommandGroup,
 		genericCommandGroup,
+	];
+
+	const chatHubViewGroups: CommandGroup[] = [
+		chatHubCommandGroup,
+		recentResourcesGroup,
+		instanceAiCommandGroup,
+		genericCommandGroup,
+		projectNavigationGroup,
+		workflowNavigationGroup,
+		credentialNavigationGroup,
+		dataTableNavigationGroup,
+		executionNavigationGroup,
 	];
 
 	const fallbackViewCommands: CommandGroup[] = [
@@ -154,6 +181,7 @@ export function useCommandBar() {
 		credentialNavigationGroup,
 		dataTableNavigationGroup,
 		executionNavigationGroup,
+		instanceAiCommandGroup,
 		genericCommandGroup,
 	];
 
@@ -181,27 +209,33 @@ export function useCommandBar() {
 			case VIEWS.EVALUATION_EDIT:
 			case VIEWS.EVALUATION_RUNS_DETAIL:
 				return evaluationViewGroups;
+			case CHAT_VIEW:
+			case CHAT_CONVERSATION_VIEW:
+			case CHAT_PERSONAL_AGENTS_VIEW:
+			case CHAT_WORKFLOW_AGENTS_VIEW:
+				return chatHubViewGroups;
 			default:
 				return fallbackViewCommands;
 		}
 	});
 
 	const context = computed(() => {
+		const workflowName = workflowDocumentStore?.value?.name ?? '';
 		switch (router.currentRoute.value.name) {
 			case VIEWS.WORKFLOW:
 			case VIEWS.NEW_WORKFLOW:
-				return workflowStore.workflow.name
-					? i18n.baseText('commandBar.sections.workflow') + ' ⋅ ' + workflowStore.workflow.name
+				return workflowName
+					? i18n.baseText('commandBar.sections.workflow') + ' ⋅ ' + workflowName
 					: '';
 			case VIEWS.EXECUTION_PREVIEW:
 			case VIEWS.EXECUTION_DEBUG:
-				return workflowStore.workflow.name
-					? i18n.baseText('commandBar.sections.execution') + ' ⋅ ' + workflowStore.workflow.name
+				return workflowName
+					? i18n.baseText('commandBar.sections.execution') + ' ⋅ ' + workflowName
 					: '';
 			case VIEWS.EVALUATION:
 			case VIEWS.EVALUATION_EDIT:
 			case VIEWS.EVALUATION_RUNS_DETAIL:
-				return workflowStore.workflow.name ? ' ⋅ ' + workflowStore.workflow.name : '';
+				return workflowName ? ' ⋅ ' + workflowName : '';
 			default:
 				return '';
 		}
@@ -287,7 +321,6 @@ export function useCommandBar() {
 	}
 
 	return {
-		isEnabled,
 		items,
 		initialize,
 		onCommandBarChange,

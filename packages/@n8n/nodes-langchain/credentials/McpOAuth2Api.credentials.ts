@@ -15,7 +15,6 @@ export class McpOAuth2Api implements ICredentialType {
 			name: 'useDynamicClientRegistration',
 			type: 'boolean',
 			default: true,
-			required: true,
 		},
 	];
 }

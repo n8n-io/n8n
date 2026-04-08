@@ -6,10 +6,10 @@ import {
 	getPairedItemsMapping,
 	MAX_ITEM_COUNT_FOR_PAIRING,
 } from './pairedItemUtils';
-import { type ITaskData } from 'n8n-workflow';
+import { createRunExecutionData, type ITaskData } from 'n8n-workflow';
 
 const MOCK_EXECUTION: Partial<IExecutionResponse> = {
-	data: {
+	data: createRunExecutionData({
 		startData: {},
 		resultData: {
 			runData: {
@@ -202,7 +202,7 @@ const MOCK_EXECUTION: Partial<IExecutionResponse> = {
 			waitingExecution: {},
 			waitingExecutionSource: {},
 		},
-	},
+	}),
 	mode: 'manual',
 	startedAt: new Date('2024-01-23T16:26:10.003Z'),
 	stoppedAt: new Date('2024-01-23T16:26:10.011Z'),
@@ -330,7 +330,7 @@ describe('pairedItemUtils', () => {
 
 		it('should skip mapping if execution has more than max items overall', () => {
 			const mockExecution: Partial<IExecutionResponse> = {
-				data: {
+				data: createRunExecutionData({
 					startData: {},
 					resultData: {
 						runData: {
@@ -369,7 +369,7 @@ describe('pairedItemUtils', () => {
 						waitingExecution: {},
 						waitingExecutionSource: {},
 					},
-				},
+				}),
 				mode: 'manual',
 				startedAt: new Date('2024-01-23T16:26:10.003Z'),
 				stoppedAt: new Date('2024-01-23T16:26:10.011Z'),
@@ -414,7 +414,7 @@ describe('pairedItemUtils', () => {
 			const itemCountPerRun = 3;
 			const pairedItemCount = 3;
 			const mockExecution: Partial<IExecutionResponse> = {
-				data: {
+				data: createRunExecutionData({
 					resultData: {
 						runData: Object.fromEntries(
 							Array.from({ length: nodeCount }).map<[string, ITaskData[]]>((_, j) => [
@@ -439,7 +439,7 @@ describe('pairedItemUtils', () => {
 							]),
 						),
 					},
-				},
+				}),
 			};
 
 			expect(getPairedItemsMapping(mockExecution)).toEqual({});

@@ -1,4 +1,5 @@
 import { SEND_AND_WAIT_OPERATION, type INodeProperties } from 'n8n-workflow';
+import { slackChannelModes } from './utils';
 
 export const messageOperations: INodeProperties[] = [
 	{
@@ -175,6 +176,40 @@ export const userRLC: INodeProperties = {
 	],
 };
 
+export const replyToMessageField: INodeProperties = {
+	displayName: 'Reply to a Message',
+	name: 'thread_ts',
+	type: 'fixedCollection',
+	default: {},
+	placeholder: 'Reply to a Message',
+	description: "Provide another message's Timestamp value to make this message a reply",
+	options: [
+		{
+			displayName: 'Reply to a Message',
+			name: 'replyValues',
+			values: [
+				{
+					displayName: 'Message Timestamp to Reply To',
+					name: 'thread_ts',
+					type: 'number',
+					default: undefined,
+					placeholder: '1663233118.856619',
+					description:
+						'Message timestamps are included in output data of Slack nodes, abbreviated to ts',
+				},
+				{
+					displayName: 'Also Send to Channel',
+					name: 'reply_broadcast',
+					type: 'boolean',
+					default: false,
+					description:
+						'Whether the reply should be made visible to everyone in the channel or conversation',
+				},
+			],
+		},
+	],
+};
+
 export const messageFields: INodeProperties[] = [
 	/* ----------------------------------------------------------------------- */
 	/*                                 message:getPermalink
@@ -192,52 +227,7 @@ export const messageFields: INodeProperties[] = [
 				operation: ['getPermalink'],
 			},
 		},
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				placeholder: 'Select a channel...',
-				typeOptions: {
-					searchListMethod: 'getChannels',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Not a valid Slack Channel ID',
-						},
-					},
-				],
-				placeholder: 'C0122KQ70S7E',
-			},
-			{
-				displayName: 'By URL',
-				name: 'url',
-				type: 'string',
-				placeholder: 'https://app.slack.com/client/TS9594PZK/B0556F47Z3A',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: 'http(s)?://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-							errorMessage: 'Not a valid Slack Channel URL',
-						},
-					},
-				],
-				extractValue: {
-					type: 'regex',
-					regex: 'https://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-				},
-			},
-		],
+		modes: slackChannelModes,
 	},
 	{
 		displayName: 'Message Timestamp',
@@ -651,39 +641,7 @@ export const messageFields: INodeProperties[] = [
 				default: false,
 				description: 'Whether to turn @users and #channels in message text into clickable links',
 			},
-			{
-				displayName: 'Reply to a Message',
-				name: 'thread_ts',
-				type: 'fixedCollection',
-				default: {},
-				placeholder: 'Reply to a Message',
-				description: "Provide another message's Timestamp value to make this message a reply",
-				options: [
-					{
-						displayName: 'Reply to a Message',
-						name: 'replyValues',
-						values: [
-							{
-								displayName: 'Message Timestamp to Reply To',
-								name: 'thread_ts',
-								type: 'number',
-								default: undefined,
-								placeholder: '1663233118.856619',
-								description:
-									'Message timestamps are included in output data of Slack nodes, abbreviated to ts',
-							},
-							{
-								displayName: 'Also Send to Channel',
-								name: 'reply_broadcast',
-								type: 'boolean',
-								default: false,
-								description:
-									'Whether the reply should be made visible to everyone in the channel or conversation',
-							},
-						],
-					},
-				],
-			},
+			replyToMessageField,
 			{
 				displayName: 'Use Markdown?',
 				name: 'mrkdwn',
@@ -804,52 +762,7 @@ export const messageFields: INodeProperties[] = [
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				placeholder: 'Select a channel...',
-				typeOptions: {
-					searchListMethod: 'getChannels',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Not a valid Slack Channel ID',
-						},
-					},
-				],
-				placeholder: 'C0122KQ70S7E',
-			},
-			{
-				displayName: 'By URL',
-				name: 'url',
-				type: 'string',
-				placeholder: 'https://app.slack.com/client/TS9594PZK/B0556F47Z3A',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: 'http(s)?://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-							errorMessage: 'Not a valid Slack Channel URL',
-						},
-					},
-				],
-				extractValue: {
-					type: 'regex',
-					regex: 'https://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-				},
-			},
-		],
+		modes: slackChannelModes,
 		required: true,
 		displayOptions: {
 			show: {
@@ -1055,52 +968,7 @@ export const messageFields: INodeProperties[] = [
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				placeholder: 'Select a channel...',
-				typeOptions: {
-					searchListMethod: 'getChannels',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: '[a-zA-Z0-9]{2,}',
-							errorMessage: 'Not a valid Slack Channel ID',
-						},
-					},
-				],
-				placeholder: 'C0122KQ70S7E',
-			},
-			{
-				displayName: 'By URL',
-				name: 'url',
-				type: 'string',
-				placeholder: 'https://app.slack.com/client/TS9594PZK/B0556F47Z3A',
-				validation: [
-					{
-						type: 'regex',
-						properties: {
-							regex: 'http(s)?://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-							errorMessage: 'Not a valid Slack Channel URL',
-						},
-					},
-				],
-				extractValue: {
-					type: 'regex',
-					regex: 'https://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
-				},
-			},
-		],
+		modes: slackChannelModes,
 		displayOptions: {
 			show: {
 				operation: ['delete'],

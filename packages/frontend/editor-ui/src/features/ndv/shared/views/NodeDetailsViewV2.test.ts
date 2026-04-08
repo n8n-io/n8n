@@ -1,6 +1,6 @@
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { waitFor, fireEvent } from '@testing-library/vue';
+import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
 import NodeDetailsViewV2 from '@/features/ndv/shared/views/NodeDetailsViewV2.vue';
@@ -17,6 +17,8 @@ import {
 	defaultNodeDescriptions,
 } from '@/__tests__/mocks';
 import type { Workflow } from 'n8n-workflow';
+import { computed } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({}),
@@ -49,12 +51,14 @@ const setupStore = (nodes: Array<ReturnType<typeof createTestNode>>) => {
 
 	return {
 		pinia,
+		workflow,
 		workflowObject: workflowsStore.workflowObject as Workflow,
 	};
 };
 
 describe('NodeDetailsViewV2', () => {
 	let pinia: ReturnType<typeof createTestingPinia>;
+	let workflowId: string;
 	let workflowObject: Workflow;
 	const manualTriggerNode = createTestNode({
 		name: 'Manual Trigger',
@@ -79,6 +83,9 @@ describe('NodeDetailsViewV2', () => {
 				...componentProps,
 			},
 			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => workflowId),
+				},
 				mocks: {
 					$route: {
 						name: VIEWS.WORKFLOW,
@@ -112,6 +119,7 @@ describe('NodeDetailsViewV2', () => {
 		beforeEach(() => {
 			const store = setupStore([manualTriggerNode, setNode, stickyNode]);
 			pinia = store.pinia;
+			workflowId = store.workflow.id;
 			workflowObject = store.workflowObject;
 		});
 
@@ -155,6 +163,7 @@ describe('NodeDetailsViewV2', () => {
 		beforeEach(() => {
 			const store = setupStore([manualTriggerNode, setNode, stickyNode]);
 			pinia = store.pinia;
+			workflowId = store.workflow.id;
 			workflowObject = store.workflowObject;
 		});
 
@@ -182,60 +191,13 @@ describe('NodeDetailsViewV2', () => {
 			expect(removeEventListenerSpy).toHaveBeenCalledWith('keydown', expect.any(Function), true);
 			removeEventListenerSpy.mockRestore();
 		});
-
-		test('should emit saveKeyboardShortcut when Ctrl+S is pressed', async () => {
-			const { getByTestId, emitted } = renderComponent({ activeNodeName: 'Manual Trigger' });
-
-			await waitFor(() => expect(getByTestId('ndv')).toBeInTheDocument());
-
-			await fireEvent.keyDown(getByTestId('ndv'), {
-				key: 's',
-				ctrlKey: true,
-				bubbles: true,
-				cancelable: true,
-			});
-
-			expect(emitted().saveKeyboardShortcut).toBeTruthy();
-			expect(emitted().saveKeyboardShortcut).toHaveLength(1);
-		});
-
-		test('should not emit saveKeyboardShortcut in readOnly mode', async () => {
-			const { getByTestId, emitted } = renderComponent({
-				activeNodeName: 'Manual Trigger',
-				readOnly: true,
-			});
-
-			await waitFor(() => expect(getByTestId('ndv')).toBeInTheDocument());
-
-			await fireEvent.keyDown(getByTestId('ndv'), {
-				key: 's',
-				ctrlKey: true,
-				bubbles: true,
-				cancelable: true,
-			});
-
-			expect(emitted().saveKeyboardShortcut).toBeFalsy();
-		});
-
-		test('should not emit saveKeyboardShortcut when Ctrl is not pressed', async () => {
-			const { getByTestId, emitted } = renderComponent({ activeNodeName: 'Manual Trigger' });
-
-			await waitFor(() => expect(getByTestId('ndv')).toBeInTheDocument());
-
-			await fireEvent.keyDown(getByTestId('ndv'), {
-				key: 's',
-				bubbles: true,
-				cancelable: true,
-			});
-
-			expect(emitted().saveKeyboardShortcut).toBeFalsy();
-		});
 	});
 
 	describe('lifecycle', () => {
 		beforeEach(() => {
 			const store = setupStore([manualTriggerNode, setNode, stickyNode]);
 			pinia = store.pinia;
+			workflowId = store.workflow.id;
 			workflowObject = store.workflowObject;
 		});
 
@@ -272,6 +234,7 @@ describe('NodeDetailsViewV2', () => {
 		beforeEach(() => {
 			const store = setupStore([manualTriggerNode, setNode, stickyNode]);
 			pinia = store.pinia;
+			workflowId = store.workflow.id;
 			workflowObject = store.workflowObject;
 		});
 

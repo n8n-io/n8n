@@ -13,11 +13,14 @@ import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useBuilderStore } from './builder.store';
 import { ASSISTANT_ENABLED_VIEWS, BUILDER_ENABLED_VIEWS } from './constants';
 import { VIEWS } from '@/app/constants';
-import { reactive } from 'vue';
+import { reactive, nextTick } from 'vue';
 import { mockedStore } from '@/__tests__/utils';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { defaultSettings } from '@/__tests__/defaults';
 import type { ICredentialType } from 'n8n-workflow';
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
+import merge from 'lodash-es/merge';
 
 // Mock vue-router
 const mockRoute = reactive({ name: VIEWS.WORKFLOW });
@@ -48,6 +51,13 @@ describe('chatPanel.store', () => {
 			createTestingPinia({
 				createSpy: vi.fn,
 				stubActions: false, // Don't stub actions so actual store logic runs
+			}),
+		);
+
+		const settingsStore = useSettingsStore();
+		settingsStore.setSettings(
+			merge({}, defaultSettings, {
+				aiAssistant: { enabled: true, setup: true },
 			}),
 		);
 
@@ -103,6 +113,7 @@ describe('chatPanel.store', () => {
 			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
 
 			await chatPanelStore.open({ mode: 'builder' });
+			vi.runAllTimers();
 
 			expect(chatPanelStateStore.isOpen).toBe(true);
 			expect(chatPanelStateStore.activeMode).toBe('builder');
@@ -146,6 +157,17 @@ describe('chatPanel.store', () => {
 
 			expect(chatPanelStateStore.activeMode).toBe('builder');
 		});
+
+		it('should not fetch credits or load sessions when streaming is in progress', async () => {
+			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
+			builderStore.streaming = true;
+
+			await chatPanelStore.open({ mode: 'builder' });
+
+			expect(chatPanelStateStore.isOpen).toBe(true);
+			expect(builderStore.fetchBuilderCredits).not.toHaveBeenCalled();
+			expect(builderStore.loadSessions).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('close', () => {
@@ -168,14 +190,6 @@ describe('chatPanel.store', () => {
 			expect(uiStore.appGridDimensions.width).toBe(window.innerWidth);
 		});
 
-		it('should reset builder chat after timeout', () => {
-			chatPanelStore.close();
-
-			vi.runAllTimers();
-
-			expect(builderStore.resetBuilderChat).toHaveBeenCalled();
-		});
-
 		it('should reset assistant chat only if session ended', () => {
 			assistantStore.isSessionEnded = true;
 
@@ -192,6 +206,15 @@ describe('chatPanel.store', () => {
 			vi.runAllTimers();
 
 			expect(assistantStore.resetAssistantChat).not.toHaveBeenCalled();
+		});
+
+		it('should not reset builder chat when streaming is in progress', () => {
+			builderStore.streaming = true;
+
+			chatPanelStore.close();
+			vi.runAllTimers();
+
+			expect(builderStore.resetBuilderChat).not.toHaveBeenCalled();
 		});
 	});
 
@@ -228,6 +251,14 @@ describe('chatPanel.store', () => {
 			expect(chatPanelStateStore.activeMode).toBe('assistant');
 			expect(chatPanelStore.isAssistantModeActive).toBe(true);
 			expect(chatPanelStore.isBuilderModeActive).toBe(false);
+		});
+
+		it('should set showCoachmark to false when switching modes', () => {
+			expect(chatPanelStateStore.showCoachmark).toBe(true);
+
+			chatPanelStore.switchMode('assistant');
+
+			expect(chatPanelStateStore.showCoachmark).toBe(false);
 		});
 
 		it('should switch from assistant to builder mode', () => {
@@ -297,7 +328,7 @@ describe('chatPanel.store', () => {
 
 			await chatPanelStore.openWithCredHelp(credType);
 
-			expect(assistantStore.initCredHelp).toHaveBeenCalledWith(credType);
+			expect(assistantStore.initCredHelp).toHaveBeenCalledWith('', credType);
 			expect(chatPanelStateStore.isOpen).toBe(true);
 			expect(chatPanelStateStore.activeMode).toBe('assistant');
 		});
@@ -323,9 +354,45 @@ describe('chatPanel.store', () => {
 
 			await chatPanelStore.openWithErrorHelper(errorContext);
 
-			expect(assistantStore.initErrorHelper).toHaveBeenCalledWith(errorContext);
+			expect(assistantStore.initErrorHelper).toHaveBeenCalledWith('', errorContext);
 			expect(chatPanelStateStore.isOpen).toBe(true);
 			expect(chatPanelStateStore.activeMode).toBe('assistant');
+		});
+	});
+
+	describe('showCoachmark tracking', () => {
+		it('should set showCoachmark to true by default when opening', async () => {
+			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
+
+			await chatPanelStore.open({ mode: 'builder' });
+
+			expect(chatPanelStateStore.showCoachmark).toBe(true);
+		});
+
+		it('should allow overriding showCoachmark when opening', async () => {
+			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
+
+			await chatPanelStore.open({ mode: 'builder', showCoachmark: false });
+
+			expect(chatPanelStateStore.showCoachmark).toBe(false);
+		});
+
+		it('should set showCoachmark to false when closing', async () => {
+			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
+			await chatPanelStore.open({ mode: 'builder' });
+			expect(chatPanelStateStore.showCoachmark).toBe(true);
+
+			chatPanelStore.close();
+
+			expect(chatPanelStateStore.showCoachmark).toBe(false);
+		});
+
+		it('should expose showCoachmark as computed property', async () => {
+			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
+
+			await chatPanelStore.open({ mode: 'builder' });
+
+			expect(chatPanelStore.showCoachmark).toBe(true);
 		});
 	});
 
@@ -358,6 +425,86 @@ describe('chatPanel.store', () => {
 		it('should expose activeMode as computed', () => {
 			chatPanelStateStore.activeMode = 'assistant';
 			expect(chatPanelStore.activeMode).toBe('assistant');
+		});
+	});
+
+	describe('route watcher - streaming state preservation', () => {
+		it('should re-open panel when streaming is in progress and entering a builder-enabled view', async () => {
+			// First set up initial state on a non-builder view
+			mockRoute.name = VIEWS.EXECUTIONS;
+			await nextTick();
+
+			// Set up state: panel closed but streaming in progress
+			chatPanelStateStore.isOpen = false;
+			chatPanelStateStore.activeMode = 'builder';
+			builderStore.streaming = true;
+
+			// Simulate navigating to a builder-enabled view
+			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
+			await nextTick();
+
+			// Verify the panel was re-opened
+			expect(chatPanelStateStore.isOpen).toBe(true);
+		});
+
+		it('should restore grid width when auto-reopening during streaming', async () => {
+			// Open in builder mode to set grid width
+			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
+			await chatPanelStore.open({ mode: 'builder' });
+			vi.runAllTimers();
+
+			// Simulate streaming and closing the panel (which resets grid width after timeout)
+			builderStore.streaming = true;
+			chatPanelStore.close();
+			vi.runAllTimers();
+			expect(uiStore.appGridDimensions.width).toBe(window.innerWidth);
+
+			// Navigate away and back to a builder view while streaming
+			mockRoute.name = VIEWS.EXECUTIONS;
+			await nextTick();
+			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
+			await nextTick();
+
+			// Auto-reopen should restore the grid width offset for the chat
+			expect(chatPanelStateStore.isOpen).toBe(true);
+			vi.runAllTimers();
+			expect(uiStore.appGridDimensions.width).toBe(window.innerWidth - DEFAULT_CHAT_WIDTH);
+		});
+
+		it('should not reset builder chat on route change when streaming is in progress', async () => {
+			// Start with panel open in builder mode and streaming
+			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
+			await chatPanelStore.open({ mode: 'builder' });
+			builderStore.streaming = true;
+			builderStore.resetBuilderChat.mockClear();
+
+			// Navigate to executions view (not a builder view, triggers close)
+			mockRoute.name = VIEWS.EXECUTIONS;
+			await nextTick();
+
+			// Run timers for the close timeout
+			vi.runAllTimers();
+
+			// Ensure resetBuilderChat was NOT called because streaming is in progress
+			expect(builderStore.resetBuilderChat).not.toHaveBeenCalled();
+		});
+
+		it('should reset builder chat on route change when not streaming', async () => {
+			// Start with panel open in builder mode but not streaming
+			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
+			await chatPanelStore.open({ mode: 'builder' });
+			builderStore.streaming = false;
+
+			// Navigate to executions view (not a builder view, triggers close)
+			mockRoute.name = VIEWS.EXECUTIONS;
+			await nextTick();
+
+			// Run timers for the close timeout
+			vi.runAllTimers();
+
+			// Builder chat should be closed since we're not streaming, but not reset
+			expect(chatPanelStore.isOpen).toEqual(false);
+			expect(builderStore.resetBuilderChat).not.toHaveBeenCalled();
 		});
 	});
 });

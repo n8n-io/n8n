@@ -29,11 +29,15 @@ export function useToast() {
 	const { APP_Z_INDEXES } = useStyles();
 
 	function showMessage(messageData: Partial<NotificationOptions>, track = true) {
+		if (uiStore.areNotificationsSuppressed) {
+			return { close: () => {} } as NotificationHandle;
+		}
+
 		const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
 			dangerouslyUseHTMLString: true,
 			position: 'bottom-right',
 			zIndex: APP_Z_INDEXES.TOASTS, // above NDV and modal overlays
-			appendTo: '#app-grid',
+			appendTo: '#n8n-app',
 			customClass: 'content-toast',
 		};
 		const { message, title } = messageData;

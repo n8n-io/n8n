@@ -9,12 +9,15 @@ import { VIEWS } from '@/app/constants';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import ProjectIcon from './ProjectIcon.vue';
 import { N8nBadge, N8nTooltip } from '@n8n/design-system';
+import type { DataTableResource } from '@/features/core/dataTable/types';
+
 type Props = {
-	resource: WorkflowResource | CredentialsResource | FolderResource;
+	resource: WorkflowResource | CredentialsResource | FolderResource | DataTableResource;
 	resourceType: ResourceType;
 	resourceTypeLabel: string;
 	personalProject: Project | null;
 	showBadgeBorder?: boolean;
+	global?: boolean;
 };
 
 const enum ProjectState {
@@ -31,6 +34,13 @@ const props = withDefaults(defineProps<Props>(), {
 	showBadgeBorder: true,
 });
 
+const homeProject = computed(() => {
+	if (props.resource.resourceType === 'dataTable') {
+		return props.resource.project;
+	}
+	return props.resource.homeProject;
+});
+
 const i18n = useI18n();
 
 const isShared = computed(() => {
@@ -39,21 +49,19 @@ const isShared = computed(() => {
 
 const projectState = computed(() => {
 	if (
-		(props.resource.homeProject &&
-			props.personalProject &&
-			props.resource.homeProject.id === props.personalProject.id) ||
-		!props.resource.homeProject
+		!homeProject.value ||
+		(props.personalProject && homeProject.value?.id === props.personalProject.id)
 	) {
 		if (isShared.value) {
 			return ProjectState.SharedOwned;
 		}
 		return ProjectState.Owned;
-	} else if (props.resource.homeProject?.type !== ProjectTypes.Team) {
+	} else if (homeProject.value?.type !== ProjectTypes.Team) {
 		if (isShared.value) {
 			return ProjectState.SharedPersonal;
 		}
 		return ProjectState.Personal;
-	} else if (props.resource.homeProject?.type === ProjectTypes.Team) {
+	} else if (homeProject.value?.type === ProjectTypes.Team) {
 		if (isShared.value) {
 			return ProjectState.SharedTeam;
 		}
@@ -73,7 +81,7 @@ const badgeText = computed(() => {
 	) {
 		return i18n.baseText('projects.menu.personal');
 	} else {
-		const { name, email } = splitName(props.resource.homeProject?.name ?? '');
+		const { name, email } = splitName(homeProject.value?.name ?? '');
 		return name ?? email ?? '';
 	}
 });
@@ -87,8 +95,8 @@ const badgeIcon = computed<IconOrEmoji>(() => {
 			return { type: 'icon', value: 'user' };
 		case ProjectState.Team:
 		case ProjectState.SharedTeam:
-			return isIconOrEmoji(props.resource.homeProject?.icon)
-				? props.resource.homeProject?.icon
+			return isIconOrEmoji(homeProject.value?.icon)
+				? homeProject.value?.icon
 				: { type: 'icon', value: 'layers' };
 		default:
 			return { type: 'icon', value: 'layers' };
@@ -141,12 +149,12 @@ const projectLocation = computed(() => {
 	if (
 		projectState.value !== ProjectState.Personal &&
 		projectState.value !== ProjectState.SharedPersonal &&
-		props.resource.homeProject?.id &&
+		homeProject.value?.id &&
 		props.resourceType === ResourceType.Workflow
 	) {
 		return {
 			name: VIEWS.PROJECTS_WORKFLOWS,
-			params: { projectId: props.resource.homeProject.id },
+			params: { projectId: homeProject.value?.id },
 		};
 	}
 	return null;
@@ -176,6 +184,27 @@ const projectLocation = computed(() => {
 			</template>
 		</N8nTooltip>
 		<slot />
+
+		<N8nTooltip v-if="global" placement="top">
+			<div
+				:class="$style['global-badge']"
+				data-test-id="credential-global-badge"
+				theme="tertiary"
+				bold
+			>
+				<ProjectIcon :icon="{ type: 'icon', value: 'globe' }" :border-less="true" size="mini" />
+				{{ i18n.baseText('projects.badge.global') }}
+			</div>
+			<template #content>
+				{{
+					i18n.baseText('projects.badge.tooltip.global', {
+						interpolate: {
+							resourceTypeLabel: props.resourceTypeLabel,
+						},
+					})
+				}}
+			</template>
+		</N8nTooltip>
 		<N8nTooltip
 			v-if="numberOfMembersInHomeTeamProject"
 			:disabled="!badgeTooltip || numberOfMembersInHomeTeamProject === 0"
@@ -230,6 +259,13 @@ const projectLocation = computed(() => {
 	color: var(--color--text);
 	border-left: var(--border);
 	line-height: var(--line-height--md);
+}
+
+.global-badge {
+	composes: count-badge;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
 }
 
 .nowrap {

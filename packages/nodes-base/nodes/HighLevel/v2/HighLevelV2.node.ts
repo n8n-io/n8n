@@ -62,6 +62,9 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'HighLevel',
 	},
+	builderHint: {
+		message: 'To add notes to contacts, set additionalFields.notes',
+	},
 	usableAsTool: true,
 	inputs: [NodeConnectionTypes.Main],
 	outputs: [NodeConnectionTypes.Main],

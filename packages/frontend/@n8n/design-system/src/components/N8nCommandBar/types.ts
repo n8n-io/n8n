@@ -10,4 +10,5 @@ export interface CommandBarItem {
 	children?: CommandBarItem[];
 	placeholder?: string;
 	hasMoreChildren?: boolean;
+	matchAnySearchTerm?: boolean;
 }

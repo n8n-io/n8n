@@ -1,4 +1,4 @@
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Head, Post, RootLevelController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -30,6 +30,7 @@ export class McpController {
 		private readonly mcpService: McpService,
 		private readonly mcpSettingsService: McpSettingsService,
 		private readonly telemetry: Telemetry,
+		private readonly logger: Logger,
 	) {}
 
 	// Add CORS headers helper
@@ -67,7 +68,7 @@ export class McpController {
 	}
 
 	@Post('/http', {
-		rateLimit: { limit: 100 },
+		ipRateLimit: { limit: 100 },
 		middlewares: [getAuthMiddleware()],
 		skipAuth: true,
 		usesTemplates: true,
@@ -77,7 +78,9 @@ export class McpController {
 		this.setCorsHeaders(res);
 
 		const body = req.body;
+		this.logger.debug('MCP Request', { body });
 		const isInitializationRequest = isJSONRPCRequest(body) ? body.method === 'initialize' : false;
+		const isToolCallRequest = isJSONRPCRequest(body) ? body.method === 'toolCall' : false;
 		const clientInfo = getClientInfo(req);
 
 		const telemetryPayload: Partial<UserConnectedToMCPEventPayload> = {
@@ -105,8 +108,11 @@ export class McpController {
 		// to ensure complete isolation. A single instance would cause request ID collisions
 		// when multiple clients connect concurrently.
 		try {
-			const server = this.mcpService.getServer(req.user);
-			const transport: StreamableHTTPServerTransport = new StreamableHTTPServerTransport({
+			const { StreamableHTTPServerTransport } = await import(
+				'@modelcontextprotocol/sdk/server/streamableHttp.js'
+			);
+			const server = await this.mcpService.getServer(req.user);
+			const transport = new StreamableHTTPServerTransport({
 				sessionIdGenerator: undefined,
 			});
 			res.on('close', () => {
@@ -120,6 +126,8 @@ export class McpController {
 					...telemetryPayload,
 					mcp_connection_status: 'success',
 				});
+			} else if (isToolCallRequest) {
+				this.logger.debug('MCP Tool Call request', body);
 			}
 		} catch (error) {
 			this.errorReporter.error(error);

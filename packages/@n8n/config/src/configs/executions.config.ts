@@ -39,6 +39,22 @@ class QueueRecoveryConfig {
 	batchSize: number = 100;
 }
 
+@Config
+class RecoveryConfig {
+	/**
+	 * Number of last executions to check when determining if a workflow should be deactivated
+	 * when all of the last N executions have crashed.
+	 */
+	@Env('N8N_WORKFLOW_AUTODEACTIVATION_MAX_LAST_EXECUTIONS')
+	maxLastExecutions: number = 3;
+
+	/**
+	 * Whether to automatically deactivate workflows that have all their last executions crashed.
+	 */
+	@Env('N8N_WORKFLOW_AUTODEACTIVATION_ENABLED')
+	workflowDeactivationEnabled: boolean = false;
+}
+
 const executionModeSchema = z.enum(['regular', 'queue']);
 
 export type ExecutionMode = z.infer<typeof executionModeSchema>;
@@ -57,7 +73,7 @@ export class ExecutionsConfig {
 	@Env('EXECUTIONS_TIMEOUT')
 	timeout: number = -1;
 
-	/** How long (seconds) a workflow execution may run for at most. */
+	/** Upper bound in seconds for execution timeout. Default: 1 hour. */
 	@Env('EXECUTIONS_TIMEOUT_MAX')
 	maxTimeout: number = 3600; // 1h
 
@@ -92,6 +108,9 @@ export class ExecutionsConfig {
 
 	@Nested
 	queueRecovery: QueueRecoveryConfig;
+
+	@Nested
+	recovery: RecoveryConfig;
 
 	/** Whether to save execution data for failed production executions. This default can be overridden at a workflow level. */
 	@Env('EXECUTIONS_DATA_SAVE_ON_ERROR')

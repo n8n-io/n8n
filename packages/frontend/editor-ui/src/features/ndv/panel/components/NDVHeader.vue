@@ -39,7 +39,7 @@ function onRename(newNodeName: string) {
 				:node-name="props.nodeTypeName"
 				:show-tooltip="true"
 			/>
-			<div :class="$style.title">
+			<div :class="$style.title" data-test-id="node-title-container">
 				<N8nInlineTextEdit
 					:model-value="nodeName"
 					:min-width="0"
@@ -65,9 +65,8 @@ function onRename(newNodeName: string) {
 					{{ i18n.baseText('ndv.close.tooltip') }}
 				</template>
 				<N8nIconButton
+					variant="ghost"
 					icon="x"
-					type="tertiary"
-					text
 					data-test-id="ndv-close-button"
 					@click="emit('close')"
 				/>

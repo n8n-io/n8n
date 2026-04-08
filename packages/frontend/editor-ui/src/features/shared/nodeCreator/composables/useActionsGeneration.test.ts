@@ -1,10 +1,14 @@
 import { NodeConnectionTypes, type INodeProperties, type INodeTypeDescription } from 'n8n-workflow';
 import { useActionsGenerator } from './useActionsGeneration';
 import { usePostHog } from '@/app/stores/posthog.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
+import { SIMPLE_MEMORY_NODE_TYPE } from '@/app/constants';
+import { mockedStore } from '@/__tests__/utils';
 
 let posthogStore: ReturnType<typeof usePostHog>;
+let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 
 describe('useActionsGenerator', () => {
 	const { generateMergedNodesAndActions } = useActionsGenerator();
@@ -32,6 +36,10 @@ describe('useActionsGenerator', () => {
 
 		posthogStore = usePostHog();
 		vi.spyOn(posthogStore, 'isVariantEnabled').mockReturnValue(true);
+
+		settingsStore = mockedStore(useSettingsStore);
+		settingsStore.isQueueModeEnabled = false;
+		settingsStore.isMultiMain = false;
 	});
 
 	describe('App actions for resource category', () => {
@@ -397,6 +405,71 @@ describe('useActionsGenerator', () => {
 					}),
 				],
 			});
+		});
+	});
+
+	describe('Simple Memory node filtering', () => {
+		const simpleMemoryNode: INodeTypeDescription = {
+			name: SIMPLE_MEMORY_NODE_TYPE,
+			displayName: 'Simple Memory',
+			description: 'Stores in n8n memory',
+			defaultVersion: 1,
+			version: 1,
+			group: ['transform'],
+			defaults: {
+				name: 'Simple Memory',
+			},
+			inputs: [],
+			outputs: [NodeConnectionTypes.AiMemory],
+			properties: [],
+		};
+
+		const regularNode: INodeTypeDescription = {
+			name: 'n8n-nodes-base.regularNode',
+			displayName: 'Regular Node',
+			description: 'A regular node',
+			defaultVersion: 1,
+			version: 1,
+			group: ['output'],
+			defaults: {
+				name: 'Regular Node',
+			},
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+			properties: [],
+		};
+
+		it('should include Simple Memory node in regular mode', () => {
+			settingsStore.isQueueModeEnabled = false;
+			settingsStore.isMultiMain = false;
+
+			const { mergedNodes } = generateMergedNodesAndActions([simpleMemoryNode, regularNode], []);
+
+			const nodeNames = mergedNodes.map((n) => n.name);
+			expect(nodeNames).toContain(SIMPLE_MEMORY_NODE_TYPE);
+			expect(nodeNames).toContain('n8n-nodes-base.regularNode');
+		});
+
+		it('should filter out Simple Memory node when queue mode is enabled', () => {
+			settingsStore.isQueueModeEnabled = true;
+			settingsStore.isMultiMain = false;
+
+			const { mergedNodes } = generateMergedNodesAndActions([simpleMemoryNode, regularNode], []);
+
+			const nodeNames = mergedNodes.map((n) => n.name);
+			expect(nodeNames).not.toContain(SIMPLE_MEMORY_NODE_TYPE);
+			expect(nodeNames).toContain('n8n-nodes-base.regularNode');
+		});
+
+		it('should filter out Simple Memory node when multi-main is enabled', () => {
+			settingsStore.isQueueModeEnabled = false;
+			settingsStore.isMultiMain = true;
+
+			const { mergedNodes } = generateMergedNodesAndActions([simpleMemoryNode, regularNode], []);
+
+			const nodeNames = mergedNodes.map((n) => n.name);
+			expect(nodeNames).not.toContain(SIMPLE_MEMORY_NODE_TYPE);
+			expect(nodeNames).toContain('n8n-nodes-base.regularNode');
 		});
 	});
 });
