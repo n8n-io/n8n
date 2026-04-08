@@ -1,11 +1,12 @@
 <script lang="ts" setup>
-import { computed, ref, onUnmounted } from 'vue';
+import { computed, ref, onUnmounted, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { N8nButton, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import MacOsIcon from '../assets/os-icons/macos-icon.svg';
 import WindowsIcon from '../assets/os-icons/windows-icon.svg';
@@ -17,6 +18,7 @@ const router = useRouter();
 const i18n = useI18n();
 const uiStore = useUIStore();
 const pushConnectionStore = usePushConnectionStore();
+const telemetry = useTelemetry();
 const instanceAiSettingsStore = useInstanceAiSettingsStore();
 
 const choice = ref<'enable' | 'disable' | null>(null);
@@ -78,6 +80,11 @@ async function selectChoice(value: 'enable' | 'disable') {
 }
 
 function dismiss() {
+	telemetry.track('n8n Agent opt-in modal dismissed', {
+		step: step?.value,
+		choice: choice?.value,
+		gatewayConnected: instanceAiSettingsStore?.isGatewayConnected,
+	});
 	uiStore.closeModal(props.modalName);
 }
 
@@ -86,9 +93,18 @@ function goToGatewayStep() {
 	pushConnectionStore.pushConnect();
 	void instanceAiSettingsStore.fetchSetupCommand();
 	instanceAiSettingsStore.startGatewayPushListener();
+	telemetry.track('n8n Agent opt-in modal gateway step entered', {
+		choice: choice.value,
+	});
 }
 
 function onGatewayStepCompleted() {
+	telemetry.track('n8n Agent opt-in modal gateway step completed', {
+		choice: choice?.value,
+		gatewayConnected: instanceAiSettingsStore?.isGatewayConnected,
+		skipped: !instanceAiSettingsStore?.isGatewayConnected,
+		selectedOs: selectedOs.value,
+	});
 	dismiss();
 	if (isEnabled.value) {
 		void router.push('/instance-ai');
@@ -96,6 +112,10 @@ function onGatewayStepCompleted() {
 }
 
 function onStep1Confirm() {
+	telemetry.track('n8n Agent opt-in modal choice confirmed', {
+		choice: choice?.value,
+		enabled: isEnabled?.value,
+	});
 	void instanceAiSettingsStore.persistOptinModalDismissed();
 	if (isEnabled.value) {
 		goToGatewayStep();
@@ -116,6 +136,10 @@ async function copyCommand() {
 		// Ignore clipboard errors
 	}
 }
+
+onMounted(() => {
+	telemetry.track('n8n Agent opt-in modal shown');
+});
 
 onUnmounted(() => {
 	instanceAiSettingsStore.stopGatewayPushListener();
