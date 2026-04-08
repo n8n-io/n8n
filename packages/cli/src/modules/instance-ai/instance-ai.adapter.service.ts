@@ -1035,6 +1035,66 @@ export class InstanceAiAdapterService {
 
 				return results;
 			},
+
+			async getAccountContext(credentialId: string) {
+				const credential = await credentialsFinderService.findCredentialForUser(
+					credentialId,
+					user,
+					['credential:read'],
+				);
+
+				if (!credential) {
+					return { accountIdentifier: undefined };
+				}
+
+				const mask = (id: string): string => {
+					const atIdx = id.indexOf('@');
+					if (atIdx > 0) {
+						const local = id.slice(0, atIdx);
+						const domain = id.slice(atIdx);
+						const keep = Math.min(2, local.length);
+						return local.slice(0, keep) + '***' + domain;
+					}
+					if (id.length <= 3) return id;
+					return id.slice(0, 2) + '***' + id.slice(-1);
+				};
+
+				try {
+					// Use redacted decryption first — accountIdentifier is not a
+					// password field so it survives redaction. This avoids exposing
+					// the full secret payload (tokens, keys) in memory.
+					const redacted = credentialsService.decrypt(credential, false);
+
+					if (typeof redacted.accountIdentifier === 'string' && redacted.accountIdentifier) {
+						return { accountIdentifier: mask(redacted.accountIdentifier) };
+					}
+
+					for (const key of ['email', 'user', 'username', 'account', 'serviceAccountEmail']) {
+						const value = redacted[key];
+						if (typeof value === 'string' && value) {
+							return { accountIdentifier: mask(value) };
+						}
+					}
+
+					// Fallback for legacy credentials: oauthTokenData is blanked by
+					// redaction, so we need unredacted access here only.
+					const raw = credentialsService.decrypt(credential, true);
+					const tokenData = raw.oauthTokenData;
+					if (tokenData && typeof tokenData === 'object') {
+						const { OauthService } = await import('@/oauth/oauth.service');
+						const identifier = OauthService.extractAccountIdentifier(
+							tokenData as Record<string, unknown>,
+						);
+						if (identifier) {
+							return { accountIdentifier: mask(identifier) };
+						}
+					}
+
+					return { accountIdentifier: undefined };
+				} catch {
+					return { accountIdentifier: undefined };
+				}
+			},
 		};
 	}
 
