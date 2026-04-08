@@ -50,6 +50,10 @@ export function createUpdateDataTableRowsTool(context: InstanceAiContext) {
 				| undefined;
 			const suspend = ctx?.agent?.suspend;
 
+			if (context.permissions?.mutateDataTableRows === 'blocked') {
+				return { denied: true, reason: 'Action blocked by admin' };
+			}
+
 			const needsApproval = context.permissions?.mutateDataTableRows !== 'always_allow';
 
 			// State 1: First call — suspend for confirmation (unless always_allow)

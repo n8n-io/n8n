@@ -18,6 +18,10 @@ jest.mock('@n8n/instance-ai', () => ({
 	})),
 }));
 
+jest.mock('../eval/execution.service', () => ({
+	EvalExecutionService: jest.fn(),
+}));
+
 import type {
 	InstanceAiSendMessageRequest,
 	InstanceAiCorrectTaskRequest,
@@ -48,6 +52,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { Push } from '@/push';
 
+import type { EvalExecutionService } from '../eval/execution.service';
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
@@ -85,6 +90,7 @@ describe('InstanceAiController', () => {
 		instanceAiService,
 		memoryService,
 		settingsService,
+		mock<EvalExecutionService>(),
 		eventBus,
 		moduleRegistry,
 		push,
@@ -774,7 +780,7 @@ describe('InstanceAiController', () => {
 
 			expect(result).toEqual({
 				token: 'pairing-token',
-				command: 'npx @n8n/fs-proxy http://localhost:5678 pairing-token',
+				command: 'npx @n8n/computer-use http://localhost:5678 pairing-token',
 			});
 			expect(instanceAiService.generatePairingToken).toHaveBeenCalledWith(USER_ID);
 		});

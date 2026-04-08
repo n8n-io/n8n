@@ -58,17 +58,16 @@ function getFilesystemSection(
 				? capabilityLines.join('\n')
 				: '- Local machine access capabilities';
 		return `
-## Local Gateway (Not Connected)
+## Computer Use (Not Connected)
 
-A **Local Gateway** can connect this n8n instance to the user's local machine, providing:
+A **Computer Use** can connect this n8n instance to the user's local machine, providing:
 ${capList}
 
 The gateway is not currently connected. When the user asks for something that requires local machine access (reading files, browsing, etc.), let them know they can connect by either:
 
-1. **Download the Local Gateway app** — https://n8n.io/downloads/local-gateway
-2. **Or run via CLI:** \`npx @n8n/fs-proxy serve\`
+1. **Run via CLI:** \`npx @n8n/computer-use serve\`
 
-Do NOT attempt to use filesystem tools — they are not available until the gateway connects.`;
+Do NOT attempt to use Computer Use tools — they are not available until the gateway connects.`;
 	}
 
 	if (filesystemAccess) {
@@ -96,7 +95,7 @@ function getBrowserSection(
 
 ## Browser Automation (Unavailable)
 
-Browser tools require a connected Local Gateway. They are not available until the gateway connects.`;
+Browser tools require a connected Computer Use. They are not available until your computer connects.`;
 		}
 		return '';
 	}

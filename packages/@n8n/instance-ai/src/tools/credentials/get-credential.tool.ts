@@ -17,8 +17,6 @@ export function createGetCredentialTool(context: InstanceAiContext) {
 			id: z.string(),
 			name: z.string(),
 			type: z.string(),
-			createdAt: z.string(),
-			updatedAt: z.string(),
 			nodesWithAccess: z.array(z.object({ nodeType: z.string() })).optional(),
 		}),
 		execute: async (inputData: z.infer<typeof getCredentialInputSchema>) => {

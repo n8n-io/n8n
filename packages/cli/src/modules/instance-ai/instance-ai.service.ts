@@ -466,7 +466,7 @@ export class InstanceAiService {
 	}
 
 	isEnabled(): boolean {
-		return !!this.instanceAiConfig.model;
+		return this.settingsService.isAgentEnabled() && !!this.instanceAiConfig.model;
 	}
 
 	/** Local filesystem is only available when an explicit base path is configured. */

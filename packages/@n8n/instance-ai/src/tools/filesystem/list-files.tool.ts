@@ -76,6 +76,16 @@ export function createListFilesTool(context: InstanceAiContext) {
 				| z.infer<typeof listFilesResumeSchema>
 				| undefined;
 			const suspend = ctx?.agent?.suspend;
+			if (context.permissions?.readFilesystem === 'blocked') {
+				return {
+					files: [],
+					truncated: false,
+					totalCount: 0,
+					denied: true,
+					reason: 'Action blocked by admin',
+				};
+			}
+
 			const needsApproval = context.permissions?.readFilesystem !== 'always_allow';
 
 			if (needsApproval && (resumeData === undefined || resumeData === null)) {

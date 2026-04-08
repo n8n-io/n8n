@@ -50,6 +50,10 @@ export function createGetFileTreeTool(context: InstanceAiContext) {
 				| z.infer<typeof getFileTreeResumeSchema>
 				| undefined;
 			const suspend = ctx?.agent?.suspend;
+			if (context.permissions?.readFilesystem === 'blocked') {
+				return { tree: '', truncated: false, denied: true, reason: 'Action blocked by admin' };
+			}
+
 			const needsApproval = context.permissions?.readFilesystem !== 'always_allow';
 
 			if (needsApproval && (resumeData === undefined || resumeData === null)) {
