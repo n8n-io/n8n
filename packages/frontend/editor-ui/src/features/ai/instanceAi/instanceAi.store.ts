@@ -445,7 +445,9 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 
 		eventSource.onmessage = (ev: MessageEvent) => {
 			// Guard: discard events from stale connections or wrong threads
-			if (gen !== sseGeneration || capturedThreadId !== currentThreadId.value) return;
+			if (gen !== sseGeneration || capturedThreadId !== currentThreadId.value) {
+				return;
+			}
 			onSSEMessage(ev);
 		};
 
@@ -689,6 +691,15 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	): Promise<void> {
 		// Clear amend context on new message
 		amendContext.value = null;
+
+		// Ensure SSE is connected before sending. Vue's Suspense boundary can
+		// unmount → remount InstanceAiView during layout transitions, which closes
+		// the SSE connection via onUnmounted. If the user sends a message before
+		// the remounted component's async connectSSE() fires, the response events
+		// would be lost. Re-establish the connection here as a safety net.
+		if (sseState.value === 'disconnected') {
+			connectSSE();
+		}
 
 		try {
 			await syncThread(currentThreadId.value);

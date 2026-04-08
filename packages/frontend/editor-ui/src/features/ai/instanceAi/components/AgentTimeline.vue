@@ -1,17 +1,18 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
 import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
+import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
-import AgentSection from './AgentSection.vue';
-import ArtifactCard from './ArtifactCard.vue';
-import ToolCallStep from './ToolCallStep.vue';
-import DelegateCard from './DelegateCard.vue';
-import TaskChecklist from './TaskChecklist.vue';
-import AnsweredQuestions from './AnsweredQuestions.vue';
-import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { computed } from 'vue';
 import { extractArtifacts, type ArtifactInfo } from '../agentTimeline.utils';
+import { useInstanceAiStore } from '../instanceAi.store';
+import AgentSection from './AgentSection.vue';
+import AnsweredQuestions from './AnsweredQuestions.vue';
+import ArtifactCard from './ArtifactCard.vue';
+import DelegateCard from './DelegateCard.vue';
+import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
+import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
+import TaskChecklist from './TaskChecklist.vue';
+import ToolCallStep from './ToolCallStep.vue';
 
 const i18n = useI18n();
 const store = useInstanceAiStore();
@@ -115,12 +116,9 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 	<div :class="$style.timeline">
 		<template v-for="(entry, idx) in props.agentNode.timeline" :key="idx">
 			<!-- Text segment -->
-			<div
-				v-if="entry.type === 'text'"
-				:class="[$style.textContent, props.compact && $style.compactText]"
-			>
+			<N8nText v-if="entry.type === 'text'" size="large" :compact="props.compact">
 				<InstanceAiMarkdown :content="entry.content" />
-			</div>
+			</N8nText>
 
 			<!-- Tool call (skip internal tools like updateWorkingMemory) -->
 			<template
@@ -196,18 +194,8 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 
 <style lang="scss" module>
 .timeline {
-	width: 100%;
-}
-
-.textContent {
-	font-size: var(--font-size--md);
-	line-height: var(--line-height--xl);
-	color: var(--color--text--shade-1);
-	margin-bottom: var(--spacing--xs);
-}
-
-.compactText {
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
 }
 </style>
