@@ -237,10 +237,26 @@ export class InstanceAiMemoryService {
 	}
 
 	async renameThread(threadId: string, title: string): Promise<InstanceAiThreadInfo> {
+		return await this.updateThread(threadId, { title });
+	}
+
+	async updateThread(
+		threadId: string,
+		updates: { title?: string; metadata?: Record<string, unknown> },
+	): Promise<InstanceAiThreadInfo> {
 		const memory = this.createMemoryInstance();
 		const updated = await patchThread(memory, {
 			threadId,
-			update: ({ metadata }) => ({ title, metadata: { ...metadata, titleRefined: true } }),
+			update: ({ metadata }) => {
+				const patch: { title?: string; metadata: Record<string, unknown> } = {
+					metadata: { ...metadata, ...updates.metadata },
+				};
+				if (updates.title !== undefined) {
+					patch.title = updates.title;
+					patch.metadata.titleRefined = true;
+				}
+				return patch;
+			},
 		});
 		if (!updated) {
 			throw new NotFoundError(`Thread ${threadId} not found`);

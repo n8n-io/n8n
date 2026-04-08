@@ -454,7 +454,10 @@ export class InstanceAiController {
 		@Body payload: InstanceAiRenameThreadRequestDto,
 	) {
 		await this.assertThreadAccess(req.user.id, threadId);
-		const thread = await this.memoryService.renameThread(threadId, payload.title);
+		const thread = await this.memoryService.updateThread(threadId, {
+			title: payload.title,
+			metadata: payload.metadata,
+		});
 		return { thread };
 	}
 

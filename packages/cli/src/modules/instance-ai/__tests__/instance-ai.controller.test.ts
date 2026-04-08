@@ -583,13 +583,16 @@ describe('InstanceAiController', () => {
 		it('should rename thread', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 			const threadObj = mock<InstanceAiThreadInfo>();
-			memoryService.renameThread.mockResolvedValue(threadObj);
+			memoryService.updateThread.mockResolvedValue(threadObj);
 			const payload = mock<InstanceAiRenameThreadRequestDto>({ title: 'New Title' });
 
 			const result = await controller.renameThread(req, res, THREAD_ID, payload);
 
 			expect(result).toEqual({ thread: threadObj });
-			expect(memoryService.renameThread).toHaveBeenCalledWith(THREAD_ID, 'New Title');
+			expect(memoryService.updateThread).toHaveBeenCalledWith(
+				THREAD_ID,
+				expect.objectContaining({ title: 'New Title' }),
+			);
 		});
 	});
 

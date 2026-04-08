@@ -30,6 +30,7 @@ import {
 	fetchThreadStatus as fetchThreadStatusApi,
 	deleteThread as deleteThreadApi,
 	renameThread as renameThreadApi,
+	updateThreadMetadata as updateThreadMetadataApi,
 } from './instanceAi.memory.api';
 import { handleEvent as reduceEvent, rebuildRunStateFromTree } from './instanceAi.reducer';
 import { useResourceRegistry } from './useResourceRegistry';
@@ -596,6 +597,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				id: t.id,
 				title: t.title || NEW_CONVERSATION_TITLE,
 				createdAt: t.createdAt,
+				metadata: t.metadata ?? undefined,
 			}));
 			threads.value = [...localOnly, ...serverThreads];
 		} catch {
@@ -952,6 +954,25 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
+	function getThreadMetadata(threadId: string): Record<string, unknown> | undefined {
+		return threads.value.find((t) => t.id === threadId)?.metadata;
+	}
+
+	async function updateThreadMetadata(
+		threadId: string,
+		metadata: Record<string, unknown>,
+	): Promise<void> {
+		// Optimistic update
+		const thread = threads.value.find((t) => t.id === threadId);
+		if (thread) {
+			thread.metadata = { ...thread.metadata, ...metadata };
+		}
+
+		if (persistedThreadIds.has(threadId)) {
+			await updateThreadMetadataApi(rootStore.restApiContext, threadId, metadata);
+		}
+	}
+
 	return {
 		// State
 		currentThreadId,
@@ -988,6 +1009,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		newThread,
 		deleteThread,
 		renameThread,
+		getThreadMetadata,
+		updateThreadMetadata,
 		switchThread,
 		loadThreads,
 		loadHistoricalMessages,
