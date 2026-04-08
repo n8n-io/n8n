@@ -47,7 +47,7 @@ export class IsolatePool {
 		}
 
 		if (this.bridges.length === 0) {
-			throw new Error('IsolatePool failed to create any bridges');
+			throw new IsolateError('IsolatePool failed to create any bridges');
 		}
 	}
 
