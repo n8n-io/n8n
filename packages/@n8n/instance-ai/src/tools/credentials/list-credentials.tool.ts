@@ -12,7 +12,7 @@ export function createListCredentialsTool(context: InstanceAiContext) {
 		id: 'list-credentials',
 		description:
 			'List credentials accessible to the current user. Never exposes secret data. ' +
-			'Returns an accountIdentifier (e.g. email address) when available, so you know which account each credential is connected to.',
+			'Returns a masked accountIdentifier (e.g. "al***@gmail.com") when available, so you know which account each credential is connected to.',
 		inputSchema: listCredentialsInputSchema,
 		outputSchema: z.object({
 			credentials: z.array(
