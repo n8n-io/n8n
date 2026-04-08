@@ -21,7 +21,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	pushConnectionStore.pushDisconnect();
-	if (!wasCollapsed) {
+	if (isCollapsed.value !== wasCollapsed) {
 		toggleCollapse();
 	}
 });
