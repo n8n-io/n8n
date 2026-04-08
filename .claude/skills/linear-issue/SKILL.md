@@ -162,7 +162,7 @@ Provide the T-shirt size along with a brief justification explaining the key fac
 - [ ] Fetched ALL linked GitHub issues/PRs via `gh` CLI
 - [ ] Listed all comments on the issue
 - [ ] Checked whether the issue is node-specific and looked up popularity if so
-- [ ] Assessed effort/complexity with T-shirt sizeCollapse commentComment on lines L153 to L159DawidMyslak commented on Apr 8, 2026 DawidMyslakon Apr 8, 2026ContributorMore actionsFinal check @krisn0x, any reason we dropped it?ReactWrite a replyResolve comment
+- [ ] Assessed effort/complexity with T-shirt size
 
 After gathering all context, present a comprehensive summary including:
 
