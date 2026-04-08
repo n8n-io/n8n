@@ -29,6 +29,7 @@ import { useCanvasPreview } from './useCanvasPreview';
 import { useEventRelay } from './useEventRelay';
 import { useExecutionPushEvents } from './useExecutionPushEvents';
 import { INSTANCE_AI_SETTINGS_VIEW, NEW_CONVERSATION_TITLE } from './constants';
+import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS } from './emptyStateSuggestions';
 import InstanceAiMessage from './components/InstanceAiMessage.vue';
 import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiEmptyState from './components/InstanceAiEmptyState.vue';
@@ -102,6 +103,7 @@ watch(
 	},
 );
 const showCreditBanner = computed(() => store.isLowCredits && !creditBannerDismissed.value);
+const showEmptyStateLayout = computed(() => !store.hasMessages && !store.isHydratingThread);
 
 // Load persisted threads from Mastra storage on mount
 onMounted(() => {
@@ -279,6 +281,14 @@ const routeThreadId = computed(() =>
 	typeof route.params.threadId === 'string' ? route.params.threadId : null,
 );
 
+function reconnectThreadIfHydrationApplied(threadId: string): void {
+	void store.loadHistoricalMessages(threadId).then((hydrationStatus) => {
+		if (hydrationStatus === 'stale') return;
+		void store.loadThreadStatus(threadId);
+		store.connectSSE(threadId);
+	});
+}
+
 watch(
 	routeThreadId,
 	(threadId) => {
@@ -292,10 +302,7 @@ watch(
 				});
 			}
 			if (store.sseState === 'disconnected') {
-				void store.loadHistoricalMessages(store.currentThreadId).then(() => {
-					void store.loadThreadStatus(store.currentThreadId);
-					store.connectSSE();
-				});
+				reconnectThreadIfHydrationApplied(store.currentThreadId);
 			}
 			return;
 		}
@@ -303,10 +310,7 @@ watch(
 			// Re-entering the same thread (e.g. after navigating away and back) —
 			// SSE was closed on unmount, reconnect if needed.
 			if (store.sseState === 'disconnected') {
-				void store.loadHistoricalMessages(threadId).then(() => {
-					void store.loadThreadStatus(threadId);
-					store.connectSSE();
-				});
+				reconnectThreadIfHydrationApplied(threadId);
 			}
 			return;
 		}
@@ -429,7 +433,7 @@ function handleStop() {
 			<div :class="$style.contentArea">
 				<div :class="$style.chatContent">
 					<!-- Empty state: centered layout -->
-					<div v-if="!store.hasMessages" :class="$style.emptyLayout">
+					<div v-if="showEmptyStateLayout" :class="$style.emptyLayout">
 						<InstanceAiEmptyState />
 						<div :class="$style.centeredInput">
 							<InstanceAiStatusBar />
@@ -443,6 +447,7 @@ function handleStop() {
 							<InstanceAiInput
 								ref="chatInputRef"
 								:is-streaming="store.isStreaming"
+								:suggestions="INSTANCE_AI_EMPTY_STATE_SUGGESTIONS"
 								@submit="handleSubmit"
 								@stop="handleStop"
 							/>
