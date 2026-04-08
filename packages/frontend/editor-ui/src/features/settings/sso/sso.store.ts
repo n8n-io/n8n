@@ -132,9 +132,12 @@ export const useSSOStore = defineStore('sso', () => {
 
 	const isEnterpriseOidcEnabled = ref(false);
 
+	const oidcConfiguredByEnv = ref(false);
+
 	const getOidcConfig = async () => {
 		const config = await ssoApi.getOidcConfig(rootStore.restApiContext);
 		oidcConfig.value = config;
+		oidcConfiguredByEnv.value = config.configuredByEnv ?? false;
 		return config;
 	};
 
@@ -224,6 +227,7 @@ export const useSSOStore = defineStore('sso', () => {
 
 		oidc,
 		oidcConfig,
+		oidcConfiguredByEnv,
 		isOidcLoginEnabled,
 		isEnterpriseOidcEnabled,
 		isDefaultAuthenticationOidc,

@@ -503,6 +503,13 @@ describe('GlobalConfig', () => {
 			ownerFirstName: 'Instance',
 			ownerLastName: 'Owner',
 			ownerPasswordHash: '',
+			ssoManagedByEnv: false,
+			oidcClientId: '',
+			oidcClientSecret: '',
+			oidcDiscoveryEndpoint: '',
+			oidcLoginEnabled: false,
+			oidcPrompt: 'select_account',
+			oidcAcrValues: '',
 		},
 	} satisfies GlobalConfigShape;
 

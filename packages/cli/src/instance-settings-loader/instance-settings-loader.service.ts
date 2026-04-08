@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
+import { OidcInstanceSettingsLoader } from './loaders/oidc.instance-settings-loader';
 import { OwnerInstanceSettingsLoader } from './loaders/owner.instance-settings-loader';
 
 type LoaderResult = 'created' | 'skipped';
@@ -10,12 +11,14 @@ export class InstanceSettingsLoaderService {
 	constructor(
 		private logger: Logger,
 		private readonly ownerLoader: OwnerInstanceSettingsLoader,
+		private readonly oidcLoader: OidcInstanceSettingsLoader,
 	) {
 		this.logger = this.logger.scoped('instance-settings-loader');
 	}
 
 	async init(): Promise<void> {
 		await this.run('owner', async () => await this.ownerLoader.run());
+		await this.run('oidc', async () => await this.oidcLoader.run());
 	}
 
 	private async run(name: string, fn: () => Promise<LoaderResult>): Promise<void> {

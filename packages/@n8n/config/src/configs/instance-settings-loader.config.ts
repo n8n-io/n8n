@@ -26,4 +26,31 @@ export class InstanceSettingsLoaderConfig {
 	 */
 	@Env('N8N_INSTANCE_OWNER_PASSWORD_HASH')
 	ownerPasswordHash: string = '';
+
+	// --- SSO ---
+
+	/** When true, SSO connection config is read from env vars on every startup and the UI is locked. */
+	@Env('N8N_SSO_MANAGED_BY_ENV')
+	ssoManagedByEnv: boolean = false;
+
+	// --- OIDC ---
+
+	@Env('N8N_SSO_OIDC_CLIENT_ID')
+	oidcClientId: string = '';
+
+	@Env('N8N_SSO_OIDC_CLIENT_SECRET')
+	oidcClientSecret: string = '';
+
+	@Env('N8N_SSO_OIDC_DISCOVERY_ENDPOINT')
+	oidcDiscoveryEndpoint: string = '';
+
+	@Env('N8N_SSO_OIDC_LOGIN_ENABLED')
+	oidcLoginEnabled: boolean = false;
+
+	@Env('N8N_SSO_OIDC_PROMPT')
+	oidcPrompt: string = 'select_account';
+
+	/** Comma-separated ACR values (split into array before storing). */
+	@Env('N8N_SSO_OIDC_ACR_VALUES')
+	oidcAcrValues: string = '';
 }
