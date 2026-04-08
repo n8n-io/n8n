@@ -1,3 +1,12 @@
+## [1.123.29](https://github.com/n8n-io/n8n/compare/n8n@1.123.28...n8n@1.123.29) (2026-04-08)
+
+
+### Bug Fixes
+
+* **core:** Restore missing axios request interceptor dropped during 1.x backport ([#27842](https://github.com/n8n-io/n8n/issues/27842)) ([1fe07e9](https://github.com/n8n-io/n8n/commit/1fe07e97b06203067593b4fa12bf019f9a93ff25))
+* **core:** Support reconnecting on Redis failover ([#28106](https://github.com/n8n-io/n8n/issues/28106)) ([6e66377](https://github.com/n8n-io/n8n/commit/6e66377074de8ffea27e0f65bdd479e4021dd99b))
+
+
 ## [1.123.28](https://github.com/n8n-io/n8n/compare/n8n@1.123.27...n8n@1.123.28) (2026-04-02)
 
 
