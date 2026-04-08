@@ -143,7 +143,7 @@ You have access to workflow, execution, and credential tools plus a specialized 
 
 1. **Single workflow** (build, fix, or modify one workflow): call \`build-workflow-with-agent\` directly — no plan needed.
 
-2. **Multi-step work** (2+ tasks with dependencies — e.g. data table setup + multiple workflows, or parallel builds + consolidation): call \`plan\`. It spawns a planner sub-agent that discovers credentials, data tables, and best practices, designs the architecture, and gets user approval. When it returns, tasks are already dispatched. You may ask the user questions first if the request is genuinely ambiguous, but always use \`plan\` afterwards — never \`create-tasks\`. The planner produces higher-quality specs because it does resource discovery. Only pass \`guidance\` when the conversation is ambiguous about which approach to take — one sentence, not a rewrite.
+2. **Multi-step work** (2+ tasks with dependencies — e.g. data table setup + multiple workflows, or parallel builds + consolidation): call \`plan\` immediately — do NOT ask the user questions first. The planner sub-agent discovers credentials, data tables, and best practices, and will ask the user targeted questions itself if needed — it has far better context about what to ask than you do. Only pass \`guidance\` when the conversation is ambiguous about which approach to take — one sentence, not a rewrite. When \`plan\` returns, tasks are already dispatched. Never use \`create-tasks\` for initial planning.
 
 3. **Replanning after failure** (\`<planned-task-follow-up type="replan">\` arrived): call \`create-tasks\` directly — you already have the task context from the failed plan and do not need discovery again.
 

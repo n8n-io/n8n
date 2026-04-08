@@ -92,17 +92,18 @@ function handleRequestChanges() {
 				{{ i18n.baseText('instanceAi.planReview.title') }}
 			</span>
 			<span :class="$style.taskCount">{{ plannedTasks.length }} tasks</span>
-			<N8nBadge v-if="props.loading" theme="secondary" :class="$style.badgeRight">
+			<N8nBadge v-if="props.loading" theme="secondary" :class="$style.badgeRight" size="small">
 				{{ i18n.baseText('instanceAi.planReview.building') }}
 			</N8nBadge>
 			<N8nBadge
 				v-else-if="props.readOnly || resolvedAction === 'approved'"
 				theme="success"
 				:class="$style.badgeRight"
+				size="small"
 			>
 				{{ i18n.baseText('instanceAi.planReview.approved') }}
 			</N8nBadge>
-			<N8nBadge v-else-if="!isResolved" theme="warning" :class="$style.badgeRight">
+			<N8nBadge v-else-if="!isResolved" theme="warning" :class="$style.badgeRight" size="small">
 				{{ i18n.baseText('instanceAi.planReview.awaitingApproval') }}
 			</N8nBadge>
 		</div>
