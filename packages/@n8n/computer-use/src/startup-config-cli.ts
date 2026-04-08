@@ -51,7 +51,7 @@ export async function editPermissions(
 export async function promptFilesystemDir(currentDir: string): Promise<string> {
 	const defaultDir = currentDir || process.cwd();
 	const rawDir = await input({
-		message: 'Filesystem root directory',
+		message: 'AI working directory',
 		default: defaultDir,
 		validate: async (dir: string) => {
 			const resolved = nodePath.resolve(dir);
