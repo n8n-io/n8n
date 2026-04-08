@@ -107,7 +107,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getInlineExpressionEditorPreview() {
-		return this.getContainer().getByTestId('inline-expression-editor-output');
+		return this.page.getByTestId('inline-expression-editor-output');
 	}
 
 	async activateParameterExpressionEditor(parameterName: string) {
@@ -311,15 +311,15 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getAskAiCtaTooltipNoInputData() {
-		return this.getContainer().getByTestId('ask-ai-cta-tooltip-no-input-data');
+		return this.page.getByTestId('ask-ai-cta-tooltip-no-input-data');
 	}
 
 	getAskAiCtaTooltipNoPrompt() {
-		return this.getContainer().getByTestId('ask-ai-cta-tooltip-no-prompt');
+		return this.page.getByTestId('ask-ai-cta-tooltip-no-prompt');
 	}
 
 	getAskAiCtaTooltipPromptTooShort() {
-		return this.getContainer().getByTestId('ask-ai-cta-tooltip-prompt-too-short');
+		return this.page.getByTestId('ask-ai-cta-tooltip-prompt-too-short');
 	}
 
 	getCodeTabPanel() {
@@ -343,19 +343,19 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getPlaceholderText(text: string) {
-		return this.getContainer().getByText(text);
+		return this.page.getByText(text);
 	}
 
 	getHeyAiText() {
-		return this.getContainer().locator('text=Hey AI, generate JavaScript');
+		return this.page.locator('text=Hey AI, generate JavaScript');
 	}
 
 	getCodeGenerationCompletedText() {
-		return this.getContainer().locator('text=Code generation completed');
+		return this.page.locator('text=Code generation completed');
 	}
 
 	getErrorMessageText(message: string) {
-		return this.getContainer().locator(`text=${message}`);
+		return this.page.locator(`text=${message}`);
 	}
 
 	async setParameterDropdown(parameterName: string, optionText: string): Promise<void> {
@@ -446,19 +446,19 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getInlineExpressionEditorOutput() {
-		return this.getContainer().getByTestId('inline-expression-editor-output');
+		return this.page.getByTestId('inline-expression-editor-output');
 	}
 
 	getInlineExpressionEditorItemInput() {
-		return this.getContainer().getByTestId('inline-expression-editor-item-input').locator('input');
+		return this.page.getByTestId('inline-expression-editor-item-input').locator('input');
 	}
 
 	getInlineExpressionEditorItemPrevButton() {
-		return this.getContainer().getByTestId('inline-expression-editor-item-prev');
+		return this.page.getByTestId('inline-expression-editor-item-prev');
 	}
 
 	getInlineExpressionEditorItemNextButton() {
-		return this.getContainer().getByTestId('inline-expression-editor-item-next');
+		return this.page.getByTestId('inline-expression-editor-item-next');
 	}
 
 	async expressionSelectNextItem() {
