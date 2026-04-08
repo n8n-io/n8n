@@ -1824,6 +1824,7 @@ export async function executeResumableStream(
 		let pendingConfirmation: Promise<Record<string, unknown>> | undefined;
 		let confirmationEvent: ConfirmationRequestEvent | undefined;
 		let confirmationEventPublished = false;
+		let currentResponseId: string | undefined;
 		const llmStepRecords: LlmStepTraceRecord[] = [];
 		const syntheticToolRecords = new Map<string, SyntheticToolTraceRecord>();
 		options.llmStepTraceHooks?.startSegment();
@@ -1858,6 +1859,7 @@ export async function executeResumableStream(
 			} else if (isRecord(chunk) && chunk.type === 'step-start') {
 				const payload = getChunkPayload(chunk);
 				const messageId = typeof payload?.messageId === 'string' ? payload.messageId : undefined;
+				currentResponseId = messageId;
 				const request = payload?.request;
 				const stepTrace =
 					typeof messageId === 'string'
@@ -1898,7 +1900,12 @@ export async function executeResumableStream(
 				hasError = true;
 			}
 
-			const event = mapMastraChunkToEvent(options.context.runId, options.context.agentId, chunk);
+			const event = mapMastraChunkToEvent(
+				options.context.runId,
+				options.context.agentId,
+				chunk,
+				currentResponseId,
+			);
 			if (event) {
 				let shouldPublishEvent = true;
 

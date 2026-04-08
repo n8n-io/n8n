@@ -10,9 +10,9 @@ const props = defineProps<{
 	agentNode: InstanceAiAgentNode;
 }>();
 
-const isExpanded = ref(false);
-
 const isActive = computed(() => props.agentNode.status === 'active');
+const isExpanded = ref(isActive.value); // Start expanded if active, otherwise collapsed
+
 const isError = computed(() => props.agentNode.status === 'error');
 
 const sectionTitle = computed(

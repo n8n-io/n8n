@@ -4,8 +4,14 @@ import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useElementHover } from '@vueuse/core';
 import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
-import { computed, useTemplateRef } from 'vue';
+import { computed, toRef, useTemplateRef } from 'vue';
+import type { ArtifactInfo } from '../agentTimeline.utils';
+import { useInstanceAiStore } from '../instanceAi.store';
+import { useTimelineGrouping } from '../useTimelineGrouping';
 import AgentTimeline from './AgentTimeline.vue';
+import ArtifactCard from './ArtifactCard.vue';
+import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
+import ResponseGroup from './ResponseGroup.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -18,10 +24,33 @@ const props = withDefaults(
 );
 
 const i18n = useI18n();
+const store = useInstanceAiStore();
 
 const hasReasoning = computed(() => props.agentNode.reasoning.length > 0);
 const triggerRef = useTemplateRef<HTMLElement>('triggerRef');
 const isHovered = useElementHover(triggerRef);
+
+const hasActiveChildren = computed(() =>
+	props.agentNode.children.some((c) => c.status === 'active'),
+);
+
+const isCompleted = computed(
+	() =>
+		(props.agentNode.status === 'completed' || props.agentNode.status === 'error') &&
+		!hasActiveChildren.value,
+);
+
+const segments = useTimelineGrouping(toRef(props, 'agentNode'));
+
+/** Whether to show grouped/collapsed view (root + completed + grouping available). */
+const showGrouped = computed(() => props.isRoot && isCompleted.value && segments.value !== null);
+
+function resolveArtifactName(artifact: ArtifactInfo): string {
+	for (const entry of store.resourceRegistry.values()) {
+		if (entry.id === artifact.resourceId) return entry.name;
+	}
+	return artifact.name;
+}
 </script>
 
 <template>
@@ -45,8 +74,36 @@ const isHovered = useElementHover(triggerRef);
 		</CollapsibleContent>
 	</CollapsibleRoot>
 
-	<!-- Unified timeline renderer -->
-	<AgentTimeline :agent-node="props.agentNode" />
+	<!-- Completed with responseId grouping: collapsed response groups + artifacts + trailing text -->
+	<template v-if="showGrouped">
+		<template v-for="(segment, idx) in segments" :key="idx">
+			<ResponseGroup
+				v-if="segment.kind === 'response-group'"
+				:group="segment"
+				:agent-node="props.agentNode"
+			/>
+
+			<!-- Artifacts from child agents in this group, rendered in-place after the group -->
+			<template v-if="segment.kind === 'response-group' && segment.artifacts.length > 0">
+				<ArtifactCard
+					v-for="artifact in segment.artifacts"
+					:key="artifact.resourceId"
+					:type="artifact.type"
+					:name="resolveArtifactName(artifact)"
+					:resource-id="artifact.resourceId"
+					:project-id="artifact.projectId"
+				/>
+			</template>
+
+			<!-- Trailing text (the actual answer) — always visible -->
+			<N8nText v-if="segment.kind === 'trailing-text'" size="large">
+				<InstanceAiMarkdown :content="segment.content" />
+			</N8nText>
+		</template>
+	</template>
+
+	<!-- Active / no grouping available: show timeline directly -->
+	<AgentTimeline v-else :agent-node="props.agentNode" />
 </template>
 
 <style lang="scss" module>
