@@ -16,6 +16,7 @@ import {
 	validOptionsValues,
 	validRequiredParameters,
 } from '../validation-checks';
+import { workflowActuallyChanged } from '../workflow-actually-changed';
 
 // Minimal trigger node type for tests
 const triggerNodeType: INodeTypeDescription = {
@@ -958,6 +959,180 @@ describe('no_invalid_from_ai', () => {
 				],
 			}),
 			makeCtx(),
+		);
+		expect(result.pass).toBe(true);
+	});
+});
+
+describe('workflow_actually_changed', () => {
+	it('passes when there is no existing workflow', async () => {
+		const result = await workflowActuallyChanged.run(
+			makeWorkflow({
+				nodes: [
+					{ id: '1', name: 'Set', type: 'n8n-nodes-base.set', typeVersion: 3, position: [0, 0] },
+				],
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(true);
+		expect(result.comment).toContain('skipped');
+	});
+
+	it('fails when workflow is exaclty identical to original', async () => {
+		const existing = makeWorkflow({
+			nodes: [
+				{
+					id: '1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+				},
+				{ id: '2', name: 'Set', type: 'n8n-nodes-base.set', typeVersion: 3, position: [200, 0] },
+			],
+			connections: {
+				['Trigger']: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
+			},
+		});
+		const result = await workflowActuallyChanged.run(
+			existing,
+			makeCtx({ existingWorkflow: existing }),
+		);
+		expect(result.pass).toBe(false);
+	});
+
+	it('passes when a node was added', async () => {
+		const existing = makeWorkflow({
+			nodes: [
+				{
+					id: '1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+				},
+			],
+			connections: {},
+		});
+		const updated = makeWorkflow({
+			nodes: [
+				{
+					id: '1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+				},
+				{ id: '2', name: 'Set', type: 'n8n-nodes-base.set', typeVersion: 3, position: [200, 0] },
+			],
+			connections: {
+				['Trigger']: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
+			},
+		});
+		const result = await workflowActuallyChanged.run(
+			updated,
+			makeCtx({ existingWorkflow: existing }),
+		);
+		expect(result.pass).toBe(true);
+	});
+
+	it('passes when a node parameter changed', async () => {
+		const existing = makeWorkflow({
+			nodes: [
+				{
+					id: '1',
+					name: 'Set',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3,
+					position: [0, 0],
+					parameters: { value: 'existing' },
+				},
+			],
+		});
+		const updated = makeWorkflow({
+			nodes: [
+				{
+					id: '1',
+					name: 'Set',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3,
+					position: [0, 0],
+					parameters: { value: 'updated' },
+				},
+			],
+		});
+		const result = await workflowActuallyChanged.run(
+			updated,
+			makeCtx({ existingWorkflow: existing }),
+		);
+		expect(result.pass).toBe(true);
+	});
+
+	it('fails when only positions changed', async () => {
+		const existing = makeWorkflow({
+			nodes: [
+				{ id: '1', name: 'Set', type: 'n8n-nodes-base.set', typeVersion: 3, position: [0, 0] },
+			],
+		});
+		const updated = makeWorkflow({
+			nodes: [
+				{ id: '1', name: 'Set', type: 'n8n-nodes-base.set', typeVersion: 3, position: [500, 300] },
+			],
+		});
+		const result = await workflowActuallyChanged.run(
+			updated,
+			makeCtx({ existingWorkflow: existing }),
+		);
+		expect(result.pass).toBe(false);
+	});
+
+	it('fails when only the name of the workflow has changed', async () => {
+		const existing = makeWorkflow({
+			nodes: [
+				{ id: '1', name: 'Set', type: 'n8n-nodes-base.set', typeVersion: 3, position: [0, 0] },
+			],
+			name: 'existing',
+		});
+		const updated = makeWorkflow({
+			nodes: [
+				{ id: '1', name: 'Set', type: 'n8n-nodes-base.set', typeVersion: 3, position: [500, 300] },
+			],
+			name: 'updated',
+		});
+		const result = await workflowActuallyChanged.run(
+			updated,
+			makeCtx({ existingWorkflow: existing }),
+		);
+		expect(result.pass).toBe(false);
+	});
+
+	it('passes when connections changed', async () => {
+		const nodes = [
+			{
+				id: '1',
+				name: 'Trigger',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+			},
+			{ id: '2', name: 'SetA', type: 'n8n-nodes-base.set', typeVersion: 3, position: [200, 0] },
+			{ id: '3', name: 'SetB', type: 'n8n-nodes-base.set', typeVersion: 3, position: [400, 0] },
+		];
+		const existing = makeWorkflow({
+			nodes,
+			connections: {
+				['Trigger']: { main: [[{ node: 'SetA', type: 'main', index: 0 }]] },
+			},
+		});
+		const updated = makeWorkflow({
+			nodes,
+			connections: {
+				['Trigger']: { main: [[{ node: 'SetB', type: 'main', index: 0 }]] },
+			},
+		});
+		const result = await workflowActuallyChanged.run(
+			updated,
+			makeCtx({ existingWorkflow: existing }),
 		);
 		expect(result.pass).toBe(true);
 	});
