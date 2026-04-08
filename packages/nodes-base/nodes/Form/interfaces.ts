@@ -1,34 +1,54 @@
-export type FormField = {
-	fieldLabel: string;
-	fieldType: string;
-	requiredField: boolean;
-	fieldOptions?: { values: Array<{ option: string }> };
-	multiselect?: boolean;
-};
+import type { GenericValue } from 'n8n-workflow';
 
-export type FormTriggerInput = {
-	isSelect?: boolean;
-	isMultiSelect?: boolean;
-	isTextarea?: boolean;
-	isInput?: boolean;
-	labbel: string;
+export type FormField = {
 	id: string;
 	errorId: string;
-	type?: 'text' | 'number' | 'date';
+	label: string;
+	placeholder?: string;
 	inputRequired: 'form-required' | '';
+	type?: 'text' | 'number' | 'date' | 'email';
+	defaultValue: GenericValue;
+
+	isInput?: boolean;
+	isTextarea?: boolean;
+
+	isSelect?: boolean;
 	selectOptions?: string[];
+
+	isMultiSelect?: boolean;
+	radioSelect?: 'radio';
+	exactSelectedOptions?: number;
+	minSelectedOptions?: number;
+	maxSelectedOptions?: number;
 	multiSelectOptions?: Array<{ id: string; label: string }>;
+
+	isFileInput?: boolean;
+	acceptFileTypes?: string;
+	multipleFiles?: 'multiple' | '';
+
+	isHtml?: boolean;
+	html?: string;
+
+	isHidden?: boolean;
+	hiddenName?: string;
+	hiddenValue?: GenericValue;
 };
 
 export type FormTriggerData = {
 	testRun: boolean;
-	validForm: boolean;
 	formTitle: string;
 	formDescription?: string;
+	formDescriptionMetadata?: string;
+	formSubmittedHeader?: string;
 	formSubmittedText?: string;
 	redirectUrl?: string;
 	n8nWebsiteLink: string;
-	formFields: FormTriggerInput[];
+	formFields: FormField[];
 	useResponseData?: boolean;
 	appendAttribution?: boolean;
+	buttonLabel?: string;
+	dangerousCustomCss?: string;
+	authToken?: string;
 };
+
+export const FORM_TRIGGER_AUTHENTICATION_PROPERTY = 'authentication';

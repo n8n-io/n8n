@@ -1,0 +1,138 @@
+{
+    "type": "object",
+    "properties": {
+        "activeWorkspace": {
+            "type": "string"
+        },
+        "customFields": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "customFieldId": {
+                        "type": "string"
+                    },
+                    "customFieldName": {
+                        "type": "string"
+                    },
+                    "customFieldType": {
+                        "type": "string"
+                    },
+                    "userId": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "defaultWorkspace": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "settings": {
+            "type": "object",
+            "properties": {
+                "alerts": {
+                    "type": "boolean"
+                },
+                "approval": {
+                    "type": "boolean"
+                },
+                "collapseAllProjectLists": {
+                    "type": "boolean"
+                },
+                "dashboardPinToTop": {
+                    "type": "boolean"
+                },
+                "dashboardSelection": {
+                    "type": "string"
+                },
+                "dashboardViewType": {
+                    "type": "string"
+                },
+                "dateFormat": {
+                    "type": "string"
+                },
+                "groupSimilarEntriesDisabled": {
+                    "type": "boolean"
+                },
+                "isCompactViewOn": {
+                    "type": "boolean"
+                },
+                "lang": {
+                    "type": "string"
+                },
+                "longRunning": {
+                    "type": "boolean"
+                },
+                "multiFactorEnabled": {
+                    "type": "boolean"
+                },
+                "myStartOfDay": {
+                    "type": "string"
+                },
+                "onboarding": {
+                    "type": "boolean"
+                },
+                "projectPickerTaskFilter": {
+                    "type": "boolean"
+                },
+                "pto": {
+                    "type": "boolean"
+                },
+                "reminders": {
+                    "type": "boolean"
+                },
+                "scheduledReports": {
+                    "type": "boolean"
+                },
+                "scheduling": {
+                    "type": "boolean"
+                },
+                "sendNewsletter": {
+                    "type": "boolean"
+                },
+                "showOnlyWorkingDays": {
+                    "type": "boolean"
+                },
+                "summaryReportSettings": {
+                    "type": "object",
+                    "properties": {
+                        "group": {
+                            "type": "string"
+                        },
+                        "subgroup": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "theme": {
+                    "type": "string"
+                },
+                "timeFormat": {
+                    "type": "string"
+                },
+                "timeTrackingManual": {
+                    "type": "boolean"
+                },
+                "timeZone": {
+                    "type": "string"
+                },
+                "weeklyUpdates": {
+                    "type": "boolean"
+                },
+                "weekStart": {
+                    "type": "string"
+                }
+            }
+        },
+        "status": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

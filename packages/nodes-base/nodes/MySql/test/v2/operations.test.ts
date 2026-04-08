@@ -1,17 +1,16 @@
+import mysql2 from 'mysql2/promise';
 import type { IDataObject, INode } from 'n8n-workflow';
 
-import mysql2 from 'mysql2/promise';
-import * as deleteTable from '../../v2/actions/database/deleteTable.operation';
+import { createMockExecuteFunction } from '@test/nodes/Helpers';
 
+import * as deleteTable from '../../v2/actions/database/deleteTable.operation';
 import * as executeQuery from '../../v2/actions/database/executeQuery.operation';
 import * as insert from '../../v2/actions/database/insert.operation';
 import * as select from '../../v2/actions/database/select.operation';
 import * as update from '../../v2/actions/database/update.operation';
 import * as upsert from '../../v2/actions/database/upsert.operation';
-
 import type { Mysql2Pool, QueryRunner } from '../../v2/helpers/interfaces';
 import { configureQueryRunner } from '../../v2/helpers/utils';
-import { createMockExecuteFunction } from '@test/nodes/Helpers';
 
 const mySqlMockNode: INode = {
 	id: '1',
@@ -190,6 +189,45 @@ describe('Test MySql V2, operations', () => {
 		);
 	});
 
+	it('deleteTable: delete, should throw on invalid where clause', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'deleteTable',
+			table: {
+				__rl: true,
+				value: 'test_table',
+				mode: 'list',
+				cachedResultName: 'test_table',
+			},
+			deleteCommand: 'delete',
+			where: {
+				values: [
+					{
+						column: 'id',
+						condition: '=1; select 1,2; -- -',
+						value: '1',
+					},
+				],
+			},
+			options: {},
+		};
+
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		const pool = createFakePool(fakeConnection);
+
+		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode);
+
+		const runQueries: QueryRunner = configureQueryRunner.call(
+			fakeExecuteFunction,
+			nodeOptions,
+			pool,
+		);
+
+		const promise = deleteTable.execute.call(fakeExecuteFunction, emptyInputItems, runQueries);
+
+		await expect(promise).rejects.toThrow('Invalid where clause');
+	});
+
 	it('executeQuery, should call runQueries with', async () => {
 		const nodeParameters: IDataObject = {
 			operation: 'executeQuery',
@@ -315,6 +353,7 @@ describe('Test MySql V2, operations', () => {
 					},
 					{
 						column: 'name',
+						condition: '=',
 						value: 'test',
 					},
 				],
@@ -360,7 +399,129 @@ describe('Test MySql V2, operations', () => {
 
 		expect(connectionQuerySpy).toBeCalledTimes(1);
 		expect(connectionQuerySpy).toBeCalledWith(
-			"SELECT * FROM `test_table` WHERE `id` > 1 OR `name` undefined 'test' ORDER BY `id` DESC LIMIT 2",
+			"SELECT * FROM `test_table` WHERE `id` > 1 OR `name` = 'test' ORDER BY `id` DESC LIMIT 2",
+		);
+
+		expect(connectionCommitSpy).toBeCalledTimes(1);
+	});
+
+	it('select, should throw on invalid where clause', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'select',
+			table: {
+				__rl: true,
+				value: 'test_table',
+				mode: 'list',
+				cachedResultName: 'test_table',
+			},
+			limit: 2,
+			where: {
+				values: [
+					{
+						column: 'id',
+						condition: '=1; select 1,2; -- -',
+						value: '1',
+					},
+				],
+			},
+			combineConditions: 'OR',
+			sort: {
+				values: [
+					{
+						column: 'id',
+						direction: 'DESC',
+					},
+				],
+			},
+			options: {
+				queryBatching: 'transaction',
+				detailedOutput: false,
+			},
+		};
+
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		const pool = createFakePool(fakeConnection);
+
+		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode);
+
+		const runQueries: QueryRunner = configureQueryRunner.call(
+			fakeExecuteFunction,
+			{ ...nodeOptions, nodeVersion: 2 },
+			pool,
+		);
+
+		const promise = select.execute.call(fakeExecuteFunction, emptyInputItems, runQueries);
+
+		await expect(promise).rejects.toThrow('Invalid where clause');
+	});
+
+	it('select, should replace direction with ASC or DESC', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'select',
+			table: {
+				__rl: true,
+				value: 'test_table',
+				mode: 'list',
+				cachedResultName: 'test_table',
+			},
+			limit: 2,
+			where: {
+				values: [
+					{
+						column: 'id',
+						condition: '>',
+						value: '1',
+					},
+					{
+						column: 'name',
+						condition: '=',
+						value: 'test',
+					},
+				],
+			},
+			combineConditions: 'OR',
+			sort: {
+				values: [
+					{
+						column: 'id',
+						direction: 'DESC; Select 1,2; -- -',
+					},
+				],
+			},
+			options: {
+				queryBatching: 'transaction',
+				detailedOutput: false,
+			},
+		};
+
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		const pool = createFakePool(fakeConnection);
+
+		const connectionQuerySpy = jest.spyOn(fakeConnection, 'query');
+
+		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode);
+
+		const runQueries: QueryRunner = configureQueryRunner.call(
+			fakeExecuteFunction,
+			{ ...nodeOptions, nodeVersion: 2 },
+			pool,
+		);
+
+		const result = await select.execute.call(fakeExecuteFunction, emptyInputItems, runQueries);
+
+		expect(result).toBeDefined();
+		expect(result).toEqual([{ json: { success: true }, pairedItem: { item: 0 } }]);
+
+		const connectionBeginTransactionSpy = jest.spyOn(fakeConnection, 'beginTransaction');
+		const connectionCommitSpy = jest.spyOn(fakeConnection, 'commit');
+
+		expect(connectionBeginTransactionSpy).toBeCalledTimes(1);
+
+		expect(connectionQuerySpy).toBeCalledTimes(1);
+		expect(connectionQuerySpy).toBeCalledWith(
+			"SELECT * FROM `test_table` WHERE `id` > 1 OR `name` = 'test' ORDER BY `id` DESC LIMIT 2",
 		);
 
 		expect(connectionCommitSpy).toBeCalledTimes(1);

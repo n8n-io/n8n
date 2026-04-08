@@ -1,14 +1,24 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { SerpAPI } from '@langchain/community/tools/serpapi';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
+
 import {
-	NodeConnectionType,
 	type IExecuteFunctions,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
+	type INodeExecutionData,
+	NodeOperationError,
 } from 'n8n-workflow';
-import { SerpAPI } from '@langchain/community/tools/serpapi';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+
+async function getTool(ctx: ISupplyDataFunctions | IExecuteFunctions, itemIndex: number) {
+	const credentials = await ctx.getCredentials('serpApi');
+
+	const options = ctx.getNodeParameter('options', itemIndex) as object;
+
+	return new SerpAPI(credentials.apiKey as string, options);
+}
 
 export class ToolSerpApi implements INodeType {
 	description: INodeTypeDescription = {
@@ -25,6 +35,7 @@ export class ToolSerpApi implements INodeType {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Tools'],
+				Tools: ['Other Tools'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -34,10 +45,10 @@ export class ToolSerpApi implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiTool],
+
+		outputs: [NodeConnectionTypes.AiTool],
 		outputNames: ['Tool'],
 		credentials: [
 			{
@@ -46,7 +57,7 @@ export class ToolSerpApi implements INodeType {
 			},
 		],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{
 				displayName: 'Options',
 				name: 'options',
@@ -112,13 +123,36 @@ export class ToolSerpApi implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials('serpApi');
-
-		const options = this.getNodeParameter('options', itemIndex) as object;
-
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		return {
-			response: logWrapper(new SerpAPI(credentials.apiKey as string, options), this),
+			response: logWrapper(await getTool(this, itemIndex), this),
 		};
+	}
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const inputData = this.getInputData();
+		const returnData: INodeExecutionData[] = [];
+		for (let itemIndex = 0; itemIndex < inputData.length; itemIndex++) {
+			const tool = await getTool(this, itemIndex);
+			const item = inputData[itemIndex].json;
+
+			if (typeof item.input !== 'string' || !item.input) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`Missing search query input at itemIndex ${itemIndex}`,
+				);
+			}
+
+			const result = (await tool.invoke(item)) as string;
+
+			returnData.push({
+				json: {
+					response: result,
+				},
+				pairedItem: { item: itemIndex },
+			});
+		}
+
+		return [returnData];
 	}
 }

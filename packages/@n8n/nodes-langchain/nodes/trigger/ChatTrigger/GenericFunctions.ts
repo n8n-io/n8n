@@ -1,10 +1,14 @@
-import type { ICredentialDataDecryptedObject, IWebhookFunctions } from 'n8n-workflow';
 import basicAuth from 'basic-auth';
+import type { ICredentialDataDecryptedObject, IWebhookFunctions } from 'n8n-workflow';
+
 import { ChatTriggerAuthorizationError } from './error';
 import type { AuthenticationChatOption } from './types';
 
 export async function validateAuth(context: IWebhookFunctions) {
-	const authentication = context.getNodeParameter('authentication') as AuthenticationChatOption;
+	const authentication = context.getNodeParameter(
+		'authentication',
+		'none',
+	) as AuthenticationChatOption;
 	const req = context.getRequestObject();
 	const headers = context.getHeaderData();
 
@@ -14,7 +18,7 @@ export async function validateAuth(context: IWebhookFunctions) {
 		// Basic authorization is needed to call webhook
 		let expectedAuth: ICredentialDataDecryptedObject | undefined;
 		try {
-			expectedAuth = await context.getCredentials('httpBasicAuth');
+			expectedAuth = await context.getCredentials<ICredentialDataDecryptedObject>('httpBasicAuth');
 		} catch {}
 
 		if (expectedAuth === undefined || !expectedAuth.user || !expectedAuth.password) {
@@ -33,20 +37,27 @@ export async function validateAuth(context: IWebhookFunctions) {
 	} else if (authentication === 'n8nUserAuth') {
 		const webhookName = context.getWebhookName();
 
-		function getCookie(name: string) {
-			const value = `; ${headers.cookie}`;
-			const parts = value.split(`; ${name}=`);
+		if (webhookName !== 'setup') {
+			function getCookie(name: string) {
+				const value = `; ${headers.cookie}`;
+				const parts = value.split(`; ${name}=`);
 
-			if (parts.length === 2) {
-				return parts.pop()?.split(';').shift();
+				if (parts.length === 2) {
+					return parts.pop()?.split(';').shift();
+				}
+				return '';
 			}
-			return '';
-		}
 
-		const authCookie = getCookie('n8n-auth');
-		if (!authCookie && webhookName !== 'setup') {
-			// Data is not defined on node so can not authenticate
-			throw new ChatTriggerAuthorizationError(500, 'User not authenticated!');
+			const authCookie = getCookie('n8n-auth');
+			if (!authCookie) {
+				throw new ChatTriggerAuthorizationError(401, 'User not authenticated!');
+			}
+
+			try {
+				await context.validateCookieAuth(authCookie);
+			} catch {
+				throw new ChatTriggerAuthorizationError(401, 'Invalid authentication token');
+			}
 		}
 	}
 

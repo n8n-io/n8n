@@ -5,7 +5,7 @@ export class QualysApi implements ICredentialType {
 
 	displayName = 'Qualys API';
 
-	icon = 'file:icons/Qualys.svg';
+	icon = 'file:icons/Qualys.svg' as const;
 
 	documentationUrl = 'qualys';
 

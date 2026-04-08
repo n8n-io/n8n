@@ -5,8 +5,10 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { awsApiRequestREST } from './GenericFunctions';
+import { awsNodeAuthOptions, awsNodeCredentials } from '../utils';
 
 export class AwsComprehend implements INodeType {
 	description: INodeTypeDescription = {
@@ -17,18 +19,15 @@ export class AwsComprehend implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Sends data to Amazon Comprehend',
+		schemaPath: 'Aws/Comprehend',
 		defaults: {
 			name: 'AWS Comprehend',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
-		credentials: [
-			{
-				name: 'aws',
-				required: true,
-			},
-		],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		credentials: awsNodeCredentials,
 		properties: [
+			awsNodeAuthOptions,
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -187,7 +186,7 @@ export class AwsComprehend implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
@@ -270,19 +269,23 @@ export class AwsComprehend implements INodeType {
 					}
 				}
 
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData as IDataObject);
-				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return [returnData];
 	}
 }

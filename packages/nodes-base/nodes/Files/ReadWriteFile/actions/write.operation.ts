@@ -1,9 +1,16 @@
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+	JsonObject,
+} from 'n8n-workflow';
+import { BINARY_ENCODING, NodeApiError } from 'n8n-workflow';
 import type { Readable } from 'stream';
-import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { BINARY_ENCODING } from 'n8n-workflow';
+
+import { updateDisplayOptions } from '@utils/utilities';
 
 import { errorMapper } from '../helpers/utils';
-import { updateDisplayOptions } from '@utils/utilities';
+import { constants } from 'node:fs';
 
 export const properties: INodeProperties[] = [
 	{
@@ -29,7 +36,7 @@ export const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
@@ -62,7 +69,9 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 			const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex);
 			fileName = this.getNodeParameter('fileName', itemIndex) as string;
 			const options = this.getNodeParameter('options', itemIndex, {});
-			const flag: string = options.append ? 'a' : 'w';
+			const flag: number = options.append
+				? constants.O_APPEND
+				: constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC;
 
 			item = items[itemIndex];
 
@@ -84,7 +93,11 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 			}
 
 			// Write the file to disk
-			await this.helpers.writeContentToFile(fileName, fileContent, flag);
+			await this.helpers.writeContentToFile(
+				await this.helpers.resolvePath(fileName),
+				fileContent,
+				flag,
+			);
 
 			if (item.binary !== undefined) {
 				// Create a shallow copy of the binary data so that the old
@@ -114,7 +127,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 				});
 				continue;
 			}
-			throw nodeOperatioinError;
+			throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex });
 		}
 	}
 

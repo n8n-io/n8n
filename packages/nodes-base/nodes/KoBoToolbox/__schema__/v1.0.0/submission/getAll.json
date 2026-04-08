@@ -1,0 +1,130 @@
+{
+    "type": "object",
+    "properties": {
+        "__version__": {
+            "type": "string"
+        },
+        "_attachments": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "download_large_url": {
+                        "type": "string"
+                    },
+                    "download_medium_url": {
+                        "type": "string"
+                    },
+                    "download_small_url": {
+                        "type": "string"
+                    },
+                    "download_url": {
+                        "type": "string"
+                    },
+                    "filename": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "instance": {
+                        "type": "integer"
+                    },
+                    "mimetype": {
+                        "type": "string"
+                    },
+                    "question_xpath": {
+                        "type": "string"
+                    },
+                    "xform": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "_id": {
+            "type": "integer"
+        },
+        "_status": {
+            "type": "string"
+        },
+        "_submission_time": {
+            "type": "string"
+        },
+        "_uuid": {
+            "type": "string"
+        },
+        "_validation_status": {
+            "type": "object",
+            "properties": {
+                "by_whom": {
+                    "type": "string"
+                },
+                "color": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "integer"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "_xform_id_string": {
+            "type": "string"
+        },
+        "description": {
+            "type": "string"
+        },
+        "deviceid": {
+            "type": "string"
+        },
+        "end": {
+            "type": "string"
+        },
+        "formhub/uuid": {
+            "type": "string"
+        },
+        "gps_note": {
+            "type": "string"
+        },
+        "infra_categ": {
+            "type": "string"
+        },
+        "infra_subtype": {
+            "type": "string"
+        },
+        "location": {
+            "type": "string"
+        },
+        "meta/instanceID": {
+            "type": "string"
+        },
+        "personal_QR_code": {
+            "type": "string"
+        },
+        "pic1": {
+            "type": "string"
+        },
+        "pic2": {
+            "type": "string"
+        },
+        "q2nd_pic": {
+            "type": "string"
+        },
+        "start": {
+            "type": "string"
+        },
+        "today": {
+            "type": "string"
+        },
+        "username": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

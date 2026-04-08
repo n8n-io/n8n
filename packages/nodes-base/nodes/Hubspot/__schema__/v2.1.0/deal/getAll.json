@@ -1,0 +1,26 @@
+{
+    "type": "object",
+    "properties": {
+        "isDeleted": {
+            "type": "boolean"
+        },
+        "portalId": {
+            "type": "integer"
+        },
+        "stateChanges": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "changeFlag": {
+                        "type": "string"
+                    },
+                    "timestamp": {
+                        "type": "integer"
+                    }
+                }
+            }
+        }
+    },
+    "version": 7
+}

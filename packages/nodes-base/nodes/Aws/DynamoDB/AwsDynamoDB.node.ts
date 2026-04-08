@@ -1,18 +1,17 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type {
-	IExecuteFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-	NodeParameterValue,
+import {
+	type IExecuteFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	type NodeParameterValue,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { awsApiRequest, awsApiRequestAllItems } from './GenericFunctions';
-
 import { itemFields, itemOperations } from './ItemDescription';
-
 import type {
 	FieldsUiValues,
 	IAttributeNameUi,
@@ -21,7 +20,6 @@ import type {
 	IRequestBody,
 	PutItemUi,
 } from './types';
-
 import {
 	adjustExpressionAttributeName,
 	adjustExpressionAttributeValues,
@@ -29,6 +27,7 @@ import {
 	decodeItem,
 	simplify,
 } from './utils';
+import { awsNodeAuthOptions, awsNodeCredentials } from '../utils';
 
 export class AwsDynamoDB implements INodeType {
 	description: INodeTypeDescription = {
@@ -39,18 +38,15 @@ export class AwsDynamoDB implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume the AWS DynamoDB API',
+		schemaPath: 'Aws/DynamoDB',
 		defaults: {
 			name: 'AWS DynamoDB',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
-		credentials: [
-			{
-				name: 'aws',
-				required: true,
-			},
-		],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		credentials: awsNodeCredentials,
 		properties: [
+			awsNodeAuthOptions,
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -109,7 +105,7 @@ export class AwsDynamoDB implements INodeType {
 							[],
 						) as IAttributeValueUi[];
 						const conditionExpession = this.getNodeParameter(
-							'conditionExpression',
+							'additionalFields.conditionExpression',
 							i,
 							'',
 						) as string;
@@ -132,7 +128,7 @@ export class AwsDynamoDB implements INodeType {
 						const expressionAttributeName = adjustExpressionAttributeName(eanUi);
 
 						if (Object.keys(expressionAttributeName).length) {
-							body.expressionAttributeNames = expressionAttributeName;
+							body.ExpressionAttributeNames = expressionAttributeName;
 						}
 
 						if (conditionExpession) {
@@ -182,7 +178,7 @@ export class AwsDynamoDB implements INodeType {
 						};
 
 						const eavUi = this.getNodeParameter(
-							'additionalFields.eavUi.eavValues',
+							'additionalFields.expressionAttributeUi.expressionAttributeValues',
 							i,
 							[],
 						) as IAttributeValueUi[];
@@ -215,7 +211,7 @@ export class AwsDynamoDB implements INodeType {
 						const expressionAttributeName = adjustExpressionAttributeName(eanUi);
 
 						if (Object.keys(expressionAttributeName).length) {
-							body.expressionAttributeNames = expressionAttributeName;
+							body.ExpressionAttributeNames = expressionAttributeName;
 						}
 
 						const headers = {
@@ -262,7 +258,7 @@ export class AwsDynamoDB implements INodeType {
 						const expressionAttributeName = adjustExpressionAttributeName(eanUi);
 
 						if (Object.keys(expressionAttributeName).length) {
-							body.expressionAttributeNames = expressionAttributeName;
+							body.ExpressionAttributeNames = expressionAttributeName;
 						}
 
 						if (additionalFields.readType) {

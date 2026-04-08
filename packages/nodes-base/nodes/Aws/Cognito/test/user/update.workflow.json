@@ -1,0 +1,71 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-80, -100],
+			"id": "7da2ce49-9a9d-4240-b082-ff1b12d101b1",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"userPool": {
+					"__rl": true,
+					"value": "eu-central-1_EUZ4iEF1T",
+					"mode": "list",
+					"cachedResultName": "UserPoolTwo"
+				},
+				"user": {
+					"__rl": true,
+					"value": "43045822-80e1-70f6-582d-78ae7992e9d9",
+					"mode": "list",
+					"cachedResultName": "Johnn"
+				},
+				"userAttributes": {
+					"attributes": [
+						{
+							"standardName": "address",
+							"value": "New"
+						}
+					]
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.awsCognito",
+			"typeVersion": 1,
+			"position": [120, -100],
+			"id": "4c6bdeea-f863-4974-b3d6-7dfc04f78df3",
+			"name": "AWS Cognito",
+			"credentials": {
+				"aws": {
+					"id": "exampleId",
+					"name": "AWS account Central Europe"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "AWS Cognito",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"AWS Cognito": [
+			{
+				"json": {
+					"updated": true
+				}
+			}
+		]
+	}
+}

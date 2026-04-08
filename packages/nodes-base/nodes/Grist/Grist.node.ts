@@ -1,14 +1,15 @@
-import type {
-	IExecuteFunctions,
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeCredentialTestResult,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-	IRequestOptions,
+import {
+	type IExecuteFunctions,
+	type ICredentialsDecrypted,
+	type ICredentialTestFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeCredentialTestResult,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	type IRequestOptions,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import {
@@ -19,9 +20,7 @@ import {
 	parseSortProperties,
 	throwOnZeroDefinedFields,
 } from './GenericFunctions';
-
 import { operationFields } from './OperationDescription';
-
 import type {
 	FieldsToSend,
 	GristColumns,
@@ -44,8 +43,9 @@ export class Grist implements INodeType {
 		defaults: {
 			name: 'Grist',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'gristApi',

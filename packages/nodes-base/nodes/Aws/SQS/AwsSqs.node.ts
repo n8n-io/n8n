@@ -1,4 +1,4 @@
-import { URL } from 'url';
+import { pascalCase } from 'change-case';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -10,10 +10,11 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
+import { URL } from 'url';
 
-import { pascalCase } from 'change-case';
 import { awsApiRequestSOAP } from '../GenericFunctions';
+import { awsNodeAuthOptions, awsNodeCredentials } from '../utils';
 
 export class AwsSqs implements INodeType {
 	description: INodeTypeDescription = {
@@ -27,15 +28,11 @@ export class AwsSqs implements INodeType {
 		defaults: {
 			name: 'AWS SQS',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
-		credentials: [
-			{
-				name: 'aws',
-				required: true,
-			},
-		],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		credentials: awsNodeCredentials,
 		properties: [
+			awsNodeAuthOptions,
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -67,7 +64,7 @@ export class AwsSqs implements INodeType {
 				default: '',
 				required: true,
 				description:
-					'Queue to send a message to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Queue to send a message to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Queue Type',
@@ -132,7 +129,7 @@ export class AwsSqs implements INodeType {
 					},
 				},
 				default: {},
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				options: [
 					{
 						displayName: 'Delay Seconds',

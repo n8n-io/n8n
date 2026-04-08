@@ -30,9 +30,9 @@ export async function zendeskApiRequest(
 	let credentials;
 
 	if (authenticationMethod === 'apiToken') {
-		credentials = (await this.getCredentials('zendeskApi')) as { subdomain: string };
+		credentials = await this.getCredentials<{ subdomain: string }>('zendeskApi');
 	} else {
-		credentials = (await this.getCredentials('zendeskOAuth2Api')) as { subdomain: string };
+		credentials = await this.getCredentials<{ subdomain: string }>('zendeskOAuth2Api');
 	}
 
 	let options: IRequestOptions = {

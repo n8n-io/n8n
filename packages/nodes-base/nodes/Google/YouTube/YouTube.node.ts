@@ -1,4 +1,3 @@
-import type { Readable } from 'stream';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -8,21 +7,18 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
+import { Readable } from 'stream';
 
-import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
+import { isoCountryCodes } from '@utils/ISOCountryCodes';
 
 import { channelFields, channelOperations } from './ChannelDescription';
-
+import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 import { playlistFields, playlistOperations } from './PlaylistDescription';
-
 import { playlistItemFields, playlistItemOperations } from './PlaylistItemDescription';
-
-import { videoFields, videoOperations } from './VideoDescription';
-
 import { videoCategoryFields, videoCategoryOperations } from './VideoCategoryDescription';
-
-import { countriesCodes } from './CountryCodes';
+import { videoFields, videoOperations } from './VideoDescription';
+import { validateAndSetDate } from '../GenericFunctions';
 
 const UPLOAD_CHUNK_SIZE = 1024 * 1024;
 
@@ -36,11 +32,13 @@ export class YouTube implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume YouTube API',
+		schemaPath: 'Google/YouTube',
 		defaults: {
 			name: 'YouTube',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'youTubeOAuth2Api',
@@ -120,7 +118,7 @@ export class YouTube implements INodeType {
 			// select them easily
 			async getCountriesCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				for (const countryCode of countriesCodes) {
+				for (const countryCode of isoCountryCodes) {
 					const countryCodeName = `${countryCode.name} - ${countryCode.alpha2}`;
 					const countryCodeId = countryCode.alpha2;
 					returnData.push({
@@ -763,6 +761,14 @@ export class YouTube implements INodeType {
 
 						qs.forMine = true;
 
+						if (filters.publishedAfter) {
+							validateAndSetDate(filters, 'publishedAfter', this.getTimezone(), this);
+						}
+
+						if (filters.publishedBefore) {
+							validateAndSetDate(filters, 'publishedBefore', this.getTimezone(), this);
+						}
+
 						Object.assign(qs, options, filters);
 
 						if (Object.keys(filters).length > 0) {
@@ -834,7 +840,7 @@ export class YouTube implements INodeType {
 
 						let mimeType: string;
 						let contentLength: number;
-						let fileContent: Buffer | Readable;
+						let fileContent: Readable;
 
 						if (binaryData.id) {
 							// Stream data in 256KB chunks, and upload the via the resumable upload api
@@ -843,8 +849,9 @@ export class YouTube implements INodeType {
 							contentLength = metadata.fileSize;
 							mimeType = metadata.mimeType ?? binaryData.mimeType;
 						} else {
-							fileContent = Buffer.from(binaryData.data, BINARY_ENCODING);
-							contentLength = fileContent.length;
+							const buffer = Buffer.from(binaryData.data, BINARY_ENCODING);
+							fileContent = Readable.from(buffer);
+							contentLength = buffer.length;
 							mimeType = binaryData.mimeType;
 						}
 

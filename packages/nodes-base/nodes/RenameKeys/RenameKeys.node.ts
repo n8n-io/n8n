@@ -1,3 +1,7 @@
+import get from 'lodash/get';
+import set from 'lodash/set';
+import unset from 'lodash/unset';
+import { NodeConnectionTypes, deepCopy } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -5,12 +9,6 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
-
-import get from 'lodash/get';
-import set from 'lodash/set';
-import unset from 'lodash/unset';
-
 interface IRenameKey {
 	currentKey: string;
 	newKey: string;
@@ -21,6 +19,7 @@ export class RenameKeys implements INodeType {
 		displayName: 'Rename Keys',
 		name: 'renameKeys',
 		icon: 'fa:edit',
+		iconColor: 'crimson',
 		group: ['transform'],
 		version: 1,
 		description: 'Update item field names',
@@ -28,8 +27,8 @@ export class RenameKeys implements INodeType {
 			name: 'Rename Keys',
 			color: '#772244',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Keys',
@@ -75,13 +74,13 @@ export class RenameKeys implements INodeType {
 				name: 'additionalOptions',
 				type: 'collection',
 				default: {},
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				options: [
 					{
 						displayName: 'Regex',
 						name: 'regexReplacement',
 						placeholder: 'Add new regular expression',
-						description: 'Adds a regular expressiond',
+						description: 'Adds a regular expression',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,
@@ -149,11 +148,21 @@ export class RenameKeys implements INodeType {
 				],
 			},
 		],
+		hints: [
+			{
+				type: 'warning',
+				message:
+					'Complex regex patterns like nested quantifiers .*+, ()*+, or multiple wildcards may cause performance issues. Consider using simpler patterns like [a-z]+ or \\w+ for better performance.',
+				displayCondition:
+					'={{ $parameter.additionalOptions.regexReplacement.replacements && $parameter.additionalOptions.regexReplacement.replacements.some(r => r.searchRegex && /(\\.\\*\\+|\\)\\*\\+|\\+\\*|\\*.*\\*|\\+.*\\+|\\?.*\\?|\\{[0-9]+,\\}|\\*{2,}|\\+{2,}|\\?{2,}|[a-zA-Z0-9]{4,}[\\*\\+]|\\([^)]*\\|[^)]*\\)[\\*\\+])/.test(r.searchRegex)) }}',
+				whenToDisplay: 'always',
+				location: 'outputPane',
+			},
+		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-
 		const returnData: INodeExecutionData[] = [];
 
 		let item: INodeExecutionData;
@@ -208,34 +217,46 @@ export class RenameKeys implements INodeType {
 			newItem.json = renameObjectKeys(newItem.json, depth as number);
 		};
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			renameKeys = this.getNodeParameter('keys.key', itemIndex, []) as IRenameKey[];
-			const regexReplacements = this.getNodeParameter(
-				'additionalOptions.regexReplacement.replacements',
-				itemIndex,
-				[],
-			) as IDataObject[];
+			try {
+				renameKeys = this.getNodeParameter('keys.key', itemIndex, []) as IRenameKey[];
+				const regexReplacements = this.getNodeParameter(
+					'additionalOptions.regexReplacement.replacements',
+					itemIndex,
+					[],
+				) as IDataObject[];
 
-			item = items[itemIndex];
+				item = items[itemIndex];
 
-			// Copy the whole JSON data as data on any level can be renamed
-			newItem = {
-				json: deepCopy(item.json),
-				pairedItem: {
-					item: itemIndex,
-				},
-			};
+				// Copy the whole JSON data as data on any level can be renamed
+				newItem = {
+					json: deepCopy(item.json),
+					pairedItem: {
+						item: itemIndex,
+					},
+				};
 
-			if (item.binary !== undefined) {
-				// Reference binary data if any exists. We can reference it
-				// as this nodes does not change it
-				newItem.binary = item.binary;
+				if (item.binary !== undefined) {
+					// Reference binary data if any exists. We can reference it
+					// as this nodes does not change it
+					newItem.binary = item.binary;
+				}
+
+				renameKeys.forEach(renameKey);
+
+				regexReplacements.forEach(regexReplaceKey);
+
+				returnData.push(newItem);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: itemIndex } },
+					);
+					returnData.push(...executionErrorData);
+					continue;
+				}
+				throw error;
 			}
-
-			renameKeys.forEach(renameKey);
-
-			regexReplacements.forEach(regexReplaceKey);
-
-			returnData.push(newItem);
 		}
 
 		return [returnData];

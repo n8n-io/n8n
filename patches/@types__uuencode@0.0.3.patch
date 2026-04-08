@@ -1,0 +1,10 @@
+diff --git a/index.d.ts b/index.d.ts
+index f8f89c567f394a538018bfdf11c28dc15e9c9fdc..f3d1cd426711f1f714744474604bd7e321073983 100644
+--- a/index.d.ts
++++ b/index.d.ts
+@@ -1,4 +1,4 @@
+ /// <reference types="node"/>
+ 
+-export function decode(str: string | Buffer): string;
++export function decode(str: string | Buffer): Buffer;
+ export function encode(str: string | Buffer): string;

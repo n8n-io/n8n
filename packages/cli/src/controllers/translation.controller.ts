@@ -1,15 +1,16 @@
-import type { Request } from 'express';
-import { join } from 'path';
-import { access } from 'fs/promises';
-import { Get, RestController } from '@/decorators';
-import config from '@/config';
 import { NODES_BASE_DIR } from '@/constants';
+import { safeJoinPath } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
+import { Get, RestController } from '@n8n/decorators';
+import type { Request } from 'express';
+import { access } from 'fs/promises';
+
+import { CredentialTypes } from '@/credential-types';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { CredentialTypes } from '@/CredentialTypes';
 
 export const CREDENTIAL_TRANSLATIONS_DIR = 'n8n-nodes-base/dist/credentials/translations';
-export const NODE_HEADERS_PATH = join(NODES_BASE_DIR, 'dist/nodes/headers');
+export const NODE_HEADERS_PATH = safeJoinPath(NODES_BASE_DIR, 'dist/nodes/headers');
 
 export declare namespace TranslationRequest {
 	export type Credential = Request<{}, {}, {}, { credentialType: string }>;
@@ -17,7 +18,10 @@ export declare namespace TranslationRequest {
 
 @RestController('/')
 export class TranslationController {
-	constructor(private readonly credentialTypes: CredentialTypes) {}
+	constructor(
+		private readonly credentialTypes: CredentialTypes,
+		private readonly globalConfig: GlobalConfig,
+	) {}
 
 	@Get('/credential-translation')
 	async getCredentialTranslation(req: TranslationRequest.Credential) {
@@ -26,8 +30,8 @@ export class TranslationController {
 		if (!this.credentialTypes.recognizes(credentialType))
 			throw new BadRequestError(`Invalid Credential type: "${credentialType}"`);
 
-		const defaultLocale = config.getEnv('defaultLocale');
-		const translationPath = join(
+		const { defaultLocale } = this.globalConfig;
+		const translationPath = safeJoinPath(
 			CREDENTIAL_TRANSLATIONS_DIR,
 			defaultLocale,
 			`${credentialType}.json`,
@@ -53,7 +57,7 @@ export class TranslationController {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 			return require(NODE_HEADERS_PATH);
 		} catch (error) {
-			throw new InternalServerError('Failed to load headers file');
+			throw new InternalServerError('Failed to load headers file', error);
 		}
 	}
 }

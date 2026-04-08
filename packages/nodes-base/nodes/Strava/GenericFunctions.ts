@@ -36,14 +36,13 @@ export async function stravaApiRequest(
 
 		if (this.getNode().type.includes('Trigger') && resource.includes('/push_subscriptions')) {
 			const credentials = await this.getCredentials('stravaOAuth2Api');
-			if (method === 'GET') {
+			if (method === 'GET' || method === 'DELETE') {
 				qs.client_id = credentials.clientId;
 				qs.client_secret = credentials.clientSecret;
 			} else {
 				body.client_id = credentials.clientId;
 				body.client_secret = credentials.clientSecret;
 			}
-
 			return await this.helpers?.request(options);
 		} else {
 			return await this.helpers.requestOAuth2.call(this, 'stravaOAuth2Api', options, {

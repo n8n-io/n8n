@@ -14,7 +14,6 @@ export async function wufooApiRequest(
 
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
 	option: IDataObject = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('wufooApi');

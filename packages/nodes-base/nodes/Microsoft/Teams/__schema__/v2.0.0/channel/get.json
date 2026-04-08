@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "properties": {
+        "@odata.context": {
+            "type": "string"
+        },
+        "createdDateTime": {
+            "type": "string"
+        },
+        "displayName": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "isArchived": {
+            "type": "boolean"
+        },
+        "membershipType": {
+            "type": "string"
+        },
+        "tenantId": {
+            "type": "string"
+        },
+        "webUrl": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

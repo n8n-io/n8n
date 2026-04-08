@@ -1,0 +1,72 @@
+{
+    "type": "object",
+    "properties": {
+        "author": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "accountType": {
+                    "type": "string"
+                },
+                "active": {
+                    "type": "boolean"
+                },
+                "avatarUrls": {
+                    "type": "object",
+                    "properties": {
+                        "16x16": {
+                            "type": "string"
+                        },
+                        "24x24": {
+                            "type": "string"
+                        },
+                        "32x32": {
+                            "type": "string"
+                        },
+                        "48x48": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "displayName": {
+                    "type": "string"
+                },
+                "emailAddress": {
+                    "type": "string"
+                },
+                "self": {
+                    "type": "string"
+                },
+                "timeZone": {
+                    "type": "string"
+                }
+            }
+        },
+        "created": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "items": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "field": {
+                        "type": "string"
+                    },
+                    "fieldId": {
+                        "type": "string"
+                    },
+                    "fieldtype": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    },
+    "version": 1
+}

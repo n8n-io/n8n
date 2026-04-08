@@ -1,17 +1,17 @@
 /* eslint-disable n8n-nodes-base/cred-class-field-name-unsuffixed */
 /* eslint-disable n8n-nodes-base/cred-class-name-unsuffixed */
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties, Icon } from 'n8n-workflow';
 
 export class HttpCustomAuth implements ICredentialType {
 	name = 'httpCustomAuth';
 
 	displayName = 'Custom Auth';
 
-	documentationUrl = 'httpRequest';
+	documentationUrl = 'httprequest';
 
 	genericAuth = true;
 
-	icon = 'node:n8n-nodes-base.httpRequest';
+	icon: Icon = 'node:n8n-nodes-base.httpRequest';
 
 	properties: INodeProperties[] = [
 		{
@@ -23,6 +23,9 @@ export class HttpCustomAuth implements ICredentialType {
 			placeholder:
 				'{ "headers": { "key" : "value" }, "body": { "key": "value" }, "qs": { "key": "value" } }',
 			default: '',
+			typeOptions: {
+				redactJsonLeaves: true,
+			},
 		},
 	];
 }

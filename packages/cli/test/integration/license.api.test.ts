@@ -1,14 +1,14 @@
-import type { SuperAgentTest } from 'supertest';
-import config from '@/config';
-import type { User } from '@db/entities/User';
-import type { ILicensePostResponse, ILicenseReadResponse } from '@/Interfaces';
-import { License } from '@/License';
-import * as testDb from './shared/testDb';
-import * as utils from './shared/utils/';
-import { createUserShell } from './shared/db/users';
+import { testDb } from '@n8n/backend-test-utils';
+import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
+import nock from 'nock';
 
-const MOCK_SERVER_URL = 'https://server.com/v1';
-const MOCK_RENEW_OFFSET = 259200;
+import { createUserShell } from './shared/db/users';
+import type { SuperAgentTest } from './shared/types';
+import * as utils from './shared/utils/';
+
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import type { ILicensePostResponse, ILicenseReadResponse } from '@/interfaces';
+import { License } from '@/license';
 
 let owner: User;
 let member: User;
@@ -18,15 +18,11 @@ let authMemberAgent: SuperAgentTest;
 const testServer = utils.setupTestServer({ endpointGroups: ['license'] });
 
 beforeAll(async () => {
-	owner = await createUserShell('global:owner');
-	member = await createUserShell('global:member');
+	owner = await createUserShell(GLOBAL_OWNER_ROLE);
+	member = await createUserShell(GLOBAL_MEMBER_ROLE);
 
 	authOwnerAgent = testServer.authAgentFor(owner);
 	authMemberAgent = testServer.authAgentFor(member);
-
-	config.set('license.serverUrl', MOCK_SERVER_URL);
-	config.set('license.autoRenewEnabled', true);
-	config.set('license.autoRenewOffset', MOCK_RENEW_OFFSET);
 });
 
 afterEach(async () => {
@@ -45,6 +41,20 @@ describe('GET /license', () => {
 	});
 });
 
+describe('POST /license/enterprise/request_trial', () => {
+	nock('https://enterprise.n8n.io').post('/enterprise-trial').reply(200);
+
+	test('should work for instance owner', async () => {
+		await authOwnerAgent.post('/license/enterprise/request_trial').expect(200);
+	});
+
+	test('does not work for regular users', async () => {
+		await authMemberAgent
+			.post('/license/enterprise/request_trial')
+			.expect(403, { status: 'error', message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE });
+	});
+});
+
 describe('POST /license/activate', () => {
 	test('should work for instance owner', async () => {
 		await authOwnerAgent
@@ -57,7 +67,7 @@ describe('POST /license/activate', () => {
 		await authMemberAgent
 			.post('/license/activate')
 			.send({ activationKey: 'abcde' })
-			.expect(403, UNAUTHORIZED_RESPONSE);
+			.expect(403, { status: 'error', message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE });
 	});
 
 	test('errors out properly', async () => {
@@ -79,10 +89,13 @@ describe('POST /license/renew', () => {
 	});
 
 	test('does not work for regular users', async () => {
-		await authMemberAgent.post('/license/renew').expect(403, UNAUTHORIZED_RESPONSE);
+		await authMemberAgent
+			.post('/license/renew')
+			.expect(403, { status: 'error', message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE });
 	});
 
 	test('errors out properly', async () => {
+		License.prototype.getPlanName = jest.fn().mockReturnValue('Enterprise');
 		License.prototype.renew = jest.fn().mockImplementation(() => {
 			throw new Error(GENERIC_ERROR_MESSAGE);
 		});
@@ -96,10 +109,14 @@ describe('POST /license/renew', () => {
 const DEFAULT_LICENSE_RESPONSE: { data: ILicenseReadResponse } = {
 	data: {
 		usage: {
-			executions: {
+			activeWorkflowTriggers: {
 				value: 0,
 				limit: -1,
 				warningThreshold: 0.8,
+			},
+			workflowsHavingEvaluations: {
+				value: 0,
+				limit: 0,
 			},
 		},
 		license: {
@@ -112,10 +129,14 @@ const DEFAULT_LICENSE_RESPONSE: { data: ILicenseReadResponse } = {
 const DEFAULT_POST_RESPONSE: { data: ILicensePostResponse } = {
 	data: {
 		usage: {
-			executions: {
+			activeWorkflowTriggers: {
 				value: 0,
 				limit: -1,
 				warningThreshold: 0.8,
+			},
+			workflowsHavingEvaluations: {
+				value: 0,
+				limit: 0,
 			},
 		},
 		license: {
@@ -126,6 +147,5 @@ const DEFAULT_POST_RESPONSE: { data: ILicensePostResponse } = {
 	},
 };
 
-const UNAUTHORIZED_RESPONSE = { status: 'error', message: 'Unauthorized' };
 const ACTIVATION_FAILED_MESSAGE = 'Failed to activate license';
 const GENERIC_ERROR_MESSAGE = 'Something went wrong';

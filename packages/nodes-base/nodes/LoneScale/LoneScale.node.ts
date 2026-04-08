@@ -7,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { lonescaleApiRequest } from './GenericFunctions';
 
@@ -15,15 +16,16 @@ export class LoneScale implements INodeType {
 		displayName: 'LoneScale',
 		name: 'loneScale',
 		group: ['transform'],
-		icon: 'file:lonescale-logo.svg',
+		icon: { light: 'file:loneScale.svg', dark: 'file:loneScale.dark.svg' },
 		version: 1,
 		description: 'Create List, add / delete items',
 		subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
 		defaults: {
 			name: 'LoneScale',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'loneScaleApi',
@@ -133,7 +135,7 @@ export class LoneScale implements INodeType {
 				},
 				default: '',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				required: true,
 			},
 			{

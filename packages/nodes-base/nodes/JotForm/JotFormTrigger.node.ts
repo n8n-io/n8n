@@ -9,7 +9,7 @@ import type {
 	IWebhookResponseData,
 	MultiPartFormData,
 } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import { NodeConnectionTypes, jsonParse } from 'n8n-workflow';
 
 import { jotformApiRequest } from './GenericFunctions';
 
@@ -20,18 +20,17 @@ interface IQuestionData {
 
 export class JotFormTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'JotForm Trigger',
+		displayName: 'Jotform Trigger',
 		name: 'jotFormTrigger',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:jotform.png',
+		icon: { light: 'file:jotform.svg', dark: 'file:jotform.dark.svg' },
 		group: ['trigger'],
 		version: 1,
-		description: 'Handle JotForm events via webhooks',
+		description: 'Handle Jotform events via webhooks',
 		defaults: {
-			name: 'JotForm Trigger',
+			name: 'Jotform Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'jotFormApi',
@@ -57,7 +56,7 @@ export class JotFormTrigger implements INodeType {
 				},
 				default: '',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 			},
 			{
 				displayName: 'Resolve Data',

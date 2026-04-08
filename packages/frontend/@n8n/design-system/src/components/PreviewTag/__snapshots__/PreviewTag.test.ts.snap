@@ -1,0 +1,21 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`PreviewTag > renders medium preview tag correctly 1`] = `
+<div>
+  <div
+    class="preview medium"
+  >
+    Preview
+  </div>
+</div>
+`;
+
+exports[`PreviewTag > renders small preview tag correctly 1`] = `
+<div>
+  <div
+    class="preview small"
+  >
+    Preview
+  </div>
+</div>
+`;

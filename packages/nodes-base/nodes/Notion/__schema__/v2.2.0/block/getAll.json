@@ -1,0 +1,55 @@
+{
+    "type": "object",
+    "properties": {
+        "archived": {
+            "type": "boolean"
+        },
+        "content": {
+            "type": "string"
+        },
+        "has_children": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "in_trash": {
+            "type": "boolean"
+        },
+        "last_edited_by": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "object": {
+                    "type": "string"
+                }
+            }
+        },
+        "object": {
+            "type": "string"
+        },
+        "parent": {
+            "type": "object",
+            "properties": {
+                "page_id": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "parent_id": {
+            "type": "string"
+        },
+        "root_id": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

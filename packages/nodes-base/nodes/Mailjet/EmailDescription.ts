@@ -209,6 +209,18 @@ export const emailFields: INodeProperties[] = [
 				description: 'Enable or disable open tracking on this message',
 				default: 'account_default',
 			},
+			{
+				displayName: 'Custom Campaign',
+				name: 'customCampaign',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Deduplicate Campaign',
+				name: 'deduplicateCampaign',
+				type: 'boolean',
+				default: false,
+			},
 		],
 	},
 	{
@@ -300,7 +312,7 @@ export const emailFields: INodeProperties[] = [
 		name: 'templateId',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTemplates',
 		},
@@ -396,6 +408,18 @@ export const emailFields: INodeProperties[] = [
 				type: 'string',
 				description: 'Enable or disable open tracking on this message',
 				default: '',
+			},
+			{
+				displayName: 'Custom Campaign',
+				name: 'customCampaign',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Deduplicate Campaign',
+				name: 'deduplicateCampaign',
+				type: 'boolean',
+				default: false,
 			},
 		],
 	},

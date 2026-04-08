@@ -3,9 +3,9 @@ import type { ICredentialTestRequest, ICredentialType, INodeProperties } from 'n
 export class WhatsAppTriggerApi implements ICredentialType {
 	name = 'whatsAppTriggerApi';
 
-	displayName = 'WhatsApp API';
+	displayName = 'WhatsApp OAuth API';
 
-	documentationUrl = 'whatsApp';
+	documentationUrl = 'whatsapp';
 
 	properties: INodeProperties[] = [
 		{

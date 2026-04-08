@@ -11,15 +11,20 @@ export class Switch extends VersionedNodeType {
 			displayName: 'Switch',
 			name: 'switch',
 			icon: 'fa:map-signs',
+			iconColor: 'light-blue',
 			group: ['transform'],
 			description: 'Route items depending on defined expression or rules',
-			defaultVersion: 3,
+			defaultVersion: 3.4,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new SwitchV1(baseDescription),
 			2: new SwitchV2(baseDescription),
 			3: new SwitchV3(baseDescription),
+			3.1: new SwitchV3(baseDescription),
+			3.2: new SwitchV3(baseDescription),
+			3.3: new SwitchV3(baseDescription),
+			3.4: new SwitchV3(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

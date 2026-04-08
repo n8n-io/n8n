@@ -1,14 +1,16 @@
-import Container from 'typedi';
+import { testDb, mockInstance } from '@n8n/backend-test-utils';
+import {
+	CredentialsEntity,
+	CredentialsRepository,
+	SharedWorkflowRepository,
+	WorkflowRepository,
+} from '@n8n/db';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
+
 import { Telemetry } from '@/telemetry';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
-import * as testDb from '../shared/testDb';
-import { mockInstance } from '../../shared/mocking';
 import {
 	FIRST_CREDENTIAL_ID,
 	SECOND_CREDENTIAL_ID,
@@ -29,11 +31,20 @@ describe('EnterpriseWorkflowService', () => {
 			Container.get(WorkflowRepository),
 			Container.get(CredentialsRepository),
 			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
 		);
 	});
 
 	afterEach(async () => {
-		await testDb.truncate(['Workflow']);
+		await testDb.truncate(['WorkflowEntity']);
 		jest.restoreAllMocks();
 	});
 

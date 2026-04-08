@@ -13,6 +13,12 @@ export const issueOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Add Link',
+				value: 'addLink',
+				description: 'Add a link to an issue',
+				action: 'Add a link to an issue',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create an issue',
@@ -56,7 +62,7 @@ export const issueFields: INodeProperties[] = [
 		name: 'teamId',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		required: true,
 		displayOptions: {
 			show: {
@@ -100,7 +106,7 @@ export const issueFields: INodeProperties[] = [
 				name: 'assigneeId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
@@ -145,7 +151,7 @@ export const issueFields: INodeProperties[] = [
 				name: 'stateId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getStates',
 				},
@@ -164,7 +170,7 @@ export const issueFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['issue'],
-				operation: ['get', 'delete'],
+				operation: ['addLink', 'get', 'delete'],
 			},
 		},
 		default: '',
@@ -192,7 +198,6 @@ export const issueFields: INodeProperties[] = [
 		default: 50,
 		typeOptions: {
 			minValue: 1,
-			maxValue: 300,
 		},
 		displayOptions: {
 			show: {
@@ -229,6 +234,7 @@ export const issueFields: INodeProperties[] = [
 			show: {
 				resource: ['issue'],
 				operation: ['update'],
+				'@version': [1],
 			},
 		},
 		options: [
@@ -237,7 +243,7 @@ export const issueFields: INodeProperties[] = [
 				name: 'assigneeId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
@@ -253,7 +259,6 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Priority Name/ID',
 				name: 'priorityId',
 				type: 'options',
-
 				options: [
 					{
 						name: 'Urgent',
@@ -283,7 +288,7 @@ export const issueFields: INodeProperties[] = [
 				name: 'stateId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getStates',
 				},
@@ -294,7 +299,7 @@ export const issueFields: INodeProperties[] = [
 				name: 'teamId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getTeams',
 				},
@@ -307,5 +312,112 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 		],
+	},
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['issue'],
+				operation: ['update'],
+			},
+			hide: {
+				'@version': [1],
+			},
+		},
+		options: [
+			{
+				displayName: 'Assignee Name or ID',
+				name: 'assigneeId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getUsers',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Priority Name/ID',
+				name: 'priorityId',
+				type: 'options',
+				options: [
+					{
+						name: 'Urgent',
+						value: 1,
+					},
+					{
+						name: 'High',
+						value: 2,
+					},
+					{
+						name: 'Medium',
+						value: 3,
+					},
+					{
+						name: 'Low',
+						value: 4,
+					},
+					{
+						name: 'No Priority',
+						value: 0,
+					},
+				],
+				default: 0,
+			},
+			{
+				displayName: 'State Name or ID',
+				name: 'stateId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getStates',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Team Name or ID',
+				name: 'teamId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getTeams',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Title',
+				name: 'title',
+				type: 'string',
+				default: '',
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                         	issue:addLink                                  */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Link',
+		name: 'link',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['issue'],
+				operation: ['addLink'],
+			},
+		},
+		default: '',
 	},
 ];

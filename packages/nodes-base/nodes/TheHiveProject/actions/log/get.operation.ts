@@ -4,9 +4,11 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { theHiveApiRequest } from '../../transport';
-import { logRLC } from '../../descriptions';
+
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
+
+import { logRLC } from '../../descriptions';
+import { theHiveApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [logRLC];
 

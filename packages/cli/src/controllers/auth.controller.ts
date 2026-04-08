@@ -1,128 +1,225 @@
-import validator from 'validator';
-
-import { AuthService } from '@/auth/auth.service';
-import { Get, Post, RestController } from '@/decorators';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { Request, Response } from 'express';
-import type { User } from '@db/entities/User';
-import { AuthenticatedRequest, LoginRequest, UserRequest } from '@/requests';
-import type { PublicUser } from '@/Interfaces';
-import { handleEmailLogin, handleLdapLogin } from '@/auth';
-import { PostHogClient } from '@/posthog';
+import { LoginRequestDto, ResolveSignupTokenQueryDto } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import { Time } from '@n8n/constants';
+import type { User, PublicUser, AuthProviderType } from '@n8n/db';
+import { UserRepository, AuthenticatedRequest, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import {
-	getCurrentAuthenticationMethod,
-	isLdapCurrentAuthenticationMethod,
-	isSamlCurrentAuthenticationMethod,
-} from '@/sso/ssoHelpers';
-import { InternalHooks } from '../InternalHooks';
-import { License } from '@/License';
-import { UserService } from '@/services/user.service';
-import { MfaService } from '@/Mfa/mfa.service';
-import { Logger } from '@/Logger';
+	Body,
+	createBodyKeyedRateLimiter,
+	Get,
+	Post,
+	Query,
+	RestController,
+} from '@n8n/decorators';
+import { isEmail } from 'class-validator';
+import { Response } from 'express';
+
+import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
+import { AuthService } from '@/auth/auth.service';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
-import { ApplicationError } from 'n8n-workflow';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { EventService } from '@/events/event.service';
+import { License } from '@/license';
+import { MfaService } from '@/mfa/mfa.service';
+import { PostHogClient } from '@/posthog';
+import { AuthlessRequest } from '@/requests';
+import { UserService } from '@/services/user.service';
+import {
+	getCurrentAuthenticationMethod,
+	isOidcCurrentAuthenticationMethod,
+	isSamlCurrentAuthenticationMethod,
+	isSsoCurrentAuthenticationMethod,
+} from '@/sso.ee/sso-helpers';
+import '../auth/handlers/email.auth-handler';
 
 @RestController()
 export class AuthController {
 	constructor(
 		private readonly logger: Logger,
-		private readonly internalHooks: InternalHooks,
 		private readonly authService: AuthService,
 		private readonly mfaService: MfaService,
 		private readonly userService: UserService,
 		private readonly license: License,
 		private readonly userRepository: UserRepository,
+		private readonly eventService: EventService,
+		private readonly authHandlerRegistry: AuthHandlerRegistry,
 		private readonly postHog?: PostHogClient,
 	) {}
 
 	/** Log in a user */
-	@Post('/login', { skipAuth: true, rateLimit: true })
-	async login(req: LoginRequest, res: Response): Promise<PublicUser | undefined> {
-		const { email, password, mfaToken, mfaRecoveryCode } = req.body;
-		if (!email) throw new ApplicationError('Email is required to log in');
-		if (!password) throw new ApplicationError('Password is required to log in');
+	@Post('/login', {
+		skipAuth: true,
+		// Two layered rate limit to ensure multiple users can login from the same
+		// IP address but aggressive per email limit.
+		ipRateLimit: {
+			limit: 1000,
+			windowMs: 5 * Time.minutes.toMilliseconds,
+		},
+		keyedRateLimit: createBodyKeyedRateLimiter<LoginRequestDto>({
+			limit: 5,
+			windowMs: 1 * Time.minutes.toMilliseconds,
+			field: 'emailOrLdapLoginId',
+		}),
+	})
+	async login(
+		req: AuthlessRequest,
+		res: Response,
+		@Body payload: LoginRequestDto,
+	): Promise<PublicUser | undefined> {
+		const { emailOrLdapLoginId, password, mfaCode, mfaRecoveryCode } = payload;
 
-		let user: User | undefined;
+		const currentAuthenticationMethod = getCurrentAuthenticationMethod();
+		this.validateEmailFormat(currentAuthenticationMethod, emailOrLdapLoginId);
 
-		let usedAuthenticationMethod = getCurrentAuthenticationMethod();
-		if (isSamlCurrentAuthenticationMethod()) {
-			// attempt to fetch user data with the credentials, but don't log in yet
-			const preliminaryUser = await handleEmailLogin(email, password);
-			// if the user is an owner, continue with the login
-			if (
-				preliminaryUser?.role === 'global:owner' ||
-				preliminaryUser?.settings?.allowSSOManualLogin
-			) {
-				user = preliminaryUser;
-				usedAuthenticationMethod = 'email';
-			} else {
-				throw new AuthError('SSO is enabled, please log in with SSO');
-			}
-		} else if (isLdapCurrentAuthenticationMethod()) {
-			const preliminaryUser = await handleEmailLogin(email, password);
-			if (preliminaryUser?.role === 'global:owner') {
-				user = preliminaryUser;
-				usedAuthenticationMethod = 'email';
-			} else {
-				user = await handleLdapLogin(email, password);
-			}
-		} else {
-			user = await handleEmailLogin(email, password);
+		const emailHandler = this.authHandlerRegistry.get('email', 'password');
+		if (!emailHandler) {
+			this.logger.error('Email authentication handler is not registered');
+			throw new InternalServerError('Email authentication method not available');
 		}
 
-		if (user) {
-			if (user.mfaEnabled) {
-				if (!mfaToken && !mfaRecoveryCode) {
-					throw new AuthError('MFA Error', 998);
-				}
+		const preliminaryUser = await emailHandler.handleLogin(emailOrLdapLoginId, password);
+		this.validateSsoRestrictions(preliminaryUser);
 
-				const { decryptedRecoveryCodes, decryptedSecret } =
-					await this.mfaService.getSecretAndRecoveryCodes(user.id);
+		const { user, usedAuthenticationMethod } = await this.authenticateWithPassword(
+			currentAuthenticationMethod,
+			emailOrLdapLoginId,
+			password,
+			preliminaryUser,
+		);
 
-				user.mfaSecret = decryptedSecret;
-				user.mfaRecoveryCodes = decryptedRecoveryCodes;
+		await this.validateMfa(user, mfaCode, mfaRecoveryCode);
 
-				const isMFATokenValid =
-					(await this.validateMfaToken(user, mfaToken)) ||
-					(await this.validateMfaRecoveryCode(user, mfaRecoveryCode));
+		this.authService.issueCookie(res, user, user.mfaEnabled, req.browserId);
 
-				if (!isMFATokenValid) {
-					throw new AuthError('Invalid mfa token or recovery code');
-				}
-			}
-
-			this.authService.issueCookie(res, user, req.browserId);
-			void this.internalHooks.onUserLoginSuccess({
-				user,
-				authenticationMethod: usedAuthenticationMethod,
-			});
-
-			return await this.userService.toPublic(user, { posthog: this.postHog, withScopes: true });
-		}
-		void this.internalHooks.onUserLoginFailed({
-			user: email,
+		this.eventService.emit('user-logged-in', {
+			user,
 			authenticationMethod: usedAuthenticationMethod,
-			reason: 'wrong credentials',
 		});
-		throw new AuthError('Wrong username or password. Do you have caps lock on?');
+
+		return await this.userService.toPublic(user, {
+			posthog: this.postHog,
+			withScopes: true,
+			mfaAuthenticated: user.mfaEnabled,
+		});
+	}
+
+	private validateEmailFormat(authMethod: AuthProviderType, emailOrLdapLoginId: string): void {
+		if (authMethod === 'email' && !isEmail(emailOrLdapLoginId)) {
+			throw new BadRequestError('Invalid email address');
+		}
+	}
+
+	private validateSsoRestrictions(preliminaryUser: User | undefined): void {
+		const shouldBlockSsoUser =
+			(isSamlCurrentAuthenticationMethod() || isOidcCurrentAuthenticationMethod()) &&
+			preliminaryUser?.role.slug !== GLOBAL_OWNER_ROLE.slug &&
+			!preliminaryUser?.settings?.allowSSOManualLogin;
+
+		if (shouldBlockSsoUser) {
+			throw new AuthError('SSO is enabled, please log in with SSO');
+		}
+	}
+
+	private async authenticateWithPassword(
+		getCurrentAuthenticationMethod: AuthProviderType,
+		emailOrLdapLoginId: string,
+		password: string,
+		preliminaryUser: User | undefined,
+	): Promise<{ user: User; usedAuthenticationMethod: AuthProviderType }> {
+		let user = preliminaryUser;
+		let usedAuthenticationMethod: AuthProviderType = 'email';
+
+		const shouldTryAlternativeAuth =
+			getCurrentAuthenticationMethod !== 'email' &&
+			preliminaryUser?.role.slug !== GLOBAL_OWNER_ROLE.slug;
+
+		if (shouldTryAlternativeAuth) {
+			const authHandler = this.authHandlerRegistry.get(getCurrentAuthenticationMethod, 'password');
+			if (authHandler) {
+				user = await authHandler.handleLogin(emailOrLdapLoginId, password);
+				usedAuthenticationMethod = getCurrentAuthenticationMethod;
+			}
+		}
+
+		if (!user) {
+			this.eventService.emit('user-login-failed', {
+				authenticationMethod: usedAuthenticationMethod,
+				userEmail: emailOrLdapLoginId,
+				reason: 'wrong credentials',
+			});
+			throw new AuthError('Wrong username or password. Do you have caps lock on?');
+		}
+
+		return { user, usedAuthenticationMethod };
+	}
+
+	private async validateMfa(
+		user: User,
+		mfaCode: string | undefined,
+		mfaRecoveryCode: string | undefined,
+	): Promise<void> {
+		if (!user.mfaEnabled) {
+			return;
+		}
+
+		if (!mfaCode && !mfaRecoveryCode) {
+			throw new AuthError('MFA Error', 998);
+		}
+
+		const isMfaCodeOrMfaRecoveryCodeValid = await this.mfaService.validateMfa(
+			user.id,
+			mfaCode,
+			mfaRecoveryCode,
+		);
+
+		if (!isMfaCodeOrMfaRecoveryCodeValid) {
+			throw new AuthError('Invalid mfa token or recovery code');
+		}
 	}
 
 	/** Check if the user is already logged in */
-	@Get('/login')
+	@Get('/login', {
+		allowSkipMFA: true,
+	})
 	async currentUser(req: AuthenticatedRequest): Promise<PublicUser> {
-		return await this.userService.toPublic(req.user, {
+		// We need auth identities to determine signInType in toPublic method
+		const user = await this.userService.findUserWithAuthIdentities(req.user.id);
+
+		return await this.userService.toPublic(user, {
 			posthog: this.postHog,
 			withScopes: true,
+			mfaAuthenticated: req.authInfo?.usedMfa,
 		});
 	}
 
 	/** Validate invite token to enable invitee to set up their account */
 	@Get('/resolve-signup-token', { skipAuth: true })
-	async resolveSignupToken(req: UserRequest.ResolveSignUp) {
-		const { inviterId, inviteeId } = req.query;
+	async resolveSignupToken(
+		_req: AuthlessRequest,
+		_res: Response,
+		@Query payload: ResolveSignupTokenQueryDto,
+	) {
+		if (isSsoCurrentAuthenticationMethod()) {
+			this.logger.debug(
+				'Invite links are not supported on this system, please use single sign on instead.',
+			);
+			throw new BadRequestError(
+				'Invite links are not supported on this system, please use single sign on instead.',
+			);
+		}
+
+		if (!payload.token) {
+			this.logger.debug('Request to resolve signup token failed because token is missing');
+			throw new BadRequestError('Token is required');
+		}
+
+		const { inviterId, inviteeId } = await this.userService.getInvitationIdsFromPayload(
+			payload.token,
+		);
+
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
 
 		if (!isWithinUsersLimit) {
@@ -130,28 +227,12 @@ export class AuthController {
 				inviterId,
 				inviteeId,
 			});
-			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
-		if (!inviterId || !inviteeId) {
-			this.logger.debug(
-				'Request to resolve signup token failed because of missing user IDs in query string',
-				{ inviterId, inviteeId },
-			);
-			throw new BadRequestError('Invalid payload');
-		}
-
-		// Postgres validates UUID format
-		for (const userId of [inviterId, inviteeId]) {
-			if (!validator.isUUID(userId)) {
-				this.logger.debug('Request to resolve signup token failed because of invalid user ID', {
-					userId,
-				});
-				throw new BadRequestError('Invalid userId');
-			}
-		}
-
-		const users = await this.userRepository.findManyByIds([inviterId, inviteeId]);
+		const users = await this.userRepository.findManyByIds([inviterId, inviteeId], {
+			includeRole: true,
+		});
 
 		if (users.length !== 2) {
 			this.logger.debug(
@@ -181,7 +262,7 @@ export class AuthController {
 			throw new BadRequestError('Invalid request');
 		}
 
-		void this.internalHooks.onUserInviteEmailClick({ inviter, invitee });
+		this.eventService.emit('user-invite-email-click', { inviter, invitee });
 
 		const { firstName, lastName } = inviter;
 		return { inviter: { firstName, lastName } };
@@ -189,31 +270,9 @@ export class AuthController {
 
 	/** Log out a user */
 	@Post('/logout')
-	logout(_: Request, res: Response) {
+	async logout(req: AuthenticatedRequest, res: Response) {
+		await this.authService.invalidateToken(req);
 		this.authService.clearCookie(res);
 		return { loggedOut: true };
-	}
-
-	private async validateMfaToken(user: User, token?: string) {
-		if (!!!token) return false;
-		return this.mfaService.totp.verifySecret({
-			secret: user.mfaSecret ?? '',
-			token,
-		});
-	}
-
-	private async validateMfaRecoveryCode(user: User, mfaRecoveryCode?: string) {
-		if (!!!mfaRecoveryCode) return false;
-		const index = user.mfaRecoveryCodes.indexOf(mfaRecoveryCode);
-		if (index === -1) return false;
-
-		// remove used recovery code
-		user.mfaRecoveryCodes.splice(index, 1);
-
-		await this.userService.update(user.id, {
-			mfaRecoveryCodes: this.mfaService.encryptRecoveryCodes(user.mfaRecoveryCodes),
-		});
-
-		return true;
 	}
 }

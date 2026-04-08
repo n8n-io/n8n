@@ -1,8 +1,14 @@
-import { ActivationErrorsService } from '@/ActivationErrors.service';
+import { mockInstance } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
+
+import { ActivationErrorsService } from '@/activation-errors.service';
 import { CacheService } from '@/services/cache/cache.service';
 
 describe('ActivationErrorsService', () => {
-	const cacheService = new CacheService();
+	const globalConfig = mockInstance(GlobalConfig, {
+		cache: { backend: 'memory', memory: { maxSize: 3 * 1024 * 1024, ttl: 3600 * 1000 } },
+	});
+	const cacheService = new CacheService(globalConfig);
 	const activationErrorsService = new ActivationErrorsService(cacheService);
 
 	const firstWorkflowId = 'GSG0etbfTA2CNPDX';

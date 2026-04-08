@@ -399,7 +399,7 @@ export const ldapFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -416,7 +416,7 @@ export const ldapFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'Comma-separated list of attributes to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Comma-separated list of attributes to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Page Size',

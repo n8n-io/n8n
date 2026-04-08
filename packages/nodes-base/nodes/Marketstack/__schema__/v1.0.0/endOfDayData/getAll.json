@@ -1,0 +1,21 @@
+{
+    "type": "object",
+    "properties": {
+        "date": {
+            "type": "string"
+        },
+        "exchange": {
+            "type": "string"
+        },
+        "split_factor": {
+            "type": "integer"
+        },
+        "symbol": {
+            "type": "string"
+        },
+        "volume": {
+            "type": "integer"
+        }
+    },
+    "version": 4
+}

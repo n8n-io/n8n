@@ -23,9 +23,9 @@ export async function mailjetApiRequest(
 
 	if (resource === 'email' || this.getNode().type.includes('Trigger')) {
 		credentialType = 'mailjetEmailApi';
-		const { sandboxMode } = (await this.getCredentials('mailjetEmailApi')) as {
+		const { sandboxMode } = await this.getCredentials<{
 			sandboxMode: boolean;
-		};
+		}>('mailjetEmailApi');
 
 		if (!this.getNode().type.includes('Trigger')) {
 			Object.assign(body, { SandboxMode: sandboxMode });
@@ -103,4 +103,6 @@ export interface IMessage {
 	ReplyTo?: IDataObject;
 	TrackClicks?: string;
 	Priority?: number;
+	CustomCampaign?: string;
+	DeduplicateCampaign?: boolean;
 }

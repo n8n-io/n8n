@@ -1,16 +1,17 @@
-import type {
-	IHookFunctions,
-	IWebhookFunctions,
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeCredentialTestResult,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
-	IRequestOptions,
+import {
+	type IHookFunctions,
+	type IWebhookFunctions,
+	type ICredentialsDecrypted,
+	type ICredentialTestFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeCredentialTestResult,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookResponseData,
+	type IRequestOptions,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { bitbucketApiRequest, bitbucketApiRequestAllItems } from './GenericFunctions';
@@ -21,18 +22,33 @@ export class BitbucketTrigger implements INodeType {
 		name: 'bitbucketTrigger',
 		icon: 'file:bitbucket.svg',
 		group: ['trigger'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		description: 'Handle Bitbucket events via webhooks',
 		defaults: {
 			name: 'Bitbucket Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'bitbucketApi',
 				required: true,
 				testedBy: 'bitbucketApiTest',
+				displayOptions: {
+					show: {
+						authentication: ['password'],
+					},
+				},
+			},
+			{
+				name: 'bitbucketAccessTokenApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['accessToken'],
+					},
+				},
 			},
 		],
 		webhooks: [
@@ -44,6 +60,48 @@ export class BitbucketTrigger implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Password (Deprecated)',
+						value: 'password',
+					},
+					{
+						name: 'Access Token',
+						value: 'accessToken',
+					},
+				],
+				default: 'password',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Password (Deprecated)',
+						value: 'password',
+					},
+					{
+						name: 'Access Token',
+						value: 'accessToken',
+					},
+				],
+				default: 'accessToken',
+				displayOptions: {
+					show: {
+						'@version': [1.1],
+					},
+				},
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -77,7 +135,7 @@ export class BitbucketTrigger implements INodeType {
 				required: true,
 				default: '',
 				description:
-					'The repository of which to listen to the events. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The repository of which to listen to the events. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Event Names or IDs',
@@ -95,7 +153,7 @@ export class BitbucketTrigger implements INodeType {
 				required: true,
 				default: [],
 				description:
-					'The events to listen to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The events to listen to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Repository Name or ID',
@@ -113,7 +171,7 @@ export class BitbucketTrigger implements INodeType {
 				required: true,
 				default: '',
 				description:
-					'The repository of which to listen to the events. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The repository of which to listen to the events. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Event Names or IDs',
@@ -131,7 +189,7 @@ export class BitbucketTrigger implements INodeType {
 				required: true,
 				default: [],
 				description:
-					'The events to listen to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The events to listen to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 		],
 	};

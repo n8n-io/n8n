@@ -1,13 +1,14 @@
+import { GlobalConfig } from '@n8n/config';
+import { WorkflowRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import nock from 'nock';
-import config from '@/config';
 import { v4 as uuid } from 'uuid';
-import { toReportTitle } from '@/security-audit/utils';
+
 import * as constants from '@/constants';
+import type { InstalledNodes } from '@/modules/community-packages/installed-nodes.entity';
+import type { InstalledPackages } from '@/modules/community-packages/installed-packages.entity';
 import type { Risk } from '@/security-audit/types';
-import type { InstalledNodes } from '@db/entities/InstalledNodes';
-import type { InstalledPackages } from '@db/entities/InstalledPackages';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import Container from 'typedi';
+import { toReportTitle } from '@/security-audit/utils';
 
 type GetSectionKind<C extends Risk.Category> = C extends 'instance'
 	? Risk.InstanceSection
@@ -42,6 +43,7 @@ export async function saveManualTriggerWorkflow() {
 		active: false,
 		connections: {},
 		nodeTypes: {},
+		versionId: uuid(),
 		nodes: [
 			{
 				id: uuid(),
@@ -71,7 +73,7 @@ export const MOCK_09990_N8N_VERSION = {
 	createdAt: '2022-11-11T11:11:11.111Z',
 	description:
 		'Includes <strong>new nodes</strong>, <strong>node enhancements</strong>, <strong>core functionality</strong> and <strong>bug fixes</strong>',
-	documentationUrl: 'https://docs.n8n.io/reference/release-notes/#n8n09990',
+	documentationUrl: 'https://docs.n8n.io/release-notes/0-x/#n8n0990',
 	hasBreakingChange: false,
 	hasSecurityFix: false,
 	hasSecurityIssue: false,
@@ -84,7 +86,7 @@ export const MOCK_01110_N8N_VERSION = {
 	createdAt: '2022-01-01T00:00:00.000Z',
 	description:
 		'Includes <strong>new nodes</strong>, <strong>node enhancements</strong>, <strong>core functionality</strong> and <strong>bug fixes</strong>',
-	documentationUrl: 'https://docs.n8n.io/reference/release-notes/#n8n01110',
+	documentationUrl: 'https://docs.n8n.io/release-notes/0-x/#n8n01100',
 	hasBreakingChange: false,
 	hasSecurityFix: false,
 	hasSecurityIssue: false,
@@ -104,28 +106,26 @@ export const MOCK_PACKAGE: InstalledPackages[] = [
 			{
 				name: 'My Test Node',
 				type: 'myTestNode',
-				latestVersion: '1',
+				latestVersion: 1,
 			} as InstalledNodes,
 		],
 	},
 ];
 
 export function simulateOutdatedInstanceOnce(versionName = MOCK_01110_N8N_VERSION.name) {
-	const baseUrl = config.getEnv('versionNotifications.endpoint') + '/';
+	const baseUrl = Container.get(GlobalConfig).versionNotifications.endpoint + '/';
 
-	jest
-		.spyOn(constants, 'getN8nPackageJson')
-		.mockReturnValueOnce({ name: 'n8n', version: versionName });
+	// @ts-expect-error readonly export
+	constants.N8N_VERSION = versionName;
 
 	nock(baseUrl).get(versionName).reply(200, [MOCK_01110_N8N_VERSION, MOCK_09990_N8N_VERSION]);
 }
 
 export function simulateUpToDateInstance(versionName = MOCK_09990_N8N_VERSION.name) {
-	const baseUrl = config.getEnv('versionNotifications.endpoint') + '/';
+	const baseUrl = Container.get(GlobalConfig).versionNotifications.endpoint + '/';
 
-	jest
-		.spyOn(constants, 'getN8nPackageJson')
-		.mockReturnValueOnce({ name: 'n8n', version: versionName });
+	// @ts-expect-error readonly export
+	constants.N8N_VERSION = versionName;
 
 	nock(baseUrl).persist().get(versionName).reply(200, [MOCK_09990_N8N_VERSION]);
 }

@@ -1,17 +1,20 @@
-import type {
-	ICredentialDataDecryptedObject,
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
-	IDataObject,
-	IExecuteFunctions,
-	INodeCredentialTestResult,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+import {
+	BINARY_ENCODING,
+	NodeConnectionTypes,
+	type ICredentialDataDecryptedObject,
+	type ICredentialsDecrypted,
+	type ICredentialTestFunctions,
+	type IDataObject,
+	type IExecuteFunctions,
+	type INodeCredentialTestResult,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
 } from 'n8n-workflow';
 
 import type { IExpenseDocument } from './GenericFunctions';
 import { awsApiRequestREST, simplify, validateCredentials } from './GenericFunctions';
+import { awsNodeAuthOptions, awsNodeCredentials } from '../utils';
 
 export class AwsTextract implements INodeType {
 	description: INodeTypeDescription = {
@@ -25,15 +28,12 @@ export class AwsTextract implements INodeType {
 		defaults: {
 			name: 'AWS Textract',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
-		credentials: [
-			{
-				name: 'aws',
-				required: true,
-			},
-		],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		credentials: awsNodeCredentials,
 		properties: [
+			awsNodeAuthOptions,
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -115,11 +115,13 @@ export class AwsTextract implements INodeType {
 				if (operation === 'analyzeExpense') {
 					const simple = this.getNodeParameter('simple', i) as boolean;
 					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-					const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+					const binaryBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+					// Convert the binary buffer to a base64 string
+					const binaryData = Buffer.from(binaryBuffer).toString(BINARY_ENCODING);
 
 					const body: IDataObject = {
 						Document: {
-							Bytes: binaryData.data,
+							Bytes: binaryData,
 						},
 					};
 

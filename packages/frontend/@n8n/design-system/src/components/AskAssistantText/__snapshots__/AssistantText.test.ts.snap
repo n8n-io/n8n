@@ -1,0 +1,41 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`AssistantText > renders default text correctly 1`] = `
+<div>
+  <span
+    class="text medium"
+  >
+    Ask me something
+  </span>
+</div>
+`;
+
+exports[`AssistantText > renders large text correctly 1`] = `
+<div>
+  <span
+    class="text large"
+  >
+    Ask me something
+  </span>
+</div>
+`;
+
+exports[`AssistantText > renders medium text correctly 1`] = `
+<div>
+  <span
+    class="text medium"
+  >
+    Ask me something
+  </span>
+</div>
+`;
+
+exports[`AssistantText > renders small text correctly 1`] = `
+<div>
+  <span
+    class="text small"
+  >
+    Ask me something
+  </span>
+</div>
+`;

@@ -1,5 +1,45 @@
-import type { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
+
 import { BATCH_MODE, SINGLE } from '../helpers/interfaces';
+
+export const operatorOptions: INodePropertyOptions[] = [
+	{
+		name: 'Equal',
+		value: 'equal',
+	},
+	{
+		name: 'Not Equal',
+		value: '!=',
+	},
+	{
+		name: 'Like',
+		value: 'LIKE',
+	},
+	{
+		name: 'Greater Than',
+		value: '>',
+	},
+	{
+		name: 'Less Than',
+		value: '<',
+	},
+	{
+		name: 'Greater Than Or Equal',
+		value: '>=',
+	},
+	{
+		name: 'Less Than Or Equal',
+		value: '<=',
+	},
+	{
+		name: 'Is Null',
+		value: 'IS NULL',
+	},
+	{
+		name: 'Is Not Null',
+		value: 'IS NOT NULL',
+	},
+];
 
 export const tableRLC: INodeProperties = {
 	displayName: 'Table',
@@ -33,7 +73,7 @@ export const optionsCollection: INodeProperties = {
 	name: 'options',
 	type: 'collection',
 	default: {},
-	placeholder: 'Add Option',
+	placeholder: 'Add option',
 	options: [
 		{
 			displayName: 'Connection Timeout',
@@ -69,7 +109,7 @@ export const optionsCollection: INodeProperties = {
 					description: 'A single query for all incoming items',
 				},
 				{
-					name: 'Independently',
+					name: 'Independent',
 					value: BATCH_MODE.INDEPENDENTLY,
 					description: 'Execute one query per incoming item of the run',
 				},
@@ -102,7 +142,7 @@ export const optionsCollection: INodeProperties = {
 			type: 'multiOptions',
 			// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
 			description:
-				'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/" target="_blank">expression</a>',
+				'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>',
 			typeOptions: {
 				loadOptionsMethod: 'getColumnsMultiOptions',
 				loadOptionsDependsOn: ['table.value'],
@@ -130,6 +170,16 @@ export const optionsCollection: INodeProperties = {
 			],
 			hint: 'Applies to NUMERIC and BIGINT columns only',
 			default: 'text',
+			displayOptions: {
+				show: { '/operation': ['select', 'executeQuery'] },
+			},
+		},
+		{
+			displayName: 'Output Decimals as Numbers',
+			name: 'decimalNumbers',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to output DECIMAL types as numbers instead of strings',
 			displayOptions: {
 				show: { '/operation': ['select', 'executeQuery'] },
 			},
@@ -231,7 +281,7 @@ export const selectRowsFixedCollection: INodeProperties = {
 					type: 'options',
 					// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 					description:
-						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/" target="_blank">expression</a>',
+						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>',
 					default: '',
 					placeholder: 'e.g. ID',
 					typeOptions: {
@@ -246,44 +296,7 @@ export const selectRowsFixedCollection: INodeProperties = {
 					description:
 						"The operator to check the column against. When using 'LIKE' operator percent sign ( %) matches zero or more characters, underscore ( _ ) matches any single character.",
 					// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
-					options: [
-						{
-							name: 'Equal',
-							value: 'equal',
-						},
-						{
-							name: 'Not Equal',
-							value: '!=',
-						},
-						{
-							name: 'Like',
-							value: 'LIKE',
-						},
-						{
-							name: 'Greater Than',
-							value: '>',
-						},
-						{
-							name: 'Less Than',
-							value: '<',
-						},
-						{
-							name: 'Greater Than Or Equal',
-							value: '>=',
-						},
-						{
-							name: 'Less Than Or Equal',
-							value: '<=',
-						},
-						{
-							name: 'Is Null',
-							value: 'IS NULL',
-						},
-						{
-							name: 'Is Not Null',
-							value: 'IS NOT NULL',
-						},
-					],
+					options: operatorOptions,
 					default: 'equal',
 				},
 				{
@@ -323,7 +336,7 @@ export const sortFixedCollection: INodeProperties = {
 					type: 'options',
 					// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 					description:
-						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/" target="_blank">expression</a>',
+						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>',
 					default: '',
 					typeOptions: {
 						loadOptionsMethod: 'getColumns',

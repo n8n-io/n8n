@@ -49,7 +49,7 @@ export const imageFields: INodeProperties[] = [
 			},
 		},
 		description:
-			'The template ID you want to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The template ID you want to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -134,7 +134,7 @@ export const imageFields: INodeProperties[] = [
 						},
 						default: '',
 						description:
-							'The name of the item you want to change. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'The name of the item you want to change. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Text',

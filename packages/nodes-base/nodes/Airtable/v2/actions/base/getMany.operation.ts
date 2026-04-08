@@ -4,6 +4,7 @@ import type {
 	INodeProperties,
 	IExecuteFunctions,
 } from 'n8n-workflow';
+
 import {
 	generatePairedItemData,
 	updateDisplayOptions,
@@ -39,7 +40,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{

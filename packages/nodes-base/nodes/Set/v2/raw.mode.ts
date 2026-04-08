@@ -7,9 +7,9 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { updateDisplayOptions } from '../../../utils/utilities';
-import { parseJsonParameter, composeReturnItem, resolveRawData } from './helpers/utils';
 import type { SetNodeOptions } from './helpers/interfaces';
+import { parseJsonParameter, composeReturnItem, resolveRawData } from './helpers/utils';
+import { updateDisplayOptions } from '../../../utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
@@ -54,7 +54,7 @@ export async function execute(
 			);
 		}
 
-		return composeReturnItem.call(this, i, item, newData, options);
+		return composeReturnItem.call(this, i, item, newData, options, node.typeVersion);
 	} catch (error) {
 		if (this.continueOnFail()) {
 			return { json: { error: (error as Error).message }, pairedItem: { item: i } };

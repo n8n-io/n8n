@@ -12,7 +12,7 @@ import { NodeApiError } from 'n8n-workflow';
 export async function lineApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	_resource: string,
 
 	body: any = {},
 	qs: IDataObject = {},

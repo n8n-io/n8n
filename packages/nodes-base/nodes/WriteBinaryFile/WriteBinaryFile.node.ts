@@ -1,12 +1,12 @@
-import type { Readable } from 'stream';
-
-import { BINARY_ENCODING } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { constants } from 'node:fs';
+import type { Readable } from 'stream';
 
 export class WriteBinaryFile implements INodeType {
 	description: INodeTypeDescription = {
@@ -21,8 +21,8 @@ export class WriteBinaryFile implements INodeType {
 			name: 'Write Binary File',
 			color: '#CC2233',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'File Name',
@@ -46,7 +46,7 @@ export class WriteBinaryFile implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{
@@ -76,7 +76,9 @@ export class WriteBinaryFile implements INodeType {
 
 				const options = this.getNodeParameter('options', 0, {});
 
-				const flag: string = options.append ? 'a' : 'w';
+				const flag: number = options.append
+					? constants.O_APPEND
+					: constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC;
 
 				item = items[itemIndex];
 
@@ -99,7 +101,11 @@ export class WriteBinaryFile implements INodeType {
 
 				// Write the file to disk
 
-				await this.helpers.writeContentToFile(fileName, fileContent, flag);
+				await this.helpers.writeContentToFile(
+					await this.helpers.resolvePath(fileName),
+					fileContent,
+					flag,
+				);
 
 				if (item.binary !== undefined) {
 					// Create a shallow copy of the binary data so that the old

@@ -10,7 +10,7 @@ import type {
 	INodeTypeDescription,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import {
 	groupDescription,
@@ -18,7 +18,6 @@ import {
 	ticketDescription,
 	userDescription,
 } from './descriptions';
-
 import {
 	doesNotBelongToZammad,
 	fieldToLoadOption,
@@ -38,7 +37,6 @@ import {
 	zammadApiRequest,
 	zammadApiRequestAllItems,
 } from './GenericFunctions';
-
 import type { Zammad as ZammadTypes } from './types';
 
 export class Zammad implements INodeType {
@@ -53,8 +51,9 @@ export class Zammad implements INodeType {
 		defaults: {
 			name: 'Zammad',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'zammadBasicAuthApi',
@@ -154,7 +153,7 @@ export class Zammad implements INodeType {
 			async loadTicketCustomFields(this: ILoadOptionsFunctions) {
 				const allFields = await getAllFields.call(this);
 
-				return getTicketCustomFields(allFields).map((i) => ({ name: i.name, value: i.id }));
+				return getTicketCustomFields(allFields).map(fieldToLoadOption);
 			},
 
 			// ----------------------------------
@@ -214,7 +213,7 @@ export class Zammad implements INodeType {
 			},
 
 			/**
-			 * POST & PUT /tickets requires customer email instead of customer ID.
+			 * POST /tickets requires customer email instead of customer ID.
 			 */
 			async loadCustomerEmails(this: ILoadOptionsFunctions) {
 				const users = (await zammadApiRequest.call(this, 'GET', '/users')) as ZammadTypes.User[];
@@ -223,6 +222,16 @@ export class Zammad implements INodeType {
 			},
 
 			// by ID
+
+			/**
+			 * PUT /tickets requires customer ID instead of customer email.
+			 * Zammad API constraint: Any listings will return users own information only. -> https://docs.zammad.org/en/latest/api/user.html
+			 */
+			async loadCustomerIds(this: ILoadOptionsFunctions) {
+				const users = (await zammadApiRequest.call(this, 'GET', '/users')) as ZammadTypes.User[];
+
+				return users.filter(isCustomer).map((i) => ({ name: i.email, value: i.id }));
+			},
 
 			async loadGroups(this: ILoadOptionsFunctions) {
 				const groups = (await zammadApiRequest.call(this, 'GET', '/groups')) as ZammadTypes.Group[];
@@ -244,6 +253,26 @@ export class Zammad implements INodeType {
 				const users = (await zammadApiRequest.call(this, 'GET', '/users')) as ZammadTypes.User[];
 
 				return users.filter(doesNotBelongToZammad).map((i) => ({ name: i.login, value: i.id }));
+			},
+			async loadTicketStates(this: ILoadOptionsFunctions) {
+				const states = (await zammadApiRequest.call(this, 'GET', '/ticket_states')) as Array<{
+					id: number;
+					name: string;
+				}>;
+				return states.map((state) => ({ name: state.name, value: state.id }));
+			},
+
+			async loadTicketPriorities(this: ILoadOptionsFunctions) {
+				const priorities = (await zammadApiRequest.call(
+					this,
+					'GET',
+					'/ticket_priorities',
+				)) as Array<{
+					id: number;
+					name: string;
+				}>;
+
+				return priorities.map((priority) => ({ name: priority.name, value: priority.id }));
 			},
 		},
 		credentialTest: {
@@ -662,12 +691,30 @@ export class Zammad implements INodeType {
 
 						// https://docs.zammad.org/en/latest/api/ticket/index.html#create
 
-						const body = {
+						const body: IDataObject = {
 							article: {},
 							title: this.getNodeParameter('title', i) as string,
 							group: this.getNodeParameter('group', i) as string,
 							customer: this.getNodeParameter('customer', i) as string,
 						};
+
+						const { customFieldsUi, ...additionalFields } = this.getNodeParameter(
+							'additionalFields',
+							i,
+						);
+
+						if (customFieldsUi) {
+							const customFields = customFieldsUi as {
+								customFieldPairs: Array<{ name: string | number; value: string }>;
+							};
+
+							for (const pair of customFields.customFieldPairs) {
+								const resolvedName = pair.name;
+								body[resolvedName] = pair.value;
+							}
+						}
+
+						Object.assign(body, additionalFields);
 
 						const article = this.getNodeParameter('article', i) as ZammadTypes.Article;
 
@@ -693,6 +740,50 @@ export class Zammad implements INodeType {
 							'GET',
 							`/ticket_articles/by_ticket/${id}`,
 						);
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//          ticket:update
+						// ----------------------------------
+
+						// https://docs.zammad.org/en/latest/api/ticket/index.html#update
+
+						const id = this.getNodeParameter('id', i) as string;
+						const body: IDataObject = {};
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+						if (!Object.keys(updateFields).length) {
+							throwOnEmptyUpdate.call(this, resource);
+						}
+
+						const { note, customFieldsUi, ...rest } = updateFields;
+
+						if (note) {
+							body.article = {
+								body: note,
+								internal: true,
+								type: 'note',
+								content_type: 'text/html',
+							};
+						}
+
+						if (customFieldsUi) {
+							const customFields = customFieldsUi as {
+								customFieldPairs: Array<{ name: string | number; value: string }>;
+							};
+							for (const pair of customFields.customFieldPairs) {
+								const resolvedName = pair.name;
+								body[resolvedName] = pair.value;
+							}
+						}
+
+						Object.assign(body, rest);
+
+						if (body.pending_time === '') {
+							delete body.pending_time;
+						}
+
+						responseData = await zammadApiRequest.call(this, 'PUT', `/tickets/${id}`, body);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//          ticket:delete

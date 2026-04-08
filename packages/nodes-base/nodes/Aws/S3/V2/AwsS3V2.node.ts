@@ -1,10 +1,5 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { createHash } from 'crypto';
-import type { Readable } from 'stream';
 import { paramCase, snakeCase } from 'change-case';
-
-import { Builder } from 'xml2js';
-
+import { createHash } from 'crypto';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -13,15 +8,16 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import type { Readable } from 'stream';
+import { Builder } from 'xml2js';
 
 import { bucketFields, bucketOperations } from './BucketDescription';
-
-import { folderFields, folderOperations } from './FolderDescription';
-
 import { fileFields, fileOperations } from './FileDescription';
-
+import { folderFields, folderOperations } from './FolderDescription';
 import { awsApiRequestREST, awsApiRequestRESTAllItems } from './GenericFunctions';
+import { awsNodeAuthOptions, awsNodeCredentials } from '../../utils';
+import { getAwsCredentials } from '../../GenericFunctions';
 
 // Minimum size 5MB for multipart upload in S3
 const UPLOAD_CHUNK_SIZE = 5120 * 1024;
@@ -42,15 +38,12 @@ export class AwsS3V2 implements INodeType {
 			defaults: {
 				name: 'AWS S3',
 			},
-			inputs: ['main'],
-			outputs: ['main'],
-			credentials: [
-				{
-					name: 'aws',
-					required: true,
-				},
-			],
+			usableAsTool: true,
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+			credentials: awsNodeCredentials,
 			properties: [
+				awsNodeAuthOptions,
 				{
 					displayName: 'Resource',
 					name: 'resource',
@@ -92,13 +85,14 @@ export class AwsS3V2 implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
+		const { credentials } = await getAwsCredentials(this);
+
 		for (let i = 0; i < items.length; i++) {
 			let headers: IDataObject = {};
 			try {
 				if (resource === 'bucket') {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_CreateBucket.html
 					if (operation === 'create') {
-						const credentials = await this.getCredentials('aws');
 						const name = this.getNodeParameter('name', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						if (additionalFields.acl) {
@@ -217,7 +211,7 @@ export class AwsS3V2 implements INodeType {
 						const servicePath = bucketName.includes('.') ? 's3' : `${bucketName}.s3`;
 						const basePath = bucketName.includes('.') ? `/${bucketName}` : '';
 						const returnAll = this.getNodeParameter('returnAll', 0);
-						const additionalFields = this.getNodeParameter('additionalFields', 0);
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.prefix) {
 							qs.prefix = additionalFields.prefix as string;
@@ -661,6 +655,8 @@ export class AwsS3V2 implements INodeType {
 							fileName,
 							mimeType,
 						);
+
+						returnData.push(items[i]);
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteObject.html
 					if (operation === 'delete') {
@@ -1063,16 +1059,11 @@ export class AwsS3V2 implements INodeType {
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
-					continue;
+				} else {
+					throw error;
 				}
-				throw error;
 			}
 		}
-		if (resource === 'file' && operation === 'download') {
-			// For file downloads the files get attached to the existing items
-			return [items];
-		} else {
-			return [returnData];
-		}
+		return [returnData];
 	}
 }

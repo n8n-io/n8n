@@ -1,3 +1,4 @@
+import get from 'lodash/get';
 import type {
 	GenericValue,
 	IDataObject,
@@ -7,9 +8,9 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import get from 'lodash/get';
-import { disableDotNotationBoolean } from '../common.descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
+
+import { disableDotNotationBoolean } from '../common.descriptions';
 
 type AggregationType =
 	| 'append'
@@ -262,7 +263,7 @@ export const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			disableDotNotationBoolean,

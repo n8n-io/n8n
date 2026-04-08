@@ -7,16 +7,12 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { keysToSnakeCase, shopifyApiRequest, shopifyApiRequestAllItems } from './GenericFunctions';
-
 import { orderFields, orderOperations } from './OrderDescription';
-
-import { productFields, productOperations } from './ProductDescription';
-
 import type { IAddress, IDiscountCode, ILineItem, IOrder } from './OrderInterface';
-
+import { productFields, productOperations } from './ProductDescription';
 import type { IProduct } from './ProductInterface';
 
 export class Shopify implements INodeType {
@@ -31,8 +27,9 @@ export class Shopify implements INodeType {
 		defaults: {
 			name: 'Shopify',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'shopifyApi',
@@ -63,6 +60,13 @@ export class Shopify implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'Shopify API Version: 2024-07',
+				type: 'notice',
+				name: 'apiVersion',
+				default: '',
+				isNodeSetting: true,
+			},
 			{
 				displayName: 'Authentication',
 				name: 'authentication',

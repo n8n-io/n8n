@@ -1,5 +1,8 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import type { INodeParameterResourceLocator } from 'n8n-workflow';
 import nock from 'nock';
-import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
+
+import { returnId } from '../V2/GenericFunctions';
 
 const searchResult = {
 	data: [
@@ -66,10 +69,19 @@ const searchResult = {
 const meResult = {
 	data: { id: '1285192200213626880', name: 'Integration-n8n', username: 'IntegrationN8n' },
 };
+
 describe('Test Twitter Request Node', () => {
+	const credentials = {
+		twitterOAuth2Api: {
+			scope: '',
+			oauthTokenData: {
+				access_token: 'ACCESSTOKEN',
+			},
+		},
+	};
+
 	beforeAll(() => {
 		const baseUrl = 'https://api.twitter.com/2';
-		nock.disableNetConnect();
 		//GET
 		nock(baseUrl).get('/users/me').reply(200, meResult);
 
@@ -78,10 +90,62 @@ describe('Test Twitter Request Node', () => {
 			.reply(200, searchResult);
 	});
 
-	afterEach(() => {
-		nock.restore();
-	});
+	new NodeTestHarness().setupTests({ credentials });
+});
 
-	const workflows = getWorkflowFilenames(__dirname);
-	testWorkflows(workflows);
+describe('X / Twitter Node unit tests', () => {
+	describe('returnId', () => {
+		it('should return the id when mode is id', () => {
+			const tweetId: INodeParameterResourceLocator = {
+				__rl: true,
+				mode: 'id',
+				value: '12345',
+			};
+			expect(returnId(tweetId)).toBe('12345');
+		});
+
+		it('should extract the tweetId from url when the domain is twitter.com', () => {
+			const tweetId: INodeParameterResourceLocator = {
+				__rl: true,
+				mode: 'url',
+				value: 'https://twitter.com/user/status/12345?utm=6789',
+			};
+			expect(returnId(tweetId)).toBe('12345');
+		});
+
+		it('should extract the tweetId from url when the domain is x.com', () => {
+			const tweetId: INodeParameterResourceLocator = {
+				__rl: true,
+				mode: 'url',
+				value: 'https://x.com/user/status/12345?utm=6789',
+			};
+			expect(returnId(tweetId)).toBe('12345');
+		});
+
+		it('should throw an error when mode is not valid', () => {
+			const tweetId: INodeParameterResourceLocator = {
+				__rl: true,
+				mode: 'invalid',
+				value: 'https://twitter.com/user/status/12345',
+			};
+			expect(() => returnId(tweetId)).toThrow();
+		});
+
+		describe('should throw an error when the URL is not valid', () => {
+			test.each([
+				'https://twitter.com/user/',
+				'https://twitter.com/user/status/',
+				'https://twitter.com/user/profile/12345',
+				'https://twitter.com/search?param=12345',
+			])('%s', (value) => {
+				expect(() =>
+					returnId({
+						__rl: true,
+						mode: 'url',
+						value,
+					}),
+				).toThrow();
+			});
+		});
+	});
 });

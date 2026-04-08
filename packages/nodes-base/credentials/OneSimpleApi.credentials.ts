@@ -5,7 +5,7 @@ export class OneSimpleApi implements ICredentialType {
 
 	displayName = 'One Simple API';
 
-	documentationUrl = 'oneSimpleApi';
+	documentationUrl = 'onesimpleapi';
 
 	properties: INodeProperties[] = [
 		{

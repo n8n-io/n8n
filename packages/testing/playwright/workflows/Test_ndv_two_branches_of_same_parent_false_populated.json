@@ -1,0 +1,94 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "6f0cf983-824b-4339-a5de-6b374a23b4b0",
+							"leftValue": "={{ $json.a }}",
+							"rightValue": 3,
+							"operator": {
+								"type": "number",
+								"operation": "equals"
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [220, 0],
+			"id": "1755282a-ec4a-4d02-a833-0316ca413cc4",
+			"name": "If"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "de1e7acf-12d8-4e56-ba42-709ffb397db2",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"category": "randomData"
+			},
+			"type": "n8n-nodes-base.debugHelper",
+			"typeVersion": 1,
+			"position": [580, 0],
+			"id": "86440d33-f833-453c-bcaa-fff7e0083501",
+			"name": "DebugHelper",
+			"alwaysOutputData": true
+		}
+	],
+	"connections": {
+		"If": {
+			"main": [
+				[
+					{
+						"node": "DebugHelper",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "DebugHelper",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "If",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"When clicking ‘Execute workflow’": [
+			{
+				"a": 1
+			},
+			{
+				"a": 2
+			}
+		]
+	}
+}

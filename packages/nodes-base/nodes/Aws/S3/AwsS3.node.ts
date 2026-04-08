@@ -2,7 +2,6 @@ import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow'
 import { VersionedNodeType } from 'n8n-workflow';
 
 import { AwsS3V1 } from './V1/AwsS3V1.node';
-
 import { AwsS3V2 } from './V2/AwsS3V2.node';
 
 export class AwsS3 extends VersionedNodeType {
@@ -15,6 +14,7 @@ export class AwsS3 extends VersionedNodeType {
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Sends data to AWS S3',
 			defaultVersion: 2,
+			schemaPath: 'Aws/S3',
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {

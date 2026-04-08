@@ -5,6 +5,8 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
+
 import { hunterApiRequest, hunterApiRequestAllItems } from './GenericFunctions';
 
 export class Hunter implements INodeType {
@@ -20,8 +22,9 @@ export class Hunter implements INodeType {
 		defaults: {
 			name: 'Hunter',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'hunterApi',

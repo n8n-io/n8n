@@ -39,11 +39,14 @@ export interface IFormstackSubmissionFieldContainer {
 	value: string;
 }
 
-export const enum FormstackFieldFormat {
-	ID = 'id',
-	Label = 'label',
-	Name = 'name',
-}
+export const FormstackFieldFormats = {
+	ID: 'id',
+	Label: 'label',
+	Name: 'name',
+} as const;
+
+export type FormstackFieldFormat =
+	(typeof FormstackFieldFormats)[keyof typeof FormstackFieldFormats];
 
 /**
  * Make an API request to Formstack
@@ -73,7 +76,7 @@ export async function apiRequest(
 
 	try {
 		if (authenticationMethod === 'accessToken') {
-			const credentials = (await this.getCredentials('formstackApi')) as IDataObject;
+			const credentials = await this.getCredentials<{ accessToken: string }>('formstackApi');
 
 			options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
 			return await this.helpers.request(options);

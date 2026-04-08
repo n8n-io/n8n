@@ -51,7 +51,7 @@ export const starFields: INodeProperties[] = [
 		},
 		default: {},
 		description: 'Options to set',
-		placeholder: 'Add options',
+		placeholder: 'Add option',
 		options: [
 			{
 				displayName: 'Channel Name or ID',
@@ -62,7 +62,7 @@ export const starFields: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'Channel to add star to, or channel where the message to add star to was posted (used with timestamp). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Channel to add star to, or channel where the message to add star to was posted (used with timestamp). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'File Comment',
@@ -103,7 +103,7 @@ export const starFields: INodeProperties[] = [
 		},
 		default: {},
 		description: 'Options to set',
-		placeholder: 'Add options',
+		placeholder: 'Add option',
 		options: [
 			{
 				displayName: 'Channel Name or ID',
@@ -114,7 +114,7 @@ export const starFields: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'Channel to add star to, or channel where the message to add star to was posted (used with timestamp). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Channel to add star to, or channel where the message to add star to was posted (used with timestamp). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'File ID',

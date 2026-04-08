@@ -5,6 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { openThesaurusApiRequest } from './GenericFunctions';
 
@@ -21,8 +22,9 @@ export class OpenThesaurus implements INodeType {
 		defaults: {
 			name: 'OpenThesaurus',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Operation',
@@ -56,7 +58,7 @@ export class OpenThesaurus implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Options',
+				placeholder: 'Add option',
 				displayOptions: {
 					show: {
 						operation: ['getSynonyms'],

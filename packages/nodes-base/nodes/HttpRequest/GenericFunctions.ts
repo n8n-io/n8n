@@ -1,14 +1,19 @@
-import type { SecureContextOptions } from 'tls';
-import type {
-	IDataObject,
-	INodeExecutionData,
-	IOAuth2Options,
-	IRequestOptions,
-} from 'n8n-workflow';
-
-import set from 'lodash/set';
-
 import FormData from 'form-data';
+import get from 'lodash/get';
+import isPlainObject from 'lodash/isPlainObject';
+import set from 'lodash/set';
+import {
+	deepCopy,
+	NodeOperationError,
+	type ICredentialDataDecryptedObject,
+	type IDataObject,
+	type INode,
+	type INodeExecutionData,
+	type IOAuth2Options,
+	type IRequestOptions,
+} from 'n8n-workflow';
+import type { SecureContextOptions } from 'tls';
+
 import type { HttpSslAuthCredentials } from './interfaces';
 import { formatPrivateKey } from '../../utils/utilities';
 
@@ -29,8 +34,46 @@ export const replaceNullValues = (item: INodeExecutionData) => {
 	return item;
 };
 
-export function sanitizeUiMessage(request: IRequestOptions, authDataKeys: IAuthDataSanitizeKeys) {
-	let sendRequest = request as unknown as IDataObject;
+export const REDACTED = '**hidden**';
+
+function isObject(obj: unknown): obj is IDataObject {
+	return isPlainObject(obj);
+}
+
+function redactString(str: string, secrets: string[]): string {
+	return secrets.reduce((safe, secret) => safe.split(secret).join(REDACTED), str);
+}
+
+function redact<T = unknown>(obj: T, secrets: string[]): T {
+	if (typeof obj === 'string') {
+		return redactString(obj, secrets) as T;
+	}
+
+	if (Array.isArray(obj)) {
+		return obj.map((item) => redact(item, secrets)) as T;
+	} else if (isObject(obj)) {
+		const result: IDataObject = {};
+		for (const [key, value] of Object.entries(obj)) {
+			const redactedKey = redactString(key, secrets);
+			result[redactedKey] = redact(value, secrets);
+		}
+		return result as T;
+	}
+
+	return obj;
+}
+
+export function sanitizeUiMessage(
+	request: IRequestOptions,
+	authDataKeys: IAuthDataSanitizeKeys,
+	secrets?: string[],
+) {
+	const { body, ...rest } = request as IDataObject;
+
+	let sendRequest: IDataObject = { body };
+	for (const [key, value] of Object.entries(rest)) {
+		sendRequest[key] = deepCopy(value);
+	}
 
 	// Protect browser from sending large binary data
 	if (Buffer.isBuffer(sendRequest.body) && sendRequest.body.length > 250000) {
@@ -38,7 +81,7 @@ export function sanitizeUiMessage(request: IRequestOptions, authDataKeys: IAuthD
 			...request,
 			body: `Binary data got replaced with this text. Original was a Buffer with a size of ${
 				(request.body as string).length
-			} byte.`,
+			} bytes.`,
 		};
 	}
 
@@ -47,10 +90,9 @@ export function sanitizeUiMessage(request: IRequestOptions, authDataKeys: IAuthD
 		sendRequest = {
 			...sendRequest,
 			[requestProperty]: Object.keys(sendRequest[requestProperty] as object).reduce(
-				// eslint-disable-next-line @typescript-eslint/no-loop-func
 				(acc: IDataObject, curr) => {
 					acc[curr] = authDataKeys[requestProperty].includes(curr)
-						? '** hidden **'
+						? REDACTED
 						: (sendRequest[requestProperty] as IDataObject)[curr];
 					return acc;
 				},
@@ -58,8 +100,42 @@ export function sanitizeUiMessage(request: IRequestOptions, authDataKeys: IAuthD
 			),
 		};
 	}
+	const HEADER_BLOCKLIST = new Set([
+		'authorization',
+		'x-api-key',
+		'x-auth-token',
+		'cookie',
+		'proxy-authorization',
+		'sslclientcert',
+	]);
+
+	const headers = sendRequest.headers as IDataObject;
+
+	if (headers) {
+		for (const headerName of Object.keys(headers)) {
+			if (HEADER_BLOCKLIST.has(headerName.toLowerCase())) {
+				headers[headerName] = REDACTED;
+			}
+		}
+	}
+	if (secrets && secrets.length > 0) {
+		return redact(sendRequest, secrets);
+	}
 
 	return sendRequest;
+}
+
+export function getSecrets(credentials: ICredentialDataDecryptedObject): string[] {
+	const secrets = Object.values(credentials).filter(
+		(value): value is string => typeof value === 'string' && value.length > 0,
+	);
+
+	const oauthAccessToken = get(credentials, 'oauthTokenData.access_token');
+	if (typeof oauthAccessToken === 'string' && !secrets.includes(oauthAccessToken)) {
+		secrets.push(oauthAccessToken);
+	}
+
+	return secrets;
 }
 
 export const getOAuth2AdditionalParameters = (nodeCredentialType: string) => {
@@ -99,6 +175,9 @@ export const getOAuth2AdditionalParameters = (nodeCredentialType: string) => {
 		},
 		mauticOAuth2Api: {
 			includeCredentialsOnRefreshOnBody: true,
+		},
+		microsoftAzureMonitorOAuth2Api: {
+			tokenExpiredStatusCode: 403,
 		},
 		microsoftDynamicsOAuth2Api: {
 			property: 'id_token',
@@ -211,4 +290,46 @@ export const setAgentOptions = (
 			agentOptions.passphrase = formatPrivateKey(sslCertificates.passphrase);
 		requestOptions.agentOptions = agentOptions;
 	}
+};
+
+export const updadeQueryParameterConfig = (version: number) => {
+	if (version < 4.3) {
+		return (qs: IDataObject, name: string, value: string) => (qs[name] = value);
+	} else {
+		return (qs: { [key: string]: any }, name: string, value: any) => {
+			if (qs[name] === undefined) {
+				qs[name] = value;
+			} else if (Array.isArray(qs[name])) {
+				qs[name].push(value);
+			} else {
+				qs[name] = [qs[name], value];
+			}
+		};
+	}
+};
+
+export const getAllowedDomains = (
+	node: INode,
+	credentialData: ICredentialDataDecryptedObject,
+): string | undefined => {
+	if (credentialData.allowedHttpRequestDomains === 'none') {
+		throw new NodeOperationError(
+			node,
+			'This credential is configured to prevent use within an HTTP Request node',
+		);
+	}
+
+	if (credentialData.allowedHttpRequestDomains === 'domains') {
+		const allowedDomains = credentialData.allowedDomains as string;
+		if (!allowedDomains || allowedDomains.trim() === '') {
+			throw new NodeOperationError(
+				node,
+				'No allowed domains specified. Configure allowed domains or change restriction setting.',
+			);
+		}
+
+		return allowedDomains;
+	}
+
+	return undefined;
 };

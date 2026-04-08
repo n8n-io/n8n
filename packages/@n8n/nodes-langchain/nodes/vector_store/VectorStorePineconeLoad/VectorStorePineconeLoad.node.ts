@@ -1,20 +1,19 @@
-import {
-	NodeConnectionType,
-	type IExecuteFunctions,
-	type INodeType,
-	type INodeTypeDescription,
-	type SupplyData,
-} from 'n8n-workflow';
+import type { Embeddings } from '@langchain/core/embeddings';
 import type { PineconeStoreParams } from '@langchain/pinecone';
 import { PineconeStore } from '@langchain/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
+import {
+	NodeConnectionTypes,
+	type INodeType,
+	type INodeTypeDescription,
+	type ISupplyDataFunctions,
+	type SupplyData,
+} from 'n8n-workflow';
 
-import type { Embeddings } from '@langchain/core/embeddings';
-import { logWrapper } from '../../../utils/logWrapper';
-import { metadataFilterField } from '../../../utils/sharedFields';
-import { getMetadataFiltersValues } from '../../../utils/helpers';
-import { pineconeIndexRLC } from '../shared/descriptions';
+import { logWrapper, getMetadataFiltersValues, metadataFilterField } from '@n8n/ai-utilities';
+
 import { pineconeIndexSearch } from '../shared/methods/listSearch';
+import { pineconeIndexRLC } from '../shared/descriptions';
 
 // This node is deprecated. Use VectorStorePinecone instead.
 export class VectorStorePineconeLoad implements INodeType {
@@ -53,11 +52,11 @@ export class VectorStorePineconeLoad implements INodeType {
 			{
 				displayName: 'Embedding',
 				maxConnections: 1,
-				type: NodeConnectionType.AiEmbedding,
+				type: NodeConnectionTypes.AiEmbedding,
 				required: true,
 			},
 		],
-		outputs: [NodeConnectionType.AiVectorStore],
+		outputs: [NodeConnectionTypes.AiVectorStore],
 		outputNames: ['Vector Store'],
 		properties: [
 			pineconeIndexRLC,
@@ -84,8 +83,8 @@ export class VectorStorePineconeLoad implements INodeType {
 		},
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		this.logger.verbose('Supplying data for Pinecone Load Vector Store');
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
+		this.logger.debug('Supplying data for Pinecone Load Vector Store');
 
 		const namespace = this.getNodeParameter('pineconeNamespace', itemIndex) as string;
 		const index = this.getNodeParameter('pineconeIndex', itemIndex, '', {
@@ -94,7 +93,7 @@ export class VectorStorePineconeLoad implements INodeType {
 
 		const credentials = await this.getCredentials('pineconeApi');
 		const embeddings = (await this.getInputConnectionData(
-			NodeConnectionType.AiEmbedding,
+			NodeConnectionTypes.AiEmbedding,
 			itemIndex,
 		)) as Embeddings;
 

@@ -1,8 +1,12 @@
 import type { IAttachment } from './ObservableInterface';
-export const enum LogStatus {
-	OK = 'Ok',
-	DELETED = 'Deleted',
-}
+
+export const LogStatuses = {
+	OK: 'Ok',
+	DELETED: 'Deleted',
+} as const;
+
+export type LogStatus = (typeof LogStatuses)[keyof typeof LogStatuses];
+
 export interface ILog {
 	// Required attributes
 	id?: string;

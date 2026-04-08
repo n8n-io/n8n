@@ -1,0 +1,166 @@
+{
+    "type": "object",
+    "properties": {
+        "color": {
+            "type": "string"
+        },
+        "deleted": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "is_admin": {
+            "type": "boolean"
+        },
+        "is_app_user": {
+            "type": "boolean"
+        },
+        "is_bot": {
+            "type": "boolean"
+        },
+        "is_email_confirmed": {
+            "type": "boolean"
+        },
+        "is_owner": {
+            "type": "boolean"
+        },
+        "is_primary_owner": {
+            "type": "boolean"
+        },
+        "is_restricted": {
+            "type": "boolean"
+        },
+        "is_ultra_restricted": {
+            "type": "boolean"
+        },
+        "name": {
+            "type": "string"
+        },
+        "profile": {
+            "type": "object",
+            "properties": {
+                "always_active": {
+                    "type": "boolean"
+                },
+                "avatar_hash": {
+                    "type": "string"
+                },
+                "display_name": {
+                    "type": "string"
+                },
+                "display_name_normalized": {
+                    "type": "string"
+                },
+                "first_name": {
+                    "type": "string"
+                },
+                "huddle_state": {
+                    "type": "string"
+                },
+                "huddle_state_expiration_ts": {
+                    "type": "integer"
+                },
+                "image_1024": {
+                    "type": "string"
+                },
+                "image_192": {
+                    "type": "string"
+                },
+                "image_24": {
+                    "type": "string"
+                },
+                "image_32": {
+                    "type": "string"
+                },
+                "image_48": {
+                    "type": "string"
+                },
+                "image_512": {
+                    "type": "string"
+                },
+                "image_72": {
+                    "type": "string"
+                },
+                "image_original": {
+                    "type": "string"
+                },
+                "is_custom_image": {
+                    "type": "boolean"
+                },
+                "last_name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "real_name": {
+                    "type": "string"
+                },
+                "real_name_normalized": {
+                    "type": "string"
+                },
+                "skype": {
+                    "type": "string"
+                },
+                "status_emoji": {
+                    "type": "string"
+                },
+                "status_emoji_display_info": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "display_url": {
+                                "type": "string"
+                            },
+                            "emoji_name": {
+                                "type": "string"
+                            },
+                            "unicode": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "status_expiration": {
+                    "type": "integer"
+                },
+                "status_text": {
+                    "type": "string"
+                },
+                "status_text_canonical": {
+                    "type": "string"
+                },
+                "team": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "real_name": {
+            "type": "string"
+        },
+        "team_id": {
+            "type": "string"
+        },
+        "tz": {
+            "type": "string"
+        },
+        "tz_label": {
+            "type": "string"
+        },
+        "tz_offset": {
+            "type": "integer"
+        },
+        "updated": {
+            "type": "integer"
+        },
+        "who_can_share_contact_card": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

@@ -1,0 +1,12 @@
+{
+    "type": "object",
+    "properties": {
+        "message": {
+            "type": "string"
+        },
+        "status": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

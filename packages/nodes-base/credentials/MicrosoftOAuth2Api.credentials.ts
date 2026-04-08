@@ -1,11 +1,11 @@
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties, Icon } from 'n8n-workflow';
 
 export class MicrosoftOAuth2Api implements ICredentialType {
 	name = 'microsoftOAuth2Api';
 
 	extends = ['oAuth2Api'];
 
-	icon = 'file:icons/Microsoft.svg';
+	icon: Icon = 'file:icons/Microsoft.svg';
 
 	displayName = 'Microsoft OAuth2 API';
 
@@ -18,8 +18,9 @@ export class MicrosoftOAuth2Api implements ICredentialType {
 			type: 'hidden',
 			default: 'authorizationCode',
 		},
-		//info about the tenantID
-		//https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-v2-protocols#endpoints
+		// Info about the tenantID
+		// https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-v2-protocols#endpoints
+		// Endpoints `/common` can only be used for multitenant apps
 		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
@@ -43,6 +44,25 @@ export class MicrosoftOAuth2Api implements ICredentialType {
 			name: 'authentication',
 			type: 'hidden',
 			default: 'body',
+		},
+		{
+			displayName: 'Microsoft Graph API Base URL',
+			name: 'graphApiBaseUrl',
+			type: 'options',
+			options: [
+				{ name: 'Global (https://graph.microsoft.com)', value: 'https://graph.microsoft.com' },
+				{ name: 'US Government (https://graph.microsoft.us)', value: 'https://graph.microsoft.us' },
+				{
+					name: 'US Government DOD (https://dod-graph.microsoft.us)',
+					value: 'https://dod-graph.microsoft.us',
+				},
+				{
+					name: 'China (https://microsoftgraph.chinacloudapi.cn)',
+					value: 'https://microsoftgraph.chinacloudapi.cn',
+				},
+			],
+			default: 'https://graph.microsoft.com',
+			description: 'Select the endpoint for your Microsoft cloud environment.',
 		},
 	];
 }

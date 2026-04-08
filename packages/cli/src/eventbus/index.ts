@@ -1,3 +1,2 @@
-export { EventMessageTypes } from './EventMessageClasses';
-export { EventPayloadWorkflow } from './EventMessageClasses/EventMessageWorkflow';
-export { METRICS_EVENT_NAME, getLabelsForEvent } from './MessageEventBusDestination/Helpers.ee';
+export type { EventMessageTypes } from './event-message-classes';
+export type { EventPayloadWorkflow } from './event-message-classes/event-message-workflow';

@@ -39,6 +39,12 @@ export const ticketDescription: INodeProperties[] = [
 				description: 'Retrieve many tickets',
 				action: 'Get many tickets',
 			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update a ticket',
+				action: 'Update a ticket',
+			},
 		],
 		default: 'create',
 	},
@@ -69,7 +75,7 @@ export const ticketDescription: INodeProperties[] = [
 		},
 		placeholder: 'First-Level Helpdesk',
 		description:
-			'Group that will own the ticket to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Group that will own the ticket to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -87,7 +93,7 @@ export const ticketDescription: INodeProperties[] = [
 			loadOptionsMethod: 'loadCustomerEmails',
 		},
 		description:
-			'Email address of the customer concerned in the ticket to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Email address of the customer concerned in the ticket to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		default: '',
 		placeholder: 'hello@n8n.io',
 		required: true,
@@ -103,7 +109,7 @@ export const ticketDescription: INodeProperties[] = [
 		name: 'id',
 		type: 'string',
 		description:
-			'Ticket to retrieve. Specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Ticket to retrieve. Specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -119,12 +125,27 @@ export const ticketDescription: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		description:
-			'Ticket to delete. Specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Ticket to delete. Specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		required: true,
 		displayOptions: {
 			show: {
 				resource: ['ticket'],
 				operation: ['delete'],
+			},
+		},
+	},
+	{
+		displayName: 'Ticket ID',
+		name: 'id',
+		type: 'string',
+		default: '',
+		description:
+			'Ticket to update. Specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['ticket'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -177,6 +198,28 @@ export const ticketDescription: INodeProperties[] = [
 						],
 					},
 					{
+						displayName: 'Sender',
+						name: 'sender',
+						type: 'options',
+						// https://docs.zammad.org/en/latest/api/ticket/articles.html
+						options: [
+							{
+								name: 'Agent',
+								value: 'Agent',
+							},
+							{
+								name: 'Customer',
+								value: 'Customer',
+							},
+							{
+								name: 'System',
+								value: 'System',
+								description: 'Only subject will be displayed in Zammad',
+							},
+						],
+						default: 'Agent',
+					},
+					{
 						displayName: 'Article Type',
 						name: 'type',
 						type: 'options',
@@ -209,6 +252,12 @@ export const ticketDescription: INodeProperties[] = [
 						],
 						default: 'note',
 					},
+					{
+						displayName: 'Reply To',
+						name: 'reply_to',
+						type: 'string',
+						default: '',
+					},
 				],
 			},
 		],
@@ -227,6 +276,7 @@ export const ticketDescription: INodeProperties[] = [
 		placeholder: 'Add Field',
 		options: [
 			{
+				/* eslint-disable n8n-nodes-base/node-param-description-wrong-for-dynamic-options, n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options */
 				displayName: 'Custom Fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
@@ -241,7 +291,7 @@ export const ticketDescription: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field Name',
 								name: 'name',
 								type: 'options',
 								typeOptions: {
@@ -249,7 +299,137 @@ export const ticketDescription: INodeProperties[] = [
 								},
 								default: '',
 								description:
-									'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+									'Internal name of the custom field to set. Choose from the list, or specify a name using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Value to set on the custom field',
+							},
+						],
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				resource: ['ticket'],
+				operation: ['update'],
+			},
+		},
+		default: {},
+		placeholder: 'Add Field',
+		options: [
+			{
+				displayName: 'Title',
+				name: 'title',
+				type: 'string',
+				default: '',
+				description: 'Title of the ticket',
+			},
+			{
+				displayName: 'Group',
+				name: 'group',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'loadGroupNames',
+				},
+				default: '',
+				description:
+					'Group that will own the ticket. Choose from the list, or specify a name using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			},
+			{
+				displayName: 'State',
+				name: 'state_id',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'loadTicketStates',
+				},
+				default: '',
+				description:
+					'State of the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			},
+			{
+				displayName: 'Pending Time',
+				name: 'pending_time',
+				type: 'dateTime',
+				default: '',
+				description:
+					'Date and time when the pending ticket should be activated (required for pending reminder, pending close, and snooze states)',
+			},
+			{
+				displayName: 'Priority',
+				name: 'priority_id',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'loadTicketPriorities',
+				},
+				default: '',
+				description:
+					'Priority of the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			},
+			{
+				displayName: 'Owner',
+				name: 'owner_id',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'loadUsers',
+				},
+				default: '',
+				description:
+					'Agent responsible for the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			},
+			{
+				displayName: 'Customer',
+				name: 'customer_id',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'loadCustomerIds',
+				},
+				default: '',
+				description:
+					'Customer associated with the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			},
+			{
+				displayName: 'Note',
+				name: 'note',
+				type: 'string',
+				typeOptions: { editor: 'htmlEditor' },
+				default: '',
+				description: 'Internal note for the ticket',
+			},
+			{
+				/* eslint-disable n8n-nodes-base/node-param-description-wrong-for-dynamic-options, n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options */
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				type: 'fixedCollection',
+				default: {},
+				placeholder: 'Add Custom Field',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'customFieldPairs',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field Name',
+								name: 'name',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'loadTicketCustomFields',
+								},
+								default: '',
+								description:
+									'Internal name of the custom field to set. Choose from the list, or specify a name using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',

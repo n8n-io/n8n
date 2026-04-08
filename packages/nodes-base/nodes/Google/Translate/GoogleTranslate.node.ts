@@ -7,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { googleApiRequest } from './GenericFunctions';
 
@@ -25,11 +26,13 @@ export class GoogleTranslate implements INodeType {
 		version: [1, 2],
 		description: 'Translate data using Google Translate',
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+		schemaPath: 'Google/Translate',
 		defaults: {
 			name: 'Google Translate',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'googleApi',
@@ -153,7 +156,7 @@ export class GoogleTranslate implements INodeType {
 				},
 				default: '',
 				description:
-					'The language to use for translation of the input text, set to one of the language codes listed in <a href="https://cloud.google.com/translate/docs/languages">Language Support</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The language to use for translation of the input text, set to one of the language codes listed in <a href="https://cloud.google.com/translate/docs/languages">Language Support</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				required: true,
 				displayOptions: {
 					show: {

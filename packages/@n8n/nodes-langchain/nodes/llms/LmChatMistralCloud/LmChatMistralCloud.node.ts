@@ -1,21 +1,26 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type { ChatMistralAIInput } from '@langchain/mistralai';
+import { ChatMistralAI } from '@langchain/mistralai';
+import { HTTPClient } from '@mistralai/mistralai/lib/http.js';
 import {
-	NodeConnectionType,
-	type IExecuteFunctions,
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	proxyFetch,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
+import {
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
-import type { ChatMistralAIInput } from '@langchain/mistralai';
-import { ChatMistralAI } from '@langchain/mistralai';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+const deprecatedMagistralModelsWithTextOutput = ['magistral-small-2506', 'magistral-medium-2506'];
 
 export class LmChatMistralCloud implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mistral Cloud Chat Model',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
+
 		name: 'lmChatMistralCloud',
 		icon: 'file:mistral.svg',
 		group: ['transform'],
@@ -27,7 +32,8 @@ export class LmChatMistralCloud implements INodeType {
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Language Models'],
+				AI: ['Language Models', 'Root Nodes'],
+				'Language Models': ['Chat Models (Recommended)'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -37,10 +43,10 @@ export class LmChatMistralCloud implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiLanguageModel],
+
+		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
 			{
@@ -53,7 +59,7 @@ export class LmChatMistralCloud implements INodeType {
 			baseURL: 'https://api.mistral.ai/v1',
 		},
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
 			{
 				displayName: 'Model',
 				name: 'model',
@@ -171,7 +177,7 @@ export class LmChatMistralCloud implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('mistralCloudApi');
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
@@ -184,14 +190,41 @@ export class LmChatMistralCloud implements INodeType {
 			randomSeed: undefined,
 		}) as Partial<ChatMistralAIInput>;
 
+		const fetchWithTimeout = async (input: RequestInfo | URL, init?: RequestInit) =>
+			await proxyFetch(input, init, {});
+		const httpClient = new HTTPClient({ fetcher: fetchWithTimeout });
+
 		const model = new ChatMistralAI({
 			apiKey: credentials.apiKey as string,
-			modelName,
+			model: modelName,
 			...options,
+			httpClient,
+			callbacks: [new N8nLlmTracing(this)],
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
+			metadata: {
+				output_format: isModelWithJSONOutput(modelName) ? 'json' : undefined,
+			},
 		});
 
 		return {
-			response: logWrapper(model, this),
+			response: model,
 		};
 	}
+}
+
+function isModelWithJSONOutput(modelName: string): boolean {
+	if (!modelName.includes('magistral')) {
+		return false;
+	}
+
+	if (deprecatedMagistralModelsWithTextOutput.includes(modelName)) {
+		// Deprecated Magistral models return text output
+		// Includes <think></think> chunks as part of text content
+		return false;
+	}
+
+	// All future Magistral models will return JSON output
+	// Which include "thinking" json types
+	// https://docs.mistral.ai/capabilities/reasoning/
+	return true;
 }

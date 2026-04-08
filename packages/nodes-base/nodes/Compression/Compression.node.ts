@@ -1,20 +1,20 @@
-import { promisify } from 'util';
-import type {
-	IBinaryKeyData,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
-
 import * as fflate from 'fflate';
+import * as mime from 'mime-types';
+import {
+	NodeConnectionTypes,
+	NodeOperationError,
+	type IBinaryKeyData,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+} from 'n8n-workflow';
+import { promisify } from 'util';
 
 const gunzip = promisify(fflate.gunzip);
 const gzip = promisify(fflate.gzip);
 const unzip = promisify(fflate.unzip);
 const zip = promisify(fflate.zip);
-
-import * as mime from 'mime-types';
 
 const ALREADY_COMPRESSED = [
 	'7z',
@@ -48,6 +48,7 @@ export class Compression implements INodeType {
 		displayName: 'Compression',
 		name: 'compression',
 		icon: 'fa:file-archive',
+		iconColor: 'green',
 		group: ['transform'],
 		subtitle: '={{$parameter["operation"]}}',
 		version: [1, 1.1],
@@ -56,8 +57,9 @@ export class Compression implements INodeType {
 			name: 'Compression',
 			color: '#408000',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Operation',
@@ -275,8 +277,16 @@ export class Compression implements INodeType {
 					for (const [index, binaryPropertyName] of binaryPropertyNames.entries()) {
 						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+						const fileExtension = binaryData.fileExtension?.toLowerCase();
 
-						if (binaryData.fileExtension?.toLowerCase() === 'zip') {
+						if (!fileExtension) {
+							throw new NodeOperationError(
+								this.getNode(),
+								`File extension not found for binary data ${binaryPropertyName}`,
+							);
+						}
+
+						if (fileExtension === 'zip') {
 							const files = await unzip(binaryDataBuffer);
 
 							for (const key of Object.keys(files)) {
@@ -292,7 +302,7 @@ export class Compression implements INodeType {
 
 								binaryObject[`${outputPrefix}${zipIndex++}`] = data;
 							}
-						} else if (['gz', 'gzip'].includes(binaryData.fileExtension?.toLowerCase() as string)) {
+						} else if (['gz', 'gzip'].includes(fileExtension)) {
 							const file = await gunzip(binaryDataBuffer);
 
 							const fileName = binaryData.fileName?.split('.')[0];

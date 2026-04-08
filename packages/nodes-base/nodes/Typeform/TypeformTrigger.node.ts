@@ -1,3 +1,5 @@
+import { randomBytes } from 'crypto';
+
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -10,7 +12,7 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, randomString } from 'n8n-workflow';
 
 import type {
 	ITypeformAnswer,
@@ -18,12 +20,13 @@ import type {
 	ITypeformDefinition,
 } from './GenericFunctions';
 import { apiRequest, getForms } from './GenericFunctions';
+import { verifySignature } from './TypeformTriggerHelpers';
 
 export class TypeformTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Typeform Trigger',
 		name: 'typeformTrigger',
-		icon: 'file:typeform.svg',
+		icon: { light: 'file:typeform.svg', dark: 'file:typeform.dark.svg' },
 		group: ['trigger'],
 		version: [1, 1.1],
 		subtitle: '=Form ID: {{$parameter["formId"]}}',
@@ -32,7 +35,7 @@ export class TypeformTrigger implements INodeType {
 			name: 'Typeform Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'typeformApi',
@@ -90,7 +93,7 @@ export class TypeformTrigger implements INodeType {
 				default: '',
 				required: true,
 				description:
-					'Form which should trigger workflow on submission. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Form which should trigger workflow on submission. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Simplify Answers',
@@ -177,21 +180,25 @@ export class TypeformTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 
 				const formId = this.getNodeParameter('formId') as string;
-				const webhookId = 'n8n-' + Math.random().toString(36).substring(2, 15);
+				const webhookId = 'n8n-' + randomString(10).toLowerCase();
 
 				const endpoint = `forms/${formId}/webhooks/${webhookId}`;
 
-				// TODO: Add HMAC-validation once either the JSON data can be used for it or there is a way to access the binary-payload-data
+				// Generate a secret for webhook signature verification
+				const webhookSecret = randomBytes(32).toString('hex');
+
 				const body = {
 					url: webhookUrl,
 					enabled: true,
 					verify_ssl: true,
+					secret: webhookSecret,
 				};
 
 				await apiRequest.call(this, 'PUT', endpoint, body);
 
 				const webhookData = this.getWorkflowStaticData('node');
 				webhookData.webhookId = webhookId;
+				webhookData.webhookSecret = webhookSecret;
 
 				return true;
 			},
@@ -212,6 +219,7 @@ export class TypeformTrigger implements INodeType {
 					// Remove from the static workflow data so that it is clear
 					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
+					delete webhookData.webhookSecret;
 				}
 
 				return true;
@@ -220,6 +228,15 @@ export class TypeformTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		// Verify webhook signature if secret is configured
+		if (!verifySignature.call(this)) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return {
+				noWebhookResponse: true,
+			};
+		}
+
 		const version = this.getNode().typeVersion;
 		const bodyData = this.getBodyData();
 

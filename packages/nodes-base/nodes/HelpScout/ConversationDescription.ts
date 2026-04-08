@@ -61,7 +61,7 @@ export const conversationFields: INodeProperties[] = [
 		},
 		default: '',
 		description:
-			'ID of a mailbox where the conversation is being created. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'ID of a mailbox where the conversation is being created. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Status',
@@ -218,7 +218,7 @@ export const conversationFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'List of tags to be added to the conversation. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'List of tags to be added to the conversation. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'User ID',
@@ -401,7 +401,7 @@ export const conversationFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -572,7 +572,7 @@ export const conversationFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'Filter conversation by tags. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Filter conversation by tags. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 		],
 	},

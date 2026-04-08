@@ -17,7 +17,10 @@
 		{{/if}}
 		Failed to connect. The window can be closed now.
 		<script>
-			(function messageParent() { window.opener?.postMessage('error', '*'); })();
+			(function messageParent() {
+				const broadcastChannel = new BroadcastChannel('oauth-callback');
+				broadcastChannel.postMessage('error');
+			})();
 		</script>
 	</body>
 </html>

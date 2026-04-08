@@ -1,12 +1,11 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import type { GoogleDriveType } from './node.type';
-
 import * as drive from './drive/Drive.resource';
 import * as file from './file/File.resource';
 import * as fileFolder from './fileFolder/FileFolder.resource';
 import * as folder from './folder/Folder.resource';
+import type { GoogleDriveType } from './node.type';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();

@@ -1,0 +1,96 @@
+{
+    "type": "object",
+    "properties": {
+        "archived": {
+            "type": "boolean"
+        },
+        "assignee": {
+            "type": "null"
+        },
+        "content": {
+            "type": "string"
+        },
+        "deleted": {
+            "type": "boolean"
+        },
+        "folder": {
+            "type": "object",
+            "properties": {
+                "access": {
+                    "type": "boolean"
+                },
+                "hidden": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "inbound_address": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "orderindex": {
+            "type": "integer"
+        },
+        "override_statuses": {
+            "type": "boolean"
+        },
+        "permission_level": {
+            "type": "string"
+        },
+        "space": {
+            "type": "object",
+            "properties": {
+                "access": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "start_date": {
+            "type": "null"
+        },
+        "statuses": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "color": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "orderindex": {
+                        "type": "integer"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "status_group": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    },
+    "version": 1
+}

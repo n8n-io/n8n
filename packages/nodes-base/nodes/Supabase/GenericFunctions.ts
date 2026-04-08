@@ -3,9 +3,7 @@ import type {
 	ICredentialTestFunctions,
 	IDataObject,
 	IExecuteFunctions,
-	IHookFunctions,
 	ILoadOptionsFunctions,
-	IWebhookFunctions,
 	INodeProperties,
 	IPairedItemData,
 	JsonObject,
@@ -14,8 +12,43 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
+export function getSchemaHeader(
+	context: IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	contextType: 'execute' | 'loadOptions',
+) {
+	let useCustomSchema = false;
+
+	if (contextType === 'loadOptions') {
+		useCustomSchema = context.getNodeParameter('useCustomSchema', false) as boolean;
+	} else {
+		useCustomSchema = context.getNodeParameter('useCustomSchema', 0, false) as boolean;
+	}
+
+	if (useCustomSchema) {
+		let schema: string;
+		const headers: IDataObject = {};
+
+		if (contextType === 'loadOptions') {
+			schema = context.getNodeParameter('schema', 'public') as string;
+		} else {
+			schema = context.getNodeParameter('schema', 0, 'public') as string;
+		}
+
+		if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) {
+			headers['Content-Profile'] = schema;
+		} else if (['GET', 'HEAD'].includes(method)) {
+			headers['Accept-Profile'] = schema;
+		}
+
+		return headers;
+	}
+
+	return {};
+}
+
 export async function supabaseApiRequest(
-	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject | IDataObject[] = {},
@@ -23,10 +56,10 @@ export async function supabaseApiRequest(
 	uri?: string,
 	headers: IDataObject = {},
 ) {
-	const credentials = (await this.getCredentials('supabaseApi')) as {
+	const credentials = await this.getCredentials<{
 		host: string;
 		serviceRole: string;
-	};
+	}>('supabaseApi');
 
 	const options: IRequestOptions = {
 		headers: {
@@ -35,18 +68,20 @@ export async function supabaseApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri || `${credentials.host}/rest/v1${resource}`,
+		uri: uri ?? `${credentials.host}/rest/v1${resource}`,
 		json: true,
 	};
+
 	try {
-		if (Object.keys(headers).length !== 0) {
-			options.headers = Object.assign({}, options.headers, headers);
-		}
+		options.headers = Object.assign({}, options.headers, headers);
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
 		return await this.helpers.requestWithAuthentication.call(this, 'supabaseApi', options);
 	} catch (error) {
+		if (error.description) {
+			error.message = `${error.message}: ${error.description}`;
+		}
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
@@ -66,7 +101,6 @@ export function getFilters(
 		filterTypeDisplayName = 'Filter',
 		filterFixedCollectionDisplayName = 'Filters',
 
-		filterStringDisplayName = 'Filters (String)',
 		mustMatchOptions = [
 			{
 				name: 'Any Filter',
@@ -143,7 +177,7 @@ export function getFilters(
 							name: 'keyName',
 							type: 'options',
 							description:
-								'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+								'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 							typeOptions: {
 								loadOptionsDependsOn: ['tableId'],
 								loadOptionsMethod: 'getTableColumns',
@@ -243,7 +277,7 @@ export function getFilters(
 		},
 		{
 			displayName:
-				'See <a href="https://postgrest.org/en/v9.0/api.html#horizontal-filtering-rows" target="_blank">PostgREST guide</a> to creating filters',
+				'See <a href="https://postgrest.org/en/stable/references/api/tables_views.html#horizontal-filtering" target="_blank">PostgREST guide</a> to creating filters',
 			name: 'jsonNotice',
 			type: 'notice',
 			displayOptions: {

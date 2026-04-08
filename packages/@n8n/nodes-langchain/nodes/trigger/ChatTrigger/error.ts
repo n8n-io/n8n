@@ -1,4 +1,6 @@
-export class ChatTriggerAuthorizationError extends Error {
+import { ApplicationError } from '@n8n/errors';
+
+export class ChatTriggerAuthorizationError extends ApplicationError {
 	constructor(
 		readonly responseCode: number,
 		message?: string,

@@ -1,17 +1,18 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type { TextSplitter } from '@langchain/textsplitters';
 import {
-	NodeConnectionType,
-	type IExecuteFunctions,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
-import type { TextSplitter } from 'langchain/text_splitter';
-
-import { logWrapper } from '../../../utils/logWrapper';
-import { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
-import { getConnectionHintNoticeField, metadataFilterField } from '../../../utils/sharedFields';
+import {
+	logWrapper,
+	N8nBinaryLoader,
+	getConnectionHintNoticeField,
+	metadataFilterField,
+} from '@n8n/ai-utilities';
 
 // Dependencies needed underneath the hood for the loaders. We add them
 // here only to track where what dependency is sued
@@ -47,20 +48,25 @@ export class DocumentBinaryInputLoader implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [
 			{
 				displayName: 'Text Splitter',
 				maxConnections: 1,
-				type: NodeConnectionType.AiTextSplitter,
+				type: NodeConnectionTypes.AiTextSplitter,
 				required: true,
 			},
 		],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiDocument],
+
+		outputs: [NodeConnectionTypes.AiDocument],
 		outputNames: ['Document'],
+		builderHint: {
+			inputs: {
+				ai_textSplitter: { required: true },
+			},
+		},
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
 			{
 				displayName: 'Loader Type',
 				name: 'loader',
@@ -177,10 +183,10 @@ export class DocumentBinaryInputLoader implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
-		this.logger.verbose('Supply Data for Binary Input Loader');
+	async supplyData(this: ISupplyDataFunctions): Promise<SupplyData> {
+		this.logger.debug('Supply Data for Binary Input Loader');
 		const textSplitter = (await this.getInputConnectionData(
-			NodeConnectionType.AiTextSplitter,
+			NodeConnectionTypes.AiTextSplitter,
 			0,
 		)) as TextSplitter | undefined;
 

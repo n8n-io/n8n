@@ -1,6 +1,6 @@
-/* eslint-disable @typescript-eslint/naming-convention */
+import type { RedisOptions } from 'ioredis';
+import type { IProcessedDataConfig } from 'n8n-workflow';
 
-import type { BinaryData } from 'n8n-core';
 import type { schema } from './schema';
 
 // -----------------------------------
@@ -50,7 +50,7 @@ type NumericPath = CollectPathsByType<number>;
 
 type BooleanPath = CollectPathsByType<boolean>;
 
-type StringLiteralArrayPath = CollectPathsByType<Readonly<string[]>>;
+type StringLiteralArrayPath = CollectPathsByType<readonly string[]>;
 
 type StringPath = CollectPathsByType<string>;
 
@@ -74,24 +74,21 @@ type ToReturnType<T extends ConfigOptionPath> = T extends NumericPath
 					: unknown;
 
 type ExceptionPaths = {
-	'queue.bull.redis': object;
-	binaryDataManager: BinaryData.Config;
-	'nodes.exclude': string[] | undefined;
-	'nodes.include': string[] | undefined;
-	'userManagement.isInstanceOwnerSetUp': boolean;
+	'queue.bull.redis': RedisOptions;
+	processedDataManager: IProcessedDataConfig;
 	'ui.banners.dismissed': string[] | undefined;
+	easyAIWorkflowOnboarded: boolean | undefined;
 };
 
 // -----------------------------------
 //        string literals map
 // -----------------------------------
 
-type GetPathSegmentsWithUnions<T> =
-	T extends ReadonlyArray<infer C>
-		? [C]
-		: {
-				[K in ValidKeys<T>]: [K, ...GetPathSegmentsWithUnions<T[K]>];
-			}[ValidKeys<T>];
+type GetPathSegmentsWithUnions<T> = T extends ReadonlyArray<infer C>
+	? [C]
+	: {
+			[K in ValidKeys<T>]: [K, ...GetPathSegmentsWithUnions<T[K]>];
+		}[ValidKeys<T>];
 
 type ToPathUnionPair<T extends string[]> = T extends [...infer Path, infer Union]
 	? Path extends string[]

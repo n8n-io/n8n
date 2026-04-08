@@ -37,7 +37,6 @@ export async function coinGeckoApiRequest(
 			delete options.body;
 		}
 
-		//@ts-ignore
 		return await this.helpers.request.call(this, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);

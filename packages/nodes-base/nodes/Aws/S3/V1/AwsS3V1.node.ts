@@ -1,9 +1,5 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { createHash } from 'crypto';
 import { paramCase, snakeCase } from 'change-case';
-
-import { Builder } from 'xml2js';
-
+import { createHash } from 'crypto';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -12,14 +8,12 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { Builder } from 'xml2js';
 
 import { bucketFields, bucketOperations } from './BucketDescription';
-
-import { folderFields, folderOperations } from './FolderDescription';
-
 import { fileFields, fileOperations } from './FileDescription';
-
+import { folderFields, folderOperations } from './FolderDescription';
 import {
 	awsApiRequestREST,
 	awsApiRequestSOAP,
@@ -42,8 +36,8 @@ export class AwsS3V1 implements INodeType {
 			defaults: {
 				name: 'AWS S3',
 			},
-			inputs: ['main'],
-			outputs: ['main'],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			credentials: [
 				{
 					name: 'aws',

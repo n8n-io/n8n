@@ -1,9 +1,5 @@
-import nock from 'nock';
-
 import * as get from '../../../../v2/actions/drive/get.operation';
-
 import * as transport from '../../../../v2/transport';
-
 import { createMockExecuteFunction, driveNode } from '../helpers';
 
 jest.mock('../../../../v2/transport', () => {
@@ -17,16 +13,7 @@ jest.mock('../../../../v2/transport', () => {
 });
 
 describe('test GoogleDriveV2: drive get', () => {
-	beforeAll(() => {
-		nock.disableNetConnect();
-	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.unmock('../../../../v2/transport');
-	});
-
-	it('shuold be called with', async () => {
+	it('should be called with', async () => {
 		const nodeParameters = {
 			resource: 'drive',
 			operation: 'get',

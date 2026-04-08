@@ -1,0 +1,14 @@
+/* Storybook layout styles for Input component stories */
+
+.input-story-container {
+	padding: 40px;
+	max-width: 400px;
+}
+
+.input-story-value {
+	margin-top: 16px;
+}
+
+.input-story-section {
+	margin-top: 16px;
+}

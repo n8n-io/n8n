@@ -20,10 +20,10 @@ export async function microsoftApiRequest(
 	uri?: string,
 	option: IDataObject = {},
 ): Promise<any> {
-	const credentials = (await this.getCredentials('microsoftDynamicsOAuth2Api')) as {
+	const credentials = await this.getCredentials<{
 		subdomain: string;
 		region: string;
-	};
+	}>('microsoftDynamicsOAuth2Api');
 
 	let options: IRequestOptions = {
 		headers: {
@@ -42,7 +42,6 @@ export async function microsoftApiRequest(
 		if (Object.keys(option).length !== 0) {
 			options = Object.assign({}, options, option);
 		}
-		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'microsoftDynamicsOAuth2Api', options, {
 			property: 'id_token',
 		});
@@ -126,14 +125,14 @@ export function getAccountFields(): INodeProperties[] {
 			},
 			default: '',
 			description:
-				'Category to indicate whether the customer account is standard or preferred. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				'Category to indicate whether the customer account is standard or preferred. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		},
 		{
 			displayName: 'Account Rating Name or ID',
 			name: 'accountratingcode',
 			type: 'options',
 			description:
-				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 			typeOptions: {
 				loadOptionsMethod: 'getAccountRatingCodes',
 			},
@@ -158,7 +157,7 @@ export function getAccountFields(): INodeProperties[] {
 							name: 'addresstypecode',
 							type: 'options',
 							description:
-								'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+								'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 							typeOptions: {
 								loadOptionsMethod: 'getAddressTypes',
 							},
@@ -249,14 +248,14 @@ export function getAccountFields(): INodeProperties[] {
 			},
 			default: '',
 			description:
-				'The legal designation or other business type of the account for contracts or reporting purposes. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				'The legal designation or other business type of the account for contracts or reporting purposes. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		},
 		{
 			displayName: 'Customer Size Name or ID',
 			name: 'customersizecode',
 			type: 'options',
 			description:
-				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 			typeOptions: {
 				loadOptionsMethod: 'getCustomerSizeCodes',
 			},
@@ -267,7 +266,7 @@ export function getAccountFields(): INodeProperties[] {
 			name: 'customertypecode',
 			type: 'options',
 			description:
-				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 			typeOptions: {
 				loadOptionsMethod: 'getCustomerTypeCodes',
 			},
@@ -325,7 +324,7 @@ export function getAccountFields(): INodeProperties[] {
 			},
 			default: '',
 			description:
-				'The account’s primary industry for use in marketing segmentation and demographic analysis. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				'The account’s primary industry for use in marketing segmentation and demographic analysis. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		},
 		{
 			displayName: 'Name',
@@ -365,7 +364,7 @@ export function getAccountFields(): INodeProperties[] {
 			},
 			default: '',
 			description:
-				'The payment terms to indicate when the customer needs to pay the total amount. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				'The payment terms to indicate when the customer needs to pay the total amount. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		},
 		{
 			displayName: 'Preferred Appointment Day Name or ID',
@@ -376,7 +375,7 @@ export function getAccountFields(): INodeProperties[] {
 			},
 			default: '',
 			description:
-				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		},
 		{
 			displayName: 'Preferred Appointment Time Name or ID',
@@ -387,7 +386,7 @@ export function getAccountFields(): INodeProperties[] {
 			},
 			default: '',
 			description:
-				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		},
 		{
 			displayName: 'Preferred Contact Method Name or ID',
@@ -398,7 +397,7 @@ export function getAccountFields(): INodeProperties[] {
 			},
 			default: '',
 			description:
-				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		},
 		{
 			displayName: 'Primary Satori ID',
@@ -437,7 +436,7 @@ export function getAccountFields(): INodeProperties[] {
 			},
 			default: '',
 			description:
-				'Shipping method for deliveries sent to the account’s address to designate the preferred carrier or other delivery option. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				'Shipping method for deliveries sent to the account’s address to designate the preferred carrier or other delivery option. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		},
 		{
 			displayName: 'SIC',
@@ -491,7 +490,7 @@ export function getAccountFields(): INodeProperties[] {
 			},
 			default: '',
 			description:
-				'Region or territory for the account for use in segmentation and analysis. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				'Region or territory for the account for use in segmentation and analysis. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		},
 		{
 			displayName: 'Ticker Symbol',

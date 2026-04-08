@@ -1,13 +1,23 @@
-import { NodeOperationError, type INodeProperties } from 'n8n-workflow';
 import type { PineconeStoreParams } from '@langchain/pinecone';
 import { PineconeStore } from '@langchain/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
-import { createVectorStoreNode } from '../shared/createVectorStoreNode';
-import { metadataFilterField } from '../../../utils/sharedFields';
-import { pineconeIndexRLC } from '../shared/descriptions';
+import { NodeOperationError, type INodeProperties } from 'n8n-workflow';
+
+import { metadataFilterField, createVectorStoreNode } from '@n8n/ai-utilities';
+
 import { pineconeIndexSearch } from '../shared/methods/listSearch';
+import { pineconeIndexRLC } from '../shared/descriptions';
 
 const sharedFields: INodeProperties[] = [pineconeIndexRLC];
+
+const pineconeNamespaceField: INodeProperties = {
+	displayName: 'Pinecone Namespace',
+	name: 'pineconeNamespace',
+	type: 'string',
+	description:
+		'Partition the records in an index into namespaces. Queries and other operations are then limited to one namespace, so different requests can search different subsets of your index.',
+	default: '',
+};
 
 const retrieveFields: INodeProperties[] = [
 	{
@@ -16,17 +26,7 @@ const retrieveFields: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
-		options: [
-			{
-				displayName: 'Pinecone Namespace',
-				name: 'pineconeNamespace',
-				type: 'string',
-				description:
-					'Partition the records in an index into namespaces. Queries and other operations are then limited to one namespace, so different requests can search different subsets of your index.',
-				default: '',
-			},
-			metadataFilterField,
-		],
+		options: [pineconeNamespaceField, metadataFilterField],
 	},
 ];
 
@@ -45,23 +45,17 @@ const insertFields: INodeProperties[] = [
 				default: false,
 				description: 'Whether to clear the namespace before inserting new data',
 			},
-			{
-				displayName: 'Pinecone Namespace',
-				name: 'pineconeNamespace',
-				type: 'string',
-				description:
-					'Partition the records in an index into namespaces. Queries and other operations are then limited to one namespace, so different requests can search different subsets of your index.',
-				default: '',
-			},
+			pineconeNamespaceField,
 		],
 	},
 ];
-export const VectorStorePinecone = createVectorStoreNode({
+
+export class VectorStorePinecone extends createVectorStoreNode<PineconeStore>({
 	meta: {
 		displayName: 'Pinecone Vector Store',
 		name: 'vectorStorePinecone',
 		description: 'Work with your data in Pinecone Vector Store',
-		icon: 'file:pinecone.svg',
+		icon: { light: 'file:pinecone.svg', dark: 'file:pinecone.dark.svg' },
 		docsUrl:
 			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstorepinecone/',
 		credentials: [
@@ -70,6 +64,7 @@ export const VectorStorePinecone = createVectorStoreNode({
 				required: true,
 			},
 		],
+		operationModes: ['load', 'insert', 'retrieve', 'update', 'retrieve-as-tool'],
 	},
 	methods: { listSearch: { pineconeIndexSearch } },
 	retrieveFields,
@@ -138,4 +133,4 @@ export const VectorStorePinecone = createVectorStoreNode({
 			pineconeIndex,
 		});
 	},
-});
+}) {}

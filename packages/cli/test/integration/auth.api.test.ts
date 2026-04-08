@@ -1,16 +1,20 @@
-import type { SuperAgentTest } from 'supertest';
-import { Container } from 'typedi';
+import { randomValidPassword, testDb } from '@n8n/backend-test-utils';
+import type { User } from '@n8n/db';
+import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import validator from 'validator';
+
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
-import type { User } from '@db/entities/User';
+import { MfaService } from '@/mfa/mfa.service';
+import { JwtService } from '@/services/jwt.service';
+
 import { LOGGED_OUT_RESPONSE_BODY } from './shared/constants';
-import { randomValidPassword } from './shared/random';
-import * as testDb from './shared/testDb';
-import * as utils from './shared/utils/';
 import { createUser, createUserShell } from './shared/db/users';
-import { UserRepository } from '@db/repositories/user.repository';
-import { MfaService } from '@/Mfa/mfa.service';
+import type { SuperAgentTest } from './shared/types';
+import * as utils from './shared/utils/';
+import { EventService } from '@/events/event.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
@@ -28,20 +32,19 @@ beforeAll(async () => {
 beforeEach(async () => {
 	await testDb.truncate(['User']);
 	config.set('ldap.disabled', true);
-	await utils.setInstanceOwnerSetUp(true);
 });
 
 describe('POST /login', () => {
 	beforeEach(async () => {
 		owner = await createUser({
 			password: ownerPassword,
-			role: 'global:owner',
+			role: GLOBAL_OWNER_ROLE,
 		});
 	});
 
 	test('should log user in', async () => {
 		const response = await testServer.authlessAgent.post('/login').send({
-			email: owner.email,
+			emailOrLdapLoginId: owner.email,
 			password: ownerPassword,
 		});
 
@@ -85,9 +88,9 @@ describe('POST /login', () => {
 		await mfaService.enableMfa(owner.id);
 
 		const response = await testServer.authlessAgent.post('/login').send({
-			email: owner.email,
+			emailOrLdapLoginId: owner.email,
 			password: ownerPassword,
-			mfaToken: mfaService.totp.generateTOTP(secret),
+			mfaCode: mfaService.totp.generateTOTP(secret),
 		});
 
 		expect(response.statusCode).toBe(200);
@@ -129,7 +132,7 @@ describe('POST /login', () => {
 		});
 
 		const response = await testServer.authlessAgent.post('/login').send({
-			email: member.email,
+			emailOrLdapLoginId: member.email,
 			password,
 		});
 		expect(response.statusCode).toBe(403);
@@ -139,11 +142,23 @@ describe('POST /login', () => {
 		license.setQuota('quota:users', 0);
 		const ownerUser = await createUser({
 			password: randomValidPassword(),
-			role: 'global:owner',
+			role: GLOBAL_OWNER_ROLE,
 		});
 
 		const response = await testServer.authAgentFor(ownerUser).get('/login');
 		expect(response.statusCode).toBe(200);
+	});
+
+	test('should fail with invalid email in the payload is the current authentication method is "email"', async () => {
+		config.set('userManagement.authenticationMethod', 'email');
+
+		const response = await testServer.authlessAgent.post('/login').send({
+			emailOrLdapLoginId: 'invalid-email',
+			password: ownerPassword,
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('Invalid email address');
 	});
 });
 
@@ -169,7 +184,7 @@ describe('GET /login', () => {
 	});
 
 	test('should return logged-in owner shell', async () => {
-		const ownerShell = await createUserShell('global:owner');
+		const ownerShell = await createUserShell(GLOBAL_OWNER_ROLE);
 
 		const response = await testServer.authAgentFor(ownerShell).get('/login');
 
@@ -204,7 +219,7 @@ describe('GET /login', () => {
 	});
 
 	test('should return logged-in member shell', async () => {
-		const memberShell = await createUserShell('global:member');
+		const memberShell = await createUserShell(GLOBAL_MEMBER_ROLE);
 
 		const response = await testServer.authAgentFor(memberShell).get('/login');
 
@@ -239,7 +254,7 @@ describe('GET /login', () => {
 	});
 
 	test('should return logged-in owner', async () => {
-		const owner = await createUser({ role: 'global:owner' });
+		const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
 
 		const response = await testServer.authAgentFor(owner).get('/login');
 
@@ -274,7 +289,7 @@ describe('GET /login', () => {
 	});
 
 	test('should return logged-in member', async () => {
-		const member = await createUser({ role: 'global:member' });
+		const member = await createUser({ role: { slug: 'global:member' } });
 
 		const response = await testServer.authAgentFor(member).get('/login');
 
@@ -313,18 +328,19 @@ describe('GET /resolve-signup-token', () => {
 	beforeEach(async () => {
 		owner = await createUser({
 			password: ownerPassword,
-			role: 'global:owner',
+			role: GLOBAL_OWNER_ROLE,
 		});
 		authOwnerAgent = testServer.authAgentFor(owner);
 	});
 
 	test('should validate invite token', async () => {
-		const memberShell = await createUserShell('global:member');
+		const memberShell = await createUserShell(GLOBAL_MEMBER_ROLE);
+		const token = Container.get(JwtService).sign(
+			{ inviterId: owner.id, inviteeId: memberShell.id },
+			{ expiresIn: '90d' },
+		);
 
-		const response = await authOwnerAgent
-			.get('/resolve-signup-token')
-			.query({ inviterId: owner.id })
-			.query({ inviteeId: memberShell.id });
+		const response = await authOwnerAgent.get('/resolve-signup-token').query({ token });
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual({
@@ -339,57 +355,92 @@ describe('GET /resolve-signup-token', () => {
 
 	test('should return 403 if user quota reached', async () => {
 		license.setQuota('quota:users', 0);
-		const memberShell = await createUserShell('global:member');
+		const memberShell = await createUserShell(GLOBAL_MEMBER_ROLE);
+		const token = Container.get(JwtService).sign(
+			{ inviterId: owner.id, inviteeId: memberShell.id },
+			{ expiresIn: '90d' },
+		);
 
-		const response = await authOwnerAgent
-			.get('/resolve-signup-token')
-			.query({ inviterId: owner.id })
-			.query({ inviteeId: memberShell.id });
+		const response = await authOwnerAgent.get('/resolve-signup-token').query({ token });
 
 		expect(response.statusCode).toBe(403);
 	});
 
 	test('should fail with invalid inputs', async () => {
-		const { id: inviteeId } = await createUser({ role: 'global:member' });
+		const { id: inviteeId } = await createUser({ role: { slug: 'global:member' } });
+		const validToken = Container.get(JwtService).sign(
+			{ inviterId: owner.id, inviteeId },
+			{ expiresIn: '90d' },
+		);
 
-		const first = await authOwnerAgent.get('/resolve-signup-token').query({ inviterId: owner.id });
+		const first = await authOwnerAgent.get('/resolve-signup-token').query({});
 
-		const second = await authOwnerAgent.get('/resolve-signup-token').query({ inviteeId });
+		const second = await authOwnerAgent.get('/resolve-signup-token').query({ token: '' });
 
 		const third = await authOwnerAgent.get('/resolve-signup-token').query({
-			inviterId: '5531199e-b7ae-425b-a326-a95ef8cca59d',
-			inviteeId: 'cb133beb-7729-4c34-8cd1-a06be8834d9d',
+			token: 'invalid-jwt-token',
 		});
 
 		// user is already set up, so call should error
-		const fourth = await authOwnerAgent
-			.get('/resolve-signup-token')
-			.query({ inviterId: owner.id })
-			.query({ inviteeId });
+		const fourth = await authOwnerAgent.get('/resolve-signup-token').query({ token: validToken });
 
 		// cause inconsistent DB state
-		await Container.get(UserRepository).update(owner.id, { email: '' });
-		const fifth = await authOwnerAgent
-			.get('/resolve-signup-token')
-			.query({ inviterId: owner.id })
-			.query({ inviteeId });
+		owner.email = '';
+		await Container.get(UserRepository).save(owner, { listeners: false });
+		const fifth = await authOwnerAgent.get('/resolve-signup-token').query({ token: validToken });
 
 		for (const response of [first, second, third, fourth, fifth]) {
 			expect(response.statusCode).toBe(400);
 		}
 	});
+
+	test('should send roles for user-invite-email-click event', async () => {
+		const memberShell = await createUserShell(GLOBAL_MEMBER_ROLE);
+		const token = Container.get(JwtService).sign(
+			{ inviterId: owner.id, inviteeId: memberShell.id },
+			{ expiresIn: '90d' },
+		);
+
+		const eventService = Container.get(EventService);
+		const emitSpy = jest.spyOn(eventService, 'emit');
+
+		await authOwnerAgent.get('/resolve-signup-token').query({ token }).expect(200);
+
+		// Check all emitted events
+		let foundEvent = false;
+		for (const [eventName, payload] of emitSpy.mock.calls) {
+			if (eventName === 'user-invite-email-click') {
+				foundEvent = true;
+				expect(payload).toBeDefined();
+				const { invitee, inviter } = payload as RelayEventMap['user-invite-email-click'];
+				expect(invitee.role).toBeDefined();
+				expect(invitee.role?.slug).toBe('global:member');
+				expect(inviter.role).toBeDefined();
+				expect(inviter.role?.slug).toBe('global:owner');
+			}
+		}
+
+		expect(foundEvent).toBe(true);
+		emitSpy.mockRestore();
+	});
 });
 
 describe('POST /logout', () => {
 	test('should log user out', async () => {
-		const owner = await createUser({ role: 'global:owner' });
+		const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
+		const ownerAgent = testServer.authAgentFor(owner);
+		// @ts-expect-error `accessInfo` types are incorrect
+		const cookie = ownerAgent.jar.getCookie(AUTH_COOKIE_NAME, { path: '/' });
 
-		const response = await testServer.authAgentFor(owner).post('/logout');
+		const response = await ownerAgent.post('/logout');
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual(LOGGED_OUT_RESPONSE_BODY);
 
 		const authToken = utils.getAuthToken(response);
 		expect(authToken).toBeUndefined();
+
+		ownerAgent.jar.setCookie(`${AUTH_COOKIE_NAME}=${cookie!.value}`);
+		await ownerAgent.get('/login').expect(401);
 	});
 });

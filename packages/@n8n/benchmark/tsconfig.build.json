@@ -1,0 +1,9 @@
+{
+	"extends": ["./tsconfig.json", "@n8n/typescript-config/tsconfig.build.json"],
+	"compilerOptions": {
+		"rootDir": "src",
+		"outDir": "dist",
+		"tsBuildInfoFile": "dist/build.tsbuildinfo"
+	},
+	"include": ["src/**/*.ts"]
+}

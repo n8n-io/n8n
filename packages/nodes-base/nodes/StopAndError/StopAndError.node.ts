@@ -3,9 +3,10 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	JsonObject,
 } from 'n8n-workflow';
-import { jsonParse, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+
+import { createErrorFromParameters } from './utils';
 
 const errorObjectPlaceholder = `{
 	"code": "404",
@@ -17,6 +18,7 @@ export class StopAndError implements INodeType {
 		displayName: 'Stop and Error',
 		name: 'stopAndError',
 		icon: 'fa:exclamation-triangle',
+		iconColor: 'red',
 		group: ['input'],
 		version: 1,
 		description: 'Throw an error in the workflow',
@@ -24,8 +26,8 @@ export class StopAndError implements INodeType {
 			name: 'Stop and Error',
 			color: '#ff0000',
 		},
-		inputs: ['main'],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+		inputs: [NodeConnectionTypes.Main],
+
 		outputs: [],
 		properties: [
 			{
@@ -80,24 +82,13 @@ export class StopAndError implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const errorType = this.getNodeParameter('errorType', 0) as 'errorMessage' | 'errorObject';
-		const { id: workflowId, name: workflowName } = this.getWorkflow();
+		const errorParameter =
+			errorType === 'errorMessage'
+				? (this.getNodeParameter('errorMessage', 0) as string)
+				: (this.getNodeParameter('errorObject', 0) as string);
 
-		let toThrow: string | JsonObject;
+		const { message, options } = createErrorFromParameters(errorType, errorParameter);
 
-		if (errorType === 'errorMessage') {
-			toThrow = this.getNodeParameter('errorMessage', 0) as string;
-		} else {
-			const json = this.getNodeParameter('errorObject', 0) as string;
-
-			const errorObject = jsonParse<JsonObject>(json);
-
-			toThrow = {
-				name: 'User-thrown error',
-				message: `Workflow ID ${workflowId} "${workflowName}" has failed`,
-				...errorObject,
-			};
-		}
-
-		throw new NodeOperationError(this.getNode(), toThrow);
+		throw new NodeOperationError(this.getNode(), message, options);
 	}
 }

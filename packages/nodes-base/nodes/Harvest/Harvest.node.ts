@@ -8,28 +8,18 @@ import type {
 	INodeTypeDescription,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { clientFields, clientOperations } from './ClientDescription';
-
-import { contactFields, contactOperations } from './ContactDescription';
-
 import { companyOperations } from './CompanyDescription';
-
+import { contactFields, contactOperations } from './ContactDescription';
 import { estimateFields, estimateOperations } from './EstimateDescription';
-
 import { expenseFields, expenseOperations } from './ExpenseDescription';
-
 import { getAllResource, harvestApiRequest } from './GenericFunctions';
-
 import { invoiceFields, invoiceOperations } from './InvoiceDescription';
-
 import { projectFields, projectOperations } from './ProjectDescription';
-
 import { taskFields, taskOperations } from './TaskDescription';
-
 import { timeEntryFields, timeEntryOperations } from './TimeEntryDescription';
-
 import { userFields, userOperations } from './UserDescription';
 
 export class Harvest implements INodeType {
@@ -45,8 +35,9 @@ export class Harvest implements INodeType {
 		defaults: {
 			name: 'Harvest',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'harvestApi',
@@ -152,7 +143,7 @@ export class Harvest implements INodeType {
 				name: 'accountId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				required: true,
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',

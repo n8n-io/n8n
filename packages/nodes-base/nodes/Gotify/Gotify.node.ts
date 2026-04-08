@@ -5,6 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { gotifyApiRequest, gotifyApiRequestAllItems } from './GenericFunctions';
 
@@ -21,8 +22,9 @@ export class Gotify implements INodeType {
 		defaults: {
 			name: 'Gotify',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'gotifyApi',
@@ -119,7 +121,7 @@ export class Gotify implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				displayOptions: {
 					show: {
 						resource: ['message'],

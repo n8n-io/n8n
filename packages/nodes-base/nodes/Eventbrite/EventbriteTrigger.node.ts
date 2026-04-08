@@ -9,9 +9,13 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
-import { eventbriteApiRequest, eventbriteApiRequestAllItems } from './GenericFunctions';
+import {
+	eventbriteApiRequest,
+	eventbriteApiRequestAllItems,
+	isValidEventbriteUrl,
+} from './GenericFunctions';
 
 export class EventbriteTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -27,7 +31,7 @@ export class EventbriteTrigger implements INodeType {
 			name: 'Eventbrite Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'eventbriteApi',
@@ -83,7 +87,7 @@ export class EventbriteTrigger implements INodeType {
 				},
 				default: '',
 				description:
-					'The Eventbrite Organization to work on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The Eventbrite Organization to work on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Event Name or ID',
@@ -96,7 +100,7 @@ export class EventbriteTrigger implements INodeType {
 				},
 				default: '',
 				description:
-					'Limit the triggers to this event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Limit the triggers to this event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Actions',
@@ -296,9 +300,10 @@ export class EventbriteTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 
-		if (req.body.api_url === undefined) {
+		const apiUrl = (req.body as IDataObject).api_url;
+		if (!isValidEventbriteUrl(apiUrl)) {
 			throw new NodeApiError(this.getNode(), req.body as JsonObject, {
-				message: 'The received data does not contain required "api_url" property!',
+				message: 'The received data does not contain a valid Eventbrite API URL!',
 			});
 		}
 

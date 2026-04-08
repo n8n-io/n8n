@@ -1,9 +1,10 @@
-import type {
-	IHookFunctions,
-	IWebhookFunctions,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
+import {
+	type IHookFunctions,
+	type IWebhookFunctions,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookResponseData,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { apiRequest } from './GenericFunctions';
@@ -22,7 +23,7 @@ export class TrelloTrigger implements INodeType {
 			name: 'Trello Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'trelloApi',

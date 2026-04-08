@@ -4,9 +4,8 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { updateDisplayOptions } from '../../../../../utils/utilities';
-import { discordApiMultiPartRequest, discordApiRequest } from '../../transport';
 
+import { updateDisplayOptions } from '../../../../../utils/utilities';
 import {
 	parseDiscordError,
 	prepareEmbeds,
@@ -14,7 +13,7 @@ import {
 	prepareMultiPartForm,
 	prepareOptions,
 } from '../../helpers/utils';
-
+import { discordApiMultiPartRequest, discordApiRequest } from '../../transport';
 import { embedsFixedCollection, filesFixedCollection } from '../common.description';
 
 const properties: INodeProperties[] = [
@@ -33,7 +32,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
@@ -137,7 +136,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			let response: IDataObject[] = [];
 
 			if (files?.length) {
-				const multiPartBody = await prepareMultiPartForm.call(this, items, files, body, i);
+				const multiPartBody = await prepareMultiPartForm.call(this, files, body, i);
 
 				response = await discordApiMultiPartRequest.call(this, 'POST', '', multiPartBody);
 			} else {

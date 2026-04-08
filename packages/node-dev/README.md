@@ -1,5 +1,9 @@
 ![n8n.io - Workflow Automation](https://user-images.githubusercontent.com/65276001/173571060-9f2f6d7b-bac0-43b6-bdb2-001da9694058.png)
 
+# ⚠️ Deprecated
+
+> **This package is deprecated and no more updates will be published to npm**
+
 # n8n-node-dev
 
 Currently very simple and not very sophisticated CLI which makes it easier
@@ -215,8 +219,4 @@ All properties are optional. However, most only work when the node-property is o
 
 ## License
 
-n8n is [fair-code](https://faircode.io) distributed under the [**Sustainable Use License**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md).
-
-Proprietary licenses are available for enterprise customers. [Get in touch](mailto:license@n8n.io)
-
-Additional information about the license can be found in the [docs](https://docs.n8n.io/reference/license/).
+You can find the license information [here](https://github.com/n8n-io/n8n/blob/master/README.md#license)

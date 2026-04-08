@@ -4,8 +4,9 @@ import type {
 	INodeTypeDescription,
 	ITriggerResponse,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
-type eventType = 'Instance started' | undefined;
+type eventType = 'Instance started' | 'Workflow published' | 'Workflow updated' | undefined;
 
 export class N8nTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -21,7 +22,7 @@ export class N8nTrigger implements INodeType {
 			name: 'n8n Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Events',
@@ -29,13 +30,29 @@ export class N8nTrigger implements INodeType {
 				type: 'multiOptions',
 				required: true,
 				default: [],
-				description:
-					'Specifies under which conditions an execution should happen: <b>Instance started</b>: Triggers when this n8n instance is started or re-started',
+				description: `Specifies under which conditions an execution should happen:
+				<ul>
+					<li><b>Published Workflow Updated</b>: Triggers when workflow version is published from a published state (workflow was already published)</li>
+					<li><b>Instance Started</b>:  Triggers when this n8n instance is started or re-started</li>
+					<li><b>Workflow Published</b>: Triggers when workflow version is published from an unpublished state (workflow was unpublished)</li>
+				</ul>`,
 				options: [
+					{
+						name: 'Published Workflow Updated',
+						value: 'update',
+						description:
+							'Triggers when workflow version is published from a published state (workflow was already published)',
+					},
 					{
 						name: 'Instance Started',
 						value: 'init',
 						description: 'Triggers when this n8n instance is started or re-started',
+					},
+					{
+						name: 'Workflow Published',
+						value: 'activate',
+						description:
+							'Triggers when workflow version is published from an unpublished state (workflow was not published)',
 					},
 				],
 			},
@@ -43,12 +60,18 @@ export class N8nTrigger implements INodeType {
 	};
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-		const events = this.getNodeParameter('events', []) as string[];
+		const events = (this.getNodeParameter('events') as string[]) || [];
 
 		const activationMode = this.getActivationMode();
 
 		if (events.includes(activationMode)) {
 			let event: eventType;
+			if (activationMode === 'activate') {
+				event = 'Workflow published';
+			}
+			if (activationMode === 'update') {
+				event = 'Workflow updated';
+			}
 			if (activationMode === 'init') {
 				event = 'Instance started';
 			}

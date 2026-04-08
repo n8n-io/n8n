@@ -1,8 +1,15 @@
-import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-
 import glob from 'fast-glob';
-import { errorMapper } from '../helpers/utils';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+	JsonObject,
+} from 'n8n-workflow';
+
 import { updateDisplayOptions } from '@utils/utilities';
+
+import { errorMapper, normalizeFileSelector } from '../helpers/utils';
 
 export const properties: INodeProperties[] = [
 	{
@@ -13,13 +20,14 @@ export const properties: INodeProperties[] = [
 		required: true,
 		placeholder: 'e.g. /home/user/Pictures/**/*.png',
 		hint: 'Supports patterns, learn more <a href="https://github.com/micromatch/picomatch#basic-globbing" target="_blank">here</a>',
-		description: "Specify a file's path or path pattern to read multiple files",
+		description:
+			"Specify a file's path or path pattern to read multiple files. Always use forward-slashes for path separator even on Windows.",
 	},
 	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
@@ -68,12 +76,16 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, items: INodeExecutionData[]) {
+	const nodeVersion = this.getNode().typeVersion;
 	const returnData: INodeExecutionData[] = [];
 	let fileSelector;
 
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 		try {
-			fileSelector = this.getNodeParameter('fileSelector', itemIndex) as string;
+			fileSelector = normalizeFileSelector(
+				this.getNodeParameter('fileSelector', itemIndex) as string,
+			);
+
 			const options = this.getNodeParameter('options', itemIndex, {});
 
 			let dataPropertyName = 'data';
@@ -84,9 +96,18 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 
 			const files = await glob(fileSelector);
 
+			if (files.length === 0 && nodeVersion > 1) {
+				throw new NodeOperationError(this.getNode(), 'No file(s) found', {
+					itemIndex,
+					description: `No file matching the selector "${fileSelector}" found`,
+				});
+			}
+
 			const newItems: INodeExecutionData[] = [];
 			for (const filePath of files) {
-				const stream = await this.helpers.createReadStream(filePath);
+				const stream = await this.helpers.createReadStream(
+					await this.helpers.resolvePath(filePath),
+				);
 				const binaryData = await this.helpers.prepareBinaryData(stream, filePath);
 
 				if (options.fileName !== undefined) {
@@ -109,7 +130,6 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 						mimeType: binaryData.mimeType,
 						fileType: binaryData.fileType,
 						fileName: binaryData.fileName,
-						directory: binaryData.directory,
 						fileExtension: binaryData.fileExtension,
 						fileSize: binaryData.fileSize,
 					},
@@ -118,17 +138,16 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 					},
 				});
 			}
-
 			returnData.push(...newItems);
 		} catch (error) {
-			const nodeOperatioinError = errorMapper.call(this, error, itemIndex, {
+			const nodeOperationError = errorMapper.call(this, error, itemIndex, {
 				filePath: fileSelector,
 				operation: 'read',
 			});
 			if (this.continueOnFail()) {
 				returnData.push({
 					json: {
-						error: nodeOperatioinError.message,
+						error: nodeOperationError.message,
 					},
 					pairedItem: {
 						item: itemIndex,
@@ -136,7 +155,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 				});
 				continue;
 			}
-			throw nodeOperatioinError;
+			throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex });
 		}
 	}
 

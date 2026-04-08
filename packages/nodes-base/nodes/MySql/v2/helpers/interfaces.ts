@@ -1,9 +1,10 @@
 import type mysql2 from 'mysql2/promise';
-import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData, SSHCredentials } from 'n8n-workflow';
 
 export type Mysql2Connection = mysql2.Connection;
 export type Mysql2Pool = mysql2.Pool;
 export type Mysql2OkPacket = mysql2.OkPacket;
+export type Mysql2PoolConnection = mysql2.PoolConnection;
 
 export type QueryValues = Array<string | number | IDataObject>;
 export type QueryWithValues = { query: string; values: QueryValues };
@@ -26,3 +27,30 @@ const INDEPENDENTLY = 'independently';
 export const BATCH_MODE = { SINGLE, TRANSACTION, INDEPENDENTLY };
 
 export type QueryMode = typeof SINGLE | typeof TRANSACTION | typeof INDEPENDENTLY;
+
+type WithSSL =
+	| { ssl: false }
+	| { ssl: true; caCertificate: string; clientCertificate: string; clientPrivateKey: string };
+
+type WithSSHTunnel =
+	| { sshTunnel: false }
+	| ({
+			sshTunnel: true;
+	  } & SSHCredentials);
+
+export type MysqlNodeCredentials = {
+	host: string;
+	port: number;
+	database: string;
+	user: string;
+	password: string;
+	connectTimeout: number;
+} & WithSSL &
+	WithSSHTunnel;
+
+export type ParameterMatch = {
+	match: string;
+	index: number;
+	paramNumber: string;
+	isName: boolean;
+};

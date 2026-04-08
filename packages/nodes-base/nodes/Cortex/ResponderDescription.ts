@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { TLP } from './AnalyzerInterface';
+import { TLPs } from './AnalyzerInterface';
 
 export const respondersOperations: INodeProperties[] = [
 	{
@@ -43,7 +43,7 @@ export const responderFields: INodeProperties[] = [
 			},
 		},
 		description:
-			'Choose the responder. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Choose the responder. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Entity Type Name or ID',
@@ -61,7 +61,7 @@ export const responderFields: INodeProperties[] = [
 		},
 		default: '',
 		description:
-			'Choose the Data type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Choose the Data type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -172,19 +172,19 @@ export const responderFields: INodeProperties[] = [
 						options: [
 							{
 								name: 'White',
-								value: TLP.white,
+								value: TLPs.white,
 							},
 							{
 								name: 'Green',
-								value: TLP.green,
+								value: TLPs.green,
 							},
 							{
 								name: 'Amber',
-								value: TLP.amber,
+								value: TLPs.amber,
 							},
 							{
 								name: 'Red',
-								value: TLP.red,
+								value: TLPs.red,
 							},
 						],
 						description: 'Traffic Light Protocol (TLP). Default=Amber.',
@@ -436,19 +436,19 @@ export const responderFields: INodeProperties[] = [
 						options: [
 							{
 								name: 'White',
-								value: TLP.white,
+								value: TLPs.white,
 							},
 							{
 								name: 'Green',
-								value: TLP.green,
+								value: TLPs.green,
 							},
 							{
 								name: 'Amber',
-								value: TLP.amber,
+								value: TLPs.amber,
 							},
 							{
 								name: 'Red',
-								value: TLP.red,
+								value: TLPs.red,
 							},
 						],
 						description: 'Traffic Light Protocol (TLP). Default=Amber.',
@@ -621,19 +621,19 @@ export const responderFields: INodeProperties[] = [
 						options: [
 							{
 								name: 'White',
-								value: TLP.white,
+								value: TLPs.white,
 							},
 							{
 								name: 'Green',
-								value: TLP.green,
+								value: TLPs.green,
 							},
 							{
 								name: 'Amber',
-								value: TLP.amber,
+								value: TLPs.amber,
 							},
 							{
 								name: 'Red',
-								value: TLP.red,
+								value: TLPs.red,
 							},
 						],
 						description: 'Traffic Light Protocol (TLP). Default=Amber.',

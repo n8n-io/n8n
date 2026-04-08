@@ -5,9 +5,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { lineApiRequest } from './GenericFunctions';
-
 import { notificationFields, notificationOperations } from './NotificationDescription';
 
 export class Line implements INodeType {
@@ -23,8 +23,9 @@ export class Line implements INodeType {
 		defaults: {
 			name: 'Line',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'lineNotifyOAuth2Api',
@@ -37,6 +38,13 @@ export class Line implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName:
+					'End of service: LINE Notify will be discontinued from April 1st 2025, You can find more information <a href="https://notify-bot.line.me/closing-announce" target="_blank">here</a>',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',

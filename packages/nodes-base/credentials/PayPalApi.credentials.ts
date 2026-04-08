@@ -5,7 +5,7 @@ export class PayPalApi implements ICredentialType {
 
 	displayName = 'PayPal API';
 
-	documentationUrl = 'payPal';
+	documentationUrl = 'paypal';
 
 	properties: INodeProperties[] = [
 		{

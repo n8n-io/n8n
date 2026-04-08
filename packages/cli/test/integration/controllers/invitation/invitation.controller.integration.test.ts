@@ -1,44 +1,50 @@
-import { mocked } from 'jest-mock';
-import Container from 'typedi';
-import { Not } from '@n8n/typeorm';
-
-import { InternalHooks } from '@/InternalHooks';
-import { ExternalHooks } from '@/ExternalHooks';
-import { UserManagementMailer } from '@/UserManagement/email';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { PasswordUtility } from '@/services/password.utility';
-
 import {
+	mockInstance,
 	randomEmail,
 	randomInvalidPassword,
 	randomName,
 	randomValidPassword,
-} from '../../shared/random';
-import { createMember, createOwner, createUserShell } from '../../shared/db/users';
-import { mockInstance } from '../../../shared/mocking';
-import * as utils from '../../shared/utils';
+} from '@n8n/backend-test-utils';
+import type { User } from '@n8n/db';
+import {
+	GLOBAL_ADMIN_ROLE,
+	GLOBAL_MEMBER_ROLE,
+	ProjectRelationRepository,
+	UserRepository,
+} from '@n8n/db';
+import { Container } from '@n8n/di';
+import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { Not } from '@n8n/typeorm';
 
 import {
 	assertReturnedUserProps,
 	assertStoredUserProps,
 	assertUserInviteResult,
 } from './assertions';
-
-import type { User } from '@/databases/entities/User';
+import { createMember, createOwner, createUserShell } from '../../shared/db/users';
+import * as utils from '../../shared/utils';
 import type { UserInvitationResult } from '../../shared/utils/users';
+
+import { EventService } from '@/events/event.service';
+import { ExternalHooks } from '@/external-hooks';
+import { JwtService } from '@/services/jwt.service';
+import { PasswordUtility } from '@/services/password.utility';
+import { UserManagementMailer } from '@/user-management/email';
 
 describe('InvitationController', () => {
 	const mailer = mockInstance(UserManagementMailer);
 	const externalHooks = mockInstance(ExternalHooks);
-	const internalHooks = mockInstance(InternalHooks);
+	const eventService = mockInstance(EventService);
 
 	const testServer = utils.setupTestServer({ endpointGroups: ['invitations'] });
 
 	let instanceOwner: User;
 	let userRepository: UserRepository;
+	let projectRelationRepository: ProjectRelationRepository;
 
 	beforeAll(async () => {
 		userRepository = Container.get(UserRepository);
+		projectRelationRepository = Container.get(ProjectRelationRepository);
 		instanceOwner = await createOwner();
 	});
 
@@ -51,19 +57,23 @@ describe('InvitationController', () => {
 		jest.restoreAllMocks();
 	});
 
-	describe('POST /invitations/:id/accept', () => {
-		test('should fill out a member shell', async () => {
-			const memberShell = await createUserShell('global:member');
+	function invitationToken(inviterId: string, inviteeId: string): string {
+		return Container.get(JwtService).sign({ inviterId, inviteeId }, { expiresIn: '90d' });
+	}
 
+	describe('POST /invitations/accept', () => {
+		test('should fill out a member shell', async () => {
+			const memberShell = await createUserShell(GLOBAL_MEMBER_ROLE);
+			const token = invitationToken(instanceOwner.id, memberShell.id);
 			const memberProps = {
-				inviterId: instanceOwner.id,
+				token,
 				firstName: randomName(),
 				lastName: randomName(),
 				password: randomValidPassword(),
 			};
 
 			const response = await testServer.authlessAgent
-				.post(`/invitations/${memberShell.id}/accept`)
+				.post('/invitations/accept')
 				.send(memberProps)
 				.expect(200);
 
@@ -84,17 +94,17 @@ describe('InvitationController', () => {
 		});
 
 		test('should fill out an admin shell', async () => {
-			const adminShell = await createUserShell('global:admin');
-
+			const adminShell = await createUserShell(GLOBAL_ADMIN_ROLE);
+			const token = invitationToken(instanceOwner.id, adminShell.id);
 			const memberProps = {
-				inviterId: instanceOwner.id,
+				token,
 				firstName: randomName(),
 				lastName: randomName(),
 				password: randomValidPassword(),
 			};
 
 			const response = await testServer.authlessAgent
-				.post(`/invitations/${adminShell.id}/accept`)
+				.post('/invitations/accept')
 				.send(memberProps)
 				.expect(200);
 
@@ -117,43 +127,36 @@ describe('InvitationController', () => {
 		test('should fail with invalid payloads', async () => {
 			const memberShell = await userRepository.save({
 				email: randomEmail(),
-				role: 'global:member',
+				role: { slug: 'global:member' },
 			});
+			const validToken = invitationToken(instanceOwner.id, memberShell.id);
 
-			const invalidPaylods = [
+			const invalidPayloads = [
 				{
 					firstName: randomName(),
 					lastName: randomName(),
 					password: randomValidPassword(),
 				},
 				{
-					inviterId: instanceOwner.id,
+					token: validToken,
 					firstName: randomName(),
 					password: randomValidPassword(),
 				},
 				{
-					inviterId: instanceOwner.id,
-					firstName: randomName(),
-					password: randomValidPassword(),
-				},
-				{
-					inviterId: instanceOwner.id,
+					token: validToken,
 					firstName: randomName(),
 					lastName: randomName(),
 				},
 				{
-					inviterId: instanceOwner.id,
+					token: validToken,
 					firstName: randomName(),
 					lastName: randomName(),
 					password: randomInvalidPassword(),
 				},
 			];
 
-			for (const payload of invalidPaylods) {
-				await testServer.authlessAgent
-					.post(`/invitations/${memberShell.id}/accept`)
-					.send(payload)
-					.expect(400);
+			for (const payload of invalidPayloads) {
+				await testServer.authlessAgent.post('/invitations/accept').send(payload).expect(400);
 
 				const storedMemberShell = await userRepository.findOneByOrFail({
 					email: memberShell.email,
@@ -167,18 +170,15 @@ describe('InvitationController', () => {
 
 		test('should fail with already accepted invite', async () => {
 			const member = await createMember();
-
+			const token = invitationToken(instanceOwner.id, member.id);
 			const memberProps = {
-				inviterId: instanceOwner.id,
+				token,
 				firstName: randomName(),
 				lastName: randomName(),
 				password: randomValidPassword(),
 			};
 
-			await testServer.authlessAgent
-				.post(`/invitations/${member.id}/accept`)
-				.send(memberProps)
-				.expect(400);
+			await testServer.authlessAgent.post('/invitations/accept').send(memberProps).expect(400);
 
 			const storedMember = await userRepository.findOneByOrFail({
 				email: member.email,
@@ -189,7 +189,7 @@ describe('InvitationController', () => {
 			expect(storedMember.password).not.toBe(memberProps.password);
 
 			const comparisonResult = await Container.get(PasswordUtility).compare(
-				member.password,
+				member.password!,
 				storedMember.password,
 			);
 
@@ -246,11 +246,16 @@ describe('InvitationController', () => {
 			const { user } = response.body.data[0];
 
 			expect(user.inviteAcceptUrl).toBeDefined();
+			expect(user).toHaveProperty('role', 'global:member');
 
 			const inviteUrl = new URL(user.inviteAcceptUrl);
 
-			expect(inviteUrl.searchParams.get('inviterId')).toBe(instanceOwner.id);
-			expect(inviteUrl.searchParams.get('inviteeId')).toBe(user.id);
+			const token = inviteUrl.searchParams.get('token');
+			expect(typeof token).toBe('string');
+			expect(token!.length).toBeGreaterThan(0);
+			// IAM-403: invite links are token-only; legacy params must not be present
+			expect(inviteUrl.searchParams.get('inviterId')).toBeNull();
+			expect(inviteUrl.searchParams.get('inviteeId')).toBeNull();
 		});
 
 		test('should create member shell', async () => {
@@ -269,6 +274,39 @@ describe('InvitationController', () => {
 			});
 
 			assertStoredUserProps(storedUser);
+		});
+
+		test('should create personal project for shell account', async () => {
+			mailer.invite.mockResolvedValue({ emailSent: false });
+
+			const response: InvitationResponse = await testServer
+				.authAgentFor(instanceOwner)
+				.post('/invitations')
+				.send([{ email: randomEmail() }])
+				.expect(200);
+
+			const [result] = response.body.data;
+
+			const storedUser = await userRepository.findOneByOrFail({
+				id: result.user.id,
+			});
+
+			assertStoredUserProps(storedUser);
+
+			const projectRelation = await projectRelationRepository.findOneOrFail({
+				where: {
+					userId: storedUser.id,
+					role: { slug: PROJECT_OWNER_ROLE_SLUG },
+					project: {
+						type: 'personal',
+					},
+				},
+				relations: { project: true },
+			});
+
+			expect(projectRelation).not.toBeUndefined();
+			expect(projectRelation.project.name).toBe(storedUser.createPersonalProjectName());
+			expect(projectRelation.project.type).toBe('personal');
 		});
 
 		test('should create admin shell when advanced permissions is licensed', async () => {
@@ -341,7 +379,7 @@ describe('InvitationController', () => {
 			mailer.invite.mockResolvedValue({ emailSent: true });
 
 			const member = await createMember();
-			const memberShell = await createUserShell('global:member');
+			const memberShell = await createUserShell(GLOBAL_MEMBER_ROLE);
 			const newUserEmail = randomEmail();
 
 			const existingUserEmails = [member.email];
@@ -377,14 +415,24 @@ describe('InvitationController', () => {
 			expect(externalHookName).toBe('user.invited');
 			expect(externalHookArg?.[0]).toStrictEqual([newUserEmail]);
 
-			// internal hooks
-
-			const calls = mocked(internalHooks).onUserTransactionalEmail.mock.calls;
-
-			for (const [onUserTransactionalEmailArg] of calls) {
-				expect(onUserTransactionalEmailArg.user_id).toBeDefined();
-				expect(onUserTransactionalEmailArg.message_type).toBe('New user invite');
-				expect(onUserTransactionalEmailArg.public_api).toBe(false);
+			for (const [eventName, payload] of eventService.emit.mock.calls) {
+				if (eventName === 'user-invited') {
+					expect(payload).toEqual({
+						user: expect.objectContaining({ id: expect.any(String) }),
+						targetUserId: expect.arrayContaining([expect.any(String), expect.any(String)]),
+						publicApi: false,
+						emailSent: true,
+						inviteeRole: 'global:member',
+					});
+				} else if (eventName === 'user-transactional-email-sent') {
+					expect(payload).toEqual({
+						userId: expect.any(String),
+						messageType: 'New user invite',
+						publicApi: false,
+					});
+				} else {
+					fail(`Unexpected event name: ${eventName}`);
+				}
 			}
 		});
 

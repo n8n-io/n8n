@@ -4,6 +4,9 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+
+import { updateDisplayOptions, wrapData } from '@utils/utilities';
+
 import {
 	caseRLC,
 	genericFiltersCollection,
@@ -11,9 +14,8 @@ import {
 	sortCollection,
 	searchOptions,
 } from '../../descriptions';
-import { theHiveApiQuery } from '../../transport';
 import type { QueryScope } from '../../helpers/interfaces';
-import { updateDisplayOptions, wrapData } from '@utils/utilities';
+import { theHiveApiQuery } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{

@@ -1,0 +1,12 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

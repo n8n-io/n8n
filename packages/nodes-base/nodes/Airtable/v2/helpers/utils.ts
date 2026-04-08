@@ -1,5 +1,6 @@
-import { ApplicationError, type IDataObject, type NodeApiError } from 'n8n-workflow';
 import set from 'lodash/set';
+import { ApplicationError, type IDataObject, type NodeApiError } from 'n8n-workflow';
+
 import type { UpdateRecord } from './interfaces';
 
 export function removeIgnored(data: IDataObject, ignore: string | string[]) {
@@ -82,10 +83,11 @@ export function processAirtableError(error: NodeApiError, id?: string, itemIndex
 	return error;
 }
 
-export const flattenOutput = (record: IDataObject) => {
+export function legacyFlattenOutput(record: IDataObject, nodeVersion: number): IDataObject {
+	if (nodeVersion >= 2.2) return record;
 	const { fields, ...rest } = record;
 	return {
 		...rest,
 		...(fields as IDataObject),
 	};
-};
+}

@@ -5,7 +5,7 @@ export class CrateDb implements ICredentialType {
 
 	displayName = 'CrateDB';
 
-	documentationUrl = 'crateDb';
+	documentationUrl = 'cratedb';
 
 	properties: INodeProperties[] = [
 		{
@@ -51,14 +51,6 @@ export class CrateDb implements ICredentialType {
 				{
 					name: 'Require',
 					value: 'require',
-				},
-				{
-					name: 'Verify (Not Implemented)',
-					value: 'verify',
-				},
-				{
-					name: 'Verify-Full (Not Implemented)',
-					value: 'verify-full',
 				},
 			],
 			default: 'disable',

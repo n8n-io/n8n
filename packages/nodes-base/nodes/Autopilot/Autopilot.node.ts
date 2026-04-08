@@ -1,22 +1,19 @@
-import type {
-	IExecuteFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
-	IHttpRequestMethods,
+import {
+	type IExecuteFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
+	type IHttpRequestMethods,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import { autopilotApiRequest, autopilotApiRequestAllItems } from './GenericFunctions';
-
 import { contactFields, contactOperations } from './ContactDescription';
-
 import { contactJourneyFields, contactJourneyOperations } from './ContactJourneyDescription';
-
 import { contactListFields, contactListOperations } from './ContactListDescription';
-
+import { autopilotApiRequest, autopilotApiRequestAllItems } from './GenericFunctions';
 import { listFields, listOperations } from './ListDescription';
 
 export class Autopilot implements INodeType {
@@ -31,8 +28,9 @@ export class Autopilot implements INodeType {
 		defaults: {
 			name: 'Autopilot',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'autopilotApi',

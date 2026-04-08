@@ -1,0 +1,35 @@
+{
+    "type": "object",
+    "properties": {
+        "debug": {
+            "type": "string"
+        },
+        "messages": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "parts": {
+                        "type": "integer"
+                    },
+                    "sender": {
+                        "type": "string"
+                    },
+                    "success": {
+                        "type": "boolean"
+                    },
+                    "udh": {
+                        "type": "null"
+                    }
+                }
+            }
+        },
+        "sms_type": {
+            "type": "string"
+        },
+        "success": {
+            "type": "string"
+        }
+    },
+    "version": 3
+}

@@ -7,7 +7,8 @@ import type {
 	JsonObject,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
+import { prepareBinariesDataList } from '../../utils/binary';
 
 export class Mailgun implements INodeType {
 	description: INodeTypeDescription = {
@@ -20,8 +21,9 @@ export class Mailgun implements INodeType {
 		defaults: {
 			name: 'Mailgun',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'mailgunApi',
@@ -142,11 +144,7 @@ export class Mailgun implements INodeType {
 
 				if (attachmentPropertyString && item.binary) {
 					const attachments = [];
-					const attachmentProperties: string[] = attachmentPropertyString
-						.split(',')
-						.map((propertyName) => {
-							return propertyName.trim();
-						});
+					const attachmentProperties = prepareBinariesDataList(attachmentPropertyString);
 
 					for (const propertyName of attachmentProperties) {
 						const binaryData = this.helpers.assertBinaryData(itemIndex, propertyName);
@@ -163,7 +161,6 @@ export class Mailgun implements INodeType {
 					}
 
 					if (attachments.length) {
-						// @ts-ignore
 						formData.attachment = attachments;
 					}
 				}

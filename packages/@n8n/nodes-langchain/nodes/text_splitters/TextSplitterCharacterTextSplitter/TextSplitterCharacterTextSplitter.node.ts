@@ -1,21 +1,21 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type { CharacterTextSplitterParams } from '@langchain/textsplitters';
+import { CharacterTextSplitter } from '@langchain/textsplitters';
 import {
-	NodeConnectionType,
-	type IExecuteFunctions,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-import type { CharacterTextSplitterParams } from 'langchain/text_splitter';
-import { CharacterTextSplitter } from 'langchain/text_splitter';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 export class TextSplitterCharacterTextSplitter implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Character Text Splitter',
 		name: 'textSplitterCharacterTextSplitter',
 		icon: 'fa:grip-lines-vertical',
+		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
 		description: 'Split text into chunks by characters',
@@ -35,13 +35,13 @@ export class TextSplitterCharacterTextSplitter implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiTextSplitter],
+
+		outputs: [NodeConnectionTypes.AiTextSplitter],
 		outputNames: ['Text Splitter'],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiDocument]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiDocument]),
 			{
 				displayName: 'Separator',
 				name: 'separator',
@@ -53,18 +53,20 @@ export class TextSplitterCharacterTextSplitter implements INodeType {
 				name: 'chunkSize',
 				type: 'number',
 				default: 1000,
+				description: 'Maximum number of characters per chunk',
 			},
 			{
 				displayName: 'Chunk Overlap',
 				name: 'chunkOverlap',
 				type: 'number',
 				default: 0,
+				description: 'Number of characters shared between consecutive chunks to preserve context',
 			},
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		this.logger.verbose('Supply Data for Text Splitter');
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
+		this.logger.debug('Supply Data for Text Splitter');
 
 		const separator = this.getNodeParameter('separator', itemIndex) as string;
 		const chunkSize = this.getNodeParameter('chunkSize', itemIndex) as number;

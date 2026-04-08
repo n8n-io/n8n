@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -8,7 +9,6 @@ import type {
 	IPollFunctions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-import { DateTime } from 'luxon';
 
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
@@ -21,6 +21,12 @@ export async function microsoftApiRequest(
 	headers: IDataObject = {},
 	option: IDataObject = { json: true },
 ): Promise<any> {
+	const credentials = await this.getCredentials('microsoftOneDriveOAuth2Api');
+	const baseUrl = (
+		typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
+			? credentials.graphApiBaseUrl
+			: 'https://graph.microsoft.com'
+	).replace(/\/+$/, '');
 	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -28,7 +34,7 @@ export async function microsoftApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `https://graph.microsoft.com/v1.0/me${resource}`,
+		uri: uri || `${baseUrl}/v1.0/me${resource}`,
 	};
 	try {
 		Object.assign(options, option);
@@ -41,7 +47,6 @@ export async function microsoftApiRequest(
 		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
-		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'microsoftOneDriveOAuth2Api', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
@@ -114,7 +119,7 @@ export async function microsoftApiRequestAllItemsDelta(
 	do {
 		responseData = (await microsoftApiRequest.call(this, 'GET', '', {}, {}, uri)) as IDataObject;
 		uri = responseData['@odata.nextLink'] as string;
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+
 		for (const value of responseData.value as IDataObject[]) {
 			if (value.fileSystemInfo as IDataObject) {
 				const updatedTimeStamp = (value.fileSystemInfo as IDataObject)
@@ -146,13 +151,19 @@ export async function getPath(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	itemId: string,
 ): Promise<string> {
+	const credentials = await this.getCredentials('microsoftOneDriveOAuth2Api');
+	const baseUrl = (
+		typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
+			? credentials.graphApiBaseUrl
+			: 'https://graph.microsoft.com'
+	).replace(/\/+$/, '');
 	const responseData = (await microsoftApiRequest.call(
 		this,
 		'GET',
 		'',
 		{},
 		{},
-		`https://graph.microsoft.com/v1.0/me/drive/items/${itemId}`,
+		`${baseUrl}/v1.0/me/drive/items/${itemId}`,
 	)) as IDataObject;
 	if (responseData.folder) {
 		return (responseData?.parentReference as IDataObject)?.path + `/${responseData?.name}`;

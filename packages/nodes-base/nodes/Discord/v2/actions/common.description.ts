@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+
 import { updateDisplayOptions } from '../../../../utils/utilities';
 
 export const guildRLC: INodeProperties = {
@@ -318,7 +319,7 @@ const embedFields: INodeProperties[] = [
 	{
 		displayName: 'Color',
 		name: 'color',
-		// eslint-disable-next-line n8n-nodes-base/node-param-color-type-unused
+
 		type: 'color',
 		default: '',
 		description: 'Color code of the embed',
@@ -462,3 +463,40 @@ export const filesFixedCollection: INodeProperties = {
 		},
 	],
 };
+
+export const sendToProperties: INodeProperties[] = [
+	{
+		displayName: 'Send To',
+		name: 'sendTo',
+		type: 'options',
+		options: [
+			{
+				name: 'User',
+				value: 'user',
+			},
+			{
+				name: 'Channel',
+				value: 'channel',
+			},
+		],
+		default: 'channel',
+		description: 'Send message to a channel or DM to a user',
+	},
+
+	{
+		...userRLC,
+		displayOptions: {
+			show: {
+				sendTo: ['user'],
+			},
+		},
+	},
+	{
+		...textChannelRLC,
+		displayOptions: {
+			show: {
+				sendTo: ['channel'],
+			},
+		},
+	},
+];

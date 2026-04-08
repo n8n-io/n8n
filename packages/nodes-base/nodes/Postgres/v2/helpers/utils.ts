@@ -4,21 +4,52 @@ import type {
 	INode,
 	INodeExecutionData,
 	INodePropertyOptions,
+	NodeParameterValueType,
 } from 'n8n-workflow';
-import { NodeOperationError, jsonParse } from 'n8n-workflow';
+import { NodeOperationError, deepCopy, jsonParse } from 'n8n-workflow';
 
-import { generatePairedItemData } from '../../../../utils/utilities';
 import type {
 	ColumnInfo,
 	EnumInfo,
 	PgpClient,
 	PgpDatabase,
+	PostgresNodeOptions,
+	QueriesRunner,
 	QueryMode,
 	QueryValues,
 	QueryWithValues,
 	SortRule,
 	WhereClause,
 } from './interfaces';
+import { generatePairedItemData } from '../../../../utils/utilities';
+import { operatorOptions } from '../actions/common.descriptions';
+
+export function isJSON(str: string) {
+	try {
+		JSON.parse(str.trim());
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+export function evaluateExpression(expression: NodeParameterValueType) {
+	if (expression === undefined) {
+		return '';
+	} else if (expression === null) {
+		return 'null';
+	} else {
+		return typeof expression === 'object' ? JSON.stringify(expression) : expression.toString();
+	}
+}
+
+export function stringToArray(str: NodeParameterValueType | undefined) {
+	if (str === undefined) return [];
+	return String(str)
+		.split(',')
+		.filter((entry) => entry)
+		.map((entry) => entry.trim());
+}
 
 export function wrapData(data: IDataObject | IDataObject[]): INodeExecutionData[] {
 	if (!Array.isArray(data)) {
@@ -29,13 +60,9 @@ export function wrapData(data: IDataObject | IDataObject[]): INodeExecutionData[
 	}));
 }
 
-export function prepareErrorItem(
-	items: INodeExecutionData[],
-	error: IDataObject | NodeOperationError | Error,
-	index: number,
-) {
+export function prepareErrorItem(error: IDataObject | NodeOperationError | Error, index: number) {
 	return {
-		json: { message: error.message, item: { ...items[index].json }, error: { ...error } },
+		json: { error: { ...error } },
 		pairedItem: { item: index },
 	} as INodeExecutionData;
 }
@@ -101,8 +128,8 @@ export function parsePostgresError(
 }
 
 export function addWhereClauses(
-	node: INode,
-	itemIndex: number,
+	_node: INode,
+	_itemIndex: number,
 	query: string,
 	clauses: WhereClause[],
 	replacements: QueryValues,
@@ -126,21 +153,10 @@ export function addWhereClauses(
 			clause.condition = '=';
 		}
 		if (['>', '<', '>=', '<='].includes(clause.condition)) {
-			const value = Number(clause.value);
-
-			if (Number.isNaN(value)) {
-				throw new NodeOperationError(
-					node,
-					`Operator in entry ${index + 1} of 'Select Rows' works with numbers, but value ${
-						clause.value
-					} is not a number`,
-					{
-						itemIndex,
-					},
-				);
+			const numericValue = Number(clause.value);
+			if (String(clause.value).trim() !== '' && !Number.isNaN(numericValue)) {
+				clause.value = numericValue;
 			}
-
-			clause.value = value;
 		}
 		const columnReplacement = `$${replacementIndex}:name`;
 		values.push(clause.column);
@@ -216,7 +232,7 @@ export function configureQueryRunner(
 	pgp: PgpClient,
 	db: PgpDatabase,
 ) {
-	return async (queries: QueryWithValues[], items: INodeExecutionData[], options: IDataObject) => {
+	return async (queries: QueryWithValues[], options: IDataObject) => {
 		let returnData: INodeExecutionData[] = [];
 		const emptyReturnData: INodeExecutionData[] =
 			options.operation === 'select' ? [] : [{ json: { success: true } }];
@@ -294,7 +310,7 @@ export function configureQueryRunner(
 					} catch (err) {
 						const error = parsePostgresError(node, err, queries, i);
 						if (!continueOnFail) throw error;
-						result.push(prepareErrorItem(items, error, i));
+						result.push(prepareErrorItem(error, i));
 						return result;
 					}
 				}
@@ -334,7 +350,7 @@ export function configureQueryRunner(
 					} catch (err) {
 						const error = parsePostgresError(node, err, queries, i);
 						if (!continueOnFail) throw error;
-						result.push(prepareErrorItem(items, error, i));
+						result.push(prepareErrorItem(error, i));
 					}
 				}
 				return result;
@@ -374,6 +390,27 @@ export function prepareItem(values: IDataObject[]) {
 	}, {} as IDataObject);
 
 	return item;
+}
+
+export function hasJsonDataTypeInSchema(schema: ColumnInfo[]) {
+	return schema.some(({ data_type }) => data_type === 'json');
+}
+
+export function convertValuesToJsonWithPgp(
+	pgp: PgpClient,
+	schema: ColumnInfo[],
+	values: IDataObject,
+) {
+	schema
+		.filter(
+			({ data_type, column_name }) =>
+				data_type === 'json' && values[column_name] !== null && values[column_name] !== undefined,
+		)
+		.forEach(({ column_name }) => {
+			values[column_name] = pgp.as.json(values[column_name], true);
+		});
+
+	return values;
 }
 
 export async function columnFeatureSupport(
@@ -437,20 +474,24 @@ export async function uniqueColumns(db: PgpDatabase, table: string, schema = 'pu
 	return unique as IDataObject[];
 }
 
-export async function getEnums(db: PgpDatabase): Promise<EnumInfo[]> {
-	const enumsData = await db.any(
+export async function getEnums(db: PgpDatabase): Promise<Map<string, string[]>> {
+	const enums = await db.any<EnumInfo>(
 		'SELECT pg_type.typname, pg_enum.enumlabel FROM pg_type JOIN pg_enum ON pg_enum.enumtypid = pg_type.oid;',
 	);
-	return enumsData as EnumInfo[];
+
+	return enums.reduce((map, { typname, enumlabel }) => {
+		const existingValues = map.get(typname) ?? [];
+		map.set(typname, [...existingValues, enumlabel]);
+		return map;
+	}, new Map<string, string[]>());
 }
 
-export function getEnumValues(enumInfo: EnumInfo[], enumName: string): INodePropertyOptions[] {
-	return enumInfo.reduce((acc, current) => {
-		if (current.typname === enumName) {
-			acc.push({ name: current.enumlabel, value: current.enumlabel });
-		}
-		return acc;
-	}, [] as INodePropertyOptions[]);
+export function getEnumValues(
+	enumInfo: Map<string, string[]>,
+	enumName: string,
+): INodePropertyOptions[] {
+	const values = enumInfo.get(enumName) ?? [];
+	return values.map((value) => ({ name: value, value }));
 }
 
 export async function doesRowExist(
@@ -517,6 +558,7 @@ export const configureTableSchemaUpdater = (initialSchema: string, initialTable:
  * @param schema table schema
  * @param node INode
  * @param itemIndex the index of the current item
+ * @returns a new data object with the arrays converted to postgres format
  */
 export const convertArraysToPostgresFormat = (
 	data: IDataObject,
@@ -524,10 +566,11 @@ export const convertArraysToPostgresFormat = (
 	node: INode,
 	itemIndex = 0,
 ) => {
+	const newData = deepCopy(data);
 	for (const columnInfo of schema) {
-		//in case column type is array we need to convert it to fornmat that postgres understands
+		// in case column type is array we need to convert it to fornmat that postgres understands
 		if (columnInfo.data_type.toUpperCase() === 'ARRAY') {
-			let columnValue = data[columnInfo.column_name];
+			let columnValue = newData[columnInfo.column_name];
 
 			if (typeof columnValue === 'string') {
 				columnValue = jsonParse(columnValue);
@@ -554,8 +597,8 @@ export const convertArraysToPostgresFormat = (
 					return entry;
 				});
 
-				//wrap in {} instead of [] as postgres does and join with ,
-				data[columnInfo.column_name] = `{${arrayEntries.join(',')}}`;
+				// wrap in {} instead of [] as postgres does and join with ,
+				newData[columnInfo.column_name] = `{${arrayEntries.join(',')}}`;
 			} else {
 				if (columnInfo.is_nullable === 'NO') {
 					throw new NodeOperationError(
@@ -569,4 +612,67 @@ export const convertArraysToPostgresFormat = (
 			}
 		}
 	}
+
+	return newData;
+};
+
+// operations use 'equal' instead of '=' because of the way expressions are handled
+// manually add '=' to allow entering it instead of 'equal'
+const conditionSet = new Set(operatorOptions.map((option) => option.value)).add('=');
+
+export const isWhereClause = (clause: unknown): clause is WhereClause => {
+	if (typeof clause !== 'object' || clause === null) return false;
+	if (!('column' in clause)) return false;
+	if (
+		!('condition' in clause) ||
+		typeof clause.condition !== 'string' ||
+		!conditionSet.has(clause.condition)
+	)
+		return false;
+	return true;
+};
+
+export const getWhereClauses = (ctx: IExecuteFunctions, itemIndex: number): WhereClause[] => {
+	const whereClauses = ctx.getNodeParameter('where', itemIndex, []) as IDataObject;
+	const whereClausesValues = whereClauses.values as unknown[];
+	if (!Array.isArray(whereClausesValues)) {
+		return [];
+	}
+	const someInvalid = whereClausesValues.some((clause) => !isWhereClause(clause));
+	if (someInvalid) {
+		throw new NodeOperationError(ctx.getNode(), 'Invalid where clause', {
+			itemIndex,
+		});
+	}
+	return whereClausesValues as WhereClause[];
+};
+
+export const runQueriesAndHandleErrors = async (
+	runQueries: QueriesRunner,
+	queries: QueryWithValues[],
+	nodeOptions: PostgresNodeOptions,
+	errorItemsMap: Map<number, INodeExecutionData>,
+) => {
+	// if we have any errors and we are not running the queries independently
+	// (i.e. `transaction` or `single` mode), we don't want to execute any
+	// queries that didn't error, since the operation should be atomic
+	if (errorItemsMap.size > 0 && nodeOptions.queryBatching !== 'independently') {
+		return Array.from(errorItemsMap.values());
+	}
+
+	const returnData = await runQueries(queries, nodeOptions);
+
+	const total = returnData.length + errorItemsMap.size;
+	const result = new Array<INodeExecutionData>(total);
+	let returnDataIndex = 0;
+	for (let i = 0; i < total; i++) {
+		const errorItem = errorItemsMap.get(i);
+		if (errorItem) {
+			result[i] = errorItem;
+		} else if (returnDataIndex < returnData.length) {
+			result[i] = returnData[returnDataIndex++];
+		}
+	}
+
+	return result;
 };

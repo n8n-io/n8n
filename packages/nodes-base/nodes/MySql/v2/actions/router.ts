@@ -1,32 +1,27 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { Client } from 'ssh2';
-
-import type { QueryRunner } from '../helpers/interfaces';
-
-import { createPool } from '../transport';
-import { configureQueryRunner } from '../helpers/utils';
 import * as database from './database/Database.resource';
 import type { MySqlType } from './node.type';
+import { addExecutionHints } from '../../../../utils/utilities';
+import type { MysqlNodeCredentials, QueryRunner } from '../helpers/interfaces';
+import { configureQueryRunner } from '../helpers/utils';
+import { createPool } from '../transport';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	let returnData: INodeExecutionData[] = [];
 
+	const items = this.getInputData();
 	const resource = this.getNodeParameter<MySqlType>('resource', 0);
 	const operation = this.getNodeParameter('operation', 0);
 	const nodeOptions = this.getNodeParameter('options', 0);
+	const node = this.getNode();
 
-	nodeOptions.nodeVersion = this.getNode().typeVersion;
+	nodeOptions.nodeVersion = node.typeVersion;
 
-	const credentials = await this.getCredentials('mySql');
+	const credentials = await this.getCredentials<MysqlNodeCredentials>('mySql');
 
-	let sshClient: Client | undefined = undefined;
-
-	if (credentials.sshTunnel) {
-		sshClient = new Client();
-	}
-	const pool = await createPool(credentials, nodeOptions, sshClient);
+	const pool = await createPool.call(this, credentials, nodeOptions);
 
 	const runQueries: QueryRunner = configureQueryRunner.call(this, nodeOptions, pool);
 
@@ -38,8 +33,6 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	try {
 		switch (mysqlNodeData.resource) {
 			case 'database':
-				const items = this.getInputData();
-
 				returnData = await database[mysqlNodeData.operation].execute.call(
 					this,
 					items,
@@ -53,14 +46,11 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					`The operation "${operation}" is not supported!`,
 				);
 		}
-	} catch (error) {
-		throw error;
 	} finally {
-		if (sshClient) {
-			sshClient.end();
-		}
 		await pool.end();
 	}
+
+	addExecutionHints(this, node, items, operation, node.executeOnce);
 
 	return [returnData];
 }

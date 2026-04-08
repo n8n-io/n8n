@@ -1,13 +1,15 @@
-import type { INodeProperties } from 'n8n-workflow';
+import { SEND_AND_WAIT_OPERATION, type INodeProperties } from 'n8n-workflow';
+
 import * as del from './delete.operation';
 import * as get from './get.operation';
 import * as getAll from './getAll.operation';
 import * as move from './move.operation';
 import * as reply from './reply.operation';
 import * as send from './send.operation';
+import * as sendAndWait from './sendAndWait.operation';
 import * as update from './update.operation';
 
-export { del as delete, get, getAll, move, reply, send, update };
+export { del as delete, get, getAll, move, reply, send, sendAndWait, update };
 
 export const description: INodeProperties[] = [
 	{
@@ -58,6 +60,12 @@ export const description: INodeProperties[] = [
 				action: 'Send a message',
 			},
 			{
+				name: 'Send and Wait for Response',
+				value: SEND_AND_WAIT_OPERATION,
+				description: 'Send a message and wait for response',
+				action: 'Send message and wait for response',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a message',
@@ -73,5 +81,6 @@ export const description: INodeProperties[] = [
 	...move.description,
 	...reply.description,
 	...send.description,
+	...sendAndWait.description,
 	...update.description,
 ];

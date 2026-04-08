@@ -1,0 +1,124 @@
+{
+    "type": "object",
+    "properties": {
+        "approval_id": {
+            "type": "null"
+        },
+        "at": {
+            "type": "string"
+        },
+        "billable": {
+            "type": "boolean"
+        },
+        "description": {
+            "type": "string"
+        },
+        "duration": {
+            "type": "string"
+        },
+        "end": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "is_locked": {
+            "type": "boolean"
+        },
+        "source": {
+            "type": "string"
+        },
+        "start": {
+            "type": "string"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "creator": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "tag_bg": {
+                        "type": "string"
+                    },
+                    "tag_fg": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "task": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "object",
+                    "properties": {
+                        "color": {
+                            "type": "string"
+                        },
+                        "orderindex": {
+                            "type": "integer"
+                        },
+                        "status": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "task_location": {
+            "type": "object",
+            "properties": {
+                "folder_id": {
+                    "type": "string"
+                },
+                "list_id": {
+                    "type": "string"
+                },
+                "space_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "task_url": {
+            "type": "string"
+        },
+        "user": {
+            "type": "object",
+            "properties": {
+                "color": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "initials": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "wid": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

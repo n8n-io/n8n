@@ -1,16 +1,17 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import { NodeConnectionType } from 'n8n-workflow';
+import { OpenAI, type ClientOptions } from '@langchain/openai';
+import { getProxyAgent, makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
-	IExecuteFunctions,
 	INodeType,
 	INodeTypeDescription,
+	ISupplyDataFunctions,
 	SupplyData,
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 
-import { OpenAI, type ClientOptions } from '@langchain/openai';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { Container } from '@n8n/di';
+import { AiConfig } from '@n8n/config';
+import { mergeCustomHeaders } from '@utils/helpers';
 
 type LmOpenAiOptions = {
 	baseURL?: string;
@@ -26,9 +27,10 @@ type LmOpenAiOptions = {
 export class LmOpenAi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'OpenAI Model',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
+
 		name: 'lmOpenAi',
-		icon: 'file:openAi.svg',
+		hidden: true,
+		icon: { light: 'file:openAiLight.svg', dark: 'file:openAiLight.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		description: 'For advanced usage with an AI chain',
@@ -38,7 +40,8 @@ export class LmOpenAi implements INodeType {
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Language Models'],
+				AI: ['Language Models', 'Root Nodes'],
+				'Language Models': ['Text Completion Models'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -48,10 +51,10 @@ export class LmOpenAi implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiLanguageModel],
+
+		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
 			{
@@ -65,7 +68,13 @@ export class LmOpenAi implements INodeType {
 				'={{ $parameter.options?.baseURL?.split("/").slice(0,-1).join("/") || "https://api.openai.com" }}',
 		},
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			{
+				displayName:
+					'This node is using OpenAI completions which are now deprecated. Please use the OpenAI Chat Model node instead.',
+				name: 'deprecated',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Model',
 				name: 'model',
@@ -94,6 +103,18 @@ export class LmOpenAi implements INodeType {
 						type: 'body',
 						property: 'model',
 						value: '={{$parameter.model.value}}',
+					},
+				},
+			},
+			{
+				displayName:
+					'When using non OpenAI models via Base URL override, not all models might be chat-compatible or support other features, like tools calling or JSON response format.',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						'/options.baseURL': [{ _cnd: { exists: true } }],
 					},
 				},
 			},
@@ -198,7 +219,7 @@ export class LmOpenAi implements INodeType {
 				})) as { data: Array<{ owned_by: string; id: string }> };
 
 				for (const model of data) {
-					if (!model.owned_by?.startsWith('system')) continue;
+					if (!options.baseURL && !model.owned_by?.startsWith('system')) continue;
 					results.push({
 						name: model.id,
 						value: model.id,
@@ -210,7 +231,7 @@ export class LmOpenAi implements INodeType {
 		},
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('openAiApi');
 
 		const modelName = this.getNodeParameter('model', itemIndex, '', {
@@ -228,22 +249,36 @@ export class LmOpenAi implements INodeType {
 			topP?: number;
 		};
 
-		const configuration: ClientOptions = {};
+		const { openAiDefaultHeaders } = Container.get(AiConfig);
+		const defaultHeaders = mergeCustomHeaders(credentials, openAiDefaultHeaders ?? {});
+		const timeout = options.timeout;
+		const configuration: ClientOptions = {
+			fetchOptions: {
+				dispatcher: getProxyAgent(options.baseURL ?? 'https://api.openai.com/v1', {
+					headersTimeout: timeout,
+					bodyTimeout: timeout,
+				}),
+			},
+			defaultHeaders,
+		};
+
 		if (options.baseURL) {
 			configuration.baseURL = options.baseURL;
 		}
 
 		const model = new OpenAI({
-			openAIApiKey: credentials.apiKey as string,
-			modelName,
+			apiKey: credentials.apiKey as string,
+			model: modelName,
 			...options,
 			configuration,
-			timeout: options.timeout ?? 60000,
+			timeout,
 			maxRetries: options.maxRetries ?? 2,
+			callbacks: [new N8nLlmTracing(this)],
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 
 		return {
-			response: logWrapper(model, this),
+			response: model,
 		};
 	}
 }

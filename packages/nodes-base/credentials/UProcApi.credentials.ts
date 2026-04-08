@@ -11,7 +11,7 @@ export class UProcApi implements ICredentialType {
 
 	displayName = 'uProc API';
 
-	documentationUrl = 'uProc';
+	documentationUrl = 'uproc';
 
 	properties: INodeProperties[] = [
 		{

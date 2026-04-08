@@ -57,7 +57,7 @@ export const contactTagFields: INodeProperties[] = [
 		name: 'tagIds',
 		type: 'multiOptions',
 		description:
-			'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTags',
 		},
@@ -97,7 +97,7 @@ export const contactTagFields: INodeProperties[] = [
 				resource: ['contactTag'],
 			},
 		},
-		default: 'Tag IDs, multiple ids can be set separated by comma.',
+		default: 'Tag IDs, multiple IDs can be set separated by comma.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 contactTag:getAll                          */

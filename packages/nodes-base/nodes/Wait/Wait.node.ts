@@ -1,4 +1,3 @@
-import { DateTime } from 'luxon';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -7,8 +6,25 @@ import type {
 	IDisplayOptions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { WAIT_TIME_UNLIMITED } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	WAIT_INDEFINITELY,
+	FORM_TRIGGER_NODE_TYPE,
+	tryToParseDateTime,
+	NodeOperationError,
+} from 'n8n-workflow';
 
+import { validateWaitAmount, validateWaitUnit } from './validation';
+import { updateDisplayOptions } from '../../utils/utilities';
+import {
+	formDescription,
+	formFields,
+	respondWithOptions,
+	formRespondMode,
+	formTitle,
+	appendAttributionToForm,
+} from '../Form/common.descriptions';
+import { formWebhook } from '../Form/utils/utils';
 import {
 	authenticationProperty,
 	credentialsProperty,
@@ -20,16 +36,6 @@ import {
 	responseDataProperty,
 	responseModeProperty,
 } from '../Webhook/description';
-
-import {
-	formDescription,
-	formFields,
-	respondWithOptions,
-	formRespondMode,
-	formTitle,
-} from '../Form/common.descriptions';
-import { formWebhook } from '../Form/utils';
-import { updateDisplayOptions } from '../../utils/utilities';
 import { Webhook } from '../Webhook/Webhook.node';
 
 const toWaitAmount: INodeProperties = {
@@ -42,6 +48,7 @@ const toWaitAmount: INodeProperties = {
 	},
 	default: 1,
 	description: 'The time to wait',
+	validateType: 'number',
 };
 
 const unitSelector: INodeProperties = {
@@ -77,7 +84,7 @@ const waitTimeProperties: INodeProperties[] = [
 		type: 'boolean',
 		default: false,
 		description:
-			'Whether the workflow will automatically resume execution after the specified limit type',
+			'Whether to limit the time this node should wait for a user response before execution resumes',
 		displayOptions: {
 			show: {
 				resume: ['webhook', 'form'],
@@ -219,6 +226,44 @@ const onWebhookCallProperties = updateDisplayOptions(displayOnWebhook, [
 
 const webhookPath = '={{$parameter["options"]["webhookSuffix"] || ""}}';
 
+const waitingTooltip = (
+	parameters: { resume: string; options?: Record<string, string> },
+	resumeUrl: string,
+	formResumeUrl: string,
+) => {
+	const resume = parameters.resume;
+
+	if (['webhook', 'form'].includes(resume)) {
+		const { webhookSuffix } = (parameters.options ?? {}) as { webhookSuffix: string };
+		const suffix = webhookSuffix && typeof webhookSuffix !== 'object' ? `/${webhookSuffix}` : '';
+
+		let message = '';
+		const baseUrl = resume === 'form' ? formResumeUrl : resumeUrl;
+
+		// Insert suffix before query parameters if present (for URLs with ?signature=token)
+		// Note: Cannot use URL class here because it is not available in expressions
+		let url: string;
+		const queryIndex = baseUrl.indexOf('?');
+		if (queryIndex !== -1) {
+			url = baseUrl.slice(0, queryIndex) + suffix + baseUrl.slice(queryIndex);
+		} else {
+			url = baseUrl + suffix;
+		}
+
+		if (resume === 'form') {
+			message = 'Execution will continue when form is submitted on ';
+		}
+
+		if (resume === 'webhook') {
+			message = 'Execution will continue when webhook is received on ';
+		}
+
+		return `${message}<a href="${url}" target="_blank">${url}</a>`;
+	}
+
+	return 'Execution will continue when wait time is over';
+};
+
 export class Wait extends Webhook {
 	authPropertyName = 'incomingAuthentication';
 
@@ -226,6 +271,7 @@ export class Wait extends Webhook {
 		displayName: 'Wait',
 		name: 'wait',
 		icon: 'fa:pause-circle',
+		iconColor: 'crimson',
 		group: ['organization'],
 		version: [1, 1.1],
 		description: 'Wait before continue with execution',
@@ -233,9 +279,10 @@ export class Wait extends Webhook {
 			name: 'Wait',
 			color: '#804050',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: credentialsProperty(this.authPropertyName),
+		waitingNodeTooltip: `={{ (${waitingTooltip})($parameter, $execution.resumeUrl, $execution.resumeFormUrl) }}`,
 		webhooks: [
 			{
 				...defaultWebhookDescription,
@@ -250,7 +297,7 @@ export class Wait extends Webhook {
 				path: webhookPath,
 				restartWebhook: true,
 				isFullPath: true,
-				isForm: true,
+				nodeType: 'form',
 			},
 			{
 				name: 'default',
@@ -260,7 +307,7 @@ export class Wait extends Webhook {
 				path: webhookPath,
 				restartWebhook: true,
 				isFullPath: true,
-				isForm: true,
+				nodeType: 'form',
 			},
 		],
 		properties: [
@@ -268,6 +315,10 @@ export class Wait extends Webhook {
 				displayName: 'Resume',
 				name: 'resume',
 				type: 'options',
+				builderHint: {
+					message:
+						'For user approval workflows, consider using nodes with operation: "sendAndWait" (e.g., email, Slack) instead of Wait node. If using "webhook", the URL will be generated at runtime and can be referenced with {{ $execution.resumeUrl }}.',
+				},
 				options: [
 					{
 						name: 'After Time Interval',
@@ -285,13 +336,36 @@ export class Wait extends Webhook {
 						description: 'Waits for a webhook call before continuing',
 					},
 					{
-						name: 'On Form Submited',
+						name: 'On Form Submitted',
 						value: 'form',
 						description: 'Waits for a form submission before continuing',
 					},
 				],
 				default: 'timeInterval',
 				description: 'Determines the waiting mode to use before the workflow continues',
+			},
+			{
+				displayName: 'Authentication',
+				name: 'incomingAuthentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Basic Auth',
+						value: 'basicAuth',
+					},
+					{
+						name: 'None',
+						value: 'none',
+					},
+				],
+				default: 'none',
+				description:
+					'If and how incoming resume-webhook-requests to $execution.resumeFormUrl should be authenticated for additional security',
+				displayOptions: {
+					show: {
+						resume: ['form'],
+					},
+				},
 			},
 			{
 				...authenticationProperty(this.authPropertyName),
@@ -314,6 +388,7 @@ export class Wait extends Webhook {
 				},
 				default: '',
 				description: 'The date and time to wait for before continuing',
+				required: true,
 			},
 
 			// ----------------------------------
@@ -393,7 +468,7 @@ export class Wait extends Webhook {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -403,13 +478,13 @@ export class Wait extends Webhook {
 						responseMode: ['responseNode'],
 					},
 				},
-				options: [respondWithOptions, webhookSuffix],
+				options: [appendAttributionToForm, respondWithOptions, webhookSuffix],
 			},
 			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -419,14 +494,14 @@ export class Wait extends Webhook {
 						responseMode: ['onReceived', 'lastNode'],
 					},
 				},
-				options: [webhookSuffix],
+				options: [appendAttributionToForm, webhookSuffix],
 			},
 		],
 	};
 
 	async webhook(context: IWebhookFunctions) {
 		const resume = context.getNodeParameter('resume', 0) as string;
-		if (resume === 'form') return await formWebhook(context);
+		if (resume === 'form') return await formWebhook(context, this.authPropertyName);
 		return await super.webhook(context);
 	}
 
@@ -434,14 +509,60 @@ export class Wait extends Webhook {
 		const resume = context.getNodeParameter('resume', 0) as string;
 
 		if (['webhook', 'form'].includes(resume)) {
-			return await this.configureAndPutToWait(context);
+			let hasFormTrigger = false;
+
+			if (resume === 'form') {
+				// Add signed resumeFormUrl to metadata for frontend to use when opening form popup
+				const resumeFormUrl = context.evaluateExpression(
+					'{{ $execution.resumeFormUrl }}',
+					0,
+				) as string;
+				context.setMetadata({ resumeFormUrl });
+
+				const parentNodes = context.getParentNodes(context.getNode().name);
+				hasFormTrigger = parentNodes.some((node) => node.type === FORM_TRIGGER_NODE_TYPE);
+			}
+
+			if (resume === 'webhook') {
+				// Add signed resumeUrl to metadata for frontend to use in waiting tooltip
+				const resumeUrl = context.evaluateExpression('{{ $execution.resumeUrl }}', 0) as string;
+				context.setMetadata({ resumeUrl });
+			}
+
+			const returnData = await this.configureAndPutToWait(context);
+
+			if (resume === 'form' && hasFormTrigger) {
+				context.sendResponse({
+					headers: {
+						location: context.evaluateExpression('{{ $execution.resumeFormUrl }}', 0),
+					},
+					statusCode: 307,
+				});
+			}
+
+			return returnData;
 		}
 
 		let waitTill: Date;
 		if (resume === 'timeInterval') {
-			const unit = context.getNodeParameter('unit', 0) as string;
+			const unit = context.getNodeParameter('unit', 0);
 
-			let waitAmount = context.getNodeParameter('amount', 0) as number;
+			if (!validateWaitUnit(unit)) {
+				throw new NodeOperationError(
+					context.getNode(),
+					"Invalid wait unit. Valid units are 'seconds', 'minutes', 'hours', or 'days'.",
+				);
+			}
+
+			let waitAmount = context.getNodeParameter('amount', 0);
+
+			if (!validateWaitAmount(waitAmount)) {
+				throw new NodeOperationError(
+					context.getNode(),
+					'Invalid wait amount. Please enter a number that is 0 or greater.',
+				);
+			}
+
 			if (unit === 'minutes') {
 				waitAmount *= 60;
 			}
@@ -458,32 +579,24 @@ export class Wait extends Webhook {
 			// a number of seconds added to the current timestamp
 			waitTill = new Date(new Date().getTime() + waitAmount);
 		} else {
-			const dateTimeStr = context.getNodeParameter('dateTime', 0) as string;
+			try {
+				const dateTimeStrRaw = context.getNodeParameter('dateTime', 0);
+				const parsedDateTime = tryToParseDateTime(dateTimeStrRaw, context.getTimezone());
 
-			waitTill = DateTime.fromFormat(dateTimeStr, "yyyy-MM-dd'T'HH:mm:ss", {
-				zone: context.getTimezone(),
-			})
-				.toUTC()
-				.toJSDate();
+				waitTill = parsedDateTime.toUTC().toJSDate();
+			} catch (e) {
+				throw new NodeOperationError(
+					context.getNode(),
+					'Cannot put execution to wait because `dateTime` parameter is not a valid date. Please pick a specific date and time to wait until.',
+				);
+			}
 		}
 
-		const waitValue = Math.max(waitTill.getTime() - new Date().getTime(), 0);
-
-		if (waitValue < 65000) {
-			// If wait time is shorter than 65 seconds leave execution active because
-			// we just check the database every 60 seconds.
-			return await new Promise((resolve) => {
-				const timer = setTimeout(() => resolve([context.getInputData()]), waitValue);
-				context.onExecutionCancellation(() => clearTimeout(timer));
-			});
-		}
-
-		// If longer than 65 seconds put execution to wait
 		return await this.putToWait(context, waitTill);
 	}
 
 	private async configureAndPutToWait(context: IExecuteFunctions) {
-		let waitTill = new Date(WAIT_TIME_UNLIMITED);
+		let waitTill = WAIT_INDEFINITELY;
 		const limitWaitTime = context.getNodeParameter('limitWaitTime', 0);
 
 		if (limitWaitTime === true) {

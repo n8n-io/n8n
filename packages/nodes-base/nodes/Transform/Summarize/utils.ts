@@ -1,7 +1,7 @@
 import get from 'lodash/get';
 import {
-	type IDataObject,
 	type GenericValue,
+	type IDataObject,
 	type IExecuteFunctions,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -55,42 +55,13 @@ function isEmpty<T>(value: T) {
 	return value === undefined || value === null || value === '';
 }
 
-function parseReturnData(returnData: IDataObject) {
-	const regexBrackets = /[\]\["]/g;
-	const regexSpaces = /[ .]/g;
-	for (const key of Object.keys(returnData)) {
-		if (key.match(regexBrackets)) {
-			const newKey = key.replace(regexBrackets, '');
-			returnData[newKey] = returnData[key];
-			delete returnData[key];
-		}
-	}
-	for (const key of Object.keys(returnData)) {
-		if (key.match(regexSpaces)) {
-			const newKey = key.replace(regexSpaces, '_');
-			returnData[newKey] = returnData[key];
-			delete returnData[key];
-		}
-	}
-}
-
-function parseFieldName(fieldName: string[]) {
-	const regexBrackets = /[\]\["]/g;
-	const regexSpaces = /[ .]/g;
-	fieldName = fieldName.map((field) => {
-		field = field.replace(regexBrackets, '');
-		field = field.replace(regexSpaces, '_');
-		return field;
-	});
-	return fieldName;
+function normalizeFieldName(fieldName: string) {
+	return fieldName.replace(/[\]\["]/g, '').replace(/[ .]/g, '_');
 }
 
 export const fieldValueGetter = (disableDotNotation?: boolean) => {
-	if (disableDotNotation) {
-		return (item: IDataObject, field: string) => item[field];
-	} else {
-		return (item: IDataObject, field: string) => get(item, field);
-	}
+	return (item: IDataObject, field: string) =>
+		disableDotNotation ? item[field] : get(item, field);
 };
 
 export function checkIfFieldExists(
@@ -171,7 +142,7 @@ function aggregate(items: IDataObject[], entry: Aggregation, getValue: ValueGett
 					}
 				}
 			}
-			return min !== undefined ? min : null;
+			return min ?? null;
 		case 'max':
 			let max;
 			for (const item of data) {
@@ -182,15 +153,22 @@ function aggregate(items: IDataObject[], entry: Aggregation, getValue: ValueGett
 					}
 				}
 			}
-			return max !== undefined ? max : null;
+			return max ?? null;
 
 		//count operations
 		case 'countUnique':
-			return new Set(data.map((item) => getValue(item, field)).filter((item) => !isEmpty(item)))
-				.size;
+			if (!entry.includeEmpty) {
+				return new Set(data.map((item) => getValue(item, field)).filter((item) => !isEmpty(item)))
+					.size;
+			}
+			return new Set(data.map((item) => getValue(item, field))).size;
+
 		default:
 			//count by default
-			return data.filter((item) => !isEmpty(getValue(item, field))).length;
+			if (!entry.includeEmpty) {
+				return data.filter((item) => !isEmpty(getValue(item, field))).length;
+			}
+			return data.length;
 	}
 }
 
@@ -199,91 +177,112 @@ function aggregateData(
 	fieldsToSummarize: Aggregations,
 	options: SummarizeOptions,
 	getValue: ValueGetterFn,
-) {
-	const returnData = fieldsToSummarize.reduce((acc, aggregation) => {
-		acc[`${AggregationDisplayNames[aggregation.aggregation]}${aggregation.field}`] = aggregate(
-			data,
-			aggregation,
-			getValue,
-		);
-		return acc;
-	}, {} as IDataObject);
-	parseReturnData(returnData);
+): { returnData: IDataObject; pairedItems?: number[] } {
+	const returnData = Object.fromEntries(
+		fieldsToSummarize.map((aggregation) => {
+			const key = normalizeFieldName(
+				`${AggregationDisplayNames[aggregation.aggregation]}${aggregation.field}`,
+			);
+			const result = aggregate(data, aggregation, getValue);
+			return [key, result];
+		}),
+	);
+
 	if (options.outputFormat === 'singleItem') {
-		parseReturnData(returnData);
-		return returnData;
-	} else {
-		return { ...returnData, pairedItems: data.map((item) => item._itemIndex as number) };
+		return { returnData };
 	}
+
+	return { returnData, pairedItems: data.map((item) => item._itemIndex as number) };
 }
 
-export function splitData(
-	splitKeys: string[],
-	data: IDataObject[],
-	fieldsToSummarize: Aggregations,
-	options: SummarizeOptions,
-	getValue: ValueGetterFn,
-) {
-	if (!splitKeys || splitKeys.length === 0) {
-		return aggregateData(data, fieldsToSummarize, options, getValue);
+type AggregationResult = { returnData: IDataObject; pairedItems?: number[] };
+type NestedAggregationResult =
+	| AggregationResult
+	| { fieldName: string; splits: Map<unknown, NestedAggregationResult> };
+
+// Using Map to preserve types
+// With a plain JS object, keys are converted to string
+export function aggregateAndSplitData({
+	splitKeys,
+	inputItems,
+	fieldsToSummarize,
+	options,
+	getValue,
+	convertKeysToString = false,
+}: {
+	splitKeys: string[] | undefined;
+	inputItems: IDataObject[];
+	fieldsToSummarize: Aggregations;
+	options: SummarizeOptions;
+	getValue: ValueGetterFn;
+	convertKeysToString?: boolean; // Legacy option for v1
+}): NestedAggregationResult {
+	if (!splitKeys?.length) {
+		return aggregateData(inputItems, fieldsToSummarize, options, getValue);
 	}
 
 	const [firstSplitKey, ...restSplitKeys] = splitKeys;
 
-	const groupedData = data.reduce((acc, item) => {
-		let keyValuee = getValue(item, firstSplitKey) as string;
+	const groupedItems = new Map<unknown, IDataObject[]>();
+	for (const item of inputItems) {
+		let splitValue = getValue(item, firstSplitKey);
 
-		if (typeof keyValuee === 'object') {
-			keyValuee = JSON.stringify(keyValuee);
+		if (splitValue && typeof splitValue === 'object') {
+			splitValue = JSON.stringify(splitValue);
 		}
 
-		if (options.skipEmptySplitFields && typeof keyValuee !== 'number' && !keyValuee) {
-			return acc;
+		if (convertKeysToString) {
+			splitValue = String(splitValue);
 		}
 
-		if (acc[keyValuee] === undefined) {
-			acc[keyValuee] = [item];
-		} else {
-			(acc[keyValuee] as IDataObject[]).push(item);
+		if (options.skipEmptySplitFields && typeof splitValue !== 'number' && !splitValue) {
+			continue;
 		}
-		return acc;
-	}, {} as IDataObject);
 
-	return Object.keys(groupedData).reduce((acc, key) => {
-		const value = groupedData[key] as IDataObject[];
-		acc[key] = splitData(restSplitKeys, value, fieldsToSummarize, options, getValue);
-		return acc;
-	}, {} as IDataObject);
+		const group = groupedItems.get(splitValue) ?? [];
+		groupedItems.set(splitValue, group.concat([item]));
+	}
+
+	const splits = new Map(
+		Array.from(groupedItems.entries()).map(([groupKey, items]) => [
+			groupKey,
+			aggregateAndSplitData({
+				splitKeys: restSplitKeys,
+				inputItems: items,
+				fieldsToSummarize,
+				options,
+				getValue,
+				convertKeysToString,
+			}),
+		]),
+	);
+
+	return { fieldName: firstSplitKey, splits };
 }
 
-export function aggregationToArray(
-	aggregationResult: IDataObject,
-	fieldsToSplitBy: string[],
-	previousStage: IDataObject = {},
-) {
-	const returnData: IDataObject[] = [];
-	fieldsToSplitBy = parseFieldName(fieldsToSplitBy);
-	const splitFieldName = fieldsToSplitBy[0];
-	const isNext = fieldsToSplitBy[1];
-
-	if (isNext === undefined) {
-		for (const fieldName of Object.keys(aggregationResult)) {
-			returnData.push({
-				...previousStage,
-				[splitFieldName]: fieldName,
-				...(aggregationResult[fieldName] as IDataObject),
-			});
-		}
-		return returnData;
-	} else {
-		for (const key of Object.keys(aggregationResult)) {
-			returnData.push(
-				...aggregationToArray(aggregationResult[key] as IDataObject, fieldsToSplitBy.slice(1), {
-					...previousStage,
-					[splitFieldName]: key,
-				}),
-			);
-		}
-		return returnData;
+export function flattenAggregationResultToObject(result: NestedAggregationResult): IDataObject {
+	if ('splits' in result) {
+		return Object.fromEntries(
+			Array.from(result.splits.entries()).map(([key, value]) => [
+				key,
+				flattenAggregationResultToObject(value),
+			]),
+		);
 	}
+
+	return result.returnData;
+}
+
+export function flattenAggregationResultToArray(
+	result: NestedAggregationResult,
+): AggregationResult[] {
+	if ('splits' in result) {
+		return Array.from(result.splits.entries()).flatMap(([value, innerResult]) =>
+			flattenAggregationResultToArray(innerResult).map((v) => {
+				v.returnData[normalizeFieldName(result.fieldName)] = value as IDataObject;
+				return v;
+			}),
+		);
+	}
+	return [result];
 }

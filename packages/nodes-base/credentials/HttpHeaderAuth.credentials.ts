@@ -1,15 +1,15 @@
-import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { IAuthenticateGeneric, ICredentialType, INodeProperties, Icon } from 'n8n-workflow';
 
 export class HttpHeaderAuth implements ICredentialType {
 	name = 'httpHeaderAuth';
 
 	displayName = 'Header Auth';
 
-	documentationUrl = 'httpRequest';
+	documentationUrl = 'httprequest';
 
 	genericAuth = true;
 
-	icon = 'node:n8n-nodes-base.httpRequest';
+	icon: Icon = 'node:n8n-nodes-base.httpRequest';
 
 	properties: INodeProperties[] = [
 		{
@@ -25,6 +25,12 @@ export class HttpHeaderAuth implements ICredentialType {
 			typeOptions: {
 				password: true,
 			},
+			default: '',
+		},
+		{
+			displayName: 'To send multiple headers, use a "Custom Auth" credential instead',
+			name: 'useCustomAuth',
+			type: 'notice',
 			default: '',
 		},
 	];

@@ -2,7 +2,7 @@ import type { GenericValue } from 'n8n-workflow';
 
 export type BaseFacebookResponse<TData> = { data: TData };
 export type BasePaginatedFacebookResponse<TData> = BaseFacebookResponse<TData> & {
-	paging: { cursors: { before?: string; after?: string } };
+	paging: { cursors: { before?: string; after?: string }; next?: string };
 };
 
 export type FacebookAppWebhookSubscriptionsResponse = BaseFacebookResponse<

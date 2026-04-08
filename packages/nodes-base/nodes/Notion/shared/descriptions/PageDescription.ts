@@ -1,6 +1,12 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 import { blocks } from './Blocks';
+import {
+	databasePageUrlExtractionRegexp,
+	databasePageUrlValidationRegexp,
+	idExtractionRegexp,
+	idValidationRegexp,
+} from '../constants';
 
 export const pageOperations: INodeProperties[] = [
 	{
@@ -93,16 +99,14 @@ export const pageFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex:
-								'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?(?:[a-zA-Z0-9-]{2,}-)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12}).*',
-							errorMessage: 'Not a valid Notion Page URL',
+							regex: databasePageUrlValidationRegexp,
+							errorMessage: 'Not a valid Notion Database Page URL',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex:
-						'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?(?:[a-zA-Z0-9-]{2,}-)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})',
+					regex: databasePageUrlExtractionRegexp,
 				},
 			},
 			{
@@ -114,15 +118,14 @@ export const pageFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex:
-								'^(([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})|([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}))[ \t]*',
+							regex: idValidationRegexp,
 							errorMessage: 'Not a valid Notion Page ID',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex: '^([0-9a-f]{8}-?[0-9a-f]{4}-?4[0-9a-f]{3}-?[89ab][0-9a-f]{3}-?[0-9a-f]{12})',
+					regex: idExtractionRegexp,
 				},
 				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
 			},
@@ -173,16 +176,14 @@ export const pageFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex:
-								'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?(?:[a-zA-Z0-9-]{2,}-)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12}).*',
-							errorMessage: 'Not a valid Notion Page URL',
+							regex: databasePageUrlValidationRegexp,
+							errorMessage: 'Not a valid Notion Database Page URL',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex:
-						'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?(?:[a-zA-Z0-9-]{2,}-)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})',
+					regex: databasePageUrlExtractionRegexp,
 				},
 			},
 			{
@@ -194,15 +195,14 @@ export const pageFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex:
-								'^(([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})|([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}))[ \t]*',
+							regex: idValidationRegexp,
 							errorMessage: 'Not a valid Notion Page ID',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex: '^([0-9a-f]{8}-?[0-9a-f]{4}-?4[0-9a-f]{3}-?[89ab][0-9a-f]{3}-?[0-9a-f]{12})',
+					regex: idExtractionRegexp,
 				},
 				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
 			},
@@ -254,7 +254,7 @@ export const pageFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		options: [
 			{
 				displayName: 'Icon Type',

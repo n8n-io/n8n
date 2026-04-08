@@ -1,94 +1,41 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import { PromptTemplate } from '@langchain/core/prompts';
+import type { JSONSchema7 } from 'json-schema';
 import {
 	jsonParse,
-	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 	NodeOperationError,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
-import { z } from 'zod';
-import type { JSONSchema7 } from 'json-schema';
-import { StructuredOutputParser } from 'langchain/output_parsers';
-import { OutputParserException } from '@langchain/core/output_parsers';
-import get from 'lodash/get';
-import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
-import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
-import { makeResolverFromLegacyOptions } from '@n8n/vm2';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { logWrapper } from '../../../utils/logWrapper';
+import type { z } from 'zod';
 
-const STRUCTURED_OUTPUT_KEY = '__structured__output';
-const STRUCTURED_OUTPUT_OBJECT_KEY = '__structured__output__object';
-const STRUCTURED_OUTPUT_ARRAY_KEY = '__structured__output__array';
+import {
+	buildJsonSchemaExampleNotice,
+	inputSchemaField,
+	jsonSchemaExampleField,
+	schemaTypeField,
+} from '@utils/descriptions';
+import {
+	N8nOutputFixingParser,
+	N8nStructuredOutputParser,
+} from '@utils/output_parsers/N8nOutputParser';
+import { convertJsonSchemaToZod, generateSchemaFromExample } from '@utils/schemaParsing';
+import { getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
-export class N8nStructuredOutputParser<T extends z.ZodTypeAny> extends StructuredOutputParser<T> {
-	async parse(text: string): Promise<z.infer<T>> {
-		try {
-			const parsed = (await super.parse(text)) as object;
+import { NAIVE_FIX_PROMPT } from './prompt';
 
-			return (
-				get(parsed, [STRUCTURED_OUTPUT_KEY, STRUCTURED_OUTPUT_OBJECT_KEY]) ??
-				get(parsed, [STRUCTURED_OUTPUT_KEY, STRUCTURED_OUTPUT_ARRAY_KEY]) ??
-				get(parsed, STRUCTURED_OUTPUT_KEY) ??
-				parsed
-			);
-		} catch (e) {
-			// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
-			throw new OutputParserException(`Failed to parse. Text: "${text}". Error: ${e}`, text);
-		}
-	}
-
-	static async fromZedJsonSchema(
-		sandboxedSchema: JavaScriptSandbox,
-		nodeVersion: number,
-	): Promise<StructuredOutputParser<z.ZodType<object, z.ZodTypeDef, object>>> {
-		const zodSchema = (await sandboxedSchema.runCode()) as z.ZodSchema<object>;
-
-		let returnSchema: z.ZodSchema<object>;
-		if (nodeVersion === 1) {
-			returnSchema = z.object({
-				[STRUCTURED_OUTPUT_KEY]: z
-					.object({
-						[STRUCTURED_OUTPUT_OBJECT_KEY]: zodSchema.optional(),
-						[STRUCTURED_OUTPUT_ARRAY_KEY]: z.array(zodSchema).optional(),
-					})
-					.describe(
-						`Wrapper around the output data. It can only contain ${STRUCTURED_OUTPUT_OBJECT_KEY} or ${STRUCTURED_OUTPUT_ARRAY_KEY} but never both.`,
-					)
-					.refine(
-						(data) => {
-							// Validate that one and only one of the properties exists
-							return (
-								Boolean(data[STRUCTURED_OUTPUT_OBJECT_KEY]) !==
-								Boolean(data[STRUCTURED_OUTPUT_ARRAY_KEY])
-							);
-						},
-						{
-							message:
-								'One and only one of __structured__output__object and __structured__output__array should be present.',
-							path: [STRUCTURED_OUTPUT_KEY],
-						},
-					),
-			});
-		} else {
-			returnSchema = z.object({
-				output: zodSchema.optional(),
-			});
-		}
-
-		return N8nStructuredOutputParser.fromZodSchema(returnSchema);
-	}
-}
 export class OutputParserStructured implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Structured Output Parser',
 		name: 'outputParserStructured',
 		icon: 'fa:code',
+		iconColor: 'black',
 		group: ['transform'],
-		version: [1, 1.1],
-		defaultVersion: 1.1,
+		version: [1, 1.1, 1.2, 1.3],
+		defaultVersion: 1.3,
 		description: 'Return data in a defined JSON format',
 		defaults: {
 			name: 'Structured Output Parser',
@@ -108,13 +55,52 @@ export class OutputParserStructured implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiOutputParser],
+		inputs: `={{
+			((parameters) => {
+				if (parameters?.autoFix) {
+					return [
+						{ displayName: 'Model', maxConnections: 1, type: "${NodeConnectionTypes.AiLanguageModel}", required: true }
+					];
+				}
+
+				return [];
+			})($parameter)
+		}}`,
+
+		outputs: [NodeConnectionTypes.AiOutputParser],
 		outputNames: ['Output Parser'],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
+			{ ...schemaTypeField, displayOptions: { show: { '@version': [{ _cnd: { gte: 1.2 } }] } } },
+			{
+				...jsonSchemaExampleField,
+				default: `{
+	"state": "California",
+	"cities": ["Los Angeles", "San Francisco", "San Diego"]
+}`,
+			},
+			buildJsonSchemaExampleNotice({
+				showExtraProps: {
+					'@version': [{ _cnd: { gte: 1.3 } }],
+				},
+			}),
+			{
+				...inputSchemaField,
+				default: `{
+	"type": "object",
+	"properties": {
+		"state": {
+			"type": "string"
+		},
+		"cities": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			}
+		}
+	}
+}`,
+			},
 			{
 				displayName: 'JSON Schema',
 				name: 'jsonSchema',
@@ -138,86 +124,144 @@ export class OutputParserStructured implements INodeType {
 					rows: 10,
 				},
 				required: true,
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lte: 1.1 } }],
+					},
+				},
 			},
 			{
-				displayName:
-					'The schema has to be defined in the <a target="_blank" href="https://json-schema.org/">JSON Schema</a> format. Look at <a target="_blank" href="https://json-schema.org/learn/miscellaneous-examples.html">this</a> page for examples.',
-				name: 'notice',
-				type: 'notice',
-				default: '',
+				displayName: 'Auto-Fix Format',
+				description:
+					'Whether to automatically fix the output when it is not in the correct format. Will cause another LLM call.',
+				name: 'autoFix',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Customize Retry Prompt',
+				name: 'customizeRetryPrompt',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						autoFix: [true],
+					},
+				},
+				default: false,
+				description:
+					'Whether to customize the prompt used for retrying the output parsing. If disabled, a default prompt will be used.',
+			},
+			{
+				displayName: 'Custom Prompt',
+				name: 'prompt',
+				type: 'string',
+				displayOptions: {
+					show: {
+						autoFix: [true],
+						customizeRetryPrompt: [true],
+					},
+				},
+				default: NAIVE_FIX_PROMPT,
+				typeOptions: {
+					rows: 10,
+				},
+				hint: 'Should include "{error}", "{instructions}", and "{completion}" placeholders',
+				description:
+					'Prompt template used for fixing the output. Uses placeholders: "{instructions}" for parsing rules, "{completion}" for the failed attempt, and "{error}" for the validation error message.',
 			},
 		],
+		hints: [
+			{
+				message:
+					'Fields that use $refs might have the wrong type, since this syntax is not currently supported',
+				type: 'warning',
+				location: 'outputPane',
+				whenToDisplay: 'afterExecution',
+				displayCondition:
+					'={{ $parameter["schemaType"] === "manual" && $parameter["inputSchema"]?.includes("$ref") }}',
+			},
+		],
+		builderHint: {
+			message:
+				'Output data is wrapped in an "output" key, e.g. { "output": { "state": "California", "cities": ["San Francisco"] } }',
+			inputs: {
+				ai_languageModel: {
+					required: true,
+					displayOptions: { show: { autoFix: [true] } },
+				},
+			},
+		},
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		const schema = this.getNodeParameter('jsonSchema', itemIndex) as string;
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
+		const schemaType = this.getNodeParameter('schemaType', itemIndex, '') as 'fromJson' | 'manual';
+		// We initialize these even though one of them will always be empty
+		// it makes it easer to navigate the ternary operator
+		const jsonExample = this.getNodeParameter('jsonSchemaExample', itemIndex, '') as string;
 
-		let itemSchema: JSONSchema7;
-		try {
-			itemSchema = jsonParse<JSONSchema7>(schema);
+		let inputSchema: string;
 
-			// If the type is not defined, we assume it's an object
-			if (itemSchema.type === undefined) {
-				itemSchema = {
-					type: 'object',
-					properties: itemSchema.properties ?? (itemSchema as { [key: string]: JSONSchema7 }),
-				};
-			}
-		} catch (error) {
-			throw new NodeOperationError(this.getNode(), 'Error during parsing of JSON Schema.');
+		// Enforce all fields to be required in the generated schema if the node version is 1.3 or higher
+		const jsonExampleAllFieldsRequired = this.getNode().typeVersion >= 1.3;
+
+		if (this.getNode().typeVersion <= 1.1) {
+			inputSchema = this.getNodeParameter('jsonSchema', itemIndex, '') as string;
+		} else {
+			inputSchema = this.getNodeParameter('inputSchema', itemIndex, '') as string;
 		}
 
-		const vmResolver = makeResolverFromLegacyOptions({
-			external: {
-				modules: ['json-schema-to-zod', 'zod'],
-				transitive: false,
-			},
-			resolve(moduleName, parentDirname) {
-				if (moduleName === 'json-schema-to-zod') {
-					return require.resolve(
-						'@n8n/n8n-nodes-langchain/node_modules/json-schema-to-zod/dist/cjs/jsonSchemaToZod.js',
-						{
-							paths: [parentDirname],
-						},
-					);
-				}
-				if (moduleName === 'zod') {
-					return require.resolve('@n8n/n8n-nodes-langchain/node_modules/zod.cjs', {
-						paths: [parentDirname],
-					});
-				}
-				return;
-			},
-			builtin: [],
-		});
-		const context = getSandboxContext.call(this, itemIndex);
-		// Make sure to remove the description from root schema
-		const { description, ...restOfSchema } = itemSchema;
-		const sandboxedSchema = new JavaScriptSandbox(
-			context,
-			`
-				const { z } = require('zod');
-				const { parseSchema } = require('json-schema-to-zod');
-				const zodSchema = parseSchema(${JSON.stringify(restOfSchema)});
-				const itemSchema = new Function('z', 'return (' + zodSchema + ')')(z)
-				return itemSchema
-			`,
+		const jsonSchema =
+			schemaType === 'fromJson'
+				? generateSchemaFromExample(jsonExample, jsonExampleAllFieldsRequired)
+				: jsonParse<JSONSchema7>(inputSchema);
+
+		const zodSchema = convertJsonSchemaToZod<z.ZodSchema<object>>(jsonSchema);
+		const nodeVersion = this.getNode().typeVersion;
+
+		const autoFix = this.getNodeParameter('autoFix', itemIndex, false) as boolean;
+
+		let outputParser;
+		try {
+			outputParser = await N8nStructuredOutputParser.fromZodJsonSchema(
+				zodSchema,
+				nodeVersion,
+				this,
+			);
+		} catch (error) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Error during parsing of JSON Schema. Please check the schema and try again.',
+			);
+		}
+
+		if (!autoFix) {
+			return {
+				response: outputParser,
+			};
+		}
+
+		const model = (await this.getInputConnectionData(
+			NodeConnectionTypes.AiLanguageModel,
 			itemIndex,
-			this.helpers,
-			{ resolver: vmResolver },
+		)) as BaseLanguageModel;
+
+		const prompt = this.getNodeParameter('prompt', itemIndex, NAIVE_FIX_PROMPT) as string;
+
+		if (prompt.length === 0 || !prompt.includes('{error}')) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Auto-fixing parser prompt has to contain {error} placeholder',
+			);
+		}
+		const parser = new N8nOutputFixingParser(
+			this,
+			model,
+			outputParser,
+			PromptTemplate.fromTemplate(prompt),
 		);
 
-		const nodeVersion = this.getNode().typeVersion;
-		try {
-			const parser = await N8nStructuredOutputParser.fromZedJsonSchema(
-				sandboxedSchema,
-				nodeVersion,
-			);
-			return {
-				response: logWrapper(parser, this),
-			};
-		} catch (error) {
-			throw new NodeOperationError(this.getNode(), 'Error during parsing of JSON Schema.');
-		}
+		return {
+			response: parser,
+		};
 	}
 }

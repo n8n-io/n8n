@@ -1,20 +1,20 @@
 import 'tsconfig-paths/register';
+import { testDb } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { DataSource as Connection } from '@n8n/typeorm';
-import config from '@/config';
-import { getBootstrapDBOptions, testDbPrefix } from './integration/shared/testDb';
 
 export default async () => {
-	const dbType = config.getEnv('database.type');
-	if (dbType !== 'postgresdb' && dbType !== 'mysqldb') return;
+	const { type: dbType } = Container.get(GlobalConfig).database;
+	if (dbType !== 'postgresdb') return;
 
-	const connection = new Connection(getBootstrapDBOptions(dbType));
+	const connection = new Connection(testDb.getBootstrapDBOptions());
 	await connection.initialize();
 
-	const query =
-		dbType === 'postgresdb' ? 'SELECT datname as "Database" FROM pg_database' : 'SHOW DATABASES';
+	const query = 'SELECT datname as "Database" FROM pg_database';
 	const results: Array<{ Database: string }> = await connection.query(query);
 	const databases = results
-		.filter(({ Database: dbName }) => dbName.startsWith(testDbPrefix))
+		.filter(({ Database: dbName }) => dbName.startsWith(testDb.testDbPrefix))
 		.map(({ Database: dbName }) => dbName);
 
 	const promises = databases.map(

@@ -14,7 +14,6 @@ export async function uprocApiRequest(
 	method: IHttpRequestMethods,
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
 	_option: IDataObject = {},
 ): Promise<any> {
 	const options: IHttpRequestOptions = {
@@ -28,7 +27,6 @@ export async function uprocApiRequest(
 	try {
 		return await this.helpers.httpRequestWithAuthentication.call(this, 'uprocApi', options);
 	} catch (error) {
-		if (error instanceof NodeApiError) throw error;
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

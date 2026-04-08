@@ -1,21 +1,24 @@
+import iconv from 'iconv-lite';
+import set from 'lodash/set';
+import unset from 'lodash/unset';
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeProperties,
+	IBinaryData,
 } from 'n8n-workflow';
-
-import { BINARY_ENCODING, NodeOperationError, deepCopy, jsonParse } from 'n8n-workflow';
-
-import get from 'lodash/get';
-import set from 'lodash/set';
-import unset from 'lodash/unset';
-
-import iconv from 'iconv-lite';
-
+import {
+	BINARY_ENCODING,
+	NodeOperationError,
+	deepCopy,
+	jsonParse,
+	BINARY_MODE_COMBINED,
+} from 'n8n-workflow';
 import { icsCalendarToObject } from 'ts-ics';
-import { updateDisplayOptions } from '@utils/utilities';
+
 import { encodeDecodeOptions } from '@utils/descriptions';
+import { updateDisplayOptions } from '@utils/utilities';
 
 export const properties: INodeProperties[] = [
 	{
@@ -40,7 +43,7 @@ export const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
@@ -105,24 +108,27 @@ export async function execute(
 	operation: string,
 ) {
 	const returnData: INodeExecutionData[] = [];
+	const { binaryMode } = this.getWorkflowSettings();
 
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 		try {
 			const item = items[itemIndex];
 			const options = this.getNodeParameter('options', itemIndex);
-			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex);
+			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex) as
+				| string
+				| IBinaryData;
 
 			const newItem: INodeExecutionData = {
 				json: {},
 				pairedItem: { item: itemIndex },
 			};
 
-			const value = get(item.binary, binaryPropertyName);
+			const value = this.helpers.assertBinaryData(itemIndex, binaryPropertyName);
 
 			if (!value) continue;
 
-			const encoding = (options.encoding as string) || 'utf8';
 			const buffer = await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
+			const encoding = (options.encoding as string) || this.helpers.detectBinaryEncoding(buffer);
 
 			if (options.keepSource && options.keepSource !== 'binary') {
 				newItem.json = deepCopy(item.json);
@@ -152,19 +158,21 @@ export async function execute(
 			const destinationKey = this.getNodeParameter('destinationKey', itemIndex, '') as string;
 			set(newItem.json, destinationKey, convertedValue);
 
-			if (options.keepSource === 'binary' || options.keepSource === 'both') {
-				newItem.binary = item.binary;
-			} else {
-				// this binary data would not be included, but there also might be other binary data
-				// which should be included, copy it over and unset current binary data
-				newItem.binary = deepCopy(item.binary);
-				unset(newItem.binary, binaryPropertyName);
+			if (typeof binaryPropertyName === 'string' && binaryMode !== BINARY_MODE_COMBINED) {
+				if (options.keepSource === 'binary' || options.keepSource === 'both') {
+					newItem.binary = item.binary;
+				} else {
+					// this binary data would not be included, but there also might be other binary data
+					// which should be included, copy it over and unset current binary data
+					newItem.binary = deepCopy(item.binary);
+					unset(newItem.binary, binaryPropertyName);
+				}
 			}
 
 			returnData.push(newItem);
 		} catch (error) {
 			let errorDescription;
-			if (error.message.includes('Unexpected token')) {
+			if (typeof error.message === 'string' && error.message.includes('Unexpected token')) {
 				error.message = "The file selected in 'Input Binary Field' is not in JSON format";
 				errorDescription =
 					"Try to change the operation or select a JSON file in 'Input Binary Field'";

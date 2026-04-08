@@ -7,6 +7,7 @@ import type {
 	ResourceMapperFields,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+
 import { apiRequest } from '../transport';
 
 type AirtableSchema = {
@@ -31,7 +32,6 @@ const airtableReadOnlyFields = [
 	'rollup',
 	'externalSyncSource',
 	'multipleLookupValues',
-	'multipleRecordLinks',
 ];
 
 const airtableTypesMap: TypesMap = {
@@ -42,7 +42,7 @@ const airtableTypesMap: TypesMap = {
 	time: [],
 	object: [],
 	options: ['singleSelect'],
-	array: ['multipleSelects', 'multipleAttachments'],
+	array: ['multipleSelects', 'multipleRecordLinks', 'multipleAttachments'],
 };
 
 function mapForeignType(foreignType: string, typesMap: TypesMap): FieldType {

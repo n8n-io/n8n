@@ -1,0 +1,240 @@
+[
+	{
+		"id": "a1b2c3d4e5f6g7h8",
+		"threadId": "a1b2c3d4e5f6g7h8",
+		"labelIds": ["UNREAD", "CATEGORY_PROMOTIONS", "INBOX"],
+		"snippet": "Don't miss our exclusive holiday discounts on all items! Act now before the sale ends.",
+		"payload": {
+			"partId": "",
+			"mimeType": "multipart/alternative",
+			"filename": "",
+			"headers": [
+				{
+					"name": "Delivered-To",
+					"value": "exampleuser@gmail.com"
+				},
+				{
+					"name": "Received",
+					"value": "by 2001:db8::abcd with SMTP id xyz123abc456; Thu, 5 Dec 2024 08:30:00 -0800 (PST)"
+				},
+				{
+					"name": "X-Google-Smtp-Source",
+					"value": "ABC12345+EXAMPLE123456789"
+				},
+				{
+					"name": "X-Received",
+					"value": "by 192.0.2.1 with SMTP id 12345abc67890; Thu, 5 Dec 2024 08:30:00 -0800 (PST)"
+				},
+				{
+					"name": "ARC-Seal",
+					"value": "i=1; a=rsa-sha256; t=1733405400; cv=none; d=example.com; s=arc-20241205; b=ABCDEFG123456="
+				},
+				{
+					"name": "ARC-Message-Signature",
+					"value": "i=1; a=rsa-sha256; c=relaxed/relaxed; d=example.com; s=arc-20241205; bh=EXAMPLEHASH12345="
+				},
+				{
+					"name": "ARC-Authentication-Results",
+					"value": "i=1; mx.example.com; dkim=pass header.i=@promotion.example.com; spf=pass smtp.mailfrom=promo@promotion.example.com; dmarc=pass header.from=example.com"
+				},
+				{
+					"name": "Return-Path",
+					"value": "<promo@promotion.example.com>"
+				},
+				{
+					"name": "Date",
+					"value": "Thu, 5 Dec 2024 08:30:00 -0800"
+				},
+				{
+					"name": "From",
+					"value": "Holiday Deals <promo@promotion.example.com>"
+				},
+				{
+					"name": "To",
+					"value": "exampleuser@gmail.com"
+				},
+				{
+					"name": "Message-ID",
+					"value": "<12345abc67890@promotion.example.com>"
+				},
+				{
+					"name": "Subject",
+					"value": "Exclusive Holiday Discounts!"
+				},
+				{
+					"name": "MIME-Version",
+					"value": "1.0"
+				},
+				{
+					"name": "Content-Type",
+					"value": "multipart/alternative; boundary=\"----=_Part_12345_67890.1733405400000\""
+				}
+			],
+			"body": {
+				"size": 0
+			},
+			"parts": [
+				{
+					"partId": "0",
+					"mimeType": "text/plain",
+					"filename": "",
+					"headers": [
+						{
+							"name": "Content-Type",
+							"value": "text/plain; charset=utf-8"
+						},
+						{
+							"name": "Content-Transfer-Encoding",
+							"value": "quoted-printable"
+						}
+					],
+					"body": {
+						"size": 1234,
+						"data": "VGhpcyBpcyBhbiBleGFtcGxlIG1lc3NhZ2UuIFRoYW5rIHlvdSBmb3Igc2hvcHBpbmcgd2l0aCB1cy4="
+					}
+				},
+				{
+					"partId": "1",
+					"mimeType": "text/html",
+					"filename": "",
+					"headers": [
+						{
+							"name": "Content-Type",
+							"value": "text/html; charset=\"utf-8\""
+						},
+						{
+							"name": "Content-Transfer-Encoding",
+							"value": "quoted-printable"
+						}
+					],
+					"body": {
+						"size": 5678,
+						"data": "PGRpdiBzdHlsZT0nZm9udC1mYW1pbHk6IEFyaWFsLCBzYW5zLXNlcmlmOyc+VGhpcyBpcyBhbiBleGFtcGxlIGh0bWwgbWVzc2FnZS4gPGI+VGhhbmsgeW91IGZvciBzaG9wcGluZyB3aXRoIHVzLjwvYj48L2Rpdj4="
+					}
+				}
+			]
+		},
+		"sizeEstimate": 67890,
+		"historyId": "54321",
+		"internalDate": "1733405400000"
+	},
+	{
+		"id": "z9y8x7w6v5u4t3s2",
+		"threadId": "z9y8x7w6v5u4t3s2",
+		"labelIds": ["UNREAD", "CATEGORY_SOCIAL", "INBOX"],
+		"snippet": "Your friend John just shared a new photo with you! Check it out now.",
+		"payload": {
+			"partId": "",
+			"mimeType": "multipart/alternative",
+			"filename": "",
+			"headers": [
+				{
+					"name": "Delivered-To",
+					"value": "exampleuser2@gmail.com"
+				},
+				{
+					"name": "Received",
+					"value": "by 2001:db8::abcd with SMTP id def456ghi789; Fri, 6 Dec 2024 09:45:00 -0800 (PST)"
+				},
+				{
+					"name": "X-Google-Smtp-Source",
+					"value": "XYZ67890+EXAMPLE0987654321"
+				},
+				{
+					"name": "X-Received",
+					"value": "by 198.51.100.2 with SMTP id 67890def12345; Fri, 6 Dec 2024 09:45:00 -0800 (PST)"
+				},
+				{
+					"name": "ARC-Seal",
+					"value": "i=1; a=rsa-sha256; t=1733490900; cv=none; d=example2.com; s=arc-20241206; b=HIJKLMN987654="
+				},
+				{
+					"name": "ARC-Message-Signature",
+					"value": "i=1; a=rsa-sha256; c=relaxed/relaxed; d=example2.com; s=arc-20241206; bh=EXAMPLEHASH67890="
+				},
+				{
+					"name": "ARC-Authentication-Results",
+					"value": "i=1; mx.example2.com; dkim=pass header.i=@social.example2.com; spf=pass smtp.mailfrom=notifications@social.example2.com; dmarc=pass header.from=example2.com"
+				},
+				{
+					"name": "Return-Path",
+					"value": "<notifications@social.example2.com>"
+				},
+				{
+					"name": "Date",
+					"value": "Fri, 6 Dec 2024 09:45:00 -0800"
+				},
+				{
+					"name": "From",
+					"value": "John's Photos <notifications@social.example2.com>"
+				},
+				{
+					"name": "To",
+					"value": "exampleuser2@gmail.com"
+				},
+				{
+					"name": "Message-ID",
+					"value": "<67890def12345@social.example2.com>"
+				},
+				{
+					"name": "Subject",
+					"value": "John shared a new photo with you!"
+				},
+				{
+					"name": "MIME-Version",
+					"value": "1.0"
+				},
+				{
+					"name": "Content-Type",
+					"value": "multipart/alternative; boundary=\"----=_Part_67890_12345.1733490900000\""
+				}
+			],
+			"body": {
+				"size": 0
+			},
+			"parts": [
+				{
+					"partId": "0",
+					"mimeType": "text/plain",
+					"filename": "",
+					"headers": [
+						{
+							"name": "Content-Type",
+							"value": "text/plain; charset=utf-8"
+						},
+						{
+							"name": "Content-Transfer-Encoding",
+							"value": "quoted-printable"
+						}
+					],
+					"body": {
+						"size": 4321,
+						"data": "U2VlIHRoZSBhdHRhY2hlZCBwaG90byBhbmQgcmVwbHkgdG8gSm9obi4gV2UgaG9wZSB5b3UgbGlrZSBpdCE="
+					}
+				},
+				{
+					"partId": "1",
+					"mimeType": "text/html",
+					"filename": "",
+					"headers": [
+						{
+							"name": "Content-Type",
+							"value": "text/html; charset=\"utf-8\""
+						},
+						{
+							"name": "Content-Transfer-Encoding",
+							"value": "quoted-printable"
+						}
+					],
+					"body": {
+						"size": 8765,
+						"data": "PGRpdiBzdHlsZT0nZm9udC1mYW1pbHk6IEFyaWFsLCBzYW5zLXNlcmlmOyc+U2VlIHRoZSBhdHRhY2hlZCBwaG90byBhbmQgcmVwbHkgdG8gPGI+Sm9obi48L2I+IFdlIGhvcGUgeW91IGxpa2UgaXQhPC9kaXY+"
+					}
+				}
+			]
+		},
+		"sizeEstimate": 54321,
+		"historyId": "98765",
+		"internalDate": "1733490900000"
+	}
+]

@@ -1,35 +1,187 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
+import type { JSONSchema7 } from 'json-schema';
+import { JsTaskRunnerSandbox } from 'n8n-nodes-base/dist/nodes/Code/JsTaskRunnerSandbox';
+import { PythonTaskRunnerSandbox } from 'n8n-nodes-base/dist/nodes/Code/PythonTaskRunnerSandbox';
 import type {
+	ExecutionError,
+	IDataObject,
 	IExecuteFunctions,
+	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	ISupplyDataFunctions,
 	SupplyData,
-	ExecutionError,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-import type { Sandbox } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
-import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
-import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
-import { PythonSandbox } from 'n8n-nodes-base/dist/nodes/Code/PythonSandbox';
+import {
+	jsonParse,
+	NodeConnectionTypes,
+	nodeNameToToolName,
+	NodeOperationError,
+} from 'n8n-workflow';
 
-import { DynamicTool } from '@langchain/core/tools';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import {
+	buildInputSchemaField,
+	buildJsonSchemaExampleField,
+	buildJsonSchemaExampleNotice,
+	schemaTypeField,
+} from '@utils/descriptions';
+import { convertJsonSchemaToZod, generateSchemaFromExample } from '@utils/schemaParsing';
+import { getConnectionHintNoticeField } from '@n8n/ai-utilities';
+
+import type { DynamicZodObject } from '../../../types/zod.types';
+
+const jsonSchemaExampleField = buildJsonSchemaExampleField({
+	showExtraProps: { specifyInputSchema: [true] },
+});
+
+const jsonSchemaExampleNotice = buildJsonSchemaExampleNotice({
+	showExtraProps: {
+		specifyInputSchema: [true],
+		'@version': [{ _cnd: { gte: 1.3 } }],
+	},
+});
+
+const jsonSchemaField = buildInputSchemaField({ showExtraProps: { specifyInputSchema: [true] } });
+
+function getTool(
+	ctx: ISupplyDataFunctions | IExecuteFunctions,
+	itemIndex: number,
+	log: boolean = true,
+) {
+	const node = ctx.getNode();
+	const workflowMode = ctx.getMode();
+
+	const { typeVersion } = node;
+	const name =
+		typeVersion <= 1.1
+			? (ctx.getNodeParameter('name', itemIndex) as string)
+			: nodeNameToToolName(node);
+
+	const description = ctx.getNodeParameter('description', itemIndex) as string;
+
+	const useSchema = ctx.getNodeParameter('specifyInputSchema', itemIndex) as boolean;
+
+	const language = ctx.getNodeParameter('language', itemIndex) as string;
+	let code = '';
+	if (language === 'javaScript') {
+		code = ctx.getNodeParameter('jsCode', itemIndex) as string;
+	} else {
+		code = ctx.getNodeParameter('pythonCode', itemIndex) as string;
+	}
+
+	const runFunction = async (query: string | IDataObject): Promise<unknown> => {
+		if (language === 'javaScript') {
+			const sandbox = new JsTaskRunnerSandbox(workflowMode, ctx, /*chunkSize=*/ undefined, {
+				query,
+			});
+			return await sandbox.runCodeForTool(code);
+		} else {
+			const sandbox = new PythonTaskRunnerSandbox(
+				code,
+				'runOnceForAllItems',
+				workflowMode,
+				ctx as IExecuteFunctions,
+				{
+					query,
+				},
+			);
+			return await sandbox.runCodeForTool();
+		}
+	};
+
+	const toolHandler = async (query: string | IDataObject): Promise<string> => {
+		const { index } = log
+			? ctx.addInputData(NodeConnectionTypes.AiTool, [[{ json: { query } }]])
+			: { index: 0 };
+
+		let response: any = '';
+		let executionError: ExecutionError | undefined;
+		try {
+			response = await runFunction(query);
+		} catch (error: unknown) {
+			executionError = new NodeOperationError(ctx.getNode(), error as ExecutionError);
+			response = `There was an error: "${executionError.message}"`;
+		}
+
+		if (typeof response === 'number') {
+			response = (response as number).toString();
+		}
+
+		if (typeof response !== 'string') {
+			// TODO: Do some more testing. Issues here should actually fail the workflow
+			executionError = new NodeOperationError(ctx.getNode(), 'Wrong output type returned', {
+				description: `The response property should be a string, but it is an ${typeof response}`,
+			});
+			response = `There was an error: "${executionError.message}"`;
+		}
+
+		if (executionError && log) {
+			void ctx.addOutputData(NodeConnectionTypes.AiTool, index, executionError);
+		} else if (log) {
+			void ctx.addOutputData(NodeConnectionTypes.AiTool, index, [[{ json: { response } }]]);
+		}
+
+		return response;
+	};
+
+	const commonToolOptions = {
+		name,
+		description,
+		func: toolHandler,
+	};
+
+	let tool: DynamicTool | DynamicStructuredTool | undefined = undefined;
+
+	if (useSchema) {
+		try {
+			// We initialize these even though one of them will always be empty
+			// it makes it easier to navigate the ternary operator
+			const jsonExample = ctx.getNodeParameter('jsonSchemaExample', itemIndex, '') as string;
+			const inputSchema = ctx.getNodeParameter('inputSchema', itemIndex, '') as string;
+
+			const schemaType = ctx.getNodeParameter('schemaType', itemIndex) as 'fromJson' | 'manual';
+
+			const jsonSchema =
+				schemaType === 'fromJson'
+					? generateSchemaFromExample(jsonExample, ctx.getNode().typeVersion >= 1.3)
+					: jsonParse<JSONSchema7>(inputSchema);
+
+			const zodSchema = convertJsonSchemaToZod<DynamicZodObject>(jsonSchema);
+
+			tool = new DynamicStructuredTool({
+				schema: zodSchema,
+				...commonToolOptions,
+			});
+		} catch (error) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				'Error during parsing of JSON Schema. \n ' + error,
+			);
+		}
+	} else {
+		tool = new DynamicTool(commonToolOptions);
+	}
+
+	return tool;
+}
 
 export class ToolCode implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Custom Code Tool',
+		displayName: 'Code Tool',
 		name: 'toolCode',
 		icon: 'fa:code',
+		iconColor: 'black',
 		group: ['transform'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2, 1.3],
 		description: 'Write a tool in JS or Python',
 		defaults: {
-			name: 'Custom Code Tool',
+			name: 'Code Tool',
 		},
 		codex: {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Tools'],
+				Tools: ['Recommended Tools'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -39,13 +191,13 @@ export class ToolCode implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiTool],
+
+		outputs: [NodeConnectionTypes.AiTool],
 		outputNames: ['Tool'],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{
 				displayName:
 					'See an example of a conversational agent with custom tool written in JavaScript <a href="/templates/1963" target="_blank">here</a>.',
@@ -76,7 +228,7 @@ export class ToolCode implements INodeType {
 					'The name of the function to be called, could contain letters, numbers, and underscores only',
 				displayOptions: {
 					show: {
-						'@version': [{ _cnd: { gte: 1.1 } }],
+						'@version': [1.1],
 					},
 				},
 			},
@@ -143,94 +295,50 @@ export class ToolCode implements INodeType {
 					editorLanguage: 'python',
 				},
 				default:
-					'# Example: convert the incoming query to uppercase and return it\nreturn query.upper()',
+					'# Example: convert the incoming query to uppercase and return it\nreturn _query.upper()',
 				// TODO: Add proper text here later
-				hint: 'You can access the input the tool receives via the input property "query". The returned value should be a single string.',
+				hint: 'You can access the input the tool receives via the input property "_query". The returned value should be a single string.',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-missing-final-period
 				description: 'E.g. Converts any text to uppercase',
 				noDataExpression: true,
 			},
+			{
+				displayName: 'Specify Input Schema',
+				name: 'specifyInputSchema',
+				type: 'boolean',
+				description:
+					'Whether to specify the schema for the function. This would require the LLM to provide the input in the correct format and would validate it against the schema.',
+				noDataExpression: true,
+				default: false,
+			},
+			{ ...schemaTypeField, displayOptions: { show: { specifyInputSchema: [true] } } },
+			jsonSchemaExampleField,
+			jsonSchemaExampleNotice,
+			jsonSchemaField,
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		const node = this.getNode();
-		const workflowMode = this.getMode();
-
-		const name = this.getNodeParameter('name', itemIndex) as string;
-		const description = this.getNodeParameter('description', itemIndex) as string;
-
-		const language = this.getNodeParameter('language', itemIndex) as string;
-		let code = '';
-		if (language === 'javaScript') {
-			code = this.getNodeParameter('jsCode', itemIndex) as string;
-		} else {
-			code = this.getNodeParameter('pythonCode', itemIndex) as string;
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
+		return {
+			response: getTool(this, itemIndex),
+		};
+	}
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const result: INodeExecutionData[] = [];
+		const input = this.getInputData();
+		for (let i = 0; i < input.length; i++) {
+			const item = input[i];
+			const tool = getTool(this, i, false);
+			result.push({
+				json: {
+					response: await tool.invoke(item.json),
+				},
+				pairedItem: {
+					item: i,
+				},
+			});
 		}
 
-		const getSandbox = (query: string, index = 0) => {
-			const context = getSandboxContext.call(this, index);
-			context.query = query;
-
-			let sandbox: Sandbox;
-			if (language === 'javaScript') {
-				sandbox = new JavaScriptSandbox(context, code, index, this.helpers);
-			} else {
-				sandbox = new PythonSandbox(context, code, index, this.helpers);
-			}
-
-			sandbox.on(
-				'output',
-				workflowMode === 'manual'
-					? this.sendMessageToUI.bind(this)
-					: (...args: unknown[]) =>
-							console.log(`[Workflow "${this.getWorkflow().id}"][Node "${node.name}"]`, ...args),
-			);
-			return sandbox;
-		};
-
-		const runFunction = async (query: string): Promise<string> => {
-			const sandbox = getSandbox(query, itemIndex);
-			return await (sandbox.runCode() as Promise<string>);
-		};
-
-		return {
-			response: new DynamicTool({
-				name,
-				description,
-
-				func: async (query: string): Promise<string> => {
-					const { index } = this.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
-
-					let response: string = '';
-					let executionError: ExecutionError | undefined;
-					try {
-						response = await runFunction(query);
-					} catch (error: unknown) {
-						executionError = error as ExecutionError;
-						response = `There was an error: "${executionError.message}"`;
-					}
-
-					if (typeof response === 'number') {
-						response = (response as number).toString();
-					}
-
-					if (typeof response !== 'string') {
-						// TODO: Do some more testing. Issues here should actually fail the workflow
-						executionError = new NodeOperationError(this.getNode(), 'Wrong output type returned', {
-							description: `The response property should be a string, but it is an ${typeof response}`,
-						});
-						response = `There was an error: "${executionError.message}"`;
-					}
-
-					if (executionError) {
-						void this.addOutputData(NodeConnectionType.AiTool, index, executionError);
-					} else {
-						void this.addOutputData(NodeConnectionType.AiTool, index, [[{ json: { response } }]]);
-					}
-					return response;
-				},
-			}),
-		};
+		return [result];
 	}
 }

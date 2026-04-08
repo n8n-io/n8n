@@ -1,5 +1,3 @@
-import { parseString } from 'xml2js';
-
 import type {
 	IExecuteFunctions,
 	IHookFunctions,
@@ -8,6 +6,8 @@ import type {
 	IHttpRequestOptions,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
+import { parseString } from 'xml2js';
+import { getAwsCredentials } from '../GenericFunctions';
 
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -17,7 +17,7 @@ export async function awsApiRequest(
 	body?: string,
 	headers?: object,
 ): Promise<any> {
-	const credentials = await this.getCredentials('aws');
+	const { credentials, credentialsType } = await getAwsCredentials(this);
 
 	const requestOptions = {
 		qs: {
@@ -30,7 +30,7 @@ export async function awsApiRequest(
 		headers,
 		region: credentials?.region as string,
 	} as IHttpRequestOptions;
-	return await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
+	return await this.helpers.requestWithAuthentication.call(this, credentialsType, requestOptions);
 }
 
 export async function awsApiRequestREST(

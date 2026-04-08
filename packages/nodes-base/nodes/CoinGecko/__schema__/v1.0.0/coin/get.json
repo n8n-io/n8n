@@ -1,0 +1,101 @@
+{
+    "type": "object",
+    "properties": {
+        "additional_notices": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "block_time_in_minutes": {
+            "type": "integer"
+        },
+        "categories": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "description": {
+            "type": "object",
+            "properties": {
+                "en": {
+                    "type": "string"
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "image": {
+            "type": "object",
+            "properties": {
+                "large": {
+                    "type": "string"
+                },
+                "small": {
+                    "type": "string"
+                },
+                "thumb": {
+                    "type": "string"
+                }
+            }
+        },
+        "links": {
+            "type": "object",
+            "properties": {
+                "chat_url": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "homepage": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "official_forum_url": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "repos_url": {
+                    "type": "object",
+                    "properties": {
+                        "github": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "twitter_screen_name": {
+                    "type": "string"
+                },
+                "whitepaper": {
+                    "type": "string"
+                }
+            }
+        },
+        "name": {
+            "type": "string"
+        },
+        "preview_listing": {
+            "type": "boolean"
+        },
+        "symbol": {
+            "type": "string"
+        },
+        "watchlist_portfolio_users": {
+            "type": "integer"
+        },
+        "web_slug": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

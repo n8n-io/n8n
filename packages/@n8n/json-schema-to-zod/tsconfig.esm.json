@@ -1,0 +1,14 @@
+{
+	"compilerOptions": {
+		"ignoreDeprecations": "6.0",
+		"target": "es2020",
+		"module": "es2020",
+		"moduleResolution": "node",
+		"rootDir": "src",
+		"outDir": "dist/esm",
+		"strict": true,
+		"skipLibCheck": true,
+		"esModuleInterop": true
+	},
+	"include": ["src"]
+}

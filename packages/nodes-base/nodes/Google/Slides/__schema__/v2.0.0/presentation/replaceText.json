@@ -1,0 +1,33 @@
+{
+    "type": "object",
+    "properties": {
+        "presentationId": {
+            "type": "string"
+        },
+        "replies": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "replaceAllText": {
+                        "type": "object",
+                        "properties": {
+                            "occurrencesChanged": {
+                                "type": "integer"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "writeControl": {
+            "type": "object",
+            "properties": {
+                "requiredRevisionId": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 1
+}

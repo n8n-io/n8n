@@ -1,15 +1,15 @@
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties, Icon } from 'n8n-workflow';
 
 export class HttpBasicAuth implements ICredentialType {
 	name = 'httpBasicAuth';
 
 	displayName = 'Basic Auth';
 
-	documentationUrl = 'httpRequest';
+	documentationUrl = 'httprequest';
 
 	genericAuth = true;
 
-	icon = 'node:n8n-nodes-base.httpRequest';
+	icon: Icon = 'node:n8n-nodes-base.httpRequest';
 
 	properties: INodeProperties[] = [
 		{
@@ -17,6 +17,7 @@ export class HttpBasicAuth implements ICredentialType {
 			name: 'user',
 			type: 'string',
 			default: '',
+			resolvableField: true,
 		},
 		{
 			displayName: 'Password',
@@ -26,6 +27,7 @@ export class HttpBasicAuth implements ICredentialType {
 				password: true,
 			},
 			default: '',
+			resolvableField: true,
 		},
 	];
 }

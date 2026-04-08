@@ -1,3 +1,5 @@
+/// <reference lib="es2022.error" />
+
 declare module '@n8n_io/riot-tmpl' {
 	interface Brackets {
 		set(token: string): void;

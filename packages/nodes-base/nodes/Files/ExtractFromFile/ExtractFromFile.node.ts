@@ -4,25 +4,26 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
-import * as spreadsheet from './actions/spreadsheet.operation';
 import * as moveTo from './actions/moveTo.operation';
 import * as pdf from './actions/pdf.operation';
+import * as spreadsheet from './actions/spreadsheet.operation';
 
 export class ExtractFromFile implements INodeType {
 	// eslint-disable-next-line n8n-nodes-base/node-class-description-missing-subtitle
 	description: INodeTypeDescription = {
 		displayName: 'Extract from File',
 		name: 'extractFromFile',
-		icon: 'file:extractFromFile.svg',
+		icon: { light: 'file:extractFromFile.svg', dark: 'file:extractFromFile.dark.svg' },
 		group: ['input'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Convert binary data to JSON',
 		defaults: {
 			name: 'Extract from File',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Operation',
@@ -113,12 +114,15 @@ export class ExtractFromFile implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions) {
+		const version = this.getNode().typeVersion;
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0);
 		let returnData: INodeExecutionData[] = [];
 
 		if (spreadsheet.operations.includes(operation)) {
-			returnData = await spreadsheet.execute.call(this, items, 'operation');
+			returnData = await spreadsheet.execute.call(this, items, 'operation', {
+				failOnCsvBufferError: version > 1,
+			});
 		}
 
 		if (['binaryToPropery', 'fromJson', 'text', 'fromIcs', 'xml'].includes(operation)) {

@@ -1,0 +1,71 @@
+{
+    "type": "object",
+    "properties": {
+        "created_at": {
+            "type": "string"
+        },
+        "custom_fields": {
+            "type": "object",
+            "properties": {
+                "cf_reference_number": {
+                    "type": "null"
+                }
+            }
+        },
+        "description": {
+            "type": "string"
+        },
+        "description_text": {
+            "type": "string"
+        },
+        "fr_escalated": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "is_escalated": {
+            "type": "boolean"
+        },
+        "nr_due_by": {
+            "type": "null"
+        },
+        "nr_escalated": {
+            "type": "boolean"
+        },
+        "priority": {
+            "type": "integer"
+        },
+        "requester_id": {
+            "type": "integer"
+        },
+        "source": {
+            "type": "integer"
+        },
+        "spam": {
+            "type": "boolean"
+        },
+        "status": {
+            "type": "integer"
+        },
+        "subject": {
+            "type": "string"
+        },
+        "support_email": {
+            "type": "null"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "to_emails": {
+            "type": "null"
+        },
+        "updated_at": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

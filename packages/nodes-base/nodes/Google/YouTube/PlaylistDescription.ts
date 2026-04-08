@@ -69,7 +69,7 @@ export const playlistFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -123,7 +123,7 @@ export const playlistFields: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'The language of the text in the playlist resource\'s title and description properties. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The language of the text in the playlist resource\'s title and description properties. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'On Behalf Of Content Owner Channel',
@@ -208,7 +208,7 @@ export const playlistFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -255,7 +255,7 @@ export const playlistFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -357,7 +357,7 @@ export const playlistFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -388,7 +388,7 @@ export const playlistFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -468,7 +468,7 @@ export const playlistFields: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'The language of the text in the playlist resource\'s title and description properties. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The language of the text in the playlist resource\'s title and description properties. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Description',

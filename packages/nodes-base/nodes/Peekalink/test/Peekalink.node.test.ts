@@ -1,9 +1,10 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import { NodeConnectionTypes, type WorkflowTestData } from 'n8n-workflow';
+
 import { apiUrl } from '../Peekalink.node';
-import type { WorkflowTestData } from '@test/nodes/types';
-import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
-import * as Helpers from '@test/nodes/Helpers';
 
 describe('Peekalink Node', () => {
+	const testHarness = new NodeTestHarness();
 	const exampleComPreview = {
 		url: 'https://example.com/',
 		domain: 'example.com',
@@ -44,7 +45,10 @@ describe('Peekalink Node', () => {
 							typeVersion: 1,
 							position: [960, 380],
 							credentials: {
-								peekalinkApi: 'token',
+								peekalinkApi: {
+									id: '1',
+									name: 'peekalink',
+								},
 							},
 						},
 					],
@@ -54,7 +58,7 @@ describe('Peekalink Node', () => {
 								[
 									{
 										node: 'Peekalink',
-										type: 'main',
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 								],
@@ -64,7 +68,6 @@ describe('Peekalink Node', () => {
 				},
 			},
 			output: {
-				nodeExecutionOrder: ['Start'],
 				nodeData: {
 					Peekalink: [
 						[
@@ -113,7 +116,10 @@ describe('Peekalink Node', () => {
 							typeVersion: 1,
 							position: [960, 380],
 							credentials: {
-								peekalinkApi: 'token',
+								peekalinkApi: {
+									id: '1',
+									name: 'peekalink',
+								},
 							},
 						},
 					],
@@ -123,7 +129,7 @@ describe('Peekalink Node', () => {
 								[
 									{
 										node: 'Peekalink',
-										type: 'main',
+										type: NodeConnectionTypes.Main,
 										index: 0,
 									},
 								],
@@ -133,7 +139,6 @@ describe('Peekalink Node', () => {
 				},
 			},
 			output: {
-				nodeExecutionOrder: ['Start'],
 				nodeData: {
 					Peekalink: [
 						[
@@ -158,14 +163,7 @@ describe('Peekalink Node', () => {
 		},
 	];
 
-	const nodeTypes = Helpers.setup(tests);
-
-	test.each(tests)('$description', async (testData) => {
-		const { result } = await executeWorkflow(testData, nodeTypes);
-		const resultNodeData = Helpers.getResultNodeData(result, testData);
-		resultNodeData.forEach(({ nodeName, resultData }) =>
-			expect(resultData).toEqual(testData.output.nodeData[nodeName]),
-		);
-		expect(result.finished).toEqual(true);
-	});
+	for (const testData of tests) {
+		testHarness.setupTest(testData);
+	}
 });

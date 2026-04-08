@@ -1,6 +1,7 @@
 import type { IDataObject, ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
-import { getSubfolders, microsoftApiRequest } from '../transport';
+
 import { encodeOutlookId } from '../helpers/utils';
+import { getSubfolders, microsoftApiRequest } from '../transport';
 
 async function search(
 	this: ILoadOptionsFunctions,

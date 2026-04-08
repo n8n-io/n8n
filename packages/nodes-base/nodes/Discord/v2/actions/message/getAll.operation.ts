@@ -4,6 +4,8 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+
+import { returnAllOrLimit } from '../../../../../utils/descriptions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import {
 	createSimplifyFunction,
@@ -13,7 +15,6 @@ import {
 } from '../../helpers/utils';
 import { discordApiRequest } from '../../transport';
 import { channelRLC, simplifyBoolean } from '../common.description';
-import { returnAllOrLimit } from '../../../../../utils/descriptions';
 
 const properties: INodeProperties[] = [
 	channelRLC,
@@ -22,7 +23,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [simplifyBoolean],
 	},

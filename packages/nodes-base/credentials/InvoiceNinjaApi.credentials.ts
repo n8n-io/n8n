@@ -11,7 +11,7 @@ export class InvoiceNinjaApi implements ICredentialType {
 
 	displayName = 'Invoice Ninja API';
 
-	documentationUrl = 'invoiceNinja';
+	documentationUrl = 'invoiceninja';
 
 	properties: INodeProperties[] = [
 		{

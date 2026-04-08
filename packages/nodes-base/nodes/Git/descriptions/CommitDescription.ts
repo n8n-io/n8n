@@ -22,9 +22,18 @@ export const commitFields: INodeProperties[] = [
 				operation: ['commit'],
 			},
 		},
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
+			{
+				displayName: 'Branch',
+				name: 'branch',
+				type: 'string',
+				default: '',
+				placeholder: 'main',
+				description:
+					'The branch to switch to before committing. If empty or not set, will commit to current branch.',
+			},
 			{
 				displayName: 'Paths to Add',
 				name: 'pathsToAdd',

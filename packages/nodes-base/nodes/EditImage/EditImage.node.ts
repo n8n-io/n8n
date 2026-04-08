@@ -1,6 +1,8 @@
-import { parse as pathParse } from 'path';
 import { writeFile as fsWriteFile } from 'fs/promises';
+import getSystemFonts from 'get-system-fonts';
+import gm from 'gm';
 import type {
+	IBinaryData,
 	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -10,10 +12,17 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
-import gm from 'gm';
+import { NodeOperationError, NodeConnectionTypes, deepCopy } from 'n8n-workflow';
+import { parse as pathParse } from 'path';
 import { file } from 'tmp-promise';
-import getSystemFonts from 'get-system-fonts';
+
+type EditImageNodeOptions = {
+	destinationKey?: string;
+	font?: string;
+	fileName?: string;
+	format?: string;
+	quality?: number;
+};
 
 const nodeOperations: INodePropertyOptions[] = [
 	{
@@ -757,6 +766,7 @@ export class EditImage implements INodeType {
 		displayName: 'Edit Image',
 		name: 'editImage',
 		icon: 'fa:image',
+		iconColor: 'purple',
 		group: ['transform'],
 		version: 1,
 		description: 'Edits an image like blur, resize or adding border and text',
@@ -764,8 +774,8 @@ export class EditImage implements INodeType {
 			name: 'Edit Image',
 			color: '#553399',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Operation',
@@ -848,9 +858,9 @@ export class EditImage implements INodeType {
 								typeOptions: {
 									loadOptionsMethod: 'getFonts',
 								},
-								default: 'default',
+								default: '',
 								description:
-									'The font to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+									'The font to use. Defaults to Arial. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 						],
 					},
@@ -862,7 +872,7 @@ export class EditImage implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					hide: {
@@ -870,6 +880,14 @@ export class EditImage implements INodeType {
 					},
 				},
 				options: [
+					{
+						displayName: 'Destination Output Field',
+						name: 'destinationKey',
+						type: 'string',
+						default: 'data',
+						placeholder: 'e.g image',
+						description: 'The name of the output field that will contain the file data',
+					},
 					{
 						displayName: 'File Name',
 						name: 'fileName',
@@ -889,9 +907,9 @@ export class EditImage implements INodeType {
 						typeOptions: {
 							loadOptionsMethod: 'getFonts',
 						},
-						default: 'default',
+						default: '',
 						description:
-							'The font to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'The font to use. Defaults to Arial. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Format',
@@ -950,7 +968,6 @@ export class EditImage implements INodeType {
 	methods = {
 		loadOptions: {
 			async getFonts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				// @ts-ignore
 				const files = await getSystemFonts();
 				const returnData: INodePropertyOptions[] = [];
 
@@ -976,11 +993,6 @@ export class EditImage implements INodeType {
 					return 0;
 				});
 
-				returnData.unshift({
-					name: 'default',
-					value: 'default',
-				});
-
 				return returnData;
 			},
 		},
@@ -998,9 +1010,16 @@ export class EditImage implements INodeType {
 				item = items[itemIndex];
 
 				const operation = this.getNodeParameter('operation', itemIndex);
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex);
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as
+					| string
+					| IBinaryData;
 
-				const options = this.getNodeParameter('options', itemIndex, {});
+				const options = this.getNodeParameter('options', itemIndex, {}) as EditImageNodeOptions;
+
+				let binaryPropertyName = options.destinationKey;
+				if (!binaryPropertyName) {
+					binaryPropertyName = typeof dataPropertyName === 'string' ? dataPropertyName : 'data';
+				}
 
 				const cleanupFunctions: Array<() => void> = [];
 
@@ -1233,15 +1252,23 @@ export class EditImage implements INodeType {
 						// Combine the lines to a single string
 						const renderText = lines.join('\n');
 
-						const font = options.font || operationData.font;
+						let font = (options.font || operationData.font) as string | undefined;
+						if (!font) {
+							const fonts = await getSystemFonts();
+							font = fonts.find((_font) => _font.includes('Arial.'));
+						}
 
-						if (font && font !== 'default') {
-							gmInstance = gmInstance!.font(font as string);
+						if (!font) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Default font not found. Select a font from the options.',
+							);
 						}
 
 						gmInstance = gmInstance!
 							.fill(operationData.fontColor as string)
 							.fontSize(operationData.fontSize as number)
+							.font(font)
 							.drawText(
 								operationData.positionX as number,
 								operationData.positionY as number,
@@ -1258,13 +1285,13 @@ export class EditImage implements INodeType {
 					// but the incoming data does not get changed.
 					Object.assign(newItem.binary, item.binary);
 					// Make a deep copy of the binary data we change
-					if (newItem.binary[dataPropertyName]) {
-						newItem.binary[dataPropertyName] = deepCopy(newItem.binary[dataPropertyName]);
+					if (newItem.binary[binaryPropertyName]) {
+						newItem.binary[binaryPropertyName] = deepCopy(newItem.binary[binaryPropertyName]);
 					}
 				}
 
-				if (newItem.binary![dataPropertyName] === undefined) {
-					newItem.binary![dataPropertyName] = {
+				if (newItem.binary![binaryPropertyName] === undefined) {
+					newItem.binary![binaryPropertyName] = {
 						data: '',
 						mimeType: '',
 					};
@@ -1276,17 +1303,17 @@ export class EditImage implements INodeType {
 
 				if (options.format !== undefined) {
 					gmInstance = gmInstance!.setFormat(options.format as string);
-					newItem.binary![dataPropertyName].fileExtension = options.format as string;
-					newItem.binary![dataPropertyName].mimeType = `image/${options.format}`;
-					const fileName = newItem.binary![dataPropertyName].fileName;
+					newItem.binary![binaryPropertyName].fileExtension = options.format as string;
+					newItem.binary![binaryPropertyName].mimeType = `image/${options.format}`;
+					const fileName = newItem.binary![binaryPropertyName].fileName;
 					if (fileName?.includes('.')) {
-						newItem.binary![dataPropertyName].fileName =
+						newItem.binary![binaryPropertyName].fileName =
 							fileName.split('.').slice(0, -1).join('.') + '.' + options.format;
 					}
 				}
 
 				if (options.fileName !== undefined) {
-					newItem.binary![dataPropertyName].fileName = options.fileName as string;
+					newItem.binary![binaryPropertyName].fileName = options.fileName as string;
 				}
 
 				returnData.push(
@@ -1299,8 +1326,8 @@ export class EditImage implements INodeType {
 							}
 
 							const binaryData = await this.helpers.prepareBinaryData(Buffer.from(buffer));
-							newItem.binary![dataPropertyName] = {
-								...newItem.binary![dataPropertyName],
+							newItem.binary![binaryPropertyName] = {
+								...newItem.binary![binaryPropertyName],
 								...binaryData,
 							};
 

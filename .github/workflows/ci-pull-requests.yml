@@ -1,69 +1,253 @@
-name: Build, unit test and lint branch
+name: 'CI: Pull Requests (Build, Test, Lint)'
 
-on: [pull_request]
+on:
+  pull_request:
+  merge_group:
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  install:
+  install-and-build:
     name: Install & Build
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
+    env:
+      NODE_OPTIONS: '--max-old-space-size=6144'
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
+      QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
+      QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
+    outputs:
+      ci: ${{ fromJSON(steps.ci-filter.outputs.results).ci == true }}
+      unit: ${{ fromJSON(steps.ci-filter.outputs.results).unit == true }}
+      e2e: ${{ fromJSON(steps.ci-filter.outputs.results).e2e == true }}
+      workflows: ${{ fromJSON(steps.ci-filter.outputs.results).workflows == true }}
+      workflow_scripts: ${{ fromJSON(steps.ci-filter.outputs.results)['workflow-scripts'] == true }}
+      db: ${{ fromJSON(steps.ci-filter.outputs.results).db == true }}
+      design_system: ${{ fromJSON(steps.ci-filter.outputs.results)['design-system'] == true }}
+      performance: ${{ fromJSON(steps.ci-filter.outputs.results).performance == true }}
+      e2e_performance: ${{ fromJSON(steps.ci-filter.outputs.results)['e2e-performance'] == true }}
+      commit_sha: ${{ steps.commit-sha.outputs.sha }}
     steps:
-      - uses: actions/checkout@v4.1.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          repository: n8n-io/n8n
-          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          # Use merge_group SHA when in merge queue, otherwise PR merge ref
+          ref: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || format('refs/pull/{0}/merge', github.event.pull_request.number) }}
 
-      - run: corepack enable
-      - name: Use Node.js 18
-        uses: actions/setup-node@v4.0.1
+      - name: Capture commit SHA for cache consistency
+        id: commit-sha
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Check for relevant changes
+        uses: ./.github/actions/ci-filter
+        id: ci-filter
         with:
-          node-version: 18.x
-          cache: pnpm
+          mode: filter
+          filters: |
+            ci:
+              **
+              !packages/@n8n/task-runner-python/**
+              !.github/**
+            unit:
+              **
+              !packages/@n8n/task-runner-python/**
+              !packages/testing/playwright/**
+              !.github/**
+            e2e:
+              .github/workflows/test-e2e-*.yml
+              .github/scripts/cleanup-ghcr-images.mjs
+              packages/testing/playwright/**
+              packages/testing/containers/**
+            workflows: .github/**
+            workflow-scripts: .github/scripts/**
+            design-system:
+              packages/frontend/@n8n/design-system/**
+              packages/frontend/@n8n/chat/**
+              packages/frontend/@n8n/storybook/**
+              .github/workflows/test-visual-chromatic.yml
+            performance:
+              packages/testing/performance/**
+              packages/workflow/src/**
+              .github/workflows/test-bench-reusable.yml
+            e2e-performance:
+              packages/testing/playwright/tests/performance/**
+              packages/testing/playwright/utils/performance-helper.ts
+              packages/testing/containers/**
+              .github/workflows/test-e2e-performance-reusable.yml
+            db:
+              packages/cli/src/databases/**
+              packages/cli/src/modules/*/database/**
+              packages/cli/src/modules/**/*.entity.ts
+              packages/cli/src/modules/**/*.repository.ts
+              packages/cli/test/integration/**
+              packages/cli/test/migration/**
+              packages/cli/test/shared/db/**
+              packages/@n8n/db/**
+              packages/cli/**/__tests__/**
+              packages/testing/containers/services/postgres.ts
+              .github/workflows/test-db-reusable.yml
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Setup and Build
+        if: fromJSON(steps.ci-filter.outputs.results).ci
+        uses: ./.github/actions/setup-nodejs
 
-      - name: Build
-        run: pnpm build
-
-      - name: Cache build artifacts
-        uses: actions/cache/save@v4.0.0
-        with:
-          path: ./packages/**/dist
-          key: ${{ github.sha }}-base:18-test-lint
+      - name: Run format check
+        if: fromJSON(steps.ci-filter.outputs.results).ci
+        run: pnpm format:check
 
   unit-test:
     name: Unit tests
-    uses: ./.github/workflows/units-tests-reusable.yml
-    needs: install
+    if: needs.install-and-build.outputs.unit == 'true'
+    uses: ./.github/workflows/test-unit-reusable.yml
+    needs: install-and-build
     with:
-      ref: refs/pull/${{ github.event.pull_request.number }}/merge
-      cacheKey: ${{ github.sha }}-base:18-test-lint
+      ref: ${{ needs.install-and-build.outputs.commit_sha }}
+      collectCoverage: true
+    secrets: inherit
+
+  typecheck:
+    name: Typecheck
+    if: needs.install-and-build.outputs.ci == 'true'
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    needs: install-and-build
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ needs.install-and-build.outputs.commit_sha }}
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm typecheck
 
   lint:
-    name: Lint changes
-    runs-on: ubuntu-latest
-    needs: install
+    name: Lint
+    if: needs.install-and-build.outputs.ci == 'true'
+    uses: ./.github/workflows/test-linting-reusable.yml
+    needs: install-and-build
+    with:
+      ref: ${{ needs.install-and-build.outputs.commit_sha }}
+
+  check-packaging:
+    name: Check packaging
+    if: needs.install-and-build.outputs.ci == 'true'
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    needs: install-and-build
     steps:
-      - uses: actions/checkout@v4.1.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          repository: n8n-io/n8n
-          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          ref: ${{ needs.install-and-build.outputs.commit_sha }}
 
-      - run: corepack enable
-      - name: Use Node.js 18
-        uses: actions/setup-node@v4.0.1
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Check packaging
+        shell: bash
+        run: |
+          pnpm -r pack --dry-run
+
+  e2e-tests:
+    name: E2E Tests
+    needs: install-and-build
+    if: (needs.install-and-build.outputs.ci == 'true' || needs.install-and-build.outputs.e2e == 'true') && github.repository == 'n8n-io/n8n' && github.event_name != 'merge_group'
+    uses: ./.github/workflows/test-e2e-ci-reusable.yml
+    with:
+      branch: ${{ needs.install-and-build.outputs.commit_sha }}
+      playwright-only: ${{ needs.install-and-build.outputs.e2e == 'true' && needs.install-and-build.outputs.unit == 'false' }}
+    secrets: inherit
+
+  db-tests:
+    name: DB Tests
+    needs: install-and-build
+    if: needs.install-and-build.outputs.db == 'true'
+    uses: ./.github/workflows/test-db-reusable.yml
+    with:
+      ref: ${{ needs.install-and-build.outputs.commit_sha }}
+
+  performance:
+    name: Performance
+    needs: install-and-build
+    if: needs.install-and-build.outputs.performance == 'true' && github.event_name != 'merge_group'
+    uses: ./.github/workflows/test-bench-reusable.yml
+    with:
+      ref: ${{ needs.install-and-build.outputs.commit_sha }}
+
+  e2e-performance:
+    name: E2E Performance
+    needs: install-and-build
+    if: >-
+      (needs.install-and-build.outputs.ci == 'true' || needs.install-and-build.outputs.e2e_performance == 'true') &&
+      github.event_name == 'pull_request' &&
+      github.repository == 'n8n-io/n8n'
+    uses: ./.github/workflows/test-e2e-performance-reusable.yml
+    secrets: inherit
+
+  security-checks:
+    name: Security Checks
+    needs: install-and-build
+    if: needs.install-and-build.outputs.workflows == 'true'
+    uses: ./.github/workflows/sec-ci-reusable.yml
+    with:
+      ref: ${{ needs.install-and-build.outputs.commit_sha }}
+    secrets: inherit
+
+  workflow-scripts:
+    name: Workflow scripts
+    needs: install-and-build
+    if: needs.install-and-build.outputs.workflow_scripts == 'true'
+    uses: ./.github/workflows/test-workflow-scripts-reusable.yml
+    with:
+      ref: ${{ needs.install-and-build.outputs.commit_sha }}
+    secrets: inherit
+
+  chromatic:
+    name: Chromatic
+    needs: install-and-build
+    if: needs.install-and-build.outputs.design_system == 'true' && github.event_name == 'pull_request' && github.repository == 'n8n-io/n8n'
+    uses: ./.github/workflows/test-visual-chromatic.yml
+    with:
+      ref: ${{ needs.install-and-build.outputs.commit_sha }}
+    secrets: inherit
+
+  # This job is required by GitHub branch protection rules.
+  # PRs cannot be merged unless this job passes.
+  required-checks:
+    name: Required Checks
+    needs:
+      [
+        install-and-build,
+        unit-test,
+        typecheck,
+        lint,
+        check-packaging,
+        e2e-tests,
+        db-tests,
+        performance,
+        security-checks,
+        workflow-scripts,
+        chromatic,
+      ]
+    if: always()
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          node-version: 18.x
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Restore cached build artifacts
-        uses: actions/cache/restore@v4.0.0
+          sparse-checkout: .github/actions/ci-filter
+          sparse-checkout-cone-mode: false
+      - name: Validate required checks
+        uses: ./.github/actions/ci-filter
         with:
-          path: ./packages/**/dist
-          key: ${{ github.sha }}-base:18-test-lint
-
-      - name: Lint
-        run: pnpm lint
+          mode: validate
+          job-results: ${{ toJSON(needs) }}
+          
+  # Posts a QA metrics comparison comment on the PR.
+  # Runs after all checks so any job can emit metrics before this reports.
+  post-qa-metrics-comment:
+    name: QA Metrics
+    needs: [required-checks, e2e-performance]
+    if: always()
+    uses: ./.github/workflows/util-qa-metrics-comment-reusable.yml
+    with:
+      metrics: memory-heap-used-baseline,docker-image-size-n8n,docker-image-size-runners
+    secrets: inherit

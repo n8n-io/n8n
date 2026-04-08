@@ -10,7 +10,7 @@ export class WhatsAppApi implements ICredentialType {
 
 	displayName = 'WhatsApp API';
 
-	documentationUrl = 'whatsApp';
+	documentationUrl = 'whatsapp';
 
 	properties: INodeProperties[] = [
 		{
@@ -22,7 +22,7 @@ export class WhatsAppApi implements ICredentialType {
 			required: true,
 		},
 		{
-			displayName: 'Bussiness Account ID',
+			displayName: 'Business Account ID',
 			type: 'string',
 			name: 'businessAccountId',
 			default: '',

@@ -59,6 +59,7 @@ export const query = {
 				success
 					issue {
 						id,
+						identifier,
 						title,
 						priority
 						archivedAt
@@ -96,6 +97,7 @@ export const query = {
 		return `query Issue($issueId: String!) {
 			issue(id: $issueId) {
 				id,
+				identifier,
 				title,
 				priority,
 				archivedAt,
@@ -135,6 +137,7 @@ export const query = {
 					issues (first: $first, after: $after){
 						nodes {
 						id,
+						identifier,
 						title,
 						priority
 						archivedAt
@@ -188,6 +191,7 @@ export const query = {
 			success
 				issue {
 					id,
+					identifier,
 					title,
 					priority
 					archivedAt
@@ -212,6 +216,23 @@ export const query = {
 					}
 				}
 			}
+		}`;
+	},
+	addComment() {
+		return `mutation CommentCreate ($issueId: String!, $body: String!, $parentId: String) {
+			commentCreate(input: {issueId: $issueId, body: $body, parentId: $parentId}) {
+				success
+				comment {
+					id
+				}
+			}
+		}`;
+	},
+	addIssueLink() {
+		return `mutation AttachmentLinkURL($url: String!, $issueId: String!) {
+  		attachmentLinkURL(url: $url, issueId: $issueId) {
+    		success
+  		}
 		}`;
 	},
 };

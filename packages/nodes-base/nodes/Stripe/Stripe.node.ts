@@ -1,3 +1,4 @@
+import isEmpty from 'lodash/isEmpty';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -7,18 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
-
-import isEmpty from 'lodash/isEmpty';
-
-import {
-	adjustChargeFields,
-	adjustCustomerFields,
-	adjustMetadata,
-	handleListing,
-	loadResource,
-	stripeApiRequest,
-} from './helpers';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import {
 	balanceOperations,
@@ -30,11 +20,21 @@ import {
 	customerCardOperations,
 	customerFields,
 	customerOperations,
+	meterEventFields,
+	meterEventOperations,
 	sourceFields,
 	sourceOperations,
 	tokenFields,
 	tokenOperations,
 } from './descriptions';
+import {
+	adjustChargeFields,
+	adjustCustomerFields,
+	adjustMetadata,
+	handleListing,
+	loadResource,
+	stripeApiRequest,
+} from './helpers';
 
 export class Stripe implements INodeType {
 	description: INodeTypeDescription = {
@@ -48,8 +48,9 @@ export class Stripe implements INodeType {
 		defaults: {
 			name: 'Stripe',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'stripeApi',
@@ -84,6 +85,10 @@ export class Stripe implements INodeType {
 						value: 'customerCard',
 					},
 					{
+						name: 'Meter Event',
+						value: 'meterEvent',
+					},
+					{
 						name: 'Source',
 						value: 'source',
 					},
@@ -103,6 +108,8 @@ export class Stripe implements INodeType {
 			...couponFields,
 			...customerOperations,
 			...customerFields,
+			...meterEventOperations,
+			...meterEventFields,
 			...sourceOperations,
 			...sourceFields,
 			...tokenOperations,
@@ -461,6 +468,68 @@ export class Stripe implements INodeType {
 						};
 
 						responseData = await stripeApiRequest.call(this, 'POST', '/tokens', body, {});
+					}
+				} else if (resource === 'meterEvent') {
+					// *********************************************************************
+					//                          meter event
+					// *********************************************************************
+
+					// https://stripe.com/docs/api/billing/meter-event
+
+					if (operation === 'create') {
+						// ----------------------------------
+						//       meterEvent: create
+						// ----------------------------------
+
+						const eventName = this.getNodeParameter('eventName', i);
+						const customerId = this.getNodeParameter('customerId', i);
+						const value = this.getNodeParameter('value', i);
+
+						const payload: IDataObject = {
+							stripe_customer_id: customerId,
+							value,
+						};
+
+						const body: IDataObject = {
+							event_name: eventName,
+							payload,
+						};
+
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+
+						if (!isEmpty(additionalFields)) {
+							if (additionalFields.identifier) {
+								body.identifier = additionalFields.identifier;
+							}
+
+							if (additionalFields.timestamp) {
+								// Convert ISO date string to Unix timestamp
+								const timestamp = new Date(additionalFields.timestamp as string).getTime() / 1000;
+								body.timestamp = Math.floor(timestamp);
+							}
+
+							if (additionalFields.customPayload) {
+								const customPayloadData = additionalFields.customPayload as {
+									properties: Array<{ key: string; value: string }>;
+								};
+								if (customPayloadData.properties && customPayloadData.properties.length > 0) {
+									customPayloadData.properties.forEach((prop) => {
+										// Guard against overwriting required fields
+										if (prop.key !== 'stripe_customer_id' && prop.key !== 'value') {
+											payload[prop.key] = prop.value;
+										}
+									});
+								}
+							}
+						}
+
+						responseData = await stripeApiRequest.call(
+							this,
+							'POST',
+							'/billing/meter_events',
+							body,
+							{},
+						);
 					}
 				}
 			} catch (error) {
