@@ -102,7 +102,7 @@ export async function fromSchema(
 	await applyTools(agent, schema.tools, handlerExecutor, options.resolveTool);
 	await applyProviderTools(agent, schema.providerTools, handlerExecutor);
 	applyConfig(agent, schema.config);
-	applyMemory(agent, schema);
+	await applyMemory(agent, schema, options);
 	applyGuardrails(agent, schema.guardrails);
 	applyEvals(agent, schema.evaluations, handlerExecutor);
 	await applyStructuredOutput(agent, schema.config.structuredOutput, handlerExecutor);
@@ -210,7 +210,11 @@ function applyConfig(agent: AgentBuilder, config: AgentSchema['config']): void {
 	}
 }
 
-function applyMemory(agent: AgentBuilder, schema: AgentSchema): void {
+async function applyMemory(
+	agent: AgentBuilder,
+	schema: AgentSchema,
+	options: FromSchemaOptions,
+): Promise<void> {
 	if (schema.memory !== null) {
 		const memory = new Memory();
 
