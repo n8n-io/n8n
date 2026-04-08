@@ -1,14 +1,24 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
-import { N8nButton, N8nCallout, N8nText } from '@n8n/design-system';
+import { ref, computed, watch, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
+import { N8nButton, N8nCallout, N8nInput, N8nSelect, N8nText } from '@n8n/design-system';
+import N8nOption from '@n8n/design-system/components/N8nOption';
 import { useI18n } from '@n8n/i18n';
-
-const locale = useI18n();
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { listAgentCredentials } from '../composables/useAgentApi';
+import { useModelCatalog } from '../composables/useModelCatalog';
+import type { ModelInfo } from '../composables/useAgentApi';
 import type { AgentSchema } from '../types';
-import AgentOverviewPanel from './AgentOverviewPanel.vue';
 import AgentToolsPanel from './AgentToolsPanel.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
 import AgentCodeEditor from './AgentCodeEditor.vue';
+
+const locale = useI18n();
+const route = useRoute();
+const rootStore = useRootStore();
+
+const projectId = computed(() => route.params.projectId as string);
+const agentId = computed(() => route.params.agentId as string);
 
 const props = defineProps<{
 	schema: AgentSchema | null;
@@ -23,7 +33,85 @@ const emit = defineEmits<{
 	cancel: [];
 }>();
 
-// Dirty state tracking
+// --- Model & credential state ---
+const { ensureLoaded: ensureCatalogLoaded, getModelsForProvider } = useModelCatalog();
+const credentials = ref<Array<{ id: string; name: string; type: string }>>([]);
+const credentialsLoading = ref(false);
+
+const provider = ref(props.schema?.model.provider ?? '');
+const modelName = ref(props.schema?.model.name ?? '');
+const credential = ref(props.schema?.credential ?? '');
+const instructions = ref(props.schema?.instructions ?? '');
+
+const PROVIDERS = [
+	'anthropic',
+	'openai',
+	'google',
+	'xai',
+	'groq',
+	'deepseek',
+	'mistral',
+	'openrouter',
+	'cohere',
+	'ollama',
+] as const;
+
+const availableModels = computed<ModelInfo[]>(() => getModelsForProvider(provider.value || ''));
+
+// Sync local state when schema prop changes externally
+watch(
+	() => props.schema,
+	(schema) => {
+		if (!schema) return;
+		provider.value = schema.model.provider ?? '';
+		modelName.value = schema.model.name ?? '';
+		credential.value = schema.credential ?? '';
+		instructions.value = schema.instructions ?? '';
+	},
+	{ deep: true, immediate: true },
+);
+
+function onModelSelect(value: string) {
+	modelName.value = value;
+	emitSchemaUpdate({
+		model: { provider: provider.value || '', name: value },
+	});
+}
+
+function onProviderChange(value: string) {
+	provider.value = value;
+	emitSchemaUpdate({
+		model: { provider: value, name: modelName.value || '' },
+	});
+}
+
+function onCredentialChange(value: string) {
+	credential.value = value;
+	emitSchemaUpdate({ credential: value });
+}
+
+function onInstructionsChange(value: string) {
+	instructions.value = value;
+	emitSchemaUpdate({ instructions: value });
+}
+
+async function loadCredentials() {
+	if (!projectId.value || !agentId.value) return;
+	credentialsLoading.value = true;
+	try {
+		credentials.value = await listAgentCredentials(
+			rootStore.restApiContext,
+			projectId.value,
+			agentId.value,
+		);
+	} catch {
+		credentials.value = [];
+	} finally {
+		credentialsLoading.value = false;
+	}
+}
+
+// --- Dirty state tracking ---
 const originalSchemaJson = ref('');
 const isDirty = ref(false);
 
@@ -38,9 +126,8 @@ watch(
 	{ immediate: true },
 );
 
-function onSchemaUpdate(changes: Partial<AgentSchema>) {
+function emitSchemaUpdate(changes: Partial<AgentSchema>) {
 	emit('update:schema', changes);
-	// Check dirty state after the parent applies the change
 	setTimeout(() => {
 		if (props.schema) {
 			isDirty.value = JSON.stringify(props.schema) !== originalSchemaJson.value;
@@ -61,9 +148,8 @@ function onCancel() {
 	isDirty.value = false;
 }
 
-// Collapsible section state
+// --- Collapsible sections ---
 const expandedSections = ref<Record<string, boolean>>({
-	model: true,
 	triggers: false,
 	tools: false,
 	advanced: false,
@@ -73,6 +159,13 @@ const expandedSections = ref<Record<string, boolean>>({
 function toggleSection(section: string) {
 	expandedSections.value[section] = !expandedSections.value[section];
 }
+
+onMounted(() => {
+	void loadCredentials();
+	if (projectId.value) {
+		void ensureCatalogLoaded(projectId.value);
+	}
+});
 </script>
 
 <template>
@@ -102,12 +195,70 @@ function toggleSection(section: string) {
 		</N8nCallout>
 
 		<div :class="$style.body">
-			<!-- Model & Instructions (always visible) -->
-			<div :class="$style.section">
-				<AgentOverviewPanel :schema="schema" @update:schema="onSchemaUpdate" />
+			<!-- Model section (always visible) -->
+			<div :class="$style.staticSection">
+				<N8nText tag="span" bold size="small">{{
+					locale.baseText('agents.settings.model')
+				}}</N8nText>
+
+				<!-- Combined model selector -->
+				<N8nSelect
+					:model-value="modelName"
+					filterable
+					:placeholder="locale.baseText('agents.settings.model.selectModel')"
+					size="medium"
+					data-testid="agent-model-select"
+					@update:model-value="onModelSelect"
+				>
+					<N8nOption v-for="m in availableModels" :key="m.id" :value="m.id" :label="m.name" />
+				</N8nSelect>
+
+				<!-- Provider (smaller, secondary) -->
+				<div :class="$style.providerRow">
+					<N8nSelect
+						:model-value="provider"
+						:placeholder="locale.baseText('agents.settings.model.selectProvider')"
+						size="small"
+						data-testid="agent-provider-select"
+						@update:model-value="onProviderChange"
+					>
+						<N8nOption v-for="p in PROVIDERS" :key="p" :value="p" :label="p" />
+					</N8nSelect>
+
+					<N8nSelect
+						:model-value="credential"
+						:placeholder="locale.baseText('agents.settings.model.selectCredential')"
+						:loading="credentialsLoading"
+						size="small"
+						data-testid="agent-credential-select"
+						@update:model-value="onCredentialChange"
+					>
+						<N8nOption
+							v-for="cred in credentials"
+							:key="cred.id"
+							:value="cred.id"
+							:label="cred.name"
+						/>
+					</N8nSelect>
+				</div>
 			</div>
 
-			<!-- Triggers -->
+			<!-- Instructions section (always visible) -->
+			<div :class="$style.staticSection">
+				<N8nText tag="span" bold size="small">{{
+					locale.baseText('agents.settings.instructions')
+				}}</N8nText>
+				<N8nInput
+					:model-value="instructions"
+					type="textarea"
+					:rows="5"
+					:placeholder="locale.baseText('agents.settings.instructions.placeholder')"
+					data-testid="agent-instructions-input"
+					@update:model-value="onInstructionsChange"
+				/>
+			</div>
+
+			<!-- Triggers (collapsible) -->
 			<div :class="$style.section">
 				<button :class="$style.sectionHeader" @click="toggleSection('triggers')">
 					<N8nText tag="span" bold size="small">{{
@@ -122,7 +273,7 @@ function toggleSection(section: string) {
 				</div>
 			</div>
 
-			<!-- Tools -->
+			<!-- Tools (collapsible) -->
 			<div :class="$style.section">
 				<button :class="$style.sectionHeader" @click="toggleSection('tools')">
 					<N8nText tag="span" bold size="small">{{
@@ -131,11 +282,11 @@ function toggleSection(section: string) {
 					<span :class="$style.chevron">{{ expandedSections.tools ? '−' : '+' }}</span>
 				</button>
 				<div v-if="expandedSections.tools" :class="$style.sectionContent">
-					<AgentToolsPanel :schema="schema" @update:schema="onSchemaUpdate" />
+					<AgentToolsPanel :schema="schema" @update:schema="emitSchemaUpdate" />
 				</div>
 			</div>
 
-			<!-- Advanced -->
+			<!-- Advanced (collapsible) -->
 			<div :class="$style.section">
 				<button :class="$style.sectionHeader" @click="toggleSection('advanced')">
 					<N8nText tag="span" bold size="small">{{
@@ -144,7 +295,7 @@ function toggleSection(section: string) {
 					<span :class="$style.chevron">{{ expandedSections.advanced ? '−' : '+' }}</span>
 				</button>
 				<div v-if="expandedSections.advanced" :class="$style.sectionContent">
-					<AgentMemoryPanel :schema="schema" @update:schema="onSchemaUpdate" />
+					<AgentMemoryPanel :schema="schema" @update:schema="emitSchemaUpdate" />
 				</div>
 			</div>
 
@@ -190,14 +341,26 @@ function toggleSection(section: string) {
 }
 
 .unsavedBanner {
-	margin: var(--spacing--2xs) var(--spacing--sm) 0;
 	flex-shrink: 0;
 }
 
 .body {
 	flex: 1;
 	overflow-y: auto;
-	padding: var(--spacing--xs) 0;
+}
+
+.staticSection {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--sm);
+	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
+}
+
+.providerRow {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: var(--spacing--2xs);
 }
 
 .section {

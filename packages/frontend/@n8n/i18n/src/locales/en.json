@@ -5377,5 +5377,11 @@
 	"agents.settings.triggers.placeholder": "Trigger configuration will be available soon.",
 	"agents.settings.tools": "Tools",
 	"agents.settings.advanced": "Advanced",
-	"agents.settings.code": "Code"
+	"agents.settings.code": "Code",
+	"agents.settings.model": "Model",
+	"agents.settings.model.selectModel": "Select model...",
+	"agents.settings.model.selectProvider": "Provider...",
+	"agents.settings.model.selectCredential": "Select credential...",
+	"agents.settings.instructions": "Instructions",
+	"agents.settings.instructions.placeholder": "Enter system instructions for this agent..."
 }
