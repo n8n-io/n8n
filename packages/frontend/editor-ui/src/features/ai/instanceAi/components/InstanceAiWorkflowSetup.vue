@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { getWorkflow as fetchWorkflowApi } from '@/app/api/workflows';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -61,6 +62,7 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const telemetry = useTelemetry();
 const store = useInstanceAiStore();
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
@@ -468,8 +470,7 @@ function wrappedGoToPrev() {
 watch(
 	() => currentCard.value && isCardComplete(currentCard.value),
 	(complete, prevComplete) => {
-		// Only auto-advance on a false->true transition (credential was just selected)
-		// Skip if user just navigated to a card that was already complete
+		// Auto-advance only when not manually navigating
 		if (!complete || prevComplete || userNavigated.value) {
 			userNavigated.value = false;
 			return;
@@ -884,9 +885,35 @@ onUnmounted(() => {
 	cancelApplyWait?.();
 });
 
+function trackSetupInput() {
+	const tc = store.findToolCallByRequestId(props.requestId);
+	const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
+	const provided: Array<{ label: string; options: string[]; option_chosen: string }> = [];
+	const skipped: Array<{ label: string; options: string[] }> = [];
+	for (const card of cards.value) {
+		const name = card.nodes[0]?.node.name ?? card.id;
+		if (isCardComplete(card)) {
+			provided.push({ label: name, options: [], option_chosen: 'configured' });
+		} else {
+			skipped.push({ label: name, options: [] });
+		}
+	}
+	telemetry.track('User finished providing input', {
+		thread_id: store.currentThreadId,
+		input_thread_id: inputThreadId,
+		instance_id: useRootStore().instanceId,
+		type: 'setup',
+		provided_inputs: provided,
+		skipped_inputs: skipped,
+		num_tasks: cards.value.length,
+	});
+}
+
 async function handleApply() {
 	const nodeCredentials = buildNodeCredentials();
 	const nodeParameters = buildNodeParameters();
+
+	trackSetupInput();
 
 	isApplying.value = true;
 	applyError.value = null;
@@ -962,6 +989,7 @@ async function handleLater() {
 	}
 
 	// No cards completed at all (or confirm mode) — defer the whole setup
+	trackSetupInput();
 	isSubmitted.value = true;
 	isDeferred.value = true;
 

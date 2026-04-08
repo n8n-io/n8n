@@ -6,6 +6,7 @@ import { CredentialDocumentationUrlRule } from './credential-documentation-url.j
 import { CredentialPasswordFieldRule } from './credential-password-field.js';
 import { CredentialTestRequiredRule } from './credential-test-required.js';
 import { IconValidationRule } from './icon-validation.js';
+import { MissingPairedItemRule } from './missing-paired-item.js';
 import { NoCredentialReuseRule } from './no-credential-reuse.js';
 import { NoDeprecatedWorkflowFunctionsRule } from './no-deprecated-workflow-functions.js';
 import { NoHttpRequestWithManualAuthRule } from './no-http-request-with-manual-auth.js';
@@ -36,4 +37,5 @@ export const rules = {
 	'node-class-description-icon-missing': NodeClassDescriptionIconMissingRule,
 	'cred-class-field-icon-missing': CredClassFieldIconMissingRule,
 	'node-connection-type-literal': NodeConnectionTypeLiteralRule,
+	'missing-paired-item': MissingPairedItemRule,
 } satisfies Record<string, AnyRuleModule>;
