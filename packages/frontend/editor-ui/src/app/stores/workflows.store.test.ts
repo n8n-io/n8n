@@ -2256,6 +2256,7 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should use the first webhook when node has multiple webhooks', async () => {
+			workflowsStore.workflow.id = 'test-workflow-id';
 			const testNode = createTestNode({
 				id: 'node-1',
 				name: 'Webhook Node',

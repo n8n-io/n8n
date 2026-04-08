@@ -81,7 +81,8 @@ export function useTriggerExecution(
 
 	const hasUpstreamIssues = computed(() => {
 		if (!nodeValue.value) return false;
-		const parentNames = workflowDocumentStore.value?.getParentNodes(nodeValue.value.name, 'ALL');
+		const parentNames =
+			workflowDocumentStore.value?.getParentNodes(nodeValue.value.name, 'ALL') ?? [];
 		return parentNames.some((name) => {
 			const parentNode = workflowDocumentStore.value?.getNodeByName(name);
 			return parentNode?.issues?.parameters || parentNode?.issues?.credentials;
