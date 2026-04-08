@@ -153,7 +153,7 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 	return {
 		files,
 		truncated,
-		totalCount: files.length,
+		returnedCount: files.length,
 	};
 }
 
@@ -203,7 +203,7 @@ function blockedResult(action: Input['action']) {
 	const base = { denied: true, reason: 'Action blocked by admin' } as const;
 	switch (action) {
 		case 'list':
-			return { files: [], truncated: false, totalCount: 0, ...base };
+			return { files: [], truncated: false, returnedCount: 0, ...base };
 		case 'read':
 			return { path: '', content: '', truncated: false, totalLines: 0, ...base };
 		case 'search':
@@ -217,7 +217,7 @@ function deniedResult(action: Input['action']) {
 	const base = { denied: true, reason: 'User denied the action' } as const;
 	switch (action) {
 		case 'list':
-			return { files: [], truncated: false, totalCount: 0, ...base };
+			return { files: [], truncated: false, returnedCount: 0, ...base };
 		case 'read':
 			return { path: '', content: '', truncated: false, totalLines: 0, ...base };
 		case 'search':
@@ -230,7 +230,7 @@ function deniedResult(action: Input['action']) {
 function emptyResult(action: Input['action']) {
 	switch (action) {
 		case 'list':
-			return { files: [], truncated: false, totalCount: 0 };
+			return { files: [], truncated: false, returnedCount: 0 };
 		case 'read':
 			return { path: '', content: '', truncated: false, totalLines: 0 };
 		case 'search':

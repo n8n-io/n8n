@@ -84,7 +84,7 @@ describe('filesystem tool', () => {
 				type: 'all',
 				recursive: true,
 			});
-			expect(result).toEqual({ files, truncated: false, totalCount: 2 });
+			expect(result).toEqual({ files, truncated: false, returnedCount: 2 });
 		});
 
 		it('should detect truncation when results exceed limit', async () => {
@@ -104,7 +104,7 @@ describe('filesystem tool', () => {
 			expect(result).toEqual({
 				files: files.slice(0, 3),
 				truncated: true,
-				totalCount: 3,
+				returnedCount: 3,
 			});
 		});
 	});
@@ -252,7 +252,7 @@ describe('filesystem tool', () => {
 			expect(result).toEqual({
 				files: [],
 				truncated: false,
-				totalCount: 0,
+				returnedCount: 0,
 				denied: true,
 				reason: 'User denied the action',
 			});

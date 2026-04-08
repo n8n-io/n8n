@@ -147,7 +147,7 @@ async function handleBestPractices(input: Extract<Input, { action: 'best-practic
 		if (description) {
 			return {
 				technique,
-				message: `Technique "${technique}" (${description}) exists but does not have detailed documentation yet. Use search-template-structures to find example workflows instead.`,
+				message: `Technique "${technique}" (${description}) exists but does not have detailed documentation yet. Use the templates tool with the search-structures action to find example workflows instead.`,
 			};
 		}
 

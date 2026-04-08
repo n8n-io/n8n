@@ -342,8 +342,18 @@ describe('data-tables tool', () => {
 	describe('delete action', () => {
 		const deleteInput = { action: 'delete' as const, dataTableId: 'dt-1' };
 
-		it('should always suspend for confirmation (destructive)', async () => {
-			const context = createMockContext();
+		it('should return denied when deleteDataTable permission is blocked', async () => {
+			const context = createMockContext({ permissions: { deleteDataTable: 'blocked' } });
+
+			const tool = createDataTablesTool(context);
+			const result = await tool.execute!(deleteInput as never, noSuspendCtx());
+
+			expect(result).toEqual({ success: false, denied: true, reason: 'Action blocked by admin' });
+			expect(context.dataTableService.delete).not.toHaveBeenCalled();
+		});
+
+		it('should suspend for confirmation when permission needs approval', async () => {
+			const context = createMockContext({ permissions: {} });
 			const suspendFn = jest.fn();
 
 			const tool = createDataTablesTool(context);
@@ -360,8 +370,18 @@ describe('data-tables tool', () => {
 			expect(context.dataTableService.delete).not.toHaveBeenCalled();
 		});
 
+		it('should execute immediately when permission is always_allow', async () => {
+			const context = createMockContext({ permissions: { deleteDataTable: 'always_allow' } });
+
+			const tool = createDataTablesTool(context);
+			const result = await tool.execute!(deleteInput as never, noSuspendCtx());
+
+			expect(context.dataTableService.delete).toHaveBeenCalledWith('dt-1');
+			expect(result).toEqual({ success: true });
+		});
+
 		it('should delete after user approves on resume', async () => {
-			const context = createMockContext();
+			const context = createMockContext({ permissions: {} });
 
 			const tool = createDataTablesTool(context);
 			const result = await tool.execute!(deleteInput as never, resumeCtx(true));
@@ -371,7 +391,7 @@ describe('data-tables tool', () => {
 		});
 
 		it('should return denied when user denies on resume', async () => {
-			const context = createMockContext();
+			const context = createMockContext({ permissions: {} });
 
 			const tool = createDataTablesTool(context);
 			const result = await tool.execute!(deleteInput as never, resumeCtx(false));
