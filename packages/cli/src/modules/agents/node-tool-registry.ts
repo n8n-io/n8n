@@ -16,6 +16,9 @@ export interface ToolDescriptor {
 	credentials: CredentialListItem[];
 }
 
+const NAME_WEIGHT = 2;
+const DESC_WEIGHT = 1;
+
 const UI_ONLY_TYPES = new Set([
 	'notice',
 	'callout',
@@ -95,9 +98,6 @@ export async function listTools(
 
 	return descriptors;
 }
-
-const NAME_WEIGHT = 2;
-const DESC_WEIGHT = 1;
 
 /**
  * Score a tool descriptor against a query string.
