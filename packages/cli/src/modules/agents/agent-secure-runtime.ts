@@ -166,7 +166,7 @@ export class AgentSecureRuntime {
 
 			globalThis.__modules = {
 				'@n8n/agents': { Agent, Tool, Memory, Eval, Guardrail, Telemetry, providerTools, McpClient },
-				'@n8n/agents-utils': { WorkflowTool },
+				'@n8n/agents-utils': { WorkflowTool, ToolFromNode },
 				'@n8n/workflow-sdk': { node },
 				'zod': zod,
 				'zod-to-json-schema': zodToJsonSchema,
