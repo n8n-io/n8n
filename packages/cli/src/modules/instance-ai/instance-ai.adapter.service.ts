@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import type {
 	InstanceAiContext,
 	InstanceAiWorkflowService,
@@ -85,7 +87,10 @@ import {
 	WEBHOOK_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	TimeoutExecutionCancelledError,
+	jsonParse,
 } from 'n8n-workflow';
+
+import { InstanceSettings } from 'n8n-core';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -107,6 +112,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { getBase } from '@/workflow-execute-additional-data';
 
@@ -117,24 +123,27 @@ export class InstanceAiAdapterService {
 	private readonly allowSendingParameterValues: boolean;
 
 	/**
-	 * Service-level cache for collectTypes().  Shared across all node adapters
-	 * to avoid loading ~31 MB of node descriptions per run.  Expires after
+	 * Service-level cache for node type descriptions. Reads from the static JSON
+	 * file that FrontendService writes at startup, avoiding the expensive
+	 * collectTypes() → postProcessLoaders() rebuild cycle. Expires after
 	 * 5 minutes so hot-reloaded nodes are picked up without a restart.
 	 */
 	private nodesCache: {
-		promise: Promise<Awaited<ReturnType<LoadNodesAndCredentials['collectTypes']>>['nodes']>;
+		promise: Promise<INodeTypeDescription[]>;
 		expiresAt: number;
 	} | null = null;
 
 	private readonly NODES_CACHE_TTL_MS = 5 * 60 * 1000;
 
-	private async getNodesFromCache() {
+	private async getNodesFromCache(): Promise<INodeTypeDescription[]> {
 		if (this.nodesCache && Date.now() < this.nodesCache.expiresAt) {
 			return await this.nodesCache.promise;
 		}
-		const promise = this.loadNodesAndCredentials.collectTypes().then((result) => result.nodes);
+		const filePath = path.join(this.instanceSettings.staticCacheDir, 'types/nodes.json');
+		const promise = readFile(filePath, 'utf-8').then((json) =>
+			jsonParse<INodeTypeDescription[]>(json),
+		);
 		this.nodesCache = { promise, expiresAt: Date.now() + this.NODES_CACHE_TTL_MS };
-		// If the promise rejects, invalidate the cache so the next call retries
 		promise.catch(() => {
 			this.nodesCache = null;
 		});
@@ -155,6 +164,7 @@ export class InstanceAiAdapterService {
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableRepository: DataTableRepository,
 		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
@@ -169,6 +179,7 @@ export class InstanceAiAdapterService {
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly eventService: EventService,
 		private readonly roleService: RoleService,
+		private readonly telemetry: Telemetry,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -180,13 +191,14 @@ export class InstanceAiAdapterService {
 			filesystemService?: InstanceAiFilesystemService;
 			searchProxyConfig?: ServiceProxyConfig;
 			pushRef?: string;
+			threadId?: string;
 		},
 	): InstanceAiContext {
-		const { filesystemService, searchProxyConfig, pushRef } = options ?? {};
+		const { filesystemService, searchProxyConfig, pushRef, threadId } = options ?? {};
 		return {
 			userId: user.id,
-			workflowService: this.createWorkflowAdapter(user),
-			executionService: this.createExecutionAdapter(user, pushRef),
+			workflowService: this.createWorkflowAdapter(user, threadId),
+			executionService: this.createExecutionAdapter(user, pushRef, threadId),
 			credentialService: this.createCredentialAdapter(user),
 			nodeService: this.createNodeAdapter(user),
 			dataTableService: this.createDataTableAdapter(user),
@@ -239,7 +251,7 @@ export class InstanceAiAdapterService {
 		return { getPersonalProjectId, assertProjectScope, resolveProjectId };
 	}
 
-	private createWorkflowAdapter(user: User): InstanceAiWorkflowService {
+	private createWorkflowAdapter(user: User, threadId?: string): InstanceAiWorkflowService {
 		const {
 			workflowService,
 			workflowFinderService,
@@ -249,6 +261,7 @@ export class InstanceAiAdapterService {
 			enterpriseWorkflowService,
 			license,
 			allowSendingParameterValues,
+			telemetry,
 		} = this;
 		const { resolveProjectId } = this.createProjectScopeHelpers(user);
 		const redactParameters = !allowSendingParameterValues;
@@ -309,6 +322,14 @@ export class InstanceAiAdapterService {
 				if (!wf.activeVersionId) {
 					throw new Error(`Workflow ${workflowId} was not activated — no active version set`);
 				}
+
+				if (threadId) {
+					telemetry.track('Builder published workflow', {
+						thread_id: threadId,
+						executed_by: 'ai',
+					});
+				}
+
 				return { activeVersionId: wf.activeVersionId };
 			},
 
@@ -383,6 +404,13 @@ export class InstanceAiAdapterService {
 
 				const updated = await workflowService.update(user, updateData, saved.id);
 
+				if (threadId) {
+					telemetry.track('Builder created workflow', {
+						thread_id: threadId,
+						workflow_id: updated.id,
+					});
+				}
+
 				return toWorkflowDetail(updated, { redactParameters });
 			},
 
@@ -425,6 +453,14 @@ export class InstanceAiAdapterService {
 				}
 
 				const updated = await workflowService.update(user, updateData, workflowId);
+
+				if (threadId) {
+					telemetry.track('Builder modified workflow', {
+						thread_id: threadId,
+						workflow_id: workflowId,
+					});
+				}
+
 				return toWorkflowDetail(updated, { redactParameters });
 			},
 
@@ -510,7 +546,11 @@ export class InstanceAiAdapterService {
 		};
 	}
 
-	private createExecutionAdapter(user: User, pushRef?: string): InstanceAiExecutionService {
+	private createExecutionAdapter(
+		user: User,
+		pushRef?: string,
+		threadId?: string,
+	): InstanceAiExecutionService {
 		const {
 			workflowFinderService,
 			workflowRunner,
@@ -519,6 +559,7 @@ export class InstanceAiAdapterService {
 			allowSendingParameterValues,
 			license,
 			roleService,
+			telemetry,
 		} = this;
 
 		const DEFAULT_TIMEOUT_MS = 5 * Time.minutes.toMilliseconds;
@@ -716,6 +757,15 @@ export class InstanceAiAdapterService {
 					}
 				}
 
+				if (threadId) {
+					telemetry.track('Builder executed workflow', {
+						thread_id: threadId,
+						executed_by: 'ai',
+						pinned_node_count: Object.keys(runData.pinData ?? {}).length,
+						exec_type: runData.executionMode,
+					});
+				}
+
 				return await extractExecutionResult(
 					executionRepository,
 					executionId,
@@ -815,8 +865,6 @@ export class InstanceAiAdapterService {
 						id: c.id,
 						name: c.name,
 						type: c.type,
-						createdAt: c.createdAt.toISOString(),
-						updatedAt: c.updatedAt.toISOString(),
 					}),
 				);
 			},
@@ -827,8 +875,6 @@ export class InstanceAiAdapterService {
 					id: credential.id,
 					name: credential.name,
 					type: credential.type,
-					createdAt: credential.createdAt.toISOString(),
-					updatedAt: credential.updatedAt.toISOString(),
 				} satisfies CredentialDetail;
 			},
 

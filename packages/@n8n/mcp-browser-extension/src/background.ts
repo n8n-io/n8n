@@ -343,7 +343,7 @@ async function connectToRelay(
 			const settings = await loadSettings();
 			relay.setSettings(settings);
 		} catch (error) {
-			relay.close('Setup failed');
+			relay.close('network_error');
 			throw error;
 		}
 
@@ -373,7 +373,7 @@ async function connectToRelay(
 function disconnect(): void {
 	if (activeConnection) {
 		log.debug('disconnecting');
-		activeConnection.relay.close('User disconnected');
+		activeConnection.relay.close('extension_disconnected');
 		activeConnection = null;
 		updateBadge(0);
 	}

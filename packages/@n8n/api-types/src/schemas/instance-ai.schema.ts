@@ -279,6 +279,10 @@ export type GatewayConfirmationRequiredPayload = z.infer<
 
 export const confirmationRequestPayloadSchema = z.object({
 	requestId: z.string(),
+	inputThreadId: z
+		.string()
+		.optional()
+		.describe('Unique ID linking input-related telemetry events in a confirmation session'),
 	toolCallId: z.string().describe('Correlates to the tool-call that needs approval'),
 	toolName: z.string(),
 	args: z.record(z.unknown()),
@@ -596,6 +600,29 @@ export interface InstanceAiConfirmResponse {
 // Frontend store types (shared so both sides agree on structure)
 // ---------------------------------------------------------------------------
 
+export interface InstanceAiConfirmation {
+	requestId: string;
+	inputThreadId?: string;
+	severity: InstanceAiConfirmationSeverity;
+	message: string;
+	credentialRequests?: InstanceAiCredentialRequest[];
+	projectId?: string;
+	inputType?: 'approval' | 'text' | 'questions' | 'plan-review' | 'resource-decision';
+	domainAccess?: DomainAccessMeta;
+	credentialFlow?: InstanceAiCredentialFlow;
+	setupRequests?: InstanceAiWorkflowSetupNode[];
+	workflowId?: string;
+	questions?: Array<{
+		id: string;
+		question: string;
+		type: 'single' | 'multi' | 'text';
+		options?: string[];
+	}>;
+	introMessage?: string;
+	tasks?: TaskList;
+	resourceDecision?: GatewayConfirmationRequiredPayload;
+}
+
 export interface InstanceAiToolCallState {
 	toolCallId: string;
 	toolName: string;
@@ -604,27 +631,7 @@ export interface InstanceAiToolCallState {
 	error?: string;
 	isLoading: boolean;
 	renderHint?: 'tasks' | 'delegate' | 'builder' | 'data-table' | 'researcher' | 'default';
-	confirmation?: {
-		requestId: string;
-		severity: InstanceAiConfirmationSeverity;
-		message: string;
-		credentialRequests?: InstanceAiCredentialRequest[];
-		projectId?: string;
-		inputType?: 'approval' | 'text' | 'questions' | 'plan-review' | 'resource-decision';
-		domainAccess?: DomainAccessMeta;
-		credentialFlow?: InstanceAiCredentialFlow;
-		setupRequests?: InstanceAiWorkflowSetupNode[];
-		workflowId?: string;
-		questions?: Array<{
-			id: string;
-			question: string;
-			type: 'single' | 'multi' | 'text';
-			options?: string[];
-		}>;
-		introMessage?: string;
-		tasks?: TaskList;
-		resourceDecision?: GatewayConfirmationRequiredPayload;
-	};
+	confirmation?: InstanceAiConfirmation;
 	confirmationStatus?: 'pending' | 'approved' | 'denied';
 	startedAt?: string;
 	completedAt?: string;
@@ -781,7 +788,7 @@ export interface InstanceAiThreadStatusResponse {
 // Settings types (runtime-configurable subset of InstanceAiConfig)
 // ---------------------------------------------------------------------------
 
-const instanceAiPermissionModeSchema = z.enum(['require_approval', 'always_allow']);
+const instanceAiPermissionModeSchema = z.enum(['require_approval', 'always_allow', 'blocked']);
 
 export type InstanceAiPermissionMode = z.infer<typeof instanceAiPermissionModeSchema>;
 
@@ -834,6 +841,7 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 // ---------------------------------------------------------------------------
 
 export interface InstanceAiAdminSettingsResponse {
+	enabled: boolean;
 	lastMessages: number;
 	embedderModel: string;
 	semanticRecallTopK: number;
@@ -852,6 +860,7 @@ export interface InstanceAiAdminSettingsResponse {
 }
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
+	enabled: z.boolean().optional(),
 	lastMessages: z.number().int().positive().optional(),
 	embedderModel: z.string().optional(),
 	semanticRecallTopK: z.number().int().positive().optional(),
@@ -909,3 +918,50 @@ export function getRenderHint(toolName: string): InstanceAiToolCallState['render
 	if (RESEARCH_RENDER_HINT_TOOLS.has(toolName)) return 'researcher';
 	return 'default';
 }
+
+// ---------------------------------------------------------------------------
+// Eval mock execution — request/response types for LLM-based workflow evaluation
+// ---------------------------------------------------------------------------
+
+export type InstanceAiEvalNodeExecutionMode = 'mocked' | 'pinned' | 'real';
+
+export interface InstanceAiEvalInterceptedRequest {
+	url: string;
+	method: string;
+	nodeType: string;
+	/** The request body sent by the node (if any) */
+	requestBody?: unknown;
+	/** The mock response body returned by the LLM handler for this request */
+	mockResponse?: unknown;
+}
+
+export interface InstanceAiEvalNodeResult {
+	output: unknown;
+	interceptedRequests: InstanceAiEvalInterceptedRequest[];
+	executionMode: InstanceAiEvalNodeExecutionMode;
+	/** Missing required parameters detected before execution (empty = fully configured) */
+	configIssues?: Record<string, string[]>;
+	/** Epoch ms when the node started executing — used to sort the execution trace chronologically */
+	startTime?: number;
+}
+
+export interface InstanceAiEvalMockHints {
+	globalContext: string;
+	triggerContent: Record<string, unknown>;
+	nodeHints: Record<string, string>;
+	warnings: string[];
+	/** Pin data generated for nodes that bypass the HTTP mock layer (AI roots, protocol nodes) */
+	bypassPinData: Record<string, Array<{ json: Record<string, unknown> }>>;
+}
+
+export interface InstanceAiEvalExecutionResult {
+	executionId: string;
+	success: boolean;
+	nodeResults: Record<string, InstanceAiEvalNodeResult>;
+	errors: string[];
+	hints: InstanceAiEvalMockHints;
+}
+
+export class InstanceAiEvalExecutionRequest extends Z.class({
+	scenarioHints: z.string().max(2000).optional(),
+}) {}
