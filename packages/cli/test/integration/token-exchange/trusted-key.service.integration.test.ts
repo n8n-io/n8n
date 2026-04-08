@@ -3,13 +3,13 @@ import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { KeyObject } from 'node:crypto';
 
-import type { TrustedKeySourceEntity } from '../../database/entities/trusted-key-source.entity';
-import { TrustedKeyEntity } from '../../database/entities/trusted-key.entity';
-import { TrustedKeySourceRepository } from '../../database/repositories/trusted-key-source.repository';
-import { TrustedKeyRepository } from '../../database/repositories/trusted-key.repository';
-import { TokenExchangeConfig } from '../../token-exchange.config';
-import type { TrustedKeyData } from '../../token-exchange.schemas';
-import { TrustedKeyService } from '../trusted-key.service';
+import type { TrustedKeySourceEntity } from '@/modules/token-exchange/database/entities/trusted-key-source.entity';
+import { TrustedKeyEntity } from '@/modules/token-exchange/database/entities/trusted-key.entity';
+import { TrustedKeySourceRepository } from '@/modules/token-exchange/database/repositories/trusted-key-source.repository';
+import { TrustedKeyRepository } from '@/modules/token-exchange/database/repositories/trusted-key.repository';
+import { TrustedKeyService } from '@/modules/token-exchange/services/trusted-key.service';
+import { TokenExchangeConfig } from '@/modules/token-exchange/token-exchange.config';
+import type { TrustedKeyData } from '@/modules/token-exchange/token-exchange.schemas';
 
 // ──────────────────────────────────────────────────────────────────────
 // Pre-generated PEM public keys (test-only, no secrets)
