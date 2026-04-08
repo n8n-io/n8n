@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { N8nAiGatewayCreditsTag } from '@n8n/design-system';
 import { ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useAiGateway } from '@/app/composables/useAiGateway';
@@ -98,23 +99,26 @@ function onCreditsBadgeClick(event: MouseEvent): void {
 					:class="$style.badgeWrap"
 					@mouseenter="badgeHovered = true"
 					@mouseleave="badgeHovered = false"
-					@click="onCreditsBadgeClick"
 				>
-					<span
-						:class="[$style.creditsBadge, badgeHovered && $style.creditsBadgeHover]"
+					<N8nAiGatewayCreditsTag
+						:clickable="!readonly"
+						:pressed="badgeHovered"
 						data-test-id="ai-gateway-credits-badge"
+						@click="onCreditsBadgeClick"
 					>
-						<span :class="[$style.badgeLabel, badgeHovered && $style.badgeLabelHidden]">
-							{{
-								i18n.baseText('aiGateway.credentialMode.creditsShort', {
-									interpolate: { count: String(creditsRemaining) },
-								})
-							}}
+						<span :class="$style.badgeGrid">
+							<span :class="[$style.badgeLabel, badgeHovered && $style.badgeLabelHidden]">
+								{{
+									i18n.baseText('aiGateway.credentialMode.creditsShort', {
+										interpolate: { count: String(creditsRemaining) },
+									})
+								}}
+							</span>
+							<span :class="[$style.badgeLabel, !badgeHovered && $style.badgeLabelHidden]">
+								{{ i18n.baseText('aiGateway.toggle.topUp') }}
+							</span>
 						</span>
-						<span :class="[$style.badgeLabel, !badgeHovered && $style.badgeLabelHidden]">
-							{{ i18n.baseText('aiGateway.toggle.topUp') }}
-						</span>
-					</span>
+					</N8nAiGatewayCreditsTag>
 				</span>
 			</button>
 
@@ -309,34 +313,8 @@ function onCreditsBadgeClick(event: MouseEvent): void {
 	flex-shrink: 0;
 }
 
-/* Pill lozenge: light green surface + dark green type (same in all themes; reads on dark panels) */
-.creditsBadge {
+.badgeGrid {
 	display: grid;
-	flex-shrink: 0;
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border: none;
-	box-shadow: none;
-	border-radius: var(--radius--full);
-	background-color: var(--color--green-100);
-	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--medium);
-	color: var(--color--green-900);
-	white-space: nowrap;
-	cursor: pointer;
-	user-select: none;
-	transition:
-		background-color 0.15s ease,
-		color 0.15s ease;
-
-	&:hover {
-		background-color: var(--color--green-200);
-		color: var(--color--green-950);
-	}
-}
-
-.creditsBadgeHover {
-	background-color: var(--color--green-200);
-	color: var(--color--green-950);
 }
 
 .badgeLabel {

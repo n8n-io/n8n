@@ -3,6 +3,7 @@ import { ElTag } from 'element-plus';
 
 import { useI18n } from '../../composables/useI18n';
 import type { NodeCreatorTag } from '../../types/node-creator-node';
+import N8nAiGatewayCreditsTag from '../AiGatewayCreditsTag/AiGatewayCreditsTag.vue';
 import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
 
@@ -28,6 +29,11 @@ defineEmits<{
 defineSlots<{ icon: {}; extraDetails: {}; dragContent: {} }>();
 
 const { t } = useI18n();
+
+/** Same look as the AI Gateway credential credits pill (light green / dark green text). */
+function shouldUseMinimalCreditsPill(tag: NonNullable<Props['tag']>): boolean {
+	return (tag.type ?? 'success') === 'success';
+}
 </script>
 
 <template>
@@ -44,8 +50,9 @@ const { t } = useI18n();
 		<div>
 			<div :class="$style.details">
 				<span :class="$style.name" data-test-id="node-creator-item-name" v-text="title" />
+				<N8nAiGatewayCreditsTag v-if="tag && shouldUseMinimalCreditsPill(tag)" :text="tag.text" />
 				<ElTag
-					v-if="tag"
+					v-else-if="tag"
 					:class="$style.tag"
 					disable-transitions
 					size="small"
@@ -95,7 +102,6 @@ const { t } = useI18n();
 	color: var(--action--arrow--color--hover, var(--color--text--tint-1));
 }
 :root .tag {
-	margin-left: var(--spacing--2xs);
 	line-height: var(--font-size--3xs);
 	font-size: var(--font-size--3xs);
 	padding: 0.1875rem var(--spacing--3xs) var(--spacing--4xs) var(--spacing--3xs);
@@ -124,7 +130,7 @@ const { t } = useI18n();
 .details {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--3xs);
+	gap: var(--spacing--4xs);
 }
 .nodeIcon {
 	display: flex;
