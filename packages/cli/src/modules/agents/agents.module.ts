@@ -36,8 +36,11 @@ export class AgentsModule implements ModuleInterface {
 	async entities() {
 		const { Agent } = await import('./entities/agent.entity');
 		const { AgentCheckpoint } = await import('./entities/agent-checkpoint.entity');
+		const { AgentResourceEntity } = await import('./entities/agent-resource.entity');
+		const { AgentThreadEntity } = await import('./entities/agent-thread.entity');
+		const { AgentMessageEntity } = await import('./entities/agent-message.entity');
 
-		return [Agent, AgentCheckpoint];
+		return [Agent, AgentCheckpoint, AgentResourceEntity, AgentThreadEntity, AgentMessageEntity];
 	}
 
 	async context() {
