@@ -421,7 +421,7 @@ function mapNestedPropertyToZodSchemaInner(prop: NodeProperty): string {
 				}
 			}
 			return isMultipleValues
-				? `z.union([z.array(stringOrExpression), expressionSchema])`
+				? 'z.union([z.array(stringOrExpression), expressionSchema])'
 				: 'stringOrExpression';
 		}
 
