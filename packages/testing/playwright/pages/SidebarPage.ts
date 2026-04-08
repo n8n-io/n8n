@@ -7,6 +7,10 @@ export class SidebarPage {
 		this.page = page;
 	}
 
+	async goto() {
+		await this.page.goto('/');
+	}
+
 	async clickHomeButton() {
 		await this.page.getByTestId('project-home-menu-item').click();
 	}

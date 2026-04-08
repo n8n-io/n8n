@@ -3,6 +3,10 @@ import type { Locator, Page } from '@playwright/test';
 import { BasePage } from '../BasePage';
 
 export class EditFieldsNode extends BasePage {
+	async goto() {
+		await this.page.goto('/');
+	}
+
 	constructor(page: Page) {
 		super(page);
 	}

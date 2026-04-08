@@ -14,6 +14,10 @@ export class AIBuilderPage {
 		this.wizard = new BuilderSetupWizard(page);
 	}
 
+	async goto() {
+		await this.page.goto('/workflows/new');
+	}
+
 	// #region Locators
 
 	getWorkflowSuggestions() {

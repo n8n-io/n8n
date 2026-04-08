@@ -3,6 +3,10 @@ import type { Locator } from '@playwright/test';
 import { BasePage } from './BasePage';
 
 export class WorkflowSettingsModal extends BasePage {
+	async goto() {
+		await this.page.goto('/');
+	}
+
 	getModal(): Locator {
 		return this.page.getByTestId('workflow-settings-dialog');
 	}
