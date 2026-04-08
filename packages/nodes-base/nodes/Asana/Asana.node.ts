@@ -89,6 +89,10 @@ export class Asana implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
+						name: 'Attachment',
+						value: 'attachment',
+					},
+					{
 						name: 'Project',
 						value: 'project',
 					},
@@ -877,6 +881,18 @@ export class Asana implements INodeType {
 						action: 'Add a task comment',
 					},
 					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get a comment',
+						action: 'Get a task comment',
+					},
+					{
+						name: 'Get Many',
+						value: 'getAll',
+						description: 'Get many comments',
+						action: 'Get many task comments',
+					},
+					{
 						name: 'Remove',
 						value: 'remove',
 						description: 'Remove a comment from a task',
@@ -969,6 +985,75 @@ export class Asana implements INodeType {
 						description: 'Whether to pin the comment',
 					},
 				],
+			},
+
+			// ----------------------------------
+			//         taskComment:get
+			// ----------------------------------
+
+			{
+				displayName: 'Comment ID',
+				name: 'id',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: ['get'],
+						resource: ['taskComment'],
+					},
+				},
+				description: 'The ID of the comment to get',
+			},
+
+			// ----------------------------------
+			//         taskComment:getAll
+			// ----------------------------------
+
+			{
+				displayName: 'Task ID',
+				name: 'taskId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: ['getAll'],
+						resource: ['taskComment'],
+					},
+				},
+				description: 'The task to get comments from',
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: ['getAll'],
+						resource: ['taskComment'],
+					},
+				},
+				default: false,
+				description: 'Whether to return all results or only up to a given limit',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: ['getAll'],
+						resource: ['taskComment'],
+						returnAll: [false],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 500,
+				},
+				default: 100,
+				description: 'Max number of results to return',
 			},
 
 			// ----------------------------------
@@ -1235,6 +1320,103 @@ export class Asana implements INodeType {
 				},
 				description:
 					'The tag that should be added. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			},
+
+			// ----------------------------------
+			//         attachment
+			// ----------------------------------
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['attachment'],
+					},
+				},
+				options: [
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get an attachment',
+						action: 'Get an attachment',
+					},
+					{
+						name: 'Get Many',
+						value: 'getAll',
+						description: 'Get many attachments',
+						action: 'Get many attachments',
+					},
+				],
+				default: 'get',
+			},
+
+			// ----------------------------------
+			//         attachment:get
+			// ----------------------------------
+			{
+				displayName: 'Attachment ID',
+				name: 'id',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: ['get'],
+						resource: ['attachment'],
+					},
+				},
+				description: 'The ID of the attachment to get',
+			},
+
+			// ----------------------------------
+			//         attachment:getAll
+			// ----------------------------------
+			{
+				displayName: 'Task ID',
+				name: 'taskId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: ['getAll'],
+						resource: ['attachment'],
+					},
+				},
+				description: 'The task to get attachments from',
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: ['getAll'],
+						resource: ['attachment'],
+					},
+				},
+				default: false,
+				description: 'Whether to return all results or only up to a given limit',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: ['getAll'],
+						resource: ['attachment'],
+						returnAll: [false],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 500,
+				},
+				default: 100,
+				description: 'Max number of results to return',
 			},
 
 			// ----------------------------------
@@ -2201,6 +2383,48 @@ export class Asana implements INodeType {
 						responseData = responseData.data;
 					}
 
+					if (operation === 'get') {
+						// ----------------------------------
+						//         taskComment:get
+						// ----------------------------------
+
+						const commentId = this.getNodeParameter('id', i) as string;
+
+						responseData = await asanaApiRequest.call(
+							this,
+							'GET',
+							`/stories/${commentId}`,
+							body,
+							qs,
+						);
+
+						responseData = responseData.data;
+					}
+
+					if (operation === 'getAll') {
+						// ----------------------------------
+						//         taskComment:getAll
+						// ----------------------------------
+
+						const taskId = this.getNodeParameter('taskId', i) as string;
+						const returnAll = this.getNodeParameter('returnAll', i);
+
+						responseData = await asanaApiRequest.call(
+							this,
+							'GET',
+							`/tasks/${taskId}/stories`,
+							body,
+							qs,
+						);
+
+						responseData = responseData.data;
+
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', i);
+							responseData = responseData.splice(0, limit);
+						}
+					}
+
 					if (operation === 'remove') {
 						// ----------------------------------
 						//         taskComment:remove
@@ -2303,6 +2527,49 @@ export class Asana implements INodeType {
 						);
 
 						responseData = { success: true };
+					}
+				}
+				if (resource === 'attachment') {
+					if (operation === 'get') {
+						// ----------------------------------
+						//         attachment:get
+						// ----------------------------------
+
+						const attachmentId = this.getNodeParameter('id', i) as string;
+
+						responseData = await asanaApiRequest.call(
+							this,
+							'GET',
+							`/attachments/${attachmentId}`,
+							body,
+							qs,
+						);
+
+						responseData = responseData.data;
+					}
+
+					if (operation === 'getAll') {
+						// ----------------------------------
+						//         attachment:getAll
+						// ----------------------------------
+
+						const taskId = this.getNodeParameter('taskId', i) as string;
+						const returnAll = this.getNodeParameter('returnAll', i);
+
+						responseData = await asanaApiRequest.call(
+							this,
+							'GET',
+							`/tasks/${taskId}/attachments`,
+							body,
+							qs,
+						);
+
+						responseData = responseData.data;
+
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', i);
+							responseData = responseData.splice(0, limit);
+						}
 					}
 				}
 				if (resource === 'user') {
