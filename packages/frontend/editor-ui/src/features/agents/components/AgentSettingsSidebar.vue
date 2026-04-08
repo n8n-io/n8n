@@ -8,6 +8,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { listAgentCredentials } from '../composables/useAgentApi';
 import { useModelCatalog } from '../composables/useModelCatalog';
 import type { ModelInfo } from '../composables/useAgentApi';
+import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { AgentSchema } from '../types';
 import AgentToolsPanel from './AgentToolsPanel.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
@@ -45,6 +46,24 @@ const credential = ref(props.schema?.credential ?? '');
 const instructions = ref(props.schema?.instructions ?? '');
 
 const availableModels = computed<ModelInfo[]>(() => getModelsForProvider(provider.value || ''));
+
+// Provider icon mapping
+const PROVIDER_ICONS: Record<string, string> = {
+	anthropic: 'anthropic',
+	openai: 'bolt-filled',
+	google: 'globe',
+	xai: 'bot',
+	groq: 'zap',
+	deepseek: 'bot',
+	mistral: 'bot',
+	openrouter: 'globe',
+	cohere: 'bot',
+	ollama: 'bot',
+};
+
+const providerIconName = computed<IconName>(
+	() => (PROVIDER_ICONS[provider.value] ?? 'bot') as IconName,
+);
 
 // Display labels for the combined model selector
 const modelDisplayName = computed(() => {
@@ -215,6 +234,9 @@ onMounted(() => {
 				<!-- Combined model display — single clickable row -->
 				<button :class="$style.modelDisplay" @click="modelConfigOpen = !modelConfigOpen">
 					<div :class="$style.modelDisplayContent">
+						<div v-if="provider" :class="$style.providerIcon">
+							<N8nIcon :icon="providerIconName" :size="14" />
+						</div>
 						<N8nText tag="span" bold size="small">{{ modelDisplayName }}</N8nText>
 						<N8nText v-if="credentialDisplayName" tag="span" size="small" color="text-light">
 							{{ credentialDisplayName }}
@@ -497,6 +519,18 @@ onMounted(() => {
 
 .modelDisplay:hover {
 	border-color: var(--color--foreground--shade-1);
+}
+
+.providerIcon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	border-radius: var(--radius);
+	background-color: var(--color--foreground--shade-1);
+	color: white;
+	flex-shrink: 0;
 }
 
 .modelDisplayContent {
