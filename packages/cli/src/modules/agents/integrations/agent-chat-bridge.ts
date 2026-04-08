@@ -487,6 +487,10 @@ export class AgentChatBridge {
 		if (actionId.startsWith('ri-btn:')) {
 			// Rich interaction button: ri-btn:{runId}:{toolCallId}:{index}
 			const parts = actionId.split(':');
+			if (parts.length < 4) {
+				this.logger.warn('[AgentChatBridge] Malformed ri-btn action ID', { actionId });
+				return;
+			}
 			runId = parts[1];
 			toolCallId = parts.slice(2, -1).join(':');
 			try {
@@ -497,6 +501,10 @@ export class AgentChatBridge {
 		} else if (actionId.startsWith('ri-sel:')) {
 			// Rich interaction select: ri-sel:{selectId}:{runId}:{toolCallId}
 			const parts = actionId.split(':');
+			if (parts.length < 4) {
+				this.logger.warn('[AgentChatBridge] Malformed ri-sel action ID', { actionId });
+				return;
+			}
 			const selectId = parts[1];
 			runId = parts[2];
 			toolCallId = parts.slice(3).join(':');

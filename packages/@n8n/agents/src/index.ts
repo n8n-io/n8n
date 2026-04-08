@@ -95,7 +95,6 @@ export type {
 	TelemetrySchema,
 } from './types/sdk/schema';
 export {
-	toDbMessage,
 	filterLlmMessages,
 	isLlmMessage,
 } from './sdk/message';

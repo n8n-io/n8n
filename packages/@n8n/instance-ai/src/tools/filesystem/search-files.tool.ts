@@ -6,36 +6,42 @@ import { z } from 'zod';
 import type { InstanceAiContext } from '../../types';
 import { wrapUntrustedData } from '../web-research/sanitize-web-content';
 
+export const searchFilesInputSchema = z.object({
+	dirPath: z
+		.string()
+		.describe(
+			'Absolute directory path or ~/relative path (e.g. "/home/user/project" or "~/project"). Do NOT use bare relative paths.',
+		),
+	query: z.string().describe('Search query — supports regex patterns'),
+	filePattern: z
+		.string()
+		.optional()
+		.describe('File pattern to restrict search (e.g. "*.ts", "*.json")'),
+	ignoreCase: z
+		.boolean()
+		.default(true)
+		.optional()
+		.describe('Case-insensitive search (default: true)'),
+	maxResults: z
+		.number()
+		.int()
+		.positive()
+		.max(100)
+		.default(50)
+		.optional()
+		.describe('Maximum number of matching lines to return (default 50, max 100)'),
+});
+
+export const searchFilesResumeSchema = z.object({
+	approved: z.boolean(),
+});
+
 export function createSearchFilesTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'search-files',
 		description:
 			'Search file contents for a text pattern or regex across a directory. Returns matching lines with file paths and line numbers. Always use absolute paths or ~/relative paths.',
-		inputSchema: z.object({
-			dirPath: z
-				.string()
-				.describe(
-					'Absolute directory path or ~/relative path (e.g. "/home/user/project" or "~/project"). Do NOT use bare relative paths.',
-				),
-			query: z.string().describe('Search query — supports regex patterns'),
-			filePattern: z
-				.string()
-				.optional()
-				.describe('File pattern to restrict search (e.g. "*.ts", "*.json")'),
-			ignoreCase: z
-				.boolean()
-				.default(true)
-				.optional()
-				.describe('Case-insensitive search (default: true)'),
-			maxResults: z
-				.number()
-				.int()
-				.positive()
-				.max(100)
-				.default(50)
-				.optional()
-				.describe('Maximum number of matching lines to return (default 50, max 100)'),
-		}),
+		inputSchema: searchFilesInputSchema,
 		outputSchema: z.object({
 			query: z.string(),
 			matches: z.array(
@@ -55,11 +61,32 @@ export function createSearchFilesTool(context: InstanceAiContext) {
 			message: z.string(),
 			severity: instanceAiConfirmationSeveritySchema,
 		}),
-		resumeSchema: z.object({
-			approved: z.boolean(),
-		}),
-		execute: async ({ dirPath, query, filePattern, ignoreCase, maxResults }, ctx) => {
-			const { resumeData, suspend } = ctx?.agent ?? {};
+		resumeSchema: searchFilesResumeSchema,
+		execute: async (
+			{
+				dirPath,
+				query,
+				filePattern,
+				ignoreCase,
+				maxResults,
+			}: z.infer<typeof searchFilesInputSchema>,
+			ctx,
+		) => {
+			const resumeData = ctx?.agent?.resumeData as
+				| z.infer<typeof searchFilesResumeSchema>
+				| undefined;
+			const suspend = ctx?.agent?.suspend;
+			if (context.permissions?.readFilesystem === 'blocked') {
+				return {
+					query,
+					matches: [],
+					truncated: false,
+					totalMatches: 0,
+					denied: true,
+					reason: 'Action blocked by admin',
+				};
+			}
+
 			const needsApproval = context.permissions?.readFilesystem !== 'always_allow';
 
 			if (needsApproval && (resumeData === undefined || resumeData === null)) {

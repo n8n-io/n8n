@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { Agent, Tool } from '@n8n/agents';
@@ -25,7 +25,7 @@ let cachedSdkTypes: string | undefined;
  * Read the @n8n/agents .d.ts files and bundle them into a single
  * declaration string for the builder agent's system prompt.
  */
-function getSdkTypeDeclarations(): string {
+async function getSdkTypeDeclarations(): Promise<string> {
 	if (cachedSdkTypes) return cachedSdkTypes;
 
 	try {
@@ -50,14 +50,16 @@ function getSdkTypeDeclarations(): string {
 			'message.d.ts',
 		];
 
-		const sections = fileNames.map((name) => {
-			try {
-				const content = readFileSync(join(distDir, name), 'utf-8');
-				return `  // --- ${name} ---\n  ${strip(content).split('\n').join('\n  ')}`;
-			} catch {
-				return '';
-			}
-		});
+		const sections = await Promise.all(
+			fileNames.map(async (name) => {
+				try {
+					const content = await readFile(join(distDir, name), 'utf-8');
+					return `  // --- ${name} ---\n  ${strip(content).split('\n').join('\n  ')}`;
+				} catch {
+					return '';
+				}
+			}),
+		);
 
 		const evalsNamespace = `  // --- evals namespace ---
   export namespace evals {
@@ -101,7 +103,7 @@ export class AgentsBuilderService {
 		}
 
 		const currentCode = agent.code ?? '';
-		const sdkTypes = getSdkTypeDeclarations();
+		const sdkTypes = await getSdkTypeDeclarations();
 
 		// Tool: typecheck — validates code compiles and node configs are valid
 		const typecheckTool = new Tool('typecheck')

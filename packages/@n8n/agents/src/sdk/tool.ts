@@ -28,14 +28,13 @@ export interface ApprovalConfig {
  * interruptible tool that uses the existing suspend/resume mechanism.
  * No validation is done here — all schema validation happens in the runtime.
  */
-/** Symbol used to mark tools wrapped for approval (used by describe()). */
-export const APPROVAL_WRAPPED = Symbol.for('n8n.agent.approvalWrapped');
 
 export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): BuiltTool {
 	const originalHandler = tool.handler!;
 
-	const wrapped: BuiltTool = {
+	return {
 		...tool,
+		withDefaultApproval: true,
 		suspendSchema: APPROVAL_SUSPEND_SCHEMA,
 		resumeSchema: APPROVAL_RESUME_SCHEMA,
 		handler: async (input, ctx) => {
@@ -64,10 +63,6 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 			} as ToolContext);
 		},
 	};
-	// Tag with approval symbol — Object.assign avoids TS index-signature issues
-	// on the BuiltTool interface while still being detectable via `in` operator.
-	Object.assign(wrapped, { [APPROVAL_WRAPPED]: true });
-	return wrapped;
 }
 
 type HandlerContext<S, R> = S extends z.ZodTypeAny
@@ -273,7 +268,7 @@ export class Tool<
 			providerOptions: this.providerOptionsValue,
 		};
 
-		if (this.requireApprovalValue ?? this.needsApprovalFnValue) {
+		if (this.requireApprovalValue || this.needsApprovalFnValue) {
 			return wrapToolForApproval(built, {
 				requireApproval: this.requireApprovalValue,
 				needsApprovalFn: this.needsApprovalFnValue,

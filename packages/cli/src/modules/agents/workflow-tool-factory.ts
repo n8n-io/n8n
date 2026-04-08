@@ -49,7 +49,6 @@ const INCOMPATIBLE_NODE_TYPES = new Set([
 ]);
 
 const DEFAULT_TIMEOUT_MS = 120_000;
-const MAX_TIMEOUT_MS = 300_000;
 const MAX_RESULT_CHARS = 20_000;
 const MAX_NODE_OUTPUT_BYTES = 5_000;
 
@@ -263,6 +262,7 @@ export async function executeWorkflow(
 	triggerType: string,
 	inputData: Record<string, unknown>,
 	context: WorkflowToolContext,
+	allOutputs = false,
 ): Promise<{
 	executionId: string;
 	status: string;
@@ -311,7 +311,7 @@ export async function executeWorkflow(
 	const executionId = await workflowRunner.run(runData);
 
 	// Wait for completion with timeout protection
-	const timeoutMs = Math.min(DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
+	const timeoutMs = DEFAULT_TIMEOUT_MS;
 
 	if (activeExecutions.has(executionId)) {
 		let timeoutId: NodeJS.Timeout | undefined;
@@ -345,7 +345,7 @@ export async function executeWorkflow(
 		}
 	}
 
-	return await extractResult(executionRepository, executionId, false);
+	return await extractResult(executionRepository, executionId, allOutputs);
 }
 
 // ---------------------------------------------------------------------------
@@ -493,8 +493,7 @@ async function buildWorkflowTool(
 	descriptor: WorkflowToolDescriptor | undefined,
 	context: WorkflowToolContext,
 ): Promise<BuiltTool> {
-	const { workflowRepository, executionRepository, workflowFinderService, userRepository } =
-		context;
+	const { workflowRepository, workflowFinderService, userRepository } = context;
 
 	// Step 1: Find the workflow by name, scoped to the project if available.
 	const whereClause: Record<string, unknown> = { name: workflowName };
@@ -582,14 +581,7 @@ async function buildWorkflowTool(
 				}),
 		)
 		.handler(async (input: Record<string, unknown>) => {
-			const result = await executeWorkflow(workflow, triggerNode, triggerType, input, context);
-
-			// If allOutputs is requested and the execution succeeded, re-extract with allOutputs
-			if (allOutputs && result.status === 'success') {
-				return await extractResult(executionRepository, result.executionId, true);
-			}
-
-			return result;
+			return await executeWorkflow(workflow, triggerNode, triggerType, input, context, allOutputs);
 		});
 
 	return builder.build();

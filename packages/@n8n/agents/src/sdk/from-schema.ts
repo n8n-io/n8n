@@ -11,7 +11,15 @@ import type { EvalInput, EvalScore, JudgeInput } from '../types/sdk/eval';
 import type { HandlerExecutor } from '../types/sdk/handler-executor';
 import type { McpServerConfig } from '../types/sdk/mcp';
 import type { AgentMessage } from '../types/sdk/message';
-import type { AgentSchema, EvalSchema, ToolSchema } from '../types/sdk/schema';
+import type {
+	AgentSchema,
+	EvalSchema,
+	GuardrailSchema,
+	McpServerSchema,
+	ProviderToolSchema,
+	TelemetrySchema,
+	ToolSchema,
+} from '../types/sdk/schema';
 import type { InterruptibleToolContext, ToolContext } from '../types/sdk/tool';
 import type { JSONObject } from '../types/utils/json';
 
@@ -67,44 +75,63 @@ export async function fromSchema(
 ): Promise<void> {
 	const { handlerExecutor } = options;
 
-	// --- Model ---
-	if (schema.model.provider && schema.model.name) {
-		agent.model(schema.model.provider, schema.model.name);
-	} else if (schema.model.name) {
-		agent.model(schema.model.name);
-	}
+	applyModel(agent, schema.model);
 
-	// --- Credential ---
 	if (schema.credential !== null) {
 		agent.credential(schema.credential);
 	}
 
-	// --- Instructions ---
 	if (schema.instructions !== null) {
 		agent.instructions(schema.instructions);
 	}
 
-	// --- Custom tools ---
-	const toolSchemas = new Map<string, { suspend?: ZodType; resume?: ZodType }>();
-	for (const ts of schema.tools) {
-		if (!ts.editable) continue;
-		const schemas: { suspend?: ZodType; resume?: ZodType } = {};
-		if (ts.suspendSchemaSource) {
-			schemas.suspend = await handlerExecutor.evaluateSchema(ts.suspendSchemaSource);
-		}
-		if (ts.resumeSchemaSource) {
-			schemas.resume = await handlerExecutor.evaluateSchema(ts.resumeSchemaSource);
-		}
-		toolSchemas.set(ts.name, schemas);
+	await applyTools(agent, schema.tools, handlerExecutor, options.resolveTool);
+	await applyProviderTools(agent, schema.providerTools, handlerExecutor);
+	applyConfig(agent, schema.config);
+	applyMemory(agent, schema);
+	applyGuardrails(agent, schema.guardrails);
+	applyEvals(agent, schema.evaluations, handlerExecutor);
+	await applyStructuredOutput(agent, schema.config.structuredOutput, handlerExecutor);
+
+	if (options.credentialProvider) {
+		agent.credentialProvider(options.credentialProvider);
 	}
 
-	for (const ts of schema.tools) {
+	await applyMcpServers(agent, schema.mcp, handlerExecutor);
+	await applyTelemetry(agent, schema.telemetry, handlerExecutor);
+}
+
+// ---------------------------------------------------------------------------
+//  Helpers – each handles one section of the AgentSchema
+// ---------------------------------------------------------------------------
+
+function applyModel(agent: AgentBuilder, model: AgentSchema['model']): void {
+	if (model.provider && model.name) {
+		agent.model(model.provider, model.name);
+	} else if (model.name) {
+		agent.model(model.name);
+	}
+}
+
+async function applyTools(
+	agent: AgentBuilder,
+	tools: ToolSchema[],
+	executor: HandlerExecutor,
+	resolveTool?: ToolResolver,
+): Promise<void> {
+	const addedTools = new Set<string>();
+	for (const ts of tools) {
+		if (addedTools.has(ts.name)) {
+			throw new Error(`Schema has multiple definitions of tool ${ts.name}`);
+		}
+		addedTools.add(ts.name);
+
 		if (!ts.editable) {
 			// Non-editable tools are platform-specific markers. The caller supplies
 			// resolveTool() to produce the appropriate BuiltTool for their platform.
 			// Without a resolver, a minimal passthrough marker is created so that
 			// the agent's tool list stays coherent (correct names / descriptions).
-			const resolved = await options.resolveTool?.(ts);
+			const resolved = resolveTool?.(ts);
 			agent.tool(
 				resolved ??
 					({
@@ -116,20 +143,33 @@ export async function fromSchema(
 			);
 			continue;
 		}
-		const preEvaluated = toolSchemas.get(ts.name);
-		const builtTool = buildToolFromSchema(ts, handlerExecutor, preEvaluated);
+
+		const schemas: { suspend?: ZodType; resume?: ZodType } = {};
+		if (ts.suspendSchemaSource) {
+			schemas.suspend = await executor.evaluateSchema(ts.suspendSchemaSource);
+		}
+		if (ts.resumeSchemaSource) {
+			schemas.resume = await executor.evaluateSchema(ts.resumeSchemaSource);
+		}
+
+		const builtTool = buildToolFromSchema(ts, executor, schemas);
 		agent.tool(builtTool);
 	}
+}
 
-	// --- Provider tools ---
-	for (const pt of schema.providerTools) {
+async function applyProviderTools(
+	agent: AgentBuilder,
+	providerTools: ProviderToolSchema[],
+	executor: HandlerExecutor,
+): Promise<void> {
+	for (const pt of providerTools) {
 		if (pt.source) {
-			const evaluated = (await handlerExecutor.evaluateExpression(pt.source)) as {
-				name: string;
+			const evaluated = (await executor.evaluateExpression(pt.source)) as {
+				name: `${string}.${string}`;
 				args?: Record<string, unknown>;
 			};
 			agent.providerTool({
-				name: evaluated.name as `${string}.${string}`,
+				name: evaluated.name,
 				args: evaluated.args ?? {},
 			});
 		} else {
@@ -139,24 +179,24 @@ export async function fromSchema(
 			});
 		}
 	}
+}
 
-	// --- Thinking ---
-	if (schema.config.thinking !== null) {
-		const { provider, ...thinkingConfig } = schema.config.thinking;
+function applyConfig(agent: AgentBuilder, config: AgentSchema['config']): void {
+	if (config.thinking !== null) {
+		const { provider, ...thinkingConfig } = config.thinking;
 		agent.thinking(provider, thinkingConfig);
 	}
 
-	// --- Tool call concurrency ---
-	if (schema.config.toolCallConcurrency !== null) {
-		agent.toolCallConcurrency(schema.config.toolCallConcurrency);
+	if (config.toolCallConcurrency !== null) {
+		agent.toolCallConcurrency(config.toolCallConcurrency);
 	}
 
-	// --- Require tool approval ---
-	if (schema.config.requireToolApproval) {
+	if (config.requireToolApproval) {
 		agent.requireToolApproval();
 	}
+}
 
-	// --- Memory ---
+function applyMemory(agent: AgentBuilder, schema: AgentSchema): void {
 	if (schema.memory !== null) {
 		const memory = new Memory();
 		if (schema.memory.lastMessages !== null) {
@@ -165,13 +205,13 @@ export async function fromSchema(
 		agent.memory(memory);
 	}
 
-	// --- Checkpoint ---
 	if (schema.checkpoint !== null) {
 		agent.checkpoint(schema.checkpoint);
 	}
+}
 
-	// --- Guardrails ---
-	for (const g of schema.guardrails) {
+function applyGuardrails(agent: AgentBuilder, guardrails: GuardrailSchema[]): void {
+	for (const g of guardrails) {
 		const builtGuardrail: BuiltGuardrail = {
 			name: g.name,
 			guardType: g.guardType,
@@ -184,50 +224,64 @@ export async function fromSchema(
 			agent.outputGuardrail(builtGuardrail);
 		}
 	}
+}
 
-	// --- Evals ---
-	for (const evalSchema of schema.evaluations) {
-		const builtEval = buildEvalFromSchema(evalSchema, handlerExecutor);
+function applyEvals(
+	agent: AgentBuilder,
+	evaluations: EvalSchema[],
+	executor: HandlerExecutor,
+): void {
+	for (const evalSchema of evaluations) {
+		const builtEval = buildEvalFromSchema(evalSchema, executor);
 		agent.eval(builtEval);
 	}
+}
 
-	// --- Structured output ---
-	if (schema.config.structuredOutput.enabled && schema.config.structuredOutput.schemaSource) {
-		const outputSchema = await handlerExecutor.evaluateSchema(
-			schema.config.structuredOutput.schemaSource,
-		);
+async function applyStructuredOutput(
+	agent: AgentBuilder,
+	structuredOutput: AgentSchema['config']['structuredOutput'],
+	executor: HandlerExecutor,
+): Promise<void> {
+	if (structuredOutput.enabled && structuredOutput.schemaSource) {
+		const outputSchema = await executor.evaluateSchema(structuredOutput.schemaSource);
 		agent.structuredOutput(outputSchema);
 	}
+}
 
-	// --- Credential provider ---
-	if (options.credentialProvider) {
-		agent.credentialProvider(options.credentialProvider);
-	}
+async function applyMcpServers(
+	agent: AgentBuilder,
+	mcp: McpServerSchema[] | null,
+	executor: HandlerExecutor,
+): Promise<void> {
+	if (!mcp || mcp.length === 0) return;
 
-	// --- MCP servers ---
-	if (schema.mcp && schema.mcp.length > 0) {
-		const mcpConfigs: McpServerConfig[] = [];
-		for (const m of schema.mcp) {
-			if (m.configSource) {
-				const config = (await handlerExecutor.evaluateExpression(
-					m.configSource,
-				)) as McpServerConfig;
-				mcpConfigs.push(config);
-			}
-		}
-		if (mcpConfigs.length > 0) {
-			agent.mcp(new McpClient(mcpConfigs));
+	const mcpConfigs: McpServerConfig[] = [];
+	for (const m of mcp) {
+		if (m.configSource) {
+			const config = (await executor.evaluateExpression(m.configSource)) as McpServerConfig;
+			mcpConfigs.push(config);
 		}
 	}
 
-	// --- Telemetry ---
-	if (schema.telemetry?.source) {
-		const telemetry = (await handlerExecutor.evaluateExpression(
-			schema.telemetry.source,
-		)) as BuiltTelemetry;
-		agent.telemetry(telemetry);
+	if (mcpConfigs.length > 0) {
+		agent.mcp(new McpClient(mcpConfigs));
 	}
 }
+
+async function applyTelemetry(
+	agent: AgentBuilder,
+	telemetry: TelemetrySchema | null,
+	executor: HandlerExecutor,
+): Promise<void> {
+	if (telemetry?.source) {
+		const built = (await executor.evaluateExpression(telemetry.source)) as BuiltTelemetry;
+		agent.telemetry(built);
+	}
+}
+
+// ---------------------------------------------------------------------------
+//  Tool & Eval builders
+// ---------------------------------------------------------------------------
 
 /**
  * Build a `BuiltTool` from a `ToolSchema` with a proxy handler that
@@ -282,11 +336,7 @@ function buildToolFromSchema(
 				return syncExecutor(toolSchema.name, output);
 			};
 		} else {
-			// Async executor cannot produce a synchronous toMessage result.
-			// Return undefined and log that executeToMessageSync is needed.
-			toMessage = (_output: unknown): AgentMessage | undefined => {
-				return undefined;
-			};
+			throw new Error('Executor does not support executeToMessageSync');
 		}
 	}
 

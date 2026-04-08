@@ -22,7 +22,9 @@ import type { SourceControlGitService } from '../source-control-git.service.ee';
 import * as sourceControlHelper from '../source-control-helper.ee';
 import type { SourceControlImportService } from '../source-control-import.service.ee';
 import { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
+import type { SourceControlContextFactory } from '../source-control-context.factory';
 import { SourceControlStatusService } from '../source-control-status.service.ee';
+import { SourceControlContext } from '../types/source-control-context';
 import type { StatusExportableCredential } from '../types/exportable-credential';
 import type { ExportableProjectWithFileName } from '../types/exportable-project';
 import type { SourceControlWorkflowVersionId } from '../types/source-control-workflow-version-id';
@@ -45,11 +47,13 @@ describe('getStatus', () => {
 		mock(),
 		mock(),
 	);
+	const sourceControlContextFactory = mock<SourceControlContextFactory>();
 	const sourceControlStatusService = new SourceControlStatusService(
 		mockLogger(),
 		mock<SourceControlGitService>(),
 		sourceControlImportService,
 		preferencesService,
+		sourceControlContextFactory,
 		tagRepository,
 		folderRepository,
 		workflowRepository,
@@ -58,6 +62,10 @@ describe('getStatus', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+
+		sourceControlContextFactory.createContext.mockImplementation(
+			async (user) => new SourceControlContext(user, [], []),
+		);
 
 		// version ids (workflows)
 		sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([]);
@@ -952,21 +960,22 @@ describe('getStatus', () => {
 					],
 				});
 
-				folderRepository.find
-					.mockResolvedValueOnce([
-						{
-							id: 'local-child',
-							name: 'Local Child',
-							parentFolder: { id: 'local-parent' },
-						} as any,
-					])
-					.mockResolvedValueOnce([
-						{
-							id: 'local-parent',
-							name: 'Local Parent',
-							parentFolder: null,
-						} as any,
-					]);
+				const folderData = new Map([
+					[
+						'local-child',
+						{ id: 'local-child', name: 'Local Child', parentFolder: { id: 'local-parent' } },
+					],
+					['local-parent', { id: 'local-parent', name: 'Local Parent', parentFolder: null }],
+				]);
+				folderRepository.find.mockImplementation(async (options: any) => {
+					// populateMissingLocalFolderPathNodes calls with where.id (In(...))
+					if (options?.where?.id?._value) {
+						const ids = options.where.id._value as string[];
+						return ids.map((id: string) => folderData.get(id)).filter(Boolean) as any;
+					}
+					// Default: return empty for other calls (lastUpdatedFolder, etc.)
+					return [];
+				});
 
 				const result = await sourceControlStatusService.getStatus(user, {
 					direction: 'push',
