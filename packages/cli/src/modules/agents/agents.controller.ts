@@ -459,9 +459,18 @@ export class AgentsController {
 			}
 		}
 
+		const sanitizedHeaders: Record<string, string> = {};
+		for (const [key, value] of Object.entries(req.headers)) {
+			if (typeof value === 'string') {
+				sanitizedHeaders[key] = value;
+			} else if (Array.isArray(value)) {
+				sanitizedHeaders[key] = value.join(', ');
+			}
+		}
+
 		const webRequest = new globalThis.Request(url, {
 			method: req.method,
-			headers: req.headers as Record<string, string>,
+			headers: sanitizedHeaders,
 			body: requestBody,
 		});
 
@@ -469,7 +478,14 @@ export class AgentsController {
 		// We hold references to keep them alive for the lifetime of the process.
 		const backgroundTasks: Array<Promise<unknown>> = [];
 		const waitUntil = (task: Promise<unknown>) => {
-			backgroundTasks.push(task.catch(() => undefined));
+			backgroundTasks.push(
+				task.catch((error: unknown) => {
+					console.warn(
+						'[AgentsController] Background task failed:',
+						error instanceof Error ? error.message : String(error),
+					);
+				}),
+			);
 		};
 
 		const webResponse = await webhookHandler(webRequest, { waitUntil });
