@@ -165,8 +165,8 @@ export function createAllTools(context: InstanceAiContext) {
  */
 export function createOrchestrationTools(context: OrchestrationContext) {
 	return {
-		plan: createPlanTool(context),
-		'plan-with-agent': createPlanWithAgentTool(context),
+		'create-tasks': createPlanTool(context),
+		plan: createPlanWithAgentTool(context),
 		'update-tasks': createUpdateTasksTool(context),
 		delegate: createDelegateTool(context),
 		'build-workflow-with-agent': createBuildWorkflowAgentTool(context),

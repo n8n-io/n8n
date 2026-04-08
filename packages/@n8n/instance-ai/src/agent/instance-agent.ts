@@ -51,7 +51,7 @@ let cachedMastraStorageKey = '';
 // All other tools are deferred behind ToolSearchProcessor for on-demand discovery.
 const ALWAYS_LOADED_TOOLS = new Set([
 	'plan',
-	'plan-with-agent',
+	'create-tasks',
 	'delegate',
 	'ask-user',
 	'web-search',

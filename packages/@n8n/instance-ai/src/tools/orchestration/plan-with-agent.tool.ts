@@ -161,14 +161,13 @@ async function clearDraftChecklist(context: OrchestrationContext): Promise<void>
 
 export function createPlanWithAgentTool(context: OrchestrationContext) {
 	return createTool({
-		id: 'plan-with-agent',
+		id: 'plan',
 		description:
-			'Spawn an inline planner agent to design the solution architecture ' +
-			'for a multi-step request. The planner reads the recent conversation ' +
-			'history directly and can ask the user questions. It discovers available ' +
-			'nodes, credentials, and data tables, then creates the plan and shows it ' +
-			'to the user for approval. Use when the request requires 2 or more tasks ' +
-			'with dependencies. After this tool returns, the plan is already approved ' +
+			'Design and execute a multi-step plan. Spawns a planner agent that reads ' +
+			'the conversation history, discovers available credentials, data tables, ' +
+			'and best practices, designs the architecture, and shows it to the user ' +
+			'for approval. Use when the request requires 2 or more tasks with ' +
+			'dependencies. When this tool returns, the plan is already approved ' +
 			'and tasks are dispatched — just acknowledge briefly and end your turn.',
 		inputSchema: z.object({
 			guidance: z
