@@ -17,7 +17,7 @@ function escapeTemplateLiteral(str: string): string {
 }
 
 function escapeSingleQuote(str: string): string {
-	return JSON.stringify(str).slice(1, -1).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+	return JSON.stringify(str).slice(1, -1).replace(/'/g, "\\'");
 }
 
 let prettierInstance: typeof prettier | undefined;
