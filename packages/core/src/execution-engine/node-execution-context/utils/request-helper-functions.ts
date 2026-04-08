@@ -827,10 +827,10 @@ export async function requestOAuth2(
 		try {
 			tokenResult = await oAuthClient.credentials.getToken();
 		} catch (error) {
-			throw new ApplicationError(
-				`Failed to acquire OAuth2 access token: ${(error as Error).message}`,
-				{ cause: error },
-			);
+			const message = error instanceof Error ? error.message : String(error);
+			throw new ApplicationError(`Failed to acquire OAuth2 access token: ${message}`, {
+				cause: error,
+			});
 		}
 		const { data } = tokenResult;
 		// Find the credentials
