@@ -561,14 +561,15 @@ describe('McpClientTool', () => {
 
 			const supplyDataResult = await new McpClientTool().supplyData.call(
 				mock<ISupplyDataFunctions>({
-					getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
+					getNode: jest.fn(() => mock<INode>({ typeVersion: 1, name: 'McpClientTool' })),
 					logger: { debug: jest.fn(), error: jest.fn() },
 					addInputData: jest.fn(() => ({ index: 0 })),
 				}),
 				0,
 			);
 
-			await supplyDataResult.closeFunction!();
+			expect(supplyDataResult.closeFunction).toBeDefined();
+			await supplyDataResult.closeFunction?.();
 
 			expect(closeSpy).toHaveBeenCalledTimes(1);
 		});
@@ -1301,7 +1302,11 @@ describe('McpClientTool', () => {
 			});
 			const closeSpy = jest.spyOn(Client.prototype, 'close').mockResolvedValue();
 
-			const mockNode = mock<INode>({ typeVersion: 1, type: 'mcpClientTool' });
+			const mockNode = mock<INode>({
+				typeVersion: 1,
+				type: 'mcpClientTool',
+				name: 'McpClientTool',
+			});
 			const mockExecuteFunctions = mock<any>({
 				getNode: jest.fn(() => mockNode),
 				getInputData: jest.fn(() => [
