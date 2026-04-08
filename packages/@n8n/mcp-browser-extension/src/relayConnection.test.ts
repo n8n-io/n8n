@@ -1,4 +1,4 @@
-import { RelayConnection } from '../relayConnection';
+import { RelayConnection } from './relayConnection';
 
 // ---------------------------------------------------------------------------
 // Mocks for chrome.debugger API
@@ -74,6 +74,7 @@ function mockTarget(chromeTabId: number): {
 	};
 }
 
+<<<<<<< HEAD:packages/@n8n/mcp-browser-extension/src/__tests__/relayConnection.test.ts
 Object.assign(globalThis, {
 	chrome: {
 		debugger: {
@@ -101,6 +102,34 @@ Object.assign(globalThis, {
 				get: jest.fn().mockResolvedValue({}),
 				set: jest.fn().mockResolvedValue(undefined),
 			},
+=======
+const chrome = {
+	debugger: {
+		attach: vi.fn().mockResolvedValue(undefined),
+		detach: vi.fn().mockResolvedValue(undefined),
+		sendCommand: vi.fn(async (debuggee: { tabId: number }, method: string, _params?: object) => {
+			if (method === 'Target.getTargetInfo') {
+				return await Promise.resolve({
+					targetInfo: { targetId: targetIdForTab(debuggee.tabId) },
+				});
+			}
+			return await Promise.resolve({});
+		}),
+		getTargets: vi.fn().mockResolvedValue([]),
+		onEvent: { addListener: vi.fn(), removeListener: vi.fn() },
+		onDetach: { addListener: vi.fn(), removeListener: vi.fn() },
+	},
+	tabs: {
+		create: vi.fn().mockResolvedValue({ id: 999, title: 'New Tab', url: 'about:blank' }),
+		remove: vi.fn().mockResolvedValue(undefined),
+		get: vi.fn().mockResolvedValue({ id: 42, title: 'Test Tab', url: 'https://example.com' }),
+		query: vi.fn().mockResolvedValue([]),
+	},
+	storage: {
+		local: {
+			get: vi.fn().mockResolvedValue({}),
+			set: vi.fn().mockResolvedValue(undefined),
+>>>>>>> 6bb90d43b6 (feat: Rename extension to "Browser Use" and prepare for publishing (#27898)):packages/@n8n/mcp-browser-extension/src/relayConnection.test.ts
 		},
 	},
 });
@@ -143,6 +172,11 @@ Object.assign(globalThis, { WebSocket: MockWebSocket });
 
 const tick = async () => await new Promise((resolve) => setTimeout(resolve, 10));
 
+/** Parse a sent WebSocket frame and return the object for assertions. */
+function parseSent(ws: MockWebSocket, index = 0): unknown {
+	return JSON.parse(ws.sent[index]);
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -152,6 +186,7 @@ describe('RelayConnection', () => {
 	let relay: RelayConnection;
 
 	beforeEach(() => {
+<<<<<<< HEAD:packages/@n8n/mcp-browser-extension/src/__tests__/relayConnection.test.ts
 		jest.clearAllMocks();
 		eventListeners.length = 0;
 		detachListeners.length = 0;
@@ -170,6 +205,9 @@ describe('RelayConnection', () => {
 
 		// Default: return empty targets (tests set up their own)
 		mockGetTargets.mockResolvedValue([]);
+=======
+		vi.clearAllMocks();
+>>>>>>> 6bb90d43b6 (feat: Rename extension to "Browser Use" and prepare for publishing (#27898)):packages/@n8n/mcp-browser-extension/src/relayConnection.test.ts
 
 		ws = new MockWebSocket();
 		relay = new RelayConnection(ws as unknown as WebSocket);
@@ -247,12 +285,18 @@ describe('RelayConnection', () => {
 			// Should NOT attach (lazy)
 			expect(mockAttach).not.toHaveBeenCalled();
 
-			const sent = JSON.parse(ws.sent[0]);
-			expect(sent.method).toBe('tabOpened');
-			expect(sent.params.id).toBe(targetIdForTab(42));
-			expect(sent.params.title).toBe('Test');
-			expect(sent.params.url).toBe('https://test.com');
-			expect(sent.params.tabId).toBeUndefined();
+			expect(ws.sent[0]).toEqual(expect.stringContaining('"method":"tabOpened"'));
+			expect(parseSent(ws)).toEqual(
+				expect.objectContaining({
+					method: 'tabOpened',
+					params: expect.objectContaining({
+						id: targetIdForTab(42),
+						title: 'Test',
+						url: 'https://test.com',
+					}),
+				}),
+			);
+			expect(parseSent(ws)).not.toHaveProperty('params.tabId');
 		});
 
 		it('should not add duplicate tabs', async () => {
@@ -272,9 +316,12 @@ describe('RelayConnection', () => {
 			relay.removeTab(42);
 			expect(relay.getControlledIds()).toEqual([]);
 
-			const sent = JSON.parse(ws.sent[0]);
-			expect(sent.method).toBe('tabClosed');
-			expect(sent.params.id).toBe(targetIdForTab(42));
+			expect(parseSent(ws)).toEqual(
+				expect.objectContaining({
+					method: 'tabClosed',
+					params: expect.objectContaining({ id: targetIdForTab(42) }),
+				}),
+			);
 		});
 
 		it('should not detach debugger for unattached tabs', async () => {
@@ -287,7 +334,7 @@ describe('RelayConnection', () => {
 		it('should close connection when last tab is removed', async () => {
 			mockGetTargets.mockResolvedValueOnce([mockTarget(42)]);
 			await relay.addTab(42, 'Test', 'https://test.com');
-			const onclose = jest.fn();
+			const onclose = vi.fn();
 			relay.onclose = onclose;
 
 			relay.removeTab(42);
@@ -330,14 +377,21 @@ describe('RelayConnection', () => {
 
 			expect(mockAttach).not.toHaveBeenCalled();
 			expect(ws.sent).toHaveLength(1);
-			const response = JSON.parse(ws.sent[0]);
-			expect(response.id).toBe(1);
-			const tabs = response.result.tabs;
-			expect(tabs).toHaveLength(1);
-			expect(tabs[0].id).toBe(targetIdForTab(42));
-			expect(tabs[0].title).toBe('Example');
-			expect(tabs[0].url).toBe('https://example.com');
-			expect(tabs[0].tabId).toBeUndefined();
+			expect(parseSent(ws)).toEqual(
+				expect.objectContaining({
+					id: 1,
+					result: expect.objectContaining({
+						tabs: [
+							expect.objectContaining({
+								id: targetIdForTab(42),
+								title: 'Example',
+								url: 'https://example.com',
+							}),
+						],
+					}),
+				}),
+			);
+			expect(parseSent(ws)).not.toHaveProperty('result.tabs.0.tabId');
 		});
 	});
 
@@ -431,8 +485,9 @@ describe('RelayConnection', () => {
 			});
 			await tick();
 
-			const response = JSON.parse(ws.sent[0]);
-			expect(response.error).toContain('No tab is connected');
+			expect(parseSent(ws)).toEqual(
+				expect.objectContaining({ error: expect.stringContaining('No tab is connected') }),
+			);
 		});
 	});
 
@@ -445,7 +500,7 @@ describe('RelayConnection', () => {
 
 		it('should return true for agent-created tabs after createTab', async () => {
 			relay.setSettings({ allowTabCreation: true, allowTabClosing: false });
-			(globalThis.chrome.tabs.create as jest.Mock).mockResolvedValueOnce({
+			(globalThis.chrome.tabs.create as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
 				id: 999,
 				title: 'New',
 				url: 'https://new.com',
@@ -465,9 +520,12 @@ describe('RelayConnection', () => {
 			expect(mockAttach).toHaveBeenCalledWith({ tabId: 999 }, '1.3');
 
 			// Response should have CDP targetId, not chromeTabId
-			const response = JSON.parse(ws.sent[0]);
-			expect(response.result.id).toBe(targetIdForTab(999));
-			expect(response.result.tabId).toBeUndefined();
+			expect(parseSent(ws)).toEqual(
+				expect.objectContaining({
+					result: expect.objectContaining({ id: targetIdForTab(999) }),
+				}),
+			);
+			expect(parseSent(ws)).not.toHaveProperty('result.tabId');
 		});
 	});
 
@@ -476,8 +534,7 @@ describe('RelayConnection', () => {
 		await tick();
 
 		expect(ws.sent).toHaveLength(1);
-		const response = JSON.parse(ws.sent[0]);
-		expect(response.error).toBeDefined();
+		expect(parseSent(ws)).toEqual(expect.objectContaining({ error: expect.anything() }));
 	});
 
 	it('should only detach attached debuggees on close', async () => {
@@ -516,11 +573,16 @@ describe('RelayConnection', () => {
 		listener({ tabId: 42 }, 'Page.loadEventFired', { timestamp: 123 });
 
 		expect(ws.sent).toHaveLength(1);
-		const event = JSON.parse(ws.sent[0]);
-		expect(event.method).toBe('forwardCDPEvent');
-		expect(event.params.method).toBe('Page.loadEventFired');
-		expect(event.params.id).toBe(targetIdForTab(42));
-		expect(event.params.tabId).toBeUndefined();
+		expect(parseSent(ws)).toEqual(
+			expect.objectContaining({
+				method: 'forwardCDPEvent',
+				params: expect.objectContaining({
+					method: 'Page.loadEventFired',
+					id: targetIdForTab(42),
+				}),
+			}),
+		);
+		expect(parseSent(ws)).not.toHaveProperty('params.tabId');
 	});
 
 	it('should ignore debugger events for uncontrolled tabs', async () => {
@@ -537,7 +599,7 @@ describe('RelayConnection', () => {
 	it('should remove tab on debugger detach and close if no tabs left', async () => {
 		mockGetTargets.mockResolvedValueOnce([mockTarget(42)]);
 		await relay.addTab(42, 'Test', 'https://test.com');
-		const onclose = jest.fn();
+		const onclose = vi.fn();
 		relay.onclose = onclose;
 
 		const detachListener = detachListeners[0];
@@ -572,8 +634,9 @@ describe('RelayConnection', () => {
 		});
 		await tick();
 
-		const response = JSON.parse(ws.sent[0]);
-		expect(response.error).toContain('Tab creation is disabled');
+		expect(parseSent(ws)).toEqual(
+			expect.objectContaining({ error: expect.stringContaining('Tab creation is disabled') }),
+		);
 	});
 
 	it('should reject closeTab when tab closing is disabled', async () => {
@@ -592,8 +655,9 @@ describe('RelayConnection', () => {
 		});
 		await tick();
 
-		const response = JSON.parse(ws.sent[0]);
-		expect(response.error).toContain('Tab closing is disabled');
+		expect(parseSent(ws)).toEqual(
+			expect.objectContaining({ error: expect.stringContaining('Tab closing is disabled') }),
+		);
 	});
 
 	describe('spawned tab helpers', () => {
@@ -636,4 +700,275 @@ describe('RelayConnection', () => {
 			expect(relay.isAgentCreatedTab(50)).toBe(false);
 		});
 	});
+<<<<<<< HEAD:packages/@n8n/mcp-browser-extension/src/__tests__/relayConnection.test.ts
+=======
+
+	// Helper: register a tab and force lazy-attach by sending a CDP command
+	async function registerAndAttach(tabId: number) {
+		chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(tabId)]);
+		await relay.registerSelectedTabs([tabId]);
+		ws.onmessage?.({
+			data: JSON.stringify({
+				id: 99,
+				method: 'forwardCDPCommand',
+				params: { method: 'Runtime.evaluate', params: {} },
+			}),
+		});
+		await tick();
+		ws.sent.length = 0;
+		chrome.debugger.sendCommand.mockClear();
+	}
+
+	describe('restricted child target filtering', () => {
+		it('should filter chrome-extension:// child targets and detach them', async () => {
+			await registerAndAttach(42);
+
+			fireDebuggerEvent({ tabId: 42 }, 'Target.attachedToTarget', {
+				sessionId: 's1',
+				targetInfo: { url: 'chrome-extension://abc/page.html' },
+			});
+
+			// Should not forward to relay
+			expect(ws.sent).toHaveLength(0);
+			// Should detach the restricted child
+			expect(chrome.debugger.sendCommand).toHaveBeenCalledWith(
+				{ tabId: 42 },
+				'Target.detachFromTarget',
+				{ sessionId: 's1' },
+			);
+		});
+
+		it('should filter chrome:// child targets', async () => {
+			await registerAndAttach(42);
+
+			fireDebuggerEvent({ tabId: 42 }, 'Target.attachedToTarget', {
+				sessionId: 's2',
+				targetInfo: { url: 'chrome://settings' },
+			});
+
+			expect(ws.sent).toHaveLength(0);
+			expect(chrome.debugger.sendCommand).toHaveBeenCalledWith(
+				{ tabId: 42 },
+				'Target.detachFromTarget',
+				{ sessionId: 's2' },
+			);
+		});
+
+		it('should forward normal child targets', async () => {
+			await registerAndAttach(42);
+
+			fireDebuggerEvent({ tabId: 42 }, 'Target.attachedToTarget', {
+				sessionId: 's3',
+				targetInfo: { url: 'https://example.com/iframe' },
+			});
+
+			expect(ws.sent).toHaveLength(1);
+
+			expect(parseSent(ws)).toEqual(
+				expect.objectContaining({
+					method: 'forwardCDPEvent',
+					params: expect.objectContaining({
+						method: 'Target.attachedToTarget',
+					}),
+				}),
+			);
+		});
+	});
+
+	describe('Target.setAutoAttach caching', () => {
+		it('should broadcast setAutoAttach to all attached tabs', async () => {
+			// Register and attach two tabs
+			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(10), mockTarget(20)]);
+			await relay.registerSelectedTabs([10, 20]);
+
+			// Attach both via CDP commands
+			ws.onmessage?.({
+				data: JSON.stringify({
+					id: 1,
+					method: 'forwardCDPCommand',
+					params: { method: 'Runtime.evaluate', params: {}, id: targetIdForTab(10) },
+				}),
+			});
+			await tick();
+			ws.onmessage?.({
+				data: JSON.stringify({
+					id: 2,
+					method: 'forwardCDPCommand',
+					params: { method: 'Runtime.evaluate', params: {}, id: targetIdForTab(20) },
+				}),
+			});
+			await tick();
+			chrome.debugger.sendCommand.mockClear();
+
+			// Send root-level Target.setAutoAttach (no id param)
+			const autoAttachParams = { autoAttach: true, waitForDebuggerOnStart: false, flatten: true };
+			ws.onmessage?.({
+				data: JSON.stringify({
+					id: 3,
+					method: 'forwardCDPCommand',
+					params: { method: 'Target.setAutoAttach', params: autoAttachParams },
+				}),
+			});
+			await tick();
+
+			// Should be sent to both attached tabs
+			const setAutoAttachCalls = chrome.debugger.sendCommand.mock.calls.filter(
+				(c: unknown[]) => c[1] === 'Target.setAutoAttach',
+			);
+			expect(setAutoAttachCalls).toHaveLength(2);
+			expect(setAutoAttachCalls[0][0]).toEqual({ tabId: 10 });
+			expect(setAutoAttachCalls[1][0]).toEqual({ tabId: 20 });
+		});
+
+		it('should reapply cached autoAttach when lazily attaching a new tab', async () => {
+			// Register one tab and send root-level setAutoAttach
+			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(10)]);
+			await relay.registerSelectedTabs([10]);
+
+			ws.onmessage?.({
+				data: JSON.stringify({
+					id: 1,
+					method: 'forwardCDPCommand',
+					params: { method: 'Runtime.evaluate', params: {} },
+				}),
+			});
+			await tick();
+
+			const autoAttachParams = { autoAttach: true, waitForDebuggerOnStart: false, flatten: true };
+			ws.onmessage?.({
+				data: JSON.stringify({
+					id: 2,
+					method: 'forwardCDPCommand',
+					params: { method: 'Target.setAutoAttach', params: autoAttachParams },
+				}),
+			});
+			await tick();
+
+			// Now add a second tab and trigger lazy attach
+			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(20)]);
+			await relay.addTab(20, 'New Tab', 'https://new.com');
+			chrome.debugger.sendCommand.mockClear();
+
+			ws.onmessage?.({
+				data: JSON.stringify({
+					id: 3,
+					method: 'forwardCDPCommand',
+					params: { method: 'DOM.getDocument', params: {}, id: targetIdForTab(20) },
+				}),
+			});
+			await tick();
+
+			// After attach, setAutoAttach should be reapplied to the new tab
+			const setAutoAttachCalls = chrome.debugger.sendCommand.mock.calls.filter(
+				(c: unknown[]) => c[1] === 'Target.setAutoAttach',
+			);
+			expect(setAutoAttachCalls).toHaveLength(1);
+			expect(setAutoAttachCalls[0][0]).toEqual({ tabId: 20 });
+			expect(setAutoAttachCalls[0][2]).toEqual(autoAttachParams);
+		});
+	});
+
+	describe('Runtime.enable workaround', () => {
+		it('should wait for executionContextCreated before resolving Runtime.enable', async () => {
+			await registerAndAttach(42);
+
+			// Send Runtime.enable — this registers a one-shot onEvent listener and
+			// waits for executionContextCreated (with auxData.isDefault === true) before resolving.
+			ws.onmessage?.({
+				data: JSON.stringify({
+					id: 1,
+					method: 'forwardCDPCommand',
+					params: { method: 'Runtime.enable', params: {} },
+				}),
+			});
+
+			// Response should not be sent yet — waiting for the context event.
+			await tick();
+
+			expect(ws.sent.some((_, i) => (parseSent(ws, i) as { id: number }).id === 1)).toBe(false);
+
+			// Fire the executionContextCreated event via the one-shot listener.
+			// It is the last listener registered (after the constructor's permanent listener).
+			const allListeners = chrome.debugger.onEvent.addListener.mock.calls;
+			const oneShotListener = allListeners[allListeners.length - 1]?.[0] as
+				| ((...args: unknown[]) => void)
+				| undefined;
+			oneShotListener?.({ tabId: 42 }, 'Runtime.executionContextCreated', {
+				context: { auxData: { isDefault: true } },
+			});
+
+			await tick();
+
+			const methods = chrome.debugger.sendCommand.mock.calls.map((c: unknown[]) => c[1]);
+			// Runtime.disable must NOT be called — we use event-based waiting now
+			expect(methods).not.toContain('Runtime.disable');
+			expect(methods).toContain('Runtime.enable');
+			// Response was sent after context confirmed
+			expect(ws.sent.some((_, i) => (parseSent(ws, i) as { id: number }).id === 1)).toBe(true);
+		});
+
+		it('should resolve Runtime.enable after timeout if executionContextCreated never fires', async () => {
+			await registerAndAttach(42);
+
+			// Install fake timers before sending the message so the 3 000 ms
+			// timeout inside contextReady is created under fake time control.
+			vi.useFakeTimers();
+			try {
+				ws.onmessage?.({
+					data: JSON.stringify({
+						id: 2,
+						method: 'forwardCDPCommand',
+						params: { method: 'Runtime.enable', params: {} },
+					}),
+				});
+				// Drain microtasks (sendCommand resolves immediately), then advance
+				// past the 3 000 ms fallback timeout.
+				await Promise.resolve();
+				await vi.advanceTimersByTimeAsync(3_100);
+			} finally {
+				vi.useRealTimers();
+			}
+
+			const methods = chrome.debugger.sendCommand.mock.calls.map((c: unknown[]) => c[1]);
+			expect(methods).not.toContain('Runtime.disable');
+			expect(methods).toContain('Runtime.enable');
+		});
+	});
+
+	describe('typed close reasons', () => {
+		it('should close with extension_disconnected when last tab is removed', async () => {
+			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(42)]);
+			await relay.addTab(42, 'Test', 'https://test.com');
+
+			relay.removeTab(42);
+			expect(ws.closeReason).toBe('extension_disconnected');
+		});
+
+		it('should close with debugger_detached when last tab debugger detaches', async () => {
+			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(42)]);
+			await relay.addTab(42, 'Test', 'https://test.com');
+
+			fireDebuggerDetach({ tabId: 42 }, 'target_closed');
+			expect(ws.closeReason).toBe('debugger_detached');
+		});
+
+		it('should close with extension_disconnected when last tab is closed via closeTab', async () => {
+			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(42)]);
+			await relay.addTab(42, 'Test', 'https://test.com');
+			relay.setSettings({ allowTabCreation: true, allowTabClosing: true });
+			ws.sent.length = 0;
+
+			ws.onmessage?.({
+				data: JSON.stringify({
+					id: 1,
+					method: 'closeTab',
+					params: { id: targetIdForTab(42) },
+				}),
+			});
+			await tick();
+
+			expect(ws.closeReason).toBe('extension_disconnected');
+		});
+	});
+>>>>>>> 6bb90d43b6 (feat: Rename extension to "Browser Use" and prepare for publishing (#27898)):packages/@n8n/mcp-browser-extension/src/relayConnection.test.ts
 });
