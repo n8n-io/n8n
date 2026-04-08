@@ -1,6 +1,11 @@
 import type { Basic } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
-import type { IConnections, IWorkflowDataProxyAdditionalKeys, Workflow } from 'n8n-workflow';
+import type {
+	IConnections,
+	IWorkflowDataProxyAdditionalKeys,
+	Workflow,
+	WorkflowExpression,
+} from 'n8n-workflow';
 
 type Range = { from: number; to: number };
 
@@ -40,7 +45,14 @@ export interface ExpressionLocalResolveContext {
 	localResolve: true;
 	envVars: Record<string, Basic>;
 	additionalKeys: IWorkflowDataProxyAdditionalKeys;
-	workflow: Workflow;
+	workflow: {
+		pinData: Workflow['pinData'];
+		expression: WorkflowExpression;
+		getNode: Workflow['getNode'];
+		getParentNodes: Workflow['getParentNodes'];
+		getNodeConnectionIndexes: Workflow['getNodeConnectionIndexes'];
+		getParentMainInputNode: Workflow['getParentMainInputNode'];
+	};
 	connections: IConnections;
 	execution: IExecutionResponse | null;
 	nodeName: string;

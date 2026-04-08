@@ -17,6 +17,7 @@ import type {
 	IWorkflowDataProxyAdditionalKeys,
 	NodeParameterValue,
 	Workflow,
+	WorkflowExpression,
 } from 'n8n-workflow';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -104,7 +105,19 @@ export async function resolveParameter<T = IDataObject>(
 
 	return await resolveParameterImpl(
 		parameter,
-		workflowsStore.workflowObject as Workflow,
+		{
+			pinData: workflowDocumentStore?.pinData as IPinData,
+			expression: workflowDocumentStore?.getExpressionHandler() ?? ({} as WorkflowExpression),
+			getNode: workflowDocumentStore?.getNodeByName ?? (() => null),
+			getParentNodes: workflowDocumentStore?.getParentNodes ?? (() => []),
+			getNodeConnectionIndexes:
+				workflowDocumentStore?.getNodeConnectionIndexes ?? (() => undefined),
+			getParentMainInputNode:
+				workflowDocumentStore?.getParentMainInputNode ??
+				(() => {
+					throw Error();
+				}),
+		},
 		workflowDocumentStore?.connectionsBySourceNode ?? {},
 		useEnvironmentsStore().variablesAsObject,
 		useNDVStore().activeNode,
@@ -117,10 +130,10 @@ export async function resolveParameter<T = IDataObject>(
 // TODO: move to separate file
 function resolveParameterImpl<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-	workflowObject: Workflow,
+	workflowObject: ExpressionLocalResolveContext['workflow'],
 	connections: IConnections,
 	envVars: Record<string, string | boolean | number>,
-	ndvActiveNode: INodeUi | null,
+	ndvActiveNode: INode | null,
 	executionData: IExecutionResponse | null,
 	pinData: IPinData | undefined,
 	opts: ResolveParameterOptions = {},
@@ -1028,12 +1041,7 @@ export function useWorkflowHelpers() {
 		const tags = (workflowData.tags ?? []) as ITag[];
 		const tagIds = convertWorkflowTagsToIds(tags);
 
-		// Sync document store settings → workflowObject (runtime Workflow instance)
-		initializedWorkflowDocumentStore.onSettingsChange(({ payload }) => {
-			workflowsStore.workflowObject.setSettings(payload.settings);
-		});
 		initializedWorkflowDocumentStore.onNameChange(({ payload }) => {
-			workflowsStore.workflowObject.name = payload.name;
 			workflowsListStore.updateWorkflowInCache(workflowData.id, { name: payload.name });
 		});
 
