@@ -140,6 +140,9 @@ describe('TrustedKeyService', () => {
 					trustedKeys: JSON.stringify(entries),
 				});
 
+				// syncSourcesToDb uses entityManager (via withLock) — return empty for orphan check
+				entityManager.find.mockResolvedValue([]);
+
 				// After syncSourcesToDb, refreshAllSources queries sources
 				sourceRepo.find.mockResolvedValue([
 					{
@@ -154,14 +157,14 @@ describe('TrustedKeyService', () => {
 
 				await service.initialize();
 
-				// Source was synced to DB
-				expect(sourceRepo.save).toHaveBeenCalledWith(
+				// Source was synced to DB via transaction
+				expect(entityManager.save).toHaveBeenCalledWith(
+					expect.anything(),
 					expect.objectContaining({ id: 'static', type: 'static' }),
 				);
 
 				// Refresh used advisory lock
 				expect(entityManager.delete).toHaveBeenCalled();
-				expect(entityManager.save).toHaveBeenCalled();
 				expect(entityManager.update).toHaveBeenCalledWith(
 					expect.anything(),
 					'static',
@@ -170,11 +173,15 @@ describe('TrustedKeyService', () => {
 			});
 
 			it('should handle empty config', async () => {
-				const { service, sourceRepo } = createMocks({ isLeader: true, trustedKeys: '' });
+				const { service, entityManager } = createMocks({ isLeader: true, trustedKeys: '' });
+
+				// syncSourcesToDb uses tx.find for orphan cleanup
+				entityManager.find.mockResolvedValue([]);
 
 				await service.initialize();
 
-				expect(sourceRepo.save).not.toHaveBeenCalled();
+				// No sources saved (only orphan cleanup ran)
+				expect(entityManager.save).not.toHaveBeenCalled();
 			});
 
 			it('should throw on invalid JSON', async () => {
@@ -193,13 +200,13 @@ describe('TrustedKeyService', () => {
 			});
 
 			it('should remove orphaned sources not in config', async () => {
-				const { service, sourceRepo } = createMocks({
+				const { service, sourceRepo, entityManager } = createMocks({
 					isLeader: true,
 					trustedKeys: JSON.stringify([staticKeyEntry()]),
 				});
 
-				// Existing orphaned source in DB
-				sourceRepo.find.mockResolvedValueOnce([
+				// syncSourcesToDb orphan check returns an orphaned source
+				entityManager.find.mockResolvedValueOnce([
 					{ id: 'orphaned-source', type: 'jwks' } as TrustedKeySourceEntity,
 				]);
 				// For refreshAllSources
@@ -214,18 +221,20 @@ describe('TrustedKeyService', () => {
 
 				await service.initialize();
 
-				expect(sourceRepo.delete).toHaveBeenCalledWith('orphaned-source');
+				expect(entityManager.delete).toHaveBeenCalledWith(expect.anything(), 'orphaned-source');
 			});
 
 			it('should not remove UI sources during orphan cleanup', async () => {
-				const { service, sourceRepo } = createMocks({
+				const { service, sourceRepo, entityManager } = createMocks({
 					isLeader: true,
 					trustedKeys: JSON.stringify([staticKeyEntry()]),
 				});
 
-				sourceRepo.find.mockResolvedValueOnce([
+				// syncSourcesToDb orphan check returns a UI source
+				entityManager.find.mockResolvedValueOnce([
 					{ id: 'ui-source-uuid', type: 'ui' } as TrustedKeySourceEntity,
 				]);
+				// For refreshAllSources
 				sourceRepo.find.mockResolvedValueOnce([
 					{
 						id: 'static',
@@ -237,7 +246,8 @@ describe('TrustedKeyService', () => {
 
 				await service.initialize();
 
-				expect(sourceRepo.delete).not.toHaveBeenCalledWith('ui-source-uuid');
+				// UI source should not be deleted — only config-managed sources are orphan-cleaned
+				expect(entityManager.delete).not.toHaveBeenCalledWith(expect.anything(), 'ui-source-uuid');
 			});
 		});
 
@@ -289,6 +299,55 @@ describe('TrustedKeyService', () => {
 			const result = await service.getByKidAndIss('test-kid', 'https://other-issuer.example.com');
 
 			expect(result).toBeUndefined();
+		});
+
+		it('should skip entity with corrupted JSON data and return undefined', async () => {
+			const { service, keyRepo } = createMocks();
+
+			const entity = makeTrustedKeyEntity();
+			entity.data = 'not-valid-json';
+			keyRepo.findAllByKid.mockResolvedValue([entity]);
+
+			const result = await service.getByKidAndIss('test-kid', 'https://issuer.example.com');
+
+			expect(result).toBeUndefined();
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				'Skipping corrupted trusted key entity',
+				expect.objectContaining({ kid: 'test-kid', sourceId: 'static' }),
+			);
+		});
+
+		it('should skip entity with invalid schema and continue to next', async () => {
+			const { service, keyRepo } = createMocks();
+
+			const corruptedEntity = makeTrustedKeyEntity();
+			corruptedEntity.data = JSON.stringify({ algorithms: [], keyMaterial: '', issuer: '' });
+			const validEntity = makeTrustedKeyEntity({
+				data: makeTrustedKeyData({ issuer: 'https://issuer.example.com' }),
+			});
+			keyRepo.findAllByKid.mockResolvedValue([corruptedEntity, validEntity]);
+
+			const result = await service.getByKidAndIss('test-kid', 'https://issuer.example.com');
+
+			expect(result).toBeDefined();
+			expect(result!.issuer).toBe('https://issuer.example.com');
+		});
+
+		it('should skip entity with corrupted PEM key material', async () => {
+			const { service, keyRepo } = createMocks();
+
+			const entity = makeTrustedKeyEntity({
+				data: makeTrustedKeyData({ keyMaterial: 'not-a-pem' }),
+			});
+			keyRepo.findAllByKid.mockResolvedValue([entity]);
+
+			const result = await service.getByKidAndIss('test-kid', 'https://issuer.example.com');
+
+			expect(result).toBeUndefined();
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				'Failed to parse key material from DB',
+				expect.objectContaining({ kid: 'test-kid' }),
+			);
 		});
 
 		it('should select the entity matching the issuer from multiple results', async () => {
@@ -633,6 +692,19 @@ describe('TrustedKeyService', () => {
 
 			// Verify interval was set (check that stopRefresh clears it)
 			service.stopRefresh();
+		});
+
+		it('should not create duplicate interval on repeated startRefresh calls', () => {
+			const { service } = createMocks();
+			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+
+			service.startRefresh();
+			service.startRefresh();
+
+			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+
+			service.stopRefresh();
+			setIntervalSpy.mockRestore();
 		});
 
 		it('should not start refresh if shutting down', () => {

@@ -55,7 +55,7 @@ export class TokenExchangeService {
 		const decodedPayload = decoded.payload;
 		const iss =
 			typeof decodedPayload === 'object' && decodedPayload !== null
-				? (decodedPayload as Record<string, unknown>).iss
+				? decodedPayload.iss
 				: undefined;
 		if (typeof iss !== 'string' || !iss) {
 			throw new BadRequestError('Token payload missing iss');

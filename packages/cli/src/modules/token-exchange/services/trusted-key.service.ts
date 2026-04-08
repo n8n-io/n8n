@@ -9,7 +9,7 @@ import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import type { Algorithm } from 'jsonwebtoken';
 import { InstanceSettings } from 'n8n-core';
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { TrustedKeySourceEntity } from '../database/entities/trusted-key-source.entity';
@@ -23,7 +23,7 @@ import type {
 	TrustedKeyData,
 	TrustedKeySource,
 } from '../token-exchange.schemas';
-import { TrustedKeySourceSchema } from '../token-exchange.schemas';
+import { TrustedKeyDataSchema, TrustedKeySourceSchema } from '../token-exchange.schemas';
 
 type AlgorithmFamily = 'RSA' | 'EC' | 'EdDSA';
 
@@ -97,7 +97,7 @@ export class TrustedKeyService {
 
 	@OnLeaderTakeover()
 	startRefresh() {
-		if (this.isShuttingDown) return;
+		if (this.isShuttingDown || this.refreshInterval) return;
 
 		const intervalMs = this.config.keyRefreshIntervalSeconds * Time.seconds.toMilliseconds;
 		this.refreshInterval = setInterval(async () => await this.refreshAllSources(), intervalMs);
@@ -133,10 +133,31 @@ export class TrustedKeyService {
 		if (entities.length === 0) return undefined;
 
 		for (const entity of entities) {
-			const data = jsonParse<TrustedKeyData>(entity.data);
+			let data: TrustedKeyData;
+			try {
+				const parsed = TrustedKeyDataSchema.safeParse(JSON.parse(entity.data));
+				if (!parsed.success) {
+					this.logger.warn('Skipping corrupted trusted key entity', {
+						kid,
+						sourceId: entity.sourceId,
+						error: parsed.error.message,
+					});
+					continue;
+				}
+				data = parsed.data;
+			} catch {
+				this.logger.warn('Skipping corrupted trusted key entity', {
+					kid,
+					sourceId: entity.sourceId,
+					error: 'invalid JSON',
+				});
+				continue;
+			}
+
 			if (data.issuer !== issuer) continue;
 
 			const cryptoKey = this.resolveCryptoKey(kid, data.keyMaterial);
+			if (!cryptoKey) continue;
 
 			return {
 				kid,
@@ -217,54 +238,59 @@ export class TrustedKeyService {
 	 * are no longer in the current config.
 	 */
 	private async syncSourcesToDb(sources: TrustedKeySource[]): Promise<void> {
-		const staticSources = sources.filter((s): s is StaticKeySource => s.type === 'static');
-		const jwksSources = sources.filter((s) => s.type === 'jwks');
+		await this.dbLockService.withLock(DbLock.TRUSTED_KEY_REFRESH, async (tx) => {
+			const staticSources = sources.filter((s): s is StaticKeySource => s.type === 'static');
+			const jwksSources = sources.filter((s) => s.type === 'jwks');
 
-		const expectedSourceIds = new Set<string>();
+			const expectedSourceIds = new Set<string>();
 
-		// Group all static keys under a single source
-		if (staticSources.length > 0) {
-			const sourceId = STATIC_SOURCE_ID;
-			expectedSourceIds.add(sourceId);
-			await this.trustedKeySourceRepository.save({
-				id: sourceId,
-				type: 'static' as const,
-				config: JSON.stringify(staticSources),
-				status: 'pending' as const,
-			});
-		}
-
-		// Each JWKS URL is a separate source
-		for (const jwks of jwksSources) {
-			const sourceId = this.generateSourceId(jwks);
-			expectedSourceIds.add(sourceId);
-			await this.trustedKeySourceRepository.save({
-				id: sourceId,
-				type: 'jwks' as const,
-				config: JSON.stringify(jwks),
-				status: 'pending' as const,
-			});
-		}
-
-		// UI sources are skipped — they are DB-generated via future UI
-
-		// Remove orphaned sources no longer in config
-		const existingSources = await this.trustedKeySourceRepository.find();
-		for (const existing of existingSources) {
-			// Only clean up config-managed sources (static/jwks), not UI sources
-			if (existing.type !== 'ui' && !expectedSourceIds.has(existing.id)) {
-				await this.trustedKeySourceRepository.delete(existing.id);
-				this.logger.info('Removed orphaned trusted key source', { sourceId: existing.id });
+			// Group all static keys under a single source
+			if (staticSources.length > 0) {
+				const sourceId = STATIC_SOURCE_ID;
+				expectedSourceIds.add(sourceId);
+				await tx.save(TrustedKeySourceEntity, {
+					id: sourceId,
+					type: 'static' as const,
+					config: JSON.stringify(staticSources),
+					status: 'pending' as const,
+				});
 			}
-		}
+
+			// Each JWKS URL is a separate source
+			for (const jwks of jwksSources) {
+				const sourceId = this.generateSourceId(jwks);
+				expectedSourceIds.add(sourceId);
+				await tx.save(TrustedKeySourceEntity, {
+					id: sourceId,
+					type: 'jwks' as const,
+					config: JSON.stringify(jwks),
+					status: 'pending' as const,
+				});
+			}
+
+			// Remove orphaned config-managed sources (not UI sources)
+			const existingSources = await tx.find(TrustedKeySourceEntity);
+			for (const existing of existingSources) {
+				if (existing.type !== 'ui' && !expectedSourceIds.has(existing.id)) {
+					await tx.delete(TrustedKeySourceEntity, existing.id);
+					this.logger.info('Removed orphaned trusted key source', {
+						sourceId: existing.id,
+					});
+				}
+			}
+		});
 	}
 
 	// ─── Private: refresh ──────────────────────────────────────────────
 
 	private async refreshAllSources(): Promise<void> {
-		const sources = await this.trustedKeySourceRepository.find();
-		for (const source of sources) {
-			await this.refreshSourceInternal(source);
+		try {
+			const sources = await this.trustedKeySourceRepository.find();
+			for (const source of sources) {
+				await this.refreshSourceInternal(source);
+			}
+		} catch (error) {
+			this.logger.error('Failed to run trusted key refresh cycle', { error });
 		}
 	}
 
@@ -303,7 +329,19 @@ export class TrustedKeyService {
 		let resolvedKeys: Array<{ kid: string; data: TrustedKeyData }>;
 
 		if (source.type === 'static') {
-			const staticConfigs = jsonParse<StaticKeySource[]>(source.config);
+			let rawConfig: unknown;
+			try {
+				rawConfig = JSON.parse(source.config);
+			} catch {
+				throw new UnexpectedError('Invalid static source config: malformed JSON');
+			}
+			const configResult = z.array(TrustedKeySourceSchema).safeParse(rawConfig);
+			if (!configResult.success) {
+				throw new UnexpectedError(`Invalid static source config: ${configResult.error.message}`);
+			}
+			const staticConfigs = configResult.data.filter(
+				(s): s is StaticKeySource => s.type === 'static',
+			);
 			resolvedKeys = this.resolveStaticKeys(staticConfigs);
 		} else if (source.type === 'jwks') {
 			this.logger.warn('JWKS key sources are not yet supported, skipping', {
@@ -431,7 +469,7 @@ export class TrustedKeyService {
 
 	// ─── Private: crypto cache ─────────────────────────────────────────
 
-	private resolveCryptoKey(kid: string, keyMaterial: string): KeyObject {
+	private resolveCryptoKey(kid: string, keyMaterial: string): KeyObject | undefined {
 		const hash = createHash('sha256').update(keyMaterial).digest('hex');
 		const cached = this.cryptoCache.get(kid);
 
@@ -439,8 +477,16 @@ export class TrustedKeyService {
 			return cached.cryptoKey;
 		}
 
-		const cryptoKey = createPublicKey(keyMaterial);
-		this.cryptoCache.set(kid, { keyMaterialHash: hash, cryptoKey });
-		return cryptoKey;
+		try {
+			const cryptoKey = createPublicKey(keyMaterial);
+			this.cryptoCache.set(kid, { keyMaterialHash: hash, cryptoKey });
+			return cryptoKey;
+		} catch (error) {
+			this.logger.warn('Failed to parse key material from DB', {
+				kid,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return undefined;
+		}
 	}
 }

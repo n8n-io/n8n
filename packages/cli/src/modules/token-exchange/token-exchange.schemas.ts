@@ -84,25 +84,16 @@ export type TrustedKeySourceStatus = 'pending' | 'healthy' | 'error';
  * JSON column. Unlike `ResolvedTrustedKey`, this holds the raw PEM string
  * instead of a live `crypto.KeyObject`.
  */
-export interface TrustedKeyData {
-	/** Allowed signing algorithms for tokens using this key. */
-	algorithms: JwtAlgorithm[];
+export const TrustedKeyDataSchema = z.object({
+	algorithms: z.array(JwtAlgorithmSchema).min(1),
+	keyMaterial: z.string().min(1),
+	issuer: z.string().min(1),
+	expectedAudience: z.string().optional(),
+	allowedRoles: z.array(z.string()).optional(),
+	expiresAt: z.string().optional(),
+});
 
-	/** PEM-encoded public key material. */
-	keyMaterial: string;
-
-	/** Expected `iss` claim value for tokens signed with this key. */
-	issuer: string;
-
-	/** Expected `aud` claim value, if restricted. */
-	expectedAudience?: string;
-
-	/** Roles allowed for tokens signed with this key, if restricted. */
-	allowedRoles?: string[];
-
-	/** ISO 8601 expiry — used by JWKS sources for key rotation. */
-	expiresAt?: string;
-}
+export type TrustedKeyData = z.infer<typeof TrustedKeyDataSchema>;
 
 /**
  * A trusted key that has been normalized and resolved to an in-memory
