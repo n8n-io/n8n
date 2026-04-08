@@ -153,6 +153,7 @@ export {
 } from './schemas/source-controlled-file.schema';
 
 export {
+	insightsSummarySchema,
 	type InsightsSummaryType,
 	type InsightsSummaryUnit,
 	type InsightsSummary,
@@ -283,6 +284,7 @@ export {
 	gatewayConfirmationRequiredPayloadSchema,
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	InstanceAiSendMessageRequest,
+	InstanceAiEvalExecutionRequest,
 	instanceAiGatewayKeySchema,
 	InstanceAiGatewayEventsQuery,
 	InstanceAiEventsQuery,
@@ -302,6 +304,7 @@ export type {
 	ToolCallId,
 	InstanceAiEventType,
 	InstanceAiRunStatus,
+	InstanceAiConfirmation,
 	InstanceAiConfirmationSeverity,
 	InstanceAiCredentialRequest,
 	InstanceAiAgentStatus,
@@ -356,6 +359,11 @@ export type {
 	GatewayConfirmationRequiredPayload,
 	ToolCategory,
 	InstanceAiWorkflowSetupNode,
+	InstanceAiEvalNodeExecutionMode,
+	InstanceAiEvalInterceptedRequest,
+	InstanceAiEvalNodeResult,
+	InstanceAiEvalMockHints,
+	InstanceAiEvalExecutionResult,
 } from './schemas/instance-ai.schema';
 
 export {

@@ -41,6 +41,9 @@
 		"GET /discover": {
 			"status": "gap"
 		},
+		"GET /insights/summary": {
+			"status": "gap"
+		},
 		"GET /executions": {
 			"status": "covered",
 			"nodeOperation": "execution:getAll"

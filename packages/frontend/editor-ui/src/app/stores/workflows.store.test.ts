@@ -1445,7 +1445,7 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsListStore.workflowsById['1'].isArchived).toBe(true);
 			expect(workflowsListStore.workflowsById['1'].versionId).toBe(updatedVersionId);
 			expect(workflowDocumentStore.isArchived).toBe(true);
-			expect(workflowsStore.workflow.versionId).toBe(updatedVersionId);
+			expect(workflowDocumentStore.versionId).toBe(updatedVersionId);
 			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
 				expect.objectContaining({
 					baseUrl: '/rest',
@@ -1524,7 +1524,7 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsListStore.workflowsById['1'].isArchived).toBe(false);
 			expect(workflowsListStore.workflowsById['1'].versionId).toBe(updatedVersionId);
 			expect(workflowDocumentStore.isArchived).toBe(false);
-			expect(workflowsStore.workflow.versionId).toBe(updatedVersionId);
+			expect(workflowDocumentStore.versionId).toBe(updatedVersionId);
 			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
 				expect.objectContaining({
 					baseUrl: '/rest',
@@ -1551,6 +1551,7 @@ describe('useWorkflowsStore', () => {
 
 			// Also populate the document store since updateWorkflowSetting reads from it
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('w1'));
+			workflowDocumentStore.setVersionData({ versionId: 'v1', name: null, description: null });
 			workflowDocumentStore.setSettings({ executionOrder: 'v1', timezone: 'UTC' });
 
 			const makeRestApiRequestSpy = vi.spyOn(apiUtils, 'makeRestApiRequest').mockResolvedValue(
