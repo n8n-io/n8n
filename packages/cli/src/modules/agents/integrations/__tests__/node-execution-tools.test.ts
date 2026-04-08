@@ -2,7 +2,8 @@ import { mock } from 'jest-mock-extended';
 
 import type { CredentialProvider } from '@n8n/agents';
 
-import type { NodeParametersSchema } from '../../node-schema-utils';
+import type { INodeProperties } from 'n8n-workflow';
+
 import type { ToolDescriptor } from '../../node-tool-registry';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import {
@@ -38,9 +39,9 @@ describe('createGetNodeSchemaTool', () => {
 	beforeEach(() => jest.clearAllMocks());
 
 	it('returns nodeType and schema when found', async () => {
-		const schema: NodeParametersSchema = {
-			url: { displayName: 'URL', type: 'string', required: true },
-		};
+		const schema: INodeProperties[] = [
+			{ displayName: 'URL', name: 'url', type: 'string', default: '', required: true },
+		];
 		jest.mocked(getNodeSchema).mockResolvedValue(schema);
 		const lnc = mock<LoadNodesAndCredentials>();
 		const tool = createGetNodeSchemaTool(lnc).build();

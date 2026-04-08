@@ -1,8 +1,7 @@
 import type { CredentialListItem, CredentialProvider } from '@n8n/agents';
+import type { INodeProperties } from 'n8n-workflow';
 
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-
-import { extractNodeParametersSchema, type NodeParametersSchema } from './node-schema-utils';
 
 export interface ToolDescriptor {
 	/** Human-readable display name, e.g. "HTTP Request" */
@@ -18,20 +17,31 @@ export interface ToolDescriptor {
 	credentials: CredentialListItem[];
 }
 
+const UI_ONLY_TYPES = new Set([
+	'notice',
+	'callout',
+	'button',
+	'hidden',
+	'icon',
+	'curlImport',
+	'workflowSelector',
+	'credentialsSelect',
+	'credentials',
+]);
+
 /**
- * Returns the parameter schema for a single node type, or `undefined` if the
- * node is not found or not usable as a tool.
- *
- * Calls `collectTypes()` each time — types are not held in memory.
+ * Returns the raw `INodeProperties[]` for a node type, filtered to remove
+ * UI-only and node-setting entries that are irrelevant to an LLM agent.
+ * Returns `undefined` if the node is not found or not usable as a tool.
  */
 export async function getNodeSchema(
 	lnc: LoadNodesAndCredentials,
 	nodeType: string,
-): Promise<NodeParametersSchema | undefined> {
+): Promise<INodeProperties[] | undefined> {
 	const { nodes } = await lnc.collectTypes();
 	const node = nodes.find((n) => n.usableAsTool && n.name === nodeType);
 	if (!node) return undefined;
-	return extractNodeParametersSchema(node.properties);
+	return node.properties.filter((prop) => !UI_ONLY_TYPES.has(prop.type) && !prop.isNodeSetting);
 }
 
 /**
