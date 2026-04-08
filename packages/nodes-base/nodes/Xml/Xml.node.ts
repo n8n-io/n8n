@@ -1,11 +1,11 @@
-import { Builder, Parser } from 'xml2js';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError, deepCopy } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, deepCopy } from 'n8n-workflow';
+import { Builder, Parser } from 'xml2js';
 
 export class Xml implements INodeType {
 	description: INodeTypeDescription = {
@@ -21,8 +21,8 @@ export class Xml implements INodeType {
 			name: 'XML',
 			color: '#333377',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Mode',
@@ -235,6 +235,20 @@ export class Xml implements INodeType {
 		const mode = this.getNodeParameter('mode', 0) as string;
 		const dataPropertyName = this.getNodeParameter('dataPropertyName', 0);
 		const options = this.getNodeParameter('options', 0, {});
+
+		const forbiddenKeys = ['__proto__', 'constructor', 'prototype'];
+		if (typeof options.attrkey === 'string' && forbiddenKeys.includes(options.attrkey)) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`The "Attribute Key" option value "${options.attrkey}" is not allowed`,
+			);
+		}
+		if (typeof options.charkey === 'string' && forbiddenKeys.includes(options.charkey)) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`The "Character Key" option value "${options.charkey}" is not allowed`,
+			);
+		}
 
 		let item: INodeExecutionData;
 		const returnData: INodeExecutionData[] = [];

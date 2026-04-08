@@ -28,7 +28,7 @@ export class GithubOAuth2Api implements ICredentialType {
 			name: 'authUrl',
 			type: 'hidden',
 			default:
-				'={{$self["server"] === "https://api.github.com" ? "https://github.com" : $self["server"]}}/login/oauth/authorize',
+				'={{$self["server"] === "https://api.github.com" ? "https://github.com" : $self["server"].split("://")[0] + "://" + $self["server"].split("://")[1].split("/")[0]}}/login/oauth/authorize',
 			required: true,
 		},
 		{
@@ -36,7 +36,7 @@ export class GithubOAuth2Api implements ICredentialType {
 			name: 'accessTokenUrl',
 			type: 'hidden',
 			default:
-				'={{$self["server"] === "https://api.github.com" ? "https://github.com" : $self["server"]}}/login/oauth/access_token',
+				'={{$self["server"] === "https://api.github.com" ? "https://github.com" : $self["server"].split("://")[0] + "://" + $self["server"].split("://")[1].split("/")[0]}}/login/oauth/access_token',
 			required: true,
 		},
 		{

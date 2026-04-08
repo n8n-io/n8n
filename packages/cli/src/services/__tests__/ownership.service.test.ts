@@ -1,28 +1,52 @@
+import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
+import {
+	Project,
+	SharedWorkflow,
+	User,
+	WorkflowEntity,
+	ProjectRelation,
+	ProjectRelationRepository,
+	ProjectRepository,
+	SharedWorkflowRepository,
+	UserRepository,
+	GLOBAL_OWNER_ROLE,
+	PROJECT_OWNER_ROLE,
+} from '@n8n/db';
+import type { SharedCredentials, SettingsRepository } from '@n8n/db';
+import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { mock } from 'jest-mock-extended';
+import { v4 as uuid } from 'uuid';
 
-import { Project } from '@/databases/entities/project';
-import { ProjectRelation } from '@/databases/entities/project-relation';
-import type { SharedCredentials } from '@/databases/entities/shared-credentials';
-import { SharedWorkflow } from '@/databases/entities/shared-workflow';
-import { User } from '@/databases/entities/user';
-import { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import type { EventService } from '@/events/event.service';
 import { OwnershipService } from '@/services/ownership.service';
+import { PasswordUtility } from '@/services/password.utility';
 import { mockCredential, mockProject } from '@test/mock-objects';
-import { mockInstance } from '@test/mocking';
+
+import { CacheService } from '../cache/cache.service';
 
 describe('OwnershipService', () => {
 	const userRepository = mockInstance(UserRepository);
 	const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
 	const projectRelationRepository = mockInstance(ProjectRelationRepository);
+	const projectRepository = mockInstance(ProjectRepository);
+	const cacheService = mockInstance(CacheService);
+	const passwordUtility = mockInstance(PasswordUtility);
+	const logger = mockInstance(Logger);
+	const eventService = mock<EventService>();
+	const settingsRepository = mock<SettingsRepository>();
+
 	const ownershipService = new OwnershipService(
-		mock(),
-		userRepository,
-		mock(),
+		cacheService,
+		eventService,
+		logger,
+		passwordUtility,
 		projectRelationRepository,
+		projectRepository,
 		sharedWorkflowRepository,
+		userRepository,
+		settingsRepository,
 	);
 
 	beforeEach(() => {
@@ -52,22 +76,24 @@ describe('OwnershipService', () => {
 		});
 	});
 
-	describe('getProjectOwnerCached()', () => {
+	describe('getPersonalProjectOwnerCached()', () => {
 		test('should retrieve a project owner', async () => {
-			const mockProject = new Project();
-			const mockOwner = new User();
-
-			const projectRelation = Object.assign(new ProjectRelation(), {
-				role: 'project:personalOwner',
-				project: mockProject,
-				user: mockOwner,
-			});
+			// ARRANGE
+			const project = new Project();
+			const owner = new User();
+			owner.role = GLOBAL_OWNER_ROLE;
+			const projectRelation = new ProjectRelation();
+			projectRelation.role = PROJECT_OWNER_ROLE;
+			projectRelation.project = project;
+			projectRelation.user = owner;
 
 			projectRelationRepository.getPersonalProjectOwners.mockResolvedValueOnce([projectRelation]);
 
+			// ACT
 			const returnedOwner = await ownershipService.getPersonalProjectOwnerCached('some-project-id');
 
-			expect(returnedOwner).toBe(mockOwner);
+			// ASSERT
+			expect(returnedOwner).toBe(owner);
 		});
 
 		test('should not throw if no project owner found, should return null instead', async () => {
@@ -77,15 +103,41 @@ describe('OwnershipService', () => {
 
 			expect(owner).toBeNull();
 		});
+
+		test('should not use the repository if the owner was found in the cache', async () => {
+			// ARRANGE
+			const project = new Project();
+			project.id = uuid();
+			const owner = new User();
+			owner.id = uuid();
+			owner.role = GLOBAL_OWNER_ROLE;
+			const projectRelation = new ProjectRelation();
+			projectRelation.role = PROJECT_OWNER_ROLE;
+			projectRelation.project = project;
+			projectRelation.user = owner;
+
+			cacheService.getHashValue.mockResolvedValueOnce(owner);
+			userRepository.create.mockReturnValueOnce(owner);
+
+			// ACT
+			const foundOwner = await ownershipService.getPersonalProjectOwnerCached(project.id);
+
+			// ASSERT
+			expect(cacheService.getHashValue).toHaveBeenCalledTimes(1);
+			expect(cacheService.getHashValue).toHaveBeenCalledWith('project-owner', project.id);
+			expect(projectRelationRepository.getPersonalProjectOwners).not.toHaveBeenCalled();
+			expect(foundOwner).toEqual(owner);
+		});
 	});
 
 	describe('getProjectOwnerCached()', () => {
 		test('should retrieve a project owner', async () => {
 			const mockProject = new Project();
 			const mockOwner = new User();
+			mockOwner.role = GLOBAL_OWNER_ROLE;
 
 			const projectRelation = Object.assign(new ProjectRelation(), {
-				role: 'project:personalOwner',
+				role: PROJECT_OWNER_ROLE_SLUG,
 				project: mockProject,
 				user: mockOwner,
 			});
@@ -184,13 +236,81 @@ describe('OwnershipService', () => {
 		});
 	});
 
+	describe('invalidateProjectOwnerCacheByUserId()', () => {
+		test('should delete cache entry for personal project', async () => {
+			const project = new Project();
+			project.id = uuid();
+			projectRepository.getPersonalProjectForUser.mockResolvedValueOnce(project);
+
+			await ownershipService.invalidateProjectOwnerCacheByUserId('some-user-id');
+
+			expect(projectRepository.getPersonalProjectForUser).toHaveBeenCalledWith('some-user-id');
+			expect(cacheService.deleteFromHash).toHaveBeenCalledWith('project-owner', project.id);
+		});
+
+		test('should not delete cache if user has no personal project', async () => {
+			projectRepository.getPersonalProjectForUser.mockResolvedValueOnce(null);
+
+			await ownershipService.invalidateProjectOwnerCacheByUserId('some-user-id');
+
+			expect(projectRepository.getPersonalProjectForUser).toHaveBeenCalledWith('some-user-id');
+			expect(cacheService.deleteFromHash).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('getInstanceOwner()', () => {
 		test('should find owner using global owner role ID', async () => {
 			await ownershipService.getInstanceOwner();
 
 			expect(userRepository.findOneOrFail).toHaveBeenCalledWith({
-				where: { role: 'global:owner' },
+				where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
 			});
+		});
+	});
+
+	describe('setupOwner()', () => {
+		it('should throw a BadRequestError if the instance owner is already setup', async () => {
+			jest.spyOn(userRepository, 'exists').mockResolvedValueOnce(true);
+
+			await expect(ownershipService.setupOwner(mock())).rejects.toThrowError(
+				new BadRequestError('Instance owner already setup'),
+			);
+
+			expect(userRepository.save).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+			expect(logger.debug).toHaveBeenCalledWith(
+				'Request to claim instance ownership failed because instance owner already exists',
+			);
+		});
+
+		it('should setup the instance owner successfully', async () => {
+			const user = mock<User>({
+				id: 'userId',
+				role: GLOBAL_OWNER_ROLE,
+				authIdentities: [],
+			});
+
+			const payload = {
+				email: 'valid@email.com',
+				password: 'NewPassword123',
+				firstName: 'Jane',
+				lastName: 'Doe',
+			};
+
+			//	not quite perfect as we hash the password.
+			const expected = { ...user, ...payload, id: 'newUserId' };
+
+			userRepository.exists.mockResolvedValueOnce(false);
+			userRepository.findOneOrFail.mockResolvedValueOnce(user);
+			userRepository.save.mockResolvedValueOnce(expected);
+
+			const actual = await ownershipService.setupOwner(payload);
+
+			expect(userRepository.save).toHaveBeenCalledWith(user, { transaction: false });
+			expect(eventService.emit).toHaveBeenCalledWith('instance-owner-setup', {
+				userId: 'newUserId',
+			});
+			expect(actual.id).toEqual('newUserId');
 		});
 	});
 });

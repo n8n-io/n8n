@@ -1,0 +1,21 @@
+{
+    "type": "object",
+    "properties": {
+        "_id": {
+            "type": "string"
+        },
+        "createdAt": {
+            "type": "string"
+        },
+        "createdBy": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        }
+    },
+    "version": 2
+}

@@ -1,13 +1,17 @@
-export const enum RecipientType {
-	email = 'EMAIL',
-	phone = 'PHONE',
-	paypalId = 'PAYPAL_ID',
-}
+export const RecipientTypes = {
+	email: 'EMAIL',
+	phone: 'PHONE',
+	paypalId: 'PAYPAL_ID',
+} as const;
 
-export const enum RecipientWallet {
-	paypal = 'PAYPAL',
-	venmo = 'VENMO',
-}
+export type RecipientType = (typeof RecipientTypes)[keyof typeof RecipientTypes];
+
+export const RecipientWallets = {
+	paypal: 'PAYPAL',
+	venmo: 'VENMO',
+} as const;
+
+export type RecipientWallet = (typeof RecipientWallets)[keyof typeof RecipientWallets];
 
 export interface IAmount {
 	currency?: string;

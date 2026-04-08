@@ -48,7 +48,7 @@ post:
                 format: email
               role:
                 type: string
-                enum: [global:admin, global:member]
+                example: global:member
             required:
               - email
   responses:

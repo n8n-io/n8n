@@ -51,18 +51,20 @@ export type PartitionKey = {
 	};
 };
 
-export const enum EAttributeValueType {
-	S = 'S',
-	SS = 'SS',
-	M = 'M',
-	L = 'L',
-	NS = 'NS',
-	N = 'N',
-	BOOL = 'BOOL',
-	B = 'B',
-	BS = 'BS',
-	NULL = 'NULL',
-}
+export const EAttributeValueTypes = {
+	S: 'S',
+	SS: 'SS',
+	M: 'M',
+	L: 'L',
+	NS: 'NS',
+	N: 'N',
+	BOOL: 'BOOL',
+	B: 'B',
+	BS: 'BS',
+	NULL: 'NULL',
+} as const;
+
+export type EAttributeValueType = (typeof EAttributeValueTypes)[keyof typeof EAttributeValueTypes];
 
 export interface IExpressionAttributeValue {
 	attribute: string;

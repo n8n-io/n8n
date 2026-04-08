@@ -5,12 +5,14 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	IHookFunctions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
+
 import { capitalize } from '../../../../../utils/utilities';
 
 export async function microsoftApiRequest(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: IHttpRequestMethods,
 	resource: string,
 	body: any = {},
@@ -18,6 +20,12 @@ export async function microsoftApiRequest(
 	uri?: string,
 	headers: IDataObject = {},
 ): Promise<any> {
+	const credentials = await this.getCredentials('microsoftTeamsOAuth2Api');
+	const baseUrl = (
+		typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
+			? credentials.graphApiBaseUrl
+			: 'https://graph.microsoft.com'
+	).replace(/\/+$/, '');
 	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -25,14 +33,13 @@ export async function microsoftApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `https://graph.microsoft.com${resource}`,
+		uri: uri || `${baseUrl}${resource}`,
 		json: true,
 	};
 	try {
 		if (Object.keys(headers).length !== 0) {
 			options.headers = Object.assign({}, options.headers, headers);
 		}
-		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'microsoftTeamsOAuth2Api', options);
 	} catch (error) {
 		const errorOptions: IDataObject = {};
@@ -56,7 +63,6 @@ export async function microsoftApiRequestAllItems(
 	propertyName: string,
 	method: IHttpRequestMethods,
 	endpoint: string,
-
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
@@ -83,7 +89,6 @@ export async function microsoftApiRequestAllItemsSkip(
 	propertyName: string,
 	method: IHttpRequestMethods,
 	endpoint: string,
-
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {

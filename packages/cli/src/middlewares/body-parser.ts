@@ -1,11 +1,11 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import type { Request, RequestHandler } from 'express';
 import { parseIncomingMessage } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { parse as parseQueryString } from 'querystring';
 import getRawBody from 'raw-body';
 import { type Readable } from 'stream';
-import Container from 'typedi';
 import { Parser as XmlParser } from 'xml2js';
 import { createGunzip, createInflate } from 'zlib';
 
@@ -49,6 +49,12 @@ export const rawBodyReader: RequestHandler = async (req, _res, next) => {
 };
 
 export const parseBody = async (req: Request) => {
+	// Skip multipart requests (e.g., file uploads) - these need specialized parsing by multer.
+	// Reading the body stream here would consume it, making it unavailable for multer processing.
+	if (req.contentType?.startsWith('multipart/')) {
+		return;
+	}
+
 	await req.readRawBody();
 	const { rawBody, contentType, encoding } = req;
 	if (rawBody?.length) {

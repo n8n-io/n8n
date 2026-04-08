@@ -1,22 +1,21 @@
+import moment from 'moment-timezone';
 import {
 	type IPollFunctions,
 	type IDataObject,
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
-import { notionApiRequest, simplifyObjects } from './shared/GenericFunctions';
-
-import { listSearch } from './shared/methods';
 import {
 	databaseUrlExtractionRegexp,
 	databaseUrlValidationRegexp,
 	idExtractionRegexp,
 	idValidationRegexp,
 } from './shared/constants';
+import { notionApiRequest, simplifyObjects } from './shared/GenericFunctions';
+import { listSearch } from './shared/methods';
 
 export class NotionTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -34,12 +33,42 @@ export class NotionTrigger implements INodeType {
 			{
 				name: 'notionApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['apiKey'],
+					},
+				},
+			},
+			{
+				name: 'notionOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2'],
+					},
+				},
 			},
 		],
 		polling: true,
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'API Key',
+						value: 'apiKey',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'apiKey',
+			},
 			{
 				displayName: 'Event',
 				name: 'event',

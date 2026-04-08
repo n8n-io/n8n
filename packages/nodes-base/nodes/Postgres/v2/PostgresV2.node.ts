@@ -5,8 +5,8 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { router } from './actions/router';
 
+import { router } from './actions/router';
 import { versionDescription } from './actions/versionDescription';
 import { credentialTest, listSearch, loadOptions, resourceMapping } from './methods';
 

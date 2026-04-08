@@ -1,4 +1,4 @@
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError } from '@n8n/errors';
 
 export type WrappableError = Record<string, unknown>;
 
@@ -21,10 +21,6 @@ export class WrappedExecutionError extends ApplicationError {
 
 	private copyErrorProperties(error: WrappableError) {
 		for (const key of Object.getOwnPropertyNames(error)) {
-			if (key === 'message' || key === 'stack') {
-				continue;
-			}
-
 			this[key] = error[key];
 		}
 	}

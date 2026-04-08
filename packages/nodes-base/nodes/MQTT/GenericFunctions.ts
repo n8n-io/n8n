@@ -55,7 +55,7 @@ export const createClient = async (credentials: MqttCredential): Promise<MqttCli
 
 		const onConnect = () => {
 			client.removeListener('connect', onConnect);
-			// eslint-disable-next-line @typescript-eslint/no-use-before-define
+
 			client.removeListener('error', onError);
 			resolve(client);
 		};

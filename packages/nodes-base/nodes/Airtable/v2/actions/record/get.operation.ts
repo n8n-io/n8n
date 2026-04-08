@@ -5,10 +5,11 @@ import type {
 	NodeApiError,
 	IExecuteFunctions,
 } from 'n8n-workflow';
+
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
-import { apiRequest, downloadRecordAttachments } from '../../transport';
-import { flattenOutput, processAirtableError } from '../../helpers/utils';
 import type { IRecord } from '../../helpers/interfaces';
+import { legacyFlattenOutput, processAirtableError } from '../../helpers/utils';
+import { apiRequest, downloadRecordAttachments } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
@@ -63,6 +64,7 @@ export async function execute(
 	table: string,
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
+	const nodeVersion = this.getNode().typeVersion;
 
 	for (let i = 0; i < items.length; i++) {
 		let id;
@@ -79,14 +81,20 @@ export async function execute(
 					[responseData] as IRecord[],
 					options.downloadFields as string[],
 				);
-				returnData.push(...itemWithAttachments);
+				returnData.push(
+					...itemWithAttachments.map((item) => ({
+						...item,
+						json: legacyFlattenOutput(item.json, nodeVersion),
+					})),
+				);
 				continue;
 			}
 
-			const executionData = this.helpers.constructExecutionMetaData(
-				wrapData(flattenOutput(responseData as IDataObject)),
-				{ itemData: { item: i } },
-			);
+			const output = legacyFlattenOutput(responseData as IDataObject, nodeVersion);
+
+			const executionData = this.helpers.constructExecutionMetaData(wrapData(output), {
+				itemData: { item: i },
+			});
 
 			returnData.push(...executionData);
 		} catch (error) {

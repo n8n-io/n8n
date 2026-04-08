@@ -6,9 +6,11 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-import { microsoftApiRequest } from '../../transport';
-import { messageRLC } from '../../descriptions';
+
 import { updateDisplayOptions } from '@utils/utilities';
+
+import { messageRLC } from '../../descriptions';
+import { microsoftApiRequest } from '../../transport';
 
 export const properties: INodeProperties[] = [
 	messageRLC,
@@ -49,7 +51,7 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions, index: number, items: INodeExecutionData[]) {
+export async function execute(this: IExecuteFunctions, index: number, _: INodeExecutionData[]) {
 	let responseData;
 
 	const messageId = this.getNodeParameter('messageId', index, undefined, {
@@ -59,22 +61,7 @@ export async function execute(this: IExecuteFunctions, index: number, items: INo
 	const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
 	const options = this.getNodeParameter('options', index);
 
-	if (items[index].binary === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
-	}
-
-	if (
-		items[index].binary &&
-		(items[index].binary as IDataObject)[binaryPropertyName] === undefined
-	) {
-		throw new NodeOperationError(
-			this.getNode(),
-			`No binary data property "${binaryPropertyName}" does not exists on item!`,
-			{ itemIndex: index },
-		);
-	}
-
-	const binaryData = items[index].binary[binaryPropertyName];
+	const binaryData = this.helpers.assertBinaryData(index, binaryPropertyName);
 	const dataBuffer = await this.helpers.getBinaryDataBuffer(index, binaryPropertyName);
 
 	const fileName = options.fileName === undefined ? binaryData.fileName : options.fileName;

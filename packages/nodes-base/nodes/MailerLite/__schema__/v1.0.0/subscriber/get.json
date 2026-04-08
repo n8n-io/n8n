@@ -1,0 +1,66 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "sent": {
+            "type": "integer"
+        },
+        "opened": {
+            "type": "integer"
+        },
+        "clicked": {
+            "type": "integer"
+        },
+        "type": {
+            "type": "string"
+        },
+        "country_id": {
+            "type": "string"
+        },
+        "signup_ip": {
+            "type": "null"
+        },
+        "signup_timestamp": {
+            "type": "null"
+        },
+        "fields": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "key": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "key",
+                    "value",
+                    "type"
+                ]
+            }
+        },
+        "date_unsubscribe": {
+            "type": "null"
+        },
+        "date_created": {
+            "type": "string"
+        },
+        "date_updated": {
+            "type": "string"
+        }
+    }
+}

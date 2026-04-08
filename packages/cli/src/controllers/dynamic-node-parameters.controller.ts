@@ -1,17 +1,28 @@
+import {
+	OptionsRequestDto,
+	ResourceLocatorRequestDto,
+	ResourceMapperFieldsRequestDto,
+	ActionResultRequestDto,
+} from '@n8n/api-types';
+import { AuthenticatedRequest } from '@n8n/db';
+import { Post, RestController, Body } from '@n8n/decorators';
 import type { INodePropertyOptions, NodeParameterValueType } from 'n8n-workflow';
 
-import { Post, RestController } from '@/decorators';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { DynamicNodeParametersRequest } from '@/requests';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { getBase } from '@/workflow-execute-additional-data';
 
 @RestController('/dynamic-node-parameters')
 export class DynamicNodeParametersController {
-	constructor(private readonly service: DynamicNodeParametersService) {}
+	constructor(private readonly dynamicNodeParametersService: DynamicNodeParametersService) {}
 
 	@Post('/options')
-	async getOptions(req: DynamicNodeParametersRequest.Options): Promise<INodePropertyOptions[]> {
+	async getOptions(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: OptionsRequestDto,
+	): Promise<INodePropertyOptions[]> {
+		await this.dynamicNodeParametersService.refineResourceIds(req.user, payload);
+
 		const {
 			credentials,
 			currentNodeParameters,
@@ -19,12 +30,18 @@ export class DynamicNodeParametersController {
 			path,
 			methodName,
 			loadOptions,
-		} = req.body;
+			projectId,
+		} = payload;
 
-		const additionalData = await getBase(req.user.id, currentNodeParameters);
+		const additionalData = await getBase({
+			userId: req.user.id,
+			projectId,
+			currentNodeParameters,
+		});
+		additionalData.dataTableProjectId = projectId;
 
 		if (methodName) {
-			return await this.service.getOptionsViaMethodName(
+			return await this.dynamicNodeParametersService.getOptionsViaMethodName(
 				methodName,
 				path,
 				additionalData,
@@ -35,7 +52,7 @@ export class DynamicNodeParametersController {
 		}
 
 		if (loadOptions) {
-			return await this.service.getOptionsViaLoadOptions(
+			return await this.dynamicNodeParametersService.getOptionsViaLoadOptions(
 				loadOptions,
 				additionalData,
 				nodeTypeAndVersion,
@@ -48,7 +65,13 @@ export class DynamicNodeParametersController {
 	}
 
 	@Post('/resource-locator-results')
-	async getResourceLocatorResults(req: DynamicNodeParametersRequest.ResourceLocatorResults) {
+	async getResourceLocatorResults(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: ResourceLocatorRequestDto,
+	) {
+		await this.dynamicNodeParametersService.refineResourceIds(req.user, payload);
+
 		const {
 			path,
 			methodName,
@@ -57,13 +80,17 @@ export class DynamicNodeParametersController {
 			credentials,
 			currentNodeParameters,
 			nodeTypeAndVersion,
-		} = req.body;
+			projectId,
+		} = payload;
 
-		if (!methodName) throw new BadRequestError('Missing `methodName` in request body');
+		const additionalData = await getBase({
+			userId: req.user.id,
+			projectId,
+			currentNodeParameters,
+		});
+		additionalData.dataTableProjectId = projectId;
 
-		const additionalData = await getBase(req.user.id, currentNodeParameters);
-
-		return await this.service.getResourceLocatorResults(
+		return await this.dynamicNodeParametersService.getResourceLocatorResults(
 			methodName,
 			path,
 			additionalData,
@@ -76,14 +103,24 @@ export class DynamicNodeParametersController {
 	}
 
 	@Post('/resource-mapper-fields')
-	async getResourceMappingFields(req: DynamicNodeParametersRequest.ResourceMapperFields) {
-		const { path, methodName, credentials, currentNodeParameters, nodeTypeAndVersion } = req.body;
+	async getResourceMappingFields(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: ResourceMapperFieldsRequestDto,
+	) {
+		await this.dynamicNodeParametersService.refineResourceIds(req.user, payload);
 
-		if (!methodName) throw new BadRequestError('Missing `methodName` in request body');
+		const { path, methodName, credentials, currentNodeParameters, nodeTypeAndVersion, projectId } =
+			payload;
 
-		const additionalData = await getBase(req.user.id, currentNodeParameters);
+		const additionalData = await getBase({
+			userId: req.user.id,
+			projectId,
+			currentNodeParameters,
+		});
+		additionalData.dataTableProjectId = projectId;
 
-		return await this.service.getResourceMappingFields(
+		return await this.dynamicNodeParametersService.getResourceMappingFields(
 			methodName,
 			path,
 			additionalData,
@@ -93,27 +130,62 @@ export class DynamicNodeParametersController {
 		);
 	}
 
+	@Post('/local-resource-mapper-fields')
+	async getLocalResourceMappingFields(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: ResourceMapperFieldsRequestDto,
+	) {
+		await this.dynamicNodeParametersService.refineResourceIds(req.user, payload);
+
+		const { path, methodName, currentNodeParameters, nodeTypeAndVersion, projectId } = payload;
+
+		const additionalData = await getBase({
+			userId: req.user.id,
+			currentNodeParameters,
+			projectId,
+		});
+
+		return await this.dynamicNodeParametersService.getLocalResourceMappingFields(
+			methodName,
+			path,
+			additionalData,
+			nodeTypeAndVersion,
+		);
+	}
+
 	@Post('/action-result')
 	async getActionResult(
-		req: DynamicNodeParametersRequest.ActionResult,
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: ActionResultRequestDto,
 	): Promise<NodeParameterValueType> {
-		const { currentNodeParameters, nodeTypeAndVersion, path, credentials, handler, payload } =
-			req.body;
+		await this.dynamicNodeParametersService.refineResourceIds(req.user, payload);
 
-		const additionalData = await getBase(req.user.id, currentNodeParameters);
+		const {
+			currentNodeParameters,
+			nodeTypeAndVersion,
+			path,
+			credentials,
+			handler,
+			payload: actionPayload,
+			projectId,
+		} = payload;
 
-		if (handler) {
-			return await this.service.getActionResult(
-				handler,
-				path,
-				additionalData,
-				nodeTypeAndVersion,
-				currentNodeParameters,
-				payload,
-				credentials,
-			);
-		}
+		const additionalData = await getBase({
+			userId: req.user.id,
+			projectId,
+			currentNodeParameters,
+		});
 
-		return;
+		return await this.dynamicNodeParametersService.getActionResult(
+			handler,
+			path,
+			additionalData,
+			nodeTypeAndVersion,
+			currentNodeParameters,
+			actionPayload,
+			credentials,
+		);
 	}
 }

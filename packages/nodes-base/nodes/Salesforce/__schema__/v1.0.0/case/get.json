@@ -1,0 +1,71 @@
+{
+    "type": "object",
+    "properties": {
+        "AssetId": {
+            "type": "null"
+        },
+        "attributes": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "BusinessHoursId": {
+            "type": "string"
+        },
+        "CaseNumber": {
+            "type": "string"
+        },
+        "Comments": {
+            "type": "null"
+        },
+        "CreatedById": {
+            "type": "string"
+        },
+        "CreatedDate": {
+            "type": "string"
+        },
+        "Id": {
+            "type": "string"
+        },
+        "IsClosed": {
+            "type": "boolean"
+        },
+        "IsDeleted": {
+            "type": "boolean"
+        },
+        "IsEscalated": {
+            "type": "boolean"
+        },
+        "Language": {
+            "type": "null"
+        },
+        "LastModifiedById": {
+            "type": "string"
+        },
+        "LastModifiedDate": {
+            "type": "string"
+        },
+        "MasterRecordId": {
+            "type": "null"
+        },
+        "OwnerId": {
+            "type": "string"
+        },
+        "RecordTypeId": {
+            "type": "string"
+        },
+        "Status": {
+            "type": "string"
+        },
+        "SystemModstamp": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

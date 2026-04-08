@@ -1,5 +1,5 @@
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
@@ -19,8 +19,8 @@ export class ReadBinaryFile implements INodeType {
 			name: 'Read Binary File',
 			color: '#449922',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'File Path',
@@ -69,7 +69,9 @@ export class ReadBinaryFile implements INodeType {
 
 				const filePath = this.getNodeParameter('filePath', itemIndex);
 
-				const stream = await this.helpers.createReadStream(filePath);
+				const stream = await this.helpers.createReadStream(
+					await this.helpers.resolvePath(filePath),
+				);
 				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex);
 
 				newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(stream, filePath);

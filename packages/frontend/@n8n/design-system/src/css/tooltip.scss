@@ -1,0 +1,135 @@
+@use 'mixins/mixins';
+@use './common/var';
+
+@include mixins.b(tooltip) {
+	max-width: 200px;
+
+	&:focus:not(.focusing),
+	&:focus:hover {
+		outline-width: 0;
+	}
+
+	@include mixins.e(popper) {
+		position: absolute;
+		border-radius: 4px;
+		padding: var.$tooltip-padding;
+		z-index: var.$index-popper;
+		font-size: var.$tooltip-font-size;
+		line-height: 1.2;
+		min-width: 10px;
+		word-wrap: break-word;
+		font-weight: var(--font-weight--regular);
+
+		a {
+			color: var(--color--primary);
+			font-weight: var(--font-weight--bold);
+		}
+
+		.el-popper__arrow,
+		.el-popper__arrow::after {
+			position: absolute;
+			display: block;
+			width: 0;
+			height: 0;
+			border-color: transparent;
+			border-style: solid;
+		}
+
+		.el-popper__arrow {
+			border-width: var.$tooltip-arrow-size;
+		}
+
+		.el-popper__arrow::after {
+			content: ' ';
+			border-width: 5px;
+		}
+
+		&[data-popper-placement^='top'] .el-popper__arrow {
+			bottom: -(var.$tooltip-arrow-size);
+			border-top-color: var.$tooltip-border-color;
+			border-bottom-width: 0;
+
+			&::after {
+				bottom: 1px;
+				margin-left: -5px;
+				border-top-color: var.$tooltip-fill;
+				border-bottom-width: 0;
+			}
+		}
+
+		&[data-popper-placement^='bottom'] .el-popper__arrow {
+			top: -(var.$tooltip-arrow-size);
+			border-top-width: 0;
+			border-bottom-color: var.$tooltip-border-color;
+
+			&::after {
+				top: 1px;
+				margin-left: -5px;
+				border-top-width: 0;
+				border-bottom-color: var.$tooltip-fill;
+			}
+		}
+
+		&[data-popper-placement^='right'] .el-popper__arrow {
+			left: -(var.$tooltip-arrow-size);
+			border-right-color: var.$tooltip-border-color;
+			border-left-width: 0;
+
+			&::after {
+				bottom: -5px;
+				left: 1px;
+				border-right-color: var.$tooltip-fill;
+				border-left-width: 0;
+			}
+		}
+
+		&[data-popper-placement^='left'] .el-popper__arrow {
+			right: -(var.$tooltip-arrow-size);
+			border-right-width: 0;
+			border-left-color: var.$tooltip-border-color;
+
+			&::after {
+				right: 1px;
+				bottom: -5px;
+				margin-left: -5px;
+				border-right-width: 0;
+				border-left-color: var.$tooltip-fill;
+			}
+		}
+
+		@include mixins.when(is-dark) {
+			background: var.$tooltip-fill;
+			color: var.$tooltip-color;
+		}
+
+		@include mixins.when(is-light) {
+			background: var.$tooltip-color;
+			border: 1px solid var.$tooltip-fill;
+
+			&[data-popper-placement^='top'] .el-popper__arrow {
+				border-top-color: var.$tooltip-fill;
+				&::after {
+					border-top-color: var.$tooltip-color;
+				}
+			}
+			&[data-popper-placement^='bottom'] .el-popper__arrow {
+				border-bottom-color: var.$tooltip-fill;
+				&::after {
+					border-bottom-color: var.$tooltip-color;
+				}
+			}
+			&[data-popper-placement^='left'] .el-popper__arrow {
+				border-left-color: var.$tooltip-fill;
+				&::after {
+					border-left-color: var.$tooltip-color;
+				}
+			}
+			&[data-popper-placement^='right'] .el-popper__arrow {
+				border-right-color: var.$tooltip-fill;
+				&::after {
+					border-right-color: var.$tooltip-color;
+				}
+			}
+		}
+	}
+}

@@ -6,10 +6,10 @@ export const sessionIdOption: INodeProperties = {
 	type: 'options',
 	options: [
 		{
-			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-			name: 'Take from previous node automatically',
+			name: 'Connected Chat Trigger Node',
 			value: 'fromInput',
-			description: 'Looks for an input field called sessionId',
+			description:
+				"Looks for an input field called 'sessionId' that is coming from a directly connected Chat Trigger",
 		},
 		{
 			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
@@ -19,7 +19,25 @@ export const sessionIdOption: INodeProperties = {
 		},
 	],
 	default: 'fromInput',
+	builderHint: {
+		message:
+			"Use 'Connected Chat Trigger Node' (fromInput) if there is a Chat Trigger node earlier in the workflow. Otherwise use 'Define below' (customKey).",
+	},
 };
+
+export const expressionSessionKeyProperty = (fromVersion: number): INodeProperties => ({
+	displayName: 'Session Key From Previous Node',
+	name: 'sessionKey',
+	type: 'string',
+	default: '={{ $json.sessionId }}',
+	disabledOptions: { show: { sessionIdType: ['fromInput'] } },
+	displayOptions: {
+		show: {
+			sessionIdType: ['fromInput'],
+			'@version': [{ _cnd: { gte: fromVersion } }],
+		},
+	},
+});
 
 export const sessionKeyProperty: INodeProperties = {
 	displayName: 'Key',

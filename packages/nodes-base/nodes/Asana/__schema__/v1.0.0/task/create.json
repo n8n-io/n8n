@@ -1,0 +1,272 @@
+{
+    "type": "object",
+    "properties": {
+        "actual_time_minutes": {
+            "type": "integer"
+        },
+        "assignee_status": {
+            "type": "string"
+        },
+        "completed": {
+            "type": "boolean"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "custom_fields": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "created_by": {
+                        "type": "object",
+                        "properties": {
+                            "gid": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "resource_type": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "enabled": {
+                        "type": "boolean"
+                    },
+                    "enum_options": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "color": {
+                                    "type": "string"
+                                },
+                                "enabled": {
+                                    "type": "boolean"
+                                },
+                                "gid": {
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "type": "string"
+                                },
+                                "resource_type": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "enum_value": {
+                        "type": "null"
+                    },
+                    "gid": {
+                        "type": "string"
+                    },
+                    "is_formula_field": {
+                        "type": "boolean"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "resource_subtype": {
+                        "type": "string"
+                    },
+                    "resource_type": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "due_at": {
+            "type": "null"
+        },
+        "followers": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "gid": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "resource_type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "gid": {
+            "type": "string"
+        },
+        "hearted": {
+            "type": "boolean"
+        },
+        "hearts": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "gid": {
+                        "type": "string"
+                    },
+                    "resource_type": {
+                        "type": "string"
+                    },
+                    "user": {
+                        "type": "object",
+                        "properties": {
+                            "gid": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "resource_type": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "liked": {
+            "type": "boolean"
+        },
+        "likes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "gid": {
+                        "type": "string"
+                    },
+                    "resource_type": {
+                        "type": "string"
+                    },
+                    "user": {
+                        "type": "object",
+                        "properties": {
+                            "gid": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "resource_type": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "memberships": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "project": {
+                        "type": "object",
+                        "properties": {
+                            "gid": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "resource_type": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "section": {
+                        "type": "object",
+                        "properties": {
+                            "gid": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "resource_type": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "modified_at": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "notes": {
+            "type": "string"
+        },
+        "num_hearts": {
+            "type": "integer"
+        },
+        "num_likes": {
+            "type": "integer"
+        },
+        "parent": {
+            "type": "null"
+        },
+        "permalink_url": {
+            "type": "string"
+        },
+        "projects": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "gid": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "resource_type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "resource_subtype": {
+            "type": "string"
+        },
+        "resource_type": {
+            "type": "string"
+        },
+        "start_at": {
+            "type": "null"
+        },
+        "start_on": {
+            "type": "null"
+        },
+        "workspace": {
+            "type": "object",
+            "properties": {
+                "gid": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "resource_type": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 1
+}

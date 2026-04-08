@@ -1,9 +1,10 @@
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
-import { oldVersionNotice } from '../../utils/descriptions';
+import { NodeConnectionTypes } from 'n8n-workflow';
+
+import { chatFields, chatOperations } from './ChatDescription';
 import { imageFields, imageOperations } from './ImageDescription';
 import { textFields, textOperations } from './TextDescription';
-import { chatFields, chatOperations } from './ChatDescription';
+import { oldVersionNotice } from '../../utils/descriptions';
 
 export class OpenAi implements INodeType {
 	description: INodeTypeDescription = {
@@ -18,8 +19,20 @@ export class OpenAi implements INodeType {
 		defaults: {
 			name: 'OpenAI',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		builderHint: {
+			relatedNodes: [
+				{
+					nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					relationHint: 'For most LLM tasks, text generation, reasoning, use Agent with this model',
+				},
+				{
+					nodeType: '@n8n/n8n-nodes-langchain.agent',
+					relationHint: 'For most LLM tasks, text generation, reasoning, tool calls, etc.',
+				},
+			],
+		},
 		credentials: [
 			{
 				name: 'openAiApi',
@@ -28,7 +41,8 @@ export class OpenAi implements INodeType {
 		],
 		requestDefaults: {
 			ignoreHttpStatusErrors: true,
-			baseURL: 'https://api.openai.com',
+			baseURL:
+				'={{ $credentials.url?.split("/").slice(0,-1).join("/") ?? "https://api.openai.com" }}',
 		},
 		properties: [
 			oldVersionNotice,

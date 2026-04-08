@@ -1,0 +1,97 @@
+{
+    "type": "object",
+    "properties": {
+        "attributes": {
+            "type": "object",
+            "properties": {
+                "auto_update": {
+                    "type": "boolean"
+                },
+                "device_trackers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "editable": {
+                    "type": "boolean"
+                },
+                "entity_picture": {
+                    "type": "string"
+                },
+                "friendly_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "in_progress": {
+                    "type": "boolean"
+                },
+                "installed_version": {
+                    "type": "string"
+                },
+                "latest_version": {
+                    "type": "string"
+                },
+                "latitude": {
+                    "type": "number"
+                },
+                "longitude": {
+                    "type": "number"
+                },
+                "release_summary": {
+                    "type": "null"
+                },
+                "release_url": {
+                    "type": "string"
+                },
+                "skipped_version": {
+                    "type": "null"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "supported_features": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "context": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "parent_id": {
+                    "type": "null"
+                },
+                "user_id": {
+                    "type": "null"
+                }
+            }
+        },
+        "entity_id": {
+            "type": "string"
+        },
+        "last_changed": {
+            "type": "string"
+        },
+        "last_reported": {
+            "type": "string"
+        },
+        "last_updated": {
+            "type": "string"
+        },
+        "state": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

@@ -1,0 +1,116 @@
+{
+    "type": "object",
+    "properties": {
+        "association_type": {
+            "type": "null"
+        },
+        "attachments": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "attachment_url": {
+                        "type": "string"
+                    },
+                    "content_type": {
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "size": {
+                        "type": "integer"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "cc_emails": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "description": {
+            "type": "string"
+        },
+        "description_text": {
+            "type": "string"
+        },
+        "due_by": {
+            "type": "string"
+        },
+        "fr_due_by": {
+            "type": "string"
+        },
+        "fr_escalated": {
+            "type": "boolean"
+        },
+        "fwd_emails": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "id": {
+            "type": "integer"
+        },
+        "is_escalated": {
+            "type": "boolean"
+        },
+        "priority": {
+            "type": "integer"
+        },
+        "reply_cc_emails": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "requester_id": {
+            "type": "integer"
+        },
+        "source": {
+            "type": "integer"
+        },
+        "source_additional_info": {
+            "type": "null"
+        },
+        "spam": {
+            "type": "boolean"
+        },
+        "status": {
+            "type": "integer"
+        },
+        "subject": {
+            "type": "string"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "ticket_cc_emails": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "updated_at": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

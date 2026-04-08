@@ -36,12 +36,17 @@ describe('ExecutionError', () => {
 
 	it('should serialize correctly', () => {
 		const error = new Error('a.unknown is not a function');
-		error.stack = defaultStack;
+		Object.defineProperty(error, 'stack', {
+			value: defaultStack,
+			enumerable: true,
+		});
+		// error.stack = defaultStack;
 
 		const executionError = new ExecutionError(error, 1);
 
 		expect(JSON.stringify(executionError)).toBe(
 			JSON.stringify({
+				stack: defaultStack,
 				message: 'a.unknown is not a function [line 2, for item 1]',
 				description: 'TypeError',
 				itemIndex: 1,

@@ -1,7 +1,7 @@
 import { NodeError } from './abstract/node.error';
-import { ApplicationError } from './application.error';
+import { ApplicationError } from '@n8n/errors';
 import type { NodeOperationErrorOptions } from './node-api.error';
-import type { INode, JsonObject } from '../Interfaces';
+import type { INode, JsonObject } from '../interfaces';
 
 /**
  * Class for instantiating an operational error, e.g. an invalid credentials error.
@@ -19,7 +19,7 @@ export class NodeOperationError extends NodeError {
 		}
 
 		if (typeof error === 'string') {
-			error = new ApplicationError(error);
+			error = new ApplicationError(error, { level: options.level ?? 'warning' });
 		}
 
 		super(node, error);
@@ -29,12 +29,17 @@ export class NodeOperationError extends NodeError {
 		}
 
 		if (options.message) this.message = options.message;
-		if (options.level) this.level = options.level;
+		this.level = options.level ?? 'warning';
 		if (options.functionality) this.functionality = options.functionality;
 		if (options.type) this.type = options.type;
-		this.description = options.description;
+
+		if (options.description) this.description = options.description;
+		else if ('description' in error && typeof error.description === 'string')
+			this.description = error.description;
+
 		this.context.runIndex = options.runIndex;
 		this.context.itemIndex = options.itemIndex;
+		this.context.metadata = options.metadata;
 
 		if (this.message === this.description) {
 			this.description = undefined;

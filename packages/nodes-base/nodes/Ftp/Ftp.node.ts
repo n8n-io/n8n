@@ -1,11 +1,5 @@
 import { createWriteStream } from 'fs';
-import { basename, dirname } from 'path';
-import type { Readable } from 'stream';
-import { pipeline } from 'stream/promises';
-import { file as tmpFile } from 'tmp-promise';
-import ftpClient from 'promise-ftp';
-import sftpClient from 'ssh2-sftp-client';
-import { BINARY_ENCODING, NodeApiError, NodeConnectionType } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -14,10 +8,18 @@ import type {
 	IExecuteFunctions,
 	INodeCredentialTestResult,
 	INodeExecutionData,
+	INodeProperties,
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
+import { basename, dirname } from 'path';
+import ftpClient from 'promise-ftp';
+import sftpClient from 'ssh2-sftp-client';
+import type { Readable } from 'stream';
+import { pipeline } from 'stream/promises';
+import { file as tmpFile } from 'tmp-promise';
+
 import { formatPrivateKey, generatePairedItemData } from '@utils/utilities';
 
 interface ReturnFtpItem {
@@ -108,6 +110,17 @@ function normalizeFtpItem(input: ftpClient.ListingElement, path: string, recursi
 	item.date = undefined;
 }
 
+const timeoutOption: INodeProperties = {
+	displayName: 'Timeout',
+	name: 'timeout',
+	description: 'Connection timeout in milliseconds',
+	type: 'number',
+	typeOptions: {
+		minValue: 1,
+	},
+	default: 10000,
+};
+
 export class Ftp implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'FTP',
@@ -122,8 +135,8 @@ export class Ftp implements INodeType {
 			name: 'FTP',
 			color: '#303050',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				// nodelinter-ignore-next-line
@@ -255,6 +268,7 @@ export class Ftp implements INodeType {
 						default: false,
 						description: 'Whether to remove all files and directories in target directory',
 					},
+					timeoutOption,
 				],
 			},
 
@@ -288,7 +302,51 @@ export class Ftp implements INodeType {
 				hint: 'The name of the output binary field to put the file in',
 				required: true,
 			},
-
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: {
+					show: {
+						operation: ['download'],
+					},
+				},
+				options: [
+					{
+						displayName: 'Enable Concurrent Reads',
+						name: 'enableConcurrentReads',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to enable concurrent reads for downloading files',
+					},
+					{
+						displayName: 'Max Concurrent Reads',
+						name: 'maxConcurrentReads',
+						type: 'number',
+						default: 5,
+						displayOptions: {
+							show: {
+								enableConcurrentReads: [true],
+							},
+						},
+					},
+					{
+						displayName: 'Chunk Size',
+						name: 'chunkSize',
+						type: 'number',
+						default: 64,
+						description: 'Size of each chunk in KB to download, Not all servers support this',
+						displayOptions: {
+							show: {
+								enableConcurrentReads: [true],
+							},
+						},
+					},
+					timeoutOption,
+				],
+			},
 			// ----------------------------------
 			//         rename
 			// ----------------------------------
@@ -338,6 +396,7 @@ export class Ftp implements INodeType {
 						description:
 							'Whether to recursively create destination directory when renaming an existing file or folder',
 					},
+					timeoutOption,
 				],
 			},
 
@@ -398,6 +457,19 @@ export class Ftp implements INodeType {
 				default: '',
 				description: 'The text content of the file to upload',
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: {
+					show: {
+						operation: ['upload'],
+					},
+				},
+				options: [timeoutOption],
+			},
 
 			// ----------------------------------
 			//         list
@@ -429,6 +501,19 @@ export class Ftp implements INodeType {
 				description:
 					'Whether to return object representing all directories / objects recursively found within SFTP server',
 				required: true,
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: {
+					show: {
+						operation: ['list'],
+					},
+				},
+				options: [timeoutOption],
 			},
 		],
 	};
@@ -509,6 +594,8 @@ export class Ftp implements INodeType {
 		let credentials: ICredentialDataDecryptedObject | undefined = undefined;
 		const protocol = this.getNodeParameter('protocol', 0) as string;
 
+		const connectionTimeout = this.getNodeParameter('options.timeout', 0, 10000) as number;
+
 		if (protocol === 'sftp') {
 			credentials = await this.getCredentials<ICredentialDataDecryptedObject>('sftp');
 		} else {
@@ -529,6 +616,10 @@ export class Ftp implements INodeType {
 							password: (credentials.password as string) || undefined,
 							privateKey: formatPrivateKey(credentials.privateKey as string),
 							passphrase: credentials.passphrase as string | undefined,
+							readyTimeout: connectionTimeout,
+							algorithms: {
+								compress: ['zlib@openssh.com', 'zlib', 'none'],
+							},
 						});
 					} else {
 						await sftp.connect({
@@ -536,6 +627,10 @@ export class Ftp implements INodeType {
 							port: credentials.port as number,
 							username: credentials.username as string,
 							password: credentials.password as string,
+							readyTimeout: connectionTimeout,
+							algorithms: {
+								compress: ['zlib@openssh.com', 'zlib', 'none'],
+							},
 						});
 					}
 				} else {
@@ -545,6 +640,7 @@ export class Ftp implements INodeType {
 						port: credentials.port as number,
 						user: credentials.username as string,
 						password: credentials.password as string,
+						connTimeout: connectionTimeout,
 					});
 				}
 			} catch (error) {
@@ -631,9 +727,21 @@ export class Ftp implements INodeType {
 
 						if (operation === 'download') {
 							const path = this.getNodeParameter('path', i) as string;
+							const options = this.getNodeParameter('options', i);
 							const binaryFile = await tmpFile({ prefix: 'n8n-sftp-' });
 							try {
-								await sftp!.get(path, createWriteStream(binaryFile.path));
+								if (!options.enableConcurrentReads) {
+									await sftp!.get(path, createWriteStream(binaryFile.path));
+								} else {
+									await sftp!.fastGet(path, binaryFile.path, {
+										concurrency:
+											options.maxConcurrentReads === undefined
+												? 5
+												: Number(options.maxConcurrentReads),
+										chunkSize:
+											(options.chunkSize === undefined ? 64 : Number(options.chunkSize)) * 1024,
+									});
+								}
 
 								const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 								const remoteFilePath = this.getNodeParameter('path', i) as string;
@@ -752,10 +860,20 @@ export class Ftp implements INodeType {
 
 						if (operation === 'rename') {
 							const oldPath = this.getNodeParameter('oldPath', i) as string;
-
 							const newPath = this.getNodeParameter('newPath', i) as string;
+							const options = this.getNodeParameter('options', i);
 
-							await ftp!.rename(oldPath, newPath);
+							try {
+								await ftp!.rename(oldPath, newPath);
+							} catch (error) {
+								if ([451, 550].includes(error.code) && options.createDirectories) {
+									const dirPath = newPath.replace(basename(newPath), '');
+									await ftp!.mkdir(dirPath, true);
+									await ftp!.rename(oldPath, newPath);
+								} else {
+									throw new NodeApiError(this.getNode(), error as JsonObject);
+								}
+							}
 							const executionData = this.helpers.constructExecutionMetaData(
 								[{ json: { success: true } }],
 								{ itemData: { item: i } },

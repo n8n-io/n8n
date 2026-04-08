@@ -22,9 +22,8 @@ export async function gristApiRequest(
 	body: IDataObject | number[] = {},
 	qs: IDataObject = {},
 ) {
-	const { apiKey, planType, customSubdomain, selfHostedUrl } = (await this.getCredentials(
-		'gristApi',
-	)) as GristCredentials;
+	const { apiKey, planType, customSubdomain, selfHostedUrl } =
+		await this.getCredentials<GristCredentials>('gristApi');
 
 	const gristapiurl =
 		planType === 'free'
@@ -68,10 +67,15 @@ export function parseSortProperties(sortProperties: GristSortProperties) {
 	}, '');
 }
 
+export function isSafeInteger(val: number) {
+	//used MIN_SAFE_INTEGER and MAX_SAFE_INTEGER instead of MIN_VALUE and MAX_VALUE to avoid edge cases
+	return !isNaN(val) && val > Number.MIN_SAFE_INTEGER && val < Number.MAX_SAFE_INTEGER;
+}
+
 export function parseFilterProperties(filterProperties: GristFilterProperties) {
 	return filterProperties.reduce<{ [key: string]: Array<string | number> }>((acc, cur) => {
 		acc[cur.field] = acc[cur.field] ?? [];
-		const values = isNaN(Number(cur.values)) ? cur.values : Number(cur.values);
+		const values = isSafeInteger(Number(cur.values)) ? Number(cur.values) : cur.values;
 		acc[cur.field].push(values);
 		return acc;
 	}, {});

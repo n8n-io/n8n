@@ -1,6 +1,5 @@
+import { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
-
-import { WorkflowEntity } from '@/databases/entities/workflow-entity';
 
 export const FIRST_CREDENTIAL_ID = '1';
 export const SECOND_CREDENTIAL_ID = '2';
@@ -76,4 +75,27 @@ export function getWorkflow(options?: {
 	}
 
 	return workflow;
+}
+
+export function getWorkflowHistory(
+	workflow: WorkflowEntity,
+	overrides: Partial<WorkflowHistory> | undefined = {},
+): WorkflowHistory {
+	const workflowHistory = new WorkflowHistory();
+
+	Object.assign(workflowHistory, {
+		versionId: 'default-version',
+		workflowId: workflow.id,
+		nodes: [],
+		connections: {},
+		authors: 'Test Author',
+		name: null,
+		description: null,
+		autosaved: false,
+		workflow,
+		workflowPublishHistory: [],
+		...overrides,
+	});
+
+	return workflowHistory;
 }

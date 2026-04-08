@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { N8nTrigger } from '../N8nTrigger.node';
 
 describe('N8nTrigger', () => {
@@ -30,7 +29,7 @@ describe('N8nTrigger', () => {
 			expect(mockTriggerFunctions.emit).toHaveBeenCalledWith([
 				[
 					{
-						event: 'Workflow activated',
+						event: 'Workflow published',
 						timestamp: expect.any(String),
 						workflow_id: 'test-workflow-id',
 					},

@@ -1,0 +1,307 @@
+{
+    "type": "object",
+    "properties": {
+        "additionalQuantities": {
+            "type": "object",
+            "properties": {
+                "quantityA": {
+                    "type": "integer"
+                },
+                "quantityB": {
+                    "type": "integer"
+                },
+                "quantityC": {
+                    "type": "integer"
+                }
+            }
+        },
+        "appearance": {
+            "type": "object",
+            "properties": {
+                "triangleColor": {
+                    "type": "null"
+                }
+            }
+        },
+        "completionDetails": {
+            "type": "object",
+            "properties": {
+                "actions": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "actionType": {
+                                "type": "string"
+                            },
+                            "adminId": {
+                                "type": "string"
+                            },
+                            "createdAt": {
+                                "type": "string"
+                            },
+                            "prevState": {
+                                "type": "object",
+                                "properties": {
+                                    "failureNotes": {
+                                        "type": "string"
+                                    },
+                                    "notes": {
+                                        "type": "string"
+                                    },
+                                    "success": {
+                                        "type": "boolean"
+                                    },
+                                    "successNotes": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "events": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "location": {
+                                "type": "array",
+                                "items": {
+                                    "type": "number"
+                                }
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "time": {
+                                "type": "integer"
+                            }
+                        }
+                    }
+                },
+                "failureNotes": {
+                    "type": "string"
+                },
+                "failureReason": {
+                    "type": "string"
+                },
+                "firstLocation": {
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                },
+                "lastLocation": {
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                },
+                "successNotes": {
+                    "type": "string"
+                }
+            }
+        },
+        "creator": {
+            "type": "string"
+        },
+        "dependencies": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "destination": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "object",
+                    "properties": {
+                        "apartment": {
+                            "type": "string"
+                        },
+                        "city": {
+                            "type": "string"
+                        },
+                        "country": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "number": {
+                            "type": "string"
+                        },
+                        "postalCode": {
+                            "type": "string"
+                        },
+                        "state": {
+                            "type": "string"
+                        },
+                        "street": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "timeCreated": {
+                    "type": "integer"
+                },
+                "timeLastModified": {
+                    "type": "integer"
+                },
+                "useGPS": {
+                    "type": "boolean"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "estimatedArrivalTime": {
+            "type": "null"
+        },
+        "estimatedCompletionTime": {
+            "type": "null"
+        },
+        "eta": {
+            "type": "null"
+        },
+        "executor": {
+            "type": "string"
+        },
+        "feedback": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "comments": {
+                        "type": "string"
+                    },
+                    "rating": {
+                        "type": "integer"
+                    },
+                    "recipient": {
+                        "type": "string"
+                    },
+                    "time": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "identity": {
+            "type": "object",
+            "properties": {
+                "checksum": {
+                    "type": "null"
+                },
+                "failedScanCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "merchant": {
+            "type": "string"
+        },
+        "notes": {
+            "type": "string"
+        },
+        "orderShortId": {
+            "type": "null"
+        },
+        "organization": {
+            "type": "string"
+        },
+        "pickupTask": {
+            "type": "boolean"
+        },
+        "recipients": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "notes": {
+                        "type": "string"
+                    },
+                    "organization": {
+                        "type": "string"
+                    },
+                    "phone": {
+                        "type": "string"
+                    },
+                    "skipSMSNotifications": {
+                        "type": "boolean"
+                    },
+                    "timeCreated": {
+                        "type": "integer"
+                    },
+                    "timeLastModified": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "scanOnlyRequiredBarcodes": {
+            "type": "boolean"
+        },
+        "serviceTime": {
+            "type": "integer"
+        },
+        "shortId": {
+            "type": "string"
+        },
+        "state": {
+            "type": "integer"
+        },
+        "timeCreated": {
+            "type": "integer"
+        },
+        "timeLastModified": {
+            "type": "integer"
+        },
+        "trackingURL": {
+            "type": "string"
+        },
+        "trackingViewed": {
+            "type": "boolean"
+        },
+        "type": {
+            "type": "integer"
+        },
+        "worker": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

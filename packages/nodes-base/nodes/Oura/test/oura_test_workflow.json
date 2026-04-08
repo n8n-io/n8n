@@ -1,0 +1,86 @@
+{
+	"name": "Oura Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "c1e3b825-a9a8-4def-986b-9108d9441992",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [720, 400],
+			"typeVersion": 1
+		},
+		{
+			"parameters": {
+				"resource": "profile"
+			},
+			"id": "7969bf78-9343-4f81-8f79-dc415a60e168",
+			"name": "Oura",
+			"type": "n8n-nodes-base.oura",
+			"typeVersion": 1,
+			"position": [940, 400],
+			"credentials": {
+				"ouraApi": {
+					"id": "r083EOdhFatkVvFy",
+					"name": "Oura account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "9b97fa0e-51a6-41d3-8a7d-cff0531e5527",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1140, 400]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"id": "some-id",
+					"age": 30,
+					"weight": 168,
+					"height": 80,
+					"biological_sex": "male",
+					"email": "nathan@n8n.io"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Oura",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Oura": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "bd108f46-f6fc-4c22-8655-ade2f51c4b33",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "0fa937d34dcabeff4bd6480d3b42cc95edf3bc20e6810819086ef1ce2623639d"
+	},
+	"id": "SrUileWU90mQeo02",
+	"tags": []
+}

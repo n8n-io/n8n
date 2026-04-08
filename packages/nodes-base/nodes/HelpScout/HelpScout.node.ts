@@ -1,6 +1,5 @@
 import type {
 	IExecuteFunctions,
-	IBinaryKeyData,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -8,39 +7,34 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+
+import { isoCountryCodes } from '@utils/ISOCountryCodes';
 
 import { conversationFields, conversationOperations } from './ConversationDescription';
-
-import { customerFields, customerOperations } from './CustomerDescription';
-
-import type { ICustomer } from './CustomerInterface';
-
 import type { IConversation } from './ConversationInterface';
-
+import { customerFields, customerOperations } from './CustomerDescription';
+import type { ICustomer } from './CustomerInterface';
 import { helpscoutApiRequest, helpscoutApiRequestAllItems } from './GenericFunctions';
-
 import { mailboxFields, mailboxOperations } from './MailboxDescription';
-
 import { threadFields, threadOperations } from './ThreadDescription';
-
 import type { IAttachment, IThread } from './ThreadInterface';
-import { isoCountryCodes } from '@utils/ISOCountryCodes';
 
 export class HelpScout implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'HelpScout',
+		displayName: 'Help Scout',
 		name: 'helpScout',
 		icon: 'file:helpScout.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume HelpScout API',
+		description: 'Consume Help Scout API',
 		defaults: {
-			name: 'HelpScout',
+			name: 'Help Scout',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'helpScoutOAuth2Api',
@@ -503,31 +497,29 @@ export class HelpScout implements INodeType {
 							}
 							if (
 								attachments.attachmentsBinary &&
-								(attachments.attachmentsBinary as IDataObject[]).length !== 0 &&
-								items[i].binary
+								(attachments.attachmentsBinary as IDataObject[]).length !== 0
 							) {
-								const mapFunction = (value: IDataObject): IAttachment => {
-									const binaryProperty = (items[i].binary as IBinaryKeyData)[
-										value.property as string
-									];
-									if (binaryProperty) {
-										return {
-											fileName: binaryProperty.fileName || 'unknown',
-											data: binaryProperty.data,
-											mimeType: binaryProperty.mimeType,
-										};
+								const binaryAttachments: IAttachment[] = [];
+								for (const value of attachments.attachmentsBinary as IDataObject[]) {
+									const binaryData = this.helpers.assertBinaryData(i, value.property as string);
+
+									let fileBase64;
+									if (binaryData.id) {
+										const chunkSize = 256 * 1024;
+										const stream = await this.helpers.getBinaryStream(binaryData.id, chunkSize);
+										const buffer = await this.helpers.binaryToBuffer(stream);
+										fileBase64 = buffer.toString('base64');
 									} else {
-										throw new NodeOperationError(
-											this.getNode(),
-											`Binary property ${value.property} does not exist on input`,
-											{ itemIndex: i },
-										);
+										fileBase64 = binaryData.data;
 									}
-								};
-								body.attachments?.push.apply(
-									body.attachments,
-									(attachments.attachmentsBinary as IDataObject[]).map(mapFunction),
-								);
+
+									binaryAttachments.push({
+										fileName: binaryData.fileName || 'unknown',
+										data: fileBase64,
+										mimeType: binaryData.mimeType,
+									});
+								}
+								body.attachments?.push.apply(body.attachments, binaryAttachments);
 							}
 						}
 						responseData = await helpscoutApiRequest.call(

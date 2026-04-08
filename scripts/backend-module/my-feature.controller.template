@@ -1,0 +1,14 @@
+import { AuthenticatedRequest } from '@n8n/db';
+import { Get, RestController } from '@n8n/decorators';
+
+import { MyFeatureService } from './my-feature.service';
+
+@RestController('/my-feature')
+export class MyFeatureController {
+	constructor(private readonly myFeatureService: MyFeatureService) {}
+
+	@Get('/summary')
+	async getSummary(_req: AuthenticatedRequest, _res: Response) {
+		return await this.myFeatureService.getSummary();
+	}
+}

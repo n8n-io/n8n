@@ -1,20 +1,22 @@
 /* eslint-disable @typescript-eslint/no-invalid-void-type */
-import type { Scope } from '@n8n/permissions';
+import type { BooleanLicenseFeature } from '@n8n/constants';
+import type { AuthenticatedRequest } from '@n8n/db';
+import { Container } from '@n8n/di';
+import type { ApiKeyScope, Scope } from '@n8n/permissions';
 import type express from 'express';
-import { Container } from 'typedi';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import type { BooleanLicenseFeature } from '@/interfaces';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { License } from '@/license';
-import { userHasScopes } from '@/permissions/check-access';
-import type { AuthenticatedRequest } from '@/requests';
+import { userHasScopes } from '@/permissions.ee/check-access';
+import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 import type { PaginatedRequest } from '../../../types';
 import { decodeCursor } from '../services/pagination.service';
 
 const UNLIMITED_USERS_QUOTA = -1;
 
-export type ProjectScopeResource = 'workflow' | 'credential';
+export type ProjectScopeResource = 'workflow' | 'credential' | 'dataTable';
 
 const buildScopeMiddleware = (
 	scopes: Scope[],
@@ -22,20 +24,30 @@ const buildScopeMiddleware = (
 	{ globalOnly } = { globalOnly: false },
 ) => {
 	return async (
-		req: AuthenticatedRequest<{ id?: string }>,
+		req: AuthenticatedRequest<{ id?: string; dataTableId?: string }>,
 		res: express.Response,
 		next: express.NextFunction,
 	): Promise<express.Response | void> => {
-		const params: { credentialId?: string; workflowId?: string } = {};
+		const params: { credentialId?: string; workflowId?: string; dataTableId?: string } = {};
 		if (req.params.id) {
 			if (resource === 'workflow') {
 				params.workflowId = req.params.id;
 			} else if (resource === 'credential') {
 				params.credentialId = req.params.id;
 			}
+		} else if (req.params.dataTableId && resource === 'dataTable') {
+			params.dataTableId = req.params.dataTableId;
 		}
-		if (!(await userHasScopes(req.user, scopes, globalOnly, params))) {
-			return res.status(403).json({ message: 'Forbidden' });
+
+		try {
+			if (!(await userHasScopes(req.user, scopes, globalOnly, params))) {
+				return res.status(403).json({ message: 'Forbidden' });
+			}
+		} catch (error) {
+			if (error instanceof NotFoundError) {
+				return res.status(404).json({ message: error.message });
+			}
+			throw error;
 		}
 
 		return next();
@@ -74,6 +86,33 @@ export const validCursor = (
 	return next();
 };
 
+export type ScopeTaggedMiddleware = ((...args: unknown[]) => unknown) & {
+	__apiKeyScope: ApiKeyScope;
+};
+
+function tagMiddleware(
+	middleware: (...args: unknown[]) => unknown,
+	apiKeyScope: ApiKeyScope,
+): ScopeTaggedMiddleware {
+	const tagged: ScopeTaggedMiddleware = Object.assign(
+		(req: unknown, res: unknown, next: unknown) => middleware(req, res, next),
+		{ __apiKeyScope: apiKeyScope },
+	);
+	return tagged;
+}
+
+export const apiKeyHasScope = (apiKeyScope: ApiKeyScope) => {
+	const middleware = Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(apiKeyScope);
+	return tagMiddleware(middleware, apiKeyScope);
+};
+
+export const apiKeyHasScopeWithGlobalScopeFallback = (
+	config: { scope: ApiKeyScope & Scope } | { apiKeyScope: ApiKeyScope; globalScope: Scope },
+) => {
+	const scope = 'scope' in config ? config.scope : config.apiKeyScope;
+	return tagMiddleware(Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(scope), scope);
+};
+
 export const validLicenseWithUserQuota = (
 	_: express.Request,
 	res: express.Response,
@@ -91,7 +130,7 @@ export const validLicenseWithUserQuota = (
 
 export const isLicensed = (feature: BooleanLicenseFeature) => {
 	return async (_: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => {
-		if (Container.get(License).isFeatureEnabled(feature)) return next();
+		if (Container.get(License).isLicensed(feature)) return next();
 
 		return res.status(403).json({ message: new FeatureNotLicensedError(feature).message });
 	};

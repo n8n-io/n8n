@@ -1,0 +1,80 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-240, 180],
+			"id": "cd9b8124-567e-43d9-b4d1-638b111cd049",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "3a40d9f2-0eed-4a92-9287-9d6ec9ce90e8",
+							"name": "message",
+							"value": "hello there",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [-20, 180],
+			"id": "6e58ae14-4851-4e9d-9465-4155b6e2f278",
+			"name": "Edit Fields1"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "9e957377-c5f2-4254-89d8-334d32a8cfb6",
+							"name": "test",
+							"value": "={{ $json.message }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [200, 180],
+			"id": "c4e9d792-51e9-4296-ba66-afac3cf378dd",
+			"name": "Repro1"
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields1": {
+			"main": [
+				[
+					{
+						"node": "Repro1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"meta": {
+		"instanceId": "cdc3bfdf3e6244f221ab6e71b2115a631406ae45a034bfca5e9731cf64f4eb64"
+	}
+}

@@ -1,0 +1,736 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "startData": {
+          "type": "object",
+          "properties": {}
+        },
+        "resultData": {
+          "type": "object",
+          "properties": {
+            "runData": {
+              "type": "object",
+              "properties": {
+                "When clicking \"Test workflow\"": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Code": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "message": {
+                              "type": "string"
+                            },
+                            "location": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Default Data Loader": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            },
+                            "previousNodeRun": {
+                              "type": "number"
+                            }
+                          }
+                        }
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "ai_document": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      },
+                      "inputOverride": {
+                        "type": "object",
+                        "properties": {
+                          "ai_document": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "properties": {
+                          "subRun": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "node": {
+                                  "type": "string"
+                                },
+                                "runIndex": {
+                                  "type": "number"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Token Splitter": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            },
+                            "previousNodeRun": {
+                              "type": "number"
+                            }
+                          }
+                        }
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "ai_textSplitter": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      },
+                      "inputOverride": {
+                        "type": "object",
+                        "properties": {
+                          "ai_textSplitter": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "properties": {
+                          "subRun": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "node": {
+                                  "type": "string"
+                                },
+                                "runIndex": {
+                                  "type": "number"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Embeddings OpenAI": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            },
+                            "previousNodeRun": {
+                              "type": "number"
+                            }
+                          }
+                        }
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "ai_embedding": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      },
+                      "inputOverride": {
+                        "type": "object",
+                        "properties": {
+                          "ai_embedding": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "properties": {
+                          "subRun": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "node": {
+                                  "type": "string"
+                                },
+                                "runIndex": {
+                                  "type": "number"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Pinecone Vector Store": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Check Vector Store Populated": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Wait": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Embeddings OpenAI10": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            },
+                            "previousNodeRun": {
+                              "type": "number"
+                            }
+                          }
+                        }
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "ai_embedding": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      },
+                      "inputOverride": {
+                        "type": "object",
+                        "properties": {
+                          "ai_embedding": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "properties": {
+                          "subRun": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "node": {
+                                  "type": "string"
+                                },
+                                "runIndex": {
+                                  "type": "number"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Pinecone Vector Store1": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "lastNodeExecuted": {
+              "type": "string"
+            }
+          }
+        },
+        "executionData": {
+          "type": "object",
+          "properties": {
+            "contextData": {
+              "type": "object",
+              "properties": {}
+            },
+            "nodeExecutionStack": {
+              "type": "array",
+              "items": {}
+            },
+            "metadata": {
+              "type": "object",
+              "properties": {
+                "Token Splitter": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "subRun": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "node": {
+                              "type": "string"
+                            },
+                            "runIndex": {
+                              "type": "number"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Default Data Loader": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "subRun": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "node": {
+                              "type": "string"
+                            },
+                            "runIndex": {
+                              "type": "number"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Embeddings OpenAI": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "subRun": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "node": {
+                              "type": "string"
+                            },
+                            "runIndex": {
+                              "type": "number"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Embeddings OpenAI10": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "subRun": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "node": {
+                              "type": "string"
+                            },
+                            "runIndex": {
+                              "type": "number"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "waitingExecution": {
+              "type": "object",
+              "properties": {}
+            },
+            "waitingExecutionSource": {
+              "type": "object",
+              "properties": {}
+            }
+          }
+        }
+      }
+    },
+    "mode": {
+      "type": "string"
+    },
+    "startedAt": {
+      "type": "string"
+    },
+    "stoppedAt": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "finished": {
+      "type": "boolean"
+    }
+  }
+}

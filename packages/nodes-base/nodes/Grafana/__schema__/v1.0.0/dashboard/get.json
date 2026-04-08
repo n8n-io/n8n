@@ -1,0 +1,678 @@
+{
+    "type": "object",
+    "properties": {
+        "dashboard": {
+            "type": "object",
+            "properties": {
+                "annotations": {
+                    "type": "object",
+                    "properties": {
+                        "list": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "builtIn": {
+                                        "type": "integer"
+                                    },
+                                    "datasource": {
+                                        "type": "object",
+                                        "properties": {
+                                            "type": {
+                                                "type": "string"
+                                            },
+                                            "uid": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "enable": {
+                                        "type": "boolean"
+                                    },
+                                    "hide": {
+                                        "type": "boolean"
+                                    },
+                                    "iconColor": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "target": {
+                                        "type": "object",
+                                        "properties": {
+                                            "limit": {
+                                                "type": "integer"
+                                            },
+                                            "matchAny": {
+                                                "type": "boolean"
+                                            },
+                                            "type": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "type": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "editable": {
+                    "type": "boolean"
+                },
+                "fiscalYearStartMonth": {
+                    "type": "integer"
+                },
+                "graphTooltip": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "links": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "asDropdown": {
+                                "type": "boolean"
+                            },
+                            "icon": {
+                                "type": "string"
+                            },
+                            "includeVars": {
+                                "type": "boolean"
+                            },
+                            "keepTime": {
+                                "type": "boolean"
+                            },
+                            "targetBlank": {
+                                "type": "boolean"
+                            },
+                            "title": {
+                                "type": "string"
+                            },
+                            "tooltip": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            },
+                            "url": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "panels": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "datasource": {
+                                "type": "object",
+                                "properties": {
+                                    "type": {
+                                        "type": "string"
+                                    },
+                                    "uid": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "description": {
+                                "type": "string"
+                            },
+                            "fieldConfig": {
+                                "type": "object",
+                                "properties": {
+                                    "defaults": {
+                                        "type": "object",
+                                        "properties": {
+                                            "color": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "fixedColor": {
+                                                        "type": "string"
+                                                    },
+                                                    "mode": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            },
+                                            "custom": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "axisBorderShow": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "axisCenteredZero": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "axisColorMode": {
+                                                        "type": "string"
+                                                    },
+                                                    "axisGridShow": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "axisLabel": {
+                                                        "type": "string"
+                                                    },
+                                                    "axisPlacement": {
+                                                        "type": "string"
+                                                    },
+                                                    "barAlignment": {
+                                                        "type": "integer"
+                                                    },
+                                                    "barWidthFactor": {
+                                                        "type": "number"
+                                                    },
+                                                    "drawStyle": {
+                                                        "type": "string"
+                                                    },
+                                                    "fillOpacity": {
+                                                        "type": "integer"
+                                                    },
+                                                    "gradientMode": {
+                                                        "type": "string"
+                                                    },
+                                                    "hideFrom": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "legend": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "tooltip": {
+                                                                "type": "boolean"
+                                                            },
+                                                            "viz": {
+                                                                "type": "boolean"
+                                                            }
+                                                        }
+                                                    },
+                                                    "insertNulls": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "lineInterpolation": {
+                                                        "type": "string"
+                                                    },
+                                                    "lineStyle": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "fill": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    },
+                                                    "lineWidth": {
+                                                        "type": "integer"
+                                                    },
+                                                    "pointSize": {
+                                                        "type": "integer"
+                                                    },
+                                                    "scaleDistribution": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "type": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    },
+                                                    "showPoints": {
+                                                        "type": "string"
+                                                    },
+                                                    "spanNulls": {
+                                                        "type": "boolean"
+                                                    },
+                                                    "stacking": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "group": {
+                                                                "type": "string"
+                                                            },
+                                                            "mode": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    },
+                                                    "thresholdsStyle": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "mode": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            "min": {
+                                                "type": "integer"
+                                            },
+                                            "thresholds": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "mode": {
+                                                        "type": "string"
+                                                    },
+                                                    "steps": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "color": {
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            "unit": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "overrides": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "matcher": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string"
+                                                        },
+                                                        "options": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                },
+                                                "properties": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "gridPos": {
+                                "type": "object",
+                                "properties": {
+                                    "h": {
+                                        "type": "integer"
+                                    },
+                                    "w": {
+                                        "type": "integer"
+                                    },
+                                    "x": {
+                                        "type": "integer"
+                                    },
+                                    "y": {
+                                        "type": "integer"
+                                    }
+                                }
+                            },
+                            "id": {
+                                "type": "integer"
+                            },
+                            "interval": {
+                                "type": "string"
+                            },
+                            "options": {
+                                "type": "object",
+                                "properties": {
+                                    "legend": {
+                                        "type": "object",
+                                        "properties": {
+                                            "calcs": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "displayMode": {
+                                                "type": "string"
+                                            },
+                                            "placement": {
+                                                "type": "string"
+                                            },
+                                            "showLegend": {
+                                                "type": "boolean"
+                                            }
+                                        }
+                                    },
+                                    "tooltip": {
+                                        "type": "object",
+                                        "properties": {
+                                            "mode": {
+                                                "type": "string"
+                                            },
+                                            "sort": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "pluginVersion": {
+                                "type": "string"
+                            },
+                            "targets": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "datasource": {
+                                            "type": "object",
+                                            "properties": {
+                                                "type": {
+                                                    "type": "string"
+                                                },
+                                                "uid": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        },
+                                        "disableTextWrap": {
+                                            "type": "boolean"
+                                        },
+                                        "editorMode": {
+                                            "type": "string"
+                                        },
+                                        "expr": {
+                                            "type": "string"
+                                        },
+                                        "format": {
+                                            "type": "string"
+                                        },
+                                        "fullMetaSearch": {
+                                            "type": "boolean"
+                                        },
+                                        "hide": {
+                                            "type": "boolean"
+                                        },
+                                        "includeNullMetadata": {
+                                            "type": "boolean"
+                                        },
+                                        "instant": {
+                                            "type": "boolean"
+                                        },
+                                        "interval": {
+                                            "type": "string"
+                                        },
+                                        "intervalFactor": {
+                                            "type": "integer"
+                                        },
+                                        "legendFormat": {
+                                            "type": "string"
+                                        },
+                                        "refId": {
+                                            "type": "string"
+                                        },
+                                        "useBackend": {
+                                            "type": "boolean"
+                                        }
+                                    }
+                                }
+                            },
+                            "title": {
+                                "type": "string"
+                            },
+                            "transparent": {
+                                "type": "boolean"
+                            },
+                            "type": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "preload": {
+                    "type": "boolean"
+                },
+                "schemaVersion": {
+                    "type": "integer"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "templating": {
+                    "type": "object",
+                    "properties": {
+                        "list": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "current": {
+                                        "type": "object",
+                                        "properties": {
+                                            "selected": {
+                                                "type": "boolean"
+                                            }
+                                        }
+                                    },
+                                    "datasource": {
+                                        "type": "object",
+                                        "properties": {
+                                            "type": {
+                                                "type": "string"
+                                            },
+                                            "uid": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "definition": {
+                                        "type": "string"
+                                    },
+                                    "hide": {
+                                        "type": "integer"
+                                    },
+                                    "includeAll": {
+                                        "type": "boolean"
+                                    },
+                                    "label": {
+                                        "type": "string"
+                                    },
+                                    "multi": {
+                                        "type": "boolean"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "options": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "selected": {
+                                                    "type": "boolean"
+                                                },
+                                                "text": {
+                                                    "type": "string"
+                                                },
+                                                "value": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "query": {
+                                        "type": "object",
+                                        "properties": {
+                                            "query": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "refresh": {
+                                        "type": "integer"
+                                    },
+                                    "regex": {
+                                        "type": "string"
+                                    },
+                                    "skipUrlSync": {
+                                        "type": "boolean"
+                                    },
+                                    "sort": {
+                                        "type": "integer"
+                                    },
+                                    "type": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "time": {
+                    "type": "object",
+                    "properties": {
+                        "from": {
+                            "type": "string"
+                        },
+                        "to": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "timezone": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "integer"
+                },
+                "weekStart": {
+                    "type": "string"
+                }
+            }
+        },
+        "meta": {
+            "type": "object",
+            "properties": {
+                "annotationsPermissions": {
+                    "type": "object",
+                    "properties": {
+                        "dashboard": {
+                            "type": "object",
+                            "properties": {
+                                "canAdd": {
+                                    "type": "boolean"
+                                },
+                                "canDelete": {
+                                    "type": "boolean"
+                                },
+                                "canEdit": {
+                                    "type": "boolean"
+                                }
+                            }
+                        },
+                        "organization": {
+                            "type": "object",
+                            "properties": {
+                                "canAdd": {
+                                    "type": "boolean"
+                                },
+                                "canDelete": {
+                                    "type": "boolean"
+                                },
+                                "canEdit": {
+                                    "type": "boolean"
+                                }
+                            }
+                        }
+                    }
+                },
+                "canAdmin": {
+                    "type": "boolean"
+                },
+                "canDelete": {
+                    "type": "boolean"
+                },
+                "canEdit": {
+                    "type": "boolean"
+                },
+                "canSave": {
+                    "type": "boolean"
+                },
+                "canStar": {
+                    "type": "boolean"
+                },
+                "created": {
+                    "type": "string"
+                },
+                "createdBy": {
+                    "type": "string"
+                },
+                "expires": {
+                    "type": "string"
+                },
+                "folderId": {
+                    "type": "integer"
+                },
+                "folderTitle": {
+                    "type": "string"
+                },
+                "folderUid": {
+                    "type": "string"
+                },
+                "folderUrl": {
+                    "type": "string"
+                },
+                "hasAcl": {
+                    "type": "boolean"
+                },
+                "isFolder": {
+                    "type": "boolean"
+                },
+                "provisioned": {
+                    "type": "boolean"
+                },
+                "provisionedExternalId": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "updated": {
+                    "type": "string"
+                },
+                "updatedBy": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "integer"
+                }
+            }
+        }
+    },
+    "version": 1
+}

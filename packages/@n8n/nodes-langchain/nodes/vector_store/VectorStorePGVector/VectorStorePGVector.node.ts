@@ -4,13 +4,12 @@ import {
 	type PGVectorStoreArgs,
 } from '@langchain/community/vectorstores/pgvector';
 import type { EmbeddingsInterface } from '@langchain/core/embeddings';
+import { configurePostgres } from 'n8n-nodes-base/dist/nodes/Postgres/transport/index';
 import type { PostgresNodeCredentials } from 'n8n-nodes-base/dist/nodes/Postgres/v2/helpers/interfaces';
-import { configurePostgres } from 'n8n-nodes-base/dist/nodes/Postgres/v2/transport';
 import type { INodeProperties } from 'n8n-workflow';
 import type pg from 'pg';
 
-import { metadataFilterField } from '../../../utils/sharedFields';
-import { createVectorStoreNode } from '../shared/createVectorStoreNode';
+import { metadataFilterField, createVectorStoreNode } from '@n8n/ai-utilities';
 
 type CollectionOptions = {
 	useCollection?: boolean;
@@ -185,7 +184,7 @@ const retrieveFields: INodeProperties[] = [
  * similaritySearchVectorWithScore should use this.filter instead of
  * expecting it from the parameter
  */
-class ExtendedPGVectorStore extends PGVectorStore {
+export class ExtendedPGVectorStore extends PGVectorStore {
 	static async initialize(
 		embeddings: EmbeddingsInterface,
 		args: PGVectorStoreArgs & { dimensions?: number },
@@ -212,7 +211,7 @@ class ExtendedPGVectorStore extends PGVectorStore {
 	}
 }
 
-export const VectorStorePGVector = createVectorStoreNode({
+export class VectorStorePGVector extends createVectorStoreNode<ExtendedPGVectorStore>({
 	meta: {
 		description: 'Work with your data in Postgresql with the PGVector extension',
 		icon: 'file:postgres.svg',
@@ -227,7 +226,7 @@ export const VectorStorePGVector = createVectorStoreNode({
 				testedBy: 'postgresConnectionTest',
 			},
 		],
-		operationModes: ['load', 'insert', 'retrieve'],
+		operationModes: ['load', 'insert', 'retrieve', 'retrieve-as-tool'],
 	},
 	sharedFields,
 	insertFields,
@@ -253,7 +252,7 @@ export const VectorStorePGVector = createVectorStoreNode({
 			{},
 		) as CollectionOptions;
 
-		if (collectionOptions && collectionOptions.useCollection) {
+		if (collectionOptions?.useCollection) {
 			config.collectionName = collectionOptions.collectionName;
 			config.collectionTableName = collectionOptions.collectionTableName;
 		}
@@ -273,6 +272,7 @@ export const VectorStorePGVector = createVectorStoreNode({
 
 		return await ExtendedPGVectorStore.initialize(embeddings, config);
 	},
+
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		// NOTE: if you are to create the HNSW index before use, you need to consider moving the distanceStrategy field to
 		// shared fields, because you need that strategy when creating the index.
@@ -294,7 +294,7 @@ export const VectorStorePGVector = createVectorStoreNode({
 			{},
 		) as CollectionOptions;
 
-		if (collectionOptions && collectionOptions.useCollection) {
+		if (collectionOptions?.useCollection) {
 			config.collectionName = collectionOptions.collectionName;
 			config.collectionTableName = collectionOptions.collectionTableName;
 		}
@@ -306,6 +306,11 @@ export const VectorStorePGVector = createVectorStoreNode({
 			metadataColumnName: 'metadata',
 		}) as ColumnOptions;
 
-		await PGVectorStore.fromDocuments(documents, embeddings, config);
+		const vectorStore = await PGVectorStore.fromDocuments(documents, embeddings, config);
+		vectorStore.client?.release();
 	},
-});
+
+	releaseVectorStoreClient(vectorStore) {
+		vectorStore.client?.release();
+	},
+}) {}

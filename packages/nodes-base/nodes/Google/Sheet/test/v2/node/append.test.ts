@@ -15,7 +15,7 @@ describe('Google Sheet - Append', () => {
 	});
 
 	it('should insert input data if sheet is empty', async () => {
-		mockExecuteFunctions.getInputData.mockReturnValueOnce([
+		const inputData = [
 			{
 				json: {
 					row_number: 3,
@@ -27,7 +27,8 @@ describe('Google Sheet - Append', () => {
 					input: undefined,
 				},
 			},
-		]);
+		];
+		mockExecuteFunctions.getInputData.mockReturnValueOnce(inputData);
 
 		mockExecuteFunctions.getNode.mockReturnValueOnce(mock<INode>({ typeVersion: 4.5 }));
 		mockExecuteFunctions.getNodeParameter
@@ -55,5 +56,6 @@ describe('Google Sheet - Append', () => {
 			range: 'Sheet1',
 			valueInputMode: 'USER_ENTERED',
 		});
+		expect(inputData[0].json).toEqual({ row_number: 3, name: 'NEW NAME', text: 'NEW TEXT' });
 	});
 });

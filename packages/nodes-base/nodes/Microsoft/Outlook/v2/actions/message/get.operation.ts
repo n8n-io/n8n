@@ -5,10 +5,12 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+
+import { updateDisplayOptions } from '@utils/utilities';
+
+import { messageRLC } from '../../descriptions';
 import { messageFields, simplifyOutputMessages } from '../../helpers/utils';
 import { downloadAttachments, getMimeContent, microsoftApiRequest } from '../../transport';
-import { messageRLC } from '../../descriptions';
-import { updateDisplayOptions } from '@utils/utilities';
 
 export const properties: INodeProperties[] = [
 	messageRLC,

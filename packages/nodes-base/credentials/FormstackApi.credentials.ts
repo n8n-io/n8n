@@ -5,7 +5,7 @@ export class FormstackApi implements ICredentialType {
 
 	displayName = 'Formstack API';
 
-	documentationUrl = 'formstackTrigger';
+	documentationUrl = 'formstacktrigger';
 
 	properties: INodeProperties[] = [
 		{

@@ -1,0 +1,236 @@
+{
+    "type": "object",
+    "properties": {
+        "_links": {
+            "type": "object",
+            "properties": {
+                "about": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "author": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "embeddable": {
+                                "type": "boolean"
+                            },
+                            "href": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "collection": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "curies": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "templated": {
+                                "type": "boolean"
+                            }
+                        }
+                    }
+                },
+                "predecessor-version": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "integer"
+                            }
+                        }
+                    }
+                },
+                "replies": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "embeddable": {
+                                "type": "boolean"
+                            },
+                            "href": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "self": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            },
+                            "targetHints": {
+                                "type": "object",
+                                "properties": {
+                                    "allow": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "version-history": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "count": {
+                                "type": "integer"
+                            },
+                            "href": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "wp:attachment": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "author": {
+            "type": "integer"
+        },
+        "class_list": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "comment_status": {
+            "type": "string"
+        },
+        "content": {
+            "type": "object",
+            "properties": {
+                "protected": {
+                    "type": "boolean"
+                },
+                "rendered": {
+                    "type": "string"
+                }
+            }
+        },
+        "date": {
+            "type": "string"
+        },
+        "date_gmt": {
+            "type": "string"
+        },
+        "excerpt": {
+            "type": "object",
+            "properties": {
+                "protected": {
+                    "type": "boolean"
+                },
+                "rendered": {
+                    "type": "string"
+                }
+            }
+        },
+        "featured_media": {
+            "type": "integer"
+        },
+        "guid": {
+            "type": "object",
+            "properties": {
+                "rendered": {
+                    "type": "string"
+                }
+            }
+        },
+        "link": {
+            "type": "string"
+        },
+        "menu_order": {
+            "type": "integer"
+        },
+        "meta": {
+            "type": "object",
+            "properties": {
+                "footnotes": {
+                    "type": "string"
+                }
+            }
+        },
+        "modified": {
+            "type": "string"
+        },
+        "modified_gmt": {
+            "type": "string"
+        },
+        "parent": {
+            "type": "integer"
+        },
+        "ping_status": {
+            "type": "string"
+        },
+        "slug": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "template": {
+            "type": "string"
+        },
+        "title": {
+            "type": "object",
+            "properties": {
+                "rendered": {
+                    "type": "string"
+                }
+            }
+        },
+        "type": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

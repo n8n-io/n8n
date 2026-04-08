@@ -1,10 +1,10 @@
+import crypto from 'crypto';
 import { mock } from 'jest-mock-extended';
 import { NodeOperationError, type INode } from 'n8n-workflow';
 
 import { testVersionedWebhookTriggerNode } from '@test/nodes/TriggerHelpers';
 
 import { FormTrigger } from '../FormTrigger.node';
-import type { FormField } from '../interfaces';
 
 describe('FormTrigger', () => {
 	beforeEach(() => {
@@ -12,7 +12,7 @@ describe('FormTrigger', () => {
 	});
 
 	it('should render a form template with correct fields', async () => {
-		const formFields: FormField[] = [
+		const formFields = [
 			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
 			{ fieldLabel: 'Age', fieldType: 'number', requiredField: false },
 			{ fieldLabel: 'Notes', fieldType: 'textarea', requiredField: false },
@@ -38,6 +38,7 @@ describe('FormTrigger', () => {
 					formTitle: 'Test Form',
 					formDescription: 'Test Description',
 					responseMode: 'onReceived',
+					authentication: 'none',
 					formFields: { values: formFields },
 					options: {
 						appendAttribution: false,
@@ -49,7 +50,9 @@ describe('FormTrigger', () => {
 
 		expect(response.render).toHaveBeenCalledWith('form-trigger', {
 			appendAttribution: false,
+			buttonLabel: 'Submit',
 			formDescription: 'Test Description',
+			formDescriptionMetadata: 'Test Description',
 			formFields: [
 				{
 					defaultValue: '',
@@ -108,14 +111,13 @@ describe('FormTrigger', () => {
 				'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger&utm_campaign=instanceId',
 			testRun: true,
 			useResponseData: false,
-			validForm: true,
 		});
 
 		expect(responseData).toEqual({ noWebhookResponse: true });
 	});
 
 	it('should return workflowData on POST request', async () => {
-		const formFields: FormField[] = [
+		const formFields = [
 			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
 			{ fieldLabel: 'Age', fieldType: 'number', requiredField: false },
 			{ fieldLabel: 'Date', fieldType: 'date', formatDate: 'dd MMM', requiredField: false },
@@ -145,10 +147,15 @@ describe('FormTrigger', () => {
 					formTitle: 'Test Form',
 					formDescription: 'Test Description',
 					responseMode: 'onReceived',
+					authentication: 'none',
 					formFields: { values: formFields },
 				},
 			},
-			request: { method: 'POST' },
+			request: {
+				method: 'POST',
+				headers: { 'content-type': 'multipart/form-data' },
+				contentType: 'multipart/form-data',
+			},
 			bodyData,
 		});
 
@@ -189,8 +196,9 @@ describe('FormTrigger', () => {
 			);
 
 			await expect(
-				testVersionedWebhookTriggerNode(FormTrigger, 2, {
+				testVersionedWebhookTriggerNode(FormTrigger, 2.1, {
 					node: {
+						typeVersion: 2.1,
 						parameters: {
 							responseMode: 'onReceived',
 						},
@@ -201,22 +209,26 @@ describe('FormTrigger', () => {
 							name: 'Test Respond To Webhook',
 							type: 'n8n-nodes-base.respondToWebhook',
 							typeVersion: 1,
+							disabled: false,
 						},
 					],
 				}),
 			).rejects.toEqual(
-				new NodeOperationError(mock<INode>(), 'n8n Form Trigger node not correctly configured'),
+				new NodeOperationError(
+					mock<INode>(),
+					'Unused Respond to Webhook node found in the workflow',
+				),
 			);
 		});
 	});
 
-	it('should throw on invalid webhook authentication', async () => {
-		const formFields: FormField[] = [
+	it('webhook execution not successful when token is invalid', async () => {
+		const formFields = [
 			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
 			{ fieldLabel: 'Age', fieldType: 'number', requiredField: false },
 		];
 
-		const { responseData, response } = await testVersionedWebhookTriggerNode(FormTrigger, 2, {
+		const { responseData } = await testVersionedWebhookTriggerNode(FormTrigger, 2, {
 			mode: 'manual',
 			node: {
 				parameters: {
@@ -227,19 +239,107 @@ describe('FormTrigger', () => {
 					authentication: 'basicAuth',
 				},
 			},
-			request: { method: 'POST' },
+			request: { method: 'POST', query: {}, headers: {} },
+			credential: {
+				user: 'testuser',
+				password: 'testpass',
+			},
 		});
 
 		expect(responseData).toEqual({ noWebhookResponse: true });
-		expect(response.status).toHaveBeenCalledWith(401);
-		expect(response.setHeader).toHaveBeenCalledWith(
-			'WWW-Authenticate',
-			'Basic realm="Enter credentials"',
+	});
+
+	it('should validate POST requests with correct authentication token', async () => {
+		const formFields = [
+			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
+			{ fieldLabel: 'Age', fieldType: 'number', requiredField: false },
+		];
+
+		const nodeId = 'test-node-id';
+		const webhookId = 'test-webhook-id';
+		const credentials = { user: 'testuser', password: 'testpass' };
+
+		const token = crypto
+			.createHmac('sha256', `${credentials.user}:${credentials.password}`)
+			.update(`${nodeId}-${webhookId}`)
+			.digest('hex');
+
+		const bodyData = {
+			data: {
+				'field-0': 'John Doe',
+				'field-1': '30',
+			},
+		};
+
+		const { responseData } = await testVersionedWebhookTriggerNode(FormTrigger, 2, {
+			mode: 'manual',
+			node: {
+				id: nodeId,
+				webhookId,
+				parameters: {
+					formTitle: 'Test Form',
+					formDescription: 'Test Description',
+					responseMode: 'onReceived',
+					formFields: { values: formFields },
+					authentication: 'basicAuth',
+				},
+			},
+			request: {
+				method: 'POST',
+				contentType: 'multipart/form-data',
+				headers: { 'content-type': 'multipart/form-data', 'x-auth-token': token },
+			},
+			bodyData,
+			credential: credentials,
+		});
+
+		expect(responseData).toEqual({
+			webhookResponse: { status: 200 },
+			workflowData: [
+				[
+					{
+						json: {
+							Name: 'John Doe',
+							Age: 30,
+							submittedAt: expect.any(String),
+							formMode: 'test',
+						},
+					},
+				],
+			],
+		});
+	});
+
+	it('should apply customCss property to form render', async () => {
+		const formFields = [{ fieldLabel: 'Name', fieldType: 'text', requiredField: true }];
+
+		const { response } = await testVersionedWebhookTriggerNode(FormTrigger, 2.2, {
+			mode: 'manual',
+			node: {
+				typeVersion: 2.2,
+				parameters: {
+					formTitle: 'Custom CSS Test',
+					formDescription: 'Testing custom CSS',
+					responseMode: 'onReceived',
+					authentication: 'none',
+					formFields: { values: formFields },
+					options: {
+						customCss: '.form-input { border-color: red; }',
+					},
+				},
+			},
+		});
+
+		expect(response.render).toHaveBeenCalledWith(
+			'form-trigger',
+			expect.objectContaining({
+				dangerousCustomCss: '.form-input { border-color: red; }',
+			}),
 		);
 	});
 
 	it('should handle files', async () => {
-		const formFields: FormField[] = [
+		const formFields = [
 			{
 				fieldLabel: 'Resume',
 				fieldType: 'file',
@@ -282,10 +382,15 @@ describe('FormTrigger', () => {
 					formTitle: 'Test Form',
 					formDescription: 'Test Description',
 					responseMode: 'onReceived',
+					authentication: 'none',
 					formFields: { values: formFields },
 				},
 			},
-			request: { method: 'POST' },
+			request: {
+				method: 'POST',
+				headers: { 'content-type': 'multipart/form-data' },
+				contentType: 'multipart/form-data',
+			},
 			bodyData,
 		});
 

@@ -10,7 +10,10 @@ Photos and videos are recommended.
 <!--
 Include links to **Linear ticket** or Github issue or Community forum post.
 Important in order to close *automatically* and provide context to reviewers.
+https://linear.app/n8n/issue/
 -->
+<!-- Use "closes #<issue-number>", "fixes #<issue-number>", or "resolves #<issue-number>" to automatically close issues when the PR is merged. -->
+
 
 ## Review / Merge checklist
 
@@ -23,4 +26,4 @@ Important in order to close *automatically* and provide context to reviewers.
    A bug is not considered fixed, unless a test is added to prevent it from happening again.
    A feature is not complete without tests.
 -->
-- [ ] PR Labeled with `release/backport` (if the PR is an urgent fix that needs to be backported)
+- [ ] PR Labeled with `Backport to Beta`, `Backport to Stable`, or `Backport to v1` (if the PR is an urgent fix that needs to be backported)

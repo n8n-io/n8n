@@ -1,0 +1,126 @@
+{
+	"name": "NDV search bugs (introduced by schema view?)",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "55635c7b-92ee-4d2d-a0c0-baff9ab071da",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [800, 380],
+			"typeVersion": 1
+		},
+		{
+			"parameters": {
+				"operation": "getAllPeople"
+			},
+			"id": "4737af43-e49b-4c92-b76f-32605c047114",
+			"name": "Customer Datastore (n8n training)",
+			"type": "n8n-nodes-base.n8nTrainingCustomerDatastore",
+			"typeVersion": 1,
+			"position": [1020, 380]
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": []
+				},
+				"includeOtherFields": true,
+				"options": {}
+			},
+			"id": "8cc9b374-1856-4f3f-9315-08e6e27840d8",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [1240, 380]
+		}
+	],
+	"pinData": {
+		"Customer Datastore (n8n training)": [
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10"
+				}
+			},
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05"
+				}
+			},
+			{
+				"json": {
+					"id": "23423534",
+					"name": "Max Sendak",
+					"email": "info@in-and-out-of-weeks.org",
+					"notes": "Keeps rolling his terrible eyes",
+					"country": "US",
+					"created": "1963-04-09"
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Customer Datastore (n8n training)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Customer Datastore (n8n training)": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "20178044-fb64-4443-88dd-e941517520d0",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd"
+	},
+	"id": "aBVnTRON9Y2cSmse",
+	"tags": []
+}

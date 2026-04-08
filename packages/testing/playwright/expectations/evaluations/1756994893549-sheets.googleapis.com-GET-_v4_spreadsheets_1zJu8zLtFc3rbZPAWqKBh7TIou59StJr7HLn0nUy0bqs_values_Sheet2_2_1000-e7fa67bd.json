@@ -1,0 +1,55 @@
+{
+	"httpRequest": {
+		"method": "GET",
+		"path": "/v4/spreadsheets/1zJu8zLtFc3rbZPAWqKBh7TIou59StJr7HLn0nUy0bqs/values/Sheet2!2:1000",
+		"queryStringParameters": {
+			"valueRenderOption": ["UNFORMATTED_VALUE"],
+			"dateTimeRenderOption": ["FORMATTED_STRING"]
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-l2-request-path": ["l2-managed-6"],
+			"X-XSS-Protection": ["0"],
+			"X-Frame-Options": ["SAMEORIGIN"],
+			"X-Content-Type-Options": ["nosniff"],
+			"Vary": ["Origin", "X-Origin", "Referer"],
+			"Server": ["ESF"],
+			"Date": ["Thu, 04 Sep 2025 14:08:00 GMT"],
+			"Content-Type": ["application/json; charset=UTF-8"],
+			"Alt-Svc": ["h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000"]
+		},
+		"body": {
+			"type": "JSON",
+			"json": {
+				"range": "Sheet2!A2:Z1000",
+				"majorDimension": "ROWS",
+				"values": [
+					[
+						"test",
+						"test",
+						10,
+						"output",
+						2,
+						0,
+						0,
+						"output-0.17321991314554896",
+						0.47763178373020865
+					],
+					["hello", "wolrd", 104, "", 3, 0, 0, "output-0.14637030644980253", 0.13015058088525477]
+				]
+			},
+			"rawBytes": "ewogICJyYW5nZSI6ICJTaGVldDIhQTI6WjEwMDAiLAogICJtYWpvckRpbWVuc2lvbiI6ICJST1dTIiwKICAidmFsdWVzIjogWwogICAgWwogICAgICAidGVzdCIsCiAgICAgICJ0ZXN0IiwKICAgICAgMTAsCiAgICAgICJvdXRwdXQiLAogICAgICAyLAogICAgICAwLAogICAgICAwLAogICAgICAib3V0cHV0LTAuMTczMjE5OTEzMTQ1NTQ4OTYiLAogICAgICAwLjQ3NzYzMTc4MzczMDIwODY1CiAgICBdLAogICAgWwogICAgICAiaGVsbG8iLAogICAgICAid29scmQiLAogICAgICAxMDQsCiAgICAgICIiLAogICAgICAzLAogICAgICAwLAogICAgICAwLAogICAgICAib3V0cHV0LTAuMTQ2MzcwMzA2NDQ5ODAyNTMiLAogICAgICAwLjEzMDE1MDU4MDg4NTI1NDc3CiAgICBdCiAgXQp9Cg=="
+		}
+	},
+	"id": "1756994893549-sheets.googleapis.com-GET-_v4_spreadsheets_1zJu8zLtFc3rbZPAWqKBh7TIou59StJr7HLn0nUy0bqs_values_Sheet2_2_1000-e7fa67bd.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}

@@ -1,0 +1,107 @@
+# Sync n8n-io/n8n to n8n-io/n8n-private
+#
+# Runs hourly to keep private in sync with public.
+# Can also be triggered manually for conflict recovery.
+#
+# Scheduled runs only sync if private is not ahead of public.
+# Manual runs always sync (for conflict recovery after failed cherry-pick).
+
+name: 'Security: Sync from Public'
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Sync even if private is ahead (for conflict recovery)
+        type: boolean
+        default: true
+
+jobs:
+  sync-from-public:
+    if: github.repository == 'n8n-io/n8n-private'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Generate App Token
+        id: app-token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Sync master from public
+        run: |
+          git fetch https://github.com/n8n-io/n8n.git master:public-master
+
+          # Check if private is ahead of public, ignore Bundle commits
+          AHEAD_COUNT=$(git rev-list public-master..HEAD --pretty=oneline --grep="chore: Bundle" --invert-grep --count)
+
+          if [ "$AHEAD_COUNT" -gt 0 ]; then
+            if [ "${{ github.event_name }}" = "schedule" ]; then
+              echo "Private is $AHEAD_COUNT commit(s) ahead of public, skipping scheduled sync"
+              exit 0
+            elif [ "${{ inputs.force }}" != "true" ]; then
+              echo "Private is $AHEAD_COUNT commit(s) ahead of public, skipping (force not enabled)"
+              exit 0
+            else
+              echo "Private is $AHEAD_COUNT commit(s) ahead of public, force syncing anyway"
+            fi
+          fi
+
+          git reset --hard public-master
+          git push origin master --force-with-lease
+
+      - name: Sync 1.x from public
+        run: |
+          git fetch https://github.com/n8n-io/n8n.git 1.x:public-1.x
+          git checkout 1.x
+
+          # Check if private is ahead of public, ignore Bundle commits
+          AHEAD_COUNT=$(git rev-list public-1.x..HEAD --pretty=oneline --grep="chore: Bundle" --invert-grep --count)
+
+          if [ "$AHEAD_COUNT" -gt 0 ]; then
+            if [ "${{ github.event_name }}" = "schedule" ]; then
+              echo "Private 1.x is $AHEAD_COUNT commit(s) ahead of public, skipping scheduled sync"
+              exit 0
+            elif [ "${{ inputs.force }}" != "true" ]; then
+              echo "Private 1.x is $AHEAD_COUNT commit(s) ahead of public, skipping (force not enabled)"
+              exit 0
+            else
+              echo "Private 1.x is $AHEAD_COUNT commit(s) ahead of public, force syncing anyway"
+            fi
+          fi
+
+          git reset --hard public-1.x
+          git push origin 1.x --force-with-lease
+
+      - name: Ensure bundle/2.x exists
+        run: |
+          if git ls-remote --exit-code origin refs/heads/bundle/2.x; then
+            echo "bundle/2.x already exists, skipping"
+          else
+            echo "bundle/2.x not found, creating from master"
+            git checkout master
+            git checkout -b bundle/2.x
+            git push origin bundle/2.x
+          fi
+
+      - name: Ensure bundle/1.x exists
+        run: |
+          if git ls-remote --exit-code origin refs/heads/bundle/1.x; then
+            echo "bundle/1.x already exists, skipping"
+          else
+            echo "bundle/1.x not found, creating from 1.x"
+            git checkout 1.x
+            git checkout -b bundle/1.x
+            git push origin bundle/1.x
+          fi

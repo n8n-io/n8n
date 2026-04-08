@@ -7,7 +7,8 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
+
 import { linkedInApiRequest } from './GenericFunctions';
 import { postFields, postOperations } from './PostDescription';
 
@@ -23,8 +24,18 @@ export class LinkedIn implements INodeType {
 		defaults: {
 			name: 'LinkedIn',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		builderHint: {
+			message: 'LinkedIn API does not support scraping profiles or leads.',
+			relatedNodes: [
+				{
+					nodeType: 'n8n-nodes-base.phantombuster',
+					relationHint: 'For LinkedIn lead scraping and data extraction',
+				},
+			],
+		},
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'linkedInOAuth2Api',

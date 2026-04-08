@@ -1,3 +1,5 @@
+import type { PubSub } from './pubsub/pubsub.types';
+
 export const QUEUE_NAME = 'jobs';
 
 export const JOB_TYPE_NAME = 'job';
@@ -8,10 +10,13 @@ export const COMMAND_PUBSUB_CHANNEL = 'n8n.commands';
 /** Pubsub channel for messages sent by workers in response to commands from main processes. */
 export const WORKER_RESPONSE_PUBSUB_CHANNEL = 'n8n.worker-response';
 
+/** Pubsub channel for MCP relay messages between main instances in multi-main queue mode. */
+export const MCP_RELAY_PUBSUB_CHANNEL = 'n8n.mcp-relay';
+
 /**
  * Commands that should be sent to the sender as well, e.g. during workflow activation and
  * deactivation in multi-main setup. */
-export const SELF_SEND_COMMANDS = new Set([
+export const SELF_SEND_COMMANDS = new Set<PubSub.Command['command']>([
 	'add-webhooks-triggers-and-pollers',
 	'remove-triggers-and-pollers',
 ]);
@@ -20,4 +25,10 @@ export const SELF_SEND_COMMANDS = new Set([
  * Commands that should not be debounced when received, e.g. during webhook handling in
  * multi-main setup.
  */
-export const IMMEDIATE_COMMANDS = new Set(['relay-execution-lifecycle-event']);
+export const IMMEDIATE_COMMANDS = new Set<PubSub.Command['command']>([
+	'add-webhooks-triggers-and-pollers',
+	'remove-triggers-and-pollers',
+	'relay-execution-lifecycle-event',
+	'relay-chat-stream-event',
+	'cancel-test-run',
+]);

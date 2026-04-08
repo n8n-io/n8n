@@ -1,14 +1,16 @@
+import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
+import type { SqliteConfig } from '@n8n/config';
+import type { IExecutionResponse } from '@n8n/db';
+import { ExecutionEntity, ExecutionRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
-import { Not, LessThanOrEqual } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { BinaryDataService } from 'n8n-core';
+import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
-import Container from 'typedi';
 
-import { ExecutionEntity } from '@/databases/entities/execution-entity';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { mockInstance, mockEntityManager } from '@test/mocking';
+import { mockEntityManager } from '@test/mocking';
 
 describe('ExecutionRepository', () => {
 	const entityManager = mockEntityManager(ExecutionEntity);
@@ -31,22 +33,33 @@ describe('ExecutionRepository', () => {
 			'on %s, should be called with expected args',
 			async (dbType) => {
 				globalConfig.database.type = dbType;
-				entityManager.find.mockResolvedValueOnce([]);
+
+				const qb = {
+					select: jest.fn().mockReturnThis(),
+					where: jest.fn().mockReturnThis(),
+					andWhere: jest.fn().mockReturnThis(),
+					orderBy: jest.fn().mockReturnThis(),
+					getMany: jest.fn().mockResolvedValue([]),
+				};
+				jest
+					.spyOn(executionRepository, 'createQueryBuilder')
+					.mockReturnValue(qb as unknown as SelectQueryBuilder<ExecutionEntity>);
 
 				await executionRepository.getWaitingExecutions();
 
-				expect(entityManager.find).toHaveBeenCalledWith(ExecutionEntity, {
-					order: { waitTill: 'ASC' },
-					select: ['id', 'waitTill'],
-					where: {
-						status: Not('crashed'),
-						waitTill: LessThanOrEqual(
-							dbType === 'sqlite'
-								? '2023-12-28 12:36:06.789'
-								: new Date('2023-12-28T12:36:06.789Z'),
-						),
-					},
+				expect(executionRepository.createQueryBuilder).toHaveBeenCalledWith('e');
+				expect(qb.select).toHaveBeenCalledWith(['e.id', 'e.waitTill']);
+
+				const expectedCondition =
+					dbType === 'postgresdb'
+						? "e.waitTill <= NOW() + INTERVAL '15 seconds'"
+						: "e.waitTill <= datetime('now', '+15 seconds')";
+				expect(qb.where).toHaveBeenCalledWith(expectedCondition);
+				expect(qb.andWhere).toHaveBeenCalledWith('e.status = :status', {
+					status: 'waiting',
 				});
+				expect(qb.orderBy).toHaveBeenCalledWith('e.waitTill', 'ASC');
+				expect(qb.getMany).toHaveBeenCalled();
 			},
 		);
 	});
@@ -63,9 +76,52 @@ describe('ExecutionRepository', () => {
 				}),
 			);
 
-			await executionRepository.deleteExecutionsByFilter({ id: '1' }, ['1'], { ids: ['1'] });
+			await executionRepository.deleteExecutionsByFilter({
+				filters: { id: '1' },
+				accessibleWorkflowIds: ['1'],
+				deleteConditions: { ids: ['1'] },
+			});
 
-			expect(binaryDataService.deleteMany).toHaveBeenCalledWith([{ executionId: '1', workflowId }]);
+			expect(binaryDataService.deleteMany).toHaveBeenCalledWith([
+				{ type: 'execution', executionId: '1', workflowId },
+			]);
 		});
+	});
+
+	describe('updateExistingExecution', () => {
+		test.each(['sqlite', 'postgresdb'] as const)(
+			'should update execution and data in transaction on %s',
+			async (dbType) => {
+				globalConfig.database.type = dbType;
+				globalConfig.database.sqlite = mock<SqliteConfig>({ poolSize: 1 });
+
+				const executionId = '1';
+				const execution = mock<IExecutionResponse>({
+					id: executionId,
+					data: mock<IRunExecutionData>(),
+					workflowData: mock<IWorkflowBase>(),
+					status: 'success',
+				});
+
+				const txCallback = jest.fn();
+				entityManager.transaction.mockImplementation(async (cb) => {
+					// @ts-expect-error Mock
+					await cb(entityManager);
+					txCallback();
+				});
+				// Mock update to return affected count
+				entityManager.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+
+				await executionRepository.updateExistingExecution(executionId, execution);
+
+				expect(entityManager.transaction).toHaveBeenCalled();
+				expect(entityManager.update).toHaveBeenCalledWith(
+					ExecutionEntity,
+					{ id: executionId },
+					expect.objectContaining({ status: 'success' }),
+				);
+				expect(txCallback).toHaveBeenCalledTimes(1);
+			},
+		);
 	});
 });

@@ -94,7 +94,7 @@ export const fileFields: INodeProperties[] = [
 			show: {
 				operation: ['upload'],
 				resource: ['file'],
-				'@version': [2.2],
+				'@version': [{ _cnd: { gte: 2.2 } }],
 			},
 		},
 		placeholder: '',
@@ -139,7 +139,7 @@ export const fileFields: INodeProperties[] = [
 				},
 				displayOptions: {
 					show: {
-						'@version': [2.2],
+						'@version': [{ _cnd: { gte: 2.2 } }],
 					},
 				},
 				default: [],

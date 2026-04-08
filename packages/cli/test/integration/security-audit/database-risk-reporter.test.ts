@@ -1,8 +1,9 @@
-import Container from 'typedi';
+import { testDb } from '@n8n/backend-test-utils';
+import { generateNanoId, WorkflowRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
+import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { generateNanoId } from '@/databases/utils/generators';
 import {
 	DATABASE_REPORT,
 	SQL_NODE_TYPES,
@@ -11,18 +12,17 @@ import {
 import { SecurityAuditService } from '@/security-audit/security-audit.service';
 
 import { getRiskSection, saveManualTriggerWorkflow } from './utils';
-import * as testDb from '../shared/test-db';
 
 let securityAuditService: SecurityAuditService;
 
 beforeAll(async () => {
 	await testDb.init();
 
-	securityAuditService = new SecurityAuditService(Container.get(WorkflowRepository));
+	securityAuditService = new SecurityAuditService(Container.get(WorkflowRepository), mock());
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['Workflow']);
+	await testDb.truncate(['WorkflowEntity']);
 });
 
 afterAll(async () => {
@@ -41,6 +41,7 @@ test('should report expressions in queries', async () => {
 			active: false,
 			connections: {},
 			nodeTypes: {},
+			versionId: uuid(),
 			nodes: [
 				{
 					id: nodeId,
@@ -94,6 +95,7 @@ test('should report expressions in query params', async () => {
 			active: false,
 			connections: {},
 			nodeTypes: {},
+			versionId: uuid(),
 			nodes: [
 				{
 					id: nodeId,
@@ -149,6 +151,7 @@ test('should report unused query params', async () => {
 			active: false,
 			connections: {},
 			nodeTypes: {},
+			versionId: uuid(),
 			nodes: [
 				{
 					id: nodeId,

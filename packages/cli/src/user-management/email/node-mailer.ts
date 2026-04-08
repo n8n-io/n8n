@@ -1,13 +1,12 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { pick } from 'lodash';
-import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import { Service } from '@n8n/di';
+import pick from 'lodash/pick';
+import { ErrorReporter } from 'n8n-core';
 import path from 'node:path';
 import type { Transporter } from 'nodemailer';
 import { createTransport } from 'nodemailer';
 import type SMTPConnection from 'nodemailer/lib/smtp-connection';
-import { Service } from 'typedi';
-
-import { Logger } from '@/logging/logger.service';
 
 import type { MailData, SendEmailResult } from './interfaces';
 
@@ -20,6 +19,7 @@ export class NodeMailer {
 	constructor(
 		globalConfig: GlobalConfig,
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 	) {
 		const smtpConfig = globalConfig.userManagement.emails.smtp;
 		const transportConfig: SMTPConnection.Options = pick(smtpConfig, ['host', 'port', 'secure']);
@@ -47,11 +47,15 @@ export class NodeMailer {
 
 	async sendMail(mailData: MailData): Promise<SendEmailResult> {
 		try {
+			const plainText =
+				mailData.textOnly ??
+				(typeof mailData.body === 'string' ? this.htmlToPlainText(mailData.body) : undefined);
+
 			await this.transport.sendMail({
 				from: this.sender,
 				to: mailData.emailRecipients,
 				subject: mailData.subject,
-				text: mailData.textOnly,
+				text: plainText,
 				html: mailData.body,
 				attachments: [
 					{
@@ -66,7 +70,7 @@ export class NodeMailer {
 				`Email sent successfully to the following recipients: ${mailData.emailRecipients.toString()}`,
 			);
 		} catch (error) {
-			ErrorReporter.error(error);
+			this.errorReporter.error(error);
 			this.logger.error('Failed to send email', {
 				recipients: mailData.emailRecipients,
 				error: error as Error,
@@ -75,5 +79,35 @@ export class NodeMailer {
 		}
 
 		return { emailSent: true };
+	}
+
+	private htmlToPlainText(html: string): string {
+		return (
+			html
+				// Remove non-visible content
+				.replace(/<head[\s\S]*?<\/head>/gi, '')
+				.replace(/<script[\s\S]*?<\/script>/gi, '')
+				.replace(/<style[\s\S]*?<\/style>/gi, '')
+				// Convert links and buttons to "text (url)" format
+				.replace(/<a\s[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, '$2 ($1)')
+				.replace(/<mj-button\s[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/mj-button>/gi, '$2 ($1)')
+				// Replace <br> and block-level closing tags with newlines
+				.replace(/<br\s*\/?>/gi, '\n')
+				.replace(/<\/(p|div|h[1-6]|li|tr)>/gi, '\n')
+				// Strip remaining HTML tags
+				.replace(/<[^>]+>/g, '')
+				// Decode common HTML entities
+				.replace(/&amp;/g, '&')
+				.replace(/&lt;/g, '<')
+				.replace(/&gt;/g, '>')
+				.replace(/&quot;/g, '"')
+				.replace(/&#039;/g, "'")
+				.replace(/&nbsp;/g, ' ')
+				// Trim leading whitespace from each line
+				.replace(/^[\t ]+/gm, '')
+				// Collapse multiple blank lines
+				.replace(/\n{3,}/g, '\n\n')
+				.trim()
+		);
 	}
 }

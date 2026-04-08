@@ -1,0 +1,49 @@
+post:
+  x-eov-operation-id: upsertDataTableRow
+  x-eov-operation-handler: v1/handlers/data-tables/data-tables.rows.handler
+  tags:
+    - DataTable
+  summary: Upsert a row in a data table
+  description: Update an existing row or insert a new one if no row matches the filter conditions.
+  operationId: upsert-data-table-row
+  parameters:
+    - $ref: '../schemas/parameters/dataTableId.yml'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/upsertRowRequest.yml'
+        example:
+          filter:
+            type: 'and'
+            filters:
+              - columnName: 'email'
+                condition: 'eq'
+                value: 'user@example.com'
+          data:
+            email: 'user@example.com'
+            name: 'Updated Name'
+            status: 'active'
+          returnData: true
+          dryRun: false
+  responses:
+    '200':
+      description: Row upserted successfully
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - type: boolean
+                description: True when returnData is false
+              - allOf:
+                  - $ref: '../schemas/dataTableRow.yml'
+                description: Upserted row when returnData is true
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
+  security:
+    - ApiKeyAuth: []

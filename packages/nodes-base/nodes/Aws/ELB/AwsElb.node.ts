@@ -8,16 +8,15 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { awsApiRequestSOAP, awsApiRequestSOAPAllItems } from './GenericFunctions';
-
-import { loadBalancerFields, loadBalancerOperations } from './LoadBalancerDescription';
-
 import {
 	listenerCertificateFields,
 	listenerCertificateOperations,
 } from './ListenerCertificateDescription';
+import { loadBalancerFields, loadBalancerOperations } from './LoadBalancerDescription';
+import { awsNodeAuthOptions, awsNodeCredentials } from '../utils';
 
 export class AwsElb implements INodeType {
 	description: INodeTypeDescription = {
@@ -31,15 +30,11 @@ export class AwsElb implements INodeType {
 		defaults: {
 			name: 'AWS ELB',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
-		credentials: [
-			{
-				name: 'aws',
-				required: true,
-			},
-		],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		credentials: awsNodeCredentials,
 		properties: [
+			awsNodeAuthOptions,
 			{
 				displayName: 'Resource',
 				name: 'resource',

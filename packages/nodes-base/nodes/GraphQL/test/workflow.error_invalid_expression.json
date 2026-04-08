@@ -1,0 +1,32 @@
+{
+	"meta": {
+		"templateId": "216",
+		"instanceId": "ee90fdf8d57662f949e6c691dc07fa0fd2f66e1eee28ed82ef06658223e67255"
+	},
+	"nodes": [
+		{
+			"parameters": {
+				"endpoint": "https://graphql-teas-endpoint.netlify.app/",
+				"requestFormat": "json",
+				"query": "query getAllTeas($name: String) {\n   teas(name: $name) {\n     name,\n     id\n   }\n}",
+				"variables": "={{ 1 }}"
+			},
+			"id": "7aece03f-e0d9-4f49-832c-fc6465613ca7",
+			"name": "Test: Errors on unsuccessful Expression validation",
+			"type": "n8n-nodes-base.graphql",
+			"typeVersion": 1,
+			"position": [660, 200],
+			"onError": "continueRegularOutput"
+		}
+	],
+	"connections": {},
+	"pinData": {
+		"Test: Errors on unsuccessful Expression validation": [
+			{
+				"json": {
+					"error": "Using variables failed:\n1\n\nGraphQL variables should be either an object or a string."
+				}
+			}
+		]
+	}
+}
