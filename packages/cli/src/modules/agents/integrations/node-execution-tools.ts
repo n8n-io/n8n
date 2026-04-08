@@ -1,12 +1,16 @@
 import { Tool } from '@n8n/agents';
 import type { CredentialProvider } from '@n8n/agents';
 import { validateNodeConfig, setSchemaBaseDirs } from '@n8n/workflow-sdk';
-import type { IDataObject, INodeCredentialsDetails, INodeParameters } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeCredentialsDetails,
+	INodeParameters,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
-import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 import { getNodeSchema, searchTools, type ToolDescriptor } from '../node-tool-registry';
 
@@ -40,7 +44,7 @@ function ensureSchemaBaseDirsSet(): void {
  * `run_node_tool` to execute.
  */
 export function createSearchToolsTool(
-	lnc: LoadNodesAndCredentials,
+	nodes: INodeTypeDescription[],
 	credentialProvider: CredentialProvider,
 ) {
 	return new Tool('search_tools')
@@ -72,7 +76,7 @@ export function createSearchToolsTool(
 				topK?: number;
 				minScore?: number;
 			}) => {
-				const tools = await searchTools(lnc, query, credentialProvider, { topK, minScore });
+				const tools = await searchTools(nodes, query, credentialProvider, { topK, minScore });
 				return { tools };
 			},
 		);
@@ -84,7 +88,7 @@ export function createSearchToolsTool(
  * Call this after search_tools to understand what nodeParameters a node accepts
  * before calling run_node_tool.
  */
-export function createGetNodeSchemaTool(lnc: LoadNodesAndCredentials) {
+export function createGetNodeSchemaTool(nodes: INodeTypeDescription[]) {
 	return new Tool('get_node_schema')
 		.description(
 			'Return the parameter schema for a specific n8n node type. ' +
@@ -100,7 +104,7 @@ export function createGetNodeSchemaTool(lnc: LoadNodesAndCredentials) {
 			}),
 		)
 		.handler(async ({ nodeType }: { nodeType: string }) => {
-			const schema = await getNodeSchema(lnc, nodeType);
+			const schema = getNodeSchema(nodes, nodeType);
 			if (!schema) {
 				return { error: `No schema found for node type "${nodeType}"` };
 			}

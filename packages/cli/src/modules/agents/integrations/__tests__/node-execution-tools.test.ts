@@ -5,7 +5,6 @@ import type { CredentialProvider } from '@n8n/agents';
 import type { INodeProperties } from 'n8n-workflow';
 
 import type { ToolDescriptor } from '../../node-tool-registry';
-import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import {
 	createGetNodeSchemaTool,
 	createSearchToolsTool,
@@ -42,19 +41,18 @@ describe('createGetNodeSchemaTool', () => {
 		const schema: INodeProperties[] = [
 			{ displayName: 'URL', name: 'url', type: 'string', default: '', required: true },
 		];
-		jest.mocked(getNodeSchema).mockResolvedValue(schema);
-		const lnc = mock<LoadNodesAndCredentials>();
-		const tool = createGetNodeSchemaTool(lnc).build();
+		jest.mocked(getNodeSchema).mockReturnValue(schema);
+		const tool = createGetNodeSchemaTool([]).build();
 
 		const result = await tool.handler!({ nodeType: 'n8n-nodes-base.httpRequest' }, ctx);
 
-		expect(getNodeSchema).toHaveBeenCalledWith(lnc, 'n8n-nodes-base.httpRequest');
+		expect(getNodeSchema).toHaveBeenCalledWith([], 'n8n-nodes-base.httpRequest');
 		expect(result).toEqual({ nodeType: 'n8n-nodes-base.httpRequest', schema });
 	});
 
 	it('returns an error object when the node type is not in the registry', async () => {
-		jest.mocked(getNodeSchema).mockResolvedValue(undefined);
-		const tool = createGetNodeSchemaTool(mock<LoadNodesAndCredentials>()).build();
+		jest.mocked(getNodeSchema).mockReturnValue(undefined);
+		const tool = createGetNodeSchemaTool([]).build();
 
 		const result = await tool.handler!({ nodeType: 'custom.unknown' }, ctx);
 
@@ -68,13 +66,12 @@ describe('createSearchToolsTool', () => {
 	it('returns { tools } from the registry', async () => {
 		const descriptor = mock<ToolDescriptor>({ nodeType: 'n8n-nodes-base.httpRequest' });
 		jest.mocked(searchTools).mockResolvedValue([descriptor]);
-		const lnc = mock<LoadNodesAndCredentials>();
 		const credentialProvider = mock<CredentialProvider>();
-		const tool = createSearchToolsTool(lnc, credentialProvider).build();
+		const tool = createSearchToolsTool([], credentialProvider).build();
 
 		const result = await tool.handler!({ query: 'http request' }, ctx);
 
-		expect(searchTools).toHaveBeenCalledWith(lnc, 'http request', credentialProvider, {
+		expect(searchTools).toHaveBeenCalledWith([], 'http request', credentialProvider, {
 			topK: undefined,
 			minScore: undefined,
 		});
@@ -83,13 +80,12 @@ describe('createSearchToolsTool', () => {
 
 	it('passes topK and minScore through to searchTools', async () => {
 		jest.mocked(searchTools).mockResolvedValue([]);
-		const lnc = mock<LoadNodesAndCredentials>();
 		const credentialProvider = mock<CredentialProvider>();
-		const tool = createSearchToolsTool(lnc, credentialProvider).build();
+		const tool = createSearchToolsTool([], credentialProvider).build();
 
 		await tool.handler!({ query: 'email', topK: 5, minScore: 0.3 }, ctx);
 
-		expect(searchTools).toHaveBeenCalledWith(lnc, 'email', credentialProvider, {
+		expect(searchTools).toHaveBeenCalledWith([], 'email', credentialProvider, {
 			topK: 5,
 			minScore: 0.3,
 		});

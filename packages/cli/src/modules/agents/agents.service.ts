@@ -385,8 +385,9 @@ export class AgentsService {
 				'./integrations/node-execution-tools'
 			);
 
-			agent.tool(createSearchToolsTool(this.loadNodesAndCredentials, credentialProvider));
-			agent.tool(createGetNodeSchemaTool(this.loadNodesAndCredentials));
+			const { nodes } = await this.loadNodesAndCredentials.collectTypes();
+			agent.tool(createSearchToolsTool(nodes, credentialProvider));
+			agent.tool(createGetNodeSchemaTool(nodes));
 			agent.tool(createRunNodeTool(this.ephemeralNodeExecutor, projectId));
 		} catch (toolError) {
 			this.logger.warn('Failed to inject node-discovery tools', {

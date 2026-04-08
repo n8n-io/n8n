@@ -1,7 +1,5 @@
 import type { CredentialListItem, CredentialProvider } from '@n8n/agents';
-import type { INodeProperties } from 'n8n-workflow';
-
-import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 
 export interface ToolDescriptor {
 	/** Human-readable display name, e.g. "HTTP Request" */
@@ -35,11 +33,10 @@ const UI_ONLY_TYPES = new Set([
  * UI-only and node-setting entries that are irrelevant to an LLM agent.
  * Returns `undefined` if the node is not found or not usable as a tool.
  */
-export async function getNodeSchema(
-	lnc: LoadNodesAndCredentials,
+export function getNodeSchema(
+	nodes: INodeTypeDescription[],
 	nodeType: string,
-): Promise<INodeProperties[] | undefined> {
-	const { nodes } = await lnc.collectTypes();
+): INodeProperties[] | undefined {
 	const node = nodes.find((n) => n.usableAsTool && n.name === nodeType);
 	if (!node) return undefined;
 	return node.properties.filter((prop) => !UI_ONLY_TYPES.has(prop.type) && !prop.isNodeSetting);
@@ -49,15 +46,11 @@ export async function getNodeSchema(
  * Returns descriptors for all nodes flagged as `usableAsTool`, deduplicated
  * by node type. Credentials are filtered to those available via the optional
  * `credentialProvider`.
- *
- * Calls `collectTypes()` each time — types are not held in memory.
  */
 export async function listTools(
-	lnc: LoadNodesAndCredentials,
+	nodes: INodeTypeDescription[],
 	credentialProvider?: CredentialProvider,
 ): Promise<ToolDescriptor[]> {
-	const { nodes } = await lnc.collectTypes();
-
 	const availableCreds = credentialProvider ? await credentialProvider.list() : [];
 
 	// When a credential provider is present, build a Set of available credential types.
@@ -140,16 +133,14 @@ function scoreToolRelevance(query: string, tool: ToolDescriptor): number {
 /**
  * Returns tool descriptors relevant to `query`, ranked by token overlap and
  * trimmed to `topK`. When `query` is empty all tools are returned up to `topK`.
- *
- * Calls `collectTypes()` each time — types are not held in memory.
  */
 export async function searchTools(
-	lnc: LoadNodesAndCredentials,
+	nodes: INodeTypeDescription[],
 	query: string,
 	credentialProvider?: CredentialProvider,
 	{ topK = 10, minScore = 0.1 }: { topK?: number; minScore?: number } = {},
 ): Promise<ToolDescriptor[]> {
-	const all = await listTools(lnc, credentialProvider);
+	const all = await listTools(nodes, credentialProvider);
 	if (!query.trim()) return all.slice(0, topK);
 
 	return all
