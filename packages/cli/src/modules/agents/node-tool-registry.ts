@@ -6,6 +6,7 @@ import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 export interface ToolDescriptor {
 	/** Human-readable display name, e.g. "HTTP Request" */
 	displayName: string;
+	/** Human-readable description, e.g. "Makes HTTP requests to any URL" */
 	description: string;
 	/** Node type identifier, e.g. 'n8n-nodes-base.httpRequest' */
 	nodeType: string;
@@ -76,10 +77,9 @@ export async function listTools(
 		const credentialSlots = (node.credentials ?? []).map((credDef) => credDef.name);
 
 		const hasCredentials =
-			availableCredTypes === undefined
-				? true
-				: credentialSlots.length === 0 ||
-					credentialSlots.some((credType) => availableCredTypes.has(credType));
+			availableCredTypes === undefined ||
+			credentialSlots.length === 0 ||
+			credentialSlots.some((credType) => availableCredTypes.has(credType));
 
 		// When a credential provider is active, hide nodes the user cannot use.
 		if (credentialProvider && !hasCredentials) continue;
@@ -103,28 +103,38 @@ export async function listTools(
 	return descriptors;
 }
 
+const NAME_WEIGHT = 2;
+const DESC_WEIGHT = 1;
+
 /**
  * Score a tool descriptor against a query string.
  *
- * Token overlap between query tokens and displayName (weight 2×) + description
- * (weight 1×), normalised to [0, 1]. Returns 1 when the query is empty so all
- * tools pass the minScore filter.
+ * Iterates over query tokens. Each query token contributes NAME_WEIGHT if it
+ * is a prefix of any displayName token, plus DESC_WEIGHT if it is a prefix of
+ * any description token. This means each query token can score at most
+ * NAME_WEIGHT + DESC_WEIGHT regardless of how many times the word appears in
+ * the document, avoiding length bias.
+ *
+ * Returns a value in [0, 1] where 1 means every query token matched in both
+ * fields. Returns 1 for empty queries so all tools pass the minScore filter.
  */
 function scoreToolRelevance(query: string, tool: ToolDescriptor): number {
 	if (!query.trim()) return 1;
 
-	const queryTokens = new Set(query.toLowerCase().split(/\W+/).filter(Boolean));
-	if (queryTokens.size === 0) return 1;
+	const queryTokens = [...new Set(query.toLowerCase().split(/\W+/).filter(Boolean))];
+	if (queryTokens.length === 0) return 1;
 
 	const nameTokens = tool.displayName.toLowerCase().split(/\W+/).filter(Boolean);
 	const descTokens = tool.description.toLowerCase().split(/\W+/).filter(Boolean);
 
 	let hits = 0;
-	for (const token of nameTokens) if (queryTokens.has(token)) hits += 2;
-	for (const token of descTokens) if (queryTokens.has(token)) hits += 1;
+	for (const qToken of queryTokens) {
+		if (nameTokens.some((t) => t.startsWith(qToken))) hits += NAME_WEIGHT;
+		if (descTokens.some((t) => t.startsWith(qToken))) hits += DESC_WEIGHT;
+	}
 
-	const maxScore = queryTokens.size * (2 + 1);
-	return Math.min(hits / maxScore, 1);
+	const maxScore = queryTokens.length * (NAME_WEIGHT + DESC_WEIGHT);
+	return hits / maxScore;
 }
 
 /**

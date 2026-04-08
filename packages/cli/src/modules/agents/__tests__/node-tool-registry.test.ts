@@ -181,7 +181,7 @@ describe('searchTools()', () => {
 		expect(results).toHaveLength(2);
 	});
 
-	it('ranks tools with matching displayName above unrelated tools', async () => {
+	it('ranks tools with a name match above tools with only a description match', async () => {
 		const lnc = makeLnc([
 			makeNode({
 				name: 'n8n-nodes-base.gmail',
@@ -229,5 +229,41 @@ describe('searchTools()', () => {
 		const results = await searchTools(lnc, 'send', undefined, { topK: 2 });
 
 		expect(results).toHaveLength(2);
+	});
+
+	it('matches on a prefix of a document token', async () => {
+		const lnc = makeLnc([
+			makeNode({
+				name: 'n8n-nodes-base.httpRequest',
+				displayName: 'HTTP Request',
+				description: 'Makes HTTP requests to any URL',
+			}),
+		]);
+
+		const results = await searchTools(lnc, 'htt req', undefined, { minScore: 0.1 });
+
+		expect(results).toHaveLength(1);
+		expect(results[0].nodeType).toBe('n8n-nodes-base.httpRequest');
+	});
+
+	it('is not biased by repeated words in the description', async () => {
+		const lnc = makeLnc([
+			makeNode({
+				name: 'n8n-nodes-base.gmail',
+				displayName: 'Gmail',
+				description: 'email email email email email',
+			}),
+			makeNode({
+				name: 'n8n-nodes-base.emailTool',
+				displayName: 'Email Tool',
+				description: 'send messages',
+			}),
+		]);
+
+		// emailTool has "email" in displayName (NAME_WEIGHT) → scores higher than
+		// gmail which only matches in description despite the word appearing 5 times
+		const results = await searchTools(lnc, 'email', undefined, { minScore: 0 });
+
+		expect(results[0].nodeType).toBe('n8n-nodes-base.emailTool');
 	});
 });
