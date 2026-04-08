@@ -30,8 +30,13 @@ import {
 	tryRefreshOAuth2Token,
 } from '../shared/utils';
 
-const MCP_CLIENT_CACHE_TTL_MS = parseInt(process.env.MCP_CLIENT_CACHE_TTL_MS ?? '300000', 10);
-const MCP_CLIENT_CACHE_MAX_SIZE = parseInt(process.env.MCP_CLIENT_CACHE_MAX_SIZE ?? '500', 10);
+const DEFAULT_CACHE_TTL_MS = 300_000;
+const DEFAULT_CACHE_MAX_SIZE = 500;
+
+const MCP_CLIENT_CACHE_TTL_MS =
+	parseInt(process.env.MCP_CLIENT_CACHE_TTL_MS ?? '', 10) || DEFAULT_CACHE_TTL_MS;
+const MCP_CLIENT_CACHE_MAX_SIZE =
+	parseInt(process.env.MCP_CLIENT_CACHE_MAX_SIZE ?? '', 10) || DEFAULT_CACHE_MAX_SIZE;
 
 interface CachedClient {
 	client: Client;
@@ -50,6 +55,14 @@ function getCacheKey(executionId: string, nodeName: string): string {
 	return `${executionId}:${nodeName}`;
 }
 
+function closeAndRemove(key: string): void {
+	const entry = activeClients.get(key);
+	if (entry) {
+		void entry.client.close().catch(() => {});
+		activeClients.delete(key);
+	}
+}
+
 let lastEvictionAt = 0;
 const EVICTION_INTERVAL_MS = 30_000;
 
@@ -66,17 +79,18 @@ export function evictStaleClients(): void {
 
 	for (const [key, entry] of activeClients) {
 		if (now - entry.createdAt > MCP_CLIENT_CACHE_TTL_MS) {
-			void entry.client.close().catch(() => {});
-			activeClients.delete(key);
+			closeAndRemove(key);
 		}
 	}
 
+	// Map preserves insertion order, which matches createdAt order since
+	// entries are only inserted (never re-set) with Date.now() timestamps.
 	if (activeClients.size > MCP_CLIENT_CACHE_MAX_SIZE) {
-		const sorted = [...activeClients.entries()].sort((a, b) => a[1].createdAt - b[1].createdAt);
-		const toEvict = sorted.slice(0, activeClients.size - MCP_CLIENT_CACHE_MAX_SIZE);
-		for (const [key, entry] of toEvict) {
-			void entry.client.close().catch(() => {});
-			activeClients.delete(key);
+		let excess = activeClients.size - MCP_CLIENT_CACHE_MAX_SIZE;
+		for (const [key] of activeClients) {
+			if (excess <= 0) break;
+			closeAndRemove(key);
+			excess--;
 		}
 	}
 }
@@ -491,17 +505,9 @@ export class McpClientTool implements INodeType {
 
 				const cancelSignal = this.getExecutionCancelSignal();
 				if (cancelSignal) {
-					cancelSignal.addEventListener(
-						'abort',
-						() => {
-							const entry = activeClients.get(cacheKey);
-							if (entry) {
-								void entry.client.close().catch(() => {});
-								activeClients.delete(cacheKey);
-							}
-						},
-						{ once: true },
-					);
+					cancelSignal.addEventListener('abort', () => closeAndRemove(cacheKey), {
+						once: true,
+					});
 				}
 			}
 		} else {

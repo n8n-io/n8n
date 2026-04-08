@@ -1045,6 +1045,41 @@ describe('McpClientTool', () => {
 			expect(closeSpy).toHaveBeenCalledTimes(2);
 		});
 
+		it('should evict entries older than TTL', () => {
+			const closeSpy = jest.fn().mockResolvedValue(undefined);
+			const now = Date.now();
+
+			activeClients.set('old:node', {
+				client: { close: closeSpy } as unknown as Client,
+				mcpTools: [],
+				createdAt: now - 600_000, // 10 min ago, well past 5 min default TTL
+			});
+			activeClients.set('recent:node', {
+				client: { close: closeSpy } as unknown as Client,
+				mcpTools: [],
+				createdAt: now - 1000, // 1 second ago, within TTL
+			});
+
+			resetEvictionTimer();
+			evictStaleClients();
+
+			expect(activeClients.size).toBe(1);
+			expect(activeClients.has('old:node')).toBe(false);
+			expect(activeClients.has('recent:node')).toBe(true);
+			expect(closeSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should not cache client when connection fails on v1.3', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockRejectedValue(new Error('Connection failed'));
+
+			const { mockExecuteFunctions } = createV13MockExecuteFunctions();
+
+			await expect(new McpClientTool().execute.call(mockExecuteFunctions)).rejects.toThrow(
+				NodeOperationError,
+			);
+			expect(activeClients.size).toBe(0);
+		});
+
 		it('should not use client cache for v1.2 nodes', async () => {
 			const connectSpy = jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
 			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
