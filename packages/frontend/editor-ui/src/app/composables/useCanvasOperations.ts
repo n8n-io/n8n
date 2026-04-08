@@ -1670,11 +1670,8 @@ export function useCanvasOperations() {
 		// Step 2: Add all downstream connected nodes from initial candidates
 		const candidateNames = new Set(initialCandidates.map((node) => node.name));
 		for (const candidate of initialCandidates) {
-			const downstream = workflowHelpers.getConnectedNodes(
-				'downstream',
-				editableWorkflowObject.value,
-				candidate.name,
-			);
+			const downstream =
+				workflowDocumentStore.value?.getConnectedNodes('downstream', candidate.name) ?? [];
 			downstream
 				// Filter the downstream nodes to find candidates that need to be shifted right.
 				.filter((name) => {
