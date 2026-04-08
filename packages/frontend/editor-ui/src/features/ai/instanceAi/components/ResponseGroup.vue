@@ -26,6 +26,13 @@ const summaryText = computed(() => {
 			}),
 		);
 	}
+	if (textCount > 0) {
+		parts.push(
+			i18n.baseText('instanceAi.activitySummary.messages', {
+				interpolate: { count: `${textCount}` },
+			}),
+		);
+	}
 	if (childCount > 0) {
 		parts.push(
 			i18n.baseText('instanceAi.activitySummary.subagents', {

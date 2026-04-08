@@ -5,9 +5,7 @@ import type {
 } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
 import { computed, type ComputedRef, type Ref } from 'vue';
-import { extractArtifacts, type ArtifactInfo } from './agentTimeline.utils';
-
-const HIDDEN_TOOLS = new Set(['updateWorkingMemory']);
+import { extractArtifacts, HIDDEN_TOOLS, type ArtifactInfo } from './agentTimeline.utils';
 
 /** Render hints for tool calls that show as special UI — not as generic "tool call" steps. */
 const SPECIAL_RENDER_HINTS = new Set(['tasks', 'delegate', 'builder', 'data-table', 'researcher']);
@@ -26,9 +24,9 @@ export interface ResponseGroupSegment {
 	kind: 'response-group';
 	responseId: string | undefined;
 	entries: InstanceAiTimelineEntry[];
-	/** Visible tool call count (excludes hidden tools). */
+	/** Visible tool call count (excludes hidden and special-render tools). */
 	toolCallCount: number;
-	/** Number of non-trailing text entries in this group. */
+	/** Number of text entries inside this group (intermediate thinking text). */
 	textCount: number;
 	/** Number of child agent entries in this group. */
 	childCount: number;
@@ -44,18 +42,13 @@ export interface TrailingTextSegment {
 export type TimelineSegment = ResponseGroupSegment | TrailingTextSegment;
 
 /**
- * Groups an agent's timeline entries by `responseId` for collapsed rendering.
+ * Groups an agent's timeline for collapsed rendering when the run is complete.
  *
- * Rules:
- * - Consecutive entries with the same `responseId` form a group.
- * - A change in `responseId` starts a new group.
- * - Trailing text entries (at the end of the timeline) are extracted as
- *   separate `trailing-text` segments so they remain visible when groups
- *   are collapsed.
- * - Artifacts from child agents within each group are extracted so they
- *   can be rendered in-place after the collapsed group header.
- * - If no entries have a `responseId` (old data), returns null to signal
- *   "no grouping available — render flat."
+ * Text entries are always rendered inline (visible). Tool calls and child agents
+ * are grouped into collapsible `response-group` segments. Text splits groups —
+ * even entries from the same API response are separated if text appears between them.
+ *
+ * Returns null when grouping is unavailable (no `responseId` data, or nothing to collapse).
  */
 export function useTimelineGrouping(
 	agentNode: Ref<InstanceAiAgentNode> | ComputedRef<InstanceAiAgentNode>,
@@ -95,9 +88,15 @@ export function useTimelineGrouping(
 
 		for (const entry of timeline) {
 			if (entry.type === 'text') {
-				// Text always renders inline — it breaks any open group.
-				finishGroup();
-				segments.push({ kind: 'trailing-text', content: entry.content });
+				// Text from the same API response as the current group stays inside
+				// (intermediate "thinking" text). Otherwise it renders inline.
+				if (currentGroup && entry.responseId === currentGroup.responseId) {
+					currentGroup.entries.push(entry);
+					currentGroup.textCount++;
+				} else {
+					finishGroup();
+					segments.push({ kind: 'trailing-text', content: entry.content });
+				}
 			} else if (entry.type === 'tool-call') {
 				const group = ensureGroup(entry.responseId);
 				group.entries.push(entry);
