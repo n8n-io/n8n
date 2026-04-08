@@ -1,13 +1,13 @@
-import { CommaSeperatedStringArray, ColonSeparatedStringArray } from '../src/custom-types';
+import { CommaSeparatedStringArray, ColonSeparatedStringArray } from '../src/custom-types';
 
-describe('CommaSeperatedStringArray', () => {
+describe('CommaSeparatedStringArray', () => {
 	it('should parse comma-separated string into array', () => {
-		const result = new CommaSeperatedStringArray('a,b,c');
+		const result = new CommaSeparatedStringArray('a,b,c');
 		expect(result).toEqual(['a', 'b', 'c']);
 	});
 
 	it('should handle empty strings', () => {
-		const result = new CommaSeperatedStringArray('a,b,,,');
+		const result = new CommaSeparatedStringArray('a,b,,,');
 		expect(result).toEqual(['a', 'b']);
 	});
 });

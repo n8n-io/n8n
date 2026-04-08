@@ -1,14 +1,19 @@
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
 
 import N8nInputLabel from './InputLabel.vue';
 import N8nInput from '../N8nInput';
 
 export default {
-	title: 'Atoms/Input Label',
+	title: 'Core/Input Label',
 	component: N8nInputLabel,
 	argTypes: {},
 	parameters: {
-		backgrounds: { default: '--color-background-light' },
+		docs: {
+			description: {
+				component: 'A label element for form controls with optional helper and required markers.',
+			},
+		},
+		backgrounds: { default: '--color--background--light-2' },
 	},
 };
 

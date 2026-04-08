@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang='en'>
 
 <head>
@@ -114,7 +115,7 @@
 					<div class='card'>
 						<div class='header'>
 							<h1>{{title}}</h1>
-							<p>{{message}}</p>
+							<p style="white-space: pre-line;">{{{message}}}</p>
 						</div>
 					</div>
 					{{#if appendAttribution}}
@@ -157,6 +158,48 @@
 			<a id='redirectUrl' href='{{redirectUrl}}' style='display: none;'></a>
 		{{/if}}
 	<script>
+		// Get signature from URL for fetch requests
+		const url = new URL(window.location.href);
+		const formSignature = url.searchParams.get('signature');
+
+		let interval = 1000;
+		let timeoutId;
+		const checkExecutionStatus = async () => {
+			if (!interval) return;
+
+			try {
+				const statusUrl = new URL(window.location.href);
+				statusUrl.pathname = statusUrl.pathname + '/n8n-execution-status';
+				// Include signature in fetch request for validation
+				if (formSignature) {
+					statusUrl.searchParams.set('signature', formSignature);
+				}
+				const response = await fetch(statusUrl.toString());
+				const text = (await response.text()).trim();
+
+				if (text === "form-waiting") {
+					// Redirect with signature in URL (will be cleaned after load)
+					const redirectUrl = new URL(window.location.href);
+					if (formSignature) {
+						redirectUrl.searchParams.set('signature', formSignature);
+					}
+					window.location.replace(redirectUrl.toString());
+					return;
+				}
+
+				if(["canceled", "crashed", "error", "success", "null" ].includes(text)) {
+					interval = 0;
+					clearTimeout(timeoutId);
+					return;
+				}
+
+				interval = Math.round(interval * 1.1);
+				timeoutId = setTimeout(checkExecutionStatus, interval);
+			} catch (error) {
+				console.error("Error fetching data:", error);
+			}
+		};
+
 		document.addEventListener('DOMContentLoaded', function () {
 			const binary = "{{{responseBinary}}}"
 				?	JSON.parse(decodeURIComponent("{{{responseBinary}}}"))
@@ -182,7 +225,13 @@
 			}
 		});
 
-			fetch('', {
+			// Include signature in POST URL for waiting forms
+			let postUrl = '';
+			if (window.location.href.includes('form-waiting') && formSignature) {
+				postUrl = '?signature=' + encodeURIComponent(formSignature);
+			}
+
+			fetch(postUrl, {
 					method: 'POST',
 					body: {}
 			})
@@ -202,14 +251,14 @@
 					} catch (e) {}
 
 					if (json?.redirectURL) {
-							const url = json.redirectURL.includes("://")
-									? json.redirectURL
-									: "https://" + json.redirectURL;
-							window.location.replace(url);
+							window.location.replace(json.redirectURL);
 					}
 			})
 			.catch(function (error) {
 					console.error('Error:', error);
+			})
+			.finally(() => {
+				timeoutId = setTimeout(checkExecutionStatus, interval);
 			});
 	</script>
 	</body>

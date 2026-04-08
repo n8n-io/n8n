@@ -36,7 +36,7 @@ Access the editor at http://localhost:5678
 - 📚 [Documentation](https://docs.n8n.io)
 - 🔧 [400+ Integrations](https://n8n.io/integrations)
 - 💡 [Example Workflows](https://n8n.io/workflows)
-- 🤖 [AI & LangChain Guide](https://docs.n8n.io/langchain/)
+- 🤖 [AI & LangChain Guide](https://docs.n8n.io/advanced-ai/)
 - 👥 [Community Forum](https://community.n8n.io)
 - 📖 [Community Tutorials](https://community.n8n.io/c/tutorials/28)
 
@@ -55,11 +55,11 @@ n8n is [fair-code](https://faircode.io) distributed under the [Sustainable Use L
 
 [Enterprise licenses](mailto:license@n8n.io) available for additional features and support.
 
-Additional information about the license model can be found in the [docs](https://docs.n8n.io/reference/license/).
+Additional information about the license model can be found in the [docs](https://docs.n8n.io/sustainable-use-license/).
 
 ## Contributing
 
-Found a bug 🐛 or have a feature idea ✨? Check our [Contributing Guide](https://github.com/n8n-io/n8n/blob/master/CONTRIBUTING.md) to get started.
+Found a bug 🐛 or have a feature idea ✨? Check our [Contributing Guide](https://github.com/n8n-io/n8n/blob/master/CONTRIBUTING.md) for a setup guide & best practices.
 
 ## Join the Team
 

@@ -33,6 +33,22 @@
         "kind": {
             "type": "string"
         },
+        "localizations": {
+            "type": "object",
+            "properties": {
+                "es": {
+                    "type": "object",
+                    "properties": {
+                        "description": {
+                            "type": "string"
+                        },
+                        "title": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "player": {
             "type": "object",
             "properties": {
@@ -56,6 +72,9 @@
                 "defaultAudioLanguage": {
                     "type": "string"
                 },
+                "defaultLanguage": {
+                    "type": "string"
+                },
                 "description": {
                     "type": "string"
                 },
@@ -75,12 +94,6 @@
                 },
                 "publishedAt": {
                     "type": "string"
-                },
-                "tags": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
                 },
                 "thumbnails": {
                     "type": "object",
@@ -214,5 +227,5 @@
             }
         }
     },
-    "version": 1
+    "version": 5
 }

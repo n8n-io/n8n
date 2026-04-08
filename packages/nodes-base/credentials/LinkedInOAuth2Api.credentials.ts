@@ -7,7 +7,7 @@ export class LinkedInOAuth2Api implements ICredentialType {
 
 	displayName = 'LinkedIn OAuth2 API';
 
-	documentationUrl = 'linkedIn';
+	documentationUrl = 'linkedin';
 
 	properties: INodeProperties[] = [
 		{

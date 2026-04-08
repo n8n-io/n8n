@@ -1,6 +1,6 @@
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
 
-import type { UserAction } from '@n8n/design-system/types';
+import type { IUser, UserAction } from '@n8n/design-system/types';
 
 import AsyncLoadingCacheDemo from './AsyncLoadingCacheDemo.vue';
 import Breadcrumbs from './Breadcrumbs.vue';
@@ -9,7 +9,7 @@ import ActionToggle from '../N8nActionToggle/ActionToggle.vue';
 import Tags from '../N8nTags/Tags.vue';
 
 export default {
-	title: 'Atoms/Breadcrumbs',
+	title: 'Core/Breadcrumbs',
 	component: Breadcrumbs,
 	argTypes: {
 		items: { control: 'object' },
@@ -26,6 +26,15 @@ export default {
 				type: 'select',
 			},
 			options: ['hover', 'click'],
+		},
+	},
+
+	parameters: {
+		docs: {
+			description: {
+				component:
+					'A hierarchical navigation trail showing the current location and parent levels.',
+			},
 		},
 	},
 };
@@ -125,7 +134,7 @@ SyncLoadingCacheTest.args = {
 	title: '[Demo] This will update the hidden items every time dropdown is opened',
 };
 
-const testActions: UserAction[] = [
+const testActions: Array<UserAction<IUser>> = [
 	{ label: 'Create Folder', value: 'action1', disabled: false },
 	{ label: 'Create Workflow', value: 'action2', disabled: false },
 	{ label: 'Rename', value: 'action3', disabled: false },
@@ -141,7 +150,7 @@ const withSlotsTemplate: StoryFn = (args, { argTypes }) => ({
 	template: `<Breadcrumbs v-bind="args">
     <template #prepend>
       <div style="display: flex; align-items: center; gap: 8px;">
-        <n8n-icon icon="layer-group"/>
+        <n8n-icon icon="layers"/>
         <n8n-text>My Project</n8n-text>
       </div>
     </template>

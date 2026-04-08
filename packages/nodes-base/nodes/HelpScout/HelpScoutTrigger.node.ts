@@ -13,14 +13,14 @@ import { helpscoutApiRequest, helpscoutApiRequestAllItems } from './GenericFunct
 
 export class HelpScoutTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'HelpScout Trigger',
+		displayName: 'Help Scout Trigger',
 		name: 'helpScoutTrigger',
 		icon: 'file:helpScout.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when HelpScout events occur',
+		description: 'Starts the workflow when Help Scout events occur',
 		defaults: {
-			name: 'HelpScout Trigger',
+			name: 'Help Scout Trigger',
 		},
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],

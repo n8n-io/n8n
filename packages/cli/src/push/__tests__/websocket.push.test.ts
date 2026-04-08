@@ -1,12 +1,12 @@
 import { createHeartbeatMessage, type PushMessage } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { EventEmitter } from 'events';
-import { Logger } from 'n8n-core';
 import type WebSocket from 'ws';
 
-import type { User } from '@/databases/entities/user';
 import { WebSocketPush } from '@/push/websocket.push';
-import { mockInstance } from '@test/mocking';
 
 jest.useFakeTimers();
 
@@ -75,7 +75,7 @@ describe('WebSocketPush', () => {
 		webSocketPush.add(pushRef2, userId, mockWebSocket2);
 		webSocketPush.sendToOne(pushMessage, pushRef1);
 
-		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg);
+		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg, { binary: false });
 		expect(mockWebSocket2.send).not.toHaveBeenCalled();
 	});
 
@@ -84,8 +84,8 @@ describe('WebSocketPush', () => {
 		webSocketPush.add(pushRef2, userId, mockWebSocket2);
 		webSocketPush.sendToAll(pushMessage);
 
-		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg);
-		expect(mockWebSocket2.send).toHaveBeenCalledWith(expectedMsg);
+		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg, { binary: false });
+		expect(mockWebSocket2.send).toHaveBeenCalledWith(expectedMsg, { binary: false });
 	});
 
 	it('pings all connections', () => {
@@ -103,8 +103,35 @@ describe('WebSocketPush', () => {
 		webSocketPush.add(pushRef2, userId, mockWebSocket2);
 		webSocketPush.sendToUsers(pushMessage, [userId]);
 
-		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg);
-		expect(mockWebSocket2.send).toHaveBeenCalledWith(expectedMsg);
+		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg, { binary: false });
+		expect(mockWebSocket2.send).toHaveBeenCalledWith(expectedMsg, { binary: false });
+	});
+
+	it('skips sending when user has no connections', () => {
+		webSocketPush.add(pushRef1, userId, mockWebSocket1);
+		webSocketPush.sendToUsers(pushMessage, ['nonexistent-user']);
+
+		expect(mockWebSocket1.send).not.toHaveBeenCalled();
+	});
+
+	it('does not remove replaced connection when old connection closes', () => {
+		const oldSocket = createMockWebSocket();
+		const newSocket = createMockWebSocket();
+
+		webSocketPush.add(pushRef1, userId, oldSocket);
+		expect(webSocketPush.hasPushRef(pushRef1)).toBe(true);
+
+		// Second add with same pushRef replaces the connection and closes old one
+		webSocketPush.add(pushRef1, userId, newSocket);
+
+		// Old connection's close event fires — should NOT remove the new connection
+		oldSocket.emit('close');
+		expect(webSocketPush.hasPushRef(pushRef1)).toBe(true);
+
+		// New connection still works
+		webSocketPush.sendToOne(pushMessage, pushRef1);
+		expect(newSocket.send).toHaveBeenCalledWith(expectedMsg, { binary: false });
+		expect(oldSocket.send).not.toHaveBeenCalled();
 	});
 
 	it('emits message event when connection receives data', async () => {

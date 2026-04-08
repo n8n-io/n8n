@@ -1,12 +1,11 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import type { INode } from 'n8n-workflow';
-
-import { testWorkflows, getWorkflowFilenames } from '@test/nodes/Helpers';
 
 import { validateInputData } from '../utils';
 
-const workflows = getWorkflowFilenames(__dirname);
-
-describe('Test Remove Duplicates Node', () => testWorkflows(workflows));
+describe('Test Remove Duplicates Node', () => {
+	new NodeTestHarness().setupTests();
+});
 
 describe('Test Remove Duplicates Node, validateInputData util', () => {
 	test('Should throw error for version 1', () => {
@@ -28,6 +27,7 @@ describe('Test Remove Duplicates Node, validateInputData util', () => {
 			),
 		).toThrow("'country' isn't always the same type");
 	});
+
 	test('Should ignore null values and not throw error for version grater than 1', () => {
 		expect(() =>
 			validateInputData(
@@ -47,6 +47,7 @@ describe('Test Remove Duplicates Node, validateInputData util', () => {
 			),
 		).not.toThrow();
 	});
+
 	test('Should throw error for different types, version grater than 1', () => {
 		expect(() =>
 			validateInputData(

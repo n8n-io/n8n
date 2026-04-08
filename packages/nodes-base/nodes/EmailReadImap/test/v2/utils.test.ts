@@ -1,7 +1,7 @@
 import { type ImapSimple } from '@n8n/imap';
-import { mock } from 'jest-mock-extended';
+import { mock, mockDeep } from 'jest-mock-extended';
 import { returnJsonArray } from 'n8n-core';
-import { type IDataObject, type ITriggerFunctions } from 'n8n-workflow';
+import type { INode, ITriggerFunctions } from 'n8n-workflow';
 
 import { getNewEmails } from '../../v2/utils';
 
@@ -9,13 +9,14 @@ describe('Test IMap V2 utils', () => {
 	afterEach(() => jest.resetAllMocks());
 
 	describe('getNewEmails', () => {
-		const triggerFunctions = mock<ITriggerFunctions>({
+		const triggerFunctions = mockDeep<ITriggerFunctions>({
 			helpers: { returnJsonArray },
 		});
 
 		const message = {
 			attributes: {
 				uuid: 1,
+				uid: 873,
 				struct: {},
 			},
 			parts: [
@@ -25,7 +26,6 @@ describe('Test IMap V2 utils', () => {
 			],
 		};
 
-		const staticData: IDataObject = {};
 		const imapConnection = mock<ImapSimple>({
 			search: jest.fn().mockReturnValue(Promise.resolve([message])),
 		});
@@ -42,6 +42,9 @@ describe('Test IMap V2 utils', () => {
 							headers: { '': 'Body content' },
 							headerLines: undefined,
 							html: false,
+							attributes: {
+								uid: 873,
+							},
 						},
 						binary: undefined,
 					},
@@ -55,6 +58,9 @@ describe('Test IMap V2 utils', () => {
 							metadata: {
 								'0': 'h',
 							},
+							attributes: {
+								uid: 873,
+							},
 						},
 					},
 				},
@@ -67,24 +73,27 @@ describe('Test IMap V2 utils', () => {
 			];
 
 			expectedResults.forEach(async (expectedResult) => {
+				triggerFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.1 }));
 				triggerFunctions.getNodeParameter
 					.calledWith('format')
 					.mockReturnValue(expectedResult.format);
 				triggerFunctions.getNodeParameter
 					.calledWith('dataPropertyAttachmentsPrefixName')
 					.mockReturnValue('resolved');
+				triggerFunctions.getWorkflowStaticData.mockReturnValue({});
 
-				const result = getNewEmails.call(
-					triggerFunctions,
+				const onEmailBatch = jest.fn();
+				await getNewEmails.call(triggerFunctions, {
 					imapConnection,
-					[],
-					staticData,
-					'',
+					searchCriteria: [],
+					postProcessAction: '',
 					getText,
 					getAttachment,
-				);
+					onEmailBatch,
+				});
 
-				await expect(result).resolves.toEqual([expectedResult.expected]);
+				expect(onEmailBatch).toHaveBeenCalledTimes(1);
+				expect(onEmailBatch).toHaveBeenCalledWith([expectedResult.expected]);
 			});
 		});
 	});

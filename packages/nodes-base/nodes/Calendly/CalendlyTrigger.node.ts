@@ -70,6 +70,18 @@ export class CalendlyTrigger implements INodeType {
 				default: 'apiKey',
 			},
 			{
+				displayName:
+					'Action required: Calendly will discontinue API Key authentication on May 31, 2025. Update node to use OAuth2 authentication now to ensure your workflows continue to work.',
+				name: 'deprecationNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						authentication: ['apiKey'],
+					},
+				},
+			},
+			{
 				displayName: 'Scope',
 				name: 'scope',
 				type: 'options',

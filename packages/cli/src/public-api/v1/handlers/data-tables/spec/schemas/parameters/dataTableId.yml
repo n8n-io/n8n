@@ -1,0 +1,7 @@
+name: dataTableId
+in: path
+description: The ID of the data table
+required: true
+schema:
+  type: string
+  format: nanoid

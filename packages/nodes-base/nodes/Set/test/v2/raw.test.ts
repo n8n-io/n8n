@@ -1,4 +1,4 @@
-import { get } from 'lodash';
+import get from 'lodash/get';
 import { constructExecutionMetaData } from 'n8n-core';
 import {
 	NodeOperationError,
@@ -19,7 +19,7 @@ const node: INode = {
 	typeVersion: 3,
 	position: [42, 42],
 	parameters: {
-		mode: 'manual',
+		mode: 'raw',
 		fields: {
 			values: [],
 		},
@@ -36,8 +36,8 @@ const createMockExecuteFunction = (
 		getNodeParameter(
 			parameterName: string,
 			_itemIndex: number,
-			fallbackValue?: IDataObject | undefined,
-			options?: IGetNodeParameterOptions | undefined,
+			fallbackValue?: IDataObject,
+			options?: IGetNodeParameterOptions,
 		) {
 			const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
 			return get(nodeParameters, parameter, fallbackValue);
@@ -68,7 +68,9 @@ describe('test Set2, rawMode/json Mode', () => {
 		include: 'none',
 	};
 
-	afterEach(() => jest.resetAllMocks());
+	afterEach(() => {
+		jest.restoreAllMocks();
+	});
 
 	describe('fixed mode', () => {
 		const jsonData = { jsonData: 1 };
@@ -109,15 +111,13 @@ describe('test Set2, rawMode/json Mode', () => {
 		};
 
 		it('should parse json with resolved expression data and compose a return item', async () => {
-			jest.spyOn(utils, 'parseJsonParameter');
-			jest.spyOn(utils, 'composeReturnItem');
-			jest.spyOn(utils, 'resolveRawData');
+			const parseJsonSpy = jest.spyOn(utils, 'parseJsonParameter');
+			const resolveRawDataSpy = jest.spyOn(utils, 'resolveRawData');
 
 			const result = await execute.call(fakeExecuteFunction, item, 0, options, rawData, node);
 
-			expect(utils.parseJsonParameter).toHaveBeenCalledWith(jsonDataString, node, 0);
-			expect(utils.composeReturnItem).toHaveBeenCalledWith(0, item, jsonData, options, 3);
-			expect(utils.resolveRawData).toHaveBeenCalledWith(jsonDataString, 0);
+			expect(parseJsonSpy).toHaveBeenCalledWith(jsonDataString, node, 0);
+			expect(resolveRawDataSpy).toHaveBeenCalledWith(jsonDataString, 0);
 			expect(result).toEqual({ json: jsonData, pairedItem: { item: 0 } });
 		});
 	});
@@ -129,7 +129,7 @@ describe('test Set2, rawMode/json Mode', () => {
 			const output = await execute.call(fakeExecuteFunction, item, 0, options, {}, node);
 
 			expect(output).toEqual({
-				json: { error: "The 'JSON Output' in item 0 contains invalid JSON" },
+				json: { error: "The 'JSON Output' in item 0 does not contain a valid JSON object" },
 				pairedItem: { item: 0 },
 			});
 		});

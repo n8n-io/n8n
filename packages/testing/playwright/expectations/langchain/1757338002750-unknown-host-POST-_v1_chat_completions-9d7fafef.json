@@ -1,0 +1,111 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/chat/completions",
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "gpt-4.1-mini",
+				"stream": false,
+				"tools": [
+					{
+						"type": "function",
+						"function": {
+							"name": "calculator",
+							"description": "Useful for getting the result of a math expression. The input to this tool should be a valid mathematical expression that could be executed by a simple calculator.",
+							"parameters": {
+								"type": "object",
+								"properties": {
+									"input": {
+										"type": "string"
+									}
+								},
+								"additionalProperties": false,
+								"$schema": "http://json-schema.org/draft-07/schema#"
+							}
+						}
+					}
+				],
+				"messages": [
+					{
+						"role": "user",
+						"content": "What is 1000 * 10?"
+					}
+				]
+			},
+			"rawBytes": "eyJtb2RlbCI6ImdwdC00LjEtbWluaSIsInN0cmVhbSI6ZmFsc2UsInRvb2xzIjpbeyJ0eXBlIjoiZnVuY3Rpb24iLCJmdW5jdGlvbiI6eyJuYW1lIjoiY2FsY3VsYXRvciIsImRlc2NyaXB0aW9uIjoiVXNlZnVsIGZvciBnZXR0aW5nIHRoZSByZXN1bHQgb2YgYSBtYXRoIGV4cHJlc3Npb24uIFRoZSBpbnB1dCB0byB0aGlzIHRvb2wgc2hvdWxkIGJlIGEgdmFsaWQgbWF0aGVtYXRpY2FsIGV4cHJlc3Npb24gdGhhdCBjb3VsZCBiZSBleGVjdXRlZCBieSBhIHNpbXBsZSBjYWxjdWxhdG9yLiIsInBhcmFtZXRlcnMiOnsidHlwZSI6Im9iamVjdCIsInByb3BlcnRpZXMiOnsiaW5wdXQiOnsidHlwZSI6InN0cmluZyJ9fSwiYWRkaXRpb25hbFByb3BlcnRpZXMiOmZhbHNlLCIkc2NoZW1hIjoiaHR0cDovL2pzb24tc2NoZW1hLm9yZy9kcmFmdC0wNy9zY2hlbWEjIn19fV0sIm1lc3NhZ2VzIjpbeyJyb2xlIjoidXNlciIsImNvbnRlbnQiOiJXaGF0IGlzIDEwMDAgKiAxMD8ifV19"
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-request-id": ["req_56023c245be3448c8373ff3aad21f7c4"],
+			"x-ratelimit-reset-tokens": ["0s"],
+			"x-ratelimit-reset-requests": ["2ms"],
+			"x-ratelimit-remaining-tokens": ["149999992"],
+			"x-ratelimit-remaining-requests": ["29999"],
+			"x-ratelimit-limit-tokens": ["150000000"]
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"id": "chatcmpl-CDWBDR6zMgzDe9t4hkJ0Xq3dxsK3y",
+				"object": "chat.completion",
+				"created": 1757337999,
+				"model": "gpt-4.1-mini-2025-04-14",
+				"choices": [
+					{
+						"index": 0,
+						"message": {
+							"role": "assistant",
+							"content": null,
+							"tool_calls": [
+								{
+									"id": "call_88I326c3cCx7lOEXL3Wpp30c",
+									"type": "function",
+									"function": {
+										"name": "calculator",
+										"arguments": "{\"input\":\"1000 * 10\"}"
+									}
+								}
+							],
+							"refusal": null,
+							"annotations": []
+						},
+						"logprobs": null,
+						"finish_reason": "tool_calls"
+					}
+				],
+				"usage": {
+					"prompt_tokens": 75,
+					"completion_tokens": 18,
+					"total_tokens": 93,
+					"prompt_tokens_details": {
+						"cached_tokens": 0,
+						"audio_tokens": 0
+					},
+					"completion_tokens_details": {
+						"reasoning_tokens": 0,
+						"audio_tokens": 0,
+						"accepted_prediction_tokens": 0,
+						"rejected_prediction_tokens": 0
+					}
+				},
+				"service_tier": "default",
+				"system_fingerprint": "fp_4fce0778af"
+			},
+			"rawBytes": "ewogICJpZCI6ICJjaGF0Y21wbC1DRFdCRFI2ek1nekRlOXQ0aGtKMFhxM2R4c0szeSIsCiAgIm9iamVjdCI6ICJjaGF0LmNvbXBsZXRpb24iLAogICJjcmVhdGVkIjogMTc1NzMzNzk5OSwKICAibW9kZWwiOiAiZ3B0LTQuMS1taW5pLTIwMjUtMDQtMTQiLAogICJjaG9pY2VzIjogWwogICAgewogICAgICAiaW5kZXgiOiAwLAogICAgICAibWVzc2FnZSI6IHsKICAgICAgICAicm9sZSI6ICJhc3Npc3RhbnQiLAogICAgICAgICJjb250ZW50IjogbnVsbCwKICAgICAgICAidG9vbF9jYWxscyI6IFsKICAgICAgICAgIHsKICAgICAgICAgICAgImlkIjogImNhbGxfODhJMzI2YzNjQ3g3bE9FWEwzV3BwMzBjIiwKICAgICAgICAgICAgInR5cGUiOiAiZnVuY3Rpb24iLAogICAgICAgICAgICAiZnVuY3Rpb24iOiB7CiAgICAgICAgICAgICAgIm5hbWUiOiAiY2FsY3VsYXRvciIsCiAgICAgICAgICAgICAgImFyZ3VtZW50cyI6ICJ7XCJpbnB1dFwiOlwiMTAwMCAqIDEwXCJ9IgogICAgICAgICAgICB9CiAgICAgICAgICB9CiAgICAgICAgXSwKICAgICAgICAicmVmdXNhbCI6IG51bGwsCiAgICAgICAgImFubm90YXRpb25zIjogW10KICAgICAgfSwKICAgICAgImxvZ3Byb2JzIjogbnVsbCwKICAgICAgImZpbmlzaF9yZWFzb24iOiAidG9vbF9jYWxscyIKICAgIH0KICBdLAogICJ1c2FnZSI6IHsKICAgICJwcm9tcHRfdG9rZW5zIjogNzUsCiAgICAiY29tcGxldGlvbl90b2tlbnMiOiAxOCwKICAgICJ0b3RhbF90b2tlbnMiOiA5MywKICAgICJwcm9tcHRfdG9rZW5zX2RldGFpbHMiOiB7CiAgICAgICJjYWNoZWRfdG9rZW5zIjogMCwKICAgICAgImF1ZGlvX3Rva2VucyI6IDAKICAgIH0sCiAgICAiY29tcGxldGlvbl90b2tlbnNfZGV0YWlscyI6IHsKICAgICAgInJlYXNvbmluZ190b2tlbnMiOiAwLAogICAgICAiYXVkaW9fdG9rZW5zIjogMCwKICAgICAgImFjY2VwdGVkX3ByZWRpY3Rpb25fdG9rZW5zIjogMCwKICAgICAgInJlamVjdGVkX3ByZWRpY3Rpb25fdG9rZW5zIjogMAogICAgfQogIH0sCiAgInNlcnZpY2VfdGllciI6ICJkZWZhdWx0IiwKICAic3lzdGVtX2ZpbmdlcnByaW50IjogImZwXzRmY2UwNzc4YWYiCn0K"
+		}
+	},
+	"id": "1757338002750-unknown-host-POST-_v1_chat_completions-9d7fafef.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}

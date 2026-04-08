@@ -14,11 +14,64 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {\n    \"string\": {\n      test2: \"hello\",\n      test3: \" \",\n      test4: \"\",\n      test5: \"3\",\n      test6: \"3,14\",\n      test7: \"3.14\",\n      test8: \"false\",\n      test8: \"TRUE\",\n      test9: \"false\",\n      test10: \"1\",\n      test11: '[\"apples\", \"oranges\"]',\n      test12: '\"apples\", \"oranges\"',\n      test13: '[1, 2]',\n      test14: '{\"a\": 1, \"b\": { \"c\": 10, \"d\": \"test\"}}',\n      test15: '{\"a\": 1}',\n      test16: \"null\",\n      test17: \"undefined\",\n      test18: \"0\",\n    },\n    \"number\": {\n      test1: 52472,\n      test2: -1,\n      test3: 0,\n      test4: 1.334535,\n      test5: null,\n      test6: undefined,\n      test7: 1,\n    },\n    \"boolean\": {\n      // test1: 1,\n      // test2: 0,\n      test3: true,\n      test4: false,\n    },\n    \"date\": {\n      test1: $now,\n      test2: \"2023-08-01T12:34:56Z\",\n      test3: \"2016-05-25T09:24:15.123\",\n      test4: \"Tue, 01 Nov 2016 13:23:12 +0630\",\n      test5: \"2017-05-15 09:24:15\",\n      test6: \"1542674993\",\n      test7: 1542674993,\n    },\n    \"array\": {\n      test13: [1,2,3,4],\n    },\n    \"object\": {\n      obj: {\n        objKey: 2,\n        objArray: [1,2,3,4],\n        objBool: true\n      }\n    },\n  }\n];"
+				"data": [
+					{
+						"string": {
+							"test2": "hello",
+							"test3": " ",
+							"test4": "",
+							"test5": "3",
+							"test6": "3,14",
+							"test7": "3.14",
+							"test8": "TRUE",
+							"test9": "false",
+							"test10": "1",
+							"test11": "[\"apples\", \"oranges\"]",
+							"test12": "\"apples\", \"oranges\"",
+							"test13": "[1, 2]",
+							"test14": "{\"a\": 1, \"b\": { \"c\": 10, \"d\": \"test\"}}",
+							"test15": "{\"a\": 1}",
+							"test16": "null",
+							"test17": "undefined",
+							"test18": "0"
+						},
+						"number": {
+							"test1": 52472,
+							"test2": -1,
+							"test3": 0,
+							"test4": 1.334535,
+							"test5": null,
+							"test7": 1
+						},
+						"boolean": {
+							"test3": true,
+							"test4": false
+						},
+						"date": {
+							"test1": "2024-01-01T00:00:00.000Z",
+							"test2": "2023-08-01T12:34:56Z",
+							"test3": "2016-05-25T09:24:15.123",
+							"test4": "Tue, 01 Nov 2016 13:23:12 +0630",
+							"test5": "2017-05-15 09:24:15",
+							"test6": "1542674993",
+							"test7": 1542674993
+						},
+						"array": {
+							"test13": [1, 2, 3, 4]
+						},
+						"object": {
+							"obj": {
+								"objKey": 2,
+								"objArray": [1, 2, 3, 4],
+								"objBool": true
+							}
+						}
+					}
+				]
 			},
 			"id": "8afc51b7-f9ed-417a-a58b-2fe251ba4b93",
 			"name": "Code1",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [420, 4240]
 		},
@@ -525,12 +578,27 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return [{name: 'John Doe', age: 32, object: {nested: true}}, {name: 'Jane Doe', age: 35, object: {nested: true}}]"
+				"data": [
+					{
+						"name": "John Doe",
+						"age": 32,
+						"object": {
+							"nested": true
+						}
+					},
+					{
+						"name": "Jane Doe",
+						"age": 35,
+						"object": {
+							"nested": true
+						}
+					}
+				]
 			},
 			"id": "7f9a81c4-5207-493f-bf48-9e52e4c350c6",
 			"name": "Code",
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
+			"type": "n8n-nodes-testing.testData",
+			"typeVersion": 1,
 			"position": [480, 5240]
 		}
 	],

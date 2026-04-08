@@ -11,7 +11,7 @@ describe('Directive n8n-truncate', () => {
 						type: String,
 					},
 				},
-				template: '<p v-n8n-smart-decimal>{{text}}</p>',
+				template: '<p v-n8n-smart-decimal="text" />',
 			},
 			{
 				props: {
@@ -35,7 +35,7 @@ describe('Directive n8n-truncate', () => {
 						type: String,
 					},
 				},
-				template: '<p v-n8n-smart-decimal:3>{{text}}</p>',
+				template: '<p v-n8n-smart-decimal:3="text" />',
 			},
 			{
 				props: {
@@ -59,7 +59,7 @@ describe('Directive n8n-truncate', () => {
 						type: String,
 					},
 				},
-				template: '<p v-n8n-smart-decimal>{{text}}</p>',
+				template: '<p v-n8n-smart-decimal="text" />',
 			},
 			{
 				props: {
@@ -83,7 +83,7 @@ describe('Directive n8n-truncate', () => {
 						type: String,
 					},
 				},
-				template: '<p v-n8n-smart-decimal>{{text}}</p>',
+				template: '<p v-n8n-smart-decimal="text">',
 			},
 			{
 				props: {
@@ -107,7 +107,7 @@ describe('Directive n8n-truncate', () => {
 						type: String,
 					},
 				},
-				template: '<p v-n8n-smart-decimal:1>{{text}}</p>',
+				template: '<p v-n8n-smart-decimal:1="text">',
 			},
 			{
 				props: {
@@ -131,7 +131,7 @@ describe('Directive n8n-truncate', () => {
 						type: String,
 					},
 				},
-				template: '<p v-n8n-smart-decimal:3>{{text}}</p>',
+				template: '<p v-n8n-smart-decimal:3="text" />',
 			},
 			{
 				props: {
@@ -155,7 +155,7 @@ describe('Directive n8n-truncate', () => {
 						type: String,
 					},
 				},
-				template: '<p v-n8n-smart-decimal>{{text}}</p>',
+				template: '<p v-n8n-smart-decimal="text" />',
 			},
 			{
 				props: {
@@ -179,7 +179,7 @@ describe('Directive n8n-truncate', () => {
 						type: String,
 					},
 				},
-				template: '<p v-n8n-smart-decimal>{{text}}</p>',
+				template: '<p v-n8n-smart-decimal="text" />',
 			},
 			{
 				props: {
@@ -203,7 +203,7 @@ describe('Directive n8n-truncate', () => {
 						type: String,
 					},
 				},
-				template: '<p v-n8n-smart-decimal:5>{{text}}</p>',
+				template: '<p v-n8n-smart-decimal:5="text" />',
 			},
 			{
 				props: {
@@ -227,7 +227,7 @@ describe('Directive n8n-truncate', () => {
 						type: String,
 					},
 				},
-				template: '<p v-n8n-smart-decimal:3>{{text}}</p>',
+				template: '<p v-n8n-smart-decimal:3="text" />',
 			},
 			{
 				props: {
@@ -241,5 +241,33 @@ describe('Directive n8n-truncate', () => {
 			},
 		);
 		expect(html()).toBe('<p>42.12</p>');
+	});
+
+	it('rendered html should update when the value changes', async () => {
+		const { html, rerender } = render(
+			{
+				props: {
+					text: {
+						type: String,
+					},
+				},
+				template: '<p v-n8n-smart-decimal:3="text" />',
+			},
+			{
+				props: {
+					text: '42.12',
+				},
+				global: {
+					directives: {
+						n8nSmartDecimal,
+					},
+				},
+			},
+		);
+		expect(html()).toBe('<p>42.12</p>');
+
+		await rerender({ text: '12.42' });
+
+		expect(html()).toBe('<p>12.42</p>');
 	});
 });

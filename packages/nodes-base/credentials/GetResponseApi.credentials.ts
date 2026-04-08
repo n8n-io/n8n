@@ -10,7 +10,7 @@ export class GetResponseApi implements ICredentialType {
 
 	displayName = 'GetResponse API';
 
-	documentationUrl = 'getResponse';
+	documentationUrl = 'getresponse';
 
 	properties: INodeProperties[] = [
 		{

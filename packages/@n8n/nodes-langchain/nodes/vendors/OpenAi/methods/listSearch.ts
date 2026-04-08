@@ -7,6 +7,7 @@ import type {
 import type { Assistant } from 'openai/resources/beta/assistants';
 import type { Model } from 'openai/resources/models';
 
+import { shouldIncludeModel } from '../helpers/modelFiltering';
 import { apiRequest } from '../transport';
 
 export async function fileSearch(
@@ -66,7 +67,6 @@ const getModelSearch =
 		}
 
 		results = results.sort((a, b) => a.name.localeCompare(b.name));
-
 		return {
 			results,
 		};
@@ -78,16 +78,15 @@ export async function modelSearch(
 ): Promise<INodeListSearchResult> {
 	const credentials = await this.getCredentials<{ url: string }>('openAiApi');
 	const url = credentials.url && new URL(credentials.url);
-	const isCustomAPI = url && url.hostname !== 'api.openai.com';
+	const isCustomAPI = !!(url && !['api.openai.com', 'ai-assistant.n8n.io'].includes(url.hostname));
+	return await getModelSearch((model) => shouldIncludeModel(model.id, isCustomAPI))(this, filter);
+}
 
-	return await getModelSearch(
-		(model) =>
-			isCustomAPI ||
-			model.id.startsWith('gpt-') ||
-			model.id.startsWith('ft:') ||
-			model.id.startsWith('o1') ||
-			model.id.startsWith('o3'),
-	)(this, filter);
+export async function videoModelSearch(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	return await getModelSearch((model) => model.id.includes('sora'))(this, filter);
 }
 
 export async function imageModelSearch(

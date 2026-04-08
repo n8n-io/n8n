@@ -524,6 +524,7 @@ export class SendGrid implements INodeType {
 							attachments,
 							categories,
 							ipPoolName,
+							replyToEmail,
 						} = this.getNodeParameter('additionalFields', i) as {
 							bccEmail: string;
 							ccEmail: string;
@@ -533,6 +534,7 @@ export class SendGrid implements INodeType {
 							attachments: string;
 							categories: string;
 							ipPoolName: string;
+							replyToEmail: string;
 						};
 
 						const body: SendMailBody = {
@@ -628,6 +630,12 @@ export class SendGrid implements INodeType {
 
 						if (sendAt) {
 							body.personalizations[0].send_at = moment.tz(sendAt, timezone).unix();
+						}
+
+						if (replyToEmail) {
+							body.reply_to_list = replyToEmail
+								.split(',')
+								.map((entry) => ({ email: entry.trim() }));
 						}
 
 						const data = await sendGridApiRequest.call(this, '/mail/send', 'POST', body, qs, {

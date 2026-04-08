@@ -1,38 +1,43 @@
+import { type ClassValue } from 'clsx';
+
+import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
+
 import { type IconSize } from './icon';
-import type { TextFloat } from './text';
 
-const BUTTON_ELEMENT = ['button', 'a'] as const;
-export type ButtonElement = (typeof BUTTON_ELEMENT)[number];
+const BUTTON_VARIANT = ['solid', 'subtle', 'ghost', 'outline', 'destructive', 'success'] as const;
+export type ButtonVariant = (typeof BUTTON_VARIANT)[number];
 
-const BUTTON_TYPE = ['primary', 'secondary', 'tertiary', 'success', 'warning', 'danger'] as const;
-export type ButtonType = (typeof BUTTON_TYPE)[number];
+/** @deprecated Use 'ghost' or 'subtle' instead */
+export type LegacyButtonVariant = 'highlight' | 'highlight-fill';
 
-const BUTTON_SIZE = ['mini', 'small', 'medium', 'large'] as const;
+const BUTTON_SIZE = ['mini', 'xmini', 'small', 'medium', 'large', 'xlarge', 'xsmall'] as const;
 export type ButtonSize = (typeof BUTTON_SIZE)[number];
 
-const BUTTON_NATIVE_TYPE = ['submit', 'reset', 'button'] as const;
-export type ButtonNativeType = (typeof BUTTON_NATIVE_TYPE)[number];
-
-export interface IconButtonProps {
-	active?: boolean;
-	disabled?: boolean;
-	float?: TextFloat;
-	icon?: string | string[];
-	loading?: boolean;
-	outline?: boolean;
+export interface ButtonProps {
+	/** Determines the visual style of the button */
+	variant?: ButtonVariant | LegacyButtonVariant;
+	/** Determines the size of the button */
 	size?: ButtonSize;
-	iconSize?: Exclude<IconSize, 'xlarge'>;
-	text?: boolean;
-	type?: ButtonType;
-	nativeType?: ButtonNativeType;
+	/** If passed, the button will be rendered as a link */
+	href?: string;
+	/** If true, the button will show a loading spinner */
+	loading?: boolean;
+	/** If true, button is fixed square size (for icon-only buttons) */
+	iconOnly?: boolean;
+	/** If true, the button will be disabled */
+	disabled?: boolean;
+	/** Additional classes to apply to the button (accepts string, object, or array) */
+	class?: ClassValue;
+	/** @deprecated Use slot instead */
+	icon?: IconName;
+	iconSize?: IconSize;
+	/** @deprecated Use slot instead */
+	label?: string;
 }
 
-export interface ButtonProps extends IconButtonProps {
-	block?: boolean;
-	element?: ButtonElement;
-	href?: string;
-	label?: string;
-	square?: boolean;
+export interface IconButtonProps extends ButtonProps {
+	/** Icon is required for icon buttons */
+	icon: IconName;
 }
 
 export type IN8nButton = {

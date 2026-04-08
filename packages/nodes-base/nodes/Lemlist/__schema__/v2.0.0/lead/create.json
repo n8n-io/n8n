@@ -10,6 +10,12 @@
         "campaignName": {
             "type": "string"
         },
+        "companyName": {
+            "type": "string"
+        },
+        "contactId": {
+            "type": "string"
+        },
         "email": {
             "type": "string"
         },
@@ -19,6 +25,9 @@
         "isPaused": {
             "type": "boolean"
         },
+        "jobTitle": {
+            "type": "string"
+        },
         "lastName": {
             "type": "string"
         },
@@ -26,5 +35,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 6
 }

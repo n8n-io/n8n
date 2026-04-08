@@ -1,15 +1,16 @@
 import type {
-	ITriggerFunctions,
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
+	ITriggerFunctions,
 	ITriggerResponse,
-	IDeferredPromise,
-	IRun,
 } from 'n8n-workflow';
-import { deepCopy, jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
-import type { ContainerOptions, EventContext, Message, ReceiverOptions } from 'rhea';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import type { ConnectionOptions, EventContext, ReceiverOptions } from 'rhea';
 import { create_container } from 'rhea';
+
+import { handleMessage } from './helpers/handleMessage';
+import type { AmqpCredential } from './types';
 
 export class AmqpTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -136,7 +137,7 @@ export class AmqpTrigger implements INodeType {
 	};
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-		const credentials = await this.getCredentials('amqp');
+		const credentials = await this.getCredentials<AmqpCredential>('amqp');
 
 		const sink = this.getNodeParameter('sink', '') as string;
 		const clientname = this.getNodeParameter('clientname', '') as string;
@@ -146,7 +147,8 @@ export class AmqpTrigger implements INodeType {
 		const pullMessagesNumber = (options.pullMessagesNumber as number) || 100;
 		const containerId = options.containerId as string;
 		const containerReconnect = (options.reconnect as boolean) || true;
-		const containerReconnectLimit = (options.reconnectLimit as number) || 50;
+		// Keep reconnecting (exponential backoff) forever unless user sets a limit
+		const containerReconnectLimit = (options.reconnectLimit as number) ?? undefined;
 
 		if (sink === '') {
 			throw new NodeOperationError(this.getNode(), 'Queue or Topic required!');
@@ -167,80 +169,41 @@ export class AmqpTrigger implements INodeType {
 		});
 
 		container.on('message', async (context: EventContext) => {
-			// No message in the context
-			if (!context.message) {
-				return;
-			}
-
-			// ignore duplicate message check, don't think it's necessary, but it was in the rhea-lib example code
-			if (context.message.message_id && context.message.message_id === lastMsgId) {
-				return;
-			}
-			lastMsgId = context.message.message_id;
-
-			let data = context.message;
-
-			if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
-				// The buffer is not ready... Stringify and parse back to load it.
-				const cont = deepCopy(data.body.content);
-				data.body = String.fromCharCode.apply(null, cont.data as number[]);
-			}
-
-			if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
-				// The buffer is not ready... Stringify and parse back to load it.
-				const cont = deepCopy(data.body.content);
-				data.body = String.fromCharCode.apply(null, cont.data as number[]);
-			}
-
-			if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
-				// The buffer is not ready... Stringify and parse back to load it.
-				const content = deepCopy(data.body.content);
-				data.body = String.fromCharCode.apply(null, content.data as number[]);
-			}
-
-			if (options.jsonParseBody === true) {
-				data.body = jsonParse(data.body as string);
-			}
-			if (options.onlyBody === true) {
-				data = data.body;
-			}
-
-			let responsePromise: IDeferredPromise<IRun> | undefined = undefined;
-			if (!parallelProcessing) {
-				responsePromise = this.helpers.createDeferredPromise();
-			}
-			if (responsePromise) {
-				this.emit([this.helpers.returnJsonArray([data as any])], undefined, responsePromise);
-				await responsePromise.promise;
-			} else {
-				this.emit([this.helpers.returnJsonArray([data as any])]);
-			}
-
-			if (!context.receiver?.has_credit()) {
-				setTimeout(
-					() => {
-						context.receiver?.add_credit(pullMessagesNumber);
-					},
-					(options.sleepTime as number) || 10,
-				);
+			try {
+				const result = await handleMessage.call(this, context, {
+					lastMessageId: lastMsgId,
+					pullMessagesNumber,
+					jsonConvertByteArrayToString: options.jsonConvertByteArrayToString as boolean,
+					jsonParseBody: options.jsonParseBody as boolean,
+					onlyBody: options.onlyBody as boolean,
+					parallelProcessing,
+					sleepTime: options.sleepTime as number,
+				});
+				if (result) {
+					lastMsgId = result.messageId;
+				}
+			} catch (error) {
+				this.saveFailedExecution(new NodeOperationError(this.getNode(), error as Error));
 			}
 		});
 
 		/*
-			Values are documentet here: https://github.com/amqp/rhea#container
+			Values are documented here: https://github.com/amqp/rhea#container
 		 */
-		const connectOptions: ContainerOptions = {
+		const connectOptions: ConnectionOptions = {
 			host: credentials.hostname,
 			hostname: credentials.hostname,
 			port: credentials.port,
 			reconnect: containerReconnect,
 			reconnect_limit: containerReconnectLimit,
+			// Try reconnection even if caused by a fatal error
+			all_errors_non_fatal: true,
 			username: credentials.username ? credentials.username : undefined,
 			password: credentials.password ? credentials.password : undefined,
 			transport: credentials.transportType ? credentials.transportType : undefined,
 			container_id: containerId ? containerId : undefined,
 			id: containerId ? containerId : undefined,
-		};
+		} as unknown as ConnectionOptions;
 		const connection = container.connect(connectOptions);
 
 		const clientOptions: ReceiverOptions = {
@@ -269,6 +232,9 @@ export class AmqpTrigger implements INodeType {
 		// for a new user who doesn't know how this works, it's better to wait and show a respective info message
 		const manualTriggerFunction = async () => {
 			await new Promise((resolve, reject) => {
+				// remove the default message listener, setup our own for test trigger
+				container.removeAllListeners('message');
+
 				const timeoutHandler = setTimeout(() => {
 					container.removeAllListeners('receiver_open');
 					container.removeAllListeners('message');
@@ -285,18 +251,27 @@ export class AmqpTrigger implements INodeType {
 						),
 					);
 				}, 15000);
-				container.on('message', (context: EventContext) => {
-					// Check if the only property present in the message is body
-					// in which case we only emit the content of the body property
-					// otherwise we emit all properties and their content
-					const message = context.message as Message;
-					if (Object.keys(message)[0] === 'body' && Object.keys(message).length === 1) {
-						this.emit([this.helpers.returnJsonArray([message.body])]);
-					} else {
-						this.emit([this.helpers.returnJsonArray([message as any])]);
+				container.on('message', async (context: EventContext) => {
+					try {
+						const result = await handleMessage.call(this, context, {
+							lastMessageId: lastMsgId,
+							pullMessagesNumber,
+							jsonConvertByteArrayToString: options.jsonConvertByteArrayToString as boolean,
+							jsonParseBody: options.jsonParseBody as boolean,
+							onlyBody: options.onlyBody as boolean,
+							parallelProcessing,
+							sleepTime: options.sleepTime as number,
+						});
+						if (result) {
+							lastMsgId = result.messageId;
+						}
+						clearTimeout(timeoutHandler);
+						resolve(true);
+					} catch (error) {
+						reject(error as Error);
+					} finally {
+						clearTimeout(timeoutHandler);
 					}
-					clearTimeout(timeoutHandler);
-					resolve(true);
 				});
 			});
 		};

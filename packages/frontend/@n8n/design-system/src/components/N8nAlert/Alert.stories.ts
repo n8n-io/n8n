@@ -1,10 +1,10 @@
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
 
 import N8nAlert from './Alert.vue';
 import N8nIcon from '../N8nIcon';
 
 export default {
-	title: 'Atoms/Alert',
+	title: 'Core/Alert',
 	component: N8nAlert,
 	argTypes: {
 		type: {
@@ -14,6 +14,14 @@ export default {
 		effect: {
 			type: 'select',
 			options: ['light', 'dark'],
+		},
+	},
+
+	parameters: {
+		docs: {
+			description: {
+				component: 'A contextual message banner for success, info, warning, and error feedback.',
+			},
 		},
 	},
 };

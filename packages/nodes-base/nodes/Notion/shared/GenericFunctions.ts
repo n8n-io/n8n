@@ -71,7 +71,9 @@ export async function notionApiRequest(
 			delete options.body;
 		}
 		if (!uri) {
-			return await this.helpers.requestWithAuthentication.call(this, 'notionApi', options);
+			const authentication = this.getNodeParameter('authentication', 0, 'apiKey') as string;
+			const credentialType = authentication === 'oAuth2' ? 'notionOAuth2Api' : 'notionApi';
+			return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 		}
 		return await this.helpers.request(options);
 	} catch (error) {
@@ -122,7 +124,7 @@ export async function notionApiRequestGetBlockChildrens(
 	for (const block of blocks) {
 		responseData.push(block);
 
-		if (block.type === 'child_page') continue;
+		if (block.type === 'child_page' || block.type === 'unsupported') continue;
 
 		if (block.has_children) {
 			let childrens = await notionApiRequestAllItems.call(
@@ -271,8 +273,7 @@ function getTexts(texts: TextData[]) {
 					type: 'mention',
 					mention: {
 						type: text.mentionType,
-						//@ts-expect-error any
-						[text.mentionType]: { id: text[text.mentionType] as string },
+						[text.mentionType]: { id: text[text.mentionType as keyof TextData] as string },
 					},
 					annotations: text.annotationUi,
 				});
@@ -763,7 +764,7 @@ export function getConditions() {
 		number: [
 			'equals',
 			'does_not_equal',
-			'grater_than',
+			'greater_than',
 			'less_than',
 			'greater_than_or_equal_to',
 			'less_than_or_equal_to',

@@ -1,4 +1,5 @@
 import type {
+	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecuteFunctions,
 	IHttpRequestMethods,
@@ -20,7 +21,9 @@ import type { Readable } from 'stream';
 
 import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
 import {
+	getAllowedDomains,
 	getOAuth2AdditionalParameters,
+	getSecrets,
 	replaceNullValues,
 	sanitizeUiMessage,
 } from '../GenericFunctions';
@@ -640,6 +643,7 @@ export class HttpRequestV2 implements INodeType {
 		} catch {}
 
 		let httpBasicAuth;
+		let httpBearerAuth;
 		let httpDigestAuth;
 		let httpHeaderAuth;
 		let httpQueryAuth;
@@ -653,6 +657,10 @@ export class HttpRequestV2 implements INodeType {
 			if (genericAuthType === 'httpBasicAuth') {
 				try {
 					httpBasicAuth = await this.getCredentials('httpBasicAuth');
+				} catch {}
+			} else if (genericAuthType === 'httpBearerAuth') {
+				try {
+					httpBearerAuth = await this.getCredentials('httpBearerAuth');
 				} catch {}
 			} else if (genericAuthType === 'httpDigestAuth') {
 				try {
@@ -679,6 +687,24 @@ export class HttpRequestV2 implements INodeType {
 			try {
 				nodeCredentialType = this.getNodeParameter('nodeCredentialType', 0) as string;
 			} catch {}
+		}
+
+		let allowedDomains: string | undefined;
+		let secrets: string[] = [];
+		for (const credential of [
+			httpBasicAuth,
+			httpBearerAuth,
+			httpDigestAuth,
+			httpHeaderAuth,
+			httpQueryAuth,
+			oAuth1Api,
+			oAuth2Api,
+		]) {
+			if (credential) {
+				allowedDomains = getAllowedDomains(this.getNode(), credential);
+				secrets.push(...getSecrets(credential));
+				break;
+			}
 		}
 
 		let requestOptions: IRequestOptions & { useStream?: boolean };
@@ -716,6 +742,27 @@ export class HttpRequestV2 implements INodeType {
 			const options = this.getNodeParameter('options', itemIndex, {});
 			const url = this.getNodeParameter('url', itemIndex) as string;
 
+			if (!url.startsWith('http://') && !url.startsWith('https://')) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`Invalid URL: ${url}. URL must start with "http" or "https".`,
+				);
+			}
+
+			if (nodeCredentialType) {
+				let credentialData: ICredentialDataDecryptedObject | undefined;
+				try {
+					credentialData = await this.getCredentials<ICredentialDataDecryptedObject>(
+						nodeCredentialType,
+						itemIndex,
+					);
+				} catch {}
+				if (credentialData) {
+					allowedDomains = getAllowedDomains(this.getNode(), credentialData);
+					secrets = getSecrets(credentialData);
+				}
+			}
+
 			if (
 				itemIndex > 0 &&
 				(options.batchSize as number) >= 0 &&
@@ -737,6 +784,7 @@ export class HttpRequestV2 implements INodeType {
 				uri: url,
 				gzip: true,
 				rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false),
+				allowedDomains,
 			};
 
 			if (fullResponse) {
@@ -959,6 +1007,11 @@ export class HttpRequestV2 implements INodeType {
 				};
 				authDataKeys.auth = ['pass'];
 			}
+			if (httpBearerAuth !== undefined) {
+				requestOptions.headers = requestOptions.headers ?? {};
+				requestOptions.headers.Authorization = `Bearer ${String(httpBearerAuth.token)}`;
+				authDataKeys.headers = ['Authorization'];
+			}
 			if (httpHeaderAuth !== undefined) {
 				requestOptions.headers![httpHeaderAuth.name as string] = httpHeaderAuth.value;
 				authDataKeys.headers = [httpHeaderAuth.name as string];
@@ -992,7 +1045,7 @@ export class HttpRequestV2 implements INodeType {
 			}
 
 			try {
-				this.sendMessageToUI(sanitizeUiMessage(requestOptions, authDataKeys));
+				this.sendMessageToUI(sanitizeUiMessage(requestOptions, authDataKeys, secrets));
 			} catch (e) {}
 
 			if (authentication === 'genericCredentialType' || authentication === 'none') {
@@ -1165,7 +1218,6 @@ export class HttpRequestV2 implements INodeType {
 					}
 
 					if (options.splitIntoItems === true && Array.isArray(response)) {
-						// eslint-disable-next-line @typescript-eslint/no-loop-func
 						response.forEach((item) =>
 							returnItems.push({
 								json: item,

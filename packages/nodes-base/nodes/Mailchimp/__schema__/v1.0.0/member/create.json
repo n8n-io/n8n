@@ -86,10 +86,19 @@
         "merge_fields": {
             "type": "object",
             "properties": {
+                "BIRTHDAY": {
+                    "type": "string"
+                },
+                "COMPANY": {
+                    "type": "string"
+                },
                 "FNAME": {
                     "type": "string"
                 },
                 "LNAME": {
+                    "type": "string"
+                },
+                "PHONE": {
                     "type": "string"
                 }
             }
@@ -105,6 +114,14 @@
         },
         "source": {
             "type": "string"
+        },
+        "stats": {
+            "type": "object",
+            "properties": {
+                "avg_click_rate": {
+                    "type": "integer"
+                }
+            }
         },
         "status": {
             "type": "string"
@@ -142,5 +159,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 3
 }

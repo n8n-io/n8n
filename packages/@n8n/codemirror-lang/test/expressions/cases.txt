@@ -293,3 +293,34 @@ Program(Resolvable)
 ==>
 
 Program(Resolvable)
+
+# Resolvable with start of Dingbat range - U+2700
+
+{{ '✀' }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable with end of Dingbat range - U+27BF
+
+{{ '➿' }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable with zap emoji - U+26A1
+
+{{ '⚡' }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable with character near end of Unicode range U+10FFFD
+{{ '􏿽' }}
+
+==>
+
+Program(Resolvable)

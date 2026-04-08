@@ -7,6 +7,9 @@
         "result": {
             "type": "object",
             "properties": {
+                "caption": {
+                    "type": "string"
+                },
                 "chat": {
                     "type": "object",
                     "properties": {
@@ -73,5 +76,5 @@
             }
         }
     },
-    "version": 1
+    "version": 5
 }

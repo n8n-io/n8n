@@ -1,12 +1,18 @@
 {
     "type": "object",
     "properties": {
+        "create_date": {
+            "type": "string"
+        },
+        "display_name": {
+            "type": "string"
+        },
         "id": {
             "type": "integer"
         },
-        "won_status": {
+        "name": {
             "type": "string"
         }
     },
-    "version": 1
+    "version": 8
 }

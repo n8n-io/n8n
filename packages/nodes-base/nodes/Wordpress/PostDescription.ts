@@ -135,6 +135,13 @@ export const postFields: INodeProperties[] = [
 				description: 'A named status for the post',
 			},
 			{
+				displayName: 'Date',
+				name: 'date',
+				type: 'dateTime',
+				default: '',
+				description: "The date the post was published, in the site's timezone",
+			},
+			{
 				displayName: 'Comment Status',
 				name: 'commentStatus',
 				type: 'options',
@@ -412,6 +419,13 @@ export const postFields: INodeProperties[] = [
 				],
 				default: 'draft',
 				description: 'A named status for the post',
+			},
+			{
+				displayName: 'Date',
+				name: 'date',
+				type: 'dateTime',
+				default: '',
+				description: "The date the post was published, in the site's timezone",
 			},
 			{
 				displayName: 'Comment Status',

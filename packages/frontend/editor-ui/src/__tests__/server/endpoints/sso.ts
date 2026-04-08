@@ -1,7 +1,7 @@
 import type { SamlPreferences } from '@n8n/api-types';
 import type { Server, Request } from 'miragejs';
 import { Response } from 'miragejs';
-import type { SamlPreferencesExtractedData } from '@/Interface';
+import type { SamlPreferencesExtractedData } from '@n8n/rest-api-client/api/sso';
 import { faker } from '@faker-js/faker';
 import type { AppSchema } from '@/__tests__/server/types';
 import { jsonParse } from 'n8n-workflow';

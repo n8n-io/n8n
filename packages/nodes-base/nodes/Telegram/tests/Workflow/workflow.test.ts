@@ -1,3 +1,4 @@
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 
 import {
@@ -12,17 +13,23 @@ import {
 	sendAnimationMessageResponse,
 	sendAudioResponse,
 	getMemberResponse,
+	sendMessageWithBinaryDataAndReplyMarkupResponse,
 } from './apiResponses';
-import { FAKE_CREDENTIALS_DATA } from '../../../../test/nodes/FakeCredentialsMap';
-import { getWorkflowFilenames, testWorkflows } from '../../../../test/nodes/Helpers';
 
 describe('Telegram', () => {
+	const credentials = {
+		telegramApi: {
+			accessToken: 'testToken',
+			baseUrl: 'https://api.telegram.org',
+		},
+	};
+
 	describe('Run Telegram workflow', () => {
 		beforeAll(() => {
-			const { baseUrl } = FAKE_CREDENTIALS_DATA.telegramApi;
-			const mock = nock(baseUrl);
+			const mock = nock(credentials.telegramApi.baseUrl);
 
 			mock.post('/bottestToken/getChat').reply(200, getChatResponse);
+			mock.post('/bottestToken/getChat').reply(404, { error: 'Chat not found' });
 			mock.post('/bottestToken/sendMessage').reply(200, sendMessageResponse);
 			mock.post('/bottestToken/sendMediaGroup').reply(200, sendMediaGroupResponse);
 			mock.post('/bottestToken/sendLocation').reply(200, sendLocationMessageResponse);
@@ -41,7 +48,17 @@ describe('Telegram', () => {
 			mock.post('/bottestToken/getChatMember').reply(200, getMemberResponse);
 		});
 
-		const workflows = getWorkflowFilenames(__dirname);
-		testWorkflows(workflows);
+		new NodeTestHarness().setupTests({ credentials, workflowFiles: ['workflow.json'] });
+	});
+
+	describe('Binary Data and Reply Markup', () => {
+		beforeAll(() => {
+			const mock = nock(credentials.telegramApi.baseUrl);
+			mock
+				.post('/bottestToken/sendDocument')
+				.reply(200, sendMessageWithBinaryDataAndReplyMarkupResponse);
+		});
+
+		new NodeTestHarness().setupTests({ credentials, workflowFiles: ['binaryData.workflow.json'] });
 	});
 });

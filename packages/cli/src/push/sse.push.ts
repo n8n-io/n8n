@@ -1,6 +1,5 @@
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-
-import type { User } from '@/databases/entities/user';
 
 import { AbstractPush } from './abstract.push';
 import type { PushRequest, PushResponse } from './types';
@@ -25,8 +24,14 @@ export class SSEPush extends AbstractPush<Connection> {
 
 		super.add(pushRef, userId, connection);
 
-		// When the client disconnects, remove the client
-		const removeClient = () => this.remove(pushRef);
+		// When the client disconnects, remove the client.
+		// Only remove if this connection is still the active one for this pushRef —
+		// a newer connection may have already replaced it via add().
+		const removeClient = () => {
+			if (this.getConnection(pushRef) === connection) {
+				this.remove(pushRef);
+			}
+		};
 		req.once('end', removeClient);
 		req.once('close', removeClient);
 		res.once('finish', removeClient);

@@ -1,676 +1,800 @@
-import { Container } from '@n8n/di';
+import type { LicenseState } from '@n8n/backend-common';
+import { mockLogger } from '@n8n/backend-test-utils';
+import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
-import { DateTime } from 'luxon';
-import type { ExecutionLifecycleHooks } from 'n8n-core';
-import type { ExecutionStatus, IRun, WorkflowExecuteMode } from 'n8n-workflow';
+import type { InstanceSettings } from 'n8n-core';
 
-import type { Project } from '@/databases/entities/project';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import type { IWorkflowDb } from '@/interfaces';
-import type { TypeUnit } from '@/modules/insights/entities/insights-shared';
-import { InsightsMetadataRepository } from '@/modules/insights/repositories/insights-metadata.repository';
-import { InsightsRawRepository } from '@/modules/insights/repositories/insights-raw.repository';
-import { createTeamProject } from '@test-integration/db/projects';
-import { createWorkflow } from '@test-integration/db/workflows';
-import * as testDb from '@test-integration/test-db';
-
-import {
-	createMetadata,
-	createRawInsightsEvent,
-	createCompactedInsightsEvent,
-	createRawInsightsEvents,
-} from '../entities/__tests__/db-utils';
+import { TypeToNumber } from '../database/entities/insights-shared';
+import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
+import type { InsightsCompactionService } from '../insights-compaction.service';
+import type { InsightsPruningService } from '../insights-pruning.service';
 import { InsightsService } from '../insights.service';
-import { InsightsByPeriodRepository } from '../repositories/insights-by-period.repository';
 
-async function truncateAll() {
-	const insightsRawRepository = Container.get(InsightsRawRepository);
-	const insightsMetadataRepository = Container.get(InsightsMetadataRepository);
-	const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
-	for (const repo of [
-		insightsRawRepository,
-		insightsMetadataRepository,
-		insightsByPeriodRepository,
-	]) {
-		await repo.delete({});
-	}
-}
-
-// Initialize DB once for all tests
-beforeAll(async () => {
-	await testDb.init();
-});
-
-// Terminate DB once after all tests complete
-afterAll(async () => {
-	await testDb.terminate();
-});
-
-describe('workflowExecuteAfterHandler', () => {
+describe('InsightsService', () => {
 	let insightsService: InsightsService;
-	let insightsRawRepository: InsightsRawRepository;
-	let insightsMetadataRepository: InsightsMetadataRepository;
-	beforeAll(async () => {
-		insightsService = Container.get(InsightsService);
-		insightsRawRepository = Container.get(InsightsRawRepository);
-		insightsMetadataRepository = Container.get(InsightsMetadataRepository);
+
+	let mockInsightsByPeriodRepository: MockProxy<InsightsByPeriodRepository>;
+	let mockCompactionService: MockProxy<InsightsCompactionService>;
+	let mockPruningService: MockProxy<InsightsPruningService>;
+	let mockLicenseState: MockProxy<LicenseState>;
+	let mockInstanceSettings: MockProxy<InstanceSettings>;
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+
+		mockInsightsByPeriodRepository = mock<InsightsByPeriodRepository>();
+		mockCompactionService = mock<InsightsCompactionService>();
+		mockPruningService = mock<InsightsPruningService>();
+		mockLicenseState = mock<LicenseState>();
+		mockInstanceSettings = mock<InstanceSettings>();
+
+		insightsService = new InsightsService(
+			mockInsightsByPeriodRepository,
+			mockCompactionService,
+			mockPruningService,
+			mockLicenseState,
+			mockInstanceSettings,
+			mockLogger(),
+		);
 	});
 
-	let project: Project;
-	let workflow: IWorkflowDb & WorkflowEntity;
+	describe('getInsightsSummary', () => {
+		const startDate = new Date('2024-01-01');
+		const endDate = new Date('2024-01-07');
 
-	beforeEach(async () => {
-		await truncateAll();
+		it('should return complete summary with all metrics', async () => {
+			mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue([
+				{ period: 'current', type: TypeToNumber.success, total_value: 8 },
+				{ period: 'current', type: TypeToNumber.failure, total_value: 12 },
+				{ period: 'current', type: TypeToNumber.runtime_ms, total_value: 4000 },
+				{ period: 'current', type: TypeToNumber.time_saved_min, total_value: 120 },
+				{ period: 'previous', type: TypeToNumber.success, total_value: 14 },
+				{ period: 'previous', type: TypeToNumber.failure, total_value: 6 },
+				{ period: 'previous', type: TypeToNumber.runtime_ms, total_value: 6000 },
+				{ period: 'previous', type: TypeToNumber.time_saved_min, total_value: 80 },
+			]);
 
-		project = await createTeamProject();
-		workflow = await createWorkflow(
-			{
-				settings: {
-					timeSavedPerExecution: 3,
+			const result = await insightsService.getInsightsSummary({
+				startDate,
+				endDate,
+			});
+
+			expect(result).toEqual({
+				averageRunTime: {
+					value: 200,
+					unit: 'millisecond',
+					deviation: -100,
 				},
-			},
-			project,
-		);
-	});
-
-	test.each<{ status: ExecutionStatus; type: TypeUnit }>([
-		{ status: 'success', type: 'success' },
-		{ status: 'error', type: 'failure' },
-		{ status: 'crashed', type: 'failure' },
-	])('stores events for executions with the status `$status`', async ({ status, type }) => {
-		// ARRANGE
-		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
-		const startedAt = DateTime.utc();
-		const stoppedAt = startedAt.plus({ seconds: 5 });
-		const run = mock<IRun>({
-			mode: 'webhook',
-			status,
-			startedAt: startedAt.toJSDate(),
-			stoppedAt: stoppedAt.toJSDate(),
-		});
-
-		// ACT
-		await insightsService.workflowExecuteAfterHandler(ctx, run);
-
-		// ASSERT
-		const metadata = await insightsMetadataRepository.findOneBy({ workflowId: workflow.id });
-
-		if (!metadata) {
-			return fail('expected metadata to exist');
-		}
-
-		expect(metadata).toMatchObject({
-			workflowId: workflow.id,
-			workflowName: workflow.name,
-			projectId: project.id,
-			projectName: project.name,
-		});
-
-		const allInsights = await insightsRawRepository.find();
-		expect(allInsights).toHaveLength(status === 'success' ? 3 : 2);
-		expect(allInsights).toContainEqual(
-			expect.objectContaining({ metaId: metadata.metaId, type, value: 1 }),
-		);
-		expect(allInsights).toContainEqual(
-			expect.objectContaining({
-				metaId: metadata.metaId,
-				type: 'runtime_ms',
-				value: stoppedAt.diff(startedAt).toMillis(),
-			}),
-		);
-		if (status === 'success') {
-			expect(allInsights).toContainEqual(
-				expect.objectContaining({
-					metaId: metadata.metaId,
-					type: 'time_saved_min',
-					value: 3,
-				}),
-			);
-		}
-	});
-
-	test.each<{ status: ExecutionStatus }>([
-		{ status: 'waiting' },
-		{ status: 'canceled' },
-		{ status: 'unknown' },
-		{ status: 'new' },
-		{ status: 'running' },
-	])('does not store events for executions with the status `$status`', async ({ status }) => {
-		// ARRANGE
-		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
-		const startedAt = DateTime.utc();
-		const stoppedAt = startedAt.plus({ seconds: 5 });
-		const run = mock<IRun>({
-			mode: 'webhook',
-			status,
-			startedAt: startedAt.toJSDate(),
-			stoppedAt: stoppedAt.toJSDate(),
-		});
-
-		// ACT
-		await insightsService.workflowExecuteAfterHandler(ctx, run);
-
-		// ASSERT
-		const metadata = await insightsMetadataRepository.findOneBy({ workflowId: workflow.id });
-		const allInsights = await insightsRawRepository.find();
-		expect(metadata).toBeNull();
-		expect(allInsights).toHaveLength(0);
-	});
-
-	test.each<{ mode: WorkflowExecuteMode }>([{ mode: 'internal' }, { mode: 'manual' }])(
-		'does not store events for executions with the mode `$mode`',
-		async ({ mode }) => {
-			// ARRANGE
-			const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
-			const startedAt = DateTime.utc();
-			const stoppedAt = startedAt.plus({ seconds: 5 });
-			const run = mock<IRun>({
-				mode,
-				status: 'success',
-				startedAt: startedAt.toJSDate(),
-				stoppedAt: stoppedAt.toJSDate(),
+				failed: {
+					value: 12,
+					unit: 'count',
+					deviation: 6,
+				},
+				failureRate: {
+					value: 0.6,
+					unit: 'ratio',
+					deviation: 0.3,
+				},
+				timeSaved: {
+					value: 120,
+					unit: 'minute',
+					deviation: 40,
+				},
+				total: {
+					value: 20,
+					unit: 'count',
+					deviation: 0,
+				},
 			});
-
-			// ACT
-			await insightsService.workflowExecuteAfterHandler(ctx, run);
-
-			// ASSERT
-			const metadata = await insightsMetadataRepository.findOneBy({ workflowId: workflow.id });
-			const allInsights = await insightsRawRepository.find();
-			expect(metadata).toBeNull();
-			expect(allInsights).toHaveLength(0);
-		},
-	);
-
-	test.each<{ mode: WorkflowExecuteMode }>([
-		{ mode: 'evaluation' },
-		{ mode: 'error' },
-		{ mode: 'cli' },
-		{ mode: 'retry' },
-		{ mode: 'trigger' },
-		{ mode: 'webhook' },
-		{ mode: 'integrated' },
-	])('stores events for executions with the mode `$mode`', async ({ mode }) => {
-		// ARRANGE
-		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
-		const startedAt = DateTime.utc();
-		const stoppedAt = startedAt.plus({ seconds: 5 });
-		const run = mock<IRun>({
-			mode,
-			status: 'success',
-			startedAt: startedAt.toJSDate(),
-			stoppedAt: stoppedAt.toJSDate(),
 		});
 
-		// ACT
-		await insightsService.workflowExecuteAfterHandler(ctx, run);
-
-		// ASSERT
-		const metadata = await insightsMetadataRepository.findOneBy({ workflowId: workflow.id });
-
-		if (!metadata) {
-			return fail('expected metadata to exist');
-		}
-
-		expect(metadata).toMatchObject({
-			workflowId: workflow.id,
-			workflowName: workflow.name,
-			projectId: project.id,
-			projectName: project.name,
-		});
-
-		const allInsights = await insightsRawRepository.find();
-		expect(allInsights).toHaveLength(3);
-		expect(allInsights).toContainEqual(
-			expect.objectContaining({ metaId: metadata.metaId, type: 'success', value: 1 }),
-		);
-		expect(allInsights).toContainEqual(
-			expect.objectContaining({
-				metaId: metadata.metaId,
-				type: 'runtime_ms',
-				value: stoppedAt.diff(startedAt).toMillis(),
-			}),
-		);
-		expect(allInsights).toContainEqual(
-			expect.objectContaining({
-				metaId: metadata.metaId,
-				type: 'time_saved_min',
-				value: 3,
-			}),
-		);
-	});
-
-	test("throws UnexpectedError if the execution's workflow has no owner", async () => {
-		// ARRANGE
-		const workflow = await createWorkflow({});
-		const ctx = mock<ExecutionLifecycleHooks>({ workflowData: workflow });
-		const startedAt = DateTime.utc();
-		const stoppedAt = startedAt.plus({ seconds: 5 });
-		const run = mock<IRun>({
-			mode: 'webhook',
-			status: 'success',
-			startedAt: startedAt.toJSDate(),
-			stoppedAt: stoppedAt.toJSDate(),
-		});
-
-		// ACT & ASSERT
-		await expect(insightsService.workflowExecuteAfterHandler(ctx, run)).rejects.toThrowError(
-			`Could not find an owner for the workflow with the name '${workflow.name}' and the id '${workflow.id}'`,
-		);
-	});
-});
-
-describe('compaction', () => {
-	beforeEach(async () => {
-		await truncateAll();
-	});
-
-	describe('compactRawToHour', () => {
-		type TestData = {
-			name: string;
-			timestamps: DateTime[];
-			batches: number[];
-		};
-
-		test.each<TestData>([
-			{
-				name: 'compact into 2 rows',
-				timestamps: [
-					DateTime.utc(2000, 1, 1, 0, 0),
-					DateTime.utc(2000, 1, 1, 0, 59),
-					DateTime.utc(2000, 1, 1, 1, 0),
-				],
-				batches: [2, 1],
-			},
-			{
-				name: 'compact into 3 rows',
-				timestamps: [
-					DateTime.utc(2000, 1, 1, 0, 0),
-					DateTime.utc(2000, 1, 1, 1, 0),
-					DateTime.utc(2000, 1, 1, 2, 0),
-				],
-				batches: [1, 1, 1],
-			},
-		])('$name', async ({ timestamps, batches }) => {
-			// ARRANGE
-			const insightsService = Container.get(InsightsService);
-			const insightsRawRepository = Container.get(InsightsRawRepository);
-			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
-
-			const project = await createTeamProject();
-			const workflow = await createWorkflow({}, project);
-			// create before so we can create the raw events in parallel
-			await createMetadata(workflow);
-			for (const timestamp of timestamps) {
-				await createRawInsightsEvent(workflow, { type: 'success', value: 1, timestamp });
-			}
-
-			// ACT
-			const compactedRows = await insightsService.compactRawToHour();
-
-			// ASSERT
-			expect(compactedRows).toBe(timestamps.length);
-			await expect(insightsRawRepository.count()).resolves.toBe(0);
-			const allCompacted = await insightsByPeriodRepository.find({ order: { periodStart: 1 } });
-			expect(allCompacted).toHaveLength(batches.length);
-			for (const [index, compacted] of allCompacted.entries()) {
-				expect(compacted.value).toBe(batches[index]);
-			}
-		});
-
-		test('batch compaction split events in hourly insight periods', async () => {
-			// ARRANGE
-			const insightsService = Container.get(InsightsService);
-			const insightsRawRepository = Container.get(InsightsRawRepository);
-			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
-
-			const project = await createTeamProject();
-			const workflow = await createWorkflow({}, project);
-
-			const batchSize = 100;
-
-			let timestamp = DateTime.utc().startOf('hour');
-			for (let i = 0; i < batchSize; i++) {
-				await createRawInsightsEvent(workflow, { type: 'success', value: 1, timestamp });
-				// create 60 events per hour
-				timestamp = timestamp.plus({ minute: 1 });
-			}
-
-			// ACT
-			await insightsService.compactInsights();
-
-			// ASSERT
-			await expect(insightsRawRepository.count()).resolves.toBe(0);
-
-			const allCompacted = await insightsByPeriodRepository.find({ order: { periodStart: 1 } });
-			const accumulatedValues = allCompacted.reduce((acc, event) => acc + event.value, 0);
-			expect(accumulatedValues).toBe(batchSize);
-			expect(allCompacted[0].value).toBe(60);
-			expect(allCompacted[1].value).toBe(40);
-		});
-
-		test('batch compaction split events in hourly insight periods by type and workflow', async () => {
-			// ARRANGE
-			const insightsService = Container.get(InsightsService);
-			const insightsRawRepository = Container.get(InsightsRawRepository);
-			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
-
-			const project = await createTeamProject();
-			const workflow1 = await createWorkflow({}, project);
-			const workflow2 = await createWorkflow({}, project);
-
-			const batchSize = 100;
-
-			let timestamp = DateTime.utc().startOf('hour');
-			for (let i = 0; i < batchSize / 4; i++) {
-				await createRawInsightsEvent(workflow1, { type: 'success', value: 1, timestamp });
-				timestamp = timestamp.plus({ minute: 1 });
-			}
-
-			for (let i = 0; i < batchSize / 4; i++) {
-				await createRawInsightsEvent(workflow1, { type: 'failure', value: 1, timestamp });
-				timestamp = timestamp.plus({ minute: 1 });
-			}
-
-			for (let i = 0; i < batchSize / 4; i++) {
-				await createRawInsightsEvent(workflow2, { type: 'runtime_ms', value: 1200, timestamp });
-				timestamp = timestamp.plus({ minute: 1 });
-			}
-
-			for (let i = 0; i < batchSize / 4; i++) {
-				await createRawInsightsEvent(workflow2, { type: 'time_saved_min', value: 3, timestamp });
-				timestamp = timestamp.plus({ minute: 1 });
-			}
-
-			// ACT
-			await insightsService.compactInsights();
-
-			// ASSERT
-			await expect(insightsRawRepository.count()).resolves.toBe(0);
-
-			const allCompacted = await insightsByPeriodRepository.find({
-				order: { metaId: 'ASC', periodStart: 'ASC' },
-			});
-
-			// Expect 2 insights for workflow 1 (for success and failure)
-			// and 3 for workflow 2 (2 period starts for runtime_ms and 1 for time_saved_min)
-			expect(allCompacted).toHaveLength(5);
-			const metaIds = allCompacted.map((event) => event.metaId);
-
-			// meta id are ordered. first 2 are for workflow 1, last 3 are for workflow 2
-			const uniqueMetaIds = [metaIds[0], metaIds[2]];
-			const workflow1Insights = allCompacted.filter((event) => event.metaId === uniqueMetaIds[0]);
-			const workflow2Insights = allCompacted.filter((event) => event.metaId === uniqueMetaIds[1]);
-
-			expect(workflow1Insights).toHaveLength(2);
-			expect(workflow2Insights).toHaveLength(3);
-
-			const successInsights = workflow1Insights.find((event) => event.type === 'success');
-			const failureInsights = workflow1Insights.find((event) => event.type === 'failure');
-
-			expect(successInsights).toBeTruthy();
-			expect(failureInsights).toBeTruthy();
-			// success and failure insights should have the value matching the number or raw events (because value = 1)
-			expect(successInsights!.value).toBe(25);
-			expect(failureInsights!.value).toBe(25);
-
-			const runtimeMsEvents = workflow2Insights.filter((event) => event.type === 'runtime_ms');
-			const timeSavedMinEvents = workflow2Insights.find((event) => event.type === 'time_saved_min');
-			expect(runtimeMsEvents).toHaveLength(2);
-
-			// The last 10 minutes of the first hour
-			expect(runtimeMsEvents[0].value).toBe(1200 * 10);
-
-			// The first 15 minutes of the second hour
-			expect(runtimeMsEvents[1].value).toBe(1200 * 15);
-			expect(timeSavedMinEvents).toBeTruthy();
-			expect(timeSavedMinEvents!.value).toBe(3 * 25);
-		});
-
-		test('should return the number of compacted events', async () => {
-			// ARRANGE
-			const insightsService = Container.get(InsightsService);
-
-			const project = await createTeamProject();
-			const workflow = await createWorkflow({}, project);
-
-			const batchSize = 100;
-
-			let timestamp = DateTime.utc(2000, 1, 1, 0, 0);
-			for (let i = 0; i < batchSize; i++) {
-				await createRawInsightsEvent(workflow, { type: 'success', value: 1, timestamp });
-				// create 60 events per hour
-				timestamp = timestamp.plus({ minute: 1 });
-			}
-
-			// ACT
-			const numberOfCompactedData = await insightsService.compactRawToHour();
-
-			// ASSERT
-			expect(numberOfCompactedData).toBe(100);
-		});
-
-		test('works with data in the compacted table', async () => {
-			// ARRANGE
-			const insightsService = Container.get(InsightsService);
-			const insightsRawRepository = Container.get(InsightsRawRepository);
-			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
-
-			const project = await createTeamProject();
-			const workflow = await createWorkflow({}, project);
-
-			const batchSize = 100;
-
-			let timestamp = DateTime.utc().startOf('hour');
-
-			// Create an existing compacted event for the first hour
-			await createCompactedInsightsEvent(workflow, {
-				type: 'success',
-				value: 10,
-				periodUnit: 'hour',
-				periodStart: timestamp,
-			});
-
-			const events = Array<{ type: 'success'; value: number; timestamp: DateTime }>();
-			for (let i = 0; i < batchSize; i++) {
-				events.push({ type: 'success', value: 1, timestamp });
-				timestamp = timestamp.plus({ minute: 1 });
-			}
-			await createRawInsightsEvents(workflow, events);
-
-			// ACT
-			await insightsService.compactInsights();
-
-			// ASSERT
-			await expect(insightsRawRepository.count()).resolves.toBe(0);
-
-			const allCompacted = await insightsByPeriodRepository.find({ order: { periodStart: 1 } });
-			const accumulatedValues = allCompacted.reduce((acc, event) => acc + event.value, 0);
-			expect(accumulatedValues).toBe(batchSize + 10);
-			expect(allCompacted[0].value).toBe(70);
-			expect(allCompacted[1].value).toBe(40);
-		});
-
-		test('works with data bigger than the batch size', async () => {
-			// ARRANGE
-			const insightsService = Container.get(InsightsService);
-			const insightsRawRepository = Container.get(InsightsRawRepository);
-			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
-
-			// spy on the compactRawToHour method to check if it's called multiple times
-			const rawToHourSpy = jest.spyOn(insightsService, 'compactRawToHour');
-
-			const project = await createTeamProject();
-			const workflow = await createWorkflow({}, project);
-
-			const batchSize = 600;
-
-			let timestamp = DateTime.utc().startOf('hour');
-			const events = Array<{ type: 'success'; value: number; timestamp: DateTime }>();
-			for (let i = 0; i < batchSize; i++) {
-				events.push({ type: 'success', value: 1, timestamp });
-				timestamp = timestamp.plus({ minute: 1 });
-			}
-			await createRawInsightsEvents(workflow, events);
-
-			// ACT
-			await insightsService.compactInsights();
-
-			// ASSERT
-			expect(rawToHourSpy).toHaveBeenCalledTimes(3);
-			await expect(insightsRawRepository.count()).resolves.toBe(0);
-			const allCompacted = await insightsByPeriodRepository.find({ order: { periodStart: 1 } });
-			const accumulatedValues = allCompacted.reduce((acc, event) => acc + event.value, 0);
-			expect(accumulatedValues).toBe(batchSize);
-		});
-	});
-
-	describe('compactionSchedule', () => {
-		test('compaction is running on schedule', async () => {
-			jest.useFakeTimers();
-			try {
-				// ARRANGE
-				const insightsService = Container.get(InsightsService);
-				insightsService.initializeCompaction();
-
-				// spy on the compactInsights method to check if it's called
-				insightsService.compactInsights = jest.fn();
-
-				// ACT
-				// advance by 1 hour and 1 minute
-				jest.advanceTimersByTime(1000 * 60 * 61);
-
-				// ASSERT
-				expect(insightsService.compactInsights).toHaveBeenCalledTimes(1);
-			} finally {
-				jest.useRealTimers();
-			}
-		});
-	});
-
-	describe('compactHourToDay', () => {
-		type TestData = {
-			name: string;
-			periodStarts: DateTime[];
-			batches: number[];
-		};
-
-		test.each<TestData>([
-			{
-				name: 'compact into 2 rows',
-				periodStarts: [
-					DateTime.utc(2000, 1, 1, 0, 0),
-					DateTime.utc(2000, 1, 1, 23, 59),
-					DateTime.utc(2000, 1, 2, 1, 0),
-				],
-				batches: [2, 1],
-			},
-			{
-				name: 'compact into 3 rows',
-				periodStarts: [
-					DateTime.utc(2000, 1, 1, 0, 0),
-					DateTime.utc(2000, 1, 1, 23, 59),
-					DateTime.utc(2000, 1, 2, 0, 0),
-					DateTime.utc(2000, 1, 2, 23, 59),
-					DateTime.utc(2000, 1, 3, 23, 59),
-				],
-				batches: [2, 2, 1],
-			},
-		])('$name', async ({ periodStarts, batches }) => {
-			// ARRANGE
-			const insightsService = Container.get(InsightsService);
-			const insightsRawRepository = Container.get(InsightsRawRepository);
-			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
-
-			const project = await createTeamProject();
-			const workflow = await createWorkflow({}, project);
-			// create before so we can create the raw events in parallel
-			await createMetadata(workflow);
-			for (const periodStart of periodStarts) {
-				await createCompactedInsightsEvent(workflow, {
-					type: 'success',
-					value: 1,
-					periodUnit: 'hour',
-					periodStart,
+		const createMockAggregates = (config: {
+			currentRuntime?: number;
+			currentSuccess?: number;
+			currentFailure?: number;
+			currentTimeSaved?: number;
+			previousRuntime?: number;
+			previousSuccess?: number;
+			previousFailure?: number;
+			previousTimeSaved?: number;
+		}) => {
+			const aggregates: Array<{
+				period: 'previous' | 'current';
+				type: 0 | 1 | 2 | 3;
+				total_value: string | number;
+			}> = [];
+
+			if (config.previousSuccess !== undefined) {
+				aggregates.push({
+					period: 'previous',
+					type: TypeToNumber.success,
+					total_value: config.previousSuccess,
 				});
 			}
 
-			// ACT
-			const compactedRows = await insightsService.compactHourToDay();
-
-			// ASSERT
-			expect(compactedRows).toBe(periodStarts.length);
-			await expect(insightsRawRepository.count()).resolves.toBe(0);
-			const allCompacted = await insightsByPeriodRepository.find({ order: { periodStart: 1 } });
-			expect(allCompacted).toHaveLength(batches.length);
-			for (const [index, compacted] of allCompacted.entries()) {
-				expect(compacted.value).toBe(batches[index]);
+			if (config.previousFailure !== undefined) {
+				aggregates.push({
+					period: 'previous',
+					type: TypeToNumber.failure,
+					total_value: config.previousFailure,
+				});
 			}
+
+			if (config.previousRuntime !== undefined) {
+				aggregates.push({
+					period: 'previous',
+					type: TypeToNumber.runtime_ms,
+					total_value: config.previousRuntime,
+				});
+			}
+
+			if (config.previousTimeSaved !== undefined) {
+				aggregates.push({
+					period: 'previous',
+					type: TypeToNumber.time_saved_min,
+					total_value: config.previousTimeSaved,
+				});
+			}
+
+			if (config.currentSuccess !== undefined) {
+				aggregates.push({
+					period: 'current',
+					type: TypeToNumber.success,
+					total_value: config.currentSuccess,
+				});
+			}
+
+			if (config.currentFailure !== undefined) {
+				aggregates.push({
+					period: 'current',
+					type: TypeToNumber.failure,
+					total_value: config.currentFailure,
+				});
+			}
+
+			if (config.currentRuntime !== undefined) {
+				aggregates.push({
+					period: 'current',
+					type: TypeToNumber.runtime_ms,
+					total_value: config.currentRuntime,
+				});
+			}
+
+			if (config.currentTimeSaved !== undefined) {
+				aggregates.push({
+					period: 'current',
+					type: TypeToNumber.time_saved_min,
+					total_value: config.currentTimeSaved,
+				});
+			}
+
+			return aggregates;
+		};
+
+		describe('average runtime', () => {
+			describe('Core Calculation Logic', () => {
+				it('should calculate average from total runtime and execution count', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 2,
+							currentFailure: 1,
+							currentRuntime: 600,
+							currentTimeSaved: 50,
+							previousSuccess: 1,
+							previousFailure: 1,
+							previousRuntime: 400,
+							previousTimeSaved: 25,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.averageRunTime).toEqual({
+						value: 200,
+						unit: 'millisecond',
+						deviation: 0,
+					});
+				});
+
+				it('should calculate average runtime with success only', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 2,
+							currentRuntime: 1600,
+							previousSuccess: 5,
+							previousRuntime: 2000,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.averageRunTime).toEqual({
+						value: 800,
+						unit: 'millisecond',
+						deviation: 400,
+					});
+				});
+
+				it('should calculate average runtime with failure only', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentFailure: 2,
+							currentRuntime: 1000,
+							previousFailure: 1,
+							previousRuntime: 1200,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.averageRunTime).toEqual({
+						value: 500,
+						unit: 'millisecond',
+						deviation: -700,
+					});
+				});
+
+				it('should calculate average runtime with decimal values', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 3,
+							currentFailure: 0,
+							currentRuntime: 410,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					// Current: 410ms / 3 executions = 136.666... rounded to 136.67
+					expect(result.averageRunTime).toEqual({
+						value: 136.67,
+						unit: 'millisecond',
+						deviation: null,
+					});
+				});
+			});
+
+			describe('Zero/Null Handling', () => {
+				it('returns 0 when no executions exist', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 0,
+							currentFailure: 0,
+							currentRuntime: 0,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.averageRunTime).toEqual({
+						value: 0,
+						unit: 'millisecond',
+						deviation: null,
+					});
+				});
+
+				it('returns 0 when runtime data is null/undefined', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 5,
+							currentFailure: 2,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.averageRunTime).toEqual({
+						value: 0,
+						unit: 'millisecond',
+						deviation: null,
+					});
+				});
+
+				it('returns 0 when total runtime is 0', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 10,
+							currentFailure: 5,
+							currentRuntime: 0,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.averageRunTime).toEqual({
+						value: 0,
+						unit: 'millisecond',
+						deviation: null,
+					});
+				});
+
+				it('returns null deviation when previous period has no executions', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 5,
+							currentFailure: 5,
+							currentRuntime: 1000,
+							previousSuccess: 0,
+							previousFailure: 0,
+							previousRuntime: 0,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.averageRunTime).toEqual({
+						value: 100,
+						unit: 'millisecond',
+						deviation: null,
+					});
+				});
+			});
 		});
-	});
-});
 
-describe('getInsightsSummary', () => {
-	let insightsService: InsightsService;
-	beforeAll(async () => {
-		insightsService = Container.get(InsightsService);
-	});
+		describe('failure rate', () => {
+			describe('Core Calculation Logic', () => {
+				it('should calculate failure rate from failures and total executions', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 6,
+							currentFailure: 4,
+							previousSuccess: 8,
+							previousFailure: 2,
+						}),
+					);
 
-	let project: Project;
-	let workflow: IWorkflowDb & WorkflowEntity;
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
 
-	beforeEach(async () => {
-		await truncateAll();
+					expect(result.failureRate).toEqual({
+						value: 0.4,
+						unit: 'ratio',
+						deviation: 0.2,
+					});
+				});
 
-		project = await createTeamProject();
-		workflow = await createWorkflow({}, project);
-	});
+				it('should handle decimal values with 3 decimal rounding', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 5,
+							currentFailure: 2,
+							previousSuccess: 8,
+							previousFailure: 1,
+						}),
+					);
 
-	test('compacted data are summarized correctly', async () => {
-		// ARRANGE
-		// last 7 days
-		await createCompactedInsightsEvent(workflow, {
-			type: 'success',
-			value: 1,
-			periodUnit: 'day',
-			periodStart: DateTime.utc(),
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					// Current: 2 / 7 = 0.285714... rounded to 0.286
+					// Previous: 1 / 9 = 0.111111... rounded to 0.111
+					expect(result.failureRate).toEqual({
+						value: 0.286,
+						unit: 'ratio',
+						deviation: 0.175,
+					});
+				});
+
+				it('should calculate 0% failure rate with only successes', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 10,
+							currentFailure: 0,
+							previousSuccess: 5,
+							previousFailure: 0,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.failureRate).toEqual({
+						value: 0,
+						unit: 'ratio',
+						deviation: 0,
+					});
+				});
+
+				it('should calculate 100% failure rate with only failures', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 0,
+							currentFailure: 5,
+							previousSuccess: 0,
+							previousFailure: 3,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.failureRate).toEqual({
+						value: 1,
+						unit: 'ratio',
+						deviation: 0,
+					});
+				});
+			});
+
+			describe('Zero/Null Handling', () => {
+				it('returns 0 when no executions exist', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 0,
+							currentFailure: 0,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.failureRate).toEqual({
+						value: 0,
+						unit: 'ratio',
+						deviation: null,
+					});
+				});
+
+				it('returns 0 when failure data is null/undefined', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 5,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.failureRate).toEqual({
+						value: 0,
+						unit: 'ratio',
+						deviation: null,
+					});
+				});
+
+				it('handles all failures correctly', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 0,
+							currentFailure: 10,
+							previousSuccess: 0,
+							previousFailure: 5,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.failureRate).toEqual({
+						value: 1,
+						unit: 'ratio',
+						deviation: 0,
+					});
+				});
+
+				it('returns null deviation when previous period has no executions', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 7,
+							currentFailure: 3,
+							previousSuccess: 0,
+							previousFailure: 0,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.failureRate.value).toBe(0.3);
+					expect(result.failureRate.deviation).toBeNull();
+				});
+			});
 		});
-		await createCompactedInsightsEvent(workflow, {
-			type: 'success',
-			value: 1,
-			periodUnit: 'day',
-			periodStart: DateTime.utc().minus({ day: 2 }),
-		});
-		await createCompactedInsightsEvent(workflow, {
-			type: 'failure',
-			value: 2,
-			periodUnit: 'day',
-			periodStart: DateTime.utc(),
-		});
-		// last 14 days
-		await createCompactedInsightsEvent(workflow, {
-			type: 'success',
-			value: 1,
-			periodUnit: 'day',
-			periodStart: DateTime.utc().minus({ days: 10 }),
-		});
-		await createCompactedInsightsEvent(workflow, {
-			type: 'runtime_ms',
-			value: 123,
-			periodUnit: 'day',
-			periodStart: DateTime.utc().minus({ days: 10 }),
+
+		describe('failed', () => {
+			describe('Core Logic', () => {
+				it('should extract failure count correctly', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 10,
+							currentFailure: 5,
+							previousSuccess: 8,
+							previousFailure: 3,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.failed).toEqual({
+						value: 5,
+						unit: 'count',
+						deviation: 2,
+					});
+				});
+
+				it('should calculate deviation with previous period data', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 5,
+							currentFailure: 15,
+							previousSuccess: 10,
+							previousFailure: 20,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.failed).toEqual({
+						value: 15,
+						unit: 'count',
+						deviation: -5,
+					});
+				});
+			});
+
+			describe('Zero/Null Handling', () => {
+				it('returns 0 when no failures exist', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 10,
+							currentFailure: 0,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.failed).toEqual({
+						value: 0,
+						unit: 'count',
+						deviation: null,
+					});
+				});
+
+				it('returns null deviation when previous period has no executions', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 5,
+							currentFailure: 3,
+							previousSuccess: 0,
+							previousFailure: 0,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.failed.value).toBe(3);
+					expect(result.failed.deviation).toBeNull();
+				});
+			});
 		});
 
-		// ACT
-		const summary = await insightsService.getInsightsSummary();
+		describe('total', () => {
+			describe('Core Logic', () => {
+				it('should sum success and failure counts correctly', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 12,
+							currentFailure: 8,
+							previousSuccess: 10,
+							previousFailure: 5,
+						}),
+					);
 
-		// ASSERT
-		expect(summary).toEqual({
-			averageRunTime: { deviation: -123, unit: 'time', value: 0 },
-			failed: { deviation: 2, unit: 'count', value: 2 },
-			failureRate: { deviation: 0.5, unit: 'ratio', value: 0.5 },
-			timeSaved: { deviation: 0, unit: 'time', value: 0 },
-			total: { deviation: 3, unit: 'count', value: 4 },
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.total).toEqual({
+						value: 20,
+						unit: 'count',
+						deviation: 5,
+					});
+				});
+
+				it('should calculate deviation with previous period data', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 5,
+							currentFailure: 5,
+							previousSuccess: 15,
+							previousFailure: 10,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.total).toEqual({
+						value: 10,
+						unit: 'count',
+						deviation: -15,
+					});
+				});
+			});
+
+			describe('Zero/Null Handling', () => {
+				it('returns 0 when no executions exist', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 0,
+							currentFailure: 0,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.total).toEqual({
+						value: 0,
+						unit: 'count',
+						deviation: null,
+					});
+				});
+
+				it('returns null deviation when previous period has no executions', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 10,
+							currentFailure: 5,
+							previousSuccess: 0,
+							previousFailure: 0,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.total.value).toBe(15);
+					expect(result.total.deviation).toBeNull();
+				});
+			});
+		});
+
+		describe('time saved', () => {
+			describe('Core Logic', () => {
+				it('should extract time saved value correctly', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 10,
+							currentTimeSaved: 150,
+							previousSuccess: 8,
+							previousTimeSaved: 100,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.timeSaved).toEqual({
+						value: 150,
+						unit: 'minute',
+						deviation: 50,
+					});
+				});
+
+				it('should calculate deviation with previous period data', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 5,
+							currentTimeSaved: 75,
+							previousSuccess: 10,
+							previousTimeSaved: 200,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.timeSaved).toEqual({
+						value: 75,
+						unit: 'minute',
+						deviation: -125,
+					});
+				});
+			});
+
+			describe('Zero/Null Handling', () => {
+				it('returns 0 when no time saved data exists', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 10,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.timeSaved).toEqual({
+						value: 0,
+						unit: 'minute',
+						deviation: null,
+					});
+				});
+
+				it('returns null deviation when previous period has no executions', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 10,
+							currentTimeSaved: 120,
+							previousSuccess: 0,
+							previousFailure: 0,
+						}),
+					);
+
+					const result = await insightsService.getInsightsSummary({
+						startDate,
+						endDate,
+					});
+
+					expect(result.timeSaved.value).toBe(120);
+					expect(result.timeSaved.deviation).toBeNull();
+				});
+			});
 		});
 	});
 });

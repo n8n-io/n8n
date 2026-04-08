@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -8,7 +7,7 @@ import {
 } from 'n8n-workflow';
 
 import { N8nItemListOutputParser } from '@utils/output_parsers/N8nItemListOutputParser';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 export class OutputParserItemList implements INodeType {
 	description: INodeTypeDescription = {
@@ -36,9 +35,9 @@ export class OutputParserItemList implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiOutputParser],
 		outputNames: ['Output Parser'],
 		properties: [

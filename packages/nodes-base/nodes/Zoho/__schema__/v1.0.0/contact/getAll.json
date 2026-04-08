@@ -45,6 +45,9 @@
         "$layout_id": {
             "type": "object",
             "properties": {
+                "display_label": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -79,18 +82,9 @@
         "$state": {
             "type": "string"
         },
-        "Assistant": {
-            "type": "null"
-        },
-        "Asst_Phone": {
-            "type": "null"
-        },
-        "Created_By": {
+        "Account_Name": {
             "type": "object",
             "properties": {
-                "email": {
-                    "type": "string"
-                },
                 "id": {
                     "type": "string"
                 },
@@ -98,9 +92,6 @@
                     "type": "string"
                 }
             }
-        },
-        "Created_Time": {
-            "type": "string"
         },
         "Email_Opt_Out": {
             "type": "boolean"
@@ -116,29 +107,6 @@
         },
         "Locked__s": {
             "type": "boolean"
-        },
-        "Modified_By": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "Modified_Time": {
-            "type": "string"
-        },
-        "Other_Street": {
-            "type": "null"
-        },
-        "Other_Zip": {
-            "type": "null"
         },
         "Owner": {
             "type": "object",
@@ -175,5 +143,5 @@
             "type": "null"
         }
     },
-    "version": 1
+    "version": 8
 }

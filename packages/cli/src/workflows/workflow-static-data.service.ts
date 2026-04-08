@@ -1,15 +1,14 @@
-import { GlobalConfig } from '@n8n/config';
+import { Logger } from '@n8n/backend-common';
+import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ErrorReporter, Logger } from 'n8n-core';
+import { ErrorReporter } from 'n8n-core';
 import type { IDataObject, Workflow } from 'n8n-workflow';
 
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { isWorkflowIdValid } from '@/utils';
 
 @Service()
 export class WorkflowStaticDataService {
 	constructor(
-		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 		private readonly workflowRepository: WorkflowRepository,
@@ -53,9 +52,6 @@ export class WorkflowStaticDataService {
 			.set({
 				staticData: newStaticData,
 				updatedAt: () => {
-					if (['mysqldb', 'mariadb'].includes(this.globalConfig.database.type)) {
-						return 'updatedAt';
-					}
 					return '"updatedAt"';
 				},
 			})

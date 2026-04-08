@@ -12,6 +12,7 @@ import type {
 import { LoggerProxy, TriggerCloseError, WorkflowActivationError } from 'n8n-workflow';
 
 import type { ErrorReporter } from '@/errors/error-reporter';
+import { Tracing } from '@/observability';
 
 import { ActiveWorkflows } from '../active-workflows';
 import type { IGetExecuteTriggerFunctions } from '../interfaces';
@@ -25,6 +26,7 @@ describe('ActiveWorkflows', () => {
 	const additionalData = mock<IWorkflowExecuteAdditionalData>();
 	const mode: WorkflowExecuteMode = 'trigger';
 	const activation: WorkflowActivateMode = 'init';
+	const tracing = new Tracing();
 
 	const getTriggerFunctions = jest.fn() as IGetExecuteTriggerFunctions;
 	const triggerResponse = mock<ITriggerResponse>();
@@ -48,6 +50,7 @@ describe('ActiveWorkflows', () => {
 			scheduledTaskManager,
 			triggersAndPollers,
 			errorReporter,
+			tracing,
 		);
 	});
 
@@ -196,7 +199,7 @@ describe('ActiveWorkflows', () => {
 
 				// Get the executeTrigger function that was registered
 				const registerCronCall = scheduledTaskManager.registerCron.mock.calls[0];
-				const executeTrigger = registerCronCall[2] as () => Promise<void>;
+				const executeTrigger = registerCronCall[1] as () => Promise<void>;
 
 				// Execute the trigger function to simulate a regular poll
 				await executeTrigger();

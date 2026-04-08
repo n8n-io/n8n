@@ -1,9 +1,8 @@
 import { heartbeatMessageSchema } from '@n8n/api-types';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 import type WebSocket from 'ws';
-
-import type { User } from '@/databases/entities/user';
 
 import { AbstractPush } from './abstract.push';
 
@@ -21,7 +20,12 @@ export class WebSocketPush extends AbstractPush<WebSocket> {
 
 		const onMessage = async (data: WebSocket.RawData) => {
 			try {
-				const buffer = Array.isArray(data) ? Buffer.concat(data) : Buffer.from(data);
+				const buffer = Array.isArray(data)
+					? Buffer.concat(data)
+					: data instanceof ArrayBuffer
+						? Buffer.from(data)
+						: data;
+
 				const msg: unknown = JSON.parse(buffer.toString('utf8'));
 
 				// Client sends application level heartbeat messages to react
@@ -50,11 +54,15 @@ export class WebSocketPush extends AbstractPush<WebSocket> {
 			}
 		};
 
-		// Makes sure to remove the session if the connection is closed
+		// Makes sure to remove the session if the connection is closed.
+		// Only remove if this connection is still the active one for this pushRef —
+		// a newer connection may have already replaced it via add().
 		connection.once('close', () => {
 			connection.off('pong', heartbeat);
 			connection.off('message', onMessage);
-			this.remove(pushRef);
+			if (this.getConnection(pushRef) === connection) {
+				this.remove(pushRef);
+			}
 		});
 
 		connection.on('message', onMessage);
@@ -64,8 +72,8 @@ export class WebSocketPush extends AbstractPush<WebSocket> {
 		connection.close();
 	}
 
-	protected sendToOneConnection(connection: WebSocket, data: string): void {
-		connection.send(data);
+	protected sendToOneConnection(connection: WebSocket, data: string, asBinary: boolean): void {
+		connection.send(data, { binary: asBinary });
 	}
 
 	protected ping(connection: WebSocket): void {

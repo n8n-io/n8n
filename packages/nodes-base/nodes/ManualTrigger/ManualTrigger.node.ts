@@ -17,12 +17,15 @@ export class ManualTrigger implements INodeType {
 		eventTriggerDescription: '',
 		maxNodes: 1,
 		defaults: {
-			name: 'When clicking ‘Test workflow’',
+			name: 'When clicking ‘Execute workflow’',
 			color: '#909298',
 		},
 
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
+		builderHint: {
+			message: 'There can only be one manual trigger node per workflow',
+		},
 		properties: [
 			{
 				displayName:

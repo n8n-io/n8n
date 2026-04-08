@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import type { ErrorEvent, Exception } from '@sentry/types';
+import type { ErrorEvent, Exception } from '@sentry/core';
 import { ErrorReporter } from 'n8n-core';
 
 import { SentryConfig } from './config/sentry-config';
@@ -15,7 +15,8 @@ export class TaskRunnerSentry {
 	) {}
 
 	async initIfEnabled() {
-		const { dsn, n8nVersion, environment, deploymentName } = this.config;
+		const { dsn, n8nVersion, environment, deploymentName, profilesSampleRate, tracesSampleRate } =
+			this.config;
 
 		if (!dsn) return;
 
@@ -26,6 +27,12 @@ export class TaskRunnerSentry {
 			environment,
 			serverName: deploymentName,
 			beforeSendFilter: this.filterOutUserCodeErrors,
+			withEventLoopBlockDetection: false,
+			tracesSampleRate,
+			profilesSampleRate,
+			eligibleIntegrations: {
+				Http: true,
+			},
 		});
 	}
 
@@ -52,11 +59,30 @@ export class TaskRunnerSentry {
 	 * that end up in the sentry error reporting.
 	 */
 	private isUserCodeError(error: Exception) {
+		if (
+			error.type === 'EvalError' &&
+			error.value === 'Code generation from strings disallowed for this context' // from --disallow-code-generation-from-strings
+		) {
+			return true;
+		}
+
 		const frames = error.stacktrace?.frames;
 		if (!frames) return false;
 
-		return frames.some(
-			(frame) => frame.filename === 'node:vm' && frame.function === 'runInContext',
-		);
+		return frames.some((frame) => {
+			if (frame.filename === 'node:vm' && frame.function === 'runInContext') {
+				return true;
+			}
+
+			if (frame.filename === 'evalmachine.<anonymous>') {
+				return true;
+			}
+
+			if (frame.function === 'VmCodeWrapper') {
+				return true;
+			}
+
+			return false;
+		});
 	}
 }

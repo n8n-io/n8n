@@ -1,5 +1,11 @@
+import { getProxyAgent } from '@n8n/ai-utilities';
+import { AiConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 import OpenAI from 'openai';
+
+import { mergeCustomHeaders } from '../../../../utils/helpers';
+import { shouldIncludeModel } from '../../../vendors/OpenAi/helpers/modelFiltering';
 
 export async function searchModels(
 	this: ILoadOptionsFunctions,
@@ -10,32 +16,36 @@ export async function searchModels(
 		(this.getNodeParameter('options.baseURL', '') as string) ||
 		(credentials.url as string) ||
 		'https://api.openai.com/v1';
+	const { openAiDefaultHeaders } = Container.get(AiConfig);
+	const defaultHeaders = mergeCustomHeaders(credentials, openAiDefaultHeaders ?? {});
 
-	const openai = new OpenAI({ baseURL, apiKey: credentials.apiKey as string });
+	const openai = new OpenAI({
+		baseURL,
+		apiKey: credentials.apiKey as string,
+		fetchOptions: {
+			dispatcher: getProxyAgent(baseURL),
+		},
+		defaultHeaders,
+	});
 	const { data: models = [] } = await openai.models.list();
 
+	const url = baseURL && new URL(baseURL);
+	const isCustomAPI = !!(url && !['api.openai.com', 'ai-assistant.n8n.io'].includes(url.hostname));
+
 	const filteredModels = models.filter((model: { id: string }) => {
-		const url = baseURL && new URL(baseURL);
-		const isValidModel =
-			(url && url.hostname !== 'api.openai.com') ||
-			model.id.startsWith('ft:') ||
-			model.id.startsWith('o1') ||
-			model.id.startsWith('o3') ||
-			(model.id.startsWith('gpt-') && !model.id.includes('instruct'));
+		const includeModel = shouldIncludeModel(model.id, isCustomAPI);
 
-		if (!filter) return isValidModel;
+		if (!filter) return includeModel;
 
-		return isValidModel && model.id.toLowerCase().includes(filter.toLowerCase());
+		return includeModel && model.id.toLowerCase().includes(filter.toLowerCase());
 	});
 
 	filteredModels.sort((a, b) => a.id.localeCompare(b.id));
 
-	const results = {
+	return {
 		results: filteredModels.map((model: { id: string }) => ({
 			name: model.id,
 			value: model.id,
 		})),
 	};
-
-	return results;
 }

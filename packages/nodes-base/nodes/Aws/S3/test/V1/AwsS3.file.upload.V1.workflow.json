@@ -41,11 +41,15 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return [{ key: \"value\" }];"
+				"data": [
+					{
+						"key": "value"
+					}
+				]
 			},
 			"id": "e12f1876-cfd1-47a4-a21b-d478452683bc",
 			"name": "Code",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [720, 340]
 		}

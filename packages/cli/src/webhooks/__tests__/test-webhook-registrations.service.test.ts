@@ -13,11 +13,17 @@ describe('TestWebhookRegistrationsService', () => {
 	);
 
 	const registration = mock<TestWebhookRegistration>({
+		version: 1,
 		webhook: { httpMethod: 'GET', path: 'hello', webhookId: undefined },
 	});
 
 	const webhookKey = 'GET|hello';
 	const cacheKey = 'test-webhooks';
+
+	beforeEach(() => {
+		jest.resetAllMocks();
+		cacheService.exists.mockResolvedValue(true);
+	});
 
 	describe('register()', () => {
 		test('should register a test webhook registration', async () => {
@@ -30,6 +36,14 @@ describe('TestWebhookRegistrationsService', () => {
 			await registrations.register(registration);
 
 			expect(cacheService.expire).not.toHaveBeenCalled();
+		});
+
+		test('should throw an error if the registration fails', async () => {
+			cacheService.exists.mockResolvedValue(false);
+
+			await expect(registrations.register(registration)).rejects.toThrow(
+				'Test webhook registration failed: workflow is too big. Remove pinned data',
+			);
 		});
 	});
 
@@ -59,6 +73,15 @@ describe('TestWebhookRegistrationsService', () => {
 
 			await expect(promise).resolves.toBeUndefined();
 		});
+
+		test('should skip registrations with outdated version', async () => {
+			const { version, ...outdatedRegistration } = registration; // remove the version property to simulate outdated registration
+			cacheService.getHashValue.mockResolvedValueOnce(outdatedRegistration);
+
+			const promise = registrations.get(webhookKey);
+
+			await expect(promise).resolves.toBeUndefined();
+		});
 	});
 
 	describe('getAllKeys()', () => {
@@ -73,19 +96,14 @@ describe('TestWebhookRegistrationsService', () => {
 
 	describe('getAllRegistrations()', () => {
 		test('should retrieve all test webhook registrations', async () => {
-			cacheService.getHash.mockResolvedValueOnce({ [webhookKey]: registration });
+			cacheService.getHash.mockResolvedValueOnce({
+				[webhookKey]: registration,
+				ANOTHER_KEY: { invalid: 'data' }, // invalid registration to test filtering
+			});
 
 			const result = await registrations.getAllRegistrations();
 
 			expect(result).toEqual([registration]);
-		});
-	});
-
-	describe('deregisterAll()', () => {
-		test('should deregister all test webhook registrations', async () => {
-			await registrations.deregisterAll();
-
-			expect(cacheService.delete).toHaveBeenCalledWith(cacheKey);
 		});
 	});
 

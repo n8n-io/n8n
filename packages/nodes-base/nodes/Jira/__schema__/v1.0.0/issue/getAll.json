@@ -18,11 +18,57 @@
                         }
                     }
                 },
+                "assignee": {
+                    "type": "object",
+                    "properties": {
+                        "accountId": {
+                            "type": "string"
+                        },
+                        "accountType": {
+                            "type": "string"
+                        },
+                        "active": {
+                            "type": "boolean"
+                        },
+                        "avatarUrls": {
+                            "type": "object",
+                            "properties": {
+                                "16x16": {
+                                    "type": "string"
+                                },
+                                "24x24": {
+                                    "type": "string"
+                                },
+                                "32x32": {
+                                    "type": "string"
+                                },
+                                "48x48": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "displayName": {
+                            "type": "string"
+                        },
+                        "emailAddress": {
+                            "type": "string"
+                        },
+                        "self": {
+                            "type": "string"
+                        },
+                        "timeZone": {
+                            "type": "string"
+                        }
+                    }
+                },
                 "components": {
                     "type": "array",
                     "items": {
                         "type": "object",
                         "properties": {
+                            "description": {
+                                "type": "string"
+                            },
                             "id": {
                                 "type": "string"
                             },
@@ -81,6 +127,15 @@
                         }
                     }
                 },
+                "customfield_10001": {
+                    "type": "null"
+                },
+                "customfield_10019": {
+                    "type": "string"
+                },
+                "customfield_10021": {
+                    "type": "null"
+                },
                 "fixVersions": {
                     "type": "array",
                     "items": {
@@ -100,6 +155,9 @@
                             },
                             "released": {
                                 "type": "boolean"
+                            },
+                            "releaseDate": {
+                                "type": "string"
                             },
                             "self": {
                                 "type": "string"
@@ -128,6 +186,9 @@
                                                         "type": "integer"
                                                     },
                                                     "description": {
+                                                        "type": "string"
+                                                    },
+                                                    "entityId": {
                                                         "type": "string"
                                                     },
                                                     "hierarchyLevel": {
@@ -236,6 +297,9 @@
                                                         "type": "integer"
                                                     },
                                                     "description": {
+                                                        "type": "string"
+                                                    },
+                                                    "entityId": {
                                                         "type": "string"
                                                     },
                                                     "hierarchyLevel": {
@@ -549,6 +613,26 @@
                         }
                     }
                 },
+                "statusCategory": {
+                    "type": "object",
+                    "properties": {
+                        "colorName": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "integer"
+                        },
+                        "key": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "self": {
+                            "type": "string"
+                        }
+                    }
+                },
                 "statuscategorychangedate": {
                     "type": "string"
                 },
@@ -567,6 +651,9 @@
                                                 "type": "integer"
                                             },
                                             "description": {
+                                                "type": "string"
+                                            },
+                                            "entityId": {
                                                 "type": "string"
                                             },
                                             "hierarchyLevel": {
@@ -712,5 +799,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 10
 }

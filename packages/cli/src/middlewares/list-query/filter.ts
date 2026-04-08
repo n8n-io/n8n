@@ -5,7 +5,6 @@ import * as ResponseHelper from '@/response-helper';
 import { toError } from '@/utils';
 
 import { CredentialsFilter } from './dtos/credentials.filter.dto';
-import { TestDefinitionsFilter } from './dtos/test-definitions.filter.dto';
 import { UserFilter } from './dtos/user.filter.dto';
 import { WorkflowFilter } from './dtos/workflow.filter.dto';
 
@@ -20,14 +19,12 @@ export const filterListQueryMiddleware = async (
 
 	let Filter;
 
-	if (req.baseUrl.endsWith('workflows')) {
+	if (req.baseUrl.endsWith('workflows') || req.path.endsWith('workflows')) {
 		Filter = WorkflowFilter;
 	} else if (req.baseUrl.endsWith('credentials')) {
 		Filter = CredentialsFilter;
 	} else if (req.baseUrl.endsWith('users')) {
 		Filter = UserFilter;
-	} else if (req.baseUrl.endsWith('test-definitions')) {
-		Filter = TestDefinitionsFilter;
 	} else {
 		return next();
 	}

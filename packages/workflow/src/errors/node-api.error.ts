@@ -1,17 +1,16 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-
-import { AxiosError } from 'axios';
+import type { AxiosError } from 'axios';
 import { parseString } from 'xml2js';
 
 import { NodeError } from './abstract/node.error';
-import type { ErrorLevel } from './error.types';
+import type { ErrorLevel } from '@n8n/errors';
 import {
 	NO_OP_NODE_TYPE,
 	UNKNOWN_ERROR_DESCRIPTION,
 	UNKNOWN_ERROR_MESSAGE,
 	UNKNOWN_ERROR_MESSAGE_CRED,
-} from '../Constants';
+} from '../constants';
 import type {
 	INode,
 	JsonObject,
@@ -19,7 +18,7 @@ import type {
 	IStatusCodeMessages,
 	Functionality,
 	RelatedExecution,
-} from '../Interfaces';
+} from '../interfaces';
 import { removeCircularRefs } from '../utils';
 
 export interface NodeOperationErrorOptions {
@@ -145,8 +144,12 @@ export class NodeApiError extends NodeError {
 
 		this.addToMessages(errorResponse.message as string);
 
-		if (!httpCode && errorResponse instanceof AxiosError) {
-			httpCode = errorResponse.response?.status?.toString();
+		if (
+			!httpCode &&
+			errorResponse instanceof Error &&
+			errorResponse.constructor?.name === 'AxiosError'
+		) {
+			httpCode = (errorResponse as unknown as AxiosError).response?.status?.toString();
 		}
 
 		// only for request library error

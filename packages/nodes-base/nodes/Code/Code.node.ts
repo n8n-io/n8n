@@ -1,25 +1,32 @@
-import { TaskRunnersConfig } from '@n8n/config';
+/* eslint-disable n8n-nodes-base/node-execute-block-wrong-error-thrown */
+import { NodesConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import set from 'lodash/set';
 import {
 	NodeConnectionTypes,
+	UnexpectedError,
+	UserError,
 	type CodeExecutionMode,
 	type CodeNodeEditorLanguage,
 	type IExecuteFunctions,
-	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
+type CodeNodeLanguageOption = CodeNodeEditorLanguage | 'pythonNative';
+
 import { javascriptCodeDescription } from './descriptions/JavascriptCodeDescription';
 import { pythonCodeDescription } from './descriptions/PythonCodeDescription';
-import { JavaScriptSandbox } from './JavaScriptSandbox';
 import { JsTaskRunnerSandbox } from './JsTaskRunnerSandbox';
-import { PythonSandbox } from './PythonSandbox';
-import { getSandboxContext } from './Sandbox';
-import { addPostExecutionWarning, standardizeOutput } from './utils';
+import { PythonRunnerUnavailableError } from './python-runner-unavailable.error';
+import { PythonTaskRunnerSandbox } from './PythonTaskRunnerSandbox';
 
-const { CODE_ENABLE_STDOUT } = process.env;
+class PythonDisabledError extends UserError {
+	constructor() {
+		super(
+			'This instance disallows Python execution because it has the environment variable `N8N_PYTHON_ENABLED` set to `false`. To restore Python execution, remove this environment variable or set it to `true` and restart the instance.',
+		);
+	}
+}
 
 export class Code implements INodeType {
 	description: INodeTypeDescription = {
@@ -35,6 +42,61 @@ export class Code implements INodeType {
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
+		builderHint: {
+			message:
+				'Use Code node as a LAST RESORT — it runs in a sandboxed environment and is slower than native nodes. Code node is ONLY appropriate for complex multi-step algorithms that cannot be expressed in single expressions, or operations requiring complex data structures.',
+			relatedNodes: [
+				{
+					nodeType: 'n8n-nodes-base.set',
+					relationHint:
+						'Use this instead for data manipulation: add/modify/rename fields, set values, map data',
+				},
+				{
+					nodeType: 'n8n-nodes-base.filter',
+					relationHint: 'Use this instead for filtering items by condition',
+				},
+				{
+					nodeType: 'n8n-nodes-base.if',
+					relationHint: 'Use this instead for routing by condition',
+				},
+				{
+					nodeType: 'n8n-nodes-base.switch',
+					relationHint: 'Use this instead for multi-way routing by condition',
+				},
+				{
+					nodeType: 'n8n-nodes-base.splitOut',
+					relationHint: 'Use this instead for splitting arrays into separate items',
+				},
+				{
+					nodeType: 'n8n-nodes-base.aggregate',
+					relationHint: 'Use this instead for combining multiple items into one',
+				},
+				{
+					nodeType: 'n8n-nodes-base.summarize',
+					relationHint: 'Use this instead for summarizing or pivoting data',
+				},
+				{
+					nodeType: 'n8n-nodes-base.removeDuplicates',
+					relationHint: 'Use this instead for removing duplicates',
+				},
+				{
+					nodeType: 'n8n-nodes-base.limit',
+					relationHint: 'Use this instead to reduce the number of items returned',
+				},
+				{
+					nodeType: 'n8n-nodes-base.merge',
+					relationHint: 'Use this instead for merging data from multiple branches',
+				},
+				{
+					nodeType: 'n8n-nodes-base.dateTime',
+					relationHint: 'Use this instead for date time operations',
+				},
+				{
+					nodeType: 'n8n-nodes-base.html',
+					relationHint: 'Use this instead for creating html pages',
+				},
+			],
+		},
 		parameterPane: 'wide',
 		properties: [
 			{
@@ -70,10 +132,12 @@ export class Code implements INodeType {
 					{
 						name: 'JavaScript',
 						value: 'javaScript',
+						action: 'Code in JavaScript',
 					},
 					{
-						name: 'Python (Beta)',
-						value: 'python',
+						name: 'Python',
+						value: 'pythonNative',
+						action: 'Code in Python',
 					},
 				],
 				default: 'javaScript',
@@ -96,113 +160,46 @@ export class Code implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions) {
-		const runnersConfig = Container.get(TaskRunnersConfig);
+		const node = this.getNode();
+		const language: CodeNodeLanguageOption =
+			node.typeVersion === 2
+				? (this.getNodeParameter('language', 0) as CodeNodeLanguageOption)
+				: 'javaScript';
+
+		const isJsLang = language === 'javaScript';
+		const isPyLang = language === 'python' || language === 'pythonNative'; // keep legacy `python` for backwards compatibility
+		if (isPyLang && !Container.get(NodesConfig).pythonEnabled) {
+			throw new PythonDisabledError();
+		}
 
 		const nodeMode = this.getNodeParameter('mode', 0) as CodeExecutionMode;
 		const workflowMode = this.getMode();
+		const codeParameterName = isPyLang ? 'pythonCode' : 'jsCode';
 
-		const node = this.getNode();
-		const language: CodeNodeEditorLanguage =
-			node.typeVersion === 2
-				? (this.getNodeParameter('language', 0) as CodeNodeEditorLanguage)
-				: 'javaScript';
-		const codeParameterName = language === 'python' ? 'pythonCode' : 'jsCode';
-
-		if (runnersConfig.enabled && language === 'javaScript') {
+		if (isJsLang) {
 			const code = this.getNodeParameter(codeParameterName, 0) as string;
-			const sandbox = new JsTaskRunnerSandbox(code, nodeMode, workflowMode, this);
+			const sandbox = new JsTaskRunnerSandbox(workflowMode, this);
 			const numInputItems = this.getInputData().length;
 
 			return nodeMode === 'runOnceForAllItems'
-				? [await sandbox.runCodeAllItems()]
-				: [await sandbox.runCodeForEachItem(numInputItems)];
+				? [await sandbox.runCodeAllItems(code)]
+				: [await sandbox.runCodeForEachItem(code, numInputItems)];
 		}
 
-		const getSandbox = (index = 0) => {
-			const code = this.getNodeParameter(codeParameterName, index) as string;
-
-			const context = getSandboxContext.call(this, index);
-			if (nodeMode === 'runOnceForAllItems') {
-				context.items = context.$input.all();
-			} else {
-				context.item = context.$input.item;
+		if (isPyLang) {
+			const runnerStatus = this.getRunnerStatus('python');
+			if (!runnerStatus.available) {
+				throw new PythonRunnerUnavailableError(
+					runnerStatus.reason as 'python' | 'venv' | undefined,
+				);
 			}
 
-			const Sandbox = language === 'python' ? PythonSandbox : JavaScriptSandbox;
-			const sandbox = new Sandbox(context, code, this.helpers);
-			sandbox.on(
-				'output',
-				workflowMode === 'manual'
-					? this.sendMessageToUI.bind(this)
-					: CODE_ENABLE_STDOUT === 'true'
-						? (...args) =>
-								console.log(`[Workflow "${this.getWorkflow().id}"][Node "${node.name}"]`, ...args)
-						: () => {},
-			);
-			return sandbox;
-		};
+			const code = this.getNodeParameter(codeParameterName, 0) as string;
+			const sandbox = new PythonTaskRunnerSandbox(code, nodeMode, workflowMode, this);
 
-		const inputDataItems = this.getInputData();
-
-		// ----------------------------------
-		//        runOnceForAllItems
-		// ----------------------------------
-
-		if (nodeMode === 'runOnceForAllItems') {
-			const sandbox = getSandbox();
-			let items: INodeExecutionData[];
-			try {
-				items = (await sandbox.runCodeAllItems()) as INodeExecutionData[];
-			} catch (error) {
-				if (!this.continueOnFail()) {
-					set(error, 'node', node);
-					throw error;
-				}
-				items = [{ json: { error: error.message } }];
-			}
-
-			for (const item of items) {
-				standardizeOutput(item.json);
-			}
-
-			addPostExecutionWarning(this, items, inputDataItems?.length);
-			return [items];
+			return [await sandbox.runUsingIncomingItems()];
 		}
 
-		// ----------------------------------
-		//        runOnceForEachItem
-		// ----------------------------------
-
-		const returnData: INodeExecutionData[] = [];
-
-		for (let index = 0; index < inputDataItems.length; index++) {
-			const sandbox = getSandbox(index);
-			let result: INodeExecutionData | undefined;
-			try {
-				result = await sandbox.runCodeEachItem(index);
-			} catch (error) {
-				if (!this.continueOnFail()) {
-					set(error, 'node', node);
-					throw error;
-				}
-				returnData.push({
-					json: { error: error.message },
-					pairedItem: {
-						item: index,
-					},
-				});
-			}
-
-			if (result) {
-				returnData.push({
-					json: standardizeOutput(result.json),
-					pairedItem: { item: index },
-					...(result.binary && { binary: result.binary }),
-				});
-			}
-		}
-
-		addPostExecutionWarning(this, returnData, inputDataItems?.length);
-		return [returnData];
+		throw new UnexpectedError(`Unsupported language: ${language}`);
 	}
 }

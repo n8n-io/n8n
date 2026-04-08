@@ -1,5 +1,7 @@
+import { Logger } from '@n8n/backend-common';
+import { Memoized } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { get } from 'lodash';
+import get from 'lodash/get';
 import type {
 	FunctionsBase,
 	ICredentialDataDecryptedObject,
@@ -14,7 +16,10 @@ import type {
 	INodeOutputConfiguration,
 	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
+	IWorkflowExecutionCustomData,
 	NodeConnectionType,
+	NodeFeatures,
+	NodeInputConnections,
 	NodeParameterValueType,
 	NodeTypeAndVersion,
 	Workflow,
@@ -22,18 +27,25 @@ import type {
 } from 'n8n-workflow';
 import {
 	ApplicationError,
+	CHAT_TRIGGER_NODE_TYPE,
 	deepCopy,
 	ExpressionError,
 	NodeHelpers,
 	NodeOperationError,
+	UnexpectedError,
 } from 'n8n-workflow';
 
-import { HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE } from '@/constants';
-import { Memoized } from '@/decorators';
+import {
+	HTTP_REQUEST_AS_TOOL_NODE_TYPE,
+	HTTP_REQUEST_NODE_TYPE,
+	HTTP_REQUEST_TOOL_NODE_TYPE,
+	WAITING_TOKEN_QUERY_PARAM,
+} from '@/constants';
 import { InstanceSettings } from '@/instance-settings';
-import { Logger } from '@/logging/logger';
+import { generateUrlSignature, prepareUrlForSigning } from '@/utils/signature-helpers';
 
 import { cleanupParameterData } from './utils/cleanup-parameter-data';
+import { createExecutionCustomData } from './utils/custom-data';
 import { ensureType } from './utils/ensure-type';
 import { extractValue } from './utils/extract-value';
 import { getAdditionalKeys } from './utils/get-additional-keys';
@@ -56,6 +68,23 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	@Memoized
 	get logger() {
 		return Container.get(Logger);
+	}
+
+	@Memoized
+	get customData(): IWorkflowExecutionCustomData {
+		if (!this.runExecutionData) {
+			throw new ApplicationError(
+				'Cannot access customData: runExecutionData is not available in this context',
+			);
+		}
+		return createExecutionCustomData({
+			runExecutionData: this.runExecutionData,
+			mode: this.mode,
+		});
+	}
+
+	getExecutionContext() {
+		return this.runExecutionData?.executionData?.runtimeData;
 	}
 
 	getExecutionId() {
@@ -101,26 +130,87 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return output;
 	}
 
-	getParentNodes(nodeName: string) {
+	getParentNodes(
+		nodeName: string,
+		options?: {
+			includeNodeParameters?: boolean;
+			connectionType?: NodeConnectionType;
+			depth?: number;
+		},
+	) {
 		const output: NodeTypeAndVersion[] = [];
-		const nodeNames = this.workflow.getParentNodes(nodeName);
+		const nodeNames = this.workflow.getParentNodes(
+			nodeName,
+			options?.connectionType,
+			options?.depth,
+		);
 
 		for (const n of nodeNames) {
 			const node = this.workflow.nodes[n];
-			output.push({
+			const entry: NodeTypeAndVersion = {
 				name: node.name,
 				type: node.type,
 				typeVersion: node.typeVersion,
 				disabled: node.disabled ?? false,
-			});
+			};
+
+			if (options?.includeNodeParameters) {
+				entry.parameters = node.parameters;
+			}
+
+			output.push(entry);
 		}
 		return output;
+	}
+
+	/**
+	 * Gets the chat trigger node
+	 *
+	 * this is needed for sub-nodes where the parent nodes are not available
+	 */
+	getChatTrigger() {
+		for (const node of Object.values(this.workflow.nodes)) {
+			if (this.workflow.nodes[node.name].type === CHAT_TRIGGER_NODE_TYPE) {
+				return this.workflow.nodes[node.name];
+			}
+		}
+
+		return null;
+	}
+
+	@Memoized
+	get workflowSettings() {
+		return Object.freeze(structuredClone(this.workflow.settings));
+	}
+
+	getWorkflowSettings() {
+		return this.workflowSettings;
 	}
 
 	@Memoized
 	get nodeType() {
 		const { type, typeVersion } = this.node;
 		return this.workflow.nodeTypes.getByNameAndVersion(type, typeVersion);
+	}
+
+	/**
+	 * Gets the feature flags for the current node version.
+	 * Uses declarative features from the node type description.
+	 * @private
+	 */
+	@Memoized
+	private get nodeFeatures(): NodeFeatures {
+		const description = this.nodeType.description;
+		return NodeHelpers.getNodeFeatures(description.features, this.node.typeVersion);
+	}
+
+	/**
+	 * Checks if a feature is enabled for the current node version.
+	 * @param featureName - The name of the feature to check
+	 * @returns true if the feature is enabled, false otherwise
+	 */
+	isNodeFeatureEnabled(featureName: string): boolean {
+		return this.nodeFeatures[featureName] ?? false;
 	}
 
 	@Memoized
@@ -149,6 +239,10 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			.filter((node) => node.disabled !== true);
 	}
 
+	getConnections(destination: INode, connectionType: NodeConnectionType): NodeInputConnections {
+		return this.workflow.connectionsByDestinationNode[destination.name]?.[connectionType] ?? [];
+	}
+
 	getNodeOutputs(): INodeOutputConfiguration[] {
 		return this.nodeOutputs;
 	}
@@ -169,6 +263,31 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this.instanceSettings.instanceId;
 	}
 
+	getSignedResumeUrl(parameters: Record<string, string> = {}) {
+		const { webhookWaitingBaseUrl, executionId } = this.additionalData;
+
+		if (typeof executionId !== 'string') {
+			throw new UnexpectedError('Execution id is missing');
+		}
+
+		const baseURL = new URL(`${webhookWaitingBaseUrl}/${executionId}/${this.node.id}`);
+
+		for (const [key, value] of Object.entries(parameters)) {
+			baseURL.searchParams.set(key, value);
+		}
+
+		// Sign the full URL (pathname + query params) using instance secret as HMAC key
+		// This ensures action parameters (like approved=true/false) cannot be tampered with
+		const urlForSigning = prepareUrlForSigning(baseURL);
+		const signature = generateUrlSignature(
+			urlForSigning,
+			this.instanceSettings.hmacSignatureSecret,
+		);
+		baseURL.searchParams.set(WAITING_TOKEN_QUERY_PARAM, signature);
+
+		return baseURL.toString();
+	}
+
 	getTimezone() {
 		return this.workflow.timezone;
 	}
@@ -185,12 +304,28 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		itemIndex?: number,
 	): Promise<T> {
 		const { workflow, node, additionalData, mode, runExecutionData, runIndex } = this;
+
+		// Eval-mode bypass: when executing with LLM mock handler and node has no credentials
+		// configured, return mock credentials built from the credential type's property definitions.
+		// This allows the node to execute (build requests, parse responses) without real credentials.
+		// Triple-gated: evaluation mode + mock handler present + credentials actually missing.
+		if (mode === 'evaluation' && additionalData.evalLlmMockHandler && !node.credentials?.[type]) {
+			const { buildEvalMockCredentials } = await import('../eval-mock-helpers');
+			return buildEvalMockCredentials(
+				additionalData.credentialsHelper.getCredentialsProperties(type),
+			) as T;
+		}
+
 		// Get the NodeType as it has the information if the credentials are required
 		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 		// Hardcode for now for security reasons that only a single node can access
 		// all credentials
-		const fullAccess = [HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE].includes(node.type);
+		const fullAccess = [
+			HTTP_REQUEST_NODE_TYPE,
+			HTTP_REQUEST_TOOL_NODE_TYPE,
+			HTTP_REQUEST_AS_TOOL_NODE_TYPE,
+		].includes(node.type);
 
 		let nodeCredentialDescription: INodeCredentialDescription | undefined;
 		if (!fullAccess) {
@@ -219,6 +354,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 					additionalData.currentNodeParameters || node.parameters,
 					nodeCredentialDescription,
 					node,
+					nodeType.description,
 					node.parameters,
 				)
 			) {
@@ -292,6 +428,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		// 	) as string;
 		// }
 
+		additionalData.executionContext = this.getExecutionContext();
 		const decryptedDataObject = await additionalData.credentialsHelper.getDecrypted(
 			additionalData,
 			nodeCredentials,
@@ -396,6 +533,8 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 				nodeCause: node.name,
 			});
 		}
+
+		if (options?.skipValidation) return returnData;
 
 		// Validate parameter value if it has a schema defined(RMC) or validateType defined
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment

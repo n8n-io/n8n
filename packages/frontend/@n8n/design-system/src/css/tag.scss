@@ -2,10 +2,10 @@
 @use './common/var';
 
 @mixin genTheme() {
-	border-color: var(--color-callout-info-border);
-	background-color: var(--color-callout-info-background);
-	color: var(--color-callout-info-font);
-	font-weight: var(--font-weight-regular);
+	border-color: var(--callout--border-color--info);
+	background-color: var(--callout--color--background--info);
+	color: var(--callout--color--text--info);
+	font-weight: var(--font-weight--regular);
 
 	@include mixins.when(hit) {
 		border-color: var.$tag-primary-color;
@@ -20,9 +20,9 @@
 	}
 
 	&.el-tag--info {
-		border-color: var(--color-callout-info-border);
-		background-color: var(--color-callout-info-background);
-		color: var(--color-callout-info-font);
+		border-color: var(--callout--border-color--info);
+		background-color: var(--callout--color--background--info);
+		color: var(--callout--color--text--info);
 		border-width: 1px;
 		border-style: solid;
 
@@ -31,7 +31,7 @@
 		}
 
 		.svg-inline--fa {
-			color: var(--color-callout-info-icon);
+			color: var(--callout--icon-color--info);
 		}
 
 		.el-tag__close {
@@ -44,14 +44,14 @@
 	}
 
 	&.el-tag--success {
-		border-color: var(--color-callout-success-border);
-		background-color: var(--color-callout-success-background);
-		color: var(--color-callout-success-font);
+		border-color: var(--callout--border-color--success);
+		background-color: var(--callout--color--background--success);
+		color: var(--callout--color--text--success);
 		border-width: 1px;
 		border-style: solid;
 
 		.svg-inline--fa {
-			color: var(--color-callout-success-icon);
+			color: var(--callout--icon-color--success);
 		}
 
 		@include mixins.when(hit) {
@@ -68,9 +68,9 @@
 	}
 
 	&.el-tag--warning {
-		border-color: var(--color-callout-warning-border);
-		background-color: var(--color-callout-warning-background);
-		color: var(--color-callout-warning-font);
+		border-color: var(--callout--border-color--warning);
+		background-color: var(--callout--color--background--warning);
+		color: var(--callout--color--text--warning);
 		border-width: 1px;
 		border-style: solid;
 
@@ -79,7 +79,7 @@
 		}
 
 		.svg-inline--fa {
-			color: var(--color-callout-warning-icon);
+			color: var(--callout--icon-color--warning);
 		}
 
 		.el-tag__close {
@@ -92,9 +92,9 @@
 	}
 
 	&.el-tag--danger {
-		border-color: var(--color-callout-danger-border);
-		background-color: var(--color-callout-danger-background);
-		color: var(--color-callout-danger-font);
+		border-color: var(--callout--border-color--danger);
+		background-color: var(--callout--color--background--danger);
+		color: var(--callout--color--text--danger);
 		border-width: 1px;
 		border-style: solid;
 
@@ -103,7 +103,7 @@
 		}
 
 		.svg-inline--fa {
-			color: var(--color-callout-danger-icon);
+			color: var(--callout--icon-color--danger);
 		}
 
 		.el-tag__close {
@@ -175,7 +175,7 @@
 	@include mixins.m(mini) {
 		height: 20px;
 		padding: 0 5px;
-		line-height: 18px;
+		line-height: 16px;
 
 		.el-icon.el-tag__close {
 			margin-left: -3px;

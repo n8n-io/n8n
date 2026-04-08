@@ -1,4 +1,4 @@
-<script lang="ts" setup>
+<script lang="ts" setup generic="UserType extends IUser = IUser">
 import { computed } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
@@ -8,10 +8,10 @@ import N8nBadge from '../N8nBadge';
 import N8nUserInfo from '../N8nUserInfo';
 
 interface UsersListProps {
-	users: IUser[];
+	users: UserType[];
 	readonly?: boolean;
-	currentUserId?: string;
-	actions?: UserAction[];
+	currentUserId?: string | null;
+	actions?: Array<UserAction<UserType>>;
 	isSamlLoginEnabled?: boolean;
 }
 
@@ -26,7 +26,7 @@ const props = withDefaults(defineProps<UsersListProps>(), {
 const { t } = useI18n();
 
 const sortedUsers = computed(() =>
-	[...props.users].sort((a: IUser, b: IUser) => {
+	[...props.users].sort((a: UserType, b: UserType) => {
 		if (!a.email || !b.email) {
 			throw new Error('Expected all users to have email');
 		}
@@ -64,7 +64,7 @@ const sortedUsers = computed(() =>
 );
 
 const defaultGuard = () => true;
-const getActions = (user: IUser): UserAction[] => {
+const getActions = (user: UserType): Array<UserAction<UserType>> => {
 	if (user.isOwner) return [];
 
 	return props.actions.filter((action) => (action.guard ?? defaultGuard)(user));
@@ -73,7 +73,7 @@ const getActions = (user: IUser): UserAction[] => {
 const emit = defineEmits<{
 	action: [value: { action: string; userId: string }];
 }>();
-const onUserAction = (user: IUser, action: string) =>
+const onUserAction = (user: UserType, action: string) =>
 	emit('action', {
 		action,
 		userId: user.id,
@@ -119,7 +119,7 @@ const onUserAction = (user: IUser, action: string) =>
 <style lang="scss" module>
 .itemContainer {
 	display: flex;
-	padding: var(--spacing-2xs) 0 vaR(--spacing-2xs) 0;
+	padding: var(--spacing--2xs) 0 vaR(--spacing--2xs) 0;
 
 	> *:first-child {
 		flex-grow: 1;
@@ -128,7 +128,7 @@ const onUserAction = (user: IUser, action: string) =>
 
 .itemWithBorder {
 	composes: itemContainer;
-	border-bottom: var(--border-base);
+	border-bottom: var(--border);
 }
 
 .badgeContainer {
@@ -136,7 +136,7 @@ const onUserAction = (user: IUser, action: string) =>
 	align-items: center;
 
 	> * {
-		margin-left: var(--spacing-2xs);
+		margin-left: var(--spacing--2xs);
 	}
 }
 </style>

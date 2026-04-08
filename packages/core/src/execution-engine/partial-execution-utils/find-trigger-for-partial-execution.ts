@@ -1,5 +1,13 @@
 import * as assert from 'assert/strict';
-import type { INode, INodeType, Workflow } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	type INode,
+	type INodeType,
+	type IRunData,
+	type Workflow,
+} from 'n8n-workflow';
+
+import type { DirectedGraph } from './directed-graph';
 
 const isTriggerNode = (nodeType: INodeType) => nodeType.description.group.includes('trigger');
 
@@ -25,10 +33,52 @@ function findAllParentTriggers(workflow: Workflow, destinationNodeName: string) 
 	return parentNodes;
 }
 
+export function anyReachableRootHasRunData(
+	workflow: DirectedGraph,
+	destinationNodeName: string,
+	runData: IRunData,
+): boolean {
+	const destinationNode = workflow.getNodes().get(destinationNodeName);
+	if (!destinationNode) return false;
+
+	// Get all parent connections recursively
+	const parentConnections = workflow.getParentConnections(destinationNode);
+
+	// Extract unique parent nodes from connections
+	const parentNodes = new Set<INode>();
+	for (const connection of parentConnections) {
+		parentNodes.add(connection.from);
+	}
+
+	// Find all root nodes (nodes with no incoming Main connections).
+	// Sub-node connections (ai_chatMemory, ai_languageModel, etc.) should not
+	// disqualify a trigger from being a root – sub-nodes are executed internally
+	// by their parent and are not independent starting points.
+	const rootNodes = new Set<INode>();
+	for (const parentNode of parentNodes) {
+		const hasMainParents = workflow
+			.getDirectParentConnections(parentNode)
+			.some((c) => c.type === NodeConnectionTypes.Main);
+		if (!hasMainParents) {
+			rootNodes.add(parentNode);
+		}
+	}
+
+	// Check if at least one root node has run data
+	for (const rootNode of rootNodes) {
+		if (runData[rootNode.name]) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
 // TODO: rewrite this using DirectedGraph instead of workflow.
 export function findTriggerForPartialExecution(
 	workflow: Workflow,
 	destinationNodeName: string,
+	runData: IRunData,
 ): INode | undefined {
 	// First, check if the destination node itself is a trigger
 	const destinationNode = workflow.getNode(destinationNodeName);
@@ -47,6 +97,13 @@ export function findTriggerForPartialExecution(
 	const parentTriggers = findAllParentTriggers(workflow, destinationNodeName).filter(
 		(trigger) => !trigger.disabled,
 	);
+
+	// prefer triggers that have run data
+	for (const trigger of parentTriggers) {
+		if (runData[trigger.name]) {
+			return trigger;
+		}
+	}
 
 	// Prioritize webhook triggers with pinned-data
 	const pinnedTriggers = parentTriggers

@@ -10,15 +10,6 @@
         "createdBy": {
             "type": "string"
         },
-        "errors": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
-        },
-        "hasError": {
-            "type": "boolean"
-        },
         "name": {
             "type": "string"
         },
@@ -26,5 +17,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

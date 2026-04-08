@@ -262,7 +262,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	inputsData: INodeExecutionData[][],
 ): Promise<INodeExecutionData[][]> {
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 	const advanced = this.getNodeParameter('advanced', 0) as boolean;
 	let matchFields;
 
@@ -374,7 +374,7 @@ export async function execute(
 			output = [...output, ...unmatched1, ...unmatched2];
 		}
 
-		returnData.push(...output);
+		returnData = returnData.concat(output);
 	}
 
 	if (joinMode === 'keepNonMatches') {
@@ -403,15 +403,21 @@ export async function execute(
 
 		if (joinMode === 'enrichInput1') {
 			if (clashResolveOptions.resolveClash === 'addSuffix') {
-				returnData.push(...mergedEntries, ...addSuffixToEntriesKeys(matches.unmatched1, '1'));
+				returnData = returnData.concat(
+					mergedEntries,
+					addSuffixToEntriesKeys(matches.unmatched1, '1'),
+				);
 			} else {
-				returnData.push(...mergedEntries, ...matches.unmatched1);
+				returnData = returnData.concat(mergedEntries, matches.unmatched1);
 			}
 		} else {
 			if (clashResolveOptions.resolveClash === 'addSuffix') {
-				returnData.push(...mergedEntries, ...addSuffixToEntriesKeys(matches.unmatched2, '2'));
+				returnData = returnData.concat(
+					mergedEntries,
+					addSuffixToEntriesKeys(matches.unmatched2, '2'),
+				);
 			} else {
-				returnData.push(...mergedEntries, ...matches.unmatched2);
+				returnData = returnData.concat(mergedEntries, matches.unmatched2);
 			}
 		}
 	}

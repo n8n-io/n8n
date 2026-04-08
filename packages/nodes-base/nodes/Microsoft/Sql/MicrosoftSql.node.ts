@@ -99,10 +99,35 @@ export class MicrosoftSql implements INodeType {
 					},
 				},
 				default: '',
-
-				placeholder: 'SELECT id, name FROM product WHERE id < 40',
+				placeholder: 'SELECT id, name FROM product WHERE quantity > $1 AND price <= $2',
 				required: true,
-				description: 'The SQL query to execute',
+				description:
+					"The SQL query to execute. You can use n8n expressions and $1, $2, $3, etc to refer to the 'Query Parameters' set in options below.",
+				hint: 'Consider using query parameters to prevent SQL injection attacks. Add them in the options below',
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add option',
+				default: {},
+				displayOptions: {
+					show: {
+						operation: ['executeQuery'],
+					},
+				},
+				options: [
+					{
+						displayName: 'Query Parameters',
+						name: 'queryReplacement',
+						type: 'string',
+						default: '',
+						placeholder: 'e.g. value1,value2,value3',
+						description:
+							'Comma-separated list of values to use as query parameters. Reference them in the query as $1, $2, $3, etc. You can drag values from the input panel on the left.',
+						hint: 'Comma-separated list of values: reference them in your query as $1, $2, $3…',
+					},
+				],
 			},
 
 			// ----------------------------------
@@ -247,13 +272,24 @@ export class MicrosoftSql implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = await this.getCredentials('microsoftSql');
 
-		const pool = configurePool(credentials);
-		await pool.connect();
-
 		let responseData: IDataObject | IDataObject[] = [];
 		let returnData: INodeExecutionData[] = [];
-
 		const items = this.getInputData();
+		const pairedItem = generatePairedItemData(items.length);
+
+		const pool = configurePool(credentials);
+		try {
+			await pool.connect();
+		} catch (error) {
+			void pool.close();
+
+			if (this.continueOnFail()) {
+				return [[{ json: { error: error.message }, pairedItem }]];
+			} else {
+				throw error;
+			}
+		}
+
 		const operation = this.getNodeParameter('operation', 0);
 		const nodeVersion = this.getNode().typeVersion;
 
@@ -265,11 +301,29 @@ export class MicrosoftSql implements INodeType {
 					for (const resolvable of getResolvables(rawQuery)) {
 						rawQuery = rawQuery.replace(
 							resolvable,
-							this.evaluateExpression(resolvable, i) as string,
+							() => this.evaluateExpression(resolvable, i) as string,
 						);
 					}
-					const results = await executeSqlQueryAndPrepareResults(pool, rawQuery, i);
-					returnData.push(...results);
+
+					let queryValues: Array<string | number | IDataObject> = [];
+					let queryReplacement = this.getNodeParameter('options.queryReplacement', i, '') as
+						| string
+						| string[];
+
+					if (typeof queryReplacement === 'string' && queryReplacement) {
+						queryReplacement = queryReplacement.split(',').map((entry) => entry.trim());
+					}
+					if (queryReplacement !== '' && !Array.isArray(queryReplacement)) {
+						// convert non-string single expression values to arrays
+						queryReplacement = [queryReplacement];
+					}
+
+					if (Array.isArray(queryReplacement)) {
+						queryValues = queryReplacement;
+					}
+
+					const results = await executeSqlQueryAndPrepareResults(pool, rawQuery, i, queryValues);
+					returnData = returnData.concat(results);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						returnData.push({

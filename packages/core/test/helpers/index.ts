@@ -51,14 +51,20 @@ export function NodeTypes(nodeTypes: INodeTypeData = predefinedNodesTypes): INod
 
 export function WorkflowExecuteAdditionalData(
 	waitPromise: IDeferredPromise<IRun>,
-	nodeExecutionOrder: string[],
 ): IWorkflowExecuteAdditionalData {
 	const hooks = new ExecutionLifecycleHooks('trigger', '1', mock());
-	hooks.addHandler('nodeExecuteAfter', (nodeName) => {
-		nodeExecutionOrder.push(nodeName);
-	});
 	hooks.addHandler('workflowExecuteAfter', (fullRunData) => waitPromise.resolve(fullRunData));
-	return mock<IWorkflowExecuteAdditionalData>({ hooks });
+	return mock<IWorkflowExecuteAdditionalData>({
+		hooks,
+		currentNodeExecutionIndex: 0,
+		webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+		formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+		// Not setting this to undefined would set it to a mock which would trigger
+		// conditions in the WorkflowExecute which only check if a property exists,
+		// e.g. `if (!this.additionalData.restartExecutionId)`. This would for
+		// example skip running the `workflowExecuteBefore` hook in the tests.
+		restartExecutionId: undefined,
+	});
 }
 
 const preparePinData = (pinData: IDataObject) => {

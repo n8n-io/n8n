@@ -68,46 +68,7 @@ export class RoutingNode {
 			inputData[NodeConnectionTypes.AiTool])[0] as INodeExecutionData[];
 		const returnData: INodeExecutionData[] = [];
 
-		let credentialDescription: INodeCredentialDescription | undefined;
-
-		if (nodeType.description.credentials?.length) {
-			if (nodeType.description.credentials.length === 1) {
-				credentialDescription = nodeType.description.credentials[0];
-			} else {
-				const authenticationMethod = context.getNodeParameter('authentication', 0) as string;
-				credentialDescription = nodeType.description.credentials.find((x) =>
-					x.displayOptions?.show?.authentication?.includes(authenticationMethod),
-				);
-				if (!credentialDescription) {
-					throw new NodeOperationError(
-						node,
-						`Node type "${node.type}" does not have any credentials of type "${authenticationMethod}" defined`,
-						{ level: 'warning' },
-					);
-				}
-			}
-		}
-
-		let credentials: ICredentialDataDecryptedObject | undefined;
-		if (credentialsDecrypted) {
-			credentials = credentialsDecrypted.data;
-		} else if (credentialDescription) {
-			try {
-				credentials =
-					(await context.getCredentials<ICredentialDataDecryptedObject>(
-						credentialDescription.name,
-						0,
-					)) || {};
-			} catch (error) {
-				if (credentialDescription.required) {
-					// Only throw error if credential is mandatory
-					throw error;
-				} else {
-					// Do not request cred type since it doesn't exist
-					credentialDescription = undefined;
-				}
-			}
-		}
+		const { credentials, credentialDescription } = await this.prepareCredentials();
 
 		const { batching } = context.getNodeParameter('requestOptions', 0, {}) as {
 			batching: { batch: { batchSize: number; batchInterval: number } };
@@ -375,6 +336,7 @@ export class RoutingNode {
 
 		if (action.type === 'filter') {
 			const passValue = action.properties.pass;
+			const { credentials } = await this.prepareCredentials();
 
 			inputData = inputData.filter((item) => {
 				// If the value is an expression resolve it
@@ -384,6 +346,7 @@ export class RoutingNode {
 					runIndex,
 					executeSingleFunctions.getExecuteData(),
 					{
+						$credentials: credentials,
 						$response: responseData,
 						$responseItem: item.json,
 						$value: parameterValue,
@@ -829,8 +792,16 @@ export class RoutingNode {
 		};
 		let basePath = path ? `${path}.` : '';
 
-		const { node } = this.context;
-		if (!NodeHelpers.displayParameter(node.parameters, nodeProperties, node, node.parameters)) {
+		const { node, nodeType } = this.context;
+		if (
+			!NodeHelpers.displayParameter(
+				node.parameters,
+				nodeProperties,
+				node,
+				nodeType.description,
+				node.parameters,
+			)
+		) {
 			return undefined;
 		}
 		if (nodeProperties.routing) {
@@ -1099,5 +1070,53 @@ export class RoutingNode {
 			}
 		}
 		return returnData;
+	}
+
+	private async prepareCredentials() {
+		const { context, nodeType, credentialsDecrypted } = this;
+		const { node } = context;
+
+		let credentialDescription: INodeCredentialDescription | undefined;
+
+		if (nodeType.description.credentials?.length) {
+			if (nodeType.description.credentials.length === 1) {
+				credentialDescription = nodeType.description.credentials[0];
+			} else {
+				const authenticationMethod = context.getNodeParameter('authentication', 0) as string;
+				credentialDescription = nodeType.description.credentials.find((x) =>
+					x.displayOptions?.show?.authentication?.includes(authenticationMethod),
+				);
+				if (!credentialDescription) {
+					throw new NodeOperationError(
+						node,
+						`Node type "${node.type}" does not have any credentials of type "${authenticationMethod}" defined`,
+						{ level: 'warning' },
+					);
+				}
+			}
+		}
+
+		let credentials: ICredentialDataDecryptedObject | undefined;
+		if (credentialsDecrypted) {
+			credentials = credentialsDecrypted.data;
+		} else if (credentialDescription) {
+			try {
+				credentials =
+					(await context.getCredentials<ICredentialDataDecryptedObject>(
+						credentialDescription.name,
+						0,
+					)) || {};
+			} catch (error) {
+				if (credentialDescription.required) {
+					// Only throw error if credential is mandatory
+					throw error;
+				} else {
+					// Do not request cred type since it doesn't exist
+					credentialDescription = undefined;
+				}
+			}
+		}
+
+		return { credentials, credentialDescription };
 	}
 }

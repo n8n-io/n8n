@@ -1,0 +1,235 @@
+{
+	"createdAt": "2025-03-11T17:56:22.329Z",
+	"updatedAt": "2025-03-11T17:57:14.000Z",
+	"id": "257",
+	"name": "Agent:auto-fix:anthropic",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "f53b691d-beaa-4d60-a9da-d7380bc4c69a",
+			"name": "When clicking \"Test workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-460, 80]
+		},
+		{
+			"parameters": {
+				"promptType": "define",
+				"text": "What time is my check-in?",
+				"hasOutputParser": true,
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 1.8,
+			"position": [-140, 80],
+			"id": "2ae90e1d-1333-4988-ac49-5e7e8f3026ff",
+			"name": "AI Agent"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.outputParserAutofixing",
+			"typeVersion": 1,
+			"position": [100, 360],
+			"id": "7e2efbb9-41b2-4c6a-a811-3a4d62181ff5",
+			"name": "Auto-fixing Output Parser"
+		},
+		{
+			"parameters": {
+				"schemaType": "manual",
+				"inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"resolution\": {\n      \"type\": \"string\",\n      \"description\": \"The customer-facing resolution or response that should be communicated to the customer\"\n    },\n    \"reasoning\": {\n      \"type\": \"string\",\n      \"description\": \"Detailed explanation of the solution and reasoning for internal use\"\n    }\n  },\n  \"additionalProperties\": true,\n  \"required\": [\"resolution\", \"reasoning\"]\n}"
+			},
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"typeVersion": 1.2,
+			"position": [240, 500],
+			"id": "6405c53c-46c2-4c64-84c7-a7db2b127ca6",
+			"name": "Structured Output Parser"
+		},
+		{
+			"parameters": {
+				"sessionIdType": "customKey",
+				"sessionKey": "memory7"
+			},
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"typeVersion": 1.3,
+			"position": [-120, 360],
+			"id": "0b93b732-9529-45c6-a914-83c500ee3a36",
+			"name": "Simple Memory"
+		},
+		{
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o-mini"
+				},
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1.2,
+			"position": [40, 500],
+			"id": "3ebb149d-a83d-4ec1-8e79-e67f87fc5091",
+			"name": "OpenAI Chat Model1",
+			"credentials": {
+				"openAiApi": {
+					"id": "Zak03cqeLUOsgkFI",
+					"name": "OpenAi account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"promptType": "define",
+				"text": "What time is my check-in?",
+				"hasOutputParser": true,
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 1.8,
+			"position": [260, 80],
+			"id": "8237c156-5ec1-4bf9-84a1-ad408d3b6152",
+			"name": "AI Agent1"
+		},
+		{
+			"parameters": {
+				"content": "## Auto-fixing Output Parser + Memory\n",
+				"height": 88,
+				"width": 386
+			},
+			"id": "fb77496b-6d07-4a3c-90a8-bb8788a5f588",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [-300, -40]
+		},
+		{
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"value": "claude-3-7-sonnet-20250219",
+					"mode": "list",
+					"cachedResultName": "Claude 3.7 Sonnet"
+				},
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+			"typeVersion": 1.3,
+			"position": [-340, 360],
+			"id": "b32382ad-d5c6-4b80-b315-5ba9ce48c994",
+			"name": "Anthropic Chat Model",
+			"credentials": {
+				"anthropicApi": {
+					"id": "1Dr1Xbrd2xeq7gaq",
+					"name": "Anthropic account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking \"Test workflow\"": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Agent": {
+			"main": [
+				[
+					{
+						"node": "AI Agent1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Auto-fixing Output Parser": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_outputParser",
+						"index": 0
+					},
+					{
+						"node": "AI Agent1",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Structured Output Parser": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "Auto-fixing Output Parser",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_memory",
+						"index": 0
+					},
+					{
+						"node": "AI Agent1",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model1": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Auto-fixing Output Parser",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Anthropic Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					},
+					{
+						"node": "AI Agent1",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"staticData": null,
+	"meta": {
+		"templateCredsSetupCompleted": true
+	},
+	"pinData": {},
+	"versionId": "4ab225eb-8c26-476c-a12f-d2cc00836ca5",
+	"triggerCount": 0,
+	"tags": []
+}

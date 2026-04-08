@@ -1,6 +1,6 @@
+import { isObjectLiteral } from '@n8n/backend-common';
 import { plainToInstance, instanceToPlain } from 'class-transformer';
 import { validate } from 'class-validator';
-import { isObjectLiteral } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
 export class BaseFilter {

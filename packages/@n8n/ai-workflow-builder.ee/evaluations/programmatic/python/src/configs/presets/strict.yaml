@@ -1,0 +1,44 @@
+version: "1.0"
+name: "strict"
+description: "Strict comparison - exact match required for most aspects"
+
+# Cost weights - higher penalties
+costs:
+  nodes:
+    insertion: 15.0
+    deletion: 15.0
+    substitution:
+      same_type: 0.5  # Very sensitive to parameter changes
+      similar_type: 10.0
+      different_type: 25.0
+      trigger_mismatch: 100.0  # Trigger mismatch is critical
+
+  edges:
+    insertion: 8.0
+    deletion: 8.0
+    substitution: 5.0
+
+  parameters:
+    mismatch_weight: 1.0  # High weight for parameter differences
+    nested_weight: 0.8
+
+# Minimal ignores - most things should match
+ignore:
+  # Only ignore pure UI elements
+  node_types:
+    - "n8n-nodes-base.stickyNote"
+
+  # Only ignore metadata that doesn't affect execution
+  global_parameters:
+    - "position"
+    - "id"
+
+# No parameter tolerance - exact match required
+parameter_comparison: {}
+
+# Output configuration
+output:
+  max_edits: 20  # Show more edits for strict mode
+  group_by: "priority"
+  include_explanations: true
+  include_suggestions: true

@@ -1,0 +1,213 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "854acfbb-2e0c-42c0-964a-1a51fb5415bc",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-464, -144]
+		},
+		{
+			"parameters": {
+				"text": "Test propmt",
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.agentTool",
+			"typeVersion": 2.2,
+			"position": [416, 32],
+			"id": "3c410614-445c-4061-853e-53b7d23e8a1d",
+			"name": "AI Agent Tool"
+		},
+		{
+			"parameters": {
+				"promptType": "define",
+				"text": "Test propmt",
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 2.2,
+			"position": [176, -144],
+			"id": "71453d28-083d-4ac4-b478-936bd7055ce6",
+			"name": "AI Agent"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [592, -144],
+			"id": "21fc57f0-cab4-4f38-9200-7acfcc2b57d0",
+			"name": "No Operation, do nothing"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "e17f54c0-00eb-4cc4-bae0-aa442b870775",
+							"name": "prompt",
+							"value": "test",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [-256, -144],
+			"id": "bf44634b-71ee-4d2e-8ad4-f1cfdffca20e",
+			"name": "Edit Fields"
+		},
+		{
+			"parameters": {
+				"resource": "all",
+				"limit": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Limit', ``, 'number') }}",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.hackerNewsTool",
+			"typeVersion": 1,
+			"position": [240, 128],
+			"id": "2ee04440-6240-4988-bf1d-c7c9a33d49f1",
+			"name": "hackernews_top"
+		},
+		{
+			"parameters": {
+				"resource": "all",
+				"limit": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Limit', ``, 'number') }}",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.hackerNewsTool",
+			"typeVersion": 1,
+			"position": [576, 240],
+			"id": "7f631cc4-9b95-4cda-9853-0872eba16e76",
+			"name": "hackernews_sub"
+		},
+		{
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1-mini"
+				},
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1.2,
+			"position": [48, 64],
+			"id": "32086ad8-ac2f-4566-803c-44060b60b005",
+			"name": "OpenAI Chat Model"
+		},
+		{
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1-mini"
+				},
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1.2,
+			"position": [400, 224],
+			"id": "fc85c9eb-77d5-4947-b90c-38eaead8f12a",
+			"name": "OpenAI Chat Model1"
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Manual Trigger": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Agent Tool": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Agent": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"hackernews_top": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"hackernews_sub": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent Tool",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model1": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent Tool",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"tags": []
+}

@@ -2,23 +2,23 @@ import { Config, Env } from '../decorators';
 
 @Config
 export class LicenseConfig {
-	/** License server URL to retrieve license. */
+	/** URL of the license server used to validate and refresh licenses. */
 	@Env('N8N_LICENSE_SERVER_URL')
 	serverUrl: string = 'https://license.n8n.io/v1';
 
-	/** Whether autorenewal for licenses is enabled. */
+	/** Whether to automatically renew licenses before they expire. */
 	@Env('N8N_LICENSE_AUTO_RENEW_ENABLED')
 	autoRenewalEnabled: boolean = true;
 
-	/** How long (in seconds) before expiry a license should be autorenewed. */
-	@Env('N8N_LICENSE_AUTO_RENEW_OFFSET')
-	autoRenewOffset: number = 60 * 60 * 72; // 72 hours
-
-	/** Activation key to initialize license. */
+	/** Activation key used to activate or upgrade the instance license. */
 	@Env('N8N_LICENSE_ACTIVATION_KEY')
 	activationKey: string = '';
 
-	/** Tenant ID used by the license manager SDK, e.g. for self-hosted, sandbox, embed, cloud. */
+	/** Whether to release floating entitlements back to the pool when the instance shuts down. */
+	@Env('N8N_LICENSE_DETACH_FLOATING_ON_SHUTDOWN')
+	detachFloatingOnShutdown: boolean = true;
+
+	/** Tenant identifier for the license SDK (for example, self-hosted, sandbox, embed, cloud). */
 	@Env('N8N_LICENSE_TENANT_ID')
 	tenantId: number = 1;
 

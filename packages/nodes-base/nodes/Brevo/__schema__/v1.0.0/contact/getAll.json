@@ -4,7 +4,7 @@
         "attributes": {
             "type": "object",
             "properties": {
-                "SMS": {
+                "FIRSTNAME": {
                     "type": "string"
                 }
             }
@@ -37,5 +37,5 @@
             "type": "boolean"
         }
     },
-    "version": 1
+    "version": 3
 }

@@ -1,38 +1,31 @@
-import { SecurityConfig } from '@n8n/config';
+import { inDevelopment, inProduction } from '@n8n/backend-common';
+import { SecurityConfig, WorkflowsConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
+import type { APIRequest, AuthenticatedRequest } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import { access as fsAccess } from 'fs/promises';
 import helmet from 'helmet';
-import { isEmpty } from 'lodash';
-import { InstanceSettings } from 'n8n-core';
+import isEmpty from 'lodash/isEmpty';
+import { InstanceSettings, installGlobalProxyAgent } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { resolve } from 'path';
 
 import { AbstractServer } from '@/abstract-server';
-import config from '@/config';
-import {
-	CLI_DIR,
-	EDITOR_UI_DIST_DIR,
-	inDevelopment,
-	inE2ETests,
-	inProduction,
-	N8N_VERSION,
-	Time,
-} from '@/constants';
+import { AuthService } from '@/auth/auth.service';
+import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests } from '@/constants';
+import { ControllerRegistry } from '@/controller.registry';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { ControllerRegistry } from '@/decorators';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import type { ICredentialsOverwrite } from '@/interfaces';
-import { isLdapEnabled } from '@/ldap.ee/helpers.ee';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/mfa/helpers';
 import { PostHogClient } from '@/posthog';
 import { isApiEnabled, loadPublicApiVersions } from '@/public-api';
-import { setupPushServer, setupPushHandler, Push } from '@/push';
-import type { APIRequest } from '@/requests';
+import { Push } from '@/push';
 import * as ResponseHelper from '@/response-helper';
 import type { FrontendService } from '@/services/frontend.service';
 
@@ -42,6 +35,7 @@ import '@/controllers/auth.controller';
 import '@/controllers/binary-data.controller';
 import '@/controllers/ai.controller';
 import '@/controllers/dynamic-node-parameters.controller';
+import '@/controllers/dynamic-templates.controller';
 import '@/controllers/invitation.controller';
 import '@/controllers/me.controller';
 import '@/controllers/node-types.controller';
@@ -59,17 +53,20 @@ import '@/controllers/users.controller';
 import '@/controllers/user-settings.controller';
 import '@/controllers/workflow-statistics.controller';
 import '@/controllers/api-keys.controller';
+import '@/controllers/security-settings.controller';
 import '@/credentials/credentials.controller';
-import '@/eventbus/event-bus.controller';
 import '@/events/events.controller';
 import '@/executions/executions.controller';
-import '@/external-secrets.ee/external-secrets.controller.ee';
 import '@/license/license.controller';
-import '@/evaluation.ee/test-definitions.controller.ee';
-import '@/evaluation.ee/metrics.controller';
 import '@/evaluation.ee/test-runs.controller.ee';
-import '@/workflows/workflow-history.ee/workflow-history.controller.ee';
+import '@/workflows/workflow-history/workflow-history.controller';
 import '@/workflows/workflows.controller';
+import '@/modules/workflow-index/workflow-dependency.controller';
+import '@/webhooks/webhooks.controller';
+
+import { ChatServer } from './chat/chat-server';
+import { MfaService } from './mfa/mfa.service';
+import { PubSubRegistry } from './scaling/pubsub/pubsub.registry';
 
 @Service()
 export class Server extends AbstractServer {
@@ -95,6 +92,8 @@ export class Server extends AbstractServer {
 		if (!this.globalConfig.endpoints.disableUi) {
 			const { FrontendService } = await import('@/services/frontend.service');
 			this.frontendService = Container.get(FrontendService);
+			await import('@/controllers/module-settings.controller');
+			await import('@/controllers/third-party-licenses.controller');
 		}
 
 		this.presetCredentialsLoaded = false;
@@ -108,6 +107,8 @@ export class Server extends AbstractServer {
 			void this.loadNodesAndCredentials.setupHotReload();
 		}
 
+		this.markAsReady();
+
 		this.eventService.emit('server-started');
 	}
 
@@ -116,21 +117,12 @@ export class Server extends AbstractServer {
 			await import('@/controllers/debug.controller');
 		}
 
-		if (isLdapEnabled()) {
-			const { LdapService } = await import('@/ldap.ee/ldap.service.ee');
-			await import('@/ldap.ee/ldap.controller.ee');
-			await Container.get(LdapService).init();
-		}
-
-		if (this.globalConfig.nodes.communityPackages.enabled) {
-			await import('@/controllers/community-packages.controller');
-		}
-
 		if (inE2ETests) {
 			await import('@/controllers/e2e.controller');
 		}
 
 		if (isMfaFeatureEnabled()) {
+			await Container.get(MfaService).init();
 			await import('@/controllers/mfa.controller');
 		}
 
@@ -142,32 +134,19 @@ export class Server extends AbstractServer {
 			await import('@/controllers/tags.controller');
 		}
 
-		// ----------------------------------------
-		// SAML
-		// ----------------------------------------
-
-		// initialize SamlService if it is licensed, even if not enabled, to
-		// set up the initial environment
-		try {
-			const { SamlService } = await import('@/sso.ee/saml/saml.service.ee');
-			await Container.get(SamlService).init();
-			await import('@/sso.ee/saml/routes/saml.controller.ee');
-		} catch (error) {
-			this.logger.warn(`SAML initialization failed: ${(error as Error).message}`);
+		if (this.globalConfig.diagnostics.enabled) {
+			await import('@/controllers/telemetry.controller');
+			await import('@/controllers/posthog.controller');
 		}
 
 		// ----------------------------------------
-		// Source Control
+		// Variables
 		// ----------------------------------------
+
 		try {
-			const { SourceControlService } = await import(
-				'@/environments.ee/source-control/source-control.service.ee'
-			);
-			await Container.get(SourceControlService).init();
-			await import('@/environments.ee/source-control/source-control.controller.ee');
 			await import('@/environments.ee/variables/variables.controller.ee');
 		} catch (error) {
-			this.logger.warn(`Source Control initialization failed: ${(error as Error).message}`);
+			this.logger.warn(`Variables initialization failed: ${(error as Error).message}`);
 		}
 	}
 
@@ -179,7 +158,7 @@ export class Server extends AbstractServer {
 
 		const { frontendService } = this;
 		if (frontendService) {
-			await this.externalHooks.run('frontend.settings', [frontendService.getSettings()]);
+			await this.externalHooks.run('frontend.settings', [await frontendService.getSettings()]);
 		}
 
 		await this.postHogClient.init();
@@ -194,7 +173,7 @@ export class Server extends AbstractServer {
 			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(publicApiEndpoint);
 			this.app.use(...apiRouters);
 			if (frontendService) {
-				frontendService.settings.publicApi.latestVersion = apiLatestVersion;
+				(await frontendService.getSettings()).publicApi.latestVersion = apiLatestVersion;
 			}
 		}
 
@@ -208,9 +187,10 @@ export class Server extends AbstractServer {
 		this.app.use(cookieParser());
 
 		const { restEndpoint, app } = this;
-		setupPushHandler(restEndpoint, app);
 
 		const push = Container.get(Push);
+		push.setupPushHandler(restEndpoint, app);
+
 		if (push.isBidirectional) {
 			const { CollaborationService } = await import('@/collaboration/collaboration.service');
 
@@ -222,7 +202,7 @@ export class Server extends AbstractServer {
 			);
 		}
 
-		if (config.getEnv('executions.mode') === 'queue') {
+		if (this.globalConfig.executions.mode === 'queue') {
 			const { ScalingService } = await import('@/scaling/scaling.service');
 			await Container.get(ScalingService).setupQueue();
 		}
@@ -230,6 +210,9 @@ export class Server extends AbstractServer {
 		await handleMfaDisable();
 
 		await this.registerAdditionalControllers();
+
+		// Reinitialize the PubSubRegistry
+		Container.get(PubSubRegistry).init();
 
 		// register all known controllers
 		Container.get(ControllerRegistry).activate(app);
@@ -240,34 +223,11 @@ export class Server extends AbstractServer {
 
 		// Returns all the available timezones
 		const tzDataFile = resolve(CLI_DIR, 'dist/timezones.json');
-		this.app.get(`/${this.restEndpoint}/options/timezones`, (_, res) => res.sendFile(tzDataFile));
+		this.app.get(`/${this.restEndpoint}/options/timezones`, (_, res) =>
+			res.sendFile(tzDataFile, { dotfiles: 'allow' }),
+		);
 
-		// ----------------------------------------
-		// Settings
-		// ----------------------------------------
-
-		if (frontendService) {
-			// Returns the current settings for the UI
-			this.app.get(
-				`/${this.restEndpoint}/settings`,
-				ResponseHelper.send(async () => frontendService.getSettings()),
-			);
-
-			// Return Sentry config as a static file
-			this.app.get(`/${this.restEndpoint}/sentry.js`, (_, res) => {
-				res.type('js');
-				res.write('window.sentry=');
-				res.write(
-					JSON.stringify({
-						dsn: this.globalConfig.sentry.frontendDsn,
-						environment: process.env.ENVIRONMENT || 'development',
-						serverName: process.env.DEPLOYMENT_NAME,
-						release: `n8n@${N8N_VERSION}`,
-					}),
-				);
-				res.end();
-			});
-		}
+		this.configureSettingsRoute();
 
 		// ----------------------------------------
 		// EventBus Setup
@@ -276,33 +236,61 @@ export class Server extends AbstractServer {
 		await eventBus.initialize();
 		Container.get(LogStreamingEventRelay).init();
 
+		// ----------------------------------------
+		// Workflow Indexing Setup
+		// ----------------------------------------
+		await this.initializeWorkflowIndexing();
+
 		if (this.endpointPresetCredentials !== '') {
 			// POST endpoint to set preset credentials
+			const overwriteEndpointMiddleware =
+				Container.get(CredentialsOverwrites).getOverwriteEndpointMiddleware();
+
+			if (overwriteEndpointMiddleware) {
+				this.app.use(`/${this.endpointPresetCredentials}`, overwriteEndpointMiddleware);
+			}
+
+			const authenticationEnforced = overwriteEndpointMiddleware !== null;
 			this.app.post(
 				`/${this.endpointPresetCredentials}`,
 				async (req: express.Request, res: express.Response) => {
-					if (!this.presetCredentialsLoaded) {
-						const body = req.body as ICredentialsOverwrite;
+					try {
+						// If authentication is enforced we can allow multiple overwrites
+						if (!this.presetCredentialsLoaded || authenticationEnforced) {
+							const body = req.body as ICredentialsOverwrite;
 
-						if (req.contentType !== 'application/json') {
+							if (req.contentType !== 'application/json') {
+								ResponseHelper.sendErrorResponse(
+									res,
+									new Error(
+										'Body must be a valid JSON, make sure the content-type is application/json',
+									),
+								);
+								return;
+							}
+
+							await Container.get(CredentialsOverwrites).setData(body, true, true);
+
+							this.presetCredentialsLoaded = true;
+
+							// Send push event to notify frontend to refetch types
+							Container.get(Push).broadcast({ type: 'nodeDescriptionUpdated', data: {} });
+
+							ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
+						} else {
 							ResponseHelper.sendErrorResponse(
 								res,
-								new Error(
-									'Body must be a valid JSON, make sure the content-type is application/json',
-								),
+								new Error('Preset credentials can be set once'),
 							);
-							return;
 						}
-
-						Container.get(CredentialsOverwrites).setData(body);
-
-						await frontendService?.generateTypes();
-
-						this.presetCredentialsLoaded = true;
-
-						ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
-					} else {
-						ResponseHelper.sendErrorResponse(res, new Error('Preset credentials can be set once'));
+					} catch (error) {
+						this.logger.error('Error handling credentials overwrite', { error });
+						ResponseHelper.sendErrorResponse(
+							res,
+							new Error(
+								'An error occurred while handling credentials overwrite, please check the logs for more details',
+							),
+						);
 					}
 				},
 			);
@@ -311,20 +299,47 @@ export class Server extends AbstractServer {
 		const maxAge = Time.days.toMilliseconds;
 		const cacheOptions = inE2ETests || inDevelopment ? {} : { maxAge };
 		const { staticCacheDir } = Container.get(InstanceSettings);
+
+		// Protect type files with authentication regardless of UI availability
+		const authService = Container.get(AuthService);
+		const protectedTypeFiles = [
+			'/types/nodes.json',
+			'/types/credentials.json',
+			'/types/node-versions.json',
+		];
+		protectedTypeFiles.forEach((path) => {
+			this.app.get(
+				path,
+				authService.createAuthMiddleware({ allowSkipMFA: true, allowSkipPreviewAuth: true }),
+				async (_, res: express.Response) => {
+					res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+					res.sendFile(path.substring(1), {
+						root: staticCacheDir,
+					});
+				},
+			);
+		});
+
 		if (frontendService) {
-			const serveIcons: express.RequestHandler = async (req, res) => {
-				// eslint-disable-next-line prefer-const
-				let { scope, packageName } = req.params;
-				if (scope) packageName = `@${scope}/${packageName}`;
-				const filePath = this.loadNodesAndCredentials.resolveIcon(packageName, req.originalUrl);
-				if (filePath) {
-					try {
-						await fsAccess(filePath);
-						return res.sendFile(filePath, cacheOptions);
-					} catch {}
-				}
-				res.sendStatus(404);
-			};
+			this.app.use(
+				[
+					'/icons/{@:scope/}:packageName/*path/*file.svg',
+					'/icons/{@:scope/}:packageName/*path/*file.png',
+				],
+				async (req, res) => {
+					// eslint-disable-next-line prefer-const
+					let { scope, packageName } = req.params;
+					if (scope) packageName = `@${scope}/${packageName}`;
+					const filePath = this.loadNodesAndCredentials.resolveIcon(packageName, req.originalUrl);
+					if (filePath) {
+						try {
+							await fsAccess(filePath);
+							return res.sendFile(filePath, { maxAge, dotfiles: 'allow' });
+						} catch {}
+					}
+					res.sendStatus(404);
+				},
+			);
 
 			const serveSchemas: express.RequestHandler = async (req, res) => {
 				const { node, version, resource, operation } = req.params;
@@ -338,15 +353,12 @@ export class Server extends AbstractServer {
 				if (filePath) {
 					try {
 						await fsAccess(filePath);
-						return res.sendFile(filePath, cacheOptions);
+						return res.sendFile(filePath, { ...cacheOptions, dotfiles: 'allow' });
 					} catch {}
 				}
 				res.sendStatus(404);
 			};
-
-			this.app.use('/icons/@:scope/:packageName/*/*.(svg|png)', serveIcons);
-			this.app.use('/icons/:packageName/*/*.(svg|png)', serveIcons);
-			this.app.use('/schemas/:node/:version/:resource?/:operation?.json', serveSchemas);
+			this.app.use('/schemas/:node/:version{/:resource}{/:operation}.json', serveSchemas);
 
 			const isTLSEnabled =
 				this.globalConfig.protocol === 'https' && !!(this.sslKey && this.sslCert);
@@ -357,11 +369,14 @@ export class Server extends AbstractServer {
 					errorMessage: 'The contentSecurityPolicy is not valid JSON.',
 				},
 			);
+			const crossOriginOpenerPolicy = Container.get(SecurityConfig).crossOriginOpenerPolicy;
+			const cspReportOnly = Container.get(SecurityConfig).contentSecurityPolicyReportOnly;
 			const securityHeadersMiddleware = helmet({
 				contentSecurityPolicy: isEmpty(cspDirectives)
 					? false
 					: {
 							useDefaults: false,
+							reportOnly: cspReportOnly,
 							directives: {
 								...cspDirectives,
 							},
@@ -382,15 +397,18 @@ export class Server extends AbstractServer {
 							preload: false,
 						}
 					: false,
+				crossOriginOpenerPolicy: {
+					policy: crossOriginOpenerPolicy,
+				},
 			});
 
 			// Route all UI urls to index.html to support history-api
-			const nonUIRoutes: Readonly<string[]> = [
+			const nonUIRoutes: readonly string[] = [
 				'favicon.ico',
 				'assets',
 				'static',
 				'types',
-				'healthz',
+				this.endpointHealth,
 				'metrics',
 				'e2e',
 				this.restEndpoint,
@@ -437,10 +455,40 @@ export class Server extends AbstractServer {
 		} else {
 			this.app.use('/', express.static(staticCacheDir, cacheOptions));
 		}
+
+		installGlobalProxyAgent();
+	}
+
+	private configureSettingsRoute() {
+		const { frontendService } = this;
+		const authService = Container.get(AuthService);
+
+		if (frontendService) {
+			// Returns the current settings for the UI
+			this.app.get(
+				`/${this.restEndpoint}/settings`,
+				authService.createAuthMiddleware({ allowSkipMFA: false, allowUnauthenticated: true }),
+				ResponseHelper.send(async (req: AuthenticatedRequest) => {
+					return req.user
+						? await frontendService.getSettings()
+						: await frontendService.getPublicSettings(!!req.authInfo?.mfaEnrollmentRequired);
+				}),
+			);
+		}
+	}
+
+	private async initializeWorkflowIndexing() {
+		if (Container.get(WorkflowsConfig).indexingEnabled) {
+			const { WorkflowIndexService } = await import(
+				'@/modules/workflow-index/workflow-index.service'
+			);
+			Container.get(WorkflowIndexService).init();
+		}
 	}
 
 	protected setupPushServer(): void {
 		const { restEndpoint, server, app } = this;
-		setupPushServer(restEndpoint, server, app);
+		Container.get(Push).setupPushServer(restEndpoint, server, app);
+		Container.get(ChatServer).setup(server, app);
 	}
 }

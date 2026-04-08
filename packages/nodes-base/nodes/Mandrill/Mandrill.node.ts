@@ -766,8 +766,8 @@ export class Mandrill implements INodeType {
 						message.from_name = options.fromName;
 					}
 
-					if (options.subaccount) {
-						message.subaccount = options.subaccount;
+					if (options.subAccount) {
+						message.subaccount = options.subAccount.toString();
 					}
 
 					const body: Body = {

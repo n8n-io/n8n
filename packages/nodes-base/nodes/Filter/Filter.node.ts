@@ -12,8 +12,8 @@ export class Filter extends VersionedNodeType {
 			icon: 'fa:filter',
 			iconColor: 'light-blue',
 			group: ['transform'],
-			description: 'Remove items matching a condition',
-			defaultVersion: 2.2,
+			description: 'Keep only items matching a condition',
+			defaultVersion: 2.3,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
@@ -21,6 +21,7 @@ export class Filter extends VersionedNodeType {
 			2: new FilterV2(baseDescription),
 			2.1: new FilterV2(baseDescription),
 			2.2: new FilterV2(baseDescription),
+			2.3: new FilterV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

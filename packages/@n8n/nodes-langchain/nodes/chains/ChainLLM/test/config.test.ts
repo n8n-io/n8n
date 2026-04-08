@@ -27,6 +27,22 @@ describe('config', () => {
 			expect(inputs).toHaveLength(3);
 			expect(inputs[2].type).toBe(NodeConnectionTypes.AiOutputParser);
 		});
+
+		it('should exclude the FallbackInput when needsFallback is false', () => {
+			const inputs = getInputs({ hasOutputParser: true, needsFallback: false });
+
+			expect(inputs).toHaveLength(3);
+			expect(inputs[0].type).toBe(NodeConnectionTypes.Main);
+			expect(inputs[1].type).toBe(NodeConnectionTypes.AiLanguageModel);
+			expect(inputs[2].type).toBe(NodeConnectionTypes.AiOutputParser);
+		});
+
+		it('should include the FallbackInput when needsFallback is true', () => {
+			const inputs = getInputs({ hasOutputParser: false, needsFallback: true });
+
+			expect(inputs).toHaveLength(3);
+			expect(inputs[2].type).toBe(NodeConnectionTypes.AiLanguageModel);
+		});
 	});
 
 	describe('nodeProperties', () => {

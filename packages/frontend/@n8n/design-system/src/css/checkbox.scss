@@ -15,18 +15,18 @@
 
 	@include mixins.when(bordered) {
 		padding: var.$checkbox-bordered-padding;
-		border-radius: var(--border-radius-base);
-		border: var(--border-base);
+		border-radius: var(--radius);
+		border: var(--border);
 		box-sizing: border-box;
 		line-height: normal;
 		height: var.$checkbox-bordered-height;
 
 		&.is-checked {
-			border-color: var(--color-primary);
+			border-color: var(--color--primary);
 		}
 
 		&.is-disabled {
-			border-color: var(--border-color-light);
+			border-color: var(--border-color--light);
 			cursor: not-allowed;
 		}
 
@@ -190,7 +190,7 @@
 		position: relative;
 		border: var.$checkbox-input-border;
 		border-radius: var.$checkbox-border-radius;
-		margin-top: var(--spacing-5xs);
+		margin-top: var(--spacing--5xs);
 		box-sizing: border-box;
 		width: var.$checkbox-input-width;
 		height: var.$checkbox-input-height;
@@ -254,7 +254,7 @@
 		vertical-align: middle;
 		cursor: pointer;
 		background: var.$button-default-background-color;
-		border: var(--border-base);
+		border: var(--border);
 		border-left: 0;
 		color: var.$button-default-font-color;
 		-webkit-appearance: none;
@@ -274,7 +274,7 @@
 		);
 
 		&:hover {
-			color: var(--color-primary);
+			color: var(--color--primary);
 		}
 
 		& .el-icon {
@@ -322,8 +322,8 @@
 
 	&:first-child {
 		.el-checkbox-button__inner {
-			border-left: var(--border-base);
-			border-radius: var(--border-radius-base) 0 0 var(--border-radius-base);
+			border-left: var(--border);
+			border-radius: var(--radius) 0 0 var(--radius);
 			box-shadow: none !important;
 		}
 	}
@@ -336,7 +336,7 @@
 
 	&:last-child {
 		.el-checkbox-button__inner {
-			border-radius: 0 var(--border-radius-base) var(--border-radius-base) 0;
+			border-radius: 0 var(--radius) var(--radius) 0;
 		}
 	}
 	@include mixins.m(medium) {

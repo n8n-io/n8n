@@ -198,7 +198,7 @@ describe('Breadcrumbs', async () => {
 			},
 			global: {
 				stubs: {
-					'n8n-action-toggle': N8nActionToggleMock,
+					N8nActionToggle: N8nActionToggleMock,
 				},
 				plugins: [router],
 			},
@@ -242,7 +242,7 @@ describe('Breadcrumbs', async () => {
 			},
 			global: {
 				stubs: {
-					'n8n-action-toggle': N8nActionToggleMock,
+					N8nActionToggle: N8nActionToggleMock,
 				},
 				plugins: [router],
 			},
@@ -274,8 +274,8 @@ describe('Breadcrumbs', async () => {
 			{ id: '4', label: 'Current' },
 		];
 		const hiddenItems = [
-			{ id: '3', label: 'Parent 1', href: '/hidden1' },
-			{ id: '4', label: 'Parent 2', href: '/hidden2' },
+			{ id: '5', label: 'Parent 1', href: '/hidden1' },
+			{ id: '6', label: 'Parent 2', href: '/hidden2' },
 		];
 
 		const { container, emitted, getByTestId, getAllByTestId } = render(Breadcrumbs, {
@@ -285,7 +285,7 @@ describe('Breadcrumbs', async () => {
 			},
 			global: {
 				stubs: {
-					'n8n-action-toggle': N8nActionToggleMock,
+					N8nActionToggle: N8nActionToggleMock,
 				},
 				plugins: [router],
 			},
@@ -318,7 +318,7 @@ describe('Breadcrumbs', async () => {
 			},
 			global: {
 				stubs: {
-					'n8n-action-toggle': N8nActionToggleMock,
+					N8nActionToggle: N8nActionToggleMock,
 				},
 				plugins: [router],
 			},

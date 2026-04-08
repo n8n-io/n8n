@@ -1,0 +1,85 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-40, -220],
+			"id": "7da2ce49-9a9d-4240-b082-ff1b12d101b1",
+			"name": "When clicking ‘Test workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "group",
+				"includeUsers": false,
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.awsIam",
+			"typeVersion": 1,
+			"position": [160, -220],
+			"id": "23fd4c79-516d-49dc-81c8-e68052a294d1",
+			"name": "getAllGroups",
+			"credentials": {
+				"aws": {
+					"id": "exampleId",
+					"name": "AWS US EAST"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"getAllGroups": [
+			{
+				"json": {
+					"Arn": "arn:aws:iam::130450532146:group/test/Admin7",
+					"CreateDate": 1733436631,
+					"GroupId": "AGPAR4X3VE4ZAFFY5EDUJ",
+					"GroupName": "Admin7",
+					"Path": "/test/"
+				}
+			},
+			{
+				"json": {
+					"Arn": "arn:aws:iam::130450532146:group/cognito",
+					"CreateDate": 1730804196,
+					"GroupId": "AGPAR4X3VE4ZMVEFLBSRB",
+					"GroupName": "cognito",
+					"Path": "/"
+				}
+			},
+			{
+				"json": {
+					"Arn": "arn:aws:iam::130450532146:group/GroupCreatedAfter",
+					"CreateDate": 1741589366,
+					"GroupId": "AGPAR4X3VE4ZF5VE6UF2U",
+					"GroupName": "GroupCreatedAfter",
+					"Path": "/"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "getAllGroups",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "51beb4c0-4163-4c57-a715-6eb45f1ffb9b",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "26f38eb23ad84214537831cfef4032299ffac994ff18d5cb72e82d31ac4ceac4"
+	},
+	"id": "0qqycx08fTBpfbC9",
+	"tags": []
+}

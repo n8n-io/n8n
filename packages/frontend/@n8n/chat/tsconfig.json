@@ -6,6 +6,7 @@
 		"baseUrl": "src",
 		"target": "esnext",
 		"module": "esnext",
+		"moduleResolution": "bundler",
 		"allowJs": true,
 		"importHelpers": true,
 		"incremental": false,
@@ -13,7 +14,8 @@
 		"resolveJsonModule": true,
 		"types": ["vitest/globals"],
 		"paths": {
-			"@n8n/chat/*": ["./*"]
+			"@n8n/chat/*": ["./*"],
+			"@n8n/design-system*": ["../../design-system/src*"]
 		},
 		"lib": ["esnext", "dom", "dom.iterable", "scripthost"],
 		// TODO: remove all options below this line

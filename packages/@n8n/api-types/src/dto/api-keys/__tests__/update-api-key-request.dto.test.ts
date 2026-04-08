@@ -5,6 +5,15 @@ describe('UpdateApiKeyRequestDto', () => {
 		test('should allow valid label', () => {
 			const result = UpdateApiKeyRequestDto.safeParse({
 				label: 'valid label',
+				scopes: ['user:create'],
+			});
+			expect(result.success).toBe(true);
+		});
+
+		test('should allow valid scope', () => {
+			const result = UpdateApiKeyRequestDto.safeParse({
+				label: 'valid label',
+				scopes: ['user:create'],
 			});
 			expect(result.success).toBe(true);
 		});
@@ -27,8 +36,26 @@ describe('UpdateApiKeyRequestDto', () => {
 				label: '<script>alert("xss");new label</script>',
 				expectedErrorPath: ['label'],
 			},
-		])('should fail validation for $name', ({ label, expectedErrorPath }) => {
-			const result = UpdateApiKeyRequestDto.safeParse({ label });
+			{
+				name: 'scopes with malformed scope',
+				label: 'valid label',
+				scopes: ['user:1'],
+				expectedErrorPath: ['scopes', 0],
+			},
+			{
+				name: 'scopes with empty array',
+				label: 'valid label',
+				scopes: [],
+				expectedErrorPath: ['scopes'],
+			},
+			{
+				name: 'scopes with {}',
+				label: 'valid label',
+				scopes: {},
+				expectedErrorPath: ['scopes'],
+			},
+		])('should fail validation for $name', ({ label, scopes, expectedErrorPath }) => {
+			const result = UpdateApiKeyRequestDto.safeParse({ label, scopes });
 
 			expect(result.success).toBe(false);
 

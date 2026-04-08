@@ -1,8 +1,8 @@
 import type { Document } from '@langchain/core/documents';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { PromptTemplate } from '@langchain/core/prompts';
-import type { SummarizationChainParams } from 'langchain/chains';
-import { loadSummarizationChain } from 'langchain/chains';
+import type { SummarizationChainParams } from '@langchain/classic/chains';
+import { loadSummarizationChain } from '@langchain/classic/chains';
 import {
 	NodeConnectionTypes,
 	type INodeTypeBaseDescription,
@@ -12,9 +12,7 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { N8nBinaryLoader } from '@utils/N8nBinaryLoader';
-import { N8nJsonLoader } from '@utils/N8nJsonLoader';
-import { getTemplateNoticeField } from '@utils/sharedFields';
+import { N8nBinaryLoader, N8nJsonLoader, getTemplateNoticeField } from '@n8n/ai-utilities';
 
 import { REFINE_PROMPT_TEMPLATE, DEFAULT_PROMPT_TEMPLATE } from '../prompt';
 
@@ -29,7 +27,7 @@ export class ChainSummarizationV1 implements INodeType {
 				name: 'Summarization Chain',
 				color: '#909298',
 			},
-			// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 			inputs: [
 				NodeConnectionTypes.Main,
 				{

@@ -14,8 +14,9 @@ import {
 	formTitle,
 	formTriggerPanel,
 	webhookPath,
+	ipAllowlist,
 } from '../common.descriptions';
-import { formWebhook } from '../utils';
+import { formWebhook } from '../utils/utils';
 
 const descriptionV1: INodeTypeDescription = {
 	displayName: 'n8n Form Trigger',
@@ -70,6 +71,7 @@ const descriptionV1: INodeTypeDescription = {
 				},
 			},
 			options: [
+				ipAllowlist,
 				{
 					displayName: 'Form Submitted Text',
 					name: 'formSubmittedText',

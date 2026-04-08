@@ -1,0 +1,30 @@
+name: 'Release: Create Minor Release PR'
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: 0 13 * * 1 # 2pm CET (UTC+1), Monday
+
+jobs:
+  create-release-pr:
+    name: Create release PR
+    uses: ./.github/workflows/release-create-pr.yml
+    secrets: inherit
+    with:
+      base-branch: master
+      release-type: minor
+
+  notify-slack:
+    name: Notify Slack
+    needs: [create-release-pr]
+    if: needs.create-release-pr.result == 'success' && needs.create-release-pr.outputs.pull-request-number != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post to Slack
+        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.RELEASE_HELPER_SLACK_TOKEN }}
+          payload: |
+            channel: C036AELNMV0
+            text: ":rocket: Minor release PR created. <${{ github.server_url }}/${{ github.repository }}/pull/${{ needs.create-release-pr.outputs.pull-request-number }}|View PR> — close it to cancel the release."
