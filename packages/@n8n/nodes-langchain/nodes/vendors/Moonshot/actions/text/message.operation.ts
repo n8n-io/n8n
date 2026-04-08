@@ -82,53 +82,16 @@ const properties: INodeProperties[] = [
 		description: 'Whether to add image attachments to the message',
 	},
 	{
-		displayName: 'Attachments Input Type',
-		name: 'attachmentsInputType',
-		type: 'options',
-		default: 'url',
-		description: 'The type of input to use for the attachments',
-		options: [
-			{
-				name: 'URL(s)',
-				value: 'url',
-			},
-			{
-				name: 'Binary File(s)',
-				value: 'binary',
-			},
-		],
-		displayOptions: {
-			show: {
-				addAttachments: [true],
-			},
-		},
-	},
-	{
-		displayName: 'Attachment URL(s)',
-		name: 'attachmentsUrls',
-		type: 'string',
-		default: '',
-		placeholder: 'e.g. https://example.com/image.png',
-		description: 'URL(s) of the image(s) to attach, multiple URLs can be added separated by comma',
-		displayOptions: {
-			show: {
-				addAttachments: [true],
-				attachmentsInputType: ['url'],
-			},
-		},
-	},
-	{
 		displayName: 'Attachment Input Data Field Name(s)',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
 		placeholder: 'e.g. data',
 		description:
-			'Name of the binary field(s) which contains the image(s) to attach, multiple field names can be added separated by comma',
+			'Name of the binary field(s) which contains the image(s) to attach, separate multiple field names with commas',
 		displayOptions: {
 			show: {
 				addAttachments: [true],
-				attachmentsInputType: ['binary'],
 			},
 		},
 	},
@@ -454,23 +417,15 @@ async function addAttachmentsToMessages(
 	i: number,
 	messages: ChatMessage[],
 ) {
-	const inputType = this.getNodeParameter('attachmentsInputType', i, 'url') as string;
+	const binaryPropertyNames = this.getNodeParameter('binaryPropertyName', i, 'data') as string;
 
 	const content: ContentBlock[] = [];
-	if (inputType === 'url') {
-		const urls = this.getNodeParameter('attachmentsUrls', i, '') as string;
-		for (const url of splitByComma(urls)) {
-			content.push({ type: 'image_url', image_url: { url } });
-		}
-	} else {
-		const binaryPropertyNames = this.getNodeParameter('binaryPropertyName', i, 'data') as string;
-		for (const binaryPropertyName of splitByComma(binaryPropertyNames)) {
-			const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
-			const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-			const base64 = buffer.toString('base64');
-			const dataUrl = `data:${binaryData.mimeType};base64,${base64}`;
-			content.push({ type: 'image_url', image_url: { url: dataUrl } });
-		}
+	for (const binaryPropertyName of splitByComma(binaryPropertyNames)) {
+		const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+		const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+		const base64 = buffer.toString('base64');
+		const dataUrl = `data:${binaryData.mimeType};base64,${base64}`;
+		content.push({ type: 'image_url', image_url: { url: dataUrl } });
 	}
 
 	if (content.length === 0) {
