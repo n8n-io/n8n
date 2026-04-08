@@ -34,6 +34,7 @@ describe('WebhookService', () => {
 	beforeEach(() => {
 		config.load(config.default);
 		jest.clearAllMocks();
+		cacheService.set.mockResolvedValue(undefined);
 	});
 
 	[true, false].forEach((isCacheEnabled) => {

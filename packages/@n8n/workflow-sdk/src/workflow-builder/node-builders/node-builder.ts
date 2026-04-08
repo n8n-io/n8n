@@ -1127,45 +1127,54 @@ export function placeholder(hint: string): PlaceholderValue {
 }
 
 /**
- * New credential implementation
- * Currently serializes to undefined (not yet implemented).
- * Will be implemented to create actual credentials later.
+ * New credential implementation.
+ * When `id` is provided, serializes to `{ id, name }` to link an existing credential.
+ * When `id` is omitted, serializes to undefined (placeholder for credential to be created).
  */
 class NewCredentialImpl implements NewCredentialValue {
 	readonly __newCredential = true as const;
 	readonly name: string;
+	readonly id?: string;
 
-	constructor(name: string) {
+	constructor(name: string, id?: string) {
 		this.name = name;
+		this.id = id;
 	}
 
-	toJSON(): undefined {
-		// TODO: Implement credential creation
+	toJSON(): { id: string; name: string } | undefined {
+		if (this.id !== undefined) {
+			return { id: this.id, name: this.name };
+		}
 		return undefined;
 	}
 }
 
 /**
- * Create a new credential marker for credentials that need to be created
+ * Create a credential marker.
  *
- * Use this when a workflow needs a credential that doesn't exist yet.
- * Currently serializes to undefined (not yet implemented).
+ * When called with just a name, creates a placeholder for a credential that needs
+ * to be created (serializes to undefined, omitted from JSON).
+ *
+ * When called with both name and id, links an existing credential
+ * (serializes to `{ id, name }` in JSON).
  *
  * @param name - Display name for the credential (e.g., 'My Slack Bot')
- * @returns A credential marker (currently serializes to undefined)
+ * @param id - Optional ID of an existing credential to link
+ * @returns A credential marker
  *
  * @example
  * ```typescript
- * const slackNode = node('n8n-nodes-base.slack', 'v2.2', {
- *   parameters: { channel: '#general' },
- *   credentials: { slackApi: newCredential('My Slack Bot') }
- * });
- * // Currently: credential is omitted from JSON output
- * // TODO: Will create actual credentials when implemented
+ * // Link existing credential
+ * credentials: { slackApi: newCredential('Slack Bot', 'cred-123') }
+ * // → { slackApi: { id: 'cred-123', name: 'Slack Bot' } }
+ *
+ * // Placeholder (credential to be created)
+ * credentials: { slackApi: newCredential('My Slack Bot') }
+ * // → {} (omitted from JSON)
  * ```
  */
-export function newCredential(name: string): NewCredentialValue {
-	return new NewCredentialImpl(name);
+export function newCredential(name: string, id?: string): NewCredentialValue {
+	return new NewCredentialImpl(name, id);
 }
 
 /**

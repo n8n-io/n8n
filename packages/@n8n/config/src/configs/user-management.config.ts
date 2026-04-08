@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { Config, Env, Nested } from '../decorators';
+import { PasswordConfig } from './password.config';
 
 @Config
 class SmtpAuth {
@@ -101,6 +102,9 @@ const INVALID_JWT_REFRESH_TIMEOUT_WARNING =
 export class UserManagementConfig {
 	@Nested
 	emails: EmailConfig;
+
+	@Nested
+	password: PasswordConfig;
 
 	/** JWT secret to use. If unset, n8n will generate its own. */
 	@Env('N8N_USER_MANAGEMENT_JWT_SECRET')

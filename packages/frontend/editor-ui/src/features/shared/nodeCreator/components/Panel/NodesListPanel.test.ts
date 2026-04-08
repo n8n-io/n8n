@@ -273,8 +273,8 @@ describe('NodesListPanel', () => {
 		});
 	});
 
-	describe('oppeningContext', () => {
-		it('should have null oppeningContext by default', () => {
+	describe('openingContext', () => {
+		it('should have null openingContext by default', () => {
 			getWrapperComponent(() => {
 				const nodeCreatorStore = useNodeCreatorStore();
 				const { setMergeNodes } = nodeCreatorStore;
@@ -287,12 +287,12 @@ describe('NodesListPanel', () => {
 					}),
 				]);
 
-				expect(nodeCreatorStore.oppeningContext).toBeNull();
+				expect(nodeCreatorStore.openingContext).toBeNull();
 				return {};
 			});
 		});
 
-		it('should maintain oppeningContext when set to "replacement"', async () => {
+		it('should maintain openingContext when set to "replacement"', async () => {
 			getWrapperComponent(() => {
 				const nodeCreatorStore = useNodeCreatorStore();
 				const { setMergeNodes } = nodeCreatorStore;
@@ -306,15 +306,15 @@ describe('NodesListPanel', () => {
 				]);
 
 				// Simulate setting context when replacing a node
-				nodeCreatorStore.oppeningContext = 'replacement';
-				expect(nodeCreatorStore.oppeningContext).toBe('replacement');
+				nodeCreatorStore.openingContext = 'replacement';
+				expect(nodeCreatorStore.openingContext).toBe('replacement');
 				return {};
 			});
 
 			await nextTick();
 		});
 
-		it('should allow resetting oppeningContext back to null', async () => {
+		it('should allow resetting openingContext back to null', async () => {
 			getWrapperComponent(() => {
 				const nodeCreatorStore = useNodeCreatorStore();
 				const { setMergeNodes } = nodeCreatorStore;
@@ -328,19 +328,19 @@ describe('NodesListPanel', () => {
 				]);
 
 				// Set context
-				nodeCreatorStore.oppeningContext = 'replacement';
-				expect(nodeCreatorStore.oppeningContext).toBe('replacement');
+				nodeCreatorStore.openingContext = 'replacement';
+				expect(nodeCreatorStore.openingContext).toBe('replacement');
 
 				// Reset context (simulating node creator close)
-				nodeCreatorStore.oppeningContext = null;
-				expect(nodeCreatorStore.oppeningContext).toBeNull();
+				nodeCreatorStore.openingContext = null;
+				expect(nodeCreatorStore.openingContext).toBeNull();
 				return {};
 			});
 
 			await nextTick();
 		});
 
-		it('should preserve oppeningContext during node search when in replacement mode', async () => {
+		it('should preserve openingContext during node search when in replacement mode', async () => {
 			const mockedNodes = [...Array(10).keys()].map(
 				(n) =>
 					mockSimplifiedNodeType({
@@ -370,7 +370,7 @@ describe('NodesListPanel', () => {
 					const { setMergeNodes, setSelectedView } = nodeCreatorStore;
 
 					// Set replacement context
-					nodeCreatorStore.oppeningContext = 'replacement';
+					nodeCreatorStore.openingContext = 'replacement';
 
 					watch(
 						() => props.nodeTypes,
@@ -405,7 +405,7 @@ describe('NodesListPanel', () => {
 			await nextTick();
 
 			const nodeCreatorStore = useNodeCreatorStore();
-			expect(nodeCreatorStore.oppeningContext).toBe('replacement');
+			expect(nodeCreatorStore.openingContext).toBe('replacement');
 
 			// Perform search
 			await fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
@@ -414,7 +414,7 @@ describe('NodesListPanel', () => {
 			await nextTick();
 
 			// Context should still be 'replacement' after search
-			expect(nodeCreatorStore.oppeningContext).toBe('replacement');
+			expect(nodeCreatorStore.openingContext).toBe('replacement');
 		});
 	});
 });

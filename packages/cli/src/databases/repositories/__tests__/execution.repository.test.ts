@@ -5,7 +5,6 @@ import type { IExecutionResponse } from '@n8n/db';
 import { ExecutionEntity, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
-import { Not, LessThanOrEqual } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { BinaryDataService } from 'n8n-core';
 import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
@@ -34,22 +33,33 @@ describe('ExecutionRepository', () => {
 			'on %s, should be called with expected args',
 			async (dbType) => {
 				globalConfig.database.type = dbType;
-				entityManager.find.mockResolvedValueOnce([]);
+
+				const qb = {
+					select: jest.fn().mockReturnThis(),
+					where: jest.fn().mockReturnThis(),
+					andWhere: jest.fn().mockReturnThis(),
+					orderBy: jest.fn().mockReturnThis(),
+					getMany: jest.fn().mockResolvedValue([]),
+				};
+				jest
+					.spyOn(executionRepository, 'createQueryBuilder')
+					.mockReturnValue(qb as unknown as SelectQueryBuilder<ExecutionEntity>);
 
 				await executionRepository.getWaitingExecutions();
 
-				expect(entityManager.find).toHaveBeenCalledWith(ExecutionEntity, {
-					order: { waitTill: 'ASC' },
-					select: ['id', 'waitTill'],
-					where: {
-						status: Not('crashed'),
-						waitTill: LessThanOrEqual(
-							dbType === 'sqlite'
-								? '2023-12-28 12:36:06.789'
-								: new Date('2023-12-28T12:36:06.789Z'),
-						),
-					},
+				expect(executionRepository.createQueryBuilder).toHaveBeenCalledWith('e');
+				expect(qb.select).toHaveBeenCalledWith(['e.id', 'e.waitTill']);
+
+				const expectedCondition =
+					dbType === 'postgresdb'
+						? "e.waitTill <= NOW() + INTERVAL '15 seconds'"
+						: "e.waitTill <= datetime('now', '+15 seconds')";
+				expect(qb.where).toHaveBeenCalledWith(expectedCondition);
+				expect(qb.andWhere).toHaveBeenCalledWith('e.status = :status', {
+					status: 'waiting',
 				});
+				expect(qb.orderBy).toHaveBeenCalledWith('e.waitTill', 'ASC');
+				expect(qb.getMany).toHaveBeenCalled();
 			},
 		);
 	});

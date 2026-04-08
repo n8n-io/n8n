@@ -16,6 +16,14 @@ export default {
 			options: ['light', 'dark'],
 		},
 	},
+
+	parameters: {
+		docs: {
+			description: {
+				component: 'A contextual message banner for success, info, warning, and error feedback.',
+			},
+		},
+	},
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({

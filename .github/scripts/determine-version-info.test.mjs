@@ -1,5 +1,6 @@
 import { describe, it, mock, before } from 'node:test';
 import assert from 'node:assert/strict';
+import { tagVersionInfoToReleaseCandidateBranchName } from './github-helpers.mjs';
 
 /**
  * Run these tests by running
@@ -18,6 +19,7 @@ mock.module('./github-helpers.mjs', {
 			if (track === 'beta') return { version: '2.10.1', tag: 'n8n@2.10.1' };
 			return { version: '1.123.33', tag: 'n8n@1.123.33' };
 		},
+		tagVersionInfoToReleaseCandidateBranchName,
 		writeGithubOutput: () => {}, // no-op in tests
 		getCommitForRef: () => {}, // no-op
 		localRefExists: () => {}, // no-op

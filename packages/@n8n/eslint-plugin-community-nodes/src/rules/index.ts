@@ -1,6 +1,7 @@
 import type { AnyRuleModule } from '@typescript-eslint/utils/ts-eslint';
 
 import { AiNodePackageJsonRule } from './ai-node-package-json.js';
+import { CredClassFieldIconMissingRule } from './cred-class-field-icon-missing.js';
 import { CredentialDocumentationUrlRule } from './credential-documentation-url.js';
 import { CredentialPasswordFieldRule } from './credential-password-field.js';
 import { CredentialTestRequiredRule } from './credential-test-required.js';
@@ -10,7 +11,10 @@ import { NoDeprecatedWorkflowFunctionsRule } from './no-deprecated-workflow-func
 import { NoHttpRequestWithManualAuthRule } from './no-http-request-with-manual-auth.js';
 import { NoRestrictedGlobalsRule } from './no-restricted-globals.js';
 import { NoRestrictedImportsRule } from './no-restricted-imports.js';
+import { NodeClassDescriptionIconMissingRule } from './node-class-description-icon-missing.js';
+import { NodeConnectionTypeLiteralRule } from './node-connection-type-literal.js';
 import { NodeUsableAsToolRule } from './node-usable-as-tool.js';
+import { OptionsSortedAlphabeticallyRule } from './options-sorted-alphabetically.js';
 import { PackageNameConventionRule } from './package-name-convention.js';
 import { ResourceOperationPatternRule } from './resource-operation-pattern.js';
 
@@ -21,6 +25,7 @@ export const rules = {
 	'credential-password-field': CredentialPasswordFieldRule,
 	'no-deprecated-workflow-functions': NoDeprecatedWorkflowFunctionsRule,
 	'node-usable-as-tool': NodeUsableAsToolRule,
+	'options-sorted-alphabetically': OptionsSortedAlphabeticallyRule,
 	'package-name-convention': PackageNameConventionRule,
 	'credential-test-required': CredentialTestRequiredRule,
 	'no-credential-reuse': NoCredentialReuseRule,
@@ -28,4 +33,7 @@ export const rules = {
 	'icon-validation': IconValidationRule,
 	'resource-operation-pattern': ResourceOperationPatternRule,
 	'credential-documentation-url': CredentialDocumentationUrlRule,
+	'node-class-description-icon-missing': NodeClassDescriptionIconMissingRule,
+	'cred-class-field-icon-missing': CredClassFieldIconMissingRule,
+	'node-connection-type-literal': NodeConnectionTypeLiteralRule,
 } satisfies Record<string, AnyRuleModule>;

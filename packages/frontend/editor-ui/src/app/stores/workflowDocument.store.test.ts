@@ -7,6 +7,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -18,6 +19,7 @@ import type { INodeUi } from '@/Interface';
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeType: vi.fn().mockReturnValue(null),
+		communityNodeType: vi.fn().mockReturnValue(null),
 	})),
 }));
 
@@ -30,26 +32,31 @@ describe('workflowDocument.store orchestration', () => {
 		setActivePinia(createPinia());
 	});
 
-	it('removeAllNodes clears both nodes and pin data', () => {
-		const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+	it('removeAllNodes clears nodes, connections, and pin data', () => {
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
 
-		// Set up nodes and pin data
-		store.setNodes([createNode({ name: 'A' }), createNode({ name: 'B' })]);
-		store.setPinData({ A: [{ json: { value: 1 } }] });
+		// Set up nodes, connections, and pin data
+		workflowDocumentStore.setNodes([createNode({ name: 'A' }), createNode({ name: 'B' })]);
+		workflowDocumentStore.setConnections({
+			A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+		});
+		workflowDocumentStore.setPinData({ A: [{ json: { value: 1 } }] });
 
-		// Verify both are populated
-		expect(store.allNodes).toHaveLength(2);
-		expect(store.pinData).toHaveProperty('A');
+		// Verify all are populated
+		expect(workflowDocumentStore.allNodes).toHaveLength(2);
+		expect(workflowDocumentStore.connectionsBySourceNode).toHaveProperty('A');
+		expect(workflowDocumentStore.pinData).toHaveProperty('A');
 
-		// removeAllNodes should clear both
-		store.removeAllNodes();
+		// removeAllNodes should clear all three
+		workflowDocumentStore.removeAllNodes();
 
-		expect(store.allNodes).toHaveLength(0);
-		expect(store.pinData).toEqual({});
+		expect(workflowDocumentStore.allNodes).toHaveLength(0);
+		expect(workflowDocumentStore.connectionsBySourceNode).toEqual({});
+		expect(workflowDocumentStore.pinData).toEqual({});
 	});
 
 	it('node mutation triggers markStateDirty on UI store', () => {
-		const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
 		const uiStore = useUIStore();
 
 		// Start clean
@@ -57,7 +64,28 @@ describe('workflowDocument.store orchestration', () => {
 		expect(uiStore.stateIsDirty).toBe(false);
 
 		// addNode fires onStateDirty, which the store wires to markStateDirty
-		store.addNode(createNode({ name: 'A' }));
+		workflowDocumentStore.addNode(createNode({ name: 'A' }));
+
+		expect(uiStore.stateIsDirty).toBe(true);
+	});
+
+	it('connection mutation triggers markStateDirty on UI store', () => {
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+		const uiStore = useUIStore();
+
+		workflowDocumentStore.setNodes([createNode({ name: 'A' }), createNode({ name: 'B' })]);
+
+		// Start clean
+		uiStore.markStateClean();
+		expect(uiStore.stateIsDirty).toBe(false);
+
+		// addConnection fires onStateDirty, which the store wires to markStateDirty
+		workflowDocumentStore.addConnection({
+			connection: [
+				{ node: 'A', type: NodeConnectionTypes.Main, index: 0 },
+				{ node: 'B', type: NodeConnectionTypes.Main, index: 0 },
+			],
+		});
 
 		expect(uiStore.stateIsDirty).toBe(true);
 	});

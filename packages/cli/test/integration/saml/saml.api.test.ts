@@ -1,10 +1,27 @@
-import { randomEmail, randomName, randomValidPassword } from '@n8n/backend-test-utils';
+import type { SamlPreferences } from '@n8n/api-types';
+import {
+	createTeamProject,
+	getProjectRoleForUser,
+	randomEmail,
+	randomName,
+	randomValidPassword,
+} from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import { type User, UserRepository, RoleRepository, RoleMappingRuleRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
+import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
+
+import {
+	EC_TEST_CERTIFICATE,
+	EC_TEST_PRIVATE_KEY,
+	RSA_MISMATCHED_CERTIFICATE,
+	RSA_TEST_CERTIFICATE,
+	RSA_TEST_PRIVATE_KEY,
+} from '@/modules/sso-saml/__tests__/saml-signing-test-fixtures';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { setSamlLoginEnabled } from '@/modules/sso-saml/saml-helpers';
 import { SamlService } from '@/modules/sso-saml/saml.service.ee';
 import {
@@ -289,6 +306,300 @@ describe('Check endpoint permissions', () => {
 	});
 });
 
+describe('Signing key configuration via API', () => {
+	const originalEnv = process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS;
+
+	afterEach(() => {
+		if (originalEnv !== undefined) {
+			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = originalEnv;
+		} else {
+			delete process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS;
+		}
+	});
+
+	describe('POST /sso/saml/config with signing keys', () => {
+		test('should reject signing keys when feature flag is disabled', async () => {
+			delete process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS;
+
+			const response = await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+					signingCertificate: RSA_TEST_CERTIFICATE,
+				})
+				.expect(400);
+
+			expect(response.body.message).toContain('SAML request signing is not enabled');
+		});
+
+		test('should accept valid RSA signing key pair', async () => {
+			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+			await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+					signingCertificate: RSA_TEST_CERTIFICATE,
+				})
+				.expect(200);
+		});
+
+		test('should accept valid EC signing key pair', async () => {
+			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+			await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					signingPrivateKey: EC_TEST_PRIVATE_KEY,
+					signingCertificate: EC_TEST_CERTIFICATE,
+				})
+				.expect(200);
+		});
+
+		test('should reject mismatched key and certificate', async () => {
+			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+			const response = await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					authnRequestsSigned: true,
+					signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+					signingCertificate: RSA_MISMATCHED_CERTIFICATE,
+				})
+				.expect(400);
+
+			expect(response.body.message).toContain('do not match');
+		});
+
+		test('should reject invalid PEM private key format', async () => {
+			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+			const response = await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					signingPrivateKey: 'not-a-valid-pem-key',
+					signingCertificate: RSA_TEST_CERTIFICATE,
+				})
+				.expect(400);
+
+			expect(response.body.message).toContain('Invalid signing private key format');
+		});
+
+		test('should reject invalid PEM certificate format', async () => {
+			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+			const response = await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+					signingCertificate: 'not-a-valid-pem-cert',
+				})
+				.expect(400);
+
+			expect(response.body.message).toContain('Invalid signing certificate format');
+		});
+
+		test('should require both key and cert when authnRequestsSigned is true', async () => {
+			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+			// Clear any signing keys stored from prior tests
+			const samlService = Container.get(SamlService);
+			type PrivatePrefs = { _samlPreferences: SamlPreferences };
+			(samlService as unknown as PrivatePrefs)._samlPreferences.signingPrivateKey = undefined;
+			(samlService as unknown as PrivatePrefs)._samlPreferences.signingCertificate = undefined;
+
+			const response = await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					authnRequestsSigned: true,
+					signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+				})
+				.expect(400);
+
+			expect(response.body.message).toContain(
+				'Both signingPrivateKey and signingCertificate are required',
+			);
+		});
+	});
+
+	describe('GET /sso/saml/config after setting signing keys', () => {
+		test('should return redacted private key and plaintext certificate after POST', async () => {
+			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+			// POST the config with signing keys
+			await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+					signingCertificate: RSA_TEST_CERTIFICATE,
+				})
+				.expect(200);
+
+			// GET the config back (response is wrapped in { data: ... })
+			const response = await authOwnerAgent.get('/sso/saml/config').expect(200);
+			const config = response.body.data;
+
+			// Private key should be redacted with the blanking value, never plaintext
+			expect(config.signingPrivateKey).toBe(CREDENTIAL_BLANKING_VALUE);
+
+			// Certificate should be returned in plaintext (it's public data)
+			expect(config.signingCertificate).toBe(RSA_TEST_CERTIFICATE);
+		});
+
+		test('should return redacted EC private key and plaintext certificate after POST', async () => {
+			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+			await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					signingPrivateKey: EC_TEST_PRIVATE_KEY,
+					signingCertificate: EC_TEST_CERTIFICATE,
+				})
+				.expect(200);
+
+			const response = await authOwnerAgent.get('/sso/saml/config').expect(200);
+			const config = response.body.data;
+
+			expect(config.signingPrivateKey).toBe(CREDENTIAL_BLANKING_VALUE);
+			expect(config.signingCertificate).toBe(EC_TEST_CERTIFICATE);
+		});
+
+		test('should not return signing fields when none were set', async () => {
+			// Clear any previously stored signing keys from prior tests
+			const samlService = Container.get(SamlService);
+			type PrivatePrefs = { _samlPreferences: SamlPreferences };
+			(samlService as unknown as PrivatePrefs)._samlPreferences.signingPrivateKey = undefined;
+			(samlService as unknown as PrivatePrefs)._samlPreferences.signingCertificate = undefined;
+
+			// POST config without signing keys
+			await authOwnerAgent.post('/sso/saml/config').send(sampleConfig).expect(200);
+
+			const response = await authOwnerAgent.get('/sso/saml/config').expect(200);
+			const config = response.body.data;
+
+			// Fields should not be present (JSON.stringify drops undefined values)
+			expect(config.signingPrivateKey).toBeUndefined();
+			expect(config.signingCertificate).toBeUndefined();
+		});
+	});
+
+	describe('POST + GET round-trip preserves decryptability', () => {
+		test('should allow service to decrypt RSA key after API round-trip', async () => {
+			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+			await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+					signingCertificate: RSA_TEST_CERTIFICATE,
+				})
+				.expect(200);
+
+			const samlService = Container.get(SamlService);
+			// @ts-expect-error -- accessing private method for testing
+			const decryptedKey = samlService.getDecryptedSigningPrivateKey();
+			expect(decryptedKey).toBe(RSA_TEST_PRIVATE_KEY);
+		});
+
+		test('should allow service to decrypt EC key after API round-trip', async () => {
+			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+			await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					signingPrivateKey: EC_TEST_PRIVATE_KEY,
+					signingCertificate: EC_TEST_CERTIFICATE,
+				})
+				.expect(200);
+
+			const samlService = Container.get(SamlService);
+			// @ts-expect-error -- accessing private method for testing
+			const decryptedKey = samlService.getDecryptedSigningPrivateKey();
+			expect(decryptedKey).toBe(EC_TEST_PRIVATE_KEY);
+		});
+
+		test('should clear signing key when empty string is sent via POST', async () => {
+			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+			// POST with real key
+			await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+					signingCertificate: RSA_TEST_CERTIFICATE,
+				})
+				.expect(200);
+
+			// Verify key is stored
+			const samlService = Container.get(SamlService);
+			// @ts-expect-error -- accessing private method for testing
+			expect(samlService.getDecryptedSigningPrivateKey()).toBe(RSA_TEST_PRIVATE_KEY);
+
+			// Clear both fields
+			await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					signingPrivateKey: '',
+					signingCertificate: '',
+				})
+				.expect(200);
+
+			// Key should be cleared
+			// @ts-expect-error -- accessing private method for testing
+			expect(samlService.getDecryptedSigningPrivateKey()).toBeUndefined();
+			expect(samlService.samlPreferences.signingCertificate).toBeUndefined();
+
+			// GET should not return signing fields
+			const response = await authOwnerAgent.get('/sso/saml/config').expect(200);
+			expect(response.body.data.signingPrivateKey).toBeUndefined();
+			expect(response.body.data.signingCertificate).toBeUndefined();
+		});
+
+		test('should preserve existing key when POST sends back blanking value', async () => {
+			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+
+			// POST with real key
+			await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+					signingCertificate: RSA_TEST_CERTIFICATE,
+				})
+				.expect(200);
+
+			// Simulate UI round-trip: GET returns blanking value, UI sends it back in POST
+			await authOwnerAgent
+				.post('/sso/saml/config')
+				.send({
+					...sampleConfig,
+					signingPrivateKey: CREDENTIAL_BLANKING_VALUE,
+					signingCertificate: RSA_TEST_CERTIFICATE,
+				})
+				.expect(200);
+
+			// Key should still be decryptable to original value
+			const samlService = Container.get(SamlService);
+			// @ts-expect-error -- accessing private method for testing
+			const decryptedKey = samlService.getDecryptedSigningPrivateKey();
+			expect(decryptedKey).toBe(RSA_TEST_PRIVATE_KEY);
+		});
+	});
+});
+
 describe('SAML email validation', () => {
 	let samlService: SamlService;
 
@@ -300,11 +611,14 @@ describe('SAML email validation', () => {
 		test('should throw BadRequestError for invalid email format', async () => {
 			// Mock getAttributesFromLoginResponse to return invalid email
 			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
-				email: 'invalid-email-format',
-				firstName: 'John',
-				lastName: 'Doe',
-				userPrincipalName: 'john.doe',
-				n8nInstanceRole: 'n8n_instance_role',
+				mapped: {
+					email: 'invalid-email-format',
+					firstName: 'John',
+					lastName: 'Doe',
+					userPrincipalName: 'john.doe',
+					n8nInstanceRole: 'n8n_instance_role',
+				},
+				raw: {},
 			});
 
 			const mockRequest = {} as express.Request;
@@ -318,11 +632,14 @@ describe('SAML email validation', () => {
 			'should throw BadRequestError for invalid email <%s>',
 			async (invalidEmail) => {
 				jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
-					email: invalidEmail,
-					firstName: 'John',
-					lastName: 'Doe',
-					userPrincipalName: 'john.doe',
-					n8nInstanceRole: 'n8n_instance_role',
+					mapped: {
+						email: invalidEmail,
+						firstName: 'John',
+						lastName: 'Doe',
+						userPrincipalName: 'john.doe',
+						n8nInstanceRole: 'n8n_instance_role',
+					},
+					raw: {},
 				});
 
 				const mockRequest = {} as express.Request;
@@ -342,11 +659,14 @@ describe('SAML email validation', () => {
 			const mockRequest = {} as express.Request;
 
 			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
-				email: validEmail,
-				firstName: 'John',
-				lastName: 'Doe',
-				userPrincipalName: 'john.doe',
-				n8nInstanceRole: 'n8n_instance_role',
+				mapped: {
+					email: validEmail,
+					firstName: 'John',
+					lastName: 'Doe',
+					userPrincipalName: 'john.doe',
+					n8nInstanceRole: 'n8n_instance_role',
+				},
+				raw: {},
 			});
 
 			// Should not throw an error for valid emails
@@ -359,11 +679,14 @@ describe('SAML email validation', () => {
 			const upperCaseEmail = 'USER@EXAMPLE.COM';
 
 			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
-				email: upperCaseEmail,
-				firstName: 'John',
-				lastName: 'Doe',
-				userPrincipalName: 'john.doe',
-				n8nInstanceRole: 'n8n_instance_role',
+				mapped: {
+					email: upperCaseEmail,
+					firstName: 'John',
+					lastName: 'Doe',
+					userPrincipalName: 'john.doe',
+					n8nInstanceRole: 'n8n_instance_role',
+				},
+				raw: {},
 			});
 
 			const mockRequest = {} as express.Request;
@@ -373,5 +696,113 @@ describe('SAML email validation', () => {
 			expect(result).toBeDefined();
 			expect(result.attributes.email).toBe(upperCaseEmail); // Original email should be preserved in attributes
 		});
+	});
+});
+
+describe('SAML SSO provisioning', () => {
+	let samlService: SamlService;
+	let roleMappingRuleRepository: RoleMappingRuleRepository;
+	let roleRepository: RoleRepository;
+	let userRepository: UserRepository;
+	let originalEnvFlag: string | undefined;
+	let savedProvisioningConfig: unknown;
+
+	beforeAll(async () => {
+		samlService = Container.get(SamlService);
+		roleMappingRuleRepository = Container.get(RoleMappingRuleRepository);
+		roleRepository = Container.get(RoleRepository);
+		userRepository = Container.get(UserRepository);
+		await Container.get(ProvisioningService).init();
+	});
+
+	beforeEach(() => {
+		originalEnvFlag = process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY;
+		process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY = 'true';
+
+		const provisioningService = Container.get(ProvisioningService);
+		// @ts-expect-error - provisioningConfig is private
+		savedProvisioningConfig = { ...provisioningService.provisioningConfig };
+		// @ts-expect-error - provisioningConfig is private
+		provisioningService.provisioningConfig.scopesUseExpressionMapping = true;
+	});
+
+	afterEach(async () => {
+		if (originalEnvFlag === undefined) {
+			delete process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY;
+		} else {
+			process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY = originalEnvFlag;
+		}
+
+		const provisioningService = Container.get(ProvisioningService);
+		// @ts-expect-error - provisioningConfig is private
+		provisioningService.provisioningConfig = { ...savedProvisioningConfig };
+
+		await roleMappingRuleRepository.delete({});
+	});
+
+	it('should provision instance role via expression mapping', async () => {
+		const adminRole = await roleRepository.findOneOrFail({ where: { slug: 'global:admin' } });
+		await roleMappingRuleRepository.save(
+			roleMappingRuleRepository.create({
+				expression: "{{ $claims.department === 'it' }}",
+				role: adminRole,
+				type: 'instance',
+				order: 0,
+			}),
+		);
+
+		jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			mapped: {
+				email: 'saml-expr-instance@example.com',
+				firstName: 'SAML',
+				lastName: 'User',
+				userPrincipalName: 'saml-expr-instance',
+			},
+			raw: { department: 'it', email: 'saml-expr-instance@example.com' },
+		});
+
+		const mockRequest = {} as express.Request;
+		const result = await samlService.handleSamlLogin(mockRequest, 'post');
+		expect(result).toBeDefined();
+
+		const userFromDB = await userRepository.findOne({
+			where: { email: 'saml-expr-instance@example.com' },
+			relations: ['role'],
+		});
+		expect(userFromDB!.role.slug).toEqual('global:admin');
+	});
+
+	it('should provision project role via expression mapping', async () => {
+		const project = await createTeamProject('saml-expr-project-role-test');
+
+		const editorRole = await roleRepository.findOneOrFail({ where: { slug: 'project:editor' } });
+		const rule = roleMappingRuleRepository.create({
+			expression: "{{ $claims.groups !== undefined && $claims.groups.includes('n8n-editors') }}",
+			role: editorRole,
+			type: 'project',
+			order: 0,
+		});
+		rule.projects = [project];
+		await roleMappingRuleRepository.save(rule);
+
+		jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			mapped: {
+				email: 'saml-expr-project@example.com',
+				firstName: 'SAML',
+				lastName: 'User',
+				userPrincipalName: 'saml-expr-project',
+			},
+			raw: {
+				email: 'saml-expr-project@example.com',
+				groups: ['n8n-editors', 'devops'],
+			},
+		});
+
+		const mockRequest = {} as express.Request;
+		const result = await samlService.handleSamlLogin(mockRequest, 'post');
+		expect(result.authenticatedUser).toBeDefined();
+
+		const projectRole = await getProjectRoleForUser(project.id, result.authenticatedUser!.id);
+		expect(projectRole).toEqual('project:editor');
 	});
 });

@@ -21,15 +21,13 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { useUIStore } from '@/app/stores/ui.store';
-import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
-import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import type { IWorkflowToShare, IWorkflowDb } from '@/Interface';
 import { telemetry } from '@/app/plugins/telemetry';
 import router from '@/app/router';
 import { sanitizeFilename } from '@n8n/utils';
 import saveAs from 'file-saver';
 import { nodeViewEventBus } from '@/app/event-bus';
-import type { FolderShortInfo } from '@/features/core/folders/folders.types';
+import type { FolderShortInfo, WorkflowListEventMap } from '@/features/core/folders/folders.types';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
@@ -39,6 +37,9 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { getWorkflowId } from '@/app/components/MainHeader/utils';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
+import { ResourceType } from '@/features/collaboration/projects/projects.utils';
+import { useMoveResourceToProjectToast } from '@/features/collaboration/projects/composables/useMoveResourceToProjectToast';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const props = defineProps<{
 	workflowPermissions: PermissionsRecord['workflow'];
@@ -65,8 +66,10 @@ const tagsStore = useTagsStore();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 const workflowHelpers = useWorkflowHelpers();
-const changeOwnerEventBus = createEventBus();
+const moveWorkflowEventBus = createEventBus<WorkflowListEventMap>();
+const { showMoveToProjectToast } = useMoveResourceToProjectToast();
 const workflowTelemetry = useTelemetry();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const onWorkflowPage = computed(() => {
 	return route.meta && (route.meta.nodeView || route.meta.keepWorkflowAlive === true);
@@ -121,7 +124,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		},
 	];
 
-	if (isSharingEnabled.value) {
+	if (isSharingEnabled.value && props.workflowPermissions.share) {
 		actions.push({
 			id: WORKFLOW_MENU_ACTIONS.SHARE,
 			label: locale.baseText('workflowDetails.share'),
@@ -238,7 +241,9 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			const workflowId = getWorkflowId(props.id, route.params.name);
 			if (!workflowId) return;
 
-			const workflowDescription = workflowsListStore.getWorkflowById(workflowId).description;
+			const workflowDescription =
+				workflowDocumentStore?.value?.description ??
+				workflowsListStore.getWorkflowById(workflowId).description;
 			uiStore.openModalWithData({
 				name: WORKFLOW_DESCRIPTION_MODAL_KEY,
 				data: {
@@ -359,20 +364,34 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			if (!workflowId) {
 				return;
 			}
-			changeOwnerEventBus.once(
-				'resource-moved',
-				async () => await router.push({ name: VIEWS.WORKFLOWS }),
-			);
+			const workflow = workflowsListStore.workflowsById[workflowId];
 
-			uiStore.openModalWithData({
-				name: PROJECT_MOVE_RESOURCE_MODAL,
-				data: {
-					resource: workflowsListStore.workflowsById[workflowId],
+			const navigateAway = async () => await router.push({ name: VIEWS.WORKFLOWS });
+			moveWorkflowEventBus.once('workflow-transferred', async (event) => {
+				await navigateAway();
+				showMoveToProjectToast({
 					resourceType: ResourceType.Workflow,
 					resourceTypeLabel: locale.baseText('generic.workflow').toLowerCase(),
-					eventBus: changeOwnerEventBus,
-				},
+					resourceName: event.source.workflow.name,
+					targetProject: event.toast.targetProject,
+					targetProjectName: event.toast.targetProjectName,
+					destinationFolderId: event.destination.parentFolder.id,
+					shareUsedCredentials: event.toast.shareUsedCredentials,
+					areAllUsedCredentialsShareable: event.toast.areAllUsedCredentialsShareable,
+				});
 			});
+
+			uiStore.openMoveToFolderModal(
+				'workflow',
+				{
+					id: workflow.id,
+					name: workflow.name,
+					parentFolderId: props.currentFolder?.id,
+					sharedWithProjects: workflow.sharedWithProjects,
+					homeProjectId: workflow.homeProject?.id,
+				},
+				moveWorkflowEventBus,
+			);
 			break;
 		}
 		default:

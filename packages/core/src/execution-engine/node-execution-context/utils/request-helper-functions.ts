@@ -15,9 +15,8 @@ import type {
 	OAuth2CredentialData,
 } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
-import { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import type { AxiosError, AxiosHeaders, AxiosRequestConfig, AxiosResponse } from 'axios';
+import type { AxiosError, AxiosHeaders, AxiosRequestConfig } from 'axios';
 import axios from 'axios';
 import crypto, { createHmac } from 'crypto';
 import FormData from 'form-data';
@@ -45,7 +44,6 @@ import type {
 	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
-	IgnoreStatusErrorConfig,
 	IHttpRequestOptions,
 	IN8nHttpFullResponse,
 	IN8nHttpResponse,
@@ -69,250 +67,26 @@ import { stringify } from 'qs';
 import { Readable } from 'stream';
 
 import type { SsrfBridge } from '@/execution-engine';
-import { createHttpProxyAgent, createHttpsProxyAgent } from '@/http-proxy';
+import { callEvalMockHandler, normalizeLegacyRequest } from '@/execution-engine/eval-mock-helpers';
 import type { IResponseError } from '@/interfaces';
 
 import { binaryToString } from './binary-helper-functions';
 import { parseIncomingMessage } from './parse-incoming-message';
-
-axios.defaults.timeout = 300000;
-// Prevent axios from adding x-form-www-urlencoded headers by default
-axios.defaults.headers.post = {};
-axios.defaults.headers.put = {};
-axios.defaults.headers.patch = {};
-axios.defaults.paramsSerializer = (params) => {
-	if (params instanceof URLSearchParams) {
-		return params.toString();
-	}
-	return stringify(params, { arrayFormat: 'indices' });
-};
-// Disable axios proxy, we handle it ourselves
-// Axios proxy option has problems: https://github.com/axios/axios/issues/4531
-axios.defaults.proxy = false;
-
-function validateUrl(url?: string): boolean {
-	if (!url) return false;
-
-	return tryParseUrl(url) !== null;
-}
-
-function isIgnoreStatusErrorConfig(
-	ignoreHttpStatusErrors: unknown,
-): ignoreHttpStatusErrors is IgnoreStatusErrorConfig {
-	return (
-		typeof ignoreHttpStatusErrors === 'object' &&
-		ignoreHttpStatusErrors !== null &&
-		'ignore' in ignoreHttpStatusErrors &&
-		ignoreHttpStatusErrors.ignore === true
-	);
-}
-
-function getUrlFromProxyConfig(proxyConfig: IHttpRequestOptions['proxy'] | string): string | null {
-	if (typeof proxyConfig === 'string') {
-		return validateUrl(proxyConfig) ? proxyConfig : null;
-	}
-
-	if (!proxyConfig?.host) return null;
-
-	const { protocol, host, port, auth } = proxyConfig;
-	const safeProtocol = protocol?.endsWith(':') ? protocol.slice(0, -1) : (protocol ?? 'http');
-
-	try {
-		const url = new URL(`${safeProtocol}://${host}`);
-		if (port !== undefined) url.port = String(port);
-		if (auth?.username) {
-			url.username = auth.username;
-			url.password = auth.password ?? '';
-		}
-		return url.href;
-	} catch {
-		return null;
-	}
-}
-
-function buildTargetUrl(url?: string, baseURL?: string): string | undefined {
-	if (!url) return undefined;
-
-	try {
-		return baseURL ? new URL(url, baseURL).href : url;
-	} catch {
-		return undefined;
-	}
-}
-
-function setAxiosAgents(
-	config: AxiosRequestConfig,
-	agentOptions?: AgentOptions,
-	proxyConfig?: IHttpRequestOptions['proxy'] | string,
-	secureLookup?: ReturnType<SsrfBridge['createSecureLookup']>,
-): void {
-	if (config.httpAgent || config.httpsAgent) return;
-
-	const customProxyUrl = getUrlFromProxyConfig(proxyConfig);
-
-	const targetUrl = buildTargetUrl(config.url, config.baseURL);
-
-	if (!targetUrl) return;
-
-	// Inject secureLookup only for non-proxy agents. When a proxy is used,
-	// the lookup option applies to resolving the proxy server hostname, not
-	// the target. Pre-request validateUrl covers the proxy path.
-	const effectiveOptions =
-		secureLookup && !customProxyUrl ? { ...agentOptions, lookup: secureLookup } : agentOptions;
-
-	config.httpAgent = createHttpProxyAgent(customProxyUrl, targetUrl, effectiveOptions);
-	config.httpsAgent = createHttpsProxyAgent(customProxyUrl, targetUrl, effectiveOptions);
-}
-
-function applyVendorHeaders(config: AxiosRequestConfig) {
-	if ([config.url, config.baseURL].some((url) => url?.startsWith('https://api.openai.com/'))) {
-		config.headers = {
-			...Container.get(AiConfig).openAiDefaultHeaders,
-			...(config.headers || {}),
-		};
-	}
-}
-
-axios.interceptors.request.use((config) => {
-	// If no content-type is set by us, prevent axios from force-setting the content-type to `application/x-www-form-urlencoded`
-	if (config.data === undefined) {
-		config.headers.setContentType(false, false);
-	}
-
-	setAxiosAgents(config);
-	applyVendorHeaders(config);
-
-	return config;
-});
-
-function searchForHeader(config: AxiosRequestConfig, headerName: string) {
-	if (config.headers === undefined) {
-		return undefined;
-	}
-
-	const headerNames = Object.keys(config.headers);
-	headerName = headerName.toLowerCase();
-	return headerNames.find((thisHeader) => thisHeader.toLowerCase() === headerName);
-}
-
-const getHostFromRequestObject = (
-	requestObject: Partial<{
-		url: string;
-		uri: string;
-		baseURL: string;
-	}>,
-): string | null => {
-	try {
-		const url = (requestObject.url ?? requestObject.uri) as string;
-		return new URL(url, requestObject.baseURL).hostname;
-	} catch (error) {
-		return null;
-	}
-};
-
-const getBeforeRedirectFn =
-	(
-		agentOptions: AgentOptions,
-		axiosConfig: AxiosRequestConfig,
-		proxyConfig: IHttpRequestOptions['proxy'] | string | undefined,
-		sendCredentialsOnCrossOriginRedirect: boolean,
-		ssrfBridge?: SsrfBridge,
-	) =>
-	(redirectedRequest: Record<string, any>) => {
-		// SSRF: validate redirect target synchronously for direct-IP URIs.
-		// Hostname-based redirect targets are caught by secureLookup on the agent.
-		if (ssrfBridge) {
-			ssrfBridge.validateRedirectSync(redirectedRequest.href);
-		}
-
-		const redirectAgentOptions: AgentOptions = {
-			...agentOptions,
-			servername: redirectedRequest.hostname,
-		};
-		const customProxyUrl = getUrlFromProxyConfig(proxyConfig);
-
-		// Inject secureLookup into redirect agents for non-proxy paths
-		const effectiveRedirectOptions =
-			ssrfBridge && !customProxyUrl
-				? { ...redirectAgentOptions, lookup: ssrfBridge.createSecureLookup() }
-				: redirectAgentOptions;
-
-		// Create both agents and set them
-		const targetUrl = redirectedRequest.href;
-		const httpAgent = createHttpProxyAgent(customProxyUrl, targetUrl, effectiveRedirectOptions);
-		const httpsAgent = createHttpsProxyAgent(customProxyUrl, targetUrl, effectiveRedirectOptions);
-
-		redirectedRequest.agent = redirectedRequest.href.startsWith('https://')
-			? httpsAgent
-			: httpAgent;
-		redirectedRequest.agents = { http: httpAgent, https: httpsAgent };
-
-		const originalUrl = axiosConfig.baseURL
-			? new URL(axiosConfig.url ?? '', axiosConfig.baseURL)
-			: new URL(axiosConfig.url ?? '');
-		const originalOrigin = originalUrl.origin;
-		const targetOrigin = new URL(targetUrl).origin;
-		// Copy auth headers
-		if (originalOrigin === targetOrigin || sendCredentialsOnCrossOriginRedirect) {
-			if (axiosConfig.headers?.Authorization) {
-				redirectedRequest.headers.Authorization = axiosConfig.headers.Authorization;
-			}
-			if (axiosConfig.auth) {
-				redirectedRequest.auth = `${axiosConfig.auth.username}:${axiosConfig.auth.password}`;
-			}
-		}
-	};
-
-function digestAuthAxiosConfig(
-	axiosConfig: AxiosRequestConfig,
-	response: AxiosResponse,
-	auth: AxiosRequestConfig['auth'],
-): AxiosRequestConfig {
-	const authDetails = response.headers['www-authenticate']
-		.split(',')
-		.map((v: string) => v.split('='));
-	if (authDetails) {
-		const nonceCount = '000000001';
-		const cnonce = crypto.randomBytes(24).toString('hex');
-		const realm: string = authDetails
-			.find((el: any) => el[0].toLowerCase().indexOf('realm') > -1)[1]
-			.replace(/"/g, '');
-		// If authDetails does not have opaque, we should not add it to authorization.
-		const opaqueKV = authDetails.find((el: any) => el[0].toLowerCase().indexOf('opaque') > -1);
-		const opaque: string = opaqueKV ? opaqueKV[1].replace(/"/g, '') : undefined;
-		const nonce: string = authDetails
-			.find((el: any) => el[0].toLowerCase().indexOf('nonce') > -1)[1]
-			.replace(/"/g, '');
-		const ha1 = crypto
-			.createHash('md5')
-			.update(`${auth?.username as string}:${realm}:${auth?.password as string}`)
-			.digest('hex');
-		const url = new URL(axios.getUri(axiosConfig));
-		const path = url.pathname + url.search;
-		const ha2 = crypto
-			.createHash('md5')
-			.update(`${axiosConfig.method ?? 'GET'}:${path}`)
-			.digest('hex');
-		const response = crypto
-			.createHash('md5')
-			.update(`${ha1}:${nonce}:${nonceCount}:${cnonce}:auth:${ha2}`)
-			.digest('hex');
-		let authorization =
-			`Digest username="${auth?.username as string}",realm="${realm}",` +
-			`nonce="${nonce}",uri="${path}",qop="auth",algorithm="MD5",` +
-			`response="${response}",nc="${nonceCount}",cnonce="${cnonce}"`;
-		// Only when opaque exists, add it to authorization.
-		if (opaque) {
-			authorization += `,opaque="${opaque}"`;
-		}
-		if (axiosConfig.headers) {
-			axiosConfig.headers.authorization = authorization;
-		} else {
-			axiosConfig.headers = { authorization };
-		}
-	}
-	return axiosConfig;
-}
+// Imported for side effects: sets axios defaults and registers the request interceptor
+import './request-helpers/axios-config';
+import {
+	buildTargetUrl,
+	createFormDataObject,
+	digestAuthAxiosConfig,
+	generateContentLengthHeader,
+	getBeforeRedirectFn,
+	getHostFromRequestObject,
+	isIgnoreStatusErrorConfig,
+	searchForHeader,
+	setAxiosAgents,
+	tryParseUrl,
+} from './request-helpers';
+import { throwIfDomainNotAllowed } from './request-helpers/axios-utils';
 
 export async function invokeAxios(
 	axiosConfig: AxiosRequestConfig,
@@ -331,51 +105,6 @@ export async function invokeAxios(
 		delete axiosConfig.auth;
 		axiosConfig = digestAuthAxiosConfig(axiosConfig, response, auth);
 		return await axios(axiosConfig);
-	}
-}
-
-const pushFormDataValue = (form: FormData, key: string, value: any) => {
-	if (value?.hasOwnProperty('value') && value.hasOwnProperty('options')) {
-		form.append(key, value.value, value.options);
-	} else {
-		form.append(key, value);
-	}
-};
-
-export const createFormDataObject = (data: Record<string, unknown>) => {
-	const formData = new FormData();
-	const keys = Object.keys(data);
-	keys.forEach((key) => {
-		const formField = data[key];
-
-		if (formField instanceof Array) {
-			formField.forEach((item) => {
-				pushFormDataValue(formData, key, item);
-			});
-		} else {
-			pushFormDataValue(formData, key, formField);
-		}
-	});
-	return formData;
-};
-
-async function generateContentLengthHeader(config: AxiosRequestConfig) {
-	if (!(config.data instanceof FormData)) {
-		return;
-	}
-	try {
-		const length = await new Promise<number>((res, rej) => {
-			config.data.getLength((error: Error | null, dataLength: number) => {
-				if (error) rej(error);
-				else res(dataLength);
-			});
-		});
-		config.headers = {
-			...config.headers,
-			'content-length': length,
-		};
-	} catch (error) {
-		Container.get(Logger).error('Unable to calculate form data length', { error });
 	}
 }
 
@@ -630,6 +359,7 @@ export async function parseRequestObject(requestObject: IRequestOptions, ssrfBri
 		axiosConfig,
 		requestObject.proxy,
 		requestObject.sendCredentialsOnCrossOriginRedirect ?? true,
+		requestObject.allowedDomains,
 		ssrfBridge,
 	);
 
@@ -704,6 +434,7 @@ export async function proxyRequestToAxios(
 	await validateUrlSsrf(url, ssrfBridge);
 
 	axiosConfig = Object.assign(axiosConfig, await parseRequestObject(configObject, ssrfBridge));
+	throwIfDomainNotAllowed(axiosConfig, configObject.allowedDomains);
 
 	try {
 		const response = await invokeAxios(axiosConfig, configObject.auth);
@@ -824,6 +555,7 @@ export function convertN8nRequestToAxios(
 		axiosRequest,
 		n8nRequest.proxy,
 		n8nRequest.sendCredentialsOnCrossOriginRedirect ?? true,
+		n8nRequest.allowedDomains,
 		ssrfBridge,
 	);
 
@@ -898,14 +630,6 @@ export function convertN8nRequestToAxios(
 	return axiosRequest;
 }
 
-function tryParseUrl(url: string): URL | null {
-	try {
-		return new URL(url);
-	} catch {
-		return null;
-	}
-}
-
 /** Validates a URL against SSRF protection rules. Throws UserError if blocked. */
 async function validateUrlSsrf(url: string | undefined, ssrfBridge?: SsrfBridge): Promise<void> {
 	if (!ssrfBridge || !url) return;
@@ -951,6 +675,8 @@ export async function httpRequest(
 	) {
 		delete axiosRequest.data;
 	}
+
+	throwIfDomainNotAllowed(axiosRequest, requestOptions.allowedDomains);
 
 	const result = await invokeAxios(axiosRequest, requestOptions.auth);
 
@@ -1336,6 +1062,18 @@ export async function httpRequestWithAuthentication(
 	}
 
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
+
+	// Eval LLM mock: intercept before credential auth and OAuth signing
+	if (additionalData.evalLlmMockHandler) {
+		const evalMockResponse = await callEvalMockHandler(
+			additionalData.evalLlmMockHandler,
+			requestOptions,
+			node,
+			requestOptions.returnFullResponse,
+		);
+		if (evalMockResponse !== undefined) return evalMockResponse;
+	}
+
 	try {
 		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
 
@@ -1423,7 +1161,6 @@ export async function httpRequestWithAuthentication(
 						node,
 					);
 				}
-				// retry the request
 				return await httpRequest(requestOptions, additionalData.ssrfBridge);
 			} catch (error) {
 				throw new NodeApiError(this.getNode(), error);
@@ -1448,6 +1185,18 @@ export async function requestWithAuthentication(
 	removeEmptyBody(requestOptions);
 
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
+
+	// Eval LLM mock: intercept before credential auth and OAuth signing (legacy path)
+	if (additionalData.evalLlmMockHandler) {
+		const evalMockResponse = await callEvalMockHandler(
+			additionalData.evalLlmMockHandler,
+			normalizeLegacyRequest(requestOptions),
+			node,
+			requestOptions.resolveWithFullResponse,
+			'legacy',
+		);
+		if (evalMockResponse !== undefined) return evalMockResponse;
+	}
 
 	try {
 		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
@@ -1529,7 +1278,6 @@ export async function requestWithAuthentication(
 						workflow,
 						node,
 					)) as IRequestOptions;
-					// retry the request
 					return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
 				}
 			}
@@ -1632,7 +1380,7 @@ export const getRequestHelperFunctions = (
 
 			const tempRequestOptions = applyPaginationRequestData(requestOptions, paginateRequestData);
 
-			if (!validateUrl(tempRequestOptions.uri as string)) {
+			if (!tryParseUrl(tempRequestOptions.uri as string)) {
 				throw new NodeOperationError(node, `'${paginateRequestData.url}' is not a valid URL.`, {
 					itemIndex,
 					runIndex,
@@ -1793,9 +1541,22 @@ export const getRequestHelperFunctions = (
 		return responseData;
 	}
 
+	// Eval LLM mock handler: extract once for use in direct helpers below
+	const evalLlmMock = additionalData.evalLlmMockHandler;
+
 	return {
-		httpRequest: async (requestOptions: IHttpRequestOptions) =>
-			await httpRequest(requestOptions, additionalData.ssrfBridge),
+		httpRequest: async (requestOptions: IHttpRequestOptions) => {
+			if (evalLlmMock) {
+				const evalMockResponse = await callEvalMockHandler(
+					evalLlmMock,
+					requestOptions,
+					node,
+					requestOptions.returnFullResponse,
+				);
+				if (evalMockResponse !== undefined) return evalMockResponse;
+			}
+			return await httpRequest(requestOptions, additionalData.ssrfBridge);
+		},
 		requestWithAuthenticationPaginated,
 		async httpRequestWithAuthentication(
 			this,
@@ -1828,8 +1589,20 @@ export const getRequestHelperFunctions = (
 			);
 		},
 
-		request: async (uriOrObject, options) =>
-			await proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options),
+		request: async (uriOrObject, options) => {
+			if (evalLlmMock) {
+				const wantsFull = typeof uriOrObject !== 'string' && uriOrObject.resolveWithFullResponse;
+				const evalMockResponse = await callEvalMockHandler(
+					evalLlmMock,
+					normalizeLegacyRequest(uriOrObject, options),
+					node,
+					wantsFull,
+					'legacy',
+				);
+				if (evalMockResponse !== undefined) return evalMockResponse;
+			}
+			return await proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
+		},
 
 		async requestWithAuthentication(
 			this,
@@ -1855,6 +1628,16 @@ export const getRequestHelperFunctions = (
 			credentialsType: string,
 			requestOptions: IRequestOptions,
 		): Promise<any> {
+			if (evalLlmMock) {
+				const evalMockResponse = await callEvalMockHandler(
+					evalLlmMock,
+					normalizeLegacyRequest(requestOptions),
+					node,
+					requestOptions.resolveWithFullResponse,
+					'legacy',
+				);
+				if (evalMockResponse !== undefined) return evalMockResponse;
+			}
 			return await requestOAuth1.call(this, credentialsType, requestOptions);
 		},
 
@@ -1864,6 +1647,16 @@ export const getRequestHelperFunctions = (
 			requestOptions: IRequestOptions,
 			oAuth2Options?: IOAuth2Options,
 		): Promise<any> {
+			if (evalLlmMock) {
+				const evalMockResponse = await callEvalMockHandler(
+					evalLlmMock,
+					normalizeLegacyRequest(requestOptions),
+					node,
+					requestOptions.resolveWithFullResponse,
+					'legacy',
+				);
+				if (evalMockResponse !== undefined) return evalMockResponse;
+			}
 			return await requestOAuth2.call(
 				this,
 				credentialsType,

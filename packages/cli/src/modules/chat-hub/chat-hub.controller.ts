@@ -1,10 +1,13 @@
 import {
 	ChatHubSendMessageRequest,
+	ChatHubManualSendMessageRequest,
 	ChatModelsResponse,
 	ChatHubConversationsResponse,
 	ChatHubConversationResponse,
 	ChatHubEditMessageRequest,
+	ChatHubManualEditMessageRequest,
 	ChatHubRegenerateMessageRequest,
+	ChatHubManualRegenerateMessageRequest,
 	ChatHubUpdateConversationRequest,
 	ChatSessionId,
 	ChatMessageId,
@@ -26,6 +29,7 @@ import {
 	Post,
 	Body,
 	GlobalScope,
+	ProjectScope,
 	Get,
 	Delete,
 	Param,
@@ -77,7 +81,12 @@ export class ChatHubController {
 		_res: Response,
 		@Query query: ChatHubConversationsRequest,
 	): Promise<ChatHubConversationsResponse> {
-		return await this.chatService.getConversations(req.user.id, query.limit, query.cursor);
+		return await this.chatService.getConversations(
+			req.user.id,
+			query.limit,
+			query.cursor,
+			query.type,
+		);
 	}
 
 	@Get('/conversations/:sessionId')
@@ -158,6 +167,41 @@ export class ChatHubController {
 		};
 	}
 
+	/**
+	 * Send a message using the draft (unpublished) workflow version.
+	 * Requires workflow:execute — not available to chat-only users.
+	 * Passes pushRef header so the execution sends canvas events.
+	 */
+	@ProjectScope('workflow:execute')
+	@Post('/conversations/manual/:workflowId/send')
+	async sendMessageManual(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+		@Body payload: ChatHubManualSendMessageRequest,
+	): Promise<ChatSendMessageResponse> {
+		const pushRef = req.headers['push-ref'] as string | undefined;
+		if (!pushRef) {
+			throw new BadRequestError('push-ref header is required for manual execution');
+		}
+
+		await this.chatService.sendHumanMessageManual(
+			req.user,
+			{
+				...payload,
+				model: { provider: 'n8n' as const, workflowId },
+				credentials: {},
+				userId: req.user.id,
+			},
+			extractAuthenticationMetadata(req),
+			pushRef,
+		);
+
+		return {
+			status: 'streaming',
+		};
+	}
+
 	@GlobalScope('chatHub:message')
 	@Post('/conversations/:sessionId/messages/:messageId/edit')
 	async editMessage(
@@ -183,6 +227,40 @@ export class ChatHubController {
 		};
 	}
 
+	@ProjectScope('workflow:execute')
+	@Post('/conversations/manual/:workflowId/:sessionId/messages/:messageId/edit')
+	async editMessageManual(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+		@Param('sessionId') sessionId: ChatSessionId,
+		@Param('messageId') editId: ChatMessageId,
+		@Body payload: ChatHubManualEditMessageRequest,
+	): Promise<ChatSendMessageResponse> {
+		const pushRef = req.headers['push-ref'] as string | undefined;
+		if (!pushRef) {
+			throw new BadRequestError('push-ref header is required for manual execution');
+		}
+
+		await this.chatService.editMessageManual(
+			req.user,
+			{
+				...payload,
+				model: { provider: 'n8n' as const, workflowId },
+				credentials: {},
+				sessionId,
+				editId,
+				userId: req.user.id,
+			},
+			extractAuthenticationMetadata(req),
+			pushRef,
+		);
+
+		return {
+			status: 'streaming',
+		};
+	}
+
 	@GlobalScope('chatHub:message')
 	@Post('/conversations/:sessionId/messages/:messageId/regenerate')
 	async regenerateMessage(
@@ -201,6 +279,40 @@ export class ChatHubController {
 				userId: req.user.id,
 			},
 			extractAuthenticationMetadata(req),
+		);
+
+		return {
+			status: 'streaming',
+		};
+	}
+
+	@ProjectScope('workflow:execute')
+	@Post('/conversations/manual/:workflowId/:sessionId/messages/:messageId/regenerate')
+	async regenerateMessageManual(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+		@Param('sessionId') sessionId: ChatSessionId,
+		@Param('messageId') retryId: ChatMessageId,
+		@Body payload: ChatHubManualRegenerateMessageRequest,
+	): Promise<ChatSendMessageResponse> {
+		const pushRef = req.headers['push-ref'] as string | undefined;
+		if (!pushRef) {
+			throw new BadRequestError('push-ref header is required for manual execution');
+		}
+
+		await this.chatService.regenerateAIMessageManual(
+			req.user,
+			{
+				...payload,
+				model: { provider: 'n8n' as const, workflowId },
+				credentials: {},
+				sessionId,
+				retryId,
+				userId: req.user.id,
+			},
+			extractAuthenticationMetadata(req),
+			pushRef,
 		);
 
 		return {

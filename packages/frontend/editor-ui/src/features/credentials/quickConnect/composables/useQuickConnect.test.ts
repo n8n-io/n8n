@@ -1,6 +1,5 @@
-import { MODAL_CONFIRM, QUICK_CONNECT_EXPERIMENT } from '@/app/constants';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useQuickConnect } from './useQuickConnect';
 import type { QuickConnectOption } from '@n8n/api-types';
@@ -11,7 +10,6 @@ import { STORES } from '@n8n/stores';
 import merge from 'lodash/merge';
 import type * as i18n from '@n8n/i18n';
 
-vi.mock('@/app/stores/posthog.store');
 vi.mock('@/app/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return { useTelemetry: () => ({ track }) };
@@ -110,7 +108,6 @@ vi.mock('../quickConnect.api', () => ({
 }));
 
 describe('useQuickConnect()', () => {
-	const isVariantEnabledMock = vi.fn(() => false);
 	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 
 	beforeEach(() => {
@@ -124,29 +121,12 @@ describe('useQuickConnect()', () => {
 			}),
 		);
 
-		// @ts-expect-error only isVariantEnabled is used from the store
-		vi.mocked(usePostHog).mockReturnValue({
-			isVariantEnabled: isVariantEnabledMock,
-		});
-
 		settingsStore = mockedStore(useSettingsStore);
 		settingsStore.moduleSettings['quick-connect'] = undefined;
 		mockUsersState.currentUser = null;
 	});
 
-	it('checks if feature is enabled through posthog', () => {
-		const { isQuickConnectEnabled } = useQuickConnect();
-
-		// Access computed to trigger evaluation
-		void isQuickConnectEnabled.value;
-
-		expect(isVariantEnabledMock).toHaveBeenCalledWith(
-			QUICK_CONNECT_EXPERIMENT.name,
-			QUICK_CONNECT_EXPERIMENT.variant,
-		);
-	});
-
-	it('returns undefined from all getters by default', () => {
+	it('returns undefined from all getters when no options are configured', () => {
 		const {
 			getQuickConnectOption,
 			getQuickConnectOptionByPackageName,
@@ -172,427 +152,526 @@ describe('useQuickConnect()', () => {
 			};
 		});
 
-		it('returns undefined when feature is disabled', () => {
-			const { getQuickConnectOptionByPackageName } = useQuickConnect();
+		describe('getQuickConnectOption()', () => {
+			it('returns option when both credential type and package match', () => {
+				const { getQuickConnectOption } = useQuickConnect();
 
-			expect(getQuickConnectOptionByPackageName('n8n-nodes-base')).toBe(undefined);
+				expect(
+					getQuickConnectOption('googleSheetsOAuth2Api', 'n8n-nodes-base.googleSheets'),
+				).toEqual(quickConnectOptionData);
+			});
+
+			it('returns undefined when credential type does not match', () => {
+				const { getQuickConnectOption } = useQuickConnect();
+
+				expect(getQuickConnectOption('slackOAuth2Api', 'n8n-nodes-base.slack')).toBe(undefined);
+			});
+
+			it('returns undefined when package name does not match', () => {
+				const { getQuickConnectOption } = useQuickConnect();
+
+				expect(getQuickConnectOption('googleSheetsOAuth2Api', 'other-package.googleSheets')).toBe(
+					undefined,
+				);
+			});
+
+			it('extracts package name from node type by splitting on first dot', () => {
+				settingsStore.moduleSettings['quick-connect'] = {
+					options: [
+						{
+							packageName: '@n8n',
+							credentialType: 'openAiApi',
+							text: 'OpenAI',
+							quickConnectType: 'oauth',
+						},
+					],
+				};
+
+				const { getQuickConnectOption } = useQuickConnect();
+
+				expect(getQuickConnectOption('openAiApi', '@n8n.openAi')).toBeDefined();
+			});
+
+			it('returns undefined when options are empty', () => {
+				settingsStore.moduleSettings['quick-connect'] = { options: [] };
+				const { getQuickConnectOption } = useQuickConnect();
+
+				expect(getQuickConnectOption('googleSheetsOAuth2Api', 'n8n-nodes-base.googleSheets')).toBe(
+					undefined,
+				);
+			});
+
+			it('returns undefined when module settings are missing', () => {
+				settingsStore.moduleSettings = {};
+				const { getQuickConnectOption } = useQuickConnect();
+
+				expect(getQuickConnectOption('googleSheetsOAuth2Api', 'n8n-nodes-base.googleSheets')).toBe(
+					undefined,
+				);
+			});
 		});
 
-		describe('feature enabled', () => {
-			beforeEach(() => {
-				isVariantEnabledMock.mockImplementation(() => true);
+		describe('getQuickConnectOptionByCredentialTypes()', () => {
+			it('returns correct option for configured credentials', () => {
+				const { getQuickConnectOptionByCredentialTypes } = useQuickConnect();
+
+				expect(getQuickConnectOptionByCredentialTypes(['googleSheetsOAuth2Api'])).toEqual(
+					quickConnectOptionData,
+				);
 			});
 
-			describe('getQuickConnectOption()', () => {
-				it('returns option when both credential type and package match', () => {
-					const { getQuickConnectOption } = useQuickConnect();
+			it('returns undefined when credentialTypes array is empty', () => {
+				const { getQuickConnectOptionByCredentialTypes } = useQuickConnect();
 
-					expect(
-						getQuickConnectOption('googleSheetsOAuth2Api', 'n8n-nodes-base.googleSheets'),
-					).toEqual(quickConnectOptionData);
-				});
-
-				it('returns undefined when credential type does not match', () => {
-					const { getQuickConnectOption } = useQuickConnect();
-
-					expect(getQuickConnectOption('slackOAuth2Api', 'n8n-nodes-base.slack')).toBe(undefined);
-				});
-
-				it('returns undefined when package name does not match', () => {
-					const { getQuickConnectOption } = useQuickConnect();
-
-					expect(getQuickConnectOption('googleSheetsOAuth2Api', 'other-package.googleSheets')).toBe(
-						undefined,
-					);
-				});
-
-				it('extracts package name from node type by splitting on first dot', () => {
-					settingsStore.moduleSettings['quick-connect'] = {
-						options: [
-							{
-								packageName: '@n8n',
-								credentialType: 'openAiApi',
-								text: 'OpenAI',
-								quickConnectType: 'oauth',
-							},
-						],
-					};
-
-					const { getQuickConnectOption } = useQuickConnect();
-
-					expect(getQuickConnectOption('openAiApi', '@n8n.openAi')).toBeDefined();
-				});
-
-				it('returns undefined when feature is disabled', () => {
-					isVariantEnabledMock.mockImplementation(() => false);
-					const { getQuickConnectOption } = useQuickConnect();
-
-					expect(
-						getQuickConnectOption('googleSheetsOAuth2Api', 'n8n-nodes-base.googleSheets'),
-					).toBe(undefined);
-				});
-
-				it('returns undefined when options are empty', () => {
-					settingsStore.moduleSettings['quick-connect'] = { options: [] };
-					const { getQuickConnectOption } = useQuickConnect();
-
-					expect(
-						getQuickConnectOption('googleSheetsOAuth2Api', 'n8n-nodes-base.googleSheets'),
-					).toBe(undefined);
-				});
-
-				it('returns undefined when module settings are missing', () => {
-					settingsStore.moduleSettings = {};
-					const { getQuickConnectOption } = useQuickConnect();
-
-					expect(
-						getQuickConnectOption('googleSheetsOAuth2Api', 'n8n-nodes-base.googleSheets'),
-					).toBe(undefined);
-				});
+				expect(getQuickConnectOptionByCredentialTypes([])).toBe(undefined);
 			});
 
-			describe('getQuickConnectOptionByCredentialTypes()', () => {
-				it('returns correct option for configured credentials', () => {
-					const { getQuickConnectOptionByCredentialTypes } = useQuickConnect();
+			it('returns undefined when no credentialTypes match', () => {
+				const { getQuickConnectOptionByCredentialTypes } = useQuickConnect();
 
-					expect(getQuickConnectOptionByCredentialTypes(['googleSheetsOAuth2Api'])).toEqual(
-						quickConnectOptionData,
-					);
-				});
-
-				it('returns undefined when credentialTypes array is empty', () => {
-					const { getQuickConnectOptionByCredentialTypes } = useQuickConnect();
-
-					expect(getQuickConnectOptionByCredentialTypes([])).toBe(undefined);
-				});
-
-				it('returns undefined when no credentialTypes match', () => {
-					const { getQuickConnectOptionByCredentialTypes } = useQuickConnect();
-
-					expect(
-						getQuickConnectOptionByCredentialTypes([
-							'non-matching-credentials',
-							'another-non-matching',
-						]),
-					).toBe(undefined);
-				});
-
-				it('returns correct option when one of multiple credentialTypes matches', () => {
-					const { getQuickConnectOptionByCredentialTypes } = useQuickConnect();
-
-					expect(
-						getQuickConnectOptionByCredentialTypes([
-							'non-matching',
-							'googleSheetsOAuth2Api',
-							'another-non-matching',
-						]),
-					).toEqual(quickConnectOptionData);
-				});
-
-				it('returns first matching option when multiple credentialTypes match', () => {
-					const secondOption: QuickConnectOption = {
-						packageName: 'second-package',
-						credentialType: 'second-credentials',
-						text: 'second promotion text',
-						quickConnectType: 'manual',
-					};
-
-					settingsStore.moduleSettings['quick-connect'] = {
-						options: [quickConnectOptionData, secondOption],
-					};
-
-					const { getQuickConnectOptionByCredentialTypes } = useQuickConnect();
-
-					expect(
-						getQuickConnectOptionByCredentialTypes(['googleSheetsOAuth2Api', 'second-credentials']),
-					).toEqual(quickConnectOptionData);
-				});
+				expect(
+					getQuickConnectOptionByCredentialTypes([
+						'non-matching-credentials',
+						'another-non-matching',
+					]),
+				).toBe(undefined);
 			});
 
-			describe('getQuickConnectOptionByPackageName()', () => {
-				it('returns correct option for configured package', () => {
-					const { getQuickConnectOptionByPackageName } = useQuickConnect();
+			it('returns correct option when one of multiple credentialTypes matches', () => {
+				const { getQuickConnectOptionByCredentialTypes } = useQuickConnect();
 
-					expect(getQuickConnectOptionByPackageName('n8n-nodes-base')).toEqual(
-						quickConnectOptionData,
-					);
-				});
-
-				it('returns undefined for non-matching package', () => {
-					const { getQuickConnectOptionByPackageName } = useQuickConnect();
-
-					expect(getQuickConnectOptionByPackageName('other-package')).toBe(undefined);
-				});
+				expect(
+					getQuickConnectOptionByCredentialTypes([
+						'non-matching',
+						'googleSheetsOAuth2Api',
+						'another-non-matching',
+					]),
+				).toEqual(quickConnectOptionData);
 			});
 
-			it('reacts to settings store changes', () => {
+			it('returns first matching option when multiple credentialTypes match', () => {
+				const secondOption: QuickConnectOption = {
+					packageName: 'second-package',
+					credentialType: 'second-credentials',
+					text: 'second promotion text',
+					quickConnectType: 'manual',
+				};
+
+				settingsStore.moduleSettings['quick-connect'] = {
+					options: [quickConnectOptionData, secondOption],
+				};
+
+				const { getQuickConnectOptionByCredentialTypes } = useQuickConnect();
+
+				expect(
+					getQuickConnectOptionByCredentialTypes(['googleSheetsOAuth2Api', 'second-credentials']),
+				).toEqual(quickConnectOptionData);
+			});
+		});
+
+		describe('getQuickConnectOptionByPackageName()', () => {
+			it('returns correct option for configured package', () => {
 				const { getQuickConnectOptionByPackageName } = useQuickConnect();
 
 				expect(getQuickConnectOptionByPackageName('n8n-nodes-base')).toEqual(
 					quickConnectOptionData,
 				);
-
-				settingsStore.moduleSettings['quick-connect'] = {
-					options: [],
-				};
-
-				expect(getQuickConnectOptionByPackageName('n8n-nodes-base')).toBe(undefined);
 			});
 
-			describe('connect()', () => {
-				it('tracks telemetry when called', async () => {
-					const { connect } = useQuickConnect();
-					const telemetry = useTelemetry();
+			it('returns undefined for non-matching package', () => {
+				const { getQuickConnectOptionByPackageName } = useQuickConnect();
 
-					await connect({
-						credentialTypeName: 'googleSheetsOAuth2Api',
-						nodeType: 'n8n-nodes-base.googleSheets',
-						source: 'node_type',
-						serviceName: 'Google',
-					});
+				expect(getQuickConnectOptionByPackageName('other-package')).toBe(undefined);
+			});
+		});
 
-					expect(telemetry.track).toHaveBeenCalledWith('User clicked quick connect button', {
-						source: 'node_type',
-						credential_type: 'googleSheetsOAuth2Api',
-						node_type: 'n8n-nodes-base.googleSheets',
-					});
+		it('reacts to settings store changes', () => {
+			const { getQuickConnectOptionByPackageName } = useQuickConnect();
+
+			expect(getQuickConnectOptionByPackageName('n8n-nodes-base')).toEqual(quickConnectOptionData);
+
+			settingsStore.moduleSettings['quick-connect'] = {
+				options: [],
+			};
+
+			expect(getQuickConnectOptionByPackageName('n8n-nodes-base')).toBe(undefined);
+		});
+
+		describe('connect()', () => {
+			it('tracks telemetry when called', async () => {
+				const { connect } = useQuickConnect();
+				const telemetry = useTelemetry();
+
+				await connect({
+					credentialTypeName: 'googleSheetsOAuth2Api',
+					nodeType: 'n8n-nodes-base.googleSheets',
+					source: 'node_type',
+					serviceName: 'Google',
 				});
 
-				it('passes nodeType to createAndAuthorize for OAuth credentials', async () => {
-					mockIsOAuthCredentialType.mockReturnValue(true);
-					mockCreateAndAuthorize.mockResolvedValue(null);
+				expect(telemetry.track).toHaveBeenCalledWith('User clicked quick connect button', {
+					source: 'node_type',
+					credential_type: 'googleSheetsOAuth2Api',
+					node_type: 'n8n-nodes-base.googleSheets',
+				});
+			});
 
-					const { connect } = useQuickConnect();
-					await connect({
-						credentialTypeName: 'slackOAuth2Api',
-						nodeType: 'n8n-nodes-base.slack',
-						source: 'node_type',
-						serviceName: 'Slack',
-					});
+			it('passes nodeType to createAndAuthorize for OAuth credentials', async () => {
+				mockIsOAuthCredentialType.mockReturnValue(true);
+				mockCreateAndAuthorize.mockResolvedValue(null);
 
-					expect(mockCreateAndAuthorize).toHaveBeenCalledWith(
-						'slackOAuth2Api',
-						'n8n-nodes-base.slack',
-					);
+				const { connect } = useQuickConnect();
+				await connect({
+					credentialTypeName: 'slackOAuth2Api',
+					nodeType: 'n8n-nodes-base.slack',
+					source: 'node_type',
+					serviceName: 'Slack',
 				});
 
-				describe.each(['@n8n/n8n-nodes-langchain', '@n8n/n8n-nodes-langchain.pinecone'])(
-					'pinecone quick connect with packageName configured as "%s"',
-					(packageName) => {
-						const pineconeOption: QuickConnectOption = {
-							packageName,
-							credentialType: 'pineconeApi',
-							text: 'Pinecone',
-							quickConnectType: 'pinecone',
-							config: {
-								integrationId: 'test-integration-id',
-							},
+				expect(mockCreateAndAuthorize).toHaveBeenCalledWith(
+					'slackOAuth2Api',
+					'n8n-nodes-base.slack',
+				);
+			});
+
+			describe.each(['@n8n/n8n-nodes-langchain', '@n8n/n8n-nodes-langchain.pinecone'])(
+				'pinecone quick connect with packageName configured as "%s"',
+				(packageName) => {
+					const pineconeOption: QuickConnectOption = {
+						packageName,
+						credentialType: 'pineconeApi',
+						text: 'Pinecone',
+						quickConnectType: 'pinecone',
+						config: {
+							integrationId: 'test-integration-id',
+						},
+					};
+
+					beforeEach(() => {
+						mockGetCredentialTypeByName.mockReturnValue({
+							name: 'pineconeApi',
+							displayName: 'Pinecone API',
+							properties: [],
+						});
+						mockIsOAuthCredentialType.mockReturnValue(false);
+						settingsStore.moduleSettings['quick-connect'] = {
+							options: [pineconeOption],
 						};
+					});
 
-						beforeEach(() => {
-							mockGetCredentialTypeByName.mockReturnValue({
-								name: 'pineconeApi',
-								displayName: 'Pinecone API',
-								properties: [],
-							});
-							mockIsOAuthCredentialType.mockReturnValue(false);
-							settingsStore.moduleSettings['quick-connect'] = {
-								options: [pineconeOption],
-							};
+					it('creates credential with API key from Pinecone popup', async () => {
+						const mockPopup = {
+							open: vi.fn(),
+						};
+						mockPineconeConnectPopup.mockImplementation(({ onConnect }) => {
+							// Simulate user connecting and providing API key
+							setTimeout(() => onConnect({ key: 'test-api-key-123' }), 0);
+							return mockPopup;
 						});
 
-						it('creates credential with API key from Pinecone popup', async () => {
-							const mockPopup = {
-								open: vi.fn(),
-							};
-							mockPineconeConnectPopup.mockImplementation(({ onConnect }) => {
-								// Simulate user connecting and providing API key
-								setTimeout(() => onConnect({ key: 'test-api-key-123' }), 0);
-								return mockPopup;
-							});
+						const mockCredential = {
+							id: 'cred-123',
+							name: 'Pinecone API',
+							type: 'pineconeApi',
+							data: {
+								apiKey: 'test-api-key-123',
+								allowedHttpRequestDomains: 'none',
+							},
+							createdAt: new Date().toISOString(),
+							updatedAt: new Date().toISOString(),
+							isManaged: false,
+						};
+						mockCreateNewCredential.mockResolvedValue(mockCredential);
 
-							const mockCredential = {
-								id: 'cred-123',
+						const { connect } = useQuickConnect();
+						const result = await connect({
+							credentialTypeName: 'pineconeApi',
+							nodeType: '@n8n/n8n-nodes-langchain.pinecone',
+							source: 'node_type',
+							serviceName: 'Pinecone',
+						});
+
+						expect(mockPineconeConnectPopup).toHaveBeenCalledWith({
+							onConnect: expect.any(Function),
+							onCancel: expect.any(Function),
+							integrationId: 'test-integration-id',
+						});
+						expect(mockPopup.open).toHaveBeenCalled();
+						expect(mockCreateNewCredential).toHaveBeenCalledWith(
+							{
+								id: '',
 								name: 'Pinecone API',
 								type: 'pineconeApi',
 								data: {
 									apiKey: 'test-api-key-123',
 									allowedHttpRequestDomains: 'none',
 								},
-								createdAt: new Date().toISOString(),
-								updatedAt: new Date().toISOString(),
-								isManaged: false,
+							},
+							'project-123',
+						);
+						expect(result).toEqual(mockCredential);
+					});
+
+					it('cleans up dangling popup handler on successful connection', async () => {
+						const mockPopup = {
+							open: vi.fn(),
+							cleanup: vi.fn(),
+						};
+						mockPineconeConnectPopup.mockImplementation(({ onConnect }) => {
+							// Simulate user connecting and providing API key
+							setTimeout(() => onConnect({ key: 'test-api-key-123' }), 0);
+							return mockPopup;
+						});
+
+						const { connect } = useQuickConnect();
+						await connect({
+							credentialTypeName: 'pineconeApi',
+							nodeType: '@n8n/n8n-nodes-langchain.pinecone',
+							source: 'node_type',
+							serviceName: 'Pinecone',
+						});
+
+						expect(mockCreateNewCredential).toHaveBeenCalled();
+						expect(mockPopup.open).toHaveBeenCalled();
+						expect(mockPopup.cleanup).toHaveBeenCalled();
+					});
+
+					it('cleans up dangling popup handler when connection is canceled in Pinecone popup', async () => {
+						const mockPopup = {
+							open: vi.fn(),
+							cleanup: vi.fn(),
+						};
+						mockPineconeConnectPopup.mockImplementation(({ onCancel }) => {
+							setTimeout(() => onCancel(), 0);
+							return mockPopup;
+						});
+
+						const { connect } = useQuickConnect();
+						await connect({
+							credentialTypeName: 'pineconeApi',
+							nodeType: '@n8n/n8n-nodes-langchain.pinecone',
+							source: 'node_type',
+							serviceName: 'Pinecone',
+						});
+
+						expect(mockPopup.open).toHaveBeenCalled();
+						expect(mockPopup.cleanup).toHaveBeenCalled();
+					});
+
+					it('returns null when credential type is not found', async () => {
+						mockGetCredentialTypeByName.mockReturnValue(null);
+
+						const { connect } = useQuickConnect();
+						const result = await connect({
+							credentialTypeName: 'pineconeApi',
+							nodeType: '@n8n/n8n-nodes-langchain.pinecone',
+							source: 'node_type',
+							serviceName: 'Pinecone',
+						});
+
+						expect(result).toBeNull();
+						expect(mockPineconeConnectPopup).not.toHaveBeenCalled();
+					});
+
+					it('doe not show error toast when Pinecone connection is cancelled', async () => {
+						const mockPopup = {
+							open: vi.fn(),
+						};
+						mockPineconeConnectPopup.mockImplementation(({ onCancel }) => {
+							// Simulate user cancelling the connection
+							setTimeout(() => onCancel(), 0);
+							return mockPopup;
+						});
+
+						const { connect } = useQuickConnect();
+						const result = await connect({
+							credentialTypeName: 'pineconeApi',
+							nodeType: '@n8n/n8n-nodes-langchain.pinecone',
+							source: 'node_type',
+							serviceName: 'Pinecone',
+						});
+
+						expect(result).toBeNull();
+						expect(mockToastShowError).not.toHaveBeenCalled();
+					});
+
+					it('shows error toast when credential creation fails', async () => {
+						const mockPopup = {
+							open: vi.fn(),
+						};
+						mockPineconeConnectPopup.mockImplementation(({ onConnect }) => {
+							setTimeout(() => onConnect({ key: 'test-api-key-123' }), 0);
+							return mockPopup;
+						});
+
+						const error = new Error('Failed to create credential');
+						mockCreateNewCredential.mockRejectedValue(error);
+
+						const { connect } = useQuickConnect();
+						const result = await connect({
+							credentialTypeName: 'pineconeApi',
+							nodeType: '@n8n/n8n-nodes-langchain.pinecone',
+							source: 'node_type',
+							serviceName: 'Pinecone',
+						});
+
+						expect(result).toBeNull();
+						expect(mockToastShowError).toHaveBeenCalledWith(
+							error,
+							'credentialEdit.credentialEdit.showError.createCredential.title',
+						);
+					});
+
+					describe('firecrawl quick connect', () => {
+						const firecrawlOption: QuickConnectOption = {
+							packageName: 'n8n-nodes-firecrawl',
+							credentialType: 'firecrawlApi',
+							text: 'Firecrawl',
+							quickConnectType: 'firecrawl',
+							consentText: 'This is the consent text.',
+						};
+
+						beforeEach(() => {
+							mockIsOAuthCredentialType.mockReturnValue(false);
+							settingsStore.moduleSettings['quick-connect'] = {
+								options: [firecrawlOption],
+							};
+							mockGetCredentialTypeByName.mockReturnValue({
+								name: 'firecrawlApi',
+								displayName: 'Firecrawl API',
+								properties: [],
+							});
+							mockGetQuickConnectApiKey.mockResolvedValue({ apiKey: 'firecrawl-api-key' });
+							mockCreateNewCredential.mockResolvedValue({
+								id: 'cred-456',
+								name: 'Firecrawl API',
+								type: 'firecrawlApi',
+							});
+							mockConfirm.mockResolvedValue(MODAL_CONFIRM);
+						});
+
+						it('shows confirmation dialog with sanitized HTML content', async () => {
+							const { connect } = useQuickConnect();
+							await connect({
+								credentialTypeName: 'firecrawlApi',
+								nodeType: 'n8n-nodes-firecrawl.firecrawl',
+								source: 'node_type',
+								serviceName: 'Firecrawl',
+							});
+
+							expect(mockConfirm).toHaveBeenCalledWith(
+								expect.objectContaining({
+									type: 'span',
+									props: expect.objectContaining({
+										innerHTML: 'This is the consent text.',
+									}),
+								}),
+								'nodeCredentials.quickConnect.connectTo',
+								expect.objectContaining({
+									customClass: 'wide',
+								}),
+							);
+						});
+
+						it('passes undefined as confirmationCheckboxMessage when consentCheckbox is not set', async () => {
+							const { connect } = useQuickConnect();
+							await connect({
+								credentialTypeName: 'firecrawlApi',
+								nodeType: 'n8n-nodes-firecrawl.firecrawl',
+								source: 'node_type',
+								serviceName: 'Firecrawl',
+							});
+
+							expect(mockConfirm).toHaveBeenCalledWith(
+								expect.any(Object),
+								expect.any(String),
+								expect.objectContaining({
+									confirmationCheckboxMessage: undefined,
+								}),
+							);
+						});
+
+						it('passes sanitized HTML as confirmationCheckboxMessage when consentCheckbox is set', async () => {
+							settingsStore.moduleSettings['quick-connect'] = {
+								options: [{ ...firecrawlOption, consentCheckbox: 'I agree to the terms' }],
+							};
+
+							const { connect } = useQuickConnect();
+							await connect({
+								credentialTypeName: 'firecrawlApi',
+								nodeType: 'n8n-nodes-firecrawl.firecrawl',
+								source: 'node_type',
+								serviceName: 'Firecrawl',
+							});
+
+							expect(mockConfirm).toHaveBeenCalledWith(
+								expect.any(Object),
+								expect.any(String),
+								expect.objectContaining({
+									confirmationCheckboxMessage: expect.objectContaining({
+										type: 'span',
+										props: expect.objectContaining({
+											innerHTML: 'I agree to the terms',
+										}),
+									}),
+								}),
+							);
+						});
+
+						it('returns null without creating a credential when dialog is cancelled', async () => {
+							mockConfirm.mockResolvedValue('cancel');
+
+							const { connect } = useQuickConnect();
+							const result = await connect({
+								credentialTypeName: 'firecrawlApi',
+								nodeType: 'n8n-nodes-firecrawl.firecrawl',
+								source: 'node_type',
+								serviceName: 'Firecrawl',
+							});
+
+							expect(result).toBeNull();
+							expect(mockGetQuickConnectApiKey).not.toHaveBeenCalled();
+							expect(mockCreateNewCredential).not.toHaveBeenCalled();
+						});
+
+						it('creates credential after dialog confirmation', async () => {
+							const mockCredential = {
+								id: 'cred-456',
+								name: 'Firecrawl API',
+								type: 'firecrawlApi',
 							};
 							mockCreateNewCredential.mockResolvedValue(mockCredential);
 
 							const { connect } = useQuickConnect();
 							const result = await connect({
-								credentialTypeName: 'pineconeApi',
-								nodeType: '@n8n/n8n-nodes-langchain.pinecone',
+								credentialTypeName: 'firecrawlApi',
+								nodeType: 'n8n-nodes-firecrawl.firecrawl',
 								source: 'node_type',
-								serviceName: 'Pinecone',
+								serviceName: 'Firecrawl',
 							});
 
-							expect(mockPineconeConnectPopup).toHaveBeenCalledWith({
-								onConnect: expect.any(Function),
-								onCancel: expect.any(Function),
-								integrationId: 'test-integration-id',
-							});
-							expect(mockPopup.open).toHaveBeenCalled();
-							expect(mockCreateNewCredential).toHaveBeenCalledWith(
-								{
-									id: '',
-									name: 'Pinecone API',
-									type: 'pineconeApi',
-									data: {
-										apiKey: 'test-api-key-123',
-										allowedHttpRequestDomains: 'none',
-									},
-								},
-								'project-123',
-							);
+							expect(mockGetQuickConnectApiKey).toHaveBeenCalled();
 							expect(result).toEqual(mockCredential);
 						});
 
-						it('cleans up dangling popup handler on successful connection', async () => {
-							const mockPopup = {
-								open: vi.fn(),
-								cleanup: vi.fn(),
-							};
-							mockPineconeConnectPopup.mockImplementation(({ onConnect }) => {
-								// Simulate user connecting and providing API key
-								setTimeout(() => onConnect({ key: 'test-api-key-123' }), 0);
-								return mockPopup;
-							});
-
-							const { connect } = useQuickConnect();
-							await connect({
-								credentialTypeName: 'pineconeApi',
-								nodeType: '@n8n/n8n-nodes-langchain.pinecone',
-								source: 'node_type',
-								serviceName: 'Pinecone',
-							});
-
-							expect(mockCreateNewCredential).toHaveBeenCalled();
-							expect(mockPopup.open).toHaveBeenCalled();
-							expect(mockPopup.cleanup).toHaveBeenCalled();
-						});
-
-						it('cleans up dangling popup handler when connection is canceled in Pinecone popup', async () => {
-							const mockPopup = {
-								open: vi.fn(),
-								cleanup: vi.fn(),
-							};
-							mockPineconeConnectPopup.mockImplementation(({ onCancel }) => {
-								setTimeout(() => onCancel(), 0);
-								return mockPopup;
-							});
-
-							const { connect } = useQuickConnect();
-							await connect({
-								credentialTypeName: 'pineconeApi',
-								nodeType: '@n8n/n8n-nodes-langchain.pinecone',
-								source: 'node_type',
-								serviceName: 'Pinecone',
-							});
-
-							expect(mockPopup.open).toHaveBeenCalled();
-							expect(mockPopup.cleanup).toHaveBeenCalled();
-						});
-
-						it('returns null when credential type is not found', async () => {
-							mockGetCredentialTypeByName.mockReturnValue(null);
-
-							const { connect } = useQuickConnect();
-							const result = await connect({
-								credentialTypeName: 'pineconeApi',
-								nodeType: '@n8n/n8n-nodes-langchain.pinecone',
-								source: 'node_type',
-								serviceName: 'Pinecone',
-							});
-
-							expect(result).toBeNull();
-							expect(mockPineconeConnectPopup).not.toHaveBeenCalled();
-						});
-
-						it('doe not show error toast when Pinecone connection is cancelled', async () => {
-							const mockPopup = {
-								open: vi.fn(),
-							};
-							mockPineconeConnectPopup.mockImplementation(({ onCancel }) => {
-								// Simulate user cancelling the connection
-								setTimeout(() => onCancel(), 0);
-								return mockPopup;
-							});
-
-							const { connect } = useQuickConnect();
-							const result = await connect({
-								credentialTypeName: 'pineconeApi',
-								nodeType: '@n8n/n8n-nodes-langchain.pinecone',
-								source: 'node_type',
-								serviceName: 'Pinecone',
-							});
-
-							expect(result).toBeNull();
-							expect(mockToastShowError).not.toHaveBeenCalled();
-						});
-
-						it('shows error toast when credential creation fails', async () => {
-							const mockPopup = {
-								open: vi.fn(),
-							};
-							mockPineconeConnectPopup.mockImplementation(({ onConnect }) => {
-								setTimeout(() => onConnect({ key: 'test-api-key-123' }), 0);
-								return mockPopup;
-							});
-
-							const error = new Error('Failed to create credential');
-							mockCreateNewCredential.mockRejectedValue(error);
-
-							const { connect } = useQuickConnect();
-							const result = await connect({
-								credentialTypeName: 'pineconeApi',
-								nodeType: '@n8n/n8n-nodes-langchain.pinecone',
-								source: 'node_type',
-								serviceName: 'Pinecone',
-							});
-
-							expect(result).toBeNull();
-							expect(mockToastShowError).toHaveBeenCalledWith(
-								error,
-								'credentialEdit.credentialEdit.showError.createCredential.title',
-							);
-						});
-
-						describe('firecrawl quick connect', () => {
-							const firecrawlOption: QuickConnectOption = {
-								packageName: 'n8n-nodes-firecrawl',
-								credentialType: 'firecrawlApi',
-								text: 'Firecrawl',
-								quickConnectType: 'firecrawl',
-								consentText: 'This is the consent text.',
-							};
-
-							beforeEach(() => {
-								mockIsOAuthCredentialType.mockReturnValue(false);
+						describe('user data replacement in consent text', () => {
+							it('replaces user template variables with current user data', async () => {
 								settingsStore.moduleSettings['quick-connect'] = {
-									options: [firecrawlOption],
+									options: [
+										{
+											...firecrawlOption,
+											consentText:
+												'Hello {user.firstName} {user.lastName}, your email is {user.email} and full name {user.fullName}',
+										},
+									],
 								};
-								mockGetCredentialTypeByName.mockReturnValue({
-									name: 'firecrawlApi',
-									displayName: 'Firecrawl API',
-									properties: [],
-								});
-								mockGetQuickConnectApiKey.mockResolvedValue({ apiKey: 'firecrawl-api-key' });
-								mockCreateNewCredential.mockResolvedValue({
-									id: 'cred-456',
-									name: 'Firecrawl API',
-									type: 'firecrawlApi',
-								});
-								mockConfirm.mockResolvedValue(MODAL_CONFIRM);
-							});
+								mockUsersState.currentUser = {
+									email: 'john@example.com',
+									firstName: 'John',
+									fullName: 'John Doe',
+									lastName: 'Doe',
+								};
 
-							it('shows confirmation dialog with sanitized HTML content', async () => {
 								const { connect } = useQuickConnect();
 								await connect({
 									credentialTypeName: 'firecrawlApi',
@@ -605,37 +684,50 @@ describe('useQuickConnect()', () => {
 									expect.objectContaining({
 										type: 'span',
 										props: expect.objectContaining({
-											innerHTML: 'This is the consent text.',
+											innerHTML:
+												'Hello John Doe, your email is john@example.com and full name John Doe',
 										}),
 									}),
-									'nodeCredentials.quickConnect.connectTo',
-									expect.objectContaining({
-										customClass: 'wide',
-									}),
-								);
-							});
-
-							it('passes undefined as confirmationCheckboxMessage when consentCheckbox is not set', async () => {
-								const { connect } = useQuickConnect();
-								await connect({
-									credentialTypeName: 'firecrawlApi',
-									nodeType: 'n8n-nodes-firecrawl.firecrawl',
-									source: 'node_type',
-									serviceName: 'Firecrawl',
-								});
-
-								expect(mockConfirm).toHaveBeenCalledWith(
-									expect.any(Object),
 									expect.any(String),
-									expect.objectContaining({
-										confirmationCheckboxMessage: undefined,
-									}),
+									expect.any(Object),
 								);
 							});
 
-							it('passes sanitized HTML as confirmationCheckboxMessage when consentCheckbox is set', async () => {
+							it('passes text unchanged when no user is logged in', async () => {
 								settingsStore.moduleSettings['quick-connect'] = {
-									options: [{ ...firecrawlOption, consentCheckbox: 'I agree to the terms' }],
+									options: [{ ...firecrawlOption, consentText: 'Hello {user.firstName}' }],
+								};
+								mockUsersState.currentUser = null;
+
+								const { connect } = useQuickConnect();
+								await connect({
+									credentialTypeName: 'firecrawlApi',
+									nodeType: 'n8n-nodes-firecrawl.firecrawl',
+									source: 'node_type',
+									serviceName: 'Firecrawl',
+								});
+
+								expect(mockConfirm).toHaveBeenCalledWith(
+									expect.objectContaining({
+										type: 'span',
+										props: expect.objectContaining({
+											innerHTML: 'Hello {user.firstName}',
+										}),
+									}),
+									expect.any(String),
+									expect.any(Object),
+								);
+							});
+
+							it('replaces missing user fields with empty string', async () => {
+								settingsStore.moduleSettings['quick-connect'] = {
+									options: [{ ...firecrawlOption, consentText: '{user.firstName} <{user.email}>' }],
+								};
+								mockUsersState.currentUser = {
+									email: null,
+									firstName: 'Alice',
+									fullName: null,
+									lastName: null,
 								};
 
 								const { connect } = useQuickConnect();
@@ -647,192 +739,55 @@ describe('useQuickConnect()', () => {
 								});
 
 								expect(mockConfirm).toHaveBeenCalledWith(
-									expect.any(Object),
-									expect.any(String),
 									expect.objectContaining({
-										confirmationCheckboxMessage: expect.objectContaining({
-											type: 'span',
-											props: expect.objectContaining({
-												innerHTML: 'I agree to the terms',
-											}),
+										type: 'span',
+										props: expect.objectContaining({
+											innerHTML: 'Alice ',
 										}),
 									}),
+									expect.any(String),
+									expect.any(Object),
 								);
 							});
+						});
+					});
 
-							it('returns null without creating a credential when dialog is cancelled', async () => {
-								mockConfirm.mockResolvedValue('cancel');
+					it('throws error for unsupported quick connect type', async () => {
+						const unsupportedOption: QuickConnectOption = {
+							packageName: 'test-package',
+							credentialType: 'testApi',
+							text: 'Test',
+							quickConnectType: 'unsupported-type',
+						};
 
-								const { connect } = useQuickConnect();
-								const result = await connect({
-									credentialTypeName: 'firecrawlApi',
-									nodeType: 'n8n-nodes-firecrawl.firecrawl',
-									source: 'node_type',
-									serviceName: 'Firecrawl',
-								});
+						settingsStore.moduleSettings['quick-connect'] = {
+							options: [unsupportedOption],
+						};
 
-								expect(result).toBeNull();
-								expect(mockGetQuickConnectApiKey).not.toHaveBeenCalled();
-								expect(mockCreateNewCredential).not.toHaveBeenCalled();
-							});
-
-							it('creates credential after dialog confirmation', async () => {
-								const mockCredential = {
-									id: 'cred-456',
-									name: 'Firecrawl API',
-									type: 'firecrawlApi',
-								};
-								mockCreateNewCredential.mockResolvedValue(mockCredential);
-
-								const { connect } = useQuickConnect();
-								const result = await connect({
-									credentialTypeName: 'firecrawlApi',
-									nodeType: 'n8n-nodes-firecrawl.firecrawl',
-									source: 'node_type',
-									serviceName: 'Firecrawl',
-								});
-
-								expect(mockGetQuickConnectApiKey).toHaveBeenCalled();
-								expect(result).toEqual(mockCredential);
-							});
-
-							describe('user data replacement in consent text', () => {
-								it('replaces user template variables with current user data', async () => {
-									settingsStore.moduleSettings['quick-connect'] = {
-										options: [
-											{
-												...firecrawlOption,
-												consentText:
-													'Hello {user.firstName} {user.lastName}, your email is {user.email} and full name {user.fullName}',
-											},
-										],
-									};
-									mockUsersState.currentUser = {
-										email: 'john@example.com',
-										firstName: 'John',
-										fullName: 'John Doe',
-										lastName: 'Doe',
-									};
-
-									const { connect } = useQuickConnect();
-									await connect({
-										credentialTypeName: 'firecrawlApi',
-										nodeType: 'n8n-nodes-firecrawl.firecrawl',
-										source: 'node_type',
-										serviceName: 'Firecrawl',
-									});
-
-									expect(mockConfirm).toHaveBeenCalledWith(
-										expect.objectContaining({
-											type: 'span',
-											props: expect.objectContaining({
-												innerHTML:
-													'Hello John Doe, your email is john@example.com and full name John Doe',
-											}),
-										}),
-										expect.any(String),
-										expect.any(Object),
-									);
-								});
-
-								it('passes text unchanged when no user is logged in', async () => {
-									settingsStore.moduleSettings['quick-connect'] = {
-										options: [{ ...firecrawlOption, consentText: 'Hello {user.firstName}' }],
-									};
-									mockUsersState.currentUser = null;
-
-									const { connect } = useQuickConnect();
-									await connect({
-										credentialTypeName: 'firecrawlApi',
-										nodeType: 'n8n-nodes-firecrawl.firecrawl',
-										source: 'node_type',
-										serviceName: 'Firecrawl',
-									});
-
-									expect(mockConfirm).toHaveBeenCalledWith(
-										expect.objectContaining({
-											type: 'span',
-											props: expect.objectContaining({
-												innerHTML: 'Hello {user.firstName}',
-											}),
-										}),
-										expect.any(String),
-										expect.any(Object),
-									);
-								});
-
-								it('replaces missing user fields with empty string', async () => {
-									settingsStore.moduleSettings['quick-connect'] = {
-										options: [
-											{ ...firecrawlOption, consentText: '{user.firstName} <{user.email}>' },
-										],
-									};
-									mockUsersState.currentUser = {
-										email: null,
-										firstName: 'Alice',
-										fullName: null,
-										lastName: null,
-									};
-
-									const { connect } = useQuickConnect();
-									await connect({
-										credentialTypeName: 'firecrawlApi',
-										nodeType: 'n8n-nodes-firecrawl.firecrawl',
-										source: 'node_type',
-										serviceName: 'Firecrawl',
-									});
-
-									expect(mockConfirm).toHaveBeenCalledWith(
-										expect.objectContaining({
-											type: 'span',
-											props: expect.objectContaining({
-												innerHTML: 'Alice ',
-											}),
-										}),
-										expect.any(String),
-										expect.any(Object),
-									);
-								});
-							});
+						mockGetCredentialTypeByName.mockReturnValue({
+							name: 'testApi',
+							displayName: 'Test API',
+							properties: [],
 						});
 
-						it('throws error for unsupported quick connect type', async () => {
-							const unsupportedOption: QuickConnectOption = {
-								packageName: 'test-package',
-								credentialType: 'testApi',
-								text: 'Test',
-								quickConnectType: 'unsupported-type',
-							};
-
-							settingsStore.moduleSettings['quick-connect'] = {
-								options: [unsupportedOption],
-							};
-
-							mockGetCredentialTypeByName.mockReturnValue({
-								name: 'testApi',
-								displayName: 'Test API',
-								properties: [],
-							});
-
-							const { connect } = useQuickConnect();
-							const result = await connect({
-								credentialTypeName: 'testApi',
-								nodeType: 'test-package.testNode',
-								source: 'node_type',
-								serviceName: 'Pinecone',
-							});
-
-							expect(result).toBeNull();
-							expect(mockToastShowError).toHaveBeenCalledWith(
-								expect.objectContaining({
-									message: 'Quick connect for type unsupported-type is not implemented',
-								}),
-								'credentialEdit.credentialEdit.showError.createCredential.title',
-							);
+						const { connect } = useQuickConnect();
+						const result = await connect({
+							credentialTypeName: 'testApi',
+							nodeType: 'test-package.testNode',
+							source: 'node_type',
+							serviceName: 'Pinecone',
 						});
-					},
-				);
-			});
+
+						expect(result).toBeNull();
+						expect(mockToastShowError).toHaveBeenCalledWith(
+							expect.objectContaining({
+								message: 'Quick connect for type unsupported-type is not implemented',
+							}),
+							'credentialEdit.credentialEdit.showError.createCredential.title',
+						);
+					});
+				},
+			);
 		});
 	});
 });

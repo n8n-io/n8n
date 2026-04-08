@@ -21,6 +21,17 @@ vi.mock('@/features/ndv/shared/ndv.store', () => ({
 	useNDVStore: () => ({ activeNode: null }),
 }));
 
+const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
+	mockWorkflowDocumentStore: {
+		allNodes: [] as INodeUi[],
+	},
+}));
+
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	useWorkflowDocumentStore: vi.fn().mockReturnValue(mockWorkflowDocumentStore),
+	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
+}));
+
 function createMockInput(value = '', selectionStart: number | null = null): HTMLInputElement {
 	const input = document.createElement('input');
 	input.value = value;
@@ -73,8 +84,11 @@ describe('useNodeMention', () => {
 		workflowsStore = useWorkflowsStore();
 		focusedNodesStore = useFocusedNodesStore();
 
-		// @ts-expect-error -- mock readonly property
+		// @ts-expect-error -- mock readonly getter
+		workflowsStore.workflowId = 'test-wf';
+		// @ts-expect-error -- mock readonly property for focusedNodesStore which still reads workflowsStore.allNodes
 		workflowsStore.allNodes = mockNodes;
+		mockWorkflowDocumentStore.allNodes = mockNodes;
 	});
 
 	describe('handleInput - @ trigger conditions', () => {

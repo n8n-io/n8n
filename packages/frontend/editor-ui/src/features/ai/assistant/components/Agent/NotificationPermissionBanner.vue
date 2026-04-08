@@ -31,7 +31,7 @@ function onDismissClick() {
 			{{ i18n.baseText('aiAssistant.builder.notificationBanner.text') }}
 		</span>
 		<N8nButton
-			variant="solid"
+			variant="outline"
 			size="xsmall"
 			data-test-id="notification-banner-notify"
 			@click="onNotifyClick"

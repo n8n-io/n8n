@@ -49,6 +49,7 @@ const RedactionPolicySchema = z.union([
 	z.literal('none'),
 	z.literal('all'),
 	z.literal('non-manual'),
+	z.literal('manual-only'),
 ]);
 
 const RedactionSettingSchemaV1 = z.object({

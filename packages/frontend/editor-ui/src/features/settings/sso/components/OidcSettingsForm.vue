@@ -13,6 +13,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { type OidcConfigDto } from '@n8n/api-types';
 import ConfirmProvisioningDialog from '../provisioning/components/ConfirmProvisioningDialog.vue';
+import RoleMappingRuleEditor from '../provisioning/components/RoleMappingRuleEditor.vue';
 import UserRoleProvisioningDropdown from '../provisioning/components/UserRoleProvisioningDropdown.vue';
 
 const i18n = useI18n();
@@ -80,7 +81,7 @@ const loadOidcConfig = async () => {
 	try {
 		await getOidcConfig();
 	} catch (error) {
-		toast.showError(error, 'error');
+		toast.showError(error, i18n.baseText('settings.sso.settings.save.error_oidc'));
 	}
 };
 
@@ -183,6 +184,25 @@ function sendTrackingEvent(config: OidcConfigDto) {
 	telemetry.track('User updated single sign on settings', trackingMetadata);
 }
 
+const isTestEnabled = computed(
+	() =>
+		!!ssoStore.oidcConfig?.discoveryEndpoint &&
+		ssoStore.oidcConfig.discoveryEndpoint !== '' &&
+		!!ssoStore.oidcConfig?.clientId &&
+		!!ssoStore.oidcConfig?.clientSecret,
+);
+
+const onTest = async () => {
+	try {
+		const { url } = await ssoStore.testOidcConfig();
+		if (typeof window !== 'undefined') {
+			window.open(url, '_blank');
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.sso.settings.test.error'));
+	}
+};
+
 const hasUnsavedChanges = computed(() => !cannotSaveOidcSettings.value && !savingForm.value);
 
 defineExpose({ hasUnsavedChanges, onSave: onOidcSettingsSave });
@@ -253,6 +273,10 @@ onMounted(async () => {
 			<small>The prompt parameter to use when authenticating with the OIDC provider</small>
 		</div>
 		<UserRoleProvisioningDropdown v-model="userRoleProvisioning" auth-protocol="oidc" />
+		<RoleMappingRuleEditor
+			v-if="userRoleProvisioning === 'expression_based'"
+			ref="roleMappingRuleEditorRef"
+		/>
 		<ConfirmProvisioningDialog
 			v-model="showUserRoleProvisioningDialog"
 			:new-provisioning-setting="userRoleProvisioning"
@@ -291,6 +315,15 @@ onMounted(async () => {
 				@click="onOidcSettingsSave(false)"
 			>
 				{{ i18n.baseText('settings.sso.settings.save') }}
+			</N8nButton>
+			<N8nButton
+				variant="subtle"
+				:disabled="!isTestEnabled"
+				size="large"
+				data-test-id="sso-oidc-test"
+				@click="onTest"
+			>
+				{{ i18n.baseText('settings.sso.settings.test') }}
 			</N8nButton>
 		</div>
 	</div>

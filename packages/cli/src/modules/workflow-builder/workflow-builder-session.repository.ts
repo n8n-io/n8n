@@ -38,6 +38,8 @@ export class WorkflowBuilderSessionRepository
 			messages,
 			previousSummary: entity.previousSummary ?? undefined,
 			updatedAt: entity.updatedAt,
+			activeVersionCardId: entity.activeVersionCardId,
+			resumeAfterRestoreMessageId: entity.resumeAfterRestoreMessageId,
 		};
 	}
 
@@ -46,11 +48,25 @@ export class WorkflowBuilderSessionRepository
 		const messages = mapChatMessagesToStoredMessages(data.messages);
 		const previousSummary = data.previousSummary ?? null;
 
+		const activeVersionCardId = data.activeVersionCardId ?? null;
+		const resumeAfterRestoreMessageId = data.resumeAfterRestoreMessageId ?? null;
+
 		await this.createQueryBuilder()
 			.insert()
 			.into(WorkflowBuilderSession)
-			.values({ id: randomUUID(), workflowId, userId, messages, previousSummary })
-			.orUpdate(['messages', 'previousSummary'], ['workflowId', 'userId'])
+			.values({
+				id: randomUUID(),
+				workflowId,
+				userId,
+				messages,
+				previousSummary,
+				activeVersionCardId,
+				resumeAfterRestoreMessageId,
+			})
+			.orUpdate(
+				['messages', 'previousSummary', 'activeVersionCardId', 'resumeAfterRestoreMessageId'],
+				['workflowId', 'userId'],
+			)
 			.execute();
 	}
 
