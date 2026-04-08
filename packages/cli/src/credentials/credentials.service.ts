@@ -731,25 +731,26 @@ export class CredentialsService {
 
 		const { manager: dbManager } = this.credentialsRepository;
 		const result = await dbManager.transaction(async (transactionManager) => {
-			if (projectId === undefined) {
+			let targetProjectId = projectId?.trim();
+			if (!targetProjectId) {
 				const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
 					user.id,
 					transactionManager,
 				);
 				// Chat users are not allowed to create credentials even within their personal project,
 				// so even though we found the project ensure it gets found via expected scope too.
-				projectId = personalProject.id;
+				targetProjectId = personalProject.id;
 			}
 
 			const project = await this.projectService.getProjectWithScope(
 				user,
-				projectId,
+				targetProjectId,
 				['credential:create'],
 				transactionManager,
 			);
 
 			if (project === null) {
-				if (!(await this.projectRepository.exists({ where: { id: projectId } }))) {
+				if (!(await this.projectRepository.exists({ where: { id: targetProjectId } }))) {
 					throw new NotFoundError('Project not found');
 				}
 				throw new ForbiddenError(
@@ -1230,15 +1231,24 @@ export class CredentialsService {
 	}
 
 	private async createCredential(opts: CreateCredentialOptions, user: User) {
+		const explicitProjectId =
+			opts.projectId !== undefined && opts.projectId.trim() !== ''
+				? opts.projectId.trim()
+				: undefined;
+
+		const projectIdForValidation =
+			explicitProjectId ??
+			(await this.projectRepository.getPersonalProjectForUserOrFail(user.id)).id;
+
 		await this.checkCredentialData(
 			opts.type,
 			opts.data as ICredentialDataDecryptedObject,
 			user,
-			opts.projectId ?? '',
+			projectIdForValidation,
 		);
-		if (this.externalSecretsConfig.externalSecretsForProjects && opts.projectId) {
+		if (this.externalSecretsConfig.externalSecretsForProjects && explicitProjectId) {
 			await validateAccessToReferencedSecretProviders(
-				opts.projectId,
+				explicitProjectId,
 				opts.data as ICredentialDataDecryptedObject,
 				this.externalSecretsProviderAccessCheckService,
 				'create',
@@ -1276,7 +1286,7 @@ export class CredentialsService {
 			credentialEntity,
 			encryptedCredential,
 			user,
-			opts.projectId,
+			explicitProjectId,
 			opts.data as ICredentialDataDecryptedObject,
 		);
 
