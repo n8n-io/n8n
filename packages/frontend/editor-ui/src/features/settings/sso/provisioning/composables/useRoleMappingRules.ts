@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type {
 	RoleMappingRuleResponse,
 	RoleMappingRuleType,
@@ -31,6 +31,15 @@ export function useRoleMappingRules() {
 	const fallbackInstanceRole = ref<string>('global:member');
 	const isLoading = ref(false);
 	const isDirty = ref(false);
+
+	// Track fallback role changes as dirty — skip the initial value set during loadRules
+	let fallbackInitialized = false;
+	watch(fallbackInstanceRole, () => {
+		if (fallbackInitialized) {
+			isDirty.value = true;
+		}
+		fallbackInitialized = true;
+	});
 
 	function getRulesRef(type: RoleMappingRuleType) {
 		return type === 'instance' ? instanceRules : projectRules;
