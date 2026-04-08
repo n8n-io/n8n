@@ -70,14 +70,21 @@ function workflowItemToTask(
 	if (wf.integrations.length > 0) specParts.push(`Integrations: ${wf.integrations.join(', ')}`);
 
 	// Infer missing table dependencies by checking if the workflow's
-	// purpose or integrations mention any table name.
+	// purpose or integrations mention any table name (word-boundary match).
+	// Skip short names (< 4 chars) — they're too ambiguous for substring inference.
 	const tableIds = new Set(knownTables.map((dt) => dt.id));
 	const explicitDeps = new Set(wf.dependsOn);
 	const inferredDeps = [...explicitDeps];
-	const wfText = `${wf.purpose} ${wf.integrations.join(' ')}`.toLowerCase();
-	for (const dt of knownTables) {
-		if (!explicitDeps.has(dt.id) && wfText.includes(dt.name.toLowerCase())) {
-			inferredDeps.push(dt.id);
+	const wfText = `${wf.purpose} ${wf.integrations.join(' ')}`;
+	const tablePatterns = knownTables
+		.filter((dt) => dt.name.length >= 4)
+		.map((dt) => ({
+			id: dt.id,
+			pattern: new RegExp(`\\b${dt.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i'),
+		}));
+	for (const { id, pattern } of tablePatterns) {
+		if (!explicitDeps.has(id) && pattern.test(wfText)) {
+			inferredDeps.push(id);
 		}
 	}
 
