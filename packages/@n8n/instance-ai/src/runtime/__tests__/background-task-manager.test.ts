@@ -139,6 +139,24 @@ describe('BackgroundTaskManager', () => {
 			expect(onFailed).not.toHaveBeenCalled();
 		});
 
+		it('does not call onSettled when aborted', async () => {
+			const onSettled = jest.fn();
+			const { promise, reject } = createDeferred<string | BackgroundTaskResult>();
+
+			manager.spawn(
+				makeSpawnOptions({
+					run: async () => await promise,
+					onSettled,
+				}),
+			);
+
+			manager.cancelTask('thread-1', 'task-1');
+			reject(new Error('aborted'));
+			await flushPromises();
+
+			expect(onSettled).not.toHaveBeenCalled();
+		});
+
 		it('removes task from map after settlement', async () => {
 			const { promise, resolve } = createDeferred<string>();
 

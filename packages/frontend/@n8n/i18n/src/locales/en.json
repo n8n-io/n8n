@@ -5252,6 +5252,7 @@
 	"instanceAi.backgroundTask.completed": "Background task finished",
 	"instanceAi.backgroundTask.failed": "Background task failed",
 	"instanceAi.planReview.title": "Review before building",
+	"instanceAi.planReview.building": "Building plan...",
 	"instanceAi.planReview.awaitingApproval": "Awaiting approval",
 	"instanceAi.planReview.description": "Review the plan, then approve it to start building or request changes to revise it.",
 	"instanceAi.planReview.feedbackPlaceholder": "Describe what should change before execution starts.",

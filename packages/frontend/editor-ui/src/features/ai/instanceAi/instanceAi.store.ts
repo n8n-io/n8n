@@ -386,38 +386,55 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				msg = messages.value.find((m) => m.runId === data.runId);
 			}
 
-			if (msg) {
-				msg.agentTree = data.agentTree;
-				msg.runId = data.runId;
-				msg.messageGroupId = groupId;
-				latestTasks.value = findLatestTasksFromMessages(messages.value);
-				const isOrchestratorLive = data.status === 'active' || data.status === 'suspended';
-				// For background-only groups, the orchestrator already finished.
-				// Set isStreaming = false so InstanceAiMessage.vue's hasActiveBackgroundTasks
-				// computed correctly detects active children and shows the indicator.
-				msg.isStreaming = isOrchestratorLive;
-				// Only the active/suspended orchestrator run should claim activeRunId.
-				// Background-only groups update their message but don't override the
-				// global active run, which controls input state and cancel buttons.
-				if (isOrchestratorLive) {
-					activeRunId.value = data.runId;
-				}
-
-				// Rebuild normalized run state keyed by groupId
-				runStateByGroupId[groupId] = rebuiltRunState;
-
-				// Restore runId → groupId mappings for ALL runs in the group.
-				// This ensures late events from older follow-up runs still route
-				// to this message after reconnect.
-				if (data.runIds) {
-					for (const rid of data.runIds) {
-						if (!isSafeObjectKey(rid)) continue;
-						groupIdByRunId[rid] = groupId;
-					}
-				}
-				// Always register the current runId
-				groupIdByRunId[data.runId] = groupId;
+			if (!msg) {
+				messages.value.push({
+					id: groupId,
+					runId: data.runId,
+					messageGroupId: groupId,
+					runIds: data.runIds,
+					role: 'assistant',
+					createdAt: new Date().toISOString(),
+					content: data.agentTree.textContent,
+					reasoning: data.agentTree.reasoning,
+					isStreaming: false,
+					agentTree: data.agentTree,
+				});
+				msg = messages.value[messages.value.length - 1];
 			}
+
+			msg.agentTree = data.agentTree;
+			msg.runId = data.runId;
+			msg.messageGroupId = groupId;
+			msg.runIds = data.runIds;
+			msg.content = data.agentTree.textContent;
+			msg.reasoning = data.agentTree.reasoning;
+			latestTasks.value = findLatestTasksFromMessages(messages.value);
+			const isOrchestratorLive = data.status === 'active' || data.status === 'suspended';
+			// For background-only groups, the orchestrator already finished.
+			// Set isStreaming = false so InstanceAiMessage.vue's hasActiveBackgroundTasks
+			// computed correctly detects active children and shows the indicator.
+			msg.isStreaming = isOrchestratorLive;
+			// Only the active/suspended orchestrator run should claim activeRunId.
+			// Background-only groups update their message but don't override the
+			// global active run, which controls input state and cancel buttons.
+			if (isOrchestratorLive) {
+				activeRunId.value = data.runId;
+			}
+
+			// Rebuild normalized run state keyed by groupId
+			runStateByGroupId[groupId] = rebuiltRunState;
+
+			// Restore runId → groupId mappings for ALL runs in the group.
+			// This ensures late events from older follow-up runs still route
+			// to this message after reconnect.
+			if (data.runIds) {
+				for (const rid of data.runIds) {
+					if (!isSafeObjectKey(rid)) continue;
+					groupIdByRunId[rid] = groupId;
+				}
+			}
+			// Always register the current runId
+			groupIdByRunId[data.runId] = groupId;
 		} catch {
 			// Malformed run-sync — skip
 		}

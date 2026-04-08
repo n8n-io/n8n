@@ -22,6 +22,8 @@ export interface ConsumeWithHitlOptions {
 	drainCorrections?: () => string[];
 	llmStepTraceHooks?: LlmStepTraceHooks;
 	workingMemoryEnabled?: boolean;
+	/** Max steps for the agent — passed to resumeStream so resumed streams keep the same limit. */
+	maxSteps?: number;
 }
 
 export interface ConsumeWithHitlResult {
@@ -59,6 +61,15 @@ export async function consumeStreamWithHitl(
 			mode: 'auto',
 			waitForConfirmation: options.waitForConfirmation,
 			drainCorrections: options.drainCorrections,
+			...(options.maxSteps
+				? {
+						buildResumeOptions: ({ mastraRunId, suspension }) => ({
+							runId: mastraRunId,
+							toolCallId: suspension.toolCallId,
+							maxSteps: options.maxSteps,
+						}),
+					}
+				: {}),
 		},
 		llmStepTraceHooks: options.llmStepTraceHooks,
 		workingMemoryEnabled: options.workingMemoryEnabled,

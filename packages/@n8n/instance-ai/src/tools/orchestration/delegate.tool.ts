@@ -22,7 +22,7 @@ import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
 
-const FORBIDDEN_TOOL_NAMES = new Set(['plan', 'delegate']);
+const FORBIDDEN_TOOL_NAMES = new Set(['plan', 'create-tasks', 'delegate']);
 
 const FALLBACK_MAX_STEPS = 10;
 
