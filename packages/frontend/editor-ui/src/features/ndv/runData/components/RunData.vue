@@ -12,7 +12,6 @@ import type {
 	ITaskMetadata,
 	NodeError,
 	NodeHint,
-	Workflow,
 	NodeConnectionType,
 } from 'n8n-workflow';
 import { parseErrorMetadata, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
@@ -21,6 +20,7 @@ import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef,
 import type { INodeUi, IRunDataDisplayMode, ITab } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
+import type { WorkflowAccessors } from '@/app/types/workflow';
 
 import {
 	CORE_NODES_CATEGORY,
@@ -111,7 +111,7 @@ export type EnterEditModeArgs = {
 };
 
 type Props = {
-	workflowObject: Workflow;
+	workflowObject: WorkflowAccessors;
 	workflowExecution?: IRunExecutionData;
 	runIndex: number;
 	executingMessage: string;
@@ -874,7 +874,7 @@ const nodeHints = computed<NodeHint[]>(() => {
 					node: node.value,
 					nodeType: nodeType.value,
 					nodeOutputData,
-					nodes: props.workflowObject.nodes,
+					getNodeByName: props.workflowObject.getNode,
 					connections: props.workflowObject.connectionsBySourceNode,
 					hasNodeRun: hasNodeRun.value,
 					hasMultipleInputItems,

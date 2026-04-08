@@ -13,10 +13,10 @@ import type {
 	ExecutionError,
 	INodeTypeBaseDescription,
 	INodeExecutionData,
-	Workflow,
 	IWorkflowDataProxyAdditionalKeys,
 } from 'n8n-workflow';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
+import type { WorkflowAccessors } from '@/app/types/workflow';
 import type {
 	ExecutionFilterType,
 	ExecutionPreviewNodeSchema,
@@ -187,7 +187,7 @@ export async function displayForm({
 
 export const waitingNodeTooltip = (
 	node: INodeUi | null | undefined,
-	workflow?: Workflow,
+	workflow?: WorkflowAccessors,
 	metadata?: { resumeUrl?: string; resumeFormUrl?: string },
 ) => {
 	if (!node) return '';

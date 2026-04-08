@@ -64,6 +64,7 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { computed } from 'vue';
+import identity from 'lodash/identity';
 
 export type ResolveParameterOptions = {
 	targetItem?: TargetItem;
@@ -105,19 +106,29 @@ export async function resolveParameter<T = IDataObject>(
 
 	return await resolveParameterImpl(
 		parameter,
-		{
-			pinData: workflowDocumentStore?.pinData as IPinData,
-			expression: workflowDocumentStore?.getExpressionHandler() ?? ({} as WorkflowExpression),
-			getNode: workflowDocumentStore?.getNodeByName ?? (() => null),
-			getParentNodes: workflowDocumentStore?.getParentNodes ?? (() => []),
-			getNodeConnectionIndexes:
-				workflowDocumentStore?.getNodeConnectionIndexes ?? (() => undefined),
-			getParentMainInputNode:
-				workflowDocumentStore?.getParentMainInputNode ??
-				(() => {
-					throw Error();
-				}),
-		},
+		workflowDocumentStore
+			? {
+					connectionsBySourceNode: workflowDocumentStore.connectionsBySourceNode,
+					pinData: workflowDocumentStore.pinData as IPinData,
+					expression: workflowDocumentStore.getExpressionHandler(),
+					getNode: workflowDocumentStore.getNodeByName,
+					getParentNodes: workflowDocumentStore.getParentNodes,
+					getNodeConnectionIndexes: workflowDocumentStore.getNodeConnectionIndexes,
+					getParentMainInputNode: workflowDocumentStore.getParentMainInputNode,
+					getChildNodes: workflowDocumentStore.getChildNodes,
+					getParentNodesByDepth: workflowDocumentStore.getParentNodesByDepth,
+				}
+			: {
+					connectionsBySourceNode: {},
+					pinData: {},
+					expression: {} as WorkflowExpression,
+					getNode: () => null,
+					getParentNodes: () => [],
+					getNodeConnectionIndexes: () => undefined,
+					getParentMainInputNode: identity,
+					getChildNodes: () => [],
+					getParentNodesByDepth: () => [],
+				},
 		workflowDocumentStore?.connectionsBySourceNode ?? {},
 		useEnvironmentsStore().variablesAsObject,
 		useNDVStore().activeNode,

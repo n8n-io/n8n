@@ -52,7 +52,9 @@ import {
 } from './type-guards';
 import { validateFieldType } from './type-validation';
 import { deepCopy } from './utils';
-import type { Workflow } from './workflow';
+import type { Workflow } from '.';
+
+type WorkflowForNodeHelpers = Pick<Workflow, 'expression'>;
 
 export const cronNodeOptions: INodePropertyCollection[] = [
 	{
@@ -1129,7 +1131,7 @@ export function getConnectionTypes(
 }
 
 export function getNodeInputs(
-	workflow: Workflow,
+	workflow: WorkflowForNodeHelpers,
 	node: INode,
 	nodeTypeData: INodeTypeDescription,
 ): Array<NodeConnectionType | INodeInputConfiguration> {
@@ -1152,7 +1154,7 @@ export function getNodeInputs(
 }
 
 export function getNodeOutputs(
-	workflow: Workflow,
+	workflow: WorkflowForNodeHelpers,
 	node: INode,
 	nodeTypeData: INodeTypeDescription,
 ): Array<NodeConnectionType | INodeOutputConfiguration> {
@@ -1686,7 +1688,11 @@ export function isTriggerNode(nodeTypeData: INodeTypeDescription) {
 	return nodeTypeData.group.includes('trigger');
 }
 
-export function isExecutable(workflow: Workflow, node: INode, nodeTypeData: INodeTypeDescription) {
+export function isExecutable(
+	workflow: WorkflowForNodeHelpers,
+	node: INode,
+	nodeTypeData: INodeTypeDescription,
+) {
 	if (!nodeTypeData) {
 		return false;
 	}
