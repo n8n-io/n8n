@@ -4,6 +4,7 @@ import { N8nCallout, N8nOption, N8nSelect } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { type SupportedProtocolType } from '../../sso.store';
 import { useRBACStore } from '@/app/stores/rbac.store';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 export type RoleAssignmentSetting = 'manual' | 'instance' | 'instance_and_project';
 export type RoleMappingMethodSetting = 'idp' | 'rules_in_n8n';
@@ -31,6 +32,8 @@ const { authProtocol } = defineProps<{
 
 const i18n = useI18n();
 const canManage = useRBACStore().hasScope('provisioning:manage');
+const { check: isEnvFeatEnabled } = useEnvFeatureFlag();
+const isRuleMappingEnabled = computed(() => isEnvFeatEnabled.value('ROLE_MAPPING_RULES'));
 
 const showMappingMethod = computed(() => roleAssignment.value !== 'manual');
 
@@ -146,6 +149,7 @@ defineExpose({ legacyValue, showRuleEditor });
 						</div>
 					</N8nOption>
 					<N8nOption
+						v-if="isRuleMappingEnabled"
 						:label="i18n.baseText('settings.sso.settings.roleMappingMethod.rulesInN8n')"
 						value="rules_in_n8n"
 					>
@@ -266,9 +270,5 @@ defineExpose({ legacyValue, showRuleEditor });
 	&:hover {
 		color: var(--color--primary);
 	}
-}
-
-.noBorder {
-	border-bottom: none;
 }
 </style>
