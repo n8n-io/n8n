@@ -463,6 +463,30 @@ export type RelayEventMap = {
 		deleteBefore?: Date;
 	};
 
+	'execution-waiting': {
+		executionId: string;
+		workflowId: string;
+		workflowName: string;
+		nodeName: string;
+		nodeId?: string;
+		nodeType?: string;
+		/**
+		 * A value of null means waiting indefinitely (no timeout).
+		 */
+		waitTill: Date | null;
+	};
+
+	'execution-resumed': {
+		executionId: string;
+		workflowId: string;
+		workflowName: string;
+		nodeName: string;
+		nodeId?: string;
+		nodeType?: string;
+		resumeSource: 'webhook' | 'form' | 'timer';
+		responseAt: Date;
+	};
+
 	'execution-data-revealed': {
 		user: UserLike;
 		executionId: string;
