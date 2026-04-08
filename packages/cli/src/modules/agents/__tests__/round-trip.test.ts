@@ -358,27 +358,27 @@ export default new Agent('mixed-array-agent')
 const NODE_TOOL_AGENT_SOURCE = `
 import { Agent } from '@n8n/agents';
 import { ToolFromNode } from '@n8n/agents-utils';
+import { z } from 'zod';
 
 export default new Agent('Node Tool Agent')
   .model('anthropic/claude-sonnet-4-5')
   .credential('Anthropic account')
   .instructions('Send emails and query databases.')
   .tool(
-    new ToolFromNode({
+    new ToolFromNode('send_email', {
       type: 'n8n-nodes-base.gmail',
       version: 2.1,
-      parameters: { resource: 'message', operation: 'send' },
+      parameters: { resource: 'message', operation: 'send', subject: '={{ $json.subject }}' },
       credentials: { gmailOAuth2: { id: 'cred-123', name: 'My Gmail' } },
     })
-      .name('send_email')
+			.input(z.object({ subject: z.string() }))
       .description('Send an email via Gmail')
   )
   .tool(
-    new ToolFromNode({
+    new ToolFromNode('query_db', {
       type: 'n8n-nodes-base.postgres',
       version: 2,
     })
-      .name('query_db')
       .description('Query the Postgres database')
   );
 `;
@@ -395,10 +395,15 @@ describe('ToolFromNode Round-Trip', () => {
 		expect(sendEmail.metadata?.nodeTool).toBe(true);
 		expect(sendEmail.metadata?.nodeType).toBe('n8n-nodes-base.gmail');
 		expect(sendEmail.metadata?.nodeTypeVersion).toBe(2.1);
-		expect(sendEmail.metadata?.nodeParameters).toEqual({ resource: 'message', operation: 'send' });
+		expect(sendEmail.metadata?.nodeParameters).toEqual({
+			resource: 'message',
+			operation: 'send',
+			subject: '={{ $json.subject }}',
+		});
 		expect(sendEmail.metadata?.credentials).toEqual({
 			gmailOAuth2: { id: 'cred-123', name: 'My Gmail' },
 		});
+		expect(sendEmail.inputSchemaSource).toBe('z.object({ subject: z.string() })');
 		expect(sendEmail.description).toBe('Send an email via Gmail');
 
 		const queryDb = schema.tools.find((t) => t.name === 'query_db')!;
@@ -412,6 +417,7 @@ describe('ToolFromNode Round-Trip', () => {
 
 	it('generates code with ToolFromNode constructor and correct imports', async () => {
 		const schema = await compileAndDescribe(NODE_TOOL_AGENT_SOURCE);
+		console.log(JSON.stringify(schema, null, 2));
 		const code = await generateAgentCode(schema, 'Node Tool Agent', { formatCode: false });
 
 		// Imports
@@ -425,11 +431,10 @@ describe('ToolFromNode Round-Trip', () => {
 		expect(code).toContain('"version": 2.1');
 		expect(code).toContain('"resource": "message"');
 		expect(code).toContain('"gmailOAuth2"');
-		expect(code).toContain(".name('send_email')");
 		expect(code).toContain(".description('Send an email via Gmail')");
+		expect(code).toContain('.input(z.object({ subject: z.string() }))');
 
 		expect(code).toContain('"type": "n8n-nodes-base.postgres"');
-		expect(code).toContain(".name('query_db')");
 	});
 
 	it('survives a full round-trip (source → schema → generate → recompile)', async () => {

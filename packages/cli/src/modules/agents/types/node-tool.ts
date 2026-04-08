@@ -25,13 +25,12 @@ export interface NodeToolDescriptor {
  * import { Agent } from '@n8n/agents';
  * import { ToolFromNode } from '@n8n/agents-utils';
  *
- * const sendEmail = new ToolFromNode({
+ * const sendEmail = new ToolFromNode('send-email', {
  *   type: 'n8n-nodes-base.gmail',
  *   version: 2.1,
  *   parameters: { resource: 'message', operation: 'send', sendTo: '={{ $json.to }}' },
  *   credentials: { gmailOAuth2: { id: 'cred-id', name: 'My Gmail' } },
  * })
- *   .name('send-email')
  *   .description('Send an email via Gmail')
  *   .input(z.object({ to: z.string() }));
  * ```
@@ -54,12 +53,16 @@ export class ToolFromNode {
 
 	private _inputSchema?: Record<string, unknown>;
 
-	constructor(nodeSchema: {
-		type: string;
-		version: string | number;
-		parameters?: Record<string, unknown>;
-		credentials?: Record<string, { id?: string; name?: string }>;
-	}) {
+	constructor(
+		name: string,
+		nodeSchema: {
+			type: string;
+			version: string | number;
+			parameters?: Record<string, unknown>;
+			credentials?: Record<string, { id?: string; name?: string }>;
+		},
+	) {
+		this._name = name;
 		this._nodeType = nodeSchema.type;
 		this._nodeTypeVersion = Number(nodeSchema.version);
 		this._nodeParameters = nodeSchema.parameters ?? {};
@@ -71,11 +74,6 @@ export class ToolFromNode {
 				this._credentials[slot] = { id: ref.id ?? '', name: ref.name ?? '' };
 			}
 		}
-	}
-
-	name(n: string): this {
-		this._name = n;
-		return this;
 	}
 
 	description(d: string): this {
@@ -108,8 +106,8 @@ export class ToolFromNode {
 				nodeTypeVersion: this._nodeTypeVersion,
 				nodeParameters: this._nodeParameters,
 				credentials: this._credentials,
-				inputSchema: this._inputSchema,
 			},
+			inputSchema: this._inputSchema,
 		};
 	}
 }

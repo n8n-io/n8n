@@ -65,6 +65,9 @@ function toolPart(tool: ToolSchema): {
 	usesWorkflowTool: boolean;
 	usesNodeTool: boolean;
 } {
+	const parts: string[] = [];
+	let usesNodeTool = false;
+	let usesWorkflowTool = false;
 	if (!tool.editable && tool.metadata?.nodeTool === true) {
 		const meta = tool.metadata as {
 			nodeType: string;
@@ -78,21 +81,17 @@ function toolPart(tool: ToolSchema): {
 		if (Object.keys(nodeParameters).length > 0) schemaObj.parameters = nodeParameters;
 		if (Object.keys(credentials).length > 0) schemaObj.credentials = credentials;
 
-		const parts = [`new ToolFromNode(${JSON.stringify(schemaObj, null, 2)})`];
-		parts.push(`.name('${escapeSingleQuote(tool.name)}')`);
-		parts.push(`.description('${escapeSingleQuote(tool.description)}')`);
-		return { part: `.tool(${parts.join('')})`, usesWorkflowTool: false, usesNodeTool: true };
+		parts.push(
+			`new ToolFromNode('${escapeSingleQuote(tool.name)}', ${JSON.stringify(schemaObj, null, 2)})`,
+		);
+		usesNodeTool = true;
+	} else if (!tool.editable && tool.metadata?.workflowTool === true) {
+		parts.push(`new WorkflowTool('${escapeSingleQuote(tool.name)}')`);
+		usesWorkflowTool = true;
+	} else {
+		parts.push(`new Tool('${escapeSingleQuote(tool.name)}')`);
 	}
 
-	if (!tool.editable && tool.metadata?.workflowTool === true) {
-		return {
-			part: `.tool(new WorkflowTool('${escapeSingleQuote(tool.name)}'))`,
-			usesWorkflowTool: true,
-			usesNodeTool: false,
-		};
-	}
-
-	const parts = [`new Tool('${escapeSingleQuote(tool.name)}')`];
 	parts.push(`.description('${escapeSingleQuote(tool.description)}')`);
 	if (tool.inputSchemaSource) parts.push(`.input(${tool.inputSchemaSource})`);
 	if (tool.outputSchemaSource) parts.push(`.output(${tool.outputSchemaSource})`);
@@ -102,7 +101,7 @@ function toolPart(tool: ToolSchema): {
 	if (tool.toMessageSource) parts.push(`.toMessage(${tool.toMessageSource})`);
 	if (tool.requireApproval) parts.push('.requireApproval()');
 	if (tool.needsApprovalFnSource) parts.push(`.needsApprovalFn(${tool.needsApprovalFnSource})`);
-	return { part: `.tool(${parts.join('')})`, usesWorkflowTool: false, usesNodeTool: false };
+	return { part: `.tool(${parts.join('')})`, usesWorkflowTool, usesNodeTool };
 }
 
 function evalPart(ev: EvalSchema): string {

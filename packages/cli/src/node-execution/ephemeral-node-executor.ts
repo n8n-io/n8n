@@ -6,6 +6,7 @@ import {
 	WorkflowEntity,
 	WorkflowRepository,
 } from '@n8n/db';
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { DataSource, type EntityManager } from '@n8n/typeorm';
@@ -68,6 +69,7 @@ export class EphemeralNodeExecutor {
 		private readonly dataSource: DataSource,
 		private readonly cacheService: CacheService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly logger: Logger,
 	) {}
 
 	/**
@@ -306,7 +308,10 @@ export class EphemeralNodeExecutor {
 			return await this.runEphemeralWorkflow(savedWorkflow, request.inputData, request.projectId);
 		} finally {
 			if (savedWorkflow) {
-				await this.deleteWorkflow(savedWorkflow.id);
+				const id = savedWorkflow.id;
+				await this.deleteWorkflow(id).catch(() => {
+					this.logger.error('Failed to delete ephemeral workflow', { workflowId: id });
+				});
 			}
 		}
 	}
