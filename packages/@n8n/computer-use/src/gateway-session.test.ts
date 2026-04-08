@@ -1,3 +1,4 @@
+import type { ToolGroup } from './config';
 import { GatewaySession, buildDefaultPermissions } from './gateway-session';
 import type { SettingsStore } from './settings-store';
 
@@ -14,7 +15,7 @@ function makeStore(
 	Pick<SettingsStore, 'getResourcePermissions' | 'alwaysAllow' | 'alwaysDeny' | 'flush'>
 > {
 	return {
-		getResourcePermissions: jest.fn((toolGroup: string) => ({
+		getResourcePermissions: jest.fn((toolGroup: ToolGroup) => ({
 			allow: overrides.allow?.[toolGroup] ?? [],
 			deny: overrides.deny?.[toolGroup] ?? [],
 		})),
