@@ -114,7 +114,7 @@ export class GatewaySession {
 
 	/** Flush pending persistent writes — must be called on shutdown. */
 	async flush(): Promise<void> {
-		return this.settingsStore.flush();
+		return await this.settingsStore.flush();
 	}
 
 	// ---------------------------------------------------------------------------

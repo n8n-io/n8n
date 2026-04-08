@@ -2,10 +2,10 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 
-jest.mock('node:os', () => ({
-	...jest.requireActual('node:os'),
-	homedir: jest.fn(() => jest.requireActual<typeof os>('node:os').homedir()),
-}));
+jest.mock('node:os', () => {
+	const actual = jest.requireActual<typeof os>('node:os');
+	return { ...actual, homedir: jest.fn(() => actual.homedir()) };
+});
 
 import type { GatewayConfig } from './config';
 import { SettingsStore } from './settings-store';
@@ -13,6 +13,14 @@ import { SettingsStore } from './settings-store';
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+function parseJson<T>(raw: string): T {
+	try {
+		return JSON.parse(raw) as T;
+	} catch {
+		throw new Error(`Failed to parse JSON: ${raw}`);
+	}
+}
 
 const BASE_CONFIG: GatewayConfig = {
 	logLevel: 'info',
@@ -203,10 +211,7 @@ describe('updateDefaults', () => {
 		await store.updateDefaults(newPermissions, '/updated');
 
 		const raw = await fs.readFile(path.join(tmpDir, '.n8n-gateway', 'settings.json'), 'utf-8');
-		const parsed = JSON.parse(raw) as {
-			permissions: Record<string, string>;
-			filesystemDir: string;
-		};
+		const parsed = parseJson<{ permissions: Record<string, string>; filesystemDir: string }>(raw);
 		expect(parsed.permissions.shell).toBe('allow');
 		expect(parsed.filesystemDir).toBe('/updated');
 	});
@@ -228,7 +233,7 @@ describe('updateDefaults', () => {
 		);
 
 		const raw = await fs.readFile(path.join(tmpDir, '.n8n-gateway', 'settings.json'), 'utf-8');
-		const parsed = JSON.parse(raw) as { resourcePermissions: Record<string, unknown> };
+		const parsed = parseJson<{ resourcePermissions: Record<string, unknown> }>(raw);
 		expect((parsed.resourcePermissions.shell as { allow: string[] }).allow).toContain('npm');
 	});
 });
@@ -244,9 +249,7 @@ describe('flush', () => {
 		await store.flush();
 
 		const raw = await fs.readFile(path.join(tmpDir, '.n8n-gateway', 'settings.json'), 'utf-8');
-		const parsed = JSON.parse(raw) as {
-			resourcePermissions: { shell: { allow: string[] } };
-		};
+		const parsed = parseJson<{ resourcePermissions: { shell: { allow: string[] } } }>(raw);
 		expect(parsed.resourcePermissions.shell.allow).toContain('npm');
 	});
 });

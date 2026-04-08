@@ -15,14 +15,14 @@ import * as path from 'node:path';
 // Module-level mocks — must be declared before imports
 // ---------------------------------------------------------------------------
 
-jest.mock('node:os', () => ({
-	...jest.requireActual('node:os'),
-	homedir: jest.fn(() => jest.requireActual<typeof os>('node:os').homedir()),
-}));
+jest.mock('node:os', () => {
+	const actual = jest.requireActual<typeof os>('node:os');
+	return { ...actual, homedir: jest.fn(() => actual.homedir()) };
+});
 
 // Prevent GatewayClient.start() from making real network calls
 jest.mock('./gateway-client', () => ({
-	GatewayClient: jest.fn().mockImplementation(() => ({
+	['GatewayClient']: jest.fn().mockImplementation(() => ({
 		start: jest.fn().mockResolvedValue(undefined),
 		disconnect: jest.fn().mockResolvedValue(undefined),
 		tools: [],
@@ -53,6 +53,14 @@ import type { DaemonOptions } from './daemon';
 // Helpers
 // ---------------------------------------------------------------------------
 
+function parseJson<T>(raw: string): T {
+	try {
+		return JSON.parse(raw) as T;
+	} catch {
+		throw new Error(`Failed to parse JSON: ${raw}`);
+	}
+}
+
 const BASE_CONFIG: GatewayConfig = {
 	logLevel: 'silent',
 	port: 0, // bind to OS-assigned port
@@ -68,7 +76,7 @@ type JsonBody = Record<string, unknown>;
 
 async function post(
 	port: number,
-	path: string,
+	urlPath: string,
 	body: JsonBody = {},
 ): Promise<{ status: number; body: JsonBody }> {
 	return await new Promise((resolve, reject) => {
@@ -77,11 +85,11 @@ async function post(
 			{
 				hostname: '127.0.0.1',
 				port,
-				path,
+				path: urlPath,
 				method: 'POST',
 				headers: {
-					'Content-Type': 'application/json',
-					'Content-Length': Buffer.byteLength(payload),
+					['Content-Type']: 'application/json',
+					['Content-Length']: Buffer.byteLength(payload),
 				},
 			},
 			(res) => {
@@ -90,7 +98,7 @@ async function post(
 				res.on('end', () =>
 					resolve({
 						status: res.statusCode ?? 0,
-						body: JSON.parse(Buffer.concat(chunks).toString()) as JsonBody,
+						body: parseJson<JsonBody>(Buffer.concat(chunks).toString()),
 					}),
 				);
 			},
@@ -100,16 +108,16 @@ async function post(
 	});
 }
 
-async function get(port: number, path: string): Promise<{ status: number; body: JsonBody }> {
+async function get(port: number, urlPath: string): Promise<{ status: number; body: JsonBody }> {
 	return await new Promise((resolve, reject) => {
 		http
-			.get({ hostname: '127.0.0.1', port, path }, (res) => {
+			.get({ hostname: '127.0.0.1', port, path: urlPath }, (res) => {
 				const chunks: Buffer[] = [];
 				res.on('data', (c: Buffer) => chunks.push(c));
 				res.on('end', () =>
 					resolve({
 						status: res.statusCode ?? 0,
-						body: JSON.parse(Buffer.concat(chunks).toString()) as JsonBody,
+						body: parseJson<JsonBody>(Buffer.concat(chunks).toString()),
 					}),
 				);
 			})
@@ -117,8 +125,8 @@ async function get(port: number, path: string): Promise<{ status: number; body: 
 	});
 }
 
-function listenPort(server: http.Server): Promise<number> {
-	return new Promise((resolve) => {
+async function listenPort(server: http.Server): Promise<number> {
+	return await new Promise((resolve) => {
 		server.once('listening', () => {
 			const addr = server.address();
 			resolve(typeof addr === 'object' && addr !== null ? addr.port : 0);
@@ -172,7 +180,7 @@ async function startTestDaemon(
 
 	const server = startDaemon(config, options);
 	const port = await listenPort(server);
-	const close = () => new Promise<void>((resolve) => server.close(() => resolve()));
+	const close = async () => await new Promise<void>((resolve) => server.close(() => resolve()));
 
 	return { port, server, close };
 }
@@ -213,7 +221,7 @@ describe('POST /connect — validation', () => {
 	it('returns 400 for invalid JSON body', async () => {
 		const { port, close } = await startTestDaemon();
 		try {
-			const res = await new Promise<{ status: number }>((resolve, reject) => {
+			const status = await new Promise<number>((resolve, reject) => {
 				const payload = 'not-json';
 				const req = http.request(
 					{
@@ -222,19 +230,19 @@ describe('POST /connect — validation', () => {
 						path: '/connect',
 						method: 'POST',
 						headers: {
-							'Content-Type': 'application/json',
-							'Content-Length': Buffer.byteLength(payload),
+							['Content-Type']: 'application/json',
+							['Content-Length']: Buffer.byteLength(payload),
 						},
 					},
 					(r) => {
 						r.resume();
-						resolve({ status: r.statusCode ?? 0 });
+						resolve(r.statusCode ?? 0);
 					},
 				);
 				req.on('error', reject);
 				req.end(payload);
 			});
-			expect(res.status).toBe(400);
+			expect(status).toBe(400);
 		} finally {
 			await close();
 		}
@@ -265,10 +273,9 @@ describe('POST /connect — confirmConnect', () => {
 				token: 'tok',
 			});
 			expect(res.status).toBe(403);
-			expect(confirmConnect).toHaveBeenCalledWith(
-				'http://localhost:5678',
-				expect.objectContaining({ dir: expect.any(String) }),
-			);
+			const [calledUrl, calledSession] = confirmConnect.mock.calls[0] as [string, { dir: string }];
+			expect(calledUrl).toBe('http://localhost:5678');
+			expect(typeof calledSession.dir).toBe('string');
 		} finally {
 			await close();
 		}
@@ -389,7 +396,7 @@ describe('OPTIONS preflight', () => {
 	it('returns 204 with CORS headers', async () => {
 		const { port, close } = await startTestDaemon();
 		try {
-			const res = await new Promise<{
+			const { status, headers } = await new Promise<{
 				status: number;
 				headers: Record<string, string | string[] | undefined>;
 			}>((resolve, reject) => {
@@ -406,8 +413,8 @@ describe('OPTIONS preflight', () => {
 				req.on('error', reject);
 				req.end();
 			});
-			expect(res.status).toBe(204);
-			expect(res.headers['access-control-allow-origin']).toBe('*');
+			expect(status).toBe(204);
+			expect(headers['access-control-allow-origin']).toBe('*');
 		} finally {
 			await close();
 		}

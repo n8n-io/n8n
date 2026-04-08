@@ -115,9 +115,11 @@ export class SettingsStore {
 		) as Record<ToolGroup, PermissionMode>;
 
 		const configDirIsDefault = config.filesystem.dir === process.cwd();
+		const storedDir = this.persistent.filesystemDir;
 		const dir =
 			(!configDirIsDefault ? config.filesystem.dir : null) ??
-			(this.persistent.filesystemDir || process.cwd());
+			(storedDir !== '' ? storedDir : null) ??
+			process.cwd();
 
 		return { permissions, dir };
 	}

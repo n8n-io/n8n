@@ -1,14 +1,26 @@
 import * as fs from 'node:fs/promises';
-import * as nodePath from 'node:path';
 import * as os from 'node:os';
+import * as nodePath from 'node:path';
 
-jest.mock('node:os', () => ({
-	...jest.requireActual('node:os'),
-	homedir: jest.fn(() => jest.requireActual<typeof os>('node:os').homedir()),
-}));
+jest.mock('node:os', () => {
+	const actual = jest.requireActual<typeof os>('node:os');
+	return { ...actual, homedir: jest.fn(() => actual.homedir()) };
+});
 
 import type { GatewayConfig } from './config';
 import { ensureSettingsFile, isAllDeny } from './startup-config-cli';
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function parseJson<T>(raw: string): T {
+	try {
+		return JSON.parse(raw) as T;
+	} catch {
+		throw new Error(`Failed to parse JSON: ${raw}`);
+	}
+}
 
 const BASE_CONFIG: GatewayConfig = {
 	logLevel: 'info',
@@ -71,11 +83,9 @@ describe('isAllDeny', () => {
 
 describe('ensureSettingsFile', () => {
 	let tmpDir: string;
-	let settingsPath: string;
 
 	beforeEach(async () => {
 		tmpDir = await fs.mkdtemp(nodePath.join(os.tmpdir(), 'gateway-test-'));
-		settingsPath = nodePath.join(tmpDir, 'settings.json');
 		// Point getSettingsFilePath() at our temp location by overriding homedir
 		(os.homedir as jest.Mock).mockReturnValue(tmpDir);
 	});
@@ -89,7 +99,7 @@ describe('ensureSettingsFile', () => {
 		await ensureSettingsFile(BASE_CONFIG);
 
 		const raw = await fs.readFile(nodePath.join(tmpDir, '.n8n-gateway', 'settings.json'), 'utf-8');
-		const parsed = JSON.parse(raw) as Record<string, unknown>;
+		const parsed = parseJson<Record<string, unknown>>(raw);
 
 		expect(parsed.permissions).toMatchObject({
 			filesystemRead: 'allow',
@@ -110,7 +120,7 @@ describe('ensureSettingsFile', () => {
 		await ensureSettingsFile(config);
 
 		const raw = await fs.readFile(nodePath.join(tmpDir, '.n8n-gateway', 'settings.json'), 'utf-8');
-		const parsed = JSON.parse(raw) as { permissions: Record<string, string> };
+		const parsed = parseJson<{ permissions: Record<string, string> }>(raw);
 
 		// CLI override wins
 		expect(parsed.permissions.shell).toBe('allow');
@@ -137,7 +147,7 @@ describe('ensureSettingsFile', () => {
 
 		// Second call must not throw and must not alter the file
 		const raw = await fs.readFile(nodePath.join(tmpDir, '.n8n-gateway', 'settings.json'), 'utf-8');
-		const parsed = JSON.parse(raw) as Record<string, unknown>;
+		const parsed = parseJson<Record<string, unknown>>(raw);
 		expect(parsed.filesystemDir).toBe('');
 	});
 });

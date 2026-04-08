@@ -1,5 +1,5 @@
-import { configure, logger } from '@n8n/computer-use/logger';
 import type { GatewaySession } from '@n8n/computer-use/gateway-session';
+import { configure, logger } from '@n8n/computer-use/logger';
 import { app, dialog } from 'electron';
 import * as path from 'node:path';
 
