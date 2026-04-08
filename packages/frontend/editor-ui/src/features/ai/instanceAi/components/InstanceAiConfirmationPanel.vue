@@ -415,7 +415,7 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 				<!-- Group header -->
 				<template v-if="isAllGenericApproval(chunk.items) && chunk.items.length > 1">
 					<div :class="$style.generic">
-						<N8nText size>
+						<N8nText>
 							{{
 								i18n.baseText('instanceAi.confirmation.agentContext', {
 									interpolate: { agent: getRoleLabel(chunk.role) },
