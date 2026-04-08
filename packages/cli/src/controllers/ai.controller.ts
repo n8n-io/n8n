@@ -2,6 +2,7 @@ import { FREE_AI_CREDITS_CREDENTIAL_NAME, STREAM_SEPARATOR } from '@/constants';
 import type {
 	AiGatewayConfigDto,
 	AiGatewayUsageResponse,
+	AiNodeNameSuggestion,
 	CreateCredentialDto,
 } from '@n8n/api-types';
 import {
@@ -9,6 +10,7 @@ import {
 	AiApplySuggestionRequestDto,
 	AiAskRequestDto,
 	AiFreeCreditsRequestDto,
+	AiSuggestNodeNamesRequestDto,
 	AiBuilderChatRequestDto,
 	AiSessionRetrievalRequestDto,
 	AiUsageSettingsRequestDto,
@@ -198,6 +200,32 @@ export class AiController {
 				switch (e.statusCode) {
 					case 413:
 						throw new ContentTooLargeError(e.message);
+					case 429:
+						throw new TooManyRequestsError(e.message);
+					case 400:
+						throw new BadRequestError(e.message);
+					default:
+						throw new InternalServerError(e.message, e);
+				}
+			}
+
+			assert(e instanceof Error);
+			throw new InternalServerError(e.message, e);
+		}
+	}
+
+	@Licensed('feat:aiAssistant')
+	@Post('/suggest-node-names', { ipRateLimit: { limit: 20 } })
+	async suggestNodeNames(
+		req: AuthenticatedRequest,
+		_: Response,
+		@Body payload: AiSuggestNodeNamesRequestDto,
+	): Promise<{ suggestions: AiNodeNameSuggestion[] }> {
+		try {
+			return await this.aiService.suggestNodeNames(payload, req.user);
+		} catch (e) {
+			if (e instanceof APIResponseError) {
+				switch (e.statusCode) {
 					case 429:
 						throw new TooManyRequestsError(e.message);
 					case 400:

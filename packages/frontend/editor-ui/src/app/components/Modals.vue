@@ -38,6 +38,7 @@ import {
 	CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
 	AI_BUILDER_DIFF_MODAL_KEY,
 	INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY,
+	NODE_NAME_SUGGESTIONS_MODAL_KEY,
 } from '@/app/constants';
 import {
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -133,6 +134,7 @@ import AIBuilderDiffModal from '@/features/ai/assistant/components/Agent/AIBuild
 import InstanceAiCredentialSetupModal, {
 	type InstanceAiCredentialSetupModalData,
 } from '@/features/ai/instanceAi/components/InstanceAiCredentialSetupModal.vue';
+import NodeNameSuggestionsModal from '@/features/ai/nodeNameSuggestions/NodeNameSuggestionsModal.vue';
 </script>
 
 <template>
@@ -498,6 +500,12 @@ import InstanceAiCredentialSetupModal, {
 					:modal-name="modalName"
 					:data="data as InstanceAiCredentialSetupModalData"
 				/>
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="NODE_NAME_SUGGESTIONS_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<NodeNameSuggestionsModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 

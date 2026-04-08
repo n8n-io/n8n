@@ -39,6 +39,7 @@ import { useDebounceFn } from '@vueuse/core';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
+import { useNodeNameSuggestions } from '@/features/ai/nodeNameSuggestions/useNodeNameSuggestions';
 
 export function useWorkflowSaving({
 	router,
@@ -242,6 +243,9 @@ export function useWorkflowSaving({
 				}
 				uiStore.removeActiveAction('workflowSaving');
 				void useExternalHooks().run('workflow.afterUpdate', { workflowData });
+
+				// Fire-and-forget AI node name check (non-blocking)
+				void useNodeNameSuggestions().checkNodeNamesAfterSave();
 
 				// Reset AI Builder edits flag only after successful save
 				builderStore.resetAiBuilderMadeEdits();

@@ -9,7 +9,11 @@ import type {
 } from '@/features/ai/assistant/assistant.types';
 import { makeRestApiRequest, streamRequest } from '@n8n/rest-api-client';
 import { getObjectSizeInKB } from '@/app/utils/objectUtils';
-import type { AiGatewayConfigDto, AiGatewayUsageResponse } from '@n8n/api-types';
+import type {
+	AiGatewayConfigDto,
+	AiGatewayUsageResponse,
+	AiNodeNameSuggestion,
+} from '@n8n/api-types';
 import type { IDataObject } from 'n8n-workflow';
 
 export function chatWithBuilder(
@@ -155,6 +159,21 @@ export async function clearBuilderSession(
 	return await makeRestApiRequest(ctx, 'POST', '/ai/build/clear-session', {
 		workflowId,
 	});
+}
+
+export async function suggestNodeNames(
+	ctx: IRestApiContext,
+	payload: {
+		nodes: Array<{
+			currentName: string;
+			nodeType: string;
+			displayName: string;
+			parameters?: Record<string, unknown>;
+		}>;
+		workflowName?: string;
+	},
+): Promise<{ suggestions: AiNodeNameSuggestion[] }> {
+	return await makeRestApiRequest(ctx, 'POST', '/ai/suggest-node-names', payload);
 }
 
 export async function truncateBuilderMessages(

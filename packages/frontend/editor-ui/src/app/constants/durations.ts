@@ -82,6 +82,12 @@ export const DEBOUNCE_TIME = {
 		ACTIVITY: 100,
 	},
 
+	/** AI features */
+	AI: {
+		/** Throttle for AI node name check after save (30s) */
+		NODE_NAME_CHECK: 30_000,
+	},
+
 	/** Connection management */
 	CONNECTION: {
 		/** WebSocket disconnect debounce (500ms) */

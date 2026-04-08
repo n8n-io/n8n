@@ -14,6 +14,10 @@ export { AiSessionRetrievalRequestDto } from './ai/ai-session-retrieval-request.
 export { AiUsageSettingsRequestDto } from './ai/ai-usage-settings-request.dto';
 export { AiTruncateMessagesRequestDto } from './ai/ai-truncate-messages-request.dto';
 export { AiClearSessionRequestDto } from './ai/ai-clear-session-request.dto';
+export {
+	AiSuggestNodeNamesRequestDto,
+	type AiNodeNameSuggestion,
+} from './ai/ai-suggest-node-names-request.dto';
 export type {
 	AiGatewayConfigDto,
 	AiGatewayProviderConfigEntry,
