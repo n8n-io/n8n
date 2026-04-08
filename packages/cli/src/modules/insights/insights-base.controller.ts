@@ -7,7 +7,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
-import { InsightsService } from './insights.service';
+import type { InsightsService } from './insights.service';
 
 export abstract class InsightsBaseController {
 	protected abstract readonly insightsService: InsightsService;
