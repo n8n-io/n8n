@@ -219,7 +219,6 @@ describe('ExecutionPersistence', () => {
 			executionsConfig.pruneDataHardDeleteBuffer = 1;
 			const executionPersistence = createPersistenceService('db');
 
-			const before = Date.now();
 			await executionPersistence.deleteInFlightExecution(target);
 			const after = Date.now();
 
