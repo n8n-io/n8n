@@ -4,12 +4,14 @@ import * as agents from '@n8n/agents';
 import { Agent } from '@n8n/agents';
 import * as zod from 'zod';
 import type { AgentSchema } from '@n8n/agents';
+import type { Logger } from '@n8n/backend-common';
 
 import { extractSources } from '../agents-source-parser';
 import { generateAgentCode } from '../generate-agent-code';
 import { WorkflowTool } from '../types';
 import { AgentSecureRuntime } from '../agent-secure-runtime';
 import { deepCopy } from 'n8n-workflow';
+import { mock } from 'jest-mock-extended';
 
 // No mocking of isolated-vm — use the real V8 isolate for integration testing.
 // generateAgentCode should be called with formatCode: false in tests to avoid importing prettier dynamically
@@ -357,7 +359,8 @@ describe('Sandboxed execution round-trip', () => {
 	let runtime: AgentSecureRuntime;
 
 	beforeAll(() => {
-		runtime = new AgentSecureRuntime();
+		const logger = mock<Logger>();
+		runtime = new AgentSecureRuntime(logger);
 	});
 
 	afterAll(() => {
