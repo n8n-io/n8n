@@ -767,6 +767,9 @@ export class InstanceAiService {
 				agentId: ORCHESTRATOR_AGENT_ID,
 				payload: { status: 'cancelled', reason: 'user_cancelled' },
 			});
+			// Persist the snapshot so the run-finish event (which clears
+			// in-flight tool calls) is reflected in the stored tree.
+			void this.saveAgentTreeSnapshot(threadId, suspended.runId, this.dbSnapshotStorage, true);
 			if (suspended.mastraRunId) {
 				void this.cleanupMastraSnapshots(suspended.mastraRunId);
 			}
