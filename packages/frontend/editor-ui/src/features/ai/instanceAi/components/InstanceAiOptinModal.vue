@@ -377,20 +377,33 @@ onUnmounted(() => {
 	align-items: center;
 	gap: var(--spacing--xs);
 	padding: var(--spacing--sm);
+	background: var(--color--orange-900);
+	border: 1px solid var(--color--orange-800);
+	border-radius: var(--radius--xs);
+	color: var(--color--orange-250);
+}
+
+:global(body:not([data-theme='dark'])) .warningBox {
 	background: var(--color--orange-50);
 	border: 1px solid var(--color--orange-200);
-	border-radius: var(--radius--xs);
 	color: var(--color--orange-700);
 }
 
 .warningIcon {
 	flex-shrink: 0;
-	color: var(--color--orange-700);
+	color: var(--color--orange-250);
 	margin-top: 2px;
+}
+
+:global(body:not([data-theme='dark'])) .warningIcon {
+	color: var(--color--orange-700);
 }
 
 .warningText {
 	line-height: var(--line-height--xl);
+	color: var(--color--orange-250);
+}
+:global(body:not([data-theme='dark'])) .warningText {
 	color: var(--color--orange-700);
 }
 
