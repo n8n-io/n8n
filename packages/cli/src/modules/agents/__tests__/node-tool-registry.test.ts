@@ -3,7 +3,7 @@ import type { CredentialProvider } from '@n8n/agents';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { NodeToolRegistry } from '../node-tool-registry';
+import { listTools, searchTools } from '../node-tool-registry';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -21,151 +21,213 @@ function makeNode(overrides: Partial<INodeTypeDescription> = {}): INodeTypeDescr
 	});
 }
 
-function makeRegistry(nodes: INodeTypeDescription[]): NodeToolRegistry {
+function makeLnc(nodes: INodeTypeDescription[]): LoadNodesAndCredentials {
 	const lnc = mock<LoadNodesAndCredentials>();
 	lnc.collectTypes.mockResolvedValue({ nodes, credentials: [] });
-	return new NodeToolRegistry(lnc);
+	return lnc;
 }
 
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('NodeToolRegistry', () => {
-	describe('listTools()', () => {
-		it('only returns nodes flagged as usableAsTool', async () => {
-			const registry = makeRegistry([
-				makeNode({ name: 'n8n-nodes-base.httpRequest', usableAsTool: true }),
-				makeNode({ name: 'n8n-nodes-base.set', usableAsTool: undefined }),
-				makeNode({ name: 'n8n-nodes-base.gmail', usableAsTool: true }),
-			]);
+describe('listTools()', () => {
+	it('only returns nodes flagged as usableAsTool', async () => {
+		const lnc = makeLnc([
+			makeNode({ name: 'n8n-nodes-base.httpRequest', usableAsTool: true }),
+			makeNode({ name: 'n8n-nodes-base.set', usableAsTool: undefined }),
+			makeNode({ name: 'n8n-nodes-base.gmail', usableAsTool: true }),
+		]);
 
-			const tools = await registry.listTools();
+		const tools = await listTools(lnc);
 
-			expect(tools.map((t) => t.nodeType)).toEqual([
-				'n8n-nodes-base.httpRequest',
-				'n8n-nodes-base.gmail',
-			]);
-		});
+		expect(tools.map((t) => t.nodeType)).toEqual([
+			'n8n-nodes-base.httpRequest',
+			'n8n-nodes-base.gmail',
+		]);
+	});
 
-		it('projects all ToolDescriptor fields correctly', async () => {
-			const registry = makeRegistry([
-				makeNode({
-					name: 'n8n-nodes-base.httpRequest',
-					displayName: 'HTTP Request',
-					description: 'Makes HTTP requests to any URL',
-					version: 4,
-				}),
-			]);
-
-			const [tool] = await registry.listTools();
-
-			expect(tool).toMatchObject({
-				nodeType: 'n8n-nodes-base.httpRequest',
+	it('projects all ToolDescriptor fields correctly', async () => {
+		const lnc = makeLnc([
+			makeNode({
+				name: 'n8n-nodes-base.httpRequest',
 				displayName: 'HTTP Request',
 				description: 'Makes HTTP requests to any URL',
-				nodeTypeVersion: 4,
-			});
+				version: 4,
+			}),
+		]);
+
+		const [tool] = await listTools(lnc);
+
+		expect(tool).toMatchObject({
+			nodeType: 'n8n-nodes-base.httpRequest',
+			displayName: 'HTTP Request',
+			description: 'Makes HTTP requests to any URL',
+			nodeTypeVersion: 4,
+		});
+	});
+
+	describe('nodeTypeVersion', () => {
+		it('uses the version directly when it is a number', async () => {
+			const [tool] = await listTools(makeLnc([makeNode({ version: 3 })]));
+			expect(tool.nodeTypeVersion).toBe(3);
 		});
 
-		describe('nodeTypeVersion', () => {
-			it('uses the version directly when it is a number', async () => {
-				const registry = makeRegistry([makeNode({ version: 3 })]);
-				const [tool] = await registry.listTools();
-				expect(tool.nodeTypeVersion).toBe(3);
-			});
+		it('uses the last element when version is an array', async () => {
+			const [tool] = await listTools(makeLnc([makeNode({ version: [1, 2, 3] })]));
+			expect(tool.nodeTypeVersion).toBe(3);
+		});
+	});
 
-			it('uses the last element when version is an array', async () => {
-				const registry = makeRegistry([makeNode({ version: [1, 2, 3] })]);
-				const [tool] = await registry.listTools();
-				expect(tool.nodeTypeVersion).toBe(3);
-			});
+	it('deduplicates nodes with the same name, keeping the first occurrence', async () => {
+		const lnc = makeLnc([
+			makeNode({ name: 'n8n-nodes-base.httpRequest', displayName: 'HTTP Request v1' }),
+			makeNode({ name: 'n8n-nodes-base.httpRequest', displayName: 'HTTP Request v2' }),
+			makeNode({ name: 'n8n-nodes-base.gmail', displayName: 'Gmail' }),
+		]);
+
+		const tools = await listTools(lnc);
+
+		expect(tools).toHaveLength(2);
+		expect(tools.find((t) => t.nodeType === 'n8n-nodes-base.httpRequest')?.displayName).toBe(
+			'HTTP Request v1',
+		);
+	});
+
+	describe('without a credential provider', () => {
+		it('sets hasCredentials to true for all nodes', async () => {
+			const lnc = makeLnc([
+				makeNode({ credentials: [] }),
+				makeNode({ credentials: [mock({ name: 'gmailOAuth2' })] }),
+			]);
+
+			const tools = await listTools(lnc);
+
+			expect(tools.every((t) => t.hasCredentials)).toBe(true);
 		});
 
-		describe('without a credential provider', () => {
-			it('sets hasCredentials to true for all nodes', async () => {
-				const registry = makeRegistry([
-					makeNode({ credentials: [] }),
-					makeNode({ credentials: [mock({ name: 'gmailOAuth2' })] }),
-				]);
+		it('returns an empty credentials array', async () => {
+			const [tool] = await listTools(makeLnc([makeNode()]));
+			expect(tool.credentials).toEqual([]);
+		});
+	});
 
-				const tools = await registry.listTools();
+	describe('with a credential provider', () => {
+		it('sets hasCredentials to true when the node requires no credentials', async () => {
+			const lnc = makeLnc([makeNode({ credentials: [] })]);
+			const provider = mock<CredentialProvider>();
+			provider.list.mockResolvedValue([]);
 
-				expect(tools.every((t) => t.hasCredentials)).toBe(true);
-			});
+			const [tool] = await listTools(lnc, provider);
 
-			it('returns an empty credentials array', async () => {
-				const registry = makeRegistry([makeNode()]);
-				const [tool] = await registry.listTools();
-				expect(tool.credentials).toEqual([]);
-			});
+			expect(tool.hasCredentials).toBe(true);
 		});
 
-		describe('with a credential provider', () => {
-			it('sets hasCredentials to true when the node requires no credentials', async () => {
-				const registry = makeRegistry([makeNode({ credentials: [] })]);
-				const provider = mock<CredentialProvider>();
-				provider.list.mockResolvedValue([]);
+		it('sets hasCredentials to true when a matching credential is available', async () => {
+			const lnc = makeLnc([makeNode({ credentials: [mock({ name: 'gmailOAuth2' })] })]);
+			const provider = mock<CredentialProvider>();
+			provider.list.mockResolvedValue([{ id: 'cred-1', name: 'My Gmail', type: 'gmailOAuth2' }]);
 
-				const [tool] = await registry.listTools(provider);
+			const [tool] = await listTools(lnc, provider);
 
-				expect(tool.hasCredentials).toBe(true);
-			});
-
-			it('sets hasCredentials to true when a matching credential is available', async () => {
-				const registry = makeRegistry([makeNode({ credentials: [mock({ name: 'gmailOAuth2' })] })]);
-				const provider = mock<CredentialProvider>();
-				provider.list.mockResolvedValue([{ id: 'cred-1', name: 'My Gmail', type: 'gmailOAuth2' }]);
-
-				const [tool] = await registry.listTools(provider);
-
-				expect(tool.hasCredentials).toBe(true);
-			});
-
-			it('sets hasCredentials to false when no matching credential is available', async () => {
-				const registry = makeRegistry([makeNode({ credentials: [mock({ name: 'gmailOAuth2' })] })]);
-				const provider = mock<CredentialProvider>();
-				provider.list.mockResolvedValue([{ id: 'cred-1', name: 'My Slack', type: 'slackApi' }]);
-
-				const [tool] = await registry.listTools(provider);
-
-				expect(tool.hasCredentials).toBe(false);
-			});
-
-			it('populates credentials with matching CredentialListItems', async () => {
-				const registry = makeRegistry([makeNode({ credentials: [mock({ name: 'gmailOAuth2' })] })]);
-				const provider = mock<CredentialProvider>();
-				provider.list.mockResolvedValue([
-					{ id: 'cred-1', name: 'My Gmail', type: 'gmailOAuth2' },
-					{ id: 'cred-2', name: 'Other Cred', type: 'slackApi' },
-				]);
-
-				const [tool] = await registry.listTools(provider);
-
-				expect(tool.credentials).toEqual([{ id: 'cred-1', name: 'My Gmail', type: 'gmailOAuth2' }]);
-			});
-
-			it('returns an empty credentials array when no credentials match', async () => {
-				const registry = makeRegistry([makeNode({ credentials: [mock({ name: 'gmailOAuth2' })] })]);
-				const provider = mock<CredentialProvider>();
-				provider.list.mockResolvedValue([{ id: 'cred-1', name: 'My Slack', type: 'slackApi' }]);
-
-				const [tool] = await registry.listTools(provider);
-
-				expect(tool.credentials).toEqual([]);
-			});
+			expect(tool.hasCredentials).toBe(true);
 		});
 
-		it('calls collectTypes only once across multiple listTools() calls', async () => {
-			const lnc = mock<LoadNodesAndCredentials>();
-			lnc.collectTypes.mockResolvedValue({ nodes: [makeNode()], credentials: [] });
-			const registry = new NodeToolRegistry(lnc);
+		it('sets hasCredentials to false when no matching credential is available', async () => {
+			const lnc = makeLnc([makeNode({ credentials: [mock({ name: 'gmailOAuth2' })] })]);
+			const provider = mock<CredentialProvider>();
+			provider.list.mockResolvedValue([{ id: 'cred-1', name: 'My Slack', type: 'slackApi' }]);
 
-			await registry.listTools();
-			await registry.listTools();
-			await registry.listTools();
+			const [tool] = await listTools(lnc, provider);
 
-			expect(lnc.collectTypes).toHaveBeenCalledTimes(1);
+			expect(tool.hasCredentials).toBe(false);
 		});
+
+		it('populates credentials with matching CredentialListItems', async () => {
+			const lnc = makeLnc([makeNode({ credentials: [mock({ name: 'gmailOAuth2' })] })]);
+			const provider = mock<CredentialProvider>();
+			provider.list.mockResolvedValue([
+				{ id: 'cred-1', name: 'My Gmail', type: 'gmailOAuth2' },
+				{ id: 'cred-2', name: 'Other Cred', type: 'slackApi' },
+			]);
+
+			const [tool] = await listTools(lnc, provider);
+
+			expect(tool.credentials).toEqual([{ id: 'cred-1', name: 'My Gmail', type: 'gmailOAuth2' }]);
+		});
+
+		it('returns an empty credentials array when no credentials match', async () => {
+			const lnc = makeLnc([makeNode({ credentials: [mock({ name: 'gmailOAuth2' })] })]);
+			const provider = mock<CredentialProvider>();
+			provider.list.mockResolvedValue([{ id: 'cred-1', name: 'My Slack', type: 'slackApi' }]);
+
+			const [tool] = await listTools(lnc, provider);
+
+			expect(tool.credentials).toEqual([]);
+		});
+	});
+});
+
+describe('searchTools()', () => {
+	it('returns all tools (up to topK) when query is empty', async () => {
+		const lnc = makeLnc([
+			makeNode({ name: 'n8n-nodes-base.httpRequest', displayName: 'HTTP Request' }),
+			makeNode({ name: 'n8n-nodes-base.gmail', displayName: 'Gmail' }),
+			makeNode({ name: 'n8n-nodes-base.slack', displayName: 'Slack' }),
+		]);
+
+		const results = await searchTools(lnc, '', undefined, { topK: 2 });
+
+		expect(results).toHaveLength(2);
+	});
+
+	it('ranks tools with matching displayName above unrelated tools', async () => {
+		const lnc = makeLnc([
+			makeNode({
+				name: 'n8n-nodes-base.gmail',
+				displayName: 'Gmail',
+				description: 'Send and receive emails',
+			}),
+			makeNode({
+				name: 'n8n-nodes-base.httpRequest',
+				displayName: 'HTTP Request',
+				description: 'Makes HTTP requests',
+			}),
+		]);
+
+		const results = await searchTools(lnc, 'email send');
+
+		expect(results[0].nodeType).toBe('n8n-nodes-base.gmail');
+	});
+
+	it('filters out tools below minScore', async () => {
+		const lnc = makeLnc([
+			makeNode({
+				name: 'n8n-nodes-base.gmail',
+				displayName: 'Gmail',
+				description: 'Send email messages',
+			}),
+			makeNode({
+				name: 'n8n-nodes-base.httpRequest',
+				displayName: 'HTTP Request',
+				description: 'Makes HTTP requests to any URL',
+			}),
+		]);
+
+		const results = await searchTools(lnc, 'email', undefined, { minScore: 0.1 });
+
+		expect(results.map((r) => r.nodeType)).toEqual(['n8n-nodes-base.gmail']);
+	});
+
+	it('respects topK limit', async () => {
+		const lnc = makeLnc([
+			makeNode({ name: 'n8n-nodes-base.a', displayName: 'Send A', description: 'send a' }),
+			makeNode({ name: 'n8n-nodes-base.b', displayName: 'Send B', description: 'send b' }),
+			makeNode({ name: 'n8n-nodes-base.c', displayName: 'Send C', description: 'send c' }),
+		]);
+
+		const results = await searchTools(lnc, 'send', undefined, { topK: 2 });
+
+		expect(results).toHaveLength(2);
 	});
 });

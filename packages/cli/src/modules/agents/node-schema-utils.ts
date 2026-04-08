@@ -101,11 +101,13 @@ function buildParameterInfo(prop: INodeProperties): NodeParameterInfo {
 		case 'options':
 		case 'multiOptions': {
 			if (Array.isArray(prop.options)) {
-				const opts: NodeParameterOption[] = prop.options.filter(isPropertyOptions).map((o) => ({
-					name: o.name,
-					value: o.value,
-					...(o.description ? { description: o.description } : {}),
-				}));
+				const opts: NodeParameterOption[] = prop.options
+					.filter(isPropertyOptions)
+					.map((option) => ({
+						name: option.name,
+						value: option.value,
+						...(option.description ? { description: option.description } : {}),
+					}));
 				if (opts.length > 0) info.options = opts;
 			}
 			break;
@@ -245,8 +247,8 @@ export function validateNodeParameters(
 		switch (info.type) {
 			case 'options': {
 				if (info.options && !info.allowArbitraryValues) {
-					if (!info.options.some((o) => o.value === value)) {
-						const allowed = info.options.map((o) => `"${String(o.value)}"`).join(', ');
+					if (!info.options.some((option) => option.value === value)) {
+						const allowed = info.options.map((option) => `"${String(option.value)}"`).join(', ');
 						errors.push(
 							`Parameter "${key}" has invalid value ${JSON.stringify(value)}. Allowed: ${allowed}`,
 						);
@@ -257,10 +259,10 @@ export function validateNodeParameters(
 
 			case 'multiOptions': {
 				if (info.options && !info.allowArbitraryValues && Array.isArray(value)) {
-					const validValues = new Set(info.options.map((o) => o.value));
-					const invalid = (value as unknown[]).filter((v) => !validValues.has(v as string));
+					const validValues = new Set(info.options.map((option) => option.value));
+					const invalid = (value as unknown[]).filter((val) => !validValues.has(val as string));
 					if (invalid.length > 0) {
-						const allowed = info.options.map((o) => `"${String(o.value)}"`).join(', ');
+						const allowed = info.options.map((option) => `"${String(option.value)}"`).join(', ');
 						errors.push(
 							`Parameter "${key}" contains invalid values ${JSON.stringify(invalid)}. Allowed: ${allowed}`,
 						);

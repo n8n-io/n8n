@@ -1,8 +1,6 @@
 import type { CredentialListItem, CredentialProvider } from '@n8n/agents';
-import { Service } from '@n8n/di';
-import type { INodeTypeDescription } from 'n8n-workflow';
 
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 import { extractNodeParametersSchema, type NodeParametersSchema } from './node-schema-utils';
 
@@ -10,71 +8,127 @@ export interface ToolDescriptor {
 	/** Human-readable display name, e.g. "HTTP Request" */
 	displayName: string;
 	description: string;
-	/** Node type identifier, e.g. 'n8n-nodes-base.httpRequest' — pass as `type` in ToolFromNode */
+	/** Node type identifier, e.g. 'n8n-nodes-base.httpRequest' */
 	nodeType: string;
 	/** The primary version number to use when executing this node. */
 	nodeTypeVersion: number;
 	/** Whether the user has at least one credential configured for this node. */
 	hasCredentials: boolean;
-	/** Configured credentials for this tool, ready to use in ToolFromNode config.credentials */
+	/** Configured credentials for this tool, ready to use in run_node_tool */
 	credentials: CredentialListItem[];
 }
 
 /**
- * Registry of n8n nodes that are usable as agent tools.
+ * Returns the parameter schema for a single node type, or `undefined` if the
+ * node is not found or not usable as a tool.
  *
- * Filters to usableAsTool nodes once on first use; the full type descriptions
- * are held in memory so we can project any field at list time without reloading.
+ * Calls `collectTypes()` each time — types are not held in memory.
  */
-@Service()
-export class NodeToolRegistry {
-	private toolNodes: INodeTypeDescription[] | undefined;
+export async function getNodeSchema(
+	lnc: LoadNodesAndCredentials,
+	nodeType: string,
+): Promise<NodeParametersSchema | undefined> {
+	const { nodes } = await lnc.collectTypes();
+	const node = nodes.find((n) => n.usableAsTool && n.name === nodeType);
+	if (!node) return undefined;
+	return extractNodeParametersSchema(node.properties);
+}
 
-	constructor(private readonly loadNodesAndCredentials: LoadNodesAndCredentials) {}
+/**
+ * Returns descriptors for all nodes flagged as `usableAsTool`, deduplicated
+ * by node type. Credentials are filtered to those available via the optional
+ * `credentialProvider`.
+ *
+ * Calls `collectTypes()` each time — types are not held in memory.
+ */
+export async function listTools(
+	lnc: LoadNodesAndCredentials,
+	credentialProvider?: CredentialProvider,
+): Promise<ToolDescriptor[]> {
+	const { nodes } = await lnc.collectTypes();
 
-	private async ensureLoaded(): Promise<INodeTypeDescription[]> {
-		if (this.toolNodes) return this.toolNodes;
-		const { nodes } = await this.loadNodesAndCredentials.collectTypes();
-		this.toolNodes = nodes.filter((n) => n.usableAsTool);
-		return this.toolNodes;
-	}
+	const availableCreds = credentialProvider ? await credentialProvider.list() : [];
+	const availableCredTypes =
+		availableCreds.length > 0 ? new Set(availableCreds.map((cred) => cred.type)) : undefined;
 
-	async getNodeSchema(nodeType: string): Promise<NodeParametersSchema | undefined> {
-		const nodes = await this.ensureLoaded();
-		const node = nodes.find((n) => n.name === nodeType);
-		if (!node) return undefined;
-		return extractNodeParametersSchema(node.properties);
-	}
+	const seen = new Set<string>();
+	const descriptors: ToolDescriptor[] = [];
 
-	async listTools(credentialProvider?: CredentialProvider): Promise<ToolDescriptor[]> {
-		const nodes = await this.ensureLoaded();
+	for (const node of nodes) {
+		if (!node.usableAsTool) continue;
+		if (seen.has(node.name)) continue;
+		seen.add(node.name);
 
-		const availableCreds = credentialProvider ? await credentialProvider.list() : [];
-		const availableCredTypes =
-			availableCreds.length > 0 ? new Set(availableCreds.map((c) => c.type)) : undefined;
+		const credentialSlots = (node.credentials ?? []).map((credDef) => credDef.name);
 
-		return nodes.map((node) => {
-			const credentialSlots = (node.credentials ?? []).map((c) => c.name);
+		const hasCredentials =
+			availableCredTypes === undefined
+				? true
+				: credentialSlots.length === 0 ||
+					credentialSlots.some((credType) => availableCredTypes.has(credType));
 
-			const hasCredentials =
-				availableCredTypes === undefined
-					? true
-					: credentialSlots.length === 0 || credentialSlots.some((t) => availableCredTypes.has(t));
+		const nodeTypeVersion = Array.isArray(node.version)
+			? node.version[node.version.length - 1]
+			: node.version;
 
-			const nodeTypeVersion = Array.isArray(node.version)
-				? node.version[node.version.length - 1]
-				: node.version;
+		const credentials = availableCreds.filter((cred) => credentialSlots.includes(cred.type));
 
-			const credentials = availableCreds.filter((c) => credentialSlots.includes(c.type));
-
-			return {
-				displayName: node.displayName,
-				description: node.description,
-				nodeType: node.name,
-				nodeTypeVersion,
-				hasCredentials,
-				credentials,
-			};
+		descriptors.push({
+			displayName: node.displayName,
+			description: node.description,
+			nodeType: node.name,
+			nodeTypeVersion,
+			hasCredentials,
+			credentials,
 		});
 	}
+
+	return descriptors;
+}
+
+/**
+ * Score a tool descriptor against a query string.
+ *
+ * Token overlap between query tokens and displayName (weight 2×) + description
+ * (weight 1×), normalised to [0, 1]. Returns 1 when the query is empty so all
+ * tools pass the minScore filter.
+ */
+function scoreToolRelevance(query: string, tool: ToolDescriptor): number {
+	if (!query.trim()) return 1;
+
+	const queryTokens = new Set(query.toLowerCase().split(/\W+/).filter(Boolean));
+	if (queryTokens.size === 0) return 1;
+
+	const nameTokens = tool.displayName.toLowerCase().split(/\W+/).filter(Boolean);
+	const descTokens = tool.description.toLowerCase().split(/\W+/).filter(Boolean);
+
+	let hits = 0;
+	for (const token of nameTokens) if (queryTokens.has(token)) hits += 2;
+	for (const token of descTokens) if (queryTokens.has(token)) hits += 1;
+
+	const maxScore = queryTokens.size * (2 + 1);
+	return Math.min(hits / maxScore, 1);
+}
+
+/**
+ * Returns tool descriptors relevant to `query`, ranked by token overlap and
+ * trimmed to `topK`. When `query` is empty all tools are returned up to `topK`.
+ *
+ * Calls `collectTypes()` each time — types are not held in memory.
+ */
+export async function searchTools(
+	lnc: LoadNodesAndCredentials,
+	query: string,
+	credentialProvider?: CredentialProvider,
+	{ topK = 10, minScore = 0.1 }: { topK?: number; minScore?: number } = {},
+): Promise<ToolDescriptor[]> {
+	const all = await listTools(lnc, credentialProvider);
+	if (!query.trim()) return all.slice(0, topK);
+
+	return all
+		.map((tool) => ({ tool, score: scoreToolRelevance(query, tool) }))
+		.filter(({ score }) => score >= minScore)
+		.sort((a, b) => b.score - a.score)
+		.slice(0, topK)
+		.map(({ tool }) => tool);
 }

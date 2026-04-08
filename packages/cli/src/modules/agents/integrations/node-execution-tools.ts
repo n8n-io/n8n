@@ -6,8 +6,9 @@ import { z } from 'zod';
 
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
+import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
-import type { NodeToolRegistry, ToolDescriptor } from '../node-tool-registry';
+import { getNodeSchema, searchTools, type ToolDescriptor } from '../node-tool-registry';
 
 export interface RunNodeArgs {
 	nodeType: string;
@@ -31,37 +32,59 @@ function ensureSchemaBaseDirsSet(): void {
 }
 
 /**
- * Tool that returns the list of n8n node tools the agent can add to itself.
- * The credential provider is used to filter to tools the user actually has
- * credentials configured for.
+ * Tool that searches for relevant n8n node tools by keyword query.
+ *
+ * Results are scored by token overlap between the query and each tool's
+ * displayName (weight 2×) and description (weight 1×), then ranked and
+ * trimmed to `topK`. Use `get_node_schema` to inspect parameters, then
+ * `run_node_tool` to execute.
  */
-export function createListToolsTool(
-	registry: Pick<NodeToolRegistry, 'listTools'>,
+export function createSearchToolsTool(
+	lnc: LoadNodesAndCredentials,
 	credentialProvider: CredentialProvider,
 ) {
-	return new Tool('list_tools')
+	return new Tool('search_tools')
 		.description(
-			'List the n8n node tools available to this agent. ' +
-				'Each entry includes: displayName, nodeType (identifier for run_node_tool), ' +
-				'nodeTypeVersion, description, hasCredentials, and credentials ({ id, name, type } for each ' +
-				'credential the user has configured). ' +
-				'Use this to find a nodeType, then call get_node_schema to see what nodeParameters ' +
-				'the node accepts, and run_node_tool to execute it.',
+			'Search for n8n node tools relevant to your task. ' +
+				'Pass a natural-language query (e.g. "send email", "fetch HTTP"). ' +
+				'Each result includes: displayName, nodeType, nodeTypeVersion, description, hasCredentials, credentials. ' +
+				'Use get_node_schema to inspect parameters, then run_node_tool to execute.',
 		)
-		.input(z.object({}))
-		.handler(async () => {
-			const tools = await registry.listTools(credentialProvider);
-			return { tools };
-		});
+		.input(
+			z.object({
+				query: z.string().describe('Natural-language description of what you want to do'),
+				topK: z.number().int().min(1).max(50).optional().describe('Max results (default 10)'),
+				minScore: z
+					.number()
+					.min(0)
+					.max(1)
+					.optional()
+					.describe('Minimum relevance score 0–1 (default 0.1)'),
+			}),
+		)
+		.handler(
+			async ({
+				query,
+				topK,
+				minScore,
+			}: {
+				query: string;
+				topK?: number;
+				minScore?: number;
+			}) => {
+				const tools = await searchTools(lnc, query, credentialProvider, { topK, minScore });
+				return { tools };
+			},
+		);
 }
 
 /**
  * Tool that returns the full parameter schema for a single n8n node type.
  *
- * Call this after list_tools to understand what nodeParameters a node accepts
+ * Call this after search_tools to understand what nodeParameters a node accepts
  * before calling run_node_tool.
  */
-export function createGetNodeSchemaTool(registry: Pick<NodeToolRegistry, 'getNodeSchema'>) {
+export function createGetNodeSchemaTool(lnc: LoadNodesAndCredentials) {
 	return new Tool('get_node_schema')
 		.description(
 			'Return the parameter schema for a specific n8n node type. ' +
@@ -73,11 +96,11 @@ export function createGetNodeSchemaTool(registry: Pick<NodeToolRegistry, 'getNod
 		)
 		.input(
 			z.object({
-				nodeType: z.string().describe('Node type identifier from list_tools'),
+				nodeType: z.string().describe('Node type identifier from search_tools'),
 			}),
 		)
 		.handler(async ({ nodeType }: { nodeType: string }) => {
-			const schema = await registry.getNodeSchema(nodeType);
+			const schema = await getNodeSchema(lnc, nodeType);
 			if (!schema) {
 				return { error: `No schema found for node type "${nodeType}"` };
 			}
@@ -99,17 +122,17 @@ export function createRunNodeTool(
 	return new Tool('run_node_tool')
 		.description(
 			'Execute an n8n node for the current request. ' +
-				'Use nodeType and nodeTypeVersion from list_tools. ' +
+				'Use nodeType and nodeTypeVersion from search_tools. ' +
 				'Call get_node_schema first to understand what nodeParameters the node accepts. ' +
 				'nodeParameters holds static node config; use n8n expressions like ={{ $json.url }} to map inputData fields. ' +
-				'credentials maps slot names to { id, name } — copy from the credentials array in list_tools. ' +
+				'credentials maps slot names to { id, name } — copy from the credentials array in search_tools. ' +
 				'inputData is the runtime payload available as $json inside expressions. ' +
 				'Parameters are validated against the node schema before execution.',
 		)
 		.input(
 			z.object({
-				nodeType: z.string().describe('Node type identifier from list_tools'),
-				nodeTypeVersion: z.number().describe('Node type version from list_tools'),
+				nodeType: z.string().describe('Node type identifier from search_tools'),
+				nodeTypeVersion: z.number().describe('Node type version from search_tools'),
 				nodeParameters: z
 					.record(z.unknown())
 					.optional()
@@ -119,7 +142,7 @@ export function createRunNodeTool(
 				credentials: z
 					.record(z.object({ id: z.string(), name: z.string() }))
 					.optional()
-					.describe('Credential slot → { id, name }. Copy from list_tools credentials array.'),
+					.describe('Credential slot → { id, name }. Copy from search_tools credentials array.'),
 				inputData: z
 					.record(z.unknown())
 					.optional()

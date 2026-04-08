@@ -22,7 +22,6 @@ import { v4 as uuid } from 'uuid';
 import { Agent } from './entities/agent.entity';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { AgentRepository } from './repositories/agent.repository';
-import { NodeToolRegistry } from './node-tool-registry';
 import type { WorkflowToolDescriptor } from './types';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -31,6 +30,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
 import { EphemeralNodeExecutor } from '@/node-execution';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { UrlService } from '@/services/url.service';
 import { TtlMap } from '@/utils/ttl-map';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -117,7 +117,7 @@ export class AgentsService {
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
 		private readonly secureRuntime: AgentSecureRuntime,
 		private readonly ephemeralNodeExecutor: EphemeralNodeExecutor,
-		private readonly nodeNodeToolRegistry: NodeToolRegistry,
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly n8nMemory: N8nMemory,
 		private readonly agentPublishedVersionRepository: AgentPublishedVersionRepository,
 	) {}
@@ -381,12 +381,12 @@ export class AgentsService {
 
 		// Node-discovery tools: let the agent discover and run n8n nodes on demand.
 		try {
-			const { createListToolsTool, createGetNodeSchemaTool, createRunNodeTool } = await import(
+			const { createSearchToolsTool, createGetNodeSchemaTool, createRunNodeTool } = await import(
 				'./integrations/node-execution-tools'
 			);
 
-			agent.tool(createListToolsTool(this.nodeNodeToolRegistry, credentialProvider));
-			agent.tool(createGetNodeSchemaTool(this.nodeNodeToolRegistry));
+			agent.tool(createSearchToolsTool(this.loadNodesAndCredentials, credentialProvider));
+			agent.tool(createGetNodeSchemaTool(this.loadNodesAndCredentials));
 			agent.tool(createRunNodeTool(this.ephemeralNodeExecutor, projectId));
 		} catch (toolError) {
 			this.logger.warn('Failed to inject node-discovery tools', {

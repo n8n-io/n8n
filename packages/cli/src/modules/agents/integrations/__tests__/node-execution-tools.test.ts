@@ -3,10 +3,11 @@ import { mock } from 'jest-mock-extended';
 import type { CredentialProvider } from '@n8n/agents';
 
 import type { NodeParametersSchema } from '../../node-schema-utils';
-import type { NodeToolRegistry, ToolDescriptor } from '../../node-tool-registry';
+import type { ToolDescriptor } from '../../node-tool-registry';
+import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import {
 	createGetNodeSchemaTool,
-	createListToolsTool,
+	createSearchToolsTool,
 	createRunNodeTool,
 } from '../node-execution-tools';
 
@@ -19,7 +20,13 @@ jest.mock('@/modules/instance-ai/node-definition-resolver', () => ({
 	resolveBuiltinNodeDefinitionDirs: jest.fn().mockReturnValue(['/fake/node-defs']),
 }));
 
+jest.mock('../../node-tool-registry', () => ({
+	getNodeSchema: jest.fn(),
+	searchTools: jest.fn(),
+}));
+
 import { validateNodeConfig } from '@n8n/workflow-sdk';
+import { getNodeSchema, searchTools } from '../../node-tool-registry';
 
 const ctx = {
 	resumeData: undefined,
@@ -28,26 +35,25 @@ const ctx = {
 };
 
 describe('createGetNodeSchemaTool', () => {
+	beforeEach(() => jest.clearAllMocks());
+
 	it('returns nodeType and schema when found', async () => {
 		const schema: NodeParametersSchema = {
 			url: { displayName: 'URL', type: 'string', required: true },
 		};
-		const registry = mock<Pick<NodeToolRegistry, 'getNodeSchema'>>({
-			getNodeSchema: jest.fn().mockResolvedValue(schema),
-		});
-		const tool = createGetNodeSchemaTool(registry).build();
+		jest.mocked(getNodeSchema).mockResolvedValue(schema);
+		const lnc = mock<LoadNodesAndCredentials>();
+		const tool = createGetNodeSchemaTool(lnc).build();
 
 		const result = await tool.handler!({ nodeType: 'n8n-nodes-base.httpRequest' }, ctx);
 
-		expect(registry.getNodeSchema).toHaveBeenCalledWith('n8n-nodes-base.httpRequest');
+		expect(getNodeSchema).toHaveBeenCalledWith(lnc, 'n8n-nodes-base.httpRequest');
 		expect(result).toEqual({ nodeType: 'n8n-nodes-base.httpRequest', schema });
 	});
 
 	it('returns an error object when the node type is not in the registry', async () => {
-		const registry = mock<Pick<NodeToolRegistry, 'getNodeSchema'>>({
-			getNodeSchema: jest.fn().mockResolvedValue(undefined),
-		});
-		const tool = createGetNodeSchemaTool(registry).build();
+		jest.mocked(getNodeSchema).mockResolvedValue(undefined);
+		const tool = createGetNodeSchemaTool(mock<LoadNodesAndCredentials>()).build();
 
 		const result = await tool.handler!({ nodeType: 'custom.unknown' }, ctx);
 
@@ -55,17 +61,37 @@ describe('createGetNodeSchemaTool', () => {
 	});
 });
 
-describe('createListToolsTool', () => {
+describe('createSearchToolsTool', () => {
+	beforeEach(() => jest.clearAllMocks());
+
 	it('returns { tools } from the registry', async () => {
 		const descriptor = mock<ToolDescriptor>({ nodeType: 'n8n-nodes-base.httpRequest' });
-		const registry = { listTools: jest.fn().mockResolvedValue([descriptor]) };
+		jest.mocked(searchTools).mockResolvedValue([descriptor]);
+		const lnc = mock<LoadNodesAndCredentials>();
 		const credentialProvider = mock<CredentialProvider>();
-		const tool = createListToolsTool(registry, credentialProvider).build();
+		const tool = createSearchToolsTool(lnc, credentialProvider).build();
 
-		const result = await tool.handler!({}, ctx);
+		const result = await tool.handler!({ query: 'http request' }, ctx);
 
-		expect(registry.listTools).toHaveBeenCalledWith(credentialProvider);
+		expect(searchTools).toHaveBeenCalledWith(lnc, 'http request', credentialProvider, {
+			topK: undefined,
+			minScore: undefined,
+		});
 		expect(result).toEqual({ tools: [descriptor] });
+	});
+
+	it('passes topK and minScore through to searchTools', async () => {
+		jest.mocked(searchTools).mockResolvedValue([]);
+		const lnc = mock<LoadNodesAndCredentials>();
+		const credentialProvider = mock<CredentialProvider>();
+		const tool = createSearchToolsTool(lnc, credentialProvider).build();
+
+		await tool.handler!({ query: 'email', topK: 5, minScore: 0.3 }, ctx);
+
+		expect(searchTools).toHaveBeenCalledWith(lnc, 'email', credentialProvider, {
+			topK: 5,
+			minScore: 0.3,
+		});
 	});
 });
 
@@ -174,7 +200,6 @@ describe('createRunNodeTool', () => {
 	});
 
 	it('executes when validateNodeConfig returns valid (no schema available)', async () => {
-		// validateNodeConfig returns valid:true when no schema file exists — graceful fallback
 		jest.mocked(validateNodeConfig).mockReturnValue({ valid: true, errors: [] });
 		const executor = { executeInline: jest.fn().mockResolvedValue({ status: 'success' }) };
 		const tool = createRunNodeTool(executor, 'project-1').build();
