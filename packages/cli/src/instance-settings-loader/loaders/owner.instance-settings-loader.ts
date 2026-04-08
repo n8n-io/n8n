@@ -15,30 +15,29 @@ const ownerEnvSchema = z
 			.string()
 			.min(
 				1,
-				'INSTANCE_OWNER_EMAIL is required when INSTANCE_OWNER_PASSWORD_HASH or INSTANCE_OWNER_OVERRIDE is set',
+				'N8N_INSTANCE_OWNER_EMAIL is required when N8N_INSTANCE_OWNER_MANAGED_BY_ENV is true',
 			),
 		ownerPasswordHash: z
 			.string()
 			.min(
 				1,
-				'INSTANCE_OWNER_PASSWORD_HASH is required when INSTANCE_OWNER_EMAIL or INSTANCE_OWNER_OVERRIDE is set',
+				'N8N_INSTANCE_OWNER_PASSWORD_HASH is required when N8N_INSTANCE_OWNER_MANAGED_BY_ENV is true',
 			)
 			.regex(
 				BCRYPT_HASH_RE,
-				'INSTANCE_OWNER_PASSWORD_HASH is not a valid bcrypt hash. Provide a pre-hashed bcrypt string.',
+				'N8N_INSTANCE_OWNER_PASSWORD_HASH is not a valid bcrypt hash. Provide a pre-hashed bcrypt string.',
 			),
 		ownerFirstName: z.string(),
 		ownerLastName: z.string(),
-		ownerOverride: z.boolean(),
 	})
-	.transform(({ ownerEmail, ownerPasswordHash, ownerFirstName, ownerLastName, ownerOverride }) => ({
+	.transform(({ ownerEmail, ownerPasswordHash, ownerFirstName, ownerLastName }) => ({
 		payload: {
 			email: ownerEmail,
 			firstName: ownerFirstName,
 			lastName: ownerLastName,
 			password: ownerPasswordHash,
 		},
-		options: { overwriteExisting: ownerOverride, passwordIsHashed: true as const },
+		options: { overwriteExisting: true, passwordIsHashed: true as const },
 	}));
 
 @Service()
@@ -52,21 +51,23 @@ export class OwnerInstanceSettingsLoader {
 	}
 
 	async run(): Promise<'created' | 'skipped'> {
-		const { ownerOverride, ownerEmail, ownerPasswordHash } = this.instanceSettingsLoaderConfig;
-		if (!ownerOverride && !ownerEmail && !ownerPasswordHash) return 'skipped';
+		const { ownerManagedByEnv, ownerEmail, ownerPasswordHash } = this.instanceSettingsLoaderConfig;
+
+		if (!ownerManagedByEnv) {
+			if (ownerEmail || ownerPasswordHash) {
+				this.logger.warn(
+					'N8N_INSTANCE_OWNER_EMAIL or N8N_INSTANCE_OWNER_PASSWORD_HASH is set but N8N_INSTANCE_OWNER_MANAGED_BY_ENV is not enabled — ignoring owner env vars',
+				);
+			}
+			return 'skipped';
+		}
+
+		this.logger.info('N8N_INSTANCE_OWNER_MANAGED_BY_ENV is enabled — applying owner env vars');
 
 		const result = ownerEnvSchema.safeParse(this.instanceSettingsLoaderConfig);
 
 		if (!result.success) {
 			throw new OperationalError(result.error.issues[0].message);
-		}
-
-		if (
-			!result.data.options.overwriteExisting &&
-			(await this.ownershipService.hasInstanceOwner())
-		) {
-			this.logger.debug('Instance owner already exists, skipping bootstrap');
-			return 'skipped';
 		}
 
 		await this.ownershipService.setupOwner(result.data.payload, result.data.options);

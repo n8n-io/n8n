@@ -497,7 +497,7 @@ describe('GlobalConfig', () => {
 			maxCodeCacheSize: 1024,
 		},
 		instanceSettingsLoader: {
-			ownerOverride: false,
+			ownerManagedByEnv: false,
 			ownerEmail: '',
 			ownerFirstName: '',
 			ownerLastName: '',

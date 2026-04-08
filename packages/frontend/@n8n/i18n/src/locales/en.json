@@ -2870,6 +2870,7 @@
 	"settings.goBack": "Go back",
 	"settings.personal": "Personal",
 	"settings.personal.basicInformation": "Basic Information",
+	"settings.personal.managedByEnv": "Your account credentials are managed via environment variables and cannot be changed here.",
 	"settings.personal.personalSettings": "Personal Settings",
 	"settings.personal.personalSettingsUpdated": "Personal details updated",
 	"settings.personal.personalSettingsUpdatedError": "Problem updating your details",

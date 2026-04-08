@@ -2,17 +2,21 @@ import { Config, Env } from '../decorators';
 
 @Config
 export class InstanceSettingsLoaderConfig {
-	/** When true, update the instance owner with the provided values on every startup. */
-	@Env('INSTANCE_OWNER_OVERRIDE')
-	ownerOverride: boolean = false;
+	/**
+	 * When true, the instance owner is managed via environment variables.
+	 * On every startup the owners details will be overriden by what is in the env vars.
+	 * When false (default), those env vars are ignored even if set.
+	 */
+	@Env('N8N_INSTANCE_OWNER_MANAGED_BY_ENV')
+	ownerManagedByEnv: boolean = false;
 
-	@Env('INSTANCE_OWNER_EMAIL')
+	@Env('N8N_INSTANCE_OWNER_EMAIL')
 	ownerEmail: string = '';
 
-	@Env('INSTANCE_OWNER_FIRST_NAME')
+	@Env('N8N_INSTANCE_OWNER_FIRST_NAME')
 	ownerFirstName: string = '';
 
-	@Env('INSTANCE_OWNER_LAST_NAME')
+	@Env('N8N_INSTANCE_OWNER_LAST_NAME')
 	ownerLastName: string = '';
 
 	/**
@@ -20,6 +24,6 @@ export class InstanceSettingsLoaderConfig {
 	 * Use when the hash is provided by an external secrets system or deployment pipeline.
 	 * WARNING: providing a plaintext password here will result in a broken login.
 	 */
-	@Env('INSTANCE_OWNER_PASSWORD_HASH')
+	@Env('N8N_INSTANCE_OWNER_PASSWORD_HASH')
 	ownerPasswordHash: string = '';
 }
