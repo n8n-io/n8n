@@ -137,6 +137,16 @@ function formatMessagesForBriefing(messages: FormattedMessage[], guidance?: stri
 // Helper: clear draft checklist from taskStorage
 // ---------------------------------------------------------------------------
 
+/** Publish an empty tasks-update so the frontend clears stale plan items. */
+function publishClearingEvent(context: OrchestrationContext): void {
+	context.eventBus.publish(context.threadId, {
+		type: 'tasks-update',
+		runId: context.runId,
+		agentId: context.orchestratorAgentId,
+		payload: { tasks: { tasks: [] }, planItems: [] },
+	});
+}
+
 async function clearDraftChecklist(context: OrchestrationContext): Promise<void> {
 	try {
 		await context.taskStorage.save(context.threadId, { tasks: [] });
@@ -329,6 +339,7 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 				}
 
 				// Planner finished without approval (no submit-plan or user didn't approve)
+				publishClearingEvent(context);
 				await clearDraftChecklist(context);
 				if (!accumulator.isEmpty()) {
 					return {
@@ -357,6 +368,7 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 				});
 
 				// Clear draft checklist on error
+				publishClearingEvent(context);
 				await clearDraftChecklist(context);
 
 				return { result: `Planner error: ${errorMessage}` };
