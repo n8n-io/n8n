@@ -7,6 +7,7 @@ import AiGatewayTopUpModal from './AiGatewayTopUpModal.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
 import { mockedStore } from '@/__tests__/utils';
 
@@ -42,6 +43,26 @@ function renderModal() {
 	return { ...renderComponent({ pinia }), pinia };
 }
 
+function renderModalWithCredentialType(credentialTypeName: string, documentationUrl?: string) {
+	const pinia = createTestingPinia({ initialState: { aiGateway: { fetchError: null } } });
+	setActivePinia(pinia);
+	const uiStore = useUIStore();
+	uiStore.modalsById[AI_GATEWAY_TOP_UP_MODAL_KEY] = {
+		open: true,
+		data: { credentialType: credentialTypeName },
+	};
+	if (documentationUrl !== undefined) {
+		const credStore = useCredentialsStore();
+		credStore.state.credentialTypes[credentialTypeName] = {
+			name: credentialTypeName,
+			displayName: credentialTypeName,
+			documentationUrl,
+			properties: [],
+		};
+	}
+	return renderComponent({ pinia });
+}
+
 describe('AiGatewayTopUpModal.vue', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -53,7 +74,7 @@ describe('AiGatewayTopUpModal.vue', () => {
 
 			const presets = screen.getAllByTestId('ai-gateway-topup-preset');
 			expect(presets).toHaveLength(4);
-			expect(presets.map((b) => b.textContent?.trim())).toEqual(['10', '20', '50', '100']);
+			expect(presets.map((b) => b.textContent?.trim())).toEqual(['$10', '$20', '$50', '$100']);
 		});
 
 		it('selects a preset when clicked', async () => {
@@ -148,15 +169,56 @@ describe('AiGatewayTopUpModal.vue', () => {
 			expect(screen.queryByText('Thank you for your interest!')).not.toBeInTheDocument();
 		});
 
-		it('shows feedback link in thank-you state', async () => {
+		it('shows generic message in thank-you state when no credentialType is provided', async () => {
 			renderModal();
 
 			await userEvent.click(screen.getAllByTestId('ai-gateway-topup-preset')[0]);
 			await userEvent.click(screen.getByTestId('ai-gateway-topup-buy'));
 
 			await waitFor(() =>
-				expect(screen.getByTestId('ai-gateway-topup-feedback-link')).toBeInTheDocument(),
+				expect(
+					screen.getByText('We are working on enabling AI Gateway top-ups directly in n8n.'),
+				).toBeInTheDocument(),
 			);
+			expect(
+				screen.queryByTestId('ai-gateway-topup-credentials-docs-link'),
+			).not.toBeInTheDocument();
+		});
+
+		it('shows credential-specific message in thank-you state when credentialType is provided', async () => {
+			renderModalWithCredentialType('openAiApi');
+
+			await userEvent.click(screen.getAllByTestId('ai-gateway-topup-preset')[0]);
+			await userEvent.click(screen.getByTestId('ai-gateway-topup-buy'));
+
+			await waitFor(() =>
+				expect(screen.getByText('Buying credits is currently in development.')).toBeInTheDocument(),
+			);
+		});
+
+		it('shows credentials docs link in thank-you state when credentialType has a documentationUrl', async () => {
+			renderModalWithCredentialType('openAiApi', 'openai');
+
+			await userEvent.click(screen.getAllByTestId('ai-gateway-topup-preset')[0]);
+			await userEvent.click(screen.getByTestId('ai-gateway-topup-buy'));
+
+			await waitFor(() =>
+				expect(screen.getByTestId('ai-gateway-topup-credentials-docs-link')).toBeInTheDocument(),
+			);
+		});
+
+		it('does not show credentials docs link when credentialType has no documentationUrl', async () => {
+			renderModalWithCredentialType('someCredential');
+
+			await userEvent.click(screen.getAllByTestId('ai-gateway-topup-preset')[0]);
+			await userEvent.click(screen.getByTestId('ai-gateway-topup-buy'));
+
+			await waitFor(() =>
+				expect(screen.getByText('Buying credits is currently in development.')).toBeInTheDocument(),
+			);
+			expect(
+				screen.queryByTestId('ai-gateway-topup-credentials-docs-link'),
+			).not.toBeInTheDocument();
 		});
 
 		it('hides footer buttons in thank-you state', async () => {
