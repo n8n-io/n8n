@@ -300,6 +300,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			if (tc) {
 				tc.confirmation = {
 					requestId: event.payload.requestId,
+					inputThreadId: event.payload.inputThreadId,
 					severity: event.payload.severity,
 					message: event.payload.message,
 					credentialRequests: event.payload.credentialRequests,

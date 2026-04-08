@@ -4,6 +4,8 @@ import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import { extractArtifacts, type ArtifactInfo } from '../agentTimeline.utils';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useInstanceAiStore } from '../instanceAi.store';
 import AgentSection from './AgentSection.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
@@ -16,6 +18,8 @@ import ToolCallStep from './ToolCallStep.vue';
 
 const i18n = useI18n();
 const store = useInstanceAiStore();
+const telemetry = useTelemetry();
+const rootStore = useRootStore();
 
 /** Resolve artifact name from the enriched registry (falls back to extracted name). */
 function resolveArtifactName(artifact: ArtifactInfo): string {
@@ -107,6 +111,26 @@ const childrenById = computed(() => {
 function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedback?: string) {
 	const requestId = tc.confirmation?.requestId;
 	if (!requestId) return;
+
+	const numTasks = ((tc.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length;
+	const eventProps = {
+		thread_id: store.currentThreadId,
+		input_thread_id: tc.confirmation?.inputThreadId ?? '',
+		instance_id: rootStore.instanceId,
+		type: 'plan-review',
+		provided_inputs: [
+			{
+				label: 'plan',
+				options: ['approve', 'request-changes'],
+				option_chosen: approved ? 'approve' : 'request-changes',
+			},
+		],
+		skipped_inputs: [],
+		num_tasks: numTasks,
+		...(feedback ? { feedback } : {}),
+	};
+	telemetry.track('User finished providing input', eventProps);
+
 	store.resolveConfirmation(requestId, approved ? 'approved' : 'denied');
 	void store.confirmAction(requestId, approved, undefined, undefined, undefined, feedback);
 }

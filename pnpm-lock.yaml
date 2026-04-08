@@ -1422,6 +1422,9 @@ importers:
 
   packages/@n8n/expression-runtime:
     dependencies:
+      '@n8n/errors':
+        specifier: workspace:*
+        version: link:../errors
       '@n8n/tournament':
         specifier: 1.0.6
         version: 1.0.6

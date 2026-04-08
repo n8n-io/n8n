@@ -1389,6 +1389,29 @@ describe('POST /workflows', () => {
 		expect(response.statusCode).toBe(400);
 	});
 
+	test('should reject workflow with pinData exceeding size limit', async () => {
+		const largeValue = 'x'.repeat(1024 * 1024 * 12 + 1); // > 12 MB
+		const response = await authOwnerAgent.post('/workflows').send({
+			name: 'testing',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+			],
+			connections: {},
+			settings: {},
+			pinData: { Start: [{ json: { data: largeValue } }] },
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('Pinned data exceeds');
+	});
+
 	test('should create workflow', async () => {
 		const payload = {
 			...mockPostWorkflowPayload(),
@@ -1653,6 +1676,57 @@ describe('PUT /workflows/:id', () => {
 		});
 
 		expect(response.statusCode).toBe(400);
+	});
+
+	test('should reject workflow update with pinData exceeding size limit', async () => {
+		const workflow = await createWorkflowWithHistory({}, member);
+		const largeValue = 'x'.repeat(1024 * 1024 * 12 + 1); // > 12 MB
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
+			name: 'testing',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+			],
+			connections: {},
+			settings: {},
+			pinData: { Start: [{ json: { data: largeValue } }] },
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('Pinned data exceeds');
+	});
+
+	test('should allow update without pinData on workflow that has oversized pinData', async () => {
+		const largeValue = 'x'.repeat(1024 * 1024 * 12 + 1);
+		const workflow = await createWorkflowWithHistory(
+			{ pinData: { Start: [{ json: { data: largeValue } }] } },
+			member,
+		);
+
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
+			name: 'updated name',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+			],
+			connections: {},
+			settings: {},
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.name).toBe('updated name');
 	});
 
 	test('should update workflow', async () => {
