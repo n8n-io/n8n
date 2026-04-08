@@ -8,11 +8,11 @@ import { nanoid } from 'nanoid';
 
 import { createMemory } from '../memory/memory-config';
 import { createAllTools, createOrchestratorDomainTools, createOrchestrationTools } from '../tools';
+import { sanitizeMcpToolSchemas } from './sanitize-mcp-schemas';
+import { getSystemPrompt } from './system-prompt';
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
 import type { CreateInstanceAgentOptions, McpServerConfig } from '../types';
-import { sanitizeMcpToolSchemas } from './sanitize-mcp-schemas';
-import { getSystemPrompt } from './system-prompt';
 function buildMcpServers(
 	configs: McpServerConfig[],
 ): Record<
@@ -187,6 +187,11 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 			agentRole: 'orchestrator',
 			tags: ['orchestrator'],
 		}) ?? allOrchestratorTools;
+
+	// Sanitize all tool schemas for Anthropic compatibility. Consolidated domain tools
+	// use z.discriminatedUnion which produces JSON Schema without top-level `type: "object"`.
+	// Must happen after tracing wraps tools (wrapTools creates new tool objects).
+	sanitizeMcpToolSchemas(tracedOrchestratorTools);
 
 	const coreTools: ToolsInput = {};
 	const deferrableTools: ToolsInput = {};
