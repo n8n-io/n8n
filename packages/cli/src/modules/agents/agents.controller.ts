@@ -15,6 +15,7 @@ import { CredentialsFinderService } from '@/credentials/credentials-finder.servi
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { AgentExecutionService } from './agent-execution.service';
 import { AgentsBuilderService } from './agents-builder.service';
 import { AgentsCredentialProvider } from './agents-credential-provider';
 import { AgentsService } from './agents.service';
@@ -69,6 +70,7 @@ export class AgentsController {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly agentRepository: AgentRepository,
+		private readonly agentExecutionService: AgentExecutionService,
 	) {}
 
 	@Post('/')
@@ -477,6 +479,27 @@ export class AgentsController {
 		});
 		const body = await webResponse.text();
 		res.send(body);
+	}
+
+	// ---------------------------------------------------------------------------
+	// Execution threads
+	// ---------------------------------------------------------------------------
+
+	@Get('/threads')
+	async listThreads(
+		req: AuthenticatedRequest<{ projectId: string }, {}, {}, { cursor?: string; limit?: string }>,
+	) {
+		const limit = Math.min(Number(req.query.limit) || 20, 100);
+		return await this.agentExecutionService.getThreads(
+			req.params.projectId,
+			limit,
+			req.query.cursor,
+		);
+	}
+
+	@Get('/threads/:threadId')
+	async getThread(req: AuthenticatedRequest<{ projectId: string; threadId: string }>) {
+		return await this.agentExecutionService.getThreadExecutions(req.params.threadId);
 	}
 
 	// ---------------------------------------------------------------------------

@@ -33,8 +33,10 @@ import { TtlMap } from '@/utils/ttl-map';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowRunner } from '@/workflow-runner';
 
+import { AgentExecutionService } from './agent-execution.service';
 import { AgentsCredentialProvider } from './agents-credential-provider';
 import { AgentSecureRuntime } from './agent-secure-runtime';
+import { ExecutionRecorder } from './execution-recorder';
 
 export interface ExecuteAgentData {
 	response: string;
@@ -98,6 +100,7 @@ export class AgentsService {
 		private readonly urlService: UrlService,
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
 		private readonly secureRuntime: AgentSecureRuntime,
+		private readonly agentExecutionService: AgentExecutionService,
 	) {}
 
 	async create(projectId: string, name: string): Promise<Agent> {
@@ -543,6 +546,7 @@ export class AgentsService {
 		}
 
 		const agentInstance = runtime.agent;
+		const recorder = new ExecutionRecorder();
 
 		const resultStream = await agentInstance.stream(message, {
 			persistence: {
@@ -556,6 +560,7 @@ export class AgentsService {
 			while (true) {
 				const { done, value } = await reader.read();
 				if (done) break;
+				recorder.record(value);
 				if (value.type === 'tool-call-suspended') {
 					this.logger.info('Chat: tool-call-suspended chunk received', {
 						agentId,
@@ -568,6 +573,26 @@ export class AgentsService {
 		} finally {
 			reader.releaseLock();
 		}
+
+		// Persist execution record in the background — best-effort, don't block the response
+		const messageRecord = recorder.getMessageRecord();
+		void this.agentExecutionService
+			.recordMessage({
+				threadId,
+				agentId,
+				agentName: agentInstance.name,
+				projectId,
+				userId,
+				userMessage: message,
+				record: messageRecord,
+			})
+			.catch((error) => {
+				this.logger.warn('Failed to record agent execution', {
+					agentId,
+					threadId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			});
 	}
 
 	/**
