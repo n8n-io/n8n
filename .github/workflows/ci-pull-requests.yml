@@ -249,5 +249,5 @@ jobs:
     if: always()
     uses: ./.github/workflows/util-qa-metrics-comment-reusable.yml
     with:
-      metrics: memory-heap-used-baseline,docker-image-size-n8n,docker-image-size-runners
+      metrics: memory-heap-used-baseline,memory-rss-baseline,instance-ai-heap-used-baseline,instance-ai-rss-baseline,docker-image-size-n8n,docker-image-size-runners
     secrets: inherit
