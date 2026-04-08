@@ -1,5 +1,4 @@
 ---
-name: node-add-oauth
 description: Add OAuth2 credential support to an existing n8n node — creates the credential file, updates the node, adds tests, and keeps the CLI constant in sync. Use when the user says /node-add-oauth.
 argument-hint: "[node-name] [optional: custom-scopes flag or scope list]"
 ---
