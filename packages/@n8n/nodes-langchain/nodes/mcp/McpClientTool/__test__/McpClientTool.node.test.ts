@@ -15,7 +15,12 @@ import {
 import { proxyFetch } from '@n8n/ai-utilities';
 
 import { getTools } from '../loadOptions';
-import { McpClientTool, activeClients } from '../McpClientTool.node';
+import {
+	McpClientTool,
+	activeClients,
+	evictStaleClients,
+	resetEvictionTimer,
+} from '../McpClientTool.node';
 
 jest.mock('@modelcontextprotocol/sdk/client/sse.js');
 jest.mock('@modelcontextprotocol/sdk/client/index.js');
@@ -1012,6 +1017,32 @@ describe('McpClientTool', () => {
 
 			expect(closeSpy).toHaveBeenCalledTimes(1);
 			expect(activeClients.size).toBe(0);
+		});
+
+		it('should evict oldest entries when cache exceeds max size', () => {
+			const closeSpy = jest.fn().mockResolvedValue(undefined);
+			const now = Date.now();
+
+			// Pre-populate cache with 502 entries (default max is 500)
+			// All entries are recent (within TTL) so only max-size eviction applies
+			for (let i = 0; i < 502; i++) {
+				activeClients.set(`exec-${i}:node`, {
+					client: { close: closeSpy } as unknown as Client,
+					mcpTools: [],
+					createdAt: now - 1000 + i, // all recent, oldest first
+				});
+			}
+
+			expect(activeClients.size).toBe(502);
+			resetEvictionTimer();
+			evictStaleClients();
+
+			// Should have evicted 2 oldest entries to get back to 500
+			expect(activeClients.size).toBe(500);
+			expect(activeClients.has('exec-0:node')).toBe(false);
+			expect(activeClients.has('exec-1:node')).toBe(false);
+			expect(activeClients.has('exec-2:node')).toBe(true);
+			expect(closeSpy).toHaveBeenCalledTimes(2);
 		});
 
 		it('should not use client cache for v1.2 nodes', async () => {

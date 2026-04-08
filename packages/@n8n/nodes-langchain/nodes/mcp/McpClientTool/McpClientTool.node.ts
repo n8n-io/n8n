@@ -30,7 +30,8 @@ import {
 	tryRefreshOAuth2Token,
 } from '../shared/utils';
 
-const CLIENT_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const MCP_CLIENT_CACHE_TTL_MS = parseInt(process.env.MCP_CLIENT_CACHE_TTL_MS ?? '300000', 10);
+const MCP_CLIENT_CACHE_MAX_SIZE = parseInt(process.env.MCP_CLIENT_CACHE_MAX_SIZE ?? '500', 10);
 
 interface CachedClient {
 	client: Client;
@@ -49,17 +50,31 @@ function getCacheKey(executionId: string, nodeName: string): string {
 	return `${executionId}:${nodeName}`;
 }
 
-/** Remove cache entries older than CLIENT_CACHE_TTL_MS as a safety net against leaks. */
 let lastEvictionAt = 0;
 const EVICTION_INTERVAL_MS = 30_000;
 
-function evictStaleClients(): void {
+/** Reset the eviction timer — exported for testing only. */
+export function resetEvictionTimer(): void {
+	lastEvictionAt = 0;
+}
+
+/** Evict stale entries (TTL) and enforce max cache size. */
+export function evictStaleClients(): void {
 	const now = Date.now();
 	if (now - lastEvictionAt < EVICTION_INTERVAL_MS) return;
 	lastEvictionAt = now;
 
 	for (const [key, entry] of activeClients) {
-		if (now - entry.createdAt > CLIENT_CACHE_TTL_MS) {
+		if (now - entry.createdAt > MCP_CLIENT_CACHE_TTL_MS) {
+			void entry.client.close().catch(() => {});
+			activeClients.delete(key);
+		}
+	}
+
+	if (activeClients.size > MCP_CLIENT_CACHE_MAX_SIZE) {
+		const sorted = [...activeClients.entries()].sort((a, b) => a[1].createdAt - b[1].createdAt);
+		const toEvict = sorted.slice(0, activeClients.size - MCP_CLIENT_CACHE_MAX_SIZE);
+		for (const [key, entry] of toEvict) {
 			void entry.client.close().catch(() => {});
 			activeClients.delete(key);
 		}
