@@ -22,10 +22,29 @@ export class MoonshotApi implements ICredentialType {
 			default: '',
 		},
 		{
+			displayName: 'Region',
+			name: 'region',
+			type: 'options',
+			options: [
+				{
+					name: 'International',
+					value: 'international',
+					description: 'platform.kimi.ai - international endpoint',
+				},
+				{
+					name: 'China',
+					value: 'china',
+					description: 'platform.moonshot.cn - for users in mainland China',
+				},
+			],
+			default: 'international',
+		},
+		{
 			displayName: 'Base URL',
 			name: 'url',
 			type: 'hidden',
-			default: 'https://api.moonshot.ai/v1',
+			default:
+				'={{ $self.region === "china" ? "https://api.moonshot.cn/v1" : "https://api.moonshot.ai/v1" }}',
 		},
 	];
 
