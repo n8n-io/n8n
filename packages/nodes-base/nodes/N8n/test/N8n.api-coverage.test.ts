@@ -27,6 +27,8 @@ const MANIFEST_RELATIVE = 'packages/nodes-base/nodes/N8n/n8n-api-coverage.json';
 
 const HTTP_METHODS = new Set(['get', 'post', 'put', 'patch', 'delete', 'head', 'options']);
 
+// This test reads OpenAPI files from packages/cli. Keep Turbo inputs for
+// n8n-nodes-base#test in sync (see turbo.json) so CLI spec changes invalidate cache.
 // Matches path entries in openapi.yml: "  /some/path:\n    $ref: './relative/file.yml'"
 const PATH_REF_PATTERN = /^ {2}(\/\S+):\s*\n\s+\$ref:\s*'([^']+)'/gm;
 

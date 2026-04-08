@@ -78,8 +78,6 @@ export class WorkflowCreationService {
 
 		await validateEntity(newWorkflow);
 
-		await this.externalHooks.run('workflow.create', [newWorkflow]);
-
 		if (tagIds?.length && !this.globalConfig.tags.disabled) {
 			newWorkflow.tags = await this.tagRepository.findMany(tagIds);
 		}
@@ -109,6 +107,10 @@ export class WorkflowCreationService {
 		WorkflowHelpers.addNodeIds(newWorkflow);
 		WorkflowHelpers.resolveNodeWebhookIds(newWorkflow, this.nodeTypes);
 
+		if ('pinData' in newWorkflow) {
+			WorkflowHelpers.validatePinDataSize(newWorkflow);
+		}
+
 		if (this.licenseState.isSharingLicensed()) {
 			// This is a new workflow, so we simply check if the user has access to
 			// all used credentials
@@ -128,6 +130,9 @@ export class WorkflowCreationService {
 				);
 			}
 		}
+
+		// Run external hook after all validation has passed, right before persisting
+		await this.externalHooks.run('workflow.create', [newWorkflow]);
 
 		const { manager: dbManager } = this.projectRepository;
 

@@ -1332,13 +1332,7 @@ function resetCredentialData(): void {
 		}
 	}
 
-	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
-	const overrideProjectId = isCredentialModalState(modalState) ? modalState.projectId : undefined;
-	const overrideProject = overrideProjectId
-		? projectsStore.myProjects.find((p) => p.id === overrideProjectId)
-		: undefined;
-	const { currentProject, personalProject } = projectsStore;
-	const resolvedProject = overrideProject ?? currentProject ?? personalProject ?? {};
+	const resolvedProject = homeProject.value ?? {};
 	const scopes = ('scopes' in resolvedProject ? resolvedProject.scopes : undefined) ?? [];
 
 	credentialData.value = {
