@@ -186,13 +186,12 @@ export async function checkIfVersionExistsOrThrow(
 				{ doNotHandleError: true },
 			);
 
-			const resolvedVersion = jsonParse(stdout);
-			// npm resolves dist-tags to concrete versions, so validate the resolved value is semver
-			if (
-				typeof resolvedVersion === 'string' &&
-				valid(resolvedVersion) !== null &&
-				(valid(version) === null || resolvedVersion === version)
-			) {
+			const resolvedVersion = jsonParse<string>(stdout);
+			const isResolvedSemver =
+				typeof resolvedVersion === 'string' && valid(resolvedVersion) !== null;
+			const isExactSemver = valid(version) !== null;
+
+			if (isResolvedSemver && (!isExactSemver || resolvedVersion === version)) {
 				return true;
 			}
 
