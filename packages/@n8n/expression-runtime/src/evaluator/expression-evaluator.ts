@@ -7,7 +7,7 @@ import type {
 	RuntimeBridge,
 } from '../types';
 import { DEFAULT_BRIDGE_CONFIG } from '../types/bridge';
-import { IsolateError } from '../errors/isolate-error';
+import { IsolateError } from '@n8n/errors';
 import { IsolatePool, PoolDisposedError, PoolExhaustedError } from '../pool/isolate-pool';
 import { LruCache } from './lru-cache';
 
