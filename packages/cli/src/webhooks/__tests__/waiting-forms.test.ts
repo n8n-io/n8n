@@ -36,6 +36,7 @@ describe('WaitingForms', () => {
 		executionRepository,
 		mock(),
 		mockInstanceSettings,
+		mock(),
 	);
 
 	beforeEach(() => {
