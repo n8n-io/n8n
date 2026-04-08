@@ -114,20 +114,19 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 /** Find the latest plan-review confirmation from a planner child's submit-plan tool call.
  *  Prefers pending (isLoading) over resolved — handles revision loops where
  *  multiple submit-plan calls exist. */
-function findPlannerConfirmation(): InstanceAiToolCallState | undefined {
+const plannerConfirmation = computed<InstanceAiToolCallState | undefined>(() => {
 	let latest: InstanceAiToolCallState | undefined;
 	for (const child of props.agentNode.children) {
 		if (child.role !== 'planner') continue;
 		for (const tc of child.toolCalls) {
 			if (tc.toolName === 'submit-plan' && tc.confirmation?.inputType === 'plan-review') {
-				// Prefer the pending (loading) one — that's the active approval
 				if (tc.isLoading) return tc;
 				latest = tc;
 			}
 		}
 	}
 	return latest;
-}
+});
 
 /** Map simplified TaskList items to PlannedTaskArg shape for loading preview */
 function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefined {
@@ -216,25 +215,22 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 				<PlanReviewPanel
 					v-if="
 						childrenById[entry.agentId].role === 'planner' &&
-						(findPlannerConfirmation() ||
+						(plannerConfirmation ||
 							props.agentNode.planItems?.length ||
 							props.agentNode.tasks?.tasks?.length)
 					"
-					:key="findPlannerConfirmation()?.confirmation?.requestId ?? 'plan-loading'"
+					:key="plannerConfirmation?.confirmation?.requestId ?? 'plan-loading'"
 					:planned-tasks="
-						findPlannerConfirmation()?.confirmation?.planItems ??
+						plannerConfirmation?.confirmation?.planItems ??
 						(props.agentNode.planItems as PlannedTaskArg[] | undefined) ??
 						mapTaskItemsToPlannedTasks(props.agentNode.tasks) ??
 						[]
 					"
-					:loading="!findPlannerConfirmation()"
-					:read-only="!!findPlannerConfirmation() && !findPlannerConfirmation()!.isLoading"
-					@approve="
-						findPlannerConfirmation() && handlePlanConfirm(findPlannerConfirmation()!, true)
-					"
+					:loading="!plannerConfirmation"
+					:read-only="!!plannerConfirmation && !plannerConfirmation.isLoading"
+					@approve="plannerConfirmation && handlePlanConfirm(plannerConfirmation, true)"
 					@request-changes="
-						(fb) =>
-							findPlannerConfirmation() && handlePlanConfirm(findPlannerConfirmation()!, false, fb)
+						(fb) => plannerConfirmation && handlePlanConfirm(plannerConfirmation, false, fb)
 					"
 				/>
 
