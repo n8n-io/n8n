@@ -5,11 +5,8 @@ disable-model-invocation: true
 argument-hint: "[issue-id]"
 compatibility:
   requires:
-    - one_of:
-        - mcp: mcp__linear-server
-          description: Claude Code — use `mcp__linear-server__*` tools
-        - mcp: user-Linear
-          description: Cursor — use `user-Linear` tools
+    - mcp: mcp__linear-server
+      description: Linear MCP — use `mcp__linear-server__*` tools
     - cli: gh
       description: GitHub CLI — used to fetch linked PRs and issues. Must be authenticated (gh auth login)
   optional:
@@ -48,9 +45,9 @@ Follow these steps to gather comprehensive context about the issue:
 
 Use the Linear MCP tools to fetch the issue details and comments together:
 
-- Use the active Linear MCP issue tool (`mcp__linear-server__get_issue` in Claude Code or the equivalent `user-Linear` issue tool in Cursor) with the issue ID to get full details including attachments
+- Use the Linear MCP issue tool (`mcp__linear-server__get_issue`) with the issue ID to get full details including attachments
 - Include relations to see blocking/related/duplicate issues
-- **Immediately after**, use the Linear MCP list_comments tool (`mcp__linear-server__list_comments` in Claude Code, equivalent in Cursor) with the issue ID to fetch all comments
+- **Immediately after**, use the Linear MCP list_comments tool (`mcp__linear-server__list_comments`) with the issue ID to fetch all comments
 
 Both calls should be made together in the same step to gather the complete context upfront.
 
@@ -81,7 +78,7 @@ Both calls should be made together in the same step to gather the complete conte
 ### 3. Fetch Related Context
 
 **Related Linear Issues:**
-- Use the Linear MCP get_issue tool (`mcp__linear-server__get_issue` in Claude Code, equivalent in Cursor) for any issues mentioned in relations (blocking, blocked by, related, duplicates)
+- Use the Linear MCP get_issue tool (`mcp__linear-server__get_issue`) for any issues mentioned in relations (blocking, blocked by, related, duplicates)
 - Summarize how they relate to the main issue
 
 **GitHub PRs and Issues:**
@@ -156,18 +153,6 @@ To make this assessment, consider:
 - **Documentation**: Does this require docs updates, migration guides, or changelog entries?
 
 Provide the T-shirt size along with a brief justification explaining the key factors that drove the estimate. Note whether it came from Flaky or your own assessment.
-
-### 7. Present Summary
-
-**Before presenting, verify you have completed:**
-- [ ] Downloaded and viewed ALL images in the description AND comments
-- [ ] Fetched transcripts for ALL Loom videos in the description AND comments
-- [ ] Fetched ALL linked GitHub issues/PRs via `gh` CLI
-- [ ] Listed all comments on the issue
-- [ ] Checked whether the issue is node-specific and looked up popularity if so
-- [ ] Assessed effort/complexity with T-shirt sizeCollapse commentComment on lines L153 to L159DawidMyslak commented on Apr 8, 2026 DawidMyslakon Apr 8, 2026ContributorMore actionsFinal check @krisn0x, any reason we dropped it?ReactWrite a replyResolve comment
-
-After gathering all context, present a comprehensive summary including:
 
 1. **Issue Overview**: Title, status, priority, assignee, labels
 2. **Description**: Full issue description with any clarifications from comments
