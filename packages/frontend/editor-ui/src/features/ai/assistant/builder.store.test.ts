@@ -3306,7 +3306,14 @@ describe('AI Builder store', () => {
 			const builderStore = useBuilderStore();
 			workflowsStore.workflowId = 'test-workflow-123';
 			workflowsStore.isNewWorkflow = false;
-			workflowsStore.workflowVersionId = 'version-1';
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setVersionData({
+				versionId: 'version-1',
+				name: null,
+				description: null,
+			});
 
 			await builderStore.sendChatMessage({ text: 'Build a workflow' });
 
@@ -3320,10 +3327,14 @@ describe('AI Builder store', () => {
 			const builderStore = useBuilderStore();
 			workflowsStore.workflowId = 'test-workflow-123';
 			workflowsStore.isNewWorkflow = false;
-			workflowsStore.workflowVersionId = 'version-1';
 			const workflowDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId(workflowsStore.workflowId),
 			);
+			workflowDocumentStore.setVersionData({
+				versionId: 'version-1',
+				name: null,
+				description: null,
+			});
 			workflowDocumentStore.setUpdatedAt('2024-01-01T00:00:00Z');
 
 			// Mock the workflow history API to return the version as existing
@@ -3379,7 +3390,14 @@ describe('AI Builder store', () => {
 			const builderStore = useBuilderStore();
 			workflowsStore.workflowId = 'test-workflow-123';
 			workflowsStore.isNewWorkflow = false;
-			workflowsStore.workflowVersionId = 'version-1';
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setVersionData({
+				versionId: 'version-1',
+				name: null,
+				description: null,
+			});
 
 			await builderStore.sendChatMessage({ text: 'What can you help me with?' });
 
@@ -3622,7 +3640,11 @@ describe('AI Builder store', () => {
 			);
 			workflowDocumentStore.setName('Test Workflow');
 			workflowsStore.isNewWorkflow = false;
-			workflowsStore.workflowVersionId = 'version-1';
+			workflowDocumentStore.setVersionData({
+				versionId: 'version-1',
+				name: null,
+				description: null,
+			});
 
 			// Mock version check for saveWorkflowAndGetRevertVersion + savePostModificationVersion
 			const workflowHistoryModule = await import('@n8n/rest-api-client/api/workflowHistory');

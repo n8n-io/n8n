@@ -26,8 +26,6 @@ function makeCredentialDetail(overrides?: Partial<CredentialDetail>): Credential
 		id: 'cred-123',
 		name: 'My Slack Token',
 		type: 'slackApi',
-		createdAt: '2025-01-01T00:00:00.000Z',
-		updatedAt: '2025-06-15T12:00:00.000Z',
 		nodesWithAccess: [{ nodeType: 'n8n-nodes-base.slack' }],
 		...overrides,
 	};

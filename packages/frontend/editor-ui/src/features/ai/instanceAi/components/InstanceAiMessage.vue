@@ -1,13 +1,14 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
-import { N8nIcon, N8nIconButton, N8nMessageRating } from '@n8n/design-system';
-import type { RatingFeedback } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
-import AttachmentPreview from './AttachmentPreview.vue';
-import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
-import AgentActivityTree from './AgentActivityTree.vue';
 import type { InstanceAiMessage } from '@n8n/api-types';
+import type { RatingFeedback } from '@n8n/design-system';
+import { N8nCallout, N8nIcon, N8nIconButton, N8nMessageRating, N8nText } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import { computed, ref } from 'vue';
 import { useInstanceAiStore } from '../instanceAi.store';
+import AgentActivityTree from './AgentActivityTree.vue';
+import AttachmentPreview from './AttachmentPreview.vue';
+import ButtonLike from './ButtonLike.vue';
+import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 
 const props = defineProps<{
 	message: InstanceAiMessage;
@@ -97,7 +98,7 @@ function formatJson(value: unknown): string {
 </script>
 
 <template>
-	<div :class="[$style.message, isUser ? $style.userMessage : $style.assistantMessage]">
+	<div :class="[isUser ? $style.userMessage : '']">
 		<!-- User message -->
 		<div v-if="isUser" :class="$style.userBubble" data-test-id="instance-ai-user-message">
 			<div v-if="attachments.length > 0" :class="$style.userAttachments">
@@ -108,64 +109,58 @@ function formatJson(value: unknown): string {
 					:is-removable="false"
 				/>
 			</div>
-			<span>{{ props.message.content }}</span>
+			<N8nText size="large">{{ props.message.content }}</N8nText>
 		</div>
 
 		<!-- Assistant message -->
 		<div v-else :class="$style.assistantWrapper" data-test-id="instance-ai-assistant-message">
-			<div :class="$style.assistantContent">
-				<!-- Agent activity tree (handles reasoning, tool calls, sub-agents) -->
-				<AgentActivityTree
-					v-if="props.message.agentTree"
-					:agent-node="props.message.agentTree"
-					:is-root="true"
-				/>
+			<!-- Agent activity tree (handles reasoning, tool calls, sub-agents) -->
+			<AgentActivityTree
+				v-if="props.message.agentTree"
+				:agent-node="props.message.agentTree"
+				:is-root="true"
+			/>
 
-				<!-- Run-level error -->
-				<div v-if="runError" :class="$style.errorBubble" role="alert">
-					<div :class="$style.errorIcon">
-						<N8nIcon icon="triangle-alert" size="medium" />
-					</div>
-					<div :class="$style.errorBody">
-						<div :class="$style.errorHeader">
-							<span :class="$style.errorTitle">{{ errorTitle }}</span>
-							<span v-if="errorDetails?.statusCode" :class="$style.errorStatusCode">{{
-								errorDetails.statusCode
-							}}</span>
-						</div>
-						<p v-if="hasProviderError" :class="$style.errorDescription">{{ runError }}</p>
-						<details v-if="formattedTechnicalDetails" :class="$style.errorDetailsCollapsible">
-							<summary :class="$style.errorDetailsSummary">
-								{{ i18n.baseText('instanceAi.error.technicalDetails') }}
-							</summary>
-							<pre :class="$style.errorDetailsContent">{{ formattedTechnicalDetails }}</pre>
-						</details>
-					</div>
+			<!-- Run-level error -->
+			<N8nCallout v-if="runError" theme="danger">
+				<div :class="$style.runLevelError">
+					<N8nText bold tag="div">{{ errorTitle }}</N8nText>
+					<N8nText v-if="hasProviderError" tag="div">{{ runError }}</N8nText>
+					<details v-if="formattedTechnicalDetails">
+						<summary :class="$style.errorDetailsSummary">
+							{{ i18n.baseText('instanceAi.error.technicalDetails') }}
+						</summary>
+						<pre :class="$style.runLevelErrorDetails">{{ formattedTechnicalDetails }}</pre>
+					</details>
 				</div>
 
-				<!-- Text content (shown when no agentTree, or streaming dots) -->
-				<div v-if="showContent && !props.message.agentTree" :class="$style.textContent">
-					<InstanceAiMarkdown v-if="props.message.content" :content="props.message.content" />
-				</div>
+				<template v-if="errorDetails?.statusCode" #trailingContent>
+					{{ errorDetails.statusCode }}
+				</template>
+			</N8nCallout>
 
-				<!-- Status indicator while preparing context -->
-				<div v-if="statusMessage && !props.message.content" :class="$style.statusIndicator">
-					<span :class="$style.statusDot" />
-					<span>{{ statusMessage }}</span>
-				</div>
+			<!-- Text content (shown when no agentTree, or streaming dots) -->
+			<N8nText v-if="showContent && !props.message.agentTree && props.message.content" size="large">
+				<InstanceAiMarkdown :content="props.message.content" />
+			</N8nText>
 
-				<!-- Blinking cursor while waiting for response -->
-				<span
-					v-else-if="isStreaming && !props.message.content && !props.message.agentTree"
-					:class="$style.blinkingCursor"
-				/>
-
-				<!-- Background task indicator (run finished but sub-agents still working) -->
-				<div v-if="hasActiveBackgroundTasks" :class="$style.backgroundStatus">
-					<N8nIcon icon="spinner" spin size="small" />
-					<span>{{ i18n.baseText('instanceAi.backgroundTask.running') }}</span>
-				</div>
+			<!-- Status indicator while preparing context -->
+			<div v-if="statusMessage && !props.message.content" :class="$style.statusIndicator">
+				<span :class="$style.statusDot" />
+				<span>{{ statusMessage }}</span>
 			</div>
+
+			<!-- Blinking cursor while waiting for response -->
+			<span
+				v-else-if="isStreaming && !props.message.content && !props.message.agentTree"
+				:class="$style.blinkingCursor"
+			/>
+
+			<!-- Background task indicator (run finished but sub-agents still working) -->
+			<ButtonLike v-if="hasActiveBackgroundTasks">
+				<N8nIcon icon="spinner" color="primary" spin size="small" />
+				{{ i18n.baseText('instanceAi.backgroundTask.running') }}
+			</ButtonLike>
 
 			<!-- Response feedback -->
 			<N8nMessageRating
@@ -182,34 +177,24 @@ function formatJson(value: unknown): string {
 				{{ i18n.baseText('instanceAi.feedback.success') }}
 			</p>
 
-			<div :class="$style.actionButtons">
-				<N8nIconButton
-					v-if="store.debugMode && !isUser"
-					icon="code"
-					variant="ghost"
-					size="xsmall"
-					:class="$style.actionBtn"
-					@click="showDebugInfo = !showDebugInfo"
-				/>
-			</div>
+			<N8nIconButton
+				v-if="store.debugMode && !isUser"
+				icon="code"
+				variant="ghost"
+				size="xsmall"
+				:class="$style.actionBtn"
+				@click="showDebugInfo = !showDebugInfo"
+			/>
 			<pre v-if="showDebugInfo" :class="$style.debugJson">{{ formatJson(props.message) }}</pre>
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
-.message {
-	padding: var(--spacing--sm) 0;
-}
-
 .userMessage {
+	align-self: flex-end;
 	display: flex;
 	justify-content: flex-end;
-}
-
-.assistantMessage {
-	display: flex;
-	justify-content: flex-start;
 }
 
 .userAttachments {
@@ -221,67 +206,33 @@ function formatJson(value: unknown): string {
 
 .userBubble {
 	background: var(--color--background);
-	color: var(--color--text);
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border-radius: var(--radius--xl);
-	max-width: 80%;
-	font-size: var(--font-size--md);
-	line-height: var(--line-height--xl);
 	white-space: pre-wrap;
 	word-break: break-word;
 }
 
 .assistantWrapper {
 	position: relative;
-	max-width: 90%;
-	width: 100%;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
 
 	&:hover .actionBtn {
 		opacity: 1;
 	}
 }
 
-.assistantContent {
-	width: 100%;
-}
-
-.textContent {
-	font-size: var(--font-size--sm);
-	line-height: var(--line-height--xl);
-	color: var(--color--text);
-}
-
-.actionButtons {
-	position: absolute;
-	top: 0;
-	right: 0;
-	display: flex;
-	gap: var(--spacing--4xs);
-}
-
 .actionBtn {
 	opacity: 0;
 	transition: opacity 0.15s ease;
+	position: absolute;
+	top: 0;
+	right: 0;
 
 	@media (hover: none) {
 		opacity: 1;
 	}
-}
-
-.feedbackSuccess {
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--2xs);
-	margin: var(--spacing--2xs) 0 0;
-}
-
-.backgroundStatus {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	padding: var(--spacing--3xs) 0;
-	margin-top: var(--spacing--4xs);
-	font-size: var(--font-size--2xs);
-	color: var(--color--text);
 }
 
 .statusIndicator {
@@ -340,55 +291,22 @@ function formatJson(value: unknown): string {
 	}
 }
 
-.errorBubble {
+.runLevelError {
 	display: flex;
-	gap: var(--spacing--xs);
-	margin-top: var(--spacing--2xs);
-	padding: var(--spacing--xs);
-	border: var(--border-width) var(--border-style) var(--callout--border-color--danger);
-	border-radius: var(--radius);
-	background-color: var(--callout--color--background--danger);
-	color: var(--callout--color--text--danger);
-	font-size: var(--font-size--2xs);
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+
+.runLevelErrorDetails {
+	margin-top: var(--spacing--4xs);
+	padding: var(--spacing--2xs);
+	font-family: monospace;
+	font-size: var(--font-size--3xs);
 	line-height: var(--line-height--xl);
-}
-
-.errorIcon {
-	flex-shrink: 0;
-	color: var(--callout--icon-color--danger);
-	line-height: 1;
-	padding-top: var(--spacing--5xs);
-}
-
-.errorBody {
-	flex: 1;
-	min-width: 0;
-}
-
-.errorHeader {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-}
-
-.errorTitle {
-	font-weight: var(--font-weight--bold);
-}
-
-.errorStatusCode {
-	margin-left: auto;
-	font-weight: var(--font-weight--bold);
-	opacity: 0.7;
-}
-
-.errorDescription {
-	margin: var(--spacing--4xs) 0 0;
 	white-space: pre-wrap;
 	word-break: break-word;
-}
-
-.errorDetailsCollapsible {
-	margin-top: var(--spacing--2xs);
+	max-height: 200px;
+	overflow-y: auto;
 }
 
 .errorDetailsSummary {
@@ -401,18 +319,10 @@ function formatJson(value: unknown): string {
 	}
 }
 
-.errorDetailsContent {
-	margin-top: var(--spacing--4xs);
-	padding: var(--spacing--2xs);
-	background: color-mix(in srgb, var(--callout--color--background--danger) 50%, transparent);
-	border-radius: var(--radius);
-	font-family: monospace;
-	font-size: var(--font-size--3xs);
-	line-height: var(--line-height--xl);
-	white-space: pre-wrap;
-	word-break: break-word;
-	max-height: 200px;
-	overflow-y: auto;
+.feedbackSuccess {
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--2xs);
+	margin: var(--spacing--2xs) 0 0;
 }
 
 .debugJson {

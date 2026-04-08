@@ -159,8 +159,8 @@ const subConnections = ref<InstanceType<typeof NDVSubConnections> | null>(null);
 const isDemoRoute = computed(() => route?.name === VIEWS.DEMO);
 const { isPreviewMode } = useSettingsStore();
 const isDemoPreview = computed(() => isDemoRoute.value && isPreviewMode);
-const currentWorkflow = computed(
-	() => workflowsListStore.getWorkflowById(workflowsStore.workflowObject.id), // @TODO check if we actually need workflowObject here
+const currentWorkflow = computed(() =>
+	workflowsListStore.getWorkflowById(workflowsStore.workflowId),
 );
 const hasForeignCredential = computed(() => props.foreignCredentials.length > 0);
 const isHomeProjectTeam = computed(

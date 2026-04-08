@@ -28,7 +28,7 @@ export interface LocalGatewayEvent {
 }
 
 /**
- * Singleton MCP gateway for a connected local client (e.g. the fs-proxy daemon).
+ * Singleton MCP gateway for a connected local client (e.g. the computer-use daemon).
  *
  * The client advertises its capabilities as `McpTool[]` on connect; all tool
  * calls are dispatched generically via the SSE channel. Tools are not limited

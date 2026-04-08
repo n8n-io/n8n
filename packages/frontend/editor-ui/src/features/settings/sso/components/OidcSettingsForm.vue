@@ -13,6 +13,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { type OidcConfigDto } from '@n8n/api-types';
 import ConfirmProvisioningDialog from '../provisioning/components/ConfirmProvisioningDialog.vue';
+import RoleMappingRuleEditor from '../provisioning/components/RoleMappingRuleEditor.vue';
 import UserRoleProvisioningDropdown from '../provisioning/components/UserRoleProvisioningDropdown.vue';
 
 const i18n = useI18n();
@@ -272,6 +273,10 @@ onMounted(async () => {
 			<small>The prompt parameter to use when authenticating with the OIDC provider</small>
 		</div>
 		<UserRoleProvisioningDropdown v-model="userRoleProvisioning" auth-protocol="oidc" />
+		<RoleMappingRuleEditor
+			v-if="userRoleProvisioning === 'expression_based'"
+			ref="roleMappingRuleEditorRef"
+		/>
 		<ConfirmProvisioningDialog
 			v-model="showUserRoleProvisioningDialog"
 			:new-provisioning-setting="userRoleProvisioning"
