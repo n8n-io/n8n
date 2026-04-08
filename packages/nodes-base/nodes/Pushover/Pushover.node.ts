@@ -252,7 +252,7 @@ export class Pushover implements INodeType {
 						description: "Your message's title, otherwise your app's name is used",
 					},
 					{
-						displayName: 'TTL',
+						displayName: 'TTL (Seconds)',
 						name: 'ttl',
 						type: 'number',
 						default: '',
