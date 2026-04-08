@@ -66,6 +66,42 @@ interface FormattedMessage {
 	content: string;
 }
 
+/** Extract plain text from Mastra memory content (string, array of parts, or {format, parts}). */
+function extractTextFromMemoryContent(content: unknown): string {
+	if (typeof content === 'string') return content;
+
+	// Mastra format-2 structured content: { format: 2, parts: [{ type: 'text', text: '...' }] }
+	if (isStructuredContent(content)) {
+		return extractTextParts(content.parts);
+	}
+
+	// Array of content parts: [{ type: 'text', text: '...' }]
+	if (Array.isArray(content)) {
+		return extractTextParts(content);
+	}
+
+	return typeof content === 'object' && content !== null ? JSON.stringify(content) : '';
+}
+
+function isStructuredContent(value: unknown): value is { format: number; parts: unknown[] } {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'parts' in value &&
+		Array.isArray((value as Record<string, unknown>).parts)
+	);
+}
+
+function extractTextParts(parts: unknown[]): string {
+	return parts
+		.filter(
+			(c): c is { type: 'text'; text: string } =>
+				typeof c === 'object' && c !== null && 'text' in c,
+		)
+		.map((c) => c.text)
+		.join('\n');
+}
+
 async function getRecentMessages(
 	context: OrchestrationContext,
 	count: number,
@@ -82,18 +118,7 @@ async function getRecentMessages(
 
 			for (const m of result.messages) {
 				const role = m.role as string;
-				const content =
-					typeof m.content === 'string'
-						? m.content
-						: Array.isArray(m.content)
-							? m.content
-									.filter(
-										(c): c is { type: 'text'; text: string } =>
-											typeof c === 'object' && c !== null && 'text' in c,
-									)
-									.map((c) => c.text)
-									.join('\n')
-							: JSON.stringify(m.content);
+				const content = extractTextFromMemoryContent(m.content);
 				if ((role === 'user' || role === 'assistant') && content.length > 0) {
 					messages.push({ role, content });
 				}
