@@ -132,10 +132,13 @@ export class UserService {
 		publicUser.mfaAuthenticated = options?.mfaAuthenticated ?? false;
 
 		const { instanceSettingsLoader } = this.globalConfig;
-		publicUser.isManagedByEnv =
+		if (
 			instanceSettingsLoader.ownerManagedByEnv &&
 			!!user.email &&
-			user.email.toLowerCase() === instanceSettingsLoader.ownerEmail.toLowerCase();
+			user.email.toLowerCase() === instanceSettingsLoader.ownerEmail.toLowerCase()
+		) {
+			publicUser.isManagedByEnv = true;
+		}
 
 		return publicUser;
 	}
