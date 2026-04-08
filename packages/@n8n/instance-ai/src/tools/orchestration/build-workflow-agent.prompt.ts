@@ -45,7 +45,21 @@ ${ADDITIONAL_FUNCTIONS}
 
 **Pay attention to @builderHint annotations in search results and type definitions** — these provide critical guidance on how to correctly configure node parameters. Write them out as notes when reviewing — they prevent common configuration mistakes.
 
-### IF Branching — use ifElse() with .onTrue()/.onFalse()
+### IF / Switch / Filter — conditions configuration (FREQUENT MISTAKE)
+
+These nodes share a \`conditions\` parameter with a strict required structure. **Missing or incomplete \`conditions\` causes a runtime crash.** This is one of the most common builder mistakes.
+
+**Required structure for every \`conditions\` object (IF, Switch rules, Filter):**
+\`\`\`javascript
+conditions: {
+  options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' },  // REQUIRED — omitting this crashes the node
+  conditions: [{ leftValue: ..., operator: { type: ..., operation: ... }, rightValue: ... }],
+  combinator: 'and'  // or 'or'
+}
+\`\`\`
+**All three fields (\`options\`, \`conditions\`, \`combinator\`) must be present.** The \`options\` object is not optional — it controls case sensitivity and type validation at runtime. Without it, the node throws "Cannot read properties of undefined (reading 'caseSensitive')".
+
+#### IF node example
 \`\`\`javascript
 const checkScore = ifElse({
   version: 2.2,
@@ -53,11 +67,13 @@ const checkScore = ifElse({
     name: 'High Score?',
     parameters: {
       conditions: {
+        options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' },
         conditions: [{
           leftValue: '={{ $json.score }}',
           operator: { type: 'number', operation: 'gte' },
           rightValue: 70
-        }]
+        }],
+        combinator: 'and'
       }
     }
   }
@@ -71,7 +87,56 @@ export default workflow('id', 'name')
     .onFalse(lowScoreAction.to(sendEmail)));
 \`\`\`
 WRONG: \`.output(0).to()\` — this does NOT work for IF branching.
-WRONG: \`.to(checkScore.onTrue(A)).add(sharedNode).to(B)\` — don't try fan-in with .add() after ifElse. Instead, include the full chain (including shared downstream nodes) in each branch.
+WRONG: \`.to(checkScore.onTrue(A)).add(sharedNode).to(B)\` — don't try fan-in with .add() after ifElse. Include the full chain (including shared downstream nodes) in each branch.
+
+#### Switch node example
+**The inner key MUST be \`values\` (not \`rules\`).** Using \`rules.rules\` crashes with "Could not find property option".
+\`\`\`javascript
+const router = switchCase({
+  version: 3.2,
+  config: {
+    name: 'Route by Type',
+    parameters: {
+      rules: {
+        values: [  // MUST be "values", NOT "rules"
+          {
+            outputKey: 'email',
+            conditions: {
+              options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' },
+              conditions: [{ leftValue: '={{ $json.type }}', operator: { type: 'string', operation: 'equals' }, rightValue: 'email' }],
+              combinator: 'and'
+            }
+          },
+          {
+            outputKey: 'slack',
+            conditions: {
+              options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' },
+              conditions: [{ leftValue: '={{ $json.type }}', operator: { type: 'string', operation: 'equals' }, rightValue: 'slack' }],
+              combinator: 'and'
+            }
+          },
+        ]
+      }
+    }
+  }
+});
+
+export default workflow('id', 'name')
+  .add(startTrigger)
+  .to(router
+    .onCase('email', sendEmail)
+    .onCase('slack', sendSlack)
+    .onDefault(logUnknown));
+\`\`\`
+
+### Self-check: conditional nodes and routing
+
+After writing any workflow with IF, Switch, or Filter nodes, verify:
+1. **Every \`conditions\` object has \`options\`, \`conditions\` array, and \`combinator\`** — missing any of these crashes the node at runtime.
+2. **Switch uses \`rules.values\`** (not \`rules.rules\`) — the wrong key crashes during workflow loading.
+3. **Each branch reaches the correct destination** — trace the data flow from the condition through \`.onTrue()\`/\`.onFalse()\`/\`.onCase()\` to the target node. Verify the routing matches the user's requirements.
+4. **Condition expressions reference the right fields** — check that \`leftValue\` expressions use fields that actually exist in the upstream node's output.
+5. **Merge nodes use the correct mode** — \`append\` to concatenate items from branches, \`combineBySql\` or \`combineByPosition\` only when matching items across inputs. Wrong mode silently drops or duplicates data.
 
 ### AI Agent with Subnodes — use factory functions in subnodes config
 \`\`\`javascript
@@ -252,31 +317,6 @@ Independent entry points can feed into shared downstream nodes. Each trigger sta
 export default workflow('id', 'name')
   .add(webhookTrigger).to(processNode).to(storeNode)
   .add(scheduleTrigger).to(processNode);
-\`\`\`
-
-### Switch/Multi-Way Routing — switchCase with .onCase()
-\`\`\`javascript
-const router = switchCase({
-  version: 3.2,
-  config: {
-    name: 'Route by Type',
-    parameters: {
-      rules: {
-        rules: [
-          { outputKey: 'email', conditions: { conditions: [{ leftValue: '={{ $json.type }}', operator: { type: 'string', operation: 'equals' }, rightValue: 'email' }] } },
-          { outputKey: 'slack', conditions: { conditions: [{ leftValue: '={{ $json.type }}', operator: { type: 'string', operation: 'equals' }, rightValue: 'slack' }] } },
-        ]
-      }
-    }
-  }
-});
-
-export default workflow('id', 'name')
-  .add(startTrigger)
-  .to(router
-    .onCase('email', sendEmail)
-    .onCase('slack', sendSlack)
-    .onDefault(logUnknown));
 \`\`\`
 
 ### Web App (SPA served from a webhook)

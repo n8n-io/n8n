@@ -7,7 +7,7 @@
 		"moduleResolution": "bundler",
 		"target": "ES2022",
 		"lib": ["ES2022", "DOM", "DOM.Iterable"],
-		"types": ["chrome", "jest", "vite/client"],
+		"types": ["chrome", "vitest/globals", "vite/client"],
 		"skipLibCheck": true
 	},
 	"include": ["src/**/*.ts", "src/**/*.vue"]

@@ -496,6 +496,13 @@ describe('GlobalConfig', () => {
 			poolSize: 1,
 			maxCodeCacheSize: 1024,
 		},
+		instanceSettingsLoader: {
+			ownerManagedByEnv: false,
+			ownerEmail: '',
+			ownerFirstName: 'Instance',
+			ownerLastName: 'Owner',
+			ownerPasswordHash: '',
+		},
 	} satisfies GlobalConfigShape;
 
 	it('should use all default values when no env variables are defined', () => {

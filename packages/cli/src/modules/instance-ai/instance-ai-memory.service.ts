@@ -10,7 +10,12 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { createMemory, patchThread, WORKING_MEMORY_TEMPLATE } from '@n8n/instance-ai';
+import {
+	createMemory,
+	patchThread,
+	type AgentTreeSnapshot,
+	WORKING_MEMORY_TEMPLATE,
+} from '@n8n/instance-ai';
 
 import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 
@@ -166,7 +171,7 @@ export class InstanceAiMemoryService {
 	async getRichMessages(
 		userId: string,
 		threadId: string,
-		options?: { limit?: number; page?: number },
+		options?: { limit?: number; page?: number; excludeRunIds?: string[] },
 	): Promise<Omit<InstanceAiRichMessagesResponse, 'nextEventId'>> {
 		const memory = this.createMemoryInstance();
 
@@ -186,13 +191,21 @@ export class InstanceAiMemoryService {
 			throw error;
 		}
 
-		const snapshots = await this.dbSnapshotStorage.getAll(threadId).catch((error) => {
+		let snapshots = await this.dbSnapshotStorage.getAll(threadId).catch((error) => {
 			this.logger.warn('Failed to load agent tree snapshots', {
 				threadId,
 				error: error instanceof Error ? error.message : String(error),
 			});
-			return [];
+			return [] as AgentTreeSnapshot[];
 		});
+
+		// Exclude snapshots for active runs — they have no matching assistant
+		// message in Mastra memory yet and would misalign the positional
+		// snapshot-to-message matching in parseStoredMessages.
+		if (options?.excludeRunIds?.length) {
+			const excluded = new Set(options.excludeRunIds);
+			snapshots = snapshots.filter((s) => !excluded.has(s.runId));
+		}
 
 		// Parse into rich messages with agent trees
 		const mastraMessages: MastraDBMessage[] = result.messages.map((m) => ({
@@ -205,6 +218,13 @@ export class InstanceAiMemoryService {
 		const messages = parseStoredMessages(mastraMessages, snapshots);
 
 		return { threadId, messages };
+	}
+
+	async getLatestRunSnapshot(
+		threadId: string,
+		options?: { messageGroupId?: string; runId?: string },
+	): Promise<AgentTreeSnapshot | undefined> {
+		return await this.dbSnapshotStorage.getLatest(threadId, options);
 	}
 
 	/**

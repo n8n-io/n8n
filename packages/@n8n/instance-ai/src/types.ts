@@ -234,6 +234,7 @@ export interface InstanceAiCredentialService {
 	): CredentialFieldInfo[] | Promise<CredentialFieldInfo[]>;
 	/** Search available credential types by keyword. Returns matching types with display names. */
 	searchCredentialTypes?(query: string): Promise<CredentialTypeSearchResult[]>;
+	getAccountContext?(credentialId: string): Promise<{ accountIdentifier?: string }>;
 }
 
 export interface CredentialFieldInfo {
@@ -565,13 +566,15 @@ export interface InstanceAiContext {
 	filesystemService?: InstanceAiFilesystemService;
 	workspaceService?: InstanceAiWorkspaceService;
 	/**
-	 * Connected remote MCP server (e.g. fs-proxy daemon). When set, dynamic tools are created from its advertised capabilities. Takes precedence over `filesystemService`.
+	 * Connected remote MCP server (e.g. computer-use daemon). When set, dynamic tools are created from its advertised capabilities. Takes precedence over `filesystemService`.
 	 */
 	localMcpServer?: LocalMcpServer;
 	/** Connection state of the local gateway — drives system prompt guidance. */
 	localGatewayStatus?: LocalGatewayStatus;
 	/** Per-action HITL permission overrides. When absent, tools default to requiring approval. */
 	permissions?: InstanceAiPermissions;
+	/** When true, the instance is in read-only mode (source control branchReadOnly). */
+	branchReadOnly?: boolean;
 	/** Human-readable hints about licensed features that are NOT available on this instance.
 	 *  Injected into the system prompt so the agent can explain why certain capabilities are missing. */
 	licenseHints?: string[];
@@ -842,7 +845,7 @@ export interface OrchestrationContext {
 	}>;
 	/** Chrome DevTools MCP config — only present when browser automation is enabled */
 	browserMcpConfig?: McpServerConfig;
-	/** Local MCP server (fs-proxy daemon) — when connected and advertising browser_* tools,
+	/** Local MCP server (computer-use daemon) — when connected and advertising browser_* tools,
 	 *  browser-credential-setup prefers these over chrome-devtools-mcp. */
 	localMcpServer?: LocalMcpServer;
 	/** MCP tools loaded from external servers — available for delegation to sub-agents */
@@ -865,6 +868,11 @@ export interface OrchestrationContext {
 	builderSandboxFactory?: BuilderSandboxFactory;
 	/** Directories containing node type definition files (.ts) for materializing into sandbox */
 	nodeDefinitionDirs?: string[];
+	/** Mastra memory instance — used to retrieve thread message history for sub-agents */
+	memory?: Memory;
+	/** The current user message being processed — needed because memory.recall() only
+	 *  returns previously-saved messages, so the in-flight message isn't available yet. */
+	currentUserMessage?: string;
 	/** The domain context — gives sub-agent tools access to n8n services */
 	domainContext?: InstanceAiContext;
 	/** When true, research guidance may suggest planned research tasks and the builder gets web-search/fetch-url */
