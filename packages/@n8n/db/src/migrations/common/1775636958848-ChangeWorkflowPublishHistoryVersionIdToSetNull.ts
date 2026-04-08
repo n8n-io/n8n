@@ -19,8 +19,13 @@ export class ChangeWorkflowPublishHistoryVersionIdToSetNull1775636958848
 		await addForeignKey(tableName, columnName, reference, undefined, 'SET NULL');
 	}
 
-	async down({ schemaBuilder: { dropForeignKey, addForeignKey, addNotNull } }: MigrationContext) {
+	async down(mc: MigrationContext) {
+		const {
+			schemaBuilder: { dropForeignKey, addForeignKey, addNotNull },
+		} = mc;
+
 		await dropForeignKey(tableName, columnName, reference);
+		await mc.runQuery(`DELETE FROM ${tableName} WHERE ${columnName} IS NULL`);
 		await addNotNull(tableName, columnName);
 		await addForeignKey(tableName, columnName, reference, undefined, 'CASCADE');
 	}
