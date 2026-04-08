@@ -28,6 +28,8 @@ export interface ResponseGroupSegment {
 	toolCallCount: number;
 	/** Number of text entries inside this group (intermediate thinking text). */
 	textCount: number;
+	/** Number of answered question forms in this group. */
+	questionCount: number;
 	/** Number of child agent entries in this group. */
 	childCount: number;
 	/** Artifacts produced by child agents in this group. */
@@ -78,6 +80,7 @@ export function useTimelineGrouping(
 					entries: [],
 					toolCallCount: 0,
 					textCount: 0,
+					questionCount: 0,
 					childCount: 0,
 					artifacts: [],
 				};
@@ -103,6 +106,8 @@ export function useTimelineGrouping(
 				const tc = agentNode.value.toolCalls.find((t) => t.toolCallId === entry.toolCallId);
 				if (tc && isGenericToolCall(tc)) {
 					group.toolCallCount++;
+				} else if (tc?.confirmation?.inputType === 'questions' && !tc.isLoading) {
+					group.questionCount++;
 				}
 			} else if (entry.type === 'child') {
 				const group = ensureGroup(entry.responseId);

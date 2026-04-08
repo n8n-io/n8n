@@ -30,20 +30,19 @@ const hasReasoning = computed(() => props.agentNode.reasoning.length > 0);
 const triggerRef = useTemplateRef<HTMLElement>('triggerRef');
 const isHovered = useElementHover(triggerRef);
 
-const hasActiveChildren = computed(() =>
-	props.agentNode.children.some((c) => c.status === 'active'),
-);
-
-const isCompleted = computed(
-	() =>
-		(props.agentNode.status === 'completed' || props.agentNode.status === 'error') &&
-		!hasActiveChildren.value,
-);
-
 const segments = useTimelineGrouping(toRef(props, 'agentNode'));
 
-/** Whether to show grouped/collapsed view (root + completed + grouping available). */
-const showGrouped = computed(() => props.isRoot && isCompleted.value && segments.value !== null);
+/** Whether to show grouped/collapsed view (root + grouping available). */
+const showGrouped = computed(() => props.isRoot && segments.value !== null);
+
+/** Index of the last response-group segment (for isLast prop). */
+const lastGroupIdx = computed(() => {
+	if (!segments.value) return -1;
+	for (let i = segments.value.length - 1; i >= 0; i--) {
+		if (segments.value[i].kind === 'response-group') return i;
+	}
+	return -1;
+});
 
 function resolveArtifactName(artifact: ArtifactInfo): string {
 	for (const entry of store.resourceRegistry.values()) {
@@ -81,6 +80,7 @@ function resolveArtifactName(artifact: ArtifactInfo): string {
 				v-if="segment.kind === 'response-group'"
 				:group="segment"
 				:agent-node="props.agentNode"
+				:is-last="idx === lastGroupIdx"
 			/>
 
 			<!-- Artifacts from child agents in this group, rendered in-place after the group -->

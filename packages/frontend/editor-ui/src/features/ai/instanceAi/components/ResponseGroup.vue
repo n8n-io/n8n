@@ -12,12 +12,14 @@ import TimelineStepButton from './TimelineStepButton.vue';
 const props = defineProps<{
 	group: ResponseGroupSegment;
 	agentNode: InstanceAiAgentNode;
+	/** Whether this is the last response group in the timeline. */
+	isLast?: boolean;
 }>();
 
 const i18n = useI18n();
 
 const summaryText = computed(() => {
-	const { toolCallCount, textCount, childCount } = props.group;
+	const { toolCallCount, textCount, questionCount, childCount } = props.group;
 	const parts: string[] = [];
 	if (toolCallCount > 0) {
 		parts.push(
@@ -30,6 +32,13 @@ const summaryText = computed(() => {
 		parts.push(
 			i18n.baseText('instanceAi.activitySummary.messages', {
 				interpolate: { count: `${textCount}` },
+			}),
+		);
+	}
+	if (questionCount > 0) {
+		parts.push(
+			i18n.baseText('instanceAi.activitySummary.questions', {
+				interpolate: { count: `${questionCount}` },
 			}),
 		);
 	}
@@ -47,8 +56,35 @@ const toolIcons = computed(() =>
 	getGroupToolIcons(props.group, props.agentNode.toolCalls, getToolIcon),
 );
 
+/** Whether any tool call in this group is still loading. */
+const hasLoadingToolCalls = computed(() =>
+	props.group.entries.some((e) => {
+		if (e.type !== 'tool-call') return false;
+		const tc = props.agentNode.toolCalls.find((t) => t.toolCallId === e.toolCallId);
+		return tc?.isLoading;
+	}),
+);
+
+/** Whether any child agent in this group is still active. */
+const hasActiveChildren = computed(() =>
+	props.group.entries.some((e) => {
+		if (e.type !== 'child') return false;
+		const child = props.agentNode.children.find((c) => c.agentId === e.agentId);
+		return child?.status === 'active';
+	}),
+);
+
+/** Don't collapse the last group while the agent is still streaming. */
+const isLastAndStreaming = computed(() => props.isLast && props.agentNode.status === 'active');
+
 /** Whether this group has enough content to justify a collapsible wrapper. */
-const isCollapsible = computed(() => props.group.toolCallCount > 1 || props.group.childCount > 0);
+const isCollapsible = computed(
+	() =>
+		!isLastAndStreaming.value &&
+		!hasLoadingToolCalls.value &&
+		!hasActiveChildren.value &&
+		(props.group.toolCallCount > 1 || props.group.childCount > 0),
+);
 </script>
 
 <template>

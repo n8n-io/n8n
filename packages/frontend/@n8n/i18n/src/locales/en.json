@@ -5389,6 +5389,7 @@
 	"instanceAi.stepTimeline.craftingWorkflow": "Crafting workflow",
 	"instanceAi.activitySummary.toolCalls": "{count} tool calls",
 	"instanceAi.activitySummary.messages": "{count} messages",
+	"instanceAi.activitySummary.questions": "{count} answered questions",
 	"instanceAi.activitySummary.subagents": "{count} subagents",
 	"instanceAi.filesystem.label": "Local gateway",
 	"instanceAi.filesystem.connected": "Files connected",
