@@ -1,5 +1,4 @@
 ---
-name: linear-issue
 description: Fetch and analyze Linear issue with all related context. Use when starting work on a Linear ticket, analyzing issues, or gathering context about a Linear issue.
 disable-model-invocation: true
 argument-hint: "[issue-id]"
