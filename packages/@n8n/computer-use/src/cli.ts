@@ -88,12 +88,12 @@ function shouldShowHelp(): boolean {
 
 function printUsage(): void {
 	console.log(`
-n8n-fs-proxy — Local AI gateway for n8n Instance AI
+n8n-computer-use — Local AI gateway for n8n Instance AI
 
 Usage:
-  npx @n8n/fs-proxy serve [directory] [options]
-  npx @n8n/fs-proxy <url> <token> [directory] [options]
-  npx @n8n/fs-proxy --url <url> --api-key <token> [options]
+  npx @n8n/computer-use serve [directory] [options]
+  npx @n8n/computer-use <url> <token> [directory] [options]
+  npx @n8n/computer-use --url <url> --api-key <token> [options]
 
 Commands:
   serve      Start a local daemon that n8n auto-detects

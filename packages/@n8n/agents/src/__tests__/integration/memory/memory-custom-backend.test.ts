@@ -7,7 +7,7 @@
  */
 import { expect, it, beforeEach } from 'vitest';
 
-import { Agent, Memory, toDbMessage, type AgentDbMessage, type AgentMessage } from '../../../index';
+import { Agent, Memory, type AgentDbMessage } from '../../../index';
 import type { BuiltMemory, Thread } from '../../../types/sdk/memory';
 import { describeIf, findLastTextContent, getModel } from '../helpers';
 
@@ -55,16 +55,16 @@ class CustomMapMemory implements BuiltMemory {
 		if (opts?.limit) {
 			msgs = msgs.slice(-opts.limit);
 		}
-		return msgs.map(toDbMessage);
+		return msgs;
 	}
 
 	async saveMessages(args: {
 		threadId: string;
 		resourceId?: string;
-		messages: AgentMessage[];
+		messages: AgentDbMessage[];
 	}): Promise<void> {
 		const existing = this.messages.get(args.threadId) ?? [];
-		this.messages.set(args.threadId, [...existing, ...args.messages.map(toDbMessage)]);
+		this.messages.set(args.threadId, [...existing, ...args.messages]);
 	}
 
 	async deleteMessages(messageIds: string[]): Promise<void> {

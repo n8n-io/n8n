@@ -1,4 +1,4 @@
-# @n8n/fs-proxy
+# @n8n/computer-use
 
 Local AI gateway for n8n Instance AI. Bridges a remote n8n instance with your
 local machine — filesystem, shell, screenshots, mouse/keyboard, and browser
@@ -32,13 +32,13 @@ automatically disabled when their platform requirements aren't met.
 Zero-click mode — n8n auto-detects the daemon on `127.0.0.1:7655`:
 
 ```bash
-npx @n8n/fs-proxy serve
+npx @n8n/computer-use serve
 
 # With a specific directory
-npx @n8n/fs-proxy serve /path/to/project
+npx @n8n/computer-use serve /path/to/project
 
 # Disable browser and mouse/keyboard
-npx @n8n/fs-proxy serve --no-browser --no-computer-mouse-keyboard
+npx @n8n/computer-use serve --no-browser --no-computer-mouse-keyboard
 ```
 
 ### Direct mode
@@ -47,10 +47,10 @@ Connect to a specific n8n instance with a gateway token:
 
 ```bash
 # Positional syntax
-npx @n8n/fs-proxy https://my-n8n.com abc123xyz /path/to/project
+npx @n8n/computer-use https://my-n8n.com abc123xyz /path/to/project
 
 # Flag syntax
-npx @n8n/fs-proxy --url https://my-n8n.com --api-key abc123xyz --filesystem-dir /path/to/project
+npx @n8n/computer-use --url https://my-n8n.com --api-key abc123xyz --filesystem-dir /path/to/project
 ```
 
 ## Configuration
@@ -122,7 +122,7 @@ take precedence.
 When using the gateway as a library, pass a config object to `GatewayClient`:
 
 ```typescript
-import { GatewayClient } from '@n8n/fs-proxy';
+import { GatewayClient } from '@n8n/computer-use';
 
 const client = new GatewayClient({
   url: 'https://my-n8n.com',
@@ -254,8 +254,8 @@ For local browser modes, see the
 On `npm install`, the package sets up platform-specific auto-start in daemon
 mode:
 
-- **macOS**: LaunchAgent at `~/Library/LaunchAgents/com.n8n.fs-proxy.plist`
-- **Linux**: systemd user service at `~/.config/systemd/user/n8n-fs-proxy.service`
+- **macOS**: LaunchAgent at `~/Library/LaunchAgents/com.n8n.computer-use.plist`
+- **Linux**: systemd user service at `~/.config/systemd/user/n8n-computer-use.service`
 - **Windows**: VBS script in Windows Startup folder
 
 ## Development

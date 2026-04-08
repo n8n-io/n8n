@@ -24,14 +24,14 @@
 The local gateway involves three runtime processes:
 
 - **n8n server** — hosts the REST/SSE endpoints and orchestrates the AI agent.
-- **fs-proxy daemon or local-gateway app** — runs on the user's local machine; executes tool calls.
+- **computer-use daemon or local-gateway app** — runs on the user's local machine; executes tool calls.
 - **Browser (frontend)** — initiates the connection and displays gateway status.
 
 ```mermaid
 graph LR
     FE[Browser / Frontend]
     SRV[n8n Server]
-    DAEMON[fs-proxy Daemon\nlocal machine]
+    DAEMON[computer-use Daemon\nlocal machine]
 
     FE -- "POST /gateway/create-link\n(user auth)" --> SRV
     FE -- "GET /gateway/status\n(user auth)" --> SRV
@@ -117,7 +117,7 @@ All paths are prefixed with `/api/v1/instance-ai`.
 ```typescript
 {
   token: string;    // gw_<nanoid(32)> — pairing token for /gateway/init
-  command: string;  // "npx @n8n/fs-proxy <baseUrl> <token>"
+  command: string;  // "npx @n8n/computer-use <baseUrl> <token>"
 }
 ```
 
@@ -169,10 +169,10 @@ Response: `{ ok: true }` when reconnecting with an active session key.
 sequenceDiagram
     participant FE as Browser
     participant SRV as n8n Server
-    participant D as fs-proxy Daemon
+    participant D as computer-use Daemon
 
     FE->>SRV: POST /gateway/create-link (user auth)
-    SRV-->>FE: { token: "gw_...", command: "npx @n8n/fs-proxy ..." }
+    SRV-->>FE: { token: "gw_...", command: "npx @n8n/computer-use ..." }
 
     Note over FE: User runs the command on their machine
 
@@ -194,7 +194,7 @@ On reconnect (e.g. after a transient network drop):
 
 ```mermaid
 sequenceDiagram
-    participant D as fs-proxy Daemon
+    participant D as computer-use Daemon
     participant SRV as n8n Server
 
     D->>SRV: POST /gateway/init (x-gateway-key: sess_...)
@@ -279,7 +279,7 @@ sequenceDiagram
     participant A as AI Agent (Mastra tool)
     participant GW as LocalGateway
     participant SRV as Controller (SSE)
-    participant D as fs-proxy Daemon
+    participant D as computer-use Daemon
 
     A->>GW: callTool({ name, args })
     GW->>GW: generate requestId, create Promise (30 s timeout)
@@ -313,7 +313,7 @@ sequenceDiagram
     participant FE as Browser (Frontend)
     participant SRV as n8n Server
     participant DB as Database
-    participant D as fs-proxy Daemon
+    participant D as computer-use Daemon
 
     Note over SRV: First invocation — tool execute() called by Mastra
     SRV->>D: callTool({ name, args }) via LocalGateway
