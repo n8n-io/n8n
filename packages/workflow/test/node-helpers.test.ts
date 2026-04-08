@@ -6560,7 +6560,7 @@ describe('NodeHelpers', () => {
 					options: {
 						caseSensitive: true,
 						leftValue: '',
-						typeValidation: 'loose',
+						typeValidation: 'strict',
 						version: 1,
 					},
 					conditions: [
@@ -6631,7 +6631,7 @@ describe('NodeHelpers', () => {
 					options: {
 						caseSensitive: false,
 						leftValue: '',
-						typeValidation: 'loose',
+						typeValidation: 'strict',
 						version: 1,
 					},
 					conditions: [],

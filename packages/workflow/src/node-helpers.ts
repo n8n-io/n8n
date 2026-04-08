@@ -787,7 +787,7 @@ export function getNodeParameters(
 					const defaultOptions = {
 						caseSensitive: true,
 						leftValue: '',
-						typeValidation: 'loose',
+						typeValidation: 'strict',
 						version: 1,
 					};
 					const filter = deepCopy(nodeValues[nodeProperties.name]) as Record<string, unknown>;
