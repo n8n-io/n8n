@@ -571,6 +571,7 @@ export class ActiveWorkflowManager {
 	@OnLeaderStepdown()
 	@OnShutdown()
 	async removeAllTriggerAndPollerBasedWorkflows() {
+		this.removeAllQueuedWorkflowActivations();
 		await this.activeWorkflows.removeAllTriggerAndPollerBasedWorkflows();
 	}
 
@@ -838,7 +839,7 @@ export class ActiveWorkflowManager {
 				workflowName,
 			});
 			try {
-				await this.add(workflowId, activationMode, workflowData);
+				await this.add(workflowId, activationMode, workflowData, { shouldPublish: false });
 			} catch (error) {
 				this.errorReporter.error(error);
 				let lastTimeout = this.queuedActivations[workflowId].lastTimeout;

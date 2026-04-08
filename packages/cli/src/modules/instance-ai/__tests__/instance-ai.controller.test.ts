@@ -691,7 +691,7 @@ describe('InstanceAiController', () => {
 
 			expect(result).toEqual({
 				token: 'pairing-token',
-				command: 'npx @n8n/fs-proxy http://localhost:5678 pairing-token',
+				command: 'npx @n8n/computer-use http://localhost:5678 pairing-token',
 			});
 			expect(instanceAiService.generatePairingToken).toHaveBeenCalledWith(USER_ID);
 		});

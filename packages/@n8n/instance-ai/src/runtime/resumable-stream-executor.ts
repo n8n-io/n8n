@@ -59,8 +59,10 @@ export interface ExecuteResumableStreamOptions {
 	workingMemoryEnabled?: boolean;
 }
 
+export type TraceStatus = 'completed' | 'cancelled' | 'suspended' | 'errored';
+
 export interface ExecuteResumableStreamResult {
-	status: 'completed' | 'cancelled' | 'suspended' | 'errored';
+	status: TraceStatus;
 	mastraRunId: string;
 	text?: Promise<string>;
 	suspension?: SuspensionInfo;
@@ -80,7 +82,7 @@ export interface LlmStepTraceHooks {
 	finalize: (
 		source: ResumableStreamSource,
 		options?: {
-			status?: 'completed' | 'cancelled' | 'suspended';
+			status?: TraceStatus;
 			error?: string;
 		},
 	) => Promise<void>;
@@ -1228,7 +1230,7 @@ async function finishSyntheticToolTrace(
 
 async function finalizeSyntheticToolTraces(
 	records: Map<string, SyntheticToolTraceRecord>,
-	options?: { status?: 'completed' | 'cancelled' | 'suspended'; error?: string },
+	options?: { status?: TraceStatus; error?: string },
 ): Promise<void> {
 	for (const record of records.values()) {
 		if (record.finished) {
@@ -1621,7 +1623,7 @@ export function createLlmStepTraceHooks(
 	const patchFinishedRecordIfNeeded = async (
 		record: LlmStepTraceRecord,
 		stepResult: StepResultLike | undefined,
-		options?: { status?: 'completed' | 'cancelled' | 'suspended'; error?: string },
+		options?: { status?: TraceStatus; error?: string },
 	): Promise<void> => {
 		const metadata = {
 			...(record.runTree.metadata ?? {}),
@@ -1842,7 +1844,7 @@ export function createLlmStepTraceHooks(
 async function finalizeLlmStepTraces(
 	source: ResumableStreamSource,
 	records: LlmStepTraceRecord[],
-	options?: { status?: 'completed' | 'cancelled' | 'suspended'; error?: string },
+	options?: { status?: TraceStatus; error?: string },
 ): Promise<void> {
 	const parentRun = getTraceParentRun();
 	const resolvedSteps = await source.steps?.then(
@@ -2028,17 +2030,18 @@ export async function executeResumableStream(
 			}
 		}
 
+		const traceStatus = suspension ? 'suspended' : hasError ? 'errored' : 'completed';
 		if (options.llmStepTraceHooks) {
 			await options.llmStepTraceHooks.finalize(activeSource, {
-				status: suspension ? 'suspended' : 'completed',
+				status: traceStatus,
 			});
 		} else {
 			await finalizeLlmStepTraces(activeSource, llmStepRecords, {
-				status: suspension ? 'suspended' : 'completed',
+				status: traceStatus,
 			});
 		}
 		await finalizeSyntheticToolTraces(syntheticToolRecords, {
-			status: suspension ? 'suspended' : 'completed',
+			status: traceStatus,
 		});
 
 		if (options.context.signal.aborted) {

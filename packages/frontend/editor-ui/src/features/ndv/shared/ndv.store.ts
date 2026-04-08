@@ -187,12 +187,12 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		if (!activeNode.value || !inputNodeName) {
 			return false;
 		}
-		const parentNodes = workflowsStore.workflowObject.getParentNodes(
+		const parentNodes = workflowDocumentStore.value?.getParentNodes(
 			activeNode.value.name,
 			NodeConnectionTypes.Main,
 			1,
 		);
-		return parentNodes.includes(inputNodeName);
+		return parentNodes?.includes(inputNodeName) ?? false;
 	});
 
 	const getHoveringItem = computed(() => {
