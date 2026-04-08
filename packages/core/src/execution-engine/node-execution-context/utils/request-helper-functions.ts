@@ -717,7 +717,7 @@ function createOAuth2Client(credentials: OAuth2CredentialData): ClientOAuth2 {
 		clientId: credentials.clientId,
 		clientSecret: credentials.clientSecret,
 		accessTokenUri: credentials.accessTokenUrl,
-		scopes: (credentials.scope ?? '').split(' '),
+		scopes: credentials.scope ? credentials.scope.split(' ') : undefined,
 		ignoreSSLIssues: credentials.ignoreSSLIssues,
 		authentication: credentials.authentication ?? 'header',
 		...(credentials.additionalBodyProperties && {
@@ -823,7 +823,16 @@ export async function requestOAuth2(
 			Object.keys(oauthTokenData).length === 0 ||
 			oauthTokenData.access_token === '') // stub
 	) {
-		const { data } = await oAuthClient.credentials.getToken();
+		let tokenResult: Awaited<ReturnType<typeof oAuthClient.credentials.getToken>>;
+		try {
+			tokenResult = await oAuthClient.credentials.getToken();
+		} catch (error) {
+			throw new ApplicationError(
+				`Failed to acquire OAuth2 access token: ${(error as Error).message}`,
+				{ cause: error },
+			);
+		}
+		const { data } = tokenResult;
 		// Find the credentials
 		if (!node.credentials?.[credentialsType]) {
 			throw new ApplicationError('Node does not have credential type', {
