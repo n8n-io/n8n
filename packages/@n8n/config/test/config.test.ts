@@ -499,8 +499,8 @@ describe('GlobalConfig', () => {
 		instanceSettingsLoader: {
 			ownerManagedByEnv: false,
 			ownerEmail: '',
-			ownerFirstName: '',
-			ownerLastName: '',
+			ownerFirstName: 'Instance',
+			ownerLastName: 'Owner',
 			ownerPasswordHash: '',
 		},
 	} satisfies GlobalConfigShape;

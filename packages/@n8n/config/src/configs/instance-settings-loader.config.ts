@@ -14,10 +14,10 @@ export class InstanceSettingsLoaderConfig {
 	ownerEmail: string = '';
 
 	@Env('N8N_INSTANCE_OWNER_FIRST_NAME')
-	ownerFirstName: string = '';
+	ownerFirstName: string = 'Instance';
 
 	@Env('N8N_INSTANCE_OWNER_LAST_NAME')
-	ownerLastName: string = '';
+	ownerLastName: string = 'Owner';
 
 	/**
 	 * Pre-hashed bcrypt password for the instance owner.
