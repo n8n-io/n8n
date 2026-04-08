@@ -75,6 +75,14 @@ export class ToolDataTableSqlQuery implements INodeType {
 							maxValue: 1000,
 						},
 					},
+					{
+						displayName: 'Never Error',
+						name: 'neverError',
+						type: 'boolean',
+						default: true,
+						description:
+							'Whether to return errors as data instead of failing. When enabled, the AI agent can see the error and retry with corrected SQL.',
+					},
 				],
 			},
 		],
@@ -111,24 +119,39 @@ export class ToolDataTableSqlQuery implements INodeType {
 			}
 
 			const tableIds = this.getNodeParameter('tables', i) as string[];
-			const options = this.getNodeParameter('options', i, {}) as { maxRows?: number };
+			const options = this.getNodeParameter('options', i, {}) as {
+				maxRows?: number;
+				neverError?: boolean;
+			};
 
 			if (!this.helpers.executeSqlQuery) {
 				throw new NodeOperationError(this.getNode(), 'Data table module is not available');
 			}
 
-			const queryResult = await this.helpers.executeSqlQuery(sql, tableIds, {
-				maxRows: options.maxRows,
-			});
+			try {
+				const queryResult = await this.helpers.executeSqlQuery(sql, tableIds, {
+					maxRows: options.maxRows,
+				});
 
-			result.push({
-				json: {
-					rows: queryResult.rows,
-					rowCount: queryResult.rowCount,
-					truncated: queryResult.truncated,
-				},
-				pairedItem: { item: i },
-			});
+				result.push({
+					json: {
+						rows: queryResult.rows,
+						rowCount: queryResult.rowCount,
+						truncated: queryResult.truncated,
+					},
+					pairedItem: { item: i },
+				});
+			} catch (error) {
+				if (options.neverError) {
+					const message = error instanceof Error ? error.message : String(error);
+					result.push({
+						json: { error: message },
+						pairedItem: { item: i },
+					});
+				} else {
+					throw error;
+				}
+			}
 		}
 
 		return [result];
