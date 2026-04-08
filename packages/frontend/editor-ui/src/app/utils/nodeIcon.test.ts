@@ -1,7 +1,6 @@
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
-import type { INode } from 'n8n-workflow';
+import type { INode, WorkflowExpression } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 import {
 	getBadgeIconUrl,
@@ -44,18 +43,6 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	})),
 }));
 
-const resolveExpressionMock = vi.fn();
-
-vi.mock('@/app/stores/workflows.store', () => ({
-	useWorkflowsStore: vi.fn(() => ({
-		workflowObject: {
-			expression: {
-				getParameterValue: resolveExpressionMock,
-			},
-		},
-	})),
-}));
-
 describe('util: Node Icon', () => {
 	describe('getNodeIcon', () => {
 		it('should return the icon from nodeType', () => {
@@ -71,8 +58,6 @@ describe('util: Node Icon', () => {
 		});
 
 		it('should resolve expression icon without a node using defaults', () => {
-			resolveExpressionMock.mockReturnValueOnce('file:python.svg');
-
 			const nodeType = mock<IconNodeType>({
 				icon: '={{ $parameter.mode === "python" ? "file:python.svg" : "file:js.svg" }}',
 				defaults: {
@@ -82,13 +67,16 @@ describe('util: Node Icon', () => {
 				},
 			});
 
-			const result = getNodeIcon(nodeType, null);
+			const result = getNodeIcon(nodeType, {
+				expressionHandler: {
+					getParameterValue: () => 'file:python.svg',
+				} as Partial<WorkflowExpression> as WorkflowExpression,
+				node: null,
+			});
 			expect(result).toBe('file:python.svg');
 		});
 
 		it('should resolve expression icon with a node using node parameters', () => {
-			resolveExpressionMock.mockReturnValueOnce('file:python.svg');
-
 			const nodeType = mock<IconNodeType>({
 				icon: '={{ $parameter.mode === "python" ? "file:python.svg" : "file:js.svg" }}',
 				defaults: {
@@ -104,41 +92,40 @@ describe('util: Node Icon', () => {
 				},
 			});
 
-			const result = getNodeIcon(nodeType, node);
+			const result = getNodeIcon(nodeType, {
+				expressionHandler: {
+					getParameterValue: () => 'file:python.svg',
+				} as Partial<WorkflowExpression> as WorkflowExpression,
+				node,
+			});
 			expect(result).toBe('file:python.svg');
 		});
 
 		it('should return null when expression resolution fails', () => {
-			vi.mocked(useWorkflowsStore).mockReturnValueOnce({
-				workflowObject: {
-					expression: {
-						getParameterValue: vi.fn().mockReturnValue({ invalid: 'object' }),
-					},
-				},
-			} as never);
-
 			const nodeType = mock<IconNodeType>({
 				icon: '={{ invalid expression }}',
 			});
 
-			const result = getNodeIcon(nodeType, null);
+			const result = getNodeIcon(nodeType, {
+				node: null,
+				expressionHandler: {
+					getParameterValue: () => ({ invalid: 'object' }),
+				} as Partial<WorkflowExpression> as WorkflowExpression,
+			});
 			expect(result).toBeNull();
 		});
 
 		it('should return null when expression resolves to invalid format', () => {
-			vi.mocked(useWorkflowsStore).mockReturnValueOnce({
-				workflowObject: {
-					expression: {
-						getParameterValue: vi.fn().mockReturnValue('invalid:prefix:name'),
-					},
-				},
-			} as never);
-
 			const nodeType = mock<IconNodeType>({
 				icon: '={{ $parameter.icon }}',
 			});
 
-			const result = getNodeIcon(nodeType, null);
+			const result = getNodeIcon(nodeType, {
+				node: null,
+				expressionHandler: {
+					getParameterValue: () => ({ invalid: 'object' }),
+				} as Partial<WorkflowExpression> as WorkflowExpression,
+			});
 			expect(result).toBeNull();
 		});
 	});

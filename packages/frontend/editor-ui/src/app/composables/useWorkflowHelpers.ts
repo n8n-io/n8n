@@ -856,7 +856,9 @@ export function useWorkflowHelpers() {
 		if (typeof obj === 'object' && stringifyObject) {
 			const proxy = obj as { isProxy: boolean; toJSON?: () => unknown } | null;
 			if (proxy?.isProxy && proxy.toJSON) return JSON.stringify(proxy.toJSON());
-			return workflowsStore.workflowObject.expression.convertObjectValueToString(obj as object);
+			return workflowDocumentStore.value
+				?.getExpressionHandler()
+				.convertObjectValueToString(obj as object);
 		}
 		return obj;
 	}
