@@ -911,3 +911,50 @@ export function getRenderHint(toolName: string): InstanceAiToolCallState['render
 	if (RESEARCH_RENDER_HINT_TOOLS.has(toolName)) return 'researcher';
 	return 'default';
 }
+
+// ---------------------------------------------------------------------------
+// Eval mock execution — request/response types for LLM-based workflow evaluation
+// ---------------------------------------------------------------------------
+
+export type InstanceAiEvalNodeExecutionMode = 'mocked' | 'pinned' | 'real';
+
+export interface InstanceAiEvalInterceptedRequest {
+	url: string;
+	method: string;
+	nodeType: string;
+	/** The request body sent by the node (if any) */
+	requestBody?: unknown;
+	/** The mock response body returned by the LLM handler for this request */
+	mockResponse?: unknown;
+}
+
+export interface InstanceAiEvalNodeResult {
+	output: unknown;
+	interceptedRequests: InstanceAiEvalInterceptedRequest[];
+	executionMode: InstanceAiEvalNodeExecutionMode;
+	/** Missing required parameters detected before execution (empty = fully configured) */
+	configIssues?: Record<string, string[]>;
+	/** Epoch ms when the node started executing — used to sort the execution trace chronologically */
+	startTime?: number;
+}
+
+export interface InstanceAiEvalMockHints {
+	globalContext: string;
+	triggerContent: Record<string, unknown>;
+	nodeHints: Record<string, string>;
+	warnings: string[];
+	/** Pin data generated for nodes that bypass the HTTP mock layer (AI roots, protocol nodes) */
+	bypassPinData: Record<string, Array<{ json: Record<string, unknown> }>>;
+}
+
+export interface InstanceAiEvalExecutionResult {
+	executionId: string;
+	success: boolean;
+	nodeResults: Record<string, InstanceAiEvalNodeResult>;
+	errors: string[];
+	hints: InstanceAiEvalMockHints;
+}
+
+export class InstanceAiEvalExecutionRequest extends Z.class({
+	scenarioHints: z.string().max(2000).optional(),
+}) {}
