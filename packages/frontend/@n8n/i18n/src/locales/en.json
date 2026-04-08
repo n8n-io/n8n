@@ -5383,5 +5383,7 @@
 	"agents.settings.model.selectProvider": "Provider...",
 	"agents.settings.model.selectCredential": "Select credential...",
 	"agents.settings.instructions": "Instructions",
-	"agents.settings.instructions.placeholder": "Enter system instructions for this agent..."
+	"agents.settings.instructions.placeholder": "Enter system instructions for this agent...",
+	"agents.settings.model.setupCredential": "Set up credentials",
+	"agents.settings.model.credentialRequired": "Set up credentials to select a model"
 }

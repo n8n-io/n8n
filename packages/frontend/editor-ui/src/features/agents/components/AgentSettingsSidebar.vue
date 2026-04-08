@@ -5,10 +5,21 @@ import { N8nButton, N8nCallout, N8nIcon, N8nInput, N8nSelect, N8nText } from '@n
 import N8nOption from '@n8n/design-system/components/N8nOption';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import {
+	chatHubLLMProviderSchema,
+	PROVIDER_CREDENTIAL_TYPE_MAP,
+	type ChatHubLLMProvider,
+} from '@n8n/api-types';
+import { providerDisplayNames } from '@/features/ai/chatHub/constants';
+import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { getResourcePermissions } from '@n8n/permissions';
+import { CHAT_CREDENTIAL_SELECTOR_MODAL_KEY } from '@/features/ai/chatHub/constants';
 import { listAgentCredentials } from '../composables/useAgentApi';
 import { useModelCatalog } from '../composables/useModelCatalog';
 import type { ModelInfo } from '../composables/useAgentApi';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { AgentSchema } from '../types';
 import AgentToolsPanel from './AgentToolsPanel.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
@@ -17,6 +28,9 @@ import AgentCodeEditor from './AgentCodeEditor.vue';
 const locale = useI18n();
 const route = useRoute();
 const rootStore = useRootStore();
+const uiStore = useUIStore();
+const credentialsStore = useCredentialsStore();
+const projectsStore = useProjectsStore();
 
 const projectId = computed(() => route.params.projectId as string);
 const agentId = computed(() => route.params.agentId as string);
@@ -35,37 +49,68 @@ const emit = defineEmits<{
 	cancel: [];
 }>();
 
+// --- Provider mapping: ChatHub provider IDs <-> Agent SDK catalog IDs ---
+// ChatHub uses camelCase (e.g. 'xAiGrok'), catalog uses lowercase (e.g. 'xai')
+const CHATHUB_TO_CATALOG: Record<string, string> = {
+	openai: 'openai',
+	anthropic: 'anthropic',
+	google: 'google',
+	ollama: 'ollama',
+	azureOpenAi: 'azure-openai',
+	azureEntraId: 'azure-openai',
+	awsBedrock: 'aws-bedrock',
+	vercelAiGateway: 'vercel',
+	xAiGrok: 'xai',
+	groq: 'groq',
+	openRouter: 'openrouter',
+	deepSeek: 'deepseek',
+	cohere: 'cohere',
+	mistralCloud: 'mistral',
+};
+
+const CATALOG_TO_CHATHUB: Record<string, ChatHubLLMProvider> = {};
+for (const [chatHub, catalog] of Object.entries(CHATHUB_TO_CATALOG)) {
+	// First mapping wins (avoid azureEntraId overriding azureOpenAi)
+	if (!(catalog in CATALOG_TO_CHATHUB)) {
+		CATALOG_TO_CHATHUB[catalog] = chatHub as ChatHubLLMProvider;
+	}
+}
+
+// Supported providers from ChatHub (canonical list), sorted alphabetically by display name
+const supportedProviders = computed(() => {
+	return chatHubLLMProviderSchema.options
+		.map((id) => ({
+			chatHubId: id,
+			catalogId: CHATHUB_TO_CATALOG[id] ?? id,
+			name: providerDisplayNames[id] ?? id,
+			credentialType: PROVIDER_CREDENTIAL_TYPE_MAP[id],
+		}))
+		.sort((a, b) => a.name.localeCompare(b.name));
+});
+
 // --- Model & credential state ---
 const { ensureLoaded: ensureCatalogLoaded, getModelsForProvider } = useModelCatalog();
 const credentials = ref<Array<{ id: string; name: string; type: string }>>([]);
 const credentialsLoading = ref(false);
 
+// Internal state uses catalog IDs (what the agent SDK expects)
 const provider = ref(props.schema?.model.provider ?? '');
 const modelName = ref(props.schema?.model.name ?? '');
 const credential = ref(props.schema?.credential ?? '');
 const instructions = ref(props.schema?.instructions ?? '');
 
-const availableModels = computed<ModelInfo[]>(() => getModelsForProvider(provider.value || ''));
-
-// Provider icon mapping
-const PROVIDER_ICONS: Record<string, string> = {
-	anthropic: 'anthropic',
-	openai: 'bolt-filled',
-	google: 'globe',
-	xai: 'bot',
-	groq: 'zap',
-	deepseek: 'bot',
-	mistral: 'bot',
-	openrouter: 'globe',
-	cohere: 'bot',
-	ollama: 'bot',
-};
-
-const providerIconName = computed<IconName>(
-	() => (PROVIDER_ICONS[provider.value] ?? 'bot') as IconName,
+// Find the ChatHub provider ID for the current catalog provider
+const currentChatHubProvider = computed<ChatHubLLMProvider | undefined>(
+	() => CATALOG_TO_CHATHUB[provider.value],
 );
 
-// Display labels for the combined model selector
+const currentCredentialType = computed(() => {
+	const chp = currentChatHubProvider.value;
+	return chp ? PROVIDER_CREDENTIAL_TYPE_MAP[chp] : undefined;
+});
+
+const availableModels = computed<ModelInfo[]>(() => getModelsForProvider(provider.value || ''));
+
 const modelDisplayName = computed(() => {
 	if (!modelName.value) return locale.baseText('agents.settings.model.selectModel');
 	const model = availableModels.value.find((m) => m.id === modelName.value);
@@ -74,12 +119,52 @@ const modelDisplayName = computed(() => {
 
 const credentialDisplayName = computed(() => {
 	if (!credential.value) return '';
-	const cred = credentials.value.find((c) => c.id === credential.value);
-	return cred?.name ?? '';
+	// Try agent-scoped list first, then global credentials store
+	const agentCred = credentials.value.find((c) => c.id === credential.value);
+	if (agentCred) return agentCred.name;
+	const globalCred = credentialsStore.getCredentialById(credential.value);
+	return globalCred?.name ?? '';
 });
 
-// Model config modal state
+// Whether model selection is disabled (no credential set for current provider)
+const isModelDisabled = computed(() => !credential.value && !!provider.value);
+
+// Model config panel state
 const modelConfigOpen = ref(false);
+
+// --- Credential setup (same pattern as ChatHub ModelSelector) ---
+const canCreateCredentials = computed(() => {
+	return getResourcePermissions(projectsStore.personalProject?.scopes).credential.create;
+});
+
+function openCredentialSetup() {
+	const chp = currentChatHubProvider.value;
+	if (!chp) return;
+
+	const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[chp];
+	const existingCredentials = credentialsStore.getCredentialsByType(credentialType);
+
+	if (existingCredentials.length === 0 && canCreateCredentials.value) {
+		// No credentials exist — open the credential creation modal
+		uiStore.openNewCredential(credentialType);
+		return;
+	}
+
+	// Credentials exist — open the selector modal
+	uiStore.openModalWithData({
+		name: CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
+		data: {
+			credentialType,
+			displayName: chp ? providerDisplayNames[chp] : '',
+			initialValue: credential.value || null,
+			onSelect: (credentialId: string | null) => {
+				if (credentialId) {
+					onCredentialChange(credentialId);
+				}
+			},
+		},
+	});
+}
 
 watch(
 	() => props.schema,
@@ -93,15 +178,32 @@ watch(
 	{ deep: true, immediate: true },
 );
 
+function onProviderChange(catalogId: string) {
+	provider.value = catalogId;
+	modelName.value = '';
+
+	// Auto-select credential if exactly one exists for this provider
+	const chp = CATALOG_TO_CHATHUB[catalogId];
+	if (chp) {
+		const credType = PROVIDER_CREDENTIAL_TYPE_MAP[chp as ChatHubLLMProvider];
+		const existing = credentialsStore.getCredentialsByType(credType);
+		if (existing.length === 1) {
+			credential.value = existing[0].id;
+			emit('update:schema', {
+				model: { provider: catalogId, name: '' },
+				credential: existing[0].id,
+			});
+			return;
+		}
+	}
+
+	credential.value = '';
+	emit('update:schema', { model: { provider: catalogId, name: '' }, credential: '' });
+}
+
 function onModelSelect(value: string) {
 	modelName.value = value;
 	emit('update:schema', { model: { provider: provider.value || '', name: value } });
-}
-
-function onProviderChange(value: string) {
-	provider.value = value;
-	modelName.value = '';
-	emit('update:schema', { model: { provider: value, name: '' } });
 }
 
 function onCredentialChange(value: string) {
@@ -130,19 +232,6 @@ async function loadCredentials() {
 	}
 }
 
-const PROVIDERS = [
-	'anthropic',
-	'openai',
-	'google',
-	'xai',
-	'groq',
-	'deepseek',
-	'mistral',
-	'openrouter',
-	'cohere',
-	'ollama',
-] as const;
-
 // --- Collapsible sections ---
 const expandedSections = ref<Record<string, boolean>>({
 	triggers: false,
@@ -157,12 +246,10 @@ function toggleSection(section: string) {
 
 // --- Resizable width ---
 const sidebarWidth = ref(480);
-const isResizing = ref(false);
 const MIN_WIDTH = 360;
 const MAX_WIDTH = 700;
 
 function onResizeStart(event: MouseEvent) {
-	isResizing.value = true;
 	const startX = event.clientX;
 	const startWidth = sidebarWidth.value;
 
@@ -172,7 +259,6 @@ function onResizeStart(event: MouseEvent) {
 	}
 
 	function onMouseUp() {
-		isResizing.value = false;
 		document.removeEventListener('mousemove', onMouseMove);
 		document.removeEventListener('mouseup', onMouseUp);
 	}
@@ -181,8 +267,29 @@ function onResizeStart(event: MouseEvent) {
 	document.addEventListener('mouseup', onMouseUp);
 }
 
+async function initCredentials() {
+	// Ensure the global credentials store is populated (needed for getCredentialsByType + CredentialIcon)
+	await credentialsStore.fetchAllCredentials({ projectId: projectId.value });
+
+	// Also load agent-scoped credentials for the credential dropdown
+	await loadCredentials();
+
+	// Auto-select credential for the current provider if one exists and none is set
+	if (provider.value && !credential.value) {
+		const chp = CATALOG_TO_CHATHUB[provider.value];
+		if (chp) {
+			const credType = PROVIDER_CREDENTIAL_TYPE_MAP[chp as ChatHubLLMProvider];
+			const existing = credentialsStore.getCredentialsByType(credType);
+			if (existing.length === 1) {
+				credential.value = existing[0].id;
+				emit('update:schema', { credential: existing[0].id });
+			}
+		}
+	}
+}
+
 onMounted(() => {
-	void loadCredentials();
+	void initCredentials();
 	if (projectId.value) {
 		void ensureCatalogLoaded(projectId.value);
 	}
@@ -197,7 +304,7 @@ onMounted(() => {
 		<!-- Resize handle -->
 		<div :class="$style.resizeHandle" @mousedown="onResizeStart" />
 
-		<!-- Sidebar header (aligned with main column header height) -->
+		<!-- Sidebar header -->
 		<div :class="$style.header">
 			<N8nText tag="span" bold>{{ locale.baseText('agents.settings.title') }}</N8nText>
 			<div :class="$style.headerActions">
@@ -234,9 +341,11 @@ onMounted(() => {
 				<!-- Combined model display — single clickable row -->
 				<button :class="$style.modelDisplay" @click="modelConfigOpen = !modelConfigOpen">
 					<div :class="$style.modelDisplayContent">
-						<div v-if="provider" :class="$style.providerIcon">
-							<N8nIcon :icon="providerIconName" :size="14" />
-						</div>
+						<CredentialIcon
+							v-if="currentCredentialType"
+							:credential-type-name="currentCredentialType"
+							:size="20"
+						/>
 						<N8nText tag="span" bold size="small">{{ modelDisplayName }}</N8nText>
 						<N8nText v-if="credentialDisplayName" tag="span" size="small" color="text-light">
 							{{ credentialDisplayName }}
@@ -247,47 +356,80 @@ onMounted(() => {
 
 				<!-- Model config panel (expandable) -->
 				<div v-if="modelConfigOpen" :class="$style.modelConfig">
-					<div :class="$style.modelConfigRow">
-						<div :class="$style.modelConfigField">
-							<N8nText size="xsmall" color="text-light" bold>Provider</N8nText>
-							<N8nSelect
-								:model-value="provider"
-								placeholder="Provider..."
-								size="small"
-								@update:model-value="onProviderChange"
-							>
-								<N8nOption v-for="p in PROVIDERS" :key="p" :value="p" :label="p" />
-							</N8nSelect>
-						</div>
-						<div :class="$style.modelConfigField">
-							<N8nText size="xsmall" color="text-light" bold>Model</N8nText>
-							<N8nSelect
-								:model-value="modelName"
-								filterable
-								placeholder="Model..."
-								size="small"
-								@update:model-value="onModelSelect"
-							>
-								<N8nOption v-for="m in availableModels" :key="m.id" :value="m.id" :label="m.name" />
-							</N8nSelect>
-						</div>
-					</div>
+					<!-- Provider -->
 					<div :class="$style.modelConfigField">
-						<N8nText size="xsmall" color="text-light" bold>Credential</N8nText>
+						<N8nText size="xsmall" color="text-light" bold>Provider</N8nText>
 						<N8nSelect
-							:model-value="credential"
-							:placeholder="locale.baseText('agents.settings.model.selectCredential')"
-							:loading="credentialsLoading"
+							:model-value="provider"
+							placeholder="Provider..."
 							size="small"
-							@update:model-value="onCredentialChange"
+							@update:model-value="onProviderChange"
 						>
 							<N8nOption
-								v-for="cred in credentials"
-								:key="cred.id"
-								:value="cred.id"
-								:label="cred.name"
-							/>
+								v-for="p in supportedProviders"
+								:key="p.catalogId"
+								:value="p.catalogId"
+								:label="p.name"
+							>
+								<div :class="$style.providerOption">
+									<CredentialIcon :credential-type-name="p.credentialType" :size="16" />
+									<span>{{ p.name }}</span>
+								</div>
+							</N8nOption>
 						</N8nSelect>
+					</div>
+
+					<!-- Credential (setup flow) -->
+					<div :class="$style.modelConfigField">
+						<N8nText size="xsmall" color="text-light" bold>Credential</N8nText>
+						<button
+							v-if="provider && !credential"
+							:class="$style.credentialSetupBtn"
+							@click="openCredentialSetup"
+						>
+							<N8nIcon icon="plus" :size="12" />
+							<span>{{ locale.baseText('agents.settings.model.setupCredential') }}</span>
+						</button>
+						<button
+							v-else-if="credential"
+							:class="$style.credentialDisplayBtn"
+							@click="openCredentialSetup"
+						>
+							<CredentialIcon
+								v-if="currentCredentialType"
+								:credential-type-name="currentCredentialType"
+								:size="16"
+							/>
+							<span>{{ credentialDisplayName }}</span>
+							<N8nIcon icon="pencil" :size="12" />
+						</button>
+					</div>
+
+					<!-- Model (disabled until credential is set) -->
+					<div :class="$style.modelConfigField">
+						<N8nText size="xsmall" color="text-light" bold>Model</N8nText>
+						<N8nSelect
+							:model-value="modelName"
+							filterable
+							placeholder="Model..."
+							size="small"
+							:disabled="isModelDisabled"
+							@update:model-value="onModelSelect"
+						>
+							<N8nOption v-for="m in availableModels" :key="m.id" :value="m.id" :label="m.name">
+								<div :class="$style.providerOption">
+									<CredentialIcon
+										v-if="currentCredentialType"
+										:credential-type-name="currentCredentialType"
+										:size="16"
+									/>
+									<span>{{ m.name }}</span>
+								</div>
+							</N8nOption>
+						</N8nSelect>
+						<N8nText v-if="isModelDisabled" size="xsmall" color="text-light">
+							{{ locale.baseText('agents.settings.model.credentialRequired') }}
+						</N8nText>
 					</div>
 				</div>
 			</div>
@@ -428,6 +570,7 @@ onMounted(() => {
 	min-height: 56px;
 	padding: 0 var(--spacing--sm);
 	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
+	background-color: var(--color--background);
 }
 
 .headerActions {
@@ -503,7 +646,6 @@ onMounted(() => {
 	background-color: var(--color--foreground--tint-1);
 }
 
-/* Combined model display — looks like a single dropdown */
 .modelDisplay {
 	display: flex;
 	align-items: center;
@@ -521,18 +663,6 @@ onMounted(() => {
 	border-color: var(--color--foreground--shade-1);
 }
 
-.providerIcon {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 20px;
-	height: 20px;
-	border-radius: var(--radius);
-	background-color: var(--color--foreground--shade-1);
-	color: white;
-	flex-shrink: 0;
-}
-
 .modelDisplayContent {
 	display: flex;
 	align-items: center;
@@ -547,7 +677,6 @@ onMounted(() => {
 	white-space: nowrap;
 }
 
-/* Model config panel (inline expandable) */
 .modelConfig {
 	display: flex;
 	flex-direction: column;
@@ -555,19 +684,66 @@ onMounted(() => {
 	padding: var(--spacing--xs);
 	border: var(--border-width) var(--border-style) var(--color--foreground);
 	border-radius: var(--radius--lg);
-	background-color: var(--color--foreground--tint-2);
-}
-
-.modelConfigRow {
-	display: grid;
-	grid-template-columns: 1fr 1fr;
-	gap: var(--spacing--2xs);
+	background-color: var(--color--background--light-2);
 }
 
 .modelConfigField {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
+}
+
+.providerOption {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.credentialSetupBtn {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	border: var(--border-width) dashed var(--color--foreground--shade-1);
+	border-radius: var(--radius--lg);
+	background: none;
+	cursor: pointer;
+	font-size: var(--font-size--2xs);
+	font-family: var(--font-family);
+	color: var(--color--primary);
+	font-weight: var(--font-weight--bold);
+}
+
+.credentialSetupBtn:hover {
+	border-color: var(--color--primary);
+	background-color: var(--color--primary--tint-3);
+}
+
+.credentialDisplayBtn {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	border: var(--border-width) var(--border-style) var(--color--foreground);
+	border-radius: var(--radius--lg);
+	background-color: var(--color--background);
+	cursor: pointer;
+	font-size: var(--font-size--2xs);
+	font-family: var(--font-family);
+	color: var(--color--text);
+	width: 100%;
+	text-align: left;
+}
+
+.credentialDisplayBtn:hover {
+	border-color: var(--color--foreground--shade-1);
+}
+
+.credentialDisplayBtn span {
+	flex: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .section {
