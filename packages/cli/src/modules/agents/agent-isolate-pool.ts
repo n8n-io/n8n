@@ -114,6 +114,7 @@ type WaitEntry = {
 	reject: (error: Error) => void;
 };
 
+// TODO: add slot TTL eviction to reduce idle memory usage
 /**
  * Pool of `AgentIsolateSlot` instances with queuing semantics.
  *
