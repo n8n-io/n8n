@@ -18,10 +18,12 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useScroll, useWindowSize } from '@vueuse/core';
+import { N8nCallout } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useInstanceAiStore } from './instanceAi.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
@@ -47,6 +49,8 @@ import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.
 
 const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
+const sourceControlStore = useSourceControlStore();
+const isReadOnlyEnvironment = computed(() => sourceControlStore.preferences.branchReadOnly);
 const pushConnectionStore = usePushConnectionStore();
 const rootStore = useRootStore();
 const i18n = useI18n();
@@ -433,6 +437,15 @@ function handleStop() {
 				</div>
 			</div>
 
+			<N8nCallout
+				v-if="isReadOnlyEnvironment"
+				theme="warning"
+				icon="lock"
+				:class="$style.readOnlyBanner"
+			>
+				{{ i18n.baseText('readOnlyEnv.instanceAi.notice') }}
+			</N8nCallout>
+
 			<!-- Content area: chat + artifacts side by side below header -->
 			<div :class="$style.contentArea">
 				<div :class="$style.chatContent">
@@ -590,6 +603,10 @@ function handleStop() {
 	min-width: 200px;
 	max-width: 400px;
 	flex-shrink: 0;
+}
+
+.readOnlyBanner {
+	margin: var(--spacing--xs) var(--spacing--sm) 0;
 }
 
 .chatArea {

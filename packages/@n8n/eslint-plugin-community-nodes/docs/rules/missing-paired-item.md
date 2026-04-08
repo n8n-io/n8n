@@ -1,4 +1,4 @@
-# Require pairedItem on INodeExecutionData objects in execute() methods (`@n8n/community-nodes/missing-paired-item`)
+# Require pairedItem on INodeExecutionData objects in execute() methods to preserve item linking (`@n8n/community-nodes/missing-paired-item`)
 
 💼 This rule is enabled in the following configs: ✅ `recommended`, ☑️ `recommendedWithoutN8nCloudSupport`.
 

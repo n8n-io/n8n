@@ -1608,6 +1608,9 @@ importers:
       nanoid:
         specifier: 'catalog:'
         version: 3.3.8
+      p-limit:
+        specifier: ^3.1.0
+        version: 3.1.0
       pdf-parse:
         specifier: ^1.1.1
         version: 1.1.1
