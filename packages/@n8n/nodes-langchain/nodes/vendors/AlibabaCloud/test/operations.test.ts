@@ -80,7 +80,7 @@ describe('AlicloudModelStudio Operations', () => {
 					}),
 				},
 			);
-			expect(result.json).toEqual({ text: 'Hi there!' });
+			expect(result.json).toEqual({ content: 'Hi there!' });
 		});
 
 		it('should use multimodal endpoint and convert string content to array format for multimodal models', async () => {
@@ -124,7 +124,7 @@ describe('AlicloudModelStudio Operations', () => {
 					}),
 				},
 			);
-			expect(result.json).toEqual({ text: '4' });
+			expect(result.json).toEqual({ content: '4' });
 		});
 
 		it('should return full response object when simplify is false', async () => {
@@ -150,7 +150,7 @@ describe('AlicloudModelStudio Operations', () => {
 			const result = await textMessageExecute.call(mockExecuteFunctions, 0);
 
 			expect(result.json).toEqual({
-				text: 'Hi there!',
+				content: 'Hi there!',
 				model: 'some-text-only-model',
 				usage: { input_tokens: 5, output_tokens: 3 },
 				fullResponse: mockResponse,
@@ -204,7 +204,7 @@ describe('AlicloudModelStudio Operations', () => {
 					}),
 				},
 			);
-			expect(result.json).toEqual({ text: 'A cat on a sofa' });
+			expect(result.json).toEqual({ content: 'A cat on a sofa' });
 		});
 	});
 

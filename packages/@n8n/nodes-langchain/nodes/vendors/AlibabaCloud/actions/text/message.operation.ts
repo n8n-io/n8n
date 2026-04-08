@@ -397,9 +397,9 @@ export async function execute(
 
 	return {
 		json: simplify
-			? { text: output }
+			? { content: output }
 			: {
-					text: output,
+					content: output,
 					model,
 					usage: response.usage,
 					fullResponse: response,
