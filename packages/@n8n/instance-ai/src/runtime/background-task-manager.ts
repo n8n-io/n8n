@@ -75,9 +75,9 @@ export class BackgroundTaskManager {
 		if (task.status !== 'running') return 'task-completed';
 		task.corrections.push(correction);
 		if (task.onCorrectionQueued) {
-			const callback = task.onCorrectionQueued;
+			const notify = task.onCorrectionQueued;
 			task.onCorrectionQueued = undefined;
-			callback();
+			notify();
 		}
 		return 'queued';
 	}
@@ -154,8 +154,8 @@ export class BackgroundTaskManager {
 			return pending;
 		};
 
-		const waitForCorrection = (): Promise<void> =>
-			new Promise<void>((resolve) => {
+		const waitForCorrection = async (): Promise<void> =>
+			await new Promise<void>((resolve) => {
 				if (task.corrections.length > 0) {
 					resolve();
 					return;
