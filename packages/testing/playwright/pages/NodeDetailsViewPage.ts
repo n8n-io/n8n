@@ -43,7 +43,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getCredentialSelect() {
-		return this.page.getByRole('combobox', { name: 'Select Credential' });
+		return this.getContainer().getByRole('combobox', { name: 'Select Credential' });
 	}
 
 	async clickBackToCanvasButton() {
@@ -99,11 +99,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getParameterExpressionPreviewValue() {
-		return this.page.getByTestId('parameter-expression-preview-value');
+		return this.getContainer().getByTestId('parameter-expression-preview-value');
 	}
 
 	getParameterExpressionPreviewOutput() {
-		return this.page.getByTestId('parameter-expression-preview-output');
+		return this.getContainer().getByTestId('parameter-expression-preview-output');
 	}
 
 	getInlineExpressionEditorPreview() {
@@ -113,7 +113,7 @@ export class NodeDetailsViewPage extends BasePage {
 	async activateParameterExpressionEditor(parameterName: string) {
 		const parameterInput = this.getParameterInput(parameterName);
 		await parameterInput.click();
-		await this.page
+		await this.getContainer()
 			.getByTestId(`${parameterName}-parameter-input-options-container`)
 			.getByTestId('radio-button-expression')
 			.click();
@@ -152,7 +152,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getAssignmentCollectionAdd(paramName: string) {
-		return this.page
+		return this.getContainer()
 			.getByTestId(`assignment-collection-${paramName}`)
 			.getByTestId('assignment-collection-drop-area');
 	}
@@ -166,7 +166,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getAssignmentValue(paramName: string) {
-		return this.page
+		return this.getContainer()
 			.getByTestId(`assignment-collection-${paramName}`)
 			.getByTestId('assignment-value');
 	}
@@ -281,7 +281,9 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async clickFloatingNode(nodeName: string) {
-		await this.page.locator(`[data-test-id="floating-node"][data-node-name="${nodeName}"]`).click();
+		await this.getContainer()
+			.locator(`[data-test-id="floating-node"][data-node-name="${nodeName}"]`)
+			.click();
 	}
 
 	async executePrevious() {
@@ -289,7 +291,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async clickAskAiTab() {
-		await this.page.locator('#tab-ask-ai').click();
+		await this.getContainer().locator('#tab-ask-ai').click();
 	}
 
 	getAskAiTabPanel() {
@@ -325,7 +327,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getCodeTab() {
-		return this.page.locator('#tab-code');
+		return this.getContainer().locator('#tab-code');
 	}
 
 	getCodeEditor() {
@@ -566,11 +568,11 @@ export class NodeDetailsViewPage extends BasePage {
 
 	// Run selector and linking helpers
 	getInputRunSelector() {
-		return this.page.locator('[data-test-id="ndv-input-panel"] [data-test-id="run-selector"]');
+		return this.getInputPanel().getByTestId('run-selector');
 	}
 
 	getOutputRunSelector() {
-		return this.page.locator('[data-test-id="output-panel"] [data-test-id="run-selector"]');
+		return this.getOutputPanel().getByTestId('run-selector');
 	}
 
 	getInputRunSelectorInput() {
@@ -701,7 +703,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getFloatingNodeByPosition(position: 'inputMain' | 'outputMain' | 'inputSub' | 'outputSub') {
-		return this.page.locator(`[data-node-placement="${position}"]`);
+		return this.getContainer().locator(`[data-node-placement="${position}"]`);
 	}
 
 	getNodeNameContainer() {
@@ -741,7 +743,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getNodesWithIssues() {
-		return this.page.locator('[class*="hasIssues"]');
+		return this.getContainer().locator('[class*="hasIssues"]');
 	}
 
 	async connectAISubNode(connectionType: string, nodeName: string, index: number = 0) {
@@ -799,7 +801,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getParameterInputWithIssues(parameterPath: string) {
-		return this.page.locator(
+		return this.getContainer().locator(
 			`[data-test-id="parameter-input-field"][title*="${parameterPath}"][title*="has issues"]`,
 		);
 	}
@@ -872,7 +874,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getCredentialLabel(credentialType: string) {
-		return this.page.getByText(credentialType);
+		return this.getContainer().getByText(credentialType);
 	}
 
 	getFilterComponent(paramName: string) {
@@ -912,11 +914,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getWebhookTestEvent() {
-		return this.page.getByText('Listening for test event');
+		return this.getContainer().getByText('Listening for test event');
 	}
 
 	getAddOptionDropdown() {
-		return this.page.getByRole('combobox', { name: 'Add option' });
+		return this.getContainer().getByRole('combobox', { name: 'Add option' });
 	}
 
 	async setInvalidExpression({
