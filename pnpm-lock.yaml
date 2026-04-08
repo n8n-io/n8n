@@ -1457,6 +1457,132 @@ importers:
         specifier: 3.25.67
         version: 3.25.67
 
+<<<<<<< HEAD
+=======
+  packages/@n8n/local-gateway:
+    dependencies:
+      '@n8n/computer-use':
+        specifier: workspace:*
+        version: link:../computer-use
+      electron-store:
+        specifier: ^8.2.0
+        version: 8.2.0
+    devDependencies:
+      '@electron/rebuild':
+        specifier: ^4.0.3
+        version: 4.0.3
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/node':
+        specifier: ^20.17.50
+        version: 20.19.21
+      concurrently:
+        specifier: ^8.2.0
+        version: 8.2.0
+      electron:
+        specifier: ^36.0.0
+        version: 36.9.5
+      electron-builder:
+        specifier: ^25.0.0
+        version: 25.1.8(electron-builder-squirrel-windows@25.1.8)
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.0.1
+
+  packages/@n8n/mcp-browser:
+    dependencies:
+      '@joplin/turndown-plugin-gfm':
+        specifier: 1.0.64
+        version: 1.0.64
+      '@modelcontextprotocol/sdk':
+        specifier: 1.26.0
+        version: 1.26.0(zod@3.25.67)
+      '@mozilla/readability':
+        specifier: ^0.6.0
+        version: 0.6.0
+      jsdom:
+        specifier: ^23.0.1
+        version: 23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+      nanoid:
+        specifier: 'catalog:'
+        version: 3.3.8
+      picocolors:
+        specifier: 'catalog:'
+        version: 1.0.1
+      playwright-core:
+        specifier: 'catalog:'
+        version: 1.58.0
+      selenium-webdriver:
+        specifier: 4.39.0
+        version: 4.39.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+      turndown:
+        specifier: ^7.2.0
+        version: 7.2.2
+      ws:
+        specifier: '>=8.17.1'
+        version: 8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+      yargs-parser:
+        specifier: 21.1.1
+        version: 21.1.1
+      zod:
+        specifier: 3.25.67
+        version: 3.25.67
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/turndown':
+        specifier: ^5.0.6
+        version: 5.0.6
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1(patch_hash=682b44b740be55e5d7018e6fe335880851dadf2524b6c723c9ed0c29cb2fa7fb)
+      '@types/yargs-parser':
+        specifier: 21.0.0
+        version: 21.0.0
+
+  packages/@n8n/mcp-browser-extension:
+    dependencies:
+      '@n8n/design-system':
+        specifier: workspace:*
+        version: link:../../frontend/@n8n/design-system
+      vue:
+        specifier: catalog:frontend
+        version: 3.5.26(typescript@6.0.2)
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../vitest-config
+      '@types/chrome':
+        specifier: 0.0.300
+        version: 0.0.300
+      '@vitejs/plugin-vue':
+        specifier: catalog:frontend
+        version: 5.2.4(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+      '@vue/test-utils':
+        specifier: catalog:frontend
+        version: 2.4.6
+      unplugin-icons:
+        specifier: catalog:frontend
+        version: 23.0.1(@vue/compiler-sfc@3.5.26)
+      vite:
+        specifier: 'catalog:'
+        version: 8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vite-svg-loader:
+        specifier: catalog:frontend
+        version: 5.1.0(vue@3.5.26(typescript@6.0.2))
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+
+>>>>>>> 6bb90d43b6 (feat: Rename extension to "Browser Use" and prepare for publishing (#27898))
   packages/@n8n/node-cli:
     dependencies:
       '@clack/prompts':
@@ -12906,8 +13032,13 @@ packages:
     resolution: {integrity: sha512-hIS4idWWai69NezIdRt2xFVofaF4j+6INOpJlVOLDO8zXGpUVEVzIYk12UUi2JzjEzWL3IOAxcTubgz9Po0yXw==}
     engines: {node: '>= 18'}
 
+<<<<<<< HEAD
   exsolve@1.0.4:
     resolution: {integrity: sha512-xsZH6PXaER4XoV+NiT7JHp1bJodJVT+cxeSH1G0f0tlT0lJqYuHUP3bUx2HtfTDvOagMINYp8rsqusxud3RXhw==}
+=======
+  exsolve@1.0.8:
+    resolution: {integrity: sha512-LmDxfWXwcTArk8fUEnOfSZpHOJ6zOMUJKOtFLFqJLoKJetuQG874Uc7/Kki7zFLzYybmZhp1M7+98pfMqeX8yA==}
+>>>>>>> 6bb90d43b6 (feat: Rename extension to "Browser Use" and prepare for publishing (#27898))
 
   ext@1.7.0:
     resolution: {integrity: sha512-6hxeJYaL110a9b5TEJSj0gojyHQAmA2ch5Os+ySCiA1QGdS697XWY1pzsrSjqA9LDEEgdB/KypIlR59RcLuHYw==}
@@ -31700,7 +31831,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+<<<<<<< HEAD
   exsolve@1.0.4: {}
+=======
+  exsolve@1.0.8: {}
+>>>>>>> 6bb90d43b6 (feat: Rename extension to "Browser Use" and prepare for publishing (#27898))
 
   ext@1.7.0:
     dependencies:
@@ -35182,7 +35317,7 @@ snapshots:
 
   mlly@1.8.0:
     dependencies:
-      acorn: 8.15.0
+      acorn: 8.16.0
       pathe: 2.0.3
       pkg-types: 1.3.1
       ufo: 1.6.1
@@ -36293,7 +36428,7 @@ snapshots:
   pkg-types@2.1.0:
     dependencies:
       confbox: 0.2.2
-      exsolve: 1.0.4
+      exsolve: 1.0.8
       pathe: 2.0.3
 
   playwright-core@1.58.0: {}
@@ -37438,6 +37573,18 @@ snapshots:
     optionalDependencies:
       '@parcel/watcher': 2.5.1
 
+<<<<<<< HEAD
+=======
+  sass@1.98.0:
+    dependencies:
+      chokidar: 4.0.3
+      immutable: 5.1.5
+      source-map-js: 1.2.1
+    optionalDependencies:
+      '@parcel/watcher': 2.5.1
+    optional: true
+
+>>>>>>> 6bb90d43b6 (feat: Rename extension to "Browser Use" and prepare for publishing (#27898))
   sax@1.2.4: {}
 
   saxes@6.0.0:
@@ -39114,8 +39261,13 @@ snapshots:
   unplugin@2.3.11:
     dependencies:
       '@jridgewell/remapping': 2.3.5
+<<<<<<< HEAD
       acorn: 8.15.0
       picomatch: 4.0.3
+=======
+      acorn: 8.16.0
+      picomatch: 4.0.4
+>>>>>>> 6bb90d43b6 (feat: Rename extension to "Browser Use" and prepare for publishing (#27898))
       webpack-virtual-modules: 0.6.2
 
   unrs-resolver@1.9.2:
