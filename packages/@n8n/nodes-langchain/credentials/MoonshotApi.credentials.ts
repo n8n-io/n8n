@@ -34,7 +34,7 @@ export class MoonshotApi implements ICredentialType {
 				{
 					name: 'China',
 					value: 'china',
-					description: 'platform.moonshot.cn - for users in mainland China',
+					description: 'platform.moonshot.cn - mainland China endpoint',
 				},
 			],
 			default: 'international',
