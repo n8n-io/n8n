@@ -216,9 +216,6 @@
 		},
 		"PATCH /projects/{projectId}/users/{userId}": {
 			"status": "gap"
-		},
-		"GET /insights/summary": {
-			"status": "gap"
 		}
 	}
 }
