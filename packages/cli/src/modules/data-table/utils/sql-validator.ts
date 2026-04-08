@@ -271,10 +271,15 @@ export class SqlValidator {
 		const trimmed = sql.trim();
 		const { tokens, tables, functions } = this.doValidate(trimmed, tableSchemas);
 
-		// Rewrite ALL quoted identifiers that match table names (FROM, JOIN, and column qualifiers)
+		// Rewrite quoted identifiers in table position (not after a dot, which indicates a column)
 		const tableNamesLower = new Set(tables.map((t) => t.name.toLowerCase()));
-		for (const token of tokens) {
+		for (let i = 0; i < tokens.length; i++) {
+			const token = tokens[i];
 			if (token.type !== 'quoted_identifier') continue;
+
+			// A quoted identifier after a dot is a column reference, not a table reference
+			if (i > 0 && isPunc(tokens, i - 1, '.')) continue;
+
 			const unquoted = unquote(token.value).toLowerCase();
 			if (!tableNamesLower.has(unquoted)) continue;
 

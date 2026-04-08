@@ -762,5 +762,29 @@ describe('SqlValidator', () => {
 			expect(result.rewrittenSql).toContain('n8n_data_table_user_abc123');
 			expect(result.rewrittenSql).toContain('n8n_data_table_user_def456');
 		});
+
+		it('should not rewrite column names that match a table name', () => {
+			const schemas: TableColumnSchema[] = [
+				{ name: 'employee', columns: ['id', 'name', 'department'] },
+				{ name: 'department', columns: ['id', 'name'] },
+			];
+			const tableMapping = new Map([
+				['employee', 'n8n_data_table_user_emp'],
+				['department', 'n8n_data_table_user_dep'],
+			]);
+
+			const result = pgValidator.validateAndRewrite(
+				'SELECT COUNT(*) FROM "employee" JOIN "department" ON "employee"."department" = "department"."name" WHERE LOWER("department"."name") = \'engineering\'',
+				schemas,
+				tableMapping,
+			);
+
+			// Table references should be rewritten
+			expect(result.rewrittenSql).toContain('FROM n8n_data_table_user_emp');
+			expect(result.rewrittenSql).toContain('JOIN n8n_data_table_user_dep');
+			// Column "department" after dot must NOT be rewritten to the physical table name
+			expect(result.rewrittenSql).toContain('n8n_data_table_user_emp."department"');
+			expect(result.rewrittenSql).not.toContain('n8n_data_table_user_emp.n8n_data_table_user_dep');
+		});
 	});
 });
