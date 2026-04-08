@@ -21,6 +21,7 @@ export function resolveNodeTool(
 		name: string;
 		description: string;
 		metadata: Record<string, unknown> | null | undefined;
+		inputSchema: Record<string, unknown> | undefined;
 	},
 	ctx: NodeToolFactoryContext,
 ): BuiltTool {
@@ -29,7 +30,7 @@ export function resolveNodeTool(
 		throw new Error(`Node tool "${toolSchema.name}" is missing metadata`);
 	}
 
-	const inputSchema = buildZodSchema(metadata.inputSchema);
+	const inputSchema = buildZodSchema(toolSchema.inputSchema);
 
 	return new Tool(toolSchema.name)
 		.description(toolSchema.description ?? `Execute the ${metadata.nodeType} node`)

@@ -366,7 +366,12 @@ export class AgentsService {
 			if (meta.nodeTool === true) {
 				const { resolveNodeTool } = await import('./node-tool-factory');
 				return resolveNodeTool(
-					{ name: ts.name, description: ts.description, metadata: ts.metadata },
+					{
+						name: ts.name,
+						description: ts.description,
+						metadata: ts.metadata,
+						inputSchema: ts.inputSchema,
+					},
 					{ executor: this.ephemeralNodeExecutor, projectId },
 				);
 			}
