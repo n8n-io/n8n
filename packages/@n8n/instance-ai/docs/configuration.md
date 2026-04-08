@@ -30,7 +30,7 @@ All Instance AI configuration is done via environment variables.
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `N8N_INSTANCE_AI_FILESYSTEM_PATH` | string | `''` | Restrict local filesystem access to this directory. When empty, bare-metal installs can read any path the n8n process has access to. When set, `path.resolve()` + `fs.realpath()` containment prevents directory traversal and symlink escape. |
-| `N8N_INSTANCE_AI_GATEWAY_API_KEY` | string | `''` | Static API key for the filesystem gateway. Used by the `@n8n/fs-proxy` daemon to authenticate SSE and HTTP POST requests. When empty, the dynamic pairing token flow is used instead. |
+| `N8N_INSTANCE_AI_GATEWAY_API_KEY` | string | `''` | Static API key for the filesystem gateway. Used by the `@n8n/computer-use` daemon to authenticate SSE and HTTP POST requests. When empty, the dynamic pairing token flow is used instead. |
 
 **Auto-detection** (no boolean flag needed):
 1. `N8N_INSTANCE_AI_FILESYSTEM_PATH` explicitly set → local FS (restricted to that path)
@@ -202,7 +202,7 @@ N8N_INSTANCE_AI_FILESYSTEM_PATH=/home/user/my-project
 # With filesystem gateway (Docker/cloud — user runs daemon on their machine)
 N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-6
 N8N_INSTANCE_AI_GATEWAY_API_KEY=my-secret-key
-# User runs: npx @n8n/fs-proxy
+# User runs: npx @n8n/computer-use
 
 # With custom OpenAI-compatible endpoint (e.g. LM Studio, Ollama)
 N8N_INSTANCE_AI_MODEL=custom/llama-3.1-70b

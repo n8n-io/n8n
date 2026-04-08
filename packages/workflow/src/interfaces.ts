@@ -1329,6 +1329,11 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 export interface INodeCredentialsDetails {
 	id: string | null;
 	name: string;
+	/**
+	 * Set automatically when the credential slot is managed by the n8n AI Gateway.
+	 * Not intended to be set or modified manually.
+	 */
+	__aiGatewayManaged?: boolean;
 }
 
 export interface INodeCredentials {
@@ -3038,6 +3043,8 @@ export interface IWorkflowExecuteAdditionalData {
 	currentNodeParameters?: INodeParameters;
 	executionTimeoutTimestamp?: number;
 	userId?: string;
+	workflowId?: string;
+	projectId?: string;
 	variables: IDataObject;
 	logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => void;
 	parentCallbackManager?: CallbackManager;

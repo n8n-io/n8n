@@ -5,18 +5,21 @@ import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
 
+export const deleteWorkflowInputSchema = z.object({
+	workflowId: z.string().describe('ID of the workflow to archive'),
+	workflowName: z.string().optional().describe('Name of the workflow (for confirmation message)'),
+});
+
+export const deleteWorkflowResumeSchema = z.object({
+	approved: z.boolean(),
+});
+
 export function createDeleteWorkflowTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'delete-workflow',
 		description:
 			'Archive a workflow by ID. This is a soft delete that unpublishes the workflow if needed and can be undone later.',
-		inputSchema: z.object({
-			workflowId: z.string().describe('ID of the workflow to archive'),
-			workflowName: z
-				.string()
-				.optional()
-				.describe('Name of the workflow (for confirmation message)'),
-		}),
+		inputSchema: deleteWorkflowInputSchema,
 		outputSchema: z.object({
 			success: z.boolean(),
 			denied: z.boolean().optional(),
@@ -27,11 +30,16 @@ export function createDeleteWorkflowTool(context: InstanceAiContext) {
 			message: z.string(),
 			severity: instanceAiConfirmationSeveritySchema,
 		}),
-		resumeSchema: z.object({
-			approved: z.boolean(),
-		}),
-		execute: async (input, ctx) => {
-			const { resumeData, suspend } = ctx?.agent ?? {};
+		resumeSchema: deleteWorkflowResumeSchema,
+		execute: async (input: z.infer<typeof deleteWorkflowInputSchema>, ctx) => {
+			const resumeData = ctx?.agent?.resumeData as
+				| z.infer<typeof deleteWorkflowResumeSchema>
+				| undefined;
+			const suspend = ctx?.agent?.suspend;
+
+			if (context.permissions?.deleteWorkflow === 'blocked') {
+				return { success: false, denied: true, reason: 'Action blocked by admin' };
+			}
 
 			const needsApproval = context.permissions?.deleteWorkflow !== 'always_allow';
 
