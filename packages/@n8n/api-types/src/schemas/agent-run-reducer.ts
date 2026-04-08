@@ -295,6 +295,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			}
 			// A completed/errored agent can't have tool calls still in-flight.
 			// Clear isLoading so persisted snapshots don't show stale confirmations.
+			if (!isSafeObjectKey(event.agentId)) break;
 			const agentToolCallIds = state.toolCallIdsByAgentId[event.agentId];
 			if (agentToolCallIds) {
 				for (const tcId of agentToolCallIds) {
