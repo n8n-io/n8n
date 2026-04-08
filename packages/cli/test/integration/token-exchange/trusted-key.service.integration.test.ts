@@ -193,9 +193,8 @@ describe('TrustedKeyService (integration)', () => {
 			await expect(service.initialize()).rejects.toThrow(error);
 		});
 
-		it('should remove orphaned sources but preserve UI sources', async () => {
+		it('should remove orphaned sources on config change', async () => {
 			await insertSource({ id: 'old-source', type: 'static', config: '[]' });
-			await insertSource({ id: 'ui-source', type: 'ui', config: '{}' });
 
 			config.trustedKeys = JSON.stringify([staticKeyEntry({ kid: 'new-key' })]);
 
@@ -205,7 +204,6 @@ describe('TrustedKeyService (integration)', () => {
 			const sourceIds = sources.map((s) => s.id);
 
 			expect(sourceIds).toContain('static');
-			expect(sourceIds).toContain('ui-source');
 			expect(sourceIds).not.toContain('old-source');
 		});
 
@@ -350,20 +348,18 @@ describe('TrustedKeyService (integration)', () => {
 			);
 		});
 
-		it.each([
-			{
-				type: 'jwks' as const,
+		it('should skip jwks sources without writing keys', async () => {
+			await insertSource({
+				id: 'jwks-source',
+				type: 'jwks',
 				config: JSON.stringify({
 					type: 'jwks',
 					url: 'https://example.com/jwks',
 					issuer: 'https://example.com',
 				}),
-			},
-			{ type: 'ui' as const, config: JSON.stringify({ type: 'ui' }) },
-		])('should skip $type sources without writing keys', async ({ type, config: sourceConfig }) => {
-			await insertSource({ id: `${type}-source`, type, config: sourceConfig });
+			});
 
-			await service.refreshSource(`${type}-source`);
+			await service.refreshSource('jwks-source');
 
 			expect(await keyRepo.find()).toHaveLength(0);
 		});

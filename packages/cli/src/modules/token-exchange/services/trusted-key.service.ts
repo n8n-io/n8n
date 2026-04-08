@@ -43,6 +43,9 @@ const ALGORITHM_FAMILY: Record<string, AlgorithmFamily> = {
 
 const STATIC_SOURCE_ID = 'static';
 
+/** How often the leader polls sources to check if any are due for refresh. */
+const REFRESH_POLL_INTERVAL_MS = 30 * Time.seconds.toMilliseconds;
+
 /**
  * Manages trusted public keys for JWT signature verification.
  *
@@ -100,12 +103,12 @@ export class TrustedKeyService {
 	startRefresh() {
 		if (this.isShuttingDown || this.refreshInterval) return;
 
-		const intervalMs = this.config.keyRefreshIntervalSeconds * Time.seconds.toMilliseconds;
-		this.refreshInterval = setInterval(async () => await this.refreshAllSources(), intervalMs);
-
-		this.logger.debug(
-			`Trusted key refresh scheduled every ${this.config.keyRefreshIntervalSeconds}s`,
+		this.refreshInterval = setInterval(
+			async () => await this.refreshDueSources(),
+			REFRESH_POLL_INTERVAL_MS,
 		);
+
+		this.logger.debug('Trusted key refresh poller started');
 	}
 
 	@OnLeaderStepdown()
@@ -227,11 +230,7 @@ export class TrustedKeyService {
 
 	private generateSourceId(source: TrustedKeySource): string {
 		if (source.type === 'static') return STATIC_SOURCE_ID;
-		if (source.type === 'jwks') {
-			return createHash('sha256').update(source.url).digest('hex').slice(0, 36);
-		}
-		// 'ui' sources use DB-generated IDs — should not reach here
-		return createHash('sha256').update('ui').digest('hex').slice(0, 36);
+		return createHash('sha256').update(source.url).digest('hex').slice(0, 36);
 	}
 
 	/**
@@ -269,11 +268,10 @@ export class TrustedKeyService {
 				});
 			}
 
-			// Remove orphaned config-managed sources (not UI sources)
+			// Remove orphaned config-managed sources
 			if (expectedSourceIds.size > 0) {
 				await tx.delete(TrustedKeySourceEntity, {
 					id: Not(In([...expectedSourceIds])),
-					type: Not('ui'),
 				});
 			}
 		});
@@ -281,6 +279,10 @@ export class TrustedKeyService {
 
 	// ─── Private: refresh ──────────────────────────────────────────────
 
+	/**
+	 * Initial refresh: refreshes all sources unconditionally.
+	 * Called once during `initialize` before the poll loop starts.
+	 */
 	private async refreshAllSources(): Promise<void> {
 		try {
 			const sources = await this.trustedKeySourceRepository.find();
@@ -289,6 +291,35 @@ export class TrustedKeyService {
 			}
 		} catch (error) {
 			this.logger.error('Failed to run trusted key refresh cycle', { error });
+		}
+	}
+
+	/**
+	 * Poll-driven refresh: only refreshes sources whose `lastRefreshedAt`
+	 * is older than their configured refresh interval.
+	 */
+	private async refreshDueSources(): Promise<void> {
+		try {
+			const sources = await this.trustedKeySourceRepository.find();
+			const now = Date.now();
+			for (const source of sources) {
+				const intervalMs = this.getRefreshIntervalMs(source);
+				const lastRefresh = source.lastRefreshedAt?.getTime() ?? 0;
+				if (now - lastRefresh >= intervalMs) {
+					await this.refreshSourceInternal(source);
+				}
+			}
+		} catch (error) {
+			this.logger.error('Failed to run trusted key refresh cycle', { error });
+		}
+	}
+
+	private getRefreshIntervalMs(source: TrustedKeySourceEntity): number {
+		switch (source.type) {
+			case 'static':
+			case 'jwks':
+			default:
+				return this.config.keyRefreshIntervalSeconds * Time.seconds.toMilliseconds;
 		}
 	}
 
@@ -360,11 +391,6 @@ export class TrustedKeyService {
 				return this.resolveKeysForStaticSource(source);
 			case 'jwks':
 				this.logger.warn('JWKS key sources are not yet supported, skipping', {
-					sourceId: source.id,
-				});
-				return undefined;
-			case 'ui':
-				this.logger.warn('UI key sources are not yet supported, skipping', {
 					sourceId: source.id,
 				});
 				return undefined;

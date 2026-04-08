@@ -4,6 +4,7 @@ import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
+import { TrustedKeySourceEntity } from '../../database/entities/trusted-key-source.entity';
 import { TrustedKeyEntity } from '../../database/entities/trusted-key.entity';
 import type { TrustedKeySourceRepository } from '../../database/repositories/trusted-key-source.repository';
 import type { TrustedKeyRepository } from '../../database/repositories/trusted-key.repository';
@@ -83,7 +84,7 @@ function createMocks() {
 		dbLockService,
 	);
 
-	return { service, keyRepo };
+	return { service, keyRepo, sourceRepo, dbLockService };
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -141,14 +142,14 @@ describe('TrustedKeyService', () => {
 	});
 
 	describe('leader lifecycle', () => {
-		it('should start refresh interval on leader takeover', () => {
+		it('should start refresh poll interval on leader takeover', () => {
 			const { service } = createMocks();
 			const setIntervalSpy = jest.spyOn(global, 'setInterval');
 
 			service.startRefresh();
 
 			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
-			expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 300_000);
+			expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 30_000);
 
 			service.stopRefresh();
 			setIntervalSpy.mockRestore();
@@ -208,6 +209,72 @@ describe('TrustedKeyService', () => {
 			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
 
 			setIntervalSpy.mockRestore();
+		});
+	});
+
+	describe('refreshDueSources', () => {
+		it('should skip sources that were recently refreshed', async () => {
+			const { service, sourceRepo, dbLockService } = createMocks();
+
+			const recentSource = Object.assign(new TrustedKeySourceEntity(), {
+				id: 'static',
+				type: 'static' as const,
+				config: JSON.stringify([]),
+				status: 'healthy' as const,
+				lastError: null,
+				lastRefreshedAt: new Date(), // just refreshed
+			});
+
+			sourceRepo.find.mockResolvedValue([recentSource]);
+
+			service.startRefresh();
+			await jest.advanceTimersByTimeAsync(30_000);
+			service.stopRefresh();
+
+			// Source was recently refreshed — should not trigger a refresh
+			expect(dbLockService.withLock).not.toHaveBeenCalled();
+		});
+
+		it('should refresh sources whose lastRefreshedAt exceeds the interval', async () => {
+			const { service, sourceRepo, dbLockService } = createMocks();
+
+			const staleSource = Object.assign(new TrustedKeySourceEntity(), {
+				id: 'static',
+				type: 'static' as const,
+				config: JSON.stringify([]),
+				status: 'healthy' as const,
+				lastError: null,
+				lastRefreshedAt: new Date(Date.now() - 400_000), // 400s ago, interval is 300s
+			});
+
+			sourceRepo.find.mockResolvedValue([staleSource]);
+
+			service.startRefresh();
+			await jest.advanceTimersByTimeAsync(30_000);
+			service.stopRefresh();
+
+			expect(dbLockService.withLock).toHaveBeenCalled();
+		});
+
+		it('should refresh sources that have never been refreshed', async () => {
+			const { service, sourceRepo, dbLockService } = createMocks();
+
+			const newSource = Object.assign(new TrustedKeySourceEntity(), {
+				id: 'static',
+				type: 'static' as const,
+				config: JSON.stringify([]),
+				status: 'pending' as const,
+				lastError: null,
+				lastRefreshedAt: null,
+			});
+
+			sourceRepo.find.mockResolvedValue([newSource]);
+
+			service.startRefresh();
+			await jest.advanceTimersByTimeAsync(30_000);
+			service.stopRefresh();
+
+			expect(dbLockService.withLock).toHaveBeenCalled();
 		});
 	});
 });

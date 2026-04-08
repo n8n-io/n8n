@@ -65,18 +65,14 @@ export const TrustedKeySourceSchema = z.discriminatedUnion('type', [
 		allowedRoles: z.array(z.string()).optional(),
 		cacheTtlSeconds: z.number().int().positive().optional(),
 	}),
-	z.object({
-		type: z.literal('ui'),
-	}),
 ]);
 
 export type TrustedKeySource = z.infer<typeof TrustedKeySourceSchema>;
 export type StaticKeySource = Extract<TrustedKeySource, { type: 'static' }>;
 export type JwksKeySource = Extract<TrustedKeySource, { type: 'jwks' }>;
-export type UiKeySource = Extract<TrustedKeySource, { type: 'ui' }>;
 
 export type JwtAlgorithm = z.infer<typeof JwtAlgorithmSchema>;
-export type TrustedKeySourceType = 'static' | 'jwks' | 'ui';
+export type TrustedKeySourceType = 'static' | 'jwks';
 export type TrustedKeySourceStatus = 'pending' | 'healthy' | 'error';
 
 /**
