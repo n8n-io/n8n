@@ -70,7 +70,7 @@ function generateFilterTypeDeclaration(exported: boolean): string {
 	return [
 		`${prefix} FilterOptionsValue = { caseSensitive?: boolean; leftValue?: string; typeValidation?: 'strict' | 'loose' };`,
 		`${prefix} FilterConditionValue = { id?: string; leftValue: unknown; operator: { type: string; operation: string }; rightValue: unknown };`,
-		`${prefix} FilterValue = { options?: FilterOptionsValue; conditions: FilterConditionValue[]; combinator?: 'and' | 'or' };`,
+		`${prefix} FilterValue = { options: FilterOptionsValue; conditions: FilterConditionValue[]; combinator: 'and' | 'or' };`,
 	].join('\n');
 }
 

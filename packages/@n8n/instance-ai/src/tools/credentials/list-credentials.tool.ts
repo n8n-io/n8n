@@ -1,4 +1,5 @@
 import { createTool } from '@mastra/core/tools';
+import pLimit from 'p-limit';
 import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
@@ -29,6 +30,7 @@ export function createListCredentialsTool(context: InstanceAiContext) {
 		id: 'list-credentials',
 		description:
 			'List credentials accessible to the current user. Never exposes secret data. ' +
+			'Returns a masked accountIdentifier (e.g. "al***@gmail.com") when available, so you know which account each credential is connected to. ' +
 			'Results are paginated — use limit/offset to page through large sets, or filter by type to narrow results.',
 		inputSchema: listCredentialsInputSchema,
 		outputSchema: z.object({
@@ -37,6 +39,7 @@ export function createListCredentialsTool(context: InstanceAiContext) {
 					id: z.string(),
 					name: z.string(),
 					type: z.string(),
+					accountIdentifier: z.string().optional(),
 				}),
 			),
 			total: z.number().describe('Total number of credentials matching the query'),
@@ -51,10 +54,30 @@ export function createListCredentialsTool(context: InstanceAiContext) {
 			const limit = inputData.limit ?? DEFAULT_LIMIT;
 			const page = allCredentials.slice(offset, offset + limit);
 
-			return {
-				credentials: page.map(({ id, name, type }) => ({ id, name, type })),
-				total,
-			};
+			if (!context.credentialService.getAccountContext) {
+				return {
+					credentials: page.map(({ id, name, type }) => ({ id, name, type })),
+					total,
+				};
+			}
+
+			const concurrencyLimit = pLimit(10);
+			const enriched = await Promise.all(
+				page.map(
+					async (cred) =>
+						await concurrencyLimit(async () => {
+							const ctx = await context.credentialService.getAccountContext!(cred.id);
+							return {
+								id: cred.id,
+								name: cred.name,
+								type: cred.type,
+								accountIdentifier: ctx?.accountIdentifier,
+							};
+						}),
+				),
+			);
+
+			return { credentials: enriched, total };
 		},
 	});
 }
