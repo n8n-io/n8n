@@ -7,10 +7,6 @@ export class NotificationsPage {
 		this.page = page;
 	}
 
-	async goto() {
-		await this.page.goto('/');
-	}
-
 	/**
 	 * Gets the main container locator for a notification by searching in its title text.
 	 * @param text The text or a regular expression to find within the notification's title.
