@@ -115,6 +115,19 @@ export function useTimelineGrouping(
 			}
 		}
 
+		// Extract trailing text from each response group — the last text entry
+		// is usually the conclusion after tool calls and should be visible.
+		for (let i = segments.length - 1; i >= 0; i--) {
+			const seg = segments[i];
+			if (seg.kind !== 'response-group') continue;
+			const last = seg.entries.at(-1);
+			if (last?.type === 'text') {
+				seg.entries.pop();
+				seg.textCount--;
+				segments.splice(i + 1, 0, { kind: 'trailing-text', content: last.content });
+			}
+		}
+
 		// Drop empty response groups (only hidden tool calls, no visible content).
 		const flattened = segments.filter((seg) => {
 			if (seg.kind !== 'response-group') return true;
