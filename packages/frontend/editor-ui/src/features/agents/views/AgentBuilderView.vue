@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { useRoute, useRouter } from 'vue-router';
-import { N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -43,10 +43,18 @@ const initialPrompt = ref<string | undefined>(undefined);
 const { schema, fetchSchema, updateSchema } = useAgentSchema();
 const localSchema = ref<AgentSchema | null>(null);
 
+// Dirty state (shared between view and sidebar)
+const originalSchemaJson = ref('');
+const isDirty = ref(false);
+
 watch(
 	schema,
 	(s) => {
-		if (s) localSchema.value = deepCopy(s);
+		if (s) {
+			localSchema.value = deepCopy(s);
+			originalSchemaJson.value = JSON.stringify(s);
+			isDirty.value = false;
+		}
 	},
 	{ immediate: true },
 );
@@ -139,20 +147,8 @@ function onSchemaFieldUpdate(updates: Partial<AgentSchema>) {
 	if (updates.config) {
 		localSchema.value.config = { ...localSchema.value.config, ...updates.config };
 	}
-	void debouncedSchemaSave();
+	isDirty.value = JSON.stringify(localSchema.value) !== originalSchemaJson.value;
 }
-
-const debouncedSchemaSave = useDebounceFn(async () => {
-	if (!localSchema.value) return;
-	const result = await updateSchema(projectId.value, agentId, localSchema.value, updatedAt.value);
-	if (result) {
-		skipNextWatch = true;
-		code.value = result.code;
-		updatedAt.value = result.updatedAt;
-	} else {
-		await fetchAgent();
-	}
-}, 1000);
 
 async function saveSchema() {
 	if (!localSchema.value) return;
@@ -161,12 +157,15 @@ async function saveSchema() {
 		skipNextWatch = true;
 		code.value = result.code;
 		updatedAt.value = result.updatedAt;
+		originalSchemaJson.value = JSON.stringify(localSchema.value);
+		isDirty.value = false;
 	}
 }
 
 function cancelSchema() {
 	if (schema.value) {
 		localSchema.value = deepCopy(schema.value);
+		isDirty.value = false;
 	}
 }
 
@@ -189,15 +188,18 @@ onMounted(async () => {
 
 <template>
 	<div :class="$style.builder">
-		<!-- Top bar -->
+		<!-- Unified top bar spanning full width -->
 		<div :class="$style.topBar">
+			<!-- Left: agent breadcrumb (for center column) -->
 			<div :class="$style.topBarLeft">
 				<N8nIcon icon="robot" :size="16" />
 				<N8nText tag="span" bold>{{
 					agentName || locale.baseText('agents.home.untitledAgent')
 				}}</N8nText>
 			</div>
-			<div :class="$style.topBarRight">
+
+			<!-- Center spacer -->
+			<div :class="$style.topBarCenter">
 				<button
 					:class="[$style.toggleBtn, settingsVisible && $style.toggleBtnActive]"
 					data-testid="toggle-settings"
@@ -205,42 +207,67 @@ onMounted(async () => {
 				>
 					<N8nIcon icon="sliders-horizontal" :size="16" />
 				</button>
+				<button
+					:class="[$style.toggleBtn, !settingsVisible && $style.toggleBtnActive]"
+					data-testid="toggle-activity"
+				>
+					<N8nIcon icon="panel-right" :size="16" />
+				</button>
+			</div>
+
+			<!-- Right: settings header (Cancel + Save) — visible when sidebar is open -->
+			<div v-if="settingsVisible" :class="$style.topBarRight">
+				<div :class="$style.settingsHeaderDivider" />
+				<N8nText tag="span" bold>{{ locale.baseText('agents.settings.title') }}</N8nText>
+				<div :class="$style.settingsHeaderActions">
+					<button :class="$style.cancelBtn" :disabled="!isDirty" @click="cancelSchema">
+						{{ locale.baseText('agents.settings.cancel') }}
+					</button>
+					<N8nButton
+						type="primary"
+						size="small"
+						:label="locale.baseText('agents.settings.save')"
+						:disabled="!isDirty"
+						@click="saveSchema"
+					/>
+				</div>
 			</div>
 		</div>
 
 		<!-- Main content area -->
 		<div :class="$style.content">
 			<!-- Center column: home or chat -->
-			<AgentHomeContent
-				v-if="!chatActive"
-				:agent-name="agentName"
-				:agent-description="agentDescription"
-				:project-id="projectId"
-				:agent-id="agentId"
-				@send-message="startChat"
-				@update:name="updateName"
-				@update:description="updateDescription"
-			/>
-			<AgentChatPanel
-				v-else
-				:project-id="projectId"
-				:agent-id="agentId"
-				mode="inline"
-				:initial-message="initialPrompt"
-				@code-updated="onCodeUpdated"
-				@code-delta="onCodeDelta"
-			/>
+			<div :class="$style.center">
+				<AgentHomeContent
+					v-if="!chatActive"
+					:agent-name="agentName"
+					:agent-description="agentDescription"
+					:project-id="projectId"
+					:agent-id="agentId"
+					@send-message="startChat"
+					@update:name="updateName"
+					@update:description="updateDescription"
+				/>
+				<AgentChatPanel
+					v-else
+					:project-id="projectId"
+					:agent-id="agentId"
+					mode="inline"
+					:initial-message="initialPrompt"
+					@code-updated="onCodeUpdated"
+					@code-delta="onCodeDelta"
+				/>
+			</div>
 
-			<!-- Settings sidebar -->
+			<!-- Settings sidebar (no own header — header is in top bar) -->
 			<AgentSettingsSidebar
 				v-if="settingsVisible"
 				:schema="localSchema"
 				:code="code"
 				:updated-at="updatedAt"
+				:is-dirty="isDirty"
 				@update:schema="onSchemaFieldUpdate"
 				@update:code="onCodeUpdate"
-				@save="saveSchema"
-				@cancel="cancelSchema"
 			/>
 		</div>
 	</div>
@@ -258,11 +285,11 @@ onMounted(async () => {
 .topBar {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	padding: var(--spacing--2xs) var(--spacing--sm);
+	height: 56px;
+	min-height: 56px;
+	padding: 0 var(--spacing--sm);
 	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
 	background-color: var(--color--background);
-	flex-shrink: 0;
 }
 
 .topBarLeft {
@@ -272,10 +299,58 @@ onMounted(async () => {
 	color: var(--color--text);
 }
 
+.topBarCenter {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--spacing--4xs);
+}
+
 .topBarRight {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--sm);
+	margin-left: var(--spacing--sm);
+}
+
+.settingsHeaderDivider {
+	width: 1px;
+	height: 24px;
+	background-color: var(--color--foreground);
+	margin-right: var(--spacing--2xs);
+}
+
+.settingsHeaderActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	margin-left: auto;
+}
+
+.cancelBtn {
+	background: none;
+	border: none;
+	cursor: pointer;
+	font-size: var(--font-size--sm);
+	font-family: var(--font-family);
+	font-weight: var(--font-weight--bold);
+	color: var(--color--text);
+	padding: var(--spacing--4xs) var(--spacing--xs);
+	border-radius: var(--radius);
+}
+
+.cancelBtn:hover {
+	background-color: var(--color--foreground--tint-2);
+}
+
+.cancelBtn:disabled {
+	color: var(--color--text--tint-2);
+	cursor: default;
+}
+
+.cancelBtn:disabled:hover {
+	background: none;
 }
 
 .toggleBtn {
@@ -298,12 +373,8 @@ onMounted(async () => {
 }
 
 .toggleBtnActive {
-	color: var(--color--primary);
-	background-color: var(--color--primary--tint-3);
-}
-
-.toggleBtnActive:hover {
-	background-color: var(--color--primary--tint-2);
+	color: var(--color--text);
+	background-color: var(--color--foreground--tint-1);
 }
 
 .content {
@@ -311,5 +382,12 @@ onMounted(async () => {
 	flex: 1;
 	min-height: 0;
 	overflow: hidden;
+}
+
+.center {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
 }
 </style>

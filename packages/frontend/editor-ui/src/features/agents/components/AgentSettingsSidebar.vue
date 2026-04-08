@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-import { N8nButton, N8nCallout, N8nInput, N8nSelect, N8nText } from '@n8n/design-system';
+import { N8nCallout, N8nIcon, N8nInput, N8nSelect, N8nText } from '@n8n/design-system';
 import N8nOption from '@n8n/design-system/components/N8nOption';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -24,13 +24,12 @@ const props = defineProps<{
 	schema: AgentSchema | null;
 	code: string;
 	updatedAt: string;
+	isDirty: boolean;
 }>();
 
 const emit = defineEmits<{
 	'update:schema': [changes: Partial<AgentSchema>];
 	'update:code': [code: string];
-	save: [];
-	cancel: [];
 }>();
 
 // --- Model & credential state ---
@@ -43,20 +42,21 @@ const modelName = ref(props.schema?.model.name ?? '');
 const credential = ref(props.schema?.credential ?? '');
 const instructions = ref(props.schema?.instructions ?? '');
 
-const PROVIDERS = [
-	'anthropic',
-	'openai',
-	'google',
-	'xai',
-	'groq',
-	'deepseek',
-	'mistral',
-	'openrouter',
-	'cohere',
-	'ollama',
-] as const;
-
 const availableModels = computed<ModelInfo[]>(() => getModelsForProvider(provider.value || ''));
+
+// Combined model display: "Model Name  Credential Name"
+const modelOptions = computed(() => {
+	return availableModels.value.map((m) => ({
+		value: m.id,
+		label: m.name,
+	}));
+});
+
+const credentialLabel = computed(() => {
+	if (!credential.value) return '';
+	const cred = credentials.value.find((c) => c.id === credential.value);
+	return cred?.name ?? '';
+});
 
 // Sync local state when schema prop changes externally
 watch(
@@ -73,26 +73,19 @@ watch(
 
 function onModelSelect(value: string) {
 	modelName.value = value;
-	emitSchemaUpdate({
+	emit('update:schema', {
 		model: { provider: provider.value || '', name: value },
-	});
-}
-
-function onProviderChange(value: string) {
-	provider.value = value;
-	emitSchemaUpdate({
-		model: { provider: value, name: modelName.value || '' },
 	});
 }
 
 function onCredentialChange(value: string) {
 	credential.value = value;
-	emitSchemaUpdate({ credential: value });
+	emit('update:schema', { credential: value });
 }
 
 function onInstructionsChange(value: string) {
 	instructions.value = value;
-	emitSchemaUpdate({ instructions: value });
+	emit('update:schema', { instructions: value });
 }
 
 async function loadCredentials() {
@@ -111,43 +104,6 @@ async function loadCredentials() {
 	}
 }
 
-// --- Dirty state tracking ---
-const originalSchemaJson = ref('');
-const isDirty = ref(false);
-
-watch(
-	() => props.schema,
-	(s) => {
-		if (s) {
-			originalSchemaJson.value = JSON.stringify(s);
-			isDirty.value = false;
-		}
-	},
-	{ immediate: true },
-);
-
-function emitSchemaUpdate(changes: Partial<AgentSchema>) {
-	emit('update:schema', changes);
-	setTimeout(() => {
-		if (props.schema) {
-			isDirty.value = JSON.stringify(props.schema) !== originalSchemaJson.value;
-		}
-	}, 0);
-}
-
-function onSave() {
-	emit('save');
-	if (props.schema) {
-		originalSchemaJson.value = JSON.stringify(props.schema);
-	}
-	isDirty.value = false;
-}
-
-function onCancel() {
-	emit('cancel');
-	isDirty.value = false;
-}
-
 // --- Collapsible sections ---
 const expandedSections = ref<Record<string, boolean>>({
 	triggers: false,
@@ -160,6 +116,32 @@ function toggleSection(section: string) {
 	expandedSections.value[section] = !expandedSections.value[section];
 }
 
+// --- Resizable width ---
+const sidebarWidth = ref(480);
+const isResizing = ref(false);
+const MIN_WIDTH = 360;
+const MAX_WIDTH = 700;
+
+function onResizeStart(event: MouseEvent) {
+	isResizing.value = true;
+	const startX = event.clientX;
+	const startWidth = sidebarWidth.value;
+
+	function onMouseMove(e: MouseEvent) {
+		const delta = startX - e.clientX;
+		sidebarWidth.value = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, startWidth + delta));
+	}
+
+	function onMouseUp() {
+		isResizing.value = false;
+		document.removeEventListener('mousemove', onMouseMove);
+		document.removeEventListener('mouseup', onMouseUp);
+	}
+
+	document.addEventListener('mousemove', onMouseMove);
+	document.addEventListener('mouseup', onMouseUp);
+}
+
 onMounted(() => {
 	void loadCredentials();
 	if (projectId.value) {
@@ -169,89 +151,79 @@ onMounted(() => {
 </script>
 
 <template>
-	<aside :class="$style.sidebar">
-		<div :class="$style.header">
-			<N8nText tag="span" bold size="large">{{ locale.baseText('agents.settings.title') }}</N8nText>
-			<div :class="$style.headerActions">
-				<N8nButton
-					type="secondary"
-					size="small"
-					:label="locale.baseText('agents.settings.cancel')"
-					:disabled="!isDirty"
-					@click="onCancel"
-				/>
-				<N8nButton
-					type="primary"
-					size="small"
-					:label="locale.baseText('agents.settings.save')"
-					:disabled="!isDirty"
-					@click="onSave"
-				/>
-			</div>
-		</div>
+	<aside
+		:class="$style.sidebar"
+		:style="{ width: `${sidebarWidth}px`, minWidth: `${MIN_WIDTH}px` }"
+	>
+		<!-- Resize handle -->
+		<div :class="$style.resizeHandle" @mousedown="onResizeStart" />
 
+		<!-- Unsaved changes banner -->
 		<N8nCallout v-if="isDirty" theme="warning" :class="$style.unsavedBanner">
 			{{ locale.baseText('agents.settings.unsavedChanges') }}
 		</N8nCallout>
 
 		<div :class="$style.body">
-			<!-- Model section (always visible) -->
+			<!-- Model section -->
 			<div :class="$style.staticSection">
-				<N8nText tag="span" bold size="small">{{
-					locale.baseText('agents.settings.model')
-				}}</N8nText>
-
-				<!-- Combined model selector -->
-				<N8nSelect
-					:model-value="modelName"
-					filterable
-					:placeholder="locale.baseText('agents.settings.model.selectModel')"
-					size="medium"
-					data-testid="agent-model-select"
-					@update:model-value="onModelSelect"
-				>
-					<N8nOption v-for="m in availableModels" :key="m.id" :value="m.id" :label="m.name" />
-				</N8nSelect>
-
-				<!-- Provider (smaller, secondary) -->
-				<div :class="$style.providerRow">
-					<N8nSelect
-						:model-value="provider"
-						:placeholder="locale.baseText('agents.settings.model.selectProvider')"
-						size="small"
-						data-testid="agent-provider-select"
-						@update:model-value="onProviderChange"
-					>
-						<N8nOption v-for="p in PROVIDERS" :key="p" :value="p" :label="p" />
-					</N8nSelect>
-
-					<N8nSelect
-						:model-value="credential"
-						:placeholder="locale.baseText('agents.settings.model.selectCredential')"
-						:loading="credentialsLoading"
-						size="small"
-						data-testid="agent-credential-select"
-						@update:model-value="onCredentialChange"
-					>
-						<N8nOption
-							v-for="cred in credentials"
-							:key="cred.id"
-							:value="cred.id"
-							:label="cred.name"
-						/>
-					</N8nSelect>
+				<div :class="$style.sectionLabel">
+					<N8nText tag="span" bold size="small">{{
+						locale.baseText('agents.settings.model')
+					}}</N8nText>
 				</div>
+
+				<!-- Combined model + credential selector -->
+				<div :class="$style.modelSelector">
+					<N8nSelect
+						:model-value="modelName"
+						filterable
+						:placeholder="locale.baseText('agents.settings.model.selectModel')"
+						size="medium"
+						:class="$style.modelSelect"
+						data-testid="agent-model-select"
+						@update:model-value="onModelSelect"
+					>
+						<N8nOption v-for="m in modelOptions" :key="m.value" :value="m.value" :label="m.label" />
+					</N8nSelect>
+					<N8nText
+						v-if="credentialLabel"
+						:class="$style.credentialInline"
+						size="small"
+						color="text-light"
+					>
+						{{ credentialLabel }}
+					</N8nText>
+				</div>
+
+				<!-- Credential selector (separate row) -->
+				<N8nSelect
+					:model-value="credential"
+					:placeholder="locale.baseText('agents.settings.model.selectCredential')"
+					:loading="credentialsLoading"
+					size="small"
+					data-testid="agent-credential-select"
+					@update:model-value="onCredentialChange"
+				>
+					<N8nOption
+						v-for="cred in credentials"
+						:key="cred.id"
+						:value="cred.id"
+						:label="cred.name"
+					/>
+				</N8nSelect>
 			</div>
 
-			<!-- Instructions section (always visible) -->
+			<!-- Instructions section -->
 			<div :class="$style.staticSection">
-				<N8nText tag="span" bold size="small">{{
-					locale.baseText('agents.settings.instructions')
-				}}</N8nText>
+				<div :class="$style.sectionLabel">
+					<N8nText tag="span" bold size="small">{{
+						locale.baseText('agents.settings.instructions')
+					}}</N8nText>
+				</div>
 				<N8nInput
 					:model-value="instructions"
 					type="textarea"
-					:rows="5"
+					:rows="6"
 					:placeholder="locale.baseText('agents.settings.instructions.placeholder')"
 					data-testid="agent-instructions-input"
 					@update:model-value="onInstructionsChange"
@@ -261,10 +233,18 @@ onMounted(() => {
 			<!-- Triggers (collapsible) -->
 			<div :class="$style.section">
 				<button :class="$style.sectionHeader" @click="toggleSection('triggers')">
-					<N8nText tag="span" bold size="small">{{
-						locale.baseText('agents.settings.triggers')
-					}}</N8nText>
-					<span :class="$style.chevron">{{ expandedSections.triggers ? '−' : '+' }}</span>
+					<div :class="$style.sectionHeaderLeft">
+						<N8nIcon
+							:icon="expandedSections.triggers ? 'chevron-down' : 'chevron-right'"
+							:size="16"
+						/>
+						<N8nText tag="span" bold size="small">{{
+							locale.baseText('agents.settings.triggers')
+						}}</N8nText>
+					</div>
+					<button :class="$style.addBtn" @click.stop>
+						<N8nIcon icon="plus" :size="16" />
+					</button>
 				</button>
 				<div v-if="expandedSections.triggers" :class="$style.sectionContent">
 					<N8nText size="small" color="text-light">
@@ -276,36 +256,57 @@ onMounted(() => {
 			<!-- Tools (collapsible) -->
 			<div :class="$style.section">
 				<button :class="$style.sectionHeader" @click="toggleSection('tools')">
-					<N8nText tag="span" bold size="small">{{
-						locale.baseText('agents.settings.tools')
-					}}</N8nText>
-					<span :class="$style.chevron">{{ expandedSections.tools ? '−' : '+' }}</span>
+					<div :class="$style.sectionHeaderLeft">
+						<N8nIcon :icon="expandedSections.tools ? 'chevron-down' : 'chevron-right'" :size="16" />
+						<N8nText tag="span" bold size="small">{{
+							locale.baseText('agents.settings.tools')
+						}}</N8nText>
+					</div>
+					<button :class="$style.addBtn" @click.stop>
+						<N8nIcon icon="plus" :size="16" />
+					</button>
 				</button>
 				<div v-if="expandedSections.tools" :class="$style.sectionContent">
-					<AgentToolsPanel :schema="schema" @update:schema="emitSchemaUpdate" />
+					<AgentToolsPanel
+						:schema="schema"
+						@update:schema="(changes) => emit('update:schema', changes)"
+					/>
 				</div>
 			</div>
 
 			<!-- Advanced (collapsible) -->
 			<div :class="$style.section">
 				<button :class="$style.sectionHeader" @click="toggleSection('advanced')">
-					<N8nText tag="span" bold size="small">{{
-						locale.baseText('agents.settings.advanced')
-					}}</N8nText>
-					<span :class="$style.chevron">{{ expandedSections.advanced ? '−' : '+' }}</span>
+					<div :class="$style.sectionHeaderLeft">
+						<N8nIcon
+							:icon="expandedSections.advanced ? 'chevron-down' : 'chevron-right'"
+							:size="16"
+						/>
+						<N8nText tag="span" bold size="small">{{
+							locale.baseText('agents.settings.advanced')
+						}}</N8nText>
+					</div>
+					<button :class="$style.addBtn" @click.stop>
+						<N8nIcon icon="plus" :size="16" />
+					</button>
 				</button>
 				<div v-if="expandedSections.advanced" :class="$style.sectionContent">
-					<AgentMemoryPanel :schema="schema" @update:schema="emitSchemaUpdate" />
+					<AgentMemoryPanel
+						:schema="schema"
+						@update:schema="(changes) => emit('update:schema', changes)"
+					/>
 				</div>
 			</div>
 
 			<!-- Code (collapsed by default) -->
 			<div :class="$style.section">
 				<button :class="$style.sectionHeader" @click="toggleSection('code')">
-					<N8nText tag="span" bold size="small">{{
-						locale.baseText('agents.settings.code')
-					}}</N8nText>
-					<span :class="$style.chevron">{{ expandedSections.code ? '−' : '+' }}</span>
+					<div :class="$style.sectionHeaderLeft">
+						<N8nIcon :icon="expandedSections.code ? 'chevron-down' : 'chevron-right'" :size="16" />
+						<N8nText tag="span" bold size="small">{{
+							locale.baseText('agents.settings.code')
+						}}</N8nText>
+					</div>
 				</button>
 				<div v-if="expandedSections.code" :class="$style.codeSection">
 					<AgentCodeEditor :model-value="code" @update:model-value="emit('update:code', $event)" />
@@ -317,31 +318,33 @@ onMounted(() => {
 
 <style module>
 .sidebar {
-	width: 340px;
-	min-width: 340px;
+	position: relative;
 	border-left: var(--border-width) var(--border-style) var(--color--foreground);
 	background-color: var(--color--background);
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
-}
-
-.header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: var(--spacing--xs) var(--spacing--sm);
-	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
 	flex-shrink: 0;
 }
 
-.headerActions {
-	display: flex;
-	gap: var(--spacing--4xs);
+.resizeHandle {
+	position: absolute;
+	top: 0;
+	left: -3px;
+	width: 6px;
+	height: 100%;
+	cursor: col-resize;
+	z-index: 5;
+}
+
+.resizeHandle:hover {
+	background-color: var(--color--primary--tint-2);
 }
 
 .unsavedBanner {
 	flex-shrink: 0;
+	text-align: center;
+	border-radius: 0;
 }
 
 .body {
@@ -353,14 +356,26 @@ onMounted(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
-	padding: var(--spacing--sm);
+	padding: var(--spacing--sm) var(--spacing--sm);
 	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
 }
 
-.providerRow {
-	display: grid;
-	grid-template-columns: 1fr 1fr;
-	gap: var(--spacing--2xs);
+.sectionLabel {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.modelSelector {
+	position: relative;
+}
+
+.modelSelect {
+	width: 100%;
+}
+
+.credentialInline {
+	margin-top: var(--spacing--4xs);
 }
 
 .section {
@@ -383,10 +398,28 @@ onMounted(() => {
 	background-color: var(--color--foreground--tint-2);
 }
 
-.chevron {
-	font-size: var(--font-size--md);
+.sectionHeaderLeft {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.addBtn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border: none;
+	background: none;
+	cursor: pointer;
 	color: var(--color--text--tint-1);
-	font-weight: var(--font-weight--bold);
+	border-radius: var(--radius);
+}
+
+.addBtn:hover {
+	background-color: var(--color--foreground--tint-1);
+	color: var(--color--text);
 }
 
 .sectionContent {
