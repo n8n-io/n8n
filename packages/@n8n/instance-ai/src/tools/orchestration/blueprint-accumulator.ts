@@ -228,6 +228,10 @@ export class BlueprintAccumulator {
 		this.removeFromArray(this.workflows, id);
 		this.removeFromArray(this.researchItems, id);
 		this.removeFromArray(this.delegateItems, id);
+		// Clean up dangling dep references in remaining tasks
+		for (const task of this.tasks) {
+			task.deps = task.deps.filter((dep) => dep !== id);
+		}
 		return true;
 	}
 
