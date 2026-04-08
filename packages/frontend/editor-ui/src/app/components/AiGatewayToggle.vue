@@ -10,6 +10,7 @@ import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
 const props = defineProps<{
 	aiGatewayEnabled: boolean;
 	readonly: boolean;
+	credentialType?: string;
 }>();
 
 const emit = defineEmits<{
@@ -69,7 +70,12 @@ watch(
 					:class="$style.tokensBadge"
 					@mouseenter="badgeHovered = true"
 					@mouseleave="badgeHovered = false"
-					@click="uiStore.openModal(AI_GATEWAY_TOP_UP_MODAL_KEY)"
+					@click="
+						uiStore.openModalWithData({
+							name: AI_GATEWAY_TOP_UP_MODAL_KEY,
+							data: { credentialType: props.credentialType },
+						})
+					"
 				>
 					<span :class="[$style.badgeLabel, badgeHovered && $style.badgeLabelHidden]">
 						{{

@@ -4,15 +4,35 @@ import { N8nButton, N8nIcon, N8nInputNumber, N8nLink, N8nText } from '@n8n/desig
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { BUILTIN_CREDENTIALS_DOCS_URL } from '@/app/constants/urls';
 import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
 import Modal from '@/app/components/Modal.vue';
 
 const PRESET_AMOUNTS = [10, 20, 50, 100] as const;
-const FEEDBACK_FORM_URL = 'https://forms.gle/placeholder'; // TODO: replace with real form URL
 
 const i18n = useI18n();
 const uiStore = useUIStore();
 const aiGatewayStore = useAiGatewayStore();
+const credentialsStore = useCredentialsStore();
+
+const modalData = computed(() => uiStore.modalsById[AI_GATEWAY_TOP_UP_MODAL_KEY]?.data);
+const credentialType = computed<string | undefined>(
+	() => modalData.value?.credentialType as string | undefined,
+);
+
+const credentialDocsUrl = computed(() => {
+	if (!credentialType.value) return '';
+
+	const type = credentialsStore.getCredentialTypeByName(credentialType.value);
+	if (!type || !type.documentationUrl) return '';
+
+	if (type.documentationUrl.startsWith('http')) {
+		return type.documentationUrl;
+	}
+
+	return `${BUILTIN_CREDENTIALS_DOCS_URL}${type.documentationUrl}/`;
+});
 
 const selectedPreset = ref<number | null>(null);
 const customAmount = ref<number | null>(null);
@@ -80,7 +100,7 @@ async function onBuy() {
 							data-test-id="ai-gateway-topup-preset"
 							@click="selectPreset(amount)"
 						>
-							{{ amount }}
+							<span :class="$style.currencySymbol">$</span>{{ amount }}
 						</button>
 					</div>
 
@@ -99,14 +119,31 @@ async function onBuy() {
 				<div v-else :class="$style.thankYouBody">
 					<N8nIcon icon="hourglass" size="xlarge" :class="$style.thankYouIcon" />
 					<N8nText size="large" bold color="text-dark">Thank you for your interest!</N8nText>
-					<N8nText color="text-base">Buying credits is currently in development.</N8nText>
-					<N8nText color="text-base">
-						Your feedback matters — it helps us build the right experience. Share your thoughts by
-						filling out our short feedback form:
-					</N8nText>
-					<N8nLink :to="FEEDBACK_FORM_URL" new-window data-test-id="ai-gateway-topup-feedback-link">
-						Open feedback form
-					</N8nLink>
+
+					<template v-if="credentialType">
+						<N8nText color="text-base">Buying credits is currently in development.</N8nText>
+						<N8nText color="text-base">
+							If you run out of AI Gateway credits, you can keep using AI in n8n by configuring your
+							own provider credentials.
+						</N8nText>
+						<N8nLink
+							v-if="credentialDocsUrl"
+							:to="credentialDocsUrl"
+							new-window
+							data-test-id="ai-gateway-topup-credentials-docs-link"
+						>
+							Open setup guide
+						</N8nLink>
+					</template>
+					<template v-else>
+						<N8nText color="text-base">
+							We are working on enabling AI Gateway top-ups directly in n8n.
+						</N8nText>
+						<N8nText color="text-base">
+							In the meantime, you can configure your own credentials with AI providers to continue
+							using AI nodes.
+						</N8nText>
+					</template>
 				</div>
 			</div>
 		</template>
@@ -175,6 +212,18 @@ async function onBuy() {
 	border-color: var(--color--success);
 	background-color: var(--color--success);
 	color: var(--color--neutral-white);
+
+	.currencySymbol {
+		color: inherit;
+		opacity: 0.7;
+	}
+}
+
+.currencySymbol {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
+	font-weight: var(--font-weight--regular);
+	margin-right: var(--spacing--3xs);
 }
 
 .customInput {

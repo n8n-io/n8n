@@ -863,6 +863,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 				v-if="showAiGatewayToggle(type.name)"
 				:ai-gateway-enabled="isAiGatewayManagedCredentials(type.name)"
 				:readonly="readonly"
+				:credential-type="type.name"
 				@toggle="onAiGatewayToggle(type.name, $event)"
 			/>
 		</div>
