@@ -6,6 +6,15 @@ import { z } from 'zod';
 import type { InstanceAiContext } from '../../types';
 import { formatTimestamp } from '../../utils/format-timestamp';
 
+export const restoreWorkflowVersionInputSchema = z.object({
+	workflowId: z.string().describe('ID of the workflow'),
+	versionId: z.string().describe('ID of the version to restore'),
+});
+
+export const restoreWorkflowVersionResumeSchema = z.object({
+	approved: z.boolean(),
+});
+
 export function createRestoreWorkflowVersionTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'restore-workflow-version',
@@ -13,10 +22,7 @@ export function createRestoreWorkflowVersionTool(context: InstanceAiContext) {
 			'Restore a workflow to a previous version by overwriting the current draft with that ' +
 			"version's nodes and connections. This does NOT affect the published/active version — " +
 			'you must publish separately after restoring.',
-		inputSchema: z.object({
-			workflowId: z.string().describe('ID of the workflow'),
-			versionId: z.string().describe('ID of the version to restore'),
-		}),
+		inputSchema: restoreWorkflowVersionInputSchema,
 		outputSchema: z.object({
 			success: z.boolean(),
 			error: z.string().optional(),
@@ -28,11 +34,16 @@ export function createRestoreWorkflowVersionTool(context: InstanceAiContext) {
 			message: z.string(),
 			severity: instanceAiConfirmationSeveritySchema,
 		}),
-		resumeSchema: z.object({
-			approved: z.boolean(),
-		}),
-		execute: async (input, ctx) => {
-			const { resumeData, suspend } = ctx?.agent ?? {};
+		resumeSchema: restoreWorkflowVersionResumeSchema,
+		execute: async (input: z.infer<typeof restoreWorkflowVersionInputSchema>, ctx) => {
+			const resumeData = ctx?.agent?.resumeData as
+				| z.infer<typeof restoreWorkflowVersionResumeSchema>
+				| undefined;
+			const suspend = ctx?.agent?.suspend;
+
+			if (context.permissions?.restoreWorkflowVersion === 'blocked') {
+				return { success: false, denied: true, reason: 'Action blocked by admin' };
+			}
 
 			const needsApproval = context.permissions?.restoreWorkflowVersion !== 'always_allow';
 

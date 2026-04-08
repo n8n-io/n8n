@@ -5,22 +5,25 @@ import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
 
+export const cleanupTestExecutionsInputSchema = z.object({
+	workflowId: z.string().describe('ID of the workflow whose test executions to clean up'),
+	workflowName: z.string().optional().describe('Name of the workflow (for confirmation message)'),
+	olderThanHours: z
+		.number()
+		.optional()
+		.describe('Only delete executions older than this many hours. Defaults to 1.'),
+});
+
+export const cleanupTestExecutionsResumeSchema = z.object({
+	approved: z.boolean(),
+});
+
 export function createCleanupTestExecutionsTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'cleanup-test-executions',
 		description:
 			'Delete manual/test execution records for a workflow. Defaults to executions older than 1 hour. Requires confirmation.',
-		inputSchema: z.object({
-			workflowId: z.string().describe('ID of the workflow whose test executions to clean up'),
-			workflowName: z
-				.string()
-				.optional()
-				.describe('Name of the workflow (for confirmation message)'),
-			olderThanHours: z
-				.number()
-				.optional()
-				.describe('Only delete executions older than this many hours. Defaults to 1.'),
-		}),
+		inputSchema: cleanupTestExecutionsInputSchema,
 		outputSchema: z.object({
 			deletedCount: z.number(),
 			denied: z.boolean().optional(),
@@ -31,11 +34,16 @@ export function createCleanupTestExecutionsTool(context: InstanceAiContext) {
 			message: z.string(),
 			severity: instanceAiConfirmationSeveritySchema,
 		}),
-		resumeSchema: z.object({
-			approved: z.boolean(),
-		}),
-		execute: async (input, ctx) => {
-			const { resumeData, suspend } = ctx?.agent ?? {};
+		resumeSchema: cleanupTestExecutionsResumeSchema,
+		execute: async (input: z.infer<typeof cleanupTestExecutionsInputSchema>, ctx) => {
+			const resumeData = ctx?.agent?.resumeData as
+				| z.infer<typeof cleanupTestExecutionsResumeSchema>
+				| undefined;
+			const suspend = ctx?.agent?.suspend;
+
+			if (context.permissions?.cleanupTestExecutions === 'blocked') {
+				return { deletedCount: 0, denied: true, reason: 'Action blocked by admin' };
+			}
 
 			const needsApproval = context.permissions?.cleanupTestExecutions !== 'always_allow';
 

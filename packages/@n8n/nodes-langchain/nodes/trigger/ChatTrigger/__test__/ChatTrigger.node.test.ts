@@ -31,6 +31,14 @@ describe('ChatTrigger Node', () => {
 		mockResponse.writeHead.mockReturnValue(mockResponse);
 		mockResponse.flushHeaders.mockImplementation(() => mockResponse);
 
+		// Provide socket methods required by the streaming keepalive configuration
+		mockRequest.socket = {
+			...mockRequest.socket,
+			setTimeout: jest.fn(),
+			setNoDelay: jest.fn(),
+			setKeepAlive: jest.fn(),
+		} as unknown as Request['socket'];
+
 		mockContext.getRequestObject.mockReturnValue(mockRequest);
 		mockContext.getResponseObject.mockReturnValue(mockResponse);
 		mockContext.getNode.mockReturnValue({
@@ -83,6 +91,114 @@ describe('ChatTrigger Node', () => {
 			expect(result).toEqual({
 				webhookResponse: { status: 200 },
 				workflowData: expect.any(Array),
+			});
+		});
+
+		it('should enable streaming when availableInChat is true and responseMode is not set', async () => {
+			// Mock options with availableInChat true and no responseMode
+			mockContext.getNodeParameter.mockImplementation(
+				(
+					paramName: string,
+					defaultValue?: boolean | string | object,
+				): boolean | string | object | undefined => {
+					if (paramName === 'public') return true;
+					if (paramName === 'mode') return 'hostedChat';
+					if (paramName === 'options') return {};
+					if (paramName === 'availableInChat') return true;
+					return defaultValue;
+				},
+			);
+
+			// Call the webhook method
+			const result = await chatTrigger.webhook(mockContext);
+
+			// Verify streaming headers are set
+			expect(mockResponse.writeHead).toHaveBeenCalledWith(200, {
+				'Content-Type': 'application/json; charset=utf-8',
+				'Transfer-Encoding': 'chunked',
+				'Cache-Control': 'no-cache, no-transform',
+				Connection: 'keep-alive',
+			});
+			expect(mockResponse.flushHeaders).toHaveBeenCalled();
+
+			// Verify response structure for streaming
+			expect(result).toEqual({
+				workflowData: expect.any(Array),
+				noWebhookResponse: true,
+			});
+		});
+
+		it('should enable streaming when availableInChat is true and responseMode is "streaming"', async () => {
+			// Mock options with availableInChat true and streaming responseMode
+			mockContext.getNodeParameter.mockImplementation(
+				(
+					paramName: string,
+					defaultValue?: boolean | string | object,
+				): boolean | string | object | undefined => {
+					if (paramName === 'public') return true;
+					if (paramName === 'mode') return 'hostedChat';
+					if (paramName === 'options') return { responseMode: 'streaming' };
+					if (paramName === 'availableInChat') return true;
+					return defaultValue;
+				},
+			);
+
+			// Call the webhook method
+			const result = await chatTrigger.webhook(mockContext);
+
+			// Verify streaming headers are set
+			expect(mockResponse.writeHead).toHaveBeenCalledWith(200, {
+				'Content-Type': 'application/json; charset=utf-8',
+				'Transfer-Encoding': 'chunked',
+				'Cache-Control': 'no-cache, no-transform',
+				Connection: 'keep-alive',
+			});
+			expect(mockResponse.flushHeaders).toHaveBeenCalled();
+
+			// Verify response structure for streaming
+			expect(result).toEqual({
+				workflowData: expect.any(Array),
+				noWebhookResponse: true,
+			});
+		});
+
+		it('should handle multipart form data with streaming enabled', async () => {
+			// Mock multipart form data request
+			mockRequest.contentType = 'multipart/form-data';
+			mockRequest.body = {
+				data: { message: 'Hello' },
+				files: {},
+			};
+
+			// Mock options with streaming responseMode
+			mockContext.getNodeParameter.mockImplementation(
+				(
+					paramName: string,
+					defaultValue?: boolean | string | object,
+				): boolean | string | object | undefined => {
+					if (paramName === 'public') return true;
+					if (paramName === 'mode') return 'hostedChat';
+					if (paramName === 'options') return { responseMode: 'streaming' };
+					return defaultValue;
+				},
+			);
+
+			// Call the webhook method
+			const result = await chatTrigger.webhook(mockContext);
+
+			// Verify streaming headers are set
+			expect(mockResponse.writeHead).toHaveBeenCalledWith(200, {
+				'Content-Type': 'application/json; charset=utf-8',
+				'Transfer-Encoding': 'chunked',
+				'Cache-Control': 'no-cache, no-transform',
+				Connection: 'keep-alive',
+			});
+			expect(mockResponse.flushHeaders).toHaveBeenCalled();
+
+			// Verify response structure for streaming
+			expect(result).toEqual({
+				workflowData: expect.any(Array),
+				noWebhookResponse: true,
 			});
 		});
 	});

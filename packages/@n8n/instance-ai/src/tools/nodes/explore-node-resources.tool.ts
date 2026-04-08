@@ -3,6 +3,38 @@ import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
 
+export const exploreNodeResourcesInputSchema = z.object({
+	nodeType: z.string().describe('Node type ID, e.g. "n8n-nodes-base.googleSheets"'),
+	version: z.number().describe('Node version, e.g. 4.7'),
+	methodName: z
+		.string()
+		.describe(
+			'The method name from the node type definition JSDoc annotation, ' +
+				'e.g. "spreadSheetsSearch" from @searchListMethod, "getModels" from @loadOptionsMethod',
+		),
+	methodType: z
+		.enum(['listSearch', 'loadOptions'])
+		.describe(
+			'The method type: "listSearch" for @searchListMethod annotations (supports filter/pagination), ' +
+				'"loadOptions" for @loadOptionsMethod annotations',
+		),
+	credentialType: z.string().describe('Credential type key, e.g. "googleSheetsOAuth2Api"'),
+	credentialId: z.string().describe('Credential ID from list-credentials'),
+	filter: z.string().optional().describe('Search/filter text to narrow results'),
+	paginationToken: z
+		.string()
+		.optional()
+		.describe('Pagination token from a previous call to get more results'),
+	currentNodeParameters: z
+		.record(z.unknown())
+		.optional()
+		.describe(
+			'Current node parameters for dependent lookups. Some methods need prior selections — ' +
+				'e.g. sheetsSearch needs documentId: { __rl: true, mode: "id", value: "spreadsheetId" } ' +
+				'to list sheets within that spreadsheet. Check displayOptions in the type definition.',
+		),
+});
+
 export function createExploreNodeResourcesTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'explore-node-resources',
@@ -11,37 +43,7 @@ export function createExploreNodeResourcesTool(context: InstanceAiContext) {
 			"OpenAI models, Slack channels). Uses the node's built-in search/load methods " +
 			'with your credentials. Call after discovering nodes and credentials to get real ' +
 			'resource IDs instead of placeholders.',
-		inputSchema: z.object({
-			nodeType: z.string().describe('Node type ID, e.g. "n8n-nodes-base.googleSheets"'),
-			version: z.number().describe('Node version, e.g. 4.7'),
-			methodName: z
-				.string()
-				.describe(
-					'The method name from the node type definition JSDoc annotation, ' +
-						'e.g. "spreadSheetsSearch" from @searchListMethod, "getModels" from @loadOptionsMethod',
-				),
-			methodType: z
-				.enum(['listSearch', 'loadOptions'])
-				.describe(
-					'The method type: "listSearch" for @searchListMethod annotations (supports filter/pagination), ' +
-						'"loadOptions" for @loadOptionsMethod annotations',
-				),
-			credentialType: z.string().describe('Credential type key, e.g. "googleSheetsOAuth2Api"'),
-			credentialId: z.string().describe('Credential ID from list-credentials'),
-			filter: z.string().optional().describe('Search/filter text to narrow results'),
-			paginationToken: z
-				.string()
-				.optional()
-				.describe('Pagination token from a previous call to get more results'),
-			currentNodeParameters: z
-				.record(z.unknown())
-				.optional()
-				.describe(
-					'Current node parameters for dependent lookups. Some methods need prior selections — ' +
-						'e.g. sheetsSearch needs documentId: { __rl: true, mode: "id", value: "spreadsheetId" } ' +
-						'to list sheets within that spreadsheet. Check displayOptions in the type definition.',
-				),
-		}),
+		inputSchema: exploreNodeResourcesInputSchema,
 		outputSchema: z.object({
 			results: z.array(
 				z.object({
@@ -54,7 +56,7 @@ export function createExploreNodeResourcesTool(context: InstanceAiContext) {
 			paginationToken: z.unknown().optional(),
 			error: z.string().optional(),
 		}),
-		execute: async (input) => {
+		execute: async (input: z.infer<typeof exploreNodeResourcesInputSchema>) => {
 			if (!context.nodeService.exploreResources) {
 				return {
 					results: [],
