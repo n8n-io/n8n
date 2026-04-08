@@ -48,12 +48,6 @@ export class AgentsCredentialProvider implements CredentialProvider {
 			throw new Error(`Credential "${credentialIdOrName}" not found or not accessible`);
 		}
 
-		if (!SUPPORTED_CREDENTIAL_TYPES.includes(credential.type)) {
-			throw new Error(
-				`Credential type "${credential.type}" is not supported. Supported types: ${SUPPORTED_CREDENTIAL_TYPES.join(', ')}`,
-			);
-		}
-
 		const data = this.credentialsService.decrypt(credential, true);
 		const apiKey = typeof data.apiKey === 'string' ? data.apiKey : '';
 
