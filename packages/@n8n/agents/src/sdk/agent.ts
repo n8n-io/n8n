@@ -2,12 +2,14 @@ import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import { z } from 'zod';
 
 import type { Eval } from './eval';
+import { fromSchema, type FromSchemaOptions } from './from-schema';
 import type { McpClient } from './mcp-client';
 import { Memory } from './memory';
 import { Telemetry } from './telemetry';
 import { Tool, wrapToolForApproval } from './tool';
 import { AgentRuntime } from '../runtime/agent-runtime';
 import { AgentEventBus } from '../runtime/event-bus';
+import { InMemoryMemory } from '../runtime/memory-store';
 import { createAgentToolResult } from '../runtime/tool-adapter';
 import type {
 	AgentEvent,
@@ -34,7 +36,20 @@ import type {
 	ThinkingConfigFor,
 	ResumeOptions,
 } from '../types';
+import type { AgentBuilder } from '../types/sdk/agent-builder';
+import type { CredentialProvider } from '../types/sdk/credential-provider';
 import type { AgentMessage } from '../types/sdk/message';
+import type {
+	AgentSchema,
+	EvalSchema,
+	GuardrailSchema,
+	McpServerSchema,
+	MemorySchema,
+	ProviderToolSchema,
+	ThinkingSchema,
+	ToolSchema,
+} from '../types/sdk/schema';
+import { zodToJsonSchema } from '../utils/zod';
 import type { Workspace } from '../workspace/workspace';
 
 const DEFAULT_LAST_MESSAGES = 10;
@@ -56,7 +71,7 @@ type ToolParameter = BuiltTool | { build(): BuiltTool };
  * ```
  */
 
-export class Agent implements BuiltAgent {
+export class Agent implements BuiltAgent, AgentBuilder {
 	readonly name: string;
 
 	private modelId?: string;
@@ -89,6 +104,8 @@ export class Agent implements BuiltAgent {
 
 	private credentialName?: string;
 
+	private credProvider?: CredentialProvider;
+
 	private resolvedKey?: string;
 
 	private runtime?: AgentRuntime;
@@ -113,6 +130,30 @@ export class Agent implements BuiltAgent {
 
 	constructor(name: string) {
 		this.name = name;
+	}
+
+	/**
+	 * Reconstruct a live Agent from an AgentSchema JSON.
+	 * Custom tool handlers are proxied through the injected HandlerExecutor.
+	 *
+	 * This is the inverse of `Agent.describe()`.
+	 */
+	static async fromSchema(
+		schema: AgentSchema,
+		name: string,
+		options: FromSchemaOptions,
+	): Promise<Agent> {
+		const agent = new Agent(name);
+		await fromSchema(agent, schema, options);
+		return agent;
+	}
+
+	hasCheckpointStorage(): boolean {
+		return this.checkpointStore !== undefined;
+	}
+
+	hasMemory(): boolean {
+		return this.memoryConfig !== undefined;
 	}
 
 	/**
@@ -164,6 +205,11 @@ export class Agent implements BuiltAgent {
 		return this;
 	}
 
+	/** @internal Read the declared tools (used by the compile step to detect workflow tool markers). */
+	get declaredTools(): BuiltTool[] {
+		return this.tools;
+	}
+
 	/** Set the memory configuration. Accepts a MemoryConfig, Memory builder, or bare BuiltMemory. */
 	memory(m: MemoryConfig | Memory | BuiltMemory): this {
 		if (m instanceof Memory) {
@@ -172,9 +218,20 @@ export class Agent implements BuiltAgent {
 		} else if ('memory' in m && 'lastMessages' in m) {
 			// MemoryConfig — use directly
 			this.memoryConfig = m;
-		} else {
+		} else if (
+			typeof m === 'object' &&
+			m !== null &&
+			typeof m.getMessages === 'function' &&
+			typeof m.saveMessages === 'function'
+		) {
 			// Bare BuiltMemory — wrap in minimal config
 			this.memoryConfig = { memory: m, lastMessages: DEFAULT_LAST_MESSAGES };
+		} else {
+			throw new Error(
+				'Invalid memory configuration. Use: new Memory().lastMessages(N) for in-process memory, ' +
+					'or new Memory().storage(new SqliteMemory(path)).lastMessages(N) for persistent storage. ' +
+					'See the Memory class documentation for all options.',
+			);
 		}
 		return this;
 	}
@@ -244,6 +301,26 @@ export class Agent implements BuiltAgent {
 		return this;
 	}
 
+	/**
+	 * Attach a credential provider that resolves credential identifiers to
+	 * decrypted API keys at build time. When both `.credential()` and
+	 * `.credentialProvider()` are set, the provider resolves the credential
+	 * before model creation — no subclassing required.
+	 *
+	 * @example
+	 * ```typescript
+	 * const agent = new Agent('assistant')
+	 *   .model('anthropic', 'claude-sonnet-4')
+	 *   .credential('credential-id-123')
+	 *   .credentialProvider(myProvider)
+	 *   .instructions('You are helpful.');
+	 * ```
+	 */
+	credentialProvider(provider: CredentialProvider): this {
+		this.credProvider = provider;
+		return this;
+	}
+
 	/** @internal Read the declared credential name (used by the execution engine). */
 	protected get declaredCredential(): string | undefined {
 		return this.credentialName;
@@ -286,12 +363,12 @@ export class Agent implements BuiltAgent {
 	 * // Anthropic — budgetTokens
 	 * new Agent('thinker')
 	 *   .model('anthropic', 'claude-sonnet-4-5')
-	 *   .thinking({ budgetTokens: 10000 })
+	 *   .thinking('anthropic', { budgetTokens: 5000 })
 	 *
 	 * // OpenAI — reasoningEffort
 	 * new Agent('thinker')
 	 *   .model('openai', 'o3-mini')
-	 *   .thinking({ reasoningEffort: 'high' })
+	 *   .thinking('openai', { reasoningEffort: 'high' })
 	 * ```
 	 */
 	thinking<P extends Provider>(_provider: P, config?: ThinkingConfigFor<P>): this {
@@ -445,6 +522,208 @@ export class Agent implements BuiltAgent {
 			});
 
 		return tool.build();
+	}
+
+	/**
+	 * Return a schema object describing the agent's declared configuration.
+	 * This is a synchronous introspection method — it does not build the agent
+	 * or connect to any external services.
+	 */
+	describe(): AgentSchema {
+		// --- Model ---
+		let model: AgentSchema['model'];
+		if (this.modelConfigObj) {
+			model = { provider: null, name: null, raw: 'object' };
+		} else if (this.modelId) {
+			const slashIdx = this.modelId.indexOf('/');
+			if (slashIdx === -1) {
+				model = { provider: null, name: this.modelId };
+			} else {
+				model = {
+					provider: this.modelId.slice(0, slashIdx),
+					name: this.modelId.slice(slashIdx + 1),
+				};
+			}
+		} else {
+			model = { provider: null, name: null };
+		}
+
+		// --- Tools (custom / workflow) ---
+		const toolSchemas: ToolSchema[] = this.tools.map((tool) => {
+			const isWorkflow = '__workflowTool' in tool && Boolean(tool.__workflowTool);
+			return {
+				name: tool.name,
+				description: tool.description,
+				type: isWorkflow ? ('workflow' as const) : ('custom' as const),
+				editable: !isWorkflow,
+				// Source strings — null, CLI patches with original TypeScript
+				inputSchemaSource: null,
+				outputSchemaSource: null,
+				handlerSource: tool.handler?.toString() ?? null,
+				suspendSchemaSource: null,
+				resumeSchemaSource: null,
+				toMessageSource: null,
+				requireApproval: tool.withDefaultApproval ?? false,
+				needsApprovalFnSource: null,
+				providerOptions: tool.providerOptions ?? null,
+				// Display fields — JSON Schema for UI rendering
+				inputSchema: zodToJsonSchema(tool.inputSchema),
+				outputSchema: zodToJsonSchema(tool.outputSchema),
+				// UI badge indicators — for approval-wrapped tools, hasSuspend/hasResume
+				// reflect the approval mechanism, not user-declared suspend/resume
+				hasSuspend: Boolean(tool.suspendSchema),
+				hasResume: Boolean(tool.resumeSchema),
+				hasToMessage: Boolean(tool.toMessage),
+			};
+		});
+
+		// --- Provider tools ---
+		const providerToolSchemas: ProviderToolSchema[] = this.providerTools.map((pt) => ({
+			name: pt.name,
+			source: '',
+		}));
+
+		// --- Guardrails ---
+		const guardrails: GuardrailSchema[] = [
+			...this.inputGuardrails.map((g) => ({
+				name: g.name,
+				guardType: g.guardType,
+				strategy: g.strategy,
+				position: 'input' as const,
+				config: g._config,
+				source: '',
+			})),
+			...this.outputGuardrails.map((g) => ({
+				name: g.name,
+				guardType: g.guardType,
+				strategy: g.strategy,
+				position: 'output' as const,
+				config: g._config,
+				source: '',
+			})),
+		];
+
+		// --- MCP servers ---
+		let mcp: McpServerSchema[] | null = null;
+		if (this.mcpClients.length > 0) {
+			mcp = [];
+			for (const client of this.mcpClients) {
+				for (const serverName of client.serverNames) {
+					mcp.push({
+						name: serverName,
+						configSource: '',
+					});
+				}
+			}
+		}
+
+		// --- Telemetry ---
+		const telemetry = this.telemetryBuilder || this.telemetryConfig ? { source: '' } : null;
+
+		// --- Checkpoint ---
+		const checkpoint = this.checkpointStore === 'memory' ? 'memory' : null;
+
+		// --- Memory ---
+		let memory: MemorySchema | null = null;
+		if (this.memoryConfig) {
+			const mc = this.memoryConfig;
+			let semanticRecall: MemorySchema['semanticRecall'] = null;
+			if (mc.semanticRecall) {
+				semanticRecall = {
+					topK: mc.semanticRecall.topK,
+					messageRange: mc.semanticRecall.messageRange
+						? {
+								before: mc.semanticRecall.messageRange.before,
+								after: mc.semanticRecall.messageRange.after,
+							}
+						: null,
+					embedder: mc.semanticRecall.embedder ?? null,
+				};
+			}
+
+			let workingMemory: MemorySchema['workingMemory'] = null;
+			if (mc.workingMemory) {
+				workingMemory = {
+					type: mc.workingMemory.structured ? 'structured' : 'freeform',
+					...(mc.workingMemory.schema
+						? { schema: zodToJsonSchema(mc.workingMemory.schema) ?? undefined }
+						: {}),
+					...(mc.workingMemory.template ? { template: mc.workingMemory.template } : {}),
+				};
+			}
+
+			memory = {
+				// TODO: each BuiltMemory should have describe() method to return a config showing connection params and other metadata
+				// this config must have enough information to rebuild the memory instance
+				source: null,
+				storage: mc.memory instanceof InMemoryMemory ? 'memory' : 'custom',
+				lastMessages: mc.lastMessages ?? null,
+				semanticRecall,
+				workingMemory,
+			};
+		}
+
+		// --- Evaluations ---
+		const evaluations: EvalSchema[] = this.agentEvals.map((e) => ({
+			name: e.name,
+			description: e.description ?? null,
+			type: e.evalType,
+			modelId: e.modelId ?? null,
+			hasCredential: e.credentialName !== null,
+			credentialName: e.credentialName,
+			handlerSource: null,
+		}));
+
+		// --- Structured output ---
+		// TODO: define structured output schema handling better
+		const structuredOutput = {
+			enabled: Boolean(this.outputSchema),
+			schemaSource: null as string | null,
+		};
+
+		// --- Thinking ---
+		let thinking: ThinkingSchema | null = null;
+		if (this.thinkingConfig) {
+			const provider = this.modelId?.split('/')[0];
+			if (provider === 'anthropic') {
+				thinking = {
+					provider: 'anthropic',
+					budgetTokens:
+						'budgetTokens' in this.thinkingConfig
+							? (this.thinkingConfig as { budgetTokens?: number }).budgetTokens
+							: undefined,
+				};
+			} else if (provider === 'openai') {
+				thinking = {
+					provider: 'openai',
+					reasoningEffort:
+						'reasoningEffort' in this.thinkingConfig
+							? String((this.thinkingConfig as { reasoningEffort?: string }).reasoningEffort)
+							: undefined,
+				};
+			}
+		}
+
+		return {
+			model,
+			credential: this.credentialName ?? null,
+			instructions: this.instructionsText ?? null,
+			description: null,
+			tools: toolSchemas,
+			providerTools: providerToolSchemas,
+			memory,
+			evaluations,
+			guardrails,
+			mcp,
+			telemetry,
+			checkpoint,
+			config: {
+				structuredOutput,
+				thinking,
+				toolCallConcurrency: this.concurrencyValue ?? null,
+				requireToolApproval: this.requireToolApprovalValue,
+			},
+		};
 	}
 
 	/** Return the latest state snapshot of the agent. Returns `{ status: 'idle' }` before first run. */
@@ -624,6 +903,12 @@ export class Agent implements BuiltAgent {
 					"Add .checkpoint('memory') for in-process storage, " +
 					'or pass a persistent store (e.g. LibSQLStore, PgStore).',
 			);
+		}
+
+		// Resolve credential via provider before building the model config.
+		if (this.credProvider && this.credentialName) {
+			const resolved = await this.credProvider.resolve(this.credentialName);
+			this.resolvedKey = resolved.apiKey;
 		}
 
 		let modelConfig: ModelConfig;

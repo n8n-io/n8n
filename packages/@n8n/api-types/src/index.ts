@@ -153,6 +153,7 @@ export {
 } from './schemas/source-controlled-file.schema';
 
 export {
+	insightsSummarySchema,
 	type InsightsSummaryType,
 	type InsightsSummaryUnit,
 	type InsightsSummary,
@@ -280,7 +281,10 @@ export {
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
 	credentialFlowSchema,
+	gatewayConfirmationRequiredPayloadSchema,
+	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	InstanceAiSendMessageRequest,
+	InstanceAiEvalExecutionRequest,
 	instanceAiGatewayKeySchema,
 	InstanceAiGatewayEventsQuery,
 	InstanceAiEventsQuery,
@@ -350,8 +354,14 @@ export type {
 	DomainAccessAction,
 	DomainAccessMeta,
 	InstanceAiCredentialFlow,
+	GatewayConfirmationRequiredPayload,
 	ToolCategory,
 	InstanceAiWorkflowSetupNode,
+	InstanceAiEvalNodeExecutionMode,
+	InstanceAiEvalInterceptedRequest,
+	InstanceAiEvalNodeResult,
+	InstanceAiEvalMockHints,
+	InstanceAiEvalExecutionResult,
 } from './schemas/instance-ai.schema';
 
 export {

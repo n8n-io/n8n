@@ -5,26 +5,32 @@ import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
 
+export const deleteFolderInputSchema = z.object({
+	folderId: z.string().describe('ID of the folder to delete'),
+	folderName: z.string().optional().describe('Name of the folder (for confirmation message)'),
+	projectId: z.string().describe('ID of the project the folder belongs to'),
+	transferToFolderId: z
+		.string()
+		.optional()
+		.describe(
+			'ID of a folder to move contents into before deletion. If omitted, contents are flattened to project root and archived.',
+		),
+	transferToFolderName: z
+		.string()
+		.optional()
+		.describe('Name of the transfer folder (for confirmation message)'),
+});
+
+export const deleteFolderResumeSchema = z.object({
+	approved: z.boolean(),
+});
+
 export function createDeleteFolderTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'delete-folder',
 		description:
 			'Delete a folder. Without transferToFolderId, contents are flattened to root and archived. With transferToFolderId, contents are moved first. Requires confirmation.',
-		inputSchema: z.object({
-			folderId: z.string().describe('ID of the folder to delete'),
-			folderName: z.string().optional().describe('Name of the folder (for confirmation message)'),
-			projectId: z.string().describe('ID of the project the folder belongs to'),
-			transferToFolderId: z
-				.string()
-				.optional()
-				.describe(
-					'ID of a folder to move contents into before deletion. If omitted, contents are flattened to project root and archived.',
-				),
-			transferToFolderName: z
-				.string()
-				.optional()
-				.describe('Name of the transfer folder (for confirmation message)'),
-		}),
+		inputSchema: deleteFolderInputSchema,
 		outputSchema: z.object({
 			success: z.boolean(),
 			denied: z.boolean().optional(),
@@ -35,11 +41,16 @@ export function createDeleteFolderTool(context: InstanceAiContext) {
 			message: z.string(),
 			severity: instanceAiConfirmationSeveritySchema,
 		}),
-		resumeSchema: z.object({
-			approved: z.boolean(),
-		}),
-		execute: async (input, ctx) => {
-			const { resumeData, suspend } = ctx?.agent ?? {};
+		resumeSchema: deleteFolderResumeSchema,
+		execute: async (input: z.infer<typeof deleteFolderInputSchema>, ctx) => {
+			const resumeData = ctx?.agent?.resumeData as
+				| z.infer<typeof deleteFolderResumeSchema>
+				| undefined;
+			const suspend = ctx?.agent?.suspend;
+
+			if (context.permissions?.deleteFolder === 'blocked') {
+				return { success: false, denied: true, reason: 'Action blocked by admin' };
+			}
 
 			const needsApproval = context.permissions?.deleteFolder !== 'always_allow';
 

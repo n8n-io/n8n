@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import type {
 	InstanceAiContext,
 	InstanceAiWorkflowService,
@@ -38,7 +40,7 @@ import { wrapUntrustedData } from '@n8n/instance-ai';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import type { User, WorkflowEntity } from '@n8n/db';
+import type { User, WorkflowEntity, ExecutionSummaries } from '@n8n/db';
 
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import {
@@ -61,7 +63,7 @@ import {
 } from '@n8n/db';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { hasGlobalScope, type Scope } from '@n8n/permissions';
+import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { LessThan } from '@n8n/typeorm';
 import {
@@ -85,7 +87,10 @@ import {
 	WEBHOOK_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	TimeoutExecutionCancelledError,
+	jsonParse,
 } from 'n8n-workflow';
+
+import { InstanceSettings } from 'n8n-core';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -101,8 +106,8 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
+import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
-import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -117,24 +122,27 @@ export class InstanceAiAdapterService {
 	private readonly allowSendingParameterValues: boolean;
 
 	/**
-	 * Service-level cache for collectTypes().  Shared across all node adapters
-	 * to avoid loading ~31 MB of node descriptions per run.  Expires after
+	 * Service-level cache for node type descriptions. Reads from the static JSON
+	 * file that FrontendService writes at startup, avoiding the expensive
+	 * collectTypes() → postProcessLoaders() rebuild cycle. Expires after
 	 * 5 minutes so hot-reloaded nodes are picked up without a restart.
 	 */
 	private nodesCache: {
-		promise: Promise<Awaited<ReturnType<LoadNodesAndCredentials['collectTypes']>>['nodes']>;
+		promise: Promise<INodeTypeDescription[]>;
 		expiresAt: number;
 	} | null = null;
 
 	private readonly NODES_CACHE_TTL_MS = 5 * 60 * 1000;
 
-	private async getNodesFromCache() {
+	private async getNodesFromCache(): Promise<INodeTypeDescription[]> {
 		if (this.nodesCache && Date.now() < this.nodesCache.expiresAt) {
 			return await this.nodesCache.promise;
 		}
-		const promise = this.loadNodesAndCredentials.collectTypes().then((result) => result.nodes);
+		const filePath = path.join(this.instanceSettings.staticCacheDir, 'types/nodes.json');
+		const promise = readFile(filePath, 'utf-8').then((json) =>
+			jsonParse<INodeTypeDescription[]>(json),
+		);
 		this.nodesCache = { promise, expiresAt: Date.now() + this.NODES_CACHE_TTL_MS };
-		// If the promise rejects, invalidate the cache so the next call retries
 		promise.catch(() => {
 			this.nodesCache = null;
 		});
@@ -146,7 +154,6 @@ export class InstanceAiAdapterService {
 		globalConfig: GlobalConfig,
 		private readonly workflowService: WorkflowService,
 		private readonly workflowFinderService: WorkflowFinderService,
-		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly projectRepository: ProjectRepository,
@@ -156,6 +163,7 @@ export class InstanceAiAdapterService {
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableRepository: DataTableRepository,
 		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
@@ -169,6 +177,7 @@ export class InstanceAiAdapterService {
 		private readonly license: License,
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly eventService: EventService,
+		private readonly roleService: RoleService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -513,11 +522,12 @@ export class InstanceAiAdapterService {
 	private createExecutionAdapter(user: User, pushRef?: string): InstanceAiExecutionService {
 		const {
 			workflowFinderService,
-			workflowSharingService,
 			workflowRunner,
 			activeExecutions,
 			executionRepository,
 			allowSendingParameterValues,
+			license,
+			roleService,
 		} = this;
 
 		const DEFAULT_TIMEOUT_MS = 5 * Time.minutes.toMilliseconds;
@@ -550,17 +560,26 @@ export class InstanceAiAdapterService {
 
 		return {
 			async list(options) {
-				const accessibleWorkflowIds = await workflowSharingService.getSharedWorkflowIds(user, {
-					scopes: ['workflow:read'],
-				});
+				const scope: Scope = 'workflow:read';
 
-				if (accessibleWorkflowIds.length === 0) return [];
+				let sharingOptions: ExecutionSummaries.RangeQuery['sharingOptions'];
+				if (license.isSharingEnabled()) {
+					const projectRoles = await roleService.rolesWithScope('project', [scope]);
+					const workflowRoles = await roleService.rolesWithScope('workflow', [scope]);
+					sharingOptions = { scopes: [scope], projectRoles, workflowRoles };
+				} else {
+					sharingOptions = {
+						workflowRoles: ['workflow:owner'],
+						projectRoles: [PROJECT_OWNER_ROLE_SLUG],
+					};
+				}
 
-				const query = {
+				const query: ExecutionSummaries.RangeQuery = {
 					kind: 'range' as const,
 					range: { limit: options?.limit ?? 20, lastId: undefined, firstId: undefined },
 					order: { startedAt: 'DESC' as const },
-					accessibleWorkflowIds,
+					user,
+					sharingOptions,
 					...(options?.workflowId ? { workflowId: options.workflowId } : {}),
 					...(options?.status
 						? {
@@ -805,8 +824,6 @@ export class InstanceAiAdapterService {
 						id: c.id,
 						name: c.name,
 						type: c.type,
-						createdAt: c.createdAt.toISOString(),
-						updatedAt: c.updatedAt.toISOString(),
 					}),
 				);
 			},
@@ -817,8 +834,6 @@ export class InstanceAiAdapterService {
 					id: credential.id,
 					name: credential.name,
 					type: credential.type,
-					createdAt: credential.createdAt.toISOString(),
-					updatedAt: credential.updatedAt.toISOString(),
 				} satisfies CredentialDetail;
 			},
 

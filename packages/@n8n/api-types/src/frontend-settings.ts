@@ -64,6 +64,7 @@ export interface IEnterpriseSettings {
 	};
 	customRoles: boolean;
 	personalSpacePolicy: boolean;
+	dataRedaction: boolean;
 }
 
 export interface FrontendSettings {
@@ -214,6 +215,10 @@ export interface FrontendSettings {
 		credits: number;
 		setup: boolean;
 	};
+	aiGateway?: {
+		enabled: boolean;
+		creditsQuota: number;
+	};
 	ai: {
 		allowSendingParameterValues: boolean;
 	};
@@ -276,6 +281,7 @@ export type FrontendModuleSettings = {
 		localGateway: boolean;
 		localGatewayDisabled: boolean;
 		localGatewayFallbackDirectory: string | null;
+		proxyEnabled: boolean;
 	};
 
 	/**
