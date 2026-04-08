@@ -110,16 +110,10 @@ describe('filterNodeValidator', () => {
 			);
 		});
 
-		it('returns both errors when options and combinator are missing', () => {
+		it('returns all errors when options, conditions array, and combinator are missing', () => {
 			const node = createMockNode('n8n-nodes-base.if', 'Check', {
 				conditions: {
-					conditions: [
-						{
-							leftValue: '={{ $json.x }}',
-							operator: { type: 'string', operation: 'equals' },
-							rightValue: 'y',
-						},
-					],
+					combinator: 'and',
 				},
 			});
 			const graphNode = createGraphNode(node);
@@ -129,9 +123,26 @@ describe('filterNodeValidator', () => {
 
 			expect(issues).toHaveLength(2);
 			expect(issues.map((i) => i.code).sort()).toEqual([
-				'FILTER_MISSING_COMBINATOR',
+				'FILTER_MISSING_CONDITIONS',
 				'FILTER_MISSING_OPTIONS',
 			]);
+		});
+
+		it('returns FILTER_MISSING_CONDITIONS when inner conditions array is missing', () => {
+			const node = createMockNode('n8n-nodes-base.if', 'Check', {
+				conditions: {
+					options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' },
+					combinator: 'and',
+				},
+			});
+			const graphNode = createGraphNode(node);
+			const nodes = new Map([['Check', graphNode]]);
+
+			const issues = filterNodeValidator.validateNode(node, graphNode, createCtx(nodes));
+
+			expect(issues).toContainEqual(
+				expect.objectContaining({ code: 'FILTER_MISSING_CONDITIONS', severity: 'error' }),
+			);
 		});
 
 		it('returns no issues when node has no parameters', () => {

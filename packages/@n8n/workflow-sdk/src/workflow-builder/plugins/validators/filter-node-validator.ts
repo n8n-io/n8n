@@ -45,6 +45,17 @@ function validateFilterValue(
 		});
 	}
 
+	if (!Array.isArray(filterValue.conditions) || filterValue.conditions.length === 0) {
+		issues.push({
+			code: 'FILTER_MISSING_CONDITIONS',
+			message: `${nodeRef} is missing or has empty 'conditions' array in ${paramPath}. Add at least one condition with leftValue, operator, and rightValue.`,
+			severity: 'error',
+			nodeName,
+			originalName,
+			parameterPath: `${paramPath}.conditions`,
+		});
+	}
+
 	if (filterValue.combinator === undefined) {
 		issues.push({
 			code: 'FILTER_MISSING_COMBINATOR',
@@ -83,7 +94,11 @@ export const filterNodeValidator: ValidatorPlugin = {
 
 		// IF and Filter nodes: conditions is directly on params
 		const conditions = params.conditions as Record<string, unknown> | undefined;
-		if (conditions && typeof conditions === 'object' && 'conditions' in conditions) {
+		if (
+			conditions &&
+			typeof conditions === 'object' &&
+			('conditions' in conditions || 'options' in conditions || 'combinator' in conditions)
+		) {
 			issues.push(
 				...validateFilterValue(conditions, nodeRef, 'conditions', displayName, origForWarning),
 			);
