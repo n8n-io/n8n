@@ -867,7 +867,7 @@ describe('NodeCredentials', () => {
 		});
 	});
 
-	describe('AI Gateway toggle (onAiGatewayToggle)', () => {
+	describe('AI Gateway credential mode (onAiGatewayToggle)', () => {
 		const googlePalmApiCredType: ICredentialType = {
 			name: 'googlePalmApi',
 			displayName: 'Google PaLM API',
@@ -916,14 +916,14 @@ describe('NodeCredentials', () => {
 			credentialsStore.state.credentialTypes = { googlePalmApi: googlePalmApiCredType };
 		});
 
-		const aiGatewayToggleStub = {
-			template: '<div data-test-id="ai-gateway-toggle" />',
+		const aiGatewayModeStub = {
+			template: '<div data-test-id="ai-gateway-credential-mode" />',
 			props: ['aiGatewayEnabled', 'readonly'],
 			emits: ['toggle'],
 		};
 
 		describe('rendering', () => {
-			it('should show the toggle and the credential selector when gateway is supported but not managed', () => {
+			it('should show the credential mode selector and the credential selector when gateway is supported but not managed', () => {
 				const existingCred = {
 					id: 'cred-1',
 					name: 'My Google Key',
@@ -943,15 +943,14 @@ describe('NodeCredentials', () => {
 
 				renderComponent({
 					props: { node: nodeWithCred, overrideCredType: 'googlePalmApi' },
-					global: { stubs: { AiGatewayToggle: aiGatewayToggleStub } },
+					global: { stubs: { AiGatewayCredentialModeSelector: aiGatewayModeStub } },
 				});
 
-				// Both the toggle and the credential dropdown should be visible
-				expect(screen.getByTestId('ai-gateway-toggle')).toBeInTheDocument();
+				expect(screen.getByTestId('ai-gateway-credential-mode')).toBeInTheDocument();
 				expect(screen.getByTestId('node-credentials-select')).toBeInTheDocument();
 			});
 
-			it('should show the toggle but hide the credential selector when gateway is managed', () => {
+			it('should show the credential mode selector but hide the credential selector when gateway is managed', () => {
 				const nodeWithGateway: INodeUi = {
 					...googleAiNode,
 					credentials: { googlePalmApi: { id: null, name: '', __aiGatewayManaged: true } },
@@ -960,14 +959,14 @@ describe('NodeCredentials', () => {
 
 				renderComponent({
 					props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' },
-					global: { stubs: { AiGatewayToggle: aiGatewayToggleStub } },
+					global: { stubs: { AiGatewayCredentialModeSelector: aiGatewayModeStub } },
 				});
 
-				expect(screen.getByTestId('ai-gateway-toggle')).toBeInTheDocument();
+				expect(screen.getByTestId('ai-gateway-credential-mode')).toBeInTheDocument();
 				expect(screen.queryByTestId('node-credentials-select')).not.toBeInTheDocument();
 			});
 
-			it('should not show the toggle when gateway feature is disabled', () => {
+			it('should not show the credential mode selector when gateway feature is disabled', () => {
 				vi.mocked(useAiGateway).mockReturnValue({
 					isEnabled: computed(() => false),
 					isCredentialTypeSupported: vi.fn(() => false),
@@ -982,13 +981,13 @@ describe('NodeCredentials', () => {
 
 				renderComponent({
 					props: { node: googleAiNode, overrideCredType: 'googlePalmApi' },
-					global: { stubs: { AiGatewayToggle: aiGatewayToggleStub } },
+					global: { stubs: { AiGatewayCredentialModeSelector: aiGatewayModeStub } },
 				});
 
-				expect(screen.queryByTestId('ai-gateway-toggle')).not.toBeInTheDocument();
+				expect(screen.queryByTestId('ai-gateway-credential-mode')).not.toBeInTheDocument();
 			});
 
-			it('should show the toggle in readonly mode when gateway is managed', () => {
+			it('should show the credential mode selector in readonly mode when gateway is managed', () => {
 				const nodeWithGateway: INodeUi = {
 					...googleAiNode,
 					credentials: { googlePalmApi: { id: null, name: '', __aiGatewayManaged: true } },
@@ -997,15 +996,15 @@ describe('NodeCredentials', () => {
 
 				renderComponent({
 					props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi', readonly: true },
-					global: { stubs: { AiGatewayToggle: aiGatewayToggleStub } },
+					global: { stubs: { AiGatewayCredentialModeSelector: aiGatewayModeStub } },
 				});
 
-				expect(screen.getByTestId('ai-gateway-toggle')).toBeInTheDocument();
+				expect(screen.getByTestId('ai-gateway-credential-mode')).toBeInTheDocument();
 				// The readonly disabled input should not be shown for a managed credential
 				expect(screen.queryByTestId('node-credentials-select')).not.toBeInTheDocument();
 			});
 
-			it('should show the readonly disabled input (not the toggle) when readonly and not managed', () => {
+			it('should show the readonly disabled input (not the credential mode selector) when readonly and not managed', () => {
 				const nodeWithCred: INodeUi = {
 					...googleAiNode,
 					credentials: { googlePalmApi: { id: 'cred-1', name: 'My Google Key' } },
@@ -1014,10 +1013,10 @@ describe('NodeCredentials', () => {
 
 				renderComponent({
 					props: { node: nodeWithCred, overrideCredType: 'googlePalmApi', readonly: true },
-					global: { stubs: { AiGatewayToggle: aiGatewayToggleStub } },
+					global: { stubs: { AiGatewayCredentialModeSelector: aiGatewayModeStub } },
 				});
 
-				expect(screen.queryByTestId('ai-gateway-toggle')).not.toBeInTheDocument();
+				expect(screen.queryByTestId('ai-gateway-credential-mode')).not.toBeInTheDocument();
 				expect(screen.getByTestId('node-credentials-select')).toBeInTheDocument();
 			});
 		});
@@ -1029,7 +1028,7 @@ describe('NodeCredentials', () => {
 				props: { node: googleAiNode, overrideCredType: 'googlePalmApi' },
 				global: {
 					stubs: {
-						AiGatewayToggle: {
+						AiGatewayCredentialModeSelector: {
 							template:
 								'<button data-test-id="ai-gateway-toggle-on" @click="$emit(\'toggle\', true)" />',
 							props: ['aiGatewayEnabled'],
@@ -1076,7 +1075,7 @@ describe('NodeCredentials', () => {
 				props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' },
 				global: {
 					stubs: {
-						AiGatewayToggle: {
+						AiGatewayCredentialModeSelector: {
 							template:
 								'<button data-test-id="ai-gateway-toggle-off" @click="$emit(\'toggle\', false)" />',
 							props: ['aiGatewayEnabled'],
@@ -1115,7 +1114,7 @@ describe('NodeCredentials', () => {
 				props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' },
 				global: {
 					stubs: {
-						AiGatewayToggle: {
+						AiGatewayCredentialModeSelector: {
 							template:
 								'<button data-test-id="ai-gateway-toggle-off" @click="$emit(\'toggle\', false)" />',
 							props: ['aiGatewayEnabled'],

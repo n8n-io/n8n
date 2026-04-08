@@ -141,6 +141,7 @@ import {
 	createWorkflowDocumentId,
 	pinDataToExecutionData,
 } from '@/app/stores/workflowDocument.store';
+import { applyDefaultAiGatewayCredentialsForNewNode } from '@/app/utils/applyDefaultAiGatewayCredentials';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -880,12 +881,19 @@ export function useCanvasOperations() {
 			createConnectionToLastInteractedWithNode(nodeData, options);
 		}
 
-		void nextTick(() => {
+		void nextTick(async () => {
 			if (!options.keepPristine) {
 				uiStore.markStateDirty();
 			}
 
 			workflowsStore.setNodePristine(nodeData.name, true);
+			const gatewayDefaultApplied = await applyDefaultAiGatewayCredentialsForNewNode(
+				nodeData,
+				nodeTypeDescription,
+			);
+			if (gatewayDefaultApplied) {
+				nodeHelpers.credentialsUpdated.value = true;
+			}
 			nodeHelpers.matchCredentials(nodeData);
 			nodeHelpers.updateNodeParameterIssues(nodeData);
 			nodeHelpers.updateNodeCredentialIssues(nodeData);

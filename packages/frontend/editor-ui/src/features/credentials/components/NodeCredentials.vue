@@ -39,7 +39,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useNodeCredentialOptions } from '../composables/useNodeCredentialOptions';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 import { useAiGateway } from '@/app/composables/useAiGateway';
-import AiGatewayToggle from '@/app/components/AiGatewayToggle.vue';
+import AiGatewayCredentialModeSelector from '@/app/components/AiGatewayCredentialModeSelector.vue';
 
 import {
 	N8nBadge,
@@ -627,7 +627,11 @@ function showQuickConnectEmptyState(type: INodeCredentialDescription): boolean {
 }
 
 function showStandardEmptyState(type: INodeCredentialDescription): boolean {
-	return !isCredentialExisting(type) && !quickConnectCredentialType.value;
+	return (
+		!isCredentialExisting(type) &&
+		!quickConnectCredentialType.value &&
+		!isAiGatewayManaged(type.name)
+	);
 }
 
 async function onQuickConnectSignIn(credentialTypeName: string) {
@@ -671,6 +675,16 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 				<template v-if="$slots['label-postfix']" #options>
 					<slot name="label-postfix" />
 				</template>
+				<div
+					v-if="showAiGatewayToggle(type.name)"
+					:class="!isAiGatewayManaged(type.name) ? $style.aiGatewayModeSpaced : undefined"
+				>
+					<AiGatewayCredentialModeSelector
+						:ai-gateway-enabled="isAiGatewayManaged(type.name)"
+						:readonly="readonly"
+						@toggle="onAiGatewayToggle(type.name, $event)"
+					/>
+				</div>
 				<div v-if="readonly && !isAiGatewayManaged(type.name)">
 					<N8nInput
 						:model-value="getSelectedName(type.name)"
@@ -860,12 +874,6 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					</I18nT>
 				</N8nNotice>
 			</N8nInputLabel>
-			<AiGatewayToggle
-				v-if="showAiGatewayToggle(type.name)"
-				:ai-gateway-enabled="isAiGatewayManaged(type.name)"
-				:readonly="readonly"
-				@toggle="onAiGatewayToggle(type.name, $event)"
-			/>
 		</div>
 	</div>
 </template>
@@ -877,6 +885,11 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	& > div:not(:first-child) {
 		margin-top: var(--spacing--xs);
 	}
+}
+
+/* Space before the credential dropdown only when "My own credential" is selected. */
+.aiGatewayModeSpaced {
+	margin-bottom: var(--spacing--2xs);
 }
 
 .selectPopper {
