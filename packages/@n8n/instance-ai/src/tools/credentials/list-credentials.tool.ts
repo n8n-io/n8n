@@ -63,7 +63,12 @@ export function createListCredentialsTool(context: InstanceAiContext) {
 			const enriched = await Promise.all(
 				page.map(async (cred) => {
 					const ctx = await context.credentialService.getAccountContext!(cred.id);
-					return { id: cred.id, name: cred.name, type: cred.type, accountIdentifier: ctx?.accountIdentifier };
+					return {
+						id: cred.id,
+						name: cred.name,
+						type: cred.type,
+						accountIdentifier: ctx?.accountIdentifier,
+					};
 				}),
 			);
 
