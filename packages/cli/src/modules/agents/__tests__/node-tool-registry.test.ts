@@ -133,14 +133,14 @@ describe('listTools()', () => {
 			expect(tool.hasCredentials).toBe(true);
 		});
 
-		it('sets hasCredentials to false when no matching credential is available', async () => {
+		it('excludes nodes when no matching credential is available', async () => {
 			const lnc = makeLnc([makeNode({ credentials: [mock({ name: 'gmailOAuth2' })] })]);
 			const provider = mock<CredentialProvider>();
 			provider.list.mockResolvedValue([{ id: 'cred-1', name: 'My Slack', type: 'slackApi' }]);
 
-			const [tool] = await listTools(lnc, provider);
+			const tools = await listTools(lnc, provider);
 
-			expect(tool.hasCredentials).toBe(false);
+			expect(tools).toHaveLength(0);
 		});
 
 		it('populates credentials with matching CredentialListItems', async () => {
@@ -156,14 +156,14 @@ describe('listTools()', () => {
 			expect(tool.credentials).toEqual([{ id: 'cred-1', name: 'My Gmail', type: 'gmailOAuth2' }]);
 		});
 
-		it('returns an empty credentials array when no credentials match', async () => {
+		it('excludes nodes entirely when no credentials match (does not return with empty array)', async () => {
 			const lnc = makeLnc([makeNode({ credentials: [mock({ name: 'gmailOAuth2' })] })]);
 			const provider = mock<CredentialProvider>();
 			provider.list.mockResolvedValue([{ id: 'cred-1', name: 'My Slack', type: 'slackApi' }]);
 
-			const [tool] = await listTools(lnc, provider);
+			const tools = await listTools(lnc, provider);
 
-			expect(tool.credentials).toEqual([]);
+			expect(tools).toHaveLength(0);
 		});
 	});
 });

@@ -58,8 +58,12 @@ export async function listTools(
 	const { nodes } = await lnc.collectTypes();
 
 	const availableCreds = credentialProvider ? await credentialProvider.list() : [];
-	const availableCredTypes =
-		availableCreds.length > 0 ? new Set(availableCreds.map((cred) => cred.type)) : undefined;
+
+	// When a credential provider is present, build a Set of available credential types.
+	// Using undefined when there is no provider signals "no filtering" to the loop below.
+	const availableCredTypes = credentialProvider
+		? new Set(availableCreds.map((cred) => cred.type))
+		: undefined;
 
 	const seen = new Set<string>();
 	const descriptors: ToolDescriptor[] = [];
@@ -76,6 +80,9 @@ export async function listTools(
 				? true
 				: credentialSlots.length === 0 ||
 					credentialSlots.some((credType) => availableCredTypes.has(credType));
+
+		// When a credential provider is active, hide nodes the user cannot use.
+		if (credentialProvider && !hasCredentials) continue;
 
 		const nodeTypeVersion = Array.isArray(node.version)
 			? node.version[node.version.length - 1]
