@@ -112,6 +112,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { getBase } from '@/workflow-execute-additional-data';
 
@@ -178,6 +179,7 @@ export class InstanceAiAdapterService {
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly eventService: EventService,
 		private readonly roleService: RoleService,
+		private readonly telemetry: Telemetry,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -189,13 +191,14 @@ export class InstanceAiAdapterService {
 			filesystemService?: InstanceAiFilesystemService;
 			searchProxyConfig?: ServiceProxyConfig;
 			pushRef?: string;
+			threadId?: string;
 		},
 	): InstanceAiContext {
-		const { filesystemService, searchProxyConfig, pushRef } = options ?? {};
+		const { filesystemService, searchProxyConfig, pushRef, threadId } = options ?? {};
 		return {
 			userId: user.id,
-			workflowService: this.createWorkflowAdapter(user),
-			executionService: this.createExecutionAdapter(user, pushRef),
+			workflowService: this.createWorkflowAdapter(user, threadId),
+			executionService: this.createExecutionAdapter(user, pushRef, threadId),
 			credentialService: this.createCredentialAdapter(user),
 			nodeService: this.createNodeAdapter(user),
 			dataTableService: this.createDataTableAdapter(user),
@@ -248,7 +251,7 @@ export class InstanceAiAdapterService {
 		return { getPersonalProjectId, assertProjectScope, resolveProjectId };
 	}
 
-	private createWorkflowAdapter(user: User): InstanceAiWorkflowService {
+	private createWorkflowAdapter(user: User, threadId?: string): InstanceAiWorkflowService {
 		const {
 			workflowService,
 			workflowFinderService,
@@ -258,6 +261,7 @@ export class InstanceAiAdapterService {
 			enterpriseWorkflowService,
 			license,
 			allowSendingParameterValues,
+			telemetry,
 		} = this;
 		const { resolveProjectId } = this.createProjectScopeHelpers(user);
 		const redactParameters = !allowSendingParameterValues;
@@ -318,6 +322,14 @@ export class InstanceAiAdapterService {
 				if (!wf.activeVersionId) {
 					throw new Error(`Workflow ${workflowId} was not activated — no active version set`);
 				}
+
+				if (threadId) {
+					telemetry.track('Builder published workflow', {
+						thread_id: threadId,
+						executed_by: 'ai',
+					});
+				}
+
 				return { activeVersionId: wf.activeVersionId };
 			},
 
@@ -392,6 +404,13 @@ export class InstanceAiAdapterService {
 
 				const updated = await workflowService.update(user, updateData, saved.id);
 
+				if (threadId) {
+					telemetry.track('Builder created workflow', {
+						thread_id: threadId,
+						workflow_id: updated.id,
+					});
+				}
+
 				return toWorkflowDetail(updated, { redactParameters });
 			},
 
@@ -434,6 +453,14 @@ export class InstanceAiAdapterService {
 				}
 
 				const updated = await workflowService.update(user, updateData, workflowId);
+
+				if (threadId) {
+					telemetry.track('Builder modified workflow', {
+						thread_id: threadId,
+						workflow_id: workflowId,
+					});
+				}
+
 				return toWorkflowDetail(updated, { redactParameters });
 			},
 
@@ -519,7 +546,11 @@ export class InstanceAiAdapterService {
 		};
 	}
 
-	private createExecutionAdapter(user: User, pushRef?: string): InstanceAiExecutionService {
+	private createExecutionAdapter(
+		user: User,
+		pushRef?: string,
+		threadId?: string,
+	): InstanceAiExecutionService {
 		const {
 			workflowFinderService,
 			workflowRunner,
@@ -528,6 +559,7 @@ export class InstanceAiAdapterService {
 			allowSendingParameterValues,
 			license,
 			roleService,
+			telemetry,
 		} = this;
 
 		const DEFAULT_TIMEOUT_MS = 5 * Time.minutes.toMilliseconds;
@@ -723,6 +755,15 @@ export class InstanceAiAdapterService {
 						}
 						throw error;
 					}
+				}
+
+				if (threadId) {
+					telemetry.track('Builder executed workflow', {
+						thread_id: threadId,
+						executed_by: 'ai',
+						pinned_node_count: Object.keys(runData.pinData ?? {}).length,
+						exec_type: runData.executionMode,
+					});
 				}
 
 				return await extractExecutionResult(
