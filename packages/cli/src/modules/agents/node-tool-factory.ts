@@ -1,4 +1,4 @@
-import type { BuiltTool } from '@n8n/agents';
+import type { BuiltTool, ToolSchema } from '@n8n/agents';
 import { Tool } from '@n8n/agents';
 import type { IDataObject, INodeParameters } from 'n8n-workflow';
 import { z } from 'zod';
@@ -16,21 +16,13 @@ export interface NodeToolFactoryContext {
  * Convert a single {@link NodeToolDescriptor} marker (from `ToolFromNode.build()`) into
  * a real `BuiltTool` backed by {@link EphemeralNodeExecutor}.
  */
-export function resolveNodeTool(
-	toolSchema: {
-		name: string;
-		description: string;
-		metadata: Record<string, unknown> | null | undefined;
-		inputSchema: Record<string, unknown> | undefined;
-	},
-	ctx: NodeToolFactoryContext,
-): BuiltTool {
-	const metadata = toolSchema.metadata as NodeToolDescriptor | undefined;
+export function resolveNodeTool(toolSchema: ToolSchema, ctx: NodeToolFactoryContext): BuiltTool {
+	const metadata = toolSchema.metadata as NodeToolDescriptor | null;
 	if (!metadata) {
 		throw new Error(`Node tool "${toolSchema.name}" is missing metadata`);
 	}
 
-	const inputSchema = buildZodSchema(toolSchema.inputSchema);
+	const inputSchema = buildZodSchema(toolSchema.inputSchema as Record<string, unknown> | undefined);
 
 	return new Tool(toolSchema.name)
 		.description(toolSchema.description ?? `Execute the ${metadata.nodeType} node`)
