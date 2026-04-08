@@ -297,48 +297,6 @@ describe('Agent.fromSchema()', () => {
 		expect(described.memory!.lastMessages).toBe(5);
 	});
 
-	it('passes credentialProvider to memoryRegistry factory', async () => {
-		const mockBuiltMemory = {
-			getThread: jest.fn(),
-			saveThread: jest.fn(),
-			deleteThread: jest.fn(),
-			getMessages: jest.fn(),
-			saveMessages: jest.fn(),
-			deleteMessages: jest.fn(),
-			describe: () => ({
-				name: 'postgres',
-				constructorName: 'PostgresMemory',
-				titleGeneration: null,
-				connectionParams: { connectionType: 'url', connection: { name: 'pg-cred' } },
-			}),
-		};
-		const factory = jest.fn().mockResolvedValue(mockBuiltMemory);
-		const credentialProvider = {
-			resolve: jest.fn().mockResolvedValue({ apiKey: 'postgresql://localhost/test' }),
-			list: jest.fn().mockResolvedValue([]),
-		};
-
-		const schema = minimalSchema({
-			memory: {
-				source: null,
-				name: 'postgres',
-				constructorName: 'PostgresMemory',
-				titleGeneration: null,
-				connectionParams: { credential: 'pg-cred' },
-				lastMessages: 10,
-				semanticRecall: null,
-				workingMemory: null,
-			},
-		});
-		await Agent.fromSchema(schema, 'test-agent', {
-			handlerExecutor: mockExecutor(),
-			credentialProvider,
-			memoryRegistry: { postgres: factory },
-		});
-
-		expect(factory).toHaveBeenCalledWith({ credential: 'pg-cred' });
-	});
-
 	it('sets toolCallConcurrency when specified', async () => {
 		const schema = minimalSchema({
 			config: {

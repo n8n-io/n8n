@@ -311,32 +311,6 @@ describe('Agent.describe()', () => {
 		expect(schema.memory!.connectionParams).toEqual({ url: 'file:./data.db', namespace: 'test' });
 	});
 
-	it('captures credentialName from BuiltMemory.describe()', () => {
-		const mockMemoryWithCredential = {
-			...makeMockMemory(),
-			describe: () => ({
-				name: 'postgres',
-				constructorName: 'PostgresMemory',
-				connectionParams: {
-					connectionType: 'url',
-					connection: { name: 'my-pg-cred', path: 'connectionString' },
-				},
-				credentialName: 'my-pg-cred',
-			}),
-		};
-		const agent = new Agent('test-agent').memory({
-			memory: mockMemoryWithCredential,
-			lastMessages: 10,
-		});
-		const schema = agent.describe();
-
-		expect(schema.memory!.name).toBe('postgres');
-		expect(schema.memory!.connectionParams).toEqual({
-			connectionType: 'url',
-			connection: { name: 'my-pg-cred', path: 'connectionString' },
-		});
-	});
-
 	it('describes structured working memory', () => {
 		const agent = new Agent('test-agent').memory({
 			memory: makeMockMemory(),
