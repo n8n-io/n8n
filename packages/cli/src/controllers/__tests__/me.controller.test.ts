@@ -448,11 +448,19 @@ describe('MeController', () => {
 	});
 
 	describe('when user is managed by env', () => {
-		it('should reject profile update for env-managed user', async () => {
-			const globalConfig = Container.get(GlobalConfig);
+		const globalConfig = Container.get(GlobalConfig);
+
+		beforeEach(() => {
 			globalConfig.instanceSettingsLoader.ownerManagedByEnv = true;
 			globalConfig.instanceSettingsLoader.ownerEmail = 'managed@example.com';
+		});
 
+		afterEach(() => {
+			globalConfig.instanceSettingsLoader.ownerManagedByEnv = false;
+			globalConfig.instanceSettingsLoader.ownerEmail = '';
+		});
+
+		it('should reject profile update for env-managed user', async () => {
 			const user = mock<User>({
 				id: '123',
 				email: 'managed@example.com',
@@ -472,15 +480,9 @@ describe('MeController', () => {
 					'This account is managed via environment variables and cannot be updated here',
 				),
 			);
-
-			globalConfig.instanceSettingsLoader.ownerManagedByEnv = false;
 		});
 
 		it('should reject password update for env-managed user', async () => {
-			const globalConfig = Container.get(GlobalConfig);
-			globalConfig.instanceSettingsLoader.ownerManagedByEnv = true;
-			globalConfig.instanceSettingsLoader.ownerEmail = 'managed@example.com';
-
 			const req = mock<AuthenticatedRequest>({
 				user: mock<User>({
 					email: 'managed@example.com',
@@ -499,15 +501,9 @@ describe('MeController', () => {
 					'This account is managed via environment variables and cannot be updated here',
 				),
 			);
-
-			globalConfig.instanceSettingsLoader.ownerManagedByEnv = false;
 		});
 
 		it('should allow profile update for non-env-managed owner', async () => {
-			const globalConfig = Container.get(GlobalConfig);
-			globalConfig.instanceSettingsLoader.ownerManagedByEnv = true;
-			globalConfig.instanceSettingsLoader.ownerEmail = 'managed@example.com';
-
 			const user = mock<User>({
 				id: '456',
 				email: 'other-owner@example.com',
@@ -530,8 +526,6 @@ describe('MeController', () => {
 			);
 
 			expect(userService.update).toHaveBeenCalled();
-
-			globalConfig.instanceSettingsLoader.ownerManagedByEnv = false;
 		});
 	});
 
