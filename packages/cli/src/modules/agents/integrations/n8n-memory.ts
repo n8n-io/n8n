@@ -5,7 +5,6 @@ import type {
 	MemoryDescriptor,
 	Thread,
 } from '@n8n/agents';
-import { toDbMessage } from '@n8n/agents';
 import { Service } from '@n8n/di';
 import type { FindOptionsWhere } from '@n8n/typeorm';
 import { LessThan } from '@n8n/typeorm';
@@ -99,12 +98,11 @@ export class N8nMemory implements BuiltMemory {
 	async saveMessages(args: {
 		threadId: string;
 		resourceId: string;
-		messages: AgentMessage[];
+		messages: AgentDbMessage[];
 	}): Promise<void> {
 		if (args.messages.length === 0) return;
 
-		const entities = args.messages.map((msg) => {
-			const dbMsg = toDbMessage(msg);
+		const entities = args.messages.map((dbMsg) => {
 			const role = 'role' in dbMsg ? (dbMsg.role as string) : 'custom';
 			const type = 'type' in dbMsg ? (dbMsg.type as string) : null;
 			return this.messageRepository.create({
