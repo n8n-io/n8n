@@ -99,6 +99,7 @@ jest.mock('../../../mcp/shared/utils', () => ({
 jest.mock('../../../mcp/McpClientTool/utils', () => ({
 	createCallTool: jest.fn(),
 	mcpToolToDynamicTool: jest.fn(),
+	buildMcpToolName: jest.requireActual('../../../mcp/McpClientTool/utils').buildMcpToolName,
 }));
 
 jest.mock('uuid', () => ({
