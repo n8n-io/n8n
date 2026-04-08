@@ -1,5 +1,7 @@
 import type { InstanceAiPermissions } from '@n8n/api-types';
+
 import type { InstanceAiContext } from '../../types';
+import { analyzeWorkflow } from '../workflows/setup-workflow.service';
 import { createWorkflowsTool } from '../workflows.tool';
 
 // Mock the setup-workflow.service module to avoid pulling in heavy dependencies
@@ -15,8 +17,6 @@ jest.mock('../workflows/setup-workflow.service', () => ({
 jest.mock('@n8n/workflow-sdk', () => ({
 	generateWorkflowCode: jest.fn().mockReturnValue('// generated code'),
 }));
-
-import { analyzeWorkflow } from '../workflows/setup-workflow.service';
 
 function createMockContext(
 	overrides: Partial<Omit<InstanceAiContext, 'permissions'>> & {
@@ -206,7 +206,9 @@ describe('workflows tool', () => {
 			} as never);
 
 			expect(suspend).toHaveBeenCalled();
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(suspend.mock.calls[0][0]).toMatchObject({
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				message: expect.stringContaining('My WF'),
 				severity: 'warning',
 			});
@@ -295,6 +297,7 @@ describe('workflows tool', () => {
 
 			expect(analyzeWorkflow).toHaveBeenCalledWith(context, 'wf1');
 			expect(suspend).toHaveBeenCalled();
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(suspend.mock.calls[0][0]).toMatchObject({
 				message: 'Configure credentials for your workflow',
 				severity: 'info',

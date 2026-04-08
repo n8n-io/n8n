@@ -1,4 +1,5 @@
 import type { InstanceAiPermissions } from '@n8n/api-types';
+
 import type { InstanceAiContext } from '../../types';
 import { createDataTablesTool } from '../data-tables.tool';
 
@@ -261,6 +262,7 @@ describe('data-tables tool', () => {
 			await tool.execute!(createInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
 					message: 'Create data table "Contacts"?',
@@ -290,6 +292,7 @@ describe('data-tables tool', () => {
 			await tool.execute!({ ...createInput, projectId: 'proj-1' } as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
 					message: 'Create data table "Contacts" in project "My Project"?',
@@ -349,6 +352,7 @@ describe('data-tables tool', () => {
 			await tool.execute!(deleteInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
 					message:
@@ -408,6 +412,7 @@ describe('data-tables tool', () => {
 			await tool.execute!(addColumnInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
 					message: 'Add column "age" (number) to data table "dt-1"?',
@@ -482,6 +487,7 @@ describe('data-tables tool', () => {
 			await tool.execute!(deleteColumnInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
 					message:
@@ -551,6 +557,7 @@ describe('data-tables tool', () => {
 			await tool.execute!(renameColumnInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
 					message: 'Rename column "col-1" to "full_name" in data table "dt-1"?',
@@ -626,6 +633,7 @@ describe('data-tables tool', () => {
 			await tool.execute!(insertRowsInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
 					message: 'Insert 2 row(s) into data table "dt-1"?',
@@ -705,6 +713,7 @@ describe('data-tables tool', () => {
 			await tool.execute!(updateRowsInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
 					message: 'Update rows in data table "dt-1"?',
@@ -785,6 +794,7 @@ describe('data-tables tool', () => {
 			await tool.execute!(deleteRowsInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
 					message: 'Delete rows where status eq inactive? This cannot be undone.',
@@ -814,6 +824,7 @@ describe('data-tables tool', () => {
 			await tool.execute!(multiFilterInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(suspendFn.mock.calls[0]![0]).toEqual(
 				expect.objectContaining({
 					message: 'Delete rows where status eq inactive or age lt 18? This cannot be undone.',

@@ -1,3 +1,4 @@
+import { fetchWorkflowsFromTemplates } from '../templates/template-api';
 import { createTemplatesTool } from '../templates.tool';
 
 // Mock external dependencies — templates tool takes no context
@@ -17,8 +18,6 @@ jest.mock('../utils/node-configuration.utils', () => ({
 		.fn()
 		.mockReturnValue('## n8n-nodes-base.telegram\nchatId: 123'),
 }));
-
-import { fetchWorkflowsFromTemplates } from '../templates/template-api';
 
 describe('templates tool', () => {
 	beforeEach(() => {

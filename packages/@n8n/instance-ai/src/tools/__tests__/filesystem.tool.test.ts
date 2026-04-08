@@ -1,4 +1,5 @@
 import type { InstanceAiPermissions } from '@n8n/api-types';
+
 import type { InstanceAiContext } from '../../types';
 import { createFilesystemTool } from '../filesystem.tool';
 
@@ -234,6 +235,7 @@ describe('filesystem tool', () => {
 			} as never);
 
 			expect(suspend).toHaveBeenCalled();
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(suspend.mock.calls[0][0]).toMatchObject({
 				message: 'List files in "/home/user"?',
 				severity: 'info',

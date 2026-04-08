@@ -545,8 +545,8 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-run',
-								toolName: 'run-workflow',
-								args: { workflowId: 'wf-1' },
+								toolName: 'executions',
+								args: { action: 'run', workflowId: 'wf-1' },
 								result: { executionId: 'exec-1' },
 							}),
 						],
@@ -567,8 +567,8 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-run',
-								toolName: 'run-workflow',
-								args: { workflowId: 'wf-1' },
+								toolName: 'executions',
+								args: { action: 'run', workflowId: 'wf-1' },
 								result: { executionId: 'exec-historical' },
 							}),
 						],
@@ -617,8 +617,8 @@ describe('useCanvasPreview', () => {
 							}),
 							makeToolCall({
 								toolCallId: 'tc-run',
-								toolName: 'run-workflow',
-								args: { workflowId: 'wf-1' },
+								toolName: 'executions',
+								args: { action: 'run', workflowId: 'wf-1' },
 								result: { executionId: 'exec-1' },
 							}),
 						],
@@ -644,7 +644,8 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-create-dt',
-								toolName: 'create-data-table',
+								toolName: 'data-tables',
+								args: { action: 'create' },
 								result: { table: { id: 'dt-1', name: 'Test Table' } },
 							}),
 						],
@@ -666,7 +667,8 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-create-dt',
-								toolName: 'create-data-table',
+								toolName: 'data-tables',
+								args: { action: 'create' },
 								result: { table: { id: 'dt-1', name: 'Test Table' } },
 							}),
 						],
@@ -689,7 +691,8 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-create-dt',
-								toolName: 'create-data-table',
+								toolName: 'data-tables',
+								args: { action: 'create' },
 								result: { table: { id: 'dt-1', name: 'Test Table' } },
 							}),
 						],
@@ -712,7 +715,8 @@ describe('useCanvasPreview', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-create-dt',
-								toolName: 'create-data-table',
+								toolName: 'data-tables',
+								args: { action: 'create' },
 								result: { table: { id: 'dt-1' } },
 							}),
 						],
@@ -737,8 +741,8 @@ describe('useCanvasPreview', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'delete-data-table',
-								args: { dataTableId: 'dt-1' },
+								toolName: 'data-tables',
+								args: { action: 'delete', dataTableId: 'dt-1' },
 								result: { success: true },
 							}),
 						],
@@ -760,8 +764,8 @@ describe('useCanvasPreview', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'delete-data-table',
-								args: { dataTableId: 'dt-other' },
+								toolName: 'data-tables',
+								args: { action: 'delete', dataTableId: 'dt-other' },
 								result: { success: true },
 							}),
 						],
@@ -784,8 +788,8 @@ describe('useCanvasPreview', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'delete-data-table',
-								args: { dataTableId: 'dt-1' },
+								toolName: 'data-tables',
+								args: { action: 'delete', dataTableId: 'dt-1' },
 								result: { success: true },
 							}),
 						],
@@ -834,8 +838,8 @@ describe('useCanvasPreview', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'run-workflow',
-								args: { workflowId },
+								toolName: 'executions',
+								args: { action: 'run', workflowId },
 								result: { executionId, status: 'success', ...(finishedAt ? { finishedAt } : {}) },
 							}),
 						],
