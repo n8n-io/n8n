@@ -12,7 +12,7 @@ export type { CodeBuilderAgentConfig, ParseAndValidateResult, ValidationWarning 
 
 // Code Workflow Builder
 export { CodeWorkflowBuilder } from './code-workflow-builder';
-export type { CodeWorkflowBuilderConfig } from './code-workflow-builder';
+export type { CodeWorkflowBuilderConfig, HistoryContext } from './code-workflow-builder';
 
 // Session utilities
 export { generateCodeBuilderThreadId } from './utils/code-builder-session';

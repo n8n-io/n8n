@@ -133,12 +133,12 @@ const actions = computed<Array<UserAction<IUser>>>(() =>
 );
 
 const isFirstItemShown = computed(() => workflowHistory.value[0]?.versionId === versionId.value);
-const createCompareRoute = (compareVersionId: string) => {
+const createCompareRoute = (compareVersionId: string, selectedVersionId = versionId.value) => {
 	return {
 		name: VIEWS.WORKFLOW_HISTORY,
 		params: {
 			workflowId: workflowId.value,
-			versionId: versionId.value,
+			versionId: selectedVersionId,
 		},
 		query: {
 			...route.query,
@@ -496,6 +496,24 @@ const openCompareView = async (compareVersionId: WorkflowVersionId) => {
 	sendTelemetry('user_clicks_compare_workflows', { source: 'version_history' });
 };
 
+const onDiffVersionsChange = async ({
+	sourceVersionId,
+	targetVersionId,
+}: {
+	sourceVersionId: string;
+	targetVersionId: string;
+}) => {
+	if (!sourceVersionId || !targetVersionId) {
+		return;
+	}
+
+	if (versionId.value === targetVersionId && diffWithVersionId.value === sourceVersionId) {
+		return;
+	}
+
+	await router.push(createCompareRoute(sourceVersionId, targetVersionId));
+};
+
 const closeCompareView = async () => {
 	if (uiStore.modalsById[WORKFLOW_HISTORY_DIFF_MODAL_KEY]?.open) {
 		uiStore.closeModal(WORKFLOW_HISTORY_DIFF_MODAL_KEY);
@@ -631,6 +649,7 @@ watchEffect(async () => {
 					:source-workflow-version-id="diffWithVersionId"
 					:target-workflow-version-id="versionId"
 					:available-versions="workflowHistory"
+					@versions-change="onDiffVersionsChange"
 					@close="closeCompareView"
 				/>
 			</template>

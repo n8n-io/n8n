@@ -2,11 +2,18 @@
 import { useI18n } from '@n8n/i18n';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { CRON_NODE_TYPE, INTERVAL_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/app/constants';
+import {
+	CRON_NODE_TYPE,
+	INTERVAL_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	WORKFLOW_SETTINGS_MODAL_KEY,
+} from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { waitingNodeTooltip } from '@/features/execution/executions/executions.utils';
+import { useExecutionRedaction } from '@/features/execution/executions/composables/useExecutionRedaction';
 import uniqBy from 'lodash/uniqBy';
 import {
 	type INodeInputConfiguration,
@@ -20,6 +27,7 @@ import { computed, ref, watch } from 'vue';
 import InputNodeSelect from './InputNodeSelect.vue';
 import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 import NDVEmptyState from './NDVEmptyState.vue';
+import RedactedDataState from './RedactedDataState.vue';
 import RunData from '@/features/ndv/runData/components/RunData.vue';
 import WireMeUp from './WireMeUp.vue';
 import { type IRunDataDisplayMode } from '@/Interface';
@@ -81,6 +89,7 @@ const emit = defineEmits<{
 	changeInputNode: [nodeName: string, index: number];
 	execute: [];
 	activatePane: [];
+	openSettings: [];
 	displayModeChange: [IRunDataDisplayMode];
 }>();
 
@@ -104,6 +113,12 @@ const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowState = injectWorkflowState();
 const router = useRouter();
 const { runWorkflow } = useRunWorkflow({ router });
+const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
+const uiStore = useUIStore();
+
+const openWorkflowSettings = () => {
+	uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+};
 
 const activeNode = computed(
 	() => workflowDocumentStore?.value?.getNodeByName(props.activeNodeName) ?? null,
@@ -663,6 +678,26 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			<NDVEmptyState :title="i18n.baseText('executionDetails.executionFailed.recoveredNodeTitle')">
 				{{ i18n.baseText('executionDetails.executionFailed.recoveredNodeMessage') }}
 			</NDVEmptyState>
+		</template>
+
+		<template #data-redacted>
+			<RedactedDataState
+				:title="i18n.baseText('ndv.input.redacted.title')"
+				:is-dynamic-credentials="isDynamicCredentials"
+				:can-reveal="canReveal"
+				@open-settings="openWorkflowSettings"
+				@reveal="revealData"
+			/>
+		</template>
+
+		<template #redacted-error>
+			<RedactedDataState
+				:title="i18n.baseText('ndv.input.redacted.title')"
+				:is-dynamic-credentials="isDynamicCredentials"
+				:can-reveal="canReveal"
+				@open-settings="openWorkflowSettings"
+				@reveal="revealData"
+			/>
 		</template>
 	</RunData>
 </template>

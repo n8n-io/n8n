@@ -25,6 +25,26 @@ export async function consumeGenerator<T>(gen: AsyncGenerator<T>) {
 	}
 }
 
+/**
+ * Consume an async generator of StreamOutput, collecting AgentMessageChunk text.
+ * Returns the concatenated text from all message chunks.
+ */
+export async function collectAgentTextResponse<
+	T extends { messages?: Array<{ type: string; text?: string }> },
+>(gen: AsyncGenerator<T>): Promise<string> {
+	const textParts: string[] = [];
+	for await (const output of gen) {
+		if (output.messages) {
+			for (const chunk of output.messages) {
+				if (chunk.type === 'message' && chunk.text) {
+					textParts.push(chunk.text);
+				}
+			}
+		}
+	}
+	return textParts.join('');
+}
+
 export async function runWithOptionalLimiter<T>(
 	fn: () => Promise<T>,
 	limiter?: LlmCallLimiter,
@@ -67,18 +87,35 @@ export interface GetChatPayloadOptions {
 	message: string;
 	workflowId: string;
 	featureFlags?: BuilderFeatureFlags;
+	/** Full workflowContext from dataset (overrides default empty context) */
+	workflowContext?: ChatPayload['workflowContext'];
+	/** Builder mode from dataset */
+	mode?: 'build' | 'plan';
 }
 
 export function getChatPayload(options: GetChatPayloadOptions): ChatPayload {
-	const { evalType, message, workflowId, featureFlags } = options;
+	const { evalType, message, workflowId, featureFlags, workflowContext, mode } = options;
+
+	// Always use the eval runId as currentWorkflow.id so getState() can find the thread.
+	// When workflowContext is provided from a dataset, override its currentWorkflow.id.
+	const resolvedContext = workflowContext
+		? {
+				...workflowContext,
+				currentWorkflow: {
+					nodes: [],
+					connections: {},
+					...((workflowContext.currentWorkflow as Record<string, unknown>) ?? {}),
+					id: workflowId,
+				},
+			}
+		: { currentWorkflow: { id: workflowId, nodes: [], connections: {} } };
 
 	return {
 		id: `${evalType}-${uuid()}`,
 		featureFlags: featureFlags ?? DEFAULTS.FEATURE_FLAGS,
 		message,
-		workflowContext: {
-			currentWorkflow: { id: workflowId, nodes: [], connections: {} },
-		},
+		workflowContext: resolvedContext,
+		...(mode ? { mode } : {}),
 	};
 }
 

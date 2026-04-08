@@ -140,6 +140,19 @@ describe('expressionPrefixValidator', () => {
 			expect(issues).toHaveLength(0);
 		});
 
+		it('skips HTML template node (uses {{ }} natively for template expressions)', () => {
+			const node = createMockNode('n8n-nodes-base.html', {
+				parameters: {
+					html: '<h1>{{ $json.title }}</h1><p>{{ $json.body }}</p>',
+				},
+			});
+			const ctx = createMockPluginContext();
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(0);
+		});
+
 		it('returns warnings for multiple malformed expressions', () => {
 			const node = createMockNode('n8n-nodes-base.set', {
 				parameters: {

@@ -37,6 +37,7 @@ type EndpointGroup =
 	| 'debug'
 	| 'project'
 	| 'role'
+	| 'roleMappingRule'
 	| 'dynamic-node-parameters'
 	| 'apiKeys'
 	| 'evaluation'
