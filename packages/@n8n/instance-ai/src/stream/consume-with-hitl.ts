@@ -20,6 +20,9 @@ export interface ConsumeWithHitlOptions {
 	waitForConfirmation?: (requestId: string) => Promise<Record<string, unknown>>;
 	/** Drain queued user corrections (mid-flight steering for background tasks). */
 	drainCorrections?: () => string[];
+	/** Returns a promise that resolves when a new user correction is queued.
+	 *  Used to unblock HITL suspensions when a correction arrives mid-confirmation. */
+	waitForCorrection?: () => Promise<void>;
 	llmStepTraceHooks?: LlmStepTraceHooks;
 	workingMemoryEnabled?: boolean;
 	/** Max steps for the agent — passed to resumeStream so resumed streams keep the same limit. */
@@ -61,6 +64,7 @@ export async function consumeStreamWithHitl(
 			mode: 'auto',
 			waitForConfirmation: options.waitForConfirmation,
 			drainCorrections: options.drainCorrections,
+			waitForCorrection: options.waitForCorrection,
 			...(options.maxSteps
 				? {
 						buildResumeOptions: ({ mastraRunId, suspension }) => ({

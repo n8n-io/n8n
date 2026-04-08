@@ -181,7 +181,7 @@ export async function startDetachedDelegateTask(
 		role,
 		traceContext,
 		plannedTaskId: input.plannedTaskId,
-		run: async (signal, drainCorrections) => {
+		run: async (signal, drainCorrections, waitForCorrection) => {
 			return await withTraceContextActor(traceContext, async () => {
 				const subAgent = createSubAgent({
 					agentId: subAgentId,
@@ -232,6 +232,7 @@ export async function startDetachedDelegateTask(
 						abortSignal: signal,
 						waitForConfirmation: context.waitForConfirmation,
 						drainCorrections,
+						waitForCorrection,
 						llmStepTraceHooks,
 						workingMemoryEnabled: false,
 					});

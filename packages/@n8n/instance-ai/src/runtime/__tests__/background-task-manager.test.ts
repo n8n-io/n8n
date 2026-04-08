@@ -209,6 +209,68 @@ describe('BackgroundTaskManager', () => {
 
 			expect(drainedCorrections[0]).toEqual([]);
 		});
+
+		it('notifies waitForCorrection when a correction is queued', async () => {
+			let waitForCorrection: (() => Promise<void>) | undefined;
+			const { promise, resolve } = createDeferred<string>();
+
+			manager.spawn(
+				makeSpawnOptions({
+					run: async (_signal, _drain, waitFn) => {
+						waitForCorrection = waitFn;
+						return await promise;
+					},
+				}),
+			);
+
+			await flushPromises();
+
+			const correctionPromise = waitForCorrection!();
+			let resolved = false;
+			void correctionPromise.then(() => {
+				resolved = true;
+			});
+
+			await flushPromises();
+			expect(resolved).toBe(false);
+
+			manager.queueCorrection('thread-1', 'task-1', 'use openrouter node');
+			await flushPromises();
+
+			expect(resolved).toBe(true);
+
+			resolve('done');
+			await flushPromises();
+		});
+
+		it('resolves waitForCorrection immediately when corrections are already queued', async () => {
+			let waitForCorrection: (() => Promise<void>) | undefined;
+			const { promise, resolve } = createDeferred<string>();
+
+			manager.spawn(
+				makeSpawnOptions({
+					run: async (_signal, _drain, waitFn) => {
+						waitForCorrection = waitFn;
+						return await promise;
+					},
+				}),
+			);
+
+			await flushPromises();
+
+			manager.queueCorrection('thread-1', 'task-1', 'pending correction');
+			const correctionPromise = waitForCorrection!();
+			let resolved = false;
+			void correctionPromise.then(() => {
+				resolved = true;
+			});
+
+			await flushPromises();
+			expect(resolved).toBe(true);
+
+			resolve('done');
+			await flushPromises();
+		});
 	});
 
 	describe('cancelTask', () => {

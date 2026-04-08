@@ -340,7 +340,7 @@ export async function startBuildWorkflowAgentTask(
 		traceContext,
 		plannedTaskId: input.plannedTaskId,
 		workItemId,
-		run: async (signal, drainCorrections): Promise<BackgroundTaskResult> =>
+		run: async (signal, drainCorrections, waitForCorrection): Promise<BackgroundTaskResult> =>
 			await withTraceContextActor(traceContext, async () => {
 				let builderWs: BuilderWorkspace | undefined;
 				const submitAttempts = new Map<string, SubmitWorkflowAttempt>();
@@ -462,6 +462,7 @@ export async function startBuildWorkflowAgentTask(
 								abortSignal: signal,
 								waitForConfirmation: context.waitForConfirmation,
 								drainCorrections,
+								waitForCorrection,
 								llmStepTraceHooks,
 								workingMemoryEnabled: false,
 							});
@@ -595,6 +596,7 @@ export async function startBuildWorkflowAgentTask(
 							abortSignal: signal,
 							waitForConfirmation: context.waitForConfirmation,
 							drainCorrections,
+							waitForCorrection,
 							llmStepTraceHooks,
 							workingMemoryEnabled: false,
 						});
