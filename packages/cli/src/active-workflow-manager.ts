@@ -792,7 +792,7 @@ export class ActiveWorkflowManager {
 
 			await this.workflowRepository.update(workflowId, { active: false, activeVersionId: null });
 
-			if (dbWorkflow) {
+			if (dbWorkflow && (activationMode === 'init' || activationMode === 'leadershipChange')) {
 				void this.eventBus.sendAuditEvent({
 					eventName: 'n8n.audit.workflow.deactivated-on-bootup',
 					payload: {
