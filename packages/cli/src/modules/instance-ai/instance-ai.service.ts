@@ -140,6 +140,9 @@ export class InstanceAiService {
 	/** Tracks the iframe pushRef per thread for live execution push events. */
 	private readonly threadPushRef = new Map<string, string>();
 
+	/** Per-thread promise chain that serializes schedulePlannedTasks calls. */
+	private readonly schedulerLocks = new Map<string, Promise<void>>();
+
 	/** Periodic sweep that auto-rejects timed-out HITL confirmations. */
 	private confirmationTimeoutInterval?: NodeJS.Timeout;
 
@@ -898,6 +901,7 @@ export class InstanceAiService {
 		});
 
 		this.creditedThreads.delete(threadId);
+		this.schedulerLocks.delete(threadId);
 		this.domainAccessTrackersByThread.delete(threadId);
 		this.threadPushRef.delete(threadId);
 		this.deleteTraceContextsForThread(threadId);
@@ -1332,6 +1336,15 @@ export class InstanceAiService {
 	}
 
 	private async schedulePlannedTasks(user: User, threadId: string): Promise<void> {
+		const prev = this.schedulerLocks.get(threadId) ?? Promise.resolve();
+		const current = prev
+			.then(async () => this.doSchedulePlannedTasks(user, threadId))
+			.catch(() => {});
+		this.schedulerLocks.set(threadId, current);
+		await current;
+	}
+
+	private async doSchedulePlannedTasks(user: User, threadId: string): Promise<void> {
 		const { plannedTaskService } = await this.createPlannedTaskState();
 		const graph = await plannedTaskService.getGraph(threadId);
 		if (!graph) return;
@@ -1384,7 +1397,7 @@ export class InstanceAiService {
 			await this.dispatchPlannedTask(task, environment.orchestrationContext);
 		}
 
-		await this.schedulePlannedTasks(user, threadId);
+		await this.doSchedulePlannedTasks(user, threadId);
 	}
 
 	private async executeRun(
