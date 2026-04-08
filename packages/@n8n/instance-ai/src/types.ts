@@ -866,6 +866,11 @@ export interface OrchestrationContext {
 	builderSandboxFactory?: BuilderSandboxFactory;
 	/** Directories containing node type definition files (.ts) for materializing into sandbox */
 	nodeDefinitionDirs?: string[];
+	/** Mastra memory instance — used to retrieve thread message history for sub-agents */
+	memory?: Memory;
+	/** The current user message being processed — needed because memory.recall() only
+	 *  returns previously-saved messages, so the in-flight message isn't available yet. */
+	currentUserMessage?: string;
 	/** The domain context — gives sub-agent tools access to n8n services */
 	domainContext?: InstanceAiContext;
 	/** When true, research guidance may suggest planned research tasks and the builder gets web-search/fetch-url */
