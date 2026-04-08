@@ -517,14 +517,11 @@ export class DataTableService {
 
 		const result = await this.dataTableColumnRepository.manager.transaction(async (trx) => {
 			const clearResult = await this.dataTableRowsRepository.clearRows(dataTableId, trx);
-
 			await this.dataTableRepository.touchUpdatedAt(dataTableId, trx);
-
 			return clearResult;
 		});
 
 		this.dataTableSizeValidator.reset();
-
 		return result;
 	}
 

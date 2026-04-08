@@ -224,7 +224,6 @@ export class DataTableProxyService implements DataTableProxyProvider {
 				);
 			},
 
-			// dataTable:writeRow
 			async clearRows(dataTableId: string, projectId: string) {
 				checkInstanceWriteAccess();
 				await requireScope('dataTable:writeRow', projectId);
