@@ -7,6 +7,7 @@ import { DbLock, DbLockService } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
+import { In, Not } from '@n8n/typeorm';
 import type { Algorithm } from 'jsonwebtoken';
 import { InstanceSettings } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
@@ -269,14 +270,11 @@ export class TrustedKeyService {
 			}
 
 			// Remove orphaned config-managed sources (not UI sources)
-			const existingSources = await tx.find(TrustedKeySourceEntity);
-			for (const existing of existingSources) {
-				if (existing.type !== 'ui' && !expectedSourceIds.has(existing.id)) {
-					await tx.delete(TrustedKeySourceEntity, existing.id);
-					this.logger.info('Removed orphaned trusted key source', {
-						sourceId: existing.id,
-					});
-				}
+			if (expectedSourceIds.size > 0) {
+				await tx.delete(TrustedKeySourceEntity, {
+					id: Not(In([...expectedSourceIds])),
+					type: Not('ui'),
+				});
 			}
 		});
 	}
@@ -326,54 +324,14 @@ export class TrustedKeyService {
 		source: TrustedKeySourceEntity,
 		tx: EntityManager,
 	): Promise<void> {
-		let resolvedKeys: Array<{ kid: string; data: TrustedKeyData }>;
-
-		if (source.type === 'static') {
-			let rawConfig: unknown;
-			try {
-				rawConfig = JSON.parse(source.config);
-			} catch {
-				throw new UnexpectedError('Invalid static source config: malformed JSON');
-			}
-			const configResult = z.array(TrustedKeySourceSchema).safeParse(rawConfig);
-			if (!configResult.success) {
-				throw new UnexpectedError(`Invalid static source config: ${configResult.error.message}`);
-			}
-			const staticConfigs = configResult.data.filter(
-				(s): s is StaticKeySource => s.type === 'static',
-			);
-			resolvedKeys = this.resolveStaticKeys(staticConfigs);
-		} else if (source.type === 'jwks') {
-			this.logger.warn('JWKS key sources are not yet supported, skipping', {
-				sourceId: source.id,
-			});
-			return;
-		} else {
-			// 'ui' — skip for now
-			this.logger.warn('UI key sources are not yet supported, skipping', {
-				sourceId: source.id,
-			});
-			return;
-		}
+		const resolvedKeys = this.resolveKeysForSource(source);
+		if (!resolvedKeys) return;
 
 		// 1. DELETE old keys for this source
 		await tx.delete(TrustedKeyEntity, { sourceId: source.id });
 
-		// 2. For each resolved key, handle cross-source kid conflicts (last-writer-wins)
+		// 2. INSERT new keys
 		for (const key of resolvedKeys) {
-			const conflicting = await tx.findBy(TrustedKeyEntity, { kid: key.kid });
-			if (conflicting.length > 0) {
-				for (const conflict of conflicting) {
-					this.logger.warn('Kid conflict: overwriting key from another source', {
-						kid: key.kid,
-						existingSourceId: conflict.sourceId,
-						newSourceId: source.id,
-					});
-				}
-				await tx.delete(TrustedKeyEntity, { kid: key.kid });
-			}
-
-			// 3. INSERT new key
 			await tx.save(TrustedKeyEntity, {
 				sourceId: source.id,
 				kid: key.kid,
@@ -382,12 +340,60 @@ export class TrustedKeyService {
 			});
 		}
 
-		// 4. UPDATE source status
+		// 3. UPDATE source status
 		await tx.update(TrustedKeySourceEntity, source.id, {
 			status: 'healthy',
 			lastError: null,
 			lastRefreshedAt: new Date(),
 		});
+	}
+
+	/**
+	 * Resolve keys for a source by type. Returns `undefined` for
+	 * unsupported types (signalling the caller should skip).
+	 */
+	private resolveKeysForSource(
+		source: TrustedKeySourceEntity,
+	): Array<{ kid: string; data: TrustedKeyData }> | undefined {
+		switch (source.type) {
+			case 'static':
+				return this.resolveKeysForStaticSource(source);
+			case 'jwks':
+				this.logger.warn('JWKS key sources are not yet supported, skipping', {
+					sourceId: source.id,
+				});
+				return undefined;
+			case 'ui':
+				this.logger.warn('UI key sources are not yet supported, skipping', {
+					sourceId: source.id,
+				});
+				return undefined;
+			default:
+				this.logger.warn('Unknown key source type, skipping', {
+					sourceId: source.id,
+					type: source.type,
+				});
+				return undefined;
+		}
+	}
+
+	private resolveKeysForStaticSource(
+		source: TrustedKeySourceEntity,
+	): Array<{ kid: string; data: TrustedKeyData }> {
+		let rawConfig: unknown;
+		try {
+			rawConfig = JSON.parse(source.config);
+		} catch {
+			throw new UnexpectedError('Invalid static source config: malformed JSON');
+		}
+		const configResult = z.array(TrustedKeySourceSchema).safeParse(rawConfig);
+		if (!configResult.success) {
+			throw new UnexpectedError(`Invalid static source config: ${configResult.error.message}`);
+		}
+		const staticConfigs = configResult.data.filter(
+			(s): s is StaticKeySource => s.type === 'static',
+		);
+		return this.resolveStaticKeys(staticConfigs);
 	}
 
 	// ─── Private: key resolution ───────────────────────────────────────
