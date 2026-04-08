@@ -22,7 +22,7 @@ export const BASE_URL_EXPRESSION = `={{ (() => {
 	const hosts = ${JSON.stringify(REGION_BASE_HOSTS)};
 	const region = $credentials.region;
 	if (region === 'eu-central-1') {
-		return 'https://' + $credentials.workspaceId + '.eu-central-1.maas.aliyuncs.com/compatible-mode/v1';
+		return 'https://' + $credentials.workspaceId + '.eu-central-1.maas.aliyuncs.com' + '${COMPATIBLE_MODE_SUFFIX}';
 	}
-	return (hosts[region] || hosts['ap-southeast-1']) + '/compatible-mode/v1';
+	return (hosts[region] || hosts['ap-southeast-1']) + '${COMPATIBLE_MODE_SUFFIX}';
 })() }}`;

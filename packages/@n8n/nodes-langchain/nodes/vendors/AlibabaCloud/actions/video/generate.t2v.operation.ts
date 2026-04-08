@@ -152,6 +152,9 @@ export const properties: INodeProperties[] = [
 				default: 'audio',
 				placeholder: 'e.g. audio',
 				hint: 'The name of the input field containing the binary audio data',
+				typeOptions: {
+					binaryDataProperty: true,
+				},
 				displayOptions: {
 					show: {
 						audioInputType: ['binary'],
