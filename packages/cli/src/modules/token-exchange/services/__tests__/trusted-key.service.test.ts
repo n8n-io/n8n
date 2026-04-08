@@ -143,11 +143,15 @@ describe('TrustedKeyService', () => {
 	describe('leader lifecycle', () => {
 		it('should start refresh interval on leader takeover', () => {
 			const { service } = createMocks();
+			const setIntervalSpy = jest.spyOn(global, 'setInterval');
 
 			service.startRefresh();
 
-			// Verify interval was set (check that stopRefresh clears it)
+			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+			expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 300_000);
+
 			service.stopRefresh();
+			setIntervalSpy.mockRestore();
 		});
 
 		it('should not create duplicate interval on repeated startRefresh calls', () => {
@@ -165,32 +169,45 @@ describe('TrustedKeyService', () => {
 
 		it('should not start refresh if shutting down', () => {
 			const { service } = createMocks();
+			const setIntervalSpy = jest.spyOn(global, 'setInterval');
 
 			service.shutdown();
 			service.startRefresh();
 
-			// No interval to clear — this just verifies no error thrown
-			service.stopRefresh();
+			expect(setIntervalSpy).not.toHaveBeenCalled();
+
+			setIntervalSpy.mockRestore();
 		});
 
 		it('should clear interval on leader stepdown', () => {
 			const { service } = createMocks();
+			const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
 
 			service.startRefresh();
 			service.stopRefresh();
 
-			// Call again to verify idempotency
+			expect(clearIntervalSpy).toHaveBeenCalled();
+
+			// Call again to verify idempotency — should not throw
 			service.stopRefresh();
+
+			clearIntervalSpy.mockRestore();
 		});
 
 		it('should stop refresh on shutdown', () => {
 			const { service } = createMocks();
+			const setIntervalSpy = jest.spyOn(global, 'setInterval');
 
 			service.startRefresh();
+			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+
 			service.shutdown();
-
-			// Verify startRefresh after shutdown is a no-op
 			service.startRefresh();
+
+			// Still only 1 call — post-shutdown startRefresh is a no-op
+			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+
+			setIntervalSpy.mockRestore();
 		});
 	});
 });
