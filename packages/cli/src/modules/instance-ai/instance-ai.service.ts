@@ -1314,6 +1314,11 @@ export class InstanceAiService {
 		researchMode: boolean | undefined,
 		messageGroupId?: string,
 	): Promise<string> {
+		if (this.runState.hasLiveRun(threadId)) {
+			this.logger.warn('Skipping internal follow-up: active run exists', { threadId });
+			return '';
+		}
+
 		const { runId, abortController } = this.runState.startRun({
 			threadId,
 			user,
