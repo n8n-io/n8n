@@ -1,6 +1,6 @@
 import { Tool } from '@n8n/agents';
 import type { CredentialProvider } from '@n8n/agents';
-import { validateNodeConfig, setSchemaBaseDirs } from '@n8n/workflow-sdk';
+import { validateNodeConfig } from '@n8n/workflow-sdk';
 import type {
 	IDataObject,
 	INodeCredentialsDetails,
@@ -10,7 +10,6 @@ import type {
 import { z } from 'zod';
 
 import type { EphemeralNodeExecutor } from '@/node-execution';
-import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
 
 import { getNodeSchema, searchTools, type ToolDescriptor } from '../node-tool-registry';
 
@@ -18,21 +17,8 @@ export interface RunNodeArgs {
 	nodeType: string;
 	nodeTypeVersion: number;
 	nodeParameters?: Record<string, unknown>;
-	credentials?: Record<string, { id: string; name: string }>;
+	credentials?: Record<string, INodeCredentialsDetails>;
 	inputData?: Record<string, unknown>;
-}
-
-let schemaBaseDirsInitialized = false;
-
-/**
- * Ensures the workflow-sdk schema validator knows where to find pre-generated
- * node schemas. Safe to call multiple times — only resolves dirs once.
- */
-function ensureSchemaBaseDirsSet(): void {
-	if (schemaBaseDirsInitialized) return;
-	schemaBaseDirsInitialized = true;
-	const dirs = resolveBuiltinNodeDefinitionDirs();
-	if (dirs.length > 0) setSchemaBaseDirs(dirs);
 }
 
 /**
@@ -162,7 +148,6 @@ export function createRunNodeTool(
 				inputData,
 			}: RunNodeArgs) => {
 				if (nodeParameters) {
-					ensureSchemaBaseDirsSet();
 					const { valid, errors } = validateNodeConfig(nodeType, nodeTypeVersion, {
 						parameters: nodeParameters,
 					});
@@ -178,7 +163,7 @@ export function createRunNodeTool(
 					nodeType,
 					nodeTypeVersion,
 					nodeParameters: (nodeParameters ?? {}) as INodeParameters,
-					credentialDetails: credentials as Record<string, INodeCredentialsDetails> | undefined,
+					credentialDetails: credentials,
 					inputData: [{ json: (inputData ?? {}) as IDataObject }],
 					projectId,
 				});

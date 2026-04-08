@@ -10,23 +10,17 @@ import {
 	createSearchToolsTool,
 	createRunNodeTool,
 } from '../node-execution-tools';
+import { validateNodeConfig } from '@n8n/workflow-sdk';
+import { getNodeSchema, searchTools } from '../../node-tool-registry';
 
 jest.mock('@n8n/workflow-sdk', () => ({
 	validateNodeConfig: jest.fn().mockReturnValue({ valid: true, errors: [] }),
-	setSchemaBaseDirs: jest.fn(),
-}));
-
-jest.mock('@/modules/instance-ai/node-definition-resolver', () => ({
-	resolveBuiltinNodeDefinitionDirs: jest.fn().mockReturnValue(['/fake/node-defs']),
 }));
 
 jest.mock('../../node-tool-registry', () => ({
 	getNodeSchema: jest.fn(),
 	searchTools: jest.fn(),
 }));
-
-import { validateNodeConfig } from '@n8n/workflow-sdk';
-import { getNodeSchema, searchTools } from '../../node-tool-registry';
 
 const ctx = {
 	resumeData: undefined,
