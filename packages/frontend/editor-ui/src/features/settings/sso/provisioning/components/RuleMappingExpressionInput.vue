@@ -152,6 +152,8 @@ function createInlineExtensions() {
 			'.cm-scroller': {
 				overflowX: 'auto',
 				overflowY: 'hidden',
+				display: 'flex',
+				alignItems: 'center',
 			},
 			'.cm-cursor, .cm-dropCursor': sharedThemeRules['.cm-cursor, .cm-dropCursor'],
 			'.cm-expression-bracket': sharedThemeRules['.cm-expression-bracket'],
