@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-04-08T13:07:58.549Z",
-	"totalViolations": 402,
+	"generated": "2026-04-08T13:49:08.611Z",
+	"totalViolations": 405,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -18,25 +18,25 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 59,
+				"line": 61,
 				"message": "AIAssistantPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "0d4d5092768f"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 59,
+				"line": 61,
 				"message": "AIAssistantPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "0d4d5092768f"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 83,
+				"line": 85,
 				"message": "AIAssistantPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "0d4d5092768f"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 107,
+				"line": 109,
 				"message": "AIAssistantPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "0d4d5092768f"
 			}
@@ -304,6 +304,18 @@
 		"pages/SidebarPage.ts": [
 			{
 				"rule": "scope-lockdown",
+				"line": 31,
+				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "b15fa9cfe2ac"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 35,
+				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "b15fa9cfe2ac"
+			},
+			{
+				"rule": "scope-lockdown",
 				"line": 39,
 				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "b15fa9cfe2ac"
@@ -383,6 +395,12 @@
 			{
 				"rule": "scope-lockdown",
 				"line": 101,
+				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "b15fa9cfe2ac"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 109,
 				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "b15fa9cfe2ac"
 			}

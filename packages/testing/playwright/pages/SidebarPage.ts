@@ -28,11 +28,11 @@ export class SidebarPage {
 	}
 
 	async clickWorkflowsLink(): Promise<void> {
-		await this.container.getByRole('link', { name: 'Workflows' }).click();
+		await this.page.getByRole('link', { name: 'Workflows' }).click();
 	}
 
 	async clickCredentialsLink(): Promise<void> {
-		await this.container.getByRole('link', { name: 'Credentials' }).click();
+		await this.page.getByRole('link', { name: 'Credentials' }).click();
 	}
 
 	getProjectButtonInUniversalAdd(): Locator {
@@ -106,7 +106,7 @@ export class SidebarPage {
 	}
 
 	getVersionUpdateItem(): Locator {
-		return this.container.getByTestId('version-update-cta-button');
+		return this.page.getByTestId('version-update-cta-button');
 	}
 
 	getSourceControlPushButton(): Locator {
