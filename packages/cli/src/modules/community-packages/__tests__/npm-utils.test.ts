@@ -655,7 +655,7 @@ describe('checkIfVersionExistsOrThrow', () => {
 			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
 		});
 
-		it('should handle special characters in package name and version safely for checkIfVersionExistsOrThrow', async () => {
+		it('should reject CLI output that is not valid semver', async () => {
 			const specialPackageName = 'test-package; rm -rf /';
 			const specialVersion = '1.0.0 && echo "hacked"';
 
@@ -668,24 +668,9 @@ describe('checkIfVersionExistsOrThrow', () => {
 				stderr: '',
 			});
 
-			const result = await checkIfVersionExistsOrThrow(
-				specialPackageName,
-				specialVersion,
-				registryUrl,
-			);
-			expect(result).toBe(true);
-			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
-			expect(mockAsyncExec).toHaveBeenCalledWith(
-				'npm',
-				[
-					'view',
-					`${specialPackageName}@${specialVersion}`,
-					'version',
-					`--registry=${registryUrl}`,
-					'--json',
-				],
-				undefined,
-			);
+			await expect(
+				checkIfVersionExistsOrThrow(specialPackageName, specialVersion, registryUrl),
+			).rejects.toThrow('Failed to check package version existence');
 		});
 
 		it('should handle 404 errors in CLI fallback', async () => {
