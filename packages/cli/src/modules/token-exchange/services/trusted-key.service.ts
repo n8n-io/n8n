@@ -247,6 +247,7 @@ export class TrustedKeyService {
 	 */
 	private async syncSourcesToDb(sources: TrustedKeySource[]): Promise<void> {
 		await this.dbLockService.withLock(DbLock.TRUSTED_KEY_REFRESH, async (tx) => {
+			this.logger.debug('Syncing sources to the database', { sources });
 			const staticSources = sources.filter((s): s is StaticKeySource => s.type === 'static');
 			const jwksSources = sources.filter((s) => s.type === 'jwks');
 
@@ -310,6 +311,7 @@ export class TrustedKeyService {
 	 */
 	private async refreshDueSources(): Promise<void> {
 		try {
+			this.logger.debug('Refreshing due sources');
 			const sources = await this.trustedKeySourceRepository.find();
 			const now = Date.now();
 			for (const source of sources) {
@@ -365,6 +367,7 @@ export class TrustedKeyService {
 		source: TrustedKeySourceEntity,
 		tx: EntityManager,
 	): Promise<void> {
+		this.logger.debug('Refreshing source', { source });
 		const resolvedKeys = this.resolveKeysForSource(source);
 		if (!resolvedKeys) return;
 
