@@ -1,3 +1,11 @@
+## [1.123.30](https://github.com/n8n-io/n8n/compare/n8n@1.123.29...n8n@1.123.30) (2026-04-09)
+
+
+### Features
+
+* Environment var to disable forms pages sandboxing ([#28158](https://github.com/n8n-io/n8n/issues/28158)) ([506cd58](https://github.com/n8n-io/n8n/commit/506cd5858e35ba2c9fb4e5bbf2c76d490563c884))
+
+
 ## [1.123.29](https://github.com/n8n-io/n8n/compare/n8n@1.123.28...n8n@1.123.29) (2026-04-08)
 
 
