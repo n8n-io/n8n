@@ -1036,6 +1036,7 @@ export class WorkflowExecute {
 
 		let data: INodeExecutionData[][] | EngineRequest | null;
 		let executionSucceeded = false;
+		let closingError: Error | undefined;
 
 		try {
 			if (customOperation) {
@@ -1066,16 +1067,20 @@ export class WorkflowExecute {
 						.map((result) => result.reason);
 
 					if (closingErrors.length > 0) {
-						if (closingErrors[0] instanceof Error) throw closingErrors[0];
-						throw new ApplicationError("Error on execution node's close function(s)", {
-							extra: { nodeName: node.name },
-							tags: { nodeType: node.type },
-							cause: closingErrors,
-						});
+						closingError =
+							closingErrors[0] instanceof Error
+								? closingErrors[0]
+								: new ApplicationError("Error on execution node's close function(s)", {
+										extra: { nodeName: node.name },
+										tags: { nodeType: node.type },
+										cause: closingErrors,
+									});
 					}
 				}
 			}
 		}
+
+		if (closingError) throw closingError;
 
 		if (isEngineRequest(data)) {
 			return data;
