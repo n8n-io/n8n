@@ -935,7 +935,7 @@ describe('Expression', () => {
 				nodes: [
 					{
 						id: 'source-id',
-						name: 'Source',
+						name: 'source',
 						type: 'n8n-nodes-base.set',
 						typeVersion: 1,
 						position: [0, 0],
@@ -943,7 +943,7 @@ describe('Expression', () => {
 					},
 					{
 						id: 'consumer-id',
-						name: 'Consumer',
+						name: 'consumer',
 						type: 'n8n-nodes-base.set',
 						typeVersion: 1,
 						position: [200, 0],
@@ -951,7 +951,7 @@ describe('Expression', () => {
 					},
 				],
 				connections: connected
-					? { Source: { main: [[{ node: 'Consumer', type: 'main' as any, index: 0 }]] } }
+					? { source: { main: [[{ node: 'consumer', type: 'main', index: 0 }]] } }
 					: {},
 				active: false,
 				nodeTypes,
@@ -961,7 +961,7 @@ describe('Expression', () => {
 		const runExecutionData = createRunExecutionData({
 			resultData: {
 				runData: {
-					Source: [
+					source: [
 						{
 							startTime: 1,
 							executionTime: 1,
@@ -976,25 +976,25 @@ describe('Expression', () => {
 			},
 		});
 
-		it("should resolve $('Source').item.json.city", async () => {
+		it("should resolve $('source').item.json.city", async () => {
 			const testWorkflow = createTestWorkflow(true);
 
 			await testWorkflow.expression.acquireIsolate();
 			try {
 				const result = testWorkflow.expression.getParameterValue(
-					"={{ $('Source').item.json.city }}",
+					"={{ $('source').item.json.city }}",
 					runExecutionData,
 					0,
 					0,
-					'Consumer',
+					'consumer',
 					[{ json: { city: 'Prague' }, pairedItem: { item: 0 } }],
 					'manual',
 					{},
 					{
-						node: testWorkflow.getNode('Consumer')!,
+						node: testWorkflow.getNode('consumer')!,
 						data: {},
 						source: {
-							main: [{ previousNode: 'Source', previousNodeOutput: 0, previousNodeRun: 0 }],
+							main: [{ previousNode: 'source', previousNodeOutput: 0, previousNodeRun: 0 }],
 						},
 					},
 				);
@@ -1012,11 +1012,11 @@ describe('Expression', () => {
 			try {
 				expect(() =>
 					testWorkflow.expression.getParameterValue(
-						"={{ $('Source').item.json.city }}",
+						"={{ $('source').item.json.city }}",
 						runExecutionData,
 						0,
 						0,
-						'Consumer',
+						'consumer',
 						[{ json: {} }],
 						'manual',
 						{},
