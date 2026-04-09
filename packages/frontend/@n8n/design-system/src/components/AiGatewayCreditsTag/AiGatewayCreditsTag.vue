@@ -13,11 +13,14 @@ withDefaults(
 		clickable?: boolean;
 		/** Match hover appearance without relying on :hover (e.g. alternate label visible). */
 		pressed?: boolean;
+		/** Larger pill for settings headers (aligns with `PreviewTag` medium). */
+		size?: 'small' | 'medium';
 	}>(),
 	{
 		text: undefined,
 		clickable: false,
 		pressed: false,
+		size: 'small',
 	},
 );
 
@@ -28,7 +31,12 @@ defineEmits<{
 
 <template>
 	<span
-		:class="[$style.root, clickable && $style.clickable, pressed && $style.pressed]"
+		:class="[
+			$style.root,
+			size === 'medium' && $style.medium,
+			clickable && $style.clickable,
+			pressed && $style.pressed,
+		]"
 		@click="$emit('click', $event)"
 	>
 		<slot>{{ text }}</slot>
@@ -51,6 +59,11 @@ defineEmits<{
 	color: var(--color--green-900);
 	white-space: nowrap;
 	box-shadow: none;
+}
+
+.medium {
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	font-size: var(--font-size--2xs);
 }
 
 .clickable {

@@ -8,6 +8,7 @@ import {
 	N8nLoading,
 	N8nText,
 	N8nTooltip,
+	N8nAiGatewayCreditsTag,
 } from '@n8n/design-system';
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import type { AiGatewayUsageEntry } from '@n8n/api-types';
@@ -28,6 +29,13 @@ const offset = ref(0);
 const PAGE_SIZE = 50;
 
 const creditsRemaining = computed(() => aiGatewayStore.creditsRemaining);
+const creditsBadgeText = computed(() =>
+	creditsRemaining.value !== undefined
+		? i18n.baseText('aiGateway.credentialMode.creditsShort', {
+				interpolate: { count: String(creditsRemaining.value) },
+			})
+		: undefined,
+);
 const entries = computed(() => aiGatewayStore.usageEntries);
 const total = computed(() => aiGatewayStore.usageTotal);
 const hasMore = computed(() => offset.value + PAGE_SIZE < total.value);
@@ -133,30 +141,29 @@ onMounted(async () => {
 
 <template>
 	<div :class="$style.container" data-test-id="settings-ai-gateway">
-		<div :class="$style.header">
-			<N8nHeading size="2xlarge">{{ i18n.baseText('settings.n8nGateway.title') }}</N8nHeading>
-			<N8nText size="small" color="text-light">
-				{{ i18n.baseText('settings.n8nGateway.description') }}
-			</N8nText>
-		</div>
-
-		<div :class="$style.creditsCard">
-			<div :class="$style.creditsInfo">
-				<span :class="$style.creditsLabel">
-					{{ i18n.baseText('settings.n8nGateway.credits.title') }}:
-				</span>
-				<span v-if="creditsRemaining !== undefined" :class="$style.creditsNumber">
-					{{ creditsRemaining }}
-				</span>
+		<header :class="$style.mainHeader" data-test-id="ai-gateway-settings-header">
+			<div :class="$style.headings">
+				<div :class="$style.headingRow">
+					<N8nHeading size="2xlarge">{{ i18n.baseText('settings.n8nGateway.title') }}</N8nHeading>
+					<N8nAiGatewayCreditsTag
+						v-if="creditsBadgeText"
+						size="medium"
+						:text="creditsBadgeText"
+						data-test-id="ai-gateway-header-credits-badge"
+					/>
+				</div>
+				<N8nText size="small" color="text-light">
+					{{ i18n.baseText('settings.n8nGateway.description') }}
+				</N8nText>
 			</div>
 			<N8nButton
 				:label="i18n.baseText('settings.n8nGateway.credits.topUp')"
 				icon="hand-coins"
-				variant="success"
+				variant="solid"
 				data-test-id="ai-gateway-topup-button"
 				@click="uiStore.openModal(AI_GATEWAY_TOP_UP_MODAL_KEY)"
 			/>
-		</div>
+		</header>
 
 		<div :class="$style.usageTableContainer">
 			<div v-if="showUsageSectionSkeleton">
@@ -234,44 +241,35 @@ onMounted(async () => {
 .container {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xl);
+	gap: var(--spacing--lg);
 	padding-bottom: var(--spacing--2xl);
 }
 
-.header {
+.mainHeader {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	gap: var(--spacing--md);
+
+	@media (max-width: 820px) {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+}
+
+.headings {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
+	flex: 1;
+	min-width: 0;
 }
 
-.creditsCard {
+.headingRow {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--sm);
-	border: var(--border);
-	border-radius: var(--radius--lg);
-	padding: var(--spacing--md) var(--spacing--lg);
-	background-color: var(--color--background);
-}
-
-.creditsInfo {
-	flex: 1;
-	display: flex;
-	align-items: baseline;
-	gap: var(--spacing--xs);
-}
-
-.creditsLabel {
-	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--regular);
-	color: var(--color--text--tint-1);
-}
-
-.creditsNumber {
-	font-size: var(--font-size--2xl);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--text--shade-1);
-	line-height: var(--line-height--sm);
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
+	margin-bottom: var(--spacing--5xs);
 }
 
 .usageTableContainer {

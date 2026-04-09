@@ -57,23 +57,26 @@ describe('SettingsAiGatewayView', () => {
 		mockGetGatewayCredits.mockResolvedValue({ creditsRemaining: 42, creditsQuota: 100 });
 	});
 
-	describe('credits card', () => {
+	describe('header credits badge', () => {
 		it('should display creditsRemaining after fetching', async () => {
 			renderComponent();
 
 			await waitFor(() => expect(screen.getByTestId('settings-ai-gateway')).toBeInTheDocument());
 			const store = useAiGatewayStore();
 			await waitFor(() => expect(store.creditsRemaining).toBe(42));
-			expect(screen.getByText('42')).toBeInTheDocument();
+			await waitFor(() =>
+				expect(screen.getByTestId('ai-gateway-header-credits-badge')).toHaveTextContent(
+					'42 credits',
+				),
+			);
 		});
 
-		it('should not render the credits number before data loads', () => {
+		it('should not render the credits badge before data loads', () => {
 			mockGetGatewayCredits.mockReturnValue(new Promise(() => {})); // never resolves
 			renderComponent();
 
 			expect(screen.queryByTestId('ai-gateway-topup-button')).not.toBeNull(); // button present
-			// number not yet visible (creditsRemaining undefined)
-			expect(screen.queryByText('42')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('ai-gateway-header-credits-badge')).not.toBeInTheDocument();
 		});
 
 		it('should open top-up modal when "Top up credits" button is clicked', async () => {
