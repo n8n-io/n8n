@@ -36,6 +36,7 @@ const props = withDefaults(defineProps<DropdownMenuProps<T, D>>(), {
 	searchPlaceholder: 'Search...',
 	searchDebounce: 300,
 	emptyText: 'No items',
+	showFullLabelOnHover: false,
 });
 
 const emit = defineEmits<{
@@ -330,6 +331,7 @@ defineExpose({ open, close });
 								<slot name="item" :item="item">
 									<N8nDropdownMenuItem
 										v-bind="item"
+										:show-full-label-on-hover="item.showFullLabelOnHover ?? showFullLabelOnHover"
 										:highlighted="highlightedIndex === index"
 										:sub-menu-open="openSubMenuIndex === index"
 										:divided="item.divided && index > 0"

@@ -58,6 +58,8 @@ export type DropdownMenuItemProps<T = string, D = never> = {
 	subMenuOpen?: boolean;
 	/** extra data useful for rendering leading/trailing slot */
 	data?: D;
+	/** Show the full label text as a native tooltip on hover (useful for truncated labels) */
+	showFullLabelOnHover?: boolean;
 };
 
 export interface DropdownMenuProps<T = string, D = never> {
@@ -99,6 +101,8 @@ export interface DropdownMenuProps<T = string, D = never> {
 	searchDebounce?: number;
 	/** Text to be shown when no menu item exists */
 	emptyText?: string;
+	/** Show the full label text as a native tooltip on hover for all items (useful for truncated labels) */
+	showFullLabelOnHover?: boolean;
 }
 
 export interface DropdownMenuEmits<T = string> {

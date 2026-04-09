@@ -182,6 +182,7 @@ watch(
 				<slot name="item-label" :item="props" :ui="labelProps">
 					<N8nText
 						:class="$style['item-label']"
+						:title="showFullLabelOnHover ? label : undefined"
 						size="medium"
 						:color="disabled ? 'text-light' : 'text-dark'"
 					>
@@ -235,6 +236,7 @@ watch(
 							<template v-for="(child, childIndex) in props.children" :key="child.id">
 								<N8nDropdownMenuItem
 									v-bind="child"
+									:show-full-label-on-hover="child.showFullLabelOnHover ?? showFullLabelOnHover"
 									:highlighted="searchable && subMenuHighlightedIndex === childIndex"
 									:divided="child.divided && childIndex > 0"
 									@select="handleSelect"
@@ -282,6 +284,7 @@ watch(
 			<slot name="item-label" :item="props" :ui="labelProps">
 				<N8nText
 					:class="$style['item-label']"
+					:title="showFullLabelOnHover ? label : undefined"
 					size="medium"
 					:color="disabled ? 'text-light' : 'text-dark'"
 				>
