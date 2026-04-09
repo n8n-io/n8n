@@ -195,50 +195,6 @@ describe('alwaysAllow / alwaysDeny deduplication', () => {
 });
 
 // ---------------------------------------------------------------------------
-// updateDefaults
-// ---------------------------------------------------------------------------
-
-describe('updateDefaults', () => {
-	it('persists new permissions and dir to the file', async () => {
-		const store = await createStore(tmpDir);
-		const newPermissions = {
-			filesystemRead: 'allow' as const,
-			filesystemWrite: 'allow' as const,
-			shell: 'allow' as const,
-			computer: 'deny' as const,
-			browser: 'ask' as const,
-		};
-		await store.updateDefaults(newPermissions, '/updated');
-
-		const raw = await fs.readFile(path.join(tmpDir, '.n8n-gateway', 'settings.json'), 'utf-8');
-		const parsed = parseJson<{ permissions: Record<string, string>; filesystemDir: string }>(raw);
-		expect(parsed.permissions.shell).toBe('allow');
-		expect(parsed.filesystemDir).toBe('/updated');
-	});
-
-	it('preserves existing resourcePermissions when updating defaults', async () => {
-		const store = await createStore(tmpDir, {
-			permissions: {},
-			resourcePermissions: { shell: { allow: ['npm'], deny: [] } },
-		});
-		await store.updateDefaults(
-			{
-				filesystemRead: 'allow',
-				filesystemWrite: 'ask',
-				shell: 'deny',
-				computer: 'deny',
-				browser: 'ask',
-			},
-			'/',
-		);
-
-		const raw = await fs.readFile(path.join(tmpDir, '.n8n-gateway', 'settings.json'), 'utf-8');
-		const parsed = parseJson<{ resourcePermissions: Record<string, unknown> }>(raw);
-		expect((parsed.resourcePermissions.shell as { allow: string[] }).allow).toContain('npm');
-	});
-});
-
-// ---------------------------------------------------------------------------
 // flush — writes pending changes immediately
 // ---------------------------------------------------------------------------
 

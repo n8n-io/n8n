@@ -124,19 +124,6 @@ export class SettingsStore {
 		return { permissions, dir };
 	}
 
-	/**
-	 * Persist updated defaults to the settings file (for future sessions).
-	 * Preserves existing resourcePermissions.
-	 */
-	async updateDefaults(permissions: Record<ToolGroup, PermissionMode>, dir: string): Promise<void> {
-		this.persistent = {
-			...this.persistent,
-			permissions,
-			filesystemDir: dir,
-		};
-		await this.flush();
-	}
-
 	// ---------------------------------------------------------------------------
 	// Resource permissions
 	// ---------------------------------------------------------------------------

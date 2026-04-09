@@ -3,7 +3,7 @@ import * as http from 'node:http';
 
 import type { GatewayConfig } from './config';
 import { GatewayClient } from './gateway-client';
-import type { GatewaySession } from './gateway-session';
+import { GatewaySession } from './gateway-session';
 import {
 	logger,
 	printConnected,
@@ -143,7 +143,6 @@ async function handleConnect(req: http.IncomingMessage, res: http.ServerResponse
 		const store = settingsStore ?? (await settingsStorePromise);
 		settingsStore ??= store;
 
-		const { GatewaySession } = await import('./gateway-session');
 		const defaults = store.getDefaults(state.config);
 		const session = new GatewaySession(defaults, store);
 
