@@ -34,7 +34,7 @@ describe('RedisClientService', () => {
 		},
 	});
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any The ioRedis constructor overloads prevent jest.mocked() from typing calls correctly
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- ioRedis constructor overloads prevent jest.mocked() from typing calls correctly
 	const mockedRedis = Redis as unknown as jest.Mock;
 
 	beforeEach(() => {
