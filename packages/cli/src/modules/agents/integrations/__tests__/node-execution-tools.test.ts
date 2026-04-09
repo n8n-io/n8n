@@ -155,6 +155,42 @@ describe('listNodes()', () => {
 			expect(node.credentials).toEqual([{ id: 'cred-1', name: 'My Gmail', type: 'gmailOAuth2' }]);
 		});
 	});
+
+	describe('missingCredentialTypes', () => {
+		it('lists all required slot names when no credential provider is given', async () => {
+			const [node] = await listNodes([makeNode({ credentials: [mock({ name: 'gmailOAuth2' })] })]);
+			expect(node.missingCredentialTypes).toEqual(['gmailOAuth2']);
+		});
+
+		it('lists slot names that have no matching credential', async () => {
+			const provider = mock<CredentialProvider>();
+			provider.list.mockResolvedValue([{ id: 'cred-1', name: 'My Slack', type: 'slackApi' }]);
+
+			const [node] = await listNodes(
+				[makeNode({ credentials: [mock({ name: 'gmailOAuth2' })] })],
+				provider,
+			);
+
+			expect(node.missingCredentialTypes).toEqual(['gmailOAuth2']);
+		});
+
+		it('is empty when all required credentials are configured', async () => {
+			const provider = mock<CredentialProvider>();
+			provider.list.mockResolvedValue([{ id: 'cred-1', name: 'My Gmail', type: 'gmailOAuth2' }]);
+
+			const [node] = await listNodes(
+				[makeNode({ credentials: [mock({ name: 'gmailOAuth2' })] })],
+				provider,
+			);
+
+			expect(node.missingCredentialTypes).toEqual([]);
+		});
+
+		it('is empty for nodes that require no credentials', async () => {
+			const [node] = await listNodes([makeNode({ credentials: [] })]);
+			expect(node.missingCredentialTypes).toEqual([]);
+		});
+	});
 });
 
 // ---------------------------------------------------------------------------

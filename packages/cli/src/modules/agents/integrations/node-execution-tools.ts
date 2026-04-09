@@ -30,6 +30,11 @@ export interface NodeDescriptor {
 	hasCredentials: boolean;
 	/** Configured credentials for this node, ready to use in run_node_tool */
 	credentials: CredentialListItem[];
+	/**
+	 * Credential slot names required by this node that the user has NOT yet configured.
+	 * Non-empty means the node cannot be executed until the user sets up these credentials.
+	 */
+	missingCredentialTypes: string[];
 }
 
 const UI_ONLY_TYPES = new Set([
@@ -88,6 +93,8 @@ function toDescriptor(
 		const cred = credsByType.get(type);
 		return cred ? [cred] : [];
 	});
+	const configuredTypes = new Set(credentials.map((c) => c.type));
+	const missingCredentialTypes = credentialSlots.filter((type) => !configuredTypes.has(type));
 	return {
 		displayName: node.displayName,
 		description: node.description,
@@ -95,6 +102,7 @@ function toDescriptor(
 		nodeTypeVersion: getLatestVersion(node.version),
 		hasCredentials: credentials.length > 0,
 		credentials,
+		missingCredentialTypes,
 	};
 }
 
@@ -197,7 +205,9 @@ export function createSearchNodesTool(
 		.description(
 			'Search for n8n node tools relevant to your task. ' +
 				'Pass a natural-language query (e.g. "send email", "fetch HTTP"). ' +
-				'Each result includes: displayName, nodeType, nodeTypeVersion, description, hasCredentials, credentials. ' +
+				'Each result includes: displayName, nodeType, nodeTypeVersion, description, hasCredentials, credentials, missingCredentialTypes. ' +
+				'If missingCredentialTypes is non-empty the node cannot be executed — do NOT call run_node_tool for it. ' +
+				'Instead, after completing all other tasks, inform the user which credential types they need to set up in n8n for each affected node. ' +
 				'Use get_node_schema to inspect parameters, then run_node_tool to execute.',
 		)
 		.input(searchNodesInputSchema)
@@ -247,6 +257,7 @@ export function createRunNodeTool(
 	return new Tool('run_node_tool')
 		.description(
 			'Execute an n8n node for the current request. ' +
+				'Only call this for nodes where missingCredentialTypes is empty in the search_nodes result. ' +
 				'Use nodeType and nodeTypeVersion from search_nodes. ' +
 				'Call get_node_schema first to understand what nodeParameters the node accepts. ' +
 				'nodeParameters holds static node config; use n8n expressions like ={{ $json.url }} to map inputData fields. ' +
