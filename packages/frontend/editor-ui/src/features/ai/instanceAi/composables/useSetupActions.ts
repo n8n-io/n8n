@@ -38,6 +38,10 @@ export function useSetupActions(deps: {
 	const isApplying = ref(false);
 	const applyError = ref<string | null>(null);
 
+	function isToolResult(val: unknown): val is Record<string, unknown> {
+		return typeof val === 'object' && val !== null && !Array.isArray(val);
+	}
+
 	let cancelApplyWait: (() => void) | null = null;
 
 	onUnmounted(() => {
@@ -79,7 +83,7 @@ export function useSetupActions(deps: {
 		const promise = new Promise<Record<string, unknown> | null>((resolve) => {
 			const existing = deps.store.findToolCallByRequestId(requestId);
 			if (existing?.result !== undefined) {
-				resolve(existing.result as Record<string, unknown>);
+				resolve(isToolResult(existing.result) ? existing.result : null);
 				return;
 			}
 
@@ -92,7 +96,7 @@ export function useSetupActions(deps: {
 				(result) => {
 					if (result !== undefined) {
 						cleanup();
-						resolve(result as Record<string, unknown>);
+						resolve(isToolResult(result) ? result : null);
 					}
 				},
 			);
@@ -190,13 +194,13 @@ export function useSetupActions(deps: {
 
 		isApplying.value = false;
 
-		if (toolResult && (toolResult.success as boolean)) {
+		if (toolResult && toolResult.success === true) {
 			applyServerResultToCanvas(toolResult);
 			isSubmitted.value = true;
-			isPartial.value = (toolResult.partial as boolean) ?? false;
+			isPartial.value = toolResult.partial === true;
 			deps.store.resolveConfirmation(deps.requestId.value, 'approved');
 		} else if (toolResult) {
-			applyError.value = (toolResult.error as string) ?? 'Apply failed';
+			applyError.value = typeof toolResult.error === 'string' ? toolResult.error : 'Apply failed';
 		} else {
 			applyError.value = 'Apply timed out — please try again.';
 		}
@@ -234,9 +238,13 @@ export function useSetupActions(deps: {
 		const toolResult = await promise;
 		cancelApplyWait = null;
 
-		if (toolResult) {
-			const error = toolResult.error as string | undefined;
-			applyError.value = error ?? 'Trigger test failed';
+		if (toolResult === null) {
+			// Timeout — the backend likely re-suspended with a new confirmation-request
+			// that will replace this component. Nothing to do here.
+		} else if (typeof toolResult.error === 'string') {
+			applyError.value = toolResult.error;
+		} else if (toolResult.success !== true) {
+			applyError.value = 'Trigger test failed';
 		}
 	}
 
@@ -250,6 +258,18 @@ export function useSetupActions(deps: {
 			}
 
 			if (dc?.type === 'group') {
+				// Clear credentials for all cards in the group (parent + subnodes)
+				const allGroupCards = [
+					...(dc.group.parentCard ? [dc.group.parentCard] : []),
+					...dc.group.subnodeCards,
+				];
+				for (const groupCard of allGroupCards) {
+					if (groupCard.credentialType && groupCard.nodes[0]) {
+						const key = deps.credGroupKey(groupCard.nodes[0]);
+						deps.clearCredentialForGroup(key, groupCard.credentialType);
+					}
+				}
+
 				if (!deps.isNextDisabled.value) {
 					deps.goToNext();
 					return;
@@ -292,9 +312,12 @@ export function useSetupActions(deps: {
 		if (!card.credentialType) return;
 		const credentialData = updateInfo.properties.credentials?.[card.credentialType];
 		const credentialId =
-			typeof credentialData === 'string'
-				? undefined
-				: (credentialData as { id?: string } | undefined)?.id;
+			typeof credentialData === 'object' &&
+			credentialData !== null &&
+			'id' in credentialData &&
+			typeof credentialData.id === 'string'
+				? credentialData.id
+				: undefined;
 		const key = card.nodes[0] ? deps.credGroupKey(card.nodes[0]) : card.credentialType;
 
 		if (credentialId) {
