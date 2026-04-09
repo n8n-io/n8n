@@ -206,28 +206,6 @@ describe('N8nMenuItem', () => {
 		});
 	});
 
-	describe('creditsBadge prop', () => {
-		it('should render credits tag text when creditsBadge is set', () => {
-			const { getByText } = render(N8nMenuItem, {
-				props: {
-					item: createMenuItem({ creditsBadge: '100 credits' }),
-				},
-				global: { stubs },
-			});
-			expect(getByText('100 credits')).toBeVisible();
-		});
-
-		it('should not render credits tag when creditsBadge is undefined', () => {
-			const { queryByText } = render(N8nMenuItem, {
-				props: {
-					item: createMenuItem(),
-				},
-				global: { stubs },
-			});
-			expect(queryByText('100 credits')).not.toBeInTheDocument();
-		});
-	});
-
 	describe('beta prop', () => {
 		it('should render BetaTag when beta is true', () => {
 			const { html } = render(N8nMenuItem, {

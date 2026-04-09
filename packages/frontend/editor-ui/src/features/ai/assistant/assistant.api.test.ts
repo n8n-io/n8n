@@ -2,7 +2,6 @@ import {
 	chatWithAssistant,
 	chatWithBuilder,
 	getBuilderCredits,
-	topUpGatewayCredits,
 	truncateBuilderMessages,
 } from './assistant.api';
 import * as apiUtils from '@n8n/rest-api-client';
@@ -520,43 +519,6 @@ describe('API: ai', () => {
 					codeBuilder: true,
 				},
 			);
-		});
-	});
-
-	describe('topUpGatewayCredits', () => {
-		let mockContext: IRestApiContext;
-		let makeRestApiRequestSpy: MockInstance;
-
-		beforeEach(() => {
-			mockContext = {
-				baseUrl: 'http://test-base-url',
-				sessionId: 'test-session',
-				pushRef: 'test-ref',
-			} as IRestApiContext;
-
-			makeRestApiRequestSpy = vi.spyOn(apiUtils, 'makeRestApiRequest');
-		});
-
-		afterEach(() => {
-			vi.clearAllMocks();
-		});
-
-		it('should call makeRestApiRequest with correct method, path and amount', async () => {
-			const mockResponse = { creditsQuota: 100, creditsRemaining: 60 };
-			makeRestApiRequestSpy.mockResolvedValue(mockResponse);
-
-			const result = await topUpGatewayCredits(mockContext, 50);
-
-			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(mockContext, 'POST', '/ai/gateway/topup', {
-				amount: 50,
-			});
-			expect(result).toEqual(mockResponse);
-		});
-
-		it('should handle API errors', async () => {
-			makeRestApiRequestSpy.mockRejectedValue(new Error('Gateway error'));
-
-			await expect(topUpGatewayCredits(mockContext, 10)).rejects.toThrow('Gateway error');
 		});
 	});
 });
