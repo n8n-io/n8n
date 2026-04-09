@@ -1,20 +1,25 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
-import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
+import type { InstanceAiAgentNode, InstanceAiToolCallState, TaskList } from '@n8n/api-types';
+import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
-import AgentSection from './AgentSection.vue';
-import ArtifactCard from './ArtifactCard.vue';
-import ToolCallStep from './ToolCallStep.vue';
-import DelegateCard from './DelegateCard.vue';
-import TaskChecklist from './TaskChecklist.vue';
-import AnsweredQuestions from './AnsweredQuestions.vue';
-import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { computed } from 'vue';
 import { extractArtifacts, type ArtifactInfo } from '../agentTimeline.utils';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { useInstanceAiStore } from '../instanceAi.store';
+import AgentSection from './AgentSection.vue';
+import AnsweredQuestions from './AnsweredQuestions.vue';
+import ArtifactCard from './ArtifactCard.vue';
+import DelegateCard from './DelegateCard.vue';
+import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
+import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
+import TaskChecklist from './TaskChecklist.vue';
+import ToolCallStep from './ToolCallStep.vue';
 
 const i18n = useI18n();
 const store = useInstanceAiStore();
+const telemetry = useTelemetry();
+const rootStore = useRootStore();
 
 /** Resolve artifact name from the enriched registry (falls back to extracted name). */
 function resolveArtifactName(artifact: ArtifactInfo): string {
@@ -106,8 +111,57 @@ const childrenById = computed(() => {
 function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedback?: string) {
 	const requestId = tc.confirmation?.requestId;
 	if (!requestId) return;
+
+	const numTasks = ((tc.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length;
+	const eventProps = {
+		thread_id: store.currentThreadId,
+		input_thread_id: tc.confirmation?.inputThreadId ?? '',
+		instance_id: rootStore.instanceId,
+		type: 'plan-review',
+		provided_inputs: [
+			{
+				label: 'plan',
+				options: ['approve', 'request-changes'],
+				option_chosen: approved ? 'approve' : 'request-changes',
+			},
+		],
+		skipped_inputs: [],
+		num_tasks: numTasks,
+		...(feedback ? { feedback } : {}),
+	};
+	telemetry.track('User finished providing input', eventProps);
+
 	store.resolveConfirmation(requestId, approved ? 'approved' : 'denied');
 	void store.confirmAction(requestId, approved, undefined, undefined, undefined, feedback);
+}
+
+/** Find the latest plan-review confirmation from a planner child's submit-plan tool call.
+ *  Prefers pending (isLoading) over resolved — handles revision loops where
+ *  multiple submit-plan calls exist. */
+const plannerConfirmation = computed<InstanceAiToolCallState | undefined>(() => {
+	let latest: InstanceAiToolCallState | undefined;
+	for (const child of props.agentNode.children) {
+		if (child.role !== 'planner') continue;
+		for (const tc of child.toolCalls) {
+			if (tc.toolName === 'submit-plan' && tc.confirmation?.inputType === 'plan-review') {
+				if (tc.isLoading) return tc;
+				latest = tc;
+			}
+		}
+	}
+	return latest;
+});
+
+/** Map simplified TaskList items to PlannedTaskArg shape for loading preview */
+function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefined {
+	if (!tasks?.tasks?.length) return undefined;
+	return tasks.tasks.map((t) => ({
+		id: t.id,
+		title: t.description,
+		kind: '',
+		spec: '',
+		deps: [],
+	}));
 }
 </script>
 
@@ -115,12 +169,9 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 	<div :class="$style.timeline">
 		<template v-for="(entry, idx) in props.agentNode.timeline" :key="idx">
 			<!-- Text segment -->
-			<div
-				v-if="entry.type === 'text'"
-				:class="[$style.textContent, props.compact && $style.compactText]"
-			>
+			<N8nText v-if="entry.type === 'text'" size="large" :compact="props.compact">
 				<InstanceAiMarkdown :content="entry.content" />
-			</div>
+			</N8nText>
 
 			<!-- Tool call (skip internal tools like updateWorkingMemory) -->
 			<template
@@ -141,10 +192,12 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 					:is-loading="toolCallsById[entry.toolCallId].isLoading"
 					:tool-call-id="toolCallsById[entry.toolCallId].toolCallId"
 				/>
-				<!-- Hidden tool calls (builder/data-table/researcher handled by child agent via AgentSection) -->
+				<!-- Hidden tool calls (builder/data-table/researcher/planner handled by child agent via AgentSection) -->
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'builder'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'data-table'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'researcher'" />
+				<!-- Planner: suppress tool call — PlanReviewPanel renders after the child AgentSection -->
+				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'planner'" />
 				<!-- Answered questions (read-only after resolution) -->
 				<AnsweredQuestions
 					v-else-if="
@@ -153,11 +206,14 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 					"
 					:tool-call="toolCallsById[entry.toolCallId]"
 				/>
-				<!-- Plan review: always render inline (interactive while pending, read-only after) -->
+				<!-- Plan review from plan() tool: always render inline -->
 				<PlanReviewPanel
 					v-else-if="toolCallsById[entry.toolCallId].confirmation?.inputType === 'plan-review'"
 					:planned-tasks="
-						(toolCallsById[entry.toolCallId].args?.tasks as PlannedTaskArg[] | undefined) ?? []
+						toolCallsById[entry.toolCallId].confirmation?.planItems ??
+						(toolCallsById[entry.toolCallId].args?.tasks as PlannedTaskArg[] | undefined) ??
+						mapTaskItemsToPlannedTasks(toolCallsById[entry.toolCallId].confirmation?.tasks) ??
+						[]
 					"
 					:read-only="!toolCallsById[entry.toolCallId].isLoading"
 					@approve="handlePlanConfirm(toolCallsById[entry.toolCallId], true)"
@@ -179,6 +235,29 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 			<template v-else-if="entry.type === 'child' && childrenById[entry.agentId]">
 				<AgentSection :agent-node="childrenById[entry.agentId]" />
 
+				<!-- Planner child: render PlanReviewPanel below the agent section -->
+				<PlanReviewPanel
+					v-if="
+						childrenById[entry.agentId].role === 'planner' &&
+						(plannerConfirmation ||
+							props.agentNode.planItems?.length ||
+							props.agentNode.tasks?.tasks?.length)
+					"
+					:key="plannerConfirmation?.confirmation?.requestId ?? 'plan-loading'"
+					:planned-tasks="
+						plannerConfirmation?.confirmation?.planItems ??
+						(props.agentNode.planItems as PlannedTaskArg[] | undefined) ??
+						mapTaskItemsToPlannedTasks(props.agentNode.tasks) ??
+						[]
+					"
+					:loading="!plannerConfirmation"
+					:read-only="!!plannerConfirmation && !plannerConfirmation.isLoading"
+					@approve="plannerConfirmation && handlePlanConfirm(plannerConfirmation, true)"
+					@request-changes="
+						(fb) => plannerConfirmation && handlePlanConfirm(plannerConfirmation, false, fb)
+					"
+				/>
+
 				<!-- Artifact cards for completed subagents (one per workflow/data-table) -->
 				<ArtifactCard
 					v-for="artifact in extractArtifacts(childrenById[entry.agentId])"
@@ -196,18 +275,8 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 
 <style lang="scss" module>
 .timeline {
-	width: 100%;
-}
-
-.textContent {
-	font-size: var(--font-size--md);
-	line-height: var(--line-height--xl);
-	color: var(--color--text--shade-1);
-	margin-bottom: var(--spacing--xs);
-}
-
-.compactText {
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
 }
 </style>

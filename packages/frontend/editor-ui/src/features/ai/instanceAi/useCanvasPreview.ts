@@ -1,4 +1,5 @@
 import { computed, ref, watch, type Ref } from 'vue';
+import { useDebounceFn } from '@vueuse/core';
 import type { RouteLocationNormalizedLoadedGeneric } from 'vue-router';
 import type { IconName } from '@n8n/design-system';
 import {
@@ -39,6 +40,26 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 	// --- Tab state ---
 	const activeTabId = ref<string | null>(null);
 	const activeExecutionId = ref<string | null>(null);
+
+	// --- Preview state persistence ---
+	const pendingRestore = ref(true);
+
+	function currentThreadId(): string | null {
+		const id = route.params.threadId;
+		return typeof id === 'string' ? id : store.currentThreadId;
+	}
+
+	const debouncedSavePreviewState = useDebounceFn((tabId: string | null) => {
+		const threadId = currentThreadId();
+		if (!threadId) return;
+		void store.updateThreadMetadata(threadId, { activePreviewTab: tabId });
+	}, 500);
+
+	// Save activeTabId to thread metadata when it changes (skip during restore)
+	watch(activeTabId, (tabId) => {
+		if (pendingRestore.value) return;
+		void debouncedSavePreviewState(tabId);
+	});
 
 	// Execution results extracted from historical chat messages (survives page refresh).
 	// Filters out stale executions where the workflow was edited after the execution finished.
@@ -85,6 +106,21 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 		}
 
 		return result;
+	});
+
+	// Restore activeTabId from thread metadata when artifacts become available
+	watch(allArtifactTabs, (tabs) => {
+		if (!pendingRestore.value || tabs.length === 0) return;
+		pendingRestore.value = false;
+
+		const threadId = currentThreadId();
+		if (!threadId) return;
+
+		const metadata = store.getThreadMetadata(threadId);
+		const savedTabId = metadata?.activePreviewTab;
+		if (typeof savedTabId === 'string' && tabs.some((t) => t.id === savedTabId)) {
+			activeTabId.value = savedTabId;
+		}
 	});
 
 	// Derived preview state from active tab
@@ -190,6 +226,7 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 		() => route.params.threadId,
 		() => {
 			wasCanvasOpenBeforeSwitch.value = isPreviewVisible.value;
+			pendingRestore.value = true;
 			activeTabId.value = null;
 			activeExecutionId.value = null;
 			userSentMessage.value = false;

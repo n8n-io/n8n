@@ -15,7 +15,11 @@ function isFeatureFlagEnabled(): boolean {
 export class TokenExchangeModule implements ModuleInterface {
 	async entities() {
 		const { TokenExchangeJti } = await import('./database/entities/token-exchange-jti.entity');
-		return [TokenExchangeJti] as never;
+		const { TrustedKeySourceEntity } = await import(
+			'./database/entities/trusted-key-source.entity'
+		);
+		const { TrustedKeyEntity } = await import('./database/entities/trusted-key.entity');
+		return [TokenExchangeJti, TrustedKeySourceEntity, TrustedKeyEntity] as never;
 	}
 
 	async init() {
