@@ -5,7 +5,6 @@ import { createTestingPinia } from '@pinia/testing';
 import { jsonParse } from 'n8n-workflow';
 import { usePostMessageHandler } from './usePostMessageHandler';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
