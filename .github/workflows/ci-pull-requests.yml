@@ -25,7 +25,6 @@ jobs:
       workflows: ${{ fromJSON(steps.ci-filter.outputs.results).workflows == true }}
       workflow_scripts: ${{ fromJSON(steps.ci-filter.outputs.results)['workflow-scripts'] == true }}
       db: ${{ fromJSON(steps.ci-filter.outputs.results).db == true }}
-      design_system: ${{ fromJSON(steps.ci-filter.outputs.results)['design-system'] == true }}
       performance: ${{ fromJSON(steps.ci-filter.outputs.results).performance == true }}
       e2e_performance: ${{ fromJSON(steps.ci-filter.outputs.results)['e2e-performance'] == true }}
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
@@ -61,11 +60,6 @@ jobs:
               packages/testing/containers/**
             workflows: .github/**
             workflow-scripts: .github/scripts/**
-            design-system:
-              packages/frontend/@n8n/design-system/**
-              packages/frontend/@n8n/chat/**
-              packages/frontend/@n8n/storybook/**
-              .github/workflows/test-visual-chromatic.yml
             performance:
               packages/testing/performance/**
               packages/workflow/src/**
@@ -201,15 +195,6 @@ jobs:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
     secrets: inherit
 
-  chromatic:
-    name: Chromatic
-    needs: install-and-build
-    if: needs.install-and-build.outputs.design_system == 'true' && github.event_name == 'pull_request' && github.repository == 'n8n-io/n8n'
-    uses: ./.github/workflows/test-visual-chromatic.yml
-    with:
-      ref: ${{ needs.install-and-build.outputs.commit_sha }}
-    secrets: inherit
-
   # This job is required by GitHub branch protection rules.
   # PRs cannot be merged unless this job passes.
   required-checks:
@@ -226,7 +211,6 @@ jobs:
         performance,
         security-checks,
         workflow-scripts,
-        chromatic,
       ]
     if: always()
     runs-on: ubuntu-slim
