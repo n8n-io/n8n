@@ -305,6 +305,99 @@ test.describe(
 
 				await expect(n8n.templates.getCategoryFilters().nth(1)).toHaveText('Sales');
 			});
+
+			test('[ADO-5047] should display workflow details when accessing collection directly', async ({
+				n8n,
+				setupRequirements,
+			}) => {
+				// This test reproduces the bug where accessing a collection via direct link
+				// shows "Just now" for all workflows instead of their actual names and dates.
+				// The issue is a race condition in the templates store.
+
+				const COLLECTION_ID = 42;
+				const pastDate = '2023-06-15T10:30:00.000Z';
+
+				// Collection with full workflow data
+				const collectionWithWorkflows = {
+					id: COLLECTION_ID,
+					name: 'Marketing Automation Collection',
+					description: 'A collection of marketing workflows',
+					workflows: [
+						{
+							id: 101,
+							name: 'Email Campaign Workflow',
+							createdAt: pastDate,
+							views: 250,
+							totalViews: 250,
+							nodes: [
+								{ name: 'Schedule', type: 'n8n-nodes-base.scheduleTrigger' },
+								{ name: 'Send Email', type: 'n8n-nodes-base.emailSend' },
+							],
+						},
+						{
+							id: 102,
+							name: 'Social Media Post Workflow',
+							createdAt: pastDate,
+							views: 180,
+							totalViews: 180,
+							nodes: [
+								{ name: 'Trigger', type: 'n8n-nodes-base.webhook' },
+								{ name: 'Twitter', type: 'n8n-nodes-base.twitter' },
+							],
+						},
+					],
+					nodes: [
+						{ name: 'Schedule', type: 'n8n-nodes-base.scheduleTrigger' },
+						{ name: 'Send Email', type: 'n8n-nodes-base.emailSend' },
+						{ name: 'Trigger', type: 'n8n-nodes-base.webhook' },
+						{ name: 'Twitter', type: 'n8n-nodes-base.twitter' },
+					],
+				};
+
+				// Setup intercept for collection endpoint
+				await setupRequirements(createCustomTemplateHostRequirements(hostname));
+				await setupDynamicTemplateRoutes(n8n, hostname);
+
+				await n8n.page.route(
+					`https://${hostname}/api/templates/collections/${COLLECTION_ID}`,
+					(route) => {
+						void route.fulfill({
+							status: 200,
+							contentType: 'application/json',
+							body: JSON.stringify({ collection: collectionWithWorkflows }),
+						});
+					},
+				);
+
+				// Navigate directly to collection (simulating clicking a direct link)
+				// This bypasses the templates list page which would pre-populate the workflow store
+				await n8n.navigate.toTemplateCollection(COLLECTION_ID);
+
+				// Wait for collection to load
+				await expect(n8n.templates.getSkeletonLoader()).toBeHidden({ timeout: 5000 });
+
+				// Verify collection name is displayed
+				await expect(n8n.page.getByRole('heading', { name: 'Marketing Automation Collection' })).toBeVisible();
+
+				// Get all template cards
+				const templateCards = n8n.templates.getTemplateCards();
+				await expect(templateCards).toHaveCount(2);
+
+				// BUG: When accessing collection directly, workflow names should be displayed
+				// Currently shows blank due to race condition in templates.store.ts
+				const firstCard = templateCards.first();
+				await expect(firstCard.getByRole('heading', { name: 'Email Campaign Workflow' })).toBeVisible();
+
+				const secondCard = templateCards.nth(1);
+				await expect(secondCard.getByRole('heading', { name: 'Social Media Post Workflow' })).toBeVisible();
+
+				// BUG: TimeAgo component should show the actual date (e.g., "8 months ago")
+				// Currently shows "Just now" due to missing createdAt data
+				// We check that it doesn't contain "Just now" as that's the symptom of the bug
+				const timeAgoElements = n8n.page.locator('time');
+				await expect(timeAgoElements.first()).not.toHaveText(/just now/i);
+				await expect(timeAgoElements.nth(1)).not.toHaveText(/just now/i);
+			});
 		});
 	},
 );
