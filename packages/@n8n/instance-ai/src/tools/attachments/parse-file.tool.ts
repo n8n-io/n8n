@@ -31,7 +31,7 @@ export const parseFileInputSchema = z.object({
 		.describe('Whether the first row is a header row (CSV/TSV only). Defaults to true.'),
 	delimiter: z
 		.string()
-		.max(1)
+		.length(1)
 		.optional()
 		.describe('Single-character delimiter override for CSV. Ignored for TSV/JSON.'),
 	startRow: z

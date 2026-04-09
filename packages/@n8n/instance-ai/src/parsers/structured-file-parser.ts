@@ -135,7 +135,15 @@ export function normalizeColumnNames(rawNames: string[]): string[] {
 
 		const count = seen.get(name) ?? 0;
 		seen.set(name, count + 1);
-		if (count > 0) name = `${name}_${count}`;
+		if (count > 0) {
+			let deduped = `${name}_${count}`;
+			while (seen.has(deduped)) {
+				deduped = `${deduped}_${seen.get(deduped)! + 1}`;
+				seen.set(name, seen.get(name)! + 1);
+			}
+			name = deduped;
+		}
+		seen.set(name, 1);
 
 		return name;
 	});
