@@ -5,6 +5,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { jsonParse } from 'n8n-workflow';
 import { usePostMessageHandler } from './usePostMessageHandler';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
@@ -275,6 +276,70 @@ describe('usePostMessageHandler', () => {
 			});
 
 			expect(storeRef.value).not.toBeNull();
+
+			cleanup();
+		});
+
+		it('should fetch workflow credentials after opening execution', async () => {
+			const credentialsStore = useCredentialsStore();
+
+			mockOpenExecution.mockResolvedValue({
+				workflowData: { id: 'test-wf-id', name: 'Test' },
+				mode: 'trigger',
+				finished: true,
+			});
+
+			const { setup, cleanup } = usePostMessageHandler({
+				workflowState,
+				currentWorkflowDocumentStore: shallowRef(null),
+			});
+			setup();
+
+			const messageEvent = new MessageEvent('message', {
+				data: JSON.stringify({
+					command: 'openExecution',
+					executionId: 'exec-1',
+					executionMode: 'trigger',
+				}),
+			});
+			window.dispatchEvent(messageEvent);
+
+			await vi.waitFor(() => {
+				expect(mockOpenExecution).toHaveBeenCalled();
+			});
+
+			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+				workflowId: 'test-wf-id',
+			});
+
+			cleanup();
+		});
+
+		it('should not fetch workflow credentials when execution data is missing', async () => {
+			const credentialsStore = useCredentialsStore();
+
+			mockOpenExecution.mockResolvedValue(null);
+
+			const { setup, cleanup } = usePostMessageHandler({
+				workflowState,
+				currentWorkflowDocumentStore: shallowRef(null),
+			});
+			setup();
+
+			const messageEvent = new MessageEvent('message', {
+				data: JSON.stringify({
+					command: 'openExecution',
+					executionId: 'exec-1',
+					executionMode: 'trigger',
+				}),
+			});
+			window.dispatchEvent(messageEvent);
+
+			await vi.waitFor(() => {
+				expect(mockOpenExecution).toHaveBeenCalled();
+			});
+
+			expect(credentialsStore.fetchAllCredentialsForWorkflow).not.toHaveBeenCalled();
 
 			cleanup();
 		});
