@@ -5,7 +5,7 @@ import type { Algorithm } from 'jsonwebtoken';
 import { OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { JwksKeySource, ResolvedTrustedKey } from '../token-exchange.schemas';
+import type { JwksKeySource } from '../token-exchange.schemas';
 import { JwtAlgorithmSchema } from '../token-exchange.schemas';
 
 /**
@@ -25,9 +25,19 @@ export interface SkippedKey {
 	reason: string;
 }
 
+/** A resolved JWKS key with PEM-encoded key material, ready for DB persistence. */
+export interface JwksResolvedKey {
+	kid: string;
+	algorithms: string[];
+	keyMaterial: string;
+	issuer: string;
+	expectedAudience?: string;
+	allowedRoles?: string[];
+}
+
 export interface JwksResolverResult {
-	keys: ResolvedTrustedKey[];
-	expiresAt: Date;
+	keys: JwksResolvedKey[];
+	ttlSeconds: number;
 	skipped: SkippedKey[];
 }
 
@@ -150,9 +160,8 @@ export async function resolveJwksKeys(
 	const maxAge = parseMaxAge(response.headers.get('cache-control'));
 	const rawTtl = maxAge ?? source.cacheTtlSeconds ?? defaultTtl;
 	const ttlSeconds = Math.max(MIN_TTL_SECONDS, Math.min(rawTtl, MAX_TTL_SECONDS));
-	const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
 
-	const keys: ResolvedTrustedKey[] = [];
+	const keys: JwksResolvedKey[] = [];
 	const skipped: SkippedKey[] = [];
 
 	for (const rawJwk of jwkSetResult.data.keys) {
@@ -192,12 +201,11 @@ export async function resolveJwksKeys(
 
 		keys.push({
 			kid: jwk.kid,
-			algorithms: [algorithm] as Algorithm[],
-			key: keyObject,
+			algorithms: [algorithm],
+			keyMaterial: keyObject.export({ type: 'spki', format: 'pem' }) as string,
 			issuer: source.issuer,
 			expectedAudience: source.expectedAudience,
 			allowedRoles: source.allowedRoles,
-			expiresAt,
 		});
 	}
 
@@ -208,5 +216,5 @@ export async function resolveJwksKeys(
 		);
 	}
 
-	return { keys, expiresAt, skipped };
+	return { keys, ttlSeconds, skipped };
 }

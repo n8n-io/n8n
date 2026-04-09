@@ -81,7 +81,7 @@ describe('resolveJwksKeys', () => {
 			expect(result.keys[0].kid).toBe('rsa-1');
 			expect(result.keys[0].algorithms).toEqual(['RS256']);
 			expect(result.keys[0].issuer).toBe('https://idp.example.com');
-			expect(result.keys[0].key).toBeDefined();
+			expect(result.keys[0].keyMaterial).toContain('BEGIN PUBLIC KEY');
 		});
 
 		it('should infer ES256 from EC P-256 JWK without alg', async () => {
@@ -218,66 +218,51 @@ describe('resolveJwksKeys', () => {
 	});
 
 	describe('TTL / Cache-Control', () => {
-		it('should parse Cache-Control max-age for expiresAt', async () => {
+		it('should parse Cache-Control max-age into ttlSeconds', async () => {
 			const fetcher = mockFetchResponse([{ ...rsaJwk, kid: 'rsa-1', alg: 'RS256' }], {
 				cacheControl: 'public, max-age=600',
 			});
-			const before = Date.now();
 
 			const result = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher });
 
-			const after = Date.now();
-			const expectedMin = before + 600 * 1000;
-			const expectedMax = after + 600 * 1000;
-			expect(result.expiresAt.getTime()).toBeGreaterThanOrEqual(expectedMin);
-			expect(result.expiresAt.getTime()).toBeLessThanOrEqual(expectedMax);
+			expect(result.ttlSeconds).toBe(600);
 		});
 
 		it('should fall back to source cacheTtlSeconds when no Cache-Control', async () => {
 			const source: JwksKeySource = { ...DEFAULT_SOURCE, cacheTtlSeconds: 120 };
 			const fetcher = mockFetchResponse([{ ...rsaJwk, kid: 'rsa-1', alg: 'RS256' }]);
-			const before = Date.now();
 
 			const result = await resolveJwksKeys(source, { fetcher });
 
-			const expectedMin = before + 120 * 1000;
-			expect(result.expiresAt.getTime()).toBeGreaterThanOrEqual(expectedMin);
+			expect(result.ttlSeconds).toBe(120);
 		});
 
 		it('should fall back to default TTL (3600s) when no Cache-Control and no cacheTtlSeconds', async () => {
 			const fetcher = mockFetchResponse([{ ...rsaJwk, kid: 'rsa-1', alg: 'RS256' }]);
-			const before = Date.now();
 
 			const result = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher });
 
-			const expectedMin = before + 3600 * 1000;
-			expect(result.expiresAt.getTime()).toBeGreaterThanOrEqual(expectedMin);
+			expect(result.ttlSeconds).toBe(3600);
 		});
 
 		it('should clamp max-age=0 to minimum TTL (60s)', async () => {
 			const fetcher = mockFetchResponse([{ ...rsaJwk, kid: 'rsa-1', alg: 'RS256' }], {
 				cacheControl: 'max-age=0',
 			});
-			const before = Date.now();
 
 			const result = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher });
 
-			const expectedMin = before + 60 * 1000;
-			expect(result.expiresAt.getTime()).toBeGreaterThanOrEqual(expectedMin);
+			expect(result.ttlSeconds).toBe(60);
 		});
 
 		it('should clamp very large max-age to maximum TTL (86400s)', async () => {
 			const fetcher = mockFetchResponse([{ ...rsaJwk, kid: 'rsa-1', alg: 'RS256' }], {
 				cacheControl: 'max-age=999999999',
 			});
-			const before = Date.now();
 
 			const result = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher });
 
-			const after = Date.now();
-			const expectedMax = after + 86_400 * 1000;
-			expect(result.expiresAt.getTime()).toBeLessThanOrEqual(expectedMax);
-			expect(result.expiresAt.getTime()).toBeGreaterThanOrEqual(before + 86_400 * 1000);
+			expect(result.ttlSeconds).toBe(86_400);
 		});
 
 		it('should prefer Cache-Control max-age over source cacheTtlSeconds', async () => {
@@ -285,28 +270,21 @@ describe('resolveJwksKeys', () => {
 			const fetcher = mockFetchResponse([{ ...rsaJwk, kid: 'rsa-1', alg: 'RS256' }], {
 				cacheControl: 'max-age=600',
 			});
-			const before = Date.now();
 
 			const result = await resolveJwksKeys(source, { fetcher });
 
-			const expectedMin = before + 600 * 1000;
-			expect(result.expiresAt.getTime()).toBeGreaterThanOrEqual(expectedMin);
+			expect(result.ttlSeconds).toBe(600);
 		});
 
 		it('should use custom defaultTtlSeconds when no Cache-Control and no cacheTtlSeconds', async () => {
 			const fetcher = mockFetchResponse([{ ...rsaJwk, kid: 'rsa-1', alg: 'RS256' }]);
-			const before = Date.now();
 
 			const result = await resolveJwksKeys(DEFAULT_SOURCE, {
 				fetcher,
 				defaultTtlSeconds: 300,
 			});
 
-			const after = Date.now();
-			const expectedMin = before + 300 * 1000;
-			const expectedMax = after + 300 * 1000;
-			expect(result.expiresAt.getTime()).toBeGreaterThanOrEqual(expectedMin);
-			expect(result.expiresAt.getTime()).toBeLessThanOrEqual(expectedMax);
+			expect(result.ttlSeconds).toBe(300);
 		});
 	});
 
