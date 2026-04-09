@@ -717,10 +717,11 @@ export const updatedIconSet = {
 export type IconName = keyof typeof updatedIconSet; // only new icon names should be used moving forward
 
 export { type NodeIconName } from './node-icons';
+import type { NodeIconName } from './node-icons';
 
 const NODE_ICON_PREFIX = 'node:';
 
-export function isNodeIcon(iconName?: string): iconName is IconName {
+export function isNodeIcon(iconName?: string): iconName is NodeIconName {
 	return typeof iconName === 'string' && iconName.startsWith(NODE_ICON_PREFIX);
 }
 
