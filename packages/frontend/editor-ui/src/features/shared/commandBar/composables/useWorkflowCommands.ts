@@ -51,6 +51,7 @@ const ITEM_ID = {
 	DELETE_WORKFLOW: 'delete-workflow',
 	PUBLISH_WORKFLOW: 'publish-workflow',
 	UNPUBLISH_WORKFLOW: 'unpublish-workflow',
+	AI_GROUP_NODES: 'ai-group-nodes',
 } as const;
 
 export function useWorkflowCommands(): CommandGroup {
@@ -239,6 +240,21 @@ export function useWorkflowCommands(): CommandGroup {
 					},
 				]
 			: []),
+		{
+			id: ITEM_ID.AI_GROUP_NODES,
+			title: 'AI: Group nodes',
+			section: i18n.baseText('commandBar.sections.workflow'),
+			keywords: ['group', 'simplify', 'ai', 'collapse', 'semantic'],
+			handler: () => {
+				window.dispatchEvent(new Event('group-secondary-nodes'));
+			},
+			icon: {
+				component: N8nIcon,
+				props: {
+					icon: 'compress',
+				},
+			},
+		},
 		{
 			id: ITEM_ID.SELECT_ALL,
 			title: {

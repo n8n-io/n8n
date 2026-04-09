@@ -51,6 +51,7 @@ export const enum CanvasNodeRenderType {
 	StickyNote = 'n8n-nodes-base.stickyNote',
 	AddNodes = 'n8n-nodes-internal.addNodes',
 	ChoicePrompt = 'n8n-nodes-internal.choicePrompt',
+	GroupFrame = 'n8n-nodes-internal.groupFrame',
 }
 
 export type CanvasNodeDefaultRenderLabelSize = 'small' | 'medium' | 'large';
@@ -65,12 +66,15 @@ export const CanvasNodeDirtiness = {
 export type CanvasNodeDirtinessType =
 	(typeof CanvasNodeDirtiness)[keyof typeof CanvasNodeDirtiness];
 
+export type NodeImportance = 'primary' | 'secondary' | 'default';
+
 export type CanvasNodeDefaultRender = {
 	type: CanvasNodeRenderType.Default;
 	options: Partial<{
 		configurable: boolean;
 		configuration: boolean;
 		trigger: boolean;
+		importance: NodeImportance;
 		inputs: {
 			labelSize: CanvasNodeDefaultRenderLabelSize;
 		};
@@ -81,6 +85,13 @@ export type CanvasNodeDefaultRender = {
 		dirtiness?: CanvasNodeDirtinessType;
 		icon?: NodeIconSource;
 		placeholder?: boolean;
+		collapsedGroup?: boolean;
+		groupedIcons?: NodeIconSource[];
+		groupedNodeNames?: string[];
+		groupName?: string;
+		groupDescription?: string;
+		groupDescriptionLoading?: boolean;
+		groupColor?: string;
 	}>;
 };
 
@@ -92,6 +103,18 @@ export type CanvasNodeAddNodesRender = {
 export type CanvasNodeChoicePromptRender = {
 	type: CanvasNodeRenderType.ChoicePrompt;
 	options: Record<string, never>;
+};
+
+export type CanvasNodeGroupFrameRender = {
+	type: CanvasNodeRenderType.GroupFrame;
+	options: {
+		width: number;
+		height: number;
+		groupId: string;
+		name: string;
+		description: string;
+		color?: string;
+	};
 };
 
 export type CanvasNodeStickyNoteRender = {
@@ -141,7 +164,8 @@ export interface CanvasNodeData {
 		| CanvasNodeDefaultRender
 		| CanvasNodeStickyNoteRender
 		| CanvasNodeAddNodesRender
-		| CanvasNodeChoicePromptRender;
+		| CanvasNodeChoicePromptRender
+		| CanvasNodeGroupFrameRender;
 }
 
 export type CanvasNode = Node<CanvasNodeData>;
@@ -202,6 +226,7 @@ export type CanvasEventBusEvents = {
 		trackEvents?: boolean;
 		trackHistory?: boolean;
 		trackBulk?: boolean;
+		skipFitView?: boolean;
 	};
 	'create:sticky': never;
 	'deprecated:tab-shortcut': never;

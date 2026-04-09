@@ -13,7 +13,9 @@ import ExperimentalInPlaceNodeSettings from '../../../../experimental/components
 import CanvasNodeTooltip from './parts/CanvasNodeTooltip.vue';
 import CanvasNodeDisabledStrikeThrough from './parts/CanvasNodeDisabledStrikeThrough.vue';
 import CanvasNodeStatusIcons from './parts/CanvasNodeStatusIcons.vue';
+import CanvasNodeCollapsedGroup from './CanvasNodeCollapsedGroup.vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
+import { N8nTooltip } from '@n8n/design-system';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
@@ -77,6 +79,7 @@ const classes = computed(() => {
 		[$style.trigger]: renderOptions.value.trigger,
 		[$style.warning]: renderOptions.value.dirtiness !== undefined,
 		[$style.placeholder]: renderOptions.value.placeholder,
+		[$style.collapsedGroup]: renderOptions.value.collapsedGroup,
 		waiting: executionWaiting.value || executionStatus.value === 'waiting',
 		running: executionRunning.value || executionWaitingForNext.value,
 	};
@@ -174,6 +177,10 @@ function onActivate(event: MouseEvent) {
 		:style="styles"
 		:is-read-only="isReadOnly"
 		:is-configurable="renderOptions.configurable ?? false"
+	/>
+	<CanvasNodeCollapsedGroup
+		v-else-if="renderOptions.collapsedGroup"
+		@open:contextmenu="openContextMenu"
 	/>
 	<div
 		v-else
@@ -380,6 +387,11 @@ function onActivate(event: MouseEvent) {
 				color: var(--color--primary);
 			}
 		}
+	}
+
+	&.collapsedGroup {
+		border: 2px dashed var(--color--foreground--shade-1);
+		opacity: 0.85;
 	}
 }
 

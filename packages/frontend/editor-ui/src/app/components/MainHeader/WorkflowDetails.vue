@@ -37,7 +37,7 @@ import {
 } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import { N8nBadge, N8nInlineTextEdit } from '@n8n/design-system';
+import { N8nBadge, N8nIcon, N8nInlineTextEdit } from '@n8n/design-system';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -89,6 +89,25 @@ const appliedTagIds = ref<string[]>([]);
 const workflowHeaderActionsRef =
 	useTemplateRef<InstanceType<typeof WorkflowHeaderDraftPublishActions>>('workflowHeaderActions');
 const tagsEventBus = createEventBus();
+
+const aiGroupingInProgress = ref(false);
+
+function onAiGroupingStart() {
+	aiGroupingInProgress.value = true;
+}
+function onAiGroupingEnd() {
+	aiGroupingInProgress.value = false;
+}
+
+onMounted(() => {
+	window.addEventListener('ai-grouping-start', onAiGroupingStart);
+	window.addEventListener('ai-grouping-end', onAiGroupingEnd);
+});
+
+onBeforeUnmount(() => {
+	window.removeEventListener('ai-grouping-start', onAiGroupingStart);
+	window.removeEventListener('ai-grouping-end', onAiGroupingEnd);
+});
 
 const hasChanged = (prev: readonly string[], curr: readonly string[]) => {
 	if (prev.length !== curr.length) {
@@ -451,6 +470,10 @@ onBeforeUnmount(() => {
 			</span>
 		</span>
 
+		<span v-if="aiGroupingInProgress" class="ai-grouping-indicator">
+			<N8nIcon icon="spinner" spin size="small" />
+			Grouping nodes...
+		</span>
 		<ConnectionTracker class="actions">
 			<WorkflowProductionChecklist v-if="!isNewWorkflow" :workflow="workflowsStore.workflow" />
 			<WorkflowHeaderDraftPublishActions
@@ -468,6 +491,16 @@ onBeforeUnmount(() => {
 
 <style scoped lang="scss">
 $--header-spacing: 20px;
+
+.ai-grouping-indicator {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-2);
+	white-space: nowrap;
+	margin-right: var(--spacing--sm);
+}
 
 .name-container {
 	margin-right: var(--spacing--sm);

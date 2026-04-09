@@ -25,6 +25,7 @@ import type {
 	CanvasNodeDefaultRenderLabelSize,
 	CanvasNodeStickyNoteRender,
 	ExecutionOutputMap,
+	NodeImportance,
 } from '../canvas.types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '../canvas.types';
 import {
@@ -63,7 +64,7 @@ import { MarkerType } from '@vue-flow/core';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
 import { useNodeDirtiness } from '@/app/composables/useNodeDirtiness';
-import { getNodeIconSource } from '@/app/utils/nodeIcon';
+import { getNodeIconSource, type NodeIconSource } from '@/app/utils/nodeIcon';
 import * as workflowUtils from 'n8n-workflow/common';
 import { throttledWatch } from '@vueuse/core';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
@@ -115,6 +116,163 @@ export function useCanvasMapping({
 		};
 	}
 
+	// LLM-based semantic groups
+	type StoredSemanticGroup = { name: string; description: string; nodes: string[]; color?: string };
+	const llmSemanticGroups = ref<StoredSemanticGroup[]>([]);
+	const summaryMode = ref(false);
+	// Groups that are visually expanded (show real nodes + frame instead of card)
+	const expandedGroupIds = ref(new Set<string>());
+	// Stable positions for group nodes — updated after tidy-up via dagre layout results
+	const groupPositions = ref<Record<string, { x: number; y: number }>>({});
+
+	// Set of node names that are in any semantic group
+	const groupedNodeNames = computed(() => {
+		const names = new Set<string>();
+		for (const g of llmSemanticGroups.value) {
+			for (const n of g.nodes) names.add(n);
+		}
+		return names;
+	});
+
+	const DEFAULT_GROUP_COLOR = 'rgb(0 90 255 / 0.08)';
+
+	function setSemanticGroups(result: { groups: StoredSemanticGroup[]; standalone: string[] }) {
+		llmSemanticGroups.value = result.groups.map((g) => ({
+			...g,
+			color: g.color ?? DEFAULT_GROUP_COLOR,
+		}));
+		summaryMode.value = result.groups.length > 0;
+		expandedGroupIds.value = new Set();
+		groupPositions.value = {};
+	}
+
+	/**
+	 * Called after tidy-up layout is applied. Captures the dagre-calculated positions
+	 * for group placeholder nodes so they don't snap back on recompute.
+	 */
+	function onLayoutApplied(layoutNodes: Array<{ id: string; x: number; y: number }>) {
+		for (const ln of layoutNodes) {
+			if (ln.id.startsWith('semantic-group-') || ln.id.startsWith('frame-')) {
+				groupPositions.value[ln.id] = { x: ln.x, y: ln.y };
+			}
+		}
+	}
+
+	function toggleSummaryMode() {
+		summaryMode.value = !summaryMode.value;
+	}
+
+	// Ungroup: remove a group entirely
+	window.addEventListener('ungroup-group', ((e: CustomEvent) => {
+		const groupId = e.detail?.groupId;
+		if (groupId) {
+			const idx = llmSemanticGroups.value.findIndex((_g, i) => `semantic-group-${i}` === groupId);
+			if (idx !== -1) {
+				const updated = [...llmSemanticGroups.value];
+				updated.splice(idx, 1);
+				llmSemanticGroups.value = updated;
+			}
+			window.dispatchEvent(new Event('groups-changed'));
+		}
+	}) as EventListener);
+
+	// Manual group: add selected nodes to a new group
+	window.addEventListener('group-nodes-manual', ((e: CustomEvent) => {
+		const nodeIds: string[] = e.detail?.nodeIds ?? [];
+		if (nodeIds.length === 0) return;
+
+		const nodeNames = nodeIds
+			.map((id) => nodes.value.find((n) => n.id === id)?.name)
+			.filter((name): name is string => !!name);
+
+		if (nodeNames.length === 0) return;
+
+		// Check if any selected node is already in a group — merge into that group
+		const existingIdx = llmSemanticGroups.value.findIndex((g) =>
+			nodeNames.some((name) => g.nodes.includes(name)),
+		);
+
+		if (existingIdx !== -1) {
+			const updated = [...llmSemanticGroups.value];
+			const existing = updated[existingIdx];
+			const merged = new Set([...existing.nodes, ...nodeNames]);
+			updated[existingIdx] = { ...existing, nodes: [...merged] };
+			llmSemanticGroups.value = updated;
+		} else {
+			const newGroupId = `semantic-group-${llmSemanticGroups.value.length}`;
+			llmSemanticGroups.value = [
+				...llmSemanticGroups.value,
+				{
+					name: 'Custom Group',
+					description: `${nodeNames.length} nodes`,
+					nodes: nodeNames,
+					color: DEFAULT_GROUP_COLOR,
+				},
+			];
+
+			// Start manual groups in expanded state
+			const next = new Set(expandedGroupIds.value);
+			next.add(newGroupId);
+			expandedGroupIds.value = next;
+		}
+		summaryMode.value = true;
+	}) as EventListener);
+
+	// Remove a single node from its group
+	window.addEventListener('remove-node-from-group', ((e: CustomEvent) => {
+		const nodeName: string = e.detail?.nodeName;
+		if (!nodeName) return;
+
+		const updated = llmSemanticGroups.value
+			.map((g) => ({
+				...g,
+				nodes: g.nodes.filter((n) => n !== nodeName),
+			}))
+			.filter((g) => g.nodes.length > 0); // remove empty groups
+
+		llmSemanticGroups.value = updated;
+		window.dispatchEvent(new Event('groups-changed'));
+	}) as EventListener);
+
+	// Expand group: show real nodes + frame instead of collapsed card
+	window.addEventListener('expand-group', ((e: CustomEvent) => {
+		const groupId = e.detail?.groupId;
+		if (groupId) {
+			const next = new Set(expandedGroupIds.value);
+			next.add(groupId);
+			expandedGroupIds.value = next;
+		}
+	}) as EventListener);
+
+	// Collapse group: go back to collapsed card view
+	window.addEventListener('collapse-group', ((e: CustomEvent) => {
+		const groupId = e.detail?.groupId;
+		if (groupId) {
+			const next = new Set(expandedGroupIds.value);
+			next.delete(groupId);
+			expandedGroupIds.value = next;
+		}
+	}) as EventListener);
+
+	// Update group name or description
+	window.addEventListener('update-group-field', ((e: CustomEvent) => {
+		const { groupId, field, value } = e.detail as {
+			groupId: string;
+			field: 'name' | 'description' | 'color';
+			value: string;
+		};
+		const idx = llmSemanticGroups.value.findIndex((_g, i) => `semantic-group-${i}` === groupId);
+		if (idx !== -1) {
+			const updated = [...llmSemanticGroups.value];
+			updated[idx] = { ...updated[idx], [field]: value };
+			llmSemanticGroups.value = updated;
+		}
+	}) as EventListener);
+
+	function getNodeImportance(node: INodeUi): NodeImportance {
+		return groupedNodeNames.value.has(node.name) ? 'secondary' : 'primary';
+	}
+
 	function createDefaultNodeRenderType(node: INodeUi): CanvasNodeDefaultRender {
 		const nodeType = nodeTypeDescriptionByNodeId.value[node.id];
 		const source = simulatedNodeTypeDescriptionByNodeId.value[node.id] ?? nodeType ?? node.type;
@@ -131,6 +289,7 @@ export function useCanvasMapping({
 					node.type,
 					node.typeVersion,
 				),
+				importance: getNodeImportance(node),
 				inputs: {
 					labelSize: nodeInputLabelSizeById.value[node.id],
 				},
@@ -871,12 +1030,632 @@ export function useCanvasMapping({
 		return '';
 	}
 
+	// --- Summary mode: collapse secondary nodes into placeholder groups ---
+
+	type CollapsedGroup = {
+		id: string;
+		nodeNames: Set<string>;
+		nodeIds: Set<string>;
+		position: { x: number; y: number };
+		entryEdges: { sourceId: string; sourceOutputIndex: number }[];
+		exitEdges: { targetId: string; targetInputIndex: number }[];
+	};
+
+	const nodeByName = computed(() => {
+		const map: Record<string, INodeUi> = {};
+		for (const node of nodes.value) {
+			map[node.name] = node;
+		}
+		return map;
+	});
+
+	// Build groups directly from LLM semantic groups
+	const collapsedGroups = computed<CollapsedGroup[]>(() => {
+		if (!summaryMode.value) return [];
+		if (llmSemanticGroups.value.length === 0) return [];
+
+		const conns = connections.value;
+		const byName = nodeByName.value;
+
+		return llmSemanticGroups.value.map((sg, idx) => {
+			const comp = new Set(sg.nodes);
+			const nodeIds = new Set<string>();
+			for (const name of comp) {
+				const n = byName[name];
+				if (n) nodeIds.add(n.id);
+			}
+
+			// Find entry/exit edges
+			const entryEdges: { sourceId: string; sourceOutputIndex: number }[] = [];
+			const exitEdges: { targetId: string; targetInputIndex: number }[] = [];
+
+			for (const [src, nodeConns] of Object.entries(conns)) {
+				const mainOutputs = nodeConns?.[NodeConnectionTypes.Main];
+				if (!mainOutputs) continue;
+				for (const [outputIdx, group] of mainOutputs.entries()) {
+					if (!group) continue;
+					for (const c of group) {
+						if (!comp.has(src) && comp.has(c.node)) {
+							const srcNode = byName[src];
+							if (srcNode) entryEdges.push({ sourceId: srcNode.id, sourceOutputIndex: outputIdx });
+						}
+						if (comp.has(src) && !comp.has(c.node)) {
+							const tgtNode = byName[c.node];
+							if (tgtNode) exitEdges.push({ targetId: tgtNode.id, targetInputIndex: c.index });
+						}
+					}
+				}
+			}
+
+			const groupId = `semantic-group-${idx}`;
+
+			let position = groupPositions.value[groupId];
+			if (!position) {
+				const memberNodes = [...comp].map((name) => byName[name]).filter((n): n is INodeUi => !!n);
+				if (memberNodes.length > 0) {
+					const avgX = memberNodes.reduce((s, n) => s + n.position[0], 0) / memberNodes.length;
+					const avgY = memberNodes.reduce((s, n) => s + n.position[1], 0) / memberNodes.length;
+					position = { x: avgX, y: avgY };
+				} else {
+					position = { x: 0, y: 0 };
+				}
+			}
+
+			return {
+				id: groupId,
+				nodeNames: comp,
+				nodeIds,
+				position,
+				entryEdges,
+				exitEdges,
+			};
+		});
+	});
+
+	// Map groupId → description from semantic groups
+	const groupNames = computed(() => {
+		const map: Record<string, string> = {};
+		for (let i = 0; i < llmSemanticGroups.value.length; i++) {
+			map[`semantic-group-${i}`] = llmSemanticGroups.value[i].name;
+		}
+		return map;
+	});
+
+	const groupDescriptions = computed(() => {
+		const map: Record<string, string> = {};
+		for (let i = 0; i < llmSemanticGroups.value.length; i++) {
+			map[`semantic-group-${i}`] = llmSemanticGroups.value[i].description;
+		}
+		return map;
+	});
+
+	const groupColors = computed(() => {
+		const map: Record<string, string | undefined> = {};
+		for (let i = 0; i < llmSemanticGroups.value.length; i++) {
+			map[`semantic-group-${i}`] = llmSemanticGroups.value[i].color;
+		}
+		return map;
+	});
+
+	// Build a map of parent node name → config sub-node names with connection type
+	const configSubNodesByParent = computed(() => {
+		const map: Record<string, { name: string; connType: string }[]> = {};
+		const conns = connections.value;
+		for (const [srcName, nodeConns] of Object.entries(conns)) {
+			for (const [connType, outputs] of Object.entries(nodeConns)) {
+				if (connType === NodeConnectionTypes.Main) continue;
+				if (!outputs) continue;
+				for (const group of outputs) {
+					if (!group) continue;
+					for (const c of group) {
+						if (!map[c.node]) map[c.node] = [];
+						map[c.node].push({ name: srcName, connType });
+					}
+				}
+			}
+		}
+		return map;
+	});
+
+	// Find agents with >1 tool sub-nodes and create collapsible tool groups
+	type ToolGroup = {
+		id: string;
+		parentName: string;
+		toolNames: string[];
+		toolIds: Set<string>;
+		position: { x: number; y: number };
+		/** Unique connection types from direct children to parent (e.g. ai_tool, ai_document) */
+		connTypes: string[];
+	};
+
+	const toolGroups = computed<ToolGroup[]>(() => {
+		if (!summaryMode.value) return [];
+		const byName = nodeByName.value;
+		const subNodes = configSubNodesByParent.value;
+		const groups: ToolGroup[] = [];
+		// Track nodes already claimed by a tool group to prevent nested orphan groups
+		const claimedNodes = new Set<string>();
+
+		// Sort so top-level parents (not themselves sub-nodes) are processed first.
+		// This ensures nested parents are claimed before they can create orphan groups.
+		const allSubNodeNames = new Set<string>();
+		for (const children of Object.values(subNodes)) {
+			for (const c of children) allSubNodeNames.add(c.name);
+		}
+		const sortedEntries = Object.entries(subNodes).sort(([a], [b]) => {
+			return (allSubNodeNames.has(a) ? 1 : 0) - (allSubNodeNames.has(b) ? 1 : 0);
+		});
+
+		for (const [parentName, children] of sortedEntries) {
+			if (children.length === 0) continue;
+
+			// Skip if parent is already hidden in a collapsed main-chain group
+			const parentInCollapsedGroup = collapsedGroups.value.some((g) => g.nodeNames.has(parentName));
+			if (parentInCollapsedGroup) continue;
+
+			// Skip if parent is already collected inside another tool group
+			if (claimedNodes.has(parentName)) continue;
+
+			// Only collapse sub-nodes the LLM marked as secondary, excluding model and memory
+			const NEVER_COLLAPSE_TYPES = ['model', 'languagemodel', 'memory'];
+			const secondaryChildren = children.filter((c) => {
+				if (NEVER_COLLAPSE_TYPES.some((t) => c.connType.toLowerCase().includes(t))) return false;
+				const n = byName[c.name];
+				return n && getNodeImportance(n) === 'secondary';
+			});
+
+			if (secondaryChildren.length === 0) continue;
+
+			// Collect unique connection types from direct children to parent
+			const connTypes = [...new Set(secondaryChildren.map((c) => c.connType))];
+
+			// Collect IDs including nested sub-nodes (e.g. embeddings on a document loader)
+			const toolIds = new Set<string>();
+			const allToolNames: string[] = [];
+			let sumX = 0;
+			let sumY = 0;
+			const collectRecursive = (name: string) => {
+				const n = byName[name];
+				if (!n || toolIds.has(n.id)) return;
+				toolIds.add(n.id);
+				allToolNames.push(name);
+				claimedNodes.add(name);
+				sumX += n.position[0];
+				sumY += n.position[1];
+				const nested = subNodes[name];
+				if (nested) {
+					for (const child of nested) collectRecursive(child.name);
+				}
+			};
+			for (const c of secondaryChildren) collectRecursive(c.name);
+
+			const groupId = `tool-group-${parentName}`;
+			// Use dagre-calculated position if available, otherwise compute from member nodes
+			let position = groupPositions.value[groupId];
+			if (!position) {
+				const count = toolIds.size || 1;
+				position = {
+					x: sumX / count,
+					y: sumY / count,
+				};
+			}
+
+			groups.push({
+				id: groupId,
+				parentName,
+				toolNames: allToolNames,
+				toolIds,
+				position,
+				connTypes,
+			});
+		}
+		return groups;
+	});
+
+	// Only include node IDs from groups that are NOT expanded, plus their config sub-nodes
+	const collapsedNodeIds = computed(() => {
+		const ids = new Set<string>();
+		const byName = nodeByName.value;
+		const subNodes = configSubNodesByParent.value;
+
+		for (const group of collapsedGroups.value) {
+			if (expandedGroupIds.value.has(group.id)) continue; // expanded = real nodes visible
+			for (const nid of group.nodeIds) ids.add(nid);
+			// Also hide config sub-nodes of grouped nodes
+			for (const nodeName of group.nodeNames) {
+				const children = subNodes[nodeName];
+				if (!children) continue;
+				for (const child of children) {
+					const childNode = byName[child.name];
+					if (childNode) ids.add(childNode.id);
+				}
+			}
+		}
+
+		// Also hide tools in collapsed tool groups
+		for (const tg of toolGroups.value) {
+			if (expandedGroupIds.value.has(tg.id)) continue;
+			for (const tid of tg.toolIds) ids.add(tid);
+		}
+
+		return ids;
+	});
+
+	/** Estimate the header height for an expanded group frame based on title + description */
+	function estimateHeaderHeight(name: string, description: string, frameWidth: number): number {
+		const PADDING = 24; // top padding + gap
+		const TITLE_LINE_HEIGHT = 20;
+		const DESC_LINE_HEIGHT = 18;
+		const CHARS_PER_LINE = Math.max(1, Math.floor((frameWidth - 60) / 7)); // ~7px per char at 12px font
+
+		let height = PADDING;
+		if (name) height += TITLE_LINE_HEIGHT;
+
+		if (description) {
+			const lines = description.split('\n');
+			let totalLines = 0;
+			for (const line of lines) {
+				totalLines += Math.max(1, Math.ceil((line.length || 1) / CHARS_PER_LINE));
+			}
+			height += totalLines * DESC_LINE_HEIGHT;
+		}
+
+		return Math.max(30, height);
+	}
+
+	function getGroupedIcons(nodeNames: Iterable<string>): NodeIconSource[] {
+		const byName = nodeByName.value;
+		const icons: NodeIconSource[] = [];
+		for (const name of nodeNames) {
+			const node = byName[name];
+			if (!node) continue;
+			const nodeType = nodeTypeDescriptionByNodeId.value[node.id];
+			const source = simulatedNodeTypeDescriptionByNodeId.value[node.id] ?? nodeType ?? node.type;
+			const icon = getNodeIconSource(source, node);
+			if (icon) icons.push(icon);
+		}
+		return icons;
+	}
+
+	const finalNodes = computed<CanvasNode[]>(() => {
+		if (!summaryMode.value) return mappedNodes.value;
+
+		const hidden = collapsedNodeIds.value;
+		const visible = mappedNodes.value.filter((n) => !hidden.has(n.id));
+
+		// Add placeholder cards OR frame nodes for groups
+		for (const group of collapsedGroups.value) {
+			if (expandedGroupIds.value.has(group.id)) {
+				// Expanded: add a frame node behind the real nodes
+				const byName = nodeByName.value;
+				const memberNodes = [...group.nodeNames]
+					.map((name) => byName[name])
+					.filter((n): n is INodeUi => !!n);
+				if (memberNodes.length > 0) {
+					const PADDING_X = 60;
+					const PADDING_TOP = 40;
+					const PADDING_BOTTOM = 80;
+					const NODE_WIDTH = 100;
+					const NODE_HEIGHT = 100;
+					const gName = groupNames.value[group.id] ?? '';
+					const gDesc = groupDescriptions.value[group.id] ?? '';
+					const minX = Math.min(...memberNodes.map((n) => n.position[0]));
+					const maxX = Math.max(...memberNodes.map((n) => n.position[0]));
+					const minY = Math.min(...memberNodes.map((n) => n.position[1]));
+					const maxY = Math.max(...memberNodes.map((n) => n.position[1]));
+					const frameWidth = maxX - minX + NODE_WIDTH + PADDING_X * 2;
+					const headerHeight = estimateHeaderHeight(gName, gDesc, frameWidth);
+					const frameHeight =
+						maxY - minY + NODE_HEIGHT + PADDING_TOP + PADDING_BOTTOM + headerHeight;
+
+					const frameData: CanvasNodeData = {
+						id: `frame-${group.id}`,
+						name: '',
+						subtitle: '',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						disabled: false,
+						inputs: [],
+						outputs: [],
+						connections: { [CanvasConnectionMode.Input]: {}, [CanvasConnectionMode.Output]: {} },
+						issues: { execution: [], validation: [], visible: false },
+						pinnedData: { count: 0, visible: false },
+						execution: { running: false },
+						runData: { iterations: 0, visible: false },
+						render: {
+							type: CanvasNodeRenderType.GroupFrame,
+							options: {
+								width: frameWidth,
+								height: frameHeight,
+								groupId: group.id,
+								name: groupNames.value[group.id] ?? '',
+								description: groupDescriptions.value[group.id] ?? '',
+								color: groupColors.value[group.id],
+							},
+						},
+					};
+
+					visible.push({
+						id: `frame-${group.id}`,
+						label: '',
+						type: 'canvas-node',
+						position: { x: minX - PADDING_X, y: minY - PADDING_TOP - headerHeight },
+						zIndex: -1,
+						draggable: true,
+						selectable: false,
+						focusable: false,
+						data: frameData,
+					} as CanvasNode);
+				}
+				continue;
+			}
+
+			const count = group.nodeNames.size;
+			const placeholderData: CanvasNodeData = {
+				id: group.id,
+				name: `${count} nodes`,
+				subtitle: '',
+				type: 'n8n-nodes-base.noOp',
+				typeVersion: 1,
+				disabled: false,
+				inputs: [{ type: NodeConnectionTypes.Main, index: 0, label: '' }],
+				outputs: [{ type: NodeConnectionTypes.Main, index: 0, label: '' }],
+				connections: {
+					[CanvasConnectionMode.Input]: {
+						main: [
+							group.entryEdges.map(() => ({ node: '', type: NodeConnectionTypes.Main, index: 0 })),
+						],
+					},
+					[CanvasConnectionMode.Output]: {
+						main: [
+							group.exitEdges.map(() => ({ node: '', type: NodeConnectionTypes.Main, index: 0 })),
+						],
+					},
+				},
+				issues: { execution: [], validation: [], visible: false },
+				pinnedData: { count: 0, visible: false },
+				execution: { running: false },
+				runData: { iterations: 0, visible: false },
+				render: {
+					type: CanvasNodeRenderType.Default,
+					options: {
+						collapsedGroup: true,
+						icon: { type: 'icon', name: 'layer-group' },
+						groupedIcons: getGroupedIcons(group.nodeNames),
+						groupedNodeNames: [...group.nodeNames],
+						groupName: groupNames.value[group.id],
+						groupDescription: groupDescriptions.value[group.id],
+						groupDescriptionLoading: false,
+						groupColor: groupColors.value[group.id],
+					},
+				},
+			};
+
+			visible.push({
+				id: group.id,
+				label: `${count} nodes`,
+				type: 'canvas-node',
+				position: group.position,
+				data: placeholderData,
+			} as CanvasNode);
+		}
+
+		// Add placeholder cards OR frame nodes for tool groups
+		for (const tg of toolGroups.value) {
+			if (expandedGroupIds.value.has(tg.id)) {
+				// Expanded: add a frame node behind the real nodes
+				const byName = nodeByName.value;
+				const memberNodes = tg.toolNames
+					.map((name) => byName[name])
+					.filter((n): n is INodeUi => !!n);
+				if (memberNodes.length > 0) {
+					const PADDING_X = 60;
+					const PADDING_TOP = 40;
+					const PADDING_BOTTOM = 80;
+					const NODE_WIDTH = 80;
+					const NODE_HEIGHT = 80;
+					const gName = '';
+					const gDesc = groupDescriptions.value[tg.id] ?? '';
+					const minX = Math.min(...memberNodes.map((n) => n.position[0]));
+					const maxX = Math.max(...memberNodes.map((n) => n.position[0]));
+					const minY = Math.min(...memberNodes.map((n) => n.position[1]));
+					const maxY = Math.max(...memberNodes.map((n) => n.position[1]));
+					const frameWidth = maxX - minX + NODE_WIDTH + PADDING_X * 2;
+					const headerHeight = estimateHeaderHeight(gName, gDesc, frameWidth);
+					const frameHeight =
+						maxY - minY + NODE_HEIGHT + PADDING_TOP + PADDING_BOTTOM + headerHeight;
+
+					const frameData: CanvasNodeData = {
+						id: `frame-${tg.id}`,
+						name: '',
+						subtitle: '',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						disabled: false,
+						inputs: [],
+						outputs: [],
+						connections: { [CanvasConnectionMode.Input]: {}, [CanvasConnectionMode.Output]: {} },
+						issues: { execution: [], validation: [], visible: false },
+						pinnedData: { count: 0, visible: false },
+						execution: { running: false },
+						runData: { iterations: 0, visible: false },
+						render: {
+							type: CanvasNodeRenderType.GroupFrame,
+							options: {
+								width: frameWidth,
+								height: frameHeight,
+								groupId: tg.id,
+								name: '',
+								description: groupDescriptions.value[tg.id] ?? '',
+							},
+						},
+					};
+
+					visible.push({
+						id: `frame-${tg.id}`,
+						label: '',
+						type: 'canvas-node',
+						position: { x: minX - PADDING_X, y: minY - PADDING_TOP - headerHeight },
+						zIndex: -1,
+						draggable: true,
+						selectable: false,
+						focusable: false,
+						data: frameData,
+					} as CanvasNode);
+				}
+				continue;
+			}
+
+			const count = tg.toolNames.length;
+			// Single output handle — all connections fan out from one point
+			const firstType = tg.connTypes[0] ?? 'ai_tool';
+
+			const toolPlaceholderData: CanvasNodeData = {
+				id: tg.id,
+				name: `${count} nodes`,
+				subtitle: '',
+				type: 'n8n-nodes-base.noOp',
+				typeVersion: 1,
+				disabled: false,
+				inputs: [],
+				outputs: [{ type: firstType as never, index: 0, label: '' }],
+				connections: {
+					[CanvasConnectionMode.Input]: {},
+					[CanvasConnectionMode.Output]: {
+						[firstType]: [[{ node: '', type: firstType as never, index: 0 }]],
+					},
+				},
+				issues: { execution: [], validation: [], visible: false },
+				pinnedData: { count: 0, visible: false },
+				execution: { running: false },
+				runData: { iterations: 0, visible: false },
+				render: {
+					type: CanvasNodeRenderType.Default,
+					options: {
+						configuration: true,
+						collapsedGroup: true,
+						icon: { type: 'icon', name: 'layer-group' },
+						groupedIcons: getGroupedIcons(tg.toolNames),
+						groupedNodeNames: tg.toolNames,
+						groupDescription: groupDescriptions.value[tg.id],
+						groupDescriptionLoading: false,
+					},
+				},
+			};
+
+			visible.push({
+				id: tg.id,
+				label: `${count} tools`,
+				type: 'canvas-node',
+				position: tg.position,
+				data: toolPlaceholderData,
+			} as CanvasNode);
+		}
+
+		return visible;
+	});
+
+	const finalConnections = computed<CanvasConnection[]>(() => {
+		if (!summaryMode.value) return mappedConnections.value;
+
+		const hidden = collapsedNodeIds.value;
+		// Keep connections between visible (primary) nodes
+		const kept = mappedConnections.value.filter(
+			(c) => !hidden.has(c.source) && !hidden.has(c.target),
+		);
+
+		// Build a lookup: hidden node ID → group placeholder ID it belongs to
+		const hiddenNodeToGroup: Record<string, string> = {};
+		for (const group of collapsedGroups.value) {
+			if (expandedGroupIds.value.has(group.id)) continue;
+			for (const nid of group.nodeIds) {
+				hiddenNodeToGroup[nid] = group.id;
+			}
+		}
+		for (const tg of toolGroups.value) {
+			if (expandedGroupIds.value.has(tg.id)) continue;
+			for (const tid of tg.toolIds) {
+				hiddenNodeToGroup[tid] = tg.id;
+			}
+		}
+
+		// Re-route connections where one or both ends are hidden inside a group
+		const addedEdges = new Set<string>();
+		for (const conn of mappedConnections.value) {
+			const srcHidden = hidden.has(conn.source);
+			const tgtHidden = hidden.has(conn.target);
+			if (!srcHidden && !tgtHidden) continue; // already kept above
+
+			const srcId = srcHidden ? hiddenNodeToGroup[conn.source] : conn.source;
+			const tgtId = tgtHidden ? hiddenNodeToGroup[conn.target] : conn.target;
+			if (!srcId || !tgtId || srcId === tgtId) continue; // internal to same group
+
+			const edgeKey = `${srcId}->${tgtId}`;
+			if (addedEdges.has(edgeKey)) continue; // one edge per group pair
+			addedEdges.add(edgeKey);
+
+			kept.push({
+				id: edgeKey,
+				source: srcId,
+				target: tgtId,
+				sourceHandle: `outputs/main/0`,
+				targetHandle: `inputs/main/0`,
+				type: 'canvas-edge',
+				markerEnd: MarkerType.ArrowClosed,
+				data: {
+					source: { type: NodeConnectionTypes.Main, index: 0 },
+					target: { type: NodeConnectionTypes.Main, index: 0 },
+				},
+			});
+		}
+
+		// Add connections from tool group placeholders to their parent
+		// All connections share one source handle but target different parent inputs
+		for (const tg of toolGroups.value) {
+			if (expandedGroupIds.value.has(tg.id)) continue;
+			const parentNode = nodeByName.value[tg.parentName];
+			if (!parentNode) continue;
+			const srcType = tg.connTypes[0] ?? 'ai_tool';
+			for (const ct of tg.connTypes) {
+				kept.push({
+					id: `${tg.id}->${parentNode.id}/${ct}`,
+					source: tg.id,
+					target: parentNode.id,
+					sourceHandle: `outputs/${srcType}/0`,
+					targetHandle: `inputs/${ct}/0`,
+					type: 'canvas-edge',
+					markerEnd: MarkerType.ArrowClosed,
+					data: {
+						source: { type: srcType as never, index: 0 },
+						target: { type: ct as never, index: 0 },
+					},
+				});
+			}
+		}
+
+		return kept;
+	});
+
+	/** Get all visible node IDs that belong to a given group */
+	function getGroupMemberNodeIds(groupId: string): string[] {
+		const group = collapsedGroups.value.find((g) => g.id === groupId);
+		if (group) return [...group.nodeIds];
+		const tg = toolGroups.value.find((t) => t.id === groupId);
+		if (tg) return [...tg.toolIds];
+		return [];
+	}
+
 	return {
 		additionalNodePropertiesById,
 		nodeExecutionRunDataOutputMapById,
 		nodeExecutionWaitingForNextById,
 		nodeHasIssuesById,
-		connections: mappedConnections,
-		nodes: mappedNodes,
+		connections: finalConnections,
+		nodes: finalNodes,
+		setSemanticGroups,
+		getGroupMemberNodeIds,
+		onLayoutApplied,
+		toggleSummaryMode,
+		summaryMode,
 	};
 }

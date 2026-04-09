@@ -10,8 +10,9 @@ import { useExperimentalNdvStore } from '../../../experimental/experimentalNdv.s
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import CanvasNodeStatusIcons from './render-types/parts/CanvasNodeStatusIcons.vue';
 
-import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import { N8nIconButton, N8nPopover, N8nTooltip } from '@n8n/design-system';
 import CanvasNodeStickyColorSelector from './toolbar/CanvasNodeStickyColorSelector.vue';
+import type { CanvasNodeGroupFrameRender } from '../../../canvas.types';
 
 const emit = defineEmits<{
 	delete: [];
@@ -21,6 +22,7 @@ const emit = defineEmits<{
 	'open:contextmenu': [event: MouseEvent];
 	focus: [id: string];
 	'add:ai': [id: string];
+	'expand:group': [];
 }>();
 
 const props = defineProps<{
@@ -33,7 +35,38 @@ const $style = useCssModule();
 const i18n = useI18n();
 
 const { isExecuting, isExperimentalNdvActive } = useCanvas();
-const { isDisabled, render, name } = useCanvasNode();
+const { id, isDisabled, render, name } = useCanvasNode();
+
+const isCollapsedGroup = computed(
+	() =>
+		id.value.startsWith('collapsed-group-') ||
+		id.value.startsWith('tool-group-') ||
+		id.value.startsWith('semantic-group-'),
+);
+
+const isExpandedFrame = computed(() => id.value.startsWith('frame-'));
+
+const isGroupNode = computed(() => isCollapsedGroup.value || isExpandedFrame.value);
+
+const groupId = computed(() => {
+	if (isCollapsedGroup.value) return id.value;
+	if (isExpandedFrame.value) {
+		const opts = render.value.options as CanvasNodeGroupFrameRender['options'];
+		return opts.groupId;
+	}
+	return '';
+});
+
+const GROUP_COLORS = [
+	{ name: 'Blue', value: 'rgb(0 90 255 / 0.08)', border: 'rgb(100 160 255 / 0.4)' },
+	{ name: 'Purple', value: 'rgb(130 80 255 / 0.08)', border: 'rgb(160 120 255 / 0.4)' },
+	{ name: 'Green', value: 'rgb(0 180 100 / 0.08)', border: 'rgb(60 200 130 / 0.4)' },
+	{ name: 'Orange', value: 'rgb(255 140 0 / 0.08)', border: 'rgb(255 170 60 / 0.4)' },
+	{ name: 'Red', value: 'rgb(255 60 60 / 0.08)', border: 'rgb(255 100 100 / 0.4)' },
+	{ name: 'Teal', value: 'rgb(0 180 180 / 0.08)', border: 'rgb(60 200 200 / 0.4)' },
+];
+
+const isGroupColorSelectorOpen = ref(false);
 
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -55,7 +88,8 @@ const isHovered = ref(false);
 const classes = computed(() => ({
 	[$style.canvasNodeToolbar]: true,
 	[$style.readOnly]: props.readOnly,
-	[$style.forceVisible]: isHovered.value || isStickyColorSelectorOpen.value,
+	[$style.forceVisible]:
+		isHovered.value || isStickyColorSelectorOpen.value || isGroupColorSelectorOpen.value,
 	[$style.isExperimentalNdvActive]: isExperimentalNdvActive.value,
 }));
 
@@ -123,6 +157,27 @@ function onAddToAi() {
 		emit('add:ai', node.value.id);
 	}
 }
+
+function onUngroupGroup() {
+	window.dispatchEvent(new CustomEvent('ungroup-group', { detail: { groupId: groupId.value } }));
+}
+
+function onExpandGroup() {
+	window.dispatchEvent(new CustomEvent('expand-group', { detail: { groupId: groupId.value } }));
+}
+
+function onCollapseGroup() {
+	window.dispatchEvent(new CustomEvent('collapse-group', { detail: { groupId: groupId.value } }));
+}
+
+function onChangeGroupColor(color: string) {
+	isGroupColorSelectorOpen.value = false;
+	window.dispatchEvent(
+		new CustomEvent('update-group-field', {
+			detail: { groupId: groupId.value, field: 'color', value: color },
+		}),
+	);
+}
 </script>
 
 <template>
@@ -135,72 +190,131 @@ function onAddToAi() {
 		@click.stop
 	>
 		<div :class="[$style.canvasNodeToolbarItems, itemsClass]">
-			<N8nTooltip
-				v-if="isExecuteNodeVisible"
-				placement="top"
-				:disabled="!isDisabled"
-				:content="i18n.baseText('ndv.execute.deactivated')"
-			>
+			<template v-if="isGroupNode">
 				<N8nIconButton
-					variant="ghost"
-					data-test-id="execute-node-button"
-					size="small"
-					icon="node-play"
-					:disabled="isExecuting || isDisabled"
-					:title="i18n.baseText('node.testStep')"
-					@click.stop="executeNode"
-				/>
-			</N8nTooltip>
-			<N8nIconButton
-				variant="ghost"
-				v-if="isDisableNodeVisible"
-				data-test-id="disable-node-button"
-				size="small"
-				icon="node-power"
-				:title="nodeDisabledTitle"
-				@click.stop="onToggleNode"
-			/>
-			<N8nIconButton
-				variant="ghost"
-				v-if="isDeleteNodeVisible"
-				data-test-id="delete-node-button"
-				size="small"
-				icon="node-trash"
-				:title="i18n.baseText('node.delete')"
-				@click.stop="onDeleteNode"
-			/>
-			<N8nIconButton
-				variant="ghost"
-				v-if="isFocusNodeVisible"
-				size="small"
-				icon="crosshair"
-				:aria-label="i18n.baseText('node.focusNode')"
-				@click.stop="onFocusNode"
-			/>
-			<CanvasNodeStickyColorSelector
-				v-if="isStickyNoteChangeColorVisible"
-				v-model:visible="isStickyColorSelectorOpen"
-				@update="onChangeStickyColor"
-			/>
-			<N8nTooltip v-if="isAddToAiVisible" placement="top" :content="i18n.baseText('node.addToAi')">
-				<N8nIconButton
-					data-test-id="add-to-ai-button"
+					v-if="isCollapsedGroup"
 					variant="ghost"
 					size="small"
-					text
-					icon="sparkles"
-					:aria-label="i18n.baseText('node.addToAi')"
-					@click.stop="onAddToAi"
+					icon="maximize-2"
+					title="Expand group"
+					@click.stop="onExpandGroup"
 				/>
-			</N8nTooltip>
-			<N8nIconButton
-				variant="ghost"
-				data-test-id="overflow-node-button"
-				size="small"
-				icon="node-ellipsis"
-				:aria-label="i18n.baseText('node.moreActions')"
-				@click.stop="onOpenContextMenu"
-			/>
+				<N8nIconButton
+					v-if="isExpandedFrame"
+					variant="ghost"
+					size="small"
+					icon="minimize-2"
+					title="Collapse group"
+					@click.stop="onCollapseGroup"
+				/>
+				<N8nPopover
+					v-model:open="isGroupColorSelectorOpen"
+					side="top"
+					width="auto"
+					:enable-scrolling="false"
+				>
+					<template #trigger>
+						<N8nIconButton
+							variant="ghost"
+							size="small"
+							icon="palette"
+							title="Change color"
+							@click.stop
+						/>
+					</template>
+					<template #content>
+						<div :class="$style.groupColorPicker">
+							<div
+								v-for="gc in GROUP_COLORS"
+								:key="gc.name"
+								:class="$style.groupColorSwatch"
+								:style="{ background: gc.border }"
+								:title="gc.name"
+								@click="onChangeGroupColor(gc.value)"
+							/>
+						</div>
+					</template>
+				</N8nPopover>
+				<N8nIconButton
+					variant="ghost"
+					size="small"
+					icon="split"
+					title="Ungroup"
+					@click.stop="onUngroupGroup"
+				/>
+			</template>
+			<template v-else>
+				<N8nTooltip
+					v-if="isExecuteNodeVisible"
+					placement="top"
+					:disabled="!isDisabled"
+					:content="i18n.baseText('ndv.execute.deactivated')"
+				>
+					<N8nIconButton
+						variant="ghost"
+						data-test-id="execute-node-button"
+						size="small"
+						icon="node-play"
+						:disabled="isExecuting || isDisabled"
+						:title="i18n.baseText('node.testStep')"
+						@click.stop="executeNode"
+					/>
+				</N8nTooltip>
+				<N8nIconButton
+					variant="ghost"
+					v-if="isDisableNodeVisible"
+					data-test-id="disable-node-button"
+					size="small"
+					icon="node-power"
+					:title="nodeDisabledTitle"
+					@click.stop="onToggleNode"
+				/>
+				<N8nIconButton
+					variant="ghost"
+					v-if="isDeleteNodeVisible"
+					data-test-id="delete-node-button"
+					size="small"
+					icon="node-trash"
+					:title="i18n.baseText('node.delete')"
+					@click.stop="onDeleteNode"
+				/>
+				<N8nIconButton
+					variant="ghost"
+					v-if="isFocusNodeVisible"
+					size="small"
+					icon="crosshair"
+					:aria-label="i18n.baseText('node.focusNode')"
+					@click.stop="onFocusNode"
+				/>
+				<CanvasNodeStickyColorSelector
+					v-if="isStickyNoteChangeColorVisible"
+					v-model:visible="isStickyColorSelectorOpen"
+					@update="onChangeStickyColor"
+				/>
+				<N8nTooltip
+					v-if="isAddToAiVisible"
+					placement="top"
+					:content="i18n.baseText('node.addToAi')"
+				>
+					<N8nIconButton
+						data-test-id="add-to-ai-button"
+						variant="ghost"
+						size="small"
+						text
+						icon="sparkles"
+						:aria-label="i18n.baseText('node.addToAi')"
+						@click.stop="onAddToAi"
+					/>
+				</N8nTooltip>
+				<N8nIconButton
+					variant="ghost"
+					data-test-id="overflow-node-button"
+					size="small"
+					icon="node-ellipsis"
+					:aria-label="i18n.baseText('node.moreActions')"
+					@click.stop="onOpenContextMenu"
+				/>
+			</template>
 		</div>
 		<CanvasNodeStatusIcons
 			v-if="showStatusIcons"
@@ -248,5 +362,22 @@ function onAddToAi() {
 
 .statusIcons {
 	margin-inline-end: var(--spacing--3xs);
+}
+
+.groupColorPicker {
+	display: flex;
+	gap: var(--spacing--2xs);
+}
+
+.groupColorSwatch {
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	cursor: pointer;
+	border: 2px solid transparent;
+
+	&:hover {
+		transform: scale(1.15);
+	}
 }
 </style>

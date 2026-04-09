@@ -40,7 +40,9 @@ export type ContextMenuAction =
 	| 'open_sub_workflow'
 	| 'tidy_up'
 	| 'extract_sub_workflow'
-	| 'focus_ai_on_selected';
+	| 'focus_ai_on_selected'
+	| 'group_node'
+	| 'ungroup_node';
 
 type Item = ActionDropdownItem<ContextMenuAction>;
 
@@ -161,6 +163,21 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 			},
 		];
 
+		const groupActions: Item[] = !onlyStickies
+			? [
+					{
+						id: 'group_node',
+						label: 'Group',
+						disabled: isReadOnly.value,
+					},
+					{
+						id: 'ungroup_node',
+						label: 'Ungroup',
+						disabled: isReadOnly.value,
+					},
+				]
+			: [];
+
 		const aiActions: Item[] = [
 			!onlyStickies &&
 				settingsStore.isAiAssistantOrBuilderEnabled &&
@@ -236,6 +253,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 				},
 				...layoutActions,
 				...extractionActions,
+				...groupActions,
 				...aiActions,
 				...selectionActions,
 				{

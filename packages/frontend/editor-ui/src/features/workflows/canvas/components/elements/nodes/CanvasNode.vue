@@ -118,6 +118,7 @@ const dataTestId = computed(() =>
 		CanvasNodeRenderType.StickyNote,
 		CanvasNodeRenderType.AddNodes,
 		CanvasNodeRenderType.ChoicePrompt,
+		CanvasNodeRenderType.GroupFrame,
 	].includes(renderType.value)
 		? undefined
 		: 'canvas-node',

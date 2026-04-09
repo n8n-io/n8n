@@ -7,9 +7,13 @@ import type { ViewportTransform } from '@vue-flow/core';
 import { getRectOfNodes, useVueFlow } from '@vue-flow/core';
 import { throttledRef } from '@vueuse/core';
 import type { Workflow } from 'n8n-workflow';
-import { computed, ref, toRef, useCssModule, useTemplateRef } from 'vue';
+import { computed, nextTick, ref, toRef, useCssModule, useTemplateRef } from 'vue';
 import type { CanvasEventBusEvents } from '../canvas.types';
 import { useCanvasMapping } from '../composables/useCanvasMapping';
+import {
+	classifyWorkflowGroups,
+	type ClassificationResult,
+} from '../composables/useNodeImportanceClassifier';
 import Canvas from './Canvas.vue';
 
 defineOptions({
@@ -41,7 +45,9 @@ const props = withDefaults(
 const canvasRef = useTemplateRef('canvas');
 const $style = useCssModule();
 
-const { onNodesInitialized, viewport, viewportRef, getNodes, fitBounds } = useVueFlow(props.id);
+const { onNodesInitialized, viewport, viewportRef, getNodes, findNode, fitBounds } = useVueFlow(
+	props.id,
+);
 
 const workflow = toRef(props, 'workflow');
 const workflowObject = toRef(props, 'workflowObject');
@@ -53,11 +59,87 @@ const nodes = computed(() => {
 });
 const connections = computed(() => props.workflow.connections);
 
-const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping({
+const {
+	nodes: mappedNodes,
+	connections: mappedConnections,
+	setSemanticGroups,
+	getGroupMemberNodeIds,
+	onLayoutApplied,
+} = useCanvasMapping({
 	nodes,
 	connections,
 	workflowObject,
 });
+
+// Move member nodes when a group frame is dragged
+window.addEventListener('frame-drag', ((e: CustomEvent) => {
+	const { groupId, dx, dy } = e.detail as { groupId: string; dx: number; dy: number };
+	const memberIds = getGroupMemberNodeIds(groupId);
+	for (const nodeId of memberIds) {
+		const node = findNode(nodeId);
+		if (node) {
+			node.position = { x: node.position.x + dx, y: node.position.y + dy };
+		}
+	}
+}) as EventListener);
+
+let cachedResult: ClassificationResult | null = null;
+
+async function onClassifyGroups() {
+	window.dispatchEvent(new Event('ai-grouping-start'));
+	try {
+		if (cachedResult) {
+			setSemanticGroups(cachedResult);
+		} else {
+			const result = await classifyWorkflowGroups(
+				props.workflow.name,
+				nodes.value,
+				connections.value,
+			);
+			cachedResult = result;
+			setSemanticGroups(result);
+		}
+
+		// Wait for Vue Flow to register new nodes before tidy-up
+		await nextTick();
+		await new Promise((r) => setTimeout(r, 300));
+		props.eventBus.emit('tidyUp', { source: 'canvas-button' });
+	} catch (e) {
+		console.error('[groups] Classification failed:', e);
+	} finally {
+		window.dispatchEvent(new Event('ai-grouping-end'));
+	}
+}
+
+// Allow command bar to trigger group/ungroup
+window.addEventListener('group-secondary-nodes', () => {
+	void onClassifyGroups();
+});
+// Tidy up when group composition changes
+window.addEventListener('groups-changed', async () => {
+	await nextTick();
+	await new Promise((r) => setTimeout(r, 300));
+	props.eventBus.emit('tidyUp', { source: 'canvas-button' });
+});
+
+// Tidy up when a group is expanded or collapsed visually
+window.addEventListener('expand-group', async () => {
+	await nextTick();
+	await new Promise((r) => setTimeout(r, 300));
+	props.eventBus.emit('tidyUp', { source: 'canvas-button' });
+});
+window.addEventListener('collapse-group', async () => {
+	await nextTick();
+	await new Promise((r) => setTimeout(r, 300));
+	props.eventBus.emit('tidyUp', { source: 'canvas-button' });
+});
+
+// Capture dagre layout positions for group placeholder nodes
+window.addEventListener('canvas-layout-applied', ((event: CustomEvent) => {
+	if (event.detail?.nodes) {
+		onLayoutApplied(event.detail.nodes);
+	}
+}) as EventListener);
 
 const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636
 const { off } = onNodesInitialized(() => {

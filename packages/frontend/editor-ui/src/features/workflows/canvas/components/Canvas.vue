@@ -450,8 +450,75 @@ function onUpdateNodePosition(id: string, position: XYPosition) {
 	emit('update:node:position', id, position);
 }
 
+// Track last known position of frame nodes for computing drag deltas
+const frameDragLastPos: Record<string, XYPosition> = {};
+
+function onNodeDrag(event: NodeDragEvent) {
+	for (const draggedNode of event.nodes) {
+		if (!draggedNode.id.startsWith('frame-')) continue;
+
+		const lastPos = frameDragLastPos[draggedNode.id];
+		if (!lastPos) {
+			frameDragLastPos[draggedNode.id] = { ...draggedNode.position };
+			continue;
+		}
+
+		const dx = draggedNode.position.x - lastPos.x;
+		const dy = draggedNode.position.y - lastPos.y;
+		frameDragLastPos[draggedNode.id] = { ...draggedNode.position };
+
+		if (dx === 0 && dy === 0) continue;
+
+		// Find member node IDs from the group data
+		const frameData = draggedNode.data as { render?: { options?: { groupId?: string } } };
+		const groupId = frameData?.render?.options?.groupId;
+		if (!groupId) continue;
+
+		// Move all visible nodes that belong to this group
+		for (const gn of graphNodes.value) {
+			if (gn.id === draggedNode.id || gn.id.startsWith('frame-')) continue;
+			// Check if this node is a member by querying the group via a custom event
+			// Simpler: check all non-frame nodes and move them if they're inside the frame bounds
+		}
+
+		// Use a window event to get member node IDs from useCanvasMapping
+		window.dispatchEvent(
+			new CustomEvent('frame-drag', {
+				detail: { groupId, dx, dy },
+			}),
+		);
+	}
+}
+
+function onNodeDragStart(event: NodeDragEvent) {
+	for (const node of event.nodes) {
+		if (node.id.startsWith('frame-')) {
+			frameDragLastPos[node.id] = { ...node.position };
+		}
+	}
+}
+
 function onNodeDragStop(event: NodeDragEvent) {
+	// Clean up frame drag tracking
+	for (const node of event.nodes) {
+		delete frameDragLastPos[node.id];
+	}
+
 	onUpdateNodesPosition(event.nodes.map(({ id, position }) => ({ id, position })));
+	// Sync group placeholder node positions so they persist across recomputes
+	const groupMoves = event.nodes.filter(
+		(n) =>
+			n.id.startsWith('semantic-group-') ||
+			n.id.startsWith('tool-group-') ||
+			n.id.startsWith('frame-'),
+	);
+	if (groupMoves.length > 0) {
+		window.dispatchEvent(
+			new CustomEvent('canvas-layout-applied', {
+				detail: { nodes: groupMoves.map((n) => ({ id: n.id, x: n.position.x, y: n.position.y })) },
+			}),
+		);
+	}
 }
 
 function onNodeClick({ event, node }: NodeMouseEvent) {
@@ -470,6 +537,17 @@ function onNodeClick({ event, node }: NodeMouseEvent) {
 
 function onSelectionDragStop(event: NodeDragEvent) {
 	onUpdateNodesPosition(event.nodes.map(({ id, position }) => ({ id, position })));
+	// Sync group placeholder node positions so they persist across recomputes
+	const groupMoves = event.nodes.filter(
+		(n) => n.id.startsWith('collapsed-group-') || n.id.startsWith('tool-group-'),
+	);
+	if (groupMoves.length > 0) {
+		window.dispatchEvent(
+			new CustomEvent('canvas-layout-applied', {
+				detail: { nodes: groupMoves.map((n) => ({ id: n.id, x: n.position.x, y: n.position.y })) },
+			}),
+		);
+	}
 }
 
 function onSelectionEnd(event: MouseEvent) {
@@ -844,6 +922,21 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 			void chatPanelStore.open({ mode: 'builder' });
 			return;
 		}
+		case 'group_node': {
+			window.dispatchEvent(new CustomEvent('group-nodes-manual', { detail: { nodeIds } }));
+			return;
+		}
+		case 'ungroup_node': {
+			for (const nodeId of nodeIds) {
+				const node = graphNodes.value.find((n) => n.id === nodeId);
+				if (node) {
+					window.dispatchEvent(
+						new CustomEvent('remove-node-from-group', { detail: { nodeName: node.data?.name } }),
+					);
+				}
+			}
+			return;
+		}
 	}
 }
 
@@ -866,11 +959,18 @@ async function onTidyUp(payload: CanvasEventBusEvents['tidyUp']) {
 		},
 	);
 
-	await nextTick();
-	if (applyOnSelection) {
-		await onFitBounds(selectedNodes.value);
-	} else {
-		await onFitView();
+	// Notify group position tracker of layout results (for collapsed group nodes)
+	window.dispatchEvent(
+		new CustomEvent('canvas-layout-applied', { detail: { nodes: result.nodes } }),
+	);
+
+	if (!payload.skipFitView) {
+		await nextTick();
+		if (applyOnSelection) {
+			await onFitBounds(selectedNodes.value);
+		} else {
+			await onFitView();
+		}
 	}
 }
 
@@ -1089,6 +1189,8 @@ defineExpose({
 		@pane-context-menu="onOpenContextMenu"
 		@move="onPaneMove"
 		@move-end="onPaneMoveEnd"
+		@node-drag-start="onNodeDragStart"
+		@node-drag="onNodeDrag"
 		@node-drag-stop="onNodeDragStop"
 		@node-click="onNodeClick"
 		@selection-drag-stop="onSelectionDragStop"
