@@ -576,6 +576,215 @@ describe('RelayConnection', () => {
 		expect(response.error).toContain('Tab creation is disabled');
 	});
 
+	describe('getSnapshot / resolveRef', () => {
+		/**
+		 * Sets up mockSendCommand to return a minimal AX tree with one button when
+		 * Accessibility.getFullAXTree is called, and empty responses for DOM.enable /
+		 * Accessibility.enable / attribute fetches.
+		 */
+		function setupSnapshotMocks(): void {
+			mockSendCommand.mockImplementation(
+				async (_debuggee: { tabId: number }, method: string, _params?: object) => {
+					switch (method) {
+						case 'Target.getTargetInfo':
+							return { targetInfo: { targetId: targetIdForTab(_debuggee.tabId) } };
+						case 'Accessibility.getFullAXTree':
+							return {
+								nodes: [
+									{
+										nodeId: '1',
+										role: { type: 'role', value: 'rootwebarea' },
+										childIds: ['2'],
+										ignored: false,
+									},
+									{
+										nodeId: '2',
+										role: { type: 'role', value: 'button' },
+										name: { type: 'string', value: 'Save' },
+										childIds: [],
+										backendDOMNodeId: 10,
+										ignored: false,
+									},
+								],
+							};
+						case 'DOM.pushNodesByBackendIdsToFrontend':
+							return { nodeIds: [100] };
+						case 'DOM.getAttributes':
+							return { attributes: [] };
+						default:
+							return {};
+					}
+				},
+			);
+		}
+
+		it('should return snapshot text on getSnapshot', async () => {
+			mockGetTargets.mockResolvedValueOnce([mockTarget(42)]);
+			await relay.registerSelectedTabs([42]);
+			const tabId = relay.getControlledIds()[0].targetId;
+			ws.sent.length = 0;
+			setupSnapshotMocks();
+
+			ws.onmessage?.({
+				data: JSON.stringify({ id: 1, method: 'getSnapshot', params: { id: tabId } }),
+			});
+			await tick();
+
+			const response = JSON.parse(ws.sent[0]);
+			expect(response.error).toBeUndefined();
+			expect(response.result.snapshot).toContain('Save');
+			expect(response.result.diffType).toBe('full'); // first call → no previous
+		});
+
+		it('should return no-change diffType when snapshot is called twice without DOM changes', async () => {
+			mockGetTargets.mockResolvedValueOnce([mockTarget(42)]);
+			await relay.registerSelectedTabs([42]);
+			const tabId = relay.getControlledIds()[0].targetId;
+			setupSnapshotMocks();
+
+			// First call
+			ws.onmessage?.({
+				data: JSON.stringify({ id: 1, method: 'getSnapshot', params: { id: tabId } }),
+			});
+			await tick();
+			ws.sent.length = 0;
+
+			// Second call with same tree
+			ws.onmessage?.({
+				data: JSON.stringify({ id: 2, method: 'getSnapshot', params: { id: tabId } }),
+			});
+			await tick();
+
+			const response = JSON.parse(ws.sent[0]);
+			expect(response.result.diffType).toBe('no-change');
+		});
+
+		it('resolveRef should error when called before any getSnapshot (no cache entry)', async () => {
+			mockGetTargets.mockResolvedValueOnce([mockTarget(42)]);
+			await relay.registerSelectedTabs([42]);
+			const tabId = relay.getControlledIds()[0].targetId;
+			ws.sent.length = 0;
+
+			ws.onmessage?.({
+				data: JSON.stringify({
+					id: 1,
+					method: 'resolveRef',
+					params: { id: tabId, ref: 'btn-save' },
+				}),
+			});
+			await tick();
+
+			const response = JSON.parse(ws.sent[0]);
+			expect(response.error).toBeDefined();
+			expect(response.error).toContain('Stale ref');
+		});
+
+		it('resolveRef should return selector after getSnapshot populates the cache', async () => {
+			mockGetTargets.mockResolvedValueOnce([mockTarget(42)]);
+			await relay.registerSelectedTabs([42]);
+			const tabId = relay.getControlledIds()[0].targetId;
+			setupSnapshotMocks();
+
+			// Populate cache via getSnapshot
+			ws.onmessage?.({
+				data: JSON.stringify({ id: 1, method: 'getSnapshot', params: { id: tabId } }),
+			});
+			await tick();
+			ws.sent.length = 0;
+
+			// resolveRef for the button — ref is role+name slug since no stable attr
+			ws.onmessage?.({
+				data: JSON.stringify({
+					id: 2,
+					method: 'resolveRef',
+					params: { id: tabId, ref: 'btn-save' },
+				}),
+			});
+			await tick();
+
+			const response = JSON.parse(ws.sent[0]);
+			expect(response.error).toBeUndefined();
+			expect(response.result.selector).toBeDefined();
+			expect(typeof response.result.selector).toBe('string');
+		});
+
+		it('getSnapshot should error when scopeSelector matches no DOM element', async () => {
+			mockGetTargets.mockResolvedValueOnce([mockTarget(42)]);
+			await relay.registerSelectedTabs([42]);
+			const tabId = relay.getControlledIds()[0].targetId;
+
+			mockSendCommand.mockImplementation(
+				async (_debuggee: { tabId: number }, method: string, _params?: object) => {
+					switch (method) {
+						case 'Target.getTargetInfo':
+							return { targetInfo: { targetId: targetIdForTab(_debuggee.tabId) } };
+						case 'Accessibility.getFullAXTree':
+							return { nodes: [] };
+						case 'DOM.getDocument':
+							return { root: { nodeId: 1 } };
+						case 'DOM.querySelector':
+							return { nodeId: 0 }; // CDP returns 0 when selector matches nothing
+						default:
+							return {};
+					}
+				},
+			);
+			ws.sent.length = 0;
+
+			ws.onmessage?.({
+				data: JSON.stringify({
+					id: 1,
+					method: 'getSnapshot',
+					params: { id: tabId, scopeSelector: '#nonexistent' },
+				}),
+			});
+			await tick();
+
+			const response = JSON.parse(ws.sent[0]);
+			expect(response.error).toBeDefined();
+			expect(response.error).toContain('#nonexistent');
+		});
+
+		it('getSnapshot should error when scopeSelector matches a DOM element with no AX node', async () => {
+			mockGetTargets.mockResolvedValueOnce([mockTarget(42)]);
+			await relay.registerSelectedTabs([42]);
+			const tabId = relay.getControlledIds()[0].targetId;
+
+			mockSendCommand.mockImplementation(
+				async (_debuggee: { tabId: number }, method: string, _params?: object) => {
+					switch (method) {
+						case 'Target.getTargetInfo':
+							return { targetInfo: { targetId: targetIdForTab(_debuggee.tabId) } };
+						case 'Accessibility.getFullAXTree':
+							return { nodes: [] }; // empty AX tree — no node can match backendNodeId 999
+						case 'DOM.getDocument':
+							return { root: { nodeId: 1 } };
+						case 'DOM.querySelector':
+							return { nodeId: 99 };
+						case 'DOM.describeNode':
+							return { node: { backendNodeId: 999 } }; // no AX node has this backendDOMNodeId
+						default:
+							return {};
+					}
+				},
+			);
+			ws.sent.length = 0;
+
+			ws.onmessage?.({
+				data: JSON.stringify({
+					id: 1,
+					method: 'getSnapshot',
+					params: { id: tabId, scopeSelector: '[aria-hidden="true"]' },
+				}),
+			});
+			await tick();
+
+			const response = JSON.parse(ws.sent[0]);
+			expect(response.error).toBeDefined();
+			expect(response.error).toContain('no accessibility node');
+		});
+	});
+
 	it('should reject closeTab when tab closing is disabled', async () => {
 		mockGetTargets.mockResolvedValueOnce([mockTarget(42)]);
 		await relay.addTab(42, 'Test', 'https://test.com');

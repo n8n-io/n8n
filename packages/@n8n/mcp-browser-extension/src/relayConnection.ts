@@ -592,11 +592,17 @@ export class RelayConnection {
 				nodeId: root.nodeId,
 				selector: scopeSelector,
 			})) as Protocol.DOM.QuerySelectorResponse;
-			if (nodeId) {
-				const { node } = (await chrome.debugger.sendCommand(debuggee, 'DOM.describeNode', {
-					nodeId,
-				})) as Protocol.DOM.DescribeNodeResponse;
-				scopeNodeId = axNodes.find((n) => n.backendDOMNodeId === node.backendNodeId)?.nodeId;
+			if (!nodeId) {
+				throw new Error(`scopeSelector "${scopeSelector}" did not match any element`);
+			}
+			const { node } = (await chrome.debugger.sendCommand(debuggee, 'DOM.describeNode', {
+				nodeId,
+			})) as Protocol.DOM.DescribeNodeResponse;
+			scopeNodeId = axNodes.find((n) => n.backendDOMNodeId === node.backendNodeId)?.nodeId;
+			if (!scopeNodeId) {
+				throw new Error(
+					`scopeSelector "${scopeSelector}" matched a DOM element with no accessibility node`,
+				);
 			}
 		}
 
