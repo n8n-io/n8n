@@ -102,12 +102,34 @@ export async function buildSetupRequests(
 				node.credentials as Record<string, unknown> | undefined,
 			)
 			.catch(() => []);
-	} else {
+	}
+
+	// Fallback: if dynamic detection returned nothing, check the node description's
+	// static credentials list and already-assigned credentials on the node.
+	// This catches cases where getNodeCredentialTypes fails silently (e.g. node
+	// lookup miss) or isn't available.
+	if (credentialTypes.length === 0) {
 		const nodeCredTypes = node.credentials ? Object.keys(node.credentials) : [];
 		if (nodeCredTypes.length > 0) {
 			credentialTypes = nodeCredTypes;
-		} else if (nodeDesc?.credentials?.[0]?.name) {
-			credentialTypes = [nodeDesc.credentials[0].name];
+		} else if (nodeDesc?.credentials) {
+			// Only include credentials whose displayOptions match the current parameters
+			credentialTypes = nodeDesc.credentials
+				.filter((c: { name?: string; displayOptions?: unknown }) => !c.displayOptions)
+				.map((c: { name?: string }) => c.name)
+				.filter((n): n is string => n !== undefined);
+		}
+	}
+
+	// Dynamic credential resolution for nodes that use genericCredentialType
+	// or predefinedCredentialType (e.g. HTTP Request). The credential type name
+	// is stored in the node parameters rather than the description's credentials array.
+	if (credentialTypes.length === 0) {
+		const authentication = parameters.authentication as string | undefined;
+		if (authentication === 'genericCredentialType' && parameters.genericAuthType) {
+			credentialTypes = [parameters.genericAuthType as string];
+		} else if (authentication === 'predefinedCredentialType' && parameters.nodeCredentialType) {
+			credentialTypes = [parameters.nodeCredentialType as string];
 		}
 	}
 

@@ -1724,7 +1724,19 @@ export class InstanceAiAdapterService {
 					credentialTypes.add(credType);
 				}
 
-				// 3. Already-assigned credentials
+				// 3. Dynamic credential resolution for nodes that use genericCredentialType
+				// or predefinedCredentialType (e.g. HTTP Request). The credential type name
+				// is stored in the node parameters rather than the description's credentials array.
+				if (parameters.authentication === 'genericCredentialType' && parameters.genericAuthType) {
+					credentialTypes.add(parameters.genericAuthType as string);
+				} else if (
+					parameters.authentication === 'predefinedCredentialType' &&
+					parameters.nodeCredentialType
+				) {
+					credentialTypes.add(parameters.nodeCredentialType as string);
+				}
+
+				// 4. Already-assigned credentials
 				if (existingCredentials) {
 					for (const credType of Object.keys(existingCredentials)) {
 						credentialTypes.add(credType);
