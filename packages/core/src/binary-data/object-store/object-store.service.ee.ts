@@ -55,7 +55,7 @@ export class ObjectStoreService {
 		const endpoint = host ? `${protocol}://${host}` : undefined;
 		if (endpoint) {
 			clientConfig.endpoint = endpoint;
-			clientConfig.forcePathStyle = true; // Needed for non-AWS S3 compatible services
+			clientConfig.forcePathStyle = this.s3Config.forcePathStyle;
 		}
 		if (bucket.region.length) {
 			clientConfig.region = bucket.region;

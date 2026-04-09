@@ -125,7 +125,7 @@ export function quoteIdentifier(name: string, dbType: DataSourceOptions['type'])
 		case 'postgres':
 		case 'sqlite':
 		default:
-			return `"${name}"`;
+			return `"${name.replace(/"/g, '""')}"`;
 	}
 }
 

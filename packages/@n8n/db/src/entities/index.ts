@@ -23,6 +23,7 @@ import { ProjectRelation } from './project-relation';
 import { ProjectSecretsProviderAccess } from './project-secrets-provider-access';
 import type { SecretsProviderAccessRole } from './project-secrets-provider-access';
 import { Role } from './role';
+import { RoleMappingRule } from './role-mapping-rule';
 import { Scope } from './scope';
 import { SecretsProviderConnection } from './secrets-provider-connection';
 import { Settings } from './settings';
@@ -60,6 +61,7 @@ export {
 	Folder,
 	Project,
 	ProjectRelation,
+	RoleMappingRule,
 	Role,
 	Scope,
 	SharedCredentials,
@@ -102,6 +104,7 @@ export const entities = {
 	Folder,
 	Project,
 	ProjectRelation,
+	RoleMappingRule,
 	Scope,
 	SharedCredentials,
 	SharedWorkflow,

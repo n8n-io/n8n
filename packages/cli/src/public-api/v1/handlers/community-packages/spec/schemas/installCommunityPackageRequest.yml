@@ -1,0 +1,10 @@
+type: object
+required:
+  - name
+properties:
+  name:
+    type: string
+    description: 'npm package name (must start with n8n-nodes-)'
+  version:
+    type: string
+    description: Specific semver version to install

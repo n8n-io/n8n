@@ -67,6 +67,7 @@ import { stringify } from 'qs';
 import { Readable } from 'stream';
 
 import type { SsrfBridge } from '@/execution-engine';
+import { callEvalMockHandler, normalizeLegacyRequest } from '@/execution-engine/eval-mock-helpers';
 import type { IResponseError } from '@/interfaces';
 
 import { binaryToString } from './binary-helper-functions';
@@ -85,6 +86,8 @@ import {
 	setAxiosAgents,
 	tryParseUrl,
 } from './request-helpers';
+import { throwIfDomainNotAllowed } from './request-helpers/axios-utils';
+
 export async function invokeAxios(
 	axiosConfig: AxiosRequestConfig,
 	authOptions: IRequestOptions['auth'] = {},
@@ -356,6 +359,7 @@ export async function parseRequestObject(requestObject: IRequestOptions, ssrfBri
 		axiosConfig,
 		requestObject.proxy,
 		requestObject.sendCredentialsOnCrossOriginRedirect ?? true,
+		requestObject.allowedDomains,
 		ssrfBridge,
 	);
 
@@ -430,6 +434,7 @@ export async function proxyRequestToAxios(
 	await validateUrlSsrf(url, ssrfBridge);
 
 	axiosConfig = Object.assign(axiosConfig, await parseRequestObject(configObject, ssrfBridge));
+	throwIfDomainNotAllowed(axiosConfig, configObject.allowedDomains);
 
 	try {
 		const response = await invokeAxios(axiosConfig, configObject.auth);
@@ -550,6 +555,7 @@ export function convertN8nRequestToAxios(
 		axiosRequest,
 		n8nRequest.proxy,
 		n8nRequest.sendCredentialsOnCrossOriginRedirect ?? true,
+		n8nRequest.allowedDomains,
 		ssrfBridge,
 	);
 
@@ -670,6 +676,8 @@ export async function httpRequest(
 		delete axiosRequest.data;
 	}
 
+	throwIfDomainNotAllowed(axiosRequest, requestOptions.allowedDomains);
+
 	const result = await invokeAxios(axiosRequest, requestOptions.auth);
 
 	if (requestOptions.returnFullResponse) {
@@ -705,11 +713,16 @@ export function applyPaginationRequestData(
 }
 
 function createOAuth2Client(credentials: OAuth2CredentialData): ClientOAuth2 {
+	// Split and trim scopes; empty scope tokens are not RFC 6749-compliant and may be rejected by authorization servers
+	const scopes = credentials.scope
+		?.split(' ')
+		.map((s) => s.trim())
+		.filter(Boolean);
 	return new ClientOAuth2({
 		clientId: credentials.clientId,
 		clientSecret: credentials.clientSecret,
 		accessTokenUri: credentials.accessTokenUrl,
-		scopes: (credentials.scope ?? '').split(' '),
+		scopes: scopes?.length ? scopes : undefined,
 		ignoreSSLIssues: credentials.ignoreSSLIssues,
 		authentication: credentials.authentication ?? 'header',
 		...(credentials.additionalBodyProperties && {
@@ -815,7 +828,16 @@ export async function requestOAuth2(
 			Object.keys(oauthTokenData).length === 0 ||
 			oauthTokenData.access_token === '') // stub
 	) {
-		const { data } = await oAuthClient.credentials.getToken();
+		let tokenResult: Awaited<ReturnType<typeof oAuthClient.credentials.getToken>>;
+		try {
+			tokenResult = await oAuthClient.credentials.getToken();
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			throw new ApplicationError(`Failed to acquire OAuth2 access token: ${message}`, {
+				cause: error,
+			});
+		}
+		const { data } = tokenResult;
 		// Find the credentials
 		if (!node.credentials?.[credentialsType]) {
 			throw new ApplicationError('Node does not have credential type', {
@@ -1054,6 +1076,18 @@ export async function httpRequestWithAuthentication(
 	}
 
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
+
+	// Eval LLM mock: intercept before credential auth and OAuth signing
+	if (additionalData.evalLlmMockHandler) {
+		const evalMockResponse = await callEvalMockHandler(
+			additionalData.evalLlmMockHandler,
+			requestOptions,
+			node,
+			requestOptions.returnFullResponse,
+		);
+		if (evalMockResponse !== undefined) return evalMockResponse;
+	}
+
 	try {
 		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
 
@@ -1141,7 +1175,6 @@ export async function httpRequestWithAuthentication(
 						node,
 					);
 				}
-				// retry the request
 				return await httpRequest(requestOptions, additionalData.ssrfBridge);
 			} catch (error) {
 				throw new NodeApiError(this.getNode(), error);
@@ -1166,6 +1199,18 @@ export async function requestWithAuthentication(
 	removeEmptyBody(requestOptions);
 
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
+
+	// Eval LLM mock: intercept before credential auth and OAuth signing (legacy path)
+	if (additionalData.evalLlmMockHandler) {
+		const evalMockResponse = await callEvalMockHandler(
+			additionalData.evalLlmMockHandler,
+			normalizeLegacyRequest(requestOptions),
+			node,
+			requestOptions.resolveWithFullResponse,
+			'legacy',
+		);
+		if (evalMockResponse !== undefined) return evalMockResponse;
+	}
 
 	try {
 		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
@@ -1247,7 +1292,6 @@ export async function requestWithAuthentication(
 						workflow,
 						node,
 					)) as IRequestOptions;
-					// retry the request
 					return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
 				}
 			}
@@ -1511,9 +1555,22 @@ export const getRequestHelperFunctions = (
 		return responseData;
 	}
 
+	// Eval LLM mock handler: extract once for use in direct helpers below
+	const evalLlmMock = additionalData.evalLlmMockHandler;
+
 	return {
-		httpRequest: async (requestOptions: IHttpRequestOptions) =>
-			await httpRequest(requestOptions, additionalData.ssrfBridge),
+		httpRequest: async (requestOptions: IHttpRequestOptions) => {
+			if (evalLlmMock) {
+				const evalMockResponse = await callEvalMockHandler(
+					evalLlmMock,
+					requestOptions,
+					node,
+					requestOptions.returnFullResponse,
+				);
+				if (evalMockResponse !== undefined) return evalMockResponse;
+			}
+			return await httpRequest(requestOptions, additionalData.ssrfBridge);
+		},
 		requestWithAuthenticationPaginated,
 		async httpRequestWithAuthentication(
 			this,
@@ -1546,8 +1603,20 @@ export const getRequestHelperFunctions = (
 			);
 		},
 
-		request: async (uriOrObject, options) =>
-			await proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options),
+		request: async (uriOrObject, options) => {
+			if (evalLlmMock) {
+				const wantsFull = typeof uriOrObject !== 'string' && uriOrObject.resolveWithFullResponse;
+				const evalMockResponse = await callEvalMockHandler(
+					evalLlmMock,
+					normalizeLegacyRequest(uriOrObject, options),
+					node,
+					wantsFull,
+					'legacy',
+				);
+				if (evalMockResponse !== undefined) return evalMockResponse;
+			}
+			return await proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
+		},
 
 		async requestWithAuthentication(
 			this,
@@ -1573,6 +1642,16 @@ export const getRequestHelperFunctions = (
 			credentialsType: string,
 			requestOptions: IRequestOptions,
 		): Promise<any> {
+			if (evalLlmMock) {
+				const evalMockResponse = await callEvalMockHandler(
+					evalLlmMock,
+					normalizeLegacyRequest(requestOptions),
+					node,
+					requestOptions.resolveWithFullResponse,
+					'legacy',
+				);
+				if (evalMockResponse !== undefined) return evalMockResponse;
+			}
 			return await requestOAuth1.call(this, credentialsType, requestOptions);
 		},
 
@@ -1582,6 +1661,16 @@ export const getRequestHelperFunctions = (
 			requestOptions: IRequestOptions,
 			oAuth2Options?: IOAuth2Options,
 		): Promise<any> {
+			if (evalLlmMock) {
+				const evalMockResponse = await callEvalMockHandler(
+					evalLlmMock,
+					normalizeLegacyRequest(requestOptions),
+					node,
+					requestOptions.resolveWithFullResponse,
+					'legacy',
+				);
+				if (evalMockResponse !== undefined) return evalMockResponse;
+			}
 			return await requestOAuth2.call(
 				this,
 				credentialsType,

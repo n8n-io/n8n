@@ -22,6 +22,7 @@ import {
 	DataTableInsertRowsResult,
 	DataTableRowReturnWithState,
 	DataTableRawRowReturn,
+	UserError,
 } from 'n8n-workflow';
 
 import { DataTableColumn } from './data-table-column.entity';
@@ -30,6 +31,7 @@ import {
 	escapeLikeSpecials,
 	extractInsertedIds,
 	extractReturningData,
+	isValidColumnName,
 	normalizeRows,
 	normalizeValueForDatabase,
 	quoteIdentifier,
@@ -689,6 +691,8 @@ export class DataTableRowsRepository {
 
 	private applySortingByField(query: QueryBuilder, field: string, direction: 'DESC' | 'ASC'): void {
 		const dbType = this.dataSource.options.type;
+		if (!isValidColumnName(field)) throw new UserError('Incorrect column format');
+
 		const quotedField = `${quoteIdentifier('dataTable', dbType)}.${quoteIdentifier(field, dbType)}`;
 		query.orderBy(quotedField, direction);
 	}
