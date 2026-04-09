@@ -79,6 +79,7 @@
       "dist/credentials/ChatHubVectorStorePineconeApi.credentials.js"
     ],
     "nodes": [
+      "dist/nodes/vendors/AlibabaCloud/AlibabaCloud.node.js",
       "dist/nodes/vendors/Anthropic/Anthropic.node.js",
       "dist/nodes/vendors/GoogleGemini/GoogleGemini.node.js",
       "dist/nodes/vendors/Ollama/Ollama.node.js",
