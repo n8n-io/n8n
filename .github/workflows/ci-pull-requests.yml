@@ -27,6 +27,7 @@ jobs:
       db: ${{ fromJSON(steps.ci-filter.outputs.results).db == true }}
       design_system: ${{ fromJSON(steps.ci-filter.outputs.results)['design-system'] == true }}
       performance: ${{ fromJSON(steps.ci-filter.outputs.results).performance == true }}
+      e2e_performance: ${{ fromJSON(steps.ci-filter.outputs.results)['e2e-performance'] == true }}
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -69,6 +70,11 @@ jobs:
               packages/testing/performance/**
               packages/workflow/src/**
               .github/workflows/test-bench-reusable.yml
+            e2e-performance:
+              packages/testing/playwright/tests/performance/**
+              packages/testing/playwright/utils/performance-helper.ts
+              packages/testing/containers/**
+              .github/workflows/test-e2e-performance-reusable.yml
             db:
               packages/cli/src/databases/**
               packages/cli/src/modules/*/database/**
@@ -167,6 +173,16 @@ jobs:
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
 
+  e2e-performance:
+    name: E2E Performance
+    needs: install-and-build
+    if: >-
+      (needs.install-and-build.outputs.ci == 'true' || needs.install-and-build.outputs.e2e_performance == 'true') &&
+      github.event_name == 'pull_request' &&
+      github.repository == 'n8n-io/n8n'
+    uses: ./.github/workflows/test-e2e-performance-reusable.yml
+    secrets: inherit
+
   security-checks:
     name: Security Checks
     needs: install-and-build
@@ -224,3 +240,14 @@ jobs:
         with:
           mode: validate
           job-results: ${{ toJSON(needs) }}
+          
+  # Posts a QA metrics comparison comment on the PR.
+  # Runs after all checks so any job can emit metrics before this reports.
+  post-qa-metrics-comment:
+    name: QA Metrics
+    needs: [required-checks, e2e-performance]
+    if: always()
+    uses: ./.github/workflows/util-qa-metrics-comment-reusable.yml
+    with:
+      metrics: memory-heap-used-baseline,docker-image-size-n8n,docker-image-size-runners
+    secrets: inherit

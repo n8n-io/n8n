@@ -756,20 +756,22 @@ function createDataTableAdapterForTests(overrides?: {
 		{
 			collectTypes: jest.fn().mockResolvedValue({ nodes: [], credentials: [] }),
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[13],
 		mockDataTableService as unknown as DataTableService,
 		mockDataTableRepository as unknown as DataTableRepository,
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[15],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[16],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[18],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		mockSourceControlPreferencesService as unknown as SourceControlPreferencesService,
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
 		{ isLicensed: jest.fn().mockReturnValue(false) } as unknown as License,
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[24],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[25],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[26],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[27],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
 	);
 
 	const adapter = service.createContext(mockUser).dataTableService;
@@ -883,6 +885,7 @@ describe('createDataTableAdapter', () => {
 function createWorkflowAdapterForTests(overrides?: {
 	namedVersionsLicensed?: boolean;
 	foldersLicensed?: boolean;
+	branchReadOnly?: boolean;
 }) {
 	const mockProjectRepository = {
 		getPersonalProjectForUserOrFail: jest.fn().mockResolvedValue({ id: 'personal-project-id' }),
@@ -940,12 +943,15 @@ function createWorkflowAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[16],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[18],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{
-			getPreferences: jest.fn().mockReturnValue({ branchReadOnly: false }),
+			getPreferences: jest
+				.fn()
+				.mockReturnValue({ branchReadOnly: overrides?.branchReadOnly ?? false }),
 		} as unknown as SourceControlPreferencesService,
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
 		{
 			isLicensed: jest.fn().mockImplementation((feat: string) => {
 				if (feat === 'feat:namedVersions') return overrides?.namedVersionsLicensed ?? false;
@@ -954,9 +960,10 @@ function createWorkflowAdapterForTests(overrides?: {
 			}),
 			isSharingEnabled: jest.fn().mockReturnValue(false),
 		} as unknown as License,
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[24],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[25],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[26],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[27],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
 	);
 
 	const context = service.createContext(mockUser);
@@ -1020,6 +1027,32 @@ describe('createWorkflowAdapter', () => {
 				projectId: 'restricted-project-id',
 			}),
 		).rejects.toThrow('User does not have the required permissions in this project');
+	});
+
+	describe('instance read-only mode', () => {
+		it('blocks createFromWorkflowJSON when branchReadOnly is true', async () => {
+			const { adapter } = createWorkflowAdapterForTests({ branchReadOnly: true });
+
+			await expect(adapter.createFromWorkflowJSON(minimalWorkflowJSON)).rejects.toThrow(
+				'Cannot modify workflows on a protected instance',
+			);
+		});
+
+		it('blocks archive when branchReadOnly is true', async () => {
+			const { adapter } = createWorkflowAdapterForTests({ branchReadOnly: true });
+
+			await expect(adapter.archive('wf-1')).rejects.toThrow(
+				'Cannot modify workflows on a protected instance',
+			);
+		});
+
+		it('blocks delete when branchReadOnly is true', async () => {
+			const { adapter } = createWorkflowAdapterForTests({ branchReadOnly: true });
+
+			await expect(adapter.delete('wf-1')).rejects.toThrow(
+				'Cannot modify workflows on a protected instance',
+			);
+		});
 	});
 });
 
@@ -1156,16 +1189,18 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[16],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[18],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{
 			getPreferences: jest.fn().mockReturnValue({ branchReadOnly: false }),
 		} as unknown as SourceControlPreferencesService,
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
 		mockLicense as unknown as License,
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[24],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[25],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[26],
 		mockRoleService as unknown as RoleService,
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
 	);
 
 	const adapter = service.createContext(mockUser).executionService;

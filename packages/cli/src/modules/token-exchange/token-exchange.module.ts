@@ -13,6 +13,15 @@ function isFeatureFlagEnabled(): boolean {
 	instanceTypes: ['main'],
 })
 export class TokenExchangeModule implements ModuleInterface {
+	async entities() {
+		const { TokenExchangeJti } = await import('./database/entities/token-exchange-jti.entity');
+		const { TrustedKeySourceEntity } = await import(
+			'./database/entities/trusted-key-source.entity'
+		);
+		const { TrustedKeyEntity } = await import('./database/entities/trusted-key.entity');
+		return [TokenExchangeJti, TrustedKeySourceEntity, TrustedKeyEntity] as never;
+	}
+
 	async init() {
 		if (!isFeatureFlagEnabled()) {
 			return;
@@ -23,5 +32,8 @@ export class TokenExchangeModule implements ModuleInterface {
 
 		await import('./token-exchange.controller');
 		await import('./controllers/embed-auth.controller');
+
+		const { JtiCleanupService } = await import('./services/jti-cleanup.service');
+		Container.get(JtiCleanupService).init();
 	}
 }

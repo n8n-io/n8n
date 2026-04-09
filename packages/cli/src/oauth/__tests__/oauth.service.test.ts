@@ -2520,4 +2520,50 @@ describe('OauthService', () => {
 			).rejects.toThrow('Request token failed');
 		});
 	});
+
+	describe('extractAccountIdentifier', () => {
+		it('returns email from direct token field', () => {
+			expect(
+				OauthService.extractAccountIdentifier({ email: 'user@example.com', access_token: 'tok' }),
+			).toBe('user@example.com');
+		});
+
+		it('returns login from direct token field (GitHub-style)', () => {
+			expect(OauthService.extractAccountIdentifier({ login: 'octocat', access_token: 'tok' })).toBe(
+				'octocat',
+			);
+		});
+
+		it('extracts email from JWT id_token', () => {
+			const payload = { email: 'user@gmail.com', sub: '123' };
+			const idToken = `header.${Buffer.from(JSON.stringify(payload)).toString('base64url')}.sig`;
+			expect(OauthService.extractAccountIdentifier({ id_token: idToken })).toBe('user@gmail.com');
+		});
+
+		it('extracts preferred_username from JWT id_token when no email', () => {
+			const payload = { preferred_username: 'admin@contoso.com', sub: '123' };
+			const idToken = `header.${Buffer.from(JSON.stringify(payload)).toString('base64url')}.sig`;
+			expect(OauthService.extractAccountIdentifier({ id_token: idToken })).toBe(
+				'admin@contoso.com',
+			);
+		});
+
+		it('returns undefined for token data without identifiers', () => {
+			expect(
+				OauthService.extractAccountIdentifier({ access_token: 'tok', refresh_token: 'ref' }),
+			).toBeUndefined();
+		});
+
+		it('handles malformed JWT gracefully', () => {
+			expect(OauthService.extractAccountIdentifier({ id_token: 'not.a.jwt' })).toBeUndefined();
+		});
+
+		it('prefers direct fields over id_token', () => {
+			const payload = { email: 'jwt@example.com' };
+			const idToken = `h.${Buffer.from(JSON.stringify(payload)).toString('base64url')}.s`;
+			expect(
+				OauthService.extractAccountIdentifier({ email: 'direct@example.com', id_token: idToken }),
+			).toBe('direct@example.com');
+		});
+	});
 });

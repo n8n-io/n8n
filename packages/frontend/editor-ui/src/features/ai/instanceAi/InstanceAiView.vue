@@ -18,10 +18,12 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useScroll, useWindowSize } from '@vueuse/core';
+import { N8nCallout } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useInstanceAiStore } from './instanceAi.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
@@ -47,6 +49,8 @@ import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.
 
 const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
+const sourceControlStore = useSourceControlStore();
+const isReadOnlyEnvironment = computed(() => sourceControlStore.preferences.branchReadOnly);
 const pushConnectionStore = usePushConnectionStore();
 const rootStore = useRootStore();
 const i18n = useI18n();
@@ -109,6 +113,7 @@ onMounted(() => {
 	void store.loadThreads();
 	void store.fetchCredits();
 	store.startCreditsPushListener();
+	void nextTick(() => chatInputRef.value?.focus());
 
 	// Auto-connect local gateway if enabled
 	void settingsStore
@@ -240,6 +245,13 @@ watch(
 
 // --- Chat input ref for auto-focus ---
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
+
+// Focus input on initial render (ref rebinds when messages load and layout switches)
+watch(chatInputRef, (el) => {
+	if (el) {
+		void nextTick(() => el.focus());
+	}
+});
 
 // --- Floating input dynamic padding ---
 const inputContainerRef = useTemplateRef<HTMLElement>('inputContainer');
@@ -425,6 +437,15 @@ function handleStop() {
 				</div>
 			</div>
 
+			<N8nCallout
+				v-if="isReadOnlyEnvironment"
+				theme="warning"
+				icon="lock"
+				:class="$style.readOnlyBanner"
+			>
+				{{ i18n.baseText('readOnlyEnv.instanceAi.notice') }}
+			</N8nCallout>
+
 			<!-- Content area: chat + artifacts side by side below header -->
 			<div :class="$style.contentArea">
 				<div :class="$style.chatContent">
@@ -455,13 +476,14 @@ function handleStop() {
 							<div
 								ref="scrollable"
 								:class="$style.messageList"
-								:style="{ paddingBottom: `${inputAreaHeight}px` }"
+								:style="{ paddingBottom: `calc(${inputAreaHeight}px + var(--spacing--sm))` }"
 							>
 								<TransitionGroup name="message-slide">
 									<InstanceAiMessage
 										v-for="message in store.messages"
 										:key="message.id"
 										:message="message"
+										:class="$style.message"
 									/>
 								</TransitionGroup>
 								<InstanceAiConfirmationPanel />
@@ -583,6 +605,10 @@ function handleStop() {
 	flex-shrink: 0;
 }
 
+.readOnlyBanner {
+	margin: var(--spacing--xs) var(--spacing--sm) 0;
+}
+
 .chatArea {
 	flex: 1;
 	display: flex;
@@ -590,7 +616,7 @@ function handleStop() {
 	min-width: 0;
 	overflow: hidden;
 	position: relative;
-	background-color: var(--color--background--light-1);
+	background-color: var(--color--background--light-2);
 }
 
 .canvasArea {
@@ -630,6 +656,7 @@ function handleStop() {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
+	background-color: var(--color--background--light-2);
 }
 
 .headerTitle {
@@ -699,6 +726,13 @@ function handleStop() {
 	max-width: 800px;
 	margin: 0 auto;
 	padding: var(--spacing--sm) var(--spacing--lg);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+}
+
+.message {
+	width: 90%;
 }
 
 .scrollButtonContainer {
@@ -729,7 +763,7 @@ function handleStop() {
 	left: 0;
 	right: 0;
 	padding: 0 var(--spacing--lg) var(--spacing--sm);
-	background: linear-gradient(transparent 0%, var(--color--background--light-1) 30%);
+	background: linear-gradient(transparent 0%, var(--color--background--light-2) 30%);
 	pointer-events: none;
 	z-index: 2;
 

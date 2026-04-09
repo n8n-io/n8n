@@ -43,6 +43,16 @@ export async function renameThread(
 	});
 }
 
+export async function updateThreadMetadata(
+	context: IRestApiContext,
+	threadId: string,
+	metadata: Record<string, unknown>,
+): Promise<{ thread: InstanceAiThreadInfo }> {
+	return await makeRestApiRequest(context, 'PATCH', `/instance-ai/threads/${threadId}`, {
+		metadata,
+	});
+}
+
 export async function fetchThreadMessages(
 	context: IRestApiContext,
 	threadId: string,
