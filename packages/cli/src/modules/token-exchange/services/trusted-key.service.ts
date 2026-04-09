@@ -81,6 +81,10 @@ export class TrustedKeyService {
 				this.logger.warn('JWKS key sources are not yet supported, skipping kid in source');
 				continue;
 			}
+			if (source.type === 'ui') {
+				this.logger.warn('UI key sources are not yet supported, skipping');
+				continue;
+			}
 			this.validateAndStoreStaticKey(source);
 		}
 

@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from '@testing-library/vue';
-import { reactive, ref } from 'vue';
+import { defineComponent, h, reactive, ref } from 'vue';
 import InstanceAiView from '../InstanceAiView.vue';
 
 class ResizeObserverMock {
@@ -78,6 +78,14 @@ vi.mock('@/app/stores/pushConnection.store', () => ({
 	usePushConnectionStore: () => ({
 		pushConnect: vi.fn(),
 		pushDisconnect: vi.fn(),
+	}),
+}));
+
+vi.mock('@/features/integrations/sourceControl.ee/sourceControl.store', () => ({
+	useSourceControlStore: () => ({
+		preferences: {
+			branchReadOnly: false,
+		},
 	}),
 }));
 
@@ -204,12 +212,31 @@ vi.mock('../components/InstanceAiStatusBar.vue', () => ({
 }));
 
 vi.mock('../components/InstanceAiInput.vue', () => ({
-	default: {
+	default: defineComponent({
 		name: 'InstanceAiInputStub',
-		props: ['suggestions', 'isStreaming'],
-		template:
-			'<div data-test-id="instance-ai-input-stub">{{ suggestions === undefined ? "unset" : suggestions.length }}</div>',
-	},
+		props: {
+			suggestions: {
+				type: Array,
+				required: false,
+			},
+			isStreaming: {
+				type: Boolean,
+				required: false,
+			},
+		},
+		setup(props, { expose }) {
+			expose({
+				focus: vi.fn(),
+			});
+
+			return () =>
+				h(
+					'div',
+					{ 'data-test-id': 'instance-ai-input-stub' },
+					props.suggestions === undefined ? 'unset' : String(props.suggestions.length),
+				);
+		},
+	}),
 }));
 
 vi.mock('../components/InstanceAiConfirmationPanel.vue', () => ({

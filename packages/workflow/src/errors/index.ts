@@ -33,3 +33,4 @@ export { ExpressionReservedVariableError } from './expression-reserved-variable.
 export { ExpressionWithStatementError } from './expression-with-statement.error';
 export { DbConnectionTimeoutError } from './db-connection-timeout-error';
 export { ensureError } from './ensure-error';
+export { IsolateError } from '@n8n/errors';

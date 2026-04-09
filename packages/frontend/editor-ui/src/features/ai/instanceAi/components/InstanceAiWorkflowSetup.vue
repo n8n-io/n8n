@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { getWorkflow as fetchWorkflowApi } from '@/app/api/workflows';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -30,6 +31,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { NodeHelpers, isResourceLocatorValue, type INodeProperties } from 'n8n-workflow';
 import { computed, onMounted, onUnmounted, provide, ref, watch } from 'vue';
 import { useInstanceAiStore } from '../instanceAi.store';
+import ConfirmationFooter from './ConfirmationFooter.vue';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -61,6 +63,7 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const telemetry = useTelemetry();
 const store = useInstanceAiStore();
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
@@ -468,8 +471,7 @@ function wrappedGoToPrev() {
 watch(
 	() => currentCard.value && isCardComplete(currentCard.value),
 	(complete, prevComplete) => {
-		// Only auto-advance on a false->true transition (credential was just selected)
-		// Skip if user just navigated to a card that was already complete
+		// Auto-advance only when not manually navigating
 		if (!complete || prevComplete || userNavigated.value) {
 			userNavigated.value = false;
 			return;
@@ -884,9 +886,35 @@ onUnmounted(() => {
 	cancelApplyWait?.();
 });
 
+function trackSetupInput() {
+	const tc = store.findToolCallByRequestId(props.requestId);
+	const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
+	const provided: Array<{ label: string; options: string[]; option_chosen: string }> = [];
+	const skipped: Array<{ label: string; options: string[] }> = [];
+	for (const card of cards.value) {
+		const name = card.nodes[0]?.node.name ?? card.id;
+		if (isCardComplete(card)) {
+			provided.push({ label: name, options: [], option_chosen: 'configured' });
+		} else {
+			skipped.push({ label: name, options: [] });
+		}
+	}
+	telemetry.track('User finished providing input', {
+		thread_id: store.currentThreadId,
+		input_thread_id: inputThreadId,
+		instance_id: useRootStore().instanceId,
+		type: 'setup',
+		provided_inputs: provided,
+		skipped_inputs: skipped,
+		num_tasks: cards.value.length,
+	});
+}
+
 async function handleApply() {
 	const nodeCredentials = buildNodeCredentials();
 	const nodeParameters = buildNodeParameters();
+
+	trackSetupInput();
 
 	isApplying.value = true;
 	applyError.value = null;
@@ -941,6 +969,28 @@ async function handleApply() {
 }
 
 async function handleLater() {
+	// In wizard mode: skip current card and advance to the next one.
+	// The skipped card will have no selection, so buildNodeCredentials()
+	// naturally excludes it from the apply payload.
+	if (!allPreResolved.value || showFullWizard.value) {
+		if (currentCard.value) {
+			selections.value[currentCard.value.id] = null;
+		}
+
+		if (!isNextDisabled.value) {
+			goToNext();
+			return;
+		}
+
+		// Last step: if any card has been completed, auto-apply the partial set
+		if (anyCardComplete.value) {
+			void handleApply();
+			return;
+		}
+	}
+
+	// No cards completed at all (or confirm mode) — defer the whole setup
+	trackSetupInput();
 	isSubmitted.value = true;
 	isDeferred.value = true;
 
@@ -955,7 +1005,7 @@ async function handleLater() {
 </script>
 
 <template>
-	<div :class="$style.root">
+	<div>
 		<template v-if="!isSubmitted && !isApplying">
 			<!-- Streamlined confirm mode: all items pre-resolved by AI -->
 			<div
@@ -989,7 +1039,7 @@ async function handleLater() {
 						</li>
 					</ul>
 				</div>
-				<footer :class="$style.footer">
+				<ConfirmationFooter layout="row-between">
 					<div :class="$style.footerNav">
 						<N8nLink
 							data-test-id="instance-ai-workflow-setup-review-details"
@@ -1018,7 +1068,7 @@ async function handleLater() {
 							@click="handleApply"
 						/>
 					</div>
-				</footer>
+				</ConfirmationFooter>
 			</div>
 			<div
 				v-else-if="currentCard"
@@ -1040,6 +1090,7 @@ async function handleLater() {
 					<N8nIcon
 						v-if="getCredTestIcon(currentCard) === 'spinner'"
 						icon="spinner"
+						color="primary"
 						size="small"
 						:class="$style.loading"
 					/>
@@ -1151,7 +1202,7 @@ async function handleLater() {
 					"
 					:class="$style.listeningCallout"
 				>
-					<N8nIcon icon="spinner" size="small" :class="$style.loading" />
+					<N8nIcon icon="spinner" color="primary" spin size="small" :class="$style.loading" />
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('instanceAi.workflowSetup.triggerListening') }}
 					</N8nText>
@@ -1164,7 +1215,7 @@ async function handleLater() {
 				</div>
 
 				<!-- Footer -->
-				<footer :class="$style.footer">
+				<ConfirmationFooter layout="row-between">
 					<div :class="$style.footerNav">
 						<N8nButton
 							v-if="showArrows"
@@ -1224,12 +1275,12 @@ async function handleLater() {
 							@click="handleApply"
 						/>
 					</div>
-				</footer>
+				</ConfirmationFooter>
 			</div>
 		</template>
 
 		<div v-else-if="isApplying" :class="$style.submitted">
-			<N8nIcon icon="spinner" size="small" :class="$style.loading" />
+			<N8nIcon icon="spinner" color="primary" spin size="small" :class="$style.loading" />
 			<span>{{ i18n.baseText('instanceAi.workflowSetup.applying') }}</span>
 		</div>
 
@@ -1251,19 +1302,12 @@ async function handleLater() {
 </template>
 
 <style lang="scss" module>
-.root {
-	// border-top: var(--border);
-	// background: var(--color--background--shade-1);
-	// padding: var(--spacing--xs);
-}
-
 .card {
 	width: 100%;
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	padding: 0;
-	// background-color: var(--color--background--light-3);
 	border: var(--border);
 	border-radius: var(--radius);
 
@@ -1278,7 +1322,6 @@ async function handleLater() {
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	padding: 0;
-	background-color: var(--color--background--light-3);
 	border: var(--border);
 	border-color: var(--color--success);
 	border-radius: var(--radius);
@@ -1355,14 +1398,6 @@ async function handleLater() {
 	background: var(--color--danger--tint-4);
 	border-radius: var(--radius);
 	margin: 0 var(--spacing--sm);
-}
-
-.footer {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--xs);
-	border-top: var(--border);
-	padding: var(--spacing--xs) var(--spacing--sm);
 }
 
 .footerNav {

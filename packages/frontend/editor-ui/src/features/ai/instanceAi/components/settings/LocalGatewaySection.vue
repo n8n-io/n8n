@@ -17,7 +17,7 @@ const isLocalGatewayDisabled = computed(() => {
 });
 
 const copied = ref(false);
-const displayCommand = computed(() => store.setupCommand ?? 'npx @n8n/fs-proxy');
+const displayCommand = computed(() => store.setupCommand ?? 'npx @n8n/computer-use');
 
 async function copyCommand() {
 	if (!store.setupCommand) return;

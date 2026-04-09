@@ -8,6 +8,7 @@
  */
 
 import { createLogger } from './logger';
+import type { TabManagementSettings } from './types';
 
 interface ProtocolCommand {
 	id: number;
@@ -21,11 +22,6 @@ interface ProtocolResponse {
 	params?: Record<string, unknown>;
 	result?: unknown;
 	error?: string;
-}
-
-export interface TabManagementSettings {
-	allowTabCreation: boolean;
-	allowTabClosing: boolean;
 }
 
 const DEFAULT_SETTINGS: TabManagementSettings = {
@@ -62,6 +58,14 @@ const ATTACH_TIMEOUT_MS = 5_000;
 // RelayConnection
 // ---------------------------------------------------------------------------
 
+/** URL prefixes that indicate restricted child targets (extensions, internal pages). */
+function isRestrictedUrl(url: string | undefined): boolean {
+	if (!url) return false;
+	if (url.startsWith('chrome-extension://')) return true;
+	const restrictedPrefixes = ['chrome://', 'devtools://', 'edge://'];
+	return restrictedPrefixes.some((prefix) => url.startsWith(prefix));
+}
+
 export class RelayConnection {
 	/** Primary map: CDP targetId → Chrome tab state */
 	private readonly tabs = new Map<string, TabEntry>();
@@ -73,6 +77,8 @@ export class RelayConnection {
 	private readonly agentCreatedChromeTabIds = new Set<number>();
 	/** The primary tab ID (first registered), used as default target */
 	private primaryId: string | undefined;
+	/** Cached Target.setAutoAttach params — reapplied to newly attached tabs for iframe support. */
+	private autoAttachParams: object | null = null;
 
 	private readonly ws: WebSocket;
 	private readonly eventListener: (
@@ -85,6 +91,7 @@ export class RelayConnection {
 	private settings: TabManagementSettings = DEFAULT_SETTINGS;
 
 	onclose?: () => void;
+	ontabcreated?: () => void;
 
 	constructor(ws: WebSocket) {
 		this.ws = ws;
@@ -169,7 +176,7 @@ export class RelayConnection {
 		this.sendMessage({ method: 'tabClosed', params: { id } });
 
 		if (this.tabs.size === 0) {
-			this.close('All tabs closed');
+			this.close('extension_disconnected');
 		}
 	}
 
@@ -310,6 +317,19 @@ export class RelayConnection {
 			]);
 			entry.attached = true;
 			log.debug(`ensureAttached: attached ${id}`);
+
+			// Reapply cached auto-attach so new tabs report iframes immediately
+			if (this.autoAttachParams) {
+				try {
+					await chrome.debugger.sendCommand(
+						{ tabId: entry.chromeTabId },
+						'Target.setAutoAttach',
+						this.autoAttachParams,
+					);
+				} catch (e) {
+					log.debug('Failed to apply auto-attach after attach:', e);
+				}
+			}
 		})();
 
 		this.pendingAttaches.set(id, promise);
@@ -328,6 +348,27 @@ export class RelayConnection {
 		if (!source.tabId) return;
 		const id = this.chromeTabIdToId.get(source.tabId);
 		if (!id) return;
+
+		// Filter restricted child targets from auto-attach (extension pages, chrome://, etc.).
+		// Without this, Chrome's debugger API throws "Cannot access a chrome-extension:// URL
+		// of a different extension" when the relay tries to send commands to these targets.
+		if (method === 'Target.attachedToTarget') {
+			const targetParams = params as
+				| { sessionId?: string; targetInfo?: { url?: string } }
+				| undefined;
+			if (isRestrictedUrl(targetParams?.targetInfo?.url)) {
+				log.debug('filtering restricted child target:', targetParams?.targetInfo?.url);
+				// Detach from the restricted child — sent on the parent tab session, not the child
+				if (targetParams?.sessionId) {
+					chrome.debugger
+						.sendCommand({ tabId: source.tabId }, 'Target.detachFromTarget', {
+							sessionId: targetParams.sessionId,
+						})
+						.catch((e) => log.debug('failed to detach restricted target:', e));
+				}
+				return;
+			}
+		}
 
 		this.sendMessage({
 			method: 'forwardCDPEvent',
@@ -356,7 +397,7 @@ export class RelayConnection {
 		this.sendMessage({ method: 'tabClosed', params: { id } });
 
 		if (this.tabs.size === 0) {
-			this.close(`Debugger detached: ${reason}`);
+			this.close('debugger_detached');
 		}
 	}
 
@@ -434,6 +475,25 @@ export class RelayConnection {
 
 	private async handleForwardCDPCommand(params: Record<string, unknown>): Promise<unknown> {
 		const { method, params: cmdParams, id: rawId } = params;
+
+		// Root-level Target.setAutoAttach: cache params and apply to ALL attached tabs.
+		// This ensures Chrome emits Target.attachedToTarget for cross-origin iframes.
+		if (method === 'Target.setAutoAttach' && !rawId) {
+			this.autoAttachParams = (cmdParams as object) ?? null;
+			const promises: Array<Promise<void>> = [];
+			for (const [, entry] of this.tabs) {
+				if (!entry.attached) continue;
+				promises.push(
+					chrome.debugger
+						.sendCommand({ tabId: entry.chromeTabId }, 'Target.setAutoAttach', cmdParams as object)
+						.then(() => {})
+						.catch((e) => log.debug('setAutoAttach failed:', e)),
+				);
+			}
+			await Promise.all(promises);
+			return {};
+		}
+
 		const { id, entry } = this.resolveTab(rawId as string | undefined);
 
 		log.debug(`CDP: ${method as string} → targetId=${id} (chromeTabId=${entry.chromeTabId})`);
@@ -442,6 +502,43 @@ export class RelayConnection {
 		await this.ensureAttached(id);
 
 		const debuggee = { tabId: entry.chromeTabId };
+
+		// Wait for the main-frame execution context before returning from Runtime.enable.
+		// Without this, Playwright may reference execution contexts that don't exist yet,
+		// causing "Cannot find context" errors.
+		// Mirrors Playwriter's approach (playwriter/src/cdp-relay.ts Runtime.enable case):
+		// wait for Runtime.executionContextCreated with auxData.isDefault === true rather
+		// than using a fixed delay. auxData.isDefault identifies the top-level frame context
+		// (the page's window object) as opposed to iframes, workers, or injected worlds.
+		if (method === 'Runtime.enable') {
+			const contextReady = new Promise<void>((resolve) => {
+				const timeout = setTimeout(() => {
+					log.debug('Runtime.enable: timed out waiting for executionContextCreated, proceeding');
+					chrome.debugger.onEvent.removeListener(handler);
+					resolve();
+				}, 3_000);
+				function handler(src: chrome.debugger.Debuggee, evt: string, evtParams?: object): void {
+					if (src.tabId !== entry.chromeTabId) return;
+					if (evt !== 'Runtime.executionContextCreated') return;
+					const auxData = (
+						evtParams as { context?: { auxData?: { isDefault?: boolean } } } | undefined
+					)?.context?.auxData;
+					if (auxData?.isDefault !== true) return;
+					clearTimeout(timeout);
+					chrome.debugger.onEvent.removeListener(handler);
+					resolve();
+				}
+				chrome.debugger.onEvent.addListener(handler);
+			});
+
+			const result = await chrome.debugger.sendCommand(
+				debuggee,
+				method as string,
+				cmdParams as object | undefined,
+			);
+			await contextReady;
+			return result;
+		}
 
 		const result = await Promise.race([
 			chrome.debugger.sendCommand(debuggee, method as string, cmdParams as object | undefined),
@@ -473,13 +570,31 @@ export class RelayConnection {
 		const tab = await chrome.tabs.create({ url, active: false });
 		if (!tab.id) throw new Error('Failed to create tab');
 
+		this.agentCreatedChromeTabIds.add(tab.id);
+
 		// Agent-created tabs are eagerly attached for immediate use
 		const targetId = await this.attachAndResolveTargetId(tab.id);
 		this.tabs.set(targetId, { chromeTabId: tab.id, attached: true });
 		this.chromeTabIdToId.set(tab.id, targetId);
-		this.agentCreatedChromeTabIds.add(tab.id);
+
+		// Apply cached auto-attach params so the new tab reports iframes immediately.
+		// ensureAttached() does this for lazily-attached tabs; we must do it here too
+		// for eagerly-attached agent-created tabs.
+		if (this.autoAttachParams) {
+			try {
+				await chrome.debugger.sendCommand(
+					{ tabId: tab.id },
+					'Target.setAutoAttach',
+					this.autoAttachParams,
+				);
+			} catch (e) {
+				log.debug('Failed to apply auto-attach after eager attach:', e);
+			}
+		}
 
 		log.debug(`createTab: targetId=${targetId} chromeTabId=${tab.id} url=${tab.url ?? url ?? ''}`);
+
+		this.ontabcreated?.();
 
 		return {
 			id: targetId,
@@ -523,7 +638,7 @@ export class RelayConnection {
 		}
 
 		if (this.tabs.size === 0) {
-			this.close('All tabs closed');
+			this.close('extension_disconnected');
 		}
 
 		return { closed: true, id };

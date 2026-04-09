@@ -5,14 +5,20 @@ import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
 
+export const deleteDataTableColumnInputSchema = z.object({
+	dataTableId: z.string().describe('ID of the data table'),
+	columnId: z.string().describe('ID of the column to delete'),
+});
+
+export const deleteDataTableColumnResumeSchema = z.object({
+	approved: z.boolean(),
+});
+
 export function createDeleteDataTableColumnTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'delete-data-table-column',
 		description: 'Remove a column from a data table. All data in the column will be lost.',
-		inputSchema: z.object({
-			dataTableId: z.string().describe('ID of the data table'),
-			columnId: z.string().describe('ID of the column to delete'),
-		}),
+		inputSchema: deleteDataTableColumnInputSchema,
 		outputSchema: z.object({
 			success: z.boolean(),
 			denied: z.boolean().optional(),
@@ -23,11 +29,16 @@ export function createDeleteDataTableColumnTool(context: InstanceAiContext) {
 			message: z.string(),
 			severity: instanceAiConfirmationSeveritySchema,
 		}),
-		resumeSchema: z.object({
-			approved: z.boolean(),
-		}),
-		execute: async (input, ctx) => {
-			const { resumeData, suspend } = ctx?.agent ?? {};
+		resumeSchema: deleteDataTableColumnResumeSchema,
+		execute: async (input: z.infer<typeof deleteDataTableColumnInputSchema>, ctx) => {
+			const resumeData = ctx?.agent?.resumeData as
+				| z.infer<typeof deleteDataTableColumnResumeSchema>
+				| undefined;
+			const suspend = ctx?.agent?.suspend;
+
+			if (context.permissions?.mutateDataTableSchema === 'blocked') {
+				return { success: false, denied: true, reason: 'Action blocked by admin' };
+			}
 
 			const needsApproval = context.permissions?.mutateDataTableSchema !== 'always_allow';
 
