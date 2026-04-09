@@ -14,7 +14,7 @@ import { mock } from 'jest-mock-extended';
 const mockMiddleware = jest.fn(async (_req: unknown, _res: unknown, next: unknown) =>
 	(next as () => void)(),
 ) as unknown as middlewares.ScopeTaggedMiddleware;
-jest.spyOn(middlewares, 'apiKeyHasScope').mockReturnValue(mockMiddleware);
+jest.spyOn(middlewares, 'publicApiScope').mockReturnValue(mockMiddleware);
 
 const handler = require('../community-packages.handler');
 
