@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, ref, onUnmounted, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { N8nButton, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -55,6 +55,10 @@ const osTabs = [
 
 const displayCommand = computed(
 	() => instanceAiSettingsStore.setupCommand ?? 'npx @n8n/computer-use',
+);
+
+const copyCommandAriaLabel = computed(() =>
+	copied.value ? i18n.baseText('generic.copiedToClipboard') : i18n.baseText('generic.copy'),
 );
 
 const isScrolledToEnd = ref(false);
@@ -163,7 +167,6 @@ onUnmounted(() => {
 });
 </script>
 
-<!-- eslint-disable vue/no-v-html -->
 <template>
 	<Modal
 		:name="props.modalName"
@@ -176,7 +179,7 @@ onUnmounted(() => {
 		<template #content>
 			<div v-if="step === 'intro'" :class="$style.body">
 				<div :class="$style.heroIcon">
-					<N8nIcon icon="sparkles" :size="34" />
+					<N8nIcon icon="sparkles" :size="34" color="text-base" />
 				</div>
 
 				<N8nHeading tag="h1" size="xlarge" :class="$style.title">
@@ -189,7 +192,7 @@ onUnmounted(() => {
 
 				<N8nText
 					:class="$style.description"
-					v-html="i18n.baseText('instanceAi.welcomeModal.description')"
+					v-n8n-html="i18n.baseText('instanceAi.welcomeModal.description')"
 				/>
 
 				<ul :class="$style.featureList">
@@ -206,7 +209,7 @@ onUnmounted(() => {
 					<N8nText
 						:class="$style.warningText"
 						size="small"
-						v-html="i18n.baseText('instanceAi.welcomeModal.warning')"
+						v-n8n-html="i18n.baseText('instanceAi.welcomeModal.warning')"
 					/>
 				</div>
 
@@ -293,7 +296,7 @@ onUnmounted(() => {
 
 				<div
 					:class="$style.gatewayTextBlock"
-					v-html="i18n.baseText('instanceAi.welcomeModal.gateway.description')"
+					v-n8n-html="i18n.baseText('instanceAi.welcomeModal.gateway.description')"
 				/>
 				<div :class="$style.commandLabel">
 					{{ i18n.baseText('instanceAi.welcomeModal.gateway.commandLabel') }}
@@ -317,16 +320,23 @@ onUnmounted(() => {
 							@scroll="onCommandScroll"
 							>{{ displayCommand }}</code
 						>
-						<button :class="$style.copyButton" @click="copyCommand">
-							<N8nIcon :icon="copied ? 'check' : 'copy'" :size="16" />
-						</button>
+						<N8nIconButton
+							:icon="copied ? 'check' : 'copy'"
+							variant="ghost"
+							size="small"
+							icon-size="large"
+							:class="$style.copyButton"
+							:aria-label="copyCommandAriaLabel"
+							data-test-id="instance-ai-welcome-modal-copy-command"
+							@click="copyCommand"
+						/>
 					</div>
 					<div v-if="instanceAiSettingsStore.isGatewayConnected" :class="$style.connectedRow">
 						<N8nIcon icon="check" :size="14" />
 						<span>{{ i18n.baseText('instanceAi.welcomeModal.gateway.connected') }}</span>
 					</div>
 					<div v-else :class="$style.waitingRow">
-						<span :class="$style.spinner" />
+						<N8nIcon icon="spinner" color="primary" spin size="small" />
 						<span>{{ i18n.baseText('instanceAi.welcomeModal.gateway.waiting') }}</span>
 					</div>
 				</div>
@@ -372,11 +382,6 @@ onUnmounted(() => {
 .heroIcon {
 	display: flex;
 	justify-content: center;
-	color: var(--color--text);
-}
-
-:global(body:not([data-theme='dark'])) .heroIcon {
-	color: var(--color--black);
 }
 
 .badge {
@@ -671,12 +676,8 @@ onUnmounted(() => {
 }
 
 .copyButton {
-	border: 0;
-	background: transparent;
-	color: var(--color--text--tint-1);
-	cursor: pointer;
-	display: flex;
-	align-items: center;
+	flex-shrink: 0;
+	--button--color: var(--color--text--tint-1);
 }
 
 .connectedRow {
@@ -709,21 +710,6 @@ onUnmounted(() => {
 :global(body:not([data-theme='dark'])) .waitingRow {
 	background: var(--color--black-alpha-700);
 	color: var(--color--text--tint-2);
-}
-
-.spinner {
-	width: 14px;
-	height: 14px;
-	border: 2px solid var(--color--background);
-	border-top-color: var(--color--text--tint-1);
-	border-radius: var(--radius--full);
-	animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-	to {
-		transform: rotate(360deg);
-	}
 }
 
 .gatewayInstructions {
