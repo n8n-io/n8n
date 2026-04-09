@@ -140,6 +140,9 @@ describe('SettingsAiGatewayView', () => {
 			mockGetGatewayUsage.mockResolvedValue({ entries: MOCK_ENTRIES, total: 100 });
 			renderComponent();
 			await waitFor(() => expect(mockGetGatewayUsage).toHaveBeenCalledOnce());
+			await waitFor(() =>
+				expect(screen.getByRole('button', { name: /refresh/i })).toBeInTheDocument(),
+			);
 
 			mockGetGatewayUsage.mockClear();
 			await userEvent.click(screen.getByRole('button', { name: /refresh/i }));

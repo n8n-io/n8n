@@ -44,6 +44,7 @@ const tableHeaders = ref<Array<TableHeader<ChatProviderSettingsDto>>>([
 		key: 'provider',
 		width: 120,
 		disableSort: true,
+		resize: false,
 		value() {
 			return;
 		},
@@ -53,6 +54,7 @@ const tableHeaders = ref<Array<TableHeader<ChatProviderSettingsDto>>>([
 		key: 'models',
 		width: 300,
 		disableSort: true,
+		resize: false,
 		value() {
 			return;
 		},
@@ -62,6 +64,7 @@ const tableHeaders = ref<Array<TableHeader<ChatProviderSettingsDto>>>([
 		key: 'updatedAt',
 		disableSort: true,
 		width: 80,
+		resize: false,
 		value() {
 			return;
 		},
@@ -72,6 +75,7 @@ const tableHeaders = ref<Array<TableHeader<ChatProviderSettingsDto>>>([
 		align: 'end',
 		width: 50,
 		disableSort: true,
+		resize: false,
 		value() {
 			return;
 		},

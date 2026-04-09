@@ -1,6 +1,16 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { N8nHeading, N8nText, N8nButton } from '@n8n/design-system';
+import {
+	N8nActionBox,
+	N8nButton,
+	N8nDataTableServer,
+	N8nHeading,
+	N8nLoading,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
+import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
+import type { AiGatewayUsageEntry } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
@@ -13,6 +23,7 @@ const aiGatewayStore = useAiGatewayStore();
 const uiStore = useUIStore();
 
 const isLoading = ref(false);
+const isAppending = ref(false);
 const offset = ref(0);
 const PAGE_SIZE = 50;
 
@@ -20,6 +31,53 @@ const creditsRemaining = computed(() => aiGatewayStore.creditsRemaining);
 const entries = computed(() => aiGatewayStore.usageEntries);
 const total = computed(() => aiGatewayStore.usageTotal);
 const hasMore = computed(() => offset.value + PAGE_SIZE < total.value);
+
+const showUsageSectionSkeleton = computed(() => isLoading.value && !isAppending.value);
+
+const tableHeaders = ref<Array<TableHeader<AiGatewayUsageEntry>>>([
+	{
+		title: i18n.baseText('settings.n8nGateway.usage.col.date'),
+		key: 'timestamp',
+		width: 200,
+		disableSort: true,
+		resize: false,
+	},
+	{
+		title: i18n.baseText('settings.n8nGateway.usage.col.provider'),
+		key: 'provider',
+		width: 120,
+		disableSort: true,
+		resize: false,
+	},
+	{
+		title: i18n.baseText('settings.n8nGateway.usage.col.model'),
+		key: 'model',
+		width: 220,
+		disableSort: true,
+		resize: false,
+	},
+	{
+		title: i18n.baseText('settings.n8nGateway.usage.col.inputTokens'),
+		key: 'inputTokens',
+		width: 120,
+		disableSort: true,
+		resize: false,
+	},
+	{
+		title: i18n.baseText('settings.n8nGateway.usage.col.outputTokens'),
+		key: 'outputTokens',
+		width: 120,
+		disableSort: true,
+		resize: false,
+	},
+	{
+		title: i18n.baseText('settings.n8nGateway.usage.col.credits'),
+		key: 'creditsDeducted',
+		width: 100,
+		disableSort: true,
+		resize: false,
+	},
+]);
 
 function formatDate(timestamp: number): string {
 	return new Intl.DateTimeFormat(undefined, {
@@ -35,7 +93,12 @@ function formatTokens(value?: number): string {
 	return value !== undefined ? String(value) : '—';
 }
 
+function rowId(row: AiGatewayUsageEntry, index: number): string {
+	return `${row.timestamp}-${row.model}-${row.provider}-${index}`;
+}
+
 async function load(): Promise<void> {
+	isAppending.value = false;
 	offset.value = 0;
 	isLoading.value = true;
 	try {
@@ -51,12 +114,14 @@ async function refresh(): Promise<void> {
 
 async function loadMore(): Promise<void> {
 	if (isLoading.value) return;
+	isAppending.value = true;
 	offset.value += PAGE_SIZE;
 	isLoading.value = true;
 	try {
 		await aiGatewayStore.fetchMoreUsage(offset.value, PAGE_SIZE);
 	} finally {
 		isLoading.value = false;
+		isAppending.value = false;
 	}
 }
 
@@ -93,60 +158,73 @@ onMounted(async () => {
 			/>
 		</div>
 
-		<div :class="$style.section">
-			<div :class="$style.sectionHeader">
-				<N8nHeading size="large">{{ i18n.baseText('settings.n8nGateway.usage.title') }}</N8nHeading>
-				<N8nButton
-					:label="i18n.baseText('settings.n8nGateway.usage.refresh')"
-					icon="refresh-cw"
-					variant="ghost"
-					size="small"
-					:loading="isLoading"
-					@click="refresh"
-				/>
+		<div :class="$style.usageTableContainer">
+			<div v-if="showUsageSectionSkeleton">
+				<N8nLoading :loading="true" variant="h1" :class="$style.usageTableHeader" />
+				<N8nLoading :loading="true" variant="p" :rows="5" :shrink-last="false" />
 			</div>
-
-			<div :class="$style.tableWrapper">
-				<table :class="$style.table">
-					<thead>
-						<tr>
-							<th>{{ i18n.baseText('settings.n8nGateway.usage.col.date') }}</th>
-							<th>{{ i18n.baseText('settings.n8nGateway.usage.col.provider') }}</th>
-							<th>{{ i18n.baseText('settings.n8nGateway.usage.col.model') }}</th>
-							<th>{{ i18n.baseText('settings.n8nGateway.usage.col.inputTokens') }}</th>
-							<th>{{ i18n.baseText('settings.n8nGateway.usage.col.outputTokens') }}</th>
-							<th>{{ i18n.baseText('settings.n8nGateway.usage.col.credits') }}</th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr v-if="entries.length === 0 && !isLoading">
-							<td colspan="6" :class="$style.empty">
-								{{ i18n.baseText('settings.n8nGateway.usage.empty') }}
-							</td>
-						</tr>
-						<tr v-for="(entry, idx) in entries" :key="idx">
-							<td>{{ formatDate(entry.timestamp) }}</td>
-							<td>
-								<span :class="$style.badge">
-									{{ entry.provider }}
-								</span>
-							</td>
-							<td>{{ entry.model }}</td>
-							<td>{{ formatTokens(entry.inputTokens) }}</td>
-							<td>{{ formatTokens(entry.outputTokens) }}</td>
-							<td>{{ entry.creditsDeducted }}</td>
-						</tr>
-					</tbody>
-				</table>
-			</div>
-
-			<div v-if="hasMore" :class="$style.loadMore">
-				<N8nButton
-					:label="i18n.baseText('settings.n8nGateway.usage.loadMore')"
-					type="secondary"
-					:loading="isLoading"
-					@click="loadMore"
+			<div v-else>
+				<div :class="$style.usageTableHeader">
+					<N8nHeading size="medium" :bold="true">
+						{{ i18n.baseText('settings.n8nGateway.usage.title') }}
+					</N8nHeading>
+					<div :class="$style.usageTableActions">
+						<N8nTooltip :content="i18n.baseText('settings.n8nGateway.usage.refresh.tooltip')">
+							<N8nButton
+								variant="subtle"
+								icon-only
+								size="small"
+								icon="refresh-cw"
+								:aria-label="i18n.baseText('generic.refresh')"
+								:loading="isLoading && !isAppending"
+								@click="refresh"
+							/>
+						</N8nTooltip>
+					</div>
+				</div>
+				<N8nActionBox
+					v-if="entries.length === 0"
+					:heading="i18n.baseText('settings.n8nGateway.usage.empty')"
 				/>
+				<N8nDataTableServer
+					v-else
+					:class="$style.gatewayUsageTable"
+					:headers="tableHeaders"
+					:items="entries"
+					:items-length="entries.length"
+					:loading="isLoading && isAppending"
+					:item-value="rowId"
+				>
+					<template #[`item.timestamp`]="{ item }">
+						{{ formatDate(item.timestamp) }}
+					</template>
+					<template #[`item.provider`]="{ item }">
+						<span :class="$style.providerBadge">
+							{{ item.provider }}
+						</span>
+					</template>
+					<template #[`item.model`]="{ item }">
+						{{ item.model }}
+					</template>
+					<template #[`item.inputTokens`]="{ item }">
+						{{ formatTokens(item.inputTokens) }}
+					</template>
+					<template #[`item.outputTokens`]="{ item }">
+						{{ formatTokens(item.outputTokens) }}
+					</template>
+					<template #[`item.creditsDeducted`]="{ item }">
+						{{ item.creditsDeducted }}
+					</template>
+				</N8nDataTableServer>
+
+				<div v-if="hasMore && entries.length > 0" :class="$style.loadMore">
+					<N8nButton
+						:label="i18n.baseText('settings.n8nGateway.usage.loadMore')"
+						type="secondary"
+						:loading="isLoading && isAppending"
+						@click="loadMore"
+					/>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -157,6 +235,7 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xl);
+	padding-bottom: var(--spacing--2xl);
 }
 
 .header {
@@ -195,57 +274,32 @@ onMounted(async () => {
 	line-height: var(--line-height--sm);
 }
 
-.section {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
+.usageTableContainer {
+	:global(.table-pagination) {
+		display: none;
+	}
 }
 
-.sectionHeader {
+.usageTableHeader {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: var(--spacing--sm);
+}
+
+.usageTableActions {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
+	gap: var(--spacing--xs);
 }
 
-.tableWrapper {
-	border: var(--border);
-	border-radius: var(--radius);
-	overflow: hidden;
-}
-
-.table {
-	width: 100%;
-	border-collapse: collapse;
-	font-size: var(--font-size--sm);
-
-	th {
-		text-align: left;
-		padding: var(--spacing--xs) var(--spacing--sm);
-		color: var(--color--text--tint-1);
-		font-weight: var(--font-weight--bold);
-		border-bottom: var(--border);
-		background-color: var(--color--background);
-	}
-
-	td {
-		padding: var(--spacing--xs) var(--spacing--sm);
-		color: var(--color--text);
-		border-bottom: var(--border);
-		vertical-align: middle;
-	}
-
-	tbody tr:last-child td {
-		border-bottom: none;
-	}
-
-	.empty {
-		text-align: center;
-		color: var(--color--text--tint-2);
-		padding: var(--spacing--xl);
+.gatewayUsageTable {
+	tr:last-child {
+		border-bottom: none !important;
 	}
 }
 
-.badge {
+.providerBadge {
 	display: inline-block;
 	padding: var(--spacing--5xs) var(--spacing--2xs);
 	border-radius: var(--radius);
@@ -258,6 +312,6 @@ onMounted(async () => {
 .loadMore {
 	display: flex;
 	justify-content: center;
-	padding-top: var(--spacing--xs);
+	padding-top: var(--spacing--md);
 }
 </style>

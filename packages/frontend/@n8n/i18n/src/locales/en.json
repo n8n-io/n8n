@@ -4206,6 +4206,7 @@
 	"settings.n8nGateway.description": "View your AI model usage through the n8n Gateway.",
 	"settings.n8nGateway.usage.title": "Usage",
 	"settings.n8nGateway.usage.refresh": "Refresh",
+	"settings.n8nGateway.usage.refresh.tooltip": "Refresh usage records",
 	"settings.n8nGateway.usage.col.date": "Date",
 	"settings.n8nGateway.usage.col.provider": "Provider",
 	"settings.n8nGateway.usage.col.model": "Model",
