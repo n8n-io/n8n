@@ -15,7 +15,6 @@ import type {
 	ICredentialType,
 	INodeIssueObjectProperty,
 	INodeInputConfiguration,
-	Workflow,
 	INodeExecutionData,
 	ITaskDataConnections,
 	IRunData,
@@ -51,6 +50,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	convertToWorkflowAccessors,
 } from '@/app/stores/workflowDocument.store';
 
 declare namespace HttpRequestNode {
@@ -82,8 +82,6 @@ export function useNodeHelpers() {
 	const credentialsUpdated = ref(false);
 	const isProductionExecutionPreview = ref(false);
 	const pullConnActiveNodeName = ref<string | null>(null);
-
-	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 
 	function hasProxyAuth(node: INodeUi): boolean {
 		return Object.keys(node.parameters).includes('nodeCredentialType');
@@ -130,9 +128,10 @@ export function useNodeHelpers() {
 
 			const isTriggerNode = !!node && nodeTypesStore.isTriggerNode(node.type);
 			const isToolNode = !!node && nodeTypesStore.isToolNode(node.type);
+			const expression = workflowDocumentStore.value?.getExpressionHandler();
 
-			if (workflowNode) {
-				const inputs = NodeHelpers.getNodeInputs(workflowObject.value, workflowNode, nodeType);
+			if (workflowNode && expression) {
+				const inputs = NodeHelpers.getNodeInputs({ expression }, workflowNode, nodeType);
 				const inputNames = NodeHelpers.getConnectionTypes(inputs);
 
 				if (!inputNames.includes(NodeConnectionTypes.Main) && !isToolNode && !isTriggerNode) {
@@ -289,11 +288,16 @@ export function useNodeHelpers() {
 
 	function updateNodeInputIssues(node: INodeUi): void {
 		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-		if (!nodeType) {
+
+		if (!nodeType || !workflowDocumentStore.value) {
 			return;
 		}
 
-		const nodeInputIssues = getNodeInputIssues(workflowObject.value, node, nodeType);
+		const nodeInputIssues = getNodeInputIssues(
+			convertToWorkflowAccessors(workflowDocumentStore.value),
+			node,
+			nodeType,
+		);
 
 		workflowDocumentStore.value?.setNodeIssue({
 			node: node.name,

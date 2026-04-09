@@ -33,15 +33,11 @@ type IconNodeTypeDescription = Pick<
 type IconVersionNode = Pick<VersionNode, 'icon' | 'iconUrl' | 'iconData' | 'defaults' | 'name'>;
 export type IconNodeType = IconNodeTypeDescription | IconVersionNode;
 
-interface IconExpressionResolveContext {
-	expressionHandler: WorkflowExpression;
-	node: INode | null;
-}
-
 const resolveIconExpression = (
 	icon: string,
 	nodeType: IconNodeType,
-	{ expressionHandler, node }: IconExpressionResolveContext,
+	node: INode | null,
+	expression: WorkflowExpression,
 ): string | null => {
 	try {
 		const defaults =
@@ -51,7 +47,7 @@ const resolveIconExpression = (
 		const additionalKeys: IWorkflowDataProxyAdditionalKeys = {};
 		additionalKeys.$parameter = parameters;
 
-		const result = expressionHandler.getParameterValue(
+		const result = expression.getParameterValue(
 			icon,
 			null,
 			0,
@@ -81,12 +77,13 @@ const resolveIconExpression = (
 
 export const getNodeIcon = (
 	nodeType: IconNodeType,
-	context?: IconExpressionResolveContext | null,
+	node: INode | null,
+	expression: WorkflowExpression | null,
 ): string | null => {
 	const themedIcon = getThemedValue(nodeType.icon, useUIStore().appliedTheme);
 
-	if (isExpression(themedIcon)) {
-		return context ? resolveIconExpression(themedIcon, nodeType, context) : null;
+	if (isExpression(themedIcon) && expression) {
+		return resolveIconExpression(themedIcon, nodeType, node, expression);
 	}
 
 	return themedIcon;
@@ -148,7 +145,8 @@ const getIconFromNodeTypeString = (nodeTypeName: string): NodeIconSource | undef
 
 export function getNodeIconSource(
 	nodeType: IconNodeType | string | null | undefined,
-	context?: IconExpressionResolveContext | null,
+	node: INode | null,
+	expression: WorkflowExpression | null,
 ): NodeIconSource | undefined {
 	if (!nodeType) return undefined;
 	if (typeof nodeType === 'string') return getIconFromNodeTypeString(nodeType);
@@ -173,7 +171,7 @@ export function getNodeIconSource(
 			fullNodeType = useNodeTypesStore().getNodeType(nodeType.name) ?? nodeType;
 		}
 
-		const icon = getNodeIcon(fullNodeType, context);
+		const icon = getNodeIcon(fullNodeType, node, expression);
 		if (!icon) return undefined;
 
 		const [type, iconName] = icon.split(':');
