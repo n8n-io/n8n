@@ -168,18 +168,23 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 	};
 
 	const initFormValue = () => {
-		const api = useRoleMappingRulesApi();
-		void Promise.all([provisioningStore.getProvisioningConfig(), api.listRules()]).then(
-			([, rules]) => {
-				const hasProjectRules = rules.some((r) => r.type === 'project');
-				const values = getDropdownValuesFromConfig(
-					provisioningStore.provisioningConfig,
-					hasProjectRules,
-				);
-				roleAssignment.value = values.roleAssignment;
-				mappingMethod.value = values.mappingMethod;
-			},
-		);
+		void provisioningStore.getProvisioningConfig().then(async () => {
+			const config = provisioningStore.provisioningConfig;
+
+			// Only fetch rules when expression mapping is active — that's the only case
+			// where we need the heuristic to distinguish instance vs instance+project.
+			// Avoids a redundant listRules call on every page load.
+			let hasProjectRules = false;
+			if (config?.scopesUseExpressionMapping) {
+				const api = useRoleMappingRulesApi();
+				const rules = await api.listRules();
+				hasProjectRules = rules.some((r) => r.type === 'project');
+			}
+
+			const values = getDropdownValuesFromConfig(config, hasProjectRules);
+			roleAssignment.value = values.roleAssignment;
+			mappingMethod.value = values.mappingMethod;
+		});
 	};
 
 	initFormValue();
