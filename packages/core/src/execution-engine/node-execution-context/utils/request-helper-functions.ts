@@ -713,17 +713,16 @@ export function applyPaginationRequestData(
 }
 
 function createOAuth2Client(credentials: OAuth2CredentialData): ClientOAuth2 {
+	// Split and trim scopes; empty scope tokens are not RFC 6749-compliant and may be rejected by authorization servers
+	const scopes = credentials.scope
+		?.split(' ')
+		.map((s) => s.trim())
+		.filter(Boolean);
 	return new ClientOAuth2({
 		clientId: credentials.clientId,
 		clientSecret: credentials.clientSecret,
 		accessTokenUri: credentials.accessTokenUrl,
-		// Split and trim scopes; empty scope tokens are not RFC 6749-compliant and may be rejected by authorization servers
-		scopes: credentials.scope
-			? credentials.scope
-					.split(' ')
-					.map((s) => s.trim())
-					.filter(Boolean)
-			: undefined,
+		scopes: scopes?.length ? scopes : undefined,
 		ignoreSSLIssues: credentials.ignoreSSLIssues,
 		authentication: credentials.authentication ?? 'header',
 		...(credentials.additionalBodyProperties && {
