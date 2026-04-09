@@ -156,7 +156,7 @@ describe('buildSetupRequests', () => {
 		expect(result[0].needsAction).toBe(true);
 	});
 
-	it('skips credentials with displayOptions in fallback', async () => {
+	it('excludes credentials whose displayOptions do not match current parameters', async () => {
 		(context.nodeService as unknown as Record<string, unknown>).getNodeCredentialTypes = jest
 			.fn()
 			.mockResolvedValue([]);
@@ -171,8 +171,30 @@ describe('buildSetupRequests', () => {
 		const node = makeNode({ type: 'n8n-nodes-base.httpRequest', typeVersion: 4.4 });
 		const result = await buildSetupRequests(context, node);
 
-		// httpSslAuth has displayOptions so it should be excluded from fallback
+		// displayOptions require provideSslCertificates=true, but it's not set
 		expect(result.find((r) => r.credentialType === 'httpSslAuth')).toBeUndefined();
+	});
+
+	it('includes credentials whose displayOptions match current parameters', async () => {
+		(context.nodeService as unknown as Record<string, unknown>).getNodeCredentialTypes = jest
+			.fn()
+			.mockResolvedValue([]);
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [
+				{ name: 'httpSslAuth', displayOptions: { show: { provideSslCertificates: [true] } } },
+			],
+		});
+		(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+
+		const node = makeNode({
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.4,
+			parameters: { provideSslCertificates: true },
+		});
+		const result = await buildSetupRequests(context, node);
+
+		expect(result.find((r) => r.credentialType === 'httpSslAuth')).toBeDefined();
 	});
 
 	it('resolves dynamic credential from genericAuthType parameter', async () => {

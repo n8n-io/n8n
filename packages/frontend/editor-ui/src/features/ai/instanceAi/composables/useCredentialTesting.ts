@@ -59,7 +59,9 @@ export function useCredentialTesting(getCardCredentialId: (card: SetupCard) => s
 				data: data as ICredentialDataDecryptedObject,
 			});
 		} catch {
-			// Test failure is tracked in the store as a side effect
+			// Ensure the credential is not stuck in a pending/unknown state —
+			// write 'error' so the card shows a warning icon instead of an eternal spinner.
+			credentialsStore.credentialTestResults.set(credentialId, 'error');
 		}
 	}
 

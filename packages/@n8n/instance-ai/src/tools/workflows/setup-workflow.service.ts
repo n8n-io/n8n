@@ -5,7 +5,8 @@
  * Separated from the tool definition so the tool stays a thin suspend/resume
  * state machine, and this logic is testable independently.
  */
-import type { IDataObject, NodeJSON } from '@n8n/workflow-sdk';
+import type { IDataObject, NodeJSON, DisplayOptions } from '@n8n/workflow-sdk';
+import { matchesDisplayOptions } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 
 import type { SetupRequest } from './setup-workflow.schema';
@@ -113,9 +114,16 @@ export async function buildSetupRequests(
 		if (nodeCredTypes.length > 0) {
 			credentialTypes = nodeCredTypes;
 		} else if (nodeDesc?.credentials) {
-			// Only include credentials whose displayOptions match the current parameters
+			// Only include credentials whose displayOptions match the current parameters.
+			// Mirrors the evaluation in instance-ai.adapter.service.ts getNodeCredentialTypes().
 			credentialTypes = nodeDesc.credentials
-				.filter((c: { name?: string; displayOptions?: unknown }) => !c.displayOptions)
+				.filter((c: { name?: string; displayOptions?: unknown }) => {
+					if (!c.displayOptions) return true;
+					return matchesDisplayOptions(
+						{ parameters, nodeVersion: typeVersion },
+						c.displayOptions as DisplayOptions,
+					);
+				})
 				.map((c: { name?: string }) => c.name)
 				.filter((n): n is string => n !== undefined);
 		}
@@ -125,11 +133,17 @@ export async function buildSetupRequests(
 	// or predefinedCredentialType (e.g. HTTP Request). The credential type name
 	// is stored in the node parameters rather than the description's credentials array.
 	if (credentialTypes.length === 0) {
-		const authentication = parameters.authentication as string | undefined;
-		if (authentication === 'genericCredentialType' && parameters.genericAuthType) {
-			credentialTypes = [parameters.genericAuthType as string];
-		} else if (authentication === 'predefinedCredentialType' && parameters.nodeCredentialType) {
-			credentialTypes = [parameters.nodeCredentialType as string];
+		const authentication = parameters.authentication;
+		if (
+			authentication === 'genericCredentialType' &&
+			typeof parameters.genericAuthType === 'string'
+		) {
+			credentialTypes = [parameters.genericAuthType];
+		} else if (
+			authentication === 'predefinedCredentialType' &&
+			typeof parameters.nodeCredentialType === 'string'
+		) {
+			credentialTypes = [parameters.nodeCredentialType];
 		}
 	}
 

@@ -49,7 +49,10 @@ export const NESTED_PARAM_TYPES = new Set([
 // ---------------------------------------------------------------------------
 
 export function credGroupKey(req: InstanceAiWorkflowSetupNode): string {
-	const credType = req.credentialType!;
+	if (!req.credentialType) {
+		return req.node.name;
+	}
+	const credType = req.credentialType;
 	const isHttpRequest =
 		req.node.type === HTTP_REQUEST_NODE_TYPE || req.node.type === HTTP_REQUEST_TOOL_NODE_TYPE;
 	if (isHttpRequest) {
@@ -83,8 +86,10 @@ export function toNodeUi(setupNode: InstanceAiWorkflowSetupNode): INodeUi {
 		typeVersion: setupNode.node.typeVersion,
 		position: setupNode.node.position,
 		parameters: setupNode.node.parameters as INodeUi['parameters'],
-		credentials: setupNode.node.credentials as INodeUi['credentials'],
-	} as INodeUi;
+		...(setupNode.node.credentials !== undefined
+			? { credentials: setupNode.node.credentials }
+			: {}),
+	} satisfies INodeUi;
 }
 
 /** True when this card only has a trigger (no credentials and no param work) */
