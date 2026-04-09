@@ -1161,17 +1161,14 @@ export class InstanceAiService {
 		const domainTools = createAllTools(context);
 		const sandboxEntry = await this.getOrCreateWorkspace(threadId, user);
 
-		// Resolve MCP builder API key if MCP builder mode is enabled (per-request toggle)
-		let mcpBuilderConfig: { baseUrl: string; apiKey: string } | undefined;
-		if (mcpBuilder) {
-			const apiKeyEntity =
-				(await this.mcpApiKeyService.findServerApiKeyForUser(user, { redact: false })) ??
-				(await this.mcpApiKeyService.createMcpServerApiKey(user));
-			mcpBuilderConfig = {
-				baseUrl: this.urlService.getInstanceBaseUrl(),
-				apiKey: apiKeyEntity.apiKey,
-			};
-		}
+		// MCP builder tools are the primary building mechanism — always resolve the API key.
+		const mcpApiKeyEntity =
+			(await this.mcpApiKeyService.findServerApiKeyForUser(user, { redact: false })) ??
+			(await this.mcpApiKeyService.createMcpServerApiKey(user));
+		const mcpBuilderConfig = {
+			baseUrl: this.urlService.getInstanceBaseUrl(),
+			apiKey: mcpApiKeyEntity.apiKey,
+		};
 
 		const orchestrationContext: OrchestrationContext = {
 			threadId,
@@ -1382,7 +1379,7 @@ export class InstanceAiService {
 			message,
 			abortController,
 			researchMode,
-			undefined, // mcpBuilder — internal follow-ups use SDK builder
+			true, // mcpBuilder — always use MCP builder
 			undefined,
 			messageGroupId,
 		);
@@ -1443,7 +1440,7 @@ export class InstanceAiService {
 			action.graph.planRunId,
 			createInertAbortSignal(),
 			this.runState.getThreadResearchMode(threadId),
-			undefined, // mcpBuilder — planned tasks use SDK builder
+			true, // mcpBuilder — always use MCP builder
 			action.graph.messageGroupId,
 		);
 		environment.orchestrationContext.tracing = this.getTraceContext(action.graph.planRunId);

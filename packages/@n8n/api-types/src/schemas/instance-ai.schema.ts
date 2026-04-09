@@ -137,6 +137,12 @@ export const agentSpawnedPayloadSchema = z.object({
 	targetResource: agentSpawnedTargetResourceSchema
 		.optional()
 		.describe('Resource this agent works on'),
+	inline: z
+		.boolean()
+		.optional()
+		.describe(
+			'When true, the sub-agent streams inline in the orchestrator thread instead of showing as a separate child agent',
+		),
 });
 
 export const agentCompletedPayloadSchema = z.object({

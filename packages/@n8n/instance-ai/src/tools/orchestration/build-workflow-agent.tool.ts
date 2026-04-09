@@ -287,6 +287,7 @@ export async function startBuildWorkflowAgentTask(
 			title: 'Building workflow',
 			subtitle: truncateLabel(input.task),
 			goal: input.task,
+			inline: true,
 			targetResource: input.workflowId
 				? { type: 'workflow' as const, id: input.workflowId }
 				: { type: 'workflow' as const },

@@ -34,6 +34,8 @@ export interface AgentNode {
 	subtitle?: string;
 	goal?: string;
 	targetResource?: InstanceAiTargetResource;
+	/** When true, this sub-agent streams inline in the orchestrator thread (no separate child bubble). */
+	inline?: boolean;
 	/** Transient status message (e.g. "Recalling conversation..."). Cleared when empty. */
 	statusMessage?: string;
 	status: InstanceAiAgentStatus;
@@ -147,6 +149,20 @@ function appendTimelineText(timeline: InstanceAiTimelineEntry[], text: string): 
 	}
 }
 
+/**
+ * For inline agents, returns the parent agent ID so events stream into the
+ * parent's timeline instead of the child's. For normal agents, returns the
+ * agent's own ID.
+ */
+function resolveTimelineAgent(state: AgentRunState, agentId: string): string {
+	const agent = state.agentsById[agentId];
+	if (agent?.inline) {
+		const parentId = state.parentByAgentId[agentId];
+		if (parentId) return parentId;
+	}
+	return agentId;
+}
+
 // ---------------------------------------------------------------------------
 // Reducer
 // ---------------------------------------------------------------------------
@@ -198,7 +214,8 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
 				agent.textContent += event.payload.text;
-				appendTimelineText(ensureTimeline(state, event.agentId), event.payload.text);
+				const timelineOwner = resolveTimelineAgent(state, event.agentId);
+				appendTimelineText(ensureTimeline(state, timelineOwner), event.payload.text);
 			}
 			break;
 		}
@@ -224,8 +241,9 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					startedAt: new Date().toISOString(),
 				};
 				state.toolCallsById[event.payload.toolCallId] = tc;
-				ensureToolCallIds(state, event.agentId).push(event.payload.toolCallId);
-				ensureTimeline(state, event.agentId).push({
+				const timelineOwner = resolveTimelineAgent(state, event.agentId);
+				ensureToolCallIds(state, timelineOwner).push(event.payload.toolCallId);
+				ensureTimeline(state, timelineOwner).push({
 					type: 'tool-call',
 					toolCallId: event.payload.toolCallId,
 				});
@@ -269,6 +287,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					subtitle: event.payload.subtitle,
 					goal: event.payload.goal,
 					targetResource: event.payload.targetResource,
+					inline: event.payload.inline,
 					status: 'active',
 					textContent: '',
 					reasoning: '',
@@ -278,10 +297,13 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				ensureChildren(state, event.agentId); // init empty
 				ensureTimeline(state, event.agentId); // init empty
 				ensureToolCallIds(state, event.agentId); // init empty
-				ensureTimeline(state, event.payload.parentId).push({
-					type: 'child',
-					agentId: event.agentId,
-				});
+				// Inline agents stream into the parent's timeline — no child entry.
+				if (!event.payload.inline) {
+					ensureTimeline(state, event.payload.parentId).push({
+						type: 'child',
+						agentId: event.agentId,
+					});
+				}
 			}
 			break;
 		}
@@ -427,8 +449,8 @@ function buildNodeRecursive(state: AgentRunState, agentId: string): InstanceAiAg
 	}
 
 	const agent = state.agentsById[agentId];
-	const childIds = (state.childrenByAgentId[agentId] ?? []).filter((childId) =>
-		isSafeObjectKey(childId),
+	const childIds = (state.childrenByAgentId[agentId] ?? []).filter(
+		(childId) => isSafeObjectKey(childId) && !state.agentsById[childId]?.inline,
 	);
 	const toolCallIds = (state.toolCallIdsByAgentId[agentId] ?? []).filter((toolCallId) =>
 		isSafeObjectKey(toolCallId),
