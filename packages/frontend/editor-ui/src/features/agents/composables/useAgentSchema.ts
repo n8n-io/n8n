@@ -22,7 +22,7 @@ export function useAgentSchema() {
 		agentId: string,
 		fullSchema: AgentSchema,
 		updatedAt: string,
-	): Promise<{ code: string; updatedAt: string } | null> {
+	): Promise<{ updatedAt: string } | null> {
 		try {
 			const result = await patchAgentSchema(
 				rootStore.restApiContext,
@@ -32,7 +32,7 @@ export function useAgentSchema() {
 				updatedAt,
 			);
 			schema.value = result.schema;
-			return { code: result.code, updatedAt: result.updatedAt };
+			return { updatedAt: result.updatedAt };
 		} catch (error: unknown) {
 			if ((error as { httpStatusCode?: number }).httpStatusCode === 409) {
 				await fetchSchema(projectId, agentId);

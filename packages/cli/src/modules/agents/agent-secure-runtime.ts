@@ -1,10 +1,11 @@
-import type { AgentSchema, HandlerExecutor } from '@n8n/agents';
+import type { ToolDescriptor } from '@n8n/agents';
+
+import type { ToolExecutor } from './from-json-config';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type ivm from 'isolated-vm';
-import type { ZodType } from 'zod';
 
-import { AgentIsolatePool, type AgentIsolateSlot, PoolExhaustedError } from './agent-isolate-pool';
+import { AgentIsolatePool, type AgentIsolateSlot } from './agent-isolate-pool';
 
 /**
  * Sandboxed execution runtime for agent user code.
@@ -298,10 +299,12 @@ export class AgentSecureRuntime {
 	// ---------------------------------------------------------------------------
 
 	/**
-	 * Run user TypeScript code in a sandbox, call describe() on the exported
-	 * Agent, and return the AgentSchema JSON with source strings patched in.
+	 * Run a standalone tool TypeScript file in a sandbox, call describe() on the
+	 * exported Tool instance, and return the ToolDescriptor JSON.
+	 *
+	 * Expects `export default new Tool(...)` pattern (no .build() call needed).
 	 */
-	async describeSecurely(tsCode: string): Promise<AgentSchema> {
+	async describeToolSecurely(tsCode: string): Promise<ToolDescriptor> {
 		const jsCode = await this.compileTs(tsCode);
 
 		return await this.withIsolate(async (slot) => {
@@ -317,60 +320,14 @@ export class AgentSecureRuntime {
 					var __exported = __mod.exports.default || __mod.exports;
 
 					if (!__exported || typeof __exported !== 'object' || typeof __exported.describe !== 'function') {
-						throw new Error('No agent found. Export a built agent as default: export default agent;');
+						throw new Error('No Tool found. Export a Tool as default: export default new Tool(...);');
 					}
 
 					module.exports = JSON.stringify(__exported.describe());
 				`;
 
 				const resultJson = this.runInContext<string>(context, slot, wrapper);
-				const schema = this.parseSandboxJson<AgentSchema>(resultJson, 'describeSecurely');
-
-				// Patch source strings from the original TypeScript on the host side.
-				const { extractSources } = await import('./agents-source-parser');
-				const extracted = extractSources(tsCode);
-
-				for (const tool of schema.tools) {
-					const toolSources = extracted.tools.get(tool.name);
-					if (toolSources) {
-						tool.handlerSource = toolSources.handlerSource ?? tool.handlerSource;
-						tool.inputSchemaSource = toolSources.inputSchemaSource;
-						tool.outputSchemaSource = toolSources.outputSchemaSource;
-						tool.suspendSchemaSource = toolSources.suspendSchemaSource;
-						tool.resumeSchemaSource = toolSources.resumeSchemaSource;
-						tool.toMessageSource = toolSources.toMessageSource;
-						tool.needsApprovalFnSource = toolSources.needsApprovalFnSource;
-					}
-				}
-				for (const pt of schema.providerTools) {
-					const ptSource = extracted.providerTools.get(pt.name);
-					if (ptSource) pt.source = ptSource;
-				}
-				if (schema.memory) {
-					schema.memory.source = extracted.memory;
-				}
-				for (const ev of schema.evaluations) {
-					const evalSource = extracted.evals.get(ev.name);
-					if (evalSource) ev.handlerSource = evalSource;
-				}
-				for (const g of schema.guardrails) {
-					const gSource = extracted.guardrails.get(g.name);
-					if (gSource) g.source = gSource;
-				}
-				if (schema.mcp) {
-					for (const m of schema.mcp) {
-						const mSource = extracted.mcpConfigs.get(m.name);
-						if (mSource) m.configSource = mSource;
-					}
-				}
-				if (schema.telemetry && extracted.telemetry) {
-					schema.telemetry.source = extracted.telemetry;
-				}
-				if (schema.config.structuredOutput.enabled && extracted.structuredOutputSource) {
-					schema.config.structuredOutput.schemaSource = extracted.structuredOutputSource;
-				}
-
-				return schema;
+				return this.parseSandboxJson<ToolDescriptor>(resultJson, 'describeToolSecurely');
 			} finally {
 				context.release();
 			}
@@ -378,25 +335,20 @@ export class AgentSecureRuntime {
 	}
 
 	/**
-	 * Execute a named handler within the full agent module context.
-	 *
-	 * Two-phase execution:
-	 * 1. Sync: load the library bundle + compile user module (sets up globals)
-	 * 2. Async: invoke the handler via context.eval() which can resolve Promises
-	 *    (tool handlers are async functions)
+	 * Execute a standalone tool's handler in the sandbox.
+	 * The tool code must follow `export default new Tool(...)` pattern.
 	 */
-	async executeInModule(
-		tsCode: string,
-		type: 'tool' | 'toMessage' | 'eval',
-		name: string,
-		args: unknown,
+	async executeToolInIsolate(
+		toolCode: string,
+		_toolName: string,
+		input: unknown,
+		ctx: unknown,
 	): Promise<unknown> {
-		const jsCode = await this.compileTs(tsCode);
+		const jsCode = await this.compileTs(toolCode);
 
 		return await this.withIsolate(async (slot) => {
 			const context = slot.createContext();
 			try {
-				// Phase 1 (sync): load user module and store the exported agent as a global
 				const setupCode = `
 					var __me = {};
 					var __mod = { exports: __me };
@@ -404,70 +356,46 @@ export class AgentSecureRuntime {
 						${jsCode}
 					})(__me, require, __mod);
 
-					globalThis.__exported = __mod.exports.default || __mod.exports;
-					if (!globalThis.__exported || typeof globalThis.__exported !== 'object') {
-						throw new Error('No agent found');
+					globalThis.__exportedTool = __mod.exports.default || __mod.exports;
+					if (!globalThis.__exportedTool || typeof globalThis.__exportedTool !== 'object') {
+						throw new Error('No Tool found');
 					}
 				`;
 				const setupScript = slot.isolate.compileScriptSync(setupCode);
 				setupScript.runSync(context, { timeout: 5000 });
 				setupScript.release();
 
-				// Phase 2 (async): invoke the handler — context.eval() resolves Promises
-				const serializedArgs = JSON.stringify(args);
+				const serializedArgs = JSON.stringify({ input, ctx });
 
-				let invokeCode: string;
-				if (type === 'tool') {
-					invokeCode = `
-						(async function() {
-							var tools = globalThis.__exported.declaredTools || [];
-							var tool = tools.find(function(t) { return t.name === ${JSON.stringify(name)}; });
-							if (!tool) throw new Error('Tool ' + ${JSON.stringify(name)} + ' not found');
+				const invokeCode = `
+					(async function() {
+						var tool = globalThis.__exportedTool;
+						var handlerFn = tool.handlerFn || (tool.build ? tool.build().handler : null);
+						if (!handlerFn) {
+							var built = tool.build ? tool.build() : tool;
+							handlerFn = built.handler;
+						}
+						if (!handlerFn) throw new Error('Tool has no handler');
 
-							var args = ${serializedArgs};
-							var suspendPayload = { called: false, data: null };
-							var ctx = Object.assign({}, args.ctx || {}, {
-								suspend: function(payload) {
-									suspendPayload.called = true;
-									suspendPayload.data = payload;
-									return Promise.resolve({ suspended: true });
-								},
-							});
+						var args = ${serializedArgs};
+						var suspendPayload = { called: false, data: null };
+						var ctx = Object.assign({}, args.ctx || {}, {
+							suspend: function(payload) {
+								suspendPayload.called = true;
+								suspendPayload.data = payload;
+								return Promise.resolve({ suspended: true });
+							},
+						});
 
-							var result = await tool.handler(args.input, ctx);
+						var result = await handlerFn(args.input, ctx);
 
-							if (suspendPayload.called) {
-								return JSON.stringify({ __suspend: true, payload: suspendPayload.data });
-							}
-							return JSON.stringify(result);
-						})()
-					`;
-				} else if (type === 'toMessage') {
-					invokeCode = `
-						(function() {
-							var tools = globalThis.__exported.declaredTools || [];
-							var tool = tools.find(function(t) { return t.name === ${JSON.stringify(name)}; });
-							if (!tool || !tool.toMessage) throw new Error('toMessage not found for ' + ${JSON.stringify(name)});
-							return JSON.stringify(tool.toMessage(${serializedArgs}));
-						})()
-					`;
-				} else if (type === 'eval') {
-					invokeCode = `
-						(async function() {
-							var evals = globalThis.__exported.agentEvals || [];
-							var ev = evals.find(function(e) { return e.name === ${JSON.stringify(name)}; });
-							if (!ev) throw new Error('Eval ' + ${JSON.stringify(name)} + ' not found');
-							var result = await ev._run(${serializedArgs});
-							return JSON.stringify(result);
-						})()
-					`;
-				} else {
-					throw new Error(`Unknown execution type: ${type as string}`);
-				}
+						if (suspendPayload.called) {
+							return JSON.stringify({ __suspend: true, payload: suspendPayload.data });
+						}
+						return JSON.stringify(result);
+					})()
+				`;
 
-				// context.eval with { promise: true } tells isolated-vm to await
-				// the Promise inside the isolate before returning the result.
-				// { copy: true } then copies the resolved value to the host.
 				const resultJson = (await context.eval(invokeCode, {
 					timeout: 5000,
 					promise: true,
@@ -476,7 +404,7 @@ export class AgentSecureRuntime {
 
 				const parsed = this.parseSandboxJson<Record<string, unknown>>(
 					resultJson,
-					'executeInModule',
+					'executeToolInIsolate',
 				);
 
 				if (parsed?.__suspend) {
@@ -494,180 +422,18 @@ export class AgentSecureRuntime {
 	}
 
 	/**
-	 * Evaluate an arbitrary expression in the sandbox and return the result.
-	 * Used for provider tool sources, MCP configs, telemetry sources, etc.
+	 * Create a ToolExecutor for use with buildFromJson().
+	 * @param toolsByName Map of tool name -> TypeScript source code
 	 */
-	async evaluateExpression(source: string): Promise<unknown> {
-		return await this.withIsolate((slot) => {
-			const context = slot.createContext();
-			try {
-				const wrapper = `
-					var z = require('zod').z || require('zod');
-					var agentsModule = require('@n8n/agents');
-					var providerTools = agentsModule.providerTools;
-					var Telemetry = agentsModule.Telemetry;
-					module.exports = JSON.stringify((function() { return (${source}); })());
-				`;
-
-				const resultJson = this.runInContext<string>(context, slot, wrapper);
-				return this.parseSandboxJson<unknown>(resultJson, 'evaluateExpression');
-			} finally {
-				context.release();
-			}
-		});
-	}
-
-	/**
-	 * Evaluate a provider tool source expression in the sandbox.
-	 * Returns the BuiltProviderTool with name and args.
-	 */
-	async evaluateProviderToolSource(
-		source: string,
-	): Promise<{ name: string; args: Record<string, unknown> }> {
-		return await this.withIsolate((slot) => {
-			const context = slot.createContext();
-			try {
-				const wrapper = `
-					var agentsModule = require('@n8n/agents');
-					var providerTools = agentsModule.providerTools;
-					var result = (function() { return (${source}); })();
-					module.exports = JSON.stringify(result);
-				`;
-
-				const resultJson = this.runInContext<string>(context, slot, wrapper);
-				return this.parseSandboxJson<{ name: string; args: Record<string, unknown> }>(
-					resultJson,
-					'evaluateProviderToolSource',
-				);
-			} finally {
-				context.release();
-			}
-		});
-	}
-
-	/**
-	 * Synchronously execute a toMessage call within the agent module context.
-	 * Uses runInContext (sync) instead of context.eval (async).
-	 *
-	 * Throws if the pool has not been warmed up yet (an async method must have
-	 * been called at least once before this sync variant is used).
-	 * Throws if no slot is available in the pool at the time of the call.
-	 */
-	executeToMessageSync(tsCode: string, toolName: string, output: unknown): unknown {
-		if (!this.pool) {
-			throw new Error(
-				'executeToMessageSync called before the runtime was initialised. ' +
-					'Call an async method (describeSecurely, executeInModule, …) first to warm up the pool.',
-			);
-		}
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		const esbuild = require('esbuild') as {
-			transformSync: (code: string, options: Record<string, string>) => { code: string };
-		};
-		// compileTs is async; for the sync path we use esbuild's synchronous API.
-		const jsCode = esbuild.transformSync(tsCode, {
-			loader: 'ts',
-			format: 'cjs',
-			target: 'es2022',
-		}).code;
-
-		const slot = this.pool.tryAcquireSync();
-		if (!slot) {
-			throw new PoolExhaustedError();
-		}
-
-		const context = slot.createContext();
-		try {
-			const serializedOutput = JSON.stringify(output);
-
-			const wrapper = `
-				var __me = {};
-				var __mod = { exports: __me };
-				(function(exports, require, module) {
-					${jsCode}
-				})(__me, require, __mod);
-
-				var __exported = __mod.exports.default || __mod.exports;
-				if (!__exported || typeof __exported !== 'object') {
-					module.exports = JSON.stringify(null);
-				} else {
-					var tools = __exported.declaredTools || [];
-					var tool = tools.find(function(t) { return t.name === ${JSON.stringify(toolName)}; });
-					if (!tool || !tool.toMessage) {
-						module.exports = JSON.stringify(null);
-					} else {
-						module.exports = JSON.stringify(tool.toMessage(${serializedOutput}));
-					}
-				}
-			`;
-
-			const resultJson = this.runInContext<string>(context, slot, wrapper);
-			return this.parseSandboxJson<unknown>(resultJson, 'executeToMessageSync');
-		} finally {
-			context.release();
-			this.pool.release(slot);
-		}
-	}
-
-	/**
-	 * Evaluate a Zod source string in the sandbox and return JSON Schema.
-	 *
-	 * Requires `zod-to-json-schema` to be available in the library bundle
-	 * (added via the shim). Throws if conversion fails rather than returning
-	 * a silent fallback.
-	 */
-	async evaluateZodSource(source: string): Promise<Record<string, unknown>> {
-		return await this.withIsolate((slot) => {
-			const context = slot.createContext();
-			try {
-				const wrapper = `
-					var z = require('zod').z || require('zod');
-					var zodToJsonSchemaModule = require('zod-to-json-schema');
-					var zodToJsonSchema = zodToJsonSchemaModule.zodToJsonSchema || zodToJsonSchemaModule.default;
-					if (typeof zodToJsonSchema !== 'function') {
-						throw new Error('zod-to-json-schema is not available in the sandbox bundle');
-					}
-					var schema = (function() { return (${source}); })();
-					module.exports = JSON.stringify(zodToJsonSchema(schema));
-				`;
-
-				const resultJson = this.runInContext<string>(context, slot, wrapper);
-				return this.parseSandboxJson<Record<string, unknown>>(resultJson, 'evaluateZodSource');
-			} finally {
-				context.release();
-			}
-		});
-	}
-
-	/**
-	 * Create a HandlerExecutor backed by this runtime for a specific agent's code.
-	 */
-	createExecutor(agentCode: string): HandlerExecutor {
+	createToolExecutor(toolsByName: Record<string, string>): ToolExecutor {
 		return {
-			executeTool: async (toolName: string, input: unknown, ctx: unknown) =>
-				await this.executeInModule(agentCode, 'tool', toolName, { input, ctx }),
-
-			executeToMessage: async (toolName: string, output: unknown) =>
-				(await this.executeInModule(agentCode, 'toMessage', toolName, output)) as
-					| Awaited<ReturnType<HandlerExecutor['executeToMessage']>>
-					| undefined,
-
-			executeToMessageSync: (toolName: string, output: unknown) =>
-				this.executeToMessageSync(agentCode, toolName, output) as
-					| ReturnType<NonNullable<HandlerExecutor['executeToMessageSync']>>
-					| undefined,
-
-			executeEval: async (evalName: string, evalInput: unknown) =>
-				(await this.executeInModule(agentCode, 'eval', evalName, evalInput)) as Awaited<
-					ReturnType<HandlerExecutor['executeEval']>
-				>,
-
-			evaluateSchema: async (schemaSource: string) => {
-				const jsonSchema = await this.evaluateZodSource(schemaSource);
-				return jsonSchema as unknown as ZodType;
+			executeTool: async (toolName: string, input: unknown, ctx: unknown) => {
+				const toolCode = toolsByName[toolName];
+				if (!toolCode) {
+					throw new Error(`Tool "${toolName}" not found in tools map`);
+				}
+				return await this.executeToolInIsolate(toolCode, toolName, input, ctx);
 			},
-
-			evaluateExpression: async (source: string) => await this.evaluateExpression(source),
 		};
 	}
 

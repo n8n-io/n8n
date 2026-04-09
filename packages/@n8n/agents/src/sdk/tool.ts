@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import type { BuiltTool, InterruptibleToolContext, ToolContext } from '../types';
 import type { AgentMessage } from '../types/sdk/message';
+import type { ToolDescriptor } from '../types/sdk/tool-descriptor';
 import type { JSONObject } from '../types/utils/json';
 
 const APPROVAL_SUSPEND_SCHEMA = z.object({
@@ -276,5 +277,35 @@ export class Tool<
 		}
 
 		return built;
+	}
+
+	/**
+	 * Return a lightweight JSON descriptor of this tool's metadata.
+	 * Does NOT require .build() to be called first.
+	 * Used by the JSON-config flow to store tool metadata without executing the handler.
+	 */
+	describe(): ToolDescriptor {
+		if (!this.name) throw new Error('Tool name is required');
+		if (!this.desc) throw new Error(`Tool "${this.name}" requires a description`);
+		if (!this.inputSchema) throw new Error(`Tool "${this.name}" requires an input schema`);
+
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		const { zodToJsonSchema } = require('zod-to-json-schema') as {
+			zodToJsonSchema: (schema: z.ZodTypeAny) => unknown;
+		};
+
+		return {
+			name: this.name,
+			description: this.desc,
+			inputSchema: zodToJsonSchema(this.inputSchema) as import('json-schema').JSONSchema7,
+			outputSchema: this.outputSchema
+				? (zodToJsonSchema(this.outputSchema) as import('json-schema').JSONSchema7)
+				: null,
+			hasSuspend: this.suspendSchemaValue !== undefined,
+			hasResume: this.resumeSchemaValue !== undefined,
+			hasToMessage: this.toMessageFn !== undefined,
+			requireApproval: this.requireApprovalValue ?? false,
+			providerOptions: this.providerOptionsValue ?? null,
+		};
 	}
 }

@@ -1,0 +1,99 @@
+import { z } from 'zod';
+
+const SemanticRecallSchema = z.object({
+	topK: z.number().int().min(1).max(100),
+	scope: z.enum(['thread', 'resource']).optional(),
+	messageRange: z
+		.object({
+			before: z.number().int().min(0),
+			after: z.number().int().min(0),
+		})
+		.optional(),
+	embedder: z.string().optional(),
+});
+
+const MemoryConfigSchema = z.object({
+	enabled: z.boolean(),
+	storage: z.enum(['n8n', 'sqlite', 'postgres']),
+	connection: z.record(z.unknown()).optional(),
+	lastMessages: z.number().int().min(1).max(200).optional(),
+	semanticRecall: SemanticRecallSchema.optional(),
+});
+
+const ThinkingConfigSchema = z.object({
+	provider: z.enum(['anthropic', 'openai']),
+	budgetTokens: z.number().int().optional(),
+	reasoningEffort: z.string().optional(),
+});
+
+const NodeToolCredentialSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+});
+
+export const NodeConfigSchema = z.object({
+	nodeType: z.string().min(1),
+	nodeTypeVersion: z.number(),
+	nodeParameters: z.record(z.unknown()).optional().default({}),
+	credentials: z.record(NodeToolCredentialSchema).optional(),
+});
+
+const JsonSchemaObjectSchema = z
+	.object({
+		type: z.literal('object').optional(),
+		properties: z.record(z.unknown()).optional(),
+		required: z.array(z.string()).optional(),
+	})
+	.passthrough();
+
+const AgentJsonToolRefSchema = z.discriminatedUnion('type', [
+	z.object({
+		type: z.literal('custom'),
+		id: z
+			.string()
+			.min(1)
+			.regex(/^[a-z0-9_-]+$/),
+		requireApproval: z.boolean().optional(),
+	}),
+	z.object({
+		type: z.literal('workflow'),
+		workflow: z.string().min(1),
+		name: z.string().optional(),
+		description: z.string().optional(),
+		requireApproval: z.boolean().optional(),
+	}),
+	z.object({
+		type: z.literal('node'),
+		name: z.string().min(1),
+		description: z.string().optional(),
+		node: NodeConfigSchema,
+		inputSchema: JsonSchemaObjectSchema.optional(),
+		requireApproval: z.boolean().optional(),
+	}),
+]);
+
+export const AgentJsonConfigSchema = z.object({
+	name: z.string().min(1).max(128),
+	description: z.string().max(512).optional(),
+	model: z
+		.string()
+		.min(1)
+		.regex(/^[a-z0-9-]+\/[a-z0-9._-]+$/i, 'Model must be "provider/model-name" format'),
+	credential: z.string().min(1),
+	instructions: z.string(),
+	memory: MemoryConfigSchema.optional(),
+	tools: z.array(AgentJsonToolRefSchema).optional(),
+	providerTools: z.record(z.record(z.unknown())).optional(),
+	config: z
+		.object({
+			thinking: ThinkingConfigSchema.optional(),
+			toolCallConcurrency: z.number().int().min(1).max(20).optional(),
+			requireToolApproval: z.boolean().optional(),
+		})
+		.optional(),
+});
+
+export const AgentJsonConfigPartialSchema = AgentJsonConfigSchema.partial();
+
+export type AgentJsonConfig = z.infer<typeof AgentJsonConfigSchema>;
+export type AgentJsonToolRef = z.infer<typeof AgentJsonToolRefSchema>;

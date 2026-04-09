@@ -155,6 +155,8 @@ import { CreateTokenExchangeJtiTable1775116241000 } from '../common/177511624100
 import { CreateAgentTables1776000000000 } from '../common/1776000000000-CreateAgentTables';
 import { AddIsEphemeralToWorkflowEntity1776300000000 } from '../common/1776300000000-AddIsEphemeralToWorkflowEntity';
 import { CreateAgentMemoryTables1777000000000 } from '../common/1777000000000-CreateAgentMemoryTables';
+import { AddToolsColumnToAgents1778000000000 } from '../common/1778000000000-AddToolsColumnToAgents';
+import { DropAgentCodeColumn1779000000000 } from '../common/1779000000000-DropAgentCodeColumn';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -315,6 +317,8 @@ const sqliteMigrations: Migration[] = [
 	CreateAgentTables1776000000000,
 	AddIsEphemeralToWorkflowEntity1776300000000,
 	CreateAgentMemoryTables1777000000000,
+	AddToolsColumnToAgents1778000000000,
+	DropAgentCodeColumn1779000000000,
 ];
 
 export { sqliteMigrations };

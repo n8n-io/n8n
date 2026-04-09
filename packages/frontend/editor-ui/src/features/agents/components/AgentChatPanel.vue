@@ -11,8 +11,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	close: [];
-	codeUpdated: [];
-	codeDelta: [delta: string];
+	configUpdated: [];
 }>();
 
 const rootStore = useRootStore();
@@ -64,6 +63,7 @@ async function streamFromEndpoint(
 	targetMessages: typeof testMessages,
 ) {
 	isStreaming.value = true;
+	let builderMutated = false;
 	const assistantMsg = reactive<ChatMessage>({
 		id: crypto.randomUUID(),
 		role: 'assistant',
@@ -135,12 +135,9 @@ async function streamFromEndpoint(
 					assistantMsg.thinking = (assistantMsg.thinking ?? '') + data.thinking;
 				}
 
-				if (typeof data.codeDelta === 'string') {
-					emit('codeDelta', data.codeDelta);
-				}
-
-				if (typeof data.code === 'string') {
-					emit('codeUpdated');
+				if (data.configUpdated !== undefined || data.toolUpdated !== undefined) {
+					builderMutated = true;
+					emit('configUpdated');
 				}
 
 				if (data.toolCall && typeof data.toolCall === 'object') {
@@ -179,6 +176,11 @@ async function streamFromEndpoint(
 		assistantMsg.content = `Error: ${e instanceof Error ? e.message : 'Unknown error'}`;
 	} finally {
 		isStreaming.value = false;
+		// Emit a final refresh after the builder stream completes to ensure the
+		// latest config is shown even if no individual tool events fired it.
+		if (endpoint === 'build' && builderMutated) {
+			emit('configUpdated');
+		}
 	}
 }
 </script>

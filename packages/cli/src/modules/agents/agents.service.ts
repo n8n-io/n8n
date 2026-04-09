@@ -1,32 +1,32 @@
-import * as agents from '@n8n/agents';
 import type {
-	AgentSchema,
 	BuiltAgent,
 	CredentialProvider,
 	GenerateResult,
 	StreamChunk,
+	ToolDescriptor,
 } from '@n8n/agents';
+
+import * as agents from '@n8n/agents';
+import { SqliteMemory, SqliteMemoryConfigSchema } from '@n8n/agents/dist/storage/sqlite-memory';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
-import { Container, Service } from '@n8n/di';
 import {
 	ExecutionRepository,
 	ProjectRelationRepository,
 	UserRepository,
 	WorkflowRepository,
 } from '@n8n/db';
+import { Container, Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { OperationalError, UserError } from 'n8n-workflow';
-
-import { SqliteMemory, SqliteMemoryConfigSchema } from '@n8n/agents/dist/storage/sqlite-memory';
-
-import { Agent } from './entities/agent.entity';
-import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
-import { N8nMemory } from './integrations/n8n-memory';
-import { AgentRepository } from './repositories/agent.repository';
-import type { WorkflowToolDescriptor } from './types';
+import {
+	setSchemaBaseDirs,
+	validateNodeConfig,
+	type SchemaValidationResult,
+} from '@n8n/workflow-sdk';
 
 import { ActiveExecutions } from '@/active-executions';
+import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -34,11 +34,19 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EphemeralNodeExecutor } from '@/node-execution';
 import { UrlService } from '@/services/url.service';
 import { TtlMap } from '@/utils/ttl-map';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowRunner } from '@/workflow-runner';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { AgentsCredentialProvider } from './agents-credential-provider';
+import type { AgentJsonConfig, AgentJsonToolRef } from './agent-json-config';
+import { AgentJsonConfigSchema } from './agent-json-config';
 import { AgentSecureRuntime } from './agent-secure-runtime';
+import { AgentsCredentialProvider } from './agents-credential-provider';
+import { Agent } from './entities/agent.entity';
+import { buildFromJson } from './from-json-config';
+import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
+import { N8nMemory } from './integrations/n8n-memory';
+import { AgentRepository } from './repositories/agent.repository';
+import type { WorkflowToolDescriptor } from './types';
 
 export interface ExecuteAgentData {
 	response: string;
@@ -47,13 +55,6 @@ export interface ExecuteAgentData {
 	toolCalls: Array<{ toolName: string; input: unknown; result: unknown }>;
 	finishReason: string;
 }
-
-const STARTER_CODE = `import { Agent } from '@n8n/agents';
-
-export default new Agent('my-agent')
-  .model('anthropic', 'claude-sonnet-4-5')
-  .instructions('You are a helpful assistant.');
-`;
 
 @Service()
 export class AgentsService {
@@ -81,14 +82,6 @@ export class AgentsService {
 		}
 	}
 
-	/**
-	 * In-process schema cache keyed by agentId.
-	 * TTL = 10 minutes — provides a short-lived buffer that avoids re-describing
-	 * on every request while staying coherent in multi-instance deployments where
-	 * another node may update the DB schema.
-	 */
-	private readonly schemaCache = new TtlMap<string, AgentSchema>(10 * Time.minutes.toMilliseconds);
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
@@ -107,20 +100,18 @@ export class AgentsService {
 	) {}
 
 	async create(projectId: string, name: string): Promise<Agent> {
+		const defaultConfig: AgentJsonConfig = {
+			name,
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: '',
+			instructions: 'You are a helpful assistant.',
+		};
+
 		const agent = this.agentRepository.create({
 			name,
-			code: STARTER_CODE,
 			projectId,
+			schema: defaultConfig,
 		});
-
-		// Describe the starter code so the schema is immediately available
-		try {
-			agent.schema = await this.secureRuntime.describeSecurely(STARTER_CODE);
-		} catch (e) {
-			this.logger.warn('Failed to describe starter code', {
-				error: e instanceof Error ? e.message : String(e),
-			});
-		}
 
 		const saved = await this.agentRepository.save(agent);
 
@@ -135,47 +126,6 @@ export class AgentsService {
 
 	async findById(agentId: string, projectId: string): Promise<Agent | null> {
 		return await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-	}
-
-	async updateCode(
-		agentId: string,
-		projectId: string,
-		code: string,
-		updatedAt?: string,
-	): Promise<{ agent: Agent; schemaError: string | null } | null> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-
-		if (!agent) {
-			return null;
-		}
-
-		if (updatedAt && agent.updatedAt.toISOString() !== updatedAt) {
-			throw new ConflictError('Agent has been modified');
-		}
-
-		agent.code = code;
-		agent.schema = null;
-
-		this.clearRuntimes(agentId);
-		this.schemaCache.delete(agentId);
-
-		// Try to describe the new code and cache schema
-		let schemaError: string | null = null;
-		try {
-			const schema = await this.secureRuntime.describeSecurely(code);
-			agent.schema = schema;
-			this.schemaCache.set(agentId, schema);
-		} catch (e) {
-			schemaError = e instanceof Error ? e.message : String(e);
-			agent.schema = null;
-			this.logger.warn('Failed to describe agent code', { agentId, error: schemaError });
-		}
-
-		const saved = await this.agentRepository.save(agent);
-
-		this.logger.debug('Updated SDK agent code', { agentId, projectId });
-
-		return { agent: saved, schemaError };
 	}
 
 	async updateName(agentId: string, projectId: string, name: string): Promise<Agent | null> {
@@ -235,7 +185,6 @@ export class AgentsService {
 		await this.agentRepository.remove(agent);
 
 		this.clearRuntimes(agentId);
-		this.schemaCache.delete(agentId);
 
 		this.logger.debug('Deleted SDK agent', { agentId, projectId });
 
@@ -260,75 +209,6 @@ export class AgentsService {
 			}
 		}
 		return undefined;
-	}
-
-	async getSchema(
-		agentId: string,
-		projectId: string,
-		_credentialProvider: CredentialProvider,
-	): Promise<AgentSchema> {
-		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!entity) throw new NotFoundError('Agent not found');
-
-		let schema = this.schemaCache.get(agentId);
-		if (!schema) {
-			if (!entity.schema) {
-				throw new UserError(
-					'Agent schema has not been generated yet. Save the agent to generate it.',
-				);
-			}
-			schema = entity.schema;
-			this.schemaCache.set(agentId, schema);
-		}
-		// Merge entity description (stored on the DB entity, not in agent code)
-		schema = {
-			...schema,
-			description: entity.description,
-		};
-		return schema;
-	}
-
-	async updateSchema(
-		agentId: string,
-		projectId: string,
-		schema: AgentSchema,
-		updatedAt: string,
-		_credentialProvider: CredentialProvider,
-	): Promise<{ code: string; schema: AgentSchema; updatedAt: string }> {
-		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!entity) throw new NotFoundError('Agent not found');
-
-		if (entity.updatedAt.toISOString() !== updatedAt) {
-			throw new ConflictError('Agent has been modified');
-		}
-
-		const { generateAgentCode } = await import('./generate-agent-code');
-		const code = await generateAgentCode(schema, entity.name);
-
-		// Invalidate caches
-		this.clearRuntimes(agentId);
-		this.schemaCache.delete(agentId);
-		entity.code = code;
-		entity.schema = null;
-
-		// Describe the generated code securely to get a validated schema
-		try {
-			const describedSchema = await this.secureRuntime.describeSecurely(code);
-			entity.schema = describedSchema;
-			this.schemaCache.set(agentId, describedSchema);
-		} catch {
-			entity.schema = null;
-		}
-
-		const saved = await this.agentRepository.save(entity);
-
-		const freshSchema = this.schemaCache.get(agentId);
-		if (!freshSchema) {
-			throw new Error('Schema not available after describing generated code');
-		}
-		freshSchema.description = entity.description;
-
-		return { code, schema: freshSchema, updatedAt: saved.updatedAt.toISOString() };
 	}
 
 	private getMemoryRegistry(): Record<string, agents.MemoryFactory> {
@@ -410,41 +290,6 @@ export class AgentsService {
 	}
 
 	/**
-	 * Reconstruct an agent from its persisted DB schema using Agent.fromSchema().
-	 * This is the execution-time path — no compile() call needed.
-	 * The runtime is cached for subsequent calls.
-	 */
-	private async reconstructFromSchema(
-		agentEntity: Agent,
-		credentialProvider: CredentialProvider,
-		userId?: string,
-	): Promise<agents.Agent> {
-		if (!agentEntity.schema) {
-			throw new UserError(
-				'Agent schema is not available. The agent may need to be re-saved to generate its schema.',
-			);
-		}
-
-		const source = agentEntity.code;
-		if (!source?.trim()) {
-			throw new UserError('Agent has no source code.');
-		}
-
-		const executor = this.secureRuntime.createExecutor(source);
-
-		const reconstructed = await agents.Agent.fromSchema(agentEntity.schema, agentEntity.name, {
-			handlerExecutor: executor,
-			credentialProvider,
-			resolveTool: this.makeToolResolver(agentEntity.projectId, userId),
-			memoryRegistry: this.getMemoryRegistry(),
-		});
-
-		await this.injectRuntimeDependencies(reconstructed, agentEntity.id);
-
-		return reconstructed;
-	}
-
-	/**
 	 * Resume a suspended tool call and yield the resulting stream chunks.
 	 * Used by chat integration handlers to continue an agent run after
 	 * a human-in-the-loop action (button click, modal submission).
@@ -511,7 +356,7 @@ export class AgentsService {
 			const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 			if (!agentEntity) throw new NotFoundError(`Agent ${agentId} not found`);
 
-			const reconstructed = await this.reconstructFromSchema(
+			const reconstructed = await this.reconstructFromConfig(
 				agentEntity,
 				credentialProvider,
 				userId,
@@ -561,36 +406,23 @@ export class AgentsService {
 		credentialProvider: CredentialProvider,
 		userId?: string,
 	): Promise<{ ok: boolean; agent?: BuiltAgent; error?: string }> {
-		const source = agentEntity.code;
-		if (!source?.trim()) {
-			return { ok: false, error: 'No source code provided' };
+		if (!agentEntity.schema) {
+			return { ok: false, error: 'Agent has no JSON config. Create a config first.' };
 		}
 
-		// Use sandboxed path when agent has a persisted schema
-		if (agentEntity.schema) {
-			try {
-				const executor = this.secureRuntime.createExecutor(source);
-
-				const reconstructed = await agents.Agent.fromSchema(agentEntity.schema, agentEntity.name, {
-					handlerExecutor: executor,
-					credentialProvider,
-					resolveTool: this.makeToolResolver(agentEntity.projectId, userId),
-					memoryRegistry: this.getMemoryRegistry(),
-				});
-
-				await this.injectRuntimeDependencies(reconstructed, agentEntity.id);
-
-				return { ok: true, agent: reconstructed as BuiltAgent };
-			} catch (e) {
-				return {
-					ok: false,
-					error: e instanceof Error ? e.message : 'Unknown compilation error',
-				};
-			}
+		try {
+			const reconstructed = await this.reconstructFromConfig(
+				agentEntity,
+				credentialProvider,
+				userId,
+			);
+			return { ok: true, agent: reconstructed as BuiltAgent };
+		} catch (e) {
+			return {
+				ok: false,
+				error: e instanceof Error ? e.message : 'Unknown compilation error',
+			};
 		}
-
-		// No schema available — agent cannot be compiled
-		return { ok: false, error: 'Agent schema is not available. Save the agent to generate it.' };
 	}
 
 	/**
@@ -694,5 +526,286 @@ export class AgentsService {
 			}
 		}
 		return '';
+	}
+
+	/**
+	 * Get the JSON config for an agent.
+	 */
+	async getConfig(agentId: string, projectId: string): Promise<AgentJsonConfig> {
+		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!entity) throw new NotFoundError('Agent not found');
+		if (!entity.schema) {
+			throw new UserError('Agent has no JSON config yet.');
+		}
+		return entity.schema;
+	}
+
+	/**
+	 * Validate an AgentJsonConfig: runs Zod schema validation and checks any
+	 * node tool configurations against their JSON-Schema definitions.
+	 *
+	 * Returns `{ valid: true, config }` on success, or `{ valid: false, error }`
+	 * with a human-readable message on failure.
+	 */
+	validateConfig(
+		raw: unknown,
+	): { valid: true; config: AgentJsonConfig } | { valid: false; error: string } {
+		const parsed = AgentJsonConfigSchema.safeParse(raw);
+		if (!parsed.success) {
+			return { valid: false, error: parsed.error.message };
+		}
+
+		const config = parsed.data;
+
+		const nodeError = this.validateNodeToolConfigs(config);
+		if (nodeError) {
+			return { valid: false, error: nodeError };
+		}
+
+		return { valid: true, config };
+	}
+
+	/**
+	 * Persist a new AgentJsonConfig (full replace).
+	 */
+	async updateConfig(
+		agentId: string,
+		projectId: string,
+		config: AgentJsonConfig,
+	): Promise<{ config: AgentJsonConfig; updatedAt: string }> {
+		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!entity) throw new NotFoundError('Agent not found');
+
+		const result = this.validateConfig(config);
+		if (!result.valid) {
+			throw new UserError(`Invalid agent config: ${result.error}`);
+		}
+
+		entity.schema = result.config;
+		entity.name = result.config.name;
+		entity.description = result.config.description ?? null;
+
+		// Remove tool entries that are no longer referenced in the config
+		const referencedIds = new Set(
+			(result.config.tools ?? [])
+				.filter((t): t is { type: 'custom'; id: string } => t.type === 'custom')
+				.map((t) => t.id),
+		);
+		const orphanIds = Object.keys(entity.tools).filter((id) => !referencedIds.has(id));
+		if (orphanIds.length > 0) {
+			const tools = { ...entity.tools };
+			for (const id of orphanIds) {
+				delete tools[id];
+			}
+			entity.tools = tools;
+		}
+
+		// Invalidate runtime caches
+		this.clearRuntimes(agentId);
+
+		const saved = await this.agentRepository.save(entity);
+		this.logger.debug('Updated agent JSON config', { agentId, projectId });
+
+		return { config: result.config, updatedAt: saved.updatedAt.toISOString() };
+	}
+
+	/**
+	 * Partially update an AgentJsonConfig
+	 */
+	async patchConfig(
+		agentId: string,
+		projectId: string,
+		partial: Partial<AgentJsonConfig>,
+	): Promise<{ config: AgentJsonConfig; updatedAt: string }> {
+		const existing = await this.getConfig(agentId, projectId);
+
+		const merged: AgentJsonConfig = {
+			...existing,
+			...partial,
+			config: partial.config !== undefined ? partial.config : existing.config,
+			memory: partial.memory !== undefined ? partial.memory : existing.memory,
+		};
+
+		return await this.updateConfig(agentId, projectId, merged);
+	}
+
+	/**
+	 * Validate and persist a custom tool for an agent.
+	 * The tool code is described in an isolate, and the descriptor + code
+	 * are stored in the agent's `tools` column.
+	 */
+	async buildCustomTool(
+		agentId: string,
+		projectId: string,
+		toolId: string,
+		code: string,
+		descriptor: ToolDescriptor,
+	): Promise<{ ok: boolean; descriptor: ToolDescriptor }> {
+		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!entity) throw new NotFoundError('Agent not found');
+
+		// Store tool code + descriptor
+		entity.tools = {
+			...entity.tools,
+			[toolId]: { code, descriptor },
+		};
+
+		// Add to config tools array if not already present
+		if (entity.schema) {
+			const tools = entity.schema.tools ?? [];
+			const alreadyLinked = tools.some(
+				(t: AgentJsonToolRef) => t.type === 'custom' && 'id' in t && t.id === toolId,
+			);
+			if (!alreadyLinked) {
+				entity.schema.tools = [...tools, { type: 'custom' as const, id: toolId }];
+			}
+		}
+
+		this.clearRuntimes(agentId);
+		await this.agentRepository.save(entity);
+
+		this.logger.debug('Built custom tool', { agentId, projectId, toolId });
+
+		return { ok: true, descriptor };
+	}
+
+	/**
+	 * Remove a custom tool from an agent.
+	 */
+	async deleteCustomTool(agentId: string, projectId: string, toolId: string): Promise<void> {
+		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!entity) throw new NotFoundError('Agent not found');
+
+		const tools = { ...entity.tools };
+		delete tools[toolId];
+		entity.tools = tools;
+
+		// Remove from config tools array
+		if (entity.schema?.tools) {
+			entity.schema.tools = entity.schema.tools.filter(
+				(t: AgentJsonToolRef) => !(t.type === 'custom' && 'id' in t && t.id === toolId),
+			);
+		}
+
+		this.clearRuntimes(agentId);
+		await this.agentRepository.save(entity);
+
+		this.logger.debug('Deleted custom tool', { agentId, projectId, toolId });
+	}
+
+	/**
+	 * Validate the node configurations for any node-type tools in an AgentJsonConfig.
+	 *
+	 * Node tool schemas are validated on the host (not in the sandbox) because the
+	 * real Zod schemas are only available in the host process.
+	 *
+	 * @returns A formatted error string if any node config is invalid, or null if all pass.
+	 */
+	private validateNodeToolConfigs(config: AgentJsonConfig): string | null {
+		const nodeTools = (config.tools ?? []).filter(
+			(t): t is Extract<AgentJsonToolRef, { type: 'node' }> => t.type === 'node',
+		);
+
+		if (nodeTools.length === 0) return null;
+
+		const dirs = resolveBuiltinNodeDefinitionDirs();
+		if (dirs.length > 0) {
+			setSchemaBaseDirs(dirs);
+		}
+
+		const errors: string[] = [];
+
+		for (const tool of nodeTools) {
+			const nodeType: string = tool.node.nodeType;
+			const nodeTypeVersion: number = tool.node.nodeTypeVersion;
+			const nodeParameters = tool.node.nodeParameters ?? {};
+
+			const result: SchemaValidationResult = validateNodeConfig(
+				nodeType,
+				nodeTypeVersion,
+				{ parameters: nodeParameters },
+				{ isToolNode: true },
+			);
+
+			if (!result.valid) {
+				const messages = result.errors
+					.map((e: { path: string; message: string }) => e.message)
+					.join('; ');
+				errors.push(`Node tool "${tool.name}" (${nodeType}@${nodeTypeVersion}): ${messages}`);
+			}
+		}
+
+		return errors.length > 0 ? errors.join('\n') : null;
+	}
+
+	/**
+	 * Reconstruct an agent from its JSON config using buildFromJson().
+	 * This is the new execution path for JSON-config agents.
+	 */
+	private async reconstructFromConfig(
+		agentEntity: Agent,
+		credentialProvider: CredentialProvider,
+		userId?: string,
+	): Promise<agents.Agent> {
+		const config = agentEntity.schema;
+		if (!config) {
+			throw new UserError('Agent has no JSON config.');
+		}
+
+		// Build toolsByName map: { toolName -> code }
+		const toolsByName: Record<string, string> = {};
+		for (const [_toolId, toolEntry] of Object.entries(agentEntity.tools ?? {})) {
+			toolsByName[toolEntry.descriptor.name] = toolEntry.code;
+		}
+
+		// Build toolDescriptors map: { toolId -> descriptor }
+		const toolDescriptors: Record<string, ToolDescriptor> = {};
+		for (const [toolId, toolEntry] of Object.entries(agentEntity.tools ?? {})) {
+			toolDescriptors[toolId] = toolEntry.descriptor;
+		}
+
+		const toolExecutor = this.secureRuntime.createToolExecutor(toolsByName);
+
+		const reconstructed = await buildFromJson(config, toolDescriptors, {
+			toolExecutor,
+			credentialProvider,
+			resolveTool: async (ref) => {
+				// Convert AgentJsonToolRef to the marker BuiltTool that makeToolResolver expects
+				if (ref.type === 'workflow') {
+					const marker = {
+						name: ref.name ?? ref.workflow,
+						description: ref.description ?? `Execute the "${ref.workflow}" workflow`,
+						editable: false,
+						metadata: {
+							workflowTool: true,
+							workflowName: ref.workflow,
+							options: { name: ref.name, description: ref.description },
+						},
+					};
+					return await this.makeToolResolver(
+						agentEntity.projectId,
+						userId,
+					)(marker as unknown as agents.ToolSchema);
+				}
+				if (ref.type === 'node') {
+					const marker = {
+						name: ref.name,
+						description: ref.description ?? `Execute node ${ref.name}`,
+						editable: false,
+						metadata: { nodeTool: true, ...ref.node },
+					};
+					return await this.makeToolResolver(
+						agentEntity.projectId,
+						userId,
+					)(marker as unknown as agents.ToolSchema);
+				}
+				return null;
+			},
+			memoryRegistry: this.getMemoryRegistry(),
+		});
+
+		await this.injectRuntimeDependencies(reconstructed, agentEntity.id);
+
+		return reconstructed;
 	}
 }

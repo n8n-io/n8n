@@ -1,6 +1,7 @@
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
-import type { AgentSchema, AgentResource } from '../types';
+import type { AgentSchema, AgentResource, AgentJsonConfig } from '../types';
+import type { ToolDescriptor } from '../agent.types';
 
 export const listAgents = async (
 	context: IRestApiContext,
@@ -173,5 +174,73 @@ export const listAgentCredentials = async (
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/credentials`,
+	);
+};
+
+export const getAgentConfig = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentJsonConfig> => {
+	return await makeRestApiRequest<AgentJsonConfig>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/config`,
+	);
+};
+
+export const updateAgentConfig = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	config: AgentJsonConfig,
+): Promise<{ config: AgentJsonConfig }> => {
+	return await makeRestApiRequest(
+		context,
+		'PUT',
+		`/projects/${projectId}/agents/v2/${agentId}/config`,
+		{ config },
+	);
+};
+
+export const patchAgentConfig = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	partial: Partial<AgentJsonConfig>,
+): Promise<{ config: AgentJsonConfig }> => {
+	return await makeRestApiRequest(
+		context,
+		'PATCH',
+		`/projects/${projectId}/agents/v2/${agentId}/config`,
+		{ config: partial },
+	);
+};
+
+export const buildCustomTool = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	toolId: string,
+	code: string,
+): Promise<{ ok: boolean; descriptor?: ToolDescriptor; errors?: Array<{ message: string }> }> => {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/tools`,
+		{ id: toolId, code },
+	);
+};
+
+export const deleteCustomTool = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	toolId: string,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/projects/${projectId}/agents/v2/${agentId}/tools/${toolId}`,
 	);
 };

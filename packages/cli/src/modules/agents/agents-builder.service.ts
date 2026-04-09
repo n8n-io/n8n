@@ -1,84 +1,17 @@
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
-
 import { Agent, Tool } from '@n8n/agents';
 import type { CredentialProvider, CredentialListItem, StreamChunk } from '@n8n/agents';
+
 import { Logger } from '@n8n/backend-common';
-import { Service } from '@n8n/di';
 import { WorkflowRepository } from '@n8n/db';
+import { Service } from '@n8n/di';
 import { z } from 'zod';
 
-import {
-	validateNodeConfig,
-	setSchemaBaseDirs,
-	type SchemaValidationResult,
-} from '@n8n/workflow-sdk';
+import { WorkflowBuilderToolsService } from '@/modules/mcp/tools/workflow-builder/workflow-builder-tools.service';
 
-import { AgentsService } from './agents.service';
 import { AgentSecureRuntime } from './agent-secure-runtime';
-
-import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
-
-let cachedSdkTypes: string | undefined;
-
-/**
- * Read the @n8n/agents .d.ts files and bundle them into a single
- * declaration string for the builder agent's system prompt.
- */
-async function getSdkTypeDeclarations(): Promise<string> {
-	if (cachedSdkTypes) return cachedSdkTypes;
-
-	try {
-		const distDir = join(require.resolve('@n8n/agents/package.json'), '..', 'dist');
-
-		const strip = (src: string) =>
-			src
-				.replace(/^import\s+.*;\s*$/gm, '')
-				.replace(/^export\s*\{\s*\}\s*;\s*$/gm, '')
-				.replace(/^export declare/gm, 'export')
-				.trim();
-
-		const fileNames = [
-			'types/agent.d.ts',
-			'types/tool.d.ts',
-			'types/eval.d.ts',
-			'types/memory.d.ts',
-			'agent.d.ts',
-			'eval.d.ts',
-			'memory.d.ts',
-			'tool.d.ts',
-			'message.d.ts',
-		];
-
-		const sections = await Promise.all(
-			fileNames.map(async (name) => {
-				try {
-					const content = await readFile(join(distDir, name), 'utf-8');
-					return `  // --- ${name} ---\n  ${strip(content).split('\n').join('\n  ')}`;
-				} catch {
-					return '';
-				}
-			}),
-		);
-
-		const evalsNamespace = `  // --- evals namespace ---
-  export namespace evals {
-    function correctness(): Eval;
-    function helpfulness(): Eval;
-    function stringSimilarity(): Eval;
-    function categorization(): Eval;
-    function containsKeywords(): Eval;
-    function jsonValidity(): Eval;
-    function toolCallAccuracy(): Eval;
-  }`;
-
-		cachedSdkTypes = `declare module '@n8n/agents' {\n  import type { z } from 'zod';\n\n${sections.filter(Boolean).join('\n\n')}\n\n${evalsNamespace}\n}`;
-	} catch {
-		cachedSdkTypes = '(SDK type declarations unavailable)';
-	}
-
-	return cachedSdkTypes;
-}
+import type { AgentJsonConfig } from './agent-json-config';
+import { AgentJsonConfigSchema, AgentJsonConfigPartialSchema } from './agent-json-config';
+import { AgentsService } from './agents.service';
 
 @Service()
 export class AgentsBuilderService {
@@ -87,6 +20,7 @@ export class AgentsBuilderService {
 		private readonly agentsService: AgentsService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly secureRuntime: AgentSecureRuntime,
+		private readonly workflowBuilderToolsService: WorkflowBuilderToolsService,
 	) {}
 
 	async *buildAgent(
@@ -102,45 +36,74 @@ export class AgentsBuilderService {
 			throw new Error(`Agent "${agentId}" not found`);
 		}
 
-		const currentCode = agent.code ?? '';
-		const sdkTypes = await getSdkTypeDeclarations();
+		await this.workflowBuilderToolsService.initialize();
 
-		// Tool: typecheck — validates code compiles and node configs are valid
-		const typecheckTool = new Tool('typecheck')
+		// Tool: create_agent_config — creates or replaces the agent configuration
+		const createAgentConfigTool = new Tool('create_agent_config')
 			.description(
-				'Compile and validate TypeScript agent code. Returns { ok: true } if the code compiles and produces a valid agent, or { ok: false, error: string } with the error message.',
+				'Create or replace the agent configuration. Pass full configuration.' +
+					'Returns { ok: true } on success or { ok: false, error } on validation failure.',
 			)
-			.input(
-				z.object({
-					code: z.string().describe('The full TypeScript source code to validate'),
-				}),
-			)
-			.handler(async ({ code }: { code: string }) => {
+			.input(z.object({ config: AgentJsonConfigSchema }))
+			.handler(async (input) => {
 				try {
-					const schema = await this.secureRuntime.describeSecurely(code);
-					const nodeToolError = this.validateNodeToolConfigs(schema.tools);
-					if (nodeToolError) return { ok: false, error: nodeToolError };
-					return { ok: true, error: null };
+					await this.agentsService.updateConfig(agentId, projectId, input.config);
+					return { ok: true };
 				} catch (e) {
 					return { ok: false, error: e instanceof Error ? e.message : String(e) };
 				}
 			})
 			.build();
 
-		// Tool: set_code — updates the agent's code in the database
-		const setCodeTool = new Tool('set_code')
+		// Tool: update_agent_config — partially updates the agent configuration
+		const updateAgentConfigTool = new Tool('update_agent_config')
 			.description(
-				'Set the code in the editor. Call this with the COMPLETE, final TypeScript source code after it passes typecheck. This replaces the entire editor content.',
+				'Update part of the agent configuration. Only pass the fields you want to change. ' +
+					'To change arrays, pass the FULL array with the modified entry. ' +
+					'Returns { ok: true, config } with the merged result.',
+			)
+			.input(z.object({ config: AgentJsonConfigPartialSchema }))
+			.handler(async (partial) => {
+				try {
+					const result = await this.agentsService.patchConfig(agentId, projectId, partial.config);
+					return { ok: true, config: result.config };
+				} catch (e) {
+					return { ok: false, error: e instanceof Error ? e.message : String(e) };
+				}
+			})
+			.build();
+
+		// Tool: build_custom_tool — validates and persists a custom tool
+		const buildCustomToolTool = new Tool('build_custom_tool')
+			.description(
+				'Create or update a custom tool. Pass the tool ID and complete TypeScript source ' +
+					'using `export default new Tool(...)` builder chain. The code is validated in a ' +
+					'sandbox. On success the tool is added to the agent config automatically. ' +
+					'Returns { ok: true, descriptor } or { ok: false, errors }.',
 			)
 			.input(
 				z.object({
-					code: z.string().describe('The complete TypeScript agent source code'),
+					id: z
+						.string()
+						.min(1)
+						.regex(/^[a-z0-9_-]+$/)
+						.describe('Tool ID (lowercase, underscores, hyphens)'),
+					code: z
+						.string()
+						.describe('Complete TypeScript source using export default new Tool(...)'),
 				}),
 			)
-			.handler(async ({ code }: { code: string }) => {
-				await this.agentsService.updateCode(agentId, projectId, code);
-				this.logger.debug('Builder agent set code', { agentId });
-				return { ok: true };
+			.handler(async ({ id, code }: { id: string; code: string }) => {
+				try {
+					const descriptor = await this.secureRuntime.describeToolSecurely(code);
+					await this.agentsService.buildCustomTool(agentId, projectId, id, code, descriptor);
+					return { ok: true, id, descriptor };
+				} catch (e) {
+					return {
+						ok: false,
+						errors: [{ message: e instanceof Error ? e.message : String(e) }],
+					};
+				}
 			})
 			.build();
 
@@ -203,6 +166,74 @@ export class AgentsBuilderService {
 			})
 			.build();
 
+		// Tool: search_nodes — search for n8n nodes by name or service
+		const searchNodesTool = new Tool('search_nodes')
+			.description(
+				'Search for n8n nodes by name or service. Use this to find nodes that can be added ' +
+					'as node tools. Returns node IDs, display names, versions, and descriptions. ' +
+					'After finding a node, call get_node_types to get its parameter schema.',
+			)
+			.input(
+				z.object({
+					queries: z
+						.array(z.string())
+						.min(1)
+						.describe('Search queries (e.g., ["gmail", "slack", "http"])'),
+				}),
+			)
+			.handler(async ({ queries }: { queries: string[] }) => {
+				const results = await this.workflowBuilderToolsService.searchNodes(queries);
+				return { results };
+			})
+			.build();
+
+		// Tool: get_node_types — get detailed parameter schema for specific n8n nodes
+		const getNodeTypesTool = new Tool('get_node_types')
+			.description(
+				'Get detailed parameter schema for specific n8n nodes. Use the node IDs returned ' +
+					'by search_nodes. Returns parameter definitions needed to configure node tools. ' +
+					'You can optionally filter by resource/operation/mode.',
+			)
+			.input(
+				z.object({
+					nodeIds: z
+						.array(
+							z.union([
+								z.string(),
+								z.object({
+									nodeId: z.string(),
+									version: z.string().optional(),
+									resource: z.string().optional(),
+									operation: z.string().optional(),
+									mode: z.string().optional(),
+								}),
+							]),
+						)
+						.min(1)
+						.describe('Node IDs from search_nodes (e.g., ["n8n-nodes-base.gmail"])'),
+				}),
+			)
+			.handler(
+				async ({
+					nodeIds,
+				}: {
+					nodeIds: Array<
+						| string
+						| {
+								nodeId: string;
+								version?: string;
+								resource?: string;
+								operation?: string;
+								mode?: string;
+						  }
+					>;
+				}) => {
+					const results = await this.workflowBuilderToolsService.getNodeTypes(nodeIds);
+					return { results };
+				},
+			)
+			.build();
+
 		// Pick credential for the builder agent itself
 		const availableCredentials = await credentialProvider.list();
 		const LLM_CREDENTIAL_TYPES = ['anthropicApi', 'openAiApi'];
@@ -226,236 +257,168 @@ export class AgentsBuilderService {
 				builderModel = 'anthropic/claude-sonnet-4-5';
 				break;
 		}
-		// TODO: add tools to fetch node definitions and resolve node tools, update system prompt
+		const currentConfig = agent.schema as unknown as AgentJsonConfig | null;
+		const currentToolsMap = agent.tools ?? {};
+		const toolList =
+			Object.entries(currentToolsMap)
+				.map(([id, t]) => `- ${id}: ${t.descriptor.name} -- ${t.descriptor.description}`)
+				.join('\n') || '(none)';
+		const configJson = currentConfig ? JSON.stringify(currentConfig, null, 2) : '(no config yet)';
+
 		const builder = new Agent('agent-builder')
 			.model(builderModel)
 			.credential(builderCredential.name)
 			.credentialProvider(credentialProvider)
 			.instructions(
-				`You are an expert @n8n/agents SDK developer. Your job is to generate TypeScript code that creates AI agents using the @n8n/agents SDK.
+				`You are an expert agent builder. You help users create and configure AI agents by modifying a JSON configuration and building custom tools.
 
-## Current agent code
+## Current agent config
 
-\`\`\`typescript
-${currentCode}
+\`\`\`json
+${configJson}
 \`\`\`
+
+## Custom tools
+
+${toolList}
 
 ## Workflow
 
-1. FIRST call list_credentials AND list_workflows to see what's available
-2. When the user describes what they want the agent to do, PREFER attaching existing workflows as tools over writing custom tool handlers — workflows can actually interact with external services (email, calendar, databases, APIs, etc.) while custom tools can only do in-memory computation
-3. Generate COMPLETE, working TypeScript code
-4. Use the typecheck tool to validate your code
-5. If typecheck fails, fix the errors and typecheck again
-6. Once typecheck passes, call set_code to put the code in the editor
-7. Write a brief explanation of what you built or changed, noting which workflows were attached and why
+1. FIRST call list_credentials, list_workflows to see what's available
+2. When the user describes what they want, start with create_agent_config to set up the base config
+3. PREFER attaching existing workflows(type: "workflow") or nodes(type: "node") as tools over custom tools -- workflows and nodes can interact with external services
+4. If the user needs custom logic (data transformation, computation, etc.), use build_custom_tool
+5. Use update_agent_config for incremental changes
 
-## Code rules
+## Agent config rules
 
-- Always import from '@n8n/agents', '@n8n/agents-utils' (for WorkflowTool, ToolFromNode, and N8nMemory), and 'zod' — these are the only available modules
-- The code MUST export the agent as the default export: \`export default agent;\`
-- Do NOT call .build() on tools or agents — the engine handles that automatically
-- Every agent MUST have .credential() — it will not compile without one
-- When using .suspend()/.resume() on a tool, the handler MUST use \`return await ctx.suspend(payload)\` — the \`return\` is mandatory
+- \`model\` must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5")
+- \`credential\` must match an available credential name (call list_credentials first)
+- \`memory.storage\` is a preset: "n8n" (recommended, persists in n8n DB), "sqlite", or "postgres"
+- \`memory.lastMessages\` default: 20
+- Use "n8n" as the default memory storage for all agents
 
-## Modifying existing code
+## Tool types
 
-When modifying existing code:
-- The current editor code is provided above
-- Make targeted changes based on the user's request
-- Always pass the COMPLETE modified code to typecheck and set_code, not just the changed parts
+### Workflow tools (preferred)
+Reference existing n8n workflows by name. Call list_workflows to see available ones.
+\`\`\`json
+{ "type": "workflow", "workflow": "Send Welcome Email" }
+\`\`\`
 
-## SDK Type Definitions
+### Node tools
+Run a single n8n node as a tool. Use search_nodes to find available nodes, then
+get_node_types to see their parameters. Add the node to the config with nodeType,
+nodeTypeVersion, and nodeParameters.
 
-${sdkTypes}
+get_node_types return typescript references, but you must supply json fields in node config
+
+Flow: search_nodes → get_node_types → create/update_agent_config
+
+\`\`\`json
+{
+  "type": "node",
+  "name": "http_request",
+  "description": "Make an HTTP request to any URL",
+  "node": {
+    "nodeType": "n8n-nodes-base.httpRequest",
+    "nodeTypeVersion": 4,
+    "nodeParameters": {
+      "method": "={{$json.method || 'GET'}}",
+      "url": "={{$json.url}}"
+    }
+  },
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "url": { "type": "string", "description": "The URL to request" },
+      "method": { "type": "string", "description": "HTTP method (GET, POST, PUT, DELETE)" }
+    },
+    "required": ["url"]
+  }
+}
+\`\`\`
+
+Rules for node tools:
+- \`nodeType\` and \`nodeTypeVersion\` come from get_node_types results
+- \`nodeParameters\` sets fixed parameters (resource, operation, etc.) and pipes parameters from inputSchema using expressions "={{$json.paramName}}" where paramName must match parameter name in inputSchema.
+- \`inputSchema\` defines what the LLM passes at runtime (JSON Schema)
+- \`credentials\` maps credential slot names to credential IDs from list_credentials
+- Use search_nodes first, never guess node type names
+
+## n8n expressions
+
+Node tool parameters inside \`nodeParameters\` can use n8n expressions to reference dynamic input.
+The LLM input is available as \`$json\` — each key matches a property from \`inputSchema\`.
+
+- \`={{ $json.fieldName }}\` — reference a field from the tool's input
+- \`={{ $json.count > 0 ? 'yes' : 'no' }}\` — inline ternary
+- \`={{ $json.items.join(', ') }}\` — call JS methods on input values
+- \`={{ $now.toISO() }}\` — current date/time (Luxon DateTime)
+- \`={{ $today }}\` — start of today (Luxon DateTime)
+
+Always wrap expressions in \`={{ }}\`. Never use bare JS variables outside the braces.
+
+### Custom tools
+Write TypeScript using the Tool builder, validate via build_custom_tool.
+\`\`\`json
+{ "type": "custom", "id": "search_web" }
+\`\`\`
+
+The tool code must follow this pattern:
+\`\`\`typescript
+import { Tool } from '@n8n/agents';
+import { z } from 'zod';
+
+export default new Tool('tool_name')
+  .description('What the tool does')
+  .input(z.object({ query: z.string() }))
+  .handler(async ({ query }) => {
+    return { result: query.toUpperCase() };
+  });
+\`\`\`
+
+Rules for custom tool code:
+- Must use \`export default new Tool(...)\` pattern
+- Only imports: '@n8n/agents' and 'zod'
+- Tool handlers are async, receive validated input
+- Do NOT use process.env, fetch external URLs only if needed
+- Do NOT call .build() -- the engine handles it
+
+## Provider tools
+
+Built-in provider capabilities (web search, image generation):
+\`\`\`json
+{ "providerTools": { "anthropic.web_search": { "maxUses": 5 } } }
+\`\`\`
+
+## Memory presets
+
+| Storage | Description |
+|---------|-------------|
+| n8n     | Default. Persists in n8n database. No config needed. |
+| sqlite  | Local SQLite file. Needs connection.path |
+| postgres | PostgreSQL. Needs connection.credential |
 
 ## Available models
 
-Use '${builderModel}' as the default model unless the user specifies otherwise.
-
-## Credentials
-
-Every agent MUST declare which credential it uses via .credential('name').
-Always call the list_credentials tool FIRST to see which credentials are available.
-Use the credential name that matches the model provider (e.g. 'anthropic' for Anthropic models, 'openai' for OpenAI models).
-The execution engine resolves the credential to an API key at build time — never hardcode API keys.
-
-## Rich Tool Messages (.toMessage)
-
-Tools can define how their results are displayed in rich chat interfaces (like Slack) using \`.toMessage()\`.
-This converts the tool's output into a structured message with visual components — sections, dividers, images, etc.
-The agent doesn't need to know about Slack or any platform — the integration layer handles rendering.
-
-\`\`\`typescript
-const myTool = new Tool('my_tool')
-  .input(z.object({ name: z.string() }))
-  .output(z.object({ name: z.string(), score: z.number(), details: z.string() }))
-  .toMessage((output) => ({
-    type: 'custom',
-    components: [
-      { type: 'section', text: \`*\${output.name}*\` },
-      { type: 'divider' },
-      { type: 'section', text: \`Score: \${output.score}\\n\${output.details}\` },
-    ],
-  }))
-  .handler(async ({ name }) => {
-    return { name, score: 42, details: 'Some details here' };
-  });
-\`\`\`
-
-**Available component types for .toMessage():**
-- \`{ type: 'section', text: string }\` — A text block (supports markdown: *bold*, _italic_, \\\`code\\\`)
-- \`{ type: 'divider' }\` — A horizontal line separator
-- \`{ type: 'image', url: string, alt: string }\` — An image
-
-The \`toMessage\` function receives the tool's output (matching the .output() schema) and returns an object with \`type: 'custom'\` and a \`components\` array. This is for DISPLAY ONLY — it does not affect what the LLM sees (the LLM still gets the raw output).
-
-Use .toMessage() when:
-- Tool results have structured data that benefits from visual formatting (stats, tables, summaries)
-- You want to show the user a nicely formatted result alongside the agent's text response
-
-Do NOT use .toMessage() for:
-- Interactive elements (buttons, inputs) — use .suspend()/.resume() for HITL instead
-- Simple text responses — the agent's natural text is sufficient
-
-## Suspend/Resume (HITL — Human in the Loop)
-
-Tools can pause and wait for human input using \`.suspend()\` and \`.resume()\`.
-
-**CRITICAL: The handler MUST check ctx.resumeData to distinguish first call vs resume:**
-\`\`\`typescript
-const approveTool = new Tool('approve_action')
-  .input(z.object({ action: z.string() }))
-  .suspend(z.object({ message: z.string() }))
-  .resume(z.object({ approved: z.boolean() }))
-  .handler(async (input, ctx) => {
-    // FIRST CALL: ctx.resumeData is undefined — suspend here
-    if (!ctx.resumeData) {
-      return await ctx.suspend({ message: \`Approve: \${input.action}?\` });
-    }
-    // SECOND CALL (after user responds): ctx.resumeData has the response
-    if (!ctx.resumeData.approved) {
-      return { result: 'denied' };
-    }
-    return { result: 'approved' };
-  });
-\`\`\`
-
-**WRONG pattern (do NOT do this):**
-\`\`\`typescript
-// ❌ WRONG — code after ctx.suspend() runs immediately, it does NOT wait
-const result = await ctx.suspend({ message: 'Approve?' });
-if (!result.approved) { ... } // This runs before user responds!
-\`\`\`
-
-**Rules:**
-- \`.suspend(schema)\` and \`.resume(schema)\` must both be set (they're paired)
-- The handler is called TWICE: once to suspend, once after resume
-- Check \`ctx.resumeData\` to know which call you're in
-- Agent MUST have \`.checkpoint('memory')\` for suspend/resume to work
-- Use \`return await ctx.suspend(payload)\` — the \`return\` is mandatory
-
-## Workflows as Tools
-
-Agents can use existing n8n workflows as tools via \`new WorkflowTool('Workflow Name')\`.
-This executes the workflow when the agent calls the tool and returns the result.
-
-**Simple — attach by name:**
-\`\`\`typescript
-import { Agent } from '@n8n/agents';
-import { WorkflowTool } from '@n8n/agents-utils';
-
-const agent = new Agent('my-agent')
-  .model('anthropic/claude-sonnet-4-5')
-  .credential('anthropic')
-  .tool(new WorkflowTool('Send Welcome Email'))
-  .tool(new WorkflowTool('Generate Report'))
-  .instructions('You help onboard new users.');
-\`\`\`
-
-**Advanced — with custom options:**
-\`\`\`typescript
-import { Agent } from '@n8n/agents';
-import { WorkflowTool } from '@n8n/agents-utils';
-
-const agent = new Agent('my-agent')
-  .tool(new WorkflowTool('Send Email', {
-    name: 'send-email',
-    description: 'Send an onboarding email to a user',
-  }))
-  .instructions('...');
-\`\`\`
-
-**How it works:**
-- The workflow name is resolved to a real workflow at compile time
-- The workflow's trigger type determines the tool's input schema automatically
-- When the agent calls the tool, the workflow executes and the result is returned
-- Supported triggers: Manual Trigger, Execute Workflow Trigger, Chat Trigger, Schedule Trigger
-
-**Rules:**
-- Use the EXACT workflow name as it appears in n8n
-- Call the list_workflows tool to see available workflows and their trigger types
-- Only workflows with \`canUseAsTool: true\` can be attached
-- The workflow runs with the agent owner's permissions
-
-## Memory Configuration
-
-Agents can have conversation memory configured using the \`Memory\` builder class.
-
-**ALWAYS add \`N8nMemory\` as the default memory storage.** \`N8nMemory\` persists conversation history in the n8n database — it survives server restarts and is the recommended storage for all agents. Import it from \`@n8n/agents-utils\`.
-
-**Default (use this unless the user asks for something else):**
-\`\`\`typescript
-import { Agent, Memory } from '@n8n/agents';
-import { N8nMemory } from '@n8n/agents-utils';
-
-const agent = new Agent('my-agent')
-  .model('anthropic/claude-sonnet-4-5')
-  .credential('anthropic')
-  .memory(new Memory().storage(new N8nMemory()).lastMessages(20))
-  .instructions('You are a helpful assistant.');
-\`\`\`
-
-**Memory builder methods:**
-- \`.storage(new N8nMemory())\` — **default** persistent storage backed by the n8n database (recommended)
-- \`.lastMessages(N)\` — how many recent messages to include in context (default: 10; use 20 as a sensible default)
-- \`.freeform(template)\` — free-form working memory with markdown template
-- \`.structured(zodSchema)\` — structured working memory with Zod schema
-
-**WRONG patterns:**
-\`\`\`typescript
-// ❌ WRONG — plain objects are NOT valid memory config
-.memory({ type: 'buffer', maxMessages: 50 })
-
-// ❌ WRONG — strings are NOT valid
-.memory('memory')
-
-// ❌ WRONG — omitting .storage() means memory is lost on restart
-.memory(new Memory().lastMessages(20))
-
-// ✅ CORRECT — always use N8nMemory as the storage backend
-.memory(new Memory().storage(new N8nMemory()).lastMessages(20))
-\`\`\`
-
-**Rules:**
-- Always use \`new Memory()\` — never pass a plain object
-- Always use \`.storage(new N8nMemory())\` — it is the n8n-native persistent backend and requires no configuration
-- \`.freeform()\` and \`.structured()\` are mutually exclusive
+Use '${builderModel}' as the default unless the user specifies otherwise.
 
 ## Important
 
-- Do NOT call .build() on tools or agents — the engine handles this automatically
-- Do NOT use process.env — it is not available in the sandbox. For API keys use .credential()
-- Tool handlers are async functions that receive the validated input object
-- Tool .input() and .output() use Zod schemas
-- Agent .instructions() sets the system prompt
-- The only imports available at runtime are '@n8n/agents', '@n8n/agents-utils' (WorkflowTool, N8nMemory, ToolFromNode), and 'zod'
-- Do NOT import anything else — it will fail at runtime`,
+- Always call list_credentials first to pick the right credential
+- Use search_nodes + get_node_types to discover nodes before adding node tools
+- Prefer workflow tools and node tools over custom tools for real-world interactions
+- Memory with storage "n8n" is the default -- always enable it unless told otherwise
+- When modifying the tools array via update_agent_config, pass the FULL array`,
 			)
-			.tool(typecheckTool)
-			.tool(setCodeTool)
+			.tool(createAgentConfigTool)
+			.tool(updateAgentConfigTool)
+			.tool(buildCustomToolTool)
 			.tool(listCredentialsTool)
-			.tool(listWorkflowsTool);
+			.tool(listWorkflowsTool)
+			.tool(searchNodesTool)
+			.tool(getNodeTypesTool);
 
 		this.logger.debug('Starting builder agent stream', { agentId, projectId });
 
@@ -471,48 +434,5 @@ const agent = new Agent('my-agent')
 		} finally {
 			reader.releaseLock();
 		}
-	}
-
-	/**
-	 * Validate the node configurations for any ToolFromNode tools in an agent schema.
-	 *
-	 * The sandbox only has a mock node() function, so validateNodeConfig() must run
-	 * on the host where the real Zod schemas are available.
-	 *
-	 * @returns A formatted error string if any node config is invalid, or null if all pass.
-	 */
-	private validateNodeToolConfigs(
-		tools: Array<{ name: string; metadata: Record<string, unknown> | null }>,
-	): string | null {
-		const nodeTools = tools.filter((t) => t.metadata?.nodeTool === true);
-		if (nodeTools.length === 0) return null;
-
-		const dirs = resolveBuiltinNodeDefinitionDirs();
-		if (dirs.length > 0) setSchemaBaseDirs(dirs);
-
-		const errors: string[] = [];
-
-		for (const tool of nodeTools) {
-			const meta = tool.metadata as Record<string, unknown>;
-			const nodeType = meta.nodeType as string;
-			const nodeTypeVersion = meta.nodeTypeVersion as number;
-			const nodeParameters = (meta.nodeParameters ?? {}) as Record<string, unknown>;
-
-			const result: SchemaValidationResult = validateNodeConfig(
-				nodeType,
-				nodeTypeVersion,
-				{ parameters: nodeParameters },
-				{ isToolNode: true },
-			);
-
-			if (!result.valid) {
-				const messages = result.errors
-					.map((e: { path: string; message: string }) => e.message)
-					.join('; ');
-				errors.push(`ToolFromNode "${tool.name}" (${nodeType}@${nodeTypeVersion}): ${messages}`);
-			}
-		}
-
-		return errors.length > 0 ? errors.join('\n') : null;
 	}
 }

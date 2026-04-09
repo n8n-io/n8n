@@ -1,23 +1,20 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
-import { useDebounceFn } from '@vueuse/core';
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { N8nButton } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { getAgent, updateAgent } from '../composables/useAgentApi';
-import type { AgentResource } from '../types';
-import { useAgentSchema } from '../composables/useAgentSchema';
-import type { AgentSchema } from '../types';
-import { deepCopy } from 'n8n-workflow';
+import type { AgentResource, AgentJsonConfig } from '../types';
+import { useAgentConfig } from '../composables/useAgentConfig';
 import AgentSidebar from '../components/AgentSidebar.vue';
-import AgentCodeEditor from '../components/AgentCodeEditor.vue';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
+import AgentCodeEditor from '../components/AgentCodeEditor.vue';
 import AgentIntegrationsPanel from '../components/AgentIntegrationsPanel.vue';
 import AgentOverviewPanel from '../components/AgentOverviewPanel.vue';
 import AgentToolsPanel from '../components/AgentToolsPanel.vue';
 import AgentPromptsPanel from '../components/AgentPromptsPanel.vue';
 import AgentMemoryPanel from '../components/AgentMemoryPanel.vue';
-import AgentEvalsPanel from '../components/AgentEvalsPanel.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -29,7 +26,7 @@ const projectId = computed(
 );
 const agentId = route.params.agentId as string;
 
-const activeTab = ref((route.query.tab as string) || 'code');
+const activeTab = ref((route.query.tab as string) || 'overview');
 
 watch(activeTab, (tab) => {
 	void router.replace({ query: { ...route.query, tab } });
@@ -40,84 +37,48 @@ watch(
 		if (tab && tab !== activeTab.value) activeTab.value = tab;
 	},
 );
+
 const chatVisible = ref(true);
-const code = ref('');
 const agentName = ref('');
 const agent = ref<AgentResource | null>(null);
 const editingName = ref(false);
-const updatedAt = ref<string>('');
-let skipNextWatch = false;
 
-const { schema, fetchSchema, updateSchema } = useAgentSchema();
-const localSchema = ref<AgentSchema | null>(null);
+const isDirty = ref(false);
+const saving = ref(false);
 
-watch(
-	schema,
-	(s) => {
-		if (s) localSchema.value = deepCopy(s);
-	},
-	{ immediate: true },
-);
+const { config, fetchConfig, updateConfig } = useAgentConfig();
 
 async function fetchAgent() {
 	const data = await getAgent(rootStore.restApiContext, projectId.value, agentId);
 	agent.value = data;
-	updatedAt.value = data.updatedAt;
-	skipNextWatch = true;
-	code.value = data.code;
 	agentName.value = data.name;
 }
 
-const autoSave = useDebounceFn(async () => {
-	if (!agent.value) return;
-	const updated = await updateAgent(rootStore.restApiContext, projectId.value, agentId, {
-		code: code.value,
-	});
-	if (updated) {
-		updatedAt.value = updated.updatedAt;
-		await fetchSchema(projectId.value, agentId);
-	}
-}, 1000);
-
-watch(code, () => {
-	if (skipNextWatch) {
-		skipNextWatch = false;
-		return;
-	}
-	void autoSave();
-});
-
-// Builder code streaming — accumulates codeDelta fragments from the set_code tool
-let codeStreamBuffer = '';
-let isCodeStreaming = false;
-
-function onCodeDelta(delta: string) {
-	if (!isCodeStreaming) {
-		// First delta — start fresh
-		isCodeStreaming = true;
-		codeStreamBuffer = '';
-	}
-	codeStreamBuffer += delta;
-
-	// Try to extract the "code" field value from the partial JSON
-	// The builder streams JSON like: {"code":"import { Agent }...
-	const match = codeStreamBuffer.match(/"code"\s*:\s*"((?:[^"\\]|\\.)*)(?:"|$)/s);
-	if (match) {
-		// Unescape the JSON string
-		try {
-			const parsed = JSON.parse(`"${match[1]}"`);
-			code.value = parsed;
-		} catch {
-			// Partial string, show what we have (replace common escapes)
-			code.value = match[1].replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\"/g, '"');
+function onConfigUpdate(partial: Partial<AgentJsonConfig>) {
+	// Optimistically merge so the UI stays responsive
+	if (config.value) {
+		Object.assign(config.value, partial);
+		if (partial.config !== undefined) {
+			config.value.config = { ...config.value.config, ...partial.config };
 		}
 	}
+	isDirty.value = true;
 }
 
-function onCodeUpdated() {
-	isCodeStreaming = false;
-	codeStreamBuffer = '';
-	void fetchAgent();
+function onConfigJsonChange(newConfig: AgentJsonConfig) {
+	config.value = newConfig;
+	isDirty.value = true;
+}
+
+async function saveConfig() {
+	if (!config.value || saving.value) return;
+	saving.value = true;
+	try {
+		await updateConfig(projectId.value, agentId, config.value);
+		isDirty.value = false;
+	} finally {
+		saving.value = false;
+	}
 }
 
 async function saveName() {
@@ -132,6 +93,11 @@ async function saveName() {
 	editingName.value = false;
 }
 
+async function onConfigUpdated() {
+	await Promise.all([fetchAgent(), fetchConfig(projectId.value, agentId)]);
+	isDirty.value = false;
+}
+
 function onNameKeydown(event: KeyboardEvent) {
 	if (event.key === 'Enter') {
 		event.preventDefault();
@@ -142,31 +108,21 @@ function onNameKeydown(event: KeyboardEvent) {
 	}
 }
 
-function onSchemaFieldUpdate(updates: Partial<AgentSchema>) {
-	if (!localSchema.value) return;
-	Object.assign(localSchema.value, updates);
-	if (updates.config) {
-		localSchema.value.config = { ...localSchema.value.config, ...updates.config };
+function onKeydown(event: KeyboardEvent) {
+	if ((event.metaKey || event.ctrlKey) && event.key === 's') {
+		event.preventDefault();
+		if (isDirty.value) void saveConfig();
 	}
-	void debouncedSchemaSave();
 }
-
-const debouncedSchemaSave = useDebounceFn(async () => {
-	if (!localSchema.value) return;
-	const result = await updateSchema(projectId.value, agentId, localSchema.value, updatedAt.value);
-	if (result) {
-		skipNextWatch = true;
-		code.value = result.code;
-		updatedAt.value = result.updatedAt;
-	} else {
-		// 409 conflict — schema was refetched; also refresh agent to get latest updatedAt
-		await fetchAgent();
-	}
-}, 1000);
 
 onMounted(async () => {
 	await fetchAgent();
-	await fetchSchema(projectId.value, agentId);
+	await fetchConfig(projectId.value, agentId);
+	window.addEventListener('keydown', onKeydown);
+});
+
+onBeforeUnmount(() => {
+	window.removeEventListener('keydown', onKeydown);
 });
 </script>
 
@@ -186,43 +142,63 @@ onMounted(async () => {
 				<h2 v-else :class="$style.nameDisplay" @click="editingName = true">
 					{{ agentName || 'Untitled Agent' }}
 				</h2>
+
+				<div :class="$style.nameBarActions">
+					<span v-if="isDirty && !saving" :class="$style.unsavedDot" title="Unsaved changes" />
+					<N8nButton
+						v-if="isDirty || saving"
+						type="primary"
+						size="small"
+						:loading="saving"
+						:disabled="saving"
+						data-testid="save-config-btn"
+						@click="saveConfig"
+					>
+						{{ saving ? 'Saving…' : 'Save' }}
+					</N8nButton>
+				</div>
 			</div>
-			<AgentCodeEditor v-if="activeTab === 'code'" v-model="code" />
+
 			<AgentOverviewPanel
-				v-else-if="activeTab === 'overview'"
-				:schema="localSchema"
-				@update:schema="onSchemaFieldUpdate"
+				v-if="activeTab === 'overview'"
+				:config="config"
+				@update:config="onConfigUpdate"
 			/>
 			<AgentPromptsPanel
 				v-else-if="activeTab === 'prompts'"
-				:schema="localSchema"
-				@update:schema="onSchemaFieldUpdate"
+				:config="config"
+				@update:config="onConfigUpdate"
 			/>
 			<AgentToolsPanel
 				v-else-if="activeTab === 'tools'"
-				:schema="localSchema"
-				@update:schema="onSchemaFieldUpdate"
+				:config="config"
+				:agent-tools="agent?.tools ?? {}"
+				@update:config="onConfigUpdate"
 			/>
 			<AgentMemoryPanel
 				v-else-if="activeTab === 'memory'"
-				:schema="localSchema"
-				@update:schema="onSchemaFieldUpdate"
+				:config="config"
+				@update:config="onConfigUpdate"
 			/>
-			<AgentEvalsPanel v-else-if="activeTab === 'evaluations'" :schema="localSchema" />
+			<div v-else-if="activeTab === 'config'" :class="$style.configPanel">
+				<AgentCodeEditor
+					:config="config"
+					:agent-tools="agent?.tools ?? {}"
+					@update:config="onConfigJsonChange"
+				/>
+			</div>
 			<AgentIntegrationsPanel
 				v-else-if="activeTab === 'integrations'"
 				:project-id="projectId"
 				:agent-id="agentId"
 			/>
-			<AgentCodeEditor v-else v-model="code" />
 		</div>
 		<AgentChatPanel
 			:visible="chatVisible"
 			:project-id="projectId"
 			:agent-id="agentId"
 			@close="chatVisible = false"
-			@code-updated="onCodeUpdated"
-			@code-delta="onCodeDelta"
+			@config-updated="onConfigUpdated"
 		/>
 	</div>
 </template>
@@ -246,9 +222,25 @@ onMounted(async () => {
 .nameBar {
 	display: flex;
 	align-items: center;
+	gap: var(--spacing--sm);
 	padding: var(--spacing--2xs) var(--spacing--sm);
 	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
 	background-color: var(--color--foreground--tint-2);
+}
+
+.nameBarActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	margin-left: auto;
+}
+
+.unsavedDot {
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background-color: var(--color--warning);
 }
 
 .nameDisplay {
@@ -275,5 +267,12 @@ onMounted(async () => {
 	padding: var(--spacing--4xs) var(--spacing--3xs);
 	outline: none;
 	font-family: var(--font-family);
+}
+
+.configPanel {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
 }
 </style>

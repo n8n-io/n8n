@@ -1,14 +1,16 @@
-import type { AgentMessage, AgentSchema, StreamChunk } from '@n8n/agents';
+import type { AgentMessage, StreamChunk } from '@n8n/agents';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Body, Delete, Get, Param, Patch, Post, RestController } from '@n8n/decorators';
+
+import { Body, Delete, Get, Param, Patch, Post, Put, RestController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
 
 import {
 	AgentChatMessageDto,
 	AgentIntegrationDto,
+	BuildCustomToolDto,
 	CreateAgentDto,
+	UpdateAgentConfigDto,
 	UpdateAgentDto,
-	UpdateAgentSchemaDto,
 } from './agents.dto';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -91,38 +93,69 @@ export class AgentsController {
 		return await this.agentsService.findByProjectId(req.params.projectId);
 	}
 
-	@Get('/:agentId/schema')
-	async getSchema(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
+	@Get('/:agentId/config')
+	async getConfig(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
 		const { projectId, agentId } = req.params;
-		const credentialProvider = new AgentsCredentialProvider(
-			this.credentialsService,
-			this.credentialsFinderService,
-			req.user,
-		);
-		return await this.agentsService.getSchema(agentId, projectId, credentialProvider);
+		return await this.agentsService.getConfig(agentId, projectId);
 	}
 
-	@Patch('/:agentId/schema')
-	async patchSchema(
+	@Put('/:agentId/config')
+	async putConfig(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
 		_res: Response,
-		@Body payload: UpdateAgentSchemaDto,
+		@Param('agentId') agentId: string,
+		@Body payload: UpdateAgentConfigDto,
 	) {
-		const { projectId, agentId } = req.params;
-		const { schema, updatedAt } = payload;
-		const credentialProvider = new AgentsCredentialProvider(
-			this.credentialsService,
-			this.credentialsFinderService,
-			req.user,
-		);
-		return await this.agentsService.updateSchema(
-			agentId,
-			projectId,
-			// Zod validates the shape at runtime; the inferred type is too loose for AgentSchema
-			schema as unknown as AgentSchema,
-			updatedAt,
-			credentialProvider,
-		);
+		const { projectId } = req.params;
+		const { config } = payload;
+		return await this.agentsService.updateConfig(agentId, projectId, config as any);
+	}
+
+	@Patch('/:agentId/config')
+	async patchConfig(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Body payload: UpdateAgentConfigDto,
+	) {
+		const { projectId } = req.params;
+		const { config } = payload;
+		return await this.agentsService.patchConfig(agentId, projectId, config as any);
+	}
+
+	@Post('/:agentId/tools')
+	async buildTool(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Body payload: BuildCustomToolDto,
+	) {
+		const { projectId } = req.params;
+		const { id, code } = payload;
+		try {
+			const { AgentSecureRuntime } = await import('./agent-secure-runtime');
+			const { Container } = await import('@n8n/di');
+			const secureRuntime = Container.get(AgentSecureRuntime);
+			const descriptor = await secureRuntime.describeToolSecurely(code);
+			return await this.agentsService.buildCustomTool(agentId, projectId, id, code, descriptor);
+		} catch (e) {
+			return {
+				ok: false,
+				errors: [{ message: e instanceof Error ? e.message : String(e) }],
+			};
+		}
+	}
+
+	@Delete('/:agentId/tools/:toolId')
+	async deleteTool(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; toolId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('toolId') toolId: string,
+	) {
+		const { projectId } = req.params;
+		await this.agentsService.deleteCustomTool(agentId, projectId, toolId);
+		return { ok: true };
 	}
 
 	@Get('/:agentId/credentials')
@@ -163,7 +196,7 @@ export class AgentsController {
 		@Param('agentId') agentId: string,
 		@Body payload: UpdateAgentDto,
 	) {
-		const { code, name, updatedAt, description } = payload;
+		const { name, description } = payload;
 		let agent = await this.agentsService.findById(agentId, req.params.projectId);
 
 		if (!agent) {
@@ -174,22 +207,8 @@ export class AgentsController {
 			agent = await this.agentsService.updateName(agentId, req.params.projectId, name);
 		}
 
-		let schemaError: string | null = null;
-		if (code !== undefined) {
-			const result = await this.agentsService.updateCode(
-				agentId,
-				req.params.projectId,
-				code,
-				updatedAt,
-			);
-			if (result) {
-				agent = result.agent;
-				schemaError = result.schemaError;
-			}
-		}
-
 		if (description !== undefined && agent) {
-			// Use the latest updatedAt from previous saves (code/name), not the original
+			// Use the latest updatedAt from previous saves (name), not the original
 			// request updatedAt, to avoid false optimistic-lock conflicts.
 			const latestUpdatedAt =
 				agent.updatedAt instanceof Date ? agent.updatedAt.toISOString() : agent.updatedAt;
@@ -201,9 +220,6 @@ export class AgentsController {
 			);
 		}
 
-		if (schemaError) {
-			return { ...agent, schemaError };
-		}
 		return agent;
 	}
 
@@ -294,22 +310,25 @@ export class AgentsController {
 					if (chunk.name) {
 						streamingToolName = chunk.name;
 					}
-					// Stream code deltas for the set_code tool (eager input streaming)
-					if (streamingToolName === 'set_code' && chunk.argumentsDelta) {
-						send({ codeDelta: chunk.argumentsDelta });
+					// Stream tool code deltas for build_custom_tool
+					if (streamingToolName === 'build_custom_tool' && chunk.argumentsDelta) {
+						send({ toolCodeDelta: chunk.argumentsDelta });
 					}
 				} else if (chunk.type === 'message' && 'message' in chunk) {
 					const events = extractMessageEvents(chunk.message);
 					for (const event of events) {
 						send(event);
-						// After set_code tool result, fetch the updated code from DB
 						if ('toolResult' in event) {
 							const toolResult = event.toolResult as { tool?: string };
-							if (toolResult.tool === 'set_code') {
-								const updated = await this.agentsService.findById(agentId, projectId);
-								if (updated) {
-									send({ code: updated.code });
-								}
+							if (
+								toolResult.tool === 'create_agent_config' ||
+								toolResult.tool === 'update_agent_config'
+							) {
+								send({ configUpdated: true });
+								streamingToolName = undefined;
+							}
+							if (toolResult.tool === 'build_custom_tool') {
+								send({ toolUpdated: true });
 								streamingToolName = undefined;
 							}
 						}
