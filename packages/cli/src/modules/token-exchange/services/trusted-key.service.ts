@@ -370,7 +370,15 @@ export class TrustedKeyService {
 	): Promise<void> {
 		this.logger.debug('Refreshing source', { source });
 		const resolvedKeys = this.resolveKeysForSource(source);
-		if (!resolvedKeys) return;
+		if (!resolvedKeys) {
+			// Mark as refreshed so the source is skipped until the next interval,
+			// even though no keys were resolved (e.g. unsupported source type).
+			await tx.update(TrustedKeySourceEntity, source.id, {
+				status: 'healthy',
+				lastRefreshedAt: new Date(),
+			});
+			return;
+		}
 
 		// 1. DELETE old keys for this source
 		await tx.delete(TrustedKeyEntity, { sourceId: source.id });

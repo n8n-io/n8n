@@ -383,7 +383,7 @@ describe('TrustedKeyService (integration)', () => {
 			);
 		});
 
-		it('should skip jwks sources without writing keys', async () => {
+		it('should skip jwks sources without writing keys but update lastRefreshedAt', async () => {
 			await insertSource({
 				id: 'jwks-source',
 				type: 'jwks',
@@ -397,6 +397,10 @@ describe('TrustedKeyService (integration)', () => {
 			await service.refreshSource('jwks-source');
 
 			expect(await keyRepo.find()).toHaveLength(0);
+
+			const source = await sourceRepo.findOneBy({ id: 'jwks-source' });
+			expect(source!.status).toBe('healthy');
+			expect(source!.lastRefreshedAt).toBeDefined();
 		});
 	});
 
