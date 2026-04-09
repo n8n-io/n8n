@@ -22,7 +22,7 @@ import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
 
-const FORBIDDEN_TOOL_NAMES = new Set(['plan', 'delegate']);
+const FORBIDDEN_TOOL_NAMES = new Set(['plan', 'create-tasks', 'delegate']);
 
 const FALLBACK_MAX_STEPS = 10;
 
@@ -181,7 +181,7 @@ export async function startDetachedDelegateTask(
 		role,
 		traceContext,
 		plannedTaskId: input.plannedTaskId,
-		run: async (signal, drainCorrections) => {
+		run: async (signal, drainCorrections, waitForCorrection) => {
 			return await withTraceContextActor(traceContext, async () => {
 				const subAgent = createSubAgent({
 					agentId: subAgentId,
@@ -232,6 +232,7 @@ export async function startDetachedDelegateTask(
 						abortSignal: signal,
 						waitForConfirmation: context.waitForConfirmation,
 						drainCorrections,
+						waitForCorrection,
 						llmStepTraceHooks,
 						workingMemoryEnabled: false,
 					});

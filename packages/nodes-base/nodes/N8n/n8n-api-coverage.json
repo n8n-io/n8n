@@ -41,6 +41,9 @@
 		"GET /discover": {
 			"status": "gap"
 		},
+		"GET /insights/summary": {
+			"status": "gap"
+		},
 		"GET /executions": {
 			"status": "covered",
 			"nodeOperation": "execution:getAll"
@@ -188,6 +191,9 @@
 			"status": "gap"
 		},
 		"DELETE /data-tables/{dataTableId}/rows/delete": {
+			"status": "gap"
+		},
+		"GET /insights/summary": {
 			"status": "gap"
 		},
 		"POST /projects": {
