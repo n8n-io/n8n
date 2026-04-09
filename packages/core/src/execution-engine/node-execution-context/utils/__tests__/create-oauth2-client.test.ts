@@ -46,8 +46,8 @@ describe('createOAuth2Client - scope handling', () => {
 		mockThis.helpers.httpRequest.mockResolvedValue({ success: true });
 	});
 
-	const call = () =>
-		requestOAuth2.call(
+	const call = async () =>
+		await requestOAuth2.call(
 			mockThis,
 			'testOAuth2',
 			{ method: 'GET', url: 'https://api.example.com/data' },
