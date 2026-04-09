@@ -127,6 +127,12 @@ export class AgentExecutionService {
 
 		await this.executionMetadataRepository.insert(metadata.map((m) => ({ ...m, executionId })));
 
+		// When a resumed execution completes with usage data, backfill any
+		// preceding suspended executions in the same thread that are missing it.
+		if (params.hitlStatus === 'resumed' && record.model) {
+			await this.backfillSuspendedExecutions(threadId, record);
+		}
+
 		// Atomically increment token/cost/duration counters on the thread
 		if (record.usage) {
 			await this.executionThreadRepository.incrementUsage(
@@ -147,6 +153,36 @@ export class AgentExecutionService {
 		});
 
 		return executionId;
+	}
+
+	/**
+	 * Backfill model info on suspended executions in a thread that are missing it.
+	 * Called when a resumed execution completes — the model applies to the whole cycle.
+	 */
+	private async backfillSuspendedExecutions(threadId: string, record: MessageRecord) {
+		// Find executions in this thread that have hitlStatus=suspended but no model
+		const suspendedExecutions = await this.executionRepository.find({
+			where: { threadId },
+			relations: ['metadata'],
+		});
+
+		for (const exec of suspendedExecutions) {
+			const hasSuspended = exec.metadata.some(
+				(m) => m.key === 'hitlStatus' && m.value === 'suspended',
+			);
+			const hasModel = exec.metadata.some((m) => m.key === 'model');
+			if (!hasSuspended || hasModel) continue;
+
+			const backfill: Array<{ key: string; value: string }> = [];
+			if (record.model) {
+				backfill.push({ key: 'model', value: record.model });
+			}
+			if (backfill.length > 0) {
+				await this.executionMetadataRepository.insert(
+					backfill.map((m) => ({ ...m, executionId: exec.id })),
+				);
+			}
+		}
 	}
 
 	/**

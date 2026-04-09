@@ -56,6 +56,11 @@ const selectedExecution = computed(
 	() => executions.value.find((e) => e.id === selectedExecutionId.value) ?? null,
 );
 
+const selectedIsSuspended = computed(
+	() =>
+		selectedExecution.value && getMetadata(selectedExecution.value, 'hitlStatus') === 'suspended',
+);
+
 const selectedToolCalls = computed(() => {
 	if (!selectedExecution.value) return [];
 	const raw = getMetadata(selectedExecution.value, 'toolCalls');
@@ -178,8 +183,13 @@ function goBack() {
 						· {{ getMetadata(selectedExecution, 'model') ?? 'Unknown model' }}
 					</div>
 
-					<!-- Token usage -->
-					<div :class="$style.detailSection">
+					<!-- Suspended notice -->
+					<div v-if="selectedIsSuspended" :class="$style.suspendedNote">
+						{{ i18n.baseText('agentSessions.detail.suspendedNote') }}
+					</div>
+
+					<!-- Token usage (hidden for suspended executions) -->
+					<div v-if="!selectedIsSuspended" :class="$style.detailSection">
 						<div :class="$style.sectionLabel">
 							{{ i18n.baseText('agentSessions.detail.tokenUsage') }}
 						</div>
@@ -237,8 +247,8 @@ function goBack() {
 						<div>{{ getMetadata(selectedExecution, 'model') ?? 'Unknown' }}</div>
 					</div>
 
-					<!-- Cost -->
-					<div :class="$style.detailSection">
+					<!-- Cost (hidden for suspended executions) -->
+					<div v-if="!selectedIsSuspended" :class="$style.detailSection">
 						<div :class="$style.sectionLabel">
 							{{ i18n.baseText('agentSessions.detail.cost') }}
 						</div>
@@ -464,6 +474,16 @@ function goBack() {
 	margin: var(--spacing--4xs) 0;
 	white-space: pre-wrap;
 	overflow-x: auto;
+}
+
+.suspendedNote {
+	font-size: var(--font-size--3xs);
+	color: var(--color--text--tint-2);
+	background-color: var(--color--foreground--tint-1);
+	padding: var(--spacing--3xs) var(--spacing--2xs);
+	border-radius: var(--radius);
+	margin-bottom: var(--spacing--sm);
+	font-style: italic;
 }
 
 .hitlDivider {
