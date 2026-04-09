@@ -256,7 +256,6 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * This handler must match the legacy engine's behavior (set in
 	 * expression.ts via setErrorHandler):
 	 * - Re-throw ExpressionError / ExpressionExtensionError
-	 * - Re-throw security violations from __sanitize
 	 * - Swallow everything else (TypeErrors, generic Errors, etc.)
 	 *
 	 * Inside the isolate, errors from host callbacks arrive as sentinel
@@ -274,14 +273,10 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		await this.context.eval(`
 			if (typeof E === 'undefined') {
 				globalThis.E = function(error, _context) {
-					// Re-throw security violations from __sanitize
-					if (error && error.message && error.message.includes('due to security concerns')) {
-						throw error;
-					}
 					// Re-throw ExpressionError / ExpressionExtensionError to match
 					// the legacy handler in expression.ts. Errors from host callbacks
 					// arrive as sentinels (not class instances), so check by name.
-					var name = error && error.name;
+					const name = error?.name;
 					if (name === 'ExpressionError' || name === 'ExpressionExtensionError') {
 						throw error;
 					}
