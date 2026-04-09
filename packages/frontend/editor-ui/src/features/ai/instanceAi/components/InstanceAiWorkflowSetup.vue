@@ -1054,14 +1054,14 @@ async function handleLater() {
 					<div :class="$style.footerActions">
 						<N8nButton
 							variant="outline"
-							size="small"
+							size="medium"
 							:class="$style.actionButton"
 							:label="i18n.baseText('instanceAi.workflowSetup.later')"
 							data-test-id="instance-ai-workflow-setup-later"
 							@click="handleLater"
 						/>
 						<N8nButton
-							size="small"
+							size="medium"
 							:class="$style.actionButton"
 							:label="i18n.baseText('instanceAi.credential.continueButton')"
 							data-test-id="instance-ai-workflow-setup-apply-button"
@@ -1249,7 +1249,7 @@ async function handleLater() {
 					<div :class="$style.footerActions">
 						<N8nButton
 							variant="outline"
-							size="small"
+							size="medium"
 							:class="$style.actionButton"
 							:label="i18n.baseText('instanceAi.workflowSetup.later')"
 							data-test-id="instance-ai-workflow-setup-later"
@@ -1258,7 +1258,7 @@ async function handleLater() {
 
 						<N8nButton
 							v-if="currentCard.isTestable && currentCard.isTrigger && currentCard.isFirstTrigger"
-							size="small"
+							size="medium"
 							:class="$style.actionButton"
 							:label="i18n.baseText('instanceAi.workflowSetup.testTrigger')"
 							:disabled="isTriggerTestDisabled(currentCard)"
@@ -1267,7 +1267,7 @@ async function handleLater() {
 						/>
 
 						<N8nButton
-							size="small"
+							size="medium"
 							:class="$style.actionButton"
 							:disabled="!anyCardComplete"
 							:label="i18n.baseText('instanceAi.credential.continueButton')"
@@ -1310,6 +1310,7 @@ async function handleLater() {
 	padding: 0;
 	border: var(--border);
 	border-radius: var(--radius);
+	background-color: var(--color--background--light-3);
 }
 
 .confirmCard {
@@ -1320,6 +1321,7 @@ async function handleLater() {
 	padding: 0;
 	border: var(--border);
 	border-radius: var(--radius);
+	background-color: var(--color--background--light-3);
 }
 
 .confirmSummary {

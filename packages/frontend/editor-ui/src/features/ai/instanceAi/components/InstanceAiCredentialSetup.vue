@@ -306,11 +306,7 @@ async function handleLater() {
 <template>
 	<div>
 		<template v-if="!isSubmitted">
-			<div
-				v-if="currentRequest"
-				data-test-id="instance-ai-credential-card"
-				:class="$style.card"
-			>
+			<div v-if="currentRequest" data-test-id="instance-ai-credential-card" :class="$style.card">
 				<!-- Header -->
 				<header :class="$style.header">
 					<CredentialIcon :credential-type-name="currentRequest.credentialType" :size="16" />
@@ -391,7 +387,7 @@ async function handleLater() {
 					<div :class="$style.footerActions">
 						<N8nButton
 							variant="outline"
-							size="small"
+							size="medium"
 							:class="$style.actionButton"
 							:label="
 								i18n.baseText(
@@ -404,7 +400,7 @@ async function handleLater() {
 						/>
 
 						<N8nButton
-							size="small"
+							size="medium"
 							:class="$style.actionButton"
 							:label="i18n.baseText('instanceAi.credential.continueButton')"
 							:disabled="!anySelected"
@@ -444,6 +440,7 @@ async function handleLater() {
 	padding: 0;
 	border: var(--border);
 	border-radius: var(--radius);
+	background-color: var(--color--background--light-3);
 }
 
 .header {
