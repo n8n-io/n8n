@@ -21,7 +21,12 @@ jest.mock('node:util', () => {
 	};
 });
 
-import { executeNpmCommand, verifyIntegrity, checkIfVersionExistsOrThrow } from '../npm-utils';
+import {
+	executeNpmCommand,
+	verifyIntegrity,
+	checkIfVersionExistsOrThrow,
+	getNpmConfigValue,
+} from '../npm-utils';
 import { NPM_COMMAND_TOKENS, RESPONSE_ERROR_MESSAGES } from '@/constants';
 
 describe('executeNpmCommand', () => {
@@ -765,5 +770,219 @@ describe('checkIfVersionExistsOrThrow', () => {
 			const result = await checkIfVersionExistsOrThrow(packageName, version, registryWithSlashes);
 			expect(result).toBe(true);
 		});
+	});
+});
+
+describe('getNpmConfigValue', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+		mockAsyncExec.mockReset();
+	});
+
+	afterEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('should return the trimmed value when npm config outputs a token', async () => {
+		mockAsyncExec.mockResolvedValue({ stdout: 'my-secret-token\n', stderr: '' });
+
+		const result = await getNpmConfigValue('//registry.example.com/:_authToken');
+		expect(result).toBe('my-secret-token');
+		expect(mockAsyncExec).toHaveBeenCalledWith(
+			'npm',
+			['config', 'get', '//registry.example.com/:_authToken'],
+			undefined,
+		);
+	});
+
+	it('should return undefined when npm config outputs "undefined"', async () => {
+		mockAsyncExec.mockResolvedValue({ stdout: 'undefined\n', stderr: '' });
+
+		const result = await getNpmConfigValue('//registry.example.com/:_authToken');
+		expect(result).toBeUndefined();
+	});
+
+	it('should return undefined when npm config outputs "null"', async () => {
+		mockAsyncExec.mockResolvedValue({ stdout: 'null\n', stderr: '' });
+
+		const result = await getNpmConfigValue('//registry.example.com/:_authToken');
+		expect(result).toBeUndefined();
+	});
+
+	it('should return undefined when npm command throws', async () => {
+		mockAsyncExec.mockRejectedValue(new Error('npm config error'));
+
+		const result = await getNpmConfigValue('//registry.example.com/:_authToken');
+		expect(result).toBeUndefined();
+	});
+
+	it('should return undefined when stdout is empty', async () => {
+		mockAsyncExec.mockResolvedValue({ stdout: '   \n', stderr: '' });
+
+		const result = await getNpmConfigValue('//registry.example.com/:_authToken');
+		expect(result).toBeUndefined();
+	});
+});
+
+describe('verifyIntegrity with auth token', () => {
+	const registryUrl = 'https://registry.example.com';
+	const packageName = 'test-package';
+	const version = '1.0.0';
+	const integrity = 'sha512-hash==';
+	const authToken = 'my-secret-token';
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+		mockAsyncExec.mockReset();
+	});
+
+	afterEach(() => {
+		nock.cleanAll();
+		jest.clearAllMocks();
+	});
+
+	it('should include Authorization header in axios request when authToken is provided', async () => {
+		nock(registryUrl, { reqheaders: { authorization: `Bearer ${authToken}` } })
+			.get(`/${encodeURIComponent(packageName)}/${version}`)
+			.reply(200, { dist: { integrity } });
+
+		await expect(
+			verifyIntegrity(packageName, version, registryUrl, integrity, authToken),
+		).resolves.not.toThrow();
+	});
+
+	it('should not include Authorization header when authToken is undefined', async () => {
+		nock(registryUrl)
+			.get(`/${encodeURIComponent(packageName)}/${version}`)
+			.reply(200, { dist: { integrity } });
+
+		await expect(
+			verifyIntegrity(packageName, version, registryUrl, integrity, undefined),
+		).resolves.not.toThrow();
+	});
+
+	it('should include auth token arg in npm CLI fallback when authToken is provided', async () => {
+		nock(registryUrl)
+			.get(`/${encodeURIComponent(packageName)}/${version}`)
+			.replyWithError('Network failure');
+
+		mockAsyncExec.mockResolvedValue({ stdout: JSON.stringify(integrity), stderr: '' });
+
+		await expect(
+			verifyIntegrity(packageName, version, registryUrl, integrity, authToken),
+		).resolves.not.toThrow();
+
+		expect(mockAsyncExec).toHaveBeenCalledWith(
+			'npm',
+			[
+				'view',
+				`${packageName}@${version}`,
+				'dist.integrity',
+				`--registry=${registryUrl}`,
+				'--json',
+				`--//registry.example.com/:_authToken=${authToken}`,
+			],
+			undefined,
+		);
+	});
+
+	it('should not include auth token arg in npm CLI fallback when authToken is undefined', async () => {
+		nock(registryUrl)
+			.get(`/${encodeURIComponent(packageName)}/${version}`)
+			.replyWithError('Network failure');
+
+		mockAsyncExec.mockResolvedValue({ stdout: JSON.stringify(integrity), stderr: '' });
+
+		await expect(
+			verifyIntegrity(packageName, version, registryUrl, integrity, undefined),
+		).resolves.not.toThrow();
+
+		expect(mockAsyncExec).toHaveBeenCalledWith(
+			'npm',
+			[
+				'view',
+				`${packageName}@${version}`,
+				'dist.integrity',
+				`--registry=${registryUrl}`,
+				'--json',
+			],
+			undefined,
+		);
+	});
+});
+
+describe('checkIfVersionExistsOrThrow with auth token', () => {
+	const registryUrl = 'https://registry.example.com';
+	const packageName = 'test-package';
+	const version = '1.0.0';
+	const authToken = 'my-secret-token';
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+		mockAsyncExec.mockReset();
+	});
+
+	afterEach(() => {
+		nock.cleanAll();
+		jest.clearAllMocks();
+	});
+
+	it('should include Authorization header in axios request when authToken is provided', async () => {
+		nock(registryUrl, { reqheaders: { authorization: `Bearer ${authToken}` } })
+			.get(`/${encodeURIComponent(packageName)}/${version}`)
+			.reply(200, { name: packageName, version });
+
+		const result = await checkIfVersionExistsOrThrow(packageName, version, registryUrl, authToken);
+		expect(result).toBe(true);
+	});
+
+	it('should not include Authorization header when authToken is undefined', async () => {
+		nock(registryUrl)
+			.get(`/${encodeURIComponent(packageName)}/${version}`)
+			.reply(200, { name: packageName, version });
+
+		const result = await checkIfVersionExistsOrThrow(packageName, version, registryUrl, undefined);
+		expect(result).toBe(true);
+	});
+
+	it('should include auth token arg in npm CLI fallback when authToken is provided', async () => {
+		nock(registryUrl)
+			.get(`/${encodeURIComponent(packageName)}/${version}`)
+			.replyWithError('Network failure');
+
+		mockAsyncExec.mockResolvedValue({ stdout: JSON.stringify(version), stderr: '' });
+
+		const result = await checkIfVersionExistsOrThrow(packageName, version, registryUrl, authToken);
+		expect(result).toBe(true);
+
+		expect(mockAsyncExec).toHaveBeenCalledWith(
+			'npm',
+			[
+				'view',
+				`${packageName}@${version}`,
+				'version',
+				`--registry=${registryUrl}`,
+				'--json',
+				`--//registry.example.com/:_authToken=${authToken}`,
+			],
+			undefined,
+		);
+	});
+
+	it('should not include auth token arg in npm CLI fallback when authToken is undefined', async () => {
+		nock(registryUrl)
+			.get(`/${encodeURIComponent(packageName)}/${version}`)
+			.replyWithError('Network failure');
+
+		mockAsyncExec.mockResolvedValue({ stdout: JSON.stringify(version), stderr: '' });
+
+		const result = await checkIfVersionExistsOrThrow(packageName, version, registryUrl, undefined);
+		expect(result).toBe(true);
+
+		expect(mockAsyncExec).toHaveBeenCalledWith(
+			'npm',
+			['view', `${packageName}@${version}`, 'version', `--registry=${registryUrl}`, '--json'],
+			undefined,
+		);
 	});
 });

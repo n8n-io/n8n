@@ -109,17 +109,30 @@ export async function executeNpmCommand(
 	}
 }
 
+export async function getNpmConfigValue(key: string): Promise<string | undefined> {
+	try {
+		const stdout = await executeNpmCommand(['config', 'get', key], { doNotHandleError: true });
+		const value = stdout.trim();
+		return value && value !== 'undefined' && value !== 'null' ? value : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
 export async function verifyIntegrity(
 	packageName: string,
 	version: string,
 	registryUrl: string,
 	expectedIntegrity: string,
+	authToken?: string,
 ) {
 	const url = `${sanitizeRegistryUrl(registryUrl)}/${encodeURIComponent(packageName)}`;
+	const headers = authToken ? { ['Authorization']: `Bearer ${authToken}` } : undefined;
 
 	try {
 		const metadata = await axios.get<{ dist: { integrity?: string } }>(`${url}/${version}`, {
 			timeout: REQUEST_TIMEOUT,
+			headers,
 		});
 
 		const integrity = metadata?.data?.dist?.integrity;
@@ -131,16 +144,19 @@ export async function verifyIntegrity(
 		return;
 	} catch (error) {
 		try {
-			const stdout = await executeNpmCommand(
-				[
-					'view',
-					`${packageName}@${version}`,
-					'dist.integrity',
-					`--registry=${sanitizeRegistryUrl(registryUrl)}`,
-					'--json',
-				],
-				{ doNotHandleError: true },
-			);
+			const registrySanitized = sanitizeRegistryUrl(registryUrl);
+			const cliArgs = [
+				'view',
+				`${packageName}@${version}`,
+				'dist.integrity',
+				`--registry=${registrySanitized}`,
+				'--json',
+			];
+			if (authToken) {
+				const host = new URL(registrySanitized).host;
+				cliArgs.push(`--//${host}/:_authToken=${authToken}`);
+			}
+			const stdout = await executeNpmCommand(cliArgs, { doNotHandleError: true });
 
 			const integrity = jsonParse(stdout);
 			if (integrity !== expectedIntegrity) {
@@ -166,24 +182,29 @@ export async function checkIfVersionExistsOrThrow(
 	packageName: string,
 	version: string,
 	registryUrl: string,
+	authToken?: string,
 ): Promise<true> {
-	const url = `${sanitizeRegistryUrl(registryUrl)}/${encodeURIComponent(packageName)}`;
+	const registrySanitized = sanitizeRegistryUrl(registryUrl);
+	const url = `${registrySanitized}/${encodeURIComponent(packageName)}`;
+	const headers = authToken ? { ['Authorization']: `Bearer ${authToken}` } : undefined;
 
 	try {
-		await axios.get(`${url}/${version}`, { timeout: REQUEST_TIMEOUT });
+		await axios.get(`${url}/${version}`, { timeout: REQUEST_TIMEOUT, headers });
 		return true;
 	} catch (error) {
 		try {
-			const stdout = await executeNpmCommand(
-				[
-					'view',
-					`${packageName}@${version}`,
-					'version',
-					`--registry=${sanitizeRegistryUrl(registryUrl)}`,
-					'--json',
-				],
-				{ doNotHandleError: true },
-			);
+			const cliArgs = [
+				'view',
+				`${packageName}@${version}`,
+				'version',
+				`--registry=${registrySanitized}`,
+				'--json',
+			];
+			if (authToken) {
+				const host = new URL(registrySanitized).host;
+				cliArgs.push(`--//${host}/:_authToken=${authToken}`);
+			}
+			const stdout = await executeNpmCommand(cliArgs, { doNotHandleError: true });
 
 			const versionInfo = jsonParse(stdout);
 			if (versionInfo === version) {

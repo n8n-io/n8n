@@ -30,7 +30,12 @@ import { CommunityPackagesConfig } from './community-packages.config';
 import type { CommunityPackages } from './community-packages.types';
 import { InstalledPackages } from './installed-packages.entity';
 import { InstalledPackagesRepository } from './installed-packages.repository';
-import { checkIfVersionExistsOrThrow, executeNpmCommand, verifyIntegrity } from './npm-utils';
+import {
+	checkIfVersionExistsOrThrow,
+	executeNpmCommand,
+	getNpmConfigValue,
+	verifyIntegrity,
+} from './npm-utils';
 
 const asyncExecFile = promisify(execFile);
 
@@ -371,8 +376,24 @@ export class CommunityPackagesService {
 		return registry;
 	}
 
-	private getNpmInstallArgs() {
-		return [...NPM_COMMON_ARGS, ...NPM_INSTALL_ARGS, `--registry=${this.getNpmRegistry()}`];
+	private async getNpmAuthToken(): Promise<string | undefined> {
+		const { authToken, npmConfig } = this.config;
+		if (authToken) return authToken;
+		if (npmConfig) {
+			const registryHost = new URL(this.getNpmRegistry()).host;
+			return await getNpmConfigValue(`//${registryHost}/:_authToken`);
+		}
+		return undefined;
+	}
+
+	private getNpmInstallArgs(authToken?: string): string[] {
+		const registry = this.getNpmRegistry();
+		const args = [...NPM_COMMON_ARGS, ...NPM_INSTALL_ARGS, `--registry=${registry}`];
+		if (authToken) {
+			const registryHost = new URL(registry).host;
+			args.push(`--//${registryHost}/:_authToken=${authToken}`);
+		}
+		return args;
 	}
 
 	private checkInstallPermissions(checksumProvided: boolean) {
@@ -393,14 +414,27 @@ export class CommunityPackagesService {
 		const shouldValidateChecksum = 'checksum' in options && Boolean(options.checksum);
 		this.checkInstallPermissions(shouldValidateChecksum);
 
+		const authToken = await this.getNpmAuthToken();
+
 		if (options.checksum) {
-			await verifyIntegrity(packageName, packageVersion, this.getNpmRegistry(), options.checksum);
+			await verifyIntegrity(
+				packageName,
+				packageVersion,
+				this.getNpmRegistry(),
+				options.checksum,
+				authToken,
+			);
 		}
 
-		await checkIfVersionExistsOrThrow(packageName, packageVersion, this.getNpmRegistry());
+		await checkIfVersionExistsOrThrow(
+			packageName,
+			packageVersion,
+			this.getNpmRegistry(),
+			authToken,
+		);
 
 		try {
-			await this.downloadPackage(packageName, packageVersion);
+			await this.downloadPackage(packageName, packageVersion, authToken);
 		} catch (error) {
 			if (error instanceof Error && error.message === RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND) {
 				throw new UserError('npm package not found', { extra: { packageName } });
@@ -469,7 +503,8 @@ export class CommunityPackagesService {
 	}
 
 	private async installOrUpdateNpmPackage(packageName: string, packageVersion: string) {
-		await this.downloadPackage(packageName, packageVersion);
+		const authToken = await this.getNpmAuthToken();
+		await this.downloadPackage(packageName, packageVersion, authToken);
 		await this.loadNodesAndCredentials.unloadPackage(packageName);
 		await this.loadNodesAndCredentials.loadPackage(packageName);
 		await this.loadNodesAndCredentials.postProcessLoaders();
@@ -489,7 +524,11 @@ export class CommunityPackagesService {
 		return `${this.downloadFolder}/node_modules/${packageName}`;
 	}
 
-	private async downloadPackage(packageName: string, packageVersion: string): Promise<string> {
+	private async downloadPackage(
+		packageName: string,
+		packageVersion: string,
+		authToken?: string,
+	): Promise<string> {
 		const registry = this.getNpmRegistry();
 		const packageDirectory = this.resolvePackageDirectory(packageName);
 
@@ -499,10 +538,17 @@ export class CommunityPackagesService {
 
 		// TODO: make sure that this works for scoped packages as well
 		// if (packageName.startsWith('@') && packageName.includes('/')) {}
-		const tarOutput = await executeNpmCommand(
-			['pack', `${packageName}@${packageVersion}`, `--registry=${registry}`, '--quiet'],
-			{ cwd: this.downloadFolder },
-		);
+		const packArgs = [
+			'pack',
+			`${packageName}@${packageVersion}`,
+			`--registry=${registry}`,
+			'--quiet',
+		];
+		if (authToken) {
+			const registryHost = new URL(registry).host;
+			packArgs.push(`--//${registryHost}/:_authToken=${authToken}`);
+		}
+		const tarOutput = await executeNpmCommand(packArgs, { cwd: this.downloadFolder });
 
 		const tarballName = tarOutput?.trim();
 
@@ -530,7 +576,7 @@ export class CommunityPackagesService {
 			} = JSON.parse(packageJsonContent);
 			await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
 
-			await executeNpmCommand(['install', ...this.getNpmInstallArgs()], {
+			await executeNpmCommand(['install', ...this.getNpmInstallArgs(authToken)], {
 				cwd: packageDirectory,
 			});
 			await this.updatePackageJsonDependency(packageName, packageJson.version);
