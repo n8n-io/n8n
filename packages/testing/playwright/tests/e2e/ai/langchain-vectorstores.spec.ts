@@ -41,11 +41,11 @@ test.describe(
 						const runData = exec.data?.resultData?.runData ?? {};
 						for (const [nodeName, runs] of Object.entries(runData)) {
 							const runsArr = runs as unknown[];
-							console.log(`[VM-DEBUG] ${nodeName}: ${runsArr.length} run(s)`);
+							process.stderr.write(`[VM-DEBUG] ${nodeName}: ${runsArr.length} run(s)\n`);
 						}
 					}
 				} catch (e) {
-					console.log(`[VM-DEBUG] Failed to fetch execution: ${e}`);
+					process.stderr.write(`[VM-DEBUG] Failed to fetch execution: ${e}\n`);
 				}
 
 				const assertInputOutputTextExists = async (text: string) => {
