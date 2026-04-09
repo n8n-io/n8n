@@ -24,4 +24,17 @@ export class ExecutionThread extends WithTimestampsAndStringId {
 	@Index()
 	@Column({ type: 'varchar', length: 255 })
 	projectId: string;
+
+	/** Stable, project-scoped incrementing counter assigned at creation. */
+	@Column({ type: 'int', default: 0 })
+	sessionNumber: number;
+
+	@Column({ type: 'int', default: 0 })
+	totalPromptTokens: number;
+
+	@Column({ type: 'int', default: 0 })
+	totalCompletionTokens: number;
+
+	@Column({ type: 'double precision', default: 0 })
+	totalCost: number;
 }

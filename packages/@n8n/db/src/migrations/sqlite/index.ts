@@ -154,6 +154,7 @@ import { CreateInstanceAiTables1775000000000 } from '../common/1775000000000-Cre
 import { CreateTokenExchangeJtiTable1775116241000 } from '../common/1775116241000-CreateTokenExchangeJtiTable';
 import { CreateAgentTables1776000000000 } from '../common/1776000000000-CreateAgentTables';
 import { CreateExecutionThreads1777000000000 } from '../common/1777000000000-CreateExecutionThreads';
+import { AddSessionColumnsToExecutionThreads1778000000000 } from '../common/1778000000000-AddSessionColumnsToExecutionThreads';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -313,6 +314,7 @@ const sqliteMigrations: Migration[] = [
 	CreateTokenExchangeJtiTable1775116241000,
 	CreateAgentTables1776000000000,
 	CreateExecutionThreads1777000000000,
+	AddSessionColumnsToExecutionThreads1778000000000,
 ];
 
 export { sqliteMigrations };

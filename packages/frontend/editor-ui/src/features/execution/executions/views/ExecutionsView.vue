@@ -50,7 +50,9 @@ onMounted(async () => {
 	documentTitle.set(i18n.baseText('executionsList.workflowExecutions'));
 	document.addEventListener('visibilitychange', onDocumentVisibilityChange);
 
-	await executionsStore.initialize();
+	if (route.query.view !== 'agents') {
+		await executionsStore.initialize();
+	}
 });
 
 onBeforeUnmount(() => {
@@ -69,7 +71,7 @@ async function loadWorkflows() {
 function onDocumentVisibilityChange() {
 	if (document.visibilityState === 'hidden') {
 		executionsStore.stopAutoRefreshInterval();
-	} else {
+	} else if (route.query.view !== 'agents') {
 		void executionsStore.startAutoRefreshInterval();
 	}
 }

@@ -16,7 +16,7 @@ export class ExecutionThreadRepository extends Repository<ExecutionThread> {
 
 	/**
 	 * Find an existing thread or create a new one.
-	 * Returns the thread and whether it was newly created.
+	 * On creation, assigns a stable sessionNumber scoped to the project.
 	 */
 	async findOrCreate(
 		threadId: string,
@@ -29,7 +29,14 @@ export class ExecutionThreadRepository extends Repository<ExecutionThread> {
 			return { thread: existing, created: false };
 		}
 
-		const thread = this.create({ id: threadId, agentId, agentName, projectId });
+		const maxResult = await this.createQueryBuilder('t')
+			.select('MAX(t.sessionNumber)', 'max')
+			.where('t.projectId = :projectId', { projectId })
+			.getRawOne<{ max: number | null }>();
+
+		const sessionNumber = (maxResult?.max ?? 0) + 1;
+
+		const thread = this.create({ id: threadId, agentId, agentName, projectId, sessionNumber });
 		const saved = await this.save(thread);
 		return { thread: saved, created: true };
 	}
@@ -67,5 +74,25 @@ export class ExecutionThreadRepository extends Repository<ExecutionThread> {
 	/** Bump updatedAt to now so the thread sorts to top of the list. */
 	async bumpUpdatedAt(threadId: string): Promise<void> {
 		await this.update(threadId, { updatedAt: new Date() });
+	}
+
+	/** Atomically increment token and cost counters on a thread. */
+	async incrementUsage(
+		threadId: string,
+		promptTokens: number,
+		completionTokens: number,
+		cost: number,
+	): Promise<void> {
+		await this.increment({ id: threadId }, 'totalPromptTokens', promptTokens);
+		await this.increment({ id: threadId }, 'totalCompletionTokens', completionTokens);
+		if (cost > 0) {
+			await this.increment({ id: threadId }, 'totalCost', cost);
+		}
+	}
+
+	/** Delete a thread, validating project ownership. Returns true if deleted. */
+	async deleteByIdAndProjectId(threadId: string, projectId: string): Promise<boolean> {
+		const result = await this.delete({ id: threadId, projectId });
+		return (result.affected ?? 0) > 0;
 	}
 }

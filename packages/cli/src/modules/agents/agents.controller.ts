@@ -143,6 +143,33 @@ export class AgentsController {
 		return await fetchProviderCatalog();
 	}
 
+	@Get('/threads')
+	async listThreads(
+		req: AuthenticatedRequest<{ projectId: string }, {}, {}, { cursor?: string; limit?: string }>,
+	) {
+		const limit = Math.min(Number(req.query.limit) || 20, 100);
+		return await this.agentExecutionService.getThreads(
+			req.params.projectId,
+			limit,
+			req.query.cursor,
+		);
+	}
+
+	@Get('/threads/:threadId')
+	async getThread(req: AuthenticatedRequest<{ projectId: string; threadId: string }>) {
+		return await this.agentExecutionService.getThreadExecutions(req.params.threadId);
+	}
+
+	@Delete('/threads/:threadId')
+	async deleteThread(req: AuthenticatedRequest<{ projectId: string; threadId: string }>) {
+		const { projectId, threadId } = req.params;
+		const deleted = await this.agentExecutionService.deleteThread(projectId, threadId);
+		if (!deleted) {
+			throw new NotFoundError(`Thread "${threadId}" not found`);
+		}
+		return { success: true };
+	}
+
 	@Get('/:agentId')
 	async get(
 		req: AuthenticatedRequest<{ projectId: string }>,
@@ -430,6 +457,7 @@ export class AgentsController {
 			interface RequestWithRawBody {
 				rawBody?: Buffer;
 			}
+
 			const rawBody = (req as RequestWithRawBody).rawBody;
 			if (rawBody) {
 				requestBody = rawBody.toString('utf-8');
@@ -479,27 +507,6 @@ export class AgentsController {
 		});
 		const body = await webResponse.text();
 		res.send(body);
-	}
-
-	// ---------------------------------------------------------------------------
-	// Execution threads
-	// ---------------------------------------------------------------------------
-
-	@Get('/threads')
-	async listThreads(
-		req: AuthenticatedRequest<{ projectId: string }, {}, {}, { cursor?: string; limit?: string }>,
-	) {
-		const limit = Math.min(Number(req.query.limit) || 20, 100);
-		return await this.agentExecutionService.getThreads(
-			req.params.projectId,
-			limit,
-			req.query.cursor,
-		);
-	}
-
-	@Get('/threads/:threadId')
-	async getThread(req: AuthenticatedRequest<{ projectId: string; threadId: string }>) {
-		return await this.agentExecutionService.getThreadExecutions(req.params.threadId);
 	}
 
 	// ---------------------------------------------------------------------------

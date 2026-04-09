@@ -60,25 +60,21 @@ export class AgentExecutionService {
 		const now = new Date();
 
 		const executionId = await this.executionRepository.manager.transaction(async (tx) => {
-			// Insert execution entity directly — bypasses the NOT NULL constraint on
-			// workflowId by explicitly setting it to NULL in the raw insert.
-			const result = await tx
-				.createQueryBuilder()
-				.insert()
-				.into(ExecutionEntity)
-				.values({
-					finished: true,
-					mode: 'agent',
-					status,
-					createdAt: now,
-					startedAt,
-					stoppedAt,
-					threadId,
-					storedAt: 'db',
-				} as Partial<ExecutionEntity>)
-				.execute();
+			// Use tx.insert with the entity class. The workflowId column is NOT NULL
+			// in the DB but nullable in the entity — TypeORM's insert() handles this
+			// correctly by omitting unset fields from the INSERT statement.
+			const { identifiers } = await tx.insert(ExecutionEntity, {
+				finished: true,
+				mode: 'agent',
+				status,
+				createdAt: now,
+				startedAt,
+				stoppedAt,
+				threadId,
+				storedAt: 'db' as const,
+			});
 
-			const id = String(result.identifiers[0].id);
+			const id = String(identifiers[0].id);
 
 			await tx.insert(ExecutionData, {
 				executionId: id,
@@ -118,6 +114,16 @@ export class AgentExecutionService {
 
 		await this.executionMetadataRepository.insert(metadata.map((m) => ({ ...m, executionId })));
 
+		// Atomically increment token/cost counters on the thread
+		if (record.usage) {
+			await this.executionThreadRepository.incrementUsage(
+				threadId,
+				record.usage.promptTokens,
+				record.usage.completionTokens,
+				record.totalCost ?? 0,
+			);
+		}
+
 		this.logger.debug('Recorded agent execution', {
 			executionId,
 			threadId,
@@ -127,6 +133,17 @@ export class AgentExecutionService {
 		});
 
 		return executionId;
+	}
+
+	/**
+	 * Delete a thread and all its associated executions.
+	 * No FK cascade exists on execution_entity.threadId, so we delete explicitly.
+	 */
+	async deleteThread(projectId: string, threadId: string): Promise<boolean> {
+		// Delete executions linked to this thread first
+		await this.executionRepository.delete({ threadId });
+		// Then delete the thread itself (with project ownership check)
+		return await this.executionThreadRepository.deleteByIdAndProjectId(threadId, projectId);
 	}
 
 	/**
