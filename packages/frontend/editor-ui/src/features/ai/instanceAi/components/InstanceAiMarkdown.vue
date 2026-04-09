@@ -46,11 +46,17 @@ const URL_BUILDERS: Record<string, (id: string) => string> = {
  * Only replaces names that appear as standalone words (not inside code spans
  * or existing links) and are at least 3 characters long to avoid false positives.
  */
+/** Internal XML blocks that should never render in the chat (LLM may echo them). */
+const INTERNAL_BLOCK_PATTERN =
+	/<(?:planning-blueprint|planned-task-follow-up|background-task-completed|running-tasks)[\s\S]*?<\/(?:planning-blueprint|planned-task-follow-up|background-task-completed|running-tasks)>/g;
+
 const processedContent = computed(() => {
 	const registry = store.resourceRegistry;
-	if (registry.size === 0) return props.content;
 
-	let result = props.content;
+	// Strip internal protocol blocks the LLM may have echoed
+	let result = props.content.replace(INTERNAL_BLOCK_PATTERN, '').trim();
+
+	if (registry.size === 0) return result;
 
 	// Build entries sorted longest-name-first to avoid partial-match conflicts
 	const entries = [...registry.values()]

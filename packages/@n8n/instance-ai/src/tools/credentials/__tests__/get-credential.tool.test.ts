@@ -92,5 +92,55 @@ describe('get-credential tool', () => {
 			);
 			expect(context.credentialService.get).toHaveBeenCalledWith('nonexistent');
 		});
+
+		it('includes accountIdentifier when getAccountContext is available', async () => {
+			const context = createMockContext();
+			const credential = makeCredentialDetail();
+			(context.credentialService.get as jest.Mock).mockResolvedValue(credential);
+			context.credentialService.getAccountContext = jest
+				.fn()
+				.mockResolvedValue({ accountIdentifier: 'user@example.com' });
+
+			const tool = createGetCredentialTool(context);
+			const result = (await tool.execute!({ credentialId: 'cred-123' }, {} as never)) as Record<
+				string,
+				unknown
+			>;
+
+			expect(context.credentialService.getAccountContext).toHaveBeenCalledWith('cred-123');
+			expect(result).toEqual({ ...credential, accountIdentifier: 'user@example.com' });
+		});
+
+		it('returns undefined accountIdentifier when getAccountContext returns no identifier', async () => {
+			const context = createMockContext();
+			const credential = makeCredentialDetail();
+			(context.credentialService.get as jest.Mock).mockResolvedValue(credential);
+			context.credentialService.getAccountContext = jest
+				.fn()
+				.mockResolvedValue({ accountIdentifier: undefined });
+
+			const tool = createGetCredentialTool(context);
+			const result = (await tool.execute!({ credentialId: 'cred-123' }, {} as never)) as Record<
+				string,
+				unknown
+			>;
+
+			expect(result).toEqual({ ...credential, accountIdentifier: undefined });
+		});
+
+		it('omits accountIdentifier when getAccountContext is not available', async () => {
+			const context = createMockContext();
+			const credential = makeCredentialDetail();
+			(context.credentialService.get as jest.Mock).mockResolvedValue(credential);
+
+			const tool = createGetCredentialTool(context);
+			const result = (await tool.execute!({ credentialId: 'cred-123' }, {} as never)) as Record<
+				string,
+				unknown
+			>;
+
+			expect(result).toEqual(credential);
+			expect(result).not.toHaveProperty('accountIdentifier');
+		});
 	});
 });
