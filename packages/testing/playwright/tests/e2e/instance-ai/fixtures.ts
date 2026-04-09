@@ -107,13 +107,43 @@ export const test = base.extend<InstanceAiFixtures>({
 							delete response.headers['anthropic-organization-id'];
 						}
 
-						// Strip request body entirely — matching uses method+path only.
-						// Sequential ordering (remainingTimes: 1) handles disambiguation.
+						// Keep a minimal body matcher so the proxy can distinguish
+						// between different LLM call types (title gen vs orchestrator
+						// vs sub-agent) which may arrive in different order during replay.
 						const request = expectation.httpRequest as {
-							body?: unknown;
+							body?: { type?: string; string?: string; json?: Record<string, unknown> };
 						};
-						if (request) {
-							delete request.body;
+						if (request?.body) {
+							const raw =
+								request.body.string ??
+								(request.body.json ? JSON.stringify(request.body.json) : undefined);
+							if (raw) {
+								try {
+									const parsed = JSON.parse(raw) as { system?: string | unknown[] };
+									// Extract a short substring from the system prompt to
+									// distinguish title-generation from orchestrator from sub-agent.
+									const system =
+										typeof parsed.system === 'string'
+											? parsed.system
+											: Array.isArray(parsed.system)
+												? JSON.stringify(parsed.system)
+												: undefined;
+									if (system) {
+										const snippet = system.slice(0, 80);
+										request.body = {
+											type: 'STRING',
+											string: snippet,
+											subString: true,
+										} as unknown as typeof request.body;
+									} else {
+										delete request.body;
+									}
+								} catch {
+									delete request.body;
+								}
+							} else {
+								delete request.body;
+							}
 						}
 
 						return expectation;

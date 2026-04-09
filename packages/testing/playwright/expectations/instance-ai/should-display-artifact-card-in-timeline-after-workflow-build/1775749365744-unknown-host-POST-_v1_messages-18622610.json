@@ -1,0 +1,87 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"type": "STRING",
+			"string": "[{\"type\":\"text\",\"text\":\"Generate a concise title (max 60 chars) summarizing what",
+			"subString": true
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-envoy-upstream-service-time": ["6456"],
+			"vary": ["Accept-Encoding"],
+			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
+			"set-cookie": [
+				"_cfuvid=cyZAjIrr5KQvnf21OC5msbpVMo5Wg7Tqsa4vUh.OcA4-1775749343.6799648-1.0.1.1-pckwuLBIzivDnieQNB9sq6gaqz1Om4HzJqXyBDpHV5c; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com"
+			],
+			"server-timing": ["x-originResponse;dur=6459"],
+			"request-id": ["req_011CZtTBxtaMVcFE7YKmyS8N"],
+			"cf-cache-status": ["DYNAMIC"],
+			"anthropic-ratelimit-tokens-reset": ["2026-04-09T15:42:24Z"],
+			"anthropic-ratelimit-tokens-remaining": ["17999000"],
+			"anthropic-ratelimit-tokens-limit": ["18000000"],
+			"anthropic-ratelimit-requests-reset": ["2026-04-09T15:42:23Z"],
+			"anthropic-ratelimit-requests-remaining": ["19998"],
+			"anthropic-ratelimit-requests-limit": ["20000"],
+			"anthropic-ratelimit-output-tokens-reset": ["2026-04-09T15:42:30Z"],
+			"anthropic-ratelimit-output-tokens-remaining": ["2999000"],
+			"anthropic-ratelimit-output-tokens-limit": ["3000000"],
+			"anthropic-ratelimit-input-tokens-reset": ["2026-04-09T15:42:24Z"],
+			"anthropic-ratelimit-input-tokens-remaining": ["15000000"],
+			"anthropic-ratelimit-input-tokens-limit": ["15000000"],
+			"X-Robots-Tag": ["none"],
+			"Server": ["cloudflare"],
+			"Date": ["Thu, 09 Apr 2026 15:42:30 GMT"],
+			"Content-Type": ["application/json"],
+			"Content-Security-Policy": ["default-src 'none'; frame-ancestors 'none'"],
+			"CF-RAY": ["9e9a9f15fa18e523-TXL"]
+		},
+		"cookies": {
+			"_cfuvid": "cyZAjIrr5KQvnf21OC5msbpVMo5Wg7Tqsa4vUh.OcA4-1775749343.6799648-1.0.1.1-pckwuLBIzivDnieQNB9sq6gaqz1Om4HzJqXyBDpHV5c"
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-6",
+				"id": "msg_01GKtB28Duq8PtjygkwgLKP8",
+				"type": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"type": "text",
+						"text": "Here is a simple n8n workflow with a Manual Trigger and a Set node called **\"artifact display test\"**:\n\n```json\n{\n  \"name\": \"Artifact Display Test Workflow\",\n  \"nodes\": [\n    {\n      \"parameters\": {},\n      \"id\": \"1\",\n      \"name\": \"Manual Trigger\",\n      \"type\": \"n8n-nodes-base.manualTrigger\",\n      \"typeVersion\": 1,\n      \"position\": [250, 300]\n    },\n    {\n      \"parameters\": {\n        \"values\": {\n          \"string\": [\n            {\n              \"name\": \"message\",\n              \"value\": \"Hello from artifact display test!\"\n            }\n          ]\n        },\n        \"options\": {}\n      },\n      \"id\": \"2\",\n      \"name\": \"artifact display test\",\n      \"type\": \"n8n-nodes-base.set\",\n      \"typeVersion\": 1,\n      \"position\": [450, 300]\n    }\n  ],\n  \"connections\": {\n    \"Manual Trigger\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"artifact display test\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    }\n  }\n}\n```\n\n### What this workflow does:\n1. **Manual Trigger** — Starts the workflow when you click \"Execute Workflow\" in n8n.\n2. **artifact display test** (Set node) — Sets a string field `message` with the value `\"Hello from artifact display test!\"`.\n\n### How to use:\n1. Copy the JSON above.\n2. In n8n, go to **Workflows → New**, then use the **Import** option to paste the JSON.\n3. Click **Execute Workflow** to run it."
+					}
+				],
+				"stop_reason": "end_turn",
+				"stop_sequence": null,
+				"stop_details": null,
+				"usage": {
+					"input_tokens": 136,
+					"cache_creation_input_tokens": 0,
+					"cache_read_input_tokens": 0,
+					"cache_creation": {
+						"ephemeral_5m_input_tokens": 0,
+						"ephemeral_1h_input_tokens": 0
+					},
+					"output_tokens": 435,
+					"service_tier": "standard",
+					"inference_geo": "global"
+				}
+			},
+			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC02IiwiaWQiOiJtc2dfMDFHS3RCMjhEdXE4UHRqeWdrd2dMS1A4IiwidHlwZSI6Im1lc3NhZ2UiLCJyb2xlIjoiYXNzaXN0YW50IiwiY29udGVudCI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoiSGVyZSBpcyBhIHNpbXBsZSBuOG4gd29ya2Zsb3cgd2l0aCBhIE1hbnVhbCBUcmlnZ2VyIGFuZCBhIFNldCBub2RlIGNhbGxlZCAqKlwiYXJ0aWZhY3QgZGlzcGxheSB0ZXN0XCIqKjpcblxuYGBganNvblxue1xuICBcIm5hbWVcIjogXCJBcnRpZmFjdCBEaXNwbGF5IFRlc3QgV29ya2Zsb3dcIixcbiAgXCJub2Rlc1wiOiBbXG4gICAge1xuICAgICAgXCJwYXJhbWV0ZXJzXCI6IHt9LFxuICAgICAgXCJpZFwiOiBcIjFcIixcbiAgICAgIFwibmFtZVwiOiBcIk1hbnVhbCBUcmlnZ2VyXCIsXG4gICAgICBcInR5cGVcIjogXCJuOG4tbm9kZXMtYmFzZS5tYW51YWxUcmlnZ2VyXCIsXG4gICAgICBcInR5cGVWZXJzaW9uXCI6IDEsXG4gICAgICBcInBvc2l0aW9uXCI6IFsyNTAsIDMwMF1cbiAgICB9LFxuICAgIHtcbiAgICAgIFwicGFyYW1ldGVyc1wiOiB7XG4gICAgICAgIFwidmFsdWVzXCI6IHtcbiAgICAgICAgICBcInN0cmluZ1wiOiBbXG4gICAgICAgICAgICB7XG4gICAgICAgICAgICAgIFwibmFtZVwiOiBcIm1lc3NhZ2VcIixcbiAgICAgICAgICAgICAgXCJ2YWx1ZVwiOiBcIkhlbGxvIGZyb20gYXJ0aWZhY3QgZGlzcGxheSB0ZXN0IVwiXG4gICAgICAgICAgICB9XG4gICAgICAgICAgXVxuICAgICAgICB9LFxuICAgICAgICBcIm9wdGlvbnNcIjoge31cbiAgICAgIH0sXG4gICAgICBcImlkXCI6IFwiMlwiLFxuICAgICAgXCJuYW1lXCI6IFwiYXJ0aWZhY3QgZGlzcGxheSB0ZXN0XCIsXG4gICAgICBcInR5cGVcIjogXCJuOG4tbm9kZXMtYmFzZS5zZXRcIixcbiAgICAgIFwidHlwZVZlcnNpb25cIjogMSxcbiAgICAgIFwicG9zaXRpb25cIjogWzQ1MCwgMzAwXVxuICAgIH1cbiAgXSxcbiAgXCJjb25uZWN0aW9uc1wiOiB7XG4gICAgXCJNYW51YWwgVHJpZ2dlclwiOiB7XG4gICAgICBcIm1haW5cIjogW1xuICAgICAgICBbXG4gICAgICAgICAge1xuICAgICAgICAgICAgXCJub2RlXCI6IFwiYXJ0aWZhY3QgZGlzcGxheSB0ZXN0XCIsXG4gICAgICAgICAgICBcInR5cGVcIjogXCJtYWluXCIsXG4gICAgICAgICAgICBcImluZGV4XCI6IDBcbiAgICAgICAgICB9XG4gICAgICAgIF1cbiAgICAgIF1cbiAgICB9XG4gIH1cbn1cbmBgYFxuXG4jIyMgV2hhdCB0aGlzIHdvcmtmbG93IGRvZXM6XG4xLiAqKk1hbnVhbCBUcmlnZ2VyKiog4oCUIFN0YXJ0cyB0aGUgd29ya2Zsb3cgd2hlbiB5b3UgY2xpY2sgXCJFeGVjdXRlIFdvcmtmbG93XCIgaW4gbjhuLlxuMi4gKiphcnRpZmFjdCBkaXNwbGF5IHRlc3QqKiAoU2V0IG5vZGUpIOKAlCBTZXRzIGEgc3RyaW5nIGZpZWxkIGBtZXNzYWdlYCB3aXRoIHRoZSB2YWx1ZSBgXCJIZWxsbyBmcm9tIGFydGlmYWN0IGRpc3BsYXkgdGVzdCFcImAuXG5cbiMjIyBIb3cgdG8gdXNlOlxuMS4gQ29weSB0aGUgSlNPTiBhYm92ZS5cbjIuIEluIG44biwgZ28gdG8gKipXb3JrZmxvd3Mg4oaSIE5ldyoqLCB0aGVuIHVzZSB0aGUgKipJbXBvcnQqKiBvcHRpb24gdG8gcGFzdGUgdGhlIEpTT04uXG4zLiBDbGljayAqKkV4ZWN1dGUgV29ya2Zsb3cqKiB0byBydW4gaXQuIn1dLCJzdG9wX3JlYXNvbiI6ImVuZF90dXJuIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjEzNiwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjQzNSwic2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoiZ2xvYmFsIn19"
+		}
+	},
+	"id": "1775749365744-unknown-host-POST-_v1_messages-18622610.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}

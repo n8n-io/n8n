@@ -1,0 +1,86 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"type": "STRING",
+			"string": "[{\"type\":\"text\",\"text\":\"Generate a concise title (max 60 chars) summarizing what",
+			"subString": true
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-envoy-upstream-service-time": ["6417"],
+			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
+			"set-cookie": [
+				"_cfuvid=CBRWM3ahoYUTny6gHRV03NgkkTTfqkp_Pww8SnlzYuo-1775749230.2452826-1.0.1.1-LyJEOTELqnSeYyQbBWyahMDSukbAq3djiBYYPHtrBco; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com"
+			],
+			"server-timing": ["x-originResponse;dur=6421"],
+			"request-id": ["req_011CZtT3bwH5UfDxCBaZc55R"],
+			"cf-cache-status": ["DYNAMIC"],
+			"anthropic-ratelimit-tokens-reset": ["2026-04-09T15:40:31Z"],
+			"anthropic-ratelimit-tokens-remaining": ["17999000"],
+			"anthropic-ratelimit-tokens-limit": ["18000000"],
+			"anthropic-ratelimit-requests-reset": ["2026-04-09T15:40:30Z"],
+			"anthropic-ratelimit-requests-remaining": ["19998"],
+			"anthropic-ratelimit-requests-limit": ["20000"],
+			"anthropic-ratelimit-output-tokens-reset": ["2026-04-09T15:40:36Z"],
+			"anthropic-ratelimit-output-tokens-remaining": ["2999000"],
+			"anthropic-ratelimit-output-tokens-limit": ["3000000"],
+			"anthropic-ratelimit-input-tokens-reset": ["2026-04-09T15:40:31Z"],
+			"anthropic-ratelimit-input-tokens-remaining": ["15000000"],
+			"anthropic-ratelimit-input-tokens-limit": ["15000000"],
+			"X-Robots-Tag": ["none"],
+			"Server": ["cloudflare"],
+			"Date": ["Thu, 09 Apr 2026 15:40:36 GMT"],
+			"Content-Type": ["application/json"],
+			"Content-Security-Policy": ["default-src 'none'; frame-ancestors 'none'"],
+			"CF-RAY": ["9e9a9c510bb7761f-TXL"]
+		},
+		"cookies": {
+			"_cfuvid": "CBRWM3ahoYUTny6gHRV03NgkkTTfqkp_Pww8SnlzYuo-1775749230.2452826-1.0.1.1-LyJEOTELqnSeYyQbBWyahMDSukbAq3djiBYYPHtrBco"
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-6",
+				"id": "msg_01KDGNmLfWDWX4EiwTNrot2n",
+				"type": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"type": "text",
+						"text": "Here's a simple n8n workflow with a Manual Trigger and a Set node:\n\n```json\n{\n  \"name\": \"Artifact Card Test Workflow\",\n  \"nodes\": [\n    {\n      \"parameters\": {},\n      \"id\": \"1\",\n      \"name\": \"Manual Trigger\",\n      \"type\": \"n8n-nodes-base.manualTrigger\",\n      \"typeVersion\": 1,\n      \"position\": [240, 300]\n    },\n    {\n      \"parameters\": {\n        \"assignments\": {\n          \"assignments\": [\n            {\n              \"id\": \"field1\",\n              \"name\": \"message\",\n              \"value\": \"Hello from artifact card test!\",\n              \"type\": \"string\"\n            }\n          ]\n        }\n      },\n      \"id\": \"2\",\n      \"name\": \"artifact card test\",\n      \"type\": \"n8n-nodes-base.set\",\n      \"typeVersion\": 3.4,\n      \"position\": [460, 300]\n    }\n  ],\n  \"connections\": {\n    \"Manual Trigger\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"artifact card test\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    }\n  },\n  \"active\": false,\n  \"settings\": {\n    \"executionOrder\": \"v1\"\n  }\n}\n```\n\n### What this workflow does:\n- **Manual Trigger** — Starts the workflow when you click *\"Execute Workflow\"*\n- **artifact card test** (Set node) — Sets a single field `message` with the value `\"Hello from artifact card test!\"`\n\n### To use it:\n1. Copy the JSON above\n2. In n8n, go to **Workflows → Import from JSON**\n3. Paste and save\n4. Click **Execute Workflow** to run it\n\nYou can add more fields in the Set node or connect additional nodes after it as needed!"
+					}
+				],
+				"stop_reason": "end_turn",
+				"stop_sequence": null,
+				"stop_details": null,
+				"usage": {
+					"input_tokens": 136,
+					"cache_creation_input_tokens": 0,
+					"cache_read_input_tokens": 0,
+					"cache_creation": {
+						"ephemeral_5m_input_tokens": 0,
+						"ephemeral_1h_input_tokens": 0
+					},
+					"output_tokens": 477,
+					"service_tier": "standard",
+					"inference_geo": "global"
+				}
+			},
+			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC02IiwiaWQiOiJtc2dfMDFLREdObUxmV0RXWDRFaXdUTnJvdDJuIiwidHlwZSI6Im1lc3NhZ2UiLCJyb2xlIjoiYXNzaXN0YW50IiwiY29udGVudCI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoiSGVyZSdzIGEgc2ltcGxlIG44biB3b3JrZmxvdyB3aXRoIGEgTWFudWFsIFRyaWdnZXIgYW5kIGEgU2V0IG5vZGU6XG5cbmBgYGpzb25cbntcbiAgXCJuYW1lXCI6IFwiQXJ0aWZhY3QgQ2FyZCBUZXN0IFdvcmtmbG93XCIsXG4gIFwibm9kZXNcIjogW1xuICAgIHtcbiAgICAgIFwicGFyYW1ldGVyc1wiOiB7fSxcbiAgICAgIFwiaWRcIjogXCIxXCIsXG4gICAgICBcIm5hbWVcIjogXCJNYW51YWwgVHJpZ2dlclwiLFxuICAgICAgXCJ0eXBlXCI6IFwibjhuLW5vZGVzLWJhc2UubWFudWFsVHJpZ2dlclwiLFxuICAgICAgXCJ0eXBlVmVyc2lvblwiOiAxLFxuICAgICAgXCJwb3NpdGlvblwiOiBbMjQwLCAzMDBdXG4gICAgfSxcbiAgICB7XG4gICAgICBcInBhcmFtZXRlcnNcIjoge1xuICAgICAgICBcImFzc2lnbm1lbnRzXCI6IHtcbiAgICAgICAgICBcImFzc2lnbm1lbnRzXCI6IFtcbiAgICAgICAgICAgIHtcbiAgICAgICAgICAgICAgXCJpZFwiOiBcImZpZWxkMVwiLFxuICAgICAgICAgICAgICBcIm5hbWVcIjogXCJtZXNzYWdlXCIsXG4gICAgICAgICAgICAgIFwidmFsdWVcIjogXCJIZWxsbyBmcm9tIGFydGlmYWN0IGNhcmQgdGVzdCFcIixcbiAgICAgICAgICAgICAgXCJ0eXBlXCI6IFwic3RyaW5nXCJcbiAgICAgICAgICAgIH1cbiAgICAgICAgICBdXG4gICAgICAgIH1cbiAgICAgIH0sXG4gICAgICBcImlkXCI6IFwiMlwiLFxuICAgICAgXCJuYW1lXCI6IFwiYXJ0aWZhY3QgY2FyZCB0ZXN0XCIsXG4gICAgICBcInR5cGVcIjogXCJuOG4tbm9kZXMtYmFzZS5zZXRcIixcbiAgICAgIFwidHlwZVZlcnNpb25cIjogMy40LFxuICAgICAgXCJwb3NpdGlvblwiOiBbNDYwLCAzMDBdXG4gICAgfVxuICBdLFxuICBcImNvbm5lY3Rpb25zXCI6IHtcbiAgICBcIk1hbnVhbCBUcmlnZ2VyXCI6IHtcbiAgICAgIFwibWFpblwiOiBbXG4gICAgICAgIFtcbiAgICAgICAgICB7XG4gICAgICAgICAgICBcIm5vZGVcIjogXCJhcnRpZmFjdCBjYXJkIHRlc3RcIixcbiAgICAgICAgICAgIFwidHlwZVwiOiBcIm1haW5cIixcbiAgICAgICAgICAgIFwiaW5kZXhcIjogMFxuICAgICAgICAgIH1cbiAgICAgICAgXVxuICAgICAgXVxuICAgIH1cbiAgfSxcbiAgXCJhY3RpdmVcIjogZmFsc2UsXG4gIFwic2V0dGluZ3NcIjoge1xuICAgIFwiZXhlY3V0aW9uT3JkZXJcIjogXCJ2MVwiXG4gIH1cbn1cbmBgYFxuXG4jIyMgV2hhdCB0aGlzIHdvcmtmbG93IGRvZXM6XG4tICoqTWFudWFsIFRyaWdnZXIqKiDigJQgU3RhcnRzIHRoZSB3b3JrZmxvdyB3aGVuIHlvdSBjbGljayAqXCJFeGVjdXRlIFdvcmtmbG93XCIqXG4tICoqYXJ0aWZhY3QgY2FyZCB0ZXN0KiogKFNldCBub2RlKSDigJQgU2V0cyBhIHNpbmdsZSBmaWVsZCBgbWVzc2FnZWAgd2l0aCB0aGUgdmFsdWUgYFwiSGVsbG8gZnJvbSBhcnRpZmFjdCBjYXJkIHRlc3QhXCJgXG5cbiMjIyBUbyB1c2UgaXQ6XG4xLiBDb3B5IHRoZSBKU09OIGFib3ZlXG4yLiBJbiBuOG4sIGdvIHRvICoqV29ya2Zsb3dzIOKGkiBJbXBvcnQgZnJvbSBKU09OKipcbjMuIFBhc3RlIGFuZCBzYXZlXG40LiBDbGljayAqKkV4ZWN1dGUgV29ya2Zsb3cqKiB0byBydW4gaXRcblxuWW91IGNhbiBhZGQgbW9yZSBmaWVsZHMgaW4gdGhlIFNldCBub2RlIG9yIGNvbm5lY3QgYWRkaXRpb25hbCBub2RlcyBhZnRlciBpdCBhcyBuZWVkZWQhIn1dLCJzdG9wX3JlYXNvbiI6ImVuZF90dXJuIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjEzNiwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjQ3Nywic2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoiZ2xvYmFsIn19"
+		}
+	},
+	"id": "1775749250448-unknown-host-POST-_v1_messages-18622610.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}
