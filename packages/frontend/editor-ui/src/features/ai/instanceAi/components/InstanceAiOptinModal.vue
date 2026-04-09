@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, onUnmounted, onMounted } from 'vue';
+import { computed, ref, onUnmounted, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { N8nButton, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -8,6 +8,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
+import { canManageInstanceAi } from '../instanceAiPermissions';
 import MacOsIcon from '../assets/os-icons/macos-icon.svg';
 import WindowsIcon from '../assets/os-icons/windows-icon.svg';
 import LinuxIcon from '../assets/os-icons/linux-icon.svg';
@@ -139,7 +140,20 @@ async function copyCommand() {
 	}
 }
 
+watch(
+	() => canManageInstanceAi(),
+	(allowed) => {
+		if (!allowed) {
+			uiStore.closeModal(props.modalName);
+		}
+	},
+);
+
 onMounted(() => {
+	if (!canManageInstanceAi()) {
+		uiStore.closeModal(props.modalName);
+		return;
+	}
 	telemetry.track('n8n Agent opt-in modal shown');
 });
 

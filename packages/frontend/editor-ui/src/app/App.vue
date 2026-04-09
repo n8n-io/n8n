@@ -13,6 +13,7 @@ import { useTelemetryInitializer } from '@/app/composables/useTelemetryInitializ
 import { useWorkflowDiffRouting } from '@/app/composables/useWorkflowDiffRouting';
 import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@/app/constants';
 import { INSTANCE_AI_OPTIN_MODAL_KEY } from '@/app/constants/modals';
+import { canManageInstanceAi } from '@/features/ai/instanceAi/instanceAiPermissions';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -73,7 +74,7 @@ watch(route, (r) => {
 	);
 });
 
-// Instance AI opt-in modal, shown until dismissed (dismissal persisted in admin settings)
+// Assistant AI opt-in modal: admins only, until dismissed
 watch(
 	() => {
 		const moduleLoaded = settingsStore.moduleSettings['instance-ai'] !== undefined;
@@ -81,7 +82,8 @@ watch(
 			moduleLoaded &&
 			settingsStore.isModuleActive('instance-ai') &&
 			route.meta.layout !== 'auth' &&
-			!settingsStore.moduleSettings['instance-ai']?.optinModalDismissed
+			!settingsStore.moduleSettings['instance-ai']?.optinModalDismissed &&
+			canManageInstanceAi()
 		);
 	},
 	(shouldShow) => {

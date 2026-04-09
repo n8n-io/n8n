@@ -1,7 +1,7 @@
 import { i18n } from '@n8n/i18n';
 import type { FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
-import { hasPermission } from '@/app/utils/rbac/permissions';
 import { INSTANCE_AI_OPTIN_MODAL_KEY } from '@/app/constants/modals';
+import { canManageInstanceAi } from '@/features/ai/instanceAi/instanceAiPermissions';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_SETTINGS_VIEW } from './constants';
 
 const InstanceAiView = async () => await import('./InstanceAiView.vue');
@@ -64,7 +64,7 @@ export const InstanceAiModule: FrontendModuleDescription = {
 			position: 'top',
 			route: { to: { name: INSTANCE_AI_SETTINGS_VIEW } },
 			get available() {
-				return hasPermission(['rbac'], { rbac: { scope: 'instanceAi:manage' } });
+				return canManageInstanceAi();
 			},
 		},
 	],
