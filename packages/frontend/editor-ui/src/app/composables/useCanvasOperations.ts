@@ -2899,7 +2899,7 @@ export function useCanvasOperations() {
 		return result.nodes?.map((node) => node.id).filter(isPresent) ?? [];
 	}
 
-	async function copyNodes(ids: string[]) {
+	async function copyNodes(ids: string[]): Promise<WorkflowData> {
 		const workflowData = deepCopy(
 			getNodesToSave(workflowDocumentStore?.value?.getNodesByIds(ids) ?? []),
 		);
@@ -2916,6 +2916,8 @@ export function useCanvasOperations() {
 			node_types: workflowData.nodes.map((node) => node.type),
 			workflow_id: workflowsStore.workflowId,
 		});
+
+		return workflowData;
 	}
 
 	async function cutNodes(ids: string[]) {

@@ -2,8 +2,10 @@
 import {
 	computed,
 	defineAsyncComponent,
+	defineComponent,
 	nextTick,
 	onMounted,
+	reactive,
 	ref,
 	useCssModule,
 	watch,
@@ -65,6 +67,11 @@ import {
 	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
 	HUMAN_IN_THE_LOOP_CATEGORY,
 } from '@/app/constants';
+import {
+	useBundleImport,
+	getWorkflowIdFromNode,
+	getDataTableIdFromNode,
+} from '@/app/composables/useBundleImport';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
@@ -137,7 +144,12 @@ import { useCollaborationStore } from '@/features/collaboration/collaboration/co
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
-import { N8nCallout, N8nCanvasThinkingPill, N8nCanvasCollaborationPill } from '@n8n/design-system';
+import {
+	N8nCallout,
+	N8nCanvasThinkingPill,
+	N8nCanvasCollaborationPill,
+	N8nSpinner,
+} from '@n8n/design-system';
 
 defineOptions({
 	name: 'NodeView',
@@ -176,6 +188,7 @@ const workflowSaving = useWorkflowSaving({
 });
 const nodeHelpers = useNodeHelpers();
 const clipboard = useClipboard({ onPaste: onClipboardPaste });
+const bundleImport = useBundleImport();
 
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
@@ -508,9 +521,96 @@ function onSetNodeSelected(id?: string) {
 }
 
 async function onCopyNodes(ids: string[]) {
-	await copyNodes(ids);
+	const copiedWorkflowData = await copyNodes(ids);
 
-	toast.showMessage({ title: i18n.baseText('generic.copiedToClipboard'), type: 'success' });
+	const nodes = workflowDocumentStore?.value?.getNodesByIds(ids) ?? [];
+	const { subWorkflowCount, dataTableCount } = countBundleResources(nodes);
+
+	if ((subWorkflowCount > 0 || dataTableCount > 0) && workflowsStore.workflowId) {
+		// Eagerly fetch the bundle so it's ready when the user clicks
+		const bundlePromise = bundleImport.fetchWorkflowBundle(workflowsStore.workflowId);
+		const mainWorkflow = {
+			name: workflowDocumentStore?.value?.name ?? '',
+			nodes: copiedWorkflowData.nodes,
+			connections: copiedWorkflowData.connections,
+			pinData: copiedWorkflowData.pinData,
+			meta: copiedWorkflowData.meta,
+		};
+
+		const linkText = getBundleIncludeText(subWorkflowCount, dataTableCount);
+		const state = reactive({ loading: false });
+
+		const BundleLinkMessage = defineComponent({
+			setup() {
+				return () =>
+					state.loading
+						? h('span', { style: 'display: inline-flex; align-items: center; gap: 4px;' }, [
+								h(N8nSpinner, { size: 'small' }),
+								i18n.baseText('generic.copiedToClipboard.bundleCopying'),
+							])
+						: h('a', { style: 'color: var(--color--primary); cursor: pointer;' }, linkText);
+			},
+		});
+
+		const notification = toast.showToast({
+			title: i18n.baseText('generic.copiedToClipboard'),
+			message: h(BundleLinkMessage),
+			type: 'success',
+			duration: 0,
+			onClick: () => {
+				if (state.loading) return;
+				state.loading = true;
+				void bundlePromise
+					.then(async (bundle) => {
+						await bundleImport.writeScopedBundleToClipboard(bundle, nodes, mainWorkflow);
+					})
+					.catch((error) => {
+						toast.showError(error, i18n.baseText('workflowBundle.copy.error'));
+					})
+					.finally(() => {
+						notification.close();
+					});
+			},
+		});
+	} else {
+		toast.showMessage({ title: i18n.baseText('generic.copiedToClipboard'), type: 'success' });
+	}
+}
+
+function countBundleResources(
+	nodes: Array<{ type: string; parameters?: Record<string, unknown> }>,
+) {
+	const seenWorkflowIds = new Set<string>();
+	const seenDataTableIds = new Set<string>();
+
+	for (const node of nodes) {
+		const wfId = getWorkflowIdFromNode(node);
+		if (wfId) seenWorkflowIds.add(wfId);
+
+		const dtId = getDataTableIdFromNode(node);
+		if (dtId) seenDataTableIds.add(dtId);
+	}
+
+	return { subWorkflowCount: seenWorkflowIds.size, dataTableCount: seenDataTableIds.size };
+}
+
+function getBundleIncludeText(subWorkflowCount: number, dataTableCount: number): string {
+	if (subWorkflowCount > 0 && dataTableCount > 0) {
+		return i18n.baseText('generic.copiedToClipboard.includeBundleAll', {
+			interpolate: {
+				subWorkflows: String(subWorkflowCount),
+				dataTables: String(dataTableCount),
+			},
+		});
+	}
+	if (subWorkflowCount > 0) {
+		return i18n.baseText('generic.copiedToClipboard.includeBundleSubWorkflows', {
+			interpolate: { subWorkflows: String(subWorkflowCount) },
+		});
+	}
+	return i18n.baseText('generic.copiedToClipboard.includeBundleDataTables', {
+		interpolate: { dataTables: String(dataTableCount) },
+	});
 }
 
 async function onClipboardPaste(plainTextData: string): Promise<void> {
@@ -519,6 +619,13 @@ async function onClipboardPaste(plainTextData: string): Promise<void> {
 		!keyBindingsEnabled.value ||
 		!checkIfEditingIsAllowed()
 	) {
+		return;
+	}
+
+	// Check if it is a workflow bundle
+	const bundle = bundleImport.parseBundleData(plainTextData);
+	if (bundle) {
+		await onPasteBundle(bundle);
 		return;
 	}
 
@@ -563,6 +670,88 @@ async function onClipboardPaste(plainTextData: string): Promise<void> {
 	const ids = result.nodes?.map((node) => node.id) ?? [];
 
 	canvasRef.value?.ensureNodesAreVisible(ids);
+}
+
+async function onPasteBundle(bundle: NonNullable<ReturnType<typeof bundleImport.parseBundleData>>) {
+	const { mainWorkflow, subWorkflows, dataTableSchemas } = bundle;
+
+	// Paste the main workflow nodes onto the canvas
+	const workflowData: WorkflowDataUpdate = {
+		nodes: mainWorkflow.nodes,
+		connections: mainWorkflow.connections,
+		pinData: mainWorkflow.pinData ?? {},
+	};
+
+	const result = await importWorkflowData(workflowData, 'paste', {
+		importTags: false,
+		viewport: viewportBoundaries.value,
+	});
+	const nodeIds = result.nodes?.map((node) => node.id) ?? [];
+	canvasRef.value?.ensureNodesAreVisible(nodeIds);
+
+	const subWorkflowCount = Object.keys(subWorkflows).length;
+	const dataTableCount = dataTableSchemas.length;
+	const hasResources = subWorkflowCount > 0 || dataTableCount > 0;
+
+	if (hasResources) {
+		const linkText = getPasteOfferText(subWorkflowCount, dataTableCount);
+		const state = reactive({ loading: false });
+
+		const PasteBundleLinkMessage = defineComponent({
+			setup() {
+				return () =>
+					state.loading
+						? h('span', { style: 'display: inline-flex; align-items: center; gap: 4px;' }, [
+								h(N8nSpinner, { size: 'small' }),
+								i18n.baseText('generic.pasteBundle.importing'),
+							])
+						: h('a', { style: 'color: var(--color--primary); cursor: pointer;' }, linkText);
+			},
+		});
+
+		const notification = toast.showToast({
+			title: i18n.baseText('workflowBundle.paste.success'),
+			message: h(PasteBundleLinkMessage),
+			type: 'info',
+			duration: 0,
+			onClick: () => {
+				if (state.loading) return;
+				state.loading = true;
+				void bundleImport
+					.importBundleResourcesOnCanvas(
+						bundle,
+						projectsStore.currentProjectId ?? projectsStore.personalProject?.id ?? '',
+						result.nodes ?? [],
+						{
+							getNodeById: (id: string) => workflowDocumentStore?.value?.getNodeById(id),
+							setNodeParameters,
+						},
+					)
+					.finally(() => {
+						notification.close();
+					});
+			},
+		});
+	}
+}
+
+function getPasteOfferText(subWorkflowCount: number, dataTableCount: number): string {
+	if (subWorkflowCount > 0 && dataTableCount > 0) {
+		return i18n.baseText('generic.pasteBundle.offerResourcesAll', {
+			interpolate: {
+				subWorkflows: String(subWorkflowCount),
+				dataTables: String(dataTableCount),
+			},
+		});
+	}
+	if (subWorkflowCount > 0) {
+		return i18n.baseText('generic.pasteBundle.offerResourcesSubWorkflows', {
+			interpolate: { subWorkflows: String(subWorkflowCount) },
+		});
+	}
+	return i18n.baseText('generic.pasteBundle.offerResourcesDataTables', {
+		interpolate: { dataTables: String(dataTableCount) },
+	});
 }
 
 async function onCutNodes(ids: string[]) {
