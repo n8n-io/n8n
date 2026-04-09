@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, withDefaults } from 'vue';
+import { computed, onMounted } from 'vue';
 import { N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRBACStore } from '@/app/stores/rbac.store';
