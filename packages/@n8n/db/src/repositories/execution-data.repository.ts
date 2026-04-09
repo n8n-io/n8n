@@ -37,8 +37,10 @@ export class ExecutionDataRepository extends Repository<ExecutionData> {
 		if (executionIds.length === 0) return;
 
 		const executionIdBatches = chunk(executionIds, BATCH_SIZE);
-		for (const batch of executionIdBatches) {
-			await this.delete({ executionId: In(batch) });
-		}
+		await this.manager.transaction(async (transactionManager) => {
+			for (const batch of executionIdBatches) {
+				await transactionManager.delete(ExecutionData, { executionId: In(batch) });
+			}
+		});
 	}
 }
