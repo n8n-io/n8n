@@ -1,5 +1,9 @@
 node_modules
+.pnpm-store/
+dist/
+*.log
 .DS_Store
+.pnpm-debug.log
 .tmp
 tmp
 dist

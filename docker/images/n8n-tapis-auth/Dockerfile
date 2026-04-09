@@ -1,33 +1,45 @@
-FROM node:23
+FROM node:23-bookworm
 
 RUN apt-get update && apt-get install -y \
     python3 make g++ tini \
     && rm -rf /var/lib/apt/lists/*
 
-# 1. Pre-Install pnpm to Corepack doesn't ask on run and block the process
+# 1. Habilitar corepack y preparar pnpm
 RUN corepack enable && corepack prepare pnpm@10.22.0 --activate
 
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml ./
+# 2. Copiar primero archivos de configuración para aprovechar el caché de capas
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+
+# 3. Copiar el resto del código (Asegúrate de tener el .dockerignore configurado)
 COPY . .
 
-# 2. Install and Build
-RUN rm -rf node_modules && CI=true pnpm install
+# 4. Instalación de dependencias
+# CI=true evita prompts interactivos y optimiza la instalación
+RUN CI=true pnpm install
+
+# 5. FIX: Instalar tipos de 'psl' explícitamente para solucionar el error de TS2688
+# Lo añadimos al workspace para que esté disponible durante el build de turbo
+RUN pnpm add -Dw @types/psl && \
+    pnpm add -w esbuild@0.25.0 @esbuild/linux-x64
+
+# 6. Build de todos los paquetes del monorepo
 RUN pnpm build
 
-# 3. Create Tapis configuration
+# 7. Configuración específica de Tapis (n8n-tapis-auth)
 RUN mkdir -p /app/packages/cli/bin && \
     echo "TAPIS_BASE_URL = 'https://portals.tapis.io'" > /app/packages/cli/bin/.env.tapis && \
     echo "TAPIS_AUTH_ENDPOINT = '/v3/oauth2/tokens'" >> /app/packages/cli/bin/.env.tapis
 
-# 4. Make sure n8n directory exists to prevent for Encryption key
+# 8. Preparar directorio de datos y permisos
 RUN mkdir -p /home/node/.n8n && chown -R node:node /home/node /app
+ENV NODE_OPTIONS="--max-old-space-size=8192"
+
 
 EXPOSE 5678
 USER node
 
-# 5. Clean run command
 ENTRYPOINT ["tini", "--"]
 CMD ["pnpm", "start"]
 

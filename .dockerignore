@@ -49,5 +49,5 @@ packages/*/node_modules
 .turbo
 .git
 *.log
-
+.pnpm-store
 
