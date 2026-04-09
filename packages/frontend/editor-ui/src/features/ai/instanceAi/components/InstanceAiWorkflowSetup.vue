@@ -1073,7 +1073,7 @@ async function handleLater() {
 			<div
 				v-else-if="currentCard"
 				data-test-id="instance-ai-workflow-setup-card"
-				:class="[$style.card, { [$style.completed]: isCardComplete(currentCard) }]"
+				:class="$style.card"
 			>
 				<!-- Header -->
 				<header :class="$style.header">
@@ -1310,10 +1310,6 @@ async function handleLater() {
 	padding: 0;
 	border: var(--border);
 	border-radius: var(--radius);
-
-	&.completed {
-		border-color: var(--color--success);
-	}
 }
 
 .confirmCard {
@@ -1323,7 +1319,6 @@ async function handleLater() {
 	gap: var(--spacing--sm);
 	padding: 0;
 	border: var(--border);
-	border-color: var(--color--success);
 	border-radius: var(--radius);
 }
 

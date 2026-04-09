@@ -309,7 +309,7 @@ async function handleLater() {
 			<div
 				v-if="currentRequest"
 				data-test-id="instance-ai-credential-card"
-				:class="[$style.card, { [$style.completed]: allSelected }]"
+				:class="$style.card"
 			>
 				<!-- Header -->
 				<header :class="$style.header">
@@ -444,10 +444,6 @@ async function handleLater() {
 	padding: 0;
 	border: var(--border);
 	border-radius: var(--radius);
-
-	&.completed {
-		border-color: var(--color--success);
-	}
 }
 
 .header {

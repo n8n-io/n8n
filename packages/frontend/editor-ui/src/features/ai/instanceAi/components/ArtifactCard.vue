@@ -46,7 +46,7 @@ function handleClick(e: MouseEvent) {
 </script>
 
 <template>
-	<N8nCard hoverable :class="$style.card" @click="handleClick">
+	<N8nCard :class="$style.card" @click="handleClick">
 		<template #prepend>
 			<N8nIcon :icon="icon" size="large" :class="$style.icon" />
 		</template>
@@ -60,6 +60,11 @@ function handleClick(e: MouseEvent) {
 <style lang="scss" module>
 .card {
 	cursor: pointer;
+	transition: box-shadow 0.3s ease;
+
+	&:hover {
+		box-shadow: var(--shadow--card-hover);
+	}
 }
 
 .icon {
