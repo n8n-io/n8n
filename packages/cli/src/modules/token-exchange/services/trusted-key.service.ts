@@ -8,7 +8,6 @@ import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators'
 import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import { In, Not } from '@n8n/typeorm';
-import type { Algorithm } from 'jsonwebtoken';
 import { InstanceSettings } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import { z } from 'zod';
@@ -168,12 +167,12 @@ export class TrustedKeyService {
 
 			if (data.issuer !== issuer) continue;
 
-			const cryptoKey = this.resolveCryptoKey(kid, data.keyMaterial);
+			const cryptoKey = this.resolveCryptoKey(`${entity.sourceId}:${kid}`, data.keyMaterial);
 			if (!cryptoKey) continue;
 
 			return {
 				kid,
-				algorithms: data.algorithms as Algorithm[],
+				algorithms: data.algorithms,
 				key: cryptoKey,
 				issuer: data.issuer,
 				expectedAudience: data.expectedAudience,
@@ -347,7 +346,9 @@ export class TrustedKeyService {
 	private async refreshSourceInternal(source: TrustedKeySourceEntity): Promise<void> {
 		try {
 			await this.dbLockService.withLock(DbLock.TRUSTED_KEY_REFRESH, async (tx) => {
-				await this.refreshSourceWithinTransaction(source, tx);
+				const freshSource = await tx.findOneBy(TrustedKeySourceEntity, { id: source.id });
+				if (!freshSource) return;
+				await this.refreshSourceWithinTransaction(freshSource, tx);
 			});
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
@@ -514,9 +515,9 @@ export class TrustedKeyService {
 
 	// ─── Private: crypto cache ─────────────────────────────────────────
 
-	private resolveCryptoKey(kid: string, keyMaterial: string): KeyObject | undefined {
+	private resolveCryptoKey(cacheKey: string, keyMaterial: string): KeyObject | undefined {
 		const hash = createHash('sha256').update(keyMaterial).digest('hex');
-		const cached = this.cryptoCache.get(kid);
+		const cached = this.cryptoCache.get(cacheKey);
 
 		if (cached && cached.keyMaterialHash === hash) {
 			return cached.cryptoKey;
@@ -524,11 +525,11 @@ export class TrustedKeyService {
 
 		try {
 			const cryptoKey = createPublicKey(keyMaterial);
-			this.cryptoCache.set(kid, { keyMaterialHash: hash, cryptoKey });
+			this.cryptoCache.set(cacheKey, { keyMaterialHash: hash, cryptoKey });
 			return cryptoKey;
 		} catch (error) {
 			this.logger.warn('Failed to parse key material from DB', {
-				kid,
+				cacheKey,
 				error: error instanceof Error ? error.message : String(error),
 			});
 			return undefined;

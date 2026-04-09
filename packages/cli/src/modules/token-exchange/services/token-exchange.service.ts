@@ -69,7 +69,8 @@ export class TokenExchangeService {
 		let payload: jwt.JwtPayload;
 		try {
 			const result = jwt.verify(subjectToken, resolvedKey.key, {
-				algorithms: resolvedKey.algorithms,
+				// EdDSA is valid at runtime but missing from @types/jsonwebtoken
+				algorithms: resolvedKey.algorithms as jwt.Algorithm[],
 				issuer: resolvedKey.issuer,
 				audience: resolvedKey.expectedAudience,
 			});

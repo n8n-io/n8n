@@ -1,4 +1,4 @@
-import type { Algorithm, Secret } from 'jsonwebtoken';
+import type { Secret } from 'jsonwebtoken';
 import { z } from 'zod';
 
 /** RFC 8693 grant type URN for token exchange */
@@ -102,7 +102,7 @@ export interface ResolvedTrustedKey {
 	kid: string;
 
 	/** Allowed signing algorithms for tokens using this key. */
-	algorithms: Algorithm[];
+	algorithms: JwtAlgorithm[];
 
 	/** The resolved key material, ready to pass to `jwt.verify()`. */
 	key: Secret;
