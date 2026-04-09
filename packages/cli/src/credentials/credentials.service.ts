@@ -1056,9 +1056,14 @@ export class CredentialsService {
 
 	async getCredentialScopes(user: User, credentialId: string): Promise<Scope[]> {
 		const userProjectRelations = await this.projectService.getProjectRelationsForUser(user);
+		const projectIds = [...new Set(userProjectRelations.map((pr) => pr.projectId))];
+		// Postgres rejects `IN ()`; SQLite tolerates it. Skip the query when there is no project scope.
+		if (projectIds.length === 0) {
+			return this.roleService.combineResourceScopes('credential', user, [], userProjectRelations);
+		}
 		const shared = await this.sharedCredentialsRepository.find({
 			where: {
-				projectId: In([...new Set(userProjectRelations.map((pr) => pr.projectId))]),
+				projectId: In(projectIds),
 				credentialsId: credentialId,
 			},
 		});
