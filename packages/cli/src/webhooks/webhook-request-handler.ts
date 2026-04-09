@@ -25,6 +25,7 @@ import type {
 	WebhookOptionsRequest,
 	WebhookRequest,
 } from '@/webhooks/webhook.types';
+import { isWebhookOrWebhookOptionsRequest } from './webhook-helpers';
 
 const WEBHOOK_METHODS: IHttpRequestMethods[] = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
 
@@ -235,11 +236,14 @@ export function createWebhookHandlerFor(webhookManager: IWebhookManager): expres
 	const handler = new WebhookRequestHandler(webhookManager);
 
 	return async (req, res) => {
-		const webhookReq = req as WebhookRequest | WebhookOptionsRequest;
-		const { params } = webhookReq;
+		if (!isWebhookOrWebhookOptionsRequest(req)) {
+			return;
+		}
+
+		const { params } = req;
 		if (Array.isArray(params.path)) {
 			params.path = params.path.join('/');
 		}
-		await handler.handleRequest(webhookReq, res);
+		await handler.handleRequest(req, res);
 	};
 }

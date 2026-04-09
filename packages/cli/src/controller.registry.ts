@@ -220,17 +220,12 @@ export class ControllerRegistry {
 
 	private createScopedMiddleware(accessScope: AccessScope): RequestHandler {
 		return async (req, res, next) => {
-			const authReq = req as AuthenticatedRequest<{
-				credentialId?: string;
-				workflowId?: string;
-				projectId?: string;
-			}>;
-			if (!authReq.user) throw new UnauthenticatedError();
+			if (!req.user) throw new UnauthenticatedError();
 
 			const { scope, globalOnly } = accessScope;
 
 			try {
-				if (!(await userHasScopes(authReq.user, [scope], globalOnly, authReq.params))) {
+				if (!(await userHasScopes(req.user, [scope], globalOnly, req.params))) {
 					res.status(403).json({
 						status: 'error',
 						message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE,

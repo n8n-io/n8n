@@ -10,7 +10,6 @@ import {
 	allowedExecutionsQueryFilterFields as ALLOWED_FILTER_FIELDS,
 	schemaGetExecutionsQueryFilter as SCHEMA,
 } from './execution.service';
-import type { ExecutionRequest } from './execution.types';
 
 const isValid = (arg: JsonObject) => validate(arg, SCHEMA).valid;
 
@@ -18,16 +17,18 @@ const isValid = (arg: JsonObject) => validate(arg, SCHEMA).valid;
  * Middleware to parse the query string in a request to retrieve a range of execution summaries.
  */
 export const parseRangeQuery = (req: Request, res: Response, next: NextFunction) => {
-	const { limit, firstId, lastId } = req.query as Partial<ExecutionRequest.QueryParams.GetMany>;
+	const { limit, firstId, lastId } = req.query;
 
 	try {
 		req.rangeQuery = {
 			kind: 'range',
-			range: { limit: limit ? Math.min(parseInt(limit, 10), 100) : 20 },
+			range: {
+				limit: limit && typeof limit === 'string' ? Math.min(parseInt(limit, 10), 100) : 20,
+			},
 		};
 
-		if (firstId) req.rangeQuery.range.firstId = firstId;
-		if (lastId) req.rangeQuery.range.lastId = lastId;
+		if (firstId && typeof firstId === 'string') req.rangeQuery.range.firstId = firstId;
+		if (lastId && typeof lastId === 'string') req.rangeQuery.range.lastId = lastId;
 
 		if (typeof req.query.filter === 'string') {
 			const jsonFilter = jsonParse<JsonObject>(req.query.filter, {

@@ -1,26 +1,33 @@
 import type { RequestHandler } from 'express';
 import { UnexpectedError } from 'n8n-workflow';
 
-import type { ListQuery } from '@/requests';
+import { isListQueryRequest } from '@/requests';
 import * as ResponseHelper from '@/response-helper';
 import { toError } from '@/utils';
 
 import { Pagination } from './dtos/pagination.dto';
 
 export const paginationListQueryMiddleware: RequestHandler = (req, res, next) => {
-	const listQueryReq = req as ListQuery.Request;
-	const { take: rawTake, skip: rawSkip = '0' } = listQueryReq.query;
+	const listQueryReq = req;
+	const { take: rawTake } = listQueryReq.query;
+	let { skip: rawSkip = '0' } = listQueryReq.query;
 
 	try {
 		if (!rawTake && listQueryReq.query.skip) {
 			throw new UnexpectedError('Please specify `take` when using `skip`');
 		}
 
-		if (!rawTake) return next();
+		if (!rawTake || typeof rawTake !== 'string') return next();
+
+		if (typeof rawSkip !== 'string') {
+			rawSkip = '0';
+		}
 
 		const { take, skip } = Pagination.fromString(rawTake, rawSkip);
 
-		listQueryReq.listQueryOptions = { ...listQueryReq.listQueryOptions, skip, take };
+		if (isListQueryRequest(listQueryReq)) {
+			listQueryReq.listQueryOptions = { ...listQueryReq.listQueryOptions, skip, take };
+		}
 
 		next();
 	} catch (maybeError) {

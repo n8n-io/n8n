@@ -66,9 +66,9 @@ export class RateLimitService {
 		return expressRateLimit({
 			limit: config.limit ?? defaultLimits.limit,
 			windowMs: config.windowMs ?? defaultLimits.windowMs,
-			keyGenerator: (req: Request) => this.extractUserIdentifier(req as AuthenticatedRequest),
+			keyGenerator: (req: Request) => this.extractUserIdentifier(req),
 			skip: (req: Request) => {
-				const identifier = this.extractUserIdentifier(req as AuthenticatedRequest);
+				const identifier = this.extractUserIdentifier(req);
 				return identifier.startsWith('skip:');
 			},
 		});
@@ -92,7 +92,7 @@ export class RateLimitService {
 		return `body:${value}`;
 	}
 
-	private extractUserIdentifier(req: AuthenticatedRequest): string {
-		return `user:${req.user.id}`;
+	private extractUserIdentifier(req: Request): string {
+		return `user:${req.user?.id}`;
 	}
 }

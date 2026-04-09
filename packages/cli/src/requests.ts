@@ -15,6 +15,7 @@ import type {
 	ProjectRole,
 	Scope,
 } from '@n8n/permissions';
+import type { Request } from 'express';
 import type {
 	ICredentialDataDecryptedObject,
 	INodeCredentialTestRequest,
@@ -48,6 +49,10 @@ export namespace ListQuery {
 		take?: number;
 		sortBy?: string;
 	};
+}
+
+export function isListQueryRequest(req: Request): req is ListQuery.Request {
+	return 'listQueryOptions' in req;
 }
 
 // ----------------------------------

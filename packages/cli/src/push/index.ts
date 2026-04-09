@@ -19,7 +19,13 @@ import { TypedEmitter } from '@/typed-emitter';
 import { validateOriginHeaders } from './origin-validator';
 import { PushConfig } from './push.config';
 import { SSEPush } from './sse.push';
-import type { OnPushMessage, PushResponse, SSEPushRequest, WebSocketPushRequest } from './types';
+import {
+	isPushRequest,
+	type OnPushMessage,
+	type PushResponse,
+	type SSEPushRequest,
+	type WebSocketPushRequest,
+} from './types';
 import { WebSocketPush } from './websocket.push';
 
 type PushEvents = {
@@ -95,8 +101,14 @@ export class Push extends TypedEmitter<PushEvents> {
 			`/${restEndpoint}/push`,
 
 			this.authService.createAuthMiddleware({ allowSkipMFA: false }),
-			(req, res) =>
-				this.handleRequest(req as SSEPushRequest | WebSocketPushRequest, res as PushResponse),
+			(req, res) => {
+				if (isPushRequest(req)) {
+					return this.handleRequest(
+						req as SSEPushRequest | WebSocketPushRequest,
+						res as PushResponse,
+					);
+				}
+			},
 		);
 	}
 

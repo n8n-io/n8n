@@ -3,17 +3,17 @@ import { validateSync } from 'class-validator';
 import type { RequestHandler } from 'express';
 import { UnexpectedError } from 'n8n-workflow';
 
-import type { ListQuery } from '@/requests';
+import { isListQueryRequest } from '@/requests';
 import * as ResponseHelper from '@/response-helper';
 import { toError } from '@/utils';
 
 import { WorkflowSorting } from './dtos/workflow.sort-by.dto';
 
 export const sortByQueryMiddleware: RequestHandler = (req, res, next) => {
-	const listQueryReq = req as ListQuery.Request;
+	const listQueryReq = req;
 	const { sortBy } = listQueryReq.query;
 
-	if (!sortBy) return next();
+	if (!sortBy || typeof sortBy !== 'string') return next();
 
 	let SortBy;
 
@@ -31,7 +31,9 @@ export const sortByQueryMiddleware: RequestHandler = (req, res, next) => {
 			throw new UnexpectedError(validationError.constraints?.workflowSortBy ?? '');
 		}
 
-		listQueryReq.listQueryOptions = { ...listQueryReq.listQueryOptions, sortBy };
+		if (isListQueryRequest(listQueryReq)) {
+			listQueryReq.listQueryOptions = { ...listQueryReq.listQueryOptions, sortBy };
+		}
 
 		next();
 	} catch (maybeError) {
