@@ -1,14 +1,15 @@
 {
-	"extends": "./packages/@n8n/typescript-config/tsconfig.common.json",
-	"exclude": ["**/dist/**/*", "**/node_modules/**/*"],
-	"compilerOptions": {
-		"skipLibCheck": true,
-		"module": "NodeNext",
-		"moduleResolution": "NodeNext",
-		"baseUrl": ".",
-		"paths": {
-			"psl": ["./node_modules/.pnpm/psl@X.X.X/node_modules/psl/index.d.ts"],
-			"js-base64": ["./node_modules/js-base64/base64.d.ts"]
-		}
-	}
+    "extends": "./packages/@n8n/typescript-config/tsconfig.common.json",
+    "exclude": ["**/dist/**/*", "**/node_modules/**/*"],
+    "compilerOptions": {
+        "skipLibCheck": true,
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
+        "baseUrl": ".",
+        "types": ["node"], 
+        "paths": {
+            "psl": ["./node_modules/psl"],
+            "js-base64": ["./node_modules/js-base64"]
+        }
+    }
 }
