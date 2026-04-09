@@ -1235,7 +1235,7 @@ export interface IPollFunctions
 	__emit(
 		data: INodeExecutionData[][],
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
-		donePromise?: IDeferredPromise<IRun>,
+		donePromise?: IDeferredPromise<IRun | undefined>,
 	): void;
 	__emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
 	getNodeParameter(
@@ -1254,7 +1254,7 @@ export interface ITriggerFunctions
 	emit(
 		data: INodeExecutionData[][],
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
-		donePromise?: IDeferredPromise<IRun>,
+		donePromise?: IDeferredPromise<IRun | undefined>,
 	): void;
 	/**
 	 * Persist the current run as a failed execution and run the error workflow if configured.
