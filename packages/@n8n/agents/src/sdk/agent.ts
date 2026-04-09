@@ -1,6 +1,7 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import { z } from 'zod';
 
+import type { ModelCost } from './catalog';
 import type { AgentRuntimeConfig } from '../runtime/agent-runtime';
 import { AgentRuntime } from '../runtime/agent-runtime';
 import { AgentEventBus } from '../runtime/event-bus';
@@ -31,6 +32,13 @@ import type {
 	ThinkingConfig,
 	ThinkingConfigFor,
 } from '../types';
+import { getModelCost } from './catalog';
+import type { Eval } from './eval';
+import { fromSchema, type FromSchemaOptions } from './from-schema';
+import type { McpClient } from './mcp-client';
+import { Memory } from './memory';
+import { Telemetry } from './telemetry';
+import { Tool, wrapToolForApproval } from './tool';
 import type { StreamChunk } from '../types/sdk/agent';
 import type { AgentBuilder } from '../types/sdk/agent-builder';
 import type { CredentialProvider } from '../types/sdk/credential-provider';
@@ -47,14 +55,6 @@ import type {
 } from '../types/sdk/schema';
 import { zodToJsonSchema } from '../utils/zod';
 import type { Workspace } from '../workspace/workspace';
-import type { ModelCost } from './catalog';
-import { getModelCost } from './catalog';
-import type { Eval } from './eval';
-import { fromSchema, type FromSchemaOptions } from './from-schema';
-import type { McpClient } from './mcp-client';
-import { Memory } from './memory';
-import { Telemetry } from './telemetry';
-import { Tool, wrapToolForApproval } from './tool';
 
 const DEFAULT_LAST_MESSAGES = 10;
 
@@ -749,19 +749,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				requireToolApproval: this.requireToolApprovalValue,
 			},
 		};
-	}
-
-	/** Return the latest state snapshot of the agent. Returns `{ status: 'idle' }` before first run. */
-	getState(): SerializableAgentState {
-		if (!this.runtime) {
-			return {
-				persistence: undefined,
-				status: 'idle',
-				messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
-				pendingToolCalls: {},
-			};
-		}
-		return this.runtime.getState();
 	}
 
 	/**
