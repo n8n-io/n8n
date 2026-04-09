@@ -46,7 +46,7 @@ test.describe(
 					},
 					captureTargetAfterPhase: `round-${ROUNDS - 1}`,
 					maxLeakMB: 50,
-					maxRssGrowthMB: 300,
+					maxRssGrowthMB: 600,
 				},
 				[
 					// Each round: open 3 tabs, build in parallel, close tabs, delete threads

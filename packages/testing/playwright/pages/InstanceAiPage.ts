@@ -114,15 +114,20 @@ export class InstanceAiPage extends BasePage {
 		return this.page.getByTestId('instance-ai-workflow-setup-confirm');
 	}
 
+	getWorkflowSetupSkip(): Locator {
+		return this.page.getByTestId('instance-ai-workflow-setup-later');
+	}
+
 	/**
 	 * Returns a locator that matches ANY type of approve/continue button.
 	 * Uses Playwright's `or()` to race between confirmation types.
+	 * Workflow setup is always skipped to avoid blocking the benchmark on credential dialogs.
 	 */
 	getAnyApproveButton(): Locator {
 		return this.getApproveButton()
 			.or(this.getDomainAccessApprove())
 			.or(this.getPlanApproveButton())
 			.or(this.getCredentialContinue())
-			.or(this.getWorkflowSetupConfirm());
+			.or(this.getWorkflowSetupSkip());
 	}
 }
