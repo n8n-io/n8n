@@ -34,7 +34,7 @@ const SECRET_KEY_PATTERN =
  * Checked BEFORE the secret pattern to avoid false positives.
  */
 const SAFE_KEY_PATTERN =
-	/keyword|primary.?key|foreign.?key|sort.?key|partition.?key|group.?key|key.?name|key.?type|key.?field|key.?column|authentication|author/i;
+	/keyword|primary.?key|foreign.?key|sort.?key|partition.?key|group.?key|key.?name|key.?type|key.?field|key.?column|authentication$|author(?!.*(key|token|secret|password|credential))/i;
 
 /**
  * Header names whose values are always secrets (case-insensitive).
@@ -62,11 +62,10 @@ export function redactSecretKeys(value: unknown): unknown {
 
 	const result: Record<string, unknown> = {};
 	for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
-		if (typeof val === 'object' && val !== null) {
-			// Always recurse into nested structures — redact leaves, not subtrees
-			result[key] = redactSecretKeys(val);
-		} else if (isSecretKey(key)) {
+		if (isSecretKey(key)) {
 			result[key] = REDACTED;
+		} else if (typeof val === 'object' && val !== null) {
+			result[key] = redactSecretKeys(val);
 		} else {
 			result[key] = val;
 		}

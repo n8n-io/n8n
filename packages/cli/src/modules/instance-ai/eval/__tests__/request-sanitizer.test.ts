@@ -76,6 +76,19 @@ describe('isSecretKey', () => {
 		});
 	});
 
+	describe('should classify compound keys with secret suffixes as secret', () => {
+		const compoundSecretKeys = [
+			'authenticationToken',
+			'authenticationKey',
+			'authorSecret',
+			'authorToken',
+		];
+
+		it.each(compoundSecretKeys)('"%s" → secret', (key) => {
+			expect(isSecretKey(key)).toBe(true);
+		});
+	});
+
 	describe('should classify non-secret keys', () => {
 		const normalKeys = [
 			'name',
@@ -113,7 +126,7 @@ describe('redactSecretKeys', () => {
 		});
 	});
 
-	it('should redact nested secret keys', () => {
+	it('should redact entire value when key is secret, even if value is an object', () => {
 		const input = {
 			config: {
 				auth: { password: 'hunter2', username: 'admin' },
@@ -122,7 +135,22 @@ describe('redactSecretKeys', () => {
 		};
 		expect(redactSecretKeys(input)).toEqual({
 			config: {
-				auth: { password: '<redacted>', username: 'admin' },
+				auth: '<redacted>',
+				host: 'localhost',
+			},
+		});
+	});
+
+	it('should still recurse into objects with non-secret keys', () => {
+		const input = {
+			config: {
+				inner: { password: 'hunter2', username: 'admin' },
+				host: 'localhost',
+			},
+		};
+		expect(redactSecretKeys(input)).toEqual({
+			config: {
+				inner: { password: '<redacted>', username: 'admin' },
 				host: 'localhost',
 			},
 		});
