@@ -287,10 +287,14 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				ensureChildren(state, event.agentId); // init empty
 				ensureTimeline(state, event.agentId); // init empty
 				ensureToolCallIds(state, event.agentId); // init empty
-				ensureTimeline(state, event.payload.parentId).push({
+				const parentTimeline = ensureTimeline(state, event.payload.parentId);
+				// Inherit responseId from the parent's last entry when not set on the event
+				// (agent-spawned events are emitted from tool code, not the stream executor).
+				const inheritedResponseId = event.responseId ?? parentTimeline.at(-1)?.responseId;
+				parentTimeline.push({
 					type: 'child',
 					agentId: event.agentId,
-					...(event.responseId ? { responseId: event.responseId } : {}),
+					...(inheritedResponseId ? { responseId: inheritedResponseId } : {}),
 				});
 			}
 			break;

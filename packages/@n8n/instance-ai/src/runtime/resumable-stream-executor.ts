@@ -1818,13 +1818,14 @@ export async function executeResumableStream(
 	let activeMastraRunId = options.stream.runId ?? options.initialMastraRunId ?? '';
 	let text = options.stream.text;
 
+	let currentResponseId: string | undefined;
+
 	while (true) {
 		let suspension: SuspensionInfo | undefined;
 		let hasError = false;
 		let pendingConfirmation: Promise<Record<string, unknown>> | undefined;
 		let confirmationEvent: ConfirmationRequestEvent | undefined;
 		let confirmationEventPublished = false;
-		let currentResponseId: string | undefined;
 		const llmStepRecords: LlmStepTraceRecord[] = [];
 		const syntheticToolRecords = new Map<string, SyntheticToolTraceRecord>();
 		options.llmStepTraceHooks?.startSegment();
@@ -1854,12 +1855,19 @@ export async function executeResumableStream(
 
 			options.llmStepTraceHooks?.onStreamChunk(chunk);
 
+			// Always capture responseId from step-start, regardless of trace hook path.
+			if (isRecord(chunk) && chunk.type === 'step-start') {
+				const stepPayload = getChunkPayload(chunk);
+				const stepMessageId =
+					typeof stepPayload?.messageId === 'string' ? stepPayload.messageId : undefined;
+				currentResponseId = stepMessageId;
+			}
+
 			if (options.llmStepTraceHooks) {
 				// Step lifecycle is handled by prepareStep/onStepFinish callbacks.
 			} else if (isRecord(chunk) && chunk.type === 'step-start') {
 				const payload = getChunkPayload(chunk);
 				const messageId = typeof payload?.messageId === 'string' ? payload.messageId : undefined;
-				currentResponseId = messageId;
 				const request = payload?.request;
 				const stepTrace =
 					typeof messageId === 'string'
