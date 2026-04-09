@@ -239,6 +239,10 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		// serializes concurrent callers to prevent duplicate-key crashes.
 		if (this.instanceSettings.instanceType === 'main') {
 			await Container.get(AuthRolesService).init();
+			this.logger.debug('Auth roles service init complete');
+
+			await this.initInstanceSettingsLoader();
+			this.logger.debug('Instance settings loader init complete');
 		}
 
 		Container.get(WaitTracker).init();
@@ -281,6 +285,13 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.executionContextHookRegistry.init();
 		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
+	}
+
+	private async initInstanceSettingsLoader(): Promise<void> {
+		const { InstanceSettingsLoaderService } = await import(
+			'@/instance-settings-loader/instance-settings-loader.service'
+		);
+		await Container.get(InstanceSettingsLoaderService).init();
 	}
 
 	async initOrchestration() {

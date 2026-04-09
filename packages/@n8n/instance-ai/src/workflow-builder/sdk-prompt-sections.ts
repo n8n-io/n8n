@@ -217,9 +217,21 @@ const hasData = items.length > 0 && Object.keys(items[0].json).length > 0;
 
 **CRITICAL:** Each branch defines a COMPLETE processing path. Chain multiple steps INSIDE the branch using .to().
 
+Every IF/Filter \`conditions\` parameter MUST include \`options\`, \`conditions\`, and \`combinator\`:
 \`\`\`javascript
-// Assume other nodes are declared
-const checkValid = ifElse({ version: 2.2, config: { name: 'Check Valid', parameters: {...} } });
+const checkValid = ifElse({
+  version: 2.2,
+  config: {
+    name: 'Check Valid',
+    parameters: {
+      conditions: {
+        options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' },
+        conditions: [{ leftValue: '={{ $json.status }}', operator: { type: 'string', operation: 'equals' }, rightValue: 'active' }],
+        combinator: 'and'
+      }
+    }
+  }
+});
 
 export default workflow('id', 'name')
   .add(startTrigger)
@@ -232,16 +244,29 @@ export default workflow('id', 'name')
 
 <multi_way_routing>
 
+Switch rules use \`rules.values\` (NOT \`rules.rules\`). Each rule needs \`outputKey\` and a complete \`conditions\` object:
 \`\`\`javascript
-// Assume other nodes are declared
-const routeByPriority = switchCase({ version: 3.2, config: { name: 'Route by Priority', parameters: {...} } });
+const routeByPriority = switchCase({
+  version: 3.2,
+  config: {
+    name: 'Route by Priority',
+    parameters: {
+      rules: {
+        values: [
+          { outputKey: 'urgent', conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' }, conditions: [{ leftValue: '={{ $json.priority }}', operator: { type: 'string', operation: 'equals' }, rightValue: 'urgent' }], combinator: 'and' } },
+          { outputKey: 'normal', conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' }, conditions: [{ leftValue: '={{ $json.priority }}', operator: { type: 'string', operation: 'equals' }, rightValue: 'normal' }], combinator: 'and' } },
+        ]
+      }
+    }
+  }
+});
 
 export default workflow('id', 'name')
   .add(startTrigger)
   .to(routeByPriority
-    .onCase(0, processUrgent.to(notifyTeam.to(escalate)))  // Chain of 3 nodes
-    .onCase(1, processNormal)
-    .onCase(2, archive));
+    .onCase('urgent', processUrgent.to(notifyTeam.to(escalate)))
+    .onCase('normal', processNormal)
+    .onDefault(archive));
 \`\`\`
 
 </multi_way_routing>

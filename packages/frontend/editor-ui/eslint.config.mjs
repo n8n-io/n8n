@@ -115,6 +115,13 @@ export default defineConfig(
 					message:
 						'Use workflowDocumentStore.setLastNodeParameters() instead of workflowsStore.setLastNodeParameters()',
 				},
+				// Guard: prevent direct workflowObject access — use workflowDocumentStore graph/expression methods.
+				{
+					selector:
+						"MemberExpression[property.name='workflowObject'][object.name='workflowsStore']",
+					message:
+						'Use workflowDocumentStore graph/expression methods instead of workflowsStore.workflowObject',
+				},
 				// Guard: prevent per-node mutations via deprecated workflowState composable.
 				{
 					selector:

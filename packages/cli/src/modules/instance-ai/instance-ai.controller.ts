@@ -12,13 +12,16 @@ import {
 	InstanceAiThreadMessagesQuery,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
+	InstanceAiEvalExecutionRequest,
 } from '@n8n/api-types';
+import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
 	RestController,
 	GlobalScope,
+	Middleware,
 	Get,
 	Post,
 	Put,
@@ -30,8 +33,9 @@ import {
 } from '@n8n/decorators';
 import type { StoredEvent } from '@n8n/instance-ai';
 import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
-import type { Request, Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
+import { EvalExecutionService } from './eval/execution.service';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
@@ -53,10 +57,41 @@ export class InstanceAiController {
 
 	private readonly instanceBaseUrl: string;
 
+	private static getTreeRichnessScore(tree: InstanceAiAgentNode): number {
+		let score = 0;
+		const stack = [tree];
+
+		while (stack.length > 0) {
+			const node = stack.pop()!;
+			score += 100;
+			score += node.toolCalls.length * 10;
+			score += node.timeline.length * 2;
+			score += (node.planItems?.length ?? 0) * 20;
+			score += node.toolCalls.filter((toolCall) => toolCall.confirmation).length * 50;
+			score += node.children.length * 25;
+			stack.push(...node.children);
+		}
+
+		return score;
+	}
+
+	private static selectBootstrapTree(
+		eventTree: InstanceAiAgentNode,
+		persistedTree?: InstanceAiAgentNode,
+	): InstanceAiAgentNode {
+		if (!persistedTree) return eventTree;
+
+		return InstanceAiController.getTreeRichnessScore(persistedTree) >
+			InstanceAiController.getTreeRichnessScore(eventTree)
+			? persistedTree
+			: eventTree;
+	}
+
 	constructor(
 		private readonly instanceAiService: InstanceAiService,
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly settingsService: InstanceAiSettingsService,
+		private readonly evalExecutionService: EvalExecutionService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly push: Push,
@@ -64,6 +99,19 @@ export class InstanceAiController {
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
 		this.instanceBaseUrl = globalConfig.editorBaseUrl || `http://localhost:${globalConfig.port}`;
+	}
+
+	// Each BrotliCompress stream allocates ~8.6 MB of native memory for its
+	// dictionary, and the compression middleware retains streams via closures on
+	// the response object for the lifetime of the HTTP keep-alive connection.
+	// Downgrade to gzip (~few KB per stream) for all instance-ai endpoints.
+	@Middleware()
+	stripBrotli(req: Request, _res: Response, next: NextFunction) {
+		const ae = req.headers['accept-encoding'];
+		if (typeof ae === 'string' && ae.includes('br')) {
+			req.headers['accept-encoding'] = ae.replace(/\bbr\b,?\s*/g, '').replace(/,\s*$/, '');
+		}
+		next();
 	}
 
 	@Post('/chat/:threadId')
@@ -120,7 +168,11 @@ export class InstanceAiController {
 		const pendingEvents: StoredEvent[] = [];
 		const userId = req.user.id;
 
-		// 1. Set SSE headers
+		// 1. Set SSE headers.
+		// Disable response compression — SSE streams small chunks where compression
+		// overhead exceeds the benefit, and each Brotli compressor retains ~8.6 MB
+		// of native memory for the lifetime of the connection.
+		(res as unknown as { compress: boolean }).compress = false;
 		res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
 		res.setHeader('Cache-Control', 'no-cache');
 		res.setHeader('Connection', 'keep-alive');
@@ -181,13 +233,21 @@ export class InstanceAiController {
 
 		for (const [groupId, group] of liveGroups) {
 			const runEvents = this.eventBus.getEventsForRuns(threadId, group.runIds);
-			if (runEvents.length === 0) continue;
-
-			const agentTree = buildAgentTreeFromEvents(runEvents);
 			// Use the group's own latest runId — NOT the thread-global activeRunId,
 			// which belongs to the current orchestrator turn and would be wrong for
 			// background groups from older turns.
 			const groupRunId = group.runIds.at(-1);
+			const persistedSnapshot = await this.memoryService.getLatestRunSnapshot(threadId, {
+				messageGroupId: groupId,
+				runId: groupRunId,
+			});
+			if (runEvents.length === 0 && !persistedSnapshot) continue;
+
+			const eventTree = buildAgentTreeFromEvents(runEvents);
+			const agentTree = InstanceAiController.selectBootstrapTree(
+				eventTree,
+				persistedSnapshot?.tree,
+			);
 			res.write(
 				`event: run-sync\ndata: ${JSON.stringify({
 					runId: groupRunId,
@@ -270,6 +330,7 @@ export class InstanceAiController {
 			nodeParameters: body.nodeParameters,
 			testTriggerNode: body.testTriggerNode,
 			answers: body.answers,
+			resourceDecision: body.resourceDecision,
 		});
 		if (!resolved) {
 			throw new NotFoundError('Confirmation request not found or not authorized');
@@ -432,7 +493,10 @@ export class InstanceAiController {
 		@Body payload: InstanceAiRenameThreadRequestDto,
 	) {
 		await this.assertThreadAccess(req.user.id, threadId);
-		const thread = await this.memoryService.renameThread(threadId, payload.title);
+		const thread = await this.memoryService.updateThread(threadId, {
+			title: payload.title,
+			metadata: payload.metadata,
+		});
 		return { thread };
 	}
 
@@ -454,9 +518,21 @@ export class InstanceAiController {
 			});
 		}
 
+		// Exclude snapshots for active/suspended runs — they have no matching
+		// assistant message in Mastra memory yet and would misalign the
+		// positional snapshot-to-message matching in parseStoredMessages.
+		const threadStatus = this.instanceAiService.getThreadStatus(threadId);
+		const activeRunId = this.instanceAiService.getActiveRunId(threadId);
+		const excludeRunIds: string[] = [];
+		if (activeRunId) excludeRunIds.push(activeRunId);
+		for (const t of threadStatus.backgroundTasks) {
+			if (t.status === 'running' && t.runId) excludeRunIds.push(t.runId);
+		}
+
 		const result = await this.memoryService.getRichMessages(req.user.id, threadId, {
 			limit: query.limit,
 			page: query.page,
+			excludeRunIds: excludeRunIds.length > 0 ? excludeRunIds : undefined,
 		});
 
 		// Include the next SSE event ID so the frontend can skip past events
@@ -488,6 +564,19 @@ export class InstanceAiController {
 		return await this.memoryService.getThreadContext(req.user.id, threadId);
 	}
 
+	// ── Evaluation endpoints ──────────────────────────────────────────────────
+
+	@Post('/eval/execute-with-llm-mock/:workflowId')
+	@GlobalScope('instanceAi:message')
+	async executeWithLlmMock(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+		@Body payload: InstanceAiEvalExecutionRequest,
+	) {
+		return await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, payload);
+	}
+
 	// ── Gateway endpoints (daemon ↔ server) ──────────────────────────────────
 
 	@Post('/gateway/create-link')
@@ -495,7 +584,7 @@ export class InstanceAiController {
 	async createGatewayLink(req: AuthenticatedRequest) {
 		const token = this.instanceAiService.generatePairingToken(req.user.id);
 		const baseUrl = this.instanceBaseUrl.replace(/\/$/, '');
-		const command = `npx @n8n/fs-proxy ${baseUrl} ${token}`;
+		const command = `npx @n8n/computer-use ${baseUrl} ${token}`;
 		return { token, command };
 	}
 
@@ -503,6 +592,7 @@ export class InstanceAiController {
 	async gatewayEvents(req: Request, res: FlushableResponse) {
 		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
 
+		(res as unknown as { compress: boolean }).compress = false;
 		res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
 		res.setHeader('Cache-Control', 'no-cache');
 		res.setHeader('Connection', 'keep-alive');
