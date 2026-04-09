@@ -58,6 +58,39 @@ export const asanaApiResponse = {
 				type: 'comment',
 			},
 		],
+		next_page: null,
+	},
+
+	getLimitedComments: {
+		data: [
+			{
+				gid: '1234567890123456',
+				resource_type: 'story',
+				created_at: '2024-01-15T10:30:00.000Z',
+				created_by: {
+					gid: '1111111111111111',
+					resource_type: 'user',
+					name: 'John Doe',
+				},
+				resource_subtype: 'comment_added',
+				text: 'This is the first comment',
+				type: 'comment',
+			},
+			{
+				gid: '1234567890123457',
+				resource_type: 'story',
+				created_at: '2024-01-15T11:00:00.000Z',
+				created_by: {
+					gid: '2222222222222222',
+					resource_type: 'user',
+					name: 'Jane Smith',
+				},
+				resource_subtype: 'comment_added',
+				text: 'This is the second comment',
+				type: 'comment',
+			},
+		],
+		next_page: null,
 	},
 
 	getAttachment: {
@@ -117,6 +150,30 @@ export const asanaApiResponse = {
 				view_url: 'https://app.asana.com/0/0/5555555555555556/f',
 			},
 		],
+		next_page: null,
+	},
+
+	getLimitedAttachments: {
+		data: [
+			{
+				gid: '5555555555555555',
+				resource_type: 'attachment',
+				name: 'example-document.pdf',
+				created_at: '2024-01-15T09:00:00.000Z',
+				download_url: 'https://example.com/download/example-document.pdf',
+				host: 'asana',
+				parent: {
+					gid: '9876543210987654',
+					resource_type: 'task',
+					name: 'Example Task',
+				},
+				permanent_url: 'https://app.asana.com/0/0/5555555555555555/f',
+				resource_subtype: 'asana',
+				size: 102400,
+				view_url: 'https://app.asana.com/0/0/5555555555555555/f',
+			},
+		],
+		next_page: null,
 	},
 };
 

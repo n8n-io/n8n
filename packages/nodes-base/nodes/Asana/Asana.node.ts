@@ -2409,19 +2409,27 @@ export class Asana implements INodeType {
 						const taskId = this.getNodeParameter('taskId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						responseData = await asanaApiRequest.call(
-							this,
-							'GET',
-							`/tasks/${taskId}/stories`,
-							body,
-							qs,
-						);
-
-						responseData = responseData.data;
-
-						if (!returnAll) {
+						if (returnAll) {
+							responseData = await asanaApiRequestAllItems.call(
+								this,
+								'GET',
+								`/tasks/${taskId}/stories`,
+								body,
+								qs,
+							);
+						} else {
 							const limit = this.getNodeParameter('limit', i);
-							responseData = responseData.splice(0, limit);
+							qs.limit = limit;
+
+							responseData = await asanaApiRequest.call(
+								this,
+								'GET',
+								`/tasks/${taskId}/stories`,
+								body,
+								qs,
+							);
+
+							responseData = responseData.data;
 						}
 					}
 
@@ -2556,19 +2564,27 @@ export class Asana implements INodeType {
 						const taskId = this.getNodeParameter('taskId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						responseData = await asanaApiRequest.call(
-							this,
-							'GET',
-							`/tasks/${taskId}/attachments`,
-							body,
-							qs,
-						);
-
-						responseData = responseData.data;
-
-						if (!returnAll) {
+						if (returnAll) {
+							responseData = await asanaApiRequestAllItems.call(
+								this,
+								'GET',
+								`/tasks/${taskId}/attachments`,
+								body,
+								qs,
+							);
+						} else {
 							const limit = this.getNodeParameter('limit', i);
-							responseData = responseData.splice(0, limit);
+							qs.limit = limit;
+
+							responseData = await asanaApiRequest.call(
+								this,
+								'GET',
+								`/tasks/${taskId}/attachments`,
+								body,
+								qs,
+							);
+
+							responseData = responseData.data;
 						}
 					}
 				}

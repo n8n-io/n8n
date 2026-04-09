@@ -136,7 +136,7 @@ describe('Asana Node', () => {
 					mocks: [
 						{
 							method: 'get',
-							path: '/tasks/9876543210987654/stories',
+							path: '/tasks/9876543210987654/stories?limit=100',
 							statusCode: 200,
 							responseBody: asanaApiResponse.getAllComments,
 						},
@@ -202,9 +202,9 @@ describe('Asana Node', () => {
 					mocks: [
 						{
 							method: 'get',
-							path: '/tasks/9876543210987654/stories',
+							path: '/tasks/9876543210987654/stories?limit=2',
 							statusCode: 200,
-							responseBody: asanaApiResponse.getAllComments,
+							responseBody: asanaApiResponse.getLimitedComments,
 						},
 					],
 				},
@@ -340,7 +340,7 @@ describe('Asana Node', () => {
 					mocks: [
 						{
 							method: 'get',
-							path: '/tasks/9876543210987654/attachments',
+							path: '/tasks/9876543210987654/attachments?limit=100',
 							statusCode: 200,
 							responseBody: asanaApiResponse.getAllAttachments,
 						},
@@ -406,9 +406,9 @@ describe('Asana Node', () => {
 					mocks: [
 						{
 							method: 'get',
-							path: '/tasks/9876543210987654/attachments',
+							path: '/tasks/9876543210987654/attachments?limit=1',
 							statusCode: 200,
-							responseBody: asanaApiResponse.getAllAttachments,
+							responseBody: asanaApiResponse.getLimitedAttachments,
 						},
 					],
 				},
