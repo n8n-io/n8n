@@ -16,6 +16,7 @@ import type { InstanceAiRichMessagesResponse, InstanceAiEvalExecutionResult } fr
 export interface WorkflowNodeResponse {
 	name: string;
 	type: string;
+	typeVersion?: number;
 	parameters?: Record<string, unknown>;
 	disabled?: boolean;
 	credentials?: Record<string, unknown>;
