@@ -16,29 +16,29 @@ RUN npm install -g pnpm
 
 WORKDIR /app
 
-# 1. Copia de archivos de configuración iniciales
+# 1. Copia de configuraciones de raíz
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.json ./
 COPY patches/ ./patches/
 
-# 2. CONFIGURACIÓN DE PNPM VIA .NPMRC (EL FIX DEFINITIVO)
-# Usamos echo para crear el archivo de configuración sin pasar por el CLI de pnpm
-# Esto fuerza el hoisting total y evita el error de "Unexpected token"
+# 2. COPIA DE PAQUETES (NECESARIO PARA EL WORKSPACE)
+# Copiamos la carpeta packages ANTES del install para que pnpm encuentre 
+# los paquetes internos como @n8n/eslint-config
+COPY packages/ ./packages/
+
+# 3. CONFIGURACIÓN DE PNPM (Hoisting)
 RUN echo "shamefully-hoist=true" > .npmrc && \
     echo "public-hoist-pattern[]='*'" >> .npmrc
 
-# 3. INSTALACIÓN
-# Con el .npmrc ya en su sitio, pnpm aplicará el hoisting automáticamente
+# 4. INSTALACIÓN
+# Ahora pnpm verá todos los paquetes en packages/ y no lanzará el error de "not found"
 RUN CI=true pnpm install --ignore-scripts --no-frozen-lockfile
 
-# 4. COPIA DE CÓDIGO
-COPY packages/ ./packages/
-
-# 5. PARCHES Y COMPILACIÓN NATIVA
-# Fix PSL tipos
+# 5. PARCHES DE TIPOS Y COMPILACIÓN NATIVA
+# Fix PSL
 RUN mkdir -p node_modules/@types/psl && \
     printf 'declare module "psl";' > node_modules/@types/psl/index.d.ts
 
-# Compilación de SQLite para Node 23
+# Compilación de SQLite (Node 23)
 RUN SQLITE3_PATH=$(find node_modules/.pnpm -name "sqlite3" -type d | head -n 1) && \
     cd $SQLITE3_PATH && npm install --build-from-source
 
