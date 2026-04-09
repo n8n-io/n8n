@@ -8,8 +8,8 @@ const SettingsInstanceAiView = async () => await import('./views/SettingsInstanc
 
 export const InstanceAiModule: FrontendModuleDescription = {
 	id: 'instance-ai',
-	name: 'Instance AI',
-	description: 'Chat with the n8n Instance AI agent.',
+	name: 'AI Assistant',
+	description: 'Chat with your n8n instance.',
 	icon: 'sparkles',
 	routes: [
 		{
@@ -61,6 +61,7 @@ export const InstanceAiModule: FrontendModuleDescription = {
 			label: i18n.baseText('settings.n8nAgent'),
 			position: 'top',
 			route: { to: { name: INSTANCE_AI_SETTINGS_VIEW } },
+			preview: true,
 			get available() {
 				return hasPermission(['rbac'], { rbac: { scope: 'instanceAi:manage' } });
 			},

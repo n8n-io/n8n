@@ -169,7 +169,7 @@ onMounted(async () => {
 			credentialsStore.fetchCredentialTypes(false),
 		]);
 	} catch (error) {
-		console.warn('Failed to preload credentials for Instance AI setup', error);
+		console.warn('Failed to preload credentials for AI Assistant setup', error);
 	}
 
 	const firstIncomplete = props.credentialRequests.findIndex(

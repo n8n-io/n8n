@@ -451,7 +451,7 @@ export class InstanceAiService {
 			}
 		} catch (error) {
 			this.creditedThreads.delete(threadId); // Allow retry on failure
-			this.logger.warn('Failed to count Instance AI credits', {
+			this.logger.warn('Failed to count AI Assistant credits', {
 				error: getErrorMessage(error),
 				threadId,
 				runId,
@@ -539,7 +539,7 @@ export class InstanceAiService {
 						: {}),
 			});
 		} catch (error) {
-			this.logger.warn('Failed to finalize Instance AI message trace root', {
+			this.logger.warn('Failed to finalize AI Assistant message trace root', {
 				runId,
 				threadId: tracing.rootRun.metadata?.thread_id,
 				error: getErrorMessage(error),
@@ -604,7 +604,7 @@ export class InstanceAiService {
 				...(options.error ? { error: options.error } : {}),
 			});
 		} catch (error) {
-			this.logger.warn('Failed to finalize Instance AI detached trace run', {
+			this.logger.warn('Failed to finalize AI Assistant detached trace run', {
 				taskId,
 				traceRunId: traceContext.rootRun.id,
 				error: getErrorMessage(error),
@@ -638,7 +638,7 @@ export class InstanceAiService {
 				...(options.status === 'error' && options.reason ? { error: options.reason } : {}),
 			});
 		} catch (error) {
-			this.logger.warn('Failed to finalize Instance AI run tracing', {
+			this.logger.warn('Failed to finalize AI Assistant run tracing', {
 				runId,
 				threadId: tracing.actorRun.metadata?.thread_id,
 				error: getErrorMessage(error),
@@ -984,7 +984,7 @@ export class InstanceAiService {
 
 		this.eventBus.clear();
 		await this.mcpClientManager.disconnect();
-		this.logger.debug('Instance AI service shut down');
+		this.logger.debug('AI Assistant service shut down');
 	}
 
 	private createMemoryConfig() {
@@ -1824,7 +1824,7 @@ export class InstanceAiService {
 
 			const errorMessage = getErrorMessage(error);
 
-			this.logger.error('Instance AI run error', {
+			this.logger.error('AI Assistant run error', {
 				error: errorMessage,
 				threadId,
 				runId,
@@ -2071,7 +2071,7 @@ export class InstanceAiService {
 
 			const errorMessage = getErrorMessage(error);
 
-			this.logger.error('Instance AI resumed run error', {
+			this.logger.error('AI Assistant resumed run error', {
 				error: errorMessage,
 				threadId: opts.threadId,
 				runId: opts.runId,

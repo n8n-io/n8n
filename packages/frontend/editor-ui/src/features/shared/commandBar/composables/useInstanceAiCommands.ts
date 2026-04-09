@@ -7,6 +7,16 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW } from '@/features/ai/instanceAi/constants';
 
+const NAME_KEYWORDS = [
+	'assistant',
+	'ai assistant',
+	'instance ai',
+	'ai',
+	'agent',
+	'n8n agent',
+	'chat',
+];
+
 export function useInstanceAiCommands(options: { lastQuery: Ref<string> }): CommandGroup {
 	const i18n = useI18n();
 	const { lastQuery } = options;
@@ -28,7 +38,7 @@ export function useInstanceAiCommands(options: { lastQuery: Ref<string> }): Comm
 			id: thread.id,
 			title: thread.title,
 			section: i18n.baseText('commandBar.instanceAi.openThread'),
-			keywords: [thread.title],
+			keywords: [...NAME_KEYWORDS, thread.title],
 			handler: () => {
 				void router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId: thread.id } });
 			},
@@ -50,7 +60,7 @@ export function useInstanceAiCommands(options: { lastQuery: Ref<string> }): Comm
 					component: N8nIcon,
 					props: { icon: 'sparkles' },
 				},
-				keywords: ['instance ai', 'ai', 'agent', 'assistant'],
+				keywords: [...NAME_KEYWORDS, 'open', 'view'],
 			},
 			{
 				id: 'instance-ai-new-thread',
@@ -64,7 +74,7 @@ export function useInstanceAiCommands(options: { lastQuery: Ref<string> }): Comm
 					component: N8nIcon,
 					props: { icon: 'plus' },
 				},
-				keywords: ['instance ai', 'new', 'conversation', 'thread'],
+				keywords: [...NAME_KEYWORDS, 'new', 'conversation', 'thread', 'chat'],
 			},
 			{
 				id: 'instance-ai-open-thread',
@@ -76,6 +86,7 @@ export function useInstanceAiCommands(options: { lastQuery: Ref<string> }): Comm
 					component: N8nIcon,
 					props: { icon: 'message-square', color: 'text-light' },
 				},
+				keywords: [...NAME_KEYWORDS, 'open', 'conversation', 'thread', 'chat'],
 			},
 		];
 	});
