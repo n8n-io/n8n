@@ -16,7 +16,7 @@ import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import { getTools } from './loadOptions';
 import type { McpToolIncludeMode } from './types';
-import { createCallTool, getSelectedTools, mcpToolToDynamicTool } from './utils';
+import { buildMcpToolName, createCallTool, getSelectedTools, mcpToolToDynamicTool } from './utils';
 import { credentials, transportSelect } from '../shared/descriptions';
 import type { McpAuthenticationOption, McpServerTransport } from '../shared/types';
 import {
@@ -379,10 +379,11 @@ export class McpClientTool implements INodeType {
 			);
 		}
 
-		const tools = mcpTools.map((tool) =>
-			logWrapper(
+		const tools = mcpTools.map((tool) => {
+			const prefixedName = buildMcpToolName(node.name, tool.name);
+			return logWrapper(
 				mcpToolToDynamicTool(
-					tool,
+					{ ...tool, name: prefixedName },
 					createCallTool(
 						tool.name,
 						client,
@@ -398,8 +399,8 @@ export class McpClientTool implements INodeType {
 					),
 				),
 				this,
-			),
-		);
+			);
+		});
 
 		this.logger.debug(`McpClientTool: Connected to MCP Server with ${tools.length} tools`);
 
@@ -432,17 +433,17 @@ export class McpClientTool implements INodeType {
 				throw new NodeOperationError(node, 'MCP Server returned no tools', { itemIndex });
 			}
 
-			for (const tool of mcpTools) {
-				// Check for tool name in item.json.tool (for toolkit execution from agent)
-				// or item.tool (for direct execution)
-				if (!item.json.tool || typeof item.json.tool !== 'string') {
-					throw new NodeOperationError(node, 'Tool name not found in item.json.tool or item.tool', {
-						itemIndex,
-					});
-				}
+			// Check for tool name in item.json.tool (for toolkit execution from agent)
+			if (!item.json.tool || typeof item.json.tool !== 'string') {
+				throw new NodeOperationError(node, 'Tool name not found in item.json.tool or item.tool', {
+					itemIndex,
+				});
+			}
 
-				const toolName = item.json.tool;
-				if (toolName === tool.name) {
+			const toolName = item.json.tool;
+			for (const tool of mcpTools) {
+				const prefixedName = buildMcpToolName(node.name, tool.name);
+				if (toolName === prefixedName) {
 					// Extract the tool name from arguments before passing to MCP
 					const { tool: _, ...toolArguments } = item.json;
 					const schema: JSONSchema7 = tool.inputSchema;
