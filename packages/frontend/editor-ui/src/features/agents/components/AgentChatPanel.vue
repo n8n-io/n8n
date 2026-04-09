@@ -263,7 +263,7 @@ async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string) {
 						<!-- Tool calls -->
 						<div v-if="msg.toolCalls?.length" :class="$style.toolCalls">
 							<div v-for="(tc, i) in msg.toolCalls" :key="i" :class="$style.toolCall">
-								<N8nIcon icon="tool" :size="12" />
+								<N8nIcon icon="wrench" :size="12" />
 								<span :class="$style.toolName">{{ tc.tool }}</span>
 								<N8nIcon
 									v-if="tc.output !== undefined"

@@ -40,7 +40,7 @@ const emojiRanges = [
 
 type Props = {
 	buttonTooltip: string;
-	buttonSize?: 'small' | 'large' | 'xlarge' | 'xxlarge';
+	buttonSize?: 'small' | 'large' | 'xlarge';
 	isReadOnly?: boolean;
 	/** Additional CSS class(es) for the outer container element */
 	containerClass?: string | Record<string, boolean> | Array<string | Record<string, boolean>>;

@@ -79,7 +79,7 @@ function submitMessage() {
 			<div :class="$style.agentIcon">
 				<N8nIconPicker
 					:model-value="agentIcon"
-					button-size="xxlarge"
+					button-size="xlarge"
 					:button-tooltip="locale.baseText('agents.home.iconPicker.tooltip')"
 					@update:model-value="emit('update:icon', $event)"
 				/>

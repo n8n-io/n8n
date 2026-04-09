@@ -96,8 +96,21 @@ const mockSchema = {
 	model: { provider: 'anthropic', name: 'claude-sonnet-4-6' },
 	credential: 'cred-1',
 	instructions: 'Be helpful',
+	description: null,
 	tools: [],
-	config: {},
+	providerTools: [],
+	memory: null,
+	evaluations: [],
+	guardrails: [],
+	mcp: null,
+	telemetry: null,
+	checkpoint: null,
+	config: {
+		structuredOutput: { enabled: false, schemaSource: null },
+		thinking: null,
+		toolCallConcurrency: null,
+		requireToolApproval: false,
+	},
 };
 
 describe('AgentSettingsSidebar', () => {

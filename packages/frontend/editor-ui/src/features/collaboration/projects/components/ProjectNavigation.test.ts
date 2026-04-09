@@ -1,3 +1,4 @@
+import { flushPromises } from '@vue/test-utils';
 import { createRouter, createMemoryHistory } from 'vue-router';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -240,7 +241,7 @@ describe('ProjectsNavigation', () => {
 			});
 
 			// Wait for the agents fetch to resolve
-			await new Promise((r) => setTimeout(r, 10));
+			await flushPromises();
 
 			expect(queryAllByTestId('agent-menu-item').length).toBeGreaterThan(0);
 			expect(queryByTestId('new-agent-menu-item')).toBeInTheDocument();

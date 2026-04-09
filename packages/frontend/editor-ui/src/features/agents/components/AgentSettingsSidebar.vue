@@ -92,8 +92,8 @@ function onSelectCredential(provider: ChatHubProvider, credentialId: string | nu
 	const currentChatHubProvider = props.schema?.model.provider
 		? CATALOG_TO_CHATHUB[props.schema.model.provider]
 		: undefined;
-	if (currentChatHubProvider === provider && credentialId) {
-		emit('update:schema', { credential: credentialId });
+	if (currentChatHubProvider === provider) {
+		emit('update:schema', { credential: credentialId ?? '' });
 	}
 }
 
