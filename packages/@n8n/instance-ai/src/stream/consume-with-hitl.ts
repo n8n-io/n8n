@@ -24,7 +24,6 @@ export interface ConsumeWithHitlOptions {
 	 *  Used to unblock HITL suspensions when a correction arrives mid-confirmation. */
 	waitForCorrection?: () => Promise<void>;
 	llmStepTraceHooks?: LlmStepTraceHooks;
-	workingMemoryEnabled?: boolean;
 	/** Max steps for the agent — passed to resumeStream so resumed streams keep the same limit. */
 	maxSteps?: number;
 }
@@ -76,7 +75,6 @@ export async function consumeStreamWithHitl(
 				: {}),
 		},
 		llmStepTraceHooks: options.llmStepTraceHooks,
-		workingMemoryEnabled: options.workingMemoryEnabled,
 	});
 
 	return { text: result.text ?? options.stream.text };
