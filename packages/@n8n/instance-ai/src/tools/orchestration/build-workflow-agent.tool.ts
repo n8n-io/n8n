@@ -363,6 +363,23 @@ export async function startBuildWorkflowAgentTask(
 						mcpTools['ask-user'] = context.domainTools['ask-user'];
 					}
 
+					// Intercept create_workflow_from_code results to capture workflowId
+					let mcpWorkflowId: string | undefined;
+					for (const [toolName, toolDef] of Object.entries(mcpTools)) {
+						if (toolName.endsWith('create_workflow_from_code') && 'execute' in toolDef) {
+							const originalExecute = toolDef.execute as (
+								args: Record<string, unknown>,
+							) => Promise<Record<string, unknown>>;
+							(toolDef as { execute: typeof originalExecute }).execute = async (args) => {
+								const result = await originalExecute(args);
+								if (result && typeof result === 'object' && 'workflowId' in result) {
+									mcpWorkflowId = String(result.workflowId);
+								}
+								return result;
+							};
+						}
+					}
+
 					try {
 						const tracedMcpTools = traceSubAgentTools(context, mcpTools, 'workflow-builder');
 
@@ -424,7 +441,26 @@ export async function startBuildWorkflowAgentTask(
 						});
 
 						const finalText = await hitlResult.text;
-						return { text: finalText };
+
+						// Report build outcome so the orchestrator can render the workflow artifact
+						const mcpOutcome: WorkflowBuildOutcome = {
+							workItemId,
+							taskId,
+							submitted: !!mcpWorkflowId,
+							workflowId: mcpWorkflowId,
+							triggerType: 'manual_or_testable',
+							needsUserInput: false,
+							summary: finalText,
+						};
+
+						if (context.workflowTaskService) {
+							await context.workflowTaskService.reportBuildOutcome(mcpOutcome);
+						}
+
+						return {
+							text: finalText,
+							outcome: mcpOutcome as unknown as Record<string, unknown>,
+						};
 					} finally {
 						await mcpClient.disconnect();
 					}
