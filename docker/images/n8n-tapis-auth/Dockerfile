@@ -19,7 +19,7 @@ RUN npm install -g pnpm
 WORKDIR /app
 
 # 1. Copia los archivos de configuración del monorepo
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.json ./
 
 # 2. COPIA LA CARPETA DE PATCHES (CRUCIAL)
 # Sin esto, pnpm install fallará al intentar aplicar parches de dependencias
