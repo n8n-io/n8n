@@ -32,16 +32,20 @@ const planOutputSchema = z.object({
 	taskCount: z.number(),
 });
 
+export const planResumeSchema = z.object({
+	approved: z.boolean(),
+	userInput: z.string().optional(),
+});
+
 export function createPlanTool(context: OrchestrationContext) {
 	return createTool({
-		id: 'plan',
+		id: 'create-tasks',
 		description:
-			'Persist a dependency-aware task plan for detached multi-step execution. ' +
-			'Use ONLY when the work requires 2 or more tasks with dependencies ' +
-			'(e.g. data table setup + multiple workflows, parallel builds + consolidation). ' +
-			'Do NOT use for single workflow builds — call build-workflow-with-agent directly instead. ' +
-			'The plan is shown to the user for approval before execution starts. ' +
-			'After calling plan, reply briefly and end your turn.',
+			'Submit a pre-built task list for detached multi-step execution. ' +
+			'Use ONLY for replanning after a failure — when you already have the task context ' +
+			'and do not need resource discovery. For initial planning, call `plan` instead. ' +
+			'The task list is shown to the user for approval before execution starts. ' +
+			'After calling create-tasks, reply briefly and end your turn.',
 		inputSchema: planInputSchema,
 		outputSchema: planOutputSchema,
 		suspendSchema: z.object({
@@ -51,11 +55,8 @@ export function createPlanTool(context: OrchestrationContext) {
 			inputType: z.literal('plan-review'),
 			tasks: taskListSchema,
 		}),
-		resumeSchema: z.object({
-			approved: z.boolean(),
-			userInput: z.string().optional(),
-		}),
-		execute: async (input, ctx) => {
+		resumeSchema: planResumeSchema,
+		execute: async (input: z.infer<typeof planInputSchema>, ctx) => {
 			if (!context.plannedTaskService || !context.schedulePlannedTasks) {
 				return {
 					result: 'Planning failed: planned task scheduling is not available.',
@@ -63,7 +64,8 @@ export function createPlanTool(context: OrchestrationContext) {
 				};
 			}
 
-			const { resumeData, suspend } = ctx?.agent ?? {};
+			const resumeData = ctx?.agent?.resumeData as z.infer<typeof planResumeSchema> | undefined;
+			const suspend = ctx?.agent?.suspend;
 
 			// First call — persist plan, show to user, suspend for approval
 			if (resumeData === undefined || resumeData === null) {
@@ -77,7 +79,7 @@ export function createPlanTool(context: OrchestrationContext) {
 				);
 
 				// Emit tasks-update so the checklist appears in the chat immediately
-				const taskItems = input.tasks.map((t) => ({
+				const taskItems = input.tasks.map((t: z.infer<typeof plannedTaskSchema>) => ({
 					id: t.id,
 					description: t.title,
 					status: 'todo' as const,
@@ -112,7 +114,7 @@ export function createPlanTool(context: OrchestrationContext) {
 
 			// User rejected or requested changes — return feedback to LLM
 			return {
-				result: `User requested changes: ${resumeData.userInput ?? 'No feedback provided'}. Revise the plan and call plan() again.`,
+				result: `User requested changes: ${resumeData.userInput ?? 'No feedback provided'}. Revise the tasks and call create-tasks again.`,
 				taskCount: 0,
 			};
 		},

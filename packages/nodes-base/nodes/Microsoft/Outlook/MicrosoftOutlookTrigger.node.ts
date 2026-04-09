@@ -83,6 +83,7 @@ export class MicrosoftOutlookTrigger implements INodeType {
 					error,
 				},
 			);
+			return null;
 		}
 
 		webhookData.lastTimeChecked = endDate;

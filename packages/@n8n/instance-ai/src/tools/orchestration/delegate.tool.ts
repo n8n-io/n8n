@@ -2,7 +2,7 @@ import type { ToolsInput } from '@mastra/core/agent';
 import { createTool } from '@mastra/core/tools';
 import { nanoid } from 'nanoid';
 
-import { delegateInputSchema, delegateOutputSchema } from './delegate.schemas';
+import { delegateInputSchema, delegateOutputSchema, type DelegateInput } from './delegate.schemas';
 import { truncateLabel } from './display-utils';
 import {
 	createDetachedSubAgentTracing,
@@ -16,13 +16,12 @@ import {
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createSubAgent, SUB_AGENT_PROTOCOL } from '../../agent/sub-agent-factory';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
-import { traceWorkingMemoryContext } from '../../runtime/working-memory-tracing';
 import { formatPreviousAttempts } from '../../storage/iteration-log';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
 
-const FORBIDDEN_TOOL_NAMES = new Set(['plan', 'delegate']);
+const FORBIDDEN_TOOL_NAMES = new Set(['plan', 'create-tasks', 'delegate']);
 
 const FALLBACK_MAX_STEPS = 10;
 
@@ -181,7 +180,7 @@ export async function startDetachedDelegateTask(
 		role,
 		traceContext,
 		plannedTaskId: input.plannedTaskId,
-		run: async (signal, drainCorrections) => {
+		run: async (signal, drainCorrections, waitForCorrection) => {
 			return await withTraceContextActor(traceContext, async () => {
 				const subAgent = createSubAgent({
 					agentId: subAgentId,
@@ -198,24 +197,14 @@ export async function startDetachedDelegateTask(
 				const traceParent = getTraceParentRun();
 				return await withTraceParentContext(traceParent, async () => {
 					const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
-					const stream = await traceWorkingMemoryContext(
-						{
-							phase: 'initial',
-							agentId: subAgentId,
-							agentRole: role,
-							threadId: context.threadId,
-							input: briefingMessage,
+					const stream = await subAgent.stream(briefingMessage, {
+						maxSteps: context.subAgentMaxSteps ?? FALLBACK_MAX_STEPS,
+						abortSignal: signal,
+						providerOptions: {
+							anthropic: { cacheControl: { type: 'ephemeral' } },
 						},
-						async () =>
-							await subAgent.stream(briefingMessage, {
-								maxSteps: context.subAgentMaxSteps ?? FALLBACK_MAX_STEPS,
-								abortSignal: signal,
-								providerOptions: {
-									anthropic: { cacheControl: { type: 'ephemeral' } },
-								},
-								...(llmStepTraceHooks?.executionOptions ?? {}),
-							}),
-					);
+						...(llmStepTraceHooks?.executionOptions ?? {}),
+					});
 
 					const result = await consumeStreamWithHitl({
 						agent: subAgent,
@@ -232,8 +221,8 @@ export async function startDetachedDelegateTask(
 						abortSignal: signal,
 						waitForConfirmation: context.waitForConfirmation,
 						drainCorrections,
+						waitForCorrection,
 						llmStepTraceHooks,
-						workingMemoryEnabled: false,
 					});
 
 					return await result.text;
@@ -260,7 +249,7 @@ export function createDelegateTool(context: OrchestrationContext) {
 			'benefit from a clean context window.',
 		inputSchema: delegateInputSchema,
 		outputSchema: delegateOutputSchema,
-		execute: async (input) => {
+		execute: async (input: DelegateInput) => {
 			if (input.tools.length === 0) {
 				return { result: 'Delegation failed: "tools" must contain at least one tool name' };
 			}
@@ -326,24 +315,14 @@ export function createDelegateTool(context: OrchestrationContext) {
 					const traceParent = getTraceParentRun();
 					return await withTraceParentContext(traceParent, async () => {
 						const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
-						const stream = await traceWorkingMemoryContext(
-							{
-								phase: 'initial',
-								agentId: subAgentId,
-								agentRole: input.role,
-								threadId: context.threadId,
-								input: briefingMessage,
+						const stream = await subAgent.stream(briefingMessage, {
+							maxSteps: context.subAgentMaxSteps ?? FALLBACK_MAX_STEPS,
+							abortSignal: context.abortSignal,
+							providerOptions: {
+								anthropic: { cacheControl: { type: 'ephemeral' } },
 							},
-							async () =>
-								await subAgent.stream(briefingMessage, {
-									maxSteps: context.subAgentMaxSteps ?? FALLBACK_MAX_STEPS,
-									abortSignal: context.abortSignal,
-									providerOptions: {
-										anthropic: { cacheControl: { type: 'ephemeral' } },
-									},
-									...(llmStepTraceHooks?.executionOptions ?? {}),
-								}),
-						);
+							...(llmStepTraceHooks?.executionOptions ?? {}),
+						});
 
 						const result = await consumeStreamWithHitl({
 							agent: subAgent,
@@ -360,7 +339,6 @@ export function createDelegateTool(context: OrchestrationContext) {
 							abortSignal: context.abortSignal,
 							waitForConfirmation: context.waitForConfirmation,
 							llmStepTraceHooks,
-							workingMemoryEnabled: false,
 						});
 
 						return await result.text;

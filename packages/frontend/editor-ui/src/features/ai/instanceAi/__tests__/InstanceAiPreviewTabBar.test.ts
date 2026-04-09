@@ -83,46 +83,6 @@ describe('InstanceAiPreviewTabBar', () => {
 		expect(emitted().close).toBeTruthy();
 	});
 
-	it('renders spinner icon for running execution status', () => {
-		const runningTab: ArtifactTab = { ...workflowTab, executionStatus: 'running' };
-		const { container } = renderComponent({
-			props: { tabs: [runningTab], activeTabId: 'wf-1' },
-		});
-
-		const spinner = container.querySelector('[data-test-id="execution-status-running"]');
-		expect(spinner).toBeInTheDocument();
-	});
-
-	it('renders checkmark icon for success execution status', () => {
-		const successTab: ArtifactTab = { ...workflowTab, executionStatus: 'success' };
-		const { container } = renderComponent({
-			props: { tabs: [successTab], activeTabId: 'wf-1' },
-		});
-
-		const check = container.querySelector('[data-test-id="execution-status-success"]');
-		expect(check).toBeInTheDocument();
-	});
-
-	it('renders x icon for error execution status', () => {
-		const errorTab: ArtifactTab = { ...workflowTab, executionStatus: 'error' };
-		const { container } = renderComponent({
-			props: { tabs: [errorTab], activeTabId: 'wf-1' },
-		});
-
-		const errorIcon = container.querySelector('[data-test-id="execution-status-error"]');
-		expect(errorIcon).toBeInTheDocument();
-	});
-
-	it('renders no status indicator when executionStatus is undefined', () => {
-		const { container } = renderComponent({
-			props: { tabs: [workflowTab], activeTabId: 'wf-1' },
-		});
-
-		expect(container.querySelector('[data-test-id="execution-status-running"]')).toBeNull();
-		expect(container.querySelector('[data-test-id="execution-status-success"]')).toBeNull();
-		expect(container.querySelector('[data-test-id="execution-status-error"]')).toBeNull();
-	});
-
 	it('hides external link when no tab is active', () => {
 		const { container } = renderComponent({
 			props: { tabs: [workflowTab], activeTabId: null },

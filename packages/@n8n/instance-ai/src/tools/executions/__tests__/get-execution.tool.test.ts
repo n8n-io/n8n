@@ -1,5 +1,5 @@
 import type { InstanceAiContext, ExecutionResult } from '../../../types';
-import { createGetExecutionTool } from '../get-execution.tool';
+import { createGetExecutionTool, getExecutionInputSchema } from '../get-execution.tool';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -38,14 +38,12 @@ describe('get-execution tool', () => {
 
 	describe('schema validation', () => {
 		it('accepts a valid executionId', () => {
-			const tool = createGetExecutionTool(context);
-			const result = tool.inputSchema!.safeParse({ executionId: 'exec-123' });
+			const result = getExecutionInputSchema.safeParse({ executionId: 'exec-123' });
 			expect(result.success).toBe(true);
 		});
 
 		it('rejects missing executionId', () => {
-			const tool = createGetExecutionTool(context);
-			const result = tool.inputSchema!.safeParse({});
+			const result = getExecutionInputSchema.safeParse({});
 			expect(result.success).toBe(false);
 		});
 	});
@@ -63,7 +61,7 @@ describe('get-execution tool', () => {
 			const result = (await tool.execute!(
 				{ executionId: 'exec-123' },
 				{} as never,
-			)) as ExecutionResult;
+			)) as unknown as ExecutionResult;
 
 			expect(context.executionService.getStatus).toHaveBeenCalledWith('exec-123');
 			expect(result.executionId).toBe('exec-123');
@@ -86,7 +84,7 @@ describe('get-execution tool', () => {
 			const result = (await tool.execute!(
 				{ executionId: 'exec-456' },
 				{} as never,
-			)) as ExecutionResult;
+			)) as unknown as ExecutionResult;
 
 			expect(context.executionService.getStatus).toHaveBeenCalledWith('exec-456');
 			expect(result.executionId).toBe('exec-456');
@@ -109,7 +107,7 @@ describe('get-execution tool', () => {
 			const result = (await tool.execute!(
 				{ executionId: 'exec-789' },
 				{} as never,
-			)) as ExecutionResult;
+			)) as unknown as ExecutionResult;
 
 			expect(result.executionId).toBe('exec-789');
 			expect(result.status).toBe('error');
@@ -128,7 +126,7 @@ describe('get-execution tool', () => {
 			const result = (await tool.execute!(
 				{ executionId: 'exec-wait' },
 				{} as never,
-			)) as ExecutionResult;
+			)) as unknown as ExecutionResult;
 
 			expect(result.executionId).toBe('exec-wait');
 			expect(result.status).toBe('waiting');

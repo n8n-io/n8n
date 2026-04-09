@@ -4,10 +4,11 @@ import { z } from 'zod';
 /** RFC 8693 grant type URN for token exchange */
 export const TOKEN_EXCHANGE_GRANT_TYPE = 'urn:ietf:params:oauth:grant-type:token-exchange' as const;
 
+/**
+ * Asymmetric-only JWT algorithms accepted for trusted key sources.
+ * Symmetric (HMAC) and 'none' are excluded by design.
+ */
 const JwtAlgorithmSchema = z.enum([
-	'HS256',
-	'HS384',
-	'HS512',
 	'RS256',
 	'RS384',
 	'RS512',
@@ -17,7 +18,8 @@ const JwtAlgorithmSchema = z.enum([
 	'PS256',
 	'PS384',
 	'PS512',
-]) satisfies z.ZodType<Algorithm>;
+	'EdDSA',
+]);
 
 /**
  * Validates JWT claims originating from an external identity provider.
@@ -34,7 +36,7 @@ export const ExternalTokenClaimsSchema = z.object({
 	email: z.string().email().optional(),
 	given_name: z.string().optional(),
 	family_name: z.string().optional(),
-	role: z.union([z.string(), z.array(z.string())]).optional(),
+	role: z.string().optional(),
 });
 
 export type ExternalTokenClaims = z.infer<typeof ExternalTokenClaimsSchema>;
@@ -63,11 +65,44 @@ export const TrustedKeySourceSchema = z.discriminatedUnion('type', [
 		allowedRoles: z.array(z.string()).optional(),
 		cacheTtlSeconds: z.number().int().positive().optional(),
 	}),
+	z.object({
+		type: z.literal('ui'),
+	}),
 ]);
 
 export type TrustedKeySource = z.infer<typeof TrustedKeySourceSchema>;
 export type StaticKeySource = Extract<TrustedKeySource, { type: 'static' }>;
 export type JwksKeySource = Extract<TrustedKeySource, { type: 'jwks' }>;
+export type UiKeySource = Extract<TrustedKeySource, { type: 'ui' }>;
+
+export type JwtAlgorithm = z.infer<typeof JwtAlgorithmSchema>;
+export type TrustedKeySourceType = 'static' | 'jwks' | 'ui';
+export type TrustedKeySourceStatus = 'pending' | 'healthy' | 'error';
+
+/**
+ * Serializable representation of a trusted key stored in the `trusted_key.data`
+ * JSON column. Unlike `ResolvedTrustedKey`, this holds the raw PEM string
+ * instead of a live `crypto.KeyObject`.
+ */
+export interface TrustedKeyData {
+	/** Allowed signing algorithms for tokens using this key. */
+	algorithms: JwtAlgorithm[];
+
+	/** PEM-encoded public key material. */
+	keyMaterial: string;
+
+	/** Expected `iss` claim value for tokens signed with this key. */
+	issuer: string;
+
+	/** Expected `aud` claim value, if restricted. */
+	expectedAudience?: string;
+
+	/** Roles allowed for tokens signed with this key, if restricted. */
+	allowedRoles?: string[];
+
+	/** ISO 8601 expiry — used by JWKS sources for key rotation. */
+	expiresAt?: string;
+}
 
 /**
  * A trusted key that has been normalized and resolved to an in-memory

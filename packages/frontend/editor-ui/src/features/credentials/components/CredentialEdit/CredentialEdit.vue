@@ -495,7 +495,7 @@ onMounted(async () => {
 async function beforeClose() {
 	let keepEditing = false;
 
-	if (hasUnsavedChanges.value) {
+	if (hasUnsavedChanges.value && !isNewCredential.value) {
 		const displayName = credentialType.value ? credentialType.value.displayName : '';
 		const confirmAction = await message.confirm(
 			i18n.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose1.message', {
@@ -1332,13 +1332,7 @@ function resetCredentialData(): void {
 		}
 	}
 
-	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
-	const overrideProjectId = isCredentialModalState(modalState) ? modalState.projectId : undefined;
-	const overrideProject = overrideProjectId
-		? projectsStore.myProjects.find((p) => p.id === overrideProjectId)
-		: undefined;
-	const { currentProject, personalProject } = projectsStore;
-	const resolvedProject = overrideProject ?? currentProject ?? personalProject ?? {};
+	const resolvedProject = homeProject.value ?? {};
 	const scopes = ('scopes' in resolvedProject ? resolvedProject.scopes : undefined) ?? [];
 
 	credentialData.value = {
