@@ -54,6 +54,7 @@ import { validateFieldType } from './type-validation';
 import { deepCopy } from './utils';
 import type { Workflow } from '.';
 
+// To facilitate frontend refactoring, make some helper functions work without full workflow object
 type WorkflowForNodeHelpers = Pick<Workflow, 'expression'>;
 
 export const cronNodeOptions: INodePropertyCollection[] = [
