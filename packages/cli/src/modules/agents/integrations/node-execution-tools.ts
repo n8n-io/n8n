@@ -30,11 +30,6 @@ export interface NodeDescriptor {
 	hasCredentials: boolean;
 	/** Configured credentials for this node, ready to use in run_node_tool */
 	credentials: CredentialListItem[];
-	/**
-	 * Credential slot names required by this node that the user has NOT yet configured.
-	 * Non-empty means the node cannot be executed until the user sets up these credentials.
-	 */
-	missingCredentialTypes: string[];
 }
 
 const UI_ONLY_TYPES = new Set([
@@ -101,8 +96,6 @@ function toDescriptor(
 ): NodeDescriptor {
 	const credentialSlots = (node.credentials ?? []).map((credDef) => credDef.name);
 	const credentials = credentialSlots.flatMap((type) => credsByType.get(type) ?? []);
-	const configuredTypes = new Set(credentials.map((c) => c.type));
-	const missingCredentialTypes = credentialSlots.filter((type) => !configuredTypes.has(type));
 
 	return {
 		displayName: node.displayName,
@@ -111,7 +104,6 @@ function toDescriptor(
 		nodeTypeVersion: getLatestVersion(node.version),
 		hasCredentials: credentials.length > 0,
 		credentials,
-		missingCredentialTypes,
 	};
 }
 
@@ -166,7 +158,12 @@ export async function searchNodes(
 // ---------------------------------------------------------------------------
 
 const searchNodesInputSchema = z.object({
-	query: z.string().describe('Natural-language description of what you want to do'),
+	query: z
+		.string()
+		.describe(
+			'Short keywords describing the node or service — prefer names over sentences ' +
+				'(e.g. "gmail", "http request", "slack message"). Avoid filler words like "send", "via", "using".',
+		),
 	topK: z.number().int().min(1).max(50).optional().describe('Max results (default 10)'),
 });
 
@@ -208,10 +205,10 @@ export function createSearchNodesTool(
 	return new Tool('search_nodes')
 		.description(
 			'Search for n8n node tools relevant to your task. ' +
-				'Pass a natural-language query (e.g. "send email", "fetch HTTP"). ' +
-				'Each result includes: displayName, nodeType, nodeTypeVersion, description, hasCredentials, credentials, missingCredentialTypes. ' +
-				'If missingCredentialTypes is non-empty the node cannot be executed — do NOT call run_node_tool for it. ' +
-				'Instead, after completing all other tasks, inform the user which credential types they need to set up in n8n for each affected node. ' +
+				'Use short keywords — node or service names work best (e.g. "gmail", "slack", "http"). ' +
+				'Each result includes: displayName, nodeType, nodeTypeVersion, description, hasCredentials, credentials. ' +
+				'If hasCredentials is false the node requires credentials the user has not set up yet — ' +
+				'do NOT call run_node_tool for it; after completing all other tasks inform the user which nodes need credentials configured in n8n. ' +
 				'Use get_node_schema to inspect parameters, then run_node_tool to execute.',
 		)
 		.input(searchNodesInputSchema)
