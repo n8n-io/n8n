@@ -530,11 +530,12 @@ export class ActiveWorkflowManager {
 				});
 
 				void this.eventBus.sendAuditEvent({
-					eventName: 'n8n.audit.workflow.activated-on-bootup',
+					eventName: 'n8n.audit.workflow.activated',
 					payload: {
 						workflowId: dbWorkflow.id,
 						workflowName: dbWorkflow.name,
 						activeVersionId: dbWorkflow.activeVersionId,
+						activationMode,
 					},
 				});
 			}
@@ -808,11 +809,13 @@ export class ActiveWorkflowManager {
 
 			if (dbWorkflow && (activationMode === 'init' || activationMode === 'leadershipChange')) {
 				void this.eventBus.sendAuditEvent({
-					eventName: 'n8n.audit.workflow.deactivated-on-bootup',
+					eventName: 'n8n.audit.workflow.deactivated',
 					payload: {
 						workflowId,
 						workflowName: dbWorkflow.name,
 						deactivatedVersionId: dbWorkflow.activeVersionId ?? null,
+						activationMode,
+						reason: error.name,
 					},
 				});
 			}
