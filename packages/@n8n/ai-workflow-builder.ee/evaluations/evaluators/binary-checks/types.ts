@@ -26,12 +26,6 @@ export interface BinaryCheck {
 	name: string;
 	kind: 'deterministic' | 'llm';
 	run(workflow: SimpleWorkflow, ctx: BinaryCheckContext): Promise<BinaryCheckResult>;
-	/**
-	 * Optional gate that runs before `run()`.
-	 * Return a comment to skip this check,
-	 * or undefined to proceed with evaluation.
-	 */
-	gate?(workflow: SimpleWorkflow, ctx: BinaryCheckContext): Promise<string | undefined>;
 }
 
 // Re-export for convenience

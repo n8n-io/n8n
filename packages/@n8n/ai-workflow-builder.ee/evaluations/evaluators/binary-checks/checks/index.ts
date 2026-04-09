@@ -5,6 +5,7 @@ import { hasStartNode } from './has-start-node';
 import { noEmptySetNodes } from './no-empty-set-nodes';
 import { noUnnecessaryCodeNodes } from './no-unnecessary-code-nodes';
 import { noUnreachableNodes } from './no-unreachable-nodes';
+import { workflowActuallyChanged } from './workflow-actually-changed';
 import {
 	agentHasDynamicPrompt,
 	agentHasLanguageModel,
@@ -18,7 +19,6 @@ import {
 	validRequiredParameters,
 	vectorStoreHasEmbeddings,
 } from './validation-checks';
-import { workflowActuallyChanged } from './workflow-actually-changed';
 
 export const DETERMINISTIC_CHECKS: BinaryCheck[] = [
 	hasNodes,

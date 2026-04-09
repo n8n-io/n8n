@@ -68,11 +68,6 @@ export function createBinaryChecksEvaluator(
 			const results = await Promise.allSettled(
 				selectedChecks.map(async (check) => {
 					try {
-						if (check.gate) {
-							const gateSkipMessage = await check.gate(workflow, checkCtx);
-							if (gateSkipMessage)
-								return { check, result: { pass: true, comment: gateSkipMessage } };
-						}
 						const result = await check.run(workflow, checkCtx);
 						return { check, result };
 					} catch (error) {
