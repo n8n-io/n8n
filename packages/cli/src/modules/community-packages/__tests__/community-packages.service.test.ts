@@ -58,7 +58,6 @@ describe('CommunityPackagesService', () => {
 		registry: 'some.random.host',
 		unverifiedEnabled: true,
 		authToken: '',
-		npmConfig: false,
 	});
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
 	const installedNodesRepository = mockInstance(InstalledNodesRepository);

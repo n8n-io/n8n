@@ -31,10 +31,6 @@ export class CommunityPackagesConfig {
 	@Env('N8N_COMMUNITY_PACKAGES_AUTH_TOKEN')
 	authToken: string = '';
 
-	/** Whether to read auth token from system npm config for the configured registry */
-	@Env('N8N_COMMUNITY_PACKAGES_NPM_CONFIG')
-	npmConfig: boolean = false;
-
 	/** Current AI Node SDK version from @n8n/ai-utilities, sent to Strapi API */
 	readonly aiNodeSdkVersion: number = AI_NODE_SDK_VERSION;
 }

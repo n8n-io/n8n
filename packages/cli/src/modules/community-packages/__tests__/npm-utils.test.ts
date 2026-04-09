@@ -25,7 +25,6 @@ import {
 	executeNpmCommand,
 	verifyIntegrity,
 	checkIfVersionExistsOrThrow,
-	getNpmConfigValue,
 	executeNpmRequest,
 } from '../npm-utils';
 import { NPM_COMMAND_TOKENS, RESPONSE_ERROR_MESSAGES } from '@/constants';
@@ -875,57 +874,6 @@ describe('executeNpmRequest', () => {
 		await expect(
 			executeNpmRequest(registryUrl, `${encodeURIComponent(packageName)}/${version}`),
 		).rejects.toThrow();
-	});
-});
-
-describe('getNpmConfigValue', () => {
-	beforeEach(() => {
-		jest.clearAllMocks();
-		mockAsyncExec.mockReset();
-	});
-
-	afterEach(() => {
-		jest.clearAllMocks();
-	});
-
-	it('should return the trimmed value when npm config outputs a token', async () => {
-		mockAsyncExec.mockResolvedValue({ stdout: 'my-secret-token\n', stderr: '' });
-
-		const result = await getNpmConfigValue('//registry.example.com/:_authToken');
-		expect(result).toBe('my-secret-token');
-		expect(mockAsyncExec).toHaveBeenCalledWith(
-			'npm',
-			['config', 'get', '//registry.example.com/:_authToken'],
-			undefined,
-		);
-	});
-
-	it('should return undefined when npm config outputs "undefined"', async () => {
-		mockAsyncExec.mockResolvedValue({ stdout: 'undefined\n', stderr: '' });
-
-		const result = await getNpmConfigValue('//registry.example.com/:_authToken');
-		expect(result).toBeUndefined();
-	});
-
-	it('should return undefined when npm config outputs "null"', async () => {
-		mockAsyncExec.mockResolvedValue({ stdout: 'null\n', stderr: '' });
-
-		const result = await getNpmConfigValue('//registry.example.com/:_authToken');
-		expect(result).toBeUndefined();
-	});
-
-	it('should return undefined when npm command throws', async () => {
-		mockAsyncExec.mockRejectedValue(new Error('npm config error'));
-
-		const result = await getNpmConfigValue('//registry.example.com/:_authToken');
-		expect(result).toBeUndefined();
-	});
-
-	it('should return undefined when stdout is empty', async () => {
-		mockAsyncExec.mockResolvedValue({ stdout: '   \n', stderr: '' });
-
-		const result = await getNpmConfigValue('//registry.example.com/:_authToken');
-		expect(result).toBeUndefined();
 	});
 });
 

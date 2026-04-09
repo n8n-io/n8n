@@ -30,12 +30,7 @@ import { CommunityPackagesConfig } from './community-packages.config';
 import type { CommunityPackages } from './community-packages.types';
 import { InstalledPackages } from './installed-packages.entity';
 import { InstalledPackagesRepository } from './installed-packages.repository';
-import {
-	checkIfVersionExistsOrThrow,
-	executeNpmCommand,
-	getNpmConfigValue,
-	verifyIntegrity,
-} from './npm-utils';
+import { checkIfVersionExistsOrThrow, executeNpmCommand, verifyIntegrity } from './npm-utils';
 
 const asyncExecFile = promisify(execFile);
 
@@ -376,14 +371,8 @@ export class CommunityPackagesService {
 		return registry;
 	}
 
-	private async getNpmAuthToken(): Promise<string | undefined> {
-		const { authToken, npmConfig } = this.config;
-		if (authToken) return authToken;
-		if (npmConfig) {
-			const registryHost = new URL(this.getNpmRegistry()).host;
-			return await getNpmConfigValue(`//${registryHost}/:_authToken`);
-		}
-		return undefined;
+	private getNpmAuthToken(): string | undefined {
+		return this.config.authToken || undefined;
 	}
 
 	private getNpmInstallArgs(authToken?: string): string[] {
@@ -414,7 +403,7 @@ export class CommunityPackagesService {
 		const shouldValidateChecksum = 'checksum' in options && Boolean(options.checksum);
 		this.checkInstallPermissions(shouldValidateChecksum);
 
-		const authToken = await this.getNpmAuthToken();
+		const authToken = this.getNpmAuthToken();
 
 		if (options.checksum) {
 			await verifyIntegrity(
@@ -503,7 +492,7 @@ export class CommunityPackagesService {
 	}
 
 	private async installOrUpdateNpmPackage(packageName: string, packageVersion: string) {
-		const authToken = await this.getNpmAuthToken();
+		const authToken = this.getNpmAuthToken();
 		await this.downloadPackage(packageName, packageVersion, authToken);
 		await this.loadNodesAndCredentials.unloadPackage(packageName);
 		await this.loadNodesAndCredentials.loadPackage(packageName);

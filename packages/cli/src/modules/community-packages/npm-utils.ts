@@ -148,16 +148,6 @@ export async function executeNpmRequest<T = unknown>(
 	}
 }
 
-export async function getNpmConfigValue(key: string): Promise<string | undefined> {
-	try {
-		const stdout = await executeNpmCommand(['config', 'get', key], { doNotHandleError: true });
-		const value = stdout.trim();
-		return value && value !== 'undefined' && value !== 'null' ? value : undefined;
-	} catch {
-		return undefined;
-	}
-}
-
 export async function verifyIntegrity(
 	packageName: string,
 	version: string,
