@@ -693,6 +693,8 @@ export interface InstanceAiToolTraceOptions {
 	metadata?: Record<string, unknown>;
 }
 
+export type TraceReplayMode = 'record' | 'replay' | 'off';
+
 export interface InstanceAiTraceContext {
 	projectName: string;
 	traceKind: 'message_turn' | 'detached_subagent';
@@ -715,6 +717,14 @@ export interface InstanceAiTraceContext {
 	) => Promise<void>;
 	toHeaders: (run: InstanceAiTraceRun) => Record<string, string>;
 	wrapTools: (tools: ToolsInput, options?: InstanceAiToolTraceOptions) => ToolsInput;
+	/** Trace replay mode: 'record' captures tool I/O, 'replay' remaps IDs, 'off' disables. */
+	replayMode: TraceReplayMode;
+	/** Shared ID remapper instance — available in 'replay' mode. */
+	idRemapper?: import('./tracing/trace-replay').IdRemapper;
+	/** Trace index for cursor-based replay — available in 'replay' mode. */
+	traceIndex?: import('./tracing/trace-replay').TraceIndex;
+	/** Trace writer for recording — available in 'record' mode. */
+	traceWriter?: import('./tracing/trace-replay').TraceWriter;
 }
 
 // ── Background task spawning ─────────────────────────────────────────────────

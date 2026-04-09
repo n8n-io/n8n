@@ -141,12 +141,16 @@ export class ProxyServer {
 
 	async loadExpectations(
 		folderName: string,
-		options: { strictBodyMatching?: boolean } = {},
+		options: {
+			strictBodyMatching?: boolean;
+			partialBodyMatching?: boolean;
+			sequential?: boolean;
+		} = {},
 	): Promise<void> {
 		try {
 			const targetDir = join(this.expectationsDir, folderName);
 			const files = await fs.readdir(targetDir);
-			const jsonFiles = files.filter((file) => file.endsWith('.json'));
+			const jsonFiles = files.filter((file) => file.endsWith('.json')).sort();
 			const expectations: Expectation[] = [];
 
 			for (const file of jsonFiles) {
@@ -163,10 +167,30 @@ export class ProxyServer {
 						(expectation.httpRequest as { body: { matchType: string } }).body.matchType = 'STRICT';
 					}
 
+					if (
+						options.partialBodyMatching &&
+						expectation.httpRequest &&
+						'body' in expectation.httpRequest
+					) {
+						(expectation.httpRequest as { body: { matchType: string } }).body.matchType =
+							'ONLY_MATCHING_FIELDS';
+					}
+
+					if (options.sequential) {
+						expectation.times = { remainingTimes: 1 };
+					}
+
 					expectations.push(expectation);
 				} catch (parseError) {
 					console.log(`Error parsing expectation from ${file}:`, parseError);
 				}
+			}
+
+			// In sequential mode, make the last expectation unlimited so it acts
+			// as a fallback — returning the same final response for any extra calls
+			// caused by tool execution divergence during replay.
+			if (options.sequential && expectations.length > 0) {
+				expectations[expectations.length - 1].times = { unlimited: true };
 			}
 
 			if (expectations.length > 0) {
@@ -255,6 +279,7 @@ export class ProxyServer {
 			host?: string;
 			dedupe?: boolean;
 			raw?: boolean;
+			clearDir?: boolean;
 			transform?: (expectation: Expectation) => Expectation;
 		},
 	): Promise<void> {
@@ -263,7 +288,15 @@ export class ProxyServer {
 				options?.pathOrRequestDefinition,
 			);
 
+			if (recordedExpectations.length === 0) {
+				return;
+			}
+
 			const targetDir = join(this.expectationsDir, folderName);
+
+			if (options?.clearDir) {
+				await fs.rm(targetDir, { recursive: true, force: true });
+			}
 
 			await fs.mkdir(targetDir, { recursive: true });
 			const seenRequests = new Set<string>();
