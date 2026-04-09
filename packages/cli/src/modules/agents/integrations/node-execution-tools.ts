@@ -63,6 +63,17 @@ export function getNodeSchema(
 	return node.properties.filter((prop) => !UI_ONLY_TYPES.has(prop.type) && !prop.isNodeSetting);
 }
 
+function groupCredsByType(creds: CredentialListItem[]): Map<string, CredentialListItem[]> {
+	const map = new Map<string, CredentialListItem[]>();
+	for (const cred of creds) {
+		const existing = map.get(cred.type);
+		if (existing) existing.push(cred);
+		else map.set(cred.type, [cred]);
+	}
+
+	return map;
+}
+
 function getLatestVersion(version: number | number[]): number {
 	return Array.isArray(version) ? Math.max(...version) : version;
 }
@@ -86,15 +97,13 @@ function indexUsableNodes(nodes: INodeTypeDescription[]): Map<string, INodeTypeD
 
 function toDescriptor(
 	node: INodeTypeDescription,
-	credsByType: Map<string, CredentialListItem>,
+	credsByType: Map<string, CredentialListItem[]>,
 ): NodeDescriptor {
 	const credentialSlots = (node.credentials ?? []).map((credDef) => credDef.name);
-	const credentials = credentialSlots.flatMap((type) => {
-		const cred = credsByType.get(type);
-		return cred ? [cred] : [];
-	});
+	const credentials = credentialSlots.flatMap((type) => credsByType.get(type) ?? []);
 	const configuredTypes = new Set(credentials.map((c) => c.type));
 	const missingCredentialTypes = credentialSlots.filter((type) => !configuredTypes.has(type));
+
 	return {
 		displayName: node.displayName,
 		description: node.description,
@@ -117,7 +126,7 @@ export async function listNodes(
 	credentialProvider?: CredentialProvider,
 ): Promise<NodeDescriptor[]> {
 	const availableCreds = credentialProvider ? await credentialProvider.list() : [];
-	const credsByType = new Map(availableCreds.map((cred) => [cred.type, cred]));
+	const credsByType = groupCredsByType(availableCreds);
 	const nodeIndex = indexUsableNodes(nodes);
 	return [...nodeIndex.values()].map((node) => toDescriptor(node, credsByType));
 }
@@ -135,10 +144,10 @@ export async function searchNodes(
 	nodes: INodeTypeDescription[],
 	query: string,
 	credentialProvider?: CredentialProvider,
-	{ topK = 10 }: { topK?: number; minScore?: number } = {},
+	topK = 10,
 ): Promise<NodeDescriptor[]> {
 	const availableCreds = credentialProvider ? await credentialProvider.list() : [];
-	const credsByType = new Map(availableCreds.map((cred) => [cred.type, cred]));
+	const credsByType = groupCredsByType(availableCreds);
 	const nodeIndex = indexUsableNodes(nodes);
 
 	if (!query.trim()) {
@@ -146,6 +155,7 @@ export async function searchNodes(
 	}
 
 	const engine = new NodeSearchEngine([...nodeIndex.values()]);
+
 	return engine
 		.searchByName(query, topK)
 		.map(({ name }: NodeSearchResult) => toDescriptor(nodeIndex.get(name)!, credsByType));
@@ -158,12 +168,6 @@ export async function searchNodes(
 const searchNodesInputSchema = z.object({
 	query: z.string().describe('Natural-language description of what you want to do'),
 	topK: z.number().int().min(1).max(50).optional().describe('Max results (default 10)'),
-	minScore: z
-		.number()
-		.min(0)
-		.max(1)
-		.optional()
-		.describe('Minimum relevance score 0–1 (default 0.1)'),
 });
 
 const getNodeSchemaInputSchema = z.object({
@@ -211,8 +215,8 @@ export function createSearchNodesTool(
 				'Use get_node_schema to inspect parameters, then run_node_tool to execute.',
 		)
 		.input(searchNodesInputSchema)
-		.handler(async ({ query, topK, minScore }) => {
-			const tools = await searchNodes(nodes, query, credentialProvider, { topK, minScore });
+		.handler(async ({ query, topK }) => {
+			const tools = await searchNodes(nodes, query, credentialProvider, topK);
 			return { tools };
 		});
 }

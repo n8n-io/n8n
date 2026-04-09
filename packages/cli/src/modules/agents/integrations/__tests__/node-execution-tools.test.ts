@@ -205,7 +205,7 @@ describe('searchNodes()', () => {
 			makeNode({ name: 'n8n-nodes-base.slack', displayName: 'Slack' }),
 		];
 
-		const results = await searchNodes(nodes, '', undefined, { topK: 2 });
+		const results = await searchNodes(nodes, '', undefined, 2);
 
 		expect(results).toHaveLength(2);
 	});
@@ -255,7 +255,7 @@ describe('searchNodes()', () => {
 			makeNode({ name: 'n8n-nodes-base.c', displayName: 'Send C', description: 'send c' }),
 		];
 
-		const results = await searchNodes(nodes, 'send', undefined, { topK: 2 });
+		const results = await searchNodes(nodes, 'send', undefined, 2);
 
 		expect(results).toHaveLength(2);
 	});
