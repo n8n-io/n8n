@@ -396,6 +396,9 @@ export function logWrapper<
 			if (originalInstance instanceof TextSplitter) {
 				if (prop === 'splitText' && 'splitText' in target) {
 					return async (text: string): Promise<string[]> => {
+						console.log(
+							`[VM-DEBUG] logWrapper splitText called, runIndex=${executeFunctions.addInputData ? 'available' : 'missing'} textLength=${text?.length ?? 'null'} textPreview=${text?.slice(0, 80)}`,
+						);
 						connectionType = NodeConnectionTypes.AiTextSplitter;
 						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { textSplitter: text } }],

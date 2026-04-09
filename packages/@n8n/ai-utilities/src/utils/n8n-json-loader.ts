@@ -57,6 +57,9 @@ export class N8nJsonLoader {
 
 		if (mode === 'expressionData') {
 			const dataString = this.context.getNodeParameter('jsonData', itemIndex) as string | object;
+			console.log(
+				`[VM-DEBUG] n8n-json-loader processItem itemIndex=${itemIndex} typeof=${typeof dataString} length=${typeof dataString === 'string' ? dataString.length : 'N/A'} preview=${typeof dataString === 'string' ? dataString.slice(0, 80) : JSON.stringify(dataString)?.slice(0, 80)}`,
+			);
 			if (typeof dataString === 'object') {
 				const itemBlob = new Blob([JSON.stringify(dataString)], { type: 'application/json' });
 				documentLoader = new JSONLoader(itemBlob, pointersArray);
@@ -73,9 +76,13 @@ export class N8nJsonLoader {
 			throw new NodeOperationError(this.context.getNode(), 'Document loader is not initialized');
 		}
 
+		const loadedDocs = await documentLoader.load();
+		console.log(
+			`[VM-DEBUG] n8n-json-loader loaded ${loadedDocs.length} docs, hasTextSplitter=${!!this.textSplitter}, itemIndex=${itemIndex}`,
+		);
 		const docs = this.textSplitter
-			? await this.textSplitter.splitDocuments(await documentLoader.load())
-			: await documentLoader.load();
+			? await this.textSplitter.splitDocuments(loadedDocs)
+			: loadedDocs;
 
 		if (metadata) {
 			docs.forEach((doc) => {
