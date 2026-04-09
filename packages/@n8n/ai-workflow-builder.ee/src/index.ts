@@ -13,7 +13,6 @@ export type {
 } from './assistant';
 
 export { NodeSearchEngine } from './tools/engines/node-search-engine';
-export type { NodeSearchResult } from './types/nodes';
 
 // Code builder utilities for MCP integration
 export {
