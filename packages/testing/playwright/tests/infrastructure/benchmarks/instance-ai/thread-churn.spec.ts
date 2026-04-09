@@ -1,6 +1,6 @@
-import { test, instanceAiTestConfig } from './fixtures';
+import { test, expect, instanceAiTestConfig } from './fixtures';
 import { analyzeHeapLeaks } from '../../../../utils/benchmark/heap-analysis';
-import { BENCHMARK_PROMPTS } from '../../../../utils/benchmark/instance-ai-driver';
+import { BENCHMARK_PROMPTS, WARMUP_PROMPT } from '../../../../utils/benchmark/instance-ai-driver';
 import { runMemoryBenchmark } from '../harness/memory-harness';
 
 test.use(instanceAiTestConfig);
@@ -40,6 +40,13 @@ test.describe(
 					heapOptions,
 					captureSnapshots: true,
 					dryRun: false,
+					warmup: async () => {
+						await driver.runParallel([WARMUP_PROMPT]);
+						await driver.cleanup();
+					},
+					captureTargetAfterPhase: `round-${ROUNDS - 1}`,
+					maxLeakMB: 50,
+					maxRssGrowthMB: 300,
 				},
 				[
 					// Each round: open 3 tabs, build in parallel, close tabs, delete threads
@@ -54,6 +61,8 @@ test.describe(
 					})),
 				],
 			);
+
+			expect(result.passed).toBe(true);
 
 			// Run memlab analysis if all three snapshots were captured
 			const { baseline, target, final: finalSnap } = result.snapshots;

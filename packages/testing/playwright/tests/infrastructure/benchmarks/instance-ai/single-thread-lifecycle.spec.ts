@@ -1,5 +1,5 @@
-import { test, instanceAiTestConfig } from './fixtures';
-import { BENCHMARK_PROMPTS } from '../../../../utils/benchmark/instance-ai-driver';
+import { test, expect, instanceAiTestConfig } from './fixtures';
+import { BENCHMARK_PROMPTS, WARMUP_PROMPT } from '../../../../utils/benchmark/instance-ai-driver';
 import { runMemoryBenchmark } from '../harness/memory-harness';
 
 test.use(instanceAiTestConfig);
@@ -23,7 +23,7 @@ test.describe(
 				stableReadingsRequired: 3,
 			};
 
-			await runMemoryBenchmark(
+			const result = await runMemoryBenchmark(
 				{
 					testInfo,
 					baseUrl: backendUrl,
@@ -31,12 +31,18 @@ test.describe(
 					dimensions: { scenario: 'single-thread' },
 					heapOptions,
 					captureSnapshots: true,
+					warmup: async () => {
+						await driver.runParallel([WARMUP_PROMPT]);
+						await driver.cleanup();
+					},
+					captureTargetAfterPhase: 'build-workflow',
+					maxLeakMB: 50,
+					maxRssGrowthMB: 300,
 				},
 				[
 					{
 						name: 'build-workflow',
 						action: async () => {
-							// Single prompt in its own tab
 							await driver.runParallel([BENCHMARK_PROMPTS[0]]);
 						},
 					},
@@ -48,6 +54,8 @@ test.describe(
 					},
 				],
 			);
+
+			expect(result.passed).toBe(true);
 		});
 	},
 );

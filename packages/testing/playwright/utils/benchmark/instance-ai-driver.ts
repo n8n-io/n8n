@@ -10,6 +10,9 @@ import {
 	type StableHeapResult,
 } from '../performance-helper';
 
+/** Lightweight prompt for warmup — exercises the instance-ai path without building a workflow. */
+export const WARMUP_PROMPT = 'List my current credentials.';
+
 /**
  * Self-contained prompts that build complete workflows without triggering HITL.
  * Each uses only core nodes (no credentials), and explicitly says "don't ask questions".
@@ -264,23 +267,10 @@ export class InstanceAiDriver {
 		}
 	}
 
-	/** Full cleanup: close tabs + delete threads + reset DB + re-authenticate. */
+	/** Close all tabs and delete all threads created by this driver instance. */
 	async cleanup(): Promise<void> {
 		await this.closeAllTabs();
 		await this.deleteAllThreads();
-		await this.resetAndReauth();
-	}
-
-	/**
-	 * Reset the database and re-authenticate.
-	 * Removes workflows, credentials, data tables, and other artifacts
-	 * created during builds so rounds don't accumulate side effects.
-	 * Re-signs in because the reset invalidates all sessions.
-	 */
-	async resetAndReauth(): Promise<void> {
-		await this.n8n.api.resetDatabase();
-		await this.n8n.api.signin('owner');
-		console.log('[INSTANCE-AI] Database reset + re-authenticated');
 	}
 
 	/** Take a stable server-side heap measurement (triggers GC + polls VictoriaMetrics). */

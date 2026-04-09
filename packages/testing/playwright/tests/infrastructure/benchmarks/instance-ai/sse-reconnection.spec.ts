@@ -1,4 +1,4 @@
-import { test, instanceAiTestConfig } from './fixtures';
+import { test, expect, instanceAiTestConfig } from './fixtures';
 import { InstanceAiPage } from '../../../../pages/InstanceAiPage';
 import { BENCHMARK_PROMPTS } from '../../../../utils/benchmark/instance-ai-driver';
 import { runMemoryBenchmark, type MemoryPhase } from '../harness/memory-harness';
@@ -56,16 +56,20 @@ test.describe(
 				},
 			});
 
-			await runMemoryBenchmark(
+			const result = await runMemoryBenchmark(
 				{
 					testInfo,
 					baseUrl: backendUrl,
 					metrics: services.observability.metrics,
 					dimensions: { scenario: 'sse-reconnection', cycles: RECONNECT_CYCLES },
 					heapOptions,
+					maxLeakMB: 50,
+					maxRssGrowthMB: 300,
 				},
 				phases,
 			);
+
+			expect(result.passed).toBe(true);
 		});
 	},
 );

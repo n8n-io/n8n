@@ -1,6 +1,6 @@
-import { test, instanceAiTestConfig } from './fixtures';
+import { test, expect, instanceAiTestConfig } from './fixtures';
 import { InstanceAiPage } from '../../../../pages/InstanceAiPage';
-import { BENCHMARK_PROMPTS } from '../../../../utils/benchmark/instance-ai-driver';
+import { BENCHMARK_PROMPTS, WARMUP_PROMPT } from '../../../../utils/benchmark/instance-ai-driver';
 import { runMemoryBenchmark, type MemoryPhase } from '../harness/memory-harness';
 
 test.use(instanceAiTestConfig);
@@ -62,7 +62,7 @@ test.describe(
 				});
 			}
 
-			await runMemoryBenchmark(
+			const result = await runMemoryBenchmark(
 				{
 					testInfo,
 					baseUrl: backendUrl,
@@ -70,9 +70,17 @@ test.describe(
 					dimensions: { scenario: 'cancel-abort', iterations: CANCEL_ITERATIONS },
 					heapOptions,
 					captureSnapshots: true,
+					warmup: async () => {
+						await driver.runParallel([WARMUP_PROMPT]);
+						await driver.cleanup();
+					},
+					maxLeakMB: 50,
+					maxRssGrowthMB: 300,
 				},
 				phases,
 			);
+
+			expect(result.passed).toBe(true);
 		});
 	},
 );

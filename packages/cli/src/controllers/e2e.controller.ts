@@ -350,6 +350,107 @@ export class E2EController {
 		return fs.createReadStream(filePath);
 	}
 
+	/**
+	 * Return a parsed breakdown of process RSS from /proc/self/smaps.
+	 * Groups memory mappings by pathname and returns both a rollup summary
+	 * and per-mapping detail sorted by RSS. Linux-only (containers).
+	 */
+	@Get('/memory-maps', { skipAuth: true })
+	getMemoryMaps() {
+		const fs = require('node:fs') as typeof nodeFs;
+
+		const memUsage = process.memoryUsage();
+		const result: {
+			processMemoryUsage: {
+				rss: number;
+				heapTotal: number;
+				heapUsed: number;
+				external: number;
+				arrayBuffers: number;
+			};
+			rollup: Record<string, number> | null;
+			mappings: Array<{ name: string; rssMB: number; pssMB: number; count: number }> | null;
+			raw: string | null;
+		} = {
+			processMemoryUsage: {
+				rss: Math.round(memUsage.rss / 1024 / 1024),
+				heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024),
+				heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024),
+				external: Math.round(memUsage.external / 1024 / 1024),
+				arrayBuffers: Math.round(memUsage.arrayBuffers / 1024 / 1024),
+			},
+			rollup: null,
+			mappings: null,
+			raw: null,
+		};
+
+		// Parse /proc/self/smaps_rollup (summary)
+		try {
+			const rollupText = fs.readFileSync('/proc/self/smaps_rollup', 'utf-8');
+			const rollup: Record<string, number> = {};
+			for (const line of rollupText.split('\n')) {
+				const match = line.match(/^(\w+):\s+(\d+)\s+kB$/);
+				if (match) {
+					rollup[`${match[1]}MB`] = Math.round(Number(match[2]) / 1024);
+				}
+			}
+			result.rollup = rollup;
+		} catch {
+			// Not available (macOS, permissions)
+		}
+
+		// Parse /proc/self/smaps (detailed per-mapping)
+		try {
+			const smapsText = fs.readFileSync('/proc/self/smaps', 'utf-8');
+			result.raw = smapsText;
+
+			const grouped = new Map<string, { rssKB: number; pssKB: number; count: number }>();
+			let currentName = '[unknown]';
+
+			for (const line of smapsText.split('\n')) {
+				// Mapping header: address range + pathname
+				const headerMatch = line.match(/^[0-9a-f]+-[0-9a-f]+\s+\S+\s+\S+\s+\S+\s+\S+\s*(.*)/);
+				if (headerMatch) {
+					const path = headerMatch[1].trim();
+					currentName = path || '[anon]';
+					if (!grouped.has(currentName)) {
+						grouped.set(currentName, { rssKB: 0, pssKB: 0, count: 0 });
+					}
+					const entry = grouped.get(currentName)!;
+					entry.count++;
+					continue;
+				}
+
+				const rssMatch = line.match(/^Rss:\s+(\d+)\s+kB$/);
+				if (rssMatch) {
+					const entry = grouped.get(currentName);
+					if (entry) entry.rssKB += Number(rssMatch[1]);
+					continue;
+				}
+
+				const pssMatch = line.match(/^Pss:\s+(\d+)\s+kB$/);
+				if (pssMatch) {
+					const entry = grouped.get(currentName);
+					if (entry) entry.pssKB += Number(pssMatch[1]);
+				}
+			}
+
+			result.mappings = [...grouped.entries()]
+				.map(([name, { rssKB, pssKB, count }]) => ({
+					name,
+					rssMB: Math.round((rssKB / 1024) * 10) / 10,
+					pssMB: Math.round((pssKB / 1024) * 10) / 10,
+					count,
+				}))
+				.filter((m) => m.rssMB > 0)
+				.sort((a, b) => b.rssMB - a.rssMB);
+		} catch {
+			// Not available (macOS, permissions)
+		}
+
+		return result;
+	}
+
 	private resetFeatures() {
 		for (const feature of Object.keys(this.enabledFeatures)) {
 			this.enabledFeatures[feature as BooleanLicenseFeature] = false;

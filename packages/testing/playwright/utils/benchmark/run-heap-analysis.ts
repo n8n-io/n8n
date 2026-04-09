@@ -208,9 +208,18 @@ export async function runFullHeapAnalysis(
 // ---------------------------------------------------------------------------
 
 async function main() {
-	const args = process.argv.slice(2).filter((a) => !a.startsWith('--'));
-	const outputIdx = process.argv.indexOf('--output');
-	const outputDir = outputIdx !== -1 ? process.argv[outputIdx + 1] : undefined;
+	const rawArgs = process.argv.slice(2);
+	const outputIdx = rawArgs.indexOf('--output');
+	const outputDir = outputIdx !== -1 ? rawArgs[outputIdx + 1] : undefined;
+
+	const args: string[] = [];
+	for (let i = 0; i < rawArgs.length; i++) {
+		if (rawArgs[i].startsWith('--')) {
+			i++; // skip the flag's value
+			continue;
+		}
+		args.push(rawArgs[i]);
+	}
 
 	if (args.length < 3) {
 		console.error('Usage: run-heap-analysis.ts <baseline> <target> <final> [--output <dir>]');

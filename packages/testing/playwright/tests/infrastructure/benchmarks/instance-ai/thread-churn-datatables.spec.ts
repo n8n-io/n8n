@@ -1,5 +1,6 @@
-import { test, instanceAiTestConfig } from './fixtures';
+import { test, expect, instanceAiTestConfig } from './fixtures';
 import { analyzeHeapLeaks } from '../../../../utils/benchmark/heap-analysis';
+import { WARMUP_PROMPT } from '../../../../utils/benchmark/instance-ai-driver';
 import { runMemoryBenchmark } from '../harness/memory-harness';
 
 test.use(instanceAiTestConfig);
@@ -44,6 +45,13 @@ test.describe(
 					heapOptions,
 					captureSnapshots: true,
 					dryRun: false,
+					warmup: async () => {
+						await driver.runParallel([WARMUP_PROMPT]);
+						await driver.cleanup();
+					},
+					captureTargetAfterPhase: `round-${ROUNDS - 1}`,
+					maxLeakMB: 50,
+					maxRssGrowthMB: 300,
 				},
 				[
 					...Array.from({ length: ROUNDS }, (_, round) => ({
@@ -57,6 +65,8 @@ test.describe(
 					})),
 				],
 			);
+
+			expect(result.passed).toBe(true);
 
 			const { baseline, target, final: finalSnap } = result.snapshots;
 			// eslint-disable-next-line playwright/no-conditional-in-test
