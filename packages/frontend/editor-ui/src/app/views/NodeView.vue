@@ -537,7 +537,19 @@ async function onCopyNodes(ids: string[]) {
 			meta: copiedWorkflowData.meta,
 		};
 
-		const linkText = getBundleIncludeText(subWorkflowCount, dataTableCount);
+		// Start with direct counts, update with recursive counts once the bundle arrives
+		const linkText = ref(getBundleIncludeText(subWorkflowCount, dataTableCount));
+		void bundlePromise
+			.then((fullBundle) => {
+				const filtered = bundleImport.filterBundleToNodes(fullBundle, nodes);
+				const recursiveWfCount = Object.keys(filtered.subWorkflows).length;
+				const recursiveDtCount = filtered.dataTableSchemas.length;
+				if (recursiveWfCount !== subWorkflowCount || recursiveDtCount !== dataTableCount) {
+					linkText.value = getBundleIncludeText(recursiveWfCount, recursiveDtCount);
+				}
+			})
+			.catch(() => {});
+
 		const state = reactive({ loading: false });
 
 		const BundleLinkMessage = defineComponent({
@@ -548,7 +560,7 @@ async function onCopyNodes(ids: string[]) {
 								h(N8nSpinner, { size: 'small' }),
 								i18n.baseText('generic.copiedToClipboard.bundleCopying'),
 							])
-						: h('a', { style: 'color: var(--color--primary); cursor: pointer;' }, linkText);
+						: h('a', { style: 'color: var(--color--primary); cursor: pointer;' }, linkText.value);
 			},
 		});
 

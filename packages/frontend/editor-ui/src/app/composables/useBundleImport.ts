@@ -553,6 +553,7 @@ export function useBundleImport() {
 	return {
 		getWorkflowIdFromNode,
 		getDataTableIdFromNode,
+		filterBundleToNodes,
 		fetchWorkflowBundle,
 		writeScopedBundleToClipboard,
 		copyBundleToClipboard,
