@@ -6,7 +6,10 @@ import { mock } from 'jest-mock-extended';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
+import type { JwtService } from '@/services/jwt.service';
+
 import type { ResolvedTrustedKey } from '../../token-exchange.schemas';
+import type { TokenExchangeConfig } from '../../token-exchange.config';
 import type { IdentityResolutionService } from '../identity-resolution.service';
 import type { JtiStoreService } from '../jti-store.service';
 import { TokenExchangeService } from '../token-exchange.service';
@@ -16,12 +19,16 @@ const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
 const trustedKeyStore = mock<TrustedKeyService>();
 const jtiStore = mock<JtiStoreService>();
 const identityResolutionService = mock<IdentityResolutionService>();
+const config = mock<TokenExchangeConfig>();
+const jwtService = mock<JwtService>();
 
 const service = new TokenExchangeService(
 	logger,
 	trustedKeyStore,
 	jtiStore,
 	identityResolutionService,
+	config,
+	jwtService,
 );
 
 const resolvedKey: ResolvedTrustedKey = {
