@@ -240,6 +240,7 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 				}
 			}
 
+			this.lostConnection = true;
 			this.emit('connection-lost', cumulativeTimeout);
 
 			return this.config.retryInterval;
@@ -276,8 +277,6 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 			const timeoutDetails = `${cumulativeTimeout}/${maxTimeout}`;
 
 			this.logger.warn(`Lost Redis connection. ${reconnectionMsg} (${timeoutDetails})`);
-
-			this.lostConnection = true;
 		});
 
 		this.on('connection-recovered', () => {
