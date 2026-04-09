@@ -55,6 +55,13 @@ vi.mock('@/app/composables/useToast', () => ({
 	})),
 }));
 
+const mockFetchAllCredentialsForWorkflow = vi.hoisted(() => vi.fn());
+vi.mock('@/features/credentials/credentials.store', () => ({
+	useCredentialsStore: vi.fn(() => ({
+		fetchAllCredentialsForWorkflow: mockFetchAllCredentialsForWorkflow,
+	})),
+}));
+
 const mockCanvasEventBusEmit = vi.hoisted(() => vi.fn());
 vi.mock('@/features/workflows/canvas/canvas.eventBus', () => ({
 	canvasEventBus: {
@@ -272,7 +279,7 @@ describe('usePostMessageHandler', () => {
 			window.dispatchEvent(messageEvent);
 
 			await vi.waitFor(() => {
-				expect(mockOpenExecution).toHaveBeenCalled();
+				expect(mockFetchAllCredentialsForWorkflow).toHaveBeenCalled();
 			});
 
 			expect(storeRef.value).not.toBeNull();
@@ -281,8 +288,6 @@ describe('usePostMessageHandler', () => {
 		});
 
 		it('should fetch workflow credentials after opening execution', async () => {
-			const credentialsStore = useCredentialsStore();
-
 			mockOpenExecution.mockResolvedValue({
 				workflowData: { id: 'test-wf-id', name: 'Test' },
 				mode: 'trigger',
@@ -305,10 +310,10 @@ describe('usePostMessageHandler', () => {
 			window.dispatchEvent(messageEvent);
 
 			await vi.waitFor(() => {
-				expect(mockOpenExecution).toHaveBeenCalled();
+				expect(mockFetchAllCredentialsForWorkflow).toHaveBeenCalled();
 			});
 
-			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+			expect(mockFetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
 				workflowId: 'test-wf-id',
 			});
 
@@ -316,8 +321,6 @@ describe('usePostMessageHandler', () => {
 		});
 
 		it('should not fetch workflow credentials when execution data is missing', async () => {
-			const credentialsStore = useCredentialsStore();
-
 			mockOpenExecution.mockResolvedValue(null);
 
 			const { setup, cleanup } = usePostMessageHandler({
@@ -339,7 +342,7 @@ describe('usePostMessageHandler', () => {
 				expect(mockOpenExecution).toHaveBeenCalled();
 			});
 
-			expect(credentialsStore.fetchAllCredentialsForWorkflow).not.toHaveBeenCalled();
+			expect(mockFetchAllCredentialsForWorkflow).not.toHaveBeenCalled();
 
 			cleanup();
 		});
