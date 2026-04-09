@@ -26,6 +26,7 @@ import {
 	verifyIntegrity,
 	checkIfVersionExistsOrThrow,
 	getNpmConfigValue,
+	executeNpmRequest,
 } from '../npm-utils';
 import { NPM_COMMAND_TOKENS, RESPONSE_ERROR_MESSAGES } from '@/constants';
 
@@ -642,22 +643,33 @@ describe('checkIfVersionExistsOrThrow', () => {
 			);
 		});
 
-		it('should fallback to npm CLI and throw error when version does not match', async () => {
-			const differentVersion = '2.0.0';
+		it('should return true when npm CLI resolves a dist-tag to a different version string', async () => {
+			// npm resolves "latest" to an actual version (e.g. "1.0.0"), not the tag name itself.
+			const resolvedVersion = '1.0.0';
 
+			nock(registryUrl)
+				.get(`/${encodeURIComponent(packageName)}/latest`)
+				.replyWithError('Network failure');
+
+			mockAsyncExec.mockResolvedValue({
+				stdout: JSON.stringify(resolvedVersion),
+				stderr: '',
+			});
+
+			const result = await checkIfVersionExistsOrThrow(packageName, 'latest', registryUrl);
+			expect(result).toBe(true);
+		});
+
+		it('should throw when npm CLI returns an empty response', async () => {
 			nock(registryUrl)
 				.get(`/${encodeURIComponent(packageName)}/${version}`)
 				.replyWithError('Network failure');
 
-			mockAsyncExec.mockResolvedValue({
-				stdout: JSON.stringify(differentVersion),
-				stderr: '',
-			});
+			mockAsyncExec.mockResolvedValue({ stdout: 'null', stderr: '' });
 
 			await expect(checkIfVersionExistsOrThrow(packageName, version, registryUrl)).rejects.toThrow(
 				new UnexpectedError('Failed to check package version existence'),
 			);
-			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
 		});
 
 		it('should handle special characters in package name and version safely for checkIfVersionExistsOrThrow', async () => {
@@ -770,6 +782,99 @@ describe('checkIfVersionExistsOrThrow', () => {
 			const result = await checkIfVersionExistsOrThrow(packageName, version, registryWithSlashes);
 			expect(result).toBe(true);
 		});
+	});
+});
+
+describe('executeNpmRequest', () => {
+	const registryUrl = 'https://registry.npmjs.org';
+	const packageName = 'test-package';
+	const version = '1.0.0';
+
+	afterEach(() => {
+		nock.cleanAll();
+	});
+
+	it('should return parsed response data on success', async () => {
+		const payload = { name: packageName, version };
+		nock(registryUrl)
+			.get(`/${encodeURIComponent(packageName)}/${version}`)
+			.reply(200, payload);
+
+		const result = await executeNpmRequest(
+			registryUrl,
+			`${encodeURIComponent(packageName)}/${version}`,
+		);
+		expect(result).toEqual(payload);
+	});
+
+	it('should strip trailing slashes from registry URL', async () => {
+		const payload = { name: packageName };
+		nock(registryUrl)
+			.get(`/${encodeURIComponent(packageName)}/${version}`)
+			.reply(200, payload);
+
+		const result = await executeNpmRequest(
+			`${registryUrl}///`,
+			`${encodeURIComponent(packageName)}/${version}`,
+		);
+		expect(result).toEqual(payload);
+	});
+
+	it('should include Authorization header when authToken is provided', async () => {
+		const authToken = 'my-secret-token';
+		nock(registryUrl, { reqheaders: { authorization: `Bearer ${authToken}` } })
+			.get(`/${encodeURIComponent(packageName)}/${version}`)
+			.reply(200, { name: packageName });
+
+		await expect(
+			executeNpmRequest(registryUrl, `${encodeURIComponent(packageName)}/${version}`, {
+				authToken,
+			}),
+		).resolves.not.toThrow();
+	});
+
+	it('should not include Authorization header when authToken is not provided', async () => {
+		nock(registryUrl)
+			.get(`/${encodeURIComponent(packageName)}/${version}`)
+			.reply(200, { name: packageName });
+
+		await expect(
+			executeNpmRequest(registryUrl, `${encodeURIComponent(packageName)}/${version}`),
+		).resolves.not.toThrow();
+	});
+
+	it('should merge extra headers with auth header', async () => {
+		const authToken = 'token';
+		nock(registryUrl, { reqheaders: { authorization: `Bearer ${authToken}`, 'x-custom': 'value' } })
+			.get(`/${encodeURIComponent(packageName)}/${version}`)
+			.reply(200, { name: packageName });
+
+		await expect(
+			executeNpmRequest(registryUrl, `${encodeURIComponent(packageName)}/${version}`, {
+				authToken,
+				headers: { 'x-custom': 'value' },
+			}),
+		).resolves.not.toThrow();
+	});
+
+	it('should throw and log on HTTP error', async () => {
+		nock(registryUrl)
+			.get(`/${encodeURIComponent(packageName)}/${version}`)
+			.reply(500);
+
+		await expect(
+			executeNpmRequest(registryUrl, `${encodeURIComponent(packageName)}/${version}`),
+		).rejects.toThrow();
+	});
+
+	it('should throw and log on network error', async () => {
+		nock(registryUrl)
+			.get(`/${encodeURIComponent(packageName)}/${version}`)
+			.replyWithError('Network failure');
+
+		await expect(
+			executeNpmRequest(registryUrl, `${encodeURIComponent(packageName)}/${version}`),
+		).rejects.toThrow();
 	});
 });
 

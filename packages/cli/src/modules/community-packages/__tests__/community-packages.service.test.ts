@@ -37,6 +37,9 @@ jest.mock('../community-node-types-utils', () => ({
 jest.mock('../npm-utils', () => ({
 	...jest.requireActual('../npm-utils'),
 	executeNpmCommand: jest.fn(),
+	executeNpmRequest: jest.fn().mockResolvedValue({}),
+	checkIfVersionExistsOrThrow: jest.fn().mockResolvedValue(true),
+	verifyIntegrity: jest.fn().mockResolvedValue(undefined),
 }));
 
 type ExecFileCallback = NonNullable<Parameters<typeof execFile>[3]>;
