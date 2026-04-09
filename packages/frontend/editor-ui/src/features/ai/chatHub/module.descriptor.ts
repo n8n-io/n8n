@@ -201,19 +201,7 @@ export const ChatModule: FrontendModuleDescription = {
 			position: 'top',
 			route: { to: { name: CHAT_SETTINGS_VIEW } },
 			get available() {
-				if (!hasPermission(['rbac'], { rbac: { scope: 'chatHub:manage' } })) {
-					return false;
-				}
-
-				// When instance-ai is enabled, Chathub settings link is hidden
-				const settingsStore = useSettingsStore();
-				if (
-					settingsStore.isModuleActive('instance-ai') &&
-					settingsStore.moduleSettings['instance-ai']?.enabled !== false
-				) {
-					return false;
-				}
-				return true;
+				return hasPermission(['rbac'], { rbac: { scope: 'chatHub:manage' } });
 			},
 		},
 	],
