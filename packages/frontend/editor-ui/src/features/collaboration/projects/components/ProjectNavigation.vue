@@ -50,6 +50,9 @@ const hasMultipleVerifiedUsers = computed(
 );
 
 // Agents sidebar section
+// Gate: isModuleActive('agents') is false when the module isn't registered.
+// The PostHog flag (0XX_first_class_agents) controls module registration on the
+// backend side — when the flag is off, 'agents' won't appear in activeModules.
 const isAgentsAvailable = computed(() => settingsStore.isModuleActive('agents'));
 const agentsList = ref<Array<{ id: string; name: string }>>([]);
 const isCoachmarkVisible = computed(

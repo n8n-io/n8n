@@ -21,6 +21,7 @@ import { listAgentCredentials } from '../composables/useAgentApi';
 import { useModelCatalog } from '../composables/useModelCatalog';
 import type { ModelInfo } from '../composables/useAgentApi';
 import type { AgentSchema } from '../types';
+import { CHATHUB_TO_CATALOG, CATALOG_TO_CHATHUB } from '../provider-mapping';
 import AgentToolsPanel from './AgentToolsPanel.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
 import AgentCodeEditor from './AgentCodeEditor.vue';
@@ -48,33 +49,6 @@ const emit = defineEmits<{
 	save: [];
 	cancel: [];
 }>();
-
-// --- Provider mapping: ChatHub provider IDs <-> Agent SDK catalog IDs ---
-// ChatHub uses camelCase (e.g. 'xAiGrok'), catalog uses lowercase (e.g. 'xai')
-const CHATHUB_TO_CATALOG: Record<string, string> = {
-	openai: 'openai',
-	anthropic: 'anthropic',
-	google: 'google',
-	ollama: 'ollama',
-	azureOpenAi: 'azure-openai',
-	azureEntraId: 'azure-openai',
-	awsBedrock: 'aws-bedrock',
-	vercelAiGateway: 'vercel',
-	xAiGrok: 'xai',
-	groq: 'groq',
-	openRouter: 'openrouter',
-	deepSeek: 'deepseek',
-	cohere: 'cohere',
-	mistralCloud: 'mistral',
-};
-
-const CATALOG_TO_CHATHUB: Record<string, ChatHubLLMProvider> = {};
-for (const [chatHub, catalog] of Object.entries(CHATHUB_TO_CATALOG)) {
-	// First mapping wins (avoid azureEntraId overriding azureOpenAi)
-	if (!(catalog in CATALOG_TO_CHATHUB)) {
-		CATALOG_TO_CHATHUB[catalog] = chatHub as ChatHubLLMProvider;
-	}
-}
 
 // Supported providers from ChatHub (canonical list), sorted alphabetically by display name
 const supportedProviders = computed(() => {
@@ -463,9 +437,9 @@ onMounted(() => {
 							locale.baseText('agents.settings.triggers')
 						}}</N8nText>
 					</div>
-					<button :class="$style.addBtn" @click.stop>
+					<span role="button" tabindex="0" :class="$style.addBtn" @click.stop @keydown.enter.stop>
 						<N8nIcon icon="plus" :size="16" />
-					</button>
+					</span>
 				</button>
 				<div v-if="expandedSections.triggers" :class="$style.sectionContent">
 					<N8nText size="small" color="text-light">
@@ -483,9 +457,9 @@ onMounted(() => {
 							locale.baseText('agents.settings.tools')
 						}}</N8nText>
 					</div>
-					<button :class="$style.addBtn" @click.stop>
+					<span role="button" tabindex="0" :class="$style.addBtn" @click.stop @keydown.enter.stop>
 						<N8nIcon icon="plus" :size="16" />
-					</button>
+					</span>
 				</button>
 				<div v-if="expandedSections.tools" :class="$style.sectionContent">
 					<AgentToolsPanel
@@ -507,9 +481,9 @@ onMounted(() => {
 							locale.baseText('agents.settings.advanced')
 						}}</N8nText>
 					</div>
-					<button :class="$style.addBtn" @click.stop>
+					<span role="button" tabindex="0" :class="$style.addBtn" @click.stop @keydown.enter.stop>
 						<N8nIcon icon="plus" :size="16" />
-					</button>
+					</span>
 				</button>
 				<div v-if="expandedSections.advanced" :class="$style.sectionContent">
 					<AgentMemoryPanel

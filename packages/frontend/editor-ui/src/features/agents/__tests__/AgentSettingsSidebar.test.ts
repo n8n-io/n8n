@@ -1,35 +1,10 @@
 import { describe, it, expect } from 'vitest';
+import { CHATHUB_TO_CATALOG, CATALOG_TO_CHATHUB } from '../provider-mapping';
 
 /**
- * Unit tests for the provider mapping logic used in AgentSettingsSidebar.
- * Tests the ChatHub <-> Catalog provider ID mapping without mounting components.
+ * Tests the shared provider mapping used by AgentSettingsSidebar
+ * to translate between ChatHub provider IDs and Agent SDK catalog IDs.
  */
-
-// Replicate the mapping from the component
-const CHATHUB_TO_CATALOG: Record<string, string> = {
-	openai: 'openai',
-	anthropic: 'anthropic',
-	google: 'google',
-	ollama: 'ollama',
-	azureOpenAi: 'azure-openai',
-	azureEntraId: 'azure-openai',
-	awsBedrock: 'aws-bedrock',
-	vercelAiGateway: 'vercel',
-	xAiGrok: 'xai',
-	groq: 'groq',
-	openRouter: 'openrouter',
-	deepSeek: 'deepseek',
-	cohere: 'cohere',
-	mistralCloud: 'mistral',
-};
-
-const CATALOG_TO_CHATHUB: Record<string, string> = {};
-for (const [chatHub, catalog] of Object.entries(CHATHUB_TO_CATALOG)) {
-	if (!(catalog in CATALOG_TO_CHATHUB)) {
-		CATALOG_TO_CHATHUB[catalog] = chatHub;
-	}
-}
-
 describe('Provider ID mapping', () => {
 	it('maps all ChatHub providers to catalog IDs', () => {
 		expect(CHATHUB_TO_CATALOG.openai).toBe('openai');
@@ -52,8 +27,6 @@ describe('Provider ID mapping', () => {
 	});
 
 	it('prefers azureOpenAi over azureEntraId for azure-openai reverse mapping', () => {
-		// Both azureOpenAi and azureEntraId map to 'azure-openai'
-		// The reverse should pick azureOpenAi (first one wins)
 		expect(CATALOG_TO_CHATHUB['azure-openai']).toBe('azureOpenAi');
 	});
 
