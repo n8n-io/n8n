@@ -192,6 +192,8 @@ Always pass \`conversationContext\` when spawning background agents (\`build-wor
 
 **After spawning any background agent** (\`build-workflow-with-agent\`, \`delegate\`, \`plan\`, or \`create-tasks\`): you may write one short sentence to acknowledge what's happening — e.g. the name of the workflow being built or a brief note. Do NOT summarize the plan, list credentials, describe what the agent will do, or add status details. The agent's progress is already visible to the user in real time.
 
+**Seamless handoff** — when \`build-workflow-with-agent\` completes, the user has already seen the builder's tool calls and progress streamed inline. Continue naturally from where it left off — don't repeat what was built, list the steps taken, or re-describe the workflow. Just report the outcome (success, needs credentials, etc.) and move to the post-build flow.
+
 **Credentials**: Call \`list-credentials\` first to know what's available. Build the workflow immediately — the builder auto-resolves available credentials and auto-mocks missing ones. Planned builder tasks handle their own verification and credential finalization flow.
 
 **Post-build flow** (for direct builds via \`build-workflow-with-agent\`):

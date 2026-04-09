@@ -36,6 +36,8 @@ export interface AgentNode {
 	targetResource?: InstanceAiTargetResource;
 	/** When true, this sub-agent streams inline in the orchestrator thread (no separate child bubble). */
 	inline?: boolean;
+	/** @internal Tracks whether an inline agent has emitted at least one tool call (preamble is over). */
+	_inlineActive?: boolean;
 	/** Transient status message (e.g. "Recalling conversation..."). Cleared when empty. */
 	statusMessage?: string;
 	status: InstanceAiAgentStatus;
@@ -214,8 +216,16 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
 				agent.textContent += event.payload.text;
-				const timelineOwner = resolveTimelineAgent(state, event.agentId);
-				appendTimelineText(ensureTimeline(state, timelineOwner), event.payload.text);
+				if (agent.inline) {
+					// Inline agents: show intermediate text (between tool calls) but suppress
+					// the preamble (before first tool call). Completion text is trimmed on agent-completed.
+					if (agent._inlineActive) {
+						const timelineOwner = resolveTimelineAgent(state, event.agentId);
+						appendTimelineText(ensureTimeline(state, timelineOwner), event.payload.text);
+					}
+				} else {
+					appendTimelineText(ensureTimeline(state, event.agentId), event.payload.text);
+				}
 			}
 			break;
 		}
@@ -232,6 +242,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			if (!isSafeObjectKey(event.payload.toolCallId)) break;
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
+				if (agent.inline) agent._inlineActive = true;
 				const tc: InstanceAiToolCallState = {
 					toolCallId: event.payload.toolCallId,
 					toolName: event.payload.toolName,
@@ -314,6 +325,18 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				agent.status = event.payload.error ? 'error' : 'completed';
 				agent.result = event.payload.result;
 				agent.error = event.payload.error;
+				// Trim trailing text from the parent timeline when an inline agent
+				// completes — this is the completion summary that would overlap
+				// with the orchestrator's own response.
+				if (agent.inline) {
+					const parentId = state.parentByAgentId[event.agentId];
+					if (parentId) {
+						const parentTimeline = state.timelineByAgentId[parentId];
+						if (parentTimeline?.at(-1)?.type === 'text') {
+							parentTimeline.pop();
+						}
+					}
+				}
 			}
 			// A completed/errored agent can't have tool calls still in-flight.
 			// Clear isLoading so persisted snapshots don't show stale confirmations.
