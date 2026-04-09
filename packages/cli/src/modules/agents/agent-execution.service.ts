@@ -20,6 +20,8 @@ export interface RecordMessageParams {
 	userId: string;
 	userMessage: string;
 	record: MessageRecord;
+	/** Set to 'suspended' or 'resumed' for HITL tool call flows. */
+	hitlStatus?: 'suspended' | 'resumed';
 }
 
 @Service()
@@ -118,6 +120,9 @@ export class AgentExecutionService {
 		}
 		if (record.error) {
 			metadata.push({ key: 'error', value: record.error });
+		}
+		if (params.hitlStatus) {
+			metadata.push({ key: 'hitlStatus', value: params.hitlStatus });
 		}
 
 		await this.executionMetadataRepository.insert(metadata.map((m) => ({ ...m, executionId })));

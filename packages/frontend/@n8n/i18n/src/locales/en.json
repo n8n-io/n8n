@@ -1325,6 +1325,7 @@
 	"agentSessions.detail.toolCalls": "Tool Calls",
 	"agentSessions.detail.model": "Model",
 	"agentSessions.detail.cost": "Cost",
+	"agentSessions.detail.toolCallSuspended": "Tool call suspended — waiting for user action",
 	"agentView.tab.editor": "Editor",
 	"agentView.tab.sessions": "Sessions",
 	"executionsList.loadMore": "Load more",

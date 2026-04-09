@@ -522,9 +522,9 @@ export class AgentsService {
 			reader.releaseLock();
 		}
 
-		// Record the resumed execution if we have the context
+		// Record the resumed execution if we have the context.
+		// Don't repeat the original user message — the pre-suspension execution already has it.
 		if (threadId && userId && projectId && !recorder.suspended) {
-			const originalMessage = this.pendingUserMessages.get(agentId) ?? '(resumed tool call)';
 			this.pendingUserMessages.delete(agentId);
 			const messageRecord = recorder.getMessageRecord();
 			void this.agentExecutionService
@@ -534,8 +534,9 @@ export class AgentsService {
 					agentName: agentInstance.name,
 					projectId,
 					userId,
-					userMessage: originalMessage,
+					userMessage: '',
 					record: messageRecord,
+					hitlStatus: 'resumed',
 				})
 				.catch((error) => {
 					this.logger.warn('Failed to record resumed agent execution', {
@@ -611,30 +612,31 @@ export class AgentsService {
 			reader.releaseLock();
 		}
 
-		// Don't record if the stream ended with a tool-call suspension — the data
-		// is incomplete (no finish chunk with usage). Recording happens on resume.
+		// Always record — even if suspended, the pre-suspension response text
+		// and tool calls are valuable. Usage/model will be null for suspended runs.
 		if (recorder.suspended) {
 			this.pendingUserMessages.set(agentId, message);
-		} else {
-			const messageRecord = recorder.getMessageRecord();
-			void this.agentExecutionService
-				.recordMessage({
-					threadId,
-					agentId,
-					agentName: agentInstance.name,
-					projectId,
-					userId,
-					userMessage: message,
-					record: messageRecord,
-				})
-				.catch((error) => {
-					this.logger.warn('Failed to record agent execution', {
-						agentId,
-						threadId,
-						error: error instanceof Error ? error.message : String(error),
-					});
-				});
 		}
+
+		const messageRecord = recorder.getMessageRecord();
+		void this.agentExecutionService
+			.recordMessage({
+				threadId,
+				agentId,
+				agentName: agentInstance.name,
+				projectId,
+				userId,
+				userMessage: message,
+				record: messageRecord,
+				hitlStatus: recorder.suspended ? 'suspended' : undefined,
+			})
+			.catch((error) => {
+				this.logger.warn('Failed to record agent execution', {
+					agentId,
+					threadId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			});
 	}
 
 	/**

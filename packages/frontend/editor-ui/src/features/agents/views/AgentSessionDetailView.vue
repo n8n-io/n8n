@@ -133,13 +133,20 @@ function goBack() {
 				<div v-if="loading" :class="$style.loadingState">Loading...</div>
 				<template v-else>
 					<template v-for="execution in executions" :key="execution.id">
-						<!-- User message -->
-						<div :class="$style.userMessage">
+						<!-- HITL suspension divider (shown before resumed messages) -->
+						<div
+							v-if="getMetadata(execution, 'hitlStatus') === 'resumed'"
+							:class="$style.hitlDivider"
+						>
+							<span :class="$style.hitlDividerText">
+								{{ i18n.baseText('agentSessions.detail.toolCallSuspended') }}
+							</span>
+						</div>
+						<!-- User message (skipped for resumed executions with empty message) -->
+						<div v-if="getMetadata(execution, 'userMessage')" :class="$style.userMessage">
 							<div
 								:class="$style.userBubble"
-								v-html="
-									highlightAgentName(getMetadata(execution, 'userMessage') ?? '(user message)')
-								"
+								v-html="highlightAgentName(getMetadata(execution, 'userMessage')!)"
 							/>
 						</div>
 						<!-- Assistant message -->
@@ -457,6 +464,27 @@ function goBack() {
 	margin: var(--spacing--4xs) 0;
 	white-space: pre-wrap;
 	overflow-x: auto;
+}
+
+.hitlDivider {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--3xs) 0;
+}
+
+.hitlDivider::before,
+.hitlDivider::after {
+	content: '';
+	flex: 1;
+	height: 1px;
+	background-color: var(--color--foreground);
+}
+
+.hitlDividerText {
+	font-size: var(--font-size--3xs);
+	color: var(--color--text--tint-2);
+	white-space: nowrap;
 }
 
 .emptyDetail {
