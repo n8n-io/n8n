@@ -166,7 +166,9 @@ export class WaitTracker {
 			};
 
 			const lastNodeName = fullExecutionData.data.resultData.lastNodeExecuted ?? '';
-			const resumedNode = fullExecutionData.workflowData.nodes.find((n) => n.name === lastNodeName);
+			const resumedNode = fullExecutionData.workflowData.nodes?.find(
+				(n) => n.name === lastNodeName,
+			);
 
 			try {
 				await this.workflowRunner.run(data, false, false, executionId);

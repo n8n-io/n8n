@@ -259,7 +259,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		lastNodeExecuted: string,
 	) {
 		const resumeSource: 'webhook' | 'form' = this.includeForms ? 'form' : 'webhook';
-		const resumedNode = execution.workflowData.nodes.find((n) => n.name === lastNodeExecuted);
+		const resumedNode = execution.workflowData.nodes?.find((n) => n.name === lastNodeExecuted);
 		this.eventService.emit('execution-resumed', {
 			executionId,
 			workflowId: execution.workflowData.id,

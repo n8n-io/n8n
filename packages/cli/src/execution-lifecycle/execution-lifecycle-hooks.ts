@@ -148,7 +148,7 @@ function hookFunctionsWorkflowEvents(hooks: ExecutionLifecycleHooks, userId?: st
 		if (runData.status === 'waiting') {
 			const { executionId, workflowData: workflow } = this;
 			const lastNodeName = runData.data.resultData.lastNodeExecuted ?? '';
-			const node = workflow.nodes.find((n) => n.name === lastNodeName);
+			const node = workflow.nodes?.find((n) => n.name === lastNodeName);
 			const isIndefinite = runData.waitTill?.getTime() === WAIT_INDEFINITELY.getTime();
 
 			eventService.emit('execution-waiting', {
