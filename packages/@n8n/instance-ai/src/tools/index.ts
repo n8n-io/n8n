@@ -39,6 +39,7 @@ import { createBuildWorkflowAgentTool } from './orchestration/build-workflow-age
 import { createCancelBackgroundTaskTool } from './orchestration/cancel-background-task.tool';
 import { createCorrectBackgroundTaskTool } from './orchestration/correct-background-task.tool';
 import { createDelegateTool } from './orchestration/delegate.tool';
+import { createPlanWithAgentTool } from './orchestration/plan-with-agent.tool';
 import { createPlanTool } from './orchestration/plan.tool';
 import { createReportVerificationVerdictTool } from './orchestration/report-verification-verdict.tool';
 import { createUpdateTasksTool } from './orchestration/update-tasks.tool';
@@ -164,7 +165,8 @@ export function createAllTools(context: InstanceAiContext) {
  */
 export function createOrchestrationTools(context: OrchestrationContext) {
 	return {
-		plan: createPlanTool(context),
+		'create-tasks': createPlanTool(context),
+		plan: createPlanWithAgentTool(context),
 		'update-tasks': createUpdateTasksTool(context),
 		delegate: createDelegateTool(context),
 		'build-workflow-with-agent': createBuildWorkflowAgentTool(context),

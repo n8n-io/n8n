@@ -7,6 +7,7 @@ export interface ProvisioningConfig {
 	scopesProjectsRolesClaimName: string;
 	scopesProvisionInstanceRole: boolean;
 	scopesProvisionProjectRoles: boolean;
+	scopesUseExpressionMapping: boolean;
 }
 
 export const getProvisioningConfig = async (

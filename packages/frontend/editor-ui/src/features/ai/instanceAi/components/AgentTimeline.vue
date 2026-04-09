@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
+import type { InstanceAiAgentNode, InstanceAiToolCallState, TaskList } from '@n8n/api-types';
 import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
@@ -134,6 +134,35 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 	store.resolveConfirmation(requestId, approved ? 'approved' : 'denied');
 	void store.confirmAction(requestId, approved, undefined, undefined, undefined, feedback);
 }
+
+/** Find the latest plan-review confirmation from a planner child's submit-plan tool call.
+ *  Prefers pending (isLoading) over resolved — handles revision loops where
+ *  multiple submit-plan calls exist. */
+const plannerConfirmation = computed<InstanceAiToolCallState | undefined>(() => {
+	let latest: InstanceAiToolCallState | undefined;
+	for (const child of props.agentNode.children) {
+		if (child.role !== 'planner') continue;
+		for (const tc of child.toolCalls) {
+			if (tc.toolName === 'submit-plan' && tc.confirmation?.inputType === 'plan-review') {
+				if (tc.isLoading) return tc;
+				latest = tc;
+			}
+		}
+	}
+	return latest;
+});
+
+/** Map simplified TaskList items to PlannedTaskArg shape for loading preview */
+function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefined {
+	if (!tasks?.tasks?.length) return undefined;
+	return tasks.tasks.map((t) => ({
+		id: t.id,
+		title: t.description,
+		kind: '',
+		spec: '',
+		deps: [],
+	}));
+}
 </script>
 
 <template>
@@ -163,10 +192,12 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 					:is-loading="toolCallsById[entry.toolCallId].isLoading"
 					:tool-call-id="toolCallsById[entry.toolCallId].toolCallId"
 				/>
-				<!-- Hidden tool calls (builder/data-table/researcher handled by child agent via AgentSection) -->
+				<!-- Hidden tool calls (builder/data-table/researcher/planner handled by child agent via AgentSection) -->
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'builder'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'data-table'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'researcher'" />
+				<!-- Planner: suppress tool call — PlanReviewPanel renders after the child AgentSection -->
+				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'planner'" />
 				<!-- Answered questions (read-only after resolution) -->
 				<AnsweredQuestions
 					v-else-if="
@@ -175,11 +206,14 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 					"
 					:tool-call="toolCallsById[entry.toolCallId]"
 				/>
-				<!-- Plan review: always render inline (interactive while pending, read-only after) -->
+				<!-- Plan review from plan() tool: always render inline -->
 				<PlanReviewPanel
 					v-else-if="toolCallsById[entry.toolCallId].confirmation?.inputType === 'plan-review'"
 					:planned-tasks="
-						(toolCallsById[entry.toolCallId].args?.tasks as PlannedTaskArg[] | undefined) ?? []
+						toolCallsById[entry.toolCallId].confirmation?.planItems ??
+						(toolCallsById[entry.toolCallId].args?.tasks as PlannedTaskArg[] | undefined) ??
+						mapTaskItemsToPlannedTasks(toolCallsById[entry.toolCallId].confirmation?.tasks) ??
+						[]
 					"
 					:read-only="!toolCallsById[entry.toolCallId].isLoading"
 					@approve="handlePlanConfirm(toolCallsById[entry.toolCallId], true)"
@@ -200,6 +234,29 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 			<!-- Child agent — flat section -->
 			<template v-else-if="entry.type === 'child' && childrenById[entry.agentId]">
 				<AgentSection :agent-node="childrenById[entry.agentId]" />
+
+				<!-- Planner child: render PlanReviewPanel below the agent section -->
+				<PlanReviewPanel
+					v-if="
+						childrenById[entry.agentId].role === 'planner' &&
+						(plannerConfirmation ||
+							props.agentNode.planItems?.length ||
+							props.agentNode.tasks?.tasks?.length)
+					"
+					:key="plannerConfirmation?.confirmation?.requestId ?? 'plan-loading'"
+					:planned-tasks="
+						plannerConfirmation?.confirmation?.planItems ??
+						(props.agentNode.planItems as PlannedTaskArg[] | undefined) ??
+						mapTaskItemsToPlannedTasks(props.agentNode.tasks) ??
+						[]
+					"
+					:loading="!plannerConfirmation"
+					:read-only="!!plannerConfirmation && !plannerConfirmation.isLoading"
+					@approve="plannerConfirmation && handlePlanConfirm(plannerConfirmation, true)"
+					@request-changes="
+						(fb) => plannerConfirmation && handlePlanConfirm(plannerConfirmation, false, fb)
+					"
+				/>
 
 				<!-- Artifact cards for completed subagents (one per workflow/data-table) -->
 				<ArtifactCard
