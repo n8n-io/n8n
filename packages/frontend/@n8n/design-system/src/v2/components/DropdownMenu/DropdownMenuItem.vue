@@ -182,7 +182,7 @@ watch(
 				<slot name="item-label" :item="props" :ui="labelProps">
 					<N8nText
 						:class="$style['item-label']"
-						:title="showFullLabelOnHover ? label : undefined"
+						:title="showFullLabelOnHover && label.length >= 20 ? label : undefined"
 						size="medium"
 						:color="disabled ? 'text-light' : 'text-dark'"
 					>
@@ -284,7 +284,7 @@ watch(
 			<slot name="item-label" :item="props" :ui="labelProps">
 				<N8nText
 					:class="$style['item-label']"
-					:title="showFullLabelOnHover ? label : undefined"
+					:title="showFullLabelOnHover && label.length >= 20 ? label : undefined"
 					size="medium"
 					:color="disabled ? 'text-light' : 'text-dark'"
 				>
