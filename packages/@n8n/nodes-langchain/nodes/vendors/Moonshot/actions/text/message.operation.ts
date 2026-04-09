@@ -18,7 +18,7 @@ import type {
 	ToolCall,
 	ToolFunction,
 } from '../../helpers/interfaces';
-import { splitByComma } from '../../helpers/utils';
+import { prepareBinaryPropertyList } from '../../helpers/utils';
 import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
 
@@ -420,10 +420,10 @@ async function addAttachmentsToMessages(
 	i: number,
 	messages: ChatMessage[],
 ) {
-	const binaryPropertyNames = this.getNodeParameter('binaryPropertyName', i, 'data') as string;
+	const binaryPropertyNames = this.getNodeParameter('binaryPropertyName', i, 'data');
 
 	const content: ContentBlock[] = [];
-	for (const binaryPropertyName of splitByComma(binaryPropertyNames)) {
+	for (const binaryPropertyName of prepareBinaryPropertyList(binaryPropertyNames)) {
 		const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 		const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 		const base64 = buffer.toString('base64');

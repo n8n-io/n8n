@@ -1,6 +1,10 @@
-export function splitByComma(value: string): string[] {
-	return value
+import type { IBinaryData } from 'n8n-workflow';
+
+export function prepareBinaryPropertyList(data: string | string[] | IBinaryData | IBinaryData[]) {
+	if (Array.isArray(data)) return data;
+	if (typeof data === 'object') return [data];
+	return data
 		.split(',')
-		.map((v) => v.trim())
-		.filter((v) => v.length > 0);
+		.map((item: string) => item.trim())
+		.filter((item: string) => item.length > 0);
 }

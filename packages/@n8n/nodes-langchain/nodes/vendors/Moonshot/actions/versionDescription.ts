@@ -7,7 +7,7 @@ import * as text from './text';
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Moonshot Kimi',
 	name: 'moonshot',
-	icon: { light: 'file:moonshot.dark.svg', dark: 'file:moonshot.svg' },
+	icon: { light: 'file:moonshot.svg', dark: 'file:moonshot.dark.svg' },
 	group: ['transform'],
 	version: 1,
 	subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
