@@ -26,8 +26,8 @@ export interface NodeDescriptor {
 	nodeType: string;
 	/** The primary version number to use when executing this node. */
 	nodeTypeVersion: number;
-	/** Whether the user has at least one credential configured for this node. */
-	hasCredentials: boolean;
+	/** Credential types this node requires, e.g. ['gmailOAuth2']. Empty means no credentials needed. */
+	credentialTypes: string[];
 	/** Configured credentials for this node, ready to use in run_node_tool */
 	credentials: CredentialListItem[];
 }
@@ -102,7 +102,7 @@ function toDescriptor(
 		description: node.description,
 		nodeType: node.name,
 		nodeTypeVersion: getLatestVersion(node.version),
-		hasCredentials: credentials.length > 0,
+		credentialTypes: credentialSlots,
 		credentials,
 	};
 }
@@ -206,9 +206,9 @@ export function createSearchNodesTool(
 		.description(
 			'Search for n8n node tools relevant to your task. ' +
 				'Use short keywords — node or service names work best (e.g. "gmail", "slack", "http"). ' +
-				'Each result includes: displayName, nodeType, nodeTypeVersion, description, hasCredentials, credentials. ' +
-				'If hasCredentials is false the node requires credentials the user has not set up yet — ' +
-				'do NOT call run_node_tool for it; after completing all other tasks inform the user which nodes need credentials configured in n8n. ' +
+				'Each result includes: displayName, nodeType, nodeTypeVersion, description, credentialTypes, credentials. ' +
+				'If credentialTypes is non-empty but credentials is empty, the user has not configured the required credentials — ' +
+				'do NOT call run_node_tool for it; inform the user they need to set up those credentials in n8n first. ' +
 				'Use get_node_schema to inspect parameters, then run_node_tool to execute.',
 		)
 		.input(searchNodesInputSchema)
@@ -258,7 +258,6 @@ export function createRunNodeTool(
 	return new Tool('run_node_tool')
 		.description(
 			'Execute an n8n node for the current request. ' +
-				'Only call this for nodes where missingCredentialTypes is empty in the search_nodes result. ' +
 				'Use nodeType and nodeTypeVersion from search_nodes. ' +
 				'Call get_node_schema first to understand what nodeParameters the node accepts. ' +
 				'nodeParameters holds static node config; use n8n expressions like ={{ $json.url }} to map inputData fields. ' +

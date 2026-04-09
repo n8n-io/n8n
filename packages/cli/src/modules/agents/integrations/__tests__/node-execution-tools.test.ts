@@ -110,13 +110,25 @@ describe('listNodes()', () => {
 		);
 	});
 
-	describe('credentials', () => {
-		it('sets hasCredentials to false when no credential provider is given', async () => {
+	describe('credentialTypes', () => {
+		it('reflects the credential slots the node declares', async () => {
 			const [node] = await listNodes([makeNode({ credentials: [mock({ name: 'gmailOAuth2' })] })]);
-			expect(node.hasCredentials).toBe(false);
+			expect(node.credentialTypes).toEqual(['gmailOAuth2']);
 		});
 
-		it('sets hasCredentials to false when user has no matching credential', async () => {
+		it('is empty when the node declares no credential slots', async () => {
+			const [node] = await listNodes([makeNode({ credentials: [] })]);
+			expect(node.credentialTypes).toEqual([]);
+		});
+	});
+
+	describe('credentials', () => {
+		it('is empty when no credential provider is given', async () => {
+			const [node] = await listNodes([makeNode({ credentials: [mock({ name: 'gmailOAuth2' })] })]);
+			expect(node.credentials).toEqual([]);
+		});
+
+		it('is empty when user has no matching credential', async () => {
 			const provider = mock<CredentialProvider>();
 			provider.list.mockResolvedValue([{ id: 'cred-1', name: 'My Slack', type: 'slackApi' }]);
 
@@ -125,19 +137,7 @@ describe('listNodes()', () => {
 				provider,
 			);
 
-			expect(node.hasCredentials).toBe(false);
-		});
-
-		it('sets hasCredentials to true when user has a matching credential', async () => {
-			const provider = mock<CredentialProvider>();
-			provider.list.mockResolvedValue([{ id: 'cred-1', name: 'My Gmail', type: 'gmailOAuth2' }]);
-
-			const [node] = await listNodes(
-				[makeNode({ credentials: [mock({ name: 'gmailOAuth2' })] })],
-				provider,
-			);
-
-			expect(node.hasCredentials).toBe(true);
+			expect(node.credentials).toEqual([]);
 		});
 
 		it('populates credentials with matching CredentialListItems', async () => {
