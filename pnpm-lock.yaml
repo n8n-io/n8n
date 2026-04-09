@@ -410,6 +410,7 @@ overrides:
   picomatch@2: 2.3.2
   picomatch@4: 4.0.4
   brace-expansion@5: 5.0.5
+  avsc: 5.7.9
 
 patchedDependencies:
   '@lezer/highlight':
@@ -12248,8 +12249,8 @@ packages:
     resolution: {integrity: sha512-wvUjBtSGN7+7SjNpq/9M2Tg350UZD3q62IFZLbRAR1bSMlCo1ZaeW+BJ+D090e4hIIZLBcTDWe4Mh4jvUDajzQ==}
     engines: {node: '>= 0.4'}
 
-  avsc@5.7.6:
-    resolution: {integrity: sha512-jyn9tfd9J3h7pgJSk4qQ/1c1Tk5qiXrvmdCDON2UjcFplqRu/KpmKmpi+Ess8ZKmmqK12U4Y3VHrfwQs1xSMZA==}
+  avsc@5.7.9:
+    resolution: {integrity: sha512-yOA4wFeI7ET3v32Di/sUybQ+ttP20JHSW3mxLuNGeO0uD6PPcvLrIQXSvy/rhJOWU5JrYh7U4OHplWMmtAtjMg==}
     engines: {node: '>=0.11'}
 
   aws-ssl-profiles@1.1.2:
@@ -26697,7 +26698,7 @@ snapshots:
   '@kafkajs/confluent-schema-registry@3.8.0':
     dependencies:
       ajv: 8.18.0
-      avsc: 5.7.6
+      avsc: 5.7.9
       mappersmith: 2.45.0
       protobufjs: 7.4.0
 
@@ -32868,7 +32869,7 @@ snapshots:
     dependencies:
       possible-typed-array-names: 1.1.0
 
-  avsc@5.7.6: {}
+  avsc@5.7.9: {}
 
   aws-ssl-profiles@1.1.2: {}
 
