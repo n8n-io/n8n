@@ -553,7 +553,7 @@ const instanceAiAttachmentSchema = z.object({
 export type InstanceAiAttachment = z.infer<typeof instanceAiAttachmentSchema>;
 
 export class InstanceAiSendMessageRequest extends Z.class({
-	message: z.string().min(1),
+	message: z.string().default(''),
 	researchMode: z.boolean().optional(),
 	attachments: z.array(instanceAiAttachmentSchema).optional(),
 	timeZone: TimeZoneSchema,
