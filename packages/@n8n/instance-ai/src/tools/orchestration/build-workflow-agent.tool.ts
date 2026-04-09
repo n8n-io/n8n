@@ -21,6 +21,7 @@ import {
 	createSandboxBuilderAgentPrompt,
 } from './build-workflow-agent.prompt';
 import { truncateLabel } from './display-utils';
+import { MCP_BUILDER_AGENT_PROMPT } from './mcp-builder-agent.prompt';
 import {
 	createDetachedSubAgentTracing,
 	traceSubAgentTools,
@@ -37,6 +38,7 @@ import {
 	mergeTraceRunInputs,
 	withTraceParentContext,
 } from '../../tracing/langsmith-tracing';
+import { createMcpBuilderClient } from '../../mcp/mcp-builder-bridge';
 import type { BackgroundTaskResult, OrchestrationContext } from '../../types';
 import { SDK_IMPORT_STATEMENT } from '../../workflow-builder/extract-code';
 import type { TriggerType, WorkflowBuildOutcome } from '../../workflow-loop';
@@ -184,15 +186,21 @@ export async function startBuildWorkflowAgentTask(
 		};
 	}
 
+	const useMcpBuilder = !!context.mcpBuilderConfig;
+
 	const factory = context.builderSandboxFactory;
 	const domainContext = context.domainContext;
-	const useSandbox = !!factory && !!domainContext;
+	const useSandbox = !useMcpBuilder && !!factory && !!domainContext;
 
 	let builderTools: ToolsInput;
 	let prompt = BUILDER_AGENT_PROMPT;
 	let credMap: CredentialMap | undefined;
 
-	if (useSandbox) {
+	if (useMcpBuilder) {
+		// MCP builder — tools are created inside the run callback from the MCP client.
+		// Set empty tools here; they'll be populated when the background task starts.
+		builderTools = {};
+	} else if (useSandbox) {
 		credMap = await buildCredentialMap(domainContext.credentialService);
 
 		const toolNames = [
@@ -303,7 +311,13 @@ export async function startBuildWorkflowAgentTask(
 		: '';
 
 	let briefing: string;
-	if (useSandbox) {
+	if (useMcpBuilder) {
+		if (workflowId) {
+			briefing = `${input.task}${conversationCtx}\n\n[CONTEXT: Modifying existing workflow ${workflowId}. Use get_workflow_details to see its current state, then use update_workflow to modify it.]${iterationContext ? `\n\n${iterationContext}` : ''}`;
+		} else {
+			briefing = `${input.task}${conversationCtx}${iterationContext ? `\n\n${iterationContext}` : ''}`;
+		}
+	} else if (useSandbox) {
 		if (workflowId) {
 			briefing = `${input.task}${conversationCtx}\n\n[CONTEXT: Modifying existing workflow ${workflowId}. The current code is pre-loaded in ~/workspace/src/workflow.ts — read it first, then edit. Use workflowId "${workflowId}" when calling submit-workflow.]\n\n[WORK ITEM ID: ${workItemId}]\n\n${DETACHED_BUILDER_REQUIREMENTS}${iterationContext ? `\n\n${iterationContext}` : ''}`;
 		} else {
@@ -338,6 +352,85 @@ export async function startBuildWorkflowAgentTask(
 		workItemId,
 		run: async (signal, drainCorrections, waitForCorrection): Promise<BackgroundTaskResult> =>
 			await withTraceContextActor(traceContext, async () => {
+				// ── MCP builder path ────────────────────────────────────────────
+				if (useMcpBuilder && context.mcpBuilderConfig) {
+					const { tools: mcpTools, client: mcpClient } = await createMcpBuilderClient(
+						context.mcpBuilderConfig,
+					);
+
+					// Add ask-user tool so the agent can ask clarifying questions
+					if (context.domainTools['ask-user']) {
+						mcpTools['ask-user'] = context.domainTools['ask-user'];
+					}
+
+					try {
+						const tracedMcpTools = traceSubAgentTools(context, mcpTools, 'workflow-builder');
+
+						const mcpPrompt = MCP_BUILDER_AGENT_PROMPT;
+						const subAgent = new Agent({
+							id: subAgentId,
+							name: 'MCP Workflow Builder',
+							instructions: {
+								role: 'system' as const,
+								content: mcpPrompt,
+								providerOptions: {
+									anthropic: { cacheControl: { type: 'ephemeral' } },
+								},
+							},
+							model: context.modelId,
+							tools: tracedMcpTools,
+						});
+						mergeTraceRunInputs(
+							traceContext?.actorRun,
+							buildAgentTraceInputs({
+								systemPrompt: mcpPrompt,
+								tools: tracedMcpTools,
+								modelId: context.modelId,
+							}),
+						);
+
+						registerWithMastra(subAgentId, subAgent, context.storage);
+
+						const traceParent = getTraceParentRun();
+						const hitlResult = await withTraceParentContext(traceParent, async () => {
+							const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
+							const stream = await subAgent.stream(briefing, {
+								maxSteps: BUILDER_MAX_STEPS,
+								abortSignal: signal,
+								providerOptions: {
+									anthropic: { cacheControl: { type: 'ephemeral' } },
+								},
+								...(llmStepTraceHooks?.executionOptions ?? {}),
+							});
+
+							return await consumeStreamWithHitl({
+								agent: subAgent,
+								stream: stream as {
+									runId?: string;
+									fullStream: AsyncIterable<unknown>;
+									text: Promise<string>;
+								},
+								runId: context.runId,
+								agentId: subAgentId,
+								eventBus: context.eventBus,
+								logger: context.logger,
+								threadId: context.threadId,
+								abortSignal: signal,
+								waitForConfirmation: context.waitForConfirmation,
+								drainCorrections,
+								waitForCorrection,
+								llmStepTraceHooks,
+							});
+						});
+
+						const finalText = await hitlResult.text;
+						return { text: finalText };
+					} finally {
+						await mcpClient.disconnect();
+					}
+				}
+
+				// ── SDK builder paths (sandbox + tool mode) ────────────────────
 				let builderWs: BuilderWorkspace | undefined;
 				const submitAttempts = new Map<string, SubmitWorkflowAttempt>();
 				try {

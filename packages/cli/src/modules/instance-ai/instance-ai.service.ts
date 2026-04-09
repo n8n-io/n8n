@@ -63,6 +63,7 @@ import {
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 
+import { McpServerApiKeyService } from '@/modules/mcp/mcp-api-key.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { AiService } from '@/services/ai.service';
 import { Push } from '@/push';
@@ -173,6 +174,7 @@ export class InstanceAiService {
 		private readonly dbIterationLogStorage: DbIterationLogStorage,
 		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
 		private readonly telemetry: Telemetry,
+		private readonly mcpApiKeyService: McpServerApiKeyService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.instanceAiConfig = globalConfig.instanceAi;
@@ -671,6 +673,7 @@ export class InstanceAiService {
 		threadId: string,
 		message: string,
 		researchMode?: boolean,
+		mcpBuilder?: boolean,
 		attachments?: InstanceAiAttachment[],
 		timeZone?: string,
 		pushRef?: string,
@@ -692,6 +695,7 @@ export class InstanceAiService {
 			message,
 			abortController,
 			researchMode,
+			mcpBuilder,
 			attachments,
 			messageGroupId,
 			timeZone,
@@ -1089,6 +1093,7 @@ export class InstanceAiService {
 		runId: string,
 		abortSignal: AbortSignal,
 		researchMode?: boolean,
+		mcpBuilder?: boolean,
 		messageGroupId?: string,
 		pushRef?: string,
 	) {
@@ -1156,6 +1161,18 @@ export class InstanceAiService {
 		const domainTools = createAllTools(context);
 		const sandboxEntry = await this.getOrCreateWorkspace(threadId, user);
 
+		// Resolve MCP builder API key if MCP builder mode is enabled (per-request toggle)
+		let mcpBuilderConfig: { baseUrl: string; apiKey: string } | undefined;
+		if (mcpBuilder) {
+			const apiKeyEntity =
+				(await this.mcpApiKeyService.findServerApiKeyForUser(user, { redact: false })) ??
+				(await this.mcpApiKeyService.createMcpServerApiKey(user));
+			mcpBuilderConfig = {
+				baseUrl: this.urlService.getInstanceBaseUrl(),
+				apiKey: apiKeyEntity.apiKey,
+			};
+		}
+
 		const orchestrationContext: OrchestrationContext = {
 			threadId,
 			runId,
@@ -1210,6 +1227,7 @@ export class InstanceAiService {
 			domainContext: context,
 			tracingProxyConfig,
 			memory,
+			mcpBuilderConfig,
 		};
 
 		return {
@@ -1364,6 +1382,7 @@ export class InstanceAiService {
 			message,
 			abortController,
 			researchMode,
+			undefined, // mcpBuilder — internal follow-ups use SDK builder
 			undefined,
 			messageGroupId,
 		);
@@ -1424,6 +1443,7 @@ export class InstanceAiService {
 			action.graph.planRunId,
 			createInertAbortSignal(),
 			this.runState.getThreadResearchMode(threadId),
+			undefined, // mcpBuilder — planned tasks use SDK builder
 			action.graph.messageGroupId,
 		);
 		environment.orchestrationContext.tracing = this.getTraceContext(action.graph.planRunId);
@@ -1442,6 +1462,7 @@ export class InstanceAiService {
 		message: string,
 		abortController: AbortController,
 		researchMode?: boolean,
+		mcpBuilder?: boolean,
 		attachments?: InstanceAiAttachment[],
 		messageGroupId?: string,
 		timeZone?: string,
@@ -1484,6 +1505,7 @@ export class InstanceAiService {
 					runId,
 					signal,
 					researchMode,
+					mcpBuilder,
 					messageGroupId,
 					executionPushRef,
 				);

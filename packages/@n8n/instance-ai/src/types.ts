@@ -889,6 +889,8 @@ export interface OrchestrationContext {
 	workflowTaskService?: WorkflowTaskService;
 	/** When set, LangSmith traces are routed through the AI service proxy. */
 	tracingProxyConfig?: ServiceProxyConfig;
+	/** MCP builder config — when present, the builder agent uses the n8n MCP server instead of the SDK pipeline. */
+	mcpBuilderConfig?: { baseUrl: string; apiKey: string };
 }
 
 // ── Agent factory options ────────────────────────────────────────────────────

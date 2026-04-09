@@ -138,6 +138,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const debugEvents = ref<Array<{ timestamp: string; event: InstanceAiEvent }>>([]);
 	const debugMode = ref(false);
 	const researchMode = ref(localStorage.getItem('instanceAi.researchMode') === 'true');
+	const mcpBuilder = ref(localStorage.getItem('instanceAi.mcpBuilder') === 'true');
 	const amendContext = ref<{ agentId: string; role: string } | null>(null);
 	// Credits are instance-level state (not per-thread). Re-fetched on mount via fetchCredits(),
 	// and updated in real-time via the 'updateInstanceAiCredits' push event.
@@ -761,6 +762,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				currentThreadId.value,
 				message,
 				researchMode.value || undefined,
+				mcpBuilder.value || undefined,
 				attachments,
 				Intl.DateTimeFormat().resolvedOptions().timeZone,
 				pushRef,
@@ -871,6 +873,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	function toggleResearchMode(): void {
 		researchMode.value = !researchMode.value;
 		localStorage.setItem('instanceAi.researchMode', String(researchMode.value));
+	}
+
+	function toggleMcpBuilder(): void {
+		mcpBuilder.value = !mcpBuilder.value;
+		localStorage.setItem('instanceAi.mcpBuilder', String(mcpBuilder.value));
 	}
 
 	function copyFullTrace(): string {
@@ -1001,6 +1008,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		debugEvents,
 		debugMode,
 		researchMode,
+		mcpBuilder,
 		amendContext,
 		feedbackByResponseId,
 		creditsQuota,
@@ -1037,6 +1045,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		cancelBackgroundTask,
 		amendAgent,
 		toggleResearchMode,
+		toggleMcpBuilder,
 		confirmAction,
 		confirmResourceDecision,
 		resolveConfirmation,
