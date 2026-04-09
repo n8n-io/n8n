@@ -183,6 +183,9 @@ const {
 	isNextDisabled,
 	credGroupKey,
 	setupRequests: toRef(props, 'setupRequests'),
+	onApplySuccess: () => {
+		previousWorkflow = null;
+	},
 });
 
 // ---------------------------------------------------------------------------

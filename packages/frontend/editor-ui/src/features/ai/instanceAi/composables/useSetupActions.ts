@@ -27,6 +27,7 @@ export function useSetupActions(deps: {
 	isNextDisabled: ComputedRef<boolean>;
 	credGroupKey: (req: InstanceAiWorkflowSetupNode) => string;
 	setupRequests: Ref<InstanceAiWorkflowSetupNode[]>;
+	onApplySuccess?: () => void;
 }) {
 	const telemetry = useTelemetry();
 	const workflowsStore = useWorkflowsStore();
@@ -198,6 +199,7 @@ export function useSetupActions(deps: {
 			applyServerResultToCanvas(toolResult);
 			isSubmitted.value = true;
 			isPartial.value = toolResult.partial === true;
+			deps.onApplySuccess?.();
 			deps.store.resolveConfirmation(deps.requestId.value, 'approved');
 		} else if (toolResult) {
 			applyError.value = typeof toolResult.error === 'string' ? toolResult.error : 'Apply failed';
