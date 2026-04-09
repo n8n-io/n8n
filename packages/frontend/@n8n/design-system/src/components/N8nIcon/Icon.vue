@@ -1,10 +1,9 @@
 <script lang="ts" setup>
 import { computed, shallowRef, useCssModule, watch } from 'vue';
 
-import type { nodeIconSet as NodeIconSetType } from './node-icons';
-
-import type { IconName, NodeIconName } from './icons';
 import { deprecatedIconSet, updatedIconSet } from './icons';
+import type { IconName, NodeIconName } from './icons';
+import type { nodeIconSet as NodeIconSetType } from './node-icons';
 import type { IconSize, IconColor } from '../../types/icon';
 
 interface IconProps {
