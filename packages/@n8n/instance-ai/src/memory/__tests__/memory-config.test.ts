@@ -19,7 +19,7 @@ interface MemoryArgs {
 		lastMessages: number;
 		semanticRecall: false | { topK: number };
 		generateTitle: boolean;
-		workingMemory: { enabled: boolean; template: string };
+		workingMemory: { enabled: boolean; template?: string };
 	};
 	embedder?: string;
 }

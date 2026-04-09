@@ -290,7 +290,6 @@ export {
 	InstanceAiGatewayEventsQuery,
 	InstanceAiEventsQuery,
 	InstanceAiCorrectTaskRequest,
-	InstanceAiUpdateMemoryRequest,
 	InstanceAiEnsureThreadRequest,
 	InstanceAiThreadMessagesQuery,
 	InstanceAiAdminSettingsUpdateRequest,

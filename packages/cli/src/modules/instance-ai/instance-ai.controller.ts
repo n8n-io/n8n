@@ -7,7 +7,6 @@ import {
 	InstanceAiEventsQuery,
 	instanceAiGatewayKeySchema,
 	InstanceAiCorrectTaskRequest,
-	InstanceAiUpdateMemoryRequest,
 	InstanceAiEnsureThreadRequest,
 	InstanceAiThreadMessagesQuery,
 	InstanceAiAdminSettingsUpdateRequest,
@@ -431,26 +430,6 @@ export class InstanceAiController {
 	@GlobalScope('instanceAi:manage')
 	async listServiceCredentials(req: AuthenticatedRequest) {
 		return await this.settingsService.listServiceCredentials(req.user);
-	}
-
-	@Get('/memory/:threadId')
-	@GlobalScope('instanceAi:message')
-	async getMemory(req: AuthenticatedRequest, _res: Response, @Param('threadId') threadId: string) {
-		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
-		return await this.memoryService.getWorkingMemory(req.user.id, threadId);
-	}
-
-	@Put('/memory/:threadId')
-	@GlobalScope('instanceAi:message')
-	async updateMemory(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Param('threadId') threadId: string,
-		@Body payload: InstanceAiUpdateMemoryRequest,
-	) {
-		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
-		await this.memoryService.updateWorkingMemory(req.user.id, threadId, payload.content);
-		return { ok: true };
 	}
 
 	@Get('/threads')

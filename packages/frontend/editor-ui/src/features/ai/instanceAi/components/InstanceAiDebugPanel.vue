@@ -308,11 +308,8 @@ onMounted(() => {
 					</div>
 					<template v-else-if="debugStore.threadContext">
 						<div :class="$style.contextSection">
-							<div :class="$style.contextLabel">
-								{{ i18n.baseText('instanceAi.debug.threads.workingMemory') }}
-							</div>
 							<pre :class="$style.contextContent">{{
-								debugStore.threadContext.workingMemory || '(empty)'
+								JSON.stringify(debugStore.threadContext, null, 2)
 							}}</pre>
 						</div>
 					</template>
