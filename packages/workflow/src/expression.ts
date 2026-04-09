@@ -598,7 +598,14 @@ export class Expression {
 				});
 				return result as string | null | (() => unknown);
 			} catch (error) {
-				throw mapVmError(error);
+				const mapped = mapVmError(error);
+				// Re-throw ExpressionErrors (matching the legacy catch block below).
+				// Swallow everything else and return null (matching the legacy
+				// fallthrough). Without this, non-ExpressionError failures crash
+				// in VM mode but silently return null in legacy mode.
+				if (isExpressionError(mapped)) throw mapped;
+				if (isSyntaxError(mapped)) throw new ApplicationError('invalid syntax');
+				return null;
 			}
 		}
 
