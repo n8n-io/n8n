@@ -14,33 +14,31 @@ RUN apt-get update && apt-get install -y \
 # Configurar pnpm
 RUN npm install -g pnpm
 
-# ... (Pasos anteriores de apt-get permanecen igual)
-
 WORKDIR /app
 
-# 1. Copia de archivos de configuración
+# 1. Copia de archivos de configuración iniciales
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.json ./
 COPY patches/ ./patches/
 
-# 2. CONFIGURACIÓN DE PNPM (EL FIX)
-# Forzamos el hoisting para que paquetes como zod-to-json-schema sean visibles globalmente
-# Esto evita el error TS2307 en @n8n/agents
-RUN pnpm config set shamefully-hoist true && \
-    pnpm config set public-hoist-pattern[] "*"
+# 2. CONFIGURACIÓN DE PNPM VIA .NPMRC (EL FIX DEFINITIVO)
+# Usamos echo para crear el archivo de configuración sin pasar por el CLI de pnpm
+# Esto fuerza el hoisting total y evita el error de "Unexpected token"
+RUN echo "shamefully-hoist=true" > .npmrc && \
+    echo "public-hoist-pattern[]='*'" >> .npmrc
 
 # 3. INSTALACIÓN
-# Añadimos --shamefully-hoist por seguridad extra en el comando
-RUN CI=true pnpm install --ignore-scripts --no-frozen-lockfile --shamefully-hoist
+# Con el .npmrc ya en su sitio, pnpm aplicará el hoisting automáticamente
+RUN CI=true pnpm install --ignore-scripts --no-frozen-lockfile
 
 # 4. COPIA DE CÓDIGO
 COPY packages/ ./packages/
 
-# 5. LOS PARCHES QUE YA FUNCIONAN
-# Fix PSL
+# 5. PARCHES Y COMPILACIÓN NATIVA
+# Fix PSL tipos
 RUN mkdir -p node_modules/@types/psl && \
     printf 'declare module "psl";' > node_modules/@types/psl/index.d.ts
 
-# Fix SQLite (Compilación nativa)
+# Compilación de SQLite para Node 23
 RUN SQLITE3_PATH=$(find node_modules/.pnpm -name "sqlite3" -type d | head -n 1) && \
     cd $SQLITE3_PATH && npm install --build-from-source
 
