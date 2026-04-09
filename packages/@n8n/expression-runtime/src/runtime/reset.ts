@@ -143,36 +143,43 @@ export function resetDataProxies(timezone?: string): void {
 	// Handle function properties (check if value is function metadata)
 	// -------------------------------------------------------------------------
 
-	// Check if $items exists and is a function
-	if (globalThis.__callFunctionAtPath) {
+	// Probe a host-side property: if it is a function, create an isolate
+	// wrapper that forwards calls via __callFunctionAtPath; otherwise copy
+	// the value as-is. Assigns to both globalThis and __data.
+	function exposeHostFunction(name: string): void {
+		if (!globalThis.__callFunctionAtPath) return;
+		const g = globalThis as unknown as Record<string, unknown>;
 		try {
-			const itemsValue = globalThis.__getValueAtPath.applySync(null, [['$items']], {
+			const value = globalThis.__getValueAtPath.applySync(null, [[name]], {
 				arguments: { copy: true },
 				result: { copy: true },
 			});
 
-			// If it's function metadata, create wrapper
-			if (itemsValue && typeof itemsValue === 'object' && itemsValue.__isFunction) {
-				globalThis.$items = function (...args: unknown[]) {
-					const result = globalThis.__callFunctionAtPath.applySync(null, [['$items'], ...args], {
+			if (value && typeof value === 'object' && value.__isFunction) {
+				const wrapper = function (...args: unknown[]) {
+					const result = globalThis.__callFunctionAtPath.applySync(null, [[name], ...args], {
 						arguments: { copy: true },
 						result: { copy: true },
 					});
 					throwIfErrorSentinel(result);
 					return result;
 				};
-				globalThis.__data.$items = globalThis.$items;
+				g[name] = wrapper;
+				globalThis.__data[name] = wrapper;
 			} else {
-				// Not a function - set to undefined or the value itself
-				globalThis.$items = itemsValue;
-				globalThis.__data.$items = itemsValue;
+				g[name] = value;
+				globalThis.__data[name] = value;
 			}
-		} catch (error) {
-			// Property doesn't exist
-			globalThis.$items = undefined;
-			globalThis.__data.$items = undefined;
+		} catch {
+			g[name] = undefined;
+			globalThis.__data[name] = undefined;
 		}
 	}
+
+	exposeHostFunction('$items');
+	exposeHostFunction('$fromAI');
+	exposeHostFunction('$fromai');
+	exposeHostFunction('$fromAi');
 
 	// -------------------------------------------------------------------------
 	// Expose globals on __data so tournament's "x in this ? this.x : global.x"

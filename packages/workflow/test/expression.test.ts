@@ -1028,6 +1028,54 @@ describe('Expression', () => {
 		});
 	});
 
+	describe('$fromAI() through expression engine', () => {
+		const nodeTypes = Helpers.NodeTypes();
+
+		function createFromAiWorkflow() {
+			return new Workflow({
+				id: 'test-from-ai',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'tool-id',
+						name: 'tool',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+		}
+
+		it("should resolve $fromAI('myKey') with placeholder data from connectionInputData", async () => {
+			const workflow = createFromAiWorkflow();
+
+			const runExecutionData = createRunExecutionData({});
+
+			await workflow.expression.acquireIsolate();
+			try {
+				const result = workflow.expression.getParameterValue(
+					"={{ $fromAI('searchQuery') }}",
+					runExecutionData,
+					0,
+					0,
+					'tool',
+					[{ json: { searchQuery: 'What is n8n?' } }],
+					'manual',
+					{},
+				);
+
+				expect(result).toBe('What is n8n?');
+			} finally {
+				await workflow.expression.releaseIsolate();
+			}
+		});
+	});
+
 	describe('getParameterValue with IWorkflowDataProxyData', () => {
 		it('should evaluate simple expression with provided IWorkflowDataProxyData', async () => {
 			const nodeTypes = Helpers.NodeTypes();
