@@ -338,7 +338,7 @@ export class TrustedKeyService {
 			} catch (e) {
 				this.logger.warn('Failed to parse source configuration for jwks source', {
 					id: source.id,
-					error: e
+					error: e,
 				});
 			}
 		}
@@ -430,8 +430,7 @@ export class TrustedKeyService {
 	private async resolveKeysForSource(
 		source: TrustedKeySourceEntity,
 	): Promise<
-		{ keys: Array<{ kid: string; data: TrustedKeyData }>; cacheTtlSeconds?: number }
-		| undefined
+		{ keys: Array<{ kid: string; data: TrustedKeyData }>; cacheTtlSeconds?: number } | undefined
 	> {
 		switch (source.type) {
 			case 'static':
@@ -481,9 +480,10 @@ export class TrustedKeyService {
 		};
 	}
 
-	private resolveKeysForStaticSource(
-		source: TrustedKeySourceEntity,
-	): { keys: Array<{ kid: string; data: TrustedKeyData }>; cacheTtlSeconds?: number } {
+	private resolveKeysForStaticSource(source: TrustedKeySourceEntity): {
+		keys: Array<{ kid: string; data: TrustedKeyData }>;
+		cacheTtlSeconds?: number;
+	} {
 		let rawConfig: unknown;
 		try {
 			rawConfig = JSON.parse(source.config);
@@ -498,8 +498,8 @@ export class TrustedKeyService {
 			(s): s is StaticKeySource => s.type === 'static',
 		);
 		return {
-			keys: this.resolveStaticKeys(staticConfigs)
-		}
+			keys: this.resolveStaticKeys(staticConfigs),
+		};
 	}
 
 	// ─── Private: key resolution ───────────────────────────────────────
