@@ -102,9 +102,13 @@ export class Push extends TypedEmitter<PushEvents> {
 
 			this.authService.createAuthMiddleware({ allowSkipMFA: false }),
 			(req, res) => {
-				if ((isWebSocketPushRequest(req) || isSSEPushRequest(req)) && isPushResponse(res)) {
-					return this.handleRequest(req, res);
+				if (!isWebSocketPushRequest(req) && !isSSEPushRequest(req)) {
+					throw new BadRequestError('Request is not a PushRequest');
 				}
+				if (!isPushResponse(res)) {
+					throw new BadRequestError('Malformed response object');
+				}
+				return this.handleRequest(req, res);
 			},
 		);
 	}
