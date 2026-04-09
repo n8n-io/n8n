@@ -265,7 +265,6 @@ describe('GlobalConfig', () => {
 			modelApiKey: '',
 			maxContextWindowTokens: 500_000,
 			mcpServers: '',
-			instanceAiEnabled: false,
 			localGatewayDisabled: false,
 			browserMcp: false,
 			lastMessages: 20,

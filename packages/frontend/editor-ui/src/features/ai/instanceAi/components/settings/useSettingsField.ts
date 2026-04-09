@@ -48,7 +48,7 @@ export function useSettingsField() {
 		if (draftVal !== undefined) return Boolean(draftVal);
 		const fromSettings = store.settings?.[key];
 		if (fromSettings !== undefined) return Boolean(fromSettings);
-		if (key === 'instanceAiEnabled') return true;
+		if (key === 'enabled') return true;
 		return false;
 	}
 

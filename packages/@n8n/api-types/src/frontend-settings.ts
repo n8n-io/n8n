@@ -278,7 +278,6 @@ export type FrontendModuleSettings = {
 	 */
 	'instance-ai'?: {
 		enabled: boolean;
-		instanceAiEnabled: boolean; // Admin on/off switch : used to toggle Instance AI on and off on settings
 		localGateway: boolean;
 		localGatewayDisabled: boolean;
 		localGatewayFallbackDirectory: string | null;

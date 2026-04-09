@@ -79,12 +79,12 @@ const checkModuleAvailability = (options: any) => {
 		return false;
 	}
 
-	// Special case for instance-ai settings route : always accessible even whe instanceAiEnabled admin setting is false
-	// Other instance-ai related routes are disabled
+	// Settings route is always accessible even when the admin toggle is off;
+	// other instance-ai routes are disabled.
 	if (options.to.meta.moduleName === 'instance-ai') {
 		const routeName = options.to.name;
 		if (routeName !== INSTANCE_AI_SETTINGS_VIEW) {
-			const enabled = settingsStore.moduleSettings['instance-ai']?.instanceAiEnabled;
+			const enabled = settingsStore.moduleSettings['instance-ai']?.enabled;
 			if (enabled === false) {
 				return false;
 			}

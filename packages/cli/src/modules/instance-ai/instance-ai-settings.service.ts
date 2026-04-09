@@ -74,7 +74,6 @@ interface PersistedAdminSettings {
 	n8nSandboxCredentialId?: string | null;
 	searchCredentialId?: string | null;
 	localGatewayDisabled?: boolean;
-	instanceAiEnabled?: boolean;
 	optinModalDismissed?: boolean;
 }
 
@@ -154,7 +153,6 @@ export class InstanceAiSettingsService {
 			n8nSandboxCredentialId: this.adminN8nSandboxCredentialId,
 			searchCredentialId: this.adminSearchCredentialId,
 			localGatewayDisabled: this.isLocalGatewayDisabled(),
-			instanceAiEnabled: this.isInstanceAiEnabled(),
 			optinModalDismissed: this.optinModalDismissed,
 		};
 	}
@@ -188,7 +186,6 @@ export class InstanceAiSettingsService {
 			this.adminSearchCredentialId = update.searchCredentialId;
 		if (update.localGatewayDisabled !== undefined)
 			c.localGatewayDisabled = update.localGatewayDisabled;
-		if (update.instanceAiEnabled !== undefined) c.instanceAiEnabled = update.instanceAiEnabled;
 		if (update.optinModalDismissed !== undefined)
 			this.optinModalDismissed = update.optinModalDismissed;
 		await this.persistAdminSettings();
@@ -388,7 +385,7 @@ export class InstanceAiSettingsService {
 
 	/** Whether Instance AI chat and main UI are enabled (settings always available when module loads). */
 	isInstanceAiEnabled(): boolean {
-		return this.config.instanceAiEnabled;
+		return this.enabled;
 	}
 
 	/** Resolve just the model name (e.g. 'claude-sonnet-4-20250514') for proxy routing. */
@@ -520,8 +517,6 @@ export class InstanceAiSettingsService {
 			this.adminSearchCredentialId = persisted.searchCredentialId;
 		if (persisted.localGatewayDisabled !== undefined)
 			c.localGatewayDisabled = persisted.localGatewayDisabled;
-		if (persisted.instanceAiEnabled !== undefined)
-			c.instanceAiEnabled = persisted.instanceAiEnabled;
 		if (persisted.optinModalDismissed !== undefined)
 			this.optinModalDismissed = persisted.optinModalDismissed;
 	}
@@ -559,7 +554,6 @@ export class InstanceAiSettingsService {
 			n8nSandboxCredentialId: this.adminN8nSandboxCredentialId,
 			searchCredentialId: this.adminSearchCredentialId,
 			localGatewayDisabled: c.localGatewayDisabled,
-			instanceAiEnabled: c.instanceAiEnabled,
 			optinModalDismissed: this.optinModalDismissed,
 		};
 

@@ -77,7 +77,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		const prev = ms['instance-ai'];
 		const merged: NonNullable<FrontendModuleSettings['instance-ai']> = {
 			enabled: adminRes.enabled,
-			instanceAiEnabled: adminRes.instanceAiEnabled,
 			localGateway: prev?.localGateway ?? false,
 			localGatewayDisabled: prev?.localGatewayDisabled ?? false,
 			localGatewayFallbackDirectory: prev?.localGatewayFallbackDirectory ?? null,

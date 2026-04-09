@@ -209,7 +209,7 @@ export const ChatModule: FrontendModuleDescription = {
 				const settingsStore = useSettingsStore();
 				if (
 					settingsStore.isModuleActive('instance-ai') &&
-					settingsStore.moduleSettings['instance-ai']?.instanceAiEnabled !== false
+					settingsStore.moduleSettings['instance-ai']?.enabled !== false
 				) {
 					return false;
 				}

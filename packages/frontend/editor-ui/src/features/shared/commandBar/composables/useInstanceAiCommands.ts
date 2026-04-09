@@ -14,11 +14,10 @@ export function useInstanceAiCommands(options: { lastQuery: Ref<string> }): Comm
 	const settingsStore = useSettingsStore();
 	const instanceAiStore = useInstanceAiStore();
 
-	// Instance AI commands disabled when instanceAiEnabled admin setting is false or module disabled
 	const isInstanceAiCommandsVisible = computed(
 		() =>
 			settingsStore.isModuleActive('instance-ai') &&
-			settingsStore.moduleSettings['instance-ai']?.instanceAiEnabled !== false,
+			settingsStore.moduleSettings['instance-ai']?.enabled !== false,
 	);
 
 	const filteredThreads = computed(() => {
