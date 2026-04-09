@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nIconPicker, N8nText } from '@n8n/design-system';
+import type { IconOrEmoji } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 
@@ -9,6 +10,7 @@ const locale = useI18n();
 const props = defineProps<{
 	agentName: string;
 	agentDescription: string | null;
+	agentIcon: IconOrEmoji;
 	projectId: string;
 	agentId: string;
 }>();
@@ -17,6 +19,7 @@ const emit = defineEmits<{
 	'send-message': [message: string];
 	'update:name': [name: string];
 	'update:description': [description: string];
+	'update:icon': [icon: IconOrEmoji];
 }>();
 
 const inputText = ref('');
@@ -54,7 +57,7 @@ function onNameKeydown(event: KeyboardEvent) {
 }
 
 function onDescriptionKeydown(event: KeyboardEvent) {
-	if (event.key === 'Enter') {
+	if (event.key === 'Enter' && !event.shiftKey) {
 		event.preventDefault();
 		saveDescription();
 	} else if (event.key === 'Escape') {
@@ -74,7 +77,11 @@ function submitMessage() {
 	<div :class="$style.container">
 		<div :class="$style.hero">
 			<div :class="$style.agentIcon">
-				<N8nIcon icon="robot" :size="32" />
+				<N8nIconPicker
+					:model-value="agentIcon"
+					:button-tooltip="locale.baseText('agents.home.iconPicker.tooltip')"
+					@update:model-value="emit('update:icon', $event)"
+				/>
 			</div>
 
 			<input
@@ -85,15 +92,23 @@ function submitMessage() {
 				@blur="saveName"
 				@keydown="onNameKeydown"
 			/>
-			<h2 v-else :class="$style.agentName" @click="editingName = true">
+			<h2
+				v-else
+				:class="$style.agentName"
+				@click="
+					localName = agentName;
+					editingName = true;
+				"
+			>
 				{{ agentName || locale.baseText('agents.home.untitledAgent') }}
 			</h2>
 
-			<input
+			<textarea
 				v-if="editingDescription"
 				v-model="localDescription"
 				:class="$style.descriptionInput"
 				:placeholder="locale.baseText('agents.home.addDescription')"
+				rows="3"
 				autofocus
 				@blur="saveDescription"
 				@keydown="onDescriptionKeydown"
@@ -103,7 +118,10 @@ function submitMessage() {
 				:class="$style.description"
 				size="small"
 				color="text-light"
-				@click="editingDescription = true"
+				@click="
+					localDescription = agentDescription ?? '';
+					editingDescription = true;
+				"
 			>
 				{{ agentDescription || locale.baseText('agents.home.addDescription') }}
 			</N8nText>
@@ -207,10 +225,13 @@ function submitMessage() {
 	background: none;
 	border: var(--border-width) var(--border-style) var(--color--primary);
 	border-radius: var(--radius);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
+	padding: var(--spacing--2xs) var(--spacing--xs);
 	outline: none;
 	text-align: center;
 	font-family: var(--font-family);
+	resize: vertical;
+	min-width: 300px;
+	line-height: var(--line-height--xl);
 }
 
 .chatInput {

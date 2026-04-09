@@ -5364,6 +5364,7 @@
 	"agents.newAgent.heading": "Let's build something{name}",
 	"agents.newAgent.placeholder": "Describe what you're working on...",
 	"agents.newAgent.suggestions": "Suggestions",
+	"agents.home.iconPicker.tooltip": "Change agent icon",
 	"agents.home.untitledAgent": "Untitled Agent",
 	"agents.home.addDescription": "Add a description here",
 	"agents.home.sendMessage": "Send a message...",

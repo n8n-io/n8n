@@ -515,7 +515,6 @@ onMounted(() => {
 .sidebar {
 	position: relative;
 	border-left: var(--border-width) var(--border-style) var(--color--foreground);
-	background-color: var(--color--background);
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
@@ -544,7 +543,6 @@ onMounted(() => {
 	min-height: 56px;
 	padding: 0 var(--spacing--sm);
 	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
-	background-color: var(--color--background);
 }
 
 .headerActions {
@@ -628,7 +626,7 @@ onMounted(() => {
 	padding: var(--spacing--2xs) var(--spacing--xs);
 	border: var(--border-width) var(--border-style) var(--color--foreground);
 	border-radius: var(--radius--lg);
-	background-color: var(--color--background);
+	background-color: transparent;
 	cursor: pointer;
 	gap: var(--spacing--2xs);
 }

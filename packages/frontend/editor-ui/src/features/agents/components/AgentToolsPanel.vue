@@ -210,15 +210,16 @@ function inputSchemaProperties(
 
 .heading {
 	margin: 0;
+	color: var(--color--text);
 }
 
 .count {
 	font-weight: var(--font-weight--regular);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 }
 
 .hint {
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 }
 
 .emptyState {
@@ -229,7 +230,7 @@ function inputSchemaProperties(
 }
 
 .emptyText {
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 }
 
 .card {

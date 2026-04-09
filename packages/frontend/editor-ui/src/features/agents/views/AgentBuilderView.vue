@@ -3,6 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { useRoute, useRouter } from 'vue-router';
 import { N8nIcon, N8nText } from '@n8n/design-system';
+import type { IconOrEmoji } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -32,6 +33,7 @@ const settingsVisible = ref(true);
 const code = ref('');
 const agentName = ref('');
 const agentDescription = ref<string | null>(null);
+const agentIcon = ref<IconOrEmoji>({ type: 'icon', value: 'robot' });
 const agent = ref<AgentResource | null>(null);
 const updatedAt = ref<string>('');
 let skipNextWatch = false;
@@ -206,11 +208,13 @@ onMounted(async () => {
 					v-if="!chatActive"
 					:agent-name="agentName"
 					:agent-description="agentDescription"
+					:agent-icon="agentIcon"
 					:project-id="projectId"
 					:agent-id="agentId"
 					@send-message="startChat"
 					@update:name="updateName"
 					@update:description="updateDescription"
+					@update:icon="agentIcon = $event"
 				/>
 				<AgentChatPanel
 					v-else
@@ -263,7 +267,6 @@ onMounted(async () => {
 	min-height: 56px;
 	padding: 0 var(--spacing--sm);
 	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
-	background-color: var(--color--background);
 }
 
 .mainHeaderLeft {

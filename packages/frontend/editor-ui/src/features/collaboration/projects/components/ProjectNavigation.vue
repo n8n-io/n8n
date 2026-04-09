@@ -17,7 +17,7 @@ import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { AGENT_BUILDER_VIEW, NEW_AGENT_VIEW } from '@/features/agents/constants';
 import { listAllAgents } from '@/features/agents/composables/useAgentApi';
 
-import { N8nMenuItem, N8nPopover, N8nTag, N8nText, N8nButton } from '@n8n/design-system';
+import { BetaTag, N8nMenuItem, N8nPopover, N8nText, N8nButton } from '@n8n/design-system';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 type Props = {
@@ -239,7 +239,7 @@ onBeforeUnmount(() => {
 						<N8nText size="small" bold color="text-light">{{
 							locale.baseText('agents.sidebar.label')
 						}}</N8nText>
-						<N8nTag :clickable="false" :text="locale.baseText('agents.sidebar.newAgent')" />
+						<BetaTag />
 					</div>
 				</template>
 				<div :class="$style.coachmark">
