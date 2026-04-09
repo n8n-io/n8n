@@ -252,11 +252,18 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	/**
 	 * Inject the E() error handler into the isolate context.
 	 *
-	 * Tournament wraps expressions with try-catch that calls E(error, this).
-	 * This handler must match the legacy engine's behavior (set in
-	 * expression.ts via setErrorHandler):
-	 * - Re-throw ExpressionError / ExpressionExtensionError
-	 * - Swallow everything else (TypeErrors, generic Errors, etc.)
+	 * There are two exception-handling layers inside the isolate:
+	 *
+	 * 1. **Inner layer (this handler, `E()`)** — Tournament wraps each
+	 *    expression with try-catch that calls `E(error, this)`. This handler
+	 *    must match the legacy engine's behavior (set in expression.ts via
+	 *    setErrorHandler):
+	 *    - Re-throw ExpressionError / ExpressionExtensionError
+	 *    - Swallow everything else (TypeErrors, generic Errors, etc.)
+	 *
+	 * 2. **Outer layer (`wrappedCode` try-catch in `execute()`)** — Catches
+	 *    anything that escaped `E()` (e.g. re-thrown ExpressionErrors) and
+	 *    serializes it into a sentinel object so the host can reconstruct it.
 	 *
 	 * Inside the isolate, errors from host callbacks arrive as sentinel
 	 * objects ({ __isError, name, message, ... }) rather than class instances,
