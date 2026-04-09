@@ -57,7 +57,7 @@ export class N8nJsonLoader {
 
 		if (mode === 'expressionData') {
 			const dataString = this.context.getNodeParameter('jsonData', itemIndex) as string | object;
-			console.log(
+			this.context.logger.warn(
 				`[VM-DEBUG] n8n-json-loader processItem itemIndex=${itemIndex} typeof=${typeof dataString} length=${typeof dataString === 'string' ? dataString.length : 'N/A'} preview=${typeof dataString === 'string' ? dataString.slice(0, 80) : JSON.stringify(dataString)?.slice(0, 80)}`,
 			);
 			if (typeof dataString === 'object') {
@@ -77,7 +77,7 @@ export class N8nJsonLoader {
 		}
 
 		const loadedDocs = await documentLoader.load();
-		console.log(
+		this.context.logger.warn(
 			`[VM-DEBUG] n8n-json-loader loaded ${loadedDocs.length} docs, hasTextSplitter=${!!this.textSplitter}, itemIndex=${itemIndex}`,
 		);
 		const docs = this.textSplitter
