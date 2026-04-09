@@ -6,7 +6,7 @@ import RunInfo from '@/features/ndv/runData/components/RunInfo.vue';
 import { storeToRefs } from 'pinia';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import type { WorkflowAccessors } from '@/app/types/workflow';
+import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import RunDataAi from '@/features/ndv/runData/components/ai/RunDataAi.vue';
 import { useNodeType } from '@/app/composables/useNodeType';
@@ -43,7 +43,7 @@ type OutputTypeKey = keyof typeof OUTPUT_TYPE;
 type OutputType = (typeof OUTPUT_TYPE)[OutputTypeKey];
 
 type Props = {
-	workflowObject: WorkflowAccessors;
+	workflowObject: WorkflowObjectAccessors;
 	runIndex: number;
 	isReadOnly?: boolean;
 	linkedRuns?: boolean;

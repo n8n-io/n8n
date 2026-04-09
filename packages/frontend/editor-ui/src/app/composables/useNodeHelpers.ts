@@ -34,7 +34,7 @@ import type {
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { AddedNode, INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
-import type { WorkflowAccessors } from '@/app/types/workflow';
+import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 
 import { isString } from '@/app/utils/typeGuards';
 import { isObject } from '@/app/utils/objectUtils';
@@ -195,7 +195,7 @@ export function useNodeHelpers() {
 	function getNodeIssues(
 		nodeType: INodeTypeDescription | null,
 		node: INodeUi,
-		workflow: WorkflowAccessors,
+		workflow: WorkflowObjectAccessors,
 		ignoreIssues?: string[],
 	): INodeIssues | null {
 		const workflowDocumentStore = workflowsStore.workflowId
@@ -393,7 +393,7 @@ export function useNodeHelpers() {
 	}
 
 	function getNodeInputIssues(
-		workflow: WorkflowAccessors,
+		workflow: WorkflowObjectAccessors,
 		node: INodeUi,
 		nodeType?: INodeTypeDescription,
 	): INodeIssues | null {
@@ -780,7 +780,7 @@ export function useNodeHelpers() {
 	function getNodeSubtitle(
 		data: INode,
 		nodeType: INodeTypeDescription,
-		workflow: WorkflowAccessors,
+		workflow: WorkflowObjectAccessors,
 	): string | undefined {
 		if (!data) {
 			return undefined;
@@ -971,7 +971,7 @@ export function useNodeHelpers() {
 	}
 
 	function getNodeHints(
-		workflow: WorkflowAccessors,
+		workflow: WorkflowObjectAccessors,
 		node: INode,
 		nodeTypeData: INodeTypeDescription,
 		nodeInputData?: {

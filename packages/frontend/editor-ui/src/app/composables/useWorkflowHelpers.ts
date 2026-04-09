@@ -64,7 +64,7 @@ import {
 	convertToWorkflowAccessors,
 } from '@/app/stores/workflowDocument.store';
 import { computed } from 'vue';
-import type { WorkflowAccessors } from '../types';
+import type { WorkflowObjectAccessors } from '../types';
 
 export type ResolveParameterOptions = {
 	targetItem?: TargetItem;
@@ -119,7 +119,7 @@ export async function resolveParameter<T = IDataObject>(
 // TODO: move to separate file
 function resolveParameterImpl<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-	workflowObject: WorkflowAccessors,
+	workflowObject: WorkflowObjectAccessors,
 	connections: IConnections,
 	envVars: Record<string, string | boolean | number>,
 	ndvActiveNode: INodeUi | null,

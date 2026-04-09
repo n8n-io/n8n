@@ -24,7 +24,7 @@ import { useWorkflowDocumentExpression } from './workflowDocument/useWorkflowDoc
 import { useWorkflowDocumentName } from './workflowDocument/useWorkflowDocumentName';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import type { WorkflowAccessors } from '../types';
+import type { WorkflowObjectAccessors } from '../types';
 import type { IPinData } from 'n8n-workflow';
 
 export {
@@ -223,7 +223,7 @@ export function injectWorkflowDocumentStore() {
 
 export function convertToWorkflowAccessors(
 	workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>,
-): WorkflowAccessors {
+): WorkflowObjectAccessors {
 	return {
 		connectionsBySourceNode: workflowDocumentStore.connectionsBySourceNode,
 		pinData: workflowDocumentStore.pinData as IPinData,

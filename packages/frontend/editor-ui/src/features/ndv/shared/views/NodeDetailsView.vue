@@ -5,7 +5,7 @@ import type { IRunData, NodeConnectionType, IConnectedNode } from 'n8n-workflow'
 import { jsonParse, NodeHelpers, NodeConnectionTypes } from 'n8n-workflow';
 import type { IRunDataDisplayMode, IUpdateInformation, TargetItem } from '@/Interface';
 import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
-import type { WorkflowAccessors } from '@/app/types/workflow';
+import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 
 import NodeSettings from '@/features/ndv/settings/components/NodeSettings.vue';
 import NDVDraggablePanels from '../../panel/components/NDVDraggablePanels.vue';
@@ -54,7 +54,7 @@ const emit = defineEmits<{
 
 const props = withDefaults(
 	defineProps<{
-		workflowObject: WorkflowAccessors;
+		workflowObject: WorkflowObjectAccessors;
 		readOnly?: boolean;
 		renaming?: boolean;
 		isProductionExecutionPreview?: boolean;

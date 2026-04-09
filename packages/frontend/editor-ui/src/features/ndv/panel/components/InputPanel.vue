@@ -22,7 +22,7 @@ import {
 	NodeConnectionTypes,
 	NodeHelpers,
 } from 'n8n-workflow';
-import type { WorkflowAccessors } from '@/app/types/workflow';
+import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 import { computed, ref, watch } from 'vue';
 import InputNodeSelect from './InputNodeSelect.vue';
 import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
@@ -42,7 +42,7 @@ type MappingMode = 'debugging' | 'mapping';
 
 export type Props = {
 	runIndex: number;
-	workflowObject: WorkflowAccessors;
+	workflowObject: WorkflowObjectAccessors;
 	pushRef: string;
 	activeNodeName: string;
 	currentNodeName?: string;

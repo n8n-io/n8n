@@ -20,7 +20,7 @@ import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef,
 import type { INodeUi, IRunDataDisplayMode, ITab } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
-import type { WorkflowAccessors } from '@/app/types/workflow';
+import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 
 import {
 	CORE_NODES_CATEGORY,
@@ -111,7 +111,7 @@ export type EnterEditModeArgs = {
 };
 
 type Props = {
-	workflowObject: WorkflowAccessors;
+	workflowObject: WorkflowObjectAccessors;
 	workflowExecution?: IRunExecutionData;
 	runIndex: number;
 	executingMessage: string;

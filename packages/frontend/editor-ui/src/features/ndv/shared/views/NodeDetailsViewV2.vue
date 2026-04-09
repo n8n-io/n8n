@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { IRunDataDisplayMode, IUpdateInformation, TargetItem } from '@/Interface';
 import type { MainPanelType, NodePanelType } from '../ndv.types';
-import type { WorkflowAccessors } from '@/app/types/workflow';
+import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { IRunData, NodeConnectionType } from 'n8n-workflow';
 import { jsonParse, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
@@ -56,7 +56,7 @@ const emit = defineEmits<{
 
 const props = withDefaults(
 	defineProps<{
-		workflowObject: WorkflowAccessors;
+		workflowObject: WorkflowObjectAccessors;
 		readOnly?: boolean;
 		isProductionExecutionPreview?: boolean;
 	}>(),
