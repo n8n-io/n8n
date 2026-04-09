@@ -224,7 +224,7 @@ jobs:
         with:
           mode: validate
           job-results: ${{ toJSON(needs) }}
-
+          
   # Posts a QA metrics comparison comment on the PR.
   # Runs after all checks so any job can emit metrics before this reports.
   post-qa-metrics-comment:
