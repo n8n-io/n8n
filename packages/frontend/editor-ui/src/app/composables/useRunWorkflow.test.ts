@@ -90,6 +90,23 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 	createWorkflowDocumentId: (id: string) => `${id}@latest`,
 }));
 
+vi.mock('@/app/stores/aiGateway.store', () => ({
+	useAiGatewayStore: vi.fn(() => ({
+		config: { value: null },
+		creditsRemaining: { value: undefined },
+		creditsQuota: { value: undefined },
+		usageEntries: { value: [] },
+		usageTotal: { value: 0 },
+		fetchError: { value: null },
+		fetchConfig: vi.fn(),
+		fetchCredits: vi.fn(),
+		fetchUsage: vi.fn(),
+		fetchMoreUsage: vi.fn(),
+		isNodeSupported: vi.fn(() => false),
+		isCredentialTypeSupported: vi.fn(() => false),
+	})),
+}));
+
 vi.mock('@/app/stores/workflows.store', () => {
 	const storeState: Partial<ReturnType<typeof useWorkflowsStore>> & {
 		activeExecutionId: string | null | undefined;

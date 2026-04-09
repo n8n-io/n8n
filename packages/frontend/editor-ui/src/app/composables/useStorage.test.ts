@@ -1,9 +1,40 @@
 import { nextTick } from 'vue';
 import { useStorage } from './useStorage';
 
+let storageState: Record<string, string> = {};
+
+const localStorageMock: Storage = {
+	get length() {
+		return Object.keys(storageState).length;
+	},
+	clear: vi.fn(() => {
+		storageState = {};
+	}),
+	getItem: vi.fn((key: string) => storageState[key] ?? null),
+	key: vi.fn((index: number) => Object.keys(storageState)[index] ?? null),
+	removeItem: vi.fn((key: string) => {
+		// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+		delete storageState[key];
+	}),
+	setItem: vi.fn((key: string, value: string) => {
+		storageState[key] = value;
+	}),
+};
+
 describe('useStorage', () => {
 	beforeEach(() => {
+		storageState = {};
+		vi.stubGlobal('localStorage', localStorageMock);
+		localStorageMock.setItem.mockReset();
+		localStorageMock.removeItem.mockReset();
+		localStorageMock.clear.mockReset();
+		localStorageMock.getItem.mockClear();
+		localStorageMock.key.mockClear();
 		localStorage.clear();
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
 	});
 
 	it('should initialize with null if no value is stored in localStorage', () => {

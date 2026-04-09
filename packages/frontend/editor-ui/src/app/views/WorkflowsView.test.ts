@@ -24,6 +24,22 @@ import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/ready
 vi.mock('@/features/collaboration/projects/projects.api');
 vi.mock('@n8n/rest-api-client/api/users');
 vi.mock('@/features/integrations/sourceControl.ee/sourceControl.api');
+vi.mock('@/app/stores/aiGateway.store', () => ({
+	useAiGatewayStore: vi.fn(() => ({
+		config: { value: null },
+		creditsRemaining: { value: undefined },
+		creditsQuota: { value: undefined },
+		usageEntries: { value: [] },
+		usageTotal: { value: 0 },
+		fetchError: { value: null },
+		fetchConfig: vi.fn(),
+		fetchCredits: vi.fn(),
+		fetchUsage: vi.fn(),
+		fetchMoreUsage: vi.fn(),
+		isNodeSupported: vi.fn(() => false),
+		isCredentialTypeSupported: vi.fn(() => false),
+	})),
+}));
 vi.mock('@/app/composables/useGlobalEntityCreation', () => ({
 	useGlobalEntityCreation: () => ({
 		menu: [],
