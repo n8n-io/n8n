@@ -64,20 +64,29 @@ export async function classifyWorkflowGroups(
 ): Promise<ClassificationResult> {
 	const workflow = serializeWorkflow(workflowName, nodes, connections);
 
-	const prompt = `You are analyzing an n8n workflow to identify semantic groups of nodes that work together to accomplish a specific function.
+	const prompt = `You are analyzing an n8n workflow to create a simplified, readable overview by grouping nodes into logical clusters.
 
-Your job is to cluster nodes into logical groups based on what they DO together in the workflow, and leave important standalone nodes ungrouped.
+Your goal is to group as MANY nodes as possible so the user sees a clean, high-level picture of what the workflow does. Ideally, only triggers and key destination nodes remain ungrouped — everything else should belong to a group.
 
-Rules:
-- Each group represents a distinct phase, step, or function in the workflow (e.g. "Data Preparation", "Send Notifications", "Score Evaluation")
+Rules for what stays STANDALONE (ungrouped):
 - Trigger nodes are ALWAYS standalone — never group them
-- AI agents should be grouped WITH their tools, model, memory, and other sub-nodes into one group. An agent and its supporting nodes form a single functional unit — keep them together unless a tool clearly serves a completely different purpose
-- Group together nodes that collaborate on the same sub-task: data transformation + routing + intermediate API calls that serve the same purpose
+- Final destination nodes (the last node that sends data to an external service like sending email, posting to Slack, updating a database) should usually be standalone, unless they are tightly coupled with other nodes in a clear sub-task
+- Important branching nodes (IF, Switch) that represent a key decision point visible to the user should stay standalone — but only if the branch is meaningful to understanding the workflow's logic
+
+Rules for what goes INTO GROUPS:
+- Group aggressively — most nodes should be in a group. A workflow with 15 nodes might have 3-4 groups and only 2-3 standalone nodes
+- Each group represents a distinct phase, step, or function (e.g. "Data Preparation", "Error Handling", "AI Processing")
+- AI agents should be grouped WITH their tools, model, memory, and other sub-nodes — they form a single functional unit
+- Error handling branches (nodes connected to error/false outputs) should be grouped together, often as their own "Error Handling" group or merged into the group they handle errors for
+- Non-essential branching (IF/Switch nodes used for simple routing or filtering within a sub-task) should be INSIDE a group, not standalone
+- Data transformation chains (Set, Code, Filter, Sort, Merge) should always be grouped with the nodes they serve
+- Intermediate API calls that fetch or prepare data for another step belong in the same group as that step
 - A node can only be in ONE group
 - Each group must have at least 2 nodes
-- Not every node needs to be in a group — important nodes should stay standalone
-- Aim for 2-5 groups depending on workflow complexity
-- Give each group a short name (2-3 words) and a one-sentence description (max 12 words)
+
+Naming and descriptions:
+- Group name: short, 2-4 words (e.g. "Input Validation", "AI Research Agent", "Notification Dispatch")
+- Group description: 1-2 sentences explaining what the group accomplishes and why, aimed at someone unfamiliar with the workflow (max 25 words)
 
 Here is the workflow:
 ${workflow}
@@ -85,9 +94,9 @@ ${workflow}
 Respond with ONLY a JSON object with this structure:
 {
   "groups": [
-    {"name": "Data Preparation", "description": "Fetches and formats input data for processing", "nodes": ["Set", "HTTP Request"]}
+    {"name": "Data Preparation", "description": "Fetches customer data from the CRM and formats it for the AI agent to process", "nodes": ["Set", "HTTP Request"]}
   ],
-  "standalone": ["Telegram Trigger", "AI Agent"]
+  "standalone": ["Telegram Trigger", "Send Email"]
 }
 
 No other text.`;
