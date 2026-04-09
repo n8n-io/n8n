@@ -17,12 +17,12 @@ COPY . .
 
 # 4. Instalación de dependencias
 # CI=true evita prompts interactivos y optimiza la instalación
-RUN CI=true pnpm install
+RUN CI=true pnpm install --ignore-scripts
 
 # 5. FIX: Instalar tipos de 'psl' explícitamente para solucionar el error de TS2688
 # Lo añadimos al workspace para que esté disponible durante el build de turbo
-RUN pnpm add -Dw @types/psl && \
-    pnpm add -w esbuild@0.25.0 @esbuild/linux-x64
+RUN pnpm add -Dw @types/psl --ignore-scripts && \
+    pnpm add -w esbuild@0.25.0 @esbuild/linux-x64 --ignore-scripts
 
 # 6. Build de todos los paquetes del monorepo
 RUN pnpm build
