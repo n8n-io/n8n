@@ -388,10 +388,6 @@ function onOptionMouseEnter(idx: number) {
 			tabindex="0"
 			@keydown="onKeydown"
 		>
-			<p v-if="introMessage" :class="$style.intro">
-				{{ introMessage }}
-			</p>
-
 			<Transition :name="$style.questionFade" mode="out-in">
 				<div :key="currentQuestion.id" :class="$style.question">
 					<N8nText tag="p" :bold="true" :class="$style.questionText">
@@ -545,7 +541,7 @@ function onOptionMouseEnter(idx: number) {
 					<N8nButton
 						v-if="showSkipButton"
 						variant="outline"
-						size="small"
+						size="medium"
 						:disabled="disabled"
 						data-test-id="instance-ai-questions-skip"
 						@click="skipQuestion"
@@ -556,7 +552,7 @@ function onOptionMouseEnter(idx: number) {
 					<N8nButton
 						v-if="showNextButton"
 						:variant="isNextEnabled ? 'solid' : 'outline'"
-						size="small"
+						size="medium"
 						:disabled="disabled || isSubmitted || !isNextEnabled"
 						data-test-id="instance-ai-questions-next"
 						@click="goToNext"
@@ -588,6 +584,7 @@ function onOptionMouseEnter(idx: number) {
 	outline: none;
 	border: var(--border);
 	border-radius: var(--radius--lg);
+	background-color: var(--color--background--light-3);
 }
 
 .question {

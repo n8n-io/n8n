@@ -105,7 +105,7 @@ function handleRequestChanges() {
 			<div :class="$style.actions">
 				<N8nButton
 					variant="outline"
-					size="small"
+					size="medium"
 					:disabled="disabled || !hasFeedback"
 					data-test-id="instance-ai-plan-request-changes"
 					@click="handleRequestChanges"
@@ -114,7 +114,7 @@ function handleRequestChanges() {
 				</N8nButton>
 				<N8nButton
 					variant="solid"
-					size="small"
+					size="medium"
 					:disabled="disabled"
 					data-test-id="instance-ai-plan-approve"
 					@click="handleApprove"
@@ -132,6 +132,7 @@ function handleRequestChanges() {
 	border-radius: var(--radius--lg);
 	margin: var(--spacing--2xs) 0;
 	overflow: hidden;
+	background-color: var(--color--background--light-3);
 }
 
 .header {
