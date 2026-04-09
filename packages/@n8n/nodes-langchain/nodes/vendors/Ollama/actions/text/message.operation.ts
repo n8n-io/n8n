@@ -1,6 +1,6 @@
 import type { Tool } from '@langchain/core/tools';
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
+import { accumulateTokenUsage, updateDisplayOptions } from 'n8n-workflow';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { getConnectedTools } from '@utils/helpers';
@@ -404,6 +404,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		body,
 	});
 
+	if (response.prompt_eval_count != null || response.eval_count != null) {
+		accumulateTokenUsage(this, response.prompt_eval_count ?? 0, response.eval_count ?? 0);
+	}
+
 	if (tools.length > 0 && response.message.tool_calls && response.message.tool_calls.length > 0) {
 		const toolCalls = response.message.tool_calls;
 
@@ -449,6 +453,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		response = await apiRequest.call(this, 'POST', '/api/chat', {
 			body: updatedBody,
 		});
+
+		if (response.prompt_eval_count != null || response.eval_count != null) {
+			accumulateTokenUsage(this, response.prompt_eval_count ?? 0, response.eval_count ?? 0);
+		}
 	}
 
 	if (simplify) {

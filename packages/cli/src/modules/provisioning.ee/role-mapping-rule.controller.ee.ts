@@ -1,6 +1,7 @@
 import {
 	CreateRoleMappingRuleDto,
 	ListRoleMappingRuleQueryDto,
+	MoveRoleMappingRuleDto,
 	PatchRoleMappingRuleDto,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
@@ -57,6 +58,21 @@ export class RoleMappingRuleController {
 		}
 
 		return await this.roleMappingRuleService.create(body);
+	}
+
+	@Post('/:id/move')
+	@GlobalScope('roleMappingRule:update')
+	async move(
+		_req: AuthenticatedRequest,
+		res: Response,
+		@Body body: MoveRoleMappingRuleDto,
+		@Param('id') id: string,
+	): Promise<RoleMappingRuleResponse | Response> {
+		if (!this.licenseState.isProvisioningLicensed()) {
+			return res.status(403).json({ message: 'Provisioning is not licensed' });
+		}
+
+		return await this.roleMappingRuleService.move(id, body.targetIndex);
 	}
 
 	@Patch('/:id')

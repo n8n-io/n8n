@@ -78,11 +78,28 @@ export const test = base.extend<
 					? CAPABILITIES[capability]
 					: capability;
 
+			const globalEnv: Record<string, string> = (() => {
+				const raw = process.env.N8N_TEST_ENV;
+				if (!raw) return {};
+				try {
+					return JSON.parse(raw) as Record<string, string>;
+				} catch {
+					console.warn('[base.ts] Failed to parse N8N_TEST_ENV');
+					return {};
+				}
+			})();
+
 			const config: N8NConfig = {
 				...base,
 				...override,
 				services: [...new Set([...(base.services ?? []), ...(override.services ?? [])])],
-				env: { ...base.env, ...override.env, E2E_TESTS: 'true', N8N_RESTRICT_FILE_ACCESS_TO: '' },
+				env: {
+					...globalEnv,
+					...base.env,
+					...override.env,
+					E2E_TESTS: 'true',
+					N8N_RESTRICT_FILE_ACCESS_TO: '',
+				},
 			};
 
 			const container = await createN8NStack(config);

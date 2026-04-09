@@ -450,4 +450,85 @@ describe('ExecuteMessage', () => {
 			'no_placeholder_values_left',
 		);
 	});
+
+	describe('follow-up actions', () => {
+		it('shows pre-execution follow-ups when deferred pin data exists', () => {
+			Object.defineProperty(builderStore, 'hasDeferredPinData', { get: () => true });
+
+			const { getByTestId } = renderExecuteMessage();
+
+			expect(getByTestId('follow-up-execute-with-mock-data')).toBeInTheDocument();
+		});
+
+		it('does not show follow-ups when no deferred pin data exists', () => {
+			Object.defineProperty(builderStore, 'hasDeferredPinData', { get: () => false });
+
+			const { queryByTestId } = renderExecuteMessage();
+
+			expect(queryByTestId('follow-up-execute-with-mock-data')).not.toBeInTheDocument();
+		});
+
+		it('hides execute button when pre-execution follow-ups are shown', () => {
+			Object.defineProperty(builderStore, 'hasDeferredPinData', { get: () => true });
+
+			const { queryByTestId } = renderExecuteMessage();
+
+			expect(queryByTestId('execute-workflow-button')).not.toBeInTheDocument();
+		});
+
+		it('shows execute button when no follow-ups are present', () => {
+			Object.defineProperty(builderStore, 'hasDeferredPinData', { get: () => false });
+
+			const { getByTestId } = renderExecuteMessage();
+
+			expect(getByTestId('execute-workflow-button')).toBeInTheDocument();
+		});
+
+		it('emits executeWithMockData when follow-up is clicked', async () => {
+			Object.defineProperty(builderStore, 'hasDeferredPinData', { get: () => true });
+
+			const { getByTestId, emitted } = renderExecuteMessage();
+
+			await fireEvent.click(getByTestId('follow-up-execute-with-mock-data'));
+
+			expect(emitted('executeWithMockData')).toHaveLength(1);
+			expect(builderStore.trackWorkflowBuilderJourney).toHaveBeenCalledWith(
+				'user_clicked_run_with_test_data',
+			);
+		});
+
+		it('shows post-execution follow-ups when pin data has been applied', () => {
+			Object.defineProperty(builderStore, 'hasDeferredPinData', { get: () => false });
+			Object.defineProperty(builderStore, 'pinDataApplied', { get: () => true });
+
+			const { getByTestId } = renderExecuteMessage();
+
+			expect(getByTestId('follow-up-toggle-pin-data')).toBeInTheDocument();
+			expect(getByTestId('follow-up-execute-and-refine')).toBeInTheDocument();
+		});
+
+		it('does not show post-execution follow-ups when pinDataApplied is false', () => {
+			Object.defineProperty(builderStore, 'hasDeferredPinData', { get: () => false });
+			Object.defineProperty(builderStore, 'pinDataApplied', { get: () => false });
+
+			const { queryByTestId } = renderExecuteMessage();
+
+			expect(queryByTestId('follow-up-toggle-pin-data')).not.toBeInTheDocument();
+			expect(queryByTestId('follow-up-execute-and-refine')).not.toBeInTheDocument();
+		});
+
+		it('hides old unpin section and execute button when post-execution follow-ups show', () => {
+			Object.defineProperty(builderStore, 'hasDeferredPinData', { get: () => false });
+			Object.defineProperty(builderStore, 'pinDataApplied', { get: () => true });
+			Object.defineProperty(builderStore, 'isCodeBuilder', { get: () => true });
+			Object.defineProperty(builderStore, 'hasHadSuccessfulExecution', { get: () => true });
+			Object.defineProperty(builderStore, 'hasTodosHiddenByPinnedData', { get: () => true });
+
+			const { queryByTestId, queryByText } = renderExecuteMessage();
+
+			// Old unpin button and execute button should be hidden
+			expect(queryByTestId('execute-workflow-button')).not.toBeInTheDocument();
+			expect(queryByText('aiAssistant.builder.executeMessage.unpinAll')).not.toBeInTheDocument();
+		});
+	});
 });

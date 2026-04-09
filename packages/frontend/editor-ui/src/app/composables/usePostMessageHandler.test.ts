@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { shallowRef } from 'vue';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
+import { jsonParse } from 'n8n-workflow';
 import { usePostMessageHandler } from './usePostMessageHandler';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
@@ -138,6 +139,25 @@ describe('usePostMessageHandler', () => {
 				expect.stringContaining('"command":"n8nReady"'),
 				'*',
 			);
+
+			cleanup();
+		});
+
+		it('should include pushRef in n8nReady postMessage', () => {
+			const postMessageSpy = vi.spyOn(window.parent, 'postMessage');
+			const { setup, cleanup } = usePostMessageHandler({
+				workflowState,
+				currentWorkflowDocumentStore: shallowRef(null),
+			});
+
+			setup();
+
+			const call = postMessageSpy.mock.calls.find(
+				([data]) => typeof data === 'string' && data.includes('"n8nReady"'),
+			);
+			expect(call).toBeDefined();
+			const parsed = jsonParse(call![0] as string);
+			expect(parsed).toHaveProperty('pushRef');
 
 			cleanup();
 		});
