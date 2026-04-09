@@ -12,8 +12,13 @@ import { useAutoScrollOnDrag } from '@/app/composables/useAutoScrollOnDrag';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useLatestFetch } from '@/app/composables/useLatestFetch';
+import type {
+	DragTarget,
+	DropTarget,
+	FolderListItem,
+	WorkflowListEventMap,
+} from '@/features/core/folders/folders.types';
 import { useDependencies } from '@/app/composables/useDependencies';
-import type { DragTarget, DropTarget, FolderListItem } from '@/features/core/folders/folders.types';
 import { useFolders } from '@/features/core/folders/composables/useFolders';
 import { useMessage } from '@/app/composables/useMessage';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
@@ -170,7 +175,7 @@ const filters = ref<Filters>({
 	tags: [],
 });
 
-const workflowListEventBus = createEventBus();
+const workflowListEventBus = createEventBus<WorkflowListEventMap>();
 
 type ResourcesListLayoutExpose = {
 	getScrollContainer?: () => HTMLElement | null;
@@ -1425,15 +1430,7 @@ const deleteFolder = async (folderId: string, workflowCount: number, subFolderCo
 	}
 };
 
-const moveFolder = async (payload: {
-	folder: { id: string; name: string };
-	newParent: { id: string; name: string; type: 'folder' | 'project' };
-	options?: {
-		skipFetch?: boolean;
-		skipNavigation?: boolean;
-		skipApiCall?: boolean;
-	};
-}) => {
+const moveFolder = async (payload: WorkflowListEventMap['folder-moved']) => {
 	if (!route.params.projectId) return;
 
 	loading.value = true;
@@ -1493,17 +1490,7 @@ const moveFolder = async (payload: {
 	}
 };
 
-const onFolderTransferred = async (payload: {
-	source: {
-		projectId: string;
-		folder: { id: string; name: string };
-	};
-	destination: {
-		projectId: string;
-		parentFolder: { id: string | undefined; name: string };
-		canAccess: boolean;
-	};
-}) => {
+const onFolderTransferred = async (payload: WorkflowListEventMap['folder-transferred']) => {
 	loading.value = true;
 	try {
 		const isCurrentFolder = currentFolderId.value === payload.source.folder.id;
@@ -1597,17 +1584,7 @@ const moveWorkflowToFolder = async (payload: {
 	);
 };
 
-const onWorkflowTransferred = async (payload: {
-	source: {
-		projectId: string;
-		workflow: { id: string; name: string };
-	};
-	destination: {
-		projectId: string;
-		parentFolder: { id: string | undefined; name: string };
-		canAccess: boolean;
-	};
-}) => {
+const onWorkflowTransferred = async (payload: WorkflowListEventMap['workflow-transferred']) => {
 	loading.value = true;
 	try {
 		await refreshWorkflows();
@@ -1654,14 +1631,7 @@ const onWorkflowTransferred = async (payload: {
 	}
 };
 
-const onWorkflowMoved = async (payload: {
-	workflow: { id: string; name: string; oldParentId: string };
-	newParent: { id: string; name: string; type: 'folder' | 'project' };
-	options?: {
-		skipFetch?: boolean;
-		skipApiCall?: boolean;
-	};
-}) => {
+const onWorkflowMoved = async (payload: WorkflowListEventMap['workflow-moved']) => {
 	if (!route.params.projectId) return;
 
 	loading.value = true;

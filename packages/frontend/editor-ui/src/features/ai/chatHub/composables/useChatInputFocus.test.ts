@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
 import { ref, nextTick } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -30,8 +30,8 @@ describe('useChatInputFocus', () => {
 	let mockInputRef: ReturnType<
 		typeof ref<{ focus: () => void; appendText: (text: string) => void } | null>
 	>;
-	let focusSpy: ReturnType<typeof vi.fn>;
-	let appendTextSpy: ReturnType<typeof vi.fn>;
+	let focusSpy: Mock;
+	let appendTextSpy: Mock;
 
 	function createKeyboardEvent(key: string, options: Partial<KeyboardEvent> = {}): KeyboardEvent {
 		return new KeyboardEvent('keydown', {

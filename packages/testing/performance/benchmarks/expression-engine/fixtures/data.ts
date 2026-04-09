@@ -137,12 +137,20 @@ export function makeLargeData(): INodeExecutionData[] {
 
 // ── Engine switching helpers ──
 
-export async function useCurrentEngine(): Promise<void> {
-	await Expression.disposeVmEvaluator();
-	Expression.setExpressionEngine('current');
+export async function useLegacyEngine(): Promise<void> {
+	await Expression.disposeExpressionEngine();
+	Expression.setExpressionEngine('legacy');
 }
 
 export async function useVmEngine(): Promise<void> {
-	Expression.setExpressionEngine('vm');
-	await Expression.initializeVmEvaluator();
+	// Use a higher timeout for benchmarks — CodSpeed's instruction-counting
+	// instrumentation adds significant wall-clock overhead that can cause the
+	// default 5s timeout to fire on larger data set benchmarks (e.g. 10k items).
+	await Expression.initExpressionEngine({
+		engine: 'vm',
+		poolSize: 1,
+		maxCodeCacheSize: 1024,
+		bridgeTimeout: 60_000,
+		bridgeMemoryLimit: 128,
+	});
 }

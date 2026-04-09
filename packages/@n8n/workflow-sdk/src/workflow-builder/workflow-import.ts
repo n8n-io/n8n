@@ -68,6 +68,7 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 				credentials,
 				...({ _originalName: n8nNode.name } as Record<string, unknown>),
 				position: n8nNode.position,
+				webhookId: n8nNode.webhookId,
 				disabled: n8nNode.disabled,
 				notes: n8nNode.notes,
 				notesInFlow: n8nNode.notesInFlow,

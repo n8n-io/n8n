@@ -11,9 +11,9 @@
 		"bench:compare": "vitest bench --run --outputJson ./profiles/benchmark-results.json && node scripts/check-regression.mjs"
 	},
 	"devDependencies": {
-		"@codspeed/vitest-plugin": "^4.0.0",
+		"@codspeed/vitest-plugin": "^5.2.0",
     "@n8n/expression-runtime": "workspace:*",
-		"vitest": "^3.2.0",
+    "vitest": "catalog:",
 		"n8n-workflow": "workspace:*"
 	}
 }

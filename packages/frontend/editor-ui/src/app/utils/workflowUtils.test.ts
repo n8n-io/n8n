@@ -487,6 +487,73 @@ describe('workflowUtils', () => {
 			]);
 		});
 
+		it('should process loop-body output before done output for loop nodes', () => {
+			// Trigger → Loop Over Items → (done) → Wait
+			//                            → (loop) → HTTP Request → (back to Loop)
+			const trigger = makeNode('Trigger', [0, 0], true);
+			const loop = makeNode('Loop', [100, 0]);
+			const wait = makeNode('Wait', [200, -100]);
+			const httpRequest = makeNode('HTTP Request', [200, 100]);
+
+			const connections = {
+				Trigger: { main: [[{ node: 'Loop', type: 'main' as const, index: 0 }]] },
+				Loop: {
+					main: [
+						// output 0 = "done"
+						[{ node: 'Wait', type: 'main' as const, index: 0 }],
+						// output 1 = "loop"
+						[{ node: 'HTTP Request', type: 'main' as const, index: 0 }],
+					],
+				},
+				'HTTP Request': { main: [[{ node: 'Loop', type: 'main' as const, index: 0 }]] },
+			};
+
+			const nodeTypes = { Loop: 'n8n-nodes-base.splitInBatches' };
+
+			const result = sortNodesByExecutionOrder(
+				[wait, httpRequest, loop, trigger],
+				connections,
+				{},
+				nodeTypes,
+			);
+
+			// Loop body (HTTP Request) should come before done branch (Wait)
+			expect(result.map((n) => n.node.name)).toEqual(['Trigger', 'Loop', 'HTTP Request', 'Wait']);
+		});
+
+		it('should handle loop node with multiple nodes in the loop body', () => {
+			// Trigger → Loop → (done) → Done Node
+			//                → (loop) → Step1 → Step2 → (back to Loop)
+			const trigger = makeNode('Trigger', [0, 0], true);
+			const loop = makeNode('Loop', [100, 0]);
+			const doneNode = makeNode('Done', [200, -100]);
+			const step1 = makeNode('Step1', [200, 100]);
+			const step2 = makeNode('Step2', [300, 100]);
+
+			const connections = {
+				Trigger: { main: [[{ node: 'Loop', type: 'main' as const, index: 0 }]] },
+				Loop: {
+					main: [
+						[{ node: 'Done', type: 'main' as const, index: 0 }],
+						[{ node: 'Step1', type: 'main' as const, index: 0 }],
+					],
+				},
+				Step1: { main: [[{ node: 'Step2', type: 'main' as const, index: 0 }]] },
+				Step2: { main: [[{ node: 'Loop', type: 'main' as const, index: 0 }]] },
+			};
+
+			const nodeTypes = { Loop: 'n8n-nodes-base.splitInBatches' };
+
+			const result = sortNodesByExecutionOrder(
+				[doneNode, step2, step1, loop, trigger],
+				connections,
+				{},
+				nodeTypes,
+			);
+
+			expect(result.map((n) => n.node.name)).toEqual(['Trigger', 'Loop', 'Step1', 'Step2', 'Done']);
+		});
+
 		it('should not follow main connections from connectionsByDestinationNode', () => {
 			const trigger = makeNode('Trigger', [0, 0], true);
 			const nodeA = makeNode('A', [100, 0]);

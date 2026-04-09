@@ -195,6 +195,22 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		};
 	});
 
+	const isModelNode = computed(() => {
+		return (nodeTypeName: string) => {
+			const nodeType = getNodeType.value(nodeTypeName);
+			if (nodeType?.outputs && Array.isArray(nodeType.outputs)) {
+				const outputTypes = nodeType.outputs.map(
+					(output: NodeConnectionType | INodeOutputConfiguration) =>
+						typeof output === 'string' ? output : output.type,
+				);
+
+				return outputTypes.includes(NodeConnectionTypes.AiLanguageModel);
+			} else {
+				return nodeType?.outputs.includes(NodeConnectionTypes.AiLanguageModel) ?? false;
+			}
+		};
+	});
+
 	const isCoreNodeType = computed(() => {
 		return (nodeType: INodeTypeDescription) => {
 			return nodeType.codex?.categories?.includes('Core Nodes');
@@ -457,6 +473,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		isConfigNode,
 		isTriggerNode,
 		isToolNode,
+		isModelNode,
 		isCoreNodeType,
 		visibleNodeTypes,
 		nativelyNumberSuffixedDefaults,

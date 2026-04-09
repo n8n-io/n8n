@@ -614,7 +614,7 @@ watch(
 
 			setTimeout(() => {
 				if (activeNode.value) {
-					const outgoingConnections = workflowsStore.outgoingConnectionsByNodeName(
+					const outgoingConnections = workflowDocumentStore?.value?.outgoingConnectionsByNodeName(
 						activeNode.value?.name,
 					);
 

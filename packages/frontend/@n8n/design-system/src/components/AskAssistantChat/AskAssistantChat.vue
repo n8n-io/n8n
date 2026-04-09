@@ -45,7 +45,6 @@ interface Props {
 	maxCharacterLength?: number;
 	suggestions?: WorkflowSuggestion[];
 	workflowId?: string;
-	pruneTimeHours?: number;
 	/** Custom message to show when all tools complete (instead of default "Workflow generated") */
 	thinkingCompletionMessage?: string;
 }
@@ -58,10 +57,6 @@ const emit = defineEmits<{
 	codeUndo: [number];
 	feedback: [RatingFeedback];
 	'upgrade-click': [];
-	restore: [versionId: string];
-	restoreConfirm: [versionId: string, messageId: string];
-	restoreCancel: [];
-	showVersion: [versionId: string];
 }>();
 
 const onClose = () => emit('close');
@@ -469,6 +464,7 @@ defineExpose({
 	focusInput: () => {
 		promptInputRef.value?.focusInput();
 	},
+	scrollToBottom,
 });
 </script>
 
@@ -502,7 +498,10 @@ defineExpose({
 					:enable-vertical-scroll="true"
 					:enable-horizontal-scroll="false"
 				>
-					<div ref="messagesRef" :class="$style.messagesContent">
+					<div
+						ref="messagesRef"
+						:class="[$style.messagesContent, showFooterRating && $style.messagesContentWithRating]"
+					>
 						<div v-if="normalizedMessages?.length">
 							<data
 								v-for="(message, i) in normalizedMessages"
@@ -532,17 +531,9 @@ defineExpose({
 									:class="getMessageStyles(message, i)"
 									:color="getMessageColor(message)"
 									:workflow-id="workflowId"
-									:prune-time-hours="pruneTimeHours"
 									@code-replace="() => emit('codeReplace', i)"
 									@code-undo="() => emit('codeUndo', i)"
 									@feedback="onRateMessage"
-									@restore="(versionId: string) => emit('restore', versionId)"
-									@restore-confirm="
-										(versionId: string, messageId: string) =>
-											emit('restoreConfirm', versionId, messageId)
-									"
-									@restore-cancel="emit('restoreCancel')"
-									@show-version="(versionId: string) => emit('showVersion', versionId)"
 								>
 									<template v-if="$slots['custom-message']" #custom-message="customMessageProps">
 										<slot name="custom-message" v-bind="customMessageProps" />
@@ -751,6 +742,7 @@ defineExpose({
 	border-top: 0;
 	border-bottom: 0;
 	position: relative;
+	overflow: hidden;
 	line-height: var(--line-height--xl);
 
 	pre,
@@ -786,12 +778,16 @@ defineExpose({
 
 .messagesContent {
 	padding: var(--spacing--xs);
-	padding-bottom: var(--spacing--3xl);
 
 	// Override p line-height from reset.scss (1.8) to use chat standard (1.5)
 	:global(p) {
 		line-height: var(--line-height--xl);
 	}
+}
+
+.messagesContentWithRating {
+	// Extra bottom padding so scroll-to-bottom clears the feedback-wrapper overlay
+	padding-bottom: var(--spacing--3xl);
 }
 
 .message {

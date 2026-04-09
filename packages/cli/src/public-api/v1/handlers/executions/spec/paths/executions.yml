@@ -7,6 +7,7 @@ get:
   description: Retrieve all executions from your instance.
   parameters:
     - $ref: '../schemas/parameters/includeData.yml'
+    - $ref: '../schemas/parameters/redactExecutionData.yml'
     - name: status
       in: query
       description: Status to filter the executions by.
@@ -40,5 +41,7 @@ get:
             $ref: '../schemas/executionList.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
     '404':
       $ref: '../../../../shared/spec/responses/notFound.yml'

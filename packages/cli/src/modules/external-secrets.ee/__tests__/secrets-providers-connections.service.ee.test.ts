@@ -8,8 +8,10 @@ import type {
 import { In } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { CREDENTIAL_BLANKING_VALUE, type IDataObject, type INodeProperties } from 'n8n-workflow';
+
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { EventService } from '@/events/event.service';
+import type { CredentialDependencyService } from '@/credentials/credential-dependency.service';
 import type { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
 import type { ExternalSecretsProviderRegistry } from '@/modules/external-secrets.ee/provider-registry.service';
 import type { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee';
@@ -18,6 +20,7 @@ import type { SecretsProvider } from '@/modules/external-secrets.ee/types';
 describe('SecretsProvidersConnectionsService', () => {
 	const mockRepository = mock<SecretsProviderConnectionRepository>();
 	const mockProjectAccessRepository = mock<ProjectSecretsProviderAccessRepository>();
+	const mockCredentialDependencyService = mock<CredentialDependencyService>();
 	const mockExternalSecretsManager = mock<ExternalSecretsManager>();
 	const mockRedactionService = mock<RedactionService>();
 	const mockProviderRegistry = mock<ExternalSecretsProviderRegistry>();
@@ -31,6 +34,7 @@ describe('SecretsProvidersConnectionsService', () => {
 		mockLogger(),
 		mockRepository,
 		mockProjectAccessRepository,
+		mockCredentialDependencyService,
 		mockProviderRegistry,
 		mockCipher as any,
 		mockExternalSecretsManager,
@@ -387,11 +391,31 @@ describe('SecretsProvidersConnectionsService', () => {
 		});
 
 		it('should sync provider connection after deleteConnection', async () => {
+			const entityManager = {
+				delete: jest.fn().mockResolvedValue(undefined),
+			};
+			const transaction = jest.fn(
+				async (fn: (em: typeof entityManager) => Promise<void>) => await fn(entityManager),
+			);
+			Object.defineProperty(mockRepository, 'manager', {
+				value: { transaction },
+				configurable: true,
+			});
+
 			mockRepository.findOne.mockResolvedValueOnce(savedConnection);
-			mockRepository.remove.mockResolvedValueOnce(savedConnection);
 
 			await service.deleteConnection('my-aws', 'user-123');
 
+			expect(mockProjectAccessRepository.deleteByConnectionId).toHaveBeenCalledWith(
+				1,
+				entityManager,
+			);
+			expect(mockCredentialDependencyService.deleteDependencyById).toHaveBeenCalledWith({
+				dependencyType: 'externalSecretProvider',
+				dependencyId: '1',
+				entityManager,
+			});
+			expect(entityManager.delete).toHaveBeenCalledWith(mockRepository.target, { id: 1 });
 			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('my-aws');
 		});
 	});
@@ -429,10 +453,15 @@ describe('SecretsProvidersConnectionsService', () => {
 			await service.cleanupConnectionsForProjectDeletion('project-1');
 
 			expect(transaction).toHaveBeenCalledTimes(1);
-			expect(entityManager.delete).toHaveBeenNthCalledWith(1, mockRepository.target, {
+			expect(mockCredentialDependencyService.deleteDependenciesByIds).toHaveBeenCalledWith({
+				dependencyType: 'externalSecretProvider',
+				dependencyIds: ['1'],
+				entityManager,
+			});
+			expect(entityManager.delete).toHaveBeenCalledWith(mockRepository.target, {
 				id: In([1]),
 			});
-			expect(entityManager.delete).toHaveBeenNthCalledWith(2, mockProjectAccessRepository.target, {
+			expect(entityManager.delete).toHaveBeenCalledWith(mockProjectAccessRepository.target, {
 				projectId: 'project-1',
 				secretsProviderConnectionId: In([2]),
 			});
@@ -448,6 +477,72 @@ describe('SecretsProvidersConnectionsService', () => {
 			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledTimes(2);
 			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('provider-a');
 			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('provider-b');
+		});
+
+		it('deletes credential dependencies for owner connections in a single bulk call', async () => {
+			const entityManager = {
+				delete: jest.fn().mockResolvedValue(undefined),
+				update: jest.fn().mockResolvedValue(undefined),
+			};
+			const transaction = jest.fn(
+				async (callback: (em: typeof entityManager) => Promise<void>) =>
+					await callback(entityManager),
+			);
+			Object.defineProperty(mockRepository, 'manager', {
+				value: { transaction },
+				configurable: true,
+			});
+
+			mockProjectAccessRepository.findByProjectId.mockResolvedValue([
+				mock<ProjectSecretsProviderAccess>({
+					projectId: 'project-1',
+					role: 'secretsProviderConnection:owner',
+					secretsProviderConnectionId: 10,
+					secretsProviderConnection: { providerKey: 'provider-a' },
+				}),
+				mock<ProjectSecretsProviderAccess>({
+					projectId: 'project-1',
+					role: 'secretsProviderConnection:owner',
+					secretsProviderConnectionId: 11,
+					secretsProviderConnection: { providerKey: 'provider-b' },
+				}),
+			]);
+
+			await service.cleanupConnectionsForProjectDeletion('project-1');
+
+			expect(mockCredentialDependencyService.deleteDependenciesByIds).toHaveBeenCalledWith({
+				dependencyType: 'externalSecretProvider',
+				dependencyIds: ['10', '11'],
+				entityManager,
+			});
+		});
+
+		it('does not delete credential dependencies when there are no owner connections', async () => {
+			const entityManager = {
+				delete: jest.fn().mockResolvedValue(undefined),
+				update: jest.fn().mockResolvedValue(undefined),
+			};
+			const transaction = jest.fn(
+				async (callback: (em: typeof entityManager) => Promise<void>) =>
+					await callback(entityManager),
+			);
+			Object.defineProperty(mockRepository, 'manager', {
+				value: { transaction },
+				configurable: true,
+			});
+
+			mockProjectAccessRepository.findByProjectId.mockResolvedValue([
+				mock<ProjectSecretsProviderAccess>({
+					projectId: 'project-1',
+					role: 'secretsProviderConnection:user',
+					secretsProviderConnectionId: 12,
+					secretsProviderConnection: { providerKey: 'provider-c' },
+				}),
+			]);
+
+			await service.cleanupConnectionsForProjectDeletion('project-1');
+
+			expect(mockCredentialDependencyService.deleteDependenciesByIds).not.toHaveBeenCalled();
 		});
 	});
 
@@ -678,31 +773,38 @@ describe('SecretsProvidersConnectionsService', () => {
 		} as unknown as SecretsProviderConnection;
 
 		it('should delete connection and sync provider when found', async () => {
-			mockRepository.removeByProviderKeyAndProjectId.mockResolvedValue(deletedConnection);
+			mockRepository.findByProviderKeyAndProjectId.mockResolvedValue(deletedConnection);
+			mockRepository.delete.mockResolvedValue({} as never);
 
 			const result = await service.deleteConnectionForProject('my-aws', 'project-1');
 
 			expect(result).toBe(deletedConnection);
-			expect(mockRepository.removeByProviderKeyAndProjectId).toHaveBeenCalledWith(
+			expect(mockRepository.findByProviderKeyAndProjectId).toHaveBeenCalledWith(
 				'my-aws',
 				'project-1',
 			);
+			expect(mockCredentialDependencyService.deleteDependencyById).toHaveBeenCalledWith({
+				dependencyType: 'externalSecretProvider',
+				dependencyId: '1',
+			});
 			expect(mockProjectAccessRepository.deleteByConnectionId).toHaveBeenCalledWith(1);
+			expect(mockRepository.delete).toHaveBeenCalledWith({ id: 1 });
 			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('my-aws');
 		});
 
 		it('should throw NotFoundError when connection does not exist', async () => {
-			mockRepository.removeByProviderKeyAndProjectId.mockResolvedValue(null);
+			mockRepository.findByProviderKeyAndProjectId.mockResolvedValue(null);
 
 			await expect(service.deleteConnectionForProject('missing', 'project-1')).rejects.toThrow(
 				NotFoundError,
 			);
+			expect(mockCredentialDependencyService.deleteDependencyById).not.toHaveBeenCalled();
 			expect(mockProjectAccessRepository.deleteByConnectionId).not.toHaveBeenCalled();
 			expect(mockExternalSecretsManager.syncProviderConnection).not.toHaveBeenCalled();
 		});
 
 		it('should throw NotFoundError when connection does not belong to the project', async () => {
-			mockRepository.removeByProviderKeyAndProjectId.mockResolvedValue(null);
+			mockRepository.findByProviderKeyAndProjectId.mockResolvedValue(null);
 
 			await expect(service.deleteConnectionForProject('my-aws', 'other-project')).rejects.toThrow(
 				NotFoundError,
