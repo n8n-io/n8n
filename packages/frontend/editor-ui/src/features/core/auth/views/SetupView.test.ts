@@ -40,13 +40,13 @@ describe('SetupView', () => {
 		expect(() => renderComponent()).not.toThrow();
 	});
 
-	it('should use passwordMinLength from settings store', () => {
+	it('should reflect configured passwordMinLength in password hint text', () => {
 		const pinia = createTestingPinia();
 		const settingsStore = mockedStore(useSettingsStore);
 		settingsStore.userManagement.passwordMinLength = 12;
 
-		const { container } = renderComponent({ pinia });
+		const { getByText } = renderComponent({ pinia });
 
-		expect(container.querySelector('[data-test-id="setup-form"]')).toBeDefined();
+		expect(getByText(/12\+ characters/)).toBeInTheDocument();
 	});
 });

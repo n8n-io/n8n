@@ -41,13 +41,13 @@ describe('ChangePasswordView', () => {
 		expect(() => renderComponent()).not.toThrow();
 	});
 
-	it('should use passwordMinLength from settings store', () => {
+	it('should reflect configured passwordMinLength in password hint text', async () => {
 		const pinia = createTestingPinia();
 		const settingsStore = mockedStore(useSettingsStore);
 		settingsStore.userManagement.passwordMinLength = 12;
 
-		const { container } = renderComponent({ pinia });
+		const { findByText } = renderComponent({ pinia });
 
-		expect(container.querySelector('[data-test-id]')).toBeDefined();
+		expect(await findByText(/12\+ characters/)).toBeInTheDocument();
 	});
 });

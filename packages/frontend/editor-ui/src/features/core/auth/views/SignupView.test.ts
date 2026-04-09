@@ -197,11 +197,13 @@ describe('SignupView', () => {
 		expect(payload).not.toHaveProperty('inviteeId');
 	});
 
-	it('should use passwordMinLength from settings store', () => {
+	it('should reflect configured passwordMinLength in password hint text', () => {
 		const settingsStore = mockedStore(useSettingsStore);
 		settingsStore.userManagement.passwordMinLength = 12;
 
-		expect(() => renderComponent()).not.toThrow();
+		const { getByText } = renderComponent();
+
+		expect(getByText(/12\+ characters/)).toBeInTheDocument();
 	});
 
 	it('should show error and redirect when URL has inviterId but no token', async () => {

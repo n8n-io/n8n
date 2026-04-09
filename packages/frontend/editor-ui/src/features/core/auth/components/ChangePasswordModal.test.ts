@@ -4,6 +4,15 @@ import type { createPinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { createPasswordRules } from '@n8n/design-system';
+
+vi.mock('@n8n/design-system', async () => {
+	const actual = await vi.importActual('@n8n/design-system');
+	return {
+		...actual,
+		createPasswordRules: vi.fn(actual.createPasswordRules),
+	};
+});
 
 const renderComponent = createComponentRenderer(ChangePasswordModal);
 
@@ -12,6 +21,7 @@ describe('ChangePasswordModal', () => {
 
 	beforeEach(() => {
 		pinia = createTestingPinia({});
+		vi.mocked(createPasswordRules).mockClear();
 	});
 
 	it('should render correctly', () => {
@@ -20,12 +30,12 @@ describe('ChangePasswordModal', () => {
 		expect(wrapper.html()).toMatchSnapshot();
 	});
 
-	it('should use passwordMinLength from settings store', () => {
+	it('should pass configured passwordMinLength to createPasswordRules', () => {
 		const settingsStore = mockedStore(useSettingsStore);
 		settingsStore.userManagement.passwordMinLength = 12;
 
-		const wrapper = renderComponent({ pinia });
+		renderComponent({ pinia });
 
-		expect(wrapper.html()).toBeDefined();
+		expect(createPasswordRules).toHaveBeenCalledWith(12);
 	});
 });
