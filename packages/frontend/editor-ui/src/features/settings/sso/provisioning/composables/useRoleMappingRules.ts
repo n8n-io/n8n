@@ -32,6 +32,9 @@ export function useRoleMappingRules() {
 	const isLoading = ref(false);
 	const isDirty = ref(false);
 
+	/** IDs of rules loaded from the server — used to detect creates vs updates vs deletes on save */
+	let serverRuleIds = new Set<string>();
+
 	// Track fallback role changes as dirty — skip the initial value set during loadRules
 	let fallbackInitialized = false;
 	watch(fallbackInstanceRole, () => {
@@ -112,6 +115,7 @@ export function useRoleMappingRules() {
 			const allRules = await api.listRules();
 			instanceRules.value = allRules.filter((r) => r.type === 'instance');
 			projectRules.value = allRules.filter((r) => r.type === 'project');
+			serverRuleIds = new Set(allRules.map((r) => r.id));
 			isDirty.value = false;
 		} finally {
 			isLoading.value = false;
@@ -121,7 +125,41 @@ export function useRoleMappingRules() {
 	async function save() {
 		isLoading.value = true;
 		try {
-			isDirty.value = false;
+			const allLocalRules = [...instanceRules.value, ...projectRules.value];
+			const localRuleIds = new Set(allLocalRules.map((r) => r.id));
+
+			// Delete rules that were on the server but removed locally
+			for (const serverId of serverRuleIds) {
+				if (!localRuleIds.has(serverId)) {
+					await api.deleteRule(serverId);
+				}
+			}
+
+			// Create or update each local rule
+			for (const rule of allLocalRules) {
+				if (rule.id.startsWith('local-')) {
+					// New rule — create on server
+					await api.createRule({
+						expression: rule.expression,
+						role: rule.role,
+						type: rule.type,
+						order: rule.order,
+						projectIds: rule.projectIds,
+					});
+				} else if (serverRuleIds.has(rule.id)) {
+					// Existing rule — update on server
+					await api.updateRule(rule.id, {
+						expression: rule.expression,
+						role: rule.role,
+						type: rule.type,
+						order: rule.order,
+						projectIds: rule.projectIds,
+					});
+				}
+			}
+
+			// Reload to get server-assigned IDs and sync state
+			await loadRules();
 		} finally {
 			isLoading.value = false;
 		}
