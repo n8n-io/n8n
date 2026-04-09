@@ -1,10 +1,5 @@
 <script setup lang="ts">
-/**
- * Credit top-up entry point: shows a “coming soon” dialog.
- *
- * The purchase flow (presets, custom amount, `topUpCredits` API) is kept in
- * `AiGatewayTopUpPurchasesPanel.vue` for when purchases are re-enabled — it is not mounted.
- */
+/** Credit top-up “coming soon” dialog; purchase UI is in AiGatewayTopUpPurchasesPanel.vue (not mounted). */
 import { computed } from 'vue';
 import {
 	N8nButton,
@@ -18,7 +13,6 @@ import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
 
-/** Feedback URL for “Send feedback” and the inline link (replace when the real form ships). */
 const FEEDBACK_FORM_URL = 'https://forms.gle/placeholder';
 
 const i18n = useI18n();
@@ -46,7 +40,6 @@ function openFeedbackForm() {
 	>
 		<div :class="$style.content">
 			<N8nIcon icon="hourglass" size="xlarge" color="text-base" :class="$style.titleIcon" />
-			<!-- `as-child` keeps a single Reka `DialogTitle` for a11y while styling the visible heading like body copy -->
 			<N8nDialogTitle as-child>
 				<N8nHeading tag="h2" size="large" :class="$style.title">
 					{{ i18n.baseText('settings.n8nGateway.topUp.comingSoon.title') }}
@@ -65,7 +58,7 @@ function openFeedbackForm() {
 						:underline="true"
 						data-test-id="ai-gateway-topup-feedback-link"
 					>
-						{{ i18n.baseText('settings.n8nGateway.topUp.comingSoon.feedbackLinkLabel') }} </N8nLink
+						{{ i18n.baseText('settings.n8nGateway.topUp.comingSoon.feedbackLinkLabel') }}</N8nLink
 					><span>{{ i18n.baseText('settings.n8nGateway.topUp.comingSoon.paragraph2b') }}</span>
 				</p>
 				<p :class="$style.bodyParagraph">

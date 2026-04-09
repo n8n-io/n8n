@@ -679,7 +679,7 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
-				path: 'n8n-gateway',
+				path: 'n8n-connect',
 				name: VIEWS.AI_GATEWAY_SETTINGS,
 				component: SettingsAiGatewayView,
 				meta: {
@@ -698,11 +698,15 @@ export const routes: RouteRecordRaw[] = [
 						pageCategory: 'settings',
 						getProperties() {
 							return {
-								feature: 'ai-gateway',
+								feature: 'n8n-connect',
 							};
 						},
 					},
 				},
+			},
+			{
+				path: 'n8n-gateway',
+				redirect: { name: VIEWS.AI_GATEWAY_SETTINGS },
 			},
 			{
 				path: 'resolvers',

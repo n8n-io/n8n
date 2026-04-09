@@ -72,7 +72,7 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.AI_SETTINGS } },
 			},
 			{
-				id: 'settings-n8n-gateway',
+				id: 'settings-n8n-connect',
 				icon: 'plug-zap',
 				label: i18n.baseText('settings.n8nConnect.menu'),
 				creditsBadge: gatewayCreditsBadge,
