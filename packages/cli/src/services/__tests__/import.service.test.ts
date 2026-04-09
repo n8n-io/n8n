@@ -883,11 +883,11 @@ describe('ImportService', () => {
 			const sqliteEntity = { id: '1', nodes: '[{"id":"abc"}]' };
 			jest.mocked(readFile).mockResolvedValue(JSON.stringify(sqliteEntity));
 
-			const capturedParams: unknown[][] = [];
+			const capturedParams: Array<Record<string, unknown>> = [];
 			mockDataSource.driver.escapeQueryWithParameters = jest
 				.fn()
 				.mockImplementation((_query, params) => {
-					capturedParams.push(params);
+					capturedParams.push(params as Record<string, unknown>);
 					return ['INSERT COMMAND', params];
 				});
 
@@ -900,9 +900,7 @@ describe('ImportService', () => {
 
 			expect(capturedParams).toHaveLength(1);
 			// nodes must be a serialised JSON string, not the raw SQLite text
-			expect((capturedParams[0] as Record<string, unknown>).nodes).toBe(
-				JSON.stringify([{ id: 'abc' }]),
-			);
+			expect(capturedParams[0].nodes).toBe(JSON.stringify([{ id: 'abc' }]));
 		});
 
 		it('should normalise Postgres object json column values before inserting into SQLite', async () => {
@@ -922,11 +920,11 @@ describe('ImportService', () => {
 			const postgresEntity = { id: '1', nodes: [{ id: 'abc' }] };
 			jest.mocked(readFile).mockResolvedValue(JSON.stringify(postgresEntity));
 
-			const capturedParams: unknown[][] = [];
+			const capturedParams: Array<Record<string, unknown>> = [];
 			mockDataSource.driver.escapeQueryWithParameters = jest
 				.fn()
 				.mockImplementation((_query, params) => {
-					capturedParams.push(params);
+					capturedParams.push(params as Record<string, unknown>);
 					return ['INSERT COMMAND', params];
 				});
 
@@ -939,9 +937,7 @@ describe('ImportService', () => {
 
 			expect(capturedParams).toHaveLength(1);
 			// nodes must be a JSON string, not the raw JS object
-			expect((capturedParams[0] as Record<string, unknown>).nodes).toBe(
-				JSON.stringify([{ id: 'abc' }]),
-			);
+			expect(capturedParams[0].nodes).toBe(JSON.stringify([{ id: 'abc' }]));
 		});
 	});
 
