@@ -532,17 +532,6 @@ export class InstanceAiController {
 		return this.instanceAiService.getThreadStatus(threadId);
 	}
 
-	@Get('/threads/:threadId/context')
-	@GlobalScope('instanceAi:message')
-	async getThreadContext(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Param('threadId') threadId: string,
-	) {
-		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
-		return await this.memoryService.getThreadContext(req.user.id, threadId);
-	}
-
 	// ── Evaluation endpoints ──────────────────────────────────────────────────
 
 	@Post('/eval/execute-with-llm-mock/:workflowId')

@@ -682,32 +682,6 @@ describe('InstanceAiController', () => {
 		});
 	});
 
-	describe('getThreadContext', () => {
-		it('should require instanceAi:message scope', () => {
-			expect(scopeOf('getThreadContext')).toEqual({
-				scope: 'instanceAi:message',
-				globalOnly: true,
-			});
-		});
-
-		it('should throw ForbiddenError for other user thread', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
-
-			await expect(controller.getThreadContext(req, res, THREAD_ID)).rejects.toThrow(
-				ForbiddenError,
-			);
-		});
-
-		it('should allow new threads', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
-			memoryService.getThreadContext.mockResolvedValue({
-				threadId: THREAD_ID,
-			});
-
-			await expect(controller.getThreadContext(req, res, THREAD_ID)).resolves.toBeDefined();
-		});
-	});
-
 	describe('createGatewayLink', () => {
 		it('should require instanceAi:gateway scope', () => {
 			expect(scopeOf('createGatewayLink')).toEqual({

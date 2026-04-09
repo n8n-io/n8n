@@ -769,10 +769,6 @@ export interface InstanceAiThreadMessagesResponse {
 	threadId: string;
 }
 
-export interface InstanceAiThreadContextResponse {
-	threadId: string;
-}
-
 // ---------------------------------------------------------------------------
 // Rich messages response (session-restored view with agent trees)
 // ---------------------------------------------------------------------------

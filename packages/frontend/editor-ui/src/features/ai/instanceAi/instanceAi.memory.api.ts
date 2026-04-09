@@ -3,7 +3,6 @@ import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	InstanceAiThreadInfo,
 	InstanceAiThreadListResponse,
-	InstanceAiThreadContextResponse,
 	InstanceAiRichMessagesResponse,
 	InstanceAiThreadStatusResponse,
 } from '@n8n/api-types';
@@ -60,11 +59,4 @@ export async function fetchThreadStatus(
 	threadId: string,
 ): Promise<InstanceAiThreadStatusResponse> {
 	return await makeRestApiRequest(context, 'GET', `/instance-ai/threads/${threadId}/status`);
-}
-
-export async function fetchThreadContext(
-	context: IRestApiContext,
-	threadId: string,
-): Promise<InstanceAiThreadContextResponse> {
-	return await makeRestApiRequest(context, 'GET', `/instance-ai/threads/${threadId}/context`);
 }

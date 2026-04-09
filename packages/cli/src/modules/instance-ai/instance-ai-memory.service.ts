@@ -1,7 +1,6 @@
 import type {
 	InstanceAiEnsureThreadResponse,
 	InstanceAiRichMessagesResponse,
-	InstanceAiThreadContextResponse,
 	InstanceAiThreadInfo,
 	InstanceAiThreadListResponse,
 	InstanceAiThreadMessagesResponse,
@@ -114,13 +113,6 @@ export class InstanceAiMemoryService {
 				createdAt: m.createdAt.toISOString(),
 			})),
 		};
-	}
-
-	async getThreadContext(
-		_userId: string,
-		threadId: string,
-	): Promise<InstanceAiThreadContextResponse> {
-		return { threadId };
 	}
 
 	async getRichMessages(
