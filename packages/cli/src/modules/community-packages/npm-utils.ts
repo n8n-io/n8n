@@ -82,12 +82,11 @@ export async function executeNpmCommand(
 		if (authToken) registryArgs.push(`--//${new URL(sanitized).host}/:_authToken=${authToken}`);
 	}
 
+	const fullArgs = [...args, ...registryArgs];
+	LoggerProxy.debug('Executing npm command', { args: fullArgs, cwd });
+
 	try {
-		const { stdout } = await asyncExecFile(
-			'npm',
-			[...args, ...registryArgs],
-			cwd ? { cwd } : undefined,
-		);
+		const { stdout } = await asyncExecFile('npm', fullArgs, cwd ? { cwd } : undefined);
 		return typeof stdout === 'string' ? stdout : stdout.toString();
 	} catch (error) {
 		if (doNotHandleError) {
@@ -146,7 +145,7 @@ export async function executeNpmRequest<T = unknown>(
 	const authHeaders = authToken ? { ['Authorization']: `Bearer ${authToken}` } : {};
 	const headers = { ...extraHeaders, ...authHeaders };
 
-	LoggerProxy.debug('Executing npm registry request', { url, headers });
+	LoggerProxy.debug('Executing npm registry request', { url, headers, timeout });
 
 	try {
 		const { data } = await axios.get<T>(url, {
