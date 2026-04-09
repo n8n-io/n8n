@@ -18,34 +18,33 @@ RUN npm install -g pnpm
 
 WORKDIR /app
 
-# 1. Copia los archivos de configuración del monorepo
+# 1. Copia de archivos de configuración
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.json ./
-
-# 2. COPIA LA CARPETA DE PATCHES (CRUCIAL)
-# Sin esto, pnpm install fallará al intentar aplicar parches de dependencias
 COPY patches/ ./patches/
 
-# 3. Copia el resto del código (o al menos los package.json de los paquetes si usas turbo prune)
+# 2. CONFIGURACIÓN DE PNPM (EL FIX)
+# Forzamos el hoisting para que paquetes como zod-to-json-schema sean visibles globalmente
+# Esto evita el error TS2307 en @n8n/agents
+RUN pnpm config set shamefully-hoist true && \
+    pnpm config set public-hoist-pattern[] "*"
+
+# 3. INSTALACIÓN
+# Añadimos --shamefully-hoist por seguridad extra en el comando
+RUN CI=true pnpm install --ignore-scripts --no-frozen-lockfile --shamefully-hoist
+
+# 4. COPIA DE CÓDIGO
 COPY packages/ ./packages/
 
-# 4. INSTALACIÓN DE DEPENDENCIAS
-# Ahora pnpm encontrará /app/patches/bull@4.16.4.patch y podrá continuar
-RUN CI=true pnpm install --ignore-scripts --no-frozen-lockfile
-
-
-# 3. PARCHE DE TIPOS (PSL)
-# Soluciona el error TS2688 inyectando la definición de tipos faltante
+# 5. LOS PARCHES QUE YA FUNCIONAN
+# Fix PSL
 RUN mkdir -p node_modules/@types/psl && \
     printf 'declare module "psl";' > node_modules/@types/psl/index.d.ts
 
-# 4. COMPILACIÓN QUIRÚRGICA DE SQLITE3
-# Como usamos --ignore-scripts, el binario nativo no se generó.
-# Localizamos la carpeta en el storage de pnpm y forzamos la compilación.
+# Fix SQLite (Compilación nativa)
 RUN SQLITE3_PATH=$(find node_modules/.pnpm -name "sqlite3" -type d | head -n 1) && \
     cd $SQLITE3_PATH && npm install --build-from-source
 
-# 5. CONSTRUCCIÓN FINAL CON TURBO
-# Turbo ahora encontrará tanto los tipos de PSL como el binario de SQLite
+# 6. BUILD FINAL
 RUN pnpm build
 
 # Comando por defecto (ajusta según tu despliegue en TACC/Render)
