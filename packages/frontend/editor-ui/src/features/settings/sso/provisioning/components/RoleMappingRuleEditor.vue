@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, withDefaults } from 'vue';
 import { N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRBACStore } from '@/app/stores/rbac.store';
@@ -8,6 +8,15 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useRoleMappingRules } from '../composables/useRoleMappingRules';
 import RuleSectionHeader from './RuleSectionHeader.vue';
 import RuleList from './RuleList.vue';
+
+const props = withDefaults(
+	defineProps<{
+		showProjectRules?: boolean;
+	}>(),
+	{
+		showProjectRules: true,
+	},
+);
 
 const i18n = useI18n();
 const rbacStore = useRBACStore();
@@ -85,36 +94,38 @@ defineExpose({ isDirty, save });
 			</N8nButton>
 		</div>
 
-		<hr :class="$style.sectionDivider" />
+		<template v-if="props.showProjectRules">
+			<hr :class="$style.sectionDivider" />
 
-		<RuleSectionHeader
-			:title="i18n.baseText('settings.sso.settings.roleMappingRules.projectRules.title')"
-			:description="
-				i18n.baseText('settings.sso.settings.roleMappingRules.projectRules.description')
-			"
-		/>
-		<RuleList
-			type="project"
-			:rules="projectRules"
-			:projects="teamProjectOptions"
-			:disabled="!canEdit"
-			@reorder="(from, to) => reorder('project', from, to)"
-			@update="updateRule"
-			@delete="deleteRule"
-			@duplicate="duplicateRule"
-		/>
-		<div :class="$style.addButtonRow">
-			<N8nButton
-				variant="outline"
-				size="small"
-				icon="plus"
+			<RuleSectionHeader
+				:title="i18n.baseText('settings.sso.settings.roleMappingRules.projectRules.title')"
+				:description="
+					i18n.baseText('settings.sso.settings.roleMappingRules.projectRules.description')
+				"
+			/>
+			<RuleList
+				type="project"
+				:rules="projectRules"
+				:projects="teamProjectOptions"
 				:disabled="!canEdit"
-				data-test-id="add-project-rule-button"
-				@click="addRule('project')"
-			>
-				{{ i18n.baseText('settings.sso.settings.roleMappingRules.addRule') }}
-			</N8nButton>
-		</div>
+				@reorder="(from, to) => reorder('project', from, to)"
+				@update="updateRule"
+				@delete="deleteRule"
+				@duplicate="duplicateRule"
+			/>
+			<div :class="$style.addButtonRow">
+				<N8nButton
+					variant="outline"
+					size="small"
+					icon="plus"
+					:disabled="!canEdit"
+					data-test-id="add-project-rule-button"
+					@click="addRule('project')"
+				>
+					{{ i18n.baseText('settings.sso.settings.roleMappingRules.addRule') }}
+				</N8nButton>
+			</div>
+		</template>
 	</div>
 </template>
 <style lang="scss" module>
