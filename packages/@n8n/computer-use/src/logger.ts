@@ -136,17 +136,17 @@ const LOGO = [
 	"| '_ \\ / _ \\| '_ \\ ",
 	'| | | | (_) | | | |',
 	'|_| |_|\\___/|_| |_|',
+	'                   ',
 ];
 
 const SUBTITLE = [
-	'  _                 _               _                           ',
-	' | | ___   ___ __ _| |   __ _  __ _| |_ _____      ____ _ _   _ ',
-	' | |/ _ \\ / __/ _` | |  / _` |/ _` | __/ _ \\ \\ /\\ / / _` | | | |',
-	' | | (_) | (_| (_| | | | (_| | (_| | ||  __/\\ V  V / (_| | |_| |',
-	' |_|\\___/ \\___\\__,_|_|  \\__, |\\__,_|\\__\\___| \\_/\\_/ \\__,_|\\__, |',
+	'                                     __',
+	'   _________  ____ ___  ____  __  __/ /____  _____   __  __________',
+	'  / ___/ __ \\/ __ `__ \\/ __ \\/ / / / __/ _ \\/ ___/  / / / / ___/ _ \\',
+	' / /__/ /_/ / / / / / / /_/ / /_/ / /_/  __/ /     / /_/ (__  )  __/',
+	' \\___/\\____/_/ /_/ /_/ .___/\\__,_/\\__/\\___/_/      \\__,_/____/\\___/',
+	'                   /_/',
 ];
-
-const SUBTITLE_LAST = '                        |___/                             |___/ ';
 
 /** Print the ASCII art startup banner. Always pretty, bypasses the logger. */
 export function printBanner(): void {
@@ -154,7 +154,6 @@ export function printBanner(): void {
 	for (let i = 0; i < LOGO.length; i++) {
 		console.log(pc.magenta(LOGO[i]) + pc.dim(SUBTITLE[i]));
 	}
-	console.log(' '.repeat(LOGO[0].length) + pc.dim(SUBTITLE_LAST));
 	console.log();
 }
 

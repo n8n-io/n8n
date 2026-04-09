@@ -7,12 +7,14 @@ import { computed, ref } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useInstanceAiStore, type PendingConfirmationItem } from '../instanceAi.store';
 import { useToolLabel } from '../toolLabels';
+import ConfirmationFooter from './ConfirmationFooter.vue';
 import DomainAccessApproval from './DomainAccessApproval.vue';
 import GatewayResourceDecision from './GatewayResourceDecision.vue';
 import InstanceAiCredentialSetup from './InstanceAiCredentialSetup.vue';
 import type { QuestionAnswer } from './InstanceAiQuestions.vue';
 import InstanceAiQuestions from './InstanceAiQuestions.vue';
 import InstanceAiWorkflowSetup from './InstanceAiWorkflowSetup.vue';
+import ConfirmationPreview from './ConfirmationPreview.vue';
 import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
 
 const store = useInstanceAiStore();
@@ -423,6 +425,7 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 						<N8nButton
 							data-test-id="instance-ai-panel-confirm-approve-all"
 							size="small"
+							variant="subtle"
 							@click="handleApproveAll(chunk.items)"
 						>
 							{{ i18n.baseText('instanceAi.confirmation.approveAll') }}
@@ -450,13 +453,15 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 						<div v-else>
 							<div :class="$style.approvalRow">
 								<div :class="$style.approvalRowBody">
-									<span :class="$style.toolLabel">
+									<N8nText size="medium" bold>
 										{{ getToolLabel(item.toolCall.toolName) }}
-									</span>
-									<span :class="$style.preview">{{ item.toolCall.confirmation.message }}</span>
+									</N8nText>
+									<ConfirmationPreview>{{
+										item.toolCall.confirmation!.message
+									}}</ConfirmationPreview>
 								</div>
 
-								<div :class="$style.approvalActions">
+								<ConfirmationFooter>
 									<N8nButton
 										data-test-id="instance-ai-panel-confirm-deny"
 										size="small"
@@ -477,7 +482,7 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 									>
 										{{ i18n.baseText('instanceAi.confirmation.approve') }}
 									</N8nButton>
-								</div>
+								</ConfirmationFooter>
 							</div>
 						</div>
 					</div>
@@ -516,47 +521,15 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 .approvalRow {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
 	padding: var(--spacing--4xs) 0;
 	font-size: var(--font-size--2xs);
 }
 
-.toolLabel {
-	display: inline-flex;
-	white-space: nowrap;
-	align-items: flex-start;
-	gap: var(--spacing--3xs);
-	font-size: var(--font-size--2xs);
-	color: var(--color--text);
-	margin-bottom: var(--spacing--xs);
-	font-weight: var(--font-weight--medium);
-}
-
 .approvalRowBody {
-	padding: var(--spacing--sm) var(--spacing--sm);
+	padding: var(--spacing--sm) var(--spacing--sm) 0;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--3xs);
-}
-
-.approvalActions {
-	display: flex;
 	gap: var(--spacing--2xs);
-	justify-content: flex-end;
-	border-top: var(--border);
-	padding: var(--spacing--xs) var(--spacing--sm);
-}
-
-.preview {
-	font-family: monospace;
-	font-size: var(--font-size--3xs);
-	color: var(--color--text--tint-1);
-	word-break: break-all;
-	margin-bottom: var(--spacing--xs);
-	padding: var(--spacing--2xs);
-	background: var(--color--background);
-	border-radius: var(--radius);
-	border: var(--border);
 }
 
 .textInputRow {

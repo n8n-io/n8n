@@ -129,7 +129,6 @@ No separate storage configuration is needed.
 
 The same storage backend is used for:
 - Message history
-- Working memory state
 - Observational memory (observations and reflections)
 - Plan storage (thread-scoped)
 - Event persistence (for SSE replay)
