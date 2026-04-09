@@ -357,8 +357,8 @@ async function handleLater() {
 					<div :class="$style.footerNav">
 						<N8nButton
 							v-if="showArrows"
-							variant="outline"
-							size="xsmall"
+							variant="ghost"
+							size="medium"
 							icon-only
 							:disabled="isPrevDisabled"
 							data-test-id="instance-ai-credential-prev"
@@ -372,8 +372,8 @@ async function handleLater() {
 						</N8nText>
 						<N8nButton
 							v-if="showArrows"
-							variant="outline"
-							size="xsmall"
+							variant="ghost"
+							size="medium"
 							icon-only
 							:disabled="isNextDisabled"
 							data-test-id="instance-ai-credential-next"
