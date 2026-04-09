@@ -1,0 +1,29 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4",
+          "mode": "list",
+          "cachedResultName": "GPT-4"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "Given a description of a linear ticket you're able to asses if there is any meaningful information or that is just an empty placeholder description. Given a description of a linear ticket you're able to asses if there is any meaningful information or that is just an empty placeholder description. Given a description of a linear ticket you're able to asses if there is any meaningful information or that is just an empty placeholder description. Given a description of a linear ticket you're able to asses if there is any meaningful information or that is just an empty placeholder description. Given a description of a linear ticket you're able to asses if there is any meaningful information or that is just an empty placeholder description. Given a description of a linear ticket you're able to asses if there is any meaningful information or that is just an empty placeholder description."
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [1040, 1504],
+      "id": "f53cc2aa-873f-4b01-8f7e-8fbbbb594e72",
+      "name": "OpenAI Node"
+    }
+  ],
+  "connections": {},
+  "pinData": {}
+}
