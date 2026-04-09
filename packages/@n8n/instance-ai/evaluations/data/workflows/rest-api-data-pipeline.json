@@ -8,7 +8,7 @@
 			"name": "happy-path",
 			"description": "API returns posts, some contain 'qui' and get filtered, summary posted to Slack",
 			"dataSetup": "The HTTP Request node returns JSON objects with fields: id, userId, title, body. Some of them should have 'qui' in the title (e.g. 'qui est esse', 'nesciunt quid non qui'). Others should NOT contain 'qui'. The Slack node returns a success response.",
-			"successCriteria": "The workflow executes without errors. Posts containing 'qui' in the title are filtered out. The Slack message is posted to #api-digest with the titles of the remaining posts. None of the titles in the Slack message should contain the word 'qui'."
+			"successCriteria": "The workflow executes without errors. Posts containing 'qui' in the title are filtered out. The Slack message is posted to #api-digest and includes how many posts remain plus the titles of the remaining posts. None of the titles in the Slack message should contain the word 'qui'."
 		},
 		{
 			"name": "empty-response",
