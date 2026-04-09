@@ -1,8 +1,10 @@
 <script lang="ts" setup>
-import { computed, useCssModule } from 'vue';
+import { computed, shallowRef, useCssModule, watch } from 'vue';
+
+import type { nodeIconSet as NodeIconSetType } from './node-icons';
 
 import type { IconName, NodeIconName } from './icons';
-import { deprecatedIconSet, nodeIconSet, updatedIconSet } from './icons';
+import { deprecatedIconSet, updatedIconSet } from './icons';
 import type { IconSize, IconColor } from '../../types/icon';
 
 interface IconProps {
@@ -87,9 +89,22 @@ const styles = computed(() => {
 	return stylesToApply;
 });
 
+const nodeIconSetRef = shallowRef<typeof NodeIconSetType | null>(null);
+
+watch(
+	() => props.icon,
+	async (icon) => {
+		if (typeof icon === 'string' && icon.startsWith('node:') && !nodeIconSetRef.value) {
+			const { nodeIconSet } = await import('./node-icons');
+			nodeIconSetRef.value = nodeIconSet;
+		}
+	},
+	{ immediate: true },
+);
+
 const resolvedComponent = computed(
 	() =>
-		nodeIconSet[props.icon as keyof typeof nodeIconSet] ??
+		nodeIconSetRef.value?.[props.icon as keyof typeof NodeIconSetType] ??
 		updatedIconSet[props.icon as keyof typeof updatedIconSet] ??
 		deprecatedIconSet[props.icon as keyof typeof deprecatedIconSet],
 );
