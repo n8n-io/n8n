@@ -3,8 +3,10 @@ import { ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
 	listThreads,
+	getThreadDetail as getThreadDetailApi,
 	deleteThread as deleteThreadApi,
 	type ExecutionThread,
+	type ThreadDetail,
 } from './composables/useAgentThreadsApi';
 
 const ITEMS_PER_PAGE = 20;
@@ -18,13 +20,21 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 
 	let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 	let currentProjectId: string | null = null;
+	let currentAgentId: string | null = null;
 
-	async function fetchThreads(projectId: string) {
+	async function fetchThreads(projectId: string, agentId?: string) {
 		currentProjectId = projectId;
+		currentAgentId = agentId ?? null;
 		loading.value = true;
 		try {
 			const rootStore = useRootStore();
-			const page = await listThreads(rootStore.restApiContext, projectId, ITEMS_PER_PAGE);
+			const page = await listThreads(
+				rootStore.restApiContext,
+				projectId,
+				ITEMS_PER_PAGE,
+				undefined,
+				agentId,
+			);
 			threads.value = page.threads;
 			nextCursor.value = page.nextCursor;
 		} finally {
@@ -32,7 +42,7 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		}
 	}
 
-	async function loadMore(projectId: string) {
+	async function loadMore(projectId: string, agentId?: string) {
 		if (!nextCursor.value || loading.value) return;
 		loading.value = true;
 		try {
@@ -42,12 +52,22 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 				projectId,
 				ITEMS_PER_PAGE,
 				nextCursor.value,
+				agentId,
 			);
 			threads.value.push(...page.threads);
 			nextCursor.value = page.nextCursor;
 		} finally {
 			loading.value = false;
 		}
+	}
+
+	async function getThreadDetail(
+		projectId: string,
+		threadId: string,
+		agentId?: string,
+	): Promise<ThreadDetail> {
+		const rootStore = useRootStore();
+		return await getThreadDetailApi(rootStore.restApiContext, projectId, threadId, agentId);
 	}
 
 	async function deleteThread(projectId: string, threadId: string) {
@@ -61,7 +81,7 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		if (!autoRefresh.value || !currentProjectId) return;
 		refreshTimer = setTimeout(async () => {
 			if (currentProjectId) {
-				await fetchThreads(currentProjectId);
+				await fetchThreads(currentProjectId, currentAgentId ?? undefined);
 			}
 			startAutoRefresh();
 		}, AUTO_REFRESH_INTERVAL_MS);
@@ -80,6 +100,7 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		nextCursor.value = null;
 		loading.value = false;
 		currentProjectId = null;
+		currentAgentId = null;
 	}
 
 	return {
@@ -89,6 +110,7 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		autoRefresh,
 		fetchThreads,
 		loadMore,
+		getThreadDetail,
 		deleteThread,
 		startAutoRefresh,
 		stopAutoRefresh,

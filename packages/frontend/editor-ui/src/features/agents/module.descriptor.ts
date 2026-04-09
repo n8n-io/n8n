@@ -1,8 +1,20 @@
 import { type FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
-import { AGENTS_LIST_VIEW, AGENT_BUILDER_VIEW, PROJECT_AGENTS } from '@/features/agents/constants';
+import {
+	AGENTS_LIST_VIEW,
+	AGENT_BUILDER_VIEW,
+	AGENT_VIEW,
+	AGENT_SESSIONS_LIST_VIEW,
+	AGENT_SESSION_DETAIL_VIEW,
+	PROJECT_AGENTS,
+} from '@/features/agents/constants';
 
 const AgentsListView = async () => await import('@/features/agents/views/AgentsListView.vue');
+const AgentView = async () => await import('@/features/agents/views/AgentView.vue');
 const AgentBuilderView = async () => await import('@/features/agents/views/AgentBuilderView.vue');
+const AgentSessionsListView = async () =>
+	await import('@/features/agents/views/AgentSessionsListView.vue');
+const AgentSessionDetailView = async () =>
+	await import('@/features/agents/views/AgentSessionDetailView.vue');
 
 export const AgentsModule: FrontendModuleDescription = {
 	id: 'agents',
@@ -28,14 +40,31 @@ export const AgentsModule: FrontendModuleDescription = {
 			},
 		},
 		{
-			name: AGENT_BUILDER_VIEW,
+			name: AGENT_VIEW,
 			path: 'agents/:agentId',
-			props: true,
-			component: AgentBuilderView,
+			component: AgentView,
 			meta: {
 				projectRoute: true,
 				middleware: ['authenticated', 'custom'],
 			},
+			children: [
+				{
+					name: AGENT_BUILDER_VIEW,
+					path: '',
+					props: true,
+					component: AgentBuilderView,
+				},
+				{
+					name: AGENT_SESSIONS_LIST_VIEW,
+					path: 'sessions',
+					component: AgentSessionsListView,
+				},
+				{
+					name: AGENT_SESSION_DETAIL_VIEW,
+					path: 'sessions/:threadId',
+					component: AgentSessionDetailView,
+				},
+			],
 		},
 	],
 	projectTabs: {

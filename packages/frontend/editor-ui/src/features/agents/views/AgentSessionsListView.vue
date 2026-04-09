@@ -5,29 +5,27 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 import { N8nActionDropdown, N8nButton, N8nIcon, N8nTableBase } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
 
 const i18n = useI18n();
+const route = useRoute();
 const router = useRouter();
 const toast = useToast();
 const message = useMessage();
 const sessionsStore = useAgentSessionsStore();
-const projectsStore = useProjectsStore();
 
-const projectId = computed(
-	() => projectsStore.currentProjectId ?? projectsStore.personalProject?.id ?? '',
-);
+const projectId = computed(() => route.params.projectId as string);
+const agentId = computed(() => route.params.agentId as string);
 
 onMounted(async () => {
-	if (projectId.value) {
+	if (projectId.value && agentId.value) {
 		try {
-			await sessionsStore.fetchThreads(projectId.value);
+			await sessionsStore.fetchThreads(projectId.value, agentId.value);
 			sessionsStore.startAutoRefresh();
 		} catch (error) {
 			toast.showError(error, i18n.baseText('agentSessions.showError.load'));
@@ -48,9 +46,25 @@ function formatTokens(count: number): string {
 	return count.toLocaleString();
 }
 
+function formatDuration(ms: number): string {
+	if (ms < 1000) return `${ms}ms`;
+	return `${(ms / 1000).toFixed(1)}s`;
+}
+
 const deleteActions = [
 	{ id: 'delete', label: i18n.baseText('generic.delete'), icon: 'trash' as const },
 ];
+
+function onRowClick(threadId: string) {
+	void router.push({
+		name: AGENT_SESSION_DETAIL_VIEW,
+		params: {
+			projectId: projectId.value,
+			agentId: agentId.value,
+			threadId,
+		},
+	});
+}
 
 async function onAction(actionId: string, threadId: string) {
 	if (actionId !== 'delete') return;
@@ -78,25 +92,9 @@ async function onAction(actionId: string, threadId: string) {
 	}
 }
 
-function formatDuration(ms: number): string {
-	if (ms < 1000) return `${ms}ms`;
-	return `${(ms / 1000).toFixed(1)}s`;
-}
-
-function onRowClick(thread: { id: string; agentId: string }) {
-	void router.push({
-		name: AGENT_SESSION_DETAIL_VIEW,
-		params: {
-			projectId: projectId.value,
-			agentId: thread.agentId,
-			threadId: thread.id,
-		},
-	});
-}
-
 async function loadMore() {
 	try {
-		await sessionsStore.loadMore(projectId.value);
+		await sessionsStore.loadMore(projectId.value, agentId.value);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('agentSessions.showError.load'));
 	}
@@ -104,8 +102,8 @@ async function loadMore() {
 </script>
 
 <template>
-	<div :class="$style.sessionsList">
-		<div :class="$style.sessionsTable">
+	<div :class="$style.wrapper">
+		<div :class="$style.tableContainer">
 			<N8nTableBase>
 				<thead>
 					<tr>
@@ -124,7 +122,7 @@ async function loadMore() {
 						:key="thread.id"
 						:class="$style.clickableRow"
 						data-test-id="agent-session-list-item"
-						@click="onRowClick(thread)"
+						@click="onRowClick(thread.id)"
 					>
 						<td>{{ thread.agentName }}</td>
 						<td>
@@ -182,15 +180,14 @@ async function loadMore() {
 </template>
 
 <style module lang="scss">
-.sessionsList {
-	flex-shrink: 1;
-	max-height: 100%;
+.wrapper {
+	padding: var(--spacing--lg) var(--spacing--2xl);
+	height: 100%;
 	overflow: auto;
 }
 
-.sessionsTable {
-	height: 100%;
-	flex: 0 1 auto;
+.tableContainer {
+	max-width: var(--content-container--width);
 }
 
 .clickableRow {

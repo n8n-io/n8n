@@ -1,9 +1,15 @@
-import type { StreamChunk } from '@n8n/agents';
+import type { AgentMessage, StreamChunk } from '@n8n/agents';
 
 export interface RecordedUsage {
 	promptTokens: number;
 	completionTokens: number;
 	totalTokens: number;
+}
+
+export interface RecordedToolCall {
+	name: string;
+	input: unknown;
+	output: unknown;
 }
 
 /**
@@ -16,6 +22,7 @@ export interface MessageRecord {
 	finishReason: string;
 	usage: RecordedUsage | null;
 	totalCost: number | null;
+	toolCalls: RecordedToolCall[];
 	startTime: number;
 	duration: number;
 	error: string | null;
@@ -32,6 +39,10 @@ export class ExecutionRecorder {
 
 	private totalCost: number | null = null;
 
+	private toolCalls: RecordedToolCall[] = [];
+
+	private _suspended = false;
+
 	private error: string | null = null;
 
 	private readonly startTime = Date.now();
@@ -41,6 +52,9 @@ export class ExecutionRecorder {
 		switch (chunk.type) {
 			case 'text-delta':
 				this.textParts.push(chunk.delta);
+				break;
+			case 'message':
+				this.extractToolCalls(chunk.message as AgentMessage);
 				break;
 			case 'finish':
 				this.finishReason = chunk.finishReason;
@@ -52,16 +66,23 @@ export class ExecutionRecorder {
 					};
 				}
 				this.model = chunk.model ?? null;
-				this.totalCost = chunk.totalCost ?? null;
+				// Cost lives in usage.cost for single-agent runs, totalCost only for sub-agent scenarios
+				this.totalCost = chunk.totalCost ?? chunk.usage?.cost ?? null;
+				break;
+			case 'tool-call-suspended':
+				this._suspended = true;
 				break;
 			case 'error': {
 				const errMsg = chunk.error instanceof Error ? chunk.error.message : String(chunk.error);
 				this.error = errMsg;
 				break;
 			}
-			// Other chunk types (reasoning-delta, message, tool-call-delta, tool-call-suspended)
-			// are not captured in the execution record for now.
 		}
+	}
+
+	/** Whether the stream ended with a tool-call suspension (incomplete cycle). */
+	get suspended(): boolean {
+		return this._suspended;
 	}
 
 	/** Build the final message record after the stream has ended. */
@@ -72,9 +93,42 @@ export class ExecutionRecorder {
 			finishReason: this.finishReason,
 			usage: this.usage,
 			totalCost: this.totalCost,
+			toolCalls: this.toolCalls,
 			startTime: this.startTime,
 			duration: Date.now() - this.startTime,
 			error: this.error,
 		};
+	}
+
+	/**
+	 * Extract tool-call and tool-result content parts from agent messages.
+	 * Pairs them by toolName into RecordedToolCall entries.
+	 */
+	private extractToolCalls(message: AgentMessage): void {
+		if (!('content' in message) || !Array.isArray(message.content)) return;
+
+		for (const part of message.content) {
+			if (part.type === 'tool-call' && 'toolName' in part) {
+				this.toolCalls.push({
+					name: part.toolName as string,
+					input: 'input' in part ? part.input : undefined,
+					output: undefined,
+				});
+			} else if (part.type === 'tool-result' && 'toolName' in part) {
+				// Match to the last tool call with the same name that has no output yet
+				const pending = [...this.toolCalls]
+					.reverse()
+					.find((tc) => tc.name === (part.toolName as string) && tc.output === undefined);
+				if (pending) {
+					pending.output = 'result' in part ? part.result : undefined;
+				} else {
+					this.toolCalls.push({
+						name: part.toolName as string,
+						input: undefined,
+						output: 'result' in part ? part.result : undefined,
+					});
+				}
+			}
+		}
 	}
 }

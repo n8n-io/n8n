@@ -174,19 +174,6 @@ onMounted(async () => {
 	<div :class="$style.builder">
 		<AgentSidebar :active-tab="activeTab" @select="activeTab = $event" />
 		<div :class="$style.main">
-			<div :class="$style.nameBar">
-				<input
-					v-if="editingName"
-					v-model="agentName"
-					:class="$style.nameInput"
-					autofocus
-					@blur="saveName"
-					@keydown="onNameKeydown"
-				/>
-				<h2 v-else :class="$style.nameDisplay" @click="editingName = true">
-					{{ agentName || 'Untitled Agent' }}
-				</h2>
-			</div>
 			<AgentCodeEditor v-if="activeTab === 'code'" v-model="code" />
 			<AgentOverviewPanel
 				v-else-if="activeTab === 'overview'"

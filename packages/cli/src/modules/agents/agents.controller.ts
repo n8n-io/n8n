@@ -145,19 +145,40 @@ export class AgentsController {
 
 	@Get('/threads')
 	async listThreads(
-		req: AuthenticatedRequest<{ projectId: string }, {}, {}, { cursor?: string; limit?: string }>,
+		req: AuthenticatedRequest<
+			{ projectId: string },
+			{},
+			{},
+			{ cursor?: string; limit?: string; agentId?: string }
+		>,
 	) {
 		const limit = Math.min(Number(req.query.limit) || 20, 100);
 		return await this.agentExecutionService.getThreads(
 			req.params.projectId,
 			limit,
 			req.query.cursor,
+			req.query.agentId,
 		);
 	}
 
 	@Get('/threads/:threadId')
-	async getThread(req: AuthenticatedRequest<{ projectId: string; threadId: string }>) {
-		return await this.agentExecutionService.getThreadExecutions(req.params.threadId);
+	async getThread(
+		req: AuthenticatedRequest<
+			{ projectId: string; threadId: string },
+			{},
+			{},
+			{ agentId?: string }
+		>,
+	) {
+		const result = await this.agentExecutionService.getThreadDetail(
+			req.params.threadId,
+			req.params.projectId,
+			req.query.agentId,
+		);
+		if (!result) {
+			throw new NotFoundError(`Thread "${req.params.threadId}" not found`);
+		}
+		return result;
 	}
 
 	@Delete('/threads/:threadId')

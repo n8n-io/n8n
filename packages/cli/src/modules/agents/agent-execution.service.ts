@@ -95,6 +95,8 @@ export class AgentExecutionService {
 		const metadata: Array<{ key: string; value: string }> = [
 			{ key: 'agentId', value: agentId },
 			{ key: 'threadId', value: threadId },
+			{ key: 'userMessage', value: params.userMessage },
+			{ key: 'assistantResponse', value: record.assistantResponse },
 		];
 
 		if (record.model) {
@@ -108,19 +110,23 @@ export class AgentExecutionService {
 		if (record.totalCost !== null) {
 			metadata.push({ key: 'cost', value: String(record.totalCost) });
 		}
+		if (record.toolCalls.length > 0) {
+			metadata.push({ key: 'toolCalls', value: JSON.stringify(record.toolCalls) });
+		}
 		if (record.error) {
 			metadata.push({ key: 'error', value: record.error });
 		}
 
 		await this.executionMetadataRepository.insert(metadata.map((m) => ({ ...m, executionId })));
 
-		// Atomically increment token/cost counters on the thread
+		// Atomically increment token/cost/duration counters on the thread
 		if (record.usage) {
 			await this.executionThreadRepository.incrementUsage(
 				threadId,
 				record.usage.promptTokens,
 				record.usage.completionTokens,
 				record.totalCost ?? 0,
+				record.duration,
 			);
 		}
 
@@ -148,19 +154,37 @@ export class AgentExecutionService {
 
 	/**
 	 * Get paginated execution threads for a project.
+	 * Optionally filtered by agentId.
 	 */
-	async getThreads(projectId: string, limit: number, cursor?: string) {
-		return await this.executionThreadRepository.findByProjectIdPaginated(projectId, limit, cursor);
+	async getThreads(projectId: string, limit: number, cursor?: string, agentId?: string) {
+		return await this.executionThreadRepository.findByProjectIdPaginated(
+			projectId,
+			limit,
+			cursor,
+			agentId,
+		);
 	}
 
 	/**
-	 * Get all executions for a specific thread, ordered by creation time.
+	 * Get a thread with all its executions.
+	 * Validates projectId ownership. Optionally validates agentId.
+	 * Returns the thread aggregate + executions with metadata.
 	 */
-	async getThreadExecutions(threadId: string) {
-		return await this.executionRepository.find({
+	async getThreadDetail(threadId: string, projectId: string, agentId?: string) {
+		const where: Record<string, string> = { id: threadId, projectId };
+		if (agentId) {
+			where.agentId = agentId;
+		}
+
+		const thread = await this.executionThreadRepository.findOneBy(where);
+		if (!thread) return null;
+
+		const executions = await this.executionRepository.find({
 			where: { threadId },
 			order: { createdAt: 'ASC' },
 			relations: ['metadata'],
 		});
+
+		return { thread, executions };
 	}
 }

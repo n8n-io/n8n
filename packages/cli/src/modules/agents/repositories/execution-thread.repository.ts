@@ -50,8 +50,12 @@ export class ExecutionThreadRepository extends Repository<ExecutionThread> {
 		projectId: string,
 		limit: number,
 		cursor?: string,
+		agentId?: string,
 	): Promise<ThreadPage> {
 		const where: Record<string, unknown> = { projectId };
+		if (agentId) {
+			where.agentId = agentId;
+		}
 		if (cursor) {
 			where.updatedAt = LessThan(new Date(cursor));
 		}
@@ -82,11 +86,15 @@ export class ExecutionThreadRepository extends Repository<ExecutionThread> {
 		promptTokens: number,
 		completionTokens: number,
 		cost: number,
+		duration: number,
 	): Promise<void> {
 		await this.increment({ id: threadId }, 'totalPromptTokens', promptTokens);
 		await this.increment({ id: threadId }, 'totalCompletionTokens', completionTokens);
 		if (cost > 0) {
 			await this.increment({ id: threadId }, 'totalCost', cost);
+		}
+		if (duration > 0) {
+			await this.increment({ id: threadId }, 'totalDuration', duration);
 		}
 	}
 

@@ -37,4 +37,8 @@ export class ExecutionThread extends WithTimestampsAndStringId {
 
 	@Column({ type: 'double precision', default: 0 })
 	totalCost: number;
+
+	/** Total generation time across all messages, in milliseconds. */
+	@Column({ type: 'int', default: 0 })
+	totalDuration: number;
 }

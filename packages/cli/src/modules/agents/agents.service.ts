@@ -476,6 +476,9 @@ export class AgentsService {
 		runId: string,
 		toolCallId: string,
 		resumeData: unknown,
+		threadId?: string,
+		userId?: string,
+		projectId?: string,
 	): AsyncGenerator<StreamChunk> {
 		const runtime = this.findRuntimeForAgent(agentId);
 		if (!runtime) {
@@ -493,6 +496,8 @@ export class AgentsService {
 			throw new UserError(`Checkpoint ${runId} not found and cannot be resumed`);
 		}
 
+		const recorder = new ExecutionRecorder();
+
 		const resultStream = await agentInstance.resume('stream', resumeData, {
 			runId,
 			toolCallId,
@@ -503,10 +508,33 @@ export class AgentsService {
 			while (true) {
 				const { done, value } = await reader.read();
 				if (done) break;
+				recorder.record(value);
 				yield value;
 			}
 		} finally {
 			reader.releaseLock();
+		}
+
+		// Record the resumed execution if we have the context
+		if (threadId && userId && projectId && !recorder.suspended) {
+			const messageRecord = recorder.getMessageRecord();
+			void this.agentExecutionService
+				.recordMessage({
+					threadId,
+					agentId,
+					agentName: agentInstance.name,
+					projectId,
+					userId,
+					userMessage: '(resumed tool call)',
+					record: messageRecord,
+				})
+				.catch((error) => {
+					this.logger.warn('Failed to record resumed agent execution', {
+						agentId,
+						threadId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				});
 		}
 	}
 
@@ -574,25 +602,28 @@ export class AgentsService {
 			reader.releaseLock();
 		}
 
-		// Persist execution record in the background — best-effort, don't block the response
-		const messageRecord = recorder.getMessageRecord();
-		void this.agentExecutionService
-			.recordMessage({
-				threadId,
-				agentId,
-				agentName: agentInstance.name,
-				projectId,
-				userId,
-				userMessage: message,
-				record: messageRecord,
-			})
-			.catch((error) => {
-				this.logger.warn('Failed to record agent execution', {
-					agentId,
+		// Don't record if the stream ended with a tool-call suspension — the data
+		// is incomplete (no finish chunk with usage). Recording happens on resume.
+		if (!recorder.suspended) {
+			const messageRecord = recorder.getMessageRecord();
+			void this.agentExecutionService
+				.recordMessage({
 					threadId,
-					error: error instanceof Error ? error.message : String(error),
+					agentId,
+					agentName: agentInstance.name,
+					projectId,
+					userId,
+					userMessage: message,
+					record: messageRecord,
+				})
+				.catch((error) => {
+					this.logger.warn('Failed to record agent execution', {
+						agentId,
+						threadId,
+						error: error instanceof Error ? error.message : String(error),
+					});
 				});
-			});
+		}
 	}
 
 	/**
