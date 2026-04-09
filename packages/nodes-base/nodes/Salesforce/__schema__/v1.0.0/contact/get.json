@@ -18,6 +18,9 @@
         "CreatedDate": {
             "type": "string"
         },
+        "HasOptedOutOfEmail": {
+            "type": "boolean"
+        },
         "HomePhone": {
             "type": "null"
         },

@@ -1942,6 +1942,7 @@ describe('Salesforce', () => {
 						additionalFields: {
 							fax: '1234567890',
 							email: 'contact@example.com',
+							hasOptedOutOfEmail: true,
 							phone: '+1234567890',
 							title: 'Director',
 							jigsaw: 'JIGSAW456',
@@ -1992,6 +1993,7 @@ describe('Salesforce', () => {
 						LastName: 'Smith',
 						Fax: '1234567890',
 						Email: 'contact@example.com',
+						HasOptedOutOfEmail: true,
 						Phone: '+1234567890',
 						Title: 'Director',
 						Jigsaw: 'JIGSAW456',
@@ -2080,6 +2082,7 @@ describe('Salesforce', () => {
 							lastName: 'Updated Contact',
 							fax: '9876543210',
 							email: 'updated@contact.com',
+							hasOptedOutOfEmail: false,
 							recordTypeId: 'rt999',
 							phone: '+1999999999',
 							title: 'Updated Director',

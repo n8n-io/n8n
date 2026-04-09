@@ -1378,6 +1378,9 @@ export class Salesforce implements INodeType {
 						if (additionalFields.fax !== undefined) {
 							body.Fax = additionalFields.fax as string;
 						}
+ 						if (additionalFields.hasOptedOutOfEmail !== undefined) {
+ 							body.HasOptedOutOfEmail = additionalFields.hasOptedOutOfEmail as boolean;
+ 						}
 						if (additionalFields.email !== undefined) {
 							body.Email = additionalFields.email as string;
 						}
@@ -1511,6 +1514,9 @@ export class Salesforce implements INodeType {
 						if (updateFields.email !== undefined) {
 							body.Email = updateFields.email as string;
 						}
+ 						if (updateFields.hasOptedOutOfEmail !== undefined) {
+ 							body.HasOptedOutOfEmail = updateFields.hasOptedOutOfEmail as boolean;
+ 						}
 						if (updateFields.recordTypeId !== undefined) {
 							body.RecordTypeId = updateFields.recordTypeId as string;
 						}

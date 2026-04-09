@@ -259,6 +259,14 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 				description: 'First name of the contact. Maximum size is 40 characters.',
 			},
+ 			{
+ 				displayName: 'Has Opted Out of Email',
+ 				name: 'hasOptedOutOfEmail',
+ 				type: 'boolean',
+ 				default: false,
+ 				description:
+ 					'Whether the contact doesn’t want to receive email from Salesforce (true) or does (false). Label is Email Opt Out.',
+ 			},
 			{
 				displayName: 'Home Phone',
 				name: 'homePhone',
@@ -559,6 +567,14 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 				description: 'First name of the contact. Maximum size is 40 characters.',
 			},
+			{
+ 				displayName: 'Has Opted Out of Email',
+ 				name: 'hasOptedOutOfEmail',
+ 				type: 'boolean',
+ 				default: false,
+ 				description:
+ 					'Whether the contact doesn’t want to receive email from Salesforce (true) or does (false). Label is Email Opt Out.',
+ 			},
 			{
 				displayName: 'Home Phone',
 				name: 'homePhone',

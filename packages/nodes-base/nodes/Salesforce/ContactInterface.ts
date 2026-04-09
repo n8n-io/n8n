@@ -3,6 +3,7 @@ export interface IContact {
 	LastName?: string;
 	Fax?: string;
 	Email?: string;
+	HasOptedOutOfEmail?: boolean;
 	Phone?: string;
 	Title?: string;
 	Jigsaw?: string;
