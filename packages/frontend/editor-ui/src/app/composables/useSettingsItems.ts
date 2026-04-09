@@ -1,11 +1,13 @@
 import { useRouter } from 'vue-router';
 import { useUserHelpers } from './useUserHelpers';
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import type { IMenuItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { storeToRefs } from 'pinia';
 import { VIEWS } from '../constants';
 import { useUIStore } from '../stores/ui.store';
 import { useSettingsStore } from '../stores/settings.store';
+import { useAiGatewayStore } from '../stores/aiGateway.store';
 import { hasPermission } from '../utils/rbac/permissions';
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 import { usePostHog } from '../stores/posthog.store';
@@ -16,10 +18,25 @@ export function useSettingsItems() {
 	const i18n = useI18n();
 	const uiStore = useUIStore();
 	const settingsStore = useSettingsStore();
+	const aiGatewayStore = useAiGatewayStore();
+	const { creditsRemaining } = storeToRefs(aiGatewayStore);
 	const { canUserAccessRouteByName } = useUserHelpers(router);
 	const postHogStore = usePostHog();
 
+	onMounted(() => {
+		if (settingsStore.isAiGatewayEnabled) {
+			void aiGatewayStore.fetchCredits();
+		}
+	});
+
 	const settingsItems = computed<IMenuItem[]>(() => {
+		const gatewayCreditsBadge =
+			creditsRemaining.value !== undefined
+				? i18n.baseText('aiGateway.credentialMode.creditsShort', {
+						interpolate: { count: String(creditsRemaining.value) },
+					})
+				: undefined;
+
 		const menuItems: IMenuItem[] = [
 			{
 				id: 'settings-usage-and-plan',
@@ -56,8 +73,9 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-n8n-gateway',
-				icon: 'network',
-				label: i18n.baseText('settings.n8nGateway'),
+				icon: 'plug-zap',
+				label: i18n.baseText('settings.n8nConnect.menu'),
+				creditsBadge: gatewayCreditsBadge,
 				position: 'top',
 				available:
 					postHogStore.getVariant(AI_GATEWAY_EXPERIMENT.name) === AI_GATEWAY_EXPERIMENT.variant &&

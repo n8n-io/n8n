@@ -40,6 +40,8 @@ export type IMenuItem = {
 	beta?: boolean;
 	preview?: boolean;
 	new?: boolean;
+	/** Renders `N8nAiGatewayCreditsTag` after the label when set (e.g. gateway credits). */
+	creditsBadge?: string;
 };
 
 export interface ICustomMenuItem {

@@ -6,7 +6,6 @@ import { useSettingsItems } from '../composables/useSettingsItems';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '../stores/ui.store';
-
 const emit = defineEmits<{
 	return: [];
 }>();
