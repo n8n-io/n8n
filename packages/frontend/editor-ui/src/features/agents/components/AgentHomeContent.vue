@@ -79,6 +79,7 @@ function submitMessage() {
 			<div :class="$style.agentIcon">
 				<N8nIconPicker
 					:model-value="agentIcon"
+					button-size="xxlarge"
 					:button-tooltip="locale.baseText('agents.home.iconPicker.tooltip')"
 					@update:model-value="emit('update:icon', $event)"
 				/>
@@ -154,7 +155,7 @@ function submitMessage() {
 	</div>
 </template>
 
-<style module>
+<style module lang="scss">
 .container {
 	flex: 1;
 	display: flex;
@@ -173,13 +174,23 @@ function submitMessage() {
 }
 
 .agentIcon {
-	width: 56px;
-	height: 56px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	color: var(--color--text--tint-1);
 	margin-bottom: var(--spacing--2xs);
+
+	> * > * :global(.button) {
+		--button--color--background: transparent;
+		--button--color--background-hover: var(--color--foreground--tint-2);
+		--button--color--background-active: var(--color--foreground--tint-1);
+		--button--shadow: none;
+		--button--shadow--hover: none;
+		--button--shadow--active: none;
+		--button--border--shadow: none;
+		--button--border--shadow--hover: none;
+		--button--border--shadow--active: none;
+	}
 }
 
 .agentName {
@@ -227,7 +238,6 @@ function submitMessage() {
 	border-radius: var(--radius);
 	padding: var(--spacing--2xs) var(--spacing--xs);
 	outline: none;
-	text-align: center;
 	font-family: var(--font-family);
 	resize: vertical;
 	min-width: 300px;

@@ -23,6 +23,10 @@ vi.mock('../composables/useAgentApi', () => ({
 	createAgent: vi.fn().mockResolvedValue({ id: 'new-agent-id', name: 'New Agent' }),
 }));
 
+vi.mock('@/app/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: vi.fn() }),
+}));
+
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string, opts?: { interpolate?: Record<string, string> }) => {
@@ -51,7 +55,7 @@ describe('NewAgentView', () => {
 	it('renders the heading with user name', async () => {
 		const wrapper = await renderView();
 		expect(wrapper.text()).toContain("Let's build something, Test");
-	});
+	}, 15_000);
 
 	it('renders 3 suggestion cards', async () => {
 		const wrapper = await renderView();

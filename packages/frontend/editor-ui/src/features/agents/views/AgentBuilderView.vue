@@ -7,6 +7,7 @@ import type { IconOrEmoji } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { getAgent, updateAgent } from '../composables/useAgentApi';
 import type { AgentResource } from '../types';
 import { useAgentSchema } from '../composables/useAgentSchema';
@@ -21,6 +22,7 @@ const router = useRouter();
 const locale = useI18n();
 const rootStore = useRootStore();
 const projectsStore = useProjectsStore();
+const telemetry = useTelemetry();
 
 const projectId = computed(
 	() => (route.params.projectId as string) ?? projectsStore.personalProject?.id ?? '',
@@ -134,6 +136,7 @@ async function updateDescription(description: string) {
 function startChat(message: string) {
 	initialPrompt.value = message;
 	chatActive.value = true;
+	telemetry.track('User started agent chat', { agent_id: agentId });
 }
 
 function onSchemaFieldUpdate(updates: Partial<AgentSchema>) {
@@ -154,6 +157,7 @@ async function saveSchema() {
 		updatedAt.value = result.updatedAt;
 		originalSchemaJson.value = JSON.stringify(localSchema.value);
 		isDirty.value = false;
+		telemetry.track('User saved agent settings', { agent_id: agentId });
 	}
 }
 
@@ -161,6 +165,7 @@ function cancelSchema() {
 	if (schema.value) {
 		localSchema.value = deepCopy(schema.value);
 		isDirty.value = false;
+		telemetry.track('User cancelled agent settings', { agent_id: agentId });
 	}
 }
 
@@ -192,13 +197,18 @@ onMounted(async () => {
 				</div>
 				<div :class="$style.mainHeaderRight">
 					<button
+						v-if="chatActive"
+						:class="$style.toggleBtn"
+						data-testid="new-chat"
+						@click="chatActive = false"
+					>
+						<N8nIcon icon="message-circle-plus" :size="16" />
+					</button>
+					<button
 						:class="[$style.toggleBtn, settingsVisible && $style.toggleBtnActive]"
 						data-testid="toggle-settings"
 						@click="settingsVisible = !settingsVisible"
 					>
-						<N8nIcon icon="sliders-horizontal" :size="16" />
-					</button>
-					<button :class="$style.toggleBtn" data-testid="toggle-activity">
 						<N8nIcon icon="panel-right" :size="16" />
 					</button>
 				</div>
@@ -299,7 +309,7 @@ onMounted(async () => {
 	border: none;
 	background: none;
 	cursor: pointer;
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	border-radius: var(--radius);
 }
 

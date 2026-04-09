@@ -7,6 +7,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { createAgent } from '../composables/useAgentApi';
 import { AGENT_BUILDER_VIEW } from '../constants';
 
@@ -15,6 +16,7 @@ const locale = useI18n();
 const rootStore = useRootStore();
 const usersStore = useUsersStore();
 const projectsStore = useProjectsStore();
+const telemetry = useTelemetry();
 
 const projectId = computed(() => projectsStore.personalProject?.id ?? '');
 const firstName = computed(() => usersStore.currentUser?.firstName ?? '');
@@ -61,6 +63,10 @@ async function createBlank() {
 	isCreating.value = true;
 	try {
 		const agent = await createAgent(rootStore.restApiContext, projectId.value, 'New Agent');
+		telemetry.track('User created agent', {
+			agent_id: agent.id,
+			source: 'create_blank',
+		});
 		void router.push({
 			name: AGENT_BUILDER_VIEW,
 			params: { projectId: projectId.value, agentId: agent.id },
@@ -75,6 +81,10 @@ async function submitDescription() {
 	isCreating.value = true;
 	try {
 		const agent = await createAgent(rootStore.restApiContext, projectId.value, 'New Agent');
+		telemetry.track('User created agent', {
+			agent_id: agent.id,
+			source: 'description_prompt',
+		});
 		void router.push({
 			name: AGENT_BUILDER_VIEW,
 			params: { projectId: projectId.value, agentId: agent.id },
@@ -87,6 +97,9 @@ async function submitDescription() {
 
 function selectSuggestion(suggestion: SuggestionTemplate) {
 	inputText.value = suggestion.prompt;
+	telemetry.track('User selected agent suggestion', {
+		suggestion_name: suggestion.name,
+	});
 }
 </script>
 

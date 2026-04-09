@@ -19,6 +19,7 @@ import { listAllAgents } from '@/features/agents/composables/useAgentApi';
 
 import { BetaTag, N8nMenuItem, N8nPopover, N8nText, N8nButton } from '@n8n/design-system';
 import { hasPermission } from '@/app/utils/rbac/permissions';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 type Props = {
 	collapsed: boolean;
@@ -36,6 +37,7 @@ const projectsStore = useProjectsStore();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 const rootStore = useRootStore();
+const telemetry = useTelemetry();
 
 const displayProjects = computed(() => globalEntityCreation.displayProjects.value);
 const isFoldersFeatureEnabled = computed(() => settingsStore.isFoldersFeatureEnabled);
@@ -250,7 +252,10 @@ onBeforeUnmount(() => {
 						size="mini"
 						type="secondary"
 						:label="locale.baseText('agents.sidebar.coachmark.dismiss')"
-						@click="dismissCallout('agents_sidebar_coachmark')"
+						@click="
+							dismissCallout('agents_sidebar_coachmark');
+							telemetry.track('User dismissed agents coachmark');
+						"
 					/>
 				</div>
 			</N8nPopover>
