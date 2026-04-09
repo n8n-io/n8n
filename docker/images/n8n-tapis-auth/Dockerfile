@@ -18,6 +18,8 @@ COPY . .
 # lefthook ni buscar carpetas .git inexistentes.
 RUN CI=true pnpm install --ignore-scripts
 
+RUN pnpm add -Dw @types/psl -w --ignore-scripts
+
 # BUILD: Aquí turbo se encarga de compilar todo
 RUN pnpm build
 
