@@ -92,6 +92,36 @@ describe('InstanceAiInput', () => {
 		expect(textbox).toHaveAttribute('placeholder', initialPlaceholder ?? '');
 	});
 
+	it('fills the textarea from the contextual suggestion when Tab is pressed on an empty input', async () => {
+		storeState.contextualSuggestion = 'Summarize the last workflow error for me';
+		const { getByRole } = renderComponent({
+			props: {
+				isStreaming: false,
+				suggestions,
+			},
+		});
+
+		const textbox = getByRole('textbox');
+		await fireEvent.keyDown(textbox, { key: 'Tab' });
+
+		await waitFor(() => {
+			expect(textbox).toHaveValue('Summarize the last workflow error for me');
+		});
+	});
+
+	it('does not submit when Enter is pressed on an empty draft', async () => {
+		const { emitted, getByRole } = renderComponent({
+			props: {
+				isStreaming: false,
+				suggestions,
+			},
+		});
+
+		await fireEvent.keyDown(getByRole('textbox'), { key: 'Enter' });
+
+		expect(emitted().submit).toBeUndefined();
+	});
+
 	it('does not change the placeholder when hovering the quick examples trigger', async () => {
 		const { getByRole, getByTestId } = renderComponent({
 			props: {
@@ -188,6 +218,39 @@ describe('InstanceAiInput', () => {
 		expect(textbox).toHaveValue('');
 	});
 
+	it('submits typed text and attachments from the send button', async () => {
+		const { container, emitted, getByRole, getByTestId } = renderComponent({
+			props: {
+				isStreaming: false,
+				suggestions,
+			},
+		});
+
+		const textbox = getByRole('textbox');
+		await userEvent.type(textbox, 'Please send this with context');
+
+		const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+		const textFile = new File(['hello world'], 'note.txt', { type: 'text/plain' });
+		Object.defineProperty(fileInput, 'files', { value: [textFile], configurable: true });
+		await fireEvent.change(fileInput);
+
+		await userEvent.click(getByTestId('instance-ai-send-button'));
+
+		await waitFor(() => {
+			expect(emitted().submit?.[0]).toBeDefined();
+		});
+
+		expect(emitted().submit?.[0]?.[0]).toBe('Please send this with context');
+		expect(emitted().submit?.[0]?.[1]).toEqual([
+			expect.objectContaining({
+				data: expect.any(String),
+				mimeType: 'text/plain',
+				fileName: 'note.txt',
+			}),
+		]);
+		expect(textbox).toHaveValue('');
+	});
+
 	it('opens quick examples and submits immediately when an example is clicked', async () => {
 		const { emitted, getByRole, getByTestId, queryByTestId } = renderComponent({
 			props: {
@@ -237,6 +300,37 @@ describe('InstanceAiInput', () => {
 		});
 	});
 
+	it('shows empty-state suggestions again after removing the last attachment', async () => {
+		const { container, getByTestId, queryByTestId } = renderComponent({
+			props: {
+				isStreaming: false,
+				suggestions,
+			},
+		});
+
+		const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+		const imageFile = new File(['image data'], 'diagram.png', { type: 'image/png' });
+
+		Object.defineProperty(fileInput, 'files', { value: [imageFile], configurable: true });
+
+		await fireEvent.change(fileInput);
+
+		await waitFor(() => {
+			expect(queryByTestId('instance-ai-suggestion-build-workflow')).not.toBeInTheDocument();
+		});
+
+		await waitFor(() => {
+			expect(getByTestId('attachment-preview-remove')).toBeInTheDocument();
+		});
+
+		await userEvent.click(getByTestId('attachment-preview-remove'));
+
+		await waitFor(() => {
+			expect(getByTestId('instance-ai-suggestion-build-workflow')).toBeInTheDocument();
+			expect(getByTestId('instance-ai-suggestion-quick-examples')).toBeInTheDocument();
+		});
+	});
+
 	it('hides suggestions while a send is pending', async () => {
 		const { queryByTestId } = renderComponent({
 			props: {
@@ -252,6 +346,32 @@ describe('InstanceAiInput', () => {
 		await waitFor(() => {
 			expect(queryByTestId('instance-ai-suggestion-build-workflow')).not.toBeInTheDocument();
 		});
+	});
+
+	it('toggles research mode from the composer footer button', async () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				isStreaming: false,
+				suggestions,
+			},
+		});
+
+		await userEvent.click(getByTestId('instance-ai-research-toggle'));
+
+		expect(toggleResearchMode).toHaveBeenCalledTimes(1);
+	});
+
+	it('emits stop when the streaming stop button is clicked', async () => {
+		const { emitted, getByTestId } = renderComponent({
+			props: {
+				isStreaming: true,
+				suggestions,
+			},
+		});
+
+		await userEvent.click(getByTestId('instance-ai-stop-button'));
+
+		expect(emitted().stop).toEqual([[]]);
 	});
 
 	it('clears the ghost prompt when suggestions become hidden', async () => {
@@ -358,6 +478,31 @@ describe('InstanceAiInput', () => {
 		});
 	});
 
+	it('includes research mode in the quick examples telemetry payload when enabled', async () => {
+		storeState.researchMode = true;
+		const { getByTestId } = renderComponent({
+			props: {
+				isStreaming: false,
+				suggestions,
+			},
+		});
+
+		telemetryTrack.mockClear();
+		await userEvent.click(getByTestId('instance-ai-suggestion-quick-examples'));
+
+		expect(telemetryTrack).toHaveBeenCalledTimes(1);
+		expect(telemetryTrack.mock.calls[0]).toEqual([
+			'Instance AI quick examples opened',
+			{
+				thread_id: 'thread-1',
+				suggestion_catalog_version: 'v1',
+				research_mode: true,
+				suggestion_id: 'quick-examples',
+				position: 4,
+			},
+		]);
+	});
+
 	it('tracks top-level suggestion selection before submit', async () => {
 		const onSubmit = vi.fn();
 		const { getByTestId } = renderComponent({
@@ -386,6 +531,33 @@ describe('InstanceAiInput', () => {
 			position: 1,
 		});
 		expect(onSubmit).toHaveBeenCalledTimes(1);
+	});
+
+	it('includes the research-mode flag when tracking top-level suggestion selection telemetry', async () => {
+		storeState.researchMode = true;
+		const { getByTestId } = renderComponent({
+			props: {
+				isStreaming: false,
+				suggestions,
+			},
+		});
+
+		telemetryTrack.mockClear();
+
+		await userEvent.click(getByTestId('instance-ai-suggestion-build-workflow'));
+
+		expect(telemetryTrack).toHaveBeenCalledTimes(1);
+		expect(telemetryTrack.mock.calls[0]).toEqual([
+			'Instance AI prompt suggestion selected',
+			{
+				thread_id: 'thread-1',
+				suggestion_catalog_version: 'v1',
+				research_mode: true,
+				suggestion_id: 'build-workflow',
+				suggestion_kind: 'prompt',
+				position: 1,
+			},
+		]);
 	});
 
 	it('tracks quick-example suggestion selection with semantic payload', async () => {

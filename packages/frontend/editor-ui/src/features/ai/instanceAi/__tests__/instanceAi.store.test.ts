@@ -637,6 +637,35 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 		expect(store.lastEventIdByThread['thread-b']).toBe(20);
 	});
 
+	test('loadHistoricalMessages returns skipped when current thread already has messages', async () => {
+		store.messages = [
+			{
+				id: 'existing-user-message',
+				role: 'user',
+				createdAt: new Date().toISOString(),
+				content: 'already hydrated',
+				reasoning: '',
+				isStreaming: false,
+			},
+		];
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: store.currentThreadId,
+			messages: [],
+			nextEventId: 10,
+		});
+
+		await expect(store.loadHistoricalMessages(store.currentThreadId)).resolves.toBe('skipped');
+		expect(store.messages).toHaveLength(1);
+		expect(store.lastEventIdByThread[store.currentThreadId]).toBeUndefined();
+	});
+
+	test('loadHistoricalMessages returns applied on fetch failure when hydration request is current', async () => {
+		mockFetchThreadMessages.mockRejectedValueOnce(new Error('fetch failed'));
+
+		await expect(store.loadHistoricalMessages(store.currentThreadId)).resolves.toBe('applied');
+		expect(store.isHydratingThread).toBe(false);
+	});
+
 	test('loadHistoricalMessages skips unsafe routing identifiers when rebuilding state', async () => {
 		mockFetchThreadMessages.mockResolvedValueOnce({
 			threadId: store.currentThreadId,
@@ -845,6 +874,34 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 		// sendMessage should have re-opened an EventSource before posting
 		expect(capturedInstance).not.toBeNull();
 		expect(mockPostMessage).toHaveBeenCalled();
+	});
+
+	test('sendMessage rolls back optimistic message when thread sync fails and resets sending state', async () => {
+		let rejectEnsureThread: ((reason?: unknown) => void) | undefined;
+
+		mockEnsureThread.mockReturnValueOnce(
+			new Promise((_resolve, reject) => {
+				rejectEnsureThread = reject;
+			}),
+		);
+
+		const sendPromise = store.sendMessage('first');
+
+		expect(store.isSendingMessage).toBe(true);
+		expect(store.messages).toHaveLength(1);
+		expect(store.messages[0]).toMatchObject({
+			role: 'user',
+			content: 'first',
+			isStreaming: false,
+		});
+		expect(mockPostMessage).not.toHaveBeenCalled();
+
+		rejectEnsureThread?.(new Error('sync failed'));
+		await sendPromise;
+
+		expect(mockPostMessage).not.toHaveBeenCalled();
+		expect(store.messages).toHaveLength(0);
+		expect(store.isSendingMessage).toBe(false);
 	});
 });
 
