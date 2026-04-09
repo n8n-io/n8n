@@ -166,8 +166,6 @@ export class AgentChatBridge {
 		const text = message.text?.trim();
 		if (!text) return;
 
-		// Use the n8n user ID (who connected the integration) for agent compilation
-		// and RBAC, and the platform user ID for memory/thread context.
 		const stream = this.agentService.executeForChat(
 			this.agentId,
 			text,

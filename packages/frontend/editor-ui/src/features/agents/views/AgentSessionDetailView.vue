@@ -87,6 +87,17 @@ function formatDate(fullDate: string) {
 	return `${date} ${time}`;
 }
 
+function highlightAgentName(text: string): string {
+	if (!thread.value?.agentName) return escapeHtml(text);
+	const escaped = escapeHtml(text);
+	const name = escapeHtml(thread.value.agentName);
+	return escaped.replace(new RegExp(`@${name}`, 'gi'), `<strong>@${name}</strong>`);
+}
+
+function escapeHtml(text: string): string {
+	return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 function goBack() {
 	void router.push({
 		name: AGENT_SESSIONS_LIST_VIEW,
@@ -124,9 +135,12 @@ function goBack() {
 					<template v-for="execution in executions" :key="execution.id">
 						<!-- User message -->
 						<div :class="$style.userMessage">
-							<div :class="$style.userBubble">
-								{{ getMetadata(execution, 'userMessage') ?? '(user message)' }}
-							</div>
+							<div
+								:class="$style.userBubble"
+								v-html="
+									highlightAgentName(getMetadata(execution, 'userMessage') ?? '(user message)')
+								"
+							/>
 						</div>
 						<!-- Assistant message -->
 						<div
@@ -191,14 +205,20 @@ function goBack() {
 						</div>
 						<div v-for="(tc, idx) in selectedToolCalls" :key="idx" :class="$style.toolCallCard">
 							<div :class="$style.toolCallName">{{ tc.name }}</div>
-							<template v-if="tc.input !== undefined">
-								<div :class="$style.toolCallLabel">Input</div>
+							<details v-if="tc.input !== undefined" :class="$style.toolCallDetails">
+								<summary :class="$style.toolCallLabel">
+									<N8nIcon icon="chevron-right" :class="$style.chevron" />
+									Input
+								</summary>
 								<pre :class="$style.toolCallJson">{{ JSON.stringify(tc.input, null, 2) }}</pre>
-							</template>
-							<template v-if="tc.output !== undefined">
-								<div :class="$style.toolCallLabel">Output</div>
+							</details>
+							<details v-if="tc.output !== undefined" :class="$style.toolCallDetails">
+								<summary :class="$style.toolCallLabel">
+									<N8nIcon icon="chevron-right" :class="$style.chevron" />
+									Output
+								</summary>
 								<pre :class="$style.toolCallJson">{{ JSON.stringify(tc.output, null, 2) }}</pre>
-							</template>
+							</details>
 						</div>
 					</div>
 
@@ -400,10 +420,32 @@ function goBack() {
 	color: var(--color--primary);
 }
 
+.toolCallDetails {
+	margin-top: var(--spacing--3xs);
+}
+
+.toolCallDetails[open] .chevron {
+	transform: rotate(90deg);
+}
+
 .toolCallLabel {
 	font-size: var(--font-size--3xs);
 	color: var(--color--text--tint-2);
-	margin-top: var(--spacing--3xs);
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	list-style: none;
+	user-select: none;
+}
+
+.toolCallLabel::-webkit-details-marker {
+	display: none;
+}
+
+.chevron {
+	font-size: var(--font-size--3xs);
+	transition: transform 0.15s;
 }
 
 .toolCallJson {

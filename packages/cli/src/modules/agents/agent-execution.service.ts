@@ -91,11 +91,14 @@ export class AgentExecutionService {
 			return id;
 		});
 
+		// Replace platform mentions (e.g. Slack's <@U0ANB4K6611>) with the agent name
+		const cleanedMessage = params.userMessage.replace(/@[A-Z0-9]+/g, `@${agentName}`).trim();
+
 		// Store agent-specific metadata
 		const metadata: Array<{ key: string; value: string }> = [
 			{ key: 'agentId', value: agentId },
 			{ key: 'threadId', value: threadId },
-			{ key: 'userMessage', value: params.userMessage },
+			{ key: 'userMessage', value: cleanedMessage },
 			{ key: 'assistantResponse', value: record.assistantResponse },
 		];
 

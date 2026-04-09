@@ -65,6 +65,13 @@ export class AgentsService {
 		{ agent: agents.Agent; agentId: string; userId?: string }
 	>(30 * Time.minutes.toMilliseconds);
 
+	/**
+	 * Stash of user messages for suspended tool calls.
+	 * When executeForChat suspends, we store the original message here so
+	 * resumeForChat can record it against the execution.
+	 */
+	private readonly pendingUserMessages = new Map<string, string>();
+
 	/** Build a cache key that includes the user so different users get isolated runtimes. */
 	private runtimeKey(agentId: string, userId?: string): string {
 		return userId ? `${agentId}:${userId}` : agentId;
@@ -517,6 +524,8 @@ export class AgentsService {
 
 		// Record the resumed execution if we have the context
 		if (threadId && userId && projectId && !recorder.suspended) {
+			const originalMessage = this.pendingUserMessages.get(agentId) ?? '(resumed tool call)';
+			this.pendingUserMessages.delete(agentId);
 			const messageRecord = recorder.getMessageRecord();
 			void this.agentExecutionService
 				.recordMessage({
@@ -525,7 +534,7 @@ export class AgentsService {
 					agentName: agentInstance.name,
 					projectId,
 					userId,
-					userMessage: '(resumed tool call)',
+					userMessage: originalMessage,
 					record: messageRecord,
 				})
 				.catch((error) => {
@@ -604,7 +613,9 @@ export class AgentsService {
 
 		// Don't record if the stream ended with a tool-call suspension — the data
 		// is incomplete (no finish chunk with usage). Recording happens on resume.
-		if (!recorder.suspended) {
+		if (recorder.suspended) {
+			this.pendingUserMessages.set(agentId, message);
+		} else {
 			const messageRecord = recorder.getMessageRecord();
 			void this.agentExecutionService
 				.recordMessage({

@@ -96,14 +96,13 @@ function onTabChange(tab: string) {
 					{{ agentName || 'Untitled Agent' }}
 				</span>
 			</div>
-			<div :class="$style.topBarCenter">
+			<div :class="$style.topBarRight">
 				<N8nRadioButtons
 					:model-value="activeTab"
 					:options="tabItems"
 					@update:model-value="onTabChange"
 				/>
 			</div>
-			<div :class="$style.topBarRight" />
 		</div>
 		<div :class="$style.content">
 			<router-view />
@@ -136,12 +135,10 @@ function onTabChange(tab: string) {
 	min-width: 0;
 }
 
-.topBarCenter {
-	flex: 0 0 auto;
-}
-
 .topBarRight {
-	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
 }
 
 .nameDisplay {
