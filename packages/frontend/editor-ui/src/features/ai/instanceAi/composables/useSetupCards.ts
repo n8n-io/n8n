@@ -156,25 +156,15 @@ export function useSetupCards(
 		const directSubnodes = new Map<string, Set<string>>();
 		const connectionsByDest = workflowsStore.connectionsByDestinationNode;
 		for (const [destName, conns] of Object.entries(connectionsByDest)) {
-			if (!conns || typeof conns !== 'object') continue;
 			for (const connType of Object.keys(conns)) {
 				if (connType === NodeConnectionTypes.Main) continue;
-				const groups = (conns as Record<string, unknown>)[connType];
-				if (!Array.isArray(groups)) continue;
-				for (const group of groups as unknown[]) {
-					if (!Array.isArray(group)) continue;
-					for (const conn of group as unknown[]) {
-						if (
-							typeof conn === 'object' &&
-							conn !== null &&
-							'node' in conn &&
-							typeof conn.node === 'string'
-						) {
-							if (!directSubnodes.has(destName)) {
-								directSubnodes.set(destName, new Set());
-							}
-							directSubnodes.get(destName)!.add(conn.node);
+				for (const group of conns[connType]) {
+					if (!group) continue;
+					for (const conn of group) {
+						if (!directSubnodes.has(destName)) {
+							directSubnodes.set(destName, new Set());
 						}
+						directSubnodes.get(destName)!.add(conn.node);
 					}
 				}
 			}
