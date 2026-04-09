@@ -68,25 +68,17 @@ export function useTimelineGrouping(
 		const segments: TimelineSegment[] = [];
 		let currentGroup: ResponseGroupSegment | null = null;
 
-		function finishGroup() {
-			currentGroup = null;
-		}
-
-		function ensureGroup(responseId: string | undefined): ResponseGroupSegment {
-			if (!currentGroup || currentGroup.responseId !== responseId) {
-				currentGroup = {
-					kind: 'response-group',
-					responseId,
-					entries: [],
-					toolCallCount: 0,
-					textCount: 0,
-					questionCount: 0,
-					childCount: 0,
-					artifacts: [],
-				};
-				segments.push(currentGroup);
-			}
-			return currentGroup;
+		function newGroup(responseId: string | undefined): ResponseGroupSegment {
+			return {
+				kind: 'response-group',
+				responseId,
+				entries: [],
+				toolCallCount: 0,
+				textCount: 0,
+				questionCount: 0,
+				childCount: 0,
+				artifacts: [],
+			};
 		}
 
 		for (const entry of timeline) {
@@ -97,25 +89,31 @@ export function useTimelineGrouping(
 					currentGroup.entries.push(entry);
 					currentGroup.textCount++;
 				} else {
-					finishGroup();
+					currentGroup = null;
 					segments.push({ kind: 'trailing-text', content: entry.content });
 				}
 			} else if (entry.type === 'tool-call') {
-				const group = ensureGroup(entry.responseId);
-				group.entries.push(entry);
+				if (!currentGroup || currentGroup.responseId !== entry.responseId) {
+					currentGroup = newGroup(entry.responseId);
+					segments.push(currentGroup);
+				}
+				currentGroup.entries.push(entry);
 				const tc = agentNode.value.toolCalls.find((t) => t.toolCallId === entry.toolCallId);
 				if (tc && isGenericToolCall(tc)) {
-					group.toolCallCount++;
+					currentGroup.toolCallCount++;
 				} else if (tc?.confirmation?.inputType === 'questions' && !tc.isLoading) {
-					group.questionCount++;
+					currentGroup.questionCount++;
 				}
 			} else if (entry.type === 'child') {
-				const group = ensureGroup(entry.responseId);
-				group.entries.push(entry);
-				group.childCount++;
+				if (!currentGroup || currentGroup.responseId !== entry.responseId) {
+					currentGroup = newGroup(entry.responseId);
+					segments.push(currentGroup);
+				}
+				currentGroup.entries.push(entry);
+				currentGroup.childCount++;
 				const child = agentNode.value.children.find((c) => c.agentId === entry.agentId);
 				if (child) {
-					group.artifacts.push(...extractArtifacts(child));
+					currentGroup.artifacts.push(...extractArtifacts(child));
 				}
 			}
 		}
