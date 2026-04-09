@@ -8,9 +8,7 @@ jest.mock('@mastra/memory', () => ({
 	},
 }));
 
-// eslint-disable-next-line import-x/first
 import type { InstanceAiMemoryConfig } from '../../types';
-// eslint-disable-next-line import-x/first
 import { createMemory } from '../memory-config';
 
 interface MemoryArgs {
