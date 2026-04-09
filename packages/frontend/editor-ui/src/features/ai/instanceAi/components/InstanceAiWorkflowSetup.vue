@@ -600,8 +600,12 @@ async function testCredentialInBackground(
 			return;
 		}
 
-		const { ownedBy, sharedWithProjects, oauthTokenData, ...data } =
-			credentialResponse.data as Record<string, unknown>;
+		const {
+			ownedBy: _ownedBy,
+			sharedWithProjects: _sharedWithProjects,
+			oauthTokenData,
+			...data
+		} = credentialResponse.data as Record<string, unknown>;
 
 		// OAuth credentials: token presence = success
 		if (oauthTokenData) {
@@ -665,8 +669,8 @@ function clearCredentialForGroup(groupKey: string, credentialType: string) {
 		if (credGroupKey(c.nodes[0]) !== groupKey) continue;
 		for (const req of c.nodes) {
 			const storeNode = workflowsStore.getNodeByName(req.node.name);
-			if (storeNode && storeNode.credentials?.[credentialType]) {
-				const { [credentialType]: _, ...remaining } = storeNode.credentials;
+			if (storeNode?.credentials?.[credentialType]) {
+				const { [credentialType]: _removed, ...remaining } = storeNode.credentials;
 				storeNode.credentials = remaining as typeof storeNode.credentials;
 			}
 		}

@@ -440,14 +440,11 @@ describe('InstanceAiWorkflowSetup', () => {
 		it('shows spinner icon for testable credential type when no test result yet', () => {
 			const credentialsStore = useCredentialsStore();
 			// @ts-expect-error Known pinia issue when spying on store getters
-			vi.spyOn(credentialsStore, 'getCredentialTypeByName', 'get').mockReturnValue(
-				() =>
-					({
-						name: 'slackApi',
-						displayName: 'Slack API',
-						test: { request: { url: '/test' } },
-					}) as never,
-			);
+			vi.spyOn(credentialsStore, 'getCredentialTypeByName', 'get').mockReturnValue(() => ({
+				name: 'slackApi',
+				displayName: 'Slack API',
+				test: { request: { url: '/test' } },
+			}));
 
 			const requests = [
 				makeSetupNodeWithCredentials('slackApi', [{ id: 'cred-1', name: 'Slack Cred' }], {
