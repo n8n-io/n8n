@@ -134,7 +134,7 @@ export class SettingsStore {
 			permissions,
 			filesystemDir: dir,
 		};
-		await this.persist();
+		await this.flush();
 	}
 
 	// ---------------------------------------------------------------------------
