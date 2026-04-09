@@ -5,7 +5,7 @@ import type { IDataObject, IExecuteFunctions, IGetNodeParameterOptions, INode } 
 export const node: INode = {
 	id: '11',
 	name: 'Airtable node',
-	typeVersion: 2,
+	typeVersion: 2.2,
 	type: 'n8n-nodes-base.airtable',
 	position: [42, 42],
 	parameters: {
@@ -13,7 +13,11 @@ export const node: INode = {
 	},
 };
 
-export const createMockExecuteFunction = (nodeParameters: IDataObject) => {
+export const createMockExecuteFunction = (
+	nodeParameters: IDataObject,
+	typeVersion = node.typeVersion,
+) => {
+	const mockNode = typeVersion === node.typeVersion ? node : { ...node, typeVersion };
 	const fakeExecuteFunction = {
 		getInputData: jest.fn(() => {
 			return [{ json: {} }];
@@ -30,7 +34,7 @@ export const createMockExecuteFunction = (nodeParameters: IDataObject) => {
 			},
 		),
 		getNode: jest.fn(() => {
-			return node;
+			return mockNode;
 		}),
 		helpers: { constructExecutionMetaData: jest.fn(constructExecutionMetaData) },
 		continueOnFail: jest.fn(() => false),

@@ -40,7 +40,7 @@ import type { WorkflowHistoryVersionUnpublishModalEventBusEvents } from '../comp
 import type { WorkflowVersionFormModalEventBusEvents } from '../components/WorkflowVersionFormModal.vue';
 import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { getActiveVersionId } from '../utils';
+import { getPublishedVersionId } from '../utils';
 
 type WorkflowHistoryActionRecord = {
 	[K in Uppercase<WorkflowHistoryActionTypes[number]>]: Lowercase<K>;
@@ -81,14 +81,14 @@ const canRender = ref(true);
 const isListLoading = ref(true);
 const requestNumberOfItems = ref(20);
 const lastReceivedItemsLength = ref(0);
-const activeWorkflow = ref<IWorkflowDb | null>(null);
+const publishedWorkflow = ref<IWorkflowDb | null>(null);
 const workflowHistory = ref<WorkflowHistory[]>([]);
 const selectedWorkflowVersion = ref<WorkflowVersion | null>(null);
 
 // Available action types based on license and context
 const availableActionTypes = computed<WorkflowHistoryActionTypes>(() => {
 	return workflowHistoryActionTypes.filter((action) => {
-		if (action === 'publish' && activeWorkflow.value?.isArchived) return false;
+		if (action === 'publish' && publishedWorkflow.value?.isArchived) return false;
 		if (action === 'name' && !isNamedVersionsEnabled.value) return false;
 		return true;
 	});
@@ -111,14 +111,14 @@ const workflowPermissions = computed(
 		getResourcePermissions(workflowsListStore.getWorkflowById(workflowId.value)?.scopes).workflow,
 );
 
-const workflowActiveVersionId = computed(() => {
-	const activeWorkflowVersionId = getActiveVersionId(activeWorkflow.value);
-	if (activeWorkflowVersionId) {
-		return activeWorkflowVersionId;
+const publishedWorkflowVersionId = computed(() => {
+	const publishedVersionId = getPublishedVersionId(publishedWorkflow.value);
+	if (!publishedVersionId) {
+		const workflowFromStore = workflowsListStore.getWorkflowById(workflowId.value);
+		return getPublishedVersionId(workflowFromStore);
 	}
 
-	const workflowFromStore = workflowsListStore.getWorkflowById(workflowId.value);
-	return getActiveVersionId(workflowFromStore);
+	return publishedVersionId;
 });
 
 const actions = computed<Array<UserAction<IUser>>>(() =>
@@ -133,12 +133,12 @@ const actions = computed<Array<UserAction<IUser>>>(() =>
 );
 
 const isFirstItemShown = computed(() => workflowHistory.value[0]?.versionId === versionId.value);
-const createCompareRoute = (compareVersionId: string) => {
+const createCompareRoute = (compareVersionId: string, selectedVersionId = versionId.value) => {
 	return {
 		name: VIEWS.WORKFLOW_HISTORY,
 		params: {
 			workflowId: workflowId.value,
-			versionId: versionId.value,
+			versionId: selectedVersionId,
 		},
 		query: {
 			...route.query,
@@ -147,10 +147,11 @@ const createCompareRoute = (compareVersionId: string) => {
 	};
 };
 
-const sendTelemetry = (event: string) => {
+const sendTelemetry = (event: string, extras?: Record<string, unknown>) => {
 	telemetry.track(event, {
 		instance_id: useRootStore().instanceId,
 		workflow_id: workflowId.value,
+		...extras,
 	});
 };
 
@@ -172,7 +173,7 @@ onBeforeMount(async () => {
 			workflowsListStore.fetchWorkflow(workflowId.value),
 			loadMore({ take: requestNumberOfItems.value }),
 		]);
-		activeWorkflow.value = workflow;
+		publishedWorkflow.value = workflow;
 		isListLoading.value = false;
 
 		if (!versionId.value && workflowHistory.value.length) {
@@ -239,9 +240,9 @@ const restoreWorkflowVersion = async (id: WorkflowVersionId) => {
 	const workflow = await workflowsListStore.fetchWorkflow(workflowId.value);
 
 	const versionIdBeforeRestore = workflow.versionId;
-	activeWorkflow.value = await workflowHistoryStore.restoreWorkflow(workflowId.value, id);
+	publishedWorkflow.value = await workflowHistoryStore.restoreWorkflow(workflowId.value, id);
 
-	if (activeWorkflow.value.versionId === versionIdBeforeRestore) {
+	if (publishedWorkflow.value.versionId === versionIdBeforeRestore) {
 		toast.showMessage({
 			title: i18n.baseText('workflowHistory.action.restore.alreadyRestored'),
 			type: 'info',
@@ -283,8 +284,8 @@ const publishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryActi
 				});
 
 				if (success) {
-					// Refresh the active workflow to get the updated activeVersion with workflowPublishHistory
-					activeWorkflow.value = workflowsListStore.getWorkflowById(workflowId.value);
+					// Refresh the published workflow to get the latest publishedVersion from workflowPublishHistory
+					publishedWorkflow.value = workflowsListStore.getWorkflowById(workflowId.value);
 
 					// Update the history list with the new name, description, and workflowPublishHistory
 					const historyItem = workflowHistory.value.find(
@@ -294,9 +295,9 @@ const publishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryActi
 						historyItem.name = submitData.name;
 						historyItem.description = submitData.description;
 						// Update workflowPublishHistory from the store's activeVersion
-						if (activeWorkflow.value?.activeVersion?.workflowPublishHistory) {
+						if (publishedWorkflow.value?.activeVersion?.workflowPublishHistory) {
 							historyItem.workflowPublishHistory =
-								activeWorkflow.value.activeVersion.workflowPublishHistory;
+								publishedWorkflow.value.activeVersion.workflowPublishHistory;
 						}
 					}
 
@@ -307,7 +308,7 @@ const publishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryActi
 							name: submitData.name,
 							description: submitData.description,
 							workflowPublishHistory:
-								activeWorkflow.value?.activeVersion?.workflowPublishHistory ??
+								publishedWorkflow.value?.activeVersion?.workflowPublishHistory ??
 								selectedWorkflowVersion.value.workflowPublishHistory,
 						};
 					}
@@ -328,7 +329,7 @@ const publishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryActi
 };
 
 const unpublishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryAction['data']) => {
-	if (workflowActiveVersionId.value !== id) {
+	if (publishedWorkflowVersionId.value !== id) {
 		return;
 	}
 
@@ -342,7 +343,7 @@ const unpublishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryAc
 			return;
 		}
 
-		activeWorkflow.value = workflowsListStore.getWorkflowById(workflowId.value);
+		publishedWorkflow.value = workflowsListStore.getWorkflowById(workflowId.value);
 
 		toast.showMessage({
 			title: i18n.baseText('workflowHistory.action.unpublish.success.title'),
@@ -492,6 +493,25 @@ const openCompareView = async (compareVersionId: WorkflowVersionId) => {
 	}
 
 	await router.push(createCompareRoute(compareVersionId));
+	sendTelemetry('user_clicks_compare_workflows', { source: 'version_history' });
+};
+
+const onDiffVersionsChange = async ({
+	sourceVersionId,
+	targetVersionId,
+}: {
+	sourceVersionId: string;
+	targetVersionId: string;
+}) => {
+	if (!sourceVersionId || !targetVersionId) {
+		return;
+	}
+
+	if (versionId.value === targetVersionId && diffWithVersionId.value === sourceVersionId) {
+		return;
+	}
+
+	await router.push(createCompareRoute(sourceVersionId, targetVersionId));
 };
 
 const closeCompareView = async () => {
@@ -540,7 +560,7 @@ watchEffect(async () => {
 
 		// Single atomic update - prevents double render of workflow preview
 		selectedWorkflowVersion.value = workflowVersion;
-		activeWorkflow.value = workflow;
+		publishedWorkflow.value = workflow;
 
 		sendTelemetry('User selected version');
 	} catch (error) {
@@ -562,9 +582,9 @@ watchEffect(async () => {
 	<div :class="$style.view">
 		<div :class="$style.header">
 			<N8nHeading tag="h2" size="medium">
-				{{ activeWorkflow?.name }}
+				{{ publishedWorkflow?.name }}
 			</N8nHeading>
-			<span v-if="activeWorkflow?.isArchived">
+			<span v-if="publishedWorkflow?.isArchived">
 				<N8nBadge class="ml-s" theme="tertiary" bold data-test-id="workflow-archived-tag">
 					{{ i18n.baseText('workflows.item.archived') }}
 				</N8nBadge>
@@ -589,7 +609,7 @@ watchEffect(async () => {
 				:should-upgrade="workflowHistoryStore.shouldUpgrade"
 				:evaluated-prune-time-in-hours="workflowHistoryStore.evaluatedPruneTime"
 				:is-list-loading="isListLoading"
-				:active-version-id="workflowActiveVersionId"
+				:published-version-id="publishedWorkflowVersionId"
 				:is-workflow-diffs-enabled="isWorkflowDiffsEnabled"
 				@action="onAction"
 				@preview="onPreview"
@@ -601,9 +621,9 @@ watchEffect(async () => {
 		<div :class="$style.contentComponentWrapper">
 			<WorkflowHistoryContent
 				v-if="canRender"
-				:workflow="activeWorkflow"
+				:workflow="publishedWorkflow"
 				:workflow-version="selectedWorkflowVersion"
-				:is-version-active="selectedWorkflowVersion?.versionId === workflowActiveVersionId"
+				:is-published="selectedWorkflowVersion?.versionId === publishedWorkflowVersionId"
 				:actions="actions"
 				:is-list-loading="isListLoading"
 				:is-first-item-shown="isFirstItemShown"
@@ -628,6 +648,8 @@ watchEffect(async () => {
 					:workflow-id="workflowId"
 					:source-workflow-version-id="diffWithVersionId"
 					:target-workflow-version-id="versionId"
+					:available-versions="workflowHistory"
+					@versions-change="onDiffVersionsChange"
 					@close="closeCompareView"
 				/>
 			</template>

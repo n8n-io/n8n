@@ -36,6 +36,7 @@ describe('ImportEntitiesCommand', () => {
 				false,
 				undefined,
 				false,
+				false,
 			);
 		});
 
@@ -60,6 +61,7 @@ describe('ImportEntitiesCommand', () => {
 				'/custom/path',
 				false,
 				undefined,
+				false,
 				false,
 			);
 		});
@@ -87,6 +89,7 @@ describe('ImportEntitiesCommand', () => {
 				true,
 				undefined,
 				false,
+				false,
 			);
 		});
 
@@ -111,6 +114,7 @@ describe('ImportEntitiesCommand', () => {
 				'./outputs',
 				false,
 				'key.txt',
+				false,
 				false,
 			);
 		});
@@ -138,6 +142,34 @@ describe('ImportEntitiesCommand', () => {
 				false,
 				undefined,
 				true,
+				false,
+			);
+		});
+
+		it('should skip disabling foreign key constraints when skipTogglingForeignKeyConstraints flag is true', async () => {
+			const command = new ImportEntitiesCommand();
+			// @ts-expect-error Protected property
+			command.flags = {
+				inputDir: './outputs',
+				truncateTables: false,
+				skipTogglingForeignKeyConstraints: true,
+			};
+			// @ts-expect-error Protected property
+			command.logger = {
+				info: jest.fn(),
+				error: jest.fn(),
+			};
+
+			mockImportService.importEntities.mockResolvedValue(undefined);
+
+			await command.run();
+
+			expect(mockImportService.importEntities).toHaveBeenCalledWith(
+				'./outputs',
+				false,
+				undefined,
+				false,
+				true,
 			);
 		});
 
@@ -164,6 +196,7 @@ describe('ImportEntitiesCommand', () => {
 				false,
 				undefined,
 				false,
+				false,
 			);
 		});
 
@@ -189,6 +222,7 @@ describe('ImportEntitiesCommand', () => {
 				'./outputs',
 				true,
 				undefined,
+				false,
 				false,
 			);
 		});

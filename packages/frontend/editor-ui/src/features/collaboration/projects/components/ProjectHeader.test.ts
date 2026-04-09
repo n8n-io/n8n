@@ -233,7 +233,7 @@ describe('ProjectHeader', () => {
 		);
 	});
 
-	it('should render ProjectTabs without Settings if no project update permission', () => {
+	it('should render ProjectTabs without Settings if no project update or externalSecretsProvider:read permission', () => {
 		route.params.projectId = '123';
 		projectsStore.currentProject = createTestProject({
 			scopes: ['project:read'],
@@ -243,6 +243,21 @@ describe('ProjectHeader', () => {
 		expect(projectTabsSpy).toHaveBeenCalledWith(
 			expect.objectContaining({
 				'show-settings': false,
+			}),
+			null,
+		);
+	});
+
+	it('should render ProjectTabs Settings if project editor has externalSecretsProvider:read scope', () => {
+		route.params.projectId = '123';
+		projectsStore.currentProject = createTestProject({
+			scopes: ['project:read', 'externalSecretsProvider:read', 'externalSecretsProvider:list'],
+		});
+		renderComponent();
+
+		expect(projectTabsSpy).toHaveBeenCalledWith(
+			expect.objectContaining({
+				'show-settings': true,
 			}),
 			null,
 		);

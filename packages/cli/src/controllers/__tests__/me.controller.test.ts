@@ -1,5 +1,6 @@
 import { UserUpdateRequestDto } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest, User, PublicUser, AuthIdentity } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -443,6 +444,88 @@ describe('MeController', () => {
 				expect(userService.update).toHaveBeenCalled();
 				expect(result).toEqual({});
 			});
+		});
+	});
+
+	describe('when user is managed by env', () => {
+		const globalConfig = Container.get(GlobalConfig);
+
+		beforeEach(() => {
+			globalConfig.instanceSettingsLoader.ownerManagedByEnv = true;
+			globalConfig.instanceSettingsLoader.ownerEmail = 'managed@example.com';
+		});
+
+		afterEach(() => {
+			globalConfig.instanceSettingsLoader.ownerManagedByEnv = false;
+			globalConfig.instanceSettingsLoader.ownerEmail = '';
+		});
+
+		it('should reject profile update for env-managed user', async () => {
+			const user = mock<User>({
+				id: '123',
+				email: 'managed@example.com',
+				password: 'password',
+				role: GLOBAL_OWNER_ROLE,
+			});
+			const req = mock<AuthenticatedRequest>({ user, browserId });
+
+			await expect(
+				controller.updateCurrentUser(
+					req,
+					mock(),
+					mock({ email: user.email, firstName: 'John', lastName: 'Doe' }),
+				),
+			).rejects.toThrowError(
+				new BadRequestError(
+					'This account is managed via environment variables and cannot be updated here',
+				),
+			);
+		});
+
+		it('should reject password update for env-managed user', async () => {
+			const req = mock<AuthenticatedRequest>({
+				user: mock<User>({
+					email: 'managed@example.com',
+					password: '$2a$10$ffitcKrHT.Ls.m9FfWrMrOod76aaI0ogKbc3S96Q320impWpCbgj6',
+				}),
+			});
+
+			await expect(
+				controller.updatePassword(
+					req,
+					mock(),
+					mock({ currentPassword: 'old_password', newPassword: 'NewPassword123' }),
+				),
+			).rejects.toThrowError(
+				new BadRequestError(
+					'This account is managed via environment variables and cannot be updated here',
+				),
+			);
+		});
+
+		it('should allow profile update for non-env-managed owner', async () => {
+			const user = mock<User>({
+				id: '456',
+				email: 'other-owner@example.com',
+				password: 'password',
+				authIdentities: [],
+				role: GLOBAL_OWNER_ROLE,
+				mfaEnabled: false,
+			});
+			const req = mock<AuthenticatedRequest>({ user, browserId });
+			const res = mock<Response>();
+			userRepository.findOneByOrFail.mockResolvedValue(user);
+			userService.findUserWithAuthIdentities.mockResolvedValue(user);
+			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
+			userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
+
+			await controller.updateCurrentUser(
+				req,
+				res,
+				mock({ email: user.email, firstName: 'Other', lastName: 'Owner' }),
+			);
+
+			expect(userService.update).toHaveBeenCalled();
 		});
 	});
 

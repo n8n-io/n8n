@@ -78,9 +78,7 @@ test.describe(
 			test('should display pin data edit button for Webhook node', async ({ n8n }) => {
 				await n8n.canvas.addNode(NODES.WEBHOOK);
 
-				const runDataHeader = n8n.ndv.getRunDataPaneHeader();
-				const editButton = runDataHeader.getByRole('button', { name: 'Edit Output' });
-				await expect(editButton).toBeVisible();
+				await expect(n8n.ndv.getEditOutputButton()).toBeVisible();
 			});
 
 			test('should duplicate pinned data when duplicating node', async ({ n8n }) => {
@@ -89,7 +87,7 @@ test.describe(
 
 				await n8n.canvas.addNode(NODES.EDIT_FIELDS);
 
-				await expect(n8n.ndv.getContainer()).toBeVisible();
+				await expect(n8n.ndv.container).toBeVisible();
 
 				await expect(n8n.ndv.getEditPinnedDataButton()).toBeVisible();
 				await expect(n8n.ndv.outputPanel.getPinDataButton()).toBeHidden();
@@ -121,7 +119,7 @@ test.describe(
 
 				await n8n.canvas.addNode(NODES.EDIT_FIELDS);
 
-				await expect(n8n.ndv.getContainer()).toBeVisible();
+				await expect(n8n.ndv.container).toBeVisible();
 				await expect(n8n.ndv.getEditPinnedDataButton()).toBeVisible();
 				await expect(n8n.ndv.outputPanel.getPinDataButton()).toBeHidden();
 
@@ -141,7 +139,7 @@ test.describe(
 
 				await n8n.canvas.addNode(NODES.EDIT_FIELDS);
 
-				await expect(n8n.ndv.getContainer()).toBeVisible();
+				await expect(n8n.ndv.container).toBeVisible();
 				await expect(n8n.ndv.getEditPinnedDataButton()).toBeVisible();
 				await expect(n8n.ndv.outputPanel.getPinDataButton()).toBeHidden();
 
@@ -175,7 +173,7 @@ test.describe(
 
 				await expect(n8n.ndv.getAssignmentCollectionAdd('assignments')).toBeVisible();
 				await n8n.ndv.getAssignmentCollectionAdd('assignments').click();
-				await n8n.ndv.getAssignmentValue('assignments').getByText('Expression').click();
+				await n8n.ndv.clickAssignmentExpressionToggle('assignments');
 
 				const expressionInput = n8n.ndv.getInlineExpressionEditorInput();
 				await expressionInput.click();
@@ -184,7 +182,7 @@ test.describe(
 				await n8n.page.keyboard.press('Escape');
 
 				const expectedOutput = '[Object: {"json": {"http": 123}, "pairedItem": {"item": 0}}]';
-				await expect(n8n.ndv.getParameterInputHint().getByText(expectedOutput)).toBeVisible();
+				await expect(n8n.ndv.getParameterInputHintWithText(expectedOutput)).toBeVisible();
 			});
 
 			test('should use pin data in manual webhook executions', async ({

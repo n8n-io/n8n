@@ -4,17 +4,17 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { LoggerProxy } from 'n8n-workflow';
 
-import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
+import { PLACEHOLDER_EMPTY_EXECUTION_ID, WAITING_TOKEN_QUERY_PARAM } from '@/constants';
 
-import {
-	setWorkflowExecutionMetadata,
-	setAllWorkflowExecutionMetadata,
-	getWorkflowExecutionMetadata,
-	getAllWorkflowExecutionMetadata,
-} from './execution-metadata';
+import { createExecutionCustomData } from './custom-data';
 import { getSecretsProxy } from './get-secrets-proxy';
+
+function appendResumeToken(url: string, token: string): string {
+	const urlObj = new URL(url);
+	urlObj.searchParams.set(WAITING_TOKEN_QUERY_PARAM, token);
+	return urlObj.toString();
+}
 
 /** Returns the additional keys for Expressions and Function-Nodes */
 export function getAdditionalKeys(
@@ -23,8 +23,13 @@ export function getAdditionalKeys(
 	runExecutionData: IRunExecutionData | null,
 ): IWorkflowDataProxyAdditionalKeys {
 	const executionId = additionalData.executionId ?? PLACEHOLDER_EMPTY_EXECUTION_ID;
-	const resumeUrl = `${additionalData.webhookWaitingBaseUrl}/${executionId}`;
-	const resumeFormUrl = `${additionalData.formWaitingBaseUrl}/${executionId}`;
+
+	let resumeUrl = `${additionalData.webhookWaitingBaseUrl}/${executionId}`;
+	let resumeFormUrl = `${additionalData.formWaitingBaseUrl}/${executionId}`;
+	if (runExecutionData?.resumeToken) {
+		resumeUrl = appendResumeToken(resumeUrl, runExecutionData.resumeToken);
+		resumeFormUrl = appendResumeToken(resumeFormUrl, runExecutionData.resumeToken);
+	}
 	return {
 		$execution: {
 			id: executionId,
@@ -32,36 +37,7 @@ export function getAdditionalKeys(
 			resumeUrl,
 			resumeFormUrl,
 			customData: runExecutionData
-				? {
-						set(key: string, value: string): void {
-							try {
-								setWorkflowExecutionMetadata(runExecutionData, key, value);
-							} catch (e) {
-								if (mode === 'manual') {
-									throw e;
-								}
-								// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
-								LoggerProxy.debug(e.message);
-							}
-						},
-						setAll(obj: Record<string, string>): void {
-							try {
-								setAllWorkflowExecutionMetadata(runExecutionData, obj);
-							} catch (e) {
-								if (mode === 'manual') {
-									throw e;
-								}
-								// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
-								LoggerProxy.debug(e.message);
-							}
-						},
-						get(key: string): string {
-							return getWorkflowExecutionMetadata(runExecutionData, key);
-						},
-						getAll(): Record<string, string> {
-							return getAllWorkflowExecutionMetadata(runExecutionData);
-						},
-					}
+				? createExecutionCustomData({ runExecutionData, mode })
 				: undefined,
 		},
 		$vars: additionalData.variables,

@@ -41,7 +41,7 @@ export function getPhaseEntry(
 	log: CoordinationLogEntry[],
 	phase: SubgraphPhase,
 ): CoordinationLogEntry | null {
-	return log.find((entry) => entry.phase === phase && entry.status === 'completed') ?? null;
+	return log.findLast((entry) => entry.phase === phase && entry.status === 'completed') ?? null;
 }
 
 /**

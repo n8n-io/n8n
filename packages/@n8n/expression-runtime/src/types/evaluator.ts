@@ -1,5 +1,6 @@
 import type { TournamentHooks } from '@n8n/tournament';
 
+import type { Logger } from './bridge';
 import type { RuntimeBridge } from './bridge';
 
 // ============================================================================
@@ -14,10 +15,8 @@ import type { RuntimeBridge } from './bridge';
  * will be added in later slices.
  */
 export interface EvaluatorConfig {
-	/**
-	 * Runtime bridge implementation.
-	 */
-	bridge: RuntimeBridge;
+	/** Factory function to create a bridge instance. */
+	createBridge: () => RuntimeBridge;
 
 	/**
 	 * Observability provider for metrics, traces, and logs.
@@ -30,6 +29,21 @@ export interface EvaluatorConfig {
 	 * If omitted, expressions are transformed with no security hooks (dev/testing use).
 	 */
 	hooks?: TournamentHooks;
+
+	/**
+	 * Maximum number of tournament-transformed expressions to cache (LRU).
+	 */
+	maxCodeCacheSize: number;
+
+	/**
+	 * Number of bridges to pre-warm in the pool. Defaults to 1 if not provided.
+	 * Can be set to the execution concurrency limit (N8N_EXPRESSION_ENGINE_POOL_SIZE)
+	 * to give each concurrent execution a pre-warmed bridge.
+	 */
+	poolSize?: number;
+
+	/** Optional logger. Passed through to pool. Falls back to no-op. */
+	logger?: Logger;
 }
 
 /**
@@ -49,13 +63,28 @@ export interface IExpressionEvaluator {
 	 *
 	 * @param expression - Expression string (e.g., "{{ $json.email }}")
 	 * @param data - Workflow data context
-	 * @param options - Evaluation options
+	 * @param caller - Owner object that acquired the bridge (same object passed to acquire())
+	 * @param options - Optional evaluation options (e.g. timezone)
 	 * @returns Result of the expression
-	 *
-	 * Note: Synchronous for Slice 1 (Node.js vm module).
-	 *       Will be async for Slice 2 (isolated-vm).
 	 */
-	evaluate(expression: string, data: WorkflowData, options?: EvaluateOptions): unknown;
+	evaluate(
+		expression: string,
+		data: WorkflowData,
+		caller: object,
+		options?: EvaluateOptions,
+	): unknown;
+
+	/**
+	 * Acquire a bridge for an owner object (e.g. an Expression instance).
+	 * Must be called before evaluate(). The same object must be passed as
+	 * the caller argument to evaluate().
+	 */
+	acquire(owner: object): Promise<void>;
+
+	/**
+	 * Release the bridge held for an owner object.
+	 */
+	release(owner: object): Promise<void>;
 
 	/**
 	 * Dispose of the evaluator and free resources.
@@ -78,18 +107,15 @@ export type WorkflowData = Record<string, unknown>;
 
 /**
  * Options for evaluate().
- */
-/**
- * Options for evaluate().
  *
  * Note: Slice 1 is minimal. Tournament options will be added later.
  */
 export interface EvaluateOptions {
 	/**
-	 * Custom timeout for this evaluation (in milliseconds).
-	 * Overrides the bridge's default timeout.
+	 * IANA timezone for this evaluation (e.g., 'America/New_York').
+	 * Sets luxon Settings.defaultZone inside the isolate before execution.
 	 */
-	timeout?: number;
+	timezone?: string;
 }
 
 // ============================================================================

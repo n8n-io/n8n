@@ -5,6 +5,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { N8nButton, N8nText } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useUIStore } from '@/app/stores/ui.store';
 import ChatAgentCard from '@/features/ai/chatHub/components/ChatAgentCard.vue';
 import ChatAgentSearchSort from '@/features/ai/chatHub/components/ChatAgentSearchSort.vue';
@@ -21,6 +22,8 @@ import { useI18n } from '@n8n/i18n';
 
 const chatStore = useChatStore();
 const uiStore = useUIStore();
+const route = useRoute();
+const router = useRouter();
 const toast = useToast();
 const message = useMessage();
 const usersStore = useUsersStore();
@@ -28,6 +31,7 @@ const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);
 const i18n = useI18n();
 
 const agentFilter = ref<ChatAgentFilter>({ search: '', sortBy: 'updatedAt' });
+const initialAgentId = typeof route.query.agentId === 'string' ? route.query.agentId : null;
 
 const { credentialsByProvider } = useChatCredentials(usersStore.currentUserId ?? 'anonymous');
 
@@ -44,8 +48,9 @@ function handleCreateAgent() {
 	});
 }
 
-async function handleEditAgent(model: ChatHubConversationModel) {
+function handleEditAgent(model: ChatHubConversationModel) {
 	if (model.provider === 'custom-agent') {
+		void router.replace({ query: { agentId: model.agentId } });
 		uiStore.openModalWithData({
 			name: AGENT_EDITOR_MODAL_KEY,
 			data: {
@@ -55,6 +60,29 @@ async function handleEditAgent(model: ChatHubConversationModel) {
 		});
 	}
 }
+
+// Sync query parameter to modal window state
+watch(
+	credentialsByProvider,
+	(credentials) => {
+		if (!credentials || !initialAgentId) return;
+		uiStore.openModalWithData({
+			name: AGENT_EDITOR_MODAL_KEY,
+			data: { agentId: initialAgentId, credentials },
+		});
+	},
+	{ immediate: true },
+);
+
+// Sync modal window state to query parameter
+watch(
+	() => uiStore.modalsById[AGENT_EDITOR_MODAL_KEY]?.open,
+	(isOpen) => {
+		if (!isOpen && route.query.agentId) {
+			void router.replace({ query: {} });
+		}
+	},
+);
 
 async function handleDeleteAgent(agentId: string) {
 	const confirmed = await message.confirm(

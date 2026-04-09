@@ -5,7 +5,7 @@ import get from 'lodash/get';
 import merge from 'lodash/merge';
 import set from 'lodash/set';
 import { PollContext, returnJsonArray } from 'n8n-core';
-import type { InstanceSettings, ExecutionLifecycleHooks } from 'n8n-core';
+import type { InstanceSettings, ExecutionLifecycleHooks, SsrfBridge } from 'n8n-core';
 import { ScheduledTaskManager } from 'n8n-core/dist/execution-engine/scheduled-task-manager';
 import {
 	createDeferredPromise,
@@ -250,29 +250,46 @@ export async function testPollingTriggerNode(
 	});
 	const mode = options.mode ?? 'trigger';
 
-	const pollContext = new PollContext(
-		workflow,
-		node,
-		mock<IWorkflowExecuteAdditionalData>({
-			currentNodeParameters: node.parameters,
-			credentialsHelper: mock<IWorkflowExecuteAdditionalData['credentialsHelper']>({
-				getParentTypes: () => [],
-				authenticate: async (_creds, _type, options) => {
-					set(options, 'headers.authorization', 'mockAuth');
-					return options as IHttpRequestOptions;
-				},
-			}),
-			hooks: mock<ExecutionLifecycleHooks>(),
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({
+		currentNodeParameters: node.parameters,
+		credentialsHelper: mock<IWorkflowExecuteAdditionalData['credentialsHelper']>({
+			getParentTypes: () => [],
+			authenticate: async (_creds, _type, options) => {
+				set(options, 'headers.authorization', 'mockAuth');
+				return options as IHttpRequestOptions;
+			},
 		}),
-		mode,
-		'init',
-	);
+		hooks: mock<ExecutionLifecycleHooks>(),
+		ssrfBridge: {
+			validateIp: jest.fn().mockReturnValue({ ok: true, result: undefined }),
+			validateUrl: jest.fn().mockResolvedValue({ ok: true, result: undefined }),
+			validateRedirectSync: jest.fn(),
+			createSecureLookup: jest.fn().mockReturnValue(jest.fn()),
+		} as SsrfBridge,
+	});
+	// Prevent the auto-mocked property from being truthy so request helpers
+	// don't take the eval-mock code path.
+	(additionalData as unknown as Record<string, unknown>).evalLlmMockHandler = undefined;
+
+	const pollContext = new PollContext(workflow, node, additionalData, mode, 'init');
 
 	pollContext.getNode = () => node;
 	pollContext.getCredentials = async <T extends object = ICredentialDataDecryptedObject>() =>
 		(options.credential ?? {}) as T;
 	pollContext.getNodeParameter = (parameterName, fallback) =>
 		get(node.parameters, parameterName) ?? fallback;
+
+	// Override OAuth helpers so tests don't flow through the real OAuth2
+	// signing/token logic (which is fragile with mocked credentials).
+	const originalRequest = pollContext.helpers.request.bind(pollContext.helpers);
+	pollContext.helpers.requestOAuth2 = async function (_credentialsType, requestOptions) {
+		set(requestOptions, 'headers.authorization', 'mockAuth');
+		return await originalRequest(requestOptions);
+	};
+	pollContext.helpers.requestOAuth1 = async function (_credentialsType, requestOptions) {
+		set(requestOptions, 'headers.authorization', 'mockAuth');
+		return await originalRequest(requestOptions);
+	};
 
 	const response = await trigger.poll?.call(pollContext);
 

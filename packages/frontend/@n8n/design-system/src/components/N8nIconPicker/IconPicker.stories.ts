@@ -16,6 +16,12 @@ export default {
 			options: ['small', 'large'],
 		},
 	},
+
+	parameters: {
+		docs: {
+			description: { component: 'A searchable selector for browsing and choosing icons.' },
+		},
+	},
 };
 
 function createTemplate(icon: IconOrEmoji): StoryFn {

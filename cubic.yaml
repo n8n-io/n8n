@@ -41,29 +41,17 @@ reviews:
 
     Approve if reasonably tested. Let humans handle edge cases.
 
-    ## Step 4: Design System Tokens
+    ## Step 4: Design System Style Rules
 
-    For any hard-coded visual values in CSS (colors, shadows, spacing), check
-    `@n8n/design-system/src/css/_primitives.scss` and
-    `@n8n/design-system/src/css/_tokens.scss` for an appropriate alternative.
-    If one exists, suggest using it. If none exist, ask why the hard-coded
-    value is required.
+    Follow `.agents/design-system-style-rules.md` for all CSS/SCSS/Vue style
+    review guidance.
+
+    Enforcement level:
+    - Strong warning: hard-coded visual values, legacy token usage, deprecated
+      style/component surfaces
+    - Soft warning: token-to-token substitutions (ask for intent to avoid
+      accidental regressions)
   custom_rules:
-    - name: Tests
-      description: |-
-        BE REASONABLE when evaluating test coverage:
-
-        **PASS if:**
-
-        - Core functionality has tests
-        - Critical paths are tested
-        - Coverage is reasonable (not necessarily 100%)
-
-        **DO NOT require tests for:**
-
-        - Exports, types, configs
-        - Metadata files
-        - Version files
     - name: Security Review
       description: |-
         Proactively review PRs and flag security vulnerabilities specific to n8n's architecture:
@@ -195,13 +183,42 @@ reviews:
         - Higher scrutiny for: expression engine, credential handling, code execution nodes, license enforcement, SSO integrations
         - Consider n8n's security audit categories: credentials, database, nodes, instance, filesystem risks
         - Community/custom nodes have higher risk profile than official nodes
+    - name: Quality & Performance Review
+      description: |-
+        You are a Staff Quality Engineer reviewing this PR for production
+        readiness. You think in terms of blast radius, resource cost, and
+        failure modes. You are pragmatic, not pedantic.
+
+        Below is a curated list of known issues from real incidents and
+        review standards the team enforces. Review the diff against each
+        item. If none match, say nothing. If one matches, explain the
+        concrete risk and suggest a fix. Never flag existing unchanged code.
+
+        ## Known Issues
+
+        ### 1. Eager imports of heavy or native modules
+        Top-level `import` of modules only used in a specific code path loads
+        them into every process at startup, increasing baseline memory.
+        Native modules (e.g. `isolated-vm`) can crash instances that lack the
+        binary. Large parsers (e.g. `jsdom` at ~16 MB heap) waste memory when
+        the code path is rarely hit.
+        **Fix:** Use `await import()` at point of use. For barrel files, use
+        `export type` instead of value re-exports when consumers only need
+        the type.
+
+        ### 2. Unreasonable test coverage expectations
+        Be pragmatic about test requirements. Pass if core functionality and
+        critical paths are tested at reasonable coverage. Do NOT require tests
+        for exports, types, configs, metadata files, or version files. Let
+        humans handle edge cases.
     - name: Design System Tokens
       description: |-
-        For any hard-coded visual values in CSS (colors, shadows, spacing),
-        check `@n8n/design-system/src/css/_primitives.scss` and
-        `@n8n/design-system/src/css/_tokens.scss` for an appropriate alternative.
-        If one exists, suggest using it. If none exist, ask why the hard-coded
-        value is required.
+        Follow `.agents/design-system-style-rules.md`.
+
+        Apply balanced enforcement:
+        - Strong warning: hard-coded visual values, legacy token usage, and
+          deprecated style/component surfaces.
+        - Soft warning: token-to-token substitutions (request intent/rationale).
     - name: Use workflowDocumentStore for Migrated Workflow Fields
       description: |-
         We are actively migrating workflow state from `workflowsStore` (Pinia store defined in

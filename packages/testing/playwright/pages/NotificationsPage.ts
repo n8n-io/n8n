@@ -137,6 +137,10 @@ export class NotificationsPage {
 		}
 	}
 
+	getModalOverlay(): Locator {
+		return this.page.locator('.el-overlay').first();
+	}
+
 	getErrorNotifications(): Locator {
 		return this.page.locator('.el-notification:has(.el-notification--error)');
 	}

@@ -23,7 +23,7 @@ import isEqual from 'lodash/isEqual';
 import sortBy from 'lodash/sortBy';
 import { computed, ref, toRaw, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { SCOPE_TYPES, SCOPES } from './projectRoleScopes';
+import { SCOPE_TYPES, SCOPES, normalizeCoupledScopes } from './projectRoleScopes';
 
 import RoleAssignmentsTab from './RoleAssignmentsTab.vue';
 
@@ -169,12 +169,23 @@ function toggleScope(scope: string) {
 			toggleScope('workflow:execute');
 		}
 	}
+
+	// Dependency: workflow:publish and workflow:unpublish are coupled
+	if (scope === 'workflow:publish') {
+		if (isBeingAdded && !form.value.scopes.includes('workflow:unpublish')) {
+			form.value.scopes.push('workflow:unpublish');
+		} else if (!isBeingAdded) {
+			const idx = form.value.scopes.indexOf('workflow:unpublish');
+			if (idx !== -1) form.value.scopes.splice(idx, 1);
+		}
+	}
 }
 
 async function createProjectRole() {
 	try {
 		const role = await rolesStore.createProjectRole({
 			...form.value,
+			scopes: normalizeCoupledScopes(form.value.scopes),
 			description: form.value.description ?? undefined,
 			roleType: 'project',
 		});
@@ -232,6 +243,7 @@ async function updateProjectRole(slug: string) {
 	try {
 		const role = await rolesStore.updateProjectRole(slug, {
 			...form.value,
+			scopes: normalizeCoupledScopes(form.value.scopes),
 			description: form.value.description ?? undefined,
 		});
 
@@ -346,9 +358,16 @@ const displayNameValidationRules = [
 			{{ backButtonText }}
 		</N8nButton>
 		<div class="mb-xl" :class="$style.headerContainer">
-			<N8nHeading tag="h1" size="2xlarge">
-				{{ roleSlug ? `Role "${form.displayName}"` : i18n.baseText('projectRoles.newRole') }}
-			</N8nHeading>
+			<div :class="$style.headingContainer">
+				<N8nHeading tag="h1" size="2xlarge" :class="$style.heading">
+					<template v-if="roleSlug"
+						>Role "<N8nTooltip :content="form.displayName" placement="bottom"
+							><span>{{ form.displayName }}</span></N8nTooltip
+						>"</template
+					>
+					<template v-else>{{ i18n.baseText('projectRoles.newRole') }}</template>
+				</N8nHeading>
+			</div>
 			<div v-if="initialState && !isReadOnly && !isLoading" :class="$style.headerActions">
 				<N8nButton variant="subtle" :disabled="!hasUnsavedChanges" @click="resetForm(initialState)">
 					{{ i18n.baseText('projectRoles.discardChanges') }}
@@ -550,6 +569,16 @@ const displayNameValidationRules = [
 	justify-content: space-between;
 	align-items: flex-start;
 	gap: var(--spacing--sm);
+}
+
+.headingContainer {
+	min-width: 0;
+}
+
+.heading {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .headerActions {
