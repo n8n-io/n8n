@@ -52,9 +52,9 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.AI_SETTINGS } },
 			},
 			{
-				id: 'settings-n8n-gateway',
-				icon: 'network',
-				label: i18n.baseText('settings.n8nGateway'),
+				id: 'settings-n8n-connect',
+				icon: 'plug-zap',
+				label: i18n.baseText('settings.n8nConnect'),
 				position: 'top',
 				available:
 					settingsStore.isAiGatewayEnabled && canUserAccessRouteByName(VIEWS.AI_GATEWAY_SETTINGS),

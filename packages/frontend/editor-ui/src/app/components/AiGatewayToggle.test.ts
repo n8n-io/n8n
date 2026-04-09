@@ -50,14 +50,14 @@ describe('AiGatewayToggle', () => {
 
 			expect(screen.getByTestId('ai-gateway-toggle')).toBeInTheDocument();
 			expect(screen.getByTestId('ai-gateway-toggle-switch')).toBeInTheDocument();
-			expect(screen.getByText('Connect via n8n Gateway')).toBeInTheDocument();
+			expect(screen.getByText('Connect via n8n Connect')).toBeInTheDocument();
 		});
 
 		it('should not show the callout when disabled', () => {
 			renderComponent({ props: { aiGatewayEnabled: false, readonly: false } });
 
 			expect(
-				screen.queryByText('n8n Gateway is the easy way to manage AI model usage'),
+				screen.queryByText('n8n Connect is the easy way to manage AI model usage'),
 			).not.toBeInTheDocument();
 		});
 
@@ -65,7 +65,7 @@ describe('AiGatewayToggle', () => {
 			renderComponent({ props: { aiGatewayEnabled: true, readonly: false } });
 
 			expect(
-				screen.getByText('n8n Gateway is the easy way to manage AI model usage'),
+				screen.getByText('n8n Connect is the easy way to manage AI model usage'),
 			).toBeInTheDocument();
 		});
 

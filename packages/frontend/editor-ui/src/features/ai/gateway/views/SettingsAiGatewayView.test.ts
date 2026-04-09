@@ -64,7 +64,7 @@ describe('SettingsAiGatewayView', () => {
 			await waitFor(() => expect(screen.getByTestId('settings-ai-gateway')).toBeInTheDocument());
 			const store = useAiGatewayStore();
 			await waitFor(() => expect(store.creditsRemaining).toBe(42));
-			expect(screen.getByText('42')).toBeInTheDocument();
+			expect(screen.getByText('42 credits')).toBeInTheDocument();
 		});
 
 		it('should not render the credits number before data loads', () => {
@@ -84,14 +84,11 @@ describe('SettingsAiGatewayView', () => {
 			);
 
 			const uiStore = useUIStore();
-			vi.spyOn(uiStore, 'openModalWithData');
+			vi.spyOn(uiStore, 'openModal');
 
 			await userEvent.click(screen.getByTestId('ai-gateway-topup-button'));
 
-			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
-				name: AI_GATEWAY_TOP_UP_MODAL_KEY,
-				data: { credentialType: undefined },
-			});
+			expect(uiStore.openModal).toHaveBeenCalledWith(AI_GATEWAY_TOP_UP_MODAL_KEY);
 		});
 	});
 
@@ -142,7 +139,7 @@ describe('SettingsAiGatewayView', () => {
 		it('should re-fetch from offset=0 when refresh is clicked', async () => {
 			mockGetGatewayUsage.mockResolvedValue({ entries: MOCK_ENTRIES, total: 100 });
 			renderComponent();
-			await waitFor(() => expect(mockGetGatewayUsage).toHaveBeenCalledOnce());
+			await waitFor(() => expect(screen.getByText('gemini-pro')).toBeInTheDocument());
 
 			mockGetGatewayUsage.mockClear();
 			await userEvent.click(screen.getByRole('button', { name: /refresh/i }));

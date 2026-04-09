@@ -81,7 +81,7 @@ async function onBuy() {
 <template>
 	<Modal
 		:name="AI_GATEWAY_TOP_UP_MODAL_KEY"
-		:title="showThankYou ? 'Coming soon' : i18n.baseText('settings.n8nGateway.topUp.modalTitle')"
+		:title="showThankYou ? 'Coming soon' : i18n.baseText('settings.n8nConnect.topUp.modalTitle')"
 		width="520px"
 		data-test-id="ai-gateway-topup-modal"
 	>
@@ -89,7 +89,7 @@ async function onBuy() {
 			<div :class="$style.contentWrapper">
 				<div v-if="!showThankYou" :class="$style.body">
 					<N8nText color="text-base">
-						{{ i18n.baseText('settings.n8nGateway.topUp.description') }}
+						{{ i18n.baseText('settings.n8nConnect.topUp.description') }}
 					</N8nText>
 
 					<div :class="$style.presets">
@@ -109,7 +109,7 @@ async function onBuy() {
 						:model-value="customAmount"
 						:min="1"
 						:precision="0"
-						:placeholder="i18n.baseText('settings.n8nGateway.topUp.customPlaceholder')"
+						:placeholder="i18n.baseText('settings.n8nConnect.topUp.customPlaceholder')"
 						data-test-id="ai-gateway-topup-custom"
 						@update:model-value="onCustomInput"
 					/>
@@ -158,7 +158,7 @@ async function onBuy() {
 				/>
 				<N8nButton
 					size="large"
-					:label="i18n.baseText('settings.n8nGateway.topUp.buy')"
+					:label="i18n.baseText('settings.n8nConnect.topUp.buy')"
 					:loading="isLoading"
 					:disabled="isBuyDisabled"
 					data-test-id="ai-gateway-topup-buy"
