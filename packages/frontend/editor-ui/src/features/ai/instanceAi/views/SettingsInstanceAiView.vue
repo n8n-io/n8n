@@ -1,27 +1,24 @@
 <script lang="ts" setup>
-import { onMounted, ref, computed, watch } from 'vue';
-import { N8nHeading, N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import { onMounted, computed } from 'vue';
+import { N8nButton, N8nHeading, N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 import { ElSwitch } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import { useToast } from '@/app/composables/useToast';
-import { fetchSettings, updateSettings } from '../instanceAi.settings.api';
-import type {
-	InstanceAiAdminSettingsResponse,
-	InstanceAiPermissions,
-	InstanceAiPermissionMode,
-} from '@n8n/api-types';
+import type { InstanceAiPermissions, InstanceAiPermissionMode } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
+import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
+import ModelSection from '../components/settings/ModelSection.vue';
+import LocalGatewaySection from '../components/settings/LocalGatewaySection.vue';
+import SandboxSection from '../components/settings/SandboxSection.vue';
+import MemorySection from '../components/settings/MemorySection.vue';
+import SearchSection from '../components/settings/SearchSection.vue';
+import AdvancedSection from '../components/settings/AdvancedSection.vue';
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
-const rootStore = useRootStore();
-const toast = useToast();
+const store = useInstanceAiSettingsStore();
 
-const isLoading = ref(false);
-const isSaving = ref(false);
-const settings = ref<InstanceAiAdminSettingsResponse | null>(null);
+const isAdmin = computed(() => store.canManage);
 
 const permissionKeys: Array<{ key: keyof InstanceAiPermissions; labelKey: BaseTextKey }> = [
 	{ key: 'createWorkflow', labelKey: 'settings.n8nAgent.permissions.createWorkflow' },
@@ -49,69 +46,21 @@ const permissionKeys: Array<{ key: keyof InstanceAiPermissions; labelKey: BaseTe
 	},
 ];
 
-const isEnabled = computed(() => settings.value?.enabled ?? false);
+const isEnabled = computed(() => store.settings?.enabled ?? false);
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.n8nAgent'));
+	void store.fetch();
 });
 
-watch(
-	() => settings.value,
-	(val) => {
-		if (!val) void loadSettings();
-	},
-	{ immediate: true },
-);
-
-async function loadSettings() {
-	isLoading.value = true;
-	try {
-		settings.value = await fetchSettings(rootStore.restApiContext);
-	} catch {
-		toast.showError(new Error('Failed to load settings'), 'Settings error');
-	} finally {
-		isLoading.value = false;
-	}
-}
-
-async function saveSettings(
-	update: Parameters<typeof updateSettings>[1],
-	previousSettings: InstanceAiAdminSettingsResponse | null,
-) {
-	if (isSaving.value) return;
-	isSaving.value = true;
-	try {
-		settings.value = await updateSettings(rootStore.restApiContext, update);
-	} catch {
-		settings.value = previousSettings;
-		toast.showError(new Error('Failed to save settings'), 'Settings error');
-	} finally {
-		isSaving.value = false;
-	}
-}
-
 function handleEnabledToggle(value: string | number | boolean) {
-	const previous = settings.value;
-	const newEnabled = Boolean(value);
-	if (settings.value) {
-		settings.value = { ...settings.value, enabled: newEnabled };
-	}
-	void saveSettings({ enabled: newEnabled }, previous);
+	store.setField('enabled', Boolean(value));
+	void store.save();
 }
 
 function handlePermissionChange(key: keyof InstanceAiPermissions, value: InstanceAiPermissionMode) {
-	const previous = settings.value;
-	if (settings.value) {
-		settings.value = {
-			...settings.value,
-			permissions: { ...settings.value.permissions, [key]: value },
-		};
-	}
-	void saveSettings({ permissions: { [key]: value } }, previous);
-}
-
-function getPermissionValue(key: keyof InstanceAiPermissions): InstanceAiPermissionMode {
-	return settings.value?.permissions?.[key] ?? 'require_approval';
+	store.setPermission(key, value);
+	void store.save();
 }
 </script>
 
@@ -126,81 +75,134 @@ function getPermissionValue(key: keyof InstanceAiPermissions): InstanceAiPermiss
 			</N8nText>
 		</header>
 
-		<div v-if="isLoading" :class="$style.loading">
+		<div v-if="store.isLoading" :class="$style.loading">
 			<N8nIcon icon="spinner" spin />
 		</div>
 
-		<template v-else-if="settings">
-			<div :class="$style.card">
-				<div :class="$style.settingsRow">
-					<div :class="$style.settingsRowLeft">
-						<span :class="$style.settingsRowLabel">
-							{{ i18n.baseText('settings.n8nAgent.enable.label') }}
-						</span>
-						<span :class="$style.settingsRowDescription">
-							{{ i18n.baseText('settings.n8nAgent.enable.description') }}
-						</span>
-					</div>
-					<ElSwitch
-						:class="$style.toggle"
-						:model-value="isEnabled"
-						:disabled="isSaving"
-						data-test-id="n8n-agent-enable-toggle"
-						@update:model-value="handleEnabledToggle"
-					/>
-				</div>
-			</div>
-
-			<template v-if="isEnabled">
-				<div :class="$style.permissionsHeader">
-					<N8nHeading :class="$style.sectionTitle" tag="h3" size="medium">
-						{{ i18n.baseText('settings.n8nAgent.permissions.title') }}
-					</N8nHeading>
-					<N8nText size="medium" color="text-light">
-						{{ i18n.baseText('settings.n8nAgent.permissions.description') }}
-					</N8nText>
-				</div>
-
+		<template v-else>
+			<template v-if="isAdmin">
 				<div :class="$style.card">
-					<div
-						v-for="(perm, index) in permissionKeys"
-						:key="perm.key"
-						:class="[
-							$style.settingsRow,
-							{ [$style.settingsRowBorder]: index < permissionKeys.length - 1 },
-						]"
-					>
+					<div :class="$style.settingsRow">
 						<div :class="$style.settingsRowLeft">
 							<span :class="$style.settingsRowLabel">
-								{{ i18n.baseText(perm.labelKey) }}
+								{{ i18n.baseText('settings.n8nAgent.enable.label') }}
+							</span>
+							<span :class="$style.settingsRowDescription">
+								{{ i18n.baseText('settings.n8nAgent.enable.description') }}
 							</span>
 						</div>
-						<N8nSelect
-							:class="$style.permissionSelect"
-							:model-value="getPermissionValue(perm.key)"
-							size="small"
-							:disabled="isSaving"
-							:data-test-id="`n8n-agent-permission-${perm.key}`"
-							@update:model-value="
-								handlePermissionChange(perm.key, $event as InstanceAiPermissionMode)
-							"
-						>
-							<N8nOption
-								value="require_approval"
-								:label="i18n.baseText('settings.n8nAgent.permissions.needsApproval')"
-							/>
-							<N8nOption
-								value="always_allow"
-								:label="i18n.baseText('settings.n8nAgent.permissions.alwaysAllow')"
-							/>
-							<N8nOption
-								value="blocked"
-								:label="i18n.baseText('settings.n8nAgent.permissions.blocked')"
-							/>
-						</N8nSelect>
+						<ElSwitch
+							:class="$style.toggle"
+							:model-value="isEnabled"
+							:disabled="store.isSaving"
+							data-test-id="n8n-agent-enable-toggle"
+							@update:model-value="handleEnabledToggle"
+						/>
 					</div>
 				</div>
 			</template>
+
+			<div :class="$style.card">
+				<div :class="$style.sectionBlock">
+					<ModelSection />
+				</div>
+			</div>
+
+			<div :class="$style.card">
+				<div :class="$style.sectionBlock">
+					<LocalGatewaySection />
+				</div>
+			</div>
+
+			<template v-if="isAdmin">
+				<div :class="$style.card">
+					<div :class="$style.sectionBlock">
+						<SandboxSection />
+					</div>
+				</div>
+
+				<div :class="$style.card">
+					<div :class="$style.sectionBlock">
+						<MemorySection />
+					</div>
+				</div>
+
+				<div :class="$style.card">
+					<div :class="$style.sectionBlock">
+						<SearchSection />
+					</div>
+				</div>
+
+				<div :class="$style.card">
+					<div :class="$style.sectionBlock">
+						<AdvancedSection />
+					</div>
+				</div>
+
+				<template v-if="isEnabled">
+					<div :class="$style.permissionsHeader">
+						<N8nHeading :class="$style.sectionTitle" tag="h3" size="medium">
+							{{ i18n.baseText('settings.n8nAgent.permissions.title') }}
+						</N8nHeading>
+						<N8nText size="medium" color="text-light">
+							{{ i18n.baseText('settings.n8nAgent.permissions.description') }}
+						</N8nText>
+					</div>
+
+					<div :class="$style.card">
+						<div
+							v-for="(perm, index) in permissionKeys"
+							:key="perm.key"
+							:class="[
+								$style.settingsRow,
+								{ [$style.settingsRowBorder]: index < permissionKeys.length - 1 },
+							]"
+						>
+							<div :class="$style.settingsRowLeft">
+								<span :class="$style.settingsRowLabel">
+									{{ i18n.baseText(perm.labelKey) }}
+								</span>
+							</div>
+							<N8nSelect
+								:class="$style.permissionSelect"
+								:model-value="store.getPermission(perm.key)"
+								size="small"
+								:disabled="store.isSaving"
+								:data-test-id="`n8n-agent-permission-${perm.key}`"
+								@update:model-value="
+									handlePermissionChange(perm.key, $event as InstanceAiPermissionMode)
+								"
+							>
+								<N8nOption
+									value="require_approval"
+									:label="i18n.baseText('settings.n8nAgent.permissions.needsApproval')"
+								/>
+								<N8nOption
+									value="always_allow"
+									:label="i18n.baseText('settings.n8nAgent.permissions.alwaysAllow')"
+								/>
+								<N8nOption
+									value="blocked"
+									:label="i18n.baseText('settings.n8nAgent.permissions.blocked')"
+								/>
+							</N8nSelect>
+						</div>
+					</div>
+				</template>
+			</template>
+
+			<div v-if="store.isDirty" :class="$style.footer">
+				<N8nButton
+					type="secondary"
+					:label="i18n.baseText('generic.cancel')"
+					@click="store.reset()"
+				/>
+				<N8nButton
+					:label="i18n.baseText('settings.personal.save')"
+					:loading="store.isSaving"
+					@click="store.save()"
+				/>
+			</div>
 		</template>
 	</div>
 </template>
@@ -209,6 +211,7 @@ function getPermissionValue(key: keyof InstanceAiPermissions): InstanceAiPermiss
 .container {
 	display: flex;
 	flex-direction: column;
+	gap: var(--spacing--sm);
 	max-width: 720px;
 	margin: 0 auto;
 	padding-bottom: var(--spacing--2xl);
@@ -223,7 +226,7 @@ function getPermissionValue(key: keyof InstanceAiPermissions): InstanceAiPermiss
 .header {
 	display: flex;
 	flex-direction: column;
-	margin-bottom: var(--spacing--xl);
+	margin-bottom: var(--spacing--xs);
 }
 
 .loading {
@@ -238,6 +241,11 @@ function getPermissionValue(key: keyof InstanceAiPermissions): InstanceAiPermiss
 	border: var(--border);
 	border-radius: var(--radius);
 	overflow: hidden;
+}
+
+.sectionBlock {
+	padding: var(--spacing--sm);
+	background: var(--color--background--light-3);
 }
 
 .toggle {
@@ -296,12 +304,18 @@ function getPermissionValue(key: keyof InstanceAiPermissions): InstanceAiPermiss
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
-	margin-top: var(--spacing--xl);
-	margin-bottom: var(--spacing--sm);
+	margin-top: var(--spacing--xs);
 }
 
 .permissionSelect {
 	width: 178px;
 	flex-shrink: 0;
+}
+
+.footer {
+	display: flex;
+	justify-content: flex-end;
+	gap: var(--spacing--2xs);
+	padding-top: var(--spacing--sm);
 }
 </style>

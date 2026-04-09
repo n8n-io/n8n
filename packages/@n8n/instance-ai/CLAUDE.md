@@ -22,7 +22,7 @@ Read these docs before starting any implementation:
 - `docs/architecture.md` — system diagram, deep agent pillars, package responsibilities
 - `docs/streaming-protocol.md` — canonical event schema, SSE transport, replay rules
 - `docs/tools.md` — tool reference, orchestration tools, domain tools, tool distribution
-- `docs/memory.md` — memory tiers, scoping model, sub-agent working memory
+- `docs/memory.md` — memory tiers, scoping model, sub-agent memory
 - `docs/filesystem-access.md` — filesystem architecture, gateway protocol, security model
 - `docs/sandboxing.md` — Daytona/local sandbox providers, workspace lifecycle, builder loop
 - `docs/configuration.md` — environment variables, minimal setup, storage, event bus
@@ -35,4 +35,4 @@ Read these docs before starting any implementation:
 - **Run lifecycle**: `run-start` (first) → events → `run-finish` (last, carries status)
 - **Planned tasks**: `plan` tool for multi-step work; tasks run detached as background agents
 - **Sub-agents**: stateless, native domain tools only, no MCP, no recursive delegation
-- **Memory**: working memory = user-scoped, observational memory = thread-scoped
+- **Memory**: observational memory = thread-scoped, working memory is disabled
