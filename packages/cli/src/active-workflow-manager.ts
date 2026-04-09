@@ -315,7 +315,7 @@ export class ActiveWorkflowManager {
 					void executePromise.then((executionId) => {
 						this.activeExecutions
 							.getPostExecutePromise(executionId)
-							.then((run) => run !== undefined && donePromise.resolve(run))
+							.then(donePromise.resolve)
 							.catch(donePromise.reject);
 					});
 				} else {

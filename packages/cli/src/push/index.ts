@@ -20,13 +20,13 @@ import { validateOriginHeaders } from './origin-validator';
 import { PushConfig } from './push.config';
 import { SSEPush } from './sse.push';
 import {
-	isPushRequest,
 	type OnPushMessage,
 	type PushResponse,
 	type SSEPushRequest,
 	type WebSocketPushRequest,
 } from './types';
 import { WebSocketPush } from './websocket.push';
+import { isPushResponse, isSSEPushRequest, isWebSocketPushRequest } from './push-helpers';
 
 type PushEvents = {
 	editorUiConnected: string;
@@ -102,11 +102,8 @@ export class Push extends TypedEmitter<PushEvents> {
 
 			this.authService.createAuthMiddleware({ allowSkipMFA: false }),
 			(req, res) => {
-				if (isPushRequest(req)) {
-					return this.handleRequest(
-						req as SSEPushRequest | WebSocketPushRequest,
-						res as PushResponse,
-					);
+				if ((isWebSocketPushRequest(req) || isSSEPushRequest(req)) && isPushResponse(res)) {
+					return this.handleRequest(req, res);
 				}
 			},
 		);

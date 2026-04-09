@@ -1,7 +1,7 @@
 import type { RequestHandler } from 'express';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { isListQueryRequest } from '@/requests';
+import { appendListQueryOptions } from '@/requests';
 import * as ResponseHelper from '@/response-helper';
 import { toError } from '@/utils';
 
@@ -25,9 +25,7 @@ export const paginationListQueryMiddleware: RequestHandler = (req, res, next) =>
 
 		const { take, skip } = Pagination.fromString(rawTake, rawSkip);
 
-		if (isListQueryRequest(listQueryReq)) {
-			listQueryReq.listQueryOptions = { ...listQueryReq.listQueryOptions, skip, take };
-		}
+		appendListQueryOptions(listQueryReq, { skip, take });
 
 		next();
 	} catch (maybeError) {

@@ -3,7 +3,7 @@ import { validateSync } from 'class-validator';
 import type { RequestHandler } from 'express';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { isListQueryRequest } from '@/requests';
+import { appendListQueryOptions } from '@/requests';
 import * as ResponseHelper from '@/response-helper';
 import { toError } from '@/utils';
 
@@ -31,9 +31,7 @@ export const sortByQueryMiddleware: RequestHandler = (req, res, next) => {
 			throw new UnexpectedError(validationError.constraints?.workflowSortBy ?? '');
 		}
 
-		if (isListQueryRequest(listQueryReq)) {
-			listQueryReq.listQueryOptions = { ...listQueryReq.listQueryOptions, sortBy };
-		}
+		appendListQueryOptions(listQueryReq, { sortBy });
 
 		next();
 	} catch (maybeError) {

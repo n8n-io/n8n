@@ -1,7 +1,6 @@
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { GlobalConfig } from '@n8n/config';
 import { type BooleanLicenseFeature } from '@n8n/constants';
-import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import type {
 	AccessScope,

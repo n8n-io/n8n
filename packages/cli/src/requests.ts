@@ -51,6 +51,11 @@ export namespace ListQuery {
 	};
 }
 
+export function appendListQueryOptions(req: Request, options: ListQuery.Options) {
+	const listQueryReq = req as unknown as ListQuery.Request;
+	listQueryReq.listQueryOptions = { ...listQueryReq.listQueryOptions, ...options };
+}
+
 export function isListQueryRequest(req: Request): req is ListQuery.Request {
 	return 'listQueryOptions' in req;
 }

@@ -40,7 +40,7 @@ type ListSearchMethod = (
 type LoadOptionsMethod = (this: ILoadOptionsFunctions) => Promise<INodePropertyOptions[]>;
 type ActionHandlerMethod = (
 	this: ILoadOptionsFunctions,
-	payload?: string,
+	payload?: string | IDataObject,
 ) => Promise<NodeParameterValueType>;
 type ResourceMappingMethod = (this: ILoadOptionsFunctions) => Promise<ResourceMapperFields>;
 
@@ -262,9 +262,8 @@ export class DynamicNodeParametersService {
 		const method = this.getMethod('actionHandler', handler, nodeType);
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
-		const stringPayload = typeof payload === 'string' ? payload : undefined;
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-		return await method.call(thisArgs, stringPayload);
+		return await method.call(thisArgs, payload);
 	}
 
 	private getMethod(

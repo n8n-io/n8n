@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'express';
 
-import { isListQueryRequest } from '@/requests';
+import { appendListQueryOptions } from '@/requests';
 import * as ResponseHelper from '@/response-helper';
 import { toError } from '@/utils';
 
@@ -31,9 +31,7 @@ export const filterListQueryMiddleware: RequestHandler = async (req, res, next) 
 
 		if (Object.keys(filter).length === 0) return next();
 
-		if (isListQueryRequest(listQueryReq)) {
-			listQueryReq.listQueryOptions = { ...listQueryReq.listQueryOptions, filter };
-		}
+		appendListQueryOptions(listQueryReq, { filter });
 
 		next();
 	} catch (maybeError) {

@@ -1,7 +1,19 @@
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 
-import type { PushRequest } from './types';
+import type { PushRequest, PushResponse, SSEPushRequest, WebSocketPushRequest } from './types';
 
 export function isPushRequest(req: Request): req is PushRequest {
-	return 'pushRef' in req.query;
+	return 'pushRef' in req.query && typeof req.query.pushRef === 'string';
+}
+
+export function isSSEPushRequest(req: Request): req is SSEPushRequest {
+	return isPushRequest(req) && 'ws' in req && req.ws === undefined;
+}
+
+export function isWebSocketPushRequest(req: Request): req is WebSocketPushRequest {
+	return isPushRequest(req) && 'ws' in req && req.ws !== undefined;
+}
+
+export function isPushResponse(res: Response): res is PushResponse {
+	return 'req' in res && isPushRequest(res.req);
 }
