@@ -133,6 +133,7 @@ jobs:
       use-custom-orchestration: true
       pre-generated-matrix: ${{ needs.prepare.outputs.matrix }}
       n8n-env: ${{ inputs.n8n-env }}
+      upload-failure-artifacts: true
     secrets: inherit
 
   # Community PR tests: Local mode with SQLite (no container building, no secrets required)
