@@ -21,7 +21,6 @@ import {
 } from './tracing-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
-import { traceWorkingMemoryContext } from '../../runtime/working-memory-tracing';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import {
 	buildAgentTraceInputs,
@@ -154,24 +153,14 @@ export async function startDataTableAgentTask(
 				const traceParent = getTraceParentRun();
 				return await withTraceParentContext(traceParent, async () => {
 					const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
-					const stream = await traceWorkingMemoryContext(
-						{
-							phase: 'initial',
-							agentId: subAgentId,
-							agentRole: 'data-table-manager',
-							threadId: context.threadId,
-							input: briefing,
+					const stream = await subAgent.stream(briefing, {
+						maxSteps: DATA_TABLE_MAX_STEPS,
+						abortSignal: signal,
+						providerOptions: {
+							anthropic: { cacheControl: { type: 'ephemeral' } },
 						},
-						async () =>
-							await subAgent.stream(briefing, {
-								maxSteps: DATA_TABLE_MAX_STEPS,
-								abortSignal: signal,
-								providerOptions: {
-									anthropic: { cacheControl: { type: 'ephemeral' } },
-								},
-								...(llmStepTraceHooks?.executionOptions ?? {}),
-							}),
-					);
+						...(llmStepTraceHooks?.executionOptions ?? {}),
+					});
 
 					const hitlResult = await consumeStreamWithHitl({
 						agent: subAgent,
@@ -188,7 +177,6 @@ export async function startDataTableAgentTask(
 						abortSignal: signal,
 						waitForConfirmation: context.waitForConfirmation,
 						llmStepTraceHooks,
-						workingMemoryEnabled: false,
 					});
 
 					return await hitlResult.text;

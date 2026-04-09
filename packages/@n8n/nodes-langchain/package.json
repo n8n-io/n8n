@@ -121,6 +121,7 @@
       "dist/nodes/llms/LmChatGoogleVertex/LmChatGoogleVertex.node.js",
       "dist/nodes/llms/LmChatGroq/LmChatGroq.node.js",
       "dist/nodes/llms/LmChatMistralCloud/LmChatMistralCloud.node.js",
+      "dist/nodes/llms/LmChatMoonshot/LmChatMoonshot.node.js",
       "dist/nodes/llms/LMChatLemonade/LmChatLemonade.node.js",
       "dist/nodes/llms/LMChatOllama/LmChatOllama.node.js",
       "dist/nodes/llms/LmChatOpenRouter/LmChatOpenRouter.node.js",
