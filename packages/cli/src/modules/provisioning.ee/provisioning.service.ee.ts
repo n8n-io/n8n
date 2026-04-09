@@ -411,6 +411,18 @@ export class ProvisioningService {
 		return provisioningConfig.scopesUseExpressionMapping;
 	}
 
+	async isInstanceRoleManaged(): Promise<boolean> {
+		return (
+			(await this.isInstanceRoleProvisioningEnabled()) || (await this.isExpressionMappingEnabled())
+		);
+	}
+
+	async isProjectRoleManaged(): Promise<boolean> {
+		return (
+			(await this.isProjectRolesProvisioningEnabled()) || (await this.isExpressionMappingEnabled())
+		);
+	}
+
 	private async buildRoleMappingConfig(): Promise<RoleMappingConfig> {
 		const dbRules = await this.roleMappingRuleRepository.find({
 			relations: ['role', 'projects'],

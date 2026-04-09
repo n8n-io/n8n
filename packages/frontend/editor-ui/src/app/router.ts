@@ -719,6 +719,7 @@ export const routes: RouteRecordRaw[] = [
 								'credentialResolver:update',
 								'credentialResolver:delete',
 							],
+							options: { mode: 'allOf' },
 						},
 						custom: () => {
 							const { isEnabled } = useDynamicCredentials();
