@@ -149,6 +149,94 @@ describe('makeOverrideValue', () => {
 		expect(result).toBeDefined();
 		expect(result?.extraPropValues.description).not.toBeDefined();
 	});
+
+	// GHC-7665: $fromAI button should appear for fields named "name" in AI Agent tool mode
+	describe('GHC-7665: parameter name "name" should support fromAI override', () => {
+		beforeEach(() => {
+			getNodeType.mockReturnValue(AI_NODE_TYPE);
+		});
+
+		it('should create fromAI override for parameter named "title"', () => {
+			const context: OverrideContext = {
+				parameter: {
+					name: 'title',
+					displayName: 'Page Title',
+					type: 'string',
+				},
+				value: '',
+				path: 'parameters.title',
+			};
+
+			const result = makeOverrideValue(context, mockNodeFromType(AI_NODE_TYPE));
+
+			expect(result).not.toBeNull();
+			expect(result?.type).toEqual('fromAI');
+		});
+
+		it('should create fromAI override for parameter named "page_title"', () => {
+			const context: OverrideContext = {
+				parameter: {
+					name: 'page_title',
+					displayName: 'Page Title (AI)',
+					type: 'string',
+				},
+				value: '',
+				path: 'parameters.page_title',
+			};
+
+			const result = makeOverrideValue(context, mockNodeFromType(AI_NODE_TYPE));
+
+			expect(result).not.toBeNull();
+			expect(result?.type).toEqual('fromAI');
+		});
+
+		it('should create fromAI override for parameter named "name" - REGRESSION TEST', () => {
+			const context: OverrideContext = {
+				parameter: {
+					name: 'name',
+					displayName: 'Name',
+					type: 'string',
+				},
+				value: '',
+				path: 'parameters.name',
+			};
+
+			const result = makeOverrideValue(context, mockNodeFromType(AI_NODE_TYPE));
+
+			// This test demonstrates the bug: currently returns null but should return a fromAI override
+			expect(result).not.toBeNull();
+			expect(result?.type).toEqual('fromAI');
+		});
+
+		it('should treat "name" parameter consistently with other string parameters', () => {
+			const nameContext: OverrideContext = {
+				parameter: {
+					name: 'name',
+					displayName: 'Name',
+					type: 'string',
+				},
+				value: '',
+				path: 'parameters.name',
+			};
+
+			const titleContext: OverrideContext = {
+				parameter: {
+					name: 'title',
+					displayName: 'Title',
+					type: 'string',
+				},
+				value: '',
+				path: 'parameters.title',
+			};
+
+			const nameResult = makeOverrideValue(nameContext, mockNodeFromType(AI_NODE_TYPE));
+			const titleResult = makeOverrideValue(titleContext, mockNodeFromType(AI_NODE_TYPE));
+
+			// Both should have the same behavior - either both null or both have fromAI override
+			// Currently fails: nameResult is null while titleResult is not null
+			expect(nameResult).toEqual(titleResult);
+		});
+	});
 });
 
 describe('FromAiOverride', () => {
