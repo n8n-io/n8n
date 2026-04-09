@@ -106,7 +106,6 @@ export class ExecutionData implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const dataProxy = this.getWorkflowDataProxy(0);
 		const nodeVersion = this.getNode().typeVersion;
 
 		const items = this.getInputData();
@@ -129,7 +128,7 @@ export class ExecutionData implements INodeType {
 						{} as { [key: string]: string },
 					);
 
-					dataProxy.$execution.customData.setAll(values);
+					this.customData.setAll(values);
 
 					returnData.push(items[i]);
 				} catch (error) {

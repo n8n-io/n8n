@@ -188,6 +188,15 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 				return nextGraph;
 			}
 
+			// All tasks settled (succeeded/cancelled mix) but none are planned or running —
+			// treat as completed so the orchestrator can synthesize partial results.
+			const hasWorkLeft = graph.tasks.some((t) => t.status === 'planned' || t.status === 'running');
+			if (graph.tasks.length > 0 && !hasWorkLeft) {
+				const nextGraph: PlannedTaskGraph = { ...graph, status: 'completed' };
+				action = { type: 'synthesize', graph: nextGraph };
+				return nextGraph;
+			}
+
 			const availableSlots = options.availableSlots ?? graph.tasks.length;
 			if (availableSlots <= 0) {
 				action = { type: 'none', graph };

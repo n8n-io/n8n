@@ -40,6 +40,8 @@ tags:
     description: Operations about community packages
   - name: Discover
     description: API capability discovery
+  - name: Insights
+    description: Operations about insights
 
 paths:
   /audit:
@@ -124,6 +126,8 @@ paths:
     $ref: './handlers/community-packages/spec/paths/community-packages.packageName.yml'
   /discover:
     $ref: './handlers/discover/spec/paths/discover.yml'
+  /insights/summary:
+    $ref: './handlers/insights/spec/paths/insights.yml'
 components:
   schemas:
     $ref: './shared/spec/schemas/_index.yml'

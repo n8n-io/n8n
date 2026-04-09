@@ -58,7 +58,7 @@ graph TB
         Service -->|auto-detect| FSProvider{Provider}
         FSProvider -->|bare metal| LocalFS[LocalFilesystemProvider]
         FSProvider -->|container/cloud| Gateway[LocalGateway]
-        Gateway -->|SSE + HTTP POST| Daemon["@n8n/fs-proxy daemon"]
+        Gateway -->|SSE + HTTP POST| Daemon["@n8n/computer-use daemon"]
     end
 
     subgraph n8n ["n8n Services"]

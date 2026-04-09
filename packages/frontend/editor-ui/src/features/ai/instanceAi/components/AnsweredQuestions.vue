@@ -6,7 +6,7 @@
  * after the user submits answers via the questions wizard.
  * Styled to match the AI builder's UserAnswersMessage.
  */
-import { N8nText } from '@n8n/design-system';
+import { N8nCard, N8nText } from '@n8n/design-system';
 import type { InstanceAiToolCallState } from '@n8n/api-types';
 
 const props = defineProps<{
@@ -48,25 +48,18 @@ function getAnswers(): DisplayAnswer[] {
 </script>
 
 <template>
-	<div :class="$style.container" data-test-id="instance-ai-answered-questions">
+	<N8nCard data-test-id="instance-ai-answered-questions">
 		<div v-for="(item, idx) in getAnswers()" :key="idx" :class="$style.answerItem">
-			<N8nText :bold="true" :class="$style.question">
+			<N8nText :bold="true" size="large" :class="$style.question">
 				{{ item.question }}
 			</N8nText>
-			<N8nText v-if="item.skipped" :class="$style.skipped">Skipped</N8nText>
-			<N8nText v-else>{{ item.answer }}</N8nText>
+			<N8nText v-if="item.skipped" :class="$style.skipped" size="large">Skipped</N8nText>
+			<N8nText v-else size="large">{{ item.answer }}</N8nText>
 		</div>
-	</div>
+	</N8nCard>
 </template>
 
 <style lang="scss" module>
-.container {
-	background-color: var(--color--background);
-	border-radius: var(--radius--lg);
-	padding: var(--spacing--sm);
-	margin: var(--spacing--2xs) 0;
-}
-
 .answerItem {
 	display: flex;
 	flex-direction: column;

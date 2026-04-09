@@ -551,6 +551,38 @@ describe('instanceAi.reducer', () => {
 
 			expect(runState).toBeUndefined();
 		});
+
+		test('rebuildRunStateFromTree preserves planItems', () => {
+			const runState = rebuildRunStateFromTree({
+				agentId: 'agent-root',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+				planItems: [
+					{
+						id: 'task-1',
+						title: 'Build workflow',
+						kind: 'build-workflow',
+						spec: 'Create the workflow',
+						deps: [],
+					},
+				],
+			});
+
+			expect(runState?.agentsById['agent-root']?.planItems).toEqual([
+				{
+					id: 'task-1',
+					title: 'Build workflow',
+					kind: 'build-workflow',
+					spec: 'Create the workflow',
+					deps: [],
+				},
+			]);
+		});
 	});
 
 	// -----------------------------------------------------------------------

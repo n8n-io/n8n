@@ -14,6 +14,15 @@ export { AiSessionRetrievalRequestDto } from './ai/ai-session-retrieval-request.
 export { AiUsageSettingsRequestDto } from './ai/ai-usage-settings-request.dto';
 export { AiTruncateMessagesRequestDto } from './ai/ai-truncate-messages-request.dto';
 export { AiClearSessionRequestDto } from './ai/ai-clear-session-request.dto';
+export type {
+	AiGatewayConfigDto,
+	AiGatewayProviderConfigEntry,
+} from './ai/ai-gateway-config-response.dto';
+export { AiGatewayUsageQueryDto } from './ai/ai-gateway-usage-response.dto';
+export type {
+	AiGatewayUsageEntry,
+	AiGatewayUsageResponse,
+} from './ai/ai-gateway-usage-response.dto';
 
 export { InstanceAiConfirmRequestDto } from './instance-ai/instance-ai-confirm-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
@@ -82,6 +91,11 @@ export { CredentialsGetOneRequestQuery } from './credentials/credentials-get-one
 export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-many-request.dto';
 export { GenerateCredentialNameRequestQuery } from './credentials/generate-credential-name.dto';
 
+export {
+	MAX_PINNED_DATA_SIZE,
+	MAX_WORKFLOW_SIZE,
+	MAX_EXPECTED_REQUEST_SIZE,
+} from './workflows/base-workflow.dto';
 export { CreateWorkflowDto } from './workflows/create-workflow.dto';
 export { UpdateWorkflowDto } from './workflows/update-workflow.dto';
 export { ImportWorkflowFromUrlDto } from './workflows/import-workflow-from-url.dto';
@@ -200,3 +214,6 @@ export {
 	ExecutionRedactionQueryDtoSchema,
 	type ExecutionRedactionQueryDto,
 } from './executions/execution-redaction-query.dto';
+
+export { VersionSinceDateQueryDto } from './instance-version-history/version-since-date-query.dto';
+export { VersionQueryDto } from './instance-version-history/version-query.dto';

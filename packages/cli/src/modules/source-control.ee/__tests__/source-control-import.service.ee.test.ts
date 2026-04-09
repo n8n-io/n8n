@@ -32,6 +32,7 @@ import type { DataTableColumnRepository } from '@/modules/data-table/data-table-
 import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
 
 import { SourceControlImportService } from '../source-control-import.service.ee';
+import type { SourceControlContextFactory } from '../source-control-context.factory';
 import type { SourceControlScopedService } from '../source-control-scoped.service';
 import type { ExportableFolder } from '../types/exportable-folders';
 import type { ExportableProject } from '../types/exportable-project';
@@ -41,18 +42,6 @@ import type { WorkflowHistoryService } from '@/workflows/workflow-history/workfl
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 jest.mock('fast-glob');
-
-const globalAdminContext = new SourceControlContext(
-	Object.assign(new User(), {
-		role: GLOBAL_ADMIN_ROLE,
-	}),
-);
-
-const globalMemberContext = new SourceControlContext(
-	Object.assign(new User(), {
-		role: GLOBAL_MEMBER_ROLE,
-	}),
-);
 
 describe('SourceControlImportService', () => {
 	const workflowRepository = mock<WorkflowRepository>();
@@ -66,6 +55,7 @@ describe('SourceControlImportService', () => {
 	const credentialsRepository = mock<CredentialsRepository>();
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const mockLogger = mock<Logger>();
+	const sourceControlContextFactory = mock<SourceControlContextFactory>();
 	const sourceControlScopedService = mock<SourceControlScopedService>();
 	const variableService = mock<VariablesService>();
 	const variablesRepository = mock<VariablesRepository>();
@@ -74,6 +64,13 @@ describe('SourceControlImportService', () => {
 	const dataTableRepository = mock<DataTableRepository>();
 	const dataTableColumnRepository = mock<DataTableColumnRepository>();
 	const dataTableDDLService = mock<DataTableDDLService>();
+
+	const globalAdminContext = new SourceControlContext(
+		Object.assign(new User(), { role: GLOBAL_ADMIN_ROLE }),
+		[],
+		[],
+	);
+
 	const service = new SourceControlImportService(
 		mockLogger,
 		mock(),
@@ -93,6 +90,7 @@ describe('SourceControlImportService', () => {
 		mock(),
 		folderRepository,
 		mock<InstanceSettings>({ n8nFolder: '/mock/n8n' }),
+		sourceControlContextFactory,
 		sourceControlScopedService,
 		workflowHistoryService,
 		dataTableRepository,
@@ -121,7 +119,6 @@ describe('SourceControlImportService', () => {
 			};
 
 			fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
-			sourceControlScopedService.getAuthorizedProjectsFromContext.mockResolvedValueOnce([]);
 
 			const result = await service.getRemoteVersionIdsFromFiles(globalAdminContext);
 			expect(fsReadFile).toHaveBeenCalledWith(mockWorkflowFile, { encoding: 'utf8' });
@@ -2053,17 +2050,17 @@ describe('SourceControlImportService', () => {
 					],
 				};
 
-				sourceControlScopedService.getAuthorizedProjectsFromContext.mockResolvedValue([
-					Object.assign(new Project(), {
-						id: 'project1',
-					}),
-					Object.assign(new Project(), {
-						id: 'project3',
-					}),
-				]);
+				const memberWithProjects = new SourceControlContext(
+					Object.assign(new User(), { role: GLOBAL_MEMBER_ROLE }),
+					[
+						Object.assign(new Project(), { id: 'project1' }),
+						Object.assign(new Project(), { id: 'project3' }),
+					],
+					[],
+				);
 				fsReadFile.mockResolvedValue(JSON.stringify(mockFoldersData));
 
-				const result = await service.getRemoteFoldersAndMappingsFromFile(globalMemberContext);
+				const result = await service.getRemoteFoldersAndMappingsFromFile(memberWithProjects);
 
 				expect(result.folders).toEqual(foldersToFind);
 			});
@@ -2487,12 +2484,14 @@ describe('SourceControlImportService', () => {
 					.mockResolvedValueOnce(JSON.stringify(mockProjectData2));
 
 				// Only allow access to project2
-				sourceControlScopedService.getAuthorizedProjectsFromContext.mockResolvedValue([
-					mock<Project>({ id: mockProjectData2.id, type: 'team' }),
-				]);
+				const memberWithProject2 = new SourceControlContext(
+					Object.assign(new User(), { role: GLOBAL_MEMBER_ROLE }),
+					[mock<Project>({ id: mockProjectData2.id, type: 'team' })],
+					[],
+				);
 
 				// ACT
-				const result = await service.getRemoteProjectsFromFiles(globalMemberContext);
+				const result = await service.getRemoteProjectsFromFiles(memberWithProject2);
 
 				// ASSERT
 				expect(fsReadFile).toHaveBeenCalledTimes(2);

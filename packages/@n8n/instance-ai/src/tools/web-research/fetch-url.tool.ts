@@ -10,22 +10,24 @@ import {
 } from '../../domain-access';
 import type { InstanceAiContext } from '../../types';
 
+export const fetchUrlInputSchema = z.object({
+	url: z.string().url().describe('URL of the page to fetch'),
+	maxContentLength: z
+		.number()
+		.int()
+		.positive()
+		.max(100_000)
+		.default(30_000)
+		.optional()
+		.describe('Maximum content length in characters (default 30000)'),
+});
+
 export function createFetchUrlTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'fetch-url',
 		description:
 			'Fetch a web page and extract its content as markdown. Use for reading documentation pages, API references, or guides from known URLs.',
-		inputSchema: z.object({
-			url: z.string().url().describe('URL of the page to fetch'),
-			maxContentLength: z
-				.number()
-				.int()
-				.positive()
-				.max(100_000)
-				.default(30_000)
-				.optional()
-				.describe('Maximum content length in characters (default 30000)'),
-		}),
+		inputSchema: fetchUrlInputSchema,
 		outputSchema: z.object({
 			url: z.string(),
 			finalUrl: z.string(),
@@ -42,7 +44,7 @@ export function createFetchUrlTool(context: InstanceAiContext) {
 		}),
 		suspendSchema: domainGatingSuspendSchema,
 		resumeSchema: domainGatingResumeSchema,
-		execute: async (input, ctx) => {
+		execute: async (input: z.infer<typeof fetchUrlInputSchema>, ctx) => {
 			if (!context.webResearchService) {
 				return {
 					url: input.url,
@@ -54,7 +56,10 @@ export function createFetchUrlTool(context: InstanceAiContext) {
 				};
 			}
 
-			const { resumeData, suspend } = ctx?.agent ?? {};
+			const resumeData = ctx?.agent?.resumeData as
+				| z.infer<typeof domainGatingResumeSchema>
+				| undefined;
+			const suspend = ctx?.agent?.suspend;
 
 			// ── Resume path: apply user's domain decision ──────────────────
 			if (resumeData !== undefined && resumeData !== null) {
@@ -91,6 +96,17 @@ export function createFetchUrlTool(context: InstanceAiContext) {
 					runId: context.runId,
 				});
 				if (!check.allowed) {
+					// Blocked by admin — deny immediately without approval prompt
+					if (check.blocked) {
+						return {
+							url: input.url,
+							finalUrl: input.url,
+							title: '',
+							content: 'Action blocked by admin.',
+							truncated: false,
+							contentLength: 0,
+						};
+					}
 					await suspend?.(check.suspendPayload!);
 					// suspend() never resolves — this satisfies the type checker
 					return {
@@ -118,10 +134,11 @@ export function createFetchUrlTool(context: InstanceAiContext) {
 					runId: context.runId,
 				});
 				if (!redirectCheck.allowed) {
-					throw new Error(
-						`Redirect to ${new URL(targetUrl).hostname} requires approval. ` +
-							`Retry with the direct URL: ${targetUrl}`,
-					);
+					const reason = redirectCheck.blocked
+						? `Access to ${new URL(targetUrl).hostname} is blocked by admin.`
+						: `Redirect to ${new URL(targetUrl).hostname} requires approval. ` +
+							`Retry with the direct URL: ${targetUrl}`;
+					throw new Error(reason);
 				}
 			};
 

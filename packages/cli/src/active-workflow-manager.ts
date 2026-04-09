@@ -41,6 +41,7 @@ import {
 	WorkflowActivationError,
 	WebhookPathTakenError,
 	UnexpectedError,
+	IsolateError,
 	ensureError,
 	createRunExecutionData,
 	validateWorkflowHasTriggerLikeNode,
@@ -571,6 +572,7 @@ export class ActiveWorkflowManager {
 	@OnLeaderStepdown()
 	@OnShutdown()
 	async removeAllTriggerAndPollerBasedWorkflows() {
+		this.removeAllQueuedWorkflowActivations();
 		await this.activeWorkflows.removeAllTriggerAndPollerBasedWorkflows();
 	}
 
@@ -777,6 +779,18 @@ export class ActiveWorkflowManager {
 			const error = ensureError(e);
 			const { message } = error;
 
+			if (error instanceof IsolateError) {
+				this.logger.warn(
+					`Isolate error activating workflow "${workflowId}", queuing for retry: "${message}"`,
+					{ workflowId },
+				);
+
+				const dbWorkflow = await this.workflowRepository.findById(workflowId);
+				if (dbWorkflow) this.addQueuedWorkflowActivation(activationMode, dbWorkflow);
+
+				return;
+			}
+
 			await this.workflowRepository.update(workflowId, { active: false, activeVersionId: null });
 
 			this.push.broadcast({
@@ -838,11 +852,11 @@ export class ActiveWorkflowManager {
 				workflowName,
 			});
 			try {
-				await this.add(workflowId, activationMode, workflowData);
+				await this.add(workflowId, activationMode, workflowData, { shouldPublish: false });
 			} catch (error) {
 				this.errorReporter.error(error);
 				let lastTimeout = this.queuedActivations[workflowId].lastTimeout;
-				if (lastTimeout < WORKFLOW_REACTIVATE_MAX_TIMEOUT) {
+				if (!(error instanceof IsolateError) && lastTimeout < WORKFLOW_REACTIVATE_MAX_TIMEOUT) {
 					lastTimeout = Math.min(lastTimeout * 2, WORKFLOW_REACTIVATE_MAX_TIMEOUT);
 				}
 

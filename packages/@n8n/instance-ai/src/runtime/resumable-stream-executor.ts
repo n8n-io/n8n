@@ -40,6 +40,9 @@ export interface AutoResumeControl {
 	mode: 'auto';
 	waitForConfirmation: (requestId: string) => Promise<Record<string, unknown>>;
 	drainCorrections?: () => string[];
+	/** Returns a promise that resolves when a new user correction is queued. Used to unblock
+	 *  HITL suspensions so the builder can incorporate the correction instead of waiting forever. */
+	waitForCorrection?: () => Promise<void>;
 	onSuspension?: (suspension: SuspensionInfo) => void;
 	buildResumeOptions?: (input: {
 		mastraRunId: string;
@@ -59,8 +62,10 @@ export interface ExecuteResumableStreamOptions {
 	workingMemoryEnabled?: boolean;
 }
 
+export type TraceStatus = 'completed' | 'cancelled' | 'suspended' | 'errored';
+
 export interface ExecuteResumableStreamResult {
-	status: 'completed' | 'cancelled' | 'suspended' | 'errored';
+	status: TraceStatus;
 	mastraRunId: string;
 	text?: Promise<string>;
 	suspension?: SuspensionInfo;
@@ -80,7 +85,7 @@ export interface LlmStepTraceHooks {
 	finalize: (
 		source: ResumableStreamSource,
 		options?: {
-			status?: 'completed' | 'cancelled' | 'suspended';
+			status?: TraceStatus;
 			error?: string;
 		},
 	) => Promise<void>;
@@ -1228,7 +1233,7 @@ async function finishSyntheticToolTrace(
 
 async function finalizeSyntheticToolTraces(
 	records: Map<string, SyntheticToolTraceRecord>,
-	options?: { status?: 'completed' | 'cancelled' | 'suspended'; error?: string },
+	options?: { status?: TraceStatus; error?: string },
 ): Promise<void> {
 	for (const record of records.values()) {
 		if (record.finished) {
@@ -1621,7 +1626,7 @@ export function createLlmStepTraceHooks(
 	const patchFinishedRecordIfNeeded = async (
 		record: LlmStepTraceRecord,
 		stepResult: StepResultLike | undefined,
-		options?: { status?: 'completed' | 'cancelled' | 'suspended'; error?: string },
+		options?: { status?: TraceStatus; error?: string },
 	): Promise<void> => {
 		const metadata = {
 			...(record.runTree.metadata ?? {}),
@@ -1842,7 +1847,7 @@ export function createLlmStepTraceHooks(
 async function finalizeLlmStepTraces(
 	source: ResumableStreamSource,
 	records: LlmStepTraceRecord[],
-	options?: { status?: 'completed' | 'cancelled' | 'suspended'; error?: string },
+	options?: { status?: TraceStatus; error?: string },
 ): Promise<void> {
 	const parentRun = getTraceParentRun();
 	const resolvedSteps = await source.steps?.then(
@@ -2028,17 +2033,18 @@ export async function executeResumableStream(
 			}
 		}
 
+		const traceStatus = suspension ? 'suspended' : hasError ? 'errored' : 'completed';
 		if (options.llmStepTraceHooks) {
 			await options.llmStepTraceHooks.finalize(activeSource, {
-				status: suspension ? 'suspended' : 'completed',
+				status: traceStatus,
 			});
 		} else {
 			await finalizeLlmStepTraces(activeSource, llmStepRecords, {
-				status: suspension ? 'suspended' : 'completed',
+				status: traceStatus,
 			});
 		}
 		await finalizeSyntheticToolTraces(syntheticToolRecords, {
-			status: suspension ? 'suspended' : 'completed',
+			status: traceStatus,
 		});
 
 		if (options.context.signal.aborted) {
@@ -2059,9 +2065,13 @@ export async function executeResumableStream(
 			};
 		}
 
-		const resumeData = await waitForConfirmation(
+		const confirmationPromise =
+			pendingConfirmation ?? options.control.waitForConfirmation(suspension.requestId);
+		const resumeData = await waitForConfirmationOrCorrection(
 			options.context.signal,
-			pendingConfirmation ?? options.control.waitForConfirmation(suspension.requestId),
+			confirmationPromise,
+			options.control,
+			options.context,
 		);
 		const resumeOptions = options.control.buildResumeOptions?.({
 			mastraRunId: activeMastraRunId,
@@ -2144,6 +2154,44 @@ async function waitForConfirmation(
 			signal.removeEventListener('abort', abortHandler);
 		}
 	}
+}
+
+/**
+ * Race the HITL confirmation promise against an incoming user correction.
+ * When a correction arrives first, auto-confirm the suspended tool call with
+ * override data so the builder can resume and incorporate the correction.
+ */
+async function waitForConfirmationOrCorrection(
+	signal: AbortSignal,
+	confirmationPromise: Promise<Record<string, unknown>>,
+	control: AutoResumeControl,
+	context: ResumableStreamContext,
+): Promise<Record<string, unknown>> {
+	if (!control.waitForCorrection) {
+		return await waitForConfirmation(signal, confirmationPromise);
+	}
+
+	const correctionSentinel = Object.freeze({ __correctionOverride: true });
+	const raced = Promise.race([
+		confirmationPromise,
+		control.waitForCorrection().then(() => correctionSentinel as Record<string, unknown>),
+	]);
+
+	const result = await waitForConfirmation(signal, raced);
+
+	if (result === correctionSentinel) {
+		const corrections = control.drainCorrections?.() ?? [];
+		publishCorrections(context, corrections);
+		return {
+			__correctionOverride: true,
+			message:
+				'The user sent a correction while this tool was waiting for confirmation. ' +
+				'The confirmation has been skipped. Apply the correction and continue.',
+			corrections,
+		};
+	}
+
+	return result;
 }
 
 function isSameSuspension(left: SuspensionInfo, right: SuspensionInfo): boolean {
