@@ -39,6 +39,7 @@ import { getWorkflowId } from '@/app/components/MainHeader/utils';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import { useMoveResourceToProjectToast } from '@/features/collaboration/projects/composables/useMoveResourceToProjectToast';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const props = defineProps<{
 	workflowPermissions: PermissionsRecord['workflow'];
@@ -68,6 +69,7 @@ const workflowHelpers = useWorkflowHelpers();
 const moveWorkflowEventBus = createEventBus<WorkflowListEventMap>();
 const { showMoveToProjectToast } = useMoveResourceToProjectToast();
 const workflowTelemetry = useTelemetry();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const onWorkflowPage = computed(() => {
 	return route.meta && (route.meta.nodeView || route.meta.keepWorkflowAlive === true);
@@ -239,7 +241,9 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			const workflowId = getWorkflowId(props.id, route.params.name);
 			if (!workflowId) return;
 
-			const workflowDescription = workflowsListStore.getWorkflowById(workflowId).description;
+			const workflowDescription =
+				workflowDocumentStore?.value?.description ??
+				workflowsListStore.getWorkflowById(workflowId).description;
 			uiStore.openModalWithData({
 				name: WORKFLOW_DESCRIPTION_MODAL_KEY,
 				data: {

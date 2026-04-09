@@ -7,6 +7,7 @@
 		"declarationMap": true,
 		"sourceMap": true,
 		"lib": ["ES2022"],
+		"types": ["node"],
 		"module": "NodeNext",
 		"moduleResolution": "NodeNext",
 		"target": "ES2022",

@@ -104,7 +104,7 @@ export declare namespace WorkflowRequest {
 		}
 	>;
 
-	type Create = AuthenticatedRequest<{}, {}, WorkflowEntity, {}>;
+	type Create = AuthenticatedRequest<{}, {}, WorkflowEntity & { projectId?: string }, {}>;
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { excludePinnedData?: boolean }>;
 	type Delete = Get;
 	type Update = AuthenticatedRequest<{ id: string }, {}, WorkflowEntity, {}>;
@@ -197,6 +197,19 @@ export declare namespace CredentialRequest {
 	type Transfer = AuthenticatedRequest<{ id: string }, {}, { destinationProjectId: string }>;
 }
 
+export declare namespace InsightsRequest {
+	type GetSummary = AuthenticatedRequest<
+		{},
+		{},
+		{},
+		{
+			startDate?: string;
+			endDate?: string;
+			projectId?: string;
+		}
+	>;
+}
+
 export type OperationID = 'getUsers' | 'getUser';
 
 type PaginationBase = { limit: number };
@@ -282,6 +295,17 @@ export declare namespace DataTableRequest {
 			dryRun?: string | boolean;
 		}
 	>;
+}
+
+// ----------------------------------
+//           /community-packages
+// ----------------------------------
+
+export declare namespace CommunityPackageRequest {
+	type Install = AuthenticatedRequest<{}, {}, { name: string; version?: string }>;
+	type List = AuthenticatedRequest;
+	type Update = AuthenticatedRequest<{ name: string }, {}, { version?: string }>;
+	type Uninstall = AuthenticatedRequest<{ name: string }>;
 }
 
 // ----------------------------------

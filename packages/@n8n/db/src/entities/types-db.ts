@@ -127,6 +127,7 @@ export interface PublicUser {
 	featureFlags?: FeatureFlags; // External type from n8n-workflow
 	lastActiveAt?: Date | null;
 	mfaAuthenticated?: boolean;
+	isManagedByEnv?: boolean;
 }
 
 export type UserSettings = Pick<User, 'id' | 'settings'>;
@@ -306,7 +307,7 @@ export const enum StatisticsNames {
 	dataLoaded = 'data_loaded',
 }
 
-const ALL_AUTH_PROVIDERS = z.enum(['ldap', 'email', 'saml', 'oidc']);
+const ALL_AUTH_PROVIDERS = z.enum(['ldap', 'email', 'saml', 'oidc', 'token-exchange']);
 
 export type AuthProviderType = z.infer<typeof ALL_AUTH_PROVIDERS>;
 

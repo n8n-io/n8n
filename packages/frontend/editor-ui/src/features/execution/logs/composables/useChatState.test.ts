@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { nextTick } from 'vue';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
@@ -62,7 +62,7 @@ describe('useChatState', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let logsStore: ReturnType<typeof useLogsStore>;
 	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
-	let mockRunWorkflow: ReturnType<typeof vi.fn>;
+	let mockRunWorkflow: Mock;
 
 	// Mock node type that mirrors the real ChatTrigger structure:
 	// - Multiple 'options' collections with displayOptions at the collection level

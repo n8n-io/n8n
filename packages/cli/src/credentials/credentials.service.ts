@@ -34,18 +34,10 @@ import {
 	displayParameter,
 	isExpression,
 	isINodePropertyCollection,
+	jsonParse,
+	jsonStringify,
 	NodeHelpers,
 } from 'n8n-workflow';
-
-import {
-	CredentialDependencyService,
-	type CredentialDependencyFilter,
-} from './credential-dependency.service';
-import { CredentialsFinderService } from './credentials-finder.service';
-import {
-	validateAccessToReferencedSecretProviders,
-	validateExternalSecretsPermissions,
-} from './validation';
 
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity, CredentialsHelper } from '@/credentials-helper';
@@ -63,6 +55,19 @@ import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
+
+import {
+	CredentialDependencyService,
+	type CredentialDependencyFilter,
+} from './credential-dependency.service';
+import { CredentialsFinderService } from './credentials-finder.service';
+import {
+	validateAccessToReferencedSecretProviders,
+	validateExternalSecretsPermissions,
+} from './validation';
+
+/** Sentinel placed at every leaf of a redacted httpCustomAuth JSON shape */
+const CUSTOM_AUTH_JSON_REDACTED_VALUE = '***';
 
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
@@ -609,7 +614,11 @@ export class CredentialsService {
 
 		const mergedData = deepCopy(data);
 		if (mergedData.data) {
-			mergedData.data = this.unredact(mergedData.data, decryptedData);
+			mergedData.data = this.unredact(
+				mergedData.data,
+				decryptedData,
+				this.getCredentialTypeProperties(existingCredential.type),
+			);
 		}
 
 		// This saves us a merge but requires some type casting. These
@@ -826,15 +835,13 @@ export class CredentialsService {
 			return props;
 		};
 		const properties = getExtendedProps(credType);
-		const redacted = this.redactValues(copiedData, properties, credential.type);
-		return redacted;
+		return this.redactValues(copiedData, properties);
 	}
 
 	private redactValues(
 		data: ICredentialDataDecryptedObject,
 		props: INodeProperties[],
-		credentialType?: string,
-	) {
+	): ICredentialDataDecryptedObject {
 		for (const dataKey of Object.keys(data)) {
 			// The frontend only cares that this value isn't falsy.
 			if (dataKey === 'oauthTokenData' || dataKey === 'csrfSecret') {
@@ -869,15 +876,22 @@ export class CredentialsService {
 				} else {
 					data[dataKey] = CREDENTIAL_EMPTY_VALUE;
 				}
+				continue;
 			}
-		}
 
-		// Custom Auth: mask JSON after save (not marked as secret; redacted by type + field)
-		if (credentialType === 'httpCustomAuth' && 'json' in data) {
-			data.json =
-				data.json && String(data.json).length > 0
-					? CREDENTIAL_BLANKING_VALUE
-					: CREDENTIAL_EMPTY_VALUE;
+			if (prop.typeOptions?.redactJsonLeaves) {
+				const jsonStr = String(data[dataKey] ?? '');
+				if (!jsonStr) {
+					data[dataKey] = CREDENTIAL_EMPTY_VALUE;
+				} else {
+					try {
+						const parsed = jsonParse<unknown>(jsonStr);
+						data[dataKey] = JSON.stringify(this.redactJsonLeaves(parsed), null, 2);
+					} catch {
+						// Not parseable (e.g. an expression) — leave as-is
+					}
+				}
+			}
 		}
 
 		return data;
@@ -888,19 +902,52 @@ export class CredentialsService {
 		const values = data?.[collectionValuesKey];
 		if (Array.isArray(values)) {
 			for (let i = 0; i < values.length; i++) {
-				values[i] = this.redactValues(
-					values[i] as ICredentialDataDecryptedObject,
-					option.values,
-					undefined,
-				);
+				values[i] = this.redactValues(values[i] as ICredentialDataDecryptedObject, option.values);
 			}
 		} else if (typeof values === 'object' && values !== null) {
 			data[collectionValuesKey] = this.redactValues(
 				values as ICredentialDataDecryptedObject,
 				option.values,
-				undefined,
 			);
 		}
+	}
+
+	private redactJsonLeaves(obj: unknown): unknown {
+		if (Array.isArray(obj)) return obj.map((item) => this.redactJsonLeaves(item));
+		if (typeof obj === 'object' && obj !== null) {
+			return Object.fromEntries(
+				Object.entries(obj as Record<string, unknown>).map(([k, v]) => [
+					k,
+					this.redactJsonLeaves(v),
+				]),
+			);
+		}
+		return CUSTOM_AUTH_JSON_REDACTED_VALUE;
+	}
+
+	private mergeRedactedJsonLeaves(newVal: unknown, savedVal: unknown): unknown {
+		if (newVal === CUSTOM_AUTH_JSON_REDACTED_VALUE) return savedVal;
+		if (Array.isArray(newVal) && Array.isArray(savedVal)) {
+			return newVal.map((item, i) => this.mergeRedactedJsonLeaves(item, savedVal[i]));
+		}
+		// Type mismatch involving arrays: user made a structural change — preserve new value as-is
+		if (Array.isArray(newVal) || Array.isArray(savedVal)) {
+			return newVal;
+		}
+		if (
+			typeof newVal === 'object' &&
+			newVal !== null &&
+			typeof savedVal === 'object' &&
+			savedVal !== null
+		) {
+			return Object.fromEntries(
+				Object.entries(newVal as Record<string, unknown>).map(([k, v]) => [
+					k,
+					this.mergeRedactedJsonLeaves(v, (savedVal as Record<string, unknown>)[k]),
+				]),
+			);
+		}
+		return newVal;
 	}
 
 	private unredactRestoreValues(unmerged: any, replacement: any) {
@@ -924,15 +971,38 @@ export class CredentialsService {
 		}
 	}
 
-	// Take unredacted data (probably from the DB) and merge it with
-	// redacted data to create an unredacted version.
+	getCredentialTypeProperties(credentialType: string): INodeProperties[] {
+		try {
+			return this.credentialTypes.getByName(credentialType).properties;
+		} catch {
+			return [];
+		}
+	}
+
+	// Take redacted data (e.g. from the frontend) and merge it with saved data to produce a
+	// fully unredacted version ready for saving or testing.
 	unredact(
 		redactedData: ICredentialDataDecryptedObject,
 		savedData: ICredentialDataDecryptedObject,
+		props: INodeProperties[] = [],
 	) {
-		// Replace any blank sentinel values with their saved version
+		// Replace field-level blank sentinels (CREDENTIAL_BLANKING_VALUE / CREDENTIAL_EMPTY_VALUE)
 		const mergedData = deepCopy(redactedData);
 		this.unredactRestoreValues(mergedData, savedData);
+
+		// Merge leaf-level *** sentinels for fields marked with typeOptions.redactJsonLeaves
+		for (const prop of props) {
+			if (!prop.typeOptions?.redactJsonLeaves) continue;
+			if (!(prop.name in mergedData) || !(prop.name in savedData)) continue;
+			try {
+				const newJson: unknown = jsonParse(String(mergedData[prop.name]));
+				const savedJson: unknown = jsonParse(String(savedData[prop.name]));
+				mergedData[prop.name] = jsonStringify(this.mergeRedactedJsonLeaves(newJson, savedJson));
+			} catch {
+				// Not parseable JSON — leave as-is
+			}
+		}
+
 		return mergedData;
 	}
 
