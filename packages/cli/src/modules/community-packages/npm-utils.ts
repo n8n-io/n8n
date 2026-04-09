@@ -19,6 +19,8 @@ const NPM_ERROR_PATTERNS = {
 interface NpmCommandOptions {
 	cwd?: string;
 	doNotHandleError?: boolean;
+	registry?: string;
+	authToken?: string;
 }
 
 interface NpmRequestOptions {
@@ -71,10 +73,21 @@ export async function executeNpmCommand(
 	args: string[],
 	options: NpmCommandOptions = {},
 ): Promise<string> {
-	const { cwd, doNotHandleError } = options;
+	const { cwd, doNotHandleError, registry, authToken } = options;
+
+	const registryArgs: string[] = [];
+	if (registry) {
+		const sanitized = sanitizeRegistryUrl(registry);
+		registryArgs.push(`--registry=${sanitized}`);
+		if (authToken) registryArgs.push(`--//${new URL(sanitized).host}/:_authToken=${authToken}`);
+	}
 
 	try {
-		const { stdout } = await asyncExecFile('npm', args, cwd ? { cwd } : undefined);
+		const { stdout } = await asyncExecFile(
+			'npm',
+			[...args, ...registryArgs],
+			cwd ? { cwd } : undefined,
+		);
 		return typeof stdout === 'string' ? stdout : stdout.toString();
 	} catch (error) {
 		if (doNotHandleError) {
@@ -155,7 +168,6 @@ export async function verifyIntegrity(
 	expectedIntegrity: string,
 	authToken?: string,
 ) {
-	const registrySanitized = sanitizeRegistryUrl(registryUrl);
 	const path = `${encodeURIComponent(packageName)}/${version}`;
 
 	try {
@@ -172,17 +184,10 @@ export async function verifyIntegrity(
 		return;
 	} catch (error) {
 		try {
-			const cliArgs = [
-				'view',
-				`${packageName}@${version}`,
-				'dist.integrity',
-				`--registry=${registrySanitized}`,
-				'--json',
-			];
-			if (authToken) {
-				cliArgs.push(`--//${new URL(registrySanitized).host}/:_authToken=${authToken}`);
-			}
-			const stdout = await executeNpmCommand(cliArgs, { doNotHandleError: true });
+			const stdout = await executeNpmCommand(
+				['view', `${packageName}@${version}`, 'dist.integrity', '--json'],
+				{ doNotHandleError: true, registry: registryUrl, authToken },
+			);
 
 			const integrity = jsonParse(stdout);
 			if (integrity !== expectedIntegrity) {
@@ -210,7 +215,6 @@ export async function checkIfVersionExistsOrThrow(
 	registryUrl: string,
 	authToken?: string,
 ): Promise<true> {
-	const registrySanitized = sanitizeRegistryUrl(registryUrl);
 	const path = `${encodeURIComponent(packageName)}/${version}`;
 
 	try {
@@ -218,17 +222,10 @@ export async function checkIfVersionExistsOrThrow(
 		return true;
 	} catch (error) {
 		try {
-			const cliArgs = [
-				'view',
-				`${packageName}@${version}`,
-				'version',
-				`--registry=${registrySanitized}`,
-				'--json',
-			];
-			if (authToken) {
-				cliArgs.push(`--//${new URL(registrySanitized).host}/:_authToken=${authToken}`);
-			}
-			const stdout = await executeNpmCommand(cliArgs, { doNotHandleError: true });
+			const stdout = await executeNpmCommand(
+				['view', `${packageName}@${version}`, 'version', '--json'],
+				{ doNotHandleError: true, registry: registryUrl, authToken },
+			);
 
 			// npm resolves dist-tags (e.g. "latest") to an actual version string,
 			// so any non-empty return value means the tag/version is resolvable.

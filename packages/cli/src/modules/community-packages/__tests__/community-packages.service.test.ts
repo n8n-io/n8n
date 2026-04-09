@@ -355,7 +355,6 @@ describe('CommunityPackagesService', () => {
 			'--install-strategy=shallow',
 			'--ignore-scripts=true',
 			'--package-lock=false',
-			`--registry=${testBlockRegistry}`,
 		].join(' ');
 
 		const execMockForThisBlock = ((...args: Parameters<typeof execFile>) => {
@@ -427,14 +426,14 @@ describe('CommunityPackagesService', () => {
 			expect(executeNpmCommand).toHaveBeenCalledTimes(2);
 			expect(executeNpmCommand).toHaveBeenNthCalledWith(
 				1,
-				['pack', `${PACKAGE_NAME}@latest`, `--registry=${testBlockRegistry}`, '--quiet'],
-				{ cwd: testBlockDownloadDir },
+				['pack', `${PACKAGE_NAME}@latest`, '--quiet'],
+				{ cwd: testBlockDownloadDir, registry: testBlockRegistry, authToken: undefined },
 			);
 
 			expect(executeNpmCommand).toHaveBeenNthCalledWith(
 				2,
 				['install', ...testBlockNpmInstallArgs.split(' ')],
-				{ cwd: testBlockPackageDir },
+				{ cwd: testBlockPackageDir, registry: testBlockRegistry, authToken: undefined },
 			);
 
 			// Check execFile was called only for tar command

@@ -246,6 +246,38 @@ describe('executeNpmCommand', () => {
 			);
 		});
 
+		it('should append registry and authToken args when provided in options', async () => {
+			mockAsyncExec.mockResolvedValue({ stdout: '', stderr: '' });
+
+			await executeNpmCommand(['install', 'pkg@1.0.0'], {
+				registry: 'https://registry.example.com/', // trailing slash — tests sanitization
+				authToken: 'my-token',
+			});
+
+			expect(mockAsyncExec).toHaveBeenCalledWith(
+				'npm',
+				[
+					'install',
+					'pkg@1.0.0',
+					'--registry=https://registry.example.com',
+					'--//registry.example.com/:_authToken=my-token',
+				],
+				undefined,
+			);
+		});
+
+		it('should append only registry arg when authToken is absent', async () => {
+			mockAsyncExec.mockResolvedValue({ stdout: '', stderr: '' });
+
+			await executeNpmCommand(['view', 'pkg'], { registry: 'https://registry.example.com' });
+
+			expect(mockAsyncExec).toHaveBeenCalledWith(
+				'npm',
+				['view', 'pkg', '--registry=https://registry.example.com'],
+				undefined,
+			);
+		});
+
 		it('should handle empty arguments array', async () => {
 			mockAsyncExec.mockResolvedValue({
 				stdout: 'npm help output',
@@ -409,8 +441,8 @@ describe('verifyIntegrity', () => {
 					'view',
 					`${packageName}@${version}`,
 					'dist.integrity',
-					`--registry=${registryUrl}`,
 					'--json',
+					`--registry=${registryUrl}`,
 				],
 				undefined,
 			);
@@ -459,8 +491,8 @@ describe('verifyIntegrity', () => {
 					'view',
 					`${specialPackageName}@${specialVersion}`,
 					'dist.integrity',
-					`--registry=${registryUrl}`,
 					'--json',
+					`--registry=${registryUrl}`,
 				],
 				undefined,
 			);
@@ -637,7 +669,7 @@ describe('checkIfVersionExistsOrThrow', () => {
 			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
 			expect(mockAsyncExec).toHaveBeenCalledWith(
 				'npm',
-				['view', `${packageName}@${version}`, 'version', `--registry=${registryUrl}`, '--json'],
+				['view', `${packageName}@${version}`, 'version', '--json', `--registry=${registryUrl}`],
 				undefined,
 			);
 		});
@@ -697,8 +729,8 @@ describe('checkIfVersionExistsOrThrow', () => {
 					'view',
 					`${specialPackageName}@${specialVersion}`,
 					'version',
-					`--registry=${registryUrl}`,
 					'--json',
+					`--registry=${registryUrl}`,
 				],
 				undefined,
 			);
@@ -931,8 +963,8 @@ describe('verifyIntegrity with auth token', () => {
 				'view',
 				`${packageName}@${version}`,
 				'dist.integrity',
-				`--registry=${registryUrl}`,
 				'--json',
+				`--registry=${registryUrl}`,
 				`--//registry.example.com/:_authToken=${authToken}`,
 			],
 			undefined,
@@ -956,8 +988,8 @@ describe('verifyIntegrity with auth token', () => {
 				'view',
 				`${packageName}@${version}`,
 				'dist.integrity',
-				`--registry=${registryUrl}`,
 				'--json',
+				`--registry=${registryUrl}`,
 			],
 			undefined,
 		);
@@ -1014,8 +1046,8 @@ describe('checkIfVersionExistsOrThrow with auth token', () => {
 				'view',
 				`${packageName}@${version}`,
 				'version',
-				`--registry=${registryUrl}`,
 				'--json',
+				`--registry=${registryUrl}`,
 				`--//registry.example.com/:_authToken=${authToken}`,
 			],
 			undefined,
@@ -1034,7 +1066,7 @@ describe('checkIfVersionExistsOrThrow with auth token', () => {
 
 		expect(mockAsyncExec).toHaveBeenCalledWith(
 			'npm',
-			['view', `${packageName}@${version}`, 'version', `--registry=${registryUrl}`, '--json'],
+			['view', `${packageName}@${version}`, 'version', '--json', `--registry=${registryUrl}`],
 			undefined,
 		);
 	});

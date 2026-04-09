@@ -35,13 +35,6 @@ import { checkIfVersionExistsOrThrow, executeNpmCommand, verifyIntegrity } from 
 const asyncExecFile = promisify(execFile);
 
 const DEFAULT_REGISTRY = 'https://registry.npmjs.org';
-const NPM_COMMON_ARGS = ['--audit=false', '--fund=false'];
-const NPM_INSTALL_ARGS = [
-	'--bin-links=false',
-	'--install-strategy=shallow',
-	'--ignore-scripts=true',
-	'--package-lock=false',
-];
 
 const { PACKAGE_NAME_NOT_PROVIDED } = RESPONSE_ERROR_MESSAGES;
 
@@ -375,16 +368,6 @@ export class CommunityPackagesService {
 		return this.config.authToken || undefined;
 	}
 
-	private getNpmInstallArgs(authToken?: string): string[] {
-		const registry = this.getNpmRegistry();
-		const args = [...NPM_COMMON_ARGS, ...NPM_INSTALL_ARGS, `--registry=${registry}`];
-		if (authToken) {
-			const registryHost = new URL(registry).host;
-			args.push(`--//${registryHost}/:_authToken=${authToken}`);
-		}
-		return args;
-	}
-
 	private checkInstallPermissions(checksumProvided: boolean) {
 		if (!this.config.unverifiedEnabled && !checksumProvided) {
 			throw new UnexpectedError('Installation of unverified community packages is forbidden!');
@@ -527,17 +510,10 @@ export class CommunityPackagesService {
 
 		// TODO: make sure that this works for scoped packages as well
 		// if (packageName.startsWith('@') && packageName.includes('/')) {}
-		const packArgs = [
-			'pack',
-			`${packageName}@${packageVersion}`,
-			`--registry=${registry}`,
-			'--quiet',
-		];
-		if (authToken) {
-			const registryHost = new URL(registry).host;
-			packArgs.push(`--//${registryHost}/:_authToken=${authToken}`);
-		}
-		const tarOutput = await executeNpmCommand(packArgs, { cwd: this.downloadFolder });
+		const tarOutput = await executeNpmCommand(
+			['pack', `${packageName}@${packageVersion}`, '--quiet'],
+			{ cwd: this.downloadFolder, registry, authToken },
+		);
 
 		const tarballName = tarOutput?.trim();
 
@@ -565,9 +541,18 @@ export class CommunityPackagesService {
 			} = JSON.parse(packageJsonContent);
 			await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
 
-			await executeNpmCommand(['install', ...this.getNpmInstallArgs(authToken)], {
-				cwd: packageDirectory,
-			});
+			await executeNpmCommand(
+				[
+					'install',
+					'--audit=false',
+					'--fund=false',
+					'--bin-links=false',
+					'--install-strategy=shallow',
+					'--ignore-scripts=true',
+					'--package-lock=false',
+				],
+				{ cwd: packageDirectory, registry, authToken },
+			);
 			await this.updatePackageJsonDependency(packageName, packageJson.version);
 		} finally {
 			await rm(join(this.downloadFolder, tarballName));
