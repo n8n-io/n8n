@@ -252,11 +252,22 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	/**
 	 * Inject the E() error handler into the isolate context.
 	 *
-	 * Tournament wraps expressions with try-catch that calls E(error, this).
-	 * This handler:
-	 * - Re-throws security violations from __sanitize
-	 * - Swallows TypeErrors (failed attack attempts return undefined)
-	 * - Re-throws all other errors
+	 * There are two exception-handling layers inside the isolate:
+	 *
+	 * 1. **Inner layer (this handler, `E()`)** — Tournament wraps each
+	 *    expression with try-catch that calls `E(error, this)`. This handler
+	 *    must match the legacy engine's behavior (set in expression.ts via
+	 *    setErrorHandler):
+	 *    - Re-throw ExpressionError / ExpressionExtensionError
+	 *    - Swallow everything else (TypeErrors, generic Errors, etc.)
+	 *
+	 * 2. **Outer layer (`wrappedCode` try-catch in `execute()`)** — Catches
+	 *    anything that escaped `E()` (e.g. re-thrown ExpressionErrors) and
+	 *    serializes it into a sentinel object so the host can reconstruct it.
+	 *
+	 * Inside the isolate, errors from host callbacks arrive as sentinel
+	 * objects ({ __isError, name, message, ... }) rather than class instances,
+	 * so we match by name instead of instanceof.
 	 *
 	 * @private
 	 * @throws {Error} If context not initialized
@@ -269,15 +280,15 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		await this.context.eval(`
 			if (typeof E === 'undefined') {
 				globalThis.E = function(error, _context) {
-					// Re-throw security violations from __sanitize
-					if (error && error.message && error.message.includes('due to security concerns')) {
+					// Re-throw ExpressionError / ExpressionExtensionError to match
+					// the legacy handler in expression.ts. Errors from host callbacks
+					// arrive as sentinels (not class instances), so check by name.
+					const name = error?.name;
+					if (name === 'ExpressionError' || name === 'ExpressionExtensionError') {
 						throw error;
 					}
-					// Swallow TypeErrors (failed attack attempts return undefined)
-					if (error instanceof TypeError) {
-						return undefined;
-					}
-					throw error;
+					// Swallow everything else (TypeErrors, generic Errors, etc.)
+					return undefined;
 				};
 			}
 		`);

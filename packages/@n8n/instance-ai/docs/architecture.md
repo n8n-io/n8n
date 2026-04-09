@@ -195,7 +195,7 @@ The agent package — framework-agnostic business logic.
 - **Workflow loop** (`workflow-loop/`) — deterministic build→verify→debug state machine for workflow builder agents
 - **Workflow builder** (`workflow-builder/`) — TypeScript SDK code parsing, validation, patching, and prompt sections
 - **Workspace** (`workspace/`) — sandbox provisioning (Daytona / local), filesystem abstraction, snapshot management
-- **Memory** (`memory/`) — working memory template, title generation, memory configuration
+- **Memory** (`memory/`) — title generation, memory configuration
 - **Compaction** (`compaction/`) — LLM-based message history summarization for long conversations
 - **Storage** (`storage/`) — iteration logs, task storage, planned task storage, workflow loop storage, agent tree snapshots
 - **MCP client** (`mcp/`) — manages connections to external MCP servers, schema sanitization for Anthropic compatibility
@@ -406,9 +406,8 @@ LangSmith integration provides step-level observability:
 - **LLM steps** — per-step traces with messages, reasoning, tool calls, usage,
   finish reason
 - **Sub-agent traces** — child spans under parent agent runs
-- **Working memory traces** — spans for memory preparation phase
-- **Synthetic tool traces** — internal tools (e.g., `updateWorkingMemory`)
-  tracked separately from LLM-invoked tools
+- **Synthetic tool traces** — internal tools tracked separately from
+  LLM-invoked tools
 
 ## Message Compaction
 
@@ -430,8 +429,8 @@ allowing the user to approve or deny access to specific hosts.
 - **Credential safety** — tool outputs never include decrypted secrets; credential setup uses the n8n frontend UI where secrets are handled securely
 - **HITL confirmation** — destructive operations (delete, publish, restore) require user approval via the suspension protocol
 - **Domain access gating** — external URL fetches require per-domain user approval
-- **Memory isolation** — working memory is user-scoped; messages, observations,
-  plans, and event history are thread-scoped. Cross-user isolation is enforced.
+- **Memory isolation** — messages, observations, plans, and event history are
+  thread-scoped. Cross-user isolation is enforced.
 - **Sub-agent containment** — sub-agents cannot spawn their own sub-agents,
   can only use native domain tools from the registered pool (no MCP tools), and
   have low `maxSteps`. A mandatory protocol prevents cascading delegation.

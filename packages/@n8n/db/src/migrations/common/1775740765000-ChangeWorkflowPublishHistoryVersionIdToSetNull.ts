@@ -10,7 +10,7 @@ const reference: [string, string] = ['workflow_history', 'versionId'];
  * records when workflow history versions are deleted, instead of cascading
  * the deletion to the publish history.
  */
-export class ChangeWorkflowPublishHistoryVersionIdToSetNull1775636958848
+export class ChangeWorkflowPublishHistoryVersionIdToSetNull1775740765000
 	implements ReversibleMigration
 {
 	async up({ schemaBuilder: { dropForeignKey, addForeignKey, dropNotNull } }: MigrationContext) {
