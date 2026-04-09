@@ -20,8 +20,6 @@ const eventListRef = useTemplateRef<HTMLElement>('eventList');
 const events = computed(() => store.debugEvents);
 
 // --- Threads tab state ---
-type ThreadSubTab = 'messages' | 'context';
-const activeThreadSubTab = ref<ThreadSubTab>('messages');
 const expandedMessageIndex = ref<number | null>(null);
 
 function toggleEvent(index: number) {
@@ -107,7 +105,6 @@ watch(activeTab, (tab) => {
 });
 
 function handleSelectThread(threadId: string) {
-	activeThreadSubTab.value = 'messages';
 	expandedMessageIndex.value = null;
 	void debugStore.selectThread(threadId);
 }
@@ -258,22 +255,12 @@ onMounted(() => {
 			<!-- Thread detail -->
 			<template v-if="debugStore.selectedThreadId">
 				<div :class="$style.threadDetailHeader">
-					<button
-						:class="[$style.subTab, activeThreadSubTab === 'messages' && $style.subTabActive]"
-						@click="activeThreadSubTab = 'messages'"
-					>
-						{{ i18n.baseText('instanceAi.debug.threads.messages') }}
-					</button>
-					<button
-						:class="[$style.subTab, activeThreadSubTab === 'context' && $style.subTabActive]"
-						@click="activeThreadSubTab = 'context'"
-					>
-						{{ i18n.baseText('instanceAi.debug.threads.context') }}
-					</button>
+					<span :class="$style.sectionLabel">{{
+						i18n.baseText('instanceAi.debug.threads.messages')
+					}}</span>
 				</div>
 
-				<!-- Messages sub-tab -->
-				<div v-if="activeThreadSubTab === 'messages'" :class="$style.threadDetailContent">
+				<div :class="$style.threadDetailContent">
 					<div v-if="debugStore.isLoadingMessages" :class="$style.loadingState">
 						<N8nIcon icon="spinner" color="primary" spin size="small" />
 					</div>
@@ -296,23 +283,6 @@ onMounted(() => {
 							<div :class="$style.messagePreview">{{ contentPreview(msg.content) }}</div>
 							<pre v-if="expandedMessageIndex === mIdx" :class="$style.eventPayload">{{
 								formatJson(msg.content)
-							}}</pre>
-						</div>
-					</template>
-				</div>
-
-				<!-- Context sub-tab -->
-				<div v-if="activeThreadSubTab === 'context'" :class="$style.threadDetailContent">
-					<div v-if="debugStore.isLoadingContext" :class="$style.loadingState">
-						<N8nIcon icon="spinner" color="primary" spin size="small" />
-					</div>
-					<template v-else-if="debugStore.threadContext">
-						<div :class="$style.contextSection">
-							<div :class="$style.contextLabel">
-								{{ i18n.baseText('instanceAi.debug.threads.workingMemory') }}
-							</div>
-							<pre :class="$style.contextContent">{{
-								debugStore.threadContext.workingMemory || '(empty)'
 							}}</pre>
 						</div>
 					</template>
@@ -638,30 +608,6 @@ onMounted(() => {
 	border-bottom: var(--border);
 }
 
-.subTab {
-	padding: var(--spacing--4xs) var(--spacing--sm);
-	font-size: var(--font-size--3xs);
-	font-family: var(--font-family);
-	cursor: pointer;
-	border: none;
-	background: none;
-	color: var(--color--text--tint-1);
-	border-bottom: 2px solid transparent;
-	transition:
-		color 0.15s,
-		border-color 0.15s;
-
-	&:hover {
-		color: var(--color--text);
-	}
-}
-
-.subTabActive {
-	color: var(--color--primary);
-	font-weight: var(--font-weight--bold);
-	border-bottom-color: var(--color--primary);
-}
-
 .threadDetailContent {
 	flex: 1;
 	overflow-y: auto;
@@ -691,32 +637,5 @@ onMounted(() => {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-}
-
-.contextSection {
-	padding: var(--spacing--2xs) var(--spacing--sm);
-}
-
-.contextLabel {
-	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--text--tint-1);
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
-	margin-bottom: var(--spacing--4xs);
-}
-
-.contextContent {
-	padding: var(--spacing--2xs);
-	background: var(--color--foreground--tint-2);
-	border-radius: var(--radius);
-	font-family: monospace;
-	font-size: var(--font-size--3xs);
-	line-height: var(--line-height--xl);
-	white-space: pre-wrap;
-	word-break: break-word;
-	max-height: 400px;
-	overflow-y: auto;
-	color: var(--color--text--tint-1);
 }
 </style>
