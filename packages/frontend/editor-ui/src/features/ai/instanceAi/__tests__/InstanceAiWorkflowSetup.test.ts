@@ -352,8 +352,8 @@ describe('InstanceAiWorkflowSetup', () => {
 	});
 
 	describe('credential group selection propagation', () => {
-		it('shared credential selection propagates across split cards via credGroupSelections', async () => {
-			// Two nodes sharing the same credential type with param issues -> per-node cards
+		it('creates per-node cards when nodes share credential type but have param issues', async () => {
+			// Two nodes sharing the same credential type with param issues -> per-node cards (escalated)
 			const nodeName1 = 'Slack Node 1';
 			const nodeName2 = 'Slack Node 2';
 			const requests = [
@@ -408,7 +408,7 @@ describe('InstanceAiWorkflowSetup', () => {
 			expect(getByText('1 of 2')).toBeTruthy();
 		});
 
-		it('clearing a credential on one card clears the group selection', async () => {
+		it('clicking Later with no credential selected defers the setup', async () => {
 			const confirmSpy = vi.spyOn(store, 'confirmAction').mockResolvedValue(true);
 			vi.spyOn(store, 'resolveConfirmation');
 
@@ -428,7 +428,7 @@ describe('InstanceAiWorkflowSetup', () => {
 				},
 			});
 
-			// Click Later to clear selection
+			// Click Later — no credential is selected, so this defers
 			await userEvent.click(getByTestId('instance-ai-workflow-setup-later'));
 
 			// Should defer since there's only 1 card and no selection
@@ -437,7 +437,7 @@ describe('InstanceAiWorkflowSetup', () => {
 	});
 
 	describe('credential testing', () => {
-		it('shows spinner icon for testable credential type when no test result yet', () => {
+		it('renders card for auto-applied testable credential type', () => {
 			const credentialsStore = useCredentialsStore();
 			// @ts-expect-error Known pinia issue when spying on store getters
 			vi.spyOn(credentialsStore, 'getCredentialTypeByName', 'get').mockReturnValue(() => ({
@@ -461,7 +461,7 @@ describe('InstanceAiWorkflowSetup', () => {
 				},
 			});
 
-			// The card should exist
+			// The card should render with the auto-applied credential
 			expect(getByTestId('instance-ai-workflow-setup-card')).toBeTruthy();
 		});
 
