@@ -18,6 +18,7 @@ function makeMockMemory(): BuiltMemory {
 		getMessages: jest.fn(),
 		saveMessages: jest.fn(),
 		deleteMessages: jest.fn(),
+		describe: () => ({ name: 'custom', constructorName: 'CustomMemory', connectionParams: {} }),
 	} as unknown as BuiltMemory;
 }
 
@@ -256,7 +257,7 @@ describe('Agent.describe()', () => {
 
 	// --- Memory ---
 
-	it('describes memory configuration', () => {
+	it('describes memory configuration with custom backend (no describe())', () => {
 		const agent = new Agent('test-agent').memory({
 			memory: makeMockMemory(),
 			lastMessages: 20,
@@ -275,16 +276,39 @@ describe('Agent.describe()', () => {
 
 		expect(schema.memory).toBeTruthy();
 		expect(schema.memory!.source).toBeNull();
+		expect(schema.memory!.name).toBe('custom');
+		expect(schema.memory!.connectionParams).toEqual({});
 		expect(schema.memory!.lastMessages).toBe(20);
 		expect(schema.memory!.semanticRecall).toEqual({
+			scope: null,
 			topK: 5,
 			messageRange: { before: 2, after: 2 },
 			embedder: 'openai/text-embedding-3-small',
 		});
 		expect(schema.memory!.workingMemory).toEqual({
+			scope: 'resource',
 			type: 'freeform',
 			template: 'Current state: {{state}}',
 		});
+	});
+
+	it('describes memory name and connectionParams from BuiltMemory.describe()', () => {
+		const mockMemoryWithDescribe = {
+			...makeMockMemory(),
+			describe: () => ({
+				name: 'sqlite',
+				constructorName: 'SqliteMemory',
+				connectionParams: { url: 'file:./data.db', namespace: 'test' },
+			}),
+		};
+		const agent = new Agent('test-agent').memory({
+			memory: mockMemoryWithDescribe,
+			lastMessages: 5,
+		});
+		const schema = agent.describe();
+
+		expect(schema.memory!.name).toBe('sqlite');
+		expect(schema.memory!.connectionParams).toEqual({ url: 'file:./data.db', namespace: 'test' });
 	});
 
 	it('describes structured working memory', () => {
