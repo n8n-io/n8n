@@ -16,14 +16,18 @@ export = {
 	installPackage: [
 		apiKeyHasScope('communityPackage:install'),
 		async (
-			req: AuthenticatedRequest<Record<string, never>, unknown, { name: string; version?: string }>,
+			req: AuthenticatedRequest<
+				Record<string, never>,
+				unknown,
+				{ name: string; version?: string; verify?: boolean }
+			>,
 			res: express.Response,
 		): Promise<express.Response> => {
 			const lifecycle = Container.get(CommunityPackagesLifecycleService);
 
 			try {
 				const installedPackage = await lifecycle.install(
-					{ name: req.body.name, version: req.body.version, verify: false },
+					{ name: req.body.name, version: req.body.version, verify: req.body.verify ?? false },
 					req.user,
 					'publicApi',
 				);
