@@ -903,7 +903,7 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 				</div>
 
 				<!-- Footer -->
-				<footer :class="$style.footer">
+				<ConfirmationFooter layout="row-between">
 					<div :class="$style.footerNav">
 						<N8nButton
 							v-if="showArrows"
@@ -974,7 +974,7 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 							@click="handleApply"
 						/>
 					</div>
-				</footer>
+				</ConfirmationFooter>
 			</div>
 		</template>
 
