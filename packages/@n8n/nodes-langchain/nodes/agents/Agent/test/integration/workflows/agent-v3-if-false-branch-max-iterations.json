@@ -1,0 +1,120 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"boolean": [
+						{
+							"value1": "={{ $json.shouldProceed }}",
+							"value2": true
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.3,
+			"position": [220, 0],
+			"id": "if-node-id",
+			"name": "If"
+		},
+		{
+			"parameters": {
+				"promptType": "define",
+				"text": "Keep calling the tool until you get the answer. Never stop.",
+				"options": {
+					"maxIterations": 2
+				}
+			},
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 3.1,
+			"position": [440, 100],
+			"id": "agent-id",
+			"name": "AI Agent",
+			"onError": "continueErrorOutput"
+		},
+		{
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "id",
+					"value": "gpt-4o-mini"
+				},
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1.2,
+			"position": [440, 300],
+			"id": "model-id",
+			"name": "OpenAI Chat Model",
+			"credentials": {
+				"openAiApi": {
+					"id": "123",
+					"name": "OpenAi account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "@n8n/n8n-nodes-langchain.toolCalculator",
+			"typeVersion": 1,
+			"position": [440, 500],
+			"id": "calculator-id",
+			"name": "Calculator"
+		}
+	],
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "If",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"If": {
+			"main": [
+				[],
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Calculator": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}
