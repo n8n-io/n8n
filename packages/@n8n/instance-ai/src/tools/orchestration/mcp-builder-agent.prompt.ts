@@ -36,6 +36,12 @@ export const MCP_BUILDER_AGENT_PROMPT = `You are an expert n8n workflow builder.
   - Whether testing passed
   - Which credentials were auto-assigned and which are missing
 
+## Error handling
+
+- If a tool call fails with a validation/type error, read the error message carefully and adjust argument types before retrying. For example, if an argument expects a string but you sent a number, wrap the value in quotes.
+- NEVER retry a failed tool call with identical arguments — always change something.
+- If you cannot figure out the correct arguments after 2 attempts, skip that step and move on.
+
 ## Output discipline
 
 - Be concise. No narration, no summaries of what you're about to do.

@@ -369,13 +369,32 @@ export async function startBuildWorkflowAgentTask(
 						if (toolName.endsWith('create_workflow_from_code') && 'execute' in toolDef) {
 							const originalExecute = toolDef.execute as (
 								args: Record<string, unknown>,
+								ctx?: unknown,
 							) => Promise<Record<string, unknown>>;
-							(toolDef as { execute: typeof originalExecute }).execute = async (args) => {
-								const result = await originalExecute(args);
-								if (result && typeof result === 'object' && 'workflowId' in result) {
-									mcpWorkflowId = String(result.workflowId);
+							(toolDef as { execute: typeof originalExecute }).execute = async (args, ctx?) => {
+								context.logger.debug('[MCP Builder] create_workflow_from_code called', {
+									argsKeys: Object.keys(args),
+								});
+								try {
+									const result = await originalExecute(args, ctx);
+									context.logger.debug('[MCP Builder] create_workflow_from_code returned', {
+										resultType: typeof result,
+										resultIsNull: result === null,
+										resultIsUndefined: result === undefined,
+										resultKeys: result && typeof result === 'object' ? Object.keys(result) : [],
+										hasWorkflowId: result && typeof result === 'object' && 'workflowId' in result,
+									});
+									if (result && typeof result === 'object' && 'workflowId' in result) {
+										mcpWorkflowId = String(result.workflowId);
+									}
+									return result;
+								} catch (error) {
+									context.logger.error('[MCP Builder] create_workflow_from_code threw', {
+										error: error instanceof Error ? error.message : String(error),
+										stack: error instanceof Error ? error.stack : undefined,
+									});
+									throw error;
 								}
-								return result;
 							};
 						}
 					}

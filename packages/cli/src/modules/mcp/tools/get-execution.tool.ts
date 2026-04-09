@@ -13,7 +13,7 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 
 const inputSchema = z.object({
 	workflowId: z.string().describe('The ID of the workflow the execution belongs to'),
-	executionId: z.string().describe('The ID of the execution to retrieve'),
+	executionId: z.coerce.string().describe('The ID of the execution to retrieve'),
 	includeData: z
 		.boolean()
 		.optional()

@@ -715,6 +715,14 @@ async function traceToolExecute(
 			toolRun,
 			async () => await tool.execute!(input, context),
 		);
+
+		// Debug: log when a tool returns undefined/null (potential artifact loss)
+		if (result === undefined || result === null) {
+			console.warn(
+				`[traceToolExecute] tool "${tool.id}" returned ${result === undefined ? 'undefined' : 'null'}`,
+			);
+		}
+
 		await finishRunTree(toolRun, {
 			outputs: result,
 			metadata: { final_status: 'completed' },

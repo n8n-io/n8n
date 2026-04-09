@@ -45,8 +45,13 @@ const ARTIFACT_TOOLS = new Set([
 	'data-table-agent',
 ]);
 
+/** Check whether a tool name matches an artifact tool (exact or suffix for MCP-prefixed tools). */
+function isArtifactTool(toolName: string): boolean {
+	return ARTIFACT_TOOLS.has(toolName) || toolName.endsWith('create_workflow_from_code');
+}
+
 function extractFromToolCall(tc: InstanceAiToolCallState, map: Map<string, ResourceEntry>): void {
-	if (!ARTIFACT_TOOLS.has(tc.toolName)) return;
+	if (!isArtifactTool(tc.toolName)) return;
 	if (!tc.result || typeof tc.result !== 'object') return;
 	const result = tc.result as Record<string, unknown>;
 
@@ -58,15 +63,17 @@ function extractFromToolCall(tc: InstanceAiToolCallState, map: Map<string, Resou
 		}
 	}
 
-	// build-workflow / build-workflow-with-agent result:
-	// { workflowId: "...", workflowName?: "..." }
+	// build-workflow / build-workflow-with-agent / create_workflow_from_code result:
+	// { workflowId: "...", workflowName?: "...", name?: "..." }
 	if (typeof result.workflowId === 'string') {
 		const name =
 			typeof result.workflowName === 'string'
 				? result.workflowName
-				: typeof tc.args?.name === 'string'
-					? tc.args.name
-					: undefined;
+				: typeof result.name === 'string'
+					? result.name
+					: typeof tc.args?.name === 'string'
+						? tc.args.name
+						: undefined;
 
 		const resolvedName = name ?? 'Untitled';
 		// Key by workflowId when unnamed to avoid collisions between multiple

@@ -1898,6 +1898,21 @@ export async function executeResumableStream(
 				hasError = true;
 			}
 
+			// Debug: log raw Mastra chunks for tool-result events to diagnose missing results
+			if (isRecord(chunk) && chunk.type === 'tool-result') {
+				const p = isRecord(chunk.payload) ? chunk.payload : {};
+				const toolName = typeof p.toolName === 'string' ? p.toolName : '?';
+				const toolCallId = typeof p.toolCallId === 'string' ? p.toolCallId : '?';
+				options.context.logger.debug('[stream] Raw tool-result chunk', {
+					toolName,
+					toolCallId,
+					hasResult: p.result !== undefined,
+					resultType: typeof p.result,
+					resultIsNull: p.result === null,
+					payloadKeys: Object.keys(p),
+				});
+			}
+
 			const event = mapMastraChunkToEvent(options.context.runId, options.context.agentId, chunk);
 			if (event) {
 				let shouldPublishEvent = true;

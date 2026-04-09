@@ -132,6 +132,15 @@ export function mapMastraChunkToEvent(
 
 	if (type === 'tool-result' || type === 'tool-error') {
 		const toolCallId = typeof payload.toolCallId === 'string' ? payload.toolCallId : '';
+		const toolName = typeof payload.toolName === 'string' ? payload.toolName : '';
+
+		// Debug: log tool-result chunks with missing results
+		if (payload.result === undefined || payload.result === null) {
+			console.warn(
+				`[map-chunk] tool-result for "${toolName}" (${toolCallId}) has ${payload.result === undefined ? 'undefined' : 'null'} result.`,
+				`Payload keys: [${Object.keys(payload).join(', ')}]`,
+			);
+		}
 
 		// Mastra signals tool errors via `isError` on tool-result chunks,
 		// not a separate event type. Map to our `tool-error` event.
