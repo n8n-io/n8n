@@ -159,12 +159,17 @@ export function useSetupCards(
 			if (!conns || typeof conns !== 'object') continue;
 			for (const connType of Object.keys(conns)) {
 				if (connType === NodeConnectionTypes.Main) continue;
-				const groups = (conns as Record<string, Array<Array<{ node: string }>>>)[connType];
+				const groups = (conns as Record<string, unknown>)[connType];
 				if (!Array.isArray(groups)) continue;
-				for (const group of groups) {
+				for (const group of groups as unknown[]) {
 					if (!Array.isArray(group)) continue;
-					for (const conn of group) {
-						if (conn.node) {
+					for (const conn of group as unknown[]) {
+						if (
+							typeof conn === 'object' &&
+							conn !== null &&
+							'node' in conn &&
+							typeof conn.node === 'string'
+						) {
 							if (!directSubnodes.has(destName)) {
 								directSubnodes.set(destName, new Set());
 							}
@@ -211,6 +216,7 @@ export function useSetupCards(
 		}
 
 		const usedCardIds = new Set<string>();
+		const deferredSubnodeCardIds = new Set<string>();
 		const result: DisplayCard[] = [];
 
 		for (const card of cards.value) {
@@ -226,6 +232,7 @@ export function useSetupCards(
 					if (subCard && !usedCardIds.has(subCard.id)) {
 						subnodeCards.push(subCard);
 						usedCardIds.add(subCard.id);
+						deferredSubnodeCardIds.delete(subCard.id);
 					}
 				}
 
@@ -255,6 +262,17 @@ export function useSetupCards(
 			}
 
 			if (!isSubnodeOfRoot) {
+				usedCardIds.add(card.id);
+				result.push({ type: 'single', card });
+			} else {
+				// Track deferred subnodes so we can recover them if their root never collects them
+				deferredSubnodeCardIds.add(card.id);
+			}
+		}
+
+		// Emit any deferred subnode cards that were never consumed by a group
+		for (const card of cards.value) {
+			if (deferredSubnodeCardIds.has(card.id) && !usedCardIds.has(card.id)) {
 				usedCardIds.add(card.id);
 				result.push({ type: 'single', card });
 			}
