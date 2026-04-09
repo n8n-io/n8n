@@ -25,7 +25,7 @@ import {
 	type ResourceDecision,
 	type ToolDefinition,
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
-	RESOURCE_DECISION_KEYS,
+	INSTANCE_RESOURCE_DECISION_KEYS,
 } from './tools/types';
 import { formatErrorResult } from './tools/utils';
 
@@ -121,7 +121,6 @@ export class GatewayClient {
 	/** Notify the server we're disconnecting, then close the SSE connection. */
 	async disconnect(): Promise<void> {
 		this.shouldReconnect = false;
-		this.options.session.clearSessionRules();
 
 		// POST the disconnect notification BEFORE closing EventSource.
 		// The EventSource keeps the Node.js event loop alive — if we close it
@@ -443,7 +442,7 @@ export class GatewayClient {
 						toolGroup: resource.toolGroup,
 						resource: resource.resource,
 						description: resource.description,
-						options: RESOURCE_DECISION_KEYS,
+						options: INSTANCE_RESOURCE_DECISION_KEYS,
 					})}`,
 				);
 			} else {
@@ -454,7 +453,7 @@ export class GatewayClient {
 				case 'allowOnce':
 					break;
 				case 'allowForSession':
-					session.allowForSession(resource.toolGroup, resource.resource);
+					session.setPermissions({ ...session.getAllPermissions(), [resource.toolGroup]: 'allow' });
 					break;
 				case 'alwaysAllow':
 					session.alwaysAllow(resource.toolGroup, resource.resource);

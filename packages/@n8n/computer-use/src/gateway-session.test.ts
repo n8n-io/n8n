@@ -197,16 +197,6 @@ describe('GatewaySession', () => {
 			expect(session.check('shell', 'npm')).toBe('deny');
 		});
 
-		it('returns allow for a session-allowed resource', () => {
-			const store = makeStore();
-			const session = new GatewaySession(
-				{ permissions: buildDefaultPermissions({ shell: 'ask' }), dir: '/' },
-				store as unknown as SettingsStore,
-			);
-			session.allowForSession('shell', 'npm');
-			expect(session.check('shell', 'npm')).toBe('allow');
-		});
-
 		it('falls through to group mode when no rules match', () => {
 			const store = makeStore();
 			const session = new GatewaySession(
@@ -214,34 +204,6 @@ describe('GatewaySession', () => {
 				store as unknown as SettingsStore,
 			);
 			expect(session.check('shell', 'npm')).toBe('ask');
-		});
-	});
-
-	// ---------------------------------------------------------------------------
-	// Session-level allow rules
-	// ---------------------------------------------------------------------------
-
-	describe('allowForSession / clearSessionRules', () => {
-		it('allow for session is cleared after clearSessionRules', () => {
-			const store = makeStore();
-			const session = new GatewaySession(
-				{ permissions: buildDefaultPermissions({ shell: 'ask' }), dir: '/' },
-				store as unknown as SettingsStore,
-			);
-			session.allowForSession('shell', 'npm');
-			expect(session.check('shell', 'npm')).toBe('allow');
-			session.clearSessionRules();
-			expect(session.check('shell', 'npm')).toBe('ask');
-		});
-
-		it('session allow for one group does not affect another', () => {
-			const store = makeStore();
-			const session = new GatewaySession(
-				{ permissions: buildDefaultPermissions({ shell: 'ask', browser: 'ask' }), dir: '/' },
-				store as unknown as SettingsStore,
-			);
-			session.allowForSession('shell', 'npm');
-			expect(session.check('browser', 'npm')).toBe('ask');
 		});
 	});
 

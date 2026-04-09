@@ -399,6 +399,7 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 					:class="$style.confirmation"
 					data-test-id="instance-ai-gateway-confirmation-panel"
 					:request-id="chunk.item.toolCall.confirmation.requestId"
+					:tool-group="chunk.item.toolCall.confirmation.resourceDecision.toolGroup"
 					:resource="chunk.item.toolCall.confirmation.resourceDecision.resource"
 					:description="chunk.item.toolCall.confirmation.resourceDecision.description"
 					:options="chunk.item.toolCall.confirmation.resourceDecision.options"
