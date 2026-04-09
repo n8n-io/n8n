@@ -56,11 +56,13 @@ export async function listTools(
 ): Promise<ToolDescriptor[]> {
 	const availableCreds = credentialProvider ? await credentialProvider.list() : [];
 
-	// When a credential provider is present, build a Set of available credential types.
+	// When a credential provider is present, build a Set and Map of available credential types.
 	// Using undefined when there is no provider signals "no filtering" to the loop below.
 	const availableCredTypes = credentialProvider
 		? new Set(availableCreds.map((cred) => cred.type))
 		: undefined;
+
+	const credsByType = new Map(availableCreds.map((cred) => [cred.type, cred]));
 
 	const seen = new Set<string>();
 	const descriptors: ToolDescriptor[] = [];
@@ -84,7 +86,10 @@ export async function listTools(
 			? node.version[node.version.length - 1]
 			: node.version;
 
-		const credentials = availableCreds.filter((cred) => credentialSlots.includes(cred.type));
+		const credentials = credentialSlots.flatMap((type) => {
+			const cred = credsByType.get(type);
+			return cred ? [cred] : [];
+		});
 
 		descriptors.push({
 			displayName: node.displayName,

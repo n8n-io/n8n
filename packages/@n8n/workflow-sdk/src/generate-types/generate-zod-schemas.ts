@@ -560,7 +560,12 @@ function stripExpressionFromZodSchema(schema: string): string {
 	if (schema === 'numberOrExpression') return 'z.number()';
 	if (schema === 'booleanOrExpression') return 'z.boolean()';
 	// Remove expressionSchema from z.union([..., expressionSchema])
-	return schema.replace(/,\s*expressionSchema/g, '');
+	// Also replace OrExpression tokens that appear inside compound schemas (e.g. z.array(stringOrExpression))
+	return schema
+		.replace(/,\s*expressionSchema/g, '')
+		.replace(/\bstringOrExpression\b/g, 'z.string()')
+		.replace(/\bnumberOrExpression\b/g, 'z.number()')
+		.replace(/\bbooleanOrExpression\b/g, 'z.boolean()');
 }
 
 function mapPropertyToZodSchemaInner(prop: NodeProperty): string {

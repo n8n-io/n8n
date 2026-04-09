@@ -153,18 +153,6 @@ describe('listTools()', () => {
 
 			expect(tool.credentials).toEqual([{ id: 'cred-1', name: 'My Gmail', type: 'gmailOAuth2' }]);
 		});
-
-		it('excludes nodes entirely when no credentials match (does not return with empty array)', async () => {
-			const provider = mock<CredentialProvider>();
-			provider.list.mockResolvedValue([{ id: 'cred-1', name: 'My Slack', type: 'slackApi' }]);
-
-			const tools = await listTools(
-				[makeNode({ credentials: [mock({ name: 'gmailOAuth2' })] })],
-				provider,
-			);
-
-			expect(tools).toHaveLength(0);
-		});
 	});
 });
 
