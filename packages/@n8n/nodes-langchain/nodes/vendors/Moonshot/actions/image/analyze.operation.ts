@@ -27,6 +27,9 @@ const properties: INodeProperties[] = [
 		hint: 'The name of the input field containing the binary file data to be processed',
 		description:
 			'Name of the binary field(s) which contains the image(s), separate multiple field names with commas',
+		typeOptions: {
+			binaryDataProperty: true,
+		},
 	},
 	{
 		displayName: 'Simplify Output',

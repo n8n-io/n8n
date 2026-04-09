@@ -89,6 +89,9 @@ const properties: INodeProperties[] = [
 		placeholder: 'e.g. data',
 		description:
 			'Name of the binary field(s) which contains the image(s) to attach, separate multiple field names with commas',
+		typeOptions: {
+			binaryDataProperty: true,
+		},
 		displayOptions: {
 			show: {
 				addAttachments: [true],

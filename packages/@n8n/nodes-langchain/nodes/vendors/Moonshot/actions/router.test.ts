@@ -31,14 +31,14 @@ describe('Moonshot router', () => {
 		expect(result).toEqual([[{ json: { foo: 'bar' } }]]);
 	});
 
-	it('should return an error if the operation is not supported', async () => {
+	it('should return an error if the resource is not supported', async () => {
 		mockExecuteFunctions.getNodeParameter.mockImplementation((parameter) =>
 			parameter === 'resource' ? 'foo' : 'bar',
 		);
 		mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
 
 		await expect(router.call(mockExecuteFunctions)).rejects.toThrow(
-			'The operation "bar" is not supported!',
+			'The resource "foo" is not supported!',
 		);
 	});
 
