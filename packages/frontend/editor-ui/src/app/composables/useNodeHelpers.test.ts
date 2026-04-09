@@ -33,6 +33,7 @@ vi.mock('@/app/stores/workflowDocument.store', async () => {
 			getNodeByName: vi.fn(),
 			setNodeIssue: vi.fn(),
 			updateNodeProperties: vi.fn(),
+			getExpressionHandler: vi.fn(() => ({})),
 		})),
 	};
 });
@@ -83,6 +84,7 @@ describe('useNodeHelpers()', () => {
 				getNodeByName: vi.fn().mockReturnValue(node),
 				setNodeIssue: vi.fn(),
 				updateNodeProperties: vi.fn(),
+				getExpressionHandler: vi.fn(() => ({})),
 			} as unknown as ReturnType<typeof useWorkflowDocumentStore>);
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
 			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(false);
