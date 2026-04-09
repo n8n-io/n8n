@@ -35,7 +35,6 @@ import InstanceAiMessage from './components/InstanceAiMessage.vue';
 import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiEmptyState from './components/InstanceAiEmptyState.vue';
 import InstanceAiThreadList from './components/InstanceAiThreadList.vue';
-import InstanceAiMemoryPanel from './components/InstanceAiMemoryPanel.vue';
 import InstanceAiDebugPanel from './components/InstanceAiDebugPanel.vue';
 import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue';
 import InstanceAiStatusBar from './components/InstanceAiStatusBar.vue';
@@ -146,7 +145,6 @@ watch(
 
 // --- Side panels ---
 const showArtifactsPanel = ref(true);
-const showMemoryPanel = ref(false);
 const showDebugPanel = ref(false);
 const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
 
@@ -410,13 +408,6 @@ function handleStop() {
 						@click="goToSettings"
 					/>
 					<N8nIconButton
-						icon="brain"
-						variant="ghost"
-						size="medium"
-						:class="{ [$style.activeButton]: showMemoryPanel }"
-						@click="showMemoryPanel = !showMemoryPanel"
-					/>
-					<N8nIconButton
 						v-if="isDebugEnabled"
 						icon="bug"
 						variant="ghost"
@@ -535,7 +526,6 @@ function handleStop() {
 				<InstanceAiArtifactsPanel v-if="showArtifactsPanel && !preview.isPreviewVisible.value" />
 
 				<!-- Overlay panels -->
-				<InstanceAiMemoryPanel v-if="showMemoryPanel" @close="showMemoryPanel = false" />
 				<InstanceAiDebugPanel
 					v-if="showDebugPanel"
 					@close="
