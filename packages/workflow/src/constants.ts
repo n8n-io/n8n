@@ -117,6 +117,7 @@ export const MCP_CLIENT_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClient';
 export const ANTHROPIC_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.anthropic';
 export const OLLAMA_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.ollama';
 export const GOOGLE_GEMINI_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.googleGemini';
+export const ALIBABA_CLOUD_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.alibabaCloud';
 export const MOONSHOT_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.moonshot';
 
 export const AI_VENDOR_NODE_TYPES = [
@@ -124,6 +125,7 @@ export const AI_VENDOR_NODE_TYPES = [
 	ANTHROPIC_LANGCHAIN_NODE_TYPE,
 	OLLAMA_LANGCHAIN_NODE_TYPE,
 	GOOGLE_GEMINI_LANGCHAIN_NODE_TYPE,
+	ALIBABA_CLOUD_LANGCHAIN_NODE_TYPE,
 	MOONSHOT_LANGCHAIN_NODE_TYPE,
 ];
 
