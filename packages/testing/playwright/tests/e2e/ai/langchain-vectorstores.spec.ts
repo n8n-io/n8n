@@ -24,6 +24,7 @@ test.describe(
 		test.describe('Advanced Workflow Features', () => {
 			test('should render runItems for sub-nodes and allow switching between them', async ({
 				n8n,
+				api,
 			}) => {
 				await n8n.start.fromImportedWorkflow('In_memory_vector_store_fake_embeddings.json');
 				await n8n.canvas.clickZoomToFitButton();
@@ -31,6 +32,21 @@ test.describe(
 
 				await n8n.canvas.executeNode('Populate VS');
 				await waitForWorkflowSuccess(n8n);
+
+				// [VM-DEBUG] Fetch execution data to diagnose VM expression failures
+				try {
+					const executions = await api.workflows.getExecutions();
+					if (executions.length > 0) {
+						const exec = await api.workflows.getExecution(executions[0].id);
+						const runData = exec.data?.resultData?.runData ?? {};
+						for (const [nodeName, runs] of Object.entries(runData)) {
+							const runsArr = runs as unknown[];
+							console.log(`[VM-DEBUG] ${nodeName}: ${runsArr.length} run(s)`);
+						}
+					}
+				} catch (e) {
+					console.log(`[VM-DEBUG] Failed to fetch execution: ${e}`);
+				}
 
 				const assertInputOutputTextExists = async (text: string) => {
 					await expect(n8n.ndv.getOutputPanel()).toContainText(text);
