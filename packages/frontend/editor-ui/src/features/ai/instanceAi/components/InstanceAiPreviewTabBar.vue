@@ -61,7 +61,13 @@ const externalLinkHref = computed(() => {
 				:href="externalLinkHref"
 				target="_blank"
 			/>
-			<N8nIconButton icon="x" variant="ghost" size="medium" @click="emit('close')" />
+			<N8nIconButton
+				icon="x"
+				variant="ghost"
+				size="medium"
+				data-test-id="instance-ai-preview-close"
+				@click="emit('close')"
+			/>
 		</div>
 	</div>
 </template>

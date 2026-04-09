@@ -92,6 +92,27 @@ function createInertAbortSignal(): AbortSignal {
 const ORCHESTRATOR_AGENT_ID = 'agent-001';
 const MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD = 5;
 
+/**
+ * When HTTP_PROXY / HTTPS_PROXY is set (e.g. in e2e tests with MockServer),
+ * return a fetch function that routes requests through the proxy. Node.js's
+ * globalThis.fetch does not respect these env vars, so AI SDK providers would
+ * bypass the proxy without this.
+ */
+function getProxyFetch(): typeof globalThis.fetch | undefined {
+	const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
+	if (!proxyUrl) return undefined;
+
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	const { ProxyAgent } = require('undici') as typeof import('undici');
+	const dispatcher = new ProxyAgent(proxyUrl);
+	return ((url: string | URL | Request, init?: RequestInit) =>
+		globalThis.fetch(url, {
+			...init,
+			// @ts-expect-error dispatcher is a valid undici option for Node.js fetch
+			dispatcher,
+		})) as typeof globalThis.fetch;
+}
+
 interface MessageTraceFinalization {
 	status: 'completed' | 'cancelled' | 'error';
 	outputText?: string;
@@ -379,9 +400,34 @@ export class InstanceAiService {
 				baseURL: client.getApiProxyBaseUrl() + '/anthropic/v1',
 				apiKey: 'proxy-managed',
 				headers,
+				fetch: getProxyFetch(),
 			});
 			return provider(modelName);
 		}
+
+		// When HTTP_PROXY is set (e.g. e2e tests with MockServer), build the model
+		// with a proxy-aware fetch so the AI SDK routes through the proxy. Mastra's
+		// ModelRouter doesn't pass `fetch` to providers, so we must do it here.
+		const proxyFetch = getProxyFetch();
+		if (proxyFetch) {
+			const config = await this.settingsService.resolveModelConfig(user);
+			const modelId = typeof config === 'string' ? config : 'id' in config ? config.id : null;
+			if (modelId) {
+				const [provider, ...rest] = modelId.split('/');
+				const modelName = rest.join('/');
+				const apiKey = typeof config === 'object' && 'apiKey' in config ? config.apiKey : undefined;
+				const baseURL = typeof config === 'object' && 'url' in config ? config.url : undefined;
+				if (provider === 'anthropic') {
+					const { createAnthropic } = await import('@ai-sdk/anthropic');
+					return createAnthropic({
+						apiKey,
+						baseURL: baseURL || undefined,
+						fetch: proxyFetch,
+					})(modelName);
+				}
+			}
+		}
+
 		return await this.settingsService.resolveModelConfig(user);
 	}
 
