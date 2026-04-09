@@ -240,13 +240,17 @@ describe('InstanceAiInput', () => {
 			expect(emitted().submit?.[0]).toBeDefined();
 		});
 
-		expect(emitted().submit?.[0]?.[0]).toBe('Please send this with context');
-		expect(emitted().submit?.[0]?.[1]).toEqual([
-			expect.objectContaining({
-				data: expect.any(String),
-				mimeType: 'text/plain',
-				fileName: 'note.txt',
-			}),
+		expect(emitted().submit).toEqual([
+			[
+				'Please send this with context',
+				[
+					expect.objectContaining({
+						data: expect.any(String),
+						mimeType: 'text/plain',
+						fileName: 'note.txt',
+					}),
+				],
+			],
 		]);
 		expect(textbox).toHaveValue('');
 	});
