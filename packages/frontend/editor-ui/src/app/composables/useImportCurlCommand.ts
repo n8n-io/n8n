@@ -2,6 +2,8 @@ import type { MaybeRef } from 'vue';
 import { unref } from 'vue';
 import get from 'lodash/get';
 import { toJsonObject as curlToJson, type JSONOutput } from 'curlconverter';
+import { convertCurlToJson } from '../utils/convertCurl/convertCurl';
+import type { CurlToJsonResult } from "../utils/convertCurl/convertCurl.types"
 
 import { CURL_IMPORT_NODES_PROTOCOLS, CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS } from '@/app/constants';
 import { useToast } from '@/app/composables/useToast';
@@ -250,7 +252,7 @@ export function sanitizeCurlUrlPlaceholders(curlCommand: string): string {
 }
 
 export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters => {
-	const curlJson = curlToJson(sanitizeCurlUrlPlaceholders(curlCommand));
+	const curlJson = convertCurlToJson(sanitizeCurlUrlPlaceholders(curlCommand));
 
 	const headers = curlJson.headers ?? {};
 
