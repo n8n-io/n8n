@@ -14,6 +14,7 @@ import {
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiEvalExecutionRequest,
 } from '@n8n/api-types';
+import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -55,6 +56,36 @@ export class InstanceAiController {
 	private readonly gatewayApiKey: string;
 
 	private readonly instanceBaseUrl: string;
+
+	private static getTreeRichnessScore(tree: InstanceAiAgentNode): number {
+		let score = 0;
+		const stack = [tree];
+
+		while (stack.length > 0) {
+			const node = stack.pop()!;
+			score += 100;
+			score += node.toolCalls.length * 10;
+			score += node.timeline.length * 2;
+			score += (node.planItems?.length ?? 0) * 20;
+			score += node.toolCalls.filter((toolCall) => toolCall.confirmation).length * 50;
+			score += node.children.length * 25;
+			stack.push(...node.children);
+		}
+
+		return score;
+	}
+
+	private static selectBootstrapTree(
+		eventTree: InstanceAiAgentNode,
+		persistedTree?: InstanceAiAgentNode,
+	): InstanceAiAgentNode {
+		if (!persistedTree) return eventTree;
+
+		return InstanceAiController.getTreeRichnessScore(persistedTree) >
+			InstanceAiController.getTreeRichnessScore(eventTree)
+			? persistedTree
+			: eventTree;
+	}
 
 	constructor(
 		private readonly instanceAiService: InstanceAiService,
@@ -202,13 +233,21 @@ export class InstanceAiController {
 
 		for (const [groupId, group] of liveGroups) {
 			const runEvents = this.eventBus.getEventsForRuns(threadId, group.runIds);
-			if (runEvents.length === 0) continue;
-
-			const agentTree = buildAgentTreeFromEvents(runEvents);
 			// Use the group's own latest runId — NOT the thread-global activeRunId,
 			// which belongs to the current orchestrator turn and would be wrong for
 			// background groups from older turns.
 			const groupRunId = group.runIds.at(-1);
+			const persistedSnapshot = await this.memoryService.getLatestRunSnapshot(threadId, {
+				messageGroupId: groupId,
+				runId: groupRunId,
+			});
+			if (runEvents.length === 0 && !persistedSnapshot) continue;
+
+			const eventTree = buildAgentTreeFromEvents(runEvents);
+			const agentTree = InstanceAiController.selectBootstrapTree(
+				eventTree,
+				persistedSnapshot?.tree,
+			);
 			res.write(
 				`event: run-sync\ndata: ${JSON.stringify({
 					runId: groupRunId,
@@ -454,7 +493,10 @@ export class InstanceAiController {
 		@Body payload: InstanceAiRenameThreadRequestDto,
 	) {
 		await this.assertThreadAccess(req.user.id, threadId);
-		const thread = await this.memoryService.renameThread(threadId, payload.title);
+		const thread = await this.memoryService.updateThread(threadId, {
+			title: payload.title,
+			metadata: payload.metadata,
+		});
 		return { thread };
 	}
 
@@ -476,9 +518,21 @@ export class InstanceAiController {
 			});
 		}
 
+		// Exclude snapshots for active/suspended runs — they have no matching
+		// assistant message in Mastra memory yet and would misalign the
+		// positional snapshot-to-message matching in parseStoredMessages.
+		const threadStatus = this.instanceAiService.getThreadStatus(threadId);
+		const activeRunId = this.instanceAiService.getActiveRunId(threadId);
+		const excludeRunIds: string[] = [];
+		if (activeRunId) excludeRunIds.push(activeRunId);
+		for (const t of threadStatus.backgroundTasks) {
+			if (t.status === 'running' && t.runId) excludeRunIds.push(t.runId);
+		}
+
 		const result = await this.memoryService.getRichMessages(req.user.id, threadId, {
 			limit: query.limit,
 			page: query.page,
+			excludeRunIds: excludeRunIds.length > 0 ? excludeRunIds : undefined,
 		});
 
 		// Include the next SSE event ID so the frontend can skip past events

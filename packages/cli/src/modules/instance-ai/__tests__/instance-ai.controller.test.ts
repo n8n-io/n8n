@@ -6,6 +6,16 @@ jest.mock('@n8n/instance-ai', () => ({
 	workflowLoopStateSchema: z.string(),
 	attemptRecordSchema: z.object({}),
 	workflowBuildOutcomeSchema: z.string(),
+	buildAgentTreeFromEvents: jest.fn(() => ({
+		agentId: 'agent-root',
+		role: 'orchestrator',
+		status: 'active',
+		textContent: '',
+		reasoning: '',
+		toolCalls: [],
+		children: [],
+		timeline: [],
+	})),
 }));
 
 jest.mock('../eval/execution.service', () => ({
@@ -174,6 +184,85 @@ describe('InstanceAiController', () => {
 	describe('events', () => {
 		it('should require instanceAi:message scope', () => {
 			expect(scopeOf('events')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
+		});
+
+		it('should bootstrap run-sync from the richer persisted snapshot when live events are incomplete', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			eventBus.getEventsAfter.mockReturnValue([]);
+			instanceAiService.getThreadStatus.mockReturnValue({
+				hasActiveRun: true,
+				isSuspended: false,
+				backgroundTasks: [],
+			} as never);
+			instanceAiService.getMessageGroupId.mockReturnValue('mg-1');
+			instanceAiService.getRunIdsForMessageGroup.mockReturnValue(['run-1']);
+			eventBus.getEventsForRuns.mockReturnValue([
+				{
+					type: 'run-start',
+					runId: 'run-1',
+					agentId: 'agent-root',
+					payload: { messageId: 'msg-1', messageGroupId: 'mg-1' },
+				},
+			] as never);
+			memoryService.getLatestRunSnapshot.mockResolvedValue({
+				runId: 'run-1',
+				messageGroupId: 'mg-1',
+				runIds: ['run-1'],
+				tree: {
+					agentId: 'agent-root',
+					role: 'orchestrator',
+					status: 'active',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [],
+					children: [
+						{
+							agentId: 'agent-planner-1',
+							role: 'planner',
+							status: 'active',
+							textContent: '',
+							reasoning: '',
+							toolCalls: [],
+							children: [],
+							timeline: [],
+							planItems: [
+								{
+									id: 'task-1',
+									title: 'Build workflow',
+									kind: 'build-workflow',
+									spec: 'Create the workflow',
+									deps: [],
+								},
+							],
+						},
+					],
+					timeline: [{ type: 'child', agentId: 'agent-planner-1' }],
+				},
+			});
+
+			const sseRes = mock<Response & { flush?: () => void }>({
+				setHeader: jest.fn(),
+				flushHeaders: jest.fn(),
+				write: jest.fn(),
+				end: jest.fn(),
+				flush: jest.fn(),
+			});
+			eventBus.subscribe.mockReturnValue(jest.fn());
+
+			const sseReq = mock<AuthenticatedRequest>({
+				user: { id: USER_ID },
+				headers: {},
+				once: jest.fn(),
+			});
+
+			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
+
+			const runSyncFrame = (sseRes.write as jest.Mock).mock.calls
+				.map(([frame]) => String(frame))
+				.find((frame) => frame.startsWith('event: run-sync'));
+
+			expect(runSyncFrame).toContain('"agent-planner-1"');
+			expect(runSyncFrame).toContain('"planItems"');
 		});
 
 		it('should close SSE stream when thread ownership changes after pre-creation subscribe', async () => {
@@ -583,13 +672,16 @@ describe('InstanceAiController', () => {
 		it('should rename thread', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 			const threadObj = mock<InstanceAiThreadInfo>();
-			memoryService.renameThread.mockResolvedValue(threadObj);
+			memoryService.updateThread.mockResolvedValue(threadObj);
 			const payload = mock<InstanceAiRenameThreadRequestDto>({ title: 'New Title' });
 
 			const result = await controller.renameThread(req, res, THREAD_ID, payload);
 
 			expect(result).toEqual({ thread: threadObj });
-			expect(memoryService.renameThread).toHaveBeenCalledWith(THREAD_ID, 'New Title');
+			expect(memoryService.updateThread).toHaveBeenCalledWith(
+				THREAD_ID,
+				expect.objectContaining({ title: 'New Title' }),
+			);
 		});
 	});
 

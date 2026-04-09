@@ -713,11 +713,16 @@ export function applyPaginationRequestData(
 }
 
 function createOAuth2Client(credentials: OAuth2CredentialData): ClientOAuth2 {
+	// Split and trim scopes; empty scope tokens are not RFC 6749-compliant and may be rejected by authorization servers
+	const scopes = credentials.scope
+		?.split(' ')
+		.map((s) => s.trim())
+		.filter(Boolean);
 	return new ClientOAuth2({
 		clientId: credentials.clientId,
 		clientSecret: credentials.clientSecret,
 		accessTokenUri: credentials.accessTokenUrl,
-		scopes: (credentials.scope ?? '').split(' '),
+		scopes: scopes?.length ? scopes : undefined,
 		ignoreSSLIssues: credentials.ignoreSSLIssues,
 		authentication: credentials.authentication ?? 'header',
 		...(credentials.additionalBodyProperties && {
@@ -823,7 +828,16 @@ export async function requestOAuth2(
 			Object.keys(oauthTokenData).length === 0 ||
 			oauthTokenData.access_token === '') // stub
 	) {
-		const { data } = await oAuthClient.credentials.getToken();
+		let tokenResult: Awaited<ReturnType<typeof oAuthClient.credentials.getToken>>;
+		try {
+			tokenResult = await oAuthClient.credentials.getToken();
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			throw new ApplicationError(`Failed to acquire OAuth2 access token: ${message}`, {
+				cause: error,
+			});
+		}
+		const { data } = tokenResult;
 		// Find the credentials
 		if (!node.credentials?.[credentialsType]) {
 			throw new ApplicationError('Node does not have credential type', {
