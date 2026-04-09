@@ -31,6 +31,7 @@ import { useSetupCards } from '../composables/useSetupCards';
 import { useSetupCardParameters } from '../composables/useSetupCardParameters';
 import { useSetupActions } from '../composables/useSetupActions';
 import { getNodeParametersIssues } from '@/features/setupPanel/setupPanel.utils';
+import ConfirmationFooter from './ConfirmationFooter.vue';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -480,7 +481,7 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 						</li>
 					</ul>
 				</div>
-				<footer :class="$style.footer">
+				<ConfirmationFooter layout="row-between">
 					<div :class="$style.footerNav">
 						<N8nLink
 							data-test-id="instance-ai-workflow-setup-review-details"
@@ -509,7 +510,7 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 							@click="handleApply"
 						/>
 					</div>
-				</footer>
+				</ConfirmationFooter>
 			</div>
 			<!-- Single display card -->
 			<div
@@ -664,7 +665,7 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 				</div>
 
 				<!-- Footer -->
-				<footer :class="$style.footer">
+				<ConfirmationFooter layout="row-between">
 					<div :class="$style.footerNav">
 						<N8nButton
 							v-if="showArrows"
@@ -724,7 +725,7 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 							@click="handleApply"
 						/>
 					</div>
-				</footer>
+				</ConfirmationFooter>
 			</div>
 
 			<!-- Grouped display card -->
@@ -877,6 +878,22 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 							/>
 						</div>
 					</ExpressionContextProvider>
+				</div>
+
+				<!-- Listening callout for webhook triggers in grouped cards -->
+				<div
+					v-if="
+						getGroupPrimaryTriggerCard(currentDisplayCard.group)?.isTrigger &&
+						getGroupPrimaryTriggerCard(currentDisplayCard.group)?.isFirstTrigger &&
+						getTriggerResult(getGroupPrimaryTriggerCard(currentDisplayCard.group)!)?.status ===
+							'listening'
+					"
+					:class="$style.listeningCallout"
+				>
+					<N8nIcon icon="spinner" color="primary" spin size="small" :class="$style.loading" />
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('instanceAi.workflowSetup.triggerListening') }}
+					</N8nText>
 				</div>
 
 				<!-- Error banner -->
@@ -1080,14 +1097,6 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 	background: var(--color--danger--tint-4);
 	border-radius: var(--radius);
 	margin: 0 var(--spacing--sm);
-}
-
-.footer {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--xs);
-	border-top: var(--border);
-	padding: var(--spacing--xs) var(--spacing--sm);
 }
 
 .footerNav {

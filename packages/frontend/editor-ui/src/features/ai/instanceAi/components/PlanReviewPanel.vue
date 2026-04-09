@@ -8,6 +8,7 @@
 import { N8nBadge, N8nButton, N8nIcon, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
+import ConfirmationFooter from './ConfirmationFooter.vue';
 
 export interface PlannedTaskArg {
 	id: string;
@@ -146,7 +147,7 @@ function handleRequestChanges() {
 		</div>
 
 		<!-- Approval footer (hidden during loading and after resolution) -->
-		<div v-if="!isResolved && !props.readOnly && !props.loading" :class="$style.footer">
+		<ConfirmationFooter v-if="!isResolved && !props.readOnly && !props.loading" layout="column">
 			<textarea
 				v-model="feedback"
 				:class="$style.feedbackTextarea"
@@ -165,7 +166,7 @@ function handleRequestChanges() {
 					{{ i18n.baseText('instanceAi.planReview.requestChanges') }}
 				</N8nButton>
 				<N8nButton
-					type="primary"
+					variant="solid"
 					size="small"
 					:disabled="disabled"
 					data-test-id="instance-ai-plan-approve"
@@ -174,7 +175,7 @@ function handleRequestChanges() {
 					{{ i18n.baseText('instanceAi.planReview.approve') }}
 				</N8nButton>
 			</div>
-		</div>
+		</ConfirmationFooter>
 	</div>
 </template>
 
@@ -336,14 +337,6 @@ function handleRequestChanges() {
 	background: var(--color--foreground);
 	border-radius: var(--radius--sm);
 	white-space: nowrap;
-}
-
-.footer {
-	border-top: var(--border);
-	padding: var(--spacing--xs) var(--spacing--sm);
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
 }
 
 .feedbackTextarea {
