@@ -16,7 +16,6 @@ import type {
 	IWebhookDescription,
 	IWorkflowDataProxyAdditionalKeys,
 	NodeParameterValue,
-	WorkflowExpression,
 } from 'n8n-workflow';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -61,10 +60,10 @@ import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWo
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	convertToWorkflowAccessors,
 } from '@/app/stores/workflowDocument.store';
 import { computed } from 'vue';
 import type { WorkflowObjectAccessors } from '../types';
-import identity from 'lodash/identity';
 
 export type ResolveParameterOptions = {
 	targetItem?: TargetItem;
@@ -100,40 +99,18 @@ export async function resolveParameter<T = IDataObject>(
 	}
 
 	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = workflowsStore.workflowId
-		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-		: undefined;
+	const workflowDocumentStore = useWorkflowDocumentStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
 
 	return await resolveParameterImpl(
 		parameter,
-		workflowDocumentStore
-			? {
-					connectionsBySourceNode: workflowDocumentStore.connectionsBySourceNode,
-					pinData: workflowDocumentStore.pinData as IPinData,
-					expression: workflowDocumentStore.getExpressionHandler(),
-					getNode: workflowDocumentStore.getNodeByName,
-					getParentNodes: workflowDocumentStore.getParentNodes,
-					getNodeConnectionIndexes: workflowDocumentStore.getNodeConnectionIndexes,
-					getParentMainInputNode: workflowDocumentStore.getParentMainInputNode,
-					getChildNodes: workflowDocumentStore.getChildNodes,
-					getParentNodesByDepth: workflowDocumentStore.getParentNodesByDepth,
-				}
-			: {
-					connectionsBySourceNode: {},
-					pinData: {},
-					expression: {} as WorkflowExpression,
-					getNode: () => null,
-					getParentNodes: () => [],
-					getNodeConnectionIndexes: () => undefined,
-					getParentMainInputNode: identity,
-					getChildNodes: () => [],
-					getParentNodesByDepth: () => [],
-				},
-		workflowDocumentStore?.connectionsBySourceNode ?? {},
+		convertToWorkflowAccessors(workflowDocumentStore),
+		workflowDocumentStore.connectionsBySourceNode ?? {},
 		useEnvironmentsStore().variablesAsObject,
 		useNDVStore().activeNode,
 		workflowsStore.workflowExecutionData,
-		workflowDocumentStore?.getPinDataSnapshot(),
+		workflowDocumentStore.getPinDataSnapshot(),
 		opts,
 	);
 }
@@ -144,7 +121,7 @@ function resolveParameterImpl<T = IDataObject>(
 	workflowObject: WorkflowObjectAccessors,
 	connections: IConnections,
 	envVars: Record<string, string | boolean | number>,
-	ndvActiveNode: INode | null,
+	ndvActiveNode: INodeUi | null,
 	executionData: IExecutionResponse | null,
 	pinData: IPinData | undefined,
 	opts: ResolveParameterOptions = {},

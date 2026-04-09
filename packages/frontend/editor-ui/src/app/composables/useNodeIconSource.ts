@@ -19,13 +19,13 @@ export function useNodeIconSource(
 	);
 
 	return computed(() => {
-		const expressionHandler = workflowDocumentStore?.value?.getExpressionHandler();
 		const typeValue = toValue(nodeType);
 		const nodeValue = toValue(node);
 
 		return getNodeIconSource(
 			typeValue ?? nodeValue?.type,
-			expressionHandler ? { expressionHandler, node: nodeValue ?? null } : undefined,
+			nodeValue ?? null,
+			workflowDocumentStore?.value?.getExpressionHandler() ?? null,
 		);
 	});
 }

@@ -118,10 +118,10 @@ export function useCanvasMapping({
 	function createDefaultNodeRenderType(node: INodeUi): CanvasNodeDefaultRender {
 		const nodeType = nodeTypeDescriptionByNodeId.value[node.id];
 		const source = simulatedNodeTypeDescriptionByNodeId.value[node.id] ?? nodeType ?? node.type;
-		const expressionHandler = workflowDocumentStore.value?.getExpressionHandler();
 		const icon = getNodeIconSource(
 			source,
-			expressionHandler ? { expressionHandler, node } : undefined,
+			node,
+			workflowDocumentStore.value?.getExpressionHandler() ?? null,
 		);
 
 		return {

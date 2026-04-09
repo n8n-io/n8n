@@ -44,7 +44,6 @@ const updateViewStack = (key: string) => {
 
 	if (installedNode) {
 		const nodeActions = nodeCreatorStore.actions?.[installedNode.key] || [];
-		const expressionHandler = workflowDocumentStore?.value?.getExpressionHandler();
 
 		popViewStack();
 
@@ -54,7 +53,8 @@ const updateViewStack = (key: string) => {
 			installedNode,
 			getNodeIconSource(
 				installedNode.properties,
-				expressionHandler ? { expressionHandler, node: null } : undefined,
+				null,
+				workflowDocumentStore?.value?.getExpressionHandler() ?? null,
 			),
 			activeViewStack.rootView,
 			nodeActions,

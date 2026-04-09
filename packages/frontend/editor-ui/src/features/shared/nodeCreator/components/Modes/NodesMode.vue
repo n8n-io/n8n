@@ -144,10 +144,10 @@ function onSelected(item: INodeCreateElement) {
 		let nodeActions = getFilteredActions(item, actions);
 		const notInstalledCommunityNode =
 			isCommunityPackageName(item.key) && !useNodeTypesStore().getIsNodeInstalled(item.key);
-		const expressionHandler = workflowDocumentStore?.value?.getExpressionHandler();
 		const nodeIcon = getNodeIconSource(
 			item.properties,
-			expressionHandler ? { expressionHandler, node: null } : undefined,
+			null,
+			workflowDocumentStore?.value?.getExpressionHandler() ?? null,
 		);
 
 		if (
