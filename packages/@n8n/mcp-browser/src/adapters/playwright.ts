@@ -12,7 +12,12 @@ import type {
 import { chromium } from 'playwright-core';
 
 import { CDPRelayServer } from '../cdp-relay';
-import { BrowserExecutableNotFoundError, PageNotFoundError, StaleRefError } from '../errors';
+import {
+	BrowserExecutableNotFoundError,
+	PageNotFoundError,
+	StaleRefError,
+	type ConnectionLostReason,
+} from '../errors';
 import { createLogger } from '../logger';
 import type {
 	ClickOptions,
@@ -75,7 +80,7 @@ interface PageState {
 // This ensures the same ID whether loaded unpacked or installed from the Chrome Web Store.
 // ---------------------------------------------------------------------------
 
-const BROWSER_BRIDGE_EXTENSION_ID = 'agklaocphkdbepcjccjpnbcglmpebhpo';
+const BROWSER_USE_EXTENSION_ID = 'cegmdpndekdfpnafgacidejijecomlhh';
 
 // ---------------------------------------------------------------------------
 // Adapter
@@ -91,6 +96,9 @@ export class PlaywrightAdapter {
 	private relay?: CDPRelayServer;
 	/** Pending activation: set by ensurePage(), consumed by context.on('page'). */
 	private pendingActivation?: { id: string; resolve: (page: Page) => void };
+
+	/** Called when the browser connection is unexpectedly lost. */
+	onDisconnect?: (reason: ConnectionLostReason) => void;
 
 	constructor(config: ResolvedConfig) {
 		this.resolvedConfig = config;
@@ -110,7 +118,7 @@ export class PlaywrightAdapter {
 
 		// Open the extension's connect page with the relay URL so it auto-connects.
 		const connectUrl =
-			`chrome-extension://${BROWSER_BRIDGE_EXTENSION_ID}/dist/connect.html` +
+			`chrome-extension://${BROWSER_USE_EXTENSION_ID}/connect.html` +
 			`?mcpRelayUrl=${encodeURIComponent(extensionEndpoint)}`;
 		const browserInfo = this.resolvedConfig.browsers.get(config.browser);
 		const chromePath = browserInfo?.executablePath;
@@ -164,6 +172,18 @@ export class PlaywrightAdapter {
 				this.trackPage(page);
 			}
 		});
+
+		// Detect unexpected disconnection from the browser (process crash, etc.)
+		this.browser.on('disconnected', () => {
+			log.debug('browser disconnected event');
+			this.onDisconnect?.('browser_closed');
+		});
+
+		// Detect extension disconnection via the relay (already a typed reason)
+		this.relay.onExtensionDisconnect = (reason) => {
+			log.debug('relay: extension disconnected, reason:', reason);
+			this.onDisconnect?.(reason);
+		};
 
 		log.debug('launch complete, context ready for lazy activation');
 	}

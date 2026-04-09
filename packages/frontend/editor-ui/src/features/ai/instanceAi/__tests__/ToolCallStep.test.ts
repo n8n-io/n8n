@@ -12,6 +12,9 @@ const renderComponent = createComponentRenderer(ToolCallStep, {
 			CollapsibleContent: { template: '<div><slot /></div>' },
 			ToolResultJson: { template: '<pre data-test-id="tool-result-json" />' },
 			ToolResultRenderer: { template: '<div data-test-id="tool-result-renderer" />' },
+			TimelineStepButton: {
+				template: '<div data-test-id="timeline-step-button"><slot /></div>',
+			},
 		},
 	},
 });
@@ -36,13 +39,12 @@ describe('ToolCallStep', () => {
 	});
 
 	it('should display the tool label', () => {
-		const { container } = renderComponent({
+		const { getByTestId } = renderComponent({
 			props: { toolCall: makeToolCall({ toolName: 'search-nodes' }) },
 		});
 
-		const label = container.querySelector('span');
-		expect(label).toBeTruthy();
-		expect(label?.textContent?.trim()).toBeTruthy();
+		const button = getByTestId('timeline-step-button');
+		expect(button.textContent?.trim()).toBeTruthy();
 	});
 
 	it('should use custom label when provided', () => {
@@ -53,59 +55,25 @@ describe('ToolCallStep', () => {
 		expect(getByText('Custom Label')).toBeInTheDocument();
 	});
 
-	it('should show connector when showConnector is true', () => {
-		const { container } = renderComponent({
-			props: { toolCall: makeToolCall(), showConnector: true },
-		});
-
-		const connectors = container.querySelectorAll('div');
-		const hasConnector = Array.from(connectors).some((el) => el.className.includes('connector'));
-		expect(hasConnector).toBe(true);
-	});
-
-	it('should not show connector when showConnector is false', () => {
-		const { container } = renderComponent({
-			props: { toolCall: makeToolCall(), showConnector: false },
-		});
-
-		const connectors = Array.from(container.querySelectorAll('div')).filter((el) =>
-			el.className.includes('connector'),
-		);
-		expect(connectors).toHaveLength(0);
-	});
-
 	it('should show spinner icon when loading', () => {
 		const { container } = renderComponent({
 			props: { toolCall: makeToolCall({ isLoading: true }) },
-		});
-
-		const icons = container.querySelectorAll('[class*="loadingIcon"]');
-		expect(icons.length).toBeGreaterThan(0);
-	});
-
-	it('should show toggle button for toggleable tools', () => {
-		const { container } = renderComponent({
-			props: {
-				toolCall: makeToolCall({
-					toolName: 'search-nodes',
-					result: { nodes: [] },
-				}),
+			global: {
+				stubs: {
+					CollapsibleRoot: { template: '<div><slot /></div>' },
+					CollapsibleTrigger: { template: '<button><slot /></button>' },
+					CollapsibleContent: { template: '<div><slot /></div>' },
+					ToolResultJson: { template: '<pre data-test-id="tool-result-json" />' },
+					ToolResultRenderer: { template: '<div data-test-id="tool-result-renderer" />' },
+					TimelineStepButton: {
+						template: '<div><slot name="icon" :is-hovered="false" /><slot /></div>',
+					},
+				},
 			},
 		});
 
-		const buttons = container.querySelectorAll('button');
-		expect(buttons.length).toBeGreaterThan(0);
-	});
-
-	it('should not show toggle for non-toggleable tools', () => {
-		const { container } = renderComponent({
-			props: {
-				toolCall: makeToolCall({ toolName: 'plan' }),
-			},
-		});
-
-		const buttons = container.querySelectorAll('button');
-		expect(buttons).toHaveLength(0);
+		const spinner = container.querySelector('.n8n-icon');
+		expect(spinner).toBeTruthy();
 	});
 
 	it('should show error text when tool call has error', () => {
@@ -147,15 +115,6 @@ describe('ToolCallStep', () => {
 
 		const label = getByText(/n8n docs/);
 		expect(label).toBeInTheDocument();
-	});
-
-	it('should render slot content', () => {
-		const { getByText } = renderComponent({
-			props: { toolCall: makeToolCall() },
-			slots: { default: '<span>Slot Content</span>' },
-		});
-
-		expect(getByText('Slot Content')).toBeInTheDocument();
 	});
 
 	it('should show result data when toggle is expanded', async () => {

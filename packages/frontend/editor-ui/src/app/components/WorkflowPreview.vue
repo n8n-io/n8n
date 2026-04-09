@@ -7,7 +7,7 @@ import type { IWorkflowTemplate } from '@n8n/rest-api-client/api/templates';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
-import { N8nLoading, N8nSpinner } from '@n8n/design-system';
+import { N8nLoading, N8nIcon } from '@n8n/design-system';
 const props = withDefaults(
 	defineProps<{
 		loading?: boolean;
@@ -246,7 +246,7 @@ defineExpose({ iframeRef });
 			<N8nLoading :loading="!showPreview" :rows="1" variant="image" />
 		</div>
 		<div v-else-if="loaderType === 'spinner' && !showPreview" :class="$style.spinner">
-			<N8nSpinner type="dots" />
+			<N8nIcon icon="spinner" color="primary" size="xxlarge" spin />
 		</div>
 		<iframe
 			ref="iframeRef"

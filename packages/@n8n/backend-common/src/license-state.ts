@@ -106,6 +106,10 @@ export class LicenseState {
 		return this.isLicensed('feat:aiCredits');
 	}
 
+	isAiGatewayLicensed() {
+		return this.isLicensed('feat:aiGateway');
+	}
+
 	isAdvancedExecutionFiltersLicensed() {
 		return this.isLicensed('feat:advancedExecutionFilters');
 	}

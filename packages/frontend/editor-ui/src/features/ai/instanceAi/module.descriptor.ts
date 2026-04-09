@@ -39,7 +39,7 @@ export const InstanceAiModule: FrontendModuleDescription = {
 				middleware: ['authenticated', 'rbac', 'custom'],
 				middlewareOptions: {
 					rbac: {
-						scope: 'instanceAi:manage',
+						scope: 'instanceAi:message',
 					},
 				},
 				telemetry: {
@@ -58,11 +58,11 @@ export const InstanceAiModule: FrontendModuleDescription = {
 		{
 			id: 'settings-instance-ai',
 			icon: 'sparkles',
-			label: i18n.baseText('settings.instanceAi'),
+			label: i18n.baseText('settings.n8nAgent'),
 			position: 'top',
 			route: { to: { name: INSTANCE_AI_SETTINGS_VIEW } },
 			get available() {
-				return hasPermission(['rbac'], { rbac: { scope: 'instanceAi:manage' } });
+				return hasPermission(['rbac'], { rbac: { scope: 'instanceAi:message' } });
 			},
 		},
 	],

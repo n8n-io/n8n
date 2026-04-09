@@ -77,7 +77,7 @@ Agent calls readFile("src/index.ts")
   → Gateway resolves pending Promise → tool gets FileContent back
 ```
 
-The `@n8n/fs-proxy` CLI daemon is one implementation of this protocol. Any
+The `@n8n/computer-use` CLI daemon is one implementation of this protocol. Any
 application that speaks SSE + HTTP POST can serve as a gateway — a Mac app,
 an Electron desktop app, a VS Code extension, or a mobile companion.
 
@@ -189,17 +189,17 @@ The `InstanceAiDirectoryShare` component has 3 states:
 |-------|-----------|-----|
 | **Connected** | `isGatewayConnected \|\| isLocalFilesystemEnabled` | Green indicator: "Files connected" |
 | **Connecting** | `isDaemonConnecting` | Spinner: "Connecting..." |
-| **Setup needed** | Default | `npx @n8n/fs-proxy` command + copy button + waiting spinner |
+| **Setup needed** | Default | `npx @n8n/computer-use` command + copy button + waiting spinner |
 
 ### Auto-connect flow
 
-The user runs `npx @n8n/fs-proxy` and everything connects automatically. No
+The user runs `npx @n8n/computer-use` and everything connects automatically. No
 URLs, no tokens, no buttons.
 
 ```mermaid
 sequenceDiagram
     participant UI as Frontend (browser)
-    participant Daemon as fs-proxy daemon (localhost:7655)
+    participant Daemon as computer-use daemon (localhost:7655)
     participant Server as n8n Backend
 
     UI->>Daemon: GET localhost:7655/health (polling every 5s)
@@ -228,7 +228,7 @@ the agent reads the filesystem through local providers without any gateway,
 daemon, or pairing.
 
 - The UI immediately shows **"Connected"** (green indicator).
-- No `npx @n8n/fs-proxy` needed.
+- No `npx @n8n/computer-use` needed.
 - If `N8N_INSTANCE_AI_FILESYSTEM_PATH` is set, access is sandboxed to that
   directory. Otherwise it is unrestricted.
 
@@ -243,11 +243,11 @@ machine. The gateway bridge is required.
 ```mermaid
 sequenceDiagram
     participant Browser as Browser (host)
-    participant Daemon as fs-proxy daemon (host:7655)
+    participant Daemon as computer-use daemon (host:7655)
     participant Server as n8n server (container)
 
     Note over Browser,Daemon: 1. User starts daemon
-    Daemon->>Daemon: npx @n8n/fs-proxy (scans project dir)
+    Daemon->>Daemon: npx @n8n/computer-use (scans project dir)
 
     Note over Browser,Daemon: 2. Browser detects daemon
     Browser->>Daemon: GET localhost:7655/health (polling every 5s)
@@ -277,7 +277,7 @@ so the gateway bridge is required.
 ```mermaid
 sequenceDiagram
     participant Browser as Browser (user's machine)
-    participant Daemon as fs-proxy daemon (localhost:7655)
+    participant Daemon as computer-use daemon (localhost:7655)
     participant Cloud as n8n Cloud server
 
     Browser->>Daemon: GET localhost:7655/health
@@ -300,8 +300,8 @@ firewall rules — SSE is a regular outbound connection.
 | Deployment | Access path | Daemon needed? | User action |
 |------------|-------------|----------------|-------------|
 | Bare metal | Direct (local providers) | No | None — auto-detected |
-| Docker / K8s | Gateway bridge | Yes | `npx @n8n/fs-proxy` on host |
-| n8n Cloud | Gateway bridge | Yes | `npx @n8n/fs-proxy` on local machine |
+| Docker / K8s | Gateway bridge | Yes | `npx @n8n/computer-use` on host |
+| n8n Cloud | Gateway bridge | Yes | `npx @n8n/computer-use` on local machine |
 
 Alternatively, setting `N8N_INSTANCE_AI_GATEWAY_API_KEY` on both the n8n
 server and the daemon skips the pairing flow entirely — useful for permanent
@@ -408,7 +408,7 @@ All key comparisons use `timingSafeEqual()` to prevent timing attacks.
 
 ## Extending the Gateway: Building Custom Clients
 
-The gateway protocol is **client-agnostic** — `@n8n/fs-proxy` is just one
+The gateway protocol is **client-agnostic** — `@n8n/computer-use` is just one
 implementation. Any application that speaks the protocol can serve as a
 filesystem provider: a desktop app (Electron, Tauri), a VS Code extension,
 a Go binary, a mobile companion, etc.
@@ -504,11 +504,11 @@ See `docs/configuration.md` for the full configuration reference.
 |---------|----------------|
 | `@n8n/instance-ai` | Agent core: service interfaces, tool definitions, data shapes. Framework-agnostic, zero n8n dependencies. |
 | `packages/cli/.../instance-ai/` | n8n backend: HTTP endpoints, gateway singleton, local providers, auto-detect logic, event bus. |
-| `@n8n/fs-proxy` | Reference gateway client: standalone CLI daemon. HTTP server, SSE client, local file reader, directory scanner. Independently installable via npx. |
+| `@n8n/computer-use` | Reference gateway client: standalone CLI daemon. HTTP server, SSE client, local file reader, directory scanner. Independently installable via npx. |
 
 ### Tree scanner behavior
 
-The reference daemon (`@n8n/fs-proxy`) scans the user's project directory on
+The reference daemon (`@n8n/computer-use`) scans the user's project directory on
 startup:
 
 - **Algorithm**: Breadth-first, broad top-level coverage before descending

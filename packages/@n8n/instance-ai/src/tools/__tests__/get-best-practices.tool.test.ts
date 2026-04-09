@@ -35,7 +35,7 @@ describe('get-best-practices tool', () => {
 		const result = (await tool.execute!(
 			{ technique: 'chatbot' },
 			{} as never,
-		)) as BestPracticesOutput;
+		)) as unknown as BestPracticesOutput;
 
 		expect(result.technique).toBe('chatbot');
 		expect(result.documentation).toBeDefined();
@@ -47,7 +47,7 @@ describe('get-best-practices tool', () => {
 		const result = (await tool.execute!(
 			{ technique: 'data_analysis' },
 			{} as never,
-		)) as BestPracticesOutput;
+		)) as unknown as BestPracticesOutput;
 
 		expect(result.technique).toBe('data_analysis');
 		expect(result.documentation).toBeUndefined();
@@ -58,7 +58,7 @@ describe('get-best-practices tool', () => {
 		const result = (await tool.execute!(
 			{ technique: 'nonexistent_technique' },
 			{} as never,
-		)) as BestPracticesOutput;
+		)) as unknown as BestPracticesOutput;
 
 		expect(result.technique).toBe('nonexistent_technique');
 		expect(result.documentation).toBeUndefined();
@@ -70,7 +70,7 @@ describe('get-best-practices tool', () => {
 		const result = (await tool.execute!(
 			{ technique: 'scheduling' },
 			{} as never,
-		)) as BestPracticesOutput;
+		)) as unknown as BestPracticesOutput;
 
 		expect(result.documentation).toContain('Schedule Trigger');
 		expect(result.documentation).toContain('Cron');
@@ -80,7 +80,7 @@ describe('get-best-practices tool', () => {
 		const result = (await tool.execute!(
 			{ technique: 'triage' },
 			{} as never,
-		)) as BestPracticesOutput;
+		)) as unknown as BestPracticesOutput;
 
 		expect(result.documentation).toContain('Triage');
 		expect(result.documentation).toContain('Switch');
