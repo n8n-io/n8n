@@ -29,7 +29,6 @@ import {
 import { createVerifyBuiltWorkflowTool } from './verify-built-workflow.tool';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
-import { traceWorkingMemoryContext } from '../../runtime/working-memory-tracing';
 import { formatPreviousAttempts } from '../../storage/iteration-log';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import {
@@ -107,7 +106,7 @@ function buildOutcome(
 	};
 }
 
-const BUILDER_MAX_STEPS = 30;
+const BUILDER_MAX_STEPS = 60;
 
 const DETACHED_BUILDER_REQUIREMENTS = `## Detached Task Contract
 
@@ -425,24 +424,14 @@ export async function startBuildWorkflowAgentTask(
 						const traceParent = getTraceParentRun();
 						const hitlResult = await withTraceParentContext(traceParent, async () => {
 							const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
-							const stream = await traceWorkingMemoryContext(
-								{
-									phase: 'initial',
-									agentId: subAgentId,
-									agentRole: 'workflow-builder',
-									threadId: context.threadId,
-									input: briefing,
+							const stream = await subAgent.stream(briefing, {
+								maxSteps: BUILDER_MAX_STEPS,
+								abortSignal: signal,
+								providerOptions: {
+									anthropic: { cacheControl: { type: 'ephemeral' } },
 								},
-								async () =>
-									await subAgent.stream(briefing, {
-										maxSteps: BUILDER_MAX_STEPS,
-										abortSignal: signal,
-										providerOptions: {
-											anthropic: { cacheControl: { type: 'ephemeral' } },
-										},
-										...(llmStepTraceHooks?.executionOptions ?? {}),
-									}),
-							);
+								...(llmStepTraceHooks?.executionOptions ?? {}),
+							});
 
 							return await consumeStreamWithHitl({
 								agent: subAgent,
@@ -461,7 +450,6 @@ export async function startBuildWorkflowAgentTask(
 								drainCorrections,
 								waitForCorrection,
 								llmStepTraceHooks,
-								workingMemoryEnabled: false,
 							});
 						});
 
@@ -559,24 +547,14 @@ export async function startBuildWorkflowAgentTask(
 					const traceParent = getTraceParentRun();
 					const hitlResult = await withTraceParentContext(traceParent, async () => {
 						const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
-						const stream = await traceWorkingMemoryContext(
-							{
-								phase: 'initial',
-								agentId: subAgentId,
-								agentRole: 'workflow-builder',
-								threadId: context.threadId,
-								input: briefing,
+						const stream = await subAgent.stream(briefing, {
+							maxSteps: BUILDER_MAX_STEPS,
+							abortSignal: signal,
+							providerOptions: {
+								anthropic: { cacheControl: { type: 'ephemeral' } },
 							},
-							async () =>
-								await subAgent.stream(briefing, {
-									maxSteps: BUILDER_MAX_STEPS,
-									abortSignal: signal,
-									providerOptions: {
-										anthropic: { cacheControl: { type: 'ephemeral' } },
-									},
-									...(llmStepTraceHooks?.executionOptions ?? {}),
-								}),
-						);
+							...(llmStepTraceHooks?.executionOptions ?? {}),
+						});
 
 						return await consumeStreamWithHitl({
 							agent: subAgent,
@@ -595,7 +573,6 @@ export async function startBuildWorkflowAgentTask(
 							drainCorrections,
 							waitForCorrection,
 							llmStepTraceHooks,
-							workingMemoryEnabled: false,
 						});
 					});
 

@@ -1,6 +1,7 @@
 import type { GatewayConfig } from '@n8n/computer-use/config';
 import type { DaemonOptions } from '@n8n/computer-use/daemon';
 import { startDaemon } from '@n8n/computer-use/daemon';
+import type { GatewaySession } from '@n8n/computer-use/gateway-session';
 import { logger } from '@n8n/computer-use/logger';
 import { EventEmitter } from 'node:events';
 import type * as http from 'node:http';
@@ -32,7 +33,10 @@ export class DaemonController extends EventEmitter<DaemonControllerEvents> {
 		return this._status !== 'stopped';
 	}
 
-	start(config: GatewayConfig, confirmConnect: (url: string) => boolean): void {
+	start(
+		config: GatewayConfig,
+		confirmConnect: (url: string, session: GatewaySession) => boolean,
+	): void {
 		if (this.server) {
 			logger.debug('Daemon start requested but already running — ignoring');
 			return;

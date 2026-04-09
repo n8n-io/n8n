@@ -1,7 +1,15 @@
 import type { Logger } from '@n8n/backend-common';
+import type { DbLockService } from '@n8n/db';
+import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 
+import { TrustedKeySourceEntity } from '../../database/entities/trusted-key-source.entity';
+import { TrustedKeyEntity } from '../../database/entities/trusted-key.entity';
+import type { TrustedKeySourceRepository } from '../../database/repositories/trusted-key-source.repository';
+import type { TrustedKeyRepository } from '../../database/repositories/trusted-key.repository';
 import type { TokenExchangeConfig } from '../../token-exchange.config';
+import type { TrustedKeyData } from '../../token-exchange.schemas';
 import { TrustedKeyService } from '../trusted-key.service';
 
 // ──────────────────────────────────────────────────────────────────────
@@ -23,48 +31,60 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEpCuPN2BHQ7G0A2qD2Bd27bwwUB9M
 Npzv5WS/ygt55l8y2X+Vfm5TQFRMNkqEx+/GXaPIU/hDmtnBdCxAUIRM9g==
 -----END PUBLIC KEY-----`;
 
-const ED25519_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
-MCowBQYDK2VwAyEAPBUxurC3wGyi/yXTTjNwTzgHjSioAIa4Qx6nyOqof0U=
------END PUBLIC KEY-----`;
-
 // ──────────────────────────────────────────────────────────────────────
 // Helpers
 // ──────────────────────────────────────────────────────────────────────
 
 const mockLogger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
 
-function createService(trustedKeysJson: string): TrustedKeyService {
-	const tokenExchangeConfig = mock<TokenExchangeConfig>({
-		trustedKeys: trustedKeysJson,
-		enabled: true,
-	});
-	return new TrustedKeyService(mockLogger, tokenExchangeConfig);
-}
-
-function staticKeyEntry(
-	overrides: Partial<{
-		kid: string;
-		algorithms: string[];
-		key: string;
-		issuer: string;
-		expectedAudience: string;
-		allowedRoles: string[];
-	}> = {},
-) {
+function makeTrustedKeyData(overrides: Partial<TrustedKeyData> = {}): TrustedKeyData {
 	return {
-		type: 'static' as const,
-		kid: 'test-kid',
 		algorithms: ['RS256'],
-		key: RSA_PUBLIC_KEY,
+		keyMaterial: RSA_PUBLIC_KEY,
 		issuer: 'https://issuer.example.com',
 		...overrides,
 	};
 }
 
-async function initWithEntries(entries: unknown[]): Promise<TrustedKeyService> {
-	const service = createService(JSON.stringify(entries));
-	await service.initialize();
-	return service;
+function makeTrustedKeyEntity(
+	overrides: Partial<{ sourceId: string; kid: string; data: TrustedKeyData }> = {},
+): TrustedKeyEntity {
+	const entity = new TrustedKeyEntity();
+	entity.sourceId = overrides.sourceId ?? 'static';
+	entity.kid = overrides.kid ?? 'test-kid';
+	entity.data = JSON.stringify(overrides.data ?? makeTrustedKeyData());
+	entity.createdAt = new Date();
+	return entity;
+}
+
+function createMocks() {
+	const config = mock<TokenExchangeConfig>({
+		trustedKeys: '',
+		keyRefreshIntervalSeconds: 300,
+	});
+	const sourceRepo = mock<TrustedKeySourceRepository>();
+	const keyRepo = mock<TrustedKeyRepository>();
+	const instanceSettings = mock<InstanceSettings>({ isLeader: true });
+	const dbLockService = mock<DbLockService>();
+
+	dbLockService.withLock.mockImplementation(
+		async (_lockId: unknown, fn: (tx: EntityManager) => Promise<unknown>) => {
+			return await fn(mock<EntityManager>());
+		},
+	);
+
+	sourceRepo.find.mockResolvedValue([]);
+
+	const service = new TrustedKeyService(
+		mockLogger,
+		config,
+		sourceRepo,
+		keyRepo,
+		instanceSettings,
+		dbLockService,
+	);
+
+	return { service, keyRepo, sourceRepo, dbLockService };
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -74,179 +94,187 @@ async function initWithEntries(entries: unknown[]): Promise<TrustedKeyService> {
 describe('TrustedKeyService', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
+		jest.useFakeTimers();
 	});
 
-	describe('configuration loading', () => {
-		it('should load keys from trustedKeys config', async () => {
-			const service = await initWithEntries([staticKeyEntry()]);
-			expect(service.size).toBe(1);
-		});
-
-		it('should succeed with empty config', async () => {
-			const service = createService('');
-			await service.initialize();
-			expect(service.size).toBe(0);
-		});
-
-		it('should throw on invalid JSON', async () => {
-			const service = createService('not-json');
-			await expect(service.initialize()).rejects.toThrow('Failed to parse trusted keys JSON');
-		});
-
-		it('should throw when parsed value is not an array', async () => {
-			const service = createService(JSON.stringify({ type: 'static' }));
-			await expect(service.initialize()).rejects.toThrow();
-		});
+	afterEach(() => {
+		jest.useRealTimers();
 	});
 
-	describe('algorithm validation', () => {
-		it('should reject none algorithm', async () => {
-			// 'none' is not in JwtAlgorithmSchema, so Zod rejects it at parse time
-			await expect(
-				initWithEntries([staticKeyEntry({ algorithms: ['none' as 'RS256'] })]),
-			).rejects.toThrow();
+	describe('crypto cache', () => {
+		it('should reuse cached crypto key when keyMaterial is unchanged', async () => {
+			const { service, keyRepo } = createMocks();
+
+			const entity = makeTrustedKeyEntity();
+			keyRepo.findAllByKid.mockResolvedValue([entity]);
+
+			const result1 = await service.getByKidAndIss('test-kid', 'https://issuer.example.com');
+			const result2 = await service.getByKidAndIss('test-kid', 'https://issuer.example.com');
+
+			// Same KeyObject instance (from cache)
+			expect(result1!.key).toBe(result2!.key);
 		});
 
-		it.each(['HS256', 'HS384', 'HS512'])('should reject HMAC algorithm %s', async (alg) => {
-			await expect(
-				initWithEntries([staticKeyEntry({ algorithms: [alg as 'RS256'] })]),
-			).rejects.toThrow();
-		});
+		it('should create new crypto key when keyMaterial changes', async () => {
+			const { service, keyRepo } = createMocks();
 
-		it('should reject unknown algorithm', async () => {
-			await expect(
-				initWithEntries([staticKeyEntry({ algorithms: ['FAKE256' as 'RS256'] })]),
-			).rejects.toThrow();
-		});
+			const entity1 = makeTrustedKeyEntity({
+				data: makeTrustedKeyData({ keyMaterial: RSA_PUBLIC_KEY }),
+			});
+			keyRepo.findAllByKid.mockResolvedValueOnce([entity1]);
 
-		it('should reject cross-family mixing (RS256 + ES256)', async () => {
-			await expect(
-				initWithEntries([staticKeyEntry({ algorithms: ['RS256', 'ES256'], key: RSA_PUBLIC_KEY })]),
-			).rejects.toThrow('same family');
-		});
+			const result1 = await service.getByKidAndIss('test-kid', 'https://issuer.example.com');
 
-		it('should accept multiple same-family algorithms (RS256 + PS256)', async () => {
-			const service = await initWithEntries([
-				staticKeyEntry({ algorithms: ['RS256', 'PS256'], key: RSA_PUBLIC_KEY }),
-			]);
-			expect(service.size).toBe(1);
-		});
-	});
-
-	describe('key-algorithm compatibility', () => {
-		it('should accept RSA key with RS256', async () => {
-			const service = await initWithEntries([
-				staticKeyEntry({ kid: 'rsa-key', algorithms: ['RS256'], key: RSA_PUBLIC_KEY }),
-			]);
-			expect(service.size).toBe(1);
-		});
-
-		it('should accept EC key with ES256', async () => {
-			const service = await initWithEntries([
-				staticKeyEntry({ kid: 'ec-key', algorithms: ['ES256'], key: EC_PUBLIC_KEY }),
-			]);
-			expect(service.size).toBe(1);
-		});
-
-		it('should accept Ed25519 key with EdDSA', async () => {
-			const service = await initWithEntries([
-				staticKeyEntry({
-					kid: 'ed-key',
-					algorithms: ['EdDSA'],
-					key: ED25519_PUBLIC_KEY,
+			// Change key material to EC key
+			const entity2 = makeTrustedKeyEntity({
+				data: makeTrustedKeyData({
+					keyMaterial: EC_PUBLIC_KEY,
+					algorithms: ['ES256'],
 				}),
-			]);
-			expect(service.size).toBe(1);
-		});
+			});
+			keyRepo.findAllByKid.mockResolvedValueOnce([entity2]);
 
-		it('should reject EC key with RSA algorithm', async () => {
-			await expect(
-				initWithEntries([
-					staticKeyEntry({ kid: 'ec-rsa', algorithms: ['RS256'], key: EC_PUBLIC_KEY }),
-				]),
-			).rejects.toThrow('does not match algorithm family');
-		});
+			const result2 = await service.getByKidAndIss('test-kid', 'https://issuer.example.com');
 
-		it('should reject RSA key with EC algorithm', async () => {
-			await expect(
-				initWithEntries([
-					staticKeyEntry({ kid: 'rsa-ec', algorithms: ['ES256'], key: RSA_PUBLIC_KEY }),
-				]),
-			).rejects.toThrow('does not match algorithm family');
-		});
-
-		it('should reject invalid PEM string', async () => {
-			await expect(
-				initWithEntries([
-					staticKeyEntry({ kid: 'bad-pem', algorithms: ['RS256'], key: 'not-a-pem' }),
-				]),
-			).rejects.toThrow('failed to parse public key');
+			// Different KeyObject (cache miss due to hash mismatch)
+			expect(result1!.key).not.toBe(result2!.key);
 		});
 	});
 
-	describe('duplicate detection', () => {
-		it('should reject duplicate kid values', async () => {
-			await expect(
-				initWithEntries([
-					staticKeyEntry({ kid: 'same-kid', key: RSA_PUBLIC_KEY }),
-					staticKeyEntry({ kid: 'same-kid', key: RSA_PUBLIC_KEY }),
-				]),
-			).rejects.toThrow('duplicate kid');
+	describe('leader lifecycle', () => {
+		it('should start refresh poll interval on leader takeover', () => {
+			const { service } = createMocks();
+			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+
+			service.startRefresh();
+
+			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+			expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 30_000);
+
+			service.stopRefresh();
+			setIntervalSpy.mockRestore();
+		});
+
+		it('should not create duplicate interval on repeated startRefresh calls', () => {
+			const { service } = createMocks();
+			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+
+			service.startRefresh();
+			service.startRefresh();
+
+			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+
+			service.stopRefresh();
+			setIntervalSpy.mockRestore();
+		});
+
+		it('should not start refresh if shutting down', () => {
+			const { service } = createMocks();
+			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+
+			service.shutdown();
+			service.startRefresh();
+
+			expect(setIntervalSpy).not.toHaveBeenCalled();
+
+			setIntervalSpy.mockRestore();
+		});
+
+		it('should clear interval on leader stepdown', () => {
+			const { service } = createMocks();
+			const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+
+			service.startRefresh();
+			service.stopRefresh();
+
+			expect(clearIntervalSpy).toHaveBeenCalled();
+
+			// Call again to verify idempotency — should not throw
+			service.stopRefresh();
+
+			clearIntervalSpy.mockRestore();
+		});
+
+		it('should stop refresh on shutdown', () => {
+			const { service } = createMocks();
+			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+
+			service.startRefresh();
+			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+
+			service.shutdown();
+			service.startRefresh();
+
+			// Still only 1 call — post-shutdown startRefresh is a no-op
+			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+
+			setIntervalSpy.mockRestore();
 		});
 	});
 
-	describe('JWKS handling', () => {
-		it('should log warning and skip JWKS sources', async () => {
-			const service = await initWithEntries([
-				{
-					type: 'jwks',
-					url: 'https://example.com/.well-known/jwks.json',
-					issuer: 'https://example.com',
-				},
-			]);
-			expect(service.size).toBe(0);
-			expect(mockLogger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('JWKS key sources are not yet supported'),
-			);
+	describe('refreshDueSources', () => {
+		it('should skip sources that were recently refreshed', async () => {
+			const { service, sourceRepo, dbLockService } = createMocks();
+
+			const recentSource = Object.assign(new TrustedKeySourceEntity(), {
+				id: 'static',
+				type: 'static' as const,
+				config: JSON.stringify([]),
+				status: 'healthy' as const,
+				lastError: null,
+				lastRefreshedAt: new Date(), // just refreshed
+			});
+
+			sourceRepo.find.mockResolvedValue([recentSource]);
+
+			service.startRefresh();
+			await jest.advanceTimersByTimeAsync(30_000);
+			service.stopRefresh();
+
+			// Source was recently refreshed — should not trigger a refresh
+			expect(dbLockService.withLock).not.toHaveBeenCalled();
 		});
 
-		it('should load static keys alongside skipped JWKS sources', async () => {
-			const service = await initWithEntries([
-				staticKeyEntry({ kid: 'static-1' }),
-				{
-					type: 'jwks',
-					url: 'https://example.com/.well-known/jwks.json',
-					issuer: 'https://example.com',
-				},
-			]);
-			expect(service.size).toBe(1);
-			expect(await service.getByKid('static-1')).toBeDefined();
-		});
-	});
+		it('should refresh sources whose lastRefreshedAt exceeds the interval', async () => {
+			const { service, sourceRepo, dbLockService } = createMocks();
 
-	describe('getByKid', () => {
-		it('should return correct ResolvedTrustedKey for known kid', async () => {
-			const service = await initWithEntries([
-				staticKeyEntry({
-					kid: 'my-key',
-					algorithms: ['RS256'],
-					key: RSA_PUBLIC_KEY,
-					issuer: 'https://issuer.example.com',
-				}),
-			]);
+			const staleSource = Object.assign(new TrustedKeySourceEntity(), {
+				id: 'static',
+				type: 'static' as const,
+				config: JSON.stringify([]),
+				status: 'healthy' as const,
+				lastError: null,
+				lastRefreshedAt: new Date(Date.now() - 400_000), // 400s ago, interval is 300s
+			});
 
-			const result = await service.getByKid('my-key');
-			expect(result).toBeDefined();
-			expect(result!.kid).toBe('my-key');
-			expect(result!.algorithms).toEqual(['RS256']);
-			expect(result!.issuer).toBe('https://issuer.example.com');
-			expect(result!.key).toBeDefined();
+			sourceRepo.find.mockResolvedValue([staleSource]);
+
+			service.startRefresh();
+			await jest.advanceTimersByTimeAsync(30_000);
+			service.stopRefresh();
+
+			expect(dbLockService.withLock).toHaveBeenCalled();
 		});
 
-		it('should return undefined for unknown kid', async () => {
-			const service = await initWithEntries([staticKeyEntry({ kid: 'known' })]);
-			const result = await service.getByKid('unknown');
-			expect(result).toBeUndefined();
+		it('should refresh sources that have never been refreshed', async () => {
+			const { service, sourceRepo, dbLockService } = createMocks();
+
+			const newSource = Object.assign(new TrustedKeySourceEntity(), {
+				id: 'static',
+				type: 'static' as const,
+				config: JSON.stringify([]),
+				status: 'pending' as const,
+				lastError: null,
+				lastRefreshedAt: null,
+			});
+
+			sourceRepo.find.mockResolvedValue([newSource]);
+
+			service.startRefresh();
+			await jest.advanceTimersByTimeAsync(30_000);
+			service.stopRefresh();
+
+			expect(dbLockService.withLock).toHaveBeenCalled();
 		});
 	});
 });
