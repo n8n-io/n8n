@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { mockDeep } from 'vitest-mock-extended';
 import type { IDataObject, IPollFunctions } from 'n8n-workflow';
 
@@ -6,6 +7,15 @@ import type { Mock, Mocked } from 'vitest';
 
 describe('googleApiRequestAllItems', () => {
 	let mockContext: Mocked<IPollFunctions>;
+=======
+import { mockDeep } from 'jest-mock-extended';
+import type { IDataObject, IPollFunctions } from 'n8n-workflow';
+
+import { googleApiRequestAllItems } from '../../v1/GenericFunctions';
+
+describe('googleApiRequestAllItems', () => {
+	let mockContext: jest.Mocked<IPollFunctions>;
+>>>>>>> b964ec958 (fix(Google Drive Node): Fix infinite pagination loop in v1 API request (#28244))
 
 	beforeEach(() => {
 		mockContext = mockDeep<IPollFunctions>();
@@ -13,13 +23,21 @@ describe('googleApiRequestAllItems', () => {
 	});
 
 	afterEach(() => {
+<<<<<<< HEAD
 		vi.resetAllMocks();
+=======
+		jest.resetAllMocks();
+>>>>>>> b964ec958 (fix(Google Drive Node): Fix infinite pagination loop in v1 API request (#28244))
 	});
 
 	it('should advance pageToken across pages and terminate when nextPageToken is absent', async () => {
 		const pageTokensReceived: Array<string | undefined> = [];
 
+<<<<<<< HEAD
 		(mockContext.helpers.requestOAuth2 as Mock).mockImplementation(
+=======
+		(mockContext.helpers.requestOAuth2 as jest.Mock).mockImplementation(
+>>>>>>> b964ec958 (fix(Google Drive Node): Fix infinite pagination loop in v1 API request (#28244))
 			async (_cred: string, opts: IDataObject) => {
 				const qs = opts.qs as IDataObject;
 				pageTokensReceived.push(qs.pageToken as string | undefined);
@@ -49,7 +67,11 @@ describe('googleApiRequestAllItems', () => {
 	});
 
 	it('should handle single page (no nextPageToken)', async () => {
+<<<<<<< HEAD
 		(mockContext.helpers.requestOAuth2 as Mock).mockResolvedValueOnce({
+=======
+		(mockContext.helpers.requestOAuth2 as jest.Mock).mockResolvedValueOnce({
+>>>>>>> b964ec958 (fix(Google Drive Node): Fix infinite pagination loop in v1 API request (#28244))
 			files: [{ id: '1' }],
 		});
 
