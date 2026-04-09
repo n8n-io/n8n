@@ -34,19 +34,17 @@ test.describe(
 				await waitForWorkflowSuccess(n8n);
 
 				// [VM-DEBUG] Fetch execution data to diagnose VM expression failures
-				try {
-					const executions = await api.workflows.getExecutions();
-					if (executions.length > 0) {
-						const exec = await api.workflows.getExecution(executions[0].id);
-						const runData = exec.data?.resultData?.runData ?? {};
-						for (const [nodeName, runs] of Object.entries(runData)) {
-							const runsArr = runs as unknown[];
-							process.stderr.write(`[VM-DEBUG] ${nodeName}: ${runsArr.length} run(s)\n`);
-						}
-					}
-				} catch (e) {
-					process.stderr.write(`[VM-DEBUG] Failed to fetch execution: ${e}\n`);
-				}
+				const executions = await api.workflows.getExecutions();
+				expect(executions.length, '[VM-DEBUG] No executions found').toBeGreaterThan(0);
+				const exec = await api.workflows.getExecution(executions[0].id);
+				const runData = (exec.data?.resultData?.runData ?? {}) as Record<string, unknown[]>;
+				const summary = Object.entries(runData)
+					.map(([name, runs]) => `${name}: ${runs.length}`)
+					.join(', ');
+				expect(
+					runData['Character Text Splitter']?.length ?? 0,
+					`[VM-DEBUG] Run counts: ${summary}`,
+				).toBe(3);
 
 				const assertInputOutputTextExists = async (text: string) => {
 					await expect(n8n.ndv.getOutputPanel()).toContainText(text);
