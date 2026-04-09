@@ -342,7 +342,7 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 function getToolCalls(response: GenerateContentResponse) {
-	return response.candidates.flatMap((c) => c.content.parts).filter((p) => 'functionCall' in p);
+	return response.candidates.flatMap((c) => c.content.parts).filter((p) => p && 'functionCall' in p);
 }
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
@@ -576,7 +576,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		? response.candidates.map((candidate) => ({
 				...candidate,
 				mergedResponse: candidate.content.parts
-					.filter((part) => 'text' in part)
+					.filter((part) => part && 'text' in part)
 					.map((part) => (part as { text: string }).text)
 					.join(''),
 			}))
