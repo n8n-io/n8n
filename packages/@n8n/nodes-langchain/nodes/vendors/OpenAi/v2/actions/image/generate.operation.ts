@@ -7,6 +7,7 @@ import type {
 import { updateDisplayOptions } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
+import { modelRLC } from '../descriptions';
 
 const properties: INodeProperties[] = [
 	{
@@ -29,6 +30,21 @@ const properties: INodeProperties[] = [
 				value: 'gpt-image-1',
 			},
 		],
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { lt: 2.2 } }],
+			},
+		},
+	},
+	{
+		...modelRLC('imageGenerateModelSearch'),
+		name: 'model',
+		default: { mode: 'list', value: 'gpt-image-1-mini' },
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 2.2 } }],
+			},
+		},
 	},
 	{
 		displayName: 'Prompt',
@@ -110,7 +126,7 @@ const properties: INodeProperties[] = [
 				],
 				displayOptions: {
 					show: {
-						'/model': ['gpt-image-1'],
+						'/model': [{ _cnd: { includes: 'gpt-image' } }],
 					},
 				},
 				default: 'medium',
@@ -186,7 +202,7 @@ const properties: INodeProperties[] = [
 				],
 				displayOptions: {
 					show: {
-						'/model': ['gpt-image-1'],
+						'/model': [{ _cnd: { includes: 'gpt-image' } }],
 					},
 				},
 				default: '1024x1024',
@@ -223,7 +239,7 @@ const properties: INodeProperties[] = [
 				description: 'Whether to return image URL(s) instead of binary file(s)',
 				displayOptions: {
 					hide: {
-						'/model': ['gpt-image-1'],
+						'/model': [{ _cnd: { includes: 'gpt-image' } }],
 					},
 				},
 			},
@@ -253,13 +269,18 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	const model = this.getNodeParameter('model', i) as string;
+	const nodeVersion = this.getNode().typeVersion;
+	const model =
+		nodeVersion >= 2.2
+			? (this.getNodeParameter('model', i, '', { extractValue: true }) as string)
+			: (this.getNodeParameter('model', i) as string);
 	const prompt = this.getNodeParameter('prompt', i) as string;
 	const options = this.getNodeParameter('options', i, {});
+	const supportsResponseFormat = !model.startsWith('gpt-image');
 	let response_format = 'b64_json';
 	let binaryPropertyOutput = 'data';
 
-	if (options.returnImageUrls) {
+	if (options.returnImageUrls && supportsResponseFormat) {
 		response_format = 'url';
 	}
 
@@ -277,7 +298,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const body: IDataObject = {
 		prompt,
 		model,
-		response_format: model !== 'gpt-image-1' ? response_format : undefined, // gpt-image-1 does not support response_format
+		response_format: supportsResponseFormat ? response_format : undefined,
 		...options,
 	};
 

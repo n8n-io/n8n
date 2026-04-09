@@ -98,6 +98,15 @@ export async function imageModelSearch(
 	)(this, filter);
 }
 
+export async function imageGenerateModelSearch(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	return await getModelSearch(
+		(model) => model.id.includes('dall-e') || model.id.includes('gpt-image'),
+	)(this, filter);
+}
+
 export async function assistantSearch(
 	this: ILoadOptionsFunctions,
 	filter?: string,
