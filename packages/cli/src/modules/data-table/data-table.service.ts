@@ -31,6 +31,7 @@ import type {
 import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, validateFieldType } from 'n8n-workflow';
 
 import { DataTableColumn } from './data-table-column.entity';
+import { DataTable } from './data-table.entity';
 import { DataTableColumnRepository } from './data-table-column.repository';
 import { DataTableCsvImportService } from './data-table-csv-import.service';
 import { DataTableRowsRepository } from './data-table-rows.repository';
@@ -134,6 +135,53 @@ export class DataTableService {
 		await this.dataTableRepository.update({ id: dataTableId }, { name: dto.name });
 
 		return true;
+	}
+
+	/** Transfer and/or rename in one transaction (one UPDATE when both apply). */
+	async updateDataTableProjectAndName(
+		dataTableId: string,
+		fromProjectId: string,
+		options: { toProjectId?: string; name?: string },
+	): Promise<void> {
+		const { toProjectId, name } = options;
+		const targetProjectId =
+			toProjectId !== undefined && toProjectId !== fromProjectId ? toProjectId : fromProjectId;
+		if (targetProjectId === fromProjectId && name === undefined) return;
+
+		await this.dataTableRepository.manager.transaction(async (em) => {
+			const table = await em.findOne(DataTable, {
+				where: { id: dataTableId, project: { id: fromProjectId } },
+			});
+			if (!table) throw new DataTableNotFoundError(dataTableId);
+
+			// When renaming in the same request, only the final name must be free in the target project.
+			if (targetProjectId !== fromProjectId && name === undefined) {
+				if (
+					await em.existsBy(DataTable, {
+						name: table.name,
+						projectId: targetProjectId,
+					})
+				) {
+					throw new DataTableNameConflictError(table.name);
+				}
+			}
+
+			if (name !== undefined) {
+				if (
+					await em.existsBy(DataTable, {
+						name,
+						projectId: targetProjectId,
+					})
+				) {
+					throw new DataTableNameConflictError(name);
+				}
+			}
+
+			const updates: { projectId?: string; name?: string } = {};
+			if (targetProjectId !== fromProjectId) updates.projectId = targetProjectId;
+			if (name !== undefined) updates.name = name;
+			await em.update(DataTable, { id: dataTableId }, updates);
+		});
 	}
 
 	async transferDataTablesByProjectId(fromProjectId: string, toProjectId: string) {

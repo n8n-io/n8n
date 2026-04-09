@@ -588,7 +588,9 @@ export class ProjectService {
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
 			const projectRoles = await this.roleService.rolesWithScope('project', scopes);
-			where.type = 'team';
+			if (!projectIds) {
+				where.type = 'team';
+			}
 			where.projectRelations = {
 				role: In(projectRoles),
 				userId: user.id,

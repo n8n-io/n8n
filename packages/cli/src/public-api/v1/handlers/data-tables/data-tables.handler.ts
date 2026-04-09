@@ -1,7 +1,8 @@
 import {
 	PublicApiListDataTableQueryDto,
-	CreateDataTableDto,
-	UpdateDataTableDto,
+	PublicApiCreateDataTableDto,
+	PublicApiUpdateDataTableDto,
+	type DataTableListFilter,
 } from '@n8n/api-types';
 import { ProjectRepository, ProjectRelationRepository } from '@n8n/db';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
@@ -19,6 +20,9 @@ import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
 import { DataTableNameConflictError } from '@/modules/data-table/errors/data-table-name-conflict.error';
 import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ProjectService } from '@/services/project.service.ee';
 
 const handleError = (error: unknown, res: express.Response): express.Response => {
 	if (error instanceof DataTableNotFoundError) {
@@ -29,6 +33,9 @@ const handleError = (error: unknown, res: express.Response): express.Response =>
 	}
 	if (error instanceof DataTableValidationError) {
 		return res.status(400).json({ message: error.message });
+	}
+	if (error instanceof ForbiddenError) {
+		return res.status(error.httpStatusCode).json({ message: error.message });
 	}
 	if (error instanceof Error) {
 		return res.status(400).json({ message: error.message });
@@ -82,14 +89,28 @@ export = {
 
 				const { offset, limit, filter, sortBy } = payload.data;
 
-				const providedFilter = filter ?? {};
-				const { projectId: _ignoredProjectId, ...restFilter } = providedFilter;
+				const providedFilter: DataTableListFilter = filter ?? {};
+				const { projectId: requestedProjectId, ...restFilter } = providedFilter;
 
 				const isGlobalOwnerOrAdmin = ['global:owner', 'global:admin'].includes(req.user.role.slug);
 
-				let finalFilter: any;
+				if (requestedProjectId && !isGlobalOwnerOrAdmin) {
+					const ids = Array.isArray(requestedProjectId) ? requestedProjectId : [requestedProjectId];
+					const accessibleIds = await Container.get(ProjectService).getProjectIdsWithScope(
+						req.user,
+						['dataTable:listProject'],
+						ids,
+					);
+					if (accessibleIds.length !== ids.length) throw new ForbiddenError();
+				}
+
+				let finalFilter: DataTableListFilter;
 				if (isGlobalOwnerOrAdmin) {
-					finalFilter = restFilter;
+					finalFilter = requestedProjectId
+						? { ...restFilter, projectId: requestedProjectId }
+						: restFilter;
+				} else if (requestedProjectId) {
+					finalFilter = { ...restFilter, projectId: requestedProjectId };
 				} else {
 					const personalProject = await Container.get(
 						ProjectRepository,
@@ -138,22 +159,30 @@ export = {
 	createDataTable: [
 		apiKeyHasScope('dataTable:create'),
 		async (req: DataTableRequest.Create, res: express.Response): Promise<express.Response> => {
-			try {
-				const payload = CreateDataTableDto.safeParse(req.body);
-				if (!payload.success) {
-					return res.status(400).json({
-						message: payload.error.errors[0]?.message || 'Invalid request body',
-					});
-				}
+			const payload = PublicApiCreateDataTableDto.safeParse(req.body);
+			if (!payload.success) {
+				throw new BadRequestError(payload.error.errors[0]?.message || 'Invalid request body');
+			}
 
+			let projectId: string;
+			if (payload.data.projectId) {
+				const project = await Container.get(ProjectService).getProjectWithScope(
+					req.user,
+					payload.data.projectId,
+					['dataTable:create'],
+				);
+				if (!project) throw new ForbiddenError();
+				projectId = project.id;
+			} else {
 				const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 					req.user.id,
 				);
+				projectId = project.id;
+			}
 
-				const result = await Container.get(DataTableService).createDataTable(
-					project.id,
-					payload.data,
-				);
+			const { projectId: _ignored, ...dto } = payload.data;
+			try {
+				const result = await Container.get(DataTableService).createDataTable(projectId, dto);
 
 				const { project: _project, ...dataTable } = result;
 
@@ -198,19 +227,37 @@ export = {
 			try {
 				const { dataTableId } = req.params;
 
-				const payload = UpdateDataTableDto.safeParse(req.body);
+				const payload = PublicApiUpdateDataTableDto.safeParse(req.body);
 				if (!payload.success) {
 					return res.status(400).json({
 						message: payload.error.errors[0]?.message || 'Invalid request body',
 					});
 				}
 
-				const projectId = await getProjectIdForDataTable(dataTableId);
+				const fromProjectId = await getProjectIdForDataTable(dataTableId);
+				let toProjectId: string | undefined;
+				if (payload.data.projectId) {
+					const project = await Container.get(ProjectService).getProjectWithScope(
+						req.user,
+						payload.data.projectId,
+						['dataTable:update'],
+					);
+					if (!project) throw new ForbiddenError();
+					toProjectId = project.id;
+				}
 
-				await Container.get(DataTableService).updateDataTable(dataTableId, projectId, payload.data);
+				await Container.get(DataTableService).updateDataTableProjectAndName(
+					dataTableId,
+					fromProjectId,
+					{
+						toProjectId,
+						name: payload.data.name,
+					},
+				);
+				const currentProjectId = toProjectId ?? fromProjectId;
 
 				const result = await Container.get(DataTableRepository).findOne({
-					where: { id: dataTableId, project: { id: projectId } },
+					where: { id: dataTableId, project: { id: currentProjectId } },
 					relations: ['project', 'columns'],
 				});
 

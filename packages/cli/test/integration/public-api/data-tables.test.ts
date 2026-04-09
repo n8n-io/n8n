@@ -1540,3 +1540,160 @@ describe('Filter Parameter Validation', () => {
 		});
 	});
 });
+
+describe('POST /data-tables with projectId', () => {
+	beforeEach(() => {
+		testServer.license.setQuota('quota:maxTeamProjects', -1);
+		testServer.license.enable('feat:projectRole:admin');
+	});
+
+	test('should create a table in the specified team project when user is a member', async () => {
+		const teamProject = await createTeamProject('Team Create');
+		await linkUserToProject(member, teamProject, 'project:editor');
+
+		const response = await authMemberAgent.post('/data-tables').send({
+			name: 'team-table',
+			columns: [{ name: 'col1', type: 'string' }],
+			projectId: teamProject.id,
+		});
+
+		expect(response.statusCode).toBe(201);
+		expect(response.body).toHaveProperty('id');
+		expect(response.body).toHaveProperty('name', 'team-table');
+		expect(response.body).toHaveProperty('projectId', teamProject.id);
+		expect(response.body).not.toHaveProperty('project');
+	});
+
+	test('should return 403 when user is not a member of the specified project', async () => {
+		const teamProject = await createTeamProject('Team No Access');
+		// member is NOT added to teamProject
+
+		const response = await authMemberAgent.post('/data-tables').send({
+			name: 'unauthorized-table',
+			columns: [{ name: 'col1', type: 'string' }],
+			projectId: teamProject.id,
+		});
+
+		expect(response.statusCode).toBe(403);
+	});
+});
+
+describe('GET /data-tables with projectId filter', () => {
+	beforeEach(() => {
+		testServer.license.setQuota('quota:maxTeamProjects', -1);
+		testServer.license.enable('feat:projectRole:admin');
+	});
+
+	test('should return only tables from the specified team project when user is a member', async () => {
+		const teamProject = await createTeamProject('Team Filter');
+		await linkUserToProject(member, teamProject, 'project:viewer');
+
+		await createDataTable(memberPersonalProject, {
+			name: 'personal-table',
+			columns: [{ name: 'col', type: 'string' }],
+		});
+		await createDataTable(teamProject, {
+			name: 'team-table',
+			columns: [{ name: 'col', type: 'string' }],
+		});
+
+		const filter = JSON.stringify({ projectId: teamProject.id });
+		const response = await authMemberAgent.get('/data-tables').query({ filter });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(1);
+		expect(response.body.data[0].name).toBe('team-table');
+	});
+
+	test('should return 403 when filtering by a project the user is not a member of', async () => {
+		const teamProject = await createTeamProject('Team No Filter Access');
+		// member is NOT added to teamProject
+
+		const filter = JSON.stringify({ projectId: teamProject.id });
+		const response = await authMemberAgent.get('/data-tables').query({ filter });
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should allow filtering by the user personal project id', async () => {
+		await createDataTable(memberPersonalProject, {
+			name: 'personal-only-table',
+			columns: [{ name: 'col', type: 'string' }],
+		});
+
+		const filter = JSON.stringify({ projectId: memberPersonalProject.id });
+		const response = await authMemberAgent.get('/data-tables').query({ filter });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(1);
+		expect(response.body.data[0].name).toBe('personal-only-table');
+	});
+});
+
+describe('PATCH /data-tables/:id with projectId (transfer)', () => {
+	beforeEach(() => {
+		testServer.license.setQuota('quota:maxTeamProjects', -1);
+		testServer.license.enable('feat:projectRole:admin');
+	});
+
+	test('should transfer a table to a team project when owner has access', async () => {
+		const teamProject = await createTeamProject('Team Transfer');
+		await linkUserToProject(owner, teamProject, 'project:admin');
+
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'table-to-transfer',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+
+		const response = await authOwnerAgent.patch(`/data-tables/${dataTable.id}`).send({
+			projectId: teamProject.id,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toHaveProperty('id', dataTable.id);
+		expect(response.body).toHaveProperty('projectId', teamProject.id);
+		expect(response.body).not.toHaveProperty('project');
+
+		// Verify via GET that the table is no longer in owner's personal project list
+		const personalListResponse = await authOwnerAgent.get('/data-tables').query({
+			filter: JSON.stringify({ projectId: ownerPersonalProject.id }),
+		});
+		const personalTableIds = personalListResponse.body.data.map((t: { id: string }) => t.id);
+		expect(personalTableIds).not.toContain(dataTable.id);
+	});
+
+	test('should return 403 when transferring to a project the user is not a member of', async () => {
+		const teamProject = await createTeamProject('Team No Transfer Access');
+		// member is NOT added to teamProject (global owner would bypass project checks)
+
+		const dataTable = await createDataTable(memberPersonalProject, {
+			name: 'table-no-transfer',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+
+		const response = await authMemberAgent.patch(`/data-tables/${dataTable.id}`).send({
+			projectId: teamProject.id,
+		});
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should transfer and rename atomically when both name and projectId are provided', async () => {
+		const teamProject = await createTeamProject('Team Transfer Rename');
+		await linkUserToProject(owner, teamProject, 'project:admin');
+
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'original-name',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+
+		const response = await authOwnerAgent.patch(`/data-tables/${dataTable.id}`).send({
+			name: 'new-name',
+			projectId: teamProject.id,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toHaveProperty('name', 'new-name');
+		expect(response.body).toHaveProperty('projectId', teamProject.id);
+	});
+});

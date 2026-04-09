@@ -2,8 +2,8 @@ import type { AuthenticatedRequest, TagEntity, WorkflowEntity } from '@n8n/db';
 import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type {
 	AddDataTableRowsDto,
-	CreateDataTableDto,
-	UpdateDataTableDto,
+	PublicApiCreateDataTableDto,
+	PublicApiUpdateDataTableDto,
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
 } from '@n8n/api-types';
@@ -257,11 +257,11 @@ export declare namespace DataTableRequest {
 		}
 	>;
 
-	type Create = AuthenticatedRequest<{}, {}, CreateDataTableDto, {}>;
+	type Create = AuthenticatedRequest<{}, {}, PublicApiCreateDataTableDto, {}>;
 
 	type Get = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
 
-	type Update = AuthenticatedRequest<{ dataTableId: string }, {}, UpdateDataTableDto, {}>;
+	type Update = AuthenticatedRequest<{ dataTableId: string }, {}, PublicApiUpdateDataTableDto, {}>;
 
 	type Delete = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
 

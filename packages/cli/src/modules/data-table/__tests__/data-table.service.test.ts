@@ -9,10 +9,11 @@ import { DataTableColumnRepository } from '../data-table-column.repository';
 import { DataTableCsvImportService } from '../data-table-csv-import.service';
 import { DataTableRowsRepository } from '../data-table-rows.repository';
 import { DataTableSizeValidator } from '../data-table-size-validator.service';
-import type { DataTable } from '../data-table.entity';
+import { DataTable } from '../data-table.entity';
 import { DataTableRepository } from '../data-table.repository';
 import { DataTableService } from '../data-table.service';
 import { DataTableColumnNotFoundError } from '../errors/data-table-column-not-found.error';
+import { DataTableNameConflictError } from '../errors/data-table-name-conflict.error';
 import { DataTableNotFoundError } from '../errors/data-table-not-found.error';
 import { DataTableValidationError } from '../errors/data-table-validation.error';
 import { RoleService } from '@/services/role.service';
@@ -357,6 +358,240 @@ describe('DataTableService', () => {
 					specialCharDto.name,
 				);
 				expect(result.name).toBe(specialCharDto.name);
+			});
+		});
+	});
+
+	describe('updateDataTableProjectAndName', () => {
+		const dataTableId = 'test-data-table-id';
+		const fromProjectId = 'test-project-id';
+		const toProjectId = 'other-project-id';
+
+		const mockDataTable: DataTable = {
+			id: dataTableId,
+			name: 'Test Table',
+			projectId: fromProjectId,
+		} as DataTable;
+
+		const mockEntityManager = (mocks: {
+			findOne: jest.Mock;
+			existsBy: jest.Mock;
+			update: jest.Mock;
+		}) => {
+			Object.defineProperty(mockDataTableRepository, 'manager', {
+				value: {
+					transaction: jest.fn(async (fn: (em: typeof mocks) => Promise<void>) => {
+						await fn(mocks);
+					}),
+				},
+				writable: true,
+				configurable: true,
+			});
+			return mocks;
+		};
+
+		describe('successful updates', () => {
+			it('should not start a transaction when there is nothing to change', async () => {
+				// Arrange
+				const transaction = jest.fn();
+				Object.defineProperty(mockDataTableRepository, 'manager', {
+					value: { transaction },
+					writable: true,
+					configurable: true,
+				});
+
+				// Act
+				await dataTableService.updateDataTableProjectAndName(dataTableId, fromProjectId, {});
+
+				// Assert
+				expect(transaction).not.toHaveBeenCalled();
+			});
+
+			it('should not start a transaction when toProjectId equals fromProjectId and name is omitted', async () => {
+				// Arrange
+				const transaction = jest.fn();
+				Object.defineProperty(mockDataTableRepository, 'manager', {
+					value: { transaction },
+					writable: true,
+					configurable: true,
+				});
+
+				// Act
+				await dataTableService.updateDataTableProjectAndName(dataTableId, fromProjectId, {
+					toProjectId: fromProjectId,
+				});
+
+				// Assert
+				expect(transaction).not.toHaveBeenCalled();
+			});
+
+			it('should rename inside a transaction when only name is provided', async () => {
+				// Arrange
+				const mockEm = mockEntityManager({
+					findOne: jest.fn().mockResolvedValue(mockDataTable),
+					existsBy: jest.fn().mockResolvedValue(false),
+					update: jest.fn().mockResolvedValue(undefined),
+				});
+
+				// Act
+				await dataTableService.updateDataTableProjectAndName(dataTableId, fromProjectId, {
+					name: 'Renamed Table',
+				});
+
+				// Assert
+				expect(mockDataTableRepository.manager.transaction).toHaveBeenCalledTimes(1);
+				expect(mockEm.findOne).toHaveBeenCalledWith(DataTable, {
+					where: { id: dataTableId, project: { id: fromProjectId } },
+				});
+				expect(mockEm.existsBy).toHaveBeenCalledWith(DataTable, {
+					name: 'Renamed Table',
+					projectId: fromProjectId,
+				});
+				expect(mockEm.update).toHaveBeenCalledWith(
+					DataTable,
+					{ id: dataTableId },
+					{
+						name: 'Renamed Table',
+					},
+				);
+			});
+
+			it('should transfer to another project when only toProjectId is provided', async () => {
+				// Arrange
+				const mockEm = mockEntityManager({
+					findOne: jest.fn().mockResolvedValue(mockDataTable),
+					existsBy: jest.fn().mockResolvedValue(false),
+					update: jest.fn().mockResolvedValue(undefined),
+				});
+
+				// Act
+				await dataTableService.updateDataTableProjectAndName(dataTableId, fromProjectId, {
+					toProjectId,
+				});
+
+				// Assert
+				expect(mockEm.existsBy).toHaveBeenCalledTimes(1);
+				expect(mockEm.existsBy).toHaveBeenCalledWith(DataTable, {
+					name: mockDataTable.name,
+					projectId: toProjectId,
+				});
+				expect(mockEm.update).toHaveBeenCalledWith(
+					DataTable,
+					{ id: dataTableId },
+					{
+						projectId: toProjectId,
+					},
+				);
+			});
+
+			it('should apply transfer and rename in a single update', async () => {
+				// Arrange
+				const mockEm = mockEntityManager({
+					findOne: jest.fn().mockResolvedValue(mockDataTable),
+					existsBy: jest.fn().mockResolvedValue(false),
+					update: jest.fn().mockResolvedValue(undefined),
+				});
+
+				// Act
+				await dataTableService.updateDataTableProjectAndName(dataTableId, fromProjectId, {
+					toProjectId,
+					name: 'New Name',
+				});
+
+				// Assert — no check on current name in target when renaming; final name is validated only
+				expect(mockEm.existsBy).toHaveBeenCalledTimes(1);
+				expect(mockEm.existsBy).toHaveBeenCalledWith(DataTable, {
+					name: 'New Name',
+					projectId: toProjectId,
+				});
+				expect(mockEm.update).toHaveBeenCalledWith(
+					DataTable,
+					{ id: dataTableId },
+					{
+						projectId: toProjectId,
+						name: 'New Name',
+					},
+				);
+			});
+		});
+
+		describe('validation errors', () => {
+			it('should throw DataTableNotFoundError when the data table is not in the source project', async () => {
+				// Arrange
+				const mockEm = mockEntityManager({
+					findOne: jest.fn().mockResolvedValue(null),
+					existsBy: jest.fn(),
+					update: jest.fn(),
+				});
+
+				// Act & Assert
+				await expect(
+					dataTableService.updateDataTableProjectAndName(dataTableId, fromProjectId, {
+						name: 'X',
+					}),
+				).rejects.toThrow(DataTableNotFoundError);
+
+				expect(mockEm.update).not.toHaveBeenCalled();
+			});
+
+			it('should throw DataTableNameConflictError when the target project already has a table with the same name', async () => {
+				// Arrange
+				const mockEm = mockEntityManager({
+					findOne: jest.fn().mockResolvedValue(mockDataTable),
+					existsBy: jest.fn().mockResolvedValue(true),
+					update: jest.fn(),
+				});
+
+				// Act & Assert
+				await expect(
+					dataTableService.updateDataTableProjectAndName(dataTableId, fromProjectId, {
+						toProjectId,
+					}),
+				).rejects.toThrow(DataTableNameConflictError);
+
+				expect(mockEm.update).not.toHaveBeenCalled();
+			});
+
+			it('should throw DataTableNameConflictError when the new name is already taken in the target project', async () => {
+				// Arrange
+				const mockEm = mockEntityManager({
+					findOne: jest.fn().mockResolvedValue(mockDataTable),
+					existsBy: jest.fn().mockResolvedValue(true),
+					update: jest.fn(),
+				});
+
+				// Act & Assert
+				await expect(
+					dataTableService.updateDataTableProjectAndName(dataTableId, fromProjectId, {
+						toProjectId,
+						name: 'Taken',
+					}),
+				).rejects.toThrow(DataTableNameConflictError);
+
+				expect(mockEm.existsBy).toHaveBeenCalledTimes(1);
+				expect(mockEm.existsBy).toHaveBeenCalledWith(DataTable, {
+					name: 'Taken',
+					projectId: toProjectId,
+				});
+				expect(mockEm.update).not.toHaveBeenCalled();
+			});
+
+			it('should throw DataTableNameConflictError when the new name is already taken in the same project', async () => {
+				// Arrange
+				const mockEm = mockEntityManager({
+					findOne: jest.fn().mockResolvedValue(mockDataTable),
+					existsBy: jest.fn().mockResolvedValue(true),
+					update: jest.fn(),
+				});
+
+				// Act & Assert
+				await expect(
+					dataTableService.updateDataTableProjectAndName(dataTableId, fromProjectId, {
+						name: 'Taken',
+					}),
+				).rejects.toThrow(DataTableNameConflictError);
+
+				expect(mockEm.update).not.toHaveBeenCalled();
 			});
 		});
 	});

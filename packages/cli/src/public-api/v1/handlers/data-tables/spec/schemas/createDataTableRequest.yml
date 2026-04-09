@@ -22,6 +22,9 @@ properties:
       required:
         - name
         - type
+  projectId:
+    type: string
+    description: ID of the project to create the table in. Defaults to the personal project when omitted.
 required:
   - name
   - columns

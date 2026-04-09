@@ -15,7 +15,7 @@ get:
       schema:
         type: string
         format: jsonString
-      example: '{"name":"my-table"}'
+      example: '{"name":"my-table","projectId":"abc123"}'
     - name: sortBy
       in: query
       description: 'Sort format: field:asc or field:desc'
@@ -33,6 +33,8 @@ get:
       $ref: '../../../../shared/spec/responses/badRequest.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
   security:
     - ApiKeyAuth: []
 
@@ -70,6 +72,8 @@ post:
       $ref: '../../../../shared/spec/responses/badRequest.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
     '409':
       $ref: '../../../../shared/spec/responses/conflict.yml'
   security:

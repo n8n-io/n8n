@@ -5,5 +5,6 @@ properties:
     description: New name for the data table
     minLength: 1
     maxLength: 128
-required:
-  - name
+  projectId:
+    type: string
+    description: Move this data table to a different project. Can be combined with name to transfer and rename atomically.
