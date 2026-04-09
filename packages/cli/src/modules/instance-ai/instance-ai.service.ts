@@ -34,6 +34,7 @@ import {
 	PlannedTaskCoordinator,
 	PlannedTaskStorage,
 	applyPlannedTaskPermissions,
+	releaseTraceClient,
 	resumeAgentRun,
 	RunStateRegistry,
 	startBuildWorkflowAgentTask,
@@ -544,6 +545,8 @@ export class InstanceAiService {
 				threadId: tracing.rootRun.metadata?.thread_id,
 				error: getErrorMessage(error),
 			});
+		} finally {
+			releaseTraceClient(tracing.rootRun.traceId);
 		}
 	}
 
@@ -574,6 +577,7 @@ export class InstanceAiService {
 	private deleteTraceContextsForThread(threadId: string): void {
 		for (const [runId, entry] of this.traceContextsByRunId) {
 			if (entry.threadId === threadId) {
+				releaseTraceClient(entry.tracing.rootRun.traceId);
 				this.traceContextsByRunId.delete(runId);
 			}
 		}
@@ -609,6 +613,8 @@ export class InstanceAiService {
 				traceRunId: traceContext.rootRun.id,
 				error: getErrorMessage(error),
 			});
+		} finally {
+			releaseTraceClient(traceContext.rootRun.traceId);
 		}
 	}
 
