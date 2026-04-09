@@ -14,6 +14,7 @@ export type {
 	ExecuteOptions,
 	RuntimeBridge,
 	BridgeConfig,
+	Logger,
 	ObservabilityProvider,
 	MetricsAPI,
 	TracesAPI,
@@ -29,6 +30,7 @@ export {
 	SecurityViolationError,
 	SyntaxError,
 } from './types';
+export { IsolateError } from '@n8n/errors';
 
 // Extension runtime exports
 export { extend, extendOptional, EXTENSION_OBJECTS } from './extensions/extend';

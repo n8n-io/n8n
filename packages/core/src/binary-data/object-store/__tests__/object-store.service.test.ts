@@ -56,6 +56,7 @@ describe('ObjectStoreService', () => {
 	beforeEach(async () => {
 		objectStoreService = new ObjectStoreService(mock(), s3Config);
 		await objectStoreService.init();
+		mockS3Send.mockClear();
 		jest.restoreAllMocks();
 	});
 

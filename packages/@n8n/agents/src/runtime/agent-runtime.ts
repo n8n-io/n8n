@@ -5,7 +5,7 @@ import type { z } from 'zod';
 import { zodToJsonSchema, type JsonSchema7Type } from 'zod-to-json-schema';
 
 import { computeCost, getModelCost, type ModelCost } from '../sdk/catalog';
-import { isLlmMessage, toDbMessage } from '../sdk/message';
+import { isLlmMessage } from '../sdk/message';
 import type {
 	AgentRunState,
 	AnthropicThinkingConfig,
@@ -151,11 +151,11 @@ type ToolCallOutcome =
 			outcome: 'success';
 			toolEntry: ToolResultEntry;
 			subAgentUsage?: SubAgentUsage[];
-			customMessage?: AgentDbMessage;
-			message: AgentDbMessage;
+			customMessage?: AgentMessage;
+			message: AgentMessage;
 	  }
 	| { outcome: 'suspended'; payload: unknown; resumeSchema: JsonSchema7Type }
-	| { outcome: 'error'; error: unknown; message: AgentDbMessage }
+	| { outcome: 'error'; error: unknown; message: AgentMessage }
 	| { outcome: 'noop' }; // tool call shouldn't be saved or logged anywhere, usually means that if was executed by AI SDK
 
 /** A tool call that completed successfully. */
@@ -165,8 +165,8 @@ interface ToolCallSuccess {
 	input: JSONValue;
 	toolEntry: ToolResultEntry;
 	subAgentUsage?: SubAgentUsage[];
-	customMessage?: AgentDbMessage;
-	message: AgentDbMessage;
+	customMessage?: AgentMessage;
+	message: AgentMessage;
 }
 
 /** Info about a tool call that suspended (before persistence — no runId yet). */
@@ -185,7 +185,7 @@ interface ToolCallError {
 	toolName: string;
 	input: JSONValue;
 	error: unknown;
-	message: AgentDbMessage;
+	message: AgentMessage;
 }
 
 /** Result of executing a batch of tool calls (before persistence). */
@@ -421,7 +421,9 @@ export class AgentRuntime {
 	 * The system prompt is NOT stored in the list; list.forLlm(instructions)
 	 * prepends it at every LLM call site.
 	 */
-	private async buildMessageList(input: AgentDbMessage[]): Promise<AgentMessageList> {
+	private async buildMessageList(
+		input: AgentMessage[],
+	): Promise<AgentMessageList> {
 		const list = new AgentMessageList();
 		const persistence = this.currentState.persistence;
 
@@ -430,7 +432,7 @@ export class AgentRuntime {
 				limit: this.config.lastMessages ?? 10,
 			});
 			if (memMessages.length > 0) {
-				list.addHistory(stripOrphanedToolMessages(memMessages.map(toDbMessage)));
+				list.addHistory(stripOrphanedToolMessages(memMessages));
 			}
 		}
 
@@ -452,7 +454,7 @@ export class AgentRuntime {
 	 */
 	private async performSemanticRecall(
 		list: AgentMessageList,
-		input: AgentDbMessage[],
+		input: AgentMessage[],
 		threadId: string,
 		resourceId?: string,
 	): Promise<void> {
@@ -467,7 +469,7 @@ export class AgentRuntime {
 
 		if (!userText) return;
 
-		let recalled: AgentMessage[] = [];
+		let recalled: AgentDbMessage[] = [];
 
 		if (this.config.memory.queryEmbeddings && this.config.semanticRecall.embedder) {
 			// Tier 3: runtime embeds the query, backend does vector search
@@ -500,7 +502,7 @@ export class AgentRuntime {
 					);
 				} else {
 					recalled = allMsgs.filter((m) => {
-						const id = 'id' in m && typeof m.id === 'string' ? m.id : undefined;
+						const id = m.id;
 						return id !== undefined && hitIds.has(id);
 					});
 				}
@@ -521,12 +523,10 @@ export class AgentRuntime {
 		const { historyIds } = list.serialize();
 		const historyIdSet = new Set(historyIds);
 
-		const newRecalled = recalled
-			.filter((m) => {
-				const id = 'id' in m && typeof m.id === 'string' ? m.id : undefined;
-				return !id || !historyIdSet.has(id);
-			})
-			.map(toDbMessage);
+		const newRecalled = recalled.filter((m) => {
+			const id = m.id;
+			return !id || !historyIdSet.has(id);
+		});
 
 		if (newRecalled.length > 0) {
 			list.addHistory(newRecalled);
@@ -535,10 +535,10 @@ export class AgentRuntime {
 
 	/** Expand hit IDs by messageRange (before/after) within the ordered message list. */
 	private expandMessageRange(
-		allMsgs: AgentMessage[],
+		allMsgs: AgentDbMessage[],
 		hitIds: Set<string>,
 		range: { before: number; after: number },
-	): AgentMessage[] {
+	): AgentDbMessage[] {
 		const expandedIds = new Set<string>();
 		for (const msg of allMsgs) {
 			const id = 'id' in msg && typeof msg.id === 'string' ? msg.id : undefined;
@@ -1639,10 +1639,8 @@ export class AgentRuntime {
 		const toolResultMsg = makeToolResultMessage(toolCallId, toolName, modelResult);
 		list.addResponse([toolResultMsg]);
 
-		const customToolMessage = builtTool?.toMessage?.(actualResult);
-		let customMessage: AgentDbMessage | undefined;
-		if (customToolMessage) {
-			customMessage = toDbMessage(customToolMessage);
+		const customMessage = builtTool?.toMessage?.(actualResult);
+		if (customMessage) {
 			list.addResponse([customMessage]);
 		}
 
@@ -1714,7 +1712,7 @@ export class AgentRuntime {
 	}
 
 	/** Emit a TurnEnd event when an assistant message is present in `newMessages`. */
-	private emitTurnEnd(newMessages: AgentDbMessage[], toolResults: ContentToolResult[]): void {
+	private emitTurnEnd(newMessages: AgentMessage[], toolResults: ContentToolResult[]): void {
 		const assistantMsg = newMessages.find((m) => 'role' in m && m.role === 'assistant');
 		if (assistantMsg) {
 			this.emitEvent({ type: AgentEvent.TurnEnd, message: assistantMsg, toolResults });

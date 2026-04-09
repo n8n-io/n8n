@@ -29,6 +29,7 @@ describe('useUserRoleProvisioningForm', () => {
 			scopesProjectsRolesClaimName: 'n8n_projects',
 			scopesProvisionInstanceRole: false,
 			scopesProvisionProjectRoles: false,
+			scopesUseExpressionMapping: false,
 		};
 		return { ...defaultConfig, ...config };
 	};
@@ -94,6 +95,27 @@ describe('useUserRoleProvisioningForm', () => {
 
 			const result = shouldPromptUserToConfirmUserRoleProvisioningChange({
 				currentLoginEnabled: true,
+				loginEnabledFormValue: true,
+			});
+
+			expect(result).toEqual(true);
+		});
+
+		it('should return true when enabling SSO with expression_based provisioning enabled', async () => {
+			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
+				mockProvisioningConfig({
+					scopesProvisionInstanceRole: false,
+					scopesProvisionProjectRoles: false,
+				}),
+			);
+			const { formValue, shouldPromptUserToConfirmUserRoleProvisioningChange } =
+				useUserRoleProvisioningForm('oidc');
+			await vi.waitFor(() => expect(formValue.value).toBe('disabled'));
+
+			formValue.value = 'expression_based';
+
+			const result = shouldPromptUserToConfirmUserRoleProvisioningChange({
+				currentLoginEnabled: false,
 				loginEnabledFormValue: true,
 			});
 
