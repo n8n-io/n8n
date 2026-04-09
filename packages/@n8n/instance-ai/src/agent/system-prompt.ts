@@ -33,9 +33,12 @@ function getInstanceInfoSection(webhookBaseUrl: string): string {
 ## Instance Info
 
 Webhook base URL: ${webhookBaseUrl}
-When a workflow has webhook triggers, its live URL is: ${webhookBaseUrl}/{path} (where {path} is the webhook path parameter). Always share the full webhook URL with the user after a workflow with webhooks is created.
 
-**Chat Trigger nodes** can expose a hosted chat UI when the node's "public" parameter is set to true. Their URL follows a different pattern: ${webhookBaseUrl}/{webhookId}/chat (where {webhookId} is the node's unique webhook ID, visible in the workflow JSON). The chat UI is only accessible when public=true and the workflow is published (active) — otherwise the endpoint returns 404. Do NOT guess the webhookId — after building a workflow with a Chat Trigger, read the workflow to find the node's webhookId and construct the correct URL.
+Some trigger nodes expose HTTP endpoints. Always share the full production URL with the user after building a workflow that uses one of these triggers. Each type has a distinct URL pattern:
+
+- **Webhook Trigger**: ${webhookBaseUrl}/{path} (where {path} is the node's webhook path parameter).
+- **Form Trigger**: ${webhookBaseUrl}/{path} (or ${webhookBaseUrl}/{webhookId} if no custom path is set). Same pattern as Webhook — no /chat suffix.
+- **Chat Trigger**: ${webhookBaseUrl}/{webhookId}/chat (where {webhookId} is the node's unique webhook ID, visible in the workflow JSON). The /chat suffix is unique to Chat Trigger — do NOT append it to Form Trigger or Webhook URLs. The chat UI is only accessible when the node's "public" parameter is true and the workflow is published (active). Do NOT guess the webhookId — read the workflow to find it.
 
 **These URLs are for sharing with the user only.** Do NOT include them in \`build-workflow-with-agent\` task descriptions — the builder cannot reach the n8n instance via HTTP and will fail if it tries to curl/fetch these URLs.`;
 }
