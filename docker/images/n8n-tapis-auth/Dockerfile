@@ -14,6 +14,8 @@ RUN apt-get update && apt-get install -y \
 # Configurar pnpm
 RUN npm install -g pnpm
 
+# ... (Pasos anteriores de apt-get permanecen igual)
+
 WORKDIR /app
 
 # 1. Copia los archivos de configuración del monorepo
@@ -30,8 +32,20 @@ COPY packages/ ./packages/
 # Ahora pnpm encontrará /app/patches/bull@4.16.4.patch y podrá continuar
 RUN CI=true pnpm install --ignore-scripts --no-frozen-lockfile
 
-# ... (Pasos de Fix de PSL y Rebuild de SQLite permanecen igual)
 
+# 3. PARCHE DE TIPOS (PSL)
+# Soluciona el error TS2688 inyectando la definición de tipos faltante
+RUN mkdir -p node_modules/@types/psl && \
+    printf 'declare module "psl";' > node_modules/@types/psl/index.d.ts
+
+# 4. COMPILACIÓN QUIRÚRGICA DE SQLITE3
+# Como usamos --ignore-scripts, el binario nativo no se generó.
+# Localizamos la carpeta en el storage de pnpm y forzamos la compilación.
+RUN SQLITE3_PATH=$(find node_modules/.pnpm -name "sqlite3" -type d | head -n 1) && \
+    cd $SQLITE3_PATH && npm install --build-from-source
+
+# 5. CONSTRUCCIÓN FINAL CON TURBO
+# Turbo ahora encontrará tanto los tipos de PSL como el binario de SQLite
 RUN pnpm build
 
 # Comando por defecto (ajusta según tu despliegue en TACC/Render)
