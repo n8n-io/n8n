@@ -435,6 +435,23 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		);
 	});
 
+	it('should re-throw ExpressionExtensionError from host-side callbacks', () => {
+		const json = {
+			get brokenProp() {
+				const err = new Error('extension failed');
+				err.name = 'ExpressionExtensionError';
+				throw err;
+			},
+		};
+
+		expect(() => evaluator.evaluate('{{ $json.brokenProp }}', { $json: json }, caller)).toThrow(
+			expect.objectContaining({
+				name: 'ExpressionExtensionError',
+				message: 'extension failed',
+			}),
+		);
+	});
+
 	it('should swallow generic errors thrown when reading a property across the isolate boundary', () => {
 		const json = {
 			get brokenProp() {
