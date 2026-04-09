@@ -1,0 +1,52 @@
+{
+  "name": "@js-joda/core",
+  "version": "5.7.0",
+  "description": "a date and time library for javascript",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/js-joda/js-joda.git"
+  },
+  "author": "pithu",
+  "contributors": [
+    "pithu",
+    "phueper"
+  ],
+  "homepage": "https://js-joda.github.io/js-joda",
+  "license": "BSD-3-Clause",
+  "bugs": {
+    "url": "https://github.com/js-joda/js-joda/issues"
+  },
+  "main": "dist/js-joda.js",
+  "module": "dist/js-joda.esm.js",
+  "typings": "typings/js-joda.d.ts",
+  "files": [
+    "dist",
+    "src",
+    "typings",
+    "CHANGELOG.md",
+    "README.md"
+  ],
+  "scripts": {
+    "prepublishOnly": "npm run build-dist",
+    "test": "NODE_ENV=test npx mocha --timeout 5000 --require @babel/register ./test/*Test_mochaOnly.js ./test/*Test.js ./test/**/*Test.js ./test/**/**/*Test.js",
+    "test-coverage": "NODE_ENV=test COVERAGE=1 npx nyc --report-dir=build/coverage --reporter=lcov --reporter html npx mocha --timeout 5000 --require @babel/register --reporter progress ./test/*Test.js ./test/**/*Test.js ./test/**/**/*Test.js",
+    "test-browser": "npx karma start --reporters=dots --single-run",
+    "test-saucelabs": "npx karma start --reporters=\"dots,saucelabs\" --browsers=\"sl_chrome,sl_firefox\" --single-run=true",
+    "test-ci": "npm run build-dist && npm run test && npm run test-browser && npm run test-ts-definitions && npm run test-coverage",
+    "test-ts-definitions": "TS_NODE_PROJECT='../../shared/ts-test-config.json' NODE_ENV=test mocha --timeout 5000 --require ts-node/register ./test/typescript_definitions/*.ts",
+    "build-dist": "npx rollup -c rollup.config.js",
+    "build-md-toc": "npx markdown-toc -i CheatSheet.md",
+    "build-gz-check": "gzip -kf dist/js-joda.min.js && ls -alh ./dist/js-joda.min.js*",
+    "lint": "npx eslint  ."
+  },
+  "keywords": [
+    "date",
+    "time",
+    "timezone"
+  ],
+  "nyc": {
+    "sourceMap": false,
+    "instrument": false
+  },
+  "gitHead": "de894726b34edb1596a821273e08e93b76096d23"
+}

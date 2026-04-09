@@ -1,0 +1,188 @@
+cmd_Release/obj.target/isolated_vm/src/module/isolate.o := g++ -o Release/obj.target/isolated_vm/src/module/isolate.o ../src/module/isolate.cc '-DNODE_GYP_MODULE_NAME=isolated_vm' '-DUSING_UV_SHARED=1' '-DUSING_V8_SHARED=1' '-DV8_DEPRECATION_WARNINGS=1' '-D_GLIBCXX_USE_CXX11_ABI=1' '-D_LARGEFILE_SOURCE' '-D_FILE_OFFSET_BITS=64' '-D__STDC_FORMAT_MACROS' '-DOPENSSL_NO_PINSHARED' '-DOPENSSL_THREADS' '-DBUILDING_NODE_EXTENSION' -I/root/.cache/node-gyp/23.11.1/include/node -I/root/.cache/node-gyp/23.11.1/src -I/root/.cache/node-gyp/23.11.1/deps/openssl/config -I/root/.cache/node-gyp/23.11.1/deps/openssl/openssl/include -I/root/.cache/node-gyp/23.11.1/deps/uv/include -I/root/.cache/node-gyp/23.11.1/deps/zlib -I/root/.cache/node-gyp/23.11.1/deps/v8/include -I../src -I../vendor  -fPIC -pthread -Wall -Wextra -Wno-unused-parameter -m64 -Wno-deprecated-declarations -O3 -fno-omit-frame-pointer -fno-strict-aliasing -std=gnu++20 -std=c++20 -g -Wno-unknown-pragmas -MMD -MF ./Release/.deps/Release/obj.target/isolated_vm/src/module/isolate.o.d.raw   -c
+Release/obj.target/isolated_vm/src/module/isolate.o: \
+ ../src/module/isolate.cc ../src/isolate/environment.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8.h \
+ /root/.cache/node-gyp/23.11.1/include/node/cppgc/common.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8config.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-array-buffer.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-local-handle.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-handle-base.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-internal.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8config.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-object.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-maybe.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-persistent-handle.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-weak-callback-info.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-primitive.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-data.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-value.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-sandbox.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-traced-handle.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-container.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-context.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-snapshot.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-isolate.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-callbacks.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-promise.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-debug.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-script.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-memory-span.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-message.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-embedder-heap.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-exception.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-function-callback.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-microtask.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-statistics.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-unwinder.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-embedder-state-scope.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-date.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-extension.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-external.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-function.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-template.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-initialization.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-platform.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-source-location.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-json.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-locker.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-microtask-queue.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-primitive-object.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-proxy.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-regexp.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-typed-array.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-value-serializer.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-version.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-wasm.h \
+ /root/.cache/node-gyp/23.11.1/include/node/uv.h \
+ /root/.cache/node-gyp/23.11.1/include/node/uv/errno.h \
+ /root/.cache/node-gyp/23.11.1/include/node/uv/version.h \
+ /root/.cache/node-gyp/23.11.1/include/node/uv/unix.h \
+ /root/.cache/node-gyp/23.11.1/include/node/uv/threadpool.h \
+ /root/.cache/node-gyp/23.11.1/include/node/uv/linux.h \
+ ../src/isolate/executor.h ../src/isolate/holder.h \
+ ../src/isolate/platform_delegate.h ../src/lib/lockable.h \
+ ../src/isolate/node_wrapper.h ../src/isolate/v8_version.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-platform.h \
+ ../src/isolate/runnable.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-profiler.h \
+ ../src/isolate/remote_handle.h ../src/isolate/scheduler.h \
+ ../src/lib/thread_pool.h ../src/isolate/specific.h \
+ ../src/isolate/strings.h ../src/isolate/generic/error.h \
+ ../src/isolate/v8_version.h ../src/isolate/generic/handle_cast.h \
+ ../src/isolate/generic/../v8_version.h \
+ ../src/isolate/cpu_profile_manager.h ../src/lib/covariant.h \
+ ../src/isolate/util.h ../src/module/callback.h \
+ ../src/module/transferable.h ../src/isolate/class_handle.h \
+ ../src/isolate/functor_runners.h ../src/external_copy/error.h \
+ ../src/external_copy/external_copy.h ../src/isolate/generic/array.h \
+ ../src/isolate/allocator.h ../src/isolate/transferable.h \
+ ../src/external_copy/./string.h ../src/isolate/generic/callbacks.h \
+ ../src/isolate/generic/extract_params.h \
+ ../src/isolate/generic/read_option.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-function-callback.h \
+ ../src/module/context_handle.h ../src/module/external_copy_handle.h \
+ ../src/module/isolate_handle.h ../src/module/lib_handle.h \
+ ../src/module/native_module_handle.h ../src/module/reference_handle.h \
+ ../src/module/script_handle.h
+../src/module/isolate.cc:
+../src/isolate/environment.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8.h:
+/root/.cache/node-gyp/23.11.1/include/node/cppgc/common.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8config.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-array-buffer.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-local-handle.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-handle-base.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-internal.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8config.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-object.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-maybe.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-persistent-handle.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-weak-callback-info.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-primitive.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-data.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-value.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-sandbox.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-traced-handle.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-container.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-context.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-snapshot.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-isolate.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-callbacks.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-promise.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-debug.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-script.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-memory-span.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-message.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-embedder-heap.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-exception.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-function-callback.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-microtask.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-statistics.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-unwinder.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-embedder-state-scope.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-date.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-extension.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-external.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-function.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-template.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-initialization.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-platform.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-source-location.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-json.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-locker.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-microtask-queue.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-primitive-object.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-proxy.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-regexp.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-typed-array.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-value-serializer.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-version.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-wasm.h:
+/root/.cache/node-gyp/23.11.1/include/node/uv.h:
+/root/.cache/node-gyp/23.11.1/include/node/uv/errno.h:
+/root/.cache/node-gyp/23.11.1/include/node/uv/version.h:
+/root/.cache/node-gyp/23.11.1/include/node/uv/unix.h:
+/root/.cache/node-gyp/23.11.1/include/node/uv/threadpool.h:
+/root/.cache/node-gyp/23.11.1/include/node/uv/linux.h:
+../src/isolate/executor.h:
+../src/isolate/holder.h:
+../src/isolate/platform_delegate.h:
+../src/lib/lockable.h:
+../src/isolate/node_wrapper.h:
+../src/isolate/v8_version.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-platform.h:
+../src/isolate/runnable.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-profiler.h:
+../src/isolate/remote_handle.h:
+../src/isolate/scheduler.h:
+../src/lib/thread_pool.h:
+../src/isolate/specific.h:
+../src/isolate/strings.h:
+../src/isolate/generic/error.h:
+../src/isolate/v8_version.h:
+../src/isolate/generic/handle_cast.h:
+../src/isolate/generic/../v8_version.h:
+../src/isolate/cpu_profile_manager.h:
+../src/lib/covariant.h:
+../src/isolate/util.h:
+../src/module/callback.h:
+../src/module/transferable.h:
+../src/isolate/class_handle.h:
+../src/isolate/functor_runners.h:
+../src/external_copy/error.h:
+../src/external_copy/external_copy.h:
+../src/isolate/generic/array.h:
+../src/isolate/allocator.h:
+../src/isolate/transferable.h:
+../src/external_copy/./string.h:
+../src/isolate/generic/callbacks.h:
+../src/isolate/generic/extract_params.h:
+../src/isolate/generic/read_option.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-function-callback.h:
+../src/module/context_handle.h:
+../src/module/external_copy_handle.h:
+../src/module/isolate_handle.h:
+../src/module/lib_handle.h:
+../src/module/native_module_handle.h:
+../src/module/reference_handle.h:
+../src/module/script_handle.h:

@@ -29,7 +29,7 @@ function getOpenAiModel(ctx: ISupplyDataFunctions, model: OpenAiModel) {
 	}
 
 	const timeout = model.timeout;
-	clientConfiguration.fetchOptions = {
+	(clientConfiguration as any).fetchOptions = {
 		dispatcher: getProxyAgent(model.baseUrl, {
 			headersTimeout: timeout,
 			bodyTimeout: timeout,
@@ -44,9 +44,9 @@ function getOpenAiModel(ctx: ISupplyDataFunctions, model: OpenAiModel) {
 		logprobs: model.logprobs,
 		topLogprobs: model.topLogprobs,
 		supportsStrictToolCalling: model.supportsStrictToolCalling,
-		reasoning: model.reasoning,
+		reasoning: model.reasoning as any,
 		zdrEnabled: model.zdrEnabled,
-		service_tier: model.service_tier,
+		service_tier: model.service_tier as any,
 		promptCacheKey: model.promptCacheKey,
 		temperature: model.temperature,
 		topP: model.topP,

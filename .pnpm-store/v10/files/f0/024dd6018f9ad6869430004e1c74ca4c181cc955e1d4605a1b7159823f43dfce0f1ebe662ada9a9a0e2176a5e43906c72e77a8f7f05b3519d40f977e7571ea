@@ -1,0 +1,51 @@
+{
+    "name": "@types/express-serve-static-core",
+    "version": "5.1.1",
+    "description": "TypeScript definitions for express-serve-static-core",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/express-serve-static-core",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Boris Yankov",
+            "githubUsername": "borisyankov",
+            "url": "https://github.com/borisyankov"
+        },
+        {
+            "name": "Satana Charuwichitratana",
+            "githubUsername": "micksatana",
+            "url": "https://github.com/micksatana"
+        },
+        {
+            "name": "Jose Luis Leon",
+            "githubUsername": "JoseLion",
+            "url": "https://github.com/JoseLion"
+        },
+        {
+            "name": "David Stephens",
+            "githubUsername": "dwrss",
+            "url": "https://github.com/dwrss"
+        },
+        {
+            "name": "Shin Ando",
+            "githubUsername": "andoshin11",
+            "url": "https://github.com/andoshin11"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/express-serve-static-core"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/node": "*",
+        "@types/qs": "*",
+        "@types/range-parser": "*",
+        "@types/send": "*"
+    },
+    "peerDependencies": {},
+    "typesPublisherContentHash": "b337510882ad267c3072f527a983b751462ec3050b22918b97b8e5a2b6bf3656",
+    "typeScriptVersion": "5.2"
+}

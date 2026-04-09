@@ -1,0 +1,179 @@
+---
+title: Coding Agents
+description: Learn how to set up the AI SDK for use with coding agents, including installing skills, accessing bundled docs, and using DevTools.
+---
+
+# Getting Started with Coding Agents
+
+This page explains how to get the most out of the AI SDK when working inside a coding agent (such as Claude Code, Codex, OpenCode, Cursor, or any other AI-assisted development environment).
+
+## Install the AI SDK Skill
+
+The fastest way to give your coding agent deep knowledge of the AI SDK is to install the official AI SDK skill. Skills are lightweight markdown files that load specialized instructions into your agent's context on demand — so your agent knows exactly how to use the SDK without you needing to explain it.
+
+Install the AI SDK skill using `npx skills add`:
+
+```bash
+npx skills add vercel/ai
+```
+
+This installs the skill into your agent's specific skills directory (e.g., `.claude/skills`, `.codex/skills`). If you select more than one agent, the CLI creates symlinks so each agent can discover the skill. Use `-a` to specify agents directly — for example, `-a amp` installs into the universal `.agents/skills` directory. Use `-y` for non-interactive installation.
+
+Once installed, any agent that supports the [Agent Skills](https://agentskills.io) format will automatically discover and load the skill when working on AI SDK tasks.
+
+<Note>
+  Agent Skills use **progressive disclosure**: your agent loads only the skill's
+  name and description at startup. The full instructions are only pulled into
+  context when the task calls for it, keeping your agent fast and focused.
+</Note>
+
+## Docs and Source Code in `node_modules`
+
+Once you've installed the `ai` package, you already have the full AI SDK documentation and source code available locally inside `node_modules`. Your coding agent can read these directly — no internet access required.
+
+Install the `ai` package if you haven't already:
+
+<div className="my-4">
+  <Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+    <Tab>
+      <Snippet text="pnpm add ai" dark />
+    </Tab>
+    <Tab>
+      <Snippet text="npm install ai" dark />
+    </Tab>
+    <Tab>
+      <Snippet text="yarn add ai" dark />
+    </Tab>
+    <Tab>
+      <Snippet text="bun add ai" dark />
+    </Tab>
+  </Tabs>
+</div>
+
+After installation, your agent can reference the bundled source code and documentation at paths like:
+
+```
+node_modules/ai/src/              # Full source code organized by module
+node_modules/ai/docs/             # Official documentation with examples
+```
+
+This means your agent can look up accurate API signatures, implementations, and usage examples directly from the installed package — ensuring it always uses the version of the SDK that's actually installed in your project.
+
+## Install DevTools
+
+AI SDK DevTools gives you full visibility into your AI SDK calls during development. It captures LLM requests, responses, tool calls, token usage, and multi-step interactions, and displays them in a local web UI.
+
+<Note type="warning">
+  AI SDK DevTools is experimental and intended for local development only. Do
+  not use in production environments.
+</Note>
+
+Install the DevTools package:
+
+<div className="my-4">
+  <Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+    <Tab>
+      <Snippet text="pnpm add @ai-sdk/devtools" dark />
+    </Tab>
+    <Tab>
+      <Snippet text="npm install @ai-sdk/devtools" dark />
+    </Tab>
+    <Tab>
+      <Snippet text="yarn add @ai-sdk/devtools" dark />
+    </Tab>
+    <Tab>
+      <Snippet text="bun add @ai-sdk/devtools" dark />
+    </Tab>
+  </Tabs>
+</div>
+
+### Add the middleware
+
+Wrap your language model with the DevTools middleware using [`wrapLanguageModel`](/docs/ai-sdk-core/middleware):
+
+```ts
+import { wrapLanguageModel, gateway } from 'ai';
+import { devToolsMiddleware } from '@ai-sdk/devtools';
+
+const model = wrapLanguageModel({
+  model: gateway('anthropic/claude-sonnet-4.5'),
+  middleware: devToolsMiddleware(),
+});
+```
+
+Use the wrapped model with any AI SDK Core function:
+
+```ts
+import { generateText } from 'ai';
+
+const result = await generateText({
+  model, // wrapped model with DevTools middleware
+  prompt: 'What cities are in the United States?',
+});
+```
+
+### Launch the viewer
+
+Start the DevTools viewer in a separate terminal:
+
+```bash
+npx @ai-sdk/devtools
+```
+
+Open [http://localhost:4983](http://localhost:4983) to inspect your AI SDK interactions in real time.
+
+## Inspecting Tool Calls and Outputs
+
+DevTools captures and displays the following for every call:
+
+- **Input parameters and prompts** — the complete input sent to your LLM
+- **Output content and tool calls** — generated text and tool invocations
+- **Token usage and timing** — resource consumption and latency per step
+- **Raw provider data** — complete request and response payloads
+
+For multi-step agent interactions, DevTools groups everything into **runs** (a complete interaction) and **steps** (each individual LLM call within it), making it easy to trace exactly what your agent did and why.
+
+You can also log tool results directly in code during development:
+
+```ts
+import { streamText, tool, stepCountIs } from 'ai';
+import { z } from 'zod';
+
+const result = streamText({
+  model,
+  prompt: "What's the weather in New York in celsius?",
+  tools: {
+    weather: tool({
+      description: 'Get the weather in a location (fahrenheit)',
+      inputSchema: z.object({
+        location: z.string().describe('The location to get the weather for'),
+      }),
+      execute: async ({ location }) => ({
+        location,
+        temperature: Math.round(Math.random() * (90 - 32) + 32),
+      }),
+    }),
+  },
+  stopWhen: stepCountIs(5),
+  onStepFinish: async ({ toolResults }) => {
+    if (toolResults.length) {
+      console.log(JSON.stringify(toolResults, null, 2));
+    }
+  },
+});
+```
+
+The `onStepFinish` callback fires after each LLM step and prints any tool results to your terminal — useful for quick debugging without opening the DevTools UI.
+
+<Note>
+  DevTools stores all AI interactions in a local `.devtools/generations.json`
+  file. It automatically adds `.devtools` to your `.gitignore` to prevent
+  committing sensitive interaction data.
+</Note>
+
+## Where to Next?
+
+- Learn about [Agent Skills](https://agentskills.io/specification) to understand the full skill format.
+- Read the [DevTools reference](/docs/ai-sdk-core/devtools) for a complete list of captured data and configuration options.
+- Explore [Tools and Tool Calling](/docs/ai-sdk-core/tools-and-tool-calling) to build agents that can take real-world actions.
+- Check out the [Add Skills to Your Agent](/cookbook/guides/agent-skills) cookbook guide for a step-by-step integration walkthrough.

@@ -1,9 +1,0 @@
-{
-  "dependencies": {
-    "zod": "^3.25",
-    "zod-to-json-schema": "file://../../"
-  },
-  "scripts": {
-    "test": "npm i && tsc --noEmit"
-  }
-}

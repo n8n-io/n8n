@@ -1,6 +1,11 @@
 {
 	"extends": ["./tsconfig.json", "@n8n/typescript-config/modern/tsconfig.cjs.json"],
 	"compilerOptions": {
+		"moduleResolution": "node", 
+		"allowSyntheticDefaultImports": true,
+		"paths": {
+		"js-base64": ["../../node_modules/js-base64/base64.d.ts"]
+		},
 		"rootDir": "src",
 		"outDir": "dist/cjs",
 		"tsBuildInfoFile": "dist/cjs/build.tsbuildinfo"

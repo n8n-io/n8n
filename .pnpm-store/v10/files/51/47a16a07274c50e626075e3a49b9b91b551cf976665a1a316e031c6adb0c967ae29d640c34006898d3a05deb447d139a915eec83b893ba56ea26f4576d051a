@@ -1,0 +1,46 @@
+---
+title: Agents
+description: An overview of building agents with the AI SDK.
+---
+
+# Agents
+
+The following section shows you how to build agents with the AI SDK - systems where large language models (LLMs) use tools in a loop to accomplish tasks.
+
+<IndexCards
+  cards={[
+    {
+      title: 'Overview',
+      description: 'Learn what agents are and why to use the ToolLoopAgent.',
+      href: '/docs/agents/overview',
+    },
+    {
+      title: 'Building Agents',
+      description: 'Complete guide to creating agents with the ToolLoopAgent.',
+      href: '/docs/agents/building-agents',
+    },
+    {
+      title: 'Workflow Patterns',
+      description:
+        'Structured patterns using core functions for complex workflows.',
+      href: '/docs/agents/workflows',
+    },
+    {
+      title: 'Loop Control',
+      description: 'Advanced execution control with stopWhen and prepareStep.',
+      href: '/docs/agents/loop-control',
+    },
+    {
+      title: 'Configuring Call Options',
+      description:
+        'Pass type-safe runtime inputs to dynamically configure agent behavior.',
+      href: '/docs/agents/configuring-call-options',
+    },
+    {
+      title: 'Subagents',
+      description:
+        'Delegate context-heavy tasks to specialized subagents while keeping the main agent focused.',
+      href: '/docs/agents/subagents',
+    },
+  ]}
+/>

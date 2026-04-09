@@ -1,0 +1,1 @@
+"use strict";exports.__esModule=true;exports.isTabPanel=exports.isTabList=exports.isTab=void 0;function makeTypeChecker(tabsRole){return element=>!!element.type&&element.type.tabsRole===tabsRole}const isTab=exports.isTab=makeTypeChecker("Tab");const isTabList=exports.isTabList=makeTypeChecker("TabList");const isTabPanel=exports.isTabPanel=makeTypeChecker("TabPanel");

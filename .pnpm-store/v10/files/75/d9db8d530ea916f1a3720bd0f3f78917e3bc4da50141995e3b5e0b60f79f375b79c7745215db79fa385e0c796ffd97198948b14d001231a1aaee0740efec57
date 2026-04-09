@@ -1,9 +1,0 @@
-export declare const noTokensFound = "no_tokens_found";
-export declare const nativeAccountUnavailable = "native_account_unavailable";
-export declare const refreshTokenExpired = "refresh_token_expired";
-export declare const uxNotAllowed = "ux_not_allowed";
-export declare const interactionRequired = "interaction_required";
-export declare const consentRequired = "consent_required";
-export declare const loginRequired = "login_required";
-export declare const badToken = "bad_token";
-//# sourceMappingURL=InteractionRequiredAuthErrorCodes.d.ts.map

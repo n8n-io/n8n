@@ -1,0 +1,58 @@
+{
+  "name": "v3-infinite-loading",
+  "version": "1.3.2",
+  "type": "module",
+  "description": "Infinite scroller component for vuejs-3",
+  "homepage": "https://vue3-infinite-loading.netlify.app/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oumoussa98/vue3-infinite-loading.git"
+  },
+  "main": "lib/v3-infinite-loading.es.js",
+  "browser": "lib/v3-infinite-loading.umd.js",
+  "module": "lib/v3-infinite-loading.es.js",
+  "types": "lib/main.d.ts",
+  "files": [
+    "lib"
+  ],
+  "devDependencies": {
+    "@types/node": "^20.2.5",
+    "@vitejs/plugin-vue": "^4.2.3",
+    "@vue/compiler-sfc": "^3.3.4",
+    "@vue/eslint-config-prettier": "^7.1.0",
+    "@vue/eslint-config-typescript": "^11.0.3",
+    "@vue/tsconfig": "^0.4.0",
+    "eslint": "^8.41.0",
+    "eslint-config-prettier": "^8.8.0",
+    "eslint-plugin-vue": "^9.14.1",
+    "path": "^0.12.7",
+    "pnpm": "^8.6.0",
+    "prettier": "2.8.8",
+    "vite": "^4.3.9",
+    "vite-plugin-dts": "^2.3.0",
+    "vue": "^3.3.4"
+  },
+  "scripts": {
+    "lint": "eslint . --ext .js,.vue --ignore-path .gitignore --fix --ignore-pattern demo",
+    "format": "prettier . --write",
+    "dev:docs": "pnpm -C docs run dev",
+    "dev:demo": "pnpm -C demo run dev",
+    "serve:docs": "pnpm -C docs run serve",
+    "serve:demo": "pnpm -C demo run serve",
+    "build:demo": "rm -rf ./demo/lib && pnpm run build:lib && mv lib demo && pnpm -C demo run build",
+    "build:docs": "pnpm -C docs run build",
+    "build:lib": "vite build --mode lib"
+  },
+  "keywords": [
+    "vue3",
+    "vue",
+    "vue3 infinite loading",
+    "vue component",
+    "infinite loader",
+    "infinite scroller",
+    "infinite scrolling",
+    "infinite loading"
+  ],
+  "author": "abdelouahed oumoussa",
+  "license": "MIT"
+}

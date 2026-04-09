@@ -1,0 +1,349 @@
+---
+title: Provider & Model Management
+description: Learn how to work with multiple providers and models
+---
+
+# Provider & Model Management
+
+When you work with multiple providers and models, it is often desirable to manage them in a central place
+and access the models through simple string ids.
+
+The AI SDK offers [custom providers](/docs/reference/ai-sdk-core/custom-provider) and
+a [provider registry](/docs/reference/ai-sdk-core/provider-registry) for this purpose:
+
+- With **custom providers**, you can pre-configure model settings, provide model name aliases,
+  and limit the available models.
+- The **provider registry** lets you mix multiple providers and access them through simple string ids.
+
+You can mix and match custom providers, the provider registry, and [middleware](/docs/ai-sdk-core/middleware) in your application.
+
+## Custom Providers
+
+You can create a [custom provider](/docs/reference/ai-sdk-core/custom-provider) using `customProvider`.
+
+### Example: custom model settings
+
+You might want to override the default model settings for a provider or provide model name aliases
+with pre-configured settings.
+
+```ts
+import {
+  gateway,
+  customProvider,
+  defaultSettingsMiddleware,
+  wrapLanguageModel,
+} from 'ai';
+
+// custom provider with different provider options:
+export const openai = customProvider({
+  languageModels: {
+    // replacement model with custom provider options:
+    'gpt-5.1': wrapLanguageModel({
+      model: gateway('openai/gpt-5.1'),
+      middleware: defaultSettingsMiddleware({
+        settings: {
+          providerOptions: {
+            openai: {
+              reasoningEffort: 'high',
+            },
+          },
+        },
+      }),
+    }),
+    // alias model with custom provider options:
+    'gpt-5.1-high-reasoning': wrapLanguageModel({
+      model: gateway('openai/gpt-5.1'),
+      middleware: defaultSettingsMiddleware({
+        settings: {
+          providerOptions: {
+            openai: {
+              reasoningEffort: 'high',
+            },
+          },
+        },
+      }),
+    }),
+  },
+  fallbackProvider: gateway,
+});
+```
+
+### Example: model name alias
+
+You can also provide model name aliases, so you can update the model version in one place in the future:
+
+```ts
+import { customProvider, gateway } from 'ai';
+
+// custom provider with alias names:
+export const anthropic = customProvider({
+  languageModels: {
+    opus: gateway('anthropic/claude-opus-4.1'),
+    sonnet: gateway('anthropic/claude-sonnet-4.5'),
+    haiku: gateway('anthropic/claude-haiku-4.5'),
+  },
+  fallbackProvider: gateway,
+});
+```
+
+### Example: limit available models
+
+You can limit the available models in the system, even if you have multiple providers.
+
+```ts
+import {
+  customProvider,
+  defaultSettingsMiddleware,
+  wrapLanguageModel,
+  gateway,
+} from 'ai';
+
+export const myProvider = customProvider({
+  languageModels: {
+    'text-medium': gateway('anthropic/claude-3-5-sonnet-20240620'),
+    'text-small': gateway('openai/gpt-5-mini'),
+    'reasoning-medium': wrapLanguageModel({
+      model: gateway('openai/gpt-5.1'),
+      middleware: defaultSettingsMiddleware({
+        settings: {
+          providerOptions: {
+            openai: {
+              reasoningEffort: 'high',
+            },
+          },
+        },
+      }),
+    }),
+    'reasoning-fast': wrapLanguageModel({
+      model: gateway('openai/gpt-5.1'),
+      middleware: defaultSettingsMiddleware({
+        settings: {
+          providerOptions: {
+            openai: {
+              reasoningEffort: 'low',
+            },
+          },
+        },
+      }),
+    }),
+  },
+  embeddingModels: {
+    embedding: gateway.embeddingModel('openai/text-embedding-3-small'),
+  },
+  // no fallback provider
+});
+```
+
+## Provider Registry
+
+You can create a [provider registry](/docs/reference/ai-sdk-core/provider-registry) with multiple providers and models using `createProviderRegistry`.
+
+### Setup
+
+```ts filename={"registry.ts"}
+import { anthropic } from '@ai-sdk/anthropic';
+import { openai } from '@ai-sdk/openai';
+import { createProviderRegistry, gateway } from 'ai';
+
+export const registry = createProviderRegistry({
+  // register provider with prefix and default setup using gateway:
+  gateway,
+
+  // register provider with prefix and direct provider import:
+  anthropic,
+  openai,
+});
+```
+
+### Setup with Custom Separator
+
+By default, the registry uses `:` as the separator between provider and model IDs. You can customize this separator:
+
+```ts filename={"registry.ts"}
+import { anthropic } from '@ai-sdk/anthropic';
+import { openai } from '@ai-sdk/openai';
+import { createProviderRegistry, gateway } from 'ai';
+
+export const customSeparatorRegistry = createProviderRegistry(
+  {
+    gateway,
+    anthropic,
+    openai,
+  },
+  { separator: ' > ' },
+);
+```
+
+### Example: Use language models
+
+You can access language models by using the `languageModel` method on the registry.
+The provider id will become the prefix of the model id: `providerId:modelId`.
+
+```ts highlight={"5"}
+import { generateText } from 'ai';
+import { registry } from './registry';
+
+const { text } = await generateText({
+  model: registry.languageModel('openai:gpt-5.1'), // default separator
+  // or with custom separator:
+  // model: customSeparatorRegistry.languageModel('openai > gpt-5.1'),
+  prompt: 'Invent a new holiday and describe its traditions.',
+});
+```
+
+### Example: Use text embedding models
+
+You can access text embedding models by using the `.embeddingModel` method on the registry.
+The provider id will become the prefix of the model id: `providerId:modelId`.
+
+```ts highlight={"5"}
+import { embed } from 'ai';
+import { registry } from './registry';
+
+const { embedding } = await embed({
+  model: registry.embeddingModel('openai:text-embedding-3-small'),
+  value: 'sunny day at the beach',
+});
+```
+
+### Example: Use image models
+
+You can access image models by using the `imageModel` method on the registry.
+The provider id will become the prefix of the model id: `providerId:modelId`.
+
+```ts highlight={"5"}
+import { generateImage } from 'ai';
+import { registry } from './registry';
+
+const { image } = await generateImage({
+  model: registry.imageModel('openai:dall-e-3'),
+  prompt: 'A beautiful sunset over a calm ocean',
+});
+```
+
+## Combining Custom Providers, Provider Registry, and Middleware
+
+The central idea of provider management is to set up a file that contains all the providers and models you want to use.
+You may want to pre-configure model settings, provide model name aliases, limit the available models, and more.
+
+Here is an example that implements the following concepts:
+
+- pass through gateway with a namespace prefix (here: `gateway > *`)
+- pass through a full provider with a namespace prefix (here: `xai > *`)
+- setup an OpenAI-compatible provider with custom api key and base URL (here: `custom > *`)
+- setup model name aliases (here: `anthropic > fast`, `anthropic > writing`, `anthropic > reasoning`)
+- pre-configure model settings (here: `anthropic > reasoning`)
+- validate the provider-specific options (here: `AnthropicLanguageModelOptions`)
+- use a fallback provider (here: `anthropic > *`)
+- limit a provider to certain models without a fallback (here: `groq > gemma2-9b-it`, `groq > qwen-qwq-32b`)
+- define a custom separator for the provider registry (here: `>`)
+
+```ts
+import { anthropic, AnthropicLanguageModelOptions } from '@ai-sdk/anthropic';
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { xai } from '@ai-sdk/xai';
+import { groq } from '@ai-sdk/groq';
+import {
+  createProviderRegistry,
+  customProvider,
+  defaultSettingsMiddleware,
+  gateway,
+  wrapLanguageModel,
+} from 'ai';
+
+export const registry = createProviderRegistry(
+  {
+    // pass through gateway with a namespace prefix
+    gateway,
+
+    // pass through full providers with namespace prefixes
+    xai,
+
+    // access an OpenAI-compatible provider with custom setup
+    custom: createOpenAICompatible({
+      name: 'provider-name',
+      apiKey: process.env.CUSTOM_API_KEY,
+      baseURL: 'https://api.custom.com/v1',
+    }),
+
+    // setup model name aliases
+    anthropic: customProvider({
+      languageModels: {
+        fast: anthropic('claude-haiku-4-5'),
+
+        // simple model
+        writing: anthropic('claude-sonnet-4-5'),
+
+        // extended reasoning model configuration:
+        reasoning: wrapLanguageModel({
+          model: anthropic('claude-sonnet-4-5'),
+          middleware: defaultSettingsMiddleware({
+            settings: {
+              maxOutputTokens: 100000, // example default setting
+              providerOptions: {
+                anthropic: {
+                  thinking: {
+                    type: 'enabled',
+                    budgetTokens: 32000,
+                  },
+                } satisfies AnthropicLanguageModelOptions,
+              },
+            },
+          }),
+        }),
+      },
+      fallbackProvider: anthropic,
+    }),
+
+    // limit a provider to certain models without a fallback
+    groq: customProvider({
+      languageModels: {
+        'gemma2-9b-it': groq('gemma2-9b-it'),
+        'qwen-qwq-32b': groq('qwen-qwq-32b'),
+      },
+    }),
+  },
+  { separator: ' > ' },
+);
+
+// usage:
+const model = registry.languageModel('anthropic > reasoning');
+```
+
+## Global Provider Configuration
+
+The AI SDK 5 includes a global provider feature that allows you to specify a model using just a plain model ID string:
+
+```ts
+import { streamText } from 'ai';
+__PROVIDER_IMPORT__;
+
+const result = await streamText({
+  model: __MODEL__, // Uses the global provider (defaults to gateway)
+  prompt: 'Invent a new holiday and describe its traditions.',
+});
+```
+
+By default, the global provider is set to the Vercel AI Gateway.
+
+### Customizing the Global Provider
+
+You can set your own preferred global provider:
+
+```ts filename="setup.ts"
+import { openai } from '@ai-sdk/openai';
+
+// Initialize once during startup:
+globalThis.AI_SDK_DEFAULT_PROVIDER = openai;
+```
+
+```ts filename="app.ts"
+import { streamText } from 'ai';
+
+const result = await streamText({
+  model: 'gpt-5.1', // Uses OpenAI provider without prefix
+  prompt: 'Invent a new holiday and describe its traditions.',
+});
+```
+
+This simplifies provider usage and makes it easier to switch between providers without changing your model references throughout your codebase.

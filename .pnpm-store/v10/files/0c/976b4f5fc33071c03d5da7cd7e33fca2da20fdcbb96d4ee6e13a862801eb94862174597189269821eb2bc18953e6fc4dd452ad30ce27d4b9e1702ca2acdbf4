@@ -1,0 +1,33 @@
+import type { AgCoreBeanCollection } from '../interfaces/agCoreBeanCollection';
+import type { BaseEvents } from '../interfaces/baseEvents';
+import type { BaseProperties } from '../interfaces/baseProperties';
+import type { IEnvironment } from '../interfaces/iEnvironment';
+import type { IPropertiesService } from '../interfaces/iProperties';
+import type { Theme } from '../theming/theme';
+import { ThemeImpl } from '../theming/themeImpl';
+import { AgBeanStub } from './agBeanStub';
+export declare abstract class BaseEnvironment<TBeanCollection extends AgCoreBeanCollection<TProperties, TGlobalEvents, TCommon, TPropertiesService>, TProperties extends BaseProperties, TGlobalEvents extends BaseEvents, TCommon, TPropertiesService extends IPropertiesService<TProperties, TCommon>, TChangeKey extends string = 'themeChanged'> extends AgBeanStub<TBeanCollection, TProperties, TGlobalEvents, TCommon, TPropertiesService> implements IEnvironment {
+    beanName: "environment";
+    protected eRootDiv: HTMLElement;
+    eStyleContainer: HTMLElement;
+    cssLayer: string | undefined;
+    styleNonce: string | undefined;
+    private mutationObserver;
+    wireBeans(beans: TBeanCollection): void;
+    private readonly paramsClass;
+    private theme;
+    private eParamsStyle;
+    private readonly globalCSS;
+    protected abstract initVariables(): void;
+    protected abstract fireStylesChangedEvent(change: TChangeKey): void;
+    protected abstract getAdditionalCss(): Map<string, string[]>;
+    protected abstract postProcessThemeChange(newTheme: ThemeImpl | undefined, themeProperty?: Theme | 'legacy'): void;
+    protected abstract getDefaultTheme(): Theme;
+    protected abstract themeError(theme: Theme | 'legacy'): void;
+    postConstruct(): void;
+    applyThemeClasses(el: HTMLElement, extraClasses?: string[]): void;
+    private applyLegacyThemeClasses;
+    addGlobalCSS(css: string, debugId: string): void;
+    private handleThemeChange;
+    private handleNewTheme;
+}

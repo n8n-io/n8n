@@ -1,0 +1,147 @@
+{
+  "name": "styled-components",
+  "version": "6.3.9",
+  "description": "CSS for the <Component> Age. Style components your way with speed, strong typing, and flexibility.",
+  "publishConfig": {
+    "access": "public"
+  },
+  "types": "dist/index.d.ts",
+  "main": "dist/styled-components.cjs.js",
+  "module": "./dist/styled-components.esm.js",
+  "react-native": "native/dist/styled-components.native.cjs.js",
+  "browser": {
+    "./dist/styled-components.cjs.js": "./dist/styled-components.browser.cjs.js",
+    "./dist/styled-components.esm.js": "./dist/styled-components.browser.esm.js"
+  },
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/styled-components/styled-components.git"
+  },
+  "files": [
+    "LICENSE",
+    "README.md",
+    "dist",
+    "native",
+    "test-utils"
+  ],
+  "keywords": [
+    "react",
+    "css",
+    "css-in-js",
+    "styled-components",
+    "styling"
+  ],
+  "author": "Glen Maddern",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/styled-components/styled-components/issues"
+  },
+  "homepage": "https://styled-components.com",
+  "dependencies": {
+    "@emotion/is-prop-valid": "1.4.0",
+    "@emotion/unitless": "0.10.0",
+    "@types/stylis": "4.2.7",
+    "css-to-react-native": "3.2.0",
+    "csstype": "3.2.3",
+    "postcss": "8.4.49",
+    "shallowequal": "1.1.0",
+    "stylis": "4.3.6",
+    "tslib": "2.8.1"
+  },
+  "peerDependencies": {
+    "react": ">= 16.8.0",
+    "react-dom": ">= 16.8.0"
+  },
+  "peerDependenciesMeta": {
+    "react-dom": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@babel/core": "^7.24.5",
+    "@babel/helper-module-imports": "^7.24.3",
+    "@babel/plugin-external-helpers": "^7.24.1",
+    "@babel/plugin-proposal-class-properties": "^7.18.6",
+    "@babel/plugin-proposal-object-rest-spread": "^7.20.7",
+    "@babel/plugin-transform-flow-strip-types": "^7.24.1",
+    "@babel/preset-env": "^7.24.5",
+    "@babel/preset-react": "^7.24.1",
+    "@babel/preset-typescript": "^7.24.1",
+    "@rollup/plugin-typescript": "^11.1.6",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.8.0",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/enzyme": "^3.10.18",
+    "@types/jest": "^30.0.0",
+    "@types/js-beautify": "^1.14.3",
+    "@types/node": "^18.19.31",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "@types/react-frame-component": "^4.1.6",
+    "@types/react-native": "^0.71",
+    "@types/react-test-renderer": "^18.0.0",
+    "@types/shallowequal": "^1.1.5",
+    "babel-jest": "^30.1.2",
+    "babel-plugin-add-module-exports": "^1.0.4",
+    "babel-plugin-styled-components": "^2.1.4",
+    "babel-plugin-tester": "^10.1.0",
+    "bundlewatch": "^0.4.1",
+    "jest": "^30.1.3",
+    "jest-environment-jsdom": "^30.1.2",
+    "jest-serializer-html": "^7.1.0",
+    "jest-watch-typeahead": "^3.0.1",
+    "js-beautify": "^1.15.1",
+    "prettier": "^3.6.2",
+    "prop-types": "^15.8.1",
+    "react": "^18",
+    "react-dom": "^18",
+    "react-frame-component": "^4.1.3",
+    "react-native": "~0.71",
+    "react-test-renderer": "^18.0.0",
+    "rollup": "^3.29.4",
+    "rollup-plugin-commonjs": "^10.1.0",
+    "rollup-plugin-json": "^4.0.0",
+    "rollup-plugin-node-resolve": "^5.2.0",
+    "rollup-plugin-replace": "^2.2.0",
+    "rollup-plugin-sourcemaps": "^0.6.3",
+    "rollup-plugin-terser": "^7.0.2",
+    "stylis-plugin-rtl": "^2.1.1",
+    "ts-toolbelt": "^9.6.0",
+    "typescript": "^5.4.5"
+  },
+  "bundlewatch": {
+    "files": [
+      {
+        "path": "./dist/styled-components.min.js",
+        "maxSize": "12.3kB"
+      }
+    ]
+  },
+  "collective": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/styled-components"
+  },
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/styled-components"
+  },
+  "engines": {
+    "node": ">= 16"
+  },
+  "scripts": {
+    "generateErrors": "node scripts/generateErrorMap.js",
+    "typecheck": "tsc --noEmit",
+    "prebuild": "rimraf dist && pnpm run generateErrors && pnpm run typecheck",
+    "build": "rollup -c",
+    "postbuild": "pnpm run size",
+    "pretest": "pnpm run generateErrors",
+    "test": "pnpm run test:web && pnpm run test:native",
+    "test:web": "jest -c jest.config.main.js",
+    "test:native": "jest -c jest.config.native.js --forceExit",
+    "size": "bundlewatch",
+    "prettier": "prettier src --write",
+    "prettier:check": "prettier src --check"
+  }
+}

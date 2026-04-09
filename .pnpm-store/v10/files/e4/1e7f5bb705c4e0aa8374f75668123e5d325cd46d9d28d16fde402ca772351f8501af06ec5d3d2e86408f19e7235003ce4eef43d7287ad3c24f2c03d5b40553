@@ -1,0 +1,60 @@
+{
+	"name": "utilium",
+	"version": "1.10.1",
+	"description": "Typescript utilities",
+	"funding": {
+		"type": "individual",
+		"url": "https://github.com/sponsors/james-pre"
+	},
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"type": "module",
+	"exports": {
+		".": "./dist/index.js",
+		"./*": "./dist/*",
+		"./eslint": "./eslint.shared.js",
+		"./source": "./src/*"
+	},
+	"files": [
+		"src",
+		"dist",
+		"tsconfig.json",
+		"scripts"
+	],
+	"scripts": {
+		"format:check": "prettier --check .",
+		"format": "prettier --write .",
+		"lint": "tsc --noEmit && eslint src",
+		"test": "tsx --test",
+		"build": "tsc -p tsconfig.json",
+		"build:docs": "typedoc",
+		"prepublishOnly": "npm run build"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/james-pre/utilium.git"
+	},
+	"author": "James Prevett <jp@jamespre.dev> (https://jamespre.dev)",
+	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/james-pre/utilium/issues"
+	},
+	"homepage": "https://github.com/james-pre/utilium#readme",
+	"devDependencies": {
+		"@eslint/js": "^9.12.0",
+		"@types/node": "^20.12.7",
+		"eslint": "^9.12.0",
+		"globals": "^15.10.0",
+		"prettier": "^3.2.5",
+		"tsx": "^4.19.1",
+		"typedoc": "^0.27.6",
+		"typescript": "^5.7.2",
+		"typescript-eslint": "^8.8.0"
+	},
+	"dependencies": {
+		"eventemitter3": "^5.0.1"
+	},
+	"optionalDependencies": {
+		"@xterm/xterm": "^5.5.0"
+	}
+}

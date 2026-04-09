@@ -1,0 +1,22 @@
+{
+  "name": "lefthook-linux-x64",
+  "version": "1.13.6",
+  "description": "The Linux 64-bit binary for lefthook, git hooks manager.",
+  "preferUnplugged": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/evilmartians/lefthook.git"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/evilmartians/lefthook/issues",
+    "email": "lefthook@evilmartians.com"
+  },
+  "homepage": "https://github.com/evilmartians/lefthook#readme",
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "x64"
+  ]
+}

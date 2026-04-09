@@ -1,1 +1,0 @@
-{"version":3,"file":"readonly.js","sourceRoot":"","sources":["readonly.ts"],"names":[],"mappings":"","sourcesContent":["\nexport type ITSReadonlyRecord<K extends keyof any, T> = {\n\treadonly [P in K]: T;\n};\n\nexport type ITSWriteableRecord<K extends keyof any, T> = {\n\t-readonly [P in K]: T;\n};\n"]}

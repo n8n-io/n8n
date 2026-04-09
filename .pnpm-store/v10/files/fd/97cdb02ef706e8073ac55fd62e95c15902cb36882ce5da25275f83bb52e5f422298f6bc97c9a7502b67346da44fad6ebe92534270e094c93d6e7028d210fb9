@@ -1,0 +1,48 @@
+{
+  "name": "ufo",
+  "version": "1.6.3",
+  "description": "URL utils for humans",
+  "repository": "unjs/ufo",
+  "license": "MIT",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.mjs"
+    },
+    "./*": "./*"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "automd && unbuild",
+    "automd": "automd",
+    "dev": "vitest",
+    "lint": "eslint . && prettier -c src test",
+    "lint:fix": "eslint --fix . && prettier -w src test",
+    "prepack": "pnpm build",
+    "release": "pnpm test && changelogen --release && npm publish && git push --follow-tags",
+    "test": "pnpm lint && vitest run --typecheck"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.8",
+    "@vitest/coverage-v8": "^4.0.17",
+    "automd": "^0.4.2",
+    "changelogen": "^0.6.2",
+    "eslint": "^9.39.2",
+    "eslint-config-unjs": "^0.6.2",
+    "jiti": "^2.6.1",
+    "prettier": "^3.7.4",
+    "typescript": "^5.9.3",
+    "unbuild": "^3.6.1",
+    "untyped": "^2.0.0",
+    "vitest": "^4.0.17"
+  },
+  "packageManager": "pnpm@10.28.0"
+}

@@ -234,7 +234,7 @@ export class ActionNetwork implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length && body.person) {
-							Object.assign(body.person, adjustPersonPayload(additionalFields));
+							Object.assign(body.person, adjustPersonPayload(additionalFields as any));
 						}
 
 						response = await actionNetworkApiRequest.call(this, 'POST', '/people', body);
@@ -266,7 +266,7 @@ export class ActionNetwork implements INodeType {
 						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
-							Object.assign(body, adjustPersonPayload(updateFields));
+							Object.assign(body, adjustPersonPayload(updateFields as any));
 						} else {
 							throw new NodeOperationError(
 								this.getNode(),

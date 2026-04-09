@@ -13,7 +13,7 @@ import type { ClientOptions } from 'openai';
 
 import { checkDomainRestrictions } from '@utils/checkDomainRestrictions';
 import { mergeCustomHeaders } from '@utils/helpers';
-import { getProxyAgent, logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
+import { /* getProxyAgent, */ logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 const modelParameter: INodeProperties = {
 	displayName: 'Model',
@@ -258,9 +258,9 @@ export class EmbeddingsOpenAi implements INodeType {
 			configuration.baseURL = credentials.url as string;
 		}
 
-		configuration.fetchOptions = {
-			dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1', {}),
-		};
+		// configuration.fetchOptions = {
+		// 	dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1', {}),
+		// };
 
 		configuration.defaultHeaders = mergeCustomHeaders(
 			credentials,

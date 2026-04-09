@@ -1,1 +1,0 @@
-{"version":3,"file":"partial.js","sourceRoot":"","sources":["partial.ts"],"names":[],"mappings":"","sourcesContent":["\n/**\n * try check key is partial of record\n */\nexport type ITSKeyIsPartialOfRecord<T, K extends keyof T> = Omit<T, K> extends T ? K : never;\n"]}

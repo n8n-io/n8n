@@ -1,0 +1,62 @@
+{
+  "name": "@aws-sdk/region-config-resolver",
+  "version": "3.972.10",
+  "scripts": {
+    "build": "concurrently 'yarn:build:types' 'yarn:build:es' && yarn build:cjs",
+    "build:cjs": "node ../../scripts/compilation/inline region-config-resolver",
+    "build:es": "tsc -p tsconfig.es.json",
+    "build:include:deps": "yarn g:turbo run build -F=\"$npm_package_name\"",
+    "build:types": "tsc -p tsconfig.types.json",
+    "build:types:downlevel": "downlevel-dts dist-types dist-types/ts3.4",
+    "clean": "premove dist-cjs dist-es dist-types tsconfig.cjs.tsbuildinfo tsconfig.es.tsbuildinfo tsconfig.types.tsbuildinfo",
+    "extract:docs": "api-extractor run --local",
+    "test": "yarn g:vitest run",
+    "test:watch": "yarn g:vitest watch"
+  },
+  "main": "./dist-cjs/index.js",
+  "module": "./dist-es/index.js",
+  "types": "./dist-types/index.d.ts",
+  "sideEffects": false,
+  "author": {
+    "name": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@aws-sdk/types": "^3.973.6",
+    "@smithy/config-resolver": "^4.4.13",
+    "@smithy/node-config-provider": "^4.3.12",
+    "@smithy/types": "^4.13.1",
+    "tslib": "^2.6.2"
+  },
+  "devDependencies": {
+    "@tsconfig/recommended": "1.0.1",
+    "concurrently": "7.0.0",
+    "downlevel-dts": "0.10.1",
+    "premove": "4.0.0",
+    "typescript": "~5.8.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "typesVersions": {
+    "<4.5": {
+      "dist-types/*": [
+        "dist-types/ts3.4/*"
+      ]
+    }
+  },
+  "files": [
+    "dist-*/**"
+  ],
+  "homepage": "https://github.com/awslabs/smithy-typescript/tree/main/packages-internal/region-config-resolver",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aws/aws-sdk-js-v3.git",
+    "directory": "packages-internal/region-config-resolver"
+  },
+  "browser": {
+    "./dist-es/regionConfig/stsRegionDefaultResolver": "./dist-es/regionConfig/stsRegionDefaultResolver.browser"
+  },
+  "react-native": {}
+}

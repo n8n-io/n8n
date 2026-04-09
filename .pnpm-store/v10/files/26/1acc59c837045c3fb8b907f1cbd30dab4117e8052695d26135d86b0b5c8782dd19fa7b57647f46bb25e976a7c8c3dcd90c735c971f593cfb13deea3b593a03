@@ -1,1 +1,0 @@
-{"version":3,"file":"no-inferrable-types.d.ts","sourceRoot":"","sources":["../../src/rules/no-inferrable-types.ts"],"names":[],"mappings":"AAYA,MAAM,MAAM,OAAO,GAAG;IACpB;QACE,gBAAgB,CAAC,EAAE,OAAO,CAAC;QAC3B,gBAAgB,CAAC,EAAE,OAAO,CAAC;KAC5B;CACF,CAAC;AACF,MAAM,MAAM,UAAU,GAAG,kBAAkB,CAAC;;AAE5C,wBAgRG"}

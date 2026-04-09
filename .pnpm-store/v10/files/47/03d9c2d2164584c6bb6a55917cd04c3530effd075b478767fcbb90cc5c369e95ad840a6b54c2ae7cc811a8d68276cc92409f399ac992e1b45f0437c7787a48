@@ -1,0 +1,84 @@
+{
+  "name": "openapi-sampler",
+  "version": "1.7.2",
+  "description": "Tool for generation samples based on OpenAPI payload/response schema",
+  "main": "dist/openapi-sampler.js",
+  "module": "src/openapi-sampler.js",
+  "types": "./src/types.d.ts",
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "npm run lint && jest",
+    "test:watch": "jest --watch",
+    "coverage": "jest --coverage",
+    "coveralls": "cat ./coverage/lcov.info | coveralls",
+    "build": "gulp build",
+    "prepublishOnly": "npm run build",
+    "changeset": "npx @changesets/cli --",
+    "release": "npm run build && npm run changeset publish"
+  },
+  "files": [
+    "src/",
+    "dist/"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Redocly/openapi-sampler.git"
+  },
+  "keywords": [
+    "OpenAPI",
+    "Swagger",
+    "instantiator",
+    "sampler",
+    "faker"
+  ],
+  "author": "Roman Hotsiy <gotsijroman@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Redocly/openapi-sampler/issues"
+  },
+  "homepage": "https://github.com/Redocly/openapi-sampler/",
+  "browserslist": "> 0.25%, not dead",
+  "devDependencies": {
+    "@babel/core": "^7.7.2",
+    "@babel/preset-env": "^7.7.1",
+    "@babel/register": "^7.7.0",
+    "@changesets/cli": "^2.29.8",
+    "@types/jest": "^29.5.12",
+    "ajv": "^8.1.0",
+    "ajv-formats": "^2.0.2",
+    "babel-eslint": "^10.0.3",
+    "babel-jest": "^29.7.0",
+    "babel-loader": "^8.0.6",
+    "babelify": "^10.0.0",
+    "browserify": "^17.0.1",
+    "core-js": "^3.4.1",
+    "coveralls-next": "^4.2.1",
+    "del": "^5.1.0",
+    "eslint": "^7.27.0",
+    "glob": "^7.1.6",
+    "gulp": "^4.0.2",
+    "gulp-eslint": "^6.0.0",
+    "gulp-filter": "^6.0.0",
+    "gulp-load-plugins": "^2.0.1",
+    "gulp-rename": "^1.4.0",
+    "gulp-sourcemaps": "^2.6.5",
+    "gulp-uglify": "^3.0.2",
+    "jest": "^29.7.0",
+    "json-loader": "^0.5.7",
+    "vinyl-buffer": "^1.0.1",
+    "vinyl-source-stream": "^2.0.0"
+  },
+  "dependencies": {
+    "@types/json-schema": "^7.0.7",
+    "fast-xml-parser": "^5.5.1",
+    "json-pointer": "0.6.2"
+  },
+  "overrides": {
+    "braces": "3.0.3",
+    "elliptic@<6.6.0": ">=6.6.0",
+    "form-data": "4.0.4",
+    "tmp": ">=0.2.4",
+    "js-yaml@>=4.0.0 <4.1.1": ">=4.1.1"
+  }
+}

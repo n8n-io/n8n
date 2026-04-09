@@ -1,0 +1,93 @@
+{
+  "name": "@opentelemetry/sdk-metrics",
+  "version": "1.26.0",
+  "description": "OpenTelemetry metrics SDK",
+  "main": "build/src/index.js",
+  "module": "build/esm/index.js",
+  "esnext": "build/esnext/index.js",
+  "types": "build/src/index.d.ts",
+  "repository": "open-telemetry/opentelemetry-js",
+  "scripts": {
+    "prepublishOnly": "npm run compile",
+    "compile": "tsc --build tsconfig.json tsconfig.esm.json tsconfig.esnext.json",
+    "clean": "tsc --build --clean tsconfig.json tsconfig.esm.json tsconfig.esnext.json",
+    "test": "nyc mocha 'test/**/*.test.ts'",
+    "test:browser": "karma start --single-run",
+    "tdd": "npm run test -- --watch-extensions ts --watch",
+    "tdd:browser": "karma start",
+    "codecov": "nyc report --reporter=json && codecov -f coverage/*.json -p ../../",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "version": "node ../../scripts/version-update.js",
+    "watch": "tsc --build --watch tsconfig.json tsconfig.esm.json tsconfig.esnext.json",
+    "precompile": "cross-var lerna run version --scope $npm_package_name --include-dependencies",
+    "prewatch": "node ../../scripts/version-update.js",
+    "peer-api-check": "node ../../scripts/peer-api-check.js",
+    "align-api-deps": "node ../../scripts/align-api-deps.js"
+  },
+  "keywords": [
+    "opentelemetry",
+    "nodejs",
+    "metrics",
+    "stats",
+    "profiling"
+  ],
+  "author": "OpenTelemetry Authors",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=14"
+  },
+  "files": [
+    "build/esm/**/*.js",
+    "build/esm/**/*.js.map",
+    "build/esm/**/*.d.ts",
+    "build/esnext/**/*.js",
+    "build/esnext/**/*.js.map",
+    "build/esnext/**/*.d.ts",
+    "build/src/**/*.js",
+    "build/src/**/*.js.map",
+    "build/src/**/*.d.ts",
+    "doc",
+    "LICENSE",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@babel/core": "7.25.2",
+    "@babel/preset-env": "7.25.3",
+    "@opentelemetry/api": ">=1.3.0 <1.10.0",
+    "@types/mocha": "10.0.7",
+    "@types/node": "18.6.5",
+    "@types/sinon": "17.0.3",
+    "babel-plugin-istanbul": "7.0.0",
+    "codecov": "3.8.3",
+    "cross-var": "1.1.0",
+    "karma": "6.4.4",
+    "karma-chrome-launcher": "3.1.0",
+    "karma-coverage": "2.2.1",
+    "karma-mocha": "2.0.1",
+    "karma-spec-reporter": "0.0.36",
+    "karma-webpack": "5.0.1",
+    "lerna": "6.6.2",
+    "mocha": "10.7.3",
+    "nyc": "15.1.0",
+    "sinon": "15.1.2",
+    "ts-loader": "9.5.1",
+    "typescript": "4.4.4",
+    "webpack": "5.89.0",
+    "webpack-cli": "5.1.4",
+    "webpack-merge": "5.10.0"
+  },
+  "peerDependencies": {
+    "@opentelemetry/api": ">=1.3.0 <1.10.0"
+  },
+  "dependencies": {
+    "@opentelemetry/core": "1.26.0",
+    "@opentelemetry/resources": "1.26.0"
+  },
+  "homepage": "https://github.com/open-telemetry/opentelemetry-js/tree/main/packages/sdk-metrics",
+  "sideEffects": false,
+  "gitHead": "720bc8c70d47029cb6b41a34ffdc3d25cbaa2f80"
+}

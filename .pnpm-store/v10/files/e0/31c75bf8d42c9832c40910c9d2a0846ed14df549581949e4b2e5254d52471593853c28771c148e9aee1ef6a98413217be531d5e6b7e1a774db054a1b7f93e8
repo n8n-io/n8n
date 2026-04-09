@@ -1,0 +1,37 @@
+{
+    "name": "@types/basic-auth",
+    "version": "1.1.8",
+    "description": "TypeScript definitions for basic-auth",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/basic-auth",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Clément Bourgeois",
+            "githubUsername": "moonpyk",
+            "url": "https://github.com/moonpyk"
+        },
+        {
+            "name": "Vesa Poikajärvi",
+            "githubUsername": "vesse",
+            "url": "https://github.com/vesse"
+        },
+        {
+            "name": "Ryo Ota",
+            "githubUsername": "nwtgck",
+            "url": "https://github.com/nwtgck"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/basic-auth"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/node": "*"
+    },
+    "typesPublisherContentHash": "e64863aae72a9325b0f40f4d179d7231bf9921b7e6941c9c7714a43e7413ddfa",
+    "typeScriptVersion": "4.6"
+}

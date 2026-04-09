@@ -1,0 +1,12 @@
+{
+	"extends": "../tsconfig.json",
+	"type": "module",
+	"compilerOptions": {
+		"target": "ES2022",
+		"noEmit": true,
+		"esModuleInterop": true,
+		"allowSyntheticDefaultImports": true,
+		"allowJs": true
+	},
+	"include": ["**/*.ts", "*.ts", "**/*.js"]
+}

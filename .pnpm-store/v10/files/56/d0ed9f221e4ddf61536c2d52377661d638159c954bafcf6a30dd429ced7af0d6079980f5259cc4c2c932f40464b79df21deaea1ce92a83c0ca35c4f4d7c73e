@@ -1,0 +1,34 @@
+import * as coreClient from "@azure/core-client";
+export declare const ErrorResponse: coreClient.CompositeMapper;
+export declare const ErrorDetail: coreClient.CompositeMapper;
+export declare const ErrorAdditionalInfo: coreClient.CompositeMapper;
+export declare const SearchDocumentsResult: coreClient.CompositeMapper;
+export declare const FacetResult: coreClient.CompositeMapper;
+export declare const QueryAnswerResult: coreClient.CompositeMapper;
+export declare const SearchRequest: coreClient.CompositeMapper;
+export declare const VectorQuery: coreClient.CompositeMapper;
+export declare const SearchResult: coreClient.CompositeMapper;
+export declare const QueryCaptionResult: coreClient.CompositeMapper;
+export declare const DocumentDebugInfo: coreClient.CompositeMapper;
+export declare const VectorsDebugInfo: coreClient.CompositeMapper;
+export declare const QueryResultDocumentSubscores: coreClient.CompositeMapper;
+export declare const TextResult: coreClient.CompositeMapper;
+export declare const SingleVectorFieldResult: coreClient.CompositeMapper;
+export declare const SuggestDocumentsResult: coreClient.CompositeMapper;
+export declare const SuggestResult: coreClient.CompositeMapper;
+export declare const SuggestRequest: coreClient.CompositeMapper;
+export declare const IndexBatch: coreClient.CompositeMapper;
+export declare const IndexAction: coreClient.CompositeMapper;
+export declare const IndexDocumentsResult: coreClient.CompositeMapper;
+export declare const IndexingResult: coreClient.CompositeMapper;
+export declare const AutocompleteResult: coreClient.CompositeMapper;
+export declare const AutocompleteItem: coreClient.CompositeMapper;
+export declare const AutocompleteRequest: coreClient.CompositeMapper;
+export declare const VectorizedQuery: coreClient.CompositeMapper;
+export declare const VectorizableTextQuery: coreClient.CompositeMapper;
+export declare let discriminators: {
+    VectorQuery: coreClient.CompositeMapper;
+    "VectorQuery.vector": coreClient.CompositeMapper;
+    "VectorQuery.text": coreClient.CompositeMapper;
+};
+//# sourceMappingURL=mappers.d.ts.map

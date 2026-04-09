@@ -1,0 +1,198 @@
+---
+title: Settings
+description: Learn how to configure the AI SDK.
+---
+
+# Settings
+
+Large language models (LLMs) typically provide settings to augment their output.
+
+All AI SDK functions support the following common settings in addition to the model, the [prompt](./prompts), and additional provider-specific settings:
+
+```ts highlight="3-5"
+const result = await generateText({
+  model: __MODEL__,
+  maxOutputTokens: 512,
+  temperature: 0.3,
+  maxRetries: 5,
+  prompt: 'Invent a new holiday and describe its traditions.',
+});
+```
+
+<Note>
+  Some providers do not support all common settings. If you use a setting with a
+  provider that does not support it, a warning will be generated. You can check
+  the `warnings` property in the result object to see if any warnings were
+  generated.
+</Note>
+
+### `maxOutputTokens`
+
+Maximum number of tokens to generate.
+
+### `temperature`
+
+Temperature setting.
+
+The value is passed through to the provider. The range depends on the provider and model.
+For most providers, `0` means almost deterministic results, and higher values mean more randomness.
+
+It is recommended to set either `temperature` or `topP`, but not both.
+
+<Note>In AI SDK 5.0, temperature is no longer set to `0` by default.</Note>
+
+### `topP`
+
+Nucleus sampling.
+
+The value is passed through to the provider. The range depends on the provider and model.
+For most providers, nucleus sampling is a number between 0 and 1.
+E.g. 0.1 would mean that only tokens with the top 10% probability mass are considered.
+
+It is recommended to set either `temperature` or `topP`, but not both.
+
+### `topK`
+
+Only sample from the top K options for each subsequent token.
+
+Used to remove "long tail" low probability responses.
+Recommended for advanced use cases only. You usually only need to use `temperature`.
+
+### `presencePenalty`
+
+The presence penalty affects the likelihood of the model to repeat information that is already in the prompt.
+
+The value is passed through to the provider. The range depends on the provider and model.
+For most providers, `0` means no penalty.
+
+### `frequencyPenalty`
+
+The frequency penalty affects the likelihood of the model to repeatedly use the same words or phrases.
+
+The value is passed through to the provider. The range depends on the provider and model.
+For most providers, `0` means no penalty.
+
+### `stopSequences`
+
+The stop sequences to use for stopping the text generation.
+
+If set, the model will stop generating text when one of the stop sequences is generated.
+Providers may have limits on the number of stop sequences.
+
+### `seed`
+
+It is the seed (integer) to use for random sampling.
+If set and supported by the model, calls will generate deterministic results.
+
+### `maxRetries`
+
+Maximum number of retries. Set to 0 to disable retries. Default: `2`.
+
+### `abortSignal`
+
+An optional abort signal that can be used to cancel the call.
+
+The abort signal can e.g. be forwarded from a user interface to cancel the call,
+or to define a timeout using `AbortSignal.timeout`.
+
+#### Example: AbortSignal.timeout
+
+```ts
+const result = await generateText({
+  model: __MODEL__,
+  prompt: 'Invent a new holiday and describe its traditions.',
+  abortSignal: AbortSignal.timeout(5000), // 5 seconds
+});
+```
+
+### `timeout`
+
+An optional timeout in milliseconds. The call will be aborted if it takes longer than the specified duration.
+
+This is a convenience parameter that creates an abort signal internally. It can be used alongside `abortSignal` - if both are provided, the call will abort when either condition is met.
+
+You can specify the timeout either as a number (milliseconds) or as an object with `totalMs`, `stepMs`, and/or `chunkMs` properties:
+
+- `totalMs`: The total timeout for the entire call including all steps.
+- `stepMs`: The timeout for each individual step (LLM call). This is useful for multi-step generations where you want to limit the time spent on each step independently.
+- `chunkMs`: The timeout between stream chunks (streaming only). The call will abort if no new chunk is received within this duration. This is useful for detecting stalled streams.
+
+#### Example: 5 second timeout (number format)
+
+```ts
+const result = await generateText({
+  model: __MODEL__,
+  prompt: 'Invent a new holiday and describe its traditions.',
+  timeout: 5000, // 5 seconds
+});
+```
+
+#### Example: 5 second total timeout (object format)
+
+```ts
+const result = await generateText({
+  model: __MODEL__,
+  prompt: 'Invent a new holiday and describe its traditions.',
+  timeout: { totalMs: 5000 }, // 5 seconds
+});
+```
+
+#### Example: 10 second step timeout
+
+```ts
+const result = await generateText({
+  model: __MODEL__,
+  prompt: 'Invent a new holiday and describe its traditions.',
+  timeout: { stepMs: 10000 }, // 10 seconds per step
+});
+```
+
+#### Example: Combined total and step timeout
+
+```ts
+const result = await generateText({
+  model: __MODEL__,
+  prompt: 'Invent a new holiday and describe its traditions.',
+  timeout: {
+    totalMs: 60000, // 60 seconds total
+    stepMs: 10000, // 10 seconds per step
+  },
+});
+```
+
+#### Example: Per-chunk timeout for streaming (streamText only)
+
+```ts
+const result = streamText({
+  model: __MODEL__,
+  prompt: 'Invent a new holiday and describe its traditions.',
+  timeout: { chunkMs: 5000 }, // abort if no chunk received for 5 seconds
+});
+```
+
+### `headers`
+
+Additional HTTP headers to be sent with the request. Only applicable for HTTP-based providers.
+
+You can use the request headers to provide additional information to the provider,
+depending on what the provider supports. For example, some observability providers support
+headers such as `Prompt-Id`.
+
+```ts
+import { generateText } from 'ai';
+__PROVIDER_IMPORT__;
+
+const result = await generateText({
+  model: __MODEL__,
+  prompt: 'Invent a new holiday and describe its traditions.',
+  headers: {
+    'Prompt-Id': 'my-prompt-id',
+  },
+});
+```
+
+<Note>
+  The `headers` setting is for request-specific headers. You can also set
+  `headers` in the provider configuration. These headers will be sent with every
+  request made by the provider.
+</Note>

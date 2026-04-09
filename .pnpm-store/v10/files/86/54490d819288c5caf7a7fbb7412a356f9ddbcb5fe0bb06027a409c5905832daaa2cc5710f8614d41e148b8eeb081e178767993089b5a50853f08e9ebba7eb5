@@ -1,0 +1,213 @@
+{
+  "name": "chromatic",
+  "version": "13.3.5",
+  "description": "Automate visual testing across browsers. Gather UI feedback. Versioned documentation.",
+  "keywords": [
+    "storybook-addon",
+    "storybook",
+    "addon",
+    "test",
+    "popular"
+  ],
+  "homepage": "https://www.chromatic.com",
+  "bugs": {
+    "url": "https://github.com/chromaui/chromatic-cli",
+    "email": "support@chromatic.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chromaui/chromatic-cli.git"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Chromatic",
+    "email": "support@chromatic.com"
+  },
+  "exports": {
+    ".": {
+      "types": "./isChromatic.d.ts",
+      "require": "./isChromatic.js",
+      "import": "./isChromatic.mjs"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "require": "./dist/node.js",
+      "node": "./dist/node.js"
+    },
+    "./isChromatic": {
+      "types": "./isChromatic.d.ts",
+      "require": "./isChromatic.js",
+      "import": "./isChromatic.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "isChromatic.js",
+  "module": "isChromatic.mjs",
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./isChromatic.d.ts"
+      ],
+      "isChromatic": [
+        "./isChromatic.d.ts"
+      ],
+      "node": [
+        "dist/node.d.ts"
+      ]
+    }
+  },
+  "bin": {
+    "chroma": "dist/bin.js",
+    "chromatic": "dist/bin.js",
+    "chromatic-cli": "dist/bin.js"
+  },
+  "files": [
+    "dist/*.js",
+    "dist/node.d.ts",
+    "isChromatic.js",
+    "isChromatic.mjs",
+    "isChromatic.d.ts"
+  ],
+  "resolutions": {
+    "any-observable": "^0.5.1"
+  },
+  "devDependencies": {
+    "@actions/core": "^1.10.0",
+    "@actions/github": "^5.0.0",
+    "@antfu/ni": "^0.21.5",
+    "@auto-it/slack": "^11.1.6",
+    "@discoveryjs/json-ext": "^0.5.7",
+    "@eslint-community/eslint-plugin-eslint-comments": "^4.3.0",
+    "@sentry/cli": "^2.37.0",
+    "@sentry/node": "^8.30.0",
+    "@snyk/dep-graph": "^2.9.0",
+    "@storybook/addon-essentials": "^8.1.5",
+    "@storybook/addon-webpack5-compiler-swc": "^1.0.3",
+    "@storybook/csf-tools": "^8.1.5",
+    "@storybook/linter-config": "^4.0.0",
+    "@storybook/react": "^8.1.5",
+    "@storybook/react-webpack5": "^8.1.5",
+    "@tsconfig/node16": "^16.1.1",
+    "@types/archiver": "^5.3.1",
+    "@types/async-retry": "^1.4.3",
+    "@types/cross-spawn": "^6.0.2",
+    "@types/fs-extra": "^9.0.13",
+    "@types/jsonfile": "^6.0.1",
+    "@types/listr": "^0.14.4",
+    "@types/node": "18.x",
+    "@types/picomatch": "^2.3.0",
+    "@types/progress-stream": "^2.0.2",
+    "@types/prompts": "^2.4.9",
+    "@types/semver": "^7.3.9",
+    "@types/webpack-env": "^1.18.5",
+    "@types/ws": "^8",
+    "@typescript-eslint/eslint-plugin": "^6.8.0",
+    "@typescript-eslint/parser": "^6.8.0",
+    "@vitest/coverage-v8": "^2.0.5",
+    "ansi-html": "0.0.9",
+    "any-observable": "^0.5.1",
+    "archiver": "^5.3.0",
+    "async-retry": "^1.3.3",
+    "auto": "^11.0.5",
+    "boxen": "^7.1.1",
+    "chalk": "^4.1.2",
+    "clean-package": "^2.2.0",
+    "cpy": "^8.1.2",
+    "cross-env": "^7.0.3",
+    "cross-spawn": "^7.0.2",
+    "debug": "^4.3.2",
+    "dotenv": "^16.4.5",
+    "env-ci": "^11.1.0",
+    "eslint": "^9.10.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-import": "^2.28.1",
+    "eslint-plugin-jsdoc": "^48.2.6",
+    "eslint-plugin-json": "^3.1.0",
+    "eslint-plugin-no-secrets": "^1.0.2",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-security": "^3.0.0",
+    "eslint-plugin-simple-import-sort": "^12.1.0",
+    "eslint-plugin-sort-class-members": "^1.20.0",
+    "eslint-plugin-unicorn": "^53.0.0",
+    "esm": "^3.2.25",
+    "execa": "^9.6.0",
+    "fake-tag": "^2.0.0",
+    "filesize": "^10.1.0",
+    "find-up": "^7.0.0",
+    "formdata-node": "^6.0.3",
+    "fs-extra": "^10.0.0",
+    "globals": "^15.3.0",
+    "https-proxy-agent": "^7.0.2",
+    "husky": "^7.0.0",
+    "json5": "^2.2.3",
+    "jsonfile": "^6.0.1",
+    "junit-report-builder": "3.1.0",
+    "listr": "0.14.3",
+    "listr-update-renderer": "^0.5.0",
+    "meow": "^9.0.0",
+    "mock-fs": "^5.1.2",
+    "no-proxy": "^1.0.3",
+    "node-ask": "^1.0.1",
+    "node-fetch": "3.2.10",
+    "npm-run-all": "^4.0.2",
+    "observable": "^2.1.4",
+    "os-browserify": "^0.3.0",
+    "p-limit": "3.1.0",
+    "picomatch": "2.2.2",
+    "pkg-up": "^3.1.0",
+    "pluralize": "^8.0.0",
+    "prettier": "^3.2.5",
+    "progress-stream": "^2.0.0",
+    "prompts": "^2.4.2",
+    "prop-types": "^15.7.2",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
+    "read-package-up": "^11.0.0",
+    "semver": "^7.3.5",
+    "slash": "^3.0.0",
+    "snyk-nodejs-lockfile-parser": "^1.58.18",
+    "snyk-nodejs-plugin": "^1.4.3",
+    "sort-package-json": "1.50.0",
+    "storybook": "^8.1.5",
+    "string-argv": "^0.3.1",
+    "strip-ansi": "^7.1.0",
+    "tmp-promise": "3.0.2",
+    "ts-dedent": "^1.0.0",
+    "ts-loader": "^9.2.5",
+    "tsup": "^7.2.0",
+    "typescript": "^5.2.2",
+    "typescript-eslint": "^7.11.0",
+    "util-deprecate": "^1.0.2",
+    "uuid": "^8.3.2",
+    "vite": "^4.4.9",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^2.0.5",
+    "why-is-node-running": "^2.1.2",
+    "ws": "^8.18.2",
+    "xxhash-wasm": "^1.0.2",
+    "yarn-or-npm": "^3.0.1",
+    "zen-observable": "^0.8.15",
+    "zod": "^3.22.2"
+  },
+  "peerDependencies": {
+    "@chromatic-com/cypress": "^0.*.* || ^1.0.0",
+    "@chromatic-com/playwright": "^0.*.* || ^1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@chromatic-com/cypress": {
+      "optional": true
+    },
+    "@chromatic-com/playwright": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "docs": "https://www.chromatic.com/docs/cli",
+  "storybook": {
+    "icon": "https://user-images.githubusercontent.com/263385/101995175-2e087800-3c96-11eb-9a33-9860a1c3ce62.gif",
+    "displayName": "Chromatic"
+  }
+}

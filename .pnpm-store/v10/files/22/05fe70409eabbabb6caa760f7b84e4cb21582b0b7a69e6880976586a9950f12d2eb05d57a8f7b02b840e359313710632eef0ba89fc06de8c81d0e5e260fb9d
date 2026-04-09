@@ -1,0 +1,915 @@
+---
+title: Event Callbacks
+description: Subscribe to lifecycle events in generateText and streamText calls
+---
+
+# Event Callbacks
+
+The AI SDK provides per-call event callbacks that you can pass to `generateText` and `streamText` to observe lifecycle events. This is useful for building observability tools, logging systems, analytics, and debugging utilities.
+
+## Basic Usage
+
+Pass callbacks directly to `generateText` or `streamText`:
+
+```ts
+import { generateText } from 'ai';
+
+const result = await generateText({
+  model: openai('gpt-4o'),
+  prompt: 'What is the weather in San Francisco?',
+  experimental_onStart: event => {
+    console.log('Generation started:', event.model.modelId);
+  },
+  onFinish: event => {
+    console.log('Generation finished:', event.totalUsage);
+  },
+});
+```
+
+## Available Callbacks
+
+<PropertiesTable
+  content={[
+    {
+      name: 'experimental_onStart',
+      type: '(event: OnStartEvent) => void | Promise<void>',
+      description: 'Called when generation begins, before any LLM calls.',
+    },
+    {
+      name: 'experimental_onStepStart',
+      type: '(event: OnStepStartEvent) => void | Promise<void>',
+      description:
+        'Called when a step (LLM call) begins, before the provider is called.',
+    },
+    {
+      name: 'experimental_onToolCallStart',
+      type: '(event: OnToolCallStartEvent) => void | Promise<void>',
+      description: "Called when a tool's execute function is about to run.",
+    },
+    {
+      name: 'experimental_onToolCallFinish',
+      type: '(event: OnToolCallFinishEvent) => void | Promise<void>',
+      description: "Called when a tool's execute function completes or errors.",
+    },
+    {
+      name: 'onStepFinish',
+      type: '(event: OnStepFinishEvent) => void | Promise<void>',
+      description: 'Called when a step (LLM call) completes.',
+    },
+    {
+      name: 'onFinish',
+      type: '(event: OnFinishEvent) => void | Promise<void>',
+      description:
+        'Called when the entire generation completes (all steps finished).',
+    },
+  ]}
+/>
+
+## Event Reference
+
+### `experimental_onStart`
+
+Called when the generation operation begins, before any LLM calls are made.
+
+```ts
+const result = await generateText({
+  model: openai('gpt-4o'),
+  prompt: 'Hello!',
+  experimental_onStart: event => {
+    console.log('Model:', event.model.modelId);
+    console.log('Temperature:', event.temperature);
+  },
+});
+```
+
+<PropertiesTable
+  content={[
+    {
+      name: 'model',
+      type: '{ provider: string; modelId: string }',
+      description: 'The model being used for generation.',
+    },
+    {
+      name: 'system',
+      type: 'string | SystemModelMessage | Array<SystemModelMessage> | undefined',
+      description: 'The system message(s) provided to the model.',
+    },
+    {
+      name: 'prompt',
+      type: 'string | Array<ModelMessage> | undefined',
+      description:
+        'The prompt string or array of messages if using the prompt option.',
+    },
+    {
+      name: 'messages',
+      type: 'Array<ModelMessage> | undefined',
+      description: 'The messages array if using the messages option.',
+    },
+    {
+      name: 'tools',
+      type: 'ToolSet | undefined',
+      description: 'The tools available for this generation.',
+    },
+    {
+      name: 'toolChoice',
+      type: 'ToolChoice | undefined',
+      description: 'The tool choice strategy for this generation.',
+    },
+    {
+      name: 'activeTools',
+      type: 'Array<keyof TOOLS> | undefined',
+      description: 'Limits which tools are available for the model to call.',
+    },
+    {
+      name: 'maxOutputTokens',
+      type: 'number | undefined',
+      description: 'Maximum number of tokens to generate.',
+    },
+    {
+      name: 'temperature',
+      type: 'number | undefined',
+      description: 'Sampling temperature for generation.',
+    },
+    {
+      name: 'topP',
+      type: 'number | undefined',
+      description: 'Top-p (nucleus) sampling parameter.',
+    },
+    {
+      name: 'topK',
+      type: 'number | undefined',
+      description: 'Top-k sampling parameter.',
+    },
+    {
+      name: 'presencePenalty',
+      type: 'number | undefined',
+      description: 'Presence penalty for generation.',
+    },
+    {
+      name: 'frequencyPenalty',
+      type: 'number | undefined',
+      description: 'Frequency penalty for generation.',
+    },
+    {
+      name: 'stopSequences',
+      type: 'string[] | undefined',
+      description: 'Sequences that will stop generation.',
+    },
+    {
+      name: 'seed',
+      type: 'number | undefined',
+      description: 'Random seed for reproducible generation.',
+    },
+    {
+      name: 'maxRetries',
+      type: 'number',
+      description: 'Maximum number of retries for failed requests.',
+    },
+    {
+      name: 'timeout',
+      type: 'TimeoutConfiguration | undefined',
+      description: 'Timeout configuration for the generation.',
+    },
+    {
+      name: 'headers',
+      type: 'Record<string, string | undefined> | undefined',
+      description: 'Additional HTTP headers sent with the request.',
+    },
+    {
+      name: 'providerOptions',
+      type: 'ProviderOptions | undefined',
+      description: 'Additional provider-specific options.',
+    },
+    {
+      name: 'stopWhen',
+      type: 'StopCondition | Array<StopCondition> | undefined',
+      description: 'Condition(s) for stopping the generation.',
+    },
+    {
+      name: 'output',
+      type: 'Output | undefined',
+      description: 'The output specification for structured outputs.',
+    },
+    {
+      name: 'abortSignal',
+      type: 'AbortSignal | undefined',
+      description: 'Abort signal for cancelling the operation.',
+    },
+    {
+      name: 'include',
+      type: '{ requestBody?: boolean; responseBody?: boolean } | undefined',
+      description:
+        'Settings for controlling what data is included in step results.',
+    },
+    {
+      name: 'functionId',
+      type: 'string | undefined',
+      description:
+        'Identifier from telemetry settings for grouping related operations.',
+    },
+    {
+      name: 'metadata',
+      type: 'Record<string, unknown> | undefined',
+      description: 'Additional metadata passed to the generation.',
+    },
+    {
+      name: 'experimental_context',
+      type: 'unknown',
+      description:
+        'User-defined context object that flows through the entire generation lifecycle.',
+    },
+  ]}
+/>
+
+### `experimental_onStepStart`
+
+Called before each step (LLM call) begins. Useful for tracking multi-step generations.
+
+```ts
+const result = await generateText({
+  model: openai('gpt-4o'),
+  prompt: 'Hello!',
+  experimental_onStepStart: event => {
+    console.log('Step:', event.stepNumber);
+    console.log('Messages:', event.messages.length);
+  },
+});
+```
+
+<PropertiesTable
+  content={[
+    {
+      name: 'stepNumber',
+      type: 'number',
+      description: 'Zero-based index of the current step.',
+    },
+    {
+      name: 'model',
+      type: '{ provider: string; modelId: string }',
+      description: 'The model being used for this step.',
+    },
+    {
+      name: 'system',
+      type: 'string | SystemModelMessage | Array<SystemModelMessage> | undefined',
+      description: 'The system message for this step.',
+    },
+    {
+      name: 'messages',
+      type: 'Array<ModelMessage>',
+      description: 'The messages that will be sent to the model for this step.',
+    },
+    {
+      name: 'tools',
+      type: 'ToolSet | undefined',
+      description: 'The tools available for this generation.',
+    },
+    {
+      name: 'toolChoice',
+      type: 'LanguageModelV3ToolChoice | undefined',
+      description: 'The tool choice configuration for this step.',
+    },
+    {
+      name: 'activeTools',
+      type: 'Array<keyof TOOLS> | undefined',
+      description: 'Limits which tools are available for this step.',
+    },
+    {
+      name: 'steps',
+      type: 'ReadonlyArray<StepResult>',
+      description:
+        'Array of results from previous steps (empty for first step).',
+    },
+    {
+      name: 'providerOptions',
+      type: 'ProviderOptions | undefined',
+      description: 'Additional provider-specific options for this step.',
+    },
+    {
+      name: 'timeout',
+      type: 'TimeoutConfiguration | undefined',
+      description: 'Timeout configuration for the generation.',
+    },
+    {
+      name: 'headers',
+      type: 'Record<string, string | undefined> | undefined',
+      description: 'Additional HTTP headers sent with the request.',
+    },
+    {
+      name: 'stopWhen',
+      type: 'StopCondition | Array<StopCondition> | undefined',
+      description: 'Condition(s) for stopping the generation.',
+    },
+    {
+      name: 'output',
+      type: 'Output | undefined',
+      description: 'The output specification for structured outputs.',
+    },
+    {
+      name: 'abortSignal',
+      type: 'AbortSignal | undefined',
+      description: 'Abort signal for cancelling the operation.',
+    },
+    {
+      name: 'include',
+      type: '{ requestBody?: boolean; responseBody?: boolean } | undefined',
+      description:
+        'Settings for controlling what data is included in step results.',
+    },
+    {
+      name: 'functionId',
+      type: 'string | undefined',
+      description:
+        'Identifier from telemetry settings for grouping related operations.',
+    },
+    {
+      name: 'metadata',
+      type: 'Record<string, unknown> | undefined',
+      description: 'Additional metadata from telemetry settings.',
+    },
+    {
+      name: 'experimental_context',
+      type: 'unknown',
+      description:
+        'User-defined context object. May be updated from prepareStep between steps.',
+    },
+  ]}
+/>
+
+### `experimental_onToolCallStart`
+
+Called before a tool's `execute` function runs.
+
+```ts
+const result = await generateText({
+  model: openai('gpt-4o'),
+  prompt: 'What is the weather?',
+  tools: { getWeather },
+  experimental_onToolCallStart: event => {
+    console.log('Tool:', event.toolCall.toolName);
+    console.log('Input:', event.toolCall.input);
+  },
+});
+```
+
+<PropertiesTable
+  content={[
+    {
+      name: 'stepNumber',
+      type: 'number | undefined',
+      description:
+        'Zero-based index of the current step where this tool call occurs.',
+    },
+    {
+      name: 'model',
+      type: '{ provider: string; modelId: string } | undefined',
+      description: 'The model being used for this step.',
+    },
+    {
+      name: 'toolCall',
+      type: 'TypedToolCall',
+      description: 'The full tool call object.',
+      properties: [
+        {
+          type: 'TypedToolCall',
+          parameters: [
+            {
+              name: 'type',
+              type: "'tool-call'",
+              description: 'The type of the call.',
+            },
+            {
+              name: 'toolCallId',
+              type: 'string',
+              description: 'Unique identifier for this tool call.',
+            },
+            {
+              name: 'toolName',
+              type: 'string',
+              description: 'Name of the tool being called.',
+            },
+            {
+              name: 'input',
+              type: 'unknown',
+              description: 'Input arguments passed to the tool.',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'messages',
+      type: 'Array<ModelMessage>',
+      description:
+        'The conversation messages available at tool execution time.',
+    },
+    {
+      name: 'abortSignal',
+      type: 'AbortSignal | undefined',
+      description: 'Signal for cancelling the operation.',
+    },
+    {
+      name: 'functionId',
+      type: 'string | undefined',
+      description:
+        'Identifier from telemetry settings for grouping related operations.',
+    },
+    {
+      name: 'metadata',
+      type: 'Record<string, unknown> | undefined',
+      description: 'Additional metadata from telemetry settings.',
+    },
+    {
+      name: 'experimental_context',
+      type: 'unknown',
+      description:
+        'User-defined context object flowing through the generation.',
+    },
+  ]}
+/>
+
+### `experimental_onToolCallFinish`
+
+Called after a tool's `execute` function completes or errors. Uses a discriminated union on the `success` field.
+
+```ts
+const result = await generateText({
+  model: openai('gpt-4o'),
+  prompt: 'What is the weather?',
+  tools: { getWeather },
+  experimental_onToolCallFinish: event => {
+    console.log('Tool:', event.toolCall.toolName);
+    console.log('Duration:', event.durationMs, 'ms');
+
+    if (event.success) {
+      console.log('Output:', event.output);
+    } else {
+      console.error('Error:', event.error);
+    }
+  },
+});
+```
+
+<PropertiesTable
+  content={[
+    {
+      name: 'stepNumber',
+      type: 'number | undefined',
+      description:
+        'Zero-based index of the current step where this tool call occurred.',
+    },
+    {
+      name: 'model',
+      type: '{ provider: string; modelId: string } | undefined',
+      description: 'The model being used for this step.',
+    },
+    {
+      name: 'toolCall',
+      type: 'TypedToolCall',
+      description: 'The full tool call object.',
+      properties: [
+        {
+          type: 'TypedToolCall',
+          parameters: [
+            {
+              name: 'type',
+              type: "'tool-call'",
+              description: 'The type of the call.',
+            },
+            {
+              name: 'toolCallId',
+              type: 'string',
+              description: 'Unique identifier for this tool call.',
+            },
+            {
+              name: 'toolName',
+              type: 'string',
+              description: 'Name of the tool that was called.',
+            },
+            {
+              name: 'input',
+              type: 'unknown',
+              description: 'Input arguments passed to the tool.',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'messages',
+      type: 'Array<ModelMessage>',
+      description:
+        'The conversation messages available at tool execution time.',
+    },
+    {
+      name: 'abortSignal',
+      type: 'AbortSignal | undefined',
+      description: 'Signal for cancelling the operation.',
+    },
+    {
+      name: 'durationMs',
+      type: 'number',
+      description: 'Execution time of the tool call in milliseconds.',
+    },
+    {
+      name: 'functionId',
+      type: 'string | undefined',
+      description:
+        'Identifier from telemetry settings for grouping related operations.',
+    },
+    {
+      name: 'metadata',
+      type: 'Record<string, unknown> | undefined',
+      description: 'Additional metadata from telemetry settings.',
+    },
+    {
+      name: 'experimental_context',
+      type: 'unknown',
+      description:
+        'User-defined context object flowing through the generation.',
+    },
+    {
+      name: 'success',
+      type: 'boolean',
+      description:
+        'Discriminator indicating whether the tool call succeeded. When true, output is available. When false, error is available.',
+    },
+    {
+      name: 'output',
+      type: 'unknown',
+      description:
+        "The tool's return value (only present when success is true).",
+    },
+    {
+      name: 'error',
+      type: 'unknown',
+      description:
+        'The error that occurred during tool execution (only present when success is false).',
+    },
+  ]}
+/>
+
+### `onStepFinish`
+
+Called after each step (LLM call) completes. Provides the full `StepResult`.
+
+```ts
+const result = await generateText({
+  model: openai('gpt-4o'),
+  prompt: 'Hello!',
+  onStepFinish: event => {
+    console.log('Step:', event.stepNumber);
+    console.log('Finish reason:', event.finishReason);
+    console.log('Tokens:', event.usage.totalTokens);
+  },
+});
+```
+
+<PropertiesTable
+  content={[
+    {
+      name: 'stepNumber',
+      type: 'number',
+      description: 'Zero-based index of this step.',
+    },
+    {
+      name: 'model',
+      type: '{ provider: string; modelId: string }',
+      description: 'Information about the model that produced this step.',
+    },
+    {
+      name: 'finishReason',
+      type: "'stop' | 'length' | 'content-filter' | 'tool-calls' | 'error' | 'other'",
+      description: 'The unified reason why the generation finished.',
+    },
+    {
+      name: 'usage',
+      type: 'LanguageModelUsage',
+      description: 'The token usage of the generated text.',
+      properties: [
+        {
+          type: 'LanguageModelUsage',
+          parameters: [
+            {
+              name: 'inputTokens',
+              type: 'number | undefined',
+              description: 'The total number of input (prompt) tokens used.',
+            },
+            {
+              name: 'outputTokens',
+              type: 'number | undefined',
+              description: 'The number of output (completion) tokens used.',
+            },
+            {
+              name: 'totalTokens',
+              type: 'number | undefined',
+              description: 'The total number of tokens used.',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'text',
+      type: 'string',
+      description: 'The generated text.',
+    },
+    {
+      name: 'toolCalls',
+      type: 'Array<TypedToolCall>',
+      description: 'The tool calls that were made during the generation.',
+    },
+    {
+      name: 'toolResults',
+      type: 'Array<TypedToolResult>',
+      description: 'The results of the tool calls.',
+    },
+    {
+      name: 'content',
+      type: 'Array<ContentPart>',
+      description: 'The content that was generated in this step.',
+    },
+    {
+      name: 'reasoning',
+      type: 'Array<ReasoningPart>',
+      description: 'The reasoning that was generated during the generation.',
+    },
+    {
+      name: 'reasoningText',
+      type: 'string | undefined',
+      description: 'The reasoning text that was generated.',
+    },
+    {
+      name: 'files',
+      type: 'Array<GeneratedFile>',
+      description: 'The files that were generated during the generation.',
+    },
+    {
+      name: 'sources',
+      type: 'Array<Source>',
+      description: 'The sources that were used to generate the text.',
+    },
+    {
+      name: 'warnings',
+      type: 'CallWarning[] | undefined',
+      description: 'Warnings from the model provider.',
+    },
+    {
+      name: 'request',
+      type: 'LanguageModelRequestMetadata',
+      description: 'Additional request information.',
+    },
+    {
+      name: 'response',
+      type: 'LanguageModelResponseMetadata',
+      description:
+        'Additional response information including id, modelId, timestamp, headers, and messages.',
+    },
+    {
+      name: 'functionId',
+      type: 'string | undefined',
+      description:
+        'Identifier from telemetry settings for grouping related operations.',
+    },
+    {
+      name: 'metadata',
+      type: 'Record<string, unknown> | undefined',
+      description: 'Additional metadata from telemetry settings.',
+    },
+    {
+      name: 'experimental_context',
+      type: 'unknown',
+      description:
+        'User-defined context object flowing through the generation.',
+    },
+    {
+      name: 'providerMetadata',
+      type: 'ProviderMetadata | undefined',
+      description: 'Additional provider-specific metadata.',
+    },
+  ]}
+/>
+
+### `onFinish`
+
+Called when the entire generation completes (all steps finished). Includes aggregated data.
+
+```ts
+const result = await generateText({
+  model: openai('gpt-4o'),
+  prompt: 'Hello!',
+  onFinish: event => {
+    console.log('Total steps:', event.steps.length);
+    console.log('Total tokens:', event.totalUsage.totalTokens);
+    console.log('Final text:', event.text);
+  },
+});
+```
+
+<PropertiesTable
+  content={[
+    {
+      name: 'steps',
+      type: 'Array<StepResult>',
+      description: 'Array containing results from all steps in the generation.',
+    },
+    {
+      name: 'totalUsage',
+      type: 'LanguageModelUsage',
+      description: 'Aggregated token usage across all steps.',
+      properties: [
+        {
+          type: 'LanguageModelUsage',
+          parameters: [
+            {
+              name: 'inputTokens',
+              type: 'number | undefined',
+              description:
+                'The total number of input tokens used across all steps.',
+            },
+            {
+              name: 'outputTokens',
+              type: 'number | undefined',
+              description:
+                'The total number of output tokens used across all steps.',
+            },
+            {
+              name: 'totalTokens',
+              type: 'number | undefined',
+              description: 'The total number of tokens used across all steps.',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'stepNumber',
+      type: 'number',
+      description: 'Zero-based index of the final step.',
+    },
+    {
+      name: 'model',
+      type: '{ provider: string; modelId: string }',
+      description: 'Information about the model that produced the final step.',
+    },
+    {
+      name: 'finishReason',
+      type: "'stop' | 'length' | 'content-filter' | 'tool-calls' | 'error' | 'other'",
+      description: 'The unified reason why the generation finished.',
+    },
+    {
+      name: 'usage',
+      type: 'LanguageModelUsage',
+      description: 'The token usage from the final step only (not aggregated).',
+    },
+    {
+      name: 'text',
+      type: 'string',
+      description: 'The full text that has been generated.',
+    },
+    {
+      name: 'toolCalls',
+      type: 'Array<TypedToolCall>',
+      description: 'The tool calls that were made in the final step.',
+    },
+    {
+      name: 'toolResults',
+      type: 'Array<TypedToolResult>',
+      description: 'The results of the tool calls from the final step.',
+    },
+    {
+      name: 'content',
+      type: 'Array<ContentPart>',
+      description: 'The content that was generated in the final step.',
+    },
+    {
+      name: 'reasoning',
+      type: 'Array<ReasoningPart>',
+      description: 'The reasoning that was generated.',
+    },
+    {
+      name: 'reasoningText',
+      type: 'string | undefined',
+      description: 'The reasoning text that was generated.',
+    },
+    {
+      name: 'files',
+      type: 'Array<GeneratedFile>',
+      description: 'Files that were generated in the final step.',
+    },
+    {
+      name: 'sources',
+      type: 'Array<Source>',
+      description:
+        'Sources that have been used as input to generate the response.',
+    },
+    {
+      name: 'warnings',
+      type: 'CallWarning[] | undefined',
+      description: 'Warnings from the model provider.',
+    },
+    {
+      name: 'request',
+      type: 'LanguageModelRequestMetadata',
+      description: 'Additional request information from the final step.',
+    },
+    {
+      name: 'response',
+      type: 'LanguageModelResponseMetadata',
+      description: 'Additional response information from the final step.',
+    },
+    {
+      name: 'functionId',
+      type: 'string | undefined',
+      description:
+        'Identifier from telemetry settings for grouping related operations.',
+    },
+    {
+      name: 'metadata',
+      type: 'Record<string, unknown> | undefined',
+      description: 'Additional metadata from telemetry settings.',
+    },
+    {
+      name: 'experimental_context',
+      type: 'unknown',
+      description: 'The final state of the user-defined context object.',
+    },
+    {
+      name: 'providerMetadata',
+      type: 'ProviderMetadata | undefined',
+      description: 'Additional provider-specific metadata from the final step.',
+    },
+  ]}
+/>
+
+## Use Cases
+
+### Logging and Debugging
+
+```ts
+import { generateText } from 'ai';
+
+const result = await generateText({
+  model: openai('gpt-4o'),
+  prompt: 'Hello!',
+  experimental_onStart: event => {
+    console.log(`[${new Date().toISOString()}] Generation started`, {
+      model: event.model.modelId,
+      provider: event.model.provider,
+    });
+  },
+  onStepFinish: event => {
+    console.log(
+      `[${new Date().toISOString()}] Step ${event.stepNumber} finished`,
+      {
+        finishReason: event.finishReason,
+        tokens: event.usage.totalTokens,
+      },
+    );
+  },
+  onFinish: event => {
+    console.log(`[${new Date().toISOString()}] Generation complete`, {
+      totalSteps: event.steps.length,
+      totalTokens: event.totalUsage.totalTokens,
+    });
+  },
+});
+```
+
+### Tool Execution Monitoring
+
+```ts
+import { generateText } from 'ai';
+
+const result = await generateText({
+  model: openai('gpt-4o'),
+  prompt: 'What is the weather?',
+  tools: { getWeather },
+  experimental_onToolCallStart: event => {
+    console.log(`Tool "${event.toolCall.toolName}" starting...`);
+  },
+  experimental_onToolCallFinish: event => {
+    if (event.success) {
+      console.log(
+        `Tool "${event.toolCall.toolName}" completed in ${event.durationMs}ms`,
+      );
+    } else {
+      console.error(`Tool "${event.toolCall.toolName}" failed:`, event.error);
+    }
+  },
+});
+```
+
+## Error Handling
+
+Errors thrown inside callbacks are caught and do not break the generation flow. This ensures that monitoring code cannot disrupt your application:
+
+```ts
+const result = await generateText({
+  model: openai('gpt-4o'),
+  prompt: 'Hello!',
+  experimental_onStart: () => {
+    throw new Error('This error is caught internally');
+    // Generation continues normally
+  },
+});
+```

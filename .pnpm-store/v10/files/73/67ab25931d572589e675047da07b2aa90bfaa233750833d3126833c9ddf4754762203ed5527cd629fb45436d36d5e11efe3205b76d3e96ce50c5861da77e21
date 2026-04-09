@@ -1,6 +1,0 @@
-{
-  "main": "../lib/node/interceptors/XMLHttpRequest/index.js",
-  "module": "../lib/node/interceptors/XMLHttpRequest/index.mjs",
-  "browser": "../lib/browser/interceptors/XMLHttpRequest/index.js",
-  "types": "../lib/node/interceptors/XMLHttpRequest/index.d.ts"
-}

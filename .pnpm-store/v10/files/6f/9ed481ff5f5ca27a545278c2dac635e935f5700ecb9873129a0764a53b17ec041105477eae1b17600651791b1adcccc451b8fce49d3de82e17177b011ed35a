@@ -1,0 +1,15 @@
+{
+  "references": [
+    {
+      "path": "./tsconfig-lib.json"
+    },
+    {
+      "path": "./tsconfig-module.json"
+    },
+  ],
+  "compilerOptions": {
+    "composite": true
+  },
+  "include": [],
+  "files": []
+}

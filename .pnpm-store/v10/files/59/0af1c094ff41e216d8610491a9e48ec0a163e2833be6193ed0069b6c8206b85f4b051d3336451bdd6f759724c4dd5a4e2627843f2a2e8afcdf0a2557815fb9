@@ -1,0 +1,24 @@
+{
+  "name": "varint",
+  "version": "6.0.0",
+  "description": "protobuf-style varint bytes - use msb to create integer values of varying sizes",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/chrisdickinson/varint.git"
+  },
+  "keywords": [
+    "varint",
+    "protobuf",
+    "encode",
+    "decode"
+  ],
+  "author": "Chris Dickinson <chris@neversaw.us>",
+  "license": "MIT",
+  "devDependencies": {
+    "tape": "~2.12.3"
+  }
+}

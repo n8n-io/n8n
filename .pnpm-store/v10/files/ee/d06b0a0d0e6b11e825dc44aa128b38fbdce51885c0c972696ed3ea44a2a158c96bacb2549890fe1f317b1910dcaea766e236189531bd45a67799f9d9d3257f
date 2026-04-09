@@ -1,0 +1,25 @@
+{
+  "name": "chromadb-js-bindings-linux-x64-gnu",
+  "version": "1.3.1",
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "main": "chromadb-js-bindings.linux-x64-gnu.node",
+  "files": [
+    "chromadb-js-bindings.linux-x64-gnu.node"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">= 10"
+  },
+  "libc": [
+    "glibc"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chroma-core/chroma"
+  }
+}

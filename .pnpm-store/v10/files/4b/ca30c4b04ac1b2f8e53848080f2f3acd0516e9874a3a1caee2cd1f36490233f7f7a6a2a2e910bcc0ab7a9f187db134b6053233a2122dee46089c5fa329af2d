@@ -1,0 +1,44 @@
+cmd_Release/obj.target/isolated_vm/src/isolate/holder.o := g++ -o Release/obj.target/isolated_vm/src/isolate/holder.o ../src/isolate/holder.cc '-DNODE_GYP_MODULE_NAME=isolated_vm' '-DUSING_UV_SHARED=1' '-DUSING_V8_SHARED=1' '-DV8_DEPRECATION_WARNINGS=1' '-D_GLIBCXX_USE_CXX11_ABI=1' '-D_LARGEFILE_SOURCE' '-D_FILE_OFFSET_BITS=64' '-D__STDC_FORMAT_MACROS' '-DOPENSSL_NO_PINSHARED' '-DOPENSSL_THREADS' '-DBUILDING_NODE_EXTENSION' -I/root/.cache/node-gyp/23.11.1/include/node -I/root/.cache/node-gyp/23.11.1/src -I/root/.cache/node-gyp/23.11.1/deps/openssl/config -I/root/.cache/node-gyp/23.11.1/deps/openssl/openssl/include -I/root/.cache/node-gyp/23.11.1/deps/uv/include -I/root/.cache/node-gyp/23.11.1/deps/zlib -I/root/.cache/node-gyp/23.11.1/deps/v8/include -I../src -I../vendor  -fPIC -pthread -Wall -Wextra -Wno-unused-parameter -m64 -Wno-deprecated-declarations -O3 -fno-omit-frame-pointer -fno-strict-aliasing -std=gnu++20 -std=c++20 -g -Wno-unknown-pragmas -MMD -MF ./Release/.deps/Release/obj.target/isolated_vm/src/isolate/holder.o.d.raw   -c
+Release/obj.target/isolated_vm/src/isolate/holder.o: \
+ ../src/isolate/holder.cc ../src/isolate/holder.h \
+ ../src/isolate/platform_delegate.h ../src/lib/lockable.h \
+ ../src/isolate/node_wrapper.h ../src/isolate/v8_version.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-platform.h \
+ ../src/isolate/runnable.h ../src/isolate/environment.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8.h \
+ /root/.cache/node-gyp/23.11.1/include/node/uv.h \
+ ../src/isolate/executor.h \
+ /root/.cache/node-gyp/23.11.1/include/node/v8-profiler.h \
+ ../src/isolate/remote_handle.h ../src/isolate/scheduler.h \
+ ../src/lib/thread_pool.h ../src/isolate/specific.h \
+ ../src/isolate/strings.h ../src/isolate/generic/error.h \
+ ../src/isolate/v8_version.h ../src/isolate/generic/handle_cast.h \
+ ../src/isolate/generic/../v8_version.h \
+ ../src/isolate/cpu_profile_manager.h ../src/lib/covariant.h \
+ ../src/isolate/util.h ../src/lib/timer.h
+../src/isolate/holder.cc:
+../src/isolate/holder.h:
+../src/isolate/platform_delegate.h:
+../src/lib/lockable.h:
+../src/isolate/node_wrapper.h:
+../src/isolate/v8_version.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-platform.h:
+../src/isolate/runnable.h:
+../src/isolate/environment.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8.h:
+/root/.cache/node-gyp/23.11.1/include/node/uv.h:
+../src/isolate/executor.h:
+/root/.cache/node-gyp/23.11.1/include/node/v8-profiler.h:
+../src/isolate/remote_handle.h:
+../src/isolate/scheduler.h:
+../src/lib/thread_pool.h:
+../src/isolate/specific.h:
+../src/isolate/strings.h:
+../src/isolate/generic/error.h:
+../src/isolate/v8_version.h:
+../src/isolate/generic/handle_cast.h:
+../src/isolate/generic/../v8_version.h:
+../src/isolate/cpu_profile_manager.h:
+../src/lib/covariant.h:
+../src/isolate/util.h:
+../src/lib/timer.h:

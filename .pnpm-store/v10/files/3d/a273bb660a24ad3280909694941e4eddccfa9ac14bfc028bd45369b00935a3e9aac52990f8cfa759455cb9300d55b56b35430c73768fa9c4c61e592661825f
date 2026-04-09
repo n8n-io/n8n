@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package xds.data.orca.v3;
+
+option java_outer_classname = "OrcaLoadReportProto";
+option java_multiple_files = true;
+option java_package = "com.github.xds.data.orca.v3";
+option go_package = "github.com/cncf/xds/go/xds/data/orca/v3";
+
+import "validate/validate.proto";
+
+// See section `ORCA load report format` of the design document in
+// :ref:`https://github.com/envoyproxy/envoy/issues/6614`.
+
+message OrcaLoadReport {
+  // CPU utilization expressed as a fraction of available CPU resources. This
+  // should be derived from the latest sample or measurement. The value may be
+  // larger than 1.0 when the usage exceeds the reporter dependent notion of
+  // soft limits.
+  double cpu_utilization = 1 [(validate.rules).double.gte = 0];
+
+  // Memory utilization expressed as a fraction of available memory
+  // resources. This should be derived from the latest sample or measurement.
+  double mem_utilization = 2 [(validate.rules).double.gte = 0, (validate.rules).double.lte = 1];
+
+  // Total RPS being served by an endpoint. This should cover all services that an endpoint is
+  // responsible for.
+  // Deprecated -- use ``rps_fractional`` field instead.
+  uint64 rps = 3 [deprecated = true];
+
+  // Application specific requests costs. Each value is an absolute cost (e.g. 3487 bytes of
+  // storage) associated with the request.
+  map<string, double> request_cost = 4;
+
+  // Resource utilization values. Each value is expressed as a fraction of total resources
+  // available, derived from the latest sample or measurement.
+  map<string, double> utilization = 5
+      [(validate.rules).map.values.double.gte = 0, (validate.rules).map.values.double.lte = 1];
+
+  // Total RPS being served by an endpoint. This should cover all services that an endpoint is
+  // responsible for.
+  double rps_fractional = 6 [(validate.rules).double.gte = 0];
+
+  // Total EPS (errors/second) being served by an endpoint. This should cover
+  // all services that an endpoint is responsible for.
+  double eps = 7 [(validate.rules).double.gte = 0];
+
+  // Application specific opaque metrics.
+  map<string, double> named_metrics = 8;
+
+  // Application specific utilization expressed as a fraction of available
+  // resources. For example, an application may report the max of CPU and memory
+  // utilization for better load balancing if it is both CPU and memory bound.
+  // This should be derived from the latest sample or measurement.
+  // The value may be larger than 1.0 when the usage exceeds the reporter
+  // dependent notion of soft limits.
+  double application_utilization = 9 [(validate.rules).double.gte = 0];
+}

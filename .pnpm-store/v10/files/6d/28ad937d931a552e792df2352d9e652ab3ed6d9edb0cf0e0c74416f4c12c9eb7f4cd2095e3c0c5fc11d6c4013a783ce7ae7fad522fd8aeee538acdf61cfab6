@@ -1,1 +1,0 @@
-{"version":3,"file":"no-empty-interface.d.ts","sourceRoot":"","sources":["../../src/rules/no-empty-interface.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,QAAQ,EAAE,MAAM,0BAA0B,CAAC;AAOzD,MAAM,MAAM,OAAO,GAAG;IACpB;QACE,kBAAkB,CAAC,EAAE,OAAO,CAAC;KAC9B;CACF,CAAC;AACF,MAAM,MAAM,UAAU,GAAG,SAAS,GAAG,kBAAkB,CAAC;;AAExD,wBAkHG"}

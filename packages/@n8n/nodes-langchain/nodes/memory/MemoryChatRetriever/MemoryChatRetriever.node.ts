@@ -10,7 +10,8 @@ import {
 } from 'n8n-workflow';
 
 function simplifyMessages(messages: BaseMessage[]) {
-	const chunkedMessages = [];
+	// const chunkedMessages = [];
+	const chunkedMessages: any[][] = [];
 	for (let i = 0; i < messages.length; i += 2) {
 		chunkedMessages.push([messages[i], messages[i + 1]]);
 	}

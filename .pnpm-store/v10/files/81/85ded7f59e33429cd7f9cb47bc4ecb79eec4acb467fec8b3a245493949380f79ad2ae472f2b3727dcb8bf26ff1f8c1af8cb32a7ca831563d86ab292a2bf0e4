@@ -1,0 +1,56 @@
+export const INFERENCE_PROVIDERS = [
+    "baseten",
+    "black-forest-labs",
+    "cerebras",
+    "clarifai",
+    "cohere",
+    "fal-ai",
+    "featherless-ai",
+    "fireworks-ai",
+    "groq",
+    "hf-inference",
+    "hyperbolic",
+    "nebius",
+    "novita",
+    "nscale",
+    "openai",
+    "ovhcloud",
+    "publicai",
+    "replicate",
+    "sambanova",
+    "scaleway",
+    "together",
+    "wavespeed",
+    "zai-org",
+];
+export const PROVIDERS_OR_POLICIES = [...INFERENCE_PROVIDERS, "auto"];
+/**
+ * The org namespace on the HF Hub i.e. hf.co/…
+ *
+ * Whenever possible, InferenceProvider should == org namespace
+ */
+export const PROVIDERS_HUB_ORGS = {
+    baseten: "baseten",
+    "black-forest-labs": "black-forest-labs",
+    cerebras: "cerebras",
+    clarifai: "clarifai",
+    cohere: "CohereLabs",
+    "fal-ai": "fal",
+    "featherless-ai": "featherless-ai",
+    "fireworks-ai": "fireworks-ai",
+    groq: "groq",
+    "hf-inference": "hf-inference",
+    hyperbolic: "Hyperbolic",
+    nebius: "nebius",
+    novita: "novita",
+    nscale: "nscale",
+    openai: "openai",
+    ovhcloud: "ovhcloud",
+    publicai: "publicai",
+    replicate: "replicate",
+    sambanova: "sambanovasystems",
+    scaleway: "scaleway",
+    together: "togethercomputer",
+    wavespeed: "wavespeed",
+    "zai-org": "zai-org",
+};

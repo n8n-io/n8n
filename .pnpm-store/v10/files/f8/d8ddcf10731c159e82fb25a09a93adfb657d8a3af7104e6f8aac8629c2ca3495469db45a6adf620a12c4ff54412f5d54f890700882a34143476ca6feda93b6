@@ -1,0 +1,62 @@
+{
+  "name": "qrcode.vue",
+  "version": "3.8.0",
+  "description": "A Vue.js component to generate QRCode. Both support Vue 2 and Vue 3",
+  "type": "module",
+  "main": "./dist/qrcode.vue.cjs.js",
+  "module": "./dist/qrcode.vue.esm.js",
+  "browser": "./dist/qrcode.vue.browser.js",
+  "unpkg": "./dist/qrcode.vue.browser.min.js",
+  "jsdelivr": "./dist/qrcode.vue.browser.min.js",
+  "types": "./dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/qrcode.vue.esm.js",
+      "require": "./dist/qrcode.vue.cjs.js"
+    },
+    "./package": "./package.json"
+  },
+  "scripts": {
+    "dev": "rsbuild dev",
+    "build": "rollup -c",
+    "test": "rstest"
+  },
+  "repository": "https://github.com/scopewu/qrcode.vue.git",
+  "keywords": [
+    "vue",
+    "vue qrcode",
+    "component",
+    "code",
+    "qrcode",
+    "QR code",
+    "二维码"
+  ],
+  "files": [
+    "/dist",
+    "CHANGELOG.md",
+    "README-zh_cn.md",
+    "README.md"
+  ],
+  "author": "scope.wu <scope.wu@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/scopewu/qrcode.vue/issues"
+  },
+  "homepage": "https://qr-vue.tie.pub",
+  "peerDependencies": {
+    "vue": "^3.0.0"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rsbuild/core": "^1.7.2",
+    "@rstest/core": "^0.8.1",
+    "@vue/test-utils": "^2.4.6",
+    "happy-dom": "^20.4.0",
+    "rollup": "^4.57.0",
+    "rollup-plugin-typescript2": "^0.36.0",
+    "typescript": "^5.9.3",
+    "vue": "^3.5.27"
+  }
+}

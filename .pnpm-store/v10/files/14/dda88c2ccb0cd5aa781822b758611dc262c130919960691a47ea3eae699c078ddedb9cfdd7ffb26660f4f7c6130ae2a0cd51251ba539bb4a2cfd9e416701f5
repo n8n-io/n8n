@@ -1,0 +1,57 @@
+{
+  "name": "@huggingface/tasks",
+  "version": "0.19.90",
+  "description": "List of ML tasks for huggingface.co/tasks",
+  "keywords": [
+    "hub",
+    "huggingface",
+    "languages"
+  ],
+  "license": "MIT",
+  "author": "Hugging Face",
+  "repository": "https://github.com/huggingface/huggingface.js.git",
+  "source": "./src/index.ts",
+  "files": [
+    "dist",
+    "src",
+    "tsconfig.json"
+  ],
+  "type": "module",
+  "main": "./dist/commonjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/commonjs/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/index.d.ts",
+        "default": "./dist/commonjs/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "tshy": {
+    "exports": {
+      ".": "./src/index.ts",
+      "./package.json": "./package.json"
+    }
+  },
+  "scripts": {
+    "lint": "eslint --quiet --fix --ext .cjs,.ts .",
+    "lint:check": "eslint --ext .cjs,.ts .",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "build": "tshy",
+    "watch:cjs": "tsc --declaration --outdir dist/commonjs --module commonjs --watch",
+    "watch:esm": "tsc --declaration --outdir dist/esm --watch",
+    "watch": "npm-run-all --parallel watch:esm watch:cjs",
+    "check": "tsc",
+    "test": "vitest run"
+  }
+}

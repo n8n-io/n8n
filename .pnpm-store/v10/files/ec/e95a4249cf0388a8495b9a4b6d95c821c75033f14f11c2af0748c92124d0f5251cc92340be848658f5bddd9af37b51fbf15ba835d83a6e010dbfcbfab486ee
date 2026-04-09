@@ -1,0 +1,12 @@
+import type { GridOptionsService } from '../gridOptionsService';
+import type { Column } from '../interfaces/iColumn';
+import type { IRowNode } from '../interfaces/iRowNode';
+import type { CellCtrl } from './cell/cellCtrl';
+import type { ICellRendererParams } from './cellRenderers/iCellRenderer';
+import type { RowCtrl } from './row/rowCtrl';
+export declare function _suppressCellMouseEvent(gos: GridOptionsService, column: Column, node: IRowNode, event: MouseEvent): boolean;
+export declare function _suppressFullWidthMouseEvent(gos: GridOptionsService, cellRendererParams: ICellRendererParams | undefined, node: IRowNode, event: MouseEvent): boolean;
+export declare const DOM_DATA_KEY_CELL_CTRL = "cellCtrl";
+export declare function _getCellCtrlForEventTarget(gos: GridOptionsService, eventTarget: EventTarget | null): CellCtrl | null;
+export declare const DOM_DATA_KEY_ROW_CTRL = "renderedRow";
+export declare function _getRowCtrlForEventTarget(gos: GridOptionsService, eventTarget: EventTarget | null): RowCtrl | null;

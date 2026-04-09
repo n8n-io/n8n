@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+
+    <title><%= typeof title !== 'undefined'? title : 'Storybook'%></title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+    <% if (favicon.endsWith('.svg')) {%>
+    <link rel="icon" type="image/svg+xml" href="./<%= favicon %>" />
+    <% } else if (favicon.endsWith('.ico')) { %>
+    <link rel="icon" type="image/x-icon" href="./<%= favicon %>" />
+    <% } %>
+    <style>
+      @font-face {
+        font-family: 'Nunito Sans';
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url('./sb-common-assets/nunito-sans-regular.woff2') format('woff2');
+      }
+
+      @font-face {
+        font-family: 'Nunito Sans';
+        font-style: italic;
+        font-weight: 400;
+        font-display: swap;
+        src: url('./sb-common-assets/nunito-sans-italic.woff2') format('woff2');
+      }
+
+      @font-face {
+        font-family: 'Nunito Sans';
+        font-style: normal;
+        font-weight: 700;
+        font-display: swap;
+        src: url('./sb-common-assets/nunito-sans-bold.woff2') format('woff2');
+      }
+
+      @font-face {
+        font-family: 'Nunito Sans';
+        font-style: italic;
+        font-weight: 700;
+        font-display: swap;
+        src: url('./sb-common-assets/nunito-sans-bold-italic.woff2') format('woff2');
+      }
+    </style>
+
+    <link href="./sb-manager/runtime.js" rel="modulepreload" />
+
+    <% files.js.forEach(file => { %>
+    <link href="<%= file %>" rel="modulepreload" />
+    <% }); %> <% if (typeof head !== 'undefined') { %> <%- head %> <% } %>
+
+    <style>
+      #storybook-root[hidden] {
+        display: none !important;
+      }
+    </style>
+
+    <% files.css.forEach(file => { %>
+    <link href="<%= file %>" rel="stylesheet" />
+    <% }); %>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <% if (typeof globals !== 'undefined' && Object.keys(globals).length) { %>
+    <script>
+      <% for (var varName in globals) { %>
+        <% if (globals[varName] !== undefined) { %>
+          window['<%=varName%>'] = <%- (globals[varName]) %>;
+        <% } %>
+      <% } %>
+    </script>
+    <% } %>
+
+    <script type="module">
+      import './sb-manager/globals-runtime.js';
+      
+      <% files.js.forEach(file => { %>
+        import '<%= file %>';
+      <% }); %>
+      
+      import './sb-manager/runtime.js';
+    </script>
+  </body>
+</html>

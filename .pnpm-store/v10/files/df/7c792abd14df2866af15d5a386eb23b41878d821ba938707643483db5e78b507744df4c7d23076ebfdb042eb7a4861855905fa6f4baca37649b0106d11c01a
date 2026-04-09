@@ -1,0 +1,23 @@
+export declare enum Precedence {
+    ALL = 0,
+    PARAMETER_LIST = 1,
+    OBJECT = 2,
+    KEY_VALUE = 3,
+    INDEX_BRACKETS = 4,
+    UNION = 5,
+    INTERSECTION = 6,
+    PREFIX = 7,
+    INFIX = 8,
+    TUPLE = 9,
+    SYMBOL = 10,
+    OPTIONAL = 11,
+    NULLABLE = 12,
+    KEY_OF_TYPE_OF = 13,
+    FUNCTION = 14,
+    ARROW = 15,
+    ARRAY_BRACKETS = 16,
+    GENERIC = 17,
+    NAME_PATH = 18,
+    PARENTHESIS = 19,
+    SPECIAL_TYPES = 20
+}

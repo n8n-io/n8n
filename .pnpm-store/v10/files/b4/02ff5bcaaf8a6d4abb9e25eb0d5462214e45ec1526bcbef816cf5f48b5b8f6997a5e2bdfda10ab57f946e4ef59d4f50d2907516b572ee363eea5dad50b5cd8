@@ -1,0 +1,37 @@
+{
+  "name": "@neon-rs/load",
+  "version": "0.0.4",
+  "description": "Utilities for loading Neon modules.",
+  "main": "dist/index.js",
+  "types": "types/index.d.ts",
+  "files": [
+    "dist/**/*",
+    "types/**/*"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "pretest": "npm run build",
+    "prepack": "npm run build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dherman/neon-rs.git"
+  },
+  "keywords": [
+    "Neon",
+    "Rust",
+    "Node"
+  ],
+  "author": "Dave Herman <david.herman@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dherman/neon-rs/issues"
+  },
+  "homepage": "https://github.com/dherman/neon-rs#readme",
+  "devDependencies": {
+    "@tsconfig/node16": "^1.0.3",
+    "@types/node": "^18.15.11",
+    "typescript": "^5.0.4"
+  }
+}

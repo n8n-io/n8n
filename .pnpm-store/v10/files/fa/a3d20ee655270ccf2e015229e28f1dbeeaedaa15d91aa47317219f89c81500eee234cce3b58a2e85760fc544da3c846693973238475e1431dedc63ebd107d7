@@ -1,0 +1,107 @@
+---
+title: DevTools
+description: Debug and inspect AI SDK applications with DevTools
+---
+
+# DevTools
+
+<Note type="warning">
+  AI SDK DevTools is experimental and intended for local development only. Do
+  not use in production environments.
+</Note>
+
+AI SDK DevTools gives you full visibility over your AI SDK calls with [`generateText`](/docs/reference/ai-sdk-core/generate-text), [`streamText`](/docs/reference/ai-sdk-core/stream-text), and [`ToolLoopAgent`](/docs/reference/ai-sdk-core/tool-loop-agent). It helps you debug and inspect LLM requests, responses, tool calls, and multi-step interactions through a web-based UI.
+
+DevTools is composed of two parts:
+
+1. **Middleware**: Captures runs and steps from your AI SDK calls
+2. **Viewer**: A web UI to inspect the captured data
+
+## Installation
+
+Install the DevTools package:
+
+```bash
+pnpm add @ai-sdk/devtools
+```
+
+## Requirements
+
+- AI SDK v6 beta (`ai@^6.0.0-beta.0`)
+- Node.js compatible runtime
+
+## Using DevTools
+
+### Add the middleware
+
+Wrap your language model with the DevTools middleware using [`wrapLanguageModel`](/docs/ai-sdk-core/middleware):
+
+```ts
+import { wrapLanguageModel, gateway } from 'ai';
+import { devToolsMiddleware } from '@ai-sdk/devtools';
+
+const model = wrapLanguageModel({
+  model: gateway('anthropic/claude-sonnet-4.5'),
+  middleware: devToolsMiddleware(),
+});
+```
+
+The wrapped model can be used with any AI SDK Core function:
+
+```ts highlight="4"
+import { generateText } from 'ai';
+
+const result = await generateText({
+  model, // wrapped model with DevTools
+  prompt: 'What cities are in the United States?',
+});
+```
+
+### Launch the viewer
+
+Start the DevTools viewer:
+
+```bash
+npx @ai-sdk/devtools
+```
+
+Open [http://localhost:4983](http://localhost:4983) to view your AI SDK interactions.
+
+## Captured data
+
+The DevTools middleware captures the following information from your AI SDK calls:
+
+- **Input parameters and prompts**: View the complete input sent to your LLM
+- **Output content and tool calls**: Inspect generated text and tool invocations
+- **Token usage and timing**: Monitor resource consumption and performance
+- **Raw provider data**: Access complete request and response payloads
+
+### Runs and steps
+
+DevTools organizes captured data into runs and steps:
+
+- **Run**: A complete multi-step AI interaction, grouped by the initial prompt
+- **Step**: A single LLM call within a run (e.g., one `generateText` or `streamText` call)
+
+Multi-step interactions, such as those created by tool calling or agent loops, are grouped together as a single run with multiple steps.
+
+## How it works
+
+The DevTools middleware intercepts all `generateText` and `streamText` calls through the [language model middleware](/docs/ai-sdk-core/middleware) system. Captured data is stored locally in a JSON file (`.devtools/generations.json`) and served through a web UI built with Hono and React.
+
+<Note type="warning">
+  The middleware automatically adds `.devtools` to your `.gitignore` file.
+  Verify that `.devtools` is in your `.gitignore` to ensure you don't commit
+  sensitive AI interaction data to your repository.
+</Note>
+
+## Security considerations
+
+DevTools stores all AI interactions locally in plain text files, including:
+
+- User prompts and messages
+- LLM responses
+- Tool call arguments and results
+- API request and response data
+
+**Only use DevTools in local development environments.** Do not enable DevTools in production or when handling sensitive data.

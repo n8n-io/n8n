@@ -1,0 +1,52 @@
+{
+  "name": "@storybook/theming",
+  "version": "8.6.14",
+  "description": "Core Storybook Components",
+  "keywords": [
+    "storybook"
+  ],
+  "homepage": "https://github.com/storybookjs/storybook/tree/next/code/lib/theming",
+  "bugs": {
+    "url": "https://github.com/storybookjs/storybook/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/storybookjs/storybook.git",
+    "directory": "code/lib/theming"
+  },
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/storybook"
+  },
+  "license": "MIT",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./shim.d.ts",
+      "import": "./shim.mjs",
+      "require": "./shim.js"
+    },
+    "./create": {
+      "types": "./create.d.ts",
+      "import": "./create.mjs",
+      "require": "./create.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./shim.js",
+  "module": "./shim.mjs",
+  "types": "./shim.d.ts",
+  "files": [
+    "README.md",
+    "*.js",
+    "*.mjs",
+    "*.cjs",
+    "*.d.ts"
+  ],
+  "peerDependencies": {
+    "storybook": "^8.2.0 || ^8.3.0-0 || ^8.4.0-0 || ^8.5.0-0 || ^8.6.0-0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

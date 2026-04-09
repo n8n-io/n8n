@@ -1,0 +1,1 @@
+import{n as e,t}from"./_format.mjs";function n(t,n){let r=JSON.parse(t,n?.reviver);return e(t,r,n),r}function r(e,n){let r=t(e,n),i=JSON.stringify(e,n?.replacer,r.indent);return r.whitespace.start+i+r.whitespace.end}export{r as n,n as t};

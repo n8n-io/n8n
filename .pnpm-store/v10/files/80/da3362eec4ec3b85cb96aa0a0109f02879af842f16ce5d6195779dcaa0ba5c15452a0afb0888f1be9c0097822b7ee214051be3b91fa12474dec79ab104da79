@@ -1,0 +1,89 @@
+{
+  "name": "better-ajv-errors",
+  "version": "1.2.0",
+  "description": "JSON Schema validation for Human",
+  "repository": "atlassian/better-ajv-errors",
+  "main": "./lib/cjs/index.js",
+  "exports": {
+    ".": {
+      "require": "./lib/cjs/index.js",
+      "default": "./lib/esm/index.mjs"
+    }
+  },
+  "module": "./lib/esm/index.mjs",
+  "engines": {
+    "node": ">= 12.13.0"
+  },
+  "keywords": [
+    "json-schema",
+    "ajv",
+    "ajv-errors"
+  ],
+  "author": "Rifat Nabi <to.rifat@gmail.com>",
+  "maintainers": [
+    "Rifat Nabi <to.rifat@gmail.com>",
+    "Dmitrii Sorin <info@staypositive.ru>",
+    "Tong Li"
+  ],
+  "license": "Apache-2.0",
+  "types": "./typings.d.ts",
+  "files": [
+    "lib",
+    "typings.d.ts"
+  ],
+  "scripts": {
+    "prebuild": "rm -rf lib",
+    "build": "npm run build:cjs && npm run build:esm",
+    "build:cjs": "node build.js --cjs",
+    "build:esm": "node build.js",
+    "prerelease": "npm run build",
+    "release": "changeset publish",
+    "format": "prettier --write './src/**/*.js' './.changeset/*.json'",
+    "lint": "eslint .",
+    "test": "jest && tsd",
+    "test-ci": "jest --coverage --colors && tsd",
+    "prescreenshot": "npm run build:cjs",
+    "screenshot": "svg-term --command='node screenshot' --out=./media/screenshot.svg --padding=5 --width=80 --height=13 --at=1000 --no-cursor --term iterm2 --profile='deep' --window",
+    "prepare": "is-ci || husky install",
+    "dependabot:changeset": "node ./.changeset/create-dependabot-dependabot.js"
+  },
+  "dependencies": {
+    "@babel/code-frame": "^7.16.0",
+    "@humanwhocodes/momoa": "^2.0.2",
+    "chalk": "^4.1.2",
+    "jsonpointer": "^5.0.0",
+    "leven": "^3.1.0 < 4"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.18.1",
+    "@changesets/write": "^0.1.6",
+    "ajv": "^8.8.2",
+    "esbuild": "^0.14.0",
+    "esbuild-jest": "^0.5.0",
+    "eslint": "^8.3.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-jest": "^26.0.0",
+    "eslint-plugin-prettier": "^4.0.0",
+    "fast-glob": "^3.2.7",
+    "flow-bin": "^0.175.0",
+    "git-format-staged": "^3.0.0",
+    "husky": "^7.0.0",
+    "is-ci": "^3.0.1",
+    "jest": "^27.3.1",
+    "jest-fixtures": "^0.6.0",
+    "prettier": "^2.5.0",
+    "svg-term-cli": "^2.1.1",
+    "tsd": "^0.20.0"
+  },
+  "peerDependencies": {
+    "ajv": "4.11.8 - 8"
+  },
+  "jest": {
+    "testMatch": [
+      "<rootDir>/src/**/__tests__/**/*.js"
+    ],
+    "transform": {
+      "^.+\\.js$": "esbuild-jest"
+    }
+  }
+}

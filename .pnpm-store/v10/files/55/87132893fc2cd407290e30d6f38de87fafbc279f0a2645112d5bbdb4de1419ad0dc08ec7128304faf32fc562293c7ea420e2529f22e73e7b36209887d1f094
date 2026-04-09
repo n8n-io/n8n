@@ -1,0 +1,42 @@
+{
+  "name": "@vueuse/shared",
+  "type": "module",
+  "version": "14.2.1",
+  "author": "Anthony Fu <https://github.com/antfu>",
+  "license": "MIT",
+  "funding": "https://github.com/sponsors/antfu",
+  "homepage": "https://github.com/vueuse/vueuse/tree/main/packages/shared#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vueuse/vueuse.git",
+    "directory": "packages/shared"
+  },
+  "bugs": {
+    "url": "https://github.com/vueuse/vueuse/issues"
+  },
+  "keywords": [
+    "vue",
+    "vue-use",
+    "utils"
+  ],
+  "sideEffects": false,
+  "exports": {
+    ".": "./dist/index.js",
+    "./*": "./dist/*"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "unpkg": "./dist/index.iife.min.js",
+  "jsdelivr": "./dist/index.iife.min.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "peerDependencies": {
+    "vue": "^3.5.0"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "test:attw": "attw --pack --config-path ../../.attw.json ."
+  }
+}

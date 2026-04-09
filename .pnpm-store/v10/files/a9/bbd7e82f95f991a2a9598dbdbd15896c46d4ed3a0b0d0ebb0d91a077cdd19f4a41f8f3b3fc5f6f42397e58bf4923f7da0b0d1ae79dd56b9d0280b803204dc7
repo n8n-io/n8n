@@ -1,5 +1,0 @@
-import * as CompilerDOM from '@vue/compiler-dom';
-import type { Code } from '../../types';
-import type { TemplateCodegenContext } from './context';
-import type { TemplateCodegenOptions } from './index';
-export declare function generateVIf(options: TemplateCodegenOptions, ctx: TemplateCodegenContext, node: CompilerDOM.IfNode, currentComponent: CompilerDOM.ElementNode | undefined, componentCtxVar: string | undefined): Generator<Code>;

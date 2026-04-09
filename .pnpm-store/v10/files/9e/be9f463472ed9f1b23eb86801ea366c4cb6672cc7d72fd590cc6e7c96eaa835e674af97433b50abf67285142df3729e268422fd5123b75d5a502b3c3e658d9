@@ -1,1 +1,0 @@
-{"version":3,"file":"memory-code-points.d.ts","sourceRoot":"","sources":["../src/memory-code-points.ts"],"names":[],"mappings":";AAAA,OAAO,QAAQ,MAAM,iBAAiB,CAAC;AAEvC,wBAAgB,sBAAsB,CAAC,IAAI,EAAE,MAAM;;;;;;;EA+BlD"}

@@ -1,0 +1,69 @@
+{
+  "name": "fast-uri",
+  "description": "Dependency-free RFC 3986 URI toolbox",
+  "version": "3.1.0",
+  "main": "index.js",
+  "type": "commonjs",
+  "types": "types/index.d.ts",
+  "license": "BSD-3-Clause",
+  "author": "Vincent Le Goff <vince.legoff@gmail.com> (https://github.com/zekth)",
+  "contributors": [
+    {
+      "name": "Matteo Collina",
+      "email": "hello@matteocollina.com"
+    },
+    {
+      "name": "Gürgün Dayıoğlu",
+      "email": "hey@gurgun.day",
+      "url": "https://heyhey.to/G"
+    },
+    {
+      "name": "Aras Abbasi",
+      "email": "aras.abbasi@gmail.com"
+    },
+    {
+      "name": "Frazer Smith",
+      "email": "frazer.dev@icloud.com",
+      "url": "https://github.com/fdawgs"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fastify/fast-uri.git"
+  },
+  "bugs": {
+    "url": "https://github.com/fastify/fast-uri/issues"
+  },
+  "homepage": "https://github.com/fastify/fast-uri",
+  "funding": [
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/fastify"
+    },
+    {
+      "type": "opencollective",
+      "url": "https://opencollective.com/fastify"
+    }
+  ],
+  "scripts": {
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "test": "npm run test:unit && npm run test:typescript",
+    "test:browser:chromium": "playwright-test ./test/* --runner tape --browser=chromium",
+    "test:browser:firefox": "playwright-test ./test/* --runner tape --browser=firefox",
+    "test:browser:webkit": "playwright-test ./test/* --runner tape --browser=webkit",
+    "test:browser": "npm run test:browser:chromium && npm run test:browser:firefox && npm run test:browser:webkit",
+    "test:unit": "tape test/**/*.js",
+    "test:unit:dev": "npm run test:unit -- --coverage-report=html",
+    "test:typescript": "tsd"
+  },
+  "devDependencies": {
+    "@fastify/pre-commit": "^2.1.0",
+    "ajv": "^8.16.0",
+    "eslint": "^9.17.0",
+    "neostandard": "^0.12.0",
+    "playwright-test": "^14.1.12",
+    "tape": "^5.8.1",
+    "tsd": "^0.32.0"
+  }
+}

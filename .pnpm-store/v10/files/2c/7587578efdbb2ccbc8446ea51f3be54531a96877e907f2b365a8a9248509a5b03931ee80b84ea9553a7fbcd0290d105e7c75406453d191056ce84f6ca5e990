@@ -1,1 +1,0 @@
-{"version":3,"file":"iterator.js","sourceRoot":"","sources":["iterator.ts"],"names":[],"mappings":"","sourcesContent":["\nexport type ITSIterator<T, TReturn = void, TNext = undefined> = Iterator<T, TReturn, TNext>;\n\nexport type ITSIteratorResult<T, TReturn = void> = IteratorResult<T, TReturn>;\n"]}

@@ -1,0 +1,116 @@
+{
+  "name": "openai",
+  "version": "4.104.0",
+  "description": "The official TypeScript library for the OpenAI API",
+  "author": "OpenAI <support@openai.com>",
+  "types": "./index.d.ts",
+  "main": "./index.js",
+  "type": "commonjs",
+  "repository": "github:openai/openai-node",
+  "license": "Apache-2.0",
+  "packageManager": "yarn@1.22.22",
+  "files": [
+    "**/*"
+  ],
+  "private": false,
+  "scripts": {
+    "test": "./scripts/test",
+    "build": "./scripts/build",
+    "format": "prettier --write --cache --cache-strategy metadata . !dist",
+    "tsn": "ts-node -r tsconfig-paths/register",
+    "lint": "./scripts/lint",
+    "fix": "./scripts/format"
+  },
+  "dependencies": {
+    "@types/node": "^18.11.18",
+    "@types/node-fetch": "^2.6.4",
+    "abort-controller": "^3.0.0",
+    "agentkeepalive": "^4.2.1",
+    "form-data-encoder": "1.7.2",
+    "formdata-node": "^4.3.2",
+    "node-fetch": "^2.6.7"
+  },
+  "sideEffects": [
+    "./_shims/index.js",
+    "./_shims/index.mjs",
+    "./shims/node.js",
+    "./shims/node.mjs",
+    "./shims/web.js",
+    "./shims/web.mjs"
+  ],
+  "imports": {
+    "openai": ".",
+    "openai/*": "./src/*"
+  },
+  "exports": {
+    "./_shims/auto/*": {
+      "deno": {
+        "types": "./_shims/auto/*.d.ts",
+        "require": "./_shims/auto/*.js",
+        "default": "./_shims/auto/*.mjs"
+      },
+      "bun": {
+        "types": "./_shims/auto/*.d.ts",
+        "require": "./_shims/auto/*-bun.js",
+        "default": "./_shims/auto/*-bun.mjs"
+      },
+      "browser": {
+        "types": "./_shims/auto/*.d.ts",
+        "require": "./_shims/auto/*.js",
+        "default": "./_shims/auto/*.mjs"
+      },
+      "worker": {
+        "types": "./_shims/auto/*.d.ts",
+        "require": "./_shims/auto/*.js",
+        "default": "./_shims/auto/*.mjs"
+      },
+      "workerd": {
+        "types": "./_shims/auto/*.d.ts",
+        "require": "./_shims/auto/*.js",
+        "default": "./_shims/auto/*.mjs"
+      },
+      "node": {
+        "types": "./_shims/auto/*-node.d.ts",
+        "require": "./_shims/auto/*-node.js",
+        "default": "./_shims/auto/*-node.mjs"
+      },
+      "types": "./_shims/auto/*.d.ts",
+      "require": "./_shims/auto/*.js",
+      "default": "./_shims/auto/*.mjs"
+    },
+    ".": {
+      "require": {
+        "types": "./index.d.ts",
+        "default": "./index.js"
+      },
+      "types": "./index.d.mts",
+      "default": "./index.mjs"
+    },
+    "./*.mjs": {
+      "types": "./*.d.ts",
+      "default": "./*.mjs"
+    },
+    "./*.js": {
+      "types": "./*.d.ts",
+      "default": "./*.js"
+    },
+    "./*": {
+      "types": "./*.d.ts",
+      "require": "./*.js",
+      "default": "./*.mjs"
+    }
+  },
+  "bin": "./bin/cli",
+  "peerDependencies": {
+    "ws": "^8.18.0",
+    "zod": "^3.23.8"
+  },
+  "peerDependenciesMeta": {
+    "ws": {
+      "optional": true
+    },
+    "zod": {
+      "optional": true
+    }
+  }
+}

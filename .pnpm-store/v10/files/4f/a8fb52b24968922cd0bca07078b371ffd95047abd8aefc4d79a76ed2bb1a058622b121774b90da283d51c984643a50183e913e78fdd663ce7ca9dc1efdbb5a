@@ -1,0 +1,32 @@
+# Installation
+> `npm install --save @types/rfc2047`
+
+# Summary
+This package contains type definitions for rfc2047 (https://github.com/One-com/rfc2047).
+
+# Details
+Files were exported from https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/rfc2047.
+## [index.d.ts](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/rfc2047/index.d.ts)
+````ts
+/**
+ * Decode
+ * @param encodedText Encoded Text
+ * @return Decoded Text
+ */
+export function decode(encodedText: string): string;
+
+/**
+ * Encode
+ * @param decodedText Decoded Text
+ * @return Encoded Text
+ */
+export function encode(decodedText: string): string;
+
+````
+
+### Additional Details
+ * Last updated: Tue, 07 Nov 2023 15:11:36 GMT
+ * Dependencies: none
+
+# Credits
+These definitions were written by [Masanori Ohgita](https://github.com/mugifly).

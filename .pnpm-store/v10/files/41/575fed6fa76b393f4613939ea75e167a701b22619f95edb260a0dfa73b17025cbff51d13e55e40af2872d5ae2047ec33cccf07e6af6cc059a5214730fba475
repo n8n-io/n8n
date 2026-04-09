@@ -1,0 +1,91 @@
+{
+	"name": "type-fest",
+	"version": "4.41.0",
+	"description": "A collection of essential TypeScript types",
+	"license": "(MIT OR CC0-1.0)",
+	"repository": "sindresorhus/type-fest",
+	"funding": "https://github.com/sponsors/sindresorhus",
+	"author": {
+		"name": "Sindre Sorhus",
+		"email": "sindresorhus@gmail.com",
+		"url": "https://sindresorhus.com"
+	},
+	"types": "./index.d.ts",
+	"sideEffects": false,
+	"engines": {
+		"node": ">=16"
+	},
+	"scripts": {
+		"test:source-files-extension": "node script/test/source-files-extension.js",
+		"test:tsc": "tsc",
+		"test:tsd": "tsd",
+		"test:xo": "xo",
+		"test": "run-p test:*"
+	},
+	"files": [
+		"index.d.ts",
+		"source",
+		"license-mit",
+		"license-cc0"
+	],
+	"keywords": [
+		"typescript",
+		"ts",
+		"types",
+		"utility",
+		"util",
+		"utilities",
+		"omit",
+		"merge",
+		"json",
+		"generics"
+	],
+	"devDependencies": {
+		"expect-type": "^1.1.0",
+		"npm-run-all2": "^7.0.1",
+		"tsd": "^0.32.0",
+		"typescript": "~5.8.3",
+		"xo": "^0.60.0"
+	},
+	"xo": {
+		"rules": {
+			"@typescript-eslint/no-extraneous-class": "off",
+			"@typescript-eslint/ban-ts-comment": "off",
+			"@typescript-eslint/ban-types": "off",
+			"@typescript-eslint/naming-convention": "off",
+			"import/extensions": "off",
+			"@typescript-eslint/no-redeclare": "off",
+			"@typescript-eslint/no-confusing-void-expression": "off",
+			"@typescript-eslint/no-unsafe-argument": "off",
+			"n/file-extension-in-import": "off",
+			"object-curly-newline": [
+				"error",
+				{
+					"multiline": true,
+					"consistent": true
+				}
+			],
+			"import/consistent-type-specifier-style": [
+				"error",
+				"prefer-top-level"
+			]
+		},
+		"overrides": [
+			{
+				"files": "**/*.d.ts",
+				"rules": {
+					"no-restricted-imports": [
+						"error",
+						"tsd",
+						"expect-type"
+					]
+				}
+			}
+		]
+	},
+	"tsd": {
+		"compilerOptions": {
+			"noUnusedLocals": false
+		}
+	}
+}

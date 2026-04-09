@@ -1,0 +1,78 @@
+{
+  "name": "@opentelemetry/sdk-trace-node",
+  "version": "1.26.0",
+  "description": "OpenTelemetry Node SDK provides automatic telemetry (tracing, metrics, etc) for Node.js applications",
+  "main": "build/src/index.js",
+  "types": "build/src/index.d.ts",
+  "repository": "open-telemetry/opentelemetry-js",
+  "scripts": {
+    "prepublishOnly": "npm run compile",
+    "compile": "tsc --build",
+    "clean": "tsc --build --clean",
+    "test": "nyc mocha 'test/**/*.test.ts'",
+    "tdd": "npm run test -- --watch-extensions ts --watch",
+    "codecov": "nyc report --reporter=json && codecov -f coverage/*.json -p ../../",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "version": "node ../../scripts/version-update.js",
+    "watch": "tsc --build --watch",
+    "precompile": "cross-var lerna run version --scope $npm_package_name --include-dependencies",
+    "prewatch": "npm run precompile",
+    "peer-api-check": "node ../../scripts/peer-api-check.js",
+    "align-api-deps": "node ../../scripts/align-api-deps.js"
+  },
+  "keywords": [
+    "opentelemetry",
+    "nodejs",
+    "tracing",
+    "profiling",
+    "metrics",
+    "stats"
+  ],
+  "author": "OpenTelemetry Authors",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=14"
+  },
+  "files": [
+    "build/src/**/*.js",
+    "build/src/**/*.js.map",
+    "build/src/**/*.d.ts",
+    "doc",
+    "LICENSE",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@opentelemetry/api": ">=1.0.0 <1.10.0",
+    "@opentelemetry/resources": "1.26.0",
+    "@opentelemetry/semantic-conventions": "1.27.0",
+    "@types/mocha": "10.0.7",
+    "@types/node": "18.6.5",
+    "@types/semver": "7.5.8",
+    "@types/sinon": "17.0.3",
+    "codecov": "3.8.3",
+    "cross-var": "1.1.0",
+    "lerna": "6.6.2",
+    "mocha": "10.7.3",
+    "nyc": "15.1.0",
+    "sinon": "15.1.2",
+    "typescript": "4.4.4"
+  },
+  "peerDependencies": {
+    "@opentelemetry/api": ">=1.0.0 <1.10.0"
+  },
+  "dependencies": {
+    "@opentelemetry/context-async-hooks": "1.26.0",
+    "@opentelemetry/core": "1.26.0",
+    "@opentelemetry/propagator-b3": "1.26.0",
+    "@opentelemetry/propagator-jaeger": "1.26.0",
+    "@opentelemetry/sdk-trace-base": "1.26.0",
+    "semver": "^7.5.2"
+  },
+  "homepage": "https://github.com/open-telemetry/opentelemetry-js/tree/main/packages/opentelemetry-sdk-trace-node",
+  "sideEffects": false,
+  "gitHead": "720bc8c70d47029cb6b41a34ffdc3d25cbaa2f80"
+}

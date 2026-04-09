@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2019",
+    "moduleResolution": "Node",
+    "rootDir": "src",
+    "outDir": "dist",
+    "declaration": true,
+    "esModuleInterop": true,
+    "allowJs": true,
+    "alwaysStrict": true,
+    // "strictNullChecks": true,
+    // "strictBindCallApply": true,
+    "strictFunctionTypes": true,
+    // "strictPropertyInitialization": true,
+    // "noImplicitAny": true,
+    // "noImplicitThis": true,
+    "useUnknownInCatchVariables": true,
+    "stripInternal": true,
+    "baseUrl": "."
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules"]
+}

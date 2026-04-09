@@ -1,0 +1,1 @@
+"use strict";var import_node_logger=require("@storybook/core/node-logger");(0,import_node_logger.deprecate)("Exports from @storybook/cli are removed. Please import from @storybook/core-common instead.");

@@ -317,7 +317,7 @@ export const configureActivityCallback = (
 			await invokeAgentScope.withActiveSpanAsync(async () => {
 				invokeAgentScope.recordInputMessages([inputText || 'Unknown text']);
 
-				let mcpClient = undefined;
+				let mcpClient: { close(): Promise<void> } | undefined;
 				let microsoftMcpToolkits: StructuredToolkit[] | undefined = undefined;
 				let mcpLogs: McpToolCallLog[] | undefined = undefined;
 				if (mcpTokenRef.token) {

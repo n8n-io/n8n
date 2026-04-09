@@ -1,0 +1,59 @@
+{
+  "name": "@babel/helper-define-polyfill-provider",
+  "version": "0.6.8",
+  "description": "Babel helper to create your own polyfill provider",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/babel/babel-polyfills.git",
+    "directory": "packages/babel-helper-define-polyfill-provider"
+  },
+  "keywords": [
+    "babel-plugin"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "lib/index.js",
+  "browser": {
+    "./lib/node/dependencies.js": "./lib/browser/dependencies.js",
+    "./src/node/dependencies.js": "./src/browser/dependencies.js"
+  },
+  "exports": {
+    ".": [
+      {
+        "import": {
+          "node": "./esm/index.node.mjs",
+          "browser": "./esm/index.browser.mjs"
+        },
+        "default": "./lib/index.js"
+      },
+      "./lib/index.js"
+    ],
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "@babel/helper-compilation-targets": "^7.28.6",
+    "@babel/helper-plugin-utils": "^7.28.6",
+    "debug": "^4.4.3",
+    "lodash.debounce": "^4.0.8",
+    "resolve": "^1.22.11"
+  },
+  "peerDependencies": {
+    "@babel/core": "^7.4.0 || ^8.0.0-0 <8.0.0"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.28.6",
+    "@babel/core": "^7.28.6",
+    "@babel/generator": "^7.28.6",
+    "@babel/plugin-transform-modules-commonjs": "^7.28.6",
+    "@babel/traverse": "^7.28.6",
+    "babel-loader": "^8.4.1",
+    "rollup": "^2.79.2",
+    "rollup-plugin-babel": "^4.4.0",
+    "strip-ansi": "^6.0.1",
+    "webpack": "^4.47.0",
+    "webpack-cli": "^3.3.12"
+  },
+  "gitHead": "86eff78e98adc17cdf0eb9ba4d94140eb7cb0da0"
+}

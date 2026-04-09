@@ -63,7 +63,7 @@ const requireStrict = (schema: any) => {
 	return false;
 };
 
-export function formatToOpenAIResponsesTool(tool: Tool): OpenAIClient.Responses.FunctionTool {
+export function formatToOpenAIResponsesTool(tool: Tool): any {
 	const schema = zodToJsonSchema(tool.schema) as any;
 	const strict = requireStrict(schema);
 

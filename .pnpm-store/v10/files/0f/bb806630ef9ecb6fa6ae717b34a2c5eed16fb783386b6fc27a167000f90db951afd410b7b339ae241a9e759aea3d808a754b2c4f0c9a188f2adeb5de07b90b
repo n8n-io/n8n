@@ -1,1 +1,0 @@
-{"version":3,"file":"empty.js","sourceRoot":"","sources":["empty.ts"],"names":[],"mappings":"","sourcesContent":["import { ITSArrayListMaybeReadonly } from '../base';\n\nexport type ITSEmptyTuple = ITSArrayListMaybeReadonly<never>;\n"]}

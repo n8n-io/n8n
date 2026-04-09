@@ -24,7 +24,7 @@ import { getTracingConfig } from '@utils/tracing';
 
 import { formatToOpenAIAssistantTool, getChatMessages } from '../../../helpers/utils';
 import { assistantRLC } from '../descriptions';
-import { getProxyAgent } from '@n8n/ai-utilities';
+// import { getProxyAgent } from '@n8n/ai-utilities';
 import { Container } from '@n8n/di';
 import { AiConfig } from '@n8n/config';
 import { checkDomainRestrictions } from '@utils/checkDomainRestrictions';
@@ -195,12 +195,12 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		maxRetries: options.maxRetries ?? 2,
 		timeout: timeout ?? 10000,
 		baseURL,
-		fetchOptions: {
-			dispatcher: getProxyAgent(baseURL, {
-				headersTimeout: timeout,
-				bodyTimeout: timeout,
-			}),
-		},
+		// fetchOptions: {
+		// 	dispatcher: getProxyAgent(baseURL, {
+		// 		headersTimeout: timeout,
+		// 		bodyTimeout: timeout,
+		// 	}),
+		// },
 		defaultHeaders,
 	});
 
@@ -290,7 +290,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			await memory.saveContext({ input }, { output: response.output });
 
 			if (response.threadId && response.runId) {
-				const threadRun = await client.beta.threads.runs.retrieve(response.runId, {
+				const threadRun = await (client.beta.threads.runs as any).retrieve(response.runId, {
 					thread_id: response.threadId,
 				});
 				response.usage = threadRun.usage;

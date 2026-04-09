@@ -1,0 +1,22 @@
+import { A as TsdownHooks, C as ChunkAddonObject, D as PackageType, E as OutExtensionObject, F as CopyOptions, I as CopyOptionsFn, L as AttwOptions, M as TsdownChunks, N as DebugOptions, O as BuildContext, P as CopyEntry, S as ChunkAddonFunction, T as OutExtensionFactory, _ as ReportOptions, a as NoExternalFn, b as globalLogger, c as ResolvedConfig, d as UnusedOptions, f as UserConfig, g as Workspace, h as WithEnabled, i as InlineConfig, j as ExportsOptions, k as RolldownContext, l as Sourcemap, m as UserConfigFn, n as DtsOptions, o as NormalizedFormat, p as UserConfigExport, r as Format, s as PublintOptions, t as CIOption, u as TreeshakingOptions, w as OutExtensionContext, x as ChunkAddon, y as Logger } from "./index-k1oOp_n4.mjs";
+import { t as defineConfig } from "./config-qCTuQ4uL.mjs";
+
+//#region src/index.d.ts
+
+/**
+* Build with tsdown.
+*/
+declare function build(userOptions?: InlineConfig): Promise<void>;
+/** @internal */
+declare const shimFile: string;
+/**
+* Build a single configuration, without watch and shortcuts features.
+*
+* Internal API, not for public use
+*
+* @private
+* @param config Resolved options
+*/
+declare function buildSingle(config: ResolvedConfig, clean: () => Promise<void>): Promise<(() => Promise<void>) | undefined>;
+//#endregion
+export { AttwOptions, BuildContext, CIOption, ChunkAddon, ChunkAddonFunction, ChunkAddonObject, CopyEntry, CopyOptions, CopyOptionsFn, DebugOptions, DtsOptions, ExportsOptions, Format, InlineConfig, type Logger, NoExternalFn, NormalizedFormat, OutExtensionContext, OutExtensionFactory, OutExtensionObject, PackageType, PublintOptions, ReportOptions, ResolvedConfig, RolldownContext, Sourcemap, TreeshakingOptions, TsdownChunks, TsdownHooks, UnusedOptions, UserConfig, UserConfigExport, UserConfigFn, WithEnabled, Workspace, build, buildSingle, defineConfig, globalLogger, shimFile };

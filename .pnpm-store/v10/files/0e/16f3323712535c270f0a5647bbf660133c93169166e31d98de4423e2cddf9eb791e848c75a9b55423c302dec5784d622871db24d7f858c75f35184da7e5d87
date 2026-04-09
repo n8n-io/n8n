@@ -1,1 +1,0 @@
-{"version":3,"file":"useLocale.cjs","names":["locale?: Ref<string | undefined>"],"sources":["../../src/shared/useLocale.ts"],"sourcesContent":[],"mappings":";;;;;AAIA,SAAgB,UAAUA,QAAkC;CAC1D,MAAM,UAAU,kEAA4B,EAC1C,QAAQ,aAAI,KAAK,CAClB,EAAC;AACF,QAAO,kBAAS,MAAM,QAAQ,SAAS,QAAQ,QAAQ,SAAS,KAAK;AACtE"}

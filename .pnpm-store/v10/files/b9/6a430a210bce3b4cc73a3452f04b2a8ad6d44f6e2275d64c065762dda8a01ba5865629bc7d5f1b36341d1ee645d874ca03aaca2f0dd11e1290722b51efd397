@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["/mnt/vss/_work/1/s/sdk/core/ts-http-runtime/src/logger/log.common.ts"],
+  "sourcesContent": ["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT License.\n\nexport function log(...args: any[]): void {\n  if (args.length > 0) {\n    const firstArg = String(args[0]);\n    if (firstArg.includes(\":error\")) {\n      console.error(...args);\n    } else if (firstArg.includes(\":warning\")) {\n      console.warn(...args);\n    } else if (firstArg.includes(\":info\")) {\n      console.info(...args);\n    } else if (firstArg.includes(\":verbose\")) {\n      console.debug(...args);\n    } else {\n      console.debug(...args);\n    }\n  }\n}\n"],
+  "mappings": ";;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAGO,SAAS,OAAO,MAAmB;AACxC,MAAI,KAAK,SAAS,GAAG;AACnB,UAAM,WAAW,OAAO,KAAK,CAAC,CAAC;AAC/B,QAAI,SAAS,SAAS,QAAQ,GAAG;AAC/B,cAAQ,MAAM,GAAG,IAAI;AAAA,IACvB,WAAW,SAAS,SAAS,UAAU,GAAG;AACxC,cAAQ,KAAK,GAAG,IAAI;AAAA,IACtB,WAAW,SAAS,SAAS,OAAO,GAAG;AACrC,cAAQ,KAAK,GAAG,IAAI;AAAA,IACtB,WAAW,SAAS,SAAS,UAAU,GAAG;AACxC,cAAQ,MAAM,GAAG,IAAI;AAAA,IACvB,OAAO;AACL,cAAQ,MAAM,GAAG,IAAI;AAAA,IACvB;AAAA,EACF;AACF;",
+  "names": []
+}

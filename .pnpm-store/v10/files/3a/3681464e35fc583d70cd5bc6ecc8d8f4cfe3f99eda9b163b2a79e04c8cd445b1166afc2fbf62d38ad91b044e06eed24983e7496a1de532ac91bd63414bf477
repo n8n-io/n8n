@@ -1,0 +1,59 @@
+---
+title: wrapLanguageModel
+description: Function for wrapping a language model with middleware (API Reference)
+---
+
+# `wrapLanguageModel()`
+
+The `wrapLanguageModel` function provides a way to enhance the behavior of language models
+by wrapping them with middleware.
+See [Language Model Middleware](/docs/ai-sdk-core/middleware) for more information on middleware.
+
+```ts
+import { wrapLanguageModel, gateway } from 'ai';
+
+const wrappedLanguageModel = wrapLanguageModel({
+  model: gateway('openai/gpt-4.1'),
+  middleware: yourLanguageModelMiddleware,
+});
+```
+
+## Import
+
+<Snippet text={`import { wrapLanguageModel } from "ai"`} prompt={false} />
+
+## API Signature
+
+### Parameters
+
+<PropertiesTable
+  content={[
+    {
+      name: 'model',
+      type: 'LanguageModelV3',
+      description: 'The original LanguageModelV3 instance to be wrapped.',
+    },
+    {
+      name: 'middleware',
+      type: 'LanguageModelV3Middleware | LanguageModelV3Middleware[]',
+      description:
+        'The middleware to be applied to the language model. When multiple middlewares are provided, the first middleware will transform the input first, and the last middleware will be wrapped directly around the model.',
+    },
+    {
+      name: 'modelId',
+      type: 'string',
+      description:
+        "Optional custom model ID to override the original model's ID.",
+    },
+    {
+      name: 'providerId',
+      type: 'string',
+      description:
+        "Optional custom provider ID to override the original model's provider.",
+    },
+  ]}
+/>
+
+### Returns
+
+A new `LanguageModelV3` instance with middleware applied.

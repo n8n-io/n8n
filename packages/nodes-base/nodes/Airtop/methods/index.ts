@@ -1,13 +1,13 @@
 import type {
 	FieldType,
-	IDataObject,
+	// IDataObject,
 	ILoadOptionsFunctions,
 	INodeListSearchResult,
 	ResourceMapperField,
 	ResourceMapperFields,
 } from 'n8n-workflow';
 
-import type { AgentsListResponse } from '../actions/agent/agent.types';
+// import type { AgentsListResponse } from '../actions/agent/agent.types';
 import { getAgentDetails } from '../actions/agent/agent.utils';
 import { BASE_URL_V2 } from '../constants';
 import { apiRequest } from '../transport';
@@ -43,11 +43,7 @@ export async function listSearchAgents(
 		name: filter ?? '',
 	};
 
-	const response = await apiRequest.call<
-		ILoadOptionsFunctions,
-		['GET', string, IDataObject, IDataObject],
-		Promise<AgentsListResponse>
-	>(this, 'GET', `${BASE_URL_V2}/agents`, {}, qs);
+	const response = await apiRequest.call(this, 'GET', `${BASE_URL_V2}/agents`, {}, qs);
 
 	const agents = response.agents ?? [];
 
@@ -89,7 +85,7 @@ export async function agentsResourceMapping(
 	const fields: ResourceMapperField[] = Object.entries(properties)
 		.map(([name, prop]) => {
 			const isRequired = requiredFields.includes(name);
-			const fieldType = isValidFieldType(prop.type) ? prop.type : 'string';
+			const fieldType = isValidFieldType((prop as any).type) ? (prop as any).type : 'string';
 			return {
 				id: name,
 				displayName: `${name}${isRequired ? ' (required)' : ''}`,

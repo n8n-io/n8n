@@ -1,0 +1,1 @@
+import{n as e}from"./_chunks/_format.mjs";import{t}from"./_chunks/libs/jsonc-parser.mjs";import{n}from"./_chunks/json.mjs";function r(n,r){let i=t(n,r?.errors,r);return e(n,i,r),i}function i(e,t){return n(e,t)}export{r as parseJSONC,i as stringifyJSONC};

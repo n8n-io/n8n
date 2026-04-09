@@ -1,0 +1,68 @@
+{
+  "name": "eslint-plugin-unused-imports",
+  "version": "4.4.1",
+  "type": "commonjs",
+  "description": "Report and remove unused es6 modules",
+  "keywords": [
+    "eslint",
+    "eslintplugin",
+    "eslint-plugin",
+    "import",
+    "unused",
+    "modules",
+    "autofix"
+  ],
+  "author": "Mikkel Holmer Pedersen",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "peerDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.0.0-0 || ^7.0.0 || ^6.0.0 || ^5.0.0",
+    "eslint": "^10.0.0 || ^9.0.0 || ^8.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@typescript-eslint/eslint-plugin": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/eslint": "^9.6.1",
+    "@typescript-eslint-v5/eslint-plugin": "npm:@typescript-eslint/eslint-plugin@^5.62.0",
+    "@typescript-eslint-v5/parser": "npm:@typescript-eslint/parser@^5.62.0",
+    "@typescript-eslint-v6/eslint-plugin": "npm:@typescript-eslint/eslint-plugin@^6.21.0",
+    "@typescript-eslint-v6/parser": "npm:@typescript-eslint/parser@^6.21.0",
+    "@typescript-eslint-v7/eslint-plugin": "npm:@typescript-eslint/eslint-plugin@^7.18.0",
+    "@typescript-eslint-v7/parser": "npm:@typescript-eslint/parser@^7.18.0",
+    "@typescript-eslint/eslint-plugin": "^8.46.1",
+    "@typescript-eslint/parser": "^8.46.1",
+    "@typescript-eslint/utils": "^8.46.1",
+    "bumpp": "^10.3.1",
+    "eslint": "^9.37.0",
+    "prettier": "^3.6.2",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.1",
+    "vitest": "^3.2.4"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sweepline/eslint-plugin-unused-imports.git"
+  },
+  "homepage": "https://github.com/sweepline/eslint-plugin-unused-imports",
+  "bugs": "https://github.com/sweepline/eslint-plugin-unused-imports/issues",
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest",
+    "format": "prettier --write '**/*.[jt]s'",
+    "release": "bumpp"
+  }
+}

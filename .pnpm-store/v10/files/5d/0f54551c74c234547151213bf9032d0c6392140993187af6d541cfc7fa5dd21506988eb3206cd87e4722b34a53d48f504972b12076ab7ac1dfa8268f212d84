@@ -1,0 +1,154 @@
+Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+
+const core = require('@sentry/core');
+const debugBuild = require('../debug-build.js');
+const baggage = require('./baggage.js');
+
+const LOG_PREFIX = '@sentry/instrumentation-http';
+
+/** Add a breadcrumb for outgoing requests. */
+function addRequestBreadcrumb(request, response) {
+  const data = getBreadcrumbData(request);
+
+  const statusCode = response?.statusCode;
+  const level = core.getBreadcrumbLogLevelFromHttpStatusCode(statusCode);
+
+  core.addBreadcrumb(
+    {
+      category: 'http',
+      data: {
+        status_code: statusCode,
+        ...data,
+      },
+      type: 'http',
+      level,
+    },
+    {
+      event: 'response',
+      request,
+      response,
+    },
+  );
+}
+
+/**
+ * Add trace propagation headers to an outgoing request.
+ * This must be called _before_ the request is sent!
+ */
+// eslint-disable-next-line complexity
+function addTracePropagationHeadersToOutgoingRequest(
+  request,
+  propagationDecisionMap,
+) {
+  const url = getClientRequestUrl(request);
+
+  const { tracePropagationTargets, propagateTraceparent } = core.getClient()?.getOptions() || {};
+  const headersToAdd = core.shouldPropagateTraceForUrl(url, tracePropagationTargets, propagationDecisionMap)
+    ? core.getTraceData({ propagateTraceparent })
+    : undefined;
+
+  if (!headersToAdd) {
+    return;
+  }
+
+  const { 'sentry-trace': sentryTrace, baggage: baggage$1, traceparent } = headersToAdd;
+
+  if (sentryTrace && !request.getHeader('sentry-trace')) {
+    try {
+      request.setHeader('sentry-trace', sentryTrace);
+      debugBuild.DEBUG_BUILD && core.debug.log(LOG_PREFIX, 'Added sentry-trace header to outgoing request');
+    } catch (error) {
+      debugBuild.DEBUG_BUILD &&
+        core.debug.error(
+          LOG_PREFIX,
+          'Failed to add sentry-trace header to outgoing request:',
+          core.isError(error) ? error.message : 'Unknown error',
+        );
+    }
+  }
+
+  if (traceparent && !request.getHeader('traceparent')) {
+    try {
+      request.setHeader('traceparent', traceparent);
+      debugBuild.DEBUG_BUILD && core.debug.log(LOG_PREFIX, 'Added traceparent header to outgoing request');
+    } catch (error) {
+      debugBuild.DEBUG_BUILD &&
+        core.debug.error(
+          LOG_PREFIX,
+          'Failed to add traceparent header to outgoing request:',
+          core.isError(error) ? error.message : 'Unknown error',
+        );
+    }
+  }
+
+  if (baggage$1) {
+    const newBaggage = baggage.mergeBaggageHeaders(request.getHeader('baggage'), baggage$1);
+    if (newBaggage) {
+      try {
+        request.setHeader('baggage', newBaggage);
+        debugBuild.DEBUG_BUILD && core.debug.log(LOG_PREFIX, 'Added baggage header to outgoing request');
+      } catch (error) {
+        debugBuild.DEBUG_BUILD &&
+          core.debug.error(
+            LOG_PREFIX,
+            'Failed to add baggage header to outgoing request:',
+            core.isError(error) ? error.message : 'Unknown error',
+          );
+      }
+    }
+  }
+}
+
+function getBreadcrumbData(request) {
+  try {
+    // `request.host` does not contain the port, but the host header does
+    const host = request.getHeader('host') || request.host;
+    const url = new URL(request.path, `${request.protocol}//${host}`);
+    const parsedUrl = core.parseUrl(url.toString());
+
+    const data = {
+      url: core.getSanitizedUrlString(parsedUrl),
+      'http.method': request.method || 'GET',
+    };
+
+    if (parsedUrl.search) {
+      data['http.query'] = parsedUrl.search;
+    }
+    if (parsedUrl.hash) {
+      data['http.fragment'] = parsedUrl.hash;
+    }
+
+    return data;
+  } catch {
+    return {};
+  }
+}
+
+/** Convert an outgoing request to request options. */
+function getRequestOptions(request) {
+  return {
+    method: request.method,
+    protocol: request.protocol,
+    host: request.host,
+    hostname: request.host,
+    path: request.path,
+    headers: request.getHeaders(),
+  };
+}
+
+/**
+ *
+ */
+function getClientRequestUrl(request) {
+  const hostname = request.getHeader('host') || request.host;
+  const protocol = request.protocol;
+  const path = request.path;
+
+  return `${protocol}//${hostname}${path}`;
+}
+
+exports.addRequestBreadcrumb = addRequestBreadcrumb;
+exports.addTracePropagationHeadersToOutgoingRequest = addTracePropagationHeadersToOutgoingRequest;
+exports.getClientRequestUrl = getClientRequestUrl;
+exports.getRequestOptions = getRequestOptions;
+//# sourceMappingURL=outgoingHttpRequest.js.map

@@ -1,0 +1,39 @@
+{
+  "name": "@vueuse/metadata",
+  "type": "module",
+  "version": "10.11.1",
+  "description": "Metadata for VueUse functions",
+  "author": "Anthony Fu <https://github.com/antfu>",
+  "license": "MIT",
+  "funding": "https://github.com/sponsors/antfu",
+  "homepage": "https://github.com/vueuse/vueuse/tree/main/packages/metadata#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vueuse/vueuse.git",
+    "directory": "packages/metadata"
+  },
+  "bugs": {
+    "url": "https://github.com/vueuse/vueuse/issues"
+  },
+  "keywords": [
+    "vue",
+    "vue-use"
+  ],
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "import": "./index.mjs",
+      "require": "./index.cjs"
+    },
+    "./*": "./*"
+  },
+  "main": "./index.cjs",
+  "module": "./index.mjs",
+  "types": "./index.d.ts",
+  "files": [
+    "index.*"
+  ],
+  "scripts": {
+    "update": "esno scripts/update.ts"
+  }
+}

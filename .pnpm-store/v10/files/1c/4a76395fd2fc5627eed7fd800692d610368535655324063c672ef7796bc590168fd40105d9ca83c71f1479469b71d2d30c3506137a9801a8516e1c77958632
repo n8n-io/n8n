@@ -1,0 +1,13 @@
+import { TimeType } from '../gen-nodejs/parquet_types';
+import { FieldDefinition, ParquetType, SchemaDefinition } from './declare';
+export declare function createStringField(optional?: boolean, fieldOptions?: FieldDefinition): FieldDefinition;
+export declare function createBooleanField(optional?: boolean, fieldOptions?: FieldDefinition): FieldDefinition;
+export declare function createIntField(size: 32 | 64, optional?: boolean, fieldOptions?: FieldDefinition): FieldDefinition;
+export declare function createFloatField(optional?: boolean, fieldOptions?: FieldDefinition): FieldDefinition;
+export declare function createDoubleField(optional?: boolean, fieldOptions?: FieldDefinition): FieldDefinition;
+export declare function createDecimalField(precision: number, optional?: boolean, fieldOptions?: FieldDefinition): FieldDefinition;
+export declare function createTimestampField(optional?: boolean, fieldOptions?: FieldDefinition): FieldDefinition;
+export declare function createStructField(fields: SchemaDefinition, optional?: boolean): FieldDefinition;
+export declare function createStructListField(fields: SchemaDefinition, optional?: boolean): FieldDefinition;
+export declare function createListField(type: ParquetType, optional?: boolean, elementOptions?: FieldDefinition): FieldDefinition;
+export declare function createTimeField(logicalType: TimeType, optional?: boolean, fieldOptions?: FieldDefinition): FieldDefinition;

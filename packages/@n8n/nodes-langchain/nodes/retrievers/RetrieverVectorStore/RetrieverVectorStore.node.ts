@@ -82,9 +82,10 @@ export class RetrieverVectorStore implements INodeType {
 			| {
 					reranker: BaseDocumentCompressor;
 					vectorStore: VectorStore;
-			  };
+			};
 
-		let retriever = null;
+		// let retriever = null;
+		let retriever: any = null;
 
 		if (vectorStore instanceof VectorStore) {
 			retriever = vectorStore.asRetriever(topK);

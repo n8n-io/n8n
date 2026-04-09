@@ -17,7 +17,7 @@ import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-h
 import {
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
-	getProxyAgent,
+	// getProxyAgent,
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
 import { formatBuiltInTools, prepareAdditionalResponsesParams } from './common';
@@ -761,12 +761,12 @@ export class LmChatOpenAi implements INodeType {
 		}
 
 		const timeout = options.timeout;
-		configuration.fetchOptions = {
-			dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1', {
-				headersTimeout: timeout,
-				bodyTimeout: timeout,
-			}),
-		};
+		// configuration.fetchOptions = {
+		// 	dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1', {
+		// 		headersTimeout: timeout,
+		// 		bodyTimeout: timeout,
+		// 	}),
+		// };
 		configuration.defaultHeaders = mergeCustomHeaders(
 			credentials,
 			(configuration.defaultHeaders ?? {}) as Record<string, string>,

@@ -1,0 +1,145 @@
+---
+title: smoothStream
+description: Stream transformer for smoothing text and reasoning output
+---
+
+# `smoothStream()`
+
+`smoothStream` is a utility function that creates a TransformStream
+for the `streamText` `transform` option
+to smooth out text and reasoning streaming by buffering and releasing complete chunks with configurable delays.
+This creates a more natural reading experience when streaming text and reasoning responses.
+
+```ts highlight={"6-9"}
+import { smoothStream, streamText } from 'ai';
+
+const result = streamText({
+  model,
+  prompt,
+  experimental_transform: smoothStream({
+    delayInMs: 20, // optional: defaults to 10ms
+    chunking: 'line', // optional: defaults to 'word'
+  }),
+});
+```
+
+## Import
+
+<Snippet text={`import { smoothStream } from "ai"`} prompt={false} />
+
+## API Signature
+
+### Parameters
+
+<PropertiesTable
+  content={[
+    {
+      name: 'delayInMs',
+      type: 'number | null',
+      isOptional: true,
+      description:
+        'The delay in milliseconds between outputting each chunk. Defaults to 10ms. Set to `null` to disable delays.',
+    },
+    {
+      name: 'chunking',
+      type: '"word" | "line" | RegExp | Intl.Segmenter | (buffer: string) => string | undefined | null',
+      isOptional: true,
+      description:
+        'Controls how text and reasoning content is chunked for streaming. Use "word" to stream word by word (default), "line" to stream line by line, an Intl.Segmenter for locale-aware word segmentation (recommended for CJK languages), or provide a custom callback or RegExp pattern for custom chunking.',
+    },
+  ]}
+/>
+
+#### Word chunking caveats with non-latin languages
+
+The word based chunking **does not work well** with the following languages that do not delimit words with spaces:
+
+- Chinese
+- Japanese
+- Korean
+- Vietnamese
+- Thai
+
+#### Using Intl.Segmenter (recommended)
+
+For these languages, we recommend using `Intl.Segmenter` for proper locale-aware word segmentation.
+This is the preferred approach as it provides accurate word boundaries for CJK and other languages.
+
+<Note>
+  `Intl.Segmenter` is available in Node.js 16+ and all modern browsers (Chrome
+  87+, Firefox 125+, Safari 14.1+).
+</Note>
+
+```tsx filename="Japanese example with Intl.Segmenter"
+import { smoothStream, streamText } from 'ai';
+__PROVIDER_IMPORT__;
+
+const segmenter = new Intl.Segmenter('ja', { granularity: 'word' });
+
+const result = streamText({
+  model: __MODEL__,
+  prompt: 'Your prompt here',
+  experimental_transform: smoothStream({
+    chunking: segmenter,
+  }),
+});
+```
+
+```tsx filename="Chinese example with Intl.Segmenter"
+import { smoothStream, streamText } from 'ai';
+__PROVIDER_IMPORT__;
+
+const segmenter = new Intl.Segmenter('zh', { granularity: 'word' });
+
+const result = streamText({
+  model: __MODEL__,
+  prompt: 'Your prompt here',
+  experimental_transform: smoothStream({
+    chunking: segmenter,
+  }),
+});
+```
+
+#### Regex based chunking
+
+To use regex based chunking, pass a `RegExp` to the `chunking` option.
+
+```ts
+// To split on underscores:
+smoothStream({
+  chunking: /_+/,
+});
+
+// Also can do it like this, same behavior
+smoothStream({
+  chunking: /[^_]*_/,
+});
+```
+
+#### Custom callback chunking
+
+To use a custom callback for chunking, pass a function to the `chunking` option.
+
+```ts
+smoothStream({
+  chunking: text => {
+    const findString = 'some string';
+    const index = text.indexOf(findString);
+
+    if (index === -1) {
+      return null;
+    }
+
+    return text.slice(0, index) + findString;
+  },
+});
+```
+
+### Returns
+
+Returns a `TransformStream` that:
+
+- Buffers incoming text and reasoning chunks
+- Releases content when the chunking pattern is encountered
+- Adds configurable delays between chunks for smooth output
+- Passes through non-text/reasoning chunks (like tool calls, step-finish events) immediately

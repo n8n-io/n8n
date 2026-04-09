@@ -1,0 +1,12 @@
+{
+    "name": "@types/psl",
+    "version": "1.11.0",
+    "description": "Stub TypeScript definitions entry for psl, which provides its own types definitions",
+    "main": "",
+    "scripts": {},
+    "license": "MIT",
+    "dependencies": {
+        "psl": "*"
+    },
+    "deprecated": "This is a stub types definition. psl provides its own type definitions, so you do not need this installed."
+}

@@ -1,0 +1,191 @@
+---
+title: embedMany
+description: API Reference for embedMany.
+---
+
+# `embedMany()`
+
+Embed several values using an embedding model.
+
+`embedMany` automatically splits large requests into smaller chunks if the model
+has a limit on how many embeddings can be generated in a single call.
+
+```ts
+import { embedMany } from 'ai';
+
+const { embeddings } = await embedMany({
+  model: 'openai/text-embedding-3-small',
+  values: [
+    'sunny day at the beach',
+    'rainy afternoon in the city',
+    'snowy night in the mountains',
+  ],
+});
+```
+
+## Import
+
+<Snippet text={`import { embedMany } from "ai"`} prompt={false} />
+
+## API Signature
+
+### Parameters
+
+<PropertiesTable
+  content={[
+    {
+      name: 'model',
+      type: 'EmbeddingModel',
+      description:
+        "The embedding model to use. Example: openai.embeddingModel('text-embedding-3-small')",
+    },
+    {
+      name: 'values',
+      type: 'Array<string>',
+      description: 'The values to embed.',
+    },
+    {
+      name: 'maxRetries',
+      type: 'number',
+      isOptional: true,
+      description:
+        'Maximum number of retries. Set to 0 to disable retries. Default: 2.',
+    },
+    {
+      name: 'abortSignal',
+      type: 'AbortSignal',
+      isOptional: true,
+      description:
+        'An optional abort signal that can be used to cancel the call.',
+    },
+    {
+      name: 'headers',
+      type: 'Record<string, string>',
+      isOptional: true,
+      description:
+        'Additional HTTP headers to be sent with the request. Only applicable for HTTP-based providers.',
+    },
+    {
+      name: 'providerOptions',
+      type: 'ProviderOptions',
+      isOptional: true,
+      description:
+        'Provider-specific options that are passed through to the provider.',
+    },
+    {
+      name: 'maxParallelCalls',
+      type: 'number',
+      isOptional: true,
+      description:
+        'Maximum number of concurrent requests to the provider. Default: Infinity.',
+    },
+    {
+      name: 'experimental_telemetry',
+      type: 'TelemetrySettings',
+      isOptional: true,
+      description: 'Telemetry configuration. Experimental feature.',
+      properties: [
+        {
+          type: 'TelemetrySettings',
+          parameters: [
+            {
+              name: 'isEnabled',
+              type: 'boolean',
+              isOptional: true,
+              description:
+                'Enable or disable telemetry. Disabled by default while experimental.',
+            },
+            {
+              name: 'recordInputs',
+              type: 'boolean',
+              isOptional: true,
+              description:
+                'Enable or disable input recording. Enabled by default.',
+            },
+            {
+              name: 'recordOutputs',
+              type: 'boolean',
+              isOptional: true,
+              description:
+                'Enable or disable output recording. Enabled by default.',
+            },
+            {
+              name: 'functionId',
+              type: 'string',
+              isOptional: true,
+              description:
+                'Identifier for this function. Used to group telemetry data by function.',
+            },
+            {
+              name: 'metadata',
+              isOptional: true,
+              type: 'Record<string, string | number | boolean | Array<null | undefined | string> | Array<null | undefined | number> | Array<null | undefined | boolean>>',
+              description:
+                'Additional information to include in the telemetry data.',
+            },
+            {
+              name: 'tracer',
+              type: 'Tracer',
+              isOptional: true,
+              description: 'A custom tracer to use for the telemetry data.',
+            },
+          ],
+        },
+      ],
+    },
+  ]}
+/>
+
+### Returns
+
+<PropertiesTable
+  content={[
+    {
+      name: 'values',
+      type: 'Array<string>',
+      description: 'The values that were embedded.',
+    },
+    {
+      name: 'embeddings',
+      type: 'number[][]',
+      description: 'The embeddings. They are in the same order as the values.',
+    },
+    {
+      name: 'usage',
+      type: 'EmbeddingModelUsage',
+      description: 'The token usage for generating the embeddings.',
+      properties: [
+        {
+          type: 'EmbeddingModelUsage',
+          parameters: [
+            {
+              name: 'tokens',
+              type: 'number',
+              description: 'The total number of input tokens.',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'warnings',
+      type: 'Warning[]',
+      description:
+        'Warnings from the model provider (e.g. unsupported settings).',
+    },
+    {
+      name: 'providerMetadata',
+      type: 'ProviderMetadata | undefined',
+      isOptional: true,
+      description:
+        'Optional metadata from the provider. The outer key is the provider name. The inner values are the metadata. Details depend on the provider.',
+    },
+    {
+      name: 'responses',
+      type: 'Array<{ headers?: Record<string, string>; body?: unknown } | undefined>',
+      isOptional: true,
+      description:
+        'Optional raw response data from each chunk request. There may be multiple responses if the request was split into multiple chunks.',
+    },
+  ]}
+/>

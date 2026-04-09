@@ -1,0 +1,32 @@
+import type { AgComponentSelector } from '../interfaces/agComponent';
+import type { AgCoreBeanCollection } from '../interfaces/agCoreBeanCollection';
+import type { BaseEvents } from '../interfaces/baseEvents';
+import type { BaseProperties } from '../interfaces/baseProperties';
+import type { IPropertiesService } from '../interfaces/iProperties';
+import { AgAbstractInputField } from './agAbstractInputField';
+import type { AgCheckboxParams, LabelAlignment } from './agFieldParams';
+import type { AgWidgetSelectorType } from './agWidgetSelectorType';
+export declare class AgCheckbox<TBeanCollection extends AgCoreBeanCollection<TProperties, TGlobalEvents, TCommon, TPropertiesService>, TProperties extends BaseProperties, TGlobalEvents extends BaseEvents, TCommon, TPropertiesService extends IPropertiesService<TProperties, TCommon>, TComponentSelectorType extends string, TConfig extends AgCheckboxParams<TComponentSelectorType> = AgCheckboxParams<TComponentSelectorType>> extends AgAbstractInputField<TBeanCollection, TProperties, TGlobalEvents, TCommon, TPropertiesService, TComponentSelectorType, HTMLInputElement, boolean, TConfig> {
+    protected labelAlignment: LabelAlignment;
+    private selected?;
+    private readOnly;
+    private passive;
+    constructor(config?: TConfig, className?: string, inputType?: string);
+    postConstruct(): void;
+    protected addInputListeners(): void;
+    getNextValue(): boolean;
+    setPassive(passive: boolean): void;
+    isReadOnly(): boolean;
+    setReadOnly(readOnly: boolean): void;
+    setDisabled(disabled: boolean): this;
+    toggle(): void;
+    getValue(): boolean | undefined;
+    setValue(value?: boolean, silent?: boolean): this;
+    setName(name: string): this;
+    protected isSelected(): boolean | undefined;
+    private setSelected;
+    private dispatchChange;
+    private onCheckboxClick;
+    private refreshSelectedClass;
+}
+export declare const AgCheckboxSelector: AgComponentSelector<AgWidgetSelectorType>;

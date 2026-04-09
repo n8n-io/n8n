@@ -1,0 +1,110 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [ master ]
+
+env:
+  CI_CHECK_FAIL: ssh2
+  OPENSSL_CONF: /dev/null
+
+jobs:
+  tests-linux:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [10.16.0, 10.x, 12.x, 14.x, 16.x, 18.x, 20.x, 22.x, 24.x]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Check Node.js version
+        run: node -pe process.versions
+      - name: Check npm version
+        run: npm -v
+      - name: Install Python 2.7 (node <16.x)
+        if: ${{ contains(fromJSON('["10.16.0", "10.x", "12.x", "14.x"]'), matrix.node-version) }}
+        uses: LizardByte/setup-python-action@v2024.1105.190605
+        with:
+          python-version: '2.7'
+      - name: Use Python 2.7 (node <16.x)
+        if: ${{ contains(fromJSON('["10.16.0", "10.x", "12.x", "14.x"]'), matrix.node-version) }}
+        run: echo "PYTHON=$(which python2.7)" >> "$GITHUB_ENV"
+      - name: Install module
+        run: npm install
+      - name: Run tests
+        run: npm test
+  tests-macos:
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [16.x, 18.x, 20.x, 22.x, 24.x]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Install Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Check Node.js version
+        run: node -pe process.versions
+      - name: Check npm version
+        run: npm -v
+      - name: Install module
+        run: npm install
+      - name: Run tests
+        run: npm test
+  tests-macos-homebrew:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Use Node.js (latest)
+        run: brew install node
+      - name: Install Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Check Node.js version
+        run: node -pe process.versions
+      - name: Check npm version
+        run: npm -v
+      - name: Install module
+        run: npm install
+      - name: Run tests
+        run: npm test
+  tests-windows:
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [16.x, 18.x, 20.x, 22.x, 24.x]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Check Node.js version
+        run: node -pe process.versions
+      - name: Check npm version
+        run: npm -v
+      - name: Install module
+        run: npm install
+      - name: Run tests
+        run: npm test

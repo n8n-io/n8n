@@ -304,7 +304,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		) {
 			break;
 		}
-		messages.push(response.choices[0].message);
+		// messages.push(response.choices[0].message);
+		messages.push(response.choices[0].message as any);
 
 		for (const toolCall of toolCalls) {
 			const functionName = toolCall.function.name;
@@ -341,7 +342,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	if (response_format) {
 		response.choices = response.choices.map((choice) => {
 			try {
-				choice.message.content = JSON.parse(choice.message.content);
+				// choice.message.content = JSON.parse(choice.message.content);
+				choice.message.content = JSON.parse(choice.message.content as string);
 			} catch (error) {}
 			return choice;
 		});
@@ -354,12 +356,12 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	if (simplify) {
 		for (const entry of response.choices) {
 			returnData.push({
-				json: entry,
+				json: entry as any,
 				pairedItem: { item: i },
 			});
 		}
 	} else {
-		returnData.push({ json: response, pairedItem: { item: i } });
+		returnData.push({ json: response as any, pairedItem: { item: i } });
 	}
 
 	return returnData;

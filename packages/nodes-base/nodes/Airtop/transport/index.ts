@@ -35,9 +35,5 @@ export async function apiRequest<T extends IAirtopResponse = IAirtopResponse>(
 		delete options.body;
 	}
 
-	return await this.helpers.httpRequestWithAuthentication.call<
-		IExecuteFunctions | ILoadOptionsFunctions,
-		[string, IHttpRequestOptions],
-		Promise<T>
-	>(this, 'airtopApi', options);
+	return await this.helpers.httpRequestWithAuthentication.call(this, 'airtopApi', options);
 }

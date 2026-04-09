@@ -1,6 +1,6 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
-	getProxyAgent,
+	// getProxyAgent,
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
@@ -296,12 +296,12 @@ export class LmChatOpenRouter implements INodeType {
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
 			fetch: createOpenRouterFetch(globalThis.fetch),
-			fetchOptions: {
-				dispatcher: getProxyAgent(credentials.url, {
-					headersTimeout: timeout,
-					bodyTimeout: timeout,
-				}),
-			},
+			// fetchOptions: {
+			// 	dispatcher: getProxyAgent(credentials.url, {
+			// 		headersTimeout: timeout,
+			// 		bodyTimeout: timeout,
+			// 	}),
+			// },
 		};
 
 		const model = new ChatOpenAI({

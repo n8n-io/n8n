@@ -12,11 +12,7 @@ export async function getAgentDetails(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	agentId: string,
 ): Promise<AirtopAgentResponse> {
-	return await apiRequest.call<
-		IExecuteFunctions | ILoadOptionsFunctions,
-		['GET', string],
-		Promise<AirtopAgentResponse>
-	>(this, 'GET', `${BASE_URL_V2}/agents/${agentId}`);
+	return await apiRequest.call(this, 'GET', `${BASE_URL_V2}/agents/${agentId}`);
 }
 
 /**
@@ -57,11 +53,11 @@ export async function getAgentStatus(
 	invocationId: string,
 ): Promise<AgentResultResponse> {
 	const resultUrl = `${AIRTOP_HOOKS_BASE_URL}/agents/${agentId}/invocations/${invocationId}/result`;
-	return await apiRequest.call<IExecuteFunctions, ['GET', string], Promise<AgentResultResponse>>(
-		this,
-		'GET',
-		resultUrl,
-	);
+	return await apiRequest.call(
+        this,
+        'GET',
+        resultUrl,
+    );
 }
 
 /**

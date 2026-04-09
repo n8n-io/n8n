@@ -1,1 +1,0 @@
-export { h as basename, p as default, d as delimiter, f as dirname, e as extname, g as format, i as isAbsolute, j as join, a as normalize, b as normalizeString, k as parse, c as relative, r as resolve, s as sep, t as toNamespacedPath } from './shared/pathe.ff20891b.mjs';

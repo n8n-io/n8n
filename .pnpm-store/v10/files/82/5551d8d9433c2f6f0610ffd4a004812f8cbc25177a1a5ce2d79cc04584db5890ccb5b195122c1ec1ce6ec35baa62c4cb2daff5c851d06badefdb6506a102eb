@@ -1,0 +1,79 @@
+{
+  "name": "@smithy/middleware-retry",
+  "version": "4.4.44",
+  "scripts": {
+    "build": "concurrently 'yarn:build:cjs' 'yarn:build:es' 'yarn:build:types && yarn build:types:downlevel'",
+    "build:cjs": "node ../../scripts/inline middleware-retry",
+    "build:es": "yarn g:tsc -p tsconfig.es.json",
+    "build:types": "yarn g:tsc -p tsconfig.types.json",
+    "build:types:downlevel": "premove dist-types/ts3.4 && downlevel-dts dist-types dist-types/ts3.4",
+    "stage-release": "premove .release && yarn pack && mkdir ./.release && tar zxvf ./package.tgz --directory ./.release && rm ./package.tgz",
+    "clean": "premove dist-cjs dist-es dist-types tsconfig.cjs.tsbuildinfo tsconfig.es.tsbuildinfo tsconfig.types.tsbuildinfo",
+    "lint": "eslint -c ../../.eslintrc.js \"src/**/*.ts\"",
+    "format": "prettier --config ../../prettier.config.js --ignore-path ../../.prettierignore --write \"**/*.{ts,md,json}\"",
+    "extract:docs": "api-extractor run --local",
+    "test": "yarn g:vitest run",
+    "test:integration": "yarn g:vitest run -c vitest.config.integ.mts",
+    "test:watch": "yarn g:vitest watch",
+    "test:integration:watch": "yarn g:vitest watch -c vitest.config.integ.mts"
+  },
+  "main": "./dist-cjs/index.js",
+  "module": "./dist-es/index.js",
+  "types": "./dist-types/index.d.ts",
+  "browser": {
+    "./dist-es/isStreamingPayload/isStreamingPayload": "./dist-es/isStreamingPayload/isStreamingPayload.browser"
+  },
+  "react-native": {
+    "./dist-cjs/isStreamingPayload/isStreamingPayload": "./dist-cjs/isStreamingPayload/isStreamingPayload.browser",
+    "./dist-es/isStreamingPayload/isStreamingPayload": "./dist-es/isStreamingPayload/isStreamingPayload.browser"
+  },
+  "author": {
+    "name": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/"
+  },
+  "license": "Apache-2.0",
+  "sideEffects": false,
+  "dependencies": {
+    "@smithy/node-config-provider": "^4.3.12",
+    "@smithy/protocol-http": "^5.3.12",
+    "@smithy/service-error-classification": "^4.2.12",
+    "@smithy/smithy-client": "^4.12.7",
+    "@smithy/types": "^4.13.1",
+    "@smithy/util-middleware": "^4.2.12",
+    "@smithy/util-retry": "^4.2.12",
+    "@smithy/uuid": "^1.1.2",
+    "tslib": "^2.6.2"
+  },
+  "devDependencies": {
+    "@smithy/util-test": "^0.2.8",
+    "concurrently": "7.0.0",
+    "downlevel-dts": "0.10.1",
+    "premove": "4.0.0",
+    "typedoc": "0.23.23"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "typesVersions": {
+    "<4.5": {
+      "dist-types/*": [
+        "dist-types/ts3.4/*"
+      ]
+    }
+  },
+  "files": [
+    "dist-*/**"
+  ],
+  "homepage": "https://github.com/smithy-lang/smithy-typescript/tree/main/packages/middleware-retry",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/smithy-lang/smithy-typescript.git",
+    "directory": "packages/middleware-retry"
+  },
+  "typedoc": {
+    "entryPoint": "src/index.ts"
+  },
+  "publishConfig": {
+    "directory": ".release/package"
+  }
+}

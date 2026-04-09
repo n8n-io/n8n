@@ -1,0 +1,1 @@
+{"version":3,"file":"remove-write-only-properties.d.ts","sourceRoot":"","sources":["../../../src/modules/description-parser/remove-write-only-properties.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,cAAc,EAAE,MAAM,wBAAwB,CAAC;AAE7D,wBAAgB,yBAAyB,CAAC,CAAC,EAAE,MAAM,EAAE,cAAc,CAAC,CAAC,CAAC,GAAG,cAAc,CAAC,CAAC,CAAC,CA2CzF"}

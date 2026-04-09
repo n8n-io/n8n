@@ -1,0 +1,607 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://json.schemastore.org/lefthook.json",
+  "$defs": {
+    "Command": {
+      "properties": {
+        "run": {
+          "type": "string"
+        },
+        "files": {
+          "type": "string"
+        },
+        "skip": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "array"
+            }
+          ]
+        },
+        "only": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "array"
+            }
+          ]
+        },
+        "tags": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array"
+            }
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "env": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "file_types": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "glob": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array"
+            }
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "root": {
+          "type": "string"
+        },
+        "exclude": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array"
+            }
+          ]
+        },
+        "priority": {
+          "type": "integer"
+        },
+        "fail_text": {
+          "type": "string"
+        },
+        "interactive": {
+          "type": "boolean"
+        },
+        "use_stdin": {
+          "type": "boolean"
+        },
+        "stage_fixed": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "run"
+      ]
+    },
+    "Group": {
+      "properties": {
+        "root": {
+          "type": "string"
+        },
+        "parallel": {
+          "type": "boolean"
+        },
+        "piped": {
+          "type": "boolean"
+        },
+        "jobs": {
+          "items": {
+            "$ref": "#/$defs/Job"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "jobs"
+      ]
+    },
+    "Hook": {
+      "properties": {
+        "parallel": {
+          "type": "boolean"
+        },
+        "piped": {
+          "type": "boolean"
+        },
+        "follow": {
+          "type": "boolean"
+        },
+        "fail_on_changes": {
+          "type": "string",
+          "enum": [
+            "true",
+            "1",
+            "0",
+            "false",
+            "never",
+            "always",
+            "ci"
+          ]
+        },
+        "files": {
+          "type": "string"
+        },
+        "exclude_tags": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "exclude": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "skip": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "array"
+            }
+          ]
+        },
+        "only": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "array"
+            }
+          ]
+        },
+        "jobs": {
+          "items": {
+            "$ref": "#/$defs/Job"
+          },
+          "type": "array"
+        },
+        "commands": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Command"
+          },
+          "type": "object"
+        },
+        "scripts": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Script"
+          },
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "Job": {
+      "oneOf": [
+        {
+          "required": [
+            "run"
+          ],
+          "title": "Run a command"
+        },
+        {
+          "required": [
+            "script"
+          ],
+          "title": "Run a script"
+        },
+        {
+          "required": [
+            "group"
+          ],
+          "title": "Run a group"
+        }
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "run": {
+          "type": "string"
+        },
+        "script": {
+          "type": "string"
+        },
+        "runner": {
+          "type": "string"
+        },
+        "glob": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array"
+            }
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "root": {
+          "type": "string"
+        },
+        "files": {
+          "type": "string"
+        },
+        "fail_text": {
+          "type": "string"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "file_types": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "env": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "interactive": {
+          "type": "boolean"
+        },
+        "use_stdin": {
+          "type": "boolean"
+        },
+        "stage_fixed": {
+          "type": "boolean"
+        },
+        "exclude": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array"
+            }
+          ]
+        },
+        "skip": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "array"
+            }
+          ]
+        },
+        "only": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "array"
+            }
+          ]
+        },
+        "group": {
+          "$ref": "#/$defs/Group"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "Remote": {
+      "properties": {
+        "git_url": {
+          "type": "string",
+          "description": "A URL to Git repository. It will be accessed with privileges of the machine lefthook runs on."
+        },
+        "ref": {
+          "type": "string",
+          "description": "An optional *branch* or *tag* name"
+        },
+        "configs": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "An optional array of config paths from remote's root",
+          "default": [
+            "lefthook.yml"
+          ]
+        },
+        "refetch": {
+          "type": "boolean",
+          "description": "Set to true if you want to always refetch the remote"
+        },
+        "refetch_frequency": {
+          "type": "string",
+          "description": "Provide a frequency for the remotes refetches",
+          "examples": [
+            "24h"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "Script": {
+      "properties": {
+        "runner": {
+          "type": "string"
+        },
+        "skip": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "array"
+            }
+          ]
+        },
+        "only": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "array"
+            }
+          ]
+        },
+        "tags": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array"
+            }
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "env": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "priority": {
+          "type": "integer"
+        },
+        "fail_text": {
+          "type": "string"
+        },
+        "interactive": {
+          "type": "boolean"
+        },
+        "use_stdin": {
+          "type": "boolean"
+        },
+        "stage_fixed": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    }
+  },
+  "$comment": "Last updated on 2025.09.29.",
+  "properties": {
+    "min_version": {
+      "type": "string",
+      "description": "Specify a minimum version for the lefthook binary"
+    },
+    "lefthook": {
+      "type": "string",
+      "description": "Lefthook executable path or command"
+    },
+    "source_dir": {
+      "type": "string",
+      "description": "Change a directory for script files. Directory for script files contains folders with git hook names which contain script files.",
+      "default": ".lefthook/"
+    },
+    "source_dir_local": {
+      "type": "string",
+      "description": "Change a directory for local script files (not stored in VCS)",
+      "default": ".lefthook-local/"
+    },
+    "rc": {
+      "type": "string",
+      "description": "Provide an rc file - a simple sh script"
+    },
+    "skip_output": {
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "array"
+        }
+      ]
+    },
+    "output": {
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "array"
+        }
+      ],
+      "description": "Manage verbosity by skipping the printing of output of some steps"
+    },
+    "extends": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array",
+      "description": "Specify files to extend config with"
+    },
+    "no_tty": {
+      "type": "boolean",
+      "description": "Whether hide spinner and other interactive things"
+    },
+    "assert_lefthook_installed": {
+      "type": "boolean"
+    },
+    "colors": {
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "object"
+        }
+      ],
+      "description": "Enable disable or set your own colors for lefthook output"
+    },
+    "skip_lfs": {
+      "type": "boolean",
+      "description": "Skip running Git LFS hooks (enabled by default)"
+    },
+    "remotes": {
+      "items": {
+        "$ref": "#/$defs/Remote"
+      },
+      "type": "array",
+      "description": "Provide multiple remote configs to use lefthook configurations shared across projects. Lefthook will automatically download and merge configurations into main config."
+    },
+    "templates": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "type": "object",
+      "description": "Custom templates for replacements in run commands."
+    },
+    "$schema": {
+      "type": "string"
+    },
+    "pre-commit": {
+      "$ref": "#/$defs/Hook"
+    },
+    "applypatch-msg": {
+      "$ref": "#/$defs/Hook"
+    },
+    "pre-applypatch": {
+      "$ref": "#/$defs/Hook"
+    },
+    "post-applypatch": {
+      "$ref": "#/$defs/Hook"
+    },
+    "pre-merge-commit": {
+      "$ref": "#/$defs/Hook"
+    },
+    "prepare-commit-msg": {
+      "$ref": "#/$defs/Hook"
+    },
+    "commit-msg": {
+      "$ref": "#/$defs/Hook"
+    },
+    "post-commit": {
+      "$ref": "#/$defs/Hook"
+    },
+    "pre-rebase": {
+      "$ref": "#/$defs/Hook"
+    },
+    "post-checkout": {
+      "$ref": "#/$defs/Hook"
+    },
+    "post-merge": {
+      "$ref": "#/$defs/Hook"
+    },
+    "pre-push": {
+      "$ref": "#/$defs/Hook"
+    },
+    "pre-receive": {
+      "$ref": "#/$defs/Hook"
+    },
+    "update": {
+      "$ref": "#/$defs/Hook"
+    },
+    "proc-receive": {
+      "$ref": "#/$defs/Hook"
+    },
+    "post-receive": {
+      "$ref": "#/$defs/Hook"
+    },
+    "post-update": {
+      "$ref": "#/$defs/Hook"
+    },
+    "reference-transaction": {
+      "$ref": "#/$defs/Hook"
+    },
+    "push-to-checkout": {
+      "$ref": "#/$defs/Hook"
+    },
+    "pre-auto-gc": {
+      "$ref": "#/$defs/Hook"
+    },
+    "post-rewrite": {
+      "$ref": "#/$defs/Hook"
+    },
+    "sendemail-validate": {
+      "$ref": "#/$defs/Hook"
+    },
+    "fsmonitor-watchman": {
+      "$ref": "#/$defs/Hook"
+    },
+    "p4-changelist": {
+      "$ref": "#/$defs/Hook"
+    },
+    "p4-prepare-changelist": {
+      "$ref": "#/$defs/Hook"
+    },
+    "p4-post-changelist": {
+      "$ref": "#/$defs/Hook"
+    },
+    "p4-pre-submit": {
+      "$ref": "#/$defs/Hook"
+    },
+    "post-index-change": {
+      "$ref": "#/$defs/Hook"
+    }
+  },
+  "additionalProperties": false,
+  "type": "object"
+}

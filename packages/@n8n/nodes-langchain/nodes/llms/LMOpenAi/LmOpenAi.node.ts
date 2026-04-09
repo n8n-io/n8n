@@ -1,5 +1,5 @@
 import { OpenAI, type ClientOptions } from '@langchain/openai';
-import { getProxyAgent, makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
+import { /* getProxyAgent, */ makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	INodeType,
@@ -220,7 +220,7 @@ export class LmOpenAi implements INodeType {
 
 				for (const model of data) {
 					if (!options.baseURL && !model.owned_by?.startsWith('system')) continue;
-					results.push({
+					(results as any[]).push({
 						name: model.id,
 						value: model.id,
 					});
@@ -253,12 +253,12 @@ export class LmOpenAi implements INodeType {
 		const defaultHeaders = mergeCustomHeaders(credentials, openAiDefaultHeaders ?? {});
 		const timeout = options.timeout;
 		const configuration: ClientOptions = {
-			fetchOptions: {
-				dispatcher: getProxyAgent(options.baseURL ?? 'https://api.openai.com/v1', {
-					headersTimeout: timeout,
-					bodyTimeout: timeout,
-				}),
-			},
+			// fetchOptions: {
+			// 	dispatcher: getProxyAgent(options.baseURL ?? 'https://api.openai.com/v1', {
+			// 		headersTimeout: timeout,
+			// 		bodyTimeout: timeout,
+			// 	}),
+			// },
 			defaultHeaders,
 		};
 

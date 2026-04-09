@@ -1,1 +1,0 @@
-{"version":3,"file":"triple-slash-reference.d.ts","sourceRoot":"","sources":["../../src/rules/triple-slash-reference.ts"],"names":[],"mappings":"AAMA,MAAM,MAAM,OAAO,GAAG;IACpB;QACE,GAAG,CAAC,EAAE,QAAQ,GAAG,OAAO,CAAC;QACzB,IAAI,CAAC,EAAE,QAAQ,GAAG,OAAO,CAAC;QAC1B,KAAK,CAAC,EAAE,QAAQ,GAAG,OAAO,GAAG,eAAe,CAAC;KAC9C;CACF,CAAC;AACF,MAAM,MAAM,UAAU,GAAG,sBAAsB,CAAC;;AAEhD,wBA0HG"}

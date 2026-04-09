@@ -1,0 +1,68 @@
+{
+  "name": "package-json-from-dist",
+  "version": "1.0.1",
+  "description": "Load the local package.json from either src or dist folder",
+  "main": "./dist/commonjs/index.js",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/index.d.ts",
+        "default": "./dist/commonjs/index.js"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "preversion": "npm test",
+    "postversion": "npm publish",
+    "prepublishOnly": "git push origin --follow-tags",
+    "prepare": "tshy",
+    "pretest": "npm run prepare",
+    "presnap": "npm run prepare",
+    "test": "tap",
+    "snap": "tap",
+    "format": "prettier --write . --log-level warn",
+    "typedoc": "typedoc"
+  },
+  "author": "Isaac Z. Schlueter <i@izs.me> (https://izs.me)",
+  "license": "BlueOak-1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/isaacs/package-json-from-dist.git"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.12",
+    "prettier": "^3.2.5",
+    "tap": "^18.5.3",
+    "typedoc": "^0.24.8",
+    "typescript": "^5.1.6",
+    "tshy": "^1.14.0"
+  },
+  "prettier": {
+    "semi": false,
+    "printWidth": 70,
+    "tabWidth": 2,
+    "useTabs": false,
+    "singleQuote": true,
+    "jsxSingleQuote": false,
+    "bracketSameLine": true,
+    "arrowParens": "avoid",
+    "endOfLine": "lf",
+    "experimentalTernaries": true
+  },
+  "tshy": {
+    "exports": {
+      "./package.json": "./package.json",
+      ".": "./src/index.ts"
+    }
+  },
+  "types": "./dist/commonjs/index.d.ts",
+  "type": "module"
+}

@@ -1,0 +1,117 @@
+{
+	"name": "globals",
+	"version": "16.5.0",
+	"description": "Global identifiers from different JavaScript environments",
+	"license": "MIT",
+	"repository": "sindresorhus/globals",
+	"funding": "https://github.com/sponsors/sindresorhus",
+	"author": {
+		"name": "Sindre Sorhus",
+		"email": "sindresorhus@gmail.com",
+		"url": "https://sindresorhus.com"
+	},
+	"sideEffects": false,
+	"engines": {
+		"node": ">=18"
+	},
+	"scripts": {
+		"test": "npm run build && xo && ava && tsd",
+		"prepare": "npm run build",
+		"update": "node scripts/update.mjs",
+		"update:browser": "node scripts/update.mjs --job=browser",
+		"update:builtin": "node scripts/update.mjs --job=builtin",
+		"update:builtin-yearly": "node scripts/update.mjs --job=builtin-yearly",
+		"update:nodeBuiltin": "node scripts/update.mjs --job=nodeBuiltin",
+		"update:worker": "node scripts/update.mjs --job=worker",
+		"update:serviceworker": "node scripts/update.mjs --job=serviceworker",
+		"update:shelljs": "node scripts/update.mjs --job=shelljs",
+		"update:jest": "node scripts/update.mjs --job=jest",
+		"update:vitest": "node scripts/update.mjs --job=vitest",
+		"build": "run-s build:data build:types",
+		"build:data": "node scripts/generate-data.mjs",
+		"build:types": "node scripts/generate-types.mjs"
+	},
+	"files": [
+		"index.js",
+		"index.d.ts",
+		"globals.json"
+	],
+	"keywords": [
+		"globals",
+		"global",
+		"identifiers",
+		"variables",
+		"vars",
+		"jshint",
+		"eslint",
+		"environments"
+	],
+	"devDependencies": {
+		"@vitest/eslint-plugin": "^1.1.44",
+		"ava": "^6.3.0",
+		"cheerio": "^1.0.0",
+		"eslint-plugin-jest": "^28.11.0",
+		"get-port": "^7.1.0",
+		"is-identifier": "^1.0.1",
+		"nano-spawn": "^0.2.0",
+		"npm-run-all2": "^8.0.1",
+		"outdent": "^0.8.0",
+		"puppeteer": "^24.27.0",
+		"shelljs": "^0.9.2",
+		"tsd": "^0.32.0",
+		"type-fest": "^4.41.0",
+		"xo": "^0.60.0"
+	},
+	"xo": {
+		"rules": {
+			"unicorn/prefer-module": "off"
+		},
+		"overrides": [
+			{
+				"files": [
+					"data/*.mjs"
+				],
+				"rules": {
+					"import/no-anonymous-default-export": "off",
+					"camelcase": "off",
+					"unicorn/filename-case": [
+						"error",
+						{
+							"cases": {
+								"camelCase": true,
+								"kebabCase": true
+							}
+						}
+					]
+				}
+			},
+			{
+				"files": [
+					"scripts/*.mjs"
+				],
+				"rules": {
+					"n/no-unsupported-features/node-builtins": "off"
+				}
+			},
+			{
+				"files": [
+					"scripts/browser/assets/**/*.mjs"
+				],
+				"envs": [
+					"browser",
+					"worker",
+					"serviceworker"
+				],
+				"rules": {
+					"n/no-unsupported-features/node-builtins": "off",
+					"unicorn/prefer-add-event-listener": "off"
+				}
+			}
+		]
+	},
+	"tsd": {
+		"compilerOptions": {
+			"resolveJsonModule": true
+		}
+	}
+}

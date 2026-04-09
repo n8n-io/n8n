@@ -1,0 +1,43 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getRuntimeConfig = void 0;
+const httpAuthSchemes_1 = require("@aws-sdk/core/httpAuthSchemes");
+const protocols_1 = require("@aws-sdk/core/protocols");
+const smithy_client_1 = require("@smithy/smithy-client");
+const url_parser_1 = require("@smithy/url-parser");
+const util_base64_1 = require("@smithy/util-base64");
+const util_utf8_1 = require("@smithy/util-utf8");
+const httpAuthSchemeProvider_1 = require("./auth/httpAuthSchemeProvider");
+const endpointResolver_1 = require("./endpoint/endpointResolver");
+const schemas_0_1 = require("./schemas/schemas_0");
+const getRuntimeConfig = (config) => {
+    return {
+        apiVersion: "2023-07-26",
+        base64Decoder: config?.base64Decoder ?? util_base64_1.fromBase64,
+        base64Encoder: config?.base64Encoder ?? util_base64_1.toBase64,
+        disableHostPrefix: config?.disableHostPrefix ?? false,
+        endpointProvider: config?.endpointProvider ?? endpointResolver_1.defaultEndpointResolver,
+        extensions: config?.extensions ?? [],
+        httpAuthSchemeProvider: config?.httpAuthSchemeProvider ?? httpAuthSchemeProvider_1.defaultBedrockAgentRuntimeHttpAuthSchemeProvider,
+        httpAuthSchemes: config?.httpAuthSchemes ?? [
+            {
+                schemeId: "aws.auth#sigv4",
+                identityProvider: (ipc) => ipc.getIdentityProvider("aws.auth#sigv4"),
+                signer: new httpAuthSchemes_1.AwsSdkSigV4Signer(),
+            },
+        ],
+        logger: config?.logger ?? new smithy_client_1.NoOpLogger(),
+        protocol: config?.protocol ?? protocols_1.AwsRestJsonProtocol,
+        protocolSettings: config?.protocolSettings ?? {
+            defaultNamespace: "com.amazonaws.bedrockagentruntime",
+            errorTypeRegistries: schemas_0_1.errorTypeRegistries,
+            version: "2023-07-26",
+            serviceTarget: "AmazonBedrockAgentRunTimeService",
+        },
+        serviceId: config?.serviceId ?? "Bedrock Agent Runtime",
+        urlParser: config?.urlParser ?? url_parser_1.parseUrl,
+        utf8Decoder: config?.utf8Decoder ?? util_utf8_1.fromUtf8,
+        utf8Encoder: config?.utf8Encoder ?? util_utf8_1.toUtf8,
+    };
+};
+exports.getRuntimeConfig = getRuntimeConfig;

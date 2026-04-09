@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["/mnt/vss/_work/1/s/sdk/core/ts-http-runtime/src/defaultHttpClient.ts"],
+  "sourcesContent": ["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT License.\n\nimport type { HttpClient } from \"./interfaces.js\";\nimport { createNodeHttpClient } from \"./nodeHttpClient.js\";\n\n/**\n * Create the correct HttpClient for the current environment.\n */\nexport function createDefaultHttpClient(): HttpClient {\n  return createNodeHttpClient();\n}\n"],
+  "mappings": ";;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAIA,4BAAqC;AAK9B,SAAS,0BAAsC;AACpD,aAAO,4CAAqB;AAC9B;",
+  "names": []
+}

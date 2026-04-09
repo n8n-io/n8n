@@ -1,0 +1,366 @@
+---
+title: Video Generation
+description: Learn how to generate videos with the AI SDK.
+---
+
+# Video Generation
+
+<Note>
+  Video generation is an experimental feature. The API may change in future
+  versions.
+</Note>
+
+The AI SDK provides the [`experimental_generateVideo`](/docs/reference/ai-sdk-core/generate-video)
+function to generate videos based on a given prompt using a video model.
+
+```tsx
+import { experimental_generateVideo as generateVideo } from 'ai';
+import { fal } from '@ai-sdk/fal';
+
+const { video } = await generateVideo({
+  model: fal.video('luma-dream-machine/ray-2'),
+  prompt: 'A cat walking on a treadmill',
+});
+```
+
+You can access the video data using the `base64` or `uint8Array` properties:
+
+```tsx
+const base64 = video.base64; // base64 video data
+const uint8Array = video.uint8Array; // Uint8Array video data
+```
+
+## Settings
+
+### Aspect Ratio
+
+The aspect ratio is specified as a string in the format `{width}:{height}`.
+Models only support a few aspect ratios, and the supported aspect ratios are different for each model and provider.
+
+```tsx highlight={"7"}
+import { experimental_generateVideo as generateVideo } from 'ai';
+import { fal } from '@ai-sdk/fal';
+
+const { video } = await generateVideo({
+  model: fal.video('luma-dream-machine/ray-2'),
+  prompt: 'A cat walking on a treadmill',
+  aspectRatio: '16:9',
+});
+```
+
+### Resolution
+
+The resolution is specified as a string in the format `{width}x{height}`.
+Models only support specific resolutions, and the supported resolutions are different for each model and provider.
+
+```tsx highlight={"7"}
+import { experimental_generateVideo as generateVideo } from 'ai';
+import { google } from '@ai-sdk/google';
+
+const { video } = await generateVideo({
+  model: google.video('veo-2.0-generate-001'),
+  prompt: 'A serene mountain landscape at sunset',
+  resolution: '1280x720',
+});
+```
+
+### Duration
+
+Some video models support specifying the duration of the generated video in seconds.
+
+```tsx highlight={"7"}
+import { experimental_generateVideo as generateVideo } from 'ai';
+import { fal } from '@ai-sdk/fal';
+
+const { video } = await generateVideo({
+  model: fal.video('luma-dream-machine/ray-2'),
+  prompt: 'A timelapse of clouds moving across the sky',
+  duration: 5,
+});
+```
+
+### Frames Per Second (FPS)
+
+Some video models allow you to specify the frames per second for the generated video.
+
+```tsx highlight={"7"}
+import { experimental_generateVideo as generateVideo } from 'ai';
+import { fal } from '@ai-sdk/fal';
+
+const { video } = await generateVideo({
+  model: fal.video('luma-dream-machine/ray-2'),
+  prompt: 'A hummingbird in slow motion',
+  fps: 24,
+});
+```
+
+### Generating Multiple Videos
+
+`experimental_generateVideo` supports generating multiple videos at once:
+
+```tsx highlight={"7"}
+import { experimental_generateVideo as generateVideo } from 'ai';
+import { google } from '@ai-sdk/google';
+
+const { videos } = await generateVideo({
+  model: google.video('veo-2.0-generate-001'),
+  prompt: 'A rocket launching into space',
+  n: 3, // number of videos to generate
+});
+```
+
+<Note>
+  `experimental_generateVideo` will automatically call the model as often as
+  needed (in parallel) to generate the requested number of videos.
+</Note>
+
+Each video model has an internal limit on how many videos it can generate in a single API call. The AI SDK manages this automatically by batching requests appropriately when you request multiple videos using the `n` parameter. Most video models only support generating 1 video per call due to computational cost.
+
+If needed, you can override this behavior using the `maxVideosPerCall` setting:
+
+```tsx
+const { videos } = await generateVideo({
+  model: google.video('veo-2.0-generate-001'),
+  prompt: 'A rocket launching into space',
+  maxVideosPerCall: 2, // Override the default batch size
+  n: 4, // Will make 2 calls of 2 videos each
+});
+```
+
+### Image-to-Video Generation
+
+Some video models support generating videos from an input image. You can provide an image using the prompt object:
+
+```tsx highlight={"7-10"}
+import { experimental_generateVideo as generateVideo } from 'ai';
+import { fal } from '@ai-sdk/fal';
+
+const { video } = await generateVideo({
+  model: fal.video('hunyuan-video'),
+  prompt: {
+    image: 'https://example.com/my-image.png',
+    text: 'Animate this image with gentle motion',
+  },
+});
+```
+
+You can also provide the image as a base64-encoded string or `Uint8Array`:
+
+```tsx
+const { video } = await generateVideo({
+  model: fal.video('hunyuan-video'),
+  prompt: {
+    image: imageBase64String, // or imageUint8Array
+    text: 'Animate this image',
+  },
+});
+```
+
+### Providing a Seed
+
+You can provide a seed to the `experimental_generateVideo` function to control the output of the video generation process.
+If supported by the model, the same seed will always produce the same video.
+
+```tsx highlight={"7"}
+import { experimental_generateVideo as generateVideo } from 'ai';
+import { fal } from '@ai-sdk/fal';
+
+const { video } = await generateVideo({
+  model: fal.video('luma-dream-machine/ray-2'),
+  prompt: 'A cat walking on a treadmill',
+  seed: 1234567890,
+});
+```
+
+### Provider-specific Settings
+
+Video models often have provider- or even model-specific settings.
+You can pass such settings to the `experimental_generateVideo` function
+using the `providerOptions` parameter. The options for the provider
+become request body properties.
+
+```tsx highlight={"8-10"}
+import { experimental_generateVideo as generateVideo } from 'ai';
+import { fal } from '@ai-sdk/fal';
+
+const { video } = await generateVideo({
+  model: fal.video('luma-dream-machine/ray-2'),
+  prompt: 'A cat walking on a treadmill',
+  aspectRatio: '16:9',
+  providerOptions: {
+    fal: { loop: true, motionStrength: 0.8 },
+  },
+});
+```
+
+### Abort Signals and Timeouts
+
+`experimental_generateVideo` accepts an optional `abortSignal` parameter of
+type [`AbortSignal`](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal)
+that you can use to abort the video generation process or set a timeout.
+
+```ts highlight={"7"}
+import { fal } from '@ai-sdk/fal';
+import { experimental_generateVideo as generateVideo } from 'ai';
+
+const { video } = await generateVideo({
+  model: fal.video('luma-dream-machine/ray-2'),
+  prompt: 'A cat walking on a treadmill',
+  abortSignal: AbortSignal.timeout(60000), // Abort after 60 seconds
+});
+```
+
+<Note>
+  Video generation typically takes longer than image generation. Consider using
+  longer timeouts (60 seconds or more) depending on the model and video length.
+</Note>
+
+### Polling Timeout
+
+Video generation is an asynchronous process that can take several minutes to complete. Most providers use a polling mechanism where the SDK periodically checks if the video is ready. The default polling timeout is typically 5 minutes, which may not be sufficient for longer videos or certain models.
+
+You can configure the polling timeout using provider-specific options. Each provider exports a type for its options that you can use with `satisfies` for type safety:
+
+```tsx highlight={"10-12"}
+import { experimental_generateVideo as generateVideo } from 'ai';
+import { fal, type FalVideoModelOptions } from '@ai-sdk/fal';
+
+const { video } = await generateVideo({
+  model: fal.video('luma-dream-machine/ray-2'),
+  prompt: 'A cinematic timelapse of a city from dawn to dusk',
+  duration: 10,
+  providerOptions: {
+    fal: {
+      pollTimeoutMs: 600000, // 10 minutes
+    } satisfies FalVideoModelOptions,
+  },
+});
+```
+
+<Note>
+  For production use, we recommend setting `pollTimeoutMs` to at least 10
+  minutes (600000ms) to account for varying generation times across different
+  models and video lengths.
+</Note>
+
+### Custom Headers
+
+`experimental_generateVideo` accepts an optional `headers` parameter of type `Record<string, string>`
+that you can use to add custom headers to the video generation request.
+
+```ts highlight={"7"}
+import { fal } from '@ai-sdk/fal';
+import { experimental_generateVideo as generateVideo } from 'ai';
+
+const { video } = await generateVideo({
+  model: fal.video('luma-dream-machine/ray-2'),
+  prompt: 'A cat walking on a treadmill',
+  headers: { 'X-Custom-Header': 'custom-value' },
+});
+```
+
+### Warnings
+
+If the model returns warnings, e.g. for unsupported parameters, they will be available in the `warnings` property of the response.
+
+```tsx
+const { video, warnings } = await generateVideo({
+  model: fal.video('luma-dream-machine/ray-2'),
+  prompt: 'A cat walking on a treadmill',
+});
+```
+
+### Additional Provider-specific Metadata
+
+Some providers expose additional metadata for the result overall or per video.
+
+```tsx
+const prompt = 'A cat walking on a treadmill';
+
+const { video, providerMetadata } = await generateVideo({
+  model: fal.video('luma-dream-machine/ray-2'),
+  prompt,
+});
+
+// Access provider-specific metadata
+const videoMetadata = providerMetadata.fal?.videos[0];
+console.log({
+  duration: videoMetadata?.duration,
+  fps: videoMetadata?.fps,
+  width: videoMetadata?.width,
+  height: videoMetadata?.height,
+});
+```
+
+The outer key of the returned `providerMetadata` is the provider name. The inner values are the metadata. A `videos` key is typically present in the metadata and is an array with the same length as the top level `videos` key.
+
+When generating multiple videos with `n > 1`, you can also access per-call metadata through the `responses` array:
+
+```tsx
+const { videos, responses } = await generateVideo({
+  model: google.video('veo-2.0-generate-001'),
+  prompt: 'A rocket launching into space',
+  n: 5, // May require multiple API calls
+});
+
+// Access metadata from each individual API call
+for (const response of responses) {
+  console.log({
+    timestamp: response.timestamp,
+    modelId: response.modelId,
+    // Per-call provider metadata (lossless)
+    providerMetadata: response.providerMetadata,
+  });
+}
+```
+
+### Error Handling
+
+When `experimental_generateVideo` cannot generate a valid video, it throws a [`AI_NoVideoGeneratedError`](/docs/reference/ai-sdk-errors/ai-no-video-generated-error).
+
+This error occurs when the AI provider fails to generate a video. It can arise due to the following reasons:
+
+- The model failed to generate a response
+- The model generated a response that could not be parsed
+
+The error preserves the following information to help you log the issue:
+
+- `responses`: Metadata about the video model responses, including timestamp, model, and headers.
+- `cause`: The cause of the error. You can use this for more detailed error handling
+
+```ts
+import {
+  experimental_generateVideo as generateVideo,
+  NoVideoGeneratedError,
+} from 'ai';
+
+try {
+  await generateVideo({ model, prompt });
+} catch (error) {
+  if (NoVideoGeneratedError.isInstance(error)) {
+    console.log('NoVideoGeneratedError');
+    console.log('Cause:', error.cause);
+    console.log('Responses:', error.responses);
+  }
+}
+```
+
+## Video Models
+
+| Provider                                                                | Model                       | Features                               |
+| ----------------------------------------------------------------------- | --------------------------- | -------------------------------------- |
+| [FAL](/providers/ai-sdk-providers/fal#video-models)                     | `luma-dream-machine/ray-2`  | Text-to-video, image-to-video          |
+| [FAL](/providers/ai-sdk-providers/fal#video-models)                     | `minimax-video`             | Text-to-video                          |
+| [Google](/providers/ai-sdk-providers/google-generative-ai#video-models) | `veo-2.0-generate-001`      | Text-to-video, up to 4 videos per call |
+| [Google Vertex](/providers/ai-sdk-providers/google-vertex#video-models) | `veo-3.1-generate-001`      | Text-to-video, audio generation        |
+| [Google Vertex](/providers/ai-sdk-providers/google-vertex#video-models) | `veo-3.1-fast-generate-001` | Text-to-video, audio generation        |
+| [Google Vertex](/providers/ai-sdk-providers/google-vertex#video-models) | `veo-3.0-generate-001`      | Text-to-video, audio generation        |
+| [Google Vertex](/providers/ai-sdk-providers/google-vertex#video-models) | `veo-3.0-fast-generate-001` | Text-to-video, audio generation        |
+| [Google Vertex](/providers/ai-sdk-providers/google-vertex#video-models) | `veo-2.0-generate-001`      | Text-to-video, up to 4 videos per call |
+| [Kling AI](/providers/ai-sdk-providers/klingai#video-models)            | `kling-v2.6-t2v`            | Text-to-video                          |
+| [Kling AI](/providers/ai-sdk-providers/klingai#video-models)            | `kling-v2.6-i2v`            | Image-to-video                         |
+| [Kling AI](/providers/ai-sdk-providers/klingai#video-models)            | `kling-v2.6-motion-control` | Motion control                         |
+| [Replicate](/providers/ai-sdk-providers/replicate#video-models)         | `minimax/video-01`          | Text-to-video                          |
+| [xAI](/providers/ai-sdk-providers/xai#video-models)                     | `grok-imagine-video`        | Text-to-video, image-to-video, editing |
+
+Above are a small subset of the video models supported by the AI SDK providers. For more, see the respective provider documentation.

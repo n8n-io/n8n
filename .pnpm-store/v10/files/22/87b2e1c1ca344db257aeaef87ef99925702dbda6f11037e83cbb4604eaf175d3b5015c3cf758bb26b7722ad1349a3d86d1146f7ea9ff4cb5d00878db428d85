@@ -1,5 +1,0 @@
-{
-  "scripts": {
-    "test": "npm --prefix ./cjs test && npm --prefix ./esm test && npm --prefix ./types test"
-  }
-}

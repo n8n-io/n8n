@@ -1,1 +1,0 @@
-{"version":3,"file":"useDirection.cjs","names":["dir?: Ref<Direction | undefined>"],"sources":["../../src/shared/useDirection.ts"],"sourcesContent":[],"mappings":";;;;;AAKA,SAAgB,aAAaA,KAAkC;CAC7D,MAAM,UAAU,kEAA4B,EAC1C,KAAK,aAAI,MAAM,CAChB,EAAC;AACF,QAAO,kBAAS,MAAM,KAAK,SAAS,QAAQ,KAAK,SAAS,MAAM;AACjE"}

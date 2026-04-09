@@ -1,0 +1,69 @@
+{
+  "name": "avsc",
+  "version": "5.7.9",
+  "description": "Avro for JavaScript",
+  "homepage": "https://github.com/mtth/avsc",
+  "keywords": [
+    "api",
+    "avdl",
+    "avpr",
+    "avro",
+    "avsc",
+    "binary",
+    "buffer",
+    "data",
+    "decoding",
+    "encoding",
+    "idl",
+    "interface",
+    "ipc",
+    "json",
+    "marshalling",
+    "message",
+    "protocol",
+    "rpc",
+    "schema",
+    "serde",
+    "serialization",
+    "type"
+  ],
+  "files": [
+    "etc/browser",
+    "lib",
+    "types"
+  ],
+  "main": "./lib",
+  "types": "./types",
+  "browser": {
+    "./lib": "./etc/browser/avsc.js",
+    "./lib/files": "./etc/browser/lib/files.js",
+    "crypto": "./etc/browser/lib/crypto.js"
+  },
+  "engines": {
+    "node": ">=0.11"
+  },
+  "scripts": {
+    "clean": "rm -rf coverage dist node_modules",
+    "cover": "nyc mocha -- --ui tdd",
+    "coverAndPublish": "nyc npm test && nyc report --reporter=text-lcov | coveralls",
+    "dist": "./etc/scripts/dist",
+    "perf": "./etc/scripts/perf etc/schemas/*",
+    "test": "mocha --ui tdd --reporter dot"
+  },
+  "devDependencies": {
+    "benchmark": "~2.1.4",
+    "coveralls": "^3.0.9",
+    "mocha": "^8.1.1",
+    "nyc": "~15.0.0",
+    "tmp": "^0.1.0"
+  },
+  "author": {
+    "name": "Matthieu Monsch",
+    "email": "mtth@apache.org"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/mtth/avsc.git"
+  }
+}

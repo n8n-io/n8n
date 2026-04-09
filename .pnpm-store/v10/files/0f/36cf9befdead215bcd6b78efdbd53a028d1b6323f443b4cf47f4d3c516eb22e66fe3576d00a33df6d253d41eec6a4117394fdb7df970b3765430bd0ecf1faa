@@ -1,0 +1,49 @@
+{
+  "name": "@vueuse/core",
+  "type": "module",
+  "version": "14.2.1",
+  "description": "Collection of essential Vue Composition Utilities",
+  "author": "Anthony Fu <https://github.com/antfu>",
+  "license": "MIT",
+  "funding": "https://github.com/sponsors/antfu",
+  "homepage": "https://github.com/vueuse/vueuse#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vueuse/vueuse.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/vueuse/vueuse/issues"
+  },
+  "keywords": [
+    "vue",
+    "vue-use",
+    "utils"
+  ],
+  "sideEffects": false,
+  "exports": {
+    ".": "./dist/index.js",
+    "./*": "./dist/*",
+    "./metadata": "./dist/metadata.mjs"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "unpkg": "./dist/index.iife.min.js",
+  "jsdelivr": "./dist/index.iife.min.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "peerDependencies": {
+    "vue": "^3.5.0"
+  },
+  "dependencies": {
+    "@types/web-bluetooth": "^0.0.21",
+    "@vueuse/metadata": "14.2.1",
+    "@vueuse/shared": "14.2.1"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "test:attw": "attw --pack --config-path ../../.attw.json ."
+  }
+}

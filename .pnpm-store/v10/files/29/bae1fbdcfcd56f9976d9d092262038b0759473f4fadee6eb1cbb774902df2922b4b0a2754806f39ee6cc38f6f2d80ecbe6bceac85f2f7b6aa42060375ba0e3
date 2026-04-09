@@ -1,0 +1,264 @@
+---
+title: experimental_generateVideo
+description: API Reference for experimental_generateVideo.
+---
+
+# `experimental_generateVideo()`
+
+<Note>
+  Video generation is an experimental feature. The API may change in future
+  versions.
+</Note>
+
+Generates videos based on a given prompt using a video model.
+
+It is ideal for use cases where you need to generate videos programmatically,
+such as creating visual content, animations, or generating videos from images.
+
+```ts
+import { experimental_generateVideo as generateVideo } from 'ai';
+
+const { videos } = await generateVideo({
+  model: fal.video('luma-dream-machine/ray-2'),
+  prompt: 'A cat walking on a treadmill',
+  aspectRatio: '16:9',
+});
+
+console.log(videos);
+```
+
+## Import
+
+<Snippet
+  text={`import { experimental_generateVideo } from "ai"`}
+  prompt={false}
+/>
+
+## API Signature
+
+### Parameters
+
+<PropertiesTable
+  content={[
+    {
+      name: 'model',
+      type: 'VideoModelV3',
+      description: 'The video model to use.',
+    },
+    {
+      name: 'prompt',
+      type: 'string | GenerateVideoPrompt',
+      description: 'The input prompt to generate the video from.',
+      properties: [
+        {
+          type: 'GenerateVideoPrompt',
+          type: 'object',
+          description:
+            'A prompt object for video generation with optional input image',
+          parameters: [
+            {
+              name: 'image',
+              type: 'DataContent',
+              description:
+                'Input image for image-to-video generation. Can be a URL string, base64-encoded string, a `Uint8Array`, an `ArrayBuffer`, or a `Buffer`.',
+            },
+            {
+              name: 'text',
+              type: 'string',
+              description: 'The text prompt.',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'n',
+      type: 'number',
+      isOptional: true,
+      description: 'Number of videos to generate. Default: 1.',
+    },
+    {
+      name: 'aspectRatio',
+      type: 'string',
+      isOptional: true,
+      description:
+        'Aspect ratio of the videos to generate. Format: `{width}:{height}`.',
+    },
+    {
+      name: 'resolution',
+      type: 'string',
+      isOptional: true,
+      description:
+        'Resolution of the videos to generate. Format: `{width}x{height}`.',
+    },
+    {
+      name: 'duration',
+      type: 'number',
+      isOptional: true,
+      description: 'Duration of the video in seconds.',
+    },
+    {
+      name: 'fps',
+      type: 'number',
+      isOptional: true,
+      description: 'Frames per second for the video.',
+    },
+    {
+      name: 'seed',
+      type: 'number',
+      isOptional: true,
+      description: 'Seed for the video generation.',
+    },
+    {
+      name: 'providerOptions',
+      type: 'ProviderOptions',
+      isOptional: true,
+      description: 'Additional provider-specific options.',
+    },
+    {
+      name: 'maxVideosPerCall',
+      type: 'number',
+      isOptional: true,
+      description:
+        'Maximum number of videos to generate per API call. When n exceeds this value, multiple API calls will be made.',
+    },
+    {
+      name: 'maxRetries',
+      type: 'number',
+      isOptional: true,
+      description: 'Maximum number of retries. Default: 2.',
+    },
+    {
+      name: 'abortSignal',
+      type: 'AbortSignal',
+      isOptional: true,
+      description: 'An optional abort signal to cancel the call.',
+    },
+    {
+      name: 'headers',
+      type: 'Record<string, string>',
+      isOptional: true,
+      description: 'Additional HTTP headers for the request.',
+    },
+    {
+      name: 'download',
+      type: '(options: { url: URL; abortSignal?: AbortSignal }) => Promise<{ data: Uint8Array; mediaType: string | undefined }>',
+      isOptional: true,
+      description:
+        'Custom download function for fetching videos from URLs. Use `createDownload()` from `ai` to create a download function with custom size limits, e.g. `createDownload({ maxBytes: 50 * 1024 * 1024 })`. Default: built-in download with 2 GiB limit.',
+    },
+  ]}
+/>
+
+### Returns
+
+<PropertiesTable
+  content={[
+    {
+      name: 'video',
+      type: 'GeneratedFile',
+      description: 'The first video that was generated.',
+      properties: [
+        {
+          type: 'GeneratedFile',
+          parameters: [
+            {
+              name: 'base64',
+              type: 'string',
+              description: 'Video as a base64 encoded string.',
+            },
+            {
+              name: 'uint8Array',
+              type: 'Uint8Array',
+              description: 'Video as a Uint8Array.',
+            },
+            {
+              name: 'mediaType',
+              type: 'string',
+              description:
+                'The IANA media type of the video (e.g., video/mp4).',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'videos',
+      type: 'Array<GeneratedFile>',
+      description: 'All videos that were generated.',
+      properties: [
+        {
+          type: 'GeneratedFile',
+          parameters: [
+            {
+              name: 'base64',
+              type: 'string',
+              description: 'Video as a base64 encoded string.',
+            },
+            {
+              name: 'uint8Array',
+              type: 'Uint8Array',
+              description: 'Video as a Uint8Array.',
+            },
+            {
+              name: 'mediaType',
+              type: 'string',
+              description:
+                'The IANA media type of the video (e.g., video/mp4).',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'warnings',
+      type: 'Warning[]',
+      description:
+        'Warnings from the model provider (e.g. unsupported settings).',
+    },
+    {
+      name: 'providerMetadata',
+      type: 'VideoModelProviderMetadata',
+      isOptional: true,
+      description:
+        'Optional metadata from the provider. The outer key is the provider name. The inner values are the metadata. A `videos` key is typically present in the metadata and is an array with the same length as the top level `videos` key. Details depend on the provider.',
+    },
+    {
+      name: 'responses',
+      type: 'Array<VideoModelResponseMetadata>',
+      description:
+        'Response metadata from the provider. There may be multiple responses if we made multiple calls to the model.',
+      properties: [
+        {
+          type: 'VideoModelResponseMetadata',
+          parameters: [
+            {
+              name: 'timestamp',
+              type: 'Date',
+              description: 'Timestamp for the start of the generated response.',
+            },
+            {
+              name: 'modelId',
+              type: 'string',
+              description:
+                'The ID of the response model that was used to generate the response.',
+            },
+            {
+              name: 'headers',
+              type: 'Record<string, string>',
+              isOptional: true,
+              description: 'Response headers.',
+            },
+            {
+              name: 'providerMetadata',
+              type: 'VideoModelProviderMetadata',
+              isOptional: true,
+              description:
+                'Provider-specific metadata for this individual API call. Useful for accessing per-call metadata when multiple calls are made.',
+            },
+          ],
+        },
+      ],
+    },
+  ]}
+/>

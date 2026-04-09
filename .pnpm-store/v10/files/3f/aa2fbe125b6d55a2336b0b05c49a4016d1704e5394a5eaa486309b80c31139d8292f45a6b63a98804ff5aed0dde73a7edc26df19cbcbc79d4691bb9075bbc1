@@ -1,0 +1,1 @@
+cmd_Release/isolated_vm.node := ln -f "Release/obj.target/isolated_vm.node" "Release/isolated_vm.node" 2>/dev/null || (rm -rf "Release/isolated_vm.node" && cp -af "Release/obj.target/isolated_vm.node" "Release/isolated_vm.node")

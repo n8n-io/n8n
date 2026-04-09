@@ -81,7 +81,8 @@ export class DynamicCredentialsController {
 	async revokeCredential(req: Request, res: Response): Promise<void> {
 		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['delete', 'options']);
 		const credentialContext = this.dynamicCredentialWebService.getCredentialContextFromRequest(req);
-		const credential = await this.findCredentialToUse(req.params.id);
+		// const credential = await this.findCredentialToUse(req.params.id);
+		const credential = await this.findCredentialToUse(req.params.id as string);
 
 		const resolverId = req.query.resolverId as string | undefined;
 		const { resolver, resolverEntity } = await this.getResolverInstance(resolverId);
@@ -118,7 +119,8 @@ export class DynamicCredentialsController {
 	async authorizeCredential(req: Request, res: Response): Promise<string> {
 		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['post', 'options']);
 		const credentialContext = this.dynamicCredentialWebService.getCredentialContextFromRequest(req);
-		const credential = await this.findCredentialToUse(req.params.id);
+		// const credential = await this.findCredentialToUse(req.params.id);
+		const credential = await this.findCredentialToUse(req.params.id as string);
 
 		const resolverId = req.query.resolverId as string | undefined;
 		const { resolver, resolverEntity } = await this.getResolverInstance(resolverId);

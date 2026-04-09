@@ -6,8 +6,8 @@ import type {
 } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 
-import type { ResponseInputImage } from 'openai/resources/responses/responses';
-import type { ChatContent, ChatResponse, ChatResponseRequest } from '../../../helpers/interfaces';
+// import type { ResponseInputImage } from 'openai/resources/responses/responses';
+import type { ChatContent, ChatResponse, /* ChatResponseRequest */} from '../../../helpers/interfaces';
 import { apiRequest } from '../../../transport';
 import { modelRLC } from '../descriptions';
 import { getBinaryDataFile } from '../../../helpers/binary-data';
@@ -139,12 +139,13 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const content: ChatContent = [
 		{
-			type: 'input_text',
+			type: 'text',
 			text,
 		},
 	];
 
-	const detail = (options.detail as ResponseInputImage['detail']) || ('auto' as const);
+	// const detail = (options.detail as ResponseInputImage['detail']) || ('auto' as const);
+	const detail = (options.detail as any) || 'auto';
 
 	if (inputType === 'url') {
 		const imageUrls = (this.getNodeParameter('imageUrls', i) as string)
@@ -153,10 +154,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 		for (const url of imageUrls) {
 			content.push({
-				type: 'input_image',
-				detail,
-				image_url: url,
-			});
+				type: 'image_url',
+				detail: detail as any,
+				image_url: { url: url },
+			} as any );
 		}
 	} else {
 		const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i)
@@ -169,14 +170,14 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			const fileBase64 = buffer.toString('base64');
 
 			content.push({
-				type: 'input_image',
-				detail,
-				image_url: `data:${contentType};base64,${fileBase64}`,
-			});
+				type: 'image_url',
+				detail: detail as any,
+				image_url: { url: `data:${contentType};base64,${fileBase64}`},
+			} as any );
 		}
 	}
 
-	const body: ChatResponseRequest = {
+	const body: any = {
 		model,
 		input: [
 			{
@@ -196,7 +197,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	if (simplify) {
 		return [
 			{
-				json: response.output as unknown as IDataObject,
+				json: (response as any).output as unknown as IDataObject,
 				pairedItem: { item: i },
 			},
 		];

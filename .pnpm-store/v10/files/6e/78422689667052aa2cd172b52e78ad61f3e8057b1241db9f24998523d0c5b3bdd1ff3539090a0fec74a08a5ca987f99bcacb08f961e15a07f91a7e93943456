@@ -1,0 +1,17 @@
+{
+  "name": "benchmark",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "private": true,
+  "scripts": {
+    "bench": "node benchmark.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "tinybench": "^5.0.0",
+    "uri-js": "^4.4.1"
+  }
+}

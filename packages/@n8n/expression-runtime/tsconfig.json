@@ -1,6 +1,11 @@
 {
 	"extends": "../typescript-config/modern/tsconfig.json",
 	"compilerOptions": {
+		"moduleResolution": "node", 
+		"allowSyntheticDefaultImports": true,
+		"paths": {
+		"js-base64": ["../../node_modules/js-base64/base64.d.ts"]
+		},
 		"rootDir": ".",
 		"noUncheckedIndexedAccess": false,
 		"types": ["node", "vitest/globals"]

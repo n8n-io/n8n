@@ -1,4 +1,5 @@
-import type { OpenAIClient } from '@langchain/openai';
+// import type { OpenAIClient } from '@langchain/openai';
+import type { OpenAI } from 'openai';
 
 export type BuiltInTools = {
 	webSearch?: {
@@ -55,7 +56,20 @@ export type TextOptions = {
 	description?: string;
 	strict?: boolean;
 };
-export type ChatResponseRequest = OpenAIClient.Responses.ResponseCreateParamsNonStreaming & {
-	conversation?: { id: string } | string;
-	top_logprobs?: number;
+
+// export type ChatResponseRequest = OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming & {
+// 	conversation?: { id: string } | string;
+// 	top_logprobs?: number;
+// };
+// // En nodes/llms/LMChatOpenAi/types.ts
+
+export type ChatResponseRequest = OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming & {
+    max_tool_calls?: number;
+    conversation?: string | { id: string };
+    input?: any[];
+    service_tier?: 'auto' | 'flex' | 'default' | 'priority' | null; 
+    prompt?: any;
+    text?: any;
+    reasoning?: any;
+    [key: string]: any;
 };

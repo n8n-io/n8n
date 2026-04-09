@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["/mnt/vss/_work/1/s/sdk/core/ts-http-runtime/src/util/object.ts"],
+  "sourcesContent": ["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT License.\n\n/**\n * A generic shape for a plain JS object.\n */\nexport type UnknownObject = { [s: string]: unknown };\n\n/**\n * Helper to determine when an input is a generic JS object.\n * @returns true when input is an object type that is not null, Array, RegExp, or Date.\n */\nexport function isObject(input: unknown): input is UnknownObject {\n  return (\n    typeof input === \"object\" &&\n    input !== null &&\n    !Array.isArray(input) &&\n    !(input instanceof RegExp) &&\n    !(input instanceof Date)\n  );\n}\n"],
+  "mappings": ";;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAYO,SAAS,SAAS,OAAwC;AAC/D,SACE,OAAO,UAAU,YACjB,UAAU,QACV,CAAC,MAAM,QAAQ,KAAK,KACpB,EAAE,iBAAiB,WACnB,EAAE,iBAAiB;AAEvB;",
+  "names": []
+}

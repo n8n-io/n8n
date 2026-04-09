@@ -683,10 +683,10 @@ export class Git implements INodeType {
 
 					await checkoutBranch(git, {
 						branchName,
-						createBranch,
-						startPoint,
-						force,
-						setUpstream,
+						createBranch: createBranch as boolean,
+						startPoint: startPoint as string,
+						force: force as boolean,
+						setUpstream: setUpstream as boolean,
 						remoteName,
 					});
 

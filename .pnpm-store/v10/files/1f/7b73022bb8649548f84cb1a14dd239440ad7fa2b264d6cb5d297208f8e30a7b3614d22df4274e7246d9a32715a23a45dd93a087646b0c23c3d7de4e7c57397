@@ -1,0 +1,1 @@
+{"version":3,"file":"types.js","sourceRoot":"","sources":["../../src/types.ts"],"names":[],"mappings":"AAAA;;;GAGG","sourcesContent":["/*\n * Copyright The OpenTelemetry Authors\n * SPDX-License-Identifier: Apache-2.0\n */\n\nexport interface JaegerPropagatorConfig {\n  customTraceHeader?: string;\n  customBaggageHeaderPrefix?: string;\n}\n"]}

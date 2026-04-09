@@ -22,7 +22,7 @@ export class ExternalSecretsController {
 	validateProviderName(req: Request, _: Response, next: NextFunction) {
 		if ('provider' in req.params) {
 			const { provider } = req.params;
-			if (!this.secretsProviders.hasProvider(provider)) {
+			if (!this.secretsProviders.hasProvider(provider as string)) {
 				throw new NotFoundError(`Could not find provider "${provider}"`);
 			}
 		}

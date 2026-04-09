@@ -1,0 +1,83 @@
+export declare const colorSchemeLight: import("../../../main-umd-noStyles").Part<{
+    readonly backgroundColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly foregroundColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly borderColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly chromeBackgroundColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly browserColorScheme: import("../../../main-umd-noStyles").ColorSchemeValue;
+}>;
+export declare const colorSchemeLightWarm: import("../../../main-umd-noStyles").Part<{
+    foregroundColor: import("../../../main-umd-noStyles").ColorValue;
+    borderColor: import("../../../main-umd-noStyles").ColorValue;
+    chromeBackgroundColor: import("../../../main-umd-noStyles").ColorValue;
+    backgroundColor: import("../../../main-umd-noStyles").ColorValue;
+    browserColorScheme: import("../../../main-umd-noStyles").ColorSchemeValue;
+}>;
+export declare const colorSchemeLightCold: import("../../../main-umd-noStyles").Part<{
+    foregroundColor: import("../../../main-umd-noStyles").ColorValue;
+    chromeBackgroundColor: import("../../../main-umd-noStyles").ColorValue;
+    backgroundColor: import("../../../main-umd-noStyles").ColorValue;
+    borderColor: import("../../../main-umd-noStyles").ColorValue;
+    browserColorScheme: import("../../../main-umd-noStyles").ColorSchemeValue;
+}>;
+export declare const colorSchemeDark: import("../../../main-umd-noStyles").Part<{
+    readonly backgroundColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly foregroundColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly chromeBackgroundColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly rowHoverColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly selectedRowBackgroundColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly menuBackgroundColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly browserColorScheme: import("../../../main-umd-noStyles").ColorSchemeValue;
+    readonly popupShadow: import("../../../main-umd-noStyles").ShadowValue;
+    readonly cardShadow: import("../../../main-umd-noStyles").ShadowValue;
+    readonly advancedFilterBuilderJoinPillColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly advancedFilterBuilderColumnPillColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly advancedFilterBuilderOptionPillColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly advancedFilterBuilderValuePillColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly filterPanelApplyButtonColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly findMatchColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly findActiveMatchColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly checkboxUncheckedBorderColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly toggleButtonOffBackgroundColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly rowBatchEditBackgroundColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly cellBatchEditBackgroundColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly cellBatchEditTextColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly rowBatchEditTextColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly borderColor: import("../../../main-umd-noStyles").ColorValue;
+}>;
+export declare const colorSchemeDarkWarm: import("../../../main-umd-noStyles").Part<{
+    backgroundColor: import("../../../main-umd-noStyles").ColorValue;
+    foregroundColor: import("../../../main-umd-noStyles").ColorValue;
+    browserColorScheme: import("../../../main-umd-noStyles").ColorSchemeValue;
+}>;
+export declare const colorSchemeDarkBlue: import("../../../main-umd-noStyles").Part<{
+    readonly backgroundColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly foregroundColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly chromeBackgroundColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly rowHoverColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly selectedRowBackgroundColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly menuBackgroundColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly browserColorScheme: import("../../../main-umd-noStyles").ColorSchemeValue;
+    readonly popupShadow: import("../../../main-umd-noStyles").ShadowValue;
+    readonly cardShadow: import("../../../main-umd-noStyles").ShadowValue;
+    readonly advancedFilterBuilderJoinPillColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly advancedFilterBuilderColumnPillColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly advancedFilterBuilderOptionPillColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly advancedFilterBuilderValuePillColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly filterPanelApplyButtonColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly findMatchColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly findActiveMatchColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly checkboxUncheckedBorderColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly toggleButtonOffBackgroundColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly rowBatchEditBackgroundColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly cellBatchEditBackgroundColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly cellBatchEditTextColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly rowBatchEditTextColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly borderColor: import("../../../main-umd-noStyles").ColorValue;
+}>;
+export declare const colorSchemeVariable: import("../../../main-umd-noStyles").Part<{
+    readonly backgroundColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly foregroundColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly borderColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly chromeBackgroundColor: import("../../../main-umd-noStyles").ColorValue;
+    readonly browserColorScheme: import("../../../main-umd-noStyles").ColorSchemeValue;
+}>;

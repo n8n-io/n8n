@@ -1,6 +1,12 @@
 {
 	"extends": "@n8n/typescript-config/modern/tsconfig.json",
 	"compilerOptions": {
+		"moduleResolution": "node", 
+		"allowSyntheticDefaultImports": true,
+		"skipLibCheck": true,
+		"paths": {
+		"js-base64": ["../node_modules/js-base64/base64.d.ts"]
+		},
 		"rootDir": ".",
 		"noUncheckedIndexedAccess": false,
 		"types": ["vite/client", "vitest/globals"]

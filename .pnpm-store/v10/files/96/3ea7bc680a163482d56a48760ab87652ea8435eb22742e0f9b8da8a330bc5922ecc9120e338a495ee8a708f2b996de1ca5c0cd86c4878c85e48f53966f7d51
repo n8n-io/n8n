@@ -1,0 +1,13 @@
+import { f as UserConfig, m as UserConfigFn, p as UserConfigExport } from "./index-k1oOp_n4.mjs";
+
+//#region src/config.d.ts
+
+/**
+* Defines the configuration for tsdown.
+*/
+declare function defineConfig(options: UserConfig): UserConfig;
+declare function defineConfig(options: UserConfig[]): UserConfig[];
+declare function defineConfig(options: UserConfigFn): UserConfigFn;
+declare function defineConfig(options: UserConfigExport): UserConfigExport;
+//#endregion
+export { defineConfig as t };

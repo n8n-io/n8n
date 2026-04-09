@@ -1,0 +1,32 @@
+{
+    "name": "@types/asn1",
+    "version": "0.2.4",
+    "description": "TypeScript definitions for asn1",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/asn1",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Jim Geurts",
+            "githubUsername": "jgeurts",
+            "url": "https://github.com/jgeurts"
+        },
+        {
+            "name": "Graham",
+            "githubUsername": "shortstuffsushi",
+            "url": "https://github.com/shortstuffsushi"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/asn1"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/node": "*"
+    },
+    "typesPublisherContentHash": "37d57072277b8a0b8c5ff0a8ecd454a379541fc5bf062f7cad06c95c38ab188a",
+    "typeScriptVersion": "4.5"
+}

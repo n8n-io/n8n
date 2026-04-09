@@ -53,7 +53,7 @@ export class WorkflowStatusController {
 		}
 
 		const status = await this.credentialResolverWorkflowService.getWorkflowStatus(
-			workflowId,
+			workflowId as string,
 			credentialContext,
 		);
 
@@ -63,7 +63,8 @@ export class WorkflowStatusController {
 		const restPath = this.globalConfig.endpoints.rest;
 
 		const executionStatus: WorkflowExecutionStatus = {
-			workflowId,
+			// workflowId,
+			workflowId: workflowId as string,
 			readyToExecute: isReady,
 			credentials: status.map((s) => ({
 				credentialId: s.credentialId,

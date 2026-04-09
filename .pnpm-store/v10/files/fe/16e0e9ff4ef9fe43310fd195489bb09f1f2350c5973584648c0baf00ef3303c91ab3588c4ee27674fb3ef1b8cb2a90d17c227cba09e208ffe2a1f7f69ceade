@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["/mnt/vss/_work/1/s/sdk/core/ts-http-runtime/src/client/operationOptionHelpers.ts"],
+  "sourcesContent": ["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT License.\n\nimport type { OperationOptions, RequestParameters } from \"./common.js\";\n\n/**\n * Helper function to convert OperationOptions to RequestParameters\n * @param options - the options that are used by Modular layer to send the request\n * @returns the result of the conversion in RequestParameters of RLC layer\n */\nexport function operationOptionsToRequestParameters(options: OperationOptions): RequestParameters {\n  return {\n    allowInsecureConnection: options.requestOptions?.allowInsecureConnection,\n    timeout: options.requestOptions?.timeout,\n    skipUrlEncoding: options.requestOptions?.skipUrlEncoding,\n    abortSignal: options.abortSignal,\n    onUploadProgress: options.requestOptions?.onUploadProgress,\n    onDownloadProgress: options.requestOptions?.onDownloadProgress,\n    headers: { ...options.requestOptions?.headers },\n    onResponse: options.onResponse,\n  };\n}\n"],
+  "mappings": ";;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAUO,SAAS,oCAAoC,SAA8C;AAChG,SAAO;AAAA,IACL,yBAAyB,QAAQ,gBAAgB;AAAA,IACjD,SAAS,QAAQ,gBAAgB;AAAA,IACjC,iBAAiB,QAAQ,gBAAgB;AAAA,IACzC,aAAa,QAAQ;AAAA,IACrB,kBAAkB,QAAQ,gBAAgB;AAAA,IAC1C,oBAAoB,QAAQ,gBAAgB;AAAA,IAC5C,SAAS,EAAE,GAAG,QAAQ,gBAAgB,QAAQ;AAAA,IAC9C,YAAY,QAAQ;AAAA,EACtB;AACF;",
+  "names": []
+}

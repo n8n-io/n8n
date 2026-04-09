@@ -1,1 +1,0 @@
-{"version":3,"file":"consistent-type-exports.d.ts","sourceRoot":"","sources":["../../src/rules/consistent-type-exports.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,QAAQ,EAAY,MAAM,0BAA0B,CAAC;AAgBnE,MAAM,MAAM,OAAO,GAAG;IACpB;QACE,sCAAsC,EAAE,OAAO,CAAC;KACjD;CACF,CAAC;AAgBF,MAAM,MAAM,UAAU,GAClB,yBAAyB,GACzB,oBAAoB,GACpB,eAAe,CAAC;;AAEpB,wBA8RG"}

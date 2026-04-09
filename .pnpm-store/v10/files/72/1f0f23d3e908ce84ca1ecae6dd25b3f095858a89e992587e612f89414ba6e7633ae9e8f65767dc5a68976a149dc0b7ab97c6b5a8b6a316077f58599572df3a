@@ -1,0 +1,107 @@
+{
+  "name": "@opentelemetry/exporter-trace-otlp-http",
+  "version": "0.53.0",
+  "description": "OpenTelemetry Collector Trace Exporter allows user to send collected traces to the OpenTelemetry Collector",
+  "main": "build/src/index.js",
+  "module": "build/esm/index.js",
+  "esnext": "build/esnext/index.js",
+  "types": "build/src/index.d.ts",
+  "repository": "open-telemetry/opentelemetry-js",
+  "browser": {
+    "./src/platform/index.ts": "./src/platform/browser/index.ts",
+    "./build/esm/platform/index.js": "./build/esm/platform/browser/index.js",
+    "./build/esnext/platform/index.js": "./build/esnext/platform/browser/index.js",
+    "./build/src/platform/index.js": "./build/src/platform/browser/index.js"
+  },
+  "scripts": {
+    "prepublishOnly": "npm run compile",
+    "compile": "tsc --build tsconfig.json tsconfig.esm.json tsconfig.esnext.json",
+    "clean": "tsc --build --clean tsconfig.json tsconfig.esm.json tsconfig.esnext.json",
+    "codecov:browser": "nyc report --reporter=json && codecov -f coverage/*.json -p ../../../",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "tdd": "npm run test -- --watch-extensions ts --watch",
+    "tdd:browser": "karma start",
+    "test": "nyc mocha 'test/**/*.test.ts' --exclude 'test/browser/**/*.ts'",
+    "test:browser": "karma start --single-run",
+    "version": "node ../../../scripts/version-update.js",
+    "watch": "tsc --build --watch tsconfig.json tsconfig.esm.json tsconfig.esnext.json",
+    "precompile": "cross-var lerna run version --scope $npm_package_name --include-dependencies",
+    "prewatch": "npm run precompile",
+    "peer-api-check": "node ../../../scripts/peer-api-check.js",
+    "codecov": "nyc report --reporter=json && codecov -f coverage/*.json -p ../../../",
+    "align-api-deps": "node ../../../scripts/align-api-deps.js"
+  },
+  "keywords": [
+    "opentelemetry",
+    "nodejs",
+    "browser",
+    "tracing",
+    "profiling",
+    "metrics",
+    "stats"
+  ],
+  "author": "OpenTelemetry Authors",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=14"
+  },
+  "files": [
+    "build/esm/**/*.js",
+    "build/esm/**/*.js.map",
+    "build/esm/**/*.d.ts",
+    "build/esnext/**/*.js",
+    "build/esnext/**/*.js.map",
+    "build/esnext/**/*.d.ts",
+    "build/src/**/*.js",
+    "build/src/**/*.js.map",
+    "build/src/**/*.d.ts",
+    "doc",
+    "LICENSE",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@babel/core": "7.25.2",
+    "@babel/preset-env": "7.25.3",
+    "@opentelemetry/api": "1.9.0",
+    "@types/mocha": "10.0.7",
+    "@types/node": "18.6.5",
+    "@types/sinon": "17.0.3",
+    "@types/webpack-env": "1.16.3",
+    "babel-loader": "8.3.0",
+    "babel-plugin-istanbul": "7.0.0",
+    "codecov": "3.8.3",
+    "cross-var": "1.1.0",
+    "karma": "6.4.4",
+    "karma-chrome-launcher": "3.1.0",
+    "karma-coverage": "2.2.1",
+    "karma-mocha": "2.0.1",
+    "karma-spec-reporter": "0.0.36",
+    "karma-webpack": "5.0.1",
+    "lerna": "6.6.2",
+    "mocha": "10.7.3",
+    "nyc": "15.1.0",
+    "sinon": "15.1.2",
+    "ts-loader": "9.5.1",
+    "typescript": "4.4.4",
+    "webpack": "5.89.0",
+    "webpack-cli": "5.1.4",
+    "webpack-merge": "5.10.0"
+  },
+  "peerDependencies": {
+    "@opentelemetry/api": "^1.0.0"
+  },
+  "dependencies": {
+    "@opentelemetry/core": "1.26.0",
+    "@opentelemetry/otlp-exporter-base": "0.53.0",
+    "@opentelemetry/otlp-transformer": "0.53.0",
+    "@opentelemetry/resources": "1.26.0",
+    "@opentelemetry/sdk-trace-base": "1.26.0"
+  },
+  "homepage": "https://github.com/open-telemetry/opentelemetry-js/tree/main/experimental/packages/exporter-trace-otlp-http",
+  "sideEffects": false,
+  "gitHead": "720bc8c70d47029cb6b41a34ffdc3d25cbaa2f80"
+}

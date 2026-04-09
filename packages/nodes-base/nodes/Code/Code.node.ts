@@ -190,7 +190,7 @@ export class Code implements INodeType {
 			const runnerStatus = this.getRunnerStatus('python');
 			if (!runnerStatus.available) {
 				throw new PythonRunnerUnavailableError(
-					runnerStatus.reason as 'python' | 'venv' | undefined,
+					(runnerStatus as any).reason as 'python' | 'venv' | undefined,
 				);
 			}
 

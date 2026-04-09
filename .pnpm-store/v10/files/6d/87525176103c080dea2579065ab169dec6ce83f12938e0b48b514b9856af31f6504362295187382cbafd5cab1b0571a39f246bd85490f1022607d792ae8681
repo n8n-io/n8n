@@ -1,0 +1,61 @@
+{
+  "name": "mylas",
+  "version": "2.1.14",
+  "description": "Mylas is a npm package to make the loading and storing of data from fs easy and reliable.",
+  "main": "build/index.js",
+  "typings": "build/index",
+  "files": [
+    "build/"
+  ],
+  "exports": {
+    ".": {
+      "types": "./build/index.d.ts",
+      "require": "./build/index.js",
+      "default": "./build/index.js"
+    },
+    "./register": {
+      "types": "./build/register.d.ts",
+      "require": "./build/register.js",
+      "default": "./build/register.js"
+    }
+  },
+  "scripts": {
+    "prepack": "npm run build",
+    "test": "jest --config ./tests/jest.config.js",
+    "build": "bash ./config/build.sh"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/raouldeheer/Mylas.git"
+  },
+  "keywords": [
+    "fs",
+    "data",
+    "json",
+    "loader",
+    "multithreaded",
+    "json-comments",
+    "node-modules"
+  ],
+  "author": "Raoul de Heer",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/raouldeheer/Mylas/issues"
+  },
+  "homepage": "https://mylas.js.org/",
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.10.0",
+    "jest": "^30.2.0",
+    "ts-jest": "^29.4.5",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/raouldeheer"
+  }
+}

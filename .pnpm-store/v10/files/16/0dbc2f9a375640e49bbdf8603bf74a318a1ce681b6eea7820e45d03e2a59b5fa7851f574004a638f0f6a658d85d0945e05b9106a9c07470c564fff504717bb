@@ -1,0 +1,59 @@
+{
+	"$id": "/inference/schemas/image-text-to-image/input.json",
+	"$schema": "http://json-schema.org/draft-06/schema#",
+	"description": "Inputs for Image Text To Image inference. Either inputs (image) or prompt (in parameters) must be provided, or both.",
+	"title": "ImageTextToImageInput",
+	"type": "object",
+	"properties": {
+		"inputs": {
+			"type": "string",
+			"description": "The input image data as a base64-encoded string. If no `parameters` are provided, you can also provide the image data as a raw bytes payload. Either this or prompt must be provided.",
+			"comment": "type=binary"
+		},
+		"parameters": {
+			"description": "Additional inference parameters for Image Text To Image",
+			"$ref": "#/$defs/ImageTextToImageParameters"
+		}
+	},
+	"$defs": {
+		"ImageTextToImageParameters": {
+			"title": "ImageTextToImageParameters",
+			"type": "object",
+			"properties": {
+				"prompt": {
+					"type": "string",
+					"description": "The text prompt to guide the image generation. Either this or inputs (image) must be provided."
+				},
+				"guidance_scale": {
+					"type": "number",
+					"description": "For diffusion models. A higher guidance scale value encourages the model to generate images closely linked to the text prompt at the expense of lower image quality."
+				},
+				"negative_prompt": {
+					"type": "string",
+					"description": "One prompt to guide what NOT to include in image generation."
+				},
+				"num_inference_steps": {
+					"type": "integer",
+					"description": "For diffusion models. The number of denoising steps. More denoising steps usually lead to a higher quality image at the expense of slower inference."
+				},
+				"target_size": {
+					"type": "object",
+					"description": "The size in pixels of the output image. This parameter is only supported by some providers and for specific models. It will be ignored when unsupported.",
+					"properties": {
+						"width": {
+							"type": "integer"
+						},
+						"height": {
+							"type": "integer"
+						}
+					},
+					"required": ["width", "height"]
+				},
+				"seed": {
+					"type": "integer",
+					"description": "Seed for the random number generator."
+				}
+			}
+		}
+	}
+}

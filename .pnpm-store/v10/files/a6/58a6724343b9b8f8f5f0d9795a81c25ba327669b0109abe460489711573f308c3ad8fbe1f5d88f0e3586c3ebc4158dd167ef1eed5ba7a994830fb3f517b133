@@ -1,0 +1,76 @@
+{
+  "name": "@huggingface/inference",
+  "version": "4.13.11",
+  "description": "Typescript client for the Hugging Face Inference Providers and Inference Endpoints",
+  "keywords": [
+    "ai",
+    "hugging face",
+    "hugging face typescript",
+    "huggingface",
+    "huggingface-inference-api",
+    "huggingface-inference-api-typescript",
+    "inference"
+  ],
+  "license": "MIT",
+  "author": "Hugging Face and Tim Mikeladze <tim.mikeladze@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/huggingface/huggingface.js.git"
+  },
+  "source": "src/index.ts",
+  "files": [
+    "dist",
+    "src",
+    "!src/snippets/templates/**/*.jinja"
+  ],
+  "type": "module",
+  "main": "./dist/commonjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/commonjs/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/index.d.ts",
+        "default": "./dist/commonjs/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@huggingface/jinja": "^0.5.4",
+    "@huggingface/tasks": "^0.19.82"
+  },
+  "devDependencies": {
+    "@types/node": "18.13.0"
+  },
+  "resolutions": {},
+  "tshy": {
+    "exports": {
+      ".": "./src/index.ts",
+      "./package.json": "./package.json"
+    }
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "pnpm run export-templates && pnpm run package-to-ts && tshy",
+    "lint": "eslint --quiet --fix --ext .cjs,.ts .",
+    "lint:check": "eslint --ext .cjs,.ts .",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "test": "vitest run --config vitest.config.mts",
+    "test:browser": "vitest run --browser.name=chrome --browser.headless --config vitest.config.mts",
+    "check": "tsc",
+    "dev": "pnpm run export-templates && tsup src/index.ts --format cjs,esm --watch",
+    "export-templates": "tsx scripts/export-templates.ts",
+    "package-to-ts": "tsx scripts/package-json-to-ts.ts"
+  }
+}

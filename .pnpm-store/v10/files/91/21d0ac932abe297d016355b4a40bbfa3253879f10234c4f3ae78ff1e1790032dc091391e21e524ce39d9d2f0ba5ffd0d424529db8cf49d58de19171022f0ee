@@ -1,0 +1,25 @@
+{
+    "name": "@types/jmespath",
+    "version": "0.15.2",
+    "description": "TypeScript definitions for jmespath",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/jmespath",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Jeffery Grajkowski",
+            "githubUsername": "pushplay",
+            "url": "https://github.com/pushplay"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/jmespath"
+    },
+    "scripts": {},
+    "dependencies": {},
+    "typesPublisherContentHash": "d419e1bf99905542092436f88fcaadb58cd5b7c0e49d1d234b5550439683c101",
+    "typeScriptVersion": "4.5"
+}

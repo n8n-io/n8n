@@ -1,0 +1,27 @@
+{
+    "name": "@types/through",
+    "version": "0.0.33",
+    "description": "TypeScript definitions for through",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/through",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Andrew Gaspar",
+            "githubUsername": "AndrewGaspar",
+            "url": "https://github.com/AndrewGaspar"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/through"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/node": "*"
+    },
+    "typesPublisherContentHash": "06af82efbf94e1c23fc3b72d80c6c90ac6472e9b69c5e319efa0c0135f20adc5",
+    "typeScriptVersion": "4.5"
+}

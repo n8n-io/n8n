@@ -1,0 +1,101 @@
+{
+  "name": "ts-type",
+  "version": "3.0.10",
+  "description": "TypeScript 類型工具庫：提供豐富的類型操作工具和重新導出的內建類型 / TypeScript type utility library: provides rich type manipulation utilities and re-exported built-in types",
+  "keywords": [
+    ".d.ts",
+    "@types",
+    "declaration",
+    "dev",
+    "develop",
+    "development",
+    "environment",
+    "ide",
+    "interface",
+    "node",
+    "playground",
+    "runtime",
+    "ts",
+    "type",
+    "type-level",
+    "typelevel",
+    "types",
+    "typescript",
+    "typing",
+    "typings",
+    "type-helper",
+    "toolbox",
+    "toolbelt",
+    "utility",
+    "utilities",
+    "type-utilities",
+    "type-manipulation",
+    "advanced-types",
+    "type-transform",
+    "type-inference",
+    "generic-types",
+    "type-safe",
+    "bilingual",
+    "chinese",
+    "english"
+  ],
+  "homepage": "https://github.com/bluelovers/ws-ts-type/tree/master/packages/ts-type#readme",
+  "bugs": {
+    "url": "https://github.com/bluelovers/ws-ts-type/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bluelovers/ws-ts-type.git",
+    "directory": "packages/ts-type"
+  },
+  "license": "ISC",
+  "author": "",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "coverage": "yarn run test -- --coverage",
+    "pretest": "yarn run build",
+    "test": "yarn run ts:check && yarn run test:tsd",
+    "test:jest": "jest --passWithNoTests",
+    "test:jest:coverage": "node --run test:jest -- --coverage",
+    "test:jest:snapshot": "yarn run test:jest -- -u",
+    "test:snapshot": "yarn run test -- -u",
+    "test:tsd": "tsd",
+    "build": "yarn run build-lib-toc",
+    "build-lib-toc": "ts-node ./test/script/toc && yarn run build:toc",
+    "build:toc": "tsc --skipLibCheck & echo build:toc",
+    "preversion": "yarn run test && yarn run postpublish:git:commit",
+    "prepublishOnly": "echo prepublishOnly",
+    "postpublish:git:commit": "git commit -m \"build(release): publish\" ./lib/index.d.ts & echo postpublish:git:commit",
+    "ncu": "yarn-tool ncu -u",
+    "sort-package-json": "yarn-tool sort",
+    "ts:check": "tsc -p tsconfig.check.json --emitDeclarationOnly --skipLibCheck",
+    "tsc:showConfig": "ynpx get-current-tsconfig -p"
+  },
+  "tsd": {
+    "compilerOptions": {
+      "skipLibCheck": true,
+      "emitDeclarationOnly": true,
+      "noUnusedParameters": false,
+      "allowUnusedLabels": true,
+      "noUnusedLocals": false,
+      "noPropertyAccessFromIndexSignature": false
+    },
+    "directory": "test/spec",
+    "testFiles": [
+      "test/spec/**/*.ts"
+    ]
+  },
+  "dependencies": {
+    "@types/node": "*",
+    "tslib": ">=2",
+    "typedarray-dts": "^1.0.0"
+  },
+  "peerDependencies": {
+    "ts-toolbelt": "^9.6.0"
+  },
+  "gitHead": "c87f657dc8050a9b9c3ed646262f6c497a867f05"
+}

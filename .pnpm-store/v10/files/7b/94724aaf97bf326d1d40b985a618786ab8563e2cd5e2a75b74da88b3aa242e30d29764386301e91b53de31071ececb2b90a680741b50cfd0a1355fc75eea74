@@ -1,0 +1,68 @@
+{
+  "name": "@cfworker/json-schema",
+  "version": "4.1.1",
+  "description": "A JSON schema validator that will run on Cloudflare workers. Supports drafts 4, 7, 2019-09, and 2020-12.",
+  "keywords": [
+    "json-schema",
+    "jsonschema",
+    "json",
+    "schema",
+    "cloudflare",
+    "worker",
+    "workers",
+    "service-worker"
+  ],
+  "repository": "https://github.com/cfworker/cfworker",
+  "author": "Jeremy Danyow <jdanyow@gmail.com>",
+  "homepage": "https://github.com/cfworker/cfworker/tree/master/packages/json-schema/README.md",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/commonjs/index.js",
+  "types": "./dist/commonjs/index.d.ts",
+  "module": "./dist/esm/index.js",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/index.d.ts",
+        "default": "./dist/commonjs/index.js"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "prepare": "tshy",
+    "build": "tsc --build",
+    "clean": "tsc --build --clean",
+    "pretest": "node --experimental-import-meta-resolve suite-gen.mjs && esbuild test/test.ts --target=esnext --bundle --format=esm --conditions=worker,browser --outdir=dist-test --ignore-annotations",
+    "test": "node ../../test.mjs"
+  },
+  "devDependencies": {
+    "@types/chai": "^5.0.1",
+    "@types/mocha": "^10.0.10",
+    "chai": "^5.1.2",
+    "json-schema-test-suite": "git+https://github.com/json-schema-org/JSON-Schema-Test-Suite#76b529f",
+    "esbuild": "^0.24.2",
+    "mocha": "^11.1.0",
+    "typescript": "^5.7.3",
+    "wrangler": "^3.107.2"
+  },
+  "tshy": {
+    "exports": {
+      "./package.json": "./package.json",
+      ".": "./src/index.ts"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+import CJS_COMPAT_NODE_URL_97jq6ppbptt from 'node:url';
+import CJS_COMPAT_NODE_PATH_97jq6ppbptt from 'node:path';
+import CJS_COMPAT_NODE_MODULE_97jq6ppbptt from "node:module";
+
+var __filename = CJS_COMPAT_NODE_URL_97jq6ppbptt.fileURLToPath(import.meta.url);
+var __dirname = CJS_COMPAT_NODE_PATH_97jq6ppbptt.dirname(__filename);
+var require = CJS_COMPAT_NODE_MODULE_97jq6ppbptt.createRequire(import.meta.url);
+
+// ------------------------------------------------------------
+// end of CJS compatibility banner, injected by Storybook's esbuild configuration
+// ------------------------------------------------------------
+
+// src/node/index.ts
+function defineMain(config) {
+  return config;
+}
+export {
+  defineMain
+};

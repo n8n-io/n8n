@@ -17,14 +17,14 @@ import { messageOptions, metadataProperty, modelRLC } from '../descriptions';
 import { createRequest } from './helpers/responses';
 
 const jsonSchemaExample = `{
-  "type": "object",
-  "properties": {
-    "message": {
-      "type": "string"
-    }
-  },
-  "additionalProperties": false,
-  "required": ["message"]
+	"type": "object",
+	"properties": {
+		"message": {
+		"type": "string"
+		}
+	},
+	"additionalProperties": false,
+	"required": ["message"]
 }`;
 
 const properties: INodeProperties[] = [
@@ -608,7 +608,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		body,
 	})) as ChatResponse;
 
-	if (body.background) {
+	if ((body as any).background) {
 		const timeoutSeconds = get(options, 'backgroundMode.values.timeout', 300) as number;
 		response = await pollUntilAvailable(
 			this,
@@ -616,12 +616,12 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				return (await apiRequest.call(this, 'GET', `/responses/${response.id}`)) as ChatResponse;
 			},
 			(response) => {
-				if (response.error) {
+				if ((response as any).error) { 
 					throw new NodeOperationError(this.getNode(), 'Background mode error', {
-						description: response.error.message,
+						description: (response as any).error.message,
 					});
 				}
-				return response.status === 'completed';
+				return (response as any).status === 'completed';
 			},
 			timeoutSeconds,
 			10,
@@ -634,7 +634,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const isToolRelatedCall: (item: { type: string }) => boolean = (item) =>
 		item.type === 'function_call' || item.type === 'reasoning';
 
-	let toolCalls = response.output.filter(isToolRelatedCall);
+	// let toolCalls = response.output.filter(isToolRelatedCall);
+	let toolCalls = (response as any).output.filter(isToolRelatedCall);
 
 	const hasFunctionCall = () => toolCalls.some((item) => item.type === 'function_call');
 
@@ -681,7 +682,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		response = (await apiRequest.call(this, 'POST', '/responses', {
 			body,
 		})) as ChatResponse;
-		toolCalls = response.output.filter(isToolRelatedCall);
+		toolCalls = (response as any).output.filter(isToolRelatedCall);
 
 		currentIteration++;
 	}
@@ -689,7 +690,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const formatType = get(body, 'text.format.type');
 	if (formatType === 'json_object' || formatType === 'json_schema') {
 		try {
-			response.output = response.output.map((item) => {
+			(response as any).output = (response as any).output.map((item) => {
 				if (item.type === 'message') {
 					item.content = item.content.map((content) => {
 						if (content.type === 'output_text') {
@@ -708,7 +709,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const returnData: INodeExecutionData[] = [];
 
 	if (simplify) {
-		const messages = response.output.filter((item) => item.type === 'message');
+		const messages = (response as any).output.filter((item: any) => item.type === 'message');
 		returnData.push({
 			json: {
 				output: messages as unknown as IDataObject,

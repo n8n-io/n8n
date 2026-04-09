@@ -1,0 +1,50 @@
+{
+  "name": "@emnapi/wasi-threads",
+  "version": "1.2.0",
+  "description": "WASI threads proposal implementation in JavaScript",
+  "main": "index.js",
+  "module": "./dist/wasi-threads.esm-bundler.js",
+  "types": "./dist/wasi-threads.d.ts",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": {
+        "module": "./dist/wasi-threads.d.ts",
+        "import": "./dist/wasi-threads.d.mts",
+        "default": "./dist/wasi-threads.d.ts"
+      },
+      "module": "./dist/wasi-threads.esm-bundler.js",
+      "import": "./dist/wasi-threads.mjs",
+      "default": "./index.js"
+    },
+    "./dist/wasi-threads.cjs.min": {
+      "types": "./dist/wasi-threads.d.ts",
+      "default": "./dist/wasi-threads.cjs.min.js"
+    },
+    "./dist/wasi-threads.min.mjs": {
+      "types": "./dist/wasi-threads.d.mts",
+      "default": "./dist/wasi-threads.min.mjs"
+    }
+  },
+  "dependencies": {
+    "tslib": "^2.4.0"
+  },
+  "scripts": {
+    "build": "node ./script/build.js",
+    "build:test": "node ./test/build.js",
+    "test": "node ./test/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/toyobayashi/emnapi.git"
+  },
+  "author": "toyobayashi",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/toyobayashi/emnapi/issues"
+  },
+  "homepage": "https://github.com/toyobayashi/emnapi#readme",
+  "publishConfig": {
+    "access": "public"
+  }
+}

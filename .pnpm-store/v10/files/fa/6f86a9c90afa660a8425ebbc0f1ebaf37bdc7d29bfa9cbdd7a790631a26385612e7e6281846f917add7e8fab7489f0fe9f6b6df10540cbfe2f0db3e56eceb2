@@ -1,5 +1,0 @@
-{
-  "main": "../lib/browser/interceptors/WebSocket/index.js",
-  "module": "../lib/browser/interceptors/WebSocket/index.mjs",
-  "types": "../lib/browser/interceptors/WebSocket/index.d.ts"
-}

@@ -1,0 +1,48 @@
+{
+    "name": "@types/oracledb",
+    "version": "6.10.2",
+    "description": "TypeScript definitions for oracledb",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/oracledb",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Connor Fitzgerald",
+            "githubUsername": "connorjayfitzgerald",
+            "url": "https://github.com/connorjayfitzgerald"
+        },
+        {
+            "name": "Dan Beglin",
+            "githubUsername": "dannyb648",
+            "url": "https://github.com/dannyb648"
+        },
+        {
+            "name": "Jacob Wheale",
+            "githubUsername": "jacobwheale",
+            "url": "https://github.com/jacobwheale"
+        },
+        {
+            "name": "Sudarshan Soma",
+            "githubUsername": "sudarshan12s",
+            "url": "https://github.com/sudarshan12s"
+        },
+        {
+            "name": "Sharad Chandran R",
+            "githubUsername": "sharadraju",
+            "url": "https://github.com/sharadraju"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/oracledb"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/node": "*"
+    },
+    "peerDependencies": {},
+    "typesPublisherContentHash": "7e52c6515abaee9090714d97070abd3818def7cdc153aab0fd3a2f9a49cc44ab",
+    "typeScriptVersion": "5.2"
+}

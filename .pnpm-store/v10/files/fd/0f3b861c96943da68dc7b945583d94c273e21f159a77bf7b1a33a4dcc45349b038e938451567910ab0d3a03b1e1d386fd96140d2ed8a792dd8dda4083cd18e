@@ -1,4 +1,0 @@
-jobs: 1
-check-coverage: false
-# in seconds
-timeout: 60

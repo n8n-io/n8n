@@ -1,0 +1,31 @@
+import { HttpBindingProtocol } from "@smithy/core/protocols";
+import type { TypeRegistry } from "@smithy/core/schema";
+import type { EndpointBearer, HandlerExecutionContext, HttpRequest as IHttpRequest, HttpResponse as IHttpResponse, MetadataBearer, OperationSchema, ResponseMetadata, SerdeFunctions, ShapeDeserializer, ShapeSerializer } from "@smithy/types";
+import { XmlCodec } from "./XmlCodec";
+/**
+ * @public
+ */
+export declare class AwsRestXmlProtocol extends HttpBindingProtocol {
+    private readonly codec;
+    protected serializer: ShapeSerializer<string | Uint8Array>;
+    protected deserializer: ShapeDeserializer<string | Uint8Array>;
+    private readonly mixin;
+    constructor(options: {
+        defaultNamespace: string;
+        xmlNamespace: string;
+        errorTypeRegistries?: TypeRegistry[];
+    });
+    getPayloadCodec(): XmlCodec;
+    getShapeId(): string;
+    serializeRequest<Input extends object>(operationSchema: OperationSchema, input: Input, context: HandlerExecutionContext & SerdeFunctions & EndpointBearer): Promise<IHttpRequest>;
+    deserializeResponse<Output extends MetadataBearer>(operationSchema: OperationSchema, context: HandlerExecutionContext & SerdeFunctions, response: IHttpResponse): Promise<Output>;
+    /**
+     * @override
+     */
+    protected handleError(operationSchema: OperationSchema, context: HandlerExecutionContext & SerdeFunctions, response: IHttpResponse, dataObject: any, metadata: ResponseMetadata): Promise<never>;
+    /**
+     * @override
+     */
+    protected getDefaultContentType(): string;
+    private hasUnstructuredPayloadBinding;
+}

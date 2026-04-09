@@ -1,0 +1,1 @@
+{"version":3,"file":"index.cjs","names":["Object","defineProperty","exports","value"],"sources":["index.js"],"sourcesContent":["\"use strict\";\nObject.defineProperty(exports, \"__esModule\", { value: true });\n"],"mappings":"AAAA,YAAY;;AACZA,MAAM,CAACC,cAAc,CAACC,OAAO,EAAE,YAAY,EAAE;EAAEC,KAAK,EAAE;AAAK,CAAC,CAAC","ignoreList":[]}

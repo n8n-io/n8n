@@ -240,7 +240,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		instructions,
 	};
 
-	const tools = [];
+	// const tools = [];
+	const tools: any[] = [];
 
 	if (codeInterpreter) {
 		tools.push({

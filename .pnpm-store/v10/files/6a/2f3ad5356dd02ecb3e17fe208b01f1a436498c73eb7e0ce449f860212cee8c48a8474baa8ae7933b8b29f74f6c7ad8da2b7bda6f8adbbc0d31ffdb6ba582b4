@@ -1,0 +1,100 @@
+{
+  "name": "@dsnp/parquetjs",
+  "description": "fully asynchronous, pure JavaScript implementation of the Parquet file format",
+  "main": "dist/parquet.js",
+  "types": "dist/parquet.d.ts",
+  "version": "1.8.7",
+  "homepage": "https://github.com/LibertyDSNP/parquetjs",
+  "license": "MIT",
+  "keywords": [
+    "dremel",
+    "parquet"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/LibertyDSNP/parquetjs.git"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.750.0",
+    "@types/node-int64": "^0.4.32",
+    "@types/thrift": "^0.10.17",
+    "@zenfs/core": "^1.11.2",
+    "brotli-wasm": "^3.0.1",
+    "bson": "6.10.3",
+    "int53": "^1.0.0",
+    "long": "^5.3.1",
+    "node-int64": "^0.4.0",
+    "snappyjs": "^0.7.0",
+    "thrift": "0.21.0",
+    "varint": "^6.0.0",
+    "xxhash-wasm": "^1.1.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.20.0",
+    "@smithy/util-stream": "^4.1.1",
+    "@types/chai": "^5.0.1",
+    "@types/eslint__js": "^8.42.3",
+    "@types/json-schema": "^7.0.15",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.13.4",
+    "@types/sinon": "^17.0.3",
+    "@types/varint": "^6.0.3",
+    "assert": "^2.1.0",
+    "aws-sdk-client-mock": "^4.1.0",
+    "buffer": "^6.0.3",
+    "chai": "5.2.0",
+    "core-js": "^3.40.0",
+    "esbuild": "^0.25.0",
+    "esbuild-plugin-wat": "^0.2.7",
+    "eslint": "^9.20.1",
+    "eslint-plugin-mocha": "^10.5.0",
+    "events": "^3.3.0",
+    "mocha": "^11.1.0",
+    "msw": "^2.7.0",
+    "object-stream": "^0.0.1",
+    "prettier": "3.5.1",
+    "process": "^0.11.10",
+    "regenerator-runtime": "^0.14.1",
+    "sinon": "^19.0.2",
+    "sinon-chai": "^4.0.0",
+    "sinon-chai-in-order": "^0.1.0",
+    "stream-browserify": "^3.0.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.24.1"
+  },
+  "scripts": {
+    "build": "npm run build:node && npm run build:types",
+    "build:types": "tsc -p tsconfig.types.json && cp gen-nodejs/parquet_types.d.ts dist/gen-nodejs/parquet_types.d.ts",
+    "build:node": "tsc -b",
+    "build:browser": "node esbuild.mjs",
+    "type": "tsc --noEmit",
+    "lint": "eslint . && npx prettier . --check",
+    "lint:fix": "eslint --fix .",
+    "format": "npx prettier . --write",
+    "test": "mocha 'test/{,!(browser)/**}/*.{js,ts}'",
+    "test:only": "mocha",
+    "clean": "rm -Rf ./dist",
+    "prepublishOnly": "npm run clean && npm run build:node && npm run build:types && npm run build:browser",
+    "thrift": "thrift -out gen-nodejs --gen js:ts parquet.thrift && thrift -out gen-nodejs --gen js:node parquet.thrift",
+    "serve": "node esbuild-serve.mjs"
+  },
+  "browser": {
+    "assert": "assert",
+    "events": "events",
+    "fs": "@zenfs/core",
+    "path": "path-browserify",
+    "stream": "readable-stream",
+    "thrift": "./node_modules/thrift/lib/nodejs/lib/thrift/browser.js",
+    "util": "util"
+  },
+  "engines": {
+    "node": ">=18.18.2"
+  },
+  "files": [
+    "dist/**/*",
+    "parquet.thrift",
+    "*.md",
+    "docs/**/*"
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["/mnt/vss/_work/1/s/sdk/core/ts-http-runtime/src/util/inspect.common.ts"],
+  "sourcesContent": ["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT License.\n\nexport const custom = Symbol();\n"],
+  "mappings": ";;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAGO,MAAM,SAAS,uBAAO;",
+  "names": []
+}

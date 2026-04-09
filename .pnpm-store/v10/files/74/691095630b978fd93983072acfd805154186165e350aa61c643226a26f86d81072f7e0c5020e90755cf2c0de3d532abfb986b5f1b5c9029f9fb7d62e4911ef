@@ -1,0 +1,19 @@
+{
+  // This determines the configuration used by your editor
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true,
+    "declaration": false,
+    "target": "es5",
+    "module": "commonjs",
+    "strict": false,
+    "lib": [
+      "es2015"
+    ]
+  },
+  "include": [
+    "scripts",
+    "src",
+    "test"
+  ]
+}

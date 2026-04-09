@@ -1,0 +1,286 @@
+---
+title: Configuring Call Options
+description: Pass type-safe runtime inputs to dynamically configure agent behavior.
+---
+
+# Configuring Call Options
+
+Call options allow you to pass type-safe structured inputs to your agent. Use them to dynamically modify any agent setting based on the specific request.
+
+## Why Use Call Options?
+
+When you need agent behavior to change based on runtime context:
+
+- **Add dynamic context** - Inject retrieved documents, user preferences, or session data into prompts
+- **Select models dynamically** - Choose faster or more capable models based on request complexity
+- **Configure tools per request** - Pass user location to search tools or adjust tool behavior
+- **Customize provider options** - Set reasoning effort, temperature, or other provider-specific settings
+
+Without call options, you'd need to create multiple agents or handle configuration logic outside the agent.
+
+## How It Works
+
+Define call options in three steps:
+
+1. **Define the schema** - Specify what inputs you accept using `callOptionsSchema`
+2. **Configure with `prepareCall`** - Use those inputs to modify agent settings
+3. **Pass options at runtime** - Provide the options when calling `generate()` or `stream()`
+
+## Basic Example
+
+Add user context to your agent's prompt at runtime:
+
+```ts
+import { ToolLoopAgent } from 'ai';
+__PROVIDER_IMPORT__;
+import { z } from 'zod';
+
+const supportAgent = new ToolLoopAgent({
+  model: __MODEL__,
+  callOptionsSchema: z.object({
+    userId: z.string(),
+    accountType: z.enum(['free', 'pro', 'enterprise']),
+  }),
+  instructions: 'You are a helpful customer support agent.',
+  prepareCall: ({ options, ...settings }) => ({
+    ...settings,
+    instructions:
+      settings.instructions +
+      `\nUser context:
+- Account type: ${options.accountType}
+- User ID: ${options.userId}
+
+Adjust your response based on the user's account level.`,
+  }),
+});
+
+// Call the agent with specific user context
+const result = await supportAgent.generate({
+  prompt: 'How do I upgrade my account?',
+  options: {
+    userId: 'user_123',
+    accountType: 'free',
+  },
+});
+```
+
+The `options` parameter is now required and type-checked. If you don't provide it or pass incorrect types, TypeScript will error.
+
+## Modifying Agent Settings
+
+Use `prepareCall` to modify any agent setting. Return only the settings you want to change.
+
+### Dynamic Model Selection
+
+Choose models based on request characteristics:
+
+```ts
+import { ToolLoopAgent } from 'ai';
+__PROVIDER_IMPORT__;
+import { z } from 'zod';
+
+const agent = new ToolLoopAgent({
+  model: __MODEL__, // Default model
+  callOptionsSchema: z.object({
+    complexity: z.enum(['simple', 'complex']),
+  }),
+  prepareCall: ({ options, ...settings }) => ({
+    ...settings,
+    model:
+      options.complexity === 'simple' ? 'openai/gpt-4o-mini' : 'openai/o1-mini',
+  }),
+});
+
+// Use faster model for simple queries
+await agent.generate({
+  prompt: 'What is 2+2?',
+  options: { complexity: 'simple' },
+});
+
+// Use more capable model for complex reasoning
+await agent.generate({
+  prompt: 'Explain quantum entanglement',
+  options: { complexity: 'complex' },
+});
+```
+
+### Dynamic Tool Configuration
+
+Configure tools based on runtime context:
+
+```ts
+import { openai } from '@ai-sdk/openai';
+import { ToolLoopAgent } from 'ai';
+__PROVIDER_IMPORT__;
+import { z } from 'zod';
+
+const newsAgent = new ToolLoopAgent({
+  model: __MODEL__,
+  callOptionsSchema: z.object({
+    userCity: z.string().optional(),
+    userRegion: z.string().optional(),
+  }),
+  tools: {
+    web_search: openai.tools.webSearch(),
+  },
+  prepareCall: ({ options, ...settings }) => ({
+    ...settings,
+    tools: {
+      web_search: openai.tools.webSearch({
+        searchContextSize: 'low',
+        userLocation: {
+          type: 'approximate',
+          city: options.userCity,
+          region: options.userRegion,
+          country: 'US',
+        },
+      }),
+    },
+  }),
+});
+
+await newsAgent.generate({
+  prompt: 'What are the top local news stories?',
+  options: {
+    userCity: 'San Francisco',
+    userRegion: 'California',
+  },
+});
+```
+
+### Provider-Specific Options
+
+Configure provider settings dynamically:
+
+```ts
+import { openai, OpenAILanguageModelResponsesOptions } from '@ai-sdk/openai';
+import { ToolLoopAgent } from 'ai';
+import { z } from 'zod';
+
+const agent = new ToolLoopAgent({
+  model: 'openai/o3',
+  callOptionsSchema: z.object({
+    taskDifficulty: z.enum(['low', 'medium', 'high']),
+  }),
+  prepareCall: ({ options, ...settings }) => ({
+    ...settings,
+    providerOptions: {
+      openai: {
+        reasoningEffort: options.taskDifficulty,
+      } satisfies OpenAILanguageModelResponsesOptions,
+    },
+  }),
+});
+
+await agent.generate({
+  prompt: 'Analyze this complex scenario...',
+  options: { taskDifficulty: 'high' },
+});
+```
+
+## Advanced Patterns
+
+### Retrieval Augmented Generation (RAG)
+
+Fetch relevant context and inject it into your prompt:
+
+```ts
+import { ToolLoopAgent } from 'ai';
+__PROVIDER_IMPORT__;
+import { z } from 'zod';
+
+const ragAgent = new ToolLoopAgent({
+  model: __MODEL__,
+  callOptionsSchema: z.object({
+    query: z.string(),
+  }),
+  prepareCall: async ({ options, ...settings }) => {
+    // Fetch relevant documents (this can be async)
+    const documents = await vectorSearch(options.query);
+
+    return {
+      ...settings,
+      instructions: `Answer questions using the following context:
+
+${documents.map(doc => doc.content).join('\n\n')}`,
+    };
+  },
+});
+
+await ragAgent.generate({
+  prompt: 'What is our refund policy?',
+  options: { query: 'refund policy' },
+});
+```
+
+The `prepareCall` function can be async, enabling you to fetch data before configuring the agent.
+
+### Combining Multiple Modifications
+
+Modify multiple settings together:
+
+```ts
+import { ToolLoopAgent } from 'ai';
+__PROVIDER_IMPORT__;
+import { z } from 'zod';
+
+const agent = new ToolLoopAgent({
+  model: __MODEL__,
+  callOptionsSchema: z.object({
+    userRole: z.enum(['admin', 'user']),
+    urgency: z.enum(['low', 'high']),
+  }),
+  tools: {
+    readDatabase: readDatabaseTool,
+    writeDatabase: writeDatabaseTool,
+  },
+  prepareCall: ({ options, ...settings }) => ({
+    ...settings,
+    // Upgrade model for urgent requests
+    model: options.urgency === 'high' ? __MODEL__ : settings.model,
+    // Limit tools based on user role
+    activeTools:
+      options.userRole === 'admin'
+        ? ['readDatabase', 'writeDatabase']
+        : ['readDatabase'],
+    // Adjust instructions
+    instructions: `You are a ${options.userRole} assistant.
+${options.userRole === 'admin' ? 'You have full database access.' : 'You have read-only access.'}`,
+  }),
+});
+
+await agent.generate({
+  prompt: 'Update the user record',
+  options: {
+    userRole: 'admin',
+    urgency: 'high',
+  },
+});
+```
+
+## Using with createAgentUIStreamResponse
+
+Pass call options through API routes to your agent:
+
+```ts filename="app/api/chat/route.ts"
+import { createAgentUIStreamResponse } from 'ai';
+import { myAgent } from '@/ai/agents/my-agent';
+
+export async function POST(request: Request) {
+  const { messages, userId, accountType } = await request.json();
+
+  return createAgentUIStreamResponse({
+    agent: myAgent,
+    messages,
+    options: {
+      userId,
+      accountType,
+    },
+  });
+}
+```
+
+## Next Steps
+
+- Learn about [loop control](/docs/agents/loop-control) for execution management
+- Explore [workflow patterns](/docs/agents/workflows) for complex multi-step processes

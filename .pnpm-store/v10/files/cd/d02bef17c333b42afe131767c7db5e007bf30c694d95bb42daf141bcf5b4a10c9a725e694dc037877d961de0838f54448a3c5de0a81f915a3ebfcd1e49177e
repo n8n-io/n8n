@@ -1,0 +1,71 @@
+{
+  "name": "@intlify/devtools-types",
+  "version": "11.3.0",
+  "description": "@intlify/devtools-types",
+  "keywords": [
+    "devtools",
+    "i18n",
+    "internationalization",
+    "intlify"
+  ],
+  "license": "MIT",
+  "author": {
+    "name": "kazuya kawaguchi",
+    "email": "kawakazu80@gmail.com"
+  },
+  "homepage": "https://github.com/intlify/vue-i18n/tree/master/packages/devtools-types#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/intlify/vue-i18n.git",
+    "directory": "packages/devtools-types"
+  },
+  "bugs": {
+    "url": "https://github.com/intlify/vue-i18n/issues"
+  },
+  "files": [
+    "index.js",
+    "dist"
+  ],
+  "main": "index.js",
+  "module": "dist/devtools-types.mjs",
+  "types": "dist/devtools-types.d.ts",
+  "dependencies": {
+    "@intlify/core-base": "11.3.0",
+    "@intlify/shared": "11.3.0"
+  },
+  "engines": {
+    "node": ">= 16"
+  },
+  "buildOptions": {
+    "name": "IntlifyDevToolsTypes",
+    "formats": [
+      "mjs",
+      "cjs"
+    ]
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/devtools-types.d.ts",
+      "import": "./dist/devtools-types.mjs",
+      "node": {
+        "import": {
+          "production": "./dist/devtools-types.prod.cjs",
+          "development": "./dist/devtools-types.mjs",
+          "default": "./dist/devtools-types.mjs"
+        },
+        "require": {
+          "production": "./dist/devtools-types.prod.cjs",
+          "development": "./dist/devtools-types.cjs",
+          "default": "./index.js"
+        }
+      }
+    },
+    "./dist/*": "./dist/*",
+    "./package.json": "./package.json"
+  },
+  "funding": "https://github.com/sponsors/kazupon",
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false
+}

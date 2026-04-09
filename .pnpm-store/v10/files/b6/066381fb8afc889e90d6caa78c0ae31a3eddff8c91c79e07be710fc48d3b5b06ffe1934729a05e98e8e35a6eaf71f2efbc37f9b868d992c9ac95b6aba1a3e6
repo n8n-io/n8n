@@ -1,0 +1,59 @@
+{
+    "name": "@types/shelljs",
+    "version": "0.8.17",
+    "description": "TypeScript definitions for shelljs",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/shelljs",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Niklas Mollenhauer",
+            "githubUsername": "nikeee",
+            "url": "https://github.com/nikeee"
+        },
+        {
+            "name": "Vojtech Jasny",
+            "githubUsername": "voy",
+            "url": "https://github.com/voy"
+        },
+        {
+            "name": "George Kalpakas",
+            "githubUsername": "gkalpak",
+            "url": "https://github.com/gkalpak"
+        },
+        {
+            "name": "Paul Huynh",
+            "githubUsername": "pheromonez",
+            "url": "https://github.com/pheromonez"
+        },
+        {
+            "name": "Alexander Futász",
+            "githubUsername": "aldafu",
+            "url": "https://github.com/aldafu"
+        },
+        {
+            "name": "ExE Boss",
+            "githubUsername": "ExE-Boss",
+            "url": "https://github.com/ExE-Boss"
+        },
+        {
+            "name": "Mirco Sanguineti",
+            "githubUsername": "msanguineti",
+            "url": "https://github.com/msanguineti"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/shelljs"
+    },
+    "scripts": {},
+    "dependencies": {
+        "glob": "^11.0.3",
+        "@types/node": "*"
+    },
+    "peerDependencies": {},
+    "typesPublisherContentHash": "34722e27ad5ec6fe942a491d2a925512fe565af89d78fb695dcee534cb90173d",
+    "typeScriptVersion": "5.1"
+}

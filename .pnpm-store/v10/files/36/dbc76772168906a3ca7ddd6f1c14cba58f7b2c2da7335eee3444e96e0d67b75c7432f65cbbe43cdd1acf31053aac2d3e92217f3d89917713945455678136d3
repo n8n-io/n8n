@@ -1,0 +1,1 @@
+{"version":3,"file":"StdioWritable.d.ts","sourceRoot":"","sources":["../src/StdioWritable.ts"],"names":[],"mappings":"AAKA,OAAO,EAAE,KAAK,cAAc,EAAqB,MAAM,kBAAkB,CAAC;AAC1E,OAAO,EAAE,gBAAgB,EAAE,MAAM,oBAAoB,CAAC;AAEtD;;;;;;;;;GASG;AACH,qBAAa,aAAc,SAAQ,gBAAgB;IACjD,OAAc,QAAQ,EAAE,aAAa,CAAuB;IAE5D,SAAS,CAAC,YAAY,CAAC,KAAK,EAAE,cAAc,GAAG,IAAI;CAOpD"}

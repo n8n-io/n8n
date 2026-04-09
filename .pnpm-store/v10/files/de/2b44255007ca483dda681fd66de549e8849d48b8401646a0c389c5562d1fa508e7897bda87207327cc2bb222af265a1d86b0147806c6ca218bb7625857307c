@@ -1,0 +1,1 @@
+{"version":3,"file":"is-json.js","sourceRoot":"","sources":["../../src/utils/is-json.ts"],"names":[],"mappings":";;AAAA,wBAOC;AAPD,SAAgB,MAAM,CAAC,GAAW;IAChC,IAAI,CAAC;QACH,IAAI,CAAC,KAAK,CAAC,GAAG,CAAC,CAAC;QAChB,OAAO,IAAI,CAAC;IACd,CAAC;IAAC,MAAM,CAAC;QACP,OAAO,KAAK,CAAC;IACf,CAAC;AACH,CAAC"}

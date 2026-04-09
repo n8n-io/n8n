@@ -1,0 +1,160 @@
+{
+    "name": "@types/jest",
+    "version": "29.5.14",
+    "description": "TypeScript definitions for jest",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/jest",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Asana (https://asana.com)\n//                 Ivo Stratev",
+            "githubUsername": "NoHomey",
+            "url": "https://github.com/NoHomey"
+        },
+        {
+            "name": "jwbay",
+            "githubUsername": "jwbay",
+            "url": "https://github.com/jwbay"
+        },
+        {
+            "name": "Alexey Svetliakov",
+            "githubUsername": "asvetliakov",
+            "url": "https://github.com/asvetliakov"
+        },
+        {
+            "name": "Alex Jover Morales",
+            "githubUsername": "alexjoverm",
+            "url": "https://github.com/alexjoverm"
+        },
+        {
+            "name": "Allan Lukwago",
+            "githubUsername": "epicallan",
+            "url": "https://github.com/epicallan"
+        },
+        {
+            "name": "Ika",
+            "githubUsername": "ikatyang",
+            "url": "https://github.com/ikatyang"
+        },
+        {
+            "name": "Waseem Dahman",
+            "githubUsername": "wsmd",
+            "url": "https://github.com/wsmd"
+        },
+        {
+            "name": "Jamie Mason",
+            "githubUsername": "JamieMason",
+            "url": "https://github.com/JamieMason"
+        },
+        {
+            "name": "Douglas Duteil",
+            "githubUsername": "douglasduteil",
+            "url": "https://github.com/douglasduteil"
+        },
+        {
+            "name": "Ahn",
+            "githubUsername": "ahnpnl",
+            "url": "https://github.com/ahnpnl"
+        },
+        {
+            "name": "Jeff Lau",
+            "githubUsername": "UselessPickles",
+            "url": "https://github.com/UselessPickles"
+        },
+        {
+            "name": "Andrew Makarov",
+            "githubUsername": "r3nya",
+            "url": "https://github.com/r3nya"
+        },
+        {
+            "name": "Martin Hochel",
+            "githubUsername": "hotell",
+            "url": "https://github.com/hotell"
+        },
+        {
+            "name": "Sebastian Sebald",
+            "githubUsername": "sebald",
+            "url": "https://github.com/sebald"
+        },
+        {
+            "name": "Andy",
+            "githubUsername": "andys8",
+            "url": "https://github.com/andys8"
+        },
+        {
+            "name": "Antoine Brault",
+            "githubUsername": "antoinebrault",
+            "url": "https://github.com/antoinebrault"
+        },
+        {
+            "name": "Gregor Stamać",
+            "githubUsername": "gstamac",
+            "url": "https://github.com/gstamac"
+        },
+        {
+            "name": "ExE Boss",
+            "githubUsername": "ExE-Boss",
+            "url": "https://github.com/ExE-Boss"
+        },
+        {
+            "name": "Alex Bolenok",
+            "githubUsername": "quassnoi",
+            "url": "https://github.com/quassnoi"
+        },
+        {
+            "name": "Mario Beltrán Alarcón",
+            "githubUsername": "Belco90",
+            "url": "https://github.com/Belco90"
+        },
+        {
+            "name": "Tony Hallett",
+            "githubUsername": "tonyhallett",
+            "url": "https://github.com/tonyhallett"
+        },
+        {
+            "name": "Jason Yu",
+            "githubUsername": "ycmjason",
+            "url": "https://github.com/ycmjason"
+        },
+        {
+            "name": "Pawel Fajfer",
+            "githubUsername": "pawfa",
+            "url": "https://github.com/pawfa"
+        },
+        {
+            "name": "Alexandre Germain",
+            "githubUsername": "gerkindev",
+            "url": "https://github.com/gerkindev"
+        },
+        {
+            "name": "Adam Jones",
+            "githubUsername": "domdomegg",
+            "url": "https://github.com/domdomegg"
+        },
+        {
+            "name": "Tom Mrazauskas",
+            "githubUsername": "mrazauskas",
+            "url": "https://github.com/mrazauskas"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./index.d.ts"
+        },
+        "./package.json": "./package.json"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/jest"
+    },
+    "scripts": {},
+    "dependencies": {
+        "expect": "^29.0.0",
+        "pretty-format": "^29.0.0"
+    },
+    "peerDependencies": {},
+    "typesPublisherContentHash": "03b921cd51b4ea0ab99ff3733f9e799bed833eccc13adaa2aaeb088345807f4d",
+    "typeScriptVersion": "4.8"
+}

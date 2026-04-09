@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["/mnt/vss/_work/1/s/sdk/core/ts-http-runtime/src/logger/log.ts"],
+  "sourcesContent": ["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT License.\n\nimport { EOL } from \"node:os\";\nimport util from \"node:util\";\nimport process from \"node:process\";\n\nexport function log(message: unknown, ...args: any[]): void {\n  process.stderr.write(`${util.format(message, ...args)}${EOL}`);\n}\n"],
+  "mappings": ";;;;;;;;;;;;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAGA,qBAAoB;AACpB,uBAAiB;AACjB,0BAAoB;AAEb,SAAS,IAAI,YAAqB,MAAmB;AAC1D,sBAAAA,QAAQ,OAAO,MAAM,GAAG,iBAAAC,QAAK,OAAO,SAAS,GAAG,IAAI,CAAC,GAAG,kBAAG,EAAE;AAC/D;",
+  "names": ["process", "util"]
+}

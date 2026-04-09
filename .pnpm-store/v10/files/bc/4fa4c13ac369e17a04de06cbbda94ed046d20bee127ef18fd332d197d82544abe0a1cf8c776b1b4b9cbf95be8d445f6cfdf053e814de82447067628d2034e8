@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["/mnt/vss/_work/1/s/sdk/core/ts-http-runtime/src/util/delay.ts"],
+  "sourcesContent": ["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT License.\n\nimport { getRandomIntegerInclusive } from \"./random.js\";\n\n/**\n * Calculates the delay interval for retry attempts using exponential delay with jitter.\n * @param retryAttempt - The current retry attempt number.\n * @param config - The exponential retry configuration.\n * @returns An object containing the calculated retry delay.\n */\nexport function calculateRetryDelay(\n  retryAttempt: number,\n  config: {\n    retryDelayInMs: number;\n    maxRetryDelayInMs: number;\n  },\n): { retryAfterInMs: number } {\n  // Exponentially increase the delay each time\n  const exponentialDelay = config.retryDelayInMs * Math.pow(2, retryAttempt);\n\n  // Don't let the delay exceed the maximum\n  const clampedDelay = Math.min(config.maxRetryDelayInMs, exponentialDelay);\n\n  // Allow the final value to have some \"jitter\" (within 50% of the delay size) so\n  // that retries across multiple clients don't occur simultaneously.\n  const retryAfterInMs = clampedDelay / 2 + getRandomIntegerInclusive(0, clampedDelay / 2);\n\n  return { retryAfterInMs };\n}\n"],
+  "mappings": ";;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAGA,oBAA0C;AAQnC,SAAS,oBACd,cACA,QAI4B;AAE5B,QAAM,mBAAmB,OAAO,iBAAiB,KAAK,IAAI,GAAG,YAAY;AAGzE,QAAM,eAAe,KAAK,IAAI,OAAO,mBAAmB,gBAAgB;AAIxE,QAAM,iBAAiB,eAAe,QAAI,yCAA0B,GAAG,eAAe,CAAC;AAEvF,SAAO,EAAE,eAAe;AAC1B;",
+  "names": []
+}

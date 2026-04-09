@@ -1,0 +1,1 @@
+import React from"react";import cx from"clsx";const defaultProps={className:"react-tabs__tab-list"};const TabList=props=>{const{children,className,...attributes}={...defaultProps,...props};return React.createElement("ul",Object.assign({},attributes,{className:cx(className),role:"tablist"}),children)};TabList.tabsRole="TabList";export default TabList;

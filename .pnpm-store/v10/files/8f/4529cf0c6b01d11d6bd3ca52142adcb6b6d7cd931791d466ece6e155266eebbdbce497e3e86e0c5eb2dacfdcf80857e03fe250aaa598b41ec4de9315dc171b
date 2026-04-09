@@ -1,0 +1,32 @@
+{
+    "name": "@types/node-int64",
+    "version": "0.4.32",
+    "description": "TypeScript definitions for node-int64",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/node-int64",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Benno Dreissig",
+            "githubUsername": "x3cion",
+            "url": "https://github.com/x3cion"
+        },
+        {
+            "name": "Kevin Greene",
+            "githubUsername": "kevin-greene-ck",
+            "url": "https://github.com/kevin-greene-ck"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/node-int64"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/node": "*"
+    },
+    "typesPublisherContentHash": "2e466d78fe3d49343f0799628d0250df1bee7f8a0c6e7f65f1ddb41e1711f45f",
+    "typeScriptVersion": "4.5"
+}

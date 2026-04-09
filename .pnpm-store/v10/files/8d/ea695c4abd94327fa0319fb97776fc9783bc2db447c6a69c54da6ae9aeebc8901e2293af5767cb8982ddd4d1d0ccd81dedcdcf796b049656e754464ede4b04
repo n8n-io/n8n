@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/json/index.js"],
+  "sourcesContent": ["export { default as getMetaFromPath } from './get-meta-from-path';\nexport { default as getDecoratedDataPath } from './get-decorated-data-path';\n"],
+  "mappings": ";;;;;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA,gCAA2C;AAC3C,qCAAgD;",
+  "names": []
+}

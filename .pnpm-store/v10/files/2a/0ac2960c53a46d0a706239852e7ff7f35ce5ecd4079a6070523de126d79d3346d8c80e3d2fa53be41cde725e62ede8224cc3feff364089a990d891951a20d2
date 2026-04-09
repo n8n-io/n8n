@@ -1,1 +1,0 @@
-{"version":3,"file":"PackageDocComment.d.ts","sourceRoot":"","sources":["../../src/aedoc/PackageDocComment.ts"],"names":[],"mappings":"AAGA,OAAO,KAAK,EAAE,MAAM,YAAY,CAAC;AACjC,OAAO,KAAK,EAAE,SAAS,EAAE,MAAM,wBAAwB,CAAC;AAGxD,qBAAa,iBAAiB;IAC5B;;OAEG;WACW,mBAAmB,CAC/B,UAAU,EAAE,EAAE,CAAC,UAAU,EACzB,SAAS,EAAE,SAAS,GACnB,EAAE,CAAC,SAAS,GAAG,SAAS;CAyD5B"}

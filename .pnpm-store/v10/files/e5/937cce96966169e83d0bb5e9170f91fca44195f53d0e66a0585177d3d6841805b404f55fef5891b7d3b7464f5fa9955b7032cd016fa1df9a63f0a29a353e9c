@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "es5",
+    "module": "commonjs",
+    "lib": [
+      "es5"
+    ],
+    "strict": true,
+    "noEmit": false,
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    // Expose module under its CJS/AMD name
+    "baseUrl": ".",
+    "paths": {
+      "psl": [
+        "./index.d.ts"
+      ]
+    }
+  }
+}

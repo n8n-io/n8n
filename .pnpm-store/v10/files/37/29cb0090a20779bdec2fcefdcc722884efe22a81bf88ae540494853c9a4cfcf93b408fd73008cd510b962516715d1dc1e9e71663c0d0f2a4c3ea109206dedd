@@ -1,0 +1,12 @@
+import type { ColorValue } from './themeTypes';
+export declare const paramToVariableName: (paramName: string) => string;
+export declare const paramToVariableExpression: (paramName: string) => string;
+export declare const clamp: (value: number, min: number, max: number) => number;
+export declare const memoize: <R, A = void>(fn: (arg: A) => R) => (arg: A) => R;
+export declare const accentMix: (mix: number) => ColorValue;
+export declare const foregroundMix: (mix: number) => ColorValue;
+export declare const foregroundBackgroundMix: (mix: number) => ColorValue;
+export declare const foregroundHeaderBackgroundMix: (mix: number) => ColorValue;
+export declare const backgroundColor: ColorValue;
+export declare const foregroundColor: ColorValue;
+export declare const accentColor: ColorValue;

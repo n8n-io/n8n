@@ -1,0 +1,68 @@
+{
+  "name": "@aws-sdk/middleware-websocket",
+  "version": "3.972.14",
+  "main": "./dist-cjs/index.js",
+  "module": "./dist-es/index.js",
+  "types": "./dist-types/index.d.ts",
+  "scripts": {
+    "build": "concurrently 'yarn:build:types' 'yarn:build:es' && yarn build:cjs",
+    "build:cjs": "node ../../scripts/compilation/inline middleware-websocket",
+    "build:es": "tsc -p tsconfig.es.json",
+    "build:include:deps": "yarn g:turbo run build -F=\"$npm_package_name\"",
+    "build:types": "tsc -p tsconfig.types.json",
+    "build:types:downlevel": "downlevel-dts dist-types dist-types/ts3.4",
+    "clean": "premove dist-cjs dist-es dist-types tsconfig.cjs.tsbuildinfo tsconfig.es.tsbuildinfo tsconfig.types.tsbuildinfo",
+    "test": "yarn g:vitest run",
+    "test:integration": "yarn g:vitest run -c vitest.config.integ.mts",
+    "test:watch": "yarn g:vitest watch",
+    "test:integration:watch": "yarn g:vitest watch -c vitest.config.integ.mts"
+  },
+  "sideEffects": false,
+  "author": {
+    "name": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@aws-sdk/types": "^3.973.6",
+    "@aws-sdk/util-format-url": "^3.972.8",
+    "@smithy/eventstream-codec": "^4.2.12",
+    "@smithy/eventstream-serde-browser": "^4.2.12",
+    "@smithy/fetch-http-handler": "^5.3.15",
+    "@smithy/protocol-http": "^5.3.12",
+    "@smithy/signature-v4": "^5.3.12",
+    "@smithy/types": "^4.13.1",
+    "@smithy/util-base64": "^4.3.2",
+    "@smithy/util-hex-encoding": "^4.2.2",
+    "@smithy/util-utf8": "^4.2.2",
+    "tslib": "^2.6.2"
+  },
+  "devDependencies": {
+    "@tsconfig/recommended": "1.0.1",
+    "concurrently": "7.0.0",
+    "downlevel-dts": "0.10.1",
+    "mock-socket": "9.1.5",
+    "premove": "4.0.0",
+    "typescript": "~5.8.3",
+    "vitest-websocket-mock": "0.2.3"
+  },
+  "engines": {
+    "node": ">= 14.0.0"
+  },
+  "typesVersions": {
+    "<4.5": {
+      "dist-types/*": [
+        "dist-types/ts3.4/*"
+      ]
+    }
+  },
+  "files": [
+    "dist-*/**"
+  ],
+  "homepage": "https://github.com/aws/aws-sdk-js-v3/tree/main/packages-internal/middleware-websocket",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aws/aws-sdk-js-v3.git",
+    "directory": "packages-internal/middleware-websocket"
+  }
+}

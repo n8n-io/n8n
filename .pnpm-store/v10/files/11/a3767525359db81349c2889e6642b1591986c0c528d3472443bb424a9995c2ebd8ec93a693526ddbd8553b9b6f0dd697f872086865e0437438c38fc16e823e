@@ -1,0 +1,38 @@
+{
+  "name": "@testcontainers/kafka",
+  "version": "11.13.0",
+  "license": "MIT",
+  "keywords": [
+    "kafka",
+    "testing",
+    "docker",
+    "testcontainers"
+  ],
+  "description": "Kafka module for Testcontainers",
+  "homepage": "https://github.com/testcontainers/testcontainers-node#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/testcontainers/testcontainers-node.git"
+  },
+  "bugs": {
+    "url": "https://github.com/testcontainers/testcontainers-node/issues"
+  },
+  "main": "build/index.js",
+  "files": [
+    "build"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "prepack": "shx cp ../../../README.md . && shx cp ../../../LICENSE .",
+    "build": "tsc --project tsconfig.build.json"
+  },
+  "devDependencies": {
+    "@confluentinc/kafka-javascript": "^1.8.2"
+  },
+  "dependencies": {
+    "compare-versions": "^6.1.1",
+    "testcontainers": "^11.13.0"
+  }
+}

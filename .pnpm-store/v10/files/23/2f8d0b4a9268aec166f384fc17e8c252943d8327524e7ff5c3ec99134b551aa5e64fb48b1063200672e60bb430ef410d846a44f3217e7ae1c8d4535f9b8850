@@ -1,0 +1,71 @@
+{
+	"name": "@xmldom/xmldom",
+	"version": "0.8.11",
+	"description": "A pure JavaScript W3C standard-based (XML DOM Level 2 Core) DOMParser and XMLSerializer module.",
+	"keywords": [
+		"w3c",
+		"dom",
+		"xml",
+		"parser",
+		"javascript",
+		"DOMParser",
+		"XMLSerializer",
+		"ponyfill"
+	],
+	"homepage": "https://github.com/xmldom/xmldom",
+	"repository": {
+		"type": "git",
+		"url": "git://github.com/xmldom/xmldom.git"
+	},
+	"main": "lib/index.js",
+	"types": "index.d.ts",
+	"files": [
+		"CHANGELOG.md",
+		"LICENSE",
+		"readme.md",
+		"SECURITY.md",
+		"index.d.ts",
+		"lib"
+	],
+	"scripts": {
+		"lint": "eslint lib test",
+		"format": "prettier --write test",
+		"changelog": "auto-changelog --unreleased-only",
+		"start": "nodemon --watch package.json --watch lib --watch test --exec 'npm --silent run test && npm --silent run lint'",
+		"stryker": "stryker run",
+		"stryker:dry-run": "stryker run -m '' --reporters progress",
+		"test": "jest",
+		"testrelease": "npm test && eslint lib",
+		"version": "./changelog-has-version.sh",
+		"release": "np --no-yarn --test-script testrelease --branch release-0.8.x patch"
+	},
+	"engines": {
+		"node": ">=10.0.0"
+	},
+	"dependencies": {},
+	"devDependencies": {
+		"@stryker-mutator/core": "5.6.1",
+		"auto-changelog": "2.4.0",
+		"eslint": "8.25.0",
+		"eslint-config-prettier": "8.5.0",
+		"eslint-plugin-es5": "1.5.0",
+		"eslint-plugin-prettier": "4.2.1",
+		"get-stream": "6.0.1",
+		"jest": "27.5.1",
+		"nodemon": "2.0.20",
+		"np": "9.2.0",
+		"prettier": "2.7.1",
+		"xmltest": "1.5.0",
+		"yauzl": "2.10.0"
+	},
+	"bugs": {
+		"url": "https://github.com/xmldom/xmldom/issues"
+	},
+	"license": "MIT",
+	"auto-changelog": {
+		"prepend": true,
+		"remote": "upstream",
+		"tagPrefix": "",
+		"template": "./auto-changelog.hbs"
+	}
+}

@@ -1,0 +1,115 @@
+{
+  "name": "eventsource-parser",
+  "version": "3.0.6",
+  "description": "Streaming, source-agnostic EventSource/Server-Sent Events parser",
+  "sideEffects": false,
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "module": "./dist/index.js",
+  "main": "./dist/index.cjs",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.js"
+    },
+    "./stream": {
+      "source": "./src/stream.ts",
+      "import": "./dist/stream.js",
+      "require": "./dist/stream.cjs",
+      "default": "./dist/stream.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "typesVersions": {
+    "*": {
+      "stream": [
+        "./dist/stream.d.ts"
+      ]
+    }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "browserslist": [
+    "node >= 20",
+    "chrome >= 71",
+    "safari >= 14.1",
+    "firefox >= 105",
+    "edge >= 79"
+  ],
+  "files": [
+    "dist",
+    "!dist/stats.html",
+    "src",
+    "stream.js"
+  ],
+  "scripts": {
+    "build": "pkg-utils build && pkg-utils --strict",
+    "clean": "rimraf dist coverage",
+    "lint": "eslint . && tsc --noEmit",
+    "posttest": "npm run lint",
+    "prebuild": "npm run clean",
+    "prepublishOnly": "npm run build",
+    "test": "npm run test:node",
+    "test:bun": "bun test",
+    "test:deno": "deno run --allow-write --allow-net --allow-run --allow-sys --allow-ffi --allow-env --allow-read npm:vitest",
+    "test:node": "vitest --reporter=verbose"
+  },
+  "author": "Espen Hovlandsdal <espen@hovlandsdal.com>",
+  "keywords": [
+    "sse",
+    "eventsource",
+    "server-sent-events"
+  ],
+  "devDependencies": {
+    "@sanity/pkg-utils": "^8.0.0",
+    "@sanity/semantic-release-preset": "^5.0.0",
+    "@types/node": "^20.19.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.51.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-config-sanity": "^7.1.2",
+    "eventsource-encoder": "^1.0.1",
+    "prettier": "^3.5.3",
+    "rimraf": "^6.0.1",
+    "rollup-plugin-visualizer": "^6.0.3",
+    "semantic-release": "^24.2.3",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.3"
+  },
+  "homepage": "https://github.com/rexxars/eventsource-parser#readme",
+  "bugs": {
+    "url": "https://github.com/rexxars/eventsource-parser/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/rexxars/eventsource-parser.git"
+  },
+  "license": "MIT",
+  "prettier": {
+    "bracketSpacing": false,
+    "printWidth": 100,
+    "semi": false,
+    "singleQuote": true
+  },
+  "eslintConfig": {
+    "parserOptions": {
+      "ecmaFeatures": {
+        "modules": true
+      },
+      "ecmaVersion": 9,
+      "sourceType": "module"
+    },
+    "extends": [
+      "sanity",
+      "sanity/typescript",
+      "prettier"
+    ],
+    "ignorePatterns": [
+      "lib/**/"
+    ]
+  }
+}

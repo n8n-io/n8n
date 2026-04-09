@@ -1,1 +1,0 @@
-{"version":3,"file":"scopeUtils.d.ts","sourceRoot":"","sources":["../../src/util/scopeUtils.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,QAAQ,EAAE,MAAM,0BAA0B,CAAC;AACzD,OAAO,KAAK,EAAE,UAAU,EAAE,MAAM,oCAAoC,CAAC;AAErE,wBAAgB,2BAA2B,CACzC,UAAU,EAAE,MAAM,EAClB,IAAI,EAAE,QAAQ,CAAC,IAAI,EACnB,UAAU,EAAE,UAAU,GACrB,OAAO,CAOT"}

@@ -1,0 +1,28 @@
+{
+  "name": "esm-resolve",
+  "version": "1.0.11",
+  "description": "Resolves ESM imports in Node",
+  "main": "bundle.js",
+  "exports": {
+    ".": {
+      "node": {
+        "import": "./bundle.js",
+        "require": "./bundle.cjs",
+        "types": "./index.d.ts"
+      }
+    }
+  },
+  "type": "module",
+  "author": "Sam Thorogood <sam.thorogood@gmail.com>",
+  "repository": "git@github.com:samthor/esm-resolve.git",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "esbuild": "^0.14.54",
+    "tsx": "^4.7.1"
+  },
+  "types": "./index.d.ts",
+  "scripts": {
+    "test": "npx tsx test/resolve.ts"
+  }
+}

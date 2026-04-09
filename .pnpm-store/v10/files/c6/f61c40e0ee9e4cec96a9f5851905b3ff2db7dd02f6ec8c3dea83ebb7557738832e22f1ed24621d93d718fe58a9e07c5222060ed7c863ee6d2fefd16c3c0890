@@ -1,0 +1,33 @@
+{
+  "name": "mjml-spacer",
+  "description": "mjml-spacer",
+  "version": "4.18.0",
+  "main": "lib/index.js",
+  "files": [
+    "lib"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mjmlio/mjml.git",
+    "directory": "packages/mjml-spacer"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mjmlio/mjml/issues"
+  },
+  "homepage": "https://mjml.io",
+  "scripts": {
+    "clean": "rimraf lib",
+    "build": "babel src --out-dir lib --root-mode upward"
+  },
+  "dependencies": {
+    "@babel/runtime": "^7.28.4",
+    "lodash": "^4.17.21",
+    "mjml-core": "4.18.0"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.8.4",
+    "rimraf": "^3.0.2"
+  },
+  "gitHead": "7f4872c48af877d98448335fb9002585cfc8fcbf"
+}

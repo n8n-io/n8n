@@ -1,0 +1,227 @@
+---
+title: Transcription
+description: Learn how to transcribe audio with the AI SDK.
+---
+
+# Transcription
+
+<Note type="warning">Transcription is an experimental feature.</Note>
+
+The AI SDK provides the [`transcribe`](/docs/reference/ai-sdk-core/transcribe)
+function to transcribe audio using a transcription model.
+
+```ts
+import { experimental_transcribe as transcribe } from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { readFile } from 'fs/promises';
+
+const transcript = await transcribe({
+  model: openai.transcription('whisper-1'),
+  audio: await readFile('audio.mp3'),
+});
+```
+
+The `audio` property can be a `Uint8Array`, `ArrayBuffer`, `Buffer`, `string` (base64 encoded audio data), or a `URL`.
+
+To access the generated transcript:
+
+```ts
+const text = transcript.text; // transcript text e.g. "Hello, world!"
+const segments = transcript.segments; // array of segments with start and end times, if available
+const language = transcript.language; // language of the transcript e.g. "en", if available
+const durationInSeconds = transcript.durationInSeconds; // duration of the transcript in seconds, if available
+```
+
+## Settings
+
+### Provider-Specific settings
+
+Transcription models often have provider or model-specific settings which you can set using the `providerOptions` parameter.
+
+```ts highlight="8-12"
+import { experimental_transcribe as transcribe } from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { readFile } from 'fs/promises';
+
+const transcript = await transcribe({
+  model: openai.transcription('whisper-1'),
+  audio: await readFile('audio.mp3'),
+  providerOptions: {
+    openai: {
+      timestampGranularities: ['word'],
+    },
+  },
+});
+```
+
+### Download Size Limits
+
+When `audio` is a URL, the SDK downloads the file with a default **2 GiB** size limit.
+You can customize this using `createDownload`:
+
+```ts highlight="1,8"
+import { experimental_transcribe as transcribe, createDownload } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+const transcript = await transcribe({
+  model: openai.transcription('whisper-1'),
+  audio: new URL('https://example.com/audio.mp3'),
+  download: createDownload({ maxBytes: 50 * 1024 * 1024 }), // 50 MB limit
+});
+```
+
+You can also provide a fully custom download function:
+
+```ts highlight="6-12"
+import { experimental_transcribe as transcribe } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+const transcript = await transcribe({
+  model: openai.transcription('whisper-1'),
+  audio: new URL('https://example.com/audio.mp3'),
+  download: async ({ url }) => {
+    const res = await myAuthenticatedFetch(url);
+    return {
+      data: new Uint8Array(await res.arrayBuffer()),
+      mediaType: res.headers.get('content-type') ?? undefined,
+    };
+  },
+});
+```
+
+If a download exceeds the size limit, a `DownloadError` is thrown:
+
+```ts
+import { experimental_transcribe as transcribe, DownloadError } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+try {
+  await transcribe({
+    model: openai.transcription('whisper-1'),
+    audio: new URL('https://example.com/audio.mp3'),
+  });
+} catch (error) {
+  if (DownloadError.isInstance(error)) {
+    console.log('Download failed:', error.message);
+  }
+}
+```
+
+### Abort Signals and Timeouts
+
+`transcribe` accepts an optional `abortSignal` parameter of
+type [`AbortSignal`](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal)
+that you can use to abort the transcription process or set a timeout.
+
+This is particularly useful when combined with URL downloads to prevent long-running requests:
+
+```ts highlight="8"
+import { openai } from '@ai-sdk/openai';
+import { experimental_transcribe as transcribe } from 'ai';
+
+const transcript = await transcribe({
+  model: openai.transcription('whisper-1'),
+  audio: new URL('https://example.com/audio.mp3'),
+  abortSignal: AbortSignal.timeout(5000), // Abort after 5 seconds
+});
+```
+
+### Custom Headers
+
+`transcribe` accepts an optional `headers` parameter of type `Record<string, string>`
+that you can use to add custom headers to the transcription request.
+
+```ts highlight="8"
+import { openai } from '@ai-sdk/openai';
+import { experimental_transcribe as transcribe } from 'ai';
+import { readFile } from 'fs/promises';
+
+const transcript = await transcribe({
+  model: openai.transcription('whisper-1'),
+  audio: await readFile('audio.mp3'),
+  headers: { 'X-Custom-Header': 'custom-value' },
+});
+```
+
+### Warnings
+
+Warnings (e.g. unsupported parameters) are available on the `warnings` property.
+
+```ts
+import { openai } from '@ai-sdk/openai';
+import { experimental_transcribe as transcribe } from 'ai';
+import { readFile } from 'fs/promises';
+
+const transcript = await transcribe({
+  model: openai.transcription('whisper-1'),
+  audio: await readFile('audio.mp3'),
+});
+
+const warnings = transcript.warnings;
+```
+
+### Error Handling
+
+When `transcribe` cannot generate a valid transcript, it throws a [`AI_NoTranscriptGeneratedError`](/docs/reference/ai-sdk-errors/ai-no-transcript-generated-error).
+
+This error can arise for any of the following reasons:
+
+- The model failed to generate a response
+- The model generated a response that could not be parsed
+
+The error preserves the following information to help you log the issue:
+
+- `responses`: Metadata about the transcription model responses, including timestamp, model, and headers.
+- `cause`: The cause of the error. You can use this for more detailed error handling.
+
+```ts
+import {
+  experimental_transcribe as transcribe,
+  NoTranscriptGeneratedError,
+} from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { readFile } from 'fs/promises';
+
+try {
+  await transcribe({
+    model: openai.transcription('whisper-1'),
+    audio: await readFile('audio.mp3'),
+  });
+} catch (error) {
+  if (NoTranscriptGeneratedError.isInstance(error)) {
+    console.log('NoTranscriptGeneratedError');
+    console.log('Cause:', error.cause);
+    console.log('Responses:', error.responses);
+  }
+}
+```
+
+## Transcription Models
+
+| Provider                                                                  | Model                    |
+| ------------------------------------------------------------------------- | ------------------------ |
+| [OpenAI](/providers/ai-sdk-providers/openai#transcription-models)         | `whisper-1`              |
+| [OpenAI](/providers/ai-sdk-providers/openai#transcription-models)         | `gpt-4o-transcribe`      |
+| [OpenAI](/providers/ai-sdk-providers/openai#transcription-models)         | `gpt-4o-mini-transcribe` |
+| [ElevenLabs](/providers/ai-sdk-providers/elevenlabs#transcription-models) | `scribe_v1`              |
+| [ElevenLabs](/providers/ai-sdk-providers/elevenlabs#transcription-models) | `scribe_v1_experimental` |
+| [Groq](/providers/ai-sdk-providers/groq#transcription-models)             | `whisper-large-v3-turbo` |
+| [Groq](/providers/ai-sdk-providers/groq#transcription-models)             | `whisper-large-v3`       |
+| [Azure OpenAI](/providers/ai-sdk-providers/azure#transcription-models)    | `whisper-1`              |
+| [Azure OpenAI](/providers/ai-sdk-providers/azure#transcription-models)    | `gpt-4o-transcribe`      |
+| [Azure OpenAI](/providers/ai-sdk-providers/azure#transcription-models)    | `gpt-4o-mini-transcribe` |
+| [Rev.ai](/providers/ai-sdk-providers/revai#transcription-models)          | `machine`                |
+| [Rev.ai](/providers/ai-sdk-providers/revai#transcription-models)          | `low_cost`               |
+| [Rev.ai](/providers/ai-sdk-providers/revai#transcription-models)          | `fusion`                 |
+| [Deepgram](/providers/ai-sdk-providers/deepgram#transcription-models)     | `base` (+ variants)      |
+| [Deepgram](/providers/ai-sdk-providers/deepgram#transcription-models)     | `enhanced` (+ variants)  |
+| [Deepgram](/providers/ai-sdk-providers/deepgram#transcription-models)     | `nova` (+ variants)      |
+| [Deepgram](/providers/ai-sdk-providers/deepgram#transcription-models)     | `nova-2` (+ variants)    |
+| [Deepgram](/providers/ai-sdk-providers/deepgram#transcription-models)     | `nova-3` (+ variants)    |
+| [Gladia](/providers/ai-sdk-providers/gladia#transcription-models)         | `default`                |
+| [AssemblyAI](/providers/ai-sdk-providers/assemblyai#transcription-models) | `best`                   |
+| [AssemblyAI](/providers/ai-sdk-providers/assemblyai#transcription-models) | `nano`                   |
+| [Fal](/providers/ai-sdk-providers/fal#transcription-models)               | `whisper`                |
+| [Fal](/providers/ai-sdk-providers/fal#transcription-models)               | `wizper`                 |
+
+Above are a small subset of the transcription models supported by the AI SDK providers. For more, see the respective provider documentation.

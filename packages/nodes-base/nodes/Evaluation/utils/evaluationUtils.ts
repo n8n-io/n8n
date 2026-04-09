@@ -60,7 +60,7 @@ export function toDataTableValue(value: JsonValue): DataTableColumnJsType {
 		value instanceof Date ||
 		value === null
 	)
-		return value;
+		return value as any;
 
 	return jsonStringify(value);
 }

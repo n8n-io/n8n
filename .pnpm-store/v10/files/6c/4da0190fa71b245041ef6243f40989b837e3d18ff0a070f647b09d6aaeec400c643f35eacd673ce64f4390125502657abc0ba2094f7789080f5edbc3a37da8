@@ -1,1 +1,0 @@
-{"version":3,"file":"no-explicit-any.d.ts","sourceRoot":"","sources":["../../src/rules/no-explicit-any.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,QAAQ,EAAY,MAAM,0BAA0B,CAAC;AAMnE,MAAM,MAAM,OAAO,GAAG;IACpB;QACE,YAAY,CAAC,EAAE,OAAO,CAAC;QACvB,cAAc,CAAC,EAAE,OAAO,CAAC;KAC1B;CACF,CAAC;AACF,MAAM,MAAM,UAAU,GAClB,cAAc,GACd,oBAAoB,GACpB,gBAAgB,GAChB,eAAe,CAAC;;AAEpB,wBAuOG"}

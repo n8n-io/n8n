@@ -1,0 +1,163 @@
+{
+  "name": "@isaacs/cliui",
+  "version": "9.0.0",
+  "description": "easily create complex multi-column command-line-interfaces",
+  "type": "module",
+  "main": "./dist/commonjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/commonjs/index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/index.d.ts",
+        "default": "./dist/commonjs/index.js"
+      }
+    },
+    "./ansi-regex": {
+      "import": {
+        "types": "./dist/esm/ansi-regex/index.d.ts",
+        "default": "./dist/esm/ansi-regex/index.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/ansi-regex/index.d.ts",
+        "default": "./dist/commonjs/ansi-regex/index.js"
+      }
+    },
+    "./ansi-styles": {
+      "import": {
+        "types": "./dist/esm/ansi-styles/index.d.ts",
+        "default": "./dist/esm/ansi-styles/index.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/ansi-styles/index.d.ts",
+        "default": "./dist/commonjs/ansi-styles/index.js"
+      }
+    },
+    "./eastasianwidth": {
+      "import": {
+        "types": "./dist/esm/eastasianwidth/index.d.ts",
+        "default": "./dist/esm/eastasianwidth/index.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/eastasianwidth/index.d.ts",
+        "default": "./dist/commonjs/eastasianwidth/index.js"
+      }
+    },
+    "./emoji-regex": {
+      "import": {
+        "types": "./dist/esm/emoji-regex/index.d.ts",
+        "default": "./dist/esm/emoji-regex/index.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/emoji-regex/index.d.ts",
+        "default": "./dist/commonjs/emoji-regex/index.js"
+      }
+    },
+    "./string-width": {
+      "import": {
+        "types": "./dist/esm/string-width/index.d.ts",
+        "default": "./dist/esm/string-width/index.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/string-width/index.d.ts",
+        "default": "./dist/commonjs/string-width/index.js"
+      }
+    },
+    "./strip-ansi": {
+      "import": {
+        "types": "./dist/esm/strip-ansi/index.d.ts",
+        "default": "./dist/esm/strip-ansi/index.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/strip-ansi/index.d.ts",
+        "default": "./dist/commonjs/strip-ansi/index.js"
+      }
+    },
+    "./wrap-ansi": {
+      "import": {
+        "types": "./dist/esm/wrap-ansi/index.d.ts",
+        "default": "./dist/esm/wrap-ansi/index.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/wrap-ansi/index.d.ts",
+        "default": "./dist/commonjs/wrap-ansi/index.js"
+      }
+    },
+    "./min": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.min.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/index.d.ts",
+        "default": "./dist/commonjs/index.min.js"
+      }
+    }
+  },
+  "scripts": {
+    "preversion": "npm test",
+    "postversion": "npm publish",
+    "prepublishOnly": "git push origin --follow-tags",
+    "prepare": "tshy && bash build.sh",
+    "pretest": "npm run prepare",
+    "presnap": "npm run prepare",
+    "test": "tap",
+    "snap": "tap",
+    "format": "prettier --write . --log-level warn",
+    "typedoc": "typedoc"
+  },
+  "repository": "git+ssh://git@github.com:isaacs/cliui",
+  "keywords": [
+    "cli",
+    "command-line",
+    "layout",
+    "design",
+    "console",
+    "wrap",
+    "table"
+  ],
+  "license": "BlueOak-1.0.0",
+  "devDependencies": {
+    "@types/node": "^25.2.1",
+    "esbuild": "^0.27.2",
+    "prettier": "^3.8.1",
+    "tap": "^21.5.0",
+    "tshy": "^3.1.0",
+    "typedoc": "^0.28.16"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "tshy": {
+    "selfLink": false,
+    "exports": {
+      "./package.json": "./package.json",
+      ".": "./src/index.ts",
+      "./ansi-regex": "./src/ansi-regex/index.ts",
+      "./ansi-styles": "./src/ansi-styles/index.ts",
+      "./eastasianwidth": "./src/eastasianwidth/index.ts",
+      "./emoji-regex": "./src/emoji-regex/index.ts",
+      "./string-width": "./src/string-width/index.ts",
+      "./strip-ansi": "./src/strip-ansi/index.ts",
+      "./wrap-ansi": "./src/wrap-ansi/index.ts",
+      "./min": {
+        "import": {
+          "types": "./dist/esm/index.d.ts",
+          "default": "./dist/esm/index.min.js"
+        },
+        "require": {
+          "types": "./dist/commonjs/index.d.ts",
+          "default": "./dist/commonjs/index.min.js"
+        }
+      }
+    }
+  }
+}

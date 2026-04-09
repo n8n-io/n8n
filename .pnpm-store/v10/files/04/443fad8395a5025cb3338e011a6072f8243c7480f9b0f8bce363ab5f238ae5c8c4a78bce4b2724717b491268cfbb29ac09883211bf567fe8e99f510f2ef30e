@@ -1,0 +1,35 @@
+{
+  "name": "stable-hash-x",
+  "version": "0.2.0",
+  "type": "module",
+  "description": "Stable JS value hash.",
+  "repository": "https://github.com/un-ts/stable-hash-x",
+  "homepage": "https://github.com/un-ts/stable-hash-x#readme",
+  "author": "Shu Ding",
+  "maintainers": [
+    "JounQin <admin@1stg.me> (https://www.1stG.me)"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=12.0.0"
+  },
+  "main": "./lib/index.cjs",
+  "types": "./lib/index.d.cts",
+  "module": "./lib/index.js",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./lib/index.d.ts",
+        "default": "./lib/index.js"
+      },
+      "require": {
+        "types": "./lib/index.d.cts",
+        "default": "./lib/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib"
+  ]
+}

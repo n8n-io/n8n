@@ -1,0 +1,81 @@
+{
+  "name": "@storybook/addon-themes",
+  "version": "10.3.3",
+  "description": "Storybook Themes addon: Switch between themes from the toolbar",
+  "keywords": [
+    "css",
+    "essentials",
+    "storybook",
+    "storybook-addon",
+    "style",
+    "themes",
+    "toggle",
+    "component",
+    "components",
+    "react",
+    "vue",
+    "angular",
+    "svelte",
+    "web-components"
+  ],
+  "homepage": "https://github.com/storybookjs/storybook/tree/next/code/addons/themes",
+  "bugs": {
+    "url": "https://github.com/storybookjs/storybook/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/storybookjs/storybook.git",
+    "directory": "code/addons/themes"
+  },
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/storybook"
+  },
+  "license": "MIT",
+  "author": "Shaun Evening",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "code": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./manager": "./dist/manager.js",
+    "./package.json": "./package.json",
+    "./postinstall": "./dist/postinstall.js",
+    "./preview": {
+      "types": "./dist/preview.d.ts",
+      "code": "./src/preview.ts",
+      "default": "./dist/preview.js"
+    }
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "*.js",
+    "*.d.ts",
+    "!src/**/*"
+  ],
+  "dependencies": {
+    "ts-dedent": "^2.0.0"
+  },
+  "devDependencies": {
+    "@storybook/icons": "^2.0.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "typescript": "^5.9.3"
+  },
+  "peerDependencies": {
+    "storybook": "^10.3.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "gitHead": "a8e7fd8a655c69780bc20b9749d2699e45beae1l",
+  "storybook": {
+    "displayName": "Themes",
+    "unsupportedFrameworks": [
+      "react-native"
+    ],
+    "icon": "https://user-images.githubusercontent.com/18172605/264114587-e4b32190-a9b7-4afa-b739-c873fc0498a6.png"
+  }
+}

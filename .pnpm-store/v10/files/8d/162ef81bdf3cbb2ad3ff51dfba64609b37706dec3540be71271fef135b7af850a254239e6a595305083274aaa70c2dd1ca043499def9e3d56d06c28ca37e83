@@ -1,0 +1,33 @@
+{
+  "name": "@mistralai/mistralai",
+  "version": "1.15.1",
+  "author": "Speakeasy",
+  "main": "./index.js",
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mistralai/client-ts.git"
+  },
+  "scripts": {
+    "lint": "eslint --cache --max-warnings=0 src",
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.19.0",
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.5.13",
+    "eslint": "^9.19.0",
+    "globals": "^15.14.0",
+    "typescript": "~5.8.3",
+    "typescript-eslint": "^8.26.0"
+  },
+  "dependencies": {
+    "ws": "^8.18.0",
+    "zod": "^3.25.0 || ^4.0.0",
+    "zod-to-json-schema": "^3.24.1"
+  }
+}

@@ -1,0 +1,168 @@
+{
+  "name": "@napi-rs/canvas",
+  "version": "0.1.97",
+  "description": "Canvas for Node.js with skia backend",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Brooooooklyn/canvas.git"
+  },
+  "workspaces": [
+    "e2e/*"
+  ],
+  "license": "MIT",
+  "keywords": [
+    "napi-rs",
+    "NAPI",
+    "N-API",
+    "Rust",
+    "node-addon",
+    "node-addon-api",
+    "canvas",
+    "image",
+    "pdf",
+    "svg",
+    "skia"
+  ],
+  "files": [
+    "index.d.ts",
+    "index.js",
+    "geometry.js",
+    "js-binding.js",
+    "load-image.js",
+    "node-canvas.js",
+    "node-canvas.d.ts"
+  ],
+  "napi": {
+    "binaryName": "skia",
+    "targets": [
+      "x86_64-unknown-linux-gnu",
+      "x86_64-apple-darwin",
+      "x86_64-pc-windows-msvc",
+      "aarch64-pc-windows-msvc",
+      "armv7-unknown-linux-gnueabihf",
+      "x86_64-unknown-linux-musl",
+      "aarch64-unknown-linux-gnu",
+      "aarch64-unknown-linux-musl",
+      "aarch64-apple-darwin",
+      "aarch64-linux-android",
+      "riscv64-unknown-linux-gnu"
+    ]
+  },
+  "engines": {
+    "node": ">= 10"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "scripts": {
+    "artifacts": "napi artifacts",
+    "bench": "node --import @oxc-node/core/register benchmark/bench.ts",
+    "build": "napi build --platform --release --js js-binding.js",
+    "build:debug": "napi build --platform --js js-binding.js",
+    "example-lottie": "yarn oxnode ./example/lottie-to-video.ts",
+    "format": "run-p format:source format:rs format:toml",
+    "format:rs": "cargo fmt",
+    "format:source": "prettier . -w",
+    "format:toml": "taplo format",
+    "lint": "oxlint",
+    "prepublishOnly": "pinst --disable && napi prepublish -t npm",
+    "postpublish": "pinst --enable",
+    "test:ci": "ava -c 1",
+    "test": "ava",
+    "e2e": "yarn workspace @napi-rs/canvas-e2e-webpack test",
+    "version": "napi version && conventional-changelog -p angular -i CHANGELOG.md -s && git add ."
+  },
+  "devDependencies": {
+    "@jimp/core": "^1.6.0",
+    "@jimp/custom": "^0.22.12",
+    "@jimp/jpeg": "^0.22.12",
+    "@jimp/png": "^0.22.12",
+    "@napi-rs/cli": "^3.5.0",
+    "@napi-rs/webcodecs": "^1.1.1",
+    "@octokit/rest": "^22.0.1",
+    "@oxc-node/cli": "^0.0.35",
+    "@oxc-node/core": "^0.0.35",
+    "@taplo/cli": "^0.7.0",
+    "@types/lodash": "^4.17.21",
+    "@types/node": "^25.0.3",
+    "@types/semver": "^7",
+    "ava": "^7.0.0",
+    "canvas": "^3.2.0",
+    "canvaskit-wasm": "^0.40.0",
+    "colorette": "^2.0.20",
+    "conventional-changelog-cli": "^5.0.0",
+    "core-js": "^3.47.0",
+    "echarts": "^6.0.0",
+    "electron": "^41.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
+    "lodash": "^4.17.21",
+    "npm-run-all2": "^8.0.4",
+    "oxlint": "^1.34.0",
+    "oxlint-tsgolint": "^0.17.0",
+    "pinst": "^3.0.0",
+    "png.js": "^0.2.1",
+    "prettier": "^3.7.4",
+    "pretty-bytes": "^7.1.0",
+    "semver": "^7.7.3",
+    "skia-canvas": "^3.0.8",
+    "table": "^6.9.0",
+    "tinybench": "^6.0.0",
+    "typescript": "^5.9.3"
+  },
+  "lint-staged": {
+    "*.@(js|ts|tsx|yml|yaml|md|json|html)": [
+      "prettier --write"
+    ],
+    "*.@(js|ts|tsx)": [
+      "oxlint --fix"
+    ]
+  },
+  "ava": {
+    "nodeArguments": [
+      "--import=@oxc-node/core/register",
+      "--import=core-js/proposals/promise-with-resolvers.js"
+    ],
+    "extensions": {
+      "ts": "module"
+    },
+    "files": [
+      "__test__/**/*.spec.ts",
+      "scripts/__test__/**/*.spec.ts"
+    ],
+    "workerThreads": false,
+    "cache": false,
+    "timeout": "3m",
+    "environmentVariables": {
+      "SWC_NODE_PROJECT": "./tsconfig.json",
+      "NODE_ENV": "ava"
+    }
+  },
+  "prettier": {
+    "printWidth": 120,
+    "semi": false,
+    "trailingComma": "all",
+    "singleQuote": true,
+    "arrowParens": "always"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/Brooooooklyn"
+  },
+  "packageManager": "yarn@4.12.0",
+  "optionalDependencies": {
+    "@napi-rs/canvas-linux-x64-gnu": "0.1.97",
+    "@napi-rs/canvas-darwin-x64": "0.1.97",
+    "@napi-rs/canvas-win32-x64-msvc": "0.1.97",
+    "@napi-rs/canvas-win32-arm64-msvc": "0.1.97",
+    "@napi-rs/canvas-linux-arm-gnueabihf": "0.1.97",
+    "@napi-rs/canvas-linux-x64-musl": "0.1.97",
+    "@napi-rs/canvas-linux-arm64-gnu": "0.1.97",
+    "@napi-rs/canvas-linux-arm64-musl": "0.1.97",
+    "@napi-rs/canvas-darwin-arm64": "0.1.97",
+    "@napi-rs/canvas-android-arm64": "0.1.97",
+    "@napi-rs/canvas-linux-riscv64-gnu": "0.1.97"
+  }
+}

@@ -1,0 +1,124 @@
+{
+  "name": "tailwindcss",
+  "version": "3.4.19",
+  "description": "A utility-first CSS framework for rapidly building custom user interfaces.",
+  "license": "MIT",
+  "main": "lib/index.js",
+  "types": "types/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tailwindlabs/tailwindcss.git#v3"
+  },
+  "bugs": "https://github.com/tailwindlabs/tailwindcss/issues",
+  "homepage": "https://tailwindcss.com",
+  "bin": {
+    "tailwind": "lib/cli.js",
+    "tailwindcss": "lib/cli.js"
+  },
+  "scripts": {
+    "prebuild": "npm run generate && rimraf lib",
+    "build": "swc src --out-dir lib --copy-files",
+    "postbuild": "esbuild lib/cli-peer-dependencies.js --bundle --platform=node --outfile=peers/index.js --define:process.env.CSS_TRANSFORMER_WASM=false",
+    "rebuild-fixtures": "npm run build && node -r @swc/register scripts/rebuildFixtures.js",
+    "style": "eslint .",
+    "pretest": "npm run generate",
+    "test": "jest",
+    "test:integrations": "npm run test --prefix ./integrations",
+    "install:integrations": "node scripts/install-integrations.js",
+    "generate:plugin-list": "node -r @swc/register scripts/create-plugin-list.js",
+    "generate:types": "node -r @swc/register scripts/generate-types.js",
+    "generate": "npm run generate:plugin-list && npm run generate:types",
+    "release-channel": "node ./scripts/release-channel.js",
+    "release-notes": "node ./scripts/release-notes.js",
+    "prepublishOnly": "npm install --force && npm run build"
+  },
+  "publishConfig": {
+    "provenance": true
+  },
+  "files": [
+    "src/*",
+    "cli/*",
+    "lib/*",
+    "peers/*",
+    "scripts/*.js",
+    "stubs/*",
+    "nesting/*",
+    "types/**/*",
+    "*.d.ts",
+    "*.css",
+    "*.js"
+  ],
+  "devDependencies": {
+    "@swc/cli": "0.1.62",
+    "@swc/core": "1.3.55",
+    "@swc/jest": "0.2.26",
+    "@swc/register": "0.1.10",
+    "autoprefixer": "^10.4.20",
+    "browserslist": "^4.24.0",
+    "concurrently": "^8.2.2",
+    "cssnano": "^6.1.2",
+    "esbuild": "^0.24.0",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^8.10.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "jest": "^29.7.0",
+    "jest-diff": "^29.7.0",
+    "lightningcss": "1.27.0",
+    "prettier": "^2.8.8",
+    "rimraf": "^5.0.10",
+    "source-map-js": "^1.2.1",
+    "turbo": "^1.13.4"
+  },
+  "dependencies": {
+    "@alloc/quick-lru": "^5.2.0",
+    "arg": "^5.0.2",
+    "chokidar": "^3.6.0",
+    "didyoumean": "^1.2.2",
+    "dlv": "^1.1.3",
+    "fast-glob": "^3.3.2",
+    "glob-parent": "^6.0.2",
+    "is-glob": "^4.0.3",
+    "jiti": "^1.21.7",
+    "lilconfig": "^3.1.3",
+    "micromatch": "^4.0.8",
+    "normalize-path": "^3.0.0",
+    "object-hash": "^3.0.0",
+    "picocolors": "^1.1.1",
+    "postcss": "^8.4.47",
+    "postcss-import": "^15.1.0",
+    "postcss-js": "^4.0.1",
+    "postcss-load-config": "^4.0.2 || ^5.0 || ^6.0",
+    "postcss-nested": "^6.2.0",
+    "postcss-selector-parser": "^6.1.2",
+    "resolve": "^1.22.8",
+    "sucrase": "^3.35.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "not edge <= 18",
+    "not ie 11",
+    "not op_mini all"
+  ],
+  "jest": {
+    "testTimeout": 30000,
+    "setupFilesAfterEnv": [
+      "<rootDir>/jest/customMatchers.js"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/integrations/",
+      "/standalone-cli/",
+      "\\.test\\.skip\\.js$"
+    ],
+    "transformIgnorePatterns": [
+      "node_modules/(?!lightningcss)"
+    ],
+    "transform": {
+      "\\.js$": "@swc/jest",
+      "\\.ts$": "@swc/jest"
+    }
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

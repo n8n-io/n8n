@@ -1,0 +1,34 @@
+{
+  "name": "postcss-nested",
+  "version": "6.2.0",
+  "description": "PostCSS plugin to unwrap nested rules like how Sass does it",
+  "keywords": [
+    "postcss",
+    "css",
+    "postcss-plugin",
+    "sass",
+    "nested"
+  ],
+  "author": "Andrey Sitnik <andrey@sitnik.ru>",
+  "license": "MIT",
+  "repository": "postcss/postcss-nested",
+  "engines": {
+    "node": ">=12.0"
+  },
+  "funding": [
+    {
+      "type": "opencollective",
+      "url": "https://opencollective.com/postcss/"
+    },
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/ai"
+    }
+  ],
+  "peerDependencies": {
+    "postcss": "^8.2.14"
+  },
+  "dependencies": {
+    "postcss-selector-parser": "^6.1.1"
+  }
+}

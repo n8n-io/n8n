@@ -1,0 +1,61 @@
+{
+  "name": "postcss-load-config",
+  "version": "6.0.1",
+  "description": "Autoload Config for PostCSS",
+  "main": "src/index.js",
+  "types": "src/index.d.ts",
+  "files": [
+    "src"
+  ],
+  "engines": {
+    "node": ">= 18"
+  },
+  "funding": [
+    {
+      "type": "opencollective",
+      "url": "https://opencollective.com/postcss/"
+    },
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/ai"
+    }
+  ],
+  "dependencies": {
+    "lilconfig": "^3.1.1"
+  },
+  "peerDependencies": {
+    "jiti": ">=1.21.0",
+    "postcss": ">=8.0.9",
+    "tsx": "^4.8.1",
+    "yaml": "^2.4.2"
+  },
+  "peerDependenciesMeta": {
+    "jiti": {
+      "optional": true
+    },
+    "postcss": {
+      "optional": true
+    },
+    "tsx": {
+      "optional": true
+    },
+    "yaml": {
+      "optional": true
+    }
+  },
+  "keywords": [
+    "postcss",
+    "postcssrc",
+    "postcss.config.js"
+  ],
+  "author": "Michael Ciniawky <michael.ciniawsky@gmail.com>",
+  "contributors": [
+    "Ryan Dunckel",
+    "Mateusz Derks",
+    "Dalton Santos",
+    "Patrick Gilday",
+    "François Wouts"
+  ],
+  "repository": "postcss/postcss-load-config",
+  "license": "MIT"
+}

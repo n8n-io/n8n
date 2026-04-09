@@ -1,0 +1,13 @@
+{
+	"$id": "/inference/schemas/image-text-to-image/output.json",
+	"$schema": "http://json-schema.org/draft-06/schema#",
+	"description": "Outputs of inference for the Image Text To Image task",
+	"title": "ImageTextToImageOutput",
+	"type": "object",
+	"properties": {
+		"image": {
+			"description": "The generated image returned as raw bytes in the payload."
+		}
+	},
+	"required": ["image"]
+}

@@ -1,1 +1,0 @@
-{"version":3,"file":"proxyPolicy-react-native.mjs","sourceRoot":"","sources":["../../../src/policies/proxyPolicy-react-native.mts"],"names":[],"mappings":"AAAA,uCAAuC;AACvC,kCAAkC;AAElC,cAAc,yBAAyB,CAAC","sourcesContent":["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT License.\n\nexport * from \"./proxyPolicy.common.js\";\n"]}

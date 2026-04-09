@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/validation-errors/required.js"],
+  "sourcesContent": ["import chalk from 'chalk';\nimport BaseValidationError from './base';\n\nexport default class RequiredValidationError extends BaseValidationError {\n  getLocation(dataPath = this.instancePath) {\n    const { start } = super.getLocation(dataPath);\n    return { start };\n  }\n\n  print() {\n    const { message, params } = this.options;\n    const output = [chalk`{red {bold REQUIRED} ${message}}\\n`];\n\n    return output.concat(\n      this.getCodeFrame(\n        chalk`\u2639\uFE0F  {magentaBright ${params.missingProperty}} is missing here!`\n      )\n    );\n  }\n\n  getError() {\n    const { message } = this.options;\n\n    return {\n      ...this.getLocation(),\n      error: `${this.getDecoratedPath()} ${message}`,\n      path: this.instancePath,\n    };\n  }\n}\n"],
+  "mappings": ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA,mBAAkB;AAClB,kBAAgC;AAEhC,MAAO,gCAA8C,oBAAoB;AAAA,EACvE,YAAY,WAAW,KAAK,cAAc;AACxC,UAAM,EAAE,UAAU,MAAM,YAAY,QAAQ;AAC5C,WAAO,EAAE,MAAM;AAAA,EACjB;AAAA,EAEA,QAAQ;AACN,UAAM,EAAE,SAAS,WAAW,KAAK;AACjC,UAAM,SAAS,CAAC,4CAA6B,YAAY;AAEzD,WAAO,OAAO,OACZ,KAAK,aACH,0CAA2B,OAAO,mCACpC,CACF;AAAA,EACF;AAAA,EAEA,WAAW;AACT,UAAM,EAAE,YAAY,KAAK;AAEzB,WAAO,iCACF,KAAK,YAAY,IADf;AAAA,MAEL,OAAO,GAAG,KAAK,iBAAiB,KAAK;AAAA,MACrC,MAAM,KAAK;AAAA,IACb;AAAA,EACF;AACF;",
+  "names": []
+}

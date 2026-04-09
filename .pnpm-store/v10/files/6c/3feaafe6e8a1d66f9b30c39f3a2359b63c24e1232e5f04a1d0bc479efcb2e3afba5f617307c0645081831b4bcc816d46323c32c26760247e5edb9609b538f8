@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["/mnt/vss/_work/1/s/sdk/core/ts-http-runtime/src/log.ts"],
+  "sourcesContent": ["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT License.\n\nimport { createClientLogger } from \"./logger/logger.js\";\nexport const logger = createClientLogger(\"ts-http-runtime\");\n"],
+  "mappings": ";;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAGA,oBAAmC;AAC5B,MAAM,aAAS,kCAAmB,iBAAiB;",
+  "names": []
+}

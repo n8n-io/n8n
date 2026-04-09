@@ -1,3 +1,0 @@
-import type { LibDefinition } from '../variable';
-export declare const es2021_full: LibDefinition;
-//# sourceMappingURL=es2021.full.d.ts.map

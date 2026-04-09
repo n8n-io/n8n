@@ -1,0 +1,579 @@
+---
+title: OpenAI Compatible Providers
+description: Use OpenAI compatible providers with the AI SDK.
+---
+
+# OpenAI Compatible Providers
+
+You can use the [OpenAI Compatible Provider](https://www.npmjs.com/package/@ai-sdk/openai-compatible) package to use language model providers that implement the OpenAI API.
+
+Below we focus on the general setup and provider instance creation. You can also [write a custom provider package leveraging the OpenAI Compatible package](/providers/openai-compatible-providers/custom-providers).
+
+We provide detailed documentation for the following OpenAI compatible providers:
+
+- [LM Studio](/providers/openai-compatible-providers/lmstudio)
+- [NIM](/providers/openai-compatible-providers/nim)
+- [Heroku](/providers/openai-compatible-providers/heroku)
+- [Clarifai](/providers/openai-compatible-providers/clarifai)
+
+The general setup and provider instance creation is the same for all of these providers.
+
+## Setup
+
+The OpenAI Compatible provider is available via the `@ai-sdk/openai-compatible` module. You can install it with:
+
+<Tabs items={['pnpm', 'npm', 'yarn', 'bun']}>
+  <Tab>
+    <Snippet text="pnpm add @ai-sdk/openai-compatible" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="npm install @ai-sdk/openai-compatible" dark />
+  </Tab>
+  <Tab>
+    <Snippet text="yarn add @ai-sdk/openai-compatible" dark />
+  </Tab>
+
+  <Tab>
+    <Snippet text="bun add @ai-sdk/openai-compatible" dark />
+  </Tab>
+</Tabs>
+
+## Provider Instance
+
+To use an OpenAI compatible provider, you can create a custom provider instance with the `createOpenAICompatible` function from `@ai-sdk/openai-compatible`:
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+
+const provider = createOpenAICompatible({
+  name: 'providerName',
+  apiKey: process.env.PROVIDER_API_KEY,
+  baseURL: 'https://api.provider.com/v1',
+  includeUsage: true, // Include usage information in streaming responses
+});
+```
+
+You can use the following optional settings to customize the provider instance:
+
+- **baseURL** _string_
+
+  Set the URL prefix for API calls.
+
+- **apiKey** _string_
+
+  API key for authenticating requests. If specified, adds an `Authorization`
+  header to request headers with the value `Bearer <apiKey>`. This will be added
+  before any headers potentially specified in the `headers` option.
+
+- **headers** _Record&lt;string,string&gt;_
+
+  Optional custom headers to include in requests. These will be added to request headers
+  after any headers potentially added by use of the `apiKey` option.
+
+- **queryParams** _Record&lt;string,string&gt;_
+
+  Optional custom url query parameters to include in request urls.
+
+- **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
+
+  Custom [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) implementation.
+  Defaults to the global `fetch` function.
+  You can use it as a middleware to intercept requests,
+  or to provide a custom fetch implementation for e.g. testing.
+
+- **includeUsage** _boolean_
+
+  Include usage information in streaming responses. When enabled, usage data will be included in the response metadata for streaming requests. Defaults to `undefined` (`false`).
+
+- **supportsStructuredOutputs** _boolean_
+
+  Set to true if the provider supports structured outputs. Only relevant for `provider()`, `provider.chatModel()`, and `provider.languageModel()`.
+
+- **transformRequestBody** _(args: Record&lt;string, any&gt;) =&gt; Record&lt;string, any&gt;_
+
+  Optional function to transform the request body before sending it to the API.
+  This is useful for proxy providers that may require a different request format
+  than the official OpenAI API.
+
+- **metadataExtractor** _MetadataExtractor_
+
+  Optional metadata extractor to capture provider-specific metadata from API responses.
+  See [Custom Metadata Extraction](#custom-metadata-extraction) for details.
+
+## Language Models
+
+You can create provider models using a provider instance.
+The first argument is the model id, e.g. `model-id`.
+
+```ts
+const model = provider('model-id');
+```
+
+You can also use the following factory methods:
+
+- `provider.languageModel('model-id')` - creates a chat language model (same as `provider('model-id')`)
+- `provider.chatModel('model-id')` - creates a chat language model
+
+### Supported Capabilities
+
+Chat models created with this provider support the following capabilities:
+
+- **Text generation** - Generate text completions
+- **Streaming** - Stream text responses in real-time
+- **Tool calling** - Call tools/functions with streaming support
+- **Structured outputs** - Generate JSON with schema validation (when `supportsStructuredOutputs` is enabled)
+- **Reasoning content** - Support for models that return reasoning/thinking tokens (e.g., DeepSeek R1)
+- **System messages** - Support for system prompts
+- **Multi-modal inputs** - Support for images and other content types (provider-dependent)
+
+### Example
+
+You can use provider language models to generate text with the `generateText` function:
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { generateText } from 'ai';
+
+const provider = createOpenAICompatible({
+  name: 'providerName',
+  apiKey: process.env.PROVIDER_API_KEY,
+  baseURL: 'https://api.provider.com/v1',
+});
+
+const { text } = await generateText({
+  model: provider('model-id'),
+  prompt: 'Write a vegetarian lasagna recipe for 4 people.',
+});
+```
+
+### Including model ids for auto-completion
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { generateText } from 'ai';
+
+type ExampleChatModelIds =
+  | 'meta-llama/Llama-3-70b-chat-hf'
+  | 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo'
+  | (string & {});
+
+type ExampleCompletionModelIds =
+  | 'codellama/CodeLlama-34b-Instruct-hf'
+  | 'Qwen/Qwen2.5-Coder-32B-Instruct'
+  | (string & {});
+
+type ExampleEmbeddingModelIds =
+  | 'BAAI/bge-large-en-v1.5'
+  | 'bert-base-uncased'
+  | (string & {});
+
+type ExampleImageModelIds = 'dall-e-3' | 'stable-diffusion-xl' | (string & {});
+
+const model = createOpenAICompatible<
+  ExampleChatModelIds,
+  ExampleCompletionModelIds,
+  ExampleEmbeddingModelIds,
+  ExampleImageModelIds
+>({
+  name: 'example',
+  apiKey: process.env.PROVIDER_API_KEY,
+  baseURL: 'https://api.example.com/v1',
+});
+
+// Subsequent calls to e.g. `model.chatModel` will auto-complete the model id
+// from the list of `ExampleChatModelIds` while still allowing free-form
+// strings as well.
+
+const { text } = await generateText({
+  model: model.chatModel('meta-llama/Llama-3-70b-chat-hf'),
+  prompt: 'Write a vegetarian lasagna recipe for 4 people.',
+});
+```
+
+### Custom query parameters
+
+Some providers may require custom query parameters. An example is the [Azure AI
+Model Inference
+API](https://learn.microsoft.com/en-us/azure/machine-learning/reference-model-inference-chat-completions?view=azureml-api-2)
+which requires an `api-version` query parameter.
+
+You can set these via the optional `queryParams` provider setting. These will be
+added to all requests made by the provider.
+
+```ts highlight="7-9"
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+
+const provider = createOpenAICompatible({
+  name: 'providerName',
+  apiKey: process.env.PROVIDER_API_KEY,
+  baseURL: 'https://api.provider.com/v1',
+  queryParams: {
+    'api-version': '1.0.0',
+  },
+});
+```
+
+For example, with the above configuration, API requests would include the query parameter in the URL like:
+`https://api.provider.com/v1/chat/completions?api-version=1.0.0`.
+
+## Image Models
+
+You can create image models using the `.imageModel()` factory method:
+
+```ts
+const model = provider.imageModel('model-id');
+```
+
+### Basic Image Generation
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { generateImage } from 'ai';
+
+const provider = createOpenAICompatible({
+  name: 'providerName',
+  apiKey: process.env.PROVIDER_API_KEY,
+  baseURL: 'https://api.provider.com/v1',
+});
+
+const { images } = await generateImage({
+  model: provider.imageModel('model-id'),
+  prompt: 'A futuristic cityscape at sunset',
+  size: '1024x1024',
+});
+```
+
+### Image Editing
+
+The OpenAI Compatible provider supports image editing through the `/images/edits` endpoint. Pass input images via `prompt.images` to transform or edit existing images.
+
+#### Basic Image Editing
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { generateImage } from 'ai';
+import fs from 'fs';
+
+const provider = createOpenAICompatible({
+  name: 'providerName',
+  apiKey: process.env.PROVIDER_API_KEY,
+  baseURL: 'https://api.provider.com/v1',
+});
+
+const imageBuffer = fs.readFileSync('./input-image.png');
+
+const { images } = await generateImage({
+  model: provider.imageModel('model-id'),
+  prompt: {
+    text: 'Turn the cat into a dog but retain the style of the original image',
+    images: [imageBuffer],
+  },
+});
+```
+
+#### Inpainting with Mask
+
+Edit specific parts of an image using a mask:
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { generateImage } from 'ai';
+import fs from 'fs';
+
+const provider = createOpenAICompatible({
+  name: 'providerName',
+  apiKey: process.env.PROVIDER_API_KEY,
+  baseURL: 'https://api.provider.com/v1',
+});
+
+const image = fs.readFileSync('./input-image.png');
+const mask = fs.readFileSync('./mask.png');
+
+const { images } = await generateImage({
+  model: provider.imageModel('model-id'),
+  prompt: {
+    text: 'A sunlit indoor lounge area with a pool containing a flamingo',
+    images: [image],
+    mask,
+  },
+});
+```
+
+<Note>
+  Input images can be provided as `Buffer`, `ArrayBuffer`, `Uint8Array`,
+  base64-encoded strings, or URLs. The provider will automatically download
+  URL-based images and convert them to the appropriate format.
+</Note>
+
+## Embedding Models
+
+You can create embedding models using the `.embeddingModel()` factory method:
+
+```ts
+const model = provider.embeddingModel('model-id');
+```
+
+### Example
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { embed } from 'ai';
+
+const provider = createOpenAICompatible({
+  name: 'providerName',
+  apiKey: process.env.PROVIDER_API_KEY,
+  baseURL: 'https://api.provider.com/v1',
+});
+
+const { embedding } = await embed({
+  model: provider.embeddingModel('text-embedding-model'),
+  value: 'The quick brown fox jumps over the lazy dog',
+});
+```
+
+### Embedding Model Options
+
+The following provider options are available for embedding models via `providerOptions`:
+
+- **dimensions** _number_
+
+  The number of dimensions the resulting output embeddings should have.
+  Only supported in models that allow dimension configuration.
+
+- **user** _string_
+
+  A unique identifier representing your end-user, which can help providers to
+  monitor and detect abuse.
+
+```ts
+const { embedding } = await embed({
+  model: provider.embeddingModel('text-embedding-model'),
+  value: 'The quick brown fox jumps over the lazy dog',
+  providerOptions: {
+    providerName: {
+      dimensions: 512,
+      user: 'user-123',
+    },
+  },
+});
+```
+
+## Completion Models
+
+You can create completion models (for text completion, not chat) using the `.completionModel()` factory method:
+
+```ts
+const model = provider.completionModel('model-id');
+```
+
+### Example
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { generateText } from 'ai';
+
+const provider = createOpenAICompatible({
+  name: 'providerName',
+  apiKey: process.env.PROVIDER_API_KEY,
+  baseURL: 'https://api.provider.com/v1',
+});
+
+const { text } = await generateText({
+  model: provider.completionModel('completion-model-id'),
+  prompt: 'The quick brown fox',
+});
+```
+
+### Completion Model Options
+
+The following provider options are available for completion models via `providerOptions`:
+
+- **echo** _boolean_
+
+  Echo back the prompt in addition to the completion.
+
+- **logitBias** _Record&lt;string, number&gt;_
+
+  Modify the likelihood of specified tokens appearing in the completion.
+  Accepts a JSON object that maps tokens (specified by their token ID) to an
+  associated bias value from -100 to 100.
+
+- **suffix** _string_
+
+  The suffix that comes after a completion of inserted text.
+
+- **user** _string_
+
+  A unique identifier representing your end-user, which can help providers to
+  monitor and detect abuse.
+
+```ts
+const { text } = await generateText({
+  model: provider.completionModel('completion-model-id'),
+  prompt: 'The quick brown fox',
+  providerOptions: {
+    providerName: {
+      echo: true,
+      suffix: ' The end.',
+      user: 'user-123',
+    },
+  },
+});
+```
+
+## Chat Model Options
+
+The following provider options are available for chat models via `providerOptions`:
+
+- **user** _string_
+
+  A unique identifier representing your end-user, which can help the provider to
+  monitor and detect abuse.
+
+- **reasoningEffort** _string_
+
+  Reasoning effort for reasoning models. The exact values depend on the provider.
+
+- **textVerbosity** _string_
+
+  Controls the verbosity of the generated text. The exact values depend on the provider.
+
+- **strictJsonSchema** _boolean_
+
+  Whether to use strict JSON schema validation. When true, the model uses constrained
+  decoding to guarantee schema compliance. Only used when the provider supports
+  structured outputs and a schema is provided. Defaults to `true`.
+
+```ts
+const { text } = await generateText({
+  model: provider('model-id'),
+  prompt: 'Solve this step by step: What is 15 * 23?',
+  providerOptions: {
+    providerName: {
+      user: 'user-123',
+      reasoningEffort: 'high',
+    },
+  },
+});
+```
+
+## Provider-specific options
+
+The OpenAI Compatible provider supports adding provider-specific options to the request body. These are specified with the `providerOptions` field in the request body.
+
+For example, if you create a provider instance with the name `providerName`, you can add a `customOption` field to the request body like this:
+
+```ts
+const provider = createOpenAICompatible({
+  name: 'providerName',
+  apiKey: process.env.PROVIDER_API_KEY,
+  baseURL: 'https://api.provider.com/v1',
+});
+
+const { text } = await generateText({
+  model: provider('model-id'),
+  prompt: 'Hello',
+  providerOptions: {
+    providerName: { customOption: 'magic-value' },
+  },
+});
+```
+
+Note that the `providerOptions` key will be in camelCase. If you set the provider name to `provider-name`, the options still need to be set on `providerOptions.providerName`.
+
+The request body sent to the provider will include the `customOption` field with the value `magic-value`. This gives you an easy way to add provider-specific options to requests without having to modify the provider or AI SDK code.
+
+## Custom Metadata Extraction
+
+The OpenAI Compatible provider supports extracting provider-specific metadata from API responses through metadata extractors.
+These extractors allow you to capture additional information returned by the provider beyond the standard response format.
+
+Metadata extractors receive the raw, unprocessed response data from the provider, giving you complete flexibility
+to extract any custom fields or experimental features that the provider may include.
+This is particularly useful when:
+
+- Working with providers that include non-standard response fields
+- Experimenting with beta or preview features
+- Capturing provider-specific metrics or debugging information
+- Supporting rapid provider API evolution without SDK changes
+
+Metadata extractors work with both streaming and non-streaming chat completions and consist of two main components:
+
+1. A function to extract metadata from complete responses
+2. A streaming extractor that can accumulate metadata across chunks in a streaming response
+
+Here's an example metadata extractor that captures both standard and custom provider data:
+
+```typescript
+import { MetadataExtractor } from '@ai-sdk/openai-compatible';
+
+const myMetadataExtractor: MetadataExtractor = {
+  // Process complete, non-streaming responses
+  extractMetadata: ({ parsedBody }) => {
+    // You have access to the complete raw response
+    // Extract any fields the provider includes
+    return {
+      myProvider: {
+        standardUsage: parsedBody.usage,
+        experimentalFeatures: parsedBody.beta_features,
+        customMetrics: {
+          processingTime: parsedBody.server_timing?.total_ms,
+          modelVersion: parsedBody.model_version,
+          // ... any other provider-specific data
+        },
+      },
+    };
+  },
+
+  // Process streaming responses
+  createStreamExtractor: () => {
+    let accumulatedData = {
+      timing: [],
+      customFields: {},
+    };
+
+    return {
+      // Process each chunk's raw data
+      processChunk: parsedChunk => {
+        if (parsedChunk.server_timing) {
+          accumulatedData.timing.push(parsedChunk.server_timing);
+        }
+        if (parsedChunk.custom_data) {
+          Object.assign(accumulatedData.customFields, parsedChunk.custom_data);
+        }
+      },
+      // Build final metadata from accumulated data
+      buildMetadata: () => ({
+        myProvider: {
+          streamTiming: accumulatedData.timing,
+          customData: accumulatedData.customFields,
+        },
+      }),
+    };
+  },
+};
+```
+
+You can provide a metadata extractor when creating your provider instance:
+
+```typescript
+const provider = createOpenAICompatible({
+  name: 'my-provider',
+  apiKey: process.env.PROVIDER_API_KEY,
+  baseURL: 'https://api.provider.com/v1',
+  metadataExtractor: myMetadataExtractor,
+});
+```
+
+The extracted metadata will be included in the response under the `providerMetadata` field:
+
+```typescript
+const { text, providerMetadata } = await generateText({
+  model: provider('model-id'),
+  prompt: 'Hello',
+});
+
+console.log(providerMetadata.myProvider.customMetric);
+```
+
+This allows you to access provider-specific information while maintaining a consistent interface across different providers.

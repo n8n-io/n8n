@@ -40,7 +40,7 @@ export async function rabbitmqConnect(
 		}
 	}
 
-	return await amqplib.connect(credentialData, optsData);
+	return await amqplib.connect(credentialData, optsData) as any;
 }
 
 export async function rabbitmqCreateChannel(
@@ -54,7 +54,7 @@ export async function rabbitmqCreateChannel(
 			// TODO: why is this error handler being added here?
 			connection.on('error', reject);
 
-			const channel = await connection.createChannel();
+			const channel = await (connection as any).createChannel();
 			resolve(channel);
 		} catch (error) {
 			reject(error);
@@ -159,7 +159,7 @@ export class MessageTracker {
 		}
 
 		await channel.close();
-		await channel.connection.close();
+		await (channel.connection as any).close();
 	}
 }
 

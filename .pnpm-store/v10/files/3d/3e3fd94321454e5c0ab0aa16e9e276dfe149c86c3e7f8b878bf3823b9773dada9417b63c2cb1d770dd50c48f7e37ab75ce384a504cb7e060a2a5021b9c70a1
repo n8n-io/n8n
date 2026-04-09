@@ -1,0 +1,49 @@
+{
+  "name": "@humanwhocodes/momoa",
+  "version": "2.0.4",
+  "description": "JSON AST parser, tokenizer, printer, traverser.",
+  "author": "Nicholas C. Zakas",
+  "main": "api.js",
+  "files": [
+    "api.js"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/humanwhocodes/momoa.git"
+  },
+  "bugs": {
+    "url": "https://github.com/humanwhocodes/momoa/issues"
+  },
+  "homepage": "https://github.com/humanwhocodes/momoa#readme",
+  "scripts": {
+    "build": "rollup -c",
+    "lint": "eslint src/*.js tests/*.js",
+    "perf": "npm run build && node tools/perf.js",
+    "regen": "npm run build && node tools/regenerate-test-data.js",
+    "prepare": "npm run build",
+    "pretest": "npm run build",
+    "test": "mocha -r esm tests/**/*.js"
+  },
+  "keywords": [
+    "json",
+    "ast",
+    "json tree",
+    "abstract syntax tree"
+  ],
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=10.10.0"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "beautify-benchmark": "^0.2.4",
+    "benchmark": "^2.1.4",
+    "chai": "^4.2.0",
+    "eslint": "^5.16.0",
+    "esm": "^3.2.25",
+    "json-to-ast": "^2.1.0",
+    "mocha": "^6.1.4",
+    "rollup": "^1.12.3",
+    "sinon": "^7.3.2"
+  }
+}

@@ -1,1 +1,0 @@
-{"version":3,"file":"batch.d.ts","sourceRoot":"","sources":["../src/sdk/batch.ts"],"names":[],"mappings":"AAIA,OAAO,EAAE,SAAS,EAAE,MAAM,gBAAgB,CAAC;AAC3C,OAAO,EAAE,WAAW,EAAE,MAAM,kBAAkB,CAAC;AAE/C,qBAAa,KAAM,SAAQ,SAAS;IAClC,OAAO,CAAC,KAAK,CAAC,CAAc;IAC5B,IAAI,IAAI,IAAI,WAAW,CAEtB;CACF"}

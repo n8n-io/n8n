@@ -1,0 +1,52 @@
+{
+  "name": "@vercel/oidc",
+  "description": "Runtime OIDC helpers intended for use with Vercel Functions",
+  "homepage": "https://vercel.com",
+  "files": [
+    "**/*.js",
+    "**/*.d.ts",
+    "**/*.md"
+  ],
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "browser": "./dist/index-browser.js",
+      "react-native": "./dist/index-browser.js",
+      "workflow": "./dist/index-browser.js",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "version": "3.1.0",
+  "repository": {
+    "directory": "packages/oidc",
+    "type": "git",
+    "url": "git+https://github.com/vercel/vercel.git"
+  },
+  "bugs": {
+    "url": "https://github.com/vercel/vercel/issues"
+  },
+  "devDependencies": {
+    "tinyspawn": "1.3.1",
+    "typedoc": "0.24.6",
+    "typedoc-plugin-markdown": "4.1.2",
+    "typedoc-plugin-mdn-links": "3.2.3",
+    "typescript": "4.9.5",
+    "vitest": "2.0.1"
+  },
+  "peerDependenciesMeta": {},
+  "engines": {
+    "node": ">= 20"
+  },
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "pretest": "pnpm run build:code",
+    "test": "vitest",
+    "build": "pnpm run build:code && pnpm run build:docs",
+    "build:code": "node ../../utils/build.mjs",
+    "build:docs": "typedoc && prettier --write docs/**/*.md docs/*.md"
+  }
+}

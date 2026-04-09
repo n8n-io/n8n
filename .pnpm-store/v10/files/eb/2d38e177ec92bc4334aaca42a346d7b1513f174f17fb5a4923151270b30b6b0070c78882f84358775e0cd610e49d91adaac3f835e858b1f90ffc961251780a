@@ -1,0 +1,8 @@
+repos:
+  - repo: https://github.com/cpplint/cpplint
+    rev: 2.0.0
+    hooks:
+      - id: cpplint
+        args:
+          - --filter=-whitespace/indent_namespace,-whitespace/parens
+          - --linelength=88

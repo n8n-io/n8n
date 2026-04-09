@@ -1,0 +1,100 @@
+{
+  "name": "eslint-plugin-eslint-plugin",
+  "version": "7.3.2",
+  "description": "An ESLint plugin for linting ESLint plugins",
+  "author": "Teddy Katz",
+  "main": "./dist/index.js",
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js",
+    "./package.json": "./package.json"
+  },
+  "license": "MIT",
+  "scripts": {
+    "build": "tsdown",
+    "e2e": "node ./e2e/run-all-tests.js",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "npm-run-all --continue-on-error --aggregate-output --parallel lint:*",
+    "lint:docs": "markdownlint \"**/*.md\"",
+    "lint:eslint-docs": "npm-run-all -s build \"update:eslint-docs -- --check\"",
+    "lint:js": "eslint --cache --ignore-pattern \"**/*.md\" --flag unstable_native_nodejs_ts_config",
+    "lint:js-docs": "eslint --no-inline-config \"**/*.md\" --flag unstable_native_nodejs_ts_config",
+    "lint:package-json": "npmPkgJsonLint .",
+    "prepare": "husky install",
+    "test": "vitest run --coverage",
+    "test:remote": "eslint-remote-tester",
+    "typecheck": "tsc",
+    "update:eslint-docs": "eslint-doc-generator"
+  },
+  "files": [
+    "CHANGELOG.md",
+    "dist/"
+  ],
+  "keywords": [
+    "eslint",
+    "eslintplugin",
+    "eslint-plugin"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eslint-community/eslint-plugin-eslint-plugin.git"
+  },
+  "bugs": {
+    "url": "https://github.com/eslint-community/eslint-plugin-eslint-plugin/issues"
+  },
+  "homepage": "https://github.com/eslint-community/eslint-plugin-eslint-plugin#readme",
+  "dependencies": {
+    "@eslint-community/eslint-utils": "^4.4.0",
+    "estraverse": "^5.3.0"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^20.0.0",
+    "@commitlint/config-conventional": "^20.0.0",
+    "@commitlint/types": "^20.0.0",
+    "@eslint-community/eslint-plugin-eslint-comments": "^4.6.0",
+    "@eslint/eslintrc": "^3.3.4",
+    "@eslint/js": "^9.39.3",
+    "@eslint/markdown": "^7.5.1",
+    "@types/eslint-scope": "^8.4.0",
+    "@types/espree": "^10.1.0",
+    "@types/estraverse": "^5.1.7",
+    "@types/estree": "^1.0.8",
+    "@types/lodash": "^4.17.18",
+    "@types/node": "^24.0.0",
+    "@typescript-eslint/parser": "8.47.0",
+    "@typescript-eslint/utils": "8.47.0",
+    "@vitest/coverage-istanbul": "^4.0.0",
+    "eslint": "^9.39.1",
+    "eslint-config-not-an-aardvark": "^2.1.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-doc-generator": "3.0.2",
+    "eslint-plugin-n": "^17.21.0",
+    "eslint-plugin-unicorn": "^62.0.0",
+    "eslint-remote-tester": "^4.0.3",
+    "eslint-scope": "^8.4.0",
+    "espree": "^11.1.1",
+    "husky": "^9.1.7",
+    "jiti": "^2.5.1",
+    "lint-staged": "^16.2.7",
+    "lodash": "^4.17.21",
+    "markdownlint-cli": "^0.43.0",
+    "npm-package-json-lint": "^9.0.0",
+    "npm-run-all2": "^8.0.0",
+    "prettier": "3.6.2",
+    "tsdown": "^0.13.3",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "8.47.0",
+    "vitest": "^4.0.0"
+  },
+  "peerDependencies": {
+    "eslint": ">=9.0.0"
+  },
+  "engines": {
+    "node": "^20.19.0 || ^22.13.0 || >=24.0.0"
+  },
+  "lint-staged": {
+    "*.{js,ts}": "eslint --cache --fix",
+    "*.{js,ts,md,json}": "prettier --write"
+  }
+}

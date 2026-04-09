@@ -1,0 +1,25 @@
+// Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.
+// See LICENSE in the project root for license information.
+/**
+ * Represents a type referenced via an "extends" or "implements" heritage clause for a TypeScript class
+ * or interface.
+ *
+ * @remarks
+ *
+ * For example, consider this declaration:
+ *
+ * ```ts
+ * export class Widget extends Controls.WidgetBase implements Controls.IWidget, IDisposable {
+ *   // . . .
+ * }
+ * ```
+ *
+ * The heritage types are `Controls.WidgetBase`, `Controls.IWidget`, and `IDisposable`.
+ * @public
+ */
+export class HeritageType {
+    constructor(excerpt) {
+        this.excerpt = excerpt;
+    }
+}
+//# sourceMappingURL=HeritageType.js.map

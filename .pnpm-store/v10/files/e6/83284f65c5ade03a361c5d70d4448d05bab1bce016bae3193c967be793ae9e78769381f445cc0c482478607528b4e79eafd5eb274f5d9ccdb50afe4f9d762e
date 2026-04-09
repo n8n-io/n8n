@@ -1,0 +1,112 @@
+{
+  "name": "@langchain/mcp-adapters",
+  "version": "1.1.3",
+  "description": "LangChain.js adapters for Model Context Protocol (MCP)",
+  "author": "LangChain",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:langchain-ai/langchainjs.git"
+  },
+  "homepage": "https://github.com/langchain-ai/langchainjs/tree/main/libs/langchain-mcp-adapters/",
+  "bugs": {
+    "url": "https://github.com/langchain-ai/langchainjs/issues"
+  },
+  "keywords": [
+    "langchain",
+    "mcp",
+    "model-context-protocol",
+    "ai",
+    "tools"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "debug": "^4.4.3",
+    "zod": "^3.25.76 || ^4"
+  },
+  "peerDependencies": {
+    "@langchain/core": "^1.0.0",
+    "@langchain/langgraph": "^1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@langchain/core": {
+      "optional": false
+    },
+    "@langchain/langgraph": {
+      "optional": false
+    }
+  },
+  "optionalDependencies": {
+    "extended-eventsource": "^1.7.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.36.0",
+    "@langchain/langgraph": "^1.0.0",
+    "@tsconfig/recommended": "^1.0.10",
+    "@types/debug": "^4.1.12",
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.18.8",
+    "@vitest/coverage-v8": "^3.2.4",
+    "dotenv": "^16.6.1",
+    "dpdm": "^3.14.0",
+    "eslint": "^9.36.0",
+    "eventsource": "^4.1.0",
+    "express": "^5.2.1",
+    "npm-run-all2": "^8.0.4",
+    "prettier": "^3.6.2",
+    "ts-node": "^10.9.2",
+    "typescript": "~5.8.3",
+    "typescript-eslint": "^8.45.0",
+    "vitest": "^3.2.4",
+    "@langchain/core": "^1.1.23",
+    "@langchain/eslint": "0.1.1",
+    "@langchain/openai": "1.2.7",
+    "@langchain/tsconfig": "0.0.1",
+    "langchain": "1.2.22"
+  },
+  "engines": {
+    "node": ">=20.10.0"
+  },
+  "directories": {
+    "example": "examples"
+  },
+  "main": "./dist/index.cjs",
+  "types": "./dist/index.d.cts",
+  "exports": {
+    ".": {
+      "input": "./src/index.ts",
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      },
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/",
+    "CHANGELOG.md",
+    "README.md",
+    "LICENSE"
+  ],
+  "module": "./dist/index.js",
+  "scripts": {
+    "build": "turbo build:compile build:examples --filter @langchain/core --output-logs new-only",
+    "build:compile": "tsdown",
+    "build:examples": "tsc -p ./examples/tsconfig.json",
+    "clean": "rm -rf dist/ dist-cjs/ .turbo/",
+    "format": "prettier --write \"src/**/*.ts\" \"examples/**/*.ts\"",
+    "format:check": "prettier --check \"src\" \"examples/**/*.ts\"",
+    "lint": "run-s lint:eslint lint:dpdm",
+    "lint:dpdm": "dpdm --skip-dynamic-imports circular --exit-code circular:1 --no-warning --no-tree src/**/*.ts examples/**/*.ts",
+    "lint:eslint": "eslint --cache src/ examples/",
+    "lint:fix": "pnpm lint:eslint --fix && pnpm lint:dpdm",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest"
+  }
+}

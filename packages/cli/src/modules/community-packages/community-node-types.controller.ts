@@ -10,7 +10,8 @@ export class CommunityNodeTypesController {
 
 	@Get('/:name', { allowSkipPreviewAuth: true })
 	async getCommunityNodeType(req: Request): Promise<CommunityNodeType | null> {
-		return await this.communityNodeTypesService.getCommunityNodeType(req.params.name);
+		// return await this.communityNodeTypesService.getCommunityNodeType(req.params.name);
+		return await this.communityNodeTypesService.getCommunityNodeType(req.params.name as string);
 	}
 
 	@Get('/', { allowSkipPreviewAuth: true })

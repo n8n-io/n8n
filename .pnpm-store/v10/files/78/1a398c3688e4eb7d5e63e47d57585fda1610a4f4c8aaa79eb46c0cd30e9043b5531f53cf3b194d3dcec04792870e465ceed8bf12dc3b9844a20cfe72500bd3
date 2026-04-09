@@ -1,0 +1,107 @@
+{
+  "name": "vite-plugin-dts",
+  "version": "4.5.4",
+  "type": "module",
+  "license": "MIT",
+  "author": "qmhc",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "vite",
+    "vite-plugin",
+    "ts",
+    "dts",
+    "typescript",
+    "vue",
+    "tsc",
+    "vue-tsc",
+    "volar"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qmhc/vite-plugin-dts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/qmhc/vite-plugin-dts/issues"
+  },
+  "dependencies": {
+    "@microsoft/api-extractor": "^7.50.1",
+    "@rollup/pluginutils": "^5.1.4",
+    "@volar/typescript": "^2.4.11",
+    "@vue/language-core": "2.2.0",
+    "compare-versions": "^6.1.1",
+    "debug": "^4.4.0",
+    "kolorist": "^1.8.0",
+    "local-pkg": "^1.0.0",
+    "magic-string": "^0.30.17"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.7.1",
+    "@types/debug": "^4.1.12",
+    "@types/minimist": "^1.2.5",
+    "@types/node": "^22.13.5",
+    "@types/prompts": "^2.4.9",
+    "@types/semver": "^7.5.8",
+    "@vexip-ui/commitlint-config": "^0.5.0",
+    "@vexip-ui/eslint-config": "^0.12.1",
+    "@vexip-ui/prettier-config": "^1.0.0",
+    "@vexip-ui/scripts": "^1.2.0",
+    "@vue/eslint-config-standard": "^8.0.1",
+    "@vue/eslint-config-typescript": "^13.0.0",
+    "conventional-changelog-cli": "^5.0.0",
+    "eslint": "^8.57.0",
+    "execa": "^9.5.2",
+    "husky": "^9.1.7",
+    "is-ci": "^4.1.0",
+    "lint-staged": "^15.4.3",
+    "minimist": "^1.2.8",
+    "pinst": "^3.0.0",
+    "prettier": "^3.5.2",
+    "pretty-quick": "^4.0.0",
+    "prompts": "^2.4.2",
+    "rimraf": "^6.0.1",
+    "semver": "^7.7.1",
+    "tsx": "^4.19.3",
+    "typescript": "5.7.3",
+    "unbuild": "^3.3.1",
+    "vite": "^6.2.0",
+    "vitest": "^3.0.7"
+  },
+  "peerDependencies": {
+    "typescript": "*",
+    "vite": "*"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "build": "tsx scripts/build.ts",
+    "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s --commit-path .",
+    "dev": "unbuild --stub",
+    "_postinstall": "is-ci || husky install",
+    "lint": "eslint --ext .js,.jsx,.ts,.tsx \"{src,tests}/**\"",
+    "precommit": "lint-staged -c ./.husky/.lintstagedrc -q --allow-empty",
+    "prettier": "pretty-quick --staged && pnpm run lint",
+    "publish:ci": "tsx scripts/publish.ts",
+    "release": "tsx scripts/release.ts",
+    "test": "vitest run",
+    "test:dev": "vitest",
+    "test:react": "pnpm -C examples/react build",
+    "test:svelte": "pnpm -C examples/svelte build",
+    "test:ts": "pnpm -C examples/ts build",
+    "test:vue": "pnpm -C examples/vue build"
+  }
+}

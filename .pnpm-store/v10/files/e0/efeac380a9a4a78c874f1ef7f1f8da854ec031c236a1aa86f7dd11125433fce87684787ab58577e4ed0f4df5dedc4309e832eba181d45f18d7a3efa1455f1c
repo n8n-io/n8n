@@ -1,0 +1,210 @@
+---
+title: Agent (Interface)
+description: API Reference for the Agent interface.
+---
+
+# `Agent` (interface)
+
+The `Agent` interface defines a contract for agents that can generate or stream AI-generated responses in response to prompts. Agents may encapsulate advanced logic such as tool usage, multi-step workflows, or prompt handling, enabling both simple and autonomous AI agents.
+
+Implementations of the `Agent` interface—such as `ToolLoopAgent`—fulfill the same contract and integrate seamlessly with all SDK APIs and utilities that expect an agent. This design allows users to supply custom agent classes or wrappers for third-party chains, while maximizing compatibility with AI SDK features.
+
+## Interface Definition
+
+```ts
+import { ModelMessage } from '@ai-sdk/provider-utils';
+import { ToolSet } from '../generate-text/tool-set';
+import { Output } from '../generate-text/output';
+import { GenerateTextResult } from '../generate-text/generate-text-result';
+import { StreamTextResult } from '../generate-text/stream-text-result';
+
+export type AgentCallParameters<CALL_OPTIONS, TOOLS extends ToolSet = {}> = ([
+  CALL_OPTIONS,
+] extends [never]
+  ? { options?: never }
+  : { options: CALL_OPTIONS }) &
+  (
+    | {
+        /**
+         * A prompt. It can be either a text prompt or a list of messages.
+         *
+         * You can either use `prompt` or `messages` but not both.
+         */
+        prompt: string | Array<ModelMessage>;
+
+        /**
+         * A list of messages.
+         *
+         * You can either use `prompt` or `messages` but not both.
+         */
+        messages?: never;
+      }
+    | {
+        /**
+         * A list of messages.
+         *
+         * You can either use `prompt` or `messages` but not both.
+         */
+        messages: Array<ModelMessage>;
+
+        /**
+         * A prompt. It can be either a text prompt or a list of messages.
+         *
+         * You can either use `prompt` or `messages` but not both.
+         */
+        prompt?: never;
+      }
+  ) & {
+    /**
+     * Abort signal.
+     */
+    abortSignal?: AbortSignal;
+    /**
+     * Timeout in milliseconds. Can be specified as a number or as an object with a totalMs property.
+     * The call will be aborted if it takes longer than the specified timeout.
+     * Can be used alongside abortSignal.
+     */
+    timeout?: number | { totalMs?: number };
+    /**
+     * Callback that is called when each step (LLM call) is finished, including intermediate steps.
+     */
+    onStepFinish?: ToolLoopAgentOnStepFinishCallback<TOOLS>;
+  };
+
+/**
+ * An Agent receives a prompt (text or messages) and generates or streams an output
+ * that consists of steps, tool calls, data parts, etc.
+ *
+ * You can implement your own Agent by implementing the `Agent` interface,
+ * or use the `ToolLoopAgent` class.
+ */
+export interface Agent<
+  CALL_OPTIONS = never,
+  TOOLS extends ToolSet = {},
+  OUTPUT extends Output = never,
+> {
+  /**
+   * The specification version of the agent interface. This will enable
+   * us to evolve the agent interface and retain backwards compatibility.
+   */
+  readonly version: 'agent-v1';
+
+  /**
+   * The id of the agent.
+   */
+  readonly id: string | undefined;
+
+  /**
+   * The tools that the agent can use.
+   */
+  readonly tools: TOOLS;
+
+  /**
+   * Generates an output from the agent (non-streaming).
+   */
+  generate(
+    options: AgentCallParameters<CALL_OPTIONS, TOOLS>,
+  ): PromiseLike<GenerateTextResult<TOOLS, OUTPUT>>;
+
+  /**
+   * Streams an output from the agent (streaming).
+   */
+  stream(
+    options: AgentStreamParameters<CALL_OPTIONS, TOOLS>,
+  ): PromiseLike<StreamTextResult<TOOLS, OUTPUT>>;
+}
+```
+
+## Core Properties & Methods
+
+| Name         | Type                                             | Description                                                         |
+| ------------ | ------------------------------------------------ | ------------------------------------------------------------------- |
+| `version`    | `'agent-v1'`                                     | Interface version for compatibility.                                |
+| `id`         | `string \| undefined`                            | Optional agent identifier.                                          |
+| `tools`      | `ToolSet`                                        | The set of tools available to this agent.                           |
+| `generate()` | `PromiseLike<GenerateTextResult<TOOLS, OUTPUT>>` | Generates full, non-streaming output for a text prompt or messages. |
+| `stream()`   | `PromiseLike<StreamTextResult<TOOLS, OUTPUT>>`   | Streams output (chunks or steps) for a text prompt or messages.     |
+
+## Generic Parameters
+
+| Parameter      | Default | Description                                                                |
+| -------------- | ------- | -------------------------------------------------------------------------- |
+| `CALL_OPTIONS` | `never` | Optional type for additional call options that can be passed to the agent. |
+| `TOOLS`        | `{}`    | The type of the tool set available to this agent.                          |
+| `OUTPUT`       | `never` | The type of additional output data that the agent can produce.             |
+
+## Method Parameters
+
+Both `generate()` and `stream()` accept an `AgentCallParameters<CALL_OPTIONS, TOOLS>` object with:
+
+- `prompt` (optional): A string prompt or array of `ModelMessage` objects
+- `messages` (optional): An array of `ModelMessage` objects (mutually exclusive with `prompt`)
+- `options` (optional): Additional call options when `CALL_OPTIONS` is not `never`
+- `abortSignal` (optional): An `AbortSignal` to cancel the operation
+- `timeout` (optional): A timeout in milliseconds. Can be specified as a number or as an object with a `totalMs` property. The call will be aborted if it takes longer than the specified timeout. Can be used alongside `abortSignal`.
+- `onStepFinish` (optional): A callback invoked after each agent step (LLM/tool call) completes. Useful for tracking token usage or logging.
+
+## Example: Custom Agent Implementation
+
+Here's how you might implement your own Agent:
+
+```ts
+import { Agent, GenerateTextResult, StreamTextResult } from 'ai';
+import type { ModelMessage } from '@ai-sdk/provider-utils';
+
+class MyEchoAgent implements Agent {
+  version = 'agent-v1' as const;
+  id = 'echo';
+  tools = {};
+
+  async generate({ prompt, messages, abortSignal }) {
+    const text = prompt ?? JSON.stringify(messages);
+    return { text, steps: [] };
+  }
+
+  async stream({ prompt, messages, abortSignal }) {
+    const text = prompt ?? JSON.stringify(messages);
+    return {
+      textStream: (async function* () {
+        yield text;
+      })(),
+    };
+  }
+}
+```
+
+## Usage: Interacting with Agents
+
+All SDK utilities that accept an agent—including [`createAgentUIStream`](/docs/reference/ai-sdk-core/create-agent-ui-stream), [`createAgentUIStreamResponse`](/docs/reference/ai-sdk-core/create-agent-ui-stream-response), and [`pipeAgentUIStreamToResponse`](/docs/reference/ai-sdk-core/pipe-agent-ui-stream-to-response)—expect an object adhering to the `Agent` interface.
+
+You can use the official [`ToolLoopAgent`](/docs/reference/ai-sdk-core/tool-loop-agent) (recommended for multi-step AI workflows with tool use), or supply your own implementation:
+
+```ts
+import { ToolLoopAgent, createAgentUIStream } from "ai";
+
+const agent = new ToolLoopAgent({ ... });
+
+const stream = await createAgentUIStream({
+  agent,
+  messages: [{ role: "user", content: "What is the weather in NYC?" }]
+});
+
+for await (const chunk of stream) {
+  console.log(chunk);
+}
+```
+
+## See Also
+
+- [`ToolLoopAgent`](/docs/reference/ai-sdk-core/tool-loop-agent) &mdash; Official multi-step agent implementation
+- [`createAgentUIStream`](/docs/reference/ai-sdk-core/create-agent-ui-stream)
+- [`GenerateTextResult`](/docs/reference/ai-sdk-core/generate-text)
+- [`StreamTextResult`](/docs/reference/ai-sdk-core/stream-text)
+
+## Notes
+
+- Agents should define their `tools` property, even if empty (`{}`), for compatibility with SDK utilities.
+- The interface accepts both plain prompts and message arrays as input, but only one at a time.
+- The `CALL_OPTIONS` generic parameter allows agents to accept additional call-specific options when needed.
+- The `abortSignal` parameter enables cancellation of agent operations.
+- This design is extensible for both complex autonomous agents and simple LLM wrappers.

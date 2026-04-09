@@ -1,11 +1,11 @@
 import type {
-	IDataObject,
+	//IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
 
-import type { AgentInvocationResponse, AgentParametersInput } from './agent.types';
+import type { AgentParametersInput } from './agent.types';
 import {
 	getAgentDetails,
 	pollAgentStatus,
@@ -157,11 +157,7 @@ export async function execute(
 	const { webhookId } = await getAgentDetails.call(this, agentId);
 	const invokeUrl = `${AIRTOP_HOOKS_BASE_URL}/agents/${agentId}/webhooks/${webhookId}`;
 
-	const invocationResponse = await apiRequest.call<
-		IExecuteFunctions,
-		['POST', string, IDataObject],
-		Promise<AgentInvocationResponse>
-	>(this, 'POST', invokeUrl, validatedAgentParameters);
+	const invocationResponse = await apiRequest.call(this, 'POST', invokeUrl, validatedAgentParameters);
 
 	const invocationId = invocationResponse.invocationId;
 	throwOperationErrorIf(

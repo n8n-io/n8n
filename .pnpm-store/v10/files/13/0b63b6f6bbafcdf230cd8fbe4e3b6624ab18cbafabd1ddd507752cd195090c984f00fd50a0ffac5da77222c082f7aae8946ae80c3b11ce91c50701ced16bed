@@ -1,0 +1,76 @@
+{
+  "name": "@tokenizer/inflate",
+  "version": "0.4.1",
+  "description": "Tokenized zip support",
+  "type": "module",
+  "exports": "./lib/index.js",
+  "files": [
+    "lib/**/*.js",
+    "lib/**/*.d.ts"
+  ],
+  "scripts": {
+    "clean": "del-cli 'lib/**/*.js' 'lib/**/*.js.map' 'lib/**/*.d.ts' 'test/**/*.js' 'test/**/*.js.map'",
+    "compile-src": "tsc -p lib",
+    "compile-test": "tsc -p test",
+    "compile": "yarn run compile-src && yarn run compile-test",
+    "build": "yarn run clean && yarn run compile",
+    "prepublishOnly": "yarn run build",
+    "eslint": "eslint lib test",
+    "lint:md": "remark -u preset-lint-recommended .",
+    "lint:ts": "biome check",
+    "fix": "yarn run biome lint --write",
+    "test": "mocha",
+    "start": "yarn run compile && yarn run lint && yarn run cover-test",
+    "update-biome": "yarn add -D --exact @biomejs/biome && npx @biomejs/biome migrate --write"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "author": {
+    "name": "Borewit",
+    "url": "https://github.com/Borewit"
+  },
+  "license": "MIT",
+  "packageManager": "yarn@4.9.1",
+  "devDependencies": {
+    "@aws-sdk/client-s3": "^3.934.0",
+    "@biomejs/biome": "2.3.6",
+    "@tokenizer/s3": "^1.0.1",
+    "@types/chai": "^5.2.3",
+    "@types/debug": "^4",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^24.10.1",
+    "chai": "^6.2.1",
+    "del-cli": "^7.0.0",
+    "file-type": "^21.1.0",
+    "mocha": "^11.7.5",
+    "strtok3": "^10.3.4",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "debug": "^4.4.3",
+    "token-types": "^6.1.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Borewit/tokenizer-inflate.git"
+  },
+  "bugs": {
+    "url": "hhttps://github.com/Borewit/tokenizer-inflate/issues"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/Borewit"
+  },
+  "keywords": [
+    "zip",
+    "unzip",
+    "decompress",
+    "inflate",
+    "strtok3",
+    "tokenizer",
+    "stream",
+    "S3"
+  ]
+}

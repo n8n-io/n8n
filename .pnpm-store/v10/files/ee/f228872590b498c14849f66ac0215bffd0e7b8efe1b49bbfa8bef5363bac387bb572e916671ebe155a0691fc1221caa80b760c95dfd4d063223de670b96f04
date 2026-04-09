@@ -1,1 +1,0 @@
-{"version":3,"file":"infer.js","sourceRoot":"","sources":["infer.ts"],"names":[],"mappings":";AAAA;;GAEG","sourcesContent":["/**\n * Created by user on 2019/6/12.\n */\n\nexport type ITSValueOfMember<T, K extends keyof T> = T extends {\n\t[p in K]: infer U\n} ? U : never;\n\nexport type ITSLengthOf<T extends {\n\tlength: number\n}> = ITSValueOfMember<T, 'length'>;\n"]}

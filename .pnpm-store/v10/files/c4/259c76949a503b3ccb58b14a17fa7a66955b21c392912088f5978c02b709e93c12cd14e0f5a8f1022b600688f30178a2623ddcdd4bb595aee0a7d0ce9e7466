@@ -1,0 +1,135 @@
+{
+  "name": "tsdown",
+  "version": "0.16.8",
+  "description": "The Elegant Bundler for Libraries",
+  "type": "module",
+  "license": "MIT",
+  "homepage": "http://tsdown.dev/",
+  "bugs": {
+    "url": "https://github.com/rolldown/tsdown/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rolldown/tsdown.git"
+  },
+  "author": "Kevin Deng <sxzz@sxzz.moe>",
+  "funding": "https://github.com/sponsors/sxzz",
+  "files": [
+    "client.d.ts",
+    "dist",
+    "esm-shims.js"
+  ],
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": "./dist/index.mjs",
+    "./config": "./dist/config.mjs",
+    "./plugins": "./dist/plugins.mjs",
+    "./run": "./dist/run.mjs",
+    "./package.json": "./package.json",
+    "./client": "./client.d.ts"
+  },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./dist/*.d.mts",
+        "./*"
+      ]
+    }
+  },
+  "bin": {
+    "tsdown": "./dist/run.mjs"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "@arethetypeswrong/core": "^0.18.1",
+    "@vitejs/devtools": "^0.0.0-alpha.18",
+    "publint": "^0.3.0",
+    "typescript": "^5.0.0",
+    "unplugin-lightningcss": "^0.4.0",
+    "unplugin-unused": "^0.5.0"
+  },
+  "peerDependenciesMeta": {
+    "@arethetypeswrong/core": {
+      "optional": true
+    },
+    "@vitejs/devtools": {
+      "optional": true
+    },
+    "publint": {
+      "optional": true
+    },
+    "typescript": {
+      "optional": true
+    },
+    "unplugin-lightningcss": {
+      "optional": true
+    },
+    "unplugin-unused": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "ansis": "^4.2.0",
+    "cac": "^6.7.14",
+    "chokidar": "^5.0.0",
+    "diff": "^8.0.2",
+    "empathic": "^2.0.0",
+    "hookable": "^5.5.3",
+    "obug": "^2.1.1",
+    "rolldown": "1.0.0-beta.52",
+    "rolldown-plugin-dts": "^0.18.1",
+    "semver": "^7.7.3",
+    "tinyexec": "^1.0.2",
+    "tinyglobby": "^0.2.15",
+    "tree-kill": "^1.2.2",
+    "unconfig-core": "^7.4.1",
+    "unrun": "^0.2.13"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/core": "^0.18.2",
+    "@sxzz/eslint-config": "^7.3.2",
+    "@sxzz/prettier-config": "^2.2.6",
+    "@sxzz/test-utils": "^0.5.13",
+    "@types/node": "^24.10.1",
+    "@types/semver": "^7.7.1",
+    "@unocss/eslint-plugin": "^66.5.9",
+    "@vitejs/devtools": "^0.0.0-alpha.18",
+    "@vueuse/core": "^14.1.0",
+    "bumpp": "^10.3.2",
+    "eslint": "^9.39.1",
+    "is-in-ci": "^2.0.0",
+    "lightningcss": "^1.30.2",
+    "pkg-types": "^2.3.0",
+    "prettier": "^3.7.1",
+    "publint": "^0.3.15",
+    "rolldown-plugin-require-cjs": "^0.3.1",
+    "typescript": "~5.9.3",
+    "unocss": "^66.5.9",
+    "unplugin-lightningcss": "^0.4.3",
+    "unplugin-unused": "^0.5.6",
+    "vite": "npm:rolldown-vite@^7.2.8",
+    "vitest": "^4.0.14"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "prettier": "@sxzz/prettier-config",
+  "scripts": {
+    "lint": "eslint --cache --max-warnings 0 .",
+    "lint:fix": "pnpm run lint --fix",
+    "build": "unrun ./src/run.ts",
+    "dev": "unrun ./src/run.ts",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --cache --write .",
+    "release": "bumpp -r",
+    "docs:dev": "pnpm -C docs run dev",
+    "docs:build": "pnpm -C docs run build",
+    "docs:preview": "pnpm -C docs run preview",
+    "docs:generate": "pnpm -C docs run generate"
+  }
+}

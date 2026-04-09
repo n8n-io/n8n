@@ -1,0 +1,77 @@
+{
+  "name": "@fastify/otel",
+  "version": "0.17.1",
+  "description": "Official Fastify OpenTelemetry Instrumentation",
+  "main": "index.js",
+  "type": "commonjs",
+  "types": "types/index.d.ts",
+  "scripts": {
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "test": "npm run test:all && npm run test:typescript",
+    "test:unit": "c8 --100 node --test",
+    "test:all": "npm run test:v4 && npm run test:v5",
+    "test:v4": "cross-env FASTIFY_VERSION=fastifyv4 npm run test:unit",
+    "test:v5": "cross-env FASTIFY_VERSION=fastify npm run test:unit",
+    "test:coverage": "c8 node --test && c8 report --reporter=html",
+    "test:typescript": "tsd"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fastify/otel.git"
+  },
+  "keywords": [
+    "plugin",
+    "helper",
+    "fastify",
+    "instrumentation",
+    "otel",
+    "opentelemetry"
+  ],
+  "author": "Carlos Fuentes - @metcoder95 (https://metcoder.dev)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/fastify/otel/issues"
+  },
+  "homepage": "https://github.com/fastify/otel#readme",
+  "funding": [
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/fastify"
+    },
+    {
+      "type": "opencollective",
+      "url": "https://opencollective.com/fastify"
+    }
+  ],
+  "devDependencies": {
+    "@fastify/type-provider-typebox": "^6.1.0",
+    "@opentelemetry/context-async-hooks": "^2.0.0",
+    "@opentelemetry/contrib-test-utils": "^0.59.0",
+    "@opentelemetry/instrumentation-http": "^0.212.0",
+    "@opentelemetry/propagator-jaeger": "^2.0.0",
+    "@opentelemetry/sdk-trace-base": "^2.0.0",
+    "@opentelemetry/sdk-trace-node": "^2.2.0",
+    "@types/node": "^25.0.3",
+    "c8": "^11.0.0",
+    "cross-env": "^10.0.0",
+    "eslint": "^9.16.0",
+    "fastify": "^5.1.0",
+    "fastify-plugin": "^5.1.0",
+    "fastifyv4": "npm:fastify@^4.0.0",
+    "neostandard": "^0.12.0",
+    "tsd": "^0.33.0"
+  },
+  "dependencies": {
+    "@opentelemetry/core": "^2.0.0",
+    "@opentelemetry/instrumentation": "^0.212.0",
+    "@opentelemetry/semantic-conventions": "^1.28.0",
+    "minimatch": "^10.2.4"
+  },
+  "peerDependencies": {
+    "@opentelemetry/api": "^1.9.0"
+  },
+  "tsd": {
+    "directory": "types"
+  }
+}

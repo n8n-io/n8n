@@ -1,0 +1,423 @@
+---
+title: createMCPClient
+description: Create a client for connecting to MCP servers
+---
+
+# `createMCPClient()`
+
+Creates a lightweight Model Context Protocol (MCP) client that connects to an MCP server. The client provides:
+
+- **Tools**: Automatic conversion between MCP tools and AI SDK tools
+- **Resources**: Methods to list, read, and discover resource templates from MCP servers
+- **Prompts**: Methods to list available prompts and retrieve prompt messages
+- **Elicitation**: Support for handling server requests for additional input during tool execution
+
+It currently does not support accepting notifications from an MCP server, and custom configuration of the client.
+
+## Import
+
+<Snippet
+  text={`import { createMCPClient } from "@ai-sdk/mcp"`}
+  prompt={false}
+/>
+
+## API Signature
+
+### Parameters
+
+<PropertiesTable
+  content={[
+    {
+      name: 'config',
+      type: 'MCPClientConfig',
+      description: 'Configuration for the MCP client.',
+      properties: [
+        {
+          type: 'MCPClientConfig',
+          parameters: [
+            {
+              name: 'transport',
+              type: 'MCPTransportConfig | MCPTransport',
+              description: 'Configuration for the message transport layer.',
+              properties: [
+                {
+                  type: 'MCPTransport',
+                  description:
+                    'A client transport instance, used explicitly for stdio or custom transports',
+                  parameters: [
+                    {
+                      name: 'start',
+                      type: '() => Promise<void>',
+                      description: 'A method that starts the transport',
+                    },
+                    {
+                      name: 'send',
+                      type: '(message: JSONRPCMessage) => Promise<void>',
+                      description:
+                        'A method that sends a message through the transport',
+                    },
+                    {
+                      name: 'close',
+                      type: '() => Promise<void>',
+                      description: 'A method that closes the transport',
+                    },
+                    {
+                      name: 'onclose',
+                      type: '() => void',
+                      description:
+                        'A method that is called when the transport is closed',
+                    },
+                    {
+                      name: 'onerror',
+                      type: '(error: Error) => void',
+                      description:
+                        'A method that is called when the transport encounters an error',
+                    },
+                    {
+                      name: 'onmessage',
+                      type: '(message: JSONRPCMessage) => void',
+                      description:
+                        'A method that is called when the transport receives a message',
+                    },
+                  ],
+                },
+                {
+                  type: 'MCPTransportConfig',
+                  parameters: [
+                    {
+                      name: 'type',
+                      type: "'sse' | 'http",
+                      description: 'Use Server-Sent Events for communication',
+                    },
+                    {
+                      name: 'url',
+                      type: 'string',
+                      description: 'URL of the MCP server',
+                    },
+                    {
+                      name: 'headers',
+                      type: 'Record<string, string>',
+                      isOptional: true,
+                      description:
+                        'Additional HTTP headers to be sent with requests.',
+                    },
+                    {
+                      name: 'authProvider',
+                      type: 'OAuthClientProvider',
+                      isOptional: true,
+                      description:
+                        'Optional OAuth provider for authorization to access protected remote MCP servers.',
+                    },
+                    {
+                      name: 'redirect',
+                      type: "'follow' | 'error'",
+                      isOptional: true,
+                      description:
+                        "Controls how HTTP redirects are handled for transport requests. Set to 'error' to reject any redirect response, preventing servers from redirecting requests to unintended hosts. Defaults to 'follow'.",
+                    },
+                  ],
+                },
+              ],
+            },
+            {
+              name: 'name',
+              type: 'string',
+              isOptional: true,
+              description: 'Client name. Defaults to "ai-sdk-mcp-client"',
+            },
+            {
+              name: 'version',
+              type: 'string',
+              isOptional: true,
+              description: 'Client version. Defaults to "1.0.0"',
+            },
+            {
+              name: 'onUncaughtError',
+              type: '(error: unknown) => void',
+              isOptional: true,
+              description: 'Handler for uncaught errors',
+            },
+            {
+              name: 'capabilities',
+              type: 'ClientCapabilities',
+              isOptional: true,
+              description:
+                'Optional client capabilities to advertise during initialization. For example, set { elicitation: {} } to enable handling elicitation requests from the server.',
+            },
+          ],
+        },
+      ],
+    },
+  ]}
+/>
+
+### Returns
+
+Returns a Promise that resolves to an `MCPClient` with the following methods:
+
+<PropertiesTable
+  content={[
+    {
+      name: 'tools',
+      type: `async (options?: {
+        schemas?: TOOL_SCHEMAS
+      }) => Promise<McpToolSet<TOOL_SCHEMAS>>`,
+      description: 'Gets the tools available from the MCP server.',
+      properties: [
+        {
+          type: 'options',
+          parameters: [
+            {
+              name: 'schemas',
+              type: 'TOOL_SCHEMAS',
+              isOptional: true,
+              description:
+                'Schema definitions for compile-time type checking. When not provided, schemas are inferred from the server. Each tool schema can include inputSchema for typed inputs, and optionally outputSchema for typed outputs when the server returns structuredContent.',
+            },
+          ],
+        },
+        {
+          type: 'TOOL_SCHEMAS',
+          parameters: [
+            {
+              name: 'inputSchema',
+              type: 'FlexibleSchema',
+              description:
+                'Zod schema or JSON schema defining the expected input parameters for the tool.',
+            },
+            {
+              name: 'outputSchema',
+              type: 'FlexibleSchema',
+              isOptional: true,
+              description:
+                'Zod schema or JSON schema defining the expected output structure. When provided, the client extracts and validates structuredContent from tool results, giving you typed outputs.',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'listResources',
+      type: `async (options?: {
+        params?: PaginatedRequest['params'];
+        options?: RequestOptions;
+      }) => Promise<ListResourcesResult>`,
+      description: 'Lists all available resources from the MCP server.',
+      properties: [
+        {
+          type: 'options',
+          parameters: [
+            {
+              name: 'params',
+              type: "PaginatedRequest['params']",
+              isOptional: true,
+              description: 'Optional pagination parameters including cursor.',
+            },
+            {
+              name: 'options',
+              type: 'RequestOptions',
+              isOptional: true,
+              description:
+                'Optional request options including signal and timeout.',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'readResource',
+      type: `async (args: {
+        uri: string;
+        options?: RequestOptions;
+      }) => Promise<ReadResourceResult>`,
+      description: 'Reads the contents of a specific resource by URI.',
+      properties: [
+        {
+          type: 'args',
+          parameters: [
+            {
+              name: 'uri',
+              type: 'string',
+              description: 'The URI of the resource to read.',
+            },
+            {
+              name: 'options',
+              type: 'RequestOptions',
+              isOptional: true,
+              description:
+                'Optional request options including signal and timeout.',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'listResourceTemplates',
+      type: `async (options?: {
+        options?: RequestOptions;
+      }) => Promise<ListResourceTemplatesResult>`,
+      description:
+        'Lists all available resource templates from the MCP server.',
+      properties: [
+        {
+          type: 'options',
+          parameters: [
+            {
+              name: 'options',
+              type: 'RequestOptions',
+              isOptional: true,
+              description:
+                'Optional request options including signal and timeout.',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'experimental_listPrompts',
+      type: `async (options?: {
+        params?: PaginatedRequest['params'];
+        options?: RequestOptions;
+      }) => Promise<ListPromptsResult>`,
+      description:
+        'Lists available prompts from the MCP server. This method is experimental and may change in the future.',
+      properties: [
+        {
+          type: 'options',
+          parameters: [
+            {
+              name: 'params',
+              type: "PaginatedRequest['params']",
+              isOptional: true,
+              description: 'Optional pagination parameters including cursor.',
+            },
+            {
+              name: 'options',
+              type: 'RequestOptions',
+              isOptional: true,
+              description:
+                'Optional request options including signal and timeout.',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'experimental_getPrompt',
+      type: `async (args: {
+        name: string;
+        arguments?: Record<string, unknown>;
+        options?: RequestOptions;
+      }) => Promise<GetPromptResult>`,
+      description:
+        'Retrieves a prompt by name, optionally passing arguments. This method is experimental and may change in the future.',
+      properties: [
+        {
+          type: 'args',
+          parameters: [
+            {
+              name: 'name',
+              type: 'string',
+              description: 'Prompt name to retrieve.',
+            },
+            {
+              name: 'arguments',
+              type: 'Record<string, unknown>',
+              isOptional: true,
+              description: 'Optional arguments to fill into the prompt.',
+            },
+            {
+              name: 'options',
+              type: 'RequestOptions',
+              isOptional: true,
+              description:
+                'Optional request options including signal and timeout.',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'onElicitationRequest',
+      type: `(
+        schema: typeof ElicitationRequestSchema,
+        handler: (request: ElicitationRequest) => Promise<ElicitResult> | ElicitResult
+      ) => void`,
+      description:
+        'Registers a handler for elicitation requests from the MCP server. The handler receives requests when the server needs additional input during tool execution.',
+      properties: [
+        {
+          type: 'parameters',
+          parameters: [
+            {
+              name: 'schema',
+              type: 'typeof ElicitationRequestSchema',
+              description:
+                'The schema to validate requests against. Must be ElicitationRequestSchema.',
+            },
+            {
+              name: 'handler',
+              type: '(request: ElicitationRequest) => Promise<ElicitResult> | ElicitResult',
+              description:
+                'A function that handles the elicitation request. The request contains a message and requestedSchema. The handler must return an object with an action ("accept", "decline", or "cancel") and optionally content when accepting.',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'close',
+      type: '() => Promise<void>',
+      description:
+        'Closes the connection to the MCP server and cleans up resources.',
+    },
+  ]}
+/>
+
+## Example
+
+```typescript
+import { createMCPClient } from '@ai-sdk/mcp';
+import { generateText } from 'ai';
+import { Experimental_StdioMCPTransport } from '@ai-sdk/mcp/mcp-stdio';
+
+let client;
+
+try {
+  client = await createMCPClient({
+    transport: new Experimental_StdioMCPTransport({
+      command: 'node server.js',
+    }),
+  });
+
+  const tools = await client.tools();
+
+  const response = await generateText({
+    model: __MODEL__,
+    tools,
+    messages: [{ role: 'user', content: 'Query the data' }],
+  });
+
+  console.log(response);
+} catch (error) {
+  console.error('Error:', error);
+} finally {
+  // ensure the client is closed even if an error occurs
+  if (client) {
+    await client.close();
+  }
+}
+```
+
+## Error Handling
+
+The client throws `MCPClientError` for:
+
+- Client initialization failures
+- Protocol version mismatches
+- Missing server capabilities
+- Connection failures
+
+For tool execution, errors are propagated as `CallToolError` errors.
+
+For unknown errors, the client exposes an `onUncaughtError` callback that can be used to manually log or handle errors that are not covered by known error types.

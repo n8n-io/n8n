@@ -1,0 +1,71 @@
+{
+    "name": "@types/cheerio",
+    "version": "0.22.35",
+    "description": "TypeScript definitions for cheerio",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/cheerio",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Bret Little",
+            "githubUsername": "blittle",
+            "url": "https://github.com/blittle"
+        },
+        {
+            "name": "VILIC VANE",
+            "url": "http://vilic.info"
+        },
+        {
+            "name": "Wayne Maurer",
+            "githubUsername": "wmaurer",
+            "url": "https://github.com/wmaurer"
+        },
+        {
+            "name": "Umar Nizamani",
+            "githubUsername": "umarniz",
+            "url": "https://github.com/umarniz"
+        },
+        {
+            "name": "LiJinyao",
+            "githubUsername": "LiJinyao",
+            "url": "https://github.com/LiJinyao"
+        },
+        {
+            "name": "Chennakrishna",
+            "githubUsername": "chennakrishna8",
+            "url": "https://github.com/chennakrishna8"
+        },
+        {
+            "name": "AzSiAz",
+            "githubUsername": "AzSiAz",
+            "url": "https://github.com/AzSiAz"
+        },
+        {
+            "name": "Ryo Ota",
+            "githubUsername": "nwtgck",
+            "url": "https://github.com/nwtgck"
+        },
+        {
+            "name": "Hiroki Osame",
+            "githubUsername": "privatenumber",
+            "url": "https://github.com/privatenumber"
+        },
+        {
+            "name": "Artishevskiy Alexey",
+            "githubUsername": "dhvcc",
+            "url": "https://github.com/dhvcc"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/cheerio"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/node": "*"
+    },
+    "typesPublisherContentHash": "8d8234bb2a274ff4020dfbf4e661d651aa9495a786dba47b35d079b252023cb5",
+    "typeScriptVersion": "4.5"
+}

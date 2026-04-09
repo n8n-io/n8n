@@ -1,0 +1,120 @@
+[
+  [
+    {
+      "host": "10.10.10.10.example.com"
+    },
+    "//10.10.10.10.example.com"
+  ],
+  [
+    {
+      "host": "2001:db8::7"
+    },
+    "//[2001:db8::7]"
+  ],
+  [
+    {
+      "host": "::ffff:129.144.52.38"
+    },
+    "//[::ffff:129.144.52.38]"
+  ],
+  [
+    {
+      "host": "2606:2800:220:1:248:1893:25c8:1946"
+    },
+    "//[2606:2800:220:1:248:1893:25c8:1946]"
+  ],
+  [
+    {
+      "host": "10.10.10.10.example.com"
+    },
+    "//10.10.10.10.example.com"
+  ],
+  [
+    {
+      "host": "10.10.10.10"
+    },
+    "//10.10.10.10"
+  ],
+  [
+    {
+      "path": "?query"
+    },
+    "%3Fquery"
+  ],
+  [
+    {
+      "path": "foo:bar"
+    },
+    "foo%3Abar"
+  ],
+  [
+    {
+      "path": "//path"
+    },
+    "/%2Fpath"
+  ],
+  [
+    {
+      "scheme": "uri",
+      "host": "example.com",
+      "port": "9000"
+    },
+    "uri://example.com:9000"
+  ],
+  [
+    {
+      "scheme": "uri",
+      "userinfo": "foo:bar",
+      "host": "example.com",
+      "port": 1,
+      "path": "path",
+      "query": "query",
+      "fragment": "fragment"
+    },
+    "uri://foo:bar@example.com:1/path?query#fragment"
+  ],
+  [
+    {
+      "scheme": "",
+      "userinfo": "",
+      "host": "",
+      "port": 0,
+      "path": "",
+      "query": "",
+      "fragment": ""
+    },
+    "//@:0?#"
+  ],
+  [
+    {},
+    ""
+  ],
+  [
+    {
+      "host": "fe80::a%en1"
+    },
+    "//[fe80::a%25en1]"
+  ],
+  [
+    {
+      "host": "fe80::a%25en1"
+    },
+    "//[fe80::a%25en1]"
+  ],
+  [
+    {
+      "scheme": "wss",
+      "host": "example.com",
+      "path": "/foo",
+      "query": "bar"
+    },
+    "wss://example.com/foo?bar"
+  ],
+  [
+    {
+      "scheme": "scheme",
+      "path": "with:colon"
+    },
+    "scheme:with:colon"
+  ]
+]

@@ -1,0 +1,128 @@
+{
+  "name": "eslint-plugin-vue",
+  "version": "10.8.0",
+  "description": "Official ESLint plugin for Vue.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "new": "node tools/new-rule.js",
+    "start": "npm run test:base -- --watch",
+    "test:base": "vitest run --reporter=dot tests/lib",
+    "test": "vitest run",
+    "test:integrations": "vitest run tests/integrations",
+    "debug": "vitest run --inspect --no-file-parallelism --reporter=dot tests/lib",
+    "cover": "npm run cover:test && npm run cover:report",
+    "cover:test": "vitest run --coverage --reporter=dot tests/lib",
+    "cover:report": "echo 'HTML coverage report available at ./coverage/index.html'",
+    "lint": "eslint . && markdownlint \"**/*.md\"",
+    "lint:fix": "eslint . --fix && markdownlint \"**/*.md\" --fix",
+    "tsc": "tsc",
+    "preversion": "npm test && git add .",
+    "version": "npm run generate:version && git add .",
+    "update": "node ./tools/update.js",
+    "update-resources": "node ./tools/update-resources.js",
+    "typegen": "node ./tools/generate-typegen.mjs",
+    "build": "npm run typegen && tsdown",
+    "docs:watch": "vitepress dev docs",
+    "predocs:build": "npm run update",
+    "docs:build": "vitepress build docs",
+    "generate:version": "env-cmd --environments version -- npm run update && npm run lint:fix",
+    "changeset:version": "changeset version && npm run generate:version && git add --all",
+    "changeset:publish": "npm run build && changeset publish"
+  },
+  "files": [
+    "dist"
+  ],
+  "homepage": "https://eslint.vuejs.org",
+  "keywords": [
+    "eslint",
+    "eslint-plugin",
+    "eslint-config",
+    "vue",
+    "vuejs",
+    "rules"
+  ],
+  "author": "Toru Nagashima (https://github.com/mysticatea)",
+  "contributors": [
+    "Michał Sajnóg <msajnog93@gmail.com> (https://github.com/michalsnik)",
+    "Yosuke Ota (https://github.com/ota-meshi)"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vuejs/eslint-plugin-vue.git"
+  },
+  "bugs": {
+    "url": "https://github.com/vuejs/eslint-plugin-vue/issues"
+  },
+  "engines": {
+    "node": "^18.18.0 || ^20.9.0 || >=21.1.0"
+  },
+  "peerDependencies": {
+    "@stylistic/eslint-plugin": "^2.0.0 || ^3.0.0 || ^4.0.0 || ^5.0.0",
+    "@typescript-eslint/parser": "^7.0.0 || ^8.0.0",
+    "eslint": "^8.57.0 || ^9.0.0 || ^10.0.0",
+    "vue-eslint-parser": "^10.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@stylistic/eslint-plugin": {
+      "optional": true
+    },
+    "@typescript-eslint/parser": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "@eslint-community/eslint-utils": "^4.4.0",
+    "natural-compare": "^1.4.0",
+    "nth-check": "^2.1.1",
+    "postcss-selector-parser": "^7.1.0",
+    "semver": "^7.6.3",
+    "xml-name-validator": "^4.0.0"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.29.8",
+    "@eslint/markdown": "^7.5.1",
+    "@ota-meshi/site-kit-eslint-editor-vue": "^0.2.4",
+    "@stylistic/eslint-plugin": "^5.7.0",
+    "@svitejs/changesets-changelog-github-compact": "^1.2.0",
+    "@types/eslint": "^9.6.1",
+    "@types/natural-compare": "^1.4.3",
+    "@types/node": "^24.0.8",
+    "@types/semver": "^7.7.1",
+    "@types/xml-name-validator": "^4.0.3",
+    "@typescript-eslint/eslint-plugin": "^8.53.0",
+    "@typescript-eslint/parser": "^8.53.0",
+    "@typescript-eslint/types": "^8.53.0",
+    "@vitest/coverage-v8": "^4.0.17",
+    "assert": "^2.1.0",
+    "env-cmd": "^11.0.0",
+    "esbuild": "^0.27.2",
+    "eslint": "^9.39.2",
+    "eslint-config-flat-gitignore": "^2.1.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-eslint-plugin": "^7.3.0",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-jsonc": "^2.21.0",
+    "eslint-plugin-markdown-preferences": "^0.40.2",
+    "eslint-plugin-node-dependencies": "^1.3.0",
+    "eslint-plugin-prettier": "^5.5.5",
+    "eslint-plugin-unicorn": "^62.0.0",
+    "eslint-plugin-vue": "file:.",
+    "eslint-typegen": "^2.3.0",
+    "eslint-visitor-keys": "^4.2.0",
+    "espree": "^10.4.0",
+    "events": "^3.3.0",
+    "globals": "^17.0.0",
+    "jsdom": "^27.4.0",
+    "markdownlint-cli": "^0.47.0",
+    "pathe": "^2.0.3",
+    "prettier": "^3.8.0",
+    "tsdown": "^0.19.0",
+    "typescript": "^5.9.3",
+    "vite-plugin-eslint4b": "^0.6.0",
+    "vitepress": "^1.6.4",
+    "vitest": "^4.0.17",
+    "vue-eslint-parser": "^10.3.0"
+  }
+}

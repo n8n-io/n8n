@@ -1,0 +1,45 @@
+{
+  "name": "@so-ric/colorspace",
+  "version": "1.1.6",
+ "description": "Generate HEX colors for a given namespace using color v5",
+  "main": "dist/index.cjs.js",
+  "scripts": {
+    "build": "rollup -c",
+    "prepare": "npm run build",
+    "test": "mocha test.js"
+  },
+  "keywords": [
+    "namespace",
+    "color",
+    "hex",
+    "colorize",
+    "name",
+    "space",
+    "colorspace"
+  ],
+  "author": "Arnout Kazemier",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/so-ric/colorspace/issues"
+  },
+  "homepage": "https://github.com/so-ric/colorspace",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/so-ric/colorspace"
+  },
+  "dependencies": {
+    "color": "^5.0.2",
+    "text-hex": "1.0.x"
+  },
+  "devDependencies": {
+    "assume": "2.3.x",
+    "mocha": "11.7.x",
+    "pre-commit": "1.2.x",
+    "rollup": "^3.0.0",
+    "@rollup/plugin-node-resolve": "^15.0.0",
+    "@rollup/plugin-commonjs": "^25.0.0",
+    "@rollup/plugin-json": "^5.0.0",
+    "@rollup/plugin-babel": "^6.0.0",
+    "rimraf": "^5.0.0"
+  }
+}

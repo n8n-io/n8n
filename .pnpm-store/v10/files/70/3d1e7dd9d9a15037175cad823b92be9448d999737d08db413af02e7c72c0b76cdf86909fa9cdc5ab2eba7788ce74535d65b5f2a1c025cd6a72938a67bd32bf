@@ -1,0 +1,55 @@
+{
+  "name": "@rushstack/problem-matcher",
+  "version": "0.2.1",
+  "description": "A library for parsing VS Code style problem matchers",
+  "main": "./lib-commonjs/index.js",
+  "module": "./lib-esm/index.js",
+  "types": "./dist/problem-matcher.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/problem-matcher.d.ts",
+      "node": "./lib-commonjs/index.js",
+      "import": "./lib-esm/index.js",
+      "require": "./lib-commonjs/index.js"
+    },
+    "./lib/*": {
+      "types": "./lib-dts/*.d.ts",
+      "node": "./lib-commonjs/*.js",
+      "import": "./lib-esm/*.js",
+      "require": "./lib-commonjs/*.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "typesVersions": {
+    "*": {
+      "lib/*": [
+        "lib-dts/*"
+      ]
+    }
+  },
+  "license": "MIT",
+  "repository": {
+    "url": "https://github.com/microsoft/rushstack.git",
+    "type": "git",
+    "directory": "libraries/problem-matcher"
+  },
+  "devDependencies": {
+    "@rushstack/heft": "1.2.0",
+    "eslint": "~9.37.0",
+    "decoupled-local-node-rig": "1.0.0"
+  },
+  "peerDependencies": {
+    "@types/node": "*"
+  },
+  "peerDependenciesMeta": {
+    "@types/node": {
+      "optional": true
+    }
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "heft build --clean",
+    "_phase:build": "heft run --only build -- --clean",
+    "_phase:test": "heft run --only test -- --clean"
+  }
+}

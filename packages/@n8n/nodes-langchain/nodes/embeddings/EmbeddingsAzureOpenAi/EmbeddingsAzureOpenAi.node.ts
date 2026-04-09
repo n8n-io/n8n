@@ -1,5 +1,5 @@
 import { AzureOpenAIEmbeddings } from '@langchain/openai';
-import { getProxyAgent, logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
+import { /* getProxyAgent, */ logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -152,12 +152,12 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 				? `${credentials.endpoint}/openai/deployments`
 				: undefined,
 			configuration: {
-				fetchOptions: {
-					dispatcher: getProxyAgent(
-						credentials.endpoint ?? `https://${credentials.resourceName}.openai.azure.com`,
-						{},
-					),
-				},
+				// fetchOptions: {
+				// 	dispatcher: getProxyAgent(
+				// 		credentials.endpoint ?? `https://${credentials.resourceName}.openai.azure.com`,
+				// 		{},
+				// 	),
+				// },
 			},
 			...options,
 		});

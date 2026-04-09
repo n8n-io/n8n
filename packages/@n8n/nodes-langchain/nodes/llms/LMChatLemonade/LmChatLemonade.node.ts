@@ -1,6 +1,6 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
-	getProxyAgent,
+	// getProxyAgent,
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
@@ -103,9 +103,9 @@ export class LmChatLemonade implements INodeType {
 			};
 		}
 
-		configuration.fetchOptions = {
-			dispatcher: getProxyAgent(configuration.baseURL ?? '', {}),
-		};
+		// configuration.fetchOptions = {
+		// 	dispatcher: getProxyAgent(configuration.baseURL ?? '', {}),
+		// };
 
 		const model = new ChatOpenAI({
 			apiKey: credentials.apiKey || 'lemonade-placeholder-key',

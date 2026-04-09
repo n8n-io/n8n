@@ -1,0 +1,60 @@
+{
+  "name": "@libsql/hrana-client",
+  "version": "0.9.0",
+  "keywords": [
+    "hrana",
+    "libsql",
+    "sqld",
+    "database"
+  ],
+  "description": "Hrana client for connecting to sqld over HTTP or WebSocket",
+  "repository": {
+    "type": "git",
+    "url": "github:libsql/hrana-client-ts"
+  },
+  "homepage": "https://github.com/libsql/hrana-client-ts",
+  "authors": [
+    "Jan Špaček <honza@chiselstrike.com>"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "main": "lib-cjs/index.js",
+  "types": "lib-esm/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib-esm/index.d.ts",
+      "import": "./lib-esm/index.js",
+      "require": "./lib-cjs/index.js"
+    }
+  },
+  "files": [
+    "lib-cjs/**",
+    "lib-esm/**"
+  ],
+  "scripts": {
+    "clean": "rm -rf ./lib-cjs ./lib-esm ./*.tsbuildinfo",
+    "prepublishOnly": "npm run clean-build",
+    "prebuild": "rm -rf ./lib-cjs ./lib-esm",
+    "build": "npm run build:cjs && npm run build:esm",
+    "build:cjs": "tsc -p tsconfig.build-cjs.json",
+    "build:esm": "tsc -p tsconfig.build-esm.json",
+    "postbuild": "cp package-cjs.json ./lib-cjs/package.json",
+    "clean-build": "npm run clean && npm run build",
+    "typecheck": "tsc --noEmit",
+    "test": "jest --runInBand",
+    "typedoc": "rm -rf ./docs && typedoc"
+  },
+  "dependencies": {
+    "@libsql/isomorphic-ws": "^0.1.5",
+    "cross-fetch": "^4.0.0",
+    "js-base64": "^3.7.5",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "@types/jest": "^29",
+    "jest": "^29.6.2",
+    "ts-jest": "^29.1.1",
+    "typedoc": "^0.24.8",
+    "typescript": "^5.1.6"
+  }
+}

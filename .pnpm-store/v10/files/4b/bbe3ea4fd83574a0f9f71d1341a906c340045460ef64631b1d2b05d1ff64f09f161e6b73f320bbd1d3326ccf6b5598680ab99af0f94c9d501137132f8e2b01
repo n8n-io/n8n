@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["/mnt/vss/_work/1/s/sdk/core/ts-http-runtime/src/constants.ts"],
+  "sourcesContent": ["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT License.\n\nexport const SDK_VERSION: string = \"0.3.4\";\n\nexport const DEFAULT_RETRY_POLICY_COUNT = 3;\n"],
+  "mappings": ";;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAGO,MAAM,cAAsB;AAE5B,MAAM,6BAA6B;",
+  "names": []
+}

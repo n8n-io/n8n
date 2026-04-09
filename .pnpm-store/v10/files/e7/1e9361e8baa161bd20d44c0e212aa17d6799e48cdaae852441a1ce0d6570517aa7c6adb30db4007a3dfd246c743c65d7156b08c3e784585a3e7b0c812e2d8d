@@ -1,0 +1,228 @@
+{
+  "name": "unplugin-icons",
+  "type": "module",
+  "version": "0.19.3",
+  "packageManager": "pnpm@9.9.0",
+  "description": "Access thousands of icons as components on-demand universally",
+  "author": "Anthony Fu <anthonyfu117@hotmail.com>",
+  "license": "MIT",
+  "funding": "https://github.com/sponsors/antfu",
+  "homepage": "https://github.com/unplugin/unplugin-icons#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/unplugin/unplugin-icons.git"
+  },
+  "bugs": "https://github.com/unplugin/unplugin-icons/issues",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./*": "./*",
+    "./esbuild": {
+      "import": {
+        "types": "./dist/esbuild.d.ts",
+        "default": "./dist/esbuild.js"
+      },
+      "require": {
+        "types": "./dist/esbuild.d.cts",
+        "default": "./dist/esbuild.cjs"
+      }
+    },
+    "./loaders": {
+      "import": {
+        "types": "./dist/loaders.d.ts",
+        "default": "./dist/loaders.js"
+      },
+      "require": {
+        "types": "./dist/loaders.d.cts",
+        "default": "./dist/loaders.cjs"
+      }
+    },
+    "./nuxt": {
+      "import": {
+        "types": "./dist/nuxt.d.ts",
+        "default": "./dist/nuxt.js"
+      },
+      "require": {
+        "types": "./dist/nuxt.d.cts",
+        "default": "./dist/nuxt.cjs"
+      }
+    },
+    "./resolver": {
+      "import": {
+        "types": "./dist/resolver.d.ts",
+        "default": "./dist/resolver.js"
+      },
+      "require": {
+        "types": "./dist/resolver.d.cts",
+        "default": "./dist/resolver.cjs"
+      }
+    },
+    "./rollup": {
+      "import": {
+        "types": "./dist/rollup.d.ts",
+        "default": "./dist/rollup.js"
+      },
+      "require": {
+        "types": "./dist/rollup.d.cts",
+        "default": "./dist/rollup.cjs"
+      }
+    },
+    "./types": {
+      "import": {
+        "types": "./dist/types.d.ts",
+        "default": "./dist/types.js"
+      },
+      "require": {
+        "types": "./dist/types.d.cts",
+        "default": "./dist/types.cjs"
+      }
+    },
+    "./types/astro": {
+      "types": "./types/astro.d.ts"
+    },
+    "./types/preact": {
+      "types": "./types/preact.d.ts"
+    },
+    "./types/qwik": {
+      "types": "./types/qwik.d.ts"
+    },
+    "./types/raw": {
+      "types": "./types/raw.d.ts"
+    },
+    "./types/react": {
+      "types": "./types/react.d.ts"
+    },
+    "./types/solid": {
+      "types": "./types/solid.d.ts"
+    },
+    "./types/svelte": {
+      "types": "./types/svelte.d.ts"
+    },
+    "./types/svelte3": {
+      "types": "./types/svelte3.d.ts"
+    },
+    "./types/svelte4": {
+      "types": "./types/svelte4.d.ts"
+    },
+    "./types/vue": {
+      "types": "./types/vue.d.ts"
+    },
+    "./types/vue3": {
+      "types": "./types/vue3.d.ts"
+    },
+    "./types/web-components": {
+      "types": "./types/web-components.d.ts"
+    },
+    "./vite": {
+      "import": {
+        "types": "./dist/vite.d.ts",
+        "default": "./dist/vite.js"
+      },
+      "require": {
+        "types": "./dist/vite.d.cts",
+        "default": "./dist/vite.cjs"
+      }
+    },
+    "./webpack": {
+      "import": {
+        "types": "./dist/webpack.d.ts",
+        "default": "./dist/webpack.js"
+      },
+      "require": {
+        "types": "./dist/webpack.d.cts",
+        "default": "./dist/webpack.cjs"
+      }
+    }
+  },
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./dist/*",
+        "./*"
+      ]
+    }
+  },
+  "files": [
+    "*.d.ts",
+    "dist",
+    "types"
+  ],
+  "scripts": {
+    "build": "esno scripts/prebuild.ts && tsup",
+    "dev": "esno scripts/prebuild.ts && tsup --watch src",
+    "example:build": "npm -C examples/vite-vue3 run build",
+    "example:dev": "npm -C examples/vite-vue3 run dev",
+    "lint": "eslint .",
+    "lint-fix": "eslint . --fix",
+    "prepublishOnly": "npm run build",
+    "release": "bumpp && npm publish",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@svgr/core": ">=7.0.0",
+    "@svgx/core": "^1.0.1",
+    "@vue/compiler-sfc": "^3.0.2 || ^2.7.0",
+    "vue-template-compiler": "^2.6.12",
+    "vue-template-es2015-compiler": "^1.9.0"
+  },
+  "peerDependenciesMeta": {
+    "@svgr/core": {
+      "optional": true
+    },
+    "@svgx/core": {
+      "optional": true
+    },
+    "@vue/compiler-sfc": {
+      "optional": true
+    },
+    "vue-template-compiler": {
+      "optional": true
+    },
+    "vue-template-es2015-compiler": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "@antfu/install-pkg": "^0.4.1",
+    "@antfu/utils": "^0.7.10",
+    "@iconify/utils": "^2.1.29",
+    "debug": "^4.3.6",
+    "kolorist": "^1.8.0",
+    "local-pkg": "^0.5.0",
+    "unplugin": "^1.12.0"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^2.24.0",
+    "@iconify/json": "^2.2.232",
+    "@iconify/types": "^2.0.0",
+    "@svgr/core": "^8.1.0",
+    "@svgr/plugin-jsx": "^8.1.0",
+    "@svgx/core": "^1.0.1",
+    "@types/debug": "^4.1.12",
+    "@types/node": "^22.0.0",
+    "@vue/compiler-sfc": "^3.4.34",
+    "bumpp": "^9.4.1",
+    "cross-env": "^7.0.3",
+    "eslint": "^9.8.0",
+    "esno": "^4.7.0",
+    "fast-glob": "^3.3.2",
+    "publint": "^0.2.9",
+    "rollup": "^4.19.1",
+    "tsup": "^8.2.3",
+    "typescript": "^5.5.4",
+    "vite": "^5.3.5",
+    "vitest": "^2.0.4"
+  }
+}

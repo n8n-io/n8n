@@ -1,0 +1,22 @@
+import { OperationParameter, OperationURLParameter, OperationQueryParameter } from "@azure/core-client";
+export declare const contentType: OperationParameter;
+export declare const dataSource: OperationParameter;
+export declare const accept: OperationParameter;
+export declare const endpoint: OperationURLParameter;
+export declare const dataSourceName: OperationURLParameter;
+export declare const ifMatch: OperationParameter;
+export declare const ifNoneMatch: OperationParameter;
+export declare const prefer: OperationParameter;
+export declare const apiVersion: OperationQueryParameter;
+export declare const select: OperationQueryParameter;
+export declare const indexerName: OperationURLParameter;
+export declare const indexer: OperationParameter;
+export declare const skillset: OperationParameter;
+export declare const skillsetName: OperationURLParameter;
+export declare const synonymMap: OperationParameter;
+export declare const synonymMapName: OperationURLParameter;
+export declare const index: OperationParameter;
+export declare const indexName: OperationURLParameter;
+export declare const allowIndexDowntime: OperationQueryParameter;
+export declare const request: OperationParameter;
+//# sourceMappingURL=parameters.d.ts.map

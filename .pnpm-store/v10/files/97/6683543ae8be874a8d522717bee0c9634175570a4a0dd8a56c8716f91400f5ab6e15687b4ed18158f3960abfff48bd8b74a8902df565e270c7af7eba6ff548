@@ -1,0 +1,26 @@
+{
+    "name": "@types/esrecurse",
+    "version": "4.3.1",
+    "description": "TypeScript definitions for esrecurse",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/esrecurse",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Jimmy Leung",
+            "githubUsername": "hkleungai",
+            "url": "https://github.com/hkleungai"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/esrecurse"
+    },
+    "scripts": {},
+    "dependencies": {},
+    "peerDependencies": {},
+    "typesPublisherContentHash": "0e4ed7e0fe84b6879532ce29fdfe397c1fc205d0c9dbc17172b64f3016ae0065",
+    "typeScriptVersion": "5.1"
+}

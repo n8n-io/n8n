@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["/mnt/vss/_work/1/s/sdk/core/ts-http-runtime/src/util/arrayBuffer.ts"],
+  "sourcesContent": ["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT License.\n\n/**\n * Converts an ArrayBufferView to an ArrayBuffer.\n * @param source - The source ArrayBufferView.\n * @returns The resulting ArrayBuffer.\n */\nexport function arrayBufferViewToArrayBuffer(source: ArrayBufferView): ArrayBuffer {\n  if (\n    source.buffer instanceof ArrayBuffer &&\n    source.byteOffset === 0 &&\n    source.byteLength === source.buffer.byteLength\n  ) {\n    return source.buffer;\n  }\n\n  const arrayBuffer = new ArrayBuffer(source.byteLength);\n  const view = new Uint8Array(arrayBuffer);\n  const sourceView = new Uint8Array(source.buffer, source.byteOffset, source.byteLength);\n  view.set(sourceView);\n  return view.buffer;\n}\n"],
+  "mappings": ";;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAQO,SAAS,6BAA6B,QAAsC;AACjF,MACE,OAAO,kBAAkB,eACzB,OAAO,eAAe,KACtB,OAAO,eAAe,OAAO,OAAO,YACpC;AACA,WAAO,OAAO;AAAA,EAChB;AAEA,QAAM,cAAc,IAAI,YAAY,OAAO,UAAU;AACrD,QAAM,OAAO,IAAI,WAAW,WAAW;AACvC,QAAM,aAAa,IAAI,WAAW,OAAO,QAAQ,OAAO,YAAY,OAAO,UAAU;AACrF,OAAK,IAAI,UAAU;AACnB,SAAO,KAAK;AACd;",
+  "names": []
+}

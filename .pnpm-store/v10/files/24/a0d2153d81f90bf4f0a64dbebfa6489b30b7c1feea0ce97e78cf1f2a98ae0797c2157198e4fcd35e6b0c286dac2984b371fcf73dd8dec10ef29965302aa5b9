@@ -1,1 +1,0 @@
-{"version":3,"file":"batch.js","sourceRoot":"","sources":["../src/sdk/batch.ts"],"names":[],"mappings":";AAAA;;GAEG;;;AAEH,4CAA2C;AAC3C,qDAA+C;AAE/C,MAAa,KAAM,SAAQ,mBAAS;IAElC,IAAI,IAAI;QACN,OAAO,CAAC,IAAI,CAAC,KAAK,KAAV,IAAI,CAAC,KAAK,GAAK,IAAI,4BAAW,CAAC,IAAI,CAAC,QAAQ,CAAC,EAAC,CAAC;IACzD,CAAC;CACF;AALD,sBAKC"}

@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../src/test-helpers.js"],
+  "sourcesContent": ["import { readFileSync } from 'fs';\nimport { getFixturePath } from 'jest-fixtures';\n\nexport async function getSchemaAndData(name, dirPath) {\n  const schemaPath = await getFixturePath(dirPath, name, 'schema.json');\n  const schema = JSON.parse(readFileSync(schemaPath, 'utf8'));\n  const dataPath = await getFixturePath(dirPath, name, 'data.json');\n  const json = readFileSync(dataPath, 'utf8');\n  const data = JSON.parse(json);\n\n  return [schema, data, json];\n}\n"],
+  "mappings": ";AAAA;AACA;AAEA,gCAAuC,MAAM,SAAS;AACpD,QAAM,aAAa,MAAM,eAAe,SAAS,MAAM,aAAa;AACpE,QAAM,SAAS,KAAK,MAAM,aAAa,YAAY,MAAM,CAAC;AAC1D,QAAM,WAAW,MAAM,eAAe,SAAS,MAAM,WAAW;AAChE,QAAM,OAAO,aAAa,UAAU,MAAM;AAC1C,QAAM,OAAO,KAAK,MAAM,IAAI;AAE5B,SAAO,CAAC,QAAQ,MAAM,IAAI;AAC5B;",
+  "names": []
+}

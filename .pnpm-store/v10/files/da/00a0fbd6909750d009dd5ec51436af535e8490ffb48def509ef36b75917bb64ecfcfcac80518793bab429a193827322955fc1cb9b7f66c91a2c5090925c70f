@@ -1,0 +1,1 @@
+{"version":3,"file":"request.d.ts","sourceRoot":"","sources":["../../../../src/tasks/custom/request.ts"],"names":[],"mappings":"AAEA,OAAO,KAAK,EAAE,aAAa,EAAE,OAAO,EAAE,WAAW,EAAE,MAAM,gBAAgB,CAAC;AAI1E;;;GAGG;AACH,wBAAsB,OAAO,CAAC,CAAC,EAC9B,IAAI,EAAE,WAAW,EACjB,OAAO,CAAC,EAAE,OAAO,GAAG;IACnB,oEAAoE;IACpE,IAAI,CAAC,EAAE,aAAa,CAAC;CACrB,GACC,OAAO,CAAC,CAAC,CAAC,CASZ"}

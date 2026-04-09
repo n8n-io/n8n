@@ -1,0 +1,9 @@
+{
+	"root": true,
+
+	"extends": "@ljharb",
+
+	"rules": {
+		"id-length": [2, { "min": 1, "max": 25 }],
+	}
+}

@@ -1,0 +1,52 @@
+{
+  "name": "@ioredis/commands",
+  "version": "1.5.1",
+  "description": "Redis commands",
+  "main": "built/index.js",
+  "files": [
+    "built/",
+    "commands.json"
+  ],
+  "scripts": {
+    "pretest": "npm run lint",
+    "test": "mocha",
+    "build": "rm -rf built && tsc",
+    "gen": "node tools/build",
+    "lint": "standard --fix --verbose | snazzy",
+    "release": "release-it"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ioredis/commands.git"
+  },
+  "keywords": [
+    "redis",
+    "commands",
+    "prefix"
+  ],
+  "author": "Zihua Li <i@zihua.li> (http://zihua.li)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ioredis/commands/issues"
+  },
+  "homepage": "https://github.com/ioredis/commands",
+  "devDependencies": {
+    "@release-it/conventional-changelog": "^4.2.0",
+    "@semantic-release/changelog": "^6.0.1",
+    "@semantic-release/commit-analyzer": "^9.0.2",
+    "@semantic-release/git": "^10.0.1",
+    "chai": "^4.3.6",
+    "ioredis": "^5.0.6",
+    "mocha": "^9.2.1",
+    "release-it": "^14.12.5",
+    "safe-stable-stringify": "^2.3.1",
+    "semantic-release": "^19.0.2",
+    "snazzy": "^9.0.0",
+    "standard": "^16.0.4",
+    "typescript": "^4.6.2"
+  }
+}

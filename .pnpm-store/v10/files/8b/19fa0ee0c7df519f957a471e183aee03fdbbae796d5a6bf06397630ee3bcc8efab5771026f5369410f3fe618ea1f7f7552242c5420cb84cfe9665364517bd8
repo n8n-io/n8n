@@ -1,0 +1,151 @@
+{
+  "name": "@azure/search-documents",
+  "version": "12.2.0",
+  "description": "Azure client library to use Cognitive Search for node.js and browser.",
+  "sdk-type": "client",
+  "main": "./dist/commonjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/commonjs/index.d.ts",
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "browser": "./dist/browser/index.js",
+  "//metadata": {
+    "constantPaths": [
+      {
+        "path": "src/constants.ts",
+        "prefix": "SDK_VERSION"
+      },
+      {
+        "path": "src/generated/data/searchClient.ts",
+        "prefix": "packageDetails"
+      },
+      {
+        "path": "src/generated/service/searchServiceClient.ts",
+        "prefix": "packageDetails"
+      },
+      {
+        "path": "swagger/Data.md",
+        "prefix": "package-version"
+      },
+      {
+        "path": "swagger/Service.md",
+        "prefix": "package-version"
+      }
+    ]
+  },
+  "repository": "github:Azure/azure-sdk-for-js",
+  "keywords": [
+    "azure",
+    "cloud"
+  ],
+  "author": "Microsoft Corporation",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Azure/azure-sdk-for-js/issues"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "homepage": "https://github.com/Azure/azure-sdk-for-js/tree/main/sdk/search/search-documents",
+  "sideEffects": false,
+  "dependencies": {
+    "@azure/core-auth": "^1.9.0",
+    "@azure/core-client": "^1.9.2",
+    "@azure/core-http-compat": "^2.1.2",
+    "@azure/core-paging": "^1.6.2",
+    "@azure/core-rest-pipeline": "^1.18.0",
+    "@azure/core-tracing": "^1.2.0",
+    "@azure/core-util": "^1.11.0",
+    "@azure/logger": "^1.1.4",
+    "events": "^3.0.0",
+    "tslib": "^2.8.1"
+  },
+  "devDependencies": {
+    "@azure/identity": "4.11.1",
+    "@azure/openai": "1.0.0-beta.12",
+    "@types/node": "^20.19.0",
+    "@vitest/browser": "^3.2.3",
+    "@vitest/coverage-istanbul": "^3.2.3",
+    "dotenv": "^16.0.0",
+    "eslint": "^9.33.0",
+    "playwright": "^1.50.1",
+    "type-plus": "^7.6.2",
+    "typescript": "~5.9.3",
+    "vitest": "^3.2.3",
+    "@azure-tools/test-credential": "^2.1.2",
+    "@azure-tools/test-recorder": "^4.1.1",
+    "@azure/dev-tool": "^1.0.0",
+    "@azure/eslint-plugin-azure-sdk": "^3.0.0",
+    "@azure-tools/test-utils-vitest": "^2.0.1"
+  },
+  "//sampleConfiguration": {
+    "productName": "Azure Search Documents",
+    "productSlugs": [
+      "azure",
+      "azure-cognitive-search",
+      "azure-search"
+    ],
+    "requiredResources": {
+      "Azure Search Documents instance": "https://learn.microsoft.com/azure/search/search-create-service-portal"
+    }
+  },
+  "type": "module",
+  "tshy": {
+    "exports": {
+      "./package.json": "./package.json",
+      ".": "./src/index.ts"
+    },
+    "dialects": [
+      "esm",
+      "commonjs"
+    ],
+    "esmDialects": [
+      "browser",
+      "react-native"
+    ],
+    "selfLink": false,
+    "project": "../../../tsconfig.src.build.json"
+  },
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "browser": {
+        "types": "./dist/browser/index.d.ts",
+        "default": "./dist/browser/index.js"
+      },
+      "react-native": {
+        "types": "./dist/react-native/index.d.ts",
+        "default": "./dist/react-native/index.js"
+      },
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/index.d.ts",
+        "default": "./dist/commonjs/index.js"
+      }
+    }
+  },
+  "scripts": {
+    "build": "npm run clean && dev-tool run build-package && dev-tool run extract-api",
+    "build:samples": "tsc -p tsconfig.samples.json",
+    "check-format": "dev-tool run vendored prettier --list-different --config ../../../.prettierrc.json --ignore-path ../../../.prettierignore \"src/**/*.ts\" \"test/**/*.ts\" \"samples-dev/**/*.ts\" \"*.{js,json}\"",
+    "clean": "dev-tool run vendored rimraf --glob dist dist-* temp types *.tgz *.log",
+    "execute:samples": "dev-tool samples run samples-dev",
+    "extract-api": "dev-tool run build-package && dev-tool run extract-api",
+    "format": "dev-tool run vendored prettier --write --config ../../../.prettierrc.json --ignore-path ../../../.prettierignore \"src/**/*.ts\" \"test/**/*.ts\" \"samples-dev/**/*.ts\" \"*.{js,json}\"",
+    "generate:client": "autorest --typescript swagger/Service.md & autorest --typescript swagger/Data.md & wait",
+    "generate:embeddings": "ts-node scripts/generateSampleEmbeddings.ts",
+    "lint": "eslint package.json src test samples-dev",
+    "lint:fix": "eslint package.json src test samples-dev --fix --fix-type [problem,suggestion]",
+    "pack": "pnpm pack 2>&1",
+    "test": "npm run test:node && npm run test:browser",
+    "test:browser": "npm run clean && dev-tool run build-package && dev-tool run build-test && dev-tool run test:vitest --browser",
+    "test:node": "dev-tool run test:vitest --test-proxy-debug",
+    "update-snippets": "echo Skipped."
+  }
+}

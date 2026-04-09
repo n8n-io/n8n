@@ -330,7 +330,8 @@ export class Server extends AbstractServer {
 					// eslint-disable-next-line prefer-const
 					let { scope, packageName } = req.params;
 					if (scope) packageName = `@${scope}/${packageName}`;
-					const filePath = this.loadNodesAndCredentials.resolveIcon(packageName, req.originalUrl);
+					// const filePath = this.loadNodesAndCredentials.resolveIcon(packageName, req.originalUrl);
+					const filePath = this.loadNodesAndCredentials.resolveIcon(packageName as string, req.originalUrl);
 					if (filePath) {
 						try {
 							await fsAccess(filePath);
@@ -344,10 +345,10 @@ export class Server extends AbstractServer {
 			const serveSchemas: express.RequestHandler = async (req, res) => {
 				const { node, version, resource, operation } = req.params;
 				const filePath = this.loadNodesAndCredentials.resolveSchema({
-					node,
-					resource,
-					operation,
-					version,
+					node: node as string,
+					resource: resource as string,
+					operation: operation as string,
+					version: version as string,
 				});
 
 				if (filePath) {

@@ -1,0 +1,55 @@
+{
+  "name": "@rushstack/rig-package",
+  "version": "0.7.2",
+  "description": "A system for sharing tool configurations between projects without duplicating config files.",
+  "main": "./lib-commonjs/index.js",
+  "module": "./lib-esm/index.js",
+  "types": "./dist/rig-package.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/rig-package.d.ts",
+      "node": "./lib-commonjs/index.js",
+      "import": "./lib-esm/index.js",
+      "require": "./lib-commonjs/index.js"
+    },
+    "./lib/*.schema.json": "./lib-commonjs/*.schema.json",
+    "./lib/*": {
+      "types": "./lib-dts/*.d.ts",
+      "node": "./lib-commonjs/*.js",
+      "import": "./lib-esm/*.js",
+      "require": "./lib-commonjs/*.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "typesVersions": {
+    "*": {
+      "lib/*": [
+        "lib-dts/*"
+      ]
+    }
+  },
+  "license": "MIT",
+  "repository": {
+    "url": "https://github.com/microsoft/rushstack.git",
+    "type": "git",
+    "directory": "libraries/rig-package"
+  },
+  "dependencies": {
+    "resolve": "~1.22.1",
+    "strip-json-comments": "~3.1.1"
+  },
+  "devDependencies": {
+    "@rushstack/heft": "1.2.0",
+    "@types/resolve": "1.20.2",
+    "ajv": "~8.18.0",
+    "eslint": "~9.37.0",
+    "resolve": "~1.22.1",
+    "decoupled-local-node-rig": "1.0.0"
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "heft build --clean",
+    "_phase:build": "heft run --only build -- --clean",
+    "_phase:test": "heft run --only test -- --clean"
+  }
+}

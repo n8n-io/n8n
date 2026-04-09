@@ -1,0 +1,37 @@
+{
+	"name": "fengari-interop",
+	"version": "0.1.4",
+	"description": "JS library for Fengari",
+	"author": "Daurnimator <quae@daurnimator.com>",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/fengari-lua/fengari-interop.git"
+	},
+	"license": "MIT",
+	"keywords": [
+		"lua",
+		"fengari",
+		"language"
+	],
+	"bugs": {
+		"url": "https://github.com/fengari-lua/fengari-interop/issues"
+	},
+	"homepage": "https://github.com/fengari-lua/fengari-interop",
+	"peerDependencies": { "fengari": "^0.1.0" },
+	"main": "src/js.js",
+	"directories": {
+		"lib": "src",
+		"test": "test"
+	},
+	"devDependencies": {
+		"eslint": "^9.39.1",
+		"fengari": "^0.1.0",
+		"globals": "^16.5.0",
+		"jest": "^30.2.0"
+	},
+	"scripts": {
+		"lint": "eslint src/ test/",
+		"prepublishOnly": "git diff-index --quiet --cached HEAD -- && npm run lint && npm run test",
+		"test": "jest"
+	}
+}

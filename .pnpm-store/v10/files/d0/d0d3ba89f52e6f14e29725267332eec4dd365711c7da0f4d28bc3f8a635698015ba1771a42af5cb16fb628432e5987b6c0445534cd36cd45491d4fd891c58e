@@ -1,0 +1,70 @@
+{
+  "name": "@borewit/text-codec",
+  "version": "0.2.2",
+  "description": "Text Decoder",
+  "type": "module",
+  "exports": "./lib/index.js",
+  "types": "lib/index.d.ts",
+  "files": [
+    "lib/index.js",
+    "lib/index.d.ts"
+  ],
+  "scripts": {
+    "clean": "del-cli lib/**/*.js lib/***.js.map test/**/*.d.ts test/**/*.js test/**/*.js.map",
+    "build": "npm run compile",
+    "prepublishOnly": "npm run build",
+    "compile:src": "tsc --p lib --sourceMap false",
+    "compile:test": "tsc --p test",
+    "compile": "npm run compile:src && npm run compile:test",
+    "lint": "biome check",
+    "test": "mocha",
+    "update-biome": "npm install --save-dev --save-exact @biomejs/biome@latest && npx @biomejs/biome migrate --write"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.6",
+    "@types/chai": "^5.2.2",
+    "@types/mocha": "^10.0.10",
+    "chai": "^6.2.2",
+    "mocha": "^11.7.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "keywords": [
+    "TextDecoder",
+    "TextEncoder",
+    "decoder",
+    "decoding",
+    "encod",
+    "encoding",
+    "decode",
+    "text",
+    "ascii",
+    "utf-8",
+    "utf8",
+    "utf-16le",
+    "latin1",
+    "iso-8859-1",
+    "windows-1252",
+    "charset",
+    "encoding",
+    "decoding",
+    "polyfill",
+    "character-set",
+    "latin",
+    "hermes",
+    "react"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Borewit/text-codec.git"
+  },
+  "author": {
+    "name": "Borewit",
+    "url": "https://github.com/Borewit"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/Borewit"
+  },
+  "license": "MIT"
+}

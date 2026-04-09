@@ -1,0 +1,47 @@
+import type { NamedBean } from '../context/bean';
+import { BeanStub } from '../context/beanStub';
+import type { Component, ComponentSelector } from '../widgets/component';
+export declare class PaginationService extends BeanStub implements NamedBean {
+    beanName: "pagination";
+    private active;
+    private paginateChildRows;
+    private pageSizeAutoCalculated?;
+    private pageSizeFromPageSizeSelector?;
+    private pageSizeFromInitialState?;
+    private pageSizeFromGridOptions?;
+    private readonly defaultPageSize;
+    private totalPages;
+    private currentPage;
+    private topDisplayedRowIndex;
+    private bottomDisplayedRowIndex;
+    private masterRowCount;
+    private readonly editSvc?;
+    postConstruct(): void;
+    getPaginationSelector(): ComponentSelector<Component>;
+    private isPaginateChildRows;
+    private onPaginationGridOptionChanged;
+    private onPageSizeGridOptionChanged;
+    goToPage(page: number): void;
+    goToPageWithIndex(index: number): void;
+    isRowInPage(rowIndex: number): boolean;
+    getCurrentPage(): number;
+    goToNextPage(): void;
+    goToPreviousPage(): void;
+    goToFirstPage(): void;
+    goToLastPage(): void;
+    getPageSize(): number;
+    getTotalPages(): number;
+    /** This is only for state setting before data has been loaded */
+    setPage(page: number): void;
+    private get pageSize();
+    calculatePages(): void;
+    unsetAutoCalculatedPageSize(): void;
+    setPageSize(size: number | undefined, source: 'autoCalculated' | 'pageSizeSelector' | 'initialState' | 'gridOptions'): void;
+    private setZeroRows;
+    private adjustCurrentPageIfInvalid;
+    private calculatePagesMasterRowsOnly;
+    getMasterRowCount(): number;
+    private calculatePagesAllRows;
+    private calculatedPagesNotActive;
+    private dispatchPaginationChangedEvent;
+}

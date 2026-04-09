@@ -1,0 +1,231 @@
+# Operator precedence
+
+a + b * c - d**3
+a or b > 2 and c or d == None
+a + b | c & d
+
+==>
+
+Script(
+  ExpressionStatement(BinaryExpression(BinaryExpression(VariableName, ArithOp,
+    BinaryExpression(VariableName, ArithOp, VariableName)), ArithOp, BinaryExpression(VariableName, ArithOp, Number))),
+  ExpressionStatement(BinaryExpression(BinaryExpression(VariableName, or,
+    BinaryExpression(BinaryExpression(VariableName, CompareOp, Number), and, VariableName)),
+    or, BinaryExpression(VariableName, CompareOp, None))),
+  ExpressionStatement(BinaryExpression(BinaryExpression(VariableName, ArithOp, VariableName), BitOp,
+    BinaryExpression(VariableName, BitOp, VariableName))))
+
+# Strings
+
+'foo' "bar"
+b'baz'
+'''long string
+on two lines'''
+
+"""also with double
+
+quotes"""
+
+==>
+
+Script(ExpressionStatement(ContinuedString(String, String)),
+       ExpressionStatement(String),
+       ExpressionStatement(String),
+       ExpressionStatement(String))
+
+# Raw string
+
+r"foo\"" + r'\\'
+
+==>
+
+Script(ExpressionStatement(BinaryExpression(String,ArithOp,String)))
+
+# Bracketed continued string
+
+print('00300:'
+      '03630:')
+
+==>
+
+Script(ExpressionStatement(CallExpression(VariableName, ArgList(ContinuedString(String, String)))))
+
+# Format strings
+
+f'hello{22} abc\' {{ }} {d-1}'
+f"double\" {quoted !s}"
+f"""big long format
+  {string :foo}"""
+f'''well {{ \x }} {2 :{bar}}'''
+f"""one"{two}"three"""
+f'{user=!s}  {delta.days=:,d}'
+
+==>
+
+Script(ExpressionStatement(FormatString(FormatReplacement(Number),Escape,
+                           FormatReplacement(BinaryExpression(VariableName, ArithOp, Number)))),
+       ExpressionStatement(FormatString(Escape,FormatReplacement(VariableName, FormatConversion))),
+       ExpressionStatement(FormatString(FormatReplacement(VariableName, FormatSpec))),
+       ExpressionStatement(FormatString(Escape,FormatReplacement(Number, FormatSpec(FormatReplacement(VariableName))))),
+       ExpressionStatement(FormatString(FormatReplacement(VariableName))),
+       ExpressionStatement(FormatString(
+         FormatReplacement(VariableName,FormatSelfDoc,FormatConversion),
+         FormatReplacement(MemberExpression(VariableName,PropertyName),FormatSelfDoc,FormatSpec))))
+
+# Nested quote types
+
+f"a{'b'}c"
+
+==>
+
+Script(ExpressionStatement(FormatString(FormatReplacement(String))))
+
+# Lambda
+
+something.map(lambda x: x + 1)
+foo = lambda a, b = 0: a ^ b
+
+==>
+
+Script(
+  ExpressionStatement(CallExpression(MemberExpression(VariableName, PropertyName), ArgList(
+    LambdaExpression(lambda, ParamList(VariableName), BinaryExpression(VariableName, ArithOp, Number))))),
+  AssignStatement(VariableName, AssignOp, LambdaExpression(lambda, ParamList(VariableName, VariableName, AssignOp, Number),
+    BinaryExpression(VariableName, BitOp, VariableName))))
+
+# Member expressions
+
+x[1]
+x.foo
+x.if.True
+
+==>
+
+Script(
+  ExpressionStatement(MemberExpression(VariableName, Number)),
+  ExpressionStatement(MemberExpression(VariableName, PropertyName)),
+  ExpressionStatement(MemberExpression(MemberExpression(VariableName, PropertyName), PropertyName)))
+
+# Call expressions
+
+foo(x, y, **z) + bar(blah=20)
+
+==>
+
+Script(ExpressionStatement(BinaryExpression(
+  CallExpression(VariableName, ArgList(VariableName, VariableName, VariableName)),
+  ArithOp,
+  CallExpression(VariableName, ArgList(VariableName, AssignOp, Number)))))
+
+# Collection expressions
+
+[True, False, None]
+{foo: 22, bar: False, **other}
+{1, 2, 3}
+(3)
+(3,)
+(3, 4)
+
+==>
+
+Script(
+  ExpressionStatement(ArrayExpression(Boolean, Boolean, None)),
+  ExpressionStatement(DictionaryExpression(VariableName, Number, VariableName, Boolean, VariableName)),
+  ExpressionStatement(SetExpression(Number, Number, Number)),
+  ExpressionStatement(ParenthesizedExpression(Number)),
+  ExpressionStatement(TupleExpression(Number)),
+  ExpressionStatement(TupleExpression(Number, Number)))
+
+# Comprehension expressions
+
+[i + 1 for i in range(1, 10) if x % 2 == 0]
+(x for x in [3, 4])
+{key: value for (key, value) in blah}
+{a - b for a in foo for b in bar}
+
+==>
+
+Script(
+  ExpressionStatement(ArrayComprehensionExpression(
+    BinaryExpression(VariableName, ArithOp, Number),
+    for VariableName in CallExpression(VariableName, ArgList(Number, Number)),
+    if BinaryExpression(BinaryExpression(VariableName, ArithOp, Number), CompareOp, Number))),
+  ExpressionStatement(ComprehensionExpression(
+    VariableName, for, VariableName, in, ArrayExpression(Number, Number))),
+  ExpressionStatement(DictionaryComprehensionExpression(
+    VariableName, VariableName, for, TupleExpression(VariableName, VariableName) in VariableName)),
+  ExpressionStatement(SetComprehensionExpression(
+    BinaryExpression(VariableName, ArithOp, VariableName), for, VariableName, in, VariableName,
+    for, VariableName, in, VariableName)))
+
+# Yield expressions
+
+def foo():
+  yield 1
+  return 1 + (yield 2)
+
+==>
+
+Script(FunctionDefinition(def, VariableName, ParamList, Body(
+  YieldStatement(yield, Number),
+  ReturnStatement(return, BinaryExpression(Number, ArithOp, ParenthesizedExpression(YieldExpression(yield, Number)))))))
+
+# Unary expressions
+
+[-1, +2 * 3, ~2**2]
+
+==>
+
+Script(ExpressionStatement(ArrayExpression(
+  UnaryExpression(ArithOp, Number),
+  BinaryExpression(UnaryExpression(ArithOp, Number), ArithOp, Number),
+  UnaryExpression(BitOp, BinaryExpression(Number, ArithOp, Number)))))
+
+# Await
+
+await something()
+
+==>
+
+Script(ExpressionStatement(AwaitExpression(await, CallExpression(VariableName, ArgList))))
+
+# Newlines in brackets
+
+x = [
+  1, 2,
+  # And
+  3, 4,
+]
+
+==>
+
+Script(AssignStatement(VariableName, AssignOp, ArrayExpression(Number, Number, Comment, Number, Number)))
+
+# Too many commas in brackets
+
+x = [
+  1, 2,,
+]
+
+==>
+
+Script(AssignStatement(VariableName, AssignOp, ArrayExpression(Number, Number, ⚠)))
+
+# Conditional expression
+
+x = 5 if True else 1 if False else 0
+
+==>
+
+Script(AssignStatement(VariableName, AssignOp, ConditionalExpression(Number, if, Boolean, else,
+  ConditionalExpression(Number, if, Boolean, else, Number))))
+
+# Exponent is R-to-L associative
+
+2 ** 3 ** 2
+
+==>
+
+Script(ExpressionStatement(BinaryExpression(
+  Number,ArithOp("**"),
+  BinaryExpression(Number,ArithOp("**"),Number))))

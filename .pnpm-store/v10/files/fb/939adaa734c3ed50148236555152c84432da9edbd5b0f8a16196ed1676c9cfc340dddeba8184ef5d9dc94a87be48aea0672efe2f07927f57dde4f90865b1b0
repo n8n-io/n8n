@@ -1,0 +1,93 @@
+{
+  "name": "@microsoft/api-extractor",
+  "version": "7.57.7",
+  "description": "Analyze the exported API for a TypeScript library and generate reviews, documentation, and .d.ts rollups",
+  "keywords": [
+    "typescript",
+    "API",
+    "JSDoc",
+    "AEDoc",
+    "TSDoc",
+    "generate",
+    "documentation",
+    "declaration",
+    "dts",
+    ".d.ts",
+    "rollup",
+    "bundle",
+    "compiler",
+    "alpha",
+    "beta"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/microsoft/rushstack.git",
+    "directory": "apps/api-extractor"
+  },
+  "homepage": "https://api-extractor.com",
+  "main": "./lib-commonjs/index.js",
+  "module": "./lib-esm/index.js",
+  "types": "./dist/rollup.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/rollup.d.ts",
+      "node": "./lib-commonjs/index.js",
+      "import": "./lib-esm/index.js",
+      "require": "./lib-commonjs/index.js"
+    },
+    "./extends/*.json": "./extends/*.json",
+    "./lib/*.schema.json": "./lib-commonjs/*.schema.json",
+    "./lib/*": {
+      "types": "./lib-dts/*.d.ts",
+      "node": "./lib-commonjs/*.js",
+      "import": "./lib-esm/*.js",
+      "require": "./lib-commonjs/*.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "typesVersions": {
+    "*": {
+      "lib/*": [
+        "lib-dts/*"
+      ]
+    }
+  },
+  "bin": {
+    "api-extractor": "./bin/api-extractor"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@microsoft/tsdoc-config": "~0.18.1",
+    "@microsoft/tsdoc": "~0.16.0",
+    "diff": "~8.0.2",
+    "lodash": "~4.17.23",
+    "minimatch": "10.2.3",
+    "resolve": "~1.22.1",
+    "semver": "~7.5.4",
+    "source-map": "~0.6.1",
+    "typescript": "5.8.2",
+    "@rushstack/terminal": "0.22.3",
+    "@rushstack/node-core-library": "5.20.3",
+    "@microsoft/api-extractor-model": "7.33.4",
+    "@rushstack/rig-package": "0.7.2",
+    "@rushstack/ts-command-line": "5.3.3"
+  },
+  "devDependencies": {
+    "@rushstack/heft": "1.2.6",
+    "@types/lodash": "4.17.23",
+    "@types/resolve": "1.20.2",
+    "@types/semver": "7.5.0",
+    "eslint": "~9.37.0",
+    "decoupled-local-node-rig": "1.0.0",
+    "local-eslint-config": "1.0.0"
+  },
+  "sideEffects": [
+    "lib-commonjs/start.js",
+    "lib-esm/start.js"
+  ],
+  "scripts": {
+    "build": "heft build --clean",
+    "_phase:build": "heft run --only build -- --clean",
+    "_phase:test": "heft run --only test -- --clean"
+  }
+}

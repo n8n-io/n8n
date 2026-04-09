@@ -1,0 +1,119 @@
+---
+title: createUIMessageStreamResponse
+description: API Reference for createUIMessageStreamResponse.
+---
+
+# `createUIMessageStreamResponse`
+
+The `createUIMessageStreamResponse` function creates a Response object that streams UI messages to the client.
+
+## Import
+
+<Snippet
+  text={`import { createUIMessageStreamResponse } from "ai"`}
+  prompt={false}
+/>
+
+## Example
+
+```tsx
+import {
+  createUIMessageStream,
+  createUIMessageStreamResponse,
+  streamText,
+} from 'ai';
+__PROVIDER_IMPORT__;
+
+const response = createUIMessageStreamResponse({
+  status: 200,
+  statusText: 'OK',
+  headers: {
+    'Custom-Header': 'value',
+  },
+  stream: createUIMessageStream({
+    execute({ writer }) {
+      // Write custom data (type must be 'data-<name>')
+      writer.write({
+        type: 'data-message',
+        data: { content: 'Hello' },
+      });
+
+      // Write text content using start/delta/end pattern
+      writer.write({
+        type: 'text-start',
+        id: 'greeting-text',
+      });
+      writer.write({
+        type: 'text-delta',
+        id: 'greeting-text',
+        delta: 'Hello, world!',
+      });
+      writer.write({
+        type: 'text-end',
+        id: 'greeting-text',
+      });
+
+      // Write source information (flat properties, not nested)
+      writer.write({
+        type: 'source-url',
+        sourceId: 'source-1',
+        url: 'https://example.com',
+        title: 'Example Source',
+      });
+
+      // Merge with LLM stream
+      const result = streamText({
+        model: __MODEL__,
+        prompt: 'Say hello',
+      });
+
+      writer.merge(result.toUIMessageStream());
+    },
+  }),
+});
+```
+
+## API Signature
+
+### Parameters
+
+<PropertiesTable
+  content={[
+    {
+      name: 'stream',
+      type: 'ReadableStream<UIMessageChunk>',
+      description: 'The UI message stream to send to the client.',
+    },
+    {
+      name: 'status',
+      type: 'number',
+      isOptional: true,
+      description: 'The status code for the response. Defaults to 200.',
+    },
+    {
+      name: 'statusText',
+      type: 'string',
+      isOptional: true,
+      description: 'The status text for the response.',
+    },
+    {
+      name: 'headers',
+      type: 'Headers | Record<string, string>',
+      isOptional: true,
+      description: 'Additional headers for the response.',
+    },
+    {
+      name: 'consumeSseStream',
+      type: '(options: { stream: ReadableStream<string> }) => PromiseLike<void> | void',
+      isOptional: true,
+      description:
+        'Optional callback to consume the Server-Sent Events stream.',
+    },
+  ]}
+/>
+
+### Returns
+
+`Response`
+
+A Response object that streams UI message chunks with the specified status, headers, and content.

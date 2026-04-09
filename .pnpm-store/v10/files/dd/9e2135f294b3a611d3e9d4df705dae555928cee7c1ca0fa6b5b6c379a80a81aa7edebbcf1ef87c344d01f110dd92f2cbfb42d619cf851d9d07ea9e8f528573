@@ -1,0 +1,94 @@
+{
+    "name": "encoding-sniffer",
+    "version": "0.2.1",
+    "description": "Implementation of the HTML encoding sniffer algo, with stream support",
+    "bugs": {
+        "url": "https://github.com/fb55/encoding-sniffer/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git://github.com/fb55/encoding-sniffer.git"
+    },
+    "funding": "https://github.com/fb55/encoding-sniffer?sponsor=1",
+    "license": "MIT",
+    "author": "Felix Boehm <me@feedic.com>",
+    "type": "module",
+    "exports": {
+        ".": {
+            "import": {
+                "types": "./dist/esm/index.d.ts",
+                "default": "./dist/esm/index.js"
+            },
+            "require": {
+                "types": "./dist/commonjs/index.d.ts",
+                "default": "./dist/commonjs/index.js"
+            }
+        },
+        "./sniffer": {
+            "import": {
+                "types": "./dist/esm/sniffer.d.ts",
+                "default": "./dist/esm/sniffer.js"
+            },
+            "require": {
+                "types": "./dist/commonjs/sniffer.d.ts",
+                "default": "./dist/commonjs/sniffer.js"
+            }
+        }
+    },
+    "main": "./dist/commonjs/index.js",
+    "module": "./dist/esm/index.js",
+    "types": "./dist/commonjs/index.d.ts",
+    "files": [
+        "sniffer.js",
+        "sniffer.d.ts",
+        "dist"
+    ],
+    "scripts": {
+        "build": "tshy",
+        "build:docs": "typedoc --hideGenerator src/index.ts",
+        "format": "npm run format:es && npm run format:prettier",
+        "format:es": "npm run lint:es -- --fix",
+        "format:prettier": "npm run prettier -- --write",
+        "lint": "npm run lint:es && npm run lint:ts && npm run lint:prettier",
+        "lint:es": "eslint --ignore-path .gitignore .",
+        "lint:prettier": "npm run prettier -- --check",
+        "lint:ts": "tsc --noEmit",
+        "prepublishOnly": "npm run build",
+        "prettier": "prettier '**/*.{ts,md,json,yml}'",
+        "test": "npm run test:vi && npm run lint",
+        "test:vi": "vitest run"
+    },
+    "prettier": {
+        "proseWrap": "always",
+        "tabWidth": 4
+    },
+    "dependencies": {
+        "iconv-lite": "^0.6.3",
+        "whatwg-encoding": "^3.1.1"
+    },
+    "devDependencies": {
+        "@types/node": "^22.15.30",
+        "@types/whatwg-encoding": "^2.0.3",
+        "@typescript-eslint/eslint-plugin": "^8.27.0",
+        "@typescript-eslint/parser": "^8.33.1",
+        "@vitest/coverage-v8": "^2.1.8",
+        "eslint": "^8.57.1",
+        "eslint-config-prettier": "^10.1.5",
+        "eslint-plugin-n": "^17.19.0",
+        "eslint-plugin-unicorn": "^56.0.1",
+        "prettier": "^3.5.3",
+        "tshy": "^3.0.2",
+        "typedoc": "^0.28.5",
+        "typescript": "^5.8.3",
+        "vitest": "^2.0.2"
+    },
+    "tshy": {
+        "exports": {
+            ".": "./src/index.ts",
+            "./sniffer": "./src/sniffer.ts"
+        },
+        "exclude": [
+            "src/**/*.spec.ts"
+        ]
+    }
+}

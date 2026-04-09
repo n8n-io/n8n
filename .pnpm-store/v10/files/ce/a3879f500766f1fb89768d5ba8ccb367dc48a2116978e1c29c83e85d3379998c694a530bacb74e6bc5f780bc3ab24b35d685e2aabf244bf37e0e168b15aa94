@@ -1,0 +1,24 @@
+{
+    "name": "@types/yamljs",
+    "version": "0.2.34",
+    "description": "TypeScript definitions for yamljs",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/yamljs",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Tim Jonischkat",
+            "url": "http://www.tim-jonischkat.de"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/yamljs"
+    },
+    "scripts": {},
+    "dependencies": {},
+    "typesPublisherContentHash": "8f09c9ebc19107c9eb7f594a88483075bbbb33434a8e7825bd7e2c1f9173e56b",
+    "typeScriptVersion": "4.5"
+}

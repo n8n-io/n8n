@@ -1,4 +1,4 @@
-import { getProxyAgent } from '@n8n/ai-utilities';
+// import { getProxyAgent } from '@n8n/ai-utilities';
 import { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
@@ -22,9 +22,9 @@ export async function searchModels(
 	const openai = new OpenAI({
 		baseURL,
 		apiKey: credentials.apiKey as string,
-		fetchOptions: {
-			dispatcher: getProxyAgent(baseURL),
-		},
+		// fetchOptions: {
+		// 	dispatcher: getProxyAgent(baseURL),
+		// },
 		defaultHeaders,
 	});
 	const { data: models = [] } = await openai.models.list();

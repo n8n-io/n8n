@@ -1,0 +1,97 @@
+{
+  "name": "@opentelemetry/otlp-transformer",
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "version": "0.53.0",
+  "description": "Transform OpenTelemetry SDK data into OTLP",
+  "module": "build/esm/index.js",
+  "esnext": "build/esnext/index.js",
+  "types": "build/src/index.d.ts",
+  "main": "build/src/index.js",
+  "repository": "open-telemetry/opentelemetry-js",
+  "scripts": {
+    "prepublishOnly": "npm run compile",
+    "precompile": "cross-var lerna run version --scope $npm_package_name --include-dependencies",
+    "compile": "npm run protos && tsc --build tsconfig.json tsconfig.esm.json tsconfig.esnext.json",
+    "clean": "tsc --build --clean tsconfig.json tsconfig.esm.json tsconfig.esnext.json",
+    "protos": "npm run submodule && npm run protos:generate",
+    "protos:generate": "node ../../../scripts/generate-protos.js",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "tdd": "npm run test -- --watch-extensions ts --watch",
+    "submodule": "git submodule sync --recursive && git submodule update --init --recursive",
+    "test": "nyc mocha 'test/**/*.test.ts'",
+    "test:browser": "karma start --single-run",
+    "test:bench": "node test/performance/benchmark/index.js | tee .benchmark-results.txt",
+    "prewatch": "node ../../../scripts/version-update.js",
+    "watch": "npm run protos && tsc -w tsconfig.json tsconfig.esm.json tsconfig.esnext.json",
+    "peer-api-check": "node ../../../scripts/peer-api-check.js",
+    "codecov": "nyc report --reporter=json && codecov -f coverage/*.json -p ../../../",
+    "align-api-deps": "node ../../../scripts/align-api-deps.js"
+  },
+  "keywords": [
+    "opentelemetry",
+    "nodejs",
+    "grpc",
+    "protobuf",
+    "otlp",
+    "tracing",
+    "metrics"
+  ],
+  "author": "OpenTelemetry Authors",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=14"
+  },
+  "files": [
+    "build/esm/**/*.js",
+    "build/esm/**/*.js.map",
+    "build/esm/**/*.d.ts",
+    "build/esnext/**/*.js",
+    "build/esnext/**/*.js.map",
+    "build/esnext/**/*.d.ts",
+    "build/src/**/*.js",
+    "build/src/**/*.js.map",
+    "build/src/**/*.d.ts",
+    "LICENSE",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "@opentelemetry/api": "^1.3.0"
+  },
+  "devDependencies": {
+    "@opentelemetry/api": "1.9.0",
+    "@types/mocha": "10.0.7",
+    "@types/webpack-env": "1.16.3",
+    "babel-plugin-istanbul": "7.0.0",
+    "codecov": "3.8.3",
+    "cross-var": "1.1.0",
+    "karma": "6.4.4",
+    "karma-chrome-launcher": "3.1.0",
+    "karma-coverage": "2.2.1",
+    "karma-mocha": "2.0.1",
+    "karma-spec-reporter": "0.0.36",
+    "karma-webpack": "5.0.1",
+    "lerna": "6.6.2",
+    "mocha": "10.7.3",
+    "nyc": "15.1.0",
+    "protobufjs-cli": "1.1.2",
+    "ts-loader": "9.5.1",
+    "typescript": "4.4.4",
+    "webpack": "5.89.0"
+  },
+  "dependencies": {
+    "@opentelemetry/api-logs": "0.53.0",
+    "@opentelemetry/core": "1.26.0",
+    "@opentelemetry/resources": "1.26.0",
+    "@opentelemetry/sdk-logs": "0.53.0",
+    "@opentelemetry/sdk-metrics": "1.26.0",
+    "@opentelemetry/sdk-trace-base": "1.26.0",
+    "protobufjs": "^7.3.0"
+  },
+  "homepage": "https://github.com/open-telemetry/opentelemetry-js/tree/main/experimental/packages/otlp-transformer",
+  "sideEffects": false,
+  "gitHead": "720bc8c70d47029cb6b41a34ffdc3d25cbaa2f80"
+}

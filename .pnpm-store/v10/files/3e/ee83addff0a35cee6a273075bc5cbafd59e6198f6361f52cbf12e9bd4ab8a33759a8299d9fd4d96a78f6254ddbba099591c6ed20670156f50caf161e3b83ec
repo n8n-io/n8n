@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    // Emit options
+    "rootDir": "src",
+    "outDir": "lib",
+    "declaration": true,
+    "declarationMap": true,
+    "target": "es5",
+    "module": "commonjs",
+    "stripInternal": true,
+    "sourceMap": true,
+    "newLine": "LF",
+    // Checking options
+    "strict": true,
+    "charset": "utf8",
+    "lib": [
+      "es5",
+      "es2015.collection"
+    ],
+    // Module resolution and types
+    "moduleResolution": "node"
+  },
+  "include": [
+    "src"
+  ]
+}

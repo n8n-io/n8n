@@ -1,0 +1,160 @@
+---
+title: AI SDK Core
+description: Reference documentation for the AI SDK Core
+collapsed: true
+---
+
+# AI SDK Core
+
+[AI SDK Core](/docs/ai-sdk-core) is a set of functions that allow you to interact with language models and other AI models.
+These functions are designed to be easy-to-use and flexible, allowing you to generate text, structured data,
+and embeddings from language models and other AI models.
+
+AI SDK Core contains the following main functions:
+
+<IndexCards
+  cards={[
+    {
+      title: 'generateText()',
+      description: 'Generate text and call tools from a language model.',
+      href: '/docs/reference/ai-sdk-core/generate-text',
+    },
+    {
+      title: 'streamText()',
+      description: 'Stream text and call tools from a language model.',
+      href: '/docs/reference/ai-sdk-core/stream-text',
+    },
+    {
+      title: 'Output',
+      description: 'Structured output types for generateText and streamText.',
+      href: '/docs/reference/ai-sdk-core/output',
+    },
+    {
+      title: 'embed()',
+      description:
+        'Generate an embedding for a single value using an embedding model.',
+      href: '/docs/reference/ai-sdk-core/embed',
+    },
+    {
+      title: 'embedMany()',
+      description:
+        'Generate embeddings for several values using an embedding model (batch embedding).',
+      href: '/docs/reference/ai-sdk-core/embed-many',
+    },
+    {
+      title: 'generateImage()',
+      description:
+        'Generate images based on a given prompt using an image model.',
+      href: '/docs/reference/ai-sdk-core/generate-image',
+    },
+    {
+      title: 'experimental_generateVideo()',
+      description:
+        'Generate videos based on a given prompt using a video model.',
+      href: '/docs/reference/ai-sdk-core/generate-video',
+    },
+    {
+      title: 'experimental_transcribe()',
+      description: 'Generate a transcript from an audio file.',
+      href: '/docs/reference/ai-sdk-core/transcribe',
+    },
+    {
+      title: 'experimental_generateSpeech()',
+      description: 'Generate speech audio from text.',
+      href: '/docs/reference/ai-sdk-core/generate-speech',
+    },
+  ]}
+/>
+
+It also contains the following helper functions:
+
+<IndexCards
+  cards={[
+    {
+      title: 'tool()',
+      description: 'Type inference helper function for tools.',
+      href: '/docs/reference/ai-sdk-core/tool',
+    },
+    {
+      title: 'createMCPClient()',
+      description: 'Creates a client for connecting to MCP servers.',
+      href: '/docs/reference/ai-sdk-core/create-mcp-client',
+    },
+    {
+      title: 'jsonSchema()',
+      description: 'Creates AI SDK compatible JSON schema objects.',
+      href: '/docs/reference/ai-sdk-core/json-schema',
+    },
+    {
+      title: 'zodSchema()',
+      description: 'Creates AI SDK compatible Zod schema objects.',
+      href: '/docs/reference/ai-sdk-core/zod-schema',
+    },
+    {
+      title: 'createProviderRegistry()',
+      description:
+        'Creates a registry for using models from multiple providers.',
+      href: '/docs/reference/ai-sdk-core/provider-registry',
+    },
+    {
+      title: 'cosineSimilarity()',
+      description:
+        'Calculates the cosine similarity between two vectors, e.g. embeddings.',
+      href: '/docs/reference/ai-sdk-core/cosine-similarity',
+    },
+    {
+      title: 'simulateReadableStream()',
+      description:
+        'Creates a ReadableStream that emits values with configurable delays.',
+      href: '/docs/reference/ai-sdk-core/simulate-readable-stream',
+    },
+    {
+      title: 'wrapLanguageModel()',
+      description: 'Wraps a language model with middleware.',
+      href: '/docs/reference/ai-sdk-core/wrap-language-model',
+    },
+    {
+      title: 'wrapImageModel()',
+      description: 'Wraps an image model with middleware.',
+      href: '/docs/reference/ai-sdk-core/wrap-image-model',
+    },
+    {
+      title: 'extractReasoningMiddleware()',
+      description:
+        'Extracts reasoning from the generated text and exposes it as a `reasoning` property on the result.',
+      href: '/docs/reference/ai-sdk-core/extract-reasoning-middleware',
+    },
+    {
+      title: 'extractJsonMiddleware()',
+      description:
+        'Extracts JSON from text content by stripping markdown code fences.',
+      href: '/docs/reference/ai-sdk-core/extract-json-middleware',
+    },
+    {
+      title: 'simulateStreamingMiddleware()',
+      description:
+        'Simulates streaming behavior with responses from non-streaming language models.',
+      href: '/docs/reference/ai-sdk-core/simulate-streaming-middleware',
+    },
+    {
+      title: 'defaultSettingsMiddleware()',
+      description: 'Applies default settings to a language model.',
+      href: '/docs/reference/ai-sdk-core/default-settings-middleware',
+    },
+    {
+      title: 'smoothStream()',
+      description: 'Smooths text and reasoning streaming output.',
+      href: '/docs/reference/ai-sdk-core/smooth-stream',
+    },
+    {
+      title: 'generateId()',
+      description: 'Helper function for generating unique IDs',
+      href: '/docs/reference/ai-sdk-core/generate-id',
+    },
+    {
+      title: 'createIdGenerator()',
+      description: 'Creates an ID generator',
+      href: '/docs/reference/ai-sdk-core/create-id-generator',
+    },
+  ]}
+/>

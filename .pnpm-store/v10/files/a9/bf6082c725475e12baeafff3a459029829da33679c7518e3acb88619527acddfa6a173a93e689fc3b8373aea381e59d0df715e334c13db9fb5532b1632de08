@@ -1,0 +1,31 @@
+{
+  "name": "@package-json/types",
+  "type": "module",
+  "version": "0.0.12",
+  "description": "Auto-generated package.json types.",
+  "author": "藍+85CD",
+  "license": "MIT",
+  "homepage": "https://github.com/importantimport/package-json",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/importantimport/package-json.git",
+    "directory": "packages/types"
+  },
+  "bugs": "https://github.com/importantimport/package-json/issues",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "pkgroll",
+    "build:upstream": "tsx build.ts"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts"
+}

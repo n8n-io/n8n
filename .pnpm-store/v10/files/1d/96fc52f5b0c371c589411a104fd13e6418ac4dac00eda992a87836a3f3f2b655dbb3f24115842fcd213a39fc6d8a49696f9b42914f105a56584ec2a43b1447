@@ -1,1 +1,0 @@
-{"version":3,"file":"createParserServices.d.ts","sourceRoot":"","sources":["../src/createParserServices.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,KAAK,EAAE,MAAM,YAAY,CAAC;AAEtC,OAAO,KAAK,EAAE,OAAO,EAAE,MAAM,WAAW,CAAC;AACzC,OAAO,KAAK,EAAE,cAAc,EAAE,MAAM,kBAAkB,CAAC;AAEvD,wBAAgB,oBAAoB,CAClC,OAAO,EAAE,OAAO,EAChB,OAAO,EAAE,EAAE,CAAC,OAAO,GAAG,IAAI,GACzB,cAAc,CA6BhB"}

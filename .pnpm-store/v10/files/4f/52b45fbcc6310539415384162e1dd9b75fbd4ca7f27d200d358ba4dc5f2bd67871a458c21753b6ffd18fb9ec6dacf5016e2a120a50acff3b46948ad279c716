@@ -1,1 +1,0 @@
-{"version":3,"file":"no-confusing-non-null-assertion.d.ts","sourceRoot":"","sources":["../../src/rules/no-confusing-non-null-assertion.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,QAAQ,EAAY,MAAM,0BAA0B,CAAC;AAUnE,MAAM,MAAM,SAAS,GACjB,iBAAiB,GACjB,gBAAgB,GAChB,mBAAmB,GACnB,iBAAiB,GACjB,oBAAoB,GACpB,mBAAmB,GACnB,YAAY,CAAC;;AAgBjB,wBA8IG"}

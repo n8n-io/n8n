@@ -1,0 +1,27 @@
+{
+    "name": "@types/aws4",
+    "version": "1.11.6",
+    "description": "TypeScript definitions for aws4",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/aws4",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Andrew Crites",
+            "githubUsername": "ajcrites",
+            "url": "https://github.com/ajcrites"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/aws4"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/node": "*"
+    },
+    "typesPublisherContentHash": "e0dcfb45b7fea5bbe36da4989cc1d817e0ba7308056c6adf0ea033c0be12acce",
+    "typeScriptVersion": "4.5"
+}

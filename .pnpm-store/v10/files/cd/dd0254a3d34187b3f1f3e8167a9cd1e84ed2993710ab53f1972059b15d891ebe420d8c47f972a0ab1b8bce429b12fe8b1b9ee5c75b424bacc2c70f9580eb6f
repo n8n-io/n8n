@@ -1,6 +1,0 @@
-{
-  "main": "../lib/node/interceptors/fetch/index.js",
-  "module": "../lib/node/interceptors/fetch/index.mjs",
-  "browser": "../lib/browser/interceptors/fetch/index.js",
-  "types": "../lib/node/interceptors/fetch/index.d.ts"
-}

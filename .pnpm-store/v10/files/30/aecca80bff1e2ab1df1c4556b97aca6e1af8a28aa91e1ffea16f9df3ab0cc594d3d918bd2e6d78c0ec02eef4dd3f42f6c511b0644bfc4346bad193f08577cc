@@ -1,0 +1,78 @@
+{
+  "name": "@ai-sdk/gateway",
+  "private": false,
+  "version": "3.0.83",
+  "license": "Apache-2.0",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist/**/*",
+    "docs/**/*",
+    "src",
+    "!src/**/*.test.ts",
+    "!src/**/*.test-d.ts",
+    "!src/**/__snapshots__",
+    "!src/**/__fixtures__",
+    "CHANGELOG.md",
+    "README.md"
+  ],
+  "directories": {
+    "doc": "./docs"
+  },
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@vercel/oidc": "3.1.0",
+    "@ai-sdk/provider": "3.0.8",
+    "@ai-sdk/provider-utils": "4.0.21"
+  },
+  "devDependencies": {
+    "@types/node": "18.15.11",
+    "tsup": "^8",
+    "tsx": "4.19.2",
+    "typescript": "5.8.3",
+    "zod": "3.25.76",
+    "@ai-sdk/test-server": "1.0.3",
+    "@vercel/ai-tsconfig": "0.0.0"
+  },
+  "peerDependencies": {
+    "zod": "^3.25.76 || ^4.1.8"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://ai-sdk.dev/docs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vercel/ai.git"
+  },
+  "bugs": {
+    "url": "https://github.com/vercel/ai/issues"
+  },
+  "keywords": [
+    "ai"
+  ],
+  "scripts": {
+    "build": "pnpm clean && tsup --tsconfig tsconfig.build.json",
+    "build:watch": "pnpm clean && tsup --watch",
+    "clean": "del-cli dist docs *.tsbuildinfo",
+    "generate-model-settings": "tsx scripts/generate-model-settings.ts",
+    "type-check": "tsc --build",
+    "test": "pnpm test:node && pnpm test:edge",
+    "test:update": "pnpm test:node -u",
+    "test:watch": "vitest --config vitest.node.config.js",
+    "test:edge": "vitest --config vitest.edge.config.js --run",
+    "test:node": "vitest --config vitest.node.config.js --run"
+  }
+}

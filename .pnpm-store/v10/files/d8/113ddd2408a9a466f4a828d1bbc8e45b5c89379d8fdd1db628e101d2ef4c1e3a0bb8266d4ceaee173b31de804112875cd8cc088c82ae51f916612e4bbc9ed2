@@ -1,0 +1,141 @@
+{
+  "author": "Stefan Goessner",
+  "name": "jsonpath-plus",
+  "version": "10.3.0",
+  "type": "module",
+  "bin": {
+    "jsonpath": "./bin/jsonpath-cli.js",
+    "jsonpath-plus": "./bin/jsonpath-cli.js"
+  },
+  "main": "dist/index-node-cjs.cjs",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "types": "./src/jsonpath.d.ts",
+      "browser": "./dist/index-browser-esm.js",
+      "umd": "./dist/index-browser-umd.cjs",
+      "import": "./dist/index-node-esm.js",
+      "require": "./dist/index-node-cjs.cjs",
+      "default": "./dist/index-browser-esm.js"
+    }
+  },
+  "module": "dist/index-node-esm.js",
+  "browser": "dist/index-browser-esm.js",
+  "types": "./src/jsonpath.d.ts",
+  "description": "A JS implementation of JSONPath with some additional operators",
+  "contributors": [
+    {
+      "name": "Prof. Gössner",
+      "email": "stefan.goessner@fh-dortmund.de"
+    },
+    {
+      "name": "Subbu Allamaraju",
+      "email": "subbu@subbu.org"
+    },
+    {
+      "name": "Mike Brevoort",
+      "email": "mike@brevoort.com"
+    },
+    {
+      "name": "Robert Krahn",
+      "email": "robert.krahn@gmail.com"
+    },
+    {
+      "name": "Brett Zamir",
+      "email": "brettz9@yahoo.com"
+    },
+    {
+      "name": "Richard Schneider",
+      "email": "makaretu@gmail.com"
+    }
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/s3u/JSONPath.git"
+  },
+  "bugs": "https://github.com/s3u/JSONPath/issues/",
+  "homepage": "https://github.com/s3u/JSONPath",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "react-native": {
+    "vm": false
+  },
+  "dependencies": {
+    "@jsep-plugin/assignment": "^1.3.0",
+    "@jsep-plugin/regex": "^1.0.4",
+    "jsep": "^1.4.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.26.8",
+    "@babel/preset-env": "^7.26.8",
+    "@rollup/plugin-babel": "^6.0.4",
+    "@rollup/plugin-node-resolve": "^15.3.1",
+    "@rollup/plugin-terser": "^0.4.4",
+    "c8": "^10.1.3",
+    "chai": "^5.1.2",
+    "coveradge": "^0.8.2",
+    "eslint": "^9.20.1",
+    "eslint-config-ash-nazg": "^36.22.2",
+    "http-server": "^14.1.1",
+    "license-badger": "^0.21.1",
+    "mocha": "^10.8.2",
+    "mocha-badge-generator": "^0.11.0",
+    "mocha-multi-reporters": "^1.5.1",
+    "open-cli": "^8.0.0",
+    "rollup": "4.27.2",
+    "typedoc": "^0.27.7",
+    "typescript": "^5.7.3"
+  },
+  "keywords": [
+    "json",
+    "jsonpath"
+  ],
+  "browserslist": [
+    "defaults, not op_mini all"
+  ],
+  "c8": {
+    "reporter": [
+      "text",
+      "html",
+      "json-summary"
+    ],
+    "exclude": [
+      ".mocharc.cjs",
+      "eslint.config.js",
+      "src/jsonpath.d.ts",
+      "rollup.config.js",
+      ".idea",
+      "coverage",
+      "dist",
+      "demo",
+      "docs",
+      "ignore",
+      "test",
+      "test-helpers"
+    ]
+  },
+  "scripts": {
+    "prepublishOnly": "pnpm i",
+    "license-badge": "license-badger --corrections --uncategorizedLicenseTemplate \"\\${license} (\\${name} (\\${version}))\" --filteredTypes=nonempty --textTemplate \"License types\n(project, deps, and bundled devDeps)\" --packageJson --production badges/licenses-badge.svg",
+    "license-badge-dev": "license-badger --corrections --filteredTypes=nonempty --textTemplate \"License types\n(all devDeps)\" --allDevelopment badges/licenses-badge-dev.svg",
+    "license-badges": "npm run license-badge && npm run license-badge-dev",
+    "build-docs": "typedoc --out docs/ts src --excludeExternals --entryPointStrategy Expand",
+    "open-docs": "open-cli http://localhost:8084/docs/ts/ && npm start",
+    "coverage": "open-cli http://localhost:8084/coverage/ && npm start",
+    "coverage-badge": "coveradge badges/coverage-badge.svg",
+    "node-import-test": "node --experimental-modules demo/node-import-test.mjs",
+    "open": "open-cli http://localhost:8084/demo/ && npm start",
+    "start": "http-server -p 8084",
+    "cli": "./bin/jsonpath-cli.js package.json name",
+    "typescript": "tsc",
+    "mocha": "mocha --require test-helpers/node-env.js --reporter-options configFile=mocha-multi-reporters.json test",
+    "c8": "rm -Rf ./coverage && rm -Rf ./node_modules/.cache && c8 --all npm run mocha && npm run coverage-badge",
+    "rollup": "rollup -c",
+    "eslint": "eslint .",
+    "lint": "npm run eslint",
+    "test": "npm run eslint && npm run rollup && npm run c8 && npm run typescript",
+    "browser-test": "npm run eslint && npm run rollup && open-cli http://localhost:8084/test/ && npm start"
+  }
+}

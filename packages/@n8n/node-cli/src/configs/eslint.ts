@@ -1,4 +1,5 @@
 import eslint from '@eslint/js';
+// @ts-ignore
 import { n8nCommunityNodesPlugin } from '@n8n/eslint-plugin-community-nodes';
 import { globalIgnores } from 'eslint/config';
 import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescript';

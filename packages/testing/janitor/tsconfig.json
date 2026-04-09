@@ -1,20 +1,24 @@
 {
 	"extends": "../../../tsconfig.json",
 	"compilerOptions": {
+		"module": "NodeNext",
+    	"moduleResolution": "NodeNext",
+		"skipLibCheck": true,
+		"types": [],
+		"paths": {
+			"psl": ["../../../node_modules/psl/index.d.ts"]
+		},
 		"outDir": "dist",
 		"rootDir": "src",
 		"declaration": true,
 		"declarationMap": true,
 		"sourceMap": true,
 		"lib": ["ES2022"],
-		"module": "NodeNext",
-		"moduleResolution": "NodeNext",
 		"target": "ES2022",
 		"strict": true,
 		"esModuleInterop": true,
-		"skipLibCheck": true,
 		"forceConsistentCasingInFileNames": true
 	},
-	"include": ["src/**/*.ts"],
+	"include": ["src/**/*"],
 	"exclude": ["dist", "node_modules", "**/__tests__/**"]
 }

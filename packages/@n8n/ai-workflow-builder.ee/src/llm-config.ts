@@ -27,7 +27,7 @@ export const gpt52 = async (config: LLMProviderConfig) => {
 			fetchOptions: {
 				dispatcher: getProxyAgent(config.baseUrl ?? 'https://api.openai.com/v1'),
 			},
-		},
+		} as any,
 	});
 };
 
@@ -150,7 +150,7 @@ function createOpenRouterModel(modelName: string) {
 				fetchOptions: {
 					dispatcher: getProxyAgent(OPENROUTER_BASE_URL),
 				},
-			},
+			} as any,
 		});
 	};
 }

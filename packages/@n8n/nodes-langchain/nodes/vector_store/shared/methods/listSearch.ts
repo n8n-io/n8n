@@ -27,7 +27,8 @@ export async function pineconeIndexSearch(this: ILoadOptionsFunctions) {
 export async function supabaseTableNameSearch(this: ILoadOptionsFunctions) {
 	const credentials = await this.getCredentials('supabaseApi');
 
-	const results = [];
+	//const results = [];
+	const results: Array<{ name: string; value: string }> = [];
 
 	if (typeof credentials.host !== 'string') {
 		throw new ApplicationError('Expected Supabase credentials host to be a string');

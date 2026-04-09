@@ -1,0 +1,1 @@
+import{n as e,t}from"./_chunks/_format.mjs";import{n,t as r}from"./_chunks/libs/smol-toml.mjs";function i(t){let r=n(t);return e(t,r,{preserveIndentation:!1}),r}function a(e){let n=t(e,{preserveIndentation:!1}),i=r(e);return n.whitespace.start+i+n.whitespace.end}export{i as parseTOML,a as stringifyTOML};

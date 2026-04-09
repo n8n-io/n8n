@@ -1,6 +1,0 @@
-{
-  "name": "web-streams-ponyfill-es6",
-  "main": "../../dist/ponyfill.es6",
-  "module": "../../dist/ponyfill.es6.mjs",
-  "types": "../../dist/types/polyfill.d.ts"
-}

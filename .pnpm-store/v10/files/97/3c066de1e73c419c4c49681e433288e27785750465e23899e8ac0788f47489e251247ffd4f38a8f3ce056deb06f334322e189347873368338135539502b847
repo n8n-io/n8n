@@ -1,0 +1,1 @@
+{"version":3,"file":"timer.d.ts","sourceRoot":"","sources":["../../../src/modules/timeout-timer/timer.ts"],"names":[],"mappings":"AAEA,qBAAa,KAAK;IAChB,OAAO,CAAC,MAAM,CAAC,QAAQ,CAAQ;IAC/B,OAAO,CAAC,SAAS,CAAS;IAE1B,OAAO;WAIO,WAAW,IAAI,KAAK;IAO3B,UAAU,IAAI,OAAO;CAK7B"}

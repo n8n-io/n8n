@@ -1,8 +1,9 @@
-import type { OpenAIClient } from '@langchain/openai';
+// import type { OpenAIClient } from '@langchain/openai';
 import get from 'lodash/get';
 import isObject from 'lodash/isObject';
 import { isObjectEmpty, jsonParse, type IDataObject, type IExecuteFunctions } from 'n8n-workflow';
-import type { ResponseInputImage } from 'openai/resources/responses/responses';
+// import type { ResponseInputImage } from 'openai/resources/responses/responses';
+
 
 import { getBinaryDataFile } from '../../../../helpers/binary-data';
 import type {
@@ -28,13 +29,15 @@ export async function formatInputMessages(
 	messages: IDataObject[],
 ) {
 	return await Promise.all(
-		messages.map<Promise<ChatInputItem>>(async (message) => {
+		// messages.map<Promise<ChatInputItem>>(async (message) => {
+		messages.map<Promise<any>>(async (message) => {
 			const role = message.role as ChatInputItem['role'];
 			let content: ChatContent = [];
 			if (message.type === 'text' || !message.type) {
-				content = [{ type: 'input_text', text: message.content as string }];
+				content = [{ type: 'input_text', text: message.content as string } as any];
 			} else if (message.type === 'image') {
-				const detail = (message.imageDetail as ResponseInputImage['detail']) || ('auto' as const);
+				// const detail = (message.imageDetail as ResponseInputImage['detail']) || ('auto' as const);
+				const detail = (message.imageDetail as any) || 'auto';
 
 				if (message.imageType === 'base64') {
 					const { fileContent, contentType } = await getBinaryDataFile(
@@ -45,19 +48,19 @@ export async function formatInputMessages(
 					const buffer = await this.helpers.binaryToBuffer(fileContent);
 					content = [
 						{
-							type: 'input_image',
+							type: 'input_image' as any,
 							detail,
-							image_url: `data:${contentType};base64,${buffer.toString('base64')}`,
-						},
+							image_url: { url: `data:${contentType};base64,${buffer.toString('base64')}` } as any,
+						} as any,
 					];
 				} else {
 					content = [
 						{
-							type: 'input_image',
+							type: 'input_image' as any,
 							detail,
 							...(message.imageType === 'url' && { image_url: message.imageUrl as string }),
 							...(message.imageType === 'fileId' && { file_id: message.fileId as string }),
-						},
+						} as any,
 					];
 				}
 			} else if (message.type === 'file') {
@@ -70,18 +73,18 @@ export async function formatInputMessages(
 					const buffer = await this.helpers.binaryToBuffer(fileContent);
 					content = [
 						{
-							type: 'input_file',
+							type: 'input_file' as any,
 							filename: message.fileName as string,
 							file_data: `data:${contentType};base64,${buffer.toString('base64')}`,
-						},
+						} as any,
 					];
 				} else {
 					content = [
 						{
-							type: 'input_file',
+							type: 'input_file' as any,
 							...(message.fileType === 'url' && { file_url: message.fileUrl as string }),
 							...(message.fileType === 'fileId' && { file_id: message.fileId as string }),
-						},
+						} as any,
 					];
 				}
 			}
@@ -95,7 +98,8 @@ interface CreateRequestOptions {
 	messages: IDataObject[];
 	options: IDataObject;
 	builtInTools?: IDataObject;
-	tools?: OpenAIClient.Responses.FunctionTool[];
+	// tools?: OpenAIClient.Responses.FunctionTool[];
+	tools?: any[];
 }
 
 export async function createRequest(
@@ -103,7 +107,8 @@ export async function createRequest(
 	i: number,
 	{ model, messages, options, builtInTools, tools }: CreateRequestOptions,
 ): Promise<ChatResponseRequest> {
-	const body: ChatResponseRequest = {
+	// const body: ChatResponseRequest = {
+	const body: any = {
 		model,
 		input: await formatInputMessages.call(this, i, messages),
 		parallel_tool_calls: get(options, 'parallelToolCalls', true) as boolean,
@@ -131,7 +136,7 @@ export async function createRequest(
 	}
 
 	if (Array.isArray(options.include) && options.include?.length) {
-		body.include = options.include as ChatResponseRequest['include'];
+		(body as any).include = options.include;
 	}
 
 	if (options.metadata) {
@@ -163,9 +168,13 @@ export async function createRequest(
 
 	if (options.textFormat) {
 		const textOptions = get(options, 'textFormat.textOptions') as IDataObject;
-		const textConfig: OpenAIClient.Responses.ResponseTextConfig = {
-			verbosity: textOptions.verbosity as OpenAIClient.Responses.ResponseTextConfig['verbosity'],
+		// const textConfig: OpenAIClient.Responses.ResponseTextConfig = {
+		// 	verbosity: textOptions.verbosity as OpenAIClient.Responses.ResponseTextConfig['verbosity'],
+		// };
+		const textConfig: any = {
+			verbosity: textOptions.verbosity,
 		};
+		
 		if (textOptions.type === 'json_schema') {
 			textConfig.format = {
 				type: textOptions.type,
@@ -211,7 +220,8 @@ export async function createRequest(
 				allowedDomains = toArray(allowedDomainsRaw);
 			}
 
-			let userLocation: OpenAIClient.Responses.WebSearchTool.UserLocation | undefined;
+			// let userLocation: OpenAIClient.Responses.WebSearchTool.UserLocation | undefined;
+			let userLocation: any | undefined;
 			if (webSearchOptions.country || webSearchOptions.city || webSearchOptions.region) {
 				userLocation = {
 					type: 'approximate',

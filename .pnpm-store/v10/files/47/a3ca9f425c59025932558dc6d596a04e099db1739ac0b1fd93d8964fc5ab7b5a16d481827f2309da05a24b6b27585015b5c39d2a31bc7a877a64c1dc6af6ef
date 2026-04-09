@@ -1,0 +1,15 @@
+import * as z from "zod/v3";
+import * as components from "../components/index.js";
+export type PostDatasetRecordsFromPlaygroundV1ObservabilityDatasetsDatasetIdImportsFromPlaygroundPostRequest = {
+    datasetId: string;
+    postDatasetImportFromPlaygroundInSchema: components.PostDatasetImportFromPlaygroundInSchema;
+};
+/** @internal */
+export type PostDatasetRecordsFromPlaygroundV1ObservabilityDatasetsDatasetIdImportsFromPlaygroundPostRequest$Outbound = {
+    dataset_id: string;
+    PostDatasetImportFromPlaygroundInSchema: components.PostDatasetImportFromPlaygroundInSchema$Outbound;
+};
+/** @internal */
+export declare const PostDatasetRecordsFromPlaygroundV1ObservabilityDatasetsDatasetIdImportsFromPlaygroundPostRequest$outboundSchema: z.ZodType<PostDatasetRecordsFromPlaygroundV1ObservabilityDatasetsDatasetIdImportsFromPlaygroundPostRequest$Outbound, z.ZodTypeDef, PostDatasetRecordsFromPlaygroundV1ObservabilityDatasetsDatasetIdImportsFromPlaygroundPostRequest>;
+export declare function postDatasetRecordsFromPlaygroundV1ObservabilityDatasetsDatasetIdImportsFromPlaygroundPostRequestToJSON(postDatasetRecordsFromPlaygroundV1ObservabilityDatasetsDatasetIdImportsFromPlaygroundPostRequest: PostDatasetRecordsFromPlaygroundV1ObservabilityDatasetsDatasetIdImportsFromPlaygroundPostRequest): string;
+//# sourceMappingURL=postdatasetrecordsfromplaygroundv1observabilitydatasetsdatasetidimportsfromplaygroundpost.d.ts.map

@@ -1,4 +1,0 @@
-import type { PreferOptionalChainMessageIds, PreferOptionalChainOptions } from './prefer-optional-chain-utils/PreferOptionalChainOptions';
-declare const _default: import("@typescript-eslint/utils/ts-eslint").RuleModule<PreferOptionalChainMessageIds, [PreferOptionalChainOptions], import("../../rules").ESLintPluginDocs, import("@typescript-eslint/utils/ts-eslint").RuleListener>;
-export default _default;
-//# sourceMappingURL=prefer-optional-chain.d.ts.map

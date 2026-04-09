@@ -1,0 +1,222 @@
+---
+title: Memory
+description: Add persistent memory to your agent using provider-defined tools, memory providers, or a custom tool.
+---
+
+# Memory
+
+Memory lets your agent save information and recall it later. Without memory, every conversation starts fresh. With memory, your agent builds context over time, recalls previous interactions, and adapts to the user.
+
+## Three Approaches
+
+You can add memory to your agent with the AI SDK in three ways, each with different tradeoffs:
+
+| Approach                                          | Effort | Flexibility | Provider Lock-in           |
+| ------------------------------------------------- | ------ | ----------- | -------------------------- |
+| [Provider-Defined Tools](#provider-defined-tools) | Low    | Medium      | Yes                        |
+| [Memory Providers](#memory-providers)             | Low    | Low         | Depends on memory provider |
+| [Custom Tool](#custom-tool)                       | High   | High        | No                         |
+
+## Provider-Defined Tools
+
+[Provider-defined tools](/docs/foundations/tools#types-of-tools) are tools where the provider specifies the tool's `inputSchema` and `description`, but you provide the `execute` function. The model has been trained to use these tools, which can result in better performance compared to custom tools.
+
+### Anthropic Memory Tool
+
+The [Anthropic Memory Tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/memory-tool) gives Claude a structured interface for managing a `/memories` directory. Claude reads its memory before starting tasks, creates and updates files as it works, and references them in future conversations.
+
+```ts
+import { anthropic } from '@ai-sdk/anthropic';
+import { ToolLoopAgent } from 'ai';
+
+const memory = anthropic.tools.memory_20250818({
+  execute: async action => {
+    // `action` contains `command`, `path`, and other fields
+    // depending on the command (view, create, str_replace,
+    // insert, delete, rename).
+    // Implement your storage backend here.
+    // Return the result as a string.
+  },
+});
+
+const agent = new ToolLoopAgent({
+  model: 'anthropic/claude-haiku-4.5',
+  tools: { memory },
+});
+
+const result = await agent.generate({
+  prompt: 'Remember that my favorite editor is Neovim',
+});
+```
+
+The tool receives structured commands (`view`, `create`, `str_replace`, `insert`, `delete`, `rename`), each with a `path` scoped to `/memories`. Your `execute` function maps these to your storage backend (the filesystem, a database, or any other persistence layer).
+
+**When to use this**: you want memory with minimal implementation effort and are already using Anthropic models. The tradeoff is provider lock-in, since this tool only works with Claude.
+
+## Memory Providers
+
+Another approach is to use a provider that has memory built in. These providers wrap an external memory service and expose it through the AI SDK's standard interface. Memory storage, retrieval, and injection happen transparently, and you do not define any tools yourself.
+
+### Letta
+
+[Letta](https://letta.com) provides agents with persistent long-term memory. You create an agent on Letta's platform (cloud or self-hosted), configure its memory there, and use the AI SDK provider to interact with it. Letta's agent runtime handles memory management (core memory, archival memory, recall).
+
+```bash
+pnpm add @letta-ai/vercel-ai-sdk-provider
+```
+
+```ts
+import { lettaCloud } from '@letta-ai/vercel-ai-sdk-provider';
+import { ToolLoopAgent } from 'ai';
+
+const agent = new ToolLoopAgent({
+  model: lettaCloud(),
+  providerOptions: {
+    letta: {
+      agent: { id: 'your-agent-id' },
+    },
+  },
+});
+
+const result = await agent.generate({
+  prompt: 'Remember that my favorite editor is Neovim',
+});
+```
+
+You can also use Letta's built-in memory tools alongside custom tools:
+
+```ts
+import { lettaCloud } from '@letta-ai/vercel-ai-sdk-provider';
+import { ToolLoopAgent } from 'ai';
+
+const agent = new ToolLoopAgent({
+  model: lettaCloud(),
+  tools: {
+    core_memory_append: lettaCloud.tool('core_memory_append'),
+    memory_insert: lettaCloud.tool('memory_insert'),
+    memory_replace: lettaCloud.tool('memory_replace'),
+  },
+  providerOptions: {
+    letta: {
+      agent: { id: 'your-agent-id' },
+    },
+  },
+});
+
+const stream = agent.stream({
+  prompt: 'What do you remember about me?',
+});
+```
+
+See the [Letta provider documentation](/providers/community-providers/letta) for full setup and configuration.
+
+### Mem0
+
+[Mem0](https://mem0.ai) adds a memory layer on top of any supported LLM provider. It automatically extracts memories from conversations, stores them, and retrieves relevant ones for future prompts.
+
+```bash
+pnpm add @mem0/vercel-ai-provider
+```
+
+```ts
+import { createMem0 } from '@mem0/vercel-ai-provider';
+import { ToolLoopAgent } from 'ai';
+
+const mem0 = createMem0({
+  provider: 'openai',
+  mem0ApiKey: process.env.MEM0_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+const agent = new ToolLoopAgent({
+  model: mem0('gpt-4.1', { user_id: 'user-123' }),
+});
+
+const { text } = await agent.generate({
+  prompt: 'Remember that my favorite editor is Neovim',
+});
+```
+
+Mem0 works across multiple LLM providers (OpenAI, Anthropic, Google, Groq, Cohere). You can also manage memories explicitly:
+
+```ts
+import { addMemories, retrieveMemories } from '@mem0/vercel-ai-provider';
+
+await addMemories(messages, { user_id: 'user-123' });
+const context = await retrieveMemories(prompt, { user_id: 'user-123' });
+```
+
+See the [Mem0 provider documentation](/providers/community-providers/mem0) for full setup and configuration.
+
+### Supermemory
+
+[Supermemory](https://supermemory.ai) is a long-term memory platform that adds persistent, self-growing memory to your AI applications. It provides tools that handle saving and retrieving memories automatically through semantic search.
+
+```bash
+pnpm add @supermemory/tools
+```
+
+```ts
+__PROVIDER_IMPORT__;
+import { supermemoryTools } from '@supermemory/tools/ai-sdk';
+import { ToolLoopAgent } from 'ai';
+
+const agent = new ToolLoopAgent({
+  model: __MODEL__,
+  tools: supermemoryTools(process.env.SUPERMEMORY_API_KEY!),
+});
+
+const result = await agent.generate({
+  prompt: 'Remember that my favorite editor is Neovim',
+});
+```
+
+Supermemory works with any AI SDK provider. The tools give the model `addMemory` and `searchMemories` operations that handle storage and retrieval.
+
+See the [Supermemory provider documentation](/providers/community-providers/supermemory) for full setup and configuration.
+
+### Hindsight
+
+[Hindsight](/providers/community-providers/hindsight) provides agents with persistent memory through five tools: `retain`, `recall`, `reflect`, `getMentalModel`, and `getDocument`. It can be self-hosted with Docker or used as a cloud service.
+
+```bash
+pnpm add @vectorize-io/hindsight-ai-sdk @vectorize-io/hindsight-client
+```
+
+```ts
+__PROVIDER_IMPORT__;
+import { HindsightClient } from '@vectorize-io/hindsight-client';
+import { createHindsightTools } from '@vectorize-io/hindsight-ai-sdk';
+import { ToolLoopAgent, stepCountIs } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+const client = new HindsightClient({ baseUrl: process.env.HINDSIGHT_API_URL });
+
+const agent = new ToolLoopAgent({
+  model: __MODEL__,
+  tools: createHindsightTools({ client, bankId: 'user-123' }),
+  stopWhen: stepCountIs(10),
+  instructions: 'You are a helpful assistant with long-term memory.',
+});
+
+const result = await agent.generate({
+  prompt: 'Remember that my favorite editor is Neovim',
+});
+```
+
+The `bankId` identifies the memory store and is typically a user ID. In multi-user apps, call `createHindsightTools` inside your request handler so each request gets the right bank. Hindsight works with any AI SDK provider.
+
+See the [Hindsight provider documentation](/providers/community-providers/hindsight) for full setup and configuration.
+
+**When to use memory providers**: these providers are a good fit when you want memory without building any storage infrastructure. The tradeoff is that the provider controls memory behavior, so you have less visibility into what gets stored and how it is retrieved. You also take on a dependency on an external service.
+
+## Custom Tool
+
+Building your own memory tool from scratch is the most flexible approach. You control the storage format, the interface, and the retrieval logic. This requires the most upfront work but gives you full ownership of how memory works, with no provider lock-in and no external dependencies.
+
+There are two common patterns:
+
+- **Structured actions**: you define explicit operations (`view`, `create`, `update`, `search`) and handle structured input yourself. Safe by design since you control every operation.
+- **Bash-backed**: you give the model a sandboxed bash environment to compose shell commands (`cat`, `grep`, `sed`, `echo`) for flexible memory access. More powerful but requires command validation for safety.
+
+For a full walkthrough of implementing a custom memory tool with a bash-backed interface, AST-based command validation, and filesystem persistence, see the **[Build a Custom Memory Tool](/cookbook/guides/custom-memory-tool)** recipe.

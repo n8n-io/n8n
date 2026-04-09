@@ -1,1 +1,0 @@
-{"version":3,"file":"overwrite.js","sourceRoot":"","sources":["overwrite.ts"],"names":[],"mappings":";AAAA;;GAEG","sourcesContent":["/**\n * Created by user on 2019/6/11.\n */\n\nexport type ITSOverwriteThisFunction<T extends any, F extends (...args: any[]) => any> =\n\t(this: T, ...args: Parameters<F>) => ReturnType<F>\n"]}

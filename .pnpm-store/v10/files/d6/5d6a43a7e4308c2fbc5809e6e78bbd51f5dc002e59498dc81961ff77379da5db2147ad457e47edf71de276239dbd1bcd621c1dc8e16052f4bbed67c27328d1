@@ -1,0 +1,40 @@
+{
+  "name": "detect-libc",
+  "version": "2.0.2",
+  "description": "Node.js module to detect the C standard library (libc) implementation family and version",
+  "main": "lib/detect-libc.js",
+  "files": [
+    "lib/",
+    "index.d.ts"
+  ],
+  "scripts": {
+    "test": "semistandard && nyc --reporter=lcov --check-coverage --branches=100 ava test/unit.js",
+    "bench": "node benchmark/detect-libc",
+    "bench:calls": "node benchmark/call-familySync.js && sleep 1 && node benchmark/call-isNonGlibcLinuxSync.js && sleep 1 && node benchmark/call-versionSync.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/lovell/detect-libc"
+  },
+  "keywords": [
+    "libc",
+    "glibc",
+    "musl"
+  ],
+  "author": "Lovell Fuller <npm@lovell.info>",
+  "contributors": [
+    "Niklas Salmoukas <niklas@salmoukas.com>",
+    "Vinícius Lourenço <vinyygamerlol@gmail.com>"
+  ],
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "ava": "^2.4.0",
+    "benchmark": "^2.1.4",
+    "nyc": "^15.1.0",
+    "proxyquire": "^2.1.3",
+    "semistandard": "^14.2.3"
+  },
+  "engines": {
+    "node": ">=8"
+  }
+}

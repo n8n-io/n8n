@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["/mnt/vss/_work/1/s/sdk/core/ts-http-runtime/src/util/bytesEncoding.ts"],
+  "sourcesContent": ["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT License.\n\n/** The supported character encoding type */\nexport type EncodingType = \"utf-8\" | \"base64\" | \"base64url\" | \"hex\";\n\n/**\n * The helper that transforms bytes with specific character encoding into string\n * @param bytes - the uint8array bytes\n * @param format - the format we use to encode the byte\n * @returns a string of the encoded string\n */\nexport function uint8ArrayToString(bytes: Uint8Array, format: EncodingType): string {\n  return Buffer.from(bytes).toString(format);\n}\n\n/**\n * The helper that transforms string to specific character encoded bytes array.\n * @param value - the string to be converted\n * @param format - the format we use to decode the value\n * @returns a uint8array\n */\nexport function stringToUint8Array(value: string, format: EncodingType): Uint8Array {\n  return Buffer.from(value, format);\n}\n"],
+  "mappings": ";;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAYO,SAAS,mBAAmB,OAAmB,QAA8B;AAClF,SAAO,OAAO,KAAK,KAAK,EAAE,SAAS,MAAM;AAC3C;AAQO,SAAS,mBAAmB,OAAe,QAAkC;AAClF,SAAO,OAAO,KAAK,OAAO,MAAM;AAClC;",
+  "names": []
+}

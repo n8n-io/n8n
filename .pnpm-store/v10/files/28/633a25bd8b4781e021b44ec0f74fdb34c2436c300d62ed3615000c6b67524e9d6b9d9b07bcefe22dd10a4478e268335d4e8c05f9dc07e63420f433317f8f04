@@ -1,0 +1,34 @@
+import Debug from '../debug';
+import { type InternalConnectionOptions } from '../connection';
+import { ColMetadataToken, DoneProcToken, DoneToken, DoneInProcToken, ErrorMessageToken, InfoMessageToken, RowToken, type EnvChangeToken, LoginAckToken, ReturnStatusToken, OrderToken, FedAuthInfoToken, SSPIToken, ReturnValueToken, NBCRowToken, FeatureExtAckToken, Token } from './token';
+import { type ColumnMetadata } from './colmetadata-token-parser';
+export type ParserOptions = Pick<InternalConnectionOptions, 'useUTC' | 'lowerCaseGuids' | 'tdsVersion' | 'useColumnNames' | 'columnNameReplacer' | 'camelCaseColumns'>;
+declare class Parser {
+    debug: Debug;
+    colMetadata: ColumnMetadata[];
+    options: ParserOptions;
+    iterator: AsyncIterator<Buffer, any, undefined> | Iterator<Buffer, any, undefined>;
+    buffer: Buffer;
+    position: number;
+    static parseTokens(iterable: AsyncIterable<Buffer> | Iterable<Buffer>, debug: Debug, options: ParserOptions, colMetadata?: ColumnMetadata[]): AsyncGenerator<Token | undefined, void, unknown>;
+    readToken(type: number): Token | undefined | Promise<Token | undefined>;
+    readFeatureExtAckToken(): FeatureExtAckToken | Promise<FeatureExtAckToken>;
+    readNbcRowToken(): Promise<NBCRowToken>;
+    readReturnValueToken(): Promise<ReturnValueToken>;
+    readColMetadataToken(): Promise<ColMetadataToken>;
+    readSSPIToken(): SSPIToken | Promise<SSPIToken>;
+    readFedAuthInfoToken(): FedAuthInfoToken | Promise<FedAuthInfoToken>;
+    readOrderToken(): OrderToken | Promise<OrderToken>;
+    readReturnStatusToken(): ReturnStatusToken | Promise<ReturnStatusToken>;
+    readLoginAckToken(): LoginAckToken | Promise<LoginAckToken>;
+    readEnvChangeToken(): EnvChangeToken | undefined | Promise<EnvChangeToken | undefined>;
+    readRowToken(): RowToken | Promise<RowToken>;
+    readInfoToken(): InfoMessageToken | Promise<InfoMessageToken>;
+    readErrorToken(): ErrorMessageToken | Promise<ErrorMessageToken>;
+    readDoneInProcToken(): DoneInProcToken | Promise<DoneInProcToken>;
+    readDoneProcToken(): DoneProcToken | Promise<DoneProcToken>;
+    readDoneToken(): DoneToken | Promise<DoneToken>;
+    constructor(iterable: AsyncIterable<Buffer> | Iterable<Buffer>, debug: Debug, options: ParserOptions);
+    waitForChunk(): Promise<void>;
+}
+export default Parser;

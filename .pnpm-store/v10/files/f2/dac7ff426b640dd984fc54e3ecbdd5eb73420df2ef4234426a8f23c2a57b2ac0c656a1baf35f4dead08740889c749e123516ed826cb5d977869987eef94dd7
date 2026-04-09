@@ -1,0 +1,135 @@
+{
+  "name": "@ibm-cloud/watsonx-ai",
+  "version": "1.7.10",
+  "description": "IBM watsonx.ai Node.js SDK",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/IBM/watsonx-ai-node-sdk.git"
+  },
+  "keywords": [
+    "ibm",
+    "watsonx",
+    "watsonx-ai"
+  ],
+  "author": "IBM Corp.",
+  "scripts": {
+    "clean": "rm -rf node_modules",
+    "eslint:fix": "eslint . --fix",
+    "eslint:check": "eslint . --cache",
+    "lint": "npm run eslint:check",
+    "lint-fix": "npm run eslint:fix",
+    "format": "prettier --config .prettierrc.js --write \"src\" \"scripts\" \"test\"",
+    "build": "./scripts/build",
+    "preversion": "rm -rf examples/node_modules",
+    "version": "node scripts/utils/check-version.cjs && git add src/version.ts",
+    "postversion": "publisher --no-checks --dry-run",
+    "local-publish": "npm run build && command -v yalc >/dev/null 2>&1 || npm install -g yalc && (cd dist/ && yalc publish)",
+    "generate-types-reexports": "node scripts/utils/generate-types-reexports.cjs",
+    "install-package-regression": "npm run local-publish && cd ./test/langchain && npm run test-install",
+    "install-package-examples": "npm run local-publish && cd ./examples && npm run test-install",
+    "jest": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" jest --",
+    "test": "npm run build && npm run lint && jest",
+    "test-all": "npm run build && npm run lint && jest test/",
+    "test-unit": "npm run build && npm run lint && jest test/unit/",
+    "test-integration": "npm run build && jest test/integration/",
+    "test-examples": "npm run local-publish && cd ./examples && npm run test-all",
+    "test-examples-sdk": "npm run local-publish && cd ./examples && npm run test-sdk",
+    "test-examples-langchain": "npm run local-publish && cd ./examples && npm run test-langchain",
+    "test-regression": "./scripts/tests/run-regression-tests.sh",
+    "test-ilab": "npm run build && jest test/integration/watsonx-ai-ml-ilab.vml_v1.test.js --testPathIgnorePatterns=''",
+    "test-lora": "npm run build && jest test/integration/watsonx-ai-ml-lora_qlora.vml_v1.test.js --testPathIgnorePatterns=''",
+    "check-packages": "installed-check -e -d -v",
+    "all": "npm run test-unit && npm run lint",
+    "typedoc": "typedoc",
+    "typedoc-merge": "typedoc --entryPointStrategy merge",
+    "update-copyrights": "node ./scripts/utils/update-copyrights.cjs"
+  },
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@types/node": "^18.0.0",
+    "extend": "3.0.2",
+    "form-data": "^4.0.4",
+    "ibm-cloud-sdk-core": "^5.4.5",
+    "ts-node": "^10.9.2"
+  },
+  "homepage": "https://github.com/IBM/watsonx-ai-node-sdk#readme",
+  "directories": {
+    "example": "examples",
+    "lib": "lib",
+    "test": "test",
+    "helpers": "helpers"
+  },
+  "files": [
+    "**/*"
+  ],
+  "main": "./index.js",
+  "module": "./index.mjs",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "require": {
+        "types": "./index.d.ts",
+        "default": "./index.js"
+      },
+      "types": "./index.d.mts",
+      "default": "./index.mjs"
+    },
+    "./vml_v1.mjs": {
+      "default": "./vml_v1.mjs",
+      "types": "./vml_v1.d.mts"
+    },
+    "./vml_v1.js": {
+      "default": "./vml_v1.js",
+      "types": "./vml_v1.d.ts"
+    },
+    "./dist/watsonx-ai-ml/vml_v1.js": {
+      "types": "./vml_v1.d.js",
+      "default": "./vml_v1.js"
+    },
+    "./gateway": {
+      "import": "./gateway/index.mjs",
+      "require": "./gateway/index.js",
+      "types": "./gateway/index.d.ts"
+    },
+    "./gateway/*.mjs": {
+      "default": "./gateway/index.mjs",
+      "types": "./gateway/index.d.mts"
+    },
+    "./gateway/*.js": {
+      "default": "./gateway/index.js",
+      "types": "./gateway/index.d.ts"
+    },
+    "./base": {
+      "import": "./base/index.mjs",
+      "require": "./base/index.js",
+      "types": "./base/index.d.ts"
+    },
+    "./base/*.mjs": {
+      "default": "./base/index.mjs",
+      "types": "./base/index.d.mts"
+    },
+    "./base/*.js": {
+      "default": "./base/index.js",
+      "types": "./base/index.d.ts"
+    },
+    "./authentication": {
+      "import": "./authentication/index.mjs",
+      "require": "./authentication/index.js",
+      "types": "./authentication/index.d.ts"
+    },
+    "./authentication/*.mjs": {
+      "default": "./authentication/index.mjs",
+      "types": "./authentication/index.d.mts"
+    },
+    "./authentication/*.js": {
+      "default": "./authentication/index.js",
+      "types": "./authentication/index.d.ts"
+    }
+  }
+}

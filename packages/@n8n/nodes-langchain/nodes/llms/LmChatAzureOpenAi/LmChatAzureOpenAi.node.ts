@@ -1,5 +1,5 @@
 import { AzureChatOpenAI } from '@langchain/openai';
-import { getProxyAgent, makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
+import { /* getProxyAgent, */ makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
 import {
 	NodeOperationError,
 	NodeConnectionTypes,
@@ -116,12 +116,12 @@ export class LmChatAzureOpenAi implements INodeType {
 				maxRetries: options.maxRetries ?? 2,
 				callbacks: [new N8nLlmTracing(this)],
 				configuration: {
-					fetchOptions: {
-						dispatcher: getProxyAgent(undefined, {
-							headersTimeout: timeout,
-							bodyTimeout: timeout,
-						}),
-					},
+					// fetchOptions: {
+					// 	dispatcher: getProxyAgent(undefined, {
+					// 		headersTimeout: timeout,
+					// 		bodyTimeout: timeout,
+					// 	}),
+					// },
 				},
 				modelKwargs: options.responseFormat
 					? {

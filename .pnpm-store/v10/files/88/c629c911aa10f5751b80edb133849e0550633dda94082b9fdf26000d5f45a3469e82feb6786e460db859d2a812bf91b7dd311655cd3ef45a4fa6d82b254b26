@@ -1,0 +1,54 @@
+{
+  "name": "@huggingface/jinja",
+  "version": "0.5.6",
+  "description": "A minimalistic JavaScript implementation of the Jinja templating engine, specifically designed for parsing and rendering ML chat templates.",
+  "keywords": [
+    "face",
+    "hugging",
+    "huggingface",
+    "jinja",
+    "templates"
+  ],
+  "license": "MIT",
+  "author": "Hugging Face",
+  "repository": "https://github.com/huggingface/huggingface.js.git",
+  "source": "src/index.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "src",
+    "tsconfig.json"
+  ],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@huggingface/transformers": "^3.0.0",
+    "typescript": "^5.3.2",
+    "@huggingface/hub": "^2.10.5"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "lint": "eslint --quiet --fix --ext .cjs,.ts .",
+    "lint:check": "eslint --ext .cjs,.ts .",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "build": "tsup src/index.ts --format cjs,esm --clean && tsc --emitDeclarationOnly --declaration",
+    "test": "vitest run",
+    "test:browser": "vitest run --browser.name=chrome --browser.headless",
+    "check": "tsc"
+  }
+}

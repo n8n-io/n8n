@@ -1,0 +1,81 @@
+{
+    "name": "css-select",
+    "version": "5.2.2",
+    "description": "a CSS selector compiler/engine",
+    "author": "Felix Boehm <me@feedic.com>",
+    "funding": {
+        "url": "https://github.com/sponsors/fb55"
+    },
+    "keywords": [
+        "css",
+        "selector",
+        "sizzle"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "git://github.com/fb55/css-select.git"
+    },
+    "main": "lib/index.js",
+    "types": "lib/index.d.ts",
+    "module": "lib/esm/index.js",
+    "exports": {
+        "require": "./lib/index.js",
+        "import": "./lib/esm/index.js"
+    },
+    "files": [
+        "lib"
+    ],
+    "dependencies": {
+        "boolbase": "^1.0.0",
+        "css-what": "^6.1.0",
+        "domhandler": "^5.0.2",
+        "domutils": "^3.0.1",
+        "nth-check": "^2.0.1"
+    },
+    "devDependencies": {
+        "@types/boolbase": "^1.0.1",
+        "@types/jest": "^27.4.1",
+        "@types/node": "^17.0.29",
+        "@typescript-eslint/eslint-plugin": "^5.21.0",
+        "@typescript-eslint/parser": "^5.21.0",
+        "cheerio-soupselect": "^0.1.1",
+        "eslint": "^8.14.0",
+        "eslint-config-prettier": "^8.5.0",
+        "htmlparser2": "^8.0.0",
+        "jest": "^27.5.1",
+        "prettier": "^2.6.2",
+        "ts-jest": "^27.1.4",
+        "typescript": "^4.6.3"
+    },
+    "scripts": {
+        "test": "npm run test:jest && npm run lint",
+        "test:jest": "jest",
+        "lint": "npm run lint:es && npm run lint:prettier",
+        "lint:es": "eslint src",
+        "lint:prettier": "npm run prettier -- --check",
+        "format": "npm run format:es && npm run format:prettier",
+        "format:es": "npm run lint:es -- --fix",
+        "format:prettier": "npm run prettier -- --write",
+        "prettier": "prettier '**/*.{ts,md,json,yml}'",
+        "build": "npm run build:cjs && npm run build:esm",
+        "build:cjs": "tsc --sourceRoot https://raw.githubusercontent.com/fb55/css-select/$(git rev-parse HEAD)/src/",
+        "build:esm": "npm run build:cjs -- --module esnext --target es2019 --outDir lib/esm && echo '{\"type\":\"module\"}' > lib/esm/package.json",
+        "prepare": "npm run build"
+    },
+    "license": "BSD-2-Clause",
+    "prettier": {
+        "tabWidth": 4,
+        "proseWrap": "always"
+    },
+    "jest": {
+        "preset": "ts-jest",
+        "testEnvironment": "node",
+        "coverageProvider": "v8",
+        "moduleNameMapper": {
+            "^(.*)\\.js$": "$1"
+        },
+        "testMatch": [
+            "<rootDir>/test/*.ts"
+        ]
+    }
+}

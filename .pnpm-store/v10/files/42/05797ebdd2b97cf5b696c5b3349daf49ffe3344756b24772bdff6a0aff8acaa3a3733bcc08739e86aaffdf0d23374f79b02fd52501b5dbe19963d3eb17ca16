@@ -1,0 +1,41 @@
+{
+  "name": "snappyjs",
+  "version": "0.7.0",
+  "description": "JavaScript implementation of Google's Snappy compression library",
+  "repository": "zhipeng-jia/snappyjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "standard && tap test.js"
+  },
+  "author": "Zhipeng Jia",
+  "license": "MIT",
+  "devDependencies": {
+    "benchmark": "~2.1.4",
+    "bluebird": "~3.5.0",
+    "browserify": "~14.4.0",
+    "licensify": "~3.1.3",
+    "microtime": "~3.0.0",
+    "request-promise": "~4.2.1",
+    "snappy": "~6.3.5",
+    "standard": "^17.0.0",
+    "tap": "^15.0.9",
+    "uglifyify": "^5.0.2"
+  },
+  "keywords": [
+    "snappy"
+  ],
+  "standard": {
+    "ignore": [
+      "/dist/snappyjs.js",
+      "/dist/snappyjs.min.js"
+    ],
+    "globals": [
+      "FileReader",
+      "Benchmark",
+      "SnappyJS"
+    ]
+  },
+  "tap": {
+    "check-coverage": false
+  }
+}

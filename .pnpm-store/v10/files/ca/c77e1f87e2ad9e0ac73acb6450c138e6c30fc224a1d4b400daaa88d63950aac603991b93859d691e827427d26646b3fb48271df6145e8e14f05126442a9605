@@ -1,0 +1,106 @@
+{
+  "name": "html-entities",
+  "version": "2.6.0",
+  "description": "Fastest HTML entities encode/decode library.",
+  "keywords": [
+    "html",
+    "html entities",
+    "html entities encode",
+    "html entities decode",
+    "entities",
+    "entities encode",
+    "entities decode"
+  ],
+  "author": {
+    "name": "Marat Dulin",
+    "email": "mdevils@yandex.ru"
+  },
+  "funding": [
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/mdevils"
+    },
+    {
+      "type": "patreon",
+      "url": "https://patreon.com/mdevils"
+    }
+  ],
+  "devDependencies": {
+    "@commitlint/cli": "^17.6.6",
+    "@commitlint/config-conventional": "^17.6.6",
+    "@types/benchmark": "^2.1.0",
+    "@types/he": "^1.1.1",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.13.14",
+    "benchmark": "^2.1.4",
+    "entities": "^6.0.0",
+    "eslint": "^9.23.0",
+    "eslint-config-prettier": "^10.1.1",
+    "eslint-plugin-import": "^2.31.0",
+    "flowgen": "^1.13.0",
+    "he": "^1.2.0",
+    "husky": "^4.3.6",
+    "prettier": "^3.5.3",
+    "standard-version": "^9.5.0",
+    "ts-jest": "^29.3.0",
+    "tshy": "^3.0.2",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2",
+    "typescript-eslint": "^8.28.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mdevils/html-entities.git"
+  },
+  "sideEffects": false,
+  "main": "./dist/commonjs/index.js",
+  "typings": "./dist/commonjs/index.d.ts",
+  "types": "./dist/commonjs/index.d.ts",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:dist": "npm run test:dist:commonjs && npm run test:dist:esm",
+    "test:dist:commonjs": "TEST_DIST=commonjs npm run test",
+    "test:dist:esm": "TEST_DIST=esm node --experimental-vm-modules node_modules/.bin/jest",
+    "benchmark": "tsx benchmark/benchmark",
+    "lint": "eslint src/**.ts",
+    "flow-type-gen": "flowgen --add-flow-header dist/esm/index.d.ts -o dist/commonjs/index.js.flow",
+    "remove-unused-declarations": "find dist -type f \\( -name '*.d.ts' ! -name index.d.ts \\) | xargs rm",
+    "build": "rm -Rf dist && tsc --noEmit && tshy && tsc --declaration --emitDeclarationOnly -p tsconfig.json && tsc --emitDeclarationOnly -p tsconfig.esm.json && npm run remove-unused-declarations && npm run flow-type-gen",
+    "prepublishOnly": "npm run build && npm run test && npm run test:dist",
+    "release": "standard-version"
+  },
+  "files": [
+    "dist",
+    "src",
+    "LICENSE"
+  ],
+  "husky": {
+    "hooks": {
+      "pre-commit": "npm run lint && npm run test"
+    }
+  },
+  "license": "MIT",
+  "type": "module",
+  "tshy": {
+    "exports": {
+      "./package.json": "./package.json",
+      ".": "./src/index.ts"
+    },
+    "selfLink": false
+  },
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/index.d.ts",
+        "default": "./dist/commonjs/index.js"
+      }
+    }
+  },
+  "module": "./dist/esm/index.js"
+}

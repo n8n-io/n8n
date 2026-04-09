@@ -1,0 +1,99 @@
+{
+  "name": "@sentry/vue",
+  "version": "10.46.0",
+  "description": "Official Sentry SDK for Vue.js",
+  "repository": "git://github.com/getsentry/sentry-javascript.git",
+  "homepage": "https://github.com/getsentry/sentry-javascript/tree/master/packages/vue",
+  "author": "Sentry",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "/build",
+    "/*.d.ts",
+    "/*.d.ts.map"
+  ],
+  "main": "build/cjs/index.js",
+  "module": "build/esm/index.js",
+  "types": "build/types/index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": {
+        "types": "./build/types/index.d.ts",
+        "default": "./build/esm/index.js"
+      },
+      "require": {
+        "types": "./build/types/index.d.ts",
+        "default": "./build/cjs/index.js"
+      }
+    },
+    "./tanstackrouter": {
+      "import": {
+        "types": "./tanstackrouter.d.ts",
+        "default": "./build/esm/tanstackrouter.js"
+      },
+      "require": {
+        "types": "./tanstackrouter.d.ts",
+        "default": "./build/cjs/tanstackrouter.js"
+      }
+    }
+  },
+  "typesVersions": {
+    "<5.0": {
+      "build/types/index.d.ts": [
+        "build/types-ts3.8/index.d.ts"
+      ]
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@sentry/browser": "10.46.0",
+    "@sentry/core": "10.46.0"
+  },
+  "peerDependencies": {
+    "@tanstack/vue-router": "^1.64.0",
+    "pinia": "2.x || 3.x",
+    "vue": "2.x || 3.x"
+  },
+  "peerDependenciesMeta": {
+    "@tanstack/vue-router": {
+      "optional": true
+    },
+    "pinia": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@tanstack/vue-router": "^1.64.0",
+    "vue": "~3.2.41"
+  },
+  "scripts": {
+    "build": "run-p build:transpile build:types",
+    "build:dev": "run-p build:transpile build:types",
+    "build:transpile": "rollup -c rollup.npm.config.mjs",
+    "build:types": "run-s build:types:core build:types:router build:types:downlevel",
+    "build:types:core": "tsc -p tsconfig.types.json",
+    "build:types:router": "tsc -p tsconfig.router-types.json",
+    "build:types:downlevel": "yarn downlevel-dts build/types build/types-ts3.8 --to ts3.8",
+    "build:watch": "run-p build:transpile:watch",
+    "build:dev:watch": "run-p build:transpile:watch",
+    "build:transpile:watch": "rollup -c rollup.npm.config.mjs --watch",
+    "build:tarball": "npm pack",
+    "circularDepCheck": "madge --circular src/index.ts && madge --circular src/tanstackrouter.ts",
+    "clean": "rimraf build coverage sentry-vue-*.tgz",
+    "lint:fix": "OXLINT_TSGOLINT_DANGEROUSLY_SUPPRESS_PROGRAM_DIAGNOSTICS=true oxlint . --fix --type-aware",
+    "lint": "OXLINT_TSGOLINT_DANGEROUSLY_SUPPRESS_PROGRAM_DIAGNOSTICS=true oxlint . --type-aware",
+    "lint:es-compatibility": "es-check es2020 ./build/cjs/*.js && es-check es2020 ./build/esm/*.js --module",
+    "test": "vitest run",
+    "test:watch": "vitest --watch",
+    "yalc:publish": "yalc publish --push --sig"
+  },
+  "volta": {
+    "extends": "../../package.json"
+  },
+  "sideEffects": false
+}

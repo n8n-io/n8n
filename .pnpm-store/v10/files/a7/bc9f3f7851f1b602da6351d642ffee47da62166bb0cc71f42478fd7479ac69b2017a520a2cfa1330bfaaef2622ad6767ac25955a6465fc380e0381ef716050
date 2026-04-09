@@ -1,0 +1,40 @@
+{
+  "name": "jest-mock-extended",
+  "version": "3.0.7",
+  "homepage": "https://github.com/marchaos/jest-mock-extended",
+  "description": "Type safe mocking extensions for jest",
+  "files": [
+    "lib/**/*"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/marchaos/jest-mock-extended.git"
+  },
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "scripts": {
+    "prepare": "npm run build",
+    "clean": "rimraf coverage lib",
+    "test": "jest",
+    "build": "tsc",
+    "coveralls": "jest --coverage && cat ./coverage/lcov.info | coveralls"
+  },
+  "dependencies": {
+    "ts-essentials": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^27.5.0",
+    "coveralls": "^3.1.1",
+    "jest": "^29.5.0",
+    "prettier": "^2.3.2",
+    "rimraf": "^3.0.2",
+    "ts-jest": "^29.0.5",
+    "typescript": "^5.0.2"
+  },
+  "peerDependencies": {
+    "jest": "^24.0.0 || ^25.0.0 || ^26.0.0 || ^27.0.0 || ^28.0.0 || ^29.0.0",
+    "typescript": "^3.0.0 || ^4.0.0 || ^5.0.0"
+  },
+  "author": "Marc McIntyre <marchaos@gmail.com>",
+  "license": "MIT"
+}

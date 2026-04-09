@@ -1,0 +1,10 @@
+export * from "./CognitoIdentityClient";
+export * from "./CognitoIdentity";
+export { ClientInputEndpointParameters } from "./endpoint/EndpointParameters";
+export { RuntimeExtension } from "./runtimeExtensions";
+export { CognitoIdentityExtensionConfiguration } from "./extensionConfiguration";
+export * from "./commands";
+export * from "./schemas/schemas_0";
+export * from "./models/errors";
+export * from "./models/models_0";
+export { CognitoIdentityServiceException } from "./models/CognitoIdentityServiceException";

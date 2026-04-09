@@ -1,0 +1,38 @@
+{
+    "name": "@types/cookie-parser",
+    "version": "1.4.10",
+    "description": "TypeScript definitions for cookie-parser",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/cookie-parser",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Santi Albo",
+            "githubUsername": "santialbo",
+            "url": "https://github.com/santialbo"
+        },
+        {
+            "name": "BendingBender",
+            "githubUsername": "BendingBender",
+            "url": "https://github.com/BendingBender"
+        },
+        {
+            "name": "Sebastian Beltran",
+            "githubUsername": "bjohansebas",
+            "url": "https://github.com/bjohansebas"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/cookie-parser"
+    },
+    "scripts": {},
+    "dependencies": {},
+    "peerDependencies": {
+        "@types/express": "*"
+    },
+    "typesPublisherContentHash": "2084e147e6529a1c84dc4645ec42b321c2b0165db9aac73e158e4bc9950ffe35",
+    "typeScriptVersion": "5.2"
+}

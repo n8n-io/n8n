@@ -1,0 +1,34 @@
+{
+  "name": "isomorphic-ws",
+  "version": "4.0.1",
+  "description": "Isomorphic implementation of WebSocket",
+  "main": "node.js",
+  "browser": "browser.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/heineiuo/isomorphic-ws.git"
+  },
+  "keywords": [
+    "browser",
+    "browsers",
+    "isomorphic",
+    "node",
+    "websocket",
+    "ws"
+  ],
+  "author": "@heineiuo",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/heineiuo/isomorphic-ws/issues"
+  },
+  "homepage": "https://github.com/heineiuo/isomorphic-ws#readme",
+  "peerDependencies": {
+    "ws": "*"
+  },
+  "files": [
+    "index.d.ts",
+    "node.js",
+    "browser.js",
+    "README.md"
+  ]
+}

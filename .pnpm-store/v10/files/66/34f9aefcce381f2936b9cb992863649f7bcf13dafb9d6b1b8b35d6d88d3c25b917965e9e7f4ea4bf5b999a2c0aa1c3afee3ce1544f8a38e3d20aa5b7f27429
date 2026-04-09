@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["/mnt/vss/_work/1/s/sdk/core/ts-http-runtime/src/util/uuidUtils.ts"],
+  "sourcesContent": ["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT License.\n\n/**\n * Generated Universally Unique Identifier\n *\n * @returns RFC4122 v4 UUID.\n */\nexport function randomUUID(): string {\n  return crypto.randomUUID();\n}\n"],
+  "mappings": ";;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAQO,SAAS,aAAqB;AACnC,SAAO,OAAO,WAAW;AAC3B;",
+  "names": []
+}

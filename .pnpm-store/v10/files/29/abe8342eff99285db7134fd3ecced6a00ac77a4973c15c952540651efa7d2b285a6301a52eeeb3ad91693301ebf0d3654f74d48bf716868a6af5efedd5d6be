@@ -1,0 +1,32 @@
+{
+	"name": "@iconify-json/mdi",
+	"description": "Material Design Icons icon set in Iconify JSON format",
+	"version": "1.2.3",
+	"main": "index.js",
+	"module": "index.mjs",
+	"types": "index.d.ts",
+	"homepage": "https://icon-sets.iconify.design/mdi/",
+	"bugs": "https://github.com/iconify/icon-sets/issues",
+	"license": "Apache-2.0",
+	"exports": {
+		"./*": "./*",
+		".": {
+			"types": "./index.d.ts",
+			"require": "./index.js",
+			"import": "./index.mjs"
+		},
+		"./icons.json": "./icons.json",
+		"./info.json": "./info.json",
+		"./metadata.json": "./metadata.json",
+		"./chars.json": "./chars.json"
+	},
+	"iconSet": {
+		"icons": "icons.json",
+		"info": "info.json",
+		"metadata": "metadata.json",
+		"chars": "chars.json"
+	},
+	"dependencies": {
+		"@iconify/types": "*"
+	}
+}

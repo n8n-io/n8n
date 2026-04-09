@@ -1,0 +1,51 @@
+{
+  "name": "nopt",
+  "version": "7.2.1",
+  "description": "Option parsing for Node, supporting types, shorthands, etc. Used by npm.",
+  "author": "GitHub Inc.",
+  "main": "lib/nopt.js",
+  "scripts": {
+    "test": "tap",
+    "lint": "eslint \"**/*.{js,cjs,ts,mjs,jsx,tsx}\"",
+    "postlint": "template-oss-check",
+    "template-oss-apply": "template-oss-apply --force",
+    "lintfix": "npm run lint -- --fix",
+    "snap": "tap",
+    "posttest": "npm run lint"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/npm/nopt.git"
+  },
+  "bin": {
+    "nopt": "bin/nopt.js"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "abbrev": "^2.0.0"
+  },
+  "devDependencies": {
+    "@npmcli/eslint-config": "^4.0.0",
+    "@npmcli/template-oss": "4.22.0",
+    "tap": "^16.3.0"
+  },
+  "tap": {
+    "nyc-arg": [
+      "--exclude",
+      "tap-snapshots/**"
+    ]
+  },
+  "files": [
+    "bin/",
+    "lib/"
+  ],
+  "engines": {
+    "node": "^14.17.0 || ^16.13.0 || >=18.0.0"
+  },
+  "templateOSS": {
+    "//@npmcli/template-oss": "This file is partially managed by @npmcli/template-oss. Edits may be overwritten.",
+    "windowsCI": false,
+    "version": "4.22.0",
+    "publish": true
+  }
+}

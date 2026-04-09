@@ -1,1 +1,0 @@
-{"version":3,"file":"inspect.js","sourceRoot":"","sources":["../../../src/util/inspect.ts"],"names":[],"mappings":";AAAA,uCAAuC;AACvC,kCAAkC;;;AAElC,yCAAoC;AAEvB,QAAA,MAAM,GAAG,mBAAO,CAAC,MAAM,CAAC","sourcesContent":["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT License.\n\nimport { inspect } from \"node:util\";\n\nexport const custom = inspect.custom;\n"]}

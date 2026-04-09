@@ -1,0 +1,13 @@
+export declare const LINE_FEED = "\n";
+export declare const DECLARATION_TYPE_EXT = ".d.ts";
+export declare const JS_JSX_EXTENSIONS: string[];
+export declare const TS_TSX_REGEX: RegExp;
+export declare const JS_JSX_REGEX: RegExp;
+export declare const TS_TRANSFORM_PATTERN = "^.+\\.tsx?$";
+export declare const ESM_TS_TRANSFORM_PATTERN = "^.+\\.m?tsx?$";
+export declare const TS_JS_TRANSFORM_PATTERN = "^.+\\.[tj]sx?$";
+export declare const ESM_TS_JS_TRANSFORM_PATTERN = "^.+\\.m?[tj]sx?$";
+export declare const JS_TRANSFORM_PATTERN = "^.+\\.jsx?$";
+export declare const ESM_JS_TRANSFORM_PATTERN = "^.+\\.m?jsx?$";
+export declare const TS_EXT_TO_TREAT_AS_ESM: string[];
+export declare const JS_EXT_TO_TREAT_AS_ESM: string[];

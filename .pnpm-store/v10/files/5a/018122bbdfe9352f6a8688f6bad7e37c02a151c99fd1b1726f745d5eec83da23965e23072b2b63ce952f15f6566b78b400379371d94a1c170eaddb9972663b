@@ -1,0 +1,59 @@
+{
+  "name": "@aws-sdk/credential-provider-cognito-identity",
+  "version": "3.972.19",
+  "scripts": {
+    "build": "concurrently 'yarn:build:types' 'yarn:build:es' && yarn build:cjs",
+    "build:cjs": "node ../../scripts/compilation/inline credential-provider-cognito-identity",
+    "build:es": "tsc -p tsconfig.es.json",
+    "build:include:deps": "yarn g:turbo run build -F=\"$npm_package_name\"",
+    "build:types": "tsc -p tsconfig.types.json",
+    "build:types:downlevel": "downlevel-dts dist-types dist-types/ts3.4",
+    "clean": "premove dist-cjs dist-es dist-types tsconfig.cjs.tsbuildinfo tsconfig.es.tsbuildinfo tsconfig.types.tsbuildinfo",
+    "test": "yarn g:vitest run && yarn test:browser",
+    "test:watch": "yarn g:vitest watch",
+    "test:browser": "yarn g:vitest run -c vitest.config.browser.mts",
+    "test:browser:watch": "yarn g:vitest watch -c vitest.config.browser.mts"
+  },
+  "main": "./dist-cjs/index.js",
+  "module": "./dist-es/index.js",
+  "types": "./dist-types/index.d.ts",
+  "sideEffects": false,
+  "author": {
+    "name": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@aws-sdk/nested-clients": "^3.996.16",
+    "@aws-sdk/types": "^3.973.6",
+    "@smithy/property-provider": "^4.2.12",
+    "@smithy/types": "^4.13.1",
+    "tslib": "^2.6.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "typesVersions": {
+    "<4.5": {
+      "dist-types/*": [
+        "dist-types/ts3.4/*"
+      ]
+    }
+  },
+  "files": [
+    "dist-*/**"
+  ],
+  "homepage": "https://github.com/aws/aws-sdk-js-v3/tree/main/packages-internal/credential-provider-cognito-identity",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aws/aws-sdk-js-v3.git",
+    "directory": "packages-internal/credential-provider-cognito-identity"
+  },
+  "devDependencies": {
+    "@tsconfig/recommended": "1.0.1",
+    "concurrently": "7.0.0",
+    "downlevel-dts": "0.10.1",
+    "premove": "4.0.0",
+    "typescript": "~5.8.3"
+  }
+}

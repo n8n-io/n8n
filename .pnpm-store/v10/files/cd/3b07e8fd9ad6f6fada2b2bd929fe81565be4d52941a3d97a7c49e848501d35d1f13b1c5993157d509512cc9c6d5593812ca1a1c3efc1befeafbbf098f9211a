@@ -1,7 +1,0 @@
-{
-  "name": "web-streams-polyfill-es6",
-  "main": "../dist/polyfill.es6",
-  "browser": "../dist/polyfill.es6.min.js",
-  "module": "../dist/polyfill.es6.mjs",
-  "types": "../dist/types/polyfill.d.ts"
-}

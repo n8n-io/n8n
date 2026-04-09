@@ -1,0 +1,14 @@
+/coverage
+/target
+/package
+/instrument
+/build
+/test
+/doc/readme
+/gulpfile.*
+/gulp
+/test/spec.js
+*.js.map
+*.log
+*.bak
+*.tgz

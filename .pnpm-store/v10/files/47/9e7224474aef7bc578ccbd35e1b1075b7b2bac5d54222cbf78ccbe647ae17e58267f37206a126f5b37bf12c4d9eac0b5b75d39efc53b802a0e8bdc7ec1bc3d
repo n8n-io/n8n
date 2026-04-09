@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/validation-errors/default.js"],
+  "sourcesContent": ["import chalk from 'chalk';\nimport BaseValidationError from './base';\n\nexport default class DefaultValidationError extends BaseValidationError {\n  print() {\n    const { keyword, message } = this.options;\n    const output = [chalk`{red {bold ${keyword.toUpperCase()}} ${message}}\\n`];\n\n    return output.concat(\n      this.getCodeFrame(chalk`\uD83D\uDC48\uD83C\uDFFD  {magentaBright ${keyword}} ${message}`)\n    );\n  }\n\n  getError() {\n    const { keyword, message } = this.options;\n\n    return {\n      ...this.getLocation(),\n      error: `${this.getDecoratedPath()}: ${keyword} ${message}`,\n      path: this.instancePath,\n    };\n  }\n}\n"],
+  "mappings": ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA,mBAAkB;AAClB,kBAAgC;AAEhC,MAAO,+BAA6C,oBAAoB;AAAA,EACtE,QAAQ;AACN,UAAM,EAAE,SAAS,YAAY,KAAK;AAClC,UAAM,SAAS,CAAC,kCAAmB,QAAQ,YAAY,MAAM,YAAY;AAEzE,WAAO,OAAO,OACZ,KAAK,aAAa,4CAA6B,YAAY,SAAS,CACtE;AAAA,EACF;AAAA,EAEA,WAAW;AACT,UAAM,EAAE,SAAS,YAAY,KAAK;AAElC,WAAO,iCACF,KAAK,YAAY,IADf;AAAA,MAEL,OAAO,GAAG,KAAK,iBAAiB,MAAM,WAAW;AAAA,MACjD,MAAM,KAAK;AAAA,IACb;AAAA,EACF;AACF;",
+  "names": []
+}

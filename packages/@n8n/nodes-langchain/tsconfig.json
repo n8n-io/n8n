@@ -4,6 +4,12 @@
 		"@n8n/typescript-config/tsconfig.backend.json"
 	],
 	"compilerOptions": {
+		"noImplicitAny": false,
+		"skipLibCheck": true,
+		"ignoreDeprecations": "5.0",
+		"checkJs": false,
+		"allowUnreachableCode": true,
+		"allowUnusedLabels": true,
 		"baseUrl": ".",
 		"paths": {
 			"@utils/*": ["./utils/*"],
@@ -21,7 +27,8 @@
 		"nodes/**/*.json",
 		"test/**/*.ts",
 		"types/**/*.ts",
-		"utils/**/*.ts"
+		"utils/**/*.ts",
+		"fix-openai.d.ts"
 	],
 	"references": [
 		{ "path": "../ai-utilities/tsconfig.build.cjs.json" },

@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["/mnt/vss/_work/1/s/sdk/core/ts-http-runtime/src/policies/proxyPolicy.common.ts"],
+  "sourcesContent": ["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT License.\n\nimport type { ProxySettings } from \"../interfaces.js\";\nimport type { PipelinePolicy } from \"../pipeline.js\";\n\nexport const proxyPolicyName = \"proxyPolicy\";\nconst errorMessage = \"proxyPolicy is not supported in browser environment\";\n\nexport function getDefaultProxySettings(_proxyUrl?: string): ProxySettings | undefined {\n  throw new Error(errorMessage);\n}\n\n/**\n * proxyPolicy is not supported in the browser and attempting\n * to use it will raise an error.\n */\nexport function proxyPolicy(\n  _proxySettings?: ProxySettings,\n  _options?: {\n    customNoProxyList?: string[];\n  },\n): PipelinePolicy {\n  throw new Error(errorMessage);\n}\n\n/**\n * A function to reset the cached agents.\n * proxyPolicy is not supported in the browser and attempting\n * to use it will raise an error.\n * @internal\n */\nexport function resetCachedProxyAgents(): void {\n  throw new Error(errorMessage);\n}\n"],
+  "mappings": ";;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAMO,MAAM,kBAAkB;AAC/B,MAAM,eAAe;AAEd,SAAS,wBAAwB,WAA+C;AACrF,QAAM,IAAI,MAAM,YAAY;AAC9B;AAMO,SAAS,YACd,gBACA,UAGgB;AAChB,QAAM,IAAI,MAAM,YAAY;AAC9B;AAQO,SAAS,yBAA+B;AAC7C,QAAM,IAAI,MAAM,YAAY;AAC9B;",
+  "names": []
+}

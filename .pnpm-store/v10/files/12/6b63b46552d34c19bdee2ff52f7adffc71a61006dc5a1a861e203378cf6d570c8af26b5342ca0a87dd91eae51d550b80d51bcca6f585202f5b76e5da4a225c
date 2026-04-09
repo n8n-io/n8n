@@ -1,5 +1,0 @@
-declare const versions: readonly ["4.7", "4.8", "4.9", "5.0", "5.1", "5.2", "5.3", "5.4"];
-type Versions = typeof versions extends ArrayLike<infer U> ? U : never;
-export declare const typescriptVersionIsAtLeast: Record<Versions, boolean>;
-export {};
-//# sourceMappingURL=version-check.d.ts.map

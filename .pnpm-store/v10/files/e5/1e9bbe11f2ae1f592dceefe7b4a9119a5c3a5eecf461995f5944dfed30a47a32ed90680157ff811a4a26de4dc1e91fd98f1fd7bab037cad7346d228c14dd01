@@ -1,0 +1,38 @@
+{
+  "name": "@vueuse/metadata",
+  "type": "module",
+  "version": "14.2.1",
+  "description": "Metadata for VueUse functions",
+  "author": "Anthony Fu <https://github.com/antfu>",
+  "license": "MIT",
+  "funding": "https://github.com/sponsors/antfu",
+  "homepage": "https://github.com/vueuse/vueuse/tree/main/packages/metadata#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vueuse/vueuse.git",
+    "directory": "packages/metadata"
+  },
+  "bugs": {
+    "url": "https://github.com/vueuse/vueuse/issues"
+  },
+  "keywords": [
+    "vue",
+    "vue-use"
+  ],
+  "sideEffects": false,
+  "exports": {
+    ".": "./dist/index.js",
+    "./*": "./dist/*"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "update": "tsx scripts/update.ts",
+    "build": "tsdown",
+    "test:attw": "attw --pack --config-path ../../.attw.json ."
+  }
+}

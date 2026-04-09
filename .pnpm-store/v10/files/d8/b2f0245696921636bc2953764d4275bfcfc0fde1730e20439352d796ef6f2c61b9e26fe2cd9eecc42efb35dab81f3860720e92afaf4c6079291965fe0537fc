@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: ['master']
+  pull_request:
+    branches: ['master']
+
+permissions:
+  contents: read
+
+jobs:
+  unit-tests:
+    name: unit tests / node ${{ matrix.node-version }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [16.x, 18.x, 20.x, 22.x, 24.x]
+
+    steps:
+      - uses: actions/checkout@v6
+        name: checkout docker-modem
+        with:
+          path: 'docker-modem'
+
+      - name: setup node ${{ matrix.node-version }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: npm ci (docker-modem)
+        run: npm ci
+        working-directory: 'docker-modem'
+
+      - name: npm test (docker-modem)
+        run: npm test
+        working-directory: 'docker-modem'
+
+      - uses: actions/checkout@v6
+        name: checkout apocas/dockerode
+        with:
+          repository: 'apocas/dockerode'
+          fetch-depth: '1'
+          path: 'dockerode'
+
+      - name: npm ci (dockerode)
+        run: npm ci
+        working-directory: 'dockerode'
+
+      - name: link docker-modem in dockerode/node_modules
+        run: |
+          rm -rf ./dockerode/node_modules/docker-modem
+          cp -R ./docker-modem ./dockerode/node_modules/docker-modem
+
+      - name: provisioning
+        run: |
+          docker pull ubuntu
+
+      - name: npm test (dockerode)
+        run: npm test
+        working-directory: 'dockerode'
+

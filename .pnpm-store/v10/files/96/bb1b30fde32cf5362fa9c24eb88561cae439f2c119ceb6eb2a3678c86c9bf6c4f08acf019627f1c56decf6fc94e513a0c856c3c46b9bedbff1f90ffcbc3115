@@ -1,0 +1,47 @@
+{
+  "name": "psl",
+  "version": "1.11.0",
+  "description": "Domain name parser based on the Public Suffix List",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:lupomontero/psl.git"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/psl.mjs",
+      "require": "./dist/psl.cjs"
+    }
+  },
+  "types": "types/index.d.ts",
+  "scripts": {
+    "lint": "eslint .",
+    "test": "mocha test/*.spec.js",
+    "test:browserstack": "browserstack-node-sdk playwright test",
+    "watch": "mocha test/*.spec.js --watch",
+    "update-rules": "./scripts/update-rules.js",
+    "build": "vite build",
+    "postbuild": "ln -s ./psl.umd.cjs dist/psl.js && ln -s ./psl.umd.cjs dist/psl.min.js",
+    "changelog": "git log $(git describe --tags --abbrev=0)..HEAD --oneline --format=\"%h %s (%an <%ae>)\""
+  },
+  "keywords": [
+    "publicsuffix",
+    "publicsuffixlist"
+  ],
+  "author": "Lupo Montero <lupomontero@gmail.com> (https://lupomontero.com/)",
+  "license": "MIT",
+  "dependencies": {
+    "punycode": "^2.3.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.15.0",
+    "@playwright/test": "^1.49.0",
+    "@types/eslint__js": "^8.42.3",
+    "browserstack-node-sdk": "^1.34.23",
+    "eslint": "^9.15.0",
+    "mocha": "^10.8.2",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.15.0",
+    "vite": "^5.4.11"
+  }
+}

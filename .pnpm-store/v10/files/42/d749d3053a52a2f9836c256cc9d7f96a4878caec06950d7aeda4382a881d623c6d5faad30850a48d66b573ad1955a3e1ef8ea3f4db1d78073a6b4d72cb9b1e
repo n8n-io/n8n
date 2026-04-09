@@ -1,0 +1,81 @@
+{
+  "name": "@ai-sdk/google",
+  "version": "3.0.53",
+  "license": "Apache-2.0",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist/**/*",
+    "docs/**/*",
+    "src",
+    "!src/**/*.test.ts",
+    "!src/**/*.test-d.ts",
+    "!src/**/__snapshots__",
+    "!src/**/__fixtures__",
+    "CHANGELOG.md",
+    "README.md",
+    "internal.d.ts"
+  ],
+  "directories": {
+    "doc": "./docs"
+  },
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./internal": {
+      "types": "./dist/internal/index.d.ts",
+      "import": "./dist/internal/index.mjs",
+      "module": "./dist/internal/index.mjs",
+      "require": "./dist/internal/index.js"
+    }
+  },
+  "dependencies": {
+    "@ai-sdk/provider-utils": "4.0.21",
+    "@ai-sdk/provider": "3.0.8"
+  },
+  "devDependencies": {
+    "@types/node": "20.17.24",
+    "tsup": "^8",
+    "typescript": "5.8.3",
+    "zod": "3.25.76",
+    "@ai-sdk/test-server": "1.0.3",
+    "@vercel/ai-tsconfig": "0.0.0"
+  },
+  "peerDependencies": {
+    "zod": "^3.25.76 || ^4.1.8"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://ai-sdk.dev/docs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vercel/ai.git"
+  },
+  "bugs": {
+    "url": "https://github.com/vercel/ai/issues"
+  },
+  "keywords": [
+    "ai"
+  ],
+  "scripts": {
+    "build": "pnpm clean && tsup --tsconfig tsconfig.build.json",
+    "build:watch": "pnpm clean && tsup --watch",
+    "clean": "del-cli dist docs *.tsbuildinfo",
+    "type-check": "tsc --build",
+    "test": "pnpm test:node && pnpm test:edge",
+    "test:update": "pnpm test:node -u",
+    "test:watch": "vitest --config vitest.node.config.js",
+    "test:edge": "vitest --config vitest.edge.config.js --run",
+    "test:node": "vitest --config vitest.node.config.js --run"
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "name": "type-detect",
+  "version": "4.1.0",
+  "description": "Improved typeof detection for node.js and the browser.",
+  "keywords": [
+    "type",
+    "typeof",
+    "types"
+  ],
+  "license": "MIT",
+  "author": "Jake Luer <jake@alogicalparadox.com> (http://alogicalparadox.com)",
+  "contributors": [
+    "Keith Cirkel (https://github.com/keithamus)",
+    "David Losert (https://github.com/davelosert)",
+    "Aleksey Shvayka (https://github.com/shvaikalesh)",
+    "Lucas Fernandes da Costa (https://github.com/lucasfcosta)",
+    "Grant Snodgrass (https://github.com/meeber)",
+    "Jeremy Tice (https://github.com/jetpacmonkey)",
+    "Edward Betts (https://github.com/EdwardBetts)",
+    "dvlsg (https://github.com/dvlsg)",
+    "Amila Welihinda (https://github.com/amilajack)",
+    "Jake Champion (https://github.com/JakeChampion)",
+    "Miroslav Bajtoš (https://github.com/bajtos)"
+  ],
+  "files": [
+    "index.js",
+    "index.ts",
+    "index.d.ts",
+    "type-detect.js"
+  ],
+  "main": "./type-detect.js",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/chaijs/type-detect.git"
+  },
+  "scripts": {
+    "bench": "node bench",
+    "build": "tsc && rollup -c rollup.conf.js",
+    "commit-msg": "commitlint -x angular",
+    "lint": "eslint --ignore-path .gitignore . --ext .js,.ts",
+    "prepare": "cross-env NODE_ENV=production npm run build",
+    "semantic-release": "semantic-release pre && npm publish && semantic-release post",
+    "pretest:node": "cross-env NODE_ENV=test npm run build",
+    "pretest:browser": "cross-env NODE_ENV=test npm run build",
+    "test": "npm run test:node && npm run test:browser",
+    "test:browser": "karma start --singleRun=true",
+    "test:node": "nyc mocha type-detect.test.js",
+    "test:deno": "deno test test/deno-test.ts",
+    "posttest:node": "nyc report --report-dir \"coverage/node-$(node --version)\" --reporter=lcovonly && npm run upload-coverage",
+    "posttest:browser": "npm run upload-coverage",
+    "upload-coverage": "codecov"
+  },
+  "eslintConfig": {
+    "parser": "@typescript-eslint/parser",
+    "plugins": [
+      "@typescript-eslint"
+    ],
+    "env": {
+      "es6": true
+    },
+    "extends": [
+      "strict/es6"
+    ],
+    "globals": {
+      "HTMLElement": false,
+      "window": false
+    },
+    "rules": {
+      "complexity": 0,
+      "max-statements": 0,
+      "prefer-rest-params": 0
+    }
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^13.1.0",
+    "@rollup/plugin-buble": "^0.21.3",
+    "@rollup/plugin-commonjs": "^20.0.0",
+    "@rollup/plugin-node-resolve": "^13.0.5",
+    "@typescript-eslint/eslint-plugin": "^4.31.2",
+    "@typescript-eslint/parser": "^4.31.2",
+    "benchmark": "^2.1.4",
+    "buble": "^0.20.0",
+    "codecov": "^3.8.3",
+    "commitlint-config-angular": "^13.1.0",
+    "cross-env": "^7.0.3",
+    "eslint": "^7.32.0",
+    "eslint-config-strict": "^14.0.1",
+    "eslint-plugin-filenames": "^1.3.2",
+    "husky": "^7.0.2",
+    "karma": "^6.3.4",
+    "karma-chrome-launcher": "^3.1.0",
+    "karma-coverage": "^2.0.3",
+    "karma-detect-browsers": "^2.3.3",
+    "karma-edge-launcher": "^0.4.2",
+    "karma-firefox-launcher": "^2.1.1",
+    "karma-ie-launcher": "^1.0.0",
+    "karma-mocha": "^2.0.1",
+    "karma-opera-launcher": "^1.0.0",
+    "karma-safari-launcher": "^1.0.0",
+    "karma-safaritechpreview-launcher": "^2.0.2",
+    "karma-sauce-launcher": "^4.3.6",
+    "mocha": "^9.1.1",
+    "nyc": "^15.1.0",
+    "rollup": "^2.57.0",
+    "rollup-plugin-istanbul": "^3.0.0",
+    "semantic-release": "^18.0.0",
+    "simple-assert": "^1.0.0",
+    "typescript": "^4.4.3"
+  },
+  "engines": {
+    "node": ">=4"
+  }
+}

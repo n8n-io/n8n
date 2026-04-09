@@ -1,0 +1,778 @@
+{
+  "name": "@microsoft/tsdoc",
+  "entries": [
+    {
+      "version": "0.16.0",
+      "tag": "@microsoft/tsdoc_v0.16.0",
+      "date": "Tue, 11 Nov 2025 00:51:42 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Normalize builtin imports."
+          },
+          {
+            "comment": "Standardize TypeScript's `@jsx`, `@jsxRuntime`, `@jsxFrag`, `@jsxImportSource` tags."
+          }
+        ],
+        "patch": [
+          {
+            "comment": "Ensure TSDocEmitter does not emit a newline for the text after `@defaultValue` tags."
+          },
+          {
+            "comment": "Remove test files and declaration maps from the published package."
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.15.1",
+      "tag": "@microsoft/tsdoc_v0.15.1",
+      "date": "Sat, 23 Nov 2024 00:23:35 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Include CHANGELOG.md in published releases again"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.15.0",
+      "tag": "@microsoft/tsdoc_v0.15.0",
+      "date": "Tue, 28 May 2024 21:34:19 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Minor package cleanup."
+          },
+          {
+            "comment": "Eliminate remaining const enums."
+          }
+        ],
+        "patch": [
+          {
+            "comment": "Update an image URL in the README.md file"
+          },
+          {
+            "comment": "Upgrade dev toolchain (Heft, Webpack, TypeScript)"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.14.2",
+      "tag": "@microsoft/tsdoc_v0.14.2",
+      "date": "Wed, 14 Sep 2022 02:55:06 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Update an internal type import to avoid a circular reference (GitHub #327 and #328)"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.14.1",
+      "tag": "@microsoft/tsdoc_v0.14.1",
+      "date": "Sat, 09 Apr 2022 02:28:41 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Rename the \"master\" branch to \"main.\""
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.14.0",
+      "tag": "@microsoft/tsdoc_v0.14.0",
+      "date": "Thu, 07 Apr 2022 22:51:07 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Add `supportedHtmlElements` and `reportUnsupportedHtmlElements` options and corresponding validation"
+          },
+          {
+            "comment": "Convert \"const enum\" APIs to be regular enums to enable compatibility with isolatedModules=true (GitHub #306)"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.13.2",
+      "tag": "@microsoft/tsdoc_v0.13.2",
+      "date": "Tue, 20 Apr 2021 04:25:13 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix an issue where \"tsdoc-inline-tag-missing-braces\" and \"tsdoc-tag-should-not-have-braces\" were reported incorrectly"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.13.1",
+      "tag": "@microsoft/tsdoc_v0.13.1",
+      "date": "Mon, 19 Apr 2021 21:22:32 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Add a new TSDocMessageId definition used by @microsoft/tsdoc-config"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.13.0",
+      "tag": "@microsoft/tsdoc_v0.13.0",
+      "date": "Fri, 22 Jan 2021 18:07:19 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Update doc comments to fix some syntax issues"
+          }
+        ],
+        "minor": [
+          {
+            "comment": "Update tsdoc.json schema to add a new field \"noStandardTags\""
+          },
+          {
+            "comment": "Add new APIs: TSDocConfiguration.clear() and TSDocTagDefinition.validateTSDocTagName()"
+          },
+          {
+            "comment": "Add new \"supportForTags\" field to tsdoc.json schema"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.12.24",
+      "tag": "@microsoft/tsdoc_v0.12.24",
+      "date": "Thu, 03 Dec 2020 08:07:55 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Add a missing declaration file"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.12.23",
+      "tag": "@microsoft/tsdoc_v0.12.23",
+      "date": "Thu, 03 Dec 2020 04:31:52 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Add a definition for the `@decorator` block tag (RFC 271)"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.12.22",
+      "tag": "@microsoft/tsdoc_v0.12.22",
+      "date": "Mon, 30 Nov 2020 06:16:21 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Update documentation to reference the new website URL"
+          },
+          {
+            "comment": "Upgrade build tools and configuration"
+          },
+          {
+            "comment": "Fix typo"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.12.21",
+      "tag": "@microsoft/tsdoc_v0.12.21",
+      "date": "Fri, 04 Sep 2020 15:53:27 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix an issue where the line extractor's trailing whitespace trimming sometimes trimmed a non-whitespace character (GitHub #258)"
+          },
+          {
+            "comment": "Update build system"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.12.20",
+      "tag": "@microsoft/tsdoc_v0.12.20",
+      "date": "Wed, 20 May 2020 22:33:27 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Add support for `@see` tag"
+          },
+          {
+            "comment": "Improve documentation for `@inheritDoc`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.12.19",
+      "tag": "@microsoft/tsdoc_v0.12.19",
+      "date": "Fri, 27 Mar 2020 23:14:53 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Add some missing entries to TSDocConfiguration.allTsdocMessageIds() which were breaking eslint-plugin-tsdoc"
+          },
+          {
+            "comment": "Fix an issue where \"h1\" was not allowed as an HTML element name"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.12.18",
+      "tag": "@microsoft/tsdoc_v0.12.18",
+      "date": "Sat, 22 Feb 2020 20:44:16 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix an issue where JSDoc optional params were not parsed correctly"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.12.17",
+      "tag": "@microsoft/tsdoc_v0.12.17",
+      "date": "Sat, 22 Feb 2020 02:55:07 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Improve the parsing of `@param` and `@typeParam` tags to recognize legacy syntaxes"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.12.16",
+      "tag": "@microsoft/tsdoc_v0.12.16",
+      "date": "Tue, 19 Nov 2019 22:01:56 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Add some new TSDocMessageId definitions used by @microsoft/tsdoc-config"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.12.15",
+      "tag": "@microsoft/tsdoc_v0.12.15",
+      "date": "Sat, 09 Nov 2019 05:55:42 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Add new API TSDocConfiguration.allTsdocMessageIds"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.12.14",
+      "tag": "@microsoft/tsdoc_v0.12.14",
+      "date": "Wed, 04 Sep 2019 03:30:10 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix a regression where some API signatures were incompatible with TypeScript versions prior to 3.4"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.12.13",
+      "tag": "@microsoft/tsdoc_v0.12.13",
+      "date": "Fri, 30 Aug 2019 18:38:59 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix an invalid regular expression."
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.12.12",
+      "tag": "@microsoft/tsdoc_v0.12.12",
+      "date": "Wed, 07 Aug 2019 23:06:02 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Improve DeclarationReference.parse for module sources"
+          },
+          {
+            "comment": "Add a definition for the `@throws` block tag (RFC 171)"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.12.11",
+      "tag": "@microsoft/tsdoc_v0.12.11",
+      "date": "Wed, 24 Jul 2019 00:38:18 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Add new meanings to DeclarationReference and fix some parsing bugs"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.12.10",
+      "tag": "@microsoft/tsdoc_v0.12.10",
+      "date": "Fri, 19 Jul 2019 02:47:09 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Add beta implementation of new DeclarationReference API"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.12.9",
+      "tag": "@microsoft/tsdoc_v0.12.9",
+      "date": "Thu, 11 Apr 2019 03:58:35 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Improve the wording of the error messages involving character sequences that look like TSDoc tags"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.12.8",
+      "tag": "@microsoft/tsdoc_v0.12.8",
+      "date": "Tue, 12 Mar 2019 23:18:11 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix an issue where tsdoc-param-tag-with-invalid-name was sometimes incorrectly reported certain identifiers (issue #148)"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.12.7",
+      "tag": "@microsoft/tsdoc_v0.12.7",
+      "date": "Fri, 01 Mar 2019 06:39:52 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Add new API TSDocConfiguration.isKnownMessageId()"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.12.6",
+      "tag": "@microsoft/tsdoc_v0.12.6",
+      "date": "Thu, 28 Feb 2019 01:29:39 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Add a new API ParserMessage.messageId with a unique ID useful for filtering and searching for errors"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.12.5",
+      "tag": "@microsoft/tsdoc_v0.12.5",
+      "date": "Tue, 29 Jan 2019 22:49:58 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Update parser to allow `$` character in `@param` names, since ECMAScript allows this in unquoted identifiers"
+          },
+          {
+            "comment": "Allow `$` character in declaration reference member identifiers (Example: `{@link Button.$render}`)"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.12.4",
+      "tag": "@microsoft/tsdoc_v0.12.4",
+      "date": "Tue, 20 Nov 2018 21:23:06 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Add new interface `IStringBuilder`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.12.3",
+      "tag": "@microsoft/tsdoc_v0.12.3",
+      "date": "Tue, 20 Nov 2018 07:42:17 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Add a new API `PlainTextEmitter.hasAnyTextContent()`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.12.2",
+      "tag": "@microsoft/tsdoc_v0.12.2",
+      "date": "Fri, 09 Nov 2018 15:13:13 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Improve trimming of spacing for link text in `{@link}` tags"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.12.1",
+      "tag": "@microsoft/tsdoc_v0.12.1",
+      "date": "Tue, 06 Nov 2018 01:37:22 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Allow HTML in a `DocSection` node"
+          },
+          {
+            "comment": "Fix a bug where `TSDocEmitter.renderHtmlTag()` and `TSDocEmitter.renderDeclarationReference()` were including comment framing"
+          },
+          {
+            "comment": "Add `DocSection.appendNodesInParagraph()` API"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.12.0",
+      "tag": "@microsoft/tsdoc_v0.12.0",
+      "date": "Sat, 03 Nov 2018 02:07:10 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Add `DocDeclarationReference.emitAsTsdoc()`, `DocHtmlStartTag.emitAsHtml()`, and `DocHtmlEndTag.emitAsHtml()`"
+          },
+          {
+            "comment": "Child nodes can now be specified as a second constructor parameter for `DocNodeContainer`"
+          }
+        ],
+        "minor": [
+          {
+            "comment": "(API change) `DocErrorText` is no longer allowed in `DocSection`; instead it must be part of a `DocParagraph`"
+          },
+          {
+            "comment": "(API change) Rename `TSDocParserConfiguration` to `TSDocConfiguration`"
+          },
+          {
+            "comment": "(API change) Require an associated `TSDocConfiguration` to be included with the parameters for every `DocNode` constructor"
+          },
+          {
+            "comment": "Introduce `TSDocConfiguration.docNodeManager` for registering custom `DocNode` subclasses and their container relationships"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.11.0",
+      "tag": "@microsoft/tsdoc_v0.11.0",
+      "date": "Sat, 27 Oct 2018 04:52:23 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "(API change) Introduce `DocParamCollection` to enable efficient lookups of parameters by name"
+          },
+          {
+            "comment": "(API change) Rename `DocComment.typeParamBlocks` --> `DocComment.typeParams`"
+          },
+          {
+            "comment": "(API change) Rename `DocComment.paramBlocks` --> `DocComment.params`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.10.0",
+      "tag": "@microsoft/tsdoc_v0.10.0",
+      "date": "Fri, 26 Oct 2018 08:42:51 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Add new APIs `DocComment.emitAsTsdoc()`, `TSDocEmitter`, and `StringBuilder`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.9.3",
+      "tag": "@microsoft/tsdoc_v0.9.3",
+      "date": "Thu, 25 Oct 2018 08:29:36 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix issue where `DocErrorText.text` returned `[object Object]` instead of the text"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.9.2",
+      "tag": "@microsoft/tsdoc_v0.9.2",
+      "date": "Wed, 17 Oct 2018 13:41:54 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix stack overflow in DocFencedCode.language property getter"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.9.1",
+      "tag": "@microsoft/tsdoc_v0.9.1",
+      "date": "Wed, 17 Oct 2018 12:49:01 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix a regression where the paragraph splitter was sometimes skipping blocks"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.9.0",
+      "tag": "@microsoft/tsdoc_v0.9.0",
+      "date": "Wed, 17 Oct 2018 04:47:19 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "(API change) Change `DocBlock` to have a `DocSection` property rather than inheriting from `DocSection`; this eliminates confusion about which nodes belong to the container"
+          },
+          {
+            "comment": "(API change) Rename `DocParticle` to `DocExcerpt`, and eliminate the `Excerpt` class"
+          },
+          {
+            "comment": "(API change) Eliminate `DocNodeLeaf`, since now `DocExcerpt` is the only class that can represent excerpts"
+          },
+          {
+            "comment": "(API change) Remove `DocNode.updateParameters()` because it is no longer needed"
+          },
+          {
+            "comment": "(API change) Spacing is now represented as a normal `DocExcerpt`, rather than via a special `Excerpt.spacingAfterContent`"
+          },
+          {
+            "comment": "(API change) Simplify `DocNodeTransforms.trimSpacesInParagraph()` to no longer merge/remap excerpts during the transformation. If we need this information, we will track it differently."
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.8.1",
+      "tag": "@microsoft/api-extractor_v0.8.1",
+      "date": "Sun, 07 Oct 2018 06:30:34 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Improve error reporting for declaration references that are probably missing a `\"#\"` delimiter"
+          },
+          {
+            "comment": "Rename `DocCodeFence` to `DocFencedCode`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.8.0",
+      "tag": "@microsoft/api-extractor_v0.8.0",
+      "date": "Wed, 03 Oct 2018 02:43:47 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Introduce a distinction between \"defined\" tags (i.e. recognized) versus \"supported\" tags (i.e. implemented by the tool)"
+          },
+          {
+            "comment": "The parser optionally reports usage of undefined tags"
+          },
+          {
+            "comment": "The parser optionally reports usage of unsupported tags"
+          },
+          {
+            "comment": "The parser reports usage of inline/block syntax that is inconsistent with the tag definition"
+          },
+          {
+            "comment": "Code spans are now allowed to be adjacent to other text, but must contain at least one character"
+          },
+          {
+            "comment": "An `@deprecated` block must contain a deprecation message"
+          },
+          {
+            "comment": "If `@inheritDoc` is used, then the summary section must be empty, and there must not be an `@remarks` block"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.7.0",
+      "tag": "@microsoft/api-extractor_v0.7.0",
+      "date": "Tue, 02 Oct 2018 02:35:35 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Add support for `@defaultValue` tag"
+          },
+          {
+            "comment": "Add support for `@typeParam` tag"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.6.0",
+      "tag": "@microsoft/api-extractor_v0.6.0",
+      "date": "Mon, 01 Oct 2018 22:11:24 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Add support for `@link` tags using the new declaration reference syntax"
+          },
+          {
+            "comment": "Add support for `@inheritDoc` tags"
+          },
+          {
+            "comment": "Add new APIs: `DocDeclarationReference`, `DocInheritDocTag`, `DocLinkTag`, `DocMemberIdentifier`, `DocMemberReference`, `DocMemberSelector`, `DocMemberSymbol`"
+          },
+          {
+            "comment": "Remove `ParserContext.verbatimNodes`"
+          },
+          {
+            "comment": "Add `DocParticle.particleId` property"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.0",
+      "tag": "@microsoft/api-extractor_v0.5.0",
+      "date": "Tue, 25 Sep 2018 03:04:06 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Add a new API `DocNode.updateParameters()` that allows a `DocNode` object to be updated after it was created; the tree nodes are no longer immutable"
+          },
+          {
+            "comment": "Add `DocNodeTransforms.trimSpacesInParagraphNodes()` for collapsing whitespace inside `DocParagraph` subtrees"
+          },
+          {
+            "comment": "Extract the `DocNode.excerpt` property into a new abstract base class `DocNodeLeaf`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.4.1",
+      "tag": "@microsoft/api-extractor_v0.4.1",
+      "date": "Fri, 31 Aug 2018 03:32:18 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Improve the error location reporting for DocErrorText objects"
+          },
+          {
+            "comment": "Separate the **api-demo** sample into a \"simple\" scenario which parses a simple text string, and an \"advanced\" scenario which uses the TypeScript compiler API to extract comments and parse custom TSDoc tags"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.4.0",
+      "tag": "@microsoft/api-extractor_v0.4.0",
+      "date": "Tue, 28 Aug 2018 03:17:20 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Rename `DocCodeSpan.text` to `DocCodeSpan.code` and model the delimiters using particles"
+          },
+          {
+            "comment": "Add support for code fences (`DocCodeFence`)"
+          },
+          {
+            "comment": "`DocSection` content is now grouped into `DocParagraph` nodes; blank lines are used to indicate paragraph boundaries"
+          },
+          {
+            "comment": "Rename `DocComment.deprecated` to `deprecatedBlock`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.0",
+      "tag": "@microsoft/api-extractor_v0.3.0",
+      "date": "Sat, 25 Aug 2018 05:53:56 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Add TextRange.isEmpty()"
+          },
+          {
+            "comment": "Improve the ModifierTagSet API"
+          },
+          {
+            "comment": "Implement the @privateRemarks and @deprecated tags"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.0",
+      "tag": "@microsoft/api-extractor_v0.2.0",
+      "date": "Fri, 24 Aug 2018 01:19:56 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Rename `CoreTags` to `StandardTags` so we can include non-core tags in the standard definitions"
+          },
+          {
+            "comment": "Rename `CoreModifierTagSet` to `StandardModifierTagSet` and convert properties to functions"
+          },
+          {
+            "comment": "Categorize the standard tags according to a `Standardization` enum, and document them"
+          },
+          {
+            "comment": "Add more standard tag definitions: `@deprecated`, `@eventProperty`, `@example`, `@inheritDoc`, `@link`, `@override`, `@packageDocumentation`, `@public`, `@privateRemarks`, `@sealed`, `@virtual`"
+          },
+          {
+            "comment": "Replace TSDocTagDefinition.singleton with TSDocTagDefinition.allowMultiple, since in practice most tags are single-usage"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.0",
+      "tag": "@microsoft/api-extractor_v0.1.0",
+      "date": "Thu, 16 Aug 2018 18:18:02 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Initial release of the TSDoc library!  :-)"
+          }
+        ]
+      }
+    }
+  ]
+}

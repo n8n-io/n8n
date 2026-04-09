@@ -1,0 +1,29 @@
+{
+  "name": "snappyjs",
+  "main": "./dist/snappyjs.js",
+  "version": "0.7.0",
+  "homepage": "https://github.com/zhipeng-jia/snappyjs",
+  "authors": [
+    "Zhipeng Jia <zhipeng.jia@outlook.com>"
+  ],
+  "description": "JavaScript implementation of Google's Snappy compression library",
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    ".npmignore",
+    ".travis.yml",
+    "benchmark.js",
+    "test.js",
+    "browser_support.js",
+    "build_browser_version.js",
+    "package.json",
+    "index.js",
+    "snappy_compressor.js",
+    "snappy_decompressor.js"
+  ],
+  "keywords": [
+    "snappy"
+  ]
+}

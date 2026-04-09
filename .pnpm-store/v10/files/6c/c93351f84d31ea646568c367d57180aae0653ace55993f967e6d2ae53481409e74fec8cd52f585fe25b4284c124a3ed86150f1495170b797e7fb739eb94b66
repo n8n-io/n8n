@@ -1,0 +1,42 @@
+{
+  "name": "mjml-core",
+  "description": "mjml-core",
+  "version": "4.18.0",
+  "main": "lib/index.js",
+  "files": [
+    "lib"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mjmlio/mjml.git",
+    "directory": "packages/mjml-core"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mjmlio/mjml/issues"
+  },
+  "homepage": "https://mjml.io",
+  "scripts": {
+    "clean": "rimraf lib",
+    "build": "babel src --out-dir lib --root-mode upward",
+    "test": "node ./tests/index.js"
+  },
+  "dependencies": {
+    "@babel/runtime": "^7.28.4",
+    "cheerio": "1.0.0-rc.12",
+    "detect-node": "^2.0.4",
+    "html-minifier": "^4.0.0",
+    "js-beautify": "^1.6.14",
+    "juice": "^10.0.0",
+    "lodash": "^4.17.21",
+    "mjml-migrate": "4.18.0",
+    "mjml-parser-xml": "4.18.0",
+    "mjml-validator": "4.18.0"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.8.4",
+    "chai": "^4.1.1",
+    "rimraf": "^3.0.2"
+  },
+  "gitHead": "7f4872c48af877d98448335fb9002585cfc8fcbf"
+}

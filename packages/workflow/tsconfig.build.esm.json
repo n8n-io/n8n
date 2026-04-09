@@ -1,6 +1,12 @@
 {
 	"extends": ["./tsconfig.json"],
 	"compilerOptions": {
+		"moduleResolution": "node", 
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "paths": {
+      "js-base64": ["../node_modules/js-base64/base64.d.ts"]
+    },
 		"rootDir": "src",
 		"outDir": "dist/esm",
 		"tsBuildInfoFile": "dist/esm/typecheck.tsbuildinfo"

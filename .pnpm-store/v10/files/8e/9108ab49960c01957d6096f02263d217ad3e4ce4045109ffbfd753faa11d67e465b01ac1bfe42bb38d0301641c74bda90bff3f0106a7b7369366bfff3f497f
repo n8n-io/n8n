@@ -1,0 +1,59 @@
+{
+  "name": "@antfu/install-pkg",
+  "type": "module",
+  "version": "0.4.1",
+  "description": "Install package programmatically.",
+  "author": "Anthony Fu <anthonyfu117@hotmail.com>",
+  "license": "MIT",
+  "funding": "https://github.com/sponsors/antfu",
+  "homepage": "https://github.com/antfu/install-pkg#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/antfu/install-pkg.git"
+  },
+  "bugs": {
+    "url": "https://github.com/antfu/install-pkg/issues"
+  },
+  "keywords": [],
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "package-manager-detector": "^0.2.0",
+    "tinyexec": "^0.3.0"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^2.27.2",
+    "@antfu/ni": "^0.22.4",
+    "@types/node": "^22.5.0",
+    "bumpp": "^9.5.2",
+    "eslint": "^9.9.1",
+    "esno": "^4.7.0",
+    "publint": "^0.2.10",
+    "tsup": "^8.2.4",
+    "typescript": "^5.5.4"
+  },
+  "scripts": {
+    "dev": "nr build --watch",
+    "start": "esno src/index.ts",
+    "build": "tsup src/index.ts --format cjs,esm --dts --no-splitting",
+    "release": "bumpp --commit --push --tag && pnpm publish",
+    "lint": "eslint ."
+  }
+}

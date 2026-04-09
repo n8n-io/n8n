@@ -1,0 +1,1 @@
+{"version":3,"file":"check-circular-refs-in-schema.js","sourceRoot":"","sources":["../../src/utils/check-circular-refs-in-schema.ts"],"names":[],"mappings":";;AAAA,8DAQC;AARD,SAAgB,yBAAyB,CAAC,MAAW;IACnD,IAAI,CAAC;QACH,IAAI,CAAC,SAAS,CAAC,MAAM,CAAC,CAAC;IACzB,CAAC;IAAC,MAAM,CAAC;QACP,OAAO,IAAI,CAAC;IACd,CAAC;IAED,OAAO,KAAK,CAAC;AACf,CAAC"}

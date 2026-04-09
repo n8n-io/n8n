@@ -1,0 +1,13 @@
+{
+  "name": "web-streams-ponyfill-es6",
+  "main": "../../dist/ponyfill.es6",
+  "module": "../../dist/ponyfill.es6.mjs",
+  "types": "../../dist/types/ponyfill.d.ts",
+  "typesVersions": {
+    ">=3.6": {
+      "../../dist/types/*": [
+        "../../dist/types/ts3.6/*"
+      ]
+    }
+  }
+}

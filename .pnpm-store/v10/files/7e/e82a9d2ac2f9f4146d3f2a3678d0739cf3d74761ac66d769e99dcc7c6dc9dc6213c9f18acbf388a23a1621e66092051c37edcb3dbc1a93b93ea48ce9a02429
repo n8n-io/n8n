@@ -1,0 +1,2626 @@
+var packages$1 = {
+	shared: {
+		name: "shared",
+		display: "Shared utilities",
+		dir: "packages/shared"
+	},
+	core: {
+		name: "core",
+		display: "VueUse",
+		description: "Collection of essential Vue Composition Utilities",
+		dir: "packages/core"
+	},
+	components: {
+		name: "components",
+		display: "Components",
+		description: "Renderless components for VueUse",
+		author: "Jacob Clevenger<https://github.com/wheatjs>",
+		external: [
+			"@vueuse/core",
+			"@vueuse/shared"
+		],
+		dir: "packages/components"
+	},
+	math: {
+		name: "math",
+		display: "Math",
+		description: "Math functions for VueUse",
+		external: [
+			"@vueuse/shared"
+		],
+		dir: "packages/math"
+	},
+	router: {
+		name: "router",
+		display: "Router",
+		description: "Utilities for vue-router",
+		addon: true,
+		external: [
+			"vue-router"
+		],
+		globals: {
+			"vue-router": "VueRouter"
+		},
+		dir: "packages/router",
+		docs: "https://vueuse.org/router/README.html"
+	},
+	integrations: {
+		name: "integrations",
+		display: "Integrations",
+		description: "Integration wrappers for utility libraries",
+		addon: true,
+		submodules: true,
+		external: [
+			"axios",
+			"universal-cookie",
+			"qrcode",
+			"http",
+			"nprogress",
+			"jwt-decode",
+			"focus-trap",
+			"change-case",
+			"drauu",
+			"@vueuse/core",
+			"@vueuse/shared",
+			"fuse.js",
+			"async-validator",
+			"idb-keyval",
+			"sortablejs",
+			"node:http"
+		],
+		globals: {
+			axios: "axios",
+			"universal-cookie": "UniversalCookie",
+			qrcode: "QRCode",
+			nprogress: "nprogress",
+			"jwt-decode": "jwt_decode",
+			"focus-trap": "focusTrap",
+			drauu: "Drauu",
+			"fuse.js": "Fuse",
+			"change-case": "changeCase",
+			"async-validator": "AsyncValidator",
+			"idb-keyval": "idbKeyval",
+			sortablejs: "Sortable"
+		},
+		dir: "packages/integrations",
+		docs: "https://vueuse.org/integrations/README.html"
+	},
+	rxjs: {
+		name: "rxjs",
+		display: "RxJS",
+		description: "Enables RxJS reactive functions in Vue",
+		addon: true,
+		external: [
+			"rxjs",
+			"rxjs/operators"
+		],
+		globals: {
+			rxjs: "rxjs",
+			"rxjs/operators": "rxjs.operator"
+		},
+		dir: "packages/rxjs",
+		docs: "https://vueuse.org/rxjs/README.html"
+	},
+	firebase: {
+		name: "firebase",
+		display: "Firebase",
+		description: "Enables realtime bindings for Firebase",
+		addon: true,
+		submodules: true,
+		external: [
+			"firebase",
+			"firebase/app",
+			"firebase/database",
+			"firebase/firestore"
+		],
+		globals: {
+			firebase: "firebase",
+			"firebase/app": "firebase",
+			"firebase/database": "firebase",
+			"firebase/firestore": "firebase"
+		},
+		dir: "packages/firebase",
+		docs: "https://vueuse.org/firebase/README.html"
+	},
+	electron: {
+		name: "electron",
+		display: "Electron",
+		description: "Electron renderer process modules for VueUse",
+		author: "Archer Gu<https://github.com/ArcherGu>",
+		addon: true,
+		external: [
+			"electron"
+		],
+		iife: false,
+		dir: "packages/electron",
+		docs: "https://vueuse.org/electron/README.html"
+	}
+};
+var categories$1 = [
+	"Animation",
+	"Array",
+	"Browser",
+	"Component",
+	"Elements",
+	"Network",
+	"Reactivity",
+	"Sensors",
+	"State",
+	"Time",
+	"Utilities",
+	"Watch",
+	"@Electron",
+	"@Firebase",
+	"@Head",
+	"@Integrations",
+	"@Math",
+	"@Motion",
+	"@Router",
+	"@RxJS",
+	"@SchemaOrg",
+	"@Sound"
+];
+var functions$1 = [
+	{
+		name: "computedAsync",
+		"package": "core",
+		lastUpdated: 1677934598000,
+		docs: "https://vueuse.org/core/computedAsync/",
+		category: "Reactivity",
+		description: "computed for async functions",
+		alias: [
+			"asyncComputed"
+		]
+	},
+	{
+		name: "computedEager",
+		"package": "shared",
+		lastUpdated: 1704254074000,
+		docs: "https://vueuse.org/shared/computedEager/",
+		category: "Reactivity",
+		description: "eager computed without lazy evaluation",
+		alias: [
+			"eagerComputed"
+		]
+	},
+	{
+		name: "computedInject",
+		"package": "core",
+		lastUpdated: 1662388825000,
+		docs: "https://vueuse.org/core/computedInject/",
+		category: "Component",
+		description: "combine computed and inject"
+	},
+	{
+		name: "computedWithControl",
+		"package": "shared",
+		lastUpdated: 1708417312000,
+		docs: "https://vueuse.org/shared/computedWithControl/",
+		category: "Reactivity",
+		description: "explicitly define the dependencies of computed",
+		alias: [
+			"controlledComputed"
+		],
+		related: [
+			"refWithControl"
+		]
+	},
+	{
+		name: "createEventHook",
+		"package": "shared",
+		lastUpdated: 1701689283000,
+		docs: "https://vueuse.org/shared/createEventHook/",
+		category: "Utilities",
+		description: "utility for creating event hooks"
+	},
+	{
+		name: "createGenericProjection",
+		"package": "math",
+		lastUpdated: 1681372607000,
+		docs: "https://vueuse.org/math/createGenericProjection/",
+		category: "@Math",
+		description: "generic version of `createProjection`",
+		related: [
+			"createProjection",
+			"useProjection"
+		]
+	},
+	{
+		name: "createGlobalState",
+		"package": "shared",
+		lastUpdated: 1682985671000,
+		docs: "https://vueuse.org/shared/createGlobalState/",
+		category: "State",
+		description: "keep states in the global scope to be reusable across Vue instances",
+		related: [
+			"createSharedComposable"
+		]
+	},
+	{
+		name: "createHead",
+		"package": "head",
+		description: "create the head manager instance.",
+		category: "@Head",
+		external: "https://github.com/vueuse/head#api"
+	},
+	{
+		name: "createInjectionState",
+		"package": "shared",
+		lastUpdated: 1716811045000,
+		docs: "https://vueuse.org/shared/createInjectionState/",
+		category: "State",
+		description: "create global state that can be injected into components"
+	},
+	{
+		name: "createProjection",
+		"package": "math",
+		lastUpdated: 1681372607000,
+		docs: "https://vueuse.org/math/createProjection/",
+		category: "@Math",
+		description: "reactive numeric projection from one domain to another",
+		related: [
+			"createGenericProjection",
+			"useProjection"
+		]
+	},
+	{
+		name: "createReusableTemplate",
+		"package": "core",
+		lastUpdated: 1708418805000,
+		docs: "https://vueuse.org/core/createReusableTemplate/",
+		category: "Component",
+		description: "define and reuse template inside the component scope"
+	},
+	{
+		name: "createSchemaOrg",
+		"package": "schema-org",
+		description: "create the schema.org manager instance.",
+		category: "@SchemaOrg",
+		external: "https://vue-schema-org.netlify.app/api/core/create-schema-org.html"
+	},
+	{
+		name: "createSharedComposable",
+		"package": "shared",
+		lastUpdated: 1678811060000,
+		docs: "https://vueuse.org/shared/createSharedComposable/",
+		category: "State",
+		description: "make a composable function usable with multiple Vue instances",
+		related: [
+			"createGlobalState"
+		]
+	},
+	{
+		name: "createTemplatePromise",
+		"package": "core",
+		lastUpdated: 1708417312000,
+		docs: "https://vueuse.org/core/createTemplatePromise/",
+		category: "Component",
+		description: "template as Promise"
+	},
+	{
+		name: "createUnrefFn",
+		"package": "core",
+		lastUpdated: 1681373709000,
+		docs: "https://vueuse.org/core/createUnrefFn/",
+		category: "Utilities",
+		description: "make a plain function accepting ref and raw values as arguments",
+		related: [
+			"reactify"
+		]
+	},
+	{
+		name: "extendRef",
+		"package": "shared",
+		lastUpdated: 1681420351000,
+		docs: "https://vueuse.org/shared/extendRef/",
+		category: "Reactivity",
+		description: "add extra attributes to Ref"
+	},
+	{
+		name: "from",
+		"package": "rxjs",
+		lastUpdated: 1687945183000,
+		docs: "https://vueuse.org/rxjs/from/",
+		category: "@RxJS",
+		description: "wrappers around RxJS's [`from()`](https://rxjs.dev/api/index/function/from) and [`fromEvent()`](https://rxjs.dev/api/index/function/fromEvent) to allow them to accept `ref`s"
+	},
+	{
+		name: "get",
+		"package": "shared",
+		lastUpdated: 1681373709000,
+		docs: "https://vueuse.org/shared/get/",
+		category: "Utilities",
+		description: "shorthand for accessing `ref.value`"
+	},
+	{
+		name: "injectLocal",
+		"package": "shared",
+		lastUpdated: 1696687552000,
+		docs: "https://vueuse.org/shared/injectLocal/",
+		category: "State",
+		description: "extended `inject` with ability to call `provideLocal` to provide the value in the same component"
+	},
+	{
+		name: "isDefined",
+		"package": "shared",
+		lastUpdated: 1682985671000,
+		docs: "https://vueuse.org/shared/isDefined/",
+		category: "Utilities",
+		description: "non-nullish checking type guard for Ref"
+	},
+	{
+		name: "logicAnd",
+		"package": "math",
+		lastUpdated: 1681372607000,
+		docs: "https://vueuse.org/math/logicAnd/",
+		category: "@Math",
+		description: "`AND` condition for refs",
+		alias: [
+			"and"
+		],
+		related: [
+			"logicNot",
+			"logicOr"
+		]
+	},
+	{
+		name: "logicNot",
+		"package": "math",
+		lastUpdated: 1681372607000,
+		docs: "https://vueuse.org/math/logicNot/",
+		category: "@Math",
+		description: "`NOT` condition for ref",
+		alias: [
+			"not"
+		],
+		related: [
+			"logicAnd",
+			"logicOr"
+		]
+	},
+	{
+		name: "logicOr",
+		"package": "math",
+		lastUpdated: 1681372607000,
+		docs: "https://vueuse.org/math/logicOr/",
+		category: "@Math",
+		description: "`OR` conditions for refs",
+		alias: [
+			"or"
+		],
+		related: [
+			"logicAnd",
+			"logicNot"
+		]
+	},
+	{
+		name: "makeDestructurable",
+		"package": "shared",
+		lastUpdated: 1718112591000,
+		docs: "https://vueuse.org/shared/makeDestructurable/",
+		category: "Utilities",
+		description: "make isomorphic destructurable for object and array at the same time"
+	},
+	{
+		name: "onClickOutside",
+		"package": "core",
+		lastUpdated: 1718191421000,
+		component: true,
+		directive: true,
+		docs: "https://vueuse.org/core/onClickOutside/",
+		category: "Sensors",
+		description: "listen for clicks outside of an element"
+	},
+	{
+		name: "onKeyStroke",
+		"package": "core",
+		lastUpdated: 1699540622000,
+		directive: true,
+		docs: "https://vueuse.org/core/onKeyStroke/",
+		category: "Sensors",
+		description: "listen for keyboard keystrokes"
+	},
+	{
+		name: "onLongPress",
+		"package": "core",
+		lastUpdated: 1716814989000,
+		component: true,
+		directive: true,
+		docs: "https://vueuse.org/core/onLongPress/",
+		category: "Sensors",
+		description: "listen for a long press on an element"
+	},
+	{
+		name: "onStartTyping",
+		"package": "core",
+		lastUpdated: 1701749721000,
+		docs: "https://vueuse.org/core/onStartTyping/",
+		category: "Sensors",
+		description: "fires when users start typing on non-editable elements"
+	},
+	{
+		name: "provideLocal",
+		"package": "shared",
+		lastUpdated: 1696687552000,
+		docs: "https://vueuse.org/shared/provideLocal/",
+		category: "State",
+		description: "extended `provide` with ability to call `injectLocal` to obtain the value in the same component"
+	},
+	{
+		name: "reactify",
+		"package": "shared",
+		lastUpdated: 1682985671000,
+		docs: "https://vueuse.org/shared/reactify/",
+		category: "Reactivity",
+		description: "converts plain functions into reactive functions",
+		alias: [
+			"createReactiveFn"
+		],
+		related: [
+			"createUnrefFn"
+		]
+	},
+	{
+		name: "reactifyObject",
+		"package": "shared",
+		lastUpdated: 1686917986000,
+		docs: "https://vueuse.org/shared/reactifyObject/",
+		category: "Reactivity",
+		description: "apply `reactify` to an object"
+	},
+	{
+		name: "reactiveComputed",
+		"package": "shared",
+		lastUpdated: 1690729590000,
+		docs: "https://vueuse.org/shared/reactiveComputed/",
+		category: "Reactivity",
+		description: "computed reactive object"
+	},
+	{
+		name: "reactiveOmit",
+		"package": "shared",
+		lastUpdated: 1695461887000,
+		docs: "https://vueuse.org/shared/reactiveOmit/",
+		category: "Reactivity",
+		description: "reactively omit fields from a reactive object"
+	},
+	{
+		name: "reactivePick",
+		"package": "shared",
+		lastUpdated: 1681373709000,
+		docs: "https://vueuse.org/shared/reactivePick/",
+		category: "Reactivity",
+		description: "reactively pick fields from a reactive object"
+	},
+	{
+		name: "refAutoReset",
+		"package": "shared",
+		lastUpdated: 1692962819000,
+		docs: "https://vueuse.org/shared/refAutoReset/",
+		category: "Reactivity",
+		description: "a ref which will be reset to the default value after some time",
+		alias: [
+			"autoResetRef"
+		]
+	},
+	{
+		name: "refDebounced",
+		"package": "shared",
+		lastUpdated: 1681372607000,
+		docs: "https://vueuse.org/shared/refDebounced/",
+		category: "Reactivity",
+		description: "debounce execution of a ref value",
+		alias: [
+			"useDebounce",
+			"debouncedRef"
+		],
+		related: [
+			"useThrottleFn"
+		]
+	},
+	{
+		name: "refDefault",
+		"package": "shared",
+		lastUpdated: 1695452523000,
+		docs: "https://vueuse.org/shared/refDefault/",
+		category: "Reactivity",
+		description: "apply default value to a ref"
+	},
+	{
+		name: "refThrottled",
+		"package": "shared",
+		lastUpdated: 1695452523000,
+		docs: "https://vueuse.org/shared/refThrottled/",
+		category: "Reactivity",
+		description: "throttle changing of a ref value",
+		alias: [
+			"useThrottle",
+			"throttledRef"
+		],
+		related: [
+			"useThrottleFn"
+		]
+	},
+	{
+		name: "refWithControl",
+		"package": "shared",
+		lastUpdated: 1716812929000,
+		docs: "https://vueuse.org/shared/refWithControl/",
+		category: "Reactivity",
+		description: "fine-grained controls over ref and its reactivity",
+		alias: [
+			"controlledRef"
+		],
+		related: [
+			"computedWithControl"
+		]
+	},
+	{
+		name: "set",
+		"package": "shared",
+		lastUpdated: 1642756441000,
+		docs: "https://vueuse.org/shared/set/",
+		category: "Utilities",
+		description: "shorthand for `ref.value = x`"
+	},
+	{
+		name: "syncRef",
+		"package": "shared",
+		lastUpdated: 1703684940000,
+		docs: "https://vueuse.org/shared/syncRef/",
+		category: "Reactivity",
+		description: "two-way refs synchronization",
+		related: [
+			"syncRefs"
+		]
+	},
+	{
+		name: "syncRefs",
+		"package": "shared",
+		lastUpdated: 1645952177000,
+		docs: "https://vueuse.org/shared/syncRefs/",
+		category: "Reactivity",
+		description: "keep target refs in sync with a source ref",
+		related: [
+			"syncRef"
+		]
+	},
+	{
+		name: "templateRef",
+		"package": "core",
+		lastUpdated: 1663295825000,
+		docs: "https://vueuse.org/core/templateRef/",
+		category: "Component",
+		description: "shorthand for binding ref to template element"
+	},
+	{
+		name: "toObserver",
+		"package": "rxjs",
+		lastUpdated: 1631130736000,
+		docs: "https://vueuse.org/rxjs/toObserver/",
+		category: "@RxJS",
+		description: "sugar function to convert a `ref` into an RxJS [Observer](https://rxjs.dev/guide/observer)"
+	},
+	{
+		name: "toReactive",
+		"package": "shared",
+		lastUpdated: 1690729590000,
+		docs: "https://vueuse.org/shared/toReactive/",
+		category: "Reactivity",
+		description: "converts ref to reactive"
+	},
+	{
+		name: "toRef",
+		"package": "shared",
+		lastUpdated: 1681458143000,
+		docs: "https://vueuse.org/shared/toRef/",
+		category: "Reactivity",
+		description: "normalize value/ref/getter to `ref` or `computed`",
+		alias: [
+			"resolveRef"
+		],
+		related: [
+			"toValue"
+		]
+	},
+	{
+		name: "toRefs",
+		"package": "shared",
+		lastUpdated: 1690722634000,
+		docs: "https://vueuse.org/shared/toRefs/",
+		category: "Reactivity",
+		description: "extended [`toRefs`](https://v3.vuejs.org/api/refs-api.html#torefs) that also accepts refs of an object"
+	},
+	{
+		name: "toValue",
+		"package": "shared",
+		lastUpdated: 1681373709000,
+		docs: "https://vueuse.org/shared/toValue/",
+		category: "Reactivity",
+		description: "get the value of value/ref/getter",
+		alias: [
+			"resolveUnref"
+		],
+		related: [
+			"toRef"
+		]
+	},
+	{
+		name: "tryOnBeforeMount",
+		"package": "shared",
+		lastUpdated: 1703684866000,
+		docs: "https://vueuse.org/shared/tryOnBeforeMount/",
+		category: "Component",
+		description: "safe `onBeforeMount`"
+	},
+	{
+		name: "tryOnBeforeUnmount",
+		"package": "shared",
+		lastUpdated: 1703684866000,
+		docs: "https://vueuse.org/shared/tryOnBeforeUnmount/",
+		category: "Component",
+		description: "safe `onBeforeUnmount`"
+	},
+	{
+		name: "tryOnMounted",
+		"package": "shared",
+		lastUpdated: 1708417716000,
+		docs: "https://vueuse.org/shared/tryOnMounted/",
+		category: "Component",
+		description: "safe `onMounted`"
+	},
+	{
+		name: "tryOnScopeDispose",
+		"package": "shared",
+		lastUpdated: 1675070075000,
+		docs: "https://vueuse.org/shared/tryOnScopeDispose/",
+		category: "Component",
+		description: "safe `onScopeDispose`"
+	},
+	{
+		name: "tryOnUnmounted",
+		"package": "shared",
+		lastUpdated: 1703684866000,
+		docs: "https://vueuse.org/shared/tryOnUnmounted/",
+		category: "Component",
+		description: "safe `onUnmounted`"
+	},
+	{
+		name: "unrefElement",
+		"package": "core",
+		lastUpdated: 1681372607000,
+		docs: "https://vueuse.org/core/unrefElement/",
+		category: "Component",
+		description: "retrieves the underlying DOM element from a Vue ref or component instance"
+	},
+	{
+		name: "until",
+		"package": "shared",
+		lastUpdated: 1708417312000,
+		docs: "https://vueuse.org/shared/until/",
+		category: "Watch",
+		description: "promised one-time watch for changes"
+	},
+	{
+		name: "useAbs",
+		"package": "math",
+		lastUpdated: 1681372607000,
+		docs: "https://vueuse.org/math/useAbs/",
+		category: "@Math",
+		description: "reactive `Math.abs`"
+	},
+	{
+		name: "useActiveElement",
+		"package": "core",
+		lastUpdated: 1716815297000,
+		component: true,
+		docs: "https://vueuse.org/core/useActiveElement/",
+		category: "Elements",
+		description: "reactive `document.activeElement`"
+	},
+	{
+		name: "useAnimate",
+		"package": "core",
+		lastUpdated: 1716810590000,
+		docs: "https://vueuse.org/core/useAnimate/",
+		category: "Animation",
+		description: "reactive [Web Animations API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Animations_API)"
+	},
+	{
+		name: "useArrayDifference",
+		"package": "shared",
+		lastUpdated: 1695461887000,
+		docs: "https://vueuse.org/shared/useArrayDifference/",
+		category: "Array",
+		description: "reactive get array difference of two arrays"
+	},
+	{
+		name: "useArrayEvery",
+		"package": "shared",
+		lastUpdated: 1695461887000,
+		docs: "https://vueuse.org/shared/useArrayEvery/",
+		category: "Array",
+		description: "reactive `Array.every`"
+	},
+	{
+		name: "useArrayFilter",
+		"package": "shared",
+		lastUpdated: 1695461887000,
+		docs: "https://vueuse.org/shared/useArrayFilter/",
+		category: "Array",
+		description: "reactive `Array.filter`"
+	},
+	{
+		name: "useArrayFind",
+		"package": "shared",
+		lastUpdated: 1695461887000,
+		docs: "https://vueuse.org/shared/useArrayFind/",
+		category: "Array",
+		description: "reactive `Array.find`"
+	},
+	{
+		name: "useArrayFindIndex",
+		"package": "shared",
+		lastUpdated: 1695461887000,
+		docs: "https://vueuse.org/shared/useArrayFindIndex/",
+		category: "Array",
+		description: "reactive `Array.findIndex`"
+	},
+	{
+		name: "useArrayFindLast",
+		"package": "shared",
+		lastUpdated: 1695461887000,
+		docs: "https://vueuse.org/shared/useArrayFindLast/",
+		category: "Array",
+		description: "reactive `Array.findLast`"
+	},
+	{
+		name: "useArrayIncludes",
+		"package": "shared",
+		lastUpdated: 1695461887000,
+		docs: "https://vueuse.org/shared/useArrayIncludes/",
+		category: "Array",
+		description: "reactive `Array.includes`"
+	},
+	{
+		name: "useArrayJoin",
+		"package": "shared",
+		lastUpdated: 1695461887000,
+		docs: "https://vueuse.org/shared/useArrayJoin/",
+		category: "Array",
+		description: "reactive `Array.join`"
+	},
+	{
+		name: "useArrayMap",
+		"package": "shared",
+		lastUpdated: 1695461887000,
+		docs: "https://vueuse.org/shared/useArrayMap/",
+		category: "Array",
+		description: "reactive `Array.map`"
+	},
+	{
+		name: "useArrayReduce",
+		"package": "shared",
+		lastUpdated: 1695461887000,
+		docs: "https://vueuse.org/shared/useArrayReduce/",
+		category: "Array",
+		description: "reactive `Array.reduce`"
+	},
+	{
+		name: "useArraySome",
+		"package": "shared",
+		lastUpdated: 1695461887000,
+		docs: "https://vueuse.org/shared/useArraySome/",
+		category: "Array",
+		description: "reactive `Array.some`"
+	},
+	{
+		name: "useArrayUnique",
+		"package": "shared",
+		lastUpdated: 1695461887000,
+		docs: "https://vueuse.org/shared/useArrayUnique/",
+		category: "Array",
+		description: "reactive unique array"
+	},
+	{
+		name: "useAsyncQueue",
+		"package": "core",
+		lastUpdated: 1692963122000,
+		docs: "https://vueuse.org/core/useAsyncQueue/",
+		category: "Utilities",
+		description: "executes each asynchronous task sequentially and passes the current task result to the next task"
+	},
+	{
+		name: "useAsyncState",
+		"package": "core",
+		lastUpdated: 1682152878000,
+		docs: "https://vueuse.org/core/useAsyncState/",
+		category: "State",
+		description: "reactive async state"
+	},
+	{
+		name: "useAsyncValidator",
+		"package": "integrations",
+		lastUpdated: 1681372607000,
+		component: true,
+		docs: "https://vueuse.org/integrations/useAsyncValidator/",
+		category: "@Integrations",
+		description: "wrapper for [`async-validator`](https://github.com/yiminghe/async-validator)",
+		importPath: "integrations/useAsyncValidator"
+	},
+	{
+		name: "useAuth",
+		"package": "firebase",
+		lastUpdated: 1658645224000,
+		docs: "https://vueuse.org/firebase/useAuth/",
+		category: "@Firebase",
+		description: "reactive [Firebase Auth](https://firebase.google.com/docs/auth) binding",
+		importPath: "firebase/useAuth"
+	},
+	{
+		name: "useAverage",
+		"package": "math",
+		lastUpdated: 1681372607000,
+		docs: "https://vueuse.org/math/useAverage/",
+		category: "@Math",
+		description: "get the average of an array reactively"
+	},
+	{
+		name: "useAxios",
+		"package": "integrations",
+		lastUpdated: 1718191421000,
+		docs: "https://vueuse.org/integrations/useAxios/",
+		category: "@Integrations",
+		description: "wrapper for [`axios`](https://github.com/axios/axios)",
+		importPath: "integrations/useAxios"
+	},
+	{
+		name: "useBase64",
+		"package": "core",
+		lastUpdated: 1681402164000,
+		docs: "https://vueuse.org/core/useBase64/",
+		category: "Utilities",
+		description: "reactive base64 transforming"
+	},
+	{
+		name: "useBattery",
+		"package": "core",
+		lastUpdated: 1704766544000,
+		component: true,
+		docs: "https://vueuse.org/core/useBattery/",
+		category: "Sensors",
+		description: "reactive [Battery Status API](https://developer.mozilla.org/en-US/docs/Web/API/Battery_Status_API)"
+	},
+	{
+		name: "useBluetooth",
+		"package": "core",
+		lastUpdated: 1695452523000,
+		docs: "https://vueuse.org/core/useBluetooth/",
+		category: "Browser",
+		description: "reactive [Web Bluetooth API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Bluetooth_API)"
+	},
+	{
+		name: "useBreakpoints",
+		"package": "core",
+		lastUpdated: 1708422663000,
+		docs: "https://vueuse.org/core/useBreakpoints/",
+		category: "Browser",
+		description: "reactive viewport breakpoints"
+	},
+	{
+		name: "useBroadcastChannel",
+		"package": "core",
+		lastUpdated: 1680167214000,
+		docs: "https://vueuse.org/core/useBroadcastChannel/",
+		category: "Browser",
+		description: "reactive [BroadcastChannel API](https://developer.mozilla.org/en-US/docs/Web/API/BroadcastChannel)"
+	},
+	{
+		name: "useBrowserLocation",
+		"package": "core",
+		lastUpdated: 1695461887000,
+		component: true,
+		docs: "https://vueuse.org/core/useBrowserLocation/",
+		category: "Browser",
+		description: "reactive browser location"
+	},
+	{
+		name: "useCached",
+		"package": "core",
+		lastUpdated: 1644284136000,
+		docs: "https://vueuse.org/core/useCached/",
+		category: "Utilities",
+		description: "cache a ref with a custom comparator"
+	},
+	{
+		name: "useCeil",
+		"package": "math",
+		lastUpdated: 1681372607000,
+		docs: "https://vueuse.org/math/useCeil/",
+		category: "@Math",
+		description: "reactive `Math.ceil`"
+	},
+	{
+		name: "useChangeCase",
+		"package": "integrations",
+		lastUpdated: 1681402164000,
+		docs: "https://vueuse.org/integrations/useChangeCase/",
+		category: "@Integrations",
+		description: "reactive wrapper for [`change-case`](https://github.com/blakeembrey/change-case)",
+		importPath: "integrations/useChangeCase"
+	},
+	{
+		name: "useClamp",
+		"package": "math",
+		lastUpdated: 1681402164000,
+		docs: "https://vueuse.org/math/useClamp/",
+		category: "@Math",
+		description: "reactively clamp a value between two other values"
+	},
+	{
+		name: "useClipboard",
+		"package": "core",
+		lastUpdated: 1709008330000,
+		component: true,
+		docs: "https://vueuse.org/core/useClipboard/",
+		category: "Browser",
+		description: "reactive [Clipboard API](https://developer.mozilla.org/en-US/docs/Web/API/Clipboard_API)",
+		related: [
+			"useClipboardItems"
+		]
+	},
+	{
+		name: "useClipboardItems",
+		"package": "core",
+		lastUpdated: 1699549739000,
+		docs: "https://vueuse.org/core/useClipboardItems/",
+		category: "Browser",
+		description: "reactive [Clipboard API](https://developer.mozilla.org/en-US/docs/Web/API/Clipboard_API)",
+		related: [
+			"useClipboard"
+		]
+	},
+	{
+		name: "useCloned",
+		"package": "core",
+		lastUpdated: 1708422521000,
+		docs: "https://vueuse.org/core/useCloned/",
+		category: "Utilities",
+		description: "reactive clone of a ref"
+	},
+	{
+		name: "useColorMode",
+		"package": "core",
+		lastUpdated: 1695461887000,
+		component: true,
+		docs: "https://vueuse.org/core/useColorMode/",
+		category: "Browser",
+		description: "reactive color mode (dark / light / customs) with auto data persistence",
+		related: [
+			"useDark",
+			"usePreferredDark",
+			"useStorage"
+		]
+	},
+	{
+		name: "useConfirmDialog",
+		"package": "core",
+		lastUpdated: 1695461887000,
+		docs: "https://vueuse.org/core/useConfirmDialog/",
+		category: "Utilities",
+		description: "creates event hooks to support modals and confirmation dialog chains"
+	},
+	{
+		name: "useCookies",
+		"package": "integrations",
+		lastUpdated: 1718191421000,
+		docs: "https://vueuse.org/integrations/useCookies/",
+		category: "@Integrations",
+		description: "wrapper for [`universal-cookie`](https://www.npmjs.com/package/universal-cookie)",
+		importPath: "integrations/useCookies"
+	},
+	{
+		name: "useCounter",
+		"package": "shared",
+		lastUpdated: 1723131573000,
+		docs: "https://vueuse.org/shared/useCounter/",
+		category: "Utilities",
+		description: "basic counter with utility functions"
+	},
+	{
+		name: "useCssVar",
+		"package": "core",
+		lastUpdated: 1686084007000,
+		docs: "https://vueuse.org/core/useCssVar/",
+		category: "Browser",
+		description: "manipulate CSS variables"
+	},
+	{
+		name: "useCurrentElement",
+		"package": "core",
+		lastUpdated: 1708421167000,
+		docs: "https://vueuse.org/core/useCurrentElement/",
+		category: "Component",
+		description: "get the DOM element of current component as a ref"
+	},
+	{
+		name: "useCycleList",
+		"package": "core",
+		lastUpdated: 1708421467000,
+		docs: "https://vueuse.org/core/useCycleList/",
+		category: "Utilities",
+		description: "cycle through a list of items"
+	},
+	{
+		name: "useDark",
+		"package": "core",
+		lastUpdated: 1701689043000,
+		component: true,
+		docs: "https://vueuse.org/core/useDark/",
+		category: "Browser",
+		description: "reactive dark mode with auto data persistence",
+		related: [
+			"useColorMode",
+			"usePreferredDark",
+			"useStorage"
+		]
+	},
+	{
+		name: "useDateFormat",
+		"package": "shared",
+		lastUpdated: 1716807174000,
+		docs: "https://vueuse.org/shared/useDateFormat/",
+		category: "Time",
+		description: "get the formatted date according to the string of tokens passed in"
+	},
+	{
+		name: "useDebouncedRefHistory",
+		"package": "core",
+		lastUpdated: 1681372607000,
+		docs: "https://vueuse.org/core/useDebouncedRefHistory/",
+		category: "State",
+		description: "shorthand for `useRefHistory` with debounced filter",
+		related: [
+			"useRefHistory",
+			"useThrottledRefHistory"
+		]
+	},
+	{
+		name: "useDebounceFn",
+		"package": "shared",
+		lastUpdated: 1695452523000,
+		docs: "https://vueuse.org/shared/useDebounceFn/",
+		category: "Utilities",
+		description: "debounce execution of a function",
+		related: [
+			"useThrottleFn"
+		]
+	},
+	{
+		name: "useDeviceMotion",
+		"package": "core",
+		lastUpdated: 1639442454000,
+		component: true,
+		docs: "https://vueuse.org/core/useDeviceMotion/",
+		category: "Sensors",
+		description: "reactive [DeviceMotionEvent](https://developer.mozilla.org/en-US/docs/Web/API/DeviceMotionEvent)"
+	},
+	{
+		name: "useDeviceOrientation",
+		"package": "core",
+		lastUpdated: 1657430593000,
+		component: true,
+		docs: "https://vueuse.org/core/useDeviceOrientation/",
+		category: "Sensors",
+		description: "reactive [DeviceOrientationEvent](https://developer.mozilla.org/en-US/docs/Web/API/DeviceOrientationEvent)"
+	},
+	{
+		name: "useDevicePixelRatio",
+		"package": "core",
+		lastUpdated: 1695452523000,
+		component: true,
+		docs: "https://vueuse.org/core/useDevicePixelRatio/",
+		category: "Sensors",
+		description: "reactively track [`window.devicePixelRatio`](https://developer.mozilla.org/docs/Web/API/Window/devicePixelRatio)"
+	},
+	{
+		name: "useDevicesList",
+		"package": "core",
+		lastUpdated: 1679996873000,
+		component: true,
+		docs: "https://vueuse.org/core/useDevicesList/",
+		category: "Sensors",
+		description: "reactive [enumerateDevices](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/enumerateDevices) listing available input/output devices",
+		related: [
+			"useUserMedia"
+		]
+	},
+	{
+		name: "useDisplayMedia",
+		"package": "core",
+		lastUpdated: 1716812994000,
+		docs: "https://vueuse.org/core/useDisplayMedia/",
+		category: "Sensors",
+		description: "reactive [`mediaDevices.getDisplayMedia`](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getDisplayMedia) streaming",
+		related: [
+			"useUserMedia"
+		]
+	},
+	{
+		name: "useDocumentVisibility",
+		"package": "core",
+		lastUpdated: 1695452523000,
+		component: true,
+		docs: "https://vueuse.org/core/useDocumentVisibility/",
+		category: "Elements",
+		description: "reactively track [`document.visibilityState`](https://developer.mozilla.org/en-US/docs/Web/API/Document/visibilityState)"
+	},
+	{
+		name: "useDraggable",
+		"package": "core",
+		lastUpdated: 1709818926000,
+		component: true,
+		docs: "https://vueuse.org/core/useDraggable/",
+		category: "Elements",
+		description: "make elements draggable"
+	},
+	{
+		name: "useDrauu",
+		"package": "integrations",
+		lastUpdated: 1696667949000,
+		docs: "https://vueuse.org/integrations/useDrauu/",
+		category: "@Integrations",
+		description: "reactive instance for [drauu](https://github.com/antfu/drauu)",
+		importPath: "integrations/useDrauu"
+	},
+	{
+		name: "useDropZone",
+		"package": "core",
+		lastUpdated: 1723131573000,
+		docs: "https://vueuse.org/core/useDropZone/",
+		category: "Elements",
+		description: "create a zone where files can be dropped"
+	},
+	{
+		name: "useElementBounding",
+		"package": "core",
+		lastUpdated: 1703686198000,
+		component: true,
+		docs: "https://vueuse.org/core/useElementBounding/",
+		category: "Elements",
+		description: "reactive [bounding box](https://developer.mozilla.org/en-US/docs/Web/API/Element/getBoundingClientRect) of an HTML element"
+	},
+	{
+		name: "useElementByPoint",
+		"package": "core",
+		lastUpdated: 1699546257000,
+		docs: "https://vueuse.org/core/useElementByPoint/",
+		category: "Sensors",
+		description: "reactive element by point"
+	},
+	{
+		name: "useElementHover",
+		"package": "core",
+		lastUpdated: 1681372607000,
+		directive: true,
+		docs: "https://vueuse.org/core/useElementHover/",
+		category: "Sensors",
+		description: "reactive element's hover state"
+	},
+	{
+		name: "useElementSize",
+		"package": "core",
+		lastUpdated: 1716810599000,
+		component: true,
+		directive: true,
+		docs: "https://vueuse.org/core/useElementSize/",
+		category: "Elements",
+		description: "reactive size of an HTML element"
+	},
+	{
+		"package": "motion",
+		category: "@Motion",
+		name: "useElementStyle",
+		description: "sync a reactive object to a target element CSS styling",
+		external: "https://motion.vueuse.org/api/use-element-style.html"
+	},
+	{
+		"package": "motion",
+		category: "@Motion",
+		name: "useElementTransform",
+		description: "sync a reactive object to a target element CSS transform.",
+		external: "https://motion.vueuse.org/api/use-element-transform.html"
+	},
+	{
+		name: "useElementVisibility",
+		"package": "core",
+		lastUpdated: 1708421800000,
+		component: true,
+		directive: true,
+		docs: "https://vueuse.org/core/useElementVisibility/",
+		category: "Elements",
+		description: "tracks the visibility of an element within the viewport"
+	},
+	{
+		name: "useEventBus",
+		"package": "core",
+		lastUpdated: 1695461887000,
+		docs: "https://vueuse.org/core/useEventBus/",
+		category: "Utilities",
+		description: "a basic event bus"
+	},
+	{
+		name: "useEventListener",
+		"package": "core",
+		lastUpdated: 1708417312000,
+		docs: "https://vueuse.org/core/useEventListener/",
+		category: "Browser",
+		description: "use EventListener with ease"
+	},
+	{
+		name: "useEventSource",
+		"package": "core",
+		lastUpdated: 1723131573000,
+		docs: "https://vueuse.org/core/useEventSource/",
+		category: "Network",
+		description: "an [EventSource](https://developer.mozilla.org/en-US/docs/Web/API/EventSource) or [Server-Sent-Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events) instance opens a persistent connection to an HTTP server"
+	},
+	{
+		name: "useExtractedObservable",
+		"package": "rxjs",
+		lastUpdated: 1696662105000,
+		docs: "https://vueuse.org/rxjs/useExtractedObservable/",
+		category: "@RxJS",
+		description: "use an RxJS [`Observable`](https://rxjs.dev/guide/observable) as extracted from one or more composables"
+	},
+	{
+		name: "useEyeDropper",
+		"package": "core",
+		lastUpdated: 1695461887000,
+		component: true,
+		docs: "https://vueuse.org/core/useEyeDropper/",
+		category: "Browser",
+		description: "reactive [EyeDropper API](https://developer.mozilla.org/en-US/docs/Web/API/EyeDropper_API)"
+	},
+	{
+		name: "useFavicon",
+		"package": "core",
+		lastUpdated: 1696662305000,
+		docs: "https://vueuse.org/core/useFavicon/",
+		category: "Browser",
+		description: "reactive favicon"
+	},
+	{
+		name: "useFetch",
+		"package": "core",
+		lastUpdated: 1716807174000,
+		docs: "https://vueuse.org/core/useFetch/",
+		category: "Network",
+		description: "reactive [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) provides the ability to abort requests"
+	},
+	{
+		name: "useFileDialog",
+		"package": "core",
+		lastUpdated: 1716812442000,
+		docs: "https://vueuse.org/core/useFileDialog/",
+		category: "Browser",
+		description: "open file dialog with ease"
+	},
+	{
+		name: "useFileSystemAccess",
+		"package": "core",
+		lastUpdated: 1708419886000,
+		docs: "https://vueuse.org/core/useFileSystemAccess/",
+		category: "Browser",
+		description: "create and read and write local files with [FileSystemAccessAPI](https://developer.mozilla.org/en-US/docs/Web/API/File_System_Access_API)"
+	},
+	{
+		name: "useFirestore",
+		"package": "firebase",
+		lastUpdated: 1681306493000,
+		docs: "https://vueuse.org/firebase/useFirestore/",
+		category: "@Firebase",
+		description: "reactive [Firestore](https://firebase.google.com/docs/firestore) binding",
+		importPath: "firebase/useFirestore"
+	},
+	{
+		name: "useFloor",
+		"package": "math",
+		lastUpdated: 1681372607000,
+		docs: "https://vueuse.org/math/useFloor/",
+		category: "@Math",
+		description: "reactive `Math.floor`"
+	},
+	{
+		name: "useFocus",
+		"package": "core",
+		lastUpdated: 1716889695000,
+		docs: "https://vueuse.org/core/useFocus/",
+		category: "Sensors",
+		description: "reactive utility to track or set the focus state of a DOM element"
+	},
+	{
+		name: "useFocusTrap",
+		"package": "integrations",
+		lastUpdated: 1695461887000,
+		component: true,
+		docs: "https://vueuse.org/integrations/useFocusTrap/",
+		category: "@Integrations",
+		description: "reactive wrapper for [`focus-trap`](https://github.com/focus-trap/focus-trap)",
+		importPath: "integrations/useFocusTrap"
+	},
+	{
+		name: "useFocusWithin",
+		"package": "core",
+		lastUpdated: 1681336477000,
+		docs: "https://vueuse.org/core/useFocusWithin/",
+		category: "Sensors",
+		description: "reactive utility to track if an element or one of its decendants has focus"
+	},
+	{
+		name: "useFps",
+		"package": "core",
+		lastUpdated: 1644734082000,
+		docs: "https://vueuse.org/core/useFps/",
+		category: "Sensors",
+		description: "reactive FPS (frames per second)"
+	},
+	{
+		name: "useFullscreen",
+		"package": "core",
+		lastUpdated: 1695461887000,
+		component: true,
+		docs: "https://vueuse.org/core/useFullscreen/",
+		category: "Browser",
+		description: "reactive [Fullscreen API](https://developer.mozilla.org/en-US/docs/Web/API/Fullscreen_API)"
+	},
+	{
+		name: "useFuse",
+		"package": "integrations",
+		lastUpdated: 1681373709000,
+		docs: "https://vueuse.org/integrations/useFuse/",
+		category: "@Integrations",
+		description: "easily implement fuzzy search using a composable with [Fuse.js](https://github.com/krisk/fuse)",
+		importPath: "integrations/useFuse"
+	},
+	{
+		name: "useGamepad",
+		"package": "core",
+		lastUpdated: 1716812401000,
+		docs: "https://vueuse.org/core/useGamepad/",
+		category: "Browser",
+		description: "provides reactive bindings for the [Gamepad API](https://developer.mozilla.org/en-US/docs/Web/API/Gamepad_API)"
+	},
+	{
+		name: "useGeolocation",
+		"package": "core",
+		lastUpdated: 1690225787000,
+		component: true,
+		docs: "https://vueuse.org/core/useGeolocation/",
+		category: "Sensors",
+		description: "reactive [Geolocation API](https://developer.mozilla.org/en-US/docs/Web/API/Geolocation_API)"
+	},
+	{
+		name: "useHead",
+		"package": "head",
+		description: "update head meta tags reactively.",
+		category: "@Head",
+		external: "https://github.com/vueuse/head#api"
+	},
+	{
+		name: "useIDBKeyval",
+		"package": "integrations",
+		lastUpdated: 1708524735000,
+		docs: "https://vueuse.org/integrations/useIDBKeyval/",
+		category: "@Integrations",
+		description: "wrapper for [`idb-keyval`](https://www.npmjs.com/package/idb-keyval)",
+		importPath: "integrations/useIDBKeyval"
+	},
+	{
+		name: "useIdle",
+		"package": "core",
+		lastUpdated: 1679570970000,
+		component: true,
+		docs: "https://vueuse.org/core/useIdle/",
+		category: "Sensors",
+		description: "tracks whether the user is being inactive"
+	},
+	{
+		name: "useImage",
+		"package": "core",
+		lastUpdated: 1695461887000,
+		component: true,
+		docs: "https://vueuse.org/core/useImage/",
+		category: "Browser",
+		description: "reactive load an image in the browser"
+	},
+	{
+		name: "useInfiniteScroll",
+		"package": "core",
+		lastUpdated: 1701688535000,
+		directive: true,
+		docs: "https://vueuse.org/core/useInfiniteScroll/",
+		category: "Sensors",
+		description: "infinite scrolling of the element"
+	},
+	{
+		name: "useIntersectionObserver",
+		"package": "core",
+		lastUpdated: 1681481790000,
+		directive: true,
+		docs: "https://vueuse.org/core/useIntersectionObserver/",
+		category: "Elements",
+		description: "detects that a target element's visibility"
+	},
+	{
+		name: "useInterval",
+		"package": "shared",
+		lastUpdated: 1681372607000,
+		docs: "https://vueuse.org/shared/useInterval/",
+		category: "Animation",
+		description: "reactive counter increases on every interval"
+	},
+	{
+		name: "useIntervalFn",
+		"package": "shared",
+		lastUpdated: 1716809906000,
+		docs: "https://vueuse.org/shared/useIntervalFn/",
+		category: "Animation",
+		description: "wrapper for `setInterval` with controls"
+	},
+	{
+		name: "useIpcRenderer",
+		"package": "electron",
+		lastUpdated: 1708417312000,
+		docs: "https://vueuse.org/electron/useIpcRenderer/",
+		category: "@Electron",
+		description: "provides [ipcRenderer](https://www.electronjs.org/docs/api/ipc-renderer) and all of its APIs"
+	},
+	{
+		name: "useIpcRendererInvoke",
+		"package": "electron",
+		lastUpdated: 1681402164000,
+		docs: "https://vueuse.org/electron/useIpcRendererInvoke/",
+		category: "@Electron",
+		description: "reactive [ipcRenderer.invoke API](https://www.electronjs.org/docs/api/ipc-renderer#ipcrendererinvokechannel-args) result"
+	},
+	{
+		name: "useIpcRendererOn",
+		"package": "electron",
+		lastUpdated: 1681402164000,
+		docs: "https://vueuse.org/electron/useIpcRendererOn/",
+		category: "@Electron",
+		description: "use [ipcRenderer.on](https://www.electronjs.org/docs/api/ipc-renderer#ipcrendereronchannel-listener) with ease and [ipcRenderer.removeListener](https://www.electronjs.org/docs/api/ipc-renderer#ipcrendererremovelistenerchannel-listener) automatically on unmounted"
+	},
+	{
+		name: "useJwt",
+		"package": "integrations",
+		lastUpdated: 1695452523000,
+		docs: "https://vueuse.org/integrations/useJwt/",
+		category: "@Integrations",
+		description: "wrapper for [`jwt-decode`](https://github.com/auth0/jwt-decode)",
+		importPath: "integrations/useJwt"
+	},
+	{
+		name: "useKeyModifier",
+		"package": "core",
+		lastUpdated: 1657638042000,
+		docs: "https://vueuse.org/core/useKeyModifier/",
+		category: "Sensors",
+		description: "reactive [Modifier State](https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/getModifierState)"
+	},
+	{
+		name: "useLastChanged",
+		"package": "shared",
+		lastUpdated: 1695461887000,
+		docs: "https://vueuse.org/shared/useLastChanged/",
+		category: "State",
+		description: "records the timestamp of the last change"
+	},
+	{
+		name: "useLocalStorage",
+		"package": "core",
+		lastUpdated: 1681372607000,
+		docs: "https://vueuse.org/core/useLocalStorage/",
+		category: "State",
+		description: "reactive [LocalStorage](https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage)",
+		related: [
+			"useStorage"
+		]
+	},
+	{
+		name: "useMagicKeys",
+		"package": "core",
+		lastUpdated: 1701749721000,
+		docs: "https://vueuse.org/core/useMagicKeys/",
+		category: "Sensors",
+		description: "reactive keys pressed state"
+	},
+	{
+		name: "useManualRefHistory",
+		"package": "core",
+		lastUpdated: 1690225787000,
+		docs: "https://vueuse.org/core/useManualRefHistory/",
+		category: "State",
+		description: "manually track the change history of a ref when the using calls `commit()`",
+		related: [
+			"useRefHistory"
+		]
+	},
+	{
+		name: "useMath",
+		"package": "math",
+		lastUpdated: 1658042869000,
+		docs: "https://vueuse.org/math/useMath/",
+		category: "@Math",
+		description: "reactive `Math` methods"
+	},
+	{
+		name: "useMax",
+		"package": "math",
+		lastUpdated: 1695452523000,
+		docs: "https://vueuse.org/math/useMax/",
+		category: "@Math",
+		description: "reactive `Math.max`"
+	},
+	{
+		name: "useMediaControls",
+		"package": "core",
+		lastUpdated: 1716812972000,
+		docs: "https://vueuse.org/core/useMediaControls/",
+		category: "Browser",
+		description: "reactive media controls for both `audio` and `video` elements"
+	},
+	{
+		name: "useMediaQuery",
+		"package": "core",
+		lastUpdated: 1690722655000,
+		docs: "https://vueuse.org/core/useMediaQuery/",
+		category: "Browser",
+		description: "reactive [Media Query](https://developer.mozilla.org/en-US/docs/Web/CSS/Media_Queries/Testing_media_queries)"
+	},
+	{
+		name: "useMemoize",
+		"package": "core",
+		lastUpdated: 1708417312000,
+		docs: "https://vueuse.org/core/useMemoize/",
+		category: "Utilities",
+		description: "cache results of functions depending on arguments and keep it reactive"
+	},
+	{
+		name: "useMemory",
+		"package": "core",
+		lastUpdated: 1658083607000,
+		docs: "https://vueuse.org/core/useMemory/",
+		category: "Browser",
+		description: "reactive Memory Info"
+	},
+	{
+		name: "useMin",
+		"package": "math",
+		lastUpdated: 1695452523000,
+		docs: "https://vueuse.org/math/useMin/",
+		category: "@Math",
+		description: "reactive `Math.min`"
+	},
+	{
+		"package": "motion",
+		category: "@Motion",
+		name: "useMotion",
+		description: "putting your components in motion.",
+		external: "https://motion.vueuse.org/api/use-motion.html"
+	},
+	{
+		"package": "motion",
+		category: "@Motion",
+		name: "useMotionProperties",
+		description: "access Motion Properties for a target element.",
+		external: "https://motion.vueuse.org/api/use-motion-properties.html"
+	},
+	{
+		"package": "motion",
+		category: "@Motion",
+		name: "useMotionVariants",
+		description: "handle the Variants state and selection.",
+		external: "https://motion.vueuse.org/api/use-motion-variants.html"
+	},
+	{
+		name: "useMounted",
+		"package": "core",
+		lastUpdated: 1710513214000,
+		docs: "https://vueuse.org/core/useMounted/",
+		category: "Component",
+		description: "mounted state in ref"
+	},
+	{
+		name: "useMouse",
+		"package": "core",
+		lastUpdated: 1695461887000,
+		component: true,
+		docs: "https://vueuse.org/core/useMouse/",
+		category: "Sensors",
+		description: "reactive mouse position"
+	},
+	{
+		name: "useMouseInElement",
+		"package": "core",
+		lastUpdated: 1701749721000,
+		component: true,
+		docs: "https://vueuse.org/core/useMouseInElement/",
+		category: "Elements",
+		description: "reactive mouse position related to an element"
+	},
+	{
+		name: "useMousePressed",
+		"package": "core",
+		lastUpdated: 1714550417000,
+		component: true,
+		docs: "https://vueuse.org/core/useMousePressed/",
+		category: "Sensors",
+		description: "reactive mouse pressing state"
+	},
+	{
+		name: "useMutationObserver",
+		"package": "core",
+		lastUpdated: 1709634902000,
+		docs: "https://vueuse.org/core/useMutationObserver/",
+		category: "Elements",
+		description: "watch for changes being made to the DOM tree"
+	},
+	{
+		name: "useNavigatorLanguage",
+		"package": "core",
+		lastUpdated: 1680167214000,
+		docs: "https://vueuse.org/core/useNavigatorLanguage/",
+		category: "Sensors",
+		description: "reactive [navigator.language](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/language)"
+	},
+	{
+		name: "useNetwork",
+		"package": "core",
+		lastUpdated: 1658083596000,
+		component: true,
+		docs: "https://vueuse.org/core/useNetwork/",
+		category: "Sensors",
+		description: "reactive [Network status](https://developer.mozilla.org/en-US/docs/Web/API/Network_Information_API)"
+	},
+	{
+		name: "useNow",
+		"package": "core",
+		lastUpdated: 1707213136000,
+		component: true,
+		docs: "https://vueuse.org/core/useNow/",
+		category: "Animation",
+		description: "reactive current Date instance"
+	},
+	{
+		name: "useNProgress",
+		"package": "integrations",
+		lastUpdated: 1681402164000,
+		docs: "https://vueuse.org/integrations/useNProgress/",
+		category: "@Integrations",
+		description: "reactive wrapper for [`nprogress`](https://github.com/rstacruz/nprogress)",
+		importPath: "integrations/useNProgress"
+	},
+	{
+		name: "useObjectUrl",
+		"package": "core",
+		lastUpdated: 1690722569000,
+		component: true,
+		docs: "https://vueuse.org/core/useObjectUrl/",
+		category: "Browser",
+		description: "reactive URL representing an object"
+	},
+	{
+		name: "useObservable",
+		"package": "rxjs",
+		lastUpdated: 1695461887000,
+		docs: "https://vueuse.org/rxjs/useObservable/",
+		category: "@RxJS",
+		description: "use an RxJS [`Observable`](https://rxjs.dev/guide/observable)"
+	},
+	{
+		name: "useOffsetPagination",
+		"package": "core",
+		lastUpdated: 1701688119000,
+		component: true,
+		docs: "https://vueuse.org/core/useOffsetPagination/",
+		category: "Utilities",
+		description: "reactive offset pagination"
+	},
+	{
+		name: "useOnline",
+		"package": "core",
+		lastUpdated: 1639442454000,
+		component: true,
+		docs: "https://vueuse.org/core/useOnline/",
+		category: "Sensors",
+		description: "reactive online state"
+	},
+	{
+		name: "usePageLeave",
+		"package": "core",
+		lastUpdated: 1642756441000,
+		component: true,
+		docs: "https://vueuse.org/core/usePageLeave/",
+		category: "Sensors",
+		description: "reactive state to show whether the mouse leaves the page"
+	},
+	{
+		name: "useParallax",
+		"package": "core",
+		lastUpdated: 1718191421000,
+		docs: "https://vueuse.org/core/useParallax/",
+		category: "Sensors",
+		description: "create parallax effect easily"
+	},
+	{
+		name: "useParentElement",
+		"package": "core",
+		lastUpdated: 1681372607000,
+		docs: "https://vueuse.org/core/useParentElement/",
+		category: "Elements",
+		description: "get parent element of the given element"
+	},
+	{
+		name: "usePerformanceObserver",
+		"package": "core",
+		lastUpdated: 1677935193000,
+		docs: "https://vueuse.org/core/usePerformanceObserver/",
+		category: "Browser",
+		description: "observe performance metrics"
+	},
+	{
+		name: "usePermission",
+		"package": "core",
+		lastUpdated: 1657430593000,
+		docs: "https://vueuse.org/core/usePermission/",
+		category: "Browser",
+		description: "reactive [Permissions API](https://developer.mozilla.org/en-US/docs/Web/API/Permissions_API)",
+		related: [
+			"useUserMedia"
+		]
+	},
+	{
+		name: "usePointer",
+		"package": "core",
+		lastUpdated: 1695452523000,
+		component: true,
+		docs: "https://vueuse.org/core/usePointer/",
+		category: "Sensors",
+		description: "reactive [pointer state](https://developer.mozilla.org/en-US/docs/Web/API/Pointer_events)"
+	},
+	{
+		name: "usePointerLock",
+		"package": "core",
+		lastUpdated: 1708417312000,
+		component: true,
+		docs: "https://vueuse.org/core/usePointerLock/",
+		category: "Sensors",
+		description: "reactive [pointer lock](https://developer.mozilla.org/en-US/docs/Web/API/Pointer_Lock_API)"
+	},
+	{
+		name: "usePointerSwipe",
+		"package": "core",
+		lastUpdated: 1701687839000,
+		docs: "https://vueuse.org/core/usePointerSwipe/",
+		category: "Sensors",
+		description: "reactive swipe detection based on [PointerEvents](https://developer.mozilla.org/en-US/docs/Web/API/PointerEvent)"
+	},
+	{
+		name: "usePrecision",
+		"package": "math",
+		lastUpdated: 1701749721000,
+		docs: "https://vueuse.org/math/usePrecision/",
+		category: "@Math",
+		description: "reactively set the precision of a number"
+	},
+	{
+		name: "usePreferredColorScheme",
+		"package": "core",
+		lastUpdated: 1639442454000,
+		component: true,
+		docs: "https://vueuse.org/core/usePreferredColorScheme/",
+		category: "Browser",
+		description: "reactive [prefers-color-scheme](https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-color-scheme) media query"
+	},
+	{
+		name: "usePreferredContrast",
+		"package": "core",
+		lastUpdated: 1661240113000,
+		component: true,
+		docs: "https://vueuse.org/core/usePreferredContrast/",
+		category: "Browser",
+		description: "reactive [prefers-contrast](https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-contrast) media query"
+	},
+	{
+		name: "usePreferredDark",
+		"package": "core",
+		lastUpdated: 1639442454000,
+		component: true,
+		docs: "https://vueuse.org/core/usePreferredDark/",
+		category: "Browser",
+		description: "reactive dark theme preference",
+		related: [
+			"useColorMode",
+			"useDark"
+		]
+	},
+	{
+		name: "usePreferredLanguages",
+		"package": "core",
+		lastUpdated: 1639442454000,
+		component: true,
+		docs: "https://vueuse.org/core/usePreferredLanguages/",
+		category: "Browser",
+		description: "reactive [Navigator Languages](https://developer.mozilla.org/en-US/docs/Web/API/NavigatorLanguage/languages)"
+	},
+	{
+		name: "usePreferredReducedMotion",
+		"package": "core",
+		lastUpdated: 1659593252000,
+		component: true,
+		docs: "https://vueuse.org/core/usePreferredReducedMotion/",
+		category: "Browser",
+		description: "reactive [prefers-reduced-motion](https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-reduced-motion) media query"
+	},
+	{
+		name: "usePrevious",
+		"package": "core",
+		lastUpdated: 1681372607000,
+		docs: "https://vueuse.org/core/usePrevious/",
+		category: "Utilities",
+		description: "holds the previous value of a ref"
+	},
+	{
+		name: "useProjection",
+		"package": "math",
+		lastUpdated: 1681372607000,
+		docs: "https://vueuse.org/math/useProjection/",
+		category: "@Math",
+		description: "reactive numeric projection from one domain to another",
+		related: [
+			"createGenericProjection",
+			"createProjection"
+		]
+	},
+	{
+		name: "useQRCode",
+		"package": "integrations",
+		lastUpdated: 1681372607000,
+		docs: "https://vueuse.org/integrations/useQRCode/",
+		category: "@Integrations",
+		description: "wrapper for [`qrcode`](https://github.com/soldair/node-qrcode)",
+		importPath: "integrations/useQRCode"
+	},
+	{
+		name: "useRafFn",
+		"package": "core",
+		lastUpdated: 1708426618000,
+		docs: "https://vueuse.org/core/useRafFn/",
+		category: "Animation",
+		description: "call function on every `requestAnimationFrame`"
+	},
+	{
+		name: "useRefHistory",
+		"package": "core",
+		lastUpdated: 1708417312000,
+		docs: "https://vueuse.org/core/useRefHistory/",
+		category: "State",
+		description: "track the change history of a ref",
+		related: [
+			"useDebouncedRefHistory",
+			"useManualRefHistory",
+			"useThrottledRefHistory"
+		]
+	},
+	{
+		name: "useResizeObserver",
+		"package": "core",
+		lastUpdated: 1708421922000,
+		docs: "https://vueuse.org/core/useResizeObserver/",
+		category: "Elements",
+		description: "reports changes to the dimensions of an Element's content or the border-box"
+	},
+	{
+		name: "useRound",
+		"package": "math",
+		lastUpdated: 1681372607000,
+		docs: "https://vueuse.org/math/useRound/",
+		category: "@Math",
+		description: "reactive `Math.round`"
+	},
+	{
+		name: "useRouteHash",
+		"package": "router",
+		lastUpdated: 1690718020000,
+		docs: "https://vueuse.org/router/useRouteHash/",
+		category: "@Router",
+		description: "shorthand for a reactive `route.hash`"
+	},
+	{
+		name: "useRouteParams",
+		"package": "router",
+		lastUpdated: 1716812049000,
+		docs: "https://vueuse.org/router/useRouteParams/",
+		category: "@Router",
+		description: "shorthand for a reactive `route.params`"
+	},
+	{
+		name: "useRouteQuery",
+		"package": "router",
+		lastUpdated: 1708427433000,
+		docs: "https://vueuse.org/router/useRouteQuery/",
+		category: "@Router",
+		description: "shorthand for a reactive `route.query`"
+	},
+	{
+		name: "useRTDB",
+		"package": "firebase",
+		lastUpdated: 1690729883000,
+		docs: "https://vueuse.org/firebase/useRTDB/",
+		category: "@Firebase",
+		description: "reactive [Firebase Realtime Database](https://firebase.google.com/docs/database) binding",
+		importPath: "firebase/useRTDB"
+	},
+	{
+		name: "useSchemaOrg",
+		"package": "schema-org",
+		description: "update schema.org reactively.",
+		category: "@SchemaOrg",
+		external: "https://vue-schema-org.netlify.app/api/core/use-schema-org.html"
+	},
+	{
+		name: "useScreenOrientation",
+		"package": "core",
+		lastUpdated: 1708417312000,
+		docs: "https://vueuse.org/core/useScreenOrientation/",
+		category: "Browser",
+		description: "reactive [Screen Orientation API](https://developer.mozilla.org/en-US/docs/Web/API/Screen_Orientation_API)"
+	},
+	{
+		name: "useScreenSafeArea",
+		"package": "core",
+		lastUpdated: 1640682127000,
+		component: true,
+		docs: "https://vueuse.org/core/useScreenSafeArea/",
+		category: "Browser",
+		description: "reactive `env(safe-area-inset-*)`"
+	},
+	{
+		name: "useScriptTag",
+		"package": "core",
+		lastUpdated: 1681372607000,
+		docs: "https://vueuse.org/core/useScriptTag/",
+		category: "Browser",
+		description: "creates a script tag"
+	},
+	{
+		name: "useScroll",
+		"package": "core",
+		lastUpdated: 1716813353000,
+		directive: true,
+		docs: "https://vueuse.org/core/useScroll/",
+		category: "Sensors",
+		description: "reactive scroll position and state"
+	},
+	{
+		name: "useScrollLock",
+		"package": "core",
+		lastUpdated: 1716812370000,
+		directive: true,
+		docs: "https://vueuse.org/core/useScrollLock/",
+		category: "Sensors",
+		description: "lock scrolling of the element"
+	},
+	{
+		name: "useSessionStorage",
+		"package": "core",
+		lastUpdated: 1681372607000,
+		docs: "https://vueuse.org/core/useSessionStorage/",
+		category: "State",
+		description: "reactive [SessionStorage](https://developer.mozilla.org/en-US/docs/Web/API/Window/sessionStorage)",
+		related: [
+			"useStorage"
+		]
+	},
+	{
+		name: "useShare",
+		"package": "core",
+		lastUpdated: 1703685517000,
+		docs: "https://vueuse.org/core/useShare/",
+		category: "Browser",
+		description: "reactive [Web Share API](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/share)"
+	},
+	{
+		name: "useSortable",
+		"package": "integrations",
+		lastUpdated: 1723131573000,
+		component: true,
+		docs: "https://vueuse.org/integrations/useSortable/",
+		category: "@Integrations",
+		description: "wrapper for [`sortable`](https://github.com/SortableJS/Sortable)",
+		importPath: "integrations/useSortable"
+	},
+	{
+		name: "useSorted",
+		"package": "core",
+		lastUpdated: 1695452523000,
+		docs: "https://vueuse.org/core/useSorted/",
+		category: "Array",
+		description: "reactive sort array"
+	},
+	{
+		name: "useSound",
+		"package": "sound",
+		description: "play sound effects reactively.",
+		category: "@Sound",
+		external: "https://github.com/vueuse/sound#examples"
+	},
+	{
+		name: "useSpeechRecognition",
+		"package": "core",
+		lastUpdated: 1716889635000,
+		docs: "https://vueuse.org/core/useSpeechRecognition/",
+		category: "Sensors",
+		description: "reactive [SpeechRecognition](https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition)"
+	},
+	{
+		name: "useSpeechSynthesis",
+		"package": "core",
+		lastUpdated: 1695452523000,
+		docs: "https://vueuse.org/core/useSpeechSynthesis/",
+		category: "Sensors",
+		description: "reactive [SpeechSynthesis](https://developer.mozilla.org/en-US/docs/Web/API/SpeechSynthesis)"
+	},
+	{
+		"package": "motion",
+		category: "@Motion",
+		name: "useSpring",
+		description: "spring animations.",
+		external: "https://motion.vueuse.org/api/use-spring.html"
+	},
+	{
+		name: "useStepper",
+		"package": "core",
+		lastUpdated: 1657132687000,
+		docs: "https://vueuse.org/core/useStepper/",
+		category: "Utilities",
+		description: "provides helpers for building a multi-step wizard interface"
+	},
+	{
+		name: "useStorage",
+		"package": "core",
+		lastUpdated: 1708524637000,
+		docs: "https://vueuse.org/core/useStorage/",
+		category: "State",
+		description: "create a reactive ref that can be used to access & modify [LocalStorage](https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage) or [SessionStorage](https://developer.mozilla.org/en-US/docs/Web/API/Window/sessionStorage)",
+		related: [
+			"useColorMode",
+			"useDark",
+			"useLocalStorage",
+			"useSessionStorage",
+			"useStorageAsync"
+		]
+	},
+	{
+		name: "useStorageAsync",
+		"package": "core",
+		lastUpdated: 1704766234000,
+		docs: "https://vueuse.org/core/useStorageAsync/",
+		category: "State",
+		description: "reactive Storage in with async support",
+		related: [
+			"useStorage"
+		]
+	},
+	{
+		name: "useStyleTag",
+		"package": "core",
+		lastUpdated: 1699546257000,
+		docs: "https://vueuse.org/core/useStyleTag/",
+		category: "Browser",
+		description: "inject reactive `style` element in head"
+	},
+	{
+		name: "useSubject",
+		"package": "rxjs",
+		lastUpdated: 1672752994000,
+		docs: "https://vueuse.org/rxjs/useSubject/",
+		category: "@RxJS",
+		description: "bind an RxJS [`Subject`](https://rxjs.dev/guide/subject) to a `ref` and propagate value changes both ways"
+	},
+	{
+		name: "useSubscription",
+		"package": "rxjs",
+		lastUpdated: 1628521945000,
+		docs: "https://vueuse.org/rxjs/useSubscription/",
+		category: "@RxJS",
+		description: "use an RxJS [`Subscription`](https://rxjs.dev/guide/subscription) without worrying about unsubscribing from it or creating memory leaks"
+	},
+	{
+		name: "useSum",
+		"package": "math",
+		lastUpdated: 1681372607000,
+		docs: "https://vueuse.org/math/useSum/",
+		category: "@Math",
+		description: "get the sum of an array reactively"
+	},
+	{
+		name: "useSupported",
+		"package": "core",
+		lastUpdated: 1679995528000,
+		docs: "https://vueuse.org/core/useSupported/",
+		category: "Utilities",
+		description: "sSR compatibility `isSupported`"
+	},
+	{
+		name: "useSwipe",
+		"package": "core",
+		lastUpdated: 1701749721000,
+		docs: "https://vueuse.org/core/useSwipe/",
+		category: "Sensors",
+		description: "reactive swipe detection based on [`TouchEvents`](https://developer.mozilla.org/en-US/docs/Web/API/TouchEvent)"
+	},
+	{
+		name: "useTemplateRefsList",
+		"package": "core",
+		lastUpdated: 1708417312000,
+		docs: "https://vueuse.org/core/useTemplateRefsList/",
+		category: "Component",
+		description: "shorthand for binding refs to template elements and components inside `v-for`"
+	},
+	{
+		name: "useTextareaAutosize",
+		"package": "core",
+		lastUpdated: 1716812909000,
+		docs: "https://vueuse.org/core/useTextareaAutosize/",
+		category: "Browser",
+		description: "automatically update the height of a textarea depending on the content"
+	},
+	{
+		name: "useTextDirection",
+		"package": "core",
+		lastUpdated: 1658657118000,
+		docs: "https://vueuse.org/core/useTextDirection/",
+		category: "Browser",
+		description: "reactive [dir](https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/dir) of the element's text"
+	},
+	{
+		name: "useTextSelection",
+		"package": "core",
+		lastUpdated: 1690226818000,
+		docs: "https://vueuse.org/core/useTextSelection/",
+		category: "Sensors",
+		description: "reactively track user text selection based on [`Window.getSelection`](https://developer.mozilla.org/en-US/docs/Web/API/Window/getSelection)"
+	},
+	{
+		name: "useThrottledRefHistory",
+		"package": "core",
+		lastUpdated: 1701749721000,
+		docs: "https://vueuse.org/core/useThrottledRefHistory/",
+		category: "State",
+		description: "shorthand for `useRefHistory` with throttled filter",
+		related: [
+			"useDebouncedRefHistory",
+			"useRefHistory"
+		]
+	},
+	{
+		name: "useThrottleFn",
+		"package": "shared",
+		lastUpdated: 1716812949000,
+		docs: "https://vueuse.org/shared/useThrottleFn/",
+		category: "Utilities",
+		description: "throttle execution of a function",
+		related: [
+			"refDebounced",
+			"refThrottled",
+			"useDebounceFn"
+		]
+	},
+	{
+		name: "useTimeAgo",
+		"package": "core",
+		lastUpdated: 1704766410000,
+		component: true,
+		docs: "https://vueuse.org/core/useTimeAgo/",
+		category: "Time",
+		description: "reactive time ago"
+	},
+	{
+		name: "useTimeout",
+		"package": "shared",
+		lastUpdated: 1716812078000,
+		docs: "https://vueuse.org/shared/useTimeout/",
+		category: "Animation",
+		description: "update value after a given time with controls"
+	},
+	{
+		name: "useTimeoutFn",
+		"package": "shared",
+		lastUpdated: 1681372607000,
+		docs: "https://vueuse.org/shared/useTimeoutFn/",
+		category: "Animation",
+		description: "wrapper for `setTimeout` with controls"
+	},
+	{
+		name: "useTimeoutPoll",
+		"package": "core",
+		lastUpdated: 1687945312000,
+		docs: "https://vueuse.org/core/useTimeoutPoll/",
+		category: "Utilities",
+		description: "use timeout to poll something"
+	},
+	{
+		name: "useTimestamp",
+		"package": "core",
+		lastUpdated: 1664157082000,
+		component: true,
+		docs: "https://vueuse.org/core/useTimestamp/",
+		category: "Animation",
+		description: "reactive current timestamp"
+	},
+	{
+		name: "useTitle",
+		"package": "core",
+		lastUpdated: 1701739377000,
+		docs: "https://vueuse.org/core/useTitle/",
+		category: "Browser",
+		description: "reactive document title"
+	},
+	{
+		name: "useToggle",
+		"package": "shared",
+		lastUpdated: 1695452523000,
+		docs: "https://vueuse.org/shared/useToggle/",
+		category: "Utilities",
+		description: "a boolean switcher with utility functions"
+	},
+	{
+		name: "useToNumber",
+		"package": "shared",
+		lastUpdated: 1716812929000,
+		docs: "https://vueuse.org/shared/useToNumber/",
+		category: "Utilities",
+		description: "reactively convert a string ref to number"
+	},
+	{
+		name: "useToString",
+		"package": "shared",
+		lastUpdated: 1681372607000,
+		docs: "https://vueuse.org/shared/useToString/",
+		category: "Utilities",
+		description: "reactively convert a ref to string"
+	},
+	{
+		name: "useTransition",
+		"package": "core",
+		lastUpdated: 1695452523000,
+		docs: "https://vueuse.org/core/useTransition/",
+		category: "Animation",
+		description: "transition between values"
+	},
+	{
+		name: "useTrunc",
+		"package": "math",
+		lastUpdated: 1681372607000,
+		docs: "https://vueuse.org/math/useTrunc/",
+		category: "@Math",
+		description: "reactive `Math.trunc`"
+	},
+	{
+		name: "useUrlSearchParams",
+		"package": "core",
+		lastUpdated: 1662286506000,
+		docs: "https://vueuse.org/core/useUrlSearchParams/",
+		category: "Browser",
+		description: "reactive [URLSearchParams](https://developer.mozilla.org/en-US/docs/Web/API/URLSearchParams)"
+	},
+	{
+		name: "useUserMedia",
+		"package": "core",
+		lastUpdated: 1708421308000,
+		docs: "https://vueuse.org/core/useUserMedia/",
+		category: "Sensors",
+		description: "reactive [`mediaDevices.getUserMedia`](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia) streaming",
+		related: [
+			"useDevicesList",
+			"useDisplayMedia",
+			"usePermission"
+		]
+	},
+	{
+		name: "useVibrate",
+		"package": "core",
+		lastUpdated: 1681372607000,
+		docs: "https://vueuse.org/core/useVibrate/",
+		category: "Browser",
+		description: "reactive [Vibration API](https://developer.mozilla.org/en-US/docs/Web/API/Vibration_API)"
+	},
+	{
+		name: "useVirtualList",
+		"package": "core",
+		lastUpdated: 1716813403000,
+		component: true,
+		docs: "https://vueuse.org/core/useVirtualList/",
+		category: "Component",
+		description: "create virtual lists with ease"
+	},
+	{
+		name: "useVModel",
+		"package": "core",
+		lastUpdated: 1691512689000,
+		docs: "https://vueuse.org/core/useVModel/",
+		category: "Component",
+		description: "shorthand for v-model binding",
+		related: [
+			"useVModels"
+		]
+	},
+	{
+		name: "useVModels",
+		"package": "core",
+		lastUpdated: 1696659979000,
+		docs: "https://vueuse.org/core/useVModels/",
+		category: "Component",
+		description: "shorthand for props v-model binding",
+		related: [
+			"useVModel"
+		]
+	},
+	{
+		name: "useWakeLock",
+		"package": "core",
+		lastUpdated: 1680167214000,
+		docs: "https://vueuse.org/core/useWakeLock/",
+		category: "Browser",
+		description: "reactive [Screen Wake Lock API](https://developer.mozilla.org/en-US/docs/Web/API/Screen_Wake_Lock_API)"
+	},
+	{
+		name: "useWebNotification",
+		"package": "core",
+		lastUpdated: 1716810149000,
+		docs: "https://vueuse.org/core/useWebNotification/",
+		category: "Browser",
+		description: "reactive [Notification](https://developer.mozilla.org/en-US/docs/Web/API/notification)"
+	},
+	{
+		name: "useWebSocket",
+		"package": "core",
+		lastUpdated: 1716811998000,
+		docs: "https://vueuse.org/core/useWebSocket/",
+		category: "Network",
+		description: "reactive [WebSocket](https://developer.mozilla.org/en-US/docs/Web/API/WebSocket/WebSocket) client"
+	},
+	{
+		name: "useWebWorker",
+		"package": "core",
+		lastUpdated: 1686083657000,
+		docs: "https://vueuse.org/core/useWebWorker/",
+		category: "Browser",
+		description: "simple [Web Workers](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Using_web_workers) registration and communication",
+		related: [
+			"useWebWorkerFn"
+		]
+	},
+	{
+		name: "useWebWorkerFn",
+		"package": "core",
+		lastUpdated: 1716811013000,
+		docs: "https://vueuse.org/core/useWebWorkerFn/",
+		category: "Browser",
+		description: "run expensive functions without blocking the UI",
+		related: [
+			"useWebWorker"
+		]
+	},
+	{
+		name: "useWindowFocus",
+		"package": "core",
+		lastUpdated: 1695452523000,
+		component: true,
+		docs: "https://vueuse.org/core/useWindowFocus/",
+		category: "Elements",
+		description: "reactively track window focus with `window.onfocus` and `window.onblur` events"
+	},
+	{
+		name: "useWindowScroll",
+		"package": "core",
+		lastUpdated: 1699543009000,
+		docs: "https://vueuse.org/core/useWindowScroll/",
+		category: "Elements",
+		description: "reactive window scroll"
+	},
+	{
+		name: "useWindowSize",
+		"package": "core",
+		lastUpdated: 1690225787000,
+		component: true,
+		docs: "https://vueuse.org/core/useWindowSize/",
+		category: "Elements",
+		description: "reactive window size"
+	},
+	{
+		name: "useZoomFactor",
+		"package": "electron",
+		lastUpdated: 1701749721000,
+		docs: "https://vueuse.org/electron/useZoomFactor/",
+		category: "@Electron",
+		description: "reactive [WebFrame](https://www.electronjs.org/docs/api/web-frame#webframe) zoom factor"
+	},
+	{
+		name: "useZoomLevel",
+		"package": "electron",
+		lastUpdated: 1701749721000,
+		docs: "https://vueuse.org/electron/useZoomLevel/",
+		category: "@Electron",
+		description: "reactive [WebFrame](https://www.electronjs.org/docs/api/web-frame#webframe) zoom level"
+	},
+	{
+		name: "utils",
+		"package": "shared",
+		lastUpdated: 1716807174000,
+		internal: true
+	},
+	{
+		name: "watchArray",
+		"package": "shared",
+		lastUpdated: 1695461887000,
+		docs: "https://vueuse.org/shared/watchArray/",
+		category: "Watch",
+		description: "watch for an array with additions and removals"
+	},
+	{
+		name: "watchAtMost",
+		"package": "shared",
+		lastUpdated: 1681372607000,
+		docs: "https://vueuse.org/shared/watchAtMost/",
+		category: "Watch",
+		description: "`watch` with the number of times triggered"
+	},
+	{
+		name: "watchDebounced",
+		"package": "shared",
+		lastUpdated: 1681372607000,
+		docs: "https://vueuse.org/shared/watchDebounced/",
+		category: "Watch",
+		description: "debounced watch",
+		alias: [
+			"debouncedWatch"
+		]
+	},
+	{
+		name: "watchDeep",
+		"package": "shared",
+		lastUpdated: 1681929885000,
+		docs: "https://vueuse.org/shared/watchDeep/",
+		category: "Watch",
+		description: "shorthand for watching value with `{deep: true}`"
+	},
+	{
+		name: "watchExtractedObservable",
+		"package": "rxjs",
+		lastUpdated: 1696662105000,
+		docs: "https://vueuse.org/rxjs/watchExtractedObservable/",
+		category: "@RxJS",
+		description: "watch the values of an RxJS [`Observable`](https://rxjs.dev/guide/observable) as extracted from one or more composables"
+	},
+	{
+		name: "watchIgnorable",
+		"package": "shared",
+		lastUpdated: 1655390134000,
+		docs: "https://vueuse.org/shared/watchIgnorable/",
+		category: "Watch",
+		description: "ignorable watch",
+		alias: [
+			"ignorableWatch"
+		]
+	},
+	{
+		name: "watchImmediate",
+		"package": "shared",
+		lastUpdated: 1686083696000,
+		docs: "https://vueuse.org/shared/watchImmediate/",
+		category: "Watch",
+		description: "shorthand for watching value with `{immediate: true}`"
+	},
+	{
+		name: "watchOnce",
+		"package": "shared",
+		lastUpdated: 1699545859000,
+		docs: "https://vueuse.org/shared/watchOnce/",
+		category: "Watch",
+		description: "`watch` that only triggers once"
+	},
+	{
+		name: "watchPausable",
+		"package": "shared",
+		lastUpdated: 1662892188000,
+		docs: "https://vueuse.org/shared/watchPausable/",
+		category: "Watch",
+		description: "pausable watch",
+		alias: [
+			"pausableWatch"
+		]
+	},
+	{
+		name: "watchThrottled",
+		"package": "shared",
+		lastUpdated: 1681372607000,
+		docs: "https://vueuse.org/shared/watchThrottled/",
+		category: "Watch",
+		description: "throttled watch",
+		alias: [
+			"throttledWatch"
+		]
+	},
+	{
+		name: "watchTriggerable",
+		"package": "shared",
+		lastUpdated: 1681373709000,
+		docs: "https://vueuse.org/shared/watchTriggerable/",
+		category: "Watch",
+		description: "watch that can be triggered manually"
+	},
+	{
+		name: "watchWithFilter",
+		"package": "shared",
+		lastUpdated: 1662892188000,
+		docs: "https://vueuse.org/shared/watchWithFilter/",
+		category: "Watch",
+		description: "`watch` with additional EventFilter control"
+	},
+	{
+		name: "whenever",
+		"package": "shared",
+		lastUpdated: 1709008124000,
+		docs: "https://vueuse.org/shared/whenever/",
+		category: "Watch",
+		description: "shorthand for watching value to be truthy"
+	}
+];
+var _metadata = {
+	packages: packages$1,
+	categories: categories$1,
+	functions: functions$1
+};
+
+const categoriesOrder = [
+  "State",
+  "Elements",
+  "Browser",
+  "Sensors",
+  "Network",
+  "Animation",
+  "Component",
+  "Watch",
+  "Reactivity",
+  "Array",
+  "Time",
+  "Utilities"
+];
+const metadata = _metadata;
+const functions = functions$1;
+const packages = packages$1;
+const categories = categories$1;
+const functionNames = functions.map((f) => f.name);
+const categoryNames = Array.from(categories).sort((a, b) => categoriesOrder.indexOf(a) - categoriesOrder.indexOf(b)).sort((a, b) => a.startsWith("@") ? 1 : b.startsWith("@") ? -1 : 0);
+const coreCategoryNames = categoryNames.filter((f) => !f.startsWith("@"));
+const addonCategoryNames = categoryNames.filter((f) => f.startsWith("@"));
+function getFunction(name) {
+  return metadata.functions.find((f) => f.name === name);
+}
+
+function getCategories(functions) {
+  return uniq(
+    functions.filter((i) => !i.internal).map((i) => i.category).filter(Boolean)
+  ).sort(
+    (a, b) => a.startsWith("@") && !b.startsWith("@") ? 1 : b.startsWith("@") && !a.startsWith("@") ? -1 : a.localeCompare(b)
+  );
+}
+function uniq(a) {
+  return Array.from(new Set(a));
+}
+
+export { addonCategoryNames, categories, categoryNames, coreCategoryNames, functionNames, functions, getCategories, getFunction, metadata, packages, uniq };

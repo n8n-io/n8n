@@ -1,0 +1,120 @@
+---
+title: hasToolCall
+description: API Reference for hasToolCall.
+---
+
+# `hasToolCall()`
+
+Creates a stop condition that stops when a specific tool is called.
+
+This function is used with `stopWhen` in `generateText` and `streamText` to control when a tool-calling loop should stop based on whether a particular tool has been invoked.
+
+```ts
+import { generateText, hasToolCall } from 'ai';
+__PROVIDER_IMPORT__;
+
+const result = await generateText({
+  model: __MODEL__,
+  tools: {
+    weather: weatherTool,
+    finalAnswer: finalAnswerTool,
+  },
+  // Stop when the finalAnswer tool is called
+  stopWhen: hasToolCall('finalAnswer'),
+});
+```
+
+## Import
+
+<Snippet text={`import { hasToolCall } from "ai"`} prompt={false} />
+
+## API Signature
+
+### Parameters
+
+<PropertiesTable
+  content={[
+    {
+      name: 'toolName',
+      type: 'string',
+      description:
+        'The name of the tool that should trigger the stop condition when called.',
+    },
+  ]}
+/>
+
+### Returns
+
+A `StopCondition` function that returns `true` when the specified tool is called in the current step. The function can be used with the `stopWhen` parameter in `generateText` and `streamText`.
+
+## Examples
+
+### Basic Usage
+
+Stop when a specific tool is called:
+
+```ts
+import { generateText, hasToolCall } from 'ai';
+
+const result = await generateText({
+  model: yourModel,
+  tools: {
+    submitAnswer: submitAnswerTool,
+    search: searchTool,
+  },
+  stopWhen: hasToolCall('submitAnswer'),
+});
+```
+
+### Combining with Other Conditions
+
+You can combine multiple stop conditions in an array:
+
+```ts
+import { generateText, hasToolCall, stepCountIs } from 'ai';
+
+const result = await generateText({
+  model: yourModel,
+  tools: {
+    weather: weatherTool,
+    search: searchTool,
+    finalAnswer: finalAnswerTool,
+  },
+  // Stop when weather tool is called OR finalAnswer is called OR after 5 steps
+  stopWhen: [
+    hasToolCall('weather'),
+    hasToolCall('finalAnswer'),
+    stepCountIs(5),
+  ],
+});
+```
+
+### Agent Pattern
+
+Common pattern for agents that run until they provide a final answer:
+
+```ts
+import { generateText, hasToolCall } from 'ai';
+
+const result = await generateText({
+  model: yourModel,
+  tools: {
+    search: searchTool,
+    calculate: calculateTool,
+    finalAnswer: {
+      description: 'Provide the final answer to the user',
+      parameters: z.object({
+        answer: z.string(),
+      }),
+      execute: async ({ answer }) => answer,
+    },
+  },
+  stopWhen: hasToolCall('finalAnswer'),
+});
+```
+
+## See also
+
+- [`stepCountIs()`](/docs/reference/ai-sdk-core/step-count-is)
+- [`generateText()`](/docs/reference/ai-sdk-core/generate-text)
+- [`streamText()`](/docs/reference/ai-sdk-core/stream-text)

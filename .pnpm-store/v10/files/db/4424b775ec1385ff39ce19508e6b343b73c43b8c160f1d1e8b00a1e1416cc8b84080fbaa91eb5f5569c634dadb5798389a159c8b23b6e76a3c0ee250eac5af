@@ -1,1 +1,0 @@
-{"version":3,"file":"getParsedConfigFileFromTSServer.d.ts","sourceRoot":"","sources":["../src/getParsedConfigFileFromTSServer.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,KAAK,EAAE,MAAM,gCAAgC,CAAC;AAI1D,wBAAgB,+BAA+B,CAC7C,QAAQ,EAAE,OAAO,EAAE,EACnB,cAAc,EAAE,MAAM,EACtB,cAAc,EAAE,OAAO,EACvB,eAAe,CAAC,EAAE,MAAM,GACvB,EAAE,CAAC,iBAAiB,GAAG,SAAS,CAYlC"}

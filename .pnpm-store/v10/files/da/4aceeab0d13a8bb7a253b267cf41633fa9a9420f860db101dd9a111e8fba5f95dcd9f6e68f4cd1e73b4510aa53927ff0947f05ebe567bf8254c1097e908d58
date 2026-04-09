@@ -1,3 +1,0 @@
-timeout: 240
-allow-incomplete-coverage: true
-reporter: terse

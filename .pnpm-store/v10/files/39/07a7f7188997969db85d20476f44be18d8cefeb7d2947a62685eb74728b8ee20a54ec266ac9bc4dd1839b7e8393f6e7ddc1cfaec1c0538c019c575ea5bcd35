@@ -1,0 +1,4 @@
+{
+    "main": "../../cjs/_wrap_reg_exp.cjs",
+    "module": "../../esm/_wrap_reg_exp.js"
+}

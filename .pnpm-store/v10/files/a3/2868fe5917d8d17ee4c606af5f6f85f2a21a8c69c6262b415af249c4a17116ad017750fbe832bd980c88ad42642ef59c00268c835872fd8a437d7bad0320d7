@@ -1,0 +1,1 @@
+export type OpenAICompatibleImageModelId = string;

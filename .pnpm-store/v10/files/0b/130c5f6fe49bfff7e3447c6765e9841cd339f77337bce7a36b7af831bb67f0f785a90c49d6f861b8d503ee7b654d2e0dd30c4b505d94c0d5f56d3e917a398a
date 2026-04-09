@@ -1,0 +1,90 @@
+{
+  "name": "libsql",
+  "version": "0.5.29",
+  "description": "A better-sqlite3 compatible API for libSQL that supports Bun, Deno, and Node",
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64",
+    "wasm32",
+    "arm"
+  ],
+  "main": "index.js",
+  "types": "types/index.d.ts",
+  "files": [
+    "auth.js",
+    "index.js",
+    "sqlite-error.js",
+    "promise.js",
+    "types/index.d.ts",
+    "types/promise.d.ts"
+  ],
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts",
+      "default": "./index.js"
+    },
+    "./promise": {
+      "types": "./types/promise.d.ts",
+      "default": "./promise.js"
+    }
+  },
+  "scripts": {
+    "test": "cargo test",
+    "debug": "cargo build --message-format=json | npm exec neon dist",
+    "build": "npx tsc && cargo build --message-format=json --release | npm exec neon dist -- --name libsql-js",
+    "cross": "cross build --message-format=json --release | npm exec neon dist -- --name libsql-js -m /target",
+    "pack-build": "neon pack-build",
+    "prepack": "neon install-builds",
+    "postversion": "git push --follow-tags"
+  },
+  "author": "Pekka Enberg <penberg@iki.fi>",
+  "license": "MIT",
+  "neon": {
+    "targets": {
+      "aarch64-apple-darwin": "@libsql/darwin-arm64",
+      "aarch64-unknown-linux-gnu": "@libsql/linux-arm64-gnu",
+      "aarch64-unknown-linux-musl": "@libsql/linux-arm64-musl",
+      "x86_64-apple-darwin": "@libsql/darwin-x64",
+      "x86_64-pc-windows-msvc": "@libsql/win32-x64-msvc",
+      "x86_64-unknown-linux-gnu": "@libsql/linux-x64-gnu",
+      "x86_64-unknown-linux-musl": "@libsql/linux-x64-musl",
+      "arm-unknown-linux-gnueabihf": "@libsql/linux-arm-gnueabihf",
+      "arm-unknown-linux-musleabihf": "@libsql/linux-arm-musleabihf"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tursodatabase/libsql-js.git"
+  },
+  "keywords": [
+    "libsql"
+  ],
+  "bugs": {
+    "url": "https://github.com/tursodatabase/libsql-js/issues"
+  },
+  "homepage": "https://github.com/tursodatabase/libsql-js",
+  "devDependencies": {
+    "@neon-rs/cli": "^0.0.165",
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "@neon-rs/load": "^0.0.4",
+    "detect-libc": "2.0.2"
+  },
+  "optionalDependencies": {
+    "@libsql/darwin-arm64": "0.5.29",
+    "@libsql/linux-arm64-gnu": "0.5.29",
+    "@libsql/linux-arm64-musl": "0.5.29",
+    "@libsql/darwin-x64": "0.5.29",
+    "@libsql/win32-x64-msvc": "0.5.29",
+    "@libsql/linux-x64-gnu": "0.5.29",
+    "@libsql/linux-x64-musl": "0.5.29",
+    "@libsql/linux-arm-gnueabihf": "0.5.29",
+    "@libsql/linux-arm-musleabihf": "0.5.29"
+  }
+}

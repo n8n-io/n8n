@@ -36,7 +36,7 @@ export async function readSheet(
 	const includeHeadersWithEmptyCells =
 		(additionalOptions?.includeHeadersWithEmptyCells as boolean) ?? false;
 
-	const range = rangeString ?? getRangeString(sheetName, dataLocationOnSheetOptions);
+	const range = rangeString ?? getRangeString(sheetName, dataLocationOnSheetOptions as any);
 
 	const valueRenderMode = (outputFormattingOption.general ||
 		'UNFORMATTED_VALUE') as ValueRenderOption;

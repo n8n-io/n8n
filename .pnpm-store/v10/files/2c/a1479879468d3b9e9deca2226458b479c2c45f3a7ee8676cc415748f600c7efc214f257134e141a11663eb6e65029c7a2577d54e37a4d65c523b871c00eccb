@@ -1,0 +1,95 @@
+{
+  "name": "react-tabs",
+  "version": "6.1.1",
+  "description": "An accessible and easy tab component for ReactJS",
+  "main": "lib/index.js",
+  "module": "esm/index.js",
+  "typings": "index.d.ts",
+  "scripts": {
+    "clean:commonjs": "rm -rf lib",
+    "clean:esm": "rm -rf esm",
+    "build:commonjs": "cross-env BABEL_OUTPUT=commonjs babel src/ --out-dir lib/ --ignore **/__tests__,**/__mocks__",
+    "build:esm": "babel src/ --out-dir esm/ --ignore **/__tests__,**/__mocks__",
+    "build": "pnpm run --sequential '/clean:.*|build:.*/'",
+    "format": "eslint src --fix --report-unused-disable-directives",
+    "lint": "eslint src --report-unused-disable-directives",
+    "prebump": "pnpm run --sequential '/lint|test/'",
+    "prepublishOnly": "pnpm run build",
+    "test": "vitest run",
+    "start": "webpack serve",
+    "website:clean": "rm -rf examples/dist",
+    "website:build": "cross-env BABEL_TARGET=examples NODE_ENV=production webpack",
+    "website:redirect": "cp -R examples/src/example examples/dist"
+  },
+  "packageManager": "pnpm@10.33.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/reactjs/react-tabs.git"
+  },
+  "author": "Matt Zabriskie",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/reactjs/react-tabs/issues"
+  },
+  "files": [
+    "esm",
+    "lib",
+    "style",
+    "index.d.ts"
+  ],
+  "homepage": "https://github.com/reactjs/react-tabs",
+  "keywords": [
+    "react",
+    "tabs",
+    "a11y",
+    "react-component"
+  ],
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0"
+  },
+  "devDependencies": {
+    "@babel/cli": "7.28.6",
+    "@babel/core": "7.29.0",
+    "@babel/eslint-parser": "7.28.6",
+    "@babel/preset-env": "7.29.2",
+    "@babel/preset-react": "7.28.5",
+    "@eslint/js": "9.39.4",
+    "@testing-library/dom": "10.4.1",
+    "@testing-library/jest-dom": "6.9.1",
+    "@testing-library/react": "16.3.2",
+    "@testing-library/user-event": "14.6.1",
+    "@vitest/coverage-v8": "4.1.1",
+    "babel-loader": "10.1.1",
+    "babel-plugin-transform-react-remove-prop-types": "0.4.24",
+    "cross-env": "7.0.3",
+    "css-loader": "7.1.4",
+    "css-minimizer-webpack-plugin": "8.0.0",
+    "eslint": "9.39.4",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-import": "2.32.0",
+    "eslint-plugin-jsx-a11y": "6.10.2",
+    "eslint-plugin-prettier": "5.5.5",
+    "eslint-plugin-react": "7.37.5",
+    "hoist-non-react-statics": "3.3.2",
+    "html-loader": "5.1.0",
+    "html-webpack-plugin": "5.6.6",
+    "jsdom": "29.0.1",
+    "less": "4.6.4",
+    "less-loader": "12.3.2",
+    "mini-css-extract-plugin": "2.10.1",
+    "prettier": "3.8.1",
+    "prism-react-renderer": "2.4.1",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "react-live": "4.1.8",
+    "react-modal": "3.16.3",
+    "vitest": "4.1.1",
+    "webpack": "5.105.4",
+    "webpack-cli": "7.0.2",
+    "webpack-dev-server": "5.2.3"
+  },
+  "dependencies": {
+    "clsx": "^2.0.0",
+    "prop-types": "^15.5.0"
+  }
+}
