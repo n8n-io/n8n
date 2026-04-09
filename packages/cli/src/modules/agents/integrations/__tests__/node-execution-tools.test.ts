@@ -4,22 +4,22 @@ import type { CredentialProvider } from '@n8n/agents';
 
 import type { INodeProperties } from 'n8n-workflow';
 
-import type { ToolDescriptor } from '../../node-tool-registry';
+import type { NodeDescriptor } from '../search-nodes-tools';
 import {
 	createGetNodeSchemaTool,
-	createSearchToolsTool,
+	createSearchNodesTool,
 	createRunNodeTool,
 } from '../node-execution-tools';
 import { validateNodeConfig } from '@n8n/workflow-sdk';
-import { getNodeSchema, searchTools } from '../../node-tool-registry';
+import { getNodeSchema, searchNodes } from '../search-nodes-tools';
 
 jest.mock('@n8n/workflow-sdk', () => ({
 	validateNodeConfig: jest.fn().mockReturnValue({ valid: true, errors: [] }),
 }));
 
-jest.mock('../../node-tool-registry', () => ({
+jest.mock('../search-nodes-tools', () => ({
 	getNodeSchema: jest.fn(),
-	searchTools: jest.fn(),
+	searchNodes: jest.fn(),
 }));
 
 const ctx = {
@@ -54,32 +54,32 @@ describe('createGetNodeSchemaTool', () => {
 	});
 });
 
-describe('createSearchToolsTool', () => {
+describe('createSearchNodesTool', () => {
 	beforeEach(() => jest.clearAllMocks());
 
 	it('returns { tools } from the registry', async () => {
-		const descriptor = mock<ToolDescriptor>({ nodeType: 'n8n-nodes-base.httpRequest' });
-		jest.mocked(searchTools).mockResolvedValue([descriptor]);
+		const descriptor = mock<NodeDescriptor>({ nodeType: 'n8n-nodes-base.httpRequest' });
+		jest.mocked(searchNodes).mockResolvedValue([descriptor]);
 		const credentialProvider = mock<CredentialProvider>();
-		const tool = createSearchToolsTool([], credentialProvider).build();
+		const tool = createSearchNodesTool([], credentialProvider).build();
 
 		const result = await tool.handler!({ query: 'http request' }, ctx);
 
-		expect(searchTools).toHaveBeenCalledWith([], 'http request', credentialProvider, {
+		expect(searchNodes).toHaveBeenCalledWith([], 'http request', credentialProvider, {
 			topK: undefined,
 			minScore: undefined,
 		});
 		expect(result).toEqual({ tools: [descriptor] });
 	});
 
-	it('passes topK and minScore through to searchTools', async () => {
-		jest.mocked(searchTools).mockResolvedValue([]);
+	it('passes topK and minScore through to searchNodes', async () => {
+		jest.mocked(searchNodes).mockResolvedValue([]);
 		const credentialProvider = mock<CredentialProvider>();
-		const tool = createSearchToolsTool([], credentialProvider).build();
+		const tool = createSearchNodesTool([], credentialProvider).build();
 
 		await tool.handler!({ query: 'email', topK: 5, minScore: 0.3 }, ctx);
 
-		expect(searchTools).toHaveBeenCalledWith([], 'email', credentialProvider, {
+		expect(searchNodes).toHaveBeenCalledWith([], 'email', credentialProvider, {
 			topK: 5,
 			minScore: 0.3,
 		});

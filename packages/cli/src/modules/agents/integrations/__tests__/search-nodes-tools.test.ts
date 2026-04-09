@@ -2,7 +2,7 @@ import { mock } from 'jest-mock-extended';
 import type { CredentialProvider } from '@n8n/agents';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import { listTools, searchTools } from '../node-tool-registry';
+import { listNodes, searchNodes } from '../search-nodes-tools';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -24,7 +24,7 @@ function makeNode(overrides: Partial<INodeTypeDescription> = {}): INodeTypeDescr
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('listTools()', () => {
+describe('listNodes()', () => {
 	it('only returns nodes flagged as usableAsTool', async () => {
 		const nodes = [
 			makeNode({ name: 'n8n-nodes-base.httpRequest', usableAsTool: true }),
@@ -32,15 +32,15 @@ describe('listTools()', () => {
 			makeNode({ name: 'n8n-nodes-base.gmail', usableAsTool: true }),
 		];
 
-		const tools = await listTools(nodes);
+		const result = await listNodes(nodes);
 
-		expect(tools.map((t) => t.nodeType)).toEqual([
+		expect(result.map((n) => n.nodeType)).toEqual([
 			'n8n-nodes-base.httpRequest',
 			'n8n-nodes-base.gmail',
 		]);
 	});
 
-	it('projects all ToolDescriptor fields correctly', async () => {
+	it('projects all NodeDescriptor fields correctly', async () => {
 		const nodes = [
 			makeNode({
 				name: 'n8n-nodes-base.httpRequest',
@@ -50,9 +50,9 @@ describe('listTools()', () => {
 			}),
 		];
 
-		const [tool] = await listTools(nodes);
+		const [node] = await listNodes(nodes);
 
-		expect(tool).toMatchObject({
+		expect(node).toMatchObject({
 			nodeType: 'n8n-nodes-base.httpRequest',
 			displayName: 'HTTP Request',
 			description: 'Makes HTTP requests to any URL',
@@ -62,81 +62,59 @@ describe('listTools()', () => {
 
 	describe('nodeTypeVersion', () => {
 		it('uses the version directly when it is a number', async () => {
-			const [tool] = await listTools([makeNode({ version: 3 })]);
-			expect(tool.nodeTypeVersion).toBe(3);
+			const [node] = await listNodes([makeNode({ version: 3 })]);
+			expect(node.nodeTypeVersion).toBe(3);
 		});
 
-		it('uses the last element when version is an array', async () => {
-			const [tool] = await listTools([makeNode({ version: [1, 2, 3] })]);
-			expect(tool.nodeTypeVersion).toBe(3);
+		it('uses the highest element when version is an array', async () => {
+			const [node] = await listNodes([makeNode({ version: [1, 2, 3] })]);
+			expect(node.nodeTypeVersion).toBe(3);
 		});
 	});
 
-	it('deduplicates nodes with the same name, keeping the first occurrence', async () => {
+	it('deduplicates nodes with the same name, keeping the highest version', async () => {
 		const nodes = [
-			makeNode({ name: 'n8n-nodes-base.httpRequest', displayName: 'HTTP Request v1' }),
-			makeNode({ name: 'n8n-nodes-base.httpRequest', displayName: 'HTTP Request v2' }),
+			makeNode({ name: 'n8n-nodes-base.httpRequest', displayName: 'HTTP Request v1', version: 1 }),
+			makeNode({ name: 'n8n-nodes-base.httpRequest', displayName: 'HTTP Request v2', version: 2 }),
 			makeNode({ name: 'n8n-nodes-base.gmail', displayName: 'Gmail' }),
 		];
 
-		const tools = await listTools(nodes);
+		const result = await listNodes(nodes);
 
-		expect(tools).toHaveLength(2);
-		expect(tools.find((t) => t.nodeType === 'n8n-nodes-base.httpRequest')?.displayName).toBe(
-			'HTTP Request v1',
+		expect(result).toHaveLength(2);
+		expect(result.find((n) => n.nodeType === 'n8n-nodes-base.httpRequest')?.displayName).toBe(
+			'HTTP Request v2',
 		);
 	});
 
-	describe('without a credential provider', () => {
-		it('sets hasCredentials to true for all nodes', async () => {
-			const nodes = [
-				makeNode({ credentials: [] }),
-				makeNode({ credentials: [mock({ name: 'gmailOAuth2' })] }),
-			];
-
-			const tools = await listTools(nodes);
-
-			expect(tools.every((t) => t.hasCredentials)).toBe(true);
+	describe('credentials', () => {
+		it('sets hasCredentials to false when no credential provider is given', async () => {
+			const [node] = await listNodes([makeNode({ credentials: [mock({ name: 'gmailOAuth2' })] })]);
+			expect(node.hasCredentials).toBe(false);
 		});
 
-		it('returns an empty credentials array', async () => {
-			const [tool] = await listTools([makeNode()]);
-			expect(tool.credentials).toEqual([]);
-		});
-	});
-
-	describe('with a credential provider', () => {
-		it('sets hasCredentials to true when the node requires no credentials', async () => {
-			const provider = mock<CredentialProvider>();
-			provider.list.mockResolvedValue([]);
-
-			const [tool] = await listTools([makeNode({ credentials: [] })], provider);
-
-			expect(tool.hasCredentials).toBe(true);
-		});
-
-		it('sets hasCredentials to true when a matching credential is available', async () => {
-			const provider = mock<CredentialProvider>();
-			provider.list.mockResolvedValue([{ id: 'cred-1', name: 'My Gmail', type: 'gmailOAuth2' }]);
-
-			const [tool] = await listTools(
-				[makeNode({ credentials: [mock({ name: 'gmailOAuth2' })] })],
-				provider,
-			);
-
-			expect(tool.hasCredentials).toBe(true);
-		});
-
-		it('excludes nodes when no matching credential is available', async () => {
+		it('sets hasCredentials to false when user has no matching credential', async () => {
 			const provider = mock<CredentialProvider>();
 			provider.list.mockResolvedValue([{ id: 'cred-1', name: 'My Slack', type: 'slackApi' }]);
 
-			const tools = await listTools(
+			const [node] = await listNodes(
 				[makeNode({ credentials: [mock({ name: 'gmailOAuth2' })] })],
 				provider,
 			);
 
-			expect(tools).toHaveLength(0);
+			expect(node.hasCredentials).toBe(false);
+		});
+
+		it('sets hasCredentials to true when user has a matching credential', async () => {
+			const provider = mock<CredentialProvider>();
+			provider.list.mockResolvedValue([{ id: 'cred-1', name: 'My Gmail', type: 'gmailOAuth2' }]);
+
+			const [node] = await listNodes(
+				[makeNode({ credentials: [mock({ name: 'gmailOAuth2' })] })],
+				provider,
+			);
+
+			expect(node.hasCredentials).toBe(true);
 		});
 
 		it('populates credentials with matching CredentialListItems', async () => {
@@ -146,30 +124,30 @@ describe('listTools()', () => {
 				{ id: 'cred-2', name: 'Other Cred', type: 'slackApi' },
 			]);
 
-			const [tool] = await listTools(
+			const [node] = await listNodes(
 				[makeNode({ credentials: [mock({ name: 'gmailOAuth2' })] })],
 				provider,
 			);
 
-			expect(tool.credentials).toEqual([{ id: 'cred-1', name: 'My Gmail', type: 'gmailOAuth2' }]);
+			expect(node.credentials).toEqual([{ id: 'cred-1', name: 'My Gmail', type: 'gmailOAuth2' }]);
 		});
 	});
 });
 
-describe('searchTools()', () => {
-	it('returns all tools (up to topK) when query is empty', async () => {
+describe('searchNodes()', () => {
+	it('returns all nodes (up to topK) when query is empty', async () => {
 		const nodes = [
 			makeNode({ name: 'n8n-nodes-base.httpRequest', displayName: 'HTTP Request' }),
 			makeNode({ name: 'n8n-nodes-base.gmail', displayName: 'Gmail' }),
 			makeNode({ name: 'n8n-nodes-base.slack', displayName: 'Slack' }),
 		];
 
-		const results = await searchTools(nodes, '', undefined, { topK: 2 });
+		const results = await searchNodes(nodes, '', undefined, { topK: 2 });
 
 		expect(results).toHaveLength(2);
 	});
 
-	it('ranks tools with a name match above tools with only a description match', async () => {
+	it('ranks nodes with a name match above nodes with only a description match', async () => {
 		const nodes = [
 			makeNode({
 				name: 'n8n-nodes-base.gmail',
@@ -183,12 +161,12 @@ describe('searchTools()', () => {
 			}),
 		];
 
-		const results = await searchTools(nodes, 'email send');
+		const results = await searchNodes(nodes, 'gmail');
 
 		expect(results[0].nodeType).toBe('n8n-nodes-base.gmail');
 	});
 
-	it('filters out tools below minScore', async () => {
+	it('filters out nodes that do not match the query at all', async () => {
 		const nodes = [
 			makeNode({
 				name: 'n8n-nodes-base.gmail',
@@ -202,7 +180,7 @@ describe('searchTools()', () => {
 			}),
 		];
 
-		const results = await searchTools(nodes, 'email', undefined, { minScore: 0.1 });
+		const results = await searchNodes(nodes, 'email');
 
 		expect(results.map((r) => r.nodeType)).toEqual(['n8n-nodes-base.gmail']);
 	});
@@ -214,12 +192,12 @@ describe('searchTools()', () => {
 			makeNode({ name: 'n8n-nodes-base.c', displayName: 'Send C', description: 'send c' }),
 		];
 
-		const results = await searchTools(nodes, 'send', undefined, { topK: 2 });
+		const results = await searchNodes(nodes, 'send', undefined, { topK: 2 });
 
 		expect(results).toHaveLength(2);
 	});
 
-	it('matches on a prefix of a document token', async () => {
+	it('matches HTTP Request by partial query "http req"', async () => {
 		const nodes = [
 			makeNode({
 				name: 'n8n-nodes-base.httpRequest',
@@ -228,30 +206,43 @@ describe('searchTools()', () => {
 			}),
 		];
 
-		const results = await searchTools(nodes, 'htt req', undefined, { minScore: 0.1 });
+		const results = await searchNodes(nodes, 'http req');
 
 		expect(results).toHaveLength(1);
 		expect(results[0].nodeType).toBe('n8n-nodes-base.httpRequest');
 	});
 
-	it('is not biased by repeated words in the description', async () => {
+	it('matches a node by its internal type name identifier', async () => {
 		const nodes = [
 			makeNode({
-				name: 'n8n-nodes-base.gmail',
-				displayName: 'Gmail',
-				description: 'email email email email email',
-			}),
-			makeNode({
-				name: 'n8n-nodes-base.emailTool',
-				displayName: 'Email Tool',
-				description: 'send messages',
+				name: 'n8n-nodes-base.httpRequest',
+				displayName: 'HTTP Request',
+				description: 'Makes HTTP requests to any URL',
 			}),
 		];
 
-		// emailTool has "email" in displayName (NAME_WEIGHT) → scores higher than
-		// gmail which only matches in description despite the word appearing 5 times
-		const results = await searchTools(nodes, 'email', undefined, { minScore: 0 });
+		const results = await searchNodes(nodes, 'httpRequest');
 
-		expect(results[0].nodeType).toBe('n8n-nodes-base.emailTool');
+		expect(results).toHaveLength(1);
+		expect(results[0].nodeType).toBe('n8n-nodes-base.httpRequest');
+	});
+
+	it('matches a node by a codex alias', async () => {
+		const nodes = [
+			mock<INodeTypeDescription>({
+				name: 'n8n-nodes-base.httpRequest',
+				displayName: 'HTTP Request',
+				description: 'Makes HTTP requests to any URL',
+				version: 1,
+				credentials: [],
+				usableAsTool: true,
+				codex: { alias: ['REST', 'API', 'Webhook'] },
+			}),
+		];
+
+		const results = await searchNodes(nodes, 'REST');
+
+		expect(results).toHaveLength(1);
+		expect(results[0].nodeType).toBe('n8n-nodes-base.httpRequest');
 	});
 });

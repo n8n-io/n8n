@@ -11,7 +11,7 @@ import { z } from 'zod';
 
 import type { EphemeralNodeExecutor } from '@/node-execution';
 
-import { getNodeSchema, searchTools, type ToolDescriptor } from '../node-tool-registry';
+import { getNodeSchema, searchNodes, type NodeDescriptor } from './search-nodes-tools';
 
 export interface RunNodeArgs {
 	nodeType: string;
@@ -22,18 +22,17 @@ export interface RunNodeArgs {
 }
 
 /**
- * Tool that searches for relevant n8n node tools by keyword query.
+ * Tool that searches for relevant n8n nodes by keyword query.
  *
- * Results are scored by token overlap between the query and each tool's
- * displayName (weight 2×) and description (weight 1×), then ranked and
- * trimmed to `topK`. Use `get_node_schema` to inspect parameters, then
- * `run_node_tool` to execute.
+ * Uses sublimeSearch across displayName, name, codex aliases, and description.
+ * Results are ranked by relevance and trimmed to `topK`.
+ * Use `get_node_schema` to inspect parameters, then `run_node_tool` to execute.
  */
-export function createSearchToolsTool(
+export function createSearchNodesTool(
 	nodes: INodeTypeDescription[],
 	credentialProvider: CredentialProvider,
 ) {
-	return new Tool('search_tools')
+	return new Tool('search_nodes')
 		.description(
 			'Search for n8n node tools relevant to your task. ' +
 				'Pass a natural-language query (e.g. "send email", "fetch HTTP"). ' +
@@ -62,7 +61,7 @@ export function createSearchToolsTool(
 				topK?: number;
 				minScore?: number;
 			}) => {
-				const tools = await searchTools(nodes, query, credentialProvider, { topK, minScore });
+				const tools = await searchNodes(nodes, query, credentialProvider, { topK, minScore });
 				return { tools };
 			},
 		);
@@ -71,7 +70,7 @@ export function createSearchToolsTool(
 /**
  * Tool that returns the full parameter schema for a single n8n node type.
  *
- * Call this after search_tools to understand what nodeParameters a node accepts
+ * Call this after search_nodes to understand what nodeParameters a node accepts
  * before calling run_node_tool.
  */
 export function createGetNodeSchemaTool(nodes: INodeTypeDescription[]) {
@@ -86,7 +85,7 @@ export function createGetNodeSchemaTool(nodes: INodeTypeDescription[]) {
 		)
 		.input(
 			z.object({
-				nodeType: z.string().describe('Node type identifier from search_tools'),
+				nodeType: z.string().describe('Node type identifier from search_nodes'),
 			}),
 		)
 		.handler(async ({ nodeType }: { nodeType: string }) => {
@@ -112,17 +111,17 @@ export function createRunNodeTool(
 	return new Tool('run_node_tool')
 		.description(
 			'Execute an n8n node for the current request. ' +
-				'Use nodeType and nodeTypeVersion from search_tools. ' +
+				'Use nodeType and nodeTypeVersion from search_nodes. ' +
 				'Call get_node_schema first to understand what nodeParameters the node accepts. ' +
 				'nodeParameters holds static node config; use n8n expressions like ={{ $json.url }} to map inputData fields. ' +
-				'credentials maps slot names to { id, name } — copy from the credentials array in search_tools. ' +
+				'credentials maps slot names to { id, name } — copy from the credentials array in search_nodes. ' +
 				'inputData is the runtime payload available as $json inside expressions. ' +
 				'Parameters are validated against the node schema before execution.',
 		)
 		.input(
 			z.object({
-				nodeType: z.string().describe('Node type identifier from search_tools'),
-				nodeTypeVersion: z.number().describe('Node type version from search_tools'),
+				nodeType: z.string().describe('Node type identifier from search_nodes'),
+				nodeTypeVersion: z.number().describe('Node type version from search_nodes'),
 				nodeParameters: z
 					.record(z.unknown())
 					.optional()
@@ -132,7 +131,7 @@ export function createRunNodeTool(
 				credentials: z
 					.record(z.object({ id: z.string(), name: z.string() }))
 					.optional()
-					.describe('Credential slot → { id, name }. Copy from search_tools credentials array.'),
+					.describe('Credential slot → { id, name }. Copy from search_nodes credentials array.'),
 				inputData: z
 					.record(z.unknown())
 					.optional()
@@ -171,4 +170,4 @@ export function createRunNodeTool(
 		);
 }
 
-export type { ToolDescriptor };
+export type { NodeDescriptor };
