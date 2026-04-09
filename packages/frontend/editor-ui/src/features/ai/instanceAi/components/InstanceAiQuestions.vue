@@ -510,7 +510,7 @@ function onOptionMouseEnter(idx: number) {
 				<div :class="$style.pagination">
 					<N8nButton
 						variant="ghost"
-						size="xsmall"
+						size="medium"
 						icon-only
 						:disabled="isFirstQuestion"
 						data-test-id="instance-ai-questions-back"
@@ -526,7 +526,7 @@ function onOptionMouseEnter(idx: number) {
 					</N8nText>
 					<N8nButton
 						variant="ghost"
-						size="xsmall"
+						size="medium"
 						icon-only
 						:disabled="isLastQuestion"
 						data-test-id="instance-ai-questions-forward"
@@ -616,7 +616,7 @@ function onOptionMouseEnter(idx: number) {
 
 	&:hover,
 	&.highlighted {
-		background-color: light-dark(var(--color--neutral-200), var(--color--neutral-800));
+		background-color: light-dark(var(--color--neutral-100), var(--color--neutral-800));
 	}
 
 	&:hover .arrowIndicator,
@@ -688,7 +688,7 @@ function onOptionMouseEnter(idx: number) {
 
 	&:hover,
 	&.highlighted {
-		background-color: light-dark(var(--color--neutral-200), var(--color--neutral-800));
+		background-color: light-dark(var(--color--neutral-100), var(--color--neutral-800));
 	}
 }
 
@@ -704,7 +704,7 @@ function onOptionMouseEnter(idx: number) {
 
 	&:hover,
 	&.highlighted {
-		background-color: light-dark(var(--color--neutral-200), var(--color--neutral-800));
+		background-color: light-dark(var(--color--neutral-100), var(--color--neutral-800));
 	}
 
 	.somethingElseInput {
@@ -736,7 +736,7 @@ function onOptionMouseEnter(idx: number) {
 
 	&:hover,
 	&.highlighted {
-		background-color: light-dark(var(--color--neutral-200), var(--color--neutral-800));
+		background-color: light-dark(var(--color--neutral-100), var(--color--neutral-800));
 	}
 }
 

@@ -134,6 +134,708 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const lastEventIdByThread = ref<Record<string, number>>({});
 	const activeRunId = ref<string | null>(null);
 	const messages = ref<InstanceAiMessage[]>([]);
+
+	// ── DEV-ONLY: mock message fixtures ──
+	const MOCK_MESSAGES: InstanceAiMessage[] = [
+		// 1. User message
+		{
+			id: 'mock-user-1',
+			role: 'user',
+			createdAt: new Date().toISOString(),
+			content: 'Build me a workflow that fetches GitHub issues and stores them in a data table',
+			reasoning: '',
+			isStreaming: false,
+		},
+		// 2. Full agent tree (tasks, delegate, children, tool calls)
+		{
+			id: 'mock-assistant-1',
+			role: 'assistant',
+			createdAt: new Date().toISOString(),
+			content: '',
+			reasoning: 'I should break this into sub-tasks.',
+			isStreaming: false,
+			agentTree: {
+				agentId: 'root-agent',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: "I'll create a GitHub issues workflow and set up the data table for you.",
+				reasoning: 'Need to delegate to builder and data-table agents.',
+				toolCalls: [
+					{
+						toolCallId: 'tc-tasks-1',
+						toolName: 'update-tasks',
+						args: {},
+						isLoading: false,
+						renderHint: 'tasks' as const,
+					},
+					{
+						toolCallId: 'tc-delegate-1',
+						toolName: 'delegate',
+						renderHint: 'delegate' as const,
+						args: {
+							role: 'workflow-builder',
+							tools: ['search-nodes', 'build-workflow'],
+							briefing: 'Build a workflow that fetches GitHub issues.',
+						},
+						result: { success: true },
+						isLoading: false,
+					},
+					{
+						toolCallId: 'tc-delegate-2',
+						toolName: 'delegate',
+						renderHint: 'delegate' as const,
+						args: {
+							role: 'data-table-manager',
+							tools: ['list-data-tables', 'create-data-table', 'add-data-table-column'],
+							briefing: 'Create a data table to store GitHub issues.',
+						},
+						isLoading: true,
+					},
+					{
+						toolCallId: 'tc-builder-1',
+						toolName: 'build-workflow',
+						args: {},
+						isLoading: false,
+						renderHint: 'builder' as const,
+					},
+					{
+						toolCallId: 'tc-search-1',
+						toolName: 'web-search',
+						args: { query: 'GitHub API list issues endpoint' },
+						result: { summary: 'Found docs.' },
+						isLoading: false,
+					},
+					{
+						toolCallId: 'tc-fetch-1',
+						toolName: 'fetch-url',
+						args: { url: 'https://api.github.com/repos/n8n-io/n8n/issues' },
+						error: 'Request timed out after 30s',
+						isLoading: false,
+					},
+					{
+						toolCallId: 'tc-loading-1',
+						toolName: 'get-node-type-definition',
+						args: { nodeType: 'n8n-nodes-base.github' },
+						isLoading: true,
+					},
+				],
+				tasks: {
+					tasks: [
+						{ id: 't1', description: 'Build GitHub issues workflow', status: 'done' as const },
+						{
+							id: 't2',
+							description: 'Create data table for issues',
+							status: 'in_progress' as const,
+						},
+						{ id: 't3', description: 'Test the workflow execution', status: 'todo' as const },
+					],
+				},
+				children: [
+					{
+						agentId: 'child-builder-1',
+						role: 'workflow-builder',
+						kind: 'builder' as const,
+						status: 'completed',
+						subtitle: 'Building GitHub issues workflow',
+						textContent: 'Built the workflow.',
+						reasoning: '',
+						result: 'Workflow "Fetch GitHub Issues" created.',
+						toolCalls: [
+							{
+								toolCallId: 'child-tc-1',
+								toolName: 'search-nodes',
+								args: { query: 'github' },
+								result: { nodes: ['GitHub'] },
+								isLoading: false,
+							},
+							{
+								toolCallId: 'child-tc-2',
+								toolName: 'build-workflow',
+								args: { name: 'Fetch GitHub Issues' },
+								result: {
+									success: true,
+									workflowId: 'wf-123',
+									workflowName: 'Fetch GitHub Issues',
+								},
+								isLoading: false,
+							},
+						],
+						children: [],
+						timeline: [
+							{ type: 'tool-call' as const, toolCallId: 'child-tc-1' },
+							{ type: 'text' as const, content: 'Found GitHub node. Building workflow.' },
+							{ type: 'tool-call' as const, toolCallId: 'child-tc-2' },
+						],
+					},
+					{
+						agentId: 'child-dt-1',
+						role: 'data-table-manager',
+						kind: 'data-table' as const,
+						status: 'active',
+						subtitle: 'Setting up issues data table',
+						textContent: '',
+						reasoning: '',
+						toolCalls: [
+							{
+								toolCallId: 'child-dt-tc-1',
+								toolName: 'list-data-tables',
+								args: {},
+								result: { tables: [] },
+								isLoading: false,
+							},
+							{
+								toolCallId: 'child-dt-tc-2',
+								toolName: 'create-data-table',
+								args: { name: 'GitHub Issues', columns: ['title', 'state', 'author'] },
+								isLoading: true,
+							},
+						],
+						children: [],
+						timeline: [
+							{ type: 'tool-call' as const, toolCallId: 'child-dt-tc-1' },
+							{ type: 'text' as const, content: 'No existing tables. Creating new one.' },
+							{ type: 'tool-call' as const, toolCallId: 'child-dt-tc-2' },
+						],
+					},
+					{
+						agentId: 'child-err-1',
+						role: 'researcher',
+						kind: 'researcher' as const,
+						status: 'error',
+						subtitle: 'Researching GitHub API rate limits',
+						textContent: '',
+						reasoning: '',
+						error: 'Failed to fetch docs: connection reset',
+						toolCalls: [
+							{
+								toolCallId: 'child-err-tc-1',
+								toolName: 'web-search',
+								args: { query: 'GitHub API rate limits' },
+								result: { summary: '5000 req/hr.' },
+								isLoading: false,
+							},
+							{
+								toolCallId: 'child-err-tc-2',
+								toolName: 'fetch-url',
+								args: { url: 'https://docs.github.com/en/rest/rate-limit' },
+								error: 'Connection reset',
+								isLoading: false,
+							},
+						],
+						children: [],
+						timeline: [
+							{ type: 'tool-call' as const, toolCallId: 'child-err-tc-1' },
+							{ type: 'tool-call' as const, toolCallId: 'child-err-tc-2' },
+						],
+					},
+				],
+				timeline: [
+					{ type: 'tool-call' as const, toolCallId: 'tc-tasks-1' },
+					{
+						type: 'text' as const,
+						content: "I'll create the workflow and data table. Delegating tasks.",
+					},
+					{ type: 'tool-call' as const, toolCallId: 'tc-delegate-1' },
+					{ type: 'tool-call' as const, toolCallId: 'tc-delegate-2' },
+					{ type: 'tool-call' as const, toolCallId: 'tc-builder-1' },
+					{ type: 'child' as const, agentId: 'child-builder-1' },
+					{ type: 'child' as const, agentId: 'child-dt-1' },
+					{ type: 'child' as const, agentId: 'child-err-1' },
+					{ type: 'tool-call' as const, toolCallId: 'tc-search-1' },
+					{ type: 'tool-call' as const, toolCallId: 'tc-fetch-1' },
+					{ type: 'tool-call' as const, toolCallId: 'tc-loading-1' },
+				],
+			},
+		},
+		// 3. Plan review (renders inline via PlanReviewPanel)
+		{
+			id: 'mock-assistant-2',
+			role: 'assistant',
+			createdAt: new Date().toISOString(),
+			content: '',
+			reasoning: '',
+			isStreaming: false,
+			agentTree: {
+				agentId: 'root-agent-2',
+				role: 'orchestrator',
+				status: 'active',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [
+					{
+						toolCallId: 'tc-plan-1',
+						toolName: 'present-plan',
+						isLoading: true,
+						args: {
+							tasks: [
+								{
+									id: 'p1',
+									title: 'Create HTTP Request node',
+									spec: 'Fetch issues from GitHub API using the REST endpoint.',
+									kind: 'build-workflow',
+									deps: [],
+								},
+								{
+									id: 'p2',
+									title: 'Add filter for open issues',
+									spec: 'Only process issues with state=open.',
+									kind: 'build-workflow',
+									deps: ['p1'],
+								},
+								{
+									id: 'p3',
+									title: 'Create data table',
+									spec: 'Store results in a data table with columns: title, state, author, url.',
+									kind: 'manage-data-tables',
+									deps: ['p1'],
+								},
+							],
+						},
+						confirmation: {
+							requestId: 'confirm-plan-1',
+							severity: 'info' as const,
+							message: 'Review plan.',
+							inputType: 'plan-review' as const,
+						},
+					},
+				],
+				children: [],
+				timeline: [
+					{ type: 'text' as const, content: "Here's my plan:" },
+					{ type: 'tool-call' as const, toolCallId: 'tc-plan-1' },
+				],
+			},
+		},
+		// 4. Pending questions (shows in ConfirmationPanel as interactive wizard)
+		{
+			id: 'mock-assistant-4',
+			role: 'assistant',
+			createdAt: new Date().toISOString(),
+			content: '',
+			reasoning: '',
+			isStreaming: false,
+			agentTree: {
+				agentId: 'root-agent-4',
+				role: 'orchestrator',
+				status: 'active',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [
+					{
+						toolCallId: 'tc-pending-q-1',
+						toolName: 'ask-questions',
+						isLoading: true,
+						args: {
+							questions: [
+								{
+									id: 'q1',
+									question: 'Which GitHub authentication method do you want to use?',
+									type: 'single',
+									options: ['Personal Access Token', 'OAuth App', 'GitHub App'],
+								},
+								{
+									id: 'q2',
+									question: 'Which repositories should I watch?',
+									type: 'multi',
+									options: ['n8n-io/n8n', 'n8n-io/n8n-docs', 'n8n-io/n8n-desktop-app'],
+								},
+								{ id: 'q3', question: 'Any additional filters for the issues?', type: 'text' },
+							],
+						},
+						confirmation: {
+							requestId: 'confirm-q-pending-1',
+							severity: 'info' as const,
+							message: 'I need some info before proceeding.',
+							inputType: 'questions' as const,
+							introMessage: 'Before I start building, I have a few questions:',
+							questions: [
+								{
+									id: 'q1',
+									question: 'Which GitHub authentication method do you want to use?',
+									type: 'single' as const,
+									options: ['Personal Access Token', 'OAuth App', 'GitHub App'],
+								},
+								{
+									id: 'q2',
+									question: 'Which repositories should I watch?',
+									type: 'multi' as const,
+									options: ['n8n-io/n8n', 'n8n-io/n8n-docs', 'n8n-io/n8n-desktop-app'],
+								},
+								{
+									id: 'q3',
+									question: 'Any additional filters for the issues?',
+									type: 'text' as const,
+								},
+							],
+						},
+					},
+				],
+				children: [],
+				timeline: [{ type: 'tool-call' as const, toolCallId: 'tc-pending-q-1' }],
+			},
+		},
+		// 5. Answered questions (read-only)
+		{
+			id: 'mock-assistant-5',
+			role: 'assistant',
+			createdAt: new Date().toISOString(),
+			content: "Great, I'll use the PAT and create the workflow in your default project.",
+			reasoning: '',
+			isStreaming: false,
+			agentTree: {
+				agentId: 'root-agent-5',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: "Great, I'll use the PAT and create the workflow in your default project.",
+				reasoning: '',
+				toolCalls: [
+					{
+						toolCallId: 'tc-answered-q-1',
+						toolName: 'ask-questions',
+						isLoading: false,
+						args: {
+							questions: [
+								{
+									id: 'q1',
+									question: 'Which GitHub authentication method?',
+									type: 'single',
+									options: ['Personal Access Token', 'OAuth App', 'GitHub App'],
+								},
+								{
+									id: 'q2',
+									question: 'Which project should I create the workflow in?',
+									type: 'text',
+								},
+							],
+						},
+						result: {
+							answered: true,
+							answers: [
+								{ questionId: 'q1', selectedOptions: ['Personal Access Token'] },
+								{ questionId: 'q2', customText: 'Default project', selectedOptions: [] },
+							],
+						},
+						confirmation: {
+							requestId: 'confirm-q-done-1',
+							severity: 'info' as const,
+							message: 'I need some info.',
+							inputType: 'questions' as const,
+							questions: [
+								{
+									id: 'q1',
+									question: 'Which GitHub authentication method?',
+									type: 'single' as const,
+									options: ['Personal Access Token', 'OAuth App', 'GitHub App'],
+								},
+								{
+									id: 'q2',
+									question: 'Which project should I create the workflow in?',
+									type: 'text' as const,
+								},
+							],
+						},
+						confirmationStatus: 'approved',
+					},
+				],
+				children: [],
+				timeline: [
+					{ type: 'tool-call' as const, toolCallId: 'tc-answered-q-1' },
+					{
+						type: 'text' as const,
+						content: "Great, I'll use the PAT and create the workflow in your default project.",
+					},
+				],
+			},
+		},
+		// 6. Simple text-only response
+		{
+			id: 'mock-assistant-6',
+			role: 'assistant',
+			createdAt: new Date().toISOString(),
+			content:
+				'Everything is set up! Your workflow fetches GitHub issues every hour and stores them in the **GitHub Issues** data table.',
+			reasoning: '',
+			isStreaming: false,
+		},
+		// 7. Error-state message
+		{
+			id: 'mock-assistant-7',
+			role: 'assistant',
+			createdAt: new Date().toISOString(),
+			content: '',
+			reasoning: '',
+			isStreaming: false,
+			agentTree: {
+				agentId: 'root-agent-7',
+				role: 'orchestrator',
+				status: 'error',
+				textContent: '',
+				reasoning: '',
+				error: 'The model returned an unexpected response. Please try again.',
+				errorDetails: {
+					statusCode: 500,
+					provider: 'Anthropic',
+					technicalDetails: '{"error":{"type":"overloaded_error","message":"Overloaded"}}',
+				},
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			},
+		},
+		// 8. Confirmation panel — generic approvals (triggers "Approve All") + domain access (separate group)
+		{
+			id: 'mock-assistant-8',
+			role: 'assistant',
+			createdAt: new Date().toISOString(),
+			content: '',
+			reasoning: '',
+			isStreaming: true,
+			agentTree: {
+				agentId: 'root-agent-8',
+				role: 'orchestrator',
+				status: 'active',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [
+					// Generic approval #1
+					{
+						toolCallId: 'tc-approve-1',
+						toolName: 'publish-workflow',
+						isLoading: true,
+						args: { workflowId: 'wf-123', name: 'Fetch GitHub Issues' },
+						confirmation: {
+							requestId: 'confirm-approve-1',
+							severity: 'warning' as const,
+							message: 'Publish workflow "Fetch GitHub Issues" to production?',
+						},
+					},
+					// Generic approval #2 (2+ generics in same agent → "Approve All" header)
+					{
+						toolCallId: 'tc-approve-2',
+						toolName: 'delete-workflow',
+						isLoading: true,
+						args: { workflowId: 'wf-old-456' },
+						confirmation: {
+							requestId: 'confirm-approve-2',
+							severity: 'destructive' as const,
+							message: 'Delete workflow "Old Backup Flow"? This cannot be undone.',
+						},
+					},
+				],
+				children: [
+					// Domain access in a child agent (separate agentId → own approval-wrapped group)
+					{
+						agentId: 'child-domain-agent',
+						role: 'researcher',
+						status: 'active',
+						textContent: '',
+						reasoning: '',
+						toolCalls: [
+							{
+								toolCallId: 'tc-domain-1',
+								toolName: 'fetch-url',
+								isLoading: true,
+								args: { url: 'https://api.github.com/repos/n8n-io/n8n/issues' },
+								confirmation: {
+									requestId: 'confirm-domain-1',
+									severity: 'info' as const,
+									message: 'Allow access to api.github.com?',
+									domainAccess: {
+										url: 'https://api.github.com/repos/n8n-io/n8n/issues',
+										host: 'api.github.com',
+									},
+								},
+							},
+						],
+						children: [],
+						timeline: [{ type: 'tool-call' as const, toolCallId: 'tc-domain-1' }],
+					},
+				],
+				timeline: [
+					{ type: 'tool-call' as const, toolCallId: 'tc-approve-1' },
+					{ type: 'tool-call' as const, toolCallId: 'tc-approve-2' },
+					{ type: 'child' as const, agentId: 'child-domain-agent' },
+				],
+			},
+		},
+		// 9. Confirmation panel — text input (ask-user)
+		{
+			id: 'mock-assistant-9',
+			role: 'assistant',
+			createdAt: new Date().toISOString(),
+			content: '',
+			reasoning: '',
+			isStreaming: true,
+			agentTree: {
+				agentId: 'root-agent-9',
+				role: 'orchestrator',
+				status: 'active',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [
+					{
+						toolCallId: 'tc-text-input-1',
+						toolName: 'ask-user',
+						isLoading: true,
+						args: {},
+						confirmation: {
+							requestId: 'confirm-text-1',
+							severity: 'info' as const,
+							message: 'What Slack channel should notifications be sent to?',
+							inputType: 'text' as const,
+						},
+					},
+				],
+				children: [],
+				timeline: [{ type: 'tool-call' as const, toolCallId: 'tc-text-input-1' }],
+			},
+		},
+		// 10. Confirmation panel — gateway resource decision
+		{
+			id: 'mock-assistant-10',
+			role: 'assistant',
+			createdAt: new Date().toISOString(),
+			content: '',
+			reasoning: '',
+			isStreaming: true,
+			agentTree: {
+				agentId: 'root-agent-10',
+				role: 'orchestrator',
+				status: 'active',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [
+					{
+						toolCallId: 'tc-gateway-1',
+						toolName: 'filesystem-read',
+						isLoading: true,
+						args: { path: '/Users/project/config.json' },
+						confirmation: {
+							requestId: 'confirm-gateway-1',
+							severity: 'warning' as const,
+							message: 'Allow filesystem access?',
+							inputType: 'resource-decision' as const,
+							resourceDecision: {
+								toolGroup: 'filesystem',
+								resource: 'File Read',
+								description: 'Read file: /Users/project/config.json',
+								options: ['allowOnce', 'allowForSession', 'alwaysAllow', 'denyOnce', 'alwaysDeny'],
+							},
+						},
+					},
+				],
+				children: [],
+				timeline: [{ type: 'tool-call' as const, toolCallId: 'tc-gateway-1' }],
+			},
+		},
+		// 11. Confirmation panel — credential setup
+		{
+			id: 'mock-assistant-11',
+			role: 'assistant',
+			createdAt: new Date().toISOString(),
+			content: '',
+			reasoning: '',
+			isStreaming: true,
+			agentTree: {
+				agentId: 'root-agent-11',
+				role: 'orchestrator',
+				status: 'active',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [
+					{
+						toolCallId: 'tc-cred-setup-1',
+						toolName: 'setup-credentials',
+						isLoading: true,
+						args: {},
+						confirmation: {
+							requestId: 'confirm-cred-1',
+							severity: 'info' as const,
+							message: 'Set up credentials for this workflow',
+							credentialRequests: [
+								{
+									credentialType: 'githubApi',
+									reason: 'Required to authenticate with the GitHub API and fetch issues',
+									existingCredentials: [{ id: 'cred-gh-1', name: 'My GitHub PAT' }],
+									suggestedName: 'GitHub Token',
+								},
+								{
+									credentialType: 'slackApi',
+									reason: 'Needed to post issue summaries to a Slack channel',
+									existingCredentials: [],
+									suggestedName: 'Slack Bot Token',
+								},
+							],
+						},
+					},
+				],
+				children: [],
+				timeline: [{ type: 'tool-call' as const, toolCallId: 'tc-cred-setup-1' }],
+			},
+		},
+		// 12. Confirmation panel — workflow setup (setupRequests)
+		{
+			id: 'mock-assistant-12',
+			role: 'assistant',
+			createdAt: new Date().toISOString(),
+			content: '',
+			reasoning: '',
+			isStreaming: true,
+			agentTree: {
+				agentId: 'root-agent-12',
+				role: 'orchestrator',
+				status: 'active',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [
+					{
+						toolCallId: 'tc-wf-setup-1',
+						toolName: 'setup-workflow',
+						isLoading: true,
+						args: {},
+						confirmation: {
+							requestId: 'confirm-wf-setup-1',
+							severity: 'info' as const,
+							message: 'Configure the workflow nodes before activation',
+							workflowId: 'wf-setup-123',
+							setupRequests: [
+								{
+									node: {
+										name: 'GitHub Trigger',
+										type: 'n8n-nodes-base.githubTrigger',
+										typeVersion: 1,
+										parameters: { owner: 'n8n-io', repository: 'n8n', events: ['issues'] },
+										position: [250, 300] as [number, number],
+										id: 'node-gh-trigger',
+									},
+									credentialType: 'githubApi',
+									existingCredentials: [{ id: 'cred-gh-1', name: 'My GitHub PAT' }],
+									isTrigger: true,
+									isFirstTrigger: true,
+									isTestable: true,
+								},
+								{
+									node: {
+										name: 'Slack',
+										type: 'n8n-nodes-base.slack',
+										typeVersion: 2,
+										parameters: { channel: '#notifications', text: 'New issue: {{ $json.title }}' },
+										position: [500, 300] as [number, number],
+										id: 'node-slack',
+									},
+									credentialType: 'slackApi',
+									existingCredentials: [],
+									isTrigger: false,
+								},
+							],
+						},
+					},
+				],
+				children: [],
+				timeline: [{ type: 'tool-call' as const, toolCallId: 'tc-wf-setup-1' }],
+			},
+		},
+	];
 	const latestTasks = ref<TaskList | null>(null);
 	const debugEvents = ref<Array<{ timestamp: string; event: InstanceAiEvent }>>([]);
 	const debugMode = ref(false);
@@ -643,6 +1345,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	}
 
 	async function loadHistoricalMessages(threadId: string): Promise<void> {
+		// ── DEV-ONLY: return mock data instead of calling API ──
+		messages.value = MOCK_MESSAGES;
+		return;
+		// ── END DEV-ONLY ──
+
 		try {
 			const result = await fetchThreadMessagesApi(rootStore.restApiContext, threadId, 100);
 			// Only hydrate if we're still on the same thread and SSE hasn't delivered messages

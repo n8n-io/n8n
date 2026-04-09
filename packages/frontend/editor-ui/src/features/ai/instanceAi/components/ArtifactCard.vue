@@ -60,6 +60,7 @@ function handleClick(e: MouseEvent) {
 <style lang="scss" module>
 .card {
 	cursor: pointer;
+	background-color: var(--color--background--light-3);
 	transition: box-shadow 0.3s ease;
 
 	&:hover {
