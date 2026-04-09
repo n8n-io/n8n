@@ -39,14 +39,13 @@ export const planResumeSchema = z.object({
 
 export function createPlanTool(context: OrchestrationContext) {
 	return createTool({
-		id: 'plan',
+		id: 'create-tasks',
 		description:
-			'Persist a dependency-aware task plan for detached multi-step execution. ' +
-			'Use ONLY when the work requires 2 or more tasks with dependencies ' +
-			'(e.g. data table setup + multiple workflows, parallel builds + consolidation). ' +
-			'Do NOT use for single workflow builds — call build-workflow-with-agent directly instead. ' +
-			'The plan is shown to the user for approval before execution starts. ' +
-			'After calling plan, reply briefly and end your turn.',
+			'Submit a pre-built task list for detached multi-step execution. ' +
+			'Use ONLY for replanning after a failure — when you already have the task context ' +
+			'and do not need resource discovery. For initial planning, call `plan` instead. ' +
+			'The task list is shown to the user for approval before execution starts. ' +
+			'After calling create-tasks, reply briefly and end your turn.',
 		inputSchema: planInputSchema,
 		outputSchema: planOutputSchema,
 		suspendSchema: z.object({
@@ -115,7 +114,7 @@ export function createPlanTool(context: OrchestrationContext) {
 
 			// User rejected or requested changes — return feedback to LLM
 			return {
-				result: `User requested changes: ${resumeData.userInput ?? 'No feedback provided'}. Revise the plan and call plan() again.`,
+				result: `User requested changes: ${resumeData.userInput ?? 'No feedback provided'}. Revise the tasks and call create-tasks again.`,
 				taskCount: 0,
 			};
 		},

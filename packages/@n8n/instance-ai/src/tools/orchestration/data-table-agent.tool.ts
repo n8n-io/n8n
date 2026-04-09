@@ -120,7 +120,7 @@ export async function startDataTableAgentTask(
 		role: 'data-table-manager',
 		traceContext,
 		plannedTaskId: input.plannedTaskId,
-		run: async (signal, _drainCorrections) => {
+		run: async (signal, _drainCorrections, _waitForCorrection) => {
 			return await withTraceContextActor(traceContext, async () => {
 				const subAgent = new Agent({
 					id: subAgentId,

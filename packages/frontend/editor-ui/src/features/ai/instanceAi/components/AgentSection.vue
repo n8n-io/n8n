@@ -1,17 +1,14 @@
 <script lang="ts" setup>
 import type { InstanceAiAgentNode } from '@n8n/api-types';
-import { N8nCallout, N8nIcon, N8nIconButton } from '@n8n/design-system';
+import { N8nCallout, N8nIcon } from '@n8n/design-system';
 import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed, ref, watch } from 'vue';
-import { useInstanceAiStore } from '../instanceAi.store';
 import SubagentStepTimeline from './SubagentStepTimeline.vue';
 import TimelineStepButton from './TimelineStepButton.vue';
 
 const props = defineProps<{
 	agentNode: InstanceAiAgentNode;
 }>();
-
-const instanceAiStore = useInstanceAiStore();
 
 const isExpanded = ref(false);
 
@@ -21,10 +18,6 @@ const isError = computed(() => props.agentNode.status === 'error');
 const sectionTitle = computed(
 	() => props.agentNode.subtitle ?? props.agentNode.role ?? 'Working...',
 );
-
-function handleStop() {
-	instanceAiStore.amendAgent(props.agentNode.agentId, props.agentNode.role, props.agentNode.taskId);
-}
 
 // Auto-collapse when agent completes (keep collapsed by default for peek preview)
 watch(
@@ -41,30 +34,20 @@ watch(
 	<!-- eslint-disable vue/no-multiple-template-root -->
 	<!-- Collapsible timeline -->
 	<CollapsibleRoot v-slot="{ open: isOpen }" v-model:open="isExpanded">
-		<div :class="$style.triggerWrapper">
-			<CollapsibleTrigger as-child>
-				<TimelineStepButton size="medium">
-					<template #icon="{ isHovered }">
-						<template v-if="!isHovered && isActive">
-							<N8nIcon icon="spinner" color="primary" size="small" transform-origin="center" spin />
-						</template>
-						<template v-else>
-							<N8nIcon v-if="!isOpen" icon="chevron-right" size="small" />
-							<N8nIcon v-else icon="chevron-down" size="small" />
-						</template>
+		<CollapsibleTrigger as-child>
+			<TimelineStepButton size="medium">
+				<template #icon="{ isHovered }">
+					<template v-if="!isHovered && isActive">
+						<N8nIcon icon="spinner" color="primary" size="small" transform-origin="center" spin />
 					</template>
-					<span :class="{ [$style.shimmer]: isActive }">{{ sectionTitle }}</span>
-				</TimelineStepButton>
-			</CollapsibleTrigger>
-			<N8nIconButton
-				v-if="isActive"
-				:class="$style.stopButton"
-				icon="square"
-				size="small"
-				variant="destructive"
-				@click.stop="handleStop"
-			/>
-		</div>
+					<template v-else>
+						<N8nIcon v-if="!isOpen" icon="chevron-right" size="small" />
+						<N8nIcon v-else icon="chevron-down" size="small" />
+					</template>
+				</template>
+				<span :class="{ [$style.shimmer]: isActive }">{{ sectionTitle }}</span>
+			</TimelineStepButton>
+		</CollapsibleTrigger>
 		<CollapsibleContent :class="$style.content">
 			<SubagentStepTimeline :agent-node="props.agentNode" />
 		</CollapsibleContent>
@@ -76,18 +59,6 @@ watch(
 </template>
 
 <style lang="scss" module>
-.triggerWrapper {
-	position: relative;
-	display: flex;
-	align-items: center;
-}
-
-.stopButton {
-	position: absolute;
-	right: 0;
-	top: 0;
-}
-
 .content {
 	padding-left: var(--spacing--2xs);
 	border-left: var(--border);

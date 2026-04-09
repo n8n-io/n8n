@@ -72,6 +72,7 @@ export const instanceAiAgentKindSchema = z.enum([
 	'researcher',
 	'delegate',
 	'browser-setup',
+	'planner',
 ]);
 export type InstanceAiAgentKind = z.infer<typeof instanceAiAgentKindSchema>;
 
@@ -258,6 +259,18 @@ export const taskListSchema = z.object({
 
 export type TaskList = z.infer<typeof taskListSchema>;
 
+export const plannedTaskArgSchema = z.object({
+	id: z.string(),
+	title: z.string(),
+	kind: z.string(),
+	spec: z.string(),
+	deps: z.array(z.string()),
+	tools: z.array(z.string()).optional(),
+	workflowId: z.string().optional(),
+});
+
+export type PlannedTaskArg = z.infer<typeof plannedTaskArgSchema>;
+
 // ── Gateway resource confirmation (instance permission mode) ─────────────────
 
 /** Protocol prefix used by the daemon to signal a resource-access confirmation is required. */
@@ -318,6 +331,10 @@ export const confirmationRequestPayloadSchema = z.object({
 	tasks: taskListSchema
 		.optional()
 		.describe('Task checklist for plan review (inputType=plan-review)'),
+	planItems: z
+		.array(plannedTaskArgSchema)
+		.optional()
+		.describe('Full planned task details for plan review (title, kind, spec, deps)'),
 	domainAccess: domainAccessMetaSchema
 		.optional()
 		.describe('When present, renders domain-access approval UI instead of generic confirm'),
@@ -438,6 +455,7 @@ export const instanceAiFilesystemResponseSchema = z.object({
 
 export const tasksUpdatePayloadSchema = z.object({
 	tasks: taskListSchema,
+	planItems: z.array(plannedTaskArgSchema).optional(),
 });
 
 export const threadTitleUpdatedPayloadSchema = z.object({
@@ -612,6 +630,7 @@ export interface InstanceAiConfirmation {
 	credentialFlow?: InstanceAiCredentialFlow;
 	setupRequests?: InstanceAiWorkflowSetupNode[];
 	workflowId?: string;
+	planItems?: PlannedTaskArg[];
 	questions?: Array<{
 		id: string;
 		question: string;
@@ -630,7 +649,14 @@ export interface InstanceAiToolCallState {
 	result?: unknown;
 	error?: string;
 	isLoading: boolean;
-	renderHint?: 'tasks' | 'delegate' | 'builder' | 'data-table' | 'researcher' | 'default';
+	renderHint?:
+		| 'tasks'
+		| 'delegate'
+		| 'builder'
+		| 'data-table'
+		| 'researcher'
+		| 'planner'
+		| 'default';
 	confirmation?: InstanceAiConfirmation;
 	confirmationStatus?: 'pending' | 'approved' | 'denied';
 	startedAt?: string;
@@ -669,6 +695,8 @@ export interface InstanceAiAgentNode {
 	timeline: InstanceAiTimelineEntry[];
 	/** Latest task list — updated by tasks-update events. */
 	tasks?: TaskList;
+	/** Full planned task details — updated progressively by plan-with-agent via tasks-update. */
+	planItems?: PlannedTaskArg[];
 	result?: string;
 	error?: string;
 	errorDetails?: {
@@ -698,6 +726,7 @@ export interface InstanceAiThreadSummary {
 	id: string;
 	title: string;
 	createdAt: string;
+	metadata?: Record<string, unknown>;
 }
 
 export type InstanceAiSSEConnectionState =
@@ -836,6 +865,31 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	restoreWorkflowVersion: 'require_approval',
 };
 
+/** Permission keys that remain active when branchReadOnly is enabled.
+ *  When changing this set, also update the read-only section in
+ *  `packages/@n8n/instance-ai/src/agent/system-prompt.ts` (`getReadOnlySection`). */
+const BRANCH_READ_ONLY_SAFE_PERMISSIONS: ReadonlySet<keyof InstanceAiPermissions> = new Set([
+	'readFilesystem',
+	'fetchUrl',
+	'publishWorkflow',
+	'deleteCredential',
+	'restoreWorkflowVersion',
+]);
+
+/** Returns a copy of permissions with all write operations set to 'blocked',
+ *  except for the safelisted ones that are allowed on read-only instances. */
+export function applyBranchReadOnlyOverrides(
+	permissions: InstanceAiPermissions,
+): InstanceAiPermissions {
+	const overridden = { ...permissions };
+	for (const key of Object.keys(overridden) as Array<keyof InstanceAiPermissions>) {
+		if (!BRANCH_READ_ONLY_SAFE_PERMISSIONS.has(key)) {
+			overridden[key] = 'blocked';
+		}
+	}
+	return overridden;
+}
+
 // ---------------------------------------------------------------------------
 // Admin settings — instance-scoped, admin-only
 // ---------------------------------------------------------------------------
@@ -909,6 +963,7 @@ const DATA_TABLE_RENDER_HINT_TOOLS = new Set([
 	'agent-data-table-manager',
 ]);
 const RESEARCH_RENDER_HINT_TOOLS = new Set(['research-with-agent']);
+const PLANNER_RENDER_HINT_TOOLS = new Set(['plan']);
 
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
 	if (toolName === 'update-tasks') return 'tasks';
@@ -916,6 +971,7 @@ export function getRenderHint(toolName: string): InstanceAiToolCallState['render
 	if (BUILDER_RENDER_HINT_TOOLS.has(toolName)) return 'builder';
 	if (DATA_TABLE_RENDER_HINT_TOOLS.has(toolName)) return 'data-table';
 	if (RESEARCH_RENDER_HINT_TOOLS.has(toolName)) return 'researcher';
+	if (PLANNER_RENDER_HINT_TOOLS.has(toolName)) return 'planner';
 	return 'default';
 }
 
