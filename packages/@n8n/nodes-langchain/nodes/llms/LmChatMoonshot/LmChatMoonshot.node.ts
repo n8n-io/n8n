@@ -21,7 +21,7 @@ export class LmChatMoonshot implements INodeType {
 		displayName: 'Moonshot Kimi Chat Model',
 
 		name: 'lmChatMoonshot',
-		icon: { light: 'file:moonshot.dark.svg', dark: 'file:moonshot.svg' },
+		icon: { light: 'file:moonshot.svg', dark: 'file:moonshot.dark.svg' },
 		group: ['transform'],
 		version: [1],
 		description: 'For advanced usage with an AI chain',
