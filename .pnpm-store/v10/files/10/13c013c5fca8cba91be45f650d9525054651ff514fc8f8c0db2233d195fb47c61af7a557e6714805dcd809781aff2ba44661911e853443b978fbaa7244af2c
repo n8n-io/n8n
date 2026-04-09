@@ -1,6 +1,0 @@
-type: string
-enum:
-  - webhook
-  - api_key
-  - sftp
-  - netsuite

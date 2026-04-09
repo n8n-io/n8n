@@ -1,3 +1,0 @@
---ui qunit
---reporter spec
---check-leaks

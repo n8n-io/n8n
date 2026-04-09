@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["../../../src/validation-errors/index.js"],
-  "sourcesContent": ["export { default as RequiredValidationError } from './required';\nexport { default as AdditionalPropValidationError } from './additional-prop';\nexport { default as EnumValidationError } from './enum';\nexport { default as DefaultValidationError } from './default';\n"],
-  "mappings": ";AAAA;AACA;AACA;AACA;",
-  "names": []
-}

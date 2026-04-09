@@ -1,1 +1,0 @@
-{"version":3,"file":"shouldRefreshSession.d.ts","sourceRoot":"","sources":["../../../../src/session/shouldRefreshSession.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,OAAO,EAAE,MAAM,UAAU,CAAC;AAGxC,iDAAiD;AACjD,wBAAgB,oBAAoB,CAClC,OAAO,EAAE,OAAO,EAChB,EAAE,iBAAiB,EAAE,iBAAiB,EAAE,EAAE;IAAE,iBAAiB,EAAE,MAAM,CAAC;IAAC,iBAAiB,EAAE,MAAM,CAAA;CAAE,GACjG,OAAO,CAYT"}

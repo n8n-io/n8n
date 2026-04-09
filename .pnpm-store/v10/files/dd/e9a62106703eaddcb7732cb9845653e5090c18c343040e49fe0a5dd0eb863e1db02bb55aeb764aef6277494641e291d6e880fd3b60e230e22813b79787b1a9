@@ -1,5 +1,0 @@
-[something]
-awesome = "this is"
-
-[something.awesome]
-this = "isn't"

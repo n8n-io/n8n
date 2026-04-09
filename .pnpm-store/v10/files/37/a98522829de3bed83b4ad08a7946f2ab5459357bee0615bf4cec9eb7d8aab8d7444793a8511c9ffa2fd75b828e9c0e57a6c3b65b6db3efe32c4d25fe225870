@@ -1,1 +1,0 @@
-{"version":3,"file":"index.cjs","names":[],"sources":["../../../src/chains/combine_documents/index.ts"],"sourcesContent":["export { createStuffDocumentsChain } from \"./stuff.js\";\n"],"mappings":""}

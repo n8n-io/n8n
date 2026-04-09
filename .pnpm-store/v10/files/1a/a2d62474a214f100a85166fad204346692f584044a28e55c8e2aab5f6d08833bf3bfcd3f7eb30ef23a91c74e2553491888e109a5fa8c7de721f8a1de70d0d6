@@ -1,1 +1,0 @@
-{"version":3,"file":"AuthMethodNotSupportedError.js","sourceRoot":"./","sources":["errors/resultCodeErrors/AuthMethodNotSupportedError.ts"],"names":[],"mappings":";;;AAAA,uDAAoD;AAEpD,MAAa,2BAA4B,SAAQ,iCAAe;IAC9D,YAAmB,OAAgB;QACjC,KAAK,CAAC,CAAC,EAAE,OAAO,IAAI,4EAA4E,CAAC,CAAC;IACpG,CAAC;CACF;AAJD,kEAIC"}

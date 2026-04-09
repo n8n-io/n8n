@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "module": "../esm/startOfSecond/index.js",
-  "typings": "../typings.d.ts"
-}

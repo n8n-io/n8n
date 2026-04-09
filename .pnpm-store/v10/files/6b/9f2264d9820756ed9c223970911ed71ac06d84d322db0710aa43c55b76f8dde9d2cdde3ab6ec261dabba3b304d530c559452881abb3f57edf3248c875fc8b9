@@ -1,1 +1,0 @@
-{"version":3,"file":"code-points-data-browser.js","sourceRoot":"","sources":["../src/code-points-data-browser.ts"],"names":[],"mappings":";;AAAA,MAAM,IAAI,GAAG,MAAM,CAAC,IAAI,CACtB,8sliBAA8sliB,EAC9sliB,QAAQ,CACT,CAAC;AACF,kBAAe,IAAI,CAAC"}

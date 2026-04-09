@@ -1,8 +1,0 @@
-{
-  "name": "rxjs/testing",
-  "types": "../dist/types/testing/index.d.ts",
-  "main": "../dist/cjs/testing/index.js",
-  "module": "../dist/esm5/testing/index.js",
-  "es2015": "../dist/esm/testing/index.js",
-  "sideEffects": false
-}

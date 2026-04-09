@@ -1,1 +1,0 @@
-{"version":3,"file":"UnsubscriptionError.d.ts","sourceRoot":"","sources":["../../../../src/internal/util/UnsubscriptionError.ts"],"names":[],"mappings":"AAEA,MAAM,WAAW,mBAAoB,SAAQ,KAAK;IAChD,QAAQ,CAAC,MAAM,EAAE,GAAG,EAAE,CAAC;CACxB;AAED,MAAM,WAAW,uBAAuB;IACtC;;;OAGG;IACH,KAAK,MAAM,EAAE,GAAG,EAAE,GAAG,mBAAmB,CAAC;CAC1C;AAED;;;GAGG;AACH,eAAO,MAAM,mBAAmB,EAAE,uBAWjC,CAAC"}

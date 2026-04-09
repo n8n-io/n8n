@@ -1,1 +1,0 @@
-{"version":3,"file":"completions.mjs","sourceRoot":"","sources":["../../src/resources/chat/completions.ts"],"names":[],"mappings":"AAAA,sFAAsF;OAE/E,EAAE,WAAW,EAAE;AAStB,MAAM,OAAO,WAAY,SAAQ,WAAW;IAmB1C,MAAM,CACJ,IAAgC,EAChC,OAA6B;QAE7B,OAAO,IAAI,CAAC,OAAO,CAAC,IAAI,CAAC,mBAAmB,EAAE,EAAE,IAAI,EAAE,GAAG,OAAO,EAAE,MAAM,EAAE,IAAI,CAAC,MAAM,IAAI,KAAK,EAAE,CAErD,CAAC;IAC9C,CAAC;CACF"}

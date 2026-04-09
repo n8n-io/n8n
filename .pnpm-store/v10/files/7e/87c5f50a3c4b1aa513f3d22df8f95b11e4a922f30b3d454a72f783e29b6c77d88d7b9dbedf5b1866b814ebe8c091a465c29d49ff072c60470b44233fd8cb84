@@ -1,1 +1,0 @@
-module.exports = require("../dist/utils/json_patch.cjs");

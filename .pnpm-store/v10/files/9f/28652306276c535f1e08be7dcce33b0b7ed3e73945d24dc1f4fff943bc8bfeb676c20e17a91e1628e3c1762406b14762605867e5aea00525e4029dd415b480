@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "module": "../esm/closestIndexTo/index.js",
-  "typings": "../typings.d.ts"
-}

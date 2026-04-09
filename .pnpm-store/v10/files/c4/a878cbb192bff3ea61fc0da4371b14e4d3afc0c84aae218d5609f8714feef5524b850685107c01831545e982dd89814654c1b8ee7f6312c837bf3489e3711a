@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "module": "../../esm/fp/differenceInCalendarWeeksWithOptions/index.js",
-  "typings": "../../typings.d.ts"
-}

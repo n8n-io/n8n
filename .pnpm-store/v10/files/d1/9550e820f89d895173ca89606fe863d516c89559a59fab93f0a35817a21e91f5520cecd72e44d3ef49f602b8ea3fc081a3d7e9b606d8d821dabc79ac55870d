@@ -1,1 +1,0 @@
-module.exports = require("../../dist/agents/react/output_parser.cjs");

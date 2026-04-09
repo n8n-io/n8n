@@ -1,1 +1,0 @@
-{"version":3,"file":"index.mjs","sources":["../../../../../packages/components/rate/index.ts"],"sourcesContent":["import { withInstall } from '@element-plus/utils'\n\nimport Rate from './src/rate.vue'\n\nexport const ElRate = withInstall(Rate)\nexport default ElRate\n\nexport * from './src/rate'\n"],"names":[],"mappings":";;;;;AAEY,MAAC,MAAM,GAAG,WAAW,CAAC,IAAI;;;;"}

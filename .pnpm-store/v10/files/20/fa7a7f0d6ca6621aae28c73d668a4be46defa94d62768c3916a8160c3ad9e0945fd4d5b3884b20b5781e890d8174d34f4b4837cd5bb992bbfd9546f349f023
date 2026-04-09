@@ -1,1 +1,0 @@
-{"version":3,"file":"datewithzone.d.ts","sourceRoot":"","sources":["../../src/datewithzone.ts"],"names":[],"mappings":"AAEA,qBAAa,YAAY;IAChB,IAAI,EAAE,IAAI,CAAA;IACV,IAAI,CAAC,EAAE,MAAM,GAAG,IAAI,CAAA;gBAEf,IAAI,EAAE,IAAI,EAAE,IAAI,CAAC,EAAE,MAAM,GAAG,IAAI;IAQ5C,OAAO,KAAK,KAAK,GAEhB;IAEM,QAAQ;IASR,OAAO;IAIP,WAAW;CAOnB"}

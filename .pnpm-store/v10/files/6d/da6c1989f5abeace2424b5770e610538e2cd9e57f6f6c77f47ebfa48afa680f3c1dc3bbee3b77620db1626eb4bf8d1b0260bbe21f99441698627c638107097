@@ -1,1 +1,0 @@
-{"version":3,"file":"LineExtractor.d.ts","sourceRoot":"","sources":["../../src/parser/LineExtractor.ts"],"names":[],"mappings":"AAIA,OAAO,KAAK,EAAE,aAAa,EAAE,MAAM,iBAAiB,CAAC;AAmBrD;;GAEG;AACH,qBAAa,aAAa;IACxB,OAAO,CAAC,MAAM,CAAC,QAAQ,CAAC,0BAA0B,CAAkB;IAEpE;;;;OAIG;WACW,OAAO,CAAC,aAAa,EAAE,aAAa,GAAG,OAAO;CA8I7D"}

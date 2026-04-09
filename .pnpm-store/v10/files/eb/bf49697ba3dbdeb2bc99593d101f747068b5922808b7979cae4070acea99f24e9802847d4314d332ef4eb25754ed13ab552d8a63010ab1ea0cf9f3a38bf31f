@@ -1,1 +1,0 @@
-export { list } from "./list";

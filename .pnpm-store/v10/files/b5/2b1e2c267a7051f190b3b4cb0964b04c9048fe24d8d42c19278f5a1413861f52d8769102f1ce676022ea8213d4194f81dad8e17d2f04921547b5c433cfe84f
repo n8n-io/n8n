@@ -1,1 +1,0 @@
-module.exports = require("../dist/experimental/openai_assistant/index.cjs");

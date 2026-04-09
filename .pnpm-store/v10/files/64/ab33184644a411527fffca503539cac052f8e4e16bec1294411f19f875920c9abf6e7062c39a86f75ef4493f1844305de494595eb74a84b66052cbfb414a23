@@ -1,6 +1,0 @@
-node_modules/
-npm-debug.log
-debug.log
-doco/
-tests/bench.js
-*.png

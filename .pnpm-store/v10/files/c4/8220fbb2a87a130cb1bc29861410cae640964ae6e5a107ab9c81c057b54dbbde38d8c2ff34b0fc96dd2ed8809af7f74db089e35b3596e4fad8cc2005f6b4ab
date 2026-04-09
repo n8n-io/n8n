@@ -1,1 +1,0 @@
-{"version":3,"file":"InvalidSyntaxError.js","sourceRoot":"./","sources":["errors/resultCodeErrors/InvalidSyntaxError.ts"],"names":[],"mappings":";;;AAAA,uDAAoD;AAEpD,MAAa,kBAAmB,SAAQ,iCAAe;IACrD,YAAmB,OAAgB;QACjC,KAAK,CAAC,EAAE,EAAE,OAAO,IAAI,uJAAuJ,CAAC,CAAC;IAChL,CAAC;CACF;AAJD,gDAIC"}

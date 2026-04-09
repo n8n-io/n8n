@@ -1,1 +1,0 @@
-import{n as e,t}from"./_chunks/_format.mjs";import{n,t as r}from"./_chunks/libs/js-yaml.mjs";function i(t,r){let i=n(t,r);return e(t,i,r),i}function a(e,n){let i=t(e,{preserveIndentation:!1}),a=r(e,{indent:typeof i.indent==`string`?i.indent.length:i.indent,...n});return i.whitespace.start+a.trim()+i.whitespace.end}export{i as parseYAML,a as stringifyYAML};

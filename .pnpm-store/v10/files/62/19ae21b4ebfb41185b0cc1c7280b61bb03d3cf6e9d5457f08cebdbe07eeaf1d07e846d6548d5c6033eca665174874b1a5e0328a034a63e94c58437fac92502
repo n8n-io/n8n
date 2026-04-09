@@ -1,9 +1,0 @@
-/*
-Shameless port of a shameless port
-@defunkt => @janl => @aq
- 
-See http://github.com/defunkt/mustache for more info.
-*/
- 
-;(function($) {
-

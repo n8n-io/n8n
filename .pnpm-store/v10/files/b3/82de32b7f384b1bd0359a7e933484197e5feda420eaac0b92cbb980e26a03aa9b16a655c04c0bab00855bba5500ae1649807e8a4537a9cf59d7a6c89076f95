@@ -1,1 +1,0 @@
-{"version":3,"file":"UndefinedTypeError.js","sourceRoot":"./","sources":["errors/resultCodeErrors/UndefinedTypeError.ts"],"names":[],"mappings":";;;AAAA,uDAAoD;AAEpD,MAAa,kBAAmB,SAAQ,iCAAe;IACrD,YAAmB,OAAgB;QACjC,KAAK,CAAC,EAAE,EAAE,OAAO,IAAI,oGAAoG,CAAC,CAAC;IAC7H,CAAC;CACF;AAJD,gDAIC"}

@@ -1,1 +1,0 @@
-module.exports = require("../dist/tools/google_calendar/index.cjs");

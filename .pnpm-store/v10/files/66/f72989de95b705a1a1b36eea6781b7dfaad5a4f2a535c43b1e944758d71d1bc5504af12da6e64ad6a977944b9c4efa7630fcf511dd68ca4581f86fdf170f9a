@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["/mnt/vss/_work/1/s/sdk/core/ts-http-runtime/src/util/sha256.ts"],
-  "sourcesContent": ["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT License.\n\nimport { createHash, createHmac } from \"node:crypto\";\n\n/**\n * Generates a SHA-256 HMAC signature.\n * @param key - The HMAC key represented as a base64 string, used to generate the cryptographic HMAC hash.\n * @param stringToSign - The data to be signed.\n * @param encoding - The textual encoding to use for the returned HMAC digest.\n */\nexport async function computeSha256Hmac(\n  key: string,\n  stringToSign: string,\n  encoding: \"base64\" | \"hex\",\n): Promise<string> {\n  const decodedKey = Buffer.from(key, \"base64\");\n\n  return createHmac(\"sha256\", decodedKey).update(stringToSign).digest(encoding);\n}\n\n/**\n * Generates a SHA-256 hash.\n * @param content - The data to be included in the hash.\n * @param encoding - The textual encoding to use for the returned hash.\n */\nexport async function computeSha256Hash(\n  content: string,\n  encoding: \"base64\" | \"hex\",\n): Promise<string> {\n  return createHash(\"sha256\").update(content).digest(encoding);\n}\n"],
-  "mappings": ";;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAGA,yBAAuC;AAQvC,eAAsB,kBACpB,KACA,cACA,UACiB;AACjB,QAAM,aAAa,OAAO,KAAK,KAAK,QAAQ;AAE5C,aAAO,+BAAW,UAAU,UAAU,EAAE,OAAO,YAAY,EAAE,OAAO,QAAQ;AAC9E;AAOA,eAAsB,kBACpB,SACA,UACiB;AACjB,aAAO,+BAAW,QAAQ,EAAE,OAAO,OAAO,EAAE,OAAO,QAAQ;AAC7D;",
-  "names": []
-}

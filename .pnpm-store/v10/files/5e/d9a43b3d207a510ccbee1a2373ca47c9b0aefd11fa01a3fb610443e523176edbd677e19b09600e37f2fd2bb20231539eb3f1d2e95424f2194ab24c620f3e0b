@@ -1,1 +1,0 @@
-{"version":3,"file":"index.cjs","names":[],"sources":["../../src/smith/index.ts"],"sourcesContent":["import {\n  type EvalResults,\n  type RunOnDatasetParams,\n  runOnDataset,\n} from \"./runner_utils.js\";\n\nexport { type EvalResults, type RunOnDatasetParams, runOnDataset };\nexport * from \"./config.js\";\n"],"mappings":""}

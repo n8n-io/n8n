@@ -1,1 +1,0 @@
-{"name":"@tsconfig/node12","repository":{"type":"git","url":"https://github.com/tsconfig/bases.git","directory":"bases"},"license":"MIT","description":"A base TSConfig for working with Node 12.","keywords":["tsconfig","node12"],"version":"1.0.11"}

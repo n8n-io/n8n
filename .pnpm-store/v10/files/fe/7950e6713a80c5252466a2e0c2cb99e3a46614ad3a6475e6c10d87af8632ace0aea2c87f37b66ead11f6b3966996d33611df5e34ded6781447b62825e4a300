@@ -1,1 +1,0 @@
-require.extensions['.mjs'] = null;

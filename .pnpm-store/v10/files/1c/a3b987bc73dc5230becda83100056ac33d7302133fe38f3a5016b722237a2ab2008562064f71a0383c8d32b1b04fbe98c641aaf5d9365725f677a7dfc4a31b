@@ -1,1 +1,0 @@
-{"version":3,"file":"index.cjs","names":[],"sources":["../../src/indexing/index.ts"],"sourcesContent":["export * from \"./record_manager.js\";\nexport * from \"./base.js\";\n"],"mappings":""}

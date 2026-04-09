@@ -1,1 +1,0 @@
-{"version":3,"file":"createReplayEnvelope.d.ts","sourceRoot":"","sources":["../../../../src/util/createReplayEnvelope.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,aAAa,EAAE,cAAc,EAAE,WAAW,EAAE,mBAAmB,EAAE,MAAM,cAAc,CAAC;AAGpG;;;GAGG;AACH,wBAAgB,oBAAoB,CAClC,WAAW,EAAE,WAAW,EACxB,aAAa,EAAE,mBAAmB,EAClC,GAAG,EAAE,aAAa,EAClB,MAAM,CAAC,EAAE,MAAM,GACd,cAAc,CAkBhB"}

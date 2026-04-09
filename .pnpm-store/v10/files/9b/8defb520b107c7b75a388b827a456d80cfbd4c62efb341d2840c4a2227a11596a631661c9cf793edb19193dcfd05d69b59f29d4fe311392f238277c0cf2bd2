@@ -1,7 +1,0 @@
-language: node_js
-node_js:
-  - "5.0"
-before_script:
-  - npm install -g coffee-script
-  - npm install -g browserify
-  - npm install -g uglify-js

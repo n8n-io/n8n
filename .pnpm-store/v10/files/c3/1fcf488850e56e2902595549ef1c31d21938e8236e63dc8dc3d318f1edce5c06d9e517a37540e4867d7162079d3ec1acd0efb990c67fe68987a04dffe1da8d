@@ -1,1 +1,0 @@
-{"version":3,"file":"base.cjs","names":[],"sources":["../../src/document_loaders/base.ts"],"sourcesContent":["export * from \"@langchain/core/document_loaders/base\";\n"],"mappings":""}

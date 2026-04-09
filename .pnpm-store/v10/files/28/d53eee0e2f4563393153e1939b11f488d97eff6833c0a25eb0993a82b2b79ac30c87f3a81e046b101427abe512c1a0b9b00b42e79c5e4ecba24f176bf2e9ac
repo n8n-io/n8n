@@ -1,1 +1,0 @@
-{"version":3,"sources":["../../src/metadata/types/DeferrableType.ts"],"names":[],"mappings":"","file":"DeferrableType.js","sourcesContent":["/**\n * DEFERRABLE type to be used to specify if foreign key constraints can be deferred.\n */\nexport type DeferrableType = \"INITIALLY IMMEDIATE\" | \"INITIALLY DEFERRED\"\n"],"sourceRoot":"../.."}

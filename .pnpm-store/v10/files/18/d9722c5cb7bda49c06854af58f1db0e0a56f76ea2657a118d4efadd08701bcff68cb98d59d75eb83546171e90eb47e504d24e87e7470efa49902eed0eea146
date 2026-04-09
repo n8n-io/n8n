@@ -1,1 +1,0 @@
-export * from "../../dist/vectorstores/closevector/web.js";

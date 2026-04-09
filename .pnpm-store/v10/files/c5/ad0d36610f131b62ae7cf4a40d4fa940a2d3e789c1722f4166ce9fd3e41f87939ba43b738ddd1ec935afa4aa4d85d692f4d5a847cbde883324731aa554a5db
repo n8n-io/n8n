@@ -1,1 +1,0 @@
-export { getServiceTokenData } from './queries';

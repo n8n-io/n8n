@@ -1,1 +1,0 @@
-export * from "../../dist/document_loaders/fs/chatgpt.js";

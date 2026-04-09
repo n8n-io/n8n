@@ -1,1 +1,0 @@
-{"version":3,"file":"functional.cjs","names":[],"sources":["../../../src/retrievers/self_query/functional.ts"],"sourcesContent":["export {\n  type FunctionFilter,\n  FunctionalTranslator,\n} from \"@langchain/core/structured_query\";\n"],"mappings":""}

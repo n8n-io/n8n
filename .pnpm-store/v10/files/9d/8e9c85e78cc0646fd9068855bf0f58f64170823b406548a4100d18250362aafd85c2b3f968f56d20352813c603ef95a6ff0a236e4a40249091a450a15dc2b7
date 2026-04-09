@@ -1,1 +1,0 @@
-module.exports = require("../dist/graphs/neo4j_graph.cjs");

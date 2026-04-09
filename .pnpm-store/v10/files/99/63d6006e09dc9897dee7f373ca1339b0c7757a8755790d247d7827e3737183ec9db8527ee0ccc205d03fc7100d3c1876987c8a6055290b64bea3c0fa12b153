@@ -1,8 +1,0 @@
-{
-  "name": "rxjs/ajax",
-  "types": "../dist/types/ajax/index.d.ts",
-  "main": "../dist/cjs/ajax/index.js",
-  "module": "../dist/esm5/ajax/index.js",
-  "es2015": "../dist/esm/ajax/index.js",
-  "sideEffects": false
-}

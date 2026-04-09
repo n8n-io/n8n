@@ -1,7 +1,0 @@
-{
-  "extends": "./tsconfig.types.json",
-  "compilerOptions": {
-    "declarationDir": "../dist/types_spec",
-    "stripInternal": false
-  }
-}

@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "module": "../esm/endOfMonth/index.js",
-  "typings": "../typings.d.ts"
-}

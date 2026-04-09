@@ -1,1 +1,0 @@
-{"version":3,"sources":["../../src/middlewares/timeout.js"],"sourcesContent":["export { default } from '../middleware/timeout'\n"],"mappings":";;;;;;;;;;;;;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA,qBAAwB;","names":[]}

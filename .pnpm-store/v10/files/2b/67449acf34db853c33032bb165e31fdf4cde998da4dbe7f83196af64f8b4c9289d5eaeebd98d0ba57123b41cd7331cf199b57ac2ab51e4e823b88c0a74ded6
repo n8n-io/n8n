@@ -1,2 +1,0 @@
-require('./buf');
-require('./pipeline');

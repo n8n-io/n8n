@@ -1,1 +1,0 @@
-theme: jekyll-theme-minimal

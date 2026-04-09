@@ -1,1 +1,0 @@
-{"version":3,"file":"SignOutState.d.ts","sourceRoot":"","sources":["../../../../../src/custom_auth/get_account/auth_flow/state/SignOutState.ts"],"names":[],"mappings":"AAKA,OAAO,EAAE,iBAAiB,EAAE,MAAM,0CAA0C,CAAC;AAM7E;;GAEG;AACH,qBAAa,qBAAsB,SAAQ,iBAAiB;IACxD;;OAEG;IACH,SAAS,SAAiC;CAC7C;AAED;;GAEG;AACH,qBAAa,kBAAmB,SAAQ,iBAAiB;IACrD;;OAEG;IACH,SAAS,SAA8B;CAC1C"}

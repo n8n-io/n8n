@@ -1,1 +1,0 @@
-module.exports = require("./dist/structured_query/index.cjs");

@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "module": "../esm/isThisHour/index.js",
-  "typings": "../typings.d.ts"
-}

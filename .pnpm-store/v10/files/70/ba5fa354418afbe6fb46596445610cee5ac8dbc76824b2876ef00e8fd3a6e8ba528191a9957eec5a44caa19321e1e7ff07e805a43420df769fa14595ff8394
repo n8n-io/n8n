@@ -1,1 +1,0 @@
-{"version":3,"file":"recommended.js","sourceRoot":"","sources":["../../../src/config/flat/recommended.ts"],"names":[],"mappings":"AAGA,eAAe;IACb,KAAK,EAAE;QAEL,wBAAwB,EAAE,OAAO;QACjC,gBAAgB,EAAE,OAAO;QACzB,oBAAoB,EAAE,OAAO;QAC7B,kBAAkB,EAAE,OAAO;QAC3B,iBAAiB,EAAE,OAAO;QAG1B,8BAA8B,EAAE,MAAM;QACtC,qCAAqC,EAAE,MAAM;QAC7C,wBAAwB,EAAE,MAAM;KACjC;CAC6B,CAAA"}

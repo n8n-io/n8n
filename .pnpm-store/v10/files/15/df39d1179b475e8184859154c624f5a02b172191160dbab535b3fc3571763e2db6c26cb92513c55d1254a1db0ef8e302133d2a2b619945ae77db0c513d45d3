@@ -1,7 +1,0 @@
-{
-  "globals": {
-    "__dirname": false,
-    "describe": false,
-    "it": false
-  }
-}

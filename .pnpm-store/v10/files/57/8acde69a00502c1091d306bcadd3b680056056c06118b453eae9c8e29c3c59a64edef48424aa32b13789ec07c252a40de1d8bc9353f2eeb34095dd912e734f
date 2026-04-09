@@ -1,1 +1,0 @@
-{"version":3,"file":"blake2b.d.ts","sourceRoot":"","sources":["../src/blake2b.ts"],"names":[],"mappings":"AAAA;;;;GAIG;AACH,OAAO,EAAE,OAAO,IAAI,GAAG,EAAE,OAAO,IAAI,GAAG,EAAE,MAAM,aAAa,CAAC;AAC7D,+DAA+D;AAC/D,eAAO,MAAM,OAAO,EAAE,OAAO,GAAS,CAAC;AACvC,+DAA+D;AAC/D,eAAO,MAAM,OAAO,EAAE,OAAO,GAAS,CAAC"}

@@ -1,1 +1,0 @@
-{"version":3,"file":"dynamic.cjs","names":[],"sources":["../../src/tools/dynamic.ts"],"sourcesContent":["export {\n  type BaseDynamicToolInput,\n  type DynamicToolInput,\n  type DynamicStructuredToolInput,\n  DynamicTool,\n  DynamicStructuredTool,\n} from \"@langchain/core/tools\";\n"],"mappings":""}

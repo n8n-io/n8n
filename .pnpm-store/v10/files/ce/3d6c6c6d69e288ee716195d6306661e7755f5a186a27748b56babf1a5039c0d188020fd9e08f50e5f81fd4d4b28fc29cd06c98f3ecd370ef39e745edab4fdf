@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "module": "../esm/parseISO/index.js",
-  "typings": "../typings.d.ts"
-}

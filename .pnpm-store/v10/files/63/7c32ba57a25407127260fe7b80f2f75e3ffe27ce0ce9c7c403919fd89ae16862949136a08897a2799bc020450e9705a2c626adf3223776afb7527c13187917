@@ -1,5 +1,0 @@
-class DotObject {
-}
-export {
-  DotObject
-};

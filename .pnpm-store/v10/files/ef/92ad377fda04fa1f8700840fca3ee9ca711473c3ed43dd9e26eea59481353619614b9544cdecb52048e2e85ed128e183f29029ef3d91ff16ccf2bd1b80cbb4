@@ -1,2 +1,0 @@
-define(['cpu'], function(cpu) {
-});

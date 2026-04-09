@@ -1,1 +1,0 @@
-module.exports = require("../../dist/callbacks/handlers/upstash_ratelimit.cjs");

@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "module": "../esm/isSunday/index.js",
-  "typings": "../typings.d.ts"
-}

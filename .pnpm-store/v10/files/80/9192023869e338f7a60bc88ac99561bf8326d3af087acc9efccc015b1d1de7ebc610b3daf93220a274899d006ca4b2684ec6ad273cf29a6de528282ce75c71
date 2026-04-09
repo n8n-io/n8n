@@ -1,8 +1,0 @@
-{
-  "type": "ssh-rsa",
-  "comment": "",
-  "public": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzHpo5IWtXPtrOfKs8ePe\nvLL776W8behIi5ckR7qlwqLk3QWXlxrVUZcaZKp5zhNBEzEkEqptXeZNRDGu1VXE\n3lxUGgSHNlxdEtbiKBLzVdCV6Q44iHT5o1BblH/aBhiyikEDH86cpqqIh2EDYbmq\n2HdZkm9PmvlMCsQMRngj3feaPyX1oyjtCU6955xI9Xk47btKaH5nIWm/RwvWGydy\nbL23Uau2dmR6fLrtekn5T6T9gPZfheBzfoDzi3BsW1ZFWR7CyNOzqZFncTDwVK8z\nxfTpwp7UVqAYUOCxR2B5ZU7XfvxPdEF14XtacY/BZLSYmorYs9PRlOYeCFot4rDa\n/wIDAQAB\n-----END PUBLIC KEY-----",
-  "publicSSH": "AAAAB3NzaC1yc2EAAAADAQABAAABAQDMemjkha1c+2s58qzx4968svvvpbxt6EiLlyRHuqXCouTdBZeXGtVRlxpkqnnOE0ETMSQSqm1d5k1EMa7VVcTeXFQaBIc2XF0S1uIoEvNV0JXpDjiIdPmjUFuUf9oGGLKKQQMfzpymqoiHYQNhuarYd1mSb0+a+UwKxAxGeCPd95o/JfWjKO0JTr3nnEj1eTjtu0pofmchab9HC9YbJ3JsvbdRq7Z2ZHp8uu16SflPpP2A9l+F4HN+gPOLcGxbVkVZHsLI07OpkWdxMPBUrzPF9OnCntRWoBhQ4LFHYHllTtd+/E90QXXhe1pxj8FktJiaitiz09GU5h4IWi3isNr/",
-  "private": null
-}
-

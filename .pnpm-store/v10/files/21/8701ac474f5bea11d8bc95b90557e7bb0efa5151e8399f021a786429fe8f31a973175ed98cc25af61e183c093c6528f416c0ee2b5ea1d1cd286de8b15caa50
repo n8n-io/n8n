@@ -1,1 +1,0 @@
-{"version":3,"file":"react-native.js","sourceRoot":"","sources":["../../../src/config/flat/react-native.ts"],"names":[],"mappings":"AAGA,eAAe;IACb,QAAQ,EAAE;QACR,mBAAmB,EAAE;YACnB,IAAI,EAAE;gBAEJ,UAAU,EAAE,CAAC,KAAK,EAAE,SAAS,EAAE,SAAS,EAAE,aAAa,CAAC;aACzD;SACF;KACF;CAC6B,CAAA"}

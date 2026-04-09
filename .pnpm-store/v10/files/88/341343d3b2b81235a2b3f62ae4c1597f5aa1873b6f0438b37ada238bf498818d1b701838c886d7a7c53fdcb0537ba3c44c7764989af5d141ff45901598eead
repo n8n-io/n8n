@@ -1,1 +1,0 @@
-export * from "../../dist/chains/query_constructor/ir.js";

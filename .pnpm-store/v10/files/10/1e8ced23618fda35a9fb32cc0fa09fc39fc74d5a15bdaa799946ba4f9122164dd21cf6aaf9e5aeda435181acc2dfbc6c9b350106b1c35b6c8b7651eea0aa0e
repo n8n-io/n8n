@@ -1,1 +1,0 @@
-export * from "../dist/retrievers/matryoshka_retriever.js";

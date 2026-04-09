@@ -1,1 +1,0 @@
-Do not remove or rename. This folder allows subpath imports in environments that don't understand the exports field.

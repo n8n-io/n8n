@@ -1,1 +1,0 @@
-module.exports = require("../dist/output_parsers/openai_functions/index.cjs");

@@ -1,6 +1,0 @@
-# The following strings are byte-for-byte equivalent:
-key1 = "One\nTwo"
-key2 = """One\nTwo"""
-key3 = """
-One
-Two"""

@@ -1,6 +1,0 @@
-import * as CompilerDOM from '@vue/compiler-dom';
-import type { Code } from '../../types';
-import type { TemplateCodegenContext } from './context';
-import type { TemplateCodegenOptions } from './index';
-export declare function generateElementDirectives(options: TemplateCodegenOptions, ctx: TemplateCodegenContext, node: CompilerDOM.ElementNode): Generator<Code>;
-export declare function generateModifiers(options: TemplateCodegenOptions, ctx: TemplateCodegenContext, prop: CompilerDOM.DirectiveNode, propertyName?: string): Generator<Code>;

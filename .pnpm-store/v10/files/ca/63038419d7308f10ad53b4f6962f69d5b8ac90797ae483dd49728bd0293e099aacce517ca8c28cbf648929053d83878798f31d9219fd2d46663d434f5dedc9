@@ -1,8 +1,0 @@
-sudo: required
-
-services:
-  - docker
-
-script:
-  - docker build -t comlink .
-  - docker run --rm -v `pwd`:/usr/src comlink

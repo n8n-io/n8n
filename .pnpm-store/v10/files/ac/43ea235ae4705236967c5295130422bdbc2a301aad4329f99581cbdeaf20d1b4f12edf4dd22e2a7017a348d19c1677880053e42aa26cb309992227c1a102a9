@@ -1,1 +1,0 @@
-{"version":3,"file":"AuthenticationHeaderParser.d.ts","sourceRoot":"","sources":["../../../src/request/AuthenticationHeaderParser.ts"],"names":[],"mappings":"AAmBA;;;GAGG;AACH,qBAAa,0BAA0B;IACnC,OAAO,CAAC,OAAO,CAAyB;gBAE5B,OAAO,EAAE,MAAM,CAAC,MAAM,EAAE,MAAM,CAAC;IAI3C;;;OAGG;IACH,WAAW,IAAI,MAAM;IAqCrB;;;;OAIG;IACH,OAAO,CAAC,eAAe;CAe1B"}

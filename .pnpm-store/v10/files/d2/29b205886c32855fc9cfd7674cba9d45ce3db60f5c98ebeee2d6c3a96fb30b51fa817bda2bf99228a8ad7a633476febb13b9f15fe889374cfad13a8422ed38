@@ -1,5 +1,0 @@
-compressionLevel: mixed
-
-enableGlobalCache: false
-
-yarnPath: .yarn/releases/yarn-4.0.2.cjs

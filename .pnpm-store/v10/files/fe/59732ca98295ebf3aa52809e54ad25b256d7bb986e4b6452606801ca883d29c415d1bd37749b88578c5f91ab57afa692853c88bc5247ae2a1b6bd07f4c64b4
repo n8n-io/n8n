@@ -1,3 +1,0 @@
-import { WeaviateDocument, WeaviateLibArgs, WeaviateStore, flattenObjectForWeaviate } from "./vectorstores.cjs";
-import { WeaviateComparisonResult, WeaviateOperationResult, WeaviateStructuredQueryResult, WeaviateTranslator, WeaviateVisitorResult } from "./translator.cjs";
-export { WeaviateComparisonResult, WeaviateDocument, WeaviateLibArgs, WeaviateOperationResult, WeaviateStore, WeaviateStructuredQueryResult, WeaviateTranslator, WeaviateVisitorResult, flattenObjectForWeaviate };

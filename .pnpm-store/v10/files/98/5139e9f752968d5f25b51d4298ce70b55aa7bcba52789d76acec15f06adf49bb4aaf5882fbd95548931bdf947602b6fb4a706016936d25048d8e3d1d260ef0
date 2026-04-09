@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "module": "../esm/addSeconds/index.js",
-  "typings": "../typings.d.ts"
-}

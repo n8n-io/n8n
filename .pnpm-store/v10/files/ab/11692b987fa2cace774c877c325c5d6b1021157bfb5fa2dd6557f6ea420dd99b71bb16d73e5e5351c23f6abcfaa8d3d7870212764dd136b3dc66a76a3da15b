@@ -1,6 +1,0 @@
-{
-  "sideEffects": false,
-  "type": "commonjs",
-  "module": "../../esm/fp/toDate/index.js",
-  "typings": "../../typings.d.ts"
-}

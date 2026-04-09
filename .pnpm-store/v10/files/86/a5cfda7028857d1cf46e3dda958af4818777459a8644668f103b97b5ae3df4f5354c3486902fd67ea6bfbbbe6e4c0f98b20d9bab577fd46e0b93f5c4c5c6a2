@@ -1,4 +1,0 @@
-{
-    "main": "../../cjs/_identity.cjs",
-    "module": "../../esm/_identity.js"
-}

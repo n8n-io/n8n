@@ -1,1 +1,0 @@
-{"version":3,"file":"GetAccountState.d.ts","sourceRoot":"","sources":["../../../../../../src/custom_auth/get_account/auth_flow/state/GetAccountState.ts"],"names":[],"mappings":"AAKA,OAAO,EAAE,iBAAiB,EAAE,MAAM,0CAA0C,CAAC;AAM7E;;GAEG;AACH,qBAAa,wBAAyB,SAAQ,iBAAiB;IAC3D;;OAEG;IACH,SAAS,SAAoC;CAChD;AAED;;GAEG;AACH,qBAAa,qBAAsB,SAAQ,iBAAiB;IACxD;;OAEG;IACH,SAAS,SAAiC;CAC7C"}

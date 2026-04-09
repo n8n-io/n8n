@@ -1,1 +1,0 @@
-{"version":3,"file":"extname.cjs","names":["path: string"],"sources":["../../src/util/extname.ts"],"sourcesContent":["export const extname = (path: string) => `.${path.split(\".\").pop()}`;\n"],"mappings":";;AAAA,MAAa,UAAU,CAACA,SAAiB,CAAC,CAAC,EAAE,KAAK,MAAM,IAAI,CAAC,KAAK,EAAE"}

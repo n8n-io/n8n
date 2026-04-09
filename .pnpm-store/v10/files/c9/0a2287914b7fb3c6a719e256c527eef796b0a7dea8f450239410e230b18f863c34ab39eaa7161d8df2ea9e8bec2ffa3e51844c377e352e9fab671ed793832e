@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["/mnt/vss/_work/1/s/sdk/core/ts-http-runtime/src/policies/tlsPolicy.ts"],
-  "sourcesContent": ["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT License.\n\nimport type { PipelinePolicy } from \"../pipeline.js\";\nimport type { TlsSettings } from \"../interfaces.js\";\n\n/**\n * Name of the TLS Policy\n */\nexport const tlsPolicyName = \"tlsPolicy\";\n\n/**\n * Gets a pipeline policy that adds the client certificate to the HttpClient agent for authentication.\n */\nexport function tlsPolicy(tlsSettings?: TlsSettings): PipelinePolicy {\n  return {\n    name: tlsPolicyName,\n    sendRequest: async (req, next) => {\n      // Users may define a request tlsSettings, honor those over the client level one\n      if (!req.tlsSettings) {\n        req.tlsSettings = tlsSettings;\n      }\n      return next(req);\n    },\n  };\n}\n"],
-  "mappings": ";;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AASO,MAAM,gBAAgB;AAKtB,SAAS,UAAU,aAA2C;AACnE,SAAO;AAAA,IACL,MAAM;AAAA,IACN,aAAa,OAAO,KAAK,SAAS;AAEhC,UAAI,CAAC,IAAI,aAAa;AACpB,YAAI,cAAc;AAAA,MACpB;AACA,aAAO,KAAK,GAAG;AAAA,IACjB;AAAA,EACF;AACF;",
-  "names": []
-}

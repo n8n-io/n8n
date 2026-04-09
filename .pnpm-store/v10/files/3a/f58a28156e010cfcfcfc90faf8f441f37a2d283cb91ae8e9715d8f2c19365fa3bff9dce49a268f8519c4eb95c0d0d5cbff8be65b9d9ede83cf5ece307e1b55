@@ -1,1 +1,0 @@
-{"version":3,"sources":["../../../src/middlewares/global-error-handler.js"],"sourcesContent":["export { default, setErrorHandler } from '../middleware/global-error-handler'\n"],"mappings":";AAAA,SAAS,WAAAA,UAAS,uBAAuB;","names":["default"]}

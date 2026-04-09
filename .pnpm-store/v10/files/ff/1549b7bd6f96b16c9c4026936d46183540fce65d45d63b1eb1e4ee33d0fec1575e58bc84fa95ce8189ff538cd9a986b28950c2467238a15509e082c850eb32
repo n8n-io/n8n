@@ -1,4 +1,0 @@
-{
-  "name": "@google/genai/web",
-  "module": "../dist/web/index.mjs"
-}

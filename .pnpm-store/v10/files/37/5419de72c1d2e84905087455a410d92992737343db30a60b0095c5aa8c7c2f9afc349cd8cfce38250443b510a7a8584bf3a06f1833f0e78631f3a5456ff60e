@@ -1,1 +1,0 @@
-{"version":3,"file":"class-constructor.type.js","sourceRoot":"","sources":["../../../src/interfaces/class-constructor.type.ts"],"names":[],"mappings":"","sourcesContent":["export type ClassConstructor<T> = {\n  new (...args: any[]): T;\n};\n"]}

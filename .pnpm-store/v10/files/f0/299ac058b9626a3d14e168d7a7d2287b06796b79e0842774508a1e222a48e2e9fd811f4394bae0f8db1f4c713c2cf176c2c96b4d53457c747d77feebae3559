@@ -1,2 +1,0 @@
-define(['jsdos'], function(dos) {
-});

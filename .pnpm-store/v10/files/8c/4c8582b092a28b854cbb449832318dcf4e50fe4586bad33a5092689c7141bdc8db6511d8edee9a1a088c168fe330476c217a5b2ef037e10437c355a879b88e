@@ -1,3 +1,0 @@
-export { Skills, type SkillCreateResponse, type SkillRetrieveResponse, type SkillListResponse, type SkillDeleteResponse, type SkillCreateParams, type SkillRetrieveParams, type SkillListParams, type SkillDeleteParams, type SkillListResponsesPageCursor, } from "./skills.mjs";
-export { Versions, type VersionCreateResponse, type VersionRetrieveResponse, type VersionListResponse, type VersionDeleteResponse, type VersionCreateParams, type VersionRetrieveParams, type VersionListParams, type VersionDeleteParams, type VersionListResponsesPageCursor, } from "./versions.mjs";
-//# sourceMappingURL=index.d.mts.map

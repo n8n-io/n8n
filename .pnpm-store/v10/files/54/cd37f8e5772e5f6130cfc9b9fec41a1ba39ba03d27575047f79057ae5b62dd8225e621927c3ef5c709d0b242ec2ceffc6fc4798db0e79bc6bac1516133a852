@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "module": "../esm/isSameMonth/index.js",
-  "typings": "../typings.d.ts"
-}

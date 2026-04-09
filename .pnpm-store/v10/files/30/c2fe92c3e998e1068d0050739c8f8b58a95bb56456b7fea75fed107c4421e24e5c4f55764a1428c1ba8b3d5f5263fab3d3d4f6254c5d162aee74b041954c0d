@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "module": "../../esm/fp/eachMinuteOfIntervalWithOptions/index.js",
-  "typings": "../../typings.d.ts"
-}

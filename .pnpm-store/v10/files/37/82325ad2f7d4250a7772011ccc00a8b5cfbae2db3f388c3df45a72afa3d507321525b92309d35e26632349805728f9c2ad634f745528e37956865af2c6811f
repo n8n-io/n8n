@@ -1,1 +1,0 @@
-export * from "../dist/tools/bingserpapi.js";

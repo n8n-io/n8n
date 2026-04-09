@@ -1,1 +1,0 @@
-{"version":3,"file":"OperationsError.js","sourceRoot":"./","sources":["errors/resultCodeErrors/OperationsError.ts"],"names":[],"mappings":";;;AAAA,uDAAoD;AAEpD,MAAa,eAAgB,SAAQ,iCAAe;IAClD,YAAmB,OAAgB;QACjC,KAAK,CAAC,CAAC,EAAE,OAAO,IAAI,iEAAiE,CAAC,CAAC;IACzF,CAAC;CACF;AAJD,0CAIC"}

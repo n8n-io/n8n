@@ -1,1 +1,0 @@
-{"version":3,"file":"UnknownStatusCodeError.js","sourceRoot":"./","sources":["errors/resultCodeErrors/UnknownStatusCodeError.ts"],"names":[],"mappings":";;;AAAA,uDAAoD;AAEpD,MAAa,sBAAuB,SAAQ,iCAAe;IACzD,YAAmB,IAAY,EAAE,OAAgB;QAC/C,KAAK,CAAC,IAAI,EAAE,OAAO,IAAI,gBAAgB,CAAC,CAAC;IAC3C,CAAC;CACF;AAJD,wDAIC"}

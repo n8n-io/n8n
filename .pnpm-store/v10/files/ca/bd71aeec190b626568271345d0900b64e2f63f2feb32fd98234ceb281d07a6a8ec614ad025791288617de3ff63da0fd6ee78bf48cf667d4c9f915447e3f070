@@ -1,1 +1,0 @@
-exports.download = require('./download')

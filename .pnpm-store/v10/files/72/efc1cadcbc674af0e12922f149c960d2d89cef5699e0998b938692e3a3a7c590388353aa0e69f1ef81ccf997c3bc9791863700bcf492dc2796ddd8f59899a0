@@ -1,1 +1,0 @@
-{"version":3,"file":"IPartitionManager.d.ts","sourceRoot":"","sources":["../../../../src/cache/distributed/IPartitionManager.ts"],"names":[],"mappings":"AAKA,OAAO,EAAE,aAAa,EAAE,MAAM,yBAAyB,CAAC;AAExD;;;GAGG;AACH,MAAM,WAAW,iBAAiB;IAC9B;;;;;;;;;;OAUG;IACH,MAAM,IAAI,OAAO,CAAC,MAAM,CAAC,CAAC;IAE1B;;;;;;;;;;;OAWG;IACH,UAAU,CAAC,aAAa,EAAE,aAAa,GAAG,OAAO,CAAC,MAAM,CAAC,CAAC;CAC7D"}

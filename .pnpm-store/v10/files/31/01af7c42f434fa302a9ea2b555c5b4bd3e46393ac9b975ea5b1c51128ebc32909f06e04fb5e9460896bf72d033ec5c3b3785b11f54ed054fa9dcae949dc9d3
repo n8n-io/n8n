@@ -1,1 +1,0 @@
-.el-main{--el-main-padding:20px;display:block;flex:1;flex-basis:auto;overflow:auto;box-sizing:border-box;padding:var(--el-main-padding)}

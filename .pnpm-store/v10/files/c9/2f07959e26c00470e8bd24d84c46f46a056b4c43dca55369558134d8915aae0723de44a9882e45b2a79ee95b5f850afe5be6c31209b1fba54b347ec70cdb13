@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["/mnt/vss/_work/1/s/sdk/core/ts-http-runtime/src/util/internal.ts"],
-  "sourcesContent": ["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT License.\n\nexport { calculateRetryDelay } from \"./delay.js\";\nexport { getRandomIntegerInclusive } from \"./random.js\";\nexport { isObject, type UnknownObject } from \"./object.js\";\nexport { isError } from \"./error.js\";\nexport { computeSha256Hash, computeSha256Hmac } from \"./sha256.js\";\nexport { randomUUID } from \"./uuidUtils.js\";\nexport {\n  isBrowser,\n  isBun,\n  isNodeLike,\n  isNodeRuntime,\n  isDeno,\n  isReactNative,\n  isWebWorker,\n} from \"./checkEnvironment.js\";\nexport { stringToUint8Array, uint8ArrayToString, type EncodingType } from \"./bytesEncoding.js\";\nexport { Sanitizer, type SanitizerOptions } from \"./sanitizer.js\";\n"],
-  "mappings": ";;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAGA,mBAAoC;AACpC,oBAA0C;AAC1C,oBAA6C;AAC7C,mBAAwB;AACxB,oBAAqD;AACrD,uBAA2B;AAC3B,8BAQO;AACP,2BAA0E;AAC1E,uBAAiD;",
-  "names": []
-}

@@ -1,1 +1,0 @@
-{"version":3,"file":"webcrypto.cjs","sources":["../webcrypto.js"],"sourcesContent":["/* eslint-env browser */\n\nexport const subtle = crypto.subtle\nexport const getRandomValues = crypto.getRandomValues.bind(crypto)\n"],"names":[],"mappings":";;;;AAAA;AACA;AACY,MAAC,MAAM,GAAG,MAAM,CAAC,OAAM;AACvB,MAAC,eAAe,GAAG,MAAM,CAAC,eAAe,CAAC,IAAI,CAAC,MAAM;;;;;"}

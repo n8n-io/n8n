@@ -1,1 +1,0 @@
-{"version":3,"file":"document.cjs","names":[],"sources":["../src/document.ts"],"sourcesContent":["export { type DocumentInput, Document } from \"@langchain/core/documents\";\n"],"mappings":""}

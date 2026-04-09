@@ -1,1 +1,0 @@
-module.exports = require("../dist/caches/upstash_redis.cjs");

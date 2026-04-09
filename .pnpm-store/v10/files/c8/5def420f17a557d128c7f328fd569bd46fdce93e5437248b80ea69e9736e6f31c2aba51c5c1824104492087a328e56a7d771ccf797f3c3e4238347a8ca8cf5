@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "module": "../../esm/fp/formatRFC3339WithOptions/index.js",
-  "typings": "../../typings.d.ts"
-}

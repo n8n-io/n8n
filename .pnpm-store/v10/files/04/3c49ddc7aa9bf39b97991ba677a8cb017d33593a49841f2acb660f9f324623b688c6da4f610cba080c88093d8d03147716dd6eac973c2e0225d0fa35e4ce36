@@ -1,5 +1,0 @@
-{
-  "main": "../../lib/browser/presets/browser.mjs",
-  "module": "../../lib/browser/presets/browser.mjs",
-  "browser": "../../lib/browser/presets/browser.mjs"
-}

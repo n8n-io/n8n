@@ -1,1 +1,0 @@
-{"version":3,"file":"LoopDetectError.js","sourceRoot":"./","sources":["errors/resultCodeErrors/LoopDetectError.ts"],"names":[],"mappings":";;;AAAA,uDAAoD;AAEpD,MAAa,eAAgB,SAAQ,iCAAe;IAClD,YAAmB,OAAgB;QACjC,KAAK,CAAC,EAAE,EAAE,OAAO,IAAI,oGAAoG,CAAC,CAAC;IAC7H,CAAC;CACF;AAJD,0CAIC"}

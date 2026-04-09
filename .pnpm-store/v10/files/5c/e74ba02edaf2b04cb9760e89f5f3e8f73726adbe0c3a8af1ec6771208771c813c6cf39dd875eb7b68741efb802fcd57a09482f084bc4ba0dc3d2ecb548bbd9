@@ -1,1 +1,0 @@
-{"version":3,"file":"index.js","names":[],"sources":["../../src/testing/index.ts"],"sourcesContent":["export * from \"./matchers.js\";\nexport { fakeModel, FakeBuiltModel } from \"./fake_model_builder.js\";\n"],"mappings":""}

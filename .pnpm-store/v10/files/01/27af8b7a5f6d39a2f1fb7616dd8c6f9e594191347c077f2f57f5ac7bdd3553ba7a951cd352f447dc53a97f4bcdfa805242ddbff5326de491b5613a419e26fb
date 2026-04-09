@@ -1,3 +1,0 @@
-@use 'var.scss';
-@use 'common/transition.scss';
-@use 'icon.scss';

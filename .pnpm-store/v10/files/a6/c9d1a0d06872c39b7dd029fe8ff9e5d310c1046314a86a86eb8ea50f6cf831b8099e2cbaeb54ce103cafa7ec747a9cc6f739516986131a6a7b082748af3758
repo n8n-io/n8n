@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "module": "../../esm/fp/nextTuesday/index.js",
-  "typings": "../../typings.d.ts"
-}

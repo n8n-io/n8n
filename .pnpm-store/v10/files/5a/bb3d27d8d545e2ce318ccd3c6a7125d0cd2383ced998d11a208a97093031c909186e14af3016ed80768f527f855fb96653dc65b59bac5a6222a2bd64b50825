@@ -1,1 +1,0 @@
-module.exports = require("./dist/smith/index.cjs");

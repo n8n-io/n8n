@@ -1,1 +1,0 @@
-{"version":3,"file":"TimeLimitExceededError.js","sourceRoot":"./","sources":["errors/resultCodeErrors/TimeLimitExceededError.ts"],"names":[],"mappings":";;;AAAA,uDAAoD;AAEpD,MAAa,sBAAuB,SAAQ,iCAAe;IACzD,YAAmB,OAAgB;QACjC,KAAK,CACH,CAAC,EACD,OAAO;YACL,+MAA+M,CAClN,CAAC;IACJ,CAAC;CACF;AARD,wDAQC"}

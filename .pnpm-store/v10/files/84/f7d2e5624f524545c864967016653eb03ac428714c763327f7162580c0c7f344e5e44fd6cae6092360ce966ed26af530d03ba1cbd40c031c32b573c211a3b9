@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "module": "../../esm/fp/getWeekYear/index.js",
-  "typings": "../../typings.d.ts"
-}

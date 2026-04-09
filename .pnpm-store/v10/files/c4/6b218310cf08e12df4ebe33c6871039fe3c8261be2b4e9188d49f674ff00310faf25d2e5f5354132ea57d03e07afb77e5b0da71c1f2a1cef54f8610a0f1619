@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "module": "../esm/hoursToSeconds/index.js",
-  "typings": "../typings.d.ts"
-}

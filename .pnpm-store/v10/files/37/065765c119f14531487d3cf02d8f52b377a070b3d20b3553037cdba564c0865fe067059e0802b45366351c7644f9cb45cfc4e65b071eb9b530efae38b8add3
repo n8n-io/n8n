@@ -1,1 +1,0 @@
-exports.name = 'installed-module-allowed-explicit-foo';

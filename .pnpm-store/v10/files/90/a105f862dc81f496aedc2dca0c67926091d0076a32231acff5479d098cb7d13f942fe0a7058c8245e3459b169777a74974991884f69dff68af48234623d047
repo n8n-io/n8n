@@ -1,1 +1,0 @@
-module.exports = require("../dist/document_transformers/mozilla_readability.cjs");

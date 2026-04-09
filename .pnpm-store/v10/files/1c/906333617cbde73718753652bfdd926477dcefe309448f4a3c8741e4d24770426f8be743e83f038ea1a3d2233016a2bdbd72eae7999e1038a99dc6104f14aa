@@ -1,6 +1,0 @@
-{
-  "sideEffects": false,
-  "type": "commonjs",
-  "module": "../esm/formatInTimeZone/index.js",
-  "typings": "../typings.d.ts"
-}

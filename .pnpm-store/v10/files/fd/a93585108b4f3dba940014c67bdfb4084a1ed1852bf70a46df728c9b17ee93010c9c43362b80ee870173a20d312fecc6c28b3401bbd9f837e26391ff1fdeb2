@@ -1,1 +1,0 @@
-module.exports = require("../dist/document_transformers/html_to_text.cjs");

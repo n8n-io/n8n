@@ -1,1 +1,0 @@
-{"version":3,"file":"in_memory.js","names":[],"sources":["../../../src/stores/message/in_memory.ts"],"sourcesContent":["export { InMemoryChatMessageHistory as ChatMessageHistory } from \"@langchain/core/chat_history\";\n"],"mappings":""}

@@ -1,1 +1,0 @@
-{"version":3,"file":"chat_memory.cjs","names":[],"sources":["../../src/memory/chat_memory.ts"],"sourcesContent":["export * from \"@langchain/classic/memory/chat_memory\";\n"],"mappings":""}

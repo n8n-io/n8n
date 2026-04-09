@@ -1,6 +1,0 @@
-#!/usr/bin/env node
-var cli = require('../lib/cli')
-cli.default(process.argv).catch(e => {
-  console.error(e)
-  process.exit(1)
-})

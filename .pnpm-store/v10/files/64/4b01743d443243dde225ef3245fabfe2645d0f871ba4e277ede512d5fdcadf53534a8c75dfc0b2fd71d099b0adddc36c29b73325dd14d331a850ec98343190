@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["/mnt/vss/_work/1/s/sdk/core/core-rest-pipeline/src/policies/setClientRequestIdPolicy.ts"],
-  "sourcesContent": ["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT License.\n\nimport type { PipelineRequest, PipelineResponse, SendRequest } from \"../interfaces.js\";\nimport type { PipelinePolicy } from \"../pipeline.js\";\n\n/**\n * The programmatic identifier of the setClientRequestIdPolicy.\n */\nexport const setClientRequestIdPolicyName = \"setClientRequestIdPolicy\";\n\n/**\n * Each PipelineRequest gets a unique id upon creation.\n * This policy passes that unique id along via an HTTP header to enable better\n * telemetry and tracing.\n * @param requestIdHeaderName - The name of the header to pass the request ID to.\n */\nexport function setClientRequestIdPolicy(\n  requestIdHeaderName = \"x-ms-client-request-id\",\n): PipelinePolicy {\n  return {\n    name: setClientRequestIdPolicyName,\n    async sendRequest(request: PipelineRequest, next: SendRequest): Promise<PipelineResponse> {\n      if (!request.headers.has(requestIdHeaderName)) {\n        request.headers.set(requestIdHeaderName, request.requestId);\n      }\n      return next(request);\n    },\n  };\n}\n"],
-  "mappings": ";;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AASO,MAAM,+BAA+B;AAQrC,SAAS,yBACd,sBAAsB,0BACN;AAChB,SAAO;AAAA,IACL,MAAM;AAAA,IACN,MAAM,YAAY,SAA0B,MAA8C;AACxF,UAAI,CAAC,QAAQ,QAAQ,IAAI,mBAAmB,GAAG;AAC7C,gBAAQ,QAAQ,IAAI,qBAAqB,QAAQ,SAAS;AAAA,MAC5D;AACA,aAAO,KAAK,OAAO;AAAA,IACrB;AAAA,EACF;AACF;",
-  "names": []
-}

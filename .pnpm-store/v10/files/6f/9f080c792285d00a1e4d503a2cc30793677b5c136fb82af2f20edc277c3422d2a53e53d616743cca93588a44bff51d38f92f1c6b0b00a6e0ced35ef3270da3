@@ -1,1 +1,0 @@
-{"version":3,"file":"handleBeforeSendEvent.d.ts","sourceRoot":"","sources":["../../../../src/coreHandlers/handleBeforeSendEvent.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAc,KAAK,EAAE,MAAM,cAAc,CAAC;AAEtD,OAAO,KAAK,EAAE,eAAe,EAAE,MAAM,UAAU,CAAC;AAKhD,KAAK,uBAAuB,GAAG,CAAC,KAAK,EAAE,KAAK,KAAK,IAAI,CAAC;AAEtD;;GAEG;AACH,wBAAgB,qBAAqB,CAAC,MAAM,EAAE,eAAe,GAAG,uBAAuB,CAQtF"}

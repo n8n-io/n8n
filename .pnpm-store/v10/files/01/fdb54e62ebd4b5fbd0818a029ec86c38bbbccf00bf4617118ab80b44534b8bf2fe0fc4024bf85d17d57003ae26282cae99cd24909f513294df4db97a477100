@@ -1,1 +1,0 @@
-{"version":3,"sources":["../../src/middlewares/duration.js"],"sourcesContent":["export { default } from '../middleware/duration'\n"],"mappings":";;;;;;;;;;;;;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA,sBAAwB;","names":[]}

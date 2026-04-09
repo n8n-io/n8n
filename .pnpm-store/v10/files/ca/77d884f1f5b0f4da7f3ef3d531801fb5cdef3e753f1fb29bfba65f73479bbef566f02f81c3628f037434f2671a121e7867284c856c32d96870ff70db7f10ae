@@ -1,1 +1,0 @@
-{"version":3,"file":"react.js","sourceRoot":"","sources":["../../../src/config/flat/react.ts"],"names":[],"mappings":"AASA,eAAe;IACb,QAAQ,EAAE;QACR,qBAAqB,EAAE,CAAC,KAAK,EAAE,MAAM,EAAE,MAAM,EAAE,MAAM,CAAC;KACvD;IACD,eAAe,EAAE;QACf,aAAa,EAAE;YACb,YAAY,EAAE;gBACZ,GAAG,EAAE,IAAI;aACV;SACF;KACF;CAC6B,CAAA"}

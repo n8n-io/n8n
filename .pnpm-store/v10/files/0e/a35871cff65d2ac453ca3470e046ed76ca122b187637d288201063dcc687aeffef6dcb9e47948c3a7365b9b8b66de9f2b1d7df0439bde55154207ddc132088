@@ -1,1 +1,0 @@
-export * from "../dist/tools/duckduckgo_search.js";

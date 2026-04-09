@@ -1,1 +1,0 @@
-module.exports = require("../../dist/stores/file/in_memory.cjs");

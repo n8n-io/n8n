@@ -1,3 +1,0 @@
-{
-  "singleQuote": true
-}

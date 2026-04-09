@@ -1,1 +1,0 @@
-{"version":3,"file":"NetworkResponse.d.ts","sourceRoot":"","sources":["../../../src/network/NetworkResponse.ts"],"names":[],"mappings":"AAKA,MAAM,MAAM,eAAe,CAAC,CAAC,IAAI;IAC7B,OAAO,EAAE,MAAM,CAAC,MAAM,EAAE,MAAM,CAAC,CAAC;IAChC,IAAI,EAAE,CAAC,CAAC;IACR,MAAM,EAAE,MAAM,CAAC;CAClB,CAAC"}

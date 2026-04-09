@@ -1,1 +1,0 @@
-{"version":3,"file":"bin-esm.js","sourceRoot":"","sources":["../src/bin-esm.ts"],"names":[],"mappings":";;;AAEA,+BAA6B;AAE7B,IAAA,UAAI,EAAC,SAAS,EAAE,EAAE,OAAO,EAAE,IAAI,EAAE,CAAC,CAAC","sourcesContent":["#!/usr/bin/env node\n\nimport { main } from './bin';\n\nmain(undefined, { '--esm': true });\n"]}

@@ -1,1 +1,0 @@
-export type Join<STRINGS extends string[], SEPARATOR extends string = ","> = STRINGS extends [] ? "" : STRINGS extends [string] ? `${STRINGS[0]}` : STRINGS extends [string, ...infer STRINGS_TAIL] ? STRINGS_TAIL extends string[] ? `${STRINGS[0]}${SEPARATOR}${Join<STRINGS_TAIL, SEPARATOR>}` : never : string;

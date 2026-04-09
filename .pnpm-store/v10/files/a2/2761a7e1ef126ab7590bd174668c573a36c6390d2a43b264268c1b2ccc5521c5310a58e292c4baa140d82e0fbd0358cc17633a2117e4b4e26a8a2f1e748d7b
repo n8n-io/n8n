@@ -1,1 +1,0 @@
-module.exports = require("../dist/retrievers/time_weighted.cjs");

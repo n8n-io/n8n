@@ -1,1 +1,0 @@
-{"version":3,"file":"index.mjs","sources":["../../../../../packages/components/image/index.ts"],"sourcesContent":["import { withInstall } from '@element-plus/utils'\n\nimport Image from './src/image.vue'\n\nexport const ElImage = withInstall(Image)\nexport default ElImage\n\nexport * from './src/image'\n"],"names":[],"mappings":";;;;;AAEY,MAAC,OAAO,GAAG,WAAW,CAAC,KAAK;;;;"}

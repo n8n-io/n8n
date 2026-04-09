@@ -1,3 +1,0 @@
-import type { LanguagePlugin, SourceScript } from '@volar/language-core';
-import type * as ts from 'typescript';
-export declare function createResolveModuleName<T>(ts: typeof import('typescript'), getFileSize: ((fileName: string) => number) | undefined, host: ts.ModuleResolutionHost, languagePlugins: LanguagePlugin<any>[], getSourceScript: (fileName: string) => SourceScript<T> | undefined): (moduleName: string, containingFile: string, compilerOptions: ts.CompilerOptions, cache?: ts.ModuleResolutionCache, redirectedReference?: ts.ResolvedProjectReference, resolutionMode?: ts.ResolutionMode) => ts.ResolvedModuleWithFailedLookupLocations;

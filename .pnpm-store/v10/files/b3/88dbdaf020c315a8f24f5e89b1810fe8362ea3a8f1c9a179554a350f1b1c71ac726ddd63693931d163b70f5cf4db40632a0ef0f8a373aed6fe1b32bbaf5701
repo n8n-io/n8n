@@ -1,1 +1,0 @@
-{"version":3,"file":"dateTimestampProvider.d.ts","sourceRoot":"","sources":["../../../../src/internal/scheduler/dateTimestampProvider.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,iBAAiB,EAAE,MAAM,UAAU,CAAC;AAE7C,UAAU,qBAAsB,SAAQ,iBAAiB;IACvD,QAAQ,EAAE,iBAAiB,GAAG,SAAS,CAAC;CACzC;AAED,eAAO,MAAM,qBAAqB,EAAE,qBAOnC,CAAC"}

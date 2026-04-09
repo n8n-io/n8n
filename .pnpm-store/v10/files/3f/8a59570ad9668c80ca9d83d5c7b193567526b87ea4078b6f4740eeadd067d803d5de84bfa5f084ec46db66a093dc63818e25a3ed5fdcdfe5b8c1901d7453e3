@@ -1,1 +1,0 @@
-{"version":3,"file":"platform.js","sourceRoot":"","sources":["../../src/platform.ts"],"names":[],"mappings":";;AAAA,kBAAe,OAAO,CAAC,GAAG,CAAC,2BAA2B,IAAI,OAAO,CAAC,QAAQ,CAAA","sourcesContent":["export default process.env.__TESTING_RIMRAF_PLATFORM__ || process.platform\n"]}

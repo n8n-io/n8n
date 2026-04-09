@@ -1,3 +1,0 @@
- - Add support for some SITE commands such as CHMOD, CHGRP, and QUOTA
- - Active (non-passive) data connections
- - IPv6 support

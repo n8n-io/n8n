@@ -1,1 +1,0 @@
-export * from "../dist/vectorstores/neo4j_vector.js";

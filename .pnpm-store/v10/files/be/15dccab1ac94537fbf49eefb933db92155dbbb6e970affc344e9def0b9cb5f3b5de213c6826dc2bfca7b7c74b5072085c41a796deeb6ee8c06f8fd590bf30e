@@ -1,1 +1,0 @@
-module.exports = require('../dist/vitest/reporter.cjs').default;

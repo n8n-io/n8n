@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "module": "../../esm/fp/getDaysInYear/index.js",
-  "typings": "../../typings.d.ts"
-}

@@ -1,1 +1,0 @@
-{"version":3,"file":"workloadIdentityCredential-browser.d.mts","sourceRoot":"","sources":["../../../src/credentials/workloadIdentityCredential-browser.mts"],"names":[],"mappings":"AAGA,OAAO,KAAK,EAAE,WAAW,EAAE,eAAe,EAAE,MAAM,kBAAkB,CAAC;AAQrE;;;;GAIG;AACH,qBAAa,0BAA2B,YAAW,eAAe;IAChE;;OAEG;;IAMH;;OAEG;IACI,QAAQ,IAAI,OAAO,CAAC,WAAW,GAAG,IAAI,CAAC;CAI/C"}

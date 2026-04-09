@@ -1,3 +1,0 @@
-const behavior = {};
-
-export { behavior };

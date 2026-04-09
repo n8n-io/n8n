@@ -1,1 +1,0 @@
-{"version":3,"sources":["../../src/repository/EntityId.ts"],"names":[],"mappings":"","file":"EntityId.js","sourcesContent":["export type EntityId = string | number | Date\n"],"sourceRoot":".."}

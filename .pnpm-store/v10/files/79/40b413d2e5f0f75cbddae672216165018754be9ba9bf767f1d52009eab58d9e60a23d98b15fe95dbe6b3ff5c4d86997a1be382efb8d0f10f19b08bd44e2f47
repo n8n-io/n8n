@@ -1,1 +1,0 @@
-{"version":3,"file":"NamingViolationError.js","sourceRoot":"./","sources":["errors/resultCodeErrors/NamingViolationError.ts"],"names":[],"mappings":";;;AAAA,uDAAoD;AAEpD,MAAa,oBAAqB,SAAQ,iCAAe;IACvD,YAAmB,OAAgB;QACjC,KAAK,CAAC,EAAE,EAAE,OAAO,IAAI,uFAAuF,CAAC,CAAC;IAChH,CAAC;CACF;AAJD,oDAIC"}

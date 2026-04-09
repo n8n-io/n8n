@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "type": "module",
-  "typings": "../../../typings.d.ts"
-}

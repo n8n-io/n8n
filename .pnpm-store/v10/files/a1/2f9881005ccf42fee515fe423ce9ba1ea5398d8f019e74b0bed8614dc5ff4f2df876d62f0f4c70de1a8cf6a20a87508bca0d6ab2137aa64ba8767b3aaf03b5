@@ -1,1 +1,0 @@
-.el-steps{display:flex}.el-steps--simple{padding:13px 8%;border-radius:4px;background:var(--el-fill-color-light)}.el-steps--horizontal{white-space:nowrap}.el-steps--vertical{height:100%;flex-flow:column}

@@ -1,1 +1,0 @@
-module.exports = require("../dist/graphs/memgraph_graph.cjs");

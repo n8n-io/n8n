@@ -1,1 +1,0 @@
-export * from "../dist/structured_query/vectara.js";

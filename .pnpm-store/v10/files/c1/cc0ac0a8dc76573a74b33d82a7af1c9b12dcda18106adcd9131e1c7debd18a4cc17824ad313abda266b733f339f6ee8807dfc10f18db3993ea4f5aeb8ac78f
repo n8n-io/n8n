@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "module": "../esm/eachDayOfInterval/index.js",
-  "typings": "../typings.d.ts"
-}

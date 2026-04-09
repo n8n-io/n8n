@@ -1,1 +1,0 @@
-module.exports = require("../../dist/chat_models/bedrock/web.cjs");

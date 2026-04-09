@@ -1,1 +1,0 @@
-{"version":3,"file":"ICacheClient.d.ts","sourceRoot":"","sources":["../../../src/cache/distributed/ICacheClient.ts"],"names":[],"mappings":"AAKA;;;GAGG;AACH,MAAM,WAAW,YAAY;IACzB;;;;;OAKG;IACH,GAAG,CAAC,GAAG,EAAE,MAAM,GAAG,OAAO,CAAC,MAAM,CAAC,CAAC;IAElC;;;;;;OAMG;IACH,GAAG,CAAC,GAAG,EAAE,MAAM,EAAE,KAAK,EAAE,MAAM,GAAG,OAAO,CAAC,MAAM,CAAC,CAAC;CACpD"}

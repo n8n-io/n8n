@@ -1,7 +1,0 @@
-import type { BatchRequestDocument, BatchRequestsOptions, GraphQLClientRequestHeaders, RawRequestExtendedOptions, RawRequestOptions, RequestDocument, RequestExtendedOptions, RequestOptions, Variables, VariablesAndRequestHeadersArgs } from './types.js';
-export declare const parseRequestArgs: <V extends Variables = Variables>(documentOrOptions: RequestDocument | RequestOptions<V>, variables?: V | undefined, requestHeaders?: GraphQLClientRequestHeaders) => RequestOptions<V>;
-export declare const parseRawRequestArgs: <V extends Variables = Variables>(queryOrOptions: string | RawRequestOptions<V>, variables?: V | undefined, requestHeaders?: GraphQLClientRequestHeaders) => RawRequestOptions<V>;
-export declare const parseBatchRequestArgs: <V extends Variables = Variables>(documentsOrOptions: BatchRequestsOptions<V> | BatchRequestDocument<V>[], requestHeaders?: GraphQLClientRequestHeaders) => BatchRequestsOptions<V>;
-export declare const parseRequestExtendedArgs: <V extends Variables = Variables>(urlOrOptions: string | RequestExtendedOptions<V>, document?: RequestDocument, ...variablesAndRequestHeaders: VariablesAndRequestHeadersArgs<V>) => RequestExtendedOptions<V>;
-export declare const parseRawRequestExtendedArgs: <V extends Variables = Variables>(urlOrOptions: string | RawRequestExtendedOptions<V>, query?: string, ...variablesAndRequestHeaders: VariablesAndRequestHeadersArgs<V>) => RawRequestExtendedOptions<V>;
-//# sourceMappingURL=parseArgs.d.ts.map

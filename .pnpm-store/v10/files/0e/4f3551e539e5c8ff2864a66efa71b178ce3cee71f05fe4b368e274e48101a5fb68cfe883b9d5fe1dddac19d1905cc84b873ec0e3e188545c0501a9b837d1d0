@@ -1,1 +1,0 @@
-{"version":3,"file":"index.mjs","sources":["../../../../../packages/components/affix/index.ts"],"sourcesContent":["import { withInstall } from '@element-plus/utils'\n\nimport Affix from './src/affix.vue'\n\nexport const ElAffix = withInstall(Affix)\nexport default ElAffix\n\nexport * from './src/affix'\n"],"names":[],"mappings":";;;;;AAEY,MAAC,OAAO,GAAG,WAAW,CAAC,KAAK;;;;"}

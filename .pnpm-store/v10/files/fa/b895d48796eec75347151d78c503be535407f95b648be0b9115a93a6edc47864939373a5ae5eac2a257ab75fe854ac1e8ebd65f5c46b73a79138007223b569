@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["/mnt/vss/_work/1/s/sdk/core/ts-http-runtime/src/util/error.ts"],
-  "sourcesContent": ["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT License.\n\nimport { isObject } from \"./object.js\";\n\n/**\n * Typeguard for an error object shape (has name and message)\n * @param e - Something caught by a catch clause.\n */\nexport function isError(e: unknown): e is Error {\n  if (isObject(e)) {\n    const hasName = typeof e.name === \"string\";\n    const hasMessage = typeof e.message === \"string\";\n    return hasName && hasMessage;\n  }\n  return false;\n}\n"],
-  "mappings": ";;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAGA,oBAAyB;AAMlB,SAAS,QAAQ,GAAwB;AAC9C,UAAI,wBAAS,CAAC,GAAG;AACf,UAAM,UAAU,OAAO,EAAE,SAAS;AAClC,UAAM,aAAa,OAAO,EAAE,YAAY;AACxC,WAAO,WAAW;AAAA,EACpB;AACA,SAAO;AACT;",
-  "names": []
-}

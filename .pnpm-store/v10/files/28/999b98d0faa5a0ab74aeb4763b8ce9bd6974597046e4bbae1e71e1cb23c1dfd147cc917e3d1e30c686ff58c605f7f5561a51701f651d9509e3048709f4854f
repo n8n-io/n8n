@@ -1,1 +1,0 @@
-{"version":3,"file":"serializable.js","names":[],"sources":["../../src/load/serializable.ts"],"sourcesContent":["export * from \"@langchain/core/load/serializable\";\n"],"mappings":""}

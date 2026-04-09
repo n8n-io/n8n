@@ -1,1 +1,0 @@
-cmd_Release/obj.target/nortti.a := rm -f Release/obj.target/nortti.a && ar crs Release/obj.target/nortti.a Release/obj.target/nortti/src/external_copy/serializer_nortti.o Release/obj.target/nortti/src/isolate/allocator_nortti.o

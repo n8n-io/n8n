@@ -1,7 +1,0 @@
-{
-  "commitMessage": "Bump v%s",
-  "tagName": "v%s",
-  "scripts": {
-    "precommit": "node build_browser_version && git add dist/*"
-  }
-}

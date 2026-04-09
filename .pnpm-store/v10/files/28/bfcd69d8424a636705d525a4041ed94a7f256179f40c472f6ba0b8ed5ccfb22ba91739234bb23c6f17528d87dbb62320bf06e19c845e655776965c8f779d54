@@ -1,1 +1,0 @@
-module.exports = require("../dist/language_models/profile.cjs");

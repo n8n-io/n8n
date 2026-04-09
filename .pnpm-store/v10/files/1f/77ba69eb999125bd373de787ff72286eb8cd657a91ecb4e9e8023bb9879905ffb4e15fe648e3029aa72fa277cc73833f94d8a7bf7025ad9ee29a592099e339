@@ -1,1 +1,0 @@
-{"version":3,"file":"azureDeveloperCliCredentialOptions.d.ts","sourceRoot":"","sources":["../../../src/credentials/azureDeveloperCliCredentialOptions.ts"],"names":[],"mappings":"AAGA,OAAO,KAAK,EAAE,iCAAiC,EAAE,MAAM,wCAAwC,CAAC;AAEhG;;GAEG;AACH,MAAM,WAAW,kCAAmC,SAAQ,iCAAiC;IAC3F;;OAEG;IACH,QAAQ,CAAC,EAAE,MAAM,CAAC;IAClB;;OAEG;IACH,kBAAkB,CAAC,EAAE,MAAM,CAAC;CAC7B"}

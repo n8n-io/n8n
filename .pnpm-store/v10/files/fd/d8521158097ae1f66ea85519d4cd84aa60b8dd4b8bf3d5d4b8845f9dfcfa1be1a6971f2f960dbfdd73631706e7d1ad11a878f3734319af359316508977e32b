@@ -1,8 +1,0 @@
-{
-  "type": "ecdsa-sha2-nistp256",
-  "comment": "",
-  "public": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEmJuPPvO8/8SExmtb8kN0q9iCIQBM\n1Qox+DY05XEqV/755NHKksVzV2hOmv7TgRubV+TKnxGCkWya8tcu390pTQ==\n-----END PUBLIC KEY-----",
-  "publicSSH": "AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBJibjz7zvP/EhMZrW/JDdKvYgiEATNUKMfg2NOVxKlf++eTRypLFc1doTpr+04Ebm1fkyp8RgpFsmvLXLt/dKU0=",
-  "private": null
-}
-

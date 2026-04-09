@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "module": "../esm/getUnixTime/index.js",
-  "typings": "../typings.d.ts"
-}

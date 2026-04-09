@@ -1,4 +1,0 @@
-{
-    "main": "../../cjs/_get.cjs",
-    "module": "../../esm/_get.js"
-}

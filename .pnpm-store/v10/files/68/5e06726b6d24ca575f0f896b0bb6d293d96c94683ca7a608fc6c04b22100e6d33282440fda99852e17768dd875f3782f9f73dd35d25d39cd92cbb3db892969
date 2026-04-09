@@ -1,1 +1,0 @@
-module.exports = require("../dist/chains/history_aware_retriever.cjs");

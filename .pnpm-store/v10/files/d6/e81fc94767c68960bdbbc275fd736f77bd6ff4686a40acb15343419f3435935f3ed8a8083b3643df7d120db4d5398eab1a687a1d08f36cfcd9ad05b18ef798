@@ -1,1 +1,0 @@
-{"version":3,"file":"AppMetadataEntity.d.ts","sourceRoot":"","sources":["../../../../src/cache/entities/AppMetadataEntity.ts"],"names":[],"mappings":"AAKA;;GAEG;AACH,MAAM,MAAM,iBAAiB,GAAG;IAC5B,kCAAkC;IAClC,QAAQ,EAAE,MAAM,CAAC;IACjB,+DAA+D;IAC/D,WAAW,EAAE,MAAM,CAAC;IACpB,yDAAyD;IACzD,QAAQ,CAAC,EAAE,MAAM,CAAC;CACrB,CAAC"}

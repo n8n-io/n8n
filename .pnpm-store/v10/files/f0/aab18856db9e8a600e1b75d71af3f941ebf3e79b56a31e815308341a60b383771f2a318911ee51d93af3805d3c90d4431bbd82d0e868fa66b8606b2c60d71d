@@ -1,1 +1,0 @@
-{"version":3,"file":"draft4.js","sourceRoot":"","sources":["../../src/vocabulary/draft4.ts"],"names":[],"mappings":";;AACA,iCAAmC;AACnC,6CAA2C;AAC3C,iEAAsE;AACtE,yDAA2D;AAE3D,MAAM,kBAAkB,GAAe,CAAC,OAAO,EAAE,aAAa,EAAE,SAAS,CAAC,CAAA;AAE1E,MAAM,kBAAkB,GAAiB;IACvC,cAAc;IACd,oBAAgB;IAChB,oBAAuB,EAAE;IACzB,gBAAgB;IAChB,kBAAkB;CACnB,CAAA;AAED,kBAAe,kBAAkB,CAAA"}

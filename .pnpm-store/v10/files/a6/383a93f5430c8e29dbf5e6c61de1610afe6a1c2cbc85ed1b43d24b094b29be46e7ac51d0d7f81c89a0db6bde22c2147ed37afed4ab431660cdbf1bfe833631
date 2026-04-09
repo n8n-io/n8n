@@ -1,1 +1,0 @@
-module.exports = require("../dist/retrievers/document_compressors/index.cjs");

@@ -1,1 +1,0 @@
-module.exports = require("../../dist/document_loaders/fs/directory.cjs");

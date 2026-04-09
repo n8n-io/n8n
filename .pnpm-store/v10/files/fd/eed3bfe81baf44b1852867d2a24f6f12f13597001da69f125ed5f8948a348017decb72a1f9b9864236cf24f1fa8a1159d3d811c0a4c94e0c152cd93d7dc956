@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["../../../src/json/get-meta-from-path.js"],
-  "sourcesContent": ["import { getPointers } from './utils';\n\nexport default function getMetaFromPath(\n  jsonAst,\n  dataPath,\n  includeIdentifierLocation\n) {\n  const pointers = getPointers(dataPath);\n  const lastPointerIndex = pointers.length - 1;\n  return pointers.reduce((obj, pointer, idx) => {\n    switch (obj.type) {\n      case 'Object': {\n        const filtered = obj.members.filter(\n          child => child.name.value === pointer\n        );\n        if (filtered.length !== 1) {\n          throw new Error(`Couldn't find property ${pointer} of ${dataPath}`);\n        }\n\n        const { name, value } = filtered[0];\n        return includeIdentifierLocation && idx === lastPointerIndex\n          ? name\n          : value;\n      }\n      case 'Array':\n        return obj.elements[pointer];\n      default:\n        // eslint-disable-next-line no-console\n        console.log(obj);\n    }\n  }, jsonAst.body);\n}\n"],
-  "mappings": ";;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA,mBAA4B;AAEb,yBACb,SACA,UACA,2BACA;AACA,QAAM,WAAW,8BAAY,QAAQ;AACrC,QAAM,mBAAmB,SAAS,SAAS;AAC3C,SAAO,SAAS,OAAO,CAAC,KAAK,SAAS,QAAQ;AAC5C,YAAQ,IAAI;AAAA,WACL,UAAU;AACb,cAAM,WAAW,IAAI,QAAQ,OAC3B,WAAS,MAAM,KAAK,UAAU,OAChC;AACA,YAAI,SAAS,WAAW,GAAG;AACzB,gBAAM,IAAI,MAAM,0BAA0B,cAAc,UAAU;AAAA,QACpE;AAEA,cAAM,EAAE,MAAM,UAAU,SAAS;AACjC,eAAO,6BAA6B,QAAQ,mBACxC,OACA;AAAA,MACN;AAAA,WACK;AACH,eAAO,IAAI,SAAS;AAAA;AAGpB,gBAAQ,IAAI,GAAG;AAAA;AAAA,EAErB,GAAG,QAAQ,IAAI;AACjB;",
-  "names": []
-}

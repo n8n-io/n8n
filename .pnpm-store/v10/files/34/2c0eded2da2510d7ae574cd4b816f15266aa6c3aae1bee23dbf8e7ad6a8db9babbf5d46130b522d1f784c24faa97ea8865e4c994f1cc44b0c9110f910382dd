@@ -1,1 +1,0 @@
-{"version":3,"file":"constants.js","sources":["../../src/constants.ts"],"sourcesContent":["import type { Operation } from './types';\n\nexport const DEFAULT_HOOKS: Operation[] = ['activate', 'mount'];\n"],"names":[],"mappings":";;AAEO,MAAM,aAAa,GAAgB,CAAC,UAAU,EAAE,OAAO;;;;"}

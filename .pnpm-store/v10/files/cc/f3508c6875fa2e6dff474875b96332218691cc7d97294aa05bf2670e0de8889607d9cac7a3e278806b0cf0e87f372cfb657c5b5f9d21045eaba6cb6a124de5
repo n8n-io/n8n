@@ -1,1 +1,0 @@
-{"version":3,"file":"logs.mjs","sourceRoot":"","sources":["../../src/resources/sessions/logs.ts"],"names":[],"mappings":"AAAA,sFAAsF;OAE/E,EAAE,WAAW,EAAE;AAGtB,MAAM,OAAO,IAAK,SAAQ,WAAW;IACnC;;OAEG;IACH,IAAI,CAAC,EAAU,EAAE,OAA6B;QAC5C,OAAO,IAAI,CAAC,OAAO,CAAC,GAAG,CAAC,gBAAgB,EAAE,OAAO,EAAE,OAAO,CAAC,CAAC;IAC9D,CAAC;CACF"}

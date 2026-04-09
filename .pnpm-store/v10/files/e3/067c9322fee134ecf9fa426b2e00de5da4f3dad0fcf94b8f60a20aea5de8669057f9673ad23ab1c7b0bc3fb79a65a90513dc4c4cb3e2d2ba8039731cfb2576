@@ -1,1 +1,0 @@
-{"version":3,"file":"interactionCountPolyfill.d.ts","sourceRoot":"","sources":["../../../../../../src/metrics/web-vitals/lib/polyfills/interactionCountPolyfill.ts"],"names":[],"mappings":"AAkBA,OAAO,CAAC,MAAM,CAAC;IACb,UAAU,WAAW;QACnB,gBAAgB,EAAE,MAAM,CAAC;KAC1B;CACF;AAmBD;;;GAGG;AACH,eAAO,MAAM,mBAAmB,QAAO,MAEtC,CAAC;AAEF;;GAEG;AACH,eAAO,MAAM,4BAA4B,QAAO,IAQ/C,CAAC"}

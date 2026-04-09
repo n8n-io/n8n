@@ -1,1 +1,0 @@
-{"version":3,"file":"promises.cjs","names":[],"sources":["../../src/callbacks/promises.ts"],"sourcesContent":["import { awaitAllCallbacks, consumeCallback } from \"../singletons/callbacks.js\";\n\nexport { awaitAllCallbacks, consumeCallback };\n"],"mappings":""}

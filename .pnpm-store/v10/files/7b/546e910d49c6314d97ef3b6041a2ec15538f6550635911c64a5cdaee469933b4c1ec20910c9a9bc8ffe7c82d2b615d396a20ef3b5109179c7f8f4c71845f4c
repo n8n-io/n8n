@@ -1,1 +1,0 @@
-export * from "../dist/vectorstores/azure_aisearch.js";

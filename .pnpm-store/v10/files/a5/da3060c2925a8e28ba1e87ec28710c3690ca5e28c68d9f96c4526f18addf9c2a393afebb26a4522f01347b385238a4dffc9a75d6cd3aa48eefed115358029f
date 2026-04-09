@@ -1,1 +1,0 @@
-module.exports = require("../dist/memory/mem0.cjs");

@@ -1,1 +1,0 @@
-{"version":3,"file":"debounce.cjs","names":["callback: T","timeoutId: NodeJS.Timeout | null"],"sources":["../../src/Splitter/utils/debounce.ts"],"sourcesContent":[],"mappings":";;AAAA,SAAwB,SACtBA,UACA,aAAa,IACb;CACA,IAAIC,YAAmC;CAEvC,MAAM,WAAW,CAAC,GAAG,SAAc;AACjC,MAAI,cAAc,KAChB,cAAa,UAAU;AAEzB,cAAY,WAAW,MAAM;AAC3B,YAAS,GAAG,KAAK;EAClB,GAAE,WAAW;CACf;AAED,QAAO;AACR"}

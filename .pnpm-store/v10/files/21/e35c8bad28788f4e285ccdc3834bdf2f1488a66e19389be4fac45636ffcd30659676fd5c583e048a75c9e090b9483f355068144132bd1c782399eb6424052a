@@ -1,4 +1,0 @@
---require should
---reporter dot
---ui bdd
---timeout 200

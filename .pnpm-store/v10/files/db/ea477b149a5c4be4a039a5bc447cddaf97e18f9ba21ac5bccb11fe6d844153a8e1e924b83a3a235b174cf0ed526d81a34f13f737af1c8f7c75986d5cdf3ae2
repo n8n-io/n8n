@@ -1,1 +1,0 @@
-module.exports = require("../dist/memory/motorhead_memory.cjs");

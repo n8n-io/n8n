@@ -1,1 +1,0 @@
-export declare const agListCSS = ".ag-list-item{align-items:center;display:flex;height:var(--ag-list-item-height);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;&.ag-active-item{background-color:var(--ag-row-hover-color)}}";

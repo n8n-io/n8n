@@ -1,1 +1,0 @@
-{"version":3,"file":"of.js","sourceRoot":"","sources":["../../../../src/internal/observable/of.ts"],"names":[],"mappings":"AAEA,OAAO,EAAE,YAAY,EAAE,MAAM,cAAc,CAAC;AAC5C,OAAO,EAAE,IAAI,EAAE,MAAM,QAAQ,CAAC;AA4E9B,MAAM,UAAU,EAAE,CAAI,GAAG,IAA8B;IACrD,MAAM,SAAS,GAAG,YAAY,CAAC,IAAI,CAAC,CAAC;IACrC,OAAO,IAAI,CAAC,IAAW,EAAE,SAAS,CAAC,CAAC;AACtC,CAAC"}

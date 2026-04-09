@@ -1,4 +1,0 @@
-export { FileBatches, type VectorStoreFileBatch, type FileBatchCreateParams, type FileBatchListFilesParams, } from "./file-batches.js";
-export { VectorStoreFilesPage, Files, type VectorStoreFile, type VectorStoreFileDeleted, type FileCreateParams, type FileListParams, } from "./files.js";
-export { VectorStoresPage, VectorStores, type AutoFileChunkingStrategyParam, type FileChunkingStrategy, type FileChunkingStrategyParam, type OtherFileChunkingStrategyObject, type StaticFileChunkingStrategy, type StaticFileChunkingStrategyObject, type StaticFileChunkingStrategyParam, type VectorStore, type VectorStoreDeleted, type VectorStoreCreateParams, type VectorStoreUpdateParams, type VectorStoreListParams, } from "./vector-stores.js";
-//# sourceMappingURL=index.d.ts.map

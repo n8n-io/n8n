@@ -1,1 +1,0 @@
-module.exports = require("../../dist/document_loaders/fs/openai_whisper_audio.cjs");

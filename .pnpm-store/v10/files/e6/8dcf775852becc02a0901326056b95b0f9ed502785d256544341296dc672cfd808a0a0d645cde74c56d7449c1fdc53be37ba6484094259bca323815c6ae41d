@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "module": "../esm/parse/index.js",
-  "typings": "../typings.d.ts"
-}

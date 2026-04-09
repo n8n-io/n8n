@@ -1,1 +1,0 @@
-{"version":3,"file":"prompt.cjs","names":[],"sources":["../../../src/agents/openai_functions/prompt.ts"],"sourcesContent":["export const PREFIX = `You are a helpful AI assistant.`;\nexport const SUFFIX = ``;\n"],"mappings":";;AAAA,MAAa,SAAS,CAAC,+BAA+B,CAAC"}

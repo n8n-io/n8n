@@ -1,4 +1,0 @@
-{
-    "main": "../../cjs/_to_array.cjs",
-    "module": "../../esm/_to_array.js"
-}

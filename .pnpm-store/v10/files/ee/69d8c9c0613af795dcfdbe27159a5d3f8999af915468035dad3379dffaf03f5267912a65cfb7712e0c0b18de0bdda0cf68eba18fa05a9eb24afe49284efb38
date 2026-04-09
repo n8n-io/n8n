@@ -1,1 +1,0 @@
-module.exports = require("../dist/retrievers/self_query/index.cjs");

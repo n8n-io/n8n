@@ -1,1 +1,0 @@
-export{parseJSON5,stringifyJSON5}from"./json5.mjs";export{a as parseJSON,p as parseJSONC,b as stringifyJSON,s as stringifyJSONC}from"./shared/confbox.f9f03f05.mjs";export{parseYAML,stringifyYAML}from"./yaml.mjs";export{parseTOML,stringifyTOML}from"./toml.mjs";import"./shared/confbox.9388d834.mjs";

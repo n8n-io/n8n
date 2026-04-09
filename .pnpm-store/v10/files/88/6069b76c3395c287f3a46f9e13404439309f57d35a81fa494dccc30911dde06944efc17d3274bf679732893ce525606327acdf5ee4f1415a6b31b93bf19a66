@@ -1,1 +1,0 @@
-{"version":3,"file":"RegionDiscoveryMetadata.d.ts","sourceRoot":"","sources":["../../../src/authority/RegionDiscoveryMetadata.ts"],"names":[],"mappings":"AAKA,OAAO,EACH,uBAAuB,EACvB,sBAAsB,EACzB,MAAM,uBAAuB,CAAC;AAE/B,MAAM,MAAM,uBAAuB,GAAG;IAClC,WAAW,CAAC,EAAE,MAAM,CAAC;IACrB,aAAa,CAAC,EAAE,sBAAsB,CAAC;IACvC,cAAc,CAAC,EAAE,uBAAuB,CAAC;CAC5C,CAAC"}

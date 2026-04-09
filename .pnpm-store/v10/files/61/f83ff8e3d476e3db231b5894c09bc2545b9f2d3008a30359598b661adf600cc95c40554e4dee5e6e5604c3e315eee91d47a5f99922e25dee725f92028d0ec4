@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(gh issue view:*)",
-      "WebFetch(domain:github.com)"
-    ]
-  }
-}

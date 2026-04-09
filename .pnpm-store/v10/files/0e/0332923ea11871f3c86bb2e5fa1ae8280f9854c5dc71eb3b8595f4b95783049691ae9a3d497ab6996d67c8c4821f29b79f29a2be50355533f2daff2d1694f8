@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["/mnt/vss/_work/1/s/sdk/core/core-rest-pipeline/src/policies/decompressResponsePolicy.ts"],
-  "sourcesContent": ["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT License.\n\nimport type { PipelinePolicy } from \"../pipeline.js\";\n\nimport {\n  decompressResponsePolicyName as tspDecompressResponsePolicyName,\n  decompressResponsePolicy as tspDecompressResponsePolicy,\n} from \"@typespec/ts-http-runtime/internal/policies\";\n\n/**\n * The programmatic identifier of the decompressResponsePolicy.\n */\nexport const decompressResponsePolicyName = tspDecompressResponsePolicyName;\n\n/**\n * A policy to enable response decompression according to Accept-Encoding header\n * https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding\n */\nexport function decompressResponsePolicy(): PipelinePolicy {\n  return tspDecompressResponsePolicy();\n}\n"],
-  "mappings": ";;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAKA,sBAGO;AAKA,MAAM,+BAA+B,gBAAAA;AAMrC,SAAS,2BAA2C;AACzD,aAAO,gBAAAC,0BAA4B;AACrC;",
-  "names": ["tspDecompressResponsePolicyName", "tspDecompressResponsePolicy"]
-}

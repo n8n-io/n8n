@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "module": "../esm/yearsToMonths/index.js",
-  "typings": "../typings.d.ts"
-}

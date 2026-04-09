@@ -1,1 +1,0 @@
-{"version":3,"file":"index.cjs","names":[],"sources":["../../../../src/agents/toolkits/sql/index.ts"],"sourcesContent":["export { type SqlCreatePromptArgs, SqlToolkit, createSqlAgent } from \"./sql.js\";\nexport { SQL_PREFIX, SQL_SUFFIX } from \"./prompt.js\";\n"],"mappings":""}

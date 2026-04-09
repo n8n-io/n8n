@@ -1,1 +1,0 @@
-{"version":3,"file":"index.mjs","sources":["../../../../../packages/components/drawer/index.ts"],"sourcesContent":["import { withInstall } from '@element-plus/utils'\nimport Drawer from './src/drawer.vue'\n\nexport const ElDrawer = withInstall(Drawer)\nexport default ElDrawer\n\nexport * from './src/drawer'\n"],"names":[],"mappings":";;;;;AAEY,MAAC,QAAQ,GAAG,WAAW,CAAC,MAAM;;;;"}

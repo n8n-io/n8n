@@ -1,1 +1,0 @@
-module.exports = require("../dist/caches/vercel_kv.cjs");

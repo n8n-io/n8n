@@ -1,1 +1,0 @@
-{"version":3,"file":"InvalidConfigurationError.d.ts","sourceRoot":"","sources":["../../../../../src/custom_auth/core/error/InvalidConfigurationError.ts"],"names":[],"mappings":"AAKA,OAAO,EAAE,eAAe,EAAE,MAAM,sBAAsB,CAAC;AAEvD,qBAAa,yBAA0B,SAAQ,eAAe;gBAC9C,KAAK,EAAE,MAAM,EAAE,OAAO,EAAE,MAAM,EAAE,aAAa,CAAC,EAAE,MAAM;CAIrE"}

@@ -1,1 +1,0 @@
-module.exports = require("../../dist/chains/graph_qa/cypher.cjs");

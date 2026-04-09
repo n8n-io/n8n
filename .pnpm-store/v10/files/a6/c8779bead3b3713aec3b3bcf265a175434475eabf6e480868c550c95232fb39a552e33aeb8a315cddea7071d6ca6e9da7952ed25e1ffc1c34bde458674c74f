@@ -1,1 +1,0 @@
-module.exports = require("../dist/memory/chat_memory.cjs");

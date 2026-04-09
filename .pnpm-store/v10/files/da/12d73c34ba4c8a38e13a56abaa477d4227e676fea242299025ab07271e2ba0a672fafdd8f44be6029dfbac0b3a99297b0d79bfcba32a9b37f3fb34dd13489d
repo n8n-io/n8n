@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["../../../src/json/utils.js"],
-  "sourcesContent": ["// TODO: Better error handling\nexport const getPointers = dataPath => {\n  return dataPath\n    .split('/')\n    .slice(1)\n    .map(pointer => pointer.split('~1').join('/').split('~0').join('~'));\n};\n"],
-  "mappings": ";AACO,IAAM,cAAc,cAAY;AACrC,SAAO,SACJ,MAAM,GAAG,EACT,MAAM,CAAC,EACP,IAAI,aAAW,QAAQ,MAAM,IAAI,EAAE,KAAK,GAAG,EAAE,MAAM,IAAI,EAAE,KAAK,GAAG,CAAC;AACvE;",
-  "names": []
-}

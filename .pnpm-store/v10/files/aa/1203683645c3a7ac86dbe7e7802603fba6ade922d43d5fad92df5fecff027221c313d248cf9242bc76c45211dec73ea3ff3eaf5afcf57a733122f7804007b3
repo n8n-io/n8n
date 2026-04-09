@@ -1,1 +1,0 @@
-module.exports = require("../dist/vectorstores/couchbase_search.cjs");

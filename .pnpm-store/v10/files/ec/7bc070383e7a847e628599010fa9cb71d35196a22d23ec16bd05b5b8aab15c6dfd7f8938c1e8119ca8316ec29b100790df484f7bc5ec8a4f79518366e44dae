@@ -1,9 +1,0 @@
-*.d.ts
-test/data/
-/example
-
-# output files
-/main.js
-/lib/**/*.js
-/parsers/**/*.js
-/test/**/*.js

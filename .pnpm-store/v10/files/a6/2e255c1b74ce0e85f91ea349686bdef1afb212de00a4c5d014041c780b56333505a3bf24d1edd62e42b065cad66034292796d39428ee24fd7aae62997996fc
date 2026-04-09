@@ -1,6 +1,0 @@
-{
-  "sideEffects": false,
-  "type": "commonjs",
-  "module": "../../esm/fp/utcToZonedTime/index.js",
-  "typings": "../../typings.d.ts"
-}

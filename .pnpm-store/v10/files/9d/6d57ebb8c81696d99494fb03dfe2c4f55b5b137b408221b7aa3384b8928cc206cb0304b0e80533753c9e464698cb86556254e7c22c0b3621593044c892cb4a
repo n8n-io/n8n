@@ -1,1 +1,0 @@
-module.exports = require("../../dist/document_loaders/web/azure_blob_storage_file.cjs");

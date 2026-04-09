@@ -1,9 +1,0 @@
-{
-  "$schema": "http://json.schemastore.org/tsconfig",
-  "extends": "./tsconfig-lib.json",
-  "compilerOptions": {
-    // Emit exactly the same code as normal tsconfig, but with ES6 import & export statements instead of CommonJS
-    "module": "esnext",
-    "outDir": "lib-module"
-  }
-}

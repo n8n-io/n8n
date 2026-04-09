@@ -1,1 +1,0 @@
-export * from "../../dist/stores/file/in_memory.js";

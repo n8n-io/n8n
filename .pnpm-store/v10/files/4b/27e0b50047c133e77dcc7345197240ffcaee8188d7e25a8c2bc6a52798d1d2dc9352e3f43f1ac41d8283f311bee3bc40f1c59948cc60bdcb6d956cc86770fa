@@ -1,1 +1,0 @@
-export function clsx(){for(var t,r=0,e="",n=arguments.length;r<n;r++)(t=arguments[r])&&"string"==typeof t&&(e+=(e&&" ")+t);return e}export default clsx;

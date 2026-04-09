@@ -1,1 +1,0 @@
-{"version":3,"file":"document.js","names":[],"sources":["../src/document.ts"],"sourcesContent":["export { type DocumentInput, Document } from \"@langchain/core/documents\";\n"],"mappings":""}

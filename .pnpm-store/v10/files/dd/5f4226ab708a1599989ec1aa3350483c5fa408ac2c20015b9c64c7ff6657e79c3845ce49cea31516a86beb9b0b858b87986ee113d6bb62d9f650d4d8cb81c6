@@ -1,1 +1,0 @@
-{"version":3,"file":"TypeUuid.d.ts","sourceRoot":"","sources":["../src/TypeUuid.ts"],"names":[],"mappings":"AAOA;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;GAgCG;AACH,qBAAa,QAAQ;IACnB,OAAO,CAAC,MAAM,CAAC,WAAW,CAA4E;IAEtG;;;;OAIG;WAEW,aAAa,CAAC,WAAW,EAAE,GAAG,EAAE,QAAQ,EAAE,MAAM,GAAG,IAAI;IAsBrE;;;OAGG;WACW,YAAY,CAAC,YAAY,EAAE,OAAO,EAAE,QAAQ,EAAE,MAAM,GAAG,OAAO;CAkB7E"}

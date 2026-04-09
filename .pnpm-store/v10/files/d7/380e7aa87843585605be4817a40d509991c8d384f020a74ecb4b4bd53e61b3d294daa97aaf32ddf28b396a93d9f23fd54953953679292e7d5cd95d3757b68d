@@ -1,1 +1,0 @@
-{"version":3,"file":"ChannelConnectivityState.js","sourceRoot":"","sources":["../../../../../../src/generated/grpc/channelz/v1/ChannelConnectivityState.ts"],"names":[],"mappings":";AAAA,sCAAsC;;;AAGtC,sCAAsC;AAEzB,QAAA,gDAAgD,GAAG;IAC9D,OAAO,EAAE,SAAS;IAClB,IAAI,EAAE,MAAM;IACZ,UAAU,EAAE,YAAY;IACxB,KAAK,EAAE,OAAO;IACd,iBAAiB,EAAE,mBAAmB;IACtC,QAAQ,EAAE,UAAU;CACZ,CAAC"}

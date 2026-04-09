@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "module": "../../esm/fp/endOfISOWeek/index.js",
-  "typings": "../../typings.d.ts"
-}

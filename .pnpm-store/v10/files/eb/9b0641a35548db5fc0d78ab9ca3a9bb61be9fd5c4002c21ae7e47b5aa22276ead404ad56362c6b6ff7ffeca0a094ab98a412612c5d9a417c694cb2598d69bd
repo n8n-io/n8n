@@ -1,9 +1,0 @@
-{
-	"root": true,
-
-	"extends": "@ljharb",
-
-	"globals": {
-		"DataView": false,
-	},
-}

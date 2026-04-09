@@ -1,1 +1,0 @@
-{"version":3,"file":"code-points-data.d.ts","sourceRoot":"","sources":["../src/code-points-data.ts"],"names":[],"mappings":";AAEA,wBAKE"}

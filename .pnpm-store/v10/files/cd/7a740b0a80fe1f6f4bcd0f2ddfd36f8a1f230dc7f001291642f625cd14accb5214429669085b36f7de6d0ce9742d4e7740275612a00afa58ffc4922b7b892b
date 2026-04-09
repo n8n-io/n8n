@@ -1,9 +1,0 @@
-@use 'mixins/mixins' as *;
-@use 'common/var' as *;
-
-@include b(radio-group) {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  font-size: 0;
-}

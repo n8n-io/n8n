@@ -1,9 +1,0 @@
-{
-    "packages": {
-        ".": {
-            "release-type": "node",
-            "package-name": "nodemailer",
-            "pull-request-title-pattern": "chore${scope}: release ${version} [skip-ci]"
-        }
-    }
-}

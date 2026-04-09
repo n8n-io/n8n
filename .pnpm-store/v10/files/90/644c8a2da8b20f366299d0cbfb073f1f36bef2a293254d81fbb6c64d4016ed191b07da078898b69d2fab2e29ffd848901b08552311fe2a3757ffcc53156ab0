@@ -1,1 +1,0 @@
-{"version":3,"file":"map_keys.d.ts","names":["SerializedFields"],"sources":["../../src/load/map_keys.d.ts"],"sourcesContent":["export interface SerializedFields {\n    [key: string]: any;\n}\n//# sourceMappingURL=map_keys.d.ts.map"],"mappings":";UAAiBA,gBAAAA;EAAAA,CAAAA,GAAAA,EAAAA,MAAAA,CAAAA,EAAAA,GAAAA"}

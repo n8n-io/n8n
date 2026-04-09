@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["/mnt/vss/_work/1/s/sdk/core/ts-http-runtime/src/abort-controller/AbortError.ts"],
-  "sourcesContent": ["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT License.\n\n/**\n * This error is thrown when an asynchronous operation has been aborted.\n * Check for this error by testing the `name` that the name property of the\n * error matches `\"AbortError\"`.\n *\n * @example\n * ```ts snippet:ReadmeSampleAbortError\n * import { AbortError } from \"@typespec/ts-http-runtime\";\n *\n * async function doAsyncWork(options: { abortSignal: AbortSignal }): Promise<void> {\n *   if (options.abortSignal.aborted) {\n *     throw new AbortError();\n *   }\n *\n *   // do async work\n * }\n *\n * const controller = new AbortController();\n * controller.abort();\n *\n * try {\n *   doAsyncWork({ abortSignal: controller.signal });\n * } catch (e) {\n *   if (e instanceof Error && e.name === \"AbortError\") {\n *     // handle abort error here.\n *   }\n * }\n * ```\n */\nexport class AbortError extends Error {\n  constructor(message?: string) {\n    super(message);\n    this.name = \"AbortError\";\n  }\n}\n"],
-  "mappings": ";;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAgCO,MAAM,mBAAmB,MAAM;AAAA,EACpC,YAAY,SAAkB;AAC5B,UAAM,OAAO;AACb,SAAK,OAAO;AAAA,EACd;AACF;",
-  "names": []
-}

@@ -1,8 +1,0 @@
-ts: false
-jsx: false
-flow: false
-timeout: 900
-branches: 60
-functions: 60
-lines: 60
-statements: 60

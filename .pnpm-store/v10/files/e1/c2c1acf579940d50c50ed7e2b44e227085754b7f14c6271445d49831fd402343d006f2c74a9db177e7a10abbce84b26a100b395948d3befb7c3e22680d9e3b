@@ -1,4 +1,0 @@
-@use 'katex' with (
-  $font-display: swap,
-  $version: $version,
-);

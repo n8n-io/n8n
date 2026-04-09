@@ -1,1 +1,0 @@
-{"version":3,"file":"event.js","sources":["../../../../packages/constants/event.ts"],"sourcesContent":["export const UPDATE_MODEL_EVENT = 'update:modelValue'\nexport const CHANGE_EVENT = 'change'\nexport const INPUT_EVENT = 'input'\n"],"names":[],"mappings":";;;;AAAY,MAAC,kBAAkB,GAAG,oBAAoB;AAC1C,MAAC,YAAY,GAAG,SAAS;AACzB,MAAC,WAAW,GAAG;;;;;;"}

@@ -1,1 +1,0 @@
-module.exports = require("../dist/llms/sagemaker_endpoint.cjs");

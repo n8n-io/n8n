@@ -1,1 +1,0 @@
-{"version":3,"file":"index.js","names":[],"sources":["../src/index.ts"],"sourcesContent":["console.warn(\n  `[WARNING]: The root \"langchain\" entrypoint is empty. Please use a specific entrypoint instead.`\n);\n"],"mappings":";;AAAA,QAAQ,KACN,CAAC,8FAA8F,CAAC,CACjG"}

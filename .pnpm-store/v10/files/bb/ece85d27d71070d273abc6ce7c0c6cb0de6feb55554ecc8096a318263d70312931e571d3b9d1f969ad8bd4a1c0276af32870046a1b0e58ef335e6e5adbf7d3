@@ -1,1 +1,0 @@
-{"version":3,"file":"index.js","sourceRoot":"","sources":["../../../../../src/platform/nodejs/persist/index.ts"],"names":[],"mappings":"AAAA,uCAAuC;AACvC,kCAAkC;AAElC,cAAc,wBAAwB,CAAC","sourcesContent":["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT License.\n\nexport * from \"./fileSystemPersist.js\";\n"]}

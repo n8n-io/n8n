@@ -1,7 +1,0 @@
-#!/usr/bin/env node
-
-var rw = require("../").dash;
-
-rw.writeFile(process.argv[2] || "-", "gréén\n", {encoding: process.argv[3]}, function(error) {
-  if (error) throw error;
-});

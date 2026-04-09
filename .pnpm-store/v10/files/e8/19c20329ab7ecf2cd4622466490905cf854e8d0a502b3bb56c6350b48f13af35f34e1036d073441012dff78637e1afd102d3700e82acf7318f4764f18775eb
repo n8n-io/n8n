@@ -1,2 +1,0 @@
-export type DataCategory = 'default' | 'error' | 'transaction' | 'replay' | 'security' | 'attachment' | 'session' | 'internal' | 'profile' | 'monitor' | 'feedback' | 'span' | 'log_item' | 'log_byte' | 'metric' | 'unknown';
-//# sourceMappingURL=datacategory.d.ts.map

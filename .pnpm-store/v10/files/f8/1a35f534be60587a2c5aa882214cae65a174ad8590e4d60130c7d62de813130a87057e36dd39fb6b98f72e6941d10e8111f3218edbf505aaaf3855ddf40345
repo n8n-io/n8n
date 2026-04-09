@@ -1,1 +1,0 @@
-{"version":3,"file":"key.mjs","sources":["../../../../packages/constants/key.ts"],"sourcesContent":["export const INSTALLED_KEY = Symbol('INSTALLED_KEY')\n"],"names":[],"mappings":"AAAY,MAAC,aAAa,GAAG,MAAM,CAAC,eAAe;;;;"}

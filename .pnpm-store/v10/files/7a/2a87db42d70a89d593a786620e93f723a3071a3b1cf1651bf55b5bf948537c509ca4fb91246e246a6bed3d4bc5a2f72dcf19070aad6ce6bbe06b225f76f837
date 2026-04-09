@@ -1,2 +1,0 @@
-1. Fix coverage test
-2. Add @napi-rs/snappy in the benchmark, and update benchmark results in README

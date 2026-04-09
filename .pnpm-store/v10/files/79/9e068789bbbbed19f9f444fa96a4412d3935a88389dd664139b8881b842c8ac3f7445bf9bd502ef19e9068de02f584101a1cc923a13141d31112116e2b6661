@@ -1,2 +1,0 @@
-extends:
-  - https://raw.githubusercontent.com/Redocly/redocly-cli-cookbook/main/rulesets/spec-compliant/redocly.yaml

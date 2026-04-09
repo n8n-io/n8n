@@ -1,1 +1,0 @@
-{"version":3,"file":"in_memory.js","names":[],"sources":["../../../src/stores/doc/in_memory.ts"],"sourcesContent":["export * from \"@langchain/classic/stores/doc/in_memory\";\n"],"mappings":""}

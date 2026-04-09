@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "module": "../../esm/locale/fa-IR/index.js",
-  "typings": "../../typings.d.ts"
-}

@@ -1,1 +1,0 @@
-{"version":3,"file":"ObjectClassViolationError.js","sourceRoot":"./","sources":["errors/resultCodeErrors/ObjectClassViolationError.ts"],"names":[],"mappings":";;;AAAA,uDAAoD;AAEpD,MAAa,yBAA0B,SAAQ,iCAAe;IAC5D,YAAmB,OAAgB;QACjC,KAAK,CAAC,EAAE,EAAE,OAAO,IAAI,wGAAwG,CAAC,CAAC;IACjI,CAAC;CACF;AAJD,8DAIC"}

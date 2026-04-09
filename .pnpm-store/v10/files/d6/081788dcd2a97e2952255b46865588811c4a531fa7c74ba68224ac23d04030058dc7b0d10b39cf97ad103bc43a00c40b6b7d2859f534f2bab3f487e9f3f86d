@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "module": "../esm/differenceInCalendarMonths/index.js",
-  "typings": "../typings.d.ts"
-}

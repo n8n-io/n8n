@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["/mnt/vss/_work/1/s/sdk/core/core-rest-pipeline/src/httpHeaders.ts"],
-  "sourcesContent": ["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT License.\n\nimport type { HttpHeaders, RawHttpHeadersInput } from \"./interfaces.js\";\n\nimport { createHttpHeaders as tspCreateHttpHeaders } from \"@typespec/ts-http-runtime\";\n\n/**\n * Creates an object that satisfies the `HttpHeaders` interface.\n * @param rawHeaders - A simple object representing initial headers\n */\nexport function createHttpHeaders(rawHeaders?: RawHttpHeadersInput): HttpHeaders {\n  return tspCreateHttpHeaders(rawHeaders);\n}\n"],
-  "mappings": ";;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAKA,6BAA0D;AAMnD,SAAS,kBAAkB,YAA+C;AAC/E,aAAO,uBAAAA,mBAAqB,UAAU;AACxC;",
-  "names": ["tspCreateHttpHeaders"]
-}

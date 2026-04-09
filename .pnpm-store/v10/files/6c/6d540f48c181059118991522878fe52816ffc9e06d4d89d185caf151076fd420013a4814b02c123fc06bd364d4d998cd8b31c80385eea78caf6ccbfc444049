@@ -1,5 +1,0 @@
-
-    Object.implement('mustache', function(view, partials){
-        return Mustache.render(view, this, partials);
-    });
-})();

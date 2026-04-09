@@ -1,1 +1,0 @@
-import"./_chunks/rolldown-runtime.mjs";import{t as e}from"./_chunks/libs/ini.mjs";var t=e();function n(e,n){return(0,t.parse)(e,n)}function r(e,n){return(0,t.stringify)(e,{whitespace:!0,...n})}export{n as parseINI,r as stringifyINI};

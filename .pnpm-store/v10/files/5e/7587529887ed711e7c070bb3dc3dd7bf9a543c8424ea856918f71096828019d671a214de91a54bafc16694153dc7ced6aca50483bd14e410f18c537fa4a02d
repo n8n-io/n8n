@@ -1,1 +1,0 @@
-module.exports = require("../../dist/experimental/multimodal_embeddings/googlevertexai.cjs");

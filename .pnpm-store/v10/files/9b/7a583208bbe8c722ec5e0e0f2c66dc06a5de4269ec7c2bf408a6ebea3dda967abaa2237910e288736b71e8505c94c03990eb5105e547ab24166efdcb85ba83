@@ -1,1 +1,0 @@
-{"version":3,"file":"index.js","sources":["../../../../../packages/components/tree-v2/index.ts"],"sourcesContent":["import { withInstall } from '@element-plus/utils'\nimport TreeV2 from './src/tree.vue'\n\nexport const ElTreeV2 = withInstall(TreeV2)\nexport default ElTreeV2\n"],"names":["withInstall","TreeV2"],"mappings":";;;;;;;;AAEY,MAAC,QAAQ,GAAGA,mBAAW,CAACC,eAAM;;;;;"}

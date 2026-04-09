@@ -1,9 +1,0 @@
-.git
-.gitignore
-.dockerignore
-Dockerfile*
-examples
-node_modules
-out
-prebuilds
-spec

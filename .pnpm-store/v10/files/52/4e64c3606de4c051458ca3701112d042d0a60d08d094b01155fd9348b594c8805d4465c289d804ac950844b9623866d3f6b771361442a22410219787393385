@@ -1,1 +1,0 @@
-{"version":3,"file":"utils.cjs","names":["baseId: string","value: StringOrNumber"],"sources":["../../src/Tabs/utils.ts"],"sourcesContent":[],"mappings":";;AAEA,SAAgB,cAAcA,QAAgBC,OAAuB;AACnE,QAAO,GAAG,OAAO,SAAS,EAAE,OAAO;AACpC;AAED,SAAgB,cAAcD,QAAgBC,OAAuB;AACnE,QAAO,GAAG,OAAO,SAAS,EAAE,OAAO;AACpC"}

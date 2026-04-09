@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "module": "../esm/getWeekOfMonth/index.js",
-  "typings": "../typings.d.ts"
-}

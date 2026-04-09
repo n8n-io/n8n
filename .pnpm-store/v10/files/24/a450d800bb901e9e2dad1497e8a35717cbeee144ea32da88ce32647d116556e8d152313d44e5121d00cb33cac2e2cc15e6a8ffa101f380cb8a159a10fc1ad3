@@ -1,1 +1,0 @@
-{"version":3,"file":"type-utils.d.cts","names":["Optional","T","K","Omit","Pick","Partial"],"sources":["../../src/types/type-utils.d.ts"],"sourcesContent":["export type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;\n//# sourceMappingURL=type-utils.d.ts.map"],"mappings":";KAAYA,4BAA4BC,KAAKE,KAAKF,GAAGC,KAAKG,QAAQD,KAAKH,GAAGC"}

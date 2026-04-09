@@ -1,4 +1,0 @@
-{
-  "name": "@google/genai/node",
-  "main": "../dist/node/index.js"
-}

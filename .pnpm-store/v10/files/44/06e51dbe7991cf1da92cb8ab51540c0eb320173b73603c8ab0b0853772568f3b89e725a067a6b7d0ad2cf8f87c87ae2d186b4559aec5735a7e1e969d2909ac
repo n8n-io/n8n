@@ -1,8 +1,0 @@
-MQTT.js command line interface, available commands are:
-
-  * publish     publish a message to the broker
-  * subscribe   subscribe for updates from the broker
-  * version     the current MQTT.js version
-  * help        help about commands
-
-Launch 'mqtt help [command]' to know more about the commands.

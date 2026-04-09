@@ -1,1 +1,0 @@
-{"version":3,"sources":["../../src/query-builder/JoinOptions.ts"],"names":[],"mappings":"","file":"JoinOptions.js","sourcesContent":["export interface JoinOptions {\n    limit?: number\n}\n"],"sourceRoot":".."}

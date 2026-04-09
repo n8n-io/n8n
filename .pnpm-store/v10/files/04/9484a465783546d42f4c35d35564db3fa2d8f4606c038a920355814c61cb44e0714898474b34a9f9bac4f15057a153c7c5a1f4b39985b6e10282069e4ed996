@@ -1,1 +1,0 @@
-{"version":3,"file":"types.js","sourceRoot":"","sources":["types.ts"],"names":[],"mappings":";AAAA;;GAEG;;;AAEU,QAAA,eAAe,GAAG,MAAM,CAAC,GAAG,CAAC,SAAS,CAAC,CAAC","sourcesContent":["/**\n * Created by user on 2020/6/10.\n */\n\nexport const SYMBOL_RAW_DATA = Symbol.for('rawData');\n\n"]}

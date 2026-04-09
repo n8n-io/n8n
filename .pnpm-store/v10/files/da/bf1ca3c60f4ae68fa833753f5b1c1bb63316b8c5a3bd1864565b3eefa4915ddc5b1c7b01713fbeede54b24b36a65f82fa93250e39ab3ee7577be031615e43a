@@ -1,1 +1,0 @@
-{"version":3,"file":"SizeLimitExceededError.js","sourceRoot":"./","sources":["errors/resultCodeErrors/SizeLimitExceededError.ts"],"names":[],"mappings":";;;AAAA,uDAAoD;AAEpD,MAAa,sBAAuB,SAAQ,iCAAe;IACzD,YAAmB,OAAgB;QACjC,KAAK,CAAC,CAAC,EAAE,OAAO,IAAI,wJAAwJ,CAAC,CAAC;IAChL,CAAC;CACF;AAJD,wDAIC"}

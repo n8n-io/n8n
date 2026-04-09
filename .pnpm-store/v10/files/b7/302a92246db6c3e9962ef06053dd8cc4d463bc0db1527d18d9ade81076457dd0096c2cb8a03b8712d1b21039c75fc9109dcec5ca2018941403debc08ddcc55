@@ -1,4 +1,0 @@
-type: object
-properties:
-  circularParent:
-    $ref: ./External.yaml#/properties

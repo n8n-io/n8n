@@ -1,1 +1,0 @@
-{"version":3,"file":"require.js","sourceRoot":"","sources":["../src/require.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,aAAa,EAAE,MAAM,aAAa,CAAA;AAI3C,MAAM,aAAa,GAAG,MAAM,CAAC,IAAI,CAAC,GAAG,CAAA;AAErC,MAAM,CAAC,MAAM,UAAU,GAAe,aAAa;IACjD,CAAC,CAAC,aAAa,CAAC,aAAa,CAAC;IAC9B,CAAC,CAA4B,OAAO,CAAA"}

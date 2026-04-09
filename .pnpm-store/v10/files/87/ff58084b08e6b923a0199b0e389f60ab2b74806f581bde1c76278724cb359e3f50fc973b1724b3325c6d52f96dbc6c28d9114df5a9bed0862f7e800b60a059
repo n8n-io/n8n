@@ -1,1 +1,0 @@
-{"version":3,"file":"index.js","sourceRoot":"","sources":["../../../../src/platform/browser/index.ts"],"names":[],"mappings":";AAAA;;;GAGG;;;AAEH,yDAAwD;AAA/C,sHAAA,iBAAiB,OAAA","sourcesContent":["/*\n * Copyright The OpenTelemetry Authors\n * SPDX-License-Identifier: Apache-2.0\n */\n\nexport { OTLPTraceExporter } from './OTLPTraceExporter';\n"]}

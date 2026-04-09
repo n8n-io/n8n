@@ -1,8 +1,0 @@
-@use 'mixins/mixins' as *;
-
-@include b(aside) {
-  overflow: auto;
-  box-sizing: border-box;
-  flex-shrink: 0;
-  width: var(#{getCssVarName('aside', 'width')}, 300px);
-}

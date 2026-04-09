@@ -1,1 +1,0 @@
-{"version":3,"file":"xml.d.ts","names":["AgentStep","formatXml"],"sources":["../../../src/agents/format_scratchpad/xml.d.ts"],"sourcesContent":["import { AgentStep } from \"@langchain/core/agents\";\nexport declare function formatXml(intermediateSteps: AgentStep[]): string;\n//# sourceMappingURL=xml.d.ts.map"],"mappings":";;;iBACwBC,SAAAA,oBAA6BD"}

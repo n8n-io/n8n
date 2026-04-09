@@ -1,7 +1,0 @@
-{
-  "extends": "./tsconfig",
-  "compilerOptions": {
-    "outDir": "build/module",
-    "module": "esnext",
-  }
-}

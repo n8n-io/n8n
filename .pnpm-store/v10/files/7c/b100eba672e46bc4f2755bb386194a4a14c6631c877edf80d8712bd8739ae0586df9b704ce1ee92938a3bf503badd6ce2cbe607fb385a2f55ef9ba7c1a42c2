@@ -1,1 +1,0 @@
-{"version":3,"file":"call-notification.d.ts","sourceRoot":"","sources":["../../../src/interfaces/call-notification.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,UAAU,EAAE,MAAM,UAAU,CAAC;AAEtC,MAAM,WAAW,iBAAiB;IAC9B,EAAE,EAAE,IAAI,CAAC;IAET,MAAM,EAAE,MAAM,CAAC;IAEf,MAAM,EAAE;QACJ,OAAO,EAAE,MAAM,CAAC;QAEhB,SAAS,EAAE,UAAU,CAAC;KACzB,CAAC;CACL"}

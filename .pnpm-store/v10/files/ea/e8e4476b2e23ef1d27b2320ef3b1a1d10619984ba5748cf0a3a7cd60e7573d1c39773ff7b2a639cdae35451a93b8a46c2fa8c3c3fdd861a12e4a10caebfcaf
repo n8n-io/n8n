@@ -1,1 +1,0 @@
-{"version":3,"sources":["../../src/common/PickKeysByType.ts"],"names":[],"mappings":"","file":"PickKeysByType.js","sourcesContent":["/**\n * Pick only the keys that match the Type `U`\n */\nexport type PickKeysByType<T, U> = string &\n    keyof {\n        [P in keyof T as T[P] extends U ? P : never]: T[P]\n    }\n"],"sourceRoot":".."}

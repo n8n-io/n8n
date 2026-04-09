@@ -1,1 +1,0 @@
-export * from "../dist/chat_models/iflytek_xinghuo/index.js";

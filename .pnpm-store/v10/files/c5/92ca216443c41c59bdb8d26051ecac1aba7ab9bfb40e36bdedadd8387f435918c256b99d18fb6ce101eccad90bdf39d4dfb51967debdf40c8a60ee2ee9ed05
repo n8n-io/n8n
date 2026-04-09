@@ -1,1 +1,0 @@
-{"version":3,"file":"index.js","names":[],"sources":["../../../../src/experimental/chains/violation_of_expectations/index.ts"],"sourcesContent":["export {\n  type ViolationOfExpectationsChainInput,\n  ViolationOfExpectationsChain,\n} from \"./violation_of_expectations_chain.js\";\n"],"mappings":""}

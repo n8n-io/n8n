@@ -1,4 +1,0 @@
-/**
- * @internal
- */
-export * from "./fromIni";

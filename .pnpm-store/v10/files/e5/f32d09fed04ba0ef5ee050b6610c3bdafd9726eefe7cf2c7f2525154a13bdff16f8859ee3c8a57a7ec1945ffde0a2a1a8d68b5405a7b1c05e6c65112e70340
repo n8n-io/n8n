@@ -1,1 +1,0 @@
-{"version":3,"file":"openai_tools.cjs","names":[],"sources":["../../../src/agents/format_scratchpad/openai_tools.ts"],"sourcesContent":["import { formatToToolMessages as formatToOpenAIToolMessages } from \"./tool_calling.js\";\n\nexport { formatToOpenAIToolMessages };\n"],"mappings":""}

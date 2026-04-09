@@ -1,1 +1,0 @@
-{"version":3,"sources":["../../src/query-builder/relation-id/RelationIdLoadResult.ts"],"names":[],"mappings":"","file":"RelationIdLoadResult.js","sourcesContent":["import { RelationIdAttribute } from \"./RelationIdAttribute\"\n\nexport interface RelationIdLoadResult {\n    relationIdAttribute: RelationIdAttribute\n    results: any[]\n}\n"],"sourceRoot":"../.."}

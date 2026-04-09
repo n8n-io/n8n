@@ -1,4 +1,0 @@
-{
-    "main": "../../cjs/_write_only_error.cjs",
-    "module": "../../esm/_write_only_error.js"
-}

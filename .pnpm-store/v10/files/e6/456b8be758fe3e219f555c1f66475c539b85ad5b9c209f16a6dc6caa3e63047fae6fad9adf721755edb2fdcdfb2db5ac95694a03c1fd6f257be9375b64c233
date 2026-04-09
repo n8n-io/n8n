@@ -1,7 +1,0 @@
--   [ ] unchecked todo item 1
-- [ ]
-- [  ] not a todo item 2
-- [ x] not a todo item 3
-- [x ] not a todo item 4
-- [ x ] not a todo item 5
--   [x] todo item 6

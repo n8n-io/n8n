@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "module": "../../esm/locale/lv/index.js",
-  "typings": "../../typings.d.ts"
-}

@@ -1,1 +1,0 @@
-module.exports = require("../dist/retrievers/bm25.cjs");

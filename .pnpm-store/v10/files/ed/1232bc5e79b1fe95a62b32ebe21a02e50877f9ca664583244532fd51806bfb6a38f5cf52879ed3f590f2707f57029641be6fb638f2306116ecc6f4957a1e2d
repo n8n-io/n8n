@@ -1,1 +1,0 @@
-{"version":3,"file":"ProtocolError.js","sourceRoot":"./","sources":["errors/resultCodeErrors/ProtocolError.ts"],"names":[],"mappings":";;;AAAA,uDAAoD;AAEpD,MAAa,aAAc,SAAQ,iCAAe;IAChD,YAAmB,OAAgB;QACjC,KAAK,CAAC,CAAC,EAAE,OAAO,IAAI,4EAA4E,CAAC,CAAC;IACpG,CAAC;CACF;AAJD,sCAIC"}

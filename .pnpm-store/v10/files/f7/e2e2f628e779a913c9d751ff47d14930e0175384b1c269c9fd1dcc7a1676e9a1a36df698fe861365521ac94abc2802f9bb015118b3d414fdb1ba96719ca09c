@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "module": "../esm/millisecondsToSeconds/index.js",
-  "typings": "../typings.d.ts"
-}

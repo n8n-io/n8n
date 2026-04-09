@@ -1,1 +1,0 @@
-module.exports = require("../../dist/callbacks/dispatch/web.cjs");

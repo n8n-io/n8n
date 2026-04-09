@@ -1,1 +1,0 @@
-module.exports = require("../dist/embeddings/bytedance_doubao.cjs");

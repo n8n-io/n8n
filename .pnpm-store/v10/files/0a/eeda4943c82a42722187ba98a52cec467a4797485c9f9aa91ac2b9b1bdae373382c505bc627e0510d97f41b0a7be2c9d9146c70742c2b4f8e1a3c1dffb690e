@@ -1,1 +1,0 @@
-{"version":3,"file":"Int16Histogram.js","sourceRoot":"","sources":["../src/Int16Histogram.ts"],"names":[],"mappings":";;AAAA;;;;;;GAMG;AACH,+DAAwD;AAExD,MAAM,cAAe,SAAQ,6BAAmB;IAC9C,YACE,sBAA8B,EAC9B,qBAA6B,EAC7B,8BAAsC;QAEtC,KAAK,CACH,WAAW,EACX,sBAAsB,EACtB,qBAAqB,EACrB,8BAA8B,CAC/B,CAAC;IACJ,CAAC;CACF;AAED,kBAAe,cAAc,CAAC"}

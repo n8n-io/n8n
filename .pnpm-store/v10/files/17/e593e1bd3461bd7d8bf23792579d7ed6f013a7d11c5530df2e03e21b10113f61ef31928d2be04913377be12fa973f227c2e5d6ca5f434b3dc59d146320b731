@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "module": "../../esm/fp/startOfDay/index.js",
-  "typings": "../../typings.d.ts"
-}

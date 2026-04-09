@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "module": "../../esm/fp/areIntervalsOverlapping/index.js",
-  "typings": "../../typings.d.ts"
-}

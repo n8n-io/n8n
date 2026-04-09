@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "module": "../esm/endOfYesterday/index.js",
-  "typings": "../typings.d.ts"
-}

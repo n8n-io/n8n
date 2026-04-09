@@ -1,1 +1,0 @@
-module.exports = require("../dist/chains/openai_functions/index.cjs");

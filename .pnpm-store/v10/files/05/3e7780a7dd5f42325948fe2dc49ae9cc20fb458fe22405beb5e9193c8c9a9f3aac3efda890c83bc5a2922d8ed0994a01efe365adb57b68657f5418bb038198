@@ -1,1 +1,0 @@
-{"version":3,"sources":["../../src/middlewares/log.js"],"sourcesContent":["export {\n  default,\n  defaultSuccessLogger,\n  defaultErrorLogger,\n  setSuccessLogger,\n  setErrorLogger,\n  setLoggerEnabled,\n} from '../middleware/log'\n"],"mappings":";;;;;;;;;;;;;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA,iBAOO;","names":[]}

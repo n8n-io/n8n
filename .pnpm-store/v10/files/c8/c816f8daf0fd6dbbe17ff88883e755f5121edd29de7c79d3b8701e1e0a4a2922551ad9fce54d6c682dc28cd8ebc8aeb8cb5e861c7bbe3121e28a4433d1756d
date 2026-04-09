@@ -1,4 +1,0 @@
-extends:
-  - nested-remote-config.yaml
-rules:
-  operation-2xx-response: error

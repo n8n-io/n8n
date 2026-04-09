@@ -1,4 +1,0 @@
-
-  dojox.mustache = dojo.hitch(Mustache, "render");
-
-})();

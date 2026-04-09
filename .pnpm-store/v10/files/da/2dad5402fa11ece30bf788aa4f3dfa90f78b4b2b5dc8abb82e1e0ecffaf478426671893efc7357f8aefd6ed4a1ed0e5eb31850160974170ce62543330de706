@@ -1,5 +1,0 @@
-{
-  "main": "../lib/index-browser.cjs",
-  "module": "../dist/index-browser.mjs",
-  "types": "../lib/types/index-browser.d.ts"
-}

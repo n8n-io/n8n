@@ -1,1 +1,0 @@
-{"version":3,"file":"index.mjs","sources":["../../../../../packages/components/switch/index.ts"],"sourcesContent":["import { withInstall } from '@element-plus/utils'\nimport Switch from './src/switch.vue'\n\nexport const ElSwitch = withInstall(Switch)\nexport default ElSwitch\n\nexport * from './src/switch'\n"],"names":[],"mappings":";;;;;AAEY,MAAC,QAAQ,GAAG,WAAW,CAAC,MAAM;;;;"}

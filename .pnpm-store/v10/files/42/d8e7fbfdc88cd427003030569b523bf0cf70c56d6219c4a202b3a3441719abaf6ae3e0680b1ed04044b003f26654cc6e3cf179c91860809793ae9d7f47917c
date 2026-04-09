@@ -1,1 +1,0 @@
-{"version":3,"file":"clear-request.d.ts","sourceRoot":"","sources":["../../../src/interfaces/clear-request.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,UAAU,EAAE,MAAM,UAAU,CAAC;AAEtC,MAAM,WAAW,aAAa;IAC1B,EAAE,EAAE,MAAM,CAAC;IAEX,MAAM,EAAE,OAAO,CAAC;IAEhB,MAAM,EAAE;QACJ,OAAO,EAAE,MAAM,CAAC;QAEhB,SAAS,EAAE,UAAU,CAAC;KACzB,CAAC;CACL"}

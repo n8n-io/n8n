@@ -1,2 +1,0 @@
-import "./messages.js";
-export {};

@@ -1,1 +1,0 @@
-{"version":3,"file":"speech.js","sourceRoot":"","sources":["../../src/resources/audio/speech.ts"],"names":[],"mappings":";AAAA,sFAAsF;;;AAEtF,gDAA6C;AAI7C,MAAa,MAAO,SAAQ,sBAAW;IACrC;;OAEG;IACH,MAAM,CAAC,IAAwB,EAAE,OAA6B;QAC5D,OAAO,IAAI,CAAC,OAAO,CAAC,IAAI,CAAC,eAAe,EAAE,EAAE,IAAI,EAAE,GAAG,OAAO,EAAE,gBAAgB,EAAE,IAAI,EAAE,CAAC,CAAC;IAC1F,CAAC;CACF;AAPD,wBAOC"}

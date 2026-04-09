@@ -1,1 +1,0 @@
-module.exports = require("../../dist/agents/xml/output_parser.cjs");

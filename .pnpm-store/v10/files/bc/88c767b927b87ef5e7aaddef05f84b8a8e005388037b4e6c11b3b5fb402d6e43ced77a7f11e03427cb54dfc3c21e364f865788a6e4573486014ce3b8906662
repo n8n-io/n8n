@@ -1,1 +1,0 @@
-export declare const inputStyleUnderlinedCSS = ".ag-input-field-input:where(input:not([type]),input[type=text],input[type=number],input[type=tel],input[type=date],input[type=datetime-local],textarea){border-left:none;border-right:none;border-top:none}";

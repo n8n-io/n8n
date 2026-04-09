@@ -1,1 +1,0 @@
-{"version":3,"file":"NotAllowedOnNonLeafError.js","sourceRoot":"./","sources":["errors/resultCodeErrors/NotAllowedOnNonLeafError.ts"],"names":[],"mappings":";;;AAAA,uDAAoD;AAEpD,MAAa,wBAAyB,SAAQ,iCAAe;IAC3D,YAAmB,OAAgB;QACjC,KAAK,CAAC,EAAE,EAAE,OAAO,IAAI,4DAA4D,CAAC,CAAC;IACrF,CAAC;CACF;AAJD,4DAIC"}

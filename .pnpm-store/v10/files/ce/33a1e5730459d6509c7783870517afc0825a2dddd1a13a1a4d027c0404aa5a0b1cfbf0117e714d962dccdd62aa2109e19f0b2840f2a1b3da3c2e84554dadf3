@@ -1,1 +1,0 @@
-{"version":3,"file":"index.mjs","sources":["../../../../../packages/components/col/index.ts"],"sourcesContent":["import { withInstall } from '@element-plus/utils'\n\nimport Col from './src/col.vue'\n\nexport const ElCol = withInstall(Col)\nexport default ElCol\n\nexport * from './src/col'\n"],"names":[],"mappings":";;;;;AAEY,MAAC,KAAK,GAAG,WAAW,CAAC,GAAG;;;;"}

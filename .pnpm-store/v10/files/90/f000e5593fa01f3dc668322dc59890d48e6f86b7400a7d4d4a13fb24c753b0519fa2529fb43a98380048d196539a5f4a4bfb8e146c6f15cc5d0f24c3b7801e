@@ -1,1 +1,0 @@
-{"version":3,"file":"base.js","names":[],"sources":["../../src/indexes/base.ts"],"sourcesContent":["export {\n  UUIDV5_NAMESPACE,\n  type UpdateOptions,\n  type ListKeyOptions,\n  type RecordManagerInterface,\n  RecordManager,\n} from \"@langchain/core/indexing\";\n"],"mappings":""}

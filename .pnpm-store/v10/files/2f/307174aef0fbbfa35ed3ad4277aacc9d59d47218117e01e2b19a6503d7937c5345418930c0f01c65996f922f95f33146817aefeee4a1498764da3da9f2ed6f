@@ -1,1 +1,0 @@
-export someDefault from './a'

@@ -1,1 +1,0 @@
-{"version":3,"file":"i18n.js","sources":["../../../../packages/utils/i18n.ts"],"sourcesContent":["export const isKorean = (text: string) =>\n  /([\\uAC00-\\uD7AF\\u3130-\\u318F])+/gi.test(text)\n"],"names":[],"mappings":";;;;AAAY,MAAC,QAAQ,GAAG,CAAC,IAAI,KAAK,mCAAmC,CAAC,IAAI,CAAC,IAAI;;;;"}

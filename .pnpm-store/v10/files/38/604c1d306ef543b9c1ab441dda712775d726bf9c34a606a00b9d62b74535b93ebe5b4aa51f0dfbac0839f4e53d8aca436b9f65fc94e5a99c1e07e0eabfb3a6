@@ -1,1 +1,0 @@
-{"version":3,"file":"ServerTelemetryRequest.d.ts","sourceRoot":"","sources":["../../../../src/telemetry/server/ServerTelemetryRequest.ts"],"names":[],"mappings":"AAKA,MAAM,MAAM,sBAAsB,GAAG;IACjC,QAAQ,EAAE,MAAM,CAAC;IACjB,KAAK,EAAE,MAAM,CAAC;IACd,aAAa,EAAE,MAAM,CAAC;IACtB,YAAY,CAAC,EAAE,OAAO,CAAC;IACvB,UAAU,CAAC,EAAE,MAAM,CAAC;IACpB,UAAU,CAAC,EAAE,MAAM,CAAC;CACvB,CAAC"}

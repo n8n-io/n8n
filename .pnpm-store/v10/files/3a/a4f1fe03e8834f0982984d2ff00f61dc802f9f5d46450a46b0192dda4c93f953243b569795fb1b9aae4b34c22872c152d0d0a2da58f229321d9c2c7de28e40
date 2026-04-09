@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "module": "../esm/lastDayOfISOWeekYear/index.js",
-  "typings": "../typings.d.ts"
-}

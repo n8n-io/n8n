@@ -1,1 +1,0 @@
-{"version":3,"file":"NotAllowedOnRDNError.js","sourceRoot":"./","sources":["errors/resultCodeErrors/NotAllowedOnRDNError.ts"],"names":[],"mappings":";;;AAAA,uDAAoD;AAEpD,MAAa,oBAAqB,SAAQ,iCAAe;IACvD,YAAmB,OAAgB;QACjC,KAAK,CAAC,EAAE,EAAE,OAAO,IAAI,iHAAiH,CAAC,CAAC;IAC1I,CAAC;CACF;AAJD,oDAIC"}

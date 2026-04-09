@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "module": "../esm/differenceInHours/index.js",
-  "typings": "../typings.d.ts"
-}

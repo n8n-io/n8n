@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "module": "../esm/subQuarters/index.js",
-  "typings": "../typings.d.ts"
-}

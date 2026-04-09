@@ -1,5 +1,0 @@
-{
-  "sideEffects": false,
-  "module": "../esm/compareDesc/index.js",
-  "typings": "../typings.d.ts"
-}

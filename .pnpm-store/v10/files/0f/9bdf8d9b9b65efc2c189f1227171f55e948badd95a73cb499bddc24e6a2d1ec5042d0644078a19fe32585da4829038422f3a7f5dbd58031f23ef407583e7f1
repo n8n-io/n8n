@@ -1,1 +1,0 @@
-module.exports = require("../../dist/experimental/utils/media_core.cjs");

@@ -1,7 +1,0 @@
-extends:
-  - local-config-with-circular.yaml
-rules:
-  no-invalid-media-type-examples: error
-  operation-description: error
-  path-http-verbs-order: error
-  operation-2xx-response: off

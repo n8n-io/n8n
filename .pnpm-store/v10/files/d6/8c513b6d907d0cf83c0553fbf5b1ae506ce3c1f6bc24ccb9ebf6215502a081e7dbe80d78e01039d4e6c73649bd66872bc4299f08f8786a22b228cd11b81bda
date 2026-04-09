@@ -1,3 +1,0 @@
-require('../').register({
-  transpileOnly: true,
-});

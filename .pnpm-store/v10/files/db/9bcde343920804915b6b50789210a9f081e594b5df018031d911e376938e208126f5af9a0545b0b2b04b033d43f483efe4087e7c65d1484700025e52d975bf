@@ -1,1 +1,0 @@
-{"version":3,"file":"json_patch.js","names":[],"sources":["../../src/utils/json_patch.ts"],"sourcesContent":["export {\n  compare,\n  type Operation,\n  applyPatch,\n} from \"./fast-json-patch/index.js\";\n"],"mappings":""}

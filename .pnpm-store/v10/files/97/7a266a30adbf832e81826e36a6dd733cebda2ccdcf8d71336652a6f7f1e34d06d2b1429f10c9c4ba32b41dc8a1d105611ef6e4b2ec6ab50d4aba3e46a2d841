@@ -1,1 +1,0 @@
-export * from '../dist/message-compiler.mjs'
