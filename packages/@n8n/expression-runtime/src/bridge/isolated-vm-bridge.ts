@@ -535,10 +535,19 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * @returns Result of the expression
 	 * @throws {Error} If bridge not initialized or execution fails
 	 */
+	private _executing = false;
+
 	execute(code: string, data: Record<string, unknown>, options?: ExecuteOptions): unknown {
 		if (!this.initialized || !this.context) {
 			throw new Error('Bridge not initialized. Call initialize() first.');
 		}
+
+		if (this._executing) {
+			throw new Error(
+				'Re-entrant expression evaluation detected: a host-side callback triggered a nested expression evaluation through the same bridge. This corrupts bridge state and must be prevented.',
+			);
+		}
+		this._executing = true;
 
 		try {
 			// Step 1: Register callbacks with current data context
@@ -629,6 +638,8 @@ export class IsolatedVmBridge implements RuntimeBridge {
 				);
 			}
 			throw new Error(`Expression evaluation failed: ${errorMessage}`);
+		} finally {
+			this._executing = false;
 		}
 	}
 

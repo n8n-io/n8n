@@ -512,6 +512,22 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			evaluator.evaluate('{{ "brokenProp" in $json }}', { $json: json }, caller),
 		).toBeUndefined();
 	});
+
+	it('should guard against re-entrant execute() calls', () => {
+		const data = {
+			$json: {
+				get nested() {
+					// Trigger a nested evaluate() through the same bridge.
+					// The guard throws a generic Error which the error handler
+					// swallows, so the outer expression returns undefined
+					// instead of corrupting bridge state.
+					return evaluator.evaluate('{{ "inner" }}', { $json: { val: 1 } }, caller);
+				},
+			},
+		};
+
+		expect(evaluator.evaluate('{{ $json.nested }}', data, caller)).toBeUndefined();
+	});
 });
 
 describe('Integration: IsolatedVmBridge error handling', () => {
