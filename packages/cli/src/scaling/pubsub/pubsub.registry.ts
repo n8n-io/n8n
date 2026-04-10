@@ -43,12 +43,7 @@ export class PubSubRegistry {
 						filter?.instanceType !== 'main' ||
 						!filter.instanceRole ||
 						filter.instanceRole === instanceSettings.instanceRole;
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-					if (shouldTrigger)
-						await (handlerClass[methodName] as (...a: unknown[]) => Promise<void>).call(
-							handlerClass,
-							...args,
-						);
+					if (shouldTrigger) await handlerClass[methodName].call(handlerClass, ...args);
 				};
 				this.pubsubEventBus.on(eventName, eventHandler);
 				this.eventHandlers.push({ eventName, handler: eventHandler });
