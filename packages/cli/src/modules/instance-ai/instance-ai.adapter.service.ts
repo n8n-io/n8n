@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import type {
 	InstanceAiContext,
 	InstanceAiWorkflowService,
@@ -7,7 +9,6 @@ import type {
 	InstanceAiNodeService,
 	InstanceAiDataTableService,
 	InstanceAiWebResearchService,
-	InstanceAiFilesystemService,
 	FetchedPage,
 	WebSearchResponse,
 	DataTableSummary,
@@ -85,7 +86,10 @@ import {
 	WEBHOOK_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	TimeoutExecutionCancelledError,
+	jsonParse,
 } from 'n8n-workflow';
+
+import { InstanceSettings } from 'n8n-core';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -107,6 +111,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { getBase } from '@/workflow-execute-additional-data';
 
@@ -117,24 +122,27 @@ export class InstanceAiAdapterService {
 	private readonly allowSendingParameterValues: boolean;
 
 	/**
-	 * Service-level cache for collectTypes().  Shared across all node adapters
-	 * to avoid loading ~31 MB of node descriptions per run.  Expires after
+	 * Service-level cache for node type descriptions. Reads from the static JSON
+	 * file that FrontendService writes at startup, avoiding the expensive
+	 * collectTypes() → postProcessLoaders() rebuild cycle. Expires after
 	 * 5 minutes so hot-reloaded nodes are picked up without a restart.
 	 */
 	private nodesCache: {
-		promise: Promise<Awaited<ReturnType<LoadNodesAndCredentials['collectTypes']>>['nodes']>;
+		promise: Promise<INodeTypeDescription[]>;
 		expiresAt: number;
 	} | null = null;
 
 	private readonly NODES_CACHE_TTL_MS = 5 * 60 * 1000;
 
-	private async getNodesFromCache() {
+	private async getNodesFromCache(): Promise<INodeTypeDescription[]> {
 		if (this.nodesCache && Date.now() < this.nodesCache.expiresAt) {
 			return await this.nodesCache.promise;
 		}
-		const promise = this.loadNodesAndCredentials.collectTypes().then((result) => result.nodes);
+		const filePath = path.join(this.instanceSettings.staticCacheDir, 'types/nodes.json');
+		const promise = readFile(filePath, 'utf-8').then((json) =>
+			jsonParse<INodeTypeDescription[]>(json),
+		);
 		this.nodesCache = { promise, expiresAt: Date.now() + this.NODES_CACHE_TTL_MS };
-		// If the promise rejects, invalidate the cache so the next call retries
 		promise.catch(() => {
 			this.nodesCache = null;
 		});
@@ -155,6 +163,7 @@ export class InstanceAiAdapterService {
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableRepository: DataTableRepository,
 		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
@@ -169,6 +178,7 @@ export class InstanceAiAdapterService {
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly eventService: EventService,
 		private readonly roleService: RoleService,
+		private readonly telemetry: Telemetry,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -177,23 +187,22 @@ export class InstanceAiAdapterService {
 	createContext(
 		user: User,
 		options?: {
-			filesystemService?: InstanceAiFilesystemService;
 			searchProxyConfig?: ServiceProxyConfig;
 			pushRef?: string;
+			threadId?: string;
 		},
 	): InstanceAiContext {
-		const { filesystemService, searchProxyConfig, pushRef } = options ?? {};
+		const { searchProxyConfig, pushRef, threadId } = options ?? {};
 		return {
 			userId: user.id,
-			workflowService: this.createWorkflowAdapter(user),
-			executionService: this.createExecutionAdapter(user, pushRef),
+			workflowService: this.createWorkflowAdapter(user, threadId),
+			executionService: this.createExecutionAdapter(user, pushRef, threadId),
 			credentialService: this.createCredentialAdapter(user),
 			nodeService: this.createNodeAdapter(user),
 			dataTableService: this.createDataTableAdapter(user),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
 			licenseHints: this.buildLicenseHints(),
-			...(filesystemService ? { filesystemService } : {}),
 		};
 	}
 
@@ -210,6 +219,14 @@ export class InstanceAiAdapterService {
 			);
 		}
 		return hints;
+	}
+
+	private assertInstanceNotReadOnly(resourceType: string) {
+		if (this.sourceControlPreferencesService.getPreferences().branchReadOnly) {
+			throw new Error(
+				`Cannot modify ${resourceType} on a protected instance. This instance is in read-only mode.`,
+			);
+		}
 	}
 
 	private createProjectScopeHelpers(user: User) {
@@ -239,7 +256,7 @@ export class InstanceAiAdapterService {
 		return { getPersonalProjectId, assertProjectScope, resolveProjectId };
 	}
 
-	private createWorkflowAdapter(user: User): InstanceAiWorkflowService {
+	private createWorkflowAdapter(user: User, threadId?: string): InstanceAiWorkflowService {
 		const {
 			workflowService,
 			workflowFinderService,
@@ -249,7 +266,9 @@ export class InstanceAiAdapterService {
 			enterpriseWorkflowService,
 			license,
 			allowSendingParameterValues,
+			telemetry,
 		} = this;
+		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('workflows');
 		const { resolveProjectId } = this.createProjectScopeHelpers(user);
 		const redactParameters = !allowSendingParameterValues;
 
@@ -290,10 +309,12 @@ export class InstanceAiAdapterService {
 			},
 
 			async archive(workflowId: string) {
+				assertNotReadOnly();
 				await workflowService.archive(user, workflowId, { skipArchived: true });
 			},
 
 			async delete(workflowId: string) {
+				assertNotReadOnly();
 				await workflowService.delete(user, workflowId);
 			},
 
@@ -309,6 +330,14 @@ export class InstanceAiAdapterService {
 				if (!wf.activeVersionId) {
 					throw new Error(`Workflow ${workflowId} was not activated — no active version set`);
 				}
+
+				if (threadId) {
+					telemetry.track('Builder published workflow', {
+						thread_id: threadId,
+						executed_by: 'ai',
+					});
+				}
+
 				return { activeVersionId: wf.activeVersionId };
 			},
 
@@ -325,6 +354,7 @@ export class InstanceAiAdapterService {
 			},
 
 			async createFromWorkflowJSON(json: WorkflowJSON, options?: { projectId?: string }) {
+				assertNotReadOnly();
 				const projectId = await resolveProjectId(['workflow:create'], options?.projectId);
 
 				// Strip redactionPolicy if the user lacks the required scope —
@@ -383,6 +413,13 @@ export class InstanceAiAdapterService {
 
 				const updated = await workflowService.update(user, updateData, saved.id);
 
+				if (threadId) {
+					telemetry.track('Builder created workflow', {
+						thread_id: threadId,
+						workflow_id: updated.id,
+					});
+				}
+
 				return toWorkflowDetail(updated, { redactParameters });
 			},
 
@@ -391,6 +428,7 @@ export class InstanceAiAdapterService {
 				json: WorkflowJSON,
 				_options?: { projectId?: string },
 			) {
+				assertNotReadOnly();
 				// Strip redactionPolicy if the user lacks the required scope —
 				// mirrors the check in createFromWorkflowJSON() and WorkflowService.update().
 				const settings = (json.settings ?? {}) as IWorkflowSettings;
@@ -425,6 +463,14 @@ export class InstanceAiAdapterService {
 				}
 
 				const updated = await workflowService.update(user, updateData, workflowId);
+
+				if (threadId) {
+					telemetry.track('Builder modified workflow', {
+						thread_id: threadId,
+						workflow_id: workflowId,
+					});
+				}
+
 				return toWorkflowDetail(updated, { redactParameters });
 			},
 
@@ -510,7 +556,11 @@ export class InstanceAiAdapterService {
 		};
 	}
 
-	private createExecutionAdapter(user: User, pushRef?: string): InstanceAiExecutionService {
+	private createExecutionAdapter(
+		user: User,
+		pushRef?: string,
+		threadId?: string,
+	): InstanceAiExecutionService {
 		const {
 			workflowFinderService,
 			workflowRunner,
@@ -519,7 +569,9 @@ export class InstanceAiAdapterService {
 			allowSendingParameterValues,
 			license,
 			roleService,
+			telemetry,
 		} = this;
+		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('executions');
 
 		const DEFAULT_TIMEOUT_MS = 5 * Time.minutes.toMilliseconds;
 		const MAX_TIMEOUT_MS = 10 * Time.minutes.toMilliseconds;
@@ -604,6 +656,7 @@ export class InstanceAiAdapterService {
 			},
 
 			async run(workflowId: string, inputData, options) {
+				assertNotReadOnly();
 				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:execute',
 				]);
@@ -716,6 +769,15 @@ export class InstanceAiAdapterService {
 					}
 				}
 
+				if (threadId) {
+					telemetry.track('Builder executed workflow', {
+						thread_id: threadId,
+						executed_by: 'ai',
+						pinned_node_count: Object.keys(runData.pinData ?? {}).length,
+						exec_type: runData.executionMode,
+					});
+				}
+
 				return await extractExecutionResult(
 					executionRepository,
 					executionId,
@@ -750,6 +812,7 @@ export class InstanceAiAdapterService {
 			},
 
 			async stop(executionId: string) {
+				assertNotReadOnly();
 				await assertExecutionAccess(executionId, ['workflow:execute']);
 				if (!activeExecutions.has(executionId)) {
 					return {
@@ -815,8 +878,6 @@ export class InstanceAiAdapterService {
 						id: c.id,
 						name: c.name,
 						type: c.type,
-						createdAt: c.createdAt.toISOString(),
-						updatedAt: c.updatedAt.toISOString(),
 					}),
 				);
 			},
@@ -827,8 +888,6 @@ export class InstanceAiAdapterService {
 					id: credential.id,
 					name: credential.name,
 					type: credential.type,
-					createdAt: credential.createdAt.toISOString(),
-					updatedAt: credential.updatedAt.toISOString(),
 				} satisfies CredentialDetail;
 			},
 
@@ -989,19 +1048,72 @@ export class InstanceAiAdapterService {
 
 				return results;
 			},
+
+			async getAccountContext(credentialId: string) {
+				const credential = await credentialsFinderService.findCredentialForUser(
+					credentialId,
+					user,
+					['credential:read'],
+				);
+
+				if (!credential) {
+					return { accountIdentifier: undefined };
+				}
+
+				const mask = (id: string): string => {
+					const atIdx = id.indexOf('@');
+					if (atIdx > 0) {
+						const local = id.slice(0, atIdx);
+						const domain = id.slice(atIdx);
+						const keep = Math.min(2, local.length);
+						return local.slice(0, keep) + '***' + domain;
+					}
+					if (id.length <= 3) return id;
+					return id.slice(0, 2) + '***' + id.slice(-1);
+				};
+
+				try {
+					// Use redacted decryption first — accountIdentifier is not a
+					// password field so it survives redaction. This avoids exposing
+					// the full secret payload (tokens, keys) in memory.
+					const redacted = credentialsService.decrypt(credential, false);
+
+					if (typeof redacted.accountIdentifier === 'string' && redacted.accountIdentifier) {
+						return { accountIdentifier: mask(redacted.accountIdentifier) };
+					}
+
+					for (const key of ['email', 'user', 'username', 'account', 'serviceAccountEmail']) {
+						const value = redacted[key];
+						if (typeof value === 'string' && value) {
+							return { accountIdentifier: mask(value) };
+						}
+					}
+
+					// Fallback for legacy credentials: oauthTokenData is blanked by
+					// redaction, so we need unredacted access here only.
+					const raw = credentialsService.decrypt(credential, true);
+					const tokenData = raw.oauthTokenData;
+					if (tokenData && typeof tokenData === 'object') {
+						const { OauthService } = await import('@/oauth/oauth.service');
+						const identifier = OauthService.extractAccountIdentifier(
+							tokenData as Record<string, unknown>,
+						);
+						if (identifier) {
+							return { accountIdentifier: mask(identifier) };
+						}
+					}
+
+					return { accountIdentifier: undefined };
+				} catch {
+					return { accountIdentifier: undefined };
+				}
+			},
 		};
 	}
 
 	private createDataTableAdapter(user: User): InstanceAiDataTableService {
-		const { dataTableService, dataTableRepository, sourceControlPreferencesService } = this;
-
-		const assertInstanceNotReadOnly = () => {
-			if (sourceControlPreferencesService.getPreferences().branchReadOnly) {
-				throw new Error(
-					'Cannot modify data tables on a protected instance. This instance is in read-only mode.',
-				);
-			}
-		};
+		const { dataTableService, dataTableRepository } = this;
+		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('data tables');
 
 		const { resolveProjectId } = this.createProjectScopeHelpers(user);
 
@@ -1035,7 +1147,7 @@ export class InstanceAiAdapterService {
 			},
 
 			async create(name, columns, options) {
-				assertInstanceNotReadOnly();
+				assertNotReadOnly();
 				const projectId = await resolveProjectId(['dataTable:create'], options?.projectId);
 				const result = await dataTableService.createDataTable(projectId, { name, columns });
 
@@ -1050,7 +1162,7 @@ export class InstanceAiAdapterService {
 			},
 
 			async delete(dataTableId) {
-				assertInstanceNotReadOnly();
+				assertNotReadOnly();
 				const projectId = await resolveProjectIdForTable(['dataTable:delete'], dataTableId);
 				await dataTableService.deleteDataTable(dataTableId, projectId);
 			},
@@ -1069,7 +1181,7 @@ export class InstanceAiAdapterService {
 			},
 
 			async addColumn(dataTableId, column) {
-				assertInstanceNotReadOnly();
+				assertNotReadOnly();
 				const projectId = await resolveProjectIdForTable(['dataTable:update'], dataTableId);
 				const result = await dataTableService.addColumn(dataTableId, projectId, column);
 				return {
@@ -1081,13 +1193,13 @@ export class InstanceAiAdapterService {
 			},
 
 			async deleteColumn(dataTableId, columnId) {
-				assertInstanceNotReadOnly();
+				assertNotReadOnly();
 				const projectId = await resolveProjectIdForTable(['dataTable:update'], dataTableId);
 				await dataTableService.deleteColumn(dataTableId, projectId, columnId);
 			},
 
 			async renameColumn(dataTableId, columnId, newName) {
-				assertInstanceNotReadOnly();
+				assertNotReadOnly();
 				const projectId = await resolveProjectIdForTable(['dataTable:update'], dataTableId);
 				await dataTableService.renameColumn(dataTableId, projectId, columnId, {
 					name: newName,
@@ -1104,7 +1216,7 @@ export class InstanceAiAdapterService {
 			},
 
 			async insertRows(dataTableId, rows) {
-				assertInstanceNotReadOnly();
+				assertNotReadOnly();
 				const projectId = await resolveProjectIdForTable(['dataTable:writeRow'], dataTableId);
 				const result = await dataTableService.insertRows(
 					dataTableId,
@@ -1116,7 +1228,7 @@ export class InstanceAiAdapterService {
 			},
 
 			async updateRows(dataTableId, filter, data) {
-				assertInstanceNotReadOnly();
+				assertNotReadOnly();
 				const projectId = await resolveProjectIdForTable(['dataTable:writeRow'], dataTableId);
 				const result = await dataTableService.updateRows(
 					dataTableId,
@@ -1128,7 +1240,7 @@ export class InstanceAiAdapterService {
 			},
 
 			async deleteRows(dataTableId, filter) {
-				assertInstanceNotReadOnly();
+				assertNotReadOnly();
 				const projectId = await resolveProjectIdForTable(['dataTable:writeRow'], dataTableId);
 				const result = await dataTableService.deleteRows(
 					dataTableId,
@@ -1609,7 +1721,19 @@ export class InstanceAiAdapterService {
 					credentialTypes.add(credType);
 				}
 
-				// 3. Already-assigned credentials
+				// 3. Dynamic credential resolution for nodes that use genericCredentialType
+				// or predefinedCredentialType (e.g. HTTP Request). The credential type name
+				// is stored in the node parameters rather than the description's credentials array.
+				if (parameters.authentication === 'genericCredentialType' && parameters.genericAuthType) {
+					credentialTypes.add(parameters.genericAuthType as string);
+				} else if (
+					parameters.authentication === 'predefinedCredentialType' &&
+					parameters.nodeCredentialType
+				) {
+					credentialTypes.add(parameters.nodeCredentialType as string);
+				}
+
+				// 4. Already-assigned credentials
 				if (existingCredentials) {
 					for (const credType of Object.keys(existingCredentials)) {
 						credentialTypes.add(credType);
@@ -1734,6 +1858,7 @@ export class InstanceAiAdapterService {
 			executionPersistence,
 			eventService,
 		} = this;
+		const assertNotReadOnly = (resource: string) => this.assertInstanceNotReadOnly(resource);
 		const { assertProjectScope } = this.createProjectScopeHelpers(user);
 
 		const adapter: InstanceAiWorkspaceService = {
@@ -1771,6 +1896,7 @@ export class InstanceAiAdapterService {
 							projectId: string,
 							parentFolderId?: string,
 						): Promise<FolderSummary> {
+							assertNotReadOnly('folders');
 							await assertProjectScope(['folder:create'], projectId);
 							const folder = await folderService.createFolder(
 								{ name, parentFolderId: parentFolderId ?? undefined },
@@ -1788,6 +1914,7 @@ export class InstanceAiAdapterService {
 							projectId: string,
 							transferToFolderId?: string,
 						): Promise<void> {
+							assertNotReadOnly('folders');
 							await assertProjectScope(['folder:delete'], projectId);
 							await folderService.deleteFolder(user, folderId, projectId, {
 								transferToFolderId: transferToFolderId ?? undefined,
@@ -1795,6 +1922,7 @@ export class InstanceAiAdapterService {
 						},
 
 						async moveWorkflowToFolder(workflowId: string, folderId: string): Promise<void> {
+							assertNotReadOnly('workflows');
 							const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 								'workflow:update',
 							]);
@@ -1809,6 +1937,7 @@ export class InstanceAiAdapterService {
 				: {}),
 
 			async tagWorkflow(workflowId: string, tagNames: string[]): Promise<string[]> {
+				assertNotReadOnly('workflows');
 				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:update',
 				]);
@@ -1863,6 +1992,7 @@ export class InstanceAiAdapterService {
 				workflowId: string,
 				options?: { olderThanHours?: number },
 			): Promise<{ deletedCount: number }> {
+				assertNotReadOnly('executions');
 				// Access-check the workflow with execute scope (matches controller behavior)
 				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:execute',

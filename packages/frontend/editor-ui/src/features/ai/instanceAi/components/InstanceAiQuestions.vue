@@ -11,6 +11,7 @@
 import { ref, computed, watch, nextTick } from 'vue';
 import { N8nButton, N8nCheckbox, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import ConfirmationFooter from './ConfirmationFooter.vue';
 
 const OTHER_SENTINEL = '__other__';
 
@@ -509,7 +510,7 @@ function onOptionMouseEnter(idx: number) {
 			</Transition>
 
 			<!-- Footer -->
-			<div :class="$style.footer">
+			<ConfirmationFooter layout="row-between" bordered>
 				<div :class="$style.pagination">
 					<N8nButton
 						variant="ghost"
@@ -554,7 +555,7 @@ function onOptionMouseEnter(idx: number) {
 
 					<N8nButton
 						v-if="showNextButton"
-						:type="isNextEnabled ? 'primary' : 'secondary'"
+						:variant="isNextEnabled ? 'solid' : 'outline'"
 						size="small"
 						:disabled="disabled || isSubmitted || !isNextEnabled"
 						data-test-id="instance-ai-questions-next"
@@ -563,7 +564,7 @@ function onOptionMouseEnter(idx: number) {
 						{{ nextButtonLabel }}
 					</N8nButton>
 				</div>
-			</div>
+			</ConfirmationFooter>
 		</div>
 	</div>
 </template>
@@ -756,14 +757,6 @@ function onOptionMouseEnter(idx: number) {
 .pencilIcon {
 	color: var(--color--text--tint-1);
 	flex-shrink: 0;
-}
-
-.footer {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	border-top: var(--border);
-	padding: var(--spacing--xs) var(--spacing--sm);
 }
 
 .pagination {

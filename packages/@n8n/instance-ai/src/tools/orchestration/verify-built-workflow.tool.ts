@@ -11,27 +11,26 @@ import { z } from 'zod';
 
 import type { OrchestrationContext } from '../../types';
 
+export const verifyBuiltWorkflowInputSchema = z.object({
+	workItemId: z.string().describe('The work item ID from the build (wi_XXXXXXXX)'),
+	workflowId: z.string().describe('The workflow ID to verify'),
+	inputData: z.record(z.unknown()).optional().describe('Input data passed to the workflow trigger'),
+	timeout: z
+		.number()
+		.int()
+		.min(1000)
+		.max(600_000)
+		.optional()
+		.describe('Max wait time in milliseconds (default 300000)'),
+});
+
 export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 	return createTool({
 		id: 'verify-built-workflow',
 		description:
 			'Run a built workflow that has mocked credentials, using sidecar verification pin data ' +
 			'from the build outcome. Use this instead of run-workflow when the build had mocked credentials.',
-		inputSchema: z.object({
-			workItemId: z.string().describe('The work item ID from the build (wi_XXXXXXXX)'),
-			workflowId: z.string().describe('The workflow ID to verify'),
-			inputData: z
-				.record(z.unknown())
-				.optional()
-				.describe('Input data passed to the workflow trigger'),
-			timeout: z
-				.number()
-				.int()
-				.min(1000)
-				.max(600_000)
-				.optional()
-				.describe('Max wait time in milliseconds (default 300000)'),
-		}),
+		inputSchema: verifyBuiltWorkflowInputSchema,
 		outputSchema: z.object({
 			executionId: z.string().optional(),
 			success: z.boolean(),
@@ -39,7 +38,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			data: z.record(z.unknown()).optional(),
 			error: z.string().optional(),
 		}),
-		execute: async (input) => {
+		execute: async (input: z.infer<typeof verifyBuiltWorkflowInputSchema>) => {
 			if (!context.workflowTaskService || !context.domainContext) {
 				return { success: false, error: 'Verification support not available.' };
 			}

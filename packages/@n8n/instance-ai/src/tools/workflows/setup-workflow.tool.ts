@@ -8,14 +8,13 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { setupSuspendSchema, setupResumeSchema } from './setup-workflow.schema';
-import {
-	analyzeWorkflow,
-	applyNodeCredentials,
-	applyNodeParameters,
-	applyNodeChanges,
-	buildCompletedReport,
-} from './setup-workflow.service';
+import { analyzeWorkflow, applyNodeChanges, buildCompletedReport } from './setup-workflow.service';
 import type { InstanceAiContext } from '../../types';
+
+export const setupWorkflowInputSchema = z.object({
+	workflowId: z.string().describe('ID of the workflow to set up'),
+	projectId: z.string().optional().describe('Project ID to scope credential creation to'),
+});
 
 export function createSetupWorkflowTool(context: InstanceAiContext) {
 	let currentRequestId: string | null = null;
@@ -28,10 +27,7 @@ export function createSetupWorkflowTool(context: InstanceAiContext) {
 			'test triggers for all nodes in a workflow. Always use this instead of setup-credentials ' +
 			'when a workflowId is available. The user handles setup through the UI — you never see ' +
 			'sensitive data. Returns success when the user applies changes.',
-		inputSchema: z.object({
-			workflowId: z.string().describe('ID of the workflow to set up'),
-			projectId: z.string().optional().describe('Project ID to scope credential creation to'),
-		}),
+		inputSchema: setupWorkflowInputSchema,
 		outputSchema: z.object({
 			success: z.boolean(),
 			deferred: z.boolean().optional(),
@@ -83,8 +79,9 @@ export function createSetupWorkflowTool(context: InstanceAiContext) {
 		}),
 		suspendSchema: setupSuspendSchema,
 		resumeSchema: setupResumeSchema,
-		execute: async (input, ctx) => {
-			const { resumeData, suspend } = ctx?.agent ?? {};
+		execute: async (input: z.infer<typeof setupWorkflowInputSchema>, ctx) => {
+			const resumeData = ctx?.agent?.resumeData as z.infer<typeof setupResumeSchema> | undefined;
+			const suspend = ctx?.agent?.suspend;
 
 			// State 1: Analyze workflow and suspend for user setup
 			if (resumeData === undefined || resumeData === null) {
@@ -124,23 +121,13 @@ export function createSetupWorkflowTool(context: InstanceAiContext) {
 			if (resumeData.action === 'test-trigger' && resumeData.testTriggerNode) {
 				preTestSnapshot ??= await context.workflowService.getAsWorkflowJSON(input.workflowId);
 
-				const applyFailures: Array<{ nodeName: string; error: string }> = [];
-				if (resumeData.credentials) {
-					const credResult = await applyNodeCredentials(
-						context,
-						input.workflowId,
-						resumeData.credentials,
-					);
-					applyFailures.push(...credResult.failed);
-				}
-				if (resumeData.nodeParameters) {
-					const paramResult = await applyNodeParameters(
-						context,
-						input.workflowId,
-						resumeData.nodeParameters,
-					);
-					applyFailures.push(...paramResult.failed);
-				}
+				const preTestApply = await applyNodeChanges(
+					context,
+					input.workflowId,
+					resumeData.credentials,
+					resumeData.nodeParameters,
+				);
+				const applyFailures = preTestApply.failed;
 
 				if (applyFailures.length > 0) {
 					return {

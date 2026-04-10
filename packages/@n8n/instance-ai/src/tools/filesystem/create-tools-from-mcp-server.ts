@@ -79,7 +79,7 @@ function tryParseGatewayConfirmationRequired(
 
 /**
  * Build Mastra tools dynamically from the MCP tools advertised by a connected
- * local MCP server (e.g. the fs-proxy daemon).
+ * local MCP server (e.g. the computer-use daemon).
  *
  * Each tool's input schema is converted from the daemon's JSON Schema definition
  * to a Zod schema so the LLM receives accurate parameter information. Falls back
@@ -120,7 +120,10 @@ export function createToolsFromLocalMcpServer(server: LocalMcpServer): ToolsInpu
 			suspendSchema: gatewayConfirmationSuspendSchema,
 			resumeSchema: gatewayConfirmationResumeSchema,
 			execute: async (args: Record<string, unknown>, ctx) => {
-				const { resumeData, suspend } = ctx?.agent ?? {};
+				const resumeData = ctx?.agent?.resumeData as
+					| z.infer<typeof gatewayConfirmationResumeSchema>
+					| undefined;
+				const suspend = ctx?.agent?.suspend;
 
 				// Resume path: user has made a resource-access decision
 				if (resumeData !== undefined && resumeData !== null) {

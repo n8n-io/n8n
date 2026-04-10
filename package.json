@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "2.15.0",
+  "version": "2.16.0",
   "private": true,
   "engines": {
     "node": ">=22.16",
@@ -50,8 +50,8 @@
     "watch": "turbo run watch --concurrency=64",
     "webhook": "./packages/cli/bin/n8n webhook",
     "worker": "./packages/cli/bin/n8n worker",
-    "dev:fs-proxy": "pnpm --filter @n8n/fs-proxy build && node packages/@n8n/fs-proxy/dist/cli.js serve",
-    "stop:fs-proxy": "lsof -ti :7655 | xargs kill 2>/dev/null; echo 'fs-proxy stopped'"
+    "dev:computer-use": "pnpm --filter @n8n/computer-use build && node packages/@n8n/computer-use/dist/cli.js serve",
+    "stop:computer-use": "lsof -ti :7655 | xargs kill 2>/dev/null; echo 'computer-use stopped'"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.26.0",
@@ -81,7 +81,7 @@
     "ts-jest": "^29.1.1",
     "tsc-alias": "^1.8.10",
     "tsc-watch": "^6.2.0",
-    "turbo": "2.8.9",
+    "turbo": "2.9.4",
     "typescript": "*",
     "zx": "^8.8.5"
   },
@@ -148,7 +148,9 @@
       "bn.js@4": "5.2.3",
       "bn.js@5": "5.2.3",
       "langsmith": ">=0.4.6",
-      "lodash-es": "4.17.23",
+      "lodash": "4.18.1",
+      "lodash-es": "4.18.1",
+      "@xmldom/xmldom": "0.8.12",
       "word-wrap@<=1.2.4": "1.2.4",
       "minimatch@<=5.1.8": "5.1.8",
       "minimatch@10": "10.2.3",
@@ -162,7 +164,8 @@
       "path-to-regexp@<0.1.13": "0.1.13",
       "picomatch@2": "2.3.2",
       "picomatch@4": "4.0.4",
-      "brace-expansion@5": "5.0.5"
+      "brace-expansion@5": "5.0.5",
+      "avsc": "5.7.9"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",

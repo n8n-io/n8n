@@ -124,10 +124,10 @@ export function useWorkflowActivate() {
 			});
 
 			if (workflowId === workflowsStore.workflowId) {
-				workflowsStore.setWorkflowVersionData({
+				workflowDocumentStore.setVersionData({
 					versionId: updatedWorkflow.versionId,
-					name: workflowsStore.versionData?.name ?? null,
-					description: workflowsStore.versionData?.description ?? null,
+					name: workflowDocumentStore.versionData?.name ?? null,
+					description: workflowDocumentStore.versionData?.description ?? null,
 				});
 				if (updatedWorkflow.checksum) {
 					workflowDocumentStore.setChecksum(updatedWorkflow.checksum);

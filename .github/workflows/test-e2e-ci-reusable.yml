@@ -144,7 +144,7 @@ jobs:
     with:
       branch: ${{ inputs.branch }}
       test-mode: local
-      test-command: pnpm --filter=n8n-playwright test:local:e2e-only
+      test-command: pnpm --filter=n8n-playwright test:local
       shards: 7
       runner: ubuntu-latest
       workers: '1'

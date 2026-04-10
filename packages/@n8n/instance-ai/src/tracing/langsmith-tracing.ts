@@ -35,21 +35,50 @@ const proxyHeaderStore = new AsyncLocalStorage<Record<string, string>>();
 // can use the correct proxy client for its HTTP calls.
 const traceClients = new Map<string, Client>();
 
+/**
+ * Fetch wrapper for LangSmith clients:
+ * - Forces gzip encoding to avoid brotli decompressors (8.6 MB native memory each).
+ * - Treats 409 Conflict as success — LangSmith returns 409 "payloads already received"
+ *   when a patchRun retry arrives after the first attempt already landed. The data is
+ *   persisted; the SDK's internal catch(console.error) is just noise.
+ */
+const gzipFetch: typeof globalThis.fetch = async (input, init) => {
+	const headers = new Headers(init?.headers);
+	if (!headers.has('Accept-Encoding')) {
+		headers.set('Accept-Encoding', 'gzip, deflate');
+	}
+	const response = await globalThis.fetch(input, { ...init, headers });
+	if (response.status === 409) {
+		return new Response(null, { status: 200, statusText: 'OK (409 suppressed)' });
+	}
+	return response;
+};
+
 let cachedProxyClient: { client: Client; apiUrl: string } | null = null;
+let cachedDirectClient: Client | null = null;
+
+/** Get a LangSmith Client that uses gzip encoding (no brotli). */
+function getOrCreateDirectClient(): Client {
+	if (cachedDirectClient) return cachedDirectClient;
+	cachedDirectClient = new Client({
+		autoBatchTracing: false,
+		fetchImplementation: gzipFetch,
+	});
+	return cachedDirectClient;
+}
 
 function getOrCreateProxyClient(proxyConfig: ServiceProxyConfig): Client {
 	if (cachedProxyClient?.apiUrl === proxyConfig.apiUrl) return cachedProxyClient.client;
 
 	const proxyFetch: typeof globalThis.fetch = async (input, init) => {
+		const merged = new Headers(init?.headers);
 		const contextHeaders = proxyHeaderStore.getStore();
 		if (contextHeaders) {
-			const merged = new Headers(init?.headers);
 			for (const [key, value] of Object.entries(contextHeaders)) {
 				merged.set(key, value);
 			}
-			return await globalThis.fetch(input, { ...init, headers: merged });
 		}
-		return await globalThis.fetch(input, init);
+		return await gzipFetch(input, { ...init, headers: merged });
 	};
 
 	const client = new Client({
@@ -121,10 +150,6 @@ type TraceableMastraTool = ToolAction<
 interface NormalizedModelMetadata {
 	provider?: string;
 	modelName?: string;
-}
-
-function isInternalStateTool(toolId: string): boolean {
-	return toolId === 'updateWorkingMemory';
 }
 
 function isLangSmithTracingEnabled(proxyAvailable?: boolean): boolean {
@@ -398,6 +423,15 @@ function mergeRunTreeInputs(
 	};
 }
 
+/**
+ * Unconditionally remove the cached LangSmith Client for a trace.
+ * Call after run finalization (success or failure) so the Client and
+ * its RunTree hierarchy can be garbage-collected.
+ */
+export function releaseTraceClient(traceId: string): void {
+	traceClients.delete(traceId);
+}
+
 export function getTraceParentRun(): RunTree | undefined {
 	const overrideRun = traceParentOverrideStorage.getStore()?.current;
 	if (overrideRun) {
@@ -576,20 +610,6 @@ function buildSuspendMetadata(
 	};
 }
 
-function resolveActorParentRun(parentRun: RunTree): RunTree {
-	let current: RunTree | undefined = parentRun;
-
-	while (current) {
-		if (current.run_type !== 'llm' && current.run_type !== 'tool') {
-			return current;
-		}
-
-		current = current.parent_run;
-	}
-
-	return parentRun;
-}
-
 async function traceSuspendableToolExecute(
 	tool: TraceableMastraTool,
 	options: InstanceAiToolTraceOptions | undefined,
@@ -687,33 +707,12 @@ async function traceToolExecute(
 		return await tool.execute?.(input, context);
 	}
 
-	const actorParentRun = isInternalStateTool(tool.id)
-		? resolveActorParentRun(parentRun)
-		: parentRun;
-	const internalStateRun = isInternalStateTool(tool.id)
-		? await postChildRun(actorParentRun, {
-				name: 'internal_state',
-				runType: 'chain',
-				tags: ['internal', 'memory'],
-				metadata: {
-					internal_state: true,
-					tool_name: tool.id,
-				},
-				inputs: { tool_name: tool.id },
-			})
-		: undefined;
-	const toolParentRun = internalStateRun ?? parentRun;
-	const toolRun = await postChildRun(toolParentRun, {
+	const toolRun = await postChildRun(parentRun, {
 		name: `tool:${tool.id}`,
 		runType: 'tool',
-		tags: normalizeTags(
-			['tool'],
-			isInternalStateTool(tool.id) ? ['internal', 'memory'] : undefined,
-			options?.tags,
-		),
+		tags: normalizeTags(['tool'], options?.tags),
 		metadata: mergeMetadata(options?.metadata, {
 			tool_name: tool.id,
-			...(isInternalStateTool(tool.id) ? { memory_tool: true } : {}),
 			...(options?.agentRole ? { agent_role: options.agentRole } : {}),
 			...normalizeModelMetadata(options?.metadata?.model_id),
 		}),
@@ -729,24 +728,12 @@ async function traceToolExecute(
 			outputs: result,
 			metadata: { final_status: 'completed' },
 		});
-		if (internalStateRun) {
-			await finishRunTree(internalStateRun, {
-				outputs: { tool_name: tool.id },
-				metadata: { final_status: 'completed', internal_state: true },
-			});
-		}
 		return result;
 	} catch (error) {
 		await finishRunTree(toolRun, {
 			error: normalizeErrorMessage(error),
 			metadata: { final_status: 'error' },
 		});
-		if (internalStateRun) {
-			await finishRunTree(internalStateRun, {
-				error: normalizeErrorMessage(error),
-				metadata: { final_status: 'error', internal_state: true },
-			});
-		}
 		throw error;
 	}
 }
@@ -861,7 +848,7 @@ function hydrateRunTree(state: InstanceAiTraceRun): RunTree {
 		outputs: state.outputs,
 		error: state.error,
 		serialized: {},
-		...(client ? { client } : {}),
+		client: client ?? getOrCreateDirectClient(),
 	});
 }
 
@@ -954,7 +941,7 @@ async function createRun(options: {
 		tags: normalizeTags(DEFAULT_TAGS, options.tags),
 		metadata: mergeMetadata(options.metadata),
 		inputs: sanitizeTracePayload(options.inputs),
-		...(options.client ? { client: options.client } : {}),
+		client: options.client ?? getOrCreateDirectClient(),
 	});
 	await runTree.postRun();
 

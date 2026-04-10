@@ -215,6 +215,10 @@ export interface FrontendSettings {
 		credits: number;
 		setup: boolean;
 	};
+	aiGateway?: {
+		enabled: boolean;
+		creditsQuota: number;
+	};
 	ai: {
 		allowSendingParameterValues: boolean;
 	};
@@ -274,9 +278,7 @@ export type FrontendModuleSettings = {
 	 */
 	'instance-ai'?: {
 		enabled: boolean;
-		localGateway: boolean;
 		localGatewayDisabled: boolean;
-		localGatewayFallbackDirectory: string | null;
 		proxyEnabled: boolean;
 	};
 
