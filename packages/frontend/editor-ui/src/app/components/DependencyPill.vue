@@ -263,7 +263,7 @@ async function onDropdownToggle(open: boolean) {
 .hiddenNotice {
 	padding: var(--spacing--4xs) var(--spacing--2xs);
 	border-top: var(--border);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	font-size: var(--font-size--3xs);
 	font-style: italic;
 	line-height: var(--line-height--lg);
