@@ -4,28 +4,10 @@ import {
 	useWorkflowDocumentPinData,
 	getPinDataSize,
 	pinDataToExecutionData,
-	type PinDataAction,
 } from './useWorkflowDocumentPinData';
-import { dataPinningEventBus } from '@/app/event-bus';
 
-vi.mock('@/app/event-bus', () => ({
-	dataPinningEventBus: {
-		emit: vi.fn(),
-	},
-}));
-
-/**
- * Creates the composable wired through a spy onChange.
- * The spy calls handleAction, simulating the store's unified dispatcher.
- */
 function createPinData() {
-	const onChangeSpy = vi.fn<(action: PinDataAction) => void>();
-	const composable = useWorkflowDocumentPinData(onChangeSpy);
-
-	// Wire the spy to call handleAction, simulating the store's onChange dispatcher
-	onChangeSpy.mockImplementation(composable.handleAction);
-
-	return { ...composable, onChangeSpy };
+	return useWorkflowDocumentPinData();
 }
 
 describe('useWorkflowDocumentPinData', () => {
@@ -52,15 +34,17 @@ describe('useWorkflowDocumentPinData', () => {
 			expect(pinData.value).toEqual({ Node1: [{ json: { key: 'value' } }] });
 		});
 
-		it('should route through onChange', () => {
-			const { setPinData, onChangeSpy } = createPinData();
+		it('should fire event hook with bulk payload', () => {
+			const { setPinData, onPinnedDataChange } = createPinData();
+			const hookSpy = vi.fn();
+			onPinnedDataChange(hookSpy);
 			const data: IPinData = { Node1: [{ json: { key: 'value' } }] };
 
 			setPinData(data);
 
-			expect(onChangeSpy).toHaveBeenCalledWith({
-				name: 'setPinData',
-				payload: { pinData: data },
+			expect(hookSpy).toHaveBeenCalledWith({
+				action: 'update',
+				payload: { pinData: { Node1: [{ json: { key: 'value' } }] } },
 			});
 		});
 
@@ -73,19 +57,6 @@ describe('useWorkflowDocumentPinData', () => {
 			setPinData(data);
 
 			expect(pinData.value).toEqual({ Node1: [{ json: { key: 'value' } }] });
-		});
-
-		it('should emit pin-data event', () => {
-			const { setPinData } = createPinData();
-			const data: IPinData = {
-				Node1: [{ json: { key: 'value' } }],
-			};
-
-			setPinData(data);
-
-			expect(dataPinningEventBus.emit).toHaveBeenCalledWith('pin-data', {
-				Node1: [{ json: { key: 'value' } }],
-			});
 		});
 
 		it('should replace existing pin data entirely', () => {
@@ -107,15 +78,30 @@ describe('useWorkflowDocumentPinData', () => {
 			expect(pinData.value).toEqual({ Node1: [{ json: { key: 'value' } }] });
 		});
 
-		it('should route through onChange', () => {
-			const { pinNodeData, onChangeSpy } = createPinData();
-			const data = [{ json: { key: 'value' } }];
+		it('should fire event hook with add action for new node', () => {
+			const { pinNodeData, onPinnedDataChange } = createPinData();
+			const hookSpy = vi.fn();
+			onPinnedDataChange(hookSpy);
 
-			pinNodeData('Node1', data);
+			pinNodeData('Node1', [{ json: { key: 'value' } }]);
 
-			expect(onChangeSpy).toHaveBeenCalledWith({
-				name: 'pinNodeData',
-				payload: { nodeName: 'Node1', data },
+			expect(hookSpy).toHaveBeenCalledWith({
+				action: 'add',
+				payload: { nodeName: 'Node1', data: [{ json: { key: 'value' } }] },
+			});
+		});
+
+		it('should fire event hook with update action for existing node', () => {
+			const { pinNodeData, onPinnedDataChange } = createPinData();
+			pinNodeData('Node1', [{ json: { a: 1 } }]);
+			const hookSpy = vi.fn();
+			onPinnedDataChange(hookSpy);
+
+			pinNodeData('Node1', [{ json: { a: 2 } }]);
+
+			expect(hookSpy).toHaveBeenCalledWith({
+				action: 'update',
+				payload: { nodeName: 'Node1', data: [{ json: { a: 2 } }] },
 			});
 		});
 
@@ -173,15 +159,6 @@ describe('useWorkflowDocumentPinData', () => {
 			expect(pinData.value).toEqual({ Node1: [{ json: { a: 2 } }] });
 		});
 
-		it('should emit pin-data event with normalized data', () => {
-			const { pinNodeData } = createPinData();
-			pinNodeData('Node1', [{ json: { key: 'value' } }]);
-
-			expect(dataPinningEventBus.emit).toHaveBeenCalledWith('pin-data', {
-				Node1: [{ json: { key: 'value' } }],
-			});
-		});
-
 		it('should handle non-array input by wrapping in array', () => {
 			const { pinData, pinNodeData } = createPinData();
 			const data = { json: { key: 'value' } } as unknown as INodeExecutionData[];
@@ -203,28 +180,17 @@ describe('useWorkflowDocumentPinData', () => {
 			expect(pinData.value).toEqual({ Node2: [{ json: { b: 2 } }] });
 		});
 
-		it('should route through onChange', () => {
-			const { pinNodeData, unpinNodeData, onChangeSpy } = createPinData();
+		it('should fire event hook with delete action', () => {
+			const { pinNodeData, unpinNodeData, onPinnedDataChange } = createPinData();
 			pinNodeData('Node1', [{ json: { a: 1 } }]);
-			onChangeSpy.mockClear();
+			const hookSpy = vi.fn();
+			onPinnedDataChange(hookSpy);
 
 			unpinNodeData('Node1');
 
-			expect(onChangeSpy).toHaveBeenCalledWith({
-				name: 'unpinNodeData',
-				payload: { nodeName: 'Node1' },
-			});
-		});
-
-		it('should emit unpin-data event', () => {
-			const { pinNodeData, unpinNodeData } = createPinData();
-			pinNodeData('Node1', [{ json: { a: 1 } }]);
-			vi.mocked(dataPinningEventBus.emit).mockClear();
-
-			unpinNodeData('Node1');
-
-			expect(dataPinningEventBus.emit).toHaveBeenCalledWith('unpin-data', {
-				nodeNames: ['Node1'],
+			expect(hookSpy).toHaveBeenCalledWith({
+				action: 'delete',
+				payload: { nodeName: 'Node1', data: undefined },
 			});
 		});
 
@@ -238,24 +204,19 @@ describe('useWorkflowDocumentPinData', () => {
 	});
 
 	describe('renamePinDataNode', () => {
-		it('should rename a node key in pin data', () => {
-			const { pinData, pinNodeData, renamePinDataNode } = createPinData();
+		it('should rename a node key in pin data and fire event hook', () => {
+			const { pinData, pinNodeData, renamePinDataNode, onPinnedDataChange } = createPinData();
 			pinNodeData('OldName', [{ json: { key: 'value' } }]);
+			const hookSpy = vi.fn();
+			onPinnedDataChange(hookSpy);
 
 			renamePinDataNode('OldName', 'NewName');
 
 			expect(pinData.value).not.toHaveProperty('OldName');
 			expect(pinData.value).toEqual({ NewName: [{ json: { key: 'value' } }] });
-		});
-
-		it('should route through onChange', () => {
-			const { renamePinDataNode, onChangeSpy } = createPinData();
-
-			renamePinDataNode('OldName', 'NewName');
-
-			expect(onChangeSpy).toHaveBeenCalledWith({
-				name: 'renamePinDataNode',
-				payload: { oldName: 'OldName', newName: 'NewName' },
+			expect(hookSpy).toHaveBeenCalledWith({
+				action: 'update',
+				payload: { nodeName: 'NewName', data: [{ json: { key: 'value' } }] },
 			});
 		});
 

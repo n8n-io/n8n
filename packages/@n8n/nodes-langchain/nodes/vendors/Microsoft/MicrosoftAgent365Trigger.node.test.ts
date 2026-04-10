@@ -60,6 +60,7 @@ describe('MicrosoftAgent365Trigger', () => {
 		mockWebhookFunctions.getNode = jest.fn().mockReturnValue({
 			name: 'Microsoft Agent 365',
 			type: 'microsoftAgent365Trigger',
+			typeVersion: 1,
 		});
 		mockWebhookFunctions.helpers = {
 			returnJsonArray: jest.fn((data) => {
@@ -211,6 +212,52 @@ describe('MicrosoftAgent365Trigger', () => {
 						activity: {},
 					}),
 				);
+			});
+
+			test('should transform activity data into flat structure for v1.1 output', async () => {
+				// Override getNode to simulate v1.1
+				mockWebhookFunctions.getNode = jest.fn().mockReturnValue({
+					name: 'Microsoft Agent 365',
+					type: 'microsoftAgent365Trigger',
+					typeVersion: 1.1,
+				});
+
+				// Populate activityCapture when configureAdapterProcessCallback is called
+				(configureAdapterProcessCallback as jest.Mock).mockImplementation(
+					(_nodeCtx, _agent, _creds, activityCapture) => {
+						activityCapture.input = 'Hello agent';
+						activityCapture.output = ['Hi there!'];
+						activityCapture.activity = {
+							conversationId: 'conv-123',
+							type: 'message',
+							channelId: 'msteams',
+						};
+						return jest.fn();
+					},
+				);
+
+				const result = (await microsoftAgent365Trigger.webhook!.call(
+					mockWebhookFunctions,
+				)) as IWebhookResponseData;
+
+				expect(result.workflowData).toHaveLength(1);
+
+				// conversationId is lifted into conversation.id; other activity fields are spread
+				expect(mockWebhookFunctions.helpers!.returnJsonArray).toHaveBeenCalledWith(
+					expect.objectContaining({
+						input: 'Hello agent',
+						output: ['Hi there!'],
+						type: 'message',
+						channelId: 'msteams',
+						conversation: { id: 'conv-123' },
+					}),
+				);
+
+				// conversationId must NOT appear at the top level
+				const calledWith = (mockWebhookFunctions.helpers!.returnJsonArray as jest.Mock).mock
+					.calls[0][0];
+				expect(calledWith).not.toHaveProperty('conversationId');
+				expect(calledWith).not.toHaveProperty('activity');
 			});
 
 			test('should set request user properties correctly', async () => {

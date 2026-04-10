@@ -30,6 +30,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
 import { useCredentialsStore } from '../credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
+import { useDependencies } from '@/app/composables/useDependencies';
 
 import { N8nActionBox, N8nCheckbox, N8nInputLabel, N8nOption, N8nSelect } from '@n8n/design-system';
 const props = defineProps<{
@@ -44,6 +45,7 @@ const externalSecretsStore = useExternalSecretsStore();
 const projectsStore = useProjectsStore();
 const usersStore = useUsersStore();
 const insightsStore = useInsightsStore();
+const { fetchDependencyCounts } = useDependencies();
 
 const documentTitle = useDocumentTitle();
 const route = useRoute();
@@ -212,13 +214,6 @@ const initialize = async () => {
 		overview.isProjectsSubPage &&
 		route?.params?.projectId === projectsStore.personalProject?.id;
 
-	// this ensures that the data for secrets is there when user types secret expressions
-	const externalSecretRequests = [externalSecretsStore.fetchGlobalSecrets()];
-	const shouldFetchProjectSecrets = route?.params?.projectId !== projectsStore.personalProject?.id;
-	if (shouldFetchProjectSecrets && typeof route?.params?.projectId === 'string') {
-		externalSecretRequests.push(externalSecretsStore.fetchProjectSecrets(route.params.projectId));
-	}
-
 	const loadPromises = [
 		credentialsStore.fetchAllCredentials({
 			projectId: route?.params?.projectId as string | undefined,
@@ -228,7 +223,6 @@ const initialize = async () => {
 			externalSecretsStore: filters.value.externalSecretsStore,
 		}),
 		credentialsStore.fetchCredentialTypes(false),
-		...externalSecretRequests,
 		nodeTypesStore.loadNodeTypesIfNotLoaded(),
 		isVarsEnabled ? useEnvironmentsStore().fetchAllVariables() : Promise.resolve(), // for expression resolution
 	];
@@ -237,6 +231,10 @@ const initialize = async () => {
 	maybeCreateCredential();
 	await maybeEditCredential();
 	loading.value = false;
+
+	// Fire-and-forget: fetch which workflows use these credentials
+	const credentialIds = credentialsStore.allCredentials.map((c) => c.id);
+	void fetchDependencyCounts(credentialIds, 'credential');
 };
 
 credentialsStore.$onAction(({ name, after }) => {

@@ -1,7 +1,7 @@
 // AI Node SDK version
 export { AI_NODE_SDK_VERSION } from './ai-node-sdk-version';
 
-// Log wrapper and related utilities
+// Utils
 export { logWrapper } from './utils/log-wrapper';
 export { logAiEvent } from './utils/log-ai-event';
 export { parseSSEStream } from './utils/sse';
@@ -26,6 +26,28 @@ export {
 	proxyFetch,
 	type AgentTimeoutOptions,
 } from './utils/http-proxy-agent';
+export {
+	getConnectionHintNoticeField,
+	metadataFilterField,
+	getBatchingOptionFields,
+	getTemplateNoticeField,
+} from './utils/shared-fields';
+export {
+	createToolFromNode,
+	createZodSchemaFromArgs,
+	extractFromAIParameters,
+} from './utils/fromai-tool-factory';
+export { createVectorStoreNode } from './utils/vector-store/createVectorStoreNode/createVectorStoreNode';
+export type {
+	VectorStoreNodeConstructorArgs,
+	NodeOperationMode,
+	NodeMeta,
+} from './utils/vector-store/createVectorStoreNode/types';
+export { MemoryVectorStoreManager } from './utils/vector-store/MemoryManager/MemoryVectorStoreManager';
+export {
+	processDocuments,
+	processDocument,
+} from './utils/vector-store/processDocuments';
 export type { ServerSentEventMessage } from './utils/sse';
 
 // Converters

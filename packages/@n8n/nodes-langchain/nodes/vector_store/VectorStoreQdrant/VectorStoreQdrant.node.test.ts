@@ -15,17 +15,13 @@ jest.mock('@langchain/qdrant', () => {
 	return { QdrantVectorStore, __state: state };
 });
 
-jest.mock('@utils/sharedFields', () => ({ metadataFilterField: {} }), { virtual: true });
 jest.mock('@n8n/ai-utilities', () => ({
+	metadataFilterField: {},
 	getMetadataFiltersValues: jest.fn(),
 	logAiEvent: jest.fn(),
 	N8nBinaryLoader: class {},
 	N8nJsonLoader: class {},
 	logWrapper: (fn: unknown) => fn,
-}));
-
-// Mock the vector store node factory
-jest.mock('../shared/createVectorStoreNode/createVectorStoreNode', () => ({
 	createVectorStoreNode: (config: {
 		getVectorStoreClient: (...args: unknown[]) => unknown;
 		populateVectorStore: (...args: unknown[]) => unknown;
@@ -44,7 +40,7 @@ jest.mock('./Qdrant.utils', () => ({
 	createQdrantClient: jest.fn(),
 }));
 
-jest.mock('../shared/createVectorStoreNode/methods/listSearch', () => ({
+jest.mock('../shared/methods/listSearch', () => ({
 	qdrantCollectionsSearch: jest.fn(),
 }));
 

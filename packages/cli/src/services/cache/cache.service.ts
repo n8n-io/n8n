@@ -4,8 +4,8 @@ import { Container, Service } from '@n8n/di';
 import { caching } from 'cache-manager';
 import { jsonStringify, UserError } from 'n8n-workflow';
 
-import { MalformedRefreshValueError } from '@/errors/cache-errors/malformed-refresh-value.error';
 import { UncacheableValueError } from '@/errors/cache-errors/uncacheable-value.error';
+import { REDIS_TTL_KEY_MISSING } from '@/services/cache/cache.constants';
 import type {
 	TaggedRedisCache,
 	TaggedMemoryCache,
@@ -13,6 +13,7 @@ import type {
 	Hash,
 } from '@/services/cache/cache.types';
 import { TypedEmitter } from '@/typed-emitter';
+import { isObject } from '@/utils';
 
 type CacheEvents = {
 	'metrics.cache.hit': never;
@@ -102,7 +103,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 	async set(key: string, value: unknown, ttl?: number) {
 		if (!this.cache) await this.init();
 
-		if (!key || !value) return;
+		if (!key || value === undefined || value === null) return;
 
 		if (this.cache.kind === 'redis' && !this.cache.store.isCacheable(value)) {
 			throw new UncacheableValueError(key);
@@ -188,8 +189,8 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		if (key?.length === 0) return;
 
 		const value = await this.cache.store.get<T>(key);
-
-		if (value !== undefined) {
+		const cacheHit = await this.isAValidCacheHit(key, value);
+		if (cacheHit) {
 			this.emit('metrics.cache.hit');
 
 			return value;
@@ -202,52 +203,6 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 
 			const refreshValue = await refreshFn(key);
 			await this.set(key, refreshValue);
-
-			return refreshValue;
-		}
-
-		return fallbackValue;
-	}
-
-	async getMany<T = unknown[]>(
-		keys: string[],
-		{
-			fallbackValue,
-			refreshFn,
-		}: {
-			fallbackValue?: T[];
-			refreshFn?: (keys: string[]) => Promise<T[]>;
-		} = {},
-	) {
-		if (!this.cache) await this.init();
-
-		if (keys.length === 0) return [];
-
-		const values = await this.cache.store.mget(...keys);
-
-		if (values !== undefined) {
-			this.emit('metrics.cache.hit');
-
-			return values as T[];
-		}
-
-		this.emit('metrics.cache.miss');
-
-		if (refreshFn) {
-			this.emit('metrics.cache.update');
-
-			const refreshValue: T[] = await refreshFn(keys);
-
-			if (keys.length !== refreshValue.length) {
-				throw new MalformedRefreshValueError();
-			}
-
-			const newValue: Array<[key: string, value: unknown]> = keys.map((key, i) => [
-				key,
-				refreshValue[i],
-			]);
-
-			await this.setMany(newValue);
 
 			return refreshValue;
 		}
@@ -272,7 +227,8 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		const hash: MaybeHash<T> =
 			this.cache.kind === 'redis' ? await this.cache.store.hgetall(key) : await this.get(key);
 
-		if (hash !== undefined) {
+		const cacheHit = await this.isAValidCacheHit(key, hash);
+		if (cacheHit) {
 			this.emit('metrics.cache.hit');
 
 			return hash;
@@ -378,5 +334,30 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		delete hashObject[hashKey];
 
 		await this.cache.store.set(cacheKey, hashObject);
+	}
+
+	private async isAValidCacheHit(key: string, value: unknown): Promise<boolean> {
+		if (value === undefined) {
+			return false;
+		}
+
+		const isEmptyArray = Array.isArray(value) && value.length === 0;
+		const isEmptyObject = isObject(value) && Object.keys(value).length === 0;
+		if (isEmptyArray || isEmptyObject) {
+			// Redis adapters may return [] or {} for missing string or hash keys after restart.
+			const keyExists = await this.doesRedisKeyExist(key);
+			return keyExists;
+		}
+
+		return true;
+	}
+
+	private async doesRedisKeyExist(key: string): Promise<boolean> {
+		if (this.isRedis()) {
+			const ttl = await this.cache.store.ttl(key);
+			return ttl !== REDIS_TTL_KEY_MISSING;
+		}
+
+		return true;
 	}
 }

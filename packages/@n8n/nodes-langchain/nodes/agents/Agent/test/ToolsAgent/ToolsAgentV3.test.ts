@@ -47,6 +47,12 @@ beforeEach(() => {
 		warn: jest.fn(),
 		error: jest.fn(),
 	};
+	mockContext.customData = {
+		set: jest.fn(),
+		setAll: jest.fn(),
+		get: jest.fn(),
+		getAll: jest.fn(),
+	};
 });
 
 describe('toolsAgentExecute V3 - Execute Function Logic', () => {
@@ -81,6 +87,44 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 			mockExecutionContext.fallbackModel,
 			mockExecutionContext.memory,
 			undefined,
+		);
+		expect(result).toEqual([[{ json: { output: 'success 1' }, pairedItem: { item: 0 } }]]);
+	});
+
+	it('should pass response to executeBatch when provided', async () => {
+		const mockExecutionContext = {
+			items: [{ json: { text: 'test input 1' } }],
+			batchSize: 1,
+			delayBetweenBatches: 0,
+			needsFallback: false,
+			model: {} as any,
+			fallbackModel: null,
+			memory: undefined,
+		};
+
+		const mockBatchResult = {
+			returnData: [{ json: { output: 'success 1' }, pairedItem: { item: 0 } }],
+			request: undefined,
+		};
+
+		const mockResponse: EngineResponse<RequestResponseMetadata> = {
+			actionResponses: [],
+			metadata: { previousRequests: [] },
+		};
+
+		jest.spyOn(helpers, 'buildExecutionContext').mockResolvedValue(mockExecutionContext);
+		jest.spyOn(helpers, 'executeBatch').mockResolvedValue(mockBatchResult);
+
+		const result = await toolsAgentExecute.call(mockContext, mockResponse);
+
+		expect(helpers.executeBatch).toHaveBeenCalledWith(
+			mockContext,
+			mockExecutionContext.items.slice(0, 1),
+			0,
+			mockExecutionContext.model,
+			mockExecutionContext.fallbackModel,
+			mockExecutionContext.memory,
+			mockResponse,
 		);
 		expect(result).toEqual([[{ json: { output: 'success 1' }, pairedItem: { item: 0 } }]]);
 	});

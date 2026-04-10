@@ -12,19 +12,21 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '../sourceControl.store';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
+import { useSourceControlFileList } from '../composables/useSourceControlFileList';
+import { useWorkflowTreeRows } from '../composables/useWorkflowTreeRows';
 import {
+	formatSourceControlUpdatedAt,
 	getPullPriorityByStatus,
 	getStatusText,
 	getStatusTheme,
 	notifyUserAboutPullWorkFolderOutcome,
 } from '../sourceControl.utils';
+import type { SourceControlTreeRow } from '../sourceControl.types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { type SourceControlledFile, SOURCE_CONTROL_FILE_TYPE } from '@n8n/api-types';
 import { shouldAutoPublishWorkflow, type AutoPublishMode } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
-import dateformat from 'dateformat';
-import orderBy from 'lodash/orderBy';
 import { computed, onBeforeMount, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
@@ -36,6 +38,7 @@ import {
 	N8nButton,
 	N8nCallout,
 	N8nHeading,
+	N8nIcon,
 	N8nIconButton,
 	N8nInfoTip,
 	N8nLink,
@@ -50,7 +53,6 @@ type SourceControlledFileWithProject = SourceControlledFile & {
 	project?: ProjectListItem;
 	willBeAutoPublished?: boolean;
 };
-
 const props = defineProps<{
 	data: { eventBus: EventBus; status?: SourceControlledFile[] };
 }>();
@@ -175,21 +177,18 @@ const groupedFilesByType = computed(() => {
 	return grouped;
 });
 
-// Filtered workflows
-const filteredWorkflows = computed(() => {
-	const workflows = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.workflow] || [];
-	return workflows;
+const baseSortedWorkflows = useSourceControlFileList({
+	files: computed(() => groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.workflow] || []),
+	sortBy: [
+		({ folderPath }) => folderPath?.join('/') ?? '',
+		({ status }) => getPullPriorityByStatus(status),
+		'updatedAt',
+	],
+	sortOrder: ['asc', 'asc', 'desc'],
 });
 
-const sortedWorkflows = computed(() => {
-	const sorted = orderBy(
-		filteredWorkflows.value,
-		[({ status }) => getPullPriorityByStatus(status), 'updatedAt'],
-		['asc', 'desc'],
-	);
-
-	// Add willBeAutoPublished property to each workflow
-	return sorted.map((file) => ({
+const sortedWorkflows = computed(() =>
+	baseSortedWorkflows.value.map((file) => ({
 		...file,
 		willBeAutoPublished:
 			file.type === SOURCE_CONTROL_FILE_TYPE.workflow &&
@@ -200,40 +199,27 @@ const sortedWorkflows = computed(() => {
 				isRemoteArchived: file.isRemoteArchived ?? false,
 				autoPublish: autoPublish.value,
 			}),
-	}));
-});
-
-// Filtered credentials
-const filteredCredentials = computed(() => {
-	const credentials = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.credential] || [];
-	return credentials;
-});
-
-const sortedCredentials = computed(() =>
-	orderBy(
-		filteredCredentials.value,
-		[({ status }) => getPullPriorityByStatus(status), 'updatedAt'],
-		['asc', 'desc'],
-	),
+	})),
 );
 
-// Filtered data tables
-const filteredDataTables = computed(() => {
-	const dataTables = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.datatable] || [];
-	return dataTables;
+const { visibleWorkflowRows, isFolderCollapsed, toggleFolderCollapse } =
+	useWorkflowTreeRows(sortedWorkflows);
+
+const sortedCredentials = useSourceControlFileList({
+	files: computed(() => groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.credential] || []),
+	sortBy: [({ status }) => getPullPriorityByStatus(status), 'updatedAt'],
+	sortOrder: ['asc', 'desc'],
 });
 
-const sortedDataTables = computed(() =>
-	orderBy(
-		filteredDataTables.value,
-		[({ status }) => getPullPriorityByStatus(status), 'updatedAt'],
-		['asc', 'desc'],
-	),
-);
+const sortedDataTables = useSourceControlFileList({
+	files: computed(() => groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.datatable] || []),
+	sortBy: [({ status }) => getPullPriorityByStatus(status), 'updatedAt'],
+	sortOrder: ['asc', 'desc'],
+});
 
 // Data tables with schema conflicts (columns will be lost)
 const conflictedDataTables = computed(() => {
-	return filteredDataTables.value.filter((dt) => {
+	return sortedDataTables.value.filter((dt) => {
 		// For pull operations, show warning for modified data tables with conflicts
 		// (schema changes) not for deleted data tables (entire table removed)
 		return dt.conflict === true && dt.status === 'modified';
@@ -262,6 +248,19 @@ const activeDataSourceFiltered = computed(() => {
 		return sortedDataTables.value;
 	}
 	return [];
+});
+
+const activeRows = computed<Array<SourceControlTreeRow<SourceControlledFileWithProject>>>(() => {
+	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
+		return visibleWorkflowRows.value;
+	}
+
+	return activeDataSourceFiltered.value.map((file) => ({
+		id: `file:${file.id}`,
+		type: 'file' as const,
+		file,
+		depth: 0,
+	}));
 });
 
 const filtersNoResultText = computed(() => {
@@ -393,17 +392,7 @@ async function pullWorkfolder() {
 }
 
 function renderUpdatedAt(file: SourceControlledFile) {
-	const currentYear = new Date().getFullYear().toString();
-
-	return i18n.baseText('settings.sourceControl.lastUpdated', {
-		interpolate: {
-			date: dateformat(
-				file.updatedAt,
-				`d mmm${file.updatedAt?.startsWith(currentYear) ? '' : ', yyyy'}`,
-			),
-			time: dateformat(file.updatedAt, 'HH:MM'),
-		},
-	});
+	return formatSourceControlUpdatedAt(file.updatedAt);
 }
 
 function openDiffModal(id: string) {
@@ -518,46 +507,91 @@ onMounted(() => {
 									{{ filtersNoResultText }}
 								</N8nInfoTip>
 								<DynamicScroller
-									v-if="activeDataSourceFiltered.length"
+									v-if="activeRows.length"
 									:class="[$style.scroller]"
-									:items="activeDataSourceFiltered"
+									:items="activeRows"
 									:min-item-size="57"
 									item-class="scrollerItem"
 								>
-									<template #default="{ item: file, active, index }">
+									<template #default="{ item: row, active, index }">
 										<DynamicScrollerItem
-											:item="file"
+											:item="row"
 											:active="active"
-											:size-dependencies="[file.name, file.id]"
+											:size-dependencies="[
+												row.type,
+												row.type === 'file' ? row.file.name : row.name,
+												row.id,
+												row.depth,
+											]"
 											:data-index="index"
 										>
-											<div :class="[$style.listItem]" data-test-id="pull-modal-item">
-												<div :class="[$style.itemContent]">
+											<div
+												v-if="row.type === 'folder'"
+												:class="[
+													$style.folderRow,
+													{ [$style.rowNoBorder]: index === activeRows.length - 1 },
+												]"
+												:style="{ paddingLeft: `${16 + row.depth * 16}px` }"
+												data-test-id="source-control-pull-modal-folder-row"
+											>
+												<N8nText tag="span" color="text-light">
+													{{ row.name }}
+												</N8nText>
+												<button
+													type="button"
+													:class="$style.folderToggle"
+													data-test-id="source-control-pull-modal-folder-toggle"
+													@click.stop="toggleFolderCollapse(row.id)"
+													@mousedown.stop
+													@pointerdown.stop
+												>
+													<N8nIcon
+														:icon="isFolderCollapsed(row.id) ? 'chevron-right' : 'chevron-down'"
+														color="text-light"
+														size="small"
+													/>
+												</button>
+											</div>
+											<div
+												v-else
+												:class="[
+													$style.listItem,
+													{ [$style.rowNoBorder]: index === activeRows.length - 1 },
+												]"
+												data-test-id="pull-modal-item"
+											>
+												<div
+													:class="[$style.itemContent]"
+													:style="{ paddingLeft: `${row.depth * 16}px` }"
+												>
 													<N8nText tag="div" bold color="text-dark" :class="[$style.listItemName]">
 														<RouterLink
-															v-if="file.type === SOURCE_CONTROL_FILE_TYPE.credential"
+															v-if="row.file.type === SOURCE_CONTROL_FILE_TYPE.credential"
 															target="_blank"
 															rel="noopener noreferrer"
-															:to="{ name: VIEWS.CREDENTIALS, params: { credentialId: file.id } }"
+															:to="{
+																name: VIEWS.CREDENTIALS,
+																params: { credentialId: row.file.id },
+															}"
 														>
-															{{ file.name }}
+															{{ row.file.name }}
 														</RouterLink>
 														<RouterLink
-															v-else-if="file.type === SOURCE_CONTROL_FILE_TYPE.workflow"
+															v-else-if="row.file.type === SOURCE_CONTROL_FILE_TYPE.workflow"
 															target="_blank"
 															rel="noopener noreferrer"
-															:to="{ name: VIEWS.WORKFLOW, params: { name: file.id } }"
+															:to="{ name: VIEWS.WORKFLOW, params: { name: row.file.id } }"
 														>
-															{{ file.name }}
+															{{ row.file.name }}
 														</RouterLink>
-														<span v-else>{{ file.name }}</span>
+														<span v-else>{{ row.file.name }}</span>
 													</N8nText>
 													<div :class="$style.statusLine">
-														<N8nText v-if="file.updatedAt" color="text-light" size="small">
-															{{ renderUpdatedAt(file) }}
+														<N8nText v-if="row.file.updatedAt" color="text-light" size="small">
+															{{ renderUpdatedAt(row.file) }}
 														</N8nText>
 														<N8nText
-															v-if="file.willBeAutoPublished"
+															v-if="row.file.willBeAutoPublished"
 															color="success"
 															size="small"
 															bold
@@ -566,7 +600,12 @@ onMounted(() => {
 																i18n.baseText('settings.sourceControl.modals.pull.autoPublishing')
 															}}
 														</N8nText>
-														<N8nText v-if="file.isRemoteArchived" color="warning" size="small" bold>
+														<N8nText
+															v-if="row.file.isRemoteArchived"
+															color="warning"
+															size="small"
+															bold
+														>
 															{{
 																i18n.baseText('settings.sourceControl.modals.pull.willBeArchived')
 															}}
@@ -574,14 +613,14 @@ onMounted(() => {
 													</div>
 												</div>
 												<span :class="[$style.badges]">
-													<N8nBadge :theme="getStatusTheme(file.status)" style="height: 25px">
-														{{ getStatusText(file.status) }}
+													<N8nBadge :theme="getStatusTheme(row.file.status)" style="height: 25px">
+														{{ getStatusText(row.file.status) }}
 													</N8nBadge>
 													<template v-if="isWorkflowDiffsEnabled">
 														<N8nTooltip
 															v-if="
-																file.type === SOURCE_CONTROL_FILE_TYPE.workflow &&
-																file.status === 'modified'
+																row.file.type === SOURCE_CONTROL_FILE_TYPE.workflow &&
+																row.file.status === 'modified'
 															"
 															:content="i18n.baseText('workflowDiff.compare')"
 															placement="top"
@@ -589,7 +628,7 @@ onMounted(() => {
 															<N8nIconButton
 																variant="subtle"
 																icon="file-diff"
-																@click="openDiffModal(file.id)"
+																@click="openDiffModal(row.file.id)"
 															/>
 														</N8nTooltip>
 													</template>
@@ -678,14 +717,6 @@ onMounted(() => {
 	max-height: 100%;
 	scrollbar-color: var(--color--foreground) transparent;
 	outline: var(--border);
-
-	:global(.scrollerItem) {
-		&:last-child {
-			.listItem {
-				border-bottom: 0;
-			}
-		}
-	}
 }
 
 .listItem {
@@ -696,6 +727,26 @@ onMounted(() => {
 	margin: 0;
 	border-bottom: var(--border);
 	gap: 30px;
+}
+
+.folderRow {
+	display: flex;
+	align-items: center;
+	padding: var(--spacing--2xs) var(--spacing--sm);
+	border-bottom: var(--border);
+}
+
+.folderToggle {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	border: 0;
+	background: transparent;
+	padding: 0;
+	margin-left: var(--spacing--4xs);
+	cursor: pointer;
 }
 
 .itemContent {
@@ -829,5 +880,9 @@ onMounted(() => {
 	margin: var(--spacing--3xs) 0;
 	white-space: normal;
 	padding-right: var(--spacing--md);
+}
+
+.rowNoBorder {
+	border-bottom: 0;
 }
 </style>

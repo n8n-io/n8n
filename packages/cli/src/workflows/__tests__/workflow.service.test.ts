@@ -1,11 +1,20 @@
-import type { User } from '@n8n/db';
+import type { LicenseState } from '@n8n/backend-common';
+import type { Project, User, WorkflowEntity } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 
+import { userHasScopes } from '@/permissions.ee/check-access';
+import type { OwnershipService } from '@/services/ownership.service';
 import type { RoleService } from '@/services/role.service';
 import type { WebhookService } from '@/webhooks/webhook.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+import * as WorkflowHelpers from '@/workflow-helpers';
+
+jest.mock('@/permissions.ee/check-access');
+jest.mock('@/workflow-helpers');
+jest.mock('@/generic-helpers');
 
 describe('WorkflowService', () => {
 	describe('getMany()', () => {
@@ -46,6 +55,7 @@ describe('WorkflowService', () => {
 				mock(), // globalConfig
 				mock(), // folderRepository
 				mock(), // workflowFinderService
+				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowPublishHistoryRepository
 				mock(), // workflowValidationService
 				mock(), // nodeTypes
@@ -148,6 +158,199 @@ describe('WorkflowService', () => {
 					workflowRoles: expect.any(Array),
 				}),
 				undefined,
+			);
+		});
+	});
+
+	describe('update() redactionPolicy scope enforcement', () => {
+		const userHasScopesMock = jest.mocked(userHasScopes);
+		let workflowService: WorkflowService;
+		let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
+		let licenseStateMock: MockProxy<LicenseState>;
+		let workflowRepositoryMock: MockProxy<{
+			update: jest.Mock;
+			findOne: jest.Mock;
+		}>;
+
+		beforeEach(() => {
+			workflowFinderServiceMock = mock<WorkflowFinderService>();
+			workflowRepositoryMock = mock();
+			licenseStateMock = mock<LicenseState>();
+			licenseStateMock.isDataRedactionLicensed.mockReturnValue(true);
+
+			const ownershipServiceMock = mock<OwnershipService>();
+			ownershipServiceMock.getWorkflowProjectCached.mockResolvedValue(
+				mock<Project>({ id: 'project-1' }),
+			);
+
+			workflowService = new WorkflowService(
+				mock(), // logger
+				mock(), // sharedWorkflowRepository
+				workflowRepositoryMock as never, // workflowRepository
+				mock(), // workflowTagMappingRepository
+				mock(), // binaryDataService
+				ownershipServiceMock, // ownershipService
+				mock(), // tagService
+				mock(), // workflowHistoryService
+				mock(), // externalHooks
+				mock(), // activeWorkflowManager
+				mock(), // roleService
+				mock(), // projectService
+				mock(), // executionRepository
+				mock(), // eventService
+				mock(), // globalConfig
+				mock(), // folderRepository
+				workflowFinderServiceMock, // workflowFinderService
+				mock(), // workflowPublishedVersionRepository
+				mock(), // workflowPublishHistoryRepository
+				mock(), // workflowValidationService
+				mock(), // nodeTypes
+				mock(), // webhookService
+				licenseStateMock, // licenseState
+				mock(), // projectRepository
+			);
+
+			jest.clearAllMocks();
+
+			// Pass settings through removeDefaultValues unchanged
+			jest.mocked(WorkflowHelpers.removeDefaultValues).mockImplementation((settings) => settings);
+		});
+
+		function setupExistingWorkflow(settings: Record<string, unknown> = {}) {
+			const existingWorkflow = mock<WorkflowEntity>({
+				id: 'workflow-1',
+				isArchived: false,
+				versionId: 'v1',
+				nodes: [],
+				connections: {},
+				settings,
+				activeVersionId: undefined as unknown as string,
+				tags: [],
+			});
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(existingWorkflow);
+			workflowRepositoryMock.findOne.mockResolvedValue(existingWorkflow);
+			return existingWorkflow;
+		}
+
+		function createUpdateData(settings: Record<string, unknown>) {
+			return { settings } as unknown as WorkflowEntity;
+		}
+
+		test('should strip redactionPolicy when user lacks scope and value is changing', async () => {
+			setupExistingWorkflow({ redactionPolicy: 'none' });
+			userHasScopesMock.mockResolvedValue(false);
+
+			const user = mock<User>();
+			await workflowService.update(
+				user,
+				createUpdateData({ redactionPolicy: 'all' }),
+				'workflow-1',
+				{ forceSave: true },
+			);
+
+			expect(userHasScopesMock).toHaveBeenCalledWith(
+				user,
+				['workflow:updateRedactionSetting'],
+				false,
+				{ workflowId: 'workflow-1' },
+			);
+			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+				'workflow-1',
+				expect.objectContaining({
+					settings: expect.not.objectContaining({ redactionPolicy: 'all' }),
+				}),
+			);
+		});
+
+		test('should preserve redactionPolicy when user has scope and value is changing', async () => {
+			setupExistingWorkflow({ redactionPolicy: 'none' });
+			userHasScopesMock.mockResolvedValue(true);
+
+			const user = mock<User>();
+			await workflowService.update(
+				user,
+				createUpdateData({ redactionPolicy: 'all' }),
+				'workflow-1',
+				{ forceSave: true },
+			);
+
+			expect(userHasScopesMock).toHaveBeenCalledWith(
+				user,
+				['workflow:updateRedactionSetting'],
+				false,
+				{ workflowId: 'workflow-1' },
+			);
+			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+				'workflow-1',
+				expect.objectContaining({
+					settings: expect.objectContaining({ redactionPolicy: 'all' }),
+				}),
+			);
+		});
+
+		test('should not check scope when redactionPolicy value is unchanged', async () => {
+			setupExistingWorkflow({ redactionPolicy: 'all' });
+
+			const user = mock<User>();
+			await workflowService.update(
+				user,
+				createUpdateData({ redactionPolicy: 'all' }),
+				'workflow-1',
+				{ forceSave: true },
+			);
+
+			expect(userHasScopesMock).not.toHaveBeenCalled();
+		});
+
+		test('should not check scope when redactionPolicy is not in incoming settings', async () => {
+			setupExistingWorkflow({ redactionPolicy: 'all' });
+
+			const user = mock<User>();
+			await workflowService.update(user, createUpdateData({ executionOrder: 'v1' }), 'workflow-1', {
+				forceSave: true,
+			});
+
+			expect(userHasScopesMock).not.toHaveBeenCalled();
+		});
+
+		test('should strip redactionPolicy when instance lacks data-redaction license', async () => {
+			setupExistingWorkflow({ redactionPolicy: 'none' });
+			licenseStateMock.isDataRedactionLicensed.mockReturnValue(false);
+
+			const user = mock<User>();
+			await workflowService.update(
+				user,
+				createUpdateData({ redactionPolicy: 'all' }),
+				'workflow-1',
+				{ forceSave: true },
+			);
+
+			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+				'workflow-1',
+				expect.objectContaining({
+					settings: expect.not.objectContaining({ redactionPolicy: 'all' }),
+				}),
+			);
+		});
+
+		test('should not strip redactionPolicy when instance has data-redaction license', async () => {
+			setupExistingWorkflow({ redactionPolicy: 'none' });
+			licenseStateMock.isDataRedactionLicensed.mockReturnValue(true);
+			userHasScopesMock.mockResolvedValue(true);
+
+			const user = mock<User>();
+			await workflowService.update(
+				user,
+				createUpdateData({ redactionPolicy: 'all' }),
+				'workflow-1',
+				{ forceSave: true },
+			);
+
+			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+				'workflow-1',
+				expect.objectContaining({
+					settings: expect.objectContaining({ redactionPolicy: 'all' }),
+				}),
 			);
 		});
 	});

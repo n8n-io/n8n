@@ -18,9 +18,9 @@ export const EnterpriseEditionFeature: Record<
 	DebugInEditor: 'debugInEditor',
 	WorkerView: 'workerView',
 	AdvancedPermissions: 'advancedPermissions',
-	ApiKeyScopes: 'apiKeyScopes',
 	NamedVersions: 'namedVersions',
 	Provisioning: 'provisioning',
 	PersonalSpacePolicy: 'personalSpacePolicy',
 	CustomRoles: 'customRoles',
+	DataRedaction: 'dataRedaction',
 };

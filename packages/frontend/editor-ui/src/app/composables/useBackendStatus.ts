@@ -27,7 +27,9 @@ export function useBackendStatus() {
 				cache: 'no-store',
 				signal: controller.signal,
 			});
-			return response.ok;
+			if (!response.ok) return false;
+			const data = (await response.json()) as { status: string };
+			return data.status === 'ok';
 		} catch {
 			return false;
 		} finally {
@@ -59,6 +61,10 @@ export function useBackendStatus() {
 	});
 
 	onMounted(() => {
+		if (settingsStore.isPreviewMode) {
+			return;
+		}
+
 		// Initial health check and start polling
 		void updateOnlineStatus();
 		startHeartbeat();

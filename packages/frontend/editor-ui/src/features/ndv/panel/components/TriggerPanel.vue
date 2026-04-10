@@ -23,7 +23,9 @@ import { useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { isTriggerPanelObject } from '@/app/utils/typeGuards';
 import { useI18n } from '@n8n/i18n';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import {
 	N8nButton,
@@ -49,9 +51,11 @@ const emit = defineEmits<{
 	execute: [];
 }>();
 
+const workflowId = useInjectWorkflowId();
 const nodesTypeStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const ndvStore = useNDVStore();
 
 const router = useRouter();
@@ -63,7 +67,9 @@ const executionsHelpEventBus = createEventBus();
 
 const help = ref<HTMLElement | null>(null);
 
-const node = computed<INodeUi | null>(() => workflowsStore.getNodeByName(props.nodeName));
+const node = computed<INodeUi | null>(
+	() => workflowDocumentStore?.value?.getNodeByName(props.nodeName) ?? null,
+);
 
 const nodeType = computed<INodeTypeDescription | null>(() => {
 	if (node.value) {
@@ -88,12 +94,9 @@ const hideContent = computed(() => {
 	}
 
 	if (node.value) {
-		const hideContentValue = workflowsStore.workflowObject.expression.getSimpleParameterValue(
-			node.value,
-			hideContent,
-			'internal',
-			{},
-		);
+		const hideContentValue = workflowDocumentStore?.value
+			?.getExpressionHandler()
+			.getSimpleParameterValue(node.value, hideContent, 'internal', {});
 
 		if (typeof hideContentValue === 'boolean') {
 			return hideContentValue;
@@ -189,9 +192,7 @@ const isActivelyPolling = computed(() => {
 	return workflowRunning.value && isPollingNode.value && props.nodeName === triggeredNode;
 });
 
-const isWorkflowActive = computed(() => {
-	return workflowsStore.isWorkflowActive;
-});
+const isWorkflowActive = computed(() => workflowDocumentStore?.value?.active ?? false);
 
 const listeningTitle = computed(() => {
 	return nodeType.value?.name === FORM_TRIGGER_NODE_TYPE
@@ -332,7 +333,7 @@ const expandExecutionHelp = () => {
 
 const openWebhookUrl = () => {
 	telemetry.track('User clicked ndv link', {
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 		push_ref: props.pushRef,
 		pane: 'input',
 		type: 'open-chat',
@@ -355,7 +356,7 @@ const onLinkClick = (e: MouseEvent) => {
 			emit('activate');
 		} else if (target.dataset.key === 'executions') {
 			telemetry.track('User clicked ndv link', {
-				workflow_id: workflowsStore.workflowId,
+				workflow_id: workflowId.value,
 				push_ref: props.pushRef,
 				pane: 'input',
 				type: 'open-executions-log',
@@ -425,7 +426,7 @@ const onNodeExecute = () => {
 						@execute="onNodeExecute"
 					/>
 				</div>
-				<div v-else>
+				<div v-else :class="$style.action">
 					<N8nText tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
 						listeningTitle
 					}}</N8nText>

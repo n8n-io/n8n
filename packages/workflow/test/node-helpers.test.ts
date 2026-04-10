@@ -7,6 +7,7 @@ import {
 	type INodeParameters,
 	type INodeProperties,
 	type INodeTypeDescription,
+	type NodeParameterValueType,
 } from '../src/interfaces';
 import {
 	getNodeParameters,
@@ -6314,6 +6315,328 @@ describe('NodeHelpers', () => {
 
 		it('should return false when nodeType does not end with "Tool"', () => {
 			expect(isHitlToolType('CustomNode')).toBe(false);
+		});
+	});
+
+	describe('getNodeParameters - noDataExpression handling', () => {
+		it('should strip expression prefix when noDataExpression is true and value is an expression', () => {
+			const nodePropertiesArray: INodeProperties[] = [
+				{
+					name: 'resource',
+					displayName: 'Resource',
+					type: 'string',
+					default: '',
+					noDataExpression: true,
+				},
+			];
+
+			const nodeValues: Record<string, string> = {
+				resource: '=users',
+			};
+
+			const node: INode = {
+				id: 'test-123',
+				name: 'Test',
+				type: 'n8n-nodes-base.test',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: nodeValues,
+				credentials: {},
+			};
+			const description: INodeTypeDescription = {
+				name: 'Test',
+				displayName: 'Test',
+				group: [],
+				version: 1,
+				description: 'Test',
+				defaults: {},
+				inputs: [],
+				outputs: [],
+				properties: nodePropertiesArray,
+			};
+
+			const nodeType: INodeType = {
+				description,
+			};
+
+			const result = getNodeParameters(
+				nodeType.description.properties,
+				nodeValues,
+				true,
+				false,
+				node,
+				nodeType.description,
+			);
+
+			expect(result?.resource).toBe('users');
+		});
+
+		it('should not strip expression prefix when noDataExpression is false', () => {
+			const nodePropertiesArray: INodeProperties[] = [
+				{
+					name: 'resource',
+					displayName: 'Resource',
+					type: 'string',
+					default: '',
+					noDataExpression: false,
+				},
+			];
+
+			const nodeValues: Record<string, string> = {
+				resource: '=users',
+			};
+
+			const node: INode = {
+				id: 'test-123',
+				name: 'Test',
+				type: 'n8n-nodes-base.test',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: nodeValues,
+				credentials: {},
+			};
+
+			const nodeType: INodeType = {
+				description: {
+					displayName: 'Test',
+					name: 'Test',
+					group: [],
+					version: 1,
+					description: 'Test',
+					defaults: {},
+					inputs: [],
+					outputs: [],
+					properties: nodePropertiesArray,
+				},
+			};
+
+			const result = getNodeParameters(
+				nodeType.description.properties,
+				nodeValues,
+				true,
+				false,
+				node,
+				nodeType.description,
+			);
+
+			expect(result?.resource).toBe('=users');
+		});
+
+		it('should not modify non-expression values when noDataExpression is true', () => {
+			const nodePropertiesArray: INodeProperties[] = [
+				{
+					name: 'resource',
+					displayName: 'Resource',
+					type: 'string',
+					default: '',
+					noDataExpression: true,
+				},
+			];
+
+			const nodeValues: Record<string, string> = {
+				resource: 'users',
+			};
+
+			const node: INode = {
+				id: 'test-123',
+				name: 'Test',
+				type: 'n8n-nodes-base.test',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: nodeValues,
+				credentials: {},
+			};
+
+			const nodeType: INodeType = {
+				description: {
+					displayName: 'Test',
+					name: 'Test',
+					group: [],
+					version: 1,
+					description: 'Test',
+					defaults: {},
+					inputs: [],
+					outputs: [],
+					properties: nodePropertiesArray,
+				},
+			};
+
+			const result = getNodeParameters(
+				nodeType.description.properties,
+				nodeValues,
+				true,
+				false,
+				node,
+				nodeType.description,
+			);
+
+			expect(result?.resource).toBe('users');
+		});
+
+		it('should handle undefined values when noDataExpression is true', () => {
+			const nodePropertiesArray: INodeProperties[] = [
+				{
+					name: 'resource',
+					displayName: 'Resource',
+					type: 'string',
+					default: '',
+					noDataExpression: true,
+				},
+			];
+
+			const nodeValues: NodeParameterValueType = {
+				resource: undefined,
+			};
+
+			const node: INode = {
+				id: 'test-123',
+				name: 'Test',
+				type: 'n8n-nodes-base.test',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: nodeValues,
+				credentials: {},
+			};
+
+			const nodeType: INodeType = {
+				description: {
+					displayName: 'Test',
+					name: 'Test',
+					group: [],
+					version: 1,
+					description: 'Test',
+					defaults: {},
+					inputs: [],
+					outputs: [],
+					properties: nodePropertiesArray,
+				},
+			};
+
+			const result = getNodeParameters(
+				nodeType.description.properties,
+				nodeValues,
+				true,
+				false,
+				node,
+				nodeType.description,
+			);
+
+			// When undefined, the default value (empty string) is used
+			expect(result?.resource).toBe('');
+		});
+	});
+
+	describe('getNodeParameters filter defaults', () => {
+		const filterProperty: INodeProperties = {
+			displayName: 'Conditions',
+			name: 'conditions',
+			type: 'filter',
+			default: {},
+		};
+
+		it('should add missing combinator and options to a filter parameter', () => {
+			const result = getNodeParameters(
+				[filterProperty],
+				{
+					conditions: {
+						conditions: [
+							{
+								leftValue: '={{ $json.field }}',
+								rightValue: 'value',
+								operator: { type: 'string', operation: 'equals' },
+							},
+						],
+					},
+				},
+				true,
+				false,
+				null,
+				null,
+			);
+
+			expect(result).toEqual({
+				conditions: {
+					combinator: 'and',
+					options: {
+						caseSensitive: true,
+						leftValue: '',
+						typeValidation: 'strict',
+						version: 1,
+					},
+					conditions: [
+						{
+							leftValue: '={{ $json.field }}',
+							rightValue: 'value',
+							operator: { type: 'string', operation: 'equals' },
+						},
+					],
+				},
+			});
+		});
+
+		it('should preserve existing combinator and options', () => {
+			const result = getNodeParameters(
+				[filterProperty],
+				{
+					conditions: {
+						combinator: 'or',
+						options: {
+							caseSensitive: false,
+							leftValue: '',
+							typeValidation: 'loose',
+							version: 2,
+						},
+						conditions: [],
+					},
+				},
+				true,
+				false,
+				null,
+				null,
+			);
+
+			expect(result).toEqual({
+				conditions: {
+					combinator: 'or',
+					options: {
+						caseSensitive: false,
+						leftValue: '',
+						typeValidation: 'loose',
+						version: 2,
+					},
+					conditions: [],
+				},
+			});
+		});
+
+		it('should fill in missing fields in partial options', () => {
+			const result = getNodeParameters(
+				[filterProperty],
+				{
+					conditions: {
+						combinator: 'and',
+						options: { caseSensitive: false },
+						conditions: [],
+					},
+				},
+				true,
+				false,
+				null,
+				null,
+			);
+
+			expect(result).toEqual({
+				conditions: {
+					combinator: 'and',
+					options: {
+						caseSensitive: false,
+						leftValue: '',
+						typeValidation: 'strict',
+						version: 1,
+					},
+					conditions: [],
+				},
+			});
 		});
 	});
 });

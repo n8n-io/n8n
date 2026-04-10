@@ -17,6 +17,8 @@ import type {
 } from '@/Interface';
 import { useActions } from '../composables/useActions';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
+import NodeCreatorShortcutCoachmark from '../components/NodeCreatorShortcutCoachmark.vue';
+import { useNodeCreatorShortcutCoachmark } from '../composables/useNodeCreatorShortcutCoachmark';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
@@ -57,6 +59,7 @@ const builderStore = useBuilderStore();
 const chatPanelStore = useChatPanelStore();
 
 const { getAddedNodesAndConnections } = useActions();
+const { shouldShowCoachmark, onDismissCoachmark } = useNodeCreatorShortcutCoachmark();
 
 const sidePanelTooltip = computed(() => {
 	if (setupPanelStore.isFeatureEnabled) {
@@ -144,20 +147,22 @@ function openCommandBar(event: MouseEvent) {
 
 <template>
 	<div v-if="!createNodeActive" :class="$style.nodeButtonsWrapper">
-		<KeyboardShortcutTooltip
-			:label="i18n.baseText('nodeView.openNodesPanel')"
-			:shortcut="{ keys: ['Tab'] }"
-			placement="left"
-		>
-			<N8nIconButton
-				variant="subtle"
-				size="large"
-				icon="plus"
-				:aria-label="i18n.baseText('nodeView.openNodesPanel')"
-				data-test-id="node-creator-plus-button"
-				@click="openNodeCreator"
-			/>
-		</KeyboardShortcutTooltip>
+		<NodeCreatorShortcutCoachmark :visible="shouldShowCoachmark" @dismiss="onDismissCoachmark">
+			<KeyboardShortcutTooltip
+				:label="i18n.baseText('nodeView.openNodesPanel')"
+				:shortcut="{ keys: ['N'] }"
+				placement="left"
+			>
+				<N8nIconButton
+					variant="subtle"
+					size="large"
+					icon="plus"
+					:aria-label="i18n.baseText('nodeView.openNodesPanel')"
+					data-test-id="node-creator-plus-button"
+					@click="openNodeCreator"
+				/>
+			</KeyboardShortcutTooltip>
+		</NodeCreatorShortcutCoachmark>
 		<KeyboardShortcutTooltip
 			:label="i18n.baseText('nodeView.openCommandBar')"
 			:shortcut="{ keys: ['k'], metaKey: true }"

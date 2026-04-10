@@ -167,6 +167,26 @@ playwright-janitor rules --verbose
 
 The JSON output is useful for AI agents that need to understand the rules before writing code.
 
+### Test Discovery & Orchestration
+
+Discover test specs via AST analysis and distribute them across CI shards:
+
+```bash
+# Discover specs and capabilities (JSON output)
+playwright-janitor discover
+
+# Distribute specs across shards (JSON output)
+playwright-janitor orchestrate --shards=14
+
+# Get specs for a single shard (0-indexed)
+playwright-janitor orchestrate --shards=14 --shard-index=0
+
+# Only include specs affected by git changes
+playwright-janitor orchestrate --shards=14 --impact
+```
+
+Discovery detects `test.fixme()` and `test.skip()` via AST and excludes them automatically. Capability tags (`@capability:proxy`) are extracted for grouping.
+
 ## Rules
 
 ### Architecture Rules
@@ -466,9 +486,29 @@ interface JanitorConfig {
     };
   };
 
+  /** Tags that exclude specs from discovery (e.g., ['@wip', '@local-only']) */
+  skipTags: string[];
+
+  /** Prefix for extracting capabilities from tags (default: '@capability:') */
+  capabilityPrefix: string;
+
+  /** Orchestration configuration for distributing specs across shards */
+  orchestration: {
+    /** Path to metrics JSON file (relative to rootDir) */
+    metricsPath?: string;
+    /** Default duration for specs without metrics (ms, default: 60000) */
+    defaultDuration: number;
+    /** Max group duration before splitting (ms, default: 300000) */
+    maxGroupDuration: number;
+    /** Only include specs matching this path prefix */
+    specFilter?: string;
+  };
+
   /** TCR configuration */
   tcr: {
     testCommand: string;  // Default: 'npx playwright test'
+    workerCount?: number; // Default: 1
+    allowedTestCommands?: string[]; // Restrict --test-command to these
   };
 }
 ```
@@ -699,21 +739,12 @@ const executed = await tcr.run({
 console.log(`Action taken: ${executed.action}`); // 'commit' | 'revert' | 'dry-run'
 ```
 
-### Watch Mode
-
-Continuously run TCR on file changes:
-
-```typescript
-const tcr = new TcrExecutor();
-tcr.watch({ execute: true }); // Ctrl+C to stop
-```
-
 ### Codebase Inventory
 
 Generate a complete inventory of your test codebase:
 
 ```typescript
-import { createProject, InventoryAnalyzer, formatInventoryConsole } from '@n8n/playwright-janitor';
+import { createProject, InventoryAnalyzer, formatInventoryJSON } from '@n8n/playwright-janitor';
 
 const { project } = createProject('./');
 const analyzer = new InventoryAnalyzer(project);
@@ -727,12 +758,8 @@ console.log(`Test files: ${inventory.summary.totalTestFiles}`);
 console.log(`Total tests: ${inventory.summary.totalTests}`);
 console.log(`Total methods: ${inventory.summary.totalMethods}`);
 
-// Detailed output
-formatInventoryConsole(inventory, true); // verbose mode
-
-// Export as markdown
-import { formatInventoryMarkdown } from '@n8n/playwright-janitor';
-const markdown = formatInventoryMarkdown(inventory);
+// JSON output
+const json = formatInventoryJSON(inventory);
 ```
 
 ### TCR Types
@@ -745,8 +772,6 @@ interface TcrOptions {
   execute?: boolean;
   /** Custom commit message */
   commitMessage?: string;
-  /** Watch mode - re-run on file changes */
-  watch?: boolean;
   /** Verbose output */
   verbose?: boolean;
   /** Override test command (default: from config or 'npx playwright test') */

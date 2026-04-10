@@ -139,6 +139,10 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{ ({ test1: 1, test2: "2" }).urlEncode() }}')).toEqual('test1=1&test2=2');
 		});
 
+		test('.urlEncode should encode special characters per WHATWG spec', () => {
+			expect(evaluate('={{ ({ name: "hello!()" }).urlEncode() }}')).toEqual('name=hello%21%28%29');
+		});
+
 		describe('.keys', () => {
 			test('should return an array of keys from the object', () => {
 				expect(evaluate('={{ ({ test1: 1, test2: 2 }).keys() }}')).toEqual(['test1', 'test2']);

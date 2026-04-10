@@ -8,36 +8,34 @@ test.use({
 	},
 });
 
-test.describe('Memory Consumption @capability:observability', {
-	annotation: [
-		{ type: 'owner', description: 'Catalysts' },
-	],
-}, () => {
-	test('Memory consumption baseline with starter plan resources', async ({
-		n8nContainer,
-		services,
-	}, testInfo) => {
-		const obs = services.observability;
+test.describe(
+	'Memory Consumption @capability:observability',
+	{
+		annotation: [{ type: 'owner', description: 'Catalysts' }],
+	},
+	() => {
+		test('Memory consumption baseline with starter plan resources', async ({
+			n8nContainer,
+			services,
+		}, testInfo) => {
+			const obs = services.observability;
 
-		const { heapUsedMB } = await getStableHeap(n8nContainer.baseUrl, obs.metrics);
+			const result = await getStableHeap(n8nContainer.baseUrl, obs.metrics);
 
-		const [heapTotalResult, rssResult] = await Promise.all([
-			obs.metrics.waitForMetric('n8n_nodejs_heap_size_total_bytes / 1024 / 1024'),
-			obs.metrics.waitForMetric('n8n_process_resident_memory_bytes / 1024 / 1024'),
-		]);
-		const heapTotalMB = heapTotalResult!.value;
-		const rssMB = rssResult!.value;
+			await attachMetric(testInfo, 'memory-heap-used-baseline', result.heapUsedMB, 'MB');
+			await attachMetric(testInfo, 'memory-heap-total-baseline', result.heapTotalMB, 'MB');
+			await attachMetric(testInfo, 'memory-rss-baseline', result.rssMB, 'MB');
+			await attachMetric(testInfo, 'memory-pss-baseline', result.pssMB ?? 0, 'MB');
+			await attachMetric(
+				testInfo,
+				'memory-non-heap-overhead-baseline',
+				result.nonHeapOverheadMB,
+				'MB',
+			);
 
-		console.log(
-			`[MEMORY] Heap Used: ${heapUsedMB.toFixed(2)} MB | Heap Total: ${heapTotalMB.toFixed(2)} MB | RSS: ${rssMB.toFixed(2)} MB`,
-		);
-
-		await attachMetric(testInfo, 'memory-heap-used-baseline', heapUsedMB, 'MB');
-		await attachMetric(testInfo, 'memory-heap-total-baseline', heapTotalMB, 'MB');
-		await attachMetric(testInfo, 'memory-rss-baseline', rssMB, 'MB');
-
-		expect(heapUsedMB).toBeGreaterThan(0);
-		expect(heapTotalMB).toBeGreaterThan(0);
-		expect(rssMB).toBeGreaterThan(0);
-	});
-});
+			expect(result.heapUsedMB).toBeGreaterThan(0);
+			expect(result.heapTotalMB).toBeGreaterThan(0);
+			expect(result.rssMB).toBeGreaterThan(0);
+		});
+	},
+);

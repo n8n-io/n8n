@@ -18,7 +18,7 @@ import {
 	schemaTypeField,
 } from '@utils/descriptions';
 import { convertJsonSchemaToZod, generateSchemaFromExample } from '@utils/schemaParsing';
-import { getBatchingOptionFields } from '@utils/sharedFields';
+import { getBatchingOptionFields } from '@n8n/ai-utilities';
 
 import { SYSTEM_PROMPT_TEMPLATE } from './constants';
 import { makeZodSchemaFromAttributes } from './helpers';
@@ -29,7 +29,7 @@ export class InformationExtractor implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Information Extractor',
 		name: 'informationExtractor',
-		icon: 'fa:project-diagram',
+		icon: 'node:information-extractor',
 		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1, 1.2],

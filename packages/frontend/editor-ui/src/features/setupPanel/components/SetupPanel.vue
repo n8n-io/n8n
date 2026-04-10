@@ -29,7 +29,7 @@ const showCompleted = ref(true);
 	width: 100%;
 	flex-direction: column;
 	justify-content: center;
-	background-color: var(--color--background--light-1);
+	background-color: var(--color--background--light-2);
 	position: relative;
 	top: calc(-1 * var(--spacing--5xs));
 }

@@ -372,12 +372,19 @@ const unsafeObjectProperties = new Set([
 	'getPrototypeOf',
 	'mainModule',
 	'binding',
+	'_linkedBinding',
 	'_load',
 	'prepareStackTrace',
 	'__lookupGetter__',
 	'__lookupSetter__',
 	'__defineGetter__',
 	'__defineSetter__',
+	'caller',
+	'arguments',
+	'getBuiltinModule',
+	'dlopen',
+	'execve',
+	'loadEnvFile',
 ]);
 
 /**
@@ -502,4 +509,11 @@ export function sanitizeFilename(fileName: string): string {
 	}
 
 	return sanitized;
+}
+
+/** Generates a cryptographically secure 64-character hex token (256 bits). */
+export function generateSecureToken(): string {
+	const bytes = new Uint8Array(32);
+	crypto.getRandomValues(bytes);
+	return bytes.reduce((hex, byte) => hex + byte.toString(16).padStart(2, '0'), '');
 }

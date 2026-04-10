@@ -70,8 +70,12 @@ export class WorkflowStatusController {
 				credentialName: s.credentialName,
 				credentialStatus: s.status,
 				credentialType: s.credentialType,
-				authorizationUrl: `${basePath}/${restPath}/credentials/${s.credentialId}/authorize?resolverId=${encodeURIComponent(s.resolverId)}`,
-				revokeUrl: `${basePath}/${restPath}/credentials/${s.credentialId}/revoke?resolverId=${encodeURIComponent(s.resolverId)}`,
+				...(s.resolverId
+					? {
+							authorizationUrl: `${basePath}/${restPath}/credentials/${s.credentialId}/authorize?resolverId=${encodeURIComponent(s.resolverId)}`,
+							revokeUrl: `${basePath}/${restPath}/credentials/${s.credentialId}/revoke?resolverId=${encodeURIComponent(s.resolverId)}`,
+						}
+					: {}),
 			})),
 		};
 		return executionStatus;

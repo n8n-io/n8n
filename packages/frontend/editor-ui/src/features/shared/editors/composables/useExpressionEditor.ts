@@ -32,6 +32,7 @@ import { highlighter } from '../plugins/codemirror/resolvableHighlighter';
 import { closeCursorInfoBox } from '../plugins/codemirror/tooltips/InfoBoxTooltip';
 import type { Html, Plaintext, RawSegment, Resolvable, Segment } from '@/app/types/expressions';
 import { getExpressionErrorMessage, getResolvableState } from '@/app/utils/expressions';
+import { isCredentialsModalOpen } from '../plugins/codemirror/completions/utils';
 import { closeCompletion, completionStatus } from '@codemirror/autocomplete';
 import {
 	Compartment,
@@ -354,7 +355,10 @@ export const useExpressionEditor = ({
 					...expressionLocalResolveContext.value,
 					additionalKeys: toValue(additionalData),
 				});
-			} else if (!ndvStore.activeNode && toValue(targetNodeParameterContext) === undefined) {
+			} else if (
+				isCredentialsModalOpen() ||
+				(!ndvStore.activeNode && toValue(targetNodeParameterContext) === undefined)
+			) {
 				// e.g. credential modal
 				result.resolved = Expression.resolveWithoutWorkflow(resolvable, toValue(additionalData));
 			} else {

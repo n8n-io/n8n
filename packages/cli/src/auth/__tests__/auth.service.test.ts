@@ -766,6 +766,25 @@ describe('AuthService', () => {
 			expect(res.cookie).toHaveBeenCalled();
 		});
 
+		it('should preserve embed cookie attributes when refreshing an embed session', async () => {
+			userRepository.findOne.mockResolvedValue(user);
+			const embedToken = authService.issueJWT(user, false, browserId, true);
+
+			jest.advanceTimersByTime(6 * Time.days.toMilliseconds);
+			await authService.resolveJwt(embedToken, req, res);
+
+			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', expect.any(String), {
+				httpOnly: true,
+				maxAge: 604800000,
+				sameSite: 'none',
+				secure: true,
+			});
+
+			const refreshedToken = res.cookie.mock.calls[0].at(1);
+			const decoded = jwt.decode(refreshedToken) as jwt.JwtPayload;
+			expect(decoded.isEmbed).toBe(true);
+		});
+
 		it('should not refresh the cookie if jwtRefreshTimeoutHours is set to -1', async () => {
 			globalConfig.userManagement.jwtRefreshTimeoutHours = -1;
 
@@ -934,6 +953,60 @@ describe('AuthService', () => {
 			const endpoint = authService.getEndpoint(req);
 
 			expect(endpoint).toBe('/api');
+		});
+	});
+
+	describe('validateCookieToken', () => {
+		beforeEach(() => {
+			jest.resetAllMocks();
+		});
+
+		it('should resolve for a valid token', async () => {
+			const token = authService.issueJWT(user, false, browserId);
+			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+			userRepository.findOne.mockResolvedValue(user);
+
+			await expect(authService.validateCookieToken(token)).resolves.toBeUndefined();
+			expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalledWith({ token });
+			expect(userRepository.findOne).toHaveBeenCalled();
+		});
+
+		it('should throw when token has been revoked', async () => {
+			const token = authService.issueJWT(user, false, browserId);
+			invalidAuthTokenRepository.existsBy.mockResolvedValue(true);
+
+			await expect(authService.validateCookieToken(token)).rejects.toThrow('Unauthorized');
+			expect(userRepository.findOne).not.toHaveBeenCalled();
+		});
+
+		it('should throw when token is malformed', async () => {
+			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+
+			await expect(authService.validateCookieToken('fake-value')).rejects.toThrow('jwt malformed');
+		});
+
+		it('should throw when token is expired', async () => {
+			const token = authService.issueJWT(user, false, browserId);
+			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+			jest.advanceTimersByTime(365 * Time.days.toMilliseconds);
+
+			await expect(authService.validateCookieToken(token)).rejects.toThrow('jwt expired');
+		});
+
+		it('should throw when user is disabled', async () => {
+			const token = authService.issueJWT(user, false, browserId);
+			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+			userRepository.findOne.mockResolvedValue(mock<User>({ ...userData, disabled: true }));
+
+			await expect(authService.validateCookieToken(token)).rejects.toThrow('Unauthorized');
+		});
+
+		it('should throw when user no longer exists', async () => {
+			const token = authService.issueJWT(user, false, browserId);
+			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+			userRepository.findOne.mockResolvedValue(null);
+
+			await expect(authService.validateCookieToken(token)).rejects.toThrow('Unauthorized');
 		});
 	});
 

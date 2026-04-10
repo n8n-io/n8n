@@ -17,8 +17,9 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { formatTimestamp, generateVersionName } from '@/features/workflows/workflowHistory/utils';
+import { formatTimestamp, getVersionLabel } from '@/features/workflows/workflowHistory/utils';
 import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
+import omit from 'lodash/omit';
 
 const i18n = useI18n();
 
@@ -26,7 +27,7 @@ const props = defineProps<{
 	workflow: IWorkflowDb | null;
 	workflowVersion: WorkflowVersion | null;
 	actions: Array<UserAction<IUser>>;
-	isVersionActive?: boolean;
+	isPublished?: boolean;
 	isListLoading?: boolean;
 	isFirstItemShown?: boolean;
 }>();
@@ -39,9 +40,9 @@ const workflowVersionPreview = computed<IWorkflowDb | undefined>(() => {
 	if (!props.workflowVersion || !props.workflow) {
 		return;
 	}
-	const { pinData, ...workflow } = props.workflow;
+	const workflowWithoutPinData = omit(props.workflow, 'pinData');
 	return {
-		...workflow,
+		...workflowWithoutPinData,
 		nodes: props.workflowVersion.nodes,
 		connections: props.workflowVersion.connections,
 	};
@@ -56,12 +57,14 @@ const formattedCreatedAt = computed<string>(() => {
 });
 
 const versionNameDisplay = computed(() => {
-	if (props.workflowVersion?.name) {
-		return props.workflowVersion.name;
+	if (!props.workflowVersion) {
+		return '';
 	}
-	return props.isVersionActive && props.workflowVersion
-		? generateVersionName(props.workflowVersion.versionId)
-		: formattedCreatedAt.value;
+
+	return getVersionLabel({
+		workflowHistory: props.workflowVersion,
+		currentVersionId: props.workflow?.versionId,
+	});
 });
 
 const MAX_DESCRIPTION_LENGTH = 200;
@@ -87,7 +90,7 @@ const actions = computed(() => {
 		filteredActions = filteredActions.filter((action) => action.value !== 'restore');
 	}
 
-	if (props.isVersionActive) {
+	if (props.isPublished) {
 		filteredActions = filteredActions.filter((action) => action.value !== 'publish');
 	} else {
 		filteredActions = filteredActions.filter((action) => action.value !== 'unpublish');
@@ -131,7 +134,10 @@ watch(
 		<div v-if="props.workflowVersion" :class="$style.info">
 			<div :class="$style.card">
 				<div :class="$style.descriptionBox">
-					<N8nTooltip v-if="versionNameDisplay" :content="versionNameDisplay">
+					<N8nTooltip v-if="versionNameDisplay" placement="right" :show-after="300">
+						<template #content>
+							{{ formattedCreatedAt }}
+						</template>
 						<N8nText :class="$style.mainLine" bold color="text-dark">{{
 							versionNameDisplay
 						}}</N8nText>

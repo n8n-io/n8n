@@ -116,6 +116,12 @@ export default defineConfig<CurrentsFixtures, CurrentsWorkerFixtures>({
 				['json', { outputFile: 'test-results.json' }],
 				...(process.env.CURRENTS_RECORD_KEY ? [currentsReporter(currentsConfig)] : []),
 				['./reporters/metrics-reporter.ts'],
+				['./reporters/benchmark-summary-reporter.ts'],
 			]
-		: [['html'], ['./reporters/metrics-reporter.ts'], ['list']],
+		: [
+				['html'],
+				['./reporters/metrics-reporter.ts'],
+				['./reporters/benchmark-summary-reporter.ts'],
+				['list'],
+			],
 });

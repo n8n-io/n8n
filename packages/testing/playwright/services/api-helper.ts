@@ -11,6 +11,7 @@ import {
 } from '../config/test-users';
 import { TestError } from '../Types';
 import { CredentialApiHelper } from './credential-api-helper';
+import { DynamicCredentialApiHelper } from './dynamic-credential-api-helper';
 import { ExternalSecretsApiHelper } from './external-secrets-api-helper';
 import { McpApiHelper } from './mcp-api-helper';
 import { ProjectApiHelper } from './project-api-helper';
@@ -50,6 +51,7 @@ export class ApiHelpers {
 	mcp: McpApiHelper;
 	projects: ProjectApiHelper;
 	credentials: CredentialApiHelper;
+	dynamicCredentials: DynamicCredentialApiHelper;
 	variables: VariablesApiHelper;
 	externalSecrets: ExternalSecretsApiHelper;
 	users: UserApiHelper;
@@ -66,6 +68,7 @@ export class ApiHelpers {
 		this.mcp = new McpApiHelper(this);
 		this.projects = new ProjectApiHelper(this);
 		this.credentials = new CredentialApiHelper(this);
+		this.dynamicCredentials = new DynamicCredentialApiHelper(this);
 		this.variables = new VariablesApiHelper(this);
 		this.externalSecrets = new ExternalSecretsApiHelper(this);
 		this.users = new UserApiHelper(this);

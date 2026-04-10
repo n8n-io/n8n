@@ -22,6 +22,8 @@ export type JobData = {
 	pushRef?: string;
 	streamingEnabled?: boolean;
 	restartExecutionId?: string;
+	projectId?: string;
+	projectName?: string;
 
 	// MCP-specific fields for queue mode support
 	/** Whether this execution was triggered by an MCP tool call. */

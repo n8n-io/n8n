@@ -86,7 +86,15 @@ beforeEach(() => {
 
 	vi.mocked(useToast).mockReturnValue(toast);
 
+	Object.defineProperty(usersStore, 'isAdmin', {
+		value: true,
+		writable: true,
+	});
 	Object.defineProperty(usersStore, 'isInstanceOwner', {
+		value: false,
+		writable: true,
+	});
+	Object.defineProperty(usersStore, 'isAdminOrOwner', {
 		value: true,
 		writable: true,
 	});
@@ -132,8 +140,16 @@ beforeEach(() => {
 
 describe('useInstallNode', () => {
 	describe('installNode', () => {
-		it('should return error when user is not an owner', async () => {
+		it('should return error when user is not an owner or admin', async () => {
+			Object.defineProperty(usersStore, 'isAdmin', {
+				value: false,
+				writable: true,
+			});
 			Object.defineProperty(usersStore, 'isInstanceOwner', {
+				value: false,
+				writable: true,
+			});
+			Object.defineProperty(usersStore, 'isAdminOrOwner', {
 				value: false,
 				writable: true,
 			});
@@ -147,10 +163,42 @@ describe('useInstallNode', () => {
 
 			expect(result.success).toBe(false);
 			expect(result.error).toBeInstanceOf(Error);
-			expect(result.error?.message).toBe('User is not an owner');
+			expect(result.error?.message).toBe('User is not an owner or admin');
 			expect(showError).toHaveBeenCalledWith(
 				expect.any(Error),
 				'settings.communityNodes.messages.install.error',
+			);
+		});
+
+		it.each([
+			{ isAdmin: true, isInstanceOwner: false, label: 'admin' },
+			{ isAdmin: false, isInstanceOwner: true, label: 'instance owner' },
+		])('should allow installing when user is $label', async ({ isAdmin, isInstanceOwner }) => {
+			Object.defineProperty(usersStore, 'isAdmin', {
+				value: isAdmin,
+				writable: true,
+			});
+			Object.defineProperty(usersStore, 'isInstanceOwner', {
+				value: isInstanceOwner,
+				writable: true,
+			});
+			Object.defineProperty(usersStore, 'isAdminOrOwner', {
+				value: isAdmin || isInstanceOwner,
+				writable: true,
+			});
+			const { installNode } = useInstallNode();
+
+			const result = await installNode({
+				type: 'verified',
+				packageName: 'test-package',
+				nodeType: 'test-node',
+			});
+
+			expect(result.success).toBe(true);
+			expect(communityNodesStore.installPackage).toHaveBeenCalledWith(
+				'test-package',
+				true,
+				'1.0.0',
 			);
 		});
 

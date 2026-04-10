@@ -7,6 +7,7 @@ import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import { getPromptInputByType } from '@utils/helpers';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
+import { buildTracingMetadata, getTracingConfig } from '@utils/tracing';
 
 import {
 	fixEmptyContentMessage,
@@ -59,6 +60,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				maxIterations?: number;
 				returnIntermediateSteps?: boolean;
 				passthroughBinaryImages?: boolean;
+				tracingMetadata?: { values?: Array<{ key: string; value: unknown }> };
 			};
 
 			// Prepare the prompt messages and prompt template.
@@ -90,9 +92,16 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				returnIntermediateSteps: options.returnIntermediateSteps === true,
 				maxIterations: options.maxIterations ?? 10,
 			});
+			const additionalMetadata = buildTracingMetadata(options.tracingMetadata?.values, this.logger);
+			if (Object.keys(additionalMetadata).length > 0) {
+				this.logger.debug('Tracing metadata', { additionalMetadata });
+			}
+			const executorWithTracing = executor.withConfig(
+				getTracingConfig(this, { additionalMetadata }),
+			);
 
 			// Invoke the executor with the given input and system message.
-			const response = await executor.invoke(
+			const response = await executorWithTracing.invoke(
 				{
 					input,
 					system_message: options.systemMessage ?? SYSTEM_MESSAGE,

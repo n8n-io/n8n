@@ -15,9 +15,12 @@ import { DynamicBannersConfig } from './configs/dynamic-banners.config';
 import { EndpointsConfig } from './configs/endpoints.config';
 import { EventBusConfig } from './configs/event-bus.config';
 import { ExecutionsConfig } from './configs/executions.config';
+import { ExpressionEngineConfig } from './configs/expression-engine.config';
 import { ExternalHooksConfig } from './configs/external-hooks.config';
 import { GenericConfig } from './configs/generic.config';
 import { HiringBannerConfig } from './configs/hiring-banner.config';
+import { InstanceAiConfig } from './configs/instance-ai.config';
+import { InstanceSettingsLoaderConfig } from './configs/instance-settings-loader.config';
 import { LicenseConfig } from './configs/license.config';
 import { LoggingConfig } from './configs/logging.config';
 import { MfaConfig } from './configs/mfa.config';
@@ -31,6 +34,7 @@ import { ScalingModeConfig } from './configs/scaling-mode.config';
 import { SecurityConfig } from './configs/security.config';
 import { SentryConfig } from './configs/sentry.config';
 import { SsoConfig } from './configs/sso.config';
+import { SsrfProtectionConfig } from './configs/ssrf-protection.config';
 import { TagsConfig } from './configs/tags.config';
 import { TemplatesConfig } from './configs/templates.config';
 import { UserManagementConfig } from './configs/user-management.config';
@@ -44,10 +48,15 @@ export { Config, Env, Nested } from './decorators';
 export { AiConfig } from './configs/ai.config';
 export { DatabaseConfig, SqliteConfig } from './configs/database.config';
 export { InstanceSettingsConfig } from './configs/instance-settings-config';
+export { InstanceSettingsLoaderConfig } from './configs/instance-settings-loader.config';
 export { sampleRateSchema } from './configs/sentry.config';
 export type { TaskRunnerMode } from './configs/runners.config';
 export { TaskRunnersConfig } from './configs/runners.config';
 export { SecurityConfig } from './configs/security.config';
+export {
+	SsrfProtectionConfig,
+	SSRF_DEFAULT_BLOCKED_IP_RANGES,
+} from './configs/ssrf-protection.config';
 export { ExecutionsConfig } from './configs/executions.config';
 export { LOG_SCOPES } from './configs/logging.config';
 export type { LogScope } from './configs/logging.config';
@@ -61,6 +70,9 @@ export { NodesConfig } from './configs/nodes.config';
 export { CronLoggingConfig } from './configs/logging.config';
 export { WorkflowHistoryCompactionConfig } from './configs/workflow-history-compaction.config';
 export { ChatHubConfig } from './configs/chat-hub.config';
+export { InstanceAiConfig } from './configs/instance-ai.config';
+export { ExpressionEngineConfig } from './configs/expression-engine.config';
+export { PasswordConfig } from './configs/password.config';
 
 const protocolSchema = z.enum(['http', 'https']);
 
@@ -187,6 +199,9 @@ export class GlobalConfig {
 	@Nested
 	sso: SsoConfig;
 
+	@Nested
+	ssrfProtection: SsrfProtectionConfig;
+
 	/** Default locale for the UI. */
 	@Env('N8N_DEFAULT_LOCALE')
 	defaultLocale: string = 'en';
@@ -206,6 +221,10 @@ export class GlobalConfig {
 	/** SSL cert for HTTPS protocol. */
 	@Env('N8N_SSL_CERT')
 	ssl_cert: string = '';
+
+	/** Whether to enable canvas-only mode, hiding the chrome UI. */
+	@Env('N8N_CANVAS_ONLY')
+	canvasOnly: boolean = false;
 
 	/** Public URL where the editor is accessible. Also used for emails sent from n8n. */
 	@Env('N8N_EDITOR_BASE_URL')
@@ -229,4 +248,13 @@ export class GlobalConfig {
 
 	@Nested
 	chatHub: ChatHubConfig;
+
+	@Nested
+	instanceAi: InstanceAiConfig;
+
+	@Nested
+	expressionEngine: ExpressionEngineConfig;
+
+	@Nested
+	instanceSettingsLoader: InstanceSettingsLoaderConfig;
 }

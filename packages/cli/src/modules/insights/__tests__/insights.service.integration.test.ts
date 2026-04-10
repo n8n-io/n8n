@@ -419,7 +419,7 @@ describe('InsightsService (Integration)', () => {
 				});
 			}
 
-			const startDate = now.minus({ days: 14 }).toJSDate();
+			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
 			const endDate = now.minus({ days: 1 }).toJSDate();
 
 			// ACT
@@ -486,7 +486,7 @@ describe('InsightsService (Integration)', () => {
 				});
 			}
 
-			const startDate = now.minus({ days: 14 }).toJSDate();
+			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
 
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
@@ -513,7 +513,7 @@ describe('InsightsService (Integration)', () => {
 				});
 			}
 
-			const startDate = now.minus({ days: 14 }).toJSDate();
+			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
 
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
@@ -585,7 +585,7 @@ describe('InsightsService (Integration)', () => {
 				});
 			}
 
-			const startDate = now.minus({ days: 14 }).toJSDate();
+			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
 
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
@@ -683,7 +683,7 @@ describe('InsightsService (Integration)', () => {
 				periodStart: now.minus({ days: 30 }),
 			});
 
-			const startDate = now.minus({ days: 14 }).toJSDate();
+			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
 
 			const byTime = await insightsService.getInsightsByTime({
 				startDate,
@@ -746,7 +746,7 @@ describe('InsightsService (Integration)', () => {
 				});
 			}
 
-			const startDate = now.minus({ days: 14 }).toJSDate();
+			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
 
 			// ACT
 			const byTime = await insightsService.getInsightsByTime({
@@ -824,7 +824,7 @@ describe('InsightsService (Integration)', () => {
 				});
 			}
 
-			const startDate = now.minus({ days: 14 }).toJSDate();
+			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
 
 			// ACT
 			const byTime = await insightsService.getInsightsByTime({
@@ -904,7 +904,7 @@ describe('InsightsService (Integration)', () => {
 				});
 			}
 
-			const startDate = now.minus({ days: 14 }).toJSDate();
+			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
 
 			// ACT
 			const byTime = await insightsService.getInsightsByTime({

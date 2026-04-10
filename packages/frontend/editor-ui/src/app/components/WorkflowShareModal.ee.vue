@@ -19,11 +19,17 @@ import ProjectSharing from '@/features/collaboration/projects/components/Project
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData, Project } from '@/features/collaboration/projects/projects.types';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
+import { useRemoteProjectSearch } from '@/features/collaboration/projects/projects.utils';
+import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { useRolesStore } from '@/app/stores/roles.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useI18n } from '@n8n/i18n';
 import { telemetry } from '@/app/plugins/telemetry';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { I18nT } from 'vue-i18n';
 
 import { N8nButton, N8nInfoTip, N8nText } from '@n8n/design-system';
@@ -51,16 +57,34 @@ const router = useRouter();
 const route = useRoute();
 const workflowSaving = useWorkflowSaving({ router });
 
-const workflow = ref(
-	data.id && workflowsListStore.workflowsById[data.id]
-		? workflowsListStore.workflowsById[data.id]
-		: workflowsStore.workflow,
+const workflowDocumentStore = computed(() =>
+	data.id ? useWorkflowDocumentStore(createWorkflowDocumentId(data.id)) : undefined,
+);
+const workflowListEntry = computed(() => workflowsListStore.workflowsById[data.id]);
+const workflowId = computed(() => data.id);
+const workflowName = computed(
+	() => workflowListEntry.value?.name ?? workflowDocumentStore.value?.name ?? '',
+);
+const workflowHomeProject = computed(
+	() =>
+		workflowListEntry.value?.homeProject ??
+		workflowDocumentStore.value?.homeProject ??
+		workflowsStore.workflow.homeProject,
+);
+const workflowScopes = computed(
+	() =>
+		workflowListEntry.value?.scopes ??
+		workflowDocumentStore.value?.scopes ??
+		workflowsStore.workflow.scopes,
+);
+const workflowSharedWithProjects = computed(
+	() => workflowListEntry.value?.sharedWithProjects ?? workflowsStore.workflow.sharedWithProjects,
 );
 const loading = ref(true);
 const isDirty = ref(false);
 const modalBus = createEventBus();
 const sharedWithProjects = ref([
-	...(workflow.value.sharedWithProjects ?? []),
+	...(workflowSharedWithProjects.value ?? []),
 ] as ProjectSharingData[]);
 const teamProject = ref(null as Project | null);
 
@@ -68,12 +92,12 @@ const isSharingEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
 );
 
-const isHomeTeamProject = computed(() => workflow.value.homeProject?.type === ProjectTypes.Team);
+const isHomeTeamProject = computed(() => workflowHomeProject.value?.type === ProjectTypes.Team);
 
 const modalTitle = computed(() => {
 	if (isHomeTeamProject.value) {
 		return i18n.baseText('workflows.shareModal.title.static', {
-			interpolate: { projectName: workflow.value.homeProject?.name ?? '' },
+			interpolate: { projectName: workflowHomeProject.value?.name ?? '' },
 		});
 	}
 
@@ -82,27 +106,31 @@ const modalTitle = computed(() => {
 			? (uiStore.contextBasedTranslationKeys.workflows.sharing.title as BaseTextKey)
 			: (uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.title as BaseTextKey),
 		{
-			interpolate: { name: workflow.value.name },
+			interpolate: {
+				name: workflowName.value,
+			},
 		},
 	);
 });
 
-const workflowPermissions = computed(() => getResourcePermissions(workflow.value?.scopes).workflow);
+const workflowPermissions = computed(() => {
+	return getResourcePermissions(workflowScopes.value).workflow;
+});
 
 const isPersonalSpaceRestricted = computed(
 	() =>
-		workflow.value.homeProject?.type === ProjectTypes.Personal &&
-		workflow.value.homeProject?.id === projectsStore.personalProject?.id &&
+		workflowHomeProject.value?.type === ProjectTypes.Personal &&
+		workflowHomeProject.value?.id === projectsStore.personalProject?.id &&
 		!workflowPermissions.value.share,
 );
 
 const workflowOwnerName = computed(() =>
-	workflowsEEStore.getWorkflowOwnerName(`${workflow.value.id}`),
+	workflowsEEStore.getWorkflowOwnerName(`${workflowId.value}`),
 );
 
-const projects = computed(() =>
-	projectsStore.personalProjects.filter((project) => project.id !== workflow.value.homeProject?.id),
-);
+const searchFn = useRemoteProjectSearch();
+const filterFn = (project: ProjectListItem) =>
+	project.type === 'personal' && project.id !== workflowHomeProject.value?.id;
 
 const numberOfMembersInHomeTeamProject = computed(() => teamProject.value?.relations.length ?? 0);
 
@@ -130,21 +158,21 @@ const workflowRoles = computed(() =>
 
 const trackTelemetry = (eventName: string, data: ITelemetryTrackProperties) => {
 	telemetry.track(eventName, {
-		workflow_id: workflow.value.id,
+		workflow_id: workflowId.value,
 		...data,
 	});
 };
 
 const onProjectAdded = (project: ProjectSharingData) => {
 	trackTelemetry('User selected sharee to add', {
-		project_id_sharer: workflow.value.homeProject?.id,
+		project_id_sharer: workflowHomeProject.value?.id,
 		project_id_sharee: project.id,
 	});
 };
 
 const onProjectRemoved = (project: ProjectSharingData) => {
 	trackTelemetry('User selected sharee to remove', {
-		project_id_sharer: workflow.value.homeProject?.id,
+		project_id_sharer: workflowHomeProject.value?.id,
 		project_id_sharee: project.id,
 	});
 };
@@ -157,7 +185,7 @@ const onSave = async () => {
 	loading.value = true;
 
 	const saveWorkflowPromise = async () => {
-		if (!workflowsStore.isWorkflowSaved[workflow.value.id]) {
+		if (!workflowsStore.isWorkflowSaved[workflowId.value]) {
 			const parentFolderId = route.query.folderId as string | undefined;
 			const workflowId = await workflowSaving.saveAsNewWorkflow({ parentFolderId });
 			if (!workflowId) {
@@ -165,7 +193,7 @@ const onSave = async () => {
 			}
 			return workflowId;
 		} else {
-			return workflow.value.id;
+			return workflowId.value;
 		}
 	};
 
@@ -214,15 +242,13 @@ const goToUpgrade = () => {
 
 const initialize = async () => {
 	if (isSharingEnabled.value) {
-		await projectsStore.getAllProjects();
-
 		// Fetch workflow if it exists and is not new
-		if (workflowsStore.isWorkflowSaved[workflow.value.id]) {
-			await workflowsListStore.fetchWorkflow(workflow.value.id);
+		if (workflowsStore.isWorkflowSaved[workflowId.value]) {
+			await workflowsListStore.fetchWorkflow(workflowId.value);
 		}
 
-		if (isHomeTeamProject.value && workflow.value.homeProject) {
-			teamProject.value = await projectsStore.fetchProject(workflow.value.homeProject.id);
+		if (isHomeTeamProject.value && workflowHomeProject.value) {
+			teamProject.value = await projectsStore.fetchProject(workflowHomeProject.value.id);
 		}
 	}
 
@@ -278,8 +304,9 @@ watch(
 					<div>
 						<ProjectSharing
 							v-model="sharedWithProjects"
-							:home-project="workflow.homeProject"
-							:projects="projects"
+							:home-project="workflowHomeProject"
+							:search-fn="searchFn"
+							:filter-fn="filterFn"
 							:roles="workflowRoles"
 							:readonly="!workflowPermissions.share"
 							:static="isHomeTeamProject || !workflowPermissions.share"
@@ -296,7 +323,7 @@ watch(
 						<N8nInfoTip v-if="isHomeTeamProject" :bold="false" class="mt-s">
 							<I18nT keypath="workflows.shareModal.info.members" tag="span" scope="global">
 								<template #projectName>
-									{{ workflow.homeProject?.name }}
+									{{ workflowHomeProject?.name }}
 								</template>
 								<template #members>
 									<strong>

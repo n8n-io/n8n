@@ -19,8 +19,8 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { computed, inject, onBeforeMount, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { RouteLocation, RouteLocationRaw } from 'vue-router';
 import { useRoute, useRouter } from 'vue-router';
-import { injectStrict } from '@/app/utils/injectStrict';
-import { WorkflowIdKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 import { useLocalStorage } from '@vueuse/core';
 import GithubButton from 'vue-github-button';
@@ -72,9 +72,12 @@ const hideMenuBar = computed(() =>
 	Boolean(activeNode.value && activeNode.value.type !== STICKY_NODE_TYPE),
 );
 const workflow = computed(() => workflowsStore.workflow);
-const workflowId = injectStrict(WorkflowIdKey);
+const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
+const workflowName = computed(() => workflowDocumentStore?.value?.name ?? '');
 const workflowTags = computed(() => workflowDocumentStore?.value?.tags ?? []);
+const workflowIsArchived = computed(() => workflowDocumentStore?.value?.isArchived ?? false);
+const workflowDescription = computed(() => workflowDocumentStore?.value?.description ?? '');
 const onWorkflowPage = computed(() => !!(route.meta.nodeView || route.meta.keepWorkflowAlive));
 
 const isEnterprise = computed(
@@ -92,13 +95,12 @@ const showGitHubButton = computed(
 );
 
 const parentFolderForBreadcrumbs = computed<FolderShortInfo | undefined>(() => {
-	if (!workflow.value.parentFolder) {
-		return undefined;
-	}
+	const folder = workflowDocumentStore?.value?.parentFolder;
+	if (!folder) return undefined;
 	return {
-		id: workflow.value.parentFolder.id,
-		name: workflow.value.parentFolder.name,
-		parentFolder: workflow.value.parentFolder.parentFolderId ?? undefined,
+		id: folder.id,
+		name: folder.name,
+		parentFolder: folder.parentFolderId ?? undefined,
 	};
 });
 
@@ -247,7 +249,7 @@ async function navigateToEvaluationsView(openInNewTab: boolean) {
 	} else if (route.name !== routeToNavigateTo.name) {
 		dirtyState.value = uiStore.stateIsDirty;
 		workflowToReturnTo.value = workflowId.value;
-		activeHeaderTab.value = MAIN_HEADER_TABS.EXECUTIONS;
+		activeHeaderTab.value = MAIN_HEADER_TABS.EVALUATION;
 		await router.push(routeToNavigateTo);
 	}
 }
@@ -257,7 +259,10 @@ function hideGithubButton() {
 }
 
 async function onWorkflowDeactivated() {
-	if (settingsStore.isModuleActive('mcp') && workflow.value.settings?.availableInMCP) {
+	if (
+		settingsStore.isModuleActive('mcp') &&
+		workflowDocumentStore?.value?.settings?.availableInMCP
+	) {
 		try {
 			// Fetch the updated workflow to get the latest settings after backend processing
 			const updatedWorkflow = await workflowsListStore.fetchWorkflow(workflow.value.id);
@@ -277,20 +282,21 @@ async function onWorkflowDeactivated() {
 <template>
 	<div :class="$style.container">
 		<div
-			:class="{ [$style['main-header']]: true, [$style.expanded]: !uiStore.sidebarMenuCollapsed }"
+			:class="{
+				[$style['main-header']]: true,
+				[$style.expanded]: !uiStore.sidebarMenuCollapsed,
+				[$style['canvas-only']]: settingsStore.isCanvasOnly,
+			}"
 		>
-			<div v-show="!hideMenuBar" :class="$style['top-menu']">
+			<div v-show="!hideMenuBar && !settingsStore.isCanvasOnly" :class="$style['top-menu']">
 				<WorkflowDetails
-					v-if="workflow?.name"
+					v-if="workflowName"
 					:id="workflow.id"
 					:tags="workflowTags"
-					:name="workflow.name"
-					:meta="workflow.meta"
-					:scopes="workflow.scopes"
-					:active="workflow.active"
+					:name="workflowName"
 					:current-folder="parentFolderForBreadcrumbs"
-					:is-archived="workflow.isArchived"
-					:description="workflow.description"
+					:is-archived="workflowIsArchived"
+					:description="workflowDescription"
 					@workflow:deactivated="onWorkflowDeactivated"
 				/>
 				<div v-if="showGitHubButton" :class="[$style['github-button'], 'hidden-sm-and-down']">
@@ -317,6 +323,7 @@ async function onWorkflowDeactivated() {
 				v-if="onWorkflowPage"
 				:items="tabBarItems"
 				:model-value="activeHeaderTab"
+				:floating="settingsStore.isCanvasOnly"
 				@update:model-value="onTabSelected"
 			/>
 		</div>
@@ -337,6 +344,12 @@ async function onWorkflowDeactivated() {
 	width: 100%;
 	box-sizing: border-box;
 	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
+}
+
+.canvas-only {
+	min-height: 0;
+	border-bottom: none;
+	background-color: transparent;
 }
 
 .top-menu {

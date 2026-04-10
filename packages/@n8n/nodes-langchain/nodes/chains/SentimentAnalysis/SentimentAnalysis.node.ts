@@ -13,7 +13,7 @@ import type {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { getBatchingOptionFields } from '@utils/sharedFields';
+import { getBatchingOptionFields } from '@n8n/ai-utilities';
 import { getTracingConfig } from '@utils/tracing';
 
 const DEFAULT_SYSTEM_PROMPT_TEMPLATE =
@@ -33,7 +33,7 @@ export class SentimentAnalysis implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Sentiment Analysis',
 		name: 'sentimentAnalysis',
-		icon: 'fa:balance-scale-left',
+		icon: 'node:sentiment-analysis',
 		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1],

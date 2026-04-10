@@ -313,7 +313,7 @@ describe('workflowUtils', () => {
 				connectionsByDestination,
 			);
 
-			expect(result.map((n) => n.node.name)).toEqual(['MCPServer', 'Tool1', 'Tool2']);
+			expect(result.map((n) => n.node.name)).toEqual(['Tool1', 'Tool2', 'MCPServer']);
 		});
 
 		it('should discover AI sub-nodes alongside main downstream nodes', () => {
@@ -338,7 +338,220 @@ describe('workflowUtils', () => {
 				connectionsByDestination,
 			);
 
-			expect(result.map((n) => n.node.name)).toEqual(['Agent', 'Downstream', 'Tool']);
+			expect(result.map((n) => n.node.name)).toEqual(['Tool', 'Agent', 'Downstream']);
+		});
+
+		it('should place AI sub-nodes before their parent agent when agent is mid-chain', () => {
+			// Trigger → Agent → Downstream, with LLM and Tool connected to Agent via AI inputs
+			const trigger = makeNode('Start', [240, 400], true);
+			const llm = makeNode('GPT Model', [704, 624]);
+			const tool = makeNode('Google Search', [832, 624]);
+			const agent = makeNode('Research Agent', [688, 400]);
+			const downstream = makeNode('Send Report Email', [2096, 400]);
+
+			const connectionsBySource = {
+				Start: { main: [[{ node: 'Research Agent', type: 'main' as const, index: 0 }]] },
+				'Research Agent': {
+					main: [[{ node: 'Send Report Email', type: 'main' as const, index: 0 }]],
+				},
+				'GPT Model': {
+					ai_languageModel: [
+						[{ node: 'Research Agent', type: 'ai_languageModel' as const, index: 0 }],
+					],
+				},
+				'Google Search': {
+					ai_tool: [[{ node: 'Research Agent', type: 'ai_tool' as const, index: 0 }]],
+				},
+			};
+
+			const connectionsByDestination = {
+				'Research Agent': {
+					main: [[{ node: 'Start', type: 'main' as const, index: 0 }]],
+					ai_languageModel: [[{ node: 'GPT Model', type: 'ai_languageModel' as const, index: 0 }]],
+					ai_tool: [[{ node: 'Google Search', type: 'ai_tool' as const, index: 0 }]],
+				},
+				'Send Report Email': {
+					main: [[{ node: 'Research Agent', type: 'main' as const, index: 0 }]],
+				},
+			};
+
+			const result = sortNodesByExecutionOrder(
+				[downstream, llm, tool, agent, trigger],
+				connectionsBySource,
+				connectionsByDestination,
+			);
+
+			// Sub-nodes (GPT Model, Google Search) should appear before their parent (Research Agent)
+			// and the parent should appear before downstream nodes (Send Report Email)
+			expect(result.map((n) => n.node.name)).toEqual([
+				'Start',
+				'GPT Model',
+				'Google Search',
+				'Research Agent',
+				'Send Report Email',
+			]);
+		});
+
+		it('should handle shared sub-nodes connected to multiple agents in a chain', () => {
+			// Start → Research Agent → Fact-Checking Agent → Report Writing Agent → HTML Agent → Send Email
+			// GPT Model is shared across ALL four agents (ai_languageModel)
+			// Google Search is shared across Research Agent and Fact-Checking Agent (ai_tool)
+			// Only Start, Research Agent, GPT Model, Google Search, Send Email are in the nodes input
+			const start = makeNode('Start', [240, 304], true);
+			const researchAgent = makeNode('Research Agent', [464, 304]);
+			const gptModel = makeNode('GPT-4.1 Mini Model', [480, 528]);
+			const googleSearch = makeNode('Google Search', [608, 528]);
+			const sendEmail = makeNode('Send Report Email', [1872, 304]);
+
+			const connectionsBySource = {
+				Start: { main: [[{ node: 'Research Agent', type: 'main' as const, index: 0 }]] },
+				'Research Agent': {
+					main: [[{ node: 'Fact-Checking Agent', type: 'main' as const, index: 0 }]],
+				},
+				'GPT-4.1 Mini Model': {
+					ai_languageModel: [
+						[
+							{ node: 'Research Agent', type: 'ai_languageModel' as const, index: 0 },
+							{ node: 'Fact-Checking Agent', type: 'ai_languageModel' as const, index: 0 },
+							{ node: 'Report Writing Agent', type: 'ai_languageModel' as const, index: 0 },
+							{ node: 'HTML Formatting Agent', type: 'ai_languageModel' as const, index: 0 },
+						],
+					],
+				},
+				'Google Search': {
+					ai_tool: [
+						[
+							{ node: 'Research Agent', type: 'ai_tool' as const, index: 0 },
+							{ node: 'Fact-Checking Agent', type: 'ai_tool' as const, index: 0 },
+						],
+					],
+				},
+				'Fact-Checking Agent': {
+					main: [[{ node: 'Report Writing Agent', type: 'main' as const, index: 0 }]],
+				},
+				'Report Writing Agent': {
+					main: [[{ node: 'HTML Formatting Agent', type: 'main' as const, index: 0 }]],
+				},
+				'HTML Formatting Agent': {
+					main: [[{ node: 'Send Report Email', type: 'main' as const, index: 0 }]],
+				},
+			};
+
+			const connectionsByDestination = {
+				'Research Agent': {
+					main: [[{ node: 'Start', type: 'main' as const, index: 0 }]],
+					ai_languageModel: [
+						[{ node: 'GPT-4.1 Mini Model', type: 'ai_languageModel' as const, index: 0 }],
+					],
+					ai_tool: [[{ node: 'Google Search', type: 'ai_tool' as const, index: 0 }]],
+				},
+				'Fact-Checking Agent': {
+					main: [[{ node: 'Research Agent', type: 'main' as const, index: 0 }]],
+					ai_languageModel: [
+						[{ node: 'GPT-4.1 Mini Model', type: 'ai_languageModel' as const, index: 0 }],
+					],
+					ai_tool: [[{ node: 'Google Search', type: 'ai_tool' as const, index: 0 }]],
+				},
+				'Report Writing Agent': {
+					main: [[{ node: 'Fact-Checking Agent', type: 'main' as const, index: 0 }]],
+					ai_languageModel: [
+						[{ node: 'GPT-4.1 Mini Model', type: 'ai_languageModel' as const, index: 0 }],
+					],
+				},
+				'HTML Formatting Agent': {
+					main: [[{ node: 'Report Writing Agent', type: 'main' as const, index: 0 }]],
+					ai_languageModel: [
+						[{ node: 'GPT-4.1 Mini Model', type: 'ai_languageModel' as const, index: 0 }],
+					],
+				},
+				'Send Report Email': {
+					main: [[{ node: 'HTML Formatting Agent', type: 'main' as const, index: 0 }]],
+				},
+			};
+
+			const result = sortNodesByExecutionOrder(
+				[sendEmail, gptModel, googleSearch, researchAgent, start],
+				connectionsBySource,
+				connectionsByDestination,
+			);
+
+			// Sub-nodes should appear before their first parent agent (Research Agent),
+			// and the entire main chain should maintain execution order.
+			// Research Agent must come before Send Report Email.
+			expect(result.map((n) => n.node.name)).toEqual([
+				'Start',
+				'GPT-4.1 Mini Model',
+				'Google Search',
+				'Research Agent',
+				'Send Report Email',
+			]);
+		});
+
+		it('should process loop-body output before done output for loop nodes', () => {
+			// Trigger → Loop Over Items → (done) → Wait
+			//                            → (loop) → HTTP Request → (back to Loop)
+			const trigger = makeNode('Trigger', [0, 0], true);
+			const loop = makeNode('Loop', [100, 0]);
+			const wait = makeNode('Wait', [200, -100]);
+			const httpRequest = makeNode('HTTP Request', [200, 100]);
+
+			const connections = {
+				Trigger: { main: [[{ node: 'Loop', type: 'main' as const, index: 0 }]] },
+				Loop: {
+					main: [
+						// output 0 = "done"
+						[{ node: 'Wait', type: 'main' as const, index: 0 }],
+						// output 1 = "loop"
+						[{ node: 'HTTP Request', type: 'main' as const, index: 0 }],
+					],
+				},
+				'HTTP Request': { main: [[{ node: 'Loop', type: 'main' as const, index: 0 }]] },
+			};
+
+			const nodeTypes = { Loop: 'n8n-nodes-base.splitInBatches' };
+
+			const result = sortNodesByExecutionOrder(
+				[wait, httpRequest, loop, trigger],
+				connections,
+				{},
+				nodeTypes,
+			);
+
+			// Loop body (HTTP Request) should come before done branch (Wait)
+			expect(result.map((n) => n.node.name)).toEqual(['Trigger', 'Loop', 'HTTP Request', 'Wait']);
+		});
+
+		it('should handle loop node with multiple nodes in the loop body', () => {
+			// Trigger → Loop → (done) → Done Node
+			//                → (loop) → Step1 → Step2 → (back to Loop)
+			const trigger = makeNode('Trigger', [0, 0], true);
+			const loop = makeNode('Loop', [100, 0]);
+			const doneNode = makeNode('Done', [200, -100]);
+			const step1 = makeNode('Step1', [200, 100]);
+			const step2 = makeNode('Step2', [300, 100]);
+
+			const connections = {
+				Trigger: { main: [[{ node: 'Loop', type: 'main' as const, index: 0 }]] },
+				Loop: {
+					main: [
+						[{ node: 'Done', type: 'main' as const, index: 0 }],
+						[{ node: 'Step1', type: 'main' as const, index: 0 }],
+					],
+				},
+				Step1: { main: [[{ node: 'Step2', type: 'main' as const, index: 0 }]] },
+				Step2: { main: [[{ node: 'Loop', type: 'main' as const, index: 0 }]] },
+			};
+
+			const nodeTypes = { Loop: 'n8n-nodes-base.splitInBatches' };
+
+			const result = sortNodesByExecutionOrder(
+				[doneNode, step2, step1, loop, trigger],
+				connections,
+				{},
+				nodeTypes,
+			);
+
+			expect(result.map((n) => n.node.name)).toEqual(['Trigger', 'Loop', 'Step1', 'Step2', 'Done']);
 		});
 
 		it('should not follow main connections from connectionsByDestinationNode', () => {

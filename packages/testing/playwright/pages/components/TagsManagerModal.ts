@@ -33,6 +33,10 @@ export class TagsManagerModal extends BasePage {
 		return this.getTable().locator('tbody tr').first();
 	}
 
+	getTagByName(name: string): Locator {
+		return this.getTable().getByText(name);
+	}
+
 	getDeleteTagButton(): Locator {
 		return this.root.getByTestId('delete-tag-button');
 	}

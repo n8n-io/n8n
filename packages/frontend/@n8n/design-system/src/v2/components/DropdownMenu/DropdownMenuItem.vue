@@ -7,14 +7,18 @@ import {
 	DropdownMenuSubContent,
 	DropdownMenuPortal,
 } from 'reka-ui';
-import { computed, ref, useCssModule, watch, toRef } from 'vue';
+import { computed, inject, ref, useCssModule, watch, toRef } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import N8nText from '@n8n/design-system/components/N8nText/Text.vue';
 import N8nLoading from '@n8n/design-system/v2/components/Loading/Loading.vue';
 
 import { useMenuKeyboardNavigation } from './composables/useMenuKeyboardNavigation';
-import type { DropdownMenuItemProps, DropdownMenuItemSlots } from './DropdownMenu.types';
+import {
+	DropdownMenuPortalTargetKey,
+	type DropdownMenuItemProps,
+	type DropdownMenuItemSlots,
+} from './DropdownMenu.types';
 import N8nDropdownMenuSearch from './DropdownMenuSearch.vue';
 
 const SUBMENU_FOCUS_DELAY = 100;
@@ -33,6 +37,7 @@ const emit = defineEmits<{
 }>();
 
 const $style = useCssModule();
+const portalTarget = inject(DropdownMenuPortalTargetKey, ref(undefined));
 
 const searchTerm = ref('');
 const internalSubMenuOpen = ref(false);
@@ -191,7 +196,7 @@ watch(
 				/>
 			</DropdownMenuSubTrigger>
 
-			<DropdownMenuPortal>
+			<DropdownMenuPortal v-bind="portalTarget ? { to: portalTarget } : {}">
 				<DropdownMenuSubContent
 					ref="subContentRef"
 					:class="$style['sub-content']"

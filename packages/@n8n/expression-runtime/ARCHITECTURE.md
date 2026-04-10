@@ -306,7 +306,7 @@ packages/@n8n/expression-runtime/
 
 **Future-Proofing**: Frontend will use Web Workers. Backend uses isolated-vm. Abstract bridge allows adding new environments without changing other layers.
 
-**Testing**: NodeVmBridge allows fast testing without native isolated-vm dependency.
+**Testing**: Integration tests use `IsolatedVmBridge` directly (see `src/__tests__/integration.test.ts`).
 
 ## Known Limitations
 
@@ -361,16 +361,15 @@ The runtime has **no access** to:
 - ❌ Cookies
 
 The runtime **can only**:
-- ✅ Call `getDataSync()` to fetch workflow data
+- ✅ Call back to host via `ivm.Reference` callbacks to fetch workflow data
 - ✅ Access lodash and Luxon libraries
 - ✅ Execute pure JavaScript code
 
 ## Testing Strategy
 
-**Runtime Tests** (vitest):
-- Use NodeVmBridge for fast, isolated tests
-- Test lazy loading, helpers, error handling
-- No native dependencies required
+**Integration Tests** (vitest):
+- Use `IsolatedVmBridge` with real `isolated-vm`
+- Test lazy loading, helpers, error handling, security wrappers
 
 **Bridge Tests** (vitest):
 - Test each bridge implementation

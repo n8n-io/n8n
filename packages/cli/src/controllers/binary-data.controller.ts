@@ -2,7 +2,12 @@ import { BinaryDataQueryDto, BinaryDataSignedQueryDto, ViewableMimeTypes } from 
 import { Get, Query, RestController } from '@n8n/decorators';
 import { Request, Response } from 'express';
 import { JsonWebTokenError } from 'jsonwebtoken';
-import { BinaryDataService, FileNotFoundError, isValidNonDefaultMode } from 'n8n-core';
+import {
+	BinaryDataService,
+	FileNotFoundError,
+	getHtmlSandboxCSP,
+	isValidNonDefaultMode,
+} from 'n8n-core';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
@@ -88,9 +93,15 @@ export class BinaryDataController {
 			res.setHeader('Content-Type', mimeType);
 		}
 
-		if (action === 'download' && fileName) {
-			const encodedFilename = encodeURIComponent(fileName);
-			res.setHeader('Content-Disposition', `attachment; filename="${encodedFilename}"`);
+		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
+
+		if (action === 'download') {
+			if (fileName) {
+				const encodedFilename = encodeURIComponent(fileName);
+				res.setHeader('Content-Disposition', `attachment; filename="${encodedFilename}"`);
+			} else {
+				res.setHeader('Content-Disposition', 'attachment');
+			}
 		}
 	}
 }

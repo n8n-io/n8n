@@ -43,7 +43,8 @@ export class Webhook extends Node {
 
 	description: INodeTypeDescription = {
 		displayName: 'Webhook',
-		icon: { light: 'file:webhook.svg', dark: 'file:webhook.dark.svg' },
+		icon: 'node:webhook',
+		iconColor: 'magenta',
 		name: 'webhook',
 		group: ['trigger'],
 		version: [1, 1.1, 2, 2.1],
@@ -71,6 +72,7 @@ export class Webhook extends Node {
 		outputs: `={{(${configuredOutputs})($parameter)}}`,
 		credentials: credentialsProperty(this.authPropertyName),
 		webhooks: [defaultWebhookDescription],
+		sensitiveOutputFields: ['headers.authorization', 'headers.cookie'],
 		properties: [
 			{
 				displayName: 'Allow Multiple HTTP Methods',

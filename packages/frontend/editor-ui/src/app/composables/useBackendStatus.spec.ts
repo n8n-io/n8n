@@ -57,7 +57,10 @@ describe('useBackendStatus', () => {
 	};
 
 	it('should check backend connection and set online status on mount', async () => {
-		mockFetch.mockResolvedValueOnce({ ok: true });
+		mockFetch.mockResolvedValueOnce({
+			ok: true,
+			json: async () => ({ status: 'ok' }),
+		});
 
 		const wrapper = createWrapper();
 
@@ -91,5 +94,23 @@ describe('useBackendStatus', () => {
 		wrapper.unmount();
 
 		expect(mockStopHeartbeat).toHaveBeenCalled();
+	});
+
+	it('should skip health checks in preview mode', async () => {
+		settingsStore.setSettings(
+			merge({}, defaultSettings, {
+				previewMode: true,
+				endpointHealth: '/internal/health',
+			}),
+		);
+
+		const wrapper = createWrapper();
+
+		await vi.waitFor(() => {
+			expect(mockFetch).not.toHaveBeenCalled();
+			expect(mockStartHeartbeat).not.toHaveBeenCalled();
+		});
+
+		wrapper.unmount();
 	});
 });

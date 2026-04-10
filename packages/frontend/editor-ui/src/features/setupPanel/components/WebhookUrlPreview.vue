@@ -122,6 +122,7 @@ function copyUrl(url: string) {
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--shade-1);
 	word-break: break-all;
+	line-height: var(--line-height--xl);
 	flex: 1;
 }
 </style>

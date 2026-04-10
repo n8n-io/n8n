@@ -37,20 +37,27 @@ export async function validateAuth(context: IWebhookFunctions) {
 	} else if (authentication === 'n8nUserAuth') {
 		const webhookName = context.getWebhookName();
 
-		function getCookie(name: string) {
-			const value = `; ${headers.cookie}`;
-			const parts = value.split(`; ${name}=`);
+		if (webhookName !== 'setup') {
+			function getCookie(name: string) {
+				const value = `; ${headers.cookie}`;
+				const parts = value.split(`; ${name}=`);
 
-			if (parts.length === 2) {
-				return parts.pop()?.split(';').shift();
+				if (parts.length === 2) {
+					return parts.pop()?.split(';').shift();
+				}
+				return '';
 			}
-			return '';
-		}
 
-		const authCookie = getCookie('n8n-auth');
-		if (!authCookie && webhookName !== 'setup') {
-			// Data is not defined on node so can not authenticate
-			throw new ChatTriggerAuthorizationError(500, 'User not authenticated!');
+			const authCookie = getCookie('n8n-auth');
+			if (!authCookie) {
+				throw new ChatTriggerAuthorizationError(401, 'User not authenticated!');
+			}
+
+			try {
+				await context.validateCookieAuth(authCookie);
+			} catch {
+				throw new ChatTriggerAuthorizationError(401, 'Invalid authentication token');
+			}
 		}
 	}
 

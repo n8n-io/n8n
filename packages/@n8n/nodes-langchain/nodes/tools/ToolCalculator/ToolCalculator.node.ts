@@ -10,8 +10,7 @@ import {
 	nodeNameToToolName,
 } from 'n8n-workflow';
 
-import { logWrapper } from '@n8n/ai-utilities';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 function getTool(ctx: ISupplyDataFunctions | IExecuteFunctions): Calculator {
 	const calculator = new Calculator();
@@ -23,7 +22,7 @@ export class ToolCalculator implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Calculator',
 		name: 'toolCalculator',
-		icon: 'fa:calculator',
+		icon: 'node:calculator',
 		iconColor: 'black',
 		group: ['transform'],
 		version: 1,

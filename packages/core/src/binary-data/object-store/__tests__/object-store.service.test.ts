@@ -45,6 +45,7 @@ describe('ObjectStoreService', () => {
 			authAutoDetect: false,
 		},
 		protocol: 'https',
+		forcePathStyle: true,
 	});
 
 	let objectStoreService: ObjectStoreService;
@@ -55,6 +56,7 @@ describe('ObjectStoreService', () => {
 	beforeEach(async () => {
 		objectStoreService = new ObjectStoreService(mock(), s3Config);
 		await objectStoreService.init();
+		mockS3Send.mockClear();
 		jest.restoreAllMocks();
 	});
 
@@ -66,12 +68,27 @@ describe('ObjectStoreService', () => {
 
 		it('should return client config with endpoint and forcePathStyle when custom host is provided', () => {
 			s3Config.host = 'example.com';
+			s3Config.forcePathStyle = true;
 
 			const clientConfig = objectStoreService.getClientConfig();
 
 			expect(clientConfig).toEqual({
 				endpoint: 'https://example.com',
 				forcePathStyle: true,
+				region: mockBucket.region,
+				credentials,
+			});
+		});
+
+		it('should return client config with forcePathStyle disabled when configured', () => {
+			s3Config.host = 'example.com';
+			s3Config.forcePathStyle = false;
+
+			const clientConfig = objectStoreService.getClientConfig();
+
+			expect(clientConfig).toEqual({
+				endpoint: 'https://example.com',
+				forcePathStyle: false,
 				region: mockBucket.region,
 				credentials,
 			});

@@ -13,8 +13,7 @@ import type { ClientOptions } from 'openai';
 
 import { checkDomainRestrictions } from '@utils/checkDomainRestrictions';
 import { mergeCustomHeaders } from '@utils/helpers';
-import { getProxyAgent, logWrapper } from '@n8n/ai-utilities';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { getProxyAgent, logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 const modelParameter: INodeProperties = {
 	displayName: 'Model',

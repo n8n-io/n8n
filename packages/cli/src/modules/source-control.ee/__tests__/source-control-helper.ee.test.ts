@@ -12,6 +12,7 @@ import {
 	SOURCE_CONTROL_SSH_FOLDER,
 } from '@/modules/source-control.ee/constants';
 import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+
 import {
 	areSameCredentials,
 	generateSshKeyPair,
@@ -25,7 +26,6 @@ import {
 	sanitizeCredentialData,
 	sourceControlFoldersExistCheck,
 } from '../source-control-helper.ee';
-
 import type { StatusExportableCredential } from '../types/exportable-credential';
 import type { SourceControlWorkflowVersionId } from '../types/source-control-workflow-version-id';
 
@@ -1007,6 +1007,25 @@ describe('Source Control Helper', () => {
 			expect(result.password).toBe('local-password');
 		});
 
+		it('should preserve oauthTokenData from local even though it is removed from remote', () => {
+			const local = {
+				apiKey: 'local-secret-123',
+				oauthTokenData: { access_token: 'some-token', refresh_token: 'some-refresh-token' },
+			};
+			const remote = {
+				apiKey: '', // Plain string sanitized to empty
+			} as ICredentialDataDecryptedObject;
+
+			const result = mergeRemoteCrendetialDataIntoLocalCredentialData({ local, remote });
+
+			// Local oauthTokenData should be explicitly copied over
+			expect(result.apiKey).toBe('local-secret-123');
+			expect(result.oauthTokenData).toEqual({
+				access_token: 'some-token',
+				refresh_token: 'some-refresh-token',
+			});
+		});
+
 		it('should recursively merge nested objects', () => {
 			const local = {
 				auth: {
@@ -1575,6 +1594,28 @@ describe('Source Control Helper', () => {
 			const auth = result.auth as ICredentialDataDecryptedObject;
 			expect(auth.enabled).toBe(true);
 			expect(auth.port).toBe(443);
+		});
+
+		it('should preserve empty string field when local does not have the key', () => {
+			const local = { port: 3000 };
+			const remote = { port: 3000, apiKey: '' };
+
+			const result = mergeRemoteCrendetialDataIntoLocalCredentialData({ local, remote });
+
+			expect('apiKey' in result).toBe(true);
+			expect(result.apiKey).toBe('');
+		});
+
+		it('should preserve multiple new empty string fields from remote when local has no matching key', () => {
+			const local = { port: 3000 };
+			const remote = { port: 3000, apiKey: '', username: '' };
+
+			const result = mergeRemoteCrendetialDataIntoLocalCredentialData({ local, remote });
+
+			expect('apiKey' in result).toBe(true);
+			expect(result.apiKey).toBe('');
+			expect('username' in result).toBe(true);
+			expect(result.username).toBe('');
 		});
 	});
 
