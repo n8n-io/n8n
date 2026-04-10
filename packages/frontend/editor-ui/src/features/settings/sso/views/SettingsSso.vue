@@ -112,7 +112,7 @@ onMounted(() => {
 			</a>
 		</p>
 		<!-- Protocol selector — rendered independently outside form v-ifs for E2E timing -->
-		<div v-if="hasAnySsoEnabled" :class="shared.card">
+		<div v-if="hasAnySsoEnabled" :class="[shared.card, $style.protocolCard]">
 			<div
 				data-test-id="sso-auth-protocol-select"
 				:class="[shared.settingsItem, shared.settingsItemNoBorder]"
@@ -144,12 +144,14 @@ onMounted(() => {
 		<div
 			v-if="ssoStore.isEnterpriseSamlEnabled && authProtocol === SupportedProtocols.SAML"
 			data-test-id="sso-content-licensed"
+			:class="$style.formContainer"
 		>
 			<SamlSettingsForm ref="samlForm" />
 		</div>
 		<div
 			v-if="ssoStore.isEnterpriseOidcEnabled && authProtocol === SupportedProtocols.OIDC"
 			data-test-id="sso-content-licensed"
+			:class="$style.formContainer"
 		>
 			<OidcSettingsForm ref="oidcForm" />
 		</div>
@@ -220,6 +222,17 @@ onMounted(() => {
 		content: '↗';
 		margin-left: 2px;
 	}
+}
+
+.protocolCard {
+	margin-bottom: -1px;
+	border-bottom-left-radius: 0;
+	border-bottom-right-radius: 0;
+}
+
+.formContainer :deep(> div > div:first-child) {
+	border-top-left-radius: 0;
+	border-top-right-radius: 0;
 }
 
 .actionBox {
