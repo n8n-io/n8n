@@ -146,14 +146,15 @@ async function onBuy() {
 							In the meantime, you can switch off n8n Connect in any workflows using it and setup
 							your own credential.
 						</p>
-						<N8nLink
-							v-if="credentialType"
-							:to="credentialDocsUrl"
-							new-window
-							data-test-id="ai-gateway-topup-credentials-docs-link"
-						>
-							Open setup guide
-						</N8nLink>
+						<p v-if="credentialType" :class="$style.thankYouParagraph">
+							<N8nLink
+								:to="credentialDocsUrl"
+								new-window
+								data-test-id="ai-gateway-topup-credentials-docs-link"
+							>
+								Open setup guide
+							</N8nLink>
+						</p>
 					</div>
 				</div>
 			</div>
@@ -182,9 +183,10 @@ async function onBuy() {
 
 <style lang="scss" module>
 .contentWrapper {
-	min-height: 300px;
 	display: flex;
 	flex-direction: column;
+	justify-content: center;
+	min-height: 300px;
 }
 
 .body {
@@ -247,7 +249,7 @@ async function onBuy() {
 	align-items: center;
 	text-align: center;
 	gap: var(--spacing--sm);
-	padding: var(--spacing--sm) 0;
+	padding: var(--spacing--sm) 0 var(--spacing--xl);
 }
 
 .thankYouIcon {
