@@ -182,6 +182,13 @@ export class InstanceAiService {
 	/** Slug of the active trace recording — set when record mode begins. */
 	private activeTraceSlug: string | undefined;
 
+	/** Shared TraceIndex/IdRemapper per slug — reused across all runs within one test. */
+	private sharedTraceIndex?: import('@n8n/instance-ai').TraceIndex;
+
+	private sharedIdRemapper?: import('@n8n/instance-ai').IdRemapper;
+
+	private sharedTraceSlug?: string;
+
 	/** Default IANA timezone for the instance (from GENERIC_TIMEZONE env var). */
 	private readonly defaultTimeZone: string;
 
@@ -561,14 +568,23 @@ export class InstanceAiService {
 		const events = slug ? this.traceEventsBySlug.get(slug) : undefined;
 
 		if (events && events.length > 0) {
-			// Replay mode: trace events loaded from fixture
+			// Replay mode: reuse shared TraceIndex/IdRemapper across all runs
+			// within the same test slug so that cursor state is preserved when
+			// background-task follow-up runs create new trace contexts.
+			if (this.sharedTraceSlug !== slug || !this.sharedTraceIndex) {
+				this.sharedTraceIndex = new TI(events as import('@n8n/instance-ai').TraceEvent[]);
+				this.sharedIdRemapper = new IR();
+				this.sharedTraceSlug = slug;
+			}
 			tracing.replayMode = 'replay';
-			tracing.traceIndex = new TI(events as import('@n8n/instance-ai').TraceEvent[]);
-			tracing.idRemapper = new IR();
+			tracing.traceIndex = this.sharedTraceIndex;
+			tracing.idRemapper = this.sharedIdRemapper!;
+			this.logger.debug(`[TRACE-REPLAY] Replay mode — slug=${slug}, events=${events.length}`);
 		} else {
 			// Record mode: no trace events, capture tool I/O
 			tracing.replayMode = 'record';
 			tracing.traceWriter = new TW('recording');
+			this.logger.debug(`[TRACE-REPLAY] Record mode — slug=${slug ?? 'none'}`);
 		}
 	}
 
@@ -930,6 +946,11 @@ export class InstanceAiService {
 		this.traceEventsBySlug.delete(slug);
 		if (this.activeTraceSlug === slug) {
 			this.activeTraceSlug = undefined;
+		}
+		if (this.sharedTraceSlug === slug) {
+			this.sharedTraceIndex = undefined;
+			this.sharedIdRemapper = undefined;
+			this.sharedTraceSlug = undefined;
 		}
 	}
 
