@@ -272,9 +272,11 @@ function onCreditsBadgeClick(event: MouseEvent): void {
 
 .textBlock {
 	display: flex;
-	flex-direction: column;
-	align-items: flex-start;
-	gap: var(--spacing--5xs);
+	flex-direction: row;
+	align-items: baseline;
+	flex-wrap: wrap;
+	column-gap: var(--spacing--4xs);
+	row-gap: var(--spacing--6xs);
 	min-width: 0;
 	flex: 1;
 	text-align: left;
@@ -310,6 +312,8 @@ function onCreditsBadgeClick(event: MouseEvent): void {
 }
 
 .badgeWrap {
+	display: flex;
+	align-items: center;
 	flex-shrink: 0;
 }
 
