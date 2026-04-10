@@ -1,9 +1,11 @@
 import { testDb, mockInstance } from '@n8n/backend-test-utils';
 import type { CommandClass } from '@n8n/decorators';
-import argvParser from 'yargs-parser';
 
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
+
+// Jest doesn't play well with ESM
+const argvParser = (await import('yargs-parser')).default;
 
 mockInstance(MessageEventBus);
 
