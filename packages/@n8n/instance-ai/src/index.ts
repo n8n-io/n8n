@@ -43,7 +43,6 @@ export type {
 	ThreadPatch,
 	WorkflowLoopWorkItemRecord,
 } from './storage';
-export { WORKING_MEMORY_TEMPLATE } from './memory/working-memory-template';
 export { truncateToTitle, generateThreadTitle } from './memory/title-utils';
 export { McpClientManager } from './mcp/mcp-client-manager';
 export { mapMastraChunkToEvent } from './stream/map-chunk';

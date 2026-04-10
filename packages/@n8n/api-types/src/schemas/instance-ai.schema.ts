@@ -564,10 +564,6 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
 	message: z.string().min(1),
 }) {}
 
-export class InstanceAiUpdateMemoryRequest extends Z.class({
-	content: z.string(),
-}) {}
-
 export class InstanceAiEnsureThreadRequest extends Z.class({
 	threadId: z.string().uuid().optional(),
 }) {}
@@ -771,11 +767,6 @@ export interface InstanceAiStoredMessage {
 export interface InstanceAiThreadMessagesResponse {
 	messages: InstanceAiStoredMessage[];
 	threadId: string;
-}
-
-export interface InstanceAiThreadContextResponse {
-	threadId: string;
-	workingMemory: string | null;
 }
 
 // ---------------------------------------------------------------------------

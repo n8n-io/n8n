@@ -65,14 +65,17 @@ describe('TokenExchangeService', () => {
 			jest
 				.spyOn(jwt, 'verify')
 				.mockReturnValue(validClaims as unknown as ReturnType<typeof jwt.verify>);
-			trustedKeyStore.getByKid.mockResolvedValue(resolvedKey);
+			trustedKeyStore.getByKidAndIss.mockResolvedValue(resolvedKey);
 			jtiStore.consume.mockResolvedValue(true);
 			identityResolutionService.resolve.mockResolvedValue(mockUser);
 
 			const result = await service.embedLogin('valid-token');
 
 			expect(result).toBe(mockUser);
-			expect(trustedKeyStore.getByKid).toHaveBeenCalledWith('test-kid');
+			expect(trustedKeyStore.getByKidAndIss).toHaveBeenCalledWith(
+				'test-kid',
+				'https://issuer.example.com',
+			);
 			expect(jtiStore.consume).toHaveBeenCalledWith(
 				'unique-jti-1',
 				new Date(validClaims.exp * 1000),
@@ -100,13 +103,24 @@ describe('TokenExchangeService', () => {
 			await expect(service.embedLogin('no-kid-token')).rejects.toThrow(BadRequestError);
 		});
 
+		it('should throw when iss is missing from JWT payload', async () => {
+			const { iss: _, ...claimsWithoutIss } = validClaims;
+			jest.spyOn(jwt, 'decode').mockReturnValue({
+				header: { alg: 'RS256', kid: 'test-kid' },
+				payload: claimsWithoutIss,
+				signature: 'sig',
+			} as unknown as ReturnType<typeof jwt.decode>);
+
+			await expect(service.embedLogin('no-iss-token')).rejects.toThrow(BadRequestError);
+		});
+
 		it('should throw when kid is unknown', async () => {
 			jest.spyOn(jwt, 'decode').mockReturnValue({
 				header: { alg: 'RS256', kid: 'unknown-kid' },
 				payload: validClaims,
 				signature: 'sig',
 			} as unknown as ReturnType<typeof jwt.decode>);
-			trustedKeyStore.getByKid.mockResolvedValue(undefined);
+			trustedKeyStore.getByKidAndIss.mockResolvedValue(undefined);
 
 			await expect(service.embedLogin('unknown-kid-token')).rejects.toThrow(AuthError);
 		});
@@ -120,7 +134,7 @@ describe('TokenExchangeService', () => {
 			jest
 				.spyOn(jwt, 'verify')
 				.mockReturnValue('string-payload' as unknown as ReturnType<typeof jwt.verify>);
-			trustedKeyStore.getByKid.mockResolvedValue(resolvedKey);
+			trustedKeyStore.getByKidAndIss.mockResolvedValue(resolvedKey);
 
 			await expect(service.embedLogin('string-payload-token')).rejects.toThrow(AuthError);
 		});
@@ -134,7 +148,7 @@ describe('TokenExchangeService', () => {
 			jest.spyOn(jwt, 'verify').mockImplementation(() => {
 				throw new Error('invalid signature');
 			});
-			trustedKeyStore.getByKid.mockResolvedValue(resolvedKey);
+			trustedKeyStore.getByKidAndIss.mockResolvedValue(resolvedKey);
 
 			await expect(service.embedLogin('bad-sig-token')).rejects.toThrow(AuthError);
 		});
@@ -149,7 +163,7 @@ describe('TokenExchangeService', () => {
 			jest
 				.spyOn(jwt, 'verify')
 				.mockReturnValue(invalidClaims as unknown as ReturnType<typeof jwt.verify>);
-			trustedKeyStore.getByKid.mockResolvedValue(resolvedKey);
+			trustedKeyStore.getByKidAndIss.mockResolvedValue(resolvedKey);
 
 			await expect(service.embedLogin('invalid-claims-token')).rejects.toThrow();
 		});
@@ -164,7 +178,7 @@ describe('TokenExchangeService', () => {
 			jest
 				.spyOn(jwt, 'verify')
 				.mockReturnValue(longLivedClaims as unknown as ReturnType<typeof jwt.verify>);
-			trustedKeyStore.getByKid.mockResolvedValue(resolvedKey);
+			trustedKeyStore.getByKidAndIss.mockResolvedValue(resolvedKey);
 
 			await expect(service.embedLogin('long-lived-token')).rejects.toThrow(AuthError);
 		});
@@ -178,7 +192,7 @@ describe('TokenExchangeService', () => {
 			jest
 				.spyOn(jwt, 'verify')
 				.mockReturnValue(validClaims as unknown as ReturnType<typeof jwt.verify>);
-			trustedKeyStore.getByKid.mockResolvedValue(resolvedKey);
+			trustedKeyStore.getByKidAndIss.mockResolvedValue(resolvedKey);
 			jtiStore.consume.mockResolvedValue(false);
 
 			await expect(service.embedLogin('replayed-token')).rejects.toThrow(AuthError);
@@ -193,7 +207,7 @@ describe('TokenExchangeService', () => {
 			jest
 				.spyOn(jwt, 'verify')
 				.mockReturnValue(validClaims as unknown as ReturnType<typeof jwt.verify>);
-			trustedKeyStore.getByKid.mockResolvedValue(resolvedKey);
+			trustedKeyStore.getByKidAndIss.mockResolvedValue(resolvedKey);
 			jtiStore.consume.mockResolvedValue(true);
 			identityResolutionService.resolve.mockRejectedValue(new Error('User not found'));
 
