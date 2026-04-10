@@ -123,13 +123,11 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 	/**
 	 * Saves the current user role provisioning setting to the store.
 	 */
-	const saveProvisioningConfig = async (isDisablingSso: boolean): Promise<void> => {
-		const effectiveRoleAssignment: RoleAssignmentSetting = isDisablingSso
-			? 'manual'
-			: roleAssignment.value;
-		const effectiveMappingMethod: RoleMappingMethodSetting = isDisablingSso
-			? 'idp'
-			: mappingMethod.value;
+	const saveProvisioningConfig = async (_isDisablingSso: boolean): Promise<void> => {
+		// Provisioning settings persist independently of SSO login toggle.
+		// Disabling SSO login should not wipe the role mapping configuration.
+		const effectiveRoleAssignment: RoleAssignmentSetting = roleAssignment.value;
+		const effectiveMappingMethod: RoleMappingMethodSetting = mappingMethod.value;
 
 		const stored = getDropdownValuesFromConfig(provisioningStore.provisioningConfig);
 		if (
