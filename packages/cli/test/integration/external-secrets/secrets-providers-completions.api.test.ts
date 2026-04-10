@@ -1,6 +1,7 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
 import {
 	createTeamProject,
+	getPersonalProject,
 	linkUserToProject,
 	mockInstance,
 	mockLogger,
@@ -314,6 +315,14 @@ describe('Secret Providers Completions API', () => {
 
 				expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
 			});
+
+			it('should allow personal project owner to list global secrets for their personal project', async () => {
+				const personalProject = await getPersonalProject(member);
+
+				await memberAgent
+					.get(`/secret-providers/completions/secrets/global/${personalProject.id}`)
+					.expect(200);
+			});
 		});
 
 		describe('response shape', () => {
@@ -383,6 +392,14 @@ describe('Secret Providers Completions API', () => {
 					.expect(403);
 
 				expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
+			});
+
+			it('should allow personal project owner to list project secrets for their personal project', async () => {
+				const personalProject = await getPersonalProject(member);
+
+				await memberAgent
+					.get(`/secret-providers/completions/secrets/project/${personalProject.id}`)
+					.expect(200);
 			});
 		});
 
