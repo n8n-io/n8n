@@ -1590,6 +1590,9 @@ importers:
       '@n8n/workflow-sdk':
         specifier: workspace:*
         version: link:../workflow-sdk
+      csv-parse:
+        specifier: 5.5.0
+        version: 5.5.0
       flatted:
         specifier: 3.4.2
         version: 3.4.2
