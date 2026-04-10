@@ -169,7 +169,6 @@ describe('createCreateDataTableTool', () => {
 			(wrappedError as Error & { cause: Error }).cause = conflictError;
 
 			(context.dataTableService.create as jest.Mock).mockRejectedValue(wrappedError);
-			(context.dataTableService.list as jest.Mock).mockResolvedValue([mockTable]);
 
 			const tool = createCreateDataTableTool(context);
 

@@ -112,16 +112,12 @@ export function createCreateDataTableTool(context: InstanceAiContext) {
 				return { table };
 			} catch (error) {
 				// If table already exists, guide the agent to use the existing one
-				// rather than throwing — which would cause the agent to retry in a loop
+				// rather than throwing — which would cause the agent to waste iterations retrying
 				if (isNameConflictError(error)) {
-					const tables = await context.dataTableService.list({ projectId: input.projectId });
-					const existing = tables.find((t) => t.name === input.name);
-					if (existing) {
-						return {
-							denied: true,
-							reason: `Table "${input.name}" already exists. Use list-data-tables to find it and get-data-table-schema to check its columns.`,
-						};
-					}
+					return {
+						denied: true,
+						reason: `Table "${input.name}" already exists. Use list-data-tables to find it and get-data-table-schema to check its columns.`,
+					};
 				}
 				throw error;
 			}
