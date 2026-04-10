@@ -33,27 +33,6 @@ const PLATFORM_CAPABILITIES: Record<string, PlatformCapabilities> = {
 			'dividers, key-value fields. For multiple choices, use one button per option. ' +
 			"The user's response (button click) is returned to you.",
 	},
-	whatsapp: {
-		supportedComponents: ['section', 'button'],
-		description:
-			'Present interactive UI in WhatsApp. Available: up to 3 buttons (max 20 chars each) ' +
-			'and text sections (max 1024 chars). For choices, use one button per option (max 3). ' +
-			"The user's response (button click) is returned to you.",
-	},
-	teams: {
-		supportedComponents: ['section', 'button', 'divider', 'image', 'fields'],
-		description:
-			'Present rich interactive UI in Microsoft Teams via Adaptive Cards. ' +
-			'Available: buttons, text sections, images, dividers, key-value fields. ' +
-			"The user's response (button click) is returned to you.",
-	},
-	linear: {
-		supportedComponents: ['section', 'divider', 'fields'],
-		description:
-			'Present formatted content in Linear. Available: text sections, dividers, ' +
-			'key-value fields. Linear does NOT support interactive buttons or selections. ' +
-			'Use this for displaying information only.',
-	},
 };
 
 // Conservative default — works on all platforms that support buttons
