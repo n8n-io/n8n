@@ -112,10 +112,6 @@ const plugins: UserConfig['plugins'] = [
 				src: 'node_modules/web-tree-sitter/tree-sitter.wasm',
 				dest: 'dist',
 			},
-			{
-				src: 'node_modules/curlconverter/dist/tree-sitter-bash.wasm',
-				dest: 'dist',
-			},
 			// wa-sqlite WASM files for OPFS database support (no cross-origin isolation needed)
 			{
 				src: 'node_modules/wa-sqlite/dist/wa-sqlite.wasm',

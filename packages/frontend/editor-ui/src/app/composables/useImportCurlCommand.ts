@@ -1,9 +1,8 @@
 import type { MaybeRef } from 'vue';
 import { unref } from 'vue';
 import get from 'lodash/get';
-import { toJsonObject as curlToJson } from 'curlconverter';
 import { convertCurlToJson } from '../utils/convertCurl/convertCurl';
-import type { CurlToJsonResult } from "../utils/convertCurl/convertCurl.types"
+import type { CurlToJsonResult } from '../utils/convertCurl/convertCurl.types';
 
 import { CURL_IMPORT_NODES_PROTOCOLS, CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS } from '@/app/constants';
 import { useToast } from '@/app/composables/useToast';
@@ -77,7 +76,10 @@ const getContentTypeHeader = (headers: CurlToJsonResult['headers']): string | un
 	return get(headers, CONTENT_TYPE_KEY) ?? undefined;
 };
 
-const isContentType = (headers: CurlToJsonResult['headers'], contentType: ContentTypes): boolean => {
+const isContentType = (
+	headers: CurlToJsonResult['headers'],
+	contentType: ContentTypes,
+): boolean => {
 	return getContentTypeHeader(headers) === contentType;
 };
 
@@ -160,7 +162,7 @@ const keyValueBodyToNodeParameters = (body: CurlToJsonResult['data'] = {}): Para
 };
 
 const jsonBodyToNodeParameters = (body: CurlToJsonResult['data'] = {}): Parameter[] | [] => {
-	// curlconverter returns string if parameter includes special base64 characters like % or / or =
+	// convertCurl returns string if parameter includes special base64 characters like % or / or =
 	if (typeof body === 'string') {
 		// handles decoding percent-encoded characters like %3D to =
 		const parameters = new URLSearchParams(body);
@@ -202,8 +204,18 @@ const lowerCaseContentTypeKey = (obj: CurlToJsonResult['headers']): void => {
 
 const encodeBasicAuthentication = (username: string, password: string) =>
 	btoa(`${username}:${password}`);
-const jsonHasNestedObjects = (json: { [key: string]: string | number | object }) =>
-	Object.values(json).some((e) => typeof e === 'object');
+const jsonHasNestedObjects = (
+	json:
+		| string
+		| {
+				[key: string]: string | boolean;
+		  },
+) => {
+	if (typeof json === 'string' || typeof json === 'boolean') {
+		return false;
+	}
+	return Object.values(json).some((e) => typeof e === 'object');
+};
 
 const mapCookies = (cookies: CurlToJsonResult['cookies']): { cookie: string } | {} => {
 	if (!cookies) return {};
@@ -253,8 +265,6 @@ export function sanitizeCurlUrlPlaceholders(curlCommand: string): string {
 
 export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters => {
 	const curlJson = convertCurlToJson(sanitizeCurlUrlPlaceholders(curlCommand));
-	console.log("New: ", curlJson);
-	console.log("Original: ", curlToJson(sanitizeCurlUrlPlaceholders(curlCommand)));
 
 	const headers = curlJson.headers ?? {};
 
@@ -266,24 +276,12 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 		headers.authorization = `Basic ${encodeBasicAuthentication(user, pass)}`;
 	}
 
-	// curlconverter does not parse query parameters correctly if they contain commas or semicolons
-	// so we need to parse it again
-	const url = new URL(curlJson.url);
-	const queries = curlJson.queries ?? {};
-	for (const [key, value] of url.searchParams) {
-		queries[key] = value;
-	}
-
-	url.search = '';
-	// URL automatically adds a trailing slash if the path is empty
-	const urlString = url.pathname === '/' ? url.href.slice(0, -1) : url.href;
-
 	const httpNodeParameters: HttpNodeParameters = {
-		url: urlString,
+		url: curlJson.url,
 		authentication: 'none',
 		method: curlJson.method.toUpperCase(),
 		...extractHeaders({ ...headers, ...mapCookies(curlJson.cookies) }),
-		...extractQueries(queries),
+		...extractQueries(curlJson.queries),
 		options: {
 			redirect: {
 				redirect: {},

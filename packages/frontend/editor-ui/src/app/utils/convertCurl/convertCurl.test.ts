@@ -11,6 +11,19 @@ describe('convertCurl', () => {
 		});
 	});
 
+	it('Should handle commas in query parameters', () => {
+		const result = convertCurlToJson('curl https://reqbin.com/echo?foo=1,2,3');
+
+		expect(result).toEqual({
+			method: 'GET',
+			url: 'https://reqbin.com/echo',
+			raw_url: 'https://reqbin.com/echo?foo=1,2,3',
+			queries: {
+				foo: '1,2,3',
+			},
+		});
+	});
+
 	it('Should handle request methods', () => {
 		const getResult = convertCurlToJson('curl -X GET http://localhost:2000');
 		expect(getResult).toEqual({

@@ -21,8 +21,6 @@ export function convertCurlToJson(curlString: string): CurlToJsonResult {
 		],
 	});
 
-	console.log(args);
-
 	const jsonOutput: CurlToJsonResult = {
 		url: '',
 		raw_url: '',
