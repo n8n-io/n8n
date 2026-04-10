@@ -714,11 +714,28 @@ export class CredentialsService {
 		});
 	}
 
+	private async resolveOwningProjectIdForNewCredential(
+		user: User,
+		projectId: string | undefined,
+		entityManager?: EntityManager,
+	): Promise<string> {
+		if (projectId !== undefined) {
+			return projectId;
+		}
+		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
+			user.id,
+			entityManager,
+		);
+		// Chat users are not allowed to create credentials even within their personal project,
+		// so even though we found the project ensure it gets found via expected scope too.
+		return personalProject.id;
+	}
+
 	async save(
 		credential: CredentialsEntity,
 		encryptedData: ICredentialsDb,
 		user: User,
-		projectId?: string,
+		projectId: string,
 		decryptedCredentialData?: ICredentialDataDecryptedObject,
 	) {
 		// To avoid side effects
@@ -729,16 +746,6 @@ export class CredentialsService {
 
 		const { manager: dbManager } = this.credentialsRepository;
 		const result = await dbManager.transaction(async (transactionManager) => {
-			if (projectId === undefined) {
-				const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
-					user.id,
-					transactionManager,
-				);
-				// Chat users are not allowed to create credentials even within their personal project,
-				// so even though we found the project ensure it gets found via expected scope too.
-				projectId = personalProject.id;
-			}
-
 			const project = await this.projectService.getProjectWithScope(
 				user,
 				projectId,
@@ -1226,15 +1233,17 @@ export class CredentialsService {
 	}
 
 	private async createCredential(opts: CreateCredentialOptions, user: User) {
+		const targetProjectId = await this.resolveOwningProjectIdForNewCredential(user, opts.projectId);
+
 		await this.checkCredentialData(
 			opts.type,
 			opts.data as ICredentialDataDecryptedObject,
 			user,
-			opts.projectId ?? '',
+			targetProjectId,
 		);
-		if (this.externalSecretsConfig.externalSecretsForProjects && opts.projectId) {
+		if (this.externalSecretsConfig.externalSecretsForProjects) {
 			await validateAccessToReferencedSecretProviders(
-				opts.projectId,
+				targetProjectId,
 				opts.data as ICredentialDataDecryptedObject,
 				this.externalSecretsProviderAccessCheckService,
 				'create',
@@ -1269,7 +1278,7 @@ export class CredentialsService {
 			credentialEntity,
 			encryptedCredential,
 			user,
-			opts.projectId,
+			targetProjectId,
 			opts.data as ICredentialDataDecryptedObject,
 		);
 
