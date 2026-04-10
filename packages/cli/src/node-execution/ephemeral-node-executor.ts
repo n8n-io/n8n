@@ -1,33 +1,29 @@
-import { GlobalConfig } from '@n8n/config';
-import {
-	CredentialsRepository,
-	SharedCredentialsRepository,
-	SharedWorkflowRepository,
-	WorkflowEntity,
-	WorkflowRepository,
-} from '@n8n/db';
 import { Logger } from '@n8n/backend-common';
+import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { DataSource, type EntityManager } from '@n8n/typeorm';
+import { ExecuteContext } from 'n8n-core';
 import type {
+	IExecuteData,
 	INode,
 	INodeCredentialsDetails,
 	INodeExecutionData,
 	INodeParameters,
-	IWorkflowExecutionDataProcess,
+	ITaskDataConnections,
+	NodeOutput,
 } from 'n8n-workflow';
-import { createRunExecutionData, NodeConnectionTypes, UserError } from 'n8n-workflow';
+import {
+	Workflow,
+	Node,
+	UserError,
+	createEmptyRunExecutionData,
+	SEND_AND_WAIT_OPERATION,
+} from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { ActiveExecutions } from '@/active-executions';
 import { NodeTypes } from '@/node-types';
-import { CacheService } from '@/services/cache/cache.service';
-import { WorkflowRunner } from '@/workflow-runner';
+import { getBase } from '@/workflow-execute-additional-data';
 
-const MANUAL_TRIGGER_NODE_NAME = 'Manual Trigger';
-
-/** Minimal tool shape for constructing an ephemeral Manual Trigger → target node workflow. */
+/** Minimal tool shape for constructing an in-memory single-node execution. */
 export type EphemeralWorkflowToolLike = {
 	projectId: string;
 	nodeType: string;
@@ -56,19 +52,15 @@ export interface NodeExecutionResult {
 	error?: string;
 }
 
+// send and wait requires persistent workflows to handle the wait logic
+const OPERATION_BLACKLIST = [SEND_AND_WAIT_OPERATION, 'dispatchAndWait'];
+
 @Service()
 export class EphemeralNodeExecutor {
 	constructor(
 		private readonly nodeTypes: NodeTypes,
-		private readonly workflowRunner: WorkflowRunner,
-		private readonly activeExecutions: ActiveExecutions,
-		private readonly workflowRepository: WorkflowRepository,
-		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
-		private readonly dataSource: DataSource,
-		private readonly cacheService: CacheService,
-		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 	) {}
 
@@ -161,7 +153,11 @@ export class EphemeralNodeExecutor {
 		return verified;
 	}
 
-	private validateNodeForExecution(nodeType: string, typeVersion: number): void {
+	private validateNodeForExecution(
+		nodeType: string,
+		typeVersion: number,
+		nodeParameters: INodeParameters,
+	): void {
 		const resolved = this.nodeTypes.getByNameAndVersion(nodeType, typeVersion);
 
 		if (!resolved.description.usableAsTool) {
@@ -171,108 +167,101 @@ export class EphemeralNodeExecutor {
 		if (resolved.description.group.includes('trigger')) {
 			throw new UserError('Trigger nodes cannot be executed standalone', { extra: { nodeType } });
 		}
+
+		const operation = nodeParameters.operation;
+
+		if (operation && typeof operation === 'string' && OPERATION_BLACKLIST.includes(operation)) {
+			throw new UserError(`The "${operation}" is not supported for agent tool execution.`, {
+				extra: { nodeType, operation },
+			});
+		}
 	}
 
-	async buildAndPersistWorkflow(
+	/**
+	 * Execute a node directly without persisting a workflow or execution to the DB.
+	 * Mirrors the pattern from WorkflowExecute.executeNode and DynamicNodeParametersService.
+	 */
+	private async executeNodeDirectly(
 		tool: EphemeralWorkflowToolLike,
-		transactionManager: EntityManager,
-	): Promise<WorkflowEntity> {
-		const manualTriggerNode: INode = {
-			id: uuid(),
-			name: MANUAL_TRIGGER_NODE_NAME,
-			type: 'n8n-nodes-base.manualTrigger',
-			typeVersion: 1,
-			position: [0, 0],
-			parameters: {},
-		};
-
-		const targetNode: INode = {
+		inputItems: INodeExecutionData[],
+	): Promise<NodeExecutionResult> {
+		const node: INode = {
 			id: uuid(),
 			name: 'Target Node',
 			type: tool.nodeType,
 			typeVersion: tool.nodeTypeVersion,
-			position: [300, 0],
+			position: [0, 0],
 			parameters: tool.nodeParameters,
 			credentials: tool.credentials ?? undefined,
 		};
 
-		const workflow = new WorkflowEntity();
-		workflow.name = `Ephemeral: ${tool.nodeType}`;
-		workflow.active = false;
-		workflow.isArchived = false;
-		workflow.isEphemeral = true;
-		workflow.versionId = uuid();
-		workflow.activeVersionId = null;
-		workflow.nodes = [manualTriggerNode, targetNode];
-		workflow.connections = {
-			[MANUAL_TRIGGER_NODE_NAME]: {
-				main: [[{ node: 'Target Node', type: NodeConnectionTypes.Main, index: 0 }]],
-			},
-		};
-		workflow.settings = {
-			saveDataErrorExecution: 'none',
-			saveDataSuccessExecution: 'none',
-			saveManualExecutions: false,
-			saveExecutionProgress: false,
-		};
-
-		const saved = await transactionManager.save(workflow);
-
-		const sharedWorkflow = this.sharedWorkflowRepository.create({
-			role: 'workflow:owner',
-			projectId: tool.projectId,
-			workflowId: saved.id,
+		const workflow = new Workflow({
+			nodes: [node],
+			connections: {},
+			active: false,
+			nodeTypes: this.nodeTypes,
 		});
-		await transactionManager.save(sharedWorkflow);
 
-		return saved;
-	}
+		const additionalData = await getBase({ projectId: tool.projectId });
 
-	async deleteWorkflow(workflowId: string): Promise<void> {
-		await this.workflowRepository.delete(workflowId);
-		await this.cacheService.deleteFromHash('workflow-project', workflowId);
-	}
+		const runExecutionData = createEmptyRunExecutionData();
+		const mode = 'internal' as const;
+		const runIndex = 0;
+		const connectionInputData = inputItems;
 
-	private async runEphemeralWorkflow(
-		savedWorkflow: WorkflowEntity,
-		inputData: INodeExecutionData[],
-		projectId: string,
-	): Promise<NodeExecutionResult> {
-		const runData: IWorkflowExecutionDataProcess = {
-			executionMode: 'ephemeral',
-			workflowData: savedWorkflow,
-			pinData: {
-				[MANUAL_TRIGGER_NODE_NAME]: inputData,
-			},
-			projectId,
+		const inputData: ITaskDataConnections = {
+			main: [inputItems],
 		};
 
-		if (this.globalConfig.executions.mode === 'queue') {
-			runData.executionData = createRunExecutionData({
-				resultData: {
-					pinData: runData.pinData,
-					runData: null,
-				},
-				executionData: null,
-			});
+		const executeData: IExecuteData = {
+			node,
+			data: inputData,
+			source: null,
+		};
+
+		const context = new ExecuteContext(
+			workflow,
+			node,
+			additionalData,
+			mode,
+			runExecutionData,
+			runIndex,
+			connectionInputData,
+			inputData,
+			executeData,
+			[],
+		);
+
+		const nodeType = this.nodeTypes.getByNameAndVersion(tool.nodeType, tool.nodeTypeVersion);
+
+		if (!nodeType.execute) {
+			return { status: 'error', data: [], error: 'Node type does not have an execute method' };
 		}
 
-		const executionId = await this.workflowRunner.run(runData, false);
-		const result = await this.activeExecutions.getPostExecutePromise(executionId);
-
-		const targetRunData = result?.data?.resultData?.runData?.['Target Node'];
-		if (!targetRunData?.[0]?.data?.main?.[0]) {
-			return {
-				status: 'error',
-				data: [],
-				error: result?.data?.resultData?.error?.message,
-			};
+		let output: NodeOutput;
+		try {
+			output =
+				nodeType instanceof Node
+					? await nodeType.execute(context)
+					: await nodeType.execute.call(context);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			this.logger.debug('Node execution failed', { nodeType: tool.nodeType, error: message });
+			return { status: 'error', data: [], error: message };
 		}
-		return { status: 'success', data: targetRunData[0].data.main[0] };
+
+		if (!Array.isArray(output) || !output[0]) {
+			return { status: 'error', data: [], error: 'No output data' };
+		}
+		return { status: 'success', data: output[0] };
 	}
 
 	async executeInline(request: InlineNodeExecutionRequest): Promise<NodeExecutionResult> {
-		this.validateNodeForExecution(request.nodeType, request.nodeTypeVersion);
+		this.validateNodeForExecution(
+			request.nodeType,
+			request.nodeTypeVersion,
+			request.nodeParameters,
+		);
 
 		const fromNames =
 			(await this.resolveInlineCredentials(request.projectId, request.credentials)) ?? {};
@@ -290,29 +279,14 @@ export class EphemeralNodeExecutor {
 				? null
 				: { ...fromNames, ...fromDetails };
 
-		const toolLike: EphemeralWorkflowToolLike = {
+		const tool: EphemeralWorkflowToolLike = {
 			projectId: request.projectId,
 			nodeType: request.nodeType,
 			nodeTypeVersion: request.nodeTypeVersion,
 			nodeParameters: request.nodeParameters,
 			credentials: mergedCredentials,
 		};
-
-		let savedWorkflow: WorkflowEntity | undefined;
-
-		try {
-			savedWorkflow = await this.dataSource.transaction(async (transactionManager) => {
-				return await this.buildAndPersistWorkflow(toolLike, transactionManager);
-			});
-
-			return await this.runEphemeralWorkflow(savedWorkflow, request.inputData, request.projectId);
-		} finally {
-			if (savedWorkflow) {
-				const id = savedWorkflow.id;
-				await this.deleteWorkflow(id).catch(() => {
-					this.logger.error('Failed to delete ephemeral workflow', { workflowId: id });
-				});
-			}
-		}
+		// TODO: for nodes with send and wait operations implement persistent workflows to handle the wait logic
+		return await this.executeNodeDirectly(tool, request.inputData);
 	}
 }

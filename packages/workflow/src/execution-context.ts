@@ -41,7 +41,6 @@ const WorkflowExecuteModeSchema = z.union([
 	z.literal('webhook'),
 	z.literal('evaluation'),
 	z.literal('chat'),
-	z.literal('ephemeral'),
 ]);
 
 export type WorkflowExecuteModeValues = z.infer<typeof WorkflowExecuteModeSchema>;

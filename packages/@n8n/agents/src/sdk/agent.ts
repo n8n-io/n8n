@@ -219,7 +219,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return this;
 	}
 
-	/** Read the declared tools. Lists only tools added via tool() or providerTool() */
+	/** Read the declared tools. Lists only tools added via tool() */
 	get declaredTools(): BuiltTool[] {
 		return this.tools;
 	}

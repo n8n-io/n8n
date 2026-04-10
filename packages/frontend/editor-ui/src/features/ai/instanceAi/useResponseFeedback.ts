@@ -98,9 +98,9 @@ export function useResponseFeedback({
 		if (!isSafeObjectKey(responseId)) return;
 
 		if (payload.rating) {
-			telemetry.track('Instance AI response rating submitted', {
-				threadId: currentThreadId.value,
-				responseId,
+			telemetry.track('User rated workflow generation', {
+				thread_id: currentThreadId.value,
+				response_id: responseId,
 				helpful: payload.rating === 'up',
 			});
 
@@ -110,9 +110,9 @@ export function useResponseFeedback({
 		}
 
 		if (payload.feedback !== undefined) {
-			telemetry.track('Instance AI response feedback text submitted', {
-				threadId: currentThreadId.value,
-				responseId,
+			telemetry.track('User submitted workflow generation feedback', {
+				thread_id: currentThreadId.value,
+				response_id: responseId,
 				feedback: payload.feedback,
 			});
 

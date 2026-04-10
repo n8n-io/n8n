@@ -7,7 +7,6 @@ import type {
 } from '@n8n/agents';
 
 import * as agents from '@n8n/agents';
-import { SqliteMemory, SqliteMemoryConfigSchema } from '@n8n/agents/dist/storage/sqlite-memory';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import {
@@ -24,7 +23,6 @@ import {
 	validateNodeConfig,
 	type SchemaValidationResult,
 } from '@n8n/workflow-sdk';
-
 import { ActiveExecutions } from '@/active-executions';
 import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -214,7 +212,7 @@ export class AgentsService {
 	private getMemoryRegistry(): Record<string, agents.MemoryFactory> {
 		return {
 			n8n: () => this.n8nMemory,
-			sqlite: (params) => new SqliteMemory(SqliteMemoryConfigSchema.parse(params)),
+			sqlite: (params) => new agents.	SqliteMemory(agents.SqliteMemoryConfigSchema.parse(params)),
 			postgres: () => {
 				throw new Error('Not implemented');
 			},

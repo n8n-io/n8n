@@ -1,7 +1,6 @@
 import type {
 	InstanceAiEnsureThreadResponse,
 	InstanceAiRichMessagesResponse,
-	InstanceAiThreadContextResponse,
 	InstanceAiThreadInfo,
 	InstanceAiThreadListResponse,
 	InstanceAiThreadMessagesResponse,
@@ -10,7 +9,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { createMemory, patchThread, WORKING_MEMORY_TEMPLATE } from '@n8n/instance-ai';
+import { createMemory, patchThread, type AgentTreeSnapshot } from '@n8n/instance-ai';
 
 import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 
@@ -31,30 +30,6 @@ export class InstanceAiMemoryService {
 		private readonly dbSnapshotStorage: DbSnapshotStorage,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
-	}
-
-	async getWorkingMemory(
-		userId: string,
-		threadId: string,
-	): Promise<{ content: string; template: string }> {
-		const memory = this.createMemoryInstance();
-		const content = await memory.getWorkingMemory({
-			threadId,
-			resourceId: userId,
-		});
-		return {
-			content: content ?? '',
-			template: WORKING_MEMORY_TEMPLATE,
-		};
-	}
-
-	async updateWorkingMemory(userId: string, threadId: string, content: string): Promise<void> {
-		const memory = this.createMemoryInstance();
-		await memory.updateWorkingMemory({
-			threadId,
-			resourceId: userId,
-			workingMemory: content,
-		});
 	}
 
 	async listThreads(
@@ -140,33 +115,10 @@ export class InstanceAiMemoryService {
 		};
 	}
 
-	async getThreadContext(
-		userId: string,
-		threadId: string,
-	): Promise<InstanceAiThreadContextResponse> {
-		const memory = this.createMemoryInstance();
-		let workingMemory: string | null;
-		try {
-			workingMemory = await memory.getWorkingMemory({
-				threadId,
-				resourceId: userId,
-			});
-		} catch (error: unknown) {
-			if (error instanceof Error && error.message.includes('No thread found')) {
-				return { threadId, workingMemory: null };
-			}
-			throw error;
-		}
-		return {
-			threadId,
-			workingMemory: workingMemory ?? null,
-		};
-	}
-
 	async getRichMessages(
 		userId: string,
 		threadId: string,
-		options?: { limit?: number; page?: number },
+		options?: { limit?: number; page?: number; excludeRunIds?: string[] },
 	): Promise<Omit<InstanceAiRichMessagesResponse, 'nextEventId'>> {
 		const memory = this.createMemoryInstance();
 
@@ -186,13 +138,21 @@ export class InstanceAiMemoryService {
 			throw error;
 		}
 
-		const snapshots = await this.dbSnapshotStorage.getAll(threadId).catch((error) => {
+		let snapshots = await this.dbSnapshotStorage.getAll(threadId).catch((error) => {
 			this.logger.warn('Failed to load agent tree snapshots', {
 				threadId,
 				error: error instanceof Error ? error.message : String(error),
 			});
-			return [];
+			return [] as AgentTreeSnapshot[];
 		});
+
+		// Exclude snapshots for active runs — they have no matching assistant
+		// message in Mastra memory yet and would misalign the positional
+		// snapshot-to-message matching in parseStoredMessages.
+		if (options?.excludeRunIds?.length) {
+			const excluded = new Set(options.excludeRunIds);
+			snapshots = snapshots.filter((s) => !excluded.has(s.runId));
+		}
 
 		// Parse into rich messages with agent trees
 		const mastraMessages: MastraDBMessage[] = result.messages.map((m) => ({
@@ -205,6 +165,13 @@ export class InstanceAiMemoryService {
 		const messages = parseStoredMessages(mastraMessages, snapshots);
 
 		return { threadId, messages };
+	}
+
+	async getLatestRunSnapshot(
+		threadId: string,
+		options?: { messageGroupId?: string; runId?: string },
+	): Promise<AgentTreeSnapshot | undefined> {
+		return await this.dbSnapshotStorage.getLatest(threadId, options);
 	}
 
 	/**
@@ -237,10 +204,26 @@ export class InstanceAiMemoryService {
 	}
 
 	async renameThread(threadId: string, title: string): Promise<InstanceAiThreadInfo> {
+		return await this.updateThread(threadId, { title });
+	}
+
+	async updateThread(
+		threadId: string,
+		updates: { title?: string; metadata?: Record<string, unknown> },
+	): Promise<InstanceAiThreadInfo> {
 		const memory = this.createMemoryInstance();
 		const updated = await patchThread(memory, {
 			threadId,
-			update: ({ metadata }) => ({ title, metadata: { ...metadata, titleRefined: true } }),
+			update: ({ metadata }) => {
+				const patch: { title?: string; metadata: Record<string, unknown> } = {
+					metadata: { ...metadata, ...updates.metadata },
+				};
+				if (updates.title !== undefined) {
+					patch.title = updates.title;
+					patch.metadata.titleRefined = true;
+				}
+				return patch;
+			},
 		});
 		if (!updated) {
 			throw new NotFoundError(`Thread ${threadId} not found`);
