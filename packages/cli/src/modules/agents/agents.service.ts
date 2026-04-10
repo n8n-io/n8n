@@ -34,16 +34,19 @@ import { TtlMap } from '@/utils/ttl-map';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import type { AgentJsonConfig, AgentJsonToolRef } from './agent-json-config';
+import type {
+	AgentJsonConfig,
+	AgentJsonMemoryConfig,
+	AgentJsonToolConfig,
+} from './agent-json-config';
 import { AgentJsonConfigSchema } from './agent-json-config';
 import { AgentSecureRuntime } from './agent-secure-runtime';
 import { AgentsCredentialProvider } from './agents-credential-provider';
 import { Agent } from './entities/agent.entity';
-import { buildFromJson } from './from-json-config';
+import { buildFromJson, MemoryFactory, ToolResolver } from './from-json-config';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
 import { AgentRepository } from './repositories/agent.repository';
-import type { WorkflowToolDescriptor } from './types';
 
 export interface ExecuteAgentData {
 	response: string;
@@ -208,13 +211,15 @@ export class AgentsService {
 		return undefined;
 	}
 
-	private getMemoryRegistry(): Record<string, agents.MemoryFactory> {
-		return {
-			n8n: () => this.n8nMemory,
-			sqlite: (params) => new agents.SqliteMemory(agents.SqliteMemoryConfigSchema.parse(params)),
-			postgres: () => {
-				throw new Error('Not implemented');
-			},
+	private getMemoryFactory(): MemoryFactory {
+		return (params: AgentJsonMemoryConfig) => {
+			if (params.storage === 'n8n') {
+				return this.n8nMemory;
+			}
+			if (params.storage === 'sqlite') {
+				return new agents.SqliteMemory(agents.SqliteMemoryConfigSchema.parse(params));
+			}
+			throw new Error(`Unsupported memory storage: ${params.storage}`);
 		};
 	}
 
@@ -226,37 +231,29 @@ export class AgentsService {
 	 * delegates to the appropriate factory. Returns `null` for unknown types so that
 	 * `fromSchema` falls back to a passthrough marker.
 	 */
-	private makeToolResolver(projectId: string, userId?: string): agents.ToolResolver {
-		return async (ts) => {
-			const meta = ts.metadata ?? {};
-
-			if (meta.workflowTool === true) {
+	private makeToolResolver(projectId: string, userId?: string): ToolResolver {
+		return async (ref: AgentJsonToolConfig) => {
+			if (ref.type === 'workflow') {
 				if (!userId) {
 					throw new UserError('userId is required when agent uses workflow tools');
 				}
 				const { resolveWorkflowTool } = await import('./workflow-tool-factory');
-				return await resolveWorkflowTool(
-					{
-						workflowName: meta.workflowName as string,
-						options: meta.options as WorkflowToolDescriptor['options'],
-					},
-					{
-						workflowRepository: this.workflowRepository,
-						workflowRunner: this.workflowRunner,
-						activeExecutions: this.activeExecutions,
-						executionRepository: this.executionRepository,
-						workflowFinderService: this.workflowFinderService,
-						userRepository: this.userRepository,
-						userId,
-						projectId,
-						webhookBaseUrl: this.urlService.getWebhookBaseUrl(),
-					},
-				);
+				return await resolveWorkflowTool(ref, {
+					workflowRepository: this.workflowRepository,
+					workflowRunner: this.workflowRunner,
+					activeExecutions: this.activeExecutions,
+					executionRepository: this.executionRepository,
+					workflowFinderService: this.workflowFinderService,
+					userRepository: this.userRepository,
+					userId,
+					projectId,
+					webhookBaseUrl: this.urlService.getWebhookBaseUrl(),
+				});
 			}
 
-			if (meta.nodeTool === true) {
+			if (ref.type === 'node') {
 				const { resolveNodeTool } = await import('./node-tool-factory');
-				return resolveNodeTool(ts, { executor: this.ephemeralNodeExecutor, projectId });
+				return resolveNodeTool(ref, { executor: this.ephemeralNodeExecutor, projectId });
 			}
 
 			return null;
@@ -643,7 +640,7 @@ export class AgentsService {
 		if (entity.schema) {
 			const tools = entity.schema.tools ?? [];
 			const alreadyLinked = tools.some(
-				(t: AgentJsonToolRef) => t.type === 'custom' && 'id' in t && t.id === toolId,
+				(t: AgentJsonToolConfig) => t.type === 'custom' && 'id' in t && t.id === toolId,
 			);
 			if (!alreadyLinked) {
 				entity.schema.tools = [...tools, { type: 'custom' as const, id: toolId }];
@@ -672,7 +669,7 @@ export class AgentsService {
 		// Remove from config tools array
 		if (entity.schema?.tools) {
 			entity.schema.tools = entity.schema.tools.filter(
-				(t: AgentJsonToolRef) => !(t.type === 'custom' && 'id' in t && t.id === toolId),
+				(t: AgentJsonToolConfig) => !(t.type === 'custom' && 'id' in t && t.id === toolId),
 			);
 		}
 
@@ -692,7 +689,7 @@ export class AgentsService {
 	 */
 	private validateNodeToolConfigs(config: AgentJsonConfig): string | null {
 		const nodeTools = (config.tools ?? []).filter(
-			(t): t is Extract<AgentJsonToolRef, { type: 'node' }> => t.type === 'node',
+			(t): t is Extract<AgentJsonToolConfig, { type: 'node' }> => t.type === 'node',
 		);
 
 		if (nodeTools.length === 0) return null;
@@ -755,42 +752,15 @@ export class AgentsService {
 
 		const toolExecutor = this.secureRuntime.createToolExecutor(toolsByName);
 
+		const toolResolver = this.makeToolResolver(agentEntity.projectId, userId);
+
 		const reconstructed = await buildFromJson(config, toolDescriptors, {
 			toolExecutor,
 			credentialProvider,
 			resolveTool: async (ref) => {
-				// Convert AgentJsonToolRef to the marker BuiltTool that makeToolResolver expects
-				if (ref.type === 'workflow') {
-					const marker = {
-						name: ref.name ?? ref.workflow,
-						description: ref.description ?? `Execute the "${ref.workflow}" workflow`,
-						editable: false,
-						metadata: {
-							workflowTool: true,
-							workflowName: ref.workflow,
-							options: { name: ref.name, description: ref.description },
-						},
-					};
-					return await this.makeToolResolver(
-						agentEntity.projectId,
-						userId,
-					)(marker as unknown as agents.ToolSchema);
-				}
-				if (ref.type === 'node') {
-					const marker = {
-						name: ref.name,
-						description: ref.description ?? `Execute node ${ref.name}`,
-						editable: false,
-						metadata: { nodeTool: true, ...ref.node },
-					};
-					return await this.makeToolResolver(
-						agentEntity.projectId,
-						userId,
-					)(marker as unknown as agents.ToolSchema);
-				}
-				return null;
+				return await toolResolver(ref);
 			},
-			memoryRegistry: this.getMemoryRegistry(),
+			memoryFactory: this.getMemoryFactory(),
 		});
 
 		await this.injectRuntimeDependencies(reconstructed, agentEntity.id);

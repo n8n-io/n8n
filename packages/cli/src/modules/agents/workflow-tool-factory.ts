@@ -1,7 +1,6 @@
 import type { BuiltTool } from '@n8n/agents';
 import { Tool } from '@n8n/agents';
 
-import type { WorkflowToolDescriptor } from './types';
 import type {
 	ExecutionRepository,
 	UserRepository,
@@ -29,6 +28,7 @@ import { z } from 'zod';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { WorkflowRunner } from '@/workflow-runner';
+import type { AgentJsonToolConfig } from './agent-json-config';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -482,18 +482,18 @@ function truncateResultData(data: Record<string, unknown>): Record<string, unkno
 // ---------------------------------------------------------------------------
 
 export async function resolveWorkflowTool(
-	descriptor: WorkflowToolDescriptor,
+	descriptor: Extract<AgentJsonToolConfig, { type: 'workflow' }>,
 	context: WorkflowToolContext,
 ): Promise<BuiltTool> {
-	return await buildWorkflowTool(descriptor.workflowName, descriptor, context);
+	return await buildWorkflowTool(descriptor, context);
 }
 
 async function buildWorkflowTool(
-	workflowName: string,
-	descriptor: WorkflowToolDescriptor | undefined,
+	descriptor: Extract<AgentJsonToolConfig, { type: 'workflow' }>,
 	context: WorkflowToolContext,
 ): Promise<BuiltTool> {
 	const { workflowRepository, workflowFinderService, userRepository } = context;
+	const workflowName = descriptor.workflow;
 
 	// Step 1: Find the workflow by name, scoped to the project if available.
 	const whereClause: Record<string, unknown> = { name: workflowName };
@@ -526,11 +526,10 @@ async function buildWorkflowTool(
 	validateCompatibility(workflow);
 	const { node: triggerNode, triggerType } = detectTriggerNode(workflow);
 
-	const options = descriptor?.options;
-	const toolName = options?.name ?? toToolName(workflowName);
-	const toolDescription = options?.description ?? `Execute the "${workflowName}" workflow`;
-	const inputSchema = options?.input ?? inferInputSchema(triggerNode, triggerType);
-	const allOutputs = options?.allOutputs ?? false;
+	const toolName = descriptor.name ?? toToolName(workflowName);
+	const toolDescription = descriptor.description ?? `Execute the "${workflowName}" workflow`;
+	const inputSchema = inferInputSchema(triggerNode, triggerType);
+	const allOutputs = descriptor.allOutputs ?? false;
 
 	// Form triggers return a link — the user fills out the form in their browser,
 	// and the workflow executes independently when they submit.
@@ -572,13 +571,12 @@ async function buildWorkflowTool(
 		.description(toolDescription)
 		.input(inputSchema)
 		.output(
-			options?.output ??
-				z.object({
-					executionId: z.string(),
-					status: z.string(),
-					data: z.record(z.unknown()).optional(),
-					error: z.string().optional(),
-				}),
+			z.object({
+				executionId: z.string(),
+				status: z.string(),
+				data: z.record(z.unknown()).optional(),
+				error: z.string().optional(),
+			}),
 		)
 		.handler(async (input: Record<string, unknown>) => {
 			return await executeWorkflow(workflow, triggerNode, triggerType, input, context, allOutputs);

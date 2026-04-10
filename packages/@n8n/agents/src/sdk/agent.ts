@@ -2,7 +2,6 @@ import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import { z } from 'zod';
 
 import type { Eval } from './eval';
-import { fromSchema, type FromSchemaOptions } from './from-schema';
 import type { McpClient } from './mcp-client';
 import { Memory } from './memory';
 import { Telemetry } from './telemetry';
@@ -38,7 +37,6 @@ import type {
 import type { AgentBuilder } from '../types/sdk/agent-builder';
 import type { CredentialProvider } from '../types/sdk/credential-provider';
 import type { AgentMessage } from '../types/sdk/message';
-import type { AgentSchema } from '../types/sdk/schema';
 import type { Workspace } from '../workspace/workspace';
 
 const DEFAULT_LAST_MESSAGES = 10;
@@ -144,22 +142,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	constructor(name: string) {
 		this.name = name;
-	}
-
-	/**
-	 * Reconstruct a live Agent from an AgentSchema JSON.
-	 * Custom tool handlers are proxied through the injected HandlerExecutor.
-	 *
-	 * This is the inverse of `Agent.describe()`.
-	 */
-	static async fromSchema(
-		schema: AgentSchema,
-		name: string,
-		options: FromSchemaOptions,
-	): Promise<Agent> {
-		const agent = new Agent(name);
-		await fromSchema(agent, schema, options);
-		return agent;
 	}
 
 	hasCheckpointStorage(): boolean {

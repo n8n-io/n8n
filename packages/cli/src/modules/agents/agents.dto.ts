@@ -23,8 +23,3 @@ export class AgentIntegrationDto extends Z.class({
 export class UpdateAgentConfigDto extends Z.class({
 	config: z.record(z.unknown()),
 }) {}
-
-export class BuildCustomToolDto extends Z.class({
-	id: z.string().min(1),
-	code: z.string().min(1),
-}) {}

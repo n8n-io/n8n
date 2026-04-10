@@ -84,17 +84,6 @@ export type {
 	AgentDbMessage,
 } from './types/sdk/message';
 export type { HandlerExecutor } from './types/sdk/handler-executor';
-export type {
-	AgentSchema,
-	ToolSchema,
-	MemorySchema,
-	EvalSchema,
-	ThinkingSchema,
-	ProviderToolSchema,
-	GuardrailSchema,
-	McpServerSchema,
-	TelemetrySchema,
-} from './types/sdk/schema';
 export {
 	filterLlmMessages,
 	isLlmMessage,
@@ -117,7 +106,6 @@ export type {
 	PostgresConstructorOptions,
 } from './storage/postgres-memory';
 export { BaseMemory } from './storage/base-memory';
-export type { MemoryFactory, FromSchemaOptions, ToolResolver } from './sdk/from-schema';
 export type { ToolDescriptor } from './types/sdk/tool-descriptor';
 
 export { Workspace } from './workspace';
@@ -156,3 +144,4 @@ export type {
 } from './workspace';
 
 export type { JSONObject, JSONArray, JSONValue } from './types/utils/json';
+export type { JSONSchema7 } from 'json-schema';

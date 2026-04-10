@@ -1,8 +1,9 @@
+import type { Operation } from 'fast-json-patch';
 import { Tool } from '@n8n/agents';
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import * as jsonpatch from 'fast-json-patch';
+import { isToolType, isTriggerNodeType } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { WorkflowBuilderToolsService } from '@/modules/mcp/tools/workflow-builder/workflow-builder-tools.service';
@@ -11,23 +12,65 @@ import type { AgentJsonConfig } from './agent-json-config';
 import { AgentJsonConfigSchema, formatZodErrors, tryParseConfigJson } from './agent-json-config';
 import { AgentSecureRuntime } from './agent-secure-runtime';
 import { AgentsService } from './agents.service';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+
+interface InvokableTool<TInput> {
+	invoke(input: TInput): Promise<string>;
+}
 
 export interface BuilderTools {
 	json: BuiltTool[];
 	shared: BuiltTool[];
 }
 
+/** Nodes the agent builder should never surface as selectable node tools. */
+function isExcludedNodeType(nodeId: string): boolean {
+	return isTriggerNodeType(nodeId) || isToolType(nodeId);
+}
+
 @Service()
 export class AgentsBuilderToolsService {
+	/** Lazily initialized filtered search tool — invalidated on node-type refresh. */
+	private builderSearchTool: InvokableTool<{ queries: string[] }> | undefined;
+
+	/** Result cache for the filtered search tool, keyed by sorted query list. */
+	private readonly builderSearchCache = new Map<string, string>();
+
 	constructor(
 		private readonly agentsService: AgentsService,
 		private readonly secureRuntime: AgentSecureRuntime,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowBuilderToolsService: WorkflowBuilderToolsService,
-	) {}
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+	) {
+		this.loadNodesAndCredentials.addPostProcessor(async () => await this.refreshNodeTypes());
+	}
+
+	async refreshNodeTypes(): Promise<void> {
+		this.builderSearchTool = undefined;
+		this.builderSearchCache.clear();
+	}
 
 	async initialize(): Promise<void> {
 		await this.workflowBuilderToolsService.initialize();
+	}
+
+	private async invokeBuilderSearch(queries: string[]): Promise<string> {
+		const cacheKey = JSON.stringify([...queries].sort());
+		const cached = this.builderSearchCache.get(cacheKey);
+		if (cached) return cached;
+
+		if (!this.builderSearchTool) {
+			const { createCodeBuilderSearchTool } = await import('@n8n/ai-workflow-builder');
+			this.builderSearchTool = createCodeBuilderSearchTool(
+				this.workflowBuilderToolsService.getNodeTypeParser(),
+				{ nodeFilter: (nodeId) => !isExcludedNodeType(nodeId) },
+			);
+		}
+
+		const result = await this.builderSearchTool.invoke({ queries });
+		this.builderSearchCache.set(cacheKey, result);
+		return result;
 	}
 
 	getTools(
@@ -103,8 +146,8 @@ export class AgentsBuilderToolsService {
 						errors: [{ path: '(root)', message: e instanceof Error ? e.message : String(e) }],
 					};
 				}
-
-				const ops = parsedOps.data as jsonpatch.Operation[];
+				const jsonpatch = (await import('fast-json-patch')).default;
+				const ops = parsedOps.data as Operation[];
 				const patchError = jsonpatch.validate(ops, existingConfig);
 				if (patchError) {
 					const opPath = (patchError.operation as { path?: string } | undefined)?.path ?? '(root)';
@@ -247,7 +290,7 @@ export class AgentsBuilderToolsService {
 				}),
 			)
 			.handler(async ({ queries }: { queries: string[] }) => {
-				const results = await this.workflowBuilderToolsService.searchNodes(queries);
+				const results = await this.invokeBuilderSearch(queries);
 				return { results };
 			})
 			.build();

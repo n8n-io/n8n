@@ -8,17 +8,25 @@ import type {
 } from '@n8n/agents';
 import { Agent, Memory, wrapToolForApproval } from '@n8n/agents';
 
-import type { AgentJsonConfig, AgentJsonToolRef } from './agent-json-config';
+import type {
+	AgentJsonConfig,
+	AgentJsonMemoryConfig,
+	AgentJsonToolConfig,
+} from './agent-json-config';
+
+export type ToolResolver = (
+	toolSchema: AgentJsonToolConfig,
+) => Promise<BuiltTool | null | undefined>;
 
 export interface ToolExecutor {
 	executeTool(toolName: string, input: unknown, ctx: unknown): Promise<unknown>;
 	executeToMessageSync?(toolName: string, output: unknown): unknown;
 }
 
-export type ToolRefResolver = (ref: AgentJsonToolRef) => Promise<BuiltTool | null | undefined>;
+export type ToolRefResolver = (ref: AgentJsonToolConfig) => Promise<BuiltTool | null | undefined>;
 
 /** Factory function that reconstructs a BuiltMemory backend from serialized params. */
-type MemoryFactory = (params: Record<string, unknown> | null) => BuiltMemory | Promise<BuiltMemory>;
+export type MemoryFactory = (params: AgentJsonMemoryConfig) => BuiltMemory | Promise<BuiltMemory>;
 
 export interface BuildFromJsonOptions {
 	/** Executes custom tool handlers inside isolates. */
@@ -27,7 +35,7 @@ export interface BuildFromJsonOptions {
 	/** Resolves workflow/node tool refs into BuiltTool instances. */
 	resolveTool?: ToolRefResolver;
 	/** Memory backend factories keyed by storage preset name. */
-	memoryRegistry?: Record<string, MemoryFactory>;
+	memoryFactory: MemoryFactory;
 }
 
 /**
@@ -78,7 +86,7 @@ export async function buildFromJson(
 
 	// Memory
 	if (config.memory?.enabled) {
-		applyMemoryFromConfig(agent, config.memory, options.memoryRegistry);
+		await applyMemoryFromConfig(agent, config.memory, options.memoryFactory);
 	}
 
 	// Config options
@@ -99,7 +107,7 @@ export async function buildFromJson(
 }
 
 async function resolveToolRef(
-	ref: AgentJsonToolRef,
+	ref: AgentJsonToolConfig,
 	descriptors: Record<string, ToolDescriptor>,
 	options: BuildFromJsonOptions,
 ): Promise<BuiltTool | null> {
@@ -157,23 +165,15 @@ async function resolveToolRef(
 	}
 }
 
-function applyMemoryFromConfig(
+async function applyMemoryFromConfig(
 	agent: AgentBuilder,
-	memoryConfig: NonNullable<AgentJsonConfig['memory']>,
-	memoryRegistry?: Record<string, MemoryFactory>,
-): void {
+	memoryConfig: AgentJsonMemoryConfig,
+	memoryFactory: MemoryFactory,
+) {
 	const memory = new Memory();
 
-	if (memoryRegistry) {
-		const factory = memoryRegistry[memoryConfig.storage] as MemoryFactory | undefined;
-		if (factory) {
-			const connectionParams = (memoryConfig.connection ?? null) as Record<string, unknown> | null;
-			const builtMemory = factory(connectionParams);
-			if (!(builtMemory instanceof Promise)) {
-				memory.storage(builtMemory);
-			}
-		}
-	}
+	const builtMemory = memoryFactory(memoryConfig);
+	memory.storage(await Promise.resolve(builtMemory));
 
 	if (memoryConfig.lastMessages) {
 		memory.lastMessages(memoryConfig.lastMessages);

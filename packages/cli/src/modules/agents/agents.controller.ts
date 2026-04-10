@@ -7,7 +7,6 @@ import type { Request, Response } from 'express';
 import {
 	AgentChatMessageDto,
 	AgentIntegrationDto,
-	BuildCustomToolDto,
 	CreateAgentDto,
 	UpdateAgentConfigDto,
 	UpdateAgentDto,
@@ -119,29 +118,6 @@ export class AgentsController {
 		const { projectId } = req.params;
 		const { config } = payload;
 		return await this.agentsService.patchConfig(agentId, projectId, config);
-	}
-
-	@Post('/:agentId/tools')
-	async buildTool(
-		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
-		_res: Response,
-		@Param('agentId') agentId: string,
-		@Body payload: BuildCustomToolDto,
-	) {
-		const { projectId } = req.params;
-		const { id, code } = payload;
-		try {
-			const { AgentSecureRuntime } = await import('./agent-secure-runtime');
-			const { Container } = await import('@n8n/di');
-			const secureRuntime = Container.get(AgentSecureRuntime);
-			const descriptor = await secureRuntime.describeToolSecurely(code);
-			return await this.agentsService.buildCustomTool(agentId, projectId, id, code, descriptor);
-		} catch (e) {
-			return {
-				ok: false,
-				errors: [{ message: e instanceof Error ? e.message : String(e) }],
-			};
-		}
 	}
 
 	@Delete('/:agentId/tools/:toolId')

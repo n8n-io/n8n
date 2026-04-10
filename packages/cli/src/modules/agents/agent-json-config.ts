@@ -46,7 +46,7 @@ const JsonSchemaObjectSchema = z
 	})
 	.passthrough();
 
-const AgentJsonToolRefSchema = z.discriminatedUnion('type', [
+const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 	z.object({
 		type: z.literal('custom'),
 		id: z
@@ -61,13 +61,17 @@ const AgentJsonToolRefSchema = z.discriminatedUnion('type', [
 		name: z.string().optional(),
 		description: z.string().optional(),
 		requireApproval: z.boolean().optional(),
+		allOutputs: z
+			.boolean()
+			.optional()
+			.describe('Whether to return all node outputs instead of just the last node'),
 	}),
 	z.object({
 		type: z.literal('node'),
 		name: z.string().min(1),
 		description: z.string().optional(),
 		node: NodeConfigSchema,
-		inputSchema: JsonSchemaObjectSchema.optional(),
+		inputSchema: JsonSchemaObjectSchema,
 		requireApproval: z.boolean().optional(),
 	}),
 ]);
@@ -82,7 +86,7 @@ export const AgentJsonConfigSchema = z.object({
 	credential: z.string().min(1),
 	instructions: z.string(),
 	memory: MemoryConfigSchema.optional(),
-	tools: z.array(AgentJsonToolRefSchema).optional(),
+	tools: z.array(AgentJsonToolConfigSchema).optional(),
 	providerTools: z.record(z.record(z.unknown())).optional(),
 	config: z
 		.object({
@@ -96,7 +100,8 @@ export const AgentJsonConfigSchema = z.object({
 export const AgentJsonConfigPartialSchema = AgentJsonConfigSchema.partial();
 
 export type AgentJsonConfig = z.infer<typeof AgentJsonConfigSchema>;
-export type AgentJsonToolRef = z.infer<typeof AgentJsonToolRefSchema>;
+export type AgentJsonToolConfig = z.infer<typeof AgentJsonToolConfigSchema>;
+export type AgentJsonMemoryConfig = z.infer<typeof MemoryConfigSchema>;
 
 export interface ConfigValidationError {
 	path: string;
