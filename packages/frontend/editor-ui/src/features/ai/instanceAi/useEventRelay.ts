@@ -31,31 +31,29 @@ export function useEventRelay({
 	}
 
 	// Forward live execution events to the iframe in real-time.
-	// Watch only the active workflow's status and event log length to avoid
-	// re-running on every Map reference replacement.
-	let prevStatus: string | undefined;
+	// Track previous status per workflow to detect running → finished transitions
+	// and relay the executionFinished event (which clears the iframe's executing node queue).
+	const prevStatus = new Map<string, string>();
 	let prevLogLength = 0;
 
 	watch(
-		() => {
+		() => workflowExecutions.value,
+		(executions) => {
 			const wfId = activeWorkflowId.value;
-			if (!wfId) return undefined;
-			const entry = workflowExecutions.value.get(wfId);
-			if (!entry) return undefined;
-			return { status: entry.status, logLength: entry.eventLog.length, wfId };
-		},
-		(current) => {
-			if (!current) return;
-			const entry = workflowExecutions.value.get(current.wfId);
+			if (!wfId) return;
+			const entry = executions.get(wfId);
 			if (!entry) return;
 
-			const prev = prevStatus;
-			prevStatus = current.status;
+			const prev = prevStatus.get(wfId);
+			prevStatus.set(wfId, entry.status);
 
-			if (current.status === 'running' && current.logLength > prevLogLength) {
-				prevLogLength = current.logLength;
-				relay(entry.eventLog[entry.eventLog.length - 1]);
-			} else if (prev === 'running' && current.status !== 'running') {
+			if (entry.status === 'running') {
+				const logLength = entry.eventLog.length;
+				if (logLength > prevLogLength) {
+					prevLogLength = logLength;
+					relay(entry.eventLog[logLength - 1]);
+				}
+			} else if (prev === 'running') {
 				prevLogLength = 0;
 				// Transition from running → success/error: relay a synthetic executionFinished
 				// so the iframe clears its executing node queue.
