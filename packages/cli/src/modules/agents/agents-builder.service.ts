@@ -252,7 +252,7 @@ ${currentCode}
 
 ## Code rules
 
-- Allowed imports: \`'@n8n/agents'\`, \`'@n8n/agents-utils'\` (\`WorkflowTool\`, \`ToolFromNode\`), \`'zod'\` — do NOT import anything else
+- Always import from '@n8n/agents', '@n8n/agents-utils' (for WorkflowTool, N8nMemory, ToolFromNode), and 'zod' — these are the only available modules
 - The code MUST export the agent as the default export: \`export default agent;\`
 - Do NOT call .build() on tools or agents — the engine handles that automatically
 - Every agent MUST have .credential() — it will not compile without one
@@ -402,38 +402,23 @@ const agent = new Agent('my-agent')
 
 Agents can have conversation memory configured using the \`Memory\` builder class.
 
-**In-process memory (default, lost on restart):**
+**ALWAYS add \`N8nMemory\` as the default memory storage.** \`N8nMemory\` persists conversation history in the n8n database — it survives server restarts and is the recommended storage for all agents. Import it from \`@n8n/agents-utils\`.
+
+**Default (use this unless the user asks for something else):**
 \`\`\`typescript
 import { Agent, Memory } from '@n8n/agents';
+import { N8nMemory } from '@n8n/agents-utils';
 
 const agent = new Agent('my-agent')
   .model('anthropic/claude-sonnet-4-5')
   .credential('anthropic')
-  .memory(new Memory().lastMessages(50))
-  .instructions('You are a helpful assistant.');
-\`\`\`
-
-**Persistent memory with SQLite:**
-\`\`\`typescript
-import { Agent, Memory, SqliteMemory } from '@n8n/agents';
-
-const agent = new Agent('my-agent')
-  .model('anthropic/claude-sonnet-4-5')
-  .credential('anthropic')
-  .memory(
-    new Memory()
-      .storage(new SqliteMemory('./memory.db'))
-      .lastMessages(50)
-      .semanticRecall({ topK: 5, embedder: 'openai/text-embedding-3-small' })
-  )
+  .memory(new Memory().storage(new N8nMemory()).lastMessages(20))
   .instructions('You are a helpful assistant.');
 \`\`\`
 
 **Memory builder methods:**
-- \`.lastMessages(N)\` — how many recent messages to include in context (default: 10)
-- \`.storage('memory')\` — in-process storage (default)
-- \`.storage(new SqliteMemory(path))\` or \`.storage(new PostgresMemory(url))\` — persistent storage
-- \`.semanticRecall({ topK, embedder })\` — RAG-based recall (requires persistent storage)
+- \`.storage(new N8nMemory())\` — **default** persistent storage backed by the n8n database (recommended)
+- \`.lastMessages(N)\` — how many recent messages to include in context (default: 10; use 20 as a sensible default)
 - \`.freeform(template)\` — free-form working memory with markdown template
 - \`.structured(zodSchema)\` — structured working memory with Zod schema
 
@@ -445,13 +430,16 @@ const agent = new Agent('my-agent')
 // ❌ WRONG — strings are NOT valid
 .memory('memory')
 
-// ✅ CORRECT — always use the Memory builder class
-.memory(new Memory().lastMessages(50))
+// ❌ WRONG — omitting .storage() means memory is lost on restart
+.memory(new Memory().lastMessages(20))
+
+// ✅ CORRECT — always use N8nMemory as the storage backend
+.memory(new Memory().storage(new N8nMemory()).lastMessages(20))
 \`\`\`
 
 **Rules:**
 - Always use \`new Memory()\` — never pass a plain object
-- \`.semanticRecall()\` only works with persistent storage (SqliteMemory/PostgresMemory), NOT in-process memory
+- Always use \`.storage(new N8nMemory())\` — it is the n8n-native persistent backend and requires no configuration
 - \`.freeform()\` and \`.structured()\` are mutually exclusive
 
 ## Important
@@ -461,7 +449,7 @@ const agent = new Agent('my-agent')
 - Tool handlers are async functions that receive the validated input object
 - Tool .input() and .output() use Zod schemas
 - Agent .instructions() sets the system prompt
-- Allowed imports: '@n8n/agents', '@n8n/agents-utils' (WorkflowTool, ToolFromNode), 'zod'
+- The only imports available at runtime are '@n8n/agents', '@n8n/agents-utils' (WorkflowTool, N8nMemory, ToolFromNode), and 'zod'
 - Do NOT import anything else — it will fail at runtime`,
 			)
 			.tool(typecheckTool)

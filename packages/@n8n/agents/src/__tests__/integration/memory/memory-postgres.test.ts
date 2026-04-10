@@ -61,6 +61,18 @@ afterAll(async () => {
 	}
 }, 30_000);
 
+/**
+ * Create a PostgresMemory instance backed by the test container connection string.
+ * Uses a simple inline CredentialProvider that returns the raw URL.
+ */
+function makePostgresMemory(namespace: string): PostgresMemory {
+	return new PostgresMemory({
+		type: 'connection',
+		connection: { connectionType: 'url', connection: { url: connectionString } },
+		options: { namespace },
+	});
+}
+
 /** describe that requires Docker — tests are no-ops without it. */
 function describeWithDocker(name: string, fn: () => void) {
 	describe(name, () => {
@@ -74,7 +86,7 @@ function describeWithDocker(name: string, fn: () => void) {
 
 describeWithDocker('PostgresMemory saveThread upsert', () => {
 	it('preserves existing title and metadata when not provided', async () => {
-		const mem = new PostgresMemory({ connection: connectionString, namespace: 'upsert_test' });
+		const mem = makePostgresMemory('upsert_test');
 
 		await mem.saveThread({
 			id: 'upsert-t1',
@@ -95,7 +107,7 @@ describeWithDocker('PostgresMemory saveThread upsert', () => {
 	});
 
 	it('overwrites title and metadata when explicitly provided', async () => {
-		const mem = new PostgresMemory({ connection: connectionString, namespace: 'upsert_ow' });
+		const mem = makePostgresMemory('upsert_ow');
 
 		await mem.saveThread({
 			id: 'upsert-t2',
@@ -121,7 +133,7 @@ describeWithDocker('PostgresMemory saveThread upsert', () => {
 
 describeWithDocker('PostgresMemory unit tests', () => {
 	it('creates tables on first use and round-trips a thread', async () => {
-		const mem = new PostgresMemory({ connection: connectionString });
+		const mem = makePostgresMemory('default');
 
 		const thread = await mem.saveThread({
 			id: 'thread-1',
@@ -141,7 +153,7 @@ describeWithDocker('PostgresMemory unit tests', () => {
 	});
 
 	it('saves and retrieves messages with limit', async () => {
-		const mem = new PostgresMemory({ connection: connectionString, namespace: 'msg_test' });
+		const mem = makePostgresMemory('msg_test');
 
 		await mem.saveThread({ id: 't1', resourceId: 'u1' });
 
@@ -180,7 +192,7 @@ describeWithDocker('PostgresMemory unit tests', () => {
 	});
 
 	it('saves and retrieves working memory keyed by resourceId', async () => {
-		const mem = new PostgresMemory({ connection: connectionString, namespace: 'wm_test' });
+		const mem = makePostgresMemory('wm_test');
 
 		expect(
 			await mem.getWorkingMemory({ threadId: 'thread-1', resourceId: 'user-1', scope: 'resource' }),
@@ -207,7 +219,7 @@ describeWithDocker('PostgresMemory unit tests', () => {
 	});
 
 	it('saves and retrieves working memory keyed by threadId (no resourceId)', async () => {
-		const mem = new PostgresMemory({ connection: connectionString, namespace: 'wm_thread_test' });
+		const mem = makePostgresMemory('wm_thread_test');
 
 		expect(
 			await mem.getWorkingMemory({ threadId: 'thread-1', resourceId: 'user-1', scope: 'thread' }),
@@ -225,7 +237,7 @@ describeWithDocker('PostgresMemory unit tests', () => {
 	});
 
 	it('isolates working memory by resourceId', async () => {
-		const mem = new PostgresMemory({ connection: connectionString, namespace: 'wm_iso_test' });
+		const mem = makePostgresMemory('wm_iso_test');
 
 		await mem.saveWorkingMemory(
 			{ threadId: 'thread-a', resourceId: 'user-a', scope: 'resource' },
@@ -247,7 +259,7 @@ describeWithDocker('PostgresMemory unit tests', () => {
 	});
 
 	it('stores scope=resource when resourceId is provided', async () => {
-		const mem = new PostgresMemory({ connection: connectionString, namespace: 'wm_scope_test' });
+		const mem = makePostgresMemory('wm_scope_test');
 
 		await mem.saveWorkingMemory(
 			{ threadId: 'thread-1', resourceId: 'res-1', scope: 'resource' },
@@ -266,10 +278,7 @@ describeWithDocker('PostgresMemory unit tests', () => {
 	});
 
 	it('stores scope=thread when only threadId is provided', async () => {
-		const mem = new PostgresMemory({
-			connection: connectionString,
-			namespace: 'wm_scope_thread_test',
-		});
+		const mem = makePostgresMemory('wm_scope_thread_test');
 
 		await mem.saveWorkingMemory(
 			{ threadId: 'thread-1', resourceId: 'user-1', scope: 'thread' },
@@ -288,10 +297,7 @@ describeWithDocker('PostgresMemory unit tests', () => {
 	});
 
 	it('does not mix resource-scoped and thread-scoped entries with the same key value', async () => {
-		const mem = new PostgresMemory({
-			connection: connectionString,
-			namespace: 'wm_scope_iso_test',
-		});
+		const mem = makePostgresMemory('wm_scope_iso_test');
 		const sharedKey = 'same-id';
 
 		await mem.saveWorkingMemory(
@@ -318,7 +324,7 @@ describeWithDocker('PostgresMemory unit tests', () => {
 	});
 
 	it('deletes thread and cascades to messages', async () => {
-		const mem = new PostgresMemory({ connection: connectionString, namespace: 'del_test' });
+		const mem = makePostgresMemory('del_test');
 
 		await mem.saveThread({ id: 'del-t1', resourceId: 'u1' });
 		await mem.saveMessages({
@@ -342,7 +348,7 @@ describeWithDocker('PostgresMemory unit tests', () => {
 	});
 
 	it('stores and queries embeddings with pgvector', async () => {
-		const mem = new PostgresMemory({ connection: connectionString, namespace: 'vec_test' });
+		const mem = makePostgresMemory('vec_test');
 
 		await mem.saveThread({ id: 'vec-t1', resourceId: 'u1' });
 
@@ -375,7 +381,7 @@ describeWithDocker('PostgresMemory unit tests', () => {
 	});
 
 	it('filters embeddings by resourceId with scope=resource (default)', async () => {
-		const mem = new PostgresMemory({ connection: connectionString, namespace: 'vec_res' });
+		const mem = makePostgresMemory('vec_res');
 
 		await mem.saveEmbeddings({
 			threadId: 't1',
@@ -410,7 +416,7 @@ describeWithDocker('PostgresMemory unit tests', () => {
 	});
 
 	it('filters embeddings by threadId with scope=thread', async () => {
-		const mem = new PostgresMemory({ connection: connectionString, namespace: 'vec_thr' });
+		const mem = makePostgresMemory('vec_thr');
 
 		await mem.saveEmbeddings({
 			threadId: 't1',
@@ -443,7 +449,7 @@ describeWithDocker('PostgresMemory unit tests', () => {
 	});
 
 	it('resource scope excludes embeddings from other resources', async () => {
-		const mem = new PostgresMemory({ connection: connectionString, namespace: 'vec_iso' });
+		const mem = makePostgresMemory('vec_iso');
 
 		await mem.saveEmbeddings({
 			threadId: 't1',
@@ -470,7 +476,7 @@ describeWithDocker('PostgresMemory unit tests', () => {
 	});
 
 	it('stores resourceId in the embeddings table', async () => {
-		const mem = new PostgresMemory({ connection: connectionString, namespace: 'vec_col' });
+		const mem = makePostgresMemory('vec_col');
 
 		await mem.saveEmbeddings({
 			threadId: 't1',
@@ -492,8 +498,8 @@ describeWithDocker('PostgresMemory unit tests', () => {
 	});
 
 	it('isolates namespaces', async () => {
-		const mem1 = new PostgresMemory({ connection: connectionString, namespace: 'ns_a' });
-		const mem2 = new PostgresMemory({ connection: connectionString, namespace: 'ns_b' });
+		const mem1 = makePostgresMemory('ns_a');
+		const mem2 = makePostgresMemory('ns_b');
 
 		await mem1.saveThread({ id: 'shared-id', resourceId: 'u1', title: 'From A' });
 		await mem2.saveThread({ id: 'shared-id', resourceId: 'u1', title: 'From B' });
@@ -520,7 +526,7 @@ function describeWithDockerAndApi(name: string, fn: () => void) {
 
 describeWithDockerAndApi('PostgresMemory agent integration', () => {
 	it('recalls previous messages across turns', async () => {
-		const store = new PostgresMemory({ connection: connectionString, namespace: 'agent_recall' });
+		const store = makePostgresMemory('agent_recall');
 		const memory = new Memory().storage(store).lastMessages(10);
 
 		const agent = new Agent('pg-recall-test')
@@ -540,7 +546,7 @@ describeWithDockerAndApi('PostgresMemory agent integration', () => {
 	});
 
 	it('persists resource-scoped working memory via Postgres backend', async () => {
-		const store = new PostgresMemory({ connection: connectionString, namespace: 'agent_wm' });
+		const store = makePostgresMemory('agent_wm');
 		const memory = new Memory()
 			.storage(store)
 			.lastMessages(10)
@@ -574,10 +580,7 @@ describeWithDockerAndApi('PostgresMemory agent integration', () => {
 	});
 
 	it('persists thread-scoped working memory via Postgres backend', async () => {
-		const store = new PostgresMemory({
-			connection: connectionString,
-			namespace: 'agent_thread_wm',
-		});
+		const store = makePostgresMemory('agent_thread_wm');
 		const memory = new Memory()
 			.storage(store)
 			.lastMessages(10)
@@ -617,7 +620,7 @@ describeWithDockerAndApi('PostgresMemory agent integration', () => {
 	});
 
 	it('works with stream() path', async () => {
-		const store = new PostgresMemory({ connection: connectionString, namespace: 'agent_stream' });
+		const store = makePostgresMemory('agent_stream');
 		const memory = new Memory().storage(store).lastMessages(10);
 
 		const agent = new Agent('pg-stream-test')

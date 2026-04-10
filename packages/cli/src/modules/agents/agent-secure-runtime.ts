@@ -141,6 +141,8 @@ export class AgentSecureRuntime {
 		const workflowToolPath = toSlash(require.resolve('./types/workflow-tool'));
 		const nodeToolPath = toSlash(require.resolve('./types/node-tool'));
 
+		const n8nMemoryMarkerPath = toSlash(require.resolve('./types/n8n-memory-marker'));
+
 		const zodToJsonSchemaPath = toSlash(require.resolve('zod-to-json-schema'));
 
 		const shim = `
@@ -151,15 +153,18 @@ export class AgentSecureRuntime {
 			const { Guardrail } = require('${agentsSrcDir}sdk/guardrail');
 			const { Telemetry } = require('${agentsSrcDir}sdk/telemetry');
 			const { providerTools } = require('${agentsSrcDir}sdk/provider-tools');
+			const { SqliteMemory } = require('${agentsSrcDir}storage/sqlite-memory');
+			const { PostgresMemory } = require('${agentsSrcDir}storage/postgres-memory');
 			const { McpClient } = require('${agentsSrcDir}sdk/mcp-client');
 			const { WorkflowTool } = require('${workflowToolPath}');
 			const { ToolFromNode } = require('${nodeToolPath}');
+			const { N8nMemoryMarker: N8nMemory } = require('${n8nMemoryMarkerPath}');
 			const zod = require('zod');
 			const zodToJsonSchema = require('${zodToJsonSchemaPath}');
 
 			globalThis.__modules = {
-				'@n8n/agents': { Agent, Tool, Memory, Eval, Guardrail, Telemetry, providerTools, McpClient },
-				'@n8n/agents-utils': { WorkflowTool, ToolFromNode },
+				'@n8n/agents': { Agent, Tool, Memory, Eval, Guardrail, Telemetry, providerTools, SqliteMemory, PostgresMemory, McpClient },
+				'@n8n/agents-utils': { WorkflowTool, N8nMemory, ToolFromNode },
 				'zod': zod,
 				'zod-to-json-schema': zodToJsonSchema,
 			};
