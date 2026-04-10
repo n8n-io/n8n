@@ -79,6 +79,7 @@ import type { TypeORMWorkflowsStorage } from './storage/typeorm-workflows-storag
 import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
 import { InstanceAiCompactionService } from './compaction.service';
+import { ProxyTokenManager } from './proxy-token-manager';
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 
 function getErrorMessage(error: unknown): string {
@@ -361,6 +362,23 @@ export class InstanceAiService {
 	}
 
 	/**
+	 * Create a ProxyTokenManager that lazily fetches and caches proxy auth
+	 * tokens for a given user.  One manager is shared across the Anthropic
+	 * model, Brave Search, and LangSmith tracing configs within a single
+	 * orchestration run so every outbound request gets a valid token.
+	 */
+	private async createProxyTokenManager(user: User): Promise<{
+		client: Awaited<ReturnType<AiService['getClient']>>;
+		tokenManager: ProxyTokenManager;
+	}> {
+		const client = await this.aiService.getClient();
+		const tokenManager = new ProxyTokenManager(async () => {
+			return await client.getBuilderApiProxyToken({ id: user.id }, { userMessageId: nanoid() });
+		});
+		return { client, tokenManager };
+	}
+
+	/**
 	 * Build model config. When the AI service proxy is enabled, returns a native
 	 * Anthropic LanguageModelV2 instance pointing at the proxy.
 	 *
@@ -369,16 +387,28 @@ export class InstanceAiService {
 	 * `createOpenAICompatible`, which sends requests to `/chat/completions`.
 	 * The proxy may forward to Vertex AI, which only supports the native Anthropic
 	 * Messages API (`/v1/messages`), not the OpenAI-compatible endpoint.
+	 *
+	 * Auth headers are injected via a custom `fetch` wrapper so that each
+	 * request gets a fresh-or-cached token from the ProxyTokenManager,
+	 * avoiding 401s on long-running agent turns.
 	 */
-	private async resolveModel(user: User): Promise<ModelConfig> {
+	private async resolveModel(user: User, tokenManager?: ProxyTokenManager): Promise<ModelConfig> {
 		if (this.aiService.isProxyEnabled()) {
-			const { client, headers } = await this.getProxyAuth(user);
+			const client = await this.aiService.getClient();
+			const mgr = tokenManager ?? (await this.createProxyTokenManager(user)).tokenManager;
 			const modelName = await this.settingsService.resolveModelName(user);
 			const { createAnthropic } = await import('@ai-sdk/anthropic');
 			const provider = createAnthropic({
 				baseURL: client.getApiProxyBaseUrl() + '/anthropic/v1',
 				apiKey: 'proxy-managed',
-				headers,
+				fetch: async (input, init) => {
+					const headers = new Headers(init?.headers);
+					const auth = await mgr.getAuthHeaders();
+					for (const [k, v] of Object.entries(auth)) {
+						headers.set(k, v);
+					}
+					return await globalThis.fetch(input, { ...init, headers });
+				},
 			});
 			return provider(modelName);
 		}
@@ -386,17 +416,31 @@ export class InstanceAiService {
 	}
 
 	/** Build search proxy config when proxy is enabled. */
-	private async resolveSearchProxyConfig(user: User): Promise<ServiceProxyConfig | undefined> {
+	private async resolveSearchProxyConfig(
+		user: User,
+		tokenManager?: ProxyTokenManager,
+	): Promise<ServiceProxyConfig | undefined> {
 		if (!this.aiService.isProxyEnabled()) return undefined;
-		const { client, headers } = await this.getProxyAuth(user);
-		return { apiUrl: client.getApiProxyBaseUrl() + '/brave-search', headers };
+		const client = await this.aiService.getClient();
+		const mgr = tokenManager ?? (await this.createProxyTokenManager(user)).tokenManager;
+		return {
+			apiUrl: client.getApiProxyBaseUrl() + '/brave-search',
+			headers: async () => await mgr.getAuthHeaders(),
+		};
 	}
 
 	/** Build tracing proxy config when proxy is enabled. */
-	private async resolveTracingProxyConfig(user: User): Promise<ServiceProxyConfig | undefined> {
+	private async resolveTracingProxyConfig(
+		user: User,
+		tokenManager?: ProxyTokenManager,
+	): Promise<ServiceProxyConfig | undefined> {
 		if (!this.aiService.isProxyEnabled()) return undefined;
-		const { client, headers } = await this.getProxyAuth(user);
-		return { apiUrl: client.getApiProxyBaseUrl() + '/langsmith', headers };
+		const client = await this.aiService.getClient();
+		const mgr = tokenManager ?? (await this.createProxyTokenManager(user)).tokenManager;
+		return {
+			apiUrl: client.getApiProxyBaseUrl() + '/langsmith',
+			headers: async () => await mgr.getAuthHeaders(),
+		};
 	}
 
 	/**
@@ -1077,9 +1121,13 @@ export class InstanceAiService {
 	) {
 		const localGatewayDisabled = this.settingsService.isLocalGatewayDisabled();
 		const userGateway = this.gatewayRegistry.findGateway(user.id);
-		// Each resolve*() call fetches a separate proxy token for audit tracking (see getProxyAuth)
-		const searchProxyConfig = await this.resolveSearchProxyConfig(user);
-		const tracingProxyConfig = await this.resolveTracingProxyConfig(user);
+		// Share a single ProxyTokenManager across all proxy configs so that the
+		// cached token is reused while valid and refreshed transparently on expiry.
+		const tokenManager = this.aiService.isProxyEnabled()
+			? (await this.createProxyTokenManager(user)).tokenManager
+			: undefined;
+		const searchProxyConfig = await this.resolveSearchProxyConfig(user, tokenManager);
+		const tracingProxyConfig = await this.resolveTracingProxyConfig(user, tokenManager);
 		const context = this.adapterService.createContext(user, {
 			searchProxyConfig,
 			pushRef,
@@ -1114,7 +1162,7 @@ export class InstanceAiService {
 			};
 		}
 
-		const modelId = await this.resolveModel(user); // separate proxy token — see getProxyAuth
+		const modelId = await this.resolveModel(user, tokenManager);
 		const memory = createMemory(this.createMemoryConfig());
 		await this.ensureThreadExists(memory, threadId, user.id);
 

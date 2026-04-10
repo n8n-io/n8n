@@ -648,8 +648,14 @@ export type ModelConfig =
 export interface ServiceProxyConfig {
 	/** Proxy endpoint, e.g. '{baseUrl}/langsmith' or '{baseUrl}/brave-search' */
 	apiUrl: string;
-	/** Auth headers to include in proxied requests */
-	headers: Record<string, string>;
+	/**
+	 * Auth headers to include in proxied requests.
+	 *
+	 * Can be a static object or a function that returns fresh headers on each
+	 * call.  The function form allows transparent token refresh during
+	 * long-running agent turns so that short-lived proxy tokens do not expire.
+	 */
+	headers: Record<string, string> | (() => Promise<Record<string, string>>);
 }
 
 // ── LangSmith tracing ────────────────────────────────────────────────────────

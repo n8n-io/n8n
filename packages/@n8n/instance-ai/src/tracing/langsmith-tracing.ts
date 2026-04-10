@@ -30,6 +30,13 @@ const traceParentOverrideStorage = new AsyncLocalStorage<{ current: RunTree | nu
 // Authorization header without any shared mutable state.
 const proxyHeaderStore = new AsyncLocalStorage<Record<string, string>>();
 
+/** Resolve proxy headers that may be a static object or an async function. */
+async function resolveProxyHeaders(
+	headers: Record<string, string> | (() => Promise<Record<string, string>>),
+): Promise<Record<string, string>> {
+	return typeof headers === 'function' ? await headers() : headers;
+}
+
 // Module-level map associating traceIds with proxy clients so that
 // hydrateRunTree() (which reconstructs RunTree from serialized state)
 // can use the correct proxy client for its HTTP calls.
@@ -743,10 +750,13 @@ function createTraceContext(
 	traceKind: InstanceAiTraceContext['traceKind'],
 	rootRun: InstanceAiTraceRun,
 	actorRun: InstanceAiTraceRun,
-	proxyHeaders?: Record<string, string>,
+	proxyHeaders?: Record<string, string> | (() => Promise<Record<string, string>>),
 ): InstanceAiTraceContext {
-	const withProxy = async <T>(fn: () => Promise<T>): Promise<T> =>
-		proxyHeaders ? await proxyHeaderStore.run(proxyHeaders, fn) : await fn();
+	const withProxy = async <T>(fn: () => Promise<T>): Promise<T> => {
+		if (!proxyHeaders) return await fn();
+		const resolved = typeof proxyHeaders === 'function' ? await proxyHeaders() : proxyHeaders;
+		return await proxyHeaderStore.run(resolved, fn);
+	};
 
 	const startChildRun = async (
 		parentRun: InstanceAiTraceRun,
@@ -1053,7 +1063,8 @@ export async function createInstanceAiTraceContext(
 	};
 
 	if (options.proxyConfig) {
-		return await proxyHeaderStore.run(options.proxyConfig.headers, createTraceRuns);
+		const resolved = await resolveProxyHeaders(options.proxyConfig.headers);
+		return await proxyHeaderStore.run(resolved, createTraceRuns);
 	}
 	return await createTraceRuns();
 }
@@ -1082,7 +1093,8 @@ export async function continueInstanceAiTraceContext(
 	};
 
 	if (options.proxyConfig) {
-		return await proxyHeaderStore.run(options.proxyConfig.headers, createContinuation);
+		const resolved = await resolveProxyHeaders(options.proxyConfig.headers);
+		return await proxyHeaderStore.run(resolved, createContinuation);
 	}
 	return await createContinuation();
 }
@@ -1133,7 +1145,8 @@ export async function createDetachedSubAgentTraceContext(
 	};
 
 	if (options.proxyConfig) {
-		return await proxyHeaderStore.run(options.proxyConfig.headers, createDetachedRuns);
+		const resolved = await resolveProxyHeaders(options.proxyConfig.headers);
+		return await proxyHeaderStore.run(resolved, createDetachedRuns);
 	}
 	return await createDetachedRuns();
 }
