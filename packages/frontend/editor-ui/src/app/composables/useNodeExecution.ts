@@ -343,7 +343,7 @@ export function useNodeExecution(
 
 	function chatTriggerHasInputData(): boolean {
 		if (!nodeRef.value) return false;
-		const startNode = workflowsStore.workflowObject.getStartNode(nodeRef.value.name);
+		const startNode = workflowDocumentStore.value?.getStartNode(nodeRef.value.name);
 		if (!startNode || startNode.type !== CHAT_TRIGGER_NODE_TYPE) return false;
 		const hasRunData = nodeHelpers.getNodeInputData(startNode, 0, 0, 'input')?.length > 0;
 		const hasPinData = !!workflowDocumentStore.value?.pinData?.[startNode.name];
