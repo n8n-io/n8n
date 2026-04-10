@@ -1,7 +1,6 @@
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type { AgentSchema, AgentResource, AgentJsonConfig } from '../types';
-import type { ToolDescriptor } from '../agent.types';
 
 export const listAgents = async (
 	context: IRestApiContext,
