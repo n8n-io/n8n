@@ -1,5 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import type { IHookFunctions } from 'n8n-workflow';
+
 import { BoxTrigger } from '../BoxTrigger.node';
 
 describe('Box Trigger Webhook Lifecycle', () => {
@@ -8,12 +9,11 @@ describe('Box Trigger Webhook Lifecycle', () => {
 	const mockRequestOAuth2 = jest.fn();
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		// resetAllMocks clears Once queues and implementations — prevents bleed between tests
+		jest.resetAllMocks();
 		Object.keys(mockStaticData).forEach((key) => delete mockStaticData[key]);
 		mockHookFunctions.getWorkflowStaticData.mockReturnValue(mockStaticData);
 		mockHookFunctions.getNodeWebhookUrl.mockReturnValue('https://n8n.io/webhook/box-test');
-
-		// Mock getNodeParameter to return different values based on parameter name
 		mockHookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
 			switch (parameterName) {
 				case 'events':
@@ -26,8 +26,6 @@ describe('Box Trigger Webhook Lifecycle', () => {
 					return undefined;
 			}
 		});
-
-		// Mock the OAuth2 request helper
 		mockHookFunctions.helpers = {
 			...mockHookFunctions.helpers,
 			requestOAuth2: mockRequestOAuth2,
@@ -35,29 +33,19 @@ describe('Box Trigger Webhook Lifecycle', () => {
 	});
 
 	describe('checkExists', () => {
-		it('should not store webhook ID when no matching webhook exists', async () => {
-			// Mock API response with no matching webhooks
+		it('should return false and not store webhook ID when no matching webhook exists', async () => {
+			// List response: mini-webhook only (new Box API — no address/triggers in list)
 			mockRequestOAuth2
 				.mockResolvedValueOnce({
-					entries: [
-						{
-							id: 'webhook_123',
-							address: 'https://other-app.com/webhook',
-							target: { id: '67890', type: 'file' },
-							triggers: ['FILE.UPLOADED'],
-						},
-						{
-							id: 'webhook_456',
-							address: 'https://n8n.io/webhook/box-test',
-							target: { id: '67890', type: 'file' }, // Different target ID
-							triggers: ['FILE.UPLOADED'],
-						},
-					],
-					offset: 0,
+					entries: [{ id: 'webhook_123', type: 'webhook', target: { id: '67890', type: 'file' } }],
+					// no next_marker — single page
 				})
+				// Full details for webhook_123 — address doesn't match
 				.mockResolvedValueOnce({
-					entries: [], // Empty to terminate the loop
-					offset: 100,
+					id: 'webhook_123',
+					address: 'https://other-app.com/webhook',
+					target: { id: '67890', type: 'file' },
+					triggers: ['FILE.UPLOADED'],
 				});
 
 			const boxTrigger = new BoxTrigger();
@@ -67,30 +55,22 @@ describe('Box Trigger Webhook Lifecycle', () => {
 			expect(mockStaticData.webhookId).toBeUndefined();
 		});
 
-		it('should store the correct webhook ID when a matching webhook exists', async () => {
-			// Mock API response with a matching webhook
-			// boxApiRequestAllItems expects a response with 'entries' property
+		it('should return true and store the correct webhook ID when a matching webhook exists', async () => {
+			// List returns two mini-webhooks; webhook_123 is skipped (target.id mismatch),
+			// only webhook_456 gets a full GET call
 			mockRequestOAuth2
 				.mockResolvedValueOnce({
 					entries: [
-						{
-							id: 'webhook_123',
-							address: 'https://other-app.com/webhook',
-							target: { id: '67890', type: 'file' },
-							triggers: ['FILE.UPLOADED'],
-						},
-						{
-							id: 'webhook_456',
-							address: 'https://n8n.io/webhook/box-test',
-							target: { id: '12345', type: 'file' }, // Matching target
-							triggers: ['FILE.UPLOADED'],
-						},
+						{ id: 'webhook_123', type: 'webhook', target: { id: '67890', type: 'file' } },
+						{ id: 'webhook_456', type: 'webhook', target: { id: '12345', type: 'file' } },
 					],
-					offset: 0,
 				})
+				// Full details only for webhook_456 — webhook_123 is pre-filtered out
 				.mockResolvedValueOnce({
-					entries: [], // Empty to terminate the loop
-					offset: 100,
+					id: 'webhook_456',
+					address: 'https://n8n.io/webhook/box-test',
+					target: { id: '12345', type: 'file' },
+					triggers: ['FILE.UPLOADED'],
 				});
 
 			const boxTrigger = new BoxTrigger();
@@ -100,23 +80,16 @@ describe('Box Trigger Webhook Lifecycle', () => {
 			expect(mockStaticData.webhookId).toBe('webhook_456');
 		});
 
-		it('should return false when webhook exists but triggers are missing', async () => {
-			// Mock API response with matching webhook but missing triggers
+		it('should return false when address and target match but a required event is missing', async () => {
 			mockRequestOAuth2
 				.mockResolvedValueOnce({
-					entries: [
-						{
-							id: 'webhook_456',
-							address: 'https://n8n.io/webhook/box-test',
-							target: { id: '12345', type: 'file' },
-							triggers: ['FILE.DOWNLOADED'], // Different trigger
-						},
-					],
-					offset: 0,
+					entries: [{ id: 'webhook_456', type: 'webhook', target: { id: '12345', type: 'file' } }],
 				})
 				.mockResolvedValueOnce({
-					entries: [], // Empty to terminate the loop
-					offset: 100,
+					id: 'webhook_456',
+					address: 'https://n8n.io/webhook/box-test',
+					target: { id: '12345', type: 'file' },
+					triggers: ['FILE.DOWNLOADED'], // missing FILE.UPLOADED
 				});
 
 			const boxTrigger = new BoxTrigger();
@@ -126,23 +99,18 @@ describe('Box Trigger Webhook Lifecycle', () => {
 			expect(mockStaticData.webhookId).toBeUndefined();
 		});
 
-		it('should return false when webhook exists but target type is different', async () => {
-			// Mock API response with matching webhook but different target type
+		it('should return false when webhook target type does not match', async () => {
 			mockRequestOAuth2
 				.mockResolvedValueOnce({
 					entries: [
-						{
-							id: 'webhook_456',
-							address: 'https://n8n.io/webhook/box-test',
-							target: { id: '12345', type: 'folder' }, // Different target type
-							triggers: ['FILE.UPLOADED'],
-						},
+						{ id: 'webhook_456', type: 'webhook', target: { id: '12345', type: 'folder' } },
 					],
-					offset: 0,
 				})
 				.mockResolvedValueOnce({
-					entries: [], // Empty to terminate the loop
-					offset: 100,
+					id: 'webhook_456',
+					address: 'https://n8n.io/webhook/box-test',
+					target: { id: '12345', type: 'folder' }, // wrong type
+					triggers: ['FILE.UPLOADED'],
 				});
 
 			const boxTrigger = new BoxTrigger();
@@ -150,21 +118,111 @@ describe('Box Trigger Webhook Lifecycle', () => {
 
 			expect(exists).toBe(false);
 			expect(mockStaticData.webhookId).toBeUndefined();
+		});
+
+		it('should page through multiple pages using next_marker before fetching individual webhooks', async () => {
+			// All list pages are consumed first by boxApiRequestAllItemsMarker,
+			// then per-webhook GET calls happen during the checkExists loop.
+			// webhook_123 (target 67890) is pre-filtered out — no GET for it.
+			mockRequestOAuth2
+				// List page 1 — has next_marker
+				.mockResolvedValueOnce({
+					entries: [{ id: 'webhook_123', type: 'webhook', target: { id: '67890', type: 'file' } }],
+					next_marker: 'page2marker',
+				})
+				// List page 2 (next_marker consumed) — no further pages
+				.mockResolvedValueOnce({
+					entries: [{ id: 'webhook_456', type: 'webhook', target: { id: '12345', type: 'file' } }],
+				})
+				// Full details only for webhook_456 — webhook_123 is pre-filtered out
+				.mockResolvedValueOnce({
+					id: 'webhook_456',
+					address: 'https://n8n.io/webhook/box-test',
+					target: { id: '12345', type: 'file' },
+					triggers: ['FILE.UPLOADED'],
+				});
+
+			const boxTrigger = new BoxTrigger();
+			const exists = await boxTrigger.webhookMethods.default.checkExists.call(mockHookFunctions);
+
+			expect(exists).toBe(true);
+			expect(mockStaticData.webhookId).toBe('webhook_456');
+
+			// 2 list calls (pagination) + 1 GET (webhook_123 skipped by target pre-filter) = 3 total
+			// If pagination didn't work, webhook_456 (page 2 only) would never be found
+			expect(mockRequestOAuth2).toHaveBeenCalledTimes(3);
+		});
+
+		it('should skip the full GET fetch for webhooks whose target does not match', async () => {
+			// Two webhooks in list — only second has matching target
+			mockRequestOAuth2
+				.mockResolvedValueOnce({
+					entries: [
+						{
+							id: 'webhook_wrong_target',
+							type: 'webhook',
+							target: { id: 'other_id', type: 'file' },
+						},
+						{ id: 'webhook_456', type: 'webhook', target: { id: '12345', type: 'file' } },
+					],
+				})
+				// Only one full GET expected — for webhook_456 (wrong_target is skipped)
+				.mockResolvedValueOnce({
+					id: 'webhook_456',
+					address: 'https://n8n.io/webhook/box-test',
+					target: { id: '12345', type: 'file' },
+					triggers: ['FILE.UPLOADED'],
+				});
+
+			const boxTrigger = new BoxTrigger();
+			const exists = await boxTrigger.webhookMethods.default.checkExists.call(mockHookFunctions);
+
+			expect(exists).toBe(true);
+			expect(mockStaticData.webhookId).toBe('webhook_456');
+			// 1 list call + 1 GET (not 2) — wrong-target webhook was skipped
+			expect(mockRequestOAuth2).toHaveBeenCalledTimes(2);
+		});
+
+		it('should return false when the webhook list is empty', async () => {
+			mockRequestOAuth2.mockResolvedValueOnce({ entries: [] });
+
+			const boxTrigger = new BoxTrigger();
+			const exists = await boxTrigger.webhookMethods.default.checkExists.call(mockHookFunctions);
+
+			expect(exists).toBe(false);
+			expect(mockStaticData.webhookId).toBeUndefined();
+		});
+
+		it('should match when the stored webhook has a superset of the required events', async () => {
+			mockRequestOAuth2
+				.mockResolvedValueOnce({
+					entries: [{ id: 'webhook_456', type: 'webhook', target: { id: '12345', type: 'file' } }],
+				})
+				.mockResolvedValueOnce({
+					id: 'webhook_456',
+					address: 'https://n8n.io/webhook/box-test',
+					target: { id: '12345', type: 'file' },
+					triggers: ['FILE.UPLOADED', 'FILE.DOWNLOADED'], // superset — should still match
+				});
+
+			const boxTrigger = new BoxTrigger();
+			const exists = await boxTrigger.webhookMethods.default.checkExists.call(mockHookFunctions);
+
+			expect(exists).toBe(true);
+			expect(mockStaticData.webhookId).toBe('webhook_456');
 		});
 	});
 
 	describe('create', () => {
-		it('should create a new webhook when none exists', async () => {
-			mockRequestOAuth2.mockResolvedValue({
-				id: 'webhook_new_789',
-			});
+		it('should create a new webhook and store its ID', async () => {
+			mockRequestOAuth2.mockResolvedValue({ id: 'webhook_new_789' });
 
 			const boxTrigger = new BoxTrigger();
 			const created = await boxTrigger.webhookMethods.default.create.call(mockHookFunctions);
 
 			expect(created).toBe(true);
 			expect(mockStaticData.webhookId).toBe('webhook_new_789');
-			expect(mockHookFunctions.helpers.requestOAuth2).toHaveBeenCalledWith(
+			expect(mockRequestOAuth2).toHaveBeenCalledWith(
 				expect.anything(),
 				expect.objectContaining({
 					method: 'POST',
@@ -172,20 +230,15 @@ describe('Box Trigger Webhook Lifecycle', () => {
 					body: {
 						address: 'https://n8n.io/webhook/box-test',
 						triggers: ['FILE.UPLOADED'],
-						target: {
-							id: '12345',
-							type: 'file',
-						},
+						target: { id: '12345', type: 'file' },
 					},
 				}),
 				expect.anything(),
 			);
 		});
 
-		it('should return false when webhook creation fails', async () => {
-			mockRequestOAuth2.mockResolvedValue({
-				// No id in response
-			});
+		it('should return false when the API response has no ID', async () => {
+			mockRequestOAuth2.mockResolvedValue({});
 
 			const boxTrigger = new BoxTrigger();
 			const created = await boxTrigger.webhookMethods.default.create.call(mockHookFunctions);
@@ -196,7 +249,7 @@ describe('Box Trigger Webhook Lifecycle', () => {
 	});
 
 	describe('delete', () => {
-		it('should delete the correct webhook upon deactivation', async () => {
+		it('should call DELETE with the stored webhook ID and clear static data', async () => {
 			mockStaticData.webhookId = 'webhook_456';
 			mockRequestOAuth2.mockResolvedValue({});
 
@@ -204,7 +257,7 @@ describe('Box Trigger Webhook Lifecycle', () => {
 			const deleted = await boxTrigger.webhookMethods.default.delete.call(mockHookFunctions);
 
 			expect(deleted).toBe(true);
-			expect(mockHookFunctions.helpers.requestOAuth2).toHaveBeenCalledWith(
+			expect(mockRequestOAuth2).toHaveBeenCalledWith(
 				expect.anything(),
 				expect.objectContaining({
 					method: 'DELETE',
@@ -215,18 +268,15 @@ describe('Box Trigger Webhook Lifecycle', () => {
 			expect(mockStaticData.webhookId).toBeUndefined();
 		});
 
-		it('should handle deletion when no webhook ID is stored', async () => {
-			// No webhookId in static data
-			mockRequestOAuth2.mockResolvedValue({});
-
+		it('should return true without making an API call when no webhook ID is stored', async () => {
 			const boxTrigger = new BoxTrigger();
 			const deleted = await boxTrigger.webhookMethods.default.delete.call(mockHookFunctions);
 
 			expect(deleted).toBe(true);
-			expect(mockHookFunctions.helpers.requestOAuth2).not.toHaveBeenCalled();
+			expect(mockRequestOAuth2).not.toHaveBeenCalled();
 		});
 
-		it('should handle delete API errors gracefully', async () => {
+		it('should return false and keep the webhook ID when the API call fails', async () => {
 			mockStaticData.webhookId = 'webhook_456';
 			mockRequestOAuth2.mockRejectedValue(new Error('API Error'));
 
@@ -234,7 +284,7 @@ describe('Box Trigger Webhook Lifecycle', () => {
 			const deleted = await boxTrigger.webhookMethods.default.delete.call(mockHookFunctions);
 
 			expect(deleted).toBe(false);
-			expect(mockStaticData.webhookId).toBe('webhook_456'); // Should not be deleted on error
+			expect(mockStaticData.webhookId).toBe('webhook_456');
 		});
 	});
 });

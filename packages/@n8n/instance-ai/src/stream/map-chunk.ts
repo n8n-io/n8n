@@ -1,9 +1,17 @@
-import { credentialRequestSchema, workflowSetupNodeSchema, taskListSchema } from '@n8n/api-types';
+import {
+	credentialRequestSchema,
+	workflowSetupNodeSchema,
+	taskListSchema,
+	plannedTaskArgSchema,
+	gatewayConfirmationRequiredPayloadSchema,
+} from '@n8n/api-types';
 import type {
 	InstanceAiCredentialRequest,
 	InstanceAiEvent,
 	InstanceAiWorkflowSetupNode,
+	PlannedTaskArg,
 	TaskList,
+	GatewayConfirmationRequiredPayload,
 } from '@n8n/api-types';
 import { z } from 'zod';
 
@@ -183,10 +191,16 @@ export function mapMastraChunkToEvent(
 		const projectId =
 			typeof suspendPayload.projectId === 'string' ? suspendPayload.projectId : undefined;
 
-		// Extract optional inputType (e.g., 'text' for ask-user, 'questions', 'plan-review')
+		// Extract optional inputType (e.g., 'text' for ask-user, 'questions', 'plan-review', 'resource-decision')
 		const rawInputType =
 			typeof suspendPayload.inputType === 'string' ? suspendPayload.inputType : undefined;
-		const validInputTypes = ['approval', 'text', 'questions', 'plan-review'] as const;
+		const validInputTypes = [
+			'approval',
+			'text',
+			'questions',
+			'plan-review',
+			'resource-decision',
+		] as const;
 		const inputType = (validInputTypes as readonly string[]).includes(rawInputType ?? '')
 			? (rawInputType as (typeof validInputTypes)[number])
 			: undefined;
@@ -213,6 +227,18 @@ export function mapMastraChunkToEvent(
 			const parsed = taskListSchema.safeParse(suspendPayload.tasks);
 			if (parsed.success) {
 				tasks = parsed.data;
+			}
+		}
+
+		// Extract optional full planned task items (for plan-review panel details)
+		let planItems: PlannedTaskArg[] | undefined;
+		if (Array.isArray(suspendPayload.planItems)) {
+			const parsed = suspendPayload.planItems
+				.map((item) => plannedTaskArgSchema.safeParse(item))
+				.filter((r) => r.success)
+				.map((r) => r.data);
+			if (parsed.length > 0) {
+				planItems = parsed;
 			}
 		}
 
@@ -257,6 +283,17 @@ export function mapMastraChunkToEvent(
 		const workflowId =
 			typeof suspendPayload.workflowId === 'string' ? suspendPayload.workflowId : undefined;
 
+		// Extract optional resourceDecision for gateway permission gating (inputType=resource-decision)
+		let resourceDecision: GatewayConfirmationRequiredPayload | undefined;
+		if (isRecord(suspendPayload.resourceDecision)) {
+			const parsed = gatewayConfirmationRequiredPayloadSchema.safeParse(
+				suspendPayload.resourceDecision,
+			);
+			if (parsed.success) {
+				resourceDecision = parsed.data;
+			}
+		}
+
 		return {
 			type: 'confirmation-request',
 			runId,
@@ -281,6 +318,8 @@ export function mapMastraChunkToEvent(
 				...(questions ? { questions } : {}),
 				...(introMessage ? { introMessage } : {}),
 				...(tasks ? { tasks } : {}),
+				...(planItems ? { planItems } : {}),
+				...(resourceDecision ? { resourceDecision } : {}),
 			},
 		};
 	}

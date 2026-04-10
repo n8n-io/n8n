@@ -187,33 +187,41 @@ const onConfirmProvisioningSetting = () => {
 		</div>
 
 		<template #footer>
-			<N8nButton
-				variant="ghost"
-				type="button"
-				data-test-id="provisioning-cancel-button"
-				@click="emit('cancel')"
-				>{{ locale.baseText('settings.provisioningConfirmDialog.button.cancel') }}</N8nButton
-			>
-			<N8nButton
-				variant="solid"
-				type="button"
-				:disabled="
-					loading ||
-					!confirmationChecked ||
-					(!isDisablingProvisioning && !hasDownloadedInstanceRoleCsv) ||
-					(shouldShowProjectRolesCsv && !hasDownloadedProjectRoleCsv)
-				"
-				data-test-id="provisioning-confirm-button"
-				@click="onConfirmProvisioningSetting"
-				>{{
-					locale.baseText(`settings.provisioningConfirmDialog.button.${messagingKey}.confirm`)
-				}}</N8nButton
-			>
+			<div :class="$style.footer">
+				<N8nButton
+					variant="ghost"
+					type="button"
+					data-test-id="provisioning-cancel-button"
+					@click="emit('cancel')"
+					>{{ locale.baseText('settings.provisioningConfirmDialog.button.cancel') }}</N8nButton
+				>
+				<N8nButton
+					variant="solid"
+					type="button"
+					:disabled="
+						loading ||
+						!confirmationChecked ||
+						(!isDisablingProvisioning && !hasDownloadedInstanceRoleCsv) ||
+						(shouldShowProjectRolesCsv && !hasDownloadedProjectRoleCsv)
+					"
+					data-test-id="provisioning-confirm-button"
+					@click="onConfirmProvisioningSetting"
+					>{{
+						locale.baseText(`settings.provisioningConfirmDialog.button.${messagingKey}.confirm`)
+					}}</N8nButton
+				>
+			</div>
 		</template>
 	</ElDialog>
 </template>
 
 <style lang="scss" module>
+.footer {
+	display: flex;
+	justify-content: flex-end;
+	gap: var(--spacing--xs);
+}
+
 .button {
 	margin-left: var(--spacing--xs);
 }

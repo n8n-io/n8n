@@ -293,6 +293,7 @@ describe('SamlService', () => {
 					'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/lastname',
 					'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn',
 				],
+				rawAttributes: {},
 			});
 
 			// ACT & ASSERT
@@ -326,20 +327,24 @@ describe('SamlService', () => {
 					n8nProjectRoles: ['projectRole1', 'projectRole2'],
 				},
 				missingAttributes: [],
+				rawAttributes: { email: 'test@test.com', role: 'admin' },
 			});
 
-			const attributes = await samlService.getAttributesFromLoginResponse(
+			const result = await samlService.getAttributesFromLoginResponse(
 				mock<express.Request>(),
 				'post',
 			);
 
-			expect(attributes).toEqual({
-				email: 'test@test.com',
-				firstName: 'test',
-				lastName: 'test',
-				userPrincipalName: 'test',
-				n8nInstanceRole: 'global:admin',
-				n8nProjectRoles: ['projectRole1', 'projectRole2'],
+			expect(result).toEqual({
+				mapped: {
+					email: 'test@test.com',
+					firstName: 'test',
+					lastName: 'test',
+					userPrincipalName: 'test',
+					n8nInstanceRole: 'global:admin',
+					n8nProjectRoles: ['projectRole1', 'projectRole2'],
+				},
+				raw: { email: 'test@test.com', role: 'admin' },
 			});
 		});
 	});
@@ -414,10 +419,8 @@ describe('SamlService', () => {
 	describe('handleSamlLogin', () => {
 		it('throws error for invalid email', async () => {
 			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
-				email: 'invalid',
-				firstName: '',
-				lastName: '',
-				userPrincipalName: '',
+				mapped: { email: 'invalid', firstName: '', lastName: '', userPrincipalName: '' },
+				raw: {},
 			});
 
 			await expect(
@@ -439,7 +442,10 @@ describe('SamlService', () => {
 					{ providerType: 'saml', providerId: samlAttributes.userPrincipalName } as any,
 				],
 			} as any;
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue(samlAttributes);
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+				mapped: samlAttributes,
+				raw: {},
+			});
 			jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser);
 
 			const loginResult = await samlService.handleSamlLogin(mock<express.Request>(), 'post');
@@ -463,7 +469,10 @@ describe('SamlService', () => {
 				email: samlAttributes.email,
 				authIdentities: [],
 			} as any;
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue(samlAttributes);
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+				mapped: samlAttributes,
+				raw: {},
+			});
 			jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser);
 			jest.spyOn(samlHelpers, 'updateUserFromSamlAttributes').mockResolvedValue(mockUser);
 
@@ -484,7 +493,10 @@ describe('SamlService', () => {
 				userPrincipalName: 'foo@bar.com',
 			};
 
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue(samlAttributes);
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+				mapped: samlAttributes,
+				raw: {},
+			});
 			jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
 			jest.spyOn(ssoHelpers, 'isSsoJustInTimeProvisioningEnabled').mockReturnValue(false);
 
@@ -508,7 +520,10 @@ describe('SamlService', () => {
 			mockUser.firstName = '';
 			mockUser.lastName = '';
 
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue(samlAttributes);
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+				mapped: samlAttributes,
+				raw: {},
+			});
 			jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
 			jest.spyOn(samlHelpers, 'createUserFromSamlAttributes').mockResolvedValue(mockUser);
 			jest.spyOn(ssoHelpers, 'isSsoJustInTimeProvisioningEnabled').mockReturnValue(true);
@@ -533,7 +548,10 @@ describe('SamlService', () => {
 			mockUser.firstName = 'Jane';
 			mockUser.lastName = 'Doe';
 
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue(samlAttributes);
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+				mapped: samlAttributes,
+				raw: {},
+			});
 			jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
 			jest.spyOn(samlHelpers, 'createUserFromSamlAttributes').mockResolvedValue(mockUser);
 			jest.spyOn(ssoHelpers, 'isSsoJustInTimeProvisioningEnabled').mockReturnValue(true);
@@ -563,7 +581,10 @@ describe('SamlService', () => {
 					{ providerType: 'saml', providerId: samlAttributes.userPrincipalName } as any,
 				],
 			} as any;
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue(samlAttributes);
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+				mapped: samlAttributes,
+				raw: {},
+			});
 			jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser);
 
 			await samlService.handleSamlLogin(mock<express.Request>(), 'post');
@@ -576,6 +597,74 @@ describe('SamlService', () => {
 				mockUser.id,
 				samlAttributes.n8nProjectRoles,
 			);
+		});
+
+		it('calls provisionExpressionMappedRolesForUser when expression mapping is enabled', async () => {
+			const samlAttributes = {
+				email: 'foo@bar.com',
+				firstName: 'Foo',
+				lastName: 'Bar',
+				userPrincipalName: 'foo@bar.com',
+			};
+			const rawAttributes = { email: 'foo@bar.com', department: 'engineering', role: 'admin' };
+			const mockUser = {
+				id: '123',
+				email: samlAttributes.email,
+				authIdentities: [
+					{ providerType: 'saml', providerId: samlAttributes.userPrincipalName } as any,
+				],
+			} as any;
+
+			provisioningService.isExpressionMappingEnabled = jest.fn().mockResolvedValue(true);
+			provisioningService.provisionExpressionMappedRolesForUser = jest
+				.fn()
+				.mockResolvedValue(undefined);
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+				mapped: samlAttributes,
+				raw: rawAttributes,
+			});
+			jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser);
+
+			await samlService.handleSamlLogin(mock<express.Request>(), 'post');
+
+			expect(provisioningService.provisionExpressionMappedRolesForUser).toHaveBeenCalledWith(
+				mockUser,
+				expect.objectContaining({ $provider: 'saml', $saml: { attributes: rawAttributes } }),
+			);
+			expect(provisioningService.provisionInstanceRoleForUser).not.toHaveBeenCalled();
+			expect(provisioningService.provisionProjectRolesForUser).not.toHaveBeenCalled();
+		});
+
+		it('falls through to direct-claim provisioning when expression mapping is disabled', async () => {
+			const samlAttributes = {
+				email: 'foo@bar.com',
+				firstName: '',
+				lastName: '',
+				userPrincipalName: 'foo@bar.com',
+				n8nInstanceRole: 'global:admin',
+			};
+			const mockUser = {
+				id: '123',
+				email: samlAttributes.email,
+				authIdentities: [
+					{ providerType: 'saml', providerId: samlAttributes.userPrincipalName } as any,
+				],
+			} as any;
+
+			provisioningService.isExpressionMappingEnabled = jest.fn().mockResolvedValue(false);
+			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+				mapped: samlAttributes,
+				raw: {},
+			});
+			jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser);
+
+			await samlService.handleSamlLogin(mock<express.Request>(), 'post');
+
+			expect(provisioningService.provisionInstanceRoleForUser).toHaveBeenCalledWith(
+				mockUser,
+				'global:admin',
+			);
+			expect(provisioningService.provisionExpressionMappedRolesForUser).not.toHaveBeenCalled();
 		});
 	});
 

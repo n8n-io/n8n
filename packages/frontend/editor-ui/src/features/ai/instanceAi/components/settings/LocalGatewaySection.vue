@@ -17,7 +17,7 @@ const isLocalGatewayDisabled = computed(() => {
 });
 
 const copied = ref(false);
-const displayCommand = computed(() => store.setupCommand ?? 'npx @n8n/fs-proxy');
+const displayCommand = computed(() => store.setupCommand ?? 'npx @n8n/computer-use');
 
 async function copyCommand() {
 	if (!store.setupCommand) return;
@@ -135,15 +135,8 @@ onMounted(() => {
 				</div>
 			</div>
 
-			<!-- Local filesystem (no gateway) -->
+			<!-- No gateway connected — show setup instructions -->
 			<template v-else>
-				<div v-if="store.isLocalGatewayEnabled" :class="$style.statusRow">
-					<span :class="[$style.dot, $style.dotLocal]" />
-					<N8nText size="small" color="text-light">
-						{{ store.localGatewayFallbackDirectory }}
-					</N8nText>
-				</div>
-
 				<!-- Daemon connecting -->
 				<div v-if="store.isDaemonConnecting" :class="$style.connectingRow">
 					<span :class="$style.spinner" />
@@ -254,10 +247,6 @@ onMounted(() => {
 
 .dotConnected {
 	background: var(--color--success);
-}
-
-.dotLocal {
-	background: var(--color--warning);
 }
 
 @keyframes pulse {

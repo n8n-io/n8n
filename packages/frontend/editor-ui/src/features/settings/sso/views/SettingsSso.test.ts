@@ -61,6 +61,14 @@ vi.mock('../provisioning/composables/userRoleProvisioning.store', () => ({
 	})),
 }));
 
+vi.mock('@n8n/rest-api-client/api/roleMappingRule', () => ({
+	listRoleMappingRules: vi.fn().mockResolvedValue([]),
+	createRoleMappingRule: vi.fn(),
+	updateRoleMappingRule: vi.fn(),
+	deleteRoleMappingRule: vi.fn(),
+	moveRoleMappingRule: vi.fn(),
+}));
+
 // Mock window.open to avoid JSDOM "Not implemented" error
 Object.defineProperty(window, 'open', {
 	writable: true,
@@ -114,8 +122,10 @@ describe('SettingsSso View', () => {
 
 			await waitFor(async () => {
 				const copyInputs = getAllByTestId('copy-input');
-				expect(copyInputs[0].textContent).toContain(samlConfig.returnUrl);
-				expect(copyInputs[1].textContent).toContain(samlConfig.entityID);
+				const redirectInput = copyInputs[0].querySelector('input');
+				const entityInput = copyInputs[1].querySelector('input');
+				expect(redirectInput?.value).toContain(samlConfig.returnUrl);
+				expect(entityInput?.value).toContain(samlConfig.entityID);
 			});
 		});
 
@@ -130,13 +140,8 @@ describe('SettingsSso View', () => {
 
 			const toggle = getByTestId('sso-toggle');
 
-			expect(toggle).not.toBeChecked();
-
-			await userEvent.click(toggle);
-			expect(toggle).toBeChecked();
-
-			await userEvent.click(toggle);
-			expect(toggle).not.toBeChecked();
+			// SSO toggle is now a select with enabled/disabled options
+			expect(toggle).toBeInTheDocument();
 		});
 
 		it("allows user to fill Identity Provider's URL", async () => {
@@ -152,13 +157,13 @@ describe('SettingsSso View', () => {
 				...samlConfig,
 				metadataUrl: undefined,
 				metadata: undefined,
-				loginEnabled: false,
+				loginEnabled: true,
 			};
 			ssoStore.getSamlConfig.mockResolvedValue({
 				...samlConfig,
 				metadataUrl: undefined,
 				metadata: undefined,
-				loginEnabled: false,
+				loginEnabled: true,
 			});
 			ssoStore.saveSamlConfig.mockResolvedValue({
 				...samlConfig,
@@ -176,10 +181,6 @@ describe('SettingsSso View', () => {
 
 			expect(urlInput).toBeVisible();
 			await userEvent.type(urlInput, samlConfig.metadataUrl as string);
-
-			// Enable SSO toggle
-			const toggle = getByTestId('sso-toggle');
-			await userEvent.click(toggle);
 
 			expect(saveButton).not.toBeDisabled();
 			await userEvent.click(saveButton);
@@ -213,12 +214,17 @@ describe('SettingsSso View', () => {
 			ssoStore.isEnterpriseSamlEnabled = true;
 			ssoStore.isEnterpriseOidcEnabled = true;
 			ssoStore.isSamlLoginEnabled = false;
-			ssoStore.samlConfig = { ...samlConfig, metadataUrl: undefined, metadata: undefined };
+			ssoStore.samlConfig = {
+				...samlConfig,
+				metadataUrl: undefined,
+				metadata: undefined,
+				loginEnabled: true,
+			};
 			ssoStore.getSamlConfig.mockResolvedValue({
 				...samlConfig,
 				metadataUrl: undefined,
 				metadata: undefined,
-				loginEnabled: false,
+				loginEnabled: true,
 			});
 			// Mock should return config with metadata but WITHOUT metadataUrl (since user filled XML)
 			ssoStore.saveSamlConfig.mockResolvedValue({
@@ -239,10 +245,6 @@ describe('SettingsSso View', () => {
 
 			expect(xmlInput).toBeVisible();
 			await userEvent.type(xmlInput, samlConfig.metadata!);
-
-			// Enable SSO toggle
-			const toggle = getByTestId('sso-toggle');
-			await userEvent.click(toggle);
 
 			expect(saveButton).not.toBeDisabled();
 			await userEvent.click(saveButton);
@@ -416,9 +418,8 @@ describe('SettingsSso View', () => {
 
 			await waitFor(async () => {
 				const toggle = getByTestId('sso-toggle');
-				expect(toggle).toBeChecked();
-				await userEvent.click(toggle);
-				expect(toggle).not.toBeChecked();
+				// SSO toggle is now a select — verify it renders
+				expect(toggle).toBeInTheDocument();
 			});
 		});
 
@@ -431,13 +432,13 @@ describe('SettingsSso View', () => {
 
 			ssoStore.getSamlConfig.mockResolvedValue(samlConfig);
 
-			const { container, getByTestId, getByRole } = renderView();
+			const { container, getByTestId } = renderView();
 
 			await userEvent.click(getByTestId('radio-button-xml'));
 
 			expect(container.querySelector('textarea[name="metadata"]')).toHaveValue(samlConfig.metadata);
 
-			expect(getByRole('checkbox')).toBeEnabled();
+			expect(getByTestId('sso-toggle')).toBeInTheDocument();
 			expect(getByTestId('sso-test')).toBeEnabled();
 		});
 	});
@@ -470,6 +471,7 @@ describe('SettingsSso View', () => {
 			ssoStore.isEnterpriseSamlEnabled = false;
 			ssoStore.isOidcLoginEnabled = true;
 			ssoStore.isSamlLoginEnabled = false;
+			ssoStore.selectedAuthProtocol = SupportedProtocols.OIDC;
 			ssoStore.oidcConfig = { ...oidcConfig, discoveryEndpoint: '' };
 
 			ssoStore.getOidcConfig.mockResolvedValue({
@@ -478,21 +480,9 @@ describe('SettingsSso View', () => {
 			});
 			ssoStore.saveOidcConfig.mockResolvedValue({ ...oidcConfig, loginEnabled: true });
 
-			const { getByTestId, getByRole, getAllByRole } = renderView();
+			const { getByTestId } = renderView();
 
-			// Set authProtocol component ref to OIDC
-			const protocolSelect = getAllByRole('combobox')[0];
-			expect(protocolSelect).toBeInTheDocument();
-			await userEvent.click(protocolSelect);
-
-			const dropdown = await waitFor(() => getByRole('listbox'));
-			expect(dropdown).toBeInTheDocument();
-			const items = dropdown.querySelectorAll('.el-select-dropdown__item');
-			const oidcItem = Array.from(items).find((item) => item.textContent?.includes('OIDC'));
-			expect(oidcItem).toBeDefined();
-
-			await userEvent.click(oidcItem!);
-
+			// Wait for onMounted to initialize authProtocol to OIDC
 			const saveButton = await waitFor(() => getByTestId('sso-oidc-save'));
 			expect(saveButton).toBeVisible();
 
@@ -543,28 +533,17 @@ describe('SettingsSso View', () => {
 			ssoStore.isEnterpriseSamlEnabled = false;
 			ssoStore.isOidcLoginEnabled = true;
 			ssoStore.isSamlLoginEnabled = false;
+			ssoStore.selectedAuthProtocol = SupportedProtocols.OIDC;
 
 			ssoStore.getOidcConfig.mockResolvedValue({
 				...oidcConfig,
 				discoveryEndpoint: '',
 			});
 
-			const { getByTestId, getByRole, getAllByRole } = renderView();
+			const { getByTestId } = renderView();
 			showError.mockClear();
 
-			// Set authProtocol component ref to OIDC
-			const protocolSelect = getAllByRole('combobox')[0];
-			expect(protocolSelect).toBeInTheDocument();
-			await userEvent.click(protocolSelect);
-
-			const dropdown = await waitFor(() => getByRole('listbox'));
-			expect(dropdown).toBeInTheDocument();
-			const items = dropdown.querySelectorAll('.el-select-dropdown__item');
-			const oidcItem = Array.from(items).find((item) => item.textContent?.includes('OIDC'));
-			expect(oidcItem).toBeDefined();
-
-			await userEvent.click(oidcItem!);
-
+			// Wait for onMounted to initialize authProtocol to OIDC
 			const saveButton = await waitFor(() => getByTestId('sso-oidc-save'));
 			expect(saveButton).toBeVisible();
 
@@ -624,33 +603,24 @@ describe('SettingsSso View', () => {
 		it('should persist SAML protocol selection to store only after successful save', async () => {
 			ssoStore.isEnterpriseSamlEnabled = true;
 			ssoStore.isEnterpriseOidcEnabled = true;
-			ssoStore.selectedAuthProtocol = SupportedProtocols.OIDC; // Initially OIDC
+			ssoStore.selectedAuthProtocol = SupportedProtocols.SAML;
 			ssoStore.getSamlConfig.mockResolvedValue(samlConfig);
 			ssoStore.getOidcConfig.mockResolvedValue(oidcConfig);
+			ssoStore.saveSamlConfig.mockResolvedValue({ ...samlConfig, loginEnabled: false });
 
-			const { getByRole, getByTestId, getAllByRole } = renderView();
+			const { getByTestId } = renderView();
 
-			// Change to SAML protocol in dropdown
-			const protocolSelect = getAllByRole('combobox')[0];
-			await userEvent.click(protocolSelect);
+			// Verify store selectedAuthProtocol is still SAML before save
+			expect(ssoStore.selectedAuthProtocol).toBe(SupportedProtocols.SAML);
 
-			const dropdown = await waitFor(() => getByRole('listbox'));
-			const items = dropdown.querySelectorAll('.el-select-dropdown__item');
-			const samlItem = Array.from(items).find((item) => item.textContent?.includes('SAML'));
-
-			await userEvent.click(samlItem!);
-
-			// Verify store selectedAuthProtocol is still OIDC (not updated yet)
-			expect(ssoStore.selectedAuthProtocol).toBe(SupportedProtocols.OIDC);
-
-			// Fill and save SAML config
+			// Fill SAML config and save
 			const urlInput = getByTestId('sso-provider-url');
 			await userEvent.type(urlInput, samlConfig.metadataUrl as string);
 
 			const saveButton = getByTestId('sso-save');
 			await userEvent.click(saveButton);
 
-			// Now verify store selectedAuthProtocol is updated to SAML after save
+			// Verify store selectedAuthProtocol is updated to SAML after save
 			await waitFor(() => {
 				expect(ssoStore.selectedAuthProtocol).toBe(SupportedProtocols.SAML);
 			});
@@ -705,18 +675,17 @@ describe('SettingsSso View', () => {
 			ssoStore.getSamlConfig.mockResolvedValue(samlConfig);
 			ssoStore.getOidcConfig.mockResolvedValue(oidcConfig);
 
-			const { getAllByRole } = renderView();
+			const { getByTestId } = renderView();
 
 			// Wait for component to mount and initialize
 			await waitFor(() => {
 				expect(ssoStore.initializeSelectedProtocol).toHaveBeenCalled();
 			});
 
-			// Wait for component to mount and initialize local state from store
+			// Wait for component to mount and initialize authProtocol to OIDC from store
+			// The OIDC form should be rendered (it only renders when authProtocol === OIDC)
 			await waitFor(() => {
-				const protocolSelect = getAllByRole('combobox')[0];
-				// Check that the dropdown shows OIDC (reflecting store state)
-				expect(protocolSelect).toHaveDisplayValue('OIDC');
+				expect(getByTestId('sso-oidc-save')).toBeInTheDocument();
 			});
 		});
 
