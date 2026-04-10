@@ -54,15 +54,32 @@ let expandedEditorView: EditorView | null = null;
 /**
  * Validate expression syntax by extracting JS from {{ }} and parsing it.
  */
+/**
+ * Mock $claims proxy for expression validation. Every property access returns
+ * a real array (with .includes, .some, etc.) so typos like .includ() throw TypeError.
+ */
+const mockClaims = new Proxy(
+	{},
+	{
+		get: (_target, prop) => {
+			if (typeof prop === 'symbol') return undefined;
+			// Return a real array so method calls like .includes() work but .includ() throws
+			return ['mock'];
+		},
+	},
+);
+
 function validateExpression(value: string): boolean {
-	if (!value.trim()) return true; // empty is valid (no error)
-	// Extract JS content from {{ ... }}
+	if (!value.trim()) return true;
 	const match = value.match(/^\{\{(.+)\}\}$/s);
 	const jsContent = match ? match[1].trim() : value.trim();
 	if (!jsContent) return true;
 	try {
 		// eslint-disable-next-line no-new-func
-		new Function(`return (${jsContent})`);
+		const fn = new Function('$claims', '$oidc', '$saml', '$provider', `return (${jsContent})`);
+		// Execute against mock context — catches both syntax errors and runtime errors
+		// like calling non-existent methods (.includ instead of .includes)
+		fn(mockClaims, { idToken: {}, userInfo: {} }, { attributes: {} }, 'oidc');
 		return true;
 	} catch {
 		return false;
