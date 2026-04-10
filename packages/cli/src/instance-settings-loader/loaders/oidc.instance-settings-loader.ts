@@ -4,8 +4,9 @@ import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
+
+import { InstanceBootstrappingError } from '../instance-bootstrapping.error';
 
 import { OIDC_PREFERENCES_DB_KEY } from '@/modules/sso-oidc/constants';
 import { PROVISIONING_PREFERENCES_DB_KEY } from '@/modules/provisioning.ee/constants';
@@ -75,12 +76,22 @@ export class OidcInstanceSettingsLoader {
 	}
 
 	async run(): Promise<'created' | 'skipped'> {
-		if (!this.instanceSettingsLoaderConfig.ssoManagedByEnv) return 'skipped';
+		const { ssoManagedByEnv, oidcClientId, oidcClientSecret, oidcDiscoveryEndpoint } =
+			this.instanceSettingsLoaderConfig;
+
+		if (!ssoManagedByEnv) {
+			if (oidcClientId || oidcClientSecret || oidcDiscoveryEndpoint) {
+				this.logger.warn(
+					'N8N_SSO_OIDC_* env vars are set but N8N_SSO_MANAGED_BY_ENV is not enabled — ignoring SSO env vars',
+				);
+			}
+			return 'skipped';
+		}
 
 		const result = ssoEnvSchema.safeParse(this.instanceSettingsLoaderConfig);
 
 		if (!result.success) {
-			throw new OperationalError(result.error.issues[0].message);
+			throw new InstanceBootstrappingError(result.error.issues[0].message);
 		}
 
 		const { oidc, provisioning } = result.data;
