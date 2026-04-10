@@ -28,8 +28,9 @@ export class InstanceAiModule implements ModuleInterface {
 			.cleanupExpiredThreads(async (threadId) => await aiService.clearThreadState(threadId))
 			.catch(() => undefined);
 
-		// Register snapshot pruning — lifecycle decorators handle start/stop
-		await import('./snapshot-pruning.service');
+		// Initialize snapshot pruning — lifecycle decorators handle multi-main start/stop
+		const { SnapshotPruningService } = await import('./snapshot-pruning.service');
+		Container.get(SnapshotPruningService).init();
 	}
 
 	async settings() {

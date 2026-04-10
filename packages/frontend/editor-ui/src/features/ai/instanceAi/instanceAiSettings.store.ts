@@ -12,6 +12,7 @@ import {
 	fetchModelCredentials,
 	fetchServiceCredentials,
 } from './instanceAi.settings.api';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import { createGatewayLink, getGatewayStatus } from './instanceAi.api';
 import type {
 	FrontendModuleSettings,
@@ -88,21 +89,32 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			'instance-ai': merged,
 		};
 	}
+	const canManage = computed(() =>
+		hasPermission(['rbac'], { rbac: { scope: 'instanceAi:manage' } }),
+	);
 
 	async function fetch(): Promise<void> {
 		isLoading.value = true;
 		try {
-			const [s, p] = await Promise.all([
-				fetchSettings(rootStore.restApiContext),
+			const promises: [
+				Promise<InstanceAiAdminSettingsResponse | null>,
+				Promise<InstanceAiUserPreferencesResponse>,
+			] = [
+				canManage.value ? fetchSettings(rootStore.restApiContext) : Promise.resolve(null),
 				fetchPreferences(rootStore.restApiContext),
-			]);
+			];
+			const [s, p] = await Promise.all(promises);
 			settings.value = s;
 			preferences.value = p;
 			if (!isProxyEnabled.value) {
-				const [c, sc] = await Promise.all([
+				const credPromises: [
+					Promise<InstanceAiModelCredential[]>,
+					Promise<InstanceAiModelCredential[]>,
+				] = [
 					fetchModelCredentials(rootStore.restApiContext),
-					fetchServiceCredentials(rootStore.restApiContext),
-				]);
+					canManage.value ? fetchServiceCredentials(rootStore.restApiContext) : Promise.resolve([]),
+				];
+				const [c, sc] = await Promise.all(credPromises);
 				credentials.value = c;
 				serviceCredentials.value = sc;
 			}
@@ -379,6 +391,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	}
 
 	return {
+		canManage,
 		settings,
 		preferences,
 		credentials,

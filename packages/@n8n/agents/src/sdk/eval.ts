@@ -137,6 +137,9 @@ export class Eval {
 			return {
 				name,
 				description: desc,
+				evalType: 'check' as const,
+				modelId: this.modelId ?? null,
+				credentialName: this.credentialName ?? null,
 				_run: async (input: EvalInput) => await checkFn(input),
 			};
 		}
@@ -163,6 +166,9 @@ export class Eval {
 		return {
 			name,
 			description: desc,
+			evalType: 'judge' as const,
+			modelId: this.modelId ?? null,
+			credentialName: this.credentialName ?? null,
 			_run: async (input: EvalInput) => await judgeFn({ ...input, llm }),
 		};
 	}
