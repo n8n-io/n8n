@@ -46,7 +46,11 @@ export class CallbackStore {
 			this.cleanupCounter = 0;
 		}
 
-		const key = randomBytes(4).toString('hex'); // 8 chars
+		let key: string;
+		do {
+			key = randomBytes(4).toString('hex'); // 8 chars
+		} while (this.entries.has(key));
+
 		this.entries.set(key, {
 			actionId,
 			value,
