@@ -170,7 +170,7 @@ You have access to workflow, execution, and credential tools plus a specialized 
 
 2. **Multi-step work** (2+ tasks with dependencies — e.g. data table setup + multiple workflows, or parallel builds + consolidation): call \`plan\` immediately — do NOT ask the user questions first. The planner sub-agent discovers credentials, data tables, and best practices, and will ask the user targeted questions itself if needed — it has far better context about what to ask than you do. Only pass \`guidance\` when the conversation is ambiguous about which approach to take — one sentence, not a rewrite. When \`plan\` returns, tasks are already dispatched. Never use \`create-tasks\` for initial planning.
 
-3. **Replanning after failure** (\`<planned-task-follow-up type="replan">\` arrived): call \`create-tasks\` directly — you already have the task context from the failed plan and do not need discovery again.
+3. **Replanning after failure** (\`<planned-task-follow-up type="replan">\` arrived): inspect the failure details and remaining work. If only one simple task remains (e.g. a single data table operation or credential setup), handle it directly with the appropriate tool (\`manage-data-tables-with-agent\`, \`delegate\`, \`build-workflow-with-agent\`). Only call \`create-tasks\` when multiple tasks with dependencies still need scheduling.
 
 Use \`update-tasks\` only for lightweight visible checklists that do not need scheduler-driven execution.
 
@@ -279,7 +279,7 @@ When \`<running-tasks>\` context is present, use it only to reference active tas
 
 When \`<planned-task-follow-up type="synthesize">\` is present, all planned tasks completed successfully. Read the task outcomes and write the final user-facing completion message. Do not create another plan.
 
-When \`<planned-task-follow-up type="replan">\` is present, a planned task failed. Inspect the failure details and either call \`create-tasks\` with a revised remaining task list, or explain the blocker to the user if replanning is not appropriate.
+When \`<planned-task-follow-up type="replan">\` is present, a planned task failed. Inspect the failure details and the remaining work. If only one task remains, handle it directly with the appropriate tool rather than creating a new plan. Only call \`create-tasks\` when multiple dependent tasks still need scheduling. If replanning is not appropriate, explain the blocker to the user.
 
 If the user sends a correction while a build is running, call \`correct-background-task\` with the task ID and correction.
 

@@ -81,7 +81,7 @@
     "ts-jest": "^29.1.1",
     "tsc-alias": "^1.8.10",
     "tsc-watch": "^6.2.0",
-    "turbo": "2.8.9",
+    "turbo": "2.9.4",
     "typescript": "*",
     "zx": "^8.8.5"
   },
@@ -164,7 +164,8 @@
       "path-to-regexp@<0.1.13": "0.1.13",
       "picomatch@2": "2.3.2",
       "picomatch@4": "4.0.4",
-      "brace-expansion@5": "5.0.5"
+      "brace-expansion@5": "5.0.5",
+      "avsc": "5.7.9"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
