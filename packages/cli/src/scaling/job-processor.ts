@@ -51,7 +51,6 @@ import type {
 	RunningJob,
 	SendChunkMessage,
 } from './scaling.types';
-import { GenericValue } from '@n8n/workflow-sdk';
 
 /**
  * Responsible for processing jobs from the queue, i.e. running enqueued executions.

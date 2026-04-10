@@ -10,7 +10,6 @@ import type { ExecutionLifecycleHooks } from 'n8n-core';
 import { ErrorReporter, InstanceSettings, StorageConfig, WorkflowExecute } from 'n8n-core';
 import type {
 	ExecutionError,
-	IDataObject,
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	IPinData,
