@@ -36,7 +36,7 @@
     "turndown": "^7.2.0",
     "ws": "8.17.1",
     "picocolors": "catalog:",
-    "yargs-parser": "catalog:",
+    "yargs-parser": "21.1.1",
     "zod": "catalog:"
   },
   "devDependencies": {

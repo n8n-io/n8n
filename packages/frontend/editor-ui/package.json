@@ -110,7 +110,7 @@
     "wa-sqlite": "github:rhashimoto/wa-sqlite#779219540f66cecaa159da32b3b8936697ba10a7",
     "web-tree-sitter": "0.24.3",
     "xss": "catalog:",
-    "yargs-parser": "catalog:"
+    "yargs-parser": "21.1.1"
   },
   "devDependencies": {
     "@codecov/vite-plugin": "^1.9.1",

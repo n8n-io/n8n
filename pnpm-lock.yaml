@@ -228,9 +228,6 @@ catalogs:
     xss:
       specifier: 1.0.15
       version: 1.0.15
-    yargs-parser:
-      specifier: 22.0.0
-      version: 22.0.0
     zod-to-json-schema:
       specifier: 3.23.3
       version: 3.23.3
@@ -836,8 +833,8 @@ importers:
         specifier: 3.14.2
         version: 3.14.2
       yargs-parser:
-        specifier: 'catalog:'
-        version: 22.0.0
+        specifier: 21.1.1
+        version: 21.1.1
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -1094,8 +1091,8 @@ importers:
         specifier: npm:empty-npm-package@1.0.0
         version: empty-npm-package@1.0.0
       yargs-parser:
-        specifier: 'catalog:'
-        version: 22.0.0
+        specifier: 21.1.1
+        version: 21.1.1
       zod:
         specifier: 3.25.67
         version: 3.25.67
@@ -1709,8 +1706,8 @@ importers:
         specifier: '>=8.17.1'
         version: 8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       yargs-parser:
-        specifier: 'catalog:'
-        version: 22.0.0
+        specifier: 21.1.1
+        version: 21.1.1
       zod:
         specifier: 3.25.67
         version: 3.25.67
@@ -3741,8 +3738,8 @@ importers:
         specifier: 'catalog:'
         version: 1.0.15
       yargs-parser:
-        specifier: 'catalog:'
-        version: 22.0.0
+        specifier: 21.1.1
+        version: 21.1.1
     devDependencies:
       '@codecov/vite-plugin':
         specifier: ^1.9.1
@@ -21823,10 +21820,6 @@ packages:
   yargs-parser@21.1.1:
     resolution: {integrity: sha512-tVpsJW7DdjecAiFpbIB1e3qxIQsE6NoPc5/eTdrbbIC4h0LVsWhnoa3g+m2HclBIujHzsxZ4VJVA+GUuc2/LBw==}
     engines: {node: '>=12'}
-
-  yargs-parser@22.0.0:
-    resolution: {integrity: sha512-rwu/ClNdSMpkSrUb+d6BRsSkLUq1fmfsY6TOpYzTwvwkg1/NRG85KBy3kq++A8LKQwX6lsu+aWad+2khvuXrqw==}
-    engines: {node: ^20.19.0 || ^22.12.0 || >=23}
 
   yargs-unparser@2.0.0:
     resolution: {integrity: sha512-7pRTIA9Qc1caZ0bZ6RYRGbHJthJWuakf+WmHK0rVeLkNrrGhfoabBNdue6kdINI6r4if7ocq9aD/n7xwKOdzOA==}
@@ -44661,8 +44654,6 @@ snapshots:
   yargs-parser@20.2.9: {}
 
   yargs-parser@21.1.1: {}
-
-  yargs-parser@22.0.0: {}
 
   yargs-unparser@2.0.0:
     dependencies:

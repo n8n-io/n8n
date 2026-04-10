@@ -33,7 +33,7 @@
     "picocolors": "catalog:",
     "reflect-metadata": "catalog:",
     "winston": "3.14.2",
-    "yargs-parser": "catalog:"
+    "yargs-parser": "21.1.1"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",

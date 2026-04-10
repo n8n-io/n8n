@@ -44,7 +44,7 @@
     "node-screenshots": "^0.2.8",
     "picocolors": "catalog:",
     "sharp": "^0.34.5",
-    "yargs-parser": "catalog:",
+    "yargs-parser": "21.1.1",
     "zod": "catalog:",
     "zod-to-json-schema": "catalog:"
   },
