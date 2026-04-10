@@ -26,7 +26,22 @@
 		"PUT /credentials/{id}/transfer": {
 			"status": "gap"
 		},
+		"GET /community-packages": {
+			"status": "gap"
+		},
+		"POST /community-packages": {
+			"status": "gap"
+		},
+		"PATCH /community-packages/{name}": {
+			"status": "gap"
+		},
+		"DELETE /community-packages/{name}": {
+			"status": "gap"
+		},
 		"GET /discover": {
+			"status": "gap"
+		},
+		"GET /insights/summary": {
 			"status": "gap"
 		},
 		"GET /executions": {
@@ -176,6 +191,9 @@
 			"status": "gap"
 		},
 		"DELETE /data-tables/{dataTableId}/rows/delete": {
+			"status": "gap"
+		},
+		"GET /insights/summary": {
 			"status": "gap"
 		},
 		"POST /projects": {

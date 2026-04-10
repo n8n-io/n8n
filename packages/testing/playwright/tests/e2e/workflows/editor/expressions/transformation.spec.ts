@@ -16,8 +16,7 @@ test.describe(
 			await n8n.ndv.getAssignmentCollectionAdd('assignments').click();
 
 			// Switch assignment value to Expression mode
-			const assignmentValue = n8n.ndv.getAssignmentValue('assignments');
-			await assignmentValue.locator('text=Expression').click();
+			await n8n.ndv.clickAssignmentExpressionToggle('assignments');
 		}
 
 		test('$json + native string methods', async ({ n8n }) => {

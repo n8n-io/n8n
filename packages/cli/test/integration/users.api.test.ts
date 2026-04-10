@@ -27,6 +27,7 @@ import { v4 as uuid } from 'uuid';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UsersController } from '@/controllers/users.controller';
 import { ExecutionService } from '@/executions/execution.service';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
 import { createFolder } from '@test-integration/db/folders';
@@ -1711,5 +1712,44 @@ describe('PATCH /users/:id/role', () => {
 		const user = await getUserById(member.id);
 
 		expect(user.role.slug).toBe(customRole);
+	});
+
+	describe('when instance roles are managed by provisioning', () => {
+		let provisioningService: ProvisioningService;
+		let savedConfig: Record<string, unknown>;
+
+		beforeEach(async () => {
+			provisioningService = Container.get(ProvisioningService);
+			await provisioningService.getConfig();
+			// @ts-expect-error - provisioningConfig is private
+			savedConfig = { ...provisioningService.provisioningConfig };
+		});
+
+		afterEach(() => {
+			// @ts-expect-error - provisioningConfig is private
+			provisioningService.provisioningConfig = { ...savedConfig };
+			delete process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY;
+		});
+
+		test('should return 403 when SSO provider controls instance roles', async () => {
+			// @ts-expect-error - provisioningConfig is private
+			provisioningService.provisioningConfig.scopesProvisionInstanceRole = true;
+
+			await ownerAgent
+				.patch(`/users/${member.id}/role`)
+				.send({ newRoleName: 'global:admin' })
+				.expect(403);
+		});
+
+		test('should return 403 when expression-based role mapping is active', async () => {
+			process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY = 'true';
+			// @ts-expect-error - provisioningConfig is private
+			provisioningService.provisioningConfig.scopesUseExpressionMapping = true;
+
+			await ownerAgent
+				.patch(`/users/${member.id}/role`)
+				.send({ newRoleName: 'global:admin' })
+				.expect(403);
+		});
 	});
 });
