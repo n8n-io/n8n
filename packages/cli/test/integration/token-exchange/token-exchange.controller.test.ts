@@ -12,6 +12,7 @@ import type {
 	TokenExchangeSuccessResponse,
 } from '@/modules/token-exchange/token-exchange.types';
 import { JwtService } from '@/services/jwt.service';
+import { InstanceSettings } from 'n8n-core';
 
 import { createUser } from '../shared/db/users';
 import * as utils from '../shared/utils';
@@ -67,6 +68,10 @@ let config: TokenExchangeConfig;
 let jwtService: JwtService;
 
 beforeAll(async () => {
+	// TrustedKeyService.initialize() only runs on the leader instance.
+	const instanceSettings = Container.get(InstanceSettings);
+	Object.defineProperty(instanceSettings, 'isLeader', { value: true, configurable: true });
+
 	config = Container.get(TokenExchangeConfig);
 	config.enabled = true;
 	config.trustedKeys = JSON.stringify([
@@ -87,9 +92,24 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['TokenExchangeJti', 'AuthIdentity', 'ProjectRelation', 'Project', 'User']);
+	await testDb.truncate([
+		'TokenExchangeJti',
+		'TrustedKeyEntity',
+		'TrustedKeySourceEntity',
+		'AuthIdentity',
+		'ProjectRelation',
+		'Project',
+		'User',
+	]);
 	config.enabled = true;
 	config.maxTokenTtl = 900;
+
+	// Re-initialize keys after truncation clears the trusted key tables.
+	await Container.get(TrustedKeyService).initialize();
+});
+
+afterEach(() => {
+	Container.get(TrustedKeyService).stopRefresh();
 });
 
 const postToken = (body: Record<string, string>) =>
