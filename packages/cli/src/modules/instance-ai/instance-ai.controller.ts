@@ -7,7 +7,6 @@ import {
 	InstanceAiEventsQuery,
 	instanceAiGatewayKeySchema,
 	InstanceAiCorrectTaskRequest,
-	InstanceAiUpdateMemoryRequest,
 	InstanceAiEnsureThreadRequest,
 	InstanceAiThreadMessagesQuery,
 	InstanceAiAdminSettingsUpdateRequest,
@@ -174,7 +173,7 @@ export class InstanceAiController {
 		// of native memory for the lifetime of the connection.
 		(res as unknown as { compress: boolean }).compress = false;
 		res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
-		res.setHeader('Cache-Control', 'no-cache');
+		res.setHeader('Cache-Control', 'no-cache, no-transform');
 		res.setHeader('Connection', 'keep-alive');
 		res.setHeader('X-Accel-Buffering', 'no');
 		res.flushHeaders();
@@ -433,26 +432,6 @@ export class InstanceAiController {
 		return await this.settingsService.listServiceCredentials(req.user);
 	}
 
-	@Get('/memory/:threadId')
-	@GlobalScope('instanceAi:message')
-	async getMemory(req: AuthenticatedRequest, _res: Response, @Param('threadId') threadId: string) {
-		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
-		return await this.memoryService.getWorkingMemory(req.user.id, threadId);
-	}
-
-	@Put('/memory/:threadId')
-	@GlobalScope('instanceAi:message')
-	async updateMemory(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Param('threadId') threadId: string,
-		@Body payload: InstanceAiUpdateMemoryRequest,
-	) {
-		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
-		await this.memoryService.updateWorkingMemory(req.user.id, threadId, payload.content);
-		return { ok: true };
-	}
-
 	@Get('/threads')
 	@GlobalScope('instanceAi:message')
 	async listThreads(req: AuthenticatedRequest) {
@@ -553,17 +532,6 @@ export class InstanceAiController {
 		return this.instanceAiService.getThreadStatus(threadId);
 	}
 
-	@Get('/threads/:threadId/context')
-	@GlobalScope('instanceAi:message')
-	async getThreadContext(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Param('threadId') threadId: string,
-	) {
-		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
-		return await this.memoryService.getThreadContext(req.user.id, threadId);
-	}
-
 	// ── Evaluation endpoints ──────────────────────────────────────────────────
 
 	@Post('/eval/execute-with-llm-mock/:workflowId')
@@ -594,7 +562,7 @@ export class InstanceAiController {
 
 		(res as unknown as { compress: boolean }).compress = false;
 		res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
-		res.setHeader('Cache-Control', 'no-cache');
+		res.setHeader('Cache-Control', 'no-cache, no-transform');
 		res.setHeader('Connection', 'keep-alive');
 		res.setHeader('X-Accel-Buffering', 'no');
 		res.flushHeaders();
