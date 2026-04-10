@@ -17,6 +17,8 @@
 	},
 	"dependencies": {
 		"@n8n/design-system": "workspace:*",
+		"diff": "^8.0.0",
+		"nanoid": "catalog:",
 		"vue": "catalog:frontend"
 	},
 	"devDependencies": {
