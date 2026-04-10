@@ -1,5 +1,6 @@
 import { nextTick, type ShallowRef } from 'vue';
 import { useI18n } from '@n8n/i18n';
+import { useRoute } from 'vue-router';
 import type { ExecutionStatus, ExecutionSummary } from 'n8n-workflow';
 import { useToast } from '@/app/composables/useToast';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
@@ -45,6 +46,7 @@ export function usePostMessageHandler({
 	const telemetry = useTelemetry();
 	const nodeHelpers = useNodeHelpers();
 
+	const route = useRoute();
 	const workflowsStore = useWorkflowsStore();
 	const { resetWorkspace, openExecution, fitView } = useCanvasOperations();
 	const { importWorkflowExact } = useWorkflowImport(currentWorkflowDocumentStore);
@@ -81,6 +83,14 @@ export function usePostMessageHandler({
 		if (json.projectId) {
 			await projectsStore.fetchAndSetProject(json.projectId);
 		}
+
+		// On the demo route, override the workflow ID to 'demo' so the iframe
+		// doesn't reference a real workflow — unless canExecute is enabled,
+		// in which case the real ID is needed for execution API calls.
+		if (window !== window.parent && route.query.canExecute !== 'true') {
+			json.workflow.id = 'demo';
+		}
+
 		await importWorkflowExact(json);
 
 		// importWorkflowExact → resetWorkspace resets activeExecutionId to undefined,
@@ -160,6 +170,12 @@ export function usePostMessageHandler({
 		if (!workflow?.nodes || !workflow?.connections) {
 			canvasStore.stopLoading();
 			throw new Error('Invalid workflow object');
+		}
+
+		// Execution previews always use 'demo' ID — they display pre-computed
+		// results and never need real execution API calls.
+		if (window !== window.parent) {
+			json.workflow.id = 'demo';
 		}
 
 		if (json.projectId) {
