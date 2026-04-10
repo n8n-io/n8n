@@ -189,6 +189,13 @@ const onConfirmProvisioningSetting = () => {
 		<template #footer>
 			<div :class="$style.footer">
 				<N8nButton
+					variant="ghost"
+					type="button"
+					data-test-id="provisioning-cancel-button"
+					@click="emit('cancel')"
+					>{{ locale.baseText('settings.provisioningConfirmDialog.button.cancel') }}</N8nButton
+				>
+				<N8nButton
 					variant="solid"
 					type="button"
 					:disabled="
@@ -202,13 +209,6 @@ const onConfirmProvisioningSetting = () => {
 					>{{
 						locale.baseText(`settings.provisioningConfirmDialog.button.${messagingKey}.confirm`)
 					}}</N8nButton
-				>
-				<N8nButton
-					variant="ghost"
-					type="button"
-					data-test-id="provisioning-cancel-button"
-					@click="emit('cancel')"
-					>{{ locale.baseText('settings.provisioningConfirmDialog.button.cancel') }}</N8nButton
 				>
 			</div>
 		</template>
