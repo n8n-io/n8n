@@ -4,6 +4,25 @@
  * These are intentionally separated from semantic tokens to make migration
  * progress explicit while preserving backwards compatibility.
  */
+
+/**
+  * CSS Variable Naming Migration with Backwards Compatibility
+  *
+  * We are migrating from single-dash format (--color-primary-shade-1) to a new
+  * double-dash format (--color--primary--shade-1) to align with design system guidelines.
+  *
+  * To maintain backwards compatibility for users (for example embed customers that customize n8n)
+  * we use CSS variable fallbacks:
+  * --color--primary: var(--color-primary, var(--color--orange-300))
+  *
+  * This ensures:
+  * 1. New code using --color--primary--* works correctly
+  * 2. Legacy code using --color-primary-* continues to work
+  * 3. External integrations and custom CSS won't break
+  * 4. Gradual migration path without breaking changes
+  *
+  */
+
 /* stylelint-disable @n8n/css-var-naming */
 
 @mixin theme-legacy {
