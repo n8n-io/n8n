@@ -1,5 +1,5 @@
 import type { InstanceAiContext } from '../../../types';
-import { createListTagsTool } from '../list-tags.tool';
+import { createListTagsTool, listTagsInputSchema } from '../list-tags.tool';
 
 function createMockContext(): InstanceAiContext {
 	return {
@@ -26,8 +26,7 @@ function createMockContext(): InstanceAiContext {
 describe('list-tags tool', () => {
 	describe('schema validation', () => {
 		it('accepts empty input', () => {
-			const tool = createListTagsTool(createMockContext());
-			const result = tool.inputSchema!.safeParse({});
+			const result = listTagsInputSchema.safeParse({});
 			expect(result.success).toBe(true);
 		});
 	});
@@ -42,7 +41,7 @@ describe('list-tags tool', () => {
 			(context.workspaceService!.listTags as jest.Mock).mockResolvedValue(mockTags);
 
 			const tool = createListTagsTool(context);
-			const result = await tool.execute!({}, {} as never);
+			const result = (await tool.execute!({}, {} as never)) as Record<string, unknown>;
 
 			expect(context.workspaceService!.listTags).toHaveBeenCalled();
 			expect(result).toEqual({ tags: mockTags });
@@ -53,7 +52,7 @@ describe('list-tags tool', () => {
 			(context.workspaceService!.listTags as jest.Mock).mockResolvedValue([]);
 
 			const tool = createListTagsTool(context);
-			const result = await tool.execute!({}, {} as never);
+			const result = (await tool.execute!({}, {} as never)) as Record<string, unknown>;
 
 			expect(result).toEqual({ tags: [] });
 		});

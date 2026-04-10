@@ -1,13 +1,12 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { getRelativeDate } from '@/features/ai/chatHub/chat.utils';
 import { N8nActionDropdown, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
-import { VIEWS } from '@/app/constants';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { computed, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
-import { getRelativeDate } from '@/features/ai/chatHub/chat.utils';
+import { useInstanceAiStore } from '../instanceAi.store';
 
 const store = useInstanceAiStore();
 const i18n = useI18n();
@@ -55,10 +54,6 @@ const groupedThreads = computed(() => {
 		return threads.length > 0 ? [{ label: dateGroupI18nMap[groupName] ?? groupName, threads }] : [];
 	});
 });
-
-function handleBack() {
-	void router.push({ name: VIEWS.HOMEPAGE });
-}
 
 function handleNewThread() {
 	const threadId = store.newThread();
@@ -109,14 +104,6 @@ function handleThreadAction(action: string, threadId: string) {
 
 <template>
 	<div :class="$style.container" data-test-id="instance-ai-thread-list">
-		<!-- Back button -->
-		<button :class="$style.backButton" @click="handleBack">
-			<N8nIcon icon="chevron-left" size="small" />
-			{{ i18n.baseText('instanceAi.sidebar.back') }}
-		</button>
-
-		<div :class="$style.separator" />
-
 		<!-- New chat button -->
 		<button
 			:class="$style.newChatButton"
@@ -160,6 +147,7 @@ function handleThreadAction(action: string, threadId: string) {
 								:to="{ name: INSTANCE_AI_THREAD_VIEW, params: { threadId: thread.id } }"
 								:class="$style.threadLink"
 								:title="thread.title"
+								:active-class="$style.threadLinkActive"
 								@dblclick.prevent="startRename(thread.id, thread.title)"
 							>
 								<span :class="$style.threadTitle">{{ thread.title }}</span>
@@ -199,31 +187,6 @@ function handleThreadAction(action: string, threadId: string) {
 	height: 100%;
 	border-right: var(--border);
 	background: var(--color--background--light-2);
-}
-
-.backButton {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--xs) var(--spacing--sm);
-	background: none;
-	border: none;
-	cursor: pointer;
-	font-family: var(--font-family);
-	font-size: var(--font-size--sm);
-	color: var(--color--text);
-	outline: none;
-
-	&:hover,
-	&:focus,
-	&:active {
-		color: var(--color--text) !important;
-	}
-}
-
-.separator {
-	border-bottom: var(--border);
-	margin: 0 var(--spacing--sm);
 }
 
 .newChatButton {
@@ -289,11 +252,7 @@ function handleThreadAction(action: string, threadId: string) {
 	}
 
 	&.active {
-		background-color: var(--color--foreground--tint-2);
-
-		&:hover {
-			background-color: var(--color--foreground--tint-2);
-		}
+		background-color: var(--color--background--light-1);
 	}
 }
 
@@ -311,11 +270,19 @@ function handleThreadAction(action: string, threadId: string) {
 
 	&:hover,
 	&:focus,
-	&:active,
 	&:visited {
 		color: var(--color--text) !important;
 		text-decoration: none !important;
 	}
+
+	&:active {
+		color: var(--color--text--shade-1) !important;
+		text-decoration: none !important;
+	}
+}
+
+.threadLinkActive {
+	background-color: var(--color--background--light-1);
 }
 
 .threadIcon {
@@ -329,6 +296,7 @@ function handleThreadAction(action: string, threadId: string) {
 	white-space: nowrap;
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
+	color: var(--color--text--shade-1);
 }
 
 .actionDropdown {

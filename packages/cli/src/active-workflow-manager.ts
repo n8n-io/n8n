@@ -41,6 +41,7 @@ import {
 	WorkflowActivationError,
 	WebhookPathTakenError,
 	UnexpectedError,
+	IsolateError,
 	ensureError,
 	createRunExecutionData,
 	validateWorkflowHasTriggerLikeNode,
@@ -48,6 +49,7 @@ import {
 import { strict } from 'node:assert';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ActiveExecutions } from '@/active-executions';
 import { EventService } from '@/events/event.service';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
@@ -96,6 +98,7 @@ export class ActiveWorkflowManager {
 		private readonly push: Push,
 		private readonly eventService: EventService,
 		private readonly storageConfig: StorageConfig,
+		private readonly eventBus: MessageEventBus,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -525,6 +528,16 @@ export class ActiveWorkflowManager {
 					workflowName: dbWorkflow.name,
 					workflowId: dbWorkflow.id,
 				});
+
+				void this.eventBus.sendAuditEvent({
+					eventName: 'n8n.audit.workflow.activated',
+					payload: {
+						workflowId: dbWorkflow.id,
+						workflowName: dbWorkflow.name,
+						activeVersionId: dbWorkflow.activeVersionId,
+						activationMode,
+					},
+				});
 			}
 		} catch (error) {
 			this.errorReporter.error(error);
@@ -571,6 +584,7 @@ export class ActiveWorkflowManager {
 	@OnLeaderStepdown()
 	@OnShutdown()
 	async removeAllTriggerAndPollerBasedWorkflows() {
+		this.removeAllQueuedWorkflowActivations();
 		await this.activeWorkflows.removeAllTriggerAndPollerBasedWorkflows();
 	}
 
@@ -777,7 +791,34 @@ export class ActiveWorkflowManager {
 			const error = ensureError(e);
 			const { message } = error;
 
+			if (error instanceof IsolateError) {
+				this.logger.warn(
+					`Isolate error activating workflow "${workflowId}", queuing for retry: "${message}"`,
+					{ workflowId },
+				);
+
+				const dbWorkflow = await this.workflowRepository.findById(workflowId);
+				if (dbWorkflow) this.addQueuedWorkflowActivation(activationMode, dbWorkflow);
+
+				return;
+			}
+
+			const dbWorkflow = await this.workflowRepository.findById(workflowId);
+
 			await this.workflowRepository.update(workflowId, { active: false, activeVersionId: null });
+
+			if (dbWorkflow && (activationMode === 'init' || activationMode === 'leadershipChange')) {
+				void this.eventBus.sendAuditEvent({
+					eventName: 'n8n.audit.workflow.deactivated',
+					payload: {
+						workflowId,
+						workflowName: dbWorkflow.name,
+						deactivatedVersionId: dbWorkflow.activeVersionId ?? null,
+						activationMode,
+						reason: error.name,
+					},
+				});
+			}
 
 			this.push.broadcast({
 				type: 'workflowFailedToActivate',
@@ -838,11 +879,11 @@ export class ActiveWorkflowManager {
 				workflowName,
 			});
 			try {
-				await this.add(workflowId, activationMode, workflowData);
+				await this.add(workflowId, activationMode, workflowData, { shouldPublish: false });
 			} catch (error) {
 				this.errorReporter.error(error);
 				let lastTimeout = this.queuedActivations[workflowId].lastTimeout;
-				if (lastTimeout < WORKFLOW_REACTIVATE_MAX_TIMEOUT) {
+				if (!(error instanceof IsolateError) && lastTimeout < WORKFLOW_REACTIVATE_MAX_TIMEOUT) {
 					lastTimeout = Math.min(lastTimeout * 2, WORKFLOW_REACTIVATE_MAX_TIMEOUT);
 				}
 

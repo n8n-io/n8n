@@ -9,6 +9,7 @@ import { Pool } from 'pg';
 import { GenericContainer, Wait, type StartedTestContainer } from 'testcontainers';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import type { AgentDbMessage } from '../../../index';
 import { Agent, Memory, PostgresMemory } from '../../../index';
 import { describeIf, findLastTextContent, getModel } from '../helpers';
 
@@ -144,10 +145,25 @@ describeWithDocker('PostgresMemory unit tests', () => {
 
 		await mem.saveThread({ id: 't1', resourceId: 'u1' });
 
-		const messages = [
-			{ role: 'user' as const, content: [{ type: 'text' as const, text: 'Hello' }] },
-			{ role: 'assistant' as const, content: [{ type: 'text' as const, text: 'Hi there' }] },
-			{ role: 'user' as const, content: [{ type: 'text' as const, text: 'How are you?' }] },
+		const messages: AgentDbMessage[] = [
+			{
+				id: 'm1',
+				createdAt: new Date(),
+				role: 'user' as const,
+				content: [{ type: 'text' as const, text: 'Hello' }],
+			},
+			{
+				id: 'm2',
+				createdAt: new Date(),
+				role: 'assistant' as const,
+				content: [{ type: 'text' as const, text: 'Hi there' }],
+			},
+			{
+				id: 'm3',
+				createdAt: new Date(),
+				role: 'user' as const,
+				content: [{ type: 'text' as const, text: 'How are you?' }],
+			},
 		];
 
 		await mem.saveMessages({ threadId: 't1', messages });
@@ -307,7 +323,14 @@ describeWithDocker('PostgresMemory unit tests', () => {
 		await mem.saveThread({ id: 'del-t1', resourceId: 'u1' });
 		await mem.saveMessages({
 			threadId: 'del-t1',
-			messages: [{ role: 'user' as const, content: [{ type: 'text' as const, text: 'test' }] }],
+			messages: [
+				{
+					id: 'm1',
+					createdAt: new Date(),
+					role: 'user' as const,
+					content: [{ type: 'text' as const, text: 'test' }],
+				},
+			],
 		});
 
 		await mem.deleteThread('del-t1');
@@ -575,7 +598,7 @@ describeWithDockerAndApi('PostgresMemory agent integration', () => {
 
 		// Working memory should be stored keyed by threadId
 		const wmByThread = await store.getWorkingMemory({ threadId, resourceId, scope: 'thread' });
-		expect(wmByThread).toBeDefined();
+		expect(wmByThread).toBeTruthy();
 		expect(wmByThread!.toLowerCase()).toContain('helios');
 
 		// resourceId key should be empty — nothing stored there

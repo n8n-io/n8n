@@ -6,7 +6,7 @@ import jwt from 'jsonwebtoken';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
-import type { ExternalTokenClaims } from '../token-exchange.schemas';
+import type { ExternalTokenClaims, ResolvedTrustedKey } from '../token-exchange.schemas';
 import { ExternalTokenClaimsSchema } from '../token-exchange.schemas';
 import { IdentityResolutionService } from './identity-resolution.service';
 import { JtiStoreService } from './jti-store.service';
@@ -41,7 +41,7 @@ export class TokenExchangeService {
 	async verifyToken(
 		subjectToken: string,
 		{ maxLifetimeSeconds }: { maxLifetimeSeconds?: number } = {},
-	): Promise<ExternalTokenClaims> {
+	): Promise<{ claims: ExternalTokenClaims; resolvedKey: ResolvedTrustedKey }> {
 		const decoded = jwt.decode(subjectToken, { complete: true });
 		if (!decoded || typeof decoded === 'string') {
 			throw new BadRequestError('Invalid token format');
@@ -52,7 +52,16 @@ export class TokenExchangeService {
 			throw new BadRequestError('Token header missing kid');
 		}
 
-		const resolvedKey = await this.trustedKeyStore.getByKid(kid);
+		const decodedPayload = decoded.payload;
+		const iss =
+			typeof decodedPayload === 'object' && decodedPayload !== null
+				? decodedPayload.iss
+				: undefined;
+		if (typeof iss !== 'string' || !iss) {
+			throw new BadRequestError('Token payload missing iss');
+		}
+
+		const resolvedKey = await this.trustedKeyStore.getByKidAndIss(kid, iss);
 		if (!resolvedKey) {
 			throw new AuthError('Unknown key id');
 		}
@@ -60,7 +69,8 @@ export class TokenExchangeService {
 		let payload: jwt.JwtPayload;
 		try {
 			const result = jwt.verify(subjectToken, resolvedKey.key, {
-				algorithms: resolvedKey.algorithms,
+				// EdDSA is valid at runtime but missing from @types/jsonwebtoken
+				algorithms: resolvedKey.algorithms as jwt.Algorithm[],
 				issuer: resolvedKey.issuer,
 				audience: resolvedKey.expectedAudience,
 			});
@@ -89,13 +99,16 @@ export class TokenExchangeService {
 			throw new AuthError('Token has already been used');
 		}
 
-		return claims;
+		return { claims, resolvedKey };
 	}
 
 	async embedLogin(subjectToken: string): Promise<User> {
-		const claims = await this.verifyToken(subjectToken, {
+		const { claims, resolvedKey } = await this.verifyToken(subjectToken, {
 			maxLifetimeSeconds: MAX_TOKEN_LIFETIME_SECONDS,
 		});
-		return await this.identityResolutionService.resolve(claims);
+		return await this.identityResolutionService.resolve(claims, resolvedKey.allowedRoles, {
+			kid: resolvedKey.kid,
+			issuer: resolvedKey.issuer,
+		});
 	}
 }

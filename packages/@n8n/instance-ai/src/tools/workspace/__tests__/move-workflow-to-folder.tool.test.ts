@@ -1,5 +1,8 @@
 import type { InstanceAiContext } from '../../../types';
-import { createMoveWorkflowToFolderTool } from '../move-workflow-to-folder.tool';
+import {
+	createMoveWorkflowToFolderTool,
+	moveWorkflowToFolderInputSchema,
+} from '../move-workflow-to-folder.tool';
 
 function createMockContext(
 	permissionOverrides?: InstanceAiContext['permissions'],
@@ -29,14 +32,15 @@ function createMockContext(
 describe('move-workflow-to-folder tool', () => {
 	describe('schema validation', () => {
 		it('accepts workflowId and folderId', () => {
-			const tool = createMoveWorkflowToFolderTool(createMockContext());
-			const result = tool.inputSchema!.safeParse({ workflowId: 'wf-1', folderId: 'f-1' });
+			const result = moveWorkflowToFolderInputSchema.safeParse({
+				workflowId: 'wf-1',
+				folderId: 'f-1',
+			});
 			expect(result.success).toBe(true);
 		});
 
 		it('rejects missing folderId', () => {
-			const tool = createMoveWorkflowToFolderTool(createMockContext());
-			const result = tool.inputSchema!.safeParse({ workflowId: 'wf-1' });
+			const result = moveWorkflowToFolderInputSchema.safeParse({ workflowId: 'wf-1' });
 			expect(result.success).toBe(false);
 		});
 	});
@@ -49,7 +53,10 @@ describe('move-workflow-to-folder tool', () => {
 			(context.workspaceService!.moveWorkflowToFolder as jest.Mock).mockResolvedValue(undefined);
 
 			const tool = createMoveWorkflowToFolderTool(context);
-			const result = await tool.execute!({ workflowId: 'wf-1', folderId: 'f-1' }, {} as never);
+			const result = (await tool.execute!(
+				{ workflowId: 'wf-1', folderId: 'f-1' },
+				{} as never,
+			)) as Record<string, unknown>;
 
 			expect(context.workspaceService!.moveWorkflowToFolder).toHaveBeenCalledWith('wf-1', 'f-1');
 			expect(result).toEqual({ success: true });

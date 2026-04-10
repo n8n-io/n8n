@@ -20,6 +20,10 @@ export class TokenExchangeConfig {
 	@Env('N8N_TOKEN_EXCHANGE_TRUSTED_KEYS')
 	trustedKeys: string = '';
 
+	/** Interval in seconds between trusted key refresh runs (leader only). */
+	@Env('N8N_TOKEN_EXCHANGE_KEY_REFRESH_INTERVAL_SECONDS')
+	keyRefreshIntervalSeconds: number = 300;
+
 	/** Interval in seconds between JTI cleanup runs. */
 	@Env('N8N_TOKEN_EXCHANGE_JTI_CLEANUP_INTERVAL_SECONDS')
 	jtiCleanupIntervalSeconds: number = 60;

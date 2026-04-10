@@ -911,11 +911,20 @@ export class ChatTrigger extends Node {
 
 		// Handle streaming responses
 		if (enableStreaming) {
-			// Set up streaming response headers
+			// Configure socket for long-lived streaming (matches SSE push pattern).
+			// Prevents reverse proxies (e.g. Cloudflare) from timing out idle connections.
+			req.socket.setTimeout(0);
+			req.socket.setNoDelay(true);
+			req.socket.setKeepAlive(true);
+
+			// Set up streaming response headers.
+			// no-transform prevents the compression middleware from wrapping the
+			// response in zlib, ensuring keepalive heartbeats reach the network
+			// immediately without being buffered by the compressor.
 			res.writeHead(200, {
 				'Content-Type': 'application/json; charset=utf-8',
 				'Transfer-Encoding': 'chunked',
-				'Cache-Control': 'no-cache',
+				'Cache-Control': 'no-cache, no-transform',
 				Connection: 'keep-alive',
 			});
 
