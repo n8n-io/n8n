@@ -71,8 +71,8 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 	};
 }
 
-type HandlerContext<S, R> = S extends z.ZodTypeAny
-	? R extends z.ZodTypeAny
+type HandlerContext<S, R> = S extends z.ZodType
+	? R extends z.ZodType
 		? InterruptibleToolContext<z.infer<S>, z.infer<R>>
 		: ToolContext
 	: ToolContext;
