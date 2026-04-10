@@ -13,7 +13,7 @@ test.describe(
 
 			// Send a message to establish the current thread
 			await n8n.instanceAi.sendMessage('First thread message');
-			await n8n.instanceAi.waitForAssistantResponse(120_000);
+			await n8n.instanceAi.waitForResponseComplete();
 
 			const threadCountBefore = await n8n.instanceAi.sidebar.getThreadItems().count();
 
@@ -24,7 +24,9 @@ test.describe(
 			await expect(n8n.instanceAi.getChatInput()).toBeVisible({ timeout: 10_000 });
 
 			// Thread count should increase
-			await expect(n8n.instanceAi.sidebar.getThreadItems()).toHaveCount(threadCountBefore + 1);
+			await expect(n8n.instanceAi.sidebar.getThreadItems()).toHaveCount(threadCountBefore + 1, {
+				timeout: 10_000,
+			});
 		});
 
 		test('should switch between threads', async ({ n8n }) => {
@@ -32,14 +34,14 @@ test.describe(
 
 			// Create first thread with a unique message
 			await n8n.instanceAi.sendMessage('Message in first thread');
-			await n8n.instanceAi.waitForAssistantResponse(120_000);
+			await n8n.instanceAi.waitForResponseComplete();
 
 			// Create second thread
 			await n8n.instanceAi.sidebar.getNewThreadButton().click();
 			await expect(n8n.instanceAi.getChatInput()).toBeVisible({ timeout: 10_000 });
 
 			await n8n.instanceAi.sendMessage('Message in second thread');
-			await n8n.instanceAi.waitForAssistantResponse(120_000);
+			await n8n.instanceAi.waitForResponseComplete();
 
 			// Switch back to first thread — it's the last item in the sidebar
 			// (newest threads appear first, so the first thread is last)
@@ -56,7 +58,7 @@ test.describe(
 			await n8n.navigate.toInstanceAi();
 
 			await n8n.instanceAi.sendMessage('Thread to rename');
-			await n8n.instanceAi.waitForAssistantResponse(120_000);
+			await n8n.instanceAi.waitForResponseComplete();
 
 			// Double-click the thread to enter rename mode
 			const thread = n8n.instanceAi.sidebar.getThreadItems().first();
@@ -79,7 +81,7 @@ test.describe(
 
 			// Create a thread with a recognizable message
 			await n8n.instanceAi.sendMessage('Thread to delete');
-			await n8n.instanceAi.waitForAssistantResponse(120_000);
+			await n8n.instanceAi.waitForResponseComplete();
 
 			// Create a second thread so we have somewhere to go after deletion
 			await n8n.instanceAi.sidebar.getNewThreadButton().click();

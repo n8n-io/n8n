@@ -175,4 +175,14 @@ export class InstanceAiPage extends BasePage {
 	async waitForAssistantResponse(timeout = 60_000): Promise<void> {
 		await this.getAssistantMessages().first().waitFor({ state: 'visible', timeout });
 	}
+
+	/**
+	 * Wait for the agent to finish responding. The send button reappears (replacing
+	 * the stop button) only after `isStreaming` becomes `false`, so its visibility
+	 * is the most reliable completion signal.
+	 */
+	async waitForResponseComplete(timeout = 120_000): Promise<void> {
+		await this.getAssistantMessages().first().waitFor({ state: 'visible', timeout });
+		await this.getSendButton().waitFor({ state: 'visible', timeout });
+	}
 }
