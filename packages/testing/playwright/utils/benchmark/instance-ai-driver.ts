@@ -267,9 +267,35 @@ export class InstanceAiDriver {
 		}
 	}
 
-	/** Close all tabs. Threads are intentionally kept alive to surface leaks in the SSE-disconnect path. */
+	/** Delete all workflows via the REST API to prevent cross-round interference. */
+	async deleteAllWorkflows(): Promise<void> {
+		const cookies = await this.n8n.page.context().cookies();
+		const cookieHeader = cookies.map((c) => `${c.name}=${c.value}`).join('; ');
+
+		const listResponse = await fetch(`${this.baseUrl}/rest/workflows`, {
+			headers: { cookie: cookieHeader },
+		});
+		if (!listResponse.ok) {
+			console.warn(`[INSTANCE-AI] Failed to list workflows: ${listResponse.status}`);
+			return;
+		}
+		const { data: workflows } = (await listResponse.json()) as { data: Array<{ id: string }> };
+
+		for (const wf of workflows) {
+			const delResponse = await fetch(`${this.baseUrl}/rest/workflows/${wf.id}`, {
+				method: 'DELETE',
+				headers: { cookie: cookieHeader },
+			});
+			if (delResponse.ok) {
+				console.log(`[INSTANCE-AI] Deleted workflow: ${wf.id}`);
+			}
+		}
+	}
+
+	/** Close all tabs and delete all threads created by this driver instance. */
 	async cleanup(): Promise<void> {
 		await this.closeAllTabs();
+		await this.deleteAllWorkflows();
 	}
 
 	/** Take a stable server-side heap measurement (triggers GC + polls VictoriaMetrics). */
