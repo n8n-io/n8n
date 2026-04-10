@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 
-import { confirm } from '@inquirer/prompts';
+import { select } from '@inquirer/prompts';
 import * as fs from 'node:fs/promises';
 
 import { parseConfig } from './config';
 import { cliConfirmResourceAccess, sanitizeForTerminal } from './confirm-resource-cli';
 import { startDaemon } from './daemon';
 import { GatewayClient } from './gateway-client';
+import { GatewaySession } from './gateway-session';
 import {
 	configure,
 	logger,
@@ -16,21 +17,59 @@ import {
 	printToolList,
 } from './logger';
 import { SettingsStore } from './settings-store';
-import { applyTemplate, runStartupConfigCli } from './startup-config-cli';
+import {
+	editPermissions,
+	ensureSettingsFile,
+	isAllDeny,
+	printPermissionsTable,
+	promptFilesystemDir,
+} from './startup-config-cli';
 import type { ConfirmResourceAccess } from './tools/types';
 
 // ---------------------------------------------------------------------------
 // Shared helpers
 // ---------------------------------------------------------------------------
 
-async function cliConfirmConnect(url: string): Promise<boolean> {
-	return await confirm({ message: `Allow connection to ${sanitizeForTerminal(url)}?` });
+async function cliConfirmConnect(url: string, session: GatewaySession): Promise<boolean> {
+	console.log(`\n  Connecting to ${sanitizeForTerminal(url)}\n`);
+	printPermissionsTable(session.getAllPermissions());
+	console.log(`  Working directory: ${session.dir}\n`);
+
+	const choice = await select({
+		message: 'Allow connection?',
+		choices: [
+			{ name: 'Yes', value: 'yes' },
+			{ name: 'Edit permissions / directory', value: 'edit' },
+			{ name: 'No', value: 'no' },
+		],
+	});
+
+	if (choice === 'no') return false;
+
+	if (choice === 'edit') {
+		let permissions = session.getAllPermissions();
+		do {
+			permissions = await editPermissions(permissions);
+			if (isAllDeny(permissions)) {
+				console.log('\n  At least one capability must be Ask or Allow.\n');
+			}
+		} while (isAllDeny(permissions));
+
+		const filesystemActive =
+			permissions.filesystemRead !== 'deny' || permissions.filesystemWrite !== 'deny';
+		const dir = filesystemActive ? await promptFilesystemDir(session.dir) : session.dir;
+
+		session.setPermissions(permissions);
+		session.setDir(dir);
+	}
+
+	return true;
 }
 
 function makeConfirmConnect(
 	nonInteractive: boolean,
 	autoConfirm: boolean,
-): (url: string) => Promise<boolean> | boolean {
+): (url: string, session: GatewaySession) => Promise<boolean> | boolean {
 	if (autoConfirm) return () => true;
 	if (nonInteractive) return () => false;
 	return cliConfirmConnect;
@@ -64,13 +103,9 @@ async function tryServe(): Promise<boolean> {
 	configure({ level: parsed.config.logLevel });
 	printBanner();
 
-	// Non-interactive: apply recommended template as explicit defaults (shell/computer stay deny
-	// unless overridden via --permission-* flags), then skip all interactive prompts.
-	const config = parsed.nonInteractive
-		? applyTemplate(parsed.config, 'default')
-		: await runStartupConfigCli(parsed.config);
+	await ensureSettingsFile(parsed.config);
 
-	startDaemon(config, {
+	startDaemon(parsed.config, {
 		confirmConnect: makeConfirmConnect(parsed.nonInteractive, parsed.autoConfirm),
 		confirmResourceAccess: makeConfirmResourceAccess(parsed.nonInteractive, parsed.autoConfirm),
 	});
@@ -151,12 +186,22 @@ async function main(): Promise<void> {
 		process.exit(1);
 	}
 
-	const config = parsed.nonInteractive
-		? applyTemplate(parsed.config, 'default')
-		: await runStartupConfigCli(parsed.config);
+	await ensureSettingsFile(parsed.config);
 
-	// Validate filesystem directory exists
-	const dir = config.filesystem.dir;
+	const settingsStore = await SettingsStore.create();
+	const defaults = settingsStore.getDefaults(parsed.config);
+	const session = new GatewaySession(defaults, settingsStore);
+
+	const confirmConnect = makeConfirmConnect(parsed.nonInteractive, parsed.autoConfirm);
+	const approved = await confirmConnect(parsed.url, session);
+	if (!approved) {
+		logger.info('Connection rejected');
+		process.exit(0);
+	}
+
+	// Validate the directory — re-check for non-interactive mode (already validated
+	// interactively in cliConfirmConnect when running in interactive mode).
+	const dir = session.dir;
 	try {
 		const stat = await fs.stat(dir);
 		if (!stat.isDirectory()) {
@@ -168,21 +213,24 @@ async function main(): Promise<void> {
 		process.exit(1);
 	}
 
-	printModuleStatus(config);
-
-	const settingsStore = await SettingsStore.create(config);
+	// printModuleStatus expects a GatewayConfig shape — derive one from the session.
+	printModuleStatus({
+		...parsed.config,
+		permissions: session.getAllPermissions(),
+		filesystem: { dir: session.dir },
+	});
 
 	const client = new GatewayClient({
 		url: parsed.url,
 		apiKey: parsed.apiKey,
-		config,
-		settingsStore,
+		config: parsed.config,
+		session,
 		confirmResourceAccess: makeConfirmResourceAccess(parsed.nonInteractive, parsed.autoConfirm),
 	});
 
 	const shutdown = () => {
 		logger.info('Shutting down');
-		void Promise.all([client.disconnect(), settingsStore.flush()]).finally(() => {
+		void Promise.all([client.disconnect(), session.flush()]).finally(() => {
 			process.exit(0);
 		});
 	};

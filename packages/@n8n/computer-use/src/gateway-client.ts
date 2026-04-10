@@ -3,6 +3,7 @@ import * as os from 'node:os';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import type { GatewayConfig } from './config';
+import type { GatewaySession } from './gateway-session';
 import {
 	logger,
 	printAuthFailure,
@@ -13,7 +14,6 @@ import {
 	printToolCall,
 	printToolResult,
 } from './logger';
-import type { SettingsStore } from './settings-store';
 import type { BrowserModule } from './tools/browser';
 import { filesystemReadTools, filesystemWriteTools } from './tools/filesystem';
 import { ShellModule } from './tools/shell';
@@ -43,8 +43,10 @@ function tagCategory(defs: ToolDefinition[], category: string): ToolDefinition[]
 export interface GatewayClientOptions {
 	url: string;
 	apiKey: string;
+	/** Non-permission config (browser, shell, logLevel, etc.) */
 	config: GatewayConfig;
-	settingsStore: SettingsStore;
+	/** Permissions + dir + session rules for this connection. */
+	session: GatewaySession;
 	confirmResourceAccess: ConfirmResourceAccess;
 	/** Called when the client gives up reconnecting after persistent auth failures. */
 	onPersistentFailure?: () => void;
@@ -97,7 +99,7 @@ export class GatewayClient {
 	}
 
 	private get dir(): string {
-		return this.options.config.filesystem.dir;
+		return this.options.session.dir;
 	}
 
 	/** Start the client: upload capabilities, connect SSE, handle requests. */
@@ -119,7 +121,7 @@ export class GatewayClient {
 	/** Notify the server we're disconnecting, then close the SSE connection. */
 	async disconnect(): Promise<void> {
 		this.shouldReconnect = false;
-		this.options.settingsStore.clearSessionRules();
+		this.options.session.clearSessionRules();
 
 		// POST the disconnect notification BEFORE closing EventSource.
 		// The EventSource keeps the Node.js event loop alive — if we close it
@@ -155,13 +157,13 @@ export class GatewayClient {
 	private async getAllDefinitions(): Promise<ToolDefinition[]> {
 		if (this.allDefinitions) return this.allDefinitions;
 
-		const { config, settingsStore } = this.options;
+		const { config, session } = this.options;
 		const defs: ToolDefinition[] = [];
 		const categories: Array<{ name: string; enabled: boolean; writeAccess?: boolean }> = [];
 
 		// Filesystem
-		const fsReadEnabled = settingsStore.getGroupMode('filesystemRead') !== 'deny';
-		const fsWriteEnabled = settingsStore.getGroupMode('filesystemWrite') !== 'deny';
+		const fsReadEnabled = session.getGroupMode('filesystemRead') !== 'deny';
+		const fsWriteEnabled = session.getGroupMode('filesystemWrite') !== 'deny';
 		if (fsReadEnabled) {
 			defs.push(...tagCategory(filesystemReadTools, 'filesystem'));
 		}
@@ -188,19 +190,19 @@ export class GatewayClient {
 			{
 				name: 'Shell',
 				category: 'shell',
-				enabled: settingsStore.getGroupMode('shell') !== 'deny',
+				enabled: session.getGroupMode('shell') !== 'deny',
 				module: ShellModule,
 			},
 			{
 				name: 'Screenshot',
 				category: 'screenshot',
-				enabled: settingsStore.getGroupMode('computer') !== 'deny',
+				enabled: session.getGroupMode('computer') !== 'deny',
 				module: ScreenshotModule,
 			},
 			{
 				name: 'MouseKeyboard',
 				category: 'mouse-keyboard',
-				enabled: settingsStore.getGroupMode('computer') !== 'deny',
+				enabled: session.getGroupMode('computer') !== 'deny',
 				module: MouseKeyboardModule,
 			},
 		];
@@ -221,7 +223,7 @@ export class GatewayClient {
 		}
 
 		// Browser
-		if (settingsStore.getGroupMode('browser') !== 'deny') {
+		if (session.getGroupMode('browser') !== 'deny') {
 			const { BrowserModule: BrowserModuleClass } = await import('./tools/browser');
 			this.browserModule = await BrowserModuleClass.create({
 				...config.browser,
@@ -418,10 +420,10 @@ export class GatewayClient {
 		resources: AffectedResource[],
 		decision?: ResourceDecision,
 	): Promise<void> {
-		const { settingsStore, confirmResourceAccess, config } = this.options;
+		const { session, confirmResourceAccess, config } = this.options;
 
 		for (const resource of resources) {
-			const rule = settingsStore.check(resource.toolGroup, resource.resource);
+			const rule = session.check(resource.toolGroup, resource.resource);
 
 			if (rule === 'deny') {
 				throw new Error(
@@ -452,13 +454,13 @@ export class GatewayClient {
 				case 'allowOnce':
 					break;
 				case 'allowForSession':
-					settingsStore.allowForSession(resource.toolGroup, resource.resource);
+					session.allowForSession(resource.toolGroup, resource.resource);
 					break;
 				case 'alwaysAllow':
-					settingsStore.alwaysAllow(resource.toolGroup, resource.resource);
+					session.alwaysAllow(resource.toolGroup, resource.resource);
 					break;
 				case 'alwaysDeny':
-					settingsStore.alwaysDeny(resource.toolGroup, resource.resource);
+					session.alwaysDeny(resource.toolGroup, resource.resource);
 					throw new Error(
 						`User permanently denied access to ${resource.toolGroup}: ${resource.resource}`,
 					);
