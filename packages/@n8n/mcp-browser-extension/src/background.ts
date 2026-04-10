@@ -270,6 +270,42 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 // Relay connection management
 // ---------------------------------------------------------------------------
 
+let lastRelayUrl: string | undefined;
+let reconnectTimer: ReturnType<typeof setInterval> | undefined;
+
+function stopReconnect(): void {
+	if (reconnectTimer) {
+		clearInterval(reconnectTimer);
+		reconnectTimer = undefined;
+	}
+}
+
+function startReconnect(relayUrl: string, chromeTabIds: number[]): void {
+	stopReconnect();
+	let attempts = 0;
+	const MAX_ATTEMPTS = 5; // 5 × 3s = 15s, matching relay grace window
+
+	reconnectTimer = setInterval(() => {
+		attempts++;
+		log.debug(`reconnect attempt ${attempts}/${MAX_ATTEMPTS}`);
+
+		if (attempts > MAX_ATTEMPTS) {
+			log.debug('reconnect: max attempts reached, giving up');
+			stopReconnect();
+			updateBadge(0);
+			broadcastStatusChange();
+			return;
+		}
+
+		void connectToRelay(relayUrl, chromeTabIds).then((result) => {
+			if (result.success) {
+				log.debug('reconnect: success');
+				stopReconnect();
+			}
+		});
+	}, 3_000);
+}
+
 async function connectToRelay(
 	relayUrl: string,
 	selectedTabIds: number[],
@@ -314,12 +350,22 @@ async function connectToRelay(
 		}
 
 		activeConnection = { relay };
+		lastRelayUrl = relayUrl;
 
 		relay.onclose = () => {
 			log.debug('relay connection closed');
+			const chromeTabIds =
+				activeConnection?.relay.getControlledIds().map((t) => t.chromeTabId) ?? [];
 			activeConnection = null;
-			updateBadge(0);
-			broadcastStatusChange();
+
+			// Attempt reconnection if we have a URL and tabs to reconnect
+			if (lastRelayUrl && chromeTabIds.length > 0) {
+				log.debug('starting reconnection with', chromeTabIds.length, 'tabs');
+				startReconnect(lastRelayUrl, chromeTabIds);
+			} else {
+				updateBadge(0);
+				broadcastStatusChange();
+			}
 		};
 
 		relay.ontabcreated = () => {
@@ -342,6 +388,8 @@ async function connectToRelay(
 }
 
 function disconnect(): void {
+	stopReconnect();
+	lastRelayUrl = undefined;
 	if (activeConnection) {
 		log.debug('disconnecting');
 		activeConnection.relay.close('extension_disconnected');
