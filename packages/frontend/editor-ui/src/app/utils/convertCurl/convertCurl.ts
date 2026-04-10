@@ -1,7 +1,9 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-use-before-define */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-import type { CurlToJsonResult } from './convertCurl.types';
-import parser from 'yargs-parser';
+import type { CurlToJsonResult, ParsedCurlYargs } from './convertCurl.types';
+// @ts-expect-error - @types/yargs-parser is outdated
+import parser from 'yargs-parser/browser';
 
 export function convertCurlToJson(curlString: string): CurlToJsonResult {
 	const args = parser(curlString, {
@@ -19,7 +21,7 @@ export function convertCurlToJson(curlString: string): CurlToJsonResult {
 			'include',
 			'G',
 		],
-	});
+	}) as ParsedCurlYargs;
 
 	const jsonOutput: CurlToJsonResult = {
 		url: '',
@@ -39,7 +41,7 @@ export function convertCurlToJson(curlString: string): CurlToJsonResult {
 				}
 				break;
 			case 'url':
-				applyUrl(args[arg], jsonOutput);
+				applyUrl(args[arg]!, jsonOutput);
 				break;
 			case 'G':
 			case 'get':
@@ -60,9 +62,9 @@ export function convertCurlToJson(curlString: string): CurlToJsonResult {
 			case 'data-urlencode':
 			case 'dataUrlencode': {
 				if (args.G || args.get) {
-					parseDataAsQueries(args[arg], jsonOutput);
+					parseDataAsQueries(args[arg]!, jsonOutput);
 				} else {
-					parseData(args[arg], jsonOutput, methodDefined);
+					parseData(args[arg]!, jsonOutput, methodDefined);
 
 					if (noContentTypeDefined(jsonOutput)) {
 						jsonOutput.headers ??= {};
@@ -73,16 +75,16 @@ export function convertCurlToJson(curlString: string): CurlToJsonResult {
 			}
 			case 'F':
 			case 'form': {
-				parseForm(args[arg], jsonOutput, methodDefined);
+				parseForm(args[arg]!, jsonOutput, methodDefined);
 				break;
 			}
 			case 'H':
 			case 'header':
-				jsonOutput.headers = { ...jsonOutput.headers, ...parseHeaders(args[arg]) };
+				jsonOutput.headers = { ...jsonOutput.headers, ...parseHeaders(args[arg]!) };
 				break;
 			case 'u':
 			case 'user':
-				jsonOutput.auth = parseAuth(args[arg]);
+				jsonOutput.auth = parseAuth(args[arg]!);
 				break;
 			case 'basic':
 				jsonOutput.auth_type = 'basic';
@@ -248,7 +250,11 @@ function parseHeaders(raw: string | string[]): Record<string, string | null> {
 	return headers;
 }
 
-function parseData(data: string[], jsonOutput: CurlToJsonResult, methodDefined: boolean): void {
+function parseData(
+	data: string | string[],
+	jsonOutput: CurlToJsonResult,
+	methodDefined: boolean,
+): void {
 	if (!methodDefined) {
 		jsonOutput.method = 'POST';
 	}
@@ -304,7 +310,7 @@ function parseDataAsQueries(data: string | string[], jsonOutput: CurlToJsonResul
 	}
 }
 
-function parseForm(data: string[], jsonOutput: CurlToJsonResult, methodDefined: boolean) {
+function parseForm(data: string | string[], jsonOutput: CurlToJsonResult, methodDefined: boolean) {
 	if (!methodDefined) {
 		jsonOutput.method = 'POST';
 	}
