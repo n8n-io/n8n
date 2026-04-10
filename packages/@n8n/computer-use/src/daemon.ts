@@ -53,22 +53,81 @@ const state: DaemonState = {
 	connectedUrl: null,
 };
 
-// HTTP header names don't follow JS naming conventions — build them dynamically
-// to satisfy the @typescript-eslint/naming-convention rule.
-const CORS_HEADERS: Record<string, string> = {
-	['Access-Control-Allow-Origin']: '*',
-	['Access-Control-Allow-Methods']: 'GET, POST, OPTIONS',
-	['Access-Control-Allow-Headers']: 'Content-Type',
-};
+// ---------------------------------------------------------------------------
+// Origin matching — supports wildcard patterns like https://*.app.n8n.cloud
+// ---------------------------------------------------------------------------
+
+function matchesOriginPattern(pattern: string, origin: string): boolean {
+	if (!pattern.includes('*')) {
+		try {
+			return new URL(pattern).origin === new URL(origin).origin;
+		} catch {
+			return false;
+		}
+	}
+
+	let originUrl: URL;
+	try {
+		originUrl = new URL(origin);
+	} catch {
+		return false;
+	}
+
+	// Parse pattern manually — URL constructor rejects wildcards in hostnames
+	const schemeMatch = /^([a-z][a-z0-9+\-.]*):\/\/(.+)$/.exec(pattern);
+	if (!schemeMatch) return false;
+	const [, patternScheme, patternAuthority] = schemeMatch;
+
+	if (originUrl.protocol !== `${patternScheme}:`) return false;
+
+	// Split authority into hostname and optional port
+	const colonIdx = patternAuthority.lastIndexOf(':');
+	const hasPort = colonIdx > patternAuthority.lastIndexOf('*');
+	const patternHostname = hasPort ? patternAuthority.slice(0, colonIdx) : patternAuthority;
+	const patternPort = hasPort ? patternAuthority.slice(colonIdx + 1) : '';
+
+	if (patternPort && originUrl.port !== patternPort) return false;
+	if (!patternPort && originUrl.port !== '') return false;
+
+	// Match hostname — * expands to any depth of subdomains
+	const escapedParts = patternHostname
+		.split('*')
+		.map((s) => s.replace(/[.+^${}()|[\]\\]/g, '\\$&'));
+	return new RegExp(`^${escapedParts.join('.+')}$`).test(originUrl.hostname);
+}
+
+export function isOriginAllowed(origin: string, allowedOrigins: string[]): boolean {
+	return allowedOrigins.some((pattern) => matchesOriginPattern(pattern, origin));
+}
+
+// ---------------------------------------------------------------------------
+// CORS helpers — echo the request Origin when it matches allowedOrigins
+// ---------------------------------------------------------------------------
+
+function getCorsHeaders(
+	reqOrigin: string | undefined,
+	allowedOrigins: string[],
+): Record<string, string> {
+	const base: Record<string, string> = {
+		['Access-Control-Allow-Methods']: 'GET, POST, OPTIONS',
+		['Access-Control-Allow-Headers']: 'Content-Type',
+	};
+	if (reqOrigin && isOriginAllowed(reqOrigin, allowedOrigins)) {
+		return { ...base, ['Access-Control-Allow-Origin']: reqOrigin, ['Vary']: 'Origin' };
+	}
+	// No ACAO — browsers will block cross-origin requests from non-matching origins
+	return base;
+}
 
 function jsonResponse(
+	req: http.IncomingMessage,
 	res: http.ServerResponse,
 	status: number,
 	body: Record<string, unknown>,
 ): void {
 	res.writeHead(status, {
 		['Content-Type']: 'application/json',
-		...CORS_HEADERS,
+		...getCorsHeaders(req.headers.origin, state.config.allowedOrigins),
 	});
 	res.end(JSON.stringify(body));
 }
@@ -86,8 +145,8 @@ async function readBody(req: http.IncomingMessage): Promise<string> {
 	});
 }
 
-function handleHealth(res: http.ServerResponse): void {
-	jsonResponse(res, 200, {
+function handleHealth(req: http.IncomingMessage, res: http.ServerResponse): void {
+	jsonResponse(req, res, 200, {
 		status: 'ok',
 		dir: getDir(),
 		connected: state.client !== null,
@@ -104,40 +163,41 @@ async function handleConnect(req: http.IncomingMessage, res: http.ServerResponse
 		url = body.url ?? '';
 		token = body.token ?? '';
 	} catch {
-		jsonResponse(res, 400, { error: 'Invalid JSON body' });
+		jsonResponse(req, res, 400, { error: 'Invalid JSON body' });
 		return;
 	}
 
 	if (!url || !token) {
-		jsonResponse(res, 400, { error: 'Missing required fields: url, token' });
+		jsonResponse(req, res, 400, { error: 'Missing required fields: url, token' });
 		return;
 	}
 
 	// Reject if already connected
 	if (state.client) {
-		jsonResponse(res, 409, {
+		jsonResponse(req, res, 409, {
 			error: `Already connected to ${state.connectedUrl}. Disconnect first.`,
 		});
 		return;
 	}
 
-	// Check allowedOrigins — skip confirmation for trusted URLs.
-	// Use exact origin matching via `new URL()` to prevent spoofing
-	// (e.g. "https://example.com.attacker.com" must not match "https://example.com").
 	let parsedOrigin: string;
 	try {
 		parsedOrigin = new URL(url).origin;
 	} catch {
-		jsonResponse(res, 400, { error: 'Invalid URL' });
+		jsonResponse(req, res, 400, { error: 'Invalid URL' });
 		return;
 	}
-	const isAllowed = state.config.allowedOrigins.some((origin) => {
-		try {
-			return new URL(origin).origin === parsedOrigin;
-		} catch {
-			return false;
-		}
-	});
+
+	// Silently refuse connections from origins not in the allowlist.
+	// Only matching origins proceed to the user confirmation prompt.
+	if (!isOriginAllowed(parsedOrigin, state.config.allowedOrigins)) {
+		logger.debug('Connection rejected: origin not in allowlist', {
+			url,
+			allowedOrigins: state.config.allowedOrigins,
+		});
+		jsonResponse(req, res, 403, { error: 'Connection rejected.' });
+		return;
+	}
 
 	try {
 		const store = settingsStore ?? (await settingsStorePromise);
@@ -146,23 +206,21 @@ async function handleConnect(req: http.IncomingMessage, res: http.ServerResponse
 		const defaults = store.getDefaults(state.config);
 		const session = new GatewaySession(defaults, store);
 
-		if (!isAllowed) {
-			const approved = await daemonOptions.confirmConnect(url, session);
-			if (!approved) {
-				jsonResponse(res, 403, { error: 'Connection rejected by user.' });
-				return;
-			}
+		const approved = await daemonOptions.confirmConnect(url, session);
+		if (!approved) {
+			jsonResponse(req, res, 403, { error: 'Connection rejected by user.' });
+			return;
 		}
 
 		// Validate the directory the session resolved to
 		try {
 			const stat = await fs.stat(session.dir);
 			if (!stat.isDirectory()) {
-				jsonResponse(res, 400, { error: `Invalid directory: ${session.dir}` });
+				jsonResponse(req, res, 400, { error: `Invalid directory: ${session.dir}` });
 				return;
 			}
 		} catch {
-			jsonResponse(res, 400, { error: `Invalid directory: ${session.dir}` });
+			jsonResponse(req, res, 400, { error: `Invalid directory: ${session.dir}` });
 			return;
 		}
 
@@ -195,15 +253,18 @@ async function handleConnect(req: http.IncomingMessage, res: http.ServerResponse
 		printConnected(url);
 		printToolList(client.tools);
 		daemonOptions.onStatusChange?.('connected', url);
-		jsonResponse(res, 200, { status: 'connected', dir });
+		jsonResponse(req, res, 200, { status: 'connected', dir });
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
 		logger.error('Connection failed', { error: message });
-		jsonResponse(res, 500, { error: message });
+		jsonResponse(req, res, 500, { error: message });
 	}
 }
 
-async function handleDisconnect(res: http.ServerResponse): Promise<void> {
+async function handleDisconnect(
+	req: http.IncomingMessage,
+	res: http.ServerResponse,
+): Promise<void> {
 	if (state.client) {
 		await state.client.disconnect();
 		state.client = null;
@@ -214,11 +275,11 @@ async function handleDisconnect(res: http.ServerResponse): Promise<void> {
 		printDisconnected();
 		daemonOptions.onStatusChange?.('disconnected');
 	}
-	jsonResponse(res, 200, { status: 'disconnected' });
+	jsonResponse(req, res, 200, { status: 'disconnected' });
 }
 
-function handleStatus(res: http.ServerResponse): void {
-	jsonResponse(res, 200, {
+function handleStatus(req: http.IncomingMessage, res: http.ServerResponse): void {
+	jsonResponse(req, res, 200, {
 		connected: state.client !== null,
 		dir: getDir(),
 		connectedAt: state.connectedAt,
@@ -226,20 +287,26 @@ function handleStatus(res: http.ServerResponse): void {
 	});
 }
 
-function handleEvents(res: http.ServerResponse): void {
+function handleEvents(req: http.IncomingMessage, res: http.ServerResponse): void {
 	res.writeHead(200, {
 		['Content-Type']: 'text/event-stream',
 		['Cache-Control']: 'no-cache',
 		['Connection']: 'keep-alive',
-		...CORS_HEADERS,
+		...getCorsHeaders(req.headers.origin, state.config.allowedOrigins),
 	});
 	// Send ready event immediately — the daemon is up
 	res.write('event: ready\ndata: {}\n\n');
 }
 
-function handleCors(res: http.ServerResponse): void {
+function handleCors(req: http.IncomingMessage, res: http.ServerResponse): void {
+	const reqOrigin = req.headers.origin;
+	if (!reqOrigin || !isOriginAllowed(reqOrigin, state.config.allowedOrigins)) {
+		res.writeHead(403);
+		res.end();
+		return;
+	}
 	res.writeHead(204, {
-		...CORS_HEADERS,
+		...getCorsHeaders(reqOrigin, state.config.allowedOrigins),
 		['Access-Control-Max-Age']: '86400',
 	});
 	res.end();
@@ -269,22 +336,33 @@ export function startDaemon(config: GatewayConfig, options: DaemonOptions): http
 
 		// CORS preflight
 		if (method === 'OPTIONS') {
-			handleCors(res);
+			handleCors(req, res);
+			return;
+		}
+
+		// Reject requests with a missing or non-matching Origin to prevent CSRF via simple requests.
+		const reqOrigin = req.headers.origin;
+		if (!reqOrigin || !isOriginAllowed(reqOrigin, state.config.allowedOrigins)) {
+			logger.debug('Request rejected: origin not in allowlist', {
+				origin: reqOrigin,
+				allowedOrigins: state.config.allowedOrigins,
+			});
+			jsonResponse(req, res, 403, { error: 'Forbidden.' });
 			return;
 		}
 
 		if (method === 'GET' && reqUrl === '/health') {
-			handleHealth(res);
+			handleHealth(req, res);
 		} else if (method === 'POST' && reqUrl === '/connect') {
 			void handleConnect(req, res);
 		} else if (method === 'POST' && reqUrl === '/disconnect') {
-			void handleDisconnect(res);
+			void handleDisconnect(req, res);
 		} else if (method === 'GET' && reqUrl === '/status') {
-			handleStatus(res);
+			handleStatus(req, res);
 		} else if (method === 'GET' && reqUrl === '/events') {
-			handleEvents(res);
+			handleEvents(req, res);
 		} else {
-			jsonResponse(res, 404, { error: 'Not found' });
+			jsonResponse(req, res, 404, { error: 'Not found' });
 		}
 	});
 

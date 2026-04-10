@@ -85,7 +85,6 @@ describe('createInstanceAgent', () => {
 					localGatewayStatus: undefined,
 					licenseHints: undefined,
 					localMcpServer: undefined,
-					filesystemService: undefined,
 				},
 				orchestrationContext: {
 					runId,
