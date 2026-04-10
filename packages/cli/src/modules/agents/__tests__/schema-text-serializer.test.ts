@@ -55,7 +55,7 @@ describe('scalar types', () => {
 	it('renders array whose items are a anyOf union', () => {
 		expect(
 			field('vals', { type: 'array', items: { anyOf: [{ type: 'string' }, { type: 'number' }] } }),
-		).toBe('  vals?: array of <string | number>');
+		).toBe(['  vals?: array with items any of:', '    | string', '    | number'].join('\n'));
 	});
 
 	it('renders array whose items are a oneOf union', () => {
@@ -64,7 +64,7 @@ describe('scalar types', () => {
 				type: 'array',
 				items: { oneOf: [{ type: 'boolean' }, { type: 'integer' }] },
 			}),
-		).toBe('  vals?: array of <boolean | integer>');
+		).toBe(['  vals?: array with items any of:', '    | boolean', '    | integer'].join('\n'));
 	});
 
 	it('renders array whose items are object shapes in an anyOf union', () => {
@@ -86,7 +86,15 @@ describe('scalar types', () => {
 					],
 				},
 			}),
-		).toBe('  events?: array of <{ kind: "click", x: number } | { kind: "key", char: string }>');
+		).toBe(
+			[
+				'  events?: array with items any of:',
+				'    | (kind = "click")',
+				'      x: number (required)',
+				'    | (kind = "key")',
+				'      char: string (required)',
+			].join('\n'),
+		);
 	});
 
 	it('renders unknown for unrecognised type', () => {
