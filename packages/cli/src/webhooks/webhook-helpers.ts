@@ -752,8 +752,12 @@ export async function executeWebhook(
 			additionalKeys.$execution = {
 				id: executionId,
 				mode: executionMode === 'manual' ? 'test' : 'production',
-				resumeUrl: `${additionalData.webhookWaitingBaseUrl}/${executionId}`,
-				resumeFormUrl: `${additionalData.formWaitingBaseUrl}/${executionId}`,
+				resumeUrl: additionalData.webhookWaitingBaseUrl
+					? `${additionalData.webhookWaitingBaseUrl}/${executionId}`
+					: '',
+				resumeFormUrl: additionalData.formWaitingBaseUrl
+					? `${additionalData.formWaitingBaseUrl}/${executionId}`
+					: '',
 			};
 			const evaluatedResponseData = context.evaluateComplexWebhookDescriptionExpression<string>(
 				'responseData',
@@ -778,13 +782,15 @@ export async function executeWebhook(
 		});
 
 		if (responseMode === 'formPage' && !didSendResponse) {
-			const formUrl = new URL(`${additionalData.formWaitingBaseUrl}/${executionId}`);
-			if (runExecutionData.resumeToken) {
-				formUrl.searchParams.set(WAITING_TOKEN_QUERY_PARAM, runExecutionData.resumeToken);
+			if (additionalData.formWaitingBaseUrl) {
+				const formUrl = new URL(`${additionalData.formWaitingBaseUrl}/${executionId}`);
+				if (runExecutionData.resumeToken) {
+					formUrl.searchParams.set(WAITING_TOKEN_QUERY_PARAM, runExecutionData.resumeToken);
+				}
+				res.send({ formWaitingUrl: formUrl.toString() });
+				process.nextTick(() => res.end());
+				didSendResponse = true;
 			}
-			res.send({ formWaitingUrl: formUrl.toString() });
-			process.nextTick(() => res.end());
-			didSendResponse = true;
 		}
 
 		didSendResponse = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);

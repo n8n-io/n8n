@@ -270,6 +270,10 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			throw new UnexpectedError('Execution id is missing');
 		}
 
+		if (!webhookWaitingBaseUrl) {
+			throw new UnexpectedError('Webhook waiting base URL is not configured');
+		}
+
 		const baseURL = new URL(`${webhookWaitingBaseUrl}/${executionId}/${this.node.id}`);
 
 		for (const [key, value] of Object.entries(parameters)) {

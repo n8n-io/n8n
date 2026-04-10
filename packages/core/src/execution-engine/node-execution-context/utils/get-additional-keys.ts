@@ -24,11 +24,22 @@ export function getAdditionalKeys(
 ): IWorkflowDataProxyAdditionalKeys {
 	const executionId = additionalData.executionId ?? PLACEHOLDER_EMPTY_EXECUTION_ID;
 
-	let resumeUrl = `${additionalData.webhookWaitingBaseUrl}/${executionId}`;
-	let resumeFormUrl = `${additionalData.formWaitingBaseUrl}/${executionId}`;
-	if (runExecutionData?.resumeToken) {
-		resumeUrl = appendResumeToken(resumeUrl, runExecutionData.resumeToken);
-		resumeFormUrl = appendResumeToken(resumeFormUrl, runExecutionData.resumeToken);
+	let resumeUrl = '';
+	let resumeFormUrl = '';
+
+	// Only construct URLs if the base URLs are valid
+	if (additionalData.webhookWaitingBaseUrl) {
+		resumeUrl = `${additionalData.webhookWaitingBaseUrl}/${executionId}`;
+		if (runExecutionData?.resumeToken) {
+			resumeUrl = appendResumeToken(resumeUrl, runExecutionData.resumeToken);
+		}
+	}
+
+	if (additionalData.formWaitingBaseUrl) {
+		resumeFormUrl = `${additionalData.formWaitingBaseUrl}/${executionId}`;
+		if (runExecutionData?.resumeToken) {
+			resumeFormUrl = appendResumeToken(resumeFormUrl, runExecutionData.resumeToken);
+		}
 	}
 	return {
 		$execution: {
