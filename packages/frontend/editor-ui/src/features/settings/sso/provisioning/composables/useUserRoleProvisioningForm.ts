@@ -91,6 +91,26 @@ function toLegacyValue(
 }
 
 /**
+ * Converts a legacy single-value setting back to the two dropdown values.
+ * Used when the legacy dropdown (feature flag off) updates the value.
+ */
+function fromLegacyValue(value: UserRoleProvisioningSetting): {
+	roleAssignment: RoleAssignmentSetting;
+	mappingMethod: RoleMappingMethodSetting;
+} {
+	switch (value) {
+		case 'instance_role':
+			return { roleAssignment: 'instance', mappingMethod: 'idp' };
+		case 'instance_and_project_roles':
+			return { roleAssignment: 'instance_and_project', mappingMethod: 'idp' };
+		case 'expression_based':
+			return { roleAssignment: 'instance', mappingMethod: 'rules_in_n8n' };
+		default:
+			return { roleAssignment: 'manual', mappingMethod: 'idp' };
+	}
+}
+
+/**
  * Composable for managing user role provisioning form logic in SSO settings.
  */
 export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
@@ -100,10 +120,15 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 	const roleAssignment = ref<RoleAssignmentSetting>('manual');
 	const mappingMethod = ref<RoleMappingMethodSetting>('idp');
 
-	/** Legacy single-value for backward compatibility. */
-	const formValue = computed<UserRoleProvisioningSetting>(() =>
-		toLegacyValue(roleAssignment.value, mappingMethod.value),
-	);
+	/** Legacy single-value — writable so the legacy dropdown can update it directly. */
+	const formValue = computed<UserRoleProvisioningSetting>({
+		get: () => toLegacyValue(roleAssignment.value, mappingMethod.value),
+		set: (value: UserRoleProvisioningSetting) => {
+			const values = fromLegacyValue(value);
+			roleAssignment.value = values.roleAssignment;
+			mappingMethod.value = values.mappingMethod;
+		},
+	});
 
 	const isUserRoleProvisioningChanged = computed<boolean>(() => {
 		const stored = getDropdownValuesFromConfig(provisioningStore.provisioningConfig);
@@ -154,7 +179,10 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 	const shouldPromptUserToConfirmUserRoleProvisioningChange = ({
 		currentLoginEnabled,
 		loginEnabledFormValue,
-	}: { currentLoginEnabled: boolean; loginEnabledFormValue: boolean }) => {
+	}: {
+		currentLoginEnabled: boolean;
+		loginEnabledFormValue: boolean;
+	}) => {
 		const isLoginEnabledChanged = currentLoginEnabled !== loginEnabledFormValue;
 		const isEnablingSsoLogin = isLoginEnabledChanged && !currentLoginEnabled;
 		const isDisablingSsoLogin = isLoginEnabledChanged && currentLoginEnabled;

@@ -397,6 +397,7 @@ onMounted(async () => {
 			<UserRoleProvisioningDropdown
 				v-model:role-assignment="roleAssignment"
 				v-model:mapping-method="mappingMethod"
+				v-model:legacy-value="userRoleProvisioning"
 				auth-protocol="saml"
 			/>
 			<RoleMappingRuleEditor
