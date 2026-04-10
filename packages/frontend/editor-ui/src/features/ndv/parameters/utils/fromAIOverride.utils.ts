@@ -54,7 +54,6 @@ const NODE_DENYLIST = [
 ] as const;
 
 const PATH_DENYLIST = [
-	'parameters.name',
 	// this is used in vector store tools
 	'parameters.toolName',
 	'parameters.description',
