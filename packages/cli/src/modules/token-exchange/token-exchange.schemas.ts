@@ -33,6 +33,7 @@ export const ExternalTokenClaimsSchema = z.object({
 	iat: z.number().int(),
 	exp: z.number().int(),
 	jti: z.string().min(1),
+	nbf: z.number().int().optional(),
 	email: z.string().email().optional(),
 	given_name: z.string().optional(),
 	family_name: z.string().optional(),
@@ -128,9 +129,9 @@ export const TokenExchangeRequestSchema = z.object({
 	actor_token: z.string().optional(),
 	actor_token_type: z.string().optional(),
 	requested_token_type: z.string().optional(),
-	scope: z.string().optional(),
-	audience: z.string().optional(),
-	resource: z.string().optional(),
+	scope: z.string().max(1024).optional(),
+	audience: z.string().max(1024).optional(),
+	resource: z.string().max(2048).optional(),
 });
 
 export type TokenExchangeRequest = z.infer<typeof TokenExchangeRequestSchema>;
