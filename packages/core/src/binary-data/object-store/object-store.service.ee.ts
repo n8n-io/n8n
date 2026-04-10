@@ -16,7 +16,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
+import { ensureError, UnexpectedError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 import { Readable } from 'node:stream';
 
@@ -50,7 +50,7 @@ export class ObjectStoreService {
 
 	/** This generates the config for the S3Client to make it work in all various auth configurations */
 	getClientConfig() {
-		const { host, bucket, protocol, credentials } = this.s3Config;
+		const { host, bucket, protocol, credentials, maxAttempts } = this.s3Config;
 		const clientConfig: S3ClientConfig = {};
 		const endpoint = host ? `${protocol}://${host}` : undefined;
 		if (endpoint) {
@@ -66,6 +66,7 @@ export class ObjectStoreService {
 				secretAccessKey: credentials.accessSecret,
 			};
 		}
+		clientConfig.maxAttempts = maxAttempts;
 		return clientConfig;
 	}
 
@@ -89,7 +90,7 @@ export class ObjectStoreService {
 			const command = new HeadBucketCommand({ Bucket: this.bucket });
 			await this.s3Client.send(command);
 		} catch (e) {
-			throw new UnexpectedError('Request to S3 failed', { cause: e });
+			this.s3Error(e);
 		}
 	}
 
@@ -119,7 +120,7 @@ export class ObjectStoreService {
 			const command = new PutObjectCommand(params);
 			return await this.s3Client.send(command);
 		} catch (e) {
-			throw new UnexpectedError('Request to S3 failed', { cause: e });
+			this.s3Error(e);
 		}
 	}
 
@@ -147,7 +148,8 @@ export class ObjectStoreService {
 
 			return await streamToBuffer(body as Readable);
 		} catch (e) {
-			throw new UnexpectedError('Request to S3 failed', { cause: e });
+			if (e instanceof UnexpectedError) throw e;
+			this.s3Error(e);
 		}
 	}
 
@@ -182,7 +184,7 @@ export class ObjectStoreService {
 
 			return headers;
 		} catch (e) {
-			throw new UnexpectedError('Request to S3 failed', { cause: e });
+			this.s3Error(e);
 		}
 	}
 
@@ -199,7 +201,7 @@ export class ObjectStoreService {
 			this.logger.debug('Sending DELETE request to S3', { bucket: this.bucket, key: fileId });
 			return await this.s3Client.send(command);
 		} catch (e) {
-			throw new UnexpectedError('Request to S3 failed', { cause: e });
+			this.s3Error(e);
 		}
 	}
 
@@ -227,7 +229,7 @@ export class ObjectStoreService {
 			const command = new DeleteObjectsCommand(params);
 			return await this.s3Client.send(command);
 		} catch (e) {
-			throw new UnexpectedError('Request to S3 failed', { cause: e });
+			this.s3Error(e);
 		}
 	}
 
@@ -253,7 +255,7 @@ export class ObjectStoreService {
 
 			return items;
 		} catch (e) {
-			throw new UnexpectedError('Request to S3 failed', { cause: e });
+			this.s3Error(e);
 		}
 	}
 
@@ -291,7 +293,12 @@ export class ObjectStoreService {
 				nextContinuationToken: response.NextContinuationToken,
 			};
 		} catch (e) {
-			throw new UnexpectedError('Request to S3 failed', { cause: e });
+			this.s3Error(e);
 		}
+	}
+
+	private s3Error(e: unknown): never {
+		const error = ensureError(e);
+		throw new UnexpectedError(`Request to S3 failed: ${error.message}`, { cause: error });
 	}
 }
