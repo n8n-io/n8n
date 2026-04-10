@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import type {
 	Browser,
@@ -193,9 +194,9 @@ export class PlaywrightAdapter {
 		log.debug('newPage: creating page, url =', url ?? '(none)');
 		const page = await this.requireContext().newPage();
 		// The relay assigned an ID during Target.createTarget → createTab()
-		const tabId = this.relay?.getLastCreatedTabId();
-		log.debug('newPage: relay tabId =', tabId);
-		const state = this.findPageState(page) ?? this.trackPage(page, tabId);
+		const pageId = this.relay?.getLastCreatedTabId();
+		log.debug('newPage: relay pageId =', pageId);
+		const state = this.findPageState(page) ?? this.trackPage(page, pageId);
 
 		if (url) {
 			await page.goto(url, { waitUntil: 'load' });
@@ -478,12 +479,34 @@ export class PlaywrightAdapter {
 		type: 'interactive' | 'full' = 'interactive',
 		depth?: number,
 	): Promise<SnapshotResult> {
-		await this.ensurePage(pageId);
+		const { page } = await this.ensurePage(pageId);
 		if (!this.relay) throw new Error('No relay available');
 
-		const scopeSelector = await this.resolveTargetToSelector(pageId, target);
+		let scopeSelector: string | undefined;
+		let scopeMarker: string | undefined;
 
-		const { snapshot, diffType } = await this.relay.getSnapshot(pageId, type, depth, scopeSelector);
+		if (target) {
+			if ('selector' in target) {
+				scopeSelector = target.selector;
+			} else {
+				// Resolve ref → Playwright locator, stamp element with marker attribute
+				const { selector: locatorStr } = await this.relay.resolveRef(pageId, target.ref);
+				const locator = page.locator(locatorStr);
+				scopeMarker = randomUUID();
+				await locator.evaluate(
+					(el, marker) => el.setAttribute('data-n8n-scope', marker),
+					scopeMarker,
+				);
+			}
+		}
+
+		const { snapshot, diffType } = await this.relay.getSnapshot(
+			pageId,
+			type,
+			depth,
+			scopeSelector,
+			scopeMarker,
+		);
 
 		return { tree: snapshot, diffType };
 	}

@@ -10,6 +10,7 @@
  *   computeSnapshotDiff(prev, next)         → { diffType, content }
  */
 
+import { structuredPatch } from 'diff';
 import type { Protocol } from 'devtools-protocol';
 
 // ---------------------------------------------------------------------------
@@ -96,30 +97,6 @@ function abbreviateRole(role: string): string {
 	return ROLE_ABBREVIATIONS[role] ?? role.slice(0, 3);
 }
 
-function deriveBaseRef(
-	role: string,
-	name: string,
-	stableId: string | undefined,
-	nextFallback: () => number,
-): string {
-	if (stableId) return stableId;
-	if (name) return `${abbreviateRole(role)}-${slugifyName(name)}`;
-	return `${abbreviateRole(role)}-${nextFallback()}`;
-}
-
-const MAX_SLUG_LENGTH = 20;
-
-function slugifyName(name: string): string {
-	const slug = name
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, '-')
-		.replace(/^-+|-+$/g, '');
-	if (slug.length <= MAX_SLUG_LENGTH) return slug;
-	const truncated = slug.slice(0, MAX_SLUG_LENGTH);
-	const lastDash = truncated.lastIndexOf('-');
-	return lastDash > 0 ? truncated.slice(0, lastDash) : truncated;
-}
-
 // ---------------------------------------------------------------------------
 // Public types
 // ---------------------------------------------------------------------------
@@ -145,7 +122,16 @@ export interface SnapshotInput {
 	scopeNodeId?: string;
 }
 
-export interface TreeNode {
+export interface AriaProps {
+	checked?: boolean | 'mixed';
+	disabled?: boolean;
+	expanded?: boolean;
+	level?: number;
+	pressed?: boolean | 'mixed';
+	selected?: boolean;
+}
+
+export interface TreeNode extends AriaProps {
 	role: string;
 	name: string;
 	/** Stable ref string — set on interactive nodes and semantic containers */
@@ -153,6 +139,10 @@ export interface TreeNode {
 	backendNodeId?: number;
 	/** Extra indent offset (for ignored-node children) */
 	indentOffset?: number;
+	/** Current value for input elements (textbox, textarea, etc.) */
+	value?: string;
+	/** Extra properties rendered as /key: value children (url, placeholder) */
+	props?: Record<string, string>;
 	children: TreeNode[];
 }
 
@@ -168,7 +158,7 @@ export interface SnapshotOutput {
 // ---------------------------------------------------------------------------
 
 /** Extends TreeNode with the `ignored` flag from the raw AX tree. Internal only. */
-interface RawNode extends TreeNode {
+interface RawNode extends TreeNode, AriaProps {
 	ignored?: boolean;
 	children: RawNode[];
 }
@@ -180,27 +170,14 @@ type FilterMode = 'interactive' | 'full';
 // ---------------------------------------------------------------------------
 
 class RefRegistry {
-	private readonly refCounts = new Map<string, number>();
-	private fallbackCounter = 0;
+	private readonly counters = new Map<string, number>();
 	private readonly _refs = new Map<string, string>();
 
-	register({
-		role,
-		name,
-		locator,
-		stableId,
-	}: {
-		role: string;
-		name: string;
-		locator: string;
-		stableId?: string;
-	}): string {
-		const baseRef = deriveBaseRef(role, name, stableId, () => ++this.fallbackCounter);
-
-		const count = this.refCounts.get(baseRef) ?? 0;
-		this.refCounts.set(baseRef, count + 1);
-		const ref = count === 0 ? baseRef : `${baseRef}-${count + 1}`;
-
+	register({ role, locator }: { role: string; locator: string }): string {
+		const abbr = abbreviateRole(role);
+		const next = (this.counters.get(abbr) ?? 0) + 1;
+		this.counters.set(abbr, next);
+		const ref = `${abbr}${next}`;
 		this._refs.set(ref, locator);
 		return ref;
 	}
@@ -278,13 +255,34 @@ export function renderSnapshot(nodes: TreeNode[], indent = 0): string {
 				line = `${prefix}- text: "${escapeAttr(node.name)}"`;
 			} else {
 				const namePart = node.name ? ` "${escapeAttr(node.name)}"` : '';
+				let attrPart = '';
+				if (node.checked === true) attrPart += ' [checked]';
+				else if (node.checked === 'mixed') attrPart += ' [checked=mixed]';
+				if (node.disabled) attrPart += ' [disabled]';
+				if (node.expanded) attrPart += ' [expanded]';
+				if (node.level) attrPart += ` [level=${node.level}]`;
+				if (node.pressed === true) attrPart += ' [pressed]';
+				else if (node.pressed === 'mixed') attrPart += ' [pressed=mixed]';
+				if (node.selected) attrPart += ' [selected]';
+				let propsPart = '';
+				if (node.props) {
+					for (const [key, val] of Object.entries(node.props)) {
+						propsPart += ` [${key}=${escapeAttr(val)}]`;
+					}
+				}
 				const refPart = node.ref ? ` [ref=${node.ref}]` : '';
-				line = `${prefix}- ${node.role}${namePart}${refPart}`;
+				line = `${prefix}- ${node.role}${namePart}${attrPart}${propsPart}${refPart}`;
 			}
-			const childrenText = renderSnapshot(node.children, nodeIndent + 1);
-			if (node.children.length > 0) {
-				line += ':';
-				return `${line}\n${childrenText}`;
+
+			// Value renders as inline text (like Playwright): `- textbox "Email" [ref=...]: user@test.com`
+			if (node.value) {
+				line += `: ${node.value}`;
+			}
+
+			const hasChildren = node.children.length > 0;
+
+			if (hasChildren) {
+				return `${line}\n${renderSnapshot(node.children, nodeIndent + 1)}`;
 			}
 			return line;
 		})
@@ -305,65 +303,48 @@ export function computeSnapshotDiff(
 	next: TreeNode[],
 	threshold = 0.5,
 ): DiffResult {
+	const nextText = renderSnapshot(next);
+
 	if (previous.length === 0) {
-		return { diffType: 'full', content: renderSnapshot(next) };
+		return { diffType: 'full', content: nextText };
 	}
 
-	const prevFlat = flattenTree(previous);
-	const nextFlat = flattenTree(next);
+	const prevText = renderSnapshot(previous);
 
-	// Build lookup maps for matching
-	const prevByRef = new Map<string, FlatNode>();
-	const prevByRoleName = new Map<string, FlatNode>();
-	for (const node of prevFlat) {
-		if (node.ref) prevByRef.set(node.ref, node);
-		prevByRoleName.set(nodeKey(node), node);
-	}
-
-	const changes: Array<{ type: '+' | '-' | '~'; node: FlatNode; prev?: FlatNode }> = [];
-
-	// Find added/changed nodes in next
-	const matchedPrevKeys = new Set<string>();
-	for (const node of nextFlat) {
-		const prev = node.ref ? prevByRef.get(node.ref) : prevByRoleName.get(nodeKey(node));
-		if (!prev) {
-			changes.push({ type: '+', node });
-		} else {
-			matchedPrevKeys.add(nodeKey(node));
-			// Check if name changed (ref matched but name differs — ref was stable ID, name label changed)
-			if (prev.name !== node.name) {
-				changes.push({ type: '~', node, prev });
-			}
-		}
-	}
-
-	// Find removed nodes
-	for (const node of prevFlat) {
-		if (!matchedPrevKeys.has(nodeKey(node))) {
-			changes.push({ type: '-', node });
-		}
-	}
-
-	if (changes.length === 0) {
+	if (prevText === nextText) {
 		return { diffType: 'no-change', content: '' };
 	}
 
-	// Only count structural changes (+/-) against the threshold — modifications (~) are always compact
-	const structuralChanges = changes.filter((c) => c.type !== '~').length;
-	const totalNodes = Math.max(prevFlat.length, nextFlat.length, 1);
-	if (structuralChanges / totalNodes > threshold) {
-		return { diffType: 'full', content: renderSnapshot(next) };
-	}
-
-	// Build breadcrumb diff lines
-	const lines = changes.map(({ type, node, prev }) => {
-		const breadcrumb = node.breadcrumb.length > 0 ? `${node.breadcrumb.join(' > ')} > ` : '';
-		const nameLabel = node.name ? ` "${node.name}"` : '';
-		const prevLabel = prev && prev.name !== node.name ? ` (was "${prev.name}")` : '';
-		return `${breadcrumb}${type} ${node.role}${nameLabel}${prevLabel}`;
+	const patch = structuredPatch('snapshot', 'snapshot', prevText, nextText, 'previous', 'current', {
+		context: 3,
 	});
 
-	return { diffType: 'diff', content: lines.join('\n') };
+	let addedLines = 0;
+	let removedLines = 0;
+	for (const hunk of patch.hunks) {
+		for (const line of hunk.lines) {
+			if (line.startsWith('+')) addedLines++;
+			else if (line.startsWith('-')) removedLines++;
+		}
+	}
+
+	const oldLineCount = prevText.split('\n').length;
+	const newLineCount = nextText.split('\n').length;
+	const maxLines = Math.max(oldLineCount, newLineCount, 1);
+	const changeRatio = Math.min(Math.max(addedLines, removedLines) / maxLines, 1);
+
+	const diffLines: string[] = ['--- snapshot (previous)', '+++ snapshot (current)'];
+	for (const hunk of patch.hunks) {
+		diffLines.push(`@@ -${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines} @@`);
+		diffLines.push(...hunk.lines);
+	}
+	const diffString = diffLines.join('\n');
+
+	if (changeRatio >= threshold || diffString.length >= nextText.length) {
+		return { diffType: 'full', content: nextText };
+	}
+
+	return { diffType: 'diff', content: diffString };
 }
 
 // ---------------------------------------------------------------------------
@@ -378,6 +359,33 @@ function findRootNodeId(axNodes: Protocol.Accessibility.AXNode[]): string | unde
 	return axNodes.find((n) => !n.parentId)?.nodeId;
 }
 
+function extractAriaProps(node: Protocol.Accessibility.AXNode): AriaProps {
+	const props: AriaProps = {};
+	for (const prop of node.properties ?? []) {
+		switch (prop.name) {
+			case 'checked':
+				props.checked = prop.value.value as boolean | 'mixed';
+				break;
+			case 'disabled':
+				if (prop.value.value) props.disabled = true;
+				break;
+			case 'expanded':
+				props.expanded = prop.value.value as boolean;
+				break;
+			case 'level':
+				props.level = prop.value.value as number;
+				break;
+			case 'pressed':
+				props.pressed = prop.value.value as boolean | 'mixed';
+				break;
+			case 'selected':
+				if (prop.value.value) props.selected = true;
+				break;
+		}
+	}
+	return props;
+}
+
 function buildRawTree(
 	nodeId: string,
 	axById: Map<string, Protocol.Accessibility.AXNode>,
@@ -389,11 +397,15 @@ function buildRawTree(
 		.map((childId) => buildRawTree(childId, axById))
 		.filter((n): n is RawNode => n !== null);
 
+	const value = getAxString(node.value);
+
 	return {
 		role: getRole(node),
 		name: getAxString(node.name),
 		backendNodeId: node.backendDOMNodeId,
 		ignored: node.ignored,
+		value: value || undefined,
+		...extractAriaProps(node),
 		children,
 	};
 }
@@ -533,28 +545,58 @@ async function filterNode(options: FilterOptions): Promise<FilterResult> {
 	}
 
 	let ref: string | undefined;
+	const nodeProps: Record<string, string> = {};
 
 	const effectiveName = nameToUse || name;
 	if (isInteractiveRole) {
 		const isPromoted = rawRole !== role; // role was promoted from a wrapper (e.g. generic → textbox)
 		const attrs = isPromoted ? new Map<string, string>() : await getAttrs();
-		const { locator, stableId } = buildLocator({ role, name: effectiveName, attrs, isPromoted });
-		ref = registry.register({ role, name: effectiveName, locator, stableId });
+		const { locator } = buildLocator({ role, name: effectiveName, attrs, isPromoted });
+		ref = registry.register({ role, locator });
+
+		// Extract props from DOM attributes
+		if (role === 'link') {
+			const href = attrs.get('href');
+			if (href) nodeProps.href = href;
+		}
+		if (role === 'textbox' || role === 'searchbox' || role === 'combobox') {
+			const placeholder = attrs.get('placeholder');
+			if (placeholder && placeholder !== effectiveName) nodeProps.placeholder = placeholder;
+		}
 	} else if (isContextRole && typeof node.backendNodeId === 'number') {
 		// Semantic containers get refs so agents can scope targeted snapshots to them
 		const attrs = await getAttrs();
-		const { locator, stableId } = buildLocator({
+		const { locator } = buildLocator({
 			role,
 			name: effectiveName,
 			attrs,
 			isPromoted: false,
 		});
-		ref = registry.register({ role, name: effectiveName, locator, stableId });
+		ref = registry.register({ role, locator });
 	}
+
+	// Carry input value for textbox/searchbox/combobox/spinbutton (not checkbox/radio)
+	const INPUT_VALUE_ROLES = new Set(['textbox', 'searchbox', 'combobox', 'spinbutton']);
+	const nodeValue =
+		INPUT_VALUE_ROLES.has(role) && node.value && node.value !== nameToUse ? node.value : undefined;
 
 	return {
 		nodes: [
-			{ role, name: nameToUse, ref, backendNodeId: node.backendNodeId, children: childNodes },
+			{
+				role,
+				name: nameToUse,
+				ref,
+				backendNodeId: node.backendNodeId,
+				value: nodeValue,
+				props: Object.keys(nodeProps).length > 0 ? nodeProps : undefined,
+				checked: node.checked,
+				disabled: node.disabled,
+				expanded: node.expanded,
+				level: node.level,
+				pressed: node.pressed,
+				selected: node.selected,
+				children: childNodes,
+			},
 		],
 		names: buildNames(childNames, nameToUse),
 	};
@@ -618,36 +660,6 @@ function applyNthDedup(refs: Map<string, string>): void {
 		indices.set(locator, idx + 1);
 	}
 	for (const [ref, locator] of updates) refs.set(ref, locator);
-}
-
-// ---------------------------------------------------------------------------
-// Internal — diff helpers
-// ---------------------------------------------------------------------------
-
-interface FlatNode {
-	role: string;
-	name: string;
-	ref?: string;
-	breadcrumb: string[];
-}
-
-function flattenTree(
-	nodes: TreeNode[],
-	breadcrumb: string[] = [],
-	into: FlatNode[] = [],
-): FlatNode[] {
-	for (const node of nodes) {
-		into.push({ role: node.role, name: node.name, ref: node.ref, breadcrumb });
-		if (node.children.length > 0) {
-			const crumb = node.name ? [...breadcrumb, node.name] : breadcrumb;
-			flattenTree(node.children, crumb, into);
-		}
-	}
-	return into;
-}
-
-function nodeKey(node: FlatNode): string {
-	return node.ref ?? `${node.role}::${node.name}`;
 }
 
 // ---------------------------------------------------------------------------
