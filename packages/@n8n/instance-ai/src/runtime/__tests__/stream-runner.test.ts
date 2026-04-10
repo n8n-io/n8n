@@ -1,6 +1,6 @@
+import type { WorkSummary } from '../../stream/work-summary-accumulator';
 import { executeResumableStream } from '../resumable-stream-executor';
 import { streamAgentRun } from '../stream-runner';
-import type { WorkSummary } from '../../stream/work-summary-accumulator';
 
 jest.mock('../resumable-stream-executor', () => ({
 	executeResumableStream: jest.fn(),

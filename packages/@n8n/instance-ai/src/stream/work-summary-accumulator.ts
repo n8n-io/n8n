@@ -1,6 +1,5 @@
-import { z } from 'zod';
-
 import type { InstanceAiEvent } from '@n8n/api-types';
+import { z } from 'zod';
 
 // ── Schema (source of truth) ────────────────────────────────────────────────
 
