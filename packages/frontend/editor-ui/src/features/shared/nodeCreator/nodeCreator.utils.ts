@@ -301,8 +301,8 @@ function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 		useAiGatewayStore().isNodeSupported(element.properties.name)
 	) {
 		element.properties.tag = {
-			type: 'success',
 			text: i18n.baseText('generic.freeCredits'),
+			pill: true,
 		};
 	}
 

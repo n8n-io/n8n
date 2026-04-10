@@ -8,7 +8,7 @@ import {
 	N8nLoading,
 	N8nText,
 	N8nTooltip,
-	N8nAiGatewayCreditsTag,
+	N8nActionPill,
 } from '@n8n/design-system';
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import type { AiGatewayUsageEntry } from '@n8n/api-types';
@@ -145,7 +145,7 @@ onMounted(async () => {
 			<div :class="$style.headings">
 				<div :class="$style.headingRow">
 					<N8nHeading size="2xlarge">{{ i18n.baseText('settings.n8nConnect.title') }}</N8nHeading>
-					<N8nAiGatewayCreditsTag
+					<N8nActionPill
 						v-if="creditsBadgeText"
 						size="medium"
 						:text="creditsBadgeText"

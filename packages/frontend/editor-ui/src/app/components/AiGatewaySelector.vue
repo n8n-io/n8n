@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
-import { N8nAiGatewayCreditsTag } from '@n8n/design-system';
+import { watch } from 'vue';
+import { N8nActionPill } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -22,8 +22,6 @@ const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 
 const { creditsRemaining, fetchCredits } = useAiGateway();
-
-const badgeHovered = ref(false);
 
 // Fetch when enabled (on mount if already enabled, or when toggled on)
 watch(
@@ -68,14 +66,14 @@ function onBadgeClick(event: MouseEvent): void {
 </script>
 
 <template>
-	<div :class="$style.wrapper" data-test-id="ai-gateway-toggle">
+	<div :class="$style.wrapper" data-test-id="ai-gateway-selector">
 		<div role="radiogroup" :aria-label="i18n.baseText('aiGateway.credentialMode.sectionLabel')">
 			<button
 				type="button"
 				role="radio"
 				:aria-checked="aiGatewayEnabled"
 				:disabled="readonly"
-				data-test-id="ai-gateway-toggle-switch"
+				data-test-id="ai-gateway-selector-connect"
 				:class="[$style.card, aiGatewayEnabled ? $style.cardSelected : $style.cardIdle]"
 				@click="selectGateway"
 			>
@@ -93,27 +91,17 @@ function onBadgeClick(event: MouseEvent): void {
 						</span>
 					</span>
 				</span>
-				<N8nAiGatewayCreditsTag
+				<N8nActionPill
 					v-if="aiGatewayEnabled && creditsRemaining !== undefined"
 					:clickable="!readonly"
-					:pressed="badgeHovered"
-					@mouseenter="badgeHovered = true"
-					@mouseleave="badgeHovered = false"
+					:text="
+						i18n.baseText('aiGateway.toggle.tokensRemaining', {
+							interpolate: { count: String(creditsRemaining) },
+						})
+					"
+					:hover-text="!readonly ? i18n.baseText('aiGateway.toggle.topUp') : undefined"
 					@click="onBadgeClick"
-				>
-					<span :class="$style.badgeGrid">
-						<span :class="[$style.badgeLabel, badgeHovered && $style.badgeLabelHidden]">
-							{{
-								i18n.baseText('aiGateway.toggle.tokensRemaining', {
-									interpolate: { count: String(creditsRemaining) },
-								})
-							}}
-						</span>
-						<span :class="[$style.badgeLabel, !badgeHovered && $style.badgeLabelHidden]">
-							{{ i18n.baseText('aiGateway.toggle.topUp') }}
-						</span>
-					</span>
-				</N8nAiGatewayCreditsTag>
+				/>
 			</button>
 
 			<button
@@ -264,20 +252,5 @@ function onBadgeClick(event: MouseEvent): void {
 	font-weight: var(--font-weight--regular);
 	line-height: var(--line-height--sm);
 	color: var(--color--text--tint-2);
-}
-
-.badgeGrid {
-	display: grid;
-}
-
-.badgeLabel {
-	grid-area: 1 / 1;
-	text-align: center;
-	transition: opacity 0.15s;
-}
-
-.badgeLabelHidden {
-	opacity: 0;
-	pointer-events: none;
 }
 </style>

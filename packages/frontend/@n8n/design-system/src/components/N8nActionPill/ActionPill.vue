@@ -1,25 +1,27 @@
 <script lang="ts" setup>
 /**
- * Pill label for AI Gateway / free-credits affordances (light green fill, dark green text).
- * Same structural pattern as BetaTag / PreviewTag — small presentational component in the design system.
+ * A small pill-shaped label that can optionally act as a button.
+ * Use for inline status indicators, counts, or any short contextual label
  */
-defineOptions({ name: 'N8nAiGatewayCreditsTag' });
+import { ref } from 'vue';
+
+defineOptions({ name: 'N8nActionPill' });
 
 withDefaults(
 	defineProps<{
-		/** When set and default slot is empty, renders this string. */
+		/** Text to display when the default slot is empty. */
 		text?: string;
-		/** Pointer + hover styling (e.g. credential “Top up” control). */
+		/** When set, swaps to this text on hover (e.g. show a count normally, an action label on hover). */
+		hoverText?: string;
+		/** Enables pointer cursor and hover styles — use when the pill triggers an action. */
 		clickable?: boolean;
-		/** Match hover appearance without relying on :hover (e.g. alternate label visible). */
-		pressed?: boolean;
-		/** 'small' matches BetaTag/PreviewTag for menus; 'medium' is the default larger pill. */
+		/** 'small' matches BetaTag/PreviewTag scale (for menus/lists); 'medium' is the default. */
 		size?: 'small' | 'medium';
 	}>(),
 	{
 		text: undefined,
+		hoverText: undefined,
 		clickable: false,
-		pressed: false,
 		size: 'medium',
 	},
 );
@@ -27,6 +29,8 @@ withDefaults(
 defineEmits<{
 	click: [event: MouseEvent];
 }>();
+
+const hovered = ref(false);
 </script>
 
 <template>
@@ -35,16 +39,23 @@ defineEmits<{
 			$style.root,
 			size === 'small' && $style.small,
 			clickable && $style.clickable,
-			pressed && $style.pressed,
+			hoverText && hovered && $style.pressed,
 		]"
+		@mouseenter="hoverText && (hovered = true)"
+		@mouseleave="hoverText && (hovered = false)"
 		@click="$emit('click', $event)"
 	>
-		<slot>{{ text }}</slot>
+		<span v-if="hoverText" :class="$style.labelGrid">
+			<span :class="[$style.label, hovered && $style.labelHidden]"
+				><slot>{{ text }}</slot></span
+			>
+			<span :class="[$style.label, !hovered && $style.labelHidden]">{{ hoverText }}</span>
+		</span>
+		<slot v-else>{{ text }}</slot>
 	</span>
 </template>
 
 <style lang="scss" module>
-/* Padding + radius match `BetaTag` / `PreviewTag` (small) for consistent chip scale */
 .root {
 	display: inline-flex;
 	align-items: center;
@@ -82,5 +93,20 @@ defineEmits<{
 .pressed {
 	background-color: var(--color--green-200);
 	color: var(--color--green-950);
+}
+
+.labelGrid {
+	display: grid;
+}
+
+.label {
+	grid-area: 1 / 1;
+	text-align: center;
+	transition: opacity 0.15s;
+}
+
+.labelHidden {
+	opacity: 0;
+	pointer-events: none;
 }
 </style>

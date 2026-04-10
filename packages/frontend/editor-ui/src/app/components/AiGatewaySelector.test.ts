@@ -4,7 +4,7 @@ import { screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import AiGatewayToggle from './AiGatewayToggle.vue';
+import AiGatewaySelector from './AiGatewaySelector.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -30,9 +30,9 @@ vi.mock('vue-router', async (importOriginal) => ({
 	useRouter: vi.fn(() => ({})),
 }));
 
-const renderComponent = createComponentRenderer(AiGatewayToggle);
+const renderComponent = createComponentRenderer(AiGatewaySelector);
 
-describe('AiGatewayToggle', () => {
+describe('AiGatewaySelector', () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 
 	beforeEach(() => {
@@ -48,8 +48,8 @@ describe('AiGatewayToggle', () => {
 		it('should render both radio cards', () => {
 			renderComponent({ props: { aiGatewayEnabled: false, readonly: false } });
 
-			expect(screen.getByTestId('ai-gateway-toggle')).toBeInTheDocument();
-			expect(screen.getByTestId('ai-gateway-toggle-switch')).toBeInTheDocument();
+			expect(screen.getByTestId('ai-gateway-selector')).toBeInTheDocument();
+			expect(screen.getByTestId('ai-gateway-selector-connect')).toBeInTheDocument();
 			expect(screen.getByTestId('ai-gateway-mode-card-own')).toBeInTheDocument();
 			expect(screen.getByText('n8n Connect')).toBeInTheDocument();
 			expect(screen.getByText('My own credential')).toBeInTheDocument();
@@ -79,24 +79,24 @@ describe('AiGatewayToggle', () => {
 		it('should disable both cards in readonly mode', () => {
 			renderComponent({ props: { aiGatewayEnabled: false, readonly: true } });
 
-			expect(screen.getByTestId('ai-gateway-toggle-switch')).toBeDisabled();
+			expect(screen.getByTestId('ai-gateway-selector-connect')).toBeDisabled();
 			expect(screen.getByTestId('ai-gateway-mode-card-own')).toBeDisabled();
 		});
 	});
 
-	describe('toggle emission', () => {
-		it('should emit toggle with true when n8n Connect card is clicked while disabled', async () => {
+	describe('selection', () => {
+		it('should emit select with true when n8n Connect card is clicked while disabled', async () => {
 			const { emitted } = renderComponent({
 				props: { aiGatewayEnabled: false, readonly: false },
 			});
 
-			await userEvent.click(screen.getByTestId('ai-gateway-toggle-switch'));
+			await userEvent.click(screen.getByTestId('ai-gateway-selector-connect'));
 
 			expect(emitted('toggle')).toBeTruthy();
 			expect(emitted('toggle')![0]).toEqual([true]);
 		});
 
-		it('should emit toggle with false when own credential card is clicked while gateway is active', async () => {
+		it('should emit select with false when own credential card is clicked while gateway is active', async () => {
 			const { emitted } = renderComponent({
 				props: { aiGatewayEnabled: true, readonly: false },
 			});
@@ -107,17 +107,17 @@ describe('AiGatewayToggle', () => {
 			expect(emitted('toggle')![0]).toEqual([false]);
 		});
 
-		it('should not emit toggle when n8n Connect card is clicked while already selected', async () => {
+		it('should not emit when n8n Connect card is clicked while already selected', async () => {
 			const { emitted } = renderComponent({
 				props: { aiGatewayEnabled: true, readonly: false },
 			});
 
-			await userEvent.click(screen.getByTestId('ai-gateway-toggle-switch'));
+			await userEvent.click(screen.getByTestId('ai-gateway-selector-connect'));
 
 			expect(emitted('toggle')).toBeFalsy();
 		});
 
-		it('should not emit toggle when own credential card is clicked while already selected', async () => {
+		it('should not emit when own credential card is clicked while already selected', async () => {
 			const { emitted } = renderComponent({
 				props: { aiGatewayEnabled: false, readonly: false },
 			});
