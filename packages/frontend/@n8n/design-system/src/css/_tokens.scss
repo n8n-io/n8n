@@ -1,24 +1,6 @@
 @use 'sass:math';
 @use './tokens.legacy.scss' as tokens-legacy;
 
-/**
- * CSS Variable Naming Migration with Backwards Compatibility
- *
- * We are migrating from single-dash format (--color-primary-shade-1) to a new
- * double-dash format (--color--primary--shade-1) to align with design system guidelines.
- *
- * To maintain backwards compatibility for users (for example embed customers that customize n8n)
- * we use CSS variable fallbacks:
- * --color--primary: var(--color-primary, var(--color--orange-300))
- *
- * This ensures:
- * 1. New code using --color--primary--* works correctly
- * 2. Legacy code using --color-primary-* continues to work
- * 3. External integrations and custom CSS won't break
- * 4. Gradual migration path without breaking changes
- *
- */
-
 @mixin theme {
 	@include tokens-legacy.theme-legacy;
 	--background--brand: var(--color--orange-500);
@@ -36,16 +18,17 @@
 	/* stylelint-disable @n8n/css-var-naming */
 	--border-color: var(--border-color-base, var(--color--black-alpha-100));
 	/* stylelint-enable @n8n/css-var-naming */
+
 	--border-color--subtle: var(--color--black-alpha-50);
 	--border-color--strong: var(--color--black-alpha-200);
 	--border-color--stronger: var(--color--black-alpha-300);
 	--border: var(--border-width, 1px) var(--border-style, solid) var(--border-color);
 
-	--icon-color--subtle: var(--color--neutral-200);
 	--icon-color: var(--color--neutral-500);
+	--icon-color--subtle: var(--color--neutral-200);
 	--icon-color--strong: var(--color--neutral-800);
 
-	--text-color--default: var(--color--neutral-900);
+	--text-color: var(--color--neutral-900);
 	--text-color--subtle: var(--color--neutral-700);
 	--text-color--subtler: var(--color--neutral-500);
 
@@ -689,7 +672,7 @@
 	--icon-color: var(--color--neutral-300);
 	--icon-color--strong: var(--color--neutral-white);
 
-	--text-color--default: var(--color--neutral-white);
+	--text-color: var(--color--neutral-white);
 	--text-color--subtle: var(--color--neutral-200);
 	--text-color--subtler: var(--color--neutral-400);
 
@@ -1249,6 +1232,8 @@
 	--command-bar-item--color--background--hover: var(--color--background--light-1);
 	--command-bar--shadow:
 		0 15px 45px 0 var(--color--black-alpha-400), 0 5px 10px 0 var(--color--black-alpha-200);
+
+	--shadow-color: var(--color--black-alpha-250);
 }
 
 :root {

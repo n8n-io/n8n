@@ -2,6 +2,7 @@ import stylelint from 'stylelint';
 import type { Rule } from 'stylelint';
 
 const ruleName = '@n8n/css-var-naming';
+const DESIGN_SYSTEM_CSS_PATH_SEGMENT = '/frontend/@n8n/design-system/src/css/';
 
 const messages = stylelint.utils.ruleMessages(ruleName, {
 	rejected: (variable: string, reason: string) => `Invalid CSS variable "${variable}": ${reason}`,
@@ -146,6 +147,16 @@ const BASIC_PATTERN = /^--[a-z0-9]+(?:-[a-z0-9]+)*(?:--[a-z0-9]+(?:-[a-z0-9]+)*)
 interface ValidationResult {
 	valid: boolean;
 	reason?: string;
+}
+
+function shouldValidateFile(filePath: string | undefined) {
+	if (!filePath) {
+		return false;
+	}
+
+	const normalizedPath = filePath.replace(/\\/g, '/');
+
+	return normalizedPath.includes(DESIGN_SYSTEM_CSS_PATH_SEGMENT);
 }
 
 function shouldSkip(variable: string) {
@@ -357,6 +368,10 @@ function validateCssVariable(variable: string): ValidationResult {
 
 const ruleFunction: Rule = (primary, secondaryOptions, context) => {
 	return (root, result) => {
+		if (!shouldValidateFile(root.source?.input.file)) {
+			return;
+		}
+
 		const validOptions = stylelint.utils.validateOptions(result, ruleName, {
 			actual: primary,
 		});
