@@ -55,7 +55,7 @@ export class TriggersAndPollers {
 				triggerFunctions.emit = (
 					data: INodeExecutionData[][],
 					responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
-					donePromise?: IDeferredPromise<IRun>,
+					donePromise?: IDeferredPromise<IRun | undefined>,
 				) => {
 					if (responsePromise) {
 						hooks.addHandler('sendResponse', (response) => responsePromise.resolve(response));

@@ -1256,7 +1256,7 @@ export interface ITriggerFunctions
 	emit(
 		data: INodeExecutionData[][],
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
-		donePromise?: IDeferredPromise<IRun | undefined>,
+		donePromise?: IDeferredPromise<IRun>,
 	): void;
 	/**
 	 * Persist the current run as a failed execution and run the error workflow if configured.
