@@ -4,3 +4,5 @@ export {
 	WORKFLOW_RULES,
 	WORKFLOW_SDK_PATTERNS,
 } from './sdk-reference';
+
+export * from './node-guidance';

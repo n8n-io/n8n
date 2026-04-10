@@ -1,15 +1,17 @@
+/**
+ * Re-export node recommendations from the shared @n8n/workflow-sdk/prompts package.
+ */
 import {
 	RecommendationCategory,
 	type RecommendationCategoryType,
 	type NodeRecommendationDocument,
-} from '@/types';
+	textManipulationRecommendation,
+	imageGenerationRecommendation,
+	videoGenerationRecommendation,
+	audioGenerationRecommendation,
+} from '@n8n/workflow-sdk/prompts';
 
-import { audioGenerationRecommendation } from './audio-generation';
-import { imageGenerationRecommendation } from './image-generation';
-import { textManipulationRecommendation } from './text-manipulation';
-import { videoGenerationRecommendation } from './video-generation';
-
-export { formatRecommendation } from './utils/format-recommendation';
+export { formatRecommendation } from '@n8n/workflow-sdk/prompts';
 
 export const recommendations: Record<
 	RecommendationCategoryType,
