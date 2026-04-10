@@ -259,6 +259,10 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 
 		await getSamlConfig();
 		sendTrackingEvent(configResponse);
+		toast.showMessage({
+			title: i18n.baseText('settings.sso.settings.save.success'),
+			type: 'success',
+		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.sso.settings.save.error'));
 		return;

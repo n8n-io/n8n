@@ -4417,6 +4417,7 @@
 	"settings.sso.settings.test": "Test connection",
 	"settings.sso.settings.test.error": "Error testing OIDC SSO configuration",
 	"settings.sso.settings.save": "Save settings",
+	"settings.sso.settings.save.success": "SSO configuration saved",
 	"settings.sso.settings.unsavedChanges.title": "Unsaved changes",
 	"settings.sso.settings.unsavedChanges.message": "You have unsaved changes. They'll be lost if you leave.",
 	"settings.sso.settings.unsavedChanges.saveAndLeave": "Save and leave",

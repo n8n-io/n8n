@@ -177,6 +177,10 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 		clientSecret.value = newConfig.clientSecret;
 
 		sendTrackingEvent(newConfig);
+		toast.showMessage({
+			title: i18n.baseText('settings.sso.settings.save.success'),
+			type: 'success',
+		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.sso.settings.save.error_oidc'));
 		return;
