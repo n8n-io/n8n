@@ -52,9 +52,6 @@ let editorView: EditorView | null = null;
 let expandedEditorView: EditorView | null = null;
 
 /**
- * Validate expression syntax by extracting JS from {{ }} and parsing it.
- */
-/**
  * Mock $claims proxy for expression validation. Every property access returns
  * a real array (with .includes, .some, etc.) so typos like .includ() throw TypeError.
  */

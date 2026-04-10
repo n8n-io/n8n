@@ -127,36 +127,27 @@ export function useRoleMappingRules() {
 		try {
 			const allLocalRules = [...instanceRules.value, ...projectRules.value];
 			const localRuleIds = new Set(allLocalRules.map((r) => r.id));
+			const rulePayload = (r: RoleMappingRuleResponse) => ({
+				expression: r.expression,
+				role: r.role,
+				type: r.type,
+				order: r.order,
+				projectIds: r.projectIds,
+			});
 
-			// Delete rules that were on the server but removed locally
-			for (const serverId of serverRuleIds) {
-				if (!localRuleIds.has(serverId)) {
-					await api.deleteRule(serverId);
-				}
-			}
-
-			// Create or update each local rule
-			for (const rule of allLocalRules) {
-				if (rule.id.startsWith('local-')) {
-					// New rule — create on server
-					await api.createRule({
-						expression: rule.expression,
-						role: rule.role,
-						type: rule.type,
-						order: rule.order,
-						projectIds: rule.projectIds,
-					});
-				} else if (serverRuleIds.has(rule.id)) {
-					// Existing rule — update on server
-					await api.updateRule(rule.id, {
-						expression: rule.expression,
-						role: rule.role,
-						type: rule.type,
-						order: rule.order,
-						projectIds: rule.projectIds,
-					});
-				}
-			}
+			// Delete removed, create new, update existing — all in parallel
+			await Promise.all([
+				...[...serverRuleIds]
+					.filter((id) => !localRuleIds.has(id))
+					.map((id) => api.deleteRule(id)),
+				...allLocalRules.map((rule) =>
+					rule.id.startsWith('local-')
+						? api.createRule(rulePayload(rule))
+						: serverRuleIds.has(rule.id)
+							? api.updateRule(rule.id, rulePayload(rule))
+							: Promise.resolve(),
+				),
+			]);
 
 			// Reload to get server-assigned IDs and sync state
 			await loadRules();

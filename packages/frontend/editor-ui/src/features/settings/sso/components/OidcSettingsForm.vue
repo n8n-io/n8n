@@ -40,7 +40,6 @@ const {
 	shouldPromptUserToConfirmUserRoleProvisioningChange,
 } = useUserRoleProvisioningForm(SupportedProtocols.OIDC);
 
-const provisioningDropdownRef = ref<InstanceType<typeof UserRoleProvisioningDropdown> | null>(null);
 
 type PromptType = 'login' | 'none' | 'consent' | 'select_account' | 'create';
 
@@ -296,13 +295,12 @@ onMounted(async () => {
 		</div>
 		<div :class="$style.card">
 			<UserRoleProvisioningDropdown
-				ref="provisioningDropdownRef"
 				v-model:role-assignment="roleAssignment"
 				v-model:mapping-method="mappingMethod"
 				auth-protocol="oidc"
 			/>
 			<RoleMappingRuleEditor
-				v-if="provisioningDropdownRef?.showRuleEditor"
+				v-if="mappingMethod === 'rules_in_n8n'"
 				ref="roleMappingRuleEditorRef"
 				:show-project-rules="roleAssignment === 'instance_and_project'"
 			/>

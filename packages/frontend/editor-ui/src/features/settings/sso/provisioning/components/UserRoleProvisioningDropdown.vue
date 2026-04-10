@@ -36,22 +36,11 @@ const { check: isEnvFeatEnabled } = useEnvFeatureFlag();
 const isRuleMappingEnabled = computed(() => isEnvFeatEnabled.value('ROLE_MAPPING_RULES'));
 const showMappingMethod = computed(() => roleAssignment.value !== 'manual');
 const showIdpInfoBox = computed(() => showMappingMethod.value && mappingMethod.value === 'idp');
-const showRuleEditor = computed(
-	() => showMappingMethod.value && mappingMethod.value === 'rules_in_n8n',
-);
-
 const idpInfoText = computed(() =>
 	roleAssignment.value === 'instance_and_project'
 		? i18n.baseText('settings.sso.settings.roleMappingMethod.idp.instanceAndProjectInfo')
 		: i18n.baseText('settings.sso.settings.roleMappingMethod.idp.instanceInfo'),
 );
-
-const legacyValue = computed<UserRoleProvisioningSetting>(() => {
-	if (roleAssignment.value === 'manual') return 'disabled';
-	if (mappingMethod.value === 'rules_in_n8n') return 'expression_based';
-	if (roleAssignment.value === 'instance_and_project') return 'instance_and_project_roles';
-	return 'instance_role';
-});
 
 const roleAssignmentOptions = [
 	{ value: 'manual', label: 'roleAssignment.manual', desc: 'roleAssignment.manual.description' },
@@ -71,17 +60,16 @@ const mappingMethodOptions = computed(() => {
 
 const ssoKey = (key: string) => i18n.baseText(`settings.sso.settings.${key}`);
 
-defineExpose({ legacyValue, showRuleEditor });
 </script>
 <template>
 	<div>
 		<!-- Dropdown 1: Role assignment -->
-		<div :class="[$style.settingsItem, { [$style.noBorder]: !showMappingMethod }]">
-			<div :class="$style.labelColumn">
+		<div :class="[shared.settingsItem, { [shared.settingsItemNoBorder]: !showMappingMethod }]">
+			<div :class="shared.settingsItemLabel">
 				<label>{{ ssoKey('roleAssignment.label') }}</label>
 				<small>{{ ssoKey('roleAssignment.description') }}</small>
 			</div>
-			<div :class="$style.controlColumn">
+			<div :class="shared.settingsItemControl">
 				<N8nSelect v-model="roleAssignment" size="medium" :disabled="!canManage" data-test-id="role-assignment-select">
 					<N8nOption v-for="opt in roleAssignmentOptions" :key="opt.value" :label="ssoKey(opt.label)" :value="opt.value">
 						<div :class="$style.optionContent">
@@ -94,12 +82,12 @@ defineExpose({ legacyValue, showRuleEditor });
 		</div>
 
 		<!-- Dropdown 2: Role mapping method (conditional) -->
-		<div v-if="showMappingMethod" :class="$style.settingsItem">
-			<div :class="$style.labelColumn">
+		<div v-if="showMappingMethod" :class="shared.settingsItem">
+			<div :class="shared.settingsItemLabel">
 				<label>{{ ssoKey('roleMappingMethod.label') }}</label>
 				<small>{{ ssoKey('roleMappingMethod.description') }}</small>
 			</div>
-			<div :class="$style.controlColumn">
+			<div :class="shared.settingsItemControl">
 				<N8nSelect v-model="mappingMethod" size="medium" :disabled="!canManage" data-test-id="role-mapping-method-select">
 					<N8nOption v-for="opt in mappingMethodOptions" :key="opt.value" :label="ssoKey(opt.label)" :value="opt.value">
 						<div :class="$style.optionContent">
@@ -127,46 +115,8 @@ defineExpose({ legacyValue, showRuleEditor });
 		</div>
 	</div>
 </template>
+<style lang="scss" module="shared" src="../../styles/sso-form.module.scss" />
 <style lang="scss" module>
-.settingsItem {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	min-height: 64px;
-	padding: var(--spacing--xs) 0;
-	border-bottom: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
-}
-
-.labelColumn {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--3xs);
-	flex-shrink: 0;
-	width: 320px;
-
-	label {
-		font-size: var(--font-size--sm);
-		font-weight: var(--font-weight--bold);
-		color: var(--color--text--shade-1);
-	}
-
-	small {
-		font-size: var(--font-size--2xs);
-		color: var(--color--text--tint-1);
-	}
-}
-
-.controlColumn {
-	width: 280px;
-	flex-shrink: 0;
-	display: flex;
-	justify-content: flex-end;
-
-	> :deep(*) {
-		width: 100%;
-	}
-}
-
 .optionContent {
 	display: flex;
 	flex-direction: column;
@@ -185,10 +135,6 @@ defineExpose({ legacyValue, showRuleEditor });
 .optionDescription {
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1);
-}
-
-.noBorder {
-	border-bottom: none;
 }
 
 .callout {

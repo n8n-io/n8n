@@ -76,7 +76,6 @@ const {
 	shouldPromptUserToConfirmUserRoleProvisioningChange,
 } = useUserRoleProvisioningForm(SupportedProtocols.SAML);
 
-const provisioningDropdownRef = ref<InstanceType<typeof UserRoleProvisioningDropdown> | null>(null);
 
 async function loadSamlConfig() {
 	if (!ssoStore.isEnterpriseSamlEnabled) {
@@ -397,13 +396,12 @@ onMounted(async () => {
 		<!-- Card 2: Role Mapping -->
 		<div :class="$style.card">
 			<UserRoleProvisioningDropdown
-				ref="provisioningDropdownRef"
 				v-model:role-assignment="roleAssignment"
 				v-model:mapping-method="mappingMethod"
 				auth-protocol="saml"
 			/>
 			<RoleMappingRuleEditor
-				v-if="provisioningDropdownRef?.showRuleEditor"
+				v-if="mappingMethod === 'rules_in_n8n'"
 				ref="roleMappingRuleEditorRef"
 				:show-project-rules="roleAssignment === 'instance_and_project'"
 			/>
