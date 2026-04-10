@@ -111,6 +111,7 @@ Based on `.github/pull_request_template.md`:
 
 ### Checklist
 All items should be addressed before merging:
+- The author of the PR has checked the "I have seen this code, I have run this code, and I take responsibility for this code." checkbox
 - PR title follows conventions
 - Docs updated or follow-up ticket created
 - Tests included (bugs need regression tests, features need coverage)
@@ -191,5 +192,8 @@ Describe **what the code does**, not what threat it prevents.
 | Linear ref | URL with slug (leaks title) | URL without slug or ticket ID only |
 | Test name | `'should prevent SQL injection'` | `'should sanitize query parameters'` |
 
+
 **Before pushing a security fix, verify:** no branch name, commit, PR title,
 PR body, Linear URL, test name, or code comment hints at the vulnerability.
+
+**When in doubt, check the Linear issue for possible extra precautions**
