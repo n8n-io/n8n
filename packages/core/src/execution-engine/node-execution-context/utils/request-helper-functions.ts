@@ -19,7 +19,7 @@ import { Container } from '@n8n/di';
 import type { AxiosError, AxiosHeaders, AxiosRequestConfig } from 'axios';
 import axios from 'axios';
 import crypto, { createHmac } from 'crypto';
-import FormData from 'form-data';
+import type FormData from 'form-data';
 import { IncomingMessage } from 'http';
 import { type AgentOptions } from 'https';
 import get from 'lodash/get';
@@ -81,6 +81,7 @@ import {
 	generateContentLengthHeader,
 	getBeforeRedirectFn,
 	getHostFromRequestObject,
+	isFormDataInstance,
 	isIgnoreStatusErrorConfig,
 	searchForHeader,
 	setAxiosAgents,
@@ -158,7 +159,7 @@ export async function parseRequestObject(requestObject: IRequestOptions, ssrfBri
 			}
 		}
 	} else if (contentType?.includes('multipart/form-data')) {
-		if (requestObject.formData !== undefined && requestObject.formData instanceof FormData) {
+		if (requestObject.formData !== undefined && isFormDataInstance(requestObject.formData)) {
 			axiosConfig.data = requestObject.formData;
 		} else {
 			const allData: Partial<FormData> = {
@@ -206,7 +207,7 @@ export async function parseRequestObject(requestObject: IRequestOptions, ssrfBri
 				});
 			}
 
-			if (requestObject.formData instanceof FormData) {
+			if (isFormDataInstance(requestObject.formData)) {
 				axiosConfig.data = requestObject.formData;
 			} else {
 				axiosConfig.data = createFormDataObject(requestObject.formData as Record<string, unknown>);
@@ -573,7 +574,7 @@ export function convertN8nRequestToAxios(
 			axiosRequest.headers = axiosRequest.headers || {};
 			// We are only setting content type headers if the user did
 			// not set it already manually. We're not overriding, even if it's wrong.
-			if (body instanceof FormData) {
+			if (isFormDataInstance(body)) {
 				axiosRequest.headers = {
 					...axiosRequest.headers,
 					...body.getHeaders(),

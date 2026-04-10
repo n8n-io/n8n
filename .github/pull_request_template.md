@@ -17,6 +17,7 @@ https://linear.app/n8n/issue/
 
 ## Review / Merge checklist
 
+- [ ] I have seen this code, I have run this code, and I take responsibility for this code.
 - [ ] PR title and summary are descriptive. ([conventions](../blob/master/.github/pull_request_title_conventions.md)) <!--
    **Remember, the title automatically goes into the changelog.
    Use `(no-changelog)` otherwise.**
