@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { CommunityNodeType } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import { N8nButton, N8nText, N8nBadge, N8nIcon } from '@n8n/design-system';
+import { N8nButton, N8nText, N8nBadge, N8nIcon, N8nExternalLink, N8nTooltip } from '@n8n/design-system';
 import NodeIcon from '@/app/components/NodeIcon.vue';
+import OfficialIcon from 'virtual:icons/mdi/verified';
 import { useInstallNode } from '../composables/useInstallNode';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { NPM_PACKAGE_DOCS_BASE_URL } from '@/app/constants';
@@ -75,31 +76,35 @@ async function onInstall() {
 <template>
 	<div :class="$style.card" data-test-id="community-package-browse-card">
 		<div :class="$style.cardTop">
-			<div :class="$style.iconWrapper">
-				<NodeIcon
-					v-if="firstNodeType"
-					:node-type="firstNodeType"
-					:size="24"
-					:show-tooltip="false"
-				/>
-			</div>
+			<NodeIcon
+				v-if="firstNodeType"
+				:class="$style.nodeIcon"
+				:node-type="firstNodeType"
+				:show-tooltip="false"
+			/>
 			<div :class="$style.nameBlock">
-				<a :href="docsUrl" target="_blank" :class="$style.packageName">
-					<N8nText :bold="true" size="medium">{{ pkg.packageName }}</N8nText>
-					<N8nIcon :class="$style.externalIcon" icon="external-link" size="small" />
-				</a>
-				<div :class="$style.meta">
-					<N8nText size="small" color="text-light">
-						{{
-							i18n.baseText('settings.communityNodes.browse.card.by', {
-								interpolate: { author: pkg.authorName },
-							})
-						}}
-					</N8nText>
-					<N8nBadge v-if="pkg.isOfficialNode" theme="primary">
-						{{ i18n.baseText('settings.communityNodes.browse.card.official') }}
-					</N8nBadge>
+				<div :class="$style.titleRow">
+					<N8nExternalLink :href="docsUrl" :class="$style.packageName">
+						<N8nText :bold="true" size="medium">{{ pkg.packageName }}</N8nText>
+					</N8nExternalLink>
+					<N8nTooltip v-if="pkg.isOfficialNode" placement="bottom" :show-after="500">
+						<template #content>
+							{{
+								i18n.baseText('generic.officialNode.tooltip', {
+									interpolate: { author: pkg.authorName },
+								})
+							}}
+						</template>
+						<OfficialIcon :class="$style.officialIcon" />
+					</N8nTooltip>
 				</div>
+				<N8nText size="small" color="text-light">
+					{{
+						i18n.baseText('settings.communityNodes.browse.card.by', {
+							interpolate: { author: pkg.authorName },
+						})
+					}}
+				</N8nText>
 			</div>
 		</div>
 
@@ -109,21 +114,26 @@ async function onInstall() {
 
 		<div :class="$style.cardBottom">
 			<div :class="$style.stats">
-				<N8nText size="small" color="text-light">
-					{{
-						i18n.baseText('settings.communityNodes.browse.card.nodes', {
-							adjustToNumber: nodeCount,
-						})
-					}}
-				</N8nText>
-				<span :class="$style.separator">·</span>
-				<N8nText size="small" color="text-light">
-					{{
-						i18n.baseText('settings.communityNodes.browse.card.downloads', {
-							interpolate: { count: formattedDownloads },
-						})
-					}}
-				</N8nText>
+				<div :class="$style.stat">
+					<N8nIcon :class="$style.statIcon" icon="box" />
+					<N8nText color="text-light" size="xsmall" :bold="true">
+						{{
+							i18n.baseText('settings.communityNodes.browse.card.nodes', {
+								adjustToNumber: nodeCount,
+							})
+						}}
+					</N8nText>
+				</div>
+				<div :class="$style.stat">
+					<N8nIcon :class="$style.statIcon" icon="hard-drive-download" />
+					<N8nText color="text-light" size="xsmall" :bold="true">
+						{{
+							i18n.baseText('settings.communityNodes.browse.card.downloads', {
+								interpolate: { count: formattedDownloads },
+							})
+						}}
+					</N8nText>
+				</div>
 			</div>
 			<div :class="$style.installAction">
 				<N8nBadge v-if="installed || pkg.isInstalled" theme="success">
@@ -164,18 +174,12 @@ async function onInstall() {
 .cardTop {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--sm);
 }
 
-.iconWrapper {
+.nodeIcon {
+	--node--icon--size: 36px;
 	flex-shrink: 0;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 32px;
-	height: 32px;
-	border-radius: var(--radius--md);
-	background-color: var(--color--foreground);
 }
 
 .nameBlock {
@@ -183,34 +187,29 @@ async function onInstall() {
 	min-width: 0;
 }
 
-.packageName {
+.titleRow {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--3xs);
+	min-width: 0;
+}
+
+.packageName {
+	padding: 0;
 	overflow: hidden;
-	color: inherit;
-	text-decoration: none;
 
 	> span {
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-
-	&:hover {
-		text-decoration: underline;
-	}
 }
 
-.externalIcon {
+.officialIcon {
+	display: inline-flex;
 	flex-shrink: 0;
-	color: var(--color--text--tint-2);
-}
-
-.meta {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
+	color: var(--color--text);
+	width: 14px;
 }
 
 .description {
@@ -231,11 +230,19 @@ async function onInstall() {
 .stats {
 	display: flex;
 	align-items: center;
+	gap: var(--spacing--sm);
+}
+
+.stat {
+	display: flex;
+	align-items: center;
 	gap: var(--spacing--4xs);
 }
 
-.separator {
-	color: var(--color--text--tint-2);
+.statIcon {
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--2xs);
+	width: 12px;
 }
 
 .installAction {

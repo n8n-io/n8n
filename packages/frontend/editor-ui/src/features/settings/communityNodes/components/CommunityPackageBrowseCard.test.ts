@@ -100,20 +100,20 @@ describe('CommunityPackageBrowseCard', () => {
 		expect(getByText(/1\.2k/)).toBeInTheDocument();
 	});
 
-	it('should show official badge when isOfficialNode is true', () => {
-		const { getByText } = renderComponent({
+	it('should show official icon when isOfficialNode is true', () => {
+		const { container } = renderComponent({
 			props: { pkg: makePkg({ isOfficialNode: true }) },
 		});
 
-		expect(getByText(/Official/)).toBeInTheDocument();
+		expect(container.querySelector('.officialIcon')).toBeInTheDocument();
 	});
 
-	it('should not show official badge when isOfficialNode is false', () => {
-		const { queryByText } = renderComponent({
+	it('should not show official icon when isOfficialNode is false', () => {
+		const { container } = renderComponent({
 			props: { pkg: makePkg() },
 		});
 
-		expect(queryByText(/Official/)).not.toBeInTheDocument();
+		expect(container.querySelector('.officialIcon')).not.toBeInTheDocument();
 	});
 
 	it('should show Install button when not installed', () => {
