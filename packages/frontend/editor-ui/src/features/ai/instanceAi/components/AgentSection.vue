@@ -48,7 +48,8 @@ watch(
 				<span :class="{ [$style.shimmer]: isActive }">{{ sectionTitle }}</span>
 			</TimelineStepButton>
 		</CollapsibleTrigger>
-		<CollapsibleContent :class="$style.content">
+		<!-- Lazy-mount: only render content when opened to avoid reka-ui RAF overhead -->
+		<CollapsibleContent v-if="isOpen" :class="$style.content" force-mount>
 			<SubagentStepTimeline :agent-node="props.agentNode" />
 		</CollapsibleContent>
 	</CollapsibleRoot>

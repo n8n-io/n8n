@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { triggerRef, ref } from 'vue';
 import type { PushMessage } from '@n8n/api-types';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 
@@ -28,33 +28,29 @@ export function useExecutionPushEvents() {
 	function handlePushEvent(event: PushMessage) {
 		if (!EXECUTION_EVENT_TYPES.has(event.type)) return;
 
+		const map = workflowExecutions.value;
+
 		if (event.type === 'executionStarted') {
 			const { executionId, workflowId } = event.data;
 			executionToWorkflow.set(executionId, workflowId);
-			const next = new Map(workflowExecutions.value);
-			next.set(workflowId, {
+			map.set(workflowId, {
 				executionId,
 				workflowId,
 				status: 'running',
 				eventLog: [event],
 			});
-			workflowExecutions.value = next;
-
+			triggerRef(workflowExecutions);
 			return;
 		}
 
 		if (event.type === 'executionFinished') {
 			const { executionId, workflowId, status } = event.data;
-			const entry = workflowExecutions.value.get(workflowId);
+			const entry = map.get(workflowId);
 			if (!entry || entry.executionId !== executionId) return;
 
-			const next = new Map(workflowExecutions.value);
-			next.set(workflowId, {
-				...entry,
-				status: status === 'success' ? 'success' : 'error',
-				eventLog: [],
-			});
-			workflowExecutions.value = next;
+			entry.status = status === 'success' ? 'success' : 'error';
+			entry.eventLog = [];
+			triggerRef(workflowExecutions);
 
 			executionToWorkflow.delete(executionId);
 			return;
@@ -65,15 +61,11 @@ export function useExecutionPushEvents() {
 		const workflowId = executionToWorkflow.get(executionId);
 		if (!workflowId) return;
 
-		const entry = workflowExecutions.value.get(workflowId);
+		const entry = map.get(workflowId);
 		if (!entry || entry.executionId !== executionId) return;
 
-		const next = new Map(workflowExecutions.value);
-		next.set(workflowId, {
-			...entry,
-			eventLog: [...entry.eventLog, event],
-		});
-		workflowExecutions.value = next;
+		entry.eventLog.push(event);
+		triggerRef(workflowExecutions);
 	}
 
 	const removeListener = pushStore.addEventListener(handlePushEvent);

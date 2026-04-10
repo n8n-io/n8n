@@ -104,7 +104,8 @@ const isCollapsible = computed(
 				</span>
 			</TimelineStepButton>
 		</CollapsibleTrigger>
-		<CollapsibleContent>
+		<!-- Lazy-mount: only render content when opened to avoid reka-ui RAF overhead -->
+		<CollapsibleContent v-if="isOpen" force-mount>
 			<AgentTimeline :agent-node="props.agentNode" :visible-entries="props.group.entries" />
 		</CollapsibleContent>
 	</CollapsibleRoot>

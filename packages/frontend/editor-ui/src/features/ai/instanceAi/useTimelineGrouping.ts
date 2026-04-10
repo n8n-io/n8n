@@ -56,6 +56,11 @@ export function useTimelineGrouping(
 	agentNode: Ref<InstanceAiAgentNode> | ComputedRef<InstanceAiAgentNode>,
 ): ComputedRef<TimelineSegment[] | null> {
 	return computed(() => {
+		// Skip grouping while the agent is still running — the result is only
+		// used for the collapsed/completed view and recomputing on every SSE
+		// chunk is wasted work.
+		if (agentNode.value.status === 'active') return null;
+
 		const timeline = agentNode.value.timeline;
 		if (timeline.length === 0) return null;
 
