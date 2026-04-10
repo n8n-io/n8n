@@ -833,7 +833,11 @@ export class RelayConnection {
 
 	private sendMessage(message: ProtocolResponse): void {
 		if (this.ws.readyState === WebSocket.OPEN) {
-			this.ws.send(JSON.stringify(message));
+			try {
+				this.ws.send(JSON.stringify(message));
+			} catch {
+				log.debug('sendMessage: send failed (connection closing)');
+			}
 		}
 	}
 }
