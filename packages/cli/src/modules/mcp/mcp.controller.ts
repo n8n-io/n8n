@@ -89,20 +89,27 @@ export class McpController {
 			client_version: clientInfo?.version,
 		};
 
-		// Deny if MCP access is disabled
-		const enabled = await this.mcpSettingsService.getEnabled();
+		// Internal builder requests bypass the MCP access toggle — the instance AI
+		// builder must always be able to reach the MCP server regardless of whether
+		// the user has enabled external MCP access in their settings.
+		const isInternalBuilder = req.header('X-N8N-MCP-Internal') === 'builder';
 
-		if (!enabled) {
-			if (isInitializationRequest) {
-				this.trackConnectionEvent({
-					...telemetryPayload,
-					mcp_connection_status: 'error',
-					error: MCP_ACCESS_DISABLED_ERROR_MESSAGE,
-				});
+		if (!isInternalBuilder) {
+			// Deny external clients if MCP access is disabled
+			const enabled = await this.mcpSettingsService.getEnabled();
+
+			if (!enabled) {
+				if (isInitializationRequest) {
+					this.trackConnectionEvent({
+						...telemetryPayload,
+						mcp_connection_status: 'error',
+						error: MCP_ACCESS_DISABLED_ERROR_MESSAGE,
+					});
+				}
+				// Return 403 Forbidden
+				res.status(403).json({ message: MCP_ACCESS_DISABLED_ERROR_MESSAGE });
+				return;
 			}
-			// Return 403 Forbidden
-			res.status(403).json({ message: MCP_ACCESS_DISABLED_ERROR_MESSAGE });
-			return;
 		}
 		// In stateless mode, create a new instance of transport and server for each request
 		// to ensure complete isolation. A single instance would cause request ID collisions

@@ -27,7 +27,10 @@ export async function createMcpBuilderClient(
 			'n8n-builder': {
 				url: new URL(`${config.baseUrl}/mcp-server/http`),
 				requestInit: {
-					headers: { Authorization: `Bearer ${config.apiKey}` },
+					headers: {
+						Authorization: `Bearer ${config.apiKey}`,
+						'X-N8N-MCP-Internal': 'builder',
+					},
 				},
 			},
 		},
