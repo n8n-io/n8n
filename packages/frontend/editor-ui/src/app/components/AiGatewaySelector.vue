@@ -94,8 +94,9 @@ function onBadgeClick(event: MouseEvent): void {
 				<N8nActionPill
 					v-if="aiGatewayEnabled && creditsRemaining !== undefined"
 					:clickable="!readonly"
+					size="small"
 					:text="
-						i18n.baseText('aiGateway.toggle.tokensRemaining', {
+						i18n.baseText('aiGateway.credentialMode.creditsShort', {
 							interpolate: { count: String(creditsRemaining) },
 						})
 					"
@@ -177,8 +178,7 @@ function onBadgeClick(event: MouseEvent): void {
 	border-color: var(--color--foreground--shade-1);
 
 	.title {
-		color: var(--color--text);
-		font-weight: var(--font-weight--bold);
+		color: var(--color--text--shade-1);
 	}
 
 	.subtitle {
@@ -234,8 +234,8 @@ function onBadgeClick(event: MouseEvent): void {
 
 .textBlock {
 	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
+	align-items: baseline;
+	gap: var(--spacing--3xs);
 	min-width: 0;
 	flex: 1;
 }
@@ -245,6 +245,7 @@ function onBadgeClick(event: MouseEvent): void {
 	font-weight: var(--font-weight--regular);
 	line-height: var(--line-height--sm);
 	color: var(--color--text--tint-1);
+	white-space: nowrap;
 }
 
 .subtitle {
@@ -252,5 +253,6 @@ function onBadgeClick(event: MouseEvent): void {
 	font-weight: var(--font-weight--regular);
 	line-height: var(--line-height--sm);
 	color: var(--color--text--tint-2);
+	white-space: nowrap;
 }
 </style>

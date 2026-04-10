@@ -2006,7 +2006,6 @@
 	"nodeCredentials.oauth.accountConnected": "Account connected successfully",
 	"aiGateway.toggle.label": "Connect via n8n Connect",
 	"aiGateway.toggle.description": "n8n Connect is the easy way to manage AI model usage",
-	"aiGateway.toggle.tokensRemaining": "{count} credits remaining",
 	"aiGateway.toggle.topUp": "Top up",
 	"aiGateway.credentialMode.sectionLabel": "Credential",
 	"aiGateway.credentialMode.creditsShort": "{count} credits",

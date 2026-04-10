@@ -59,21 +59,21 @@ describe('AiGatewaySelector', () => {
 			mockCreditsRemaining.value = 5;
 			renderComponent({ props: { aiGatewayEnabled: true, readonly: false } });
 
-			expect(screen.getByText('5 credits remaining')).toBeInTheDocument();
+			expect(screen.getByText('5 credits')).toBeInTheDocument();
 		});
 
 		it('should not show credits badge when creditsRemaining is undefined', () => {
 			mockCreditsRemaining.value = undefined;
 			renderComponent({ props: { aiGatewayEnabled: true, readonly: false } });
 
-			expect(screen.queryByText(/credits remaining/)).not.toBeInTheDocument();
+			expect(screen.queryByText(/\d+ credits$/)).not.toBeInTheDocument();
 		});
 
 		it('should not show credits badge when aiGatewayEnabled is false', () => {
 			mockCreditsRemaining.value = 5;
 			renderComponent({ props: { aiGatewayEnabled: false, readonly: false } });
 
-			expect(screen.queryByText(/credits remaining/)).not.toBeInTheDocument();
+			expect(screen.queryByText(/\d+ credits$/)).not.toBeInTheDocument();
 		});
 
 		it('should disable both cards in readonly mode', () => {
@@ -200,7 +200,7 @@ describe('AiGatewaySelector', () => {
 			const uiStore = useUIStore();
 			vi.spyOn(uiStore, 'openModalWithData');
 
-			await userEvent.click(screen.getByText('5 credits remaining'));
+			await userEvent.click(screen.getByText('5 credits'));
 
 			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
 				name: AI_GATEWAY_TOP_UP_MODAL_KEY,
