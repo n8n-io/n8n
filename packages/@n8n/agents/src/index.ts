@@ -144,4 +144,3 @@ export type {
 } from './workspace';
 
 export type { JSONObject, JSONArray, JSONValue } from './types/utils/json';
-export type { JSONSchema7 } from 'json-schema';

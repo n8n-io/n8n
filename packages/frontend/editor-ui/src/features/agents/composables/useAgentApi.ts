@@ -203,35 +203,6 @@ export const updateAgentConfig = async (
 	);
 };
 
-export const patchAgentConfig = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-	partial: Partial<AgentJsonConfig>,
-): Promise<{ config: AgentJsonConfig }> => {
-	return await makeRestApiRequest(
-		context,
-		'PATCH',
-		`/projects/${projectId}/agents/v2/${agentId}/config`,
-		{ config: partial },
-	);
-};
-
-export const buildCustomTool = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-	toolId: string,
-	code: string,
-): Promise<{ ok: boolean; descriptor?: ToolDescriptor; errors?: Array<{ message: string }> }> => {
-	return await makeRestApiRequest(
-		context,
-		'POST',
-		`/projects/${projectId}/agents/v2/${agentId}/tools`,
-		{ id: toolId, code },
-	);
-};
-
 export const deleteCustomTool = async (
 	context: IRestApiContext,
 	projectId: string,

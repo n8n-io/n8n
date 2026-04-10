@@ -52,7 +52,7 @@ function typeLabel(schema: JSONSchema7): string {
 	if (type === 'boolean') return 'boolean';
 	if (type === 'array') {
 		if (schema.items && typeof schema.items === 'object' && !Array.isArray(schema.items)) {
-			return `array of <${typeLabel(schema.items as JSONSchema7)}>`;
+			return `array of <${typeLabel(schema.items)}>`;
 		}
 		return 'array';
 	}
@@ -78,16 +78,13 @@ function serializeSchema(
 
 		if (fieldName) {
 			const optSuffix = optional ? '?' : '';
-			const defaultSuffix =
-				schema.default !== undefined ? ` (default: ${JSON.stringify(schema.default)})` : '';
-			const requiredSuffix = optional ? '' : ' (required)';
 			lines.push(
 				`${prefix}${fieldName}${optSuffix}: array of <discriminated by "${discriminator ?? 'type'}">`,
 			);
 			// Emit union branches inline
 			for (const branch of unionBranches) {
 				if (typeof branch !== 'object' || branch === null) continue;
-				const b = branch as JSONSchema7;
+				const b = branch;
 				const constProp = discriminator ? findConstInProperties(b, discriminator) : undefined;
 				const branchLabel =
 					constProp !== undefined ? `${discriminator} = ${JSON.stringify(constProp)}` : '?';
@@ -95,8 +92,6 @@ function serializeSchema(
 				serializeBranchFields(b, branchFields);
 				lines.push(`${prefix}  | ${branchLabel}: { ${branchFields.join(', ')} }`);
 			}
-			void defaultSuffix;
-			void requiredSuffix;
 		}
 		return;
 	}
@@ -121,7 +116,7 @@ function serializeSchema(
 			);
 		}
 		if (schema.additionalProperties && typeof schema.additionalProperties === 'object') {
-			const valType = typeLabel(schema.additionalProperties as JSONSchema7);
+			const valType = typeLabel(schema.additionalProperties);
 			lines.push(`${pad(indent + 1)}[key: string]: ${valType}`);
 		}
 		return;
@@ -130,9 +125,7 @@ function serializeSchema(
 	if (type === 'object' && schema.additionalProperties) {
 		const valSchema = schema.additionalProperties;
 		const valType =
-			typeof valSchema === 'object' && valSchema !== null
-				? typeLabel(valSchema as JSONSchema7)
-				: 'unknown';
+			typeof valSchema === 'object' && valSchema !== null ? typeLabel(valSchema) : 'unknown';
 		const optSuffix = optional ? '?' : '';
 		const requiredSuffix = optional ? '' : ' (required)';
 		lines.push(`${prefix}${fieldName}${optSuffix}: Record<string, ${valType}>${requiredSuffix}`);
@@ -155,7 +148,7 @@ function serializeBranchFields(schema: JSONSchema7, out: string[]): void {
 	const requiredFields = new Set(schema.required ?? []);
 	for (const [propName, propSchema] of Object.entries(schema.properties)) {
 		if (typeof propSchema !== 'object' || propSchema === null) continue;
-		const s = propSchema as JSONSchema7;
+		const s = propSchema;
 		const optSuffix = !requiredFields.has(propName) ? '?' : '';
 		out.push(`${propName}${optSuffix}: ${typeLabel(s)}`);
 	}
@@ -180,7 +173,7 @@ function detectDiscriminator(branches: JSONSchema7[]): string | undefined {
 
 function getConstValue(schema: JSONSchema7Definition | undefined): unknown {
 	if (typeof schema !== 'object' || schema === null) return undefined;
-	const s = schema as JSONSchema7;
+	const s = schema;
 	if (s.const !== undefined) return s.const;
 	if (s.enum && s.enum.length === 1) return s.enum[0];
 	return undefined;

@@ -108,18 +108,6 @@ export class AgentsController {
 		return await this.agentsService.updateConfig(agentId, projectId, config);
 	}
 
-	@Patch('/:agentId/config')
-	async patchConfig(
-		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
-		_res: Response,
-		@Param('agentId') agentId: string,
-		@Body payload: UpdateAgentConfigDto,
-	) {
-		const { projectId } = req.params;
-		const { config } = payload;
-		return await this.agentsService.patchConfig(agentId, projectId, config);
-	}
-
 	@Delete('/:agentId/tools/:toolId')
 	async deleteTool(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; toolId: string }>,

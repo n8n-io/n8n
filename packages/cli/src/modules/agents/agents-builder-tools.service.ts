@@ -234,7 +234,7 @@ export class AgentsBuilderToolsService {
 
 		const listWorkflowsTool = new Tool('list_workflows')
 			.description(
-				'List the n8n workflows that can be attached as tools via .tool(new WorkflowTool(name)) from @n8n/agents-utils. ' +
+				'List the n8n workflows that can be attached as tools via `type: "workflow"` in the agent config. ' +
 					'ALWAYS call this at the start — workflows are the preferred way to give agents real capabilities ' +
 					'(sending emails, creating calendar events, querying databases, calling APIs, etc.). ' +
 					'Only returns workflows with supported trigger types.',

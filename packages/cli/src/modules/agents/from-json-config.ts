@@ -23,8 +23,6 @@ export interface ToolExecutor {
 	executeToMessageSync?(toolName: string, output: unknown): unknown;
 }
 
-export type ToolRefResolver = (ref: AgentJsonToolConfig) => Promise<BuiltTool | null | undefined>;
-
 /** Factory function that reconstructs a BuiltMemory backend from serialized params. */
 export type MemoryFactory = (params: AgentJsonMemoryConfig) => BuiltMemory | Promise<BuiltMemory>;
 
@@ -33,7 +31,7 @@ export interface BuildFromJsonOptions {
 	toolExecutor: ToolExecutor;
 	credentialProvider?: CredentialProvider;
 	/** Resolves workflow/node tool refs into BuiltTool instances. */
-	resolveTool?: ToolRefResolver;
+	resolveTool?: ToolResolver;
 	/** Memory backend factories keyed by storage preset name. */
 	memoryFactory: MemoryFactory;
 }

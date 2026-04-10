@@ -43,7 +43,7 @@ import { AgentJsonConfigSchema } from './agent-json-config';
 import { AgentSecureRuntime } from './agent-secure-runtime';
 import { AgentsCredentialProvider } from './agents-credential-provider';
 import { Agent } from './entities/agent.entity';
-import { buildFromJson, MemoryFactory, ToolResolver } from './from-json-config';
+import { buildFromJson, type MemoryFactory, type ToolResolver } from './from-json-config';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
 import { AgentRepository } from './repositories/agent.repository';
@@ -593,26 +593,6 @@ export class AgentsService {
 		this.logger.debug('Updated agent JSON config', { agentId, projectId });
 
 		return { config: result.config, updatedAt: saved.updatedAt.toISOString() };
-	}
-
-	/**
-	 * Partially update an AgentJsonConfig
-	 */
-	async patchConfig(
-		agentId: string,
-		projectId: string,
-		partial: Partial<AgentJsonConfig>,
-	): Promise<{ config: AgentJsonConfig; updatedAt: string }> {
-		const existing = await this.getConfig(agentId, projectId);
-
-		const merged: AgentJsonConfig = {
-			...existing,
-			...partial,
-			config: partial.config !== undefined ? partial.config : existing.config,
-			memory: partial.memory !== undefined ? partial.memory : existing.memory,
-		};
-
-		return await this.updateConfig(agentId, projectId, merged);
 	}
 
 	/**
