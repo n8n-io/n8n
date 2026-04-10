@@ -1,4 +1,6 @@
 type: object
+description: |
+  Provide `name`, `projectId`, or both.
 properties:
   name:
     type: string
@@ -7,4 +9,5 @@ properties:
     maxLength: 128
   projectId:
     type: string
-    description: Move this data table to a different project. Can be combined with name to transfer and rename atomically.
+    description: |
+      ID of the project to move this table into. Combine with `name` to transfer and rename in one update.

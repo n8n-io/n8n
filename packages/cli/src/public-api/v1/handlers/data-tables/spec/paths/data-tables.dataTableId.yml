@@ -28,7 +28,7 @@ patch:
   tags:
     - DataTable
   summary: Update a data table
-  description: Update a data table's name.
+  description: Rename the table and/or move it to another project.
   operationId: update-data-table
   parameters:
     - $ref: '../schemas/parameters/dataTableId.yml'
@@ -38,8 +38,20 @@ patch:
       application/json:
         schema:
           $ref: '../schemas/updateDataTableRequest.yml'
-        example:
-          name: 'updated-customers'
+        examples:
+          renameOnly:
+            summary: Rename
+            value:
+              name: 'updated-customers'
+          moveOnly:
+            summary: Move to another project
+            value:
+              projectId: 'a1b2c3d4'
+          moveAndRename:
+            summary: Move and rename
+            value:
+              name: 'imported-customers'
+              projectId: 'a1b2c3d4'
   responses:
     '200':
       description: Data table updated successfully

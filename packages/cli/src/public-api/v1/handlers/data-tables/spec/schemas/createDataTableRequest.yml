@@ -24,7 +24,8 @@ properties:
         - type
   projectId:
     type: string
-    description: ID of the project to create the table in. Defaults to the personal project when omitted.
+    description: |
+      ID of the project to create the table in. When omitted, the table is created in the user's personal project.
 required:
   - name
   - columns
