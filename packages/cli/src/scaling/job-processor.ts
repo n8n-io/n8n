@@ -21,6 +21,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 	StructuredChunk,
 	CloseFunction,
+	IDataObjectValue,
 } from 'n8n-workflow';
 import {
 	BINARY_ENCODING,
@@ -50,6 +51,7 @@ import type {
 	RunningJob,
 	SendChunkMessage,
 } from './scaling.types';
+import { GenericValue } from '@n8n/workflow-sdk';
 
 /**
  * Responsible for processing jobs from the queue, i.e. running enqueued executions.
@@ -545,9 +547,10 @@ export class JobProcessor {
 
 				const result = await nodeType.execute.call(context as unknown as IExecuteFunctions);
 
-				const response = (result as INodeExecutionData[][] | undefined)?.[0]?.flatMap(
-					(item: INodeExecutionData) => item.json,
-				);
+				let response: IDataObjectValue[] = [];
+				if (Array.isArray(result)) {
+					response = result?.[0]?.flatMap((item: INodeExecutionData) => item.json);
+				}
 
 				context.addOutputData(NodeConnectionTypes.AiTool, 0, [
 					[{ json: { response } as INodeExecutionData['json'] }],

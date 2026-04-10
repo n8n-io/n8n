@@ -67,7 +67,7 @@ function flushResponse(res: { flush?: () => void }) {
 
 @Service()
 export class WorkflowRunner {
-	private scalingService!: ScalingService;
+	private scalingService: ScalingService;
 
 	constructor(
 		private readonly logger: Logger,
@@ -338,7 +338,7 @@ export class WorkflowRunner {
 
 			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({
 				pushRef: data.pushRef,
-			}) as (type: string, data: IDataObject | IDataObject[]) => void;
+			});
 
 			if (data.executionData !== undefined) {
 				this.logger.debug(`Execution ID ${executionId} had Execution data. Running with payload.`, {
