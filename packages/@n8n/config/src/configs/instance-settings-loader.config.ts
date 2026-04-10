@@ -33,6 +33,10 @@ export class InstanceSettingsLoaderConfig {
 	@Env('N8N_SSO_MANAGED_BY_ENV')
 	ssoManagedByEnv: boolean = false;
 
+	/** User role provisioning mode: disabled, instance_role, or instance_and_project_roles. */
+	@Env('N8N_SSO_USER_ROLE_PROVISIONING')
+	ssoUserRoleProvisioning: string = 'disabled';
+
 	// --- OIDC ---
 
 	@Env('N8N_SSO_OIDC_CLIENT_ID')
@@ -47,10 +51,11 @@ export class InstanceSettingsLoaderConfig {
 	@Env('N8N_SSO_OIDC_LOGIN_ENABLED')
 	oidcLoginEnabled: boolean = false;
 
+	/**  Values can be found in packages/@n8n/api-types/src/dto/oidc/config.dto.ts */
 	@Env('N8N_SSO_OIDC_PROMPT')
 	oidcPrompt: string = 'select_account';
 
-	/** Comma-separated ACR values (split into array before storing). */
+	/** Comma-separated ACR values */
 	@Env('N8N_SSO_OIDC_ACR_VALUES')
 	oidcAcrValues: string = '';
 }

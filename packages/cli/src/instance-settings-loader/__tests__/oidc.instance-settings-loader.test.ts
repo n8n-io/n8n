@@ -19,6 +19,7 @@ describe('OidcInstanceSettingsLoader', () => {
 		oidcLoginEnabled: false,
 		oidcPrompt: 'select_account',
 		oidcAcrValues: '',
+		ssoUserRoleProvisioning: 'disabled',
 	};
 
 	const createLoader = (configOverrides: Partial<InstanceSettingsLoaderConfig> = {}) => {
@@ -30,6 +31,7 @@ describe('OidcInstanceSettingsLoader', () => {
 			oidcLoginEnabled: false,
 			oidcPrompt: 'select_account',
 			oidcAcrValues: '',
+			ssoUserRoleProvisioning: 'disabled',
 			...configOverrides,
 		} as InstanceSettingsLoaderConfig;
 
@@ -139,6 +141,62 @@ describe('OidcInstanceSettingsLoader', () => {
 			(settingsRepository.save.mock.calls[0][0] as { value: string }).value,
 		);
 		expect(savedValue.loginEnabled).toBe(true);
+	});
+
+	it('should throw when ssoUserRoleProvisioning is an invalid value', async () => {
+		const loader = createLoader({ ...validConfig, ssoUserRoleProvisioning: 'invalid' });
+
+		await expect(loader.run()).rejects.toThrow('N8N_SSO_USER_ROLE_PROVISIONING must be one of');
+	});
+
+	it('should write provisioning config with disabled mode', async () => {
+		const loader = createLoader({ ...validConfig, ssoUserRoleProvisioning: 'disabled' });
+
+		await loader.run();
+
+		expect(settingsRepository.upsert).toHaveBeenCalledWith(
+			expect.objectContaining({ key: 'features.provisioning' }),
+			{ conflictPaths: ['key'] },
+		);
+
+		const savedValue = JSON.parse(
+			(settingsRepository.upsert.mock.calls[0][0] as { value: string }).value,
+		);
+		expect(savedValue).toEqual({
+			scopesProvisionInstanceRole: false,
+			scopesProvisionProjectRoles: false,
+		});
+	});
+
+	it('should write provisioning config with instance_role mode', async () => {
+		const loader = createLoader({ ...validConfig, ssoUserRoleProvisioning: 'instance_role' });
+
+		await loader.run();
+
+		const savedValue = JSON.parse(
+			(settingsRepository.upsert.mock.calls[0][0] as { value: string }).value,
+		);
+		expect(savedValue).toEqual({
+			scopesProvisionInstanceRole: true,
+			scopesProvisionProjectRoles: false,
+		});
+	});
+
+	it('should write provisioning config with instance_and_project_roles mode', async () => {
+		const loader = createLoader({
+			...validConfig,
+			ssoUserRoleProvisioning: 'instance_and_project_roles',
+		});
+
+		await loader.run();
+
+		const savedValue = JSON.parse(
+			(settingsRepository.upsert.mock.calls[0][0] as { value: string }).value,
+		);
+		expect(savedValue).toEqual({
+			scopesProvisionInstanceRole: true,
+			scopesProvisionProjectRoles: true,
+		});
 	});
 
 	describe('isConfiguredByEnv', () => {

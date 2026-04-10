@@ -1,3 +1,4 @@
+import { OIDC_PROMPT_VALUES } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
@@ -7,8 +8,11 @@ import { OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { OIDC_PREFERENCES_DB_KEY } from '@/modules/sso-oidc/constants';
+import { PROVISIONING_PREFERENCES_DB_KEY } from '@/modules/provisioning.ee/constants';
 
-const oidcEnvSchema = z
+const PROVISIONING_MODES = ['disabled', 'instance_role', 'instance_and_project_roles'] as const;
+
+const ssoEnvSchema = z
 	.object({
 		oidcClientId: z
 			.string()
@@ -21,35 +25,39 @@ const oidcEnvSchema = z
 			),
 		oidcDiscoveryEndpoint: z.string().url('N8N_SSO_OIDC_DISCOVERY_ENDPOINT must be a valid URL'),
 		oidcLoginEnabled: z.boolean(),
-		oidcPrompt: z.enum(['none', 'login', 'consent', 'select_account', 'create'], {
+		oidcPrompt: z.enum(OIDC_PROMPT_VALUES, {
 			errorMap: () => ({
-				message: 'N8N_SSO_OIDC_PROMPT must be one of: none, login, consent, select_account, create',
+				message: `N8N_SSO_OIDC_PROMPT must be one of: ${OIDC_PROMPT_VALUES.join(', ')}`,
 			}),
 		}),
 		oidcAcrValues: z.string(),
+		ssoUserRoleProvisioning: z.enum(PROVISIONING_MODES, {
+			errorMap: () => ({
+				message: `N8N_SSO_USER_ROLE_PROVISIONING must be one of: ${PROVISIONING_MODES.join(', ')}`,
+			}),
+		}),
 	})
-	.transform(
-		({
-			oidcClientId,
-			oidcClientSecret,
-			oidcDiscoveryEndpoint,
-			oidcLoginEnabled,
-			oidcPrompt,
-			oidcAcrValues,
-		}) => ({
-			clientId: oidcClientId,
-			clientSecret: oidcClientSecret,
-			discoveryEndpoint: oidcDiscoveryEndpoint,
-			loginEnabled: oidcLoginEnabled,
-			prompt: oidcPrompt,
-			authenticationContextClassReference: oidcAcrValues
-				? oidcAcrValues
+	.transform((input) => ({
+		oidc: {
+			clientId: input.oidcClientId,
+			clientSecret: input.oidcClientSecret,
+			discoveryEndpoint: input.oidcDiscoveryEndpoint,
+			loginEnabled: input.oidcLoginEnabled,
+			prompt: input.oidcPrompt,
+			authenticationContextClassReference: input.oidcAcrValues
+				? input.oidcAcrValues
 						.split(',')
 						.map((v) => v.trim())
 						.filter(Boolean)
 				: [],
-		}),
-	);
+		},
+		provisioning: {
+			scopesProvisionInstanceRole:
+				input.ssoUserRoleProvisioning === 'instance_role' ||
+				input.ssoUserRoleProvisioning === 'instance_and_project_roles',
+			scopesProvisionProjectRoles: input.ssoUserRoleProvisioning === 'instance_and_project_roles',
+		},
+	}));
 
 @Service()
 export class OidcInstanceSettingsLoader {
@@ -69,20 +77,31 @@ export class OidcInstanceSettingsLoader {
 	async run(): Promise<'created' | 'skipped'> {
 		if (!this.instanceSettingsLoaderConfig.ssoManagedByEnv) return 'skipped';
 
-		const result = oidcEnvSchema.safeParse(this.instanceSettingsLoaderConfig);
+		const result = ssoEnvSchema.safeParse(this.instanceSettingsLoaderConfig);
 
 		if (!result.success) {
 			throw new OperationalError(result.error.issues[0].message);
 		}
 
+		const { oidc, provisioning } = result.data;
+
 		await this.settingsRepository.save({
 			key: OIDC_PREFERENCES_DB_KEY,
 			value: JSON.stringify({
-				...result.data,
-				clientSecret: this.cipher.encrypt(result.data.clientSecret),
+				...oidc,
+				clientSecret: this.cipher.encrypt(oidc.clientSecret),
 			}),
 			loadOnStartup: true,
 		});
+
+		await this.settingsRepository.upsert(
+			{
+				key: PROVISIONING_PREFERENCES_DB_KEY,
+				value: JSON.stringify(provisioning),
+				loadOnStartup: true,
+			},
+			{ conflictPaths: ['key'] },
+		);
 
 		this.logger.debug('OIDC configuration applied from environment variables');
 
