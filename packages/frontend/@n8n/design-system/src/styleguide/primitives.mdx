@@ -1,0 +1,37 @@
+import { Meta, Source } from '@storybook/addon-docs/blocks';
+
+import PrimitivesColorTable from './components/PrimitivesColorTable.vue';
+import PrimitivesShadowTable from './components/PrimitivesShadowTable.vue';
+import PrimitivesTypeTable from './components/PrimitivesTypeTable.vue';
+
+<Meta title="Styleguide/Primitives" />
+
+# Primitives
+
+Primitives are the core stylistic building blocks of our UI. They can be used directly in components or aliased via tokens (preferred).
+
+## Colours
+
+We have a vast, beautiful color palette out of the box. Prefer using these rather than custom colours (e.g #ff0000). Each colour has 13 steps ranging from lightest (50) to darkest (950).
+
+<PrimitivesColorTable />
+
+### Example
+
+You can use tokens directly in your component CSS like so. We prefer co-locating styles instead of abstacting to a seperate CSS/SCSS file.
+
+```css
+.container {
+	background-color: var(--color--pink-50);
+	color: var(--color--pink-900);
+}
+```
+
+<PrimitivesTypeTable />
+<PrimitivesShadowTable />
+
+```csss
+	.class {
+	background-color:white;
+}
+```
