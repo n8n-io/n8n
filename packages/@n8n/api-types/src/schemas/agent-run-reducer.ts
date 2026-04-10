@@ -34,10 +34,6 @@ export interface AgentNode {
 	subtitle?: string;
 	goal?: string;
 	targetResource?: InstanceAiTargetResource;
-	/** When true, this sub-agent streams inline in the orchestrator thread (no separate child bubble). */
-	inline?: boolean;
-	/** @internal Tracks whether an inline agent has emitted at least one tool call (preamble is over). */
-	_inlineActive?: boolean;
 	/** Transient status message (e.g. "Recalling conversation..."). Cleared when empty. */
 	statusMessage?: string;
 	status: InstanceAiAgentStatus;
@@ -151,20 +147,6 @@ function appendTimelineText(timeline: InstanceAiTimelineEntry[], text: string): 
 	}
 }
 
-/**
- * For inline agents, returns the parent agent ID so events stream into the
- * parent's timeline instead of the child's. For normal agents, returns the
- * agent's own ID.
- */
-function resolveTimelineAgent(state: AgentRunState, agentId: string): string {
-	const agent = state.agentsById[agentId];
-	if (agent?.inline) {
-		const parentId = state.parentByAgentId[agentId];
-		if (parentId) return parentId;
-	}
-	return agentId;
-}
-
 // ---------------------------------------------------------------------------
 // Reducer
 // ---------------------------------------------------------------------------
@@ -216,16 +198,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
 				agent.textContent += event.payload.text;
-				if (agent.inline) {
-					// Inline agents: show intermediate text (between tool calls) but suppress
-					// the preamble (before first tool call). Completion text is trimmed on agent-completed.
-					if (agent._inlineActive) {
-						const timelineOwner = resolveTimelineAgent(state, event.agentId);
-						appendTimelineText(ensureTimeline(state, timelineOwner), event.payload.text);
-					}
-				} else {
-					appendTimelineText(ensureTimeline(state, event.agentId), event.payload.text);
-				}
+				appendTimelineText(ensureTimeline(state, event.agentId), event.payload.text);
 			}
 			break;
 		}
@@ -242,7 +215,6 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			if (!isSafeObjectKey(event.payload.toolCallId)) break;
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
-				if (agent.inline) agent._inlineActive = true;
 				const tc: InstanceAiToolCallState = {
 					toolCallId: event.payload.toolCallId,
 					toolName: event.payload.toolName,
@@ -252,9 +224,8 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					startedAt: new Date().toISOString(),
 				};
 				state.toolCallsById[event.payload.toolCallId] = tc;
-				const timelineOwner = resolveTimelineAgent(state, event.agentId);
-				ensureToolCallIds(state, timelineOwner).push(event.payload.toolCallId);
-				ensureTimeline(state, timelineOwner).push({
+				ensureToolCallIds(state, event.agentId).push(event.payload.toolCallId);
+				ensureTimeline(state, event.agentId).push({
 					type: 'tool-call',
 					toolCallId: event.payload.toolCallId,
 				});
@@ -298,7 +269,6 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					subtitle: event.payload.subtitle,
 					goal: event.payload.goal,
 					targetResource: event.payload.targetResource,
-					inline: event.payload.inline,
 					status: 'active',
 					textContent: '',
 					reasoning: '',
@@ -308,13 +278,10 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				ensureChildren(state, event.agentId); // init empty
 				ensureTimeline(state, event.agentId); // init empty
 				ensureToolCallIds(state, event.agentId); // init empty
-				// Inline agents stream into the parent's timeline — no child entry.
-				if (!event.payload.inline) {
-					ensureTimeline(state, event.payload.parentId).push({
-						type: 'child',
-						agentId: event.agentId,
-					});
-				}
+				ensureTimeline(state, event.payload.parentId).push({
+					type: 'child',
+					agentId: event.agentId,
+				});
 			}
 			break;
 		}
@@ -325,18 +292,6 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				agent.status = event.payload.error ? 'error' : 'completed';
 				agent.result = event.payload.result;
 				agent.error = event.payload.error;
-				// Trim trailing text from the parent timeline when an inline agent
-				// completes — this is the completion summary that would overlap
-				// with the orchestrator's own response.
-				if (agent.inline) {
-					const parentId = state.parentByAgentId[event.agentId];
-					if (parentId) {
-						const parentTimeline = state.timelineByAgentId[parentId];
-						if (parentTimeline?.at(-1)?.type === 'text') {
-							parentTimeline.pop();
-						}
-					}
-				}
 			}
 			// A completed/errored agent can't have tool calls still in-flight.
 			// Clear isLoading so persisted snapshots don't show stale confirmations.
@@ -472,8 +427,8 @@ function buildNodeRecursive(state: AgentRunState, agentId: string): InstanceAiAg
 	}
 
 	const agent = state.agentsById[agentId];
-	const childIds = (state.childrenByAgentId[agentId] ?? []).filter(
-		(childId) => isSafeObjectKey(childId) && !state.agentsById[childId]?.inline,
+	const childIds = (state.childrenByAgentId[agentId] ?? []).filter((childId) =>
+		isSafeObjectKey(childId),
 	);
 	const toolCallIds = (state.toolCallIdsByAgentId[agentId] ?? []).filter((toolCallId) =>
 		isSafeObjectKey(toolCallId),

@@ -31,18 +31,13 @@ export function getLatestBuildResult(node: InstanceAiAgentNode): BuildResult | u
 	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
 		const tc = node.toolCalls[i];
 		if (
-			(tc.toolName === 'build-workflow' ||
-				tc.toolName === 'submit-workflow' ||
-				tc.toolName.endsWith('create_workflow_from_code')) &&
+			(tc.toolName === 'build-workflow' || tc.toolName === 'submit-workflow') &&
 			!tc.isLoading &&
 			tc.result &&
 			typeof tc.result === 'object'
 		) {
 			const result = tc.result as Record<string, unknown>;
-			if (
-				(result.success === true || tc.toolName.endsWith('create_workflow_from_code')) &&
-				typeof result.workflowId === 'string'
-			) {
+			if (result.success === true && typeof result.workflowId === 'string') {
 				return { workflowId: result.workflowId, toolCallId: tc.toolCallId };
 			}
 		}

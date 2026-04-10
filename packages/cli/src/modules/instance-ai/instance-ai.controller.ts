@@ -134,7 +134,6 @@ export class InstanceAiController {
 			threadId,
 			payload.message,
 			payload.researchMode,
-			payload.mcpBuilder,
 			payload.attachments,
 			payload.timeZone,
 			payload.pushRef,

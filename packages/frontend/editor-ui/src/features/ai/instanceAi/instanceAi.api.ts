@@ -16,7 +16,6 @@ export async function postMessage(
 	threadId: string,
 	message: string,
 	researchMode?: boolean,
-	mcpBuilder?: boolean,
 	attachments?: InstanceAiAttachment[],
 	timeZone?: string,
 	pushRef?: string,
@@ -28,7 +27,6 @@ export async function postMessage(
 		{
 			message,
 			...(researchMode ? { researchMode } : {}),
-			...(mcpBuilder ? { mcpBuilder } : {}),
 			...(attachments && attachments.length > 0 ? { attachments } : {}),
 			...(timeZone ? { timeZone } : {}),
 			...(pushRef ? { pushRef } : {}),

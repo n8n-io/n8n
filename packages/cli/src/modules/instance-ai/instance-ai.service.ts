@@ -673,7 +673,6 @@ export class InstanceAiService {
 		threadId: string,
 		message: string,
 		researchMode?: boolean,
-		mcpBuilder?: boolean,
 		attachments?: InstanceAiAttachment[],
 		timeZone?: string,
 		pushRef?: string,
@@ -695,7 +694,6 @@ export class InstanceAiService {
 			message,
 			abortController,
 			researchMode,
-			mcpBuilder,
 			attachments,
 			messageGroupId,
 			timeZone,
@@ -1093,7 +1091,6 @@ export class InstanceAiService {
 		runId: string,
 		abortSignal: AbortSignal,
 		researchMode?: boolean,
-		mcpBuilder?: boolean,
 		messageGroupId?: string,
 		pushRef?: string,
 	) {
@@ -1379,7 +1376,6 @@ export class InstanceAiService {
 			message,
 			abortController,
 			researchMode,
-			true, // mcpBuilder — always use MCP builder
 			undefined,
 			messageGroupId,
 		);
@@ -1440,7 +1436,6 @@ export class InstanceAiService {
 			action.graph.planRunId,
 			createInertAbortSignal(),
 			this.runState.getThreadResearchMode(threadId),
-			true, // mcpBuilder — always use MCP builder
 			action.graph.messageGroupId,
 		);
 		environment.orchestrationContext.tracing = this.getTraceContext(action.graph.planRunId);
@@ -1459,7 +1454,6 @@ export class InstanceAiService {
 		message: string,
 		abortController: AbortController,
 		researchMode?: boolean,
-		mcpBuilder?: boolean,
 		attachments?: InstanceAiAttachment[],
 		messageGroupId?: string,
 		timeZone?: string,
@@ -1502,7 +1496,6 @@ export class InstanceAiService {
 					runId,
 					signal,
 					researchMode,
-					mcpBuilder,
 					messageGroupId,
 					executionPushRef,
 				);

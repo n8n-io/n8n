@@ -163,7 +163,6 @@ export interface StartBuildWorkflowAgentInput {
 	task: string;
 	workflowId?: string;
 	conversationContext?: string;
-	lastUserVisibleMessage?: string;
 	taskId?: string;
 	agentId?: string;
 	plannedTaskId?: string;
@@ -288,7 +287,6 @@ export async function startBuildWorkflowAgentTask(
 			title: 'Building workflow',
 			subtitle: truncateLabel(input.task),
 			goal: input.task,
-			inline: true,
 			targetResource: input.workflowId
 				? { type: 'workflow' as const, id: input.workflowId }
 				: { type: 'workflow' as const },
@@ -312,16 +310,12 @@ export async function startBuildWorkflowAgentTask(
 		? `\n\n[CONVERSATION CONTEXT: ${input.conversationContext}]`
 		: '';
 
-	const handoffCtx = input.lastUserVisibleMessage
-		? `\n\n[HANDOFF: The user just saw this message from the orchestrator: "${input.lastUserVisibleMessage}". Continue naturally from here — do not repeat or rephrase it.]`
-		: '';
-
 	let briefing: string;
 	if (useMcpBuilder) {
 		if (workflowId) {
-			briefing = `${input.task}${conversationCtx}${handoffCtx}\n\n[CONTEXT: Modifying existing workflow ${workflowId}. Use get_workflow_details to see its current state, then use update_workflow to modify it.]${iterationContext ? `\n\n${iterationContext}` : ''}`;
+			briefing = `${input.task}${conversationCtx}\n\n[CONTEXT: Modifying existing workflow ${workflowId}. Use get_workflow_details to see its current state, then use update_workflow to modify it.]${iterationContext ? `\n\n${iterationContext}` : ''}`;
 		} else {
-			briefing = `${input.task}${conversationCtx}${handoffCtx}${iterationContext ? `\n\n${iterationContext}` : ''}`;
+			briefing = `${input.task}${conversationCtx}${iterationContext ? `\n\n${iterationContext}` : ''}`;
 		}
 	} else if (useSandbox) {
 		if (workflowId) {
@@ -739,7 +733,7 @@ export async function startBuildWorkflowAgentTask(
 	});
 
 	return {
-		result: `Workflow build started (task: ${taskId}). Reply with one short sentence — e.g. name what's being built. Do NOT summarize the plan or list details. The builder's progress streams inline to the user — they can see the tool calls happening in real time.`,
+		result: `Workflow build started (task: ${taskId}). Reply with one short sentence — e.g. name what's being built. Do NOT summarize the plan or list details.`,
 		taskId,
 		agentId: subAgentId,
 	};
@@ -762,12 +756,6 @@ export const buildWorkflowAgentInputSchema = z.object({
 		.optional()
 		.describe(
 			'Brief summary of the conversation so far — what was discussed, decisions made, and information gathered (e.g., which credentials are available). The builder uses this to avoid repeating information the user already knows.',
-		),
-	lastUserVisibleMessage: z
-		.string()
-		.optional()
-		.describe(
-			'The last message you wrote to the user before calling this tool. The builder streams inline — this helps it continue naturally without repeating what you just said.',
 		),
 });
 

@@ -41,13 +41,4 @@ export const MCP_BUILDER_AGENT_PROMPT = `You are an expert n8n workflow builder.
 - If a tool call fails with a validation/type error, read the error message carefully and adjust argument types before retrying. For example, if an argument expects a string but you sent a number, wrap the value in quotes.
 - NEVER retry a failed tool call with identical arguments — always change something.
 - If you cannot figure out the correct arguments after 2 attempts, skip that step and move on.
-
-## Inline streaming
-
-Your tool calls and short intermediate messages are streamed directly into the user's conversation — they see your work happening in real time as part of one continuous thread. Because of this:
-
-- Do NOT introduce yourself or restate the task at the start — the user already knows what's being built.
-- Write short connective text between tool calls to keep the stream readable (e.g., "Now validating the code:" or "Testing the workflow:").
-- Do NOT write a summary or conclusion at the end — the orchestrator will handle the wrap-up with the user.
-- Be concise. Report progress, not process.
 `;

@@ -137,12 +137,6 @@ export const agentSpawnedPayloadSchema = z.object({
 	targetResource: agentSpawnedTargetResourceSchema
 		.optional()
 		.describe('Resource this agent works on'),
-	inline: z
-		.boolean()
-		.optional()
-		.describe(
-			'When true, the sub-agent streams inline in the orchestrator thread instead of showing as a separate child agent',
-		),
 });
 
 export const agentCompletedPayloadSchema = z.object({
@@ -561,7 +555,6 @@ export type InstanceAiAttachment = z.infer<typeof instanceAiAttachmentSchema>;
 export class InstanceAiSendMessageRequest extends Z.class({
 	message: z.string().min(1),
 	researchMode: z.boolean().optional(),
-	mcpBuilder: z.boolean().optional(),
 	attachments: z.array(instanceAiAttachmentSchema).optional(),
 	timeZone: TimeZoneSchema,
 	pushRef: z.string().optional(),
