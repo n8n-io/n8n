@@ -128,6 +128,7 @@
       "validator": "13.15.26",
       "zod": "3.25.67",
       "js-yaml": "4.1.1",
+      "yamljs": "-",
       "node-forge": "1.4.0",
       "body-parser": "2.2.1",
       "glob@10": "10.5.0",
