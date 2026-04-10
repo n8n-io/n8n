@@ -18,8 +18,6 @@ export { SchedulingBestPractices } from './guides/scheduling';
 export { ScrapingAndResearchBestPractices } from './guides/scraping-and-research';
 export { TriageBestPractices } from './guides/triage';
 
-import { WorkflowTechnique } from './types';
-import type { WorkflowTechniqueType, BestPracticesDocument } from './types';
 import { ChatbotBestPractices } from './guides/chatbot';
 import { ContentGenerationBestPractices } from './guides/content-generation';
 import { DataAnalysisBestPractices } from './guides/data-analysis';
@@ -36,6 +34,8 @@ import { NotificationBestPractices } from './guides/notification';
 import { SchedulingBestPractices } from './guides/scheduling';
 import { ScrapingAndResearchBestPractices } from './guides/scraping-and-research';
 import { TriageBestPractices } from './guides/triage';
+import type { WorkflowTechniqueType, BestPracticesDocument } from './types';
+import { WorkflowTechnique } from './types';
 
 export const bestPracticesRegistry: Record<
 	WorkflowTechniqueType,
