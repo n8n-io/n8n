@@ -52,9 +52,9 @@ export class EmbedAuthController {
 	}
 
 	private async handleLogin(subjectToken: string, req: AuthlessRequest, res: Response) {
-		const { user, subject, issuer } = await this.tokenExchangeService.embedLogin(subjectToken);
+		const { user, subject, issuer, kid } = await this.tokenExchangeService.embedLogin(subjectToken);
 
-		this.authService.issueCookie(res, user, true, req.browserId, {
+		this.authService.issueCookie(res, user, true, req.browserId, true, {
 			sameSite: 'none',
 			secure: true,
 		});
@@ -62,6 +62,7 @@ export class EmbedAuthController {
 		this.eventService.emit('embed-login', {
 			subject,
 			issuer,
+			kid,
 			clientIp: req.ip ?? 'unknown',
 		});
 

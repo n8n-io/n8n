@@ -26,6 +26,8 @@ interface AuthJwtPayload {
 	browserId?: string;
 	/** This indicates if mfa was used during the creation of this token */
 	usedMfa?: boolean;
+	/** This indicates if the session originated from an embed login (cross-site cookie required) */
+	isEmbed?: boolean;
 }
 
 interface IssuedJWT extends AuthJwtPayload {
@@ -209,6 +211,7 @@ export class AuthService {
 		user: User,
 		usedMfa: boolean,
 		browserId?: string,
+		isEmbed?: boolean,
 		cookieOverrides?: { sameSite?: 'strict' | 'lax' | 'none'; secure?: boolean },
 	) {
 		// TODO: move this check to the login endpoint in AuthController
@@ -218,7 +221,7 @@ export class AuthService {
 			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
-		const token = this.issueJWT(user, usedMfa, browserId);
+		const token = this.issueJWT(user, usedMfa, browserId, isEmbed);
 		const { samesite, secure } = this.globalConfig.auth.cookie;
 		res.cookie(AUTH_COOKIE_NAME, token, {
 			maxAge: this.jwtExpiration * Time.seconds.toMilliseconds,
@@ -228,12 +231,13 @@ export class AuthService {
 		});
 	}
 
-	issueJWT(user: User, usedMfa: boolean = false, browserId?: string) {
+	issueJWT(user: User, usedMfa: boolean = false, browserId?: string, isEmbed?: boolean) {
 		const payload: AuthJwtPayload = {
 			id: user.id,
 			hash: this.createJWTHash(user),
 			browserId: browserId && this.hash(browserId),
 			usedMfa,
+			...(isEmbed && { isEmbed }),
 		};
 		return this.jwtService.sign(payload, {
 			expiresIn: this.jwtExpiration,
@@ -344,7 +348,17 @@ export class AuthService {
 
 		if (jwtPayload.exp * 1000 - Date.now() < this.jwtRefreshTimeout) {
 			this.logger.debug('JWT about to expire. Will be refreshed');
-			this.issueCookie(res, user, jwtPayload.usedMfa ?? false, browserId);
+			const embedCookieOverrides = jwtPayload.isEmbed
+				? ({ sameSite: 'none' as const, secure: true } as const)
+				: undefined;
+			this.issueCookie(
+				res,
+				user,
+				jwtPayload.usedMfa ?? false,
+				browserId,
+				jwtPayload.isEmbed,
+				embedCookieOverrides,
+			);
 		}
 
 		return [user, { usedMfa: jwtPayload.usedMfa ?? false }];

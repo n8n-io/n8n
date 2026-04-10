@@ -766,6 +766,25 @@ describe('AuthService', () => {
 			expect(res.cookie).toHaveBeenCalled();
 		});
 
+		it('should preserve embed cookie attributes when refreshing an embed session', async () => {
+			userRepository.findOne.mockResolvedValue(user);
+			const embedToken = authService.issueJWT(user, false, browserId, true);
+
+			jest.advanceTimersByTime(6 * Time.days.toMilliseconds);
+			await authService.resolveJwt(embedToken, req, res);
+
+			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', expect.any(String), {
+				httpOnly: true,
+				maxAge: 604800000,
+				sameSite: 'none',
+				secure: true,
+			});
+
+			const refreshedToken = res.cookie.mock.calls[0].at(1);
+			const decoded = jwt.decode(refreshedToken) as jwt.JwtPayload;
+			expect(decoded.isEmbed).toBe(true);
+		});
+
 		it('should not refresh the cookie if jwtRefreshTimeoutHours is set to -1', async () => {
 			globalConfig.userManagement.jwtRefreshTimeoutHours = -1;
 

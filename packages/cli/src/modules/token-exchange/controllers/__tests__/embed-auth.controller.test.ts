@@ -36,6 +36,7 @@ const embedLoginResult = {
 	user: mockUser,
 	subject: 'ext-sub-1',
 	issuer: 'https://issuer.example.com',
+	kid: 'key-id-1',
 };
 
 describe('EmbedAuthController', () => {
@@ -81,13 +82,21 @@ describe('EmbedAuthController', () => {
 			await controller.getLogin(req, res, query);
 
 			expect(tokenExchangeService.embedLogin).toHaveBeenCalledWith('subject-token');
-			expect(authService.issueCookie).toHaveBeenCalledWith(res, mockUser, true, 'browser-id-123', {
-				sameSite: 'none',
-				secure: true,
-			});
+			expect(authService.issueCookie).toHaveBeenCalledWith(
+				res,
+				mockUser,
+				true,
+				'browser-id-123',
+				true,
+				{
+					sameSite: 'none',
+					secure: true,
+				},
+			);
 			expect(eventService.emit).toHaveBeenCalledWith('embed-login', {
 				subject: 'ext-sub-1',
 				issuer: 'https://issuer.example.com',
+				kid: 'key-id-1',
 				clientIp: '192.168.1.1',
 			});
 			expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/');
@@ -104,13 +113,21 @@ describe('EmbedAuthController', () => {
 			await controller.postLogin(req, res, body);
 
 			expect(tokenExchangeService.embedLogin).toHaveBeenCalledWith('subject-token');
-			expect(authService.issueCookie).toHaveBeenCalledWith(res, mockUser, true, 'browser-id-456', {
-				sameSite: 'none',
-				secure: true,
-			});
+			expect(authService.issueCookie).toHaveBeenCalledWith(
+				res,
+				mockUser,
+				true,
+				'browser-id-456',
+				true,
+				{
+					sameSite: 'none',
+					secure: true,
+				},
+			);
 			expect(eventService.emit).toHaveBeenCalledWith('embed-login', {
 				subject: 'ext-sub-1',
 				issuer: 'https://issuer.example.com',
+				kid: 'key-id-1',
 				clientIp: '10.0.0.1',
 			});
 			expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/');

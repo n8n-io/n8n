@@ -102,7 +102,9 @@ export class TokenExchangeService {
 		return { claims, resolvedKey };
 	}
 
-	async embedLogin(subjectToken: string): Promise<{ user: User; subject: string; issuer: string }> {
+	async embedLogin(
+		subjectToken: string,
+	): Promise<{ user: User; subject: string; issuer: string; kid: string }> {
 		const { claims, resolvedKey } = await this.verifyToken(subjectToken, {
 			maxLifetimeSeconds: MAX_TOKEN_LIFETIME_SECONDS,
 		});
@@ -110,6 +112,6 @@ export class TokenExchangeService {
 			kid: resolvedKey.kid,
 			issuer: resolvedKey.issuer,
 		});
-		return { user, subject: claims.sub, issuer: resolvedKey.issuer };
+		return { user, subject: claims.sub, issuer: resolvedKey.issuer, kid: resolvedKey.kid };
 	}
 }
