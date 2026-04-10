@@ -39,6 +39,8 @@ export const domainGatingResumeSchema = z.object({
 
 export interface DomainGatingCheck {
 	allowed: boolean;
+	/** When true, the action is blocked by admin — no approval prompt, just denied. */
+	blocked?: boolean;
 	/** When not allowed, the tool should pass this to `suspend()`. */
 	suspendPayload?: z.infer<typeof domainGatingSuspendSchema>;
 }
@@ -54,6 +56,11 @@ export function checkDomainAccess(options: {
 	runId?: string;
 }): DomainGatingCheck {
 	const { url, tracker, permissionMode, runId } = options;
+
+	// Permission set to blocked → deny immediately, no approval prompt
+	if (permissionMode === 'blocked') {
+		return { allowed: false, blocked: true };
+	}
 
 	// Permission set to always_allow → skip gating entirely
 	if (permissionMode === 'always_allow') {

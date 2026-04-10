@@ -1,0 +1,28 @@
+{
+	"prompt": "Every hour, check the current weather for London, New York, and Tokyo using the OpenWeatherMap API (GET https://api.openweathermap.org/data/2.5/weather?q={city}&units=metric&appid=YOUR_API_KEY). Use 3 separate HTTP Request nodes, one per city. If any city has a temperature above 30°C, send a Telegram alert to chat ID -1001234567890 listing the hot cities. Log all readings to an Airtable table with columns: city, temperature, humidity, timestamp. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"complexity": "complex",
+	"tags": [
+		"build",
+		"schedule",
+		"http-request",
+		"telegram",
+		"airtable",
+		"conditional",
+		"multi-request"
+	],
+	"triggerType": "schedule",
+	"scenarios": [
+		{
+			"name": "happy-path",
+			"description": "All 3 cities return weather data, one is above 30°C",
+			"dataSetup": "London returns: temp=18.5, humidity=72. New York returns: temp=32.1, humidity=65. Tokyo returns: temp=28.3, humidity=80. The Telegram node returns a success response. The Airtable node returns success for each row created.",
+			"successCriteria": "The workflow executes without errors. All 3 weather API calls succeed. The Telegram alert is sent mentioning New York (32.1°C). All 3 readings are logged to Airtable with city, temperature, humidity, and timestamp."
+		},
+		{
+			"name": "no-alerts",
+			"description": "All cities are below 30°C — no alert needed",
+			"dataSetup": "London returns: temp=15.2, humidity=68. New York returns: temp=22.7, humidity=55. Tokyo returns: temp=19.8, humidity=75. The Airtable node returns success for each row created.",
+			"successCriteria": "The workflow executes without errors. No Telegram alert is sent (all temps below 30°C). All 3 readings are still logged to Airtable."
+		}
+	]
+}

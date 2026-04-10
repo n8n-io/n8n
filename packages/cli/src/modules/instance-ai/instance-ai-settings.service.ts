@@ -15,8 +15,10 @@ import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
 import type { ModelConfig } from '@n8n/instance-ai';
 import { jsonParse } from 'n8n-workflow';
 
+import { AiService } from '@/services/ai.service';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 
 const ADMIN_SETTINGS_KEY = 'instanceAi.settings';
 const USER_PREFERENCES_KEY_PREFIX = 'instanceAi.preferences.';
@@ -56,6 +58,7 @@ const SERVICE_CREDENTIAL_TYPES = [...SANDBOX_CREDENTIAL_TYPES, ...SEARCH_CREDENT
 
 /** Admin settings stored in DB under ADMIN_SETTINGS_KEY. */
 interface PersistedAdminSettings {
+	enabled?: boolean;
 	lastMessages?: number;
 	embedderModel?: string;
 	semanticRecallTopK?: number;
@@ -84,6 +87,9 @@ interface PersistedUserPreferences {
 export class InstanceAiSettingsService {
 	private readonly config: InstanceAiConfig;
 
+	/** Whether n8n Agent is enabled for this instance. */
+	private enabled = true;
+
 	/** Per-action HITL permission overrides. */
 	private permissions: InstanceAiPermissions = { ...DEFAULT_INSTANCE_AI_PERMISSIONS };
 
@@ -100,10 +106,16 @@ export class InstanceAiSettingsService {
 	constructor(
 		globalConfig: GlobalConfig,
 		private readonly settingsRepository: SettingsRepository,
+		private readonly aiService: AiService,
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinderService: CredentialsFinderService,
 	) {
 		this.config = globalConfig.instanceAi;
+	}
+
+	/** Whether the AI service proxy is active (model, search, sandbox managed externally). */
+	isProxyEnabled(): boolean {
+		return this.aiService.isProxyEnabled();
 	}
 
 	/** Load persisted settings from DB and apply to the singleton config. Call on module init. */
@@ -122,6 +134,7 @@ export class InstanceAiSettingsService {
 	getAdminSettings(): InstanceAiAdminSettingsResponse {
 		const c = this.config;
 		return {
+			enabled: this.enabled,
 			lastMessages: c.lastMessages,
 			embedderModel: c.embedderModel,
 			semanticRecallTopK: c.semanticRecallTopK,
@@ -143,7 +156,11 @@ export class InstanceAiSettingsService {
 	async updateAdminSettings(
 		update: InstanceAiAdminSettingsUpdateRequest,
 	): Promise<InstanceAiAdminSettingsResponse> {
+		if (this.aiService.isProxyEnabled()) {
+			this.rejectProxyManagedFields(update, InstanceAiSettingsService.PROXY_MANAGED_ADMIN_FIELDS);
+		}
 		const c = this.config;
+		if (update.enabled !== undefined) this.enabled = update.enabled;
 		if (update.lastMessages !== undefined) c.lastMessages = update.lastMessages;
 		if (update.embedderModel !== undefined) c.embedderModel = update.embedderModel;
 		if (update.semanticRecallTopK !== undefined) c.semanticRecallTopK = update.semanticRecallTopK;
@@ -202,6 +219,12 @@ export class InstanceAiSettingsService {
 		user: User,
 		update: InstanceAiUserPreferencesUpdateRequest,
 	): Promise<InstanceAiUserPreferencesResponse> {
+		if (this.aiService.isProxyEnabled()) {
+			this.rejectProxyManagedFields(
+				update,
+				InstanceAiSettingsService.PROXY_MANAGED_PREFERENCE_FIELDS,
+			);
+		}
 		const prefs = await this.loadUserPreferences(user.id);
 		if (update.credentialId !== undefined) prefs.credentialId = update.credentialId;
 		if (update.modelName !== undefined) prefs.modelName = update.modelName;
@@ -216,6 +239,7 @@ export class InstanceAiSettingsService {
 
 	/** List credentials the user can access that are usable as LLM providers. */
 	async listModelCredentials(user: User): Promise<InstanceAiModelCredential[]> {
+		if (this.aiService.isProxyEnabled()) return [];
 		const allCredentials = await this.credentialsFinderService.findCredentialsForUser(user, [
 			'credential:read',
 		]);
@@ -231,6 +255,7 @@ export class InstanceAiSettingsService {
 
 	/** List credentials the user can access that are usable as sandbox/search services. */
 	async listServiceCredentials(user: User): Promise<InstanceAiModelCredential[]> {
+		if (this.aiService.isProxyEnabled()) return [];
 		const allCredentials = await this.credentialsFinderService.findCredentialsForUser(user, [
 			'credential:read',
 		]);
@@ -342,6 +367,11 @@ export class InstanceAiSettingsService {
 		return prefs?.localGatewayDisabled ?? false;
 	}
 
+	/** Whether the n8n Agent is enabled by the admin. */
+	isAgentEnabled(): boolean {
+		return this.enabled;
+	}
+
 	/** Whether the local gateway is disabled globally by the admin. */
 	isLocalGatewayDisabled(): boolean {
 		return this.config.localGatewayDisabled;
@@ -398,6 +428,34 @@ export class InstanceAiSettingsService {
 
 	// ── Private helpers ───────────────────────────────────────────────────
 
+	/** Admin fields managed by the AI service proxy — not user-editable when proxy is active. */
+	private static readonly PROXY_MANAGED_ADMIN_FIELDS: readonly string[] = [
+		'sandboxEnabled',
+		'sandboxProvider',
+		'sandboxImage',
+		'sandboxTimeout',
+		'daytonaCredentialId',
+		'searchCredentialId',
+	];
+
+	/** User preference fields managed by the AI service proxy. */
+	private static readonly PROXY_MANAGED_PREFERENCE_FIELDS: readonly string[] = [
+		'credentialId',
+		'modelName',
+	];
+
+	private rejectProxyManagedFields(
+		update: Record<string, unknown>,
+		managedFields: readonly string[],
+	): void {
+		const present = managedFields.filter((key) => key in update && update[key] !== undefined);
+		if (present.length > 0) {
+			throw new UnprocessableRequestError(
+				`Cannot update proxy-managed fields: ${present.join(', ')}`,
+			);
+		}
+	}
+
 	private envVarModelConfig(): ModelConfig {
 		const { model, modelUrl, modelApiKey } = this.config;
 		const id: `${string}/${string}` = model.includes('/')
@@ -422,6 +480,7 @@ export class InstanceAiSettingsService {
 
 	private applyAdminSettings(persisted: PersistedAdminSettings): void {
 		const c = this.config;
+		if (persisted.enabled !== undefined) this.enabled = persisted.enabled;
 		if (persisted.lastMessages !== undefined) c.lastMessages = persisted.lastMessages;
 		if (persisted.embedderModel !== undefined) c.embedderModel = persisted.embedderModel;
 		if (persisted.semanticRecallTopK !== undefined)
@@ -466,6 +525,7 @@ export class InstanceAiSettingsService {
 	private async persistAdminSettings(): Promise<void> {
 		const c = this.config;
 		const value: PersistedAdminSettings = {
+			enabled: this.enabled,
 			lastMessages: c.lastMessages,
 			embedderModel: c.embedderModel,
 			semanticRecallTopK: c.semanticRecallTopK,

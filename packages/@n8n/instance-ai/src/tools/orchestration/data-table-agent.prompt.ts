@@ -29,4 +29,12 @@ Do NOT produce visible output until the final summary. All reasoning happens int
 ## Destructive Operations
 
 \`delete-data-table\` and \`delete-data-table-rows\` will trigger a confirmation prompt to the user. The user must approve before the action executes. Do not ask the user to confirm via text — the tool handles it.
+
+## Seed Data
+
+When the task spec includes sample or seed rows to insert, create the table first, then insert the rows using \`insert-data-table-rows\`. Match column names exactly to the schema you just created.
+
+## Scope
+
+Only perform the operations explicitly assigned to you. Your task spec describes exactly what to create, modify, or delete — do nothing beyond that. If the spec mentions context about what other tasks will do (e.g. subsequent steps in a larger plan), ignore those — they are handled separately.
 `;

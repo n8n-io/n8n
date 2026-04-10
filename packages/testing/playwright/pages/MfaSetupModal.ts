@@ -7,16 +7,16 @@ import { BasePage } from './BasePage';
  * Page object for the MFA setup modal that appears when enabling two-factor authentication.
  */
 export class MfaSetupModal extends BasePage {
-	getModalContainer(): Locator {
+	get container(): Locator {
 		return this.page.getByTestId('mfaSetup-modal');
 	}
 
 	getTokenInput(): Locator {
-		return this.page.getByTestId('mfa-token-input');
+		return this.container.getByTestId('mfa-token-input');
 	}
 
 	getDownloadRecoveryCodesButton(): Locator {
-		return this.page.getByTestId('mfa-recovery-codes-button');
+		return this.container.getByTestId('mfa-recovery-codes-button');
 	}
 
 	async fillToken(token: string): Promise<void> {
@@ -32,13 +32,13 @@ export class MfaSetupModal extends BasePage {
 	}
 
 	async clickSave(): Promise<void> {
-		await this.getModalContainer().getByTestId('mfa-save-button').click();
+		await this.container.getByTestId('mfa-save-button').click();
 	}
 
 	/**
 	 * Wait for the MFA setup modal to be hidden from view
 	 */
 	async waitForHidden(): Promise<void> {
-		await expect(this.getModalContainer()).toBeHidden();
+		await expect(this.container).toBeHidden();
 	}
 }
