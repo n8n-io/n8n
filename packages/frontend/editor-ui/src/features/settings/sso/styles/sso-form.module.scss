@@ -65,6 +65,7 @@
 	border-top: none;
 	border-top-left-radius: 0;
 	border-top-right-radius: 0;
+	padding-top: 0;
 
 	> :first-child {
 		border-top: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
