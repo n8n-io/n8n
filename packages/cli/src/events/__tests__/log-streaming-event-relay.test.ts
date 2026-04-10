@@ -1,7 +1,7 @@
 import { GLOBAL_OWNER_ROLE, type IWorkflowDb } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
-import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
+import type { INode, IRun, IWorkflowBase, IWorkflowExecutionDataProcess } from 'n8n-workflow';
 
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
@@ -385,6 +385,41 @@ describe('LogStreamingEventRelay', () => {
 					workflowName: 'Test Workflow',
 					projectId: 'proj-123',
 					projectName: 'Test Project',
+				},
+			});
+		});
+
+		it('should log on `workflow-pre-execute` with IWorkflowExecutionDataProcess data', () => {
+			const executionData = {
+				executionData: undefined,
+				executionMode: 'manual' as const,
+				userId: 'user-abc',
+				projectId: 'proj-from-data',
+				projectName: 'Data Project',
+				workflowData: mock<IWorkflowBase>({ id: 'wf303', name: 'Data Workflow' }),
+			} as unknown as IWorkflowExecutionDataProcess;
+
+			const event: RelayEventMap['workflow-pre-execute'] = {
+				executionId: 'exec456',
+				data: executionData,
+				mode: 'manual',
+				projectId: 'proj-fallback',
+				projectName: 'Fallback Project',
+			};
+
+			eventService.emit('workflow-pre-execute', event);
+
+			expect(eventBus.sendWorkflowEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.workflow.started',
+				payload: {
+					executionId: 'exec456',
+					userId: 'user-abc',
+					workflowId: 'wf303',
+					isManual: true,
+					mode: 'manual',
+					workflowName: 'Data Workflow',
+					projectId: 'proj-from-data',
+					projectName: 'Data Project',
 				},
 			});
 		});
