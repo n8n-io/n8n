@@ -91,9 +91,10 @@ export function createDeepLazyProxy(
 		callFunctionAtPath: any;
 	},
 ): any {
-	const getValueAtPath = callbacks?.getValueAtPath ?? globalThis.__getValueAtPath;
-	const getArrayElement = callbacks?.getArrayElement ?? globalThis.__getArrayElement;
-	const callFunctionAtPath = callbacks?.callFunctionAtPath ?? globalThis.__callFunctionAtPath;
+	if (!callbacks) {
+		throw new Error('createDeepLazyProxy requires callbacks parameter');
+	}
+	const { getValueAtPath, getArrayElement, callFunctionAtPath } = callbacks;
 	// Cache for keys fetched from the bridge (root proxies without knownKeys).
 	// Shared between ownKeys and getOwnPropertyDescriptor for consistency.
 	let fetchedKeys: string[] | undefined;

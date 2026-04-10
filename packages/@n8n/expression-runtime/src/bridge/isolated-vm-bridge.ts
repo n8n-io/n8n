@@ -154,7 +154,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * - DateTime, extend, extendOptional (expression engine globals)
 	 * - SafeObject and SafeError wrappers
 	 * - createDeepLazyProxy function
-	 * - __data object initialization
+	 * - buildContext function
 	 *
 	 * @private
 	 * @throws {Error} If context not initialized or bundle loading fails
@@ -169,7 +169,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			const runtimeBundle = await readRuntimeBundle();
 
 			// Evaluate bundle in isolate context
-			// This makes all exported globals available (DateTime, extend, extendOptional, SafeObject, SafeError, createDeepLazyProxy, resetDataProxies, __data)
+			// This makes all exported globals available (DateTime, extend, extendOptional, SafeObject, SafeError, createDeepLazyProxy, buildContext)
 			await this.context.eval(runtimeBundle);
 
 			this.logger.info('[IsolatedVmBridge] Runtime bundle loaded');
@@ -208,15 +208,14 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		try {
 			// Verify proxy system components loaded correctly
 			const hasProxyCreator = await this.context.eval('typeof createDeepLazyProxy !== "undefined"');
-			const hasData = await this.context.eval('typeof __data !== "undefined"');
 			const hasSafeObject = await this.context.eval('typeof SafeObject !== "undefined"');
 			const hasSafeError = await this.context.eval('typeof SafeError !== "undefined"');
 			const hasBuildContext = await this.context.eval('typeof buildContext !== "undefined"');
 
-			if (!hasProxyCreator || !hasData || !hasSafeObject || !hasSafeError || !hasBuildContext) {
+			if (!hasProxyCreator || !hasSafeObject || !hasSafeError || !hasBuildContext) {
 				throw new Error(
 					`Proxy system verification failed: ` +
-						`createDeepLazyProxy=${hasProxyCreator}, __data=${hasData}, ` +
+						`createDeepLazyProxy=${hasProxyCreator}, ` +
 						`SafeObject=${hasSafeObject}, SafeError=${hasSafeError}, ` +
 						`buildContext=${hasBuildContext}`,
 				);
