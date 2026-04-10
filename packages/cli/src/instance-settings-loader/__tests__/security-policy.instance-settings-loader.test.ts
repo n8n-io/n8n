@@ -18,10 +18,10 @@ describe('SecurityPolicyInstanceSettingsLoader', () => {
 
 	const createLoader = (configOverrides: Partial<InstanceSettingsLoaderConfig> = {}) => {
 		const config = {
-			securityPolicyOverride: false,
-			securityPolicyMfaEnforced: false,
-			securityPolicyPersonalSpacePublishing: true,
-			securityPolicyPersonalSpaceSharing: true,
+			securityPolicyManagedByEnv: false,
+			mfaEnforcedEnabled: false,
+			personalSpacePublishingEnabled: true,
+			personalSpaceSharingEnabled: true,
 			...configOverrides,
 		} as InstanceSettingsLoaderConfig;
 
@@ -38,7 +38,7 @@ describe('SecurityPolicyInstanceSettingsLoader', () => {
 		logger.scoped.mockReturnThis();
 	});
 
-	describe('when N8N_SECURITY_POLICY_OVERRIDE is false', () => {
+	describe('when N8N_SECURITY_POLICY_MANAGED_BY_ENV is false', () => {
 		it('should skip when no security env vars deviate from defaults', async () => {
 			const loader = createLoader();
 
@@ -50,48 +50,48 @@ describe('SecurityPolicyInstanceSettingsLoader', () => {
 			expect(logger.warn).not.toHaveBeenCalled();
 		});
 
-		it('should skip and warn when securityPolicyMfaEnforced is true', async () => {
-			const loader = createLoader({ securityPolicyMfaEnforced: true });
+		it('should skip and warn when mfaEnforcedEnabled is true', async () => {
+			const loader = createLoader({ mfaEnforcedEnabled: true });
 
 			const result = await loader.run();
 
 			expect(result).toBe('skipped');
 			expect(mfaService.enforceMFA).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('N8N_SECURITY_POLICY_OVERRIDE is not enabled'),
+				expect.stringContaining('N8N_SECURITY_POLICY_MANAGED_BY_ENV is not enabled'),
 			);
 		});
 
-		it('should skip and warn when securityPolicyPersonalSpacePublishing is false', async () => {
-			const loader = createLoader({ securityPolicyPersonalSpacePublishing: false });
+		it('should skip and warn when personalSpacePublishingEnabled is false', async () => {
+			const loader = createLoader({ personalSpacePublishingEnabled: false });
 
 			const result = await loader.run();
 
 			expect(result).toBe('skipped');
 			expect(securitySettingsService.setPersonalSpaceSetting).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('N8N_SECURITY_POLICY_OVERRIDE is not enabled'),
+				expect.stringContaining('N8N_SECURITY_POLICY_MANAGED_BY_ENV is not enabled'),
 			);
 		});
 
-		it('should skip and warn when securityPolicyPersonalSpaceSharing is false', async () => {
-			const loader = createLoader({ securityPolicyPersonalSpaceSharing: false });
+		it('should skip and warn when personalSpaceSharingEnabled is false', async () => {
+			const loader = createLoader({ personalSpaceSharingEnabled: false });
 
 			const result = await loader.run();
 
 			expect(result).toBe('skipped');
 			expect(securitySettingsService.setPersonalSpaceSetting).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('N8N_SECURITY_POLICY_OVERRIDE is not enabled'),
+				expect.stringContaining('N8N_SECURITY_POLICY_MANAGED_BY_ENV is not enabled'),
 			);
 		});
 	});
 
-	describe('when N8N_SECURITY_POLICY_OVERRIDE is true', () => {
-		it('should enforce MFA when securityPolicyMfaEnforced is true', async () => {
+	describe('when N8N_SECURITY_POLICY_MANAGED_BY_ENV is true', () => {
+		it('should enforce MFA when mfaEnforcedEnabled is true', async () => {
 			const loader = createLoader({
-				securityPolicyOverride: true,
-				securityPolicyMfaEnforced: true,
+				securityPolicyManagedByEnv: true,
+				mfaEnforcedEnabled: true,
 			});
 
 			const result = await loader.run();
@@ -100,10 +100,10 @@ describe('SecurityPolicyInstanceSettingsLoader', () => {
 			expect(mfaService.enforceMFA).toHaveBeenCalledWith(true);
 		});
 
-		it('should disable MFA enforcement when securityPolicyMfaEnforced is false', async () => {
+		it('should disable MFA enforcement when mfaEnforcedEnabled is false', async () => {
 			const loader = createLoader({
-				securityPolicyOverride: true,
-				securityPolicyMfaEnforced: false,
+				securityPolicyManagedByEnv: true,
+				mfaEnforcedEnabled: false,
 			});
 
 			const result = await loader.run();
@@ -112,10 +112,10 @@ describe('SecurityPolicyInstanceSettingsLoader', () => {
 			expect(mfaService.enforceMFA).toHaveBeenCalledWith(false);
 		});
 
-		it('should enable personal space publishing when securityPolicyPersonalSpacePublishing is true', async () => {
+		it('should enable personal space publishing when personalSpacePublishingEnabled is true', async () => {
 			const loader = createLoader({
-				securityPolicyOverride: true,
-				securityPolicyPersonalSpacePublishing: true,
+				securityPolicyManagedByEnv: true,
+				personalSpacePublishingEnabled: true,
 			});
 
 			const result = await loader.run();
@@ -127,10 +127,10 @@ describe('SecurityPolicyInstanceSettingsLoader', () => {
 			);
 		});
 
-		it('should disable personal space publishing when securityPolicyPersonalSpacePublishing is false', async () => {
+		it('should disable personal space publishing when personalSpacePublishingEnabled is false', async () => {
 			const loader = createLoader({
-				securityPolicyOverride: true,
-				securityPolicyPersonalSpacePublishing: false,
+				securityPolicyManagedByEnv: true,
+				personalSpacePublishingEnabled: false,
 			});
 
 			const result = await loader.run();
@@ -142,10 +142,10 @@ describe('SecurityPolicyInstanceSettingsLoader', () => {
 			);
 		});
 
-		it('should enable personal space sharing when securityPolicyPersonalSpaceSharing is true', async () => {
+		it('should enable personal space sharing when personalSpaceSharingEnabled is true', async () => {
 			const loader = createLoader({
-				securityPolicyOverride: true,
-				securityPolicyPersonalSpaceSharing: true,
+				securityPolicyManagedByEnv: true,
+				personalSpaceSharingEnabled: true,
 			});
 
 			const result = await loader.run();
@@ -157,10 +157,10 @@ describe('SecurityPolicyInstanceSettingsLoader', () => {
 			);
 		});
 
-		it('should disable personal space sharing when securityPolicyPersonalSpaceSharing is false', async () => {
+		it('should disable personal space sharing when personalSpaceSharingEnabled is false', async () => {
 			const loader = createLoader({
-				securityPolicyOverride: true,
-				securityPolicyPersonalSpaceSharing: false,
+				securityPolicyManagedByEnv: true,
+				personalSpaceSharingEnabled: false,
 			});
 
 			const result = await loader.run();
@@ -173,21 +173,21 @@ describe('SecurityPolicyInstanceSettingsLoader', () => {
 		});
 
 		it('should log info message about override being enabled', async () => {
-			const loader = createLoader({ securityPolicyOverride: true });
+			const loader = createLoader({ securityPolicyManagedByEnv: true });
 
 			await loader.run();
 
 			expect(logger.info).toHaveBeenCalledWith(
-				expect.stringContaining('N8N_SECURITY_POLICY_OVERRIDE is enabled'),
+				expect.stringContaining('N8N_SECURITY_POLICY_MANAGED_BY_ENV is enabled'),
 			);
 		});
 
 		it('should apply all settings together', async () => {
 			const loader = createLoader({
-				securityPolicyOverride: true,
-				securityPolicyMfaEnforced: true,
-				securityPolicyPersonalSpacePublishing: false,
-				securityPolicyPersonalSpaceSharing: false,
+				securityPolicyManagedByEnv: true,
+				mfaEnforcedEnabled: true,
+				personalSpacePublishingEnabled: false,
+				personalSpaceSharingEnabled: false,
 			});
 
 			const result = await loader.run();

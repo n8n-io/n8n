@@ -22,37 +22,35 @@ export class SecurityPolicyInstanceSettingsLoader {
 
 	async run(): Promise<'created' | 'skipped'> {
 		const {
-			securityPolicyOverride,
-			securityPolicyMfaEnforced,
-			securityPolicyPersonalSpacePublishing,
-			securityPolicyPersonalSpaceSharing,
+			securityPolicyManagedByEnv,
+			mfaEnforcedEnabled,
+			personalSpacePublishingEnabled,
+			personalSpaceSharingEnabled,
 		} = this.instanceSettingsLoaderConfig;
 
-		if (!securityPolicyOverride) {
-			if (
-				securityPolicyMfaEnforced ||
-				!securityPolicyPersonalSpacePublishing ||
-				!securityPolicyPersonalSpaceSharing
-			) {
+		if (!securityPolicyManagedByEnv) {
+			if (mfaEnforcedEnabled || !personalSpacePublishingEnabled || !personalSpaceSharingEnabled) {
 				this.logger.warn(
-					'Security policy env vars are set but N8N_SECURITY_POLICY_OVERRIDE is not enabled — ignoring security policy env vars',
+					'Security policy env vars are set but N8N_SECURITY_POLICY_MANAGED_BY_ENV is not enabled — ignoring security policy env vars',
 				);
 			}
 			return 'skipped';
 		}
 
-		this.logger.info('N8N_SECURITY_POLICY_OVERRIDE is enabled — applying security policy env vars');
+		this.logger.info(
+			'N8N_SECURITY_POLICY_MANAGED_BY_ENV is enabled — applying security policy env vars',
+		);
 
-		await this.mfaService.enforceMFA(securityPolicyMfaEnforced);
+		await this.mfaService.enforceMFA(mfaEnforcedEnabled);
 
 		await this.securitySettingsService.setPersonalSpaceSetting(
 			PERSONAL_SPACE_PUBLISHING_SETTING,
-			securityPolicyPersonalSpacePublishing,
+			personalSpacePublishingEnabled,
 		);
 
 		await this.securitySettingsService.setPersonalSpaceSetting(
 			PERSONAL_SPACE_SHARING_SETTING,
-			securityPolicyPersonalSpaceSharing,
+			personalSpaceSharingEnabled,
 		);
 
 		return 'created';
