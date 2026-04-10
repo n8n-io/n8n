@@ -4,6 +4,7 @@ import { extend, extendOptional } from '../extensions/extend';
 
 import { SafeObject, SafeError, ExpressionError } from './safe-globals';
 import { createDeepLazyProxy } from './lazy-proxy';
+import { buildContext } from './context';
 import { resetDataProxies } from './reset';
 import { __prepareForTransfer } from './serialize';
 
@@ -23,6 +24,14 @@ declare global {
 
 		// Reset function (Step 3)
 		var resetDataProxies: () => void;
+
+		// Context builder (closure-scoped alternative to resetDataProxies)
+		var buildContext: (
+			getValueAtPath: any,
+			getArrayElement: any,
+			callFunctionAtPath: any,
+			timezone?: string,
+		) => Record<string, unknown>;
 
 		// Safe wrappers
 		var SafeObject: typeof Object;
@@ -83,6 +92,7 @@ globalThis.SafeError = SafeError;
 (globalThis as any).ExpressionError = ExpressionError;
 
 globalThis.createDeepLazyProxy = createDeepLazyProxy;
+globalThis.buildContext = buildContext;
 globalThis.resetDataProxies = resetDataProxies;
 globalThis.__prepareForTransfer = __prepareForTransfer;
 
