@@ -18,11 +18,6 @@ import {
 import { Container, Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { OperationalError, UserError } from 'n8n-workflow';
-import {
-	setSchemaBaseDirs,
-	validateNodeConfig,
-	type SchemaValidationResult,
-} from '@n8n/workflow-sdk';
 import { ActiveExecutions } from '@/active-executions';
 import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -537,9 +532,9 @@ export class AgentsService {
 	 * Returns `{ valid: true, config }` on success, or `{ valid: false, error }`
 	 * with a human-readable message on failure.
 	 */
-	validateConfig(
+	async validateConfig(
 		raw: unknown,
-	): { valid: true; config: AgentJsonConfig } | { valid: false; error: string } {
+	): Promise<{ valid: true; config: AgentJsonConfig } | { valid: false; error: string }> {
 		const parsed = AgentJsonConfigSchema.safeParse(raw);
 		if (!parsed.success) {
 			return { valid: false, error: parsed.error.message };
@@ -547,7 +542,7 @@ export class AgentsService {
 
 		const config = parsed.data;
 
-		const nodeError = this.validateNodeToolConfigs(config);
+		const nodeError = await this.validateNodeToolConfigs(config);
 		if (nodeError) {
 			return { valid: false, error: nodeError };
 		}
@@ -566,7 +561,7 @@ export class AgentsService {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
 
-		const result = this.validateConfig(config);
+		const result = await this.validateConfig(config);
 		if (!result.valid) {
 			throw new UserError(`Invalid agent config: ${result.error}`);
 		}
@@ -671,12 +666,14 @@ export class AgentsService {
 	 *
 	 * @returns A formatted error string if any node config is invalid, or null if all pass.
 	 */
-	private validateNodeToolConfigs(config: AgentJsonConfig): string | null {
+	private async validateNodeToolConfigs(config: AgentJsonConfig): Promise<string | null> {
 		const nodeTools = (config.tools ?? []).filter(
 			(t): t is Extract<AgentJsonToolConfig, { type: 'node' }> => t.type === 'node',
 		);
 
 		if (nodeTools.length === 0) return null;
+
+		const { setSchemaBaseDirs, validateNodeConfig } = await import('@n8n/workflow-sdk');
 
 		const dirs = resolveBuiltinNodeDefinitionDirs();
 		if (dirs.length > 0) {
@@ -690,7 +687,7 @@ export class AgentsService {
 			const nodeTypeVersion: number = tool.node.nodeTypeVersion;
 			const nodeParameters = tool.node.nodeParameters ?? {};
 
-			const result: SchemaValidationResult = validateNodeConfig(
+			const result = validateNodeConfig(
 				nodeType,
 				nodeTypeVersion,
 				{ parameters: nodeParameters },
