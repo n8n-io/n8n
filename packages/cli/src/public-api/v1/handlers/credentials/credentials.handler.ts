@@ -30,7 +30,7 @@ import {
 } from './credentials.service';
 import type { CredentialTypeRequest, CredentialRequest } from '../../../types';
 import {
-	apiKeyHasScope,
+	publicApiScope,
 	apiKeyHasScopeWithGlobalScopeFallback,
 	projectScope,
 	validCursor,
@@ -95,7 +95,7 @@ export = {
 	createCredential: [
 		validCredentialType,
 		validCredentialsProperties,
-		apiKeyHasScope('credential:create'),
+		publicApiScope('credential:create'),
 		async (
 			req: CredentialRequest.Create,
 			res: express.Response,
@@ -113,7 +113,7 @@ export = {
 	updateCredential: [
 		validCredentialTypeForUpdate,
 		validCredentialsPropertiesForUpdate,
-		apiKeyHasScope('credential:update'),
+		publicApiScope('credential:update'),
 		projectScope('credential:update', 'credential'),
 		async (
 			req: CredentialRequest.Update,
@@ -158,7 +158,7 @@ export = {
 		},
 	],
 	transferCredential: [
-		apiKeyHasScope('credential:move'),
+		publicApiScope('credential:move'),
 		projectScope('credential:move', 'credential'),
 		async (req: CredentialRequest.Transfer, res: express.Response) => {
 			const body = z.object({ destinationProjectId: z.string() }).parse(req.body);
@@ -173,7 +173,7 @@ export = {
 		},
 	],
 	deleteCredential: [
-		apiKeyHasScope('credential:delete'),
+		publicApiScope('credential:delete'),
 		projectScope('credential:delete', 'credential'),
 		async (
 			req: CredentialRequest.Delete,

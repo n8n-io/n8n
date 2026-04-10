@@ -24,10 +24,6 @@ import { createListExecutionsTool } from './executions/list-executions.tool';
 import { createRunWorkflowTool } from './executions/run-workflow.tool';
 import { createStopExecutionTool } from './executions/stop-execution.tool';
 import { createToolsFromLocalMcpServer } from './filesystem/create-tools-from-mcp-server';
-import { createGetFileTreeTool } from './filesystem/get-file-tree.tool';
-import { createListFilesTool } from './filesystem/list-files.tool';
-import { createReadFileTool } from './filesystem/read-file.tool';
-import { createSearchFilesTool } from './filesystem/search-files.tool';
 import { createExploreNodeResourcesTool } from './nodes/explore-node-resources.tool';
 import { createGetNodeDescriptionTool } from './nodes/get-node-description.tool';
 import { createGetNodeTypeDefinitionTool } from './nodes/get-node-type-definition.tool';
@@ -146,16 +142,7 @@ export function createAllTools(context: InstanceAiContext) {
 						: {}),
 				}
 			: {}),
-		...(context.localMcpServer
-			? createToolsFromLocalMcpServer(context.localMcpServer)
-			: context.filesystemService
-				? {
-						'list-files': createListFilesTool(context),
-						'read-file': createReadFileTool(context),
-						'search-files': createSearchFilesTool(context),
-						'get-file-tree': createGetFileTreeTool(context),
-					}
-				: {}),
+		...(context.localMcpServer ? createToolsFromLocalMcpServer(context.localMcpServer) : {}),
 	};
 }
 

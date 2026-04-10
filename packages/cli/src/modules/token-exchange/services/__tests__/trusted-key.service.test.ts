@@ -10,6 +10,7 @@ import type { TrustedKeySourceRepository } from '../../database/repositories/tru
 import type { TrustedKeyRepository } from '../../database/repositories/trusted-key.repository';
 import type { TokenExchangeConfig } from '../../token-exchange.config';
 import type { TrustedKeyData } from '../../token-exchange.schemas';
+import type { JwksResolverService } from '../jwks-resolver';
 import { TrustedKeyService } from '../trusted-key.service';
 
 // ──────────────────────────────────────────────────────────────────────
@@ -66,6 +67,7 @@ function createMocks() {
 	const keyRepo = mock<TrustedKeyRepository>();
 	const instanceSettings = mock<InstanceSettings>({ isLeader: true });
 	const dbLockService = mock<DbLockService>();
+	const jwksResolverService = mock<JwksResolverService>();
 
 	dbLockService.withLock.mockImplementation(
 		async (_lockId: unknown, fn: (tx: EntityManager) => Promise<unknown>) => {
@@ -82,6 +84,7 @@ function createMocks() {
 		keyRepo,
 		instanceSettings,
 		dbLockService,
+		jwksResolverService,
 	);
 
 	return { service, keyRepo, sourceRepo, dbLockService };
