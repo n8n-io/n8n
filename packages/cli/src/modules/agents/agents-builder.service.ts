@@ -60,7 +60,7 @@ export class AgentsBuilderService {
 			Object.entries(currentToolsMap)
 				.map(([id, t]) => `- ${id}: ${t.descriptor.name} -- ${t.descriptor.description}`)
 				.join('\n') || '(none)';
-		
+
 		const configJson = currentConfig ? JSON.stringify(currentConfig, null, 2) : '(no config yet)';
 
 		const instructions = buildBuilderPrompt({ configJson, toolList, builderModel });
@@ -91,48 +91,5 @@ export class AgentsBuilderService {
 		} finally {
 			reader.releaseLock();
 		}
-	}
-
-	/**
-	 * Validate the node configurations for any ToolFromNode tools in an agent schema.
-	 *
-	 * The sandbox only has a mock node() function, so validateNodeConfig() must run
-	 * on the host where the real Zod schemas are available.
-	 *
-	 * @returns A formatted error string if any node config is invalid, or null if all pass.
-	 */
-	private validateNodeToolConfigs(
-		tools: Array<{ name: string; metadata: Record<string, unknown> | null }>,
-	): string | null {
-		const nodeTools = tools.filter((t) => t.metadata?.nodeTool === true);
-		if (nodeTools.length === 0) return null;
-
-		const dirs = resolveBuiltinNodeDefinitionDirs();
-		if (dirs.length > 0) setSchemaBaseDirs(dirs);
-
-		const errors: string[] = [];
-
-		for (const tool of nodeTools) {
-			const meta = tool.metadata as Record<string, unknown>;
-			const nodeType = meta.nodeType as string;
-			const nodeTypeVersion = meta.nodeTypeVersion as number;
-			const nodeParameters = (meta.nodeParameters ?? {}) as Record<string, unknown>;
-
-			const result: SchemaValidationResult = validateNodeConfig(
-				nodeType,
-				nodeTypeVersion,
-				{ parameters: nodeParameters },
-				{ isToolNode: true },
-			);
-
-			if (!result.valid) {
-				const messages = result.errors
-					.map((e: { path: string; message: string }) => e.message)
-					.join('; ');
-				errors.push(`ToolFromNode "${tool.name}" (${nodeType}@${nodeTypeVersion}): ${messages}`);
-			}
-		}
-
-		return errors.length > 0 ? errors.join('\n') : null;
 	}
 }

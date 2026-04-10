@@ -338,12 +338,7 @@ export class AgentSecureRuntime {
 	 * Execute a standalone tool's handler in the sandbox.
 	 * The tool code must follow `export default new Tool(...)` pattern.
 	 */
-	async executeToolInIsolate(
-		toolCode: string,
-		_toolName: string,
-		input: unknown,
-		ctx: unknown,
-	): Promise<unknown> {
+	async executeToolInIsolate(toolCode: string, input: unknown, ctx: unknown): Promise<unknown> {
 		const jsCode = await this.compileTs(toolCode);
 
 		return await this.withIsolate(async (slot) => {
@@ -432,7 +427,7 @@ export class AgentSecureRuntime {
 				if (!toolCode) {
 					throw new Error(`Tool "${toolName}" not found in tools map`);
 				}
-				return await this.executeToolInIsolate(toolCode, toolName, input, ctx);
+				return await this.executeToolInIsolate(toolCode, input, ctx);
 			},
 		};
 	}
