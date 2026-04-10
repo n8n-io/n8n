@@ -116,14 +116,17 @@ export class TokenExchangeService {
 		return { claims, resolvedKey };
 	}
 
-	async embedLogin(subjectToken: string): Promise<User> {
+	async embedLogin(
+		subjectToken: string,
+	): Promise<{ user: User; subject: string; issuer: string; kid: string }> {
 		const { claims, resolvedKey } = await this.verifyToken(subjectToken, {
 			maxLifetimeSeconds: MAX_TOKEN_LIFETIME_SECONDS,
 		});
-		return await this.identityResolutionService.resolve(claims, resolvedKey.allowedRoles, {
+		const user = await this.identityResolutionService.resolve(claims, resolvedKey.allowedRoles, {
 			kid: resolvedKey.kid,
 			issuer: resolvedKey.issuer,
 		});
+		return { user, subject: claims.sub, issuer: resolvedKey.issuer, kid: resolvedKey.kid };
 	}
 
 	async exchange(request: TokenExchangeRequest): Promise<IssuedTokenResult> {
