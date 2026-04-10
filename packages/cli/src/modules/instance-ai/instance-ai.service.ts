@@ -80,6 +80,7 @@ import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
 import { InstanceAiCompactionService } from './compaction.service';
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
+import { TraceReplayState } from './trace-replay-state';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
@@ -176,18 +177,8 @@ export class InstanceAiService {
 	/** In-memory guard to prevent double credit counting within the same process. */
 	private readonly creditedThreads = new Set<string>();
 
-	/** In-memory store for tool trace events keyed by test slug (test-only, loaded via API). */
-	private traceEventsBySlug = new Map<string, unknown[]>();
-
-	/** Slug of the active trace recording — set when record mode begins. */
-	private activeTraceSlug: string | undefined;
-
-	/** Shared TraceIndex/IdRemapper per slug — reused across all runs within one test. */
-	private sharedTraceIndex?: import('@n8n/instance-ai').TraceIndex;
-
-	private sharedIdRemapper?: import('@n8n/instance-ai').IdRemapper;
-
-	private sharedTraceSlug?: string;
+	/** Test-only trace replay state (slugs, events, shared TraceIndex/IdRemapper). */
+	private readonly traceReplay = new TraceReplayState();
 
 	/** Default IANA timezone for the instance (from GENERIC_TIMEZONE env var). */
 	private readonly defaultTimeZone: string;
@@ -548,7 +539,7 @@ export class InstanceAiService {
 			threadId,
 			messageGroupId,
 			tracing,
-			traceSlug: this.activeTraceSlug,
+			traceSlug: this.traceReplay.getActiveSlug(),
 		});
 	}
 
@@ -557,35 +548,7 @@ export class InstanceAiService {
 	}
 
 	private async configureTraceReplayMode(tracing: InstanceAiTraceContext): Promise<void> {
-		if (!process.env.N8N_INSTANCE_AI_TRACE_REPLAY) {
-			return;
-		}
-
-		const { TraceIndex: TI, IdRemapper: IR, TraceWriter: TW } = await import('@n8n/instance-ai');
-
-		// Check if trace events were loaded for the active slug
-		const slug = this.activeTraceSlug;
-		const events = slug ? this.traceEventsBySlug.get(slug) : undefined;
-
-		if (events && events.length > 0) {
-			// Replay mode: reuse shared TraceIndex/IdRemapper across all runs
-			// within the same test slug so that cursor state is preserved when
-			// background-task follow-up runs create new trace contexts.
-			if (this.sharedTraceSlug !== slug || !this.sharedTraceIndex) {
-				this.sharedTraceIndex = new TI(events as import('@n8n/instance-ai').TraceEvent[]);
-				this.sharedIdRemapper = new IR();
-				this.sharedTraceSlug = slug;
-			}
-			tracing.replayMode = 'replay';
-			tracing.traceIndex = this.sharedTraceIndex;
-			tracing.idRemapper = this.sharedIdRemapper!;
-			this.logger.debug(`[TRACE-REPLAY] Replay mode — slug=${slug}, events=${events.length}`);
-		} else {
-			// Record mode: no trace events, capture tool I/O
-			tracing.replayMode = 'record';
-			tracing.traceWriter = new TW('recording');
-			this.logger.debug(`[TRACE-REPLAY] Record mode — slug=${slug ?? 'none'}`);
-		}
+		await this.traceReplay.configureReplayMode(tracing);
 	}
 
 	private async finalizeMessageTraceRoot(
@@ -659,9 +622,10 @@ export class InstanceAiService {
 				// Preserve recorded trace events in the slug-scoped store
 				// so the test fixture teardown can still retrieve them via GET.
 				if (entry.tracing.traceWriter && entry.traceSlug) {
-					const existing = this.traceEventsBySlug.get(entry.traceSlug) ?? [];
-					existing.push(...entry.tracing.traceWriter.getEvents());
-					this.traceEventsBySlug.set(entry.traceSlug, existing);
+					this.traceReplay.preserveWriterEvents(
+						entry.traceSlug,
+						entry.tracing.traceWriter.getEvents(),
+					);
 				}
 				this.traceContextsByRunId.delete(runId);
 			}
@@ -928,39 +892,19 @@ export class InstanceAiService {
 	// ── Test-only trace replay API ───────────────────────────────────────────
 
 	loadTraceEvents(slug: string, events: unknown[]): void {
-		this.traceEventsBySlug.set(slug, events);
-		this.activeTraceSlug = slug;
+		this.traceReplay.loadEvents(slug, events);
 	}
 
 	getTraceEvents(slug: string): unknown[] {
-		// Check active trace writers tagged with this slug
-		const fromWriters: unknown[] = [];
-		for (const entry of this.traceContextsByRunId.values()) {
-			if (entry.traceSlug === slug && entry.tracing.traceWriter) {
-				fromWriters.push(...entry.tracing.traceWriter.getEvents());
-			}
-		}
-		if (fromWriters.length > 0) return fromWriters;
-
-		// Fallback to preserved events (flushed by deleteTraceContextsForThread)
-		return this.traceEventsBySlug.get(slug) ?? [];
+		return this.traceReplay.getEventsWithWriterFallback(slug, this.traceContextsByRunId.values());
 	}
 
-	/** Called at the start of each test's fixture setup to mark the active slug. */
 	activateTraceSlug(slug: string): void {
-		this.activeTraceSlug = slug;
+		this.traceReplay.activateSlug(slug);
 	}
 
 	clearTraceEvents(slug: string): void {
-		this.traceEventsBySlug.delete(slug);
-		if (this.activeTraceSlug === slug) {
-			this.activeTraceSlug = undefined;
-		}
-		if (this.sharedTraceSlug === slug) {
-			this.sharedTraceIndex = undefined;
-			this.sharedIdRemapper = undefined;
-			this.sharedTraceSlug = undefined;
-		}
+		this.traceReplay.clearEvents(slug);
 	}
 
 	getUserIdForApiKey(key: string): string | undefined {

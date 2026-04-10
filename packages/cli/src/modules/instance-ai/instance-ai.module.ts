@@ -20,6 +20,10 @@ export class InstanceAiModule implements ModuleInterface {
 		await Container.get(InstanceAiSettingsService).loadFromDb();
 		await import('./instance-ai.controller');
 
+		if (process.env.N8N_INSTANCE_AI_TRACE_REPLAY) {
+			await import('./instance-ai-test.controller');
+		}
+
 		// Fire-and-forget: clean up expired conversation threads on startup
 		const { InstanceAiMemoryService } = await import('./instance-ai-memory.service');
 		const { InstanceAiService } = await import('./instance-ai.service');

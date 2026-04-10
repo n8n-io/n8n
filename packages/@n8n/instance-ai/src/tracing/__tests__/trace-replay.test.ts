@@ -1,4 +1,4 @@
-import { IdRemapper, TraceIndex } from '../trace-replay';
+import { IdRemapper, TraceIndex, TraceWriter, parseTraceJsonl } from '../trace-replay';
 import type { TraceToolCall, TraceToolSuspend, TraceToolResume, TraceEvent } from '../trace-replay';
 
 // ── IdRemapper ──────────────────────────────────────────────────────────────
@@ -289,5 +289,150 @@ describe('TraceIndex', () => {
 		const index = new TraceIndex(events);
 		const event = index.next('orchestrator', 'search-nodes');
 		expect(event.stepId).toBe(1);
+	});
+});
+
+// ── TraceWriter ──────────────────────────────────────────────────────────────
+
+describe('TraceWriter', () => {
+	it('should record a header event on construction', () => {
+		const writer = new TraceWriter('my-test');
+		const events = writer.getEvents();
+
+		expect(events).toHaveLength(1);
+		expect(events[0].kind).toBe('header');
+		const header = events[0] as TraceEvent & { kind: 'header' };
+		expect(header.version).toBe(1);
+		expect(header.testName).toBe('my-test');
+		expect(header.recordedAt).toBeDefined();
+	});
+
+	it('should record tool-call events with incrementing stepIds', () => {
+		const writer = new TraceWriter('test');
+		writer.recordToolCall('orchestrator', 'search-nodes', { q: 'http' }, { results: [] });
+		writer.recordToolCall('builder', 'build-workflow', { nodes: [] }, { workflowId: '5' });
+
+		const events = writer.getEvents();
+		expect(events).toHaveLength(3); // header + 2 tool-calls
+
+		const call1 = events[1] as TraceToolCall;
+		expect(call1.kind).toBe('tool-call');
+		expect(call1.stepId).toBe(1);
+		expect(call1.agentRole).toBe('orchestrator');
+		expect(call1.toolName).toBe('search-nodes');
+		expect(call1.input).toEqual({ q: 'http' });
+		expect(call1.output).toEqual({ results: [] });
+
+		const call2 = events[2] as TraceToolCall;
+		expect(call2.stepId).toBe(2);
+		expect(call2.agentRole).toBe('builder');
+		expect(call2.toolName).toBe('build-workflow');
+	});
+
+	it('should record tool-suspend events', () => {
+		const writer = new TraceWriter('test');
+		writer.recordToolSuspend(
+			'orchestrator',
+			'run-workflow',
+			{ workflowId: '5' },
+			{ denied: true },
+			{ reason: 'needs approval' },
+		);
+
+		const events = writer.getEvents();
+		const suspend = events[1] as TraceToolSuspend;
+		expect(suspend.kind).toBe('tool-suspend');
+		expect(suspend.stepId).toBe(1);
+		expect(suspend.suspendPayload).toEqual({ reason: 'needs approval' });
+	});
+
+	it('should record tool-resume events', () => {
+		const writer = new TraceWriter('test');
+		writer.recordToolResume(
+			'orchestrator',
+			'run-workflow',
+			{ workflowId: '5' },
+			{ executionId: 'exec-1' },
+			{ approved: true },
+		);
+
+		const events = writer.getEvents();
+		const resume = events[1] as TraceToolResume;
+		expect(resume.kind).toBe('tool-resume');
+		expect(resume.stepId).toBe(1);
+		expect(resume.resumeData).toEqual({ approved: true });
+	});
+
+	it('should return a copy of events from getEvents', () => {
+		const writer = new TraceWriter('test');
+		writer.recordToolCall('orch', 'tool-a', {}, {});
+
+		const first = writer.getEvents();
+		const second = writer.getEvents();
+		expect(first).not.toBe(second);
+		expect(first).toEqual(second);
+	});
+
+	it('should serialize events to JSONL format', () => {
+		const writer = new TraceWriter('test');
+		writer.recordToolCall('orch', 'search-nodes', { q: 'http' }, { results: [] });
+
+		const jsonl = writer.toJsonl();
+		const lines = jsonl.trim().split('\n');
+		expect(lines).toHaveLength(2); // header + 1 tool-call
+
+		const header = JSON.parse(lines[0]);
+		expect(header.kind).toBe('header');
+
+		const call = JSON.parse(lines[1]);
+		expect(call.kind).toBe('tool-call');
+		expect(call.toolName).toBe('search-nodes');
+	});
+});
+
+// ── parseTraceJsonl ──────────────────────────────────────────────────────────
+
+describe('parseTraceJsonl', () => {
+	it('should parse JSONL into TraceEvent array', () => {
+		const jsonl = [
+			JSON.stringify({ kind: 'header', version: 1, testName: 'test', recordedAt: '2026-01-01' }),
+			JSON.stringify({
+				kind: 'tool-call',
+				stepId: 1,
+				agentRole: 'orch',
+				toolName: 'search',
+				input: {},
+				output: {},
+			}),
+		].join('\n');
+
+		const events = parseTraceJsonl(jsonl);
+		expect(events).toHaveLength(2);
+		expect(events[0].kind).toBe('header');
+		expect(events[1].kind).toBe('tool-call');
+	});
+
+	it('should handle trailing newline', () => {
+		const jsonl =
+			JSON.stringify({ kind: 'header', version: 1, testName: 'test', recordedAt: '' }) + '\n';
+		const events = parseTraceJsonl(jsonl);
+		expect(events).toHaveLength(1);
+	});
+
+	it('should handle empty string', () => {
+		expect(parseTraceJsonl('')).toEqual([]);
+	});
+
+	it('should roundtrip with TraceWriter', () => {
+		const writer = new TraceWriter('roundtrip-test');
+		writer.recordToolCall('orch', 'build-workflow', { nodes: [] }, { workflowId: '5' });
+		writer.recordToolSuspend('orch', 'run-workflow', { workflowId: '5' }, {}, { ask: true });
+
+		const parsed = parseTraceJsonl(writer.toJsonl());
+		expect(parsed).toHaveLength(3);
+		expect(parsed[0].kind).toBe('header');
+		expect(parsed[1].kind).toBe('tool-call');
+		expect(parsed[2].kind).toBe('tool-suspend');
+		expect((parsed[1] as TraceToolCall).output).toEqual({ workflowId: '5' });
 	});
 });
