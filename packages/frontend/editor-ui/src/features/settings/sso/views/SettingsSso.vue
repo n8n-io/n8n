@@ -228,7 +228,7 @@ onMounted(() => {
 	border-bottom-right-radius: 0;
 }
 
-.formContainer :deep(> div > div:first-child) {
+.formContainer :deep(div[class*='card']:first-of-type) {
 	border-top: none;
 	border-top-left-radius: 0;
 	border-top-right-radius: 0;
