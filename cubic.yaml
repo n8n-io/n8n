@@ -213,7 +213,7 @@ reviews:
         humans handle edge cases.
     - name: Design System Tokens
       description: |-
-        Follow `.agents/design-system-style-rules.md`.
+        Follow `.claude/skills/design-system-style-rules/SKILL.md`.
 
         Apply balanced enforcement:
         - Strong warning: hard-coded visual values, legacy token usage, and
