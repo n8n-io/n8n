@@ -52,7 +52,16 @@ export class TokenExchangeService {
 			throw new BadRequestError('Token header missing kid');
 		}
 
-		const resolvedKey = await this.trustedKeyStore.getByKid(kid);
+		const decodedPayload = decoded.payload;
+		const iss =
+			typeof decodedPayload === 'object' && decodedPayload !== null
+				? decodedPayload.iss
+				: undefined;
+		if (typeof iss !== 'string' || !iss) {
+			throw new BadRequestError('Token payload missing iss');
+		}
+
+		const resolvedKey = await this.trustedKeyStore.getByKidAndIss(kid, iss);
 		if (!resolvedKey) {
 			throw new AuthError('Unknown key id');
 		}
@@ -60,7 +69,8 @@ export class TokenExchangeService {
 		let payload: jwt.JwtPayload;
 		try {
 			const result = jwt.verify(subjectToken, resolvedKey.key, {
-				algorithms: resolvedKey.algorithms,
+				// EdDSA is valid at runtime but missing from @types/jsonwebtoken
+				algorithms: resolvedKey.algorithms as jwt.Algorithm[],
 				issuer: resolvedKey.issuer,
 				audience: resolvedKey.expectedAudience,
 			});

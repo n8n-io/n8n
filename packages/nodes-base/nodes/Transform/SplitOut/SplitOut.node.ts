@@ -17,7 +17,8 @@ export class SplitOut implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Split Out',
 		name: 'splitOut',
-		icon: 'file:splitOut.svg',
+		icon: 'node:split-out',
+		iconColor: 'violet',
 		group: ['transform'],
 		subtitle: '',
 		version: 1,
