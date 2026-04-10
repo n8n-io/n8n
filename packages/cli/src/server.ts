@@ -70,9 +70,9 @@ import { PubSubRegistry } from './scaling/pubsub/pubsub.registry';
 
 @Service()
 export class Server extends AbstractServer {
-	private endpointPresetCredentials!: string;
+	private endpointPresetCredentials: string;
 
-	private presetCredentialsLoaded!: boolean;
+	private presetCredentialsLoaded: boolean;
 
 	private frontendService?: FrontendService;
 

@@ -23,17 +23,17 @@ import {
 @Entity()
 export class InsightsByPeriod extends BaseEntity {
 	@PrimaryGeneratedColumn()
-	id!: number;
+	id: number;
 
 	@Column()
-	metaId!: number;
+	metaId: number;
 
 	@ManyToOne(() => InsightsMetadata)
 	@JoinColumn({ name: 'metaId' })
-	metadata!: InsightsMetadata;
+	metadata: InsightsMetadata;
 
 	@Column({ name: 'type', type: 'int' })
-	private type_!: number;
+	private type_: number;
 
 	get type() {
 		const typeValue = this.type_;
@@ -56,10 +56,10 @@ export class InsightsByPeriod extends BaseEntity {
 	 * Values exceeding Number.MAX_SAFE_INTEGER will lose precision.
 	 */
 	@Column()
-	value!: number;
+	value: number;
 
 	@Column({ name: 'periodUnit' })
-	private periodUnit_!: number;
+	private periodUnit_: number;
 
 	get periodUnit() {
 		const periodUnitValue = this.periodUnit_;
@@ -77,5 +77,5 @@ export class InsightsByPeriod extends BaseEntity {
 	}
 
 	@DateTimeColumn()
-	periodStart!: Date;
+	periodStart: Date;
 }
