@@ -13,7 +13,6 @@ import {
 	UpdateAgentDto,
 } from './agents.dto';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -68,7 +67,6 @@ export class AgentsController {
 		private readonly agentsService: AgentsService,
 		private readonly agentsBuilderService: AgentsBuilderService,
 		private readonly credentialsService: CredentialsService,
-		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly agentRepository: AgentRepository,
 	) {}
@@ -108,7 +106,7 @@ export class AgentsController {
 	) {
 		const { projectId } = req.params;
 		const { config } = payload;
-		return await this.agentsService.updateConfig(agentId, projectId, config as any);
+		return await this.agentsService.updateConfig(agentId, projectId, config);
 	}
 
 	@Patch('/:agentId/config')
@@ -120,7 +118,7 @@ export class AgentsController {
 	) {
 		const { projectId } = req.params;
 		const { config } = payload;
-		return await this.agentsService.patchConfig(agentId, projectId, config as any);
+		return await this.agentsService.patchConfig(agentId, projectId, config);
 	}
 
 	@Post('/:agentId/tools')
@@ -160,11 +158,8 @@ export class AgentsController {
 
 	@Get('/:agentId/credentials')
 	async listCredentials(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
-		const credentialProvider = new AgentsCredentialProvider(
-			this.credentialsService,
-			this.credentialsFinderService,
-			req.user,
-		);
+		const { projectId } = req.params;
+		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
 		return await credentialProvider.list();
 	}
 
@@ -248,11 +243,7 @@ export class AgentsController {
 		const { projectId } = req.params;
 		const { message } = payload;
 
-		const credentialProvider = new AgentsCredentialProvider(
-			this.credentialsService,
-			this.credentialsFinderService,
-			req.user,
-		);
+		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
 
 		const send = initSseResponse(res);
 
@@ -286,11 +277,7 @@ export class AgentsController {
 		const { projectId } = req.params;
 		const { message } = payload;
 
-		const credentialProvider = new AgentsCredentialProvider(
-			this.credentialsService,
-			this.credentialsFinderService,
-			req.user,
-		);
+		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
 
 		const send = initSseResponse(res);
 
@@ -320,10 +307,7 @@ export class AgentsController {
 						send(event);
 						if ('toolResult' in event) {
 							const toolResult = event.toolResult as { tool?: string };
-							if (
-								toolResult.tool === 'create_agent_config' ||
-								toolResult.tool === 'update_agent_config'
-							) {
+							if (toolResult.tool === 'write_config' || toolResult.tool === 'patch_config') {
 								send({ configUpdated: true });
 								streamingToolName = undefined;
 							}

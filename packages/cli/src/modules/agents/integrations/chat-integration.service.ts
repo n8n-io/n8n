@@ -83,12 +83,8 @@ export class ChatIntegrationService {
 
 		const user = await this.resolveUser(userId);
 
-		// Create credential provider scoped to this user (for agent execution)
-		const credentialProvider = new AgentsCredentialProvider(
-			this.credentialsService,
-			this.credentialsFinderService,
-			user,
-		);
+		// Create credential provider scoped to this agent's project
+		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
 
 		// Decrypt the integration credential to get platform tokens
 		const decryptedData = await this.decryptCredential(credentialId, user);

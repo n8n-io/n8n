@@ -25,7 +25,6 @@ import {
 } from '@n8n/workflow-sdk';
 import { ActiveExecutions } from '@/active-executions';
 import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -212,7 +211,7 @@ export class AgentsService {
 	private getMemoryRegistry(): Record<string, agents.MemoryFactory> {
 		return {
 			n8n: () => this.n8nMemory,
-			sqlite: (params) => new agents.	SqliteMemory(agents.SqliteMemoryConfigSchema.parse(params)),
+			sqlite: (params) => new agents.SqliteMemory(agents.SqliteMemoryConfigSchema.parse(params)),
 			postgres: () => {
 				throw new Error('Not implemented');
 			},
@@ -441,17 +440,9 @@ export class AgentsService {
 			throw new OperationalError('Agent not found or not accessible.');
 		}
 
-		// Look up the full User entity with role relation (CredentialsFinderService needs it)
-		const userRepo = Container.get(UserRepository);
-		const user = await userRepo.findOne({ where: { id: userId }, relations: ['role'] });
-		if (!user) {
-			throw new OperationalError('Could not resolve user for credential access.');
-		}
-
 		const credentialProvider = new AgentsCredentialProvider(
 			Container.get(CredentialsService),
-			Container.get(CredentialsFinderService),
-			user,
+			projectId,
 		);
 
 		const compiled = await this.compileIsolated(agentEntity, credentialProvider, userId);
@@ -569,7 +560,7 @@ export class AgentsService {
 	async updateConfig(
 		agentId: string,
 		projectId: string,
-		config: AgentJsonConfig,
+		config: unknown,
 	): Promise<{ config: AgentJsonConfig; updatedAt: string }> {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');

@@ -1,48 +1,36 @@
 import type { CredentialProvider, ResolvedCredential, CredentialListItem } from '@n8n/agents';
-import type { User } from '@n8n/db';
 
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 
 /**
  * Resolves and lists n8n credentials for use by SDK agents.
  *
- * This is not a DI-managed singleton — a new instance is created per request
- * because it is scoped to a specific user.
+ * This is not a DI-managed singleton — a new instance is created per request,
+ * scoped to a specific project. Agents always belong to a project, so credential
+ * access is always project-scoped, matching how workflow execution resolves
+ * credentials and preventing cross-project credential leakage.
  */
 export class AgentsCredentialProvider implements CredentialProvider {
 	constructor(
 		private readonly credentialsService: CredentialsService,
-		private readonly credentialsFinderService: CredentialsFinderService,
-		private readonly user: User,
+		private readonly projectId: string,
 	) {}
 
 	/**
-	 * Resolve a credential by ID or name: verify user access, decrypt, and return
-	 * the raw credential data (including apiKey).
+	 * Resolve a credential by ID or name, then decrypt and return the raw data.
 	 *
-	 * First tries to find by ID. If that fails, searches by name among the user's
-	 * accessible credentials. This allows agent code to use either:
-	 *   .credential('credential-id-here')
-	 *   .credential('Anthropic account')
+	 * Only credentials shared with the agent's project are considered. ID is
+	 * tried first, then name (case-insensitive).
 	 */
 	async resolve(credentialIdOrName: string): Promise<ResolvedCredential> {
-		// Try by ID first
-		let credential = await this.credentialsFinderService.findCredentialForUser(
-			credentialIdOrName,
-			this.user,
-			['credential:read'],
+		const projectCredentials = await this.credentialsService.findAllCredentialIdsForProject(
+			this.projectId,
 		);
 
-		// If not found by ID, try by name
-		if (!credential) {
-			const allCredentials = await this.credentialsFinderService.findCredentialsForUser(this.user, [
-				'credential:read',
-			]);
-			credential =
-				allCredentials.find((c) => c.name.toLowerCase() === credentialIdOrName.toLowerCase()) ??
-				null;
-		}
+		const credential =
+			projectCredentials.find((c) => c.id === credentialIdOrName) ??
+			projectCredentials.find((c) => c.name.toLowerCase() === credentialIdOrName.toLowerCase()) ??
+			null;
 
 		if (!credential) {
 			throw new Error(`Credential "${credentialIdOrName}" not found or not accessible`);
@@ -55,14 +43,14 @@ export class AgentsCredentialProvider implements CredentialProvider {
 	}
 
 	/**
-	 * List all credentials the user can access.
+	 * List all credentials shared with the agent's project.
 	 */
 	async list(): Promise<CredentialListItem[]> {
-		const allCredentials = await this.credentialsFinderService.findCredentialsForUser(this.user, [
-			'credential:read',
-		]);
+		const projectCredentials = await this.credentialsService.findAllCredentialIdsForProject(
+			this.projectId,
+		);
 
-		return allCredentials.map((c) => ({
+		return projectCredentials.map((c) => ({
 			id: c.id,
 			name: c.name,
 			type: c.type,

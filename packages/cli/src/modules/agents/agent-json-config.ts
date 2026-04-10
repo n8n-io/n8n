@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z, type ZodError } from 'zod';
 
 const SemanticRecallSchema = z.object({
 	topK: z.number().int().min(1).max(100),
@@ -97,3 +97,30 @@ export const AgentJsonConfigPartialSchema = AgentJsonConfigSchema.partial();
 
 export type AgentJsonConfig = z.infer<typeof AgentJsonConfigSchema>;
 export type AgentJsonToolRef = z.infer<typeof AgentJsonToolRefSchema>;
+
+export interface ConfigValidationError {
+	path: string;
+	message: string;
+	expected?: string;
+	received?: string;
+}
+
+export function tryParseConfigJson(
+	raw: string,
+): { ok: true; data: unknown } | { ok: false; errors: ConfigValidationError[] } {
+	try {
+		return { ok: true, data: JSON.parse(raw) };
+	} catch (e) {
+		const msg = e instanceof SyntaxError ? e.message : String(e);
+		return { ok: false, errors: [{ path: '(root)', message: `JSON parse error: ${msg}` }] };
+	}
+}
+
+export function formatZodErrors(error: ZodError): ConfigValidationError[] {
+	return error.issues.map((issue) => ({
+		path: issue.path.join('.') || '(root)',
+		message: issue.message,
+		expected: 'expected' in issue ? String(issue.expected) : undefined,
+		received: 'received' in issue ? String(issue.received) : undefined,
+	}));
+}

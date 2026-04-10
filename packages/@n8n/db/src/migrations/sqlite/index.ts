@@ -160,7 +160,7 @@ import { AddToolsColumnToAgents1778000000000 } from '../common/1778000000000-Add
 import { DropAgentCodeColumn1779000000000 } from '../common/1779000000000-DropAgentCodeColumn';
 import type { Migration } from '../migration-types';
 
-const sqliteMigrations: Migration[] = [
+export const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
 	WebhookModel1592445003908,
 	CreateIndexStoppedAt1594825041918,
@@ -319,8 +319,6 @@ const sqliteMigrations: Migration[] = [
 	CreateAgentMemoryTables1777000000000,
 	AddToolsColumnToAgents1778000000000,
 	DropAgentCodeColumn1779000000000,
-	CreateAgentMemoryTables1777000000000,
 	ChangeWorkflowPublishHistoryVersionIdToSetNull1775740765000,
 	CreateTrustedKeyTables1776000000000,
 ];
-
