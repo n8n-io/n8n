@@ -26,7 +26,7 @@ function collectMatches(pattern: RegExp, text: string, groupIndex: number): stri
 }
 
 /** Extract all referenced node names from an expression string. */
-function extractNodeNamesFromExpression(expression: string): string[] {
+export function extractNodeNamesFromExpression(expression: string): string[] {
 	const names: string[] = [];
 
 	for (const pattern of QUOTED_NODE_REFS) {
@@ -44,7 +44,7 @@ function extractNodeNamesFromExpression(expression: string): string[] {
 }
 
 /** Recursively extract all expression strings from node parameters. */
-function extractExpressionsFromParams(value: unknown, key?: string): string[] {
+export function extractExpressionsFromParams(value: unknown, key?: string): string[] {
 	if (typeof value === 'string') {
 		// Expressions start with '=', jsCode fields are also expressions
 		if (value.charAt(0) === '=' || key === 'jsCode') {

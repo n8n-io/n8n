@@ -6,6 +6,7 @@ import { noCodeImports } from './no-code-imports';
 import { noEmptySetNodes } from './no-empty-set-nodes';
 import { noUnnecessaryCodeNodes } from './no-unnecessary-code-nodes';
 import { noUnreachableNodes } from './no-unreachable-nodes';
+import { referencesReachableNodes } from './references-reachable-nodes';
 import {
 	agentHasDynamicPrompt,
 	agentHasLanguageModel,
@@ -35,6 +36,7 @@ export const DETERMINISTIC_CHECKS: BinaryCheck[] = [
 	noUnnecessaryCodeNodes,
 	noCodeImports,
 	expressionsReferenceExistingNodes,
+	referencesReachableNodes,
 	validRequiredParameters,
 	validOptionsValues,
 	noInvalidFromAi,

@@ -144,7 +144,7 @@ describe('all_nodes_connected', () => {
 					{ name: 'Set', type: 'n8n-nodes-base.set', typeVersion: 3, position: [200, 0] },
 				],
 				connections: {
-					Trigger: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
+					['Trigger']: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
 				},
 			}),
 			makeCtx(),
@@ -171,7 +171,7 @@ describe('all_nodes_connected', () => {
 					},
 				],
 				connections: {
-					Trigger: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
+					['Trigger']: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
 				},
 			}),
 			makeCtx(),
@@ -193,7 +193,7 @@ describe('all_nodes_connected', () => {
 					{ name: 'Orphan', type: 'n8n-nodes-base.set', typeVersion: 3, position: [400, 0] },
 				],
 				connections: {
-					Trigger: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
+					['Trigger']: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
 				},
 			}),
 			makeCtx(),
@@ -233,7 +233,7 @@ describe('no_unreachable_nodes', () => {
 					{ name: 'Set', type: 'n8n-nodes-base.set', typeVersion: 3, position: [200, 0] },
 				],
 				connections: {
-					Trigger: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
+					['Trigger']: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
 				},
 			}),
 			makeCtx(),
@@ -255,7 +255,7 @@ describe('no_unreachable_nodes', () => {
 					{ name: 'Orphan', type: 'n8n-nodes-base.set', typeVersion: 3, position: [400, 0] },
 				],
 				connections: {
-					Trigger: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
+					['Trigger']: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
 				},
 			}),
 			makeCtx(),
@@ -283,7 +283,7 @@ describe('no_unreachable_nodes', () => {
 					},
 				],
 				connections: {
-					Trigger: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
+					['Trigger']: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
 				},
 			}),
 			makeCtx(),
@@ -334,13 +334,13 @@ describe('no_unreachable_nodes', () => {
 					},
 				],
 				connections: {
-					Trigger: { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
-					LLM: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
-					SubAgent: { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
-					SubLLM: {
-						ai_languageModel: [[{ node: 'SubAgent', type: 'ai_languageModel', index: 0 }]],
+					['Trigger']: { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+					LLM: { ['ai_languageModel']: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
+					['SubAgent']: { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
+					['SubLLM']: {
+						['ai_languageModel']: [[{ node: 'SubAgent', type: 'ai_languageModel', index: 0 }]],
 					},
-					SearchTool: { ai_tool: [[{ node: 'SubAgent', type: 'ai_tool', index: 0 }]] },
+					['SearchTool']: { ai_tool: [[{ node: 'SubAgent', type: 'ai_tool', index: 0 }]] },
 				},
 			}),
 			makeCtx(),
@@ -510,7 +510,7 @@ describe('has_start_node', () => {
 					{ name: 'Set', type: 'n8n-nodes-base.set', typeVersion: 3, position: [200, 0] },
 				],
 				connections: {
-					Trigger: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
+					['Trigger']: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
 				},
 			}),
 			makeCtx(),
@@ -563,7 +563,7 @@ describe('expressions_reference_existing_nodes', () => {
 					},
 				],
 				connections: {
-					Trigger: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
+					['Trigger']: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
 				},
 			}),
 			makeCtx(),
