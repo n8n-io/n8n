@@ -7,7 +7,7 @@
 		{
 			"name": "happy-path",
 			"description": "GitHub returns issues, each is synced to Notion",
-			"dataSetup": "The GitHub API returns 3 open bug issues. Issue 1: title='Login timeout on mobile', created_at='2026-03-15T10:00:00Z', assignee.login='alice', html_url='https://github.com/acme-corp/backend/issues/142'. Issue 2: title='API rate limit not enforced', created_at='2026-03-20T14:30:00Z', assignee=null, html_url='https://github.com/acme-corp/backend/issues/155'. Issue 3: title='Memory leak in worker pool', created_at='2026-03-22T09:00:00Z', assignee.login='bob', html_url='https://github.com/acme-corp/backend/issues/158'. Each Notion create-page call returns a success response.",
+			"dataSetup": "The GitHub API returns 3 open bug issues. Issue 1: title='Login timeout on mobile', created_at='2026-03-15T10:00:00Z', assignee.login='alice', html_url='https://github.com/acme-corp/backend/issues/142'. Issue 2: title='API rate limit not enforced', created_at='2026-03-20T14:30:00Z', assignee=null, html_url='https://github.com/acme-corp/backend/issues/155'. Issue 3: title='Memory leak in worker pool', created_at='2026-03-22T09:00:00Z', assignee.login='bob', html_url='https://github.com/acme-corp/backend/issues/158'. Each Notion create-page call returns a minimal success response with just {object: 'page', id: '<uuid>'}.",
 			"successCriteria": "The workflow executes without errors. All 3 issues are fetched from GitHub. 3 pages are created in Notion with the correct titles, URLs, dates, and assignees. The unassigned issue (Issue 2) has 'Unassigned' as the assignee value."
 		},
 		{

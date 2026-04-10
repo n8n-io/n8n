@@ -234,6 +234,7 @@ export interface InstanceAiCredentialService {
 	): CredentialFieldInfo[] | Promise<CredentialFieldInfo[]>;
 	/** Search available credential types by keyword. Returns matching types with display names. */
 	searchCredentialTypes?(query: string): Promise<CredentialTypeSearchResult[]>;
+	getAccountContext?(credentialId: string): Promise<{ accountIdentifier?: string }>;
 }
 
 export interface CredentialFieldInfo {
@@ -432,65 +433,6 @@ export interface InstanceAiWebResearchService {
 	): Promise<FetchedPage>;
 }
 
-// ── Filesystem data shapes ───────────────────────────────────────────────────
-
-export interface FileEntry {
-	path: string;
-	type: 'file' | 'directory';
-	sizeBytes?: number;
-}
-
-export interface FileContent {
-	path: string;
-	content: string;
-	truncated: boolean;
-	totalLines: number;
-}
-
-export interface FileSearchMatch {
-	path: string;
-	lineNumber: number;
-	line: string;
-}
-
-export interface FileSearchResult {
-	query: string;
-	matches: FileSearchMatch[];
-	truncated: boolean;
-	totalMatches: number;
-}
-
-// ── Filesystem service ──────────────────────────────────────────────────────
-
-export interface InstanceAiFilesystemService {
-	listFiles(
-		dirPath: string,
-		opts?: {
-			pattern?: string;
-			maxResults?: number;
-			type?: 'file' | 'directory' | 'all';
-			recursive?: boolean;
-		},
-	): Promise<FileEntry[]>;
-
-	readFile(
-		filePath: string,
-		opts?: { maxLines?: number; startLine?: number },
-	): Promise<FileContent>;
-
-	searchFiles(
-		dirPath: string,
-		opts: {
-			query: string;
-			filePattern?: string;
-			ignoreCase?: boolean;
-			maxResults?: number;
-		},
-	): Promise<FileSearchResult>;
-
-	getFileTree(dirPath: string, opts?: { maxDepth?: number; exclude?: string[] }): Promise<string>;
-}
-
 // ── Filesystem MCP server ────────────────────────────────────────────────────
 
 /**
@@ -562,16 +504,17 @@ export interface InstanceAiContext {
 	nodeService: InstanceAiNodeService;
 	dataTableService: InstanceAiDataTableService;
 	webResearchService?: InstanceAiWebResearchService;
-	filesystemService?: InstanceAiFilesystemService;
 	workspaceService?: InstanceAiWorkspaceService;
 	/**
-	 * Connected remote MCP server (e.g. computer-use daemon). When set, dynamic tools are created from its advertised capabilities. Takes precedence over `filesystemService`.
+	 * Connected remote MCP server (e.g. computer-use daemon). When set, dynamic tools are created from its advertised capabilities.
 	 */
 	localMcpServer?: LocalMcpServer;
 	/** Connection state of the local gateway — drives system prompt guidance. */
 	localGatewayStatus?: LocalGatewayStatus;
 	/** Per-action HITL permission overrides. When absent, tools default to requiring approval. */
 	permissions?: InstanceAiPermissions;
+	/** When true, the instance is in read-only mode (source control branchReadOnly). */
+	branchReadOnly?: boolean;
 	/** Human-readable hints about licensed features that are NOT available on this instance.
 	 *  Injected into the system prompt so the agent can explain why certain capabilities are missing. */
 	licenseHints?: string[];
@@ -798,6 +741,7 @@ export interface SpawnBackgroundTaskOptions {
 	run: (
 		signal: AbortSignal,
 		drainCorrections: () => string[],
+		waitForCorrection: () => Promise<void>,
 	) => Promise<string | BackgroundTaskResult>;
 }
 
@@ -865,6 +809,11 @@ export interface OrchestrationContext {
 	builderSandboxFactory?: BuilderSandboxFactory;
 	/** Directories containing node type definition files (.ts) for materializing into sandbox */
 	nodeDefinitionDirs?: string[];
+	/** Mastra memory instance — used to retrieve thread message history for sub-agents */
+	memory?: Memory;
+	/** The current user message being processed — needed because memory.recall() only
+	 *  returns previously-saved messages, so the in-flight message isn't available yet. */
+	currentUserMessage?: string;
 	/** The domain context — gives sub-agent tools access to n8n services */
 	domainContext?: InstanceAiContext;
 	/** When true, research guidance may suggest planned research tasks and the builder gets web-search/fetch-url */

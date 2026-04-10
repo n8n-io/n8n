@@ -281,7 +281,6 @@ describe('GlobalConfig', () => {
 			sandboxTimeout: 300000,
 			braveSearchApiKey: '',
 			searxngUrl: '',
-			filesystemPath: '',
 			gatewayApiKey: '',
 			threadTtlDays: 90,
 			snapshotPruneInterval: 3_600_000,
@@ -495,6 +494,15 @@ describe('GlobalConfig', () => {
 			engine: 'legacy',
 			poolSize: 1,
 			maxCodeCacheSize: 1024,
+			bridgeTimeout: 5000,
+			bridgeMemoryLimit: 128,
+		},
+		instanceSettingsLoader: {
+			ownerManagedByEnv: false,
+			ownerEmail: '',
+			ownerFirstName: 'Instance',
+			ownerLastName: 'Owner',
+			ownerPasswordHash: '',
 		},
 	} satisfies GlobalConfigShape;
 

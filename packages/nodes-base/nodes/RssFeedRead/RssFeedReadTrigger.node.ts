@@ -18,7 +18,7 @@ export class RssFeedReadTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'RSS Feed Trigger',
 		name: 'rssFeedReadTrigger',
-		icon: 'fa:rss',
+		icon: 'node:rss-feed-trigger',
 		iconColor: 'orange-red',
 		group: ['trigger'],
 		version: 1,
@@ -26,7 +26,6 @@ export class RssFeedReadTrigger implements INodeType {
 		subtitle: '={{$parameter["event"]}}',
 		defaults: {
 			name: 'RSS Feed Trigger',
-			color: '#b02020',
 		},
 		polling: true,
 		inputs: [],

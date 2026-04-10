@@ -6,6 +6,10 @@ export class TokenExchangeConfig {
 	@Env('N8N_TOKEN_EXCHANGE_ENABLED')
 	enabled: boolean = false;
 
+	/** Whether the embed login endpoint (GET/POST /auth/embed) is enabled. */
+	@Env('N8N_EMBED_LOGIN_ENABLED')
+	embedEnabled: boolean = false;
+
 	/** Maximum lifetime in seconds for an issued token. */
 	@Env('N8N_TOKEN_EXCHANGE_MAX_TOKEN_TTL')
 	maxTokenTtl: number = 900;
@@ -19,6 +23,10 @@ export class TokenExchangeConfig {
 	 */
 	@Env('N8N_TOKEN_EXCHANGE_TRUSTED_KEYS')
 	trustedKeys: string = '';
+
+	/** Interval in seconds between trusted key refresh runs (leader only). */
+	@Env('N8N_TOKEN_EXCHANGE_KEY_REFRESH_INTERVAL_SECONDS')
+	keyRefreshIntervalSeconds: number = 300;
 
 	/** Interval in seconds between JTI cleanup runs. */
 	@Env('N8N_TOKEN_EXCHANGE_JTI_CLEANUP_INTERVAL_SECONDS')

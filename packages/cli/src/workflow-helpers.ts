@@ -1,3 +1,4 @@
+import { MAX_PINNED_DATA_SIZE, MAX_WORKFLOW_SIZE, MAX_EXPECTED_REQUEST_SIZE } from '@n8n/api-types';
 import { CredentialsRepository } from '@n8n/db';
 import type { WorkflowEntity, WorkflowHistory, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -14,9 +15,40 @@ import type {
 import { resolveNodeWebhookId } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 
 import { OwnershipService } from './services/ownership.service';
+
+/**
+ * Validates that pinned data does not exceed size limits.
+ * (Backend counterpart of the frontend's `usePinnedData.isValidSize()`).
+ * Check 1: pinData alone must not exceed MAX_PINNED_DATA_SIZE (12 MB).
+ * Check 2: workflow (without pinData) + pinData must not exceed MAX_WORKFLOW_SIZE - MAX_EXPECTED_REQUEST_SIZE (~16 MB - 2 KB).
+ */
+export function validatePinDataSize(workflow: IWorkflowBase): void {
+	if (!workflow.pinData) return;
+
+	const pinDataStr = JSON.stringify(workflow.pinData);
+	const pinDataSize = Buffer.byteLength(pinDataStr, 'utf8');
+
+	if (pinDataSize > MAX_PINNED_DATA_SIZE) {
+		throw new BadRequestError(
+			`Pinned data exceeds the maximum allowed size of ${MAX_PINNED_DATA_SIZE / (1024 * 1024)} MB`,
+		);
+	}
+
+	const { pinData: _, ...workflowWithoutPinData } = workflow;
+	const workflowSize =
+		Buffer.byteLength(JSON.stringify(workflowWithoutPinData), 'utf8') + pinDataSize;
+	const limit = MAX_WORKFLOW_SIZE - MAX_EXPECTED_REQUEST_SIZE;
+	if (workflowSize > limit) {
+		const limitMB = Math.floor(limit / (1024 * 1024));
+		throw new BadRequestError(
+			`Workflow with pinned data exceeds the maximum allowed size of ${limitMB} MB`,
+		);
+	}
+}
 
 /**
  * Returns the data of the last executed node

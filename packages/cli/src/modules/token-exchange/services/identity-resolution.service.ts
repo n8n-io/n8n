@@ -276,7 +276,7 @@ export class IdentityResolutionService {
 		let needsReload = false;
 
 		// Sync profile fields (firstName, lastName)
-		const profileUpdates: Partial<User> = {};
+		const profileUpdates: Pick<Partial<User>, 'firstName' | 'lastName'> = {};
 
 		if (claims.given_name !== undefined) {
 			const trimmed = trimName(claims.given_name);

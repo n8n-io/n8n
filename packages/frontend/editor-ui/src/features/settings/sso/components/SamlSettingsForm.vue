@@ -38,6 +38,7 @@ async function handleCopy(value: string, field: string) {
 }
 
 const savingForm = ref<boolean>(false);
+const roleMappingRuleEditorRef = ref<InstanceType<typeof RoleMappingRuleEditor> | null>(null);
 
 const redirectUrl = ref();
 const samlLoginEnabled = ref<boolean>(false);
@@ -67,6 +68,8 @@ const entityId = ref();
 const showUserRoleProvisioningDialog = ref(false);
 
 const {
+	roleAssignment,
+	mappingMethod,
 	formValue: userRoleProvisioning,
 	isUserRoleProvisioningChanged,
 	saveProvisioningConfig,
@@ -114,8 +117,12 @@ const isSaveEnabled = computed(() => {
 		return false;
 	};
 	const isSamlLoginEnabledChanged = ssoStore.isSamlLoginEnabled !== samlLoginEnabled.value;
+	const isRuleMappingDirty = roleMappingRuleEditorRef.value?.isDirty ?? false;
 	return (
-		isUserRoleProvisioningChanged.value || isIdentityProviderChanged() || isSamlLoginEnabledChanged
+		isUserRoleProvisioningChanged.value ||
+		isIdentityProviderChanged() ||
+		isSamlLoginEnabledChanged ||
+		isRuleMappingDirty
 	);
 });
 
@@ -241,11 +248,19 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 
 		await saveProvisioningConfig(isDisablingSamlLogin);
 
+		if (userRoleProvisioning.value === 'expression_based') {
+			await roleMappingRuleEditorRef.value?.save();
+		}
+
 		// Update store with saved protocol selection
 		ssoStore.selectedAuthProtocol = SupportedProtocols.SAML;
 
 		await getSamlConfig();
 		sendTrackingEvent(configResponse);
+		toast.showMessage({
+			title: i18n.baseText('settings.sso.settings.save.success'),
+			type: 'success',
+		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.sso.settings.save.error'));
 		return;
@@ -299,8 +314,7 @@ onMounted(async () => {
 </script>
 <template>
 	<div>
-		<!-- Card 1: SSO Configuration -->
-		<div :class="$style.card">
+		<div :class="[$style.card, $style.firstCard]">
 			<slot name="protocol-select" />
 			<div :class="$style.settingsItem">
 				<div :class="$style.settingsItemLabel">
@@ -377,12 +391,17 @@ onMounted(async () => {
 			</div>
 		</div>
 
-		<!-- Card 2: Role Mapping -->
 		<div :class="$style.card">
-			<UserRoleProvisioningDropdown v-model="userRoleProvisioning" auth-protocol="saml" />
+			<UserRoleProvisioningDropdown
+				v-model:role-assignment="roleAssignment"
+				v-model:mapping-method="mappingMethod"
+				v-model:legacy-value="userRoleProvisioning"
+				auth-protocol="saml"
+			/>
 			<RoleMappingRuleEditor
-				v-if="userRoleProvisioning === 'expression_based'"
+				v-if="mappingMethod === 'rules_in_n8n'"
 				ref="roleMappingRuleEditorRef"
+				:show-project-rules="roleAssignment === 'instance_and_project'"
 			/>
 			<ConfirmProvisioningDialog
 				v-model="showUserRoleProvisioningDialog"
@@ -393,7 +412,6 @@ onMounted(async () => {
 			/>
 		</div>
 
-		<!-- Card 3: SSO Toggle -->
 		<div :class="$style.card">
 			<div :class="[$style.settingsItem, $style.settingsItemNoBorder]">
 				<div :class="$style.settingsItemLabel">
@@ -403,6 +421,7 @@ onMounted(async () => {
 				<div :class="$style.settingsItemControl">
 					<N8nSelect
 						:model-value="samlLoginEnabled ? 'enabled' : 'disabled'"
+						size="medium"
 						data-test-id="sso-toggle"
 						@update:model-value="samlLoginEnabled = $event === 'enabled'"
 					>
