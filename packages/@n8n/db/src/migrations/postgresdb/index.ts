@@ -327,10 +327,10 @@ export const postgresMigrations: Migration[] = [
 	CreateInstanceVersionHistoryTable1774854660000,
 	CreateInstanceAiTables1775000000000,
 	CreateTokenExchangeJtiTable1775116241000,
+	ChangeWorkflowPublishHistoryVersionIdToSetNull1775740765000,
 	CreateAgentTables1776000000000,
+	CreateTrustedKeyTables1776000000000,
 	CreateAgentMemoryTables1777000000000,
 	AddToolsColumnToAgents1778000000000,
 	DropAgentCodeColumn1779000000000,
-	ChangeWorkflowPublishHistoryVersionIdToSetNull1775740765000,
-	CreateTrustedKeyTables1776000000000,
 ];

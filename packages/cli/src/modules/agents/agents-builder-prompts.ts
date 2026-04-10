@@ -73,6 +73,7 @@ Rules for node tools:
 - \`inputSchema\` defines what the LLM passes at runtime (JSON Schema)
 - \`credentials\` maps credential slot names to credential IDs from list_credentials
 - Use search_nodes first, never guess node type names
+- if you can't find existing credentials for the node, fill them with empty values
 
 ### Custom tools
 Write TypeScript using the Tool builder, validate via build_custom_tool.
