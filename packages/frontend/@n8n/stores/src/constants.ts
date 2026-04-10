@@ -53,4 +53,5 @@ export const STORES = {
 	SETUP_PANEL: 'setupPanel',
 	FOCUSED_NODES: 'focusedNodes',
 	FAVORITES: 'favorites',
+	AI_GATEWAY: 'aiGateway',
 } as const;

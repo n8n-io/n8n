@@ -152,7 +152,9 @@ import { AddRestoreFieldsToWorkflowBuilderSession1774280963551 } from '../common
 import { CreateInstanceVersionHistoryTable1774854660000 } from '../common/1774854660000-CreateInstanceVersionHistoryTable';
 import { CreateInstanceAiTables1775000000000 } from '../common/1775000000000-CreateInstanceAiTables';
 import { CreateTokenExchangeJtiTable1775116241000 } from '../common/1775116241000-CreateTokenExchangeJtiTable';
-import { CreateFavoritesTable1775544024000 } from '../common/1775544024000-CreateFavoritesTable';
+import { ChangeWorkflowPublishHistoryVersionIdToSetNull1775740765000 } from '../common/1775740765000-ChangeWorkflowPublishHistoryVersionIdToSetNull';
+import { CreateFavoritesTable1775828513000 } from '../common/1775828513000-CreateFavoritesTable';
+import { CreateTrustedKeyTables1776000000000 } from '../common/1776000000000-CreateTrustedKeyTables';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -310,7 +312,9 @@ const sqliteMigrations: Migration[] = [
 	CreateInstanceVersionHistoryTable1774854660000,
 	CreateInstanceAiTables1775000000000,
 	CreateTokenExchangeJtiTable1775116241000,
-	CreateFavoritesTable1775544024000,
+	ChangeWorkflowPublishHistoryVersionIdToSetNull1775740765000,
+	CreateTrustedKeyTables1776000000000,
+	CreateFavoritesTable1775828513000,
 ];
 
 export { sqliteMigrations };

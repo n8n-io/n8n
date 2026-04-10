@@ -25,6 +25,7 @@ export const MODULE_NAMES = [
 	'instance-ai',
 	'otel',
 	'token-exchange',
+	'instance-version-history',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];
