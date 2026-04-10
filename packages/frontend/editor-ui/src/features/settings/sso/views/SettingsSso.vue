@@ -113,10 +113,7 @@ onMounted(() => {
 		</p>
 		<!-- Protocol selector — rendered independently outside form v-ifs for E2E timing -->
 		<div v-if="hasAnySsoEnabled" :class="[shared.card, $style.protocolCard]">
-			<div
-				data-test-id="sso-auth-protocol-select"
-				:class="[shared.settingsItem, shared.settingsItemNoBorder]"
-			>
+			<div data-test-id="sso-auth-protocol-select" :class="shared.settingsItem">
 				<div :class="shared.settingsItemLabel">
 					<label>{{ i18n.baseText('settings.sso.settings.authProtocol.label') }}</label>
 					<small>{{ i18n.baseText('settings.sso.settings.authProtocol.description') }}</small>
@@ -225,12 +222,14 @@ onMounted(() => {
 }
 
 .protocolCard {
-	margin-bottom: -1px;
+	margin-bottom: 0;
+	border-bottom: none;
 	border-bottom-left-radius: 0;
 	border-bottom-right-radius: 0;
 }
 
 .formContainer :deep(> div > div:first-child) {
+	border-top: none;
 	border-top-left-radius: 0;
 	border-top-right-radius: 0;
 }
