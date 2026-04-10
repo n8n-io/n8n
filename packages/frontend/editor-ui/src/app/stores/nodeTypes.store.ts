@@ -5,6 +5,7 @@ import type {
 	ResourceLocatorRequestDto,
 	ResourceMapperFieldsRequestDto,
 } from '@n8n/api-types';
+import type { CommunityPackageSummary } from '@/features/settings/communityNodes/communityNodes.types';
 import * as nodeTypesApi from '@n8n/rest-api-client/api/nodeTypes';
 import {
 	HTTP_REQUEST_NODE_TYPE,
@@ -87,26 +88,14 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		return actionsGenerator.generateMergedNodesAndActions(unofficialCommunityNodeTypes.value, []);
 	});
 
-	const vettedCommunityPackages = computed(() => {
-		const grouped = new Map<
-			string,
-			{
-				packageName: string;
-				authorName: string;
-				description: string;
-				isOfficialNode: boolean;
-				isInstalled: boolean;
-				numberOfDownloads: number;
-				npmVersion: string;
-				nodes: CommunityNodeType[];
-			}
-		>();
+	const vettedCommunityPackages = computed<CommunityPackageSummary[]>(() => {
+		const grouped = new Map<string, CommunityPackageSummary>();
 
 		for (const nodeType of vettedCommunityNodeTypes.value.values()) {
 			const existing = grouped.get(nodeType.packageName);
 			if (existing) {
 				existing.nodes.push(nodeType);
-				existing.isInstalled = existing.isInstalled && nodeType.isInstalled;
+				existing.isInstalled = existing.isInstalled || nodeType.isInstalled;
 			} else {
 				grouped.set(nodeType.packageName, {
 					packageName: nodeType.packageName,

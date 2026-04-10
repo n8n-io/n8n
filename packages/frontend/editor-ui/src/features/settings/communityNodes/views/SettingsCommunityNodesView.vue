@@ -120,12 +120,15 @@ onMounted(async () => {
 	} finally {
 		loading.value = false;
 	}
-	loadingBrowse.value = true;
-	await Promise.all([
-		communityNodesStore.fetchAvailableCommunityPackageCount(),
-		nodeTypesStore.fetchCommunityNodePreviews(),
-	]);
-	loadingBrowse.value = false;
+	try {
+		loadingBrowse.value = true;
+		await Promise.all([
+			communityNodesStore.fetchAvailableCommunityPackageCount(),
+			nodeTypesStore.fetchCommunityNodePreviews(),
+		]);
+	} finally {
+		loadingBrowse.value = false;
+	}
 });
 
 onBeforeUnmount(() => {

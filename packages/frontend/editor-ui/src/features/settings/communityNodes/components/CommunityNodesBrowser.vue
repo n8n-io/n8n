@@ -2,12 +2,14 @@
 import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import {
+	N8nIcon,
 	N8nInput,
 	N8nRadioButtons,
 	N8nActionBox,
 	N8nSelect,
 	N8nOption,
 	N8nLoading,
+	N8nText,
 } from '@n8n/design-system';
 import CommunityPackageBrowseCard from './CommunityPackageBrowseCard.vue';
 import { computed, ref } from 'vue';
@@ -88,7 +90,7 @@ const filteredPackages = computed(() => {
 
 <template>
 	<div :class="$style.container">
-		<div :class="$style.controls">
+		<div v-if="!loading" :class="$style.controls">
 			<N8nInput
 				v-model="search"
 				:placeholder="i18n.baseText('settings.communityNodes.browse.search.placeholder')"
@@ -96,7 +98,7 @@ const filteredPackages = computed(() => {
 				data-test-id="community-nodes-search"
 			>
 				<template #prefix>
-					<font-awesome-icon icon="search" />
+					<N8nIcon icon="search" />
 				</template>
 			</N8nInput>
 			<N8nRadioButtons
@@ -119,6 +121,13 @@ const filteredPackages = computed(() => {
 				/>
 			</N8nSelect>
 		</div>
+		<N8nText v-if="!loading && filteredPackages.length > 0" size="small" color="text-light">
+			{{
+				i18n.baseText('settings.communityNodes.browse.resultCount', {
+					adjustToNumber: filteredPackages.length,
+				})
+			}}
+		</N8nText>
 		<div v-if="loading" :class="$style.grid">
 			<div v-for="n in 6" :key="n" :class="$style.skeletonCard">
 				<N8nLoading variant="p" :rows="1" />

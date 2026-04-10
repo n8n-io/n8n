@@ -1,24 +1,20 @@
 <script setup lang="ts">
-import type { CommunityNodeType } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import { N8nButton, N8nText, N8nBadge, N8nIcon, N8nExternalLink, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nText,
+	N8nBadge,
+	N8nIcon,
+	N8nExternalLink,
+	N8nTooltip,
+} from '@n8n/design-system';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import OfficialIcon from 'virtual:icons/mdi/verified';
+import type { CommunityPackageSummary } from '../communityNodes.types';
 import { useInstallNode } from '../composables/useInstallNode';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { NPM_PACKAGE_DOCS_BASE_URL } from '@/app/constants';
 import { computed, ref } from 'vue';
-
-interface CommunityPackageSummary {
-	packageName: string;
-	authorName: string;
-	description: string;
-	isOfficialNode: boolean;
-	isInstalled: boolean;
-	numberOfDownloads: number;
-	npmVersion: string;
-	nodes: CommunityNodeType[];
-}
 
 const props = defineProps<{
 	pkg: CommunityPackageSummary;
@@ -31,7 +27,8 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const { installNode, loading } = useInstallNode();
-const installed = ref(props.pkg.isInstalled);
+const installedLocally = ref(false);
+const installed = computed(() => props.pkg.isInstalled || installedLocally.value);
 
 const nodeCount = computed(() => props.pkg.nodes.length);
 
@@ -47,9 +44,7 @@ const firstNodeType = computed(() => {
 	return node?.nodeDescription ?? null;
 });
 
-const docsUrl = computed(
-	() => `${NPM_PACKAGE_DOCS_BASE_URL}${props.pkg.packageName}`,
-);
+const docsUrl = computed(() => `${NPM_PACKAGE_DOCS_BASE_URL}${props.pkg.packageName}`);
 
 async function onInstall() {
 	if (!props.pkg.nodes.length) return;
@@ -67,7 +62,7 @@ async function onInstall() {
 	});
 
 	if (result.success) {
-		installed.value = true;
+		installedLocally.value = true;
 		emit('installed');
 	}
 }
@@ -136,7 +131,7 @@ async function onInstall() {
 				</div>
 			</div>
 			<div :class="$style.installAction">
-				<N8nBadge v-if="installed || pkg.isInstalled" theme="success">
+				<N8nBadge v-if="installed" theme="success">
 					{{ i18n.baseText('settings.communityNodes.browse.card.installed') }}
 				</N8nBadge>
 				<N8nButton

@@ -2773,6 +2773,7 @@
 	"settings.communityNodes.browse.sort.name": "Name (A–Z)",
 	"settings.communityNodes.browse.sort.popular": "Most popular",
 	"settings.communityNodes.browse.sort.recent": "Recently added",
+	"settings.communityNodes.browse.resultCount": "{count} package | {count} packages",
 	"settings.communityNodes.browse.empty.title": "No packages found",
 	"settings.communityNodes.browse.empty.description": "Try a different search term or filter.",
 	"settings.communityNodes.browse.card.nodes": "{count} node | {count} nodes",
