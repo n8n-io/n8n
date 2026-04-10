@@ -10,7 +10,8 @@ export class ManualTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Manual Trigger',
 		name: 'manualTrigger',
-		icon: 'fa:mouse-pointer',
+		icon: 'node:manual-trigger',
+		iconColor: 'black',
 		group: ['trigger'],
 		version: 1,
 		description: 'Runs the flow on clicking a button in n8n',
@@ -18,7 +19,6 @@ export class ManualTrigger implements INodeType {
 		maxNodes: 1,
 		defaults: {
 			name: 'When clicking ‘Execute workflow’',
-			color: '#909298',
 		},
 
 		inputs: [],
