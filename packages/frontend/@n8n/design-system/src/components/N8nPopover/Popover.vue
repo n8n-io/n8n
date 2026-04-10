@@ -178,8 +178,8 @@ watch(
 
 <style lang="scss" module>
 .popoverContent {
-	--popover-slide-x: 0px;
-	--popover-slide-y: 0px;
+	--popover-slide-x: 0;
+	--popover-slide-y: 0;
 	--popover-origin-x: center;
 	--popover-origin-y: center;
 
