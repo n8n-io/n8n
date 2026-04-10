@@ -232,7 +232,9 @@ export function createGetNodeSchemaTool(nodes: INodeTypeDescription[]) {
 				'required, default, and (for options/multiOptions) the allowed values. ' +
 				'Nested types: collection → fields, fixedCollection → groups with fields inside. ' +
 				'Parameters marked conditional only apply under certain resource/operation combinations. ' +
-				'Use this before run_node_tool to understand what to put in nodeParameters.',
+				'After reviewing the schema, if any required parameters have no obvious value from the ' +
+				'conversation context, ask the user to provide them via text before calling run_node_tool. ' +
+				'No form is available — ask as a plain text message.',
 		)
 		.input(getNodeSchemaInputSchema)
 		.handler(async ({ nodeType }) => {
