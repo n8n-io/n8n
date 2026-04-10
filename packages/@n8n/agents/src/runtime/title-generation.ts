@@ -10,10 +10,11 @@ const logger = createFilteredLogger();
 
 const DEFAULT_TITLE_INSTRUCTIONS = [
 	'- you will generate a short title based on the first message a user begins a conversation with',
-	'- ensure it is not more than 80 characters long',
 	"- the title should be a summary of the user's message",
-	'- do not use quotes or colons',
-	'- the entire text you return will be used as the title',
+	'- 1 to 5 words, no more than 80 characters',
+	'- use sentence case (e.g. "Conversation title" instead of "Conversation Title")',
+	'- do not use quotes, colons, or markdown formatting',
+	'- the entire text you return will be used directly as the title, so respond with the title only',
 ].join('\n');
 
 /**
@@ -63,6 +64,13 @@ export async function generateThreadTitle(opts: {
 
 		// Strip <think>...</think> blocks (e.g. from DeepSeek R1)
 		title = title.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+		if (!title) return;
+
+		// Strip markdown heading prefixes and inline formatting
+		title = title
+			.replace(/^#{1,6}\s+/, '')
+			.replace(/\*+/g, '')
+			.trim();
 		if (!title) return;
 
 		await opts.memory.saveThread({

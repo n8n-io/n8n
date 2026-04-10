@@ -8,6 +8,11 @@ export interface RuleSettings {
 
 export type RuleSettingsMap = Record<string, RuleSettings | undefined>;
 
+export interface FixData {
+	type: string;
+	[key: string]: unknown;
+}
+
 export interface Violation {
 	file: string;
 	line: number;
@@ -16,6 +21,17 @@ export interface Violation {
 	message: string;
 	severity: Severity;
 	suggestion?: string;
+	fixable?: boolean;
+	fixData?: FixData;
+}
+
+export type FixAction = string;
+
+export interface FixResult {
+	file: string;
+	action: FixAction;
+	target?: string;
+	applied: boolean;
 }
 
 export interface RuleResult {
@@ -23,6 +39,8 @@ export interface RuleResult {
 	violations: Violation[];
 	filesAnalyzed: number;
 	executionTimeMs: number;
+	fixable?: boolean;
+	fixes?: FixResult[];
 }
 
 export interface ReportSummary {
@@ -49,4 +67,5 @@ export interface RuleInfo {
 	description: string;
 	severity: Severity;
 	enabled: boolean;
+	fixable?: boolean;
 }

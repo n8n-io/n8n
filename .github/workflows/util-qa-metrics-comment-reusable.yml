@@ -1,0 +1,40 @@
+name: 'QA: Metrics PR Comment'
+
+on:
+  workflow_call:
+    inputs:
+      metrics:
+        description: 'Comma-separated list of metric names to report'
+        required: true
+        type: string
+      baseline-days:
+        description: 'Number of days for the rolling baseline'
+        required: false
+        type: number
+        default: 14
+
+jobs:
+  post-comment:
+    name: Post Metrics Comment
+    if: >-
+      github.event_name == 'pull_request' &&
+      !github.event.pull_request.head.repo.fork
+    runs-on: ubuntu-slim
+    continue-on-error: true
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          sparse-checkout: .github/scripts/post-qa-metrics-comment.mjs
+          sparse-checkout-cone-mode: false
+      - name: Post QA metrics comparison
+        env:
+          QA_METRICS_COMMENT_WEBHOOK_URL: ${{ secrets.QA_METRICS_COMMENT_WEBHOOK_URL }}
+          QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
+          QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          node .github/scripts/post-qa-metrics-comment.mjs \
+            --metrics "${{ inputs.metrics }}" \
+            --baseline-days "${{ inputs.baseline-days }}"

@@ -6525,4 +6525,118 @@ describe('NodeHelpers', () => {
 			expect(result?.resource).toBe('');
 		});
 	});
+
+	describe('getNodeParameters filter defaults', () => {
+		const filterProperty: INodeProperties = {
+			displayName: 'Conditions',
+			name: 'conditions',
+			type: 'filter',
+			default: {},
+		};
+
+		it('should add missing combinator and options to a filter parameter', () => {
+			const result = getNodeParameters(
+				[filterProperty],
+				{
+					conditions: {
+						conditions: [
+							{
+								leftValue: '={{ $json.field }}',
+								rightValue: 'value',
+								operator: { type: 'string', operation: 'equals' },
+							},
+						],
+					},
+				},
+				true,
+				false,
+				null,
+				null,
+			);
+
+			expect(result).toEqual({
+				conditions: {
+					combinator: 'and',
+					options: {
+						caseSensitive: true,
+						leftValue: '',
+						typeValidation: 'strict',
+						version: 1,
+					},
+					conditions: [
+						{
+							leftValue: '={{ $json.field }}',
+							rightValue: 'value',
+							operator: { type: 'string', operation: 'equals' },
+						},
+					],
+				},
+			});
+		});
+
+		it('should preserve existing combinator and options', () => {
+			const result = getNodeParameters(
+				[filterProperty],
+				{
+					conditions: {
+						combinator: 'or',
+						options: {
+							caseSensitive: false,
+							leftValue: '',
+							typeValidation: 'loose',
+							version: 2,
+						},
+						conditions: [],
+					},
+				},
+				true,
+				false,
+				null,
+				null,
+			);
+
+			expect(result).toEqual({
+				conditions: {
+					combinator: 'or',
+					options: {
+						caseSensitive: false,
+						leftValue: '',
+						typeValidation: 'loose',
+						version: 2,
+					},
+					conditions: [],
+				},
+			});
+		});
+
+		it('should fill in missing fields in partial options', () => {
+			const result = getNodeParameters(
+				[filterProperty],
+				{
+					conditions: {
+						combinator: 'and',
+						options: { caseSensitive: false },
+						conditions: [],
+					},
+				},
+				true,
+				false,
+				null,
+				null,
+			);
+
+			expect(result).toEqual({
+				conditions: {
+					combinator: 'and',
+					options: {
+						caseSensitive: false,
+						leftValue: '',
+						typeValidation: 'strict',
+						version: 1,
+					},
+					conditions: [],
+				},
+			});
+		});
+	});
 });
