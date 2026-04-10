@@ -1,7 +1,7 @@
 import type { MaybeRef } from 'vue';
 import { unref } from 'vue';
 import get from 'lodash/get';
-import { toJsonObject as curlToJson, type JSONOutput } from 'curlconverter';
+import { toJsonObject as curlToJson } from 'curlconverter';
 import { convertCurlToJson } from '../utils/convertCurl/convertCurl';
 import type { CurlToJsonResult } from "../utils/convertCurl/convertCurl.types"
 
@@ -73,15 +73,15 @@ type ContentTypes = (typeof SUPPORTED_CONTENT_TYPES)[number];
 
 const CONTENT_TYPE_KEY = 'content-type';
 
-const getContentTypeHeader = (headers: JSONOutput['headers']): string | undefined => {
+const getContentTypeHeader = (headers: CurlToJsonResult['headers']): string | undefined => {
 	return get(headers, CONTENT_TYPE_KEY) ?? undefined;
 };
 
-const isContentType = (headers: JSONOutput['headers'], contentType: ContentTypes): boolean => {
+const isContentType = (headers: CurlToJsonResult['headers'], contentType: ContentTypes): boolean => {
 	return getContentTypeHeader(headers) === contentType;
 };
 
-const isJsonRequest = (curlJson: JSONOutput): boolean => {
+const isJsonRequest = (curlJson: CurlToJsonResult): boolean => {
 	if (isContentType(curlJson.headers, 'application/json')) return true;
 
 	if (curlJson.data && !getContentTypeHeader(curlJson.headers)) {
@@ -96,13 +96,13 @@ const isJsonRequest = (curlJson: JSONOutput): boolean => {
 	return false;
 };
 
-const isFormUrlEncodedRequest = (curlJson: JSONOutput): boolean => {
+const isFormUrlEncodedRequest = (curlJson: CurlToJsonResult): boolean => {
 	if (isContentType(curlJson.headers, 'application/x-www-form-urlencoded')) return true;
 	if (!getContentTypeHeader(curlJson.headers) && curlJson.data && !curlJson.files) return true;
 	return false;
 };
 
-const isMultipartRequest = (curlJson: JSONOutput): boolean => {
+const isMultipartRequest = (curlJson: CurlToJsonResult): boolean => {
 	if (isContentType(curlJson.headers, 'multipart/form-data')) return true;
 
 	if (curlJson.files)
@@ -111,7 +111,7 @@ const isMultipartRequest = (curlJson: JSONOutput): boolean => {
 	return false;
 };
 
-const isBinaryRequest = (curlJson: JSONOutput): boolean => {
+const isBinaryRequest = (curlJson: CurlToJsonResult): boolean => {
 	if (curlJson?.headers?.[CONTENT_TYPE_KEY]) {
 		const contentType = curlJson?.headers?.[CONTENT_TYPE_KEY];
 		return ['image', 'video', 'audio'].some((d) => contentType.includes(d));
@@ -124,7 +124,7 @@ const toKeyValueArray = ([key, value]: [string, unknown]) => ({
 	value: value?.toString() ?? '',
 });
 
-const extractHeaders = (headers: JSONOutput['headers'] = {}): HttpNodeHeaders => {
+const extractHeaders = (headers: CurlToJsonResult['headers'] = {}): HttpNodeHeaders => {
 	const emptyHeaders = !Object.keys(headers).length;
 
 	const onlyContentTypeHeaderDefined =
@@ -142,7 +142,7 @@ const extractHeaders = (headers: JSONOutput['headers'] = {}): HttpNodeHeaders =>
 	};
 };
 
-const extractQueries = (queries: JSONOutput['queries'] = {}): HttpNodeQueries => {
+const extractQueries = (queries: CurlToJsonResult['queries'] = {}): HttpNodeQueries => {
 	const emptyQueries = !Object.keys(queries).length;
 
 	if (emptyQueries) return { sendQuery: false };
@@ -155,11 +155,11 @@ const extractQueries = (queries: JSONOutput['queries'] = {}): HttpNodeQueries =>
 	};
 };
 
-const keyValueBodyToNodeParameters = (body: JSONOutput['data'] = {}): Parameter[] | [] => {
+const keyValueBodyToNodeParameters = (body: CurlToJsonResult['data'] = {}): Parameter[] | [] => {
 	return Object.entries(body).map(toKeyValueArray);
 };
 
-const jsonBodyToNodeParameters = (body: JSONOutput['data'] = {}): Parameter[] | [] => {
+const jsonBodyToNodeParameters = (body: CurlToJsonResult['data'] = {}): Parameter[] | [] => {
 	// curlconverter returns string if parameter includes special base64 characters like % or / or =
 	if (typeof body === 'string') {
 		// handles decoding percent-encoded characters like %3D to =
@@ -173,8 +173,8 @@ const jsonBodyToNodeParameters = (body: JSONOutput['data'] = {}): Parameter[] | 
 };
 
 const multipartToNodeParameters = (
-	body: JSONOutput['data'] = {},
-	files: JSONOutput['files'] = {},
+	body: CurlToJsonResult['data'] = {},
+	files: CurlToJsonResult['files'] = {},
 ): Parameter[] | [] => {
 	return [
 		...Object.entries(body)
@@ -186,7 +186,7 @@ const multipartToNodeParameters = (
 	];
 };
 
-const lowerCaseContentTypeKey = (obj: JSONOutput['headers']): void => {
+const lowerCaseContentTypeKey = (obj: CurlToJsonResult['headers']): void => {
 	if (!obj) return;
 
 	const regex = new RegExp(CONTENT_TYPE_KEY, 'gi');
@@ -205,7 +205,7 @@ const encodeBasicAuthentication = (username: string, password: string) =>
 const jsonHasNestedObjects = (json: { [key: string]: string | number | object }) =>
 	Object.values(json).some((e) => typeof e === 'object');
 
-const mapCookies = (cookies: JSONOutput['cookies']): { cookie: string } | {} => {
+const mapCookies = (cookies: CurlToJsonResult['cookies']): { cookie: string } | {} => {
 	if (!cookies) return {};
 
 	const cookiesValues = Object.entries(cookies).reduce(
@@ -253,6 +253,8 @@ export function sanitizeCurlUrlPlaceholders(curlCommand: string): string {
 
 export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters => {
 	const curlJson = convertCurlToJson(sanitizeCurlUrlPlaceholders(curlCommand));
+	console.log("New: ", curlJson);
+	console.log("Original: ", curlToJson(sanitizeCurlUrlPlaceholders(curlCommand)));
 
 	const headers = curlJson.headers ?? {};
 

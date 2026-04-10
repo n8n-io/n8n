@@ -15,7 +15,7 @@ export type CurlToJsonResult = {
     queries?: {
         [key: string]: string | string[];
     };
-    data?: {
+    data?: string | {
         [key: string]: string | boolean;
     };
     files?: {
