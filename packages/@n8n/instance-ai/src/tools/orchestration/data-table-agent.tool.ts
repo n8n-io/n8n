@@ -19,6 +19,7 @@ import {
 	traceSubAgentTools,
 	withTraceContextActor,
 } from './tracing-utils';
+import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
@@ -145,10 +146,11 @@ export async function startDataTableAgentTask(
 
 				registerWithMastra(subAgentId, subAgent, context.storage);
 
-				const conversationCtx = input.conversationContext
-					? `\n\n[CONVERSATION CONTEXT: ${input.conversationContext}]`
-					: '';
-				const briefing = `${input.task}${conversationCtx}`;
+				const briefing = await buildSubAgentBriefing({
+					task: input.task,
+					conversationContext: input.conversationContext,
+					runningTasks: context.getRunningTaskSummaries?.(),
+				});
 
 				const traceParent = getTraceParentRun();
 				return await withTraceParentContext(traceParent, async () => {

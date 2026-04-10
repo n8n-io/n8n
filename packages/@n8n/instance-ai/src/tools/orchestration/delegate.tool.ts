@@ -13,11 +13,11 @@ import {
 	withTraceContextActor,
 	withTraceRun,
 } from './tracing-utils';
+import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { buildDebriefing } from '../../agent/sub-agent-debriefing';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createSubAgent, SUB_AGENT_PROTOCOL } from '../../agent/sub-agent-factory';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
-import { formatPreviousAttempts } from '../../storage/iteration-log';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
@@ -67,23 +67,17 @@ async function buildDelegateBriefing(
 	artifacts?: unknown,
 	conversationContext?: string,
 ): Promise<string> {
-	const serializedArtifacts = artifacts ? `\n\nArtifacts: ${JSON.stringify(artifacts)}` : '';
-	const conversationCtx = conversationContext
-		? `\n\n[CONVERSATION CONTEXT: ${conversationContext}]`
-		: '';
+	const structured = await buildSubAgentBriefing({
+		task: briefing,
+		conversationContext,
+		artifacts: artifacts as Record<string, unknown> | undefined,
+		iteration: context.iterationLog
+			? { log: context.iterationLog, threadId: context.threadId, taskKey: `delegate:${role}` }
+			: undefined,
+		runningTasks: context.getRunningTaskSummaries?.(),
+	});
 
-	let iterationContext = '';
-	if (context.iterationLog) {
-		const taskKey = `delegate:${role}`;
-		try {
-			const entries = await context.iterationLog.getForTask(context.threadId, taskKey);
-			iterationContext = formatPreviousAttempts(entries);
-		} catch {
-			// Non-fatal — iteration log is best-effort
-		}
-	}
-
-	return `${briefing}${conversationCtx}${serializedArtifacts}${iterationContext ? `\n\n${iterationContext}` : ''}\n\nRemember: ${SUB_AGENT_PROTOCOL}`;
+	return `${structured}\n\nRemember: ${SUB_AGENT_PROTOCOL}`;
 }
 
 export interface DetachedDelegateTaskInput {
