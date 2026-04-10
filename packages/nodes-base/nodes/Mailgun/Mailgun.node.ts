@@ -115,7 +115,7 @@ export class Mailgun implements INodeType {
 				default: '',
 				placeholder: 'tag1, tag2',
 				description:
-					'Tags for segmentation and analytics (comma-separated). Sent as o:tag. Matches Zapier tagging.',
+					'Tags for segmentation and analytics (comma-separated). Sent as o:tag.',
 			},
 			{
 				displayName: 'Subject',
