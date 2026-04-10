@@ -79,6 +79,20 @@ describe('getToolIcon', () => {
 	test('returns settings as default', () => {
 		expect(getToolIcon('unknown-tool')).toBe('settings');
 	});
+
+	test('normalizes n8n-builder_ prefixed MCP tool names', () => {
+		expect(getToolIcon('n8n-builder_search_nodes')).toBe('workflow');
+		expect(getToolIcon('n8n-builder_get_node_types')).toBe('workflow');
+		expect(getToolIcon('n8n-builder_validate_workflow')).toBe('workflow');
+		expect(getToolIcon('n8n-builder_create_workflow_from_code')).toBe('workflow');
+		expect(getToolIcon('n8n-builder_execute_workflow')).toBe('workflow');
+		expect(getToolIcon('n8n-builder_get_execution')).toBe('workflow');
+		expect(getToolIcon('n8n-builder_get_sdk_reference')).toBe('workflow');
+		expect(getToolIcon('n8n-builder_search_data_tables')).toBe('table');
+		expect(getToolIcon('n8n-builder_create_data_table')).toBe('table');
+		expect(getToolIcon('n8n-builder_search_folders')).toBe('search');
+		expect(getToolIcon('n8n-builder_search_projects')).toBe('search');
+	});
 });
 
 describe('useToolLabel', () => {

@@ -6,30 +6,35 @@ import type { InstanceAiToolCallState } from '@n8n/api-types';
 const NO_TOGGLE_TOOLS = new Set(['updateWorkingMemory', 'plan', 'cancel-background-task']);
 
 export function getToolIcon(toolName: string): IconName {
-	if (toolName === 'delegate' || toolName.endsWith('-with-agent')) return 'share';
-	if (toolName.includes('data-table')) return 'table';
+	// Normalize MCP tool names: strip server prefix and convert underscores to hyphens
+	const name = toolName.replace(/^n8n-builder_/, '').replace(/_/g, '-');
+
+	if (name === 'delegate' || name.endsWith('-with-agent')) return 'share';
+	if (name.includes('data-table')) return 'table';
 	if (
-		toolName.includes('workflow') ||
-		toolName === 'search-nodes' ||
-		toolName.startsWith('get-node') ||
-		toolName === 'submit-workflow' ||
-		toolName === 'run-workflow' ||
-		toolName === 'activate-workflow' ||
-		toolName === 'list-nodes' ||
-		toolName === 'explore-node-resources' ||
-		toolName === 'get-suggested-nodes' ||
-		toolName === 'list-executions' ||
-		toolName === 'get-execution' ||
-		toolName === 'debug-execution' ||
-		toolName === 'stop-execution' ||
-		toolName === 'materialize-node-type'
+		name.includes('workflow') ||
+		name === 'search-nodes' ||
+		name.startsWith('get-node') ||
+		name === 'submit-workflow' ||
+		name === 'run-workflow' ||
+		name === 'activate-workflow' ||
+		name === 'list-nodes' ||
+		name === 'explore-node-resources' ||
+		name === 'get-suggested-nodes' ||
+		name === 'list-executions' ||
+		name === 'get-execution' ||
+		name === 'debug-execution' ||
+		name === 'stop-execution' ||
+		name === 'materialize-node-type' ||
+		name === 'get-sdk-reference' ||
+		name === 'prepare-test-pin-data'
 	) {
 		return 'workflow';
 	}
-	if (toolName === 'web-search' || toolName === 'fetch-url') return 'search';
-	if (toolName === 'updateWorkingMemory' || toolName === 'plan') return 'brain';
-	if (toolName.includes('credential') || toolName === 'browser-credential-setup')
-		return 'key-round';
+	if (name === 'web-search' || name === 'fetch-url') return 'search';
+	if (name === 'updateWorkingMemory' || name === 'plan') return 'brain';
+	if (name.includes('credential') || name === 'browser-credential-setup') return 'key-round';
+	if (name === 'search-folders' || name === 'search-projects') return 'search';
 	return 'settings';
 }
 
