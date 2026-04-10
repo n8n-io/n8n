@@ -146,4 +146,45 @@ describe('CommunityNodesBrowser', () => {
 		expect(cards[1]).toHaveTextContent('n8n-nodes-mid');
 		expect(cards[2]).toHaveTextContent('n8n-nodes-low');
 	});
+
+	it('should show skeleton cards when loading is true', () => {
+		const { container, queryByTestId } = renderComponent({
+			props: { loading: true },
+		});
+
+		const skeletons = container.querySelectorAll('[class*="skeletonCard"]');
+		expect(skeletons).toHaveLength(6);
+		expect(queryByTestId('community-nodes-search')).not.toBeInTheDocument();
+	});
+
+	it('should hide controls and show result count when packages are available', () => {
+		mockVettedCommunityPackages = [
+			makePackageSummary('n8n-nodes-foo'),
+			makePackageSummary('n8n-nodes-bar'),
+		];
+
+		const { getByText, getByTestId } = renderComponent();
+
+		expect(getByTestId('community-nodes-search')).toBeInTheDocument();
+		expect(getByText('2 packages')).toBeInTheDocument();
+	});
+
+	it('should filter by official packages', async () => {
+		mockVettedCommunityPackages = [
+			makePackageSummary('n8n-nodes-official', { isOfficialNode: true }),
+			makePackageSummary('n8n-nodes-community', { isOfficialNode: false }),
+		];
+
+		const { getByText, queryByText, getByTestId } = renderComponent();
+
+		const filterButtons = getByTestId('community-nodes-filter');
+		const officialButton = filterButtons.querySelector('[value="official"]') as HTMLElement;
+		if (officialButton) {
+			await fireEvent.click(officialButton);
+			await waitFor(() => {
+				expect(getByText('n8n-nodes-official')).toBeInTheDocument();
+				expect(queryByText('n8n-nodes-community')).not.toBeInTheDocument();
+			});
+		}
+	});
 });

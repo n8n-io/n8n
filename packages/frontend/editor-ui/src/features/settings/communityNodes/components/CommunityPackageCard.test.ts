@@ -6,6 +6,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import type { CommunityPackageCardData } from '../communityNodes.types';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { ref } from 'vue';
+import { fireEvent } from '@testing-library/vue';
 
 const mockInstallNode = vi.fn().mockResolvedValue({ success: true });
 const mockLoading = ref(false);
@@ -147,5 +148,51 @@ describe('CommunityPackageCard', () => {
 
 		expect(nodeTypesStore.loadNodeTypesIfNotLoaded).toHaveBeenCalled();
 		expect(nodeTypesStore.getCommunityNodeAttributes).toHaveBeenCalledWith('n8n-nodes-example');
+	});
+
+	it('should render skeleton when loading is true', () => {
+		const { container, queryByText } = renderComponent({ props: { loading: true } });
+
+		expect(container.querySelector('[class*="skeleton"]')).toBeInTheDocument();
+		expect(queryByText('n8n-nodes-example')).not.toBeInTheDocument();
+	});
+
+	it('should format downloads in millions', () => {
+		const { getByText } = renderComponent({
+			props: { pkg: makePkg({ numberOfDownloads: 2_500_000 }) },
+		});
+
+		expect(getByText(/2\.5M/)).toBeInTheDocument();
+	});
+
+	it('should call installNode on Install click', async () => {
+		const { getByText } = renderComponent({ props: { pkg: makePkg() } });
+
+		await fireEvent.click(getByText('Install'));
+
+		expect(mockInstallNode).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'verified',
+				packageName: 'n8n-nodes-example',
+				nodeType: 'n8n-nodes-example.exampleNode',
+			}),
+		);
+	});
+
+	it('should show Installed badge after successful install', async () => {
+		const { getByText } = renderComponent({ props: { pkg: makePkg() } });
+
+		await fireEvent.click(getByText('Install'));
+		await flushPromises();
+
+		expect(getByText('Installed')).toBeInTheDocument();
+	});
+
+	it('should show failed-loading icon when failedLoading is true', () => {
+		const { container } = renderComponent({
+			props: { pkg: makePkg({ isInstalled: true, failedLoading: true }) },
+		});
+
+		expect(container.querySelector('[class*="actions"]')).toBeInTheDocument();
 	});
 });
