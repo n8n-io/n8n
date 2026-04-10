@@ -3,6 +3,7 @@ import { Service } from '@n8n/di';
 
 import { OidcInstanceSettingsLoader } from './loaders/oidc.instance-settings-loader';
 import { OwnerInstanceSettingsLoader } from './loaders/owner.instance-settings-loader';
+import { SamlInstanceSettingsLoader } from './loaders/saml.instance-settings-loader';
 import { SecurityPolicyInstanceSettingsLoader } from './loaders/security-policy.instance-settings-loader';
 
 type LoaderResult = 'created' | 'skipped';
@@ -14,6 +15,7 @@ export class InstanceSettingsLoaderService {
 		private readonly ownerLoader: OwnerInstanceSettingsLoader,
 		private readonly oidcLoader: OidcInstanceSettingsLoader,
 		private readonly securityPolicyLoader: SecurityPolicyInstanceSettingsLoader,
+		private readonly samlLoader: SamlInstanceSettingsLoader,
 	) {
 		this.logger = this.logger.scoped('instance-settings-loader');
 	}
@@ -22,6 +24,7 @@ export class InstanceSettingsLoaderService {
 		await this.run('owner', async () => await this.ownerLoader.run());
 		await this.run('oidc', async () => await this.oidcLoader.run());
 		await this.run('security-policy', async () => await this.securityPolicyLoader.run());
+		await this.run('saml', async () => await this.samlLoader.run());
 	}
 
 	private async run(name: string, fn: () => Promise<LoaderResult>): Promise<void> {

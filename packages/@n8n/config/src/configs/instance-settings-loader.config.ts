@@ -75,4 +75,76 @@ export class InstanceSettingsLoaderConfig {
 
 	@Env('N8N_PERSONAL_SPACE_SHARING_ENABLED')
 	personalSpaceSharingEnabled: boolean = true;
+
+	// --- SSO ---
+
+	/** When true, SSO connection config is read from env vars on every startup. */
+	@Env('N8N_SSO_MANAGED_BY_ENV')
+	ssoManagedByEnv: boolean = false;
+
+	// --- SAML ---
+
+	/** XML metadata string from the identity provider. */
+	@Env('N8N_SSO_SAML_METADATA')
+	samlMetadata: string = '';
+
+	/** URL to fetch SAML metadata from (mutually exclusive with metadata). */
+	@Env('N8N_SSO_SAML_METADATA_URL')
+	samlMetadataUrl: string = '';
+
+	@Env('N8N_SSO_SAML_LOGIN_ENABLED')
+	samlLoginEnabled: boolean = false;
+
+	@Env('N8N_SSO_SAML_LOGIN_LABEL')
+	samlLoginLabel: string = '';
+
+	@Env('N8N_SSO_SAML_LOGIN_BINDING')
+	samlLoginBinding: string = 'redirect';
+
+	@Env('N8N_SSO_SAML_ACS_BINDING')
+	samlAcsBinding: string = 'post';
+
+	@Env('N8N_SSO_SAML_IGNORE_SSL')
+	samlIgnoreSsl: boolean = false;
+
+	@Env('N8N_SSO_SAML_AUTHN_REQUESTS_SIGNED')
+	samlAuthnRequestsSigned: boolean = false;
+
+	@Env('N8N_SSO_SAML_WANT_ASSERTIONS_SIGNED')
+	samlWantAssertionsSigned: boolean = true;
+
+	@Env('N8N_SSO_SAML_WANT_MESSAGE_SIGNED')
+	samlWantMessageSigned: boolean = true;
+
+	/** PEM-encoded private key for signing SAML AuthnRequests. */
+	@Env('N8N_SSO_SAML_SIGNING_PRIVATE_KEY')
+	samlSigningPrivateKey: string = '';
+
+	/** PEM-encoded certificate matching the signing private key. */
+	@Env('N8N_SSO_SAML_SIGNING_CERTIFICATE')
+	samlSigningCertificate: string = '';
+
+	@Env('N8N_SSO_SAML_RELAY_STATE')
+	samlRelayState: string = '';
+
+	// --- SAML attribute mapping ---
+
+	@Env('N8N_SSO_SAML_MAPPING_EMAIL')
+	samlMappingEmail: string = '';
+
+	@Env('N8N_SSO_SAML_MAPPING_FIRST_NAME')
+	samlMappingFirstName: string = '';
+
+	@Env('N8N_SSO_SAML_MAPPING_LAST_NAME')
+	samlMappingLastName: string = '';
+
+	@Env('N8N_SSO_SAML_MAPPING_USER_PRINCIPAL_NAME')
+	samlMappingUserPrincipalName: string = '';
+
+	@Env('N8N_SSO_SAML_MAPPING_INSTANCE_ROLE')
+	samlMappingInstanceRole: string = '';
+
+	/** Comma-separated list of project role claims (split into array before storing). */
+	@Env('N8N_SSO_SAML_MAPPING_PROJECT_ROLES')
+	samlMappingProjectRoles: string = '';
 }
