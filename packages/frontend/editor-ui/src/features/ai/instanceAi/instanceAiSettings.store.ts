@@ -44,20 +44,12 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const setupCommand = ref<string | null>(null);
 	const isGatewayPolling = ref(false);
 
-	const isLocalGatewayEnabled = computed(
-		() => settingsStore.moduleSettings?.['instance-ai']?.localGateway === true,
-	);
 	const gatewayConnected = ref(false);
 	const gatewayDirectory = ref<string | null>(null);
 	const gatewayHostIdentifier = ref<string | null>(null);
 	const gatewayToolCategories = ref<ToolCategory[]>([]);
 	const isGatewayConnected = computed(() => gatewayConnected.value);
-	const localGatewayFallbackDirectory = computed(
-		() => settingsStore.moduleSettings?.['instance-ai']?.localGatewayFallbackDirectory ?? null,
-	);
-	const activeDirectory = computed(
-		() => gatewayDirectory.value ?? localGatewayFallbackDirectory.value,
-	);
+	const activeDirectory = computed(() => gatewayDirectory.value);
 	const isLocalGatewayDisabled = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.localGatewayDisabled === true,
 	);
@@ -356,12 +348,10 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		isDaemonConnecting,
 		setupCommand,
 		isGatewayPolling,
-		isLocalGatewayEnabled,
 		isGatewayConnected,
 		gatewayDirectory,
 		gatewayHostIdentifier,
 		gatewayToolCategories,
-		localGatewayFallbackDirectory,
 		activeDirectory,
 		isLocalGatewayDisabled,
 		isProxyEnabled,

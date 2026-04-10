@@ -29,16 +29,10 @@ All Instance AI configuration is done via environment variables.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `N8N_INSTANCE_AI_FILESYSTEM_PATH` | string | `''` | Restrict local filesystem access to this directory. When empty, bare-metal installs can read any path the n8n process has access to. When set, `path.resolve()` + `fs.realpath()` containment prevents directory traversal and symlink escape. |
 | `N8N_INSTANCE_AI_GATEWAY_API_KEY` | string | `''` | Static API key for the filesystem gateway. Used by the `@n8n/computer-use` daemon to authenticate SSE and HTTP POST requests. When empty, the dynamic pairing token flow is used instead. |
 
-**Auto-detection** (no boolean flag needed):
-1. `N8N_INSTANCE_AI_FILESYSTEM_PATH` explicitly set → local FS (restricted to that path)
-2. Container detected (Docker, Kubernetes, systemd-nspawn) → gateway only
-3. Bare metal (default) → local FS (unrestricted)
-
-**Provider priority**: Gateway > Local > None — when both are available, gateway
-wins so the daemon's targeted project directory is preferred.
+Filesystem access requires the `@n8n/computer-use` gateway daemon. The user
+runs `npx @n8n/computer-use serve` on their machine to connect.
 
 See `docs/filesystem-access.md` for the full architecture, gateway protocol spec,
 and security model.
@@ -190,15 +184,7 @@ N8N_INSTANCE_AI_SANDBOX_PROVIDER=n8n-sandbox
 N8N_SANDBOX_SERVICE_URL=https://sandbox.example.com
 N8N_SANDBOX_SERVICE_API_KEY=sandbox-key
 
-# With filesystem access (bare metal — zero config, auto-detected)
-N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-6
-# Nothing else needed! Local filesystem is auto-detected on bare metal.
-
-# With filesystem access (restricted to a specific directory)
-N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-6
-N8N_INSTANCE_AI_FILESYSTEM_PATH=/home/user/my-project
-
-# With filesystem gateway (Docker/cloud — user runs daemon on their machine)
+# With filesystem gateway (user runs daemon on their machine)
 N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-6
 N8N_INSTANCE_AI_GATEWAY_API_KEY=my-secret-key
 # User runs: npx @n8n/computer-use

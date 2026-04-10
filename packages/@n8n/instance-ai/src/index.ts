@@ -17,6 +17,7 @@ export type { DomainAccessTracker } from './domain-access';
 export {
 	createInstanceAiTraceContext,
 	continueInstanceAiTraceContext,
+	releaseTraceClient,
 	withCurrentTraceSpan,
 } from './tracing/langsmith-tracing';
 export { createInstanceAgent } from './agent/instance-agent';
@@ -168,11 +169,6 @@ export type {
 	WebSearchResult,
 	WebSearchResponse,
 	InstanceAiWebResearchService,
-	InstanceAiFilesystemService,
-	FileEntry,
-	FileContent,
-	FileSearchMatch,
-	FileSearchResult,
 	InstanceAiWorkspaceService,
 	ProjectSummary,
 	FolderSummary,
