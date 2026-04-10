@@ -41,7 +41,7 @@ const uiStore = useUIStore();
 const settingsStore = useSettingsStore();
 const nodeTypesStore = useNodeTypesStore();
 
-const selectedTab = ref<CommunityNodesTab>('browse');
+const selectedTab = ref<CommunityNodesTab>('installed');
 
 const tabs = computed<Array<TabOptions<CommunityNodesTab>>>(() => [
 	{
