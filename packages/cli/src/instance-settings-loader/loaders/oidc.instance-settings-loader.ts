@@ -96,14 +96,17 @@ export class OidcInstanceSettingsLoader {
 
 		const { oidc, provisioning } = result.data;
 
-		await this.settingsRepository.save({
-			key: OIDC_PREFERENCES_DB_KEY,
-			value: JSON.stringify({
-				...oidc,
-				clientSecret: this.cipher.encrypt(oidc.clientSecret),
-			}),
-			loadOnStartup: true,
-		});
+		await this.settingsRepository.upsert(
+			{
+				key: OIDC_PREFERENCES_DB_KEY,
+				value: JSON.stringify({
+					...oidc,
+					clientSecret: this.cipher.encrypt(oidc.clientSecret),
+				}),
+				loadOnStartup: true,
+			},
+			{ conflictPaths: ['key'] },
+		);
 
 		await this.settingsRepository.upsert(
 			{

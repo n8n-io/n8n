@@ -50,7 +50,7 @@ describe('OidcInstanceSettingsLoader', () => {
 		const result = await loader.run();
 
 		expect(result).toBe('skipped');
-		expect(settingsRepository.save).not.toHaveBeenCalled();
+		expect(settingsRepository.upsert).not.toHaveBeenCalled();
 	});
 
 	it('should throw when clientId is missing', async () => {
@@ -84,7 +84,7 @@ describe('OidcInstanceSettingsLoader', () => {
 		await loader.run();
 
 		const savedValue = JSON.parse(
-			(settingsRepository.save.mock.calls[0][0] as { value: string }).value,
+			(settingsRepository.upsert.mock.calls[0][0] as { value: string }).value,
 		);
 		expect(savedValue.authenticationContextClassReference).toEqual(['mfa', 'phrh']);
 	});
