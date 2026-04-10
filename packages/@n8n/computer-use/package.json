@@ -7,8 +7,8 @@
   },
   "scripts": {
     "clean": "rimraf dist .turbo",
-    "start": "node dist/cli.js serve",
-    "dev": "pnpm watch",
+    "start": "node dist/cli.js http://localhost:5678 --allowed-origins http://localhost:5678",
+    "dev": "pnpm build && (pnpm watch & pnpm start)",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
     "format": "biome format --write src",
