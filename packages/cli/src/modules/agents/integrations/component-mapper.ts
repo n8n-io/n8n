@@ -41,7 +41,7 @@ interface ComponentRenderContext {
 	toolCallId: string;
 	children: unknown[];
 	buttons: unknown[];
-	makeButton: (label: string, rawValue: string, style?: string) => unknown;
+	makeButton: (label: string, rawValue: string, style?: string) => Promise<unknown>;
 }
 
 /**
@@ -101,7 +101,7 @@ export class ComponentMapper {
 		runId: string,
 		toolCallId: string,
 		resumeSchema?: unknown,
-		shortenCallback?: (actionId: string, value: string) => { id: string; value: string },
+		shortenCallback?: (actionId: string, value: string) => Promise<{ id: string; value: string }>,
 		platform?: string,
 	): Promise<unknown> {
 		const sdk = await loadChatSdk();
@@ -113,14 +113,14 @@ export class ComponentMapper {
 		const buttons: unknown[] = [];
 		const buttonIndex = { value: 0 };
 
-		const makeButton = (label: string, rawValue: string, style?: string) => {
+		const makeButton = async (label: string, rawValue: string, style?: string) => {
 			let id = `resume:${runId}:${toolCallId}:${buttonIndex.value++}`;
 			let value = JSON.stringify(this.wrapValueForSchema(rawValue, resumeSchema));
 
 			// For platforms with short callback limits (e.g. Telegram 64 bytes),
 			// replace the full id/value with a short lookup key.
 			if (shortenCallback) {
-				const shortened = shortenCallback(id, value);
+				const shortened = await shortenCallback(id, value);
 				id = shortened.id;
 				value = shortened.value;
 			}
@@ -134,7 +134,15 @@ export class ComponentMapper {
 		};
 
 		for (const component of components) {
-			this.appendComponent({ component, sdk, runId, toolCallId, children, buttons, makeButton });
+			await this.appendComponent({
+				component,
+				sdk,
+				runId,
+				toolCallId,
+				children,
+				buttons,
+				makeButton,
+			});
 		}
 
 		if (buttons.length > 0) {
@@ -148,16 +156,16 @@ export class ComponentMapper {
 	}
 
 	/** Dispatch a single component to its dedicated handler. */
-	private appendComponent(ctx: ComponentRenderContext): void {
+	private async appendComponent(ctx: ComponentRenderContext): Promise<void> {
 		const { component, children, buttons, makeButton } = ctx;
 		switch (component.type) {
 			case 'button':
 				buttons.push(
-					makeButton(component.label ?? 'Action', component.value ?? '', component.style),
+					await makeButton(component.label ?? 'Action', component.value ?? '', component.style),
 				);
 				return;
 			case 'section':
-				this.appendSection(ctx);
+				await this.appendSection(ctx);
 				return;
 			case 'divider':
 				children.push(ctx.sdk.Divider());
@@ -183,7 +191,12 @@ export class ComponentMapper {
 		}
 	}
 
-	private appendSection({ component, sdk, children, makeButton }: ComponentRenderContext): void {
+	private async appendSection({
+		component,
+		sdk,
+		children,
+		makeButton,
+	}: ComponentRenderContext): Promise<void> {
 		if (component.text) {
 			children.push(sdk.Section([sdk.CardText(component.text)] as never));
 		}
@@ -193,7 +206,11 @@ export class ComponentMapper {
 		if (component.button) {
 			children.push(
 				sdk.Actions([
-					makeButton(component.button.label, component.button.value, component.button.style),
+					await makeButton(
+						component.button.label,
+						component.button.value,
+						component.button.style,
+					),
 				] as never),
 			);
 		}

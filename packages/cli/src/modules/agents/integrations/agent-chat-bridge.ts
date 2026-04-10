@@ -183,12 +183,12 @@ export class AgentChatBridge {
 	 * data limits (Telegram). Returns undefined for other platforms.
 	 */
 	private getShortenCallback():
-		| ((actionId: string, value: string) => { id: string; value: string })
+		| ((actionId: string, value: string) => Promise<{ id: string; value: string }>)
 		| undefined {
 		if (!this.callbackStore) return undefined;
 		const store = this.callbackStore;
-		return (actionId: string, value: string) => {
-			const key = store.store(actionId, value);
+		return async (actionId: string, value: string) => {
+			const key = await store.store(actionId, value);
 			return { id: key, value: '' };
 		};
 	}
@@ -525,9 +525,9 @@ export class AgentChatBridge {
 		let { actionId, value } = event;
 		const { thread } = event;
 
-		// Resolve short Telegram callback keys back to full action data
+		// Resolve short callback keys back to full action data
 		if (this.callbackStore) {
-			const resolved = this.callbackStore.resolve(actionId);
+			const resolved = await this.callbackStore.resolve(actionId);
 			if (resolved) {
 				actionId = resolved.actionId;
 				value = resolved.value;
