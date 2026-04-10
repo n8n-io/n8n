@@ -15,9 +15,10 @@ import {
 	LanguageSupport,
 	LRLanguage,
 	syntaxHighlighting,
-	defaultHighlightStyle,
+	HighlightStyle,
 	syntaxTree,
 } from '@codemirror/language';
+import { tags } from '@lezer/highlight';
 import { parseMixed, type SyntaxNodeRef } from '@lezer/common';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { ElDialog } from 'element-plus';
@@ -45,9 +46,28 @@ const i18n = useI18n();
 const editorRef = ref<HTMLDivElement>();
 const expandedEditorRef = ref<HTMLDivElement>();
 const isEmpty = ref(true);
+const hasError = ref(false);
 const dialogVisible = ref(false);
 let editorView: EditorView | null = null;
 let expandedEditorView: EditorView | null = null;
+
+/**
+ * Validate expression syntax by extracting JS from {{ }} and parsing it.
+ */
+function validateExpression(value: string): boolean {
+	if (!value.trim()) return true; // empty is valid (no error)
+	// Extract JS content from {{ ... }}
+	const match = value.match(/^\{\{(.+)\}\}$/s);
+	const jsContent = match ? match[1].trim() : value.trim();
+	if (!jsContent) return true;
+	try {
+		// eslint-disable-next-line no-new-func
+		new Function(`return (${jsContent})`);
+		return true;
+	} catch {
+		return false;
+	}
+}
 
 // n8n expression language: parses {{ }} as Resolvable blocks with nested JS inside
 const isResolvable = (node: SyntaxNodeRef) => node.type.name === 'Resolvable';
@@ -98,6 +118,20 @@ function createBracketPlugin() {
 	);
 }
 
+// Custom highlight style — green-tinted for valid expressions (not the default red/orange)
+const expressionHighlightStyle = HighlightStyle.define([
+	{ tag: tags.string, color: 'var(--color--success--shade-1)' },
+	{ tag: tags.number, color: 'var(--color--primary)' },
+	{ tag: tags.bool, color: 'var(--color--primary)' },
+	{ tag: tags.keyword, color: 'var(--color--primary--shade-1)' },
+	{ tag: tags.operator, color: 'var(--color--text--shade-1)' },
+	{ tag: tags.propertyName, color: 'var(--color--success)' },
+	{ tag: tags.variableName, color: 'var(--color--text--shade-1)' },
+	{ tag: tags.function(tags.variableName), color: 'var(--color--success--shade-1)' },
+	{ tag: tags.paren, color: 'var(--color--text--tint-1)' },
+	{ tag: tags.punctuation, color: 'var(--color--text--tint-1)' },
+]);
+
 const sharedThemeRules = {
 	'.cm-content': {
 		fontFamily: 'var(--font-family--monospace)',
@@ -116,7 +150,7 @@ const sharedThemeRules = {
 function createInlineExtensions() {
 	return [
 		new LanguageSupport(n8nLanguage),
-		syntaxHighlighting(defaultHighlightStyle),
+		syntaxHighlighting(expressionHighlightStyle),
 		createBracketPlugin(),
 		history(),
 		keymap.of(historyKeymap),
@@ -162,6 +196,7 @@ function createInlineExtensions() {
 			if (update.docChanged) {
 				const newValue = update.state.doc.toString();
 				isEmpty.value = newValue.length === 0;
+				hasError.value = !validateExpression(newValue);
 				if (newValue !== props.modelValue) {
 					emit('update:modelValue', newValue);
 				}
@@ -173,7 +208,7 @@ function createInlineExtensions() {
 function createExpandedExtensions() {
 	return [
 		new LanguageSupport(n8nLanguage),
-		syntaxHighlighting(defaultHighlightStyle),
+		syntaxHighlighting(expressionHighlightStyle),
 		createBracketPlugin(),
 		history(),
 		keymap.of(historyKeymap),
@@ -214,6 +249,7 @@ function createExpandedExtensions() {
 			if (update.docChanged) {
 				const newValue = update.state.doc.toString();
 				isEmpty.value = newValue.length === 0;
+				hasError.value = !validateExpression(newValue);
 				if (newValue !== props.modelValue) {
 					emit('update:modelValue', newValue);
 				}
@@ -248,6 +284,7 @@ onMounted(() => {
 	if (!editorRef.value) return;
 
 	isEmpty.value = !props.modelValue;
+	hasError.value = !validateExpression(props.modelValue);
 
 	const state = EditorState.create({
 		doc: props.modelValue,
@@ -287,7 +324,15 @@ watch(
 	<div :class="$style.wrapper">
 		<div
 			ref="editorRef"
-			:class="[$style.container, { [$style.disabled]: disabled, [$style.empty]: isEmpty }]"
+			:class="[
+				$style.container,
+				{
+					[$style.disabled]: disabled,
+					[$style.empty]: isEmpty,
+					[$style.error]: hasError,
+					[$style.valid]: !isEmpty && !hasError,
+				},
+			]"
 			:data-placeholder="placeholder ? `{{ ${placeholder} }}` : ''"
 			data-test-id="rule-expression-input"
 		/>
@@ -336,6 +381,14 @@ watch(
 	:global(.cm-content) {
 		padding: 0 !important;
 	}
+}
+
+.valid :global(.cm-editor) {
+	border-color: var(--color--success);
+}
+
+.error :global(.cm-editor) {
+	border-color: var(--color--danger);
 }
 
 .empty::before {
