@@ -258,7 +258,7 @@ export class UpdateHandler implements OperationHandler {
 
 export class MoveHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
-		//https://api.todoist.com/sync/v9/sync
+		//https://api.todoist.com/api/v1/sync
 		const taskId = ctx.getNodeParameter('taskId', itemIndex) as number;
 		const section = ctx.getNodeParameter('section', itemIndex) as number;
 

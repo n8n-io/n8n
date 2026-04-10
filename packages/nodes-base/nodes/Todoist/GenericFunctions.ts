@@ -52,7 +52,6 @@ export async function todoistSyncRequest(
 	this: Context,
 	body: any = {},
 	qs: IDataObject = {},
-	endpoint: string = '/sync',
 ): Promise<any> {
 	const authentication = this.getNodeParameter('authentication', 0, 'oAuth2');
 
@@ -60,13 +59,32 @@ export async function todoistSyncRequest(
 		headers: {},
 		method: 'POST',
 		qs,
-		uri: `https://api.todoist.com/sync/v9${endpoint}`,
+		uri: 'https://api.todoist.com/api/v1/sync',
 		json: true,
 	};
 
 	if (Object.keys(body as IDataObject).length !== 0) {
 		options.body = body;
 	}
+
+	try {
+		const credentialType = authentication === 'oAuth2' ? 'todoistOAuth2Api' : 'todoistApi';
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error as JsonObject);
+	}
+}
+
+export async function todoistQuickAddRequest(this: Context, body: IDataObject = {}): Promise<any> {
+	const authentication = this.getNodeParameter('authentication', 0, 'oAuth2');
+
+	const options: IRequestOptions = {
+		headers: {},
+		method: 'POST',
+		uri: 'https://api.todoist.com/api/v1/tasks/quick_add',
+		json: true,
+		body,
+	};
 
 	try {
 		const credentialType = authentication === 'oAuth2' ? 'todoistOAuth2Api' : 'todoistApi';

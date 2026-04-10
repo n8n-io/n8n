@@ -2,14 +2,21 @@ import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
 import type { Context } from '../GenericFunctions';
-import { todoistApiGetAllRequest } from '../GenericFunctions';
+import {
+	todoistApiGetAllRequest,
+	todoistQuickAddRequest,
+	todoistSyncRequest,
+} from '../GenericFunctions';
 
-const createMockContext = (typeVersion: number = 2.2) => {
+const createMockContext = (
+	typeVersion: number = 2.2,
+	authentication: 'oAuth2' | 'apiKey' = 'oAuth2',
+) => {
 	const mockRequestWithAuth = jest.fn();
 	const mockCtx = mock<IExecuteFunctions>({
 		getNode: () => mock<INode>({ typeVersion }),
 		getNodeParameter: jest.fn((param: string) => {
-			if (param === 'authentication') return 'oAuth2';
+			if (param === 'authentication') return authentication;
 			return '';
 		}) as any,
 		helpers: {
@@ -399,6 +406,76 @@ describe('GenericFunctions', () => {
 				expect(mockRequestWithAuth).not.toHaveBeenCalled();
 				expect(result).toEqual([]);
 			});
+		});
+	});
+
+	describe('todoistSyncRequest', () => {
+		it('should POST to the v1 sync endpoint with oAuth2 credentials', async () => {
+			const { ctx, mockRequestWithAuth } = createMockContext(2.2, 'oAuth2');
+			mockRequestWithAuth.mockResolvedValue({ sync_status: {} });
+
+			await todoistSyncRequest.call(ctx, { commands: [] });
+
+			expect(mockRequestWithAuth).toHaveBeenCalledWith(
+				ctx,
+				'todoistOAuth2Api',
+				expect.objectContaining({
+					method: 'POST',
+					uri: 'https://api.todoist.com/api/v1/sync',
+					body: { commands: [] },
+				}),
+			);
+		});
+
+		it('should POST to the v1 sync endpoint with apiKey credentials', async () => {
+			const { ctx, mockRequestWithAuth } = createMockContext(2.2, 'apiKey');
+			mockRequestWithAuth.mockResolvedValue({ sync_status: {} });
+
+			await todoistSyncRequest.call(ctx, { commands: [] });
+
+			expect(mockRequestWithAuth).toHaveBeenCalledWith(
+				ctx,
+				'todoistApi',
+				expect.objectContaining({
+					method: 'POST',
+					uri: 'https://api.todoist.com/api/v1/sync',
+				}),
+			);
+		});
+	});
+
+	describe('todoistQuickAddRequest', () => {
+		it('should POST to the v1 tasks/quick_add endpoint with oAuth2 credentials', async () => {
+			const { ctx, mockRequestWithAuth } = createMockContext(2.2, 'oAuth2');
+			mockRequestWithAuth.mockResolvedValue({ id: '123', content: 'Test task' });
+
+			await todoistQuickAddRequest.call(ctx, { text: 'Test task' });
+
+			expect(mockRequestWithAuth).toHaveBeenCalledWith(
+				ctx,
+				'todoistOAuth2Api',
+				expect.objectContaining({
+					method: 'POST',
+					uri: 'https://api.todoist.com/api/v1/tasks/quick_add',
+					body: { text: 'Test task' },
+				}),
+			);
+		});
+
+		it('should POST to the v1 tasks/quick_add endpoint with apiKey credentials', async () => {
+			const { ctx, mockRequestWithAuth } = createMockContext(2.2, 'apiKey');
+			mockRequestWithAuth.mockResolvedValue({ id: '456', content: 'Another task' });
+
+			await todoistQuickAddRequest.call(ctx, { text: 'Another task' });
+
+			expect(mockRequestWithAuth).toHaveBeenCalledWith(
+				ctx,
+				'todoistApi',
+				expect.objectContaining({
+					method: 'POST',
+					uri: 'https://api.todoist.com/api/v1/tasks/quick_add',
+				}),
+			);
 		});
 	});
 });

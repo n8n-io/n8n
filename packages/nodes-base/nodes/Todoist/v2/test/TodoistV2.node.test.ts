@@ -282,7 +282,7 @@ describe('Execute TodoistV2 Node', () => {
 		todoistNock.get('/rest/v2/tasks').query(true).reply(200, tasksListData);
 
 		// Move task uses sync API
-		todoistNock.post('/sync/v9/sync').reply(200, { sync_status: { '8888999900': 'ok' } });
+		todoistNock.post('/api/v1/sync').reply(200, { sync_status: { '8888999900': 'ok' } });
 
 		// Label operations
 		todoistNock.post('/rest/v2/labels').reply(200, labelData);
@@ -298,7 +298,7 @@ describe('Execute TodoistV2 Node', () => {
 		todoistNock.get('/rest/v2/comments').query({ task_id: '5555666677' }).reply(200, [commentData]);
 
 		// Quick add operation
-		todoistNock.post('/sync/v9/quick/add').reply(200, quickAddTaskData);
+		todoistNock.post('/api/v1/tasks/quick_add').reply(200, quickAddTaskData);
 	});
 
 	afterEach(() => {

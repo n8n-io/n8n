@@ -4,6 +4,7 @@ import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import {
 	todoistApiRequest,
 	todoistApiGetAllRequest,
+	todoistQuickAddRequest,
 	todoistSyncRequest,
 } from '../../GenericFunctions';
 import {
@@ -45,6 +46,7 @@ import {
 jest.mock('../../GenericFunctions', () => ({
 	todoistApiRequest: jest.fn(),
 	todoistApiGetAllRequest: jest.fn(),
+	todoistQuickAddRequest: jest.fn(),
 	todoistSyncRequest: jest.fn(),
 	FormatDueDatetime: jest.fn((dateTime: string) => dateTime),
 }));
@@ -57,6 +59,9 @@ jest.mock('uuid', () => ({
 const mockTodoistApiRequest = todoistApiRequest as jest.MockedFunction<typeof todoistApiRequest>;
 const mockTodoistApiGetAllRequest = todoistApiGetAllRequest as jest.MockedFunction<
 	typeof todoistApiGetAllRequest
+>;
+const mockTodoistQuickAddRequest = todoistQuickAddRequest as jest.MockedFunction<
+	typeof todoistQuickAddRequest
 >;
 const mockTodoistSyncRequest = todoistSyncRequest as jest.MockedFunction<typeof todoistSyncRequest>;
 
@@ -1017,15 +1022,13 @@ describe('OperationHandler', () => {
 					},
 				};
 
-				mockTodoistSyncRequest.mockResolvedValue(expectedResponse);
+				mockTodoistQuickAddRequest.mockResolvedValue(expectedResponse);
 
 				const result = await handler.handleOperation(mockCtx, 0);
 
-				expect(mockTodoistSyncRequest).toHaveBeenCalledWith(
-					{ text: 'Buy milk tomorrow @shopping' },
-					{},
-					'/quick/add',
-				);
+				expect(mockTodoistQuickAddRequest).toHaveBeenCalledWith({
+					text: 'Buy milk tomorrow @shopping',
+				});
 				expect(result).toEqual({ data: expectedResponse });
 			});
 
@@ -1051,20 +1054,16 @@ describe('OperationHandler', () => {
 					},
 				};
 
-				mockTodoistSyncRequest.mockResolvedValue(expectedResponse);
+				mockTodoistQuickAddRequest.mockResolvedValue(expectedResponse);
 
 				const result = await handler.handleOperation(mockCtx, 0);
 
-				expect(mockTodoistSyncRequest).toHaveBeenCalledWith(
-					{
-						text: 'Meeting with team tomorrow at 2pm',
-						note: 'Discuss project roadmap and priorities',
-						reminder: 'tomorrow at 1:30pm',
-						auto_reminder: true,
-					},
-					{},
-					'/quick/add',
-				);
+				expect(mockTodoistQuickAddRequest).toHaveBeenCalledWith({
+					text: 'Meeting with team tomorrow at 2pm',
+					note: 'Discuss project roadmap and priorities',
+					reminder: 'tomorrow at 1:30pm',
+					auto_reminder: true,
+				});
 				expect(result).toEqual({ data: expectedResponse });
 			});
 
@@ -1083,18 +1082,14 @@ describe('OperationHandler', () => {
 					project_id: '123',
 				};
 
-				mockTodoistSyncRequest.mockResolvedValue(expectedResponse);
+				mockTodoistQuickAddRequest.mockResolvedValue(expectedResponse);
 
 				const result = await handler.handleOperation(mockCtx, 0);
 
-				expect(mockTodoistSyncRequest).toHaveBeenCalledWith(
-					{
-						text: 'Review documents',
-						note: 'Check the quarterly reports',
-					},
-					{},
-					'/quick/add',
-				);
+				expect(mockTodoistQuickAddRequest).toHaveBeenCalledWith({
+					text: 'Review documents',
+					note: 'Check the quarterly reports',
+				});
 				expect(result).toEqual({ data: expectedResponse });
 			});
 
@@ -1113,18 +1108,14 @@ describe('OperationHandler', () => {
 					project_id: '456',
 				};
 
-				mockTodoistSyncRequest.mockResolvedValue(expectedResponse);
+				mockTodoistQuickAddRequest.mockResolvedValue(expectedResponse);
 
 				const result = await handler.handleOperation(mockCtx, 0);
 
-				expect(mockTodoistSyncRequest).toHaveBeenCalledWith(
-					{
-						text: 'Call dentist',
-						reminder: 'next Monday at 9am',
-					},
-					{},
-					'/quick/add',
-				);
+				expect(mockTodoistQuickAddRequest).toHaveBeenCalledWith({
+					text: 'Call dentist',
+					reminder: 'next Monday at 9am',
+				});
 				expect(result).toEqual({ data: expectedResponse });
 			});
 
@@ -1148,18 +1139,14 @@ describe('OperationHandler', () => {
 					},
 				};
 
-				mockTodoistSyncRequest.mockResolvedValue(expectedResponse);
+				mockTodoistQuickAddRequest.mockResolvedValue(expectedResponse);
 
 				const result = await handler.handleOperation(mockCtx, 0);
 
-				expect(mockTodoistSyncRequest).toHaveBeenCalledWith(
-					{
-						text: 'Presentation due Friday at 5pm',
-						auto_reminder: true,
-					},
-					{},
-					'/quick/add',
-				);
+				expect(mockTodoistQuickAddRequest).toHaveBeenCalledWith({
+					text: 'Presentation due Friday at 5pm',
+					auto_reminder: true,
+				});
 				expect(result).toEqual({ data: expectedResponse });
 			});
 
@@ -1180,16 +1167,14 @@ describe('OperationHandler', () => {
 					project_id: '333',
 				};
 
-				mockTodoistSyncRequest.mockResolvedValue(expectedResponse);
+				mockTodoistQuickAddRequest.mockResolvedValue(expectedResponse);
 
 				const result = await handler.handleOperation(mockCtx, 0);
 
 				// Should only include text since other options are empty/false
-				expect(mockTodoistSyncRequest).toHaveBeenCalledWith(
-					{ text: 'Simple task' },
-					{},
-					'/quick/add',
-				);
+				expect(mockTodoistQuickAddRequest).toHaveBeenCalledWith({
+					text: 'Simple task',
+				});
 				expect(result).toEqual({ data: expectedResponse });
 			});
 		});

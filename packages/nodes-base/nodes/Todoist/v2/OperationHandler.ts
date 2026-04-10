@@ -13,6 +13,7 @@ import {
 	FormatDueDatetime,
 	todoistApiGetAllRequest,
 	todoistApiRequest,
+	todoistQuickAddRequest,
 	todoistSyncRequest,
 } from '../GenericFunctions';
 
@@ -435,7 +436,7 @@ export class UpdateHandler implements OperationHandler {
 
 export class MoveHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
-		//https://api.todoist.com/sync/v9/sync
+		//https://api.todoist.com/api/v1/sync
 		const taskId = ctx.getNodeParameter('taskId', itemIndex);
 		assertValidTodoistId('taskId', taskId, ctx.getNode());
 
@@ -869,7 +870,7 @@ export class QuickAddHandler implements OperationHandler {
 			body.auto_reminder = options.auto_reminder;
 		}
 
-		const data = await todoistSyncRequest.call(ctx, body, {}, '/quick/add');
+		const data = await todoistQuickAddRequest.call(ctx, body);
 
 		return {
 			data,
