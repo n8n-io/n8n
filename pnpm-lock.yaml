@@ -2664,8 +2664,8 @@ importers:
         specifier: ^2.8.2
         version: 2.8.3
       yargs-parser:
-        specifier: 'catalog:'
-        version: 22.0.0
+        specifier: 21.1.1
+        version: 21.1.1
       zod:
         specifier: 3.25.67
         version: 3.25.67
