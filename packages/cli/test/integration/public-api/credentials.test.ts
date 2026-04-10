@@ -249,6 +249,25 @@ describe('POST /credentials', () => {
 		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
 		expect(credential.isResolvable).toBe(false);
 	});
+
+	test('should return 400 for external secret reference without projectId when permissions are missing', async () => {
+		const payload = {
+			name: 'test credential',
+			type: 'githubApi',
+			data: {
+				accessToken: '={{ $secrets.myApiKey }}',
+				user: 'test',
+				server: 'testServer',
+			},
+		};
+
+		const response = await authMemberAgent.post('/credentials').send(payload);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe(
+			'Lacking permissions to reference external secrets in credentials',
+		);
+	});
 });
 
 describe('GET /credentials', () => {
