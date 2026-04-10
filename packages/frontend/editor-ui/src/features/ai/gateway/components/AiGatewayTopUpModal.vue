@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { N8nButton, N8nIcon, N8nInputNumber, N8nLink, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -10,6 +10,10 @@ import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
 import Modal from '@/app/components/Modal.vue';
 
 const PRESET_AMOUNTS = [10, 20, 50, 100] as const;
+
+// TODO: Set to false and use onBuy() when credit purchasing is implemented
+const SKIP_BUY = true;
+const DEFAULT_AMOUNT = 100;
 
 const i18n = useI18n();
 const uiStore = useUIStore();
@@ -67,6 +71,14 @@ function close() {
 	uiStore.closeModal(AI_GATEWAY_TOP_UP_MODAL_KEY);
 }
 
+// When SKIP_BUY is true, send request on open and jump straight to the thank-you screen.
+// Remove this block when credit purchasing is implemented.
+onMounted(async () => {
+	if (!SKIP_BUY) return;
+	await aiGatewayStore.topUpCredits(DEFAULT_AMOUNT);
+	showThankYou.value = true;
+});
+
 async function onBuy() {
 	if (effectiveAmount.value === null || effectiveAmount.value <= 0) return;
 	isLoading.value = true;
@@ -81,8 +93,9 @@ async function onBuy() {
 <template>
 	<Modal
 		:name="AI_GATEWAY_TOP_UP_MODAL_KEY"
-		:title="showThankYou ? 'Coming soon' : i18n.baseText('settings.n8nConnect.topUp.modalTitle')"
+		:title="showThankYou ? '' : i18n.baseText('settings.n8nConnect.topUp.modalTitle')"
 		width="520px"
+		custom-class="ai-gateway-topup-dialog"
 		data-test-id="ai-gateway-topup-modal"
 	>
 		<template #content>
@@ -117,39 +130,37 @@ async function onBuy() {
 
 				<!-- Thank you state (temporary: buying credits is in development) -->
 				<div v-else :class="$style.thankYouBody">
-					<N8nIcon icon="hourglass" size="xlarge" :class="$style.thankYouIcon" />
-					<N8nText size="large" bold color="text-dark">Thank you for your interest!</N8nText>
+					<N8nIcon icon="hourglass" size="xlarge" color="text-base" :class="$style.thankYouIcon" />
+					<N8nText :class="$style.thankYouTitle" bold color="text-dark"
+						>Credit top up is comming soon</N8nText
+					>
 
-					<template v-if="credentialType">
-						<N8nText color="text-base">Buying credits is currently in development.</N8nText>
-						<N8nText color="text-base">
-							If you run out of AI Gateway credits, you can keep using AI in n8n by configuring your
-							own provider credentials.
-						</N8nText>
+					<div :class="$style.thankYouContent">
+						<p :class="$style.thankYouParagraph">
+							Unfortunately credit top up is still in development.
+						</p>
+						<p :class="$style.thankYouParagraph">
+							You'll be notified in the comming weeks when this feature became available.
+						</p>
+						<p :class="$style.thankYouParagraph">
+							In the meantime, you can switch off n8n Connect in any workflows using it and setup
+							your own credential.
+						</p>
 						<N8nLink
-							v-if="credentialDocsUrl"
+							v-if="credentialType"
 							:to="credentialDocsUrl"
 							new-window
 							data-test-id="ai-gateway-topup-credentials-docs-link"
 						>
 							Open setup guide
 						</N8nLink>
-					</template>
-					<template v-else>
-						<N8nText color="text-base">
-							We are working on enabling AI Gateway top-ups directly in n8n.
-						</N8nText>
-						<N8nText color="text-base">
-							In the meantime, you can configure your own credentials with AI providers to continue
-							using AI nodes.
-						</N8nText>
-					</template>
+					</div>
 				</div>
 			</div>
 		</template>
 
-		<template #footer>
-			<div :class="[$style.footer, showThankYou && $style.footerHidden]">
+		<template v-if="!showThankYou" #footer>
+			<div :class="$style.footer">
 				<N8nButton
 					variant="subtle"
 					size="large"
@@ -171,7 +182,7 @@ async function onBuy() {
 
 <style lang="scss" module>
 .contentWrapper {
-	min-height: 220px;
+	min-height: 300px;
 	display: flex;
 	flex-direction: column;
 }
@@ -234,16 +245,36 @@ async function onBuy() {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	justify-content: center;
-	flex: 1;
-	gap: var(--spacing--sm);
-	padding: var(--spacing--lg) 0 var(--spacing--md);
 	text-align: center;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--sm) 0;
 }
 
 .thankYouIcon {
-	color: var(--color--secondary);
-	margin-bottom: var(--spacing--2xs);
+	flex-shrink: 0;
+}
+
+.thankYouTitle {
+	font-size: var(--font-size--lg);
+	font-weight: var(--font-weight--bold);
+	line-height: var(--line-height--md);
+	margin: 0;
+}
+
+.thankYouContent {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	width: 100%;
+}
+
+.thankYouParagraph {
+	margin: 0;
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--md);
+	font-weight: var(--font-weight--regular);
+	color: var(--color--text--tint-1);
+	text-align: center;
 }
 
 .footer {
@@ -251,8 +282,10 @@ async function onBuy() {
 	justify-content: space-between;
 	width: 100%;
 }
+</style>
 
-.footerHidden {
-	visibility: hidden;
+<style lang="scss">
+.ai-gateway-topup-dialog.el-dialog {
+	background-color: var(--color--background);
 }
 </style>

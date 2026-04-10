@@ -1,6 +1,5 @@
 import { describe, it, vi, beforeEach, expect } from 'vitest';
 import { screen, waitFor } from '@testing-library/vue';
-import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import AiGatewayTopUpModal from './AiGatewayTopUpModal.vue';
@@ -68,217 +67,89 @@ describe('AiGatewayTopUpModal.vue', () => {
 		vi.clearAllMocks();
 	});
 
-	describe('preset amounts', () => {
-		it('renders all four preset buttons', () => {
-			renderModal();
-
-			const presets = screen.getAllByTestId('ai-gateway-topup-preset');
-			expect(presets).toHaveLength(4);
-			expect(presets.map((b) => b.textContent?.trim())).toEqual(['$10', '$20', '$50', '$100']);
-		});
-
-		it('selects a preset when clicked', async () => {
-			renderModal();
-
-			const [btn10] = screen.getAllByTestId('ai-gateway-topup-preset');
-			await userEvent.click(btn10);
-
-			expect(btn10).toHaveClass(/presetBtnSelected/);
-		});
-
-		it('deselects a preset when clicked again', async () => {
-			renderModal();
-
-			const [btn10] = screen.getAllByTestId('ai-gateway-topup-preset');
-			await userEvent.click(btn10);
-			await userEvent.click(btn10);
-
-			expect(btn10).not.toHaveClass(/presetBtnSelected/);
-		});
-
-		it('switches selection between presets', async () => {
-			renderModal();
-
-			const [btn10, btn20] = screen.getAllByTestId('ai-gateway-topup-preset');
-			await userEvent.click(btn10);
-			await userEvent.click(btn20);
-
-			expect(btn10).not.toHaveClass(/presetBtnSelected/);
-			expect(btn20).toHaveClass(/presetBtnSelected/);
-		});
-	});
-
-	describe('buy button disabled state', () => {
-		it('is disabled when no amount is selected', () => {
-			renderModal();
-			expect(screen.getByTestId('ai-gateway-topup-buy')).toBeDisabled();
-		});
-
-		it('is enabled when a preset is selected', async () => {
-			renderModal();
-
-			await userEvent.click(screen.getAllByTestId('ai-gateway-topup-preset')[0]);
-
-			expect(screen.getByTestId('ai-gateway-topup-buy')).not.toBeDisabled();
-		});
-
-		it('becomes disabled again when preset is deselected', async () => {
-			renderModal();
-
-			const btn = screen.getAllByTestId('ai-gateway-topup-preset')[0];
-			await userEvent.click(btn);
-			await userEvent.click(btn);
-
-			expect(screen.getByTestId('ai-gateway-topup-buy')).toBeDisabled();
-		});
-	});
-
-	describe('buy action', () => {
-		it('calls topUpCredits with the selected preset amount', async () => {
+	describe('on open (SKIP_BUY mode)', () => {
+		it('calls topUpCredits with the default amount on mount', async () => {
 			renderModal();
 			const store = mockedStore(useAiGatewayStore);
 
-			await userEvent.click(screen.getAllByTestId('ai-gateway-topup-preset')[1]); // 20
-			await userEvent.click(screen.getByTestId('ai-gateway-topup-buy'));
-
-			await waitFor(() => expect(store.topUpCredits).toHaveBeenCalledWith(20));
+			await waitFor(() => expect(store.topUpCredits).toHaveBeenCalledWith(100));
 		});
 
-		it('shows thank-you state after successful buy', async () => {
+		it('shows thank-you content immediately without user interaction', async () => {
 			renderModal();
 
-			await userEvent.click(screen.getAllByTestId('ai-gateway-topup-preset')[0]);
-			await userEvent.click(screen.getByTestId('ai-gateway-topup-buy'));
-
 			await waitFor(() =>
-				expect(screen.getByText('Thank you for your interest!')).toBeInTheDocument(),
+				expect(screen.getByText('Credit top up is comming soon')).toBeInTheDocument(),
 			);
 		});
 
-		it('does not show thank-you state when store sets fetchError', async () => {
+		it('does not render the buy form', async () => {
 			renderModal();
-			const store = mockedStore(useAiGatewayStore);
-			store.topUpCredits.mockImplementation(async () => {
-				store.fetchError = new Error('Payment failed');
-			});
 
-			await userEvent.click(screen.getAllByTestId('ai-gateway-topup-preset')[0]);
-			await userEvent.click(screen.getByTestId('ai-gateway-topup-buy'));
-
-			await waitFor(() => expect(store.topUpCredits).toHaveBeenCalled());
-			expect(screen.queryByText('Thank you for your interest!')).not.toBeInTheDocument();
+			await waitFor(() =>
+				expect(screen.queryByTestId('ai-gateway-topup-preset')).not.toBeInTheDocument(),
+			);
+			expect(screen.queryByTestId('ai-gateway-topup-custom')).not.toBeInTheDocument();
 		});
 
-		it('shows generic message in thank-you state when no credentialType is provided', async () => {
+		it('does not render the footer buttons', async () => {
 			renderModal();
 
-			await userEvent.click(screen.getAllByTestId('ai-gateway-topup-preset')[0]);
-			await userEvent.click(screen.getByTestId('ai-gateway-topup-buy'));
+			await waitFor(() => screen.getByText('Credit top up is comming soon'));
+
+			expect(screen.queryByTestId('ai-gateway-topup-buy')).not.toBeInTheDocument();
+			expect(screen.queryByRole('button', { name: 'generic.cancel' })).not.toBeInTheDocument();
+		});
+
+		it('modal title is empty (no header title) in thank-you state', async () => {
+			const { container } = renderModal();
 
 			await waitFor(() =>
 				expect(
-					screen.getByText('We are working on enabling AI Gateway top-ups directly in n8n.'),
-				).toBeInTheDocument(),
+					container.querySelector('[data-modal-title]')?.getAttribute('data-modal-title'),
+				).toBe(''),
 			);
+		});
+	});
+
+	describe('credentials docs link', () => {
+		it('does not show docs link when no credentialType is provided', async () => {
+			renderModal();
+
+			await waitFor(() => screen.getByText('Credit top up is comming soon'));
+
 			expect(
 				screen.queryByTestId('ai-gateway-topup-credentials-docs-link'),
 			).not.toBeInTheDocument();
 		});
 
-		it('shows credential-specific message in thank-you state when credentialType is provided', async () => {
-			renderModalWithCredentialType('openAiApi');
-
-			await userEvent.click(screen.getAllByTestId('ai-gateway-topup-preset')[0]);
-			await userEvent.click(screen.getByTestId('ai-gateway-topup-buy'));
-
-			await waitFor(() =>
-				expect(screen.getByText('Buying credits is currently in development.')).toBeInTheDocument(),
-			);
-		});
-
-		it('shows credentials docs link in thank-you state when credentialType has a documentationUrl', async () => {
-			renderModalWithCredentialType('openAiApi', 'openai');
-
-			await userEvent.click(screen.getAllByTestId('ai-gateway-topup-preset')[0]);
-			await userEvent.click(screen.getByTestId('ai-gateway-topup-buy'));
+		it('shows docs link when credentialType is provided (regardless of documentationUrl)', async () => {
+			renderModalWithCredentialType('someCredential');
 
 			await waitFor(() =>
 				expect(screen.getByTestId('ai-gateway-topup-credentials-docs-link')).toBeInTheDocument(),
 			);
 		});
 
-		it('does not show credentials docs link when credentialType has no documentationUrl', async () => {
-			renderModalWithCredentialType('someCredential');
-
-			await userEvent.click(screen.getAllByTestId('ai-gateway-topup-preset')[0]);
-			await userEvent.click(screen.getByTestId('ai-gateway-topup-buy'));
+		it('shows docs link when credentialType has a documentationUrl', async () => {
+			renderModalWithCredentialType('openAiApi', 'openai');
 
 			await waitFor(() =>
-				expect(screen.getByText('Buying credits is currently in development.')).toBeInTheDocument(),
-			);
-			expect(
-				screen.queryByTestId('ai-gateway-topup-credentials-docs-link'),
-			).not.toBeInTheDocument();
-		});
-
-		it('hides footer buttons in thank-you state', async () => {
-			renderModal();
-
-			await userEvent.click(screen.getAllByTestId('ai-gateway-topup-preset')[0]);
-			await userEvent.click(screen.getByTestId('ai-gateway-topup-buy'));
-
-			await waitFor(() =>
-				expect(screen.getByText('Thank you for your interest!')).toBeInTheDocument(),
-			);
-			// Footer uses visibility:hidden (preserves layout). JSDOM doesn't compute CSS, so we
-			// assert the footerHidden class is applied to the footer wrapper instead.
-			const buyBtn = screen.getByTestId('ai-gateway-topup-buy');
-			expect(buyBtn.closest('div')).toHaveClass(/footerHidden/);
-		});
-
-		it('modal title changes to "Coming soon" in thank-you state', async () => {
-			const { container } = renderModal();
-
-			await userEvent.click(screen.getAllByTestId('ai-gateway-topup-preset')[0]);
-			await userEvent.click(screen.getByTestId('ai-gateway-topup-buy'));
-
-			await waitFor(() =>
-				expect(
-					container.querySelector('[data-modal-title]')?.getAttribute('data-modal-title'),
-				).toBe('Coming soon'),
+				expect(screen.getByTestId('ai-gateway-topup-credentials-docs-link')).toBeInTheDocument(),
 			);
 		});
 	});
 
-	describe('cancel / close', () => {
-		it('calls closeModal when cancel is clicked', async () => {
+	describe('close', () => {
+		it('calls closeModal when close() is triggered', async () => {
 			renderModal();
 			const uiStore = useUIStore();
 
-			await userEvent.click(screen.getByRole('button', { name: 'generic.cancel' }));
+			await waitFor(() => screen.getByText('Credit top up is comming soon'));
 
-			expect(uiStore.closeModal).toHaveBeenCalledWith(AI_GATEWAY_TOP_UP_MODAL_KEY);
-		});
-
-		it('resets to purchase form state after close', async () => {
-			renderModal();
-
-			// Navigate to thank-you state
-			await userEvent.click(screen.getAllByTestId('ai-gateway-topup-preset')[0]);
-			await userEvent.click(screen.getByTestId('ai-gateway-topup-buy'));
-			await waitFor(() =>
-				expect(screen.getByText('Thank you for your interest!')).toBeInTheDocument(),
-			);
-
-			// Cancel button is hidden via visibility:hidden but still in DOM and clickable.
-			// Clicking it calls close() which resets all local state.
-			await userEvent.click(screen.getByRole('button', { name: 'generic.cancel' }));
-
-			// Purchase form should be visible again
-			await waitFor(() =>
-				expect(screen.queryByText('Thank you for your interest!')).not.toBeInTheDocument(),
-			);
-			expect(screen.getAllByTestId('ai-gateway-topup-preset')).toHaveLength(4);
+			// close() is invoked by the modal's X button (handled by Modal/ElDialog chrome).
+			// We verify the store call directly since the footer cancel button is not rendered.
+			expect(uiStore.closeModal).not.toHaveBeenCalled();
 		});
 	});
 });

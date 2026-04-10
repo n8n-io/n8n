@@ -161,7 +161,7 @@ onMounted(async () => {
 				icon="hand-coins"
 				variant="solid"
 				data-test-id="ai-gateway-topup-button"
-				@click="uiStore.openModal(AI_GATEWAY_TOP_UP_MODAL_KEY)"
+				@click="uiStore.openModalWithData({ name: AI_GATEWAY_TOP_UP_MODAL_KEY, data: {} })"
 			/>
 		</header>
 
