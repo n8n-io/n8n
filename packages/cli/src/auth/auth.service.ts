@@ -204,7 +204,13 @@ export class AuthService {
 		}
 	}
 
-	issueCookie(res: Response, user: User, usedMfa: boolean, browserId?: string) {
+	issueCookie(
+		res: Response,
+		user: User,
+		usedMfa: boolean,
+		browserId?: string,
+		cookieOverrides?: { sameSite?: 'strict' | 'lax' | 'none'; secure?: boolean },
+	) {
 		// TODO: move this check to the login endpoint in AuthController
 		// If the instance has exceeded its user quota, prevent non-owners from logging in
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
@@ -217,8 +223,8 @@ export class AuthService {
 		res.cookie(AUTH_COOKIE_NAME, token, {
 			maxAge: this.jwtExpiration * Time.seconds.toMilliseconds,
 			httpOnly: true,
-			sameSite: samesite,
-			secure,
+			sameSite: cookieOverrides?.sameSite ?? samesite,
+			secure: cookieOverrides?.secure ?? secure,
 		});
 	}
 

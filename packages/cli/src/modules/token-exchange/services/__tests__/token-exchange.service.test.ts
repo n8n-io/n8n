@@ -71,7 +71,11 @@ describe('TokenExchangeService', () => {
 
 			const result = await service.embedLogin('valid-token');
 
-			expect(result).toBe(mockUser);
+			expect(result).toEqual({
+				user: mockUser,
+				subject: 'external-user-1',
+				issuer: 'https://issuer.example.com',
+			});
 			expect(trustedKeyStore.getByKidAndIss).toHaveBeenCalledWith(
 				'test-kid',
 				'https://issuer.example.com',
