@@ -9,6 +9,7 @@ import {
 	type ICredentialDataDecryptedObject,
 	randomString,
 } from 'n8n-workflow';
+
 import { CredentialsService } from '@/credentials/credentials.service';
 
 import {
@@ -203,13 +204,13 @@ describe('GET /credentials', () => {
 			expect(Array.isArray((item as { shared: unknown }).shared)).toBe(true);
 			(
 				item as {
-					shared: {
+					shared: Array<{
 						id: string;
 						name: string;
 						role: string;
 						createdAt: string;
 						updatedAt: string;
-					}[];
+					}>;
 				}
 			).shared.forEach((entry) => {
 				expect(entry).toHaveProperty('id');
