@@ -75,6 +75,7 @@ describe('TokenExchangeService', () => {
 				user: mockUser,
 				subject: 'external-user-1',
 				issuer: 'https://issuer.example.com',
+				kid: 'test-kid',
 			});
 			expect(trustedKeyStore.getByKidAndIss).toHaveBeenCalledWith(
 				'test-kid',
