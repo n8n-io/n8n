@@ -202,7 +202,6 @@ function isNodeInputConfiguration(
 }
 
 function getPossibleSubInputConnections(): INodeInputConfiguration[] {
-	console.log('>>>>>>>>>', workflowDocumentStore?.value);
 	if (!nodeType.value || !props.rootNode || !workflowDocumentStore?.value) return [];
 
 	const inputs = NodeHelpers.getNodeInputs(
