@@ -125,8 +125,8 @@ subsequent communication uses a session key.
 
 #### Self-hosted (bare metal / Docker / Kubernetes)
 
-n8n runs inside a container and **cannot** directly read files on the host
-machine. The gateway bridge is required.
+Whether n8n runs on bare metal or inside a container, it **cannot** directly
+read files from the user's project directory. The gateway bridge is required.
 
 ```mermaid
 sequenceDiagram
