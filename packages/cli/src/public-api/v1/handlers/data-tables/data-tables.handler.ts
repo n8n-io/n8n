@@ -11,7 +11,7 @@ import type express from 'express';
 
 import type { DataTableRequest } from '../../../types';
 import {
-	apiKeyHasScope,
+	publicApiScope,
 	projectScope,
 	validCursor,
 } from '../../shared/middlewares/global.middleware';
@@ -76,7 +76,7 @@ const getProjectIdForDataTable = async (dataTableId: string): Promise<string> =>
 
 export = {
 	listDataTables: [
-		apiKeyHasScope('dataTable:list'),
+		publicApiScope('dataTable:list'),
 		validCursor,
 		async (req: DataTableRequest.List, res: express.Response): Promise<express.Response> => {
 			try {
@@ -157,7 +157,7 @@ export = {
 	],
 
 	createDataTable: [
-		apiKeyHasScope('dataTable:create'),
+		publicApiScope('dataTable:create'),
 		async (req: DataTableRequest.Create, res: express.Response): Promise<express.Response> => {
 			const payload = PublicApiCreateDataTableDto.safeParse(req.body);
 			if (!payload.success) {
@@ -194,7 +194,7 @@ export = {
 	],
 
 	getDataTable: [
-		apiKeyHasScope('dataTable:read'),
+		publicApiScope('dataTable:read'),
 		projectScope('dataTable:read', 'dataTable'),
 		async (req: DataTableRequest.Get, res: express.Response): Promise<express.Response> => {
 			try {
@@ -221,7 +221,7 @@ export = {
 	],
 
 	updateDataTable: [
-		apiKeyHasScope('dataTable:update'),
+		publicApiScope('dataTable:update'),
 		projectScope('dataTable:update', 'dataTable'),
 		async (req: DataTableRequest.Update, res: express.Response): Promise<express.Response> => {
 			try {
@@ -275,7 +275,7 @@ export = {
 	],
 
 	deleteDataTable: [
-		apiKeyHasScope('dataTable:delete'),
+		publicApiScope('dataTable:delete'),
 		projectScope('dataTable:delete', 'dataTable'),
 		async (req: DataTableRequest.Delete, res: express.Response): Promise<express.Response> => {
 			try {

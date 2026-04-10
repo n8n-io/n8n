@@ -60,23 +60,30 @@ if (user && pass) {
 
 console.log(`PR #${pr}: fetching ${metrics.join(', ')} (${baselineDays}-day baseline)`);
 
-const res = await fetch(webhookUrl, {
-	method: 'POST',
-	headers,
-	body: JSON.stringify({
-		pr_number: pr,
-		github_repo: repo,
-		git_sha: sha,
-		baseline_days: baselineDays,
-		metric_names: metrics,
-	}),
-	signal: AbortSignal.timeout(60_000),
-});
+let res;
+try {
+	res = await fetch(webhookUrl, {
+		method: 'POST',
+		headers,
+		body: JSON.stringify({
+			pr_number: pr,
+			github_repo: repo,
+			git_sha: sha,
+			baseline_days: baselineDays,
+			metric_names: metrics,
+		}),
+		signal: AbortSignal.timeout(60_000),
+	});
+} catch (err) {
+	console.warn(`Webhook unreachable, skipping metrics comment: ${err.message}`);
+	process.exit(0);
+}
 
 if (!res.ok) {
 	const text = await res.text().catch(() => '');
-	console.error(`Webhook failed: ${res.status} ${res.statusText}\n${text}`);
-	process.exit(1);
+	console.warn(`Webhook failed: ${res.status} ${res.statusText}\n${text}`);
+	console.warn('Skipping metrics comment.');
+	process.exit(0);
 }
 
 const { markdown, has_data } = await res.json();

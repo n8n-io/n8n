@@ -29,6 +29,7 @@ const configs = {
 			'@n8n/community-nodes/package-name-convention': 'error',
 			'@n8n/community-nodes/credential-test-required': 'error',
 			'@n8n/community-nodes/no-credential-reuse': 'error',
+			'@n8n/community-nodes/no-forbidden-lifecycle-scripts': 'error',
 			'@n8n/community-nodes/no-http-request-with-manual-auth': 'error',
 			'@n8n/community-nodes/icon-validation': 'error',
 			'@n8n/community-nodes/options-sorted-alphabetically': 'warn',
@@ -38,6 +39,7 @@ const configs = {
 			'@n8n/community-nodes/cred-class-field-icon-missing': 'error',
 			'@n8n/community-nodes/node-connection-type-literal': 'error',
 			'@n8n/community-nodes/missing-paired-item': 'error',
+			'@n8n/community-nodes/require-continue-on-fail': 'error',
 		},
 	},
 	recommendedWithoutN8nCloudSupport: {
@@ -53,6 +55,7 @@ const configs = {
 			'@n8n/community-nodes/package-name-convention': 'error',
 			'@n8n/community-nodes/credential-test-required': 'error',
 			'@n8n/community-nodes/no-credential-reuse': 'error',
+			'@n8n/community-nodes/no-forbidden-lifecycle-scripts': 'error',
 			'@n8n/community-nodes/no-http-request-with-manual-auth': 'error',
 			'@n8n/community-nodes/icon-validation': 'error',
 			'@n8n/community-nodes/options-sorted-alphabetically': 'warn',
@@ -62,6 +65,7 @@ const configs = {
 			'@n8n/community-nodes/cred-class-field-icon-missing': 'error',
 			'@n8n/community-nodes/node-connection-type-literal': 'error',
 			'@n8n/community-nodes/missing-paired-item': 'error',
+			'@n8n/community-nodes/require-continue-on-fail': 'error',
 		},
 	},
 } satisfies Record<string, Linter.Config>;

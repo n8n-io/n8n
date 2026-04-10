@@ -193,6 +193,9 @@
 		"DELETE /data-tables/{dataTableId}/rows/delete": {
 			"status": "gap"
 		},
+		"GET /insights/summary": {
+			"status": "gap"
+		},
 		"POST /projects": {
 			"status": "gap"
 		},

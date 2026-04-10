@@ -56,6 +56,12 @@ export class MeController {
 			lastName: currentLastName,
 		} = req.user;
 
+		if (this.isUserManagedByEnv(req.user)) {
+			throw new BadRequestError(
+				'This account is managed via environment variables and cannot be updated here',
+			);
+		}
+
 		const { currentPassword, ...payloadWithoutPassword } = payload;
 		const { email, firstName, lastName } = payload;
 		const isEmailBeingChanged = email !== currentEmail;
@@ -164,6 +170,15 @@ export class MeController {
 		}
 	}
 
+	private isUserManagedByEnv(user: User): boolean {
+		const { instanceSettingsLoader } = this.globalConfig;
+		return (
+			instanceSettingsLoader.ownerManagedByEnv &&
+			!!user.email &&
+			user.email.toLowerCase() === instanceSettingsLoader.ownerEmail.toLowerCase()
+		);
+	}
+
 	/**
 	 * Update the logged-in user's password.
 	 */
@@ -177,6 +192,12 @@ export class MeController {
 	) {
 		const { user } = req;
 		const { currentPassword, newPassword, mfaCode } = payload;
+
+		if (this.isUserManagedByEnv(user)) {
+			throw new BadRequestError(
+				'This account is managed via environment variables and cannot be updated here',
+			);
+		}
 
 		// If SAML is enabled, we don't allow the user to change their password
 		if (isSamlLicensedAndEnabled()) {
