@@ -148,7 +148,11 @@ if (props.isEmbeddedInCanvas) {
 }
 
 const nodeValid = ref(true);
-const openPanel = ref<NodeSettingsTab>('params');
+
+const initialNode = props.activeNode ?? ndvStore.activeNode;
+const hasExecutionData =
+	!!initialNode && !!workflowsStore.getWorkflowRunData?.[initialNode.name]?.length;
+const openPanel = ref<NodeSettingsTab>(props.readOnly && hasExecutionData ? 'output' : 'params');
 
 // Used to prevent nodeValues from being overwritten by defaults on reopening ndv
 const nodeValuesInitialized = ref(false);
