@@ -170,6 +170,7 @@ onUnmounted(() => {
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	overflow: hidden;
+	margin: var(--spacing--2xl) 0;
 }
 
 .wrapper {
@@ -178,6 +179,7 @@ onUnmounted(() => {
 	width: 100%;
 	align-items: end;
 	gap: var(--spacing--xs);
+	margin-top: 0;
 }
 
 .row {
@@ -198,6 +200,7 @@ onUnmounted(() => {
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--medium);
 	color: var(--color--text--shade-1);
+	margin-bottom: 0 !important;
 }
 
 .swatch {
