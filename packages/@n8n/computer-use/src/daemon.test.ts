@@ -64,7 +64,7 @@ function parseJson<T>(raw: string): T {
 const BASE_CONFIG: GatewayConfig = {
 	logLevel: 'silent',
 	port: 0, // bind to OS-assigned port
-	allowedOrigins: [],
+	allowedOrigins: ['http://localhost:5678'],
 	filesystem: { dir: '/' },
 	computer: { shell: { timeout: 30_000 } },
 	browser: { defaultBrowser: 'chrome' },
@@ -78,20 +78,17 @@ async function post(
 	port: number,
 	urlPath: string,
 	body: JsonBody = {},
+	origin?: string,
 ): Promise<{ status: number; body: JsonBody }> {
 	return await new Promise((resolve, reject) => {
 		const payload = JSON.stringify(body);
+		const headers: Record<string, string | number> = {
+			['Content-Type']: 'application/json',
+			['Content-Length']: Buffer.byteLength(payload),
+		};
+		if (origin) headers['Origin'] = origin;
 		const req = http.request(
-			{
-				hostname: '127.0.0.1',
-				port,
-				path: urlPath,
-				method: 'POST',
-				headers: {
-					['Content-Type']: 'application/json',
-					['Content-Length']: Buffer.byteLength(payload),
-				},
-			},
+			{ hostname: '127.0.0.1', port, path: urlPath, method: 'POST', headers },
 			(res) => {
 				const chunks: Buffer[] = [];
 				res.on('data', (c: Buffer) => chunks.push(c));
@@ -260,13 +257,34 @@ describe('POST /connect — validation', () => {
 });
 
 // ---------------------------------------------------------------------------
-// POST /connect — confirmConnect integration
+// POST /connect — origin allowlist
 // ---------------------------------------------------------------------------
 
-describe('POST /connect — confirmConnect', () => {
-	it('calls confirmConnect with (url, session) and rejects with 403 when it returns false', async () => {
+describe('POST /connect — origin allowlist', () => {
+	it('silently refuses (403) connections from non-matching origins without calling confirmConnect', async () => {
+		const confirmConnect = jest.fn().mockResolvedValue(true);
+		const { port, close } = await startTestDaemon(
+			{ allowedOrigins: ['http://localhost:5678'] },
+			{ confirmConnect },
+		);
+		try {
+			const res = await post(port, '/connect', {
+				url: 'http://attacker.example.com',
+				token: 'tok',
+			});
+			expect(res.status).toBe(403);
+			expect(confirmConnect).not.toHaveBeenCalled();
+		} finally {
+			await close();
+		}
+	});
+
+	it('calls confirmConnect for connections from allowed origins', async () => {
 		const confirmConnect = jest.fn().mockResolvedValue(false);
-		const { port, close } = await startTestDaemon({}, { confirmConnect });
+		const { port, close } = await startTestDaemon(
+			{ allowedOrigins: ['http://localhost:5678'] },
+			{ confirmConnect },
+		);
 		try {
 			const res = await post(port, '/connect', {
 				url: 'http://localhost:5678',
@@ -276,20 +294,6 @@ describe('POST /connect — confirmConnect', () => {
 			const [calledUrl, calledSession] = confirmConnect.mock.calls[0] as [string, { dir: string }];
 			expect(calledUrl).toBe('http://localhost:5678');
 			expect(typeof calledSession.dir).toBe('string');
-		} finally {
-			await close();
-		}
-	});
-
-	it('skips confirmConnect for URLs in allowedOrigins', async () => {
-		const confirmConnect = jest.fn().mockResolvedValue(true);
-		const { port, close } = await startTestDaemon(
-			{ allowedOrigins: ['http://localhost:5678'], filesystem: { dir: tmpDir } },
-			{ confirmConnect },
-		);
-		try {
-			await post(port, '/connect', { url: 'http://localhost:5678', token: 'tok' });
-			expect(confirmConnect).not.toHaveBeenCalled();
 		} finally {
 			await close();
 		}
@@ -392,31 +396,105 @@ describe('GET /status', () => {
 // CORS preflight
 // ---------------------------------------------------------------------------
 
+async function options(
+	port: number,
+	urlPath: string,
+	origin?: string,
+): Promise<{ status: number; headers: Record<string, string | string[] | undefined> }> {
+	return await new Promise((resolve, reject) => {
+		const headers: Record<string, string> = {};
+		if (origin) headers['Origin'] = origin;
+		const req = http.request(
+			{ hostname: '127.0.0.1', port, path: urlPath, method: 'OPTIONS', headers },
+			(r) => {
+				r.resume();
+				resolve({
+					status: r.statusCode ?? 0,
+					headers: r.headers as Record<string, string | string[] | undefined>,
+				});
+			},
+		);
+		req.on('error', reject);
+		req.end();
+	});
+}
+
 describe('OPTIONS preflight', () => {
-	it('returns 204 with CORS headers', async () => {
+	it('returns 204 with echoed origin for matching origins', async () => {
 		const { port, close } = await startTestDaemon();
 		try {
-			const { status, headers } = await new Promise<{
-				status: number;
-				headers: Record<string, string | string[] | undefined>;
-			}>((resolve, reject) => {
-				const req = http.request(
-					{ hostname: '127.0.0.1', port, path: '/connect', method: 'OPTIONS' },
-					(r) => {
-						r.resume();
-						resolve({
-							status: r.statusCode ?? 0,
-							headers: r.headers as Record<string, string | string[] | undefined>,
-						});
-					},
-				);
-				req.on('error', reject);
-				req.end();
-			});
+			const { status, headers } = await options(port, '/connect', 'http://localhost:5678');
 			expect(status).toBe(204);
-			expect(headers['access-control-allow-origin']).toBe('*');
+			expect(headers['access-control-allow-origin']).toBe('http://localhost:5678');
 		} finally {
 			await close();
 		}
+	});
+
+	it('returns 403 for non-matching origins', async () => {
+		const { port, close } = await startTestDaemon();
+		try {
+			const { status, headers } = await options(port, '/connect', 'https://attacker.example.com');
+			expect(status).toBe(403);
+			expect(headers['access-control-allow-origin']).toBeUndefined();
+		} finally {
+			await close();
+		}
+	});
+
+	it('returns 403 when no Origin header is sent', async () => {
+		const { port, close } = await startTestDaemon();
+		try {
+			const { status } = await options(port, '/connect');
+			expect(status).toBe(403);
+		} finally {
+			await close();
+		}
+	});
+});
+
+// ---------------------------------------------------------------------------
+// isOriginAllowed — wildcard matching
+// ---------------------------------------------------------------------------
+
+describe('isOriginAllowed', () => {
+	let isOriginAllowed: (origin: string, allowedOrigins: string[]) => boolean;
+
+	beforeEach(async () => {
+		({ isOriginAllowed } = await import('./daemon'));
+	});
+
+	const cloudPattern = 'https://*.app.n8n.cloud';
+
+	it('matches a single-level subdomain', () => {
+		expect(isOriginAllowed('https://my-instance.app.n8n.cloud', [cloudPattern])).toBe(true);
+	});
+
+	it('matches a multi-level subdomain', () => {
+		expect(isOriginAllowed('https://a.b.app.n8n.cloud', [cloudPattern])).toBe(true);
+	});
+
+	it('does not match the base domain without subdomain', () => {
+		expect(isOriginAllowed('https://app.n8n.cloud', [cloudPattern])).toBe(false);
+	});
+
+	it('does not match an unrelated origin', () => {
+		expect(isOriginAllowed('https://attacker.com', [cloudPattern])).toBe(false);
+	});
+
+	it('does not match when scheme differs', () => {
+		expect(isOriginAllowed('http://my-instance.app.n8n.cloud', [cloudPattern])).toBe(false);
+	});
+
+	it('does not match when port differs from pattern default', () => {
+		expect(isOriginAllowed('https://my-instance.app.n8n.cloud:8080', [cloudPattern])).toBe(false);
+	});
+
+	it('matches exact origins without wildcards', () => {
+		expect(isOriginAllowed('http://localhost:5678', ['http://localhost:5678'])).toBe(true);
+	});
+
+	it('rejects exact origins that differ by port', () => {
+		expect(isOriginAllowed('http://localhost:3000', ['http://localhost:5678'])).toBe(false);
 	});
 });
