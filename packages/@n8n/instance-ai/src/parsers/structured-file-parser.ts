@@ -244,6 +244,13 @@ function parseCsvTsv(
 		dataRows = records;
 	}
 
+	// Check for dangerous keys in CSV/TSV headers (consistent with JSON validation)
+	for (const header of rawHeaders) {
+		if (DANGEROUS_KEYS.has(header.trim())) {
+			throw new Error(`Dangerous column header "${header.trim()}" found in ${format} data`);
+		}
+	}
+
 	return { rawHeaders, allRows: dataRows };
 }
 
@@ -510,7 +517,10 @@ export function buildAttachmentManifest(classified: ClassifiedAttachment[]): str
 			: att.unavailableReason
 				? `not parseable: ${att.unavailableReason}`
 				: 'not a supported structured format';
-		lines.push(`- [${att.index}] "${att.original.fileName}" (${att.original.mimeType}): ${status}`);
+		// Escape user-controlled values to prevent prompt injection via crafted filenames/MIME types
+		const safeFileName = att.original.fileName.replace(/[\n\r]/g, ' ').slice(0, 200);
+		const safeMimeType = att.original.mimeType.replace(/[\n\r]/g, ' ').slice(0, 100);
+		lines.push(`- [${att.index}] \`${safeFileName}\` (${safeMimeType}): ${status}`);
 	}
 
 	if (classified.length > MAX_MANIFEST_ATTACHMENTS) {
