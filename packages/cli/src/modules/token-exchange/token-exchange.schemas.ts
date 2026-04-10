@@ -8,7 +8,7 @@ export const TOKEN_EXCHANGE_GRANT_TYPE = 'urn:ietf:params:oauth:grant-type:token
  * Asymmetric-only JWT algorithms accepted for trusted key sources.
  * Symmetric (HMAC) and 'none' are excluded by design.
  */
-const JwtAlgorithmSchema = z.enum([
+export const JwtAlgorithmSchema = z.enum([
 	'RS256',
 	'RS384',
 	'RS512',

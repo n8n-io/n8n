@@ -27,14 +27,14 @@ function isRedactableExecution(
 }
 
 import type { ExecutionRequest } from '../../../types';
-import { apiKeyHasScope, validCursor } from '../../shared/middlewares/global.middleware';
+import { publicApiScope, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import { getSharedWorkflowIds } from '../workflows/workflows.service';
 import { getExecutionTags, mapAnnotationTags, updateExecutionTags } from './executions.service';
 
 export = {
 	deleteExecution: [
-		apiKeyHasScope('execution:delete'),
+		publicApiScope('execution:delete'),
 		async (req: ExecutionRequest.Delete, res: express.Response): Promise<express.Response> => {
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:delete']);
 
@@ -80,7 +80,7 @@ export = {
 		},
 	],
 	getExecution: [
-		apiKeyHasScope('execution:read'),
+		publicApiScope('execution:read'),
 		async (req: ExecutionRequest.Get, res: express.Response): Promise<express.Response> => {
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
@@ -137,7 +137,7 @@ export = {
 		},
 	],
 	getExecutions: [
-		apiKeyHasScope('execution:list'),
+		publicApiScope('execution:list'),
 		validCursor,
 		async (req: ExecutionRequest.GetAll, res: express.Response): Promise<express.Response> => {
 			const {
@@ -231,7 +231,7 @@ export = {
 		},
 	],
 	retryExecution: [
-		apiKeyHasScope('execution:retry'),
+		publicApiScope('execution:retry'),
 		async (req: ExecutionRequest.Retry, res: express.Response): Promise<express.Response> => {
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
@@ -268,7 +268,7 @@ export = {
 		},
 	],
 	getExecutionTags: [
-		apiKeyHasScope('executionTags:list'),
+		publicApiScope('executionTags:list'),
 		async (req: ExecutionRequest.GetTags, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
@@ -291,7 +291,7 @@ export = {
 		},
 	],
 	updateExecutionTags: [
-		apiKeyHasScope('executionTags:update'),
+		publicApiScope('executionTags:update'),
 		async (req: ExecutionRequest.UpdateTags, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 			const newTagIds = req.body.map((tag) => tag.id);
@@ -322,7 +322,7 @@ export = {
 		},
 	],
 	stopExecution: [
-		apiKeyHasScope('execution:stop'),
+		publicApiScope('execution:stop'),
 		async (req: ExecutionRequest.Stop, res: express.Response): Promise<express.Response> => {
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:execute']);
 
@@ -350,7 +350,7 @@ export = {
 		},
 	],
 	stopManyExecutions: [
-		apiKeyHasScope('execution:stop'),
+		publicApiScope('execution:stop'),
 		async (req: ExecutionRequest.StopMany, res: express.Response): Promise<express.Response> => {
 			const { status: rawStatus, workflowId, startedAfter, startedBefore } = req.body;
 			const status: ExecutionStatus[] = rawStatus.map((x) => (x === 'queued' ? 'new' : x));
