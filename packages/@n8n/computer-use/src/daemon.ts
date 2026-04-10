@@ -43,6 +43,7 @@ interface DaemonState {
 	session: GatewaySession | null;
 	connectedAt: string | null;
 	connectedUrl: string | null;
+	confirmingConnection: boolean;
 }
 
 const state: DaemonState = {
@@ -51,6 +52,7 @@ const state: DaemonState = {
 	session: null,
 	connectedAt: null,
 	connectedUrl: null,
+	confirmingConnection: false,
 };
 
 // HTTP header names don't follow JS naming conventions — build them dynamically
@@ -121,6 +123,12 @@ async function handleConnect(req: http.IncomingMessage, res: http.ServerResponse
 		return;
 	}
 
+	// Reject concurrent connection attempts while a confirmation prompt is active
+	if (state.confirmingConnection) {
+		jsonResponse(res, 409, { error: 'A connection confirmation is already in progress.' });
+		return;
+	}
+
 	// Check allowedOrigins — skip confirmation for trusted URLs.
 	// Use exact origin matching via `new URL()` to prevent spoofing
 	// (e.g. "https://example.com.attacker.com" must not match "https://example.com").
@@ -147,7 +155,13 @@ async function handleConnect(req: http.IncomingMessage, res: http.ServerResponse
 		const session = new GatewaySession(defaults, store);
 
 		if (!isAllowed) {
-			const approved = await daemonOptions.confirmConnect(url, session);
+			state.confirmingConnection = true;
+			let approved: boolean;
+			try {
+				approved = await daemonOptions.confirmConnect(url, session);
+			} finally {
+				state.confirmingConnection = false;
+			}
 			if (!approved) {
 				jsonResponse(res, 403, { error: 'Connection rejected by user.' });
 				return;
