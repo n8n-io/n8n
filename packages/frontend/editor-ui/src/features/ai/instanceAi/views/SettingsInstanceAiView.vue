@@ -4,19 +4,7 @@ import { N8nButton, N8nHeading, N8nIcon, N8nOption, N8nSelect, N8nText } from '@
 import { ElSwitch } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-<<<<<<< HEAD
-import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useToast } from '@/app/composables/useToast';
-import { fetchSettings, updateSettings } from '../instanceAi.settings.api';
-import type {
-	InstanceAiAdminSettingsResponse,
-	InstanceAiPermissions,
-	InstanceAiPermissionMode,
-} from '@n8n/api-types';
-=======
 import type { InstanceAiPermissions, InstanceAiPermissionMode } from '@n8n/api-types';
->>>>>>> master
 import type { BaseTextKey } from '@n8n/i18n';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import ModelSection from '../components/settings/ModelSection.vue';
@@ -28,13 +16,7 @@ import AdvancedSection from '../components/settings/AdvancedSection.vue';
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
-<<<<<<< HEAD
-const rootStore = useRootStore();
-const settingsStore = useSettingsStore();
-const toast = useToast();
-=======
 const store = useInstanceAiSettingsStore();
->>>>>>> master
 
 const isAdmin = computed(() => store.canManage);
 
@@ -71,45 +53,6 @@ onMounted(() => {
 	void store.fetch();
 });
 
-<<<<<<< HEAD
-watch(
-	() => settings.value,
-	(val) => {
-		if (!val) void loadSettings();
-	},
-	{ immediate: true },
-);
-
-async function loadSettings() {
-	isLoading.value = true;
-	try {
-		settings.value = await fetchSettings(rootStore.restApiContext);
-	} catch {
-		toast.showError(new Error('Failed to load settings'), 'Settings error');
-	} finally {
-		isLoading.value = false;
-	}
-}
-
-async function saveSettings(
-	update: Parameters<typeof updateSettings>[1],
-	previousSettings: InstanceAiAdminSettingsResponse | null,
-) {
-	if (isSaving.value) return;
-	isSaving.value = true;
-	try {
-		settings.value = await updateSettings(rootStore.restApiContext, update);
-		await settingsStore.getModuleSettings();
-	} catch {
-		settings.value = previousSettings;
-		toast.showError(new Error('Failed to save settings'), 'Settings error');
-	} finally {
-		isSaving.value = false;
-	}
-}
-
-=======
->>>>>>> master
 function handleEnabledToggle(value: string | number | boolean) {
 	store.setField('enabled', Boolean(value));
 	void store.save();
