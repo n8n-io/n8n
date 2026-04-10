@@ -141,9 +141,9 @@ describe('RelayConnection', () => {
 			const ids = relay.getControlledIds();
 			expect(ids).toHaveLength(3);
 			expect(ids).toEqual([
-				{ targetId: expect.stringMatching(/^n8n-tab-/), chromeTabId: 1 },
-				{ targetId: expect.stringMatching(/^n8n-tab-/), chromeTabId: 2 },
-				{ targetId: expect.stringMatching(/^n8n-tab-/), chromeTabId: 3 },
+				{ targetId: targetIdForTab(1), chromeTabId: 1 },
+				{ targetId: targetIdForTab(2), chromeTabId: 2 },
+				{ targetId: targetIdForTab(3), chromeTabId: 3 },
 			]);
 
 			// Should NOT attach any debuggers (lazy)
@@ -180,8 +180,8 @@ describe('RelayConnection', () => {
 			const ids = relay.getControlledIds();
 			expect(ids).toHaveLength(2);
 			expect(ids).toEqual([
-				{ targetId: expect.stringMatching(/^n8n-tab-/), chromeTabId: 1 },
-				{ targetId: expect.stringMatching(/^n8n-tab-/), chromeTabId: 3 },
+				{ targetId: targetIdForTab(1), chromeTabId: 1 },
+				{ targetId: targetIdForTab(3), chromeTabId: 3 },
 			]);
 		});
 	});
@@ -193,7 +193,7 @@ describe('RelayConnection', () => {
 			await relay.addTab(42, 'Test', 'https://test.com');
 			expect(relay.getControlledIds()).toHaveLength(1);
 			expect(relay.getControlledIds()[0]).toEqual({
-				targetId: expect.stringMatching(/^n8n-tab-/),
+				targetId: targetIdForTab(42),
 				chromeTabId: 42,
 			});
 
@@ -205,7 +205,7 @@ describe('RelayConnection', () => {
 				expect.objectContaining({
 					method: 'tabOpened',
 					params: expect.objectContaining({
-						id: expect.stringMatching(/^n8n-tab-/),
+						id: targetIdForTab(42),
 						title: 'Test',
 						url: 'https://test.com',
 					}),
@@ -234,7 +234,7 @@ describe('RelayConnection', () => {
 			expect(parseSent(ws)).toEqual(
 				expect.objectContaining({
 					method: 'tabClosed',
-					params: expect.objectContaining({ id: expect.stringMatching(/^n8n-tab-/) }),
+					params: expect.objectContaining({ id: targetIdForTab(42) }),
 				}),
 			);
 		});
@@ -298,7 +298,7 @@ describe('RelayConnection', () => {
 					result: expect.objectContaining({
 						tabs: [
 							expect.objectContaining({
-								id: expect.stringMatching(/^n8n-tab-/),
+								id: targetIdForTab(42),
 								title: 'Example',
 								url: 'https://example.com',
 							}),
@@ -363,7 +363,7 @@ describe('RelayConnection', () => {
 			expect(chrome.debugger.sendCommand).toHaveBeenCalledTimes(2);
 		});
 
-		it('should route CDP commands to specific tab by session ID', async () => {
+		it('should route CDP commands to specific tab by CDP targetId', async () => {
 			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(10), mockTarget(20)]);
 			await relay.registerSelectedTabs([10, 20]);
 			const ids = relay.getControlledIds();
@@ -434,10 +434,10 @@ describe('RelayConnection', () => {
 			// Agent-created tabs ARE eagerly attached
 			expect(chrome.debugger.attach).toHaveBeenCalledWith({ tabId: 999 }, '1.3');
 
-			// Response should have session ID, not chromeTabId
+			// Response should have CDP targetId, not chromeTabId
 			expect(parseSent(ws)).toEqual(
 				expect.objectContaining({
-					result: expect.objectContaining({ id: expect.stringMatching(/^n8n-tab-/) }),
+					result: expect.objectContaining({ id: targetIdForTab(999) }),
 				}),
 			);
 			expect(parseSent(ws)).not.toHaveProperty('result.tabId');
@@ -479,7 +479,7 @@ describe('RelayConnection', () => {
 		expect(chrome.debugger.detach).toHaveBeenCalledWith({ tabId: 42 });
 	});
 
-	it('should forward debugger events with session ID', async () => {
+	it('should forward debugger events with CDP targetId', async () => {
 		chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(42)]);
 		await relay.addTab(42, 'Test', 'https://test.com');
 		ws.sent.length = 0;
@@ -492,7 +492,7 @@ describe('RelayConnection', () => {
 				method: 'forwardCDPEvent',
 				params: expect.objectContaining({
 					method: 'Page.loadEventFired',
-					id: expect.stringMatching(/^n8n-tab-/),
+					id: targetIdForTab(42),
 				}),
 			}),
 		);
@@ -689,14 +689,13 @@ describe('RelayConnection', () => {
 			// Register and attach two tabs
 			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(10), mockTarget(20)]);
 			await relay.registerSelectedTabs([10, 20]);
-			const ids = relay.getControlledIds();
 
 			// Attach both via CDP commands
 			ws.onmessage?.({
 				data: JSON.stringify({
 					id: 1,
 					method: 'forwardCDPCommand',
-					params: { method: 'Runtime.evaluate', params: {}, id: ids[0].targetId },
+					params: { method: 'Runtime.evaluate', params: {}, id: targetIdForTab(10) },
 				}),
 			});
 			await tick();
@@ -704,7 +703,7 @@ describe('RelayConnection', () => {
 				data: JSON.stringify({
 					id: 2,
 					method: 'forwardCDPCommand',
-					params: { method: 'Runtime.evaluate', params: {}, id: ids[1].targetId },
+					params: { method: 'Runtime.evaluate', params: {}, id: targetIdForTab(20) },
 				}),
 			});
 			await tick();
@@ -757,14 +756,13 @@ describe('RelayConnection', () => {
 			// Now add a second tab and trigger lazy attach
 			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(20)]);
 			await relay.addTab(20, 'New Tab', 'https://new.com');
-			const tab20Id = relay.getControlledIds().find((e) => e.chromeTabId === 20)!.targetId;
 			chrome.debugger.sendCommand.mockClear();
 
 			ws.onmessage?.({
 				data: JSON.stringify({
 					id: 3,
 					method: 'forwardCDPCommand',
-					params: { method: 'DOM.getDocument', params: {}, id: tab20Id },
+					params: { method: 'DOM.getDocument', params: {}, id: targetIdForTab(20) },
 				}),
 			});
 			await tick();
@@ -866,7 +864,6 @@ describe('RelayConnection', () => {
 		it('should close with extension_disconnected when last tab is closed via closeTab', async () => {
 			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(42)]);
 			await relay.addTab(42, 'Test', 'https://test.com');
-			const tabSessionId = relay.getControlledIds()[0].targetId;
 			relay.setSettings({ allowTabCreation: true, allowTabClosing: true });
 			ws.sent.length = 0;
 
@@ -874,7 +871,7 @@ describe('RelayConnection', () => {
 				data: JSON.stringify({
 					id: 1,
 					method: 'closeTab',
-					params: { id: tabSessionId },
+					params: { id: targetIdForTab(42) },
 				}),
 			});
 			await tick();
@@ -984,7 +981,7 @@ describe('RelayConnection', () => {
 				data: JSON.stringify({
 					id: 1,
 					method: 'resolveRef',
-					params: { id: tabId, ref: 'btn1' },
+					params: { id: tabId, ref: 'btn-save' },
 				}),
 			});
 			await tick();
@@ -1007,12 +1004,12 @@ describe('RelayConnection', () => {
 			await tick();
 			ws.sent.length = 0;
 
-			// resolveRef for the button — ref is abbreviated role + counter (e.g. btn1)
+			// resolveRef for the button — ref is role+name slug since no stable attr
 			ws.onmessage?.({
 				data: JSON.stringify({
 					id: 2,
 					method: 'resolveRef',
-					params: { id: tabId, ref: 'btn1' },
+					params: { id: tabId, ref: 'btn-save' },
 				}),
 			});
 			await tick();

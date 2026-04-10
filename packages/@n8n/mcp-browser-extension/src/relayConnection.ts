@@ -1,14 +1,12 @@
 /**
  * Manages the WebSocket connection from the Chrome extension to the CDP relay server.
  *
- * The extension is the single source of truth for tab state. It generates stable
- * session IDs (`n8n-tab-{nanoid}`) for each controlled tab, decoupling Playwright's
- * page identity from Chrome's internal CDP Target.targetId strings.
- * The extension resolves real CDP targetIds via `chrome.debugger.getTargets()` and
- * only attaches the debugger lazily on first interaction with a tab.
+ * The extension is the single source of truth for tab state. It resolves real CDP
+ * `Target.targetId` strings via `chrome.debugger.getTargets()` (no attach needed)
+ * and only attaches the debugger lazily on first interaction with a tab.
+ * All communication with the relay uses these CDP target IDs.
  */
 
-import { nanoid } from 'nanoid';
 import type { Protocol } from 'devtools-protocol';
 
 import { buildSnapshot, computeSnapshotDiff, type TreeNode } from './ariaSnapshot';
@@ -54,8 +52,6 @@ export function isEligibleTab(tab: chrome.tabs.Tab): boolean {
 interface TabEntry {
 	chromeTabId: number;
 	attached: boolean;
-	/** Real CDP Target.targetId — needed for Target.getTargetInfo and crash cleanup. */
-	targetId: string;
 }
 
 const CDP_COMMAND_TIMEOUT_MS = 30_000;
@@ -74,17 +70,17 @@ function isRestrictedUrl(url: string | undefined): boolean {
 }
 
 export class RelayConnection {
-	/** Primary map: stable sessionId → Chrome tab state */
+	/** Primary map: CDP targetId → Chrome tab state */
 	private readonly tabs = new Map<string, TabEntry>();
-	/** Reverse lookup: chromeTabId → stable sessionId (for debugger events) */
-	private readonly chromeTabIdToSessionId = new Map<number, string>();
+	/** Reverse lookup: chromeTabId → CDP targetId (for debugger events) */
+	private readonly chromeTabIdToId = new Map<number, string>();
 	/** In-flight attach promises to deduplicate concurrent attaches */
 	private readonly pendingAttaches = new Map<string, Promise<void>>();
 	/** Set of chrome tab IDs created by the AI agent */
 	private readonly agentCreatedChromeTabIds = new Set<number>();
-	/** The primary session ID (first registered), used as default target */
+	/** The primary tab ID (first registered), used as default target */
 	private primaryId: string | undefined;
-	/** Snapshot cache per tab: sessionId → { nodes, refs } — no rendered text stored */
+	/** Snapshot cache per tab: targetId → { nodes, refs } — no rendered text stored */
 	private readonly tabSnapshotCache = new Map<
 		string,
 		{ nodes: TreeNode[]; refs: Map<string, string> }
@@ -120,11 +116,6 @@ export class RelayConnection {
 	// Public API — called by background.ts
 	// =========================================================================
 
-	/** Generate a stable, human-readable session ID for a new tab. */
-	private generateSessionId(): string {
-		return `n8n-tab-${nanoid(12)}`;
-	}
-
 	/**
 	 * Register user-selected tabs without attaching the debugger (lazy attach).
 	 * Resolves real CDP targetIds via chrome.debugger.getTargets().
@@ -133,7 +124,7 @@ export class RelayConnection {
 		const targetMap = await this.resolveTargetIds(chromeTabIds);
 
 		for (const chromeTabId of chromeTabIds) {
-			if (this.chromeTabIdToSessionId.has(chromeTabId)) continue;
+			if (this.chromeTabIdToId.has(chromeTabId)) continue;
 
 			const targetId = targetMap.get(chromeTabId);
 			if (!targetId) {
@@ -141,19 +132,16 @@ export class RelayConnection {
 				continue;
 			}
 
-			const sessionId = this.generateSessionId();
-			this.tabs.set(sessionId, { chromeTabId, attached: false, targetId });
-			this.chromeTabIdToSessionId.set(chromeTabId, sessionId);
-			this.primaryId ??= sessionId;
-			log.debug(
-				`registerTab: sessionId=${sessionId} targetId=${targetId} chromeTabId=${chromeTabId} (lazy)`,
-			);
+			this.tabs.set(targetId, { chromeTabId, attached: false });
+			this.chromeTabIdToId.set(chromeTabId, targetId);
+			this.primaryId ??= targetId;
+			log.debug(`registerTab: targetId=${targetId} chromeTabId=${chromeTabId} (lazy)`);
 		}
 	}
 
 	/** Add a newly opened tab and notify the relay. Resolves targetId without attaching. */
 	async addTab(chromeTabId: number, title: string, url: string): Promise<void> {
-		if (this.chromeTabIdToSessionId.has(chromeTabId)) return;
+		if (this.chromeTabIdToId.has(chromeTabId)) return;
 
 		const targetMap = await this.resolveTargetIds([chromeTabId]);
 		const targetId = targetMap.get(chromeTabId);
@@ -162,42 +150,39 @@ export class RelayConnection {
 			return;
 		}
 
-		const sessionId = this.generateSessionId();
-		this.tabs.set(sessionId, { chromeTabId, attached: false, targetId });
-		this.chromeTabIdToSessionId.set(chromeTabId, sessionId);
-		this.primaryId ??= sessionId;
+		this.tabs.set(targetId, { chromeTabId, attached: false });
+		this.chromeTabIdToId.set(chromeTabId, targetId);
+		this.primaryId ??= targetId;
 
-		log.debug(
-			`addTab: sessionId=${sessionId} targetId=${targetId} chromeTabId=${chromeTabId} url=${url} (lazy)`,
-		);
-		this.sendMessage({ method: 'tabOpened', params: { id: sessionId, title, url } });
+		log.debug(`addTab: targetId=${targetId} chromeTabId=${chromeTabId} url=${url} (lazy)`);
+		this.sendMessage({ method: 'tabOpened', params: { id: targetId, title, url } });
 	}
 
 	/** Remove a closed tab and notify the relay. */
 	removeTab(chromeTabId: number): void {
-		const sessionId = this.chromeTabIdToSessionId.get(chromeTabId);
-		if (!sessionId) return;
+		const id = this.chromeTabIdToId.get(chromeTabId);
+		if (!id) return;
 
-		const entry = this.tabs.get(sessionId);
+		const entry = this.tabs.get(id);
 
 		// Detach debugger only if actually attached
 		if (entry?.attached) {
 			chrome.debugger.detach({ tabId: chromeTabId }).catch(() => {});
 		}
 
-		this.tabs.delete(sessionId);
-		this.chromeTabIdToSessionId.delete(chromeTabId);
+		this.tabs.delete(id);
+		this.chromeTabIdToId.delete(chromeTabId);
 		this.agentCreatedChromeTabIds.delete(chromeTabId);
-		this.tabSnapshotCache.delete(sessionId);
+		this.tabSnapshotCache.delete(id);
 
 		// Update primary
-		if (sessionId === this.primaryId) {
+		if (id === this.primaryId) {
 			const remaining = [...this.tabs.keys()];
 			this.primaryId = remaining.length > 0 ? remaining[0] : undefined;
 		}
 
-		log.debug(`removeTab: ${sessionId} (chromeTabId=${chromeTabId})`);
-		this.sendMessage({ method: 'tabClosed', params: { id: sessionId } });
+		log.debug(`removeTab: ${id} (chromeTabId=${chromeTabId})`);
+		this.sendMessage({ method: 'tabClosed', params: { id } });
 
 		if (this.tabs.size === 0) {
 			this.close('extension_disconnected');
@@ -208,17 +193,17 @@ export class RelayConnection {
 		this.settings = settings;
 	}
 
-	/** Return controlled tab identifiers (sessionId and Chrome tab ID). */
+	/** Return controlled tab identifiers (both CDP targetId and Chrome tab ID). */
 	getControlledIds(): Array<{ targetId: string; chromeTabId: number }> {
-		return [...this.tabs.entries()].map(([sessionId, entry]) => ({
-			targetId: sessionId,
+		return [...this.tabs.entries()].map(([targetId, entry]) => ({
+			targetId,
 			chromeTabId: entry.chromeTabId,
 		}));
 	}
 
 	/** Check whether a chrome tab ID is controlled by this relay. */
 	isControlledTab(chromeTabId: number): boolean {
-		return this.chromeTabIdToSessionId.has(chromeTabId);
+		return this.chromeTabIdToId.has(chromeTabId);
 	}
 
 	isTabCreationAllowed(): boolean {
@@ -258,11 +243,10 @@ export class RelayConnection {
 		}
 
 		this.tabs.clear();
-		this.chromeTabIdToSessionId.clear();
+		this.chromeTabIdToId.clear();
 		this.pendingAttaches.clear();
 		this.agentCreatedChromeTabIds.clear();
 		this.tabSnapshotCache.clear();
-		this.primaryId = undefined;
 		this.onclose?.();
 	}
 
@@ -372,8 +356,8 @@ export class RelayConnection {
 
 	private onDebuggerEvent(source: chrome.debugger.Debuggee, method: string, params?: object): void {
 		if (!source.tabId) return;
-		const sessionId = this.chromeTabIdToSessionId.get(source.tabId);
-		if (!sessionId) return;
+		const id = this.chromeTabIdToId.get(source.tabId);
+		if (!id) return;
 
 		// Filter restricted child targets from auto-attach (extension pages, chrome://, etc.).
 		// Without this, Chrome's debugger API throws "Cannot access a chrome-extension:// URL
@@ -398,29 +382,29 @@ export class RelayConnection {
 
 		this.sendMessage({
 			method: 'forwardCDPEvent',
-			params: { method, params, id: sessionId },
+			params: { method, params, id },
 		});
 	}
 
 	private onDebuggerDetach(source: chrome.debugger.Debuggee, reason: string): void {
 		if (!source.tabId) return;
-		const sessionId = this.chromeTabIdToSessionId.get(source.tabId);
-		if (!sessionId) return;
+		const id = this.chromeTabIdToId.get(source.tabId);
+		if (!id) return;
 
-		const entry = this.tabs.get(sessionId);
+		const entry = this.tabs.get(id);
 		if (entry) entry.attached = false;
 
-		this.tabs.delete(sessionId);
-		this.chromeTabIdToSessionId.delete(source.tabId);
+		this.tabs.delete(id);
+		this.chromeTabIdToId.delete(source.tabId);
 		this.agentCreatedChromeTabIds.delete(source.tabId);
 
-		if (sessionId === this.primaryId) {
+		if (id === this.primaryId) {
 			const remaining = [...this.tabs.keys()];
 			this.primaryId = remaining.length > 0 ? remaining[0] : undefined;
 		}
 
-		log.debug(`debuggerDetach: ${sessionId} reason=${reason}`);
-		this.sendMessage({ method: 'tabClosed', params: { id: sessionId } });
+		log.debug(`debuggerDetach: ${id} reason=${reason}`);
+		this.sendMessage({ method: 'tabClosed', params: { id } });
 
 		if (this.tabs.size === 0) {
 			this.close('debugger_detached');
@@ -491,7 +475,7 @@ export class RelayConnection {
 	// Internal — tab ID resolution
 	// =========================================================================
 
-	/** Resolve a session ID to the tab entry, falling back to primary. */
+	/** Resolve a CDP targetId to the tab entry, falling back to primary. */
 	private resolveTab(id?: string): { id: string; entry: TabEntry } {
 		if (id) {
 			const entry = this.tabs.get(id);
@@ -532,7 +516,7 @@ export class RelayConnection {
 
 		const { id, entry } = this.resolveTab(rawId as string | undefined);
 
-		log.debug(`CDP: ${method as string} → sessionId=${id} (chromeTabId=${entry.chromeTabId})`);
+		log.debug(`CDP: ${method as string} → targetId=${id} (chromeTabId=${entry.chromeTabId})`);
 
 		// Lazy attach on first CDP command
 		await this.ensureAttached(id);
@@ -610,9 +594,8 @@ export class RelayConnection {
 
 		// Agent-created tabs are eagerly attached for immediate use
 		const targetId = await this.attachAndResolveTargetId(tab.id);
-		const sessionId = this.generateSessionId();
-		this.tabs.set(sessionId, { chromeTabId: tab.id, attached: true, targetId });
-		this.chromeTabIdToSessionId.set(tab.id, sessionId);
+		this.tabs.set(targetId, { chromeTabId: tab.id, attached: true });
+		this.chromeTabIdToId.set(tab.id, targetId);
 
 		// Apply cached auto-attach params so the new tab reports iframes immediately.
 		// ensureAttached() does this for lazily-attached tabs; we must do it here too
@@ -629,14 +612,12 @@ export class RelayConnection {
 			}
 		}
 
-		log.debug(
-			`createTab: sessionId=${sessionId} targetId=${targetId} chromeTabId=${tab.id} url=${tab.url ?? url ?? ''}`,
-		);
+		log.debug(`createTab: targetId=${targetId} chromeTabId=${tab.id} url=${tab.url ?? url ?? ''}`);
 
 		this.ontabcreated?.();
 
 		return {
-			id: sessionId,
+			id: targetId,
 			title: tab.title ?? '',
 			url: tab.url ?? url ?? '',
 		};
@@ -649,13 +630,13 @@ export class RelayConnection {
 			);
 		}
 
-		const sessionId = params.id as string;
-		if (!sessionId) throw new Error('id is required');
+		const id = params.id as string;
+		if (!id) throw new Error('id is required');
 
-		const entry = this.tabs.get(sessionId);
-		if (!entry) throw new Error(`Tab ${sessionId} is not registered`);
+		const entry = this.tabs.get(id);
+		if (!entry) throw new Error(`Tab ${id} is not registered`);
 
-		log.debug(`closeTab: ${sessionId} (chromeTabId=${entry.chromeTabId})`);
+		log.debug(`closeTab: ${id} (chromeTabId=${entry.chromeTabId})`);
 
 		// Detach debugger if attached
 		if (entry.attached) {
@@ -663,15 +644,15 @@ export class RelayConnection {
 		}
 
 		// Clean up maps
-		this.tabs.delete(sessionId);
-		this.chromeTabIdToSessionId.delete(entry.chromeTabId);
+		this.tabs.delete(id);
+		this.chromeTabIdToId.delete(entry.chromeTabId);
 		this.agentCreatedChromeTabIds.delete(entry.chromeTabId);
 
 		// Close the tab
 		await chrome.tabs.remove(entry.chromeTabId);
 
 		// Update primary
-		if (sessionId === this.primaryId) {
+		if (id === this.primaryId) {
 			const remaining = [...this.tabs.keys()];
 			this.primaryId = remaining.length > 0 ? remaining[0] : undefined;
 		}
@@ -680,7 +661,7 @@ export class RelayConnection {
 			this.close('extension_disconnected');
 		}
 
-		return { closed: true, id: sessionId };
+		return { closed: true, id };
 	}
 
 	private async handleAttachTab(params: Record<string, unknown>): Promise<unknown> {
@@ -699,13 +680,11 @@ export class RelayConnection {
 			type = 'interactive',
 			depth,
 			scopeSelector,
-			scopeMarker,
 		} = params as {
 			id?: string;
 			type?: 'interactive' | 'full';
 			depth?: number;
 			scopeSelector?: string;
-			scopeMarker?: string;
 		};
 		const { id, entry } = this.resolveTab(rawId);
 		await this.ensureAttached(id);
@@ -724,26 +703,18 @@ export class RelayConnection {
 			{},
 		)) as Protocol.Accessibility.GetFullAXTreeResponse;
 
-		// Ensure DOM document is loaded — required for DOM.pushNodesByBackendIdsToFrontend
-		// and DOM.getAttributes used by fetchAttributes below
-		const { root } = (await chrome.debugger.sendCommand(debuggee, 'DOM.getDocument', {
-			depth: 0,
-		})) as Protocol.DOM.GetDocumentResponse;
-
-		// Resolve scope node if scopeMarker or scopeSelector given
+		// Resolve scope node if scopeSelector given
 		let scopeNodeId: string | undefined;
-		const cssScopeSelector = scopeMarker ? `[data-n8n-scope="${scopeMarker}"]` : scopeSelector;
-		if (cssScopeSelector) {
+		if (scopeSelector) {
+			const { root } = (await chrome.debugger.sendCommand(debuggee, 'DOM.getDocument', {
+				depth: 0,
+			})) as Protocol.DOM.GetDocumentResponse;
 			const { nodeId } = (await chrome.debugger.sendCommand(debuggee, 'DOM.querySelector', {
 				nodeId: root.nodeId,
-				selector: cssScopeSelector,
+				selector: scopeSelector,
 			})) as Protocol.DOM.QuerySelectorResponse;
 			if (!nodeId) {
-				throw new Error(
-					scopeMarker
-						? 'Scope element no longer exists. Take a new snapshot.'
-						: `scopeSelector "${scopeSelector}" did not match any element`,
-				);
+				throw new Error(`scopeSelector "${scopeSelector}" did not match any element`);
 			}
 			const { node } = (await chrome.debugger.sendCommand(debuggee, 'DOM.describeNode', {
 				nodeId,
@@ -751,19 +722,8 @@ export class RelayConnection {
 			scopeNodeId = axNodes.find((n) => n.backendDOMNodeId === node.backendNodeId)?.nodeId;
 			if (!scopeNodeId) {
 				throw new Error(
-					scopeMarker
-						? 'Scope element has no accessibility node'
-						: `scopeSelector "${scopeSelector}" matched a DOM element with no accessibility node`,
+					`scopeSelector "${scopeSelector}" matched a DOM element with no accessibility node`,
 				);
-			}
-			// Clean up marker attribute
-			if (scopeMarker) {
-				chrome.debugger
-					.sendCommand(debuggee, 'DOM.removeAttribute', {
-						nodeId,
-						name: 'data-n8n-scope',
-					})
-					.catch(() => {}); // fire-and-forget cleanup
 			}
 		}
 
@@ -792,9 +752,7 @@ export class RelayConnection {
 		this.tabSnapshotCache.set(id, { nodes, refs });
 		const { diffType, content } = computeSnapshotDiff(previous, nodes);
 
-		log.debug(
-			`getSnapshot: sessionId=${id} diffType=${diffType} len=${content.length}\n${content}`,
-		);
+		log.debug(`getSnapshot: targetId=${id} diffType=${diffType} len=${content.length}\n${content}`);
 		return { snapshot: content, diffType };
 	}
 
@@ -809,12 +767,12 @@ export class RelayConnection {
 
 	private async handleListTabs(): Promise<unknown> {
 		const tabs = await Promise.all(
-			[...this.tabs.entries()].map(async ([sessionId, entry]) => {
+			[...this.tabs.entries()].map(async ([id, entry]) => {
 				try {
 					const tab = await chrome.tabs.get(entry.chromeTabId);
-					return { id: sessionId, title: tab.title ?? '', url: tab.url ?? '' };
+					return { id, title: tab.title ?? '', url: tab.url ?? '' };
 				} catch {
-					return { id: sessionId, title: '', url: '' };
+					return { id, title: '', url: '' };
 				}
 			}),
 		);

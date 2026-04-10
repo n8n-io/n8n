@@ -483,30 +483,22 @@ export class PlaywrightAdapter {
 		if (!this.relay) throw new Error('No relay available');
 
 		let scopeSelector: string | undefined;
-		let scopeMarker: string | undefined;
 
 		if (target) {
 			if ('selector' in target) {
 				scopeSelector = target.selector;
 			} else {
-				// Resolve ref → Playwright locator, stamp element with marker attribute
+				// Resolve ref → Playwright locator, stamp element with unique marker attribute,
+				// then use it as a scopeSelector so the extension scopes the snapshot.
 				const { selector: locatorStr } = await this.relay.resolveRef(pageId, target.ref);
 				const locator = page.locator(locatorStr);
-				scopeMarker = randomUUID();
-				await locator.evaluate(
-					(el, marker) => el.setAttribute('data-n8n-scope', marker),
-					scopeMarker,
-				);
+				const marker = randomUUID();
+				await locator.evaluate((el, m) => el.setAttribute('data-n8n-scope', m), marker);
+				scopeSelector = `[data-n8n-scope="${marker}"]`;
 			}
 		}
 
-		const { snapshot, diffType } = await this.relay.getSnapshot(
-			pageId,
-			type,
-			depth,
-			scopeSelector,
-			scopeMarker,
-		);
+		const { snapshot, diffType } = await this.relay.getSnapshot(pageId, type, depth, scopeSelector);
 
 		return { tree: snapshot, diffType };
 	}
