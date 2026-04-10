@@ -1,5 +1,5 @@
 import type { AuthenticatedRequest } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import { ApiKeyRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { TokenExpiredError } from 'jsonwebtoken';
 
@@ -12,7 +12,7 @@ const API_KEY_HEADER = 'x-n8n-api-key';
 @Service()
 export class ApiKeyAuthStrategy implements AuthStrategy {
 	constructor(
-		private readonly userRepository: UserRepository,
+		private readonly apiKeyRepository: ApiKeyRepository,
 		private readonly jwtService: JwtService,
 	) {}
 
@@ -21,19 +21,14 @@ export class ApiKeyAuthStrategy implements AuthStrategy {
 
 		if (typeof providedApiKey !== 'string' || !providedApiKey) return null;
 
-		const user = await this.userRepository.findOne({
-			where: {
-				apiKeys: {
-					apiKey: providedApiKey,
-					audience: API_KEY_AUDIENCE,
-				},
-			},
-			relations: ['role'],
+		const apiKeyRecord = await this.apiKeyRepository.findOne({
+			where: { apiKey: providedApiKey, audience: API_KEY_AUDIENCE },
+			relations: { user: { role: true } },
 		});
 
-		if (!user) return false;
+		if (!apiKeyRecord?.user) return false;
 
-		if (user.disabled) return false;
+		if (apiKeyRecord.user.disabled) return false;
 
 		if (!providedApiKey.startsWith(PREFIX_LEGACY_API_KEY)) {
 			try {
@@ -47,7 +42,8 @@ export class ApiKeyAuthStrategy implements AuthStrategy {
 			}
 		}
 
-		req.user = user;
+		req.user = apiKeyRecord.user;
+		req.tokenGrant = { scopes: apiKeyRecord.scopes ?? [] };
 
 		return true;
 	}
