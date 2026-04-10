@@ -15,7 +15,6 @@ import { nanoid } from 'nanoid';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
-import { createBrowserCredentialSetupTool } from './browser-credential-setup.tool';
 import {
 	BUILDER_AGENT_PROMPT,
 	createSandboxBuilderAgentPrompt,
@@ -43,7 +42,6 @@ import type { TriggerType, WorkflowBuildOutcome } from '../../workflow-loop';
 import type { BuilderWorkspace } from '../../workspace/builder-sandbox-factory';
 import { readFileViaSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
-import { createApplyWorkflowCredentialsTool } from '../workflows/apply-workflow-credentials.tool';
 import { buildCredentialMap, type CredentialMap } from '../workflows/resolve-credentials';
 import {
 	createSubmitWorkflowTool,
@@ -131,13 +129,6 @@ The system tracks file hashes. If you edit the code and then call run-workflow o
 - If verification fails, call debug-execution, fix the code, re-submit, and retry once
 - If the same failure signature repeats, stop and explain the block
 
-### Credential finalization
-
-If verification succeeds with mocked credentials:
-1. call setup-credentials with credentialFlow stage "finalize"
-2. if it returns needsBrowserSetup=true, call browser-credential-setup then setup-credentials again
-3. call apply-workflow-credentials with the workItemId and selected credentials
-
 ### Resource discovery
 
 Before writing code that uses external services, **resolve real resource IDs**:
@@ -204,7 +195,6 @@ export async function startBuildWorkflowAgentTask(
 			'list-workflows',
 			'list-credentials',
 			'test-credential',
-			'setup-credentials',
 			'ask-user',
 			'run-workflow',
 			'get-execution',
@@ -227,10 +217,6 @@ export async function startBuildWorkflowAgentTask(
 		}
 		if (context.workflowTaskService && context.domainContext) {
 			builderTools['verify-built-workflow'] = createVerifyBuiltWorkflowTool(context);
-			builderTools['apply-workflow-credentials'] = createApplyWorkflowCredentialsTool(context);
-		}
-		if (context.browserMcpConfig) {
-			builderTools['browser-credential-setup'] = createBrowserCredentialSetupTool(context);
 		}
 	} else {
 		builderTools = {};

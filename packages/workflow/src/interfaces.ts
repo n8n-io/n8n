@@ -2169,23 +2169,34 @@ export interface IWorkflowIssues {
 }
 
 export type ThemeIconColor =
+	| 'neutral'
 	| 'gray'
 	| 'black'
 	| 'blue'
 	| 'light-blue'
 	| 'dark-blue'
+	| 'sky-blue'
 	| 'orange'
 	| 'orange-red'
+	| 'amber'
+	| 'rust'
 	| 'pink-red'
+	| 'magenta'
 	| 'red'
 	| 'light-green'
 	| 'green'
 	| 'dark-green'
+	| 'emerald'
+	| 'forest-green'
+	| 'lime'
 	| 'azure'
+	| 'teal'
 	| 'purple'
+	| 'violet'
+	| 'lavender'
 	| 'crimson';
 export type Themed<T> = T | { light: T; dark: T };
-export type IconRef = `fa:${string}` | `node:${string}.${string}`;
+export type IconRef = `fa:${string}` | `node:${string}`;
 export type IconFile = `file:${string}.png` | `file:${string}.svg` | ExpressionString;
 export type Icon = IconRef | Themed<IconFile> | IconFile;
 
