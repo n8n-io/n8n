@@ -31,6 +31,7 @@ import { CredentialsFinderService } from '@/credentials/credentials-finder.servi
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EphemeralNodeExecutor } from '@/node-execution';
 import { UrlService } from '@/services/url.service';
 import { TtlMap } from '@/utils/ttl-map';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -101,6 +102,7 @@ export class AgentsService {
 		private readonly urlService: UrlService,
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
 		private readonly secureRuntime: AgentSecureRuntime,
+		private readonly ephemeralNodeExecutor: EphemeralNodeExecutor,
 		private readonly n8nMemory: N8nMemory,
 	) {}
 
@@ -341,89 +343,59 @@ export class AgentsService {
 
 	/**
 	 * Returns a `resolveTool` callback for `Agent.fromSchema()` that converts
-	 * non-editable tool schema entries into workflow tool marker BuiltTools.
+	 * non-editable tool schema entries into functional `BuiltTool` implementations.
+	 *
+	 * Detects the tool type via `metadata.workflowTool` / `metadata.nodeTool` and
+	 * delegates to the appropriate factory. Returns `null` for unknown types so that
+	 * `fromSchema` falls back to a passthrough marker.
 	 */
-	private makeWorkflowToolResolver(): agents.ToolResolver {
-		return (ts: {
-			name: string;
-			description: string;
-			metadata?: Record<string, unknown> | null;
-		}) => {
-			// Assume all non-editable tools are workflow tools
-			const meta: Record<string, unknown> =
-				typeof ts.metadata?.workflowTool === 'boolean'
-					? ts.metadata
-					: { workflowTool: true, workflowName: ts.name };
-			return {
-				name: ts.name,
-				description: ts.description,
-				metadata: meta,
-			};
+	private makeToolResolver(projectId: string, userId?: string): agents.ToolResolver {
+		return async (ts) => {
+			const meta = ts.metadata ?? {};
+
+			if (meta.workflowTool === true) {
+				if (!userId) {
+					throw new UserError('userId is required when agent uses workflow tools');
+				}
+				const { resolveWorkflowTool } = await import('./workflow-tool-factory');
+				return await resolveWorkflowTool(
+					{
+						workflowName: meta.workflowName as string,
+						options: meta.options as WorkflowToolDescriptor['options'],
+					},
+					{
+						workflowRepository: this.workflowRepository,
+						workflowRunner: this.workflowRunner,
+						activeExecutions: this.activeExecutions,
+						executionRepository: this.executionRepository,
+						workflowFinderService: this.workflowFinderService,
+						userRepository: this.userRepository,
+						userId,
+						projectId,
+						webhookBaseUrl: this.urlService.getWebhookBaseUrl(),
+					},
+				);
+			}
+
+			if (meta.nodeTool === true) {
+				const { resolveNodeTool } = await import('./node-tool-factory');
+				return resolveNodeTool(ts, { executor: this.ephemeralNodeExecutor, projectId });
+			}
+
+			return null;
 		};
 	}
 
 	/**
-	 * Inject workflow tools, rich interaction tool, and checkpoint storage into
-	 * an agent instance. Shared between reconstructFromSchema() and compileIsolated().
+	 * Inject platform-level tools and storage into an agent instance.
+	 * Workflow and node tools are resolved earlier via `makeToolResolver()` inside
+	 * `fromSchema()`, so this method only handles host-side singletons.
 	 */
-	private async injectRuntimeDependencies(
-		agent: agents.Agent,
-		agentId: string,
-		projectId: string,
-		userId?: string,
-	): Promise<void> {
-		// Resolve workflow tools — detect WorkflowTool markers in the tools list via
-		// tool.metadata.workflowTool. Both direct-mode compile and fromSchema
-		// reconstruction attach this metadata to non-editable (workflow) tools.
-		type ToolWithMeta = { metadata?: Record<string, unknown> };
-		const workflowMarkers: WorkflowToolDescriptor[] = (
-			agent.declaredTools as unknown as ToolWithMeta[]
-		)
-			.filter((t) => t.metadata?.workflowTool === true)
-			.map((t) => ({
-				workflowName: t.metadata!.workflowName as string,
-				options: t.metadata!.options as WorkflowToolDescriptor['options'],
-			}));
-
-		if (workflowMarkers.length > 0) {
-			if (!userId) {
-				throw new UserError('userId is required when agent uses workflow tools');
-			}
-
-			const { resolveWorkflowTools } = await import('./workflow-tool-factory');
-
-			const workflowTools = await resolveWorkflowTools([], workflowMarkers, {
-				workflowRepository: this.workflowRepository,
-				workflowRunner: this.workflowRunner,
-				activeExecutions: this.activeExecutions,
-				executionRepository: this.executionRepository,
-				workflowFinderService: this.workflowFinderService,
-				userRepository: this.userRepository,
-				userId,
-				projectId,
-				webhookBaseUrl: this.urlService.getWebhookBaseUrl(),
-			});
-
-			const agentWithTool = agent as unknown as {
-				tool: (t: unknown) => unknown;
-			};
-			if (typeof agentWithTool.tool === 'function') {
-				for (const tool of workflowTools) {
-					agentWithTool.tool(tool);
-				}
-			}
-
-			this.logger.debug('Resolved workflow tools', {
-				agentId,
-				count: workflowTools.length,
-			});
-		}
-
+	private async injectRuntimeDependencies(agent: agents.Agent, agentId: string): Promise<void> {
 		// Inject the rich_interaction tool for ad-hoc UI in chat integrations.
-		const agentWithTools = agent as unknown as { tool: (t: unknown) => unknown };
 		try {
 			const { createRichInteractionTool } = await import('./integrations/rich-interaction-tool');
-			agentWithTools.tool(createRichInteractionTool());
+			agent.tool(createRichInteractionTool());
 		} catch (toolError) {
 			this.logger.warn('Failed to inject rich_interaction tool', {
 				agentId,
@@ -463,17 +435,11 @@ export class AgentsService {
 		const reconstructed = await agents.Agent.fromSchema(agentEntity.schema, agentEntity.name, {
 			handlerExecutor: executor,
 			credentialProvider,
-			resolveTool: this.makeWorkflowToolResolver(),
+			resolveTool: this.makeToolResolver(agentEntity.projectId, userId),
 			memoryRegistry: this.getMemoryRegistry(),
 		});
 
-		// Inject workflow tools, rich interaction tool, checkpoint
-		await this.injectRuntimeDependencies(
-			reconstructed,
-			agentEntity.id,
-			agentEntity.projectId,
-			userId,
-		);
+		await this.injectRuntimeDependencies(reconstructed, agentEntity.id);
 
 		return reconstructed;
 	}
@@ -608,17 +574,11 @@ export class AgentsService {
 				const reconstructed = await agents.Agent.fromSchema(agentEntity.schema, agentEntity.name, {
 					handlerExecutor: executor,
 					credentialProvider,
-					resolveTool: this.makeWorkflowToolResolver(),
+					resolveTool: this.makeToolResolver(agentEntity.projectId, userId),
 					memoryRegistry: this.getMemoryRegistry(),
 				});
 
-				// Inject runtime dependencies (workflow tools, rich interaction, checkpoint)
-				await this.injectRuntimeDependencies(
-					reconstructed,
-					agentEntity.id,
-					agentEntity.projectId,
-					userId,
-				);
+				await this.injectRuntimeDependencies(reconstructed, agentEntity.id);
 
 				return { ok: true, agent: reconstructed as BuiltAgent };
 			} catch (e) {

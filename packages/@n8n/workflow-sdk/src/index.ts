@@ -158,6 +158,8 @@ export {
 	type ValidationResult,
 	type ValidationOptions,
 	type ValidationErrorCode,
+	validateNodeConfig,
+	type SchemaValidationResult,
 } from './validation';
 
 // Code generation

@@ -136,9 +136,10 @@ export class AgentSecureRuntime {
 		const agentsPath = toSlash(require.resolve('@n8n/agents'));
 		const agentsSrcDir = agentsPath.replace(/dist\/index\.js$/, 'dist/');
 
-		// WorkflowTool is exposed under the virtual '@n8n/agents-utils' package so
-		// that user code can import it without polluting the core '@n8n/agents' namespace.
+		// WorkflowTool and ToolFromNode are exposed under the virtual '@n8n/agents-utils' package so
+		// that user code can import them without polluting the core '@n8n/agents' namespace.
 		const workflowToolPath = toSlash(require.resolve('./types/workflow-tool'));
+		const nodeToolPath = toSlash(require.resolve('./types/node-tool'));
 
 		const n8nMemoryMarkerPath = toSlash(require.resolve('./types/n8n-memory-marker'));
 
@@ -156,13 +157,14 @@ export class AgentSecureRuntime {
 			const { PostgresMemory } = require('${agentsSrcDir}storage/postgres-memory');
 			const { McpClient } = require('${agentsSrcDir}sdk/mcp-client');
 			const { WorkflowTool } = require('${workflowToolPath}');
+			const { ToolFromNode } = require('${nodeToolPath}');
 			const { N8nMemoryMarker: N8nMemory } = require('${n8nMemoryMarkerPath}');
 			const zod = require('zod');
 			const zodToJsonSchema = require('${zodToJsonSchemaPath}');
 
 			globalThis.__modules = {
 				'@n8n/agents': { Agent, Tool, Memory, Eval, Guardrail, Telemetry, providerTools, SqliteMemory, PostgresMemory, McpClient },
-				'@n8n/agents-utils': { WorkflowTool, N8nMemory },
+				'@n8n/agents-utils': { WorkflowTool, N8nMemory, ToolFromNode },
 				'zod': zod,
 				'zod-to-json-schema': zodToJsonSchema,
 			};

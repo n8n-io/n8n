@@ -181,14 +181,38 @@ function modelParts(model: AgentSchema['model']): string[] {
 	return [];
 }
 
-function toolPart(tool: ToolSchema): { part: string; usesWorkflowTool: boolean } {
-	if (!tool.editable) {
-		return {
-			part: `.tool(new WorkflowTool('${escapeSingleQuote(tool.name)}'))`,
-			usesWorkflowTool: true,
+function toolPart(tool: ToolSchema): {
+	part: string;
+	usesWorkflowTool: boolean;
+	usesNodeTool: boolean;
+} {
+	const parts: string[] = [];
+	let usesNodeTool = false;
+	let usesWorkflowTool = false;
+	if (!tool.editable && tool.metadata?.nodeTool === true) {
+		const meta = tool.metadata as {
+			nodeType: string;
+			nodeTypeVersion: number;
+			nodeParameters?: Record<string, unknown>;
+			credentials?: Record<string, { id: string; name: string }>;
 		};
+		const { nodeType, nodeTypeVersion, nodeParameters = {}, credentials = {} } = meta;
+
+		const schemaObj: Record<string, unknown> = { type: nodeType, version: nodeTypeVersion };
+		if (Object.keys(nodeParameters).length > 0) schemaObj.parameters = nodeParameters;
+		if (Object.keys(credentials).length > 0) schemaObj.credentials = credentials;
+
+		parts.push(
+			`new ToolFromNode('${escapeSingleQuote(tool.name)}', ${JSON.stringify(schemaObj, null, 2)})`,
+		);
+		usesNodeTool = true;
+	} else if (!tool.editable && tool.metadata?.workflowTool === true) {
+		parts.push(`new WorkflowTool('${escapeSingleQuote(tool.name)}')`);
+		usesWorkflowTool = true;
+	} else {
+		parts.push(`new Tool('${escapeSingleQuote(tool.name)}')`);
 	}
-	const parts = [`new Tool('${escapeSingleQuote(tool.name)}')`];
+
 	parts.push(`.description('${escapeSingleQuote(tool.description)}')`);
 	if (tool.inputSchemaSource) parts.push(`.input(${tool.inputSchemaSource})`);
 	if (tool.outputSchemaSource) parts.push(`.output(${tool.outputSchemaSource})`);
@@ -198,7 +222,7 @@ function toolPart(tool: ToolSchema): { part: string; usesWorkflowTool: boolean }
 	if (tool.toMessageSource) parts.push(`.toMessage(${tool.toMessageSource})`);
 	if (tool.requireApproval) parts.push('.requireApproval()');
 	if (tool.needsApprovalFnSource) parts.push(`.needsApprovalFn(${tool.needsApprovalFnSource})`);
-	return { part: `.tool(${parts.join('')})`, usesWorkflowTool: false };
+	return { part: `.tool(${parts.join('')})`, usesWorkflowTool, usesNodeTool };
 }
 
 function evalPart(ev: EvalSchema): string {
@@ -232,11 +256,16 @@ function thinkingPart(thinking: NonNullable<AgentSchema['config']['thinking']>):
 	return `.thinking('${thinking.provider}')`;
 }
 
-function buildImports(schema: AgentSchema, needsWorkflowTool: boolean): string {
+function buildImports(
+	schema: AgentSchema,
+	needsWorkflowTool: boolean,
+	needsNodeTool: boolean,
+): string {
 	const agentImports = new Set<string>(['Agent']);
 	const agentUtilsImports = new Set<string>();
 	if (schema.tools.some((t) => t.editable)) agentImports.add('Tool');
 	if (needsWorkflowTool) agentUtilsImports.add('WorkflowTool');
+	if (needsNodeTool) agentUtilsImports.add('ToolFromNode');
 	if (schema.memory) agentImports.add('Memory');
 
 	if (schema.memory?.name) {
@@ -315,6 +344,7 @@ export async function generateAgentCode(
 	// No manual indentation — Prettier formats at the end.
 	const parts: string[] = [];
 	let needsWorkflowTool = false;
+	let needsNodeTool = false;
 
 	parts.push(`export default new Agent('${escapeSingleQuote(agentName)}')`);
 	parts.push(...modelParts(model));
@@ -323,8 +353,9 @@ export async function generateAgentCode(
 	if (instructions) parts.push(`.instructions(\`${escapeTemplateLiteral(instructions)}\`)`);
 
 	for (const tool of tools) {
-		const { part, usesWorkflowTool } = toolPart(tool);
+		const { part, usesWorkflowTool, usesNodeTool } = toolPart(tool);
 		if (usesWorkflowTool) needsWorkflowTool = true;
+		if (usesNodeTool) needsNodeTool = true;
 		parts.push(part);
 	}
 
@@ -356,48 +387,7 @@ export async function generateAgentCode(
 		parts.push(`.structuredOutput(${structuredOutput.schemaSource})`);
 	}
 
-	// // Build imports
-	// const agentImports = new Set<string>(['Agent']);
-	// const agentsUtilsImports: Set<string> = new Set();
-	// if (tools.some((t) => t.editable)) agentImports.add('Tool');
-	// if (memory) agentImports.add('Memory');
-
-	// if (memory?.name) {
-	// 	const memoryImport = MemoryImportMap[memory.name];
-	// 	if (!memoryImport) {
-	// 		throw new Error(`Unknown memory name: ${memory.name}`);
-	// 	}
-	// 	if (memoryImport !== 'no-import') {
-	// 		if (memoryImport.source === '@n8n/agents') {
-	// 			agentImports.add(memoryImport.importName);
-	// 		} else if (memoryImport.source === '@n8n/agents-utils') {
-	// 			agentsUtilsImports.add(memoryImport.importName);
-	// 		}
-	// 	}
-	// }
-	// if (mcp && mcp.length > 0) agentImports.add('McpClient');
-	// if (evaluations.length > 0) agentImports.add('Eval');
-
-	// const toolsNeedZod = tools.some((t) => {
-	// 	const inputHasZod = t.inputSchemaSource?.includes('z.') === true;
-	// 	const outputHasZod = t.outputSchemaSource?.includes('z.') === true;
-	// 	return inputHasZod || outputHasZod;
-	// });
-	// const structuredOutputNeedsZod = structuredOutput.schemaSource?.includes('z.') ?? false;
-	// const structuredWorkingMemoryNeedsZod =
-	// 	memory?.workingMemory?.type === 'structured' &&
-	// 	!!(memory.workingMemory as { schemaSource?: string | null }).schemaSource;
-	// const needsZod = toolsNeedZod || structuredOutputNeedsZod || structuredWorkingMemoryNeedsZod;
-
-	// let imports = `import { ${Array.from(agentImports).sort().join(', ')} } from '@n8n/agents';`;
-
-	// if (needsWorkflowTool) agentsUtilsImports.add('WorkflowTool');
-	// if (agentsUtilsImports.size > 0) {
-	// 	imports += `\nimport { ${Array.from(agentsUtilsImports).sort().join(', ')} } from '@n8n/agents-utils';`;
-	// }
-	// if (needsZod) imports += "\nimport { z } from 'zod';";
-
-	const imports = buildImports(schema, needsWorkflowTool);
+	const imports = buildImports(schema, needsWorkflowTool, needsNodeTool);
 	const raw = `${imports}\n\n${parts.join('')};\n`;
 	return options?.formatCode ? await formatCode(raw) : raw;
 }

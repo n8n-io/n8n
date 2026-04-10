@@ -8,7 +8,7 @@ import type { Logger } from '@n8n/backend-common';
 
 import { extractSources } from '../agents-source-parser';
 import { generateAgentCode } from '../generate-agent-code';
-import { WorkflowTool } from '../types';
+import { WorkflowTool, ToolFromNode } from '../types';
 import { AgentSecureRuntime } from '../agent-secure-runtime';
 import { N8nMemoryMarker } from '../types/n8n-memory-marker';
 import { deepCopy } from 'n8n-workflow';
@@ -91,7 +91,8 @@ async function compileAndDescribe(source: string): Promise<AgentSchema> {
 	const moduleExports: Record<string, unknown> = {};
 	const moduleRequire = (id: string) => {
 		if (id === '@n8n/agents') return agents;
-		if (id === '@n8n/agents-utils') return { WorkflowTool, N8nMemory: N8nMemoryMarker };
+		if (id === '@n8n/agents-utils')
+			return { WorkflowTool, N8nMemory: N8nMemoryMarker, ToolFromNode };
 		if (id === 'zod') return zod;
 		throw new Error('Unavailable: ' + id);
 	};
@@ -350,6 +351,115 @@ export default new Agent('mixed-array-agent')
 			expect(t2!.hasSuspend).toBe(t1.hasSuspend);
 			expect(t2!.hasResume).toBe(t1.hasResume);
 			expect(t2!.hasToMessage).toBe(t1.hasToMessage);
+		}
+	});
+});
+
+// ---------------------------------------------------------------------------
+// ToolFromNode round-trip
+// ---------------------------------------------------------------------------
+
+const NODE_TOOL_AGENT_SOURCE = `
+import { Agent } from '@n8n/agents';
+import { ToolFromNode } from '@n8n/agents-utils';
+import { z } from 'zod';
+
+export default new Agent('Node Tool Agent')
+  .model('anthropic/claude-sonnet-4-5')
+  .credential('Anthropic account')
+  .instructions('Send emails and query databases.')
+  .tool(
+    new ToolFromNode('send_email', {
+      type: 'n8n-nodes-base.gmail',
+      version: 2.1,
+      parameters: { resource: 'message', operation: 'send', subject: '={{ $json.subject }}' },
+      credentials: { gmailOAuth2: { id: 'cred-123', name: 'My Gmail' } },
+    })
+			.input(z.object({ subject: z.string() }))
+      .description('Send an email via Gmail')
+  )
+  .tool(
+    new ToolFromNode('query_db', {
+      type: 'n8n-nodes-base.postgres',
+      version: 2,
+    })
+      .description('Query the Postgres database')
+  );
+`;
+
+describe('ToolFromNode Round-Trip', () => {
+	it('produces a schema with nodeTool metadata', async () => {
+		const schema = await compileAndDescribe(NODE_TOOL_AGENT_SOURCE);
+
+		expect(schema.tools).toHaveLength(2);
+
+		const sendEmail = schema.tools.find((t) => t.name === 'send_email')!;
+		expect(sendEmail).toBeDefined();
+		expect(sendEmail.editable).toBe(false);
+		expect(sendEmail.metadata?.nodeTool).toBe(true);
+		expect(sendEmail.metadata?.nodeType).toBe('n8n-nodes-base.gmail');
+		expect(sendEmail.metadata?.nodeTypeVersion).toBe(2.1);
+		expect(sendEmail.metadata?.nodeParameters).toEqual({
+			resource: 'message',
+			operation: 'send',
+			subject: '={{ $json.subject }}',
+		});
+		expect(sendEmail.metadata?.credentials).toEqual({
+			gmailOAuth2: { id: 'cred-123', name: 'My Gmail' },
+		});
+		expect(sendEmail.inputSchemaSource).toBe('z.object({ subject: z.string() })');
+		expect(sendEmail.description).toBe('Send an email via Gmail');
+
+		const queryDb = schema.tools.find((t) => t.name === 'query_db')!;
+		expect(queryDb).toBeDefined();
+		expect(queryDb.metadata?.nodeTool).toBe(true);
+		expect(queryDb.metadata?.nodeType).toBe('n8n-nodes-base.postgres');
+		expect(queryDb.metadata?.nodeTypeVersion).toBe(2);
+		expect(queryDb.metadata?.nodeParameters).toEqual({});
+		expect(queryDb.metadata?.credentials).toEqual({});
+	});
+
+	it('generates code with ToolFromNode constructor and correct imports', async () => {
+		const schema = await compileAndDescribe(NODE_TOOL_AGENT_SOURCE);
+		const code = await generateAgentCode(schema, 'Node Tool Agent', { formatCode: false });
+
+		// Imports
+		expect(code).toContain("from '@n8n/agents-utils'");
+		expect(code).toContain('ToolFromNode');
+		expect(code).not.toContain('WorkflowTool');
+
+		// ToolFromNode calls
+		expect(code).toContain('new ToolFromNode(');
+		expect(code).toContain('"type": "n8n-nodes-base.gmail"');
+		expect(code).toContain('"version": 2.1');
+		expect(code).toContain('"resource": "message"');
+		expect(code).toContain('"gmailOAuth2"');
+		expect(code).toContain(".description('Send an email via Gmail')");
+		expect(code).toContain('.input(z.object({ subject: z.string() }))');
+
+		expect(code).toContain('"type": "n8n-nodes-base.postgres"');
+	});
+
+	it('survives a full round-trip (source → schema → generate → recompile)', async () => {
+		const schema1 = await compileAndDescribe(NODE_TOOL_AGENT_SOURCE);
+		const generated = await generateAgentCode(schema1, 'Node Tool Agent', { formatCode: false });
+		const schema2 = await compileAndDescribe(generated);
+
+		// Scalar fields survive
+		expect(schema2.model).toEqual(schema1.model);
+		expect(schema2.credential).toEqual(schema1.credential);
+		expect(schema2.instructions).toEqual(schema1.instructions);
+
+		// Both node tools survive with intact metadata
+		expect(schema2.tools).toHaveLength(2);
+		for (const t1 of schema1.tools) {
+			const t2 = schema2.tools.find((t) => t.name === t1.name);
+			expect(t2).toBeDefined();
+			expect(t2!.metadata?.nodeTool).toBe(true);
+			expect(t2!.metadata?.nodeType).toBe(t1.metadata?.nodeType);
+			expect(t2!.metadata?.nodeTypeVersion).toBe(t1.metadata?.nodeTypeVersion);
+			expect(t2!.metadata?.nodeParameters).toEqual(t1.metadata?.nodeParameters);
+			expect(t2!.metadata?.credentials).toEqual(t1.metadata?.credentials);
 		}
 	});
 });
