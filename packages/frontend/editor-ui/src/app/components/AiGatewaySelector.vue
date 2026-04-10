@@ -5,6 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
 
 const props = defineProps<{
@@ -20,6 +21,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const telemetry = useTelemetry();
 
 const { creditsRemaining, fetchCredits } = useAiGateway();
 
@@ -58,6 +60,10 @@ function selectOwnCredential(): void {
 function onBadgeClick(event: MouseEvent): void {
 	event.stopPropagation();
 	if (props.readonly) return;
+	telemetry.track('User clicked ai gateway top up', {
+		source: 'credential_selector',
+		credential_type: props.credentialType,
+	});
 	uiStore.openModalWithData({
 		name: AI_GATEWAY_TOP_UP_MODAL_KEY,
 		data: { credentialType: props.credentialType },
