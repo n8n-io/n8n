@@ -760,6 +760,13 @@ export class InstanceAiController {
 		return { ok: true };
 	}
 
+	@Post('/test/drain-background-tasks', { skipAuth: true })
+	drainBackgroundTasks() {
+		this.assertTraceReplayEnabled();
+		const cancelled = this.instanceAiService.cancelAllBackgroundTasks();
+		return { ok: true, cancelled };
+	}
+
 	private assertTraceReplayEnabled(): void {
 		if (!process.env.N8N_INSTANCE_AI_TRACE_REPLAY) {
 			throw new ForbiddenError('Trace replay is not enabled');

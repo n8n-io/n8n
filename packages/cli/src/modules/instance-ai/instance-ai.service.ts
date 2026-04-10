@@ -914,6 +914,15 @@ export class InstanceAiService {
 		}
 	}
 
+	/** Cancel all background tasks across all threads. Test-only. */
+	cancelAllBackgroundTasks(): number {
+		const cancelled = this.backgroundTasks.cancelAll();
+		for (const task of cancelled) {
+			void this.finalizeBackgroundTaskTracing(task, 'cancelled');
+		}
+		return cancelled.length;
+	}
+
 	// ── Gateway lifecycle (delegated to LocalGatewayRegistry) ───────────────
 
 	// ── Test-only trace replay API ───────────────────────────────────────────

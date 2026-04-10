@@ -66,6 +66,16 @@ export const test = base.extend<InstanceAiFixtures>({
 
 			await services.proxy.clearAllExpectations();
 
+			// Cancel any leftover background tasks from previous tests so their
+			// auto-follow-up LLM calls don't contaminate this test's recordings.
+			try {
+				await fetch(`${backendUrl}/rest/instance-ai/test/drain-background-tasks`, {
+					method: 'POST',
+				});
+			} catch {
+				// Endpoint may not be available
+			}
+
 			// Recording mode: real API key, not CI → proxy forwards to real API,
 			// backend records tool I/O. Replay mode: load existing expectations
 			// and trace events so the proxy serves recorded responses and the
