@@ -13,11 +13,15 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import { flushPromises } from '@vue/test-utils';
 import { shallowRef } from 'vue';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	injectWorkflowDocumentStore,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
 	...(await importOriginal()),
 	injectWorkflowDocumentStore: vi.fn(),
+	useWorkflowDocumentStore: vi.fn(),
 }));
 
 // Mock i18n to return translation keys instead of translated strings
@@ -121,14 +125,21 @@ describe('ParameterInputList', () => {
 		createTestingPinia();
 		ndvStore = mockedStore(useNDVStore);
 		workflowStore = mockedStore(useWorkflowsStore);
+		const workflowDocumentStoreMock = {
+			getChildNodes: (...args: Parameters<typeof workflowStore.workflowObject.getChildNodes>) =>
+				workflowStore.workflowObject.getChildNodes(...args),
+			getParentNodes: (...args: Parameters<typeof workflowStore.workflowObject.getParentNodes>) =>
+				workflowStore.workflowObject.getParentNodes(...args),
+			getParentNodesByDepth: (
+				...args: Parameters<typeof workflowStore.workflowObject.getParentNodesByDepth>
+			) => workflowStore.workflowObject.getParentNodesByDepth(...args),
+			getNodeByName: (name: string) => workflowStore.workflowObject.getNode(name),
+		};
 		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(
-			shallowRef({
-				getChildNodes: (...args: Parameters<typeof workflowStore.workflowObject.getChildNodes>) =>
-					workflowStore.workflowObject.getChildNodes(...args),
-				getParentNodes: (...args: Parameters<typeof workflowStore.workflowObject.getParentNodes>) =>
-					workflowStore.workflowObject.getParentNodes(...args),
-				getNodeByName: (name: string) => workflowStore.workflowObject.getNode(name),
-			}) as ReturnType<typeof injectWorkflowDocumentStore>,
+			shallowRef(workflowDocumentStoreMock) as ReturnType<typeof injectWorkflowDocumentStore>,
+		);
+		vi.mocked(useWorkflowDocumentStore).mockReturnValue(
+			workflowDocumentStoreMock as unknown as ReturnType<typeof useWorkflowDocumentStore>,
 		);
 	});
 
