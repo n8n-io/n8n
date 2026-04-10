@@ -92,6 +92,27 @@ function createInertAbortSignal(): AbortSignal {
 const ORCHESTRATOR_AGENT_ID = 'agent-001';
 const MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD = 5;
 
+/**
+ * When HTTP_PROXY / HTTPS_PROXY is set (e.g. in e2e tests with MockServer),
+ * return a fetch function that routes requests through the proxy. Node.js's
+ * globalThis.fetch does not respect these env vars, so AI SDK providers would
+ * bypass the proxy without this.
+ */
+function getProxyFetch(): typeof globalThis.fetch | undefined {
+	const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
+	if (!proxyUrl) return undefined;
+
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	const { ProxyAgent } = require('undici') as typeof import('undici');
+	const dispatcher = new ProxyAgent(proxyUrl);
+	return ((url: string | URL | Request, init?: RequestInit) =>
+		globalThis.fetch(url, {
+			...init,
+			// @ts-expect-error dispatcher is a valid undici option for Node.js fetch
+			dispatcher,
+		})) as typeof globalThis.fetch;
+}
+
 interface MessageTraceFinalization {
 	status: 'completed' | 'cancelled' | 'error';
 	outputText?: string;
@@ -121,7 +142,12 @@ export class InstanceAiService {
 	/** Trace contexts keyed by the n8n run ID that started the orchestration turn. */
 	private readonly traceContextsByRunId = new Map<
 		string,
-		{ threadId: string; messageGroupId?: string; tracing: InstanceAiTraceContext }
+		{
+			threadId: string;
+			messageGroupId?: string;
+			tracing: InstanceAiTraceContext;
+			traceSlug?: string;
+		}
 	>();
 	/** Active sandboxes keyed by thread ID — persisted across messages within a conversation. */
 	private readonly sandboxes = new Map<
@@ -149,6 +175,19 @@ export class InstanceAiService {
 
 	/** In-memory guard to prevent double credit counting within the same process. */
 	private readonly creditedThreads = new Set<string>();
+
+	/** In-memory store for tool trace events keyed by test slug (test-only, loaded via API). */
+	private traceEventsBySlug = new Map<string, unknown[]>();
+
+	/** Slug of the active trace recording — set when record mode begins. */
+	private activeTraceSlug: string | undefined;
+
+	/** Shared TraceIndex/IdRemapper per slug — reused across all runs within one test. */
+	private sharedTraceIndex?: import('@n8n/instance-ai').TraceIndex;
+
+	private sharedIdRemapper?: import('@n8n/instance-ai').IdRemapper;
+
+	private sharedTraceSlug?: string;
 
 	/** Default IANA timezone for the instance (from GENERIC_TIMEZONE env var). */
 	private readonly defaultTimeZone: string;
@@ -379,9 +418,34 @@ export class InstanceAiService {
 				baseURL: client.getApiProxyBaseUrl() + '/anthropic/v1',
 				apiKey: 'proxy-managed',
 				headers,
+				fetch: getProxyFetch(),
 			});
 			return provider(modelName);
 		}
+
+		// When HTTP_PROXY is set (e.g. e2e tests with MockServer), build the model
+		// with a proxy-aware fetch so the AI SDK routes through the proxy. Mastra's
+		// ModelRouter doesn't pass `fetch` to providers, so we must do it here.
+		const proxyFetch = getProxyFetch();
+		if (proxyFetch) {
+			const config = await this.settingsService.resolveModelConfig(user);
+			const modelId = typeof config === 'string' ? config : 'id' in config ? config.id : null;
+			if (modelId) {
+				const [provider, ...rest] = modelId.split('/');
+				const modelName = rest.join('/');
+				const apiKey = typeof config === 'object' && 'apiKey' in config ? config.apiKey : undefined;
+				const baseURL = typeof config === 'object' && 'url' in config ? config.url : undefined;
+				if (provider === 'anthropic') {
+					const { createAnthropic } = await import('@ai-sdk/anthropic');
+					return createAnthropic({
+						apiKey,
+						baseURL: baseURL || undefined,
+						fetch: proxyFetch,
+					})(modelName);
+				}
+			}
+		}
+
 		return await this.settingsService.resolveModelConfig(user);
 	}
 
@@ -480,11 +544,48 @@ export class InstanceAiService {
 		tracing: InstanceAiTraceContext,
 		messageGroupId?: string,
 	): void {
-		this.traceContextsByRunId.set(runId, { threadId, messageGroupId, tracing });
+		this.traceContextsByRunId.set(runId, {
+			threadId,
+			messageGroupId,
+			tracing,
+			traceSlug: this.activeTraceSlug,
+		});
 	}
 
 	private getTraceContext(runId: string): InstanceAiTraceContext | undefined {
 		return this.traceContextsByRunId.get(runId)?.tracing;
+	}
+
+	private async configureTraceReplayMode(tracing: InstanceAiTraceContext): Promise<void> {
+		if (!process.env.N8N_INSTANCE_AI_TRACE_REPLAY) {
+			return;
+		}
+
+		const { TraceIndex: TI, IdRemapper: IR, TraceWriter: TW } = await import('@n8n/instance-ai');
+
+		// Check if trace events were loaded for the active slug
+		const slug = this.activeTraceSlug;
+		const events = slug ? this.traceEventsBySlug.get(slug) : undefined;
+
+		if (events && events.length > 0) {
+			// Replay mode: reuse shared TraceIndex/IdRemapper across all runs
+			// within the same test slug so that cursor state is preserved when
+			// background-task follow-up runs create new trace contexts.
+			if (this.sharedTraceSlug !== slug || !this.sharedTraceIndex) {
+				this.sharedTraceIndex = new TI(events as import('@n8n/instance-ai').TraceEvent[]);
+				this.sharedIdRemapper = new IR();
+				this.sharedTraceSlug = slug;
+			}
+			tracing.replayMode = 'replay';
+			tracing.traceIndex = this.sharedTraceIndex;
+			tracing.idRemapper = this.sharedIdRemapper!;
+			this.logger.debug(`[TRACE-REPLAY] Replay mode — slug=${slug}, events=${events.length}`);
+		} else {
+			// Record mode: no trace events, capture tool I/O
+			tracing.replayMode = 'record';
+			tracing.traceWriter = new TW('recording');
+			this.logger.debug(`[TRACE-REPLAY] Record mode — slug=${slug ?? 'none'}`);
+		}
 	}
 
 	private async finalizeMessageTraceRoot(
@@ -555,6 +656,13 @@ export class InstanceAiService {
 		for (const [runId, entry] of this.traceContextsByRunId) {
 			if (entry.threadId === threadId) {
 				releaseTraceClient(entry.tracing.rootRun.traceId);
+				// Preserve recorded trace events in the slug-scoped store
+				// so the test fixture teardown can still retrieve them via GET.
+				if (entry.tracing.traceWriter && entry.traceSlug) {
+					const existing = this.traceEventsBySlug.get(entry.traceSlug) ?? [];
+					existing.push(...entry.tracing.traceWriter.getEvents());
+					this.traceEventsBySlug.set(entry.traceSlug, existing);
+				}
 				this.traceContextsByRunId.delete(runId);
 			}
 		}
@@ -806,7 +914,54 @@ export class InstanceAiService {
 		}
 	}
 
+	/** Cancel all background tasks across all threads. Test-only. */
+	cancelAllBackgroundTasks(): number {
+		const cancelled = this.backgroundTasks.cancelAll();
+		for (const task of cancelled) {
+			void this.finalizeBackgroundTaskTracing(task, 'cancelled');
+		}
+		return cancelled.length;
+	}
+
 	// ── Gateway lifecycle (delegated to LocalGatewayRegistry) ───────────────
+
+	// ── Test-only trace replay API ───────────────────────────────────────────
+
+	loadTraceEvents(slug: string, events: unknown[]): void {
+		this.traceEventsBySlug.set(slug, events);
+		this.activeTraceSlug = slug;
+	}
+
+	getTraceEvents(slug: string): unknown[] {
+		// Check active trace writers tagged with this slug
+		const fromWriters: unknown[] = [];
+		for (const entry of this.traceContextsByRunId.values()) {
+			if (entry.traceSlug === slug && entry.tracing.traceWriter) {
+				fromWriters.push(...entry.tracing.traceWriter.getEvents());
+			}
+		}
+		if (fromWriters.length > 0) return fromWriters;
+
+		// Fallback to preserved events (flushed by deleteTraceContextsForThread)
+		return this.traceEventsBySlug.get(slug) ?? [];
+	}
+
+	/** Called at the start of each test's fixture setup to mark the active slug. */
+	activateTraceSlug(slug: string): void {
+		this.activeTraceSlug = slug;
+	}
+
+	clearTraceEvents(slug: string): void {
+		this.traceEventsBySlug.delete(slug);
+		if (this.activeTraceSlug === slug) {
+			this.activeTraceSlug = undefined;
+		}
+		if (this.sharedTraceSlug === slug) {
+			this.sharedTraceIndex = undefined;
+			this.sharedIdRemapper = undefined;
+			this.sharedTraceSlug = undefined;
+		}
+	}
 
 	getUserIdForApiKey(key: string): string | undefined {
 		return this.gatewayRegistry.getUserIdForApiKey(key);
@@ -1493,7 +1648,15 @@ export class InstanceAiService {
 				proxyConfig: orchestrationContext.tracingProxyConfig,
 			});
 
+			// When trace replay is enabled but LangSmith isn't configured,
+			// create a minimal context that only supports replay/record wrapping.
+			if (!tracing && process.env.N8N_INSTANCE_AI_TRACE_REPLAY) {
+				const { createTraceReplayOnlyContext } = await import('@n8n/instance-ai');
+				tracing = createTraceReplayOnlyContext();
+			}
+
 			if (tracing) {
+				await this.configureTraceReplayMode(tracing);
 				orchestrationContext.tracing = tracing;
 				this.runState.attachTracing(threadId, tracing);
 				this.storeTraceContext(runId, threadId, tracing, messageGroupId);

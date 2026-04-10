@@ -64,6 +64,7 @@ describe('useEventRelay', () => {
 			workflowExecutions,
 			activeWorkflowId: computed(() => activeWorkflowId.value),
 			getBufferedEvents: (wfId: string) => bufferedEventsStore.get(wfId) ?? [],
+			clearEventLog: vi.fn(),
 			relay,
 		});
 	}
