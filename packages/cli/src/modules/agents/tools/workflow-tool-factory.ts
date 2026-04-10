@@ -28,7 +28,7 @@ import { z } from 'zod';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { WorkflowRunner } from '@/workflow-runner';
-import type { AgentJsonToolConfig } from './agent-json-config';
+import type { AgentJsonToolConfig } from '../json-config/agent-json-config';
 
 // ---------------------------------------------------------------------------
 // Constants

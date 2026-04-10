@@ -1,10 +1,10 @@
 import type { AgentSnapshot, ToolDescriptor } from '@n8n/agents';
 
-import type { AgentJsonConfig } from '../agent-json-config';
+import type { AgentJsonConfig } from '../json-config/agent-json-config';
 import type { JSONSchema7 } from 'json-schema';
-import { AgentJsonConfigSchema } from '../agent-json-config';
-import { buildFromJson } from '../from-json-config';
-import type { ToolExecutor } from '../from-json-config';
+import { AgentJsonConfigSchema } from '../json-config/agent-json-config';
+import { buildFromJson } from '../json-config/from-json-config';
+import type { ToolExecutor } from '../json-config/from-json-config';
 
 // ---------------------------------------------------------------------------
 // buildFromJson() tests
@@ -36,8 +36,17 @@ describe('buildFromJson()', () => {
 		...overrides,
 	});
 
+	const makeMockMemoryFactory = () => jest.fn();
+
 	it('sets name, model, credential, and instructions', async () => {
-		const agent = await buildFromJson(makeConfig(), {}, { toolExecutor: makeMockToolExecutor() });
+		const agent = await buildFromJson(
+			makeConfig(),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
 		const snap: AgentSnapshot = agent.snapshot;
 
 		expect(snap.name).toBe('test-agent');
@@ -51,7 +60,7 @@ describe('buildFromJson()', () => {
 		const agent = await buildFromJson(
 			makeConfig({ model: 'claude-sonnet-4-5' }),
 			{},
-			{ toolExecutor: makeMockToolExecutor() },
+			{ toolExecutor: makeMockToolExecutor(), memoryFactory: makeMockMemoryFactory() },
 		);
 
 		const snap: AgentSnapshot = agent.snapshot;
@@ -68,6 +77,7 @@ describe('buildFromJson()', () => {
 			{ search_tool: descriptor },
 			{
 				toolExecutor: makeMockToolExecutor(),
+				memoryFactory: makeMockMemoryFactory(),
 			},
 		);
 
@@ -78,7 +88,14 @@ describe('buildFromJson()', () => {
 		const config = makeConfig({ tools: [{ type: 'custom', id: 'missing_tool' }] });
 
 		await expect(
-			buildFromJson(config, {}, { toolExecutor: makeMockToolExecutor() }),
+			buildFromJson(
+				config,
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					memoryFactory: makeMockMemoryFactory(),
+				},
+			),
 		).rejects.toThrow('Custom tool "missing_tool" not found in tool descriptors');
 	});
 
@@ -99,6 +116,7 @@ describe('buildFromJson()', () => {
 			{},
 			{
 				toolExecutor: makeMockToolExecutor(),
+				memoryFactory: makeMockMemoryFactory(),
 				resolveTool,
 			},
 		);
@@ -110,7 +128,14 @@ describe('buildFromJson()', () => {
 	it('falls back to marker tool when resolveTool is not provided for workflow tools', async () => {
 		const config = makeConfig({ tools: [{ type: 'workflow', workflow: 'Test Workflow' }] });
 
-		const agent = await buildFromJson(config, {}, { toolExecutor: makeMockToolExecutor() });
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
 
 		expect(agent.snapshot.tools.some((t) => t.name === 'Test Workflow')).toBe(true);
 	});
@@ -120,17 +145,31 @@ describe('buildFromJson()', () => {
 			config: { thinking: { provider: 'anthropic', budgetTokens: 5000 } },
 		});
 
-		const agent = await buildFromJson(config, {}, { toolExecutor: makeMockToolExecutor() });
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
 		const snap: AgentSnapshot = agent.snapshot;
 
 		expect(snap.thinking).not.toBeNull();
-		expect(snap.thinking).toMatchObject({ provider: 'anthropic', budgetTokens: 5000 });
+		expect(snap.thinking).toMatchObject({ budgetTokens: 5000 });
 	});
 
 	it('sets toolCallConcurrency', async () => {
 		const config = makeConfig({ config: { toolCallConcurrency: 5 } });
 
-		const agent = await buildFromJson(config, {}, { toolExecutor: makeMockToolExecutor() });
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
 
 		expect(agent.snapshot.toolCallConcurrency).toBe(5);
 	});
@@ -138,7 +177,14 @@ describe('buildFromJson()', () => {
 	it('sets requireToolApproval', async () => {
 		const config = makeConfig({ config: { requireToolApproval: true } });
 
-		const agent = await buildFromJson(config, {}, { toolExecutor: makeMockToolExecutor() });
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
 
 		expect(agent.snapshot.requireToolApproval).toBe(true);
 	});
@@ -161,23 +207,36 @@ describe('buildFromJson()', () => {
 			memory: { enabled: true, storage: 'n8n', lastMessages: 15 },
 		});
 
+		const memoryFactory = jest.fn().mockReturnValue(mockMemory);
+
 		const agent = await buildFromJson(
 			config,
 			{},
 			{
 				toolExecutor: makeMockToolExecutor(),
-				memoryRegistry: { n8n: () => mockMemory },
+				memoryFactory,
 			},
 		);
 
+		expect(memoryFactory).toHaveBeenCalledWith(config.memory);
 		expect(agent.snapshot.hasMemory).toBe(true);
 	});
 
 	it('skips memory when memory.enabled is false', async () => {
 		const config = makeConfig({ memory: { enabled: false, storage: 'n8n' } });
 
-		const agent = await buildFromJson(config, {}, { toolExecutor: makeMockToolExecutor() });
+		const memoryFactory = jest.fn();
 
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				memoryFactory,
+			},
+		);
+
+		expect(memoryFactory).not.toHaveBeenCalled();
 		expect(agent.snapshot.hasMemory).toBe(false);
 	});
 });

@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
 import { Tool } from '../sdk/tool';
+import type { AgentMessage } from '../types/sdk/message';
+import type { InterruptibleToolContext } from '../types/sdk/tool';
 
 // ---------------------------------------------------------------------------
 // Tool.describe() tests
@@ -11,7 +13,7 @@ describe('Tool.describe()', () => {
 		const tool = new Tool('search')
 			.description('Search the web')
 			.input(z.object({ query: z.string() }))
-			.handler(async ({ query }) => ({ result: query }));
+			.handler(async ({ query }) => await Promise.resolve({ result: query }));
 
 		const descriptor = tool.describe();
 
@@ -33,7 +35,7 @@ describe('Tool.describe()', () => {
 			.suspend(z.object({ message: z.string() }))
 			.resume(z.object({ approved: z.boolean() }))
 			.handler(async (input, ctx) => {
-				const interruptCtx = ctx as import('../types').InterruptibleToolContext;
+				const interruptCtx = ctx as InterruptibleToolContext;
 				if (!interruptCtx.resumeData) {
 					return await interruptCtx.suspend({ message: `Approve: ${input.action}?` });
 				}
@@ -59,10 +61,12 @@ describe('Tool.describe()', () => {
 				(output) =>
 					({
 						type: 'custom',
-						components: [{ type: 'section', text: output.value }],
-					}) as any,
+						data: {
+							components: [{ type: 'section', text: output.value }],
+						},
+					}) as unknown as AgentMessage,
 			)
-			.handler(async ({ id }) => ({ value: id }));
+			.handler(async ({ id }) => await Promise.resolve({ value: id }));
 
 		const descriptor = tool.describe();
 
@@ -74,7 +78,7 @@ describe('Tool.describe()', () => {
 			.description('Delete a record')
 			.input(z.object({ id: z.string() }))
 			.requireApproval()
-			.handler(async ({ id }) => ({ deleted: id }));
+			.handler(async ({ id }) => await Promise.resolve({ deleted: id }));
 
 		const descriptor = tool.describe();
 
@@ -86,7 +90,7 @@ describe('Tool.describe()', () => {
 			.description('Compute something')
 			.input(z.object({ value: z.number() }))
 			.output(z.object({ result: z.number() }))
-			.handler(async ({ value }) => ({ result: value * 2 }));
+			.handler(async ({ value }) => await Promise.resolve({ result: value * 2 }));
 
 		const descriptor = tool.describe();
 
@@ -102,7 +106,7 @@ describe('Tool.describe()', () => {
 	it('throws if description is missing', () => {
 		const tool = new Tool('no-desc')
 			.input(z.object({ x: z.string() }))
-			.handler(async ({ x }) => ({ x }));
+			.handler(async ({ x }) => await Promise.resolve({ x }));
 		expect(() => tool.describe()).toThrow('"no-desc" requires a description');
 	});
 
@@ -120,7 +124,7 @@ describe('Tool.describe()', () => {
 					count: z.number().int().min(1),
 				}),
 			)
-			.handler(async ({ name, count }) => ({ name, count }));
+			.handler(async ({ name, count }) => await Promise.resolve({ name, count }));
 
 		const descriptor = tool.describe();
 

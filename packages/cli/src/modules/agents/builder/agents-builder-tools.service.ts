@@ -8,10 +8,14 @@ import { z } from 'zod';
 
 import { WorkflowBuilderToolsService } from '@/modules/mcp/tools/workflow-builder/workflow-builder-tools.service';
 
-import type { AgentJsonConfig } from './agent-json-config';
-import { AgentJsonConfigSchema, formatZodErrors, tryParseConfigJson } from './agent-json-config';
-import { AgentSecureRuntime } from './agent-secure-runtime';
-import { AgentsService } from './agents.service';
+import type { AgentJsonConfig } from '../json-config/agent-json-config';
+import {
+	AgentJsonConfigSchema,
+	formatZodErrors,
+	tryParseConfigJson,
+} from '../json-config/agent-json-config';
+import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
+import { AgentsService } from '../agents.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 interface InvokableTool<TInput> {

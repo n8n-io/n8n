@@ -1,8 +1,8 @@
 import type { JSONSchema7 } from 'json-schema';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
-import { AgentJsonConfigSchema } from './agent-json-config';
-import { jsonSchemaToCompactText } from './schema-text-serializer';
+import { AgentJsonConfigSchema } from '../json-config/agent-json-config';
+import { jsonSchemaToCompactText } from '../json-config/schema-text-serializer';
 
 // ---------------------------------------------------------------------------
 // Context sections — dynamic, injected at runtime

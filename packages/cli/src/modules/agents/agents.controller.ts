@@ -15,8 +15,8 @@ import {
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { AgentsBuilderService } from './agents-builder.service';
-import { AgentsCredentialProvider } from './agents-credential-provider';
+import { AgentsBuilderService } from './builder/agents-builder.service';
+import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentsService } from './agents.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentRepository } from './repositories/agent.repository';

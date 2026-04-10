@@ -3,10 +3,10 @@ import type { CredentialListItem, CredentialProvider, StreamChunk } from '@n8n/a
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
-import type { AgentJsonConfig } from './agent-json-config';
+import type { AgentJsonConfig } from '../json-config/agent-json-config';
 import { buildBuilderPrompt } from './agents-builder-prompts';
 import { AgentsBuilderToolsService } from './agents-builder-tools.service';
-import { AgentsService } from './agents.service';
+import { AgentsService } from '../agents.service';
 
 @Service()
 export class AgentsBuilderService {

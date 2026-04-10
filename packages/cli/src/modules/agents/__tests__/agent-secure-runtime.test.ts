@@ -7,8 +7,8 @@ import {
 	AgentIsolateSlot,
 	PoolDisposedError,
 	PoolExhaustedError,
-} from '../agent-isolate-pool';
-import { AgentSecureRuntime } from '../agent-secure-runtime';
+} from '../runtime/agent-isolate-pool';
+import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 
 // No mocking — uses the real isolated-vm V8 isolate.
 
@@ -313,12 +313,7 @@ describe('AgentSecureRuntime', () => {
 	});
 
 	it('executeToolInIsolate executes a tool handler', async () => {
-		const result = await runtime.executeToolInIsolate(
-			SIMPLE_TOOL_CODE,
-			'double',
-			{ value: 21 },
-			{},
-		);
+		const result = await runtime.executeToolInIsolate(SIMPLE_TOOL_CODE, { value: 21 }, {});
 		expect(result).toEqual({ result: 42 });
 	});
 

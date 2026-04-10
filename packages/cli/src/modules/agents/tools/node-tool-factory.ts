@@ -5,7 +5,7 @@ import type { IDataObject, INodeParameters } from 'n8n-workflow';
 
 import type { EphemeralNodeExecutor } from '@/node-execution';
 
-import type { AgentJsonToolConfig } from './agent-json-config';
+import type { AgentJsonToolConfig } from '../json-config/agent-json-config';
 
 export interface NodeToolFactoryContext {
 	executor: EphemeralNodeExecutor;

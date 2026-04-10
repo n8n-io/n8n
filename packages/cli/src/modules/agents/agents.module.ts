@@ -13,7 +13,7 @@ export class AgentsModule implements ModuleInterface {
 
 		// Register the sandboxed runtime service (lazy — the V8 isolate is only
 		// created on first use, so this import has negligible startup cost).
-		const { AgentSecureRuntime } = await import('./agent-secure-runtime');
+		const { AgentSecureRuntime } = await import('./runtime/agent-secure-runtime');
 		Container.get(AgentSecureRuntime);
 
 		// Register Chat integration service and reconnect active integrations

@@ -6,7 +6,7 @@ import { Container, Service } from '@n8n/di';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 
-import { AgentsCredentialProvider } from '../agents-credential-provider';
+import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
 import { AgentRepository } from '../repositories/agent.repository';
 
 import { AgentChatBridge } from './agent-chat-bridge';

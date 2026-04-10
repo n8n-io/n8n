@@ -38,12 +38,16 @@ import type {
 	AgentJsonConfig,
 	AgentJsonMemoryConfig,
 	AgentJsonToolConfig,
-} from './agent-json-config';
-import { AgentJsonConfigSchema } from './agent-json-config';
-import { AgentSecureRuntime } from './agent-secure-runtime';
-import { AgentsCredentialProvider } from './agents-credential-provider';
+} from './json-config/agent-json-config';
+import { AgentJsonConfigSchema } from './json-config/agent-json-config';
+import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
+import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { Agent } from './entities/agent.entity';
-import { buildFromJson, type MemoryFactory, type ToolResolver } from './from-json-config';
+import {
+	buildFromJson,
+	type MemoryFactory,
+	type ToolResolver,
+} from './json-config/from-json-config';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
 import { AgentRepository } from './repositories/agent.repository';
@@ -237,7 +241,7 @@ export class AgentsService {
 				if (!userId) {
 					throw new UserError('userId is required when agent uses workflow tools');
 				}
-				const { resolveWorkflowTool } = await import('./workflow-tool-factory');
+				const { resolveWorkflowTool } = await import('./tools/workflow-tool-factory');
 				return await resolveWorkflowTool(ref, {
 					workflowRepository: this.workflowRepository,
 					workflowRunner: this.workflowRunner,
@@ -252,7 +256,7 @@ export class AgentsService {
 			}
 
 			if (ref.type === 'node') {
-				const { resolveNodeTool } = await import('./node-tool-factory');
+				const { resolveNodeTool } = await import('./tools/node-tool-factory');
 				return resolveNodeTool(ref, { executor: this.ephemeralNodeExecutor, projectId });
 			}
 

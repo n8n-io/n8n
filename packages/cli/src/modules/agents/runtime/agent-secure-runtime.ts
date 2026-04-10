@@ -1,6 +1,6 @@
 import type { ToolDescriptor } from '@n8n/agents';
 
-import type { ToolExecutor } from './from-json-config';
+import type { ToolExecutor } from '../json-config/from-json-config';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type ivm from 'isolated-vm';
@@ -137,37 +137,13 @@ export class AgentSecureRuntime {
 		const agentsPath = toSlash(require.resolve('@n8n/agents'));
 		const agentsSrcDir = agentsPath.replace(/dist\/index\.js$/, 'dist/');
 
-		// WorkflowTool and ToolFromNode are exposed under the virtual '@n8n/agents-utils' package so
-		// that user code can import them without polluting the core '@n8n/agents' namespace.
-		const workflowToolPath = toSlash(require.resolve('./types/workflow-tool'));
-		const nodeToolPath = toSlash(require.resolve('./types/node-tool'));
-
-		const n8nMemoryMarkerPath = toSlash(require.resolve('./types/n8n-memory-marker'));
-
-		const zodToJsonSchemaPath = toSlash(require.resolve('zod-to-json-schema'));
-
 		const shim = `
-			const { Agent } = require('${agentsSrcDir}sdk/agent');
 			const { Tool } = require('${agentsSrcDir}sdk/tool');
-			const { Memory } = require('${agentsSrcDir}sdk/memory');
-			const { Eval } = require('${agentsSrcDir}sdk/eval');
-			const { Guardrail } = require('${agentsSrcDir}sdk/guardrail');
-			const { Telemetry } = require('${agentsSrcDir}sdk/telemetry');
-			const { providerTools } = require('${agentsSrcDir}sdk/provider-tools');
-			const { SqliteMemory } = require('${agentsSrcDir}storage/sqlite-memory');
-			const { PostgresMemory } = require('${agentsSrcDir}storage/postgres-memory');
-			const { McpClient } = require('${agentsSrcDir}sdk/mcp-client');
-			const { WorkflowTool } = require('${workflowToolPath}');
-			const { ToolFromNode } = require('${nodeToolPath}');
-			const { N8nMemoryMarker: N8nMemory } = require('${n8nMemoryMarkerPath}');
 			const zod = require('zod');
-			const zodToJsonSchema = require('${zodToJsonSchemaPath}');
 
 			globalThis.__modules = {
-				'@n8n/agents': { Agent, Tool, Memory, Eval, Guardrail, Telemetry, providerTools, SqliteMemory, PostgresMemory, McpClient },
-				'@n8n/agents-utils': { WorkflowTool, N8nMemory, ToolFromNode },
+				'@n8n/agents': { Tool },
 				'zod': zod,
-				'zod-to-json-schema': zodToJsonSchema,
 			};
 		`;
 
