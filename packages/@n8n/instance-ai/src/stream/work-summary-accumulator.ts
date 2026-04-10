@@ -73,7 +73,7 @@ export class WorkSummaryAccumulator {
 
 	/** Produce a frozen summary. Safe to call multiple times (idempotent). */
 	toSummary(): WorkSummary {
-		const toolCalls = [...this.calls.values()];
+		const toolCalls = [...this.calls.values()].map((c) => ({ ...c }));
 		return {
 			toolCalls,
 			totalToolCalls: toolCalls.length,
