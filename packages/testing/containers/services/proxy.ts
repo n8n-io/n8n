@@ -186,11 +186,17 @@ export class ProxyServer {
 				}
 			}
 
-			// In sequential mode, make the last expectation unlimited so it acts
-			// as a fallback — returning the same final response for any extra calls
-			// caused by tool execution divergence during replay.
+			// In sequential mode, make the last LLM expectation unlimited so it
+			// acts as a fallback — returning the same final response for any extra
+			// calls caused by tool execution divergence during replay.
 			if (options.sequential && expectations.length > 0) {
-				expectations[expectations.length - 1].times = { unlimited: true };
+				for (let i = expectations.length - 1; i >= 0; i--) {
+					const path = (expectations[i].httpRequest as { path?: string })?.path;
+					if (path === '/v1/messages') {
+						expectations[i].times = { unlimited: true };
+						break;
+					}
+				}
 			}
 
 			if (expectations.length > 0) {
