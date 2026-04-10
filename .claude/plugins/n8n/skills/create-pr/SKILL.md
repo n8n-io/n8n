@@ -72,24 +72,16 @@ Creates GitHub PRs with titles that pass n8n's `check-pr-title` CI validation.
    git push -u origin HEAD
    ```
 
-6. **Create PR** using gh CLI with the template from `.github/pull_request_template.md`:
+6. **Create PR** using gh CLI. Read `.github/pull_request_template.md` as the
+   body structure, then populate each section with actual content before
+   creating the PR:
+   - **Summary**: describe what the PR does and how to test it
+   - **Related tickets**: add the Linear ticket URL (`https://linear.app/n8n/issue/[TICKET-ID]`) and any GitHub issue links
+   - **Checklist**: keep as-is from the template
+
    ```bash
    gh pr create --draft --title "<type>(<scope>): <summary>" --body "$(cat <<'EOF'
-   ## Summary
-
-   <Describe what the PR does and how to test. Photos and videos are recommended.>
-
-   ## Related Linear tickets, Github issues, and Community forum posts
-
-   <!-- Link to Linear ticket: https://linear.app/n8n/issue/[TICKET-ID] -->
-   <!-- Use "closes #<issue-number>", "fixes #<issue-number>", or "resolves #<issue-number>" to automatically close issues -->
-
-   ## Review / Merge checklist
-
-   - [ ] PR title and summary are descriptive. ([conventions](../blob/master/.github/pull_request_title_conventions.md))
-   - [ ] [Docs updated](https://github.com/n8n-io/n8n-docs) or follow-up ticket created.
-   - [ ] Tests included.
-   - [ ] PR Labeled with `release/backport` (if the PR is an urgent fix that needs to be backported)
+   <populated body based on pull_request_template.md>
    EOF
    )"
    ```
