@@ -408,6 +408,14 @@ watch(
 	border-color: var(--color--danger);
 }
 
+.error :global(.cm-content) {
+	color: var(--color--danger) !important;
+}
+
+.error :global(.cm-content span) {
+	color: inherit !important;
+}
+
 .empty::before {
 	content: attr(data-placeholder);
 	color: var(--color--text--tint-2);
