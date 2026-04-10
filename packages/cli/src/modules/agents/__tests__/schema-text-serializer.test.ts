@@ -333,7 +333,7 @@ describe('union types', () => {
 		);
 		expect(output).toBe(
 			[
-				'  action: one of <discriminated by "type">',
+				'  action: one of <discriminated by "type"> (required)',
 				'    | type = "click": { type: "click", x: number, y: number }',
 				'    | type = "type": { type: "type", text: string }',
 			].join('\n'),
@@ -406,6 +406,28 @@ describe('union types', () => {
 		expect(output).toBe('');
 	});
 
+	it('appends (required) to a required union field', () => {
+		const output = field(
+			'action',
+			{
+				anyOf: [
+					{ type: 'object', properties: { kind: { const: 'A' } }, required: ['kind'] },
+					{ type: 'object', properties: { kind: { const: 'B' } }, required: ['kind'] },
+				],
+			},
+			true,
+		);
+		expect(output).toMatch(/^ {2}action: one of .* \(required\)$/m);
+	});
+
+	it('appends (default: ...) to a union field with a default', () => {
+		const output = field('mode', {
+			anyOf: [{ type: 'object', properties: { kind: { const: 'A' } }, required: ['kind'] }],
+			default: { kind: 'A' },
+		});
+		expect(output).toMatch(/\(default: \{"kind":"A"\}\)/);
+	});
+
 	it('uses a single-value enum as a discriminator const', () => {
 		const output = field('ev', {
 			anyOf: [
@@ -424,6 +446,46 @@ describe('union types', () => {
 		expect(output).toContain('discriminated by "kind"');
 		expect(output).toContain('kind = "start"');
 		expect(output).toContain('kind = "stop"');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Array-union field metadata (required / default)
+// ---------------------------------------------------------------------------
+
+describe('array-union field metadata', () => {
+	it('appends (required) when the array-union field is required', () => {
+		const output = field(
+			'events',
+			{
+				type: 'array',
+				items: { anyOf: [{ type: 'string' }, { type: 'number' }] },
+			},
+			true,
+		);
+		expect(output).toMatch(/^ {2}events: array with items any of: \(required\)$/m);
+	});
+
+	it('appends (default: ...) when the array-union field carries a default', () => {
+		const output = field('events', {
+			type: 'array',
+			items: { anyOf: [{ type: 'string' }] },
+			default: [],
+		});
+		expect(output).toMatch(/\(default: \[\]\)/);
+	});
+
+	it('appends both (required) and (default: ...) together', () => {
+		const output = field(
+			'events',
+			{
+				type: 'array',
+				items: { anyOf: [{ type: 'string' }] },
+				default: [],
+			},
+			true,
+		);
+		expect(output).toMatch(/array with items any of: \(required\) \(default: \[\]\)/);
 	});
 });
 
@@ -498,7 +560,7 @@ describe('full schema snapshot', () => {
 			'  scores?: object',
 			'    baseline: number [0..1] (required)',
 			'    [key: string]: number',
-			'  event: one of <discriminated by "type">',
+			'  event: one of <discriminated by "type"> (required)',
 			'    | type = "click": { type: "click", x: number, y: number }',
 			'    | type = "keypress": { type: "keypress", key: string, modifiers?: array of <string> }',
 		].join('\n');

@@ -170,7 +170,7 @@ function serializeSchema(
 	level: number,
 ): string[] {
 	const unionBranches = schema.anyOf ?? schema.oneOf;
-	if (unionBranches?.length) return serializeUnion(unionBranches, fieldName, optional, level);
+	if (unionBranches?.length) return serializeUnion(schema, fieldName, optional, level);
 	if (schema.type === 'object') return serializeObject(schema, fieldName, optional, level);
 	if (schema.type === 'array' && hasUnionItems(schema)) {
 		return serializeArrayUnion(schema, fieldName, optional, level);
@@ -288,18 +288,21 @@ function serializeObject(
  * //   ]
  */
 function serializeUnion(
-	branches: NonNullable<JSONSchema7['anyOf']>,
+	schema: JSONSchema7,
 	fieldName: string,
 	optional: boolean,
 	level: number,
 ): string[] {
 	if (!fieldName) return [];
 
-	const objectBranches = branches.filter(
+	const objectBranches = (schema.anyOf ?? schema.oneOf ?? []).filter(
 		(b): b is JSONSchema7 => typeof b === 'object' && b !== null,
 	);
 	const discriminator = detectDiscriminator(objectBranches);
-	const header = `${pad(level)}${fieldPrefix(fieldName, optional)}one of <discriminated by "${discriminator ?? 'type'}">`;
+	const requiredSuffix = optional ? '' : ' (required)';
+	const defaultSuffix =
+		schema.default !== undefined ? ` (default: ${JSON.stringify(schema.default)})` : '';
+	const header = `${pad(level)}${fieldPrefix(fieldName, optional)}one of <discriminated by "${discriminator ?? 'type'}">${requiredSuffix}${defaultSuffix}`;
 
 	const branchLines = objectBranches.map((branch) => {
 		const constProp = discriminator ? getConstValue(branch.properties?.[discriminator]) : undefined;
@@ -343,7 +346,10 @@ function serializeArrayUnion(
 		(b): b is JSONSchema7 => typeof b === 'object' && b !== null,
 	);
 	const discriminator = detectDiscriminator(branches);
-	const header = `${pad(level)}${fieldPrefix(fieldName, optional)}array with items any of:`;
+	const requiredSuffix = optional ? '' : ' (required)';
+	const defaultSuffix =
+		schema.default !== undefined ? ` (default: ${JSON.stringify(schema.default)})` : '';
+	const header = `${pad(level)}${fieldPrefix(fieldName, optional)}array with items any of:${requiredSuffix}${defaultSuffix}`;
 	const branchLines = branches.flatMap((branch) =>
 		serializeArrayUnionBranch(branch, discriminator, level),
 	);
