@@ -29,6 +29,7 @@ import {
 } from './tracing-utils';
 import { createVerifyBuiltWorkflowTool } from './verify-built-workflow.tool';
 import { registerWithMastra } from '../../agent/register-with-mastra';
+import { createMcpBuilderClient } from '../../mcp/mcp-builder-bridge';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { formatPreviousAttempts } from '../../storage/iteration-log';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
@@ -38,7 +39,6 @@ import {
 	mergeTraceRunInputs,
 	withTraceParentContext,
 } from '../../tracing/langsmith-tracing';
-import { createMcpBuilderClient } from '../../mcp/mcp-builder-bridge';
 import type { BackgroundTaskResult, OrchestrationContext } from '../../types';
 import { SDK_IMPORT_STATEMENT } from '../../workflow-builder/extract-code';
 import type { TriggerType, WorkflowBuildOutcome } from '../../workflow-loop';
@@ -352,136 +352,181 @@ export async function startBuildWorkflowAgentTask(
 		workItemId,
 		run: async (signal, drainCorrections, waitForCorrection): Promise<BackgroundTaskResult> =>
 			await withTraceContextActor(traceContext, async () => {
-				// ── MCP builder path ────────────────────────────────────────────
+				// ── MCP builder path (primary) ──────────────────────────────────
+				// Falls through to SDK builder paths on connection failure.
 				if (useMcpBuilder && context.mcpBuilderConfig) {
-					const { tools: mcpTools, client: mcpClient } = await createMcpBuilderClient(
-						context.mcpBuilderConfig,
-					);
-
-					// Add ask-user tool so the agent can ask clarifying questions
-					if (context.domainTools['ask-user']) {
-						mcpTools['ask-user'] = context.domainTools['ask-user'];
-					}
-
-					// Intercept create_workflow_from_code results to capture workflowId
-					let mcpWorkflowId: string | undefined;
-					for (const [toolName, toolDef] of Object.entries(mcpTools)) {
-						if (toolName.endsWith('create_workflow_from_code') && 'execute' in toolDef) {
-							const originalExecute = toolDef.execute as (
-								args: Record<string, unknown>,
-								ctx?: unknown,
-							) => Promise<Record<string, unknown>>;
-							(toolDef as { execute: typeof originalExecute }).execute = async (args, ctx?) => {
-								context.logger.debug('[MCP Builder] create_workflow_from_code called', {
-									argsKeys: Object.keys(args),
-								});
-								try {
-									const result = await originalExecute(args, ctx);
-									context.logger.debug('[MCP Builder] create_workflow_from_code returned', {
-										resultType: typeof result,
-										resultIsNull: result === null,
-										resultIsUndefined: result === undefined,
-										resultKeys: result && typeof result === 'object' ? Object.keys(result) : [],
-										hasWorkflowId: result && typeof result === 'object' && 'workflowId' in result,
-									});
-									if (result && typeof result === 'object' && 'workflowId' in result) {
-										mcpWorkflowId = String(result.workflowId);
-									}
-									return result;
-								} catch (error) {
-									context.logger.error('[MCP Builder] create_workflow_from_code threw', {
-										error: error instanceof Error ? error.message : String(error),
-										stack: error instanceof Error ? error.stack : undefined,
-									});
-									throw error;
-								}
-							};
-						}
-					}
-
 					try {
-						const tracedMcpTools = traceSubAgentTools(context, mcpTools, 'workflow-builder');
-
-						const mcpPrompt = MCP_BUILDER_AGENT_PROMPT;
-						const subAgent = new Agent({
-							id: subAgentId,
-							name: 'MCP Workflow Builder',
-							instructions: {
-								role: 'system' as const,
-								content: mcpPrompt,
-								providerOptions: {
-									anthropic: { cacheControl: { type: 'ephemeral' } },
-								},
-							},
-							model: context.modelId,
-							tools: tracedMcpTools,
-						});
-						mergeTraceRunInputs(
-							traceContext?.actorRun,
-							buildAgentTraceInputs({
-								systemPrompt: mcpPrompt,
-								tools: tracedMcpTools,
-								modelId: context.modelId,
-							}),
+						const { tools: mcpTools, client: mcpClient } = await createMcpBuilderClient(
+							context.mcpBuilderConfig,
 						);
 
-						registerWithMastra(subAgentId, subAgent, context.storage);
-
-						const traceParent = getTraceParentRun();
-						const hitlResult = await withTraceParentContext(traceParent, async () => {
-							const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
-							const stream = await subAgent.stream(briefing, {
-								maxSteps: BUILDER_MAX_STEPS,
-								abortSignal: signal,
-								providerOptions: {
-									anthropic: { cacheControl: { type: 'ephemeral' } },
-								},
-								...(llmStepTraceHooks?.executionOptions ?? {}),
-							});
-
-							return await consumeStreamWithHitl({
-								agent: subAgent,
-								stream: stream as {
-									runId?: string;
-									fullStream: AsyncIterable<unknown>;
-									text: Promise<string>;
-								},
-								runId: context.runId,
-								agentId: subAgentId,
-								eventBus: context.eventBus,
-								logger: context.logger,
-								threadId: context.threadId,
-								abortSignal: signal,
-								waitForConfirmation: context.waitForConfirmation,
-								drainCorrections,
-								waitForCorrection,
-								llmStepTraceHooks,
-							});
-						});
-
-						const finalText = await hitlResult.text;
-
-						// Report build outcome so the orchestrator can render the workflow artifact
-						const mcpOutcome: WorkflowBuildOutcome = {
-							workItemId,
-							taskId,
-							submitted: !!mcpWorkflowId,
-							workflowId: mcpWorkflowId,
-							triggerType: 'manual_or_testable',
-							needsUserInput: false,
-							summary: finalText,
-						};
-
-						if (context.workflowTaskService) {
-							await context.workflowTaskService.reportBuildOutcome(mcpOutcome);
+						// Add ask-user tool so the agent can ask clarifying questions,
+						// and track whether it was invoked to set needsUserInput.
+						let mcpNeedsUserInput = false;
+						if (context.domainTools['ask-user']) {
+							const originalAskUser = context.domainTools['ask-user'];
+							if ('execute' in originalAskUser) {
+								const origExec = originalAskUser.execute as (
+									args: Record<string, unknown>,
+									ctx?: unknown,
+								) => Promise<unknown>;
+								mcpTools['ask-user'] = {
+									...originalAskUser,
+									execute: async (args: Record<string, unknown>, ctx?: unknown) => {
+										mcpNeedsUserInput = true;
+										return await origExec(args, ctx);
+									},
+								};
+							} else {
+								mcpTools['ask-user'] = originalAskUser;
+							}
 						}
 
+						// Intercept workflow-creating tools to capture workflowId and credential metadata
+						let mcpWorkflowId: string | undefined;
+						let mcpSkippedNote: string | undefined;
+						let intercepted = false;
+
+						for (const [toolName, toolDef] of Object.entries(mcpTools)) {
+							if (toolName.endsWith('create_workflow_from_code') && 'execute' in toolDef) {
+								intercepted = true;
+								const originalExecute = toolDef.execute as (
+									args: Record<string, unknown>,
+									ctx?: unknown,
+								) => Promise<Record<string, unknown>>;
+								(toolDef as { execute: typeof originalExecute }).execute = async (args, ctx?) => {
+									try {
+										const result = await originalExecute(args, ctx);
+										if (result && typeof result === 'object') {
+											if ('workflowId' in result) {
+												mcpWorkflowId = String(result.workflowId);
+											}
+											if ('note' in result && typeof result.note === 'string') {
+												mcpSkippedNote = result.note;
+											}
+										}
+										return result;
+									} catch (error) {
+										context.logger.error('[MCP Builder] create_workflow_from_code failed', {
+											error: error instanceof Error ? error.message : String(error),
+										});
+										throw error;
+									}
+								};
+							}
+						}
+						if (!intercepted) {
+							context.logger.warn(
+								'[MCP Builder] Could not find create_workflow_from_code tool to intercept — workflowId capture will not work',
+							);
+						}
+
+						try {
+							const tracedMcpTools = traceSubAgentTools(context, mcpTools, 'workflow-builder');
+
+							const mcpPrompt = MCP_BUILDER_AGENT_PROMPT;
+							const subAgent = new Agent({
+								id: subAgentId,
+								name: 'MCP Workflow Builder',
+								instructions: {
+									role: 'system' as const,
+									content: mcpPrompt,
+									providerOptions: {
+										anthropic: { cacheControl: { type: 'ephemeral' } },
+									},
+								},
+								model: context.modelId,
+								tools: tracedMcpTools,
+							});
+							mergeTraceRunInputs(
+								traceContext?.actorRun,
+								buildAgentTraceInputs({
+									systemPrompt: mcpPrompt,
+									tools: tracedMcpTools,
+									modelId: context.modelId,
+								}),
+							);
+
+							registerWithMastra(subAgentId, subAgent, context.storage);
+
+							const traceParent = getTraceParentRun();
+							const hitlResult = await withTraceParentContext(traceParent, async () => {
+								const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
+								const stream = await subAgent.stream(briefing, {
+									maxSteps: BUILDER_MAX_STEPS,
+									abortSignal: signal,
+									providerOptions: {
+										anthropic: { cacheControl: { type: 'ephemeral' } },
+									},
+									...(llmStepTraceHooks?.executionOptions ?? {}),
+								});
+
+								return await consumeStreamWithHitl({
+									agent: subAgent,
+									stream: stream as {
+										runId?: string;
+										fullStream: AsyncIterable<unknown>;
+										text: Promise<string>;
+									},
+									runId: context.runId,
+									agentId: subAgentId,
+									eventBus: context.eventBus,
+									logger: context.logger,
+									threadId: context.threadId,
+									abortSignal: signal,
+									waitForConfirmation: context.waitForConfirmation,
+									drainCorrections,
+									waitForCorrection,
+									llmStepTraceHooks,
+								});
+							});
+
+							const finalText = await hitlResult.text;
+
+							// Report build outcome so the orchestrator can render the workflow artifact.
+							// Credential metadata comes from the intercepted create_workflow_from_code result;
+							// nodes that had credentials skipped (HTTP Request) are noted in mcpSkippedNote.
+							const nodesNeedingCredentials = mcpSkippedNote
+								? (mcpSkippedNote.match(/HTTP Request nodes \(([^)]+)\)/)?.[1]?.split(', ') ?? [])
+								: [];
+							const mcpOutcome: WorkflowBuildOutcome = {
+								workItemId,
+								taskId,
+								submitted: !!mcpWorkflowId,
+								workflowId: mcpWorkflowId,
+								triggerType: 'manual_or_testable',
+								needsUserInput: mcpNeedsUserInput,
+								mockedNodeNames: nodesNeedingCredentials,
+								summary: finalText,
+							};
+
+							if (context.workflowTaskService) {
+								await context.workflowTaskService.reportBuildOutcome(mcpOutcome);
+							}
+
+							return {
+								text: finalText,
+								outcome: mcpOutcome as unknown as Record<string, unknown>,
+							};
+						} finally {
+							await mcpClient.disconnect();
+						}
+					} catch (mcpError) {
+						const errorMsg = mcpError instanceof Error ? mcpError.message : String(mcpError);
+						context.logger.error('[MCP Builder] MCP connection failed', {
+							error: errorMsg,
+						});
 						return {
-							text: finalText,
-							outcome: mcpOutcome as unknown as Record<string, unknown>,
+							text: `Workflow builder failed to connect to the MCP server: ${errorMsg}`,
+							outcome: {
+								workItemId,
+								taskId,
+								submitted: false,
+								triggerType: 'manual_or_testable',
+								needsUserInput: false,
+								summary: `MCP connection failed: ${errorMsg}`,
+							},
 						};
-					} finally {
-						await mcpClient.disconnect();
 					}
 				}
 
