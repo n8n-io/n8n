@@ -17,6 +17,10 @@
     },
     "./dist/generate-types/generate-node-defs-cli": {
       "default": "./dist/generate-types/generate-node-defs-cli.js"
+    },
+    "./prompts": {
+      "types": "./dist/prompts/index.d.ts",
+      "default": "./dist/prompts/index.js"
     }
   },
   "scripts": {
@@ -43,6 +47,13 @@
   "main": "dist/index.js",
   "module": "src/index.ts",
   "types": "dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "prompts": [
+        "./dist/prompts/index.d.ts"
+      ]
+    }
+  },
   "files": [
     "dist/**/*"
   ],

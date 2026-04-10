@@ -14,7 +14,7 @@ import {
 	EXPRESSION_REFERENCE,
 	ADDITIONAL_FUNCTIONS,
 	WORKFLOW_RULES,
-} from '../../shared/code-builder-and-mcp-prompt-constants';
+} from '@n8n/workflow-sdk/prompts';
 import type { PlanOutput } from '../../types/planning';
 import { formatPlanAsText } from '../../utils/plan-helpers';
 import type { ExpressionValue } from '../../workflow-builder-agent';
