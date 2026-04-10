@@ -69,26 +69,52 @@ async function onInstall() {
 
 <template>
 	<div :class="$style.card" data-test-id="community-package-browse-card">
-		<div :class="$style.cardHeader">
+		<div :class="$style.cardTop">
 			<div :class="$style.iconWrapper">
 				<NodeIcon
 					v-if="firstNodeType"
 					:node-type="firstNodeType"
-					:size="28"
+					:size="24"
 					:show-tooltip="false"
 				/>
 			</div>
-			<div :class="$style.headerInfo">
-				<div :class="$style.titleRow">
-					<N8nText :bold="true" size="medium">{{ pkg.packageName }}</N8nText>
-					<N8nBadge v-if="pkg.isOfficialNode" :class="$style.officialBadge" theme="primary">
+			<div :class="$style.nameBlock">
+				<N8nText :bold="true" size="medium" :class="$style.packageName">
+					{{ pkg.packageName }}
+				</N8nText>
+				<div :class="$style.meta">
+					<N8nText size="small" color="text-light">
+						{{
+							i18n.baseText('settings.communityNodes.browse.card.by', {
+								interpolate: { author: pkg.authorName },
+							})
+						}}
+					</N8nText>
+					<N8nBadge v-if="pkg.isOfficialNode" theme="primary">
 						{{ i18n.baseText('settings.communityNodes.browse.card.official') }}
 					</N8nBadge>
 				</div>
+			</div>
+		</div>
+
+		<N8nText size="small" color="text-light" :class="$style.description">
+			{{ pkg.description }}
+		</N8nText>
+
+		<div :class="$style.cardBottom">
+			<div :class="$style.stats">
 				<N8nText size="small" color="text-light">
 					{{
-						i18n.baseText('settings.communityNodes.browse.card.by', {
-							interpolate: { author: pkg.authorName },
+						i18n.baseText('settings.communityNodes.browse.card.nodes', {
+							adjustToNumber: nodeCount,
+						})
+					}}
+				</N8nText>
+				<span :class="$style.separator">·</span>
+				<N8nText size="small" color="text-light">
+					{{
+						i18n.baseText('settings.communityNodes.browse.card.downloads', {
+							interpolate: { count: formattedDownloads },
 						})
 					}}
 				</N8nText>
@@ -110,26 +136,6 @@ async function onInstall() {
 				/>
 			</div>
 		</div>
-		<div :class="$style.cardBody">
-			<N8nText size="small" color="text-light" :class="$style.description">
-				{{ pkg.description }}
-			</N8nText>
-		</div>
-		<div :class="$style.cardFooter">
-			<N8nText size="small" color="text-light">
-				{{
-					i18n.baseText('settings.communityNodes.browse.card.nodes', { adjustToNumber: nodeCount })
-				}}
-			</N8nText>
-			<span :class="$style.separator">·</span>
-			<N8nText size="small" color="text-light">
-				{{
-					i18n.baseText('settings.communityNodes.browse.card.downloads', {
-						interpolate: { count: formattedDownloads },
-					})
-				}}
-			</N8nText>
-		</div>
 	</div>
 </template>
 
@@ -137,6 +143,7 @@ async function onInstall() {
 .card {
 	display: flex;
 	flex-direction: column;
+	gap: var(--spacing--2xs);
 	padding: var(--spacing--sm);
 	border: var(--border-width) var(--border-style) var(--color--foreground);
 	border-radius: var(--radius--lg);
@@ -148,41 +155,39 @@ async function onInstall() {
 	}
 }
 
-.cardHeader {
+.cardTop {
 	display: flex;
-	align-items: flex-start;
-	gap: var(--spacing--xs);
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .iconWrapper {
 	flex-shrink: 0;
-	width: 28px;
-	height: 28px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	border-radius: var(--radius--md);
+	background-color: var(--color--foreground);
 }
 
-.headerInfo {
+.nameBlock {
 	flex: 1;
 	min-width: 0;
 }
 
-.titleRow {
+.packageName {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.meta {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
-	flex-wrap: wrap;
-}
-
-.officialBadge {
-	flex-shrink: 0;
-}
-
-.installAction {
-	flex-shrink: 0;
-	margin-left: auto;
-}
-
-.cardBody {
-	margin-top: var(--spacing--2xs);
 }
 
 .description {
@@ -190,16 +195,27 @@ async function onInstall() {
 	-webkit-line-clamp: 2;
 	-webkit-box-orient: vertical;
 	overflow: hidden;
+	flex: 1;
 }
 
-.cardFooter {
+.cardBottom {
 	display: flex;
 	align-items: center;
-	margin-top: var(--spacing--2xs);
+	justify-content: space-between;
+	margin-top: auto;
+}
+
+.stats {
+	display: flex;
+	align-items: center;
 	gap: var(--spacing--4xs);
 }
 
 .separator {
 	color: var(--color--text--tint-2);
+}
+
+.installAction {
+	flex-shrink: 0;
 }
 </style>
