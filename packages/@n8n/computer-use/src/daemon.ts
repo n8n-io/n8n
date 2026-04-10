@@ -181,13 +181,13 @@ async function handleConnect(req: http.IncomingMessage, res: http.ServerResponse
 		});
 		return;
 	}
-  
+
 	// Reject concurrent connection attempts while a confirmation prompt is active
 	if (state.confirmingConnection) {
-		jsonResponse(res, 409, { error: 'A connection confirmation is already in progress.' });
+		jsonResponse(req, res, 409, { error: 'A connection confirmation is already in progress.' });
 		return;
 	}
-  
+
 	let parsedOrigin: string;
 	try {
 		parsedOrigin = new URL(url).origin;
@@ -214,7 +214,7 @@ async function handleConnect(req: http.IncomingMessage, res: http.ServerResponse
 		const defaults = store.getDefaults(state.config);
 		const session = new GatewaySession(defaults, store);
 
-    state.confirmingConnection = true;
+		state.confirmingConnection = true;
 		let approved: boolean;
 		try {
 			approved = await daemonOptions.confirmConnect(url, session);
