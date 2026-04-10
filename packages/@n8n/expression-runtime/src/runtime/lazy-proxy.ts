@@ -82,7 +82,18 @@ export function getProxyPath(obj: object): string[] | undefined {
  * @param basePath - Current path in object tree (e.g., ['$json', 'user'])
  * @returns Proxy object with lazy loading behavior
  */
-export function createDeepLazyProxy(basePath: string[] = [], knownKeys?: string[]): any {
+export function createDeepLazyProxy(
+	basePath: string[] = [],
+	knownKeys?: string[],
+	callbacks?: {
+		getValueAtPath: any;
+		getArrayElement: any;
+		callFunctionAtPath: any;
+	},
+): any {
+	const getValueAtPath = callbacks?.getValueAtPath ?? globalThis.__getValueAtPath;
+	const getArrayElement = callbacks?.getArrayElement ?? globalThis.__getArrayElement;
+	const callFunctionAtPath = callbacks?.callFunctionAtPath ?? globalThis.__callFunctionAtPath;
 	// Cache for keys fetched from the bridge (root proxies without knownKeys).
 	// Shared between ownKeys and getOwnPropertyDescriptor for consistency.
 	let fetchedKeys: string[] | undefined;
@@ -90,7 +101,7 @@ export function createDeepLazyProxy(basePath: string[] = [], knownKeys?: string[
 	function resolveKeys(): string[] {
 		if (knownKeys) return knownKeys;
 		if (fetchedKeys) return fetchedKeys;
-		const value = globalThis.__getValueAtPath.applySync(null, [basePath], {
+		const value = getValueAtPath.applySync(null, [basePath], {
 			arguments: { copy: true },
 			result: { copy: true },
 		});
@@ -144,7 +155,7 @@ export function createDeepLazyProxy(basePath: string[] = [], knownKeys?: string[
 
 			// Call back to parent to get metadata/value
 			// Note: __getValueAtPath is an ivm.Reference set by bridge
-			const value = globalThis.__getValueAtPath.applySync(null, [path], {
+			const value = getValueAtPath.applySync(null, [path], {
 				arguments: { copy: true },
 				result: { copy: true },
 			});
@@ -163,7 +174,7 @@ export function createDeepLazyProxy(basePath: string[] = [], knownKeys?: string[
 			if (value && typeof value === 'object' && value.__isFunction) {
 				// Create function wrapper that calls back to parent
 				target[prop] = function (...args: any[]) {
-					const result = globalThis.__callFunctionAtPath.applySync(null, [path, ...args], {
+					const result = callFunctionAtPath.applySync(null, [path, ...args], {
 						arguments: { copy: true },
 						result: { copy: true },
 					});
@@ -202,7 +213,7 @@ export function createDeepLazyProxy(basePath: string[] = [], knownKeys?: string[
 							// Check cache
 							if (!(arrProp in arrTarget)) {
 								// Fetch element from parent
-								const element = globalThis.__getArrayElement.applySync(null, [path, index], {
+								const element = getArrayElement.applySync(null, [path, index], {
 									arguments: { copy: true },
 									result: { copy: true },
 								});
@@ -210,12 +221,12 @@ export function createDeepLazyProxy(basePath: string[] = [], knownKeys?: string[
 								// Handle element metadata (arrays and objects need proxies)
 								if (element && typeof element === 'object' && element.__isArray) {
 									const elementPath = [...path, String(index)];
-									arrTarget[arrProp] = createDeepLazyProxy(elementPath);
+									arrTarget[arrProp] = createDeepLazyProxy(elementPath, undefined, callbacks);
 								} else if (isObjectMetadata(element)) {
 									// Object metadata: create nested proxy, passing known keys to
 									// avoid an extra __getValueAtPath round-trip for ownKeys/Object.keys()
 									const elementPath = [...path, String(index)];
-									arrTarget[arrProp] = createDeepLazyProxy(elementPath, element.__keys);
+									arrTarget[arrProp] = createDeepLazyProxy(elementPath, element.__keys, callbacks);
 								} else {
 									// Primitive element
 									arrTarget[arrProp] = element;
@@ -237,7 +248,7 @@ export function createDeepLazyProxy(basePath: string[] = [], knownKeys?: string[
 			// Handle objects - metadata: { __isObject: true, __keys: string[] }
 			if (isObjectMetadata(value)) {
 				// Create nested proxy for recursive lazy loading, passing known keys
-				target[prop] = createDeepLazyProxy(path, value.__keys);
+				target[prop] = createDeepLazyProxy(path, value.__keys, callbacks);
 				return target[prop];
 			}
 
@@ -259,7 +270,7 @@ export function createDeepLazyProxy(basePath: string[] = [], knownKeys?: string[
 
 			// Build path and check existence via callback
 			const path = [...basePath, prop];
-			const value = globalThis.__getValueAtPath.applySync(null, [path], {
+			const value = getValueAtPath.applySync(null, [path], {
 				arguments: { copy: true },
 				result: { copy: true },
 			});
