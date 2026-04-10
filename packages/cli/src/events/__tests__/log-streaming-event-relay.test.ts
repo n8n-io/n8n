@@ -368,6 +368,8 @@ describe('LogStreamingEventRelay', () => {
 				executionId: 'exec123',
 				data: workflow,
 				mode: 'trigger',
+				projectId: 'proj-123',
+				projectName: 'Test Project',
 			};
 
 			eventService.emit('workflow-pre-execute', event);
@@ -381,6 +383,8 @@ describe('LogStreamingEventRelay', () => {
 					isManual: false,
 					mode: 'trigger',
 					workflowName: 'Test Workflow',
+					projectId: 'proj-123',
+					projectName: 'Test Project',
 				},
 			});
 		});
@@ -396,11 +400,13 @@ describe('LogStreamingEventRelay', () => {
 					mode: 'manual',
 					data: { resultData: {} },
 				}),
+				projectId: 'proj-456',
+				projectName: 'My Project',
 			});
 
 			eventService.emit('workflow-post-execute', payload);
 
-			const { runData: _, workflow: __, ...rest } = payload;
+			const { runData: _, workflow: __, projectId: ___, projectName: ____, ...rest } = payload;
 
 			expect(eventBus.sendWorkflowEvent).toHaveBeenCalledWith({
 				eventName: 'n8n.workflow.success',
@@ -411,6 +417,8 @@ describe('LogStreamingEventRelay', () => {
 					mode: 'manual',
 					workflowName: 'some-name',
 					workflowId: 'some-id',
+					projectId: 'proj-456',
+					projectName: 'My Project',
 				},
 			});
 		});
@@ -467,11 +475,13 @@ describe('LogStreamingEventRelay', () => {
 				userId: 'some-id',
 				workflow: mock<IWorkflowBase>({ id: 'some-id', name: 'some-name' }),
 				runData,
+				projectId: 'proj-789',
+				projectName: 'Failed Project',
 			};
 
 			eventService.emit('workflow-post-execute', event);
 
-			const { runData: _, workflow: __, ...rest } = event;
+			const { runData: _, workflow: __, projectId: ___, projectName: ____, ...rest } = event;
 
 			expect(eventBus.sendWorkflowEvent).toHaveBeenCalledWith({
 				eventName: 'n8n.workflow.failed',
@@ -485,6 +495,8 @@ describe('LogStreamingEventRelay', () => {
 					lastNodeExecuted: 'some-node',
 					errorNodeType: 'some-type',
 					errorMessage: 'some-message',
+					projectId: 'proj-789',
+					projectName: 'Failed Project',
 				},
 			});
 		});
