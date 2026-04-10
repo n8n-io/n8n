@@ -141,14 +141,12 @@ onMounted(() => {
 		<div
 			v-if="ssoStore.isEnterpriseSamlEnabled && authProtocol === SupportedProtocols.SAML"
 			data-test-id="sso-content-licensed"
-			
 		>
 			<SamlSettingsForm ref="samlForm" />
 		</div>
 		<div
 			v-if="ssoStore.isEnterpriseOidcEnabled && authProtocol === SupportedProtocols.OIDC"
 			data-test-id="sso-content-licensed"
-			
 		>
 			<OidcSettingsForm ref="oidcForm" />
 		</div>
@@ -228,7 +226,6 @@ onMounted(() => {
 	border-bottom-left-radius: 0;
 	border-bottom-right-radius: 0;
 }
-
 
 .actionBox {
 	margin-top: var(--spacing--lg);

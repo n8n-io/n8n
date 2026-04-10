@@ -44,8 +44,16 @@ const idpInfoText = computed(() =>
 
 const roleAssignmentOptions = [
 	{ value: 'manual', label: 'roleAssignment.manual', desc: 'roleAssignment.manual.description' },
-	{ value: 'instance', label: 'roleAssignment.instanceRoles', desc: 'roleAssignment.instanceRoles.description' },
-	{ value: 'instance_and_project', label: 'roleAssignment.instanceAndProjectRoles', desc: 'roleAssignment.instanceAndProjectRoles.description' },
+	{
+		value: 'instance',
+		label: 'roleAssignment.instanceRoles',
+		desc: 'roleAssignment.instanceRoles.description',
+	},
+	{
+		value: 'instance_and_project',
+		label: 'roleAssignment.instanceAndProjectRoles',
+		desc: 'roleAssignment.instanceAndProjectRoles.description',
+	},
 ];
 
 const mappingMethodOptions = computed(() => {
@@ -53,13 +61,16 @@ const mappingMethodOptions = computed(() => {
 		{ value: 'idp', label: 'roleMappingMethod.idp', desc: 'roleMappingMethod.idp.description' },
 	];
 	if (isRuleMappingEnabled.value) {
-		opts.push({ value: 'rules_in_n8n', label: 'roleMappingMethod.rulesInN8n', desc: 'roleMappingMethod.rulesInN8n.description' });
+		opts.push({
+			value: 'rules_in_n8n',
+			label: 'roleMappingMethod.rulesInN8n',
+			desc: 'roleMappingMethod.rulesInN8n.description',
+		});
 	}
 	return opts;
 });
 
 const ssoKey = (key: string) => i18n.baseText(`settings.sso.settings.${key}`);
-
 </script>
 <template>
 	<div>
@@ -70,8 +81,18 @@ const ssoKey = (key: string) => i18n.baseText(`settings.sso.settings.${key}`);
 				<small>{{ ssoKey('roleAssignment.description') }}</small>
 			</div>
 			<div :class="shared.settingsItemControl">
-				<N8nSelect v-model="roleAssignment" size="medium" :disabled="!canManage" data-test-id="role-assignment-select">
-					<N8nOption v-for="opt in roleAssignmentOptions" :key="opt.value" :label="ssoKey(opt.label)" :value="opt.value">
+				<N8nSelect
+					v-model="roleAssignment"
+					size="medium"
+					:disabled="!canManage"
+					data-test-id="role-assignment-select"
+				>
+					<N8nOption
+						v-for="opt in roleAssignmentOptions"
+						:key="opt.value"
+						:label="ssoKey(opt.label)"
+						:value="opt.value"
+					>
 						<div :class="$style.optionContent">
 							<span :class="$style.optionTitle">{{ ssoKey(opt.label) }}</span>
 							<span :class="$style.optionDescription">{{ ssoKey(opt.desc) }}</span>
@@ -88,8 +109,18 @@ const ssoKey = (key: string) => i18n.baseText(`settings.sso.settings.${key}`);
 				<small>{{ ssoKey('roleMappingMethod.description') }}</small>
 			</div>
 			<div :class="shared.settingsItemControl">
-				<N8nSelect v-model="mappingMethod" size="medium" :disabled="!canManage" data-test-id="role-mapping-method-select">
-					<N8nOption v-for="opt in mappingMethodOptions" :key="opt.value" :label="ssoKey(opt.label)" :value="opt.value">
+				<N8nSelect
+					v-model="mappingMethod"
+					size="medium"
+					:disabled="!canManage"
+					data-test-id="role-mapping-method-select"
+				>
+					<N8nOption
+						v-for="opt in mappingMethodOptions"
+						:key="opt.value"
+						:label="ssoKey(opt.label)"
+						:value="opt.value"
+					>
 						<div :class="$style.optionContent">
 							<span :class="$style.optionTitle">{{ ssoKey(opt.label) }}</span>
 							<span :class="$style.optionDescription">{{ ssoKey(opt.desc) }}</span>

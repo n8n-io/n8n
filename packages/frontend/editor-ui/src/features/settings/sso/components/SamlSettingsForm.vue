@@ -76,7 +76,6 @@ const {
 	shouldPromptUserToConfirmUserRoleProvisioningChange,
 } = useUserRoleProvisioningForm(SupportedProtocols.SAML);
 
-
 async function loadSamlConfig() {
 	if (!ssoStore.isEnterpriseSamlEnabled) {
 		return;

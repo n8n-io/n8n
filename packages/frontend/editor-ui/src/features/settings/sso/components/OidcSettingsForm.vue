@@ -40,7 +40,6 @@ const {
 	shouldPromptUserToConfirmUserRoleProvisioningChange,
 } = useUserRoleProvisioningForm(SupportedProtocols.OIDC);
 
-
 type PromptType = 'login' | 'none' | 'consent' | 'select_account' | 'create';
 
 const prompt = ref<PromptType>('select_account');
