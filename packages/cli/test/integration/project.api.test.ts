@@ -38,6 +38,7 @@ import { createMember, createOwner, createUser } from './shared/db/users';
 import * as utils from './shared/utils/';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { getWorkflowById } from '@/public-api/v1/handlers/workflows/workflows.service';
 
 const testServer = utils.setupTestServer({
@@ -216,6 +217,57 @@ describe('Project members endpoints', () => {
 		expect(relations.some((r) => r.userId === member.id && r.role.slug === 'project:editor')).toBe(
 			true,
 		);
+	});
+
+	describe('PATCH /projects/:projectId/users/:userId when project roles are managed by provisioning', () => {
+		let provisioningService: ProvisioningService;
+		let savedConfig: Record<string, unknown>;
+
+		beforeEach(async () => {
+			provisioningService = Container.get(ProvisioningService);
+			await provisioningService.getConfig();
+			// @ts-expect-error - provisioningConfig is private
+			savedConfig = { ...provisioningService.provisioningConfig };
+		});
+
+		afterEach(() => {
+			// @ts-expect-error - provisioningConfig is private
+			provisioningService.provisioningConfig = { ...savedConfig };
+			delete process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY;
+		});
+
+		test('should return 403 when SSO provider controls project roles', async () => {
+			// @ts-expect-error - provisioningConfig is private
+			provisioningService.provisioningConfig.scopesProvisionProjectRoles = true;
+
+			const owner = await createOwner();
+			const member = await createUser();
+			const project = await createTeamProject('Team Project', owner);
+			await linkUserToProject(member, project, 'project:viewer');
+
+			const ownerAgent = testServer.authAgentFor(owner);
+			await ownerAgent
+				.patch(`/projects/${project.id}/users/${member.id}`)
+				.send({ role: 'project:editor' })
+				.expect(403);
+		});
+
+		test('should return 403 when expression-based role mapping is active', async () => {
+			process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY = 'true';
+			// @ts-expect-error - provisioningConfig is private
+			provisioningService.provisioningConfig.scopesUseExpressionMapping = true;
+
+			const owner = await createOwner();
+			const member = await createUser();
+			const project = await createTeamProject('Team Project', owner);
+			await linkUserToProject(member, project, 'project:viewer');
+
+			const ownerAgent = testServer.authAgentFor(owner);
+			await ownerAgent
+				.patch(`/projects/${project.id}/users/${member.id}`)
+				.send({ role: 'project:editor' })
+				.expect(403);
+		});
 	});
 
 	test('DELETE /projects/:projectId/users/:userId removes a member', async () => {

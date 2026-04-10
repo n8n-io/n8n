@@ -35,8 +35,14 @@ export function createDeleteDataTableTool(context: InstanceAiContext) {
 				| undefined;
 			const suspend = ctx?.agent?.suspend;
 
-			// State 1: First call — suspend for confirmation
-			if (resumeData === undefined || resumeData === null) {
+			if (context.permissions?.deleteDataTable === 'blocked') {
+				return { success: false, denied: true, reason: 'Action blocked by admin' };
+			}
+
+			const needsApproval = context.permissions?.deleteDataTable !== 'always_allow';
+
+			// State 1: First call — suspend for confirmation (unless always_allow)
+			if (needsApproval && (resumeData === undefined || resumeData === null)) {
 				await suspend?.({
 					requestId: nanoid(),
 					message: `Delete data table "${input.dataTableId}"? This will permanently remove the table and all its data.`,
@@ -46,7 +52,7 @@ export function createDeleteDataTableTool(context: InstanceAiContext) {
 			}
 
 			// State 2: Denied
-			if (!resumeData.approved) {
+			if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 				return { success: false, denied: true, reason: 'User denied the action' };
 			}
 

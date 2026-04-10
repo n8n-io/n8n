@@ -573,6 +573,8 @@ export interface InstanceAiContext {
 	localGatewayStatus?: LocalGatewayStatus;
 	/** Per-action HITL permission overrides. When absent, tools default to requiring approval. */
 	permissions?: InstanceAiPermissions;
+	/** When true, the instance is in read-only mode (source control branchReadOnly). */
+	branchReadOnly?: boolean;
 	/** Human-readable hints about licensed features that are NOT available on this instance.
 	 *  Injected into the system prompt so the agent can explain why certain capabilities are missing. */
 	licenseHints?: string[];
@@ -799,6 +801,7 @@ export interface SpawnBackgroundTaskOptions {
 	run: (
 		signal: AbortSignal,
 		drainCorrections: () => string[],
+		waitForCorrection: () => Promise<void>,
 	) => Promise<string | BackgroundTaskResult>;
 }
 

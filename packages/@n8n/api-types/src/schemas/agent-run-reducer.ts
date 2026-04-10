@@ -293,6 +293,18 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				agent.result = event.payload.result;
 				agent.error = event.payload.error;
 			}
+			// A completed/errored agent can't have tool calls still in-flight.
+			// Clear isLoading so persisted snapshots don't show stale confirmations.
+			if (!isSafeObjectKey(event.agentId)) break;
+			const agentToolCallIds = state.toolCallIdsByAgentId[event.agentId];
+			if (agentToolCallIds) {
+				for (const tcId of agentToolCallIds) {
+					const tc = state.toolCallsById[tcId];
+					if (tc?.isLoading) {
+						tc.isLoading = false;
+					}
+				}
+			}
 			break;
 		}
 
@@ -365,6 +377,15 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const root = state.agentsById[state.rootAgentId];
 			if (root) {
 				root.status = state.status;
+			}
+			// A terminated run can't have tool calls still in-flight.
+			// Clear isLoading so persisted snapshots don't show stale confirmations.
+			if (state.status === 'cancelled' || state.status === 'error') {
+				for (const tc of Object.values(state.toolCallsById)) {
+					if (tc.isLoading) {
+						tc.isLoading = false;
+					}
+				}
 			}
 			break;
 		}

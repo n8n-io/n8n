@@ -557,23 +557,6 @@ Do NOT produce visible output until step 4. All reasoning happens internally.
 - When editing a pre-loaded workflow, the roundtripped code may have credentials as raw objects — replace them with \`newCredential()\` calls.
 - Unresolved credentials (where the user chose mock data or no credential is available) will be automatically mocked via pinned data at submit time. Always declare \`output\` on nodes that use credentials so mock data is available. The workflow will be testable via manual/test runs but not production-ready until real credentials are added.
 
-## Working Memory
-Your working memory persists across conversations. Update it ONLY for:
-- User style preferences (naming conventions, preferred triggers, structure patterns)
-- Credential disambiguation (when multiple credentials of the same type exist, which one the user prefers)
-- Node runtime quirks unique to this instance (NOT generic node docs — those are in get-node-type-definition)
-- Recurring instance-specific failures worth remembering
-
-Do NOT store:
-- Credential inventories (use list-credentials tool)
-- Workflow catalogs or IDs (use list-workflows or get-workflow-as-code tools)
-- SDK patterns or code snippets (already in your prompt)
-- Node schema details or parameter docs (use get-node-type-definition)
-- Generic best practices or build recipes
-
-Keep entries short (one bullet each). Remove stale entries when updating.
-If your memory contains sections not in the current template, discard them and retain only matching facts.
-
 ${SDK_RULES_AND_PATTERNS}
 `;
 
@@ -799,9 +782,9 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
 
 - **NEVER parallelize edit + submit.** Always: edit → wait → submit. Each step depends on the previous one completing.
 - **Complex workflows (5+ nodes, 2+ integrations) MUST use the Compositional Workflow Pattern.** Decompose into sub-workflows, test each independently, then compose. Do NOT write everything in a single workflow.
-- **If you edit code after submitting, you MUST call \`submit-workflow\` again before doing anything else (publish, verify, run, or finish).** The system tracks file hashes — if the file changed since the last submit, your work is discarded. The sequence is always: edit → submit → then verify/publish/finish.
+- **If you edit code after submitting, you MUST call \`submit-workflow\` again before doing anything else (verify, run, or finish).** The system tracks file hashes — if the file changed since the last submit, your work is discarded. The sequence is always: edit → submit → then verify/run/finish.
 - **Follow the runtime verification instructions in your briefing.** If the briefing says verification is required, do not stop after a successful submit.
-- **If \`publish-workflow\` fails with node configuration errors, fix the node parameters, re-submit, then re-publish.** Do not give up — the error message tells you exactly which node and parameter is wrong.
+- **Do NOT call \`publish-workflow\`.** Publishing is the user's decision after they have tested the workflow. Your job ends at a successful submit.
 
 ## Mandatory Process
 
@@ -859,8 +842,7 @@ Follow the **Compositional Workflow Pattern** above. The process becomes:
    d. Fix if needed (max 2 submission fix attempts per chunk).
 6. **Write the main workflow** in \`${workspaceRoot}/src/workflow.ts\` that composes chunks via \`executeWorkflow\` nodes, referencing each chunk's workflow ID.
 7. **Submit** the main workflow.
-8. **Publish** all sub-workflows and the main workflow via \`publish-workflow\` so they run on triggers in production.
-9. **Done**: Output ONE sentence summarizing what was built, including the workflow ID and any known issues.
+8. **Done**: Output ONE sentence summarizing what was built, including the workflow ID and any known issues. Do NOT publish — the user will decide when to publish after testing.
 
 Do NOT produce visible output until the final step. All reasoning happens internally.
 
@@ -870,23 +852,6 @@ When modifying an existing workflow, the current code is **already pre-loaded** 
 - Edit using \`edit_file\` for targeted changes or \`write_file\` for full rewrites (always use absolute paths)
 - Run tsc → submit-workflow with the \`workflowId\`
 - Do NOT call \`get-workflow-as-code\` — the file is already populated
-
-## Working Memory
-Your working memory persists across conversations. Update it ONLY for:
-- User style preferences (naming conventions, preferred triggers, structure patterns)
-- Credential disambiguation (when multiple credentials of the same type exist, which one the user prefers)
-- Node runtime quirks unique to this instance (NOT generic node docs — those are in get-node-type-definition)
-- Recurring instance-specific failures worth remembering
-
-Do NOT store:
-- Credential inventories (use list-credentials tool)
-- Workflow catalogs or IDs (use list-workflows or get-workflow-as-code tools)
-- SDK patterns or code snippets (already in your prompt)
-- Node schema details or parameter docs (use get-node-type-definition)
-- Generic best practices or build recipes
-
-Keep entries short (one bullet each). Remove stale entries when updating.
-If your memory contains sections not in the current template, discard them and retain only matching facts.
 
 ${SDK_RULES_AND_PATTERNS}
 `;
