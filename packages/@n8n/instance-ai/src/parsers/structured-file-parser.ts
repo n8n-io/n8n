@@ -477,27 +477,16 @@ export function classifyAttachments(attachments: AttachmentInfo[]): ClassifiedAt
 			return { original: att, index, parseable: false };
 		}
 
-		// Check size
-		let decoded: Buffer;
-		try {
-			decoded = Buffer.from(att.data, 'base64');
-		} catch {
+		// Estimate decoded size from base64 length to avoid decoding the full payload here.
+		// The exact decode + size check happens later in parseStructuredFile.
+		const estimatedDecodedSize = Math.ceil((att.data.length * 3) / 4);
+		if (estimatedDecodedSize > MAX_DECODED_SIZE_BYTES) {
 			return {
 				original: att,
 				index,
 				parseable: false,
 				format,
-				unavailableReason: 'Failed to decode base64 data',
-			};
-		}
-
-		if (decoded.length > MAX_DECODED_SIZE_BYTES) {
-			return {
-				original: att,
-				index,
-				parseable: false,
-				format,
-				unavailableReason: `File exceeds ${MAX_DECODED_SIZE_BYTES / 1024} KB limit (${Math.round(decoded.length / 1024)} KB)`,
+				unavailableReason: `File exceeds ${MAX_DECODED_SIZE_BYTES / 1024} KB limit (${Math.round(estimatedDecodedSize / 1024)} KB)`,
 			};
 		}
 

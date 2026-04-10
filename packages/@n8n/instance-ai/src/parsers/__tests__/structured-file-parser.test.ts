@@ -334,14 +334,13 @@ describe('parseStructuredFile — guardrails', () => {
 		expect(() => parseStructuredFile(att, 0, {})).toThrow('Unsupported format');
 	});
 
-	it('rejects malformed base64', () => {
+	it('does not throw on malformed base64', () => {
 		const att: AttachmentInfo = {
 			data: '!!!not-base64!!!',
 			mimeType: 'text/csv',
 			fileName: 'test.csv',
 		};
-		// Buffer.from doesn't throw on bad base64, so this should still work as a valid CSV
-		// The real protection is the size check
+		// Buffer.from silently ignores invalid base64 chars — the real protection is the size check
 		expect(() => parseStructuredFile(att, 0, {})).not.toThrow();
 	});
 
