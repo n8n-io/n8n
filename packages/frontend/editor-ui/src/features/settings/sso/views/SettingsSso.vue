@@ -141,14 +141,14 @@ onMounted(() => {
 		<div
 			v-if="ssoStore.isEnterpriseSamlEnabled && authProtocol === SupportedProtocols.SAML"
 			data-test-id="sso-content-licensed"
-			:class="$style.formContainer"
+			
 		>
 			<SamlSettingsForm ref="samlForm" />
 		</div>
 		<div
 			v-if="ssoStore.isEnterpriseOidcEnabled && authProtocol === SupportedProtocols.OIDC"
 			data-test-id="sso-content-licensed"
-			:class="$style.formContainer"
+			
 		>
 			<OidcSettingsForm ref="oidcForm" />
 		</div>
@@ -228,11 +228,6 @@ onMounted(() => {
 	border-bottom-right-radius: 0;
 }
 
-.formContainer :deep(div[class*='card']:first-of-type) {
-	border-top: none;
-	border-top-left-radius: 0;
-	border-top-right-radius: 0;
-}
 
 .actionBox {
 	margin-top: var(--spacing--lg);

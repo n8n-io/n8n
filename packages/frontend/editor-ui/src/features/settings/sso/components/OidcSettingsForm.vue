@@ -229,7 +229,7 @@ onMounted(async () => {
 </script>
 <template>
 	<div>
-		<div :class="$style.card">
+		<div :class="[$style.card, $style.firstCard]">
 			<slot name="protocol-select" />
 			<div :class="$style.group">
 				<label>Redirect URL</label>

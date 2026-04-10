@@ -317,7 +317,7 @@ onMounted(async () => {
 <template>
 	<div>
 		<!-- Card 1: SSO Configuration -->
-		<div :class="$style.card">
+		<div :class="[$style.card, $style.firstCard]">
 			<slot name="protocol-select" />
 			<div :class="$style.settingsItem">
 				<div :class="$style.settingsItemLabel">
