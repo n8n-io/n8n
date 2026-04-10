@@ -13,6 +13,7 @@ import {
 	withTraceContextActor,
 	withTraceRun,
 } from './tracing-utils';
+import { buildDebriefing } from '../../agent/sub-agent-debriefing';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createSubAgent, SUB_AGENT_PROTOCOL } from '../../agent/sub-agent-factory';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
@@ -261,6 +262,7 @@ export function createDelegateTool(context: OrchestrationContext) {
 			}
 
 			const subAgentId = generateAgentId();
+			const startTime = Date.now();
 
 			// 2. Publish agent-spawned
 			context.eventBus.publish(context.threadId, {
@@ -311,7 +313,7 @@ export function createDelegateTool(context: OrchestrationContext) {
 				);
 
 				// 4. Stream sub-agent with HITL support
-				const resultText = await withTraceRun(context, traceRun, async () => {
+				const consumeResult = await withTraceRun(context, traceRun, async () => {
 					const traceParent = getTraceParentRun();
 					return await withTraceParentContext(traceParent, async () => {
 						const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
@@ -324,7 +326,7 @@ export function createDelegateTool(context: OrchestrationContext) {
 							...(llmStepTraceHooks?.executionOptions ?? {}),
 						});
 
-						const result = await consumeStreamWithHitl({
+						return await consumeStreamWithHitl({
 							agent: subAgent,
 							stream: stream as {
 								runId?: string;
@@ -340,15 +342,26 @@ export function createDelegateTool(context: OrchestrationContext) {
 							waitForConfirmation: context.waitForConfirmation,
 							llmStepTraceHooks,
 						});
-
-						return await result.text;
 					});
 				});
+
+				const resultText = await consumeResult.text;
+				const debriefing = buildDebriefing({
+					agentId: subAgentId,
+					role: input.role,
+					result: resultText,
+					workSummary: consumeResult.workSummary,
+					startTime,
+				});
+
 				await finishTraceRun(context, traceRun, {
 					outputs: {
 						result: resultText,
 						agentId: subAgentId,
 						role: input.role,
+						toolCallCount: debriefing.toolCallCount,
+						toolErrorCount: debriefing.toolErrorCount,
+						durationMs: debriefing.durationMs,
 					},
 				});
 
@@ -363,7 +376,13 @@ export function createDelegateTool(context: OrchestrationContext) {
 					},
 				});
 
-				return { result: resultText };
+				return {
+					result: resultText,
+					toolCallCount: debriefing.toolCallCount,
+					toolErrorCount: debriefing.toolErrorCount,
+					durationMs: debriefing.durationMs,
+					blockers: debriefing.blockers,
+				};
 			} catch (error) {
 				// 8. Publish agent-completed with error
 				const errorMessage = error instanceof Error ? error.message : String(error);
