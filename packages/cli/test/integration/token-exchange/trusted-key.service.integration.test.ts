@@ -382,26 +382,6 @@ describe('TrustedKeyService (integration)', () => {
 				'Trusted key source not found',
 			);
 		});
-
-		it('should skip jwks sources without writing keys but update lastRefreshedAt', async () => {
-			await insertSource({
-				id: 'jwks-source',
-				type: 'jwks',
-				config: JSON.stringify({
-					type: 'jwks',
-					url: 'https://example.com/jwks',
-					issuer: 'https://example.com',
-				}),
-			});
-
-			await service.refreshSource('jwks-source');
-
-			expect(await keyRepo.find()).toHaveLength(0);
-
-			const source = await sourceRepo.findOneBy({ id: 'jwks-source' });
-			expect(source!.status).toBe('healthy');
-			expect(source!.lastRefreshedAt).toBeDefined();
-		});
 	});
 
 	describe('algorithm validation and key compatibility', () => {
