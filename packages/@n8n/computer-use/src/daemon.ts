@@ -340,6 +340,17 @@ export function startDaemon(config: GatewayConfig, options: DaemonOptions): http
 			return;
 		}
 
+		// Reject requests with a missing or non-matching Origin to prevent CSRF via simple requests.
+		const reqOrigin = req.headers.origin;
+		if (!reqOrigin || !isOriginAllowed(reqOrigin, state.config.allowedOrigins)) {
+			logger.debug('Request rejected: origin not in allowlist', {
+				origin: reqOrigin,
+				allowedOrigins: state.config.allowedOrigins,
+			});
+			jsonResponse(req, res, 403, { error: 'Forbidden.' });
+			return;
+		}
+
 		if (method === 'GET' && reqUrl === '/health') {
 			handleHealth(req, res);
 		} else if (method === 'POST' && reqUrl === '/connect') {

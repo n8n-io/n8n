@@ -74,11 +74,13 @@ const BASE_CONFIG: GatewayConfig = {
 
 type JsonBody = Record<string, unknown>;
 
+const DEFAULT_ORIGIN = 'http://localhost:5678';
+
 async function post(
 	port: number,
 	urlPath: string,
 	body: JsonBody = {},
-	origin?: string,
+	origin: string | null = DEFAULT_ORIGIN,
 ): Promise<{ status: number; body: JsonBody }> {
 	return await new Promise((resolve, reject) => {
 		const payload = JSON.stringify(body);
@@ -105,10 +107,16 @@ async function post(
 	});
 }
 
-async function get(port: number, urlPath: string): Promise<{ status: number; body: JsonBody }> {
+async function get(
+	port: number,
+	urlPath: string,
+	origin: string | null = DEFAULT_ORIGIN,
+): Promise<{ status: number; body: JsonBody }> {
 	return await new Promise((resolve, reject) => {
+		const headers: Record<string, string> = {};
+		if (origin) headers['Origin'] = origin;
 		http
-			.get({ hostname: '127.0.0.1', port, path: urlPath }, (res) => {
+			.get({ hostname: '127.0.0.1', port, path: urlPath, headers }, (res) => {
 				const chunks: Buffer[] = [];
 				res.on('data', (c: Buffer) => chunks.push(c));
 				res.on('end', () =>
@@ -229,6 +237,7 @@ describe('POST /connect — validation', () => {
 						headers: {
 							['Content-Type']: 'application/json',
 							['Content-Length']: Buffer.byteLength(payload),
+							['Origin']: DEFAULT_ORIGIN,
 						},
 					},
 					(r) => {
@@ -447,6 +456,42 @@ describe('OPTIONS preflight', () => {
 		try {
 			const { status } = await options(port, '/connect');
 			expect(status).toBe(403);
+		} finally {
+			await close();
+		}
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Origin guard — non-preflight requests
+// ---------------------------------------------------------------------------
+
+describe('Origin guard on non-preflight requests', () => {
+	it('returns 403 when Origin header is absent', async () => {
+		const { port, close } = await startTestDaemon();
+		try {
+			const res = await get(port, '/health', null);
+			expect(res.status).toBe(403);
+		} finally {
+			await close();
+		}
+	});
+
+	it('returns 403 when Origin header is non-matching', async () => {
+		const { port, close } = await startTestDaemon();
+		try {
+			const res = await get(port, '/health', 'https://attacker.example.com');
+			expect(res.status).toBe(403);
+		} finally {
+			await close();
+		}
+	});
+
+	it('processes requests normally when Origin matches the allowlist', async () => {
+		const { port, close } = await startTestDaemon();
+		try {
+			const res = await get(port, '/health', DEFAULT_ORIGIN);
+			expect(res.status).toBe(200);
 		} finally {
 			await close();
 		}
