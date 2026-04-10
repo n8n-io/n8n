@@ -421,7 +421,6 @@ describe('ToolFromNode Round-Trip', () => {
 
 	it('generates code with ToolFromNode constructor and correct imports', async () => {
 		const schema = await compileAndDescribe(NODE_TOOL_AGENT_SOURCE);
-		console.log(JSON.stringify(schema, null, 2));
 		const code = await generateAgentCode(schema, 'Node Tool Agent', { formatCode: false });
 
 		// Imports

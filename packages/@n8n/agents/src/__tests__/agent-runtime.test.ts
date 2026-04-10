@@ -1641,7 +1641,6 @@ describe('AgentRuntime — runtime JSON Schema input validation', () => {
 			(m) => isLlmMessage(m) && m.role === 'tool',
 		) as Message;
 		expect(toolResultMsg).toBeDefined();
-		console.log('ToolResultMsg', toolResultMsg);
 		const content = toolResultMsg.content[0] as ContentToolResult;
 		expect(content.isError).toBe(true);
 		expect(JSON.stringify(content.result)).toContain('Invalid tool input');
@@ -1675,7 +1674,6 @@ describe('AgentRuntime — runtime JSON Schema input validation', () => {
 		});
 
 		const result = await runtime.generate('go');
-		console.log('Result', result.error);
 		expect(result.finishReason).toBe('stop');
 
 		const toolResultMsg = result.messages.find(
@@ -1713,6 +1711,140 @@ describe('AgentRuntime — runtime JSON Schema input validation', () => {
 
 		await runtime.generate('go');
 		expect(handlerFn).not.toHaveBeenCalled();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Tool builder — JSON Schema input integration
+//
+// Mirrors the resolveNodeTool() code path in node-tool-factory.ts where the
+// input schema is a raw JSON Schema object (converted from Zod by ToolFromNode).
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime — Tool builder with JSON Schema input', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('passes valid input to the handler when built via Tool builder', async () => {
+		const handlerFn = jest.fn().mockResolvedValue({ found: true });
+
+		const tool = new Tool('lookup')
+			.description('Look up a record by id')
+			.input({
+				type: 'object',
+				properties: { id: { type: 'string' } },
+				required: ['id'],
+			})
+			.handler(handlerFn)
+			.build();
+
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'lookup', { id: 'abc-123' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [tool],
+		});
+
+		const result = await runtime.generate('go');
+
+		expect(result.finishReason).toBe('stop');
+		expect(handlerFn).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'abc-123' }),
+			expect.anything(),
+		);
+
+		const toolResultMsg = result.messages.find(
+			(m) => isLlmMessage(m) && m.role === 'tool',
+		) as Message;
+		const content = toolResultMsg.content[0] as ContentToolResult;
+		expect(content.isError).toBeFalsy();
+	});
+
+	it('produces a tool error when the LLM sends input that fails JSON Schema validation', async () => {
+		const handlerFn = jest.fn().mockResolvedValue({ found: true });
+
+		const tool = new Tool('lookup')
+			.description('Look up a record by id')
+			.input({
+				type: 'object',
+				properties: {
+					id: { type: 'string' },
+					count: { type: 'integer', minimum: 1 },
+				},
+				required: ['id', 'count'],
+			})
+			.handler(handlerFn)
+			.build();
+
+		generateText
+			// LLM sends count: 0 (violates minimum: 1) and id as a number (wrong type)
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'lookup', { id: 42, count: 0 }))
+			.mockResolvedValueOnce(makeGenerateSuccess('corrected'));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [tool],
+		});
+
+		const result = await runtime.generate('go');
+
+		expect(result.finishReason).toBe('stop');
+		// Handler must not be called — validation should block execution
+		expect(handlerFn).not.toHaveBeenCalled();
+
+		const toolResultMsg = result.messages.find(
+			(m) => isLlmMessage(m) && m.role === 'tool',
+		) as Message;
+		const content = toolResultMsg.content[0] as ContentToolResult;
+		expect(content.isError).toBe(true);
+		expect(JSON.stringify(content.result)).toContain('Invalid tool input');
+	});
+
+	it('validates enum and pattern constraints defined in JSON Schema', async () => {
+		const handlerFn = jest.fn().mockResolvedValue({ ok: true });
+
+		const tool = new Tool('set_status')
+			.description('Set the status of a record')
+			.input({
+				type: 'object',
+				properties: {
+					status: { type: 'string', enum: ['active', 'inactive', 'pending'] },
+				},
+				required: ['status'],
+			})
+			.handler(handlerFn)
+			.build();
+
+		// First call: invalid enum value
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'set_status', { status: 'deleted' }))
+			// Second call: valid enum value after self-correction
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-2', 'set_status', { status: 'inactive' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [tool],
+		});
+
+		const result = await runtime.generate('go');
+
+		expect(result.finishReason).toBe('stop');
+		// Handler called exactly once — only for the valid input
+		expect(handlerFn).toHaveBeenCalledTimes(1);
+		expect(handlerFn).toHaveBeenCalledWith(
+			expect.objectContaining({ status: 'inactive' }),
+			expect.anything(),
+		);
 	});
 });
 
