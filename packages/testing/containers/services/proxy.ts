@@ -139,6 +139,30 @@ export class ProxyServer {
 		this.client = mockServerClient(parsedURL.hostname, parseInt(parsedURL.port, 10));
 	}
 
+	/** Retry an async operation with exponential backoff (handles ECONNRESET). */
+	private async withRetry<T>(
+		fn: () => Promise<T>,
+		{ retries = 3, delayMs = 500 }: { retries?: number; delayMs?: number } = {},
+	): Promise<T> {
+		let lastError: unknown;
+		for (let attempt = 0; attempt <= retries; attempt++) {
+			try {
+				return await fn();
+			} catch (error) {
+				lastError = error;
+				if (attempt < retries) {
+					const backoff = delayMs * 2 ** attempt;
+					console.log(
+						`Proxy request failed (attempt ${attempt + 1}/${retries + 1}), retrying in ${backoff}ms:`,
+						error,
+					);
+					await new Promise((resolve) => setTimeout(resolve, backoff));
+				}
+			}
+		}
+		throw lastError;
+	}
+
 	async loadExpectations(
 		folderName: string,
 		options: {
@@ -201,10 +225,11 @@ export class ProxyServer {
 
 			if (expectations.length > 0) {
 				console.log('Loading expectations:', expectations.length);
-				await this.client.mockAnyResponse(expectations);
+				await this.withRetry(() => this.client.mockAnyResponse(expectations));
 			}
 		} catch (error) {
 			console.log('Error loading expectations:', error);
+			throw error;
 		}
 	}
 
@@ -234,7 +259,7 @@ export class ProxyServer {
 
 	async clearAllExpectations(): Promise<void> {
 		try {
-			await this.client.clear('', 'ALL');
+			await this.withRetry(() => this.client.clear('', 'ALL'));
 		} catch (error) {
 			throw new Error(`Failed to clear ProxyServer: ${JSON.stringify(error)}`);
 		}
