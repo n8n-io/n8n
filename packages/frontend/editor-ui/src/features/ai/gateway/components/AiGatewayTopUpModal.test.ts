@@ -8,17 +8,6 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
 
-vi.mock('@n8n/i18n', async (importActual) => ({
-	...(await importActual()),
-	useI18n: () => ({ baseText: (key: string) => key }),
-}));
-
-vi.mock('@n8n/stores/useRootStore', () => ({
-	useRootStore: vi.fn(() => ({
-		restApiContext: { baseUrl: 'http://localhost:5678', sessionId: '' },
-	})),
-}));
-
 vi.mock('@/app/components/Modal.vue', () => ({
 	default: {
 		props: ['name', 'title'],
@@ -35,7 +24,10 @@ function renderModal() {
 	return { ...renderComponent({ pinia }), pinia };
 }
 
-function renderModalWithCredentialType(credentialTypeName: string, documentationUrl?: string) {
+function renderModalWithCredentialType(
+	credentialTypeName: string,
+	options: { displayName?: string; documentationUrl?: string } = {},
+) {
 	const pinia = createTestingPinia();
 	setActivePinia(pinia);
 	const uiStore = useUIStore();
@@ -43,15 +35,13 @@ function renderModalWithCredentialType(credentialTypeName: string, documentation
 		open: true,
 		data: { credentialType: credentialTypeName },
 	};
-	if (documentationUrl !== undefined) {
-		const credStore = useCredentialsStore();
-		credStore.state.credentialTypes[credentialTypeName] = {
-			name: credentialTypeName,
-			displayName: credentialTypeName,
-			documentationUrl,
-			properties: [],
-		};
-	}
+	const credStore = useCredentialsStore();
+	credStore.state.credentialTypes[credentialTypeName] = {
+		name: credentialTypeName,
+		displayName: options.displayName ?? credentialTypeName,
+		documentationUrl: options.documentationUrl,
+		properties: [],
+	};
 	return renderComponent({ pinia });
 }
 
@@ -62,7 +52,7 @@ describe('AiGatewayTopUpModal.vue', () => {
 
 	it('shows the coming-soon content', () => {
 		renderModal();
-		expect(screen.getByText('Credit top up is comming soon')).toBeInTheDocument();
+		expect(screen.getByText('Credit top up is coming soon')).toBeInTheDocument();
 	});
 
 	it('does not render any buy UI or footer buttons', () => {
@@ -80,13 +70,15 @@ describe('AiGatewayTopUpModal.vue', () => {
 			).not.toBeInTheDocument();
 		});
 
-		it('shows docs link when credentialType is provided', () => {
-			renderModalWithCredentialType('someCredential');
-			expect(screen.getByTestId('ai-gateway-topup-credentials-docs-link')).toBeInTheDocument();
+		it('shows descriptive docs link with credential display name', () => {
+			renderModalWithCredentialType('openAiApi', { displayName: 'OpenAI' });
+			const link = screen.getByTestId('ai-gateway-topup-credentials-docs-link');
+			expect(link).toBeInTheDocument();
+			expect(link.textContent).toContain('See how to configure the OpenAI credential');
 		});
 
 		it('shows docs link when credentialType has a documentationUrl', () => {
-			renderModalWithCredentialType('openAiApi', 'openai');
+			renderModalWithCredentialType('openAiApi', { documentationUrl: 'openai' });
 			expect(screen.getByTestId('ai-gateway-topup-credentials-docs-link')).toBeInTheDocument();
 		});
 	});

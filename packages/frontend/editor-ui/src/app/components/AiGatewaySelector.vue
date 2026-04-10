@@ -66,7 +66,10 @@ function onBadgeClick(event: MouseEvent): void {
 </script>
 
 <template>
-	<div :class="$style.wrapper" data-test-id="ai-gateway-selector">
+	<div
+		:class="[$style.wrapper, !aiGatewayEnabled && $style.withGap]"
+		data-test-id="ai-gateway-selector"
+	>
 		<div role="radiogroup" :aria-label="i18n.baseText('aiGateway.credentialMode.sectionLabel')">
 			<button
 				type="button"
@@ -138,7 +141,10 @@ function onBadgeClick(event: MouseEvent): void {
 	display: flex;
 	flex-direction: column;
 	margin-top: var(--spacing--4xs);
-	margin-bottom: var(--spacing--xs);
+}
+
+.withGap {
+	margin-bottom: var(--spacing--2xs);
 }
 
 .card {
@@ -188,7 +194,7 @@ function onBadgeClick(event: MouseEvent): void {
 
 .cardIdle {
 	&:hover:not(:disabled) {
-		background-color: var(--color--foreground--tint-2);
+		background-color: color-mix(in srgb, var(--color--foreground) 30%, transparent);
 	}
 }
 

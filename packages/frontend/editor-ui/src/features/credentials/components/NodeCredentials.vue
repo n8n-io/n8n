@@ -670,15 +670,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 		:class="['node-credentials', $style.container]"
 	>
 		<div v-for="{ type, options } in credentialTypesNodeDescriptionDisplayed" :key="type.name">
-			<AiGatewaySelector
-				v-if="showAiGatewaySelector(type.name)"
-				:ai-gateway-enabled="isAiGatewayManagedCredentials(type.name)"
-				:readonly="readonly"
-				:credential-type="type.name"
-				@toggle="onAiGatewaySelector(type.name, $event)"
-			/>
 			<N8nInputLabel
-				v-if="!showAiGatewaySelector(type.name) || !isAiGatewayManagedCredentials(type.name)"
 				:label="getCredentialsFieldLabel(type)"
 				:bold="false"
 				size="small"
@@ -688,6 +680,13 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 				<template v-if="$slots['label-postfix']" #options>
 					<slot name="label-postfix" />
 				</template>
+				<AiGatewaySelector
+					v-if="showAiGatewaySelector(type.name)"
+					:ai-gateway-enabled="isAiGatewayManagedCredentials(type.name)"
+					:readonly="readonly"
+					:credential-type="type.name"
+					@toggle="onAiGatewaySelector(type.name, $event)"
+				/>
 				<div v-if="readonly && !isAiGatewayManagedCredentials(type.name)">
 					<N8nInput
 						:model-value="getSelectedName(type.name)"

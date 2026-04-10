@@ -1,14 +1,12 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { BUILTIN_CREDENTIALS_DOCS_URL } from '@/app/constants/urls';
 import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
 import Modal from '@/app/components/Modal.vue';
 
-const i18n = useI18n();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 
@@ -17,10 +15,13 @@ const credentialType = computed<string | undefined>(
 	() => modalData.value?.credentialType as string | undefined,
 );
 
-const credentialDocsUrl = computed(() => {
-	if (!credentialType.value) return '';
+const credentialTypeInfo = computed(() => {
+	if (!credentialType.value) return null;
+	return credentialsStore.getCredentialTypeByName(credentialType.value) ?? null;
+});
 
-	const type = credentialsStore.getCredentialTypeByName(credentialType.value);
+const credentialDocsUrl = computed(() => {
+	const type = credentialTypeInfo.value;
 	if (!type?.documentationUrl) return '';
 
 	if (type.documentationUrl.startsWith('http')) {
@@ -29,12 +30,16 @@ const credentialDocsUrl = computed(() => {
 
 	return `${BUILTIN_CREDENTIALS_DOCS_URL}${type.documentationUrl}/`;
 });
+
+const credentialDocsLinkText = computed(() => {
+	const name = credentialTypeInfo.value?.displayName;
+	return name ? `See how to configure the ${name} credential` : 'See credential setup guide';
+});
 </script>
 
 <template>
 	<Modal
 		:name="AI_GATEWAY_TOP_UP_MODAL_KEY"
-		:title="i18n.baseText('settings.n8nConnect.topUp.modalTitle')"
 		width="520px"
 		custom-class="ai-gateway-topup-dialog"
 		data-test-id="ai-gateway-topup-modal"
@@ -44,17 +49,15 @@ const credentialDocsUrl = computed(() => {
 				<div :class="$style.body">
 					<N8nIcon icon="hourglass" size="xlarge" color="text-base" :class="$style.icon" />
 					<N8nText :class="$style.title" bold color="text-dark"
-						>Credit top up is comming soon</N8nText
+						>Credit top up is coming soon</N8nText
 					>
 
 					<div :class="$style.paragraphs">
-						<p :class="$style.paragraph">Unfortunately credit top up is still in development.</p>
 						<p :class="$style.paragraph">
-							You'll be notified in the comming weeks when this feature became available.
+							You'll be notified in the coming weeks when this feature becomes available.
 						</p>
 						<p :class="$style.paragraph">
-							In the meantime, you can switch off n8n Connect in any workflows using it and setup
-							your own credential.
+							In the meantime you can switch to using your own credentials.
 						</p>
 						<p v-if="credentialType" :class="$style.paragraph">
 							<N8nLink
@@ -62,7 +65,7 @@ const credentialDocsUrl = computed(() => {
 								new-window
 								data-test-id="ai-gateway-topup-credentials-docs-link"
 							>
-								Open setup guide
+								{{ credentialDocsLinkText }}
 							</N8nLink>
 						</p>
 					</div>
