@@ -1,6 +1,8 @@
 import type crypto from 'node:crypto';
 import { createPublicKey } from 'node:crypto';
 
+import { Logger } from '@n8n/backend-common';
+import { Service } from '@n8n/di';
 import type { Algorithm } from 'jsonwebtoken';
 import { OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
@@ -110,111 +112,167 @@ function parseMaxAge(cacheControl: string | null): number | undefined {
 }
 
 // ──────────────────────────────────────────────────────────────────────
-// Resolver
+// Service
 // ──────────────────────────────────────────────────────────────────────
 
 /**
- * Fetches a JWKS endpoint, converts signing keys to ResolvedTrustedKey[],
+ * Fetches JWKS endpoints, converts signing keys to PEM-encoded material,
  * and determines cache expiry from Cache-Control or fallback TTL.
  */
-export async function resolveJwksKeys(
-	source: JwksKeySource,
-	options?: {
-		fetcher?: typeof fetch;
-		defaultTtlSeconds?: number;
-	},
-): Promise<JwksResolverResult> {
-	const doFetch = options?.fetcher ?? globalThis.fetch;
-	const defaultTtl = options?.defaultTtlSeconds ?? DEFAULT_TTL_SECONDS;
-	const { url } = source;
+@Service()
+export class JwksResolverService {
+	private readonly logger: Logger;
 
-	let response: Response;
-	try {
-		response = await doFetch(url, {
-			signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-			headers: { Accept: 'application/json' },
-			redirect: 'error',
+	constructor(logger: Logger) {
+		this.logger = logger.scoped('token-exchange');
+	}
+
+	async resolveKeys(
+		source: JwksKeySource,
+		options?: {
+			fetcher?: typeof fetch;
+			defaultTtlSeconds?: number;
+		},
+	): Promise<JwksResolverResult> {
+		const fetcher = options?.fetcher ?? globalThis.fetch;
+		const defaultTtl = options?.defaultTtlSeconds ?? DEFAULT_TTL_SECONDS;
+		const { url } = source;
+
+		this.logger.debug(`Fetching JWKS from "${url}"`);
+
+		const { rawKeys, cacheControl } = await this.fetchJwkSet(url, fetcher);
+		const ttlSeconds = this.computeTtl(cacheControl, source, defaultTtl);
+
+		const keys: JwksResolvedKey[] = [];
+		const skipped: SkippedKey[] = [];
+
+		for (const rawJwk of rawKeys) {
+			const result = this.parseJwk(rawJwk, source);
+			if ('resolved' in result) {
+				keys.push(result.resolved);
+			} else {
+				skipped.push(result.skipped);
+			}
+		}
+
+		if (keys.length === 0) {
+			const reasons = skipped.map((s) => `${s.kid ?? 'unknown'}: ${s.reason}`).join('; ');
+			throw new OperationalError(
+				`JWKS response has no usable signing keys for "${url}" (${reasons})`,
+			);
+		}
+
+		this.logger.debug(`Resolved ${keys.length} key(s) from "${url}"`, {
+			resolved: keys.length,
+			skipped: skipped.length,
+			ttlSeconds,
 		});
-	} catch (error) {
-		const message = error instanceof Error ? error.message : 'unknown error';
-		throw new OperationalError(`JWKS fetch failed for "${url}": ${message}`);
+
+		return { keys, ttlSeconds, skipped };
 	}
 
-	if (!response.ok) {
-		throw new OperationalError(`JWKS fetch failed for "${url}": HTTP ${response.status}`);
+	// ─── Private helpers ──────────────────────────────────────────────
+
+	/** Fetch the JWKS endpoint, validate the response, and return raw keys. */
+	private async fetchJwkSet(
+		url: string,
+		fetcher: typeof fetch,
+	): Promise<{ rawKeys: unknown[]; cacheControl: string | null }> {
+		let response: Response;
+		try {
+			response = await fetcher(url, {
+				signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+				headers: { Accept: 'application/json' },
+				redirect: 'error',
+			});
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'unknown error';
+			throw new OperationalError(`JWKS fetch failed for "${url}": ${message}`);
+		}
+
+		if (!response.ok) {
+			throw new OperationalError(`JWKS fetch failed for "${url}": HTTP ${response.status}`);
+		}
+
+		let body: unknown;
+		try {
+			body = await response.json();
+		} catch {
+			throw new OperationalError(`JWKS response is not valid JSON for "${url}"`);
+		}
+
+		const jwkSetResult = JwkSetSchema.safeParse(body);
+		if (!jwkSetResult.success) {
+			throw new OperationalError(`JWKS response has no keys for "${url}"`);
+		}
+
+		return {
+			rawKeys: jwkSetResult.data.keys,
+			cacheControl: response.headers.get('cache-control'),
+		};
 	}
 
-	let body: unknown;
-	try {
-		body = await response.json();
-	} catch {
-		throw new OperationalError(`JWKS response is not valid JSON for "${url}"`);
-	}
-
-	const jwkSetResult = JwkSetSchema.safeParse(body);
-	if (!jwkSetResult.success) {
-		throw new OperationalError(`JWKS response has no keys for "${url}"`);
-	}
-
-	// Compute TTL: Cache-Control max-age > source.cacheTtlSeconds > default, clamped to [60s, 24h]
-	const maxAge = parseMaxAge(response.headers.get('cache-control'));
-	const rawTtl = maxAge ?? source.cacheTtlSeconds ?? defaultTtl;
-	const ttlSeconds = Math.max(MIN_TTL_SECONDS, Math.min(rawTtl, MAX_TTL_SECONDS));
-
-	const keys: JwksResolvedKey[] = [];
-	const skipped: SkippedKey[] = [];
-
-	for (const rawJwk of jwkSetResult.data.keys) {
+	/** Parse and validate a single raw JWK entry from the key set. */
+	private parseJwk(
+		rawJwk: unknown,
+		source: JwksKeySource,
+	): { resolved: JwksResolvedKey } | { skipped: SkippedKey } {
 		if (rawJwk === null || typeof rawJwk !== 'object') {
-			skipped.push({ kid: undefined, reason: 'not an object' });
-			continue;
+			return { skipped: { kid: undefined, reason: 'not an object' } };
 		}
 
 		const jwkResult = SigningJwkSchema.safeParse(rawJwk);
 		if (!jwkResult.success) {
 			const raw = rawJwk as Record<string, unknown>;
-			skipped.push({
-				kid: typeof raw.kid === 'string' ? raw.kid : undefined,
-				reason: 'failed schema validation',
-			});
-			continue;
+			return {
+				skipped: {
+					kid: typeof raw.kid === 'string' ? raw.kid : undefined,
+					reason: 'failed schema validation',
+				},
+			};
 		}
 
 		const jwk = jwkResult.data;
 
 		const algorithm = inferAlgorithm(jwk);
 		if (!algorithm) {
-			skipped.push({
-				kid: jwk.kid,
-				reason: `unsupported algorithm or key type (kty=${jwk.kty}, alg=${jwk.alg ?? 'none'}, crv=${jwk.crv ?? 'none'})`,
-			});
-			continue;
+			return {
+				skipped: {
+					kid: jwk.kid,
+					reason: `unsupported algorithm or key type (kty=${jwk.kty}, alg=${jwk.alg ?? 'none'}, crv=${jwk.crv ?? 'none'})`,
+				},
+			};
 		}
 
 		let keyObject: ReturnType<typeof createPublicKey>;
 		try {
 			keyObject = createPublicKey({ format: 'jwk', key: jwk } as crypto.JsonWebKeyInput);
 		} catch {
-			skipped.push({ kid: jwk.kid, reason: 'failed to create public key from JWK material' });
-			continue;
+			return {
+				skipped: { kid: jwk.kid, reason: 'failed to create public key from JWK material' },
+			};
 		}
 
-		keys.push({
-			kid: jwk.kid,
-			algorithms: [algorithm],
-			keyMaterial: keyObject.export({ type: 'spki', format: 'pem' }) as string,
-			issuer: source.issuer,
-			expectedAudience: source.expectedAudience,
-			allowedRoles: source.allowedRoles,
-		});
+		return {
+			resolved: {
+				kid: jwk.kid,
+				algorithms: [algorithm],
+				keyMaterial: keyObject.export({ type: 'spki', format: 'pem' }) as string,
+				issuer: source.issuer,
+				expectedAudience: source.expectedAudience,
+				allowedRoles: source.allowedRoles,
+			},
+		};
 	}
 
-	if (keys.length === 0) {
-		const reasons = skipped.map((s) => `${s.kid ?? 'unknown'}: ${s.reason}`).join('; ');
-		throw new OperationalError(
-			`JWKS response has no usable signing keys for "${url}" (${reasons})`,
-		);
+	/** Compute TTL: Cache-Control max-age > source.cacheTtlSeconds > default, clamped to [60s, 24h]. */
+	private computeTtl(
+		cacheControl: string | null,
+		source: JwksKeySource,
+		defaultTtl: number,
+	): number {
+		const maxAge = parseMaxAge(cacheControl);
+		const rawTtl = maxAge ?? source.cacheTtlSeconds ?? defaultTtl;
+		return Math.max(MIN_TTL_SECONDS, Math.min(rawTtl, MAX_TTL_SECONDS));
 	}
-
-	return { keys, ttlSeconds, skipped };
 }

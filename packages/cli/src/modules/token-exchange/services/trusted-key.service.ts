@@ -26,7 +26,7 @@ import type {
 	TrustedKeySource,
 } from '../token-exchange.schemas';
 import { TrustedKeyDataSchema, TrustedKeySourceSchema } from '../token-exchange.schemas';
-import { resolveJwksKeys } from './jwks-resolver';
+import { JwksResolverService } from './jwks-resolver';
 
 type AlgorithmFamily = 'RSA' | 'EC' | 'EdDSA';
 
@@ -79,6 +79,7 @@ export class TrustedKeyService {
 		private readonly trustedKeyRepository: TrustedKeyRepository,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly dbLockService: DbLockService,
+		private readonly jwksResolverService: JwksResolverService,
 	) {
 		this.logger = logger.scoped('token-exchange');
 	}
@@ -456,7 +457,7 @@ export class TrustedKeyService {
 			throw new UnexpectedError('Invalid JWKS source config: malformed JSON');
 		}
 
-		const result = await resolveJwksKeys(jwksConfig);
+		const result = await this.jwksResolverService.resolveKeys(jwksConfig);
 
 		if (result.skipped.length > 0) {
 			this.logger.debug(`JWKS "${jwksConfig.url}": skipped ${result.skipped.length} key(s)`, {

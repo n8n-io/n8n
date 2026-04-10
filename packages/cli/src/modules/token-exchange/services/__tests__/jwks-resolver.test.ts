@@ -1,9 +1,11 @@
 import { generateKeyPairSync } from 'node:crypto';
 
+import type { Logger } from '@n8n/backend-common';
+import { mock } from 'jest-mock-extended';
 import { OperationalError } from 'n8n-workflow';
 
 import type { JwksKeySource } from '../../token-exchange.schemas';
-import { resolveJwksKeys } from '../jwks-resolver';
+import { JwksResolverService } from '../jwks-resolver';
 
 // ──────────────────────────────────────────────────────────────────────
 // Test key fixtures — generated once, reused across tests
@@ -70,12 +72,20 @@ function mockFetchInvalidJson(): typeof fetch {
 // Tests
 // ──────────────────────────────────────────────────────────────────────
 
-describe('resolveJwksKeys', () => {
+const mockLogger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
+
+describe('JwksResolverService', () => {
+	let service: JwksResolverService;
+
+	beforeEach(() => {
+		service = new JwksResolverService(mockLogger);
+	});
+
 	describe('happy path', () => {
 		it('should resolve RSA JWK with explicit alg', async () => {
 			const fetcher = mockFetchResponse([{ ...rsaJwk, kid: 'rsa-1', alg: 'RS256', use: 'sig' }]);
 
-			const result = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher });
+			const result = await service.resolveKeys(DEFAULT_SOURCE, { fetcher });
 
 			expect(result.keys).toHaveLength(1);
 			expect(result.keys[0].kid).toBe('rsa-1');
@@ -87,7 +97,7 @@ describe('resolveJwksKeys', () => {
 		it('should infer ES256 from EC P-256 JWK without alg', async () => {
 			const fetcher = mockFetchResponse([{ ...ecJwk, kid: 'ec-1' }]);
 
-			const result = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher });
+			const result = await service.resolveKeys(DEFAULT_SOURCE, { fetcher });
 
 			expect(result.keys).toHaveLength(1);
 			expect(result.keys[0].kid).toBe('ec-1');
@@ -100,7 +110,7 @@ describe('resolveJwksKeys', () => {
 				{ ...ecJwk, kid: 'ec-1' },
 			]);
 
-			const result = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher });
+			const result = await service.resolveKeys(DEFAULT_SOURCE, { fetcher });
 
 			expect(result.keys).toHaveLength(2);
 			expect(result.keys.map((k) => k.kid)).toEqual(['rsa-1', 'ec-1']);
@@ -109,7 +119,7 @@ describe('resolveJwksKeys', () => {
 		it('should resolve Ed25519 OKP JWK to EdDSA', async () => {
 			const fetcher = mockFetchResponse([{ ...ed25519Jwk, kid: 'ed-1' }]);
 
-			const result = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher });
+			const result = await service.resolveKeys(DEFAULT_SOURCE, { fetcher });
 
 			expect(result.keys).toHaveLength(1);
 			expect(result.keys[0].algorithms).toEqual(['EdDSA']);
@@ -118,7 +128,7 @@ describe('resolveJwksKeys', () => {
 		it('should infer RS256 from RSA JWK without explicit alg', async () => {
 			const fetcher = mockFetchResponse([{ ...rsaJwk, kid: 'rsa-no-alg' }]);
 
-			const result = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher });
+			const result = await service.resolveKeys(DEFAULT_SOURCE, { fetcher });
 
 			expect(result.keys).toHaveLength(1);
 			expect(result.keys[0].kid).toBe('rsa-no-alg');
@@ -131,7 +141,7 @@ describe('resolveJwksKeys', () => {
 		])('should infer $expectedAlg from EC $curve JWK', async ({ jwk, expectedAlg }) => {
 			const fetcher = mockFetchResponse([{ ...jwk, kid: 'ec-curve' }]);
 
-			const result = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher });
+			const result = await service.resolveKeys(DEFAULT_SOURCE, { fetcher });
 
 			expect(result.keys).toHaveLength(1);
 			expect(result.keys[0].algorithms).toEqual([expectedAlg]);
@@ -145,7 +155,7 @@ describe('resolveJwksKeys', () => {
 			};
 			const fetcher = mockFetchResponse([{ ...rsaJwk, kid: 'rsa-1', alg: 'RS256' }]);
 
-			const result = await resolveJwksKeys(source, { fetcher });
+			const result = await service.resolveKeys(source, { fetcher });
 
 			expect(result.keys[0].expectedAudience).toBe('https://n8n.example.com');
 			expect(result.keys[0].allowedRoles).toEqual(['admin']);
@@ -159,7 +169,7 @@ describe('resolveJwksKeys', () => {
 				{ ...rsaJwk, kid: 'rsa-1', alg: 'RS256' },
 			]);
 
-			const result = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher });
+			const result = await service.resolveKeys(DEFAULT_SOURCE, { fetcher });
 
 			expect(result.keys).toHaveLength(1);
 			expect(result.keys[0].kid).toBe('rsa-1');
@@ -171,7 +181,7 @@ describe('resolveJwksKeys', () => {
 				{ ...rsaJwk, kid: 'sig-key', alg: 'RS256', use: 'sig' },
 			]);
 
-			const result = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher });
+			const result = await service.resolveKeys(DEFAULT_SOURCE, { fetcher });
 
 			expect(result.keys).toHaveLength(1);
 			expect(result.keys[0].kid).toBe('sig-key');
@@ -183,7 +193,7 @@ describe('resolveJwksKeys', () => {
 				{ ...rsaJwk, kid: 'rsa-1', alg: 'RS256' },
 			]);
 
-			const result = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher });
+			const result = await service.resolveKeys(DEFAULT_SOURCE, { fetcher });
 
 			expect(result.keys).toHaveLength(1);
 			expect(result.keys[0].kid).toBe('rsa-1');
@@ -195,7 +205,7 @@ describe('resolveJwksKeys', () => {
 				{ ...rsaJwk, kid: 'rsa-1', alg: 'RS256' },
 			]);
 
-			const result = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher });
+			const result = await service.resolveKeys(DEFAULT_SOURCE, { fetcher });
 
 			expect(result.keys).toHaveLength(1);
 			expect(result.keys[0].kid).toBe('rsa-1');
@@ -210,7 +220,7 @@ describe('resolveJwksKeys', () => {
 				{ ...ecJwk, kid: 'no-use' }, // no use field — included
 			]);
 
-			const result = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher });
+			const result = await service.resolveKeys(DEFAULT_SOURCE, { fetcher });
 
 			expect(result.keys).toHaveLength(2);
 			expect(result.keys.map((k) => k.kid)).toEqual(['explicit-sig', 'no-use']);
@@ -223,7 +233,7 @@ describe('resolveJwksKeys', () => {
 				cacheControl: 'public, max-age=600',
 			});
 
-			const result = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher });
+			const result = await service.resolveKeys(DEFAULT_SOURCE, { fetcher });
 
 			expect(result.ttlSeconds).toBe(600);
 		});
@@ -232,7 +242,7 @@ describe('resolveJwksKeys', () => {
 			const source: JwksKeySource = { ...DEFAULT_SOURCE, cacheTtlSeconds: 120 };
 			const fetcher = mockFetchResponse([{ ...rsaJwk, kid: 'rsa-1', alg: 'RS256' }]);
 
-			const result = await resolveJwksKeys(source, { fetcher });
+			const result = await service.resolveKeys(source, { fetcher });
 
 			expect(result.ttlSeconds).toBe(120);
 		});
@@ -240,7 +250,7 @@ describe('resolveJwksKeys', () => {
 		it('should fall back to default TTL (3600s) when no Cache-Control and no cacheTtlSeconds', async () => {
 			const fetcher = mockFetchResponse([{ ...rsaJwk, kid: 'rsa-1', alg: 'RS256' }]);
 
-			const result = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher });
+			const result = await service.resolveKeys(DEFAULT_SOURCE, { fetcher });
 
 			expect(result.ttlSeconds).toBe(3600);
 		});
@@ -250,7 +260,7 @@ describe('resolveJwksKeys', () => {
 				cacheControl: 'max-age=0',
 			});
 
-			const result = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher });
+			const result = await service.resolveKeys(DEFAULT_SOURCE, { fetcher });
 
 			expect(result.ttlSeconds).toBe(60);
 		});
@@ -260,7 +270,7 @@ describe('resolveJwksKeys', () => {
 				cacheControl: 'max-age=999999999',
 			});
 
-			const result = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher });
+			const result = await service.resolveKeys(DEFAULT_SOURCE, { fetcher });
 
 			expect(result.ttlSeconds).toBe(86_400);
 		});
@@ -271,7 +281,7 @@ describe('resolveJwksKeys', () => {
 				cacheControl: 'max-age=600',
 			});
 
-			const result = await resolveJwksKeys(source, { fetcher });
+			const result = await service.resolveKeys(source, { fetcher });
 
 			expect(result.ttlSeconds).toBe(600);
 		});
@@ -279,7 +289,7 @@ describe('resolveJwksKeys', () => {
 		it('should use custom defaultTtlSeconds when no Cache-Control and no cacheTtlSeconds', async () => {
 			const fetcher = mockFetchResponse([{ ...rsaJwk, kid: 'rsa-1', alg: 'RS256' }]);
 
-			const result = await resolveJwksKeys(DEFAULT_SOURCE, {
+			const result = await service.resolveKeys(DEFAULT_SOURCE, {
 				fetcher,
 				defaultTtlSeconds: 300,
 			});
@@ -292,7 +302,7 @@ describe('resolveJwksKeys', () => {
 		it('should throw OperationalError on network failure', async () => {
 			const fetcher = mockFetchError(new Error('ECONNREFUSED'));
 
-			const error = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher }).catch((e) => e);
+			const error = await service.resolveKeys(DEFAULT_SOURCE, { fetcher }).catch((e) => e);
 			expect(error).toBeInstanceOf(OperationalError);
 			expect(error.message).toMatch(/JWKS fetch failed.*ECONNREFUSED/);
 		});
@@ -300,7 +310,7 @@ describe('resolveJwksKeys', () => {
 		it('should throw OperationalError on non-200 response', async () => {
 			const fetcher = mockFetchResponse([], { status: 500 });
 
-			const error = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher }).catch((e) => e);
+			const error = await service.resolveKeys(DEFAULT_SOURCE, { fetcher }).catch((e) => e);
 			expect(error).toBeInstanceOf(OperationalError);
 			expect(error.message).toMatch(/HTTP 500/);
 		});
@@ -308,7 +318,7 @@ describe('resolveJwksKeys', () => {
 		it('should throw OperationalError on invalid JSON', async () => {
 			const fetcher = mockFetchInvalidJson();
 
-			const error = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher }).catch((e) => e);
+			const error = await service.resolveKeys(DEFAULT_SOURCE, { fetcher }).catch((e) => e);
 			expect(error).toBeInstanceOf(OperationalError);
 			expect(error.message).toMatch(/not valid JSON/);
 		});
@@ -316,7 +326,7 @@ describe('resolveJwksKeys', () => {
 		it('should throw OperationalError on empty keys array', async () => {
 			const fetcher = mockFetchResponse([]);
 
-			const error = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher }).catch((e) => e);
+			const error = await service.resolveKeys(DEFAULT_SOURCE, { fetcher }).catch((e) => e);
 			expect(error).toBeInstanceOf(OperationalError);
 			expect(error.message).toMatch(/no keys/);
 		});
@@ -324,7 +334,7 @@ describe('resolveJwksKeys', () => {
 		it('should throw OperationalError when all keys are filtered out', async () => {
 			const fetcher = mockFetchResponse([{ kid: 'enc-only', kty: 'RSA', use: 'enc', ...rsaJwk }]);
 
-			const error = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher }).catch((e) => e);
+			const error = await service.resolveKeys(DEFAULT_SOURCE, { fetcher }).catch((e) => e);
 			expect(error).toBeInstanceOf(OperationalError);
 			expect(error.message).toMatch(/no usable signing keys/);
 		});
@@ -339,7 +349,7 @@ describe('resolveJwksKeys', () => {
 				{ ...rsaJwk, kid: 'rsa-1', alg: 'RS256' },
 			]);
 
-			const result = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher });
+			const result = await service.resolveKeys(DEFAULT_SOURCE, { fetcher });
 
 			expect(result.keys).toHaveLength(1);
 			expect(result.keys[0].kid).toBe('rsa-1');
@@ -356,7 +366,7 @@ describe('resolveJwksKeys', () => {
 				{ ...rsaJwk, kid: 'rsa-1', alg: 'RS256' },
 			]);
 
-			const result = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher });
+			const result = await service.resolveKeys(DEFAULT_SOURCE, { fetcher });
 
 			expect(result.keys).toHaveLength(1);
 			expect(result.keys[0].kid).toBe('rsa-1');
@@ -368,7 +378,7 @@ describe('resolveJwksKeys', () => {
 				{ ...rsaJwk, kid: 'rsa-1', alg: 'RS256' },
 			]);
 
-			const result = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher });
+			const result = await service.resolveKeys(DEFAULT_SOURCE, { fetcher });
 
 			expect(result.keys).toHaveLength(1);
 			expect(result.keys[0].kid).toBe('rsa-1');
@@ -382,7 +392,7 @@ describe('resolveJwksKeys', () => {
 				{ ...rsaJwk, kid: 'rsa-1', alg: 'RS256' }, // valid
 			]);
 
-			const result = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher });
+			const result = await service.resolveKeys(DEFAULT_SOURCE, { fetcher });
 
 			expect(result.keys).toHaveLength(1);
 			expect(result.skipped).toHaveLength(3);
@@ -402,7 +412,7 @@ describe('resolveJwksKeys', () => {
 		it('should return empty skipped array when all keys are valid', async () => {
 			const fetcher = mockFetchResponse([{ ...rsaJwk, kid: 'rsa-1', alg: 'RS256' }]);
 
-			const result = await resolveJwksKeys(DEFAULT_SOURCE, { fetcher });
+			const result = await service.resolveKeys(DEFAULT_SOURCE, { fetcher });
 
 			expect(result.keys).toHaveLength(1);
 			expect(result.skipped).toEqual([]);
