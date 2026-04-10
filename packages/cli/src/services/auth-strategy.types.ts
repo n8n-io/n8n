@@ -1,4 +1,4 @@
-import type { Request } from "express";
+import type { Request } from 'express';
 
 /**
  * A single authentication strategy for the public API.
