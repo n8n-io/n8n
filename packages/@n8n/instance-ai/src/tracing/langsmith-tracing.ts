@@ -423,6 +423,15 @@ function mergeRunTreeInputs(
 	};
 }
 
+/**
+ * Unconditionally remove the cached LangSmith Client for a trace.
+ * Call after run finalization (success or failure) so the Client and
+ * its RunTree hierarchy can be garbage-collected.
+ */
+export function releaseTraceClient(traceId: string): void {
+	traceClients.delete(traceId);
+}
+
 export function getTraceParentRun(): RunTree | undefined {
 	const overrideRun = traceParentOverrideStorage.getStore()?.current;
 	if (overrideRun) {

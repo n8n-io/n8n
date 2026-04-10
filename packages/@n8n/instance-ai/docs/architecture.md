@@ -55,9 +55,7 @@ graph TB
     end
 
     subgraph Filesystem ["Filesystem Access"]
-        Service -->|auto-detect| FSProvider{Provider}
-        FSProvider -->|bare metal| LocalFS[LocalFilesystemProvider]
-        FSProvider -->|container/cloud| Gateway[LocalGateway]
+        Service --> Gateway[LocalGateway]
         Gateway -->|SSE + HTTP POST| Daemon["@n8n/computer-use daemon"]
     end
 
@@ -221,9 +219,8 @@ The n8n integration layer.
 - **Settings service** — admin settings (model, MCP, sandbox), user preferences
 - **Event bus** — in-process EventEmitter (single instance) or Redis Pub/Sub
   (queue mode), with thread storage for event persistence and replay (max 500 events or 2 MB per thread)
-- **Filesystem** — `LocalFilesystemProvider` (bare metal) and `LocalGateway`
-  (remote daemon via SSE protocol). Auto-detected based on runtime environment
-  (see `docs/filesystem-access.md`)
+- **Filesystem** — `LocalGateway` (remote daemon via SSE protocol).
+  See `docs/filesystem-access.md`
 - **Entities** — TypeORM entities for thread, message, memory, snapshots, iteration logs
 - **Repositories** — data access layer (7 TypeORM repositories)
 

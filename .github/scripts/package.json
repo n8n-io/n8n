@@ -9,6 +9,7 @@
     "conventional-changelog": "7.2.0",
     "debug": "4.4.3",
     "glob": "13.0.6",
+    "minimatch": "10.2.4",
     "semver": "7.7.4",
     "tempfile": "6.0.1"
   },
