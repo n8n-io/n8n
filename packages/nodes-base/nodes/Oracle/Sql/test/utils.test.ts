@@ -1,9 +1,11 @@
 import { DateTime } from 'luxon';
 import * as oracleDBTypes from 'oracledb';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import type { ExecuteOpBindParam } from '../helpers/interfaces';
 import {
 	addSortRules,
+	configureQueryRunner,
 	getBindParameters,
 	getCompatibleValue,
 	getOutBindDefsForExecute,
@@ -234,5 +236,87 @@ describe('Test getBindParameters ', () => {
 		({ updatedQuery, bindParameters } = getBindParameters(query, paramList));
 		expect(updatedQuery).toEqual(query);
 		expect(bindParameters).toEqual(expectedBindParams);
+	});
+});
+
+describe('configureQueryRunner', () => {
+	it('should handle large out bind datasets without stack overflow', async () => {
+		const chunkSize = 250_000;
+		const outBinds = [[[42]]];
+		const executeMany = jest.fn().mockResolvedValue({ outBinds });
+		const close = jest.fn().mockResolvedValue(undefined);
+		const connection = { executeMany, close };
+		const getConnection = jest.fn().mockResolvedValue(connection);
+		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
+		const constructExecutionMetaData = jest
+			.fn()
+			.mockImplementation((data: INodeExecutionData[]) =>
+				Array.from({ length: chunkSize }, () => data[0]),
+			);
+		const context = {
+			helpers: {
+				constructExecutionMetaData,
+			},
+		} as unknown as IExecuteFunctions;
+		const node = {} as any;
+		const queryRunner = configureQueryRunner.call(context, node, false, pool);
+
+		const queries = [
+			{
+				query: 'INSERT INTO "TEST" ("COL1") VALUES (:0)',
+				executeManyValues: [{}],
+				outputColumns: ['COL1'],
+			},
+		];
+
+		const result = await queryRunner(queries as any, [], {
+			operation: 'insert',
+			stmtBatching: 'single',
+		});
+
+		expect(result).toHaveLength(chunkSize);
+		expect(result[0]?.json.COL1).toEqual(42);
+		expect(result[chunkSize - 1]?.json.COL1).toEqual(42);
+		expect(constructExecutionMetaData).toHaveBeenCalledTimes(1);
+		expect(getConnection).toHaveBeenCalledTimes(1);
+		expect(close).toHaveBeenCalledTimes(1);
+	});
+
+	it('should handle large select result sets without stack overflow', async () => {
+		const chunkSize = 250_000;
+		const rows = Array.from({ length: chunkSize }, (_, index) => ({ COL1: index }));
+		const execute = jest.fn().mockResolvedValue({ rows });
+		const close = jest.fn().mockResolvedValue(undefined);
+		const connection = { execute, close };
+		const getConnection = jest.fn().mockResolvedValue(connection);
+		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
+		const constructExecutionMetaData = jest
+			.fn()
+			.mockImplementation((data: INodeExecutionData[]) => data);
+		const context = {
+			helpers: {
+				constructExecutionMetaData,
+			},
+		} as unknown as IExecuteFunctions;
+		const node = {} as any;
+		const queryRunner = configureQueryRunner.call(context, node, false, pool);
+
+		const queries = [
+			{
+				query: 'SELECT COL1 FROM TEST',
+			},
+		];
+
+		const result = await queryRunner(queries as any, [], {
+			operation: 'select',
+			stmtBatching: 'independently',
+		});
+
+		expect(result).toHaveLength(chunkSize);
+		expect(result[0]?.json.COL1).toEqual(0);
+		expect(result[chunkSize - 1]?.json.COL1).toEqual(chunkSize - 1);
+		expect(constructExecutionMetaData).toHaveBeenCalledTimes(1);
+		expect(getConnection).toHaveBeenCalledTimes(1);
+		expect(close).toHaveBeenCalledTimes(1);
 	});
 });
