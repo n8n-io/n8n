@@ -1,5 +1,5 @@
 import type { AuthenticatedRequest, User } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import type { UserRepository } from '@n8n/db';
 import type { Scope as ScopeType } from '@n8n/permissions';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
