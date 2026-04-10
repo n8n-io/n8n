@@ -137,9 +137,7 @@ export function useRoleMappingRules() {
 
 			// Delete removed, create new, update existing — all in parallel
 			await Promise.all([
-				...[...serverRuleIds]
-					.filter((id) => !localRuleIds.has(id))
-					.map((id) => api.deleteRule(id)),
+				...[...serverRuleIds].filter((id) => !localRuleIds.has(id)).map((id) => api.deleteRule(id)),
 				...allLocalRules.map((rule) =>
 					rule.id.startsWith('local-')
 						? api.createRule(rulePayload(rule))
