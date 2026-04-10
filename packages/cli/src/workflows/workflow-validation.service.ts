@@ -148,11 +148,9 @@ export class WorkflowValidationService {
 			);
 
 			if (nodeIssues?.parameters) {
-				const parameterIssuesCount = Object.keys(nodeIssues.parameters).length;
-				if (parameterIssuesCount > 0) {
-					issues.push(
-						`Missing or invalid required parameters (${parameterIssuesCount} issue${parameterIssuesCount === 1 ? '' : 's'})`,
-					);
+				const paramNames = Object.keys(nodeIssues.parameters);
+				if (paramNames.length > 0) {
+					issues.push(`Missing or invalid required parameters: ${paramNames.join(', ')}`);
 				}
 			}
 		} catch (error) {

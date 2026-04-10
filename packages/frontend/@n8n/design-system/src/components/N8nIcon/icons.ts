@@ -35,6 +35,7 @@ import Toolbox from './custom/toolbox.svg';
 import Triangle from './custom/triangle.svg';
 import VectorSquare from './custom/vector-square.svg';
 import Webhook from './custom/webhook.svg';
+import type { NodeIconName } from './node-icons';
 
 import IconLucideAlignRight from '~icons/lucide/align-right';
 import IconLucideArchive from '~icons/lucide/archive';
@@ -74,6 +75,7 @@ import IconLucideChevronsUpDown from '~icons/lucide/chevrons-up-down';
 import IconLucideCircle from '~icons/lucide/circle';
 import IconLucideCircleAlert from '~icons/lucide/circle-alert';
 import IconLucideCircleCheck from '~icons/lucide/circle-check';
+import IconLucideCircleDollarSign from '~icons/lucide/circle-dollar-sign';
 import IconLucideCircleDot from '~icons/lucide/circle-dot';
 import IconLucideCircleEllipsis from '~icons/lucide/circle-ellipsis';
 import IconLucideCircleHelp from '~icons/lucide/circle-help';
@@ -539,6 +541,7 @@ export const updatedIconSet = {
 	circle: IconLucideCircle,
 	'circle-alert': IconLucideCircleAlert,
 	'circle-check': IconLucideCircleCheck,
+	'circle-dollar-sign': IconLucideCircleDollarSign,
 	'circle-dot': IconLucideCircleDot,
 	'circle-ellipsis': IconLucideCircleEllipsis,
 	'circle-help': IconLucideCircleHelp,
@@ -714,9 +717,19 @@ export const updatedIconSet = {
 
 export type IconName = keyof typeof updatedIconSet; // only new icon names should be used moving forward
 
+export { type NodeIconName } from './node-icons';
+
+const NODE_ICON_PREFIX = 'node:';
+
+export function isNodeIcon(iconName?: string): iconName is NodeIconName {
+	return typeof iconName === 'string' && iconName.startsWith(NODE_ICON_PREFIX);
+}
+
 export function isSupportedIconName(iconName?: string): iconName is IconName {
-	// support both deprecated and updated icon names
 	return (
-		typeof iconName === 'string' && (iconName in updatedIconSet || iconName in deprecatedIconSet)
+		typeof iconName === 'string' &&
+		(iconName in updatedIconSet ||
+			iconName in deprecatedIconSet ||
+			iconName.startsWith(NODE_ICON_PREFIX))
 	);
 }

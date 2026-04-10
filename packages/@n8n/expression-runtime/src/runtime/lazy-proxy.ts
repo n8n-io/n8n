@@ -10,9 +10,55 @@
 // ---------------------------------------------------------------------------
 const proxyPaths = new WeakMap<object, string[]>();
 
+/**
+ * Serialized error sentinel returned by host-side bridge callbacks.
+ * When a callback throws, the bridge catches the error and returns this
+ * sentinel instead of letting it cross the isolate boundary (which strips
+ * custom class identity and properties).
+ */
+export interface ErrorSentinel {
+	__isError: true;
+	name: string;
+	message: string;
+	stack?: string;
+	extra?: Record<string, unknown>;
+}
+
+interface ObjectMetadata {
+	__isObject: true;
+	__keys: string[];
+}
+
+function isObjectMetadata(value: unknown): value is ObjectMetadata {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'__isObject' in value &&
+		value.__isObject === true
+	);
+}
+
+function isErrorSentinel(value: unknown): value is ErrorSentinel {
+	return (
+		typeof value === 'object' && value !== null && '__isError' in value && value.__isError === true
+	);
+}
+
+/**
+ * If `value` is an error sentinel from a host-side callback, throw it
+ * directly. The isolate's outer try-catch will detect __isError and
+ * return it as the result. Error reconstruction happens on the host only.
+ */
+export function throwIfErrorSentinel(value: unknown): void {
+	if (isErrorSentinel(value)) {
+		// eslint-disable-next-line @typescript-eslint/no-throw-literal -- sentinel is reconstructed on the host
+		throw value;
+	}
+}
+
 /** Returns true if `obj` is a deep lazy proxy created by createDeepLazyProxy. */
 export function isLazyProxy(obj: unknown): boolean {
-	return typeof obj === 'object' && obj !== null && proxyPaths.has(obj as object);
+	return typeof obj === 'object' && obj !== null && proxyPaths.has(obj);
 }
 
 /** Returns the basePath the proxy was created with, or undefined if not a proxy. */
@@ -36,8 +82,37 @@ export function getProxyPath(obj: object): string[] | undefined {
  * @param basePath - Current path in object tree (e.g., ['$json', 'user'])
  * @returns Proxy object with lazy loading behavior
  */
-export function createDeepLazyProxy(basePath: string[] = []): any {
+export function createDeepLazyProxy(basePath: string[] = [], knownKeys?: string[]): any {
+	// Cache for keys fetched from the bridge (root proxies without knownKeys).
+	// Shared between ownKeys and getOwnPropertyDescriptor for consistency.
+	let fetchedKeys: string[] | undefined;
+
+	function resolveKeys(): string[] {
+		if (knownKeys) return knownKeys;
+		if (fetchedKeys) return fetchedKeys;
+		const value = globalThis.__getValueAtPath.applySync(null, [basePath], {
+			arguments: { copy: true },
+			result: { copy: true },
+		});
+		throwIfErrorSentinel(value);
+		if (isObjectMetadata(value)) {
+			fetchedKeys = value.__keys;
+			return fetchedKeys;
+		}
+		return [];
+	}
+
 	const proxy = new Proxy({} as Record<string, unknown>, {
+		ownKeys(): string[] {
+			return resolveKeys();
+		},
+		getOwnPropertyDescriptor(_target: any, prop: string | symbol): PropertyDescriptor | undefined {
+			if (typeof prop === 'symbol') return undefined;
+			if (resolveKeys().includes(prop)) {
+				return { configurable: true, enumerable: true, writable: false };
+			}
+			return undefined;
+		},
 		get(target: any, prop: string | symbol): unknown {
 			// Handle Symbol properties - return undefined
 			// Symbols like Symbol.toStringTag are accessed internally
@@ -65,7 +140,7 @@ export function createDeepLazyProxy(basePath: string[] = []): any {
 			}
 
 			// Build path for this property
-			const path = [...basePath, prop as string];
+			const path = [...basePath, prop];
 
 			// Call back to parent to get metadata/value
 			// Note: __getValueAtPath is an ivm.Reference set by bridge
@@ -80,14 +155,21 @@ export function createDeepLazyProxy(basePath: string[] = []): any {
 				return value;
 			}
 
+			// Handle errors serialized by host-side callbacks — reconstruct and throw
+			// so the isolate's outer try-catch can serialize them back via __reportError
+			throwIfErrorSentinel(value);
+
 			// Handle functions - metadata: { __isFunction: true, __name: string }
 			if (value && typeof value === 'object' && value.__isFunction) {
 				// Create function wrapper that calls back to parent
 				target[prop] = function (...args: any[]) {
-					return globalThis.__callFunctionAtPath.applySync(null, [path, ...args], {
+					const result = globalThis.__callFunctionAtPath.applySync(null, [path, ...args], {
 						arguments: { copy: true },
 						result: { copy: true },
 					});
+					// Check if the host-side function threw — reconstruct and throw
+					throwIfErrorSentinel(result);
+					return result;
 				};
 				return target[prop];
 			}
@@ -124,14 +206,16 @@ export function createDeepLazyProxy(basePath: string[] = []): any {
 									arguments: { copy: true },
 									result: { copy: true },
 								});
+								throwIfErrorSentinel(element);
 								// Handle element metadata (arrays and objects need proxies)
 								if (element && typeof element === 'object' && element.__isArray) {
 									const elementPath = [...path, String(index)];
 									arrTarget[arrProp] = createDeepLazyProxy(elementPath);
-								} else if (element && typeof element === 'object' && element.__isObject) {
-									// Object metadata: create nested proxy
+								} else if (isObjectMetadata(element)) {
+									// Object metadata: create nested proxy, passing known keys to
+									// avoid an extra __getValueAtPath round-trip for ownKeys/Object.keys()
 									const elementPath = [...path, String(index)];
-									arrTarget[arrProp] = createDeepLazyProxy(elementPath);
+									arrTarget[arrProp] = createDeepLazyProxy(elementPath, element.__keys);
 								} else {
 									// Primitive element
 									arrTarget[arrProp] = element;
@@ -151,9 +235,9 @@ export function createDeepLazyProxy(basePath: string[] = []): any {
 			}
 
 			// Handle objects - metadata: { __isObject: true, __keys: string[] }
-			if (value && typeof value === 'object' && value.__isObject) {
-				// Create nested proxy for recursive lazy loading
-				target[prop] = createDeepLazyProxy(path);
+			if (isObjectMetadata(value)) {
+				// Create nested proxy for recursive lazy loading, passing known keys
+				target[prop] = createDeepLazyProxy(path, value.__keys);
 				return target[prop];
 			}
 
@@ -174,11 +258,15 @@ export function createDeepLazyProxy(basePath: string[] = []): any {
 			}
 
 			// Build path and check existence via callback
-			const path = [...basePath, prop as string];
+			const path = [...basePath, prop];
 			const value = globalThis.__getValueAtPath.applySync(null, [path], {
 				arguments: { copy: true },
 				result: { copy: true },
 			});
+
+			// Handle errors serialized by host-side callbacks — reconstruct and throw
+			// so the isolate's outer try-catch can serialize them back via __reportError
+			throwIfErrorSentinel(value);
 
 			// Property exists if value is not undefined
 			// Note: null values mean property exists but is null

@@ -33,6 +33,8 @@ export class Execute extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	async init() {
 		await super.init();
+		await this.initLicense();
+		await this.initCommunityPackages();
 		await this.initBinaryDataService();
 		await this.initDataDeduplicationService();
 		await this.initExternalHooks();

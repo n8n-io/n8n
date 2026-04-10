@@ -1,5 +1,5 @@
 import type { User } from '@n8n/db';
-import type { INodeTypeDescription, IWorkflowBase } from 'n8n-workflow';
+import type { INode, INodeTypeDescription, IWorkflowBase } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -112,4 +112,27 @@ export async function autoPopulateNodeCredentials(
 	}
 
 	return { assignments, skippedHttpNodes };
+}
+
+/**
+ * Strip newCredential() stubs from parsed SDK code.
+ * The SDK's newCredential() serializes to undefined via toJSON(), so after
+ * deepCopy the credentials object may contain entries like { slackApi: undefined }.
+ * These would fail the credential permission check, so we remove them here.
+ */
+export function stripNullCredentialStubs(nodes: INode[]): void {
+	for (const node of nodes) {
+		if (node.credentials) {
+			for (const key of Object.keys(node.credentials)) {
+				// Loose equality to catch both null and undefined stubs
+				// eslint-disable-next-line eqeqeq
+				if (node.credentials[key] == null) {
+					delete node.credentials[key];
+				}
+			}
+			if (Object.keys(node.credentials).length === 0) {
+				node.credentials = undefined;
+			}
+		}
+	}
 }

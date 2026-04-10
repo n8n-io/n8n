@@ -29,10 +29,16 @@ assert.match(releaseType, /^(patch|minor|major|experimental|premajor)$/, 'Invali
 // TODO: if releaseType is `auto` determine release type based on the changelog
 
 const lastTag = (await exec('git describe --tags --match "n8n@*" --abbrev=0')).stdout.trim();
-const packages = JSON.parse((await exec('pnpm ls -r --only-projects --json')).stdout);
+const packages = JSON.parse(
+	(
+		await exec(
+			`pnpm ls -r --only-projects --json | jq -r '[.[] | { name: .name, version: .version, path: .path,  private: .private}]'`,
+		)
+	).stdout,
+);
 
 const packageMap = {};
-for (let { name, path, version, private: isPrivate, dependencies } of packages) {
+for (let { name, path, version, private: isPrivate } of packages) {
 	if (isPrivate && path !== rootDir) continue;
 	if (path === rootDir) name = 'monorepo-root';
 

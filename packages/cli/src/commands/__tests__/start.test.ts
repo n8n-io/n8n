@@ -136,6 +136,7 @@ describe('Start - AuthRolesService initialization', () => {
 			},
 			cache: { backend: 'memory' },
 			taskRunners: {},
+			expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 		};
 		// @ts-expect-error - Accessing protected method for testing
 		start.initCrashJournal = jest.fn().mockResolvedValue(undefined);
@@ -146,6 +147,8 @@ describe('Start - AuthRolesService initialization', () => {
 		start.initDataDeduplicationService = jest.fn().mockResolvedValue(undefined);
 		start.initExternalHooks = jest.fn().mockResolvedValue(undefined);
 		start.initWorkflowHistory = jest.fn();
+		// @ts-expect-error - Accessing private method for testing
+		start.initInstanceSettingsLoader = jest.fn().mockResolvedValue(undefined);
 		start.cleanupTestRunner = jest.fn().mockResolvedValue(undefined);
 		// @ts-expect-error - Accessing private method for testing
 		start.generateStaticAssets = jest.fn().mockResolvedValue(undefined);
@@ -186,6 +189,7 @@ describe('Start - AuthRolesService initialization', () => {
 				},
 				cache: { backend: 'memory' },
 				taskRunners: {},
+				expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 			};
 
 			await start.init();
@@ -219,11 +223,32 @@ describe('Start - AuthRolesService initialization', () => {
 				},
 				cache: { backend: 'memory' },
 				taskRunners: {},
+				expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 			};
 
 			await start.init();
 
 			expect(authRolesService.init).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('init - instance settings loader initialization', () => {
+		it('should initialize instance settings loader when instanceType is main', async () => {
+			setupInstanceSettings('main', false, false);
+
+			await start.init();
+
+			// @ts-expect-error - Accessing private method for testing
+			expect(start.initInstanceSettingsLoader).toHaveBeenCalledTimes(1);
+		});
+
+		it('should NOT initialize instance settings loader when instanceType is not main', async () => {
+			setupInstanceSettings('worker', false, false);
+
+			await start.init();
+
+			// @ts-expect-error - Accessing private method for testing
+			expect(start.initInstanceSettingsLoader).not.toHaveBeenCalled();
 		});
 	});
 
@@ -243,6 +268,7 @@ describe('Start - AuthRolesService initialization', () => {
 			},
 			cache: { backend: 'memory' },
 			taskRunners: {},
+			expressionEngine: { engine: 'legacy' as const, poolSize: 1, maxCodeCacheSize: 1024 },
 		};
 
 		beforeEach(() => {
