@@ -27,7 +27,7 @@ export class Agent extends WithTimestampsAndStringId {
 
 	@Column({ type: 'varchar', nullable: true })
 	model: string | null;
-
+	// TODO: add schema versioning
 	@JsonColumn({ nullable: true, default: null })
 	schema: AgentJsonConfig | null;
 

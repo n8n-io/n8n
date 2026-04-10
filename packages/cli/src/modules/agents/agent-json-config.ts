@@ -12,6 +12,7 @@ const SemanticRecallSchema = z.object({
 	embedder: z.string().optional(),
 });
 
+// TODO: Create a list of all supported memory storages, define connection params for each storage
 const MemoryConfigSchema = z.object({
 	enabled: z.boolean(),
 	storage: z.enum(['n8n', 'sqlite', 'postgres']),
