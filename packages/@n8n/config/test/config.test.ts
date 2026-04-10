@@ -503,6 +503,10 @@ describe('GlobalConfig', () => {
 			ownerFirstName: 'Instance',
 			ownerLastName: 'Owner',
 			ownerPasswordHash: '',
+			securityPolicyOverride: false,
+			securityPolicyMfaEnforced: false,
+			securityPolicyPersonalSpacePublishing: true,
+			securityPolicyPersonalSpaceSharing: true,
 		},
 	} satisfies GlobalConfigShape;
 

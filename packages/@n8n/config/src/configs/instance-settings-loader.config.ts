@@ -26,4 +26,21 @@ export class InstanceSettingsLoaderConfig {
 	 */
 	@Env('N8N_INSTANCE_OWNER_PASSWORD_HASH')
 	ownerPasswordHash: string = '';
+
+	/**
+	 * When true, security policy settings are managed via environment variables.
+	 * On every startup the security policy will be overridden by env vars.
+	 * When false (default), security policy env vars are ignored even if set.
+	 */
+	@Env('SECURITY_POLICY_OVERRIDE')
+	securityPolicyOverride: boolean = false;
+
+	@Env('SECURITY_POLICY_MFA_ENFORCED')
+	securityPolicyMfaEnforced: boolean = false;
+
+	@Env('SECURITY_POLICY_PERSONAL_SPACE_PUBLISHING')
+	securityPolicyPersonalSpacePublishing: boolean = true;
+
+	@Env('SECURITY_POLICY_PERSONAL_SPACE_SHARING')
+	securityPolicyPersonalSpaceSharing: boolean = true;
 }
