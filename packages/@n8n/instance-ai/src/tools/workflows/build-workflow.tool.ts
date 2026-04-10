@@ -54,6 +54,11 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			warnings: z.array(z.string()).optional(),
 		}),
 		execute: async (input: z.infer<typeof buildWorkflowInputSchema>) => {
+			const permKey = input.workflowId ? 'updateWorkflow' : 'createWorkflow';
+			if (context.permissions?.[permKey] === 'blocked') {
+				return { success: false, errors: ['Action blocked by admin'] };
+			}
+
 			const { code, patches, workflowId, projectId, name } = input;
 			let finalCode: string;
 

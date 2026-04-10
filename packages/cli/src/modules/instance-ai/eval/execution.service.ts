@@ -137,6 +137,7 @@ export class EvalExecutionService {
 				workflowEntity,
 				bypassNodeNames,
 				hints.globalContext,
+				scenarioHints,
 			);
 			this.logger.debug(
 				`[EvalMock] Phase 1.5 result — pinned nodes: ${Object.keys(hints.bypassPinData).join(', ') || 'none'}`,
@@ -157,14 +158,16 @@ export class EvalExecutionService {
 		workflowEntity: IWorkflowBase,
 		bypassNodeNames: string[],
 		globalContext: string,
+		scenarioHints?: string,
 	): Promise<IPinData> {
 		if (bypassNodeNames.length === 0) return {};
 
 		try {
+			const dataDescription = [globalContext, scenarioHints].filter(Boolean).join('\n\n');
 			const result = await generatePinData({
 				workflow: workflowEntity as unknown as WorkflowJSON,
 				nodeNames: bypassNodeNames,
-				instructions: globalContext ? { dataDescription: globalContext } : undefined,
+				instructions: dataDescription ? { dataDescription } : undefined,
 			});
 
 			return normalizePinData(result as unknown as IPinData);

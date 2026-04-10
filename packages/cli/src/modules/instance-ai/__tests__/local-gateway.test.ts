@@ -135,7 +135,7 @@ describe('LocalGateway', () => {
 			).rejects.toThrow('not connected');
 		});
 
-		it('should timeout after 30 seconds', async () => {
+		it('should timeout after 60 seconds', async () => {
 			jest.useFakeTimers();
 
 			gateway.init(EMPTY_CAPABILITIES);
@@ -145,7 +145,7 @@ describe('LocalGateway', () => {
 				arguments: { filePath: 'slow.ts' },
 			});
 
-			jest.advanceTimersByTime(30_001);
+			jest.advanceTimersByTime(60_001);
 
 			await expect(callPromise).rejects.toThrow('timed out');
 

@@ -12,8 +12,8 @@ export class NodeDetailsViewPage extends BasePage {
 	readonly setupHelper: NodeParameterHelper;
 	readonly editFields: EditFieldsNode;
 	readonly clipboard: ClipboardHelper;
-	readonly inputPanel = new RunDataPanel(this.page.getByTestId('ndv-input-panel'));
-	readonly outputPanel = new RunDataPanel(this.page.getByTestId('output-panel'));
+	readonly inputPanel = new RunDataPanel(this.container.getByTestId('ndv-input-panel'));
+	readonly outputPanel = new RunDataPanel(this.container.getByTestId('output-panel'));
 
 	constructor(page: Page) {
 		super(page);
@@ -23,11 +23,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getNodeCredentialsSelect() {
-		return this.page.getByTestId('node-credentials-select');
+		return this.container.getByTestId('node-credentials-select');
 	}
 
 	getNodeCredentialsEmptyState() {
-		return this.page.getByTestId('node-credentials-empty-state');
+		return this.container.getByTestId('node-credentials-empty-state');
 	}
 
 	credentialDropdownCreateNewCredential() {
@@ -43,7 +43,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getCredentialSelect() {
-		return this.page.getByRole('combobox', { name: 'Select Credential' });
+		return this.container.getByRole('combobox', { name: 'Select Credential' });
 	}
 
 	async clickBackToCanvasButton() {
@@ -51,7 +51,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getParameterByLabel(labelName: string) {
-		return this.getContainer().locator('.parameter-item').filter({ hasText: labelName });
+		return this.container.locator('.parameter-item').filter({ hasText: labelName });
+	}
+
+	getParameterTextboxByLabel(labelName: string) {
+		return this.getParameterByLabel(labelName).getByRole('textbox');
 	}
 
 	async fillParameterInput(labelName: string, value: string, index?: number) {
@@ -87,23 +91,23 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getOutputPanel() {
-		return this.page.getByTestId('output-panel');
+		return this.container.getByTestId('output-panel');
 	}
 
-	getContainer() {
+	get container() {
 		return this.page.getByTestId('ndv');
 	}
 
 	getInputPanel() {
-		return this.page.getByTestId('ndv-input-panel');
+		return this.container.getByTestId('ndv-input-panel');
 	}
 
 	getParameterExpressionPreviewValue() {
-		return this.page.getByTestId('parameter-expression-preview-value');
+		return this.container.getByTestId('parameter-expression-preview-value');
 	}
 
 	getParameterExpressionPreviewOutput() {
-		return this.page.getByTestId('parameter-expression-preview-output');
+		return this.container.getByTestId('parameter-expression-preview-output');
 	}
 
 	getInlineExpressionEditorPreview() {
@@ -113,18 +117,18 @@ export class NodeDetailsViewPage extends BasePage {
 	async activateParameterExpressionEditor(parameterName: string) {
 		const parameterInput = this.getParameterInput(parameterName);
 		await parameterInput.click();
-		await this.page
+		await this.container
 			.getByTestId(`${parameterName}-parameter-input-options-container`)
 			.getByTestId('radio-button-expression')
 			.click();
 	}
 
 	getEditPinnedDataButton() {
-		return this.page.getByTestId('ndv-edit-pinned-data');
+		return this.container.getByTestId('ndv-edit-pinned-data');
 	}
 
 	getRunDataPaneHeader() {
-		return this.page.getByTestId('run-data-pane-header');
+		return this.container.getByTestId('run-data-pane-header');
 	}
 
 	getEditOutputButton() {
@@ -152,13 +156,13 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getAssignmentCollectionAdd(paramName: string) {
-		return this.page
+		return this.container
 			.getByTestId(`assignment-collection-${paramName}`)
 			.getByTestId('assignment-collection-drop-area');
 	}
 
 	getAssignmentCollectionDropArea() {
-		return this.page.getByTestId('assignment-collection-drop-area');
+		return this.container.getByTestId('assignment-collection-drop-area');
 	}
 
 	async clickAssignmentCollectionDropArea() {
@@ -166,13 +170,17 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getAssignmentValue(paramName: string) {
-		return this.page
+		return this.container
 			.getByTestId(`assignment-collection-${paramName}`)
 			.getByTestId('assignment-value');
 	}
 
+	getAssignmentExpressionToggle(paramName: string) {
+		return this.getAssignmentValue(paramName).getByText('Expression');
+	}
+
 	async clickAssignmentExpressionToggle(paramName: string) {
-		await this.getAssignmentValue(paramName).getByText('Expression').click();
+		await this.getAssignmentExpressionToggle(paramName).click();
 	}
 
 	/**
@@ -185,15 +193,15 @@ export class NodeDetailsViewPage extends BasePage {
 			const parameterInput = this.getParameterInput(parameterName);
 			return parameterInput.getByTestId('inline-expression-editor-input');
 		}
-		return this.page.getByTestId('inline-expression-editor-input');
+		return this.container.getByTestId('inline-expression-editor-input');
 	}
 
 	getNodeParameters() {
-		return this.page.getByTestId('node-parameters');
+		return this.container.getByTestId('node-parameters');
 	}
 
 	getParameterInputHint() {
-		return this.page.getByTestId('parameter-input-hint');
+		return this.container.getByTestId('parameter-input-hint');
 	}
 
 	getParameterInputHintWithText(text: string) {
@@ -201,7 +209,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getInputLabel() {
-		return this.page.getByTestId('input-label');
+		return this.container.getByTestId('input-label');
 	}
 
 	getNthParameter(index: number) {
@@ -209,7 +217,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getCredentialsLabel() {
-		return this.page.getByTestId('credentials-label');
+		return this.container.getByTestId('credentials-label');
 	}
 
 	async makeWebhookRequest(path: string) {
@@ -230,7 +238,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getParameterInput(parameterName: string, index?: number) {
-		return locatorByIndex(this.page.getByTestId(`parameter-input-${parameterName}`), index);
+		return locatorByIndex(this.container.getByTestId(`parameter-input-${parameterName}`), index);
 	}
 
 	getParameterInputTextbox(parameterName: string, index?: number) {
@@ -246,13 +254,20 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getParameterInput(parameterName, index).locator('.cm-content');
 	}
 
+	getParameterTextarea(parameterName: string, index?: number) {
+		return this.getParameterInput(parameterName, index).locator('textarea');
+	}
+
 	async selectOptionInParameterDropdown(parameterName: string, optionText: string, index = 0) {
 		await this.clickParameterDropdown(parameterName, index);
 		await this.selectFromVisibleDropdown(optionText);
 	}
 
 	async clickParameterDropdown(parameterName: string, index = 0): Promise<void> {
-		await locatorByIndex(this.page.getByTestId(`parameter-input-${parameterName}`), index).click();
+		await locatorByIndex(
+			this.container.getByTestId(`parameter-input-${parameterName}`),
+			index,
+		).click();
 	}
 
 	async selectFromVisibleDropdown(optionText: string): Promise<void> {
@@ -266,7 +281,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async clickParameterOptions(): Promise<void> {
-		await this.page.getByTestId('collection-parameter-add').click();
+		await this.container.getByTestId('collection-parameter-add').click();
 	}
 
 	async addParameterOptionByName(optionName: string): Promise<void> {
@@ -275,7 +290,9 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async clickFloatingNode(nodeName: string) {
-		await this.page.locator(`[data-test-id="floating-node"][data-node-name="${nodeName}"]`).click();
+		await this.container
+			.locator(`[data-test-id="floating-node"][data-node-name="${nodeName}"]`)
+			.click();
 	}
 
 	async executePrevious() {
@@ -283,23 +300,23 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async clickAskAiTab() {
-		await this.page.locator('#tab-ask-ai').click();
+		await this.container.locator('#tab-ask-ai').click();
 	}
 
 	getAskAiTabPanel() {
-		return this.page.getByTestId('code-node-tab-ai');
+		return this.container.getByTestId('code-node-tab-ai');
 	}
 
 	getAskAiCtaButton() {
-		return this.page.getByTestId('ask-ai-cta');
+		return this.container.getByTestId('ask-ai-cta');
 	}
 
 	getAskAiPromptInput() {
-		return this.page.getByTestId('ask-ai-prompt-input');
+		return this.container.getByTestId('ask-ai-prompt-input');
 	}
 
 	getAskAiPromptCounter() {
-		return this.page.getByTestId('ask-ai-prompt-counter');
+		return this.container.getByTestId('ask-ai-prompt-counter');
 	}
 
 	getAskAiCtaTooltipNoInputData() {
@@ -315,11 +332,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getCodeTabPanel() {
-		return this.page.getByTestId('code-node-tab-code');
+		return this.container.getByTestId('code-node-tab-code');
 	}
 
 	getCodeTab() {
-		return this.page.locator('#tab-code');
+		return this.container.locator('#tab-code');
 	}
 
 	getCodeEditor() {
@@ -373,7 +390,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getAssignmentCollectionContainer(paramName: string) {
-		return this.page.getByTestId(`assignment-collection-${paramName}`);
+		return this.container.getByTestId(`assignment-collection-${paramName}`);
 	}
 
 	async selectInputNode(nodeName: string) {
@@ -382,15 +399,20 @@ export class NodeDetailsViewPage extends BasePage {
 		await this.page.getByRole('option', { name: nodeName }).click();
 	}
 
+	getAssignments(paramName: string) {
+		return this.getAssignmentCollectionContainer(paramName).getByTestId('assignment');
+	}
+
 	getAssignmentName(paramName: string, index = 0) {
-		return this.getAssignmentCollectionContainer(paramName)
-			.getByTestId('assignment')
-			.nth(index)
-			.getByTestId('assignment-name');
+		return this.getAssignments(paramName).nth(index).getByTestId('assignment-name');
+	}
+
+	getAssignmentNameTextbox(paramName: string, index = 0) {
+		return this.getAssignmentName(paramName, index).getByRole('textbox');
 	}
 
 	getResourceMapperFieldsContainer() {
-		return this.page.getByTestId('mapping-fields-container');
+		return this.container.getByTestId('mapping-fields-container');
 	}
 
 	getResourceMapperParameterInputs() {
@@ -398,15 +420,15 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getResourceMapperSelectColumn() {
-		return this.page.getByTestId('matching-column-select');
+		return this.container.getByTestId('matching-column-select');
 	}
 
 	getResourceMapperColumnsOptionsButton() {
-		return this.page.getByTestId('columns-parameter-input-options-container');
+		return this.container.getByTestId('columns-parameter-input-options-container');
 	}
 
 	getResourceMapperRemoveFieldButton(fieldName: string) {
-		return this.page.getByTestId(`remove-field-button-${fieldName}`);
+		return this.container.getByTestId(`remove-field-button-${fieldName}`);
 	}
 
 	getResourceMapperRemoveAllFieldsOption() {
@@ -498,7 +520,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getCopyInputButton() {
-		return this.page.getByTestId('copy-input');
+		return this.container.getByTestId('copy-input');
 	}
 
 	getOutputPagination() {
@@ -527,7 +549,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getRunDataInfoCallout() {
-		return this.page.getByTestId('run-data-callout');
+		return this.container.getByTestId('run-data-callout');
 	}
 
 	async checkParameterCheckboxInputByName(name: string): Promise<void> {
@@ -537,9 +559,9 @@ export class NodeDetailsViewPage extends BasePage {
 
 	// Credentials modal helpers
 	async clickCreateNewCredential(eq: number = 0): Promise<void> {
-		const setupManually = this.page.getByTestId('setup-manually-link').nth(eq);
-		const setupCredential = this.page.getByTestId('setup-credential-button').nth(eq);
-		const credentialSelect = this.page.getByTestId('node-credentials-select').nth(eq);
+		const setupManually = this.container.getByTestId('setup-manually-link').nth(eq);
+		const setupCredential = this.container.getByTestId('setup-credential-button').nth(eq);
+		const credentialSelect = this.container.getByTestId('node-credentials-select').nth(eq);
 
 		// Wait for one of the three credential UI states to appear
 		await Promise.race([
@@ -560,11 +582,11 @@ export class NodeDetailsViewPage extends BasePage {
 
 	// Run selector and linking helpers
 	getInputRunSelector() {
-		return this.page.locator('[data-test-id="ndv-input-panel"] [data-test-id="run-selector"]');
+		return this.getInputPanel().getByTestId('run-selector');
 	}
 
 	getOutputRunSelector() {
-		return this.page.locator('[data-test-id="output-panel"] [data-test-id="run-selector"]');
+		return this.getOutputPanel().getByTestId('run-selector');
 	}
 
 	getInputRunSelectorInput() {
@@ -576,11 +598,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getNodeRunErrorMessage() {
-		return this.page.getByTestId('node-error-message');
+		return this.container.getByTestId('node-error-message');
 	}
 
 	getNodeRunErrorDescription() {
-		return this.page.getByTestId('node-error-description');
+		return this.container.getByTestId('node-error-description');
 	}
 
 	async isOutputRunLinkingEnabled() {
@@ -617,15 +639,15 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getExecuteNodeButton() {
-		return this.page.getByTestId('node-execute-button');
+		return this.container.getByTestId('node-execute-button');
 	}
 
 	getTriggerPanelExecuteButton() {
-		return this.page.getByTestId('trigger-execute-button');
+		return this.container.getByTestId('trigger-execute-button');
 	}
 
 	async openCodeEditorFullscreen() {
-		await this.page.getByTestId('code-editor-fullscreen-button').click();
+		await this.container.getByTestId('code-editor-fullscreen-button').click();
 	}
 
 	getCodeEditorFullscreen() {
@@ -641,23 +663,23 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getNodeRunSuccessIndicator() {
-		return this.page.getByTestId('node-run-status-success');
+		return this.container.getByTestId('node-run-status-success');
 	}
 
 	getNodeRunErrorIndicator() {
-		return this.page.getByTestId('node-run-status-danger');
+		return this.container.getByTestId('node-run-status-danger');
 	}
 
 	getNodeRunTooltipIndicator() {
-		return this.page.getByTestId('node-run-info');
+		return this.container.getByTestId('node-run-info');
 	}
 
 	getStaleNodeIndicator() {
-		return this.page.getByTestId('node-run-info-stale');
+		return this.container.getByTestId('node-run-info-stale');
 	}
 
 	getExecuteStepButton() {
-		return this.page.getByTestId('node-execute-button');
+		return this.container.getByTestId('node-execute-button');
 	}
 
 	async clickExecuteStep() {
@@ -665,11 +687,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async openSettings() {
-		await this.page.getByTestId('tab-settings').click();
+		await this.container.getByTestId('tab-settings').click();
 	}
 
 	getNodeVersion() {
-		return this.page.getByTestId('node-version');
+		return this.container.getByTestId('node-version');
 	}
 
 	async searchOutputData(searchTerm: string) {
@@ -695,11 +717,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getFloatingNodeByPosition(position: 'inputMain' | 'outputMain' | 'inputSub' | 'outputSub') {
-		return this.page.locator(`[data-node-placement="${position}"]`);
+		return this.container.locator(`[data-node-placement="${position}"]`);
 	}
 
 	getNodeNameContainer() {
-		return this.getContainer().getByTestId('node-title-container');
+		return this.container.getByTestId('node-title-container');
 	}
 
 	async clickFloatingNodeByPosition(
@@ -731,11 +753,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getAddSubNodeButton(connectionType: string, index: number = 0) {
-		return this.page.getByTestId(`add-subnode-${connectionType}-${index}`);
+		return this.container.getByTestId(`add-subnode-${connectionType}-${index}`);
 	}
 
 	getNodesWithIssues() {
-		return this.page.locator('[class*="hasIssues"]');
+		return this.container.locator('[class*="hasIssues"]');
 	}
 
 	async connectAISubNode(connectionType: string, nodeName: string, index: number = 0) {
@@ -745,11 +767,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getFloatingNode() {
-		return this.page.getByTestId('floating-node');
+		return this.container.getByTestId('floating-node');
 	}
 
 	async addItemToFixedCollection(collectionName: string) {
-		const collection = this.page.getByTestId(`fixed-collection-${collectionName}`);
+		const collection = this.container.getByTestId(`fixed-collection-${collectionName}`);
 		const explicitAddControl = collection
 			.locator(
 				[
@@ -789,21 +811,29 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getParameterItemWithText(text: string) {
-		return this.page.getByTestId('parameter-item').getByText(text);
+		return this.container.getByTestId('parameter-item').getByText(text);
 	}
 
 	getParameterInputWithIssues(parameterPath: string) {
-		return this.page.locator(
+		return this.container.locator(
 			`[data-test-id="parameter-input-field"][title*="${parameterPath}"][title*="has issues"]`,
 		);
 	}
 
 	getResourceLocator(paramName: string) {
-		return this.page.getByTestId(`resource-locator-${paramName}`);
+		return this.container.getByTestId(`resource-locator-${paramName}`);
 	}
 
 	getResourceLocatorInput(paramName: string) {
 		return this.getResourceLocator(paramName).getByTestId('rlc-input-container');
+	}
+
+	getResourceLocatorInputField(paramName: string) {
+		return this.getResourceLocatorInput(paramName).locator('input');
+	}
+
+	getResourceLocatorLink(paramName: string) {
+		return this.getResourceLocatorInput(paramName).locator('a');
 	}
 
 	getResourceLocatorModeSelector(paramName: string) {
@@ -827,7 +857,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getParameterInputIssues() {
-		return this.page.getByTestId('parameter-issues');
+		return this.container.getByTestId('parameter-issues');
 	}
 
 	getResourceLocatorItems() {
@@ -839,7 +869,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getExpressionModeToggle(index: number = 1) {
-		return this.page.getByTestId('radio-button-expression').nth(index);
+		return this.container.getByTestId('radio-button-expression').nth(index);
 	}
 
 	async setRLCValue(paramName: string, value: string, index = 0): Promise<void> {
@@ -854,7 +884,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getInputSelect() {
-		return this.page.getByTestId('ndv-input-select').locator('input');
+		return this.container.getByTestId('ndv-input-select').locator('input');
 	}
 
 	getOutputRunSelectorInput() {
@@ -862,15 +892,15 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getAiOutputModeToggle() {
-		return this.page.getByTestId('ai-output-mode-select');
+		return this.container.getByTestId('ai-output-mode-select');
 	}
 
 	getCredentialLabel(credentialType: string) {
-		return this.page.getByText(credentialType);
+		return this.container.getByText(credentialType);
 	}
 
 	getFilterComponent(paramName: string) {
-		return this.page.getByTestId(`filter-${paramName}`);
+		return this.container.getByTestId(`filter-${paramName}`);
 	}
 
 	getFilterConditions(paramName: string) {
@@ -906,11 +936,11 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getWebhookTestEvent() {
-		return this.page.getByText('Listening for test event');
+		return this.container.getByText('Listening for test event');
 	}
 
 	getAddOptionDropdown() {
-		return this.page.getByRole('combobox', { name: 'Add option' });
+		return this.container.getByRole('combobox', { name: 'Add option' });
 	}
 
 	async setInvalidExpression({

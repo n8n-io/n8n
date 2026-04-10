@@ -2,12 +2,14 @@ import {
 	credentialRequestSchema,
 	workflowSetupNodeSchema,
 	taskListSchema,
+	plannedTaskArgSchema,
 	gatewayConfirmationRequiredPayloadSchema,
 } from '@n8n/api-types';
 import type {
 	InstanceAiCredentialRequest,
 	InstanceAiEvent,
 	InstanceAiWorkflowSetupNode,
+	PlannedTaskArg,
 	TaskList,
 	GatewayConfirmationRequiredPayload,
 } from '@n8n/api-types';
@@ -228,6 +230,18 @@ export function mapMastraChunkToEvent(
 			}
 		}
 
+		// Extract optional full planned task items (for plan-review panel details)
+		let planItems: PlannedTaskArg[] | undefined;
+		if (Array.isArray(suspendPayload.planItems)) {
+			const parsed = suspendPayload.planItems
+				.map((item) => plannedTaskArgSchema.safeParse(item))
+				.filter((r) => r.success)
+				.map((r) => r.data);
+			if (parsed.length > 0) {
+				planItems = parsed;
+			}
+		}
+
 		// Extract optional domainAccess metadata (for domain-gated tools like fetch-url)
 		const rawDomainAccess = isRecord(suspendPayload.domainAccess)
 			? suspendPayload.domainAccess
@@ -304,6 +318,7 @@ export function mapMastraChunkToEvent(
 				...(questions ? { questions } : {}),
 				...(introMessage ? { introMessage } : {}),
 				...(tasks ? { tasks } : {}),
+				...(planItems ? { planItems } : {}),
 				...(resourceDecision ? { resourceDecision } : {}),
 			},
 		};

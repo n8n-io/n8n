@@ -1,13 +1,14 @@
+import * as fs from 'node:fs/promises';
 import * as http from 'node:http';
 
 import type { GatewayConfig } from './config';
 import { GatewayClient } from './gateway-client';
+import { GatewaySession } from './gateway-session';
 import {
 	logger,
 	printConnected,
 	printDisconnected,
 	printListening,
-	printModuleStatus,
 	printShuttingDown,
 	printToolList,
 	printWaiting,
@@ -18,8 +19,8 @@ import type { ConfirmResourceAccess } from './tools/types';
 export type { ConfirmResourceAccess, ResourceDecision } from './tools/types';
 
 export interface DaemonOptions {
-	/** Called before a new connection. Return false to reject with HTTP 403. */
-	confirmConnect: (url: string) => Promise<boolean> | boolean;
+	/** Called before a new connection. Receives a pre-seeded session; may mutate it. Return false to reject with HTTP 403. */
+	confirmConnect: (url: string, session: GatewaySession) => Promise<boolean> | boolean;
 	/** Called when a tool is about to access a resource that requires confirmation. */
 	confirmResourceAccess: ConfirmResourceAccess;
 	/** Called after connect/disconnect for status propagation (e.g. Electron tray). */
@@ -39,6 +40,7 @@ let settingsStorePromise: Promise<SettingsStore>;
 interface DaemonState {
 	config: GatewayConfig;
 	client: GatewayClient | null;
+	session: GatewaySession | null;
 	connectedAt: string | null;
 	connectedUrl: string | null;
 }
@@ -46,6 +48,7 @@ interface DaemonState {
 const state: DaemonState = {
 	config: undefined as unknown as GatewayConfig,
 	client: null,
+	session: null,
 	connectedAt: null,
 	connectedUrl: null,
 };
@@ -71,7 +74,7 @@ function jsonResponse(
 }
 
 function getDir(): string {
-	return state.config.filesystem.dir;
+	return state.session?.dir ?? state.config.filesystem.dir;
 }
 
 async function readBody(req: http.IncomingMessage): Promise<string> {
@@ -136,26 +139,44 @@ async function handleConnect(req: http.IncomingMessage, res: http.ServerResponse
 		}
 	});
 
-	if (!isAllowed) {
-		const approved = await daemonOptions.confirmConnect(url);
-		if (!approved) {
-			jsonResponse(res, 403, { error: 'Connection rejected by user.' });
-			return;
-		}
-	}
-
 	try {
 		const store = settingsStore ?? (await settingsStorePromise);
 		settingsStore ??= store;
+
+		const defaults = store.getDefaults(state.config);
+		const session = new GatewaySession(defaults, store);
+
+		if (!isAllowed) {
+			const approved = await daemonOptions.confirmConnect(url, session);
+			if (!approved) {
+				jsonResponse(res, 403, { error: 'Connection rejected by user.' });
+				return;
+			}
+		}
+
+		// Validate the directory the session resolved to
+		try {
+			const stat = await fs.stat(session.dir);
+			if (!stat.isDirectory()) {
+				jsonResponse(res, 400, { error: `Invalid directory: ${session.dir}` });
+				return;
+			}
+		} catch {
+			jsonResponse(res, 400, { error: `Invalid directory: ${session.dir}` });
+			return;
+		}
+
+		state.session = session;
 
 		const client = new GatewayClient({
 			url: url.replace(/\/$/, ''),
 			apiKey: token,
 			config: state.config,
-			settingsStore: store,
+			session,
 			confirmResourceAccess: daemonOptions.confirmResourceAccess,
 			onPersistentFailure: () => {
 				state.client = null;
+				state.session = null;
 				state.connectedAt = null;
 				state.connectedUrl = null;
 				printDisconnected();
@@ -186,6 +207,7 @@ async function handleDisconnect(res: http.ServerResponse): Promise<void> {
 	if (state.client) {
 		await state.client.disconnect();
 		state.client = null;
+		state.session = null;
 		state.connectedAt = null;
 		state.connectedUrl = null;
 		logger.debug('Disconnected');
@@ -230,7 +252,7 @@ export function startDaemon(config: GatewayConfig, options: DaemonOptions): http
 
 	// SettingsStore is initialized asynchronously; the server starts immediately.
 	// handleConnect awaits this promise before proceeding, eliminating the race condition.
-	settingsStorePromise = SettingsStore.create(config);
+	settingsStorePromise = SettingsStore.create();
 	void settingsStorePromise
 		.then((store) => {
 			settingsStore = store;
@@ -275,7 +297,6 @@ export function startDaemon(config: GatewayConfig, options: DaemonOptions): http
 	});
 
 	server.listen(port, '127.0.0.1', () => {
-		printModuleStatus(config);
 		printListening(port);
 		printWaiting();
 	});

@@ -152,10 +152,6 @@ interface NormalizedModelMetadata {
 	modelName?: string;
 }
 
-function isInternalStateTool(toolId: string): boolean {
-	return toolId === 'updateWorkingMemory';
-}
-
 function isLangSmithTracingEnabled(proxyAvailable?: boolean): boolean {
 	const tracingFlag =
 		process.env.LANGCHAIN_TRACING_V2 ?? process.env.LANGSMITH_TRACING ?? undefined;
@@ -605,20 +601,6 @@ function buildSuspendMetadata(
 	};
 }
 
-function resolveActorParentRun(parentRun: RunTree): RunTree {
-	let current: RunTree | undefined = parentRun;
-
-	while (current) {
-		if (current.run_type !== 'llm' && current.run_type !== 'tool') {
-			return current;
-		}
-
-		current = current.parent_run;
-	}
-
-	return parentRun;
-}
-
 async function traceSuspendableToolExecute(
 	tool: TraceableMastraTool,
 	options: InstanceAiToolTraceOptions | undefined,
@@ -716,33 +698,12 @@ async function traceToolExecute(
 		return await tool.execute?.(input, context);
 	}
 
-	const actorParentRun = isInternalStateTool(tool.id)
-		? resolveActorParentRun(parentRun)
-		: parentRun;
-	const internalStateRun = isInternalStateTool(tool.id)
-		? await postChildRun(actorParentRun, {
-				name: 'internal_state',
-				runType: 'chain',
-				tags: ['internal', 'memory'],
-				metadata: {
-					internal_state: true,
-					tool_name: tool.id,
-				},
-				inputs: { tool_name: tool.id },
-			})
-		: undefined;
-	const toolParentRun = internalStateRun ?? parentRun;
-	const toolRun = await postChildRun(toolParentRun, {
+	const toolRun = await postChildRun(parentRun, {
 		name: `tool:${tool.id}`,
 		runType: 'tool',
-		tags: normalizeTags(
-			['tool'],
-			isInternalStateTool(tool.id) ? ['internal', 'memory'] : undefined,
-			options?.tags,
-		),
+		tags: normalizeTags(['tool'], options?.tags),
 		metadata: mergeMetadata(options?.metadata, {
 			tool_name: tool.id,
-			...(isInternalStateTool(tool.id) ? { memory_tool: true } : {}),
 			...(options?.agentRole ? { agent_role: options.agentRole } : {}),
 			...normalizeModelMetadata(options?.metadata?.model_id),
 		}),
@@ -758,24 +719,12 @@ async function traceToolExecute(
 			outputs: result,
 			metadata: { final_status: 'completed' },
 		});
-		if (internalStateRun) {
-			await finishRunTree(internalStateRun, {
-				outputs: { tool_name: tool.id },
-				metadata: { final_status: 'completed', internal_state: true },
-			});
-		}
 		return result;
 	} catch (error) {
 		await finishRunTree(toolRun, {
 			error: normalizeErrorMessage(error),
 			metadata: { final_status: 'error' },
 		});
-		if (internalStateRun) {
-			await finishRunTree(internalStateRun, {
-				error: normalizeErrorMessage(error),
-				metadata: { final_status: 'error', internal_state: true },
-			});
-		}
 		throw error;
 	}
 }
