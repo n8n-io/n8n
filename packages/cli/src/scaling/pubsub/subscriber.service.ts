@@ -43,6 +43,8 @@ export class Subscriber {
 	/** Callback for MCP relay messages. Set by ScalingService. */
 	private mcpRelayHandler?: (msg: McpRelayMessage) => void;
 
+	private readonly debouncedHandlers = new Map<string, ReturnType<typeof debounce>>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly instanceSettings: InstanceSettings,
@@ -65,11 +67,8 @@ export class Subscriber {
 		this.client = this.redisClientService.createClient({ type: 'subscriber(n8n)' });
 
 		const handlerFn = (msg: PubSub.Command | PubSub.WorkerResponse) => {
-			const eventName = 'command' in msg ? msg.command : msg.response;
-			this.pubsubEventBus.emit(eventName, msg.payload);
+			this.pubsubEventBus.emit(this.eventNameFrom(msg), msg.payload);
 		};
-
-		const debouncedHandlerFn = debounce(handlerFn, 300);
 
 		this.client.on('message', (channel: string, str: string) => {
 			// Handle MCP relay messages separately
@@ -80,8 +79,15 @@ export class Subscriber {
 
 			const msg = this.parseMessage(str, channel);
 			if (!msg) return;
-			if (msg.debounce) debouncedHandlerFn(msg);
-			else handlerFn(msg);
+			if (!msg.debounce) return handlerFn(msg);
+
+			const eventName = this.eventNameFrom(msg);
+			let handler = this.debouncedHandlers.get(eventName);
+			if (!handler) {
+				handler = debounce(handlerFn, 300);
+				this.debouncedHandlers.set(eventName, handler);
+			}
+			handler(msg);
 		});
 	}
 
@@ -128,6 +134,7 @@ export class Subscriber {
 
 	// @TODO: Use `@OnShutdown()` decorator
 	shutdown() {
+		for (const handler of this.debouncedHandlers.values()) handler.cancel();
 		this.client.disconnect();
 	}
 
@@ -140,6 +147,10 @@ export class Subscriber {
 
 			this.logger.debug(`Subscribed to channel ${channel}`);
 		});
+	}
+
+	private eventNameFrom(msg: PubSub.Command | PubSub.WorkerResponse) {
+		return 'command' in msg ? msg.command : msg.response;
 	}
 
 	private parseMessage(str: string, channel: string) {
@@ -165,7 +176,7 @@ export class Subscriber {
 			return null;
 		}
 
-		let msgName = 'command' in msg ? msg.command : msg.response;
+		let msgName = this.eventNameFrom(msg);
 
 		const metadata: LogMetadata = { msg: msgName, channel };
 

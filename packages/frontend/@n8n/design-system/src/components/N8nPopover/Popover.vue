@@ -20,7 +20,13 @@ import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 interface Props
 	extends Pick<
 			PopoverContentProps,
-			'side' | 'align' | 'sideFlip' | 'sideOffset' | 'reference' | 'positionStrategy'
+			| 'side'
+			| 'align'
+			| 'sideFlip'
+			| 'sideOffset'
+			| 'reference'
+			| 'positionStrategy'
+			| 'collisionPadding'
 		>,
 		Pick<PopoverRootProps, 'open'> {
 	/**
@@ -85,6 +91,7 @@ const props = withDefaults(defineProps<Props>(), {
 	scrollType: 'hover',
 	sideOffset: 5,
 	sideFlip: undefined,
+	collisionPadding: 5,
 	suppressAutoFocus: false,
 	zIndex: 999,
 	showArrow: false,
@@ -140,6 +147,7 @@ watch(
 				:side-flip="sideFlip"
 				:align="align"
 				:side-offset="sideOffset"
+				:collision-padding="collisionPadding"
 				:class="[$style.popoverContent, contentClass, { [$style.enableSlideIn]: enableSlideIn }]"
 				:style="{ width, zIndex }"
 				:reference="reference"

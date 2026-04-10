@@ -90,6 +90,9 @@ export class AuthService {
 
 			// Skip browser ID check for chat hub attachments
 			`/${restEndpoint}/chat/conversations/:sessionId/messages/:messageId/attachments/:index`,
+
+			// Skip browser ID check for Instance AI SSE endpoint — EventSource can't send custom headers
+			`/${restEndpoint}/instance-ai/events/:threadId`,
 		];
 	}
 
@@ -98,8 +101,8 @@ export class AuthService {
 		allowSkipPreviewAuth,
 		allowUnauthenticated,
 	}: CreateAuthMiddlewareOptions) {
-		return async (req: Request, res: Response, next: NextFunction) => {
-			const token = this.getCookieToken(req);
+		return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+			const token = req.cookies[AUTH_COOKIE_NAME];
 
 			if (token) {
 				try {
@@ -154,15 +157,6 @@ export class AuthService {
 			else if (shouldSkipAuth) next();
 			else res.status(401).json({ status: 'error', message: 'Unauthorized' });
 		};
-	}
-
-	getCookieToken(req: Request) {
-		// This models the behavior of an AuthenticatedRequest type having an optional cookies property of type Record<string, string>
-		if (typeof req.cookies === 'object' && req.cookies !== null) {
-			const cookies = req.cookies as Record<string, string | undefined>;
-			return cookies[AUTH_COOKIE_NAME];
-		}
-		return undefined;
 	}
 
 	getBrowserId(req: Request) {

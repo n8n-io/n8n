@@ -14,8 +14,9 @@
 			"@test-integration/*": ["../test/integration/shared/*"]
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
-		// TODO: remove all options below this line
 		"strict": true,
+		"strictFunctionTypes": false,
+		// TODO: remove all options below this line
 		"useUnknownInCatchVariables": false
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts", "src/sso.ee/saml/saml-schema-metadata-2.0.xsd"],

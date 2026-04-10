@@ -30,6 +30,8 @@ import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	createRunExecutionData,
+	getHighlightedInputKey,
+	HIGHLIGHTED_SESSION_KEY,
 	DOCUMENT_DEFAULT_DATA_LOADER_NODE_TYPE,
 	IConnections,
 	IExecuteData,
@@ -537,6 +539,13 @@ export class ChatHubWorkflowService {
 		const executionData = createRunExecutionData({
 			executionData: {
 				nodeExecutionStack,
+			},
+			resultData: {
+				metadata: ChatHubWorkflowService.buildHighlightedDataMetadata(
+					chatTriggerNode.name,
+					humanMessage,
+					sessionId,
+				),
 			},
 			manualData: {
 				userId,
@@ -1194,6 +1203,17 @@ Respond the title only:`,
 		];
 	}
 
+	private static buildHighlightedDataMetadata(
+		triggerNodeName: string,
+		message: string,
+		sessionId: string,
+	): Record<string, string> {
+		return {
+			[getHighlightedInputKey(triggerNodeName)]: message,
+			[HIGHLIGHTED_SESSION_KEY]: sessionId,
+		};
+	}
+
 	async prepareReplyWorkflow(
 		user: User,
 		sessionId: ChatSessionId,
@@ -1449,10 +1469,21 @@ Respond the title only:`,
 			executionMetadata,
 		);
 
+		const autoSaveHighlightedData = chatTriggerParams.options?.autoSaveHighlightedData !== false;
+
 		const executionData = createRunExecutionData({
 			executionData: {
 				nodeExecutionStack,
 			},
+			resultData: autoSaveHighlightedData
+				? {
+						metadata: ChatHubWorkflowService.buildHighlightedDataMetadata(
+							chatTrigger.name,
+							message,
+							sessionId,
+						),
+					}
+				: undefined,
 			manualData: {
 				userId: user.id,
 			},

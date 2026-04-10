@@ -376,6 +376,15 @@ export class WorkflowService {
 		WorkflowHelpers.addNodeIds(workflowUpdateData);
 		WorkflowHelpers.resolveNodeWebhookIds(workflowUpdateData, this.nodeTypes);
 
+		// Strip redactionPolicy if instance lacks data-redaction license
+		if (
+			workflowUpdateData.settings?.redactionPolicy !== undefined &&
+			workflowUpdateData.settings.redactionPolicy !== workflow.settings?.redactionPolicy &&
+			!this.licenseState.isDataRedactionLicensed()
+		) {
+			delete workflowUpdateData.settings.redactionPolicy;
+		}
+
 		// Strip redactionPolicy if user lacks scope and value is changing
 		if (
 			workflowUpdateData.settings?.redactionPolicy !== undefined &&
@@ -397,8 +406,6 @@ export class WorkflowService {
 			};
 		}
 
-		await this.externalHooks.run('workflow.update', [workflowUpdateData]);
-
 		if (workflowUpdateData.settings) {
 			workflowUpdateData.settings = WorkflowHelpers.removeDefaultValues(
 				workflowUpdateData.settings,
@@ -417,6 +424,14 @@ export class WorkflowService {
 		if (workflowUpdateData.name) {
 			await validateEntity(workflowUpdateData);
 		}
+
+		// Validate pinData size after all mutations are applied
+		if ('pinData' in workflowUpdateData) {
+			WorkflowHelpers.validatePinDataSize({ ...workflow, ...workflowUpdateData });
+		}
+
+		// Run external hook after all validation has passed, right before persisting
+		await this.externalHooks.run('workflow.update', [workflowUpdateData]);
 
 		const fieldsToUpdate = [
 			'name',
@@ -600,7 +615,12 @@ export class WorkflowService {
 			workflowId: workflow.id,
 		});
 
-		return await this.webhookService.findWebhookConflicts(workflow, additionalData);
+		await workflow.expression.acquireIsolate();
+		try {
+			return await this.webhookService.findWebhookConflicts(workflow, additionalData);
+		} finally {
+			await workflow.expression.releaseIsolate();
+		}
 	}
 
 	private async _detectWebhookConflicts(

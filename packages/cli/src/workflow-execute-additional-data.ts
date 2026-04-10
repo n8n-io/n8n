@@ -492,6 +492,8 @@ export async function getBase({
 		currentNodeParameters,
 		executionTimeoutTimestamp,
 		userId,
+		workflowId,
+		projectId,
 		setExecutionStatus,
 		variables,
 		workflowSettings,

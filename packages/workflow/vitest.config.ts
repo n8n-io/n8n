@@ -10,7 +10,7 @@ export default defineConfig({
 	test: {
 		reporters,
 		outputFile,
-		workspace: [
+		projects: [
 			{
 				test: {
 					...sharedTestConfig,
