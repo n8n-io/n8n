@@ -2,8 +2,61 @@
 
 End-to-end tests for the Instance AI feature, using recorded LLM responses replayed through a MockServer proxy. Tests run without an API key in CI while producing real database state for full frontend verification.
 
+## Robustness and Maintenance
+
+This section explains what the replay system is resilient to, what breaks it, and how to keep tests stable as Instance AI evolves.
+
+### What Does NOT Require Re-Recording
+
+The architecture is deliberately tolerant of many common changes:
+
+| Change | Why It's Safe |
+|--------|---------------|
+| **Prompt wording changes** (within the same 80-char prefix) | Proxy matches on an 80-character substring of the system prompt, not the full text. Minor rewording that doesn't alter this prefix passes through unchanged. |
+| **Tool output differences** (new fields, different execution data) | Proxy ignores request bodies entirely — tool results flow into LLM request bodies as `tool_result` blocks, but the proxy matches by path and prompt prefix only. The `IdRemapper` compares by field path, so extra fields are ignored. |
+| **Database auto-increment IDs** | This is the core problem the `IdRemapper` solves. IDs like `workflowId`, `executionId`, `credentialId` are automatically remapped between the recorded session and the current run. |
+| **Frontend component changes** | Tests assert on data-testid attributes and semantic content, not CSS or layout. Frontend refactors that preserve test IDs don't affect recordings. |
+| **Node catalog changes** (new community nodes, updated descriptions) | Community node API expectations have been removed — the proxy doesn't replay these. Only Anthropic API calls are replayed. |
+| **New optional tool input fields** (with defaults) | The frozen LLM response won't include the new field, but the tool executes fine because it has a default value. Neither the proxy nor the `TraceIndex` validate input shape. |
+| **New tool output fields** | The `IdRemapper` compares recorded vs actual output by field path. Extra fields in the actual output are simply ignored — no false mappings are created. |
+| **Unrelated tool additions** | Adding tools that aren't called by existing test scenarios has no effect — the `TraceIndex` only validates tools the agent actually calls. |
+
+### What DOES Require Re-Recording
+
+These changes alter what the LLM "sees" or "says", breaking the recorded response sequence:
+
+| Change | Why It Breaks | Detection |
+|--------|---------------|-----------|
+| **System prompt changes** (different 80-char prefix) | The proxy's body matcher uses an 80-character substring of the system prompt. If this prefix changes, MockServer can't match the request to a recorded response and returns a 404. | Test fails with HTTP error from proxy or empty LLM response. |
+| **Tool schema changes** (renamed fields, changed types, new required inputs) | Recorded tool inputs/outputs have the old shape. Renamed ID fields (e.g. `workflowId` → `wfId`) break `IdRemapper` path matching. New **required** input fields break because the frozen LLM response can't provide them — tool Zod validation rejects the input. New **optional** input fields (with defaults) are safe — the tool executes fine without them. | Renamed IDs: `IdRemapper` fails to learn mappings → "workflow not found". New required fields: Zod validation error in tool execute. |
+| **New tools added to an existing agent's flow** | The recorded LLM responses don't contain calls to the new tool. If the agent now calls `new-tool` where it previously called `build-workflow`, the `TraceIndex` detects the mismatch. | "Tool mismatch at step N" error from `TraceIndex.next()`. |
+| **Tool removal or reordering** | Same as above — the recorded trace expects a specific tool sequence per agent role. | "Tool mismatch" or "Trace exhausted" errors. |
+| **Agent orchestration code changes** (tool distribution, delegation routing) | The recorded LLM responses are fixed, but the code that *acts on* them can change. For example, if a tool moves from the orchestrator to a sub-agent, or `delegate` now routes to a different role, the per-role trace cursors diverge because tools execute under different `agentRole` keys than the recording expects. | "Trace exhausted for role X" or tool mismatch. |
+| **Model change** (different Anthropic model) | Different models produce different responses, which means different tool call sequences. | Any of the above errors, depending on how the model diverges. |
+
+### Design Decisions That Maximize Robustness
+
+1. **80-character prompt prefix matching** — Long enough to distinguish between call types (title generation vs. orchestrator vs. sub-agent) but short enough that minor prompt edits don't break replay. The prefix is extracted during recording by the fixture's `transform` callback.
+
+2. **Field-name-aware ID extraction** — The `IdRemapper` only compares fields named `id` or ending with `Id` (e.g., `workflowId`, `executionId`). This prevents false mappings from execution output data, web content, or other string fields that happen to differ between runs.
+
+3. **Per-role trace cursors** — The `TraceIndex` groups events by `agentRole` with independent cursors. This handles interleaved orchestrator and sub-agent calls naturally, without requiring a single global sequence that breaks when parallelism changes.
+
+4. **Shared state across runs** — The `TraceIndex` and `IdRemapper` are shared across all runs within one test (orchestrator run, background task follow-up, delegated sub-agent). This means a workflowId learned in run 1 is available for remapping in run 2.
+
+5. **Request body stripping** — During recording, LLM request bodies are replaced with just the prompt prefix. This means the recorded expectations don't encode tool results, conversation history, or any other dynamic content. Replay stays deterministic regardless of what tools return.
+
+### Keeping Tests Stable
+
+- **Prefer small, focused test scenarios.** A test that sends "build a workflow that sends an email" exercises fewer tools than "build a workflow, run it, debug the failure, and fix it". Fewer tools = fewer points of divergence.
+- **Re-record the specific test that broke**, not all tests. Each test has independent recordings.
+- **After re-recording, always verify replay** by running without the API key. A successful recording doesn't guarantee a successful replay — the `IdRemapper` needs to learn the right mappings.
+- **When changing prompts**, check if the first 80 characters of the system prompt changed. If they did, all tests using that agent type need re-recording.
+- **When adding tools**, only re-record tests that exercise the affected agent. Unaffected tests continue to replay correctly.
+
 ## Table of Contents
 
+- [Robustness and Maintenance](#robustness-and-maintenance)
 - [Architecture Overview](#architecture-overview)
 - [How Recording Works](#how-recording-works)
 - [How Replay Works](#how-replay-works)
