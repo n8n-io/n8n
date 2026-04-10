@@ -229,6 +229,15 @@ export class Expression {
 
 	private static vmEvaluator?: IExpressionEvaluator;
 
+	/**
+	 * Tracks whether the VM engine is currently evaluating an expression.
+	 * When true, nested expression evaluations (e.g. from $parameter proxy)
+	 * fall back to the legacy evaluator to avoid re-entrant bridge calls.
+	 * This is a temporary workaround until the bridge supports closure-scoped
+	 * evaluation contexts (evalClosureSync).
+	 */
+	private static vmExecuting = false;
+
 	constructor(private readonly timezone: string) {}
 
 	/**
@@ -586,12 +595,27 @@ export class Expression {
 	private renderExpression(expression: string, data: IWorkflowDataProxyData) {
 		// Use VM evaluator if engine is set to 'vm' and we're not in the browser
 		if (Expression.expressionEngine === 'vm' && !IS_FRONTEND) {
+			// If the VM bridge is already executing, a host-side callback
+			// (e.g. $parameter proxy) triggered a nested expression evaluation.
+			// Fall back to the legacy evaluator to avoid re-entrant bridge calls.
+			// This will be removed once the bridge uses evalClosureSync.
+			if (Expression.vmExecuting) {
+				try {
+					return evaluateExpression(expression, data);
+				} catch (error) {
+					if (isExpressionError(error)) throw error;
+					if (isSyntaxError(error)) throw new ExpressionError('invalid syntax');
+				}
+				return null;
+			}
+
 			if (!Expression.vmEvaluator) {
 				throw new UnexpectedError(
 					'N8N_EXPRESSION_ENGINE=vm is enabled but VM evaluator is not initialized. Call Expression.initExpressionEngine() during application startup.',
 				);
 			}
 
+			Expression.vmExecuting = true;
 			try {
 				const result = Expression.vmEvaluator.evaluate(expression, data, this, {
 					timezone: this.timezone,
@@ -599,6 +623,8 @@ export class Expression {
 				return result as string | null | (() => unknown);
 			} catch (error) {
 				throw mapVmError(error);
+			} finally {
+				Expression.vmExecuting = false;
 			}
 		}
 
