@@ -1,6 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { SharedWorkflowRepository, User, WorkflowEntity } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
+import { z } from 'zod';
 
 import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workflow.tool';
 
@@ -399,6 +400,36 @@ describe('update-workflow MCP tool', () => {
 				{ nodeName: 'Webhook', credentialName: 'My Cred', credentialType: 'webhookAuth' },
 			]);
 			expect(response.note).toBeUndefined();
+		});
+
+		test('structuredContent conforms to declared outputSchema under strict validation', async () => {
+			// Regression for #28274: MCP publishes outputSchema with additionalProperties: false,
+			// so any field returned by the handler but missing from the schema breaks strict clients.
+			mockAutoPopulateNodeCredentials.mockResolvedValue({
+				assignments: [
+					{ nodeName: 'Webhook', credentialName: 'My Cred', credentialType: 'webhookAuth' },
+				],
+				skippedHttpNodes: [],
+			});
+
+			const tool = createTool();
+			const result = (await tool.handler(
+				{ workflowId: 'wf-1', code: 'const wf = ...' } as never,
+				{} as never,
+			)) as { structuredContent: unknown };
+
+			const envelopeShape = tool.config.outputSchema as z.ZodRawShape;
+			const itemsField = envelopeShape.autoAssignedCredentials as z.ZodArray<
+				z.ZodObject<z.ZodRawShape>
+			>;
+			const strictSchema = z
+				.object({
+					...envelopeShape,
+					autoAssignedCredentials: z.array(itemsField.element.strict()),
+				})
+				.strict();
+
+			expect(() => strictSchema.parse(result.structuredContent)).not.toThrow();
 		});
 
 		test('includes note about skipped HTTP nodes', async () => {
