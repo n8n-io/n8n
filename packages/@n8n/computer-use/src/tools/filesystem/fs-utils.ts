@@ -1,6 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
+import { isProtectedSettingsPath } from '../../config';
 import type { AffectedResource } from '../types';
 
 const MAX_ENTRIES = 10_000;
@@ -206,5 +207,21 @@ export async function buildFilesystemResource(
 	description: string,
 ): Promise<AffectedResource> {
 	const absolutePath = await resolveSafePath(dir, inputPath);
+
+	if (isProtectedSettingsPath(absolutePath)) {
+		throw new Error(`Access denied: cannot access "${inputPath}"`);
+	}
+
+	// Symlink defense: also check the real path to prevent symlink-based bypasses
+	try {
+		const realPath = await fs.realpath(absolutePath);
+		if (realPath !== absolutePath && isProtectedSettingsPath(realPath)) {
+			throw new Error(`Access denied: cannot access "${inputPath}"`);
+		}
+	} catch (error) {
+		// realpath throws ENOENT for non-existent paths — the logical check above is sufficient
+		if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+	}
+
 	return { toolGroup, resource: absolutePath, description };
 }

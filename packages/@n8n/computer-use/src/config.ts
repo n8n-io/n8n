@@ -250,6 +250,23 @@ export function getSettingsFilePath(): string {
 	return path.join(os.homedir(), '.n8n-gateway', 'settings.json');
 }
 
+let _settingsDir: string | undefined;
+
+/** Return the directory containing the gateway settings file (cached). */
+export function getSettingsDir(): string {
+	_settingsDir ??= path.dirname(getSettingsFilePath());
+	return _settingsDir;
+}
+
+/**
+ * Check if an absolute path falls within the gateway settings directory.
+ * Used to prevent computer-use tools from modifying their own configuration.
+ */
+export function isProtectedSettingsPath(absolutePath: string): boolean {
+	const dir = getSettingsDir();
+	return absolutePath === dir || absolutePath.startsWith(dir + path.sep);
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
