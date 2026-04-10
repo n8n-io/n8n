@@ -66,31 +66,42 @@ export const test = base.extend<InstanceAiFixtures>({
 
 			await services.proxy.clearAllExpectations();
 
-			// Load tool trace for ID remapping
-			const traceEvents = await loadTraceFile(folder);
+			// Recording mode: real API key, not CI → proxy forwards to real API,
+			// backend records tool I/O. Replay mode: load existing expectations
+			// and trace events so the proxy serves recorded responses and the
+			// backend remaps tool IDs.
+			const isRecording = !process.env.CI && HAS_REAL_API_KEY;
 
-			// With a real API key and no trace file yet: recording mode.
-			// Skip loading old expectations so the proxy forwards to the real API.
-			// With trace file or no API key: replay mode — load expectations.
-			const isRecording = !process.env.CI && HAS_REAL_API_KEY && traceEvents.length === 0;
 			if (!isRecording) {
+				const traceEvents = await loadTraceFile(folder);
 				await services.proxy.loadExpectations(folder, {
 					sequential: true,
 				});
-			}
 
-			// Activate the test slug (and optionally load trace events for replay)
-			try {
-				await fetch(`${backendUrl}/rest/instance-ai/test/tool-trace`, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						slug: testSlug,
-						...(traceEvents.length > 0 ? { events: traceEvents } : {}),
-					}),
-				});
-			} catch {
-				// Trace endpoint may not be available
+				// Load trace events for replay ID remapping
+				try {
+					await fetch(`${backendUrl}/rest/instance-ai/test/tool-trace`, {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							slug: testSlug,
+							...(traceEvents.length > 0 ? { events: traceEvents } : {}),
+						}),
+					});
+				} catch {
+					// Trace endpoint may not be available
+				}
+			} else {
+				// In recording mode, just activate the slug (no trace events to load)
+				try {
+					await fetch(`${backendUrl}/rest/instance-ai/test/tool-trace`, {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ slug: testSlug }),
+					});
+				} catch {
+					// Trace endpoint may not be available
+				}
 			}
 
 			await use(undefined);
