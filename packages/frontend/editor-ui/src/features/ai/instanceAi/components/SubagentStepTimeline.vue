@@ -2,7 +2,8 @@
 import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
 import { N8nButton, N8nIcon, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import { computed } from 'vue';
 import { getToolIcon, useToolLabel } from '../toolLabels';
 import ButtonLike from './ButtonLike.vue';
@@ -130,11 +131,11 @@ const steps = computed((): TimelineStep[] => {
 							<template v-else>{{ step.label }}</template>
 						</N8nButton>
 					</CollapsibleTrigger>
-					<CollapsibleContent :class="$style.toggleContent">
+					<AnimatedCollapsibleContent :class="$style.toggleContent">
 						<DataSection>
 							<InstanceAiMarkdown :content="step.textContent!" />
 						</DataSection>
-					</CollapsibleContent>
+					</AnimatedCollapsibleContent>
 				</CollapsibleRoot>
 				<ButtonLike v-else>
 					<N8nIcon :icon="step.icon" size="small" />

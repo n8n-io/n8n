@@ -2,7 +2,8 @@
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import { computed } from 'vue';
 import { getToolIcon } from '../toolLabels';
 import { getGroupToolIcons, type ResponseGroupSegment } from '../useTimelineGrouping';
@@ -105,9 +106,9 @@ const isCollapsible = computed(
 			</TimelineStepButton>
 		</CollapsibleTrigger>
 		<!-- Lazy-mount: only render content when opened to avoid reka-ui RAF overhead -->
-		<CollapsibleContent v-if="isOpen" force-mount>
+		<AnimatedCollapsibleContent>
 			<AgentTimeline :agent-node="props.agentNode" :visible-entries="props.group.entries" />
-		</CollapsibleContent>
+		</AnimatedCollapsibleContent>
 	</CollapsibleRoot>
 
 	<!-- Flat: groups with only text + special UI (questions, plan-review) -->

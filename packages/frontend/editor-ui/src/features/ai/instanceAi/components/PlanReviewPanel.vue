@@ -8,6 +8,8 @@
 import { N8nButton, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
+import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 
 export interface PlannedTaskArg {
@@ -40,6 +42,7 @@ const isResolved = ref(false);
 const resolvedAction = ref<'approved' | 'changes-requested' | null>(null);
 
 const hasFeedback = computed(() => feedback.value.trim().length > 0);
+const isExpanded = ref(!props.readOnly);
 
 function getDescription(task: PlannedTaskArg): string {
 	let text = task.spec;
@@ -69,15 +72,17 @@ function handleRequestChanges() {
 </script>
 
 <template>
-	<div :class="$style.root" data-test-id="instance-ai-plan-review">
-		<!-- Header -->
-		<div :class="$style.header">
-			<N8nText bold>
-				{{ i18n.baseText('instanceAi.planReview.title') }}
-			</N8nText>
-		</div>
+	<CollapsibleRoot v-model:open="isExpanded" :class="$style.root" data-test-id="instance-ai-plan-review">
+		<CollapsibleTrigger as-child>
+			<!-- Header -->
+			<div :class="$style.header">
+				<N8nText bold>
+					{{ i18n.baseText('instanceAi.planReview.title') }}
+				</N8nText>
+			</div>
+		</CollapsibleTrigger>
 
-		<!-- Task list -->
+		<AnimatedCollapsibleContent>
 		<div :class="$style.tasks">
 			<div v-for="(task, idx) in plannedTasks" :key="task.id" :class="$style.taskItem">
 				<div :class="$style.taskRow">
@@ -123,7 +128,8 @@ function handleRequestChanges() {
 				</N8nButton>
 			</div>
 		</ConfirmationFooter>
-	</div>
+		</AnimatedCollapsibleContent>
+	</CollapsibleRoot>
 </template>
 
 <style lang="scss" module>

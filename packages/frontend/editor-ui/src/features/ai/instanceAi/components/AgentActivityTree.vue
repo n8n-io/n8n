@@ -3,7 +3,8 @@ import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useElementHover } from '@vueuse/core';
-import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import { computed, toRef, useTemplateRef } from 'vue';
 import type { ArtifactInfo } from '../agentTimeline.utils';
 import { useInstanceAiStore } from '../instanceAi.store';
@@ -68,9 +69,9 @@ function resolveArtifactName(artifact: ArtifactInfo): string {
 				{{ i18n.baseText('instanceAi.message.reasoning') }}
 			</N8nButton>
 		</CollapsibleTrigger>
-		<CollapsibleContent>
+		<AnimatedCollapsibleContent>
 			<N8nText tag="div" :class="$style.reasoningContent">{{ props.agentNode.reasoning }}</N8nText>
-		</CollapsibleContent>
+		</AnimatedCollapsibleContent>
 	</CollapsibleRoot>
 
 	<!-- Completed with responseId grouping: collapsed response groups + artifacts + trailing text -->

@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { N8nCallout, N8nIcon } from '@n8n/design-system';
-import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import { computed, ref, watch } from 'vue';
 import SubagentStepTimeline from './SubagentStepTimeline.vue';
 import TimelineStepButton from './TimelineStepButton.vue';
@@ -49,9 +50,9 @@ watch(
 			</TimelineStepButton>
 		</CollapsibleTrigger>
 		<!-- Lazy-mount: only render content when opened to avoid reka-ui RAF overhead -->
-		<CollapsibleContent v-if="isOpen" :class="$style.content" force-mount>
+		<AnimatedCollapsibleContent :class="$style.content">
 			<SubagentStepTimeline :agent-node="props.agentNode" />
-		</CollapsibleContent>
+		</AnimatedCollapsibleContent>
 	</CollapsibleRoot>
 	<!-- Error display -->
 	<N8nCallout v-if="isError && props.agentNode.error" theme="danger">
