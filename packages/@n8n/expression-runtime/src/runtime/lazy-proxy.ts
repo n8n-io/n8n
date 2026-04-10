@@ -73,13 +73,15 @@ export function getProxyPath(obj: object): string[] | undefined {
  * the isolate boundary using metadata-driven callbacks.
  *
  * Pattern:
- * 1. When property accessed: Call __getValueAtPath([path]) to get metadata
+ * 1. When property accessed: Call getValueAtPath([path]) to get metadata
  * 2. Metadata indicates type: primitive, object, array, or function
  * 3. For objects/arrays: Create nested proxy for lazy loading
- * 4. For functions: Create wrapper that calls __callFunctionAtPath
+ * 4. For functions: Create wrapper that calls callFunctionAtPath
  * 5. Cache all fetched values in target to avoid repeated callbacks
  *
  * @param basePath - Current path in object tree (e.g., ['$json', 'user'])
+ * @param knownKeys - Optional pre-known keys for the proxy
+ * @param callbacks - ivm.Reference callbacks for cross-isolate communication
  * @returns Proxy object with lazy loading behavior
  */
 export function createDeepLazyProxy(
@@ -154,8 +156,8 @@ export function createDeepLazyProxy(
 			// Build path for this property
 			const path = [...basePath, prop];
 
-			// Call back to parent to get metadata/value
-			// Note: __getValueAtPath is an ivm.Reference set by bridge
+			// Call back to host to get metadata/value
+			// Note: getValueAtPath is an ivm.Reference passed via callbacks
 			const value = getValueAtPath.applySync(null, [path], {
 				arguments: { copy: true },
 				result: { copy: true },
