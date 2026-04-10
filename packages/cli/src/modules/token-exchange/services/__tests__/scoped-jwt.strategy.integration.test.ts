@@ -17,13 +17,13 @@ const jwtService = new JwtService(instanceSettings, mock());
 
 function makeBearerReq(token: string): AuthenticatedRequest {
 	const req = mock<AuthenticatedRequest>();
-	req.headers = { authorization: `Bearer ${token}` } as AuthenticatedRequest['headers'];
+	req.headers = { authorization: `Bearer ${token}` } as unknown as AuthenticatedRequest['headers'];
 	return req;
 }
 
 function makeApiKeyReq(token: string): AuthenticatedRequest {
 	const req = mock<AuthenticatedRequest>();
-	req.headers = { 'x-n8n-api-key': token } as AuthenticatedRequest['headers'];
+	req.headers = { 'x-n8n-api-key': token } as unknown as AuthenticatedRequest['headers'];
 	return req;
 }
 
