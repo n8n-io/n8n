@@ -1482,9 +1482,7 @@ onBeforeUnmount(() => {
 					:disabled="readOnlyEnv || !workflowPermissions.update"
 					:label="i18n.baseText('workflowSettings.save')"
 					:variant="isDirty ? 'solid' : 'outline'"
-					:class="$style['save-button']"
 					size="large"
-					float="right"
 					@click="saveSettings"
 				/>
 			</div>
@@ -1509,11 +1507,9 @@ onBeforeUnmount(() => {
 	}
 }
 
-.save-button {
-	transition:
-		background-color 150ms ease,
-		box-shadow 150ms ease,
-		color 150ms ease;
+.action-buttons {
+	display: flex;
+	justify-content: flex-end;
 }
 
 .dataRedactionHint {
