@@ -223,6 +223,7 @@ onMounted(() => {
 
 .protocolCard {
 	margin-bottom: 0;
+	padding-bottom: 0;
 	border-bottom: none;
 	border-bottom-left-radius: 0;
 	border-bottom-right-radius: 0;
