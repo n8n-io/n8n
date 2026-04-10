@@ -1,5 +1,5 @@
-import { SET_NODE_TYPE } from '../utils';
 import type { BinaryCheck } from '../types';
+import { SET_NODE_TYPE } from '../utils';
 
 /**
  * Set nodes should have at least one assignment configured.
@@ -10,7 +10,7 @@ export const noEmptySetNodes: BinaryCheck = {
 	name: 'no_empty_set_nodes',
 	description: 'Set nodes have at least one assignment configured',
 	kind: 'deterministic',
-	async run(workflow) {
+	run(workflow) {
 		const setNodes = (workflow.nodes ?? []).filter((n) => n.type === SET_NODE_TYPE);
 		if (setNodes.length === 0) return { pass: true };
 

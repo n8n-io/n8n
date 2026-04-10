@@ -9,8 +9,8 @@
 //   pnpm eval:subagent --dataset my-dataset --experiment my-exp --verbose
 // ---------------------------------------------------------------------------
 
-import { evaluate } from 'langsmith/evaluation';
 import { Client } from 'langsmith/client';
+import { evaluate } from 'langsmith/evaluation';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, basename } from 'node:path';
 
@@ -106,33 +106,34 @@ function loadLocalTestCases(filter?: string, subagent?: string): SubAgentTestCas
 		files = files.filter((f) => f.includes(filter));
 	}
 
-	return files
-		.map((file) => {
-			const raw = readFileSync(join(DATA_DIR, file), 'utf-8');
-			let parsed: {
-				id?: string;
-				prompt: string;
-				subagent?: string;
-				systemPrompt?: string;
-				tools?: string[];
-				maxSteps?: number;
-			};
-			try {
-				parsed = JSON.parse(raw) as typeof parsed;
-			} catch {
-				console.error(`Failed to parse ${file}`);
-				return null;
-			}
-			return {
-				id: parsed.id ?? basename(file, '.json'),
-				prompt: parsed.prompt,
-				subagent: parsed.subagent ?? subagent,
-				systemPrompt: parsed.systemPrompt,
-				tools: parsed.tools,
-				maxSteps: parsed.maxSteps,
-			};
-		})
-		.filter((tc): tc is SubAgentTestCase => tc !== null);
+	const cases: SubAgentTestCase[] = [];
+	for (const file of files) {
+		const raw = readFileSync(join(DATA_DIR, file), 'utf-8');
+		let parsed: {
+			id?: string;
+			prompt: string;
+			subagent?: string;
+			systemPrompt?: string;
+			tools?: string[];
+			maxSteps?: number;
+		};
+		try {
+			parsed = JSON.parse(raw) as typeof parsed;
+		} catch {
+			console.error(`Failed to parse ${file}`);
+			continue;
+		}
+		const tc: SubAgentTestCase = {
+			id: parsed.id ?? basename(file, '.json'),
+			prompt: parsed.prompt,
+		};
+		if (parsed.subagent ?? subagent) tc.subagent = parsed.subagent ?? subagent;
+		if (parsed.systemPrompt) tc.systemPrompt = parsed.systemPrompt;
+		if (parsed.tools) tc.tools = parsed.tools;
+		if (parsed.maxSteps) tc.maxSteps = parsed.maxSteps;
+		cases.push(tc);
+	}
+	return cases;
 }
 
 // ---------------------------------------------------------------------------
@@ -337,8 +338,10 @@ async function main(): Promise<void> {
 	if (!existsSync(nodesJsonPath)) {
 		console.error(
 			'Error: evaluations/nodes.json not found. Node search will return empty results.\n' +
-				'Generate it from a running n8n instance:\n' +
-				'  curl http://localhost:5678/rest/node-types > packages/@n8n/instance-ai/evaluations/nodes.json',
+				'Generate it from a running n8n instance (requires auth):\n' +
+				'  1. curl -c cookies.txt -X POST http://localhost:5678/rest/login -H "Content-Type: application/json" -d \'{"email":"...","password":"..."}\'\n' +
+				'  2. curl -b cookies.txt http://localhost:5678/types/nodes.json > packages/@n8n/instance-ai/evaluations/nodes.json\n' +
+				'  3. rm cookies.txt',
 		);
 		process.exit(1);
 	}

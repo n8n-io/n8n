@@ -4,7 +4,7 @@ export const hasNodes: BinaryCheck = {
 	name: 'has_nodes',
 	description: 'Workflow contains at least one node',
 	kind: 'deterministic',
-	async run(workflow) {
+	run(workflow) {
 		const count = (workflow.nodes ?? []).length;
 		return {
 			pass: count > 0,

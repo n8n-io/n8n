@@ -1,6 +1,6 @@
 import { createEvalAgent, extractText } from '../../../src/utils/eval-agents';
-import type { BinaryCheck, BinaryCheckContext } from '../types';
 import type { WorkflowResponse } from '../../clients/n8n-client';
+import type { BinaryCheck, BinaryCheckContext } from '../types';
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 

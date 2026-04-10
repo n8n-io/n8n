@@ -6,12 +6,12 @@
 // createFromWorkflowJSON calls so we can evaluate the built workflow.
 // ---------------------------------------------------------------------------
 
+import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
-
+import type { CapturedWorkflow } from './types';
 // Direct relative import — works at eval time via tsx, avoids adding cli as a dependency
 import {
 	resolveNodeTypeDefinition,
@@ -32,7 +32,6 @@ import type {
 	SearchableNodeDescription,
 	WorkflowDetail,
 } from '../../src/types';
-import type { CapturedWorkflow } from './types';
 
 // ---------------------------------------------------------------------------
 // Captured workflow accumulator
@@ -190,7 +189,11 @@ function loadNodes(): RawNodeType[] {
 		cachedNodes = [];
 		return cachedNodes;
 	}
-	cachedNodes = JSON.parse(fs.readFileSync(NODES_JSON_PATH, 'utf-8')) as RawNodeType[];
+	try {
+		cachedNodes = JSON.parse(fs.readFileSync(NODES_JSON_PATH, 'utf-8')) as RawNodeType[];
+	} catch {
+		cachedNodes = [];
+	}
 	return cachedNodes;
 }
 
@@ -236,7 +239,7 @@ function createStubNodeService(): InstanceAiNodeService {
 					return n.version === version;
 				});
 			}
-			if (!desc) desc = nodes.find((n) => n.name === nodeType);
+			desc ??= nodes.find((n) => n.name === nodeType);
 			if (!desc) {
 				return {
 					name: nodeType,
@@ -383,14 +386,14 @@ function createStubDataTableService(): InstanceAiDataTableService {
 		async queryRows() {
 			return { count: 0, data: [] };
 		},
-		async insertRows(_id, rows) {
-			return { insertedCount: rows.length };
+		async insertRows(dataTableId, rows) {
+			return { insertedCount: rows.length, dataTableId, tableName: 'stub', projectId: 'stub' };
 		},
-		async updateRows() {
-			return { updatedCount: 0 };
+		async updateRows(dataTableId) {
+			return { updatedCount: 0, dataTableId, tableName: 'stub', projectId: 'stub' };
 		},
-		async deleteRows() {
-			return { deletedCount: 0 };
+		async deleteRows(dataTableId) {
+			return { deletedCount: 0, dataTableId, tableName: 'stub', projectId: 'stub' };
 		},
 	};
 }

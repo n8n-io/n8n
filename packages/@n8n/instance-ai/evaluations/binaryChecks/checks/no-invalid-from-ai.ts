@@ -24,7 +24,7 @@ export const noInvalidFromAi: BinaryCheck = {
 	name: 'no_invalid_from_ai',
 	description: 'Only tool nodes use $fromAI() in their parameters',
 	kind: 'deterministic',
-	async run(workflow) {
+	run(workflow) {
 		const nodes = workflow.nodes ?? [];
 		if (nodes.length === 0) return { pass: true };
 

@@ -1,12 +1,12 @@
-import { collectAllConnectedNodes, getActiveNodes } from '../utils';
 import type { WorkflowResponse } from '../../clients/n8n-client';
 import type { BinaryCheck } from '../types';
+import { collectAllConnectedNodes, getActiveNodes } from '../utils';
 
 export const allNodesConnected: BinaryCheck = {
 	name: 'all_nodes_connected',
 	description: 'Every non-sticky node is part of the connection graph',
 	kind: 'deterministic',
-	async run(workflow: WorkflowResponse) {
+	run(workflow: WorkflowResponse) {
 		const activeNodes = getActiveNodes(workflow.nodes ?? []);
 		if (activeNodes.length === 0) return { pass: true };
 

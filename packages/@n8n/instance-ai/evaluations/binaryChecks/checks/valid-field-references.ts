@@ -1,8 +1,8 @@
 import { discoverOutputSchemaForNode } from '@n8n/workflow-sdk';
 
 import type { WorkflowNodeResponse, WorkflowResponse } from '../../clients/n8n-client';
-import { SET_NODE_TYPE } from '../utils';
 import type { BinaryCheck } from '../types';
+import { SET_NODE_TYPE } from '../utils';
 
 // ---------------------------------------------------------------------------
 // Expression field reference extraction
@@ -202,7 +202,7 @@ export const validFieldReferences: BinaryCheck = {
 	name: 'valid_field_references',
 	description: 'Expressions reference fields that exist in upstream node output schemas',
 	kind: 'deterministic',
-	async run(workflow: WorkflowResponse) {
+	run(workflow: WorkflowResponse) {
 		const nodes = workflow.nodes ?? [];
 		if (nodes.length === 0) return { pass: true };
 

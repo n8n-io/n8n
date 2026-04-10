@@ -46,5 +46,8 @@ export interface BinaryCheck {
 	description: string;
 	/** Whether this check requires an LLM call */
 	kind: 'deterministic' | 'llm';
-	run(workflow: WorkflowResponse, ctx: BinaryCheckContext): Promise<BinaryCheckResult>;
+	run(
+		workflow: WorkflowResponse,
+		ctx: BinaryCheckContext,
+	): BinaryCheckResult | Promise<BinaryCheckResult>;
 }

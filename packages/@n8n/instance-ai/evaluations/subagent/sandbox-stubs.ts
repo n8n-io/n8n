@@ -11,14 +11,14 @@ import { createTool } from '@mastra/core/tools';
 import { layoutWorkflowJSON } from '@n8n/workflow-sdk';
 import { z } from 'zod';
 
-import type { InstanceAiContext } from '../../src/types';
-import { parseAndValidate, partitionWarnings } from '../../src/workflow-builder';
-import { extractWorkflowCode } from '../../src/workflow-builder/extract-code';
-import { ensureWebhookIds } from '../../src/tools/workflows/submit-workflow.tool';
 import {
 	buildCredentialMap,
 	resolveCredentials,
 } from '../../src/tools/workflows/resolve-credentials';
+import { ensureWebhookIds } from '../../src/tools/workflows/submit-workflow.tool';
+import type { InstanceAiContext } from '../../src/types';
+import { parseAndValidate, partitionWarnings } from '../../src/workflow-builder';
+import { extractWorkflowCode } from '../../src/workflow-builder/extract-code';
 
 // ---------------------------------------------------------------------------
 // In-memory filesystem
@@ -53,6 +53,8 @@ export class MemoryFs {
 // Sandbox tool stubs
 // ---------------------------------------------------------------------------
 
+// Stub tool execute methods implement async interfaces but don't need await
+/* eslint-disable @typescript-eslint/require-await */
 export function createSandboxStubs(
 	fs: MemoryFs,
 	context: InstanceAiContext,
@@ -65,7 +67,7 @@ export function createSandboxStubs(
 				file_path: z.string(),
 				content: z.string(),
 			}),
-			execute: async ({ file_path, content }) => {
+			execute: async ({ file_path, content }: { file_path: string; content: string }) => {
 				fs.write(file_path, content);
 				return { success: true, path: file_path, bytes: content.length };
 			},
@@ -79,7 +81,15 @@ export function createSandboxStubs(
 				old_string: z.string(),
 				new_string: z.string(),
 			}),
-			execute: async ({ file_path, old_string, new_string }) => {
+			execute: async ({
+				file_path,
+				old_string,
+				new_string,
+			}: {
+				file_path: string;
+				old_string: string;
+				new_string: string;
+			}) => {
 				const content = fs.read(file_path);
 				if (!content) return { success: false, error: `File not found: ${file_path}` };
 				if (!content.includes(old_string)) {
@@ -96,7 +106,7 @@ export function createSandboxStubs(
 			inputSchema: z.object({
 				file_path: z.string(),
 			}),
-			execute: async ({ file_path }) => {
+			execute: async ({ file_path }: { file_path: string }) => {
 				const content = fs.read(file_path);
 				if (content === undefined) return { success: false, error: `File not found: ${file_path}` };
 				return { success: true, content };
@@ -109,7 +119,7 @@ export function createSandboxStubs(
 			inputSchema: z.object({
 				command: z.string(),
 			}),
-			execute: async ({ command }) => {
+			execute: async ({ command }: { command: string }) => {
 				// tsc check: always report clean
 				if (command.includes('tsc')) {
 					return { exitCode: 0, stdout: '', stderr: '' };
@@ -126,6 +136,7 @@ export function createSandboxStubs(
 		'submit-workflow': createSubmitWorkflowStub(fs, context),
 	};
 }
+/* eslint-enable @typescript-eslint/require-await */
 
 // ---------------------------------------------------------------------------
 // submit-workflow stub
@@ -145,7 +156,17 @@ function createSubmitWorkflowStub(fs: MemoryFs, context: InstanceAiContext) {
 			projectId: z.string().optional(),
 			name: z.string().optional(),
 		}),
-		execute: async ({ filePath, workflowId, projectId, name }) => {
+		execute: async ({
+			filePath,
+			workflowId,
+			projectId,
+			name,
+		}: {
+			filePath?: string;
+			workflowId?: string;
+			projectId?: string;
+			name?: string;
+		}) => {
 			const resolvedPath = filePath ?? '/home/daytona/workspace/src/workflow.ts';
 			const code = fs.read(resolvedPath);
 

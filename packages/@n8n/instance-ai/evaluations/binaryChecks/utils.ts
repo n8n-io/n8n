@@ -46,12 +46,12 @@ interface ConnectionLink {
 }
 
 /**
- * Iterate all connections in a workflow, calling `cb` for each link.
+ * Iterate all connections in a workflow, calling `visitor` for each link.
  * Handles the n8n format: `{ [source]: { [connType]: [ [ { node, type, index } ] ] } }`
  */
 export function forEachConnection(
 	connections: Record<string, unknown>,
-	cb: (source: string, connectionType: string, link: ConnectionLink) => void,
+	visitor: (source: string, connectionType: string, link: ConnectionLink) => void,
 ): void {
 	for (const [sourceName, outputs] of Object.entries(connections)) {
 		if (typeof outputs !== 'object' || outputs === null) continue;
@@ -62,7 +62,7 @@ export function forEachConnection(
 				if (!Array.isArray(outputSlot)) continue;
 				for (const link of outputSlot) {
 					if (typeof link === 'object' && link !== null && 'node' in link) {
-						cb(sourceName, connType, link as ConnectionLink);
+						visitor(sourceName, connType, link as ConnectionLink);
 					}
 				}
 			}

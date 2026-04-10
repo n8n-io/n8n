@@ -1,5 +1,5 @@
-import { HTTP_REQUEST_TYPE, SET_NODE_TYPE } from '../utils';
 import type { BinaryCheck } from '../types';
+import { HTTP_REQUEST_TYPE, SET_NODE_TYPE } from '../utils';
 
 const CREDENTIAL_FIELD_PATTERNS = [
 	/api[_-]?key/i,
@@ -98,7 +98,7 @@ export const noHardcodedCredentials: BinaryCheck = {
 	name: 'no_hardcoded_credentials',
 	description: 'No hardcoded credentials in HTTP Request headers or Set node fields',
 	kind: 'deterministic',
-	async run(workflow) {
+	run(workflow) {
 		const nodes = workflow.nodes ?? [];
 		if (nodes.length === 0) return { pass: true };
 

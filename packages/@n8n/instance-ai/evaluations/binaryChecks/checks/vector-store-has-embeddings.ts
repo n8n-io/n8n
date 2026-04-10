@@ -1,5 +1,5 @@
-import { collectTargetsByConnectionType } from '../utils';
 import type { BinaryCheck } from '../types';
+import { collectTargetsByConnectionType } from '../utils';
 
 function isVectorStoreNode(type: string): boolean {
 	const shortName = type.split('.').pop() ?? '';
@@ -10,7 +10,7 @@ export const vectorStoreHasEmbeddings: BinaryCheck = {
 	name: 'vector_store_has_embeddings',
 	description: 'Vector store nodes have an embeddings model connected',
 	kind: 'deterministic',
-	async run(workflow) {
+	run(workflow) {
 		const nodes = (workflow.nodes ?? []).filter((n) => isVectorStoreNode(n.type));
 		if (nodes.length === 0) return { pass: true };
 

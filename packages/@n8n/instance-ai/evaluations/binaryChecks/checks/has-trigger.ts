@@ -1,11 +1,11 @@
-import { isTriggerNode } from '../utils';
 import type { BinaryCheck } from '../types';
+import { isTriggerNode } from '../utils';
 
 export const hasTrigger: BinaryCheck = {
 	name: 'has_trigger',
 	description: 'Workflow contains a trigger or start node',
 	kind: 'deterministic',
-	async run(workflow) {
+	run(workflow) {
 		const nodes = workflow.nodes ?? [];
 		const triggers = nodes.filter((n) => isTriggerNode(n.type));
 		return {

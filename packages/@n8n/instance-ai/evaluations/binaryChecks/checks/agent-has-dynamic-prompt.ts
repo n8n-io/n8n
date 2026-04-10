@@ -1,5 +1,5 @@
-import { AGENT_TYPE } from '../utils';
 import type { BinaryCheck } from '../types';
+import { AGENT_TYPE } from '../utils';
 
 function containsExpression(value: unknown): boolean {
 	if (typeof value === 'string') return value.startsWith('=');
@@ -13,7 +13,7 @@ export const agentHasDynamicPrompt: BinaryCheck = {
 	name: 'agent_has_dynamic_prompt',
 	description: 'Agent nodes have an expression in their prompt and a system message',
 	kind: 'deterministic',
-	async run(workflow) {
+	run(workflow) {
 		const nodes = (workflow.nodes ?? []).filter((n) => n.type === AGENT_TYPE);
 		if (nodes.length === 0) return { pass: true };
 

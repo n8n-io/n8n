@@ -1,6 +1,6 @@
-import { forEachConnection, getActiveNodes, isTriggerNode } from '../utils';
 import type { WorkflowResponse } from '../../clients/n8n-client';
 import type { BinaryCheck } from '../types';
+import { forEachConnection, getActiveNodes, isTriggerNode } from '../utils';
 
 function buildForwardAdjacency(connections: Record<string, unknown>): Map<string, Set<string>> {
 	const adj = new Map<string, Set<string>>();
@@ -63,7 +63,7 @@ export const noUnreachableNodes: BinaryCheck = {
 	name: 'no_unreachable_nodes',
 	description: 'All nodes are reachable from at least one trigger',
 	kind: 'deterministic',
-	async run(workflow: WorkflowResponse) {
+	run(workflow: WorkflowResponse) {
 		const activeNodes = getActiveNodes(workflow.nodes ?? []);
 		if (activeNodes.length === 0) return { pass: true };
 
@@ -72,7 +72,7 @@ export const noUnreachableNodes: BinaryCheck = {
 			return { pass: true, comment: 'Skipped: no triggers found' };
 		}
 
-		const connections = (workflow.connections ?? {}) as Record<string, unknown>;
+		const connections = workflow.connections ?? {};
 		const forward = buildForwardAdjacency(connections);
 		const reverse = buildReverseAdjacency(connections);
 

@@ -22,7 +22,7 @@ export const validNodeConfig: BinaryCheck = {
 	name: 'valid_node_config',
 	description: 'Node parameters match their Zod schemas (required params, valid options)',
 	kind: 'deterministic',
-	async run(workflow: WorkflowResponse) {
+	run(workflow: WorkflowResponse) {
 		const nodes = workflow.nodes ?? [];
 		if (nodes.length === 0) return { pass: true };
 

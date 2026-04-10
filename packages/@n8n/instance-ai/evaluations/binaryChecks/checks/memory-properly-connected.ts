@@ -1,5 +1,5 @@
-import { collectSourcesByConnectionType } from '../utils';
 import type { BinaryCheck } from '../types';
+import { collectSourcesByConnectionType } from '../utils';
 
 function isMemoryNode(type: string): boolean {
 	const shortName = type.split('.').pop() ?? '';
@@ -10,7 +10,7 @@ export const memoryProperlyConnected: BinaryCheck = {
 	name: 'memory_properly_connected',
 	description: 'Memory nodes are properly connected to a parent node',
 	kind: 'deterministic',
-	async run(workflow) {
+	run(workflow) {
 		const nodes = (workflow.nodes ?? []).filter((n) => isMemoryNode(n.type));
 		if (nodes.length === 0) return { pass: true };
 

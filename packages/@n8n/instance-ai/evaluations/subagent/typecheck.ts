@@ -6,8 +6,8 @@
  * agent-generated code against the @n8n/workflow-sdk type declarations.
  */
 
-import * as path from 'path';
 import * as fs from 'fs';
+import * as path from 'path';
 import * as ts from 'typescript';
 
 // ---------------------------------------------------------------------------

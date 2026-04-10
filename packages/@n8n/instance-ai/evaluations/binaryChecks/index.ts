@@ -5,8 +5,8 @@
 // returns Feedback[] compatible with the existing harness.
 // ---------------------------------------------------------------------------
 
-import type { Feedback } from '../subagent/types';
 import type { WorkflowResponse } from '../clients/n8n-client';
+import type { Feedback } from '../subagent/types';
 import { DETERMINISTIC_CHECKS, LLM_CHECKS } from './checks/index';
 import type { BinaryCheck, BinaryCheckContext } from './types';
 

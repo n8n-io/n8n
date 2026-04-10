@@ -9,7 +9,7 @@ export const noDisabledNodes: BinaryCheck = {
 	name: 'no_disabled_nodes',
 	description: 'No nodes are disabled in the workflow',
 	kind: 'deterministic',
-	async run(workflow) {
+	run(workflow) {
 		const disabled = (workflow.nodes ?? []).filter((n) => n.disabled === true).map((n) => n.name);
 
 		return {

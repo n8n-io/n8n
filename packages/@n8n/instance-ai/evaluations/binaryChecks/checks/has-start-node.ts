@@ -1,5 +1,5 @@
-import { isTriggerNode } from '../utils';
 import type { BinaryCheck } from '../types';
+import { isTriggerNode } from '../utils';
 
 function hasDownstreamConnection(
 	sourceName: string,
@@ -21,7 +21,7 @@ export const hasStartNode: BinaryCheck = {
 	name: 'has_start_node',
 	description: 'At least one trigger has a downstream node connected',
 	kind: 'deterministic',
-	async run(workflow) {
+	run(workflow) {
 		const nodes = workflow.nodes ?? [];
 		if (nodes.length === 0) return { pass: false, comment: 'Workflow has no nodes' };
 

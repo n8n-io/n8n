@@ -7,14 +7,8 @@
 
 import type { ToolsInput } from '@mastra/core/agent';
 import { createTool } from '@mastra/core/tools';
+import { z } from 'zod';
 
-import { createSubAgent } from '../../src/agent/sub-agent-factory';
-import { createAllTools } from '../../src/tools/index';
-import { buildWorkflowInputSchema } from '../../src/tools/workflows/build-workflow.tool';
-import { BUILDER_AGENT_PROMPT } from '../../src/tools/orchestration/build-workflow-agent.prompt';
-import { runBinaryChecks } from '../binaryChecks/index';
-import type { BinaryCheckContext } from '../binaryChecks/types';
-import type { WorkflowResponse } from '../clients/n8n-client';
 import { createStubContext } from './stub-context';
 import { typeCheckSDKCode } from './typecheck';
 import type {
@@ -24,6 +18,12 @@ import type {
 	SubAgentRunnerConfig,
 	SubAgentTestCase,
 } from './types';
+import { createSubAgent } from '../../src/agent/sub-agent-factory';
+import { createAllTools } from '../../src/tools/index';
+import { BUILDER_AGENT_PROMPT } from '../../src/tools/orchestration/build-workflow-agent.prompt';
+import { runBinaryChecks } from '../binaryChecks/index';
+import type { BinaryCheckContext } from '../binaryChecks/types';
+import type { WorkflowResponse } from '../clients/n8n-client';
 
 // ---------------------------------------------------------------------------
 // Default builder tool set (tool-mode, no sandbox)
@@ -88,12 +88,25 @@ const SUBAGENT_TYPES: Record<string, SubAgentTypeConfig> = {
  * code before delegating to the real tool. Mirrors the production sandbox flow
  * where the agent runs `tsc` and gets type errors back for self-correction.
  */
+const evalBuildWorkflowSchema = z.object({
+	code: z.string().describe('Full TypeScript workflow code using @n8n/workflow-sdk.'),
+	workflowId: z.string().optional().describe('Existing workflow ID to update (omit to create new)'),
+	projectId: z.string().optional().describe('Project ID. Defaults to personal project.'),
+	name: z.string().optional().describe('Workflow name (required for new workflows)'),
+});
+
 function wrapWithTypeCheck(original: ToolsInput[string]): ToolsInput[string] {
 	return createTool({
 		id: 'build-workflow',
-		description: (original as { description?: string }).description ?? '',
-		inputSchema: buildWorkflowInputSchema,
-		execute: async (input) => {
+		description:
+			'Build a workflow from TypeScript SDK code. Pass full code via the `code` parameter.',
+		inputSchema: evalBuildWorkflowSchema,
+		execute: async (input: {
+			code: string;
+			workflowId?: string;
+			projectId?: string;
+			name?: string;
+		}) => {
 			const code = input.code;
 			if (typeof code === 'string' && code.length > 0) {
 				const typeErrors = typeCheckSDKCode(code);
@@ -104,7 +117,7 @@ function wrapWithTypeCheck(original: ToolsInput[string]): ToolsInput[string] {
 					};
 				}
 			}
-			return (original as { execute: (input: unknown) => Promise<unknown> }).execute(input);
+			return await (original as { execute: (input: unknown) => Promise<unknown> }).execute(input);
 		},
 	});
 }
@@ -250,10 +263,13 @@ export async function runSubAgent(
 						.payload;
 					const res = payload?.result as Record<string, unknown> | undefined;
 					const status = res?.success === false ? 'FAILED' : 'ok';
-					const detail =
-						res?.success === false
-							? `: ${String(Array.isArray(res.errors) ? (res.errors as string[]).join('; ') : String(res.error ?? '')).slice(0, 200)}`
+					const rawError = res?.error;
+					const errorMsg = Array.isArray(res?.errors)
+						? (res.errors as string[]).join('; ')
+						: typeof rawError === 'string'
+							? rawError
 							: '';
+					const detail = res?.success === false ? `: ${errorMsg.slice(0, 200)}` : '';
 					console.log(
 						`  [${testCase.id}]   result: ${payload?.toolName ?? '?'} ${status}${detail}`,
 					);
@@ -261,7 +277,8 @@ export async function runSubAgent(
 
 				// Log if agent stopped early
 				const resultRecord = result as unknown as Record<string, unknown>;
-				const stopReason = String(resultRecord.finishReason ?? resultRecord.stopReason ?? '?');
+				const finishOrStop = resultRecord.finishReason ?? resultRecord.stopReason;
+				const stopReason = typeof finishOrStop === 'string' ? finishOrStop : '?';
 				console.log(
 					`  [${testCase.id}] maxSteps=${String(maxSteps)}, steps used=${String(toolCalls.length)}, stopReason=${stopReason}`,
 				);

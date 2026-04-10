@@ -65,7 +65,7 @@ export const expressionsReferenceExistingNodes: BinaryCheck = {
 	name: 'expressions_reference_existing_nodes',
 	description: 'Expressions only reference nodes that exist in the workflow',
 	kind: 'deterministic',
-	async run(workflow) {
+	run(workflow) {
 		const nodes = workflow.nodes ?? [];
 		if (nodes.length === 0) return { pass: true };
 

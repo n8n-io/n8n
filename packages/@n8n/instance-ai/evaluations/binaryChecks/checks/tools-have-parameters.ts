@@ -19,7 +19,7 @@ export const toolsHaveParameters: BinaryCheck = {
 	name: 'tools_have_parameters',
 	description: 'Tool nodes have required parameters configured',
 	kind: 'deterministic',
-	async run(workflow) {
+	run(workflow) {
 		const nodes = workflow.nodes ?? [];
 		if (nodes.length === 0) return { pass: true };
 

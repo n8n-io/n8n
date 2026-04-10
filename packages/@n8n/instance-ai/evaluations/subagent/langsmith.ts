@@ -52,7 +52,7 @@ export function createFeedbackExtractor(): (args: {
 	inputs: Record<string, unknown>;
 	outputs: Record<string, unknown>;
 	referenceOutputs?: Record<string, unknown>;
-}) => { results: { key: string; score: number; comment?: string }[] } {
+}) => { results: Array<{ key: string; score: number; comment?: string }> } {
 	return ({ outputs }) => {
 		if (!outputs) {
 			return { results: [{ key: 'error', score: 0, comment: 'No outputs from run' }] };
