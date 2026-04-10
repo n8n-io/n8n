@@ -5,10 +5,11 @@ import { Container, Service } from '@n8n/di';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { UrlService } from '@/services/url.service';
 
 import { AgentChatBridge } from './agent-chat-bridge';
 import { ComponentMapper } from './component-mapper';
-import { loadChatSdk, loadMemoryState, loadSlackAdapter } from './esm-loader';
+import { loadChatSdk, loadMemoryState, loadSlackAdapter, loadTelegramAdapter } from './esm-loader';
 import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
 import { AgentRepository } from '../repositories/agent.repository';
 
@@ -54,6 +55,7 @@ export class ChatIntegrationService {
 		private readonly agentRepository: AgentRepository,
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly urlService: UrlService,
 	) {}
 
 	private connectionKey(agentId: string, type: string, credentialId: string): string {
@@ -120,10 +122,17 @@ export class ChatIntegrationService {
 			this.logger,
 			userId,
 			projectId,
+			integrationType,
 		);
 
 		// Initialize the Chat instance (connects adapters, state adapter, etc.)
 		await chat.initialize();
+
+		// Register Telegram webhook if running in webhook mode
+		if (integrationType === 'telegram' && this.getTelegramMode() === 'webhook') {
+			const botToken = this.extractTelegramBotToken(decryptedData);
+			await this.registerTelegramWebhook(botToken, agentId, projectId);
+		}
 
 		// The `chat` variable is returned by `new Chat(...)` from the ESM-only
 		// package. Its runtime shape matches our local `ChatInstance` interface.
@@ -355,6 +364,45 @@ export class ChatIntegrationService {
 		);
 	}
 
+	private extractTelegramBotToken(credential: Record<string, unknown>): string {
+		const token = credential.accessToken;
+		if (typeof token === 'string' && token) {
+			return token;
+		}
+		throw new Error(
+			'Could not extract a bot token from the Telegram credential. ' +
+				'Please ensure the credential has a valid access token from BotFather.',
+		);
+	}
+
+	private getTelegramMode(): 'webhook' | 'polling' {
+		const baseUrl = this.urlService.getWebhookBaseUrl();
+		const isPublic = baseUrl.startsWith('https://') && !baseUrl.includes('localhost');
+		return isPublic ? 'webhook' : 'polling';
+	}
+
+	private buildWebhookUrl(agentId: string, projectId: string, platform: string): string {
+		const base = this.urlService.getInstanceBaseUrl();
+		return `${base}/rest/projects/${projectId}/agents/v2/${agentId}/webhooks/${platform}`;
+	}
+
+	private async registerTelegramWebhook(
+		botToken: string,
+		agentId: string,
+		projectId: string,
+	): Promise<void> {
+		const webhookUrl = this.buildWebhookUrl(agentId, projectId, 'telegram');
+		const resp = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ url: webhookUrl }),
+		});
+		if (!resp.ok) {
+			throw new Error(`Failed to register Telegram webhook: ${await resp.text()}`);
+		}
+		this.logger.info(`[ChatIntegrationService] Telegram webhook registered: ${webhookUrl}`);
+	}
+
 	private async createAdapter(type: string, credential: Record<string, unknown>): Promise<unknown> {
 		switch (type) {
 			case 'slack': {
@@ -362,6 +410,12 @@ export class ChatIntegrationService {
 				const signingSecret = this.extractSlackSigningSecret(credential);
 				const { createSlackAdapter } = await loadSlackAdapter();
 				return createSlackAdapter({ botToken, signingSecret });
+			}
+			case 'telegram': {
+				const botToken = this.extractTelegramBotToken(credential);
+				const mode = this.getTelegramMode();
+				const { createTelegramAdapter } = await loadTelegramAdapter();
+				return createTelegramAdapter({ botToken, mode });
 			}
 			default:
 				throw new Error(`Unsupported integration type: ${type}`);

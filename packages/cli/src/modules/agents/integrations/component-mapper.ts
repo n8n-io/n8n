@@ -52,9 +52,39 @@ interface ComponentRenderContext {
  */
 export class ComponentMapper {
 	/**
-	 * Convert a suspend payload to a Chat SDK Card.
-	 * Encodes `runId:toolCallId` in button IDs for the resume flow.
+	 * Normalize components for platforms that don't support certain types.
+	 * Converts select/radio_select → individual buttons, image → text link.
 	 */
+	private normalizeForPlatform(
+		components: SuspendComponent[],
+		platform?: string,
+	): SuspendComponent[] {
+		// Slack supports everything — no normalization needed
+		if (!platform || platform === 'slack') return components;
+
+		const normalized: SuspendComponent[] = [];
+		for (const c of components) {
+			switch (c.type) {
+				case 'select':
+				case 'radio_select':
+					// Convert select options to individual buttons
+					for (const opt of c.options ?? []) {
+						normalized.push({ type: 'button', label: opt.label, value: opt.value });
+					}
+					break;
+				case 'image':
+					// Convert image to a section with a markdown link
+					if (c.url) {
+						normalized.push({ type: 'section', text: `[${c.altText ?? 'Image'}](${c.url})` });
+					}
+					break;
+				default:
+					normalized.push(c);
+			}
+		}
+		return normalized;
+	}
+
 	/**
 	 * Convert a suspend payload to a Chat SDK Card.
 	 *
@@ -64,28 +94,46 @@ export class ComponentMapper {
 	 *
 	 * @param resumeSchema - JSON Schema from the tool's `.resume()` definition.
 	 *   Used to wrap raw button values into the expected shape.
+	 * @param platform - Integration type (e.g. 'slack', 'telegram') for component normalization.
 	 */
 	async toCard(
 		payload: SuspendPayload,
 		runId: string,
 		toolCallId: string,
 		resumeSchema?: unknown,
+		shortenCallback?: (actionId: string, value: string) => { id: string; value: string },
+		platform?: string,
 	): Promise<unknown> {
 		const sdk = await loadChatSdk();
+
+		// Normalize unsupported components for the target platform
+		const components = this.normalizeForPlatform(payload.components, platform);
 
 		const children: unknown[] = [];
 		const buttons: unknown[] = [];
 		const buttonIndex = { value: 0 };
 
-		const makeButton = (label: string, rawValue: string, style?: string) =>
-			sdk.Button({
-				id: `resume:${runId}:${toolCallId}:${buttonIndex.value++}`,
+		const makeButton = (label: string, rawValue: string, style?: string) => {
+			let id = `resume:${runId}:${toolCallId}:${buttonIndex.value++}`;
+			let value = JSON.stringify(this.wrapValueForSchema(rawValue, resumeSchema));
+
+			// For platforms with short callback limits (e.g. Telegram 64 bytes),
+			// replace the full id/value with a short lookup key.
+			if (shortenCallback) {
+				const shortened = shortenCallback(id, value);
+				id = shortened.id;
+				value = shortened.value;
+			}
+
+			return sdk.Button({
+				id,
 				label,
 				style: style === 'danger' ? 'danger' : 'primary',
-				value: JSON.stringify(this.wrapValueForSchema(rawValue, resumeSchema)),
+				value,
 			});
+		};
 
-		for (const component of payload.components) {
+		for (const component of components) {
 			this.appendComponent({ component, sdk, runId, toolCallId, children, buttons, makeButton });
 		}
 

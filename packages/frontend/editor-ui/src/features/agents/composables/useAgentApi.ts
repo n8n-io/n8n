@@ -60,35 +60,37 @@ export const deleteAgent = async (
 	await makeRestApiRequest(context, 'DELETE', `/projects/${projectId}/agents/v2/${agentId}`);
 };
 
-export const connectSlack = async (
+export const connectIntegration = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
+	type: string,
 	credentialId: string,
 ): Promise<{ status: string }> => {
 	return await makeRestApiRequest(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/connect`,
-		{ type: 'slack', credentialId },
+		{ type, credentialId },
 	);
 };
 
-export const disconnectSlack = async (
+export const disconnectIntegration = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
+	type: string,
 	credentialId: string,
 ): Promise<{ status: string }> => {
 	return await makeRestApiRequest(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/disconnect`,
-		{ type: 'slack', credentialId },
+		{ type, credentialId },
 	);
 };
 
-export const getSlackStatus = async (
+export const getIntegrationStatus = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
@@ -99,6 +101,23 @@ export const getSlackStatus = async (
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/status`,
 	);
 };
+
+// Backward-compatible aliases
+export const connectSlack = async (
+	ctx: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	credentialId: string,
+) => await connectIntegration(ctx, projectId, agentId, 'slack', credentialId);
+
+export const disconnectSlack = async (
+	ctx: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	credentialId: string,
+) => await disconnectIntegration(ctx, projectId, agentId, 'slack', credentialId);
+
+export const getSlackStatus = getIntegrationStatus;
 
 export const listAllAgents = async (
 	context: IRestApiContext,

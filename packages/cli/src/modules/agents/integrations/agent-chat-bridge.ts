@@ -4,6 +4,7 @@ import type { Logger } from 'n8n-workflow';
 import type { AgentsService } from '../agents.service';
 import type { RichSuspendPayload } from '../types';
 import type { ComponentMapper } from './component-mapper';
+import { CallbackStore } from './callback-store';
 
 /**
  * Subset of `AgentsService` consumed by the bridge.
@@ -17,6 +18,7 @@ interface AgentExecutor {
 		userId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		integrationType?: string,
 	): AsyncGenerator<StreamChunk>;
 
 	executeForChatPublished(
@@ -94,6 +96,12 @@ export class AgentChatBridge {
 	/** Short-lived set of run IDs that have been resumed to prevent double resumption */
 	private readonly activeResumedRuns = new Set<string>();
 
+	/** Store for shortening callback data on platforms with size limits (Telegram, WhatsApp, etc.) */
+	private readonly callbackStore?: CallbackStore;
+
+	/** Platforms where callback data must be shortened */
+	private static readonly SHORT_CALLBACK_PLATFORMS = new Set(['telegram', 'whatsapp']);
+
 	constructor(
 		private readonly bot: ChatBot,
 		private readonly agentId: string,
@@ -103,7 +111,11 @@ export class AgentChatBridge {
 		private readonly logger: Logger,
 		private readonly n8nUserId: string,
 		private readonly n8nProjectId: string,
+		private readonly integrationType: string = 'slack',
 	) {
+		if (AgentChatBridge.SHORT_CALLBACK_PLATFORMS.has(integrationType)) {
+			this.callbackStore = new CallbackStore();
+		}
 		this.registerHandlers();
 	}
 
@@ -120,6 +132,7 @@ export class AgentChatBridge {
 		logger: Logger,
 		n8nUserId: string,
 		n8nProjectId: string,
+		integrationType: string = 'slack',
 	): AgentChatBridge {
 		return new AgentChatBridge(
 			bot as ChatBot,
@@ -130,6 +143,7 @@ export class AgentChatBridge {
 			logger,
 			n8nUserId,
 			n8nProjectId,
+			integrationType,
 		);
 	}
 
@@ -164,6 +178,21 @@ export class AgentChatBridge {
 		});
 	}
 
+	/**
+	 * Returns a callback shortener function for platforms with short callback
+	 * data limits (Telegram). Returns undefined for other platforms.
+	 */
+	private getShortenCallback():
+		| ((actionId: string, value: string) => { id: string; value: string })
+		| undefined {
+		if (!this.callbackStore) return undefined;
+		const store = this.callbackStore;
+		return (actionId: string, value: string) => {
+			const key = store.store(actionId, value);
+			return { id: key, value: '' };
+		};
+	}
+
 	// ---------------------------------------------------------------------------
 	// Core execution pipeline
 	// ---------------------------------------------------------------------------
@@ -182,6 +211,7 @@ export class AgentChatBridge {
 			this.n8nUserId,
 			this.n8nProjectId,
 			this.credentialProvider,
+			this.integrationType,
 		);
 
 		await this.consumeStream(stream, thread);
@@ -379,6 +409,8 @@ export class AgentChatBridge {
 				runId,
 				toolCallId,
 				chunk.resumeSchema,
+				this.getShortenCallback(),
+				this.integrationType,
 			);
 			await thread.post({ card });
 		} catch (error) {
@@ -432,6 +464,8 @@ export class AgentChatBridge {
 				runId!,
 				toolCallId!,
 				riResumeSchema,
+				this.getShortenCallback(),
+				this.integrationType,
 			);
 			await thread.post({ card });
 		} catch (error) {
@@ -488,7 +522,17 @@ export class AgentChatBridge {
 	 * - `resume:{runId}:{toolCallId}:{index}` — generic per-tool resume button
 	 */
 	private async handleAction(event: ChatActionEvent): Promise<void> {
-		const { actionId, value, thread } = event;
+		let { actionId, value } = event;
+		const { thread } = event;
+
+		// Resolve short Telegram callback keys back to full action data
+		if (this.callbackStore) {
+			const resolved = this.callbackStore.resolve(actionId);
+			if (resolved) {
+				actionId = resolved.actionId;
+				value = resolved.value;
+			}
+		}
 
 		let runId: string;
 		let toolCallId: string;
