@@ -7,6 +7,8 @@ import { AuthIdentity, AuthIdentityRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import jwt from 'jsonwebtoken';
 
+import { InstanceSettings } from 'n8n-core';
+
 import { EventService } from '@/events/event.service';
 import { TokenExchangeConfig } from '@/modules/token-exchange/token-exchange.config';
 
@@ -42,6 +44,8 @@ const trustedKeysJson = JSON.stringify([
 const config = Container.get(TokenExchangeConfig);
 config.trustedKeys = trustedKeysJson;
 config.embedEnabled = true;
+
+Container.get(InstanceSettings).markAsLeader();
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['auth'],
