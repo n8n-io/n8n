@@ -71,7 +71,6 @@ describe('useUserRoleProvisioningForm', () => {
 
 			expect(mappingMethod.value).toBe('idp');
 		});
-
 		it('should set instance + idp when only scopesProvisionInstanceRole is true', async () => {
 			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
 				mockProvisioningConfig({ scopesProvisionInstanceRole: true }),
@@ -82,7 +81,6 @@ describe('useUserRoleProvisioningForm', () => {
 
 			expect(mappingMethod.value).toBe('idp');
 		});
-
 		it('should set instance_and_project + idp when both scopes are true', async () => {
 			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
 				mockProvisioningConfig({
@@ -96,7 +94,6 @@ describe('useUserRoleProvisioningForm', () => {
 
 			expect(mappingMethod.value).toBe('idp');
 		});
-
 		it('should set instance + rules_in_n8n when expression mapping enabled and no project rules', async () => {
 			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
 				mockProvisioningConfig({ scopesUseExpressionMapping: true }),
@@ -108,7 +105,6 @@ describe('useUserRoleProvisioningForm', () => {
 
 			expect(mappingMethod.value).toBe('rules_in_n8n');
 		});
-
 		it('should set instance_and_project + rules_in_n8n when expression mapping enabled and project rules exist', async () => {
 			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
 				mockProvisioningConfig({ scopesUseExpressionMapping: true }),
@@ -134,7 +130,6 @@ describe('useUserRoleProvisioningForm', () => {
 			const { formValue } = useUserRoleProvisioningForm('oidc');
 			await vi.waitFor(() => expect(formValue.value).toBe('disabled'));
 		});
-
 		it('should return instance_role when instance + idp', async () => {
 			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
 				mockProvisioningConfig({ scopesProvisionInstanceRole: true }),
@@ -143,7 +138,6 @@ describe('useUserRoleProvisioningForm', () => {
 			const { formValue } = useUserRoleProvisioningForm('oidc');
 			await vi.waitFor(() => expect(formValue.value).toBe('instance_role'));
 		});
-
 		it('should return instance_and_project_roles when both scopes + idp', async () => {
 			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
 				mockProvisioningConfig({
@@ -155,7 +149,6 @@ describe('useUserRoleProvisioningForm', () => {
 			const { formValue } = useUserRoleProvisioningForm('oidc');
 			await vi.waitFor(() => expect(formValue.value).toBe('instance_and_project_roles'));
 		});
-
 		it('should return expression_based when rules_in_n8n is selected', async () => {
 			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
 				mockProvisioningConfig({ scopesUseExpressionMapping: true }),
@@ -198,7 +191,6 @@ describe('useUserRoleProvisioningForm', () => {
 				}),
 			);
 		});
-
 		it('should save instance + idp with correct flags', async () => {
 			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
 				mockProvisioningConfig({}),
@@ -224,7 +216,6 @@ describe('useUserRoleProvisioningForm', () => {
 				}),
 			);
 		});
-
 		it('should save instance_and_project + idp with both scopes true', async () => {
 			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
 				mockProvisioningConfig({}),
@@ -253,7 +244,6 @@ describe('useUserRoleProvisioningForm', () => {
 				}),
 			);
 		});
-
 		it('should save rules_in_n8n with expression flag and scopes false', async () => {
 			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
 				mockProvisioningConfig({}),
@@ -279,7 +269,6 @@ describe('useUserRoleProvisioningForm', () => {
 				}),
 			);
 		});
-
 		it('should force manual when isDisablingSso is true', async () => {
 			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
 				mockProvisioningConfig({ scopesProvisionInstanceRole: true }),

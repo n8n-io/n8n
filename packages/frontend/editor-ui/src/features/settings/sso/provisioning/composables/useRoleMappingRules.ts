@@ -32,10 +32,8 @@ export function useRoleMappingRules() {
 	const isLoading = ref(false);
 	const isDirty = ref(false);
 
-	/** IDs of rules loaded from the server — used to detect creates vs updates vs deletes on save */
 	let serverRuleIds = new Set<string>();
 
-	// Track fallback role changes as dirty — skip the initial value set during loadRules
 	let fallbackInitialized = false;
 	watch(fallbackInstanceRole, () => {
 		if (fallbackInitialized) {
@@ -89,19 +87,16 @@ export function useRoleMappingRules() {
 		const movedRule = rules.value[fromIndex];
 		if (!movedRule) return;
 
-		// Optimistic local update
 		const [moved] = rules.value.splice(fromIndex, 1);
 		rules.value.splice(toIndex, 0, moved);
 		rules.value.forEach((r, i) => {
 			r.order = i;
 		});
 
-		// Persist via API — if the rule has been saved (not a local-only rule)
 		if (!movedRule.id.startsWith('local-')) {
 			try {
 				await api.moveRule(movedRule.id, toIndex);
 			} catch {
-				// Rollback on error — reload from server
 				await loadRules();
 				return;
 			}
@@ -135,19 +130,16 @@ export function useRoleMappingRules() {
 				projectIds: r.projectIds,
 			});
 
-			// Delete removed, create new, update existing — all in parallel
 			await Promise.all([
-				...[...serverRuleIds].filter((id) => !localRuleIds.has(id)).map((id) => api.deleteRule(id)),
-				...allLocalRules.map((rule) =>
-					rule.id.startsWith('local-')
-						? api.createRule(rulePayload(rule))
-						: serverRuleIds.has(rule.id)
-							? api.updateRule(rule.id, rulePayload(rule))
-							: Promise.resolve(),
-				),
+				...[...serverRuleIds]
+					.filter((id) => !localRuleIds.has(id))
+					.map(async (id) => await api.deleteRule(id)),
+				...allLocalRules.map(async (rule): Promise<void> => {
+					if (rule.id.startsWith('local-')) await api.createRule(rulePayload(rule));
+					else if (serverRuleIds.has(rule.id)) await api.updateRule(rule.id, rulePayload(rule));
+				}),
 			]);
 
-			// Reload to get server-assigned IDs and sync state
 			await loadRules();
 		} finally {
 			isLoading.value = false;

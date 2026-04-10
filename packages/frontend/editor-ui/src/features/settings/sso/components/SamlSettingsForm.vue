@@ -314,7 +314,6 @@ onMounted(async () => {
 </script>
 <template>
 	<div>
-		<!-- Card 1: SSO Configuration -->
 		<div :class="[$style.card, $style.firstCard]">
 			<slot name="protocol-select" />
 			<div :class="$style.settingsItem">
@@ -392,7 +391,6 @@ onMounted(async () => {
 			</div>
 		</div>
 
-		<!-- Card 2: Role Mapping -->
 		<div :class="$style.card">
 			<UserRoleProvisioningDropdown
 				v-model:role-assignment="roleAssignment"
@@ -414,7 +412,6 @@ onMounted(async () => {
 			/>
 		</div>
 
-		<!-- Card 3: SSO Toggle -->
 		<div :class="$style.card">
 			<div :class="[$style.settingsItem, $style.settingsItemNoBorder]">
 				<div :class="$style.settingsItemLabel">

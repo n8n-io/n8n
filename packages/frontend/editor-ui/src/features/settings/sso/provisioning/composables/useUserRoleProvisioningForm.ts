@@ -11,48 +11,33 @@ import { type SupportedProtocolType } from '../../sso.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
-/**
- * Derives the two dropdown values from the stored provisioning config.
- *
- * When expression mapping is active, both scopes booleans are false (mutually exclusive
- * code paths on the backend), so we can't distinguish "instance only" from "instance+project"
- * from config alone. We use `hasProjectRules` as a heuristic: if project-type rules exist
- * in the DB, the user intended "instance and project"; otherwise "instance only".
- */
+type DropdownValues = {
+	roleAssignment: RoleAssignmentSetting;
+	mappingMethod: RoleMappingMethodSetting;
+};
+const DEFAULTS: DropdownValues = { roleAssignment: 'manual', mappingMethod: 'idp' };
+
 function getDropdownValuesFromConfig(
 	config?: ProvisioningConfig,
 	hasProjectRules = false,
-): {
-	roleAssignment: RoleAssignmentSetting;
-	mappingMethod: RoleMappingMethodSetting;
-} {
-	if (!config) {
-		return { roleAssignment: 'manual', mappingMethod: 'idp' };
-	}
-
+): DropdownValues {
+	if (!config) return DEFAULTS;
 	const mappingMethod: RoleMappingMethodSetting = config.scopesUseExpressionMapping
 		? 'rules_in_n8n'
 		: 'idp';
-
 	if (config.scopesProvisionInstanceRole && config.scopesProvisionProjectRoles) {
 		return { roleAssignment: 'instance_and_project', mappingMethod };
 	} else if (config.scopesProvisionInstanceRole) {
 		return { roleAssignment: 'instance', mappingMethod };
 	} else if (config.scopesUseExpressionMapping) {
-		// Expression mapping active — scopes booleans are both false.
-		// Use presence of project rules to infer the intended role scope.
 		return {
 			roleAssignment: hasProjectRules ? 'instance_and_project' : 'instance',
 			mappingMethod: 'rules_in_n8n',
 		};
 	}
-
-	return { roleAssignment: 'manual', mappingMethod: 'idp' };
+	return DEFAULTS;
 }
 
-/**
- * Converts the two dropdown values into the provisioning config patch.
- */
 function getProvisioningConfigFromDropdowns(
 	roleAssignment: RoleAssignmentSetting,
 	mappingMethod: RoleMappingMethodSetting,
@@ -77,9 +62,6 @@ function getProvisioningConfigFromDropdowns(
 	};
 }
 
-/**
- * Derives the legacy single-value setting for telemetry and confirmation dialog.
- */
 function toLegacyValue(
 	roleAssignment: RoleAssignmentSetting,
 	mappingMethod: RoleMappingMethodSetting,
@@ -90,29 +72,15 @@ function toLegacyValue(
 	return 'instance_role';
 }
 
-/**
- * Converts a legacy single-value setting back to the two dropdown values.
- * Used when the legacy dropdown (feature flag off) updates the value.
- */
-function fromLegacyValue(value: UserRoleProvisioningSetting): {
-	roleAssignment: RoleAssignmentSetting;
-	mappingMethod: RoleMappingMethodSetting;
-} {
-	switch (value) {
-		case 'instance_role':
-			return { roleAssignment: 'instance', mappingMethod: 'idp' };
-		case 'instance_and_project_roles':
-			return { roleAssignment: 'instance_and_project', mappingMethod: 'idp' };
-		case 'expression_based':
-			return { roleAssignment: 'instance', mappingMethod: 'rules_in_n8n' };
-		default:
-			return { roleAssignment: 'manual', mappingMethod: 'idp' };
-	}
+function fromLegacyValue(value: UserRoleProvisioningSetting): DropdownValues {
+	const map: Record<string, DropdownValues> = {
+		instance_role: { roleAssignment: 'instance', mappingMethod: 'idp' },
+		instance_and_project_roles: { roleAssignment: 'instance_and_project', mappingMethod: 'idp' },
+		expression_based: { roleAssignment: 'instance', mappingMethod: 'rules_in_n8n' },
+	};
+	return map[value] ?? DEFAULTS;
 }
 
-/**
- * Composable for managing user role provisioning form logic in SSO settings.
- */
 export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 	const provisioningStore = useUserRoleProvisioningStore();
 	const telemetry = useTelemetry();
@@ -120,7 +88,6 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 	const roleAssignment = ref<RoleAssignmentSetting>('manual');
 	const mappingMethod = ref<RoleMappingMethodSetting>('idp');
 
-	/** Legacy single-value — writable so the legacy dropdown can update it directly. */
 	const formValue = computed<UserRoleProvisioningSetting>({
 		get: () => toLegacyValue(roleAssignment.value, mappingMethod.value),
 		set: (value: UserRoleProvisioningSetting) => {
@@ -145,9 +112,6 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 		});
 	};
 
-	/**
-	 * Saves the current user role provisioning setting to the store.
-	 */
 	const saveProvisioningConfig = async (isDisablingSso: boolean): Promise<void> => {
 		const effectiveRoleAssignment: RoleAssignmentSetting = isDisablingSso
 			? 'manual'
@@ -199,8 +163,6 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 		void provisioningStore.getProvisioningConfig().then(async () => {
 			const config = provisioningStore.provisioningConfig;
 
-			// Only fetch rules when expression mapping is active — that's the only case
-			// where we need the heuristic to distinguish instance vs instance+project.
 			let hasProjectRules = false;
 			if (config?.scopesUseExpressionMapping) {
 				const api = useRoleMappingRulesApi();

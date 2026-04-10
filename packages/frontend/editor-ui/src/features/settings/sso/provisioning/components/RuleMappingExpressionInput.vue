@@ -51,19 +51,10 @@ const dialogVisible = ref(false);
 let editorView: EditorView | null = null;
 let expandedEditorView: EditorView | null = null;
 
-/**
- * Mock $claims proxy for expression validation. Every property access returns
- * a real array (with .includes, .some, etc.) so typos like .includ() throw TypeError.
- */
+// Mock $claims: every property returns a real array so .includes() works but .includ() throws
 const mockClaims = new Proxy(
 	{},
-	{
-		get: (_target, prop) => {
-			if (typeof prop === 'symbol') return undefined;
-			// Return a real array so method calls like .includes() work but .includ() throws
-			return ['mock'];
-		},
-	},
+	{ get: (_target, prop) => (typeof prop === 'symbol' ? undefined : ['mock']) },
 );
 
 function validateExpression(value: string): boolean {
@@ -72,10 +63,8 @@ function validateExpression(value: string): boolean {
 	const jsContent = match ? match[1].trim() : value.trim();
 	if (!jsContent) return true;
 	try {
-		// eslint-disable-next-line no-new-func
+		// eslint-disable-next-line no-new-func, @typescript-eslint/no-implied-eval
 		const fn = new Function('$claims', '$oidc', '$saml', '$provider', `return (${jsContent})`);
-		// Execute against mock context — catches both syntax errors and runtime errors
-		// like calling non-existent methods (.includ instead of .includes)
 		fn(mockClaims, { idToken: {}, userInfo: {} }, { attributes: {} }, 'oidc');
 		return true;
 	} catch {
@@ -83,7 +72,6 @@ function validateExpression(value: string): boolean {
 	}
 }
 
-// n8n expression language: parses {{ }} as Resolvable blocks with nested JS inside
 const isResolvable = (node: SyntaxNodeRef) => node.type.name === 'Resolvable';
 
 const n8nParserWithNestedJs = n8nParser.configure({
@@ -97,7 +85,6 @@ const n8nParserWithNestedJs = n8nParser.configure({
 
 const n8nLanguage = LRLanguage.define({ parser: n8nParserWithNestedJs });
 
-// Decoration plugin: styles {{ }} brackets with a darker color
 const bracketDecoMark = Decoration.mark({ class: 'cm-expression-bracket' });
 
 function buildDecorations(view: EditorView): DecorationSet {
@@ -132,7 +119,6 @@ function createBracketPlugin() {
 	);
 }
 
-// Custom highlight style — green-tinted for valid expressions (not the default red/orange)
 const expressionHighlightStyle = HighlightStyle.define([
 	{ tag: tags.string, color: 'var(--color--success--shade-1)' },
 	{ tag: tags.number, color: 'var(--color--primary)' },
@@ -311,7 +297,6 @@ onBeforeUnmount(() => {
 	expandedEditorView = null;
 });
 
-// Sync external value changes into both editors
 watch(
 	() => props.modelValue,
 	(newVal) => {

@@ -9,17 +9,12 @@ import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatur
 export type RoleAssignmentSetting = 'manual' | 'instance' | 'instance_and_project';
 export type RoleMappingMethodSetting = 'idp' | 'rules_in_n8n';
 
-/**
- * Legacy type kept for backward compatibility with ConfirmProvisioningDialog.
- * Derived from the two new dropdown values.
- */
 export type UserRoleProvisioningSetting =
 	| 'disabled'
 	| 'instance_role'
 	| 'instance_and_project_roles'
 	| 'expression_based';
 
-/** New two-dropdown models (used when feature flag is on) */
 const roleAssignment = defineModel<RoleAssignmentSetting>('roleAssignment', {
 	default: 'manual',
 });
@@ -27,7 +22,6 @@ const mappingMethod = defineModel<RoleMappingMethodSetting>('mappingMethod', {
 	default: 'idp',
 });
 
-/** Legacy single-value model (used when feature flag is off) */
 const legacyValue = defineModel<UserRoleProvisioningSetting>('legacyValue', {
 	default: 'disabled',
 });
@@ -78,7 +72,6 @@ const mappingMethodOptions = computed(() => {
 
 const ssoKey = (key: string) => i18n.baseText(`settings.sso.settings.${key}` as BaseTextKey);
 
-// --- Legacy single-dropdown options (shown when feature flag is off) ---
 const legacyOptions: Array<{ label: string; value: UserRoleProvisioningSetting }> = [
 	{
 		label: i18n.baseText('settings.sso.settings.userRoleProvisioning.option.disabled.label'),
@@ -98,7 +91,6 @@ const legacyOptions: Array<{ label: string; value: UserRoleProvisioningSetting }
 </script>
 <template>
 	<div>
-		<!-- Legacy single dropdown (feature flag OFF) -->
 		<template v-if="!isRuleMappingEnabled">
 			<div :class="[shared.settingsItem, shared.settingsItemNoBorder]">
 				<div :class="shared.settingsItemLabel">
@@ -131,9 +123,7 @@ const legacyOptions: Array<{ label: string; value: UserRoleProvisioningSetting }
 			</div>
 		</template>
 
-		<!-- New two-dropdown layout (feature flag ON) -->
 		<template v-else>
-			<!-- Dropdown 1: Role assignment -->
 			<div :class="[shared.settingsItem, { [shared.settingsItemNoBorder]: !showMappingMethod }]">
 				<div :class="shared.settingsItemLabel">
 					<label>{{ ssoKey('roleAssignment.label') }}</label>
@@ -161,7 +151,6 @@ const legacyOptions: Array<{ label: string; value: UserRoleProvisioningSetting }
 				</div>
 			</div>
 
-			<!-- Dropdown 2: Role mapping method (conditional) -->
 			<div v-if="showMappingMethod" :class="shared.settingsItem">
 				<div :class="shared.settingsItemLabel">
 					<label>{{ ssoKey('roleMappingMethod.label') }}</label>
@@ -189,7 +178,6 @@ const legacyOptions: Array<{ label: string; value: UserRoleProvisioningSetting }
 				</div>
 			</div>
 
-			<!-- Info box for IdP-managed mode -->
 			<div v-if="showIdpInfoBox" :class="$style.infoBox">
 				<N8nCallout theme="custom" icon="info" :class="$style.callout">
 					<div>
