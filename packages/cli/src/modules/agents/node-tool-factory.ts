@@ -20,6 +20,9 @@ export function resolveNodeTool(toolSchema: ToolSchema, ctx: NodeToolFactoryCont
 	if (!metadata) {
 		throw new Error(`Node tool "${toolSchema.name}" is missing metadata`);
 	}
+	if (!toolSchema.inputSchema) {
+		throw new Error(`Node tool "${toolSchema.name}" is missing input schema`);
+	}
 
 	return new Tool(toolSchema.name)
 		.description(toolSchema.description ?? `Execute the ${metadata.nodeType} node`)
