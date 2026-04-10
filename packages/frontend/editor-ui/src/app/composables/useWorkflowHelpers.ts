@@ -16,7 +16,6 @@ import type {
 	IWebhookDescription,
 	IWorkflowDataProxyAdditionalKeys,
 	NodeParameterValue,
-	Workflow,
 } from 'n8n-workflow';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -338,7 +337,7 @@ export async function resolveRequiredParameters(
 
 function getConnectedNodes(
 	direction: 'upstream' | 'downstream',
-	workflow: Workflow,
+	workflow: WorkflowObjectAccessors,
 	nodeName: string,
 ): string[] {
 	let checkNodes: string[];
