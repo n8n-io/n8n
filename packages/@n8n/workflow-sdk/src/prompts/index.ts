@@ -6,3 +6,4 @@ export {
 } from './sdk-reference';
 
 export * from './node-guidance';
+export * from './best-practices';

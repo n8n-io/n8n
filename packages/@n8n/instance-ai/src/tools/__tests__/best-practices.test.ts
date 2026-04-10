@@ -29,44 +29,15 @@ describe('best-practices', () => {
 			}
 		});
 
-		it('should return documentation for techniques with guides', () => {
-			const techniquesWithDocs = [
-				WorkflowTechnique.SCHEDULING,
-				WorkflowTechnique.CHATBOT,
-				WorkflowTechnique.FORM_INPUT,
-				WorkflowTechnique.SCRAPING_AND_RESEARCH,
-				WorkflowTechnique.TRIAGE,
-				WorkflowTechnique.CONTENT_GENERATION,
-				WorkflowTechnique.DATA_EXTRACTION,
-				WorkflowTechnique.DATA_PERSISTENCE,
-				WorkflowTechnique.DATA_TRANSFORMATION,
-				WorkflowTechnique.DOCUMENT_PROCESSING,
-				WorkflowTechnique.NOTIFICATION,
-			];
-
-			for (const tech of techniquesWithDocs) {
+		it('should return documentation for all techniques', () => {
+			for (const tech of Object.values(WorkflowTechnique)) {
 				const fn = documentation[tech];
 				expect(fn).toBeDefined();
 				if (fn) {
 					const doc = fn();
 					expect(typeof doc).toBe('string');
 					expect(doc.length).toBeGreaterThan(100);
-					expect(doc).toContain('# Best Practices');
 				}
-			}
-		});
-
-		it('should have undefined for techniques without guides', () => {
-			const techniquesWithoutDocs = [
-				WorkflowTechnique.DATA_ANALYSIS,
-				WorkflowTechnique.ENRICHMENT,
-				WorkflowTechnique.KNOWLEDGE_BASE,
-				WorkflowTechnique.HUMAN_IN_THE_LOOP,
-				WorkflowTechnique.MONITORING,
-			];
-
-			for (const tech of techniquesWithoutDocs) {
-				expect(documentation[tech]).toBeUndefined();
 			}
 		});
 	});
