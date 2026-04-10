@@ -164,18 +164,13 @@ describe('webhook-form-data', () => {
 			testServer.assertHasBeenCalled();
 		});
 
-		it('should ignore file that is too large', async () => {
+		it('should reject when file exceeds max size', async () => {
 			const oneByteInMb = 1 / 1024 / 1024;
 			const parseFn = createMultiFormDataParser(oneByteInMb);
 
 			await testServer
 				.sendRequestToHandler(async (req) => {
-					const parsedData = await parseFn(req);
-
-					expect(parsedData).toStrictEqual({
-						data: {},
-						files: {},
-					});
+					await expect(parseFn(req)).rejects.toThrow();
 				})
 				.attach('file', oneKbData, 'file.txt');
 
