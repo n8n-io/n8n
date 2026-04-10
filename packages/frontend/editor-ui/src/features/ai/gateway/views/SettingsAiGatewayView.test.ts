@@ -15,7 +15,6 @@ vi.mock('@/features/ai/assistant/assistant.api', () => ({
 	getGatewayConfig: vi.fn(),
 	getGatewayCredits: (...args: unknown[]) => mockGetGatewayCredits(...args),
 	getGatewayUsage: (...args: unknown[]) => mockGetGatewayUsage(...args),
-	topUpGatewayCredits: vi.fn(),
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({

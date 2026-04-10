@@ -8,7 +8,6 @@ import {
 	getGatewayConfig,
 	getGatewayCredits,
 	getGatewayUsage,
-	topUpGatewayCredits,
 } from '@/features/ai/assistant/assistant.api';
 
 function toError(e: unknown): Error {
@@ -57,17 +56,6 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 		}
 	}
 
-	async function topUpCredits(amount: number): Promise<void> {
-		try {
-			const data = await topUpGatewayCredits(rootStore.restApiContext, amount);
-			creditsRemaining.value = data.creditsRemaining;
-			creditsQuota.value = data.creditsQuota;
-			fetchError.value = null;
-		} catch (error) {
-			fetchError.value = toError(error);
-		}
-	}
-
 	async function fetchMoreUsage(offset: number, limit = 50): Promise<void> {
 		try {
 			const data = await getGatewayUsage(rootStore.restApiContext, offset, limit);
@@ -96,7 +84,6 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 		fetchError,
 		fetchConfig,
 		fetchCredits,
-		topUpCredits,
 		fetchUsage,
 		fetchMoreUsage,
 		isNodeSupported,

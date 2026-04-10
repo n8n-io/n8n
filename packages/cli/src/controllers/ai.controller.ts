@@ -15,7 +15,6 @@ import {
 	AiTruncateMessagesRequestDto,
 	AiClearSessionRequestDto,
 	AiGatewayUsageQueryDto,
-	AiGatewayTopUpRequestDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Licensed, Post, Query, RestController, GlobalScope } from '@n8n/decorators';
@@ -293,25 +292,6 @@ export class AiController {
 	): Promise<AiGatewayUsageResponse> {
 		try {
 			return await this.aiGatewayService.getUsage(req.user.id, query.offset, query.limit);
-		} catch (e) {
-			assert(e instanceof Error);
-			throw new InternalServerError(e.message, e);
-		}
-	}
-
-	@Licensed('feat:aiGateway')
-	@Post('/gateway/topup')
-	async topUpGatewayCredits(
-		req: AuthenticatedRequest,
-		_: Response,
-		@Body body: AiGatewayTopUpRequestDto,
-	): Promise<{ creditsQuota: number; creditsRemaining: number }> {
-		try {
-			return await this.aiGatewayService.topUpCredits(req.user.id, body.amount, {
-				email: req.user.email,
-				firstName: req.user.firstName,
-				lastName: req.user.lastName,
-			});
 		} catch (e) {
 			assert(e instanceof Error);
 			throw new InternalServerError(e.message, e);

@@ -173,38 +173,6 @@ export class AiGatewayService {
 		return this.parseCreditsResponse(await response.json());
 	}
 
-	async topUpCredits(
-		userId: string,
-		amount: number,
-		user: { email: string; firstName: string; lastName: string },
-	): Promise<GatewayCreditsResponse> {
-		const baseUrl = this.requireBaseUrl();
-
-		const jwt = await this.getOrFetchToken(userId);
-		if (!jwt) {
-			throw new UserError('Failed to obtain a valid AI Gateway token.');
-		}
-
-		const response = await fetch(`${baseUrl}/v1/gateway/topup`, {
-			method: 'POST',
-			headers: {
-				Authorization: `Bearer ${jwt}`,
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify({
-				amount,
-				userEmail: user.email,
-				userName: `${user.firstName} ${user.lastName}`.trim(),
-			}),
-		});
-
-		if (!response.ok) {
-			throw new UserError(`Failed to top up AI Gateway credits: HTTP ${response.status}`);
-		}
-
-		return this.parseCreditsResponse(await response.json());
-	}
-
 	private parseCreditsResponse(data: unknown): GatewayCreditsResponse {
 		const d = data as GatewayCreditsResponse;
 		if (typeof d.creditsQuota !== 'number' || typeof d.creditsRemaining !== 'number') {

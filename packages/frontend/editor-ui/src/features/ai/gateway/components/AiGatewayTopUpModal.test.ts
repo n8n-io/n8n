@@ -1,22 +1,16 @@
 import { describe, it, vi, beforeEach, expect } from 'vitest';
-import { screen, waitFor } from '@testing-library/vue';
+import { screen } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import AiGatewayTopUpModal from './AiGatewayTopUpModal.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
-import { mockedStore } from '@/__tests__/utils';
 
 vi.mock('@n8n/i18n', async (importActual) => ({
 	...(await importActual()),
 	useI18n: () => ({ baseText: (key: string) => key }),
-}));
-
-vi.mock('@/features/ai/assistant/assistant.api', () => ({
-	topUpGatewayCredits: vi.fn(),
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -25,7 +19,6 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	})),
 }));
 
-// Stub Modal to render slots directly — we test content, not the modal system.
 vi.mock('@/app/components/Modal.vue', () => ({
 	default: {
 		props: ['name', 'title'],
@@ -37,13 +30,13 @@ vi.mock('@/app/components/Modal.vue', () => ({
 const renderComponent = createComponentRenderer(AiGatewayTopUpModal);
 
 function renderModal() {
-	const pinia = createTestingPinia({ initialState: { aiGateway: { fetchError: null } } });
+	const pinia = createTestingPinia();
 	setActivePinia(pinia);
 	return { ...renderComponent({ pinia }), pinia };
 }
 
 function renderModalWithCredentialType(credentialTypeName: string, documentationUrl?: string) {
-	const pinia = createTestingPinia({ initialState: { aiGateway: { fetchError: null } } });
+	const pinia = createTestingPinia();
 	setActivePinia(pinia);
 	const uiStore = useUIStore();
 	uiStore.modalsById[AI_GATEWAY_TOP_UP_MODAL_KEY] = {
@@ -67,89 +60,34 @@ describe('AiGatewayTopUpModal.vue', () => {
 		vi.clearAllMocks();
 	});
 
-	describe('on open (SKIP_BUY mode)', () => {
-		it('calls topUpCredits with the default amount on mount', async () => {
-			renderModal();
-			const store = mockedStore(useAiGatewayStore);
+	it('shows the coming-soon content', () => {
+		renderModal();
+		expect(screen.getByText('Credit top up is comming soon')).toBeInTheDocument();
+	});
 
-			await waitFor(() => expect(store.topUpCredits).toHaveBeenCalledWith(100));
-		});
-
-		it('shows thank-you content immediately without user interaction', async () => {
-			renderModal();
-
-			await waitFor(() =>
-				expect(screen.getByText('Credit top up is comming soon')).toBeInTheDocument(),
-			);
-		});
-
-		it('does not render the buy form', async () => {
-			renderModal();
-
-			await waitFor(() =>
-				expect(screen.queryByTestId('ai-gateway-topup-preset')).not.toBeInTheDocument(),
-			);
-			expect(screen.queryByTestId('ai-gateway-topup-custom')).not.toBeInTheDocument();
-		});
-
-		it('does not render the footer buttons', async () => {
-			renderModal();
-
-			await waitFor(() => screen.getByText('Credit top up is comming soon'));
-
-			expect(screen.queryByTestId('ai-gateway-topup-buy')).not.toBeInTheDocument();
-			expect(screen.queryByRole('button', { name: 'generic.cancel' })).not.toBeInTheDocument();
-		});
-
-		it('modal title is empty (no header title) in thank-you state', async () => {
-			const { container } = renderModal();
-
-			await waitFor(() =>
-				expect(
-					container.querySelector('[data-modal-title]')?.getAttribute('data-modal-title'),
-				).toBe(''),
-			);
-		});
+	it('does not render any buy UI or footer buttons', () => {
+		renderModal();
+		expect(screen.queryByTestId('ai-gateway-topup-preset')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('ai-gateway-topup-custom')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('ai-gateway-topup-buy')).not.toBeInTheDocument();
 	});
 
 	describe('credentials docs link', () => {
-		it('does not show docs link when no credentialType is provided', async () => {
+		it('does not show docs link when no credentialType is provided', () => {
 			renderModal();
-
-			await waitFor(() => screen.getByText('Credit top up is comming soon'));
-
 			expect(
 				screen.queryByTestId('ai-gateway-topup-credentials-docs-link'),
 			).not.toBeInTheDocument();
 		});
 
-		it('shows docs link when credentialType is provided (regardless of documentationUrl)', async () => {
+		it('shows docs link when credentialType is provided', () => {
 			renderModalWithCredentialType('someCredential');
-
-			await waitFor(() =>
-				expect(screen.getByTestId('ai-gateway-topup-credentials-docs-link')).toBeInTheDocument(),
-			);
+			expect(screen.getByTestId('ai-gateway-topup-credentials-docs-link')).toBeInTheDocument();
 		});
 
-		it('shows docs link when credentialType has a documentationUrl', async () => {
+		it('shows docs link when credentialType has a documentationUrl', () => {
 			renderModalWithCredentialType('openAiApi', 'openai');
-
-			await waitFor(() =>
-				expect(screen.getByTestId('ai-gateway-topup-credentials-docs-link')).toBeInTheDocument(),
-			);
-		});
-	});
-
-	describe('close', () => {
-		it('calls closeModal when close() is triggered', async () => {
-			renderModal();
-			const uiStore = useUIStore();
-
-			await waitFor(() => screen.getByText('Credit top up is comming soon'));
-
-			// close() is invoked by the modal's X button (handled by Modal/ElDialog chrome).
-			// We verify the store call directly since the footer cancel button is not rendered.
-			expect(uiStore.closeModal).not.toHaveBeenCalled();
+			expect(screen.getByTestId('ai-gateway-topup-credentials-docs-link')).toBeInTheDocument();
 		});
 	});
 });

@@ -148,13 +148,6 @@ export async function getGatewayUsage(
 	return await makeRestApiRequest(ctx, 'GET', `/ai/gateway/usage?offset=${offset}&limit=${limit}`);
 }
 
-export async function topUpGatewayCredits(
-	ctx: IRestApiContext,
-	amount: number,
-): Promise<{ creditsQuota: number; creditsRemaining: number }> {
-	return await makeRestApiRequest(ctx, 'POST', '/ai/gateway/topup', { amount });
-}
-
 export async function clearBuilderSession(
 	ctx: IRestApiContext,
 	workflowId: string,
