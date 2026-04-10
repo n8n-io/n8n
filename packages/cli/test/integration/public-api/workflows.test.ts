@@ -2014,6 +2014,78 @@ describe('PUT /workflows/:id', () => {
 			callerPolicy: 'workflowsFromSameOwner', // Added
 		});
 	});
+
+	test('should preserve availableInMCP when settings are updated without it', async () => {
+		const workflow = await createWorkflowWithHistory(
+			{
+				name: 'Test Workflow',
+				nodes: [],
+				connections: {},
+				settings: { availableInMCP: true },
+			},
+			member,
+		);
+
+		const payload = {
+			name: workflow.name,
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			settings: { saveManualExecutions: true },
+		};
+
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.settings.availableInMCP).toBe(true);
+	});
+
+	test('should allow explicitly setting availableInMCP to false', async () => {
+		const workflow = await createWorkflowWithHistory(
+			{
+				name: 'Test Workflow',
+				nodes: [],
+				connections: {},
+				settings: { availableInMCP: true },
+			},
+			member,
+		);
+
+		const payload = {
+			name: workflow.name,
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			settings: { availableInMCP: false },
+		};
+
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.settings.availableInMCP).toBe(false);
+	});
+
+	test('should preserve non-default callerPolicy when settings are updated without it', async () => {
+		const workflow = await createWorkflowWithHistory(
+			{
+				name: 'Test Workflow',
+				nodes: [],
+				connections: {},
+				settings: { callerPolicy: 'none' },
+			},
+			member,
+		);
+
+		const payload = {
+			name: workflow.name,
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			settings: { saveManualExecutions: true },
+		};
+
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.settings.callerPolicy).toBe('none');
+	});
 });
 
 describe('GET /workflows/:id/tags', () => {

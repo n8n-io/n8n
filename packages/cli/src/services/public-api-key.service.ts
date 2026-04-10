@@ -7,8 +7,6 @@ import { getApiKeyScopesForRole, getOwnerOnlyApiKeyScopes } from '@n8n/permissio
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
-import type { NextFunction, Request, Response } from 'express';
-
 import { JwtService } from './jwt.service';
 
 export const API_KEY_AUDIENCE = 'public-api';
@@ -131,25 +129,6 @@ export class PublicApiKeyService {
 		if (!apiKeyData) return false;
 
 		return apiKeyData.scopes.includes(endpointScope);
-	}
-
-	getApiKeyScopeMiddleware(endpointScope: ApiKeyScope) {
-		return async (req: Request, res: Response, next: NextFunction) => {
-			const apiKey = req.headers['x-n8n-api-key'];
-
-			if (apiKey === undefined || typeof apiKey !== 'string') {
-				res.status(401).json({ message: 'Unauthorized' });
-				return;
-			}
-
-			const valid = await this.apiKeyHasValidScopes(apiKey, endpointScope);
-
-			if (!valid) {
-				res.status(403).json({ message: 'Forbidden' });
-				return;
-			}
-			next();
-		};
 	}
 
 	async removeOwnerOnlyScopesFromApiKeys(user: User, tx?: EntityManager) {

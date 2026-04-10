@@ -101,7 +101,7 @@ export const portSchema = z.number().int().positive().default(7655);
 const structuralConfigSchema = z.object({
 	logLevel: logLevelSchema,
 	port: portSchema,
-	allowedOrigins: z.array(z.string()).default([]),
+	allowedOrigins: z.array(z.string()).default(['https://*.app.n8n.cloud']),
 	filesystem: z.object({ dir: z.string().default('.') }).default({}),
 	computer: z
 		.object({
@@ -163,14 +163,6 @@ function buildEnvConfig(): PartialStructural {
 	const logLevel = envString('LOG_LEVEL') ?? process.env.LOG_LEVEL;
 	if (logLevel) config.logLevel = logLevel;
 
-	const allowedOrigins = envString('ALLOWED_ORIGINS');
-	if (allowedOrigins) {
-		config.allowedOrigins = allowedOrigins
-			.split(',')
-			.map((s) => s.trim())
-			.filter(Boolean);
-	}
-
 	const fsDir = envString('FILESYSTEM_DIR');
 	if (fsDir) config.filesystem = { dir: fsDir };
 
@@ -191,12 +183,18 @@ function buildCliConfig(args: yargsParser.Arguments): PartialStructural {
 
 	if (args['log-level']) config.logLevel = args['log-level'];
 	if (args.port !== undefined) config.port = args.port;
-	if (args['allow-origin']) {
-		const raw = args['allow-origin'] as unknown;
-		config.allowedOrigins = Array.isArray(raw) ? raw.map(String) : [String(raw)];
+	if (args['allowed-origins']) {
+		const raw = args['allowed-origins'] as string | string[];
+		const rawArr = Array.isArray(raw) ? raw.map(String) : [String(raw)];
+		config.allowedOrigins = rawArr.flatMap((s) =>
+			s
+				.split(',')
+				.map((p) => p.trim())
+				.filter(Boolean),
+		);
 	}
 
-	const dir = args['filesystem-dir'] as string;
+	const dir = args.dir as string;
 	if (dir) config.filesystem = { dir };
 
 	const timeout = args['computer-shell-timeout'] as number;
@@ -255,9 +253,7 @@ export function getSettingsFilePath(): string {
 // ---------------------------------------------------------------------------
 
 export interface ParsedArgs {
-	/** Subcommand: 'serve' or undefined (direct mode) */
-	command?: 'serve';
-	/** n8n instance URL (direct mode) */
+	/** n8n instance URL */
 	url?: string;
 	/** Gateway API key (direct mode) */
 	apiKey?: string;
@@ -276,23 +272,20 @@ export interface ParsedArgs {
 }
 
 export function parseConfig(argv = process.argv.slice(2)): ParsedArgs {
-	const isServe = argv[0] === 'serve';
-	const rawArgs = isServe ? argv.slice(1) : argv;
-
 	const permissionFlags = Object.values(TOOL_GROUP_DEFINITIONS).map((o) => o.cliFlag);
 
-	const args = yargsParser(rawArgs, {
+	const args = yargsParser(argv, {
 		string: [
 			'log-level',
-			'filesystem-dir',
+			'dir',
 			'browser-default',
-			'allow-origin',
+			'allowed-origins',
 			'permission-confirmation',
 			...permissionFlags,
 		],
 		boolean: ['auto-confirm', 'non-interactive', 'help'],
 		number: ['port', 'computer-shell-timeout'],
-		alias: { h: 'help', p: 'port' },
+		alias: { h: 'help', p: 'port', d: 'dir' },
 	});
 
 	// Three-tier merge: Zod defaults ← env ← CLI
@@ -303,40 +296,30 @@ export function parseConfig(argv = process.argv.slice(2)): ParsedArgs {
 		cliConfig as Record<string, unknown>,
 	);
 
-	// Handle positional args
+	// Handle positional args: [url?, token?, dir?]
 	let url: string | undefined;
 	let apiKey: string | undefined;
 
-	if (isServe) {
-		const positional = args._;
-		if (positional.length > 0 && typeof positional[0] === 'string') {
-			const dir = String(positional[0]);
+	const positional = args._;
+	if (positional.length >= 1) {
+		url = String(positional[0]);
+		if (positional.length >= 2) {
+			apiKey = String(positional[1]);
+		}
+		if (positional.length >= 3) {
+			const dir = String(positional[2]);
 			if (!merged.filesystem || typeof merged.filesystem !== 'object') {
 				merged.filesystem = { dir };
 			} else if (!(merged.filesystem as Record<string, unknown>).dir) {
 				(merged.filesystem as Record<string, unknown>).dir = dir;
 			}
 		}
-	} else {
-		const positional = args._;
-		if (positional.length >= 2) {
-			url = String(positional[0]);
-			apiKey = String(positional[1]);
-			if (positional.length >= 3) {
-				const dir = String(positional[2]);
-				if (!merged.filesystem || typeof merged.filesystem !== 'object') {
-					merged.filesystem = { dir };
-				} else if (!(merged.filesystem as Record<string, unknown>).dir) {
-					(merged.filesystem as Record<string, unknown>).dir = dir;
-				}
-			}
-		} else if (!args.help) {
-			url = args.url as string | undefined;
-			apiKey = args['api-key'] as string | undefined;
-			if (args.dir) {
-				if (!merged.filesystem || typeof merged.filesystem !== 'object') {
-					merged.filesystem = { dir: args.dir as string };
-				}
+	} else if (!args.help) {
+		url = args.url as string | undefined;
+		apiKey = args['api-key'] as string | undefined;
+		if (args.dir) {
+			if (!merged.filesystem || typeof merged.filesystem !== 'object') {
+				merged.filesystem = { dir: args.dir as string };
 			}
 		}
 	}
@@ -373,7 +356,6 @@ export function parseConfig(argv = process.argv.slice(2)): ParsedArgs {
 	const config: GatewayConfig = { ...structural, permissions };
 
 	return {
-		command: isServe ? 'serve' : undefined,
 		url,
 		apiKey,
 		config,

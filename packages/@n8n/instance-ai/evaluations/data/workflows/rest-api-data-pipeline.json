@@ -1,14 +1,14 @@
 {
-	"prompt": "Fetch the latest 10 posts from the JSONPlaceholder API (GET https://jsonplaceholder.typicode.com/posts with query parameter _limit=10). Filter out any posts where the title contains the word 'qui'. Then post a summary message to a Slack channel called #api-digest that says how many posts remain and lists their titles. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"prompt": "Fetch the latest posts from the JSONPlaceholder API (GET https://jsonplaceholder.typicode.com/posts). Filter out any posts where the title contains the word 'qui'. Then post a summary message to a Slack channel called #api-digest that says how many posts remain and lists their titles. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
 	"complexity": "medium",
 	"tags": ["build", "http-request", "slack", "data-transformation", "schedule"],
 	"triggerType": "schedule",
 	"scenarios": [
 		{
 			"name": "happy-path",
-			"description": "API returns 10 posts, some get filtered, summary posted to Slack",
-			"dataSetup": "The HTTP Request node returns 10 JSON objects with fields: id, userId, title, body. Some of them should have 'qui' in the title. The Slack node returns a success response.",
-			"successCriteria": "The workflow executes without errors. The HTTP Request fetches data successfully. Posts containing 'qui' in the title are filtered out — fewer posts remain than the original 10. The Slack message is posted to #api-digest with the count and titles of the remaining posts. None of the titles in the Slack message should contain the word 'qui'."
+			"description": "API returns posts, some contain 'qui' and get filtered, summary posted to Slack",
+			"dataSetup": "The HTTP Request node returns JSON objects with fields: id, userId, title, body. Some of them should have 'qui' in the title (e.g. 'qui est esse', 'nesciunt quid non qui'). Others should NOT contain 'qui'. The Slack node returns a success response.",
+			"successCriteria": "The workflow executes without errors. Posts containing 'qui' in the title are filtered out. The Slack message is posted to #api-digest and includes how many posts remain plus the titles of the remaining posts. None of the titles in the Slack message should contain the word 'qui'."
 		},
 		{
 			"name": "empty-response",
