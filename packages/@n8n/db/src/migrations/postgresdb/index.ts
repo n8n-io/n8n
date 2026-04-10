@@ -159,6 +159,7 @@ import { CreateInstanceVersionHistoryTable1774854660000 } from '../common/177485
 import { CreateInstanceAiTables1775000000000 } from '../common/1775000000000-CreateInstanceAiTables';
 import { CreateTokenExchangeJtiTable1775116241000 } from '../common/1775116241000-CreateTokenExchangeJtiTable';
 import { CreateTrustedKeyTables1776000000000 } from '../common/1776000000000-CreateTrustedKeyTables';
+import { CreateDeploymentKeyTable1777000000000 } from '../common/1777000000000-CreateDeploymentKeyTable';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -323,4 +324,5 @@ export const postgresMigrations: Migration[] = [
 	CreateInstanceAiTables1775000000000,
 	CreateTokenExchangeJtiTable1775116241000,
 	CreateTrustedKeyTables1776000000000,
+	CreateDeploymentKeyTable1777000000000,
 ];
