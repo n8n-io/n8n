@@ -45,8 +45,10 @@ test.describe(
 			await n8n.navigate.toInstanceAi();
 			await expect(n8n.instanceAi.getChatInput()).toBeVisible({ timeout: 30_000 });
 
-			// The old thread should be visible in the sidebar — click it to restore
-			const oldThread = n8n.instanceAi.sidebar.getThreadItems().last();
+			// The old thread should be visible in the sidebar — click it to restore.
+			// Thread title is LLM-generated ("Persistence message noted" from recording).
+			// Use partial match to be resilient to minor title variations.
+			const oldThread = n8n.instanceAi.sidebar.getThreadByTitle('Persistence message');
 			await expect(oldThread).toBeVisible({ timeout: 10_000 });
 			await oldThread.click();
 

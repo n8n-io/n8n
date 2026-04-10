@@ -173,7 +173,16 @@ export class ProxyServer {
 	): Promise<void> {
 		try {
 			const targetDir = join(this.expectationsDir, folderName);
-			const files = await fs.readdir(targetDir);
+			let files: string[];
+			try {
+				files = await fs.readdir(targetDir);
+			} catch (err) {
+				if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+					console.log(`No expectations directory: ${targetDir}, skipping`);
+					return;
+				}
+				throw err;
+			}
 			const jsonFiles = files.filter((file) => file.endsWith('.json')).sort();
 			const expectations: Expectation[] = [];
 
