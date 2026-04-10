@@ -29,11 +29,7 @@ export class SecurityPolicyInstanceSettingsLoader {
 		} = this.instanceSettingsLoaderConfig;
 
 		if (!securityPolicyManagedByEnv) {
-			if (mfaEnforcedEnabled || !personalSpacePublishingEnabled || !personalSpaceSharingEnabled) {
-				this.logger.warn(
-					'Security policy env vars are set but N8N_SECURITY_POLICY_MANAGED_BY_ENV is not enabled — ignoring security policy env vars',
-				);
-			}
+			this.logger.debug('Security policy is not managed by environment variables, skipping');
 			return 'skipped';
 		}
 
