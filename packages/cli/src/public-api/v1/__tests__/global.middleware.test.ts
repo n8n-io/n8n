@@ -1,6 +1,6 @@
-import type { AuthenticatedRequest, TokenGrant } from '@n8n/db';
+import type { AuthenticatedRequest, TokenGrant, User } from '@n8n/db';
 import type { ApiKeyScope } from '@n8n/permissions';
-import { mockDeep } from 'jest-mock-extended';
+import { mock, mockDeep } from 'jest-mock-extended';
 import type { NextFunction, Response } from 'express';
 
 import * as middlewares from '../shared/middlewares/global.middleware';
@@ -37,7 +37,7 @@ describe('publicApiScope', () => {
 	});
 
 	it('calls next() when the required scope is present in tokenGrant.scopes', async () => {
-		const grant: TokenGrant = { scopes: ['workflow:read'] };
+		const grant: TokenGrant = { scopes: ['workflow:read'], subject: mock<User>() };
 		await middlewares.publicApiScope('workflow:read' as ApiKeyScope)(
 			buildReq(grant) as any,
 			res,
@@ -47,7 +47,7 @@ describe('publicApiScope', () => {
 	});
 
 	it('returns 403 when the required scope is not in tokenGrant.scopes', async () => {
-		const grant: TokenGrant = { scopes: ['workflow:read'] };
+		const grant: TokenGrant = { scopes: ['workflow:read'], subject: mock<User>() };
 		await middlewares.publicApiScope('workflow:create' as ApiKeyScope)(
 			buildReq(grant) as any,
 			res,
@@ -59,7 +59,7 @@ describe('publicApiScope', () => {
 	});
 
 	it('returns 403 when tokenGrant.scopes is empty', async () => {
-		const grant: TokenGrant = { scopes: [] };
+		const grant: TokenGrant = { scopes: [], subject: mock<User>() };
 		await middlewares.publicApiScope('workflow:read' as ApiKeyScope)(
 			buildReq(grant) as any,
 			res,

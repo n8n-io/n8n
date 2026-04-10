@@ -11,6 +11,8 @@ import { createOwnerWithApiKey } from '@test-integration/db/users';
 
 import { ApiKeyAuthStrategy } from '../api-key-auth.strategy';
 import { JwtService } from '../jwt.service';
+import { TOKEN_EXCHANGE_ISSUER } from '@/modules/token-exchange/token-exchange.types';
+import { API_KEY_ISSUER } from '../public-api-key.service';
 
 const mockReqWith = (apiKey: string, path: string, method: string): AuthenticatedRequest =>
 	mock<AuthenticatedRequest>({
@@ -62,7 +64,7 @@ describe('ApiKeyAuthStrategy', () => {
 	});
 
 	it('should return false if valid api key is not in database', async () => {
-		const apiKey = jwtService.sign({ sub: '123' });
+		const apiKey = jwtService.sign({ sub: '123', iss: API_KEY_ISSUER });
 		const req = mockReqWith(apiKey, '/test', 'GET');
 		expect(await strategy.authenticate(req)).toBe(false);
 	});
@@ -142,5 +144,23 @@ describe('ApiKeyAuthStrategy', () => {
 		const req = mockReqWith(apiKey, '/test', 'GET');
 
 		expect(await strategy.authenticate(req)).toBe(false);
+	});
+
+	it('should set req.tokenGrant.subject to the API key owner', async () => {
+		const owner = await createOwnerWithApiKey();
+		const [{ apiKey }] = owner.apiKeys;
+		const req = mockReqWith(apiKey, '/test', 'GET');
+
+		await strategy.authenticate(req);
+
+		expect(req.tokenGrant?.subject).toBeDefined();
+		expect(req.tokenGrant?.subject.id).toBe(owner.id);
+	});
+
+	it('should return null when x-n8n-api-key contains a token-exchange JWT', async () => {
+		const tokenExchangeJwt = jwtService.sign({ iss: TOKEN_EXCHANGE_ISSUER, sub: '123' });
+		const req = mockReqWith(tokenExchangeJwt, '/test', 'GET');
+
+		expect(await strategy.authenticate(req)).toBeNull();
 	});
 });

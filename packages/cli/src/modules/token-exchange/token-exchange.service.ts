@@ -10,12 +10,14 @@ import {
 	type ExternalTokenClaims,
 	type TokenExchangeRequest,
 } from './token-exchange.schemas';
-import type { IssuedJwtPayload, IssuedTokenResult } from './token-exchange.types';
+import {
+	TOKEN_EXCHANGE_ISSUER,
+	type IssuedJwtPayload,
+	type IssuedTokenResult,
+} from './token-exchange.types';
 
 @Service()
 export class TokenExchangeService {
-	private static readonly ISSUER = 'n8n';
-
 	private readonly jwtService = Container.get(JwtService);
 
 	private readonly config = Container.get(TokenExchangeConfig);
@@ -41,7 +43,7 @@ export class TokenExchangeService {
 		const scopes = request.scope?.split(' ').filter(Boolean);
 
 		const payload: IssuedJwtPayload = {
-			iss: TokenExchangeService.ISSUER,
+			iss: TOKEN_EXCHANGE_ISSUER,
 			sub: subjectClaims.sub,
 			...(actorClaims && { act: { sub: actorClaims.sub } }),
 			...(scopes?.length && { scope: scopes }),
