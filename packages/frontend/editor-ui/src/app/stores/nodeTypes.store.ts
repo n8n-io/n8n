@@ -87,6 +87,43 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		return actionsGenerator.generateMergedNodesAndActions(unofficialCommunityNodeTypes.value, []);
 	});
 
+	const vettedCommunityPackages = computed(() => {
+		const grouped = new Map<
+			string,
+			{
+				packageName: string;
+				authorName: string;
+				description: string;
+				isOfficialNode: boolean;
+				isInstalled: boolean;
+				numberOfDownloads: number;
+				npmVersion: string;
+				nodes: CommunityNodeType[];
+			}
+		>();
+
+		for (const nodeType of vettedCommunityNodeTypes.value.values()) {
+			const existing = grouped.get(nodeType.packageName);
+			if (existing) {
+				existing.nodes.push(nodeType);
+				existing.isInstalled = existing.isInstalled && nodeType.isInstalled;
+			} else {
+				grouped.set(nodeType.packageName, {
+					packageName: nodeType.packageName,
+					authorName: nodeType.authorName,
+					description: nodeType.description,
+					isOfficialNode: nodeType.isOfficialNode,
+					isInstalled: nodeType.isInstalled,
+					numberOfDownloads: nodeType.numberOfDownloads,
+					npmVersion: nodeType.npmVersion,
+					nodes: [nodeType],
+				});
+			}
+		}
+
+		return Array.from(grouped.values()).sort((a, b) => a.packageName.localeCompare(b.packageName));
+	});
+
 	const allNodeTypes = computed(() => {
 		return Object.values(nodeTypes.value).flatMap((nodeType) =>
 			Object.keys(nodeType).map((version) => nodeType[Number(version)]),
@@ -482,6 +519,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		isConfigurableNode,
 		communityNodesAndActions,
 		communityNodeType,
+		vettedCommunityPackages,
 		fetchCommunityNodePreviews,
 		getResourceMapperFields,
 		getLocalResourceMapperFields,

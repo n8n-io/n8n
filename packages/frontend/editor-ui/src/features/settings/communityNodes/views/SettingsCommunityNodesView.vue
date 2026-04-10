@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import {
-	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
-	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
-} from '../communityNodes.constants';
+import { COMMUNITY_PACKAGE_INSTALL_MODAL_KEY } from '../communityNodes.constants';
 import CommunityPackageCard from '../components/CommunityPackageCard.vue';
+import CommunityNodesBrowser from '../components/CommunityNodesBrowser.vue';
 import { useToast } from '@/app/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import type { PublicInstalledPackage } from 'n8n-workflow';
@@ -18,9 +16,12 @@ import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
-import { N8nActionBox, N8nButton, N8nHeading } from '@n8n/design-system';
-const PACKAGE_COUNT_THRESHOLD = 31;
+import { N8nActionBox, N8nButton, N8nHeading, N8nTabs } from '@n8n/design-system';
+import type { TabOptions } from '@n8n/design-system';
+
+type CommunityNodesTab = 'installed' | 'browse';
 
 const loading = ref(false);
 
@@ -36,56 +37,30 @@ const documentTitle = useDocumentTitle();
 const communityNodesStore = useCommunityNodesStore();
 const uiStore = useUIStore();
 const settingsStore = useSettingsStore();
+const nodeTypesStore = useNodeTypesStore();
 
-const getEmptyStateTitle = computed(() => {
-	if (!settingsStore.isUnverifiedPackagesEnabled) {
-		return i18n.baseText('settings.communityNodes.empty.verified.only.title');
-	}
+const selectedTab = ref<CommunityNodesTab>('browse');
 
-	return i18n.baseText('settings.communityNodes.empty.title');
-});
+const tabs = computed<Array<TabOptions<CommunityNodesTab>>>(() => [
+	{
+		label: i18n.baseText('settings.communityNodes.tabs.installed'),
+		value: 'installed',
+	},
+	{
+		label: i18n.baseText('settings.communityNodes.tabs.browse'),
+		value: 'browse',
+	},
+]);
 
-const getEmptyStateDescription = computed(() => {
-	if (!settingsStore.isUnverifiedPackagesEnabled) {
-		return i18n.baseText('settings.communityNodes.empty.verified.only.description');
-	}
+const hasInstalledPackages = computed(() => communityNodesStore.getInstalledPackages.length > 0);
 
-	const packageCount = communityNodesStore.availablePackageCount;
+const hasBrowsablePackages = computed(() => nodeTypesStore.vettedCommunityPackages.length > 0);
 
-	return packageCount < PACKAGE_COUNT_THRESHOLD
-		? i18n.baseText('settings.communityNodes.empty.description.no-packages', {
-				interpolate: {
-					docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL,
-				},
-			})
-		: i18n.baseText('settings.communityNodes.empty.description', {
-				interpolate: {
-					docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL,
-					count: (Math.floor(packageCount / 10) * 10).toString(),
-				},
-			});
-});
-
-const getEmptyStateButtonText = computed(() => {
-	if (!settingsStore.isUnverifiedPackagesEnabled) return '';
-	return i18n.baseText('settings.communityNodes.empty.installPackageLabel');
-});
-
-const actionBoxConfig = computed(() => {
-	return {
-		calloutText: '',
-		calloutTheme: undefined,
-		hideButton: false,
-	};
-});
-
-const onClickEmptyStateButton = () => {
-	openInstallModal();
-};
+const showTabs = computed(() => settingsStore.isCommunityNodesFeatureEnabled);
 
 const openInstallModal = () => {
 	const telemetryPayload = {
-		is_empty_state: communityNodesStore.getInstalledPackages.length === 0,
+		is_empty_state: !hasInstalledPackages.value,
 	};
 	telemetry.track('user clicked cnr install button', telemetryPayload);
 
@@ -93,9 +68,12 @@ const openInstallModal = () => {
 	uiStore.openModal(COMMUNITY_PACKAGE_INSTALL_MODAL_KEY);
 };
 
+const switchToBrowse = () => {
+	selectedTab.value = 'browse';
+};
+
 onBeforeMount(() => {
 	pushConnection.initialize();
-	// The push connection is needed here to receive `reloadNodeType` and `removeNodeType` events when community nodes are installed, updated, or removed.
 	pushStore.pushConnect();
 });
 
@@ -128,6 +106,10 @@ onMounted(async () => {
 			}),
 			number_of_updates_available: packagesToUpdate.length,
 		});
+
+		if (installedPackages.length > 0) {
+			selectedTab.value = 'installed';
+		}
 	} catch (error) {
 		toast.showError(
 			error,
@@ -137,11 +119,10 @@ onMounted(async () => {
 	} finally {
 		loading.value = false;
 	}
-	try {
-		await communityNodesStore.fetchAvailableCommunityPackageCount();
-	} finally {
-		loading.value = false;
-	}
+	await Promise.all([
+		communityNodesStore.fetchAvailableCommunityPackageCount(),
+		nodeTypesStore.fetchCommunityNodePreviews(),
+	]);
 });
 
 onBeforeUnmount(() => {
@@ -155,43 +136,47 @@ onBeforeUnmount(() => {
 		<div :class="$style.headingContainer">
 			<N8nHeading size="2xlarge">{{ i18n.baseText('settings.communityNodes') }}</N8nHeading>
 			<N8nButton
-				v-if="
-					settingsStore.isUnverifiedPackagesEnabled &&
-					communityNodesStore.getInstalledPackages.length > 0 &&
-					!loading
-				"
+				v-if="settingsStore.isUnverifiedPackagesEnabled && selectedTab === 'installed' && !loading"
 				:label="i18n.baseText('settings.communityNodes.installModal.installButton.label')"
 				size="large"
 				@click="openInstallModal"
 			/>
 		</div>
-		<div v-if="loading" :class="$style.cardsContainer">
-			<CommunityPackageCard
-				v-for="n in 2"
-				:key="'index-' + n"
-				:loading="true"
-			></CommunityPackageCard>
+
+		<N8nTabs
+			v-if="showTabs"
+			:model-value="selectedTab"
+			:options="tabs"
+			@update:model-value="selectedTab = $event as CommunityNodesTab"
+		/>
+
+		<div v-if="selectedTab === 'installed'">
+			<div v-if="loading" :class="$style.cardsContainer">
+				<CommunityPackageCard v-for="n in 2" :key="'index-' + n" :loading="true" />
+			</div>
+			<div v-else-if="!hasInstalledPackages" :class="$style.actionBoxContainer">
+				<N8nActionBox
+					:heading="i18n.baseText('settings.communityNodes.installed.empty.title')"
+					:description="i18n.baseText('settings.communityNodes.installed.empty.description')"
+					:button-text="
+						hasBrowsablePackages
+							? i18n.baseText('settings.communityNodes.installed.empty.browseButton')
+							: ''
+					"
+					@click:button="switchToBrowse"
+				/>
+			</div>
+			<div v-else :class="$style.cardsContainer">
+				<CommunityPackageCard
+					v-for="communityPackage in communityNodesStore.getInstalledPackages"
+					:key="communityPackage.packageName"
+					:community-package="communityPackage"
+				/>
+			</div>
 		</div>
-		<div
-			v-else-if="communityNodesStore.getInstalledPackages.length === 0"
-			:class="$style.actionBoxContainer"
-		>
-			<N8nActionBox
-				:heading="getEmptyStateTitle"
-				:description="getEmptyStateDescription"
-				:button-text="getEmptyStateButtonText"
-				:button-disabled="!settingsStore.isUnverifiedPackagesEnabled"
-				:callout-text="actionBoxConfig.calloutText"
-				:callout-theme="actionBoxConfig.calloutTheme"
-				@click:button="onClickEmptyStateButton"
-			/>
-		</div>
-		<div v-else :class="$style.cardsContainer">
-			<CommunityPackageCard
-				v-for="communityPackage in communityNodesStore.getInstalledPackages"
-				:key="communityPackage.packageName"
-				:community-package="communityPackage"
-			></CommunityPackageCard>
+
+		<div v-else-if="selectedTab === 'browse'">
+			<CommunityNodesBrowser />
 		</div>
 	</div>
 </template>
@@ -208,11 +193,6 @@ onBeforeUnmount(() => {
 .headingContainer {
 	display: flex;
 	justify-content: space-between;
-}
-
-.loadingContainer {
-	display: flex;
-	gap: var(--spacing--xs);
 }
 
 .actionBoxContainer {
