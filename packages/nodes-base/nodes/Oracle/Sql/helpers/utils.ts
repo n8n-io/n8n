@@ -442,14 +442,17 @@ function createErrorItems(
 	return [prepareErrorItem(error, 0)];
 }
 
+type ConnectionResult =
+	| { connection: oracledb.Connection; error?: never }
+	| { connection?: never; error: NodeOperationError };
+
 async function getConnectionOrError(
 	pool: oracledb.Pool,
 	node: INode,
 	continueOnFail: boolean,
-): Promise<{ connection?: oracledb.Connection; error?: NodeOperationError }> {
+): Promise<ConnectionResult> {
 	try {
-		const connection = await pool.getConnection();
-		return { connection };
+		return { connection: await pool.getConnection() };
 	} catch (caughtError) {
 		const error = parseOracleError(node, caughtError);
 		if (!continueOnFail) throw error;
@@ -523,7 +526,7 @@ export function configureQueryRunner(
 		if (stmtBatching === 'single' && queries[0].executeManyValues) {
 			const { connection, error } = await getConnectionOrError(pool, node, continueOnFail);
 			if (!connection) {
-				return createErrorItems(error!, items);
+				return createErrorItems(error, items);
 			}
 			try {
 				execOptions = getExecuteManyOptions(options);
@@ -577,7 +580,7 @@ export function configureQueryRunner(
 			execOptions.autoCommit = false; // for transaction mode forcefully overwrite it.
 			const { connection, error } = await getConnectionOrError(pool, node, continueOnFail);
 			if (!connection) {
-				return createErrorItems(error!, items);
+				return createErrorItems(error, items);
 			}
 			try {
 				for (let i = 0; i < queries.length; i++) {
@@ -637,7 +640,7 @@ export function configureQueryRunner(
 		} else if (stmtBatching === 'independently') {
 			const { connection, error } = await getConnectionOrError(pool, node, continueOnFail);
 			if (!connection) {
-				return createErrorItems(error!, items);
+				return createErrorItems(error, items);
 			}
 			try {
 				for (let i = 0; i < queries.length; i++) {
