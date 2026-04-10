@@ -34,11 +34,8 @@ const i18n = useI18n();
 const canManage = useRBACStore().hasScope('provisioning:manage');
 const { check: isEnvFeatEnabled } = useEnvFeatureFlag();
 const isRuleMappingEnabled = computed(() => isEnvFeatEnabled.value('ROLE_MAPPING_RULES'));
-
 const showMappingMethod = computed(() => roleAssignment.value !== 'manual');
-
 const showIdpInfoBox = computed(() => showMappingMethod.value && mappingMethod.value === 'idp');
-
 const showRuleEditor = computed(
 	() => showMappingMethod.value && mappingMethod.value === 'rules_in_n8n',
 );
@@ -49,16 +46,30 @@ const idpInfoText = computed(() =>
 		: i18n.baseText('settings.sso.settings.roleMappingMethod.idp.instanceInfo'),
 );
 
-/**
- * Derives the legacy single-value setting from the two dropdowns.
- * Used by ConfirmProvisioningDialog and the save flow.
- */
 const legacyValue = computed<UserRoleProvisioningSetting>(() => {
 	if (roleAssignment.value === 'manual') return 'disabled';
 	if (mappingMethod.value === 'rules_in_n8n') return 'expression_based';
 	if (roleAssignment.value === 'instance_and_project') return 'instance_and_project_roles';
 	return 'instance_role';
 });
+
+const roleAssignmentOptions = [
+	{ value: 'manual', label: 'roleAssignment.manual', desc: 'roleAssignment.manual.description' },
+	{ value: 'instance', label: 'roleAssignment.instanceRoles', desc: 'roleAssignment.instanceRoles.description' },
+	{ value: 'instance_and_project', label: 'roleAssignment.instanceAndProjectRoles', desc: 'roleAssignment.instanceAndProjectRoles.description' },
+];
+
+const mappingMethodOptions = computed(() => {
+	const opts = [
+		{ value: 'idp', label: 'roleMappingMethod.idp', desc: 'roleMappingMethod.idp.description' },
+	];
+	if (isRuleMappingEnabled.value) {
+		opts.push({ value: 'rules_in_n8n', label: 'roleMappingMethod.rulesInN8n', desc: 'roleMappingMethod.rulesInN8n.description' });
+	}
+	return opts;
+});
+
+const ssoKey = (key: string) => i18n.baseText(`settings.sso.settings.${key}`);
 
 defineExpose({ legacyValue, showRuleEditor });
 </script>
@@ -67,55 +78,15 @@ defineExpose({ legacyValue, showRuleEditor });
 		<!-- Dropdown 1: Role assignment -->
 		<div :class="[$style.settingsItem, { [$style.noBorder]: !showMappingMethod }]">
 			<div :class="$style.labelColumn">
-				<label>{{ i18n.baseText('settings.sso.settings.roleAssignment.label') }}</label>
-				<small>{{ i18n.baseText('settings.sso.settings.roleAssignment.description') }} </small>
+				<label>{{ ssoKey('roleAssignment.label') }}</label>
+				<small>{{ ssoKey('roleAssignment.description') }}</small>
 			</div>
 			<div :class="$style.controlColumn">
-				<N8nSelect
-					v-model="roleAssignment"
-					size="medium"
-					:disabled="!canManage"
-					data-test-id="role-assignment-select"
-				>
-					<N8nOption
-						:label="i18n.baseText('settings.sso.settings.roleAssignment.manual')"
-						value="manual"
-					>
+				<N8nSelect v-model="roleAssignment" size="medium" :disabled="!canManage" data-test-id="role-assignment-select">
+					<N8nOption v-for="opt in roleAssignmentOptions" :key="opt.value" :label="ssoKey(opt.label)" :value="opt.value">
 						<div :class="$style.optionContent">
-							<span :class="$style.optionTitle">{{
-								i18n.baseText('settings.sso.settings.roleAssignment.manual')
-							}}</span>
-							<span :class="$style.optionDescription">{{
-								i18n.baseText('settings.sso.settings.roleAssignment.manual.description')
-							}}</span>
-						</div>
-					</N8nOption>
-					<N8nOption
-						:label="i18n.baseText('settings.sso.settings.roleAssignment.instanceRoles')"
-						value="instance"
-					>
-						<div :class="$style.optionContent">
-							<span :class="$style.optionTitle">{{
-								i18n.baseText('settings.sso.settings.roleAssignment.instanceRoles')
-							}}</span>
-							<span :class="$style.optionDescription">{{
-								i18n.baseText('settings.sso.settings.roleAssignment.instanceRoles.description')
-							}}</span>
-						</div>
-					</N8nOption>
-					<N8nOption
-						:label="i18n.baseText('settings.sso.settings.roleAssignment.instanceAndProjectRoles')"
-						value="instance_and_project"
-					>
-						<div :class="$style.optionContent">
-							<span :class="$style.optionTitle">{{
-								i18n.baseText('settings.sso.settings.roleAssignment.instanceAndProjectRoles')
-							}}</span>
-							<span :class="$style.optionDescription">{{
-								i18n.baseText(
-									'settings.sso.settings.roleAssignment.instanceAndProjectRoles.description',
-								)
-							}}</span>
+							<span :class="$style.optionTitle">{{ ssoKey(opt.label) }}</span>
+							<span :class="$style.optionDescription">{{ ssoKey(opt.desc) }}</span>
 						</div>
 					</N8nOption>
 				</N8nSelect>
@@ -125,41 +96,15 @@ defineExpose({ legacyValue, showRuleEditor });
 		<!-- Dropdown 2: Role mapping method (conditional) -->
 		<div v-if="showMappingMethod" :class="$style.settingsItem">
 			<div :class="$style.labelColumn">
-				<label>{{ i18n.baseText('settings.sso.settings.roleMappingMethod.label') }}</label>
-				<small>{{ i18n.baseText('settings.sso.settings.roleMappingMethod.description') }}</small>
+				<label>{{ ssoKey('roleMappingMethod.label') }}</label>
+				<small>{{ ssoKey('roleMappingMethod.description') }}</small>
 			</div>
 			<div :class="$style.controlColumn">
-				<N8nSelect
-					v-model="mappingMethod"
-					size="medium"
-					:disabled="!canManage"
-					data-test-id="role-mapping-method-select"
-				>
-					<N8nOption
-						:label="i18n.baseText('settings.sso.settings.roleMappingMethod.idp')"
-						value="idp"
-					>
+				<N8nSelect v-model="mappingMethod" size="medium" :disabled="!canManage" data-test-id="role-mapping-method-select">
+					<N8nOption v-for="opt in mappingMethodOptions" :key="opt.value" :label="ssoKey(opt.label)" :value="opt.value">
 						<div :class="$style.optionContent">
-							<span :class="$style.optionTitle">{{
-								i18n.baseText('settings.sso.settings.roleMappingMethod.idp')
-							}}</span>
-							<span :class="$style.optionDescription">{{
-								i18n.baseText('settings.sso.settings.roleMappingMethod.idp.description')
-							}}</span>
-						</div>
-					</N8nOption>
-					<N8nOption
-						v-if="isRuleMappingEnabled"
-						:label="i18n.baseText('settings.sso.settings.roleMappingMethod.rulesInN8n')"
-						value="rules_in_n8n"
-					>
-						<div :class="$style.optionContent">
-							<span :class="$style.optionTitle">{{
-								i18n.baseText('settings.sso.settings.roleMappingMethod.rulesInN8n')
-							}}</span>
-							<span :class="$style.optionDescription">{{
-								i18n.baseText('settings.sso.settings.roleMappingMethod.rulesInN8n.description')
-							}}</span>
+							<span :class="$style.optionTitle">{{ ssoKey(opt.label) }}</span>
+							<span :class="$style.optionDescription">{{ ssoKey(opt.desc) }}</span>
 						</div>
 					</N8nOption>
 				</N8nSelect>
