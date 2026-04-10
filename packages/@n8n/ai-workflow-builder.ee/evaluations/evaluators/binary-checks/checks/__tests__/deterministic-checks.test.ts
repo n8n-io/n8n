@@ -996,7 +996,10 @@ describe('workflow_actually_changed', () => {
 		});
 		const result = await workflowActuallyChanged.run(
 			existing,
-			makeCtx({ existingWorkflow: existing }),
+			makeCtx({
+				existingWorkflow: existing,
+				annotations: { tags: ['requires_changes_in_workflow'] },
+			}),
 		);
 		expect(result.pass).toBe(false);
 	});
@@ -1031,7 +1034,10 @@ describe('workflow_actually_changed', () => {
 		});
 		const result = await workflowActuallyChanged.run(
 			updated,
-			makeCtx({ existingWorkflow: existing }),
+			makeCtx({
+				existingWorkflow: existing,
+				annotations: { tags: ['requires_changes_in_workflow'] },
+			}),
 		);
 		expect(result.pass).toBe(true);
 	});
@@ -1063,7 +1069,10 @@ describe('workflow_actually_changed', () => {
 		});
 		const result = await workflowActuallyChanged.run(
 			updated,
-			makeCtx({ existingWorkflow: existing }),
+			makeCtx({
+				existingWorkflow: existing,
+				annotations: { tags: ['requires_changes_in_workflow'] },
+			}),
 		);
 		expect(result.pass).toBe(true);
 	});
@@ -1081,7 +1090,10 @@ describe('workflow_actually_changed', () => {
 		});
 		const result = await workflowActuallyChanged.run(
 			updated,
-			makeCtx({ existingWorkflow: existing }),
+			makeCtx({
+				existingWorkflow: existing,
+				annotations: { tags: ['requires_changes_in_workflow'] },
+			}),
 		);
 		expect(result.pass).toBe(false);
 	});
@@ -1101,7 +1113,10 @@ describe('workflow_actually_changed', () => {
 		});
 		const result = await workflowActuallyChanged.run(
 			updated,
-			makeCtx({ existingWorkflow: existing }),
+			makeCtx({
+				existingWorkflow: existing,
+				annotations: { tags: ['requires_changes_in_workflow'] },
+			}),
 		);
 		expect(result.pass).toBe(false);
 	});
@@ -1132,7 +1147,10 @@ describe('workflow_actually_changed', () => {
 		});
 		const result = await workflowActuallyChanged.run(
 			updated,
-			makeCtx({ existingWorkflow: existing }),
+			makeCtx({
+				existingWorkflow: existing,
+				annotations: { tags: ['requires_changes_in_workflow'] },
+			}),
 		);
 		expect(result.pass).toBe(true);
 	});

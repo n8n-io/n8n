@@ -179,48 +179,49 @@ async function main() {
 	let errors = 0;
 	const startTime = Date.now();
 
-	const tasks = examples.map((example) =>
-		limit(async () => {
-			const index = ++completed;
-			try {
-				const inputs = example.inputs as Record<string, unknown>;
-				const prompt = extractPrompt(inputs);
-				const tags = await generateTags(llm, prompt);
+	const tasks = examples.map(
+		async (example) =>
+			await limit(async () => {
+				const index = ++completed;
+				try {
+					const inputs = example.inputs as Record<string, unknown>;
+					const prompt = extractPrompt(inputs);
+					const tags = await generateTags(llm, prompt);
 
-				const existingAnnotations =
-					typeof inputs.annotations === 'object' &&
-					inputs.annotations !== null &&
-					!Array.isArray(inputs.annotations)
-						? (inputs.annotations as Record<string, unknown>)
-						: {};
+					const existingAnnotations =
+						typeof inputs.annotations === 'object' &&
+						inputs.annotations !== null &&
+						!Array.isArray(inputs.annotations)
+							? (inputs.annotations as Record<string, unknown>)
+							: {};
 
-				const updatedInputs = {
-					...inputs,
-					annotations: {
-						...existingAnnotations,
-						tags,
-					},
-				};
+					const updatedInputs = {
+						...inputs,
+						annotations: {
+							...existingAnnotations,
+							tags,
+						},
+					};
 
-				const tagsDisplay = tags.length > 0 ? tags.join(', ') : '(none)';
+					const tagsDisplay = tags.length > 0 ? tags.join(', ') : '(none)';
 
-				if (dryRun) {
-					console.log(
-						pc.yellow(`[DRY-RUN ${index}/${examples.length}]`) +
-							` ${prompt}\n  Tags: ${tagsDisplay}\n`,
-					);
-				} else {
-					await lsClient.updateExample({ id: example.id, inputs: updatedInputs });
-					console.log(
-						pc.green(`[${index}/${examples.length}]`) + ` ${prompt}\n  Tags: ${tagsDisplay}\n`,
-					);
+					if (dryRun) {
+						console.log(
+							pc.yellow(`[DRY-RUN ${index}/${examples.length}]`) +
+								` ${prompt}\n  Tags: ${tagsDisplay}\n`,
+						);
+					} else {
+						await lsClient.updateExample({ id: example.id, inputs: updatedInputs });
+						console.log(
+							pc.green(`[${index}/${examples.length}]`) + ` ${prompt}\n  Tags: ${tagsDisplay}\n`,
+						);
+					}
+				} catch (error) {
+					errors++;
+					const msg = error instanceof Error ? error.message : String(error);
+					console.error(pc.red(`[${index}/${examples.length}] Error: ${msg}\n`));
 				}
-			} catch (error) {
-				errors++;
-				const msg = error instanceof Error ? error.message : String(error);
-				console.error(pc.red(`[${index}/${examples.length}] Error: ${msg}\n`));
-			}
-		}),
+			}),
 	);
 
 	await Promise.all(tasks);
