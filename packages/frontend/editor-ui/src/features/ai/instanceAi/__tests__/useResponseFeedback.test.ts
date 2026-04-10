@@ -286,7 +286,7 @@ describe('useResponseFeedback - submitFeedback', () => {
 		submitFeedback('resp-1', { rating: 'down' });
 		expect(feedbackByResponseId.value['resp-1']).toBeUndefined();
 		expect(mockTrack).toHaveBeenCalledWith(
-			'Instance AI response rating submitted',
+			'User rated workflow generation',
 			expect.objectContaining({ helpful: false }),
 		);
 	});
@@ -302,8 +302,8 @@ describe('useResponseFeedback - submitFeedback', () => {
 		const { submitFeedback, mockTrack } = setup();
 		submitFeedback('resp-1', { rating: 'up' });
 		expect(mockTrack).toHaveBeenCalledWith(
-			'Instance AI response rating submitted',
-			expect.objectContaining({ responseId: 'resp-1', helpful: true }),
+			'User rated workflow generation',
+			expect.objectContaining({ response_id: 'resp-1', helpful: true }),
 		);
 	});
 
@@ -311,17 +311,17 @@ describe('useResponseFeedback - submitFeedback', () => {
 		const { submitFeedback, mockTrack } = setup();
 		submitFeedback('resp-1', { feedback: 'Great job!' });
 		expect(mockTrack).toHaveBeenCalledWith(
-			'Instance AI response feedback text submitted',
-			expect.objectContaining({ responseId: 'resp-1', feedback: 'Great job!' }),
+			'User submitted workflow generation feedback',
+			expect.objectContaining({ response_id: 'resp-1', feedback: 'Great job!' }),
 		);
 	});
 
-	test('includes threadId in telemetry', () => {
+	test('includes thread_id in telemetry', () => {
 		const { submitFeedback, mockTrack } = setup();
 		submitFeedback('resp-1', { rating: 'up' });
 		expect(mockTrack).toHaveBeenCalledWith(
-			'Instance AI response rating submitted',
-			expect.objectContaining({ threadId: 'thread-1' }),
+			'User rated workflow generation',
+			expect.objectContaining({ thread_id: 'thread-1' }),
 		);
 	});
 });

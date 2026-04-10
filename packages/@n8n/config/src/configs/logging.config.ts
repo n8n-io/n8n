@@ -28,7 +28,6 @@ export const LOG_SCOPES = [
 	'cron',
 	'community-nodes',
 	'chat-hub',
-	'instance-ai',
 	'breaking-changes',
 	'circuit-breaker',
 	'source-control',
@@ -40,6 +39,7 @@ export const LOG_SCOPES = [
 	'instance-ai',
 	'agents',
 	'instance-version-history',
+	'instance-settings-loader',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

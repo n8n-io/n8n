@@ -284,6 +284,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			write: (v) => String(v),
 		},
 	});
+	const sidebarWidth = useLocalStorage('N8N_SIDEBAR_WIDTH', 200);
 	const currentView = ref<string>('');
 	const stateIsDirty = ref<boolean>(false);
 	// This tracks only structural changes without metadata (name or tags)
@@ -745,6 +746,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		nodeViewInitialized,
 		addFirstStepOnLoad,
 		sidebarMenuCollapsed,
+		sidebarWidth,
 		theme: computed(() => theme.value),
 		modalsById,
 		currentView,
