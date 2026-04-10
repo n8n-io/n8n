@@ -7,7 +7,14 @@ describe('CONFIG_TEMPLATES', () => {
 	});
 
 	it('covers all tool groups on every template', () => {
-		const expectedGroups = ['filesystemRead', 'filesystemWrite', 'shell', 'computer', 'browser'];
+		const expectedGroups = [
+			'filesystemRead',
+			'filesystemWrite',
+			'shell',
+			'computer',
+			'browser',
+			'system',
+		];
 		for (const tpl of CONFIG_TEMPLATES) {
 			expect(Object.keys(tpl.permissions).sort()).toEqual(expectedGroups.sort());
 		}
@@ -21,6 +28,7 @@ describe('CONFIG_TEMPLATES', () => {
 				shell: 'deny',
 				computer: 'deny',
 				browser: 'ask',
+				system: 'ask',
 			});
 		});
 	});

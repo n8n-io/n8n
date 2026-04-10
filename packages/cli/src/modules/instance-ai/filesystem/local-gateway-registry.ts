@@ -135,6 +135,11 @@ export class LocalGatewayRegistry {
 		state.gateway.init(data);
 	}
 
+	/** Update available tools on an already-connected gateway. */
+	updateGatewayTools(userId: string, data: InstanceAiGatewayCapabilities): void {
+		this.userGateways.get(userId)?.gateway.updateTools(data.tools, data.toolCategories ?? []);
+	}
+
 	/** Resolve a pending tool call request dispatched to a user's daemon. */
 	resolveGatewayRequest(
 		userId: string,

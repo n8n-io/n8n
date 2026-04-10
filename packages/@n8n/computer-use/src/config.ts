@@ -40,9 +40,21 @@ export const TOOL_GROUP_DEFINITIONS = {
 		default: 'ask',
 		description: 'Browser automation mode: deny | ask | allow',
 	},
+	system: {
+		envVar: 'PERMISSION_SYSTEM',
+		cliFlag: 'permission-system',
+		default: 'ask',
+		description: 'System tool group (activate_tools): deny | ask | allow',
+	},
 } as const;
 
 export type ToolGroup = keyof typeof TOOL_GROUP_DEFINITIONS;
+
+/**
+ * Tool groups that are not shown in the connection dialog and cannot be
+ * configured by the user interactively. They can only be changed via settings.json.
+ */
+export const NON_CONFIGURABLE_TOOL_GROUPS = new Set<ToolGroup>(['system']);
 
 export const PERMISSION_MODES = ['deny', 'ask', 'allow'] as const;
 export const permissionModeSchema = z.enum(PERMISSION_MODES);

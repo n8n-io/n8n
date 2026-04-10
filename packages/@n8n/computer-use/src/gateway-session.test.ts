@@ -54,6 +54,7 @@ describe('buildDefaultPermissions', () => {
 			shell: 'deny',
 			computer: 'deny',
 			browser: 'ask',
+			system: 'ask',
 		});
 	});
 

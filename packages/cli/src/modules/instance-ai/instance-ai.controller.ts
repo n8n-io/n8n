@@ -587,6 +587,27 @@ export class InstanceAiController {
 		if (!parsed.success) {
 			throw new BadRequestError(parsed.error.message);
 		}
+
+		const gateway = this.instanceAiService.getLocalGateway(userId);
+
+		if (gateway.isConnected) {
+			// Gateway already connected — update available tools without resetting the session.
+			this.instanceAiService.updateGatewayTools(userId, parsed.data);
+			this.push.sendToUsers(
+				{
+					type: 'instanceAiGatewayStateChanged',
+					data: {
+						connected: true,
+						directory: parsed.data.rootPath,
+						hostIdentifier: parsed.data.hostIdentifier ?? null,
+						toolCategories: parsed.data.toolCategories ?? [],
+					},
+				},
+				[userId],
+			);
+			return { ok: true };
+		}
+
 		this.instanceAiService.initGateway(userId, parsed.data);
 
 		this.push.sendToUsers(

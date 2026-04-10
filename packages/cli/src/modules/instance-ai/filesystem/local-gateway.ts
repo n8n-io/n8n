@@ -99,6 +99,12 @@ export class LocalGateway {
 		this._connectedAt = new Date().toISOString();
 	}
 
+	/** Update available tools on an already-connected gateway (e.g. after activate_tools). */
+	updateTools(tools: McpTool[], toolCategories: ToolCategory[]): void {
+		this._availableTools = tools;
+		this._toolCategories = toolCategories;
+	}
+
 	/** Called when the client POSTs back an MCP result for a pending request. */
 	resolveRequest(requestId: string, result?: McpToolCallResult, error?: string): boolean {
 		const pending = this.pendingRequests.get(requestId);

@@ -830,6 +830,10 @@ export class InstanceAiService {
 		this.gatewayRegistry.initGateway(userId, data);
 	}
 
+	updateGatewayTools(userId: string, data: InstanceAiGatewayCapabilities): void {
+		this.gatewayRegistry.updateGatewayTools(userId, data);
+	}
+
 	resolveGatewayRequest(
 		userId: string,
 		requestId: string,

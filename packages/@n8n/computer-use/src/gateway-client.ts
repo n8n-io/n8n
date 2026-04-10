@@ -104,8 +104,24 @@ export class GatewayClient {
 
 	/** Start the client: upload capabilities, connect SSE, handle requests. */
 	async start(): Promise<void> {
+		this.options.session.setReuploadCapabilities(async () => await this.reuploadCapabilities());
 		await this.uploadCapabilities();
 		this.connectSSE();
+	}
+
+	/**
+	 * Recompute the full tool list (reflecting updated permissions) and re-upload
+	 * capabilities to the n8n instance. Called by the session after activateToolGroups().
+	 */
+	private async reuploadCapabilities(): Promise<void> {
+		if (this.browserModule) {
+			await this.browserModule.shutdown();
+			this.browserModule = null;
+		}
+		this.allDefinitions = null;
+		this.definitionMap = new Map();
+		this.activeToolCategories = [];
+		await this.uploadCapabilities();
 	}
 
 	/** Stop the client and close the SSE connection. */
@@ -175,6 +191,15 @@ export class GatewayClient {
 			enabled: fsReadEnabled || fsWriteEnabled,
 			writeAccess: fsWriteEnabled,
 		});
+
+		// System tools — always registered unless explicitly denied
+		if (session.getGroupMode('system') !== 'deny') {
+			const { SystemModule } = await import('./tools/system');
+			defs.push(...tagCategory(SystemModule.definitions, 'system'));
+			categories.push({ name: 'system', enabled: true });
+		} else {
+			categories.push({ name: 'system', enabled: false });
+		}
 
 		// Computer use modules — check permission mode and platform support
 		// Lazy-load Screenshot and MouseKeyboard to avoid eager native module imports
@@ -408,7 +433,7 @@ export class GatewayClient {
 			typeof _confirmation === 'string' ? (_confirmation as ResourceDecision) : undefined;
 
 		const typedArgs: unknown = def.inputSchema.parse(cleanArgs);
-		const context = { dir: this.dir };
+		const context = { dir: this.dir, session: this.options.session };
 
 		const resources = await def.getAffectedResources(typedArgs, context);
 		await this.checkPermissions(resources, decision);

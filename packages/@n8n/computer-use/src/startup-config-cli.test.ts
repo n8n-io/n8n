@@ -40,7 +40,7 @@ const BASE_CONFIG: GatewayConfig = {
 // ---------------------------------------------------------------------------
 
 describe('isAllDeny', () => {
-	it('returns true when all groups are deny', () => {
+	it('returns true when all configurable groups are deny', () => {
 		expect(
 			isAllDeny({
 				filesystemRead: 'deny',
@@ -48,6 +48,7 @@ describe('isAllDeny', () => {
 				shell: 'deny',
 				computer: 'deny',
 				browser: 'deny',
+				system: 'ask',
 			}),
 		).toBe(true);
 	});
@@ -60,6 +61,7 @@ describe('isAllDeny', () => {
 				shell: 'deny',
 				computer: 'deny',
 				browser: 'deny',
+				system: 'ask',
 			}),
 		).toBe(false);
 	});
@@ -72,6 +74,7 @@ describe('isAllDeny', () => {
 				shell: 'deny',
 				computer: 'deny',
 				browser: 'deny',
+				system: 'ask',
 			}),
 		).toBe(false);
 	});

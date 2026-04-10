@@ -179,6 +179,23 @@ describe('LocalGateway', () => {
 		});
 	});
 
+	describe('updateTools', () => {
+		it('should replace available tools and categories without resetting connection state', () => {
+			gateway.init({ rootPath: 'my-project', tools: [SAMPLE_TOOL], toolCategories: [] });
+
+			const newTool: McpTool = {
+				name: 'shell_execute',
+				description: 'Execute a shell command',
+				inputSchema: { type: 'object', properties: { command: { type: 'string' } } },
+			};
+			gateway.updateTools([newTool], [{ name: 'shell', enabled: true }]);
+
+			expect(gateway.isConnected).toBe(true);
+			expect(gateway.getAvailableTools()).toEqual([newTool]);
+			expect(gateway.getStatus().toolCategories).toEqual([{ name: 'shell', enabled: true }]);
+		});
+	});
+
 	describe('resolveRequest with isError results', () => {
 		const CONFIRMATION_PAYLOAD = {
 			toolGroup: 'filesystemWrite',

@@ -3,7 +3,12 @@ import * as fs from 'node:fs/promises';
 import * as nodePath from 'node:path';
 
 import type { GatewayConfig, PermissionMode, ToolGroup } from './config';
-import { PERMISSION_MODES, getSettingsFilePath, TOOL_GROUP_DEFINITIONS } from './config';
+import {
+	NON_CONFIGURABLE_TOOL_GROUPS,
+	PERMISSION_MODES,
+	getSettingsFilePath,
+	TOOL_GROUP_DEFINITIONS,
+} from './config';
 import { getTemplate } from './config-templates';
 
 // ---------------------------------------------------------------------------
@@ -16,12 +21,14 @@ export const GROUP_LABELS: Record<ToolGroup, string> = {
 	shell: 'Shell Execution',
 	computer: 'Computer Control',
 	browser: 'Browser Automation',
+	system: 'System',
 };
 
 export function printPermissionsTable(permissions: Record<ToolGroup, PermissionMode>): void {
 	console.log();
 	console.log('  Current permissions:');
 	for (const group of Object.keys(TOOL_GROUP_DEFINITIONS) as ToolGroup[]) {
+		if (NON_CONFIGURABLE_TOOL_GROUPS.has(group)) continue;
 		const label = GROUP_LABELS[group].padEnd(20);
 		const mode = permissions[group];
 		console.log(`    ${label} ${mode}`);
@@ -39,6 +46,7 @@ export async function editPermissions(
 	const result = { ...current };
 	console.log('Edit permissions');
 	for (const group of Object.keys(TOOL_GROUP_DEFINITIONS) as ToolGroup[]) {
+		if (NON_CONFIGURABLE_TOOL_GROUPS.has(group)) continue;
 		result[group] = await select({
 			message: `    ${GROUP_LABELS[group]}`,
 			default: result[group],
@@ -70,9 +78,9 @@ export async function promptFilesystemDir(currentDir: string): Promise<string> {
 }
 
 export function isAllDeny(permissions: Record<ToolGroup, PermissionMode>): boolean {
-	return (Object.keys(TOOL_GROUP_DEFINITIONS) as ToolGroup[]).every(
-		(g) => permissions[g] === 'deny',
-	);
+	return (Object.keys(TOOL_GROUP_DEFINITIONS) as ToolGroup[])
+		.filter((g) => !NON_CONFIGURABLE_TOOL_GROUPS.has(g))
+		.every((g) => permissions[g] === 'deny');
 }
 
 // ---------------------------------------------------------------------------

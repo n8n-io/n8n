@@ -2,6 +2,7 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import type { z } from 'zod';
 
 import type { ToolGroup } from '../config';
+import type { GatewaySession } from '../gateway-session';
 
 export type { CallToolResult };
 
@@ -19,6 +20,8 @@ export interface McpTool {
 export interface ToolContext {
 	/** Base filesystem directory (used by filesystem tools) */
 	dir: string;
+	/** Active gateway session — used by system tools to update permissions and re-upload capabilities. */
+	session?: GatewaySession;
 }
 
 export interface ToolAnnotations {

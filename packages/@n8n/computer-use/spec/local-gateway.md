@@ -118,6 +118,31 @@ session modes are supported:
 - **Local** — the user's real installed browser, using their actual profile and
   data
 
+### 5. System
+
+The `system` tool group exposes management tools that let the AI adapt the set of available
+capabilities at runtime. It is always registered (unless explicitly set to `deny` via
+`settings.json`) and its default permission mode is `ask`.
+
+Unlike other tool groups, the `system` group **cannot be configured in the connection dialog**.
+Its permission mode can only be changed by editing `settings.json` directly.
+
+#### `activate_tools`
+
+Activates one or more tool groups that are currently disabled. When called:
+
+- For each requested group that is set to `deny`, the permission mode is changed to `ask` and
+  persisted to `settings.json`.
+- The updated tool list is uploaded to the n8n instance so the AI is immediately aware of the
+  newly enabled tools.
+- Groups that are already active (`ask` or `allow`) are left unchanged.
+
+The newly enabled tools are available from the **next conversation turn**. The AI should inform
+the user and end its current response after calling this tool.
+
+Confirmation (if the `system` group is in `ask` mode) is requested once per tool group being
+activated, scoped to the resource `activate:<group>`.
+
 ---
 
 ## Connection Flow
@@ -206,13 +231,14 @@ modes** (coarse-grained, configured at startup) and **resource-level rules**
 Each tool group has an independent permission mode, configured before the
 gateway connects and stored in the gateway configuration file.
 
-| Tool Group | Available Modes |
-|---|---|
-| Filesystem Access | Deny / Ask / Allow |
-| Filesystem Write Access | Deny / Ask / Allow |
-| Shell Execution | Deny / Ask / Allow |
-| Computer Control | Deny / Ask / Allow |
-| Browser Automation | Deny / Ask / Allow |
+| Tool Group | Available Modes | Default | Configurable in connection dialog |
+|---|---|---|---|
+| Filesystem Access | Deny / Ask / Allow | Allow | Yes |
+| Filesystem Write Access | Deny / Ask / Allow | Ask | Yes |
+| Shell Execution | Deny / Ask / Allow | Deny | Yes |
+| Computer Control | Deny / Ask / Allow | Deny | Yes |
+| Browser Automation | Deny / Ask / Allow | Ask | Yes |
+| System | Deny / Ask / Allow | Ask | No — `settings.json` only |
 
 **Deny** — The tool group is disabled. Its tools are not registered with the
 n8n instance; the AI has no knowledge of them.

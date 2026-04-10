@@ -49,6 +49,7 @@ export const CONFIG_TEMPLATES: readonly ConfigTemplate[] = [
 			shell: 'allow',
 			computer: 'allow',
 			browser: 'allow',
+			system: 'allow',
 		},
 	},
 	{

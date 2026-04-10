@@ -104,6 +104,7 @@ describe('getDefaults', () => {
 			shell: 'deny',
 			computer: 'deny',
 			browser: 'ask',
+			system: 'ask',
 		});
 	});
 
@@ -207,6 +208,7 @@ describe('updateDefaults', () => {
 			shell: 'allow' as const,
 			computer: 'deny' as const,
 			browser: 'ask' as const,
+			system: 'ask' as const,
 		};
 		await store.updateDefaults(newPermissions, '/updated');
 
@@ -228,6 +230,7 @@ describe('updateDefaults', () => {
 				shell: 'deny',
 				computer: 'deny',
 				browser: 'ask',
+				system: 'ask',
 			},
 			'/',
 		);

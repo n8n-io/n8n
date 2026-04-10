@@ -14,6 +14,7 @@ export class GatewaySession {
 	private _dir: string;
 	private _permissions: Record<ToolGroup, PermissionMode>;
 	private readonly sessionAllows: Map<ToolGroup, Set<string>> = new Map();
+	private _reuploadCapabilities?: () => Promise<void>;
 
 	constructor(
 		defaults: { permissions: Record<ToolGroup, PermissionMode>; dir: string },
@@ -33,6 +34,29 @@ export class GatewaySession {
 
 	setDir(dir: string): void {
 		this._dir = dir;
+	}
+
+	/** Register the callback used to recompute and re-upload capabilities to the n8n instance. */
+	setReuploadCapabilities(fn: () => Promise<void>): void {
+		this._reuploadCapabilities = fn;
+	}
+
+	/**
+	 * For each requested group that is currently `deny`, change its mode to `ask`
+	 * and persist to settings.json, then re-upload capabilities to the n8n instance.
+	 */
+	async activateToolGroups(groups: ToolGroup[]): Promise<void> {
+		let anyActivated = false;
+		for (const group of groups) {
+			if (this.getGroupMode(group) === 'deny') {
+				this._permissions[group] = 'ask';
+				anyActivated = true;
+			}
+		}
+		if (!anyActivated) return;
+
+		await this.settingsStore.updateDefaults({ ...this._permissions }, this._dir);
+		await this._reuploadCapabilities?.();
 	}
 
 	// ---------------------------------------------------------------------------
