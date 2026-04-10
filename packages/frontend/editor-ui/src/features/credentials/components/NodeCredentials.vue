@@ -660,7 +660,15 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 		:class="['node-credentials', $style.container]"
 	>
 		<div v-for="{ type, options } in credentialTypesNodeDescriptionDisplayed" :key="type.name">
+			<AiGatewayToggle
+				v-if="showAiGatewayToggle(type.name)"
+				:ai-gateway-enabled="isAiGatewayManagedCredentials(type.name)"
+				:readonly="readonly"
+				:credential-type="type.name"
+				@toggle="onAiGatewayToggle(type.name, $event)"
+			/>
 			<N8nInputLabel
+				v-if="!showAiGatewayToggle(type.name) || !isAiGatewayManagedCredentials(type.name)"
 				:label="getCredentialsFieldLabel(type)"
 				:bold="false"
 				size="small"
@@ -859,13 +867,6 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					</I18nT>
 				</N8nNotice>
 			</N8nInputLabel>
-			<AiGatewayToggle
-				v-if="showAiGatewayToggle(type.name)"
-				:ai-gateway-enabled="isAiGatewayManagedCredentials(type.name)"
-				:readonly="readonly"
-				:credential-type="type.name"
-				@toggle="onAiGatewayToggle(type.name, $event)"
-			/>
 		</div>
 	</div>
 </template>

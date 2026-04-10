@@ -4,6 +4,7 @@ import { computed } from 'vue';
 import type { IMenuItem } from '@n8n/design-system/types';
 
 import BetaTag from '../BetaTag/BetaTag.vue';
+import N8nAiGatewayCreditsTag from '../AiGatewayCreditsTag/AiGatewayCreditsTag.vue';
 import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';
 import N8nRoute from '../N8nRoute';
@@ -142,6 +143,11 @@ const tooltipPlacement = computed(() => {
 						:clickable="false"
 						text="New"
 						:class="$style.newTag"
+					/>
+					<N8nAiGatewayCreditsTag
+						v-if="!compact && item.creditsTag"
+						size="small"
+						:text="item.creditsTag"
 					/>
 				</div>
 				<N8nIcon v-if="item.children && !compact" icon="chevron-right" color="text-light" />

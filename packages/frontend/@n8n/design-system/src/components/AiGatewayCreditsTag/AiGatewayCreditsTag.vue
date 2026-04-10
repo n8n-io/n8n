@@ -13,14 +13,14 @@ withDefaults(
 		clickable?: boolean;
 		/** Match hover appearance without relying on :hover (e.g. alternate label visible). */
 		pressed?: boolean;
-		/** Larger pill for settings headers (aligns with `PreviewTag` medium). */
+		/** 'small' matches BetaTag/PreviewTag for menus; 'medium' is the default larger pill. */
 		size?: 'small' | 'medium';
 	}>(),
 	{
 		text: undefined,
 		clickable: false,
 		pressed: false,
-		size: 'small',
+		size: 'medium',
 	},
 );
 
@@ -33,7 +33,7 @@ defineEmits<{
 	<span
 		:class="[
 			$style.root,
-			size === 'medium' && $style.medium,
+			size === 'small' && $style.small,
 			clickable && $style.clickable,
 			pressed && $style.pressed,
 		]"
@@ -50,20 +50,20 @@ defineEmits<{
 	align-items: center;
 	justify-content: center;
 	flex-shrink: 0;
-	padding: var(--spacing--5xs) var(--spacing--4xs);
+	padding: var(--spacing--4xs) var(--spacing--2xs);
 	border: none;
 	border-radius: 16px;
 	background-color: var(--color--green-100);
-	font-size: var(--font-size--3xs);
+	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--medium);
 	color: var(--color--green-900);
 	white-space: nowrap;
 	box-shadow: none;
 }
 
-.medium {
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	font-size: var(--font-size--2xs);
+.small {
+	padding: var(--spacing--5xs) var(--spacing--4xs);
+	font-size: var(--font-size--3xs);
 }
 
 .clickable {

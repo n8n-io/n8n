@@ -1,5 +1,6 @@
 import { useRouter } from 'vue-router';
 import { useUserHelpers } from './useUserHelpers';
+import { useAiGateway } from './useAiGateway';
 import { computed } from 'vue';
 import type { IMenuItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -15,6 +16,7 @@ export function useSettingsItems() {
 	const uiStore = useUIStore();
 	const settingsStore = useSettingsStore();
 	const { canUserAccessRouteByName } = useUserHelpers(router);
+	const { creditsRemaining } = useAiGateway();
 
 	const settingsItems = computed<IMenuItem[]>(() => {
 		const menuItems: IMenuItem[] = [
@@ -59,6 +61,12 @@ export function useSettingsItems() {
 				available:
 					settingsStore.isAiGatewayEnabled && canUserAccessRouteByName(VIEWS.AI_GATEWAY_SETTINGS),
 				route: { to: { name: VIEWS.AI_GATEWAY_SETTINGS } },
+				creditsTag:
+					creditsRemaining.value !== undefined
+						? i18n.baseText('aiGateway.credentialMode.creditsShort', {
+								interpolate: { count: String(creditsRemaining.value) },
+							})
+						: undefined,
 			},
 			{
 				id: 'settings-project-roles',
