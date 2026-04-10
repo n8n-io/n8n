@@ -6,7 +6,7 @@ import CommunityPackageBrowseCard from './CommunityPackageBrowseCard.vue';
 import { computed, ref } from 'vue';
 
 type FilterValue = 'all' | 'official' | 'community';
-type SortValue = 'popular' | 'name' | 'nodes';
+type SortValue = 'popular' | 'name' | 'recent';
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
@@ -33,7 +33,7 @@ const sortOptions = computed(() => [
 		value: 'popular' as const,
 	},
 	{ label: i18n.baseText('settings.communityNodes.browse.sort.name'), value: 'name' as const },
-	{ label: i18n.baseText('settings.communityNodes.browse.sort.nodes'), value: 'nodes' as const },
+	{ label: i18n.baseText('settings.communityNodes.browse.sort.recent'), value: 'recent' as const },
 ]);
 
 const filteredPackages = computed(() => {
@@ -64,8 +64,12 @@ const filteredPackages = computed(() => {
 		case 'name':
 			sorted.sort((a, b) => a.packageName.localeCompare(b.packageName));
 			break;
-		case 'nodes':
-			sorted.sort((a, b) => b.nodes.length - a.nodes.length);
+		case 'recent':
+			sorted.sort((a, b) => {
+				const dateA = a.nodes[0]?.createdAt ?? '';
+				const dateB = b.nodes[0]?.createdAt ?? '';
+				return dateB.localeCompare(dateA);
+			});
 			break;
 	}
 
