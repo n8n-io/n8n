@@ -1011,15 +1011,46 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 			qb.limit(limit);
 
-			if (firstId) qb.andWhere('execution.id > :firstId', { firstId });
-			if (lastId) qb.andWhere('execution.id < :lastId', { lastId });
-
 			if (query.order?.startedAt === 'DESC') {
-				qb.orderBy({ 'COALESCE(execution.startedAt, execution.createdAt)': 'DESC' });
-			} else if (query.order?.top) {
-				qb.orderBy(`(CASE WHEN execution.status = '${query.order.top}' THEN 0 ELSE 1 END)`);
+				// When ordering by startedAt, use startedAt-based cursor with ID tiebreaker
+				// to avoid skipping rows whose IDs don't follow startedAt order (e.g.
+				// executions resumed after a Wait node have earlier IDs but later startedAt).
+				// The tiebreaker (ID) prevents duplicates when multiple rows share the same startedAt.
+				if (lastId) {
+					const subQuery = this.createQueryBuilder('ref')
+						.select('COALESCE(ref.startedAt, ref.createdAt)')
+						.where('ref.id = :lastId', { lastId });
+					qb.andWhere(
+						`(COALESCE(execution.startedAt, execution.createdAt) < (${subQuery.getQuery()})` +
+						` OR (COALESCE(execution.startedAt, execution.createdAt) = (${subQuery.getQuery()})` +
+						` AND execution.id < :lastId))`,
+						{ lastId },
+					);
+					qb.setParameters(subQuery.getParameters());
+				}
+				if (firstId) {
+					const subQuery = this.createQueryBuilder('ref')
+						.select('COALESCE(ref.startedAt, ref.createdAt)')
+						.where('ref.id = :firstId', { firstId });
+					qb.andWhere(
+						`(COALESCE(execution.startedAt, execution.createdAt) > (${subQuery.getQuery()})` +
+						` OR (COALESCE(execution.startedAt, execution.createdAt) = (${subQuery.getQuery()})` +
+						` AND execution.id > :firstId))`,
+						{ firstId },
+					);
+					qb.setParameters(subQuery.getParameters());
+				}
+				qb.orderBy({ 'COALESCE(execution.startedAt, execution.createdAt)': 'DESC' })
+					.addOrderBy('execution.id', 'DESC');
 			} else {
-				qb.orderBy({ 'execution.id': 'DESC' });
+				if (firstId) qb.andWhere('execution.id > :firstId', { firstId });
+				if (lastId) qb.andWhere('execution.id < :lastId', { lastId });
+
+				if (query.order?.top) {
+					qb.orderBy(`(CASE WHEN execution.status = '${query.order.top}' THEN 0 ELSE 1 END)`);
+				} else {
+					qb.orderBy({ 'execution.id': 'DESC' });
+				}
 			}
 		}
 
@@ -1123,7 +1154,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				const table = qb.escape('e');
 				const startedAt = qb.escape('startedAt');
 				const createdAt = qb.escape('createdAt');
-				qb.orderBy({ [`COALESCE(${table}.${startedAt}, ${table}.${createdAt})`]: 'DESC' });
+				qb.orderBy({ [`COALESCE(${table}.${startedAt}, ${table}.${createdAt})`]: 'DESC' })
+					.addOrderBy(`${table}."id"`, 'DESC');
 			} else if (query.order?.top) {
 				qb.orderBy(`(CASE WHEN e.status = '${query.order.top}' THEN 0 ELSE 1 END)`);
 			} else {

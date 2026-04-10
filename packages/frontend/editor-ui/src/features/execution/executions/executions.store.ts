@@ -64,7 +64,10 @@ export const useExecutionsStore = defineStore('executions', () => {
 		const data = Object.values(executionsById.value);
 
 		data.sort((a, b) => {
-			return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+			const aTime = new Date(b.startedAt ?? b.createdAt).getTime();
+			const bTime = new Date(a.startedAt ?? a.createdAt).getTime();
+			if (aTime !== bTime) return aTime - bTime;
+			return Number(b.id) - Number(a.id);
 		});
 
 		return data;
