@@ -267,10 +267,9 @@ export class InstanceAiDriver {
 		}
 	}
 
-	/** Close all tabs and delete all threads created by this driver instance. */
+	/** Close all tabs. Threads are intentionally kept alive to surface leaks in the SSE-disconnect path. */
 	async cleanup(): Promise<void> {
 		await this.closeAllTabs();
-		await this.deleteAllThreads();
 	}
 
 	/** Take a stable server-side heap measurement (triggers GC + polls VictoriaMetrics). */
