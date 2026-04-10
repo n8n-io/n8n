@@ -68,6 +68,23 @@ describe('CommunityPackages Handler', () => {
 			expect(mockResponse.json).toHaveBeenCalledWith(mapToCommunityPackage(mockInstalledPackage));
 		});
 
+		it('should forward verify:true to lifecycle when provided', async () => {
+			const req = {
+				body: { name: 'n8n-nodes-test', verify: true },
+				user: mockUser,
+			};
+
+			mockLifecycle.install.mockResolvedValue(mockInstalledPackage as InstalledPackages);
+
+			await handler.installPackage[handler.installPackage.length - 1](req, mockResponse);
+
+			expect(mockLifecycle.install).toHaveBeenCalledWith(
+				{ name: 'n8n-nodes-test', version: undefined, verify: true },
+				mockUser,
+				'publicApi',
+			);
+		});
+
 		it('should return 400 when name is missing', async () => {
 			const req = {
 				body: {},

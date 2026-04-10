@@ -13,8 +13,6 @@ import { formatTimestamp } from '../utils/format-timestamp';
 import { setupSuspendSchema, setupResumeSchema } from './workflows/setup-workflow.schema';
 import {
 	analyzeWorkflow,
-	applyNodeCredentials,
-	applyNodeParameters,
 	applyNodeChanges,
 	buildCompletedReport,
 } from './workflows/setup-workflow.service';
@@ -299,23 +297,13 @@ async function handleSetup(
 	if (resumeData.action === 'test-trigger' && resumeData.testTriggerNode) {
 		state.preTestSnapshot ??= await context.workflowService.getAsWorkflowJSON(input.workflowId);
 
-		const applyFailures: Array<{ nodeName: string; error: string }> = [];
-		if (resumeData.credentials) {
-			const credResult = await applyNodeCredentials(
-				context,
-				input.workflowId,
-				resumeData.credentials,
-			);
-			applyFailures.push(...credResult.failed);
-		}
-		if (resumeData.nodeParameters) {
-			const paramResult = await applyNodeParameters(
-				context,
-				input.workflowId,
-				resumeData.nodeParameters,
-			);
-			applyFailures.push(...paramResult.failed);
-		}
+		const preTestApply = await applyNodeChanges(
+			context,
+			input.workflowId,
+			resumeData.credentials,
+			resumeData.nodeParameters,
+		);
+		const applyFailures = preTestApply.failed;
 
 		if (applyFailures.length > 0) {
 			return {

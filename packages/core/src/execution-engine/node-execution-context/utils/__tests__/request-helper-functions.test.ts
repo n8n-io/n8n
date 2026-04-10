@@ -403,6 +403,40 @@ describe('Request Helper Functions', () => {
 			expect(axiosOptions.data).toBeInstanceOf(FormData);
 		});
 
+		test('should handle FormData from a different module copy (duck-typing)', async () => {
+			// Simulate a FormData created by a different copy of the form-data package.
+			// instanceof FormData would return false, but duck-type check should pass.
+			const realFormData = new FormData();
+			realFormData.append('key', 'value');
+
+			// Create a wrapper that breaks instanceof but preserves the interface
+			const foreignFormData: Record<string, unknown> = Object.create(null);
+			for (const prop of Object.getOwnPropertyNames(Object.getPrototypeOf(realFormData))) {
+				const value = (realFormData as unknown as Record<string, unknown>)[prop];
+				if (typeof value === 'function') {
+					foreignFormData[prop] = value.bind(realFormData);
+				}
+			}
+			for (const prop of Object.getOwnPropertyNames(realFormData)) {
+				foreignFormData[prop] = (realFormData as unknown as Record<string, unknown>)[prop];
+			}
+
+			// Verify it's NOT an instanceof FormData
+			expect(foreignFormData instanceof FormData).toBe(false);
+
+			const axiosOptions = await parseRequestObject({
+				url: 'https://example.com',
+				formData: foreignFormData as unknown as FormData,
+				headers: {
+					'content-type': 'multipart/form-data',
+				},
+			});
+
+			expect(axiosOptions.headers).toMatchObject({
+				'content-type': expect.stringMatching(/^multipart\/form-data; boundary=/),
+			});
+		});
+
 		test('should not use Host header for SNI', async () => {
 			const axiosOptions = await parseRequestObject({
 				url: 'https://example.de/foo/bar',
@@ -1393,6 +1427,134 @@ describe('Request Helper Functions', () => {
 
 			expect(result).toEqual({ success: true });
 			expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('requestOAuth2 - client credentials initial token fetch', () => {
+		const baseUrl = 'https://api.example.com';
+		const tokenUrl = 'https://auth.example.com';
+		const mockThis = mockDeep<IAllExecuteFunctions>();
+		const mockNode = mockDeep<INode>();
+		const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
+
+		beforeEach(() => {
+			nock.cleanAll();
+			jest.resetAllMocks();
+			mockNode.name = 'test-node';
+			mockNode.credentials = {
+				testOAuth2: { id: 'cred-id', name: 'cred-name' },
+			};
+		});
+
+		test('should not send scope parameter when scope is empty', async () => {
+			mockThis.getCredentials.mockResolvedValue({
+				clientId: 'client-id',
+				clientSecret: 'client-secret',
+				grantType: 'clientCredentials',
+				accessTokenUrl: `${tokenUrl}/token`,
+				authentication: 'body',
+				scope: '',
+				oauthTokenData: undefined,
+			});
+
+			// Token endpoint must NOT receive scope in body
+			nock(tokenUrl)
+				.post('/token', (body) => !('scope' in body) || body.scope === undefined)
+				.reply(
+					200,
+					{ access_token: 'new-token', token_type: 'bearer' },
+					{ 'content-type': 'application/json' },
+				);
+
+			nock(baseUrl).get('/data').reply(200, { success: true });
+
+			mockThis.helpers.httpRequest.mockResolvedValueOnce({ success: true });
+
+			await requestOAuth2.call(
+				mockThis,
+				'testOAuth2',
+				{ method: 'GET', url: `${baseUrl}/data` },
+				mockNode,
+				mockAdditionalData,
+				undefined,
+				true, // isN8nRequest
+			);
+
+			expect(mockThis.helpers.httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					headers: expect.objectContaining({ Authorization: 'Bearer new-token' }),
+				}),
+			);
+		});
+
+		test('should send scope parameter when scope is set', async () => {
+			mockThis.getCredentials.mockResolvedValue({
+				clientId: 'client-id',
+				clientSecret: 'client-secret',
+				grantType: 'clientCredentials',
+				accessTokenUrl: `${tokenUrl}/token`,
+				authentication: 'body',
+				scope: 'read write',
+				oauthTokenData: undefined,
+			});
+
+			nock(tokenUrl)
+				.post('/token', (body) => body.scope === 'read write')
+				.reply(
+					200,
+					{ access_token: 'scoped-token', token_type: 'bearer' },
+					{ 'content-type': 'application/json' },
+				);
+
+			mockThis.helpers.httpRequest.mockResolvedValueOnce({ data: 'ok' });
+
+			await requestOAuth2.call(
+				mockThis,
+				'testOAuth2',
+				{ method: 'GET', url: `${baseUrl}/data` },
+				mockNode,
+				mockAdditionalData,
+				undefined,
+				true,
+			);
+
+			expect(mockThis.helpers.httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					headers: expect.objectContaining({ Authorization: 'Bearer scoped-token' }),
+				}),
+			);
+		});
+
+		test('should throw ApplicationError with clear message when token acquisition fails', async () => {
+			mockThis.getCredentials.mockResolvedValue({
+				clientId: 'client-id',
+				clientSecret: 'wrong-secret',
+				grantType: 'clientCredentials',
+				accessTokenUrl: `${tokenUrl}/token`,
+				authentication: 'body',
+				scope: '',
+				oauthTokenData: undefined,
+			});
+
+			nock(tokenUrl)
+				.post('/token')
+				.reply(
+					400,
+					{ error: 'invalid_client', error_description: 'Invalid client credentials' },
+					{ 'content-type': 'application/json' },
+				);
+
+			await expect(
+				requestOAuth2.call(
+					mockThis,
+					'testOAuth2',
+					{ method: 'GET', url: `${baseUrl}/data` },
+					mockNode,
+					mockAdditionalData,
+					undefined,
+					true,
+				),
+			).rejects.toThrow('Failed to acquire OAuth2 access token');
 		});
 	});
 

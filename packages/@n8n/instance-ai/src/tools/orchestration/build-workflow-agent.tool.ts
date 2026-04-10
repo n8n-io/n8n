@@ -15,7 +15,6 @@ import { nanoid } from 'nanoid';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
-import { createBrowserCredentialSetupTool } from './browser-credential-setup.tool';
 import {
 	BUILDER_AGENT_PROMPT,
 	createSandboxBuilderAgentPrompt,
@@ -29,7 +28,6 @@ import {
 import { createVerifyBuiltWorkflowTool } from './verify-built-workflow.tool';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
-import { traceWorkingMemoryContext } from '../../runtime/working-memory-tracing';
 import { formatPreviousAttempts } from '../../storage/iteration-log';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import {
@@ -44,7 +42,6 @@ import type { TriggerType, WorkflowBuildOutcome } from '../../workflow-loop';
 import type { BuilderWorkspace } from '../../workspace/builder-sandbox-factory';
 import { readFileViaSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
-import { createApplyWorkflowCredentialsTool } from '../workflows/apply-workflow-credentials.tool';
 import { buildCredentialMap, type CredentialMap } from '../workflows/resolve-credentials';
 import {
 	createSubmitWorkflowTool,
@@ -107,7 +104,7 @@ function buildOutcome(
 	};
 }
 
-const BUILDER_MAX_STEPS = 30;
+const BUILDER_MAX_STEPS = 60;
 
 const DETACHED_BUILDER_REQUIREMENTS = `## Detached Task Contract
 
@@ -131,13 +128,6 @@ The system tracks file hashes. If you edit the code and then call run-workflow o
 - Otherwise call run-workflow to test (skip for trigger-only workflows)
 - If verification fails, call debug-execution, fix the code, re-submit, and retry once
 - If the same failure signature repeats, stop and explain the block
-
-### Credential finalization
-
-If verification succeeds with mocked credentials:
-1. call setup-credentials with credentialFlow stage "finalize"
-2. if it returns needsBrowserSetup=true, call browser-credential-setup then setup-credentials again
-3. call apply-workflow-credentials with the workItemId and selected credentials
 
 ### Resource discovery
 
@@ -213,10 +203,6 @@ export async function startBuildWorkflowAgentTask(
 		}
 		if (context.workflowTaskService && context.domainContext) {
 			builderTools['verify-built-workflow'] = createVerifyBuiltWorkflowTool(context);
-			builderTools['apply-workflow-credentials'] = createApplyWorkflowCredentialsTool(context);
-		}
-		if (context.browserMcpConfig) {
-			builderTools['browser-credential-setup'] = createBrowserCredentialSetupTool(context);
 		}
 	} else {
 		builderTools = {};
@@ -402,24 +388,14 @@ export async function startBuildWorkflowAgentTask(
 						const traceParent = getTraceParentRun();
 						const hitlResult = await withTraceParentContext(traceParent, async () => {
 							const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
-							const stream = await traceWorkingMemoryContext(
-								{
-									phase: 'initial',
-									agentId: subAgentId,
-									agentRole: 'workflow-builder',
-									threadId: context.threadId,
-									input: briefing,
+							const stream = await subAgent.stream(briefing, {
+								maxSteps: BUILDER_MAX_STEPS,
+								abortSignal: signal,
+								providerOptions: {
+									anthropic: { cacheControl: { type: 'ephemeral' } },
 								},
-								async () =>
-									await subAgent.stream(briefing, {
-										maxSteps: BUILDER_MAX_STEPS,
-										abortSignal: signal,
-										providerOptions: {
-											anthropic: { cacheControl: { type: 'ephemeral' } },
-										},
-										...(llmStepTraceHooks?.executionOptions ?? {}),
-									}),
-							);
+								...(llmStepTraceHooks?.executionOptions ?? {}),
+							});
 
 							return await consumeStreamWithHitl({
 								agent: subAgent,
@@ -438,7 +414,6 @@ export async function startBuildWorkflowAgentTask(
 								drainCorrections,
 								waitForCorrection,
 								llmStepTraceHooks,
-								workingMemoryEnabled: false,
 							});
 						});
 
@@ -536,24 +511,14 @@ export async function startBuildWorkflowAgentTask(
 					const traceParent = getTraceParentRun();
 					const hitlResult = await withTraceParentContext(traceParent, async () => {
 						const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
-						const stream = await traceWorkingMemoryContext(
-							{
-								phase: 'initial',
-								agentId: subAgentId,
-								agentRole: 'workflow-builder',
-								threadId: context.threadId,
-								input: briefing,
+						const stream = await subAgent.stream(briefing, {
+							maxSteps: BUILDER_MAX_STEPS,
+							abortSignal: signal,
+							providerOptions: {
+								anthropic: { cacheControl: { type: 'ephemeral' } },
 							},
-							async () =>
-								await subAgent.stream(briefing, {
-									maxSteps: BUILDER_MAX_STEPS,
-									abortSignal: signal,
-									providerOptions: {
-										anthropic: { cacheControl: { type: 'ephemeral' } },
-									},
-									...(llmStepTraceHooks?.executionOptions ?? {}),
-								}),
-						);
+							...(llmStepTraceHooks?.executionOptions ?? {}),
+						});
 
 						return await consumeStreamWithHitl({
 							agent: subAgent,
@@ -572,7 +537,6 @@ export async function startBuildWorkflowAgentTask(
 							drainCorrections,
 							waitForCorrection,
 							llmStepTraceHooks,
-							workingMemoryEnabled: false,
 						});
 					});
 

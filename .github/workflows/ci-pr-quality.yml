@@ -1,0 +1,99 @@
+name: 'CI: PR Quality Checks'
+
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - synchronize
+    branches:
+      - master
+  issue_comment:
+    types:
+      - created
+
+jobs:
+  handle-size-override:
+    name: Handle /size-limit-override
+    # Re-requests the PR Size Limit check run on the PR's HEAD commit, so it re-runs
+    # in the original PR context and picks up the override comment.
+    if: |
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request &&
+      startsWith(github.event.comment.body, '/size-limit-override')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      checks: write
+      issues: write
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+
+      - name: Re-request PR Size Limit check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node .github/scripts/quality/handle-size-override.mjs
+
+  check-ownership-checkbox:
+    name: Ownership Acknowledgement
+    # Checks that the author has acknowledged the ownership of their code
+    # by checking the checkbox in the PR summary.
+    if: |
+      github.event_name == 'pull_request' &&
+      !contains(github.event.pull_request.labels.*.name, 'automation:backport') &&
+      !contains(github.event.pull_request.title, '(backport to')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+
+      - name: Check ownership checkbox
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node .github/scripts/quality/check-ownership-checkbox.mjs
+
+  check-pr-size:
+    name: PR Size Limit
+    # Checks that the PR size doesn't exceed the limit (currently 1000 lines)
+    # Allows for override via '/size-limit-override' comment
+    if: |
+      github.event_name == 'pull_request' &&
+      !contains(github.event.pull_request.labels.*.name, 'automation:backport') &&
+      !contains(github.event.pull_request.title, '(backport to')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+
+      - name: Check PR size
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node .github/scripts/quality/check-pr-size.mjs

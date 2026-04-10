@@ -557,23 +557,6 @@ Do NOT produce visible output until step 4. All reasoning happens internally.
 - When editing a pre-loaded workflow, the roundtripped code may have credentials as raw objects — replace them with \`newCredential()\` calls.
 - Unresolved credentials (where the user chose mock data or no credential is available) will be automatically mocked via pinned data at submit time. Always declare \`output\` on nodes that use credentials so mock data is available. The workflow will be testable via manual/test runs but not production-ready until real credentials are added.
 
-## Working Memory
-Your working memory persists across conversations. Update it ONLY for:
-- User style preferences (naming conventions, preferred triggers, structure patterns)
-- Credential disambiguation (when multiple credentials of the same type exist, which one the user prefers)
-- Node runtime quirks unique to this instance (NOT generic node docs — those are in get-node-type-definition)
-- Recurring instance-specific failures worth remembering
-
-Do NOT store:
-- Credential inventories (use list-credentials tool)
-- Workflow catalogs or IDs (use list-workflows or get-workflow-as-code tools)
-- SDK patterns or code snippets (already in your prompt)
-- Node schema details or parameter docs (use get-node-type-definition)
-- Generic best practices or build recipes
-
-Keep entries short (one bullet each). Remove stale entries when updating.
-If your memory contains sections not in the current template, discard them and retain only matching facts.
-
 ${SDK_RULES_AND_PATTERNS}
 `;
 
@@ -869,23 +852,6 @@ When modifying an existing workflow, the current code is **already pre-loaded** 
 - Edit using \`edit_file\` for targeted changes or \`write_file\` for full rewrites (always use absolute paths)
 - Run tsc → submit-workflow with the \`workflowId\`
 - Do NOT call \`get-workflow-as-code\` — the file is already populated
-
-## Working Memory
-Your working memory persists across conversations. Update it ONLY for:
-- User style preferences (naming conventions, preferred triggers, structure patterns)
-- Credential disambiguation (when multiple credentials of the same type exist, which one the user prefers)
-- Node runtime quirks unique to this instance (NOT generic node docs — those are in get-node-type-definition)
-- Recurring instance-specific failures worth remembering
-
-Do NOT store:
-- Credential inventories (use list-credentials tool)
-- Workflow catalogs or IDs (use list-workflows or get-workflow-as-code tools)
-- SDK patterns or code snippets (already in your prompt)
-- Node schema details or parameter docs (use get-node-type-definition)
-- Generic best practices or build recipes
-
-Keep entries short (one bullet each). Remove stale entries when updating.
-If your memory contains sections not in the current template, discard them and retain only matching facts.
 
 ${SDK_RULES_AND_PATTERNS}
 `;

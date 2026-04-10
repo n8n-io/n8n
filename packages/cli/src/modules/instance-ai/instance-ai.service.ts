@@ -34,6 +34,7 @@ import {
 	PlannedTaskCoordinator,
 	PlannedTaskStorage,
 	applyPlannedTaskPermissions,
+	releaseTraceClient,
 	resumeAgentRun,
 	RunStateRegistry,
 	startBuildWorkflowAgentTask,
@@ -69,7 +70,7 @@ import { Push } from '@/push';
 import { Telemetry } from '@/telemetry';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import type { LocalGateway } from './filesystem';
-import { LocalGatewayRegistry, LocalFilesystemProvider } from './filesystem';
+import { LocalGatewayRegistry } from './filesystem';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
 import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
@@ -130,9 +131,6 @@ export class InstanceAiService {
 			workspace: ReturnType<typeof createWorkspace>;
 		}
 	>();
-
-	/** Singleton local filesystem provider — created lazily when filesystem config is enabled. */
-	private localFsProvider?: LocalFilesystemProvider;
 
 	/** Per-user Local Gateway connections. Handles pairing tokens, session keys, and tool dispatch. */
 	private readonly gatewayRegistry = new LocalGatewayRegistry();
@@ -311,15 +309,6 @@ export class InstanceAiService {
 		return new BuilderSandboxFactory(config);
 	}
 
-	/** Lazily create the local filesystem provider (singleton). */
-	private getLocalFsProvider(): LocalFilesystemProvider {
-		if (!this.localFsProvider) {
-			const basePath = this.instanceAiConfig.filesystemPath || undefined;
-			this.localFsProvider = new LocalFilesystemProvider(basePath);
-		}
-		return this.localFsProvider;
-	}
-
 	/** Get or create a sandbox + workspace for a thread. Returns undefined when sandbox is disabled. */
 	private async getOrCreateWorkspace(threadId: string, user: User) {
 		const existing = this.sandboxes.get(threadId);
@@ -477,17 +466,6 @@ export class InstanceAiService {
 		return this.settingsService.isAgentEnabled() && !!this.instanceAiConfig.model;
 	}
 
-	/** Local filesystem is only available when an explicit base path is configured. */
-	isLocalFilesystemAvailable(): boolean {
-		return !!this.instanceAiConfig.filesystemPath?.trim();
-	}
-
-	/** Return the configured filesystem root directory, or null if not configured. */
-	getLocalFilesystemDirectory(): string | null {
-		const basePath = this.instanceAiConfig.filesystemPath?.trim();
-		return basePath || null;
-	}
-
 	hasActiveRun(threadId: string): boolean {
 		return this.runState.hasLiveRun(threadId);
 	}
@@ -544,6 +522,8 @@ export class InstanceAiService {
 				threadId: tracing.rootRun.metadata?.thread_id,
 				error: getErrorMessage(error),
 			});
+		} finally {
+			releaseTraceClient(tracing.rootRun.traceId);
 		}
 	}
 
@@ -574,6 +554,7 @@ export class InstanceAiService {
 	private deleteTraceContextsForThread(threadId: string): void {
 		for (const [runId, entry] of this.traceContextsByRunId) {
 			if (entry.threadId === threadId) {
+				releaseTraceClient(entry.tracing.rootRun.traceId);
 				this.traceContextsByRunId.delete(runId);
 			}
 		}
@@ -609,6 +590,8 @@ export class InstanceAiService {
 				traceRunId: traceContext.rootRun.id,
 				error: getErrorMessage(error),
 			});
+		} finally {
+			releaseTraceClient(traceContext.rootRun.traceId);
 		}
 	}
 
@@ -1094,15 +1077,10 @@ export class InstanceAiService {
 	) {
 		const localGatewayDisabled = this.settingsService.isLocalGatewayDisabled();
 		const userGateway = this.gatewayRegistry.findGateway(user.id);
-		const localFilesystemService =
-			!localGatewayDisabled && !userGateway?.isConnected && this.isLocalFilesystemAvailable()
-				? this.getLocalFsProvider()
-				: undefined;
 		// Each resolve*() call fetches a separate proxy token for audit tracking (see getProxyAuth)
 		const searchProxyConfig = await this.resolveSearchProxyConfig(user);
 		const tracingProxyConfig = await this.resolveTracingProxyConfig(user);
 		const context = this.adapterService.createContext(user, {
-			filesystemService: localFilesystemService,
 			searchProxyConfig,
 			pushRef,
 			threadId,
