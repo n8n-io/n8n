@@ -20,6 +20,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 import { N8nActionBox, N8nButton, N8nHeading, N8nTabs } from '@n8n/design-system';
 import type { TabOptions } from '@n8n/design-system';
+import { fromInstalledPackage } from '../communityNodes.types';
 
 type CommunityNodesTab = 'installed' | 'browse';
 
@@ -176,7 +177,7 @@ onBeforeUnmount(() => {
 				<CommunityPackageCard
 					v-for="communityPackage in communityNodesStore.getInstalledPackages"
 					:key="communityPackage.packageName"
-					:community-package="communityPackage"
+					:pkg="fromInstalledPackage(communityPackage, nodeTypesStore.getNodeType)"
 				/>
 			</div>
 		</div>

@@ -140,7 +140,7 @@ describe('CommunityNodesBrowser', () => {
 		];
 
 		const { getAllByTestId } = renderComponent();
-		const cards = getAllByTestId('community-package-browse-card');
+		const cards = getAllByTestId('community-package-card');
 
 		expect(cards[0]).toHaveTextContent('n8n-nodes-high');
 		expect(cards[1]).toHaveTextContent('n8n-nodes-mid');

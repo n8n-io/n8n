@@ -11,7 +11,8 @@ import {
 	N8nLoading,
 	N8nText,
 } from '@n8n/design-system';
-import CommunityPackageBrowseCard from './CommunityPackageBrowseCard.vue';
+import CommunityPackageCard from './CommunityPackageCard.vue';
+import { fromBrowsePackage } from '../communityNodes.types';
 import { computed, ref } from 'vue';
 
 type FilterValue = 'all' | 'official' | 'community';
@@ -142,10 +143,10 @@ const filteredPackages = computed(() => {
 			/>
 		</div>
 		<div v-else :class="$style.grid">
-			<CommunityPackageBrowseCard
+			<CommunityPackageCard
 				v-for="pkg in filteredPackages"
 				:key="pkg.packageName"
-				:pkg="pkg"
+				:pkg="fromBrowsePackage(pkg)"
 			/>
 		</div>
 	</div>
