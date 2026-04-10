@@ -91,7 +91,8 @@ async function compileAndDescribe(source: string): Promise<AgentSchema> {
 	const moduleExports: Record<string, unknown> = {};
 	const moduleRequire = (id: string) => {
 		if (id === '@n8n/agents') return agents;
-		if (id === '@n8n/agents-utils') return { WorkflowTool, N8nMemory: N8nMemoryMarker, ToolFromNode };
+		if (id === '@n8n/agents-utils')
+			return { WorkflowTool, N8nMemory: N8nMemoryMarker, ToolFromNode };
 		if (id === 'zod') return zod;
 		throw new Error('Unavailable: ' + id);
 	};
