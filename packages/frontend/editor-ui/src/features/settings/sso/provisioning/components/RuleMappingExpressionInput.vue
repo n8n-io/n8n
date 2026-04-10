@@ -149,6 +149,17 @@ const expressionHighlightStyle = HighlightStyle.define([
 	{ tag: tags.punctuation, color: 'var(--color--text--tint-1)' },
 ]);
 
+const editorUpdateListener = EditorView.updateListener.of((update) => {
+	if (update.docChanged) {
+		const newValue = update.state.doc.toString();
+		isEmpty.value = newValue.length === 0;
+		hasError.value = !validateExpression(newValue);
+		if (newValue !== props.modelValue) {
+			emit('update:modelValue', newValue);
+		}
+	}
+});
+
 const sharedThemeRules = {
 	'.cm-content': {
 		fontFamily: 'var(--font-family--monospace)',
@@ -209,16 +220,7 @@ function createInlineExtensions() {
 			'.cm-cursor, .cm-dropCursor': sharedThemeRules['.cm-cursor, .cm-dropCursor'],
 			'.cm-expression-bracket': sharedThemeRules['.cm-expression-bracket'],
 		}),
-		EditorView.updateListener.of((update) => {
-			if (update.docChanged) {
-				const newValue = update.state.doc.toString();
-				isEmpty.value = newValue.length === 0;
-				hasError.value = !validateExpression(newValue);
-				if (newValue !== props.modelValue) {
-					emit('update:modelValue', newValue);
-				}
-			}
-		}),
+		editorUpdateListener,
 	];
 }
 
@@ -262,16 +264,7 @@ function createExpandedExtensions() {
 			'.cm-cursor, .cm-dropCursor': sharedThemeRules['.cm-cursor, .cm-dropCursor'],
 			'.cm-expression-bracket': sharedThemeRules['.cm-expression-bracket'],
 		}),
-		EditorView.updateListener.of((update) => {
-			if (update.docChanged) {
-				const newValue = update.state.doc.toString();
-				isEmpty.value = newValue.length === 0;
-				hasError.value = !validateExpression(newValue);
-				if (newValue !== props.modelValue) {
-					emit('update:modelValue', newValue);
-				}
-			}
-		}),
+		editorUpdateListener,
 	];
 }
 
