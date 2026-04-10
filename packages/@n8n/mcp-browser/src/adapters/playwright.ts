@@ -194,9 +194,9 @@ export class PlaywrightAdapter {
 		log.debug('newPage: creating page, url =', url ?? '(none)');
 		const page = await this.requireContext().newPage();
 		// The relay assigned an ID during Target.createTarget → createTab()
-		const pageId = this.relay?.getLastCreatedTabId();
-		log.debug('newPage: relay pageId =', pageId);
-		const state = this.findPageState(page) ?? this.trackPage(page, pageId);
+		const tabId = this.relay?.getLastCreatedTabId();
+		log.debug('newPage: relay tabId =', tabId);
+		const state = this.findPageState(page) ?? this.trackPage(page, tabId);
 
 		if (url) {
 			await page.goto(url, { waitUntil: 'load' });
@@ -296,16 +296,12 @@ export class PlaywrightAdapter {
 	async back(pageId: string): Promise<NavigateResult> {
 		const { page } = await this.ensurePage(pageId);
 		await page.goBack({ waitUntil: 'load' });
-		return await this.getNavigateResult(page);
+		return { title: await page.title(), url: page.url(), status: 0 };
 	}
 
 	async forward(pageId: string): Promise<NavigateResult> {
 		const { page } = await this.ensurePage(pageId);
 		await page.goForward({ waitUntil: 'load' });
-		return await this.getNavigateResult(page);
-	}
-
-	private async getNavigateResult(page: Page): Promise<NavigateResult> {
 		return { title: await page.title(), url: page.url(), status: 0 };
 	}
 
@@ -327,6 +323,7 @@ export class PlaywrightAdapter {
 	// =========================================================================
 
 	async click(pageId: string, target: ElementTarget, options?: ClickOptions): Promise<void> {
+		await this.ensurePage(pageId);
 		const locator = await this.resolveLocator(pageId, target);
 		await locator.click({
 			button: options?.button,
@@ -341,6 +338,7 @@ export class PlaywrightAdapter {
 		text: string,
 		options?: TypeOptions,
 	): Promise<void> {
+		await this.ensurePage(pageId);
 		const locator = await this.resolveLocator(pageId, target);
 
 		if (options?.clear) {
@@ -355,11 +353,13 @@ export class PlaywrightAdapter {
 	}
 
 	async select(pageId: string, target: ElementTarget, values: string[]): Promise<string[]> {
+		await this.ensurePage(pageId);
 		const locator = await this.resolveLocator(pageId, target);
 		return await locator.selectOption(values);
 	}
 
 	async hover(pageId: string, target: ElementTarget): Promise<void> {
+		await this.ensurePage(pageId);
 		const locator = await this.resolveLocator(pageId, target);
 		await locator.hover();
 	}
@@ -370,6 +370,7 @@ export class PlaywrightAdapter {
 	}
 
 	async drag(pageId: string, from: ElementTarget, to: ElementTarget): Promise<void> {
+		await this.ensurePage(pageId);
 		const fromLocator = await this.resolveLocator(pageId, from);
 		const toLocator = await this.resolveLocator(pageId, to);
 		await fromLocator.dragTo(toLocator);
@@ -412,7 +413,11 @@ export class PlaywrightAdapter {
 		// If a dialog is already pending, handle it immediately
 		if (state.pendingDialog) {
 			const dialogType = state.pendingDialog.type();
-			await this.handleDialog(state.pendingDialog, action, text);
+			if (action === 'accept') {
+				await state.pendingDialog.accept(text);
+			} else {
+				await state.pendingDialog.dismiss();
+			}
 			state.pendingDialog = undefined;
 			return dialogType;
 		}
@@ -427,25 +432,17 @@ export class PlaywrightAdapter {
 				clearTimeout(timeout);
 				try {
 					const dialogType = dlg.type();
-					await this.handleDialog(dlg, action, text);
+					if (action === 'accept') {
+						await dlg.accept(text);
+					} else {
+						await dlg.dismiss();
+					}
 					resolve(dialogType);
 				} catch (error) {
 					reject(toError(error));
 				}
 			});
 		});
-	}
-
-	private async handleDialog(
-		dlg: Dialog,
-		action: 'accept' | 'dismiss',
-		text?: string,
-	): Promise<void> {
-		if (action === 'accept') {
-			await dlg.accept(text);
-		} else {
-			await dlg.dismiss();
-		}
 	}
 
 	// =========================================================================

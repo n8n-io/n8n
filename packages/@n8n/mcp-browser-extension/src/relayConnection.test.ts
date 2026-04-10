@@ -83,8 +83,24 @@ class MockWebSocket {
 	closeCode?: number;
 	closeReason?: string;
 
+	private sendWaiters: Array<(data: string) => void> = [];
+
 	send(data: string): void {
 		this.sent.push(data);
+		// Resolve any pending waitForSent() promises
+		const waiter = this.sendWaiters.shift();
+		waiter?.(data);
+	}
+
+	/**
+	 * Returns a promise that resolves with the next message sent via this
+	 * WebSocket. Use instead of `tick()` to deterministically wait for async
+	 * command handlers (like getSnapshot) to complete.
+	 */
+	waitForSent(): Promise<string> {
+		return new Promise((resolve) => {
+			this.sendWaiters.push(resolve);
+		});
 	}
 
 	close(code?: number, reason?: string): void {
@@ -933,7 +949,7 @@ describe('RelayConnection', () => {
 			ws.onmessage?.({
 				data: JSON.stringify({ id: 1, method: 'getSnapshot', params: { id: tabId } }),
 			});
-			await tick();
+			await ws.waitForSent();
 
 			expect(parseSent(ws)).toEqual(
 				expect.objectContaining({
@@ -955,14 +971,14 @@ describe('RelayConnection', () => {
 			ws.onmessage?.({
 				data: JSON.stringify({ id: 1, method: 'getSnapshot', params: { id: tabId } }),
 			});
-			await tick();
+			await ws.waitForSent();
 			ws.sent.length = 0;
 
 			// Second call with same tree
 			ws.onmessage?.({
 				data: JSON.stringify({ id: 2, method: 'getSnapshot', params: { id: tabId } }),
 			});
-			await tick();
+			await ws.waitForSent();
 
 			expect(parseSent(ws)).toEqual(
 				expect.objectContaining({
@@ -981,10 +997,10 @@ describe('RelayConnection', () => {
 				data: JSON.stringify({
 					id: 1,
 					method: 'resolveRef',
-					params: { id: tabId, ref: 'btn-save' },
+					params: { id: tabId, ref: 'btn1' },
 				}),
 			});
-			await tick();
+			await ws.waitForSent();
 
 			expect(parseSent(ws)).toEqual(
 				expect.objectContaining({ error: expect.stringContaining('Stale ref') }),
@@ -1001,7 +1017,7 @@ describe('RelayConnection', () => {
 			ws.onmessage?.({
 				data: JSON.stringify({ id: 1, method: 'getSnapshot', params: { id: tabId } }),
 			});
-			await tick();
+			await ws.waitForSent();
 			ws.sent.length = 0;
 
 			// resolveRef for the button — ref is role+name slug since no stable attr
@@ -1009,10 +1025,10 @@ describe('RelayConnection', () => {
 				data: JSON.stringify({
 					id: 2,
 					method: 'resolveRef',
-					params: { id: tabId, ref: 'btn-save' },
+					params: { id: tabId, ref: 'btn1' },
 				}),
 			});
-			await tick();
+			await ws.waitForSent();
 
 			expect(parseSent(ws)).toEqual(
 				expect.objectContaining({
@@ -1052,7 +1068,7 @@ describe('RelayConnection', () => {
 					params: { id: tabId, scopeSelector: '#nonexistent' },
 				}),
 			});
-			await tick();
+			await ws.waitForSent();
 
 			expect(parseSent(ws)).toEqual(
 				expect.objectContaining({ error: expect.stringContaining('#nonexistent') }),
@@ -1092,7 +1108,7 @@ describe('RelayConnection', () => {
 					params: { id: tabId, scopeSelector: '[aria-hidden="true"]' },
 				}),
 			});
-			await tick();
+			await ws.waitForSent();
 
 			expect(parseSent(ws)).toEqual(
 				expect.objectContaining({

@@ -428,12 +428,6 @@ export class RelayConnection {
 			return;
 		}
 
-		// Application-level ping — respond immediately to keep service worker alive
-		if (message.method === 'ping') {
-			this.sendMessage({ method: 'pong' });
-			return;
-		}
-
 		log.debug(`← relay: id=${message.id} method=${message.method}`);
 
 		const response: ProtocolResponse = { id: message.id };
@@ -791,11 +785,7 @@ export class RelayConnection {
 
 	private sendMessage(message: ProtocolResponse): void {
 		if (this.ws.readyState === WebSocket.OPEN) {
-			try {
-				this.ws.send(JSON.stringify(message));
-			} catch {
-				log.debug('sendMessage: send failed (connection closing)');
-			}
+			this.ws.send(JSON.stringify(message));
 		}
 	}
 }

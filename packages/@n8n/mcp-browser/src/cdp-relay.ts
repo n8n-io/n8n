@@ -895,6 +895,10 @@ class ExtensionConnection {
 			log.debug('ExtensionConnection WebSocket error:', error);
 			this.handleClose();
 		});
+		this.ws.on('pong', () => {
+			this.lastPongAt = Date.now();
+		});
+
 		this.startHeartbeat();
 	}
 
@@ -968,11 +972,7 @@ class ExtensionConnection {
 				return;
 			}
 
-			try {
-				this.ws.send(JSON.stringify({ method: 'ping' }));
-			} catch {
-				// connection closing
-			}
+			this.ws.ping();
 		}, HEARTBEAT_INTERVAL_MS);
 	}
 
@@ -989,12 +989,6 @@ class ExtensionConnection {
 			parsed = JSON.parse(String(data)) as ExtensionResponse;
 		} catch {
 			log.debug('failed to parse extension message:', String(data).slice(0, 200));
-			return;
-		}
-
-		// Application-level pong keeps the service worker alive and updates heartbeat
-		if (parsed.method === 'pong') {
-			this.lastPongAt = Date.now();
 			return;
 		}
 
