@@ -1,0 +1,86 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"type": "STRING",
+			"string": "[{\"type\":\"text\",\"text\":\"Generate a concise title (max 60 chars) summarizing what",
+			"subString": true
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-envoy-upstream-service-time": ["8125"],
+			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
+			"set-cookie": [
+				"_cfuvid=42T7ikQZlRm.tIjSzK4xMSsIRCgTL9QfRBihgR00sDw-1775805923.4113417-1.0.1.1-X4kcafRU8.tL7EhYym2CjlFdhlAevfxV1u6MttXLkGg; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com"
+			],
+			"server-timing": ["x-originResponse;dur=8137"],
+			"request-id": ["req_011CZuh6hc4g2PzJU47jsiCh"],
+			"cf-cache-status": ["DYNAMIC"],
+			"anthropic-ratelimit-tokens-reset": ["2026-04-10T07:25:24Z"],
+			"anthropic-ratelimit-tokens-remaining": ["26998000"],
+			"anthropic-ratelimit-tokens-limit": ["27000000"],
+			"anthropic-ratelimit-requests-reset": ["2026-04-10T07:25:23Z"],
+			"anthropic-ratelimit-requests-remaining": ["19998"],
+			"anthropic-ratelimit-requests-limit": ["20000"],
+			"anthropic-ratelimit-output-tokens-reset": ["2026-04-10T07:25:31Z"],
+			"anthropic-ratelimit-output-tokens-remaining": ["4498000"],
+			"anthropic-ratelimit-output-tokens-limit": ["4500000"],
+			"anthropic-ratelimit-input-tokens-reset": ["2026-04-10T07:25:24Z"],
+			"anthropic-ratelimit-input-tokens-remaining": ["22500000"],
+			"anthropic-ratelimit-input-tokens-limit": ["22500000"],
+			"X-Robots-Tag": ["none"],
+			"Server": ["cloudflare"],
+			"Date": ["Fri, 10 Apr 2026 07:25:31 GMT"],
+			"Content-Type": ["application/json"],
+			"Content-Security-Policy": ["default-src 'none'; frame-ancestors 'none'"],
+			"CF-RAY": ["9ea0046d583fc637-TXL"]
+		},
+		"cookies": {
+			"_cfuvid": "42T7ikQZlRm.tIjSzK4xMSsIRCgTL9QfRBihgR00sDw-1775805923.4113417-1.0.1.1-X4kcafRU8.tL7EhYym2CjlFdhlAevfxV1u6MttXLkGg"
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-6",
+				"id": "msg_015BXuQ1SCTsworimEMnQxAe",
+				"type": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"type": "text",
+						"text": "Here is a simple n8n workflow with a Manual Trigger and a Set node called \"artifact display test\":\n\n<artifact identifier=\"workflow\" type=\"application/n8n-workflow\" title=\"Artifact Display Test Workflow\">\n{\n  \"name\": \"Artifact Display Test\",\n  \"nodes\": [\n    {\n      \"parameters\": {},\n      \"id\": \"1a2b3c4d-0001-0001-0001-000000000001\",\n      \"name\": \"Manual Trigger\",\n      \"type\": \"n8n-nodes-base.manualTrigger\",\n      \"typeVersion\": 1,\n      \"position\": [240, 300]\n    },\n    {\n      \"parameters\": {\n        \"assignments\": {\n          \"assignments\": [\n            {\n              \"id\": \"field-001\",\n              \"name\": \"message\",\n              \"value\": \"Hello from the artifact display test!\",\n              \"type\": \"string\"\n            },\n            {\n              \"id\": \"field-002\",\n              \"name\": \"timestamp\",\n              \"value\": \"={{ $now }}\",\n              \"type\": \"string\"\n            }\n          ]\n        },\n        \"options\": {}\n      },\n      \"id\": \"1a2b3c4d-0002-0002-0002-000000000002\",\n      \"name\": \"artifact display test\",\n      \"type\": \"n8n-nodes-base.set\",\n      \"typeVersion\": 3.4,\n      \"position\": [460, 300]\n    }\n  ],\n  \"connections\": {\n    \"Manual Trigger\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"artifact display test\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    }\n  },\n  \"pinData\": {},\n  \"settings\": {\n    \"executionOrder\": \"v1\"\n  }\n}\n</artifact>\n\n### What this workflow does:\n1. **Manual Trigger** — Starts the workflow when you click \"Test workflow\" in n8n.\n2. **artifact display test** (Set node) — Sets two fields on the output item:\n   - `message`: A static string `\"Hello from the artifact display test!\"`\n   - `timestamp`: The current date/time using `$now`\n\nYou can import this directly into n8n and run it right away!"
+					}
+				],
+				"stop_reason": "end_turn",
+				"stop_sequence": null,
+				"stop_details": null,
+				"usage": {
+					"input_tokens": 136,
+					"cache_creation_input_tokens": 0,
+					"cache_read_input_tokens": 0,
+					"cache_creation": {
+						"ephemeral_5m_input_tokens": 0,
+						"ephemeral_1h_input_tokens": 0
+					},
+					"output_tokens": 579,
+					"service_tier": "standard",
+					"inference_geo": "global"
+				}
+			},
+			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC02IiwiaWQiOiJtc2dfMDE1Qlh1UTFTQ1Rzd29yaW1FTW5ReEFlIiwidHlwZSI6Im1lc3NhZ2UiLCJyb2xlIjoiYXNzaXN0YW50IiwiY29udGVudCI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoiSGVyZSBpcyBhIHNpbXBsZSBuOG4gd29ya2Zsb3cgd2l0aCBhIE1hbnVhbCBUcmlnZ2VyIGFuZCBhIFNldCBub2RlIGNhbGxlZCBcImFydGlmYWN0IGRpc3BsYXkgdGVzdFwiOlxuXG48YXJ0aWZhY3QgaWRlbnRpZmllcj1cIndvcmtmbG93XCIgdHlwZT1cImFwcGxpY2F0aW9uL244bi13b3JrZmxvd1wiIHRpdGxlPVwiQXJ0aWZhY3QgRGlzcGxheSBUZXN0IFdvcmtmbG93XCI+XG57XG4gIFwibmFtZVwiOiBcIkFydGlmYWN0IERpc3BsYXkgVGVzdFwiLFxuICBcIm5vZGVzXCI6IFtcbiAgICB7XG4gICAgICBcInBhcmFtZXRlcnNcIjoge30sXG4gICAgICBcImlkXCI6IFwiMWEyYjNjNGQtMDAwMS0wMDAxLTAwMDEtMDAwMDAwMDAwMDAxXCIsXG4gICAgICBcIm5hbWVcIjogXCJNYW51YWwgVHJpZ2dlclwiLFxuICAgICAgXCJ0eXBlXCI6IFwibjhuLW5vZGVzLWJhc2UubWFudWFsVHJpZ2dlclwiLFxuICAgICAgXCJ0eXBlVmVyc2lvblwiOiAxLFxuICAgICAgXCJwb3NpdGlvblwiOiBbMjQwLCAzMDBdXG4gICAgfSxcbiAgICB7XG4gICAgICBcInBhcmFtZXRlcnNcIjoge1xuICAgICAgICBcImFzc2lnbm1lbnRzXCI6IHtcbiAgICAgICAgICBcImFzc2lnbm1lbnRzXCI6IFtcbiAgICAgICAgICAgIHtcbiAgICAgICAgICAgICAgXCJpZFwiOiBcImZpZWxkLTAwMVwiLFxuICAgICAgICAgICAgICBcIm5hbWVcIjogXCJtZXNzYWdlXCIsXG4gICAgICAgICAgICAgIFwidmFsdWVcIjogXCJIZWxsbyBmcm9tIHRoZSBhcnRpZmFjdCBkaXNwbGF5IHRlc3QhXCIsXG4gICAgICAgICAgICAgIFwidHlwZVwiOiBcInN0cmluZ1wiXG4gICAgICAgICAgICB9LFxuICAgICAgICAgICAge1xuICAgICAgICAgICAgICBcImlkXCI6IFwiZmllbGQtMDAyXCIsXG4gICAgICAgICAgICAgIFwibmFtZVwiOiBcInRpbWVzdGFtcFwiLFxuICAgICAgICAgICAgICBcInZhbHVlXCI6IFwiPXt7ICRub3cgfX1cIixcbiAgICAgICAgICAgICAgXCJ0eXBlXCI6IFwic3RyaW5nXCJcbiAgICAgICAgICAgIH1cbiAgICAgICAgICBdXG4gICAgICAgIH0sXG4gICAgICAgIFwib3B0aW9uc1wiOiB7fVxuICAgICAgfSxcbiAgICAgIFwiaWRcIjogXCIxYTJiM2M0ZC0wMDAyLTAwMDItMDAwMi0wMDAwMDAwMDAwMDJcIixcbiAgICAgIFwibmFtZVwiOiBcImFydGlmYWN0IGRpc3BsYXkgdGVzdFwiLFxuICAgICAgXCJ0eXBlXCI6IFwibjhuLW5vZGVzLWJhc2Uuc2V0XCIsXG4gICAgICBcInR5cGVWZXJzaW9uXCI6IDMuNCxcbiAgICAgIFwicG9zaXRpb25cIjogWzQ2MCwgMzAwXVxuICAgIH1cbiAgXSxcbiAgXCJjb25uZWN0aW9uc1wiOiB7XG4gICAgXCJNYW51YWwgVHJpZ2dlclwiOiB7XG4gICAgICBcIm1haW5cIjogW1xuICAgICAgICBbXG4gICAgICAgICAge1xuICAgICAgICAgICAgXCJub2RlXCI6IFwiYXJ0aWZhY3QgZGlzcGxheSB0ZXN0XCIsXG4gICAgICAgICAgICBcInR5cGVcIjogXCJtYWluXCIsXG4gICAgICAgICAgICBcImluZGV4XCI6IDBcbiAgICAgICAgICB9XG4gICAgICAgIF1cbiAgICAgIF1cbiAgICB9XG4gIH0sXG4gIFwicGluRGF0YVwiOiB7fSxcbiAgXCJzZXR0aW5nc1wiOiB7XG4gICAgXCJleGVjdXRpb25PcmRlclwiOiBcInYxXCJcbiAgfVxufVxuPC9hcnRpZmFjdD5cblxuIyMjIFdoYXQgdGhpcyB3b3JrZmxvdyBkb2VzOlxuMS4gKipNYW51YWwgVHJpZ2dlcioqIOKAlCBTdGFydHMgdGhlIHdvcmtmbG93IHdoZW4geW91IGNsaWNrIFwiVGVzdCB3b3JrZmxvd1wiIGluIG44bi5cbjIuICoqYXJ0aWZhY3QgZGlzcGxheSB0ZXN0KiogKFNldCBub2RlKSDigJQgU2V0cyB0d28gZmllbGRzIG9uIHRoZSBvdXRwdXQgaXRlbTpcbiAgIC0gYG1lc3NhZ2VgOiBBIHN0YXRpYyBzdHJpbmcgYFwiSGVsbG8gZnJvbSB0aGUgYXJ0aWZhY3QgZGlzcGxheSB0ZXN0IVwiYFxuICAgLSBgdGltZXN0YW1wYDogVGhlIGN1cnJlbnQgZGF0ZS90aW1lIHVzaW5nIGAkbm93YFxuXG5Zb3UgY2FuIGltcG9ydCB0aGlzIGRpcmVjdGx5IGludG8gbjhuIGFuZCBydW4gaXQgcmlnaHQgYXdheSEifV0sInN0b3BfcmVhc29uIjoiZW5kX3R1cm4iLCJzdG9wX3NlcXVlbmNlIjpudWxsLCJzdG9wX2RldGFpbHMiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6MTM2LCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjowLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6NTc5LCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5jZV9nZW8iOiJnbG9iYWwifX0="
+		}
+	},
+	"id": "1775805936944-unknown-host-POST-_v1_messages-18622610.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}
