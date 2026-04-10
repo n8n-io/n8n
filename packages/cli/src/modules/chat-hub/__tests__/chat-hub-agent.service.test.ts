@@ -12,10 +12,39 @@ import type { ChatHubExecutionService } from '../chat-hub-execution.service';
 import type { ChatHubSettingsService } from '../chat-hub.settings.service';
 import type { ChatHubToolService } from '../chat-hub-tool.service';
 import type { ChatHubWorkflowService } from '../chat-hub-workflow.service';
+import type { ChatHubAgentKnowledgeItem } from '@n8n/api-types';
+import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
+import type { SemanticSearchOptions } from '../chat-hub.types';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
+const mockGetBase = jest.fn();
+jest.mock('@/workflow-execute-additional-data', () => ({
+	getBase: (...args: unknown[]) => mockGetBase(...args),
+}));
+
+function makeMullerFile(overrides: Partial<Express.Multer.File> = {}): Express.Multer.File {
+	return {
+		fieldname: 'files',
+		originalname: 'document.pdf',
+		encoding: '7bit',
+		mimetype: 'application/pdf',
+		buffer: Buffer.from('pdf content'),
+		size: 11,
+		stream: null as never,
+		destination: '',
+		filename: '',
+		path: '',
+		...overrides,
+	};
+}
+
+const MOCK_SEMANTIC_SEARCH_OPTIONS: SemanticSearchOptions = {
+	embeddingModel: { provider: 'openai', credentialId: 'embedding-cred' },
+	vectorStore: { nodeType: 'vectorStore', credentialType: 'pineconeApi', credentialId: 'vs-cred' },
+};
 
 const mockUserId = uuid();
 
@@ -239,7 +268,7 @@ describe('ChatHubAgentService', () => {
 		it('should only pass provided fields to repository', async () => {
 			const agent = makeAgent();
 			agentRepository.getOneById.mockResolvedValue(agent);
-			agentRepository.updateAgent.mockResolvedValue({ ...agent, name: 'New Name' });
+			agentRepository.updateAgent.mockResolvedValue({ ...agent, name: 'New Name' } as ChatHubAgent);
 			toolService.getToolIdsForAgent.mockResolvedValue([]);
 
 			await service.updateAgent(agent.id, mockUser, { name: 'New Name' });
@@ -425,6 +454,162 @@ describe('ChatHubAgentService', () => {
 			const model = service.convertAgentEntityToModel(agent);
 
 			expect(model.suggestedPrompts).toEqual([{ text: 'Hello' }, { text: 'Help me' }]);
+		});
+	});
+
+	describe('addFilesToAgent', () => {
+		beforeEach(() => {
+			mockGetBase.mockResolvedValue({});
+		});
+
+		it('should throw NotFoundError when agent does not exist', async () => {
+			agentRepository.getOneById.mockResolvedValue(null);
+
+			await expect(
+				service.addFilesToAgent('nonexistent', mockUser, [makeMullerFile()]),
+			).rejects.toThrow(NotFoundError);
+		});
+
+		it('should append new knowledge items and trigger workflow execution', async () => {
+			const existingFile: ChatHubAgentKnowledgeItem = {
+				id: uuid(),
+				type: 'embedding',
+				provider: 'openai',
+				fileName: 'existing.pdf',
+				mimeType: 'application/pdf',
+				status: 'indexed',
+			};
+			const agent = makeAgent({ files: [existingFile] });
+			const updatedAgent = makeAgent({ files: [existingFile] });
+
+			agentRepository.getOneById.mockResolvedValue(agent);
+			agentRepository.updateAgent.mockResolvedValue(updatedAgent);
+			agentRepository.findOne.mockResolvedValue(updatedAgent);
+			toolService.getToolIdsForAgent.mockResolvedValue([]);
+			settingsService.getSemanticSearchOptions.mockResolvedValue(MOCK_SEMANTIC_SEARCH_OPTIONS);
+			attachmentService.storeTemporaryExecutionFile.mockResolvedValue({
+				fileName: 'document.pdf',
+				data: 'base64data',
+				mimeType: 'application/pdf',
+			});
+			credentialsService.findPersonalProject.mockResolvedValue({ id: 'project-id' } as never);
+
+			workflowService.createEmbeddingsInsertionWorkflow.mockResolvedValue({
+				workflowData: { id: 'w0' } as IWorkflowBase,
+				executionData: {} as IRunExecutionData,
+			});
+
+			const mockTransaction = jest.fn(
+				async (cb: (trx: never) => Promise<unknown>) => await cb(mock()),
+			);
+
+			Object.defineProperty(agentRepository, 'manager', {
+				value: { transaction: mockTransaction },
+				configurable: true,
+			});
+			workflowExecutionService.executeChatWorkflow.mockResolvedValue({
+				executionId: 'exec-1',
+			} as never);
+			executionService.waitForExecutionCompletion.mockResolvedValue(undefined);
+			executionService.ensureWasSuccessfulOrThrow.mockResolvedValue(undefined);
+			workflowService.deleteChatWorkflow.mockResolvedValue(undefined);
+
+			await service.addFilesToAgent(agent.id, mockUser, [makeMullerFile()]);
+
+			expect(agentRepository.updateAgent).toHaveBeenCalledWith(
+				agent.id,
+				expect.objectContaining({
+					files: expect.arrayContaining([
+						existingFile,
+						expect.objectContaining({ status: 'indexing', mimeType: 'application/pdf' }),
+					]),
+				}),
+			);
+
+			await new Promise(setImmediate);
+
+			expect(workflowExecutionService.executeChatWorkflow).toHaveBeenCalledWith(
+				mockUser,
+				expect.objectContaining({ id: 'w0' }),
+				expect.anything(),
+				undefined,
+				false,
+				'chat',
+			);
+		});
+	});
+
+	describe('deleteAgentFile', () => {
+		beforeEach(() => {
+			mockGetBase.mockResolvedValue({});
+		});
+
+		it('should throw NotFoundError when agent does not exist', async () => {
+			agentRepository.getOneById.mockResolvedValue(null);
+
+			await expect(service.deleteAgentFile('nonexistent', mockUser, 'file-1')).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+
+		it('should throw NotFoundError when file is not in agent files', async () => {
+			const agent = makeAgent({ files: [] });
+			agentRepository.getOneById.mockResolvedValue(agent);
+
+			await expect(service.deleteAgentFile(agent.id, mockUser, 'nonexistent-file')).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+
+		it('should delete embeddings and remove file from agent', async () => {
+			const fileId = uuid();
+			const file: ChatHubAgentKnowledgeItem = {
+				id: fileId,
+				type: 'embedding',
+				provider: 'openai',
+				fileName: 'report.pdf',
+				mimeType: 'application/pdf',
+				status: 'indexed',
+			};
+			const agent = makeAgent({ files: [file] });
+			agentRepository.getOneById.mockResolvedValue(agent);
+			settingsService.getSemanticSearchOptions.mockResolvedValue(MOCK_SEMANTIC_SEARCH_OPTIONS);
+
+			await service.deleteAgentFile(agent.id, mockUser, fileId);
+
+			expect(dynamicNodeParametersService.getActionResult).toHaveBeenCalledWith(
+				'deleteDocuments',
+				expect.anything(),
+				expect.anything(),
+				expect.anything(),
+				expect.anything(),
+				expect.stringContaining(fileId),
+				expect.anything(),
+			);
+			expect(agentRepository.updateAgent).toHaveBeenCalledWith(agent.id, { files: [] });
+		});
+
+		it('should still remove file from agent when embedding deletion fails', async () => {
+			const fileId = uuid();
+			const file: ChatHubAgentKnowledgeItem = {
+				id: fileId,
+				type: 'embedding',
+				provider: 'openai',
+				fileName: 'report.pdf',
+				mimeType: 'application/pdf',
+				status: 'indexed',
+			};
+			const agent = makeAgent({ files: [file] });
+			agentRepository.getOneById.mockResolvedValue(agent);
+			settingsService.getSemanticSearchOptions.mockResolvedValue(MOCK_SEMANTIC_SEARCH_OPTIONS);
+			dynamicNodeParametersService.getActionResult.mockRejectedValue(
+				new Error('Vector store unreachable'),
+			);
+
+			await service.deleteAgentFile(agent.id, mockUser, fileId);
+
+			expect(logger.warn).toHaveBeenCalled();
+			expect(agentRepository.updateAgent).toHaveBeenCalledWith(agent.id, { files: [] });
 		});
 	});
 

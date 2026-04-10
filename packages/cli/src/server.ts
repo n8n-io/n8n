@@ -61,6 +61,7 @@ import '@/license/license.controller';
 import '@/evaluation.ee/test-runs.controller.ee';
 import '@/workflows/workflow-history/workflow-history.controller';
 import '@/workflows/workflows.controller';
+import '@/modules/workflow-index/workflow-dependency.controller';
 import '@/webhooks/webhooks.controller';
 
 import { ChatServer } from './chat/chat-server';

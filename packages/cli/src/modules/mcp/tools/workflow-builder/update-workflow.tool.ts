@@ -1,16 +1,16 @@
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
-import { resolveNodeWebhookId } from 'n8n-workflow';
 import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { CODE_BUILDER_VALIDATE_TOOL, MCP_UPDATE_WORKFLOW_TOOL } from './constants';
-import { autoPopulateNodeCredentials } from './credentials-auto-assign';
+import { autoPopulateNodeCredentials, stripNullCredentialStubs } from './credentials-auto-assign';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { NodeTypes } from '@/node-types';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
+import { resolveNodeWebhookIds } from '@/workflow-helpers';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
@@ -105,7 +105,12 @@ export const createUpdateWorkflowTool = (
 
 		try {
 			// Fetch the workflow to check if it's available in MCP
-			await getMcpWorkflow(workflowId, user, ['workflow:update'], workflowFinderService);
+			const existingWorkflow = await getMcpWorkflow(
+				workflowId,
+				user,
+				['workflow:update'],
+				workflowFinderService,
+			);
 
 			const { ParseValidateHandler, stripImportStatements } = await import(
 				'@n8n/ai-workflow-builder'
@@ -126,12 +131,21 @@ export const createUpdateWorkflowTool = (
 				meta: { ...workflowJson.meta, aiBuilderAssisted: true },
 			});
 
+			resolveNodeWebhookIds(workflowUpdateData, nodeTypes);
+
+			stripNullCredentialStubs(workflowUpdateData.nodes);
+
+			// Preserve user-configured credentials from the existing workflow.
+			// Match nodes by name + type so that auto-assign skips them.
+			const existingCredsByNode = new Map(
+				existingWorkflow.nodes.map((n) => [n.name, { type: n.type, credentials: n.credentials }]),
+			);
 			for (const node of workflowUpdateData.nodes) {
-				try {
-					const desc = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-					resolveNodeWebhookId(node, desc.description);
-				} catch {
-					// Node type not found, skip
+				if (!node.credentials) {
+					const existing = existingCredsByNode.get(node.name);
+					if (existing?.type === node.type && existing.credentials) {
+						node.credentials = { ...existing.credentials };
+					}
 				}
 			}
 

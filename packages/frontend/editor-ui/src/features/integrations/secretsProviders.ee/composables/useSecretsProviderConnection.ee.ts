@@ -31,6 +31,10 @@ export function useSecretsProviderConnection(projectId?: string) {
 	const isLoading = ref(false);
 	const isTesting = ref(false);
 
+	function setConnectionState(state: SecretProviderConnection['state']) {
+		connectionState.value = state;
+	}
+
 	// API operations
 	async function testConnection(providerKey: string): Promise<SecretProviderConnection['state']> {
 		isTesting.value = true;
@@ -131,6 +135,7 @@ export function useSecretsProviderConnection(projectId?: string) {
 		isTesting,
 
 		// Methods
+		setConnectionState,
 		getConnection,
 		createConnection,
 		updateConnection,

@@ -45,6 +45,25 @@ interface IExecutionsBuffer {
 	};
 }
 
+interface IApiInvocationProperties {
+	user_id: string;
+	path: string;
+	method: string;
+	api_version: string;
+	user_agent?: string;
+}
+
+interface IApiInvocationsBufferEntry {
+	total_calls: number;
+	first: Date;
+	endpoints: Record<string, number>;
+	user_agents: Record<string, number>;
+}
+
+interface IApiInvocationsBuffer {
+	[userId: string]: IApiInvocationsBufferEntry;
+}
+
 @Service()
 export class Telemetry {
 	private rudderStack?: RudderStack;
@@ -52,6 +71,8 @@ export class Telemetry {
 	private pulseIntervalReference: NodeJS.Timeout;
 
 	private executionCountsBuffer: IExecutionsBuffer = {};
+
+	private apiInvocationsBuffer: IApiInvocationsBuffer = {};
 
 	constructor(
 		private readonly logger: Logger,
@@ -178,6 +199,21 @@ export class Telemetry {
 
 		this.executionCountsBuffer = {};
 
+		// Flush API invocation counts
+		for (const userId of Object.keys(this.apiInvocationsBuffer)) {
+			const entry = this.apiInvocationsBuffer[userId];
+			if (entry.total_calls > 0) {
+				this.track('Public API usage', {
+					user_id: userId,
+					total_calls: entry.total_calls,
+					first: entry.first,
+					endpoints: JSON.stringify(entry.endpoints),
+					user_agents: JSON.stringify(entry.user_agents),
+				});
+			}
+		}
+		this.apiInvocationsBuffer = {};
+
 		const sourceControlPreferences = Container.get(
 			SourceControlPreferencesService,
 		).getPreferences();
@@ -238,6 +274,29 @@ export class Telemetry {
 			) {
 				this.track('Workflow execution errored', properties);
 			}
+		}
+	}
+
+	trackApiInvocation(properties: IApiInvocationProperties) {
+		if (!this.rudderStack) return;
+
+		const { user_id, path, method, user_agent } = properties;
+
+		this.apiInvocationsBuffer[user_id] = this.apiInvocationsBuffer[user_id] ?? {
+			total_calls: 0,
+			first: new Date(),
+			endpoints: {},
+			user_agents: {},
+		};
+
+		const entry = this.apiInvocationsBuffer[user_id];
+		entry.total_calls++;
+
+		const endpointKey = `${method} ${path}`;
+		entry.endpoints[endpointKey] = (entry.endpoints[endpointKey] ?? 0) + 1;
+
+		if (user_agent) {
+			entry.user_agents[user_agent] = (entry.user_agents[user_agent] ?? 0) + 1;
 		}
 	}
 
@@ -349,5 +408,9 @@ export class Telemetry {
 	// test helpers
 	getCountsBuffer(): IExecutionsBuffer {
 		return this.executionCountsBuffer;
+	}
+
+	getApiInvocationsBuffer(): IApiInvocationsBuffer {
+		return this.apiInvocationsBuffer;
 	}
 }

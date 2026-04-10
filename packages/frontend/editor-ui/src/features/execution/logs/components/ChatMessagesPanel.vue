@@ -413,9 +413,14 @@ onUnmounted(() => {
 		--chat--input--file--button--background-hover: var(--color--primary--shade-2);
 
 		/* Message Action Buttons */
-		--chat--message--actions--color: var(--color--text--primary);
+		--chat--message--actions--color: var(--color--text--tint-1);
 		--chat--message--actions--gap: var(--spacing--sm);
 		--chat--message--actions--icon-size: 32px;
+	}
+
+	/* Allow action buttons to appear above the message bubble */
+	:global(.chat-message) {
+		overflow: visible;
 	}
 
 	/* Hide the default chat header since we use our own */
@@ -456,7 +461,7 @@ onUnmounted(() => {
 			--chat--input--border-active: 1px solid var(--color--primary);
 			--chat--color--primary-shade-50: var(--color--primary--shade-50);
 
-			--chat--message--actions--color: var(--chat--color-light-shade-100);
+			--chat--message--actions--color: var(--color--text--tint-1);
 		}
 	}
 }

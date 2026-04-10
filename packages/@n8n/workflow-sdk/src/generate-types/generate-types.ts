@@ -67,7 +67,11 @@ const ASSIGNMENT_TYPE_JSDOC = `/**
 
 function generateFilterTypeDeclaration(exported: boolean): string {
 	const prefix = exported ? 'export type' : 'type';
-	return `${prefix} FilterValue = { conditions: Array<{ leftValue: unknown; operator: { type: string; operation: string }; rightValue: unknown }> };`;
+	return [
+		`${prefix} FilterOptionsValue = { caseSensitive?: boolean; leftValue?: string; typeValidation?: 'strict' | 'loose' };`,
+		`${prefix} FilterConditionValue = { id?: string; leftValue: unknown; operator: { type: string; operation: string }; rightValue: unknown };`,
+		`${prefix} FilterValue = { options: FilterOptionsValue; conditions: FilterConditionValue[]; combinator: 'and' | 'or' };`,
+	].join('\n');
 }
 
 function generateAssignmentTypeDeclarations(exported: boolean): string {
@@ -247,6 +251,7 @@ export interface NodeProperty {
 		name: string;
 		displayName?: string;
 		type?: string;
+		typeOptions?: Record<string, unknown>;
 	}>;
 }
 
@@ -849,6 +854,20 @@ function generateNestedPropertyJSDoc(
 			.replace(/</g, '&lt;')
 			.replace(/>/g, '&gt;');
 		lines.push(`${indent} * @builderHint ${safeBuilderHint}`);
+	}
+
+	// Search/load method annotations — signals to the builder agent that
+	// explore-node-resources can resolve real IDs for this parameter.
+	if (prop.modes) {
+		for (const mode of prop.modes) {
+			if (typeof mode.typeOptions?.searchListMethod === 'string') {
+				lines.push(`${indent} * @searchListMethod ${mode.typeOptions.searchListMethod}`);
+				break; // one annotation per property is enough
+			}
+		}
+	}
+	if (typeof prop.typeOptions?.loadOptionsMethod === 'string') {
+		lines.push(`${indent} * @loadOptionsMethod ${prop.typeOptions.loadOptionsMethod}`);
 	}
 
 	// Display options - filter out @version since version is implicit from the file
@@ -1611,6 +1630,20 @@ export function generatePropertyJSDoc(
 			.replace(/</g, '&lt;')
 			.replace(/>/g, '&gt;');
 		lines.push(` * @builderHint ${safeBuilderHint}`);
+	}
+
+	// Search/load method annotations — signals to the builder agent that
+	// explore-node-resources can resolve real IDs for this parameter.
+	if (prop.modes) {
+		for (const mode of prop.modes) {
+			if (typeof mode.typeOptions?.searchListMethod === 'string') {
+				lines.push(` * @searchListMethod ${mode.typeOptions.searchListMethod}`);
+				break;
+			}
+		}
+	}
+	if (typeof prop.typeOptions?.loadOptionsMethod === 'string') {
+		lines.push(` * @loadOptionsMethod ${prop.typeOptions.loadOptionsMethod}`);
 	}
 
 	// Display options - conditions for when this property is shown/hidden

@@ -2,6 +2,11 @@
 
 Extra information, specific to the frontend codebase.
 
+### Style Review Rules
+
+For CSS/SCSS/Vue style changes and updates touching `@n8n/design-system`,
+follow `.agents/design-system-style-rules.md`.
+
 ### CSS Variables Reference
 
 Use the following CSS variables to maintain consistency across the
@@ -114,6 +119,11 @@ application. These variables cover colors, spacing, typography, and borders.
 --border-style: solid
 --border: var(--border-width) var(--border-style) var(--color--foreground)
 ```
+
+### Icons (N8nIcon)
+
+Available icon names are in `packages/frontend/@n8n/design-system/src/components/N8nIcon/icons.ts`.
+Use keys from `updatedIconSet` only — `deprecatedIconSet` entries must not be used in new code.
 
 ### Debounce Timing
 

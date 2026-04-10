@@ -1,4 +1,10 @@
+import type { InjectionKey, Ref } from 'vue';
+
 import type { IconOrEmoji } from '../../../components/N8nIconPicker/types';
+
+/** Injection key for passing portalTarget to nested DropdownMenuItem sub-menus */
+export const DropdownMenuPortalTargetKey: InjectionKey<Ref<string | HTMLElement | undefined>> =
+	Symbol('DropdownMenuPortalTarget');
 
 type VueCssClass = undefined | string | Record<string, boolean> | Array<string | VueCssClass>;
 
@@ -57,6 +63,10 @@ export type DropdownMenuItemProps<T = string, D = never> = {
 export interface DropdownMenuProps<T = string, D = never> {
 	/** Unique identifier for the dropdown */
 	id?: string;
+	/** Portal target element (e.g. pop-out window's document.body). When set, portals content to the specified element. Use with `modal: false` in cross-window contexts. */
+	portalTarget?: string | HTMLElement;
+	/** When true (default), blocks interaction with the rest of the page while open (reka-ui sets pointer-events:none on body and locks scroll). */
+	modal?: boolean;
 	/** Array of menu items to display */
 	items: Array<DropdownMenuItemProps<T, D>>;
 	/** The controlled open state of the dropdown. Can be bind as `v-model` */
@@ -121,6 +131,8 @@ export interface DropdownMenuSlots<T = string, D = never> {
 	loading?: () => void;
 	/** Custom empty state when no items */
 	empty?: () => void;
+	/** Content rendered after the item list (e.g. info notices) */
+	footer?: () => void;
 	/** Icon or content before the search input (default: search icon) */
 	'search-prefix'?: () => void;
 	/** Icon or content after the search input */

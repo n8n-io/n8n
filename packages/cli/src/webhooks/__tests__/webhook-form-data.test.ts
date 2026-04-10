@@ -164,20 +164,36 @@ describe('webhook-form-data', () => {
 			testServer.assertHasBeenCalled();
 		});
 
-		it('should ignore file that is too large', async () => {
+		it('should reject with an error when file exceeds maxFileSize', async () => {
 			const oneByteInMb = 1 / 1024 / 1024;
 			const parseFn = createMultiFormDataParser(oneByteInMb);
 
 			await testServer
 				.sendRequestToHandler(async (req) => {
-					const parsedData = await parseFn(req);
-
-					expect(parsedData).toStrictEqual({
-						data: {},
-						files: {},
-					});
+					await expect(parseFn(req)).rejects.toThrow(/maxFileSize/);
 				})
 				.attach('file', oneKbData, 'file.txt');
+
+			testServer.assertHasBeenCalled();
+		});
+
+		it('should reject with an error when total file size exceeds limit', async () => {
+			// Simulate the real-world scenario from #28069: a file upload that
+			// exceeds the configured limit should surface the actual formidable
+			// error instead of silently returning empty data.
+			const twoKbData = Buffer.alloc(2 * 1024, 'x');
+			const oneKbInMb = 1 / 1024;
+			const parseFn = createMultiFormDataParser(oneKbInMb);
+
+			await testServer
+				.sendRequestToHandler(async (req) => {
+					const rejection = parseFn(req);
+					await expect(rejection).rejects.toThrow();
+					await expect(rejection).rejects.toMatchObject({
+						httpCode: 413,
+					});
+				})
+				.attach('file', twoKbData, 'large-upload.bin');
 
 			testServer.assertHasBeenCalled();
 		});

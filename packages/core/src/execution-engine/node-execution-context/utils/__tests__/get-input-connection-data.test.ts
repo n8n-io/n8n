@@ -1104,6 +1104,91 @@ describe('makeHandleToolInvocation', () => {
 			sleepWithAbortSpy.mockRestore();
 		});
 	});
+
+	describe('sendMessage propagation', () => {
+		it('should include sendMessage in addOutputData when Chat node returns a string message', async () => {
+			// Use a fresh runExecutionData so runIndex starts at 0 regardless of prior tests
+			const freshRunExecutionData = mock<IRunExecutionData>({
+				resultData: { runData: {} },
+			});
+			const mockContext = mock<IExecuteFunctions>();
+			contextFactory.mockReturnValue(mockContext);
+
+			const sendMessage = 'Please choose an option';
+			const mockResult = [[{ json: { result: 'ok' }, sendMessage }]];
+			execute.mockResolvedValueOnce(mockResult);
+
+			const handleToolInvocation = makeHandleToolInvocation(
+				contextFactory,
+				connectedNode,
+				connectedNodeType,
+				freshRunExecutionData,
+			);
+			const result = await handleToolInvocation(toolArgs);
+
+			// The tool return value to the agent is still just the JSON response
+			expect(result).toBe(JSON.stringify([{ result: 'ok' }]));
+			// sendMessage must be stored in the output data so the chat service can forward it
+			expect(mockContext.addOutputData).toHaveBeenCalledWith(NodeConnectionTypes.AiTool, 0, [
+				[{ json: { response: [{ result: 'ok' }] }, sendMessage }],
+			]);
+		});
+
+		it('should include sendMessage object with buttons in addOutputData', async () => {
+			// Use a fresh runExecutionData so runIndex starts at 0 regardless of prior tests
+			const freshRunExecutionData = mock<IRunExecutionData>({
+				resultData: { runData: {} },
+			});
+			const mockContext = mock<IExecuteFunctions>();
+			contextFactory.mockReturnValue(mockContext);
+
+			const sendMessage = {
+				type: 'with-buttons' as const,
+				text: 'Approve or deny?',
+				blockUserInput: true,
+				buttons: [{ label: 'Approve', value: 'approve', style: 'primary' as const }],
+			};
+			const mockResult = [[{ json: { result: 'pending' }, sendMessage }]];
+			execute.mockResolvedValueOnce(mockResult);
+
+			const handleToolInvocation = makeHandleToolInvocation(
+				contextFactory,
+				connectedNode,
+				connectedNodeType,
+				freshRunExecutionData,
+			);
+			await handleToolInvocation(toolArgs);
+
+			expect(mockContext.addOutputData).toHaveBeenCalledWith(NodeConnectionTypes.AiTool, 0, [
+				[{ json: { response: [{ result: 'pending' }] }, sendMessage }],
+			]);
+		});
+
+		it('should not include sendMessage in addOutputData when node does not return one', async () => {
+			// Use a fresh runExecutionData so runIndex starts at 0 regardless of prior tests
+			const freshRunExecutionData = mock<IRunExecutionData>({
+				resultData: { runData: {} },
+			});
+			const mockContext = mock<IExecuteFunctions>();
+			contextFactory.mockReturnValue(mockContext);
+
+			const mockResult = [[{ json: { result: 'data' } }]];
+			execute.mockResolvedValueOnce(mockResult);
+
+			const handleToolInvocation = makeHandleToolInvocation(
+				contextFactory,
+				connectedNode,
+				connectedNodeType,
+				freshRunExecutionData,
+			);
+			await handleToolInvocation(toolArgs);
+
+			// sendMessage must not be set to a real value in the stored output
+			expect(mockContext.addOutputData).toHaveBeenCalledWith(NodeConnectionTypes.AiTool, 0, [
+				[expect.not.objectContaining({ sendMessage: expect.anything() })],
+			]);
+		});
+	});
 });
 
 describe('HITL Tool handling', () => {
