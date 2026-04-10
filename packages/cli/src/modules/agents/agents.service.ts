@@ -18,8 +18,11 @@ import {
 import { In } from '@n8n/typeorm';
 import { OperationalError, UserError } from 'n8n-workflow';
 
+import { SqliteMemory, SqliteMemoryConfigSchema } from '@n8n/agents/dist/storage/sqlite-memory';
+
 import { Agent } from './entities/agent.entity';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
+import { N8nMemory } from './integrations/n8n-memory';
 import { AgentRepository } from './repositories/agent.repository';
 import type { WorkflowToolDescriptor } from './types';
 
@@ -98,6 +101,7 @@ export class AgentsService {
 		private readonly urlService: UrlService,
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
 		private readonly secureRuntime: AgentSecureRuntime,
+		private readonly n8nMemory: N8nMemory,
 	) {}
 
 	async create(projectId: string, name: string): Promise<Agent> {
@@ -325,6 +329,16 @@ export class AgentsService {
 		return { code, schema: freshSchema, updatedAt: saved.updatedAt.toISOString() };
 	}
 
+	private getMemoryRegistry(): Record<string, agents.MemoryFactory> {
+		return {
+			n8n: () => this.n8nMemory,
+			sqlite: (params) => new SqliteMemory(SqliteMemoryConfigSchema.parse(params)),
+			postgres: () => {
+				throw new Error('Not implemented');
+			},
+		};
+	}
+
 	/**
 	 * Returns a `resolveTool` callback for `Agent.fromSchema()` that converts
 	 * non-editable tool schema entries into workflow tool marker BuiltTools.
@@ -450,6 +464,7 @@ export class AgentsService {
 			handlerExecutor: executor,
 			credentialProvider,
 			resolveTool: this.makeWorkflowToolResolver(),
+			memoryRegistry: this.getMemoryRegistry(),
 		});
 
 		// Inject workflow tools, rich interaction tool, checkpoint
@@ -594,6 +609,7 @@ export class AgentsService {
 					handlerExecutor: executor,
 					credentialProvider,
 					resolveTool: this.makeWorkflowToolResolver(),
+					memoryRegistry: this.getMemoryRegistry(),
 				});
 
 				// Inject runtime dependencies (workflow tools, rich interaction, checkpoint)

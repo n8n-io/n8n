@@ -28,6 +28,7 @@ export type {
 	SerializableAgentState,
 	AgentRunState,
 	MemoryConfig,
+	MemoryDescriptor,
 	TitleGenerationConfig,
 	Thread,
 	SemanticRecallConfig,
@@ -82,7 +83,6 @@ export type {
 	AgentDbMessage,
 } from './types/sdk/message';
 export type { HandlerExecutor } from './types/sdk/handler-executor';
-export type { FromSchemaOptions, ToolResolver } from './sdk/from-schema';
 export type {
 	AgentSchema,
 	ToolSchema,
@@ -108,10 +108,15 @@ export type {
 	ModelCost,
 	ModelLimits,
 } from './sdk/catalog';
-export { SqliteMemory } from './storage/sqlite-memory';
+export { SqliteMemory, SqliteMemoryConfigSchema } from './storage/sqlite-memory';
 export type { SqliteMemoryConfig } from './storage/sqlite-memory';
 export { PostgresMemory } from './storage/postgres-memory';
-export type { PostgresMemoryConfig } from './storage/postgres-memory';
+export type {
+	PostgresConnectionOptions,
+	PostgresConstructorOptions,
+} from './storage/postgres-memory';
+export { BaseMemory } from './storage/base-memory';
+export type { MemoryFactory, FromSchemaOptions, ToolResolver } from './sdk/from-schema';
 
 export { Workspace } from './workspace';
 export { BaseFilesystem } from './workspace';

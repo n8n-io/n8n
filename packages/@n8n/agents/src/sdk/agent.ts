@@ -9,7 +9,6 @@ import { Telemetry } from './telemetry';
 import { Tool, wrapToolForApproval } from './tool';
 import { AgentRuntime } from '../runtime/agent-runtime';
 import { AgentEventBus } from '../runtime/event-bus';
-import { InMemoryMemory } from '../runtime/memory-store';
 import { createAgentToolResult } from '../runtime/tool-adapter';
 import type {
 	AgentEvent,
@@ -630,6 +629,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			if (mc.semanticRecall) {
 				semanticRecall = {
 					topK: mc.semanticRecall.topK,
+					scope: mc.semanticRecall.scope ?? null,
 					messageRange: mc.semanticRecall.messageRange
 						? {
 								before: mc.semanticRecall.messageRange.before,
@@ -644,6 +644,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			if (mc.workingMemory) {
 				workingMemory = {
 					type: mc.workingMemory.structured ? 'structured' : 'freeform',
+					scope: mc.workingMemory.scope,
 					...(mc.workingMemory.schema
 						? { schema: zodToJsonSchema(mc.workingMemory.schema) ?? undefined }
 						: {}),
@@ -651,14 +652,34 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				};
 			}
 
+			let titleGeneration: MemorySchema['titleGeneration'] = null;
+			if (mc.titleGeneration) {
+				let modelStr: string | undefined;
+				if (mc.titleGeneration.model !== undefined) {
+					if (typeof mc.titleGeneration.model === 'string') {
+						modelStr = mc.titleGeneration.model;
+					} else if ('id' in mc.titleGeneration.model) {
+						modelStr = mc.titleGeneration.model.id;
+					}
+				}
+				titleGeneration = {
+					...(modelStr !== undefined && { model: modelStr }),
+					...(mc.titleGeneration.instructions !== undefined && {
+						instructions: mc.titleGeneration.instructions,
+					}),
+				};
+			}
+
+			const memoryDescriptor = mc.memory.describe();
 			memory = {
-				// TODO: each BuiltMemory should have describe() method to return a config showing connection params and other metadata
-				// this config must have enough information to rebuild the memory instance
 				source: null,
-				storage: mc.memory instanceof InMemoryMemory ? 'memory' : 'custom',
+				name: memoryDescriptor.name,
+				constructorName: memoryDescriptor.constructorName,
+				connectionParams: memoryDescriptor.connectionParams,
 				lastMessages: mc.lastMessages ?? null,
 				semanticRecall,
 				workingMemory,
+				titleGeneration,
 			};
 		}
 

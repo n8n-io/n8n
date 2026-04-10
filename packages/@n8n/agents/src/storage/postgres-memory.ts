@@ -1,7 +1,7 @@
 import type { Pool, PoolClient } from 'pg';
-import type { ConnectionOptions } from 'tls';
 
-import type { BuiltMemory, Thread } from '../types/sdk/memory';
+import { BaseMemory } from './base-memory';
+import type { Thread } from '../types/sdk/memory';
 import type { AgentDbMessage, AgentMessage } from '../types/sdk/message';
 
 interface ThreadRow {
@@ -40,24 +40,24 @@ function parseJsonSafe(text: string): unknown {
 	}
 }
 
-export interface PostgresConnectionConfig {
-	/** Postgres host. Defaults to 'localhost'. */
-	host?: string;
-	/** Postgres port. Defaults to 5432. */
-	port?: number;
-	/** Database name. */
-	database?: string;
-	/** Database user. */
-	user?: string;
-	/** Database password. */
-	password?: string | (() => string | Promise<string>);
-}
+export type PostgresConnectionOptions =
+	| { connectionType: 'url'; connection: { url: string } }
+	| {
+			connectionType: 'config';
+			connection: {
+				/** Postgres host. Defaults to 'localhost'. */ host?: string;
+				/** Postgres port. Defaults to 5432. */
+				port?: number;
+				/** Database name. */
+				database?: string;
+				/** Database user. */
+				user?: string;
+				/** Database password. Always credential-backed — never a raw string. */
+				password?: string;
+			};
+	  };
 
-export interface PostgresMemoryConfig {
-	// --- Connection ---
-	/** Connection URL string (e.g. 'postgresql://user:pass@localhost:5432/db') or individual connection parameters. */
-	connection: string | PostgresConnectionConfig;
-
+export type PostgresMemoryOptions = {
 	// --- Pool settings ---
 	/** Connection pool configuration. */
 	pool?: {
@@ -75,32 +75,47 @@ export interface PostgresMemoryConfig {
 
 	// --- Security ---
 	/** SSL configuration. `true` for default SSL, or a TLS ConnectionOptions object. */
-	ssl?: boolean | ConnectionOptions;
+	ssl?: boolean;
 
 	// --- SDK options ---
 	/** Table name prefix for multi-tenant isolation. Alphanumeric and underscores only. */
 	namespace?: string;
-}
+};
 
-export class PostgresMemory implements BuiltMemory {
+export type PostgresConstructorOptions = (
+	| {
+			type: 'credential';
+			credential: string;
+	  }
+	| {
+			type: 'connection';
+			connection: PostgresConnectionOptions;
+	  }
+) & {
+	options?: PostgresMemoryOptions;
+};
+
+export class PostgresMemory extends BaseMemory<PostgresConstructorOptions> {
 	private initPromise: Promise<Pool> | null = null;
 
 	private embeddingsInitPromise: Promise<void> | null = null;
 
-	private readonly config: PostgresMemoryConfig;
-
 	private readonly ns: string;
 
-	constructor(config: PostgresMemoryConfig) {
-		if (config.namespace !== undefined) {
-			if (!/^[a-zA-Z0-9_]+$/.test(config.namespace)) {
+	constructor(
+		protected readonly constructorOptions: PostgresConstructorOptions,
+		private readonly resolveConfig?: (credential: string) => Promise<PostgresConnectionOptions>,
+	) {
+		super('postgres', constructorOptions);
+		const namespace = constructorOptions.options?.namespace;
+		if (namespace !== undefined) {
+			if (!/^[a-zA-Z0-9_]+$/.test(namespace)) {
 				throw new Error(
-					`Invalid namespace "${config.namespace}": must be alphanumeric and underscores only`,
+					`Invalid namespace "${namespace}": must be alphanumeric and underscores only`,
 				);
 			}
 		}
-		this.config = config;
-		this.ns = config.namespace ? `${config.namespace}_` : '';
+		this.ns = namespace ? `${namespace}_` : '';
 	}
 
 	// ── Lazy initialisation ──────────────────────────────────────────────
@@ -115,34 +130,53 @@ export class PostgresMemory implements BuiltMemory {
 
 	private async _initialize(): Promise<Pool> {
 		const { Pool: PgPool } = await import('pg');
-		const conn = this.config.connection;
-		const connectionOpts =
-			typeof conn === 'string'
-				? { connectionString: conn }
-				: {
-						...(conn.host && { host: conn.host }),
-						...(conn.port && { port: conn.port }),
-						...(conn.database && { database: conn.database }),
-						...(conn.user && { user: conn.user }),
-						...(conn.password !== undefined && { password: conn.password }),
-					};
+		let connectionOpts: Record<string, unknown>;
 
+		if (this.constructorOptions.type === 'credential' && !this.resolveConfig) {
+			throw new Error('resolveConfig() was not provided in constructor options');
+		}
+
+		const config =
+			this.constructorOptions.type === 'credential'
+				? await this.resolveConfig!(this.constructorOptions.credential)
+				: this.constructorOptions.connection;
+
+		if (config.connectionType === 'url') {
+			const url = config.connection.url;
+			connectionOpts = { connectionString: url };
+		} else {
+			const cfg = config.connection;
+			const host = cfg.host;
+			const port = cfg.port;
+			const database = cfg.database;
+			const user = cfg.user;
+			const password = cfg.password;
+			connectionOpts = {
+				...(host !== undefined && { host }),
+				...(port !== undefined && { port }),
+				...(database !== undefined && { database }),
+				...(user !== undefined && { user }),
+				...(password !== undefined && { password }),
+			};
+		}
+
+		const opts = this.constructorOptions.options;
 		const pool = new PgPool({
 			...connectionOpts,
 			// Pool
-			...(this.config.pool?.max !== undefined && { max: this.config.pool.max }),
-			...(this.config.pool?.min !== undefined && { min: this.config.pool.min }),
-			...(this.config.pool?.idleTimeoutMillis !== undefined && {
-				idleTimeoutMillis: this.config.pool.idleTimeoutMillis,
+			...(opts?.pool?.max !== undefined && { max: opts.pool.max }),
+			...(opts?.pool?.min !== undefined && { min: opts.pool.min }),
+			...(opts?.pool?.idleTimeoutMillis !== undefined && {
+				idleTimeoutMillis: opts.pool.idleTimeoutMillis,
 			}),
-			...(this.config.pool?.connectionTimeoutMillis !== undefined && {
-				connectionTimeoutMillis: this.config.pool.connectionTimeoutMillis,
+			...(opts?.pool?.connectionTimeoutMillis !== undefined && {
+				connectionTimeoutMillis: opts.pool.connectionTimeoutMillis,
 			}),
-			...(this.config.pool?.allowExitOnIdle !== undefined && {
-				allowExitOnIdle: this.config.pool.allowExitOnIdle,
+			...(opts?.pool?.allowExitOnIdle !== undefined && {
+				allowExitOnIdle: opts.pool.allowExitOnIdle,
 			}),
 			// Security
-			...(this.config.ssl !== undefined && { ssl: this.config.ssl }),
+			...(opts?.ssl !== undefined && { ssl: opts.ssl }),
 		});
 
 		await pool.query(

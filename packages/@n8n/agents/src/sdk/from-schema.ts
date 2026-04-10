@@ -10,6 +10,7 @@ import type { CredentialProvider } from '../types/sdk/credential-provider';
 import type { EvalInput, EvalScore, JudgeInput } from '../types/sdk/eval';
 import type { HandlerExecutor } from '../types/sdk/handler-executor';
 import type { McpServerConfig } from '../types/sdk/mcp';
+import type { BuiltMemory } from '../types/sdk/memory';
 import type { AgentMessage } from '../types/sdk/message';
 import type {
 	AgentSchema,
@@ -25,6 +26,12 @@ import type { JSONObject } from '../types/utils/json';
 
 export type ToolResolver = (toolSchema: ToolSchema) => BuiltTool | null | undefined;
 
+/**
+ * Factory function that reconstructs a BuiltMemory backend from serialized connectionParams.
+ * Registered in `FromSchemaOptions.memoryRegistry` keyed by the backend name (e.g. 'postgres').
+ */
+export type MemoryFactory = (params: JSONObject | null) => BuiltMemory | Promise<BuiltMemory>;
+
 export interface FromSchemaOptions {
 	handlerExecutor: HandlerExecutor;
 	credentialProvider?: CredentialProvider;
@@ -36,6 +43,13 @@ export interface FromSchemaOptions {
 	 * tool schema's `name`, `description`, and `metadata`.
 	 */
 	resolveTool?: ToolResolver;
+	/**
+	 * Registry of memory backend factories keyed by name (e.g. 'postgres', 'sqlite').
+	 * When a schema contains `memory.name`, the matching factory is called with
+	 * `connectionParams` to reconstruct the backend.
+	 * Falls back to in-memory if no matching factory is found.
+	 */
+	memoryRegistry?: Record<string, MemoryFactory>;
 }
 
 /** Sentinel used to signal that a sandboxed handler called ctx.suspend(). */
@@ -88,7 +102,7 @@ export async function fromSchema(
 	await applyTools(agent, schema.tools, handlerExecutor, options.resolveTool);
 	await applyProviderTools(agent, schema.providerTools, handlerExecutor);
 	applyConfig(agent, schema.config);
-	applyMemory(agent, schema);
+	await applyMemory(agent, schema, options);
 	applyGuardrails(agent, schema.guardrails);
 	applyEvals(agent, schema.evaluations, handlerExecutor);
 	await applyStructuredOutput(agent, schema.config.structuredOutput, handlerExecutor);
@@ -196,12 +210,58 @@ function applyConfig(agent: AgentBuilder, config: AgentSchema['config']): void {
 	}
 }
 
-function applyMemory(agent: AgentBuilder, schema: AgentSchema): void {
+async function applyMemory(
+	agent: AgentBuilder,
+	schema: AgentSchema,
+	options: FromSchemaOptions,
+): Promise<void> {
 	if (schema.memory !== null) {
 		const memory = new Memory();
+
 		if (schema.memory.lastMessages !== null) {
 			memory.lastMessages(schema.memory.lastMessages);
 		}
+
+		const { name, connectionParams } = schema.memory;
+		const factory = options.memoryRegistry?.[name];
+		if (factory) {
+			const builtMemory: BuiltMemory = await factory(connectionParams);
+			memory.storage(builtMemory);
+		}
+
+		if (schema.memory.semanticRecall) {
+			const sr = schema.memory.semanticRecall as {
+				topK: number;
+				scope: 'thread' | 'resource' | null;
+				messageRange: { before: number; after: number } | null;
+				embedder: string | null;
+			};
+			memory.semanticRecall({
+				topK: sr.topK,
+				...(sr.embedder !== null && { embedder: sr.embedder }),
+				...(sr.messageRange !== null && { messageRange: sr.messageRange }),
+				...(sr.scope !== null && { scope: sr.scope }),
+			});
+		}
+
+		if (schema.memory.workingMemory) {
+			const wm = schema.memory.workingMemory as {
+				type: 'structured' | 'freeform';
+				scope: 'resource' | 'thread';
+				template?: string;
+			};
+			if (wm.type === 'freeform' && wm.template) {
+				memory.freeform(wm.template);
+			}
+			memory.scope(wm.scope);
+		}
+
+		if (schema.memory.titleGeneration) {
+			memory.titleGeneration(
+				schema.memory.titleGeneration as { model?: string; instructions?: string },
+			);
+		}
+
 		agent.memory(memory);
 	}
 
