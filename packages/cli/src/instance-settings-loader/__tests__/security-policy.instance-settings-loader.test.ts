@@ -38,7 +38,7 @@ describe('SecurityPolicyInstanceSettingsLoader', () => {
 		logger.scoped.mockReturnThis();
 	});
 
-	describe('when SECURITY_POLICY_OVERRIDE is false', () => {
+	describe('when N8N_SECURITY_POLICY_OVERRIDE is false', () => {
 		it('should skip when no security env vars deviate from defaults', async () => {
 			const loader = createLoader();
 
@@ -58,7 +58,7 @@ describe('SecurityPolicyInstanceSettingsLoader', () => {
 			expect(result).toBe('skipped');
 			expect(mfaService.enforceMFA).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('SECURITY_POLICY_OVERRIDE is not enabled'),
+				expect.stringContaining('N8N_SECURITY_POLICY_OVERRIDE is not enabled'),
 			);
 		});
 
@@ -70,7 +70,7 @@ describe('SecurityPolicyInstanceSettingsLoader', () => {
 			expect(result).toBe('skipped');
 			expect(securitySettingsService.setPersonalSpaceSetting).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('SECURITY_POLICY_OVERRIDE is not enabled'),
+				expect.stringContaining('N8N_SECURITY_POLICY_OVERRIDE is not enabled'),
 			);
 		});
 
@@ -82,12 +82,12 @@ describe('SecurityPolicyInstanceSettingsLoader', () => {
 			expect(result).toBe('skipped');
 			expect(securitySettingsService.setPersonalSpaceSetting).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('SECURITY_POLICY_OVERRIDE is not enabled'),
+				expect.stringContaining('N8N_SECURITY_POLICY_OVERRIDE is not enabled'),
 			);
 		});
 	});
 
-	describe('when SECURITY_POLICY_OVERRIDE is true', () => {
+	describe('when N8N_SECURITY_POLICY_OVERRIDE is true', () => {
 		it('should enforce MFA when securityPolicyMfaEnforced is true', async () => {
 			const loader = createLoader({
 				securityPolicyOverride: true,
@@ -178,7 +178,7 @@ describe('SecurityPolicyInstanceSettingsLoader', () => {
 			await loader.run();
 
 			expect(logger.info).toHaveBeenCalledWith(
-				expect.stringContaining('SECURITY_POLICY_OVERRIDE is enabled'),
+				expect.stringContaining('N8N_SECURITY_POLICY_OVERRIDE is enabled'),
 			);
 		});
 

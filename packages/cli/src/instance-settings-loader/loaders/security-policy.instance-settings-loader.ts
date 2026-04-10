@@ -35,13 +35,13 @@ export class SecurityPolicyInstanceSettingsLoader {
 				!securityPolicyPersonalSpaceSharing
 			) {
 				this.logger.warn(
-					'Security policy env vars are set but SECURITY_POLICY_OVERRIDE is not enabled — ignoring security policy env vars',
+					'Security policy env vars are set but N8N_SECURITY_POLICY_OVERRIDE is not enabled — ignoring security policy env vars',
 				);
 			}
 			return 'skipped';
 		}
 
-		this.logger.info('SECURITY_POLICY_OVERRIDE is enabled — applying security policy env vars');
+		this.logger.info('N8N_SECURITY_POLICY_OVERRIDE is enabled — applying security policy env vars');
 
 		await this.mfaService.enforceMFA(securityPolicyMfaEnforced);
 

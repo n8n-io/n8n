@@ -32,15 +32,15 @@ export class InstanceSettingsLoaderConfig {
 	 * On every startup the security policy will be overridden by env vars.
 	 * When false (default), security policy env vars are ignored even if set.
 	 */
-	@Env('SECURITY_POLICY_OVERRIDE')
+	@Env('N8N_SECURITY_POLICY_OVERRIDE')
 	securityPolicyOverride: boolean = false;
 
-	@Env('SECURITY_POLICY_MFA_ENFORCED')
+	@Env('N8N_SECURITY_POLICY_MFA_ENFORCED')
 	securityPolicyMfaEnforced: boolean = false;
 
-	@Env('SECURITY_POLICY_PERSONAL_SPACE_PUBLISHING')
+	@Env('N8N_SECURITY_POLICY_PERSONAL_SPACE_PUBLISHING')
 	securityPolicyPersonalSpacePublishing: boolean = true;
 
-	@Env('SECURITY_POLICY_PERSONAL_SPACE_SHARING')
+	@Env('N8N_SECURITY_POLICY_PERSONAL_SPACE_SHARING')
 	securityPolicyPersonalSpaceSharing: boolean = true;
 }
