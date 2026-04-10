@@ -342,12 +342,11 @@ ORDER BY atc.COLUMN_NAME`;
 }
 
 export function prepareErrorItem(
-	items: INodeExecutionData[],
 	error: IDataObject | NodeOperationError | Error,
 	index: number,
 ): INodeExecutionData {
 	return {
-		json: { message: error.message, item: { ...items[index].json }, error: { ...error } },
+		json: { message: error.message, error: { ...error } },
 		pairedItem: { item: index },
 	};
 }
@@ -414,8 +413,10 @@ function _getResponseForOutbinds(
 			const executionData = this.helpers.constructExecutionMetaData(wrapData(normalizedRows[j]), {
 				itemData: { item: j },
 			});
-			if (executionData) {
-				returnData = returnData.concat(executionData);
+			if (executionData?.length) {
+				for (const item of executionData) {
+					returnData.push(item);
+				}
 			}
 		}
 	}
@@ -428,6 +429,31 @@ function _getResponseForOutbinds(
 function doesRowExist(query: string, results: any) {
 	if (/^\s*UPDATE\b/i.test(query) && results.rowsAffected === 0) {
 		throw new Error("The row you are trying to update doesn't exist");
+	}
+}
+
+function createErrorItems(
+	error: NodeOperationError | Error,
+	items: INodeExecutionData[],
+): INodeExecutionData[] {
+	if (items.length) {
+		return items.map((_item, index) => prepareErrorItem(error, index));
+	}
+	return [prepareErrorItem(error, 0)];
+}
+
+async function getConnectionOrError(
+	pool: oracledb.Pool,
+	node: INode,
+	continueOnFail: boolean,
+): Promise<{ connection?: oracledb.Connection; error?: NodeOperationError }> {
+	try {
+		const connection = await pool.getConnection();
+		return { connection };
+	} catch (caughtError) {
+		const error = parseOracleError(node, caughtError);
+		if (!continueOnFail) throw error;
+		return { error };
 	}
 }
 
@@ -495,7 +521,10 @@ export function configureQueryRunner(
 		}
 
 		if (stmtBatching === 'single' && queries[0].executeManyValues) {
-			const connection = await pool.getConnection();
+			const { connection, error } = await getConnectionOrError(pool, node, continueOnFail);
+			if (!connection) {
+				return createErrorItems(error!, items);
+			}
 			try {
 				execOptions = getExecuteManyOptions(options);
 				if (continueOnFail) {
@@ -546,7 +575,10 @@ export function configureQueryRunner(
 			}
 		} else if (stmtBatching === 'transaction') {
 			execOptions.autoCommit = false; // for transaction mode forcefully overwrite it.
-			const connection = await pool.getConnection();
+			const { connection, error } = await getConnectionOrError(pool, node, continueOnFail);
+			if (!connection) {
+				return createErrorItems(error!, items);
+			}
 			try {
 				for (let i = 0; i < queries.length; i++) {
 					try {
@@ -590,7 +622,7 @@ export function configureQueryRunner(
 					} catch (caughtError) {
 						const error = parseOracleError(node, caughtError, i);
 						if (!continueOnFail) throw error;
-						returnData.push(prepareErrorItem(items, error, i));
+						returnData.push(prepareErrorItem(error, i));
 
 						// The rollback happens automatically, so just return.
 						return returnData;
@@ -603,7 +635,10 @@ export function configureQueryRunner(
 				await connection.close();
 			}
 		} else if (stmtBatching === 'independently') {
-			const connection = await pool.getConnection();
+			const { connection, error } = await getConnectionOrError(pool, node, continueOnFail);
+			if (!connection) {
+				return createErrorItems(error!, items);
+			}
 			try {
 				for (let i = 0; i < queries.length; i++) {
 					try {
@@ -646,7 +681,7 @@ export function configureQueryRunner(
 					} catch (caughtError) {
 						const error = parseOracleError(node, caughtError, i);
 						if (!continueOnFail) throw error;
-						returnData.push(prepareErrorItem(items, error, i));
+						returnData.push(prepareErrorItem(error, i));
 					}
 				}
 			} finally {

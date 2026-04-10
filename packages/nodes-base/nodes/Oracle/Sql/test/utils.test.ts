@@ -1,9 +1,11 @@
 import { DateTime } from 'luxon';
 import * as oracleDBTypes from 'oracledb';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import type { ExecuteOpBindParam } from '../helpers/interfaces';
 import {
 	addSortRules,
+	configureQueryRunner,
 	getBindParameters,
 	getCompatibleValue,
 	getOutBindDefsForExecute,
@@ -234,5 +236,47 @@ describe('Test getBindParameters ', () => {
 		({ updatedQuery, bindParameters } = getBindParameters(query, paramList));
 		expect(updatedQuery).toEqual(query);
 		expect(bindParameters).toEqual(expectedBindParams);
+	});
+});
+
+describe('configureQueryRunner', () => {
+	it('should handle large out bind datasets without stack overflow', async () => {
+		const largeRowCount = 150_000;
+		const outBinds = Array.from({ length: largeRowCount }, (_unused, index) => [[index]]);
+		const executeMany = jest.fn().mockResolvedValue({ outBinds });
+		const close = jest.fn().mockResolvedValue(undefined);
+		const connection = { executeMany, close };
+		const getConnection = jest.fn().mockResolvedValue(connection);
+		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
+		const constructExecutionMetaData = jest
+			.fn()
+			.mockImplementation((data: INodeExecutionData[]) => data);
+		const context = {
+			helpers: {
+				constructExecutionMetaData,
+			},
+		} as unknown as IExecuteFunctions;
+		const node = {} as any;
+		const queryRunner = configureQueryRunner.call(context, node, false, pool);
+
+		const queries = [
+			{
+				query: 'INSERT INTO "TEST" ("COL1") VALUES (:0)',
+				executeManyValues: [{}],
+				outputColumns: ['COL1'],
+			},
+		];
+
+		const result = await queryRunner(queries as any, [], {
+			operation: 'insert',
+			stmtBatching: 'single',
+		});
+
+		expect(result).toHaveLength(largeRowCount);
+		expect(result[0]?.json.COL1).toEqual(0);
+		expect(result[largeRowCount - 1]?.json.COL1).toEqual(largeRowCount - 1);
+		expect(constructExecutionMetaData).toHaveBeenCalledTimes(largeRowCount);
+		expect(getConnection).toHaveBeenCalledTimes(1);
+		expect(close).toHaveBeenCalledTimes(1);
 	});
 });
