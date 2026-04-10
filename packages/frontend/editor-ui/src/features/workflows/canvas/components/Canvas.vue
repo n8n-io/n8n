@@ -1109,6 +1109,7 @@ defineExpose({
 					v-bind="nodeProps"
 					:data="nodeDataById[nodeProps.id]"
 					:read-only="readOnly"
+					:can-execute="canExecute"
 					:event-bus="eventBus"
 					:hovered="nodesHoveredById[nodeProps.id]"
 					:nearby-hovered="nodeProps.id === hoveredTriggerNode.id.value"
