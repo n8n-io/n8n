@@ -192,6 +192,13 @@ export async function resolveSafePath(basePath: string, relativePath: string): P
 	if (!current.startsWith(realBase + path.sep) && current !== realBase) {
 		throw new Error(`Path "${relativePath}" escapes the base directory`);
 	}
+
+	// Check if the resolved real path targets a protected path (e.g. settings directory).
+	// This catches symlink-based bypasses since `current` has all symlinks resolved.
+	if (isProtectedSettingsPath(current)) {
+		throw new Error(`Access denied: cannot access "${relativePath}"`);
+	}
+
 	return absolute;
 }
 
@@ -207,21 +214,6 @@ export async function buildFilesystemResource(
 	description: string,
 ): Promise<AffectedResource> {
 	const absolutePath = await resolveSafePath(dir, inputPath);
-
-	if (isProtectedSettingsPath(absolutePath)) {
-		throw new Error(`Access denied: cannot access "${inputPath}"`);
-	}
-
-	// Symlink defense: also check the real path to prevent symlink-based bypasses
-	try {
-		const realPath = await fs.realpath(absolutePath);
-		if (realPath !== absolutePath && isProtectedSettingsPath(realPath)) {
-			throw new Error(`Access denied: cannot access "${inputPath}"`);
-		}
-	} catch (error) {
-		// realpath throws ENOENT for non-existent paths — the logical check above is sufficient
-		if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
-	}
 
 	return { toolGroup, resource: absolutePath, description };
 }

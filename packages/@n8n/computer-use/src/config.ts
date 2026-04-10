@@ -263,8 +263,9 @@ export function getSettingsDir(): string {
  * Used to prevent computer-use tools from modifying their own configuration.
  */
 export function isProtectedSettingsPath(absolutePath: string): boolean {
-	const dir = getSettingsDir();
-	return absolutePath === dir || absolutePath.startsWith(dir + path.sep);
+	const dir = path.resolve(getSettingsDir());
+	const target = path.resolve(absolutePath);
+	return target === dir || target.startsWith(dir + path.sep);
 }
 
 // ---------------------------------------------------------------------------

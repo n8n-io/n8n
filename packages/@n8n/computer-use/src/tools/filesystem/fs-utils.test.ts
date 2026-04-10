@@ -135,6 +135,22 @@ describe('resolveSafePath', () => {
 
 		await expect(resolveSafePath(BASE, 'test/bam/bum')).rejects.toThrow('escapes');
 	});
+
+	it('throws when a symlink resolves to the protected settings directory', async () => {
+		// Use the settings directory's parent as base so the resolved path is within bounds
+		const settingsDir = config.getSettingsDir();
+		const parentDir = settingsDir.replace(/\/[^/]+$/, '');
+		const sneakyLink = `${parentDir}/sneaky-link`;
+		// Identity realpath by default; only the symlink diverges
+		(fs.realpath as jest.Mock).mockImplementation(async (p: string) => {
+			if (p === sneakyLink) return await Promise.resolve(settingsDir);
+			return await Promise.resolve(p);
+		});
+
+		await expect(resolveSafePath(parentDir, 'sneaky-link/settings.json')).rejects.toThrow(
+			'Access denied',
+		);
+	});
 });
 
 describe('buildFilesystemResource — settings self-protection', () => {
