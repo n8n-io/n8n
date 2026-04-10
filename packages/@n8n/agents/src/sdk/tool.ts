@@ -5,6 +5,7 @@ import type { BuiltTool, InterruptibleToolContext, ToolContext } from '../types'
 import type { AgentMessage } from '../types/sdk/message';
 import type { ToolDescriptor } from '../types/sdk/tool-descriptor';
 import type { JSONObject } from '../types/utils/json';
+import { isZodSchema, zodToJsonSchema } from '../utils/zod';
 
 const APPROVAL_SUSPEND_SCHEMA = z.object({
 	type: z.literal('approval'),
@@ -294,18 +295,19 @@ export class Tool<
 		if (!this.desc) throw new Error(`Tool "${this.name}" requires a description`);
 		if (!this.inputSchema) throw new Error(`Tool "${this.name}" requires an input schema`);
 
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		const { zodToJsonSchema } = require('zod-to-json-schema') as {
-			zodToJsonSchema: (schema: z.ZodTypeAny) => unknown;
-		};
-
+		const inputSchema = isZodSchema(this.inputSchema)
+			? zodToJsonSchema(this.inputSchema)
+			: this.inputSchema;
+		const outputSchema = this.outputSchema
+			? isZodSchema(this.outputSchema)
+				? zodToJsonSchema(this.outputSchema)
+				: this.outputSchema
+			: null;
 		return {
 			name: this.name,
 			description: this.desc,
-			inputSchema: zodToJsonSchema(this.inputSchema) as import('json-schema').JSONSchema7,
-			outputSchema: this.outputSchema
-				? (zodToJsonSchema(this.outputSchema) as import('json-schema').JSONSchema7)
-				: null,
+			inputSchema: inputSchema as JSONSchema7,
+			outputSchema: outputSchema as JSONSchema7,
 			hasSuspend: this.suspendSchemaValue !== undefined,
 			hasResume: this.resumeSchemaValue !== undefined,
 			hasToMessage: this.toMessageFn !== undefined,
