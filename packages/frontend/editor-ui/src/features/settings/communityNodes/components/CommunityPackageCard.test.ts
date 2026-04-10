@@ -5,10 +5,14 @@ import CommunityPackageCard from './CommunityPackageCard.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { PublicInstalledNode, PublicInstalledPackage } from 'n8n-workflow';
 
+vi.mock('@/app/components/NodeIcon.vue', () => ({
+	default: { template: '<div data-test-id="node-icon" />' },
+}));
+
 const communityPackage: PublicInstalledPackage = {
 	packageName: 'n8n-nodes-test',
 	installedVersion: '1.0.0',
-	installedNodes: [{ name: 'TestNode' } as PublicInstalledNode],
+	installedNodes: [{ name: 'TestNode', type: 'n8n-nodes-test.testNode' } as PublicInstalledNode],
 	createdAt: new Date(0),
 	updatedAt: new Date(0),
 };

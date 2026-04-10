@@ -157,7 +157,7 @@ onBeforeUnmount(() => {
 		/>
 
 		<div v-if="selectedTab === 'installed'">
-			<div v-if="loading" :class="$style.cardsContainer">
+			<div v-if="loading" :class="$style.grid">
 				<CommunityPackageCard v-for="n in 2" :key="'index-' + n" :loading="true" />
 			</div>
 			<div v-else-if="!hasInstalledPackages" :class="$style.actionBoxContainer">
@@ -172,7 +172,7 @@ onBeforeUnmount(() => {
 					@click:button="switchToBrowse"
 				/>
 			</div>
-			<div v-else :class="$style.cardsContainer">
+			<div v-else :class="$style.grid">
 				<CommunityPackageCard
 					v-for="communityPackage in communityNodesStore.getInstalledPackages"
 					:key="communityPackage.packageName"
@@ -205,9 +205,9 @@ onBeforeUnmount(() => {
 	text-align: center;
 }
 
-.cardsContainer {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
+.grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+	gap: var(--spacing--xs);
 }
 </style>

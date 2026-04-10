@@ -4,16 +4,17 @@ import type { IUser, PublicInstalledPackage } from 'n8n-workflow';
 import { COMMUNITY_PACKAGE_MANAGE_ACTIONS } from '../communityNodes.constants';
 import { NPM_PACKAGE_DOCS_BASE_URL } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import type { UserAction } from '@n8n/design-system';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 import { computed, ref, watch } from 'vue';
 import semver from 'semver';
 
 import {
 	N8nActionToggle,
 	N8nButton,
+	N8nExternalLink,
 	N8nIcon,
 	N8nLoading,
 	N8nText,
@@ -32,7 +33,6 @@ const props = withDefaults(defineProps<Props>(), {
 const { openCommunityPackageUpdateConfirmModal, openCommunityPackageUninstallConfirmModal } =
 	useUIStore();
 const i18n = useI18n();
-const telemetry = useTelemetry();
 
 const settingsStore = useSettingsStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -51,12 +51,17 @@ const hasVerifiedPackageUpdate = computed(() => {
 	return settingsStore.isCommunityNodesFeatureEnabled && canUpdate;
 });
 
+const docsUrl = computed(
+	() => `${NPM_PACKAGE_DOCS_BASE_URL}${props.communityPackage?.packageName ?? ''}`,
+);
+
+const firstNodeType = computed(() => {
+	if (!props.communityPackage?.installedNodes.length) return null;
+	const firstNode = props.communityPackage.installedNodes[0];
+	return nodeTypesStore.getNodeType(firstNode.type) ?? null;
+});
+
 const packageActions: Array<UserAction<IUser>> = [
-	{
-		label: i18n.baseText('settings.communityNodes.viewDocsAction.label'),
-		value: COMMUNITY_PACKAGE_MANAGE_ACTIONS.VIEW_DOCS,
-		type: 'external-link',
-	},
 	{
 		label: i18n.baseText('settings.communityNodes.uninstallAction.label'),
 		value: COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL,
@@ -66,13 +71,6 @@ const packageActions: Array<UserAction<IUser>> = [
 async function onAction(value: string) {
 	if (!props.communityPackage) return;
 	switch (value) {
-		case COMMUNITY_PACKAGE_MANAGE_ACTIONS.VIEW_DOCS:
-			telemetry.track('user clicked to browse the cnr package documentation', {
-				package_name: props.communityPackage.packageName,
-				package_version: props.communityPackage.installedVersion,
-			});
-			window.open(`${NPM_PACKAGE_DOCS_BASE_URL}${props.communityPackage.packageName}`, '_blank');
-			break;
 		case COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL:
 			openCommunityPackageUninstallConfirmModal(props.communityPackage.packageName);
 			break;
@@ -106,133 +104,167 @@ watch(
 </script>
 
 <template>
-	<div :class="$style.cardContainer" data-test-id="community-package-card">
-		<div v-if="loading" :class="$style.cardSkeleton">
-			<N8nLoading :class="$style.loader" variant="p" :rows="1" />
-			<N8nLoading :class="$style.loader" variant="p" :rows="1" />
+	<div :class="$style.card" data-test-id="community-package-card">
+		<div v-if="loading" :class="$style.skeleton">
+			<N8nLoading variant="p" :rows="1" />
+			<N8nLoading variant="p" :rows="1" />
 		</div>
-		<div v-else-if="communityPackage" :class="$style.packageCard">
-			<div :class="$style.cardInfoContainer">
-				<div :class="$style.cardTitle">
-					<N8nText :bold="true" size="large">{{ communityPackage.packageName }}</N8nText>
-				</div>
-				<div :class="$style.cardSubtitle">
-					<N8nText :bold="true" size="small" color="text-light">
+		<template v-else-if="communityPackage">
+			<div :class="$style.cardTop">
+				<NodeIcon
+					v-if="firstNodeType"
+					:class="$style.nodeIcon"
+					:node-type="firstNodeType"
+					:show-tooltip="false"
+				/>
+				<div :class="$style.nameBlock">
+					<div :class="$style.titleRow">
+						<N8nExternalLink :href="docsUrl" :class="$style.packageName">
+							<N8nText :bold="true" size="medium">{{
+								communityPackage.packageName
+							}}</N8nText>
+						</N8nExternalLink>
+					</div>
+					<N8nText v-if="communityPackage.authorName" size="small" color="text-light">
 						{{
-							i18n.baseText('settings.communityNodes.packageNodes.label', {
-								adjustToNumber: communityPackage.installedNodes.length,
+							i18n.baseText('settings.communityNodes.browse.card.by', {
+								interpolate: { author: communityPackage.authorName },
 							})
-						}}:&nbsp;
-					</N8nText>
-					<N8nText size="small" color="text-light">
-						<span v-for="(node, index) in communityPackage.installedNodes" :key="node.name">
-							{{ node.name
-							}}<span v-if="index != communityPackage.installedNodes.length - 1">,</span>
-						</span>
+						}}
 					</N8nText>
 				</div>
 			</div>
-			<div :class="$style.cardControlsContainer">
-				<N8nText :bold="true" size="large" color="text-light">
-					v{{ communityPackage.installedVersion }}
-				</N8nText>
-				<N8nTooltip v-if="communityPackage.failedLoading === true" placement="top">
-					<template #content>
-						<div>
+
+			<div :class="$style.cardBottom">
+				<div :class="$style.stats">
+					<div :class="$style.stat">
+						<N8nIcon :class="$style.statIcon" icon="box" />
+						<N8nText color="text-light" size="xsmall" :bold="true">
+							{{
+								i18n.baseText('settings.communityNodes.packageNodes.label', {
+									adjustToNumber: communityPackage.installedNodes.length,
+								})
+							}}
+						</N8nText>
+					</div>
+					<div :class="$style.stat">
+						<N8nText color="text-light" size="xsmall" :bold="true">
+							v{{ communityPackage.installedVersion }}
+						</N8nText>
+					</div>
+				</div>
+				<div :class="$style.actions">
+					<N8nTooltip v-if="communityPackage.failedLoading === true" placement="top">
+						<template #content>
 							{{ i18n.baseText('settings.communityNodes.failedToLoad.tooltip') }}
-						</div>
-					</template>
-					<N8nIcon icon="triangle-alert" color="danger" size="large" />
-				</N8nTooltip>
-				<N8nTooltip
-					v-else-if="hasUnverifiedPackagesUpdate || hasVerifiedPackageUpdate"
-					placement="top"
-				>
-					<template #content>
-						<div>
+						</template>
+						<N8nIcon icon="triangle-alert" color="danger" size="large" />
+					</N8nTooltip>
+					<N8nTooltip
+						v-else-if="hasUnverifiedPackagesUpdate || hasVerifiedPackageUpdate"
+						placement="top"
+					>
+						<template #content>
 							{{ i18n.baseText('settings.communityNodes.updateAvailable.tooltip') }}
-						</div>
-					</template>
-					<N8nButton variant="outline" label="Update" @click="onUpdateClick" />
-				</N8nTooltip>
-				<N8nTooltip v-else placement="top">
-					<template #content>
-						<div>
+						</template>
+						<N8nButton variant="outline" label="Update" size="small" @click="onUpdateClick" />
+					</N8nTooltip>
+					<N8nTooltip v-else placement="top">
+						<template #content>
 							{{ i18n.baseText('settings.communityNodes.upToDate.tooltip') }}
-						</div>
-					</template>
-					<N8nIcon icon="circle-check" color="text-light" size="large" />
-				</N8nTooltip>
-				<div :class="$style.cardActions">
-					<N8nActionToggle :actions="packageActions" @action="onAction"></N8nActionToggle>
+						</template>
+						<N8nIcon icon="circle-check" color="text-light" />
+					</N8nTooltip>
+					<N8nActionToggle :actions="packageActions" @action="onAction" />
 				</div>
 			</div>
-		</div>
+		</template>
 	</div>
 </template>
 
 <style lang="scss" module>
-.cardContainer {
+.card {
 	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
 	padding: var(--spacing--sm);
-	border: var(--border-width) var(--border-style) var(--color--info--tint-1);
+	border: var(--border-width) var(--border-style) var(--color--foreground);
 	border-radius: var(--radius--lg);
 	background-color: var(--color--background--light-3);
+	transition: border-color 0.2s ease;
+
+	&:hover {
+		border-color: var(--color--foreground--shade-1);
+	}
 }
 
-.packageCard,
-.cardSkeleton {
+.skeleton {
 	display: flex;
-	flex-basis: 100%;
-	justify-content: space-between;
-}
-
-.packageCard {
-	align-items: center;
-}
-
-.cardSkeleton {
 	flex-direction: column;
+	gap: var(--spacing--xs);
 }
 
-.loader {
-	width: 50%;
-	transform: scaleY(-1);
-
-	&:last-child {
-		width: 70%;
-
-		div {
-			margin: 0;
-		}
-	}
-}
-
-.cardInfoContainer {
+.cardTop {
 	display: flex;
-	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--spacing--sm);
 }
 
-.cardTitle {
-	flex-basis: 100%;
-
-	span {
-		line-height: 1;
-	}
+.nodeIcon {
+	--node--icon--size: 36px;
+	flex-shrink: 0;
 }
 
-.cardSubtitle {
-	margin-top: 2px;
-	padding-right: var(--spacing--md);
+.nameBlock {
+	flex: 1;
+	min-width: 0;
 }
 
-.cardControlsContainer {
+.titleRow {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
+	min-width: 0;
 }
 
-.cardActions {
-	padding-left: var(--spacing--3xs);
+.packageName {
+	padding: 0;
+	overflow: hidden;
+
+	> span {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+}
+
+.cardBottom {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.stats {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--sm);
+}
+
+.stat {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+
+.statIcon {
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--2xs);
+	width: 12px;
+}
+
+.actions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
 }
 </style>
