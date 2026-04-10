@@ -169,28 +169,13 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 		void provisioningStore.getProvisioningConfig().then(async () => {
 			const config = provisioningStore.provisioningConfig;
 
-			// Check if rules exist in the DB — needed for two cases:
-			// 1. Expression mapping active: distinguish instance vs instance+project
-			// 2. Config flags reset (e.g., after SSO disable): detect that rules still
-			//    exist and restore the correct dropdown values
-			const api = useRoleMappingRulesApi();
-			const rules = await api.listRules();
-			const hasInstanceRules = rules.some((r) => r.type === 'instance');
-			const hasProjectRules = rules.some((r) => r.type === 'project');
-			const hasAnyRules = hasInstanceRules || hasProjectRules;
-
-			// If config says manual/disabled but rules exist, the config was likely
-			// reset by a previous SSO disable. Restore expression mapping state.
-			if (
-				config &&
-				!config.scopesUseExpressionMapping &&
-				!config.scopesProvisionInstanceRole &&
-				!config.scopesProvisionProjectRoles &&
-				hasAnyRules
-			) {
-				roleAssignment.value = hasProjectRules ? 'instance_and_project' : 'instance';
-				mappingMethod.value = 'rules_in_n8n';
-				return;
+			// Only fetch rules when expression mapping is active — that's the only case
+			// where we need the heuristic to distinguish instance vs instance+project.
+			let hasProjectRules = false;
+			if (config?.scopesUseExpressionMapping) {
+				const api = useRoleMappingRulesApi();
+				const rules = await api.listRules();
+				hasProjectRules = rules.some((r) => r.type === 'project');
 			}
 
 			const values = getDropdownValuesFromConfig(config, hasProjectRules);
