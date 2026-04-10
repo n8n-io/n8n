@@ -221,12 +221,7 @@ function onAction(value: string) {
 							<template #content>
 								{{ i18n.baseText('settings.communityNodes.updateAvailable.tooltip') }}
 							</template>
-							<N8nButton
-								variant="outline"
-								label="Update"
-								size="small"
-								@click="onUpdateClick"
-							/>
+							<N8nButton variant="outline" label="Update" size="small" @click="onUpdateClick" />
 						</N8nTooltip>
 						<N8nBadge v-else theme="success">
 							{{ i18n.baseText('settings.communityNodes.browse.card.installed') }}

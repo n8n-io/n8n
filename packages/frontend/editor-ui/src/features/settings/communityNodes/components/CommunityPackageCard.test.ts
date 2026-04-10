@@ -137,9 +137,7 @@ describe('CommunityPackageCard', () => {
 			get: () => [{ name: 'n8n-nodes-example' }],
 		});
 		nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockResolvedValue(undefined);
-		nodeTypesStore.getCommunityNodeAttributes = vi
-			.fn()
-			.mockResolvedValue({ npmVersion: '2.0.0' });
+		nodeTypesStore.getCommunityNodeAttributes = vi.fn().mockResolvedValue({ npmVersion: '2.0.0' });
 
 		renderComponent({
 			props: { pkg: makePkg({ isInstalled: true, installedVersion: '1.0.0' }) },

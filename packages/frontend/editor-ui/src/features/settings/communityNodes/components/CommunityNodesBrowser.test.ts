@@ -22,7 +22,7 @@ vi.mock('@/app/components/NodeIcon.vue', () => ({
 	default: { template: '<div data-test-id="node-icon" />' },
 }));
 
-let mockVettedCommunityPackages: ReturnType<typeof makePackageSummary>[] = [];
+let mockVettedCommunityPackages: Array<ReturnType<typeof makePackageSummary>> = [];
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
