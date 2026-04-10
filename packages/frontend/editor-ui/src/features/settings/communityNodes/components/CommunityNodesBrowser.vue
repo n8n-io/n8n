@@ -1,12 +1,21 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { N8nInput, N8nRadioButtons, N8nActionBox, N8nSelect, N8nOption } from '@n8n/design-system';
+import {
+	N8nInput,
+	N8nRadioButtons,
+	N8nActionBox,
+	N8nSelect,
+	N8nOption,
+	N8nLoading,
+} from '@n8n/design-system';
 import CommunityPackageBrowseCard from './CommunityPackageBrowseCard.vue';
 import { computed, ref } from 'vue';
 
 type FilterValue = 'all' | 'official' | 'community';
 type SortValue = 'popular' | 'name' | 'recent';
+
+withDefaults(defineProps<{ loading?: boolean }>(), { loading: false });
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
@@ -110,7 +119,14 @@ const filteredPackages = computed(() => {
 				/>
 			</N8nSelect>
 		</div>
-		<div v-if="filteredPackages.length === 0" :class="$style.emptyState">
+		<div v-if="loading" :class="$style.grid">
+			<div v-for="n in 6" :key="n" :class="$style.skeletonCard">
+				<N8nLoading variant="p" :rows="1" />
+				<N8nLoading variant="p" :rows="2" />
+				<N8nLoading variant="p" :rows="1" />
+			</div>
+		</div>
+		<div v-else-if="filteredPackages.length === 0" :class="$style.emptyState">
 			<N8nActionBox
 				:heading="i18n.baseText('settings.communityNodes.browse.empty.title')"
 				:description="i18n.baseText('settings.communityNodes.browse.empty.description')"
@@ -158,5 +174,15 @@ const filteredPackages = computed(() => {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
 	gap: var(--spacing--xs);
+}
+
+.skeletonCard {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--sm);
+	border: var(--border-width) var(--border-style) var(--color--foreground);
+	border-radius: var(--radius--lg);
+	background-color: var(--color--background--light-3);
 }
 </style>

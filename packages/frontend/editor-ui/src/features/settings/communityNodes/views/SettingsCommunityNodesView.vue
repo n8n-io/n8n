@@ -24,6 +24,7 @@ import type { TabOptions } from '@n8n/design-system';
 type CommunityNodesTab = 'installed' | 'browse';
 
 const loading = ref(false);
+const loadingBrowse = ref(false);
 
 const router = useRouter();
 const pushConnection = usePushConnection({ router });
@@ -119,10 +120,12 @@ onMounted(async () => {
 	} finally {
 		loading.value = false;
 	}
+	loadingBrowse.value = true;
 	await Promise.all([
 		communityNodesStore.fetchAvailableCommunityPackageCount(),
 		nodeTypesStore.fetchCommunityNodePreviews(),
 	]);
+	loadingBrowse.value = false;
 });
 
 onBeforeUnmount(() => {
@@ -176,7 +179,7 @@ onBeforeUnmount(() => {
 		</div>
 
 		<div v-else-if="selectedTab === 'browse'">
-			<CommunityNodesBrowser />
+			<CommunityNodesBrowser :loading="loadingBrowse" />
 		</div>
 	</div>
 </template>
