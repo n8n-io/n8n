@@ -413,10 +413,9 @@ function _getResponseForOutbinds(
 			const executionData = this.helpers.constructExecutionMetaData(wrapData(normalizedRows[j]), {
 				itemData: { item: j },
 			});
-			if (executionData?.length) {
-				for (const item of executionData) {
-					returnData.push(item);
-				}
+			if (!executionData?.length) continue;
+			for (const entry of executionData) {
+				returnData.push(entry);
 			}
 		}
 	}
