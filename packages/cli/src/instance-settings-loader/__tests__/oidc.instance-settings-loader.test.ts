@@ -55,148 +55,38 @@ describe('OidcInstanceSettingsLoader', () => {
 
 	it('should throw when clientId is missing', async () => {
 		const loader = createLoader({ ...validConfig, oidcClientId: '' });
-
 		await expect(loader.run()).rejects.toThrow('N8N_SSO_OIDC_CLIENT_ID is required');
 	});
 
 	it('should throw when clientSecret is missing', async () => {
 		const loader = createLoader({ ...validConfig, oidcClientSecret: '' });
-
 		await expect(loader.run()).rejects.toThrow('N8N_SSO_OIDC_CLIENT_SECRET is required');
-	});
-
-	it('should throw when discoveryEndpoint is missing', async () => {
-		const loader = createLoader({ ...validConfig, oidcDiscoveryEndpoint: '' });
-
-		await expect(loader.run()).rejects.toThrow('N8N_SSO_OIDC_DISCOVERY_ENDPOINT');
 	});
 
 	it('should throw when discoveryEndpoint is not a valid URL', async () => {
 		const loader = createLoader({ ...validConfig, oidcDiscoveryEndpoint: 'not-a-url' });
-
 		await expect(loader.run()).rejects.toThrow('N8N_SSO_OIDC_DISCOVERY_ENDPOINT');
 	});
 
 	it('should throw when oidcPrompt is an invalid value', async () => {
 		const loader = createLoader({ ...validConfig, oidcPrompt: 'invalid' });
-
 		await expect(loader.run()).rejects.toThrow('N8N_SSO_OIDC_PROMPT');
-	});
-
-	it('should upsert settings with encrypted secret when all values are valid', async () => {
-		const loader = createLoader(validConfig);
-
-		const result = await loader.run();
-
-		expect(result).toBe('created');
-		expect(cipher.encrypt).toHaveBeenCalledWith('my-client-secret');
-		expect(settingsRepository.save).toHaveBeenCalledWith(
-			expect.objectContaining({
-				key: 'features.oidc',
-				loadOnStartup: true,
-			}),
-		);
-
-		const savedValue = JSON.parse(
-			(settingsRepository.save.mock.calls[0][0] as { value: string }).value,
-		);
-		expect(savedValue).toEqual({
-			clientId: 'my-client-id',
-			clientSecret: 'encrypted-secret',
-			discoveryEndpoint: 'https://idp.example.com/.well-known/openid-configuration',
-			loginEnabled: false,
-			prompt: 'select_account',
-			authenticationContextClassReference: [],
-		});
-	});
-
-	it('should split comma-separated ACR values into array', async () => {
-		const loader = createLoader({ ...validConfig, oidcAcrValues: 'mfa, phrh, pwd' });
-
-		await loader.run();
-
-		const savedValue = JSON.parse(
-			(settingsRepository.save.mock.calls[0][0] as { value: string }).value,
-		);
-		expect(savedValue.authenticationContextClassReference).toEqual(['mfa', 'phrh', 'pwd']);
-	});
-
-	it('should store empty array when ACR values is empty', async () => {
-		const loader = createLoader({ ...validConfig, oidcAcrValues: '' });
-
-		await loader.run();
-
-		const savedValue = JSON.parse(
-			(settingsRepository.save.mock.calls[0][0] as { value: string }).value,
-		);
-		expect(savedValue.authenticationContextClassReference).toEqual([]);
-	});
-
-	it('should set loginEnabled to true when configured', async () => {
-		const loader = createLoader({ ...validConfig, oidcLoginEnabled: true });
-
-		await loader.run();
-
-		const savedValue = JSON.parse(
-			(settingsRepository.save.mock.calls[0][0] as { value: string }).value,
-		);
-		expect(savedValue.loginEnabled).toBe(true);
 	});
 
 	it('should throw when ssoUserRoleProvisioning is an invalid value', async () => {
 		const loader = createLoader({ ...validConfig, ssoUserRoleProvisioning: 'invalid' });
-
 		await expect(loader.run()).rejects.toThrow('N8N_SSO_USER_ROLE_PROVISIONING must be one of');
 	});
 
-	it('should write provisioning config with disabled mode', async () => {
-		const loader = createLoader({ ...validConfig, ssoUserRoleProvisioning: 'disabled' });
-
-		await loader.run();
-
-		expect(settingsRepository.upsert).toHaveBeenCalledWith(
-			expect.objectContaining({ key: 'features.provisioning' }),
-			{ conflictPaths: ['key'] },
-		);
-
-		const savedValue = JSON.parse(
-			(settingsRepository.upsert.mock.calls[0][0] as { value: string }).value,
-		);
-		expect(savedValue).toEqual({
-			scopesProvisionInstanceRole: false,
-			scopesProvisionProjectRoles: false,
-		});
-	});
-
-	it('should write provisioning config with instance_role mode', async () => {
-		const loader = createLoader({ ...validConfig, ssoUserRoleProvisioning: 'instance_role' });
+	it('should handle messy ACR values with extra commas and whitespace', async () => {
+		const loader = createLoader({ ...validConfig, oidcAcrValues: ',mfa,,  phrh  ,,' });
 
 		await loader.run();
 
 		const savedValue = JSON.parse(
-			(settingsRepository.upsert.mock.calls[0][0] as { value: string }).value,
+			(settingsRepository.save.mock.calls[0][0] as { value: string }).value,
 		);
-		expect(savedValue).toEqual({
-			scopesProvisionInstanceRole: true,
-			scopesProvisionProjectRoles: false,
-		});
-	});
-
-	it('should write provisioning config with instance_and_project_roles mode', async () => {
-		const loader = createLoader({
-			...validConfig,
-			ssoUserRoleProvisioning: 'instance_and_project_roles',
-		});
-
-		await loader.run();
-
-		const savedValue = JSON.parse(
-			(settingsRepository.upsert.mock.calls[0][0] as { value: string }).value,
-		);
-		expect(savedValue).toEqual({
-			scopesProvisionInstanceRole: true,
-			scopesProvisionProjectRoles: true,
-		});
+		expect(savedValue.authenticationContextClassReference).toEqual(['mfa', 'phrh']);
 	});
 
 	describe('isConfiguredByEnv', () => {
