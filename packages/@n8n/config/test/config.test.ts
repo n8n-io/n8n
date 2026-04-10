@@ -498,6 +498,8 @@ describe('GlobalConfig', () => {
 			engine: 'legacy',
 			poolSize: 1,
 			maxCodeCacheSize: 1024,
+			bridgeTimeout: 5000,
+			bridgeMemoryLimit: 128,
 		},
 		instanceSettingsLoader: {
 			ownerManagedByEnv: false,

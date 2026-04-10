@@ -29,7 +29,6 @@ import {
 import { createVerifyBuiltWorkflowTool } from './verify-built-workflow.tool';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
-import { traceWorkingMemoryContext } from '../../runtime/working-memory-tracing';
 import { formatPreviousAttempts } from '../../storage/iteration-log';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import {
@@ -107,7 +106,7 @@ function buildOutcome(
 	};
 }
 
-const BUILDER_MAX_STEPS = 30;
+const BUILDER_MAX_STEPS = 60;
 
 const DETACHED_BUILDER_REQUIREMENTS = `## Detached Task Contract
 
@@ -116,14 +115,14 @@ You are running as a detached background task. Do not stop after a successful su
 ### Completion criteria
 
 Your job is done when ONE of these is true:
-- the workflow is verified (ran successfully or publish-workflow succeeded)
-- the workflow uses only event triggers (${UNTESTABLE_TRIGGER_LABELS}) and cannot be runtime-tested — publish it and stop
+- the workflow is verified (ran successfully)
+- the workflow uses only event triggers (${UNTESTABLE_TRIGGER_LABELS}) and cannot be runtime-tested — stop after a successful submit. Do NOT publish it; the orchestrator will handle setup and publishing.
 - you are blocked after one repair attempt per unique failure
 
 ### Submit discipline
 
 **Every file edit MUST be followed by submit-workflow before you do anything else.**
-The system tracks file hashes. If you edit the code and then call publish-workflow, run-workflow, or finish without re-submitting, your work is discarded. The sequence is always: edit → submit → then verify/publish.
+The system tracks file hashes. If you edit the code and then call run-workflow or finish without re-submitting, your work is discarded. The sequence is always: edit → submit → then verify/run.
 
 ### Verification
 
@@ -147,12 +146,9 @@ Before writing code that uses external services, **resolve real resource IDs**:
 - Call get-suggested-nodes early if the workflow fits a known category (web_app, form_input, data_persistence, etc.) — the pattern hints prevent common mistakes
 - Check @builderHint annotations in node type definitions for critical configuration guidance
 
-### Publish validation errors
+### Publishing
 
-If publish-workflow fails with node configuration issues, the error tells you which node and what's wrong. Fix the parameter, re-submit, then try publishing again. Common causes:
-- Resource list parameters (calendar, spreadsheet) need a real ID from explore-node-resources, not "primary"
-- Expression parameters need the correct n8n expression syntax
-- Required parameters missing from the node config
+Do NOT call \`publish-workflow\` for the main workflow. Publishing is the user's decision after testing. Your job ends at a successful submit. The only exception is sub-workflows in the compositional pattern — those must be published so the parent workflow can reference them.
 `;
 
 function hashContent(content: string | null): string {
@@ -340,7 +336,7 @@ export async function startBuildWorkflowAgentTask(
 		traceContext,
 		plannedTaskId: input.plannedTaskId,
 		workItemId,
-		run: async (signal, drainCorrections): Promise<BackgroundTaskResult> =>
+		run: async (signal, drainCorrections, waitForCorrection): Promise<BackgroundTaskResult> =>
 			await withTraceContextActor(traceContext, async () => {
 				let builderWs: BuilderWorkspace | undefined;
 				const submitAttempts = new Map<string, SubmitWorkflowAttempt>();
@@ -428,24 +424,14 @@ export async function startBuildWorkflowAgentTask(
 						const traceParent = getTraceParentRun();
 						const hitlResult = await withTraceParentContext(traceParent, async () => {
 							const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
-							const stream = await traceWorkingMemoryContext(
-								{
-									phase: 'initial',
-									agentId: subAgentId,
-									agentRole: 'workflow-builder',
-									threadId: context.threadId,
-									input: briefing,
+							const stream = await subAgent.stream(briefing, {
+								maxSteps: BUILDER_MAX_STEPS,
+								abortSignal: signal,
+								providerOptions: {
+									anthropic: { cacheControl: { type: 'ephemeral' } },
 								},
-								async () =>
-									await subAgent.stream(briefing, {
-										maxSteps: BUILDER_MAX_STEPS,
-										abortSignal: signal,
-										providerOptions: {
-											anthropic: { cacheControl: { type: 'ephemeral' } },
-										},
-										...(llmStepTraceHooks?.executionOptions ?? {}),
-									}),
-							);
+								...(llmStepTraceHooks?.executionOptions ?? {}),
+							});
 
 							return await consumeStreamWithHitl({
 								agent: subAgent,
@@ -462,8 +448,8 @@ export async function startBuildWorkflowAgentTask(
 								abortSignal: signal,
 								waitForConfirmation: context.waitForConfirmation,
 								drainCorrections,
+								waitForCorrection,
 								llmStepTraceHooks,
-								workingMemoryEnabled: false,
 							});
 						});
 
@@ -561,24 +547,14 @@ export async function startBuildWorkflowAgentTask(
 					const traceParent = getTraceParentRun();
 					const hitlResult = await withTraceParentContext(traceParent, async () => {
 						const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
-						const stream = await traceWorkingMemoryContext(
-							{
-								phase: 'initial',
-								agentId: subAgentId,
-								agentRole: 'workflow-builder',
-								threadId: context.threadId,
-								input: briefing,
+						const stream = await subAgent.stream(briefing, {
+							maxSteps: BUILDER_MAX_STEPS,
+							abortSignal: signal,
+							providerOptions: {
+								anthropic: { cacheControl: { type: 'ephemeral' } },
 							},
-							async () =>
-								await subAgent.stream(briefing, {
-									maxSteps: BUILDER_MAX_STEPS,
-									abortSignal: signal,
-									providerOptions: {
-										anthropic: { cacheControl: { type: 'ephemeral' } },
-									},
-									...(llmStepTraceHooks?.executionOptions ?? {}),
-								}),
-						);
+							...(llmStepTraceHooks?.executionOptions ?? {}),
+						});
 
 						return await consumeStreamWithHitl({
 							agent: subAgent,
@@ -595,8 +571,8 @@ export async function startBuildWorkflowAgentTask(
 							abortSignal: signal,
 							waitForConfirmation: context.waitForConfirmation,
 							drainCorrections,
+							waitForCorrection,
 							llmStepTraceHooks,
-							workingMemoryEnabled: false,
 						});
 					});
 

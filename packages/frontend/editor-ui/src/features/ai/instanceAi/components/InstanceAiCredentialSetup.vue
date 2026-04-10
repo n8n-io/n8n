@@ -13,6 +13,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useInstanceAiStore } from '../instanceAi.store';
+import ConfirmationFooter from './ConfirmationFooter.vue';
 
 const props = defineProps<{
 	requestId: string;
@@ -356,7 +357,7 @@ async function handleLater() {
 				</div>
 
 				<!-- Footer -->
-				<footer :class="$style.footer">
+				<ConfirmationFooter layout="row-between">
 					<div :class="$style.footerNav">
 						<N8nButton
 							v-if="showArrows"
@@ -411,7 +412,7 @@ async function handleLater() {
 							@click="handleContinue"
 						/>
 					</div>
-				</footer>
+				</ConfirmationFooter>
 			</div>
 		</template>
 
@@ -481,14 +482,6 @@ async function handleLater() {
 	:global(.node-credentials) {
 		margin-top: 0;
 	}
-}
-
-.footer {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--xs);
-	border-top: var(--border);
-	padding: var(--spacing--xs) var(--spacing--sm);
 }
 
 .footerNav {

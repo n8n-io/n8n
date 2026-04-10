@@ -1,26 +1,26 @@
 # @n8n/computer-use
 
-Local AI gateway for n8n Instance AI. Bridges a remote n8n instance with your
+Computer Use for n8n Assistant. Bridges a remote n8n instance with your
 local machine — filesystem, shell, screenshots, mouse/keyboard, and browser
-automation — all through a single daemon.
+automation.
 
 ## Why
 
-n8n AI runs in the cloud but often needs access to your local
+n8n Assistant runs in the cloud but may need access to your local
 environment: reading project files, running shell commands, capturing
 screenshots, controlling the browser, or using mouse and keyboard. This
-gateway exposes these capabilities as MCP tools that the agent can call
+gateway exposes these capabilities as tools that the agent can call
 remotely over a secure SSE connection.
 
 ## Capabilities
 
-| Category | Module | Tools | Platform | Default |
-|----------|--------|-------|----------|---------|
-| **Filesystem** | filesystem | `read_file`, `list_files`, `get_file_tree`, `search_files` | All | Enabled |
-| **Computer** | shell | `shell_execute` | All | Enabled |
-| **Computer** | screenshot | `screen_screenshot`, `screen_screenshot_region` | macOS, Linux (X11), Windows | Enabled |
-| **Computer** | mouse/keyboard | `mouse_move`, `mouse_click`, `mouse_double_click`, `mouse_drag`, `mouse_scroll`, `keyboard_type`, `keyboard_key_tap`, `keyboard_shortcut` | macOS, Linux (X11), Windows | Enabled |
-| **Browser** | browser | 32 browser automation tools (navigate, click, type, snapshot, screenshot, etc.) | All | Enabled |
+| Capability | Tools | Platform | Default Permission |
+|------------|-------|----------|--------------------|
+| **Filesystem (read)** | `read_file`, `list_files`, `get_file_tree`, `search_files` | All | `allow` |
+| **Filesystem (write)** | `write_file`, `edit_file`, `create_directory`, `delete`, `move`, `copy_file` | All | `ask` |
+| **Shell** | `shell_execute` | All | `deny` |
+| **Computer** | `screen_screenshot`, `screen_screenshot_region`, `mouse_move`, `mouse_click`, `mouse_double_click`, `mouse_drag`, `mouse_scroll`, `keyboard_type`, `keyboard_key_tap`, `keyboard_shortcut` | macOS, Linux (X11), Windows | `deny` |
+| **Browser** | 32 browser automation tools | All | `ask` |
 
 Modules that require native dependencies (screenshot, mouse/keyboard) are
 automatically disabled when their platform requirements aren't met.
@@ -29,7 +29,7 @@ automatically disabled when their platform requirements aren't met.
 
 ### Daemon mode (recommended)
 
-Zero-click mode — n8n auto-detects the daemon on `127.0.0.1:7655`:
+Zero-click mode — n8n auto-detects the daemon on `127.0.0.1:7655`.
 
 ```bash
 npx @n8n/computer-use serve
@@ -37,13 +37,13 @@ npx @n8n/computer-use serve
 # With a specific directory
 npx @n8n/computer-use serve /path/to/project
 
-# Disable browser and mouse/keyboard
-npx @n8n/computer-use serve --no-browser --no-computer-mouse-keyboard
+# Non-interactive (uses Recommended defaults, override with --permission-* flags)
+npx @n8n/computer-use serve --non-interactive --permission-shell ask
 ```
 
 ### Direct mode
 
-Connect to a specific n8n instance with a gateway token:
+Connect to a specific n8n instance with a Computer Use token:
 
 ```bash
 # Positional syntax
@@ -56,8 +56,7 @@ npx @n8n/computer-use --url https://my-n8n.com --api-key abc123xyz --filesystem-
 ## Configuration
 
 All configuration follows three-tier precedence: **defaults < env vars < CLI
-flags**. There are no config files — the wrapping application owns
-configuration.
+flags**.
 
 ### CLI flags
 
@@ -66,7 +65,10 @@ configuration.
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--log-level <level>` | `info` | Log level: `silent`, `error`, `warn`, `info`, `debug` |
+| `--allow-origin <url>` | | Allow connections from this URL without confirmation (repeatable) |
 | `-p, --port <port>` | `7655` | Daemon port (serve mode only) |
+| `--non-interactive` | | Skip all prompts; use defaults and env/CLI overrides |
+| `--auto-confirm` | | Auto-confirm all resource access prompts |
 | `-h, --help` | | Show help |
 
 #### Filesystem
@@ -74,28 +76,30 @@ configuration.
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--filesystem-dir <path>` | `.` | Root directory for filesystem tools |
-| `--no-filesystem` | | Disable filesystem tools entirely |
+
+#### Permissions
+
+Each capability has an independent permission mode (`deny` \| `ask` \| `allow`):
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--permission-filesystem-read <mode>` | `allow` | Filesystem read access |
+| `--permission-filesystem-write <mode>` | `ask` | Filesystem write access |
+| `--permission-shell <mode>` | `deny` | Shell execution |
+| `--permission-computer <mode>` | `deny` | Computer control (screenshot, mouse/keyboard) |
+| `--permission-browser <mode>` | `ask` | Browser automation |
 
 #### Computer use
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--no-computer-shell` | | Disable shell tool |
 | `--computer-shell-timeout <ms>` | `30000` | Shell command timeout |
-| `--no-computer-screenshot` | | Disable screenshot tools |
-| `--no-computer-mouse-keyboard` | | Disable mouse/keyboard tools |
 
 #### Browser
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--no-browser` | | Disable browser tools |
-| `--browser-headless` | `true` | Run browser in headless mode |
-| `--no-browser-headless` | | Run browser with visible window |
-| `--browser-default <name>` | `chromium` | Default browser |
-| `--browser-viewport <WxH>` | `1280x720` | Browser viewport size |
-| `--browser-session-ttl-ms <ms>` | `1800000` | Session idle timeout (30 min) |
-| `--browser-max-sessions <n>` | `5` | Max concurrent browser sessions |
+| `--browser-default <name>` | `chrome` | Default browser |
 
 ### Environment variables
 
@@ -106,67 +110,45 @@ take precedence.
 |---------|---------|
 | `N8N_GATEWAY_LOG_LEVEL` | `--log-level` |
 | `N8N_GATEWAY_FILESYSTEM_DIR` | `--filesystem-dir` |
-| `N8N_GATEWAY_FILESYSTEM_ENABLED` | `--no-filesystem` (set to `false` to disable) |
-| `N8N_GATEWAY_COMPUTER_SHELL_ENABLED` | `--no-computer-shell` (set to `false`) |
 | `N8N_GATEWAY_COMPUTER_SHELL_TIMEOUT` | `--computer-shell-timeout` |
-| `N8N_GATEWAY_COMPUTER_SCREENSHOT_ENABLED` | `--no-computer-screenshot` (set to `false`) |
-| `N8N_GATEWAY_COMPUTER_MOUSE_KEYBOARD_ENABLED` | `--no-computer-mouse-keyboard` (set to `false`) |
-| `N8N_GATEWAY_BROWSER_ENABLED` | `--no-browser` (set to `false`) |
-| `N8N_GATEWAY_BROWSER_HEADLESS` | `--browser-headless` |
 | `N8N_GATEWAY_BROWSER_DEFAULT` | `--browser-default` |
-| `N8N_GATEWAY_BROWSER_VIEWPORT` | `--browser-viewport` (as `WxH`) |
-| `LOG_LEVEL` | `--log-level` (legacy) |
-
-### Programmatic configuration
-
-When using the gateway as a library, pass a config object to `GatewayClient`:
-
-```typescript
-import { GatewayClient } from '@n8n/computer-use';
-
-const client = new GatewayClient({
-  url: 'https://my-n8n.com',
-  apiKey: 'abc123xyz',
-  config: {
-    logLevel: 'info',
-    port: 7655,
-
-    // Filesystem — false to disable, object to configure
-    filesystem: {
-      dir: '/path/to/project',
-    },
-
-    // Computer use — each sub-module toggleable
-    computer: {
-      shell: { timeout: 30000 },
-      screenshot: {},           // enabled with defaults
-      mouseKeyboard: false,     // disabled
-    },
-
-    // Browser — false to disable, object to configure
-    browser: {
-      headless: true,
-      defaultBrowser: 'chromium',
-      viewport: { width: 1280, height: 720 },
-      sessionTtlMs: 1800000,
-      maxConcurrentSessions: 5,
-    },
-  },
-});
-```
+| `N8N_GATEWAY_ALLOWED_ORIGINS` | `--allow-origin` (comma-separated) |
+| `N8N_GATEWAY_AUTO_CONFIRM` | `--auto-confirm` (set to `true`) |
+| `N8N_GATEWAY_NON_INTERACTIVE` | `--non-interactive` (set to `true`) |
+| `N8N_GATEWAY_PERMISSION_FILESYSTEM_READ` | `--permission-filesystem-read` |
+| `N8N_GATEWAY_PERMISSION_FILESYSTEM_WRITE` | `--permission-filesystem-write` |
+| `N8N_GATEWAY_PERMISSION_SHELL` | `--permission-shell` |
+| `N8N_GATEWAY_PERMISSION_COMPUTER` | `--permission-computer` |
+| `N8N_GATEWAY_PERMISSION_BROWSER` | `--permission-browser` |
 
 ## Module reference
 
-### Filesystem
+### Filesystem (read)
 
 Read-only access to files within a sandboxed directory.
 
 | Tool | Description |
 |------|-------------|
-| `read_file` | Read file contents (max 512KB, paginated) |
+| `read_file` | Read file contents (max 512 KB, paginated by line range) |
 | `list_files` | List immediate children of a directory |
 | `get_file_tree` | Get indented directory tree (configurable depth) |
 | `search_files` | Regex search across files with optional glob filter |
+
+### Filesystem (write)
+
+Write access within the specified directory. Requires `--permission-filesystem-write ask` or `allow`.
+
+| Tool | Description |
+|------|-------------|
+| `write_file` | Create or overwrite a file (parent directories created automatically) |
+| `edit_file` | Targeted search-and-replace on an existing file |
+| `create_directory` | Create a directory (idempotent, parents created automatically) |
+| `delete` | Delete a file or directory recursively |
+| `move` | Move or rename a file or directory |
+| `copy_file` | Copy a file to a new path |
+
+All write operations are subject to the same path-scoping rules as read
+operations — paths outside the configured root are rejected.
 
 ### Shell
 
@@ -209,13 +191,40 @@ session modes.
 See the [@n8n/mcp-browser docs](../mcp-browser/docs/tools.md) for the
 complete tool reference.
 
-## Permissions (upcoming)
+## Permissions
 
-Each tool definition includes annotation metadata (`readOnlyHint`,
-`destructiveHint`) that classifies tools by risk level.
+The gateway uses a two-tier permission model.
 
-Permission enforcement and granular per-tool/per-argument rules are planned
-for a future release.
+### Tool group permission modes
+
+Each capability has an independent mode saved to
+`~/.n8n-gateway/settings.json`.
+
+| Mode | Behavior |
+|------|----------|
+| `deny` | Capability disabled. Tools are not registered; the AI has no knowledge of them. |
+| `ask` | Tools are registered. Before each tool execution the user is prompted to confirm. Existing resource-level rules are applied automatically. |
+| `allow` | Tools are registered. All tool calls execute without confirmation. Permanently stored `always deny` resource-level rules still take precedence. |
+
+The gateway will not connect unless at least one capability is set to `ask` or
+`allow`.
+
+### Resource-level rules
+
+When a capability is in `ask` mode, confirmation is scoped to a **resource**:
+the domain for browser tools, the normalized command for shell, or the path
+for filesystem write operations.
+
+| Rule | Effect | Persistence |
+|------|--------|-------------|
+| Allow once | Execute this specific invocation only | Not stored |
+| Allow for session | Execute all invocations of this resource until disconnected | In-memory |
+| Always allow | Execute all future invocations of this resource | Saved to settings file |
+| Deny once | Block this specific invocation only | Not stored |
+| Always deny | Block all future invocations of this resource | Saved to settings file |
+
+`Always deny` rules take precedence over the tool group mode — a blocked
+resource is rejected even when the capability is set to `allow`.
 
 ## Prerequisites
 
@@ -230,7 +239,7 @@ detected.
 
 ### Mouse & keyboard
 
-Requires `@jitsi/robotjs` which needs native build tools:
+Uses `@jitsi/robotjs` which needs native build tools:
 
 - **macOS**: Xcode Command Line Tools
 - **Linux**: `libxtst-dev`, X11 (not supported on Wayland without XWayland)
@@ -249,19 +258,11 @@ npx playwright install chromium firefox
 For local browser modes, see the
 [@n8n/mcp-browser prerequisites](../mcp-browser/README.md#prerequisites).
 
-## Auto-start
-
-On `npm install`, the package sets up platform-specific auto-start in daemon
-mode:
-
-- **macOS**: LaunchAgent at `~/Library/LaunchAgents/com.n8n.computer-use.plist`
-- **Linux**: systemd user service at `~/.config/systemd/user/n8n-computer-use.service`
-- **Windows**: VBS script in Windows Startup folder
-
 ## Development
 
 ```bash
 pnpm dev    # watch mode with auto-rebuild
 pnpm build  # production build
 pnpm test   # run tests
+pnpm start  # starts Computer Use in serve mode
 ```

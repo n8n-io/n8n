@@ -255,6 +255,7 @@ export {
 	instanceAiEventSchema,
 	taskItemSchema,
 	taskListSchema,
+	plannedTaskArgSchema,
 	runStartPayloadSchema,
 	runFinishPayloadSchema,
 	agentSpawnedPayloadSchema,
@@ -289,11 +290,11 @@ export {
 	InstanceAiGatewayEventsQuery,
 	InstanceAiEventsQuery,
 	InstanceAiCorrectTaskRequest,
-	InstanceAiUpdateMemoryRequest,
 	InstanceAiEnsureThreadRequest,
 	InstanceAiThreadMessagesQuery,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
+	applyBranchReadOnlyOverrides,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -343,7 +344,6 @@ export type {
 	InstanceAiEnsureThreadResponse,
 	InstanceAiStoredMessage,
 	InstanceAiThreadMessagesResponse,
-	InstanceAiThreadContextResponse,
 	InstanceAiRichMessagesResponse,
 	InstanceAiThreadStatusResponse,
 	InstanceAiAdminSettingsResponse,
@@ -358,6 +358,7 @@ export type {
 	GatewayConfirmationRequiredPayload,
 	ToolCategory,
 	InstanceAiWorkflowSetupNode,
+	PlannedTaskArg,
 	InstanceAiEvalNodeExecutionMode,
 	InstanceAiEvalInterceptedRequest,
 	InstanceAiEvalNodeResult,

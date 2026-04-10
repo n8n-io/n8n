@@ -30,6 +30,7 @@ import {
 	fetchThreadStatus as fetchThreadStatusApi,
 	deleteThread as deleteThreadApi,
 	renameThread as renameThreadApi,
+	updateThreadMetadata as updateThreadMetadataApi,
 } from './instanceAi.memory.api';
 import { handleEvent as reduceEvent, rebuildRunStateFromTree } from './instanceAi.reducer';
 import { useResourceRegistry } from './useResourceRegistry';
@@ -386,38 +387,55 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				msg = messages.value.find((m) => m.runId === data.runId);
 			}
 
-			if (msg) {
-				msg.agentTree = data.agentTree;
-				msg.runId = data.runId;
-				msg.messageGroupId = groupId;
-				latestTasks.value = findLatestTasksFromMessages(messages.value);
-				const isOrchestratorLive = data.status === 'active' || data.status === 'suspended';
-				// For background-only groups, the orchestrator already finished.
-				// Set isStreaming = false so InstanceAiMessage.vue's hasActiveBackgroundTasks
-				// computed correctly detects active children and shows the indicator.
-				msg.isStreaming = isOrchestratorLive;
-				// Only the active/suspended orchestrator run should claim activeRunId.
-				// Background-only groups update their message but don't override the
-				// global active run, which controls input state and cancel buttons.
-				if (isOrchestratorLive) {
-					activeRunId.value = data.runId;
-				}
-
-				// Rebuild normalized run state keyed by groupId
-				runStateByGroupId[groupId] = rebuiltRunState;
-
-				// Restore runId → groupId mappings for ALL runs in the group.
-				// This ensures late events from older follow-up runs still route
-				// to this message after reconnect.
-				if (data.runIds) {
-					for (const rid of data.runIds) {
-						if (!isSafeObjectKey(rid)) continue;
-						groupIdByRunId[rid] = groupId;
-					}
-				}
-				// Always register the current runId
-				groupIdByRunId[data.runId] = groupId;
+			if (!msg) {
+				messages.value.push({
+					id: groupId,
+					runId: data.runId,
+					messageGroupId: groupId,
+					runIds: data.runIds,
+					role: 'assistant',
+					createdAt: new Date().toISOString(),
+					content: data.agentTree.textContent,
+					reasoning: data.agentTree.reasoning,
+					isStreaming: false,
+					agentTree: data.agentTree,
+				});
+				msg = messages.value[messages.value.length - 1];
 			}
+
+			msg.agentTree = data.agentTree;
+			msg.runId = data.runId;
+			msg.messageGroupId = groupId;
+			msg.runIds = data.runIds;
+			msg.content = data.agentTree.textContent;
+			msg.reasoning = data.agentTree.reasoning;
+			latestTasks.value = findLatestTasksFromMessages(messages.value);
+			const isOrchestratorLive = data.status === 'active' || data.status === 'suspended';
+			// For background-only groups, the orchestrator already finished.
+			// Set isStreaming = false so InstanceAiMessage.vue's hasActiveBackgroundTasks
+			// computed correctly detects active children and shows the indicator.
+			msg.isStreaming = isOrchestratorLive;
+			// Only the active/suspended orchestrator run should claim activeRunId.
+			// Background-only groups update their message but don't override the
+			// global active run, which controls input state and cancel buttons.
+			if (isOrchestratorLive) {
+				activeRunId.value = data.runId;
+			}
+
+			// Rebuild normalized run state keyed by groupId
+			runStateByGroupId[groupId] = rebuiltRunState;
+
+			// Restore runId → groupId mappings for ALL runs in the group.
+			// This ensures late events from older follow-up runs still route
+			// to this message after reconnect.
+			if (data.runIds) {
+				for (const rid of data.runIds) {
+					if (!isSafeObjectKey(rid)) continue;
+					groupIdByRunId[rid] = groupId;
+				}
+			}
+			// Always register the current runId
+			groupIdByRunId[data.runId] = groupId;
 		} catch {
 			// Malformed run-sync — skip
 		}
@@ -596,6 +614,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				id: t.id,
 				title: t.title || NEW_CONVERSATION_TITLE,
 				createdAt: t.createdAt,
+				metadata: t.metadata ?? undefined,
 			}));
 			threads.value = [...localOnly, ...serverThreads];
 		} catch {
@@ -952,6 +971,25 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
+	function getThreadMetadata(threadId: string): Record<string, unknown> | undefined {
+		return threads.value.find((t) => t.id === threadId)?.metadata;
+	}
+
+	async function updateThreadMetadata(
+		threadId: string,
+		metadata: Record<string, unknown>,
+	): Promise<void> {
+		// Optimistic update
+		const thread = threads.value.find((t) => t.id === threadId);
+		if (thread) {
+			thread.metadata = { ...thread.metadata, ...metadata };
+		}
+
+		if (persistedThreadIds.has(threadId)) {
+			await updateThreadMetadataApi(rootStore.restApiContext, threadId, metadata);
+		}
+	}
+
 	return {
 		// State
 		currentThreadId,
@@ -988,6 +1026,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		newThread,
 		deleteThread,
 		renameThread,
+		getThreadMetadata,
+		updateThreadMetadata,
 		switchThread,
 		loadThreads,
 		loadHistoricalMessages,
