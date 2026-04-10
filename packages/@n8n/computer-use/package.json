@@ -44,13 +44,12 @@
     "node-screenshots": "^0.2.8",
     "picocolors": "catalog:",
     "sharp": "^0.34.5",
-    "yargs-parser": "21.1.1",
+    "yargs-parser": "catalog:",
     "zod": "catalog:",
     "zod-to-json-schema": "catalog:"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
-    "@types/node": "catalog:",
-    "@types/yargs-parser": "21.0.0"
+    "@types/node": "catalog:"
   }
 }

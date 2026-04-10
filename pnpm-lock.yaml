@@ -228,6 +228,9 @@ catalogs:
     xss:
       specifier: 1.0.15
       version: 1.0.15
+    yargs-parser:
+      specifier: 22.0.0
+      version: 22.0.0
     zod-to-json-schema:
       specifier: 3.23.3
       version: 3.23.3
@@ -414,9 +417,6 @@ patchedDependencies:
   '@lezer/highlight':
     hash: 97f85e6fe46f23015ea0dd420e33d584bc2dc71633910cf131321da31b27ca8c
     path: patches/@lezer__highlight.patch
-  '@types/express-serve-static-core@5.0.6':
-    hash: d602248fcd302cf5a794d1e85a411633ba9635ea5d566d6f2e0429c7ae0fa3eb
-    path: patches/@types__express-serve-static-core@5.0.6.patch
   '@types/uuencode@0.0.3':
     hash: 083a73709a54db57b092d986b43d27ddda3cb8008f9510e98bc9e6da0e1cbb62
     path: patches/@types__uuencode@0.0.3.patch
@@ -450,9 +450,6 @@ patchedDependencies:
   v-code-diff:
     hash: 21588de80e591bbc1e5a068d9bce311db5254686443652945d2c7887fdafe9d9
     path: patches/v-code-diff.patch
-  vue-tsc@2.2.8:
-    hash: e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f
-    path: patches/vue-tsc@2.2.8.patch
   z-vue-scan:
     hash: bbd573be7e456224f369aafb4d66374523c4847964a4655a6a1654fd40e8b0f8
     path: patches/z-vue-scan.patch
@@ -839,8 +836,8 @@ importers:
         specifier: 3.14.2
         version: 3.14.2
       yargs-parser:
-        specifier: 21.1.1
-        version: 21.1.1
+        specifier: 'catalog:'
+        version: 22.0.0
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -848,9 +845,6 @@ importers:
       '@types/stream-json':
         specifier: 1.7.8
         version: 1.7.8
-      '@types/yargs-parser':
-        specifier: 21.0.0
-        version: 21.0.0
       zod:
         specifier: 3.25.67
         version: 3.25.67
@@ -1100,8 +1094,8 @@ importers:
         specifier: npm:empty-npm-package@1.0.0
         version: empty-npm-package@1.0.0
       yargs-parser:
-        specifier: 21.1.1
-        version: 21.1.1
+        specifier: 'catalog:'
+        version: 22.0.0
       zod:
         specifier: 3.25.67
         version: 3.25.67
@@ -1115,9 +1109,6 @@ importers:
       '@types/node':
         specifier: ^20.17.50
         version: 20.19.21
-      '@types/yargs-parser':
-        specifier: 21.0.0
-        version: 21.0.0
 
   packages/@n8n/config:
     dependencies:
@@ -1494,7 +1485,7 @@ importers:
         version: 6.0.1
       tsdown:
         specifier: 'catalog:'
-        version: 0.16.5(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))
+        version: 0.16.5(typescript@6.0.2)(vue-tsc@2.2.8(typescript@6.0.2))
       tsx:
         specifier: 'catalog:'
         version: 4.19.3
@@ -1509,7 +1500,7 @@ importers:
         version: 4.5.0(vue@3.5.26(typescript@6.0.2))
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(typescript@6.0.2)
       zod-to-json-schema:
         specifier: 'catalog:'
         version: 3.23.3(zod@3.25.67)
@@ -1718,8 +1709,8 @@ importers:
         specifier: '>=8.17.1'
         version: 8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       yargs-parser:
-        specifier: 21.1.1
-        version: 21.1.1
+        specifier: 'catalog:'
+        version: 22.0.0
       zod:
         specifier: 3.25.67
         version: 3.25.67
@@ -1733,9 +1724,6 @@ importers:
       '@types/ws':
         specifier: ^8.18.1
         version: 8.18.1(patch_hash=682b44b740be55e5d7018e6fe335880851dadf2524b6c723c9ed0c29cb2fa7fb)
-      '@types/yargs-parser':
-        specifier: 21.0.0
-        version: 21.0.0
 
   packages/@n8n/mcp-browser-extension:
     dependencies:
@@ -2276,7 +2264,7 @@ importers:
         version: 14.6.1(@testing-library/dom@10.4.0)
       tsdown:
         specifier: 'catalog:'
-        version: 0.16.5(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))
+        version: 0.16.5(typescript@6.0.2)(vue-tsc@2.2.8(typescript@6.0.2))
       typescript:
         specifier: 6.0.2
         version: 6.0.2
@@ -2672,9 +2660,12 @@ importers:
       xss:
         specifier: 'catalog:'
         version: 1.0.15
+      yaml:
+        specifier: ^2.8.2
+        version: 2.8.3
       yargs-parser:
-        specifier: 21.1.1
-        version: 21.1.1
+        specifier: 'catalog:'
+        version: 22.0.0
       zod:
         specifier: 3.25.67
         version: 3.25.67
@@ -2953,7 +2944,7 @@ importers:
         version: 6.0.1
       tsdown:
         specifier: 'catalog:'
-        version: 0.16.5(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))
+        version: 0.16.5(typescript@6.0.2)(vue-tsc@2.2.8(typescript@6.0.2))
       vite:
         specifier: 'catalog:'
         version: 8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
@@ -2965,7 +2956,7 @@ importers:
         version: 4.5.0(vue@3.5.26(typescript@6.0.2))
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(typescript@6.0.2)
 
   packages/frontend/@n8n/chat:
     dependencies:
@@ -3029,7 +3020,7 @@ importers:
         version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(typescript@6.0.2)
 
   packages/frontend/@n8n/composables:
     devDependencies:
@@ -3062,7 +3053,7 @@ importers:
         version: 10.11.0(vue@3.5.26(typescript@6.0.2))
       tsdown:
         specifier: 'catalog:'
-        version: 0.16.5(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))
+        version: 0.16.5(typescript@6.0.2)(vue-tsc@2.2.8(typescript@6.0.2))
       typescript:
         specifier: 6.0.2
         version: 6.0.2
@@ -3077,7 +3068,7 @@ importers:
         version: 3.5.26(typescript@6.0.2)
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(typescript@6.0.2)
 
   packages/frontend/@n8n/design-system:
     dependencies:
@@ -3219,7 +3210,7 @@ importers:
         version: 3.1.0(typescript@6.0.2)(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(typescript@6.0.2)
 
   packages/frontend/@n8n/i18n:
     dependencies:
@@ -3259,7 +3250,7 @@ importers:
         version: 10.11.0(vue@3.5.26(typescript@6.0.2))
       tsdown:
         specifier: 'catalog:'
-        version: 0.16.5(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))
+        version: 0.16.5(typescript@6.0.2)(vue-tsc@2.2.8(typescript@6.0.2))
       typescript:
         specifier: 6.0.2
         version: 6.0.2
@@ -3274,7 +3265,7 @@ importers:
         version: 3.5.26(typescript@6.0.2)
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(typescript@6.0.2)
 
   packages/frontend/@n8n/rest-api-client:
     dependencies:
@@ -3323,7 +3314,7 @@ importers:
         version: 14.6.1(@testing-library/dom@10.4.0)
       tsdown:
         specifier: 'catalog:'
-        version: 0.16.5(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))
+        version: 0.16.5(typescript@6.0.2)(vue-tsc@2.2.8(typescript@6.0.2))
       typescript:
         specifier: 6.0.2
         version: 6.0.2
@@ -3372,7 +3363,7 @@ importers:
         version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
       tsdown:
         specifier: 'catalog:'
-        version: 0.16.5(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))
+        version: 0.16.5(typescript@6.0.2)(vue-tsc@2.2.8(typescript@6.0.2))
       typescript:
         specifier: 6.0.2
         version: 6.0.2
@@ -3387,7 +3378,7 @@ importers:
         version: 3.5.26(typescript@6.0.2)
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(typescript@6.0.2)
 
   packages/frontend/@n8n/storybook:
     dependencies:
@@ -3420,7 +3411,7 @@ importers:
         version: 4.5.0(vue@3.5.26(typescript@6.0.2))
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(typescript@6.0.2)
     devDependencies:
       '@chromatic-com/storybook':
         specifier: catalog:storybook
@@ -3749,6 +3740,9 @@ importers:
       xss:
         specifier: 'catalog:'
         version: 1.0.15
+      yargs-parser:
+        specifier: 'catalog:'
+        version: 22.0.0
     devDependencies:
       '@codecov/vite-plugin':
         specifier: ^1.9.1
@@ -3851,7 +3845,7 @@ importers:
         version: 3.1.0(typescript@6.0.2)(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.21)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(typescript@6.0.2)
       z-vue-scan:
         specifier: ^0.0.35
         version: 0.0.35(patch_hash=bbd573be7e456224f369aafb4d66374523c4847964a4655a6a1654fd40e8b0f8)(vue@3.5.26(typescript@6.0.2))
@@ -16850,9 +16844,6 @@ packages:
   lossless-json@1.0.5:
     resolution: {integrity: sha512-RicKUuLwZVNZ6ZdJHgIZnSeA05p8qWc5NW0uR96mpPIjN9WDLUg9+kj1esQU1GkPn9iLZVKatSQK5gyiaFHgJA==}
 
-  lossless-json@4.0.2:
-    resolution: {integrity: sha512-+z0EaLi2UcWi8MZRxA5iTb6m4Ys4E80uftGY+yG5KNFJb5EceQXOhdW/pWJZ8m97s26u7yZZAYMcKWNztSZssA==}
-
   loupe@3.1.4:
     resolution: {integrity: sha512-wJzkKwJrheKtknCOKNEtDK4iqg/MxmZheEMtSTYvnzRdEYaZzmgH976nenp8WdJRdx5Vc1X/9MO0Oszl6ezeXg==}
 
@@ -20530,17 +20521,6 @@ packages:
     resolution: {integrity: sha512-L0Orpi8qGpRG//Nd+H90vFB+3iHnue1zSSGmNOOCh1GLJ7rUKVwV2HvijphGQS2UmhUZewS9VgvxYIdgr+fG1A==}
     hasBin: true
 
-  tree-sitter-bash@0.23.3:
-    resolution: {integrity: sha512-36cg/GQ2YmIbeiBeqeuh4fBJ6i4kgVouDaqTxqih5ysPag+zHufyIaxMOFeM8CeplwAK/Luj1o5XHqgdAfoCZg==}
-    peerDependencies:
-      tree-sitter: ^0.21.1
-    peerDependenciesMeta:
-      tree-sitter:
-        optional: true
-
-  tree-sitter@0.21.1:
-    resolution: {integrity: sha512-7dxoA6kYvtgWw80265MyqJlkRl4yawIjO7S5MigytjELkX43fV2WsAXzsNfO7sBpPPCF5Gp0+XzHk0DwLCq3xQ==}
-
   treeify@1.1.0:
     resolution: {integrity: sha512-1m4RA7xVAJrSGrrXGs0L3YTwyvBs2S8PbRHaLZAkFw7JR8oIFwYtysxlBZhYIa7xSyiYJKZ3iGrrk55cGA3i9A==}
     engines: {node: '>=0.6'}
@@ -21843,6 +21823,10 @@ packages:
   yargs-parser@21.1.1:
     resolution: {integrity: sha512-tVpsJW7DdjecAiFpbIB1e3qxIQsE6NoPc5/eTdrbbIC4h0LVsWhnoa3g+m2HclBIujHzsxZ4VJVA+GUuc2/LBw==}
     engines: {node: '>=12'}
+
+  yargs-parser@22.0.0:
+    resolution: {integrity: sha512-rwu/ClNdSMpkSrUb+d6BRsSkLUq1fmfsY6TOpYzTwvwkg1/NRG85KBy3kq++A8LKQwX6lsu+aWad+2khvuXrqw==}
+    engines: {node: ^20.19.0 || ^22.12.0 || >=23}
 
   yargs-unparser@2.0.0:
     resolution: {integrity: sha512-7pRTIA9Qc1caZ0bZ6RYRGbHJthJWuakf+WmHK0rVeLkNrrGhfoabBNdue6kdINI6r4if7ocq9aD/n7xwKOdzOA==}
@@ -31155,7 +31139,7 @@ snapshots:
       '@types/range-parser': 1.2.4
       '@types/send': 0.17.4
 
-  '@types/express-serve-static-core@5.0.6(patch_hash=d602248fcd302cf5a794d1e85a411633ba9635ea5d566d6f2e0429c7ae0fa3eb)':
+  '@types/express-serve-static-core@5.0.6':
     dependencies:
       '@types/node': 20.19.21
       '@types/qs': 6.9.15
@@ -31172,7 +31156,7 @@ snapshots:
   '@types/express@5.0.1':
     dependencies:
       '@types/body-parser': 1.19.2
-      '@types/express-serve-static-core': 5.0.6(patch_hash=d602248fcd302cf5a794d1e85a411633ba9635ea5d566d6f2e0429c7ae0fa3eb)
+      '@types/express-serve-static-core': 5.0.6
       '@types/serve-static': 1.15.0
 
   '@types/file-saver@2.0.5': {}
@@ -38790,8 +38774,6 @@ snapshots:
 
   lossless-json@1.0.5: {}
 
-  lossless-json@4.0.2: {}
-
   loupe@3.1.4: {}
 
   lower-case@1.1.4: {}
@@ -41739,7 +41721,7 @@ snapshots:
       sprintf-js: 1.1.3
     optional: true
 
-  rolldown-plugin-dts@0.17.8(rolldown@1.0.0-beta.50)(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)):
+  rolldown-plugin-dts@0.17.8(rolldown@1.0.0-beta.50)(typescript@6.0.2)(vue-tsc@2.2.8(typescript@6.0.2)):
     dependencies:
       '@babel/generator': 7.28.5
       '@babel/parser': 7.28.5
@@ -41753,7 +41735,7 @@ snapshots:
       rolldown: 1.0.0-beta.50
     optionalDependencies:
       typescript: 6.0.2
-      vue-tsc: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+      vue-tsc: 2.2.8(typescript@6.0.2)
     transitivePeerDependencies:
       - oxc-resolver
 
@@ -43299,18 +43281,6 @@ snapshots:
 
   tree-kill@1.2.2: {}
 
-  tree-sitter-bash@0.23.3(tree-sitter@0.21.1):
-    dependencies:
-      node-addon-api: 8.3.0
-      node-gyp-build: 4.8.4
-    optionalDependencies:
-      tree-sitter: 0.21.1
-
-  tree-sitter@0.21.1:
-    dependencies:
-      node-addon-api: 8.3.0
-      node-gyp-build: 4.8.4
-
   treeify@1.1.0: {}
 
   triple-beam@1.3.0: {}
@@ -43457,7 +43427,7 @@ snapshots:
       minimist: 1.2.8
       strip-bom: 3.0.0
 
-  tsdown@0.16.5(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)):
+  tsdown@0.16.5(typescript@6.0.2)(vue-tsc@2.2.8(typescript@6.0.2)):
     dependencies:
       ansis: 4.2.0
       cac: 6.7.14
@@ -43467,7 +43437,7 @@ snapshots:
       hookable: 5.5.3
       obug: 2.1.1
       rolldown: 1.0.0-beta.50
-      rolldown-plugin-dts: 0.17.8(rolldown@1.0.0-beta.50)(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))
+      rolldown-plugin-dts: 0.17.8(rolldown@1.0.0-beta.50)(typescript@6.0.2)(vue-tsc@2.2.8(typescript@6.0.2))
       semver: 7.7.3
       tinyexec: 1.0.2
       tinyglobby: 0.2.15
@@ -44271,7 +44241,7 @@ snapshots:
       '@vue/devtools-api': 6.6.4
       vue: 3.5.26(typescript@6.0.2)
 
-  vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2):
+  vue-tsc@2.2.8(typescript@6.0.2):
     dependencies:
       '@volar/typescript': 2.4.12
       '@vue/language-core': 2.2.8(typescript@6.0.2)
@@ -44691,6 +44661,8 @@ snapshots:
   yargs-parser@20.2.9: {}
 
   yargs-parser@21.1.1: {}
+
+  yargs-parser@22.0.0: {}
 
   yargs-unparser@2.0.0:
     dependencies:

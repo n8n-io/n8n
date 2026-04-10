@@ -36,13 +36,12 @@
     "turndown": "^7.2.0",
     "ws": "8.17.1",
     "picocolors": "catalog:",
-    "yargs-parser": "21.1.1",
+    "yargs-parser": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@types/turndown": "^5.0.6",
-    "@types/ws": "^8.18.1",
-    "@types/yargs-parser": "21.0.0"
+    "@types/ws": "^8.18.1"
   }
 }
