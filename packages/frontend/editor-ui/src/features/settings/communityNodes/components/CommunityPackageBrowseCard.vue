@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { CommunityNodeType } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import { N8nButton, N8nText, N8nBadge } from '@n8n/design-system';
+import { N8nButton, N8nText, N8nBadge, N8nIcon } from '@n8n/design-system';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useInstallNode } from '../composables/useInstallNode';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { NPM_PACKAGE_DOCS_BASE_URL } from '@/app/constants';
 import { computed, ref } from 'vue';
 
 interface CommunityPackageSummary {
@@ -45,6 +46,10 @@ const firstNodeType = computed(() => {
 	return node?.nodeDescription ?? null;
 });
 
+const docsUrl = computed(
+	() => `${NPM_PACKAGE_DOCS_BASE_URL}${props.pkg.packageName}`,
+);
+
 async function onInstall() {
 	if (!props.pkg.nodes.length) return;
 
@@ -79,9 +84,10 @@ async function onInstall() {
 				/>
 			</div>
 			<div :class="$style.nameBlock">
-				<N8nText :bold="true" size="medium" :class="$style.packageName">
-					{{ pkg.packageName }}
-				</N8nText>
+				<a :href="docsUrl" target="_blank" :class="$style.packageName">
+					<N8nText :bold="true" size="medium">{{ pkg.packageName }}</N8nText>
+					<N8nIcon :class="$style.externalIcon" icon="external-link" size="small" />
+				</a>
 				<div :class="$style.meta">
 					<N8nText size="small" color="text-light">
 						{{
@@ -178,10 +184,27 @@ async function onInstall() {
 }
 
 .packageName {
-	display: block;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
+	color: inherit;
+	text-decoration: none;
+
+	> span {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	&:hover {
+		text-decoration: underline;
+	}
+}
+
+.externalIcon {
+	flex-shrink: 0;
+	color: var(--color--text--tint-2);
 }
 
 .meta {
