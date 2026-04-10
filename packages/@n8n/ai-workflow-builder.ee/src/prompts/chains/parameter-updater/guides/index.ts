@@ -13,4 +13,4 @@ export {
 	SYSTEM_MESSAGE_GUIDE,
 	TEXT_FIELDS_GUIDE,
 	PREDECESSOR_OUTPUT_GUIDE,
-} from '@n8n/workflow-sdk/prompts';
+} from '@n8n/workflow-sdk/prompts/node-guidance/parameter-guides';

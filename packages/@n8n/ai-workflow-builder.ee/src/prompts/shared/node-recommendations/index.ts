@@ -9,9 +9,10 @@ import {
 	imageGenerationRecommendation,
 	videoGenerationRecommendation,
 	audioGenerationRecommendation,
-} from '@n8n/workflow-sdk/prompts';
+	formatRecommendation,
+} from '@n8n/workflow-sdk/prompts/node-guidance/node-recommendations';
 
-export { formatRecommendation } from '@n8n/workflow-sdk/prompts';
+export { formatRecommendation };
 
 export const recommendations: Record<
 	RecommendationCategoryType,

@@ -14,7 +14,7 @@ import {
 	EXPRESSION_REFERENCE,
 	ADDITIONAL_FUNCTIONS,
 	WORKFLOW_RULES,
-} from '@n8n/workflow-sdk/prompts';
+} from '@n8n/workflow-sdk/prompts/sdk-reference';
 import type { PlanOutput } from '../../types/planning';
 import { formatPlanAsText } from '../../utils/plan-helpers';
 import type { ExpressionValue } from '../../workflow-builder-agent';

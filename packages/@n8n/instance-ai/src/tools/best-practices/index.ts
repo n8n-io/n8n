@@ -3,7 +3,7 @@
  *
  * Sources best-practice content from the shared @n8n/workflow-sdk/prompts package.
  */
-import { bestPracticesRegistry } from '@n8n/workflow-sdk/prompts';
+import { bestPracticesRegistry } from '@n8n/workflow-sdk/prompts/best-practices';
 
 import { WorkflowTechnique, type WorkflowTechniqueType } from './techniques';
 

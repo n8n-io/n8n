@@ -11,6 +11,8 @@ import {
 	ADDITIONAL_FUNCTIONS,
 	WORKFLOW_RULES,
 	WORKFLOW_SDK_PATTERNS,
+} from '@n8n/workflow-sdk/prompts/sdk-reference';
+import {
 	IF_NODE_GUIDE,
 	SWITCH_NODE_GUIDE,
 	SET_NODE_GUIDE,
@@ -18,7 +20,7 @@ import {
 	TOOL_NODES_GUIDE,
 	EMBEDDING_NODES_GUIDE,
 	RESOURCE_LOCATOR_GUIDE,
-} from '@n8n/workflow-sdk/prompts';
+} from '@n8n/workflow-sdk/prompts/node-guidance/parameter-guides';
 
 // ── Shared SDK reference sections ────────────────────────────────────────────
 

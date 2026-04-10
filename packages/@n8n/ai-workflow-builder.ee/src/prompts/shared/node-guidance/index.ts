@@ -1,5 +1,4 @@
 /**
- * Re-export node tips from the shared @n8n/workflow-sdk/prompts package.
+ * Re-export node tips from the shared @n8n/workflow-sdk package.
  */
-export { structuredOutputParser } from '@n8n/workflow-sdk/prompts';
-export { webhook } from '@n8n/workflow-sdk/prompts';
+export { structuredOutputParser, webhook } from '@n8n/workflow-sdk/prompts/node-guidance/node-tips';

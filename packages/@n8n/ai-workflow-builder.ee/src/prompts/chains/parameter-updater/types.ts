@@ -6,4 +6,4 @@ export type {
 	PromptContext,
 	NodeTypeGuide,
 	NodeTypeExamples,
-} from '@n8n/workflow-sdk/prompts';
+} from '@n8n/workflow-sdk/prompts/node-guidance/parameter-guides';

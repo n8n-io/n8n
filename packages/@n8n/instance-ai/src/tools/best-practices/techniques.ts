@@ -5,4 +5,4 @@ export {
 	WorkflowTechnique,
 	TechniqueDescription,
 	type WorkflowTechniqueType,
-} from '@n8n/workflow-sdk/prompts';
+} from '@n8n/workflow-sdk/prompts/best-practices';
