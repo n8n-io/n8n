@@ -87,6 +87,50 @@ describe('createCreateDataTableTool', () => {
 		expect(tool.id).toBe('create-data-table');
 	});
 
+	describe('when permission requires approval (default)', () => {
+		it('suspends for user confirmation on first call', async () => {
+			const tool = createCreateDataTableTool(context);
+			const suspend = jest.fn();
+
+			await tool.execute!(validInput, {
+				agent: { suspend, resumeData: undefined },
+			} as never);
+
+			expect(suspend).toHaveBeenCalledTimes(1);
+			const payload = (suspend.mock.calls as unknown[][])[0][0] as Record<string, unknown>;
+			expect(payload).toEqual(
+				expect.objectContaining({
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					message: expect.stringContaining('Shopping List'),
+					severity: 'info',
+				}),
+			);
+		});
+
+		it('creates when resumed with approved: true', async () => {
+			(context.dataTableService.create as jest.Mock).mockResolvedValue(mockTable);
+			const tool = createCreateDataTableTool(context);
+
+			const result = (await tool.execute!(validInput, {
+				agent: { suspend: jest.fn(), resumeData: { approved: true } },
+			} as never)) as Record<string, unknown>;
+
+			expect(context.dataTableService.create).toHaveBeenCalled();
+			expect(result.table).toEqual(mockTable);
+		});
+
+		it('returns denied when resumed with approved: false', async () => {
+			const tool = createCreateDataTableTool(context);
+
+			const result = (await tool.execute!(validInput, {
+				agent: { suspend: jest.fn(), resumeData: { approved: false } },
+			} as never)) as Record<string, unknown>;
+
+			expect(context.dataTableService.create).not.toHaveBeenCalled();
+			expect(result).toEqual({ denied: true, reason: 'User denied the action' });
+		});
+	});
+
 	describe('when permission is always_allow', () => {
 		beforeEach(() => {
 			context = createMockContext({
