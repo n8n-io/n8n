@@ -62,7 +62,7 @@
 }
 
 .firstCard {
-	border-top: none;
+	border-top: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
 	border-top-left-radius: 0;
 	border-top-right-radius: 0;
 }
