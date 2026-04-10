@@ -55,6 +55,7 @@ const activeForm = computed(() => {
 });
 
 const authProtocol = ref<SupportedProtocolType>(SupportedProtocols.SAML);
+
 function onAuthProtocolUpdated(value: SupportedProtocolType) {
 	authProtocol.value = value;
 }

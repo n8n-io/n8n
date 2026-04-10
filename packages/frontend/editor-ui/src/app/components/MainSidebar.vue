@@ -337,7 +337,7 @@ useKeybindings({
 			[$style.sideMenuCollapsed]: isCollapsed,
 		}"
 		:width="sidebarWidth"
-		:style="{ width: `${sidebarWidth}px` }"
+		:style="isCollapsed ? {} : { width: `${sidebarWidth}px` }"
 		:supported-directions="['right']"
 		:min-width="200"
 		:max-width="500"
