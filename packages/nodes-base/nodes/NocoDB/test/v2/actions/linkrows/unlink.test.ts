@@ -28,7 +28,7 @@ describe('NocoDB Linkrows Unlink Node', () => {
 					binary: {},
 				},
 			],
-			getNodeParameter: (name: string, index: number, defaultValue?: any, options?: any) => {
+			getNodeParameter: (name: string, _index: number, defaultValue?: any, options?: any) => {
 				if (name === 'projectId') {
 					return 'base1';
 				}
@@ -78,7 +78,7 @@ describe('NocoDB Linkrows Unlink Node', () => {
 	it('should successfully link multiple rows', async () => {
 		mockThis.getNodeParameter = (
 			name: string,
-			index: number,
+			_index: number,
 			defaultValue?: any,
 			options?: any,
 		) => {
@@ -132,7 +132,7 @@ describe('NocoDB Linkrows Unlink Node', () => {
 	it('should throw an error if linkId is empty', async () => {
 		mockThis.getNodeParameter = (
 			name: string,
-			index: number,
+			_index: number,
 			defaultValue?: any,
 			options?: any,
 		) => {
@@ -156,9 +156,9 @@ describe('NocoDB Linkrows Unlink Node', () => {
 	it('should correctly process linkId as an array of objects from expression', async () => {
 		mockThis.getNodeParameter = (
 			name: string,
-			index: number,
+			_index: number,
 			defaultValue?: any,
-			options?: any,
+			_options?: any,
 		) => {
 			if (name === 'projectId') return 'base1';
 			if (name === 'table') return 'table1';
@@ -187,7 +187,7 @@ describe('NocoDB Linkrows Unlink Node', () => {
 	it('should correctly process linkId as an array of strings/numbers from expression', async () => {
 		mockThis.getNodeParameter = (
 			name: string,
-			index: number,
+			_index: number,
 			defaultValue?: any,
 			options?: any,
 		) => {

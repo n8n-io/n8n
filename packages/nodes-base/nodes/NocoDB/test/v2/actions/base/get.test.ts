@@ -1,4 +1,4 @@
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { execute } from '../../../../v2/actions/base/get.operation';
 import { apiRequest } from '../../../../v2/transport';
@@ -13,8 +13,6 @@ jest.mock('../../../../v2/transport/index', () => {
 
 describe('NocoDB  base get action', () => {
 	let mockExecuteFunctions: IExecuteFunctions;
-	let mockNode: INode;
-
 	beforeEach(() => {
 		mockExecuteFunctions = {
 			getNodeParameter: jest.fn(),

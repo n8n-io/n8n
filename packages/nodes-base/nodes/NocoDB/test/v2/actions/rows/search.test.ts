@@ -33,22 +33,20 @@ describe('NocoDB Rows Search Action', () => {
 	describe('v4', () => {
 		it('should make a basic search request with where and fields', async () => {
 			// Mocking getNodeParameter for v4
-			mockExecuteFunctions.getNodeParameter = jest
-				.fn()
-				.mockImplementation((name: string, index: number) => {
-					if (name === 'version') return 4;
-					if (name === 'projectId') return 'base1';
-					if (name === 'table') return 'table1';
-					if (name === 'returnAll') return false;
-					if (name === 'limit') return 50;
-					if (name === 'options') {
-						return {
-							where: '(name,eq,test)',
-							fields: ['fieldA', 'fieldB'],
-						};
-					}
-					return undefined;
-				});
+			mockExecuteFunctions.getNodeParameter = jest.fn().mockImplementation((name: string) => {
+				if (name === 'version') return 4;
+				if (name === 'projectId') return 'base1';
+				if (name === 'table') return 'table1';
+				if (name === 'returnAll') return false;
+				if (name === 'limit') return 50;
+				if (name === 'options') {
+					return {
+						where: '(name,eq,test)',
+						fields: ['fieldA', 'fieldB'],
+					};
+				}
+				return undefined;
+			});
 
 			// Mocking apiRequest.call
 			(apiRequest.call as jest.Mock).mockResolvedValue({
@@ -90,21 +88,19 @@ describe('NocoDB Rows Search Action', () => {
 
 		it('should make a search request with only fields option', async () => {
 			// Mocking getNodeParameter for v4 with only fields
-			mockExecuteFunctions.getNodeParameter = jest
-				.fn()
-				.mockImplementation((name: string, index: number) => {
-					if (name === 'version') return 4;
-					if (name === 'projectId') return 'base1';
-					if (name === 'table') return 'table1';
-					if (name === 'returnAll') return false;
-					if (name === 'limit') return 50;
-					if (name === 'options') {
-						return {
-							fields: ['fieldC', 'fieldD'],
-						};
-					}
-					return undefined;
-				});
+			mockExecuteFunctions.getNodeParameter = jest.fn().mockImplementation((name: string) => {
+				if (name === 'version') return 4;
+				if (name === 'projectId') return 'base1';
+				if (name === 'table') return 'table1';
+				if (name === 'returnAll') return false;
+				if (name === 'limit') return 50;
+				if (name === 'options') {
+					return {
+						fields: ['fieldC', 'fieldD'],
+					};
+				}
+				return undefined;
+			});
 
 			// Mocking apiRequest.call
 			(apiRequest.call as jest.Mock).mockResolvedValue({
@@ -147,18 +143,16 @@ describe('NocoDB Rows Search Action', () => {
 	describe('returnAll', () => {
 		it('should make a search request with returnAll set to true', async () => {
 			// Mocking getNodeParameter for returnAll
-			mockExecuteFunctions.getNodeParameter = jest
-				.fn()
-				.mockImplementation((name: string, index: number) => {
-					if (name === 'version') return 3;
-					if (name === 'projectId') return 'base1';
-					if (name === 'table') return 'table1';
-					if (name === 'returnAll') return true;
-					if (name === 'options') {
-						return {};
-					}
-					return undefined;
-				});
+			mockExecuteFunctions.getNodeParameter = jest.fn().mockImplementation((name: string) => {
+				if (name === 'version') return 3;
+				if (name === 'projectId') return 'base1';
+				if (name === 'table') return 'table1';
+				if (name === 'returnAll') return true;
+				if (name === 'options') {
+					return {};
+				}
+				return undefined;
+			});
 
 			// Mocking apiRequestAllItems.call
 			(apiRequestAllItems.call as jest.Mock).mockResolvedValue([
