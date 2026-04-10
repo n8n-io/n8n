@@ -142,8 +142,8 @@ catalogs:
       specifier: 0.6.3
       version: 0.6.3
     js-base64:
-      specifier: 3.7.2
-      version: 3.7.2
+      specifier: 3.7.8
+      version: 3.7.8
     js-tiktoken:
       specifier: 1.0.21
       version: 1.0.21
@@ -1433,7 +1433,7 @@ importers:
         version: 6.0.2
       js-base64:
         specifier: 'catalog:'
-        version: 3.7.2(patch_hash=bb02fdf69495c7b0768791b60ab6e1a002053b8decd19a174f5755691e5c9500)
+        version: 3.7.8(patch_hash=bb02fdf69495c7b0768791b60ab6e1a002053b8decd19a174f5755691e5c9500)
       jssha:
         specifier: 3.3.1
         version: 3.3.1
@@ -3305,7 +3305,7 @@ importers:
         version: 3.4.2
       js-base64:
         specifier: 'catalog:'
-        version: 3.7.2(patch_hash=bb02fdf69495c7b0768791b60ab6e1a002053b8decd19a174f5755691e5c9500)
+        version: 3.7.8(patch_hash=bb02fdf69495c7b0768791b60ab6e1a002053b8decd19a174f5755691e5c9500)
       n8n-workflow:
         specifier: workspace:*
         version: link:../../../workflow
@@ -4458,7 +4458,7 @@ importers:
         version: 0.16.0
       js-base64:
         specifier: 'catalog:'
-        version: 3.7.2(patch_hash=bb02fdf69495c7b0768791b60ab6e1a002053b8decd19a174f5755691e5c9500)
+        version: 3.7.8(patch_hash=bb02fdf69495c7b0768791b60ab6e1a002053b8decd19a174f5755691e5c9500)
       jsonrepair:
         specifier: 'catalog:'
         version: 3.13.2
