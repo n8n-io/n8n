@@ -153,7 +153,6 @@ import { CreateInstanceVersionHistoryTable1774854660000 } from '../common/177485
 import { CreateInstanceAiTables1775000000000 } from '../common/1775000000000-CreateInstanceAiTables';
 import { CreateTokenExchangeJtiTable1775116241000 } from '../common/1775116241000-CreateTokenExchangeJtiTable';
 import { CreateAgentTables1776000000000 } from '../common/1776000000000-CreateAgentTables';
-import { AddIsEphemeralToWorkflowEntity1776300000000 } from '../common/1776300000000-AddIsEphemeralToWorkflowEntity';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -312,7 +311,6 @@ const sqliteMigrations: Migration[] = [
 	CreateInstanceAiTables1775000000000,
 	CreateTokenExchangeJtiTable1775116241000,
 	CreateAgentTables1776000000000,
-	AddIsEphemeralToWorkflowEntity1776300000000,
 ];
 
 export { sqliteMigrations };
