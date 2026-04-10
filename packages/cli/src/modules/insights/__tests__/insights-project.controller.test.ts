@@ -74,6 +74,25 @@ describe('InsightsProjectController', () => {
 			});
 		});
 
+		it('should use route param projectId, ignoring query projectId', async () => {
+			insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue([]);
+
+			await controller.getProjectInsightsSummary(
+				mock<AuthenticatedRequest>(),
+				mock<Response>(),
+				'route-project-id',
+				{ projectId: 'query-project-id' },
+			);
+
+			expect(
+				insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates,
+			).toHaveBeenCalledWith(
+				expect.objectContaining({
+					projectId: 'route-project-id',
+				}),
+			);
+		});
+
 		it('should throw a BadRequestError when endDate is before startDate', async () => {
 			await expect(
 				controller.getProjectInsightsSummary(
