@@ -10,6 +10,7 @@ import { type KeyMap, useKeybindings } from '@/app/composables/useKeybindings';
 import type { PinDataSource } from '@/app/composables/usePinnedData';
 import { CanvasKey } from '@/app/constants';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { NODE_CREATOR_SHORTCUT_COACHMARK_KEY } from '@/features/shared/nodeCreator/composables/useNodeCreatorShortcutCoachmark';
 import type { NodeCreatorOpenSource } from '@/Interface';
 import type {
@@ -44,7 +45,7 @@ import type {
 import { getRectOfNodes, MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
 import { MiniMap } from '@vue-flow/minimap';
 import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, type IConnections } from 'n8n-workflow';
 import {
 	computed,
 	nextTick,
@@ -944,8 +945,29 @@ function onWindowBlur() {
 
 const initialized = ref(false);
 
+let pendingFitViewOnInit = false;
+let pendingConnections: IConnections | null = null;
+
+function onRequestFitViewOnInit() {
+	if (initialized.value) {
+		void onFitView();
+		return;
+	}
+	pendingFitViewOnInit = true;
+}
+
+function onRequestSetConnectionsOnInit(connections: IConnections) {
+	// Always defer — this event is only emitted during importWorkflowExact which
+	// recreates all nodes. VueFlow will drop edges applied before node handles
+	// exist, so we must wait for onNodesInitialized.
+	initialized.value = false;
+	pendingConnections = connections;
+}
+
 onMounted(() => {
 	props.eventBus.on('fitView', onFitView);
+	props.eventBus.on('fitView:onNodesInit', onRequestFitViewOnInit);
+	props.eventBus.on('setConnections:onNodesInit', onRequestSetConnectionsOnInit);
 	props.eventBus.on('nodes:select', onSelectNodes);
 	props.eventBus.on('nodes:selectAll', () => addSelectedNodes(graphNodes.value));
 	props.eventBus.on('tidyUp', onTidyUp);
@@ -954,6 +976,8 @@ onMounted(() => {
 
 onUnmounted(() => {
 	props.eventBus.off('fitView', onFitView);
+	props.eventBus.off('fitView:onNodesInit', onRequestFitViewOnInit);
+	props.eventBus.off('setConnections:onNodesInit', onRequestSetConnectionsOnInit);
 	props.eventBus.off('nodes:select', onSelectNodes);
 	props.eventBus.off('tidyUp', onTidyUp);
 	window.removeEventListener('blur', onWindowBlur);
@@ -970,6 +994,17 @@ onPaneReady(async () => {
 
 onNodesInitialized(() => {
 	initialized.value = true;
+
+	if (pendingConnections) {
+		const connections = pendingConnections;
+		pendingConnections = null;
+		useWorkflowsStore().setConnections(connections);
+	}
+
+	if (pendingFitViewOnInit) {
+		pendingFitViewOnInit = false;
+		void onFitView();
+	}
 });
 
 watch(

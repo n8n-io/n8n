@@ -226,7 +226,7 @@ describe('ProjectRepository', () => {
 	});
 
 	describe('getAccessibleProjectsAndCount', () => {
-		it('returns personal projects and team projects the user belongs to', async () => {
+		it('returns only own personal project and team projects the user belongs to', async () => {
 			const owner = await createOwner();
 			const member = await createMember();
 
@@ -237,11 +237,14 @@ describe('ProjectRepository', () => {
 			const repo = Container.get(ProjectRepository);
 			const [projects, count] = await repo.getAccessibleProjectsAndCount(member.id, {});
 
-			// member sees: all personal projects (owner's + member's) + teamA
+			// member sees: own personal project + teamA (NOT owner's personal project)
 			const projectNames = projects.map((p) => p.name);
 			expect(projectNames).toContain('Accessible Team');
 			expect(projectNames).not.toContain('Not Accessible Team');
-			expect(count).toBe(projects.length);
+			const personalProjects = projects.filter((p) => p.type === 'personal');
+			expect(personalProjects).toHaveLength(1);
+			expect(personalProjects[0].creatorId).toBe(member.id);
+			expect(count).toBe(2); // 1 personal + 1 team
 		});
 
 		it('paginates correctly with accurate count', async () => {
@@ -260,8 +263,8 @@ describe('ProjectRepository', () => {
 			});
 
 			expect(page).toHaveLength(3);
-			// 10 team projects + 2 personal projects (owner + member)
-			expect(count).toBe(12);
+			// 10 team projects + 1 personal project (member's own only)
+			expect(count).toBe(11);
 		});
 
 		it('filters by search', async () => {
@@ -283,31 +286,24 @@ describe('ProjectRepository', () => {
 			expect(projects[0].name).toBe('Alpha Project');
 		});
 
-		it('does not produce duplicate rows when project matches multiple OR branches', async () => {
+		it('does not include other users personal projects', async () => {
 			const owner = await createOwner();
 			const member = await createMember();
 
-			// Every user's personal project is visible via `p.type = 'personal'`.
-			// The member also has a projectRelation to their own personal project
-			// (as personal owner). Without DISTINCT, the LEFT JOIN + OR would
-			// produce the personal project twice: once via the type branch and
-			// once via the relation branch.
 			const team = await createTeamProject('Shared Team', owner);
 			await linkUserToProject(member, team, 'project:editor');
 
 			const repo = Container.get(ProjectRepository);
 			const [projects, count] = await repo.getAccessibleProjectsAndCount(member.id, {});
 
-			// member's personal project should appear exactly once despite
-			// matching both OR branches (type=personal AND pr.userId=member)
-			const memberPersonalProjects = projects.filter(
-				(p) => p.type === 'personal' && p.creatorId === member.id,
-			);
-			expect(memberPersonalProjects).toHaveLength(1);
+			// member sees only own personal project, not owner's
+			const personalProjects = projects.filter((p) => p.type === 'personal');
+			expect(personalProjects).toHaveLength(1);
+			expect(personalProjects[0].creatorId).toBe(member.id);
 			expect(count).toBe(projects.length);
 		});
 
-		it('filters out non-activated personal projects when activated=true', async () => {
+		it('filters out non-activated own personal project when activated=true', async () => {
 			await createOwner();
 			const member = await createMember();
 			await createUserShell(GLOBAL_MEMBER_ROLE); // pending user
@@ -317,18 +313,17 @@ describe('ProjectRepository', () => {
 				activated: true,
 			});
 
-			// member sees: owner's personal + member's personal, but NOT pending user's personal
+			// member sees only own personal project (member is activated)
 			const personalProjects = projects.filter((p) => p.type === 'personal');
-			expect(personalProjects).toHaveLength(2); // owner + member
-			expect(count).toBe(2);
+			expect(personalProjects).toHaveLength(1);
+			expect(personalProjects[0].creatorId).toBe(member.id);
+			expect(count).toBe(1);
 		});
 
-		it('orders team projects first, then activated personal, then pending personal', async () => {
-			const owner = await createOwner();
+		it('orders team projects first, then personal projects', async () => {
+			await createOwner();
 			const member = await createMember();
-			const pendingUser = await createUserShell(GLOBAL_MEMBER_ROLE);
-			const team = await createTeamProject('Alpha Team', owner);
-			await linkUserToProject(member, team, 'project:viewer');
+			await createTeamProject('Alpha Team', member);
 
 			const repo = Container.get(ProjectRepository);
 			const [projects] = await repo.getAccessibleProjectsAndCount(member.id, {});
@@ -337,11 +332,6 @@ describe('ProjectRepository', () => {
 			const firstPersonalIndex = types.indexOf('personal');
 			const lastTeamIndex = types.lastIndexOf('team');
 			expect(lastTeamIndex).toBeLessThan(firstPersonalIndex);
-
-			// Among personal projects, pending user should be last
-			const personalProjects = projects.filter((p) => p.type === 'personal');
-			const lastPersonal = personalProjects[personalProjects.length - 1];
-			expect(lastPersonal.creatorId).toBe(pendingUser.id);
 		});
 	});
 

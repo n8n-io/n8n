@@ -4,7 +4,7 @@ import z from 'zod';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { CODE_BUILDER_VALIDATE_TOOL, MCP_UPDATE_WORKFLOW_TOOL } from './constants';
-import { autoPopulateNodeCredentials } from './credentials-auto-assign';
+import { autoPopulateNodeCredentials, stripNullCredentialStubs } from './credentials-auto-assign';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { NodeTypes } from '@/node-types';
@@ -132,6 +132,8 @@ export const createUpdateWorkflowTool = (
 			});
 
 			resolveNodeWebhookIds(workflowUpdateData, nodeTypes);
+
+			stripNullCredentialStubs(workflowUpdateData.nodes);
 
 			// Preserve user-configured credentials from the existing workflow.
 			// Match nodes by name + type so that auto-assign skips them.

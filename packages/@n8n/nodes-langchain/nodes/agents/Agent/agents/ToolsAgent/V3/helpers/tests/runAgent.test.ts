@@ -312,7 +312,10 @@ describe('runAgent - tracing configuration', () => {
 			additionalMetadata: {},
 		});
 		expect(mockWithConfig).toHaveBeenCalledWith(mockTracingConfig);
-		expect(mockInvoke).toHaveBeenCalled();
+		expect(mockInvoke).toHaveBeenCalledWith(
+			expect.any(Object),
+			expect.objectContaining({ signal: expect.any(AbortSignal) }),
+		);
 	});
 
 	it('should include tracing metadata when provided', async () => {

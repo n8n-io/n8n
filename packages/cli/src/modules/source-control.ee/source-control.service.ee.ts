@@ -34,10 +34,10 @@ import {
 	getDeletedResources,
 	getNonDeletedResources,
 } from './source-control-resource-helper';
+import { SourceControlContextFactory } from './source-control-context.factory';
 import { SourceControlScopedService } from './source-control-scoped.service';
 import { SourceControlStatusService } from './source-control-status.service.ee';
 import type { ImportResult } from './types/import-result';
-import { SourceControlContext } from './types/source-control-context';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
 
@@ -64,6 +64,7 @@ export class SourceControlService {
 		private sourceControlPreferencesService: SourceControlPreferencesService,
 		private sourceControlExportService: SourceControlExportService,
 		private sourceControlImportService: SourceControlImportService,
+		private sourceControlContextFactory: SourceControlContextFactory,
 		private sourceControlScopedService: SourceControlScopedService,
 		private readonly eventService: EventService,
 		private readonly sourceControlStatusService: SourceControlStatusService,
@@ -303,7 +304,7 @@ export class SourceControlService {
 			throw new BadRequestError('Cannot push onto read-only branch.');
 		}
 
-		const context = new SourceControlContext(user);
+		const context = await this.sourceControlContextFactory.createContext(user);
 
 		let filesToPush: SourceControlledFile[] = options.fileNames.map((file) => {
 			const normalizedPath = normalizeAndValidateSourceControlledFilePath(
@@ -615,7 +616,7 @@ export class SourceControlService {
 		commit?: string;
 	}): Promise<IWorkflowToImport> {
 		await this.sanityCheck();
-		const context = new SourceControlContext(user);
+		const context = await this.sourceControlContextFactory.createContext(user);
 		switch (type) {
 			case 'workflow': {
 				if (typeof id === 'undefined') {

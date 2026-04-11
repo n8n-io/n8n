@@ -4,6 +4,10 @@ import { BasePage } from './BasePage';
 import { ChatHubPersonalAgentModal } from './components/ChatHubPersonalAgentModal';
 
 export class ChatHubPersonalAgentsPage extends BasePage {
+	async goto() {
+		await this.page.goto('/home/chat/personal-agents');
+	}
+
 	readonly editModal = new ChatHubPersonalAgentModal(this.page.getByRole('dialog'));
 
 	constructor(page: Page) {

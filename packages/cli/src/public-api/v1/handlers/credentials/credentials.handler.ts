@@ -30,7 +30,7 @@ import {
 } from './credentials.service';
 import type { CredentialTypeRequest, CredentialRequest } from '../../../types';
 import {
-	apiKeyHasScope,
+	publicApiScope,
 	apiKeyHasScopeWithGlobalScopeFallback,
 	projectScope,
 	validCursor,
@@ -95,7 +95,7 @@ export = {
 	createCredential: [
 		validCredentialType,
 		validCredentialsProperties,
-		apiKeyHasScope('credential:create'),
+		publicApiScope('credential:create'),
 		async (
 			req: CredentialRequest.Create,
 			res: express.Response,
@@ -113,7 +113,7 @@ export = {
 	updateCredential: [
 		validCredentialTypeForUpdate,
 		validCredentialsPropertiesForUpdate,
-		apiKeyHasScope('credential:update'),
+		publicApiScope('credential:update'),
 		projectScope('credential:update', 'credential'),
 		async (
 			req: CredentialRequest.Update,
@@ -121,7 +121,12 @@ export = {
 		): Promise<express.Response<Partial<CredentialsEntity>>> => {
 			const { id: credentialId } = req.params;
 
-			if (req.body.isGlobal !== undefined) {
+			const existingCredential = await getCredential(credentialId);
+			if (!existingCredential) {
+				return res.status(404).json({ message: 'Credential not found' });
+			}
+
+			if (req.body.isGlobal !== undefined && req.body.isGlobal !== existingCredential.isGlobal) {
 				if (!Container.get(LicenseState).isSharingLicensed()) {
 					return res.status(403).json({ message: 'You are not licensed for sharing credentials' });
 				}
@@ -135,11 +140,7 @@ export = {
 			}
 
 			try {
-				const updatedCredential = await updateCredential(credentialId, req.user, req.body);
-
-				if (!updatedCredential) {
-					return res.status(404).json({ message: 'Credential not found' });
-				}
+				const updatedCredential = await updateCredential(existingCredential, req.user, req.body);
 
 				return res.json(sanitizeCredentials(updatedCredential as CredentialsEntity));
 			} catch (error) {
@@ -157,7 +158,7 @@ export = {
 		},
 	],
 	transferCredential: [
-		apiKeyHasScope('credential:move'),
+		publicApiScope('credential:move'),
 		projectScope('credential:move', 'credential'),
 		async (req: CredentialRequest.Transfer, res: express.Response) => {
 			const body = z.object({ destinationProjectId: z.string() }).parse(req.body);
@@ -172,7 +173,7 @@ export = {
 		},
 	],
 	deleteCredential: [
-		apiKeyHasScope('credential:delete'),
+		publicApiScope('credential:delete'),
 		projectScope('credential:delete', 'credential'),
 		async (
 			req: CredentialRequest.Delete,
