@@ -1,3 +1,4 @@
+import FormData from 'form-data';
 import { mockDeep } from 'jest-mock-extended';
 import type {
 	IExecuteFunctions,
@@ -748,6 +749,93 @@ describe('Telegram node', () => {
 			expectChatId(1, 'chat-id-0');
 			expectChatId(2, 'chat-id-1');
 			expectChatId(3, 'chat-id-2');
+		});
+	});
+
+	describe('message:sendDocument with non-ASCII filenames', () => {
+		const setupSendDocument = (fileName: string) => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((paramName) => {
+				switch (paramName) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'sendDocument';
+					case 'binaryData':
+						return true;
+					case 'chatId':
+						return 'chat-id';
+					case 'binaryPropertyName':
+						return 'data';
+					case 'additionalFields.fileName':
+						return fileName;
+					case 'additionalFields':
+						return {};
+					default:
+						return undefined;
+				}
+			});
+
+			executeFunctionsMock.getInputData.mockReturnValue([
+				{
+					json: {},
+					binary: {
+						data: {
+							data: 'dGVzdA==',
+							mimeType: 'text/markdown',
+							fileName,
+						},
+					},
+				},
+			]);
+
+			executeFunctionsMock.helpers.assertBinaryData.mockReturnValue({
+				data: 'dGVzdA==',
+				mimeType: 'text/markdown',
+				fileName,
+			});
+
+			apiRequestSpy.mockResolvedValue([{ result: { document: { file_name: fileName } } }]);
+		};
+
+		it('should use a FormData instance with RFC 5987 encoding for filenames with non-ASCII characters', async () => {
+			const nonAsciiFilename = '认知天性【标题已矫正】.md';
+			setupSendDocument(nonAsciiFilename);
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'sendDocument',
+				{},
+				{},
+				expect.objectContaining({
+					formData: expect.any(FormData),
+				}),
+			);
+		});
+
+		it('should use a plain object for filenames with only ASCII characters', async () => {
+			const asciiFilename = 'document.md';
+			setupSendDocument(asciiFilename);
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'sendDocument',
+				{},
+				{},
+				expect.objectContaining({
+					formData: expect.objectContaining({
+						document: expect.objectContaining({
+							options: expect.objectContaining({
+								filename: asciiFilename,
+								contentType: 'text/markdown',
+							}),
+						}),
+					}),
+				}),
+			);
 		});
 	});
 });
