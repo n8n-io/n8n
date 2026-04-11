@@ -3,6 +3,7 @@ import { mock } from 'vitest-mock-extended';
 import type { ICredentialsResponse } from '../credentials.types';
 import * as credentialsApi from '../credentials.api';
 import { useCredentialsStore } from '../credentials.store';
+import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 
 const mockRootStore = {
 	restApiContext: { baseUrl: 'http://localhost:5678', sessionId: 'test-session' },
@@ -329,6 +330,50 @@ describe('credentials.store', () => {
 			});
 
 			expect(store.state.credentials['cred-1']?.sharedWithProjects).toEqual(newSharing);
+		});
+	});
+
+	describe('getCredentialTypesNodeDescriptions', () => {
+		it('returns a minimal descriptor when the credential type is not loaded in the store yet', () => {
+			const store = useCredentialsStore();
+			const httpNodeType = {
+				credentials: [
+					{
+						name: 'httpSslAuth',
+						displayOptions: { show: { provideSslCertificates: [true] } },
+					},
+				],
+			} as unknown as INodeTypeDescription;
+
+			const result = store.getCredentialTypesNodeDescriptions('anthropicApi', httpNodeType);
+
+			expect(result).toEqual([{ name: 'anthropicApi' }]);
+		});
+
+		it('returns static node credentials when override is an empty string', () => {
+			const store = useCredentialsStore();
+			const staticCred = { name: 'httpSslAuth' };
+			const httpNodeType = { credentials: [staticCred] } as unknown as INodeTypeDescription;
+
+			const result = store.getCredentialTypesNodeDescriptions('', httpNodeType);
+
+			expect(result).toEqual([staticCred]);
+		});
+
+		it('returns the registered credential type when it exists in the store', () => {
+			const store = useCredentialsStore();
+			const anthropic: ICredentialType = {
+				name: 'anthropicApi',
+				displayName: 'Anthropic',
+				documentationUrl: '',
+				properties: [],
+			};
+			store.setCredentialTypes([anthropic]);
+
+			const result = store.getCredentialTypesNodeDescriptions('anthropicApi', null);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].name).toBe('anthropicApi');
 		});
 	});
 });

@@ -3,6 +3,7 @@ import {
 	AI_MCP_TOOL_NODE_TYPE,
 	WIKIPEDIA_TOOL_NODE_TYPE,
 } from '@/app/constants';
+import { HTTP_REQUEST_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import type { INodeUi } from '@/Interface';
 import type { NodeTypeProvider } from '@/app/utils/nodeTypes/nodeTypeTransforms';
 import type {
@@ -10,8 +11,45 @@ import type {
 	FromAIArgument,
 	INodePropertyOptions,
 } from 'n8n-workflow';
-import { isHitlToolType, NodeHelpers, traverseNodeParameters } from 'n8n-workflow';
+import {
+	HTTP_REQUEST_NODE_TYPE,
+	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
+	isHitlToolType,
+	NodeHelpers,
+	traverseNodeParameters,
+} from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+
+const HTTP_REQUEST_LIKE_NODE_TYPES: ReadonlySet<string> = new Set([
+	HTTP_REQUEST_NODE_TYPE,
+	HTTP_REQUEST_TOOL_NODE_TYPE,
+	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
+]);
+
+function isHttpRequestLikeNodeType(nodeTypeName: string | undefined): boolean {
+	return nodeTypeName !== undefined && HTTP_REQUEST_LIKE_NODE_TYPES.has(nodeTypeName);
+}
+
+function appendDynamicHttpRequestCredentials(
+	displayable: INodeCredentialDescription[],
+	nodeParameters: Record<string, unknown>,
+): INodeCredentialDescription[] {
+	const authentication = nodeParameters.authentication;
+	let dynamicType = '';
+	if (authentication === 'predefinedCredentialType') {
+		const raw = nodeParameters.nodeCredentialType;
+		dynamicType = typeof raw === 'string' ? raw : '';
+	} else if (authentication === 'genericCredentialType') {
+		const raw = nodeParameters.genericAuthType;
+		dynamicType = typeof raw === 'string' ? raw : '';
+	}
+
+	if (dynamicType === '' || displayable.some((c) => c.name === dynamicType)) {
+		return displayable;
+	}
+
+	return [...displayable, { name: dynamicType }];
+}
 
 /**
  * Returns the credentials that are displayable for the given node.
@@ -41,9 +79,16 @@ export function getNodeTypeDisplayableCredentials(
 			nodeType,
 		) ?? node.parameters;
 
-	const displayableCredentials = nodeTypeCreds.filter((credentialTypeDescription) => {
+	let displayableCredentials = nodeTypeCreds.filter((credentialTypeDescription) => {
 		return NodeHelpers.displayParameter(nodeParameters, credentialTypeDescription, node, nodeType);
 	});
+
+	if (isHttpRequestLikeNodeType(node.type)) {
+		displayableCredentials = appendDynamicHttpRequestCredentials(
+			displayableCredentials,
+			nodeParameters as Record<string, unknown>,
+		);
+	}
 
 	return displayableCredentials;
 }

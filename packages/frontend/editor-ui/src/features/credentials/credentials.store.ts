@@ -337,11 +337,20 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	) => INodeCredentialDescription[] = (overrideCredType, nodeType) => {
 		if (typeof overrideCredType !== 'string') return [];
 
+		// Empty override: use the node type's static credentials (e.g. HTTP Request SSL cert).
+		if (overrideCredType === '') {
+			return nodeType?.credentials ? nodeType.credentials : [];
+		}
+
 		const credType = getCredentialTypeByName.value(overrideCredType);
 
 		if (credType) return [credType];
 
-		return nodeType?.credentials ? nodeType.credentials : [];
+		// Credential types can be absent from the store briefly (e.g. before fetchCredentialTypes
+		// completes). Falling back to node.credentials would only expose unrelated entries (e.g.
+		// httpSslAuth for HTTP Request) and breaks CredentialsSelect for dynamic types such as
+		// anthropicApi — see https://github.com/n8n-io/n8n/issues/28272
+		return [{ name: overrideCredType }];
 	};
 
 	const createNewCredential = async (
