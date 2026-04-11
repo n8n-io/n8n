@@ -54,24 +54,23 @@ describe('formatWorkflowLoopGuidance', () => {
 				mockedCredentialTypes: ['slackOAuth2Api', 'gmailOAuth2'],
 			};
 			const result = formatWorkflowLoopGuidance(action);
-			expect(result).toContain('setup-credentials');
-			expect(result).toContain('slackOAuth2Api, gmailOAuth2');
-			expect(result).toContain('finalize');
-			expect(result).toContain('apply-workflow-credentials');
+			expect(result).toContain('setup-workflow');
+			expect(result).toContain('Do not call');
 		});
 
-		it('should use workItemId from options when mockedCredentialTypes present', () => {
+		it('should include workflowId in setup-workflow guidance when mockedCredentialTypes present', () => {
 			const action: WorkflowLoopAction = {
 				type: 'done',
 				summary: 'Done with mocks',
 				mockedCredentialTypes: ['notionApi'],
+				workflowId: 'wf-42',
 			};
-			const result = formatWorkflowLoopGuidance(action, { workItemId: 'item-42' });
-			expect(result).toContain('item-42');
-			expect(result).not.toContain('unknown');
+			const result = formatWorkflowLoopGuidance(action);
+			expect(result).toContain('setup-workflow');
+			expect(result).toContain('wf-42');
 		});
 
-		it('should default workItemId to "unknown" when not provided and mocked credentials exist', () => {
+		it('should default workflowId to "unknown" when not provided and mocked credentials exist', () => {
 			const action: WorkflowLoopAction = {
 				type: 'done',
 				summary: 'Done with mocks',
@@ -251,14 +250,15 @@ describe('formatWorkflowLoopGuidance', () => {
 			expect(occurrences).toBeGreaterThanOrEqual(2);
 		});
 
-		it('should pass workItemId to done guidance with mocked credentials', () => {
+		it('should include workflowId in done guidance with mocked credentials', () => {
 			const action: WorkflowLoopAction = {
 				type: 'done',
 				summary: 'ok',
 				mockedCredentialTypes: ['testApi'],
+				workflowId: 'wf-xyz',
 			};
-			const result = formatWorkflowLoopGuidance(action, { workItemId: 'wi-xyz' });
-			expect(result).toContain('wi-xyz');
+			const result = formatWorkflowLoopGuidance(action);
+			expect(result).toContain('wf-xyz');
 		});
 
 		it('should not affect blocked or rebuild actions', () => {
