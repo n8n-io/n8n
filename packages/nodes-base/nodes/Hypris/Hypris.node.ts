@@ -641,7 +641,7 @@ export class Hypris implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['property', 'view', 'database'],
-						operation: ['create', 'getMany', 'delete'],
+						operation: ['create', 'getMany', 'delete', 'update', 'getFullDataOptions'],
 					},
 				},
 				description: 'The ID of the database, e.g., 69b7dc893bdd1bad9241263f',
@@ -1669,13 +1669,10 @@ export class Hypris implements INodeType {
 						const createdProps = [];
 						for (const prop of propertiesList.propertyValues || []) {
 							const body = { title: prop.title, type: prop.type, state: 'published' };
-
-							console.log('\n--- HYPRIS BULK REQUEST DEBUG (PROPERTY CREATE) ---');
 							console.log(
 								'Method: POST URL:',
 								`https://api.hypris.com/v1/database/${databaseId}/property`,
 							);
-							console.log('Payload:', JSON.stringify(body, null, 2));
 
 							try {
 								const res = await this.helpers.requestWithAuthentication.call(this, 'hyprisApi', {
@@ -1684,12 +1681,9 @@ export class Hypris implements INodeType {
 									body,
 									json: true,
 								});
-								console.log('Response:', JSON.stringify(res, null, 2));
-								console.log('---------------------------------------------------\n');
 								createdProps.push(res);
 							} catch (e: any) {
 								console.error('Error Response:', e.message);
-								console.log('---------------------------------------------------\n');
 								throw e;
 							}
 						}
@@ -1704,21 +1698,15 @@ export class Hypris implements INodeType {
 
 						const deletedProps = [];
 						for (const propId of propertyIds) {
-							console.log('\n--- HYPRIS BULK REQUEST DEBUG (PROPERTY DELETE) ---');
-							console.log('Method: DELETE URL:', `https://api.hypris.com/v1/property/${propId}`);
-
 							try {
 								const res = await this.helpers.requestWithAuthentication.call(this, 'hyprisApi', {
 									method: 'DELETE',
 									url: `https://api.hypris.com/v1/property/${propId}`,
 									json: true,
 								});
-								console.log('Response:', JSON.stringify(res, null, 2));
-								console.log('---------------------------------------------------\n');
 								deletedProps.push({ propertyId: propId, status: res });
 							} catch (e: any) {
 								console.error('Error Response:', e.message);
-								console.log('---------------------------------------------------\n');
 								throw e;
 							}
 						}
@@ -1747,15 +1735,6 @@ export class Hypris implements INodeType {
 							headers: { Accept: 'application/json' },
 							json: true,
 						};
-					} else if (operation === 'delete') {
-						const propertyId = this.getNodeParameter('propertyId', i) as string;
-
-						options = {
-							method: 'DELETE',
-							url: `https://api.hypris.com/v1/property/${propertyId}`,
-							headers: { Accept: 'application/json' },
-							json: true,
-						};
 					} else if (operation === 'getFullDataOptions') {
 						const propertyId = this.getNodeParameter('propertyId', i) as string;
 
@@ -1774,13 +1753,10 @@ export class Hypris implements INodeType {
 						const createdViews = [];
 						for (const view of viewsList.viewValues || []) {
 							const body = { name: view.title, type: view.type };
-
-							console.log('\n--- HYPRIS BULK REQUEST DEBUG (VIEW CREATE) ---');
 							console.log(
 								'Method: POST URL:',
 								`https://api.hypris.com/v1/database/${databaseId}/view`,
 							);
-							console.log('Payload:', JSON.stringify(body, null, 2));
 
 							try {
 								const res = await this.helpers.requestWithAuthentication.call(this, 'hyprisApi', {
@@ -1789,12 +1765,9 @@ export class Hypris implements INodeType {
 									body,
 									json: true,
 								});
-								console.log('Response:', JSON.stringify(res, null, 2));
-								console.log('---------------------------------------------------\n');
 								createdViews.push(res);
 							} catch (e: any) {
 								console.error('Error Response:', e.message);
-								console.log('---------------------------------------------------\n');
 								throw e;
 							}
 						}
@@ -1823,9 +1796,6 @@ export class Hypris implements INodeType {
 						const deletedViews = [];
 
 						for (const viewId of viewIds) {
-							console.log('\n--- HYPRIS BULK REQUEST DEBUG (VIEW DELETE) ---');
-							console.log('Method: DELETE URL:', `https://api.hypris.com/v1/view/${viewId}`);
-
 							try {
 								const res = await this.helpers.requestWithAuthentication.call(this, 'hyprisApi', {
 									method: 'DELETE',
@@ -1833,12 +1803,9 @@ export class Hypris implements INodeType {
 									headers: { Accept: 'application/json' },
 									json: true,
 								});
-								console.log('Response:', JSON.stringify(res, null, 2));
-								console.log('---------------------------------------------------\n');
 								deletedViews.push({ viewId, status: res });
 							} catch (e: any) {
 								console.error('Error Response:', e.message);
-								console.log('---------------------------------------------------\n');
 								throw e;
 							}
 						}
@@ -1930,9 +1897,7 @@ export class Hypris implements INodeType {
 										resourceSpaceId = itemWithSpace.resourceSpaceId;
 									}
 								}
-							} catch (e: any) {
-								console.log('Failed to fetch resource space fallback from items:', e.message);
-							}
+							} catch (e: any) {}
 						}
 
 						const body: any = {
@@ -1961,20 +1926,11 @@ export class Hypris implements INodeType {
 				}
 
 				if (options) {
-					console.log('\n--- HYPRIS REQUEST DEBUG ---');
-					console.log('Method:', options.method, 'URL:', options.url);
-					if (options.body) console.log('Payload:', JSON.stringify(options.body, null, 2));
-					console.log('----------------------------\n');
-
 					const responseData = await this.helpers.requestWithAuthentication.call(
 						this,
 						'hyprisApi',
 						options,
 					);
-
-					console.log('\n--- HYPRIS RESPONSE DEBUG ---');
-					console.log(JSON.stringify(responseData, null, 2));
-					console.log('-----------------------------\n');
 
 					let data = responseData;
 					if (
