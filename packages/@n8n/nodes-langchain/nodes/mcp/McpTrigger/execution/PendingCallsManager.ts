@@ -63,6 +63,10 @@ export class PendingCallsManager {
 	}
 
 	remove(callId: string): void {
+		const pending = this.pendingCalls[callId];
+		if (pending) {
+			clearTimeout(pending.timer);
+		}
 		delete this.pendingCalls[callId];
 	}
 
