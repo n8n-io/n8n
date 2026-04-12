@@ -2,19 +2,63 @@
 
 Tests whether workflows built by Instance AI actually work by executing them with LLM-generated mock HTTP responses.
 
-## Quick start
+## Running evals
+
+### Playwright (primary — used in CI)
+
+```bash
+# From repo root, with n8n running via pnpm dev:ai
+
+# Run all test cases (4 workers)
+dotenvx run -f .env.local -- pnpm --filter=n8n-playwright test:instance-ai-workflow-evals:local
+
+# Run a single test case
+dotenvx run -f .env.local -- pnpm --filter=n8n-playwright test:instance-ai-workflow-evals:local -- --grep "contact-form"
+```
+
+Results are printed to the console via a custom reporter and written to `eval-results.json`.
+
+### CLI (alternative — quick local iteration)
 
 ```bash
 # From packages/@n8n/instance-ai/
-
-# Run all test cases
 dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai workflows --verbose
 
-# Run a single test case
+# Single test case
 dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai workflows --filter contact-form --verbose
 ```
 
-The n8n server must be running with `N8N_ENABLED_MODULES=instance-ai`.
+Generates an HTML report in `.data/workflow-eval-report.html`.
+
+### Docker (local without pnpm dev:ai)
+
+```bash
+# Build the Docker image
+INCLUDE_TEST_CONTROLLER=true pnpm build:docker
+
+# Start a container
+docker run -d --name n8n-eval \
+  -e E2E_TESTS=true \
+  -e N8N_ENABLED_MODULES=instance-ai \
+  -e N8N_AI_ENABLED=true \
+  -e N8N_INSTANCE_AI_MODEL_API_KEY=your-key \
+  -p 5678:5678 \
+  n8nio/n8n:local
+
+# Reset DB and create user
+curl -X POST http://localhost:5678/rest/e2e/reset \
+  -H "Content-Type: application/json" \
+  -d '{"owner":{"email":"admin@n8n.io","password":"password","firstName":"Eval","lastName":"Owner"},"admin":{"email":"admin2@n8n.io","password":"password","firstName":"Admin","lastName":"User"},"members":[],"chat":{"email":"chat@n8n.io","password":"password","firstName":"Chat","lastName":"User"}}'
+
+# Run evals against it
+pnpm --filter=n8n-playwright test:instance-ai-workflow-evals:local
+```
+
+### CI
+
+Evals run automatically on PRs that change Instance AI code (path-filtered). The CI workflow starts a single Docker container and runs tests against it — same as local mode. See `.github/workflows/test-evals-instance-ai.yml`.
+
+The eval job is **non-blocking** — it doesn't prevent PR merges. Results are uploaded as artifacts and visible in the GitHub Actions step summary.
 
 ### Environment variables
 
@@ -65,6 +109,8 @@ Test cases live in `evaluations/data/workflows/*.json`:
 }
 ```
 
+Adding a scenario to the JSON automatically creates a new Playwright test — no spec file changes needed.
+
 ### Writing good test cases
 
 **Prompt tips:**
@@ -83,66 +129,54 @@ Test cases live in `evaluations/data/workflows/*.json`:
 - Edge cases — empty data, missing fields, single vs multiple items
 - Error scenarios only if the workflow is expected to handle them gracefully. Most agent-built workflows don't include error handling, so testing "the workflow crashes on invalid input" is a legitimate finding, not a test case failure.
 
-## Understanding the report
-
-Each run generates a timestamped HTML report in `.data/` plus a stable `workflow-eval-report.html`.
-
-### Failure categories
+## Failure categories
 
 When a scenario fails, the verifier categorizes the root cause:
 
-- **builder_issue** (amber) — the agent misconfigured a node, chose the wrong node type, or the workflow structure doesn't match what was asked. Examples: Switch node missing required `conditions.options`, Linear node not querying `creator.email`, missing error handling.
-- **mock_issue** (red) — the LLM mock returned incorrect data. Examples: `_evalMockError` (JSON parse failure), wrong response shape for the endpoint, identical responses for repeated calls.
-- **legitimate_failure** — the workflow genuinely doesn't meet the success criteria. Neither builder nor mock is at fault.
-- **verification_gap** — not enough information to determine the cause.
-
-### Report sections
-
-- **Dashboard** — pass rate, counts at a glance
-- **Scenario indicators** — inline pass/fail on the collapsed test case card
-- **Built workflow** — node list with execution modes and config issues
-- **Agent output** — raw workflow JSON for cross-run comparison
-- **Execution trace** — per-node detail with request/response pairs for mocked nodes
-- **Mock data plan** — Phase 1 hints (global context, trigger content, per-node hints)
-- **Diagnosis** — verifier reasoning with failure category and root cause
-
-## Known limitations
-
-- **LangChain/AI nodes** — use their own SDKs, not intercepted by the HTTP mock layer. These nodes will fail with credential errors. Use pin data for these (tracked in AI-2297).
-- **GraphQL APIs** — response shape depends on the query, not just the endpoint. The mock handles this when the request body (containing the query) is passed to the LLM, but quality depends on the LLM knowing the API schema.
-- **Context7 quota** — free tier is 1,000 requests/month, 60/hour. A full suite run uses ~100 requests. Set `CONTEXT7_API_KEY` for sustained use. When quota is exceeded, a warning is logged and the LLM falls back to its training data.
-- **Non-determinism** — the agent builds different workflows each run. Some configurations work, some don't. Contact Form is stable at 5/5. Other test cases vary based on how the agent configures nodes.
-- **Switch/IF nodes** — the agent sometimes builds these without the required `conditions.options` block, causing a `caseSensitive` runtime crash. This is a known agent builder issue.
+- **builder_issue** — the agent misconfigured a node, chose the wrong node type, or the workflow structure doesn't match what was asked
+- **mock_issue** — the LLM mock returned incorrect data (e.g., `_evalMockError`, wrong response shape)
+- **framework_issue** — Phase 1 failed (empty trigger content), cascading errors from the eval framework itself
+- **verification_failure** — the LLM verifier couldn't produce a valid result
+- **build_failure** — Instance AI failed to build the workflow (timeout, agent error)
+- **timeout** — scenario execution exceeded the timeout
 
 ## Architecture
 
 ```
 evaluations/
+├── index.ts              # Public API (used by Playwright specs + CLI)
 ├── cli/                  # CLI entry point and args parsing
 ├── clients/              # n8n REST + SSE clients
-├── checklist/            # Verification (programmatic + LLM)
+├── checklist/            # LLM verification with retry
 ├── credentials/          # Test credential seeding
-├── data/
-│   ├── prompts.ts        # Original prompt-based eval prompts
-│   └── workflows/        # Workflow test case JSON files
-├── harness/              # Runner orchestration
-├── outcome/              # Outcome extraction (original flow)
-├── execution/            # Post-build execution (original flow)
-├── report/               # HTML report generators
-└── system-prompts/       # LLM prompts (builder-* for original flow, mock-* for mock execution)
+├── data/workflows/       # Test case JSON files
+├── harness/              # Runner: buildWorkflow, executeScenario, cleanupBuild
+├── outcome/              # SSE event parsing, workflow discovery
+├── report/               # HTML report generator (CLI only)
+└── system-prompts/       # LLM prompts for verification
+
+packages/testing/playwright/
+├── tests/e2e/instance-ai-workflow-evals/
+│   ├── fixtures.ts       # EvalClient, container/local mode
+│   ├── eval-spec-helper.ts  # Test generation from JSON
+│   ├── build-cache.ts    # Cross-worker build coordination
+│   └── *.spec.ts         # One per test case (3 lines each)
+└── reporters/
+    └── instance-ai-workflow-eval-reporter.ts  # Console + JSON + GitHub summary
 
 packages/cli/src/modules/instance-ai/eval/
-├── execution.service.ts    # Phase 1 + Phase 2 orchestration
-├── workflow-analysis.ts    # Hint generation (Phase 1)
-├── mock-handler.ts         # Per-request mock generation (Phase 2)
-├── api-docs.ts             # Context7 API doc fetcher
-├── node-config.ts          # Node config serializer
-├── pin-data-generator.ts   # LLM pin data for bypass nodes (Phase 1.5)
-
-packages/core/src/execution-engine/
-├── eval-mock-helpers.ts        # HTTP interception utilities
+├── execution.service.ts  # Phase 1 + Phase 2 orchestration
+├── workflow-analysis.ts  # Hint generation (Phase 1)
+├── mock-handler.ts       # Per-request mock generation (Phase 2)
+├── api-docs.ts           # Context7 API doc fetcher
+├── node-config.ts        # Node config serializer
+└── pin-data-generator.ts # LLM pin data for bypass nodes (Phase 1.5)
 ```
 
-Two evaluation approaches coexist:
-- **Original** (`pnpm eval:instance-ai`) — prompt-based builder evaluation using checklists
-- **Workflow test cases** (`pnpm eval:instance-ai workflows`) — mock execution evaluation
+## Known limitations
+
+- **LangChain/AI nodes** — use their own SDKs, not intercepted by the HTTP mock layer. These nodes will fail with credential errors. Use pin data for these.
+- **GraphQL APIs** — response shape depends on the query, not just the endpoint. Quality depends on the LLM knowing the API schema.
+- **Context7 quota** — free tier is 1,000 requests/month, 60/hour. A full suite run uses ~100 requests. When quota is exceeded, the LLM falls back to its training data.
+- **Non-determinism** — the agent builds different workflows each run. Pass rates vary between 40-65%.
+- **Large workflows** — the verification artifact includes full execution traces. For complex workflows (12+ nodes) this can hit token limits. See TRUST-43 for the tool-based verifier approach.

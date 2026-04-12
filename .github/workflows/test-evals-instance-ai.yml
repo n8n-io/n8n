@@ -1,0 +1,117 @@
+name: 'Test: Instance AI Exec Evals'
+
+on:
+  workflow_call:
+    inputs:
+      branch:
+        description: 'GitHub branch to test'
+        required: false
+        type: string
+        default: 'master'
+      filter:
+        description: 'Filter test cases by name (e.g. "contact-form")'
+        required: false
+        type: string
+        default: ''
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'GitHub branch to test'
+        required: false
+        default: 'master'
+      filter:
+        description: 'Filter test cases by name (e.g. "contact-form")'
+        required: false
+        default: ''
+
+jobs:
+  run-evals:
+    name: 'Run Evals'
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    timeout-minutes: 45
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.branch || github.ref }}
+          fetch-depth: 1
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: 'pnpm build'
+
+      - name: Build Docker image
+        run: pnpm build:docker
+        env:
+          INCLUDE_TEST_CONTROLLER: 'true'
+
+      - name: Start n8n container
+        run: |
+          docker run -d --name n8n-eval \
+            -e E2E_TESTS=true \
+            -e N8N_ENABLED_MODULES=instance-ai \
+            -e N8N_AI_ENABLED=true \
+            -e N8N_INSTANCE_AI_MODEL_API_KEY=${{ secrets.EVALS_ANTHROPIC_KEY }} \
+            -e N8N_LICENSE_ACTIVATION_KEY=${{ secrets.N8N_LICENSE_ACTIVATION_KEY }} \
+            -e N8N_LICENSE_CERT=${{ secrets.N8N_LICENSE_CERT }} \
+            -e N8N_ENCRYPTION_KEY=${{ secrets.N8N_ENCRYPTION_KEY }} \
+            -p 5678:5678 \
+            n8nio/n8n:local
+          echo "Waiting for n8n to be ready..."
+          for i in $(seq 1 60); do
+            if curl -s http://localhost:5678/healthz/readiness -o /dev/null -w "%{http_code}" | grep -q 200; then
+              echo "n8n ready after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::n8n failed to start within 60s"
+          docker logs n8n-eval --tail 30
+          exit 1
+
+      - name: Reset database and create owner
+        run: |
+          echo "Resetting database..."
+          HTTP_CODE=$(curl -s -o /tmp/reset-response.txt -w "%{http_code}" -X POST http://localhost:5678/rest/e2e/reset \
+            -H "Content-Type: application/json" \
+            -d '{"owner":{"email":"nathan@n8n.io","password":"PlaywrightTest123","firstName":"Nathan","lastName":"Owner"},"admin":{"email":"admin@n8n.io","password":"PlaywrightTest123","firstName":"Admin","lastName":"User"},"members":[],"chat":{"email":"chat@n8n.io","password":"PlaywrightTest123","firstName":"Chat","lastName":"User"}}')
+          echo "Reset response: $HTTP_CODE"
+          cat /tmp/reset-response.txt
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::error::Database reset failed with HTTP $HTTP_CODE"
+            docker logs n8n-eval --tail 50
+            exit 1
+          fi
+
+      - name: Run Instance AI Evals
+        continue-on-error: true
+        run: >-
+          pnpm --filter=n8n-playwright exec playwright test
+          --project=instance-ai-workflow-evals
+          --workers=4
+          --reporter=./reporters/instance-ai-workflow-eval-reporter.ts
+          ${{ inputs.filter && format('--grep "{0}"', inputs.filter) || '' }}
+        env:
+          N8N_BASE_URL: http://localhost:5678
+          N8N_EVAL_EMAIL: nathan@n8n.io
+          N8N_EVAL_PASSWORD: PlaywrightTest123
+          N8N_INSTANCE_AI_MODEL_API_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
+
+      - name: Stop n8n container
+        if: ${{ always() }}
+        run: docker stop n8n-eval && docker rm n8n-eval || true
+
+      - name: Upload Results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: instance-ai-workflow-eval-results
+          path: |
+            packages/testing/playwright/test-results/
+            packages/testing/playwright/playwright-report/
+            packages/testing/playwright/eval-results.json
+          retention-days: 14

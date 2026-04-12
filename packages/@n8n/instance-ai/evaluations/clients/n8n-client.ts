@@ -75,9 +75,14 @@ interface ThreadStatus {
 export class N8nClient {
 	private sessionCookie?: string;
 
-	constructor(private readonly baseUrl: string) {}
+	constructor(readonly baseUrl: string) {}
 
 	// -- Auth ----------------------------------------------------------------
+
+	/** Set the session cookie directly (for sharing across workers). */
+	setSessionCookie(cookie: string): void {
+		this.sessionCookie = cookie;
+	}
 
 	/**
 	 * Authenticate with the n8n instance via POST /rest/login.

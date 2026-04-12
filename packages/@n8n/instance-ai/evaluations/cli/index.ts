@@ -31,7 +31,7 @@ async function main(): Promise<void> {
 	logger.success('Authenticated');
 
 	logger.info('Seeding credentials...');
-	const seedResult = await seedCredentials(client);
+	const seedResult = await seedCredentials(client, undefined, logger);
 	logger.info(`Seeded ${String(seedResult.credentialIds.length)} credential(s)`);
 
 	const preRunWorkflowIds = await snapshotWorkflowIds(client);

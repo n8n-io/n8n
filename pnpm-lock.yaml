@@ -4345,6 +4345,9 @@ importers:
       '@n8n/db':
         specifier: workspace:*
         version: link:../../@n8n/db
+      '@n8n/instance-ai':
+        specifier: workspace:*
+        version: link:../../@n8n/instance-ai
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../../@n8n/permissions
