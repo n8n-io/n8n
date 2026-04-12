@@ -68,6 +68,29 @@ const AI_DENYLIST_NODE_TYPE: INodeTypeDescription = {
 	...MOCK_NODE_TYPE_MIXIN,
 };
 
+const TOOL_VECTOR_STORE_NODE_TYPE: INodeTypeDescription = {
+	name: '@n8n/n8n-nodes-langchain.toolVectorStore',
+	codex: {
+		categories: ['AI'],
+		subcategories: {
+			AI: ['Tools'],
+		},
+	},
+	...MOCK_NODE_TYPE_MIXIN,
+};
+
+const TOOL_WORKFLOW_NODE_TYPE: INodeTypeDescription = {
+	name: '@n8n/n8n-nodes-langchain.toolWorkflow',
+	version: 2,
+	codex: {
+		categories: ['AI'],
+		subcategories: {
+			AI: ['Tools'],
+		},
+	},
+	...MOCK_NODE_TYPE_MIXIN,
+};
+
 const AI_VECTOR_STORE_NODE_TYPE: INodeTypeDescription = {
 	name: 'aVectorStore',
 	codex: {
@@ -107,9 +130,29 @@ describe('makeOverrideValue', () => {
 			makeContext('', undefined, 'credentialsSelect'),
 			mockNodeFromType(AI_NODE_TYPE),
 		],
+		[
+			'parameters.name on toolVectorStore (tool identity field)',
+			makeContext('', 'parameters.name'),
+			mockNodeFromType(TOOL_VECTOR_STORE_NODE_TYPE),
+		],
+		[
+			'parameters.name on toolWorkflow v2 (tool identity field)',
+			makeContext('', 'parameters.name'),
+			mockNodeFromType(TOOL_WORKFLOW_NODE_TYPE),
+		],
 	])('should not create an override for %s', (_name, context, nodeType) => {
 		getNodeType.mockReturnValue(nodeType);
 		expect(makeOverrideValue(context, nodeType)).toBeNull();
+	});
+
+	it('should create a fromAI override for parameters.name on community nodes', () => {
+		getNodeType.mockReturnValue(AI_NODE_TYPE);
+		const result = makeOverrideValue(
+			makeContext('', 'parameters.name'),
+			mockNodeFromType(AI_NODE_TYPE),
+		);
+		expect(result).not.toBeNull();
+		expect(result?.type).toEqual('fromAI');
 	});
 
 	it('should create an fromAI override', () => {
