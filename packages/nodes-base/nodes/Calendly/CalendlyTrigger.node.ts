@@ -63,15 +63,16 @@ export class CalendlyTrigger implements INodeType {
 						value: 'oAuth2',
 					},
 					{
-						name: 'API Key or Personal Access Token',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'API Key or Personal Access Token (deprecated)',
 						value: 'apiKey',
 					},
 				],
-				default: 'apiKey',
+				default: 'oAuth2',
 			},
 			{
 				displayName:
-					'Action required: Calendly will discontinue API Key authentication on May 31, 2025. Update node to use OAuth2 authentication now to ensure your workflows continue to work.',
+					'API Key authentication is deprecated. Calendly discontinued API keys on May 31, 2025 and now requires OAuth2. Please switch this node to OAuth2 authentication to keep your workflows running.',
 				name: 'deprecationNotice',
 				type: 'notice',
 				default: '',
