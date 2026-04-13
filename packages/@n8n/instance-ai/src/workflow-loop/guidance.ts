@@ -23,9 +23,11 @@ export function formatWorkflowLoopGuidance(
 		case 'verify':
 			return (
 				`VERIFY: Run workflow ${action.workflowId}. ` +
-				`If the build had mocked credentials, use \`verify-built-workflow\` with workItemId "${options.workItemId ?? 'unknown'}". ` +
+				`If the build had mocked credentials, use \`verify-built-workflow\` with workItemId "${options.workItemId ?? 'unknown'}", ` +
+				"useLlmMockExecution=true, and a successCriteria string describing what the workflow should accomplish (derive this from the user's original request). " +
+				'The tool will execute with LLM-generated mock HTTP responses and an automated judge will evaluate the result. ' +
 				'Otherwise use `run-workflow`. ' +
-				'If it fails, use `debug-execution` to diagnose. ' +
+				'Read the verdict from the tool output — if it includes a verdict with pass=false, use the reasoning and failureCategory to decide your next step. ' +
 				`Then call \`report-verification-verdict\` with workItemId "${options.workItemId ?? 'unknown'}" and your findings.`
 			);
 		case 'blocked':

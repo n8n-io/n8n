@@ -21,6 +21,10 @@ jest.mock('../eval/execution.service', () => ({
 	EvalExecutionService: jest.fn(),
 }));
 
+jest.mock('../eval/workflow-eval.service', () => ({
+	WorkflowEvalService: jest.fn(),
+}));
+
 import type {
 	InstanceAiSendMessageRequest,
 	InstanceAiCorrectTaskRequest,
@@ -51,6 +55,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { Push } from '@/push';
 
 import type { EvalExecutionService } from '../eval/execution.service';
+import type { WorkflowEvalService } from '../eval/workflow-eval.service';
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
@@ -89,6 +94,7 @@ describe('InstanceAiController', () => {
 		memoryService,
 		settingsService,
 		mock<EvalExecutionService>(),
+		mock<WorkflowEvalService>(),
 		eventBus,
 		moduleRegistry,
 		push,

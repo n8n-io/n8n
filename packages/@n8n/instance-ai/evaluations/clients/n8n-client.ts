@@ -386,6 +386,51 @@ export class N8nClient {
 		return result.data;
 	}
 
+	/**
+	 * Execute a workflow with LLM mocking + optional judge evaluation + optional pin data persistence.
+	 * Uses the orchestrated pipeline: mock execution → judge → storage.
+	 */
+	async executeAndEvaluate(
+		workflowId: string,
+		options?: {
+			scenarioHints?: string;
+			successCriteria?: string;
+			persistMockData?: boolean;
+		},
+		timeoutMs: number = 180_000,
+	): Promise<{
+		execution: InstanceAiEvalExecutionResult;
+		verification?: {
+			pass: boolean;
+			reasoning: string;
+			failureCategory?: string;
+			rootCause?: string;
+		};
+		pinDataPersisted?: boolean;
+	}> {
+		const result = (await this.fetch(`/rest/instance-ai/eval/execute-and-evaluate/${workflowId}`, {
+			method: 'POST',
+			body: {
+				scenarioHints: options?.scenarioHints,
+				successCriteria: options?.successCriteria,
+				persistMockData: options?.persistMockData,
+			},
+			timeoutMs,
+		})) as {
+			data: {
+				execution: InstanceAiEvalExecutionResult;
+				verification?: {
+					pass: boolean;
+					reasoning: string;
+					failureCategory?: string;
+					rootCause?: string;
+				};
+				pinDataPersisted?: boolean;
+			};
+		};
+		return result.data;
+	}
+
 	// -- SSE helpers ---------------------------------------------------------
 
 	/**

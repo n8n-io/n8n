@@ -45,6 +45,7 @@ import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { EventService } from '@/events/event.service';
 import type { RoleService } from '@/services/role.service';
 import type { Telemetry } from '@/telemetry';
+import type { WorkflowEvalService } from '../eval/workflow-eval.service';
 
 jest.mock('@/permissions.ee/check-access');
 jest.mock('@/workflow-execute-additional-data', () => ({
@@ -121,6 +122,7 @@ const service = new InstanceAiAdapterService(
 	eventService,
 	roleService,
 	telemetry,
+	mock<WorkflowEvalService>(),
 );
 
 const user = mock<User>({

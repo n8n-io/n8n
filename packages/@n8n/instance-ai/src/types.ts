@@ -62,6 +62,25 @@ export interface ExecutionResult {
 	finishedAt?: string;
 }
 
+/** Result from executeAndEvaluate — LLM-mocked execution + optional judge verdict */
+export interface EvalExecuteAndEvaluateResult {
+	execution: {
+		executionId: string;
+		success: boolean;
+		errors: string[];
+		nodeResults: Record<string, unknown>;
+	};
+	/** Present when successCriteria was provided */
+	verification?: {
+		pass: boolean;
+		reasoning: string;
+		failureCategory?: string;
+		rootCause?: string;
+	};
+	/** Whether mock data was persisted as pin data */
+	pinDataPersisted?: boolean;
+}
+
 export interface NodeOutputResult {
 	nodeName: string;
 	items: unknown[];
@@ -215,6 +234,21 @@ export interface InstanceAiExecutionService {
 		nodeName: string,
 		options?: { startIndex?: number; maxItems?: number },
 	): Promise<NodeOutputResult>;
+
+	/**
+	 * Execute a workflow with LLM-mocked HTTP responses and optionally evaluate
+	 * the result against success criteria via a tool-based judge.
+	 *
+	 * Optional — only available when the eval module is loaded.
+	 */
+	executeAndEvaluate?(
+		workflowId: string,
+		options?: {
+			scenarioHints?: string;
+			successCriteria?: string;
+			persistMockData?: boolean;
+		},
+	): Promise<EvalExecuteAndEvaluateResult>;
 }
 
 export interface CredentialTypeSearchResult {

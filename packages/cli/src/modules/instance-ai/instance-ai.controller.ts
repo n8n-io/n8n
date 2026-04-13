@@ -12,6 +12,7 @@ import {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiEvalExecutionRequest,
+	InstanceAiWorkflowEvalRequest,
 } from '@n8n/api-types';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -35,6 +36,7 @@ import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { EvalExecutionService } from './eval/execution.service';
+import { WorkflowEvalService } from './eval/workflow-eval.service';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
@@ -91,6 +93,7 @@ export class InstanceAiController {
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly evalExecutionService: EvalExecutionService,
+		private readonly workflowEvalService: WorkflowEvalService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly push: Push,
@@ -547,6 +550,17 @@ export class InstanceAiController {
 		@Body payload: InstanceAiEvalExecutionRequest,
 	) {
 		return await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, payload);
+	}
+
+	@Post('/eval/execute-and-evaluate/:workflowId')
+	@GlobalScope('instanceAi:message')
+	async executeAndEvaluate(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+		@Body payload: InstanceAiWorkflowEvalRequest,
+	) {
+		return await this.workflowEvalService.executeAndEvaluate(workflowId, req.user, payload);
 	}
 
 	// ── Gateway endpoints (daemon ↔ server) ──────────────────────────────────

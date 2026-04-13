@@ -295,6 +295,9 @@ export {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
 	applyBranchReadOnlyOverrides,
+	evalFailureCategorySchema,
+	evalJudgeVerdictSchema,
+	InstanceAiWorkflowEvalRequest,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -364,6 +367,9 @@ export type {
 	InstanceAiEvalNodeResult,
 	InstanceAiEvalMockHints,
 	InstanceAiEvalExecutionResult,
+	EvalFailureCategory,
+	EvalJudgeVerdict,
+	InstanceAiWorkflowEvalResult,
 } from './schemas/instance-ai.schema';
 
 export {

@@ -124,10 +124,16 @@ The system tracks file hashes. If you edit the code and then call run-workflow o
 
 ### Verification
 
-- If submit-workflow returned mocked credentials, call verify-built-workflow with the workItemId
+- If submit-workflow returned mocked credentials, call \`verify-built-workflow\` with the workflowId, **useLlmMockExecution=true**, and a \`successCriteria\` string describing what the workflow should accomplish (derive from your task). If you have a workItemId, pass it too. This runs the workflow with LLM-generated fake API responses — no real credentials needed. The tool returns a structured verdict with pass/fail, reasoning, and failure category.
 - Otherwise call run-workflow to test (skip for trigger-only workflows)
-- If verification fails, call debug-execution, fix the code, re-submit, and retry once
-- If the same failure signature repeats, stop and explain the block
+- If the verdict says pass=false, read the reasoning and failureCategory to understand what went wrong. Fix the issue, re-submit, and retry once.
+- If the same failure repeats after a fix, stop and explain the block
+
+### Node replacement policy
+
+When a native service node fails due to configuration issues (e.g. RLC validation, credential format, placeholder IDs), always attempt to fix the configuration first — try expression mode, correctly formatted dummy IDs, or alternative parameter structures. Only replace a native node with an HTTP Request node as a last resort, after confirming the native node fundamentally cannot perform the task.
+
+If you do replace a node type from the original design (e.g. native service node replaced with HTTP Request), always flag this explicitly and explain why the replacement was necessary.
 
 ### Resource discovery
 

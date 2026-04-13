@@ -1012,3 +1012,38 @@ export interface InstanceAiEvalExecutionResult {
 export class InstanceAiEvalExecutionRequest extends Z.class({
 	scenarioHints: z.string().max(2000).optional(),
 }) {}
+
+// ---------------------------------------------------------------------------
+// Workflow eval orchestrator (TRUST-44) — execute + judge + persist
+// ---------------------------------------------------------------------------
+
+export const evalFailureCategorySchema = z.enum([
+	'builder_issue',
+	'mock_issue',
+	'legitimate_failure',
+	'framework_issue',
+	'verification_gap',
+]);
+export type EvalFailureCategory = z.infer<typeof evalFailureCategorySchema>;
+
+export const evalJudgeVerdictSchema = z.object({
+	pass: z.boolean(),
+	reasoning: z.string(),
+	failureCategory: evalFailureCategorySchema.nullable().optional(),
+	rootCause: z.string().nullable().optional(),
+});
+export type EvalJudgeVerdict = z.infer<typeof evalJudgeVerdictSchema>;
+
+export class InstanceAiWorkflowEvalRequest extends Z.class({
+	scenarioHints: z.string().max(2000).optional(),
+	/** When provided, the judge evaluates the execution result against this criteria */
+	successCriteria: z.string().max(2000).optional(),
+	/** When true, mocked node outputs are persisted as pin data on the workflow */
+	persistMockData: z.boolean().optional(),
+}) {}
+
+export interface InstanceAiWorkflowEvalResult {
+	execution: InstanceAiEvalExecutionResult;
+	verification?: EvalJudgeVerdict;
+	pinDataPersisted?: boolean;
+}

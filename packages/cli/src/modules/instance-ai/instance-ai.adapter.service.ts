@@ -34,6 +34,7 @@ import type {
 	FolderSummary,
 	ServiceProxyConfig,
 	CredentialTypeSearchResult,
+	EvalExecuteAndEvaluateResult,
 } from '@n8n/instance-ai';
 import { wrapUntrustedData } from '@n8n/instance-ai';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
@@ -41,6 +42,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { User, WorkflowEntity, ExecutionSummaries } from '@n8n/db';
 
+import { WorkflowEvalService } from './eval/workflow-eval.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import {
 	resolveNodeTypeDefinition,
@@ -179,6 +181,7 @@ export class InstanceAiAdapterService {
 		private readonly eventService: EventService,
 		private readonly roleService: RoleService,
 		private readonly telemetry: Telemetry,
+		private readonly workflowEvalService: WorkflowEvalService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -570,6 +573,7 @@ export class InstanceAiAdapterService {
 			license,
 			roleService,
 			telemetry,
+			workflowEvalService,
 		} = this;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('executions');
 
@@ -857,6 +861,32 @@ export class InstanceAiAdapterService {
 				}
 
 				return await extractNodeOutput(executionRepository, executionId, nodeName, options);
+			},
+
+			async executeAndEvaluate(workflowId, options): Promise<EvalExecuteAndEvaluateResult> {
+				const result = await workflowEvalService.executeAndEvaluate(workflowId, user, {
+					scenarioHints: options?.scenarioHints,
+					successCriteria: options?.successCriteria,
+					persistMockData: options?.persistMockData,
+				});
+
+				return {
+					execution: {
+						executionId: result.execution.executionId,
+						success: result.execution.success,
+						errors: result.execution.errors,
+						nodeResults: result.execution.nodeResults,
+					},
+					verification: result.verification
+						? {
+								pass: result.verification.pass,
+								reasoning: result.verification.reasoning,
+								failureCategory: result.verification.failureCategory ?? undefined,
+								rootCause: result.verification.rootCause ?? undefined,
+							}
+						: undefined,
+					pinDataPersisted: result.pinDataPersisted,
+				};
 			},
 		};
 	}

@@ -41,7 +41,7 @@ const MAX_CONCURRENT_SCENARIOS = 99;
 // Workflow test case runner — build once, run scenarios against it
 // ---------------------------------------------------------------------------
 
-const SCENARIO_BG_TASK_TIMEOUT_MS = 240_000;
+const SCENARIO_BG_TASK_TIMEOUT_MS = 900_000;
 
 interface WorkflowTestCaseConfig {
 	client: N8nClient;

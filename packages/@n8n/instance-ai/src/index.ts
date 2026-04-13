@@ -154,6 +154,7 @@ export type {
 	WorkflowVersionSummary,
 	WorkflowVersionDetail,
 	ExecutionResult,
+	EvalExecuteAndEvaluateResult,
 	ExecutionDebugInfo,
 	NodeOutputResult,
 	ExecutionSummary,
