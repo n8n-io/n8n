@@ -36,6 +36,7 @@ import {
 	mergeTraceRunInputs,
 	withTraceParentContext,
 } from '../../tracing/langsmith-tracing';
+import { MAX_STEPS } from '../../constants/max-steps';
 import type { BackgroundTaskResult, OrchestrationContext } from '../../types';
 import { SDK_IMPORT_STATEMENT } from '../../workflow-builder/extract-code';
 import type { TriggerType, WorkflowBuildOutcome } from '../../workflow-loop';
@@ -104,8 +105,6 @@ function buildOutcome(
 		summary: finalText,
 	};
 }
-
-const BUILDER_MAX_STEPS = 60;
 
 const DETACHED_BUILDER_REQUIREMENTS = `## Detached Task Contract
 
@@ -409,7 +408,7 @@ export async function startBuildWorkflowAgentTask(
 						const hitlResult = await withTraceParentContext(traceParent, async () => {
 							const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
 							const stream = await subAgent.stream(briefing, {
-								maxSteps: BUILDER_MAX_STEPS,
+								maxSteps: MAX_STEPS.BUILDER,
 								abortSignal: signal,
 								providerOptions: {
 									anthropic: { cacheControl: { type: 'ephemeral' } },
@@ -532,7 +531,7 @@ export async function startBuildWorkflowAgentTask(
 					const hitlResult = await withTraceParentContext(traceParent, async () => {
 						const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
 						const stream = await subAgent.stream(briefing, {
-							maxSteps: BUILDER_MAX_STEPS,
+							maxSteps: MAX_STEPS.BUILDER,
 							abortSignal: signal,
 							providerOptions: {
 								anthropic: { cacheControl: { type: 'ephemeral' } },

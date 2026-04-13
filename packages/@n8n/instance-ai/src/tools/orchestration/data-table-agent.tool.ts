@@ -29,9 +29,8 @@ import {
 	mergeTraceRunInputs,
 	withTraceParentContext,
 } from '../../tracing/langsmith-tracing';
+import { MAX_STEPS } from '../../constants/max-steps';
 import type { OrchestrationContext } from '../../types';
-
-const DATA_TABLE_MAX_STEPS = 35;
 
 const DATA_TABLE_TOOL_NAMES = [
 	'list-data-tables',
@@ -157,7 +156,7 @@ export async function startDataTableAgentTask(
 				return await withTraceParentContext(traceParent, async () => {
 					const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
 					const stream = await subAgent.stream(briefing, {
-						maxSteps: DATA_TABLE_MAX_STEPS,
+						maxSteps: MAX_STEPS.DATA_TABLE,
 						abortSignal: signal,
 						providerOptions: {
 							anthropic: { cacheControl: { type: 'ephemeral' } },

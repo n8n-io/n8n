@@ -28,9 +28,8 @@ import {
 	mergeTraceRunInputs,
 	withTraceParentContext,
 } from '../../tracing/langsmith-tracing';
+import { MAX_STEPS } from '../../constants/max-steps';
 import type { OrchestrationContext } from '../../types';
-
-const RESEARCH_MAX_STEPS = 25;
 
 export interface StartResearchAgentInput {
 	goal: string;
@@ -143,7 +142,7 @@ export async function startResearchAgentTask(
 				return await withTraceParentContext(traceParent, async () => {
 					const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
 					const stream = await subAgent.stream(briefing, {
-						maxSteps: RESEARCH_MAX_STEPS,
+						maxSteps: MAX_STEPS.RESEARCH,
 						abortSignal: signal,
 						providerOptions: {
 							anthropic: { cacheControl: { type: 'ephemeral' } },
