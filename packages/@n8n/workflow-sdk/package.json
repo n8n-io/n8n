@@ -37,6 +37,10 @@
     "./prompts/best-practices": {
       "types": "./dist/prompts/best-practices/index.d.ts",
       "default": "./dist/prompts/best-practices/index.js"
+    },
+    "./prompts/node-selection": {
+      "types": "./dist/prompts/node-selection/index.d.ts",
+      "default": "./dist/prompts/node-selection/index.js"
     }
   },
   "scripts": {
@@ -79,6 +83,9 @@
       ],
       "prompts/best-practices": [
         "./dist/prompts/best-practices/index.d.ts"
+      ],
+      "prompts/node-selection": [
+        "./dist/prompts/node-selection/index.d.ts"
       ]
     }
   },

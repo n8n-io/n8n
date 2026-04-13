@@ -21,6 +21,11 @@ import {
 	WORKFLOW_RULES,
 	WORKFLOW_SDK_PATTERNS,
 } from '@n8n/workflow-sdk/prompts/sdk-reference';
+import {
+	AI_TOOL_PATTERNS,
+	CONNECTION_CHANGING_PARAMETERS,
+	BASELINE_FLOW_CONTROL,
+} from '@n8n/workflow-sdk/prompts/node-selection';
 
 // ── Shared SDK reference sections ────────────────────────────────────────────
 
@@ -393,7 +398,16 @@ documentId: 'YOUR_SPREADSHEET_ID',  // Not an RLC object
 // WRONG — expr() wrapper
 documentId: expr('{{ "spreadsheetId" }}'),  // RLC fields don't use expressions
 \`\`\`
-Always use the IDs from \`explore-node-resources\` results inside the RLC \`value\` field.`;
+Always use the IDs from \`explore-node-resources\` results inside the RLC \`value\` field.
+
+### AI Tool Connection Patterns
+${AI_TOOL_PATTERNS}
+
+### Connection-Changing Parameters
+${CONNECTION_CHANGING_PARAMETERS}
+
+### Baseline Flow Control Nodes
+${BASELINE_FLOW_CONTROL}`;
 
 // ── Composed SDK rules from shared + local sources ───────────────────────────
 
