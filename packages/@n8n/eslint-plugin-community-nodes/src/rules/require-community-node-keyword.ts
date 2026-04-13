@@ -1,7 +1,7 @@
 import type { TSESTree } from '@typescript-eslint/utils';
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 
-import { createRule, findJsonProperty, getTopLevelObjectInJson } from '../utils/index.js';
+import { createRule, findJsonProperty } from '../utils/index.js';
 
 const REQUIRED_KEYWORD = 'n8n-community-node-package';
 
@@ -28,21 +28,20 @@ export const RequireCommunityNodeKeywordRule = createRule({
 
 		return {
 			ObjectExpression(node: TSESTree.ObjectExpression) {
-				const topLevel = getTopLevelObjectInJson(node);
-				if (!topLevel) {
+				if (node.parent?.type !== AST_NODE_TYPES.ExpressionStatement) {
 					return;
 				}
 
-				const keywordsProp = findJsonProperty(topLevel, 'keywords');
+				const keywordsProp = findJsonProperty(node, 'keywords');
 
 				if (!keywordsProp) {
 					context.report({
-						node: topLevel,
+						node,
 						messageId: 'missingKeywordsArray',
 						fix(fixer) {
-							const lastProp = topLevel.properties[topLevel.properties.length - 1];
+							const lastProp = node.properties[node.properties.length - 1];
 							if (!lastProp) {
-								return fixer.replaceText(topLevel, `{ "keywords": ["${REQUIRED_KEYWORD}"] }`);
+								return fixer.replaceText(node, `{ "keywords": ["${REQUIRED_KEYWORD}"] }`);
 							}
 							return fixer.insertTextAfter(lastProp, `, "keywords": ["${REQUIRED_KEYWORD}"]`);
 						},

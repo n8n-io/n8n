@@ -1,6 +1,6 @@
 # Require the "n8n-community-node-package" keyword in package.json (`@n8n/community-nodes/require-community-node-keyword`)
 
-⚠️ This rule is set to `warn` in the following configs: ✅ `recommended`, ☑️ `recommendedWithoutN8nCloudSupport`.
+💼 This rule is enabled in the following configs: ✅ `recommended`, ☑️ `recommendedWithoutN8nCloudSupport`.
 
 🔧 This rule is automatically fixable by the [`--fix` CLI option](https://eslint.org/docs/latest/use/command-line-interface#--fix).
 

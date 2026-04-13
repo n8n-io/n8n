@@ -26,6 +26,18 @@ ruleTester.run('require-community-node-keyword', RequireCommunityNodeKeywordRule
 			filename: 'package.json',
 			code: '{ "name": "n8n-nodes-example", "keywords": ["n8n-community-node-package"], "config": { "nested": "value" } }',
 		},
+		{
+			name: 'objects inside arrays (e.g. contributors) are not flagged',
+			filename: 'package.json',
+			code: `{
+				"name": "n8n-nodes-example",
+				"keywords": ["n8n-community-node-package"],
+				"contributors": [
+					{ "name": "Alice", "email": "alice@example.com" },
+					{ "name": "Bob", "email": "bob@example.com" }
+				]
+			}`,
+		},
 	],
 	invalid: [
 		{
