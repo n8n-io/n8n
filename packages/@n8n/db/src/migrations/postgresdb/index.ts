@@ -162,6 +162,8 @@ import { ChangeWorkflowPublishHistoryVersionIdToSetNull1775740765000 } from '../
 import { CreateAgentTables1776000000000 } from '../common/1776000000000-CreateAgentTables';
 import { CreateTrustedKeyTables1776000000000 } from '../common/1776000000000-CreateTrustedKeyTables';
 import { CreateAgentMemoryTables1777000000000 } from '../common/1777000000000-CreateAgentMemoryTables';
+import { AddToolsColumnToAgents1778000000000 } from '../common/1778000000000-AddToolsColumnToAgents';
+import { DropAgentCodeColumn1779000000000 } from '../common/1779000000000-DropAgentCodeColumn';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -329,4 +331,6 @@ export const postgresMigrations: Migration[] = [
 	CreateAgentTables1776000000000,
 	CreateTrustedKeyTables1776000000000,
 	CreateAgentMemoryTables1777000000000,
+	AddToolsColumnToAgents1778000000000,
+	DropAgentCodeColumn1779000000000,
 ];

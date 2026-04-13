@@ -4,6 +4,7 @@ import type { RunTree } from 'langsmith';
 import type { InstanceAiEventBus } from '../event-bus';
 import type { Logger } from '../logger';
 import { mapMastraChunkToEvent } from '../stream/map-chunk';
+import { WorkSummaryAccumulator, type WorkSummary } from '../stream/work-summary-accumulator';
 import { getTraceParentRun, setTraceParentOverride } from '../tracing/langsmith-tracing';
 import { asResumable, parseSuspension } from '../utils/stream-helpers';
 import type { SuspensionInfo } from '../utils/stream-helpers';
@@ -68,6 +69,8 @@ export interface ExecuteResumableStreamResult {
 	text?: Promise<string>;
 	suspension?: SuspensionInfo;
 	confirmationEvent?: ConfirmationRequestEvent;
+	/** Accumulated tool call outcomes observed during stream consumption. */
+	workSummary: WorkSummary;
 }
 
 export interface LlmStepTraceHooks {
@@ -1817,6 +1820,7 @@ export async function executeResumableStream(
 	let activeStream = options.stream.fullStream;
 	let activeMastraRunId = options.stream.runId ?? options.initialMastraRunId ?? '';
 	let text = options.stream.text;
+	const workSummaryAccumulator = new WorkSummaryAccumulator();
 
 	let currentResponseId: string | undefined;
 
@@ -1847,7 +1851,12 @@ export async function executeResumableStream(
 					status: 'cancelled',
 					error: 'Run cancelled while streaming',
 				});
-				return { status: 'cancelled', mastraRunId: activeMastraRunId, text };
+				return {
+					status: 'cancelled',
+					mastraRunId: activeMastraRunId,
+					text,
+					workSummary: workSummaryAccumulator.toSummary(),
+				};
 			}
 
 			await startSyntheticToolTrace(chunk, syntheticToolRecords);
@@ -1915,6 +1924,7 @@ export async function executeResumableStream(
 				currentResponseId,
 			);
 			if (event) {
+				workSummaryAccumulator.observe(event);
 				let shouldPublishEvent = true;
 
 				if (event.type === 'confirmation-request') {
@@ -1961,11 +1971,21 @@ export async function executeResumableStream(
 		});
 
 		if (options.context.signal.aborted) {
-			return { status: 'cancelled', mastraRunId: activeMastraRunId, text };
+			return {
+				status: 'cancelled',
+				mastraRunId: activeMastraRunId,
+				text,
+				workSummary: workSummaryAccumulator.toSummary(),
+			};
 		}
 
 		if (!suspension) {
-			return { status: hasError ? 'errored' : 'completed', mastraRunId: activeMastraRunId, text };
+			return {
+				status: hasError ? 'errored' : 'completed',
+				mastraRunId: activeMastraRunId,
+				text,
+				workSummary: workSummaryAccumulator.toSummary(),
+			};
 		}
 
 		if (options.control.mode === 'manual') {
@@ -1974,6 +1994,7 @@ export async function executeResumableStream(
 				mastraRunId: activeMastraRunId,
 				text,
 				suspension,
+				workSummary: workSummaryAccumulator.toSummary(),
 				...(confirmationEvent ? { confirmationEvent } : {}),
 			};
 		}

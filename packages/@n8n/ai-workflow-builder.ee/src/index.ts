@@ -17,6 +17,7 @@ export {
 	NodeTypeParser,
 	ParseValidateHandler,
 	createCodeBuilderSearchTool,
+	type CodeBuilderSearchToolOptions,
 	createCodeBuilderGetTool,
 	createGetSuggestedNodesTool,
 	stripImportStatements,

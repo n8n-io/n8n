@@ -45,7 +45,7 @@ export type { ProviderOptions } from '@ai-sdk/provider-utils';
 export { AgentEvent } from './types';
 export type { AgentEventData, AgentEventHandler } from './types';
 
-export { Tool } from './sdk/tool';
+export { Tool, wrapToolForApproval } from './sdk/tool';
 export { Memory } from './sdk/memory';
 export { Guardrail } from './sdk/guardrail';
 export { Eval } from './sdk/eval';
@@ -56,6 +56,7 @@ export { Telemetry } from './sdk/telemetry';
 export { LangSmithTelemetry } from './integrations/langsmith';
 export type { LangSmithTelemetryConfig } from './integrations/langsmith';
 export { Agent } from './sdk/agent';
+export type { AgentSnapshot } from './sdk/agent';
 export type {
 	AgentBuilder,
 	CredentialProvider,
@@ -83,17 +84,6 @@ export type {
 	AgentDbMessage,
 } from './types/sdk/message';
 export type { HandlerExecutor } from './types/sdk/handler-executor';
-export type {
-	AgentSchema,
-	ToolSchema,
-	MemorySchema,
-	EvalSchema,
-	ThinkingSchema,
-	ProviderToolSchema,
-	GuardrailSchema,
-	McpServerSchema,
-	TelemetrySchema,
-} from './types/sdk/schema';
 export {
 	filterLlmMessages,
 	isLlmMessage,
@@ -116,7 +106,7 @@ export type {
 	PostgresConstructorOptions,
 } from './storage/postgres-memory';
 export { BaseMemory } from './storage/base-memory';
-export type { MemoryFactory, FromSchemaOptions, ToolResolver } from './sdk/from-schema';
+export type { ToolDescriptor } from './types/sdk/tool-descriptor';
 
 export { Workspace } from './workspace';
 export { BaseFilesystem } from './workspace';
@@ -152,3 +142,5 @@ export type {
 	SpawnProcessOptions,
 	ProcessInfo,
 } from './workspace';
+
+export type { JSONObject, JSONArray, JSONValue } from './types/utils/json';

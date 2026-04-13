@@ -21,6 +21,8 @@ export interface IssuedJwtPayload {
 	jti: string;
 }
 
+export const TOKEN_EXCHANGE_ISSUER = 'n8n-token-exchange';
+
 export type TokenExchangeAuditEvent =
 	| {
 			event: 'token_exchange_success';

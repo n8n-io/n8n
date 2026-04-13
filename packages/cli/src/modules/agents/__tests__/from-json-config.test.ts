@@ -1,0 +1,403 @@
+import type { AgentSnapshot, ToolDescriptor } from '@n8n/agents';
+
+import type { AgentJsonConfig } from '../json-config/agent-json-config';
+import type { JSONSchema7 } from 'json-schema';
+import { AgentJsonConfigSchema } from '../json-config/agent-json-config';
+import { buildFromJson } from '../json-config/from-json-config';
+import type { ToolExecutor } from '../json-config/from-json-config';
+
+// ---------------------------------------------------------------------------
+// buildFromJson() tests
+// ---------------------------------------------------------------------------
+
+describe('buildFromJson()', () => {
+	const makeConfig = (overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig => ({
+		name: 'test-agent',
+		model: 'anthropic/claude-sonnet-4-5',
+		credential: 'my-anthropic-key',
+		instructions: 'You are a test agent.',
+		...overrides,
+	});
+
+	const makeMockToolExecutor = (): ToolExecutor => ({
+		executeTool: jest.fn().mockResolvedValue({ result: 'tool result' }),
+	});
+
+	const makeToolDescriptor = (overrides: Partial<ToolDescriptor> = {}): ToolDescriptor => ({
+		name: 'search',
+		description: 'Search the web',
+		inputSchema: { type: 'object', properties: { query: { type: 'string' } } } as JSONSchema7,
+		outputSchema: null,
+		hasSuspend: false,
+		hasResume: false,
+		hasToMessage: false,
+		requireApproval: false,
+		providerOptions: null,
+		...overrides,
+	});
+
+	const makeMockMemoryFactory = () => jest.fn();
+
+	it('sets name, model, credential, and instructions', async () => {
+		const agent = await buildFromJson(
+			makeConfig(),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+		const snap: AgentSnapshot = agent.snapshot;
+
+		expect(snap.name).toBe('test-agent');
+		expect(snap.model.provider).toBe('anthropic');
+		expect(snap.model.name).toBe('claude-sonnet-4-5');
+		expect(snap.credential).toBe('my-anthropic-key');
+		expect(snap.instructions).toBe('You are a test agent.');
+	});
+
+	it('handles single-part model string (no slash)', async () => {
+		const agent = await buildFromJson(
+			makeConfig({ model: 'claude-sonnet-4-5' }),
+			{},
+			{ toolExecutor: makeMockToolExecutor(), memoryFactory: makeMockMemoryFactory() },
+		);
+
+		const snap: AgentSnapshot = agent.snapshot;
+		expect(snap.model.provider).toBeNull();
+		expect(snap.model.name).toBe('claude-sonnet-4-5');
+	});
+
+	it('wires a custom tool', async () => {
+		const descriptor = makeToolDescriptor({ name: 'my_search' });
+		const config = makeConfig({ tools: [{ type: 'custom', id: 'search_tool' }] });
+
+		const agent = await buildFromJson(
+			config,
+			{ search_tool: descriptor },
+			{
+				toolExecutor: makeMockToolExecutor(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		expect(agent.snapshot.tools.some((t) => t.name === 'my_search')).toBe(true);
+	});
+
+	it('throws when custom tool id is not found in descriptors', async () => {
+		const config = makeConfig({ tools: [{ type: 'custom', id: 'missing_tool' }] });
+
+		await expect(
+			buildFromJson(
+				config,
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					memoryFactory: makeMockMemoryFactory(),
+				},
+			),
+		).rejects.toThrow('Custom tool "missing_tool" not found in tool descriptors');
+	});
+
+	it('resolves workflow tool via resolveTool callback', async () => {
+		const config = makeConfig({
+			tools: [{ type: 'workflow', workflow: 'My Workflow', name: 'run_workflow' }],
+		});
+
+		const resolvedTool = {
+			name: 'run_workflow',
+			description: 'Run My Workflow',
+			handler: jest.fn().mockResolvedValue({ done: true }),
+		};
+		const resolveTool = jest.fn().mockResolvedValue(resolvedTool);
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				memoryFactory: makeMockMemoryFactory(),
+				resolveTool,
+			},
+		);
+
+		expect(agent.snapshot.tools.some((t) => t.name === 'run_workflow')).toBe(true);
+		expect(resolveTool).toHaveBeenCalledTimes(1);
+	});
+
+	it('wraps workflow tool with approval when requireApproval is true', async () => {
+		const config = makeConfig({
+			tools: [
+				{ type: 'workflow', workflow: 'My Workflow', name: 'run_workflow', requireApproval: true },
+			],
+		});
+
+		const resolvedTool = {
+			name: 'run_workflow',
+			description: 'Run My Workflow',
+			handler: jest.fn().mockResolvedValue({ done: true }),
+		};
+		const resolveTool = jest.fn().mockResolvedValue(resolvedTool);
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				memoryFactory: makeMockMemoryFactory(),
+				resolveTool,
+			},
+		);
+
+		const tool = agent.declaredTools.find((t) => t.name === 'run_workflow');
+		expect(tool).toBeDefined();
+		expect(tool!.withDefaultApproval).toBe(true);
+	});
+
+	it('wraps node tool with approval when requireApproval is true', async () => {
+		const config = makeConfig({
+			tools: [
+				{
+					type: 'node',
+					name: 'my_node_tool',
+					description: 'A node tool',
+					node: { nodeType: 'n8n-nodes-base.httpRequest', nodeTypeVersion: 1, nodeParameters: {} },
+					inputSchema: { type: 'object' as const },
+					requireApproval: true,
+				},
+			],
+		});
+
+		const resolvedTool = {
+			name: 'my_node_tool',
+			description: 'A node tool',
+			handler: jest.fn().mockResolvedValue({ done: true }),
+		};
+		const resolveTool = jest.fn().mockResolvedValue(resolvedTool);
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				memoryFactory: makeMockMemoryFactory(),
+				resolveTool,
+			},
+		);
+
+		const tool = agent.declaredTools.find((t) => t.name === 'my_node_tool');
+		expect(tool).toBeDefined();
+		expect(tool!.withDefaultApproval).toBe(true);
+	});
+
+	it('does not wrap workflow tool with approval when requireApproval is not set', async () => {
+		const config = makeConfig({
+			tools: [{ type: 'workflow', workflow: 'My Workflow', name: 'run_workflow' }],
+		});
+
+		const resolvedTool = {
+			name: 'run_workflow',
+			description: 'Run My Workflow',
+			handler: jest.fn().mockResolvedValue({ done: true }),
+		};
+		const resolveTool = jest.fn().mockResolvedValue(resolvedTool);
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				memoryFactory: makeMockMemoryFactory(),
+				resolveTool,
+			},
+		);
+
+		const tool = agent.declaredTools.find((t) => t.name === 'run_workflow');
+		expect(tool).toBeDefined();
+		expect(tool!.withDefaultApproval).toBeUndefined();
+	});
+
+	it('falls back to marker tool when resolveTool is not provided for workflow tools', async () => {
+		const config = makeConfig({ tools: [{ type: 'workflow', workflow: 'Test Workflow' }] });
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		expect(agent.snapshot.tools.some((t) => t.name === 'Test Workflow')).toBe(true);
+	});
+
+	it('sets thinking config', async () => {
+		const config = makeConfig({
+			config: { thinking: { provider: 'anthropic', budgetTokens: 5000 } },
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+		const snap: AgentSnapshot = agent.snapshot;
+
+		expect(snap.thinking).not.toBeNull();
+		expect(snap.thinking).toMatchObject({ budgetTokens: 5000 });
+	});
+
+	it('sets toolCallConcurrency', async () => {
+		const config = makeConfig({ config: { toolCallConcurrency: 5 } });
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		expect(agent.snapshot.toolCallConcurrency).toBe(5);
+	});
+
+	it('sets requireToolApproval', async () => {
+		const config = makeConfig({ config: { requireToolApproval: true } });
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		expect(agent.snapshot.requireToolApproval).toBe(true);
+	});
+
+	it('configures memory when enabled', async () => {
+		const mockMemory = {
+			getThread: jest.fn(),
+			saveThread: jest.fn(),
+			deleteThread: jest.fn(),
+			getMessages: jest.fn().mockResolvedValue([]),
+			saveMessages: jest.fn(),
+			deleteMessages: jest.fn(),
+			describe: jest
+				.fn()
+				.mockReturnValue({ name: 'n8n', constructorName: 'N8nMemory', connectionParams: null }),
+			close: jest.fn(),
+		};
+
+		const config = makeConfig({
+			memory: { enabled: true, storage: 'n8n', lastMessages: 15 },
+		});
+
+		const memoryFactory = jest.fn().mockReturnValue(mockMemory);
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				memoryFactory,
+			},
+		);
+
+		expect(memoryFactory).toHaveBeenCalledWith(config.memory);
+		expect(agent.snapshot.hasMemory).toBe(true);
+	});
+
+	it('skips memory when memory.enabled is false', async () => {
+		const config = makeConfig({ memory: { enabled: false, storage: 'n8n' } });
+
+		const memoryFactory = jest.fn();
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				memoryFactory,
+			},
+		);
+
+		expect(memoryFactory).not.toHaveBeenCalled();
+		expect(agent.snapshot.hasMemory).toBe(false);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// AgentJsonConfig Zod schema validation
+// ---------------------------------------------------------------------------
+
+describe('AgentJsonConfigSchema', () => {
+	it('parses a minimal valid config', () => {
+		const config = {
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'my-key',
+			instructions: 'Be helpful.',
+		};
+		expect(() => AgentJsonConfigSchema.parse(config)).not.toThrow();
+	});
+
+	it('rejects invalid model format (no slash)', () => {
+		const config = {
+			name: 'test',
+			model: 'invalid-no-slash',
+			credential: 'my-key',
+			instructions: 'Be helpful.',
+		};
+		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
+	});
+
+	it('rejects empty name', () => {
+		const config = {
+			name: '',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'my-key',
+			instructions: '',
+		};
+		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
+	});
+
+	it('rejects name longer than 128 chars', () => {
+		const config = {
+			name: 'a'.repeat(129),
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'my-key',
+			instructions: '',
+		};
+		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
+	});
+
+	it('parses custom tool ref with valid id', () => {
+		const config = {
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'my-key',
+			instructions: '',
+			tools: [{ type: 'custom', id: 'my_tool_1' }],
+		};
+		const parsed = AgentJsonConfigSchema.parse(config);
+		expect(parsed.tools?.[0]).toMatchObject({ type: 'custom', id: 'my_tool_1' });
+	});
+
+	it('rejects custom tool ref with invalid id (uppercase)', () => {
+		const config = {
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'my-key',
+			instructions: '',
+			tools: [{ type: 'custom', id: 'MyTool' }],
+		};
+		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
+	});
+});

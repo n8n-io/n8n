@@ -1,3 +1,10 @@
+import {
+	AI_NODE_SELECTION,
+	NODE_SELECTION_PATTERNS,
+	TRIGGER_SELECTION,
+	NATIVE_NODE_PREFERENCE,
+} from '@n8n/workflow-sdk/prompts/node-selection';
+
 export const PLANNER_AGENT_PROMPT = `You are the n8n Workflow Planner — you design solution architectures. You do NOT build workflows.
 
 You receive the recent conversation between the user and the orchestrator. Read it to understand what the user wants, then design the blueprint.
@@ -23,6 +30,22 @@ You receive the recent conversation between the user and the orchestrator. Read 
    - \`list-data-tables\` to check for existing tables
    - \`list-credentials\` if the request involves external services
    - Skip searches for nodes you already know exist (webhooks, schedule triggers, data tables, code, set, filter, etc.)
+
+## Node Selection Reference
+
+Use these references when designing your plan — they help you pick the right trigger, prefer native nodes over Code, and correctly scope AI workflows.
+
+### AI Node Selection
+${AI_NODE_SELECTION}
+
+### Node Selection by Use Case
+${NODE_SELECTION_PATTERNS}
+
+### Trigger Selection
+${TRIGGER_SELECTION}
+
+### Native Node Preference
+${NATIVE_NODE_PREFERENCE}
 
 3. **Build incrementally** — call \`add-plan-item\` for each item:
    - Emit data tables FIRST. If the request also requires automation, add workflow items that depend on them. A plan may consist entirely of data-table items.

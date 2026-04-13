@@ -1,22 +1,22 @@
-import type { AgentMessage, AgentSchema, StreamChunk } from '@n8n/agents';
+import type { AgentMessage, StreamChunk } from '@n8n/agents';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Body, Delete, Get, Param, Patch, Post, RestController } from '@n8n/decorators';
+
+import { Body, Delete, Get, Param, Patch, Post, Put, RestController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
 
 import {
 	AgentChatMessageDto,
 	AgentIntegrationDto,
 	CreateAgentDto,
+	UpdateAgentConfigDto,
 	UpdateAgentDto,
-	UpdateAgentSchemaDto,
 } from './agents.dto';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { AgentsBuilderService } from './agents-builder.service';
-import { AgentsCredentialProvider } from './agents-credential-provider';
+import { AgentsBuilderService } from './builder/agents-builder.service';
+import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentsService } from './agents.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentRepository } from './repositories/agent.repository';
@@ -66,7 +66,6 @@ export class AgentsController {
 		private readonly agentsService: AgentsService,
 		private readonly agentsBuilderService: AgentsBuilderService,
 		private readonly credentialsService: CredentialsService,
-		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly agentRepository: AgentRepository,
 	) {}
@@ -91,47 +90,40 @@ export class AgentsController {
 		return await this.agentsService.findByProjectId(req.params.projectId);
 	}
 
-	@Get('/:agentId/schema')
-	async getSchema(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
+	@Get('/:agentId/config')
+	async getConfig(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
 		const { projectId, agentId } = req.params;
-		const credentialProvider = new AgentsCredentialProvider(
-			this.credentialsService,
-			this.credentialsFinderService,
-			req.user,
-		);
-		return await this.agentsService.getSchema(agentId, projectId, credentialProvider);
+		return await this.agentsService.getConfig(agentId, projectId);
 	}
 
-	@Patch('/:agentId/schema')
-	async patchSchema(
+	@Put('/:agentId/config')
+	async putConfig(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
 		_res: Response,
-		@Body payload: UpdateAgentSchemaDto,
+		@Param('agentId') agentId: string,
+		@Body payload: UpdateAgentConfigDto,
 	) {
-		const { projectId, agentId } = req.params;
-		const { schema, updatedAt } = payload;
-		const credentialProvider = new AgentsCredentialProvider(
-			this.credentialsService,
-			this.credentialsFinderService,
-			req.user,
-		);
-		return await this.agentsService.updateSchema(
-			agentId,
-			projectId,
-			// Zod validates the shape at runtime; the inferred type is too loose for AgentSchema
-			schema as unknown as AgentSchema,
-			updatedAt,
-			credentialProvider,
-		);
+		const { projectId } = req.params;
+		const { config } = payload;
+		return await this.agentsService.updateConfig(agentId, projectId, config);
+	}
+
+	@Delete('/:agentId/tools/:toolId')
+	async deleteTool(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; toolId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('toolId') toolId: string,
+	) {
+		const { projectId } = req.params;
+		await this.agentsService.deleteCustomTool(agentId, projectId, toolId);
+		return { ok: true };
 	}
 
 	@Get('/:agentId/credentials')
 	async listCredentials(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
-		const credentialProvider = new AgentsCredentialProvider(
-			this.credentialsService,
-			this.credentialsFinderService,
-			req.user,
-		);
+		const { projectId } = req.params;
+		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
 		return await credentialProvider.list();
 	}
 
@@ -163,7 +155,7 @@ export class AgentsController {
 		@Param('agentId') agentId: string,
 		@Body payload: UpdateAgentDto,
 	) {
-		const { code, name, updatedAt, description } = payload;
+		const { name, description } = payload;
 		let agent = await this.agentsService.findById(agentId, req.params.projectId);
 
 		if (!agent) {
@@ -174,22 +166,8 @@ export class AgentsController {
 			agent = await this.agentsService.updateName(agentId, req.params.projectId, name);
 		}
 
-		let schemaError: string | null = null;
-		if (code !== undefined) {
-			const result = await this.agentsService.updateCode(
-				agentId,
-				req.params.projectId,
-				code,
-				updatedAt,
-			);
-			if (result) {
-				agent = result.agent;
-				schemaError = result.schemaError;
-			}
-		}
-
 		if (description !== undefined && agent) {
-			// Use the latest updatedAt from previous saves (code/name), not the original
+			// Use the latest updatedAt from previous saves (name), not the original
 			// request updatedAt, to avoid false optimistic-lock conflicts.
 			const latestUpdatedAt =
 				agent.updatedAt instanceof Date ? agent.updatedAt.toISOString() : agent.updatedAt;
@@ -201,9 +179,6 @@ export class AgentsController {
 			);
 		}
 
-		if (schemaError) {
-			return { ...agent, schemaError };
-		}
 		return agent;
 	}
 
@@ -232,11 +207,7 @@ export class AgentsController {
 		const { projectId } = req.params;
 		const { message } = payload;
 
-		const credentialProvider = new AgentsCredentialProvider(
-			this.credentialsService,
-			this.credentialsFinderService,
-			req.user,
-		);
+		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
 
 		const send = initSseResponse(res);
 
@@ -260,6 +231,23 @@ export class AgentsController {
 		res.end();
 	}
 
+	@Get('/:agentId/build/messages')
+	async getBuilderMessages(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
+		const { projectId, agentId } = req.params;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		return await this.agentsBuilderService.getBuilderMessages(agentId);
+	}
+
+	@Delete('/:agentId/build/messages')
+	async clearBuilderMessages(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
+		const { projectId, agentId } = req.params;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		await this.agentsBuilderService.clearBuilderMessages(agentId);
+		return { ok: true };
+	}
+
 	@Post('/:agentId/build', { usesTemplates: true })
 	async build(
 		req: AuthenticatedRequest<{ projectId: string }>,
@@ -270,11 +258,7 @@ export class AgentsController {
 		const { projectId } = req.params;
 		const { message } = payload;
 
-		const credentialProvider = new AgentsCredentialProvider(
-			this.credentialsService,
-			this.credentialsFinderService,
-			req.user,
-		);
+		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
 
 		const send = initSseResponse(res);
 
@@ -294,22 +278,22 @@ export class AgentsController {
 					if (chunk.name) {
 						streamingToolName = chunk.name;
 					}
-					// Stream code deltas for the set_code tool (eager input streaming)
-					if (streamingToolName === 'set_code' && chunk.argumentsDelta) {
-						send({ codeDelta: chunk.argumentsDelta });
+					// Stream tool code deltas for build_custom_tool
+					if (streamingToolName === 'build_custom_tool' && chunk.argumentsDelta) {
+						send({ toolCodeDelta: chunk.argumentsDelta });
 					}
 				} else if (chunk.type === 'message' && 'message' in chunk) {
 					const events = extractMessageEvents(chunk.message);
 					for (const event of events) {
 						send(event);
-						// After set_code tool result, fetch the updated code from DB
 						if ('toolResult' in event) {
 							const toolResult = event.toolResult as { tool?: string };
-							if (toolResult.tool === 'set_code') {
-								const updated = await this.agentsService.findById(agentId, projectId);
-								if (updated) {
-									send({ code: updated.code });
-								}
+							if (toolResult.tool === 'write_config' || toolResult.tool === 'patch_config') {
+								send({ configUpdated: true });
+								streamingToolName = undefined;
+							}
+							if (toolResult.tool === 'build_custom_tool') {
+								send({ toolUpdated: true });
 								streamingToolName = undefined;
 							}
 						}

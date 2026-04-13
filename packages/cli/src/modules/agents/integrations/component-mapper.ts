@@ -168,11 +168,13 @@ export class ComponentMapper {
 						description: o.description,
 					}));
 					children.push(
-						RadioSelect({
-							id: `ri-sel:${component.id ?? 'radio'}:${runId}:${toolCallId}`,
-							label: component.label ?? 'Select',
-							options: opts,
-						}),
+						Actions([
+							RadioSelect({
+								id: `ri-sel:${component.id ?? 'radio'}:${runId}:${toolCallId}`,
+								label: component.label ?? 'Select',
+								options: opts,
+							}),
+						] as never),
 					);
 					break;
 				}

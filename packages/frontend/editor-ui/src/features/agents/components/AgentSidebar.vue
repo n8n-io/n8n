@@ -17,12 +17,11 @@ interface SidebarTab {
 }
 
 const mainTabs: SidebarTab[] = [
-	{ id: 'code', label: 'Code', icon: 'code' },
 	{ id: 'overview', label: 'Overview', icon: 'info' },
 	{ id: 'prompts', label: 'Prompts', icon: 'message-square' },
 	{ id: 'tools', label: 'Tools', icon: 'wrench' },
 	{ id: 'memory', label: 'Memory', icon: 'brain' },
-	{ id: 'evaluations', label: 'Evaluations', icon: 'flask-conical' },
+	{ id: 'config', label: 'Config', icon: 'code' },
 	{ id: 'integrations', label: 'Integrations', icon: 'plug' },
 ];
 
