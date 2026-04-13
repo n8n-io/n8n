@@ -140,13 +140,33 @@ describe('LmChatMinimax', () => {
 
 			expect(MockedChatOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
-					modelKwargs: { response_format: { type: 'json_object' } },
+					modelKwargs: {
+						reasoning_split: true,
+						response_format: { type: 'json_object' },
+					},
 				}),
 			);
 		});
 
-		it('should not set modelKwargs when no responseFormat', async () => {
+		it('should set reasoning_split by default (hideThinking defaults to true)', async () => {
 			const ctx = setupMockContext();
+
+			await node.supplyData.call(ctx, 0);
+
+			expect(MockedChatOpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({
+					modelKwargs: { reasoning_split: true },
+				}),
+			);
+		});
+
+		it('should not set reasoning_split when hideThinking is false', async () => {
+			const ctx = setupMockContext();
+			ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model') return 'MiniMax-M2.7';
+				if (paramName === 'options') return { hideThinking: false };
+				return undefined;
+			});
 
 			await node.supplyData.call(ctx, 0);
 

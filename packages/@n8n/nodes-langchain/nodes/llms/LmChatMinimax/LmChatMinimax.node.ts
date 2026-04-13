@@ -98,6 +98,14 @@ export class LmChatMinimax implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Hide Thinking',
+						name: 'hideThinking',
+						default: true,
+						type: 'boolean',
+						description:
+							'Whether to strip chain-of-thought reasoning from the response, returning only the final answer',
+					},
+					{
 						displayName: 'Maximum Number of Tokens',
 						name: 'maxTokens',
 						default: -1,
@@ -167,6 +175,7 @@ export class LmChatMinimax implements INodeType {
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
+			hideThinking?: boolean;
 			maxTokens?: number;
 			maxRetries: number;
 			timeout: number;
@@ -174,6 +183,8 @@ export class LmChatMinimax implements INodeType {
 			topP?: number;
 			responseFormat?: 'text' | 'json_object';
 		};
+
+		const hideThinking = options.hideThinking ?? true;
 
 		const timeout = options.timeout;
 		const configuration: ClientOptions = {
@@ -186,6 +197,14 @@ export class LmChatMinimax implements INodeType {
 			},
 		};
 
+		const modelKwargs: Record<string, unknown> = {};
+		if (hideThinking) {
+			modelKwargs.reasoning_split = true;
+		}
+		if (options.responseFormat) {
+			modelKwargs.response_format = { type: options.responseFormat };
+		}
+
 		const model = new ChatOpenAI({
 			apiKey: credentials.apiKey,
 			model: modelName,
@@ -194,11 +213,7 @@ export class LmChatMinimax implements INodeType {
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
 			callbacks: [new N8nLlmTracing(this)],
-			modelKwargs: options.responseFormat
-				? {
-						response_format: { type: options.responseFormat },
-					}
-				: undefined,
+			modelKwargs: Object.keys(modelKwargs).length > 0 ? modelKwargs : undefined,
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
 		});
 
