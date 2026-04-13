@@ -12,6 +12,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes, NodeOperationError, jsonParse } from 'n8n-workflow';
 
+import { getGraphQlErrorDetails } from './GraphQLErrorUtils';
+
 export class GraphQL implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GraphQL',
@@ -552,10 +554,8 @@ export class GraphQL implements INodeType {
 				}
 				// throw from response object.errors[]
 				if (typeof response === 'object' && response.errors) {
-					const message =
-						response.errors?.map((error: IDataObject) => error.message).join(', ') ||
-						'Unexpected error';
-					throw new NodeApiError(this.getNode(), response.errors as JsonObject, { message });
+					const { message, errorData } = getGraphQlErrorDetails(response.errors);
+					throw new NodeApiError(this.getNode(), errorData, { message });
 				}
 			} catch (error) {
 				if (!this.continueOnFail()) {
