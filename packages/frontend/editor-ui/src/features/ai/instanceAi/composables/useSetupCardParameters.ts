@@ -1,10 +1,16 @@
 import type { ComputedRef, Ref } from 'vue';
 import { ref } from 'vue';
+import { hasPlaceholderDeep } from '@n8n/utils';
 import { NodeHelpers, type INodeProperties } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { IUpdateInformation } from '@/Interface';
 import { isNestedParam, isParamValueSet, type SetupCard } from '../instanceAiWorkflowSetup.utils';
+
+/** Check if the original node parameter value was a placeholder sentinel. */
+function isOriginalValuePlaceholder(req: SetupCard['nodes'][0], paramName: string): boolean {
+	return hasPlaceholderDeep(req.node.parameters[paramName]);
+}
 
 export function useSetupCardParameters(
 	cards: ComputedRef<SetupCard[]>,
@@ -111,6 +117,10 @@ export function useSetupCardParameters(
 					}
 					if (isParamValueSet(val)) {
 						merged[paramName] = val;
+						hasValues = true;
+					} else if (isOriginalValuePlaceholder(req, paramName)) {
+						// Explicitly send empty string to clear the placeholder sentinel on the backend
+						merged[paramName] = '';
 						hasValues = true;
 					}
 				}
