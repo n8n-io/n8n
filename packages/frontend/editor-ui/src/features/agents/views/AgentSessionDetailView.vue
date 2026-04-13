@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import { useToast } from '@/app/composables/useToast';
-import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import { AGENT_SESSIONS_LIST_VIEW } from '@/features/agents/constants';
 import type { ThreadExecution } from '@/features/agents/composables/useAgentThreadsApi';
@@ -87,11 +86,6 @@ function executionDuration(execution: ThreadExecution): number {
 	return new Date(execution.stoppedAt).getTime() - new Date(execution.startedAt).getTime();
 }
 
-function formatDate(fullDate: string) {
-	const { date, time } = convertToDisplayDate(fullDate);
-	return `${date} ${time}`;
-}
-
 function highlightAgentName(text: string): string {
 	if (!thread.value?.agentName) return escapeHtml(text);
 	const escaped = escapeHtml(text);
@@ -148,6 +142,7 @@ function goBack() {
 							</span>
 						</div>
 						<!-- User message (skipped for resumed executions with empty message) -->
+						<!-- eslint-disable vue/no-v-html -- safe: highlightAgentName uses escapeHtml -->
 						<div v-if="getMetadata(execution, 'userMessage')" :class="$style.userMessage">
 							<div
 								:class="$style.userBubble"

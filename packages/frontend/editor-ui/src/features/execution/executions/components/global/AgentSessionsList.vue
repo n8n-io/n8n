@@ -49,7 +49,7 @@ function formatTokens(count: number): string {
 }
 
 const deleteActions = [
-	{ id: 'delete', label: i18n.baseText('generic.delete'), icon: 'trash' as const },
+	{ id: 'delete', label: i18n.baseText('generic.delete'), icon: 'trash-2' as const },
 ];
 
 async function onAction(actionId: string, threadId: string) {

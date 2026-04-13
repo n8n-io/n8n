@@ -72,7 +72,7 @@ const viewModeOptions = [
 	{ label: i18n.baseText('executionsList.viewMode.agents'), value: 'agents' },
 ];
 
-function onViewModeChange(mode: ViewMode) {
+function onViewModeChange(mode: string) {
 	void router.replace({ query: { ...route.query, view: mode === 'workflows' ? undefined : mode } });
 }
 

@@ -105,7 +105,7 @@ function onTabChange(tab: string) {
 			</div>
 		</div>
 		<div :class="$style.content">
-			<router-view />
+			<RouterView />
 		</div>
 	</div>
 </template>
