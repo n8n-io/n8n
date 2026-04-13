@@ -113,7 +113,7 @@ onMounted(() => {
 			</a>
 		</p>
 		<N8nCallout
-			v-if="ssoStore.oidcConfiguredByEnv"
+			v-if="ssoStore.ssoManagedByEnv"
 			theme="warning"
 			style="margin-bottom: var(--spacing--lg)"
 		>
@@ -130,7 +130,7 @@ onMounted(() => {
 					<N8nSelect
 						filterable
 						size="medium"
-						:disabled="ssoStore.oidcConfiguredByEnv"
+						:disabled="ssoStore.ssoManagedByEnv"
 						:model-value="authProtocol"
 						:placeholder="i18n.baseText('parameterInput.select')"
 						@update:model-value="onAuthProtocolUpdated"

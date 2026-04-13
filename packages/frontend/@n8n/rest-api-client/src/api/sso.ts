@@ -1,6 +1,5 @@
 import type {
 	OidcConfigDto,
-	OidcConfigResponseDto,
 	SamlPreferences,
 	SamlToggleDto,
 	TestOidcConfigResponseDto,
@@ -49,7 +48,7 @@ export const testSamlConfig = async (
 	return await makeRestApiRequest(context, 'POST', '/sso/saml/config/test', data);
 };
 
-export const getOidcConfig = async (context: IRestApiContext): Promise<OidcConfigResponseDto> => {
+export const getOidcConfig = async (context: IRestApiContext): Promise<OidcConfigDto> => {
 	return await makeRestApiRequest(context, 'GET', '/sso/oidc/config');
 };
 

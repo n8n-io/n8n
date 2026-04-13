@@ -1,4 +1,4 @@
-import type { OidcConfigResponseDto, SamlPreferences } from '@n8n/api-types';
+import type { OidcConfigDto, SamlPreferences } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { within, waitFor } from '@testing-library/vue';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
@@ -21,8 +21,7 @@ const samlConfig = {
 
 const oidcConfig = {
 	discoveryEndpoint: 'https://dev-qqkrykgkoo0p63d5.eu.auth0.com/.well-known/openid-configuration',
-	configuredByEnv: false,
-} as OidcConfigResponseDto;
+} as OidcConfigDto;
 
 const telemetryTrack = vi.fn();
 vi.mock('@/app/composables/useTelemetry', () => ({

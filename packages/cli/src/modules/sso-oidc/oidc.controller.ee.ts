@@ -36,10 +36,7 @@ export class OidcController {
 		if (config.clientSecret) {
 			config.clientSecret = OIDC_CLIENT_SECRET_REDACTED_VALUE;
 		}
-		return {
-			...config,
-			configuredByEnv: this.oidcSettingsLoader.isConfiguredByEnv(),
-		};
+		return config;
 	}
 
 	@Post('/config')

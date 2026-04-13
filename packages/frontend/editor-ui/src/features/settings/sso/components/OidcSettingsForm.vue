@@ -24,7 +24,7 @@ const message = useMessage();
 
 const savingForm = ref<boolean>(false);
 const roleMappingRuleEditorRef = ref<InstanceType<typeof RoleMappingRuleEditor> | null>(null);
-const isOverrideActive = computed(() => ssoStore.oidcConfiguredByEnv);
+const isOverrideActive = computed(() => ssoStore.ssoManagedByEnv);
 
 const discoveryEndpoint = ref('');
 const clientId = ref('');

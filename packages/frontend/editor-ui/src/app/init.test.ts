@@ -140,14 +140,15 @@ describe('Init', () => {
 			const oidc = { loginEnabled: false, loginUrl: '', callbackUrl: '' };
 
 			settingsStore.userManagement.authenticationMethod = UserManagementAuthenticationMethod.Saml;
-			settingsStore.settings.sso = { saml, ldap, oidc };
+			settingsStore.settings.sso = { managedByEnv: false, saml, ldap, oidc };
 			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml] = true;
 
 			await initializeCore();
 
 			expect(ssoStore.initialize).toHaveBeenCalledWith({
 				authenticationMethod: UserManagementAuthenticationMethod.Saml,
-				config: { saml, ldap, oidc },
+				managedByEnv: false,
+				config: { managedByEnv: false, saml, ldap, oidc },
 				features: {
 					saml: true,
 					ldap: false,
