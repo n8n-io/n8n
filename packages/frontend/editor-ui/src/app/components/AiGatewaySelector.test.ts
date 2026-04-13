@@ -4,10 +4,12 @@ import { screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import AiGatewayToggle from './AiGatewayToggle.vue';
+import AiGatewaySelector from './AiGatewaySelector.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
 
 const mockFetchCredits = vi.fn().mockResolvedValue(undefined);
 const mockCreditsRemaining = ref<number | undefined>(undefined);
@@ -28,9 +30,9 @@ vi.mock('vue-router', async (importOriginal) => ({
 	useRouter: vi.fn(() => ({})),
 }));
 
-const renderComponent = createComponentRenderer(AiGatewayToggle);
+const renderComponent = createComponentRenderer(AiGatewaySelector);
 
-describe('AiGatewayToggle', () => {
+describe('AiGatewaySelector', () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 
 	beforeEach(() => {
@@ -43,72 +45,86 @@ describe('AiGatewayToggle', () => {
 	});
 
 	describe('rendering', () => {
-		it('should render the toggle switch and label', () => {
+		it('should render both radio cards', () => {
 			renderComponent({ props: { aiGatewayEnabled: false, readonly: false } });
 
-			expect(screen.getByTestId('ai-gateway-toggle')).toBeInTheDocument();
-			expect(screen.getByTestId('ai-gateway-toggle-switch')).toBeInTheDocument();
-			expect(screen.getByText('Connect via n8n Gateway')).toBeInTheDocument();
+			expect(screen.getByTestId('ai-gateway-selector')).toBeInTheDocument();
+			expect(screen.getByTestId('ai-gateway-selector-connect')).toBeInTheDocument();
+			expect(screen.getByTestId('ai-gateway-mode-card-own')).toBeInTheDocument();
+			expect(screen.getByText('n8n Connect')).toBeInTheDocument();
+			expect(screen.getByText('My own credential')).toBeInTheDocument();
 		});
 
-		it('should not show the callout when disabled', () => {
-			renderComponent({ props: { aiGatewayEnabled: false, readonly: false } });
-
-			expect(
-				screen.queryByText('n8n Gateway is the easy way to manage AI model usage'),
-			).not.toBeInTheDocument();
-		});
-
-		it('should show the callout when enabled', () => {
-			renderComponent({ props: { aiGatewayEnabled: true, readonly: false } });
-
-			expect(
-				screen.getByText('n8n Gateway is the easy way to manage AI model usage'),
-			).toBeInTheDocument();
-		});
-
-		it('should show credits badge when creditsRemaining is defined', () => {
+		it('should show credits badge when aiGatewayEnabled and creditsRemaining is defined', () => {
 			mockCreditsRemaining.value = 5;
 			renderComponent({ props: { aiGatewayEnabled: true, readonly: false } });
 
-			expect(screen.getByText('5 credits remaining')).toBeInTheDocument();
+			expect(screen.getByText('5 credits')).toBeInTheDocument();
 		});
 
 		it('should not show credits badge when creditsRemaining is undefined', () => {
 			mockCreditsRemaining.value = undefined;
 			renderComponent({ props: { aiGatewayEnabled: true, readonly: false } });
 
-			expect(screen.queryByText(/credits remaining/)).not.toBeInTheDocument();
+			expect(screen.queryByText(/\d+ credits$/)).not.toBeInTheDocument();
 		});
 
-		it('should disable the switch in readonly mode', () => {
+		it('should not show credits badge when aiGatewayEnabled is false', () => {
+			mockCreditsRemaining.value = 5;
+			renderComponent({ props: { aiGatewayEnabled: false, readonly: false } });
+
+			expect(screen.queryByText(/\d+ credits$/)).not.toBeInTheDocument();
+		});
+
+		it('should disable both cards in readonly mode', () => {
 			renderComponent({ props: { aiGatewayEnabled: false, readonly: true } });
 
-			expect(screen.getByTestId('ai-gateway-toggle-switch')).toBeDisabled();
+			expect(screen.getByTestId('ai-gateway-selector-connect')).toBeDisabled();
+			expect(screen.getByTestId('ai-gateway-mode-card-own')).toBeDisabled();
 		});
 	});
 
-	describe('toggle emission', () => {
-		it('should emit toggle with true when switched on', async () => {
+	describe('selection', () => {
+		it('should emit select with true when n8n Connect card is clicked while disabled', async () => {
 			const { emitted } = renderComponent({
 				props: { aiGatewayEnabled: false, readonly: false },
 			});
 
-			await userEvent.click(screen.getByTestId('ai-gateway-toggle-switch'));
+			await userEvent.click(screen.getByTestId('ai-gateway-selector-connect'));
 
 			expect(emitted('toggle')).toBeTruthy();
 			expect(emitted('toggle')![0]).toEqual([true]);
 		});
 
-		it('should emit toggle with false when switched off', async () => {
+		it('should emit select with false when own credential card is clicked while gateway is active', async () => {
 			const { emitted } = renderComponent({
 				props: { aiGatewayEnabled: true, readonly: false },
 			});
 
-			await userEvent.click(screen.getByTestId('ai-gateway-toggle-switch'));
+			await userEvent.click(screen.getByTestId('ai-gateway-mode-card-own'));
 
 			expect(emitted('toggle')).toBeTruthy();
 			expect(emitted('toggle')![0]).toEqual([false]);
+		});
+
+		it('should not emit when n8n Connect card is clicked while already selected', async () => {
+			const { emitted } = renderComponent({
+				props: { aiGatewayEnabled: true, readonly: false },
+			});
+
+			await userEvent.click(screen.getByTestId('ai-gateway-selector-connect'));
+
+			expect(emitted('toggle')).toBeFalsy();
+		});
+
+		it('should not emit when own credential card is clicked while already selected', async () => {
+			const { emitted } = renderComponent({
+				props: { aiGatewayEnabled: false, readonly: false },
+			});
+
+			await userEvent.click(screen.getByTestId('ai-gateway-mode-card-own'));
+
+			expect(emitted('toggle')).toBeFalsy();
 		});
 	});
 
@@ -173,6 +189,30 @@ describe('AiGatewayToggle', () => {
 
 			await new Promise((r) => setTimeout(r, 10));
 			expect(mockFetchCredits).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('top-up badge', () => {
+		it('opens top-up modal when badge is clicked', async () => {
+			mockCreditsRemaining.value = 5;
+			renderComponent({ props: { aiGatewayEnabled: true, readonly: false } });
+
+			const uiStore = useUIStore();
+			vi.spyOn(uiStore, 'openModalWithData');
+
+			await userEvent.click(screen.getByText('5 credits'));
+
+			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+				name: AI_GATEWAY_TOP_UP_MODAL_KEY,
+				data: { credentialType: undefined },
+			});
+		});
+
+		it('renders "Top up" label alongside the credits label in the badge', () => {
+			mockCreditsRemaining.value = 5;
+			renderComponent({ props: { aiGatewayEnabled: true, readonly: false } });
+
+			expect(screen.getByText('Top up')).toBeInTheDocument();
 		});
 	});
 });

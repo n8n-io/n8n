@@ -121,6 +121,10 @@ export class InstanceAiController {
 		@Param('threadId') threadId: string,
 		@Body payload: InstanceAiSendMessageRequest,
 	) {
+		if (!payload.message && (!payload.attachments || payload.attachments.length === 0)) {
+			throw new BadRequestError('Either message or attachments must be provided');
+		}
+
 		// Verify the requesting user owns this thread (or it's new)
 		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
 

@@ -98,7 +98,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				userId: null,
 			});
 
-			await new Promise((resolve) => setTimeout(resolve, 1));
+			await new Promise((resolve) => setTimeout(resolve, 5));
 
 			await repository.addRecord({
 				workflowId: workflow.id,
@@ -107,7 +107,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				userId: null,
 			});
 
-			await new Promise((resolve) => setTimeout(resolve, 1));
+			await new Promise((resolve) => setTimeout(resolve, 5));
 
 			await repository.addRecord({
 				workflowId: workflow.id,
@@ -151,7 +151,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				userId: user1.id,
 			});
 
-			await new Promise((resolve) => setTimeout(resolve, 1));
+			await new Promise((resolve) => setTimeout(resolve, 5));
 
 			await repository.addRecord({
 				workflowId: workflow.id,
