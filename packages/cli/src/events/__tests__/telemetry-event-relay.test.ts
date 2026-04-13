@@ -1302,6 +1302,7 @@ describe('TelemetryEventRelay', () => {
 				credential_edited: false,
 				ai_builder_assisted: false,
 				identity_extractor_changed: false,
+				redaction_policy: undefined,
 			});
 		});
 
@@ -1318,7 +1319,7 @@ describe('TelemetryEventRelay', () => {
 					id: 'workflow123',
 					name: 'Test Workflow',
 					nodes: [],
-					settings: { credentialResolverId: 'resolver-123' },
+					settings: { credentialResolverId: 'resolver-123', redactionPolicy: undefined },
 				}),
 				publicApi: false,
 				settingsChanged: {
@@ -1349,6 +1350,69 @@ describe('TelemetryEventRelay', () => {
 				ai_builder_assisted: false,
 				credential_resolver_id: 'resolver-123',
 				identity_extractor_changed: false,
+				redaction_policy: undefined,
+			});
+		});
+
+		it('should track redaction policy when it changes', async () => {
+			const event: RelayEventMap['workflow-saved'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					nodes: [],
+					settings: { redactionPolicy: 'all' },
+				}),
+				publicApi: false,
+				settingsChanged: {
+					redactionPolicy: {
+						from: 'none',
+						to: 'all',
+					},
+				},
+			};
+
+			eventService.emit('workflow-saved', event);
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'User saved workflow',
+				expect.objectContaining({
+					redaction_policy: 'all',
+				}),
+			);
+		});
+
+		it('should track on `execution-data-revealed` event', () => {
+			const event: RelayEventMap['execution-data-revealed'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				executionId: 'exec123',
+				workflowId: 'workflow123',
+				ipAddress: '127.0.0.1',
+				userAgent: 'test-agent',
+				redactionPolicy: 'all',
+			};
+
+			eventService.emit('execution-data-revealed', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User confirmed reveal data', {
+				user_id: 'user123',
+				execution_id: 'exec123',
+				workflow_id: 'workflow123',
+				redaction_policy: 'all',
 			});
 		});
 

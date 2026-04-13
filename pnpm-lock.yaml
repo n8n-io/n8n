@@ -1608,6 +1608,9 @@ importers:
       luxon:
         specifier: 'catalog:'
         version: 3.7.2
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../workflow
       nanoid:
         specifier: 'catalog:'
         version: 3.3.8

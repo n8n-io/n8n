@@ -511,6 +511,10 @@ describe('GlobalConfig', () => {
 			oidcPrompt: 'select_account',
 			oidcAcrValues: '',
 			ssoUserRoleProvisioning: 'disabled',
+			securityPolicyManagedByEnv: false,
+			mfaEnforcedEnabled: false,
+			personalSpacePublishingEnabled: true,
+			personalSpaceSharingEnabled: true,
 		},
 	} satisfies GlobalConfigShape;
 

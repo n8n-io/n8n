@@ -94,12 +94,13 @@ function buildOutcome(
 		taskId,
 		workflowId: attempt.workflowId,
 		submitted: true,
-		triggerType: detectTriggerType(attempt),
+		triggerType: attempt.hasUnresolvedPlaceholders ? 'trigger_only' : detectTriggerType(attempt),
 		needsUserInput: false,
 		mockedNodeNames: attempt.mockedNodeNames,
 		mockedCredentialTypes: attempt.mockedCredentialTypes,
 		mockedCredentialsByNode: attempt.mockedCredentialsByNode,
 		verificationPinData: attempt.verificationPinData,
+		hasUnresolvedPlaceholders: attempt.hasUnresolvedPlaceholders,
 		summary: finalText,
 	};
 }
@@ -125,7 +126,7 @@ The system tracks file hashes. If you edit the code and then call run-workflow o
 ### Verification
 
 - If submit-workflow returned mocked credentials, call verify-built-workflow with the workItemId
-- Otherwise call run-workflow to test (skip for trigger-only workflows)
+- Otherwise call run-workflow to test (skip for trigger-only workflows). For event-based triggers (Linear, GitHub, Slack, etc.), pass \`inputData\` with sample data matching the trigger's expected output shape — the system injects it as the trigger node's output.
 - If verification fails, call debug-execution, fix the code, re-submit, and retry once
 - If the same failure signature repeats, stop and explain the block
 
