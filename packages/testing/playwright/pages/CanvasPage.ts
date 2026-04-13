@@ -13,6 +13,10 @@ import { StickyComponent } from './components/StickyComponent';
 import { TagsManagerModal } from './components/TagsManagerModal';
 
 export class CanvasPage extends BasePage {
+	async goto() {
+		await this.page.goto(ROUTES.NEW_WORKFLOW_PAGE);
+	}
+
 	readonly sticky = new StickyComponent(this.page);
 	readonly logsPanel = new LogsPanel(this.page.getByTestId('logs-panel'));
 	readonly focusPanel = new FocusPanel(this.page.getByTestId('focus-panel'));

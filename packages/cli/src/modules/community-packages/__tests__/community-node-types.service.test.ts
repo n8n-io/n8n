@@ -828,6 +828,8 @@ describe('CommunityNodeTypesService', () => {
 				{ name: 'package-2.node2', packageName: 'package-2', npmVersion: '2.0.0' },
 			];
 			(service as any).setCommunityNodeTypes(mockNodeTypes);
+			// Prevent fetchNodeTypes from running (and deleting the mock data via detectUpdates)
+			(service as any).lastUpdateTimestamp = Date.now();
 		});
 
 		it('should return node types with isInstalled flag', async () => {
