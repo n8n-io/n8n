@@ -1,3 +1,12 @@
+/**
+ * Legacy code-builder workflow patterns — verbose examples with positions and sample output.
+ *
+ * Used by the sandbox-based builder (ai-workflow-builder.ee) where explicit positions
+ * and output data are needed for code generation and validation.
+ *
+ * See also: workflow-patterns.ts for the instance-AI variant
+ * (enriched parameter examples, no positions/output).
+ */
 const SDK_IMPORT =
 	"import { workflow, node, trigger, sticky, placeholder, newCredential, ifElse, switchCase, merge, splitInBatches, nextBatch, languageModel, memory, tool, outputParser, embedding, embeddings, vectorStore, retriever, documentLoader, textSplitter, reranker, fromAi, expr } from '@n8n/workflow-sdk';";
 

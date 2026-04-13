@@ -1,11 +1,11 @@
 /**
- * Workflow SDK patterns — examples of common workflow shapes.
+ * Instance-AI workflow patterns — enriched examples with full parameter structures.
  *
- * Two variants:
- * - WORKFLOW_SDK_PATTERNS: Concise, no positions/output (used by instance-ai builder)
- * - WORKFLOW_PATTERNS: Verbose, with positions and sample output (used by legacy code-builder)
+ * Includes zero_item_safety, executeOnce guidance, and complete conditions/switch
+ * parameter examples. No positions or sample output — instance-AI auto-calculates layout.
  *
- * Both cover the same patterns; content is kept in sync.
+ * See also: workflow-patterns-detailed.ts for the legacy code-builder variant
+ * (includes positions and sample output for the sandbox environment).
  */
 
 const SDK_IMPORT =
@@ -489,8 +489,4 @@ export default workflow('ai-sentiment', 'AI Sentiment Analyzer')
 \`\`\`
 </ai_agent_with_structured_output>`;
 
-/**
- * Verbose workflow patterns with positions and sample output data.
- * Used by the legacy code-builder agent (ai-workflow-builder.ee).
- */
 export { WORKFLOW_SDK_PATTERNS as WORKFLOW_PATTERNS_CONCISE };
