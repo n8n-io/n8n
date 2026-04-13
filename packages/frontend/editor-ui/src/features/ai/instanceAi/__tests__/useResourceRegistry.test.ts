@@ -316,4 +316,108 @@ describe('useResourceRegistry', () => {
 			);
 		});
 	});
+
+	describe('data table mutation artifact metadata', () => {
+		test.each(['insert-data-table-rows', 'update-data-table-rows', 'delete-data-table-rows'])(
+			'registers data table from %s result with name and projectId',
+			async (toolName) => {
+				const { messages, registry } = setup();
+
+				messages.value = [
+					makeMessage({
+						agentTree: makeAgentNode({
+							toolCalls: [
+								makeToolCall({
+									toolName,
+									result: {
+										dataTableId: 'dt-mut-1',
+										tableName: 'Orders',
+										projectId: 'proj-1',
+									},
+								}),
+							],
+						}),
+					}),
+				];
+				await nextTick();
+
+				const entry = registry.value.get('orders');
+				expect(entry).toEqual({
+					type: 'data-table',
+					id: 'dt-mut-1',
+					name: 'Orders',
+					projectId: 'proj-1',
+				});
+			},
+		);
+
+		test('enriches existing registry entry with projectId from mutation result', async () => {
+			const { messages, registry } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							// First: create-data-table registers the table (without projectId)
+							makeToolCall({
+								toolName: 'create-data-table',
+								result: { table: { id: 'dt-enrich', name: 'Signups' } },
+							}),
+							// Then: insert-data-table-rows adds projectId
+							makeToolCall({
+								toolName: 'insert-data-table-rows',
+								result: {
+									insertedCount: 5,
+									dataTableId: 'dt-enrich',
+									tableName: 'Signups',
+									projectId: 'proj-2',
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			const entry = registry.value.get('signups');
+			expect(entry).toEqual(
+				expect.objectContaining({
+					type: 'data-table',
+					id: 'dt-enrich',
+					name: 'Signups',
+					projectId: 'proj-2',
+				}),
+			);
+		});
+
+		test('uses dataTableId as fallback name when tableName is missing', async () => {
+			const { messages, registry } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'insert-data-table-rows',
+								result: {
+									insertedCount: 1,
+									dataTableId: 'dt-no-name',
+									projectId: 'proj-3',
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			const entry = registry.value.get('dt-no-name');
+			expect(entry).toEqual({
+				type: 'data-table',
+				id: 'dt-no-name',
+				name: 'dt-no-name',
+				projectId: 'proj-3',
+			});
+		});
+	});
 });

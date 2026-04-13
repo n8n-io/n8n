@@ -152,10 +152,6 @@ interface NormalizedModelMetadata {
 	modelName?: string;
 }
 
-function isInternalStateTool(toolId: string): boolean {
-	return toolId === 'updateWorkingMemory';
-}
-
 function isLangSmithTracingEnabled(proxyAvailable?: boolean): boolean {
 	const tracingFlag =
 		process.env.LANGCHAIN_TRACING_V2 ?? process.env.LANGSMITH_TRACING ?? undefined;
@@ -427,6 +423,15 @@ function mergeRunTreeInputs(
 	};
 }
 
+/**
+ * Unconditionally remove the cached LangSmith Client for a trace.
+ * Call after run finalization (success or failure) so the Client and
+ * its RunTree hierarchy can be garbage-collected.
+ */
+export function releaseTraceClient(traceId: string): void {
+	traceClients.delete(traceId);
+}
+
 export function getTraceParentRun(): RunTree | undefined {
 	const overrideRun = traceParentOverrideStorage.getStore()?.current;
 	if (overrideRun) {
@@ -605,20 +610,6 @@ function buildSuspendMetadata(
 	};
 }
 
-function resolveActorParentRun(parentRun: RunTree): RunTree {
-	let current: RunTree | undefined = parentRun;
-
-	while (current) {
-		if (current.run_type !== 'llm' && current.run_type !== 'tool') {
-			return current;
-		}
-
-		current = current.parent_run;
-	}
-
-	return parentRun;
-}
-
 async function traceSuspendableToolExecute(
 	tool: TraceableMastraTool,
 	options: InstanceAiToolTraceOptions | undefined,
@@ -716,33 +707,12 @@ async function traceToolExecute(
 		return await tool.execute?.(input, context);
 	}
 
-	const actorParentRun = isInternalStateTool(tool.id)
-		? resolveActorParentRun(parentRun)
-		: parentRun;
-	const internalStateRun = isInternalStateTool(tool.id)
-		? await postChildRun(actorParentRun, {
-				name: 'internal_state',
-				runType: 'chain',
-				tags: ['internal', 'memory'],
-				metadata: {
-					internal_state: true,
-					tool_name: tool.id,
-				},
-				inputs: { tool_name: tool.id },
-			})
-		: undefined;
-	const toolParentRun = internalStateRun ?? parentRun;
-	const toolRun = await postChildRun(toolParentRun, {
+	const toolRun = await postChildRun(parentRun, {
 		name: `tool:${tool.id}`,
 		runType: 'tool',
-		tags: normalizeTags(
-			['tool'],
-			isInternalStateTool(tool.id) ? ['internal', 'memory'] : undefined,
-			options?.tags,
-		),
+		tags: normalizeTags(['tool'], options?.tags),
 		metadata: mergeMetadata(options?.metadata, {
 			tool_name: tool.id,
-			...(isInternalStateTool(tool.id) ? { memory_tool: true } : {}),
 			...(options?.agentRole ? { agent_role: options.agentRole } : {}),
 			...normalizeModelMetadata(options?.metadata?.model_id),
 		}),
@@ -758,24 +728,12 @@ async function traceToolExecute(
 			outputs: result,
 			metadata: { final_status: 'completed' },
 		});
-		if (internalStateRun) {
-			await finishRunTree(internalStateRun, {
-				outputs: { tool_name: tool.id },
-				metadata: { final_status: 'completed', internal_state: true },
-			});
-		}
 		return result;
 	} catch (error) {
 		await finishRunTree(toolRun, {
 			error: normalizeErrorMessage(error),
 			metadata: { final_status: 'error' },
 		});
-		if (internalStateRun) {
-			await finishRunTree(internalStateRun, {
-				error: normalizeErrorMessage(error),
-				metadata: { final_status: 'error', internal_state: true },
-			});
-		}
 		throw error;
 	}
 }
@@ -785,10 +743,13 @@ function createTraceContext(
 	traceKind: InstanceAiTraceContext['traceKind'],
 	rootRun: InstanceAiTraceRun,
 	actorRun: InstanceAiTraceRun,
-	proxyHeaders?: Record<string, string>,
+	getProxyHeaders?: () => Promise<Record<string, string>>,
 ): InstanceAiTraceContext {
-	const withProxy = async <T>(fn: () => Promise<T>): Promise<T> =>
-		proxyHeaders ? await proxyHeaderStore.run(proxyHeaders, fn) : await fn();
+	const withProxy = async <T>(fn: () => Promise<T>): Promise<T> => {
+		if (!getProxyHeaders) return await fn();
+		const headers = await getProxyHeaders();
+		return await proxyHeaderStore.run(headers, fn);
+	};
 
 	const startChildRun = async (
 		parentRun: InstanceAiTraceRun,
@@ -1090,12 +1051,13 @@ export async function createInstanceAiTraceContext(
 			'message_turn',
 			messageRun,
 			orchestratorRun,
-			options.proxyConfig?.headers,
+			options.proxyConfig?.getAuthHeaders,
 		);
 	};
 
 	if (options.proxyConfig) {
-		return await proxyHeaderStore.run(options.proxyConfig.headers, createTraceRuns);
+		const headers = await options.proxyConfig.getAuthHeaders();
+		return await proxyHeaderStore.run(headers, createTraceRuns);
 	}
 	return await createTraceRuns();
 }
@@ -1119,12 +1081,13 @@ export async function continueInstanceAiTraceContext(
 			'message_turn',
 			existingContext.rootRun,
 			orchestratorRun,
-			options.proxyConfig?.headers,
+			options.proxyConfig?.getAuthHeaders,
 		);
 	};
 
 	if (options.proxyConfig) {
-		return await proxyHeaderStore.run(options.proxyConfig.headers, createContinuation);
+		const headers = await options.proxyConfig.getAuthHeaders();
+		return await proxyHeaderStore.run(headers, createContinuation);
 	}
 	return await createContinuation();
 }
@@ -1170,12 +1133,13 @@ export async function createDetachedSubAgentTraceContext(
 			'detached_subagent',
 			rootRun,
 			rootRun,
-			options.proxyConfig?.headers,
+			options.proxyConfig?.getAuthHeaders,
 		);
 	};
 
 	if (options.proxyConfig) {
-		return await proxyHeaderStore.run(options.proxyConfig.headers, createDetachedRuns);
+		const headers = await options.proxyConfig.getAuthHeaders();
+		return await proxyHeaderStore.run(headers, createDetachedRuns);
 	}
 	return await createDetachedRuns();
 }

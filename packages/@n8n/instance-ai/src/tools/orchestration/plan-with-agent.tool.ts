@@ -32,7 +32,6 @@ import {
 } from './tracing-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
-import { traceWorkingMemoryContext } from '../../runtime/working-memory-tracing';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
@@ -287,24 +286,14 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 					const traceParent = getTraceParentRun();
 					return await withTraceParentContext(traceParent, async () => {
 						const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
-						const stream = await traceWorkingMemoryContext(
-							{
-								phase: 'initial',
-								agentId: subAgentId,
-								agentRole: 'planner',
-								threadId: context.threadId,
-								input: briefing,
+						const stream = await subAgent.stream(briefing, {
+							maxSteps: PLANNER_MAX_STEPS,
+							abortSignal: context.abortSignal,
+							providerOptions: {
+								anthropic: { cacheControl: { type: 'ephemeral' } },
 							},
-							async () =>
-								await subAgent.stream(briefing, {
-									maxSteps: PLANNER_MAX_STEPS,
-									abortSignal: context.abortSignal,
-									providerOptions: {
-										anthropic: { cacheControl: { type: 'ephemeral' } },
-									},
-									...(llmStepTraceHooks?.executionOptions ?? {}),
-								}),
-						);
+							...(llmStepTraceHooks?.executionOptions ?? {}),
+						});
 
 						const result = await consumeStreamWithHitl({
 							agent: subAgent,
@@ -321,7 +310,6 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 							abortSignal: context.abortSignal,
 							waitForConfirmation: context.waitForConfirmation,
 							llmStepTraceHooks,
-							workingMemoryEnabled: false,
 							maxSteps: PLANNER_MAX_STEPS,
 						});
 

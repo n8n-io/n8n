@@ -81,7 +81,7 @@
     "ts-jest": "^29.1.1",
     "tsc-alias": "^1.8.10",
     "tsc-watch": "^6.2.0",
-    "turbo": "2.8.9",
+    "turbo": "2.9.4",
     "typescript": "*",
     "zx": "^8.8.5"
   },
@@ -148,7 +148,9 @@
       "bn.js@4": "5.2.3",
       "bn.js@5": "5.2.3",
       "langsmith": ">=0.4.6",
-      "lodash-es": "4.17.23",
+      "lodash": "4.18.1",
+      "lodash-es": "4.18.1",
+      "@xmldom/xmldom": "0.8.12",
       "word-wrap@<=1.2.4": "1.2.4",
       "minimatch@<=5.1.8": "5.1.8",
       "minimatch@10": "10.2.3",
@@ -162,7 +164,8 @@
       "path-to-regexp@<0.1.13": "0.1.13",
       "picomatch@2": "2.3.2",
       "picomatch@4": "4.0.4",
-      "brace-expansion@5": "5.0.5"
+      "brace-expansion@5": "5.0.5",
+      "avsc": "5.7.9"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
@@ -173,7 +176,6 @@
       "@types/uuencode@0.0.3": "patches/@types__uuencode@0.0.3.patch",
       "vue-tsc@2.2.8": "patches/vue-tsc@2.2.8.patch",
       "element-plus@2.4.3": "patches/element-plus@2.4.3.patch",
-      "js-base64": "patches/js-base64.patch",
       "ics": "patches/ics.patch",
       "minifaker": "patches/minifaker.patch",
       "z-vue-scan": "patches/z-vue-scan.patch",

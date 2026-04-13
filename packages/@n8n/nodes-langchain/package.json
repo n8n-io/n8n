@@ -61,6 +61,7 @@
       "dist/credentials/MotorheadApi.credentials.js",
       "dist/credentials/MilvusApi.credentials.js",
       "dist/credentials/MistralCloudApi.credentials.js",
+      "dist/credentials/MoonshotApi.credentials.js",
       "dist/credentials/LemonadeApi.credentials.js",
       "dist/credentials/OllamaApi.credentials.js",
       "dist/credentials/OpenRouterApi.credentials.js",
@@ -79,8 +80,10 @@
       "dist/credentials/ChatHubVectorStorePineconeApi.credentials.js"
     ],
     "nodes": [
+      "dist/nodes/vendors/AlibabaCloud/AlibabaCloud.node.js",
       "dist/nodes/vendors/Anthropic/Anthropic.node.js",
       "dist/nodes/vendors/GoogleGemini/GoogleGemini.node.js",
+      "dist/nodes/vendors/Moonshot/Moonshot.node.js",
       "dist/nodes/vendors/Ollama/Ollama.node.js",
       "dist/nodes/vendors/OpenAi/OpenAi.node.js",
       "dist/nodes/vendors/Microsoft/MicrosoftAgent365Trigger.node.js",
@@ -118,6 +121,7 @@
       "dist/nodes/llms/LmChatGoogleVertex/LmChatGoogleVertex.node.js",
       "dist/nodes/llms/LmChatGroq/LmChatGroq.node.js",
       "dist/nodes/llms/LmChatMistralCloud/LmChatMistralCloud.node.js",
+      "dist/nodes/llms/LmChatMoonshot/LmChatMoonshot.node.js",
       "dist/nodes/llms/LMChatLemonade/LmChatLemonade.node.js",
       "dist/nodes/llms/LMChatOllama/LmChatOllama.node.js",
       "dist/nodes/llms/LmChatOpenRouter/LmChatOpenRouter.node.js",

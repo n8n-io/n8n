@@ -30,7 +30,10 @@ export async function braveSearch(
 		maxResults?: number;
 		includeDomains?: string[];
 		excludeDomains?: string[];
-		proxyConfig?: { apiUrl: string; headers: Record<string, string> };
+		proxyConfig?: {
+			apiUrl: string;
+			getAuthHeaders: () => Promise<Record<string, string>>;
+		};
 	},
 ): Promise<WebSearchResponse> {
 	let searchQuery = query;
@@ -53,10 +56,11 @@ export async function braveSearch(
 	const baseUrl = useProxy
 		? `${options.proxyConfig!.apiUrl}${BRAVE_SEARCH_PATH}`
 		: BRAVE_SEARCH_URL;
+	const proxyHeaders = useProxy ? await options.proxyConfig!.getAuthHeaders() : undefined;
 	const headers: Record<string, string> = {
 		Accept: 'application/json',
 		'Accept-Encoding': 'gzip',
-		...(useProxy ? options.proxyConfig!.headers : { 'X-Subscription-Token': apiKey }),
+		...(proxyHeaders ?? { 'X-Subscription-Token': apiKey }),
 	};
 
 	const response = await fetch(`${baseUrl}?${params}`, { headers });
