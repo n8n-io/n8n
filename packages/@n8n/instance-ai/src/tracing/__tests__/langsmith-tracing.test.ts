@@ -705,6 +705,7 @@ describe('createInstanceAiTraceContext', () => {
 			input: { message: 'proxy test' },
 			proxyConfig: {
 				apiUrl: 'https://proxy.example.com/langsmith',
+				// eslint-disable-next-line @typescript-eslint/require-await
 				getAuthHeaders: async () => ({ Authorization: 'Bearer proxy-token' }),
 			},
 		});
@@ -723,6 +724,7 @@ describe('createInstanceAiTraceContext', () => {
 			input: { message: 'client test' },
 			proxyConfig: {
 				apiUrl: 'https://proxy.example.com/langsmith',
+				// eslint-disable-next-line @typescript-eslint/require-await
 				getAuthHeaders: async () => ({ Authorization: 'Bearer proxy-token' }),
 			},
 		});
@@ -764,6 +766,7 @@ describe('createInstanceAiTraceContext', () => {
 			input: { message: 'disabled test' },
 			proxyConfig: {
 				apiUrl: 'https://proxy.example.com/langsmith',
+				// eslint-disable-next-line @typescript-eslint/require-await
 				getAuthHeaders: async () => ({ Authorization: 'Bearer proxy-token' }),
 			},
 		});
