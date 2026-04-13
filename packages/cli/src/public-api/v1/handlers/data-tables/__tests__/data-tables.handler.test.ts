@@ -136,15 +136,13 @@ describe('DataTable Handler', () => {
 					columns: [],
 					project: { id: projectId },
 				} as never);
-			mockDataTableService.updateDataTableProjectAndName.mockResolvedValue(undefined);
+			mockDataTableService.updateDataTable.mockResolvedValue(true as never);
 
 			await mainHandler.updateDataTable[2](req, mockResponse as Response);
 
-			expect(mockDataTableService.updateDataTableProjectAndName).toHaveBeenCalledWith(
-				dataTableId,
-				projectId,
-				{ toProjectId: undefined, name: 'renamed-table' },
-			);
+			expect(mockDataTableService.updateDataTable).toHaveBeenCalledWith(dataTableId, projectId, {
+				name: 'renamed-table',
+			});
 		});
 	});
 

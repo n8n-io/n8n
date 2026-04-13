@@ -1,13 +1,10 @@
 type: object
-description: |
-  Provide `name`, `projectId`, or both.
+description: Rename the data table. The new name must be unique within its project.
+required:
+  - name
 properties:
   name:
     type: string
     description: New name for the data table
     minLength: 1
     maxLength: 128
-  projectId:
-    type: string
-    description: |
-      ID of the project to move this table into. Combine with `name` to transfer and rename in one update.

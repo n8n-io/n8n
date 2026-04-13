@@ -235,29 +235,13 @@ export = {
 				}
 
 				const fromProjectId = await getProjectIdForDataTable(dataTableId);
-				let toProjectId: string | undefined;
-				if (payload.data.projectId) {
-					const project = await Container.get(ProjectService).getProjectWithScope(
-						req.user,
-						payload.data.projectId,
-						['dataTable:update'],
-					);
-					if (!project) throw new ForbiddenError();
-					toProjectId = project.id;
-				}
 
-				await Container.get(DataTableService).updateDataTableProjectAndName(
-					dataTableId,
-					fromProjectId,
-					{
-						toProjectId,
-						name: payload.data.name,
-					},
-				);
-				const currentProjectId = toProjectId ?? fromProjectId;
+				await Container.get(DataTableService).updateDataTable(dataTableId, fromProjectId, {
+					name: payload.data.name,
+				});
 
 				const result = await Container.get(DataTableRepository).findOne({
-					where: { id: dataTableId, project: { id: currentProjectId } },
+					where: { id: dataTableId, project: { id: fromProjectId } },
 					relations: ['project', 'columns'],
 				});
 
