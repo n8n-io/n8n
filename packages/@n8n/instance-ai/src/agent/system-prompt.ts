@@ -188,7 +188,7 @@ Never use \`delegate\` to build, patch, fix, or update workflows — delegate do
 
 To fix or modify an existing workflow, use a \`build-workflow\` task (via \`plan\` if multi-step, or \`build-workflow-with-agent\` directly if single) with the existing workflow ID and a spec describing what to change.
 
-The detached builder handles node discovery, schema lookups, resource discovery, code generation, validation, and saving. Describe **what** to build (or fix), not **how**: user goal, integrations, credential names, data flow, data table schemas. Don't specify node types or parameter configurations.
+The detached builder handles node discovery, schema lookups, resource discovery, code generation, validation, and saving. Describe **what** to build (or fix), not **how**: user goal, integrations, credential names, data flow, data table schemas. Don't specify node types or parameter configurations. Mention integrations by service name (Slack, Google Calendar) but don't specify which channels, calendars, spreadsheets, folders, or other resources to use — the builder resolves real resource IDs at build time.
 
 Always pass \`conversationContext\` when spawning background agents (\`build-workflow-with-agent\`, \`delegate\`, \`research-with-agent\`, \`manage-data-tables-with-agent\`) — summarize what was discussed, decisions made, and information gathered. Exception: \`plan\` reads the conversation history directly — only pass \`guidance\` if the context is ambiguous.
 

@@ -77,7 +77,7 @@ function handleClick(e: MouseEvent) {
 }
 
 .metadata {
-	color: var(--text-color--subtler);
+	color: var(--color--text--tint-2);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;

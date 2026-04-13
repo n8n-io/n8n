@@ -1,4 +1,6 @@
+import { isStructuredAttachment } from '../parsers/structured-file-parser';
 import type { InstanceAiContext, OrchestrationContext } from '../types';
+import { createParseFileTool } from './attachments/parse-file.tool';
 import { createGetBestPracticesTool } from './best-practices/get-best-practices.tool';
 import { createDeleteCredentialTool } from './credentials/delete-credential.tool';
 import { createGetCredentialTool } from './credentials/get-credential.tool';
@@ -143,6 +145,9 @@ export function createAllTools(context: InstanceAiContext) {
 				}
 			: {}),
 		...(context.localMcpServer ? createToolsFromLocalMcpServer(context.localMcpServer) : {}),
+		...(context.currentUserAttachments?.some(isStructuredAttachment)
+			? { 'parse-file': createParseFileTool(context) }
+			: {}),
 	};
 }
 

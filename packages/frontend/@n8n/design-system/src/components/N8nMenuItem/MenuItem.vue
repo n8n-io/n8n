@@ -4,6 +4,7 @@ import { computed } from 'vue';
 import type { IMenuItem } from '@n8n/design-system/types';
 
 import BetaTag from '../BetaTag/BetaTag.vue';
+import N8nActionPill from '../N8nActionPill/ActionPill.vue';
 import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';
 import N8nRoute from '../N8nRoute';
@@ -143,6 +144,7 @@ const tooltipPlacement = computed(() => {
 						text="New"
 						:class="$style.newTag"
 					/>
+					<N8nActionPill v-if="!compact && item.creditsTag" size="small" :text="item.creditsTag" />
 				</div>
 				<N8nIcon v-if="item.children && !compact" icon="chevron-right" color="text-light" />
 			</N8nRoute>
