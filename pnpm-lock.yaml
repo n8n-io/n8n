@@ -142,8 +142,8 @@ catalogs:
       specifier: 0.6.3
       version: 0.6.3
     js-base64:
-      specifier: 3.7.2
-      version: 3.7.2
+      specifier: 3.7.8
+      version: 3.7.8
     js-tiktoken:
       specifier: 1.0.21
       version: 1.0.21
@@ -436,9 +436,6 @@ patchedDependencies:
   ics:
     hash: 163587ad2fa9bc787ed09cd5e958eace08b4aa8aaca651869e9434ba674e158d
     path: patches/ics.patch
-  js-base64:
-    hash: bb02fdf69495c7b0768791b60ab6e1a002053b8decd19a174f5755691e5c9500
-    path: patches/js-base64.patch
   minifaker:
     hash: bc707e2c34a2464da2c9c93ead33e80fd9883a00434ef64907ddc45208a08b33
     path: patches/minifaker.patch
@@ -1433,7 +1430,7 @@ importers:
         version: 6.0.2
       js-base64:
         specifier: 'catalog:'
-        version: 3.7.2(patch_hash=bb02fdf69495c7b0768791b60ab6e1a002053b8decd19a174f5755691e5c9500)
+        version: 3.7.8
       jssha:
         specifier: 3.3.1
         version: 3.3.1
@@ -1593,6 +1590,9 @@ importers:
       '@n8n/workflow-sdk':
         specifier: workspace:*
         version: link:../workflow-sdk
+      csv-parse:
+        specifier: 5.5.0
+        version: 5.5.0
       flatted:
         specifier: 3.4.2
         version: 3.4.2
@@ -3305,7 +3305,7 @@ importers:
         version: 3.4.2
       js-base64:
         specifier: 'catalog:'
-        version: 3.7.2(patch_hash=bb02fdf69495c7b0768791b60ab6e1a002053b8decd19a174f5755691e5c9500)
+        version: 3.7.8
       n8n-workflow:
         specifier: workspace:*
         version: link:../../../workflow
@@ -4458,7 +4458,7 @@ importers:
         version: 0.16.0
       js-base64:
         specifier: 'catalog:'
-        version: 3.7.2(patch_hash=bb02fdf69495c7b0768791b60ab6e1a002053b8decd19a174f5755691e5c9500)
+        version: 3.7.8
       jsonrepair:
         specifier: 'catalog:'
         version: 3.13.2
@@ -27286,7 +27286,7 @@ snapshots:
     dependencies:
       '@libsql/core': 0.17.2
       '@libsql/hrana-client': 0.9.0(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@5.0.10)
-      js-base64: 3.7.8(patch_hash=bb02fdf69495c7b0768791b60ab6e1a002053b8decd19a174f5755691e5c9500)
+      js-base64: 3.7.8
       libsql: 0.5.28
       promise-limit: 2.7.0
     transitivePeerDependencies:
@@ -27296,7 +27296,7 @@ snapshots:
 
   '@libsql/core@0.17.2':
     dependencies:
-      js-base64: 3.7.8(patch_hash=bb02fdf69495c7b0768791b60ab6e1a002053b8decd19a174f5755691e5c9500)
+      js-base64: 3.7.8
 
   '@libsql/darwin-arm64@0.5.28':
     optional: true
@@ -27308,7 +27308,7 @@ snapshots:
     dependencies:
       '@libsql/isomorphic-ws': 0.1.5(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       cross-fetch: 4.0.0(encoding@0.1.13)
-      js-base64: 3.7.8(patch_hash=bb02fdf69495c7b0768791b60ab6e1a002053b8decd19a174f5755691e5c9500)
+      js-base64: 3.7.8
       node-fetch: 3.3.2
     transitivePeerDependencies:
       - bufferutil
@@ -33821,7 +33821,7 @@ snapshots:
       form-data: 4.0.4
       form-data-encoder: 4.0.2
       formdata-node: 6.0.3
-      js-base64: 3.7.2(patch_hash=bb02fdf69495c7b0768791b60ab6e1a002053b8decd19a174f5755691e5c9500)
+      js-base64: 3.7.2
       node-fetch: 2.7.0(encoding@0.1.13)
       qs: 6.14.2
       readable-stream: 4.5.2
@@ -38170,9 +38170,9 @@ snapshots:
 
   jose@6.1.3: {}
 
-  js-base64@3.7.2(patch_hash=bb02fdf69495c7b0768791b60ab6e1a002053b8decd19a174f5755691e5c9500): {}
+  js-base64@3.7.2: {}
 
-  js-base64@3.7.8(patch_hash=bb02fdf69495c7b0768791b60ab6e1a002053b8decd19a174f5755691e5c9500): {}
+  js-base64@3.7.8: {}
 
   js-beautify@1.14.9:
     dependencies:

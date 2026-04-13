@@ -29,12 +29,6 @@ const isSaving = ref(false);
 const step = ref<'intro' | 'gateway'>('intro');
 const selectedOs = ref<'mac' | 'windows' | 'linux'>('mac');
 
-const featureItems = [
-	{ key: 'instanceAi.welcomeModal.feature.build' as const, icon: 'workflow' as const },
-	{ key: 'instanceAi.welcomeModal.feature.debug' as const, icon: 'flask-conical' as const },
-	{ key: 'instanceAi.welcomeModal.feature.ask' as const, icon: 'circle-help' as const },
-];
-
 const osTabs = [
 	{
 		id: 'mac' as const,
@@ -194,15 +188,6 @@ onUnmounted(() => {
 					:class="$style.description"
 					v-n8n-html="i18n.baseText('instanceAi.welcomeModal.description')"
 				/>
-
-				<ul :class="$style.featureList">
-					<li v-for="item in featureItems" :key="item.key" :class="$style.featureItem">
-						<N8nIcon :icon="item.icon" :size="24" :class="$style.featureIcon" />
-						<N8nText :class="$style.featureText">
-							{{ i18n.baseText(item.key) }}
-						</N8nText>
-					</li>
-				</ul>
 
 				<div :class="$style.warningBox">
 					<N8nIcon icon="triangle-alert" :size="16" :class="$style.warningIcon" />
@@ -438,33 +423,6 @@ onUnmounted(() => {
 	line-height: var(--line-height--sm);
 	margin: 0;
 	text-align: center;
-}
-
-.featureList {
-	list-style: none;
-	padding: 0;
-	margin: 0;
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-	margin-bottom: var(--spacing--2xs);
-}
-
-.featureItem {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--xs);
-}
-
-.featureIcon {
-	color: var(--color--text);
-	width: var(--spacing--sm);
-}
-
-.featureText {
-	flex: 1;
-	font-size: var(--font-size--sm);
-	line-height: var(--line-height--md);
 }
 
 .toggleGroup {
