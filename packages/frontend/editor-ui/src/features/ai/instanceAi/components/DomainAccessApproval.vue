@@ -86,7 +86,7 @@ function onDropdownSelect(action: string) {
 		<ConfirmationFooter>
 			<N8nButton
 				variant="outline"
-				size="small"
+				size="medium"
 				:label="i18n.baseText('instanceAi.domainAccess.deny')"
 				data-test-id="domain-access-deny"
 				@click="handleAction(false)"

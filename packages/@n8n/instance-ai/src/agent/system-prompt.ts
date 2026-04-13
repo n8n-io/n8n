@@ -224,13 +224,17 @@ Examples: search "credential" to find setup/test/delete tools, search "file" for
 
 `
 		: ''
-}## Safety
+}## Communication Style
+
+- **Be concise.** Ask for clarification when intent is ambiguous.
+- **No emojis** — only use emojis if the user explicitly requests it. Avoid emojis in all communication unless asked.
+- **Always end with a text response.** The user cannot see raw tool output. After every tool call sequence, reply with a brief summary of what you found or did — even if it's just one sentence. Never end your turn silently after tool calls.
+
+## Safety
 
 - **Destructive operations** show a confirmation UI automatically — don't ask via text.
 - **Credential setup** uses \`setup-workflow\` when a workflowId is available — it handles credentials, parameters, and triggers in one step. Use \`setup-credentials\` only when the user explicitly asks to create a credential outside of any workflow context. Never call both tools for the same workflow.
 - **Never expose credential secrets** — metadata only.
-- **Be concise**. Ask for clarification when intent is ambiguous.
-- **Always end with a text response.** The user cannot see raw tool output. After every tool call sequence, reply with a brief summary of what you found or did — even if it's just one sentence. Never end your turn silently after tool calls.
 
 ${
 	researchMode

@@ -499,14 +499,14 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 					<div :class="$style.footerActions">
 						<N8nButton
 							variant="outline"
-							size="small"
+							size="medium"
 							:class="$style.actionButton"
 							:label="i18n.baseText('instanceAi.workflowSetup.later')"
 							data-test-id="instance-ai-workflow-setup-later"
 							@click="handleLater"
 						/>
 						<N8nButton
-							size="small"
+							size="medium"
 							:class="$style.actionButton"
 							:label="i18n.baseText('instanceAi.credential.continueButton')"
 							data-test-id="instance-ai-workflow-setup-apply-button"
@@ -519,7 +519,7 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 			<div
 				v-else-if="currentDisplayCard?.type === 'single' && currentCard"
 				data-test-id="instance-ai-workflow-setup-card"
-				:class="[$style.card, { [$style.completed]: isCardComplete(currentCard) }]"
+				:class="$style.card"
 			>
 				<!-- Header -->
 				<header :class="$style.header">
@@ -702,7 +702,7 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 					<div :class="$style.footerActions">
 						<N8nButton
 							variant="outline"
-							size="small"
+							size="medium"
 							:class="$style.actionButton"
 							:label="i18n.baseText('instanceAi.workflowSetup.later')"
 							data-test-id="instance-ai-workflow-setup-later"
@@ -711,7 +711,7 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 
 						<N8nButton
 							v-if="currentCard.isTestable && currentCard.isTrigger && currentCard.isFirstTrigger"
-							size="small"
+							size="medium"
 							:class="$style.actionButton"
 							:label="i18n.baseText('instanceAi.workflowSetup.testTrigger')"
 							:disabled="isTriggerTestDisabled(currentCard)"
@@ -720,7 +720,7 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 						/>
 
 						<N8nButton
-							size="small"
+							size="medium"
 							:class="$style.actionButton"
 							:disabled="!anyCardComplete"
 							:label="i18n.baseText('instanceAi.credential.continueButton')"
@@ -1012,10 +1012,7 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 	padding: 0;
 	border: var(--border);
 	border-radius: var(--radius);
-
-	&.completed {
-		border-color: var(--color--success);
-	}
+	background-color: var(--color--background--light-3);
 }
 
 .confirmCard {
@@ -1025,8 +1022,8 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 	gap: var(--spacing--sm);
 	padding: 0;
 	border: var(--border);
-	border-color: var(--color--success);
 	border-radius: var(--radius);
+	background-color: var(--color--background--light-3);
 }
 
 .confirmSummary {
