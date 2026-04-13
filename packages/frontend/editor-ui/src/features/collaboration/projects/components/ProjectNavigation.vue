@@ -16,6 +16,7 @@ import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { AGENT_BUILDER_VIEW, NEW_AGENT_VIEW } from '@/features/agents/constants';
 import { listAllAgents, deleteAgent } from '@/features/agents/composables/useAgentApi';
+import { agentsEventBus } from '@/features/agents/agents.eventBus';
 
 import {
 	BetaTag,
@@ -215,11 +216,13 @@ async function onSourceControlPull() {
 onBeforeMount(async () => {
 	await usersStore.fetchUsers({ filter: { isPending: false }, take: 2 });
 	sourceControlEventBus.on('pull', onSourceControlPull);
+	agentsEventBus.on('agentUpdated', fetchAgents);
 	void fetchAgents();
 });
 
 onBeforeUnmount(() => {
 	sourceControlEventBus.off('pull', onSourceControlPull);
+	agentsEventBus.off('agentUpdated', fetchAgents);
 });
 </script>
 

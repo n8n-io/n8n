@@ -1,26 +1,33 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, nextTick } from 'vue';
-import { N8nIcon, N8nMarkdown, N8nPromptInput } from '@n8n/design-system';
+import { ref, reactive, computed, onMounted, nextTick, useTemplateRef } from 'vue';
+import { N8nIcon, N8nIconButton, N8nInput, N8nText } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useI18n } from '@n8n/i18n';
 import { getBuilderMessages, clearBuilderMessages } from '../composables/useAgentApi';
+import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
+import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
 
 const props = withDefaults(
 	defineProps<{
 		visible?: boolean;
 		projectId: string;
 		agentId: string;
+		mode?: 'panel' | 'inline';
 		initialMessage?: string;
 	}>(),
 	{
 		visible: true,
+		mode: 'panel',
 	},
 );
 
 const emit = defineEmits<{
-	close: [];
+	codeUpdated: [];
+	codeDelta: [delta: string];
 	configUpdated: [];
 }>();
 
+const locale = useI18n();
 const rootStore = useRootStore();
 
 interface ChatMessage {
@@ -38,7 +45,8 @@ const builderMessages = ref<ChatMessage[]>([]);
 const inputText = ref('');
 const isStreaming = ref(false);
 const builderHistoryLoaded = ref(false);
-const scrollContainer = ref<HTMLDivElement | null>(null);
+const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
+const inputRef = useTemplateRef<InstanceType<typeof N8nInput>>('inputRef');
 
 const currentMessages = computed(() =>
 	activeTab.value === 'builder' ? builderMessages.value : messages.value,
@@ -54,8 +62,8 @@ const messagingState = computed<'idle' | 'waitingFirstChunk' | 'receiving'>(() =
 
 function scrollToBottom() {
 	void nextTick(() => {
-		if (scrollContainer.value) {
-			scrollContainer.value.scrollTop = scrollContainer.value.scrollHeight;
+		if (scrollRef.value) {
+			scrollRef.value.scrollTop = scrollRef.value.scrollHeight;
 		}
 	});
 }
@@ -76,7 +84,6 @@ function convertDbMessages(dbMessages: unknown[]): ChatMessage[] {
 			}>;
 		};
 		if (!msg.role || !Array.isArray(msg.content)) continue;
-		// Only show user and assistant messages
 		if (msg.role !== 'user' && msg.role !== 'assistant') continue;
 
 		let text = '';
@@ -261,6 +268,14 @@ async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string) {
 					assistantMsg.thinking = (assistantMsg.thinking ?? '') + data.thinking;
 				}
 
+				if (typeof data.codeDelta === 'string') {
+					emit('codeDelta', data.codeDelta);
+				}
+
+				if (typeof data.code === 'string') {
+					emit('codeUpdated');
+				}
+
 				if (data.configUpdated !== undefined || data.toolUpdated !== undefined) {
 					builderMutated = true;
 					emit('configUpdated');
@@ -306,6 +321,7 @@ async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string) {
 		assistantMsg.status = 'error';
 	} finally {
 		isStreaming.value = false;
+		scrollToBottom();
 		// Emit a final refresh after the builder stream completes to ensure the
 		// latest config is shown even if no individual tool events fired it.
 		if (endpoint === 'build' && builderMutated) {
@@ -316,8 +332,9 @@ async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string) {
 </script>
 
 <template>
-	<aside v-if="visible" :class="$style.panel">
-		<div :class="$style.header">
+	<aside v-if="visible" :class="[mode === 'inline' ? $style.inlinePanel : $style.panel]">
+		<!-- Tabs header (only shown in panel mode) -->
+		<div v-if="mode === 'panel'" :class="$style.header">
 			<div :class="$style.tabs">
 				<button
 					:class="[$style.tabBtn, activeTab === 'test' && $style.tabBtnActive]"
@@ -344,19 +361,15 @@ async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string) {
 				>
 					<N8nIcon icon="trash-2" :size="14" />
 				</button>
-				<button :class="$style.closeBtn" data-testid="chat-close-button" @click="emit('close')">
-					<N8nIcon icon="x" :size="16" />
-				</button>
 			</div>
 		</div>
 
-		<div ref="scrollContainer" :class="$style.messages">
+		<!-- Messages -->
+		<div ref="scrollRef" :class="$style.messages">
 			<div v-if="currentMessages.length === 0 && !isStreaming" :class="$style.emptyState">
 				<N8nIcon icon="message-square" :size="32" />
-				<p :class="$style.emptyTitle">
-					{{ activeTab === 'builder' ? 'Builder chat' : 'Test your agent' }}
-				</p>
-				<span :class="$style.emptySubtitle">Send a message to start a conversation</span>
+				<N8nText tag="p" bold>Test your agent</N8nText>
+				<N8nText size="small" color="text-light"> Send a message to start a conversation </N8nText>
 			</div>
 			<template v-else>
 				<div
@@ -392,7 +405,7 @@ async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string) {
 									:size="12"
 									:class="$style.toolDone"
 								/>
-								<span v-else :class="$style.toolRunning">…</span>
+								<ChatTypingIndicator v-else />
 							</div>
 						</div>
 
@@ -407,12 +420,15 @@ async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string) {
 							:class="[$style.chatMessage, { [$style.chatMessageError]: msg.status === 'error' }]"
 						>
 							<div :class="$style.markdownContent">
-								<N8nMarkdown :content="msg.content" />
+								<ChatMarkdownChunk
+									:source="{ type: 'text', content: msg.content }"
+									@open-artifact="() => {}"
+								/>
 							</div>
 						</div>
 
 						<!-- Typing indicator for assistant still streaming with no content -->
-						<span
+						<ChatTypingIndicator
 							v-if="
 								msg.role === 'assistant' &&
 								msg.status === 'streaming' &&
@@ -420,9 +436,7 @@ async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string) {
 								!msg.toolCalls?.length
 							"
 							:class="$style.typingIndicator"
-						>
-							…
-						</span>
+						/>
 					</div>
 				</div>
 
@@ -432,7 +446,7 @@ async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string) {
 						<N8nIcon icon="robot" width="20" height="20" />
 					</div>
 					<div :class="$style.content">
-						<span :class="$style.typingIndicator">…</span>
+						<ChatTypingIndicator :class="$style.typingIndicator" />
 					</div>
 				</div>
 			</template>
@@ -440,14 +454,44 @@ async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string) {
 
 		<!-- Input -->
 		<div :class="$style.inputArea">
-			<N8nPromptInput
-				v-model="inputText"
-				placeholder="Type a message..."
-				:disabled="isStreaming"
-				data-testid="chat-input"
-				@submit="onSubmit"
-				@keydown="onKeydown"
-			/>
+			<form :class="$style.prompt" @submit.prevent="onSubmit">
+				<N8nInput
+					ref="inputRef"
+					:model-value="inputText"
+					type="textarea"
+					placeholder="Type a message..."
+					autocomplete="off"
+					:autosize="{ minRows: 1, maxRows: 6 }"
+					autofocus
+					:disabled="isStreaming"
+					data-testid="chat-input"
+					@update:model-value="inputText = $event"
+					@keydown="onKeydown"
+				/>
+				<div :class="$style.promptFooter">
+					<div />
+					<div :class="$style.promptActions">
+						<N8nIconButton
+							v-if="messagingState !== 'receiving'"
+							type="submit"
+							:disabled="isStreaming || !inputText.trim()"
+							:title="locale.baseText('chatHub.chat.prompt.button.send')"
+							:loading="messagingState === 'waitingFirstChunk'"
+							icon="arrow-up"
+							icon-size="large"
+							@click.stop
+						/>
+						<N8nIconButton
+							v-else
+							native-type="button"
+							:title="locale.baseText('chatHub.chat.prompt.button.stopGenerating')"
+							icon="square"
+							icon-size="large"
+							@click.stop
+						/>
+					</div>
+				</div>
+			</form>
 		</div>
 	</aside>
 </template>
@@ -459,6 +503,13 @@ async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string) {
 	border-left: var(--border-width) var(--border-style) var(--color--foreground);
 	display: flex;
 	flex-direction: column;
+}
+
+.inlinePanel {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
 }
 
 .header {
@@ -522,23 +573,6 @@ async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string) {
 	color: var(--color--danger);
 }
 
-.closeBtn {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	border: none;
-	background: none;
-	cursor: pointer;
-	color: var(--color--text--tint-2);
-	padding: var(--spacing--4xs);
-	border-radius: var(--radius);
-}
-
-.closeBtn:hover {
-	background-color: var(--color--foreground--tint-1);
-	color: var(--color--text);
-}
-
 /* Messages area — matches ChatHub layout */
 .messages {
 	flex: 1;
@@ -557,15 +591,6 @@ async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string) {
 	height: 100%;
 	gap: var(--spacing--3xs);
 	color: var(--color--text--tint-2);
-}
-
-.emptyTitle {
-	font-weight: var(--font-weight--bold);
-	margin: 0;
-}
-
-.emptySubtitle {
-	font-size: var(--font-size--sm);
 }
 
 /* Message layout — mirrors ChatMessage.vue styles */
@@ -683,19 +708,68 @@ async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string) {
 	color: var(--color--success);
 }
 
-.toolRunning {
-	color: var(--color--text--tint-2);
-}
-
 .typingIndicator {
 	margin-top: var(--spacing--xs);
-	color: var(--color--text--tint-2);
-	font-size: var(--font-size--lg);
 }
 
-/* Input area */
+/* Input area — matches ChatPromptFull layout */
 .inputArea {
 	padding: var(--spacing--sm);
 	border-top: var(--border-width) var(--border-style) var(--color--foreground);
+}
+
+.prompt {
+	width: 100%;
+	position: relative;
+	display: flex;
+	flex-direction: column;
+
+	& textarea {
+		font-size: var(--font-size--md);
+		line-height: 1.5em;
+		padding: var(--spacing--sm);
+		padding-bottom: 64px;
+		color: var(--color--text--shade-1);
+		box-shadow: 0 10px 24px 0 #00000010;
+		border-radius: 16px;
+
+		&::placeholder {
+			color: var(--color--text--tint-1);
+		}
+	}
+
+	:global(.n8n-input__wrapper) {
+		--input--radius: 16px;
+	}
+}
+
+.promptFooter {
+	position: absolute;
+	bottom: 1px;
+	left: 1px;
+	width: calc(100% - 2px);
+	z-index: 10;
+	background: var(--color--background--light-2);
+	border-radius: 16px;
+	padding: var(--spacing--sm);
+	display: flex;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+	pointer-events: none;
+
+	& > * {
+		pointer-events: auto;
+	}
+}
+
+.promptActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+
+	& button path {
+		stroke-width: 2.5;
+	}
 }
 </style>

@@ -92,25 +92,11 @@ vi.mock('@/features/ai/chatHub/chat.utils', () => ({
 	isLlmProviderModel: () => true,
 }));
 
-const mockSchema = {
-	model: { provider: 'anthropic', name: 'claude-sonnet-4-6' },
+const mockConfig = {
+	name: 'Test Agent',
+	model: 'anthropic/claude-sonnet-4-6',
 	credential: 'cred-1',
 	instructions: 'Be helpful',
-	description: null,
-	tools: [],
-	providerTools: [],
-	memory: null,
-	evaluations: [],
-	guardrails: [],
-	mcp: null,
-	telemetry: null,
-	checkpoint: null,
-	config: {
-		structuredOutput: { enabled: false, schemaSource: null },
-		thinking: null,
-		toolCallConcurrency: null,
-		requireToolApproval: false,
-	},
 };
 
 describe('AgentSettingsSidebar', () => {
@@ -120,8 +106,8 @@ describe('AgentSettingsSidebar', () => {
 		);
 		return mount(AgentSettingsSidebar, {
 			props: {
-				schema: mockSchema,
-				code: 'const agent = {};',
+				config: mockConfig,
+				agentTools: {},
 				updatedAt: '2026-04-09T00:00:00Z',
 				isDirty: false,
 				...props,

@@ -8,7 +8,8 @@ import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
 import { isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
-import type { AgentSchema } from '../types';
+import type { AgentJsonConfig } from '../types';
+import type { CustomToolEntry } from '../agent.types';
 import { CHATHUB_TO_CATALOG, CATALOG_TO_CHATHUB } from '../provider-mapping';
 import AgentToolsPanel from './AgentToolsPanel.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
@@ -19,15 +20,14 @@ const usersStore = useUsersStore();
 const chatStore = useChatStore();
 
 const props = defineProps<{
-	schema: AgentSchema | null;
-	code: string;
+	config: AgentJsonConfig | null;
+	agentTools: Record<string, CustomToolEntry>;
 	updatedAt: string;
 	isDirty: boolean;
 }>();
 
 const emit = defineEmits<{
-	'update:schema': [changes: Partial<AgentSchema>];
-	'update:code': [code: string];
+	'update:config': [changes: Partial<AgentJsonConfig>];
 	save: [];
 	cancel: [];
 }>();
@@ -37,7 +37,7 @@ const { credentialsByProvider, selectCredential } = useChatCredentials(
 	usersStore.currentUserId ?? 'anonymous',
 );
 
-const instructions = ref(props.schema?.instructions ?? '');
+const instructions = ref(props.config?.instructions ?? '');
 
 // Fetch agents when credentials are ready
 watch(
@@ -50,19 +50,29 @@ watch(
 	{ immediate: true },
 );
 
-// Build a ChatModelDto from the current schema so ModelSelector can show it as selected
-const selectedAgent = computed<ChatModelDto | null>(() => {
-	if (!props.schema?.model.provider || !props.schema?.model.name) return null;
+/** Parse "provider/model" string into provider and model parts */
+function parseModelString(model: string): { provider: string; name: string } | null {
+	const slashIndex = model.indexOf('/');
+	if (slashIndex <= 0) return null;
+	return { provider: model.slice(0, slashIndex), name: model.slice(slashIndex + 1) };
+}
 
-	const chatHubProvider = CATALOG_TO_CHATHUB[props.schema.model.provider];
+// Build a ChatModelDto from the current config so ModelSelector can show it as selected
+const selectedAgent = computed<ChatModelDto | null>(() => {
+	if (!props.config?.model) return null;
+
+	const parsed = parseModelString(props.config.model);
+	if (!parsed) return null;
+
+	const chatHubProvider = CATALOG_TO_CHATHUB[parsed.provider];
 	if (!chatHubProvider) return null;
 
 	return {
 		model: {
 			provider: chatHubProvider,
-			model: props.schema.model.name,
+			model: parsed.name,
 		} as ChatHubConversationModel,
-		name: props.schema.model.name,
+		name: parsed.name,
 		description: null,
 		icon: null,
 		updatedAt: null,
@@ -79,8 +89,8 @@ function onModelChange(selection: ChatHubConversationModel) {
 	const catalogProvider = CHATHUB_TO_CATALOG[selection.provider] ?? selection.provider;
 	const credentialId = credentialsByProvider.value?.[selection.provider] ?? '';
 
-	emit('update:schema', {
-		model: { provider: catalogProvider, name: selection.model },
+	emit('update:config', {
+		model: `${catalogProvider}/${selection.model}`,
 		credential: credentialId,
 	});
 }
@@ -88,27 +98,28 @@ function onModelChange(selection: ChatHubConversationModel) {
 function onSelectCredential(provider: ChatHubProvider, credentialId: string | null) {
 	selectCredential(provider, credentialId);
 
-	// If this is the currently selected provider, also update the schema credential
-	const currentChatHubProvider = props.schema?.model.provider
-		? CATALOG_TO_CHATHUB[props.schema.model.provider]
-		: undefined;
-	if (currentChatHubProvider === provider) {
-		emit('update:schema', { credential: credentialId ?? '' });
+	// If this is the currently selected provider, also update the config credential
+	if (props.config?.model) {
+		const parsed = parseModelString(props.config.model);
+		const currentChatHubProvider = parsed ? CATALOG_TO_CHATHUB[parsed.provider] : undefined;
+		if (currentChatHubProvider === provider) {
+			emit('update:config', { credential: credentialId ?? '' });
+		}
 	}
 }
 
 watch(
-	() => props.schema,
-	(schema) => {
-		if (!schema) return;
-		instructions.value = schema.instructions ?? '';
+	() => props.config,
+	(config) => {
+		if (!config) return;
+		instructions.value = config.instructions ?? '';
 	},
 	{ deep: true, immediate: true },
 );
 
 function onInstructionsChange(value: string) {
 	instructions.value = value;
-	emit('update:schema', { instructions: value });
+	emit('update:config', { instructions: value });
 }
 
 // --- Collapsible sections ---
@@ -252,8 +263,9 @@ function onResizeStart(event: MouseEvent) {
 				</button>
 				<div v-if="expandedSections.tools" :class="$style.sectionContent">
 					<AgentToolsPanel
-						:schema="schema"
-						@update:schema="(changes) => emit('update:schema', changes)"
+						:config="config"
+						:agent-tools="agentTools"
+						@update:config="(changes) => emit('update:config', changes)"
 					/>
 				</div>
 			</div>
@@ -276,13 +288,13 @@ function onResizeStart(event: MouseEvent) {
 				</button>
 				<div v-if="expandedSections.advanced" :class="$style.sectionContent">
 					<AgentMemoryPanel
-						:schema="schema"
-						@update:schema="(changes) => emit('update:schema', changes)"
+						:config="config"
+						@update:config="(changes) => emit('update:config', changes)"
 					/>
 				</div>
 			</div>
 
-			<!-- Code (collapsed by default) -->
+			<!-- Config JSON (collapsed by default) -->
 			<div :class="$style.section">
 				<button :class="$style.sectionHeader" @click="toggleSection('code')">
 					<div :class="$style.sectionHeaderLeft">
@@ -293,7 +305,11 @@ function onResizeStart(event: MouseEvent) {
 					</div>
 				</button>
 				<div v-if="expandedSections.code" :class="$style.codeSection">
-					<AgentCodeEditor :model-value="code" @update:model-value="emit('update:code', $event)" />
+					<AgentCodeEditor
+						:config="config"
+						:agent-tools="agentTools"
+						@update:config="(newConfig) => emit('update:config', newConfig)"
+					/>
 				</div>
 			</div>
 		</div>
