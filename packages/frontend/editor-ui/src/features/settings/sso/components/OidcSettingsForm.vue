@@ -183,8 +183,8 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 		toast.showError(error, i18n.baseText('settings.sso.settings.save.error_oidc'));
 		return;
 	} finally {
-		savingForm.value = false;
 		await getOidcConfig();
+		savingForm.value = false;
 	}
 }
 

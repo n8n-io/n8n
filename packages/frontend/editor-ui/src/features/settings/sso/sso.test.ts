@@ -1,6 +1,10 @@
+import type { OidcConfigDto } from '@n8n/api-types';
 import { createPinia, setActivePinia } from 'pinia';
 import { useSSOStore, SupportedProtocols } from '@/features/settings/sso/sso.store';
 import type { UserManagementAuthenticationMethod } from '@/Interface';
+import * as ssoApi from '@n8n/rest-api-client/api/sso';
+
+vi.mock('@n8n/rest-api-client/api/sso');
 
 let ssoStore: ReturnType<typeof useSSOStore>;
 
@@ -148,6 +152,55 @@ describe('SSO store', () => {
 
 			// Should default to SAML when authentication method is undefined
 			expect(ssoStore.selectedAuthProtocol).toBe(SupportedProtocols.SAML);
+		});
+	});
+
+	describe('getOidcConfig', () => {
+		it('should sync oidc.loginEnabled when fetching config', async () => {
+			const oidcConfig: OidcConfigDto = {
+				clientId: 'test-id',
+				clientSecret: 'test-secret',
+				discoveryEndpoint: 'https://example.com/.well-known/openid-configuration',
+				loginEnabled: true,
+				prompt: 'select_account',
+				authenticationContextClassReference: [],
+			};
+
+			vi.mocked(ssoApi.getOidcConfig).mockResolvedValue(oidcConfig);
+
+			// loginEnabled starts as false (default)
+			expect(ssoStore.isOidcLoginEnabled).toBe(false);
+
+			await ssoStore.getOidcConfig();
+
+			// After fetching config, loginEnabled should be synced
+			expect(ssoStore.isOidcLoginEnabled).toBe(true);
+			expect(ssoStore.oidcConfig).toEqual(oidcConfig);
+		});
+
+		it('should reset oidc.loginEnabled to false when server config has it disabled', async () => {
+			// Start with loginEnabled = true via initialize
+			ssoStore.initialize({
+				authenticationMethod: 'oidc' as UserManagementAuthenticationMethod,
+				config: { oidc: { loginEnabled: true } },
+				features: { saml: false, ldap: false, oidc: true },
+			});
+			expect(ssoStore.isOidcLoginEnabled).toBe(true);
+
+			// Server returns config with loginEnabled = false
+			vi.mocked(ssoApi.getOidcConfig).mockResolvedValue({
+				clientId: 'test-id',
+				clientSecret: 'test-secret',
+				discoveryEndpoint: 'https://example.com/.well-known/openid-configuration',
+				loginEnabled: false,
+				prompt: 'select_account',
+				authenticationContextClassReference: [],
+			});
+
+			await ssoStore.getOidcConfig();
+
+			// loginEnabled should now be false, matching server state
+			expect(ssoStore.isOidcLoginEnabled).toBe(false);
 		});
 	});
 });
