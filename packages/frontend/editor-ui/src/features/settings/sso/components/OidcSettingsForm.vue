@@ -112,9 +112,7 @@ const cannotSaveOidcSettings = computed(() => {
 	);
 });
 
-async function onOidcSettingsSave(
-	provisioningChangesConfirmed: boolean = false,
-): Promise<boolean> {
+async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false): Promise<boolean> {
 	if (
 		!provisioningChangesConfirmed &&
 		shouldPromptUserToConfirmUserRoleProvisioningChange({
