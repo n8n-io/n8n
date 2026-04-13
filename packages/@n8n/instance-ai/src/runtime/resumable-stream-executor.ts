@@ -1818,6 +1818,8 @@ export async function executeResumableStream(
 	let activeMastraRunId = options.stream.runId ?? options.initialMastraRunId ?? '';
 	let text = options.stream.text;
 
+	let currentResponseId: string | undefined;
+
 	while (true) {
 		let suspension: SuspensionInfo | undefined;
 		let hasError = false;
@@ -1852,6 +1854,14 @@ export async function executeResumableStream(
 			await finishSyntheticToolTrace(chunk, syntheticToolRecords);
 
 			options.llmStepTraceHooks?.onStreamChunk(chunk);
+
+			// Always capture responseId from step-start, regardless of trace hook path.
+			if (isRecord(chunk) && chunk.type === 'step-start') {
+				const stepPayload = getChunkPayload(chunk);
+				const stepMessageId =
+					typeof stepPayload?.messageId === 'string' ? stepPayload.messageId : undefined;
+				currentResponseId = stepMessageId;
+			}
 
 			if (options.llmStepTraceHooks) {
 				// Step lifecycle is handled by prepareStep/onStepFinish callbacks.
@@ -1898,7 +1908,12 @@ export async function executeResumableStream(
 				hasError = true;
 			}
 
-			const event = mapMastraChunkToEvent(options.context.runId, options.context.agentId, chunk);
+			const event = mapMastraChunkToEvent(
+				options.context.runId,
+				options.context.agentId,
+				chunk,
+				currentResponseId,
+			);
 			if (event) {
 				let shouldPublishEvent = true;
 

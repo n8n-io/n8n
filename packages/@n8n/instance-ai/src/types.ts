@@ -371,13 +371,16 @@ export interface InstanceAiDataTableService {
 	insertRows(
 		dataTableId: string,
 		rows: Array<Record<string, unknown>>,
-	): Promise<{ insertedCount: number }>;
+	): Promise<{ insertedCount: number; dataTableId: string; tableName: string; projectId: string }>;
 	updateRows(
 		dataTableId: string,
 		filter: DataTableFilterInput,
 		data: Record<string, unknown>,
-	): Promise<{ updatedCount: number }>;
-	deleteRows(dataTableId: string, filter: DataTableFilterInput): Promise<{ deletedCount: number }>;
+	): Promise<{ updatedCount: number; dataTableId: string; tableName: string; projectId: string }>;
+	deleteRows(
+		dataTableId: string,
+		filter: DataTableFilterInput,
+	): Promise<{ deletedCount: number; dataTableId: string; tableName: string; projectId: string }>;
 }
 
 // ── Web Research ────────────────────────────────────────────────────────────

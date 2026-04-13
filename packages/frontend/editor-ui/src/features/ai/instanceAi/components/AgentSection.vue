@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { N8nCallout, N8nIcon } from '@n8n/design-system';
-import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import { computed, ref, watch } from 'vue';
 import SubagentStepTimeline from './SubagentStepTimeline.vue';
 import TimelineStepButton from './TimelineStepButton.vue';
@@ -10,9 +11,9 @@ const props = defineProps<{
 	agentNode: InstanceAiAgentNode;
 }>();
 
-const isExpanded = ref(false);
-
 const isActive = computed(() => props.agentNode.status === 'active');
+const isExpanded = ref(isActive.value); // Start expanded if active, otherwise collapsed
+
 const isError = computed(() => props.agentNode.status === 'error');
 
 const sectionTitle = computed(
@@ -48,9 +49,9 @@ watch(
 				<span :class="{ [$style.shimmer]: isActive }">{{ sectionTitle }}</span>
 			</TimelineStepButton>
 		</CollapsibleTrigger>
-		<CollapsibleContent :class="$style.content">
+		<AnimatedCollapsibleContent :class="$style.content">
 			<SubagentStepTimeline :agent-node="props.agentNode" />
-		</CollapsibleContent>
+		</AnimatedCollapsibleContent>
 	</CollapsibleRoot>
 	<!-- Error display -->
 	<N8nCallout v-if="isError && props.agentNode.error" theme="danger">
