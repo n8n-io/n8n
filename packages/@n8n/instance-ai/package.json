@@ -48,7 +48,8 @@
     "@ai-sdk/provider-v5": "npm:@ai-sdk/provider@2.0.0",
     "zod-from-json-schema-v3": "npm:zod-from-json-schema@^0.0.5",
     "@n8n/agents": "workspace:*",
-    "flatted": "catalog:"
+    "flatted": "catalog:",
+    "n8n-workflow": "workspace:*"
   },
   "devDependencies": {
     "@ai-sdk/anthropic": "2.0.61",

@@ -1,3 +1,5 @@
+import { jsonParse } from 'n8n-workflow';
+
 import { IdRemapper, TraceIndex, TraceWriter, parseTraceJsonl } from '../trace-replay';
 import type { TraceToolCall, TraceToolSuspend, TraceToolResume, TraceEvent } from '../trace-replay';
 
@@ -381,10 +383,10 @@ describe('TraceWriter', () => {
 		const lines = jsonl.trim().split('\n');
 		expect(lines).toHaveLength(2); // header + 1 tool-call
 
-		const header = JSON.parse(lines[0]);
+		const header = jsonParse<{ kind: string }>(lines[0]);
 		expect(header.kind).toBe('header');
 
-		const call = JSON.parse(lines[1]);
+		const call = jsonParse<{ kind: string; toolName: string }>(lines[1]);
 		expect(call.kind).toBe('tool-call');
 		expect(call.toolName).toBe('search-nodes');
 	});

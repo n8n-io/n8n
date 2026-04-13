@@ -1,3 +1,5 @@
+import { jsonParse } from 'n8n-workflow';
+
 // ── Trace Event Types ───────────────────────────────────────────────────────
 
 export interface TraceHeader {
@@ -295,7 +297,7 @@ export function parseTraceJsonl(jsonl: string): TraceEvent[] {
 	return jsonl
 		.split('\n')
 		.filter((line) => line.trim().length > 0)
-		.map((line) => JSON.parse(line) as TraceEvent);
+		.map((line) => jsonParse<TraceEvent>(line));
 }
 
 /** Set of tool IDs that should use Tier 2 (pure replay) instead of real execution. */

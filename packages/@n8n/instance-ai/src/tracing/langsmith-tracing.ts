@@ -13,7 +13,8 @@ import type {
 	InstanceAiTraceRunInit,
 	ServiceProxyConfig,
 } from '../types';
-import { IdRemapper, TraceIndex, TraceWriter, PURE_REPLAY_TOOLS } from './trace-replay';
+import type { IdRemapper, TraceIndex, TraceWriter } from './trace-replay';
+import { PURE_REPLAY_TOOLS } from './trace-replay';
 import { isRecord } from '../utils/stream-helpers';
 
 const DEFAULT_PROJECT_NAME = 'instance-ai';
@@ -997,7 +998,7 @@ function pureReplayWrapTool(
 		requestContextSchema: tool.requestContextSchema,
 		execute: async (_input, _context) => {
 			const event = traceIndex.next(agentRole, tool.id);
-			return idRemapper.remapOutput(event.output);
+			return await Promise.resolve(idRemapper.remapOutput(event.output));
 		},
 		mastra: tool.mastra,
 		requireApproval: tool.requireApproval,
@@ -1147,8 +1148,8 @@ export function createTraceReplayOnlyContext(): InstanceAiTraceContext {
 		actorRun: stubRun,
 		messageRun: stubRun,
 		orchestratorRun: stubRun,
-		startChildRun: async () => stubRun,
-		withRunTree: async (_run, fn) => fn(),
+		startChildRun: async () => await Promise.resolve(stubRun),
+		withRunTree: async (_run, fn) => await fn(),
 		finishRun: async () => {},
 		failRun: async () => {},
 		toHeaders: () => ({}),
