@@ -5,7 +5,6 @@ import { createCredentialsTool } from './credentials.tool';
 import { createDataTablesTool } from './data-tables.tool';
 import { createExecutionsTool } from './executions.tool';
 import { createToolsFromLocalMcpServer } from './filesystem/create-tools-from-mcp-server';
-import { createFilesystemTool } from './filesystem.tool';
 import { createNodesTool } from './nodes.tool';
 import { createBrowserCredentialSetupTool } from './orchestration/browser-credential-setup.tool';
 import { createBuildWorkflowAgentTool } from './orchestration/build-workflow-agent.tool';
@@ -38,11 +37,7 @@ export function createAllTools(context: InstanceAiContext) {
 		templates: createTemplatesTool(),
 		'ask-user': createAskUserTool(),
 		'build-workflow': createBuildWorkflowTool(context),
-		...(context.localMcpServer
-			? createToolsFromLocalMcpServer(context.localMcpServer)
-			: context.filesystemService
-				? { filesystem: createFilesystemTool(context) }
-				: {}),
+		...(context.localMcpServer ? createToolsFromLocalMcpServer(context.localMcpServer) : {}),
 		...(context.currentUserAttachments?.some(isStructuredAttachment)
 			? { 'parse-file': createParseFileTool(context) }
 			: {}),
@@ -62,12 +57,9 @@ export function createOrchestratorDomainTools(context: InstanceAiContext) {
 		workspace: createWorkspaceTool(context),
 		research: createResearchTool(context),
 		nodes: createNodesTool(context, 'orchestrator'),
+		templates: createTemplatesTool(),
 		'ask-user': createAskUserTool(),
-		...(context.localMcpServer
-			? createToolsFromLocalMcpServer(context.localMcpServer)
-			: context.filesystemService
-				? { filesystem: createFilesystemTool(context) }
-				: {}),
+		...(context.localMcpServer ? createToolsFromLocalMcpServer(context.localMcpServer) : {}),
 	};
 }
 
