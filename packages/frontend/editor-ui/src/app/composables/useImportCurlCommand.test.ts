@@ -648,6 +648,27 @@ describe('sanitizeCurlUrlPlaceholders', () => {
 		);
 	});
 
+	test('should sanitize placeholder in URL when curl has a method flag before it', () => {
+		const curl = 'curl -X POST https://api.openai.com/v1/agents/<AGENT_ID>/runs';
+		const result = sanitizeCurlUrlPlaceholders(curl);
+		expect(result).toBe('curl -X POST https://api.openai.com/v1/agents/{AGENT_ID}/runs');
+	});
+
+	test('should sanitize placeholder in URL when curl has multiple flags before it', () => {
+		const curl =
+			'curl -X GET https://api.example.com/<RESOURCE_ID>/data -H "Authorization: Bearer <TOKEN>"';
+		const result = sanitizeCurlUrlPlaceholders(curl);
+		expect(result).toBe(
+			'curl -X GET https://api.example.com/{RESOURCE_ID}/data -H "Authorization: Bearer <TOKEN>"',
+		);
+	});
+
+	test('should sanitize placeholder in quoted URL when curl has a method flag before it', () => {
+		const curl = "curl -X DELETE 'https://api.example.com/v1/users/<USER_ID>'";
+		const result = sanitizeCurlUrlPlaceholders(curl);
+		expect(result).toBe("curl -X DELETE 'https://api.example.com/v1/users/{USER_ID}'");
+	});
+
 	test('should parse cURL command with unknown content-type', () => {
 		const curl = `curl --request POST \
   --url https://example.com/api \

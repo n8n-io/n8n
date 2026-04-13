@@ -235,16 +235,22 @@ export const flattenObject = <T extends Record<string, unknown>>(obj: T, prefix 
 /**
  * Extracts and sanitizes the URL in a cURL command.
  * Converts invalid placeholder syntax like \<PLACEHOLDER\> → {PLACEHOLDER}
+ * Handles URLs that appear after curl flags (e.g., curl -X POST https://...)
  */
 export function sanitizeCurlUrlPlaceholders(curlCommand: string): string {
-	const CURL_URL_REGEX = /curl\s+(['"]?)(https?:\/\/[^\s'"]+)\1/;
+	// Match the first URL in the command (optionally quoted).
+	// The URL may appear after flags like -X POST or -H "..." rather than
+	// immediately after 'curl', so we don't anchor the match to 'curl'.
+	const URL_REGEX = /(['"]?)(https?:\/\/[^\s'"]+)\1/;
 	const PLACEHOLDER_REGEX = /<([A-Za-z0-9_-]+)>/g;
 
-	const urlMatch = curlCommand.match(CURL_URL_REGEX);
+	const urlMatch = curlCommand.match(URL_REGEX);
 	if (!urlMatch || !urlMatch[2]) return curlCommand;
 
 	const originalUrl = urlMatch[2];
 	const sanitizedUrl = originalUrl.replaceAll(PLACEHOLDER_REGEX, '{$1}');
+
+	if (originalUrl === sanitizedUrl) return curlCommand;
 
 	return curlCommand.replace(originalUrl, sanitizedUrl);
 }
