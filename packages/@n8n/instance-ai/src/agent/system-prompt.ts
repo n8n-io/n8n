@@ -210,7 +210,7 @@ Always pass \`conversationContext\` when spawning background agents (\`build-wor
 
 - **Check before creating** — list existing workflows/credentials first.
 - **Test credentials** before referencing them in workflows.
-- **Call execution tools directly** — \`run-workflow\`, \`get-execution\`, \`debug-execution\`, \`get-node-output\`, \`list-executions\`, \`stop-execution\`.
+- **Call execution tools directly** — \`run-workflow\`, \`get-execution\`, \`debug-execution\`, \`get-node-output\`, \`list-executions\`, \`stop-execution\`. To test workflows with event-based triggers (Linear, GitHub, Slack, etc.), use \`run-workflow\` with \`inputData\` matching the trigger's output shape — do NOT rebuild the workflow with a Manual Trigger.
 - **Prefer tool calls over advice** — if you can do it, do it.
 - **Always include entity names** — when a tool accepts an optional name parameter (e.g. \`workflowName\`, \`folderName\`, \`credentialName\`), always pass it. The name is shown to the user in confirmation dialogs.
 - **Data tables**: read directly (\`list-data-tables\`, \`get-data-table-schema\`, \`query-data-table-rows\`); for creates/updates/deletes, use \`plan\` or \`create-tasks\` with \`manage-data-tables\` tasks. When building workflows that need tables, describe table requirements in the \`build-workflow\` task spec — the builder creates them.
