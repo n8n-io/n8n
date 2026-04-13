@@ -1,6 +1,7 @@
 import type { StorybookConfig } from '@storybook/vue3-vite';
 
 import { dirname } from 'path';
+import remarkGfm from 'remark-gfm';
 
 import { fileURLToPath } from 'url';
 
@@ -22,7 +23,16 @@ const config: StorybookConfig = {
 		getAbsolutePath('@chromatic-com/storybook'),
 		getAbsolutePath('@storybook/addon-vitest'),
 		getAbsolutePath('@storybook/addon-a11y'),
-		getAbsolutePath('@storybook/addon-docs'),
+		{
+			name: getAbsolutePath('@storybook/addon-docs'),
+			options: {
+				mdxPluginOptions: {
+					mdxCompileOptions: {
+						remarkPlugins: [remarkGfm],
+					},
+				},
+			},
+		},
 		getAbsolutePath('@storybook/addon-themes'),
 		getAbsolutePath('storybook-addon-vue-mdx'),
 	],
