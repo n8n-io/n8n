@@ -29,14 +29,25 @@ describe('best-practices', () => {
 			}
 		});
 
-		it('should return documentation for all techniques', () => {
+		it('should return documentation for all techniques that have it', () => {
+			const disabled = new Set([
+				WorkflowTechnique.DATA_ANALYSIS,
+				WorkflowTechnique.ENRICHMENT,
+				WorkflowTechnique.KNOWLEDGE_BASE,
+				WorkflowTechnique.HUMAN_IN_THE_LOOP,
+				WorkflowTechnique.MONITORING,
+			]);
 			for (const tech of Object.values(WorkflowTechnique)) {
 				const fn = documentation[tech];
-				expect(fn).toBeDefined();
-				if (fn) {
-					const doc = fn();
-					expect(typeof doc).toBe('string');
-					expect(doc.length).toBeGreaterThan(100);
+				if (disabled.has(tech)) {
+					expect(fn).toBeUndefined();
+				} else {
+					expect(fn).toBeDefined();
+					if (fn) {
+						const doc = fn();
+						expect(typeof doc).toBe('string');
+						expect(doc.length).toBeGreaterThan(100);
+					}
 				}
 			}
 		});

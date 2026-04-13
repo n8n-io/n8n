@@ -194,8 +194,8 @@ describe('get_documentation tool', () => {
 		});
 	});
 
-	describe('previously unavailable techniques', () => {
-		it('should return documentation for MONITORING (now wired up via shared registry)', async () => {
+	describe('empty results', () => {
+		it('should return a message when no documentation is available for requested techniques', async () => {
 			const { tool } = createGetDocumentationTool();
 
 			const command = await tool.invoke(
@@ -203,6 +203,7 @@ describe('get_documentation tool', () => {
 					requests: [
 						{
 							type: DocumentationType.BEST_PRACTICES,
+							// MONITORING has undefined documentation
 							techniques: [WorkflowTechnique.MONITORING],
 						},
 					],
@@ -211,7 +212,8 @@ describe('get_documentation tool', () => {
 			);
 			const result = getMessageContent(command);
 
-			expect(result).toContain('<best_practices>');
+			expect(result).toBe('No documentation available for the requested items.');
+			expect(result).not.toContain('<best_practices>');
 		});
 	});
 });

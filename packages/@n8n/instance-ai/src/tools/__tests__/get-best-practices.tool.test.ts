@@ -28,7 +28,7 @@ describe('get-best-practices tool', () => {
 
 		const dataAnalysis = result.availableTechniques!.find((t) => t.technique === 'data_analysis');
 		expect(dataAnalysis).toBeDefined();
-		expect(dataAnalysis!.hasDocumentation).toBe(true);
+		expect(dataAnalysis!.hasDocumentation).toBe(false);
 	});
 
 	it('should return documentation for known technique with guide', async () => {
@@ -43,15 +43,15 @@ describe('get-best-practices tool', () => {
 		expect(result.message).toContain('retrieved successfully');
 	});
 
-	it('should return documentation for data_analysis technique (now wired up)', async () => {
+	it('should return no-documentation message for disabled technique', async () => {
 		const result = (await tool.execute!(
 			{ technique: 'data_analysis' },
 			{} as never,
 		)) as unknown as BestPracticesOutput;
 
 		expect(result.technique).toBe('data_analysis');
-		expect(result.documentation).toBeDefined();
-		expect(result.message).toContain('retrieved successfully');
+		expect(result.documentation).toBeUndefined();
+		expect(result.message).toContain('does not have detailed documentation yet');
 	});
 
 	it('should return helpful message for unknown technique', async () => {
