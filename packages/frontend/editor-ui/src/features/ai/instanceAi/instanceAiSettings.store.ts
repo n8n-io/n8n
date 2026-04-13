@@ -12,6 +12,7 @@ import {
 	fetchModelCredentials,
 	fetchServiceCredentials,
 } from './instanceAi.settings.api';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import { createGatewayLink, getGatewayStatus } from './instanceAi.api';
 import type {
 	InstanceAiAdminSettingsResponse,
@@ -43,20 +44,12 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const setupCommand = ref<string | null>(null);
 	const isGatewayPolling = ref(false);
 
-	const isLocalGatewayEnabled = computed(
-		() => settingsStore.moduleSettings?.['instance-ai']?.localGateway === true,
-	);
 	const gatewayConnected = ref(false);
 	const gatewayDirectory = ref<string | null>(null);
 	const gatewayHostIdentifier = ref<string | null>(null);
 	const gatewayToolCategories = ref<ToolCategory[]>([]);
 	const isGatewayConnected = computed(() => gatewayConnected.value);
-	const localGatewayFallbackDirectory = computed(
-		() => settingsStore.moduleSettings?.['instance-ai']?.localGatewayFallbackDirectory ?? null,
-	);
-	const activeDirectory = computed(
-		() => gatewayDirectory.value ?? localGatewayFallbackDirectory.value,
-	);
+	const activeDirectory = computed(() => gatewayDirectory.value);
 	const isLocalGatewayDisabled = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.localGatewayDisabled === true,
 	);
@@ -69,20 +62,32 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		return Object.keys(draft).length > 0 || Object.keys(preferencesDraft).length > 0;
 	});
 
+	const canManage = computed(() =>
+		hasPermission(['rbac'], { rbac: { scope: 'instanceAi:manage' } }),
+	);
+
 	async function fetch(): Promise<void> {
 		isLoading.value = true;
 		try {
-			const [s, p] = await Promise.all([
-				fetchSettings(rootStore.restApiContext),
+			const promises: [
+				Promise<InstanceAiAdminSettingsResponse | null>,
+				Promise<InstanceAiUserPreferencesResponse>,
+			] = [
+				canManage.value ? fetchSettings(rootStore.restApiContext) : Promise.resolve(null),
 				fetchPreferences(rootStore.restApiContext),
-			]);
+			];
+			const [s, p] = await Promise.all(promises);
 			settings.value = s;
 			preferences.value = p;
 			if (!isProxyEnabled.value) {
-				const [c, sc] = await Promise.all([
+				const credPromises: [
+					Promise<InstanceAiModelCredential[]>,
+					Promise<InstanceAiModelCredential[]>,
+				] = [
 					fetchModelCredentials(rootStore.restApiContext),
-					fetchServiceCredentials(rootStore.restApiContext),
-				]);
+					canManage.value ? fetchServiceCredentials(rootStore.restApiContext) : Promise.resolve([]),
+				];
+				const [c, sc] = await Promise.all(credPromises);
 				credentials.value = c;
 				serviceCredentials.value = sc;
 			}
@@ -322,6 +327,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	}
 
 	return {
+		canManage,
 		settings,
 		preferences,
 		credentials,
@@ -342,12 +348,10 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		isDaemonConnecting,
 		setupCommand,
 		isGatewayPolling,
-		isLocalGatewayEnabled,
 		isGatewayConnected,
 		gatewayDirectory,
 		gatewayHostIdentifier,
 		gatewayToolCategories,
-		localGatewayFallbackDirectory,
 		activeDirectory,
 		isLocalGatewayDisabled,
 		isProxyEnabled,

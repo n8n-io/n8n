@@ -121,6 +121,10 @@ export class InstanceAiController {
 		@Param('threadId') threadId: string,
 		@Body payload: InstanceAiSendMessageRequest,
 	) {
+		if (!payload.message && (!payload.attachments || payload.attachments.length === 0)) {
+			throw new BadRequestError('Either message or attachments must be provided');
+		}
+
 		// Verify the requesting user owns this thread (or it's new)
 		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
 
@@ -173,7 +177,7 @@ export class InstanceAiController {
 		// of native memory for the lifetime of the connection.
 		(res as unknown as { compress: boolean }).compress = false;
 		res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
-		res.setHeader('Cache-Control', 'no-cache');
+		res.setHeader('Cache-Control', 'no-cache, no-transform');
 		res.setHeader('Connection', 'keep-alive');
 		res.setHeader('X-Accel-Buffering', 'no');
 		res.flushHeaders();
@@ -562,7 +566,7 @@ export class InstanceAiController {
 
 		(res as unknown as { compress: boolean }).compress = false;
 		res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
-		res.setHeader('Cache-Control', 'no-cache');
+		res.setHeader('Cache-Control', 'no-cache, no-transform');
 		res.setHeader('Connection', 'keep-alive');
 		res.setHeader('X-Accel-Buffering', 'no');
 		res.flushHeaders();

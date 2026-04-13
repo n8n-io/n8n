@@ -416,9 +416,7 @@ per-user.
 ```typescript
 {
   enabled: boolean;                       // Model is configured and usable
-  localGateway: boolean;                  // Local filesystem path is configured
   localGatewayDisabled: boolean;          // Admin/user opt-out flag
-  localGatewayFallbackDirectory: string | null;  // Configured fallback path
 }
 ```
 
