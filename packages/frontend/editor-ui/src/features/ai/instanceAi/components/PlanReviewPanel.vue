@@ -72,7 +72,11 @@ function handleRequestChanges() {
 </script>
 
 <template>
-	<CollapsibleRoot v-model:open="isExpanded" :class="$style.root" data-test-id="instance-ai-plan-review">
+	<CollapsibleRoot
+		v-model:open="isExpanded"
+		:class="$style.root"
+		data-test-id="instance-ai-plan-review"
+	>
 		<CollapsibleTrigger as-child>
 			<!-- Header -->
 			<div :class="$style.header">
@@ -83,51 +87,51 @@ function handleRequestChanges() {
 		</CollapsibleTrigger>
 
 		<AnimatedCollapsibleContent>
-		<div :class="$style.tasks">
-			<div v-for="(task, idx) in plannedTasks" :key="task.id" :class="$style.taskItem">
-				<div :class="$style.taskRow">
-					<span :class="$style.taskNumber">{{ idx + 1 }}</span>
-					<N8nText :class="$style.taskTitle">{{ task.title }}</N8nText>
-				</div>
+			<div :class="$style.tasks">
+				<div v-for="(task, idx) in plannedTasks" :key="task.id" :class="$style.taskItem">
+					<div :class="$style.taskRow">
+						<span :class="$style.taskNumber">{{ idx + 1 }}</span>
+						<N8nText :class="$style.taskTitle">{{ task.title }}</N8nText>
+					</div>
 
-				<div v-if="task.spec" :class="$style.taskDetail">
-					<N8nText tag="p" color="text-light" :class="$style.taskSpec">{{
-						getDescription(task)
-					}}</N8nText>
+					<div v-if="task.spec" :class="$style.taskDetail">
+						<N8nText tag="p" color="text-light" :class="$style.taskSpec">{{
+							getDescription(task)
+						}}</N8nText>
+					</div>
 				</div>
 			</div>
-		</div>
 
-		<!-- Approval footer (hidden during loading and after resolution) -->
-		<ConfirmationFooter v-if="!isResolved && !props.readOnly && !props.loading" layout="column">
-			<N8nInput
-				v-model="feedback"
-				type="textarea"
-				:placeholder="i18n.baseText('instanceAi.planReview.feedbackPlaceholder')"
-				:disabled="disabled"
-				:rows="2"
-			/>
-			<div :class="$style.actions">
-				<N8nButton
-					variant="outline"
-					size="medium"
-					:disabled="disabled || !hasFeedback"
-					data-test-id="instance-ai-plan-request-changes"
-					@click="handleRequestChanges"
-				>
-					{{ i18n.baseText('instanceAi.planReview.requestChanges') }}
-				</N8nButton>
-				<N8nButton
-					variant="solid"
-					size="medium"
+			<!-- Approval footer (hidden during loading and after resolution) -->
+			<ConfirmationFooter v-if="!isResolved && !props.readOnly && !props.loading" layout="column">
+				<N8nInput
+					v-model="feedback"
+					type="textarea"
+					:placeholder="i18n.baseText('instanceAi.planReview.feedbackPlaceholder')"
 					:disabled="disabled"
-					data-test-id="instance-ai-plan-approve"
-					@click="handleApprove"
-				>
-					{{ i18n.baseText('instanceAi.planReview.approve') }}
-				</N8nButton>
-			</div>
-		</ConfirmationFooter>
+					:rows="2"
+				/>
+				<div :class="$style.actions">
+					<N8nButton
+						variant="outline"
+						size="medium"
+						:disabled="disabled || !hasFeedback"
+						data-test-id="instance-ai-plan-request-changes"
+						@click="handleRequestChanges"
+					>
+						{{ i18n.baseText('instanceAi.planReview.requestChanges') }}
+					</N8nButton>
+					<N8nButton
+						variant="solid"
+						size="medium"
+						:disabled="disabled"
+						data-test-id="instance-ai-plan-approve"
+						@click="handleApprove"
+					>
+						{{ i18n.baseText('instanceAi.planReview.approve') }}
+					</N8nButton>
+				</div>
+			</ConfirmationFooter>
 		</AnimatedCollapsibleContent>
 	</CollapsibleRoot>
 </template>
