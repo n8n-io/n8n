@@ -154,7 +154,7 @@ const classes = computed(() => {
 }
 
 .text-dark {
-	color: var(--text-color--default);
+	color: var(--text-color);
 }
 
 .text-base {

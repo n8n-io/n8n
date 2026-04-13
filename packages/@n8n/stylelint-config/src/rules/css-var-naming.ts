@@ -165,7 +165,10 @@ function shouldValidateFile(filePath: string | undefined) {
 
 function shouldSkip(variable: string) {
 	if (variable.startsWith(N8N_BYPASS_PREFIX)) {
-		return true;
+		const groups = variable.slice(2).split('--').slice(1);
+		const hasKnownProperty = groups.some((group) => PROPERTY_VOCABULARY.has(group));
+
+		return !hasKnownProperty;
 	}
 
 	// Split into groups first (drop first empty element from leading --)
@@ -376,7 +379,7 @@ function validateCssVariable(variable: string): ValidationResult {
 
 const ruleFunction: Rule = (primary, secondaryOptions, context) => {
 	return (root, result) => {
-		if (!shouldValidateFile(root.source?.input.file)) {
+		if (root.source?.input.file && !shouldValidateFile(root.source.input.file)) {
 			return;
 		}
 

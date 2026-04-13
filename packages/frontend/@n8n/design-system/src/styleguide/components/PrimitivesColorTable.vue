@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
+
 import N8nTooltip from '../../components/N8nTooltip/Tooltip.vue';
 import { TOOLTIP_DELAY_MS } from '../../constants';
 
