@@ -35,6 +35,9 @@ export function createUpdateDataTableRowsTool(context: InstanceAiContext) {
 		inputSchema: updateDataTableRowsInputSchema,
 		outputSchema: z.object({
 			updatedCount: z.number().optional(),
+			dataTableId: z.string().optional(),
+			tableName: z.string().optional(),
+			projectId: z.string().optional(),
 			denied: z.boolean().optional(),
 			reason: z.string().optional(),
 		}),
