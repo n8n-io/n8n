@@ -658,8 +658,13 @@ export type ModelConfig =
 export interface ServiceProxyConfig {
 	/** Proxy endpoint, e.g. '{baseUrl}/langsmith' or '{baseUrl}/brave-search' */
 	apiUrl: string;
-	/** Auth headers to include in proxied requests */
-	headers: Record<string, string>;
+	/**
+	 * Returns fresh auth headers for proxied requests.
+	 *
+	 * Called on each outbound request so that short-lived proxy tokens are
+	 * transparently refreshed during long-running agent turns.
+	 */
+	getAuthHeaders: () => Promise<Record<string, string>>;
 }
 
 // ── LangSmith tracing ────────────────────────────────────────────────────────
@@ -849,6 +854,9 @@ export interface OrchestrationContext {
 	workflowTaskService?: WorkflowTaskService;
 	/** When set, LangSmith traces are routed through the AI service proxy. */
 	tracingProxyConfig?: ServiceProxyConfig;
+	/** Summaries of currently running background tasks in this thread.
+	 *  Used to give sub-agents thread-state awareness (what else is happening). */
+	getRunningTaskSummaries?: () => Array<{ taskId: string; role: string; goal?: string }>;
 }
 
 // ── Agent factory options ────────────────────────────────────────────────────

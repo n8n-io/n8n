@@ -419,9 +419,10 @@ export type AuthenticationInformation = {
  * actor:    Actor identity for delegation — present when the token carries an `act` claim.
  */
 export interface TokenGrant {
-	roles?: string[];
 	scopes: string[];
-	actor?: { userId: string };
+	apiKeyScopes?: string[];
+	actor?: User;
+	subject: User;
 }
 
 export type AuthenticatedRequest<

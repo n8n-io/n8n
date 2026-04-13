@@ -14,10 +14,11 @@ export const runWorkflowInputSchema = z.object({
 		.record(z.unknown())
 		.optional()
 		.describe(
-			'Input data passed to the workflow trigger. ' +
-				'For webhook-triggered workflows, inputData IS the request body — ' +
-				'do NOT wrap it in { body: ... }. ' +
-				'Example: to send { title: "Hello" } as POST body, pass inputData: { title: "Hello" }.',
+			'Input data passed to the workflow trigger. Works for ANY trigger type — ' +
+				'the system injects inputData as the trigger node output, bypassing the need for a real event. ' +
+				'For webhook triggers, inputData is the request body (do NOT wrap in { body: ... }). ' +
+				'For event-based triggers (e.g. Linear, GitHub, Slack), pass inputData matching ' +
+				'the shape the trigger would emit (e.g. { action: "create", data: { ... } }).',
 		),
 	timeout: z
 		.number()
