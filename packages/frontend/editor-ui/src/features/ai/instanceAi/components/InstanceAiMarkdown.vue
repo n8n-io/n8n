@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
 import type { ComponentPublicInstance } from 'vue';
-import { computed, inject, onMounted, onUpdated, ref, useCssModule } from 'vue';
+import { computed, inject, onBeforeUnmount, onMounted, onUpdated, ref, useCssModule } from 'vue';
 import { useInstanceAiStore } from '../instanceAi.store';
 
 const props = defineProps<{
@@ -124,6 +124,9 @@ function applyResourceChip(link: HTMLAnchorElement, type: string): void {
 	}
 }
 
+/** Track click handlers attached to links so they can be cleaned up. */
+const linkHandlers = new WeakMap<HTMLAnchorElement, (e: MouseEvent) => void>();
+
 /**
  * Post-process the rendered DOM to transform resource links into
  * styled resource chips with icons. Handles both:
@@ -162,7 +165,7 @@ function enhanceResourceLinks(): void {
 			applyResourceChip(link, type);
 
 			// Regular click opens preview; Cmd/Ctrl+click falls through to default (new tab)
-			link.addEventListener('click', (e: MouseEvent) => {
+			const handler = (e: MouseEvent) => {
 				if (e.metaKey || e.ctrlKey) return; // Let browser handle new-tab
 
 				const canPreview =
@@ -177,7 +180,9 @@ function enhanceResourceLinks(): void {
 				} else if (type === 'data-table' && registryEntry?.projectId) {
 					openDataTablePreview?.(id, registryEntry.projectId);
 				}
-			});
+			};
+			link.addEventListener('click', handler);
+			linkHandlers.set(link, handler);
 
 			continue;
 		}
@@ -193,8 +198,25 @@ function enhanceResourceLinks(): void {
 	}
 }
 
+/** Remove click handlers from all enhanced links. */
+function cleanupLinkHandlers(): void {
+	if (!wrapperRef.value) return;
+	const allLinks = (wrapperRef.value.$el as HTMLElement).querySelectorAll<HTMLAnchorElement>('a');
+	for (const link of allLinks) {
+		const handler = linkHandlers.get(link);
+		if (handler) {
+			link.removeEventListener('click', handler);
+			linkHandlers.delete(link);
+		}
+	}
+}
+
 onMounted(enhanceResourceLinks);
-onUpdated(enhanceResourceLinks);
+onUpdated(() => {
+	cleanupLinkHandlers();
+	enhanceResourceLinks();
+});
+onBeforeUnmount(cleanupLinkHandlers);
 </script>
 
 <template>

@@ -7,9 +7,13 @@ import { AuthService } from '@/auth/auth.service';
 import { EventService } from '@/events/event.service';
 import { AuthlessRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
+import { validateRedirectUrl } from '@/utils/validate-redirect-url';
 
 import { TokenExchangeService } from '../services/token-exchange.service';
 import { TokenExchangeConfig } from '../token-exchange.config';
+import { Container } from '@n8n/di';
+
+const configService = Container.get(TokenExchangeConfig);
 
 @RestController('/auth/embed')
 export class EmbedAuthController {
@@ -23,7 +27,10 @@ export class EmbedAuthController {
 
 	@Get('/', {
 		skipAuth: true,
-		ipRateLimit: { limit: 20, windowMs: 1 * Time.minutes.toMilliseconds },
+		ipRateLimit: {
+			limit: configService.rateLimitEmbedLogin,
+			windowMs: 1 * Time.minutes.toMilliseconds,
+		},
 	})
 	async getLogin(req: AuthlessRequest, res: Response, @Query query: EmbedLoginQueryDto) {
 		if (!this.config.embedEnabled) {
@@ -33,12 +40,15 @@ export class EmbedAuthController {
 			});
 			return;
 		}
-		return await this.handleLogin(query.token, req, res);
+		return await this.handleLogin(query.token, req, res, query.redirectTo);
 	}
 
 	@Post('/', {
 		skipAuth: true,
-		ipRateLimit: { limit: 20, windowMs: 1 * Time.minutes.toMilliseconds },
+		ipRateLimit: {
+			limit: configService.rateLimitEmbedLogin,
+			windowMs: 1 * Time.minutes.toMilliseconds,
+		},
 	})
 	async postLogin(req: AuthlessRequest, res: Response, @Body body: EmbedLoginBodyDto) {
 		if (!this.config.embedEnabled) {
@@ -48,10 +58,15 @@ export class EmbedAuthController {
 			});
 			return;
 		}
-		return await this.handleLogin(body.token, req, res);
+		return await this.handleLogin(body.token, req, res, body.redirectTo);
 	}
 
-	private async handleLogin(subjectToken: string, req: AuthlessRequest, res: Response) {
+	private async handleLogin(
+		subjectToken: string,
+		req: AuthlessRequest,
+		res: Response,
+		redirect?: string,
+	) {
 		const { user, subject, issuer, kid } = await this.tokenExchangeService.embedLogin(subjectToken);
 
 		this.authService.issueCookie(res, user, true, req.browserId, true, {
@@ -66,6 +81,7 @@ export class EmbedAuthController {
 			clientIp: req.ip ?? 'unknown',
 		});
 
-		res.redirect(this.urlService.getInstanceBaseUrl() + '/');
+		const safePath = validateRedirectUrl(redirect ?? '');
+		res.redirect(this.urlService.getInstanceBaseUrl() + safePath);
 	}
 }

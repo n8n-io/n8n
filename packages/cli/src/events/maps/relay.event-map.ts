@@ -126,6 +126,8 @@ export type RelayEventMap = {
 		executionId: string;
 		data: IWorkflowExecutionDataProcess /* main process */ | IWorkflowBase /* worker */;
 		mode: WorkflowExecuteMode;
+		projectId?: string;
+		projectName?: string;
 	};
 
 	'workflow-post-execute': {
@@ -133,6 +135,8 @@ export type RelayEventMap = {
 		userId?: string;
 		workflow: IWorkflowBase;
 		runData?: IRun;
+		projectId?: string;
+		projectName?: string;
 	};
 
 	'workflow-sharing-updated': {
@@ -378,6 +382,7 @@ export type RelayEventMap = {
 		projectType?: string;
 		uiContext?: string;
 		isDynamic?: boolean;
+		usesExternalSecrets?: boolean;
 	};
 
 	'credentials-shared': {
@@ -394,6 +399,7 @@ export type RelayEventMap = {
 		credentialType: string;
 		credentialId: string;
 		isDynamic?: boolean;
+		usesExternalSecrets?: boolean;
 	};
 
 	'credentials-deleted': {
@@ -610,6 +616,7 @@ export type RelayEventMap = {
 
 	'external-secrets-connection-created': {
 		userId: string;
+		userRole?: string;
 		providerKey: string;
 		vaultType: string;
 		projects: ProjectSummary[];
@@ -617,6 +624,7 @@ export type RelayEventMap = {
 
 	'external-secrets-connection-updated': {
 		userId: string;
+		userRole?: string;
 		providerKey: string;
 		vaultType: string;
 		projects: ProjectSummary[];
@@ -624,6 +632,7 @@ export type RelayEventMap = {
 
 	'external-secrets-connection-deleted': {
 		userId: string;
+		userRole?: string;
 		providerKey: string;
 		vaultType: string;
 		projects: ProjectSummary[];
@@ -631,6 +640,7 @@ export type RelayEventMap = {
 
 	'external-secrets-connection-tested': {
 		userId: string;
+		userRole?: string;
 		providerKey: string;
 		vaultType: string;
 		projects: ProjectSummary[];
@@ -640,9 +650,15 @@ export type RelayEventMap = {
 
 	'external-secrets-connection-reloaded': {
 		userId: string;
+		userRole?: string;
 		providerKey: string;
 		vaultType: string;
 		projects: ProjectSummary[];
+	};
+
+	'external-secrets-system-roles-toggled': {
+		userId: string;
+		enabled: boolean;
 	};
 
 	// #endregion
@@ -693,6 +709,56 @@ export type RelayEventMap = {
 		role: string;
 		userId: string;
 	};
+
+	// #endregion
+
+	// #region Role Mapping
+
+	'expression-mapping-roles-resolved': {
+		userId: string;
+		userEmail: string;
+		provider: 'oidc' | 'saml' | 'ldap';
+		instanceRole: {
+			role: string;
+			previousRole: string;
+			changed: boolean;
+			matchedRuleId: string | null;
+			expression: string | null;
+			isFallback: boolean;
+		};
+		projectRoles: Array<{
+			projectId: string;
+			role: string;
+			previousRole: string | null;
+			changed: boolean;
+			matchedRuleId: string;
+			expression: string;
+		}>;
+		removedProjectIds: string[];
+	};
+
+	'role-mapping-rule-created': {
+		user: UserLike;
+		ruleId: string;
+		ruleType: 'instance' | 'project';
+		expression: string;
+		role: string;
+	};
+
+	'role-mapping-rule-updated': {
+		user: UserLike;
+		ruleId: string;
+		ruleType: 'instance' | 'project';
+		patchedFields: string[];
+	};
+
+	'role-mapping-rule-deleted': {
+		user: UserLike;
+		ruleId: string;
+		ruleType: 'instance' | 'project';
+	};
+
+	// #endregion
 
 	// #region Token exchange
 
@@ -811,6 +877,27 @@ export type RelayEventMap = {
 		user: UserLike;
 		settingName: '2fa_enforcement' | 'workflow_publishing' | 'workflow_sharing';
 		value: boolean;
+	};
+
+	// #endregion
+
+	// #region Custom Roles
+
+	'custom-role-created': {
+		userId: string;
+		roleSlug: string;
+		scopes: string[];
+	};
+
+	'custom-role-updated': {
+		userId: string;
+		roleSlug: string;
+		scopes: string[];
+	};
+
+	'custom-role-deleted': {
+		userId: string;
+		roleSlug: string;
 	};
 
 	// #endregion

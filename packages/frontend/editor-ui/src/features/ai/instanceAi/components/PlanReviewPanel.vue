@@ -5,9 +5,11 @@
  * Single-card plan approval UI. Shows planned tasks as an accordion with
  * expandable specs, dependency info, and approve/request-changes controls.
  */
-import { N8nBadge, N8nButton, N8nIcon, type IconName } from '@n8n/design-system';
+import { N8nButton, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
+import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 
 export interface PlannedTaskArg {
@@ -35,38 +37,23 @@ const emit = defineEmits<{
 	'request-changes': [feedback: string];
 }>();
 
-const expandedIds = ref<Set<string>>(new Set());
 const feedback = ref('');
 const isResolved = ref(false);
 const resolvedAction = ref<'approved' | 'changes-requested' | null>(null);
 
 const hasFeedback = computed(() => feedback.value.trim().length > 0);
+const isExpanded = ref(!props.readOnly);
 
-const kindConfig: Record<string, { icon: IconName; label: string }> = {
-	'build-workflow': { icon: 'workflow', label: 'Workflow' },
-	'manage-data-tables': { icon: 'table', label: 'Data table' },
-	research: { icon: 'search', label: 'Research' },
-	delegate: { icon: 'share', label: 'Task' },
-};
-
-function getKind(kind: string) {
-	return kindConfig[kind] ?? { icon: 'circle', label: kind };
-}
-
-function toggle(id: string) {
-	if (expandedIds.value.has(id)) {
-		expandedIds.value.delete(id);
-	} else {
-		expandedIds.value.add(id);
+function getDescription(task: PlannedTaskArg): string {
+	let text = task.spec;
+	if (task.deps.length) {
+		const depNames = task.deps.map((depId) => {
+			const dep = props.plannedTasks.find((t) => t.id === depId);
+			return dep?.title ?? depId;
+		});
+		text += `\nDepends on: ${depNames.join(', ')}`;
 	}
-}
-
-function getDeps(task: PlannedTaskArg): string[] {
-	if (!task.deps.length) return [];
-	return task.deps.map((depId) => {
-		const dep = props.plannedTasks.find((t) => t.id === depId);
-		return dep?.title ?? depId;
-	});
+	return text;
 }
 
 function handleApprove() {
@@ -85,98 +72,68 @@ function handleRequestChanges() {
 </script>
 
 <template>
-	<div :class="$style.root" data-test-id="instance-ai-plan-review">
-		<!-- Header -->
-		<div :class="$style.header">
-			<N8nIcon icon="scroll-text" size="small" :class="$style.headerIcon" />
-			<span :class="$style.headerTitle">
-				{{ i18n.baseText('instanceAi.planReview.title') }}
-			</span>
-			<span :class="$style.taskCount">{{ plannedTasks.length }} tasks</span>
-			<N8nBadge v-if="props.loading" theme="secondary" :class="$style.badgeRight" size="small">
-				{{ i18n.baseText('instanceAi.planReview.building') }}
-			</N8nBadge>
-			<N8nBadge
-				v-else-if="props.readOnly || resolvedAction === 'approved'"
-				theme="success"
-				:class="$style.badgeRight"
-				size="small"
-			>
-				{{ i18n.baseText('instanceAi.planReview.approved') }}
-			</N8nBadge>
-			<N8nBadge v-else-if="!isResolved" theme="warning" :class="$style.badgeRight" size="small">
-				{{ i18n.baseText('instanceAi.planReview.awaitingApproval') }}
-			</N8nBadge>
-		</div>
+	<CollapsibleRoot
+		v-model:open="isExpanded"
+		:class="$style.root"
+		data-test-id="instance-ai-plan-review"
+	>
+		<CollapsibleTrigger as-child>
+			<!-- Header -->
+			<div :class="$style.header">
+				<N8nText bold>
+					{{ i18n.baseText('instanceAi.planReview.title') }}
+				</N8nText>
+			</div>
+		</CollapsibleTrigger>
 
-		<!-- Task accordion -->
-		<div :class="$style.tasks">
-			<div v-for="(task, idx) in plannedTasks" :key="task.id" :class="$style.taskItem">
-				<button
-					:class="[$style.taskRow, expandedIds.has(task.id) && $style.taskRowExpanded]"
-					type="button"
-					:disabled="!task.spec"
-					@click="toggle(task.id)"
-				>
-					<span :class="$style.taskNumber">{{ idx + 1 }}</span>
-					<N8nIcon
-						v-if="task.kind"
-						:icon="getKind(task.kind).icon"
-						size="small"
-						:class="$style.taskKindIcon"
-					/>
-					<span :class="$style.taskTitle">{{ task.title }}</span>
-					<span v-if="task.kind" :class="$style.taskKindBadge">{{ getKind(task.kind).label }}</span>
-					<N8nIcon
-						v-if="task.spec"
-						:icon="expandedIds.has(task.id) ? 'chevron-up' : 'chevron-down'"
-						size="small"
-						:class="$style.chevron"
-					/>
-				</button>
+		<AnimatedCollapsibleContent>
+			<div :class="$style.tasks">
+				<div v-for="(task, idx) in plannedTasks" :key="task.id" :class="$style.taskItem">
+					<div :class="$style.taskRow">
+						<span :class="$style.taskNumber">{{ idx + 1 }}</span>
+						<N8nText :class="$style.taskTitle">{{ task.title }}</N8nText>
+					</div>
 
-				<!-- Expanded detail (only when spec available) -->
-				<div v-if="expandedIds.has(task.id) && task.spec" :class="$style.taskDetail">
-					<p :class="$style.taskSpec">{{ task.spec }}</p>
-					<div v-if="getDeps(task).length > 0" :class="$style.taskDeps">
-						<span :class="$style.depsLabel">Depends on:</span>
-						<span v-for="dep in getDeps(task)" :key="dep" :class="$style.depChip">{{ dep }}</span>
+					<div v-if="task.spec" :class="$style.taskDetail">
+						<N8nText tag="p" color="text-light" :class="$style.taskSpec">{{
+							getDescription(task)
+						}}</N8nText>
 					</div>
 				</div>
 			</div>
-		</div>
 
-		<!-- Approval footer (hidden during loading and after resolution) -->
-		<ConfirmationFooter v-if="!isResolved && !props.readOnly && !props.loading" layout="column">
-			<textarea
-				v-model="feedback"
-				:class="$style.feedbackTextarea"
-				:placeholder="i18n.baseText('instanceAi.planReview.feedbackPlaceholder')"
-				:disabled="disabled"
-				rows="2"
-			/>
-			<div :class="$style.actions">
-				<N8nButton
-					variant="outline"
-					size="small"
-					:disabled="disabled || !hasFeedback"
-					data-test-id="instance-ai-plan-request-changes"
-					@click="handleRequestChanges"
-				>
-					{{ i18n.baseText('instanceAi.planReview.requestChanges') }}
-				</N8nButton>
-				<N8nButton
-					variant="solid"
-					size="small"
+			<!-- Approval footer (hidden during loading and after resolution) -->
+			<ConfirmationFooter v-if="!isResolved && !props.readOnly && !props.loading" layout="column">
+				<N8nInput
+					v-model="feedback"
+					type="textarea"
+					:placeholder="i18n.baseText('instanceAi.planReview.feedbackPlaceholder')"
 					:disabled="disabled"
-					data-test-id="instance-ai-plan-approve"
-					@click="handleApprove"
-				>
-					{{ i18n.baseText('instanceAi.planReview.approve') }}
-				</N8nButton>
-			</div>
-		</ConfirmationFooter>
-	</div>
+					:rows="2"
+				/>
+				<div :class="$style.actions">
+					<N8nButton
+						variant="outline"
+						size="medium"
+						:disabled="disabled || !hasFeedback"
+						data-test-id="instance-ai-plan-request-changes"
+						@click="handleRequestChanges"
+					>
+						{{ i18n.baseText('instanceAi.planReview.requestChanges') }}
+					</N8nButton>
+					<N8nButton
+						variant="solid"
+						size="medium"
+						:disabled="disabled"
+						data-test-id="instance-ai-plan-approve"
+						@click="handleApprove"
+					>
+						{{ i18n.baseText('instanceAi.planReview.approve') }}
+					</N8nButton>
+				</div>
+			</ConfirmationFooter>
+		</AnimatedCollapsibleContent>
+	</CollapsibleRoot>
 </template>
 
 <style lang="scss" module>
@@ -185,6 +142,7 @@ function handleRequestChanges() {
 	border-radius: var(--radius--lg);
 	margin: var(--spacing--2xs) 0;
 	overflow: hidden;
+	background-color: var(--color--background--light-3);
 }
 
 .header {
@@ -195,34 +153,14 @@ function handleRequestChanges() {
 	border-bottom: var(--border);
 }
 
-.headerIcon {
-	color: var(--color--primary);
-	flex-shrink: 0;
-}
-
-.headerTitle {
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--text);
-}
-
-.taskCount {
-	font-size: var(--font-size--3xs);
-	color: var(--color--text--tint-1);
-}
-
-.badgeRight {
-	margin-left: auto;
-}
-
 .tasks {
 	display: flex;
 	flex-direction: column;
 }
 
 .taskItem {
-	& + & {
-		border-top: var(--border);
+	&:first-child {
+		padding-top: var(--spacing--3xs);
 	}
 }
 
@@ -230,18 +168,7 @@ function handleRequestChanges() {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	width: 100%;
-	padding: var(--spacing--2xs) var(--spacing--sm);
-	background: none;
-	border: none;
-	cursor: pointer;
-	font-family: var(--font-family);
-	text-align: left;
-	transition: background-color 0.12s ease;
-
-	&:hover {
-		background: var(--color--foreground--tint-2);
-	}
+	padding: var(--spacing--2xs) var(--spacing--sm) 0;
 }
 
 .taskNumber {
@@ -253,111 +180,28 @@ function handleRequestChanges() {
 	border-radius: 50%;
 	background: var(--color--foreground);
 	color: var(--color--text--tint-1);
-	font-size: var(--font-size--3xs);
+	font-size: var(--font-size--xs);
 	font-weight: var(--font-weight--bold);
-	flex-shrink: 0;
-}
-
-.taskKindIcon {
-	color: var(--color--text--tint-1);
 	flex-shrink: 0;
 }
 
 .taskTitle {
 	flex: 1;
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--text);
 	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
-.taskKindBadge {
-	font-size: var(--font-size--3xs);
-	color: var(--color--text--tint-1);
-	padding: var(--spacing--5xs) var(--spacing--4xs);
-	background: var(--color--foreground);
-	border-radius: var(--radius--sm);
-	white-space: nowrap;
-	flex-shrink: 0;
-}
-
-.chevron {
-	color: var(--color--text--tint-2);
-	flex-shrink: 0;
-}
-
 .taskDetail {
-	padding: 0 var(--spacing--sm) var(--spacing--xs);
+	padding: var(--spacing--4xs) var(--spacing--sm) var(--spacing--2xs);
 	padding-left: calc(var(--spacing--sm) + 20px + var(--spacing--2xs));
-	animation: detail-slide-in 0.15s ease;
-}
-
-@keyframes detail-slide-in {
-	from {
-		opacity: 0;
-		transform: translateY(-4px);
-	}
-
-	to {
-		opacity: 1;
-		transform: translateY(0);
-	}
 }
 
 .taskSpec {
 	margin: 0;
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
-	line-height: var(--line-height--xl);
 	white-space: pre-wrap;
 	word-break: break-word;
-}
-
-.taskDeps {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	margin-top: var(--spacing--3xs);
-	flex-wrap: wrap;
-}
-
-.depsLabel {
-	font-size: var(--font-size--3xs);
-	color: var(--color--text--tint-2);
-	white-space: nowrap;
-}
-
-.depChip {
-	font-size: var(--font-size--3xs);
-	color: var(--color--text--tint-1);
-	padding: var(--spacing--5xs) var(--spacing--4xs);
-	background: var(--color--foreground);
-	border-radius: var(--radius--sm);
-	white-space: nowrap;
-}
-
-.feedbackTextarea {
-	width: 100%;
-	padding: var(--spacing--2xs);
-	border: var(--border);
-	border-radius: var(--radius);
-	font-size: var(--font-size--2xs);
-	font-family: var(--font-family);
-	background: var(--color--background);
-	color: var(--color--text);
-	resize: vertical;
-	outline: none;
-
-	&:focus {
-		border-color: var(--color--primary);
-	}
-
-	&::placeholder {
-		color: var(--color--text--tint-2);
-	}
 }
 
 .actions {
