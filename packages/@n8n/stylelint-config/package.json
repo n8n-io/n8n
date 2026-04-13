@@ -19,9 +19,9 @@
     "dev": "pnpm watch",
     "format": "biome format --write .",
     "format:check": "biome ci .",
-    "test": "jest",
-    "test:unit": "jest",
-    "test:dev": "jest --watch",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:dev": "vitest --silent=false",
     "typecheck": "tsc --noEmit",
     "watch": "tsc --watch"
   },
@@ -35,7 +35,11 @@
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "typescript": "catalog:",
-    "rimraf": "catalog:"
+    "rimraf": "catalog:",
+    "@n8n/vitest-config": "workspace:*",
+    "@vitest/coverage-v8": "catalog:",
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:"
   },
   "peerDependencies": {
     "stylelint": ">= 16"
