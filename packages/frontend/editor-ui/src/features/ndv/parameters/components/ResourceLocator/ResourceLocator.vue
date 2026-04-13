@@ -55,7 +55,7 @@ import {
 	type FromAIOverride,
 } from '../../utils/fromAIOverride.utils';
 import { completeExpressionSyntax } from '@/app/utils/expressions';
-import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
+import { DEBOUNCE_TIME, ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import FromAiOverrideButton from '../ParameterInputOverrides/FromAiOverrideButton.vue';
@@ -733,14 +733,14 @@ async function loadInitialResources(): Promise<void> {
 	}
 }
 
-function loadResourcesDebounced() {
+function loadResourcesDebounced(debounceTime: number = DEBOUNCE_TIME.INPUT.SEARCH) {
 	if (currentResponse.value?.error) {
 		// Clear error response immediately when retrying to show loading state
 		delete cachedResponses.value[currentRequestKey.value];
 	}
 
 	void callDebounced(loadResources, {
-		debounceTime: 1000,
+		debounceTime,
 		trailing: true,
 	});
 }
@@ -836,10 +836,10 @@ async function loadResources() {
 		// Store response under the original key to prevent cache pollution
 		setResponse(paramsKey, responseData);
 
-		// If the key changed during the request, also store under current key to prevent infinite loading
-		const currentKey = currentRequestKey.value;
-		if (currentKey !== paramsKey) {
-			setResponse(currentKey, responseData);
+		// Restart if the key changed during the request
+		if (currentRequestKey.value !== paramsKey) {
+			loadResourcesDebounced(0);
+			return;
 		}
 
 		if (params.filter && !hasCompletedASearch.value) {
@@ -861,10 +861,9 @@ async function loadResources() {
 		// Store error under the original key
 		setResponse(paramsKey, errorData);
 
-		// If the key changed during the request, also store under current key to prevent infinite loading
-		const currentKey = currentRequestKey.value;
-		if (currentKey !== paramsKey) {
-			setResponse(currentKey, errorData);
+		// Restart if the key changed during the request
+		if (currentRequestKey.value !== paramsKey) {
+			loadResourcesDebounced(0);
 		}
 	}
 }

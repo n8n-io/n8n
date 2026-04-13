@@ -41,6 +41,20 @@ export class SpanRegistry {
 		return span;
 	}
 
+	findUnendedNodeSpans(executionId: string): Span[] {
+		const prefix = `${executionId}:`;
+		const dangling: Span[] = [];
+
+		for (const [key, span] of this.spans.entries()) {
+			if (key.startsWith(prefix)) {
+				dangling.push(span);
+				this.spans.delete(key);
+			}
+		}
+
+		return dangling;
+	}
+
 	cleanup(executionId: string) {
 		for (const key of this.spans.keys()) {
 			if (key === executionId || key.startsWith(`${executionId}:`)) {

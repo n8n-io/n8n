@@ -100,6 +100,8 @@ const TestRunDetailView = async () =>
 const EvaluationRootView = async () =>
 	await import('@/features/ai/evaluation.ee/views/EvaluationsRootView.vue');
 const SettingsAIView = async () => await import('@/features/ai/assistant/views/SettingsAIView.vue');
+const SettingsAiGatewayView = async () =>
+	await import('@/features/ai/gateway/views/SettingsAiGatewayView.vue');
 const ResourceCenterView = async () =>
 	await import('@/experiments/resourceCenter/views/ResourceCenterView.vue');
 const ResourceCenterSectionView = async () =>
@@ -677,6 +679,28 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				path: 'n8n-connect',
+				name: VIEWS.AI_GATEWAY_SETTINGS,
+				component: SettingsAiGatewayView,
+				meta: {
+					middleware: ['authenticated', 'custom'],
+					middlewareOptions: {
+						custom: () => {
+							const settingsStore = useSettingsStore();
+							return settingsStore.isAiGatewayEnabled;
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'n8n-connect',
+							};
+						},
+					},
+				},
+			},
+			{
 				path: 'resolvers',
 				name: VIEWS.RESOLVERS,
 				component: SettingsResolversView,
@@ -691,6 +715,7 @@ export const routes: RouteRecordRaw[] = [
 								'credentialResolver:update',
 								'credentialResolver:delete',
 							],
+							options: { mode: 'allOf' },
 						},
 						custom: () => {
 							const { isEnabled } = useDynamicCredentials();

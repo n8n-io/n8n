@@ -564,7 +564,10 @@ export class ProjectService {
 		};
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
-			const projectRoles = await this.roleService.rolesWithScope('project', scopes);
+			// Use the same EntityManager as the project lookup (including when callers pass a
+			// transaction manager). Otherwise role resolution can open a second pooled connection
+			// while a transaction already holds a connection
+			const projectRoles = await this.roleService.rolesWithScope('project', scopes, em);
 
 			where = {
 				...where,

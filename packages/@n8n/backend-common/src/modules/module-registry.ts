@@ -49,6 +49,8 @@ export class ModuleRegistry {
 		'redaction',
 		'instance-registry',
 		'otel',
+		'token-exchange',
+		'instance-version-history',
 	];
 
 	private readonly activeModules: string[] = [];

@@ -64,10 +64,22 @@ jest.mock('node:fs', () => ({
 const nodeTypes = Helpers.NodeTypes();
 
 beforeEach(() => {
+	jest.restoreAllMocks();
 	jest.resetAllMocks();
 });
 
 describe('WorkflowExecute', () => {
+	beforeEach(() => {
+		// Test workflows are not fully configured and would fail validation.
+		// Mock out the check so execution tests can focus on execution logic.
+		jest
+			.spyOn(
+				WorkflowExecute.prototype as unknown as { checkForWorkflowIssues: () => void },
+				'checkForWorkflowIssues',
+			)
+			.mockImplementation(() => {});
+	});
+
 	describe('v0 execution order', () => {
 		const tests: WorkflowTestData[] = legacyWorkflowExecuteTests;
 
@@ -1116,11 +1128,12 @@ describe('WorkflowExecute', () => {
 		const startNode = mock<INode>({ name: 'Start Node' });
 		const unknownNode = mock<INode>({ name: 'Unknown Node', type: 'unknownNode' });
 
-		const nodeParamIssuesSpy = jest.spyOn(NodeHelpers, 'getNodeParametersIssues');
+		let nodeParamIssuesSpy: jest.SpyInstance;
 
 		const nodeTypes = mock<INodeTypes>();
 
 		beforeEach(() => {
+			nodeParamIssuesSpy = jest.spyOn(NodeHelpers, 'getNodeParametersIssues');
 			nodeTypes.getByNameAndVersion.mockImplementation((type) => {
 				// TODO: getByNameAndVersion signature needs to be updated to allow returning undefined
 				if (type === 'unknownNode') return undefined as unknown as INodeType;
