@@ -91,55 +91,55 @@ const classes = computed(() => {
 	line-height: var(--line-height--md);
 }
 
-.step-1 {
+.step-4xs {
 	font-size: var(--font-size--4xs);
 	line-height: var(--line-height--xs);
 	letter-spacing: var(--letter-spacing--normal);
 }
 
-.step-2 {
+.step-3xs {
 	font-size: var(--font-size--3xs);
 	line-height: var(--line-height--sm);
 	letter-spacing: var(--letter-spacing--normal);
 }
 
-.step-3 {
+.step-2xs {
 	font-size: var(--font-size--2xs);
 	line-height: var(--line-height--md);
 	letter-spacing: var(--letter-spacing--normal);
 }
 
-.step-4 {
+.step-xs {
 	font-size: var(--font-size--xs);
 	line-height: var(--line-height--md);
 	letter-spacing: var(--letter-spacing--normal);
 }
 
-.step-5 {
+.step-sm {
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--lg);
 	letter-spacing: var(--letter-spacing--normal);
 }
 
-.step-6 {
+.step-md {
 	font-size: var(--font-size--md);
 	line-height: var(--line-height--lg);
 	letter-spacing: var(--letter-spacing--normal);
 }
 
-.step-7 {
+.step-lg {
 	font-size: var(--font-size--lg);
 	line-height: var(--line-height--xl);
 	letter-spacing: var(--letter-spacing--normal);
 }
 
-.step-8 {
+.step-xl {
 	font-size: var(--font-size--xl);
 	line-height: var(--line-height--xl);
 	letter-spacing: var(--letter-spacing--normal);
 }
 
-.step-9 {
+.step-2xl {
 	font-size: var(--font-size--2xl);
 	line-height: var(--line-height--xl);
 	letter-spacing: var(--letter-spacing--tight);
