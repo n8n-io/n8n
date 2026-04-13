@@ -113,7 +113,7 @@ describe('parseWorkflowCodeToBuilder', () => {
 		});
 
 		it('should handle a plain object with empty nodes array', () => {
-			const code = `export default { name: 'Empty', nodes: [], connections: {} }`;
+			const code = "export default { name: 'Empty', nodes: [], connections: {} }";
 
 			const builder = parseWorkflowCodeToBuilder(code);
 			builder.regenerateNodeIds();
