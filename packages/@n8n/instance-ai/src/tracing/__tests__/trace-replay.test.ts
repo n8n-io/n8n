@@ -437,4 +437,28 @@ describe('parseTraceJsonl', () => {
 		expect(parsed[2].kind).toBe('tool-suspend');
 		expect((parsed[1] as TraceToolCall).output).toEqual({ workflowId: '5' });
 	});
+
+	it('should throw when a line is not an object', () => {
+		expect(() => parseTraceJsonl('42')).toThrow(/line 1/i);
+		expect(() => parseTraceJsonl('null')).toThrow(/line 1/i);
+		expect(() => parseTraceJsonl('"hello"')).toThrow(/line 1/i);
+	});
+
+	it('should throw when an event is missing the kind field', () => {
+		const jsonl = JSON.stringify({ stepId: 1, agentRole: 'orch' });
+		expect(() => parseTraceJsonl(jsonl)).toThrow(/kind/i);
+	});
+
+	it('should throw on unknown kind value', () => {
+		const jsonl = JSON.stringify({ kind: 'mystery-event', stepId: 1 });
+		expect(() => parseTraceJsonl(jsonl)).toThrow(/mystery-event/);
+	});
+
+	it('should report the offending line number for the second invalid line', () => {
+		const jsonl = [
+			JSON.stringify({ kind: 'header', version: 1, testName: 't', recordedAt: '' }),
+			JSON.stringify({ kind: 'banana' }),
+		].join('\n');
+		expect(() => parseTraceJsonl(jsonl)).toThrow(/line 2/i);
+	});
 });
