@@ -19,7 +19,7 @@ const SDK_RULES_AND_PATTERNS = `## SDK Code Rules
 
 - Do NOT specify node positions — they are auto-calculated by the layout engine.
 - For credentials, see the credential rules in your specific workflow process section below.
-- **Do NOT use \`placeholder()\`** — always resolve real resource IDs via \`explore-node-resources\` or create resources via setup workflows. If a resource truly cannot be created (external system), use a descriptive string comment like \`'NEEDS: Slack channel #engineering'\` and explain in your summary.
+- **Do NOT use \`placeholder()\` for discoverable resources** — resolve real IDs via \`explore-node-resources\` or create them via setup workflows. For **user-provided values** that cannot be discovered or created (email recipients, phone numbers, custom URLs, notification targets), use \`placeholder('descriptive hint')\` so the setup wizard prompts the user after the build. Never hardcode fake values like \`user@example.com\`.
 - Use \`expr('{{ $json.field }}')\` for n8n expressions. Variables MUST be inside \`{{ }}\`.
 - Do NOT use \`as const\` assertions — the workflow parser only supports JavaScript syntax, not TypeScript-only features. Just use plain string literals.
 - Use string values directly for discriminator fields like \`resource\` and \`operation\` (e.g., \`resource: 'message'\` not \`resource: 'message' as const\`).
@@ -541,6 +541,7 @@ When called with failure details for an existing workflow, start from the pre-lo
 ## Escalation
 - If you are stuck or need information only a human can provide (e.g., a chat ID, API key, external resource name), use the \`ask-user\` tool to ask a clear question.
 - Do NOT retry the same failing approach more than twice — ask the user instead.
+- When the user says "send me", "email me", "notify me", or similar and you don't know their specific address, use \`placeholder('Your email address')\` for the recipient field rather than hardcoding a fake address like \`user@example.com\`. The setup wizard will collect this from the user after the build.
 
 ## Mandatory Process
 1. **Research**: If the workflow fits a known category (notification, chatbot, scheduling, data_transformation, etc.), call \`get-suggested-nodes\` first for curated recommendations. Then use \`search-nodes\` for service-specific nodes (use short service names: "Gmail", "Slack", not "send email SMTP"). The results include \`discriminators\` (available resources and operations) for nodes that need them. Then call \`get-node-type-definition\` with the appropriate resource/operation to get the TypeScript schema with exact parameter names and types. **Pay attention to @builderHint annotations** in search results and type definitions — they prevent common configuration mistakes.
@@ -726,7 +727,7 @@ Replace \`CHUNK_WORKFLOW_ID\` with the actual ID returned by \`submit-workflow\`
 
 ## Setup Workflows (Create Missing Resources)
 
-**NEVER use \`placeholder()\` or hardcoded placeholder strings like "YOUR_SPREADSHEET_ID".** If a resource doesn't exist, create it.
+**NEVER use \`placeholder()\` for discoverable resources** (spreadsheet IDs, calendar IDs, channel IDs, folder IDs). If a resource doesn't exist, create it via a setup workflow. **DO use \`placeholder('descriptive hint')\` for user-provided values** that cannot be discovered (email addresses, phone numbers, custom URLs, recipient addresses). Never hardcode fake values like \`user@example.com\`.
 
 When \`explore-node-resources\` returns no results for a required resource:
 
@@ -743,6 +744,7 @@ When called with failure details for an existing workflow, start from the pre-lo
 ## Escalation
 - If you are stuck or need information only a human can provide (e.g., a chat ID, API key, external resource name), use the \`ask-user\` tool to ask a clear question.
 - Do NOT retry the same failing approach more than twice — ask the user instead.
+- When the user says "send me", "email me", "notify me", or similar and you don't know their specific address, use \`placeholder('Your email address')\` for the recipient field rather than hardcoding a fake address like \`user@example.com\`. The setup wizard will collect this from the user after the build.
 
 ## Sandbox Isolation
 
@@ -809,7 +811,7 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
 4. **Resolve real resource IDs**: Check the node schemas from step 3 for parameters with \`searchListMethod\` or \`loadOptionsMethod\`. For EACH one, call \`explore-node-resources\` with the node type, method name, and the matching credential from step 1 to discover real resource IDs.
    - **This is mandatory for: calendars, spreadsheets, channels, folders, models, databases, and any other list-based parameter.** Do NOT assume values like "primary", "default", or "General" — always look up the real ID.
    - Example: Google Calendar's \`calendar\` parameter uses \`searchListMethod: getCalendars\`. Call \`explore-node-resources\` with \`methodName: "getCalendars"\` to get the actual calendar ID (e.g., "user@example.com"), not "primary".
-   - **NEVER use \`placeholder()\` or fake IDs.** If a resource doesn't exist, build a setup workflow to create it (see "Setup Workflows" section).
+   - **NEVER use \`placeholder()\` or fake IDs for discoverable resources.** If a discoverable resource doesn't exist, build a setup workflow to create it (see "Setup Workflows" section). Use \`placeholder('descriptive hint')\` only for values that require direct user input (email addresses, phone numbers, etc.).
    - If the resource can't be created via n8n (e.g., Slack channels), explain clearly in your summary what the user needs to set up.
 
 5. **Write workflow code** to \`${workspaceRoot}/src/workflow.ts\`.

@@ -13,6 +13,18 @@ import {
 	type SetupCardGroup,
 } from '../instanceAiWorkflowSetup.utils';
 
+/** Recursively check if an object contains any placeholder sentinel strings. */
+function hasPlaceholderInParams(value: unknown): boolean {
+	if (typeof value === 'string') {
+		return value.startsWith('<__PLACEHOLDER_VALUE__') && value.endsWith('__>');
+	}
+	if (Array.isArray(value)) return value.some(hasPlaceholderInParams);
+	if (value !== null && typeof value === 'object') {
+		return Object.values(value as Record<string, unknown>).some(hasPlaceholderInParams);
+	}
+	return false;
+}
+
 export function useSetupCards(
 	setupRequests: Ref<InstanceAiWorkflowSetupNode[]>,
 	getCardCredentialId: (card: SetupCard) => string | null,
@@ -309,6 +321,8 @@ export function useSetupCards(
 				if (storeNode) {
 					const liveIssues = getNodeParametersIssues(nodeTypesStore, storeNode);
 					if (Object.keys(liveIssues).length > 0) return false;
+					// Also check for remaining placeholder values in node parameters
+					if (hasPlaceholderInParams(storeNode.parameters)) return false;
 				}
 			}
 		}

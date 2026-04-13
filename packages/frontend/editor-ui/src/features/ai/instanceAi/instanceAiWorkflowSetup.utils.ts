@@ -65,11 +65,22 @@ export function credGroupKey(req: InstanceAiWorkflowSetupNode): string {
 	return credType;
 }
 
-/** Check if a parameter value is meaningfully set (not empty, null, or an empty resource locator). */
+/** Check if a string is a placeholder sentinel value (format: <__PLACEHOLDER_VALUE__hint__>). */
+function isPlaceholderString(val: unknown): boolean {
+	return typeof val === 'string' && val.startsWith('<__PLACEHOLDER_VALUE__') && val.endsWith('__>');
+}
+
+/** Check if a parameter value is meaningfully set (not empty, null, placeholder, or an empty resource locator). */
 export function isParamValueSet(val: unknown): boolean {
 	if (val === undefined || val === null || val === '') return false;
+	if (isPlaceholderString(val)) return false;
 	if (isResourceLocatorValue(val)) {
-		return val.value !== '' && val.value !== null && val.value !== undefined;
+		return (
+			val.value !== '' &&
+			val.value !== null &&
+			val.value !== undefined &&
+			!isPlaceholderString(val.value)
+		);
 	}
 	return true;
 }

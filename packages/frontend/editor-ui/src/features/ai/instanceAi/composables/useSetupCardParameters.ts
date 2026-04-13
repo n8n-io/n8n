@@ -6,6 +6,12 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { IUpdateInformation } from '@/Interface';
 import { isNestedParam, isParamValueSet, type SetupCard } from '../instanceAiWorkflowSetup.utils';
 
+/** Check if the original node parameter value was a placeholder sentinel. */
+function isOriginalValuePlaceholder(req: SetupCard['nodes'][0], paramName: string): boolean {
+	const val = req.node.parameters[paramName];
+	return typeof val === 'string' && val.startsWith('<__PLACEHOLDER_VALUE__') && val.endsWith('__>');
+}
+
 export function useSetupCardParameters(
 	cards: ComputedRef<SetupCard[]>,
 	trackedParamNames: Ref<Map<string, Set<string>>>,
@@ -111,6 +117,10 @@ export function useSetupCardParameters(
 					}
 					if (isParamValueSet(val)) {
 						merged[paramName] = val;
+						hasValues = true;
+					} else if (isOriginalValuePlaceholder(req, paramName)) {
+						// Explicitly send empty string to clear the placeholder sentinel on the backend
+						merged[paramName] = '';
 						hasValues = true;
 					}
 				}

@@ -67,6 +67,13 @@ export async function buildSetupRequests(
 			.catch(() => ({}));
 	}
 
+	// Also treat placeholder values as parameter issues so the setup wizard surfaces them
+	for (const [paramName, paramValue] of Object.entries(parameters)) {
+		if (!parameterIssues[paramName] && hasPlaceholderDeep(paramValue)) {
+			parameterIssues[paramName] = ['Contains a placeholder value - please provide the real value'];
+		}
+	}
+
 	// Build editable parameter definitions for parameters that have issues
 	let editableParameters: SetupRequest['editableParameters'];
 	if (Object.keys(parameterIssues).length > 0 && nodeDesc?.properties) {
@@ -647,4 +654,23 @@ export async function analyzeWorkflow(
 	);
 
 	return setupRequests;
+}
+
+// ── Placeholder detection ─────────────────────────────────────────────────
+
+/** Check if a string is a placeholder sentinel value (format: <__PLACEHOLDER_VALUE__hint__>). */
+function isPlaceholderString(value: unknown): boolean {
+	return (
+		typeof value === 'string' && value.startsWith('<__PLACEHOLDER_VALUE__') && value.endsWith('__>')
+	);
+}
+
+/** Recursively check if a value contains any placeholder strings. */
+function hasPlaceholderDeep(value: unknown): boolean {
+	if (typeof value === 'string') return isPlaceholderString(value);
+	if (Array.isArray(value)) return value.some(hasPlaceholderDeep);
+	if (value !== null && typeof value === 'object') {
+		return Object.values(value as Record<string, unknown>).some(hasPlaceholderDeep);
+	}
+	return false;
 }

@@ -36,6 +36,8 @@ export interface SubmitWorkflowAttempt {
 	mockedCredentialsByNode?: Record<string, string[]>;
 	/** Verification-only pin data — scoped to this build, never persisted to workflow. */
 	verificationPinData?: Record<string, Array<Record<string, unknown>>>;
+	/** Whether any node parameters contain unresolved placeholder values. */
+	hasUnresolvedPlaceholders?: boolean;
 	errors?: string[];
 }
 
@@ -43,6 +45,23 @@ function hashContent(content: string | null): string {
 	return createHash('sha256')
 		.update(content ?? '', 'utf8')
 		.digest('hex');
+}
+
+/** Check if a string is a placeholder sentinel value (format: <__PLACEHOLDER_VALUE__hint__>). */
+function isPlaceholderString(value: unknown): boolean {
+	return (
+		typeof value === 'string' && value.startsWith('<__PLACEHOLDER_VALUE__') && value.endsWith('__>')
+	);
+}
+
+/** Recursively check if a value contains any placeholder strings. */
+function hasPlaceholderDeep(value: unknown): boolean {
+	if (typeof value === 'string') return isPlaceholderString(value);
+	if (Array.isArray(value)) return value.some(hasPlaceholderDeep);
+	if (value !== null && typeof value === 'object') {
+		return Object.values(value as Record<string, unknown>).some(hasPlaceholderDeep);
+	}
+	return false;
 }
 
 /** Node types that require a webhookId for proper webhook path registration. */
@@ -346,6 +365,10 @@ export function createSubmitWorkflowTool(
 				(n) => n.type?.endsWith?.('Trigger') || n.type?.endsWith?.('trigger'),
 			);
 			const triggerNodeTypes = triggers.map((t) => t.type).filter(Boolean);
+
+			// Scan node parameters for unresolved placeholder values
+			const hasPlaceholders = (json.nodes ?? []).some((n) => hasPlaceholderDeep(n.parameters));
+
 			await reportAttempt({
 				success: true,
 				workflowId: savedId,
@@ -359,6 +382,7 @@ export function createSubmitWorkflowTool(
 					hasMockedCredentials && Object.keys(mockResult.verificationPinData).length > 0
 						? mockResult.verificationPinData
 						: undefined,
+				hasUnresolvedPlaceholders: hasPlaceholders || undefined,
 			});
 			return {
 				success: true,
