@@ -13,7 +13,11 @@ const CONTEXT7_BASE_URL = 'https://context7.com/api/v2';
 const FETCH_TIMEOUT_MS = 10_000;
 
 const FALLBACK_INSTRUCTIONS =
-	'No API documentation was found for this endpoint. Generate the response based on your knowledge of this API. Follow standard REST conventions for the HTTP method: GET returns resource data, POST returns the created resource, PUT/PATCH returns the updated resource, DELETE returns 204 or confirmation.';
+	'No API documentation was found for this endpoint. Generate the response based on your knowledge of this API. ' +
+	'Follow standard REST conventions for the HTTP method: GET returns resource data, POST returns the created resource, PUT/PATCH returns the updated resource, DELETE returns 204 or confirmation. ' +
+	'IMPORTANT: Respect query parameters and filters in the request. If the request includes date filters (e.g., createdAt gte, since, after), only return items matching those constraints. ' +
+	'If it includes field selection or filtering, only return matching items. ' +
+	'Return valid JSON that matches the real API response structure — do not invent extra wrapper objects or non-standard fields.';
 
 const docsCache = new Map<string, string>();
 

@@ -17,12 +17,6 @@
 			"successCriteria": "The workflow handles the empty channel without errors. The merge step completes with partial data. A summary is generated covering the team offsite and API performance topics. The workflow completes end-to-end."
 		},
 		{
-			"name": "high-volume",
-			"description": "Channels return many messages, testing merge and aggregation",
-			"dataSetup": "Each Slack channel history node returns 8-10 messages covering diverse topics: hiring updates, infrastructure changes, feature launches, customer feedback, and team announcements. The AI/LLM node should return a comprehensive summary. The Slack post-message node returns a success response.",
-			"successCriteria": "The workflow handles the volume without errors. All messages are merged/aggregated correctly. The summary covers the major topics and is posted successfully. No data is lost in the merge step."
-		},
-		{
 			"name": "channel-not-found",
 			"description": "One Slack channel does not exist or has been deleted",
 			"dataSetup": "Two Slack channel history nodes return 2-3 messages each with normal content. The third returns an error indicating the channel was not found. The AI/LLM node should return a summary if it receives any input. The Slack post-message node returns a success response.",

@@ -41,6 +41,14 @@ export const runWorkflowInputSchema = z.object({
 			'Success criteria for the automated judge. Only used with useLlmMockExecution=true. ' +
 				'Describe what the workflow should accomplish.',
 		),
+	scenarioHints: z
+		.string()
+		.optional()
+		.describe(
+			'Instructions for mock data generation. Only used with useLlmMockExecution=true. ' +
+				'Describe what the mock API responses should contain — e.g. "return 3 items with name and email fields" ' +
+				'or "return an empty array to test empty input handling".',
+		),
 	persistMockData: z
 		.boolean()
 		.optional()
@@ -139,6 +147,7 @@ export function createRunWorkflowTool(context: InstanceAiContext) {
 				}
 
 				const evalResult = await evalFn(input.workflowId, {
+					scenarioHints: input.scenarioHints,
 					successCriteria: input.successCriteria,
 					persistMockData: input.persistMockData,
 				});

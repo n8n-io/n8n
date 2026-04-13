@@ -113,9 +113,9 @@ You are running as a detached background task. Do not stop after a successful su
 ### Completion criteria
 
 Your job is done when ONE of these is true:
-- the workflow is verified (ran successfully)
+- the workflow is verified via mock execution (verdict pass=true)
 - the workflow uses only event triggers (${UNTESTABLE_TRIGGER_LABELS}) and cannot be runtime-tested — stop after a successful submit. Do NOT publish it; the orchestrator will handle setup and publishing.
-- you are blocked after one repair attempt per unique failure
+- you are blocked (see verification rules below)
 
 ### Submit discipline
 
@@ -124,10 +124,19 @@ The system tracks file hashes. If you edit the code and then call run-workflow o
 
 ### Verification
 
-- Call \`run-workflow\` with the workflowId and **useLlmMockExecution=true** plus a \`successCriteria\` string describing what the workflow should accomplish (derive from your task). This runs the workflow with LLM-generated fake API responses — no real credentials needed. The tool returns a structured verdict with pass/fail, reasoning, and failure category.
-- If the workflow has real credentials and no mocked ones, you can call run-workflow without the mock flag to test with real APIs instead (skip for trigger-only workflows).
-- If the verdict says pass=false, read the reasoning and failureCategory to understand what went wrong. Fix the issue, re-submit, and retry once.
-- If the same failure repeats after a fix, stop and explain the block
+After every successful submit, call \`run-workflow\` with the workflowId and **useLlmMockExecution=true** to verify the workflow works. Provide:
+- \`successCriteria\`: what the workflow should accomplish (derive from your task)
+- \`scenarioHints\`: describe realistic mock data the API nodes should return. Be specific about field names, data types, and realistic values that match what downstream nodes expect.
+
+Think about what could go wrong — include edge cases in your scenario hints when relevant:
+- What if an API returns an empty array? Will the workflow handle it or crash?
+- What if a filter removes all items? Does the workflow handle the empty result?
+- Do all node configurations match the expected data shape (field names, nesting)?
+
+When the verdict says pass=false:
+- If failureCategory is \`builder_issue\`: read the reasoning carefully, fix the specific issue in your code, re-submit, and verify again. Each new issue you find is worth fixing — complex workflows may need several rounds.
+- If failureCategory is \`mock_issue\` or \`framework_issue\`: stop. These are not caused by your code and cannot be fixed by rebuilding. Report the result and finish.
+- **Loop prevention**: if you see the same failure reasoning come back after a fix attempt, stop immediately. Do not keep retrying the same fix — explain what you tried and what is blocking you.
 
 ### Node replacement policy
 

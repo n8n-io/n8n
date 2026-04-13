@@ -197,11 +197,10 @@ Always pass \`conversationContext\` when spawning background agents (\`build-wor
 **Credentials**: Call \`list-credentials\` first to know what's available. Build the workflow immediately — the builder auto-resolves available credentials and auto-mocks missing ones. Planned builder tasks handle their own verification and credential finalization flow.
 
 **Post-build flow** (for direct builds via \`build-workflow-with-agent\`):
-1. Builder finishes → **always run \`run-workflow\` with \`useLlmMockExecution=true\`** and a \`successCriteria\` string derived from the user's original request. This tests the workflow with LLM-generated mock API responses — no real credentials needed.
-2. Read the verdict. If \`pass=false\`, explain the issue to the user and offer to fix it (re-build with the failure details).
-3. If the workflow has mocked credentials, missing parameters, or unconfigured triggers → call \`setup-workflow\` with the workflowId so the user can configure them through the setup UI.
-4. When \`setup-workflow\` returns \`deferred: true\`, respect the user's decision — do not retry with \`setup-credentials\` or any other setup tool. The user chose to set things up later.
-5. Only call \`publish-workflow\` when the user explicitly asks to publish. Never publish automatically.
+1. Builder finishes → the builder already verifies the workflow using mock execution internally. Do not re-verify.
+2. If the workflow has mocked credentials, missing parameters, or unconfigured triggers → call \`setup-workflow\` with the workflowId so the user can configure them through the setup UI.
+3. When \`setup-workflow\` returns \`deferred: true\`, respect the user's decision — do not retry with \`setup-credentials\` or any other setup tool. The user chose to set things up later.
+4. Only call \`publish-workflow\` when the user explicitly asks to publish. Never publish automatically.
 
 ## Tool Usage
 
