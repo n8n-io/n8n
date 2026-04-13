@@ -16,16 +16,16 @@ import {
 	RESOURCE_LOCATOR_GUIDE,
 } from '@n8n/workflow-sdk/prompts/node-guidance/parameter-guides';
 import {
+	AI_TOOL_PATTERNS,
+	CONNECTION_CHANGING_PARAMETERS,
+	BASELINE_FLOW_CONTROL,
+} from '@n8n/workflow-sdk/prompts/node-selection';
+import {
 	EXPRESSION_REFERENCE,
 	ADDITIONAL_FUNCTIONS,
 	WORKFLOW_RULES,
 	WORKFLOW_SDK_PATTERNS,
 } from '@n8n/workflow-sdk/prompts/sdk-reference';
-import {
-	AI_TOOL_PATTERNS,
-	CONNECTION_CHANGING_PARAMETERS,
-	BASELINE_FLOW_CONTROL,
-} from '@n8n/workflow-sdk/prompts/node-selection';
 
 // ── Shared SDK reference sections ────────────────────────────────────────────
 
