@@ -95,6 +95,7 @@ jobs:
           --project=instance-ai-workflow-evals
           --workers=4
           --reporter=./reporters/instance-ai-workflow-eval-reporter.ts
+          --repeat-each=5
           ${{ inputs.filter && format('--grep "{0}"', inputs.filter) || '' }}
         env:
           N8N_BASE_URL: http://localhost:5678
