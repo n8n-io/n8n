@@ -92,7 +92,7 @@ export function handleBuildOutcome(
 				workflowId: outcome.workflowId,
 				summary: outcome.summary,
 				mockedCredentialTypes,
-				hasUnresolvedPlaceholders,
+				hasUnresolvedPlaceholders: updatedState.hasUnresolvedPlaceholders,
 			},
 			attempt,
 		};
