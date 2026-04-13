@@ -1,4 +1,9 @@
-import type { InstanceAiTraceContext } from '@n8n/instance-ai';
+import type {
+	InstanceAiTraceContext,
+	TraceIndex as TraceIndexType,
+	IdRemapper as IdRemapperType,
+	TraceEvent,
+} from '@n8n/instance-ai';
 
 /**
  * Manages test-only trace replay state for Instance AI e2e tests.
@@ -16,9 +21,9 @@ export class TraceReplayState {
 	private activeSlug: string | undefined;
 
 	/** Shared TraceIndex per slug — reused across all runs within one test. */
-	private sharedTraceIndex?: import('@n8n/instance-ai').TraceIndex;
+	private sharedTraceIndex?: TraceIndexType;
 
-	private sharedIdRemapper?: import('@n8n/instance-ai').IdRemapper;
+	private sharedIdRemapper?: IdRemapperType;
 
 	private sharedTraceSlug?: string;
 
@@ -97,7 +102,7 @@ export class TraceReplayState {
 
 		if (events && events.length > 0) {
 			if (this.sharedTraceSlug !== slug || !this.sharedTraceIndex) {
-				this.sharedTraceIndex = new TI(events as import('@n8n/instance-ai').TraceEvent[]);
+				this.sharedTraceIndex = new TI(events as TraceEvent[]);
 				this.sharedIdRemapper = new IR();
 				this.sharedTraceSlug = slug;
 			}
