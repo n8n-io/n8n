@@ -241,7 +241,9 @@ export function createDelegateTool(context: OrchestrationContext) {
 			'role, a task-specific system prompt, the tool subset needed, and a ' +
 			'detailed briefing. The sub-agent executes independently and returns ' +
 			'a synthesized result. Use for complex multi-step operations that ' +
-			'benefit from a clean context window.',
+			'benefit from a clean context window. ' +
+			'Sub-agents are stateless — include all relevant context in the briefing ' +
+			'(IDs, error messages, credential names, data shapes).',
 		inputSchema: delegateInputSchema,
 		outputSchema: delegateOutputSchema,
 		execute: async (input: DelegateInput) => {

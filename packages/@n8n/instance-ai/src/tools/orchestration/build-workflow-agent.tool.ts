@@ -189,6 +189,7 @@ export async function startBuildWorkflowAgentTask(
 		const toolNames = [
 			'search-nodes',
 			'get-suggested-nodes',
+			'get-best-practices',
 			'get-workflow-as-code',
 			'get-node-type-definition',
 			'explore-node-resources',
@@ -228,6 +229,7 @@ export async function startBuildWorkflowAgentTask(
 			'list-workflows',
 			'search-nodes',
 			'get-suggested-nodes',
+			'get-best-practices',
 			'ask-user',
 			'list-data-tables',
 			'create-data-table',

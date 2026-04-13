@@ -17,7 +17,11 @@ export { NotificationBestPractices } from './guides/notification';
 export { SchedulingBestPractices } from './guides/scheduling';
 export { ScrapingAndResearchBestPractices } from './guides/scraping-and-research';
 export { TriageBestPractices } from './guides/triage';
+export { WorkflowCompositionBestPractices } from './guides/workflow-composition';
+export { AiAgentPatternsBestPractices } from './guides/ai-agent-patterns';
+export { WebAppBestPractices } from './guides/web-app';
 
+import { AiAgentPatternsBestPractices } from './guides/ai-agent-patterns';
 import { ChatbotBestPractices } from './guides/chatbot';
 import { ContentGenerationBestPractices } from './guides/content-generation';
 import { DataExtractionBestPractices } from './guides/data-extraction';
@@ -29,6 +33,8 @@ import { NotificationBestPractices } from './guides/notification';
 import { SchedulingBestPractices } from './guides/scheduling';
 import { ScrapingAndResearchBestPractices } from './guides/scraping-and-research';
 import { TriageBestPractices } from './guides/triage';
+import { WebAppBestPractices } from './guides/web-app';
+import { WorkflowCompositionBestPractices } from './guides/workflow-composition';
 import type { WorkflowTechniqueType, BestPracticesDocument } from './types';
 import { WorkflowTechnique } from './types';
 
@@ -52,4 +58,7 @@ export const bestPracticesRegistry: Record<
 	[WorkflowTechnique.NOTIFICATION]: new NotificationBestPractices(),
 	[WorkflowTechnique.KNOWLEDGE_BASE]: undefined,
 	[WorkflowTechnique.HUMAN_IN_THE_LOOP]: undefined,
+	[WorkflowTechnique.WORKFLOW_COMPOSITION]: new WorkflowCompositionBestPractices(),
+	[WorkflowTechnique.AI_AGENT_PATTERNS]: new AiAgentPatternsBestPractices(),
+	[WorkflowTechnique.WEB_APP]: new WebAppBestPractices(),
 };

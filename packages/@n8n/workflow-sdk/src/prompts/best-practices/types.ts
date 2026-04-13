@@ -18,6 +18,12 @@ export const WorkflowTechnique = {
 	NOTIFICATION: 'notification',
 	KNOWLEDGE_BASE: 'knowledge_base',
 	HUMAN_IN_THE_LOOP: 'human_in_the_loop',
+	/** Composing workflows with parallel branches, batch processing, fan-in, and data flow control */
+	WORKFLOW_COMPOSITION: 'workflow_composition',
+	/** Building AI agent workflows with subnodes, tools, fromAi(), and structured output */
+	AI_AGENT_PATTERNS: 'ai_agent_patterns',
+	/** Serving single-page web applications from n8n webhooks */
+	WEB_APP: 'web_app',
 } as const;
 
 export type WorkflowTechniqueType = (typeof WorkflowTechnique)[keyof typeof WorkflowTechnique];
@@ -50,6 +56,12 @@ export const TechniqueDescription: Record<WorkflowTechniqueType, string> = {
 	[WorkflowTechnique.KNOWLEDGE_BASE]:
 		'Building or using a centralized information collection (usually vector database for LLM use)',
 	[WorkflowTechnique.HUMAN_IN_THE_LOOP]: 'Pausing for human decision/input before resuming',
+	[WorkflowTechnique.WORKFLOW_COMPOSITION]:
+		'Composing workflows with parallel branches, batch processing, fan-in, data flow control (executeOnce, alwaysOutputData)',
+	[WorkflowTechnique.AI_AGENT_PATTERNS]:
+		'Building AI agent workflows with language models, tool subnodes, fromAi(), and structured output parsers',
+	[WorkflowTechnique.WEB_APP]:
+		'Serving single-page web applications from n8n webhooks with file-based HTML, data injection, and multi-route APIs',
 };
 
 /**

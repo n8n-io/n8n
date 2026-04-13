@@ -23,6 +23,11 @@ export class SplitInBatchesV3 implements INodeType {
 
 		outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
 		outputNames: ['done', 'loop'],
+		builderHint: {
+			message: `Use the SDK factory: splitInBatches({ version: 3, config: { name: 'Batch Process', parameters: { batchSize: 10 } } }).
+Connect .onDone(finalizeNode) for the completion path and .onEachBatch(processNode.to(nextBatch(sibNode))) for the processing loop.
+The node automatically outputs to "done" when all items are processed.`,
+		},
 		properties: [
 			{
 				displayName:

@@ -59,6 +59,11 @@ export class SwitchV3 implements INodeType {
 			},
 			inputs: [NodeConnectionTypes.Main],
 			outputs: `={{(${configuredOutputs})($parameter)}}`,
+			builderHint: {
+				message: `The inner key for routing rules MUST be rules.values (NOT rules.rules). Using rules.rules crashes with "Could not find property option".
+Each rule needs an outputKey string and a complete conditions object with options, conditions array, and combinator.
+e.g.: { "rules": { "values": [{ "outputKey": "email", "conditions": { "combinator": "and", "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" }, "conditions": [{ "leftValue": "={{ $json.type }}", "operator": { "type": "string", "operation": "equals" }, "rightValue": "email" }] } }] } }`,
+			},
 			properties: [
 				{
 					displayName: 'Mode',

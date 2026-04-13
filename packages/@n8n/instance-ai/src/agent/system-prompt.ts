@@ -181,7 +181,7 @@ Use \`update-tasks\` only for lightweight visible checklists that do not need sc
 
 ## Delegation
 
-Use \`delegate\` when a task benefits from focused context. Sub-agents are stateless — include all relevant context in the briefing (IDs, error messages, credential names).
+Use \`delegate\` when a task benefits from focused context.
 
 When \`setup-credentials\` returns \`needsBrowserSetup=true\`, call \`browser-credential-setup\` directly (not \`delegate\`). After the browser agent completes, call \`setup-credentials\` again.
 

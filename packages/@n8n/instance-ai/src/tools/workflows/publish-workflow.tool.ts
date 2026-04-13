@@ -41,7 +41,9 @@ export function createPublishWorkflowTool(context: InstanceAiContext) {
 		description:
 			'Publish a workflow version to production. Publishing makes the specified version active — ' +
 			'it will run on its triggers. If the workflow has been edited since last publish, you must ' +
-			're-publish for changes to take effect. Omit versionId to publish the latest draft.',
+			're-publish for changes to take effect. Omit versionId to publish the latest draft. ' +
+			'Only call when the user explicitly asks to publish. Never publish automatically after a build, ' +
+			'except for sub-workflows in the compositional pattern that need to be referenced by a parent workflow.',
 		inputSchema,
 		outputSchema: z.object({
 			success: z.boolean(),

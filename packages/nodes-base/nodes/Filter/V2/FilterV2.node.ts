@@ -29,6 +29,13 @@ export class FilterV2 implements INodeType {
 			outputs: [NodeConnectionTypes.Main],
 			outputNames: ['Kept', 'Discarded'],
 			parameterPane: 'wide',
+			builderHint: {
+				message: `parameters.conditions must always contain these three sibling keys:
+- "combinator": "and" or "or", default to "and"
+- "conditions": [ {a list of condition objects} ]
+- "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" }
+Missing any of these crashes at runtime with "Cannot read properties of undefined (reading 'caseSensitive')".`,
+			},
 			properties: [
 				{
 					displayName: 'Conditions',

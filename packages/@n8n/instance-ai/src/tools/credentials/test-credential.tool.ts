@@ -10,7 +10,9 @@ export const testCredentialInputSchema = z.object({
 export function createTestCredentialTool(context: InstanceAiContext) {
 	return createTool({
 		id: 'test-credential',
-		description: 'Test whether a credential is valid and can connect to its service.',
+		description:
+			'Test whether a credential is valid and can connect to its service. ' +
+			'Call this before referencing credentials in workflows to verify they work.',
 		inputSchema: testCredentialInputSchema,
 		outputSchema: z.object({
 			success: z.boolean(),

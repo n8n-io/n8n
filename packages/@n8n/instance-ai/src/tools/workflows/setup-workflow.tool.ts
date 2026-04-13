@@ -26,7 +26,9 @@ export function createSetupWorkflowTool(context: InstanceAiContext) {
 			'Open the workflow setup UI for the user to configure credentials, parameters, and ' +
 			'test triggers for all nodes in a workflow. Always use this instead of setup-credentials ' +
 			'when a workflowId is available. The user handles setup through the UI — you never see ' +
-			'sensitive data. Returns success when the user applies changes.',
+			'sensitive data. Returns success when the user applies changes. ' +
+			'When it returns deferred: true, the user chose to set up later — ' +
+			'do not retry with setup-credentials or other setup tools.',
 		inputSchema: setupWorkflowInputSchema,
 		outputSchema: z.object({
 			success: z.boolean(),
