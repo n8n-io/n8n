@@ -38,6 +38,7 @@ const {
 	isUserRoleProvisioningChanged,
 	saveProvisioningConfig,
 	roleAssignmentTransition,
+	storedHasProjectRoles,
 	revertRoleAssignment,
 } = useUserRoleProvisioningForm(SupportedProtocols.OIDC);
 
@@ -302,7 +303,7 @@ onMounted(async () => {
 			<ConfirmProvisioningDialog
 				v-model="showUserRoleProvisioningDialog"
 				:transition-type="roleAssignmentTransition"
-				:show-project-roles-csv="roleAssignment === 'instance_and_project'"
+				:show-project-roles-csv="storedHasProjectRoles || roleAssignment === 'instance_and_project'"
 				auth-protocol="oidc"
 				@confirm-provisioning="onOidcSettingsSave(true)"
 				@cancel="

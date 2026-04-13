@@ -89,6 +89,11 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 
 	const roleAssignment = ref<RoleAssignmentSetting>('manual');
 	const mappingMethod = ref<RoleMappingMethodSetting>('idp');
+	const storedHasProjectRules = ref(false);
+
+	const storedValues = computed(() =>
+		getDropdownValuesFromConfig(provisioningStore.provisioningConfig, storedHasProjectRules.value),
+	);
 
 	const formValue = computed<UserRoleProvisioningSetting>({
 		get: () => toLegacyValue(roleAssignment.value, mappingMethod.value),
@@ -100,7 +105,7 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 	});
 
 	const isUserRoleProvisioningChanged = computed<boolean>(() => {
-		const stored = getDropdownValuesFromConfig(provisioningStore.provisioningConfig);
+		const stored = storedValues.value;
 		return (
 			stored.roleAssignment !== roleAssignment.value || stored.mappingMethod !== mappingMethod.value
 		);
@@ -122,7 +127,7 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 			? 'idp'
 			: mappingMethod.value;
 
-		const stored = getDropdownValuesFromConfig(provisioningStore.provisioningConfig);
+		const stored = storedValues.value;
 		if (
 			effectiveRoleAssignment === stored.roleAssignment &&
 			effectiveMappingMethod === stored.mappingMethod
@@ -143,7 +148,7 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 	};
 
 	const roleAssignmentTransition = computed<RoleAssignmentTransitionType>(() => {
-		const stored = getDropdownValuesFromConfig(provisioningStore.provisioningConfig);
+		const stored = storedValues.value;
 		if (
 			stored.roleAssignment === roleAssignment.value &&
 			stored.mappingMethod === mappingMethod.value
@@ -156,8 +161,12 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 		return 'backup';
 	});
 
+	const storedHasProjectRoles = computed(
+		() => storedValues.value.roleAssignment === 'instance_and_project',
+	);
+
 	const revertRoleAssignment = () => {
-		const stored = getDropdownValuesFromConfig(provisioningStore.provisioningConfig);
+		const stored = storedValues.value;
 		roleAssignment.value = stored.roleAssignment;
 		mappingMethod.value = stored.mappingMethod;
 	};
@@ -173,6 +182,7 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 				hasProjectRules = rules.some((r) => r.type === 'project');
 			}
 
+			storedHasProjectRules.value = hasProjectRules;
 			const values = getDropdownValuesFromConfig(config, hasProjectRules);
 			roleAssignment.value = values.roleAssignment;
 			mappingMethod.value = values.mappingMethod;
@@ -188,6 +198,7 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 		isUserRoleProvisioningChanged,
 		saveProvisioningConfig,
 		roleAssignmentTransition,
+		storedHasProjectRoles,
 		revertRoleAssignment,
 	};
 }
