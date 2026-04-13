@@ -367,6 +367,7 @@ export class McpClientTool implements INodeType {
 		this.logger.debug('McpClientTool: Successfully connected to MCP Server');
 
 		if (!mcpTools?.length) {
+			await client.close();
 			return setError(
 				new NodeOperationError(node, 'MCP Server returned no tools', {
 					itemIndex,
@@ -376,6 +377,7 @@ export class McpClientTool implements INodeType {
 			);
 		}
 
+<<<<<<< HEAD
 		const tools = mcpTools.map((tool) =>
 			logWrapper(
 				mcpToolToDynamicTool(
@@ -389,12 +391,45 @@ export class McpClientTool implements INodeType {
 				this,
 			),
 		);
+=======
+		try {
+			const tools = mcpTools.map((tool) => {
+				const prefixedName = buildMcpToolName(node.name, tool.name);
+				return logWrapper(
+					mcpToolToDynamicTool(
+						{ ...tool, name: prefixedName },
+						createCallTool(
+							tool.name,
+							client,
+							config.timeout,
+							(errorMessage) => {
+								const error = new NodeOperationError(node, errorMessage, { itemIndex });
+								void this.addOutputData(NodeConnectionTypes.AiTool, itemIndex, error);
+								this.logger.error(`McpClientTool: Tool "${tool.name}" failed to execute`, {
+									error,
+								});
+							},
+							() => this.getExecutionCancelSignal(),
+						),
+					),
+					this,
+				);
+			});
+>>>>>>> 882dd9ce (fix(core): Drain webhook close functions to prevent MCP connection leaks (#28384))
 
-		this.logger.debug(`McpClientTool: Connected to MCP Server with ${tools.length} tools`);
+			this.logger.debug(`McpClientTool: Connected to MCP Server with ${tools.length} tools`);
 
+<<<<<<< HEAD
 		const toolkit = new McpToolkit(tools);
+=======
+			const toolkit = new StructuredToolkit(tools);
+>>>>>>> 882dd9ce (fix(core): Drain webhook close functions to prevent MCP connection leaks (#28384))
 
-		return { response: toolkit, closeFunction: async () => await client.close() };
+			return { response: toolkit, closeFunction: async () => await client.close() };
+		} catch (e) {
+			await client.close();
+			throw e;
+		}
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
