@@ -206,6 +206,20 @@ const sessionTitle = computed(() => {
 	return thread.value.title ?? `Session ${thread.value.sessionNumber}`;
 });
 
+const triggerSource = computed(() => {
+	if (executions.value.length === 0) return null;
+	const first = executions.value[0];
+	const source = getMetadata(first, 'source');
+	return source ?? 'chat';
+});
+
+const triggerLabel = computed(() => {
+	const source = triggerSource.value;
+	if (!source) return '';
+	const name = source.charAt(0).toUpperCase() + source.slice(1);
+	return `Trigger \u2192 ${name}`;
+});
+
 function escapeHtml(text: string): string {
 	return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
@@ -257,7 +271,19 @@ function selectItem(item: TimelineItem) {
 			<!-- Timeline -->
 			<div :class="$style.timelinePanel">
 				<div v-if="loading" :class="$style.loadingState">Loading...</div>
-				<div v-else :class="$style.timeline">
+				<template v-else>
+					<!-- Trigger header -->
+					<div v-if="triggerSource" :class="$style.triggerRow">
+						<div :class="$style.triggerCorner" />
+						<div :class="$style.triggerLabel">
+							<N8nIcon icon="bolt-filled" :class="$style.triggerIcon" />
+							{{ triggerLabel }}
+						</div>
+						<span :class="$style.triggerTimestamp">
+							{{ thread ? formatTimestamp(new Date(thread.createdAt).getTime()) : '' }}
+						</span>
+					</div>
+					<div :class="$style.timeline">
 					<div
 						v-for="(item, idx) in timelineItems"
 						:key="idx"
@@ -339,6 +365,7 @@ function selectItem(item: TimelineItem) {
 						</div>
 					</div>
 				</div>
+				</template>
 			</div>
 
 			<!-- Detail panel -->
@@ -543,21 +570,62 @@ function selectItem(item: TimelineItem) {
 	border-right: var(--border-width) var(--border-style) var(--color--foreground);
 }
 
+.triggerRow {
+	display: flex;
+	align-items: flex-start;
+	// Left border of corner must align with the timeline ::after line (left: 33px on .timeline).
+	// padding-left positions the content start; the corner border-left draws at this edge.
+	padding-left: 33px;
+	position: relative;
+	margin-bottom: 0;
+}
+
+.triggerCorner {
+	width: var(--spacing--sm);
+	min-height: var(--spacing--lg);
+	border-left: 2px solid var(--color--foreground--shade-1);
+	border-top: 2px solid var(--color--foreground--shade-1);
+	border-radius: var(--radius--lg) 0 0 0;
+	flex-shrink: 0;
+	margin-top: 8px;
+}
+
+.triggerLabel {
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--bold);
+	color: var(--color--text);
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	white-space: nowrap;
+	margin-left: var(--spacing--2xs);
+}
+
+.triggerIcon {
+	color: var(--color--primary);
+}
+
+.triggerTimestamp {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-2);
+	margin-left: auto;
+}
+
 .timeline {
 	position: relative;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--sm);
 
-	// Vertical line — 32px from the left edge of the cards
+	// Vertical line — aligned with the trigger corner's left border
 	&::after {
 		content: '';
 		position: absolute;
-		left: 32px;
+		left: 33px;
 		top: 0;
 		bottom: 0;
 		width: 2px;
-		background-color: var(--color--foreground);
+		background-color: var(--color--foreground--shade-1);
 	}
 }
 

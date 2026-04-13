@@ -381,6 +381,7 @@ export class AgentsService {
 		userId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		source?: string,
 	): AsyncGenerator<StreamChunk> {
 		const key = this.runtimeKey(agentId, userId);
 		let runtime = this.runtimes.get(key);
@@ -448,6 +449,7 @@ export class AgentsService {
 				userMessage: message,
 				record: messageRecord,
 				hitlStatus: recorder.suspended ? 'suspended' : undefined,
+				source,
 			})
 			.catch((error) => {
 				this.logger.warn('Failed to record agent execution', {

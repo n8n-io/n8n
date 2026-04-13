@@ -269,6 +269,7 @@ export class AgentsController {
 				req.user.id,
 				projectId,
 				credentialProvider,
+				'chat',
 			)) {
 				this.sendStreamChunk(chunk, send);
 			}

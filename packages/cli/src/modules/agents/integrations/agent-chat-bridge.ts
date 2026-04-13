@@ -17,6 +17,7 @@ interface AgentExecutor {
 		userId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		source?: string,
 	): AsyncGenerator<StreamChunk>;
 
 	resumeForChat(
@@ -97,6 +98,7 @@ export class AgentChatBridge {
 		private readonly logger: Logger,
 		private readonly n8nUserId: string,
 		private readonly n8nProjectId: string,
+		private readonly platform: string = 'chat',
 	) {
 		this.registerHandlers();
 	}
@@ -114,6 +116,7 @@ export class AgentChatBridge {
 		logger: Logger,
 		n8nUserId: string,
 		n8nProjectId: string,
+		platform?: string,
 	): AgentChatBridge {
 		return new AgentChatBridge(
 			bot as ChatBot,
@@ -124,6 +127,7 @@ export class AgentChatBridge {
 			logger,
 			n8nUserId,
 			n8nProjectId,
+			platform,
 		);
 	}
 
@@ -173,6 +177,7 @@ export class AgentChatBridge {
 			this.n8nUserId,
 			this.n8nProjectId,
 			this.credentialProvider,
+			this.platform,
 		);
 
 		await this.consumeStream(stream, thread);

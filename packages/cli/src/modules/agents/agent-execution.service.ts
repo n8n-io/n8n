@@ -23,6 +23,8 @@ export interface RecordMessageParams {
 	record: MessageRecord;
 	/** Set to 'suspended' or 'resumed' for HITL tool call flows. */
 	hitlStatus?: 'suspended' | 'resumed';
+	/** Where the message originated from, e.g. 'chat', 'slack'. */
+	source?: string;
 }
 
 @Service()
@@ -135,6 +137,9 @@ export class AgentExecutionService {
 		}
 		if (record.workingMemory) {
 			metadata.push({ key: 'workingMemory', value: record.workingMemory });
+		}
+		if (params.source) {
+			metadata.push({ key: 'source', value: params.source });
 		}
 
 		await this.executionMetadataRepository.insert(metadata.map((m) => ({ ...m, executionId })));

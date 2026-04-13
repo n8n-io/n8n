@@ -120,6 +120,7 @@ export class ChatIntegrationService {
 			this.logger,
 			userId,
 			projectId,
+			integrationType,
 		);
 
 		// Initialize the Chat instance (connects adapters, state adapter, etc.)
