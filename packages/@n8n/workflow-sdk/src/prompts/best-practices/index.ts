@@ -20,16 +20,11 @@ export { TriageBestPractices } from './guides/triage';
 
 import { ChatbotBestPractices } from './guides/chatbot';
 import { ContentGenerationBestPractices } from './guides/content-generation';
-import { DataAnalysisBestPractices } from './guides/data-analysis';
 import { DataExtractionBestPractices } from './guides/data-extraction';
 import { DataPersistenceBestPractices } from './guides/data-persistence';
 import { DataTransformationBestPractices } from './guides/data-transformation';
 import { DocumentProcessingBestPractices } from './guides/document-processing';
-import { EnrichmentBestPractices } from './guides/enrichment';
 import { FormInputBestPractices } from './guides/form-input';
-import { HumanInTheLoopBestPractices } from './guides/human-in-the-loop';
-import { KnowledgeBaseBestPractices } from './guides/knowledge-base';
-import { MonitoringBestPractices } from './guides/monitoring';
 import { NotificationBestPractices } from './guides/notification';
 import { SchedulingBestPractices } from './guides/scheduling';
 import { ScrapingAndResearchBestPractices } from './guides/scraping-and-research';
