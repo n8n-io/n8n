@@ -125,6 +125,98 @@ describe('buildFromJson()', () => {
 		expect(resolveTool).toHaveBeenCalledTimes(1);
 	});
 
+	it('wraps workflow tool with approval when requireApproval is true', async () => {
+		const config = makeConfig({
+			tools: [
+				{ type: 'workflow', workflow: 'My Workflow', name: 'run_workflow', requireApproval: true },
+			],
+		});
+
+		const resolvedTool = {
+			name: 'run_workflow',
+			description: 'Run My Workflow',
+			handler: jest.fn().mockResolvedValue({ done: true }),
+		};
+		const resolveTool = jest.fn().mockResolvedValue(resolvedTool);
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				memoryFactory: makeMockMemoryFactory(),
+				resolveTool,
+			},
+		);
+
+		const tool = agent.declaredTools.find((t) => t.name === 'run_workflow');
+		expect(tool).toBeDefined();
+		expect(tool!.withDefaultApproval).toBe(true);
+	});
+
+	it('wraps node tool with approval when requireApproval is true', async () => {
+		const config = makeConfig({
+			tools: [
+				{
+					type: 'node',
+					name: 'my_node_tool',
+					description: 'A node tool',
+					node: { nodeType: 'n8n-nodes-base.httpRequest', nodeTypeVersion: 1 },
+					inputSchema: { type: 'object' as const },
+					requireApproval: true,
+				},
+			],
+		});
+
+		const resolvedTool = {
+			name: 'my_node_tool',
+			description: 'A node tool',
+			handler: jest.fn().mockResolvedValue({ done: true }),
+		};
+		const resolveTool = jest.fn().mockResolvedValue(resolvedTool);
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				memoryFactory: makeMockMemoryFactory(),
+				resolveTool,
+			},
+		);
+
+		const tool = agent.declaredTools.find((t) => t.name === 'my_node_tool');
+		expect(tool).toBeDefined();
+		expect(tool!.withDefaultApproval).toBe(true);
+	});
+
+	it('does not wrap workflow tool with approval when requireApproval is not set', async () => {
+		const config = makeConfig({
+			tools: [{ type: 'workflow', workflow: 'My Workflow', name: 'run_workflow' }],
+		});
+
+		const resolvedTool = {
+			name: 'run_workflow',
+			description: 'Run My Workflow',
+			handler: jest.fn().mockResolvedValue({ done: true }),
+		};
+		const resolveTool = jest.fn().mockResolvedValue(resolvedTool);
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				memoryFactory: makeMockMemoryFactory(),
+				resolveTool,
+			},
+		);
+
+		const tool = agent.declaredTools.find((t) => t.name === 'run_workflow');
+		expect(tool).toBeDefined();
+		expect(tool!.withDefaultApproval).toBeUndefined();
+	});
+
 	it('falls back to marker tool when resolveTool is not provided for workflow tools', async () => {
 		const config = makeConfig({ tools: [{ type: 'workflow', workflow: 'Test Workflow' }] });
 

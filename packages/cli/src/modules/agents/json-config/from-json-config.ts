@@ -146,8 +146,11 @@ async function resolveToolRef(
 					options: { name: ref.name, description: ref.description },
 				},
 			};
-			const resolved = await options.resolveTool?.(ref);
-			return resolved ?? marker;
+			const tool = (await options.resolveTool?.(ref)) ?? marker;
+			if (ref.requireApproval) {
+				return wrapToolForApproval(tool, { requireApproval: true });
+			}
+			return tool;
 		}
 
 		case 'node': {
@@ -157,8 +160,11 @@ async function resolveToolRef(
 				editable: false,
 				metadata: { nodeTool: true, ...ref.node },
 			};
-			const resolved = await options.resolveTool?.(ref);
-			return resolved ?? marker;
+			const tool = (await options.resolveTool?.(ref)) ?? marker;
+			if (ref.requireApproval) {
+				return wrapToolForApproval(tool, { requireApproval: true });
+			}
+			return tool;
 		}
 	}
 }
