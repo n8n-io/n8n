@@ -4,7 +4,6 @@ import {
 	UpdateDataTableDto,
 	type DataTableListFilter,
 } from '@n8n/api-types';
-import { ProjectRepository, ProjectRelationRepository } from '@n8n/db';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { Container } from '@n8n/di';
 import type express from 'express';
@@ -23,6 +22,11 @@ import { DataTableValidationError } from '@/modules/data-table/errors/data-table
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { ProjectService } from '@/services/project.service.ee';
+import {
+	getProjectIdForDataTable,
+	getDataTableListFilter,
+	resolveProjectIdForCreate,
+} from './data-tables.service';
 
 const handleError = (error: unknown, res: express.Response): express.Response => {
 	if (error instanceof DataTableNotFoundError) {
@@ -57,23 +61,6 @@ const stringifyQuery = (query: Record<string, unknown>): Record<string, string |
 	return result;
 };
 
-/**
- * Gets the project ID for a data table.
- * Called AFTER projectScope middleware has validated access.
- */
-const getProjectIdForDataTable = async (dataTableId: string): Promise<string> => {
-	const dataTable = await Container.get(DataTableRepository).findOne({
-		where: { id: dataTableId },
-		relations: ['project'],
-	});
-
-	if (!dataTable) {
-		throw new DataTableNotFoundError(dataTableId);
-	}
-
-	return dataTable.project.id;
-};
-
 export = {
 	listDataTables: [
 		publicApiScope('dataTable:list'),
@@ -104,34 +91,12 @@ export = {
 					if (accessibleIds.length !== ids.length) throw new ForbiddenError();
 				}
 
-				let finalFilter: DataTableListFilter;
-				if (isGlobalOwnerOrAdmin) {
-					finalFilter = requestedProjectId
-						? { ...restFilter, projectId: requestedProjectId }
-						: restFilter;
-				} else if (requestedProjectId) {
-					finalFilter = { ...restFilter, projectId: requestedProjectId };
-				} else {
-					const personalProject = await Container.get(
-						ProjectRepository,
-					).getPersonalProjectForUserOrFail(req.user.id);
-
-					const projectRelations = await Container.get(ProjectRelationRepository).find({
-						where: { userId: req.user.id },
-						relations: ['project'],
-					});
-
-					const teamProjectIds = projectRelations
-						.filter((rel) => rel.project.type === 'team')
-						.map((rel) => rel.projectId);
-
-					const allAccessibleProjectIds = [personalProject.id, ...teamProjectIds];
-
-					finalFilter = {
-						...restFilter,
-						projectId: allAccessibleProjectIds,
-					};
-				}
+				const finalFilter = await getDataTableListFilter(
+					req.user.id,
+					isGlobalOwnerOrAdmin,
+					requestedProjectId,
+					restFilter,
+				);
 
 				const result = await Container.get(DataTableService).getManyAndCount({
 					skip: offset,
@@ -164,23 +129,10 @@ export = {
 				throw new BadRequestError(payload.error.errors[0]?.message || 'Invalid request body');
 			}
 
-			let projectId: string;
-			if (payload.data.projectId) {
-				const project = await Container.get(ProjectService).getProjectWithScope(
-					req.user,
-					payload.data.projectId,
-					['dataTable:create'],
-				);
-				if (!project) throw new ForbiddenError();
-				projectId = project.id;
-			} else {
-				const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
-					req.user.id,
-				);
-				projectId = project.id;
-			}
+			const { projectId: requestedProjectId, ...dto } = payload.data;
 
-			const { projectId: _ignored, ...dto } = payload.data;
+			const projectId = await resolveProjectIdForCreate(req.user, requestedProjectId);
+
 			try {
 				const result = await Container.get(DataTableService).createDataTable(projectId, dto);
 
