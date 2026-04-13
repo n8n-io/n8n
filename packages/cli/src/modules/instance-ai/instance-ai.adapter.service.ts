@@ -9,7 +9,6 @@ import type {
 	InstanceAiNodeService,
 	InstanceAiDataTableService,
 	InstanceAiWebResearchService,
-	InstanceAiFilesystemService,
 	FetchedPage,
 	WebSearchResponse,
 	DataTableSummary,
@@ -188,13 +187,12 @@ export class InstanceAiAdapterService {
 	createContext(
 		user: User,
 		options?: {
-			filesystemService?: InstanceAiFilesystemService;
 			searchProxyConfig?: ServiceProxyConfig;
 			pushRef?: string;
 			threadId?: string;
 		},
 	): InstanceAiContext {
-		const { filesystemService, searchProxyConfig, pushRef, threadId } = options ?? {};
+		const { searchProxyConfig, pushRef, threadId } = options ?? {};
 		return {
 			userId: user.id,
 			workflowService: this.createWorkflowAdapter(user, threadId),
@@ -205,7 +203,6 @@ export class InstanceAiAdapterService {
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
 			licenseHints: this.buildLicenseHints(),
-			...(filesystemService ? { filesystemService } : {}),
 		};
 	}
 
@@ -1130,6 +1127,16 @@ export class InstanceAiAdapterService {
 			return table.projectId;
 		};
 
+		// Like resolveProjectIdForTable but also returns the table name for artifact display
+		const resolveTableMeta = async (scopes: Scope[], dataTableId: string) => {
+			const allowed = await userHasScopes(user, scopes, false, { dataTableId });
+			if (!allowed) {
+				throw new Error(`Data table "${dataTableId}" not found`);
+			}
+			const table = await dataTableRepository.findOneByOrFail({ id: dataTableId });
+			return { projectId: table.projectId, tableName: table.name };
+		};
+
 		return {
 			async list(options) {
 				const projectId = await resolveProjectId(['dataTable:listProject'], options?.projectId);
@@ -1220,38 +1227,62 @@ export class InstanceAiAdapterService {
 
 			async insertRows(dataTableId, rows) {
 				assertNotReadOnly();
-				const projectId = await resolveProjectIdForTable(['dataTable:writeRow'], dataTableId);
+				const { projectId, tableName } = await resolveTableMeta(
+					['dataTable:writeRow'],
+					dataTableId,
+				);
 				const result = await dataTableService.insertRows(
 					dataTableId,
 					projectId,
 					rows as DataTableRows,
 					'count',
 				);
-				return { insertedCount: typeof result === 'number' ? result : rows.length };
+				return {
+					insertedCount: typeof result === 'number' ? result : rows.length,
+					dataTableId,
+					tableName,
+					projectId,
+				};
 			},
 
 			async updateRows(dataTableId, filter, data) {
 				assertNotReadOnly();
-				const projectId = await resolveProjectIdForTable(['dataTable:writeRow'], dataTableId);
+				const { projectId, tableName } = await resolveTableMeta(
+					['dataTable:writeRow'],
+					dataTableId,
+				);
 				const result = await dataTableService.updateRows(
 					dataTableId,
 					projectId,
 					{ filter: filter as DataTableFilter, data: data as DataTableRow },
 					true,
 				);
-				return { updatedCount: Array.isArray(result) ? result.length : 0 };
+				return {
+					updatedCount: Array.isArray(result) ? result.length : 0,
+					dataTableId,
+					tableName,
+					projectId,
+				};
 			},
 
 			async deleteRows(dataTableId, filter) {
 				assertNotReadOnly();
-				const projectId = await resolveProjectIdForTable(['dataTable:writeRow'], dataTableId);
+				const { projectId, tableName } = await resolveTableMeta(
+					['dataTable:writeRow'],
+					dataTableId,
+				);
 				const result = await dataTableService.deleteRows(
 					dataTableId,
 					projectId,
 					{ filter: filter as DataTableFilter },
 					true,
 				);
-				return { deletedCount: Array.isArray(result) ? result.length : 0 };
+				return {
+					deletedCount: Array.isArray(result) ? result.length : 0,
+					dataTableId,
+					tableName,
+					projectId,
+				};
 			},
 		};
 	}
@@ -1724,7 +1755,19 @@ export class InstanceAiAdapterService {
 					credentialTypes.add(credType);
 				}
 
-				// 3. Already-assigned credentials
+				// 3. Dynamic credential resolution for nodes that use genericCredentialType
+				// or predefinedCredentialType (e.g. HTTP Request). The credential type name
+				// is stored in the node parameters rather than the description's credentials array.
+				if (parameters.authentication === 'genericCredentialType' && parameters.genericAuthType) {
+					credentialTypes.add(parameters.genericAuthType as string);
+				} else if (
+					parameters.authentication === 'predefinedCredentialType' &&
+					parameters.nodeCredentialType
+				) {
+					credentialTypes.add(parameters.nodeCredentialType as string);
+				}
+
+				// 4. Already-assigned credentials
 				if (existingCredentials) {
 					for (const credType of Object.keys(existingCredentials)) {
 						credentialTypes.add(credType);

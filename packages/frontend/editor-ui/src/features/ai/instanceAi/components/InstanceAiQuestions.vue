@@ -388,10 +388,6 @@ function onOptionMouseEnter(idx: number) {
 			tabindex="0"
 			@keydown="onKeydown"
 		>
-			<p v-if="introMessage" :class="$style.intro">
-				{{ introMessage }}
-			</p>
-
 			<Transition :name="$style.questionFade" mode="out-in">
 				<div :key="currentQuestion.id" :class="$style.question">
 					<N8nText tag="p" :bold="true" :class="$style.questionText">
@@ -514,7 +510,7 @@ function onOptionMouseEnter(idx: number) {
 				<div :class="$style.pagination">
 					<N8nButton
 						variant="ghost"
-						size="xsmall"
+						size="medium"
 						icon-only
 						:disabled="isFirstQuestion"
 						data-test-id="instance-ai-questions-back"
@@ -530,7 +526,7 @@ function onOptionMouseEnter(idx: number) {
 					</N8nText>
 					<N8nButton
 						variant="ghost"
-						size="xsmall"
+						size="medium"
 						icon-only
 						:disabled="isLastQuestion"
 						data-test-id="instance-ai-questions-forward"
@@ -545,7 +541,7 @@ function onOptionMouseEnter(idx: number) {
 					<N8nButton
 						v-if="showSkipButton"
 						variant="outline"
-						size="small"
+						size="medium"
 						:disabled="disabled"
 						data-test-id="instance-ai-questions-skip"
 						@click="skipQuestion"
@@ -556,7 +552,7 @@ function onOptionMouseEnter(idx: number) {
 					<N8nButton
 						v-if="showNextButton"
 						:variant="isNextEnabled ? 'solid' : 'outline'"
-						size="small"
+						size="medium"
 						:disabled="disabled || isSubmitted || !isNextEnabled"
 						data-test-id="instance-ai-questions-next"
 						@click="goToNext"
@@ -588,6 +584,7 @@ function onOptionMouseEnter(idx: number) {
 	outline: none;
 	border: var(--border);
 	border-radius: var(--radius--lg);
+	background-color: var(--color--background--light-3);
 }
 
 .question {
@@ -619,7 +616,7 @@ function onOptionMouseEnter(idx: number) {
 
 	&:hover,
 	&.highlighted {
-		background-color: light-dark(var(--color--neutral-200), var(--color--neutral-800));
+		background-color: light-dark(var(--color--neutral-100), var(--color--neutral-800));
 	}
 
 	&:hover .arrowIndicator,
@@ -691,7 +688,7 @@ function onOptionMouseEnter(idx: number) {
 
 	&:hover,
 	&.highlighted {
-		background-color: light-dark(var(--color--neutral-200), var(--color--neutral-800));
+		background-color: light-dark(var(--color--neutral-100), var(--color--neutral-800));
 	}
 }
 
@@ -707,7 +704,7 @@ function onOptionMouseEnter(idx: number) {
 
 	&:hover,
 	&.highlighted {
-		background-color: light-dark(var(--color--neutral-200), var(--color--neutral-800));
+		background-color: light-dark(var(--color--neutral-100), var(--color--neutral-800));
 	}
 
 	.somethingElseInput {
@@ -739,7 +736,7 @@ function onOptionMouseEnter(idx: number) {
 
 	&:hover,
 	&.highlighted {
-		background-color: light-dark(var(--color--neutral-200), var(--color--neutral-800));
+		background-color: light-dark(var(--color--neutral-100), var(--color--neutral-800));
 	}
 }
 
