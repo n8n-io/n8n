@@ -123,6 +123,12 @@ export class InstanceAiPage extends BasePage {
 		return this.getPreviewIframe().locator('[data-test-id="canvas-node"]');
 	}
 
+	getPreviewNodeByName(nodeName: string): Locator {
+		return this.getPreviewIframe().locator(
+			`[data-test-id="canvas-node"][data-node-name="${nodeName}"]`,
+		);
+	}
+
 	getPreviewRunningNodes(): Locator {
 		return this.getPreviewIframe().locator(
 			'[data-test-id="canvas-node"].running, [data-test-id="canvas-node"].waiting',
@@ -131,6 +137,28 @@ export class InstanceAiPage extends BasePage {
 
 	getPreviewSuccessIndicators(): Locator {
 		return this.getPreviewIframe().locator('[data-test-id="canvas-node-status-success"]');
+	}
+
+	getPreviewRunWorkflowButton(): Locator {
+		return this.getPreviewIframe().locator('[data-test-id="execute-workflow-button"]');
+	}
+
+	getPreviewNodeToolbar(nodeName: string): Locator {
+		return this.getPreviewNodeByName(nodeName).locator('[data-test-id="canvas-node-toolbar"]');
+	}
+
+	getPreviewExecuteNodeButton(nodeName: string): Locator {
+		return this.getPreviewNodeToolbar(nodeName).locator('[data-test-id="execute-node-button"]');
+	}
+
+	getPreviewNodeSuccessIndicator(nodeName: string): Locator {
+		return this.getPreviewNodeByName(nodeName).locator(
+			'[data-test-id="canvas-node-status-success"]',
+		);
+	}
+
+	getPreviewNdvOutputPanel(): Locator {
+		return this.getPreviewIframe().locator('[data-test-id="ndv-output-panel"]');
 	}
 
 	getPreviewCloseButton(): Locator {
