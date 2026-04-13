@@ -132,11 +132,11 @@ export const test = base.extend<InstanceAiFixtures>({
 						// between different LLM call types (title gen vs orchestrator
 						// vs sub-agent) which may arrive in different order during replay.
 						const request = expectation.httpRequest as {
-							body?: { type?: string; string?: string; json?: Record<string, unknown> };
+							body?: { type?: string; 'string'?: string; json?: Record<string, unknown> };
 						};
 						if (request?.body) {
 							const raw =
-								request.body.string ??
+								request.body['string'] ??
 								(request.body.json ? JSON.stringify(request.body.json) : undefined);
 							if (raw) {
 								try {
@@ -153,7 +153,7 @@ export const test = base.extend<InstanceAiFixtures>({
 										const snippet = system.slice(0, 80);
 										request.body = {
 											type: 'STRING',
-											string: snippet,
+											'string': snippet,
 											subString: true,
 										} as unknown as typeof request.body;
 									} else {

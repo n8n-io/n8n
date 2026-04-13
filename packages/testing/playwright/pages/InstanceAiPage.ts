@@ -1,4 +1,4 @@
-import type { Locator } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 import { InstanceAiSidebar } from './components/InstanceAiSidebar';
@@ -6,7 +6,7 @@ import { InstanceAiSidebar } from './components/InstanceAiSidebar';
 export class InstanceAiPage extends BasePage {
 	readonly sidebar: InstanceAiSidebar;
 
-	constructor(page: import('@playwright/test').Page) {
+	constructor(page: Page) {
 		super(page);
 		this.sidebar = new InstanceAiSidebar(page.getByTestId('instance-ai-thread-list'));
 	}
