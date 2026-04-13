@@ -29,30 +29,16 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 
 const mockIsAiGatewayEnabled = ref(false);
-const mockGetVariant = vi.fn().mockReturnValue(undefined);
 
 vi.mock('@/app/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({ isAiGatewayEnabled: mockIsAiGatewayEnabled.value })),
 }));
-
-vi.mock('@/app/stores/posthog.store', () => ({
-	usePostHog: vi.fn(() => ({ getVariant: mockGetVariant })),
-}));
-
-vi.mock('@/app/constants', async () => {
-	const actual = await vi.importActual('@/app/constants');
-	return {
-		...actual,
-		AI_GATEWAY_EXPERIMENT: { name: 'ai_gateway', variant: 'enabled' },
-	};
-});
 
 describe('useAiGateway', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
 		mockIsAiGatewayEnabled.value = false;
-		mockGetVariant.mockReturnValue(undefined);
 		mockGetGatewayConfig.mockResolvedValue({ nodes: [], credentialTypes: [], providerConfig: {} });
 	});
 
@@ -68,7 +54,6 @@ describe('useAiGateway', () => {
 		});
 
 		it('should fetch and update creditsRemaining and creditsQuota when enabled', async () => {
-			mockGetVariant.mockReturnValue('enabled');
 			mockIsAiGatewayEnabled.value = true;
 			mockGetGatewayCredits.mockResolvedValue({ creditsRemaining: 7, creditsQuota: 10 });
 
@@ -82,7 +67,6 @@ describe('useAiGateway', () => {
 		});
 
 		it('should keep previous values on API error', async () => {
-			mockGetVariant.mockReturnValue('enabled');
 			mockIsAiGatewayEnabled.value = true;
 
 			// First successful call
@@ -101,7 +85,6 @@ describe('useAiGateway', () => {
 		});
 
 		it('should share credits state across multiple composable instances', async () => {
-			mockGetVariant.mockReturnValue('enabled');
 			mockIsAiGatewayEnabled.value = true;
 			mockGetGatewayCredits.mockResolvedValue({ creditsRemaining: 3, creditsQuota: 5 });
 

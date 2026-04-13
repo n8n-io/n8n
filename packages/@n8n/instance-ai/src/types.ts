@@ -5,6 +5,7 @@ import type { Workspace } from '@mastra/core/workspace';
 import type { Memory } from '@mastra/memory';
 import type {
 	TaskList,
+	InstanceAiAttachment,
 	InstanceAiPermissions,
 	McpTool,
 	McpToolCallRequest,
@@ -370,13 +371,16 @@ export interface InstanceAiDataTableService {
 	insertRows(
 		dataTableId: string,
 		rows: Array<Record<string, unknown>>,
-	): Promise<{ insertedCount: number }>;
+	): Promise<{ insertedCount: number; dataTableId: string; tableName: string; projectId: string }>;
 	updateRows(
 		dataTableId: string,
 		filter: DataTableFilterInput,
 		data: Record<string, unknown>,
-	): Promise<{ updatedCount: number }>;
-	deleteRows(dataTableId: string, filter: DataTableFilterInput): Promise<{ deletedCount: number }>;
+	): Promise<{ updatedCount: number; dataTableId: string; tableName: string; projectId: string }>;
+	deleteRows(
+		dataTableId: string,
+		filter: DataTableFilterInput,
+	): Promise<{ deletedCount: number; dataTableId: string; tableName: string; projectId: string }>;
 }
 
 // ── Web Research ────────────────────────────────────────────────────────────
@@ -582,6 +586,11 @@ export interface InstanceAiContext {
 	domainAccessTracker?: DomainAccessTracker;
 	/** Current run ID — used for transient (allow_once) domain approvals. */
 	runId?: string;
+	/**
+	 * Attachments from the current user message. Runtime-only — not persisted.
+	 * Used to register `parse-file` and supply data to the parser.
+	 */
+	currentUserAttachments?: InstanceAiAttachment[];
 }
 
 // ── Task storage ─────────────────────────────────────────────────────────────
@@ -889,6 +898,9 @@ export interface OrchestrationContext {
 	workflowTaskService?: WorkflowTaskService;
 	/** When set, LangSmith traces are routed through the AI service proxy. */
 	tracingProxyConfig?: ServiceProxyConfig;
+	/** Summaries of currently running background tasks in this thread.
+	 *  Used to give sub-agents thread-state awareness (what else is happening). */
+	getRunningTaskSummaries?: () => Array<{ taskId: string; role: string; goal?: string }>;
 }
 
 // ── Agent factory options ────────────────────────────────────────────────────

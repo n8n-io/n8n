@@ -280,6 +280,7 @@ export type FrontendModuleSettings = {
 		enabled: boolean;
 		localGatewayDisabled: boolean;
 		proxyEnabled: boolean;
+		optinModalDismissed: boolean;
 	};
 
 	/**

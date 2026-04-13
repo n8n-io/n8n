@@ -1,4 +1,6 @@
+import { isStructuredAttachment } from '../parsers/structured-file-parser';
 import type { InstanceAiContext, OrchestrationContext } from '../types';
+import { createParseFileTool } from './attachments/parse-file.tool';
 import { createCredentialsTool } from './credentials.tool';
 import { createDataTablesTool } from './data-tables.tool';
 import { createExecutionsTool } from './executions.tool';
@@ -41,6 +43,9 @@ export function createAllTools(context: InstanceAiContext) {
 			: context.filesystemService
 				? { filesystem: createFilesystemTool(context) }
 				: {}),
+		...(context.currentUserAttachments?.some(isStructuredAttachment)
+			? { 'parse-file': createParseFileTool(context) }
+			: {}),
 	};
 }
 

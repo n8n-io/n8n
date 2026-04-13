@@ -20,6 +20,7 @@ import {
 	withTraceContextActor,
 } from './tracing-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
+import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import {
@@ -30,7 +31,7 @@ import {
 } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
 
-const DATA_TABLE_MAX_STEPS = 15;
+const DATA_TABLE_MAX_STEPS = 35;
 
 const DATA_TABLE_TOOL_NAME = 'data-tables';
 
@@ -52,13 +53,16 @@ export async function startDataTableAgentTask(
 	context: OrchestrationContext,
 	input: StartDataTableAgentInput,
 ): Promise<StartedBackgroundAgentTask> {
-	// Grab the consolidated data-tables tool from domain tools
+	// Grab the consolidated data-tables tool (and parse-file if available) from domain tools
 	const dataTableTools: ToolsInput = {};
 	if (DATA_TABLE_TOOL_NAME in context.domainTools) {
 		dataTableTools[DATA_TABLE_TOOL_NAME] = context.domainTools[DATA_TABLE_TOOL_NAME];
 	}
+	if ('parse-file' in context.domainTools) {
+		dataTableTools['parse-file'] = context.domainTools['parse-file'];
+	}
 
-	if (Object.keys(dataTableTools).length === 0) {
+	if (!(DATA_TABLE_TOOL_NAME in dataTableTools)) {
 		return { result: 'Error: data-tables tool not available.', taskId: '', agentId: '' };
 	}
 
@@ -131,10 +135,11 @@ export async function startDataTableAgentTask(
 
 				registerWithMastra(subAgentId, subAgent, context.storage);
 
-				const conversationCtx = input.conversationContext
-					? `\n\n[CONVERSATION CONTEXT: ${input.conversationContext}]`
-					: '';
-				const briefing = `${input.task}${conversationCtx}`;
+				const briefing = await buildSubAgentBriefing({
+					task: input.task,
+					conversationContext: input.conversationContext,
+					runningTasks: context.getRunningTaskSummaries?.(),
+				});
 
 				const traceParent = getTraceParentRun();
 				return await withTraceParentContext(traceParent, async () => {

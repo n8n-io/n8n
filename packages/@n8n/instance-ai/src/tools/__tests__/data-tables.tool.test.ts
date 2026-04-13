@@ -335,6 +335,42 @@ describe('data-tables tool', () => {
 			expect(result).toEqual({ denied: true, reason: 'User denied the action' });
 			expect(context.dataTableService.create).not.toHaveBeenCalled();
 		});
+
+		it('should return denied when table already exists (name conflict)', async () => {
+			const conflictError = new Error(
+				"Data table with name 'Contacts' already exists in this project",
+			);
+			Object.defineProperty(conflictError, 'constructor', {
+				value: { name: 'DataTableNameConflictError' },
+			});
+			const wrappedError = new Error('wrapped');
+			(wrappedError as Error & { cause: Error }).cause = conflictError;
+
+			const context = createMockContext({ permissions: { createDataTable: 'always_allow' } });
+			(context.dataTableService.create as jest.Mock).mockRejectedValue(wrappedError);
+
+			const tool = createDataTablesTool(context);
+			const result = (await tool.execute!(createInput as never, noSuspendCtx())) as Record<
+				string,
+				unknown
+			>;
+
+			expect(result.denied).toBe(true);
+			expect(result.reason).toContain('already exists');
+		});
+
+		it('should throw non-conflict errors normally', async () => {
+			const context = createMockContext({ permissions: { createDataTable: 'always_allow' } });
+			(context.dataTableService.create as jest.Mock).mockRejectedValue(
+				new Error('Database connection failed'),
+			);
+
+			const tool = createDataTablesTool(context);
+
+			await expect(tool.execute!(createInput as never, noSuspendCtx())).rejects.toThrow(
+				'Database connection failed',
+			);
+		});
 	});
 
 	// ── delete ──────────────────────────────────────────────────────────────
@@ -693,6 +729,26 @@ describe('data-tables tool', () => {
 			expect(result).toEqual({ denied: true, reason: 'User denied the action' });
 			expect(context.dataTableService.insertRows).not.toHaveBeenCalled();
 		});
+
+		it('should return artifact metadata (dataTableId, tableName, projectId) in result', async () => {
+			const context = createMockContext({ permissions: { mutateDataTableRows: 'always_allow' } });
+			(context.dataTableService.insertRows as jest.Mock).mockResolvedValue({
+				insertedCount: 3,
+				dataTableId: 'dt-1',
+				tableName: 'Orders',
+				projectId: 'proj-1',
+			});
+
+			const tool = createDataTablesTool(context);
+			const result = await tool.execute!(insertRowsInput as never, noSuspendCtx());
+
+			expect(result).toEqual({
+				insertedCount: 3,
+				dataTableId: 'dt-1',
+				tableName: 'Orders',
+				projectId: 'proj-1',
+			});
+		});
 	});
 
 	// ── update-rows ─────────────────────────────────────────────────────────
@@ -844,7 +900,12 @@ describe('data-tables tool', () => {
 
 		it('should execute immediately when permission is always_allow', async () => {
 			const context = createMockContext({ permissions: { mutateDataTableRows: 'always_allow' } });
-			(context.dataTableService.deleteRows as jest.Mock).mockResolvedValue({ deletedCount: 10 });
+			(context.dataTableService.deleteRows as jest.Mock).mockResolvedValue({
+				deletedCount: 10,
+				dataTableId: 'dt-1',
+				tableName: 'Users',
+				projectId: 'proj-1',
+			});
 
 			const tool = createDataTablesTool(context);
 			const result = await tool.execute!(deleteRowsInput as never, noSuspendCtx());
@@ -853,12 +914,23 @@ describe('data-tables tool', () => {
 				'dt-1',
 				deleteRowsInput.filter,
 			);
-			expect(result).toEqual({ success: true, deletedCount: 10 });
+			expect(result).toEqual({
+				success: true,
+				deletedCount: 10,
+				dataTableId: 'dt-1',
+				tableName: 'Users',
+				projectId: 'proj-1',
+			});
 		});
 
 		it('should delete rows after user approves on resume', async () => {
 			const context = createMockContext({ permissions: {} });
-			(context.dataTableService.deleteRows as jest.Mock).mockResolvedValue({ deletedCount: 7 });
+			(context.dataTableService.deleteRows as jest.Mock).mockResolvedValue({
+				deletedCount: 7,
+				dataTableId: 'dt-1',
+				tableName: 'Users',
+				projectId: 'proj-1',
+			});
 
 			const tool = createDataTablesTool(context);
 			const result = await tool.execute!(deleteRowsInput as never, resumeCtx(true));
@@ -867,7 +939,13 @@ describe('data-tables tool', () => {
 				'dt-1',
 				deleteRowsInput.filter,
 			);
-			expect(result).toEqual({ success: true, deletedCount: 7 });
+			expect(result).toEqual({
+				success: true,
+				deletedCount: 7,
+				dataTableId: 'dt-1',
+				tableName: 'Users',
+				projectId: 'proj-1',
+			});
 		});
 
 		it('should return denied when user denies on resume', async () => {

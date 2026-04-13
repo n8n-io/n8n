@@ -50,6 +50,20 @@ const confirmationResumeSchema = z.object({
 
 type ResumeData = z.infer<typeof confirmationResumeSchema>;
 
+/**
+ * Check if an error (or its cause chain) is a DataTableNameConflictError.
+ * The error class lives in packages/cli so we can't import it directly —
+ * instead we match on the class name through the cause chain.
+ */
+function isNameConflictError(error: unknown): boolean {
+	let current: unknown = error;
+	while (current instanceof Error) {
+		if (current.constructor.name === 'DataTableNameConflictError') return true;
+		current = (current as Error & { cause?: unknown }).cause;
+	}
+	return false;
+}
+
 // ── Action schemas ─────────────────────────────────────────────────────────
 
 const listAction = z.object({
@@ -241,10 +255,22 @@ async function handleCreate(
 	}
 
 	// State 3: Approved or always_allow — execute
-	const table = await context.dataTableService.create(input.name, input.columns, {
-		projectId: input.projectId,
-	});
-	return { table };
+	try {
+		const table = await context.dataTableService.create(input.name, input.columns, {
+			projectId: input.projectId,
+		});
+		return { table };
+	} catch (error) {
+		// If table already exists, guide the agent to use the existing one
+		// rather than throwing — which would cause the agent to waste iterations retrying
+		if (isNameConflictError(error)) {
+			return {
+				denied: true,
+				reason: `Table "${input.name}" already exists. Use list-data-tables to find it and get-data-table-schema to check its columns.`,
+			};
+		}
+		throw error;
+	}
 }
 
 async function handleDelete(
@@ -492,7 +518,13 @@ async function handleDeleteRows(
 
 	// State 3: Approved or always_allow — execute
 	const result = await context.dataTableService.deleteRows(input.dataTableId, input.filter);
-	return { success: true, deletedCount: result.deletedCount };
+	return {
+		success: true,
+		deletedCount: result.deletedCount,
+		dataTableId: result.dataTableId,
+		tableName: result.tableName,
+		projectId: result.projectId,
+	};
 }
 
 // ── Tool factory ───────────────────────────────────────────────────────────
