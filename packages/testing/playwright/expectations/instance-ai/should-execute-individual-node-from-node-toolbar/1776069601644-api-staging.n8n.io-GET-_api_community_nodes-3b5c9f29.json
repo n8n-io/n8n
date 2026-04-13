@@ -1,0 +1,3179 @@
+{
+	"httpRequest": {
+		"method": "GET",
+		"path": "/api/community-nodes",
+		"queryStringParameters": {
+			"pagination[page]": ["22"],
+			"pagination[pageSize]": ["25"],
+			"maxAiNodeSdk": ["1"]
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-powered-by": ["n8n <n8n.io>"],
+			"x-permitted-cross-domain-policies": ["none"],
+			"x-frame-options": ["SAMEORIGIN"],
+			"x-download-options": ["noopen"],
+			"x-dns-prefetch-control": ["off"],
+			"x-content-type-options": ["nosniff"],
+			"x-cache": ["MISS"],
+			"vary": ["Origin, Accept-Encoding"],
+			"strict-transport-security": ["max-age=0; includeSubDomains"],
+			"referrer-policy": ["no-referrer"],
+			"last-modified": ["Mon, 13 Apr 2026 08:38:01 GMT"],
+			"content-security-policy": [
+				"script-src 'self';frame-ancestors https://n8n.io https://*.n8n.io https://*.n8n.cloud;img-src 'self' data: blob: https://market-assets.strapi.io https://n8niostorageaccount.blob.core.windows.net;style-src 'self' 'unsafe-inline';connect-src 'self';font-src 'self';media-src 'self' data: blob:;default-src 'self';base-uri 'self';form-action 'self';object-src 'none';script-src-attr 'none'"
+			],
+			"cf-cache-status": ["HIT"],
+			"access-control-expose-headers": ["WWW-Authenticate,Server-Authorization"],
+			"access-control-allow-origin": [""],
+			"access-control-allow-credentials": ["true"],
+			"Server": ["cloudflare"],
+			"Report-To": [
+				"{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=35ZCGl82ZnSsr816YshjIEiY7BpcrsB%2BxgYZk3QprHsaHVqFQ1L7tMADteeM7qwWwqffNuT%2BQRlAgWtblImfc1aKeh6odx8z3nS59%2FxTEJn%2BdjsYBHqj7GZax1MCasIEelSzSQ%3D%3D\"}]}"
+			],
+			"Nel": ["{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}"],
+			"Date": ["Mon, 13 Apr 2026 08:39:37 GMT"],
+			"Content-Type": ["application/json; charset=utf-8"],
+			"Cache-Control": ["max-age=14400"],
+			"CF-RAY": ["9eb9294cb946e513-TXL"],
+			"Age": ["95"]
+		},
+		"body": {
+			"type": "JSON",
+			"json": {
+				"data": [
+					{
+						"id": 763,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-parsio.parsioTrigger",
+								"codex": {},
+								"group": ["trigger"],
+								"inputs": [],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Parsio_Trigger_2679ab97f7.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Parsio Trigger"
+								},
+								"subtitle": "",
+								"properties": [],
+								"description": "Trigger workflow when events occur in Parsio",
+								"displayName": "Parsio Trigger",
+								"originalName": "n8n-nodes-parsio.parsioTrigger",
+								"usableAsTool": true
+							},
+							"createdAt": "2026-04-08T07:28:54.945Z",
+							"updatedAt": "2026-04-08T07:28:54.945Z",
+							"authorGithubUrl": "https://github.com/parsioio/",
+							"authorName": "andrew_io",
+							"checksum": "sha512-nRZSbmtJE0cy7+EkW5YIXCR2qa6sSwWKVb1ymFAoDIyQE2V66cAbYnvGA2WnEVXwh5T2XfWY6zBKmyw6D5ZcLw==",
+							"description": "Trigger workflow when events occur in Parsio",
+							"displayName": "Parsio Trigger",
+							"name": "n8n-nodes-parsio.parsioTrigger",
+							"numberOfStars": 0,
+							"numberOfDownloads": 130,
+							"packageName": "n8n-nodes-parsio",
+							"npmVersion": "0.2.1",
+							"isOfficialNode": false,
+							"isPublished": true,
+							"companyName": null,
+							"nodeVersions": [
+								{
+									"checksum": "sha512-nRZSbmtJE0cy7+EkW5YIXCR2qa6sSwWKVb1ymFAoDIyQE2V66cAbYnvGA2WnEVXwh5T2XfWY6zBKmyw6D5ZcLw==",
+									"npmVersion": "0.2.1"
+								}
+							],
+							"aiNodeSdkVersion": null
+						}
+					},
+					{
+						"id": 246,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-screenshotbase.screenshotBase",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Screenshot_Base_4ee549e16f.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "ScreenshotBase"
+								},
+								"subtitle": "={{$parameter[\"operation\"]}}",
+								"properties": [
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "getScreenshot",
+										"options": [
+											{
+												"name": "Get Screenshot",
+												"value": "getScreenshot",
+												"action": "Fetch website screenshot",
+												"routing": {
+													"request": {
+														"qs": {
+															"url": "={{$parameter[\"url\"]}}"
+														},
+														"url": "/take",
+														"method": "GET"
+													}
+												},
+												"description": "Capture a screenshot from a given URL"
+											}
+										],
+										"displayName": "Operation",
+										"noDataExpression": true
+									}
+								],
+								"description": "Capture screenshots via ScreenshotBase API",
+								"displayName": "ScreenshotBase",
+								"originalName": "n8n-nodes-screenshotbase.screenshotBase",
+								"usableAsTool": true
+							},
+							"createdAt": "2025-10-22T10:20:19.017Z",
+							"updatedAt": "2026-04-08T07:08:28.846Z",
+							"authorGithubUrl": "https://github.com/everapihq/",
+							"authorName": "everapi-user",
+							"checksum": "sha512-iug9154UbSYhwHsA3kEYfhmebOEdhARpEMAF3CJ+X3w1xo8t23QIHqud0azCl3K/NUFEDuq1YFxZjhK1u5nTrQ==",
+							"description": "Capture screenshots via ScreenshotBase API",
+							"displayName": "ScreenshotBase",
+							"name": "n8n-nodes-screenshotbase.screenshotBase",
+							"numberOfStars": 0,
+							"numberOfDownloads": 163,
+							"packageName": "n8n-nodes-screenshotbase",
+							"npmVersion": "0.1.3",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "Everapi",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-eUyssG0MqrlLif7l8n3hP4Ec/4vodLMhNwshSMQuCXwDLFLoukt4L+Q6XoQKZvliP5pQbyvI1SVteO5iAfbwtA==",
+									"npmVersion": "0.1.2"
+								},
+								{
+									"checksum": "sha512-iug9154UbSYhwHsA3kEYfhmebOEdhARpEMAF3CJ+X3w1xo8t23QIHqud0azCl3K/NUFEDuq1YFxZjhK1u5nTrQ==",
+									"npmVersion": "0.1.3"
+								}
+							],
+							"aiNodeSdkVersion": null
+						}
+					},
+					{
+						"id": 691,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-recram.recramTrigger",
+								"codex": {},
+								"group": ["trigger"],
+								"inputs": [],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Rec_Ram_Trigger_3949cb1bca.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "RecRam Trigger"
+								},
+								"subtitle": "={{$parameter[\"event\"]}}",
+								"properties": [],
+								"description": "Starts workflow when a RecRam event occurs",
+								"displayName": "RecRam Trigger",
+								"originalName": "n8n-nodes-recram.recramTrigger"
+							},
+							"createdAt": "2026-03-22T18:42:38.025Z",
+							"updatedAt": "2026-03-22T18:42:38.025Z",
+							"authorGithubUrl": "https://github.com/therecram/",
+							"authorName": "recram",
+							"checksum": "sha512-3fikFZotlUXKEIl8hulDAecQbhBpexnxUP3HeaRjgt5pBDrxOgKfUdNZeDVko8RfOpG/FbMBjmPqE+mvIqOzBQ==",
+							"description": "Starts workflow when a RecRam event occurs",
+							"displayName": "RecRam Trigger",
+							"name": "n8n-nodes-recram.recramTrigger",
+							"numberOfStars": 0,
+							"numberOfDownloads": 179,
+							"packageName": "n8n-nodes-recram",
+							"npmVersion": "0.1.2",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": null,
+							"nodeVersions": [
+								{
+									"checksum": "sha512-3fikFZotlUXKEIl8hulDAecQbhBpexnxUP3HeaRjgt5pBDrxOgKfUdNZeDVko8RfOpG/FbMBjmPqE+mvIqOzBQ==",
+									"npmVersion": "0.1.2"
+								}
+							],
+							"aiNodeSdkVersion": null
+						}
+					},
+					{
+						"id": 218,
+						"attributes": {
+							"nodeDescription": {
+								"name": "@datafix/n8n-nodes-preview-anthias.anthias",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Anthias_1800946850.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Anthias"
+								},
+								"subtitle": "",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "asset",
+										"options": [
+											{
+												"name": "Asset",
+												"value": "asset"
+											},
+											{
+												"name": "Device",
+												"value": "device"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "getAllAssets",
+										"options": [
+											{
+												"name": "Control Asset Playback",
+												"value": "controlAssetPlayback",
+												"action": "Control asset playback"
+											},
+											{
+												"name": "Create Asset",
+												"value": "createAsset",
+												"action": "Create an asset"
+											},
+											{
+												"name": "Delete Asset",
+												"value": "deleteAsset",
+												"action": "Delete an asset"
+											},
+											{
+												"name": "Get All Assets",
+												"value": "getAllAssets",
+												"action": "Get all assets"
+											},
+											{
+												"name": "Get Asset",
+												"value": "getAsset",
+												"action": "Get an asset"
+											},
+											{
+												"name": "Get Asset Content",
+												"value": "getAssetContent",
+												"action": "Get asset content"
+											},
+											{
+												"name": "Update Asset",
+												"value": "updateAsset",
+												"action": "Update an asset"
+											},
+											{
+												"name": "Update Playlist Order",
+												"value": "updatePlaylistOrder",
+												"action": "Update playlist order"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["asset"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "getDeviceSettings",
+										"options": [
+											{
+												"name": "Get Device Settings",
+												"value": "getDeviceSettings",
+												"action": "Get device settings"
+											},
+											{
+												"name": "Get Integrations Information",
+												"value": "getIntegrationsInformation",
+												"action": "Get integrations information"
+											},
+											{
+												"name": "Get System Information",
+												"value": "getSystemInfo",
+												"action": "Get system information"
+											},
+											{
+												"name": "Reboot Device",
+												"value": "rebootDevice",
+												"action": "Reboot device"
+											},
+											{
+												"name": "Shutdown Device",
+												"value": "shutdownDevice",
+												"action": "Shutdown device"
+											},
+											{
+												"name": "Update Device Settings",
+												"value": "updateDeviceSettings",
+												"action": "Update device settings"
+											}
+										],
+										"displayName": "Operation",
+										"placeholder": "Select operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["device"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Node for controlling Anthias deployments with the Anthias API",
+								"displayName": "Anthias",
+								"originalName": "@datafix/n8n-nodes-anthias.anthias",
+								"usableAsTool": true
+							},
+							"createdAt": "2025-09-30T09:21:17.758Z",
+							"updatedAt": "2026-04-08T07:08:29.805Z",
+							"authorGithubUrl": "https://github.com/DataFix-B-V/n8n-nodes-anthias.git",
+							"authorName": "bramknuever",
+							"checksum": "sha512-SrR0UoNC/13/xaA16y6MKOGpkNPFxrnmJw0dwpsyMeSXCFhG7QIsRCAuSn6srw6JXxk5AhEnrdxA8BL+r74GHg==",
+							"description": "Node for controlling Anthias deployments with the Anthias API",
+							"displayName": "Anthias",
+							"name": "@datafix/n8n-nodes-anthias.anthias",
+							"numberOfStars": 0,
+							"numberOfDownloads": 214,
+							"packageName": "@datafix/n8n-nodes-anthias",
+							"npmVersion": "0.1.3",
+							"isOfficialNode": false,
+							"isPublished": true,
+							"companyName": "DataFix B.V.",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-SrR0UoNC/13/xaA16y6MKOGpkNPFxrnmJw0dwpsyMeSXCFhG7QIsRCAuSn6srw6JXxk5AhEnrdxA8BL+r74GHg==",
+									"npmVersion": "0.1.3"
+								}
+							],
+							"aiNodeSdkVersion": null
+						}
+					},
+					{
+						"id": 303,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-jaasai.jaasai",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Jaa_S_AI_c514685ceb.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "JaasAi"
+								},
+								"subtitle": "",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "evaluate",
+										"options": [
+											{
+												"name": "Evaluate",
+												"value": "evaluate",
+												"description": "Evaluate AI agents and outputs"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "evaluate",
+										"options": [
+											{
+												"name": "Evaluate",
+												"value": "evaluate",
+												"action": "Evaluate AI agent responses",
+												"description": "Evaluate AI agent responses"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["evaluate"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Evaluate AI Agents with JaaS",
+								"displayName": "JaaS AI",
+								"originalName": "n8n-nodes-jaasai.jaasai"
+							},
+							"createdAt": "2025-11-17T13:20:56.122Z",
+							"updatedAt": "2026-04-08T07:08:28.082Z",
+							"authorGithubUrl": "https://github.com/jaas-a1/",
+							"authorName": "hljaasai",
+							"checksum": "sha512-oJJL5LHwFXJ9V21vw3TioOlUniDYttghRnUqmKWH6dwDCtiVwh68lMOGJbi1k1AM0h9jNaujf2QukgT0bFsQPg==",
+							"description": "Evaluate AI Agents with JaaS",
+							"displayName": "JaaS AI",
+							"name": "n8n-nodes-jaasai.jaasai",
+							"numberOfStars": 0,
+							"numberOfDownloads": 5,
+							"packageName": "n8n-nodes-jaasai",
+							"npmVersion": "0.3.2",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "JaaS AI",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-oJJL5LHwFXJ9V21vw3TioOlUniDYttghRnUqmKWH6dwDCtiVwh68lMOGJbi1k1AM0h9jNaujf2QukgT0bFsQPg==",
+									"npmVersion": "0.3.2"
+								}
+							],
+							"aiNodeSdkVersion": null
+						}
+					},
+					{
+						"id": 743,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-smallestai.smallestai",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Smallest_AI_f4227aa8e7.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Smallest AI"
+								},
+								"subtitle": "={{$parameter[\"resource\"] + \": \" + $parameter[\"operation\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "tts",
+										"options": [
+											{
+												"name": "Speech (TTS)",
+												"value": "tts"
+											},
+											{
+												"name": "Transcription (STT)",
+												"value": "stt"
+											},
+											{
+												"name": "Voice Clone",
+												"value": "voiceClone"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "synthesize",
+										"options": [
+											{
+												"name": "Get Voices",
+												"value": "getVoices",
+												"action": "Get voices",
+												"description": "Retrieve available voice models"
+											},
+											{
+												"name": "Synthesize Speech",
+												"value": "synthesize",
+												"action": "Synthesize speech",
+												"description": "Convert text to speech"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["tts"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "transcribe",
+										"options": [
+											{
+												"name": "Transcribe Audio",
+												"value": "transcribe",
+												"action": "Transcribe audio",
+												"description": "Transcribe audio to text"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["stt"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "addVoice",
+										"options": [
+											{
+												"name": "Add Voice",
+												"value": "addVoice",
+												"action": "Add voice",
+												"description": "Clone a voice from an audio file"
+											},
+											{
+												"name": "Delete Cloned Voice",
+												"value": "deleteClonedVoice",
+												"action": "Delete cloned voice",
+												"description": "Delete a cloned voice by its ID"
+											},
+											{
+												"name": "Get Cloned Voices",
+												"value": "getClonedVoices",
+												"action": "Get cloned voices",
+												"description": "Retrieve all your cloned voices"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["voiceClone"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Interact with Smallest AI APIs for voice synthesis and agents",
+								"displayName": "Smallest AI",
+								"originalName": "n8n-nodes-smallestai.smallestai",
+								"usableAsTool": true
+							},
+							"createdAt": "2026-03-30T11:19:12.269Z",
+							"updatedAt": "2026-04-08T07:34:05.814Z",
+							"authorGithubUrl": "https://github.com/sosumit001/",
+							"authorName": "smallestai",
+							"checksum": "sha512-Z9lQJicl8QWzxgfWF3cHWV07QY+6+96VzQpT0KVaKD4Lo12LWktvmJwMfC+U+XxHmtoRIyYlaGARyJxo1NkV6A==",
+							"description": "Interact with Smallest AI APIs for voice synthesis and agents",
+							"displayName": "Smallest AI",
+							"name": "n8n-nodes-smallestai.smallestai",
+							"numberOfStars": 0,
+							"numberOfDownloads": 161,
+							"packageName": "n8n-nodes-smallestai",
+							"npmVersion": "0.1.7",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": null,
+							"nodeVersions": [
+								{
+									"checksum": "sha512-trnGhBWvFQXRz5MhQXQd9okFhUawkPttTbO77eVfbCiPnOIwoi5JXi6B+kEv0ly6a4SZcNM3hqzRjMf2/gSCHA==",
+									"npmVersion": "0.1.6"
+								},
+								{
+									"checksum": "sha512-Z9lQJicl8QWzxgfWF3cHWV07QY+6+96VzQpT0KVaKD4Lo12LWktvmJwMfC+U+XxHmtoRIyYlaGARyJxo1NkV6A==",
+									"npmVersion": "0.1.7"
+								}
+							],
+							"aiNodeSdkVersion": null
+						}
+					},
+					{
+						"id": 255,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-llmlayer.llmLayer",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/LLM_Layer_6321fe20c8.png",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "LLMLayer"
+								},
+								"subtitle": "={{$parameter[\"resource\"] + \": \" + $parameter[\"operation\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "answer",
+										"options": [
+											{
+												"name": "Answer",
+												"value": "answer",
+												"description": "Search and generate AI answers"
+											},
+											{
+												"name": "Web Search",
+												"value": "webSearch",
+												"description": "Search the web for information"
+											},
+											{
+												"name": "Scrape",
+												"value": "scrape",
+												"description": "Scrape content from a URL"
+											},
+											{
+												"name": "YouTube",
+												"value": "youtube",
+												"description": "Get YouTube video transcript"
+											},
+											{
+												"name": "PDF",
+												"value": "pdf",
+												"description": "Extract content from PDF"
+											}
+										],
+										"required": true,
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "generate",
+										"options": [
+											{
+												"name": "Generate",
+												"value": "generate",
+												"action": "Generate an answer",
+												"description": "Generate an answer based on search results"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["answer"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "search",
+										"options": [
+											{
+												"name": "Search",
+												"value": "search",
+												"action": "Search the web",
+												"description": "Search the web"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["webSearch"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "scrapeUrl",
+										"options": [
+											{
+												"name": "Scrape URL",
+												"value": "scrapeUrl",
+												"action": "Scrape content from URL",
+												"description": "Scrape content from a URL"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["scrape"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "getTranscript",
+										"options": [
+											{
+												"name": "Get Transcript",
+												"value": "getTranscript",
+												"action": "Get YouTube transcript",
+												"description": "Get YouTube video transcript"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["youtube"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "extractContent",
+										"options": [
+											{
+												"name": "Extract Content",
+												"value": "extractContent",
+												"action": "Extract PDF content",
+												"description": "Extract text from PDF"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["pdf"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Search and answer questions using LLMLayer API",
+								"displayName": "LLMLayer",
+								"originalName": "n8n-nodes-llmlayer.llmLayer"
+							},
+							"createdAt": "2025-10-24T15:20:50.628Z",
+							"updatedAt": "2026-04-08T07:08:29.875Z",
+							"authorGithubUrl": "https://github.com/YassKhazzan/",
+							"authorName": "yassine.khazzan",
+							"checksum": "sha512-CTT9UZP7kTl28tX4gAONyMEYv5x3u1zlEY0FekjQfgGVvICwwwi2xj1jhZM8HonzX3PgeoMS8YBF9PyZYFt+lw==",
+							"description": "Search and answer questions using LLMLayer API",
+							"displayName": "LLMLayer",
+							"name": "n8n-nodes-llmlayer.llmLayer",
+							"numberOfStars": 1,
+							"numberOfDownloads": 77,
+							"packageName": "n8n-nodes-llmlayer",
+							"npmVersion": "1.0.3",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "llmlayer",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-CTT9UZP7kTl28tX4gAONyMEYv5x3u1zlEY0FekjQfgGVvICwwwi2xj1jhZM8HonzX3PgeoMS8YBF9PyZYFt+lw==",
+									"npmVersion": "1.0.3"
+								}
+							],
+							"aiNodeSdkVersion": null
+						}
+					},
+					{
+						"id": 764,
+						"attributes": {
+							"nodeDescription": {
+								"name": "@sinch-engage/n8n-nodes-preview-sinch-engage.sinchEngageTrigger",
+								"codex": {},
+								"group": ["trigger"],
+								"inputs": [],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Sinch_Engage_Trigger_29bf310639.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Sinch Engage Trigger"
+								},
+								"subtitle": "={{$parameter[\"eventType\"]}}",
+								"properties": [],
+								"description": "Receive SMS messages via Sinch Engage webhook",
+								"displayName": "Sinch Engage Trigger",
+								"originalName": "@sinch-engage/n8n-nodes-sinch-engage.sinchEngageTrigger"
+							},
+							"createdAt": "2026-04-08T07:33:27.976Z",
+							"updatedAt": "2026-04-08T07:33:27.976Z",
+							"authorGithubUrl": "https://github.com/messagemedia/n8n-engage.git",
+							"authorName": "yuying_pei",
+							"checksum": "sha512-1w4fDGy/V3zkGBXrVLZoouU9xqGgLR+k/oe5eqJwUEdr7uqOyKW9hiWQmqA2hsta0J043e41aJtKXh9snks3qQ==",
+							"description": "Receive SMS messages via Sinch Engage webhook",
+							"displayName": "Sinch Engage Trigger",
+							"name": "@sinch-engage/n8n-nodes-sinch-engage.sinchEngageTrigger",
+							"numberOfStars": 1,
+							"numberOfDownloads": 10,
+							"packageName": "@sinch-engage/n8n-nodes-sinch-engage",
+							"npmVersion": "1.0.0-alpha.16",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": null,
+							"nodeVersions": [
+								{
+									"checksum": "sha512-1w4fDGy/V3zkGBXrVLZoouU9xqGgLR+k/oe5eqJwUEdr7uqOyKW9hiWQmqA2hsta0J043e41aJtKXh9snks3qQ==",
+									"npmVersion": "1.0.0-alpha.16"
+								}
+							],
+							"aiNodeSdkVersion": null
+						}
+					},
+					{
+						"id": 765,
+						"attributes": {
+							"nodeDescription": {
+								"name": "@sinch-engage/n8n-nodes-preview-sinch-engage.sinchEngage",
+								"codex": {},
+								"group": ["output"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Sinch_Engage_41f4b32600.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Sinch Engage"
+								},
+								"subtitle": "={{$parameter[\"resource\"].toUpperCase() + \": \" + $parameter[\"operation\"].charAt(0).toUpperCase() + $parameter[\"operation\"].slice(1)}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "sms",
+										"options": [
+											{
+												"name": "Blacklist",
+												"value": "blacklist",
+												"description": "Manage opt-out blacklist for phone numbers"
+											},
+											{
+												"name": "SMS",
+												"value": "sms",
+												"description": "Send and manage SMS messages"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "send",
+										"options": [
+											{
+												"name": "Send",
+												"value": "send",
+												"action": "Send an SMS",
+												"description": "Send an SMS message"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["sms"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "add",
+										"options": [
+											{
+												"name": "Add",
+												"value": "add",
+												"action": "Add to blacklist",
+												"description": "Add phone number(s) to blacklist"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["blacklist"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Send SMS and manage communications via Sinch Engage",
+								"displayName": "Sinch Engage",
+								"originalName": "@sinch-engage/n8n-nodes-sinch-engage.sinchEngage"
+							},
+							"createdAt": "2026-04-08T07:33:27.988Z",
+							"updatedAt": "2026-04-08T07:33:27.988Z",
+							"authorGithubUrl": "https://github.com/messagemedia/n8n-engage.git",
+							"authorName": "yuying_pei",
+							"checksum": "sha512-1w4fDGy/V3zkGBXrVLZoouU9xqGgLR+k/oe5eqJwUEdr7uqOyKW9hiWQmqA2hsta0J043e41aJtKXh9snks3qQ==",
+							"description": "Send SMS and manage communications via Sinch Engage",
+							"displayName": "Sinch Engage",
+							"name": "@sinch-engage/n8n-nodes-sinch-engage.sinchEngage",
+							"numberOfStars": 1,
+							"numberOfDownloads": 10,
+							"packageName": "@sinch-engage/n8n-nodes-sinch-engage",
+							"npmVersion": "1.0.0-alpha.16",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": null,
+							"nodeVersions": [
+								{
+									"checksum": "sha512-1w4fDGy/V3zkGBXrVLZoouU9xqGgLR+k/oe5eqJwUEdr7uqOyKW9hiWQmqA2hsta0J043e41aJtKXh9snks3qQ==",
+									"npmVersion": "1.0.0-alpha.16"
+								}
+							],
+							"aiNodeSdkVersion": null
+						}
+					},
+					{
+						"id": 145,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-pdfvector.pdfVector",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/PDF_Vector_cd91195af6.svg",
+								"outputs": ["main"],
+								"version": 2,
+								"defaults": {
+									"name": "PDF Vector"
+								},
+								"subtitle": "={{$parameter[\"operation\"] + \": \" + $parameter[\"resource\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "document",
+										"options": [
+											{
+												"name": "Academic",
+												"value": "academic"
+											},
+											{
+												"name": "Bank Statement",
+												"value": "bankStatement"
+											},
+											{
+												"name": "Document",
+												"value": "document"
+											},
+											{
+												"name": "Identity Document",
+												"value": "identity"
+											},
+											{
+												"name": "Invoice",
+												"value": "invoice"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "parse",
+										"options": [
+											{
+												"name": "Parse",
+												"value": "parse",
+												"action": "Parse a document",
+												"description": "Extract text and page count from a document"
+											},
+											{
+												"name": "Ask",
+												"value": "ask",
+												"action": "Ask about a document",
+												"description": "Ask a question about a document and get an AI answer"
+											},
+											{
+												"name": "Extract",
+												"value": "extract",
+												"action": "Extract from a document",
+												"description": "Extract structured data from a document using JSON Schema"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["document"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "parse",
+										"options": [
+											{
+												"name": "Parse",
+												"value": "parse",
+												"action": "Parse a identity document",
+												"description": "Extract text and page count from a identity document"
+											},
+											{
+												"name": "Ask",
+												"value": "ask",
+												"action": "Ask about a identity document",
+												"description": "Ask a question about a identity document and get an AI answer"
+											},
+											{
+												"name": "Extract",
+												"value": "extract",
+												"action": "Extract from a identity document",
+												"description": "Extract structured data from a identity document using JSON Schema"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["identity"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "parse",
+										"options": [
+											{
+												"name": "Parse",
+												"value": "parse",
+												"action": "Parse a invoice",
+												"description": "Extract text and page count from a invoice"
+											},
+											{
+												"name": "Ask",
+												"value": "ask",
+												"action": "Ask about a invoice",
+												"description": "Ask a question about a invoice and get an AI answer"
+											},
+											{
+												"name": "Extract",
+												"value": "extract",
+												"action": "Extract from a invoice",
+												"description": "Extract structured data from a invoice using JSON Schema"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["invoice"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "parse",
+										"options": [
+											{
+												"name": "Parse",
+												"value": "parse",
+												"action": "Parse a bank statement",
+												"description": "Extract text and page count from a bank statement"
+											},
+											{
+												"name": "Ask",
+												"value": "ask",
+												"action": "Ask about a bank statement",
+												"description": "Ask a question about a bank statement and get an AI answer"
+											},
+											{
+												"name": "Extract",
+												"value": "extract",
+												"action": "Extract from a bank statement",
+												"description": "Extract structured data from a bank statement using JSON Schema"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["bankStatement"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "search",
+										"options": [
+											{
+												"name": "Search",
+												"value": "search",
+												"action": "Search academic papers",
+												"description": "Search for academic papers across multiple databases"
+											},
+											{
+												"name": "Fetch",
+												"value": "fetch",
+												"action": "Fetch papers by ID",
+												"description": "Fetch specific papers by DOI, PubMed ID, ArXiv ID, etc"
+											},
+											{
+												"name": "Find Citations",
+												"value": "findCitations",
+												"action": "Find citations for text",
+												"description": "Find relevant academic citations for a paragraph of text"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["academic"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Convert PDFs, Word, Excel documents, and images to clean markdown, extract structured data with AI, process invoices with specialized parsing, and search millions of academic papers across PubMed, ArXiv, Google Scholar, and more.",
+								"displayName": "PDF Vector",
+								"originalName": "n8n-nodes-pdfvector.pdfVector",
+								"usableAsTool": true
+							},
+							"createdAt": "2025-08-13T09:20:35.166Z",
+							"updatedAt": "2026-04-08T07:33:29.725Z",
+							"authorGithubUrl": "https://github.com/phuctm97/",
+							"authorName": "phuctm97",
+							"checksum": "sha512-dmaz78Nk1eNy0Kz1JFW1jrk8rDjxKpDFUL8BkHFTGf4mF+oW+NMVla4QuEj1idGJntbsdG78ngLa0Nl0SXhKHg==",
+							"description": "Convert PDFs, Word, Excel documents, and images to clean markdown, extract structured data with AI, process invoices with specialized parsing, and search millions of academic papers across PubMed, ArXiv, Google Scholar, and more.",
+							"displayName": "PDF Vector",
+							"name": "n8n-nodes-pdfvector.pdfVector",
+							"numberOfStars": 3,
+							"numberOfDownloads": 10002,
+							"packageName": "n8n-nodes-pdfvector",
+							"npmVersion": "0.8.4",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "PDF Vector",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-8TQlsbiJ58McwZpQ1bS/ImjGl9wlCLc0SXb+p+hRXU3vNXzTnI8lFbshKMwm+S/MTlaTLazqkfk/v28clykDlQ==",
+									"npmVersion": "0.4.0"
+								},
+								{
+									"checksum": "sha512-SpOLAn4JtuLBFG6P/MRISQzcTakhxsl4xbi+RapQS0+GG5pMaNT4AQXycBhosG9wZZ3p7QMBbm0sOJmNr+Z4rg==",
+									"npmVersion": "0.6.0"
+								},
+								{
+									"checksum": "sha512-JFwsZQSFzoGHqEvMniwVM1ATkSBrVEwgQOKhSMD3JA1YxPCDnQuYFGDqMHlhl6jffsnX8fcy/Vt2cxlgwUwuuw==",
+									"npmVersion": "0.8.1"
+								},
+								{
+									"checksum": "sha512-x5zzeoLG2MhGi2oo4PHdkJq+X2OqphROvTFwVnMHBunSvqR7GXO8C2E4iQlR3eKwQfA69zjxv1yAlMRFGFVPhw==",
+									"npmVersion": "0.8.2"
+								},
+								{
+									"checksum": "sha512-iV57I9dMxutybC/yn7tNxDS9iH5m9bT5qL25vm34USbQKuYFjt4GhcEBHNtEXGwzwbowUzpxkoWIGg7Pw0p9Gg==",
+									"npmVersion": "0.8.3"
+								},
+								{
+									"checksum": "sha512-dmaz78Nk1eNy0Kz1JFW1jrk8rDjxKpDFUL8BkHFTGf4mF+oW+NMVla4QuEj1idGJntbsdG78ngLa0Nl0SXhKHg==",
+									"npmVersion": "0.8.4"
+								}
+							],
+							"aiNodeSdkVersion": null
+						}
+					},
+					{
+						"id": 693,
+						"attributes": {
+							"nodeDescription": {
+								"name": "@alphainsiderinc/n8n-nodes-preview-alphainsider.alphaInsider",
+								"codex": {},
+								"group": ["trigger"],
+								"inputs": [],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Alpha_Insider_bb3c19af81.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "AlphaInsider"
+								},
+								"subtitle": "={{$parameter[\"operation\"] + \": \" + $parameter[\"resource\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "websockets",
+										"options": [
+											{
+												"name": "Websockets",
+												"value": "websockets"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "subscribe",
+										"options": [
+											{
+												"name": "Subscribe",
+												"value": "subscribe",
+												"action": "Subscribe to websocket channels",
+												"description": "Subscribe to real-time websocket events from AlphaInsider"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["websockets"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Real-time stock & crypto data, automated trading, live trade alerts, broker connections.",
+								"displayName": "AlphaInsider",
+								"originalName": "@alphainsiderinc/n8n-nodes-alphainsider.alphaInsider"
+							},
+							"createdAt": "2026-03-24T14:19:26.660Z",
+							"updatedAt": "2026-04-08T07:43:28.808Z",
+							"authorGithubUrl": "https://github.com/AlphaInsider/n8n-nodes-alphainsider.git",
+							"authorName": "alphainsider",
+							"checksum": "sha512-YvaMP25RM4pe78+93o09rrqjS5r+AqbzApeXBd1pwJfIHceyowwpjXUweyKVPCZMMPcAGtnQCtvmtTZ7mo2iaA==",
+							"description": "Real-time stock & crypto data, automated trading, live trade alerts, broker connections.",
+							"displayName": "AlphaInsider",
+							"name": "@alphainsiderinc/n8n-nodes-alphainsider.alphaInsider",
+							"numberOfStars": 0,
+							"numberOfDownloads": 157,
+							"packageName": "@alphainsiderinc/n8n-nodes-alphainsider",
+							"npmVersion": "1.4.4",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": null,
+							"nodeVersions": [
+								{
+									"checksum": "sha512-jn7Am92TRyOEWhH6PPcXYv47kDEQ8hCAlAyzKhtNigdz64/4hDT6Q5wMEdjkqGr8pf0IKPrd/bQZ5g4kMa9s5g==",
+									"npmVersion": "1.4.3"
+								},
+								{
+									"checksum": "sha512-YvaMP25RM4pe78+93o09rrqjS5r+AqbzApeXBd1pwJfIHceyowwpjXUweyKVPCZMMPcAGtnQCtvmtTZ7mo2iaA==",
+									"npmVersion": "1.4.4"
+								}
+							],
+							"aiNodeSdkVersion": null
+						}
+					},
+					{
+						"id": 440,
+						"attributes": {
+							"nodeDescription": {
+								"name": "@custom-js/n8n-nodes-preview-pdf-toolkit-v2.pdfToolkit",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Custom_JS_PDF_and_File_Toolkit_66d875e649.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "PDF Toolkit"
+								},
+								"subtitle": "",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "convert",
+										"options": [
+											{
+												"name": "Convert",
+												"value": "convert"
+											},
+											{
+												"name": "PDF",
+												"value": "pdf"
+											},
+											{
+												"name": "Web",
+												"value": "web"
+											},
+											{
+												"name": "Data",
+												"value": "data"
+											},
+											{
+												"name": "HTML Hosting",
+												"value": "page"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "pdfToPng",
+										"options": [
+											{
+												"name": "PDF to PNG",
+												"value": "pdfToPng",
+												"action": "Convert PDF to PNG"
+											},
+											{
+												"name": "PDF to Text",
+												"value": "pdfToText",
+												"action": "Convert PDF to Text"
+											},
+											{
+												"name": "HTML to DOCX",
+												"value": "htmlToDocx",
+												"action": "Convert HTML to DOCX"
+											},
+											{
+												"name": "HTML to PDF",
+												"value": "htmlToPdf",
+												"action": "Convert HTML to PDF"
+											},
+											{
+												"name": "JSON to TOON",
+												"value": "jsonToToon",
+												"action": "Convert JSON to TOON"
+											},
+											{
+												"name": "TOON to JSON",
+												"value": "toonToJson",
+												"action": "Convert TOON to JSON"
+											},
+											{
+												"name": "Markdown to HTML",
+												"value": "markdownToHtml",
+												"action": "Convert Markdown to HTML"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["convert"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "compress",
+										"options": [
+											{
+												"name": "Compress",
+												"value": "compress",
+												"action": "Compress PDF"
+											},
+											{
+												"name": "Merge",
+												"value": "merge",
+												"action": "Merge PDFs"
+											},
+											{
+												"name": "Extract Pages",
+												"value": "extractPages",
+												"action": "Extract Pages from PDF"
+											},
+											{
+												"name": "Get Form Fields",
+												"value": "getFormFields",
+												"action": "Get PDF Form Fields"
+											},
+											{
+												"name": "Fill Form",
+												"value": "fillForm",
+												"action": "Fill PDF Form"
+											},
+											{
+												"name": "Generate Invoice",
+												"value": "generateInvoice",
+												"action": "Generate Invoice PDF"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["pdf"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "scrape",
+										"options": [
+											{
+												"name": "Scrape",
+												"value": "scrape",
+												"action": "Scrape Website"
+											},
+											{
+												"name": "Screenshot",
+												"value": "screenshot",
+												"action": "Take Screenshot"
+											},
+											{
+												"name": "SSL Check",
+												"value": "sslCheck",
+												"action": "Check SSL"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["web"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "jsonSelect",
+										"options": [
+											{
+												"name": "JSON Select",
+												"value": "jsonSelect",
+												"action": "Select JSON Data"
+											},
+											{
+												"name": "Regex",
+												"value": "regex",
+												"action": "Regex Tool"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["data"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "upload",
+										"options": [
+											{
+												"name": "Get HTML Pages",
+												"value": "getAll",
+												"action": "Get HTML Pages"
+											},
+											{
+												"name": "Host HTML Page",
+												"value": "upload",
+												"action": "Upload new HTML Page"
+											},
+											{
+												"name": "Update HTML Page",
+												"value": "update",
+												"action": "Update existing HTML Page"
+											},
+											{
+												"name": "Upsert HTML Page",
+												"value": "upsert",
+												"action": "Upsert HTML Page"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["page"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "All-in-one toolkit for PDF, HTML, JSON, and file conversions.",
+								"displayName": "CustomJS (PDF & File Toolkit)",
+								"originalName": "@custom-js/n8n-nodes-pdf-toolkit-v2.pdfToolkit"
+							},
+							"createdAt": "2026-02-06T16:21:44.421Z",
+							"updatedAt": "2026-04-08T07:07:54.860Z",
+							"authorGithubUrl": "https://github.com/customjs/n8n-nodes-pdf-toolkit-v2.git",
+							"authorName": "henriklippke",
+							"checksum": "sha512-eRf20tbQvZ9fThDma1nW5UeTj9mUWiF+2bnsp7IQ6MnmrW0YYPSYuOUXfZot4wcDq8CqKTguLwbxANxi2As3Ug==",
+							"description": "All-in-one toolkit for PDF, HTML, JSON, and file conversions.",
+							"displayName": "CustomJS (PDF & File Toolkit)",
+							"name": "@custom-js/n8n-nodes-pdf-toolkit-v2.pdfToolkit",
+							"numberOfStars": 0,
+							"numberOfDownloads": 412,
+							"packageName": "@custom-js/n8n-nodes-pdf-toolkit-v2",
+							"npmVersion": "0.9.0",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "Henrik Lippke",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-x/T5Y5L0CiR0+AdvQ2qXau4iZxXtGixSGMBN7POUXFP9Ed6ZSZ28RSAnRlZSSK4o+F1ZxFrVBtN2raf4N6FRSQ==",
+									"npmVersion": "0.5.0"
+								},
+								{
+									"checksum": "sha512-qnZYR2eMNlQc9qp07SqqEfo5Qiq8R/ynNUsJML6tgebLb0+J2fjpPt46v2MoXZ97Ji9eFpQshavlTaVSZngQGg==",
+									"npmVersion": "0.7.0"
+								},
+								{
+									"checksum": "sha512-rJznMK7RNKC2Rf4auqhdGs8ndXiWqtCf8q6nsL8Ljk9eLKHCcHzNEL5PvhLx+rbw1744RQQ22yz/DtNxHeOrmw==",
+									"npmVersion": "0.8.0"
+								},
+								{
+									"checksum": "sha512-eRf20tbQvZ9fThDma1nW5UeTj9mUWiF+2bnsp7IQ6MnmrW0YYPSYuOUXfZot4wcDq8CqKTguLwbxANxi2As3Ug==",
+									"npmVersion": "0.9.0"
+								}
+							],
+							"aiNodeSdkVersion": null
+						}
+					},
+					{
+						"id": 606,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-klicktipp.klicktippTrigger",
+								"codex": {},
+								"group": ["trigger"],
+								"inputs": [],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Klick_Tipp_Trigger_6c658750a7.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "KlickTipp Trigger"
+								},
+								"subtitle": "",
+								"properties": [],
+								"description": "Triggers when a webhook event occurs in KlickTipp, such as a tag being added, an email being opened or sent, a link clicked, an SMS sent, and more.",
+								"displayName": "KlickTipp Trigger",
+								"originalName": "n8n-nodes-klicktipp.klicktippTrigger"
+							},
+							"createdAt": "2026-03-17T16:44:33.318Z",
+							"updatedAt": "2026-04-08T07:08:14.860Z",
+							"authorGithubUrl": "https://github.com/klicktipp/n8n-community-node-klicktipp.git",
+							"authorName": "mchudesnov",
+							"checksum": "sha512-HKCNisKUuolAHyB5VGbSATSElDMs+N3LPy8Yn4nGule1eijBcH0OCuFlD9EtDizVgwikkwYVCQXod7cKZJxITA==",
+							"description": "Triggers when a webhook event occurs in KlickTipp, such as a tag being added, an email being opened or sent, a link clicked, an SMS sent, and more.",
+							"displayName": "KlickTipp Trigger",
+							"name": "n8n-nodes-klicktipp.klicktippTrigger",
+							"numberOfStars": 0,
+							"numberOfDownloads": 298,
+							"packageName": "n8n-nodes-klicktipp",
+							"npmVersion": "1.0.39",
+							"isOfficialNode": false,
+							"isPublished": true,
+							"companyName": "Klick-Tipp",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-aB71f5Dg2C76YAS+yfup7CjXkkT3sNVRMepdYNStVnDjCYEIxyWlxib7AYZdaBeLxuo0ka9eMAh69PE+Fi1QDg==",
+									"npmVersion": "1.0.36"
+								},
+								{
+									"checksum": "sha512-lObSjSpLzYwzAiRC+GzNZBiMmUvBwEjXqC6gzXM2pqxAnVXwGY+sMLDrpGk0vfwFYLXlPk59UEIhPMnj7T8Hfg==",
+									"npmVersion": "1.0.38"
+								},
+								{
+									"checksum": "sha512-HKCNisKUuolAHyB5VGbSATSElDMs+N3LPy8Yn4nGule1eijBcH0OCuFlD9EtDizVgwikkwYVCQXod7cKZJxITA==",
+									"npmVersion": "1.0.39"
+								}
+							],
+							"aiNodeSdkVersion": null
+						}
+					},
+					{
+						"id": 87,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-featherless.featherless",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": "={{[\"main\"]}}",
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Featherless_32f46a9e9a.svg",
+								"outputs": "={{[\"main\"]}}",
+								"version": 1,
+								"defaults": {
+									"name": "Featherless"
+								},
+								"subtitle": "={{$parameter[\"operation\"]}}",
+								"properties": [
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "chat",
+										"options": [
+											{
+												"name": "Chat",
+												"value": "chat",
+												"action": "Send a chat message",
+												"description": "Send a chat message"
+											}
+										],
+										"displayName": "Operation",
+										"noDataExpression": true
+									}
+								],
+								"description": "Interact with Featherless API",
+								"displayName": "Featherless",
+								"originalName": "n8n-nodes-featherless.featherless",
+								"usableAsTool": true
+							},
+							"createdAt": "2025-07-14T15:47:04.294Z",
+							"updatedAt": "2026-04-08T07:08:19.505Z",
+							"authorGithubUrl": "https://github.com/featherlessai/",
+							"authorName": "darinverheijke",
+							"checksum": "sha512-KLrNfG9QynEbbHid4cI8lbZFu/0fMhDdVNq9Gd/O3UQBJ1mIVofvJ9L6fMlVvO/KF77Weg3L2x61Q4/9pj1Q+w==",
+							"description": "Interact with Featherless API",
+							"displayName": "Featherless",
+							"name": "n8n-nodes-featherless.featherless",
+							"numberOfStars": 0,
+							"numberOfDownloads": 33,
+							"packageName": "n8n-nodes-featherless",
+							"npmVersion": "0.1.6",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "Featherless AI",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-KLrNfG9QynEbbHid4cI8lbZFu/0fMhDdVNq9Gd/O3UQBJ1mIVofvJ9L6fMlVvO/KF77Weg3L2x61Q4/9pj1Q+w==",
+									"npmVersion": "0.1.6"
+								}
+							],
+							"aiNodeSdkVersion": null
+						}
+					},
+					{
+						"id": 261,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-meetgeek.meetGeek",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Meet_Geek_17d819ea1c.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "MeetGeek"
+								},
+								"subtitle": "={{$parameter[\"operation\"] + \": \" + $parameter[\"resource\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "meeting",
+										"options": [
+											{
+												"name": "Meeting",
+												"value": "meeting"
+											},
+											{
+												"name": "Recording",
+												"value": "recording"
+											},
+											{
+												"name": "Highlight",
+												"value": "highlight"
+											},
+											{
+												"name": "Team",
+												"value": "team"
+											},
+											{
+												"name": "Transcript",
+												"value": "transcript"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "getManyHighlights",
+										"options": [
+											{
+												"name": "Get Many",
+												"value": "getManyHighlights",
+												"action": "Get many highlights",
+												"description": "Get list of highlights for a meeting"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["highlight"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "getManyMeetings",
+										"options": [
+											{
+												"name": "Get Many",
+												"value": "getManyMeetings",
+												"action": "Gets many meetings",
+												"description": "Get list of meetings"
+											},
+											{
+												"name": "Get Meeting Details",
+												"value": "getMeeting",
+												"action": "Gets a meeting by ID",
+												"description": "Get a meeting by ID"
+											},
+											{
+												"name": "Get Meeting Summary",
+												"value": "getMeetingSummary",
+												"action": "Gets meeting summary by ID",
+												"description": "Get meeting summary by ID"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["meeting"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "uploadRecording",
+										"options": [
+											{
+												"name": "Upload",
+												"value": "uploadRecording",
+												"action": "Upload recording",
+												"description": "Upload a recording for analysis"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["recording"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "getManyTeams",
+										"options": [
+											{
+												"name": "Get Many",
+												"value": "getManyTeams",
+												"action": "Get many teams",
+												"description": "Get list of teams"
+											},
+											{
+												"name": "Get Team Meetings",
+												"value": "getTeamMeetings",
+												"action": "Gets team meetings"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["team"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "getManyTranscripts",
+										"options": [
+											{
+												"name": "Get Many",
+												"value": "getManyTranscripts",
+												"action": "Get many transcripts",
+												"description": "Get list of transcripts for a meeting"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["transcript"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Interact with MeetGeek API",
+								"displayName": "MeetGeek",
+								"originalName": "n8n-nodes-meetgeek.meetGeek"
+							},
+							"createdAt": "2025-10-24T16:20:56.617Z",
+							"updatedAt": "2026-04-08T07:08:27.881Z",
+							"authorGithubUrl": "https://github.com/meetgeekai/meetgeekai-n8n-node.git",
+							"authorName": "meetgeek",
+							"checksum": "sha512-+0BQZGYyupB0rxV8Nn6V+Ys+AKSepSlmdOt9VI99lahVUz8ypLszcCX7pPWgJ0yhagfuUyrNRU+f0zJMJSqteQ==",
+							"description": "Interact with MeetGeek API",
+							"displayName": "MeetGeek",
+							"name": "n8n-nodes-meetgeek.meetGeek",
+							"numberOfStars": 5,
+							"numberOfDownloads": 100,
+							"packageName": "n8n-nodes-meetgeek",
+							"npmVersion": "0.1.6",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "Makeitfuture",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-+0BQZGYyupB0rxV8Nn6V+Ys+AKSepSlmdOt9VI99lahVUz8ypLszcCX7pPWgJ0yhagfuUyrNRU+f0zJMJSqteQ==",
+									"npmVersion": "0.1.6"
+								}
+							],
+							"aiNodeSdkVersion": null
+						}
+					},
+					{
+						"id": 116,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-octagon.octagonAgents",
+								"codex": {},
+								"group": ["input"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Octagon_860db8c7c9.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Octagon"
+								},
+								"subtitle": "={{$parameter[\"agent\"]}}",
+								"properties": [],
+								"description": "Financial AI agents",
+								"displayName": "Octagon",
+								"originalName": "n8n-nodes-octagon.octagonAgents",
+								"usableAsTool": true
+							},
+							"createdAt": "2025-07-23T10:30:56.184Z",
+							"updatedAt": "2026-04-08T07:08:20.203Z",
+							"authorGithubUrl": "https://github.com/OctagonAI/",
+							"authorName": "octagonai",
+							"checksum": "sha512-dJneAKDNeOpMyOo3PwgbnYOH0vdF3SZ1/qkxGd8tqnnRWlv1UspTrIeCAWRnsmtfKpYLQz7xne2VwiX0qH0BsA==",
+							"description": "Financial AI agents",
+							"displayName": "Octagon",
+							"name": "n8n-nodes-octagon.octagonAgents",
+							"numberOfStars": 0,
+							"numberOfDownloads": 158,
+							"packageName": "n8n-nodes-octagon",
+							"npmVersion": "1.0.8",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "Octagon",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-dJneAKDNeOpMyOo3PwgbnYOH0vdF3SZ1/qkxGd8tqnnRWlv1UspTrIeCAWRnsmtfKpYLQz7xne2VwiX0qH0BsA==",
+									"npmVersion": "1.0.8"
+								}
+							],
+							"aiNodeSdkVersion": null
+						}
+					},
+					{
+						"id": 166,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-dalil-ai.dalilAi",
+								"codex": {},
+								"group": ["output"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Dalil_AI_c7375fdd76.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Dalil AI"
+								},
+								"subtitle": "={{$parameter[\"operation\"] + \": \" + $parameter[\"resource\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "people",
+										"options": [
+											{
+												"name": "Company",
+												"value": "company"
+											},
+											{
+												"name": "Note",
+												"value": "note"
+											},
+											{
+												"name": "Note Relation",
+												"value": "noteTarget"
+											},
+											{
+												"name": "Opportunity",
+												"value": "opportunity"
+											},
+											{
+												"name": "Person",
+												"value": "people"
+											},
+											{
+												"name": "Pipeline",
+												"value": "pipeline"
+											},
+											{
+												"name": "Task",
+												"value": "task"
+											},
+											{
+												"name": "Task Relation",
+												"value": "taskTarget"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "create",
+										"options": [
+											{
+												"name": "Create",
+												"value": "create",
+												"action": "Create a person",
+												"description": "Create a new person"
+											},
+											{
+												"name": "Delete",
+												"value": "delete",
+												"action": "Delete a person",
+												"description": "Delete a person"
+											},
+											{
+												"name": "Get",
+												"value": "get",
+												"action": "Get a person",
+												"description": "Get a person"
+											},
+											{
+												"name": "Get Many",
+												"value": "getAll",
+												"action": "Get many people",
+												"description": "Get many people"
+											},
+											{
+												"name": "Search",
+												"value": "search",
+												"action": "Search for people",
+												"description": "Search for people by name or email"
+											},
+											{
+												"name": "Update",
+												"value": "update",
+												"action": "Update a person",
+												"description": "Update a person"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["people"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "create",
+										"options": [
+											{
+												"name": "Create",
+												"value": "create",
+												"action": "Create a company",
+												"description": "Create a new company"
+											},
+											{
+												"name": "Delete",
+												"value": "delete",
+												"action": "Delete a company",
+												"description": "Delete a company"
+											},
+											{
+												"name": "Get",
+												"value": "get",
+												"action": "Get a company",
+												"description": "Get a company"
+											},
+											{
+												"name": "Get Many",
+												"value": "getAll",
+												"action": "Get many companies",
+												"description": "Get many companies"
+											},
+											{
+												"name": "Search",
+												"value": "search",
+												"action": "Search for companies",
+												"description": "Search for companies by name"
+											},
+											{
+												"name": "Update",
+												"value": "update",
+												"action": "Update a company",
+												"description": "Update a company"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["company"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "create",
+										"options": [
+											{
+												"name": "Create",
+												"value": "create",
+												"action": "Create a note",
+												"description": "Create a new note"
+											},
+											{
+												"name": "Delete",
+												"value": "delete",
+												"action": "Delete a note",
+												"description": "Delete a note"
+											},
+											{
+												"name": "Get",
+												"value": "get",
+												"action": "Get a note",
+												"description": "Get a note"
+											},
+											{
+												"name": "Get Many",
+												"value": "getAll",
+												"action": "Get many notes",
+												"description": "Get many notes"
+											},
+											{
+												"name": "Search",
+												"value": "search",
+												"action": "Search for notes",
+												"description": "Search for notes by title"
+											},
+											{
+												"name": "Update",
+												"value": "update",
+												"action": "Update a note",
+												"description": "Update a note"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["note"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "create",
+										"options": [
+											{
+												"name": "Create",
+												"value": "create",
+												"action": "Create a note relation",
+												"description": "Create a new note relation"
+											},
+											{
+												"name": "Delete",
+												"value": "delete",
+												"action": "Delete a note relation",
+												"description": "Delete a note relation"
+											},
+											{
+												"name": "Get",
+												"value": "get",
+												"action": "Get a note relation",
+												"description": "Get a note relation"
+											},
+											{
+												"name": "Get Many",
+												"value": "getAll",
+												"action": "Get many note relations",
+												"description": "Get many note relations"
+											},
+											{
+												"name": "Update",
+												"value": "update",
+												"action": "Update a note relation",
+												"description": "Update a note relation"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["noteTarget"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "create",
+										"options": [
+											{
+												"name": "Create",
+												"value": "create",
+												"action": "Create a task",
+												"description": "Create a new task"
+											},
+											{
+												"name": "Delete",
+												"value": "delete",
+												"action": "Delete a task",
+												"description": "Delete a task"
+											},
+											{
+												"name": "Get",
+												"value": "get",
+												"action": "Get a task",
+												"description": "Get a task"
+											},
+											{
+												"name": "Get Many",
+												"value": "getAll",
+												"action": "Get many tasks",
+												"description": "Get many tasks"
+											},
+											{
+												"name": "Search",
+												"value": "search",
+												"action": "Search for tasks",
+												"description": "Search for tasks by title"
+											},
+											{
+												"name": "Update",
+												"value": "update",
+												"action": "Update a task",
+												"description": "Update a task"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["task"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "create",
+										"options": [
+											{
+												"name": "Create",
+												"value": "create",
+												"action": "Create a task relation",
+												"description": "Create a new task relation"
+											},
+											{
+												"name": "Delete",
+												"value": "delete",
+												"action": "Delete a task relation",
+												"description": "Delete a task relation"
+											},
+											{
+												"name": "Get",
+												"value": "get",
+												"action": "Get a task relation",
+												"description": "Get a task relation"
+											},
+											{
+												"name": "Get Many",
+												"value": "getAll",
+												"action": "Get many task relations",
+												"description": "Get many task relations"
+											},
+											{
+												"name": "Update",
+												"value": "update",
+												"action": "Update a task relation",
+												"description": "Update a task relation"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["taskTarget"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "create",
+										"options": [
+											{
+												"name": "Create",
+												"value": "create",
+												"action": "Create a pipeline record",
+												"description": "Create a new pipeline record"
+											},
+											{
+												"name": "Delete",
+												"value": "delete",
+												"action": "Delete a pipeline record",
+												"description": "Delete a pipeline record"
+											},
+											{
+												"name": "Get",
+												"value": "get",
+												"action": "Get a pipeline record",
+												"description": "Get a pipeline record"
+											},
+											{
+												"name": "Get Many",
+												"value": "getAll",
+												"action": "Get many pipeline records",
+												"description": "Get many pipeline records"
+											},
+											{
+												"name": "Search",
+												"value": "search",
+												"action": "Search for pipeline records",
+												"description": "Search for pipeline records by name"
+											},
+											{
+												"name": "Update",
+												"value": "update",
+												"action": "Update a pipeline record",
+												"description": "Update a pipeline record"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["pipeline"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "create",
+										"options": [
+											{
+												"name": "Create",
+												"value": "create",
+												"action": "Create an opportunity",
+												"description": "Create a new opportunity"
+											},
+											{
+												"name": "Delete",
+												"value": "delete",
+												"action": "Delete an opportunity",
+												"description": "Delete an opportunity"
+											},
+											{
+												"name": "Get",
+												"value": "get",
+												"action": "Get an opportunity",
+												"description": "Get an opportunity"
+											},
+											{
+												"name": "Get Many",
+												"value": "getAll",
+												"action": "Get many opportunities",
+												"description": "Get many opportunities"
+											},
+											{
+												"name": "Search",
+												"value": "search",
+												"action": "Search for opportunities",
+												"description": "Search for opportunities by name"
+											},
+											{
+												"name": "Update",
+												"value": "update",
+												"action": "Update an opportunity",
+												"description": "Update an opportunity"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["opportunity"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Consume Dalil AI API",
+								"displayName": "Dalil AI",
+								"originalName": "n8n-nodes-dalil-ai.dalilAi"
+							},
+							"createdAt": "2025-08-26T14:53:41.152Z",
+							"updatedAt": "2026-04-08T07:08:20.671Z",
+							"authorGithubUrl": "https://github.com/dalil-ai/",
+							"authorName": "dalil-ai",
+							"checksum": "sha512-7gJeAlJUmmccdGC+23PoCC52TEXb6NsPp6DxIGh1EvjQGxsQwXmdcvbxyJ2ZKBqtpYt7YlXPRp84sOx6wfWWbw==",
+							"description": "Consume Dalil AI API",
+							"displayName": "Dalil AI",
+							"name": "n8n-nodes-dalil-ai.dalilAi",
+							"numberOfStars": 0,
+							"numberOfDownloads": 104,
+							"packageName": "n8n-nodes-dalil-ai",
+							"npmVersion": "0.2.1",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "DalilAI",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-eFu87Jm32ZLVnTNSnBgD1ochpWtBzY5Ij3y3LxT2G/lTKT0CmxpMyIotIxncRlWwj3NNJhuldw2z5zcjD9PuNw==",
+									"npmVersion": "0.2.0"
+								},
+								{
+									"checksum": "sha512-7gJeAlJUmmccdGC+23PoCC52TEXb6NsPp6DxIGh1EvjQGxsQwXmdcvbxyJ2ZKBqtpYt7YlXPRp84sOx6wfWWbw==",
+									"npmVersion": "0.2.1"
+								}
+							],
+							"aiNodeSdkVersion": null
+						}
+					},
+					{
+						"id": 204,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-authentica.authentica",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Authentica_da1c96a47f.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Authentica"
+								},
+								"subtitle": "",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "otp",
+										"options": [
+											{
+												"name": "Account",
+												"value": "account"
+											},
+											{
+												"name": "OTP",
+												"value": "otp"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "send",
+										"options": [
+											{
+												"name": "Send",
+												"value": "send",
+												"action": "Send an OTP",
+												"description": "Send an OTP"
+											},
+											{
+												"name": "Verify",
+												"value": "verify",
+												"action": "Verify an OTP",
+												"description": "Verify an OTP"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["otp"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "getBalance",
+										"options": [
+											{
+												"name": "Get Balance",
+												"value": "getBalance",
+												"action": "Get balance"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["account"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "OTP and account balance via Authentica",
+								"displayName": "Authentica",
+								"originalName": "n8n-nodes-authentica.authentica"
+							},
+							"createdAt": "2025-09-24T15:20:14.007Z",
+							"updatedAt": "2026-04-08T07:08:28.144Z",
+							"authorGithubUrl": "https://github.com/AuthenticaSA/n8n-node-authentica.git",
+							"authorName": "authenticasa",
+							"checksum": "sha512-JArFN6vsBDy2Yk2+vT3fc1nPj3q5tZFawbXpMLlUbJ+MVl3DQ/p8Y22XRNskkaORP7EipQ3uF8EQluWpwUt5kQ==",
+							"description": "OTP and account balance via Authentica",
+							"displayName": "Authentica",
+							"name": "n8n-nodes-authentica.authentica",
+							"numberOfStars": 0,
+							"numberOfDownloads": 8,
+							"packageName": "n8n-nodes-authentica",
+							"npmVersion": "0.1.3",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "Authentica",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-JArFN6vsBDy2Yk2+vT3fc1nPj3q5tZFawbXpMLlUbJ+MVl3DQ/p8Y22XRNskkaORP7EipQ3uF8EQluWpwUt5kQ==",
+									"npmVersion": "0.1.3"
+								}
+							],
+							"aiNodeSdkVersion": null
+						}
+					},
+					{
+						"id": 70,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-parseur.parseur",
+								"codex": {
+									"resources": {
+										"primaryDocumentation": [
+											{
+												"url": "https://parseur.com/"
+											}
+										]
+									},
+									"categories": ["Development", "Developer Tools"]
+								},
+								"group": ["input"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Parseur_714a12c1b5.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Parseur"
+								},
+								"subtitle": "={{ $parameter[\"operation\"] + \": \" + $parameter[\"resource\"] }}",
+								"properties": [
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "uploadFile",
+										"options": [
+											{
+												"name": "Upload File",
+												"value": "uploadFile",
+												"action": "Upload a file to a mailbox",
+												"description": "Upload a file to a mailbox"
+											},
+											{
+												"name": "Upload Text",
+												"value": "uploadText",
+												"action": "Upload a text html document to a mailbox",
+												"description": "Upload a text/HTML document to a mailbox"
+											},
+											{
+												"name": "Custom API Call",
+												"value": "__CUSTOM_API_CALL__"
+											}
+										],
+										"displayName": "Operation",
+										"noDataExpression": true
+									}
+								],
+								"description": "Interact with Parseur to upload text or files",
+								"displayName": "Parseur",
+								"originalName": "n8n-nodes-parseur.parseur"
+							},
+							"createdAt": "2025-06-19T16:29:01.285Z",
+							"updatedAt": "2026-03-21T09:09:26.967Z",
+							"authorGithubUrl": "https://github.com/parseur/parseur-n8n-node.git",
+							"authorName": "parseur",
+							"checksum": "sha512-gja8ZbhGGNzpS4D5NEyZn5cjkxznwH8MYvBJsUcndw2GWvUKsRcFq7HDaDOVkxxhrrr4zUu58vfAeYnaznUYBQ==",
+							"description": "Interact with Parseur to upload text or files",
+							"displayName": "Parseur",
+							"name": "n8n-nodes-parseur.parseur",
+							"numberOfStars": 1,
+							"numberOfDownloads": 18,
+							"packageName": "n8n-nodes-parseur",
+							"npmVersion": "0.0.4",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "Parseur.com",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-gja8ZbhGGNzpS4D5NEyZn5cjkxznwH8MYvBJsUcndw2GWvUKsRcFq7HDaDOVkxxhrrr4zUu58vfAeYnaznUYBQ==",
+									"npmVersion": "0.0.4"
+								}
+							],
+							"aiNodeSdkVersion": null
+						}
+					},
+					{
+						"id": 122,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-zigpoll.zigpollTrigger",
+								"codex": {},
+								"group": ["trigger"],
+								"inputs": [],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Zigpoll_Trigger_aa0cb515ad.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Zigpoll"
+								},
+								"subtitle": "",
+								"properties": [],
+								"description": "Triggers when a specific Zigpoll survey is completed",
+								"displayName": "Zigpoll Trigger",
+								"originalName": "n8n-nodes-zigpoll.zigpollTrigger"
+							},
+							"createdAt": "2025-07-24T22:31:55.729Z",
+							"updatedAt": "2026-04-08T07:08:19.739Z",
+							"authorGithubUrl": "https://github.com/JasonZigelbaum/",
+							"authorName": "zigpoll",
+							"checksum": "sha512-NBIcLDwIqXiLEd4t/rBAC1tHoRzYaTHrDLq6wuOWLvNggyZZ+fV+DUi5ya3vFc62mqUBRP4/nEdbnOrzNJjnWw==",
+							"description": "Triggers when a specific Zigpoll survey is completed",
+							"displayName": "Zigpoll Trigger",
+							"name": "n8n-nodes-zigpoll.zigpollTrigger",
+							"numberOfStars": 0,
+							"numberOfDownloads": 195,
+							"packageName": "n8n-nodes-zigpoll",
+							"npmVersion": "0.1.9",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "Zigpoll",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-NBIcLDwIqXiLEd4t/rBAC1tHoRzYaTHrDLq6wuOWLvNggyZZ+fV+DUi5ya3vFc62mqUBRP4/nEdbnOrzNJjnWw==",
+									"npmVersion": "0.1.9"
+								}
+							],
+							"aiNodeSdkVersion": null
+						}
+					},
+					{
+						"id": 219,
+						"attributes": {
+							"nodeDescription": {
+								"name": "@nvoip/n8n-nodes-preview-nvoip.nvoip",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "undefined",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Nvoip"
+								},
+								"subtitle": "",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "sms",
+										"options": [
+											{
+												"name": "SMS",
+												"value": "sms",
+												"description": "SMS actions"
+											},
+											{
+												"name": "WhatsApp",
+												"value": "whatsapp",
+												"description": "WhatsApp actions"
+											},
+											{
+												"name": "Call",
+												"value": "call",
+												"description": "Call actions"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "makeCall",
+										"options": [
+											{
+												"name": "Make Call",
+												"value": "makeCall",
+												"action": "Make a phone call",
+												"description": "Make an outbound call using Nvoip"
+											},
+											{
+												"name": "Send Interactive Voice Broadcast",
+												"value": "sendVoiceBlastInteractive",
+												"action": "Send interactive voice broadcast",
+												"description": "Send an automated voice message with the ability to receive DTMF input"
+											},
+											{
+												"name": "Send Voice Broadcast",
+												"value": "sendVoiceBlast",
+												"action": "Send voice broadcast",
+												"description": "Send an automated voice message delivered as audio file or TTS"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["call"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "sendSms",
+										"options": [
+											{
+												"name": "Send SMS",
+												"value": "sendSms",
+												"action": "Send SMS",
+												"description": "Send a customized SMS message to a customer"
+											},
+											{
+												"name": "Send SMS (Template)",
+												"value": "sendTemplateSms",
+												"action": "Send template SMS",
+												"description": "Send an SMS using a predefined template"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["sms"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "sendWhatsapp",
+										"options": [
+											{
+												"name": "Send WhatsApp (With HSM)",
+												"value": "sendWhatsapp",
+												"action": "Send whatsapp message",
+												"description": "Send WhatsApp template messages using Nvoip for automated communication"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["whatsapp"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Make calls, send WhatsApp and SMS.",
+								"displayName": "Nvoip",
+								"originalName": "@nvoip/n8n-nodes-nvoip.nvoip"
+							},
+							"createdAt": "2025-09-30T09:22:21.796Z",
+							"updatedAt": "2026-04-08T07:08:24.211Z",
+							"authorGithubUrl": "https://github.com/Nvoip/nvoip-n8n.git",
+							"authorName": "lucasnaves",
+							"checksum": "sha512-tuASlOI/n2KDOWN/2eF86pdFN48ELkGF+UsHFcuPCeOEfl1TgBwg3UN6JOhsgsNDOekWQX0dFPm2GsLnKgQzGA==",
+							"description": "Make calls, send WhatsApp and SMS.",
+							"displayName": "Nvoip",
+							"name": "@nvoip/n8n-nodes-nvoip.nvoip",
+							"numberOfStars": 0,
+							"numberOfDownloads": 115,
+							"packageName": "@nvoip/n8n-nodes-nvoip",
+							"npmVersion": "0.1.11",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "Nvoip",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-Q+3Xvm0aKlAB01XvMNG2YEbM23zSfIfIYJdDoZT0xTJJCxuiSWUBr0uv3hNDy8xc/dKm50t0VpVmYtg+nzU5dg==",
+									"npmVersion": "0.1.6"
+								},
+								{
+									"checksum": "sha512-B9HivKvhsCsYunKb8EcqSYyDznBvhl73HRdK3eholaPuADfezBg4IStKvJWxGom9QYIbvuK75InVa+i4NJdiHg==",
+									"npmVersion": "0.1.9"
+								},
+								{
+									"checksum": "sha512-UvbMfJ6aRCpb9prgBUd8dqjGU5Mx7xfFRUL8/SMY2GSWPbpWrkTmixiSYU+56O0uR6Ywd5FIQUd6eHJQm1uSdg==",
+									"npmVersion": "0.1.10"
+								},
+								{
+									"checksum": "sha512-tuASlOI/n2KDOWN/2eF86pdFN48ELkGF+UsHFcuPCeOEfl1TgBwg3UN6JOhsgsNDOekWQX0dFPm2GsLnKgQzGA==",
+									"npmVersion": "0.1.11"
+								}
+							],
+							"aiNodeSdkVersion": null
+						}
+					},
+					{
+						"id": 77,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-velatir.velatir",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Velatir_7c89a1aa12.svg",
+								"outputs": ["main", "main", "main"],
+								"version": 1,
+								"defaults": {
+									"name": "Velatir"
+								},
+								"subtitle": "",
+								"properties": [],
+								"description": "Human approval gate with decision routing - routes workflow based on approval decision",
+								"displayName": "Velatir",
+								"originalName": "n8n-nodes-velatir.velatir"
+							},
+							"createdAt": "2025-06-30T14:57:08.263Z",
+							"updatedAt": "2026-04-08T07:08:18.928Z",
+							"authorGithubUrl": "https://github.com/velatir/",
+							"authorName": "velatir",
+							"checksum": "sha512-HVJcES3DbqQq7Q08AYeTPBxtoSZc+qoKyTO+XutF8I0K+2nZhB7kZNY/nIl0qK8wbysPPExVSPR9+ategL+ISA==",
+							"description": "Human approval gate with decision routing - routes workflow based on approval decision",
+							"displayName": "Velatir",
+							"name": "n8n-nodes-velatir.velatir",
+							"numberOfStars": 1,
+							"numberOfDownloads": 34,
+							"packageName": "n8n-nodes-velatir",
+							"npmVersion": "2.0.1",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "Velatir",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-KQGboQMPLfAB1bRgK/S6LQ6zfjPXkIWz8AjxHTdYEGTOMM/GN0gC4ERITcPjxSRoE39RLXYpJauc0XRhSDNOSg==",
+									"npmVersion": "0.1.0"
+								},
+								{
+									"checksum": "sha512-q9AKMsidG9Xqjr4454nnGIUBFfVVP2bmhUw7EGeMdyRqNKyfs2VNMG1bVpM13GJbQlwdGc8uuQk1BEDyuFENXA==",
+									"npmVersion": "1.0.0"
+								},
+								{
+									"checksum": "sha512-HVJcES3DbqQq7Q08AYeTPBxtoSZc+qoKyTO+XutF8I0K+2nZhB7kZNY/nIl0qK8wbysPPExVSPR9+ategL+ISA==",
+									"npmVersion": "2.0.1"
+								}
+							],
+							"aiNodeSdkVersion": null
+						}
+					},
+					{
+						"id": 129,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-understandtechchat.understandTechChat",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Understand_Tech_Chat_8ceb18726f.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Understand Tech Chat"
+								},
+								"subtitle": "",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "chat",
+										"options": [
+											{
+												"name": "Chat",
+												"value": "chat"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "sendMessage",
+										"options": [
+											{
+												"name": "Send Message",
+												"value": "sendMessage",
+												"action": "Send message a chat",
+												"description": "Send a message to the chat model"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["chat"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Chat with a model in UnderstandTech",
+								"displayName": "Understand Tech Chat",
+								"originalName": "n8n-nodes-understandtechchat.understandTechChat"
+							},
+							"createdAt": "2025-07-28T16:32:16.122Z",
+							"updatedAt": "2026-04-08T07:08:16.443Z",
+							"authorGithubUrl": "https://github.com/LavaxMaster/n8n-nodes-starter.git",
+							"authorName": "understandtech",
+							"checksum": "sha512-quJVtS/DSmQtdKnUuT9u2qCLhVgGhJpwG/SLhOcRJxjHahkrxo8kiS96mqbUeZ9/6RsJdiABdRUnh/cOWG7z6A==",
+							"description": "Chat with a model in UnderstandTech",
+							"displayName": "Understand Tech Chat",
+							"name": "n8n-nodes-understandtechchat.understandTechChat",
+							"numberOfStars": 0,
+							"numberOfDownloads": 2,
+							"packageName": "n8n-nodes-understandtechchat",
+							"npmVersion": "0.1.5",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "Understand Tech",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-quJVtS/DSmQtdKnUuT9u2qCLhVgGhJpwG/SLhOcRJxjHahkrxo8kiS96mqbUeZ9/6RsJdiABdRUnh/cOWG7z6A==",
+									"npmVersion": "0.1.5"
+								}
+							],
+							"aiNodeSdkVersion": null
+						}
+					},
+					{
+						"id": 125,
+						"attributes": {
+							"nodeDescription": {
+								"name": "n8n-nodes-preview-pushinator.pushinator",
+								"codex": {},
+								"group": ["output"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Pushinator_223f77d941.svg",
+								"outputs": ["main"],
+								"version": 1,
+								"defaults": {
+									"name": "Pushinator"
+								},
+								"subtitle": "",
+								"properties": [
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "send_notification",
+										"options": [
+											{
+												"name": "Send Notification",
+												"value": "send_notification",
+												"action": "Send a push notification"
+											}
+										],
+										"displayName": "Operation",
+										"noDataExpression": true
+									}
+								],
+								"description": "Send notifications using Pushinator",
+								"displayName": "Pushinator",
+								"originalName": "n8n-nodes-pushinator.pushinator"
+							},
+							"createdAt": "2025-07-25T07:30:01.267Z",
+							"updatedAt": "2026-04-08T07:08:18.826Z",
+							"authorGithubUrl": "https://github.com/appricos/pushinator-n8n.git",
+							"authorName": "makstamoian",
+							"checksum": "sha512-dx52bWbQr/P4rQgRnJepPMrX0Mvyl9X+qHgQzNnaST/VGg29P71XVx2f2KDsMD+tZw6UU16geiuVcqRs2wNOmQ==",
+							"description": "Send notifications using Pushinator",
+							"displayName": "Pushinator",
+							"name": "n8n-nodes-pushinator.pushinator",
+							"numberOfStars": 0,
+							"numberOfDownloads": 3268,
+							"packageName": "n8n-nodes-pushinator",
+							"npmVersion": "0.1.4",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "Pushinator",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-jRHSajAZ3Z205P87SZcI6vXwGlu/9cjYVeC/3Fy7YdpLS/KdgyfonzqCnVjyc5L85Pm5DBzrfma3cp5Vbd54UA==",
+									"npmVersion": "0.1.3"
+								},
+								{
+									"checksum": "sha512-dx52bWbQr/P4rQgRnJepPMrX0Mvyl9X+qHgQzNnaST/VGg29P71XVx2f2KDsMD+tZw6UU16geiuVcqRs2wNOmQ==",
+									"npmVersion": "0.1.4"
+								}
+							],
+							"aiNodeSdkVersion": null
+						}
+					},
+					{
+						"id": 34,
+						"attributes": {
+							"nodeDescription": {
+								"name": "@tavily/n8n-nodes-preview-tavily.tavily",
+								"codex": {},
+								"group": ["transform"],
+								"inputs": ["main"],
+								"iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-stage/assets/Tavily_0a4e8cd19d.svg",
+								"outputs": "={{['main']}}",
+								"version": 1,
+								"defaults": {
+									"name": "Tavily"
+								},
+								"subtitle": "={{$parameter[\"operation\"] + \": \" + $parameter[\"resource\"]}}",
+								"properties": [
+									{
+										"name": "resource",
+										"type": "options",
+										"default": "search",
+										"options": [
+											{
+												"name": "Crawl",
+												"value": "crawl"
+											},
+											{
+												"name": "Extract",
+												"value": "extract"
+											},
+											{
+												"name": "Map",
+												"value": "map"
+											},
+											{
+												"name": "Research",
+												"value": "research"
+											},
+											{
+												"name": "Search",
+												"value": "search"
+											}
+										],
+										"displayName": "Resource",
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "urls",
+										"options": [
+											{
+												"name": "URLs",
+												"value": "urls",
+												"action": "Extract",
+												"description": "Extract raw content from URLs"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["extract"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "query",
+										"options": [
+											{
+												"name": "Query",
+												"value": "query",
+												"action": "Search",
+												"description": "Search query"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["search"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "url",
+										"options": [
+											{
+												"name": "URL",
+												"value": "url",
+												"action": "Crawl",
+												"description": "The root URL to begin the crawl"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["crawl"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "url",
+										"options": [
+											{
+												"name": "URL",
+												"value": "url",
+												"action": "Map",
+												"description": "Discover all internal links starting from a base URL"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["map"]
+											}
+										},
+										"noDataExpression": true
+									},
+									{
+										"name": "operation",
+										"type": "options",
+										"default": "create",
+										"options": [
+											{
+												"name": "Create Research Task",
+												"value": "create",
+												"action": "Create research task",
+												"description": "Initiate a comprehensive research task on a given topic"
+											},
+											{
+												"name": "Get Research Status",
+												"value": "status",
+												"action": "Get research status",
+												"description": "Retrieve the status and results of a research task"
+											}
+										],
+										"displayName": "Operation",
+										"displayOptions": {
+											"show": {
+												"resource": ["research"]
+											}
+										},
+										"noDataExpression": true
+									}
+								],
+								"description": "Tavily API",
+								"displayName": "Tavily",
+								"originalName": "@tavily/n8n-nodes-tavily.tavily",
+								"usableAsTool": true
+							},
+							"createdAt": "2025-05-22T10:16:54.269Z",
+							"updatedAt": "2026-04-08T07:08:15.510Z",
+							"authorGithubUrl": "https://github.com/tavily-ai/tavily-n8n-node.git",
+							"authorName": "konstantintzt",
+							"checksum": "sha512-NADocQRYjHRQIPmvLldAgMu5aquJucPPmFCMw4a0oTkVXkUCLs6FWxZFNTNJE6IUJnS2iKlFy+49Ua0UcmF+4w==",
+							"description": "Tavily API",
+							"displayName": "Tavily",
+							"name": "@tavily/n8n-nodes-tavily.tavily",
+							"numberOfStars": 17,
+							"numberOfDownloads": 61266,
+							"packageName": "@tavily/n8n-nodes-tavily",
+							"npmVersion": "0.5.1",
+							"isOfficialNode": true,
+							"isPublished": true,
+							"companyName": "Tavily",
+							"nodeVersions": [
+								{
+									"checksum": "sha512-+SClj3qhzcrF/hSVWm+Z/bItKYxHgLpGv09Rd+EiDzSpr5vdg2tubZo9MNbEccsb9mFqjZiMa0rmYa+0+bYFYw==",
+									"npmVersion": "0.1.15"
+								},
+								{
+									"checksum": "sha512-1odEJg3nlPpOK2ecudfMdy/MnMVOlHpx0vGSLu+DXhlM82YLgRLq0Bo+CNQerCfuN+DX6rILOmwna52hL0Ypug==",
+									"npmVersion": "0.2.1"
+								},
+								{
+									"checksum": "sha512-FNdV66SD3uv6WbGXZPLYNNL7yh0wCpsrHBLyLUcSyrXk+pziK4c0ITZ5tS32D6PZ1tEE4WMSSIN5NfABOs497A==",
+									"npmVersion": "0.2.2"
+								},
+								{
+									"checksum": "sha512-KBWv1RpI4FraZ9bF8Jqi6b5AC6XyBGbwNjv7bHWYfaayxHrvTuLkcg8OOvrGarluqLbPv7Y1WmQUG0BN5U4aDg==",
+									"npmVersion": "0.2.3"
+								},
+								{
+									"checksum": "sha512-CHnMa2xSMKMqo08pUbaA9e3TlR28iIKAmFh/rrMIA+Hc8gLX/e0SeByn/+HpJbK2Y16nsBgNaW5ybrkjTiECpQ==",
+									"npmVersion": "0.2.4"
+								},
+								{
+									"checksum": "sha512-eJLQjnG7yZHakhzWvzPV0V4jmcW4We019jCE78uW5JGp7ZR9v3c9NHMtf+iQljnCUzcyfUJ59QMRZKWo2NjWdQ==",
+									"npmVersion": "0.2.5"
+								},
+								{
+									"checksum": "sha512-HiCgm9zJN/TPb0m5ewqeiqLp6SkpCE8UkyBIm6snHv3YFTQm98VKJNBwKupBj5DUMS817h2E95vGEPJssDEOMw==",
+									"npmVersion": "0.2.6"
+								},
+								{
+									"checksum": "sha512-vJkQ65pmv4eJLH4bWWguAbVnPneUqln63xe3dmUp9JwNh8PzIXfyT8iyxyx8gjOdrSUgYB5fnteIOlwMwoLdTQ==",
+									"npmVersion": "0.4.0"
+								},
+								{
+									"checksum": "sha512-o0s72NBtC965SkwEbyLnydaa0bslP5t/wKqfuSNuPFwrz/QRaGLcK24xKVl8wDkS2WoHEMu5j6MV2f2Uq14kZw==",
+									"npmVersion": "0.5.0"
+								},
+								{
+									"checksum": "sha512-NADocQRYjHRQIPmvLldAgMu5aquJucPPmFCMw4a0oTkVXkUCLs6FWxZFNTNJE6IUJnS2iKlFy+49Ua0UcmF+4w==",
+									"npmVersion": "0.5.1"
+								}
+							],
+							"aiNodeSdkVersion": null
+						}
+					}
+				],
+				"meta": {
+					"pagination": {
+						"page": 22,
+						"pageSize": 25,
+						"pageCount": 25,
+						"total": 609
+					}
+				}
+			},
+			"rawBytes": "eyJkYXRhIjpbeyJpZCI6NzYzLCJhdHRyaWJ1dGVzIjp7Im5vZGVEZXNjcmlwdGlvbiI6eyJuYW1lIjoibjhuLW5vZGVzLXByZXZpZXctcGFyc2lvLnBhcnNpb1RyaWdnZXIiLCJjb2RleCI6e30sImdyb3VwIjpbInRyaWdnZXIiXSwiaW5wdXRzIjpbXSwiaWNvblVybCI6Imh0dHBzOi8vbjhuaW9zdG9yYWdlYWNjb3VudC5ibG9iLmNvcmUud2luZG93cy5uZXQvbjhuaW8tc3RyYXBpLWJsb2JzLXN0YWdlL2Fzc2V0cy9QYXJzaW9fVHJpZ2dlcl8yNjc5YWI5N2Y3LnN2ZyIsIm91dHB1dHMiOlsibWFpbiJdLCJ2ZXJzaW9uIjoxLCJkZWZhdWx0cyI6eyJuYW1lIjoiUGFyc2lvIFRyaWdnZXIifSwic3VidGl0bGUiOiIiLCJwcm9wZXJ0aWVzIjpbXSwiZGVzY3JpcHRpb24iOiJUcmlnZ2VyIHdvcmtmbG93IHdoZW4gZXZlbnRzIG9jY3VyIGluIFBhcnNpbyIsImRpc3BsYXlOYW1lIjoiUGFyc2lvIFRyaWdnZXIiLCJvcmlnaW5hbE5hbWUiOiJuOG4tbm9kZXMtcGFyc2lvLnBhcnNpb1RyaWdnZXIiLCJ1c2FibGVBc1Rvb2wiOnRydWV9LCJjcmVhdGVkQXQiOiIyMDI2LTA0LTA4VDA3OjI4OjU0Ljk0NVoiLCJ1cGRhdGVkQXQiOiIyMDI2LTA0LTA4VDA3OjI4OjU0Ljk0NVoiLCJhdXRob3JHaXRodWJVcmwiOiJodHRwczovL2dpdGh1Yi5jb20vcGFyc2lvaW8vIiwiYXV0aG9yTmFtZSI6ImFuZHJld19pbyIsImNoZWNrc3VtIjoic2hhNTEyLW5SWlNibXRKRTBjeTcrRWtXNVlJWENSMnFhNnNTd1dLVmIxeW1GQW9ESXlRRTJWNjZjQWJZbnZHQTJXbkVWWHdoNVQyWGZXWTZ6QktteXc2RDVaY0x3PT0iLCJkZXNjcmlwdGlvbiI6IlRyaWdnZXIgd29ya2Zsb3cgd2hlbiBldmVudHMgb2NjdXIgaW4gUGFyc2lvIiwiZGlzcGxheU5hbWUiOiJQYXJzaW8gVHJpZ2dlciIsIm5hbWUiOiJuOG4tbm9kZXMtcGFyc2lvLnBhcnNpb1RyaWdnZXIiLCJudW1iZXJPZlN0YXJzIjowLCJudW1iZXJPZkRvd25sb2FkcyI6MTMwLCJwYWNrYWdlTmFtZSI6Im44bi1ub2Rlcy1wYXJzaW8iLCJucG1WZXJzaW9uIjoiMC4yLjEiLCJpc09mZmljaWFsTm9kZSI6ZmFsc2UsImlzUHVibGlzaGVkIjp0cnVlLCJjb21wYW55TmFtZSI6bnVsbCwibm9kZVZlcnNpb25zIjpbeyJjaGVja3N1bSI6InNoYTUxMi1uUlpTYm10SkUwY3k3K0VrVzVZSVhDUjJxYTZzU3dXS1ZiMXltRkFvREl5UUUyVjY2Y0FiWW52R0EyV25FVlh3aDVUMlhmV1k2ekJLbXl3NkQ1WmNMdz09IiwibnBtVmVyc2lvbiI6IjAuMi4xIn1dLCJhaU5vZGVTZGtWZXJzaW9uIjpudWxsfX0seyJpZCI6MjQ2LCJhdHRyaWJ1dGVzIjp7Im5vZGVEZXNjcmlwdGlvbiI6eyJuYW1lIjoibjhuLW5vZGVzLXByZXZpZXctc2NyZWVuc2hvdGJhc2Uuc2NyZWVuc2hvdEJhc2UiLCJjb2RleCI6e30sImdyb3VwIjpbInRyYW5zZm9ybSJdLCJpbnB1dHMiOlsibWFpbiJdLCJpY29uVXJsIjoiaHR0cHM6Ly9uOG5pb3N0b3JhZ2VhY2NvdW50LmJsb2IuY29yZS53aW5kb3dzLm5ldC9uOG5pby1zdHJhcGktYmxvYnMtc3RhZ2UvYXNzZXRzL1NjcmVlbnNob3RfQmFzZV80ZWU1NDllMTZmLnN2ZyIsIm91dHB1dHMiOlsibWFpbiJdLCJ2ZXJzaW9uIjoxLCJkZWZhdWx0cyI6eyJuYW1lIjoiU2NyZWVuc2hvdEJhc2UifSwic3VidGl0bGUiOiI9e3skcGFyYW1ldGVyW1wib3BlcmF0aW9uXCJdfX0iLCJwcm9wZXJ0aWVzIjpbeyJuYW1lIjoib3BlcmF0aW9uIiwidHlwZSI6Im9wdGlvbnMiLCJkZWZhdWx0IjoiZ2V0U2NyZWVuc2hvdCIsIm9wdGlvbnMiOlt7Im5hbWUiOiJHZXQgU2NyZWVuc2hvdCIsInZhbHVlIjoiZ2V0U2NyZWVuc2hvdCIsImFjdGlvbiI6IkZldGNoIHdlYnNpdGUgc2NyZWVuc2hvdCIsInJvdXRpbmciOnsicmVxdWVzdCI6eyJxcyI6eyJ1cmwiOiI9e3skcGFyYW1ldGVyW1widXJsXCJdfX0ifSwidXJsIjoiL3Rha2UiLCJtZXRob2QiOiJHRVQifX0sImRlc2NyaXB0aW9uIjoiQ2FwdHVyZSBhIHNjcmVlbnNob3QgZnJvbSBhIGdpdmVuIFVSTCJ9XSwiZGlzcGxheU5hbWUiOiJPcGVyYXRpb24iLCJub0RhdGFFeHByZXNzaW9uIjp0cnVlfV0sImRlc2NyaXB0aW9uIjoiQ2FwdHVyZSBzY3JlZW5zaG90cyB2aWEgU2NyZWVuc2hvdEJhc2UgQVBJIiwiZGlzcGxheU5hbWUiOiJTY3JlZW5zaG90QmFzZSIsIm9yaWdpbmFsTmFtZSI6Im44bi1ub2Rlcy1zY3JlZW5zaG90YmFzZS5zY3JlZW5zaG90QmFzZSIsInVzYWJsZUFzVG9vbCI6dHJ1ZX0sImNyZWF0ZWRBdCI6IjIwMjUtMTAtMjJUMTA6MjA6MTkuMDE3WiIsInVwZGF0ZWRBdCI6IjIwMjYtMDQtMDhUMDc6MDg6MjguODQ2WiIsImF1dGhvckdpdGh1YlVybCI6Imh0dHBzOi8vZ2l0aHViLmNvbS9ldmVyYXBpaHEvIiwiYXV0aG9yTmFtZSI6ImV2ZXJhcGktdXNlciIsImNoZWNrc3VtIjoic2hhNTEyLWl1ZzkxNTRVYlNZaHdIc0Eza0VZZmhtZWJPRWRoQVJwRU1BRjNDSitYM3cxeG84dDIzUUlIcXVkMGF6Q2wzSy9OVUZFRHVxMVlGeFpqaEsxdTVuVHJRPT0iLCJkZXNjcmlwdGlvbiI6IkNhcHR1cmUgc2NyZWVuc2hvdHMgdmlhIFNjcmVlbnNob3RCYXNlIEFQSSIsImRpc3BsYXlOYW1lIjoiU2NyZWVuc2hvdEJhc2UiLCJuYW1lIjoibjhuLW5vZGVzLXNjcmVlbnNob3RiYXNlLnNjcmVlbnNob3RCYXNlIiwibnVtYmVyT2ZTdGFycyI6MCwibnVtYmVyT2ZEb3dubG9hZHMiOjE2MywicGFja2FnZU5hbWUiOiJuOG4tbm9kZXMtc2NyZWVuc2hvdGJhc2UiLCJucG1WZXJzaW9uIjoiMC4xLjMiLCJpc09mZmljaWFsTm9kZSI6dHJ1ZSwiaXNQdWJsaXNoZWQiOnRydWUsImNvbXBhbnlOYW1lIjoiRXZlcmFwaSIsIm5vZGVWZXJzaW9ucyI6W3siY2hlY2tzdW0iOiJzaGE1MTItZVV5c3NHME1xcmxMaWY3bDhuM2hQNEVjLzR2b2RMTWhOd3NoU01RdUNYd0RMRkxvdWt0NEwrUTZYb1FLWnZsaVA1cFFieXZJMVNWdGVPNWlBZmJ3dEE9PSIsIm5wbVZlcnNpb24iOiIwLjEuMiJ9LHsiY2hlY2tzdW0iOiJzaGE1MTItaXVnOTE1NFViU1lod0hzQTNrRVlmaG1lYk9FZGhBUnBFTUFGM0NKK1gzdzF4bzh0MjNRSUhxdWQwYXpDbDNLL05VRkVEdXExWUZ4WmpoSzF1NW5UclE9PSIsIm5wbVZlcnNpb24iOiIwLjEuMyJ9XSwiYWlOb2RlU2RrVmVyc2lvbiI6bnVsbH19LHsiaWQiOjY5MSwiYXR0cmlidXRlcyI6eyJub2RlRGVzY3JpcHRpb24iOnsibmFtZSI6Im44bi1ub2Rlcy1wcmV2aWV3LXJlY3JhbS5yZWNyYW1UcmlnZ2VyIiwiY29kZXgiOnt9LCJncm91cCI6WyJ0cmlnZ2VyIl0sImlucHV0cyI6W10sImljb25VcmwiOiJodHRwczovL244bmlvc3RvcmFnZWFjY291bnQuYmxvYi5jb3JlLndpbmRvd3MubmV0L244bmlvLXN0cmFwaS1ibG9icy1zdGFnZS9hc3NldHMvUmVjX1JhbV9UcmlnZ2VyXzM5NDljYjFiY2Euc3ZnIiwib3V0cHV0cyI6WyJtYWluIl0sInZlcnNpb24iOjEsImRlZmF1bHRzIjp7Im5hbWUiOiJSZWNSYW0gVHJpZ2dlciJ9LCJzdWJ0aXRsZSI6Ij17eyRwYXJhbWV0ZXJbXCJldmVudFwiXX19IiwicHJvcGVydGllcyI6W10sImRlc2NyaXB0aW9uIjoiU3RhcnRzIHdvcmtmbG93IHdoZW4gYSBSZWNSYW0gZXZlbnQgb2NjdXJzIiwiZGlzcGxheU5hbWUiOiJSZWNSYW0gVHJpZ2dlciIsIm9yaWdpbmFsTmFtZSI6Im44bi1ub2Rlcy1yZWNyYW0ucmVjcmFtVHJpZ2dlciJ9LCJjcmVhdGVkQXQiOiIyMDI2LTAzLTIyVDE4OjQyOjM4LjAyNVoiLCJ1cGRhdGVkQXQiOiIyMDI2LTAzLTIyVDE4OjQyOjM4LjAyNVoiLCJhdXRob3JHaXRodWJVcmwiOiJodHRwczovL2dpdGh1Yi5jb20vdGhlcmVjcmFtLyIsImF1dGhvck5hbWUiOiJyZWNyYW0iLCJjaGVja3N1bSI6InNoYTUxMi0zZmlrRlpvdGxVWEtFSWw4aHVsREFlY1FiaEJwZXhueFVQM0hlYVJqZ3Q1cEJEcnhPZ0tmVWROWmVEVmtvOFJmT3BHL0ZiTUJqbVBxRSttdklxT3pCUT09IiwiZGVzY3JpcHRpb24iOiJTdGFydHMgd29ya2Zsb3cgd2hlbiBhIFJlY1JhbSBldmVudCBvY2N1cnMiLCJkaXNwbGF5TmFtZSI6IlJlY1JhbSBUcmlnZ2VyIiwibmFtZSI6Im44bi1ub2Rlcy1yZWNyYW0ucmVjcmFtVHJpZ2dlciIsIm51bWJlck9mU3RhcnMiOjAsIm51bWJlck9mRG93bmxvYWRzIjoxNzksInBhY2thZ2VOYW1lIjoibjhuLW5vZGVzLXJlY3JhbSIsIm5wbVZlcnNpb24iOiIwLjEuMiIsImlzT2ZmaWNpYWxOb2RlIjp0cnVlLCJpc1B1Ymxpc2hlZCI6dHJ1ZSwiY29tcGFueU5hbWUiOm51bGwsIm5vZGVWZXJzaW9ucyI6W3siY2hlY2tzdW0iOiJzaGE1MTItM2Zpa0Zab3RsVVhLRUlsOGh1bERBZWNRYmhCcGV4bnhVUDNIZWFSamd0NXBCRHJ4T2dLZlVkTlplRFZrbzhSZk9wRy9GYk1Cam1QcUUrbXZJcU96QlE9PSIsIm5wbVZlcnNpb24iOiIwLjEuMiJ9XSwiYWlOb2RlU2RrVmVyc2lvbiI6bnVsbH19LHsiaWQiOjIxOCwiYXR0cmlidXRlcyI6eyJub2RlRGVzY3JpcHRpb24iOnsibmFtZSI6IkBkYXRhZml4L244bi1ub2Rlcy1wcmV2aWV3LWFudGhpYXMuYW50aGlhcyIsImNvZGV4Ijp7fSwiZ3JvdXAiOlsidHJhbnNmb3JtIl0sImlucHV0cyI6WyJtYWluIl0sImljb25VcmwiOiJodHRwczovL244bmlvc3RvcmFnZWFjY291bnQuYmxvYi5jb3JlLndpbmRvd3MubmV0L244bmlvLXN0cmFwaS1ibG9icy1zdGFnZS9hc3NldHMvQW50aGlhc18xODAwOTQ2ODUwLnN2ZyIsIm91dHB1dHMiOlsibWFpbiJdLCJ2ZXJzaW9uIjoxLCJkZWZhdWx0cyI6eyJuYW1lIjoiQW50aGlhcyJ9LCJzdWJ0aXRsZSI6IiIsInByb3BlcnRpZXMiOlt7Im5hbWUiOiJyZXNvdXJjZSIsInR5cGUiOiJvcHRpb25zIiwiZGVmYXVsdCI6ImFzc2V0Iiwib3B0aW9ucyI6W3sibmFtZSI6IkFzc2V0IiwidmFsdWUiOiJhc3NldCJ9LHsibmFtZSI6IkRldmljZSIsInZhbHVlIjoiZGV2aWNlIn1dLCJkaXNwbGF5TmFtZSI6IlJlc291cmNlIiwibm9EYXRhRXhwcmVzc2lvbiI6dHJ1ZX0seyJuYW1lIjoib3BlcmF0aW9uIiwidHlwZSI6Im9wdGlvbnMiLCJkZWZhdWx0IjoiZ2V0QWxsQXNzZXRzIiwib3B0aW9ucyI6W3sibmFtZSI6IkNvbnRyb2wgQXNzZXQgUGxheWJhY2siLCJ2YWx1ZSI6ImNvbnRyb2xBc3NldFBsYXliYWNrIiwiYWN0aW9uIjoiQ29udHJvbCBhc3NldCBwbGF5YmFjayJ9LHsibmFtZSI6IkNyZWF0ZSBBc3NldCIsInZhbHVlIjoiY3JlYXRlQXNzZXQiLCJhY3Rpb24iOiJDcmVhdGUgYW4gYXNzZXQifSx7Im5hbWUiOiJEZWxldGUgQXNzZXQiLCJ2YWx1ZSI6ImRlbGV0ZUFzc2V0IiwiYWN0aW9uIjoiRGVsZXRlIGFuIGFzc2V0In0seyJuYW1lIjoiR2V0IEFsbCBBc3NldHMiLCJ2YWx1ZSI6ImdldEFsbEFzc2V0cyIsImFjdGlvbiI6IkdldCBhbGwgYXNzZXRzIn0seyJuYW1lIjoiR2V0IEFzc2V0IiwidmFsdWUiOiJnZXRBc3NldCIsImFjdGlvbiI6IkdldCBhbiBhc3NldCJ9LHsibmFtZSI6IkdldCBBc3NldCBDb250ZW50IiwidmFsdWUiOiJnZXRBc3NldENvbnRlbnQiLCJhY3Rpb24iOiJHZXQgYXNzZXQgY29udGVudCJ9LHsibmFtZSI6IlVwZGF0ZSBBc3NldCIsInZhbHVlIjoidXBkYXRlQXNzZXQiLCJhY3Rpb24iOiJVcGRhdGUgYW4gYXNzZXQifSx7Im5hbWUiOiJVcGRhdGUgUGxheWxpc3QgT3JkZXIiLCJ2YWx1ZSI6InVwZGF0ZVBsYXlsaXN0T3JkZXIiLCJhY3Rpb24iOiJVcGRhdGUgcGxheWxpc3Qgb3JkZXIifV0sImRpc3BsYXlOYW1lIjoiT3BlcmF0aW9uIiwiZGlzcGxheU9wdGlvbnMiOnsic2hvdyI6eyJyZXNvdXJjZSI6WyJhc3NldCJdfX0sIm5vRGF0YUV4cHJlc3Npb24iOnRydWV9LHsibmFtZSI6Im9wZXJhdGlvbiIsInR5cGUiOiJvcHRpb25zIiwiZGVmYXVsdCI6ImdldERldmljZVNldHRpbmdzIiwib3B0aW9ucyI6W3sibmFtZSI6IkdldCBEZXZpY2UgU2V0dGluZ3MiLCJ2YWx1ZSI6ImdldERldmljZVNldHRpbmdzIiwiYWN0aW9uIjoiR2V0IGRldmljZSBzZXR0aW5ncyJ9LHsibmFtZSI6IkdldCBJbnRlZ3JhdGlvbnMgSW5mb3JtYXRpb24iLCJ2YWx1ZSI6ImdldEludGVncmF0aW9uc0luZm9ybWF0aW9uIiwiYWN0aW9uIjoiR2V0IGludGVncmF0aW9ucyBpbmZvcm1hdGlvbiJ9LHsibmFtZSI6IkdldCBTeXN0ZW0gSW5mb3JtYXRpb24iLCJ2YWx1ZSI6ImdldFN5c3RlbUluZm8iLCJhY3Rpb24iOiJHZXQgc3lzdGVtIGluZm9ybWF0aW9uIn0seyJuYW1lIjoiUmVib290IERldmljZSIsInZhbHVlIjoicmVib290RGV2aWNlIiwiYWN0aW9uIjoiUmVib290IGRldmljZSJ9LHsibmFtZSI6IlNodXRkb3duIERldmljZSIsInZhbHVlIjoic2h1dGRvd25EZXZpY2UiLCJhY3Rpb24iOiJTaHV0ZG93biBkZXZpY2UifSx7Im5hbWUiOiJVcGRhdGUgRGV2aWNlIFNldHRpbmdzIiwidmFsdWUiOiJ1cGRhdGVEZXZpY2VTZXR0aW5ncyIsImFjdGlvbiI6IlVwZGF0ZSBkZXZpY2Ugc2V0dGluZ3MifV0sImRpc3BsYXlOYW1lIjoiT3BlcmF0aW9uIiwicGxhY2Vob2xkZXIiOiJTZWxlY3Qgb3BlcmF0aW9uIiwiZGlzcGxheU9wdGlvbnMiOnsic2hvdyI6eyJyZXNvdXJjZSI6WyJkZXZpY2UiXX19LCJub0RhdGFFeHByZXNzaW9uIjp0cnVlfV0sImRlc2NyaXB0aW9uIjoiTm9kZSBmb3IgY29udHJvbGxpbmcgQW50aGlhcyBkZXBsb3ltZW50cyB3aXRoIHRoZSBBbnRoaWFzIEFQSSIsImRpc3BsYXlOYW1lIjoiQW50aGlhcyIsIm9yaWdpbmFsTmFtZSI6IkBkYXRhZml4L244bi1ub2Rlcy1hbnRoaWFzLmFudGhpYXMiLCJ1c2FibGVBc1Rvb2wiOnRydWV9LCJjcmVhdGVkQXQiOiIyMDI1LTA5LTMwVDA5OjIxOjE3Ljc1OFoiLCJ1cGRhdGVkQXQiOiIyMDI2LTA0LTA4VDA3OjA4OjI5LjgwNVoiLCJhdXRob3JHaXRodWJVcmwiOiJodHRwczovL2dpdGh1Yi5jb20vRGF0YUZpeC1CLVYvbjhuLW5vZGVzLWFudGhpYXMuZ2l0IiwiYXV0aG9yTmFtZSI6ImJyYW1rbnVldmVyIiwiY2hlY2tzdW0iOiJzaGE1MTItU3JSMFVvTkMvMTMveGFBMTZ5Nk1LT0dwa05QRnhybm1KdzBkd3BzeU1lU1hDRmhHN1FJc1JDQXVTbjZzcnc2Slh4azVBaEVucmR4QThCTCtyNzRHSGc9PSIsImRlc2NyaXB0aW9uIjoiTm9kZSBmb3IgY29udHJvbGxpbmcgQW50aGlhcyBkZXBsb3ltZW50cyB3aXRoIHRoZSBBbnRoaWFzIEFQSSIsImRpc3BsYXlOYW1lIjoiQW50aGlhcyIsIm5hbWUiOiJAZGF0YWZpeC9uOG4tbm9kZXMtYW50aGlhcy5hbnRoaWFzIiwibnVtYmVyT2ZTdGFycyI6MCwibnVtYmVyT2ZEb3dubG9hZHMiOjIxNCwicGFja2FnZU5hbWUiOiJAZGF0YWZpeC9uOG4tbm9kZXMtYW50aGlhcyIsIm5wbVZlcnNpb24iOiIwLjEuMyIsImlzT2ZmaWNpYWxOb2RlIjpmYWxzZSwiaXNQdWJsaXNoZWQiOnRydWUsImNvbXBhbnlOYW1lIjoiRGF0YUZpeCBCLlYuIiwibm9kZVZlcnNpb25zIjpbeyJjaGVja3N1bSI6InNoYTUxMi1TclIwVW9OQy8xMy94YUExNnk2TUtPR3BrTlBGeHJubUp3MGR3cHN5TWVTWENGaEc3UUlzUkNBdVNuNnNydzZKWHhrNUFoRW5yZHhBOEJMK3I3NEdIZz09IiwibnBtVmVyc2lvbiI6IjAuMS4zIn1dLCJhaU5vZGVTZGtWZXJzaW9uIjpudWxsfX0seyJpZCI6MzAzLCJhdHRyaWJ1dGVzIjp7Im5vZGVEZXNjcmlwdGlvbiI6eyJuYW1lIjoibjhuLW5vZGVzLXByZXZpZXctamFhc2FpLmphYXNhaSIsImNvZGV4Ijp7fSwiZ3JvdXAiOlsidHJhbnNmb3JtIl0sImlucHV0cyI6WyJtYWluIl0sImljb25VcmwiOiJodHRwczovL244bmlvc3RvcmFnZWFjY291bnQuYmxvYi5jb3JlLndpbmRvd3MubmV0L244bmlvLXN0cmFwaS1ibG9icy1zdGFnZS9hc3NldHMvSmFhX1NfQUlfYzUxNDY4NWNlYi5zdmciLCJvdXRwdXRzIjpbIm1haW4iXSwidmVyc2lvbiI6MSwiZGVmYXVsdHMiOnsibmFtZSI6IkphYXNBaSJ9LCJzdWJ0aXRsZSI6IiIsInByb3BlcnRpZXMiOlt7Im5hbWUiOiJyZXNvdXJjZSIsInR5cGUiOiJvcHRpb25zIiwiZGVmYXVsdCI6ImV2YWx1YXRlIiwib3B0aW9ucyI6W3sibmFtZSI6IkV2YWx1YXRlIiwidmFsdWUiOiJldmFsdWF0ZSIsImRlc2NyaXB0aW9uIjoiRXZhbHVhdGUgQUkgYWdlbnRzIGFuZCBvdXRwdXRzIn1dLCJkaXNwbGF5TmFtZSI6IlJlc291cmNlIiwibm9EYXRhRXhwcmVzc2lvbiI6dHJ1ZX0seyJuYW1lIjoib3BlcmF0aW9uIiwidHlwZSI6Im9wdGlvbnMiLCJkZWZhdWx0IjoiZXZhbHVhdGUiLCJvcHRpb25zIjpbeyJuYW1lIjoiRXZhbHVhdGUiLCJ2YWx1ZSI6ImV2YWx1YXRlIiwiYWN0aW9uIjoiRXZhbHVhdGUgQUkgYWdlbnQgcmVzcG9uc2VzIiwiZGVzY3JpcHRpb24iOiJFdmFsdWF0ZSBBSSBhZ2VudCByZXNwb25zZXMifV0sImRpc3BsYXlOYW1lIjoiT3BlcmF0aW9uIiwiZGlzcGxheU9wdGlvbnMiOnsic2hvdyI6eyJyZXNvdXJjZSI6WyJldmFsdWF0ZSJdfX0sIm5vRGF0YUV4cHJlc3Npb24iOnRydWV9XSwiZGVzY3JpcHRpb24iOiJFdmFsdWF0ZSBBSSBBZ2VudHMgd2l0aCBKYWFTIiwiZGlzcGxheU5hbWUiOiJKYWFTIEFJIiwib3JpZ2luYWxOYW1lIjoibjhuLW5vZGVzLWphYXNhaS5qYWFzYWkifSwiY3JlYXRlZEF0IjoiMjAyNS0xMS0xN1QxMzoyMDo1Ni4xMjJaIiwidXBkYXRlZEF0IjoiMjAyNi0wNC0wOFQwNzowODoyOC4wODJaIiwiYXV0aG9yR2l0aHViVXJsIjoiaHR0cHM6Ly9naXRodWIuY29tL2phYXMtYTEvIiwiYXV0aG9yTmFtZSI6ImhsamFhc2FpIiwiY2hlY2tzdW0iOiJzaGE1MTItb0pKTDVMSHdGWEo5VjIxdnczVGlvT2xVbmlEWXR0Z2hSblVxbUtXSDZkd0RDdGlWd2g2OGxNT0dKYmkxazFBTTBoOWpOYXVqZjJRdWtnVDBiRnNRUGc9PSIsImRlc2NyaXB0aW9uIjoiRXZhbHVhdGUgQUkgQWdlbnRzIHdpdGggSmFhUyIsImRpc3BsYXlOYW1lIjoiSmFhUyBBSSIsIm5hbWUiOiJuOG4tbm9kZXMtamFhc2FpLmphYXNhaSIsIm51bWJlck9mU3RhcnMiOjAsIm51bWJlck9mRG93bmxvYWRzIjo1LCJwYWNrYWdlTmFtZSI6Im44bi1ub2Rlcy1qYWFzYWkiLCJucG1WZXJzaW9uIjoiMC4zLjIiLCJpc09mZmljaWFsTm9kZSI6dHJ1ZSwiaXNQdWJsaXNoZWQiOnRydWUsImNvbXBhbnlOYW1lIjoiSmFhUyBBSSIsIm5vZGVWZXJzaW9ucyI6W3siY2hlY2tzdW0iOiJzaGE1MTItb0pKTDVMSHdGWEo5VjIxdnczVGlvT2xVbmlEWXR0Z2hSblVxbUtXSDZkd0RDdGlWd2g2OGxNT0dKYmkxazFBTTBoOWpOYXVqZjJRdWtnVDBiRnNRUGc9PSIsIm5wbVZlcnNpb24iOiIwLjMuMiJ9XSwiYWlOb2RlU2RrVmVyc2lvbiI6bnVsbH19LHsiaWQiOjc0MywiYXR0cmlidXRlcyI6eyJub2RlRGVzY3JpcHRpb24iOnsibmFtZSI6Im44bi1ub2Rlcy1wcmV2aWV3LXNtYWxsZXN0YWkuc21hbGxlc3RhaSIsImNvZGV4Ijp7fSwiZ3JvdXAiOlsidHJhbnNmb3JtIl0sImlucHV0cyI6WyJtYWluIl0sImljb25VcmwiOiJodHRwczovL244bmlvc3RvcmFnZWFjY291bnQuYmxvYi5jb3JlLndpbmRvd3MubmV0L244bmlvLXN0cmFwaS1ibG9icy1zdGFnZS9hc3NldHMvU21hbGxlc3RfQUlfZjQyMjdhYThlNy5zdmciLCJvdXRwdXRzIjpbIm1haW4iXSwidmVyc2lvbiI6MSwiZGVmYXVsdHMiOnsibmFtZSI6IlNtYWxsZXN0IEFJIn0sInN1YnRpdGxlIjoiPXt7JHBhcmFtZXRlcltcInJlc291cmNlXCJdICsgXCI6IFwiICsgJHBhcmFtZXRlcltcIm9wZXJhdGlvblwiXX19IiwicHJvcGVydGllcyI6W3sibmFtZSI6InJlc291cmNlIiwidHlwZSI6Im9wdGlvbnMiLCJkZWZhdWx0IjoidHRzIiwib3B0aW9ucyI6W3sibmFtZSI6IlNwZWVjaCAoVFRTKSIsInZhbHVlIjoidHRzIn0seyJuYW1lIjoiVHJhbnNjcmlwdGlvbiAoU1RUKSIsInZhbHVlIjoic3R0In0seyJuYW1lIjoiVm9pY2UgQ2xvbmUiLCJ2YWx1ZSI6InZvaWNlQ2xvbmUifV0sImRpc3BsYXlOYW1lIjoiUmVzb3VyY2UiLCJub0RhdGFFeHByZXNzaW9uIjp0cnVlfSx7Im5hbWUiOiJvcGVyYXRpb24iLCJ0eXBlIjoib3B0aW9ucyIsImRlZmF1bHQiOiJzeW50aGVzaXplIiwib3B0aW9ucyI6W3sibmFtZSI6IkdldCBWb2ljZXMiLCJ2YWx1ZSI6ImdldFZvaWNlcyIsImFjdGlvbiI6IkdldCB2b2ljZXMiLCJkZXNjcmlwdGlvbiI6IlJldHJpZXZlIGF2YWlsYWJsZSB2b2ljZSBtb2RlbHMifSx7Im5hbWUiOiJTeW50aGVzaXplIFNwZWVjaCIsInZhbHVlIjoic3ludGhlc2l6ZSIsImFjdGlvbiI6IlN5bnRoZXNpemUgc3BlZWNoIiwiZGVzY3JpcHRpb24iOiJDb252ZXJ0IHRleHQgdG8gc3BlZWNoIn1dLCJkaXNwbGF5TmFtZSI6Ik9wZXJhdGlvbiIsImRpc3BsYXlPcHRpb25zIjp7InNob3ciOnsicmVzb3VyY2UiOlsidHRzIl19fSwibm9EYXRhRXhwcmVzc2lvbiI6dHJ1ZX0seyJuYW1lIjoib3BlcmF0aW9uIiwidHlwZSI6Im9wdGlvbnMiLCJkZWZhdWx0IjoidHJhbnNjcmliZSIsIm9wdGlvbnMiOlt7Im5hbWUiOiJUcmFuc2NyaWJlIEF1ZGlvIiwidmFsdWUiOiJ0cmFuc2NyaWJlIiwiYWN0aW9uIjoiVHJhbnNjcmliZSBhdWRpbyIsImRlc2NyaXB0aW9uIjoiVHJhbnNjcmliZSBhdWRpbyB0byB0ZXh0In1dLCJkaXNwbGF5TmFtZSI6Ik9wZXJhdGlvbiIsImRpc3BsYXlPcHRpb25zIjp7InNob3ciOnsicmVzb3VyY2UiOlsic3R0Il19fSwibm9EYXRhRXhwcmVzc2lvbiI6dHJ1ZX0seyJuYW1lIjoib3BlcmF0aW9uIiwidHlwZSI6Im9wdGlvbnMiLCJkZWZhdWx0IjoiYWRkVm9pY2UiLCJvcHRpb25zIjpbeyJuYW1lIjoiQWRkIFZvaWNlIiwidmFsdWUiOiJhZGRWb2ljZSIsImFjdGlvbiI6IkFkZCB2b2ljZSIsImRlc2NyaXB0aW9uIjoiQ2xvbmUgYSB2b2ljZSBmcm9tIGFuIGF1ZGlvIGZpbGUifSx7Im5hbWUiOiJEZWxldGUgQ2xvbmVkIFZvaWNlIiwidmFsdWUiOiJkZWxldGVDbG9uZWRWb2ljZSIsImFjdGlvbiI6IkRlbGV0ZSBjbG9uZWQgdm9pY2UiLCJkZXNjcmlwdGlvbiI6IkRlbGV0ZSBhIGNsb25lZCB2b2ljZSBieSBpdHMgSUQifSx7Im5hbWUiOiJHZXQgQ2xvbmVkIFZvaWNlcyIsInZhbHVlIjoiZ2V0Q2xvbmVkVm9pY2VzIiwiYWN0aW9uIjoiR2V0IGNsb25lZCB2b2ljZXMiLCJkZXNjcmlwdGlvbiI6IlJldHJpZXZlIGFsbCB5b3VyIGNsb25lZCB2b2ljZXMifV0sImRpc3BsYXlOYW1lIjoiT3BlcmF0aW9uIiwiZGlzcGxheU9wdGlvbnMiOnsic2hvdyI6eyJyZXNvdXJjZSI6WyJ2b2ljZUNsb25lIl19fSwibm9EYXRhRXhwcmVzc2lvbiI6dHJ1ZX1dLCJkZXNjcmlwdGlvbiI6IkludGVyYWN0IHdpdGggU21hbGxlc3QgQUkgQVBJcyBmb3Igdm9pY2Ugc3ludGhlc2lzIGFuZCBhZ2VudHMiLCJkaXNwbGF5TmFtZSI6IlNtYWxsZXN0IEFJIiwib3JpZ2luYWxOYW1lIjoibjhuLW5vZGVzLXNtYWxsZXN0YWkuc21hbGxlc3RhaSIsInVzYWJsZUFzVG9vbCI6dHJ1ZX0sImNyZWF0ZWRBdCI6IjIwMjYtMDMtMzBUMTE6MTk6MTIuMjY5WiIsInVwZGF0ZWRBdCI6IjIwMjYtMDQtMDhUMDc6MzQ6MDUuODE0WiIsImF1dGhvckdpdGh1YlVybCI6Imh0dHBzOi8vZ2l0aHViLmNvbS9zb3N1bWl0MDAxLyIsImF1dGhvck5hbWUiOiJzbWFsbGVzdGFpIiwiY2hlY2tzdW0iOiJzaGE1MTItWjlsUUppY2w4UVd6eGdmV0YzY0hXVjA3UVkrNis5NlZ6UXBUMEtWYUtENExvMTJMV2t0dm1Kd01mQytVK1h4SG10b1JJeVlsYUdBUnlKeG8xTmtWNkE9PSIsImRlc2NyaXB0aW9uIjoiSW50ZXJhY3Qgd2l0aCBTbWFsbGVzdCBBSSBBUElzIGZvciB2b2ljZSBzeW50aGVzaXMgYW5kIGFnZW50cyIsImRpc3BsYXlOYW1lIjoiU21hbGxlc3QgQUkiLCJuYW1lIjoibjhuLW5vZGVzLXNtYWxsZXN0YWkuc21hbGxlc3RhaSIsIm51bWJlck9mU3RhcnMiOjAsIm51bWJlck9mRG93bmxvYWRzIjoxNjEsInBhY2thZ2VOYW1lIjoibjhuLW5vZGVzLXNtYWxsZXN0YWkiLCJucG1WZXJzaW9uIjoiMC4xLjciLCJpc09mZmljaWFsTm9kZSI6dHJ1ZSwiaXNQdWJsaXNoZWQiOnRydWUsImNvbXBhbnlOYW1lIjpudWxsLCJub2RlVmVyc2lvbnMiOlt7ImNoZWNrc3VtIjoic2hhNTEyLXRybkdoQld2RlFYUno1TWhRWFFkOW9rRmhVYXdrUHR0VGJPNzdlVmZiQ2lQbk9Jd29pNUpYaTZCK2tFdjBseTZhNFNaY05NM2hxelJqTWYyL2dTQ0hBPT0iLCJucG1WZXJzaW9uIjoiMC4xLjYifSx7ImNoZWNrc3VtIjoic2hhNTEyLVo5bFFKaWNsOFFXenhnZldGM2NIV1YwN1FZKzYrOTZWelFwVDBLVmFLRDRMbzEyTFdrdHZtSndNZkMrVStYeEhtdG9SSXlZbGFHQVJ5SnhvMU5rVjZBPT0iLCJucG1WZXJzaW9uIjoiMC4xLjcifV0sImFpTm9kZVNka1ZlcnNpb24iOm51bGx9fSx7ImlkIjoyNTUsImF0dHJpYnV0ZXMiOnsibm9kZURlc2NyaXB0aW9uIjp7Im5hbWUiOiJuOG4tbm9kZXMtcHJldmlldy1sbG1sYXllci5sbG1MYXllciIsImNvZGV4Ijp7fSwiZ3JvdXAiOlsidHJhbnNmb3JtIl0sImlucHV0cyI6WyJtYWluIl0sImljb25VcmwiOiJodHRwczovL244bmlvc3RvcmFnZWFjY291bnQuYmxvYi5jb3JlLndpbmRvd3MubmV0L244bmlvLXN0cmFwaS1ibG9icy1zdGFnZS9hc3NldHMvTExNX0xheWVyXzYzMjFmZTIwYzgucG5nIiwib3V0cHV0cyI6WyJtYWluIl0sInZlcnNpb24iOjEsImRlZmF1bHRzIjp7Im5hbWUiOiJMTE1MYXllciJ9LCJzdWJ0aXRsZSI6Ij17eyRwYXJhbWV0ZXJbXCJyZXNvdXJjZVwiXSArIFwiOiBcIiArICRwYXJhbWV0ZXJbXCJvcGVyYXRpb25cIl19fSIsInByb3BlcnRpZXMiOlt7Im5hbWUiOiJyZXNvdXJjZSIsInR5cGUiOiJvcHRpb25zIiwiZGVmYXVsdCI6ImFuc3dlciIsIm9wdGlvbnMiOlt7Im5hbWUiOiJBbnN3ZXIiLCJ2YWx1ZSI6ImFuc3dlciIsImRlc2NyaXB0aW9uIjoiU2VhcmNoIGFuZCBnZW5lcmF0ZSBBSSBhbnN3ZXJzIn0seyJuYW1lIjoiV2ViIFNlYXJjaCIsInZhbHVlIjoid2ViU2VhcmNoIiwiZGVzY3JpcHRpb24iOiJTZWFyY2ggdGhlIHdlYiBmb3IgaW5mb3JtYXRpb24ifSx7Im5hbWUiOiJTY3JhcGUiLCJ2YWx1ZSI6InNjcmFwZSIsImRlc2NyaXB0aW9uIjoiU2NyYXBlIGNvbnRlbnQgZnJvbSBhIFVSTCJ9LHsibmFtZSI6IllvdVR1YmUiLCJ2YWx1ZSI6InlvdXR1YmUiLCJkZXNjcmlwdGlvbiI6IkdldCBZb3VUdWJlIHZpZGVvIHRyYW5zY3JpcHQifSx7Im5hbWUiOiJQREYiLCJ2YWx1ZSI6InBkZiIsImRlc2NyaXB0aW9uIjoiRXh0cmFjdCBjb250ZW50IGZyb20gUERGIn1dLCJyZXF1aXJlZCI6dHJ1ZSwiZGlzcGxheU5hbWUiOiJSZXNvdXJjZSIsIm5vRGF0YUV4cHJlc3Npb24iOnRydWV9LHsibmFtZSI6Im9wZXJhdGlvbiIsInR5cGUiOiJvcHRpb25zIiwiZGVmYXVsdCI6ImdlbmVyYXRlIiwib3B0aW9ucyI6W3sibmFtZSI6IkdlbmVyYXRlIiwidmFsdWUiOiJnZW5lcmF0ZSIsImFjdGlvbiI6IkdlbmVyYXRlIGFuIGFuc3dlciIsImRlc2NyaXB0aW9uIjoiR2VuZXJhdGUgYW4gYW5zd2VyIGJhc2VkIG9uIHNlYXJjaCByZXN1bHRzIn1dLCJkaXNwbGF5TmFtZSI6Ik9wZXJhdGlvbiIsImRpc3BsYXlPcHRpb25zIjp7InNob3ciOnsicmVzb3VyY2UiOlsiYW5zd2VyIl19fSwibm9EYXRhRXhwcmVzc2lvbiI6dHJ1ZX0seyJuYW1lIjoib3BlcmF0aW9uIiwidHlwZSI6Im9wdGlvbnMiLCJkZWZhdWx0Ijoic2VhcmNoIiwib3B0aW9ucyI6W3sibmFtZSI6IlNlYXJjaCIsInZhbHVlIjoic2VhcmNoIiwiYWN0aW9uIjoiU2VhcmNoIHRoZSB3ZWIiLCJkZXNjcmlwdGlvbiI6IlNlYXJjaCB0aGUgd2ViIn1dLCJkaXNwbGF5TmFtZSI6Ik9wZXJhdGlvbiIsImRpc3BsYXlPcHRpb25zIjp7InNob3ciOnsicmVzb3VyY2UiOlsid2ViU2VhcmNoIl19fSwibm9EYXRhRXhwcmVzc2lvbiI6dHJ1ZX0seyJuYW1lIjoib3BlcmF0aW9uIiwidHlwZSI6Im9wdGlvbnMiLCJkZWZhdWx0Ijoic2NyYXBlVXJsIiwib3B0aW9ucyI6W3sibmFtZSI6IlNjcmFwZSBVUkwiLCJ2YWx1ZSI6InNjcmFwZVVybCIsImFjdGlvbiI6IlNjcmFwZSBjb250ZW50IGZyb20gVVJMIiwiZGVzY3JpcHRpb24iOiJTY3JhcGUgY29udGVudCBmcm9tIGEgVVJMIn1dLCJkaXNwbGF5TmFtZSI6Ik9wZXJhdGlvbiIsImRpc3BsYXlPcHRpb25zIjp7InNob3ciOnsicmVzb3VyY2UiOlsic2NyYXBlIl19fSwibm9EYXRhRXhwcmVzc2lvbiI6dHJ1ZX0seyJuYW1lIjoib3BlcmF0aW9uIiwidHlwZSI6Im9wdGlvbnMiLCJkZWZhdWx0IjoiZ2V0VHJhbnNjcmlwdCIsIm9wdGlvbnMiOlt7Im5hbWUiOiJHZXQgVHJhbnNjcmlwdCIsInZhbHVlIjoiZ2V0VHJhbnNjcmlwdCIsImFjdGlvbiI6IkdldCBZb3VUdWJlIHRyYW5zY3JpcHQiLCJkZXNjcmlwdGlvbiI6IkdldCBZb3VUdWJlIHZpZGVvIHRyYW5zY3JpcHQifV0sImRpc3BsYXlOYW1lIjoiT3BlcmF0aW9uIiwiZGlzcGxheU9wdGlvbnMiOnsic2hvdyI6eyJyZXNvdXJjZSI6WyJ5b3V0dWJlIl19fSwibm9EYXRhRXhwcmVzc2lvbiI6dHJ1ZX0seyJuYW1lIjoib3BlcmF0aW9uIiwidHlwZSI6Im9wdGlvbnMiLCJkZWZhdWx0IjoiZXh0cmFjdENvbnRlbnQiLCJvcHRpb25zIjpbeyJuYW1lIjoiRXh0cmFjdCBDb250ZW50IiwidmFsdWUiOiJleHRyYWN0Q29udGVudCIsImFjdGlvbiI6IkV4dHJhY3QgUERGIGNvbnRlbnQiLCJkZXNjcmlwdGlvbiI6IkV4dHJhY3QgdGV4dCBmcm9tIFBERiJ9XSwiZGlzcGxheU5hbWUiOiJPcGVyYXRpb24iLCJkaXNwbGF5T3B0aW9ucyI6eyJzaG93Ijp7InJlc291cmNlIjpbInBkZiJdfX0sIm5vRGF0YUV4cHJlc3Npb24iOnRydWV9XSwiZGVzY3JpcHRpb24iOiJTZWFyY2ggYW5kIGFuc3dlciBxdWVzdGlvbnMgdXNpbmcgTExNTGF5ZXIgQVBJIiwiZGlzcGxheU5hbWUiOiJMTE1MYXllciIsIm9yaWdpbmFsTmFtZSI6Im44bi1ub2Rlcy1sbG1sYXllci5sbG1MYXllciJ9LCJjcmVhdGVkQXQiOiIyMDI1LTEwLTI0VDE1OjIwOjUwLjYyOFoiLCJ1cGRhdGVkQXQiOiIyMDI2LTA0LTA4VDA3OjA4OjI5Ljg3NVoiLCJhdXRob3JHaXRodWJVcmwiOiJodHRwczovL2dpdGh1Yi5jb20vWWFzc0toYXp6YW4vIiwiYXV0aG9yTmFtZSI6Inlhc3NpbmUua2hhenphbiIsImNoZWNrc3VtIjoic2hhNTEyLUNUVDlVWlA3a1RsMjh0WDRnQU9OeU1FWXY1eDN1MXpsRVkwRmVralFmZ0dWdklDd3d3aTJ4ajFqaFpNOEhvbnpYM1BnZW9NUzhZQkY5UHlaWUZ0K2x3PT0iLCJkZXNjcmlwdGlvbiI6IlNlYXJjaCBhbmQgYW5zd2VyIHF1ZXN0aW9ucyB1c2luZyBMTE1MYXllciBBUEkiLCJkaXNwbGF5TmFtZSI6IkxMTUxheWVyIiwibmFtZSI6Im44bi1ub2Rlcy1sbG1sYXllci5sbG1MYXllciIsIm51bWJlck9mU3RhcnMiOjEsIm51bWJlck9mRG93bmxvYWRzIjo3NywicGFja2FnZU5hbWUiOiJuOG4tbm9kZXMtbGxtbGF5ZXIiLCJucG1WZXJzaW9uIjoiMS4wLjMiLCJpc09mZmljaWFsTm9kZSI6dHJ1ZSwiaXNQdWJsaXNoZWQiOnRydWUsImNvbXBhbnlOYW1lIjoibGxtbGF5ZXIiLCJub2RlVmVyc2lvbnMiOlt7ImNoZWNrc3VtIjoic2hhNTEyLUNUVDlVWlA3a1RsMjh0WDRnQU9OeU1FWXY1eDN1MXpsRVkwRmVralFmZ0dWdklDd3d3aTJ4ajFqaFpNOEhvbnpYM1BnZW9NUzhZQkY5UHlaWUZ0K2x3PT0iLCJucG1WZXJzaW9uIjoiMS4wLjMifV0sImFpTm9kZVNka1ZlcnNpb24iOm51bGx9fSx7ImlkIjo3NjQsImF0dHJpYnV0ZXMiOnsibm9kZURlc2NyaXB0aW9uIjp7Im5hbWUiOiJAc2luY2gtZW5nYWdlL244bi1ub2Rlcy1wcmV2aWV3LXNpbmNoLWVuZ2FnZS5zaW5jaEVuZ2FnZVRyaWdnZXIiLCJjb2RleCI6e30sImdyb3VwIjpbInRyaWdnZXIiXSwiaW5wdXRzIjpbXSwiaWNvblVybCI6Imh0dHBzOi8vbjhuaW9zdG9yYWdlYWNjb3VudC5ibG9iLmNvcmUud2luZG93cy5uZXQvbjhuaW8tc3RyYXBpLWJsb2JzLXN0YWdlL2Fzc2V0cy9TaW5jaF9FbmdhZ2VfVHJpZ2dlcl8yOWJmMzEwNjM5LnN2ZyIsIm91dHB1dHMiOlsibWFpbiJdLCJ2ZXJzaW9uIjoxLCJkZWZhdWx0cyI6eyJuYW1lIjoiU2luY2ggRW5nYWdlIFRyaWdnZXIifSwic3VidGl0bGUiOiI9e3skcGFyYW1ldGVyW1wiZXZlbnRUeXBlXCJdfX0iLCJwcm9wZXJ0aWVzIjpbXSwiZGVzY3JpcHRpb24iOiJSZWNlaXZlIFNNUyBtZXNzYWdlcyB2aWEgU2luY2ggRW5nYWdlIHdlYmhvb2siLCJkaXNwbGF5TmFtZSI6IlNpbmNoIEVuZ2FnZSBUcmlnZ2VyIiwib3JpZ2luYWxOYW1lIjoiQHNpbmNoLWVuZ2FnZS9uOG4tbm9kZXMtc2luY2gtZW5nYWdlLnNpbmNoRW5nYWdlVHJpZ2dlciJ9LCJjcmVhdGVkQXQiOiIyMDI2LTA0LTA4VDA3OjMzOjI3Ljk3NloiLCJ1cGRhdGVkQXQiOiIyMDI2LTA0LTA4VDA3OjMzOjI3Ljk3NloiLCJhdXRob3JHaXRodWJVcmwiOiJodHRwczovL2dpdGh1Yi5jb20vbWVzc2FnZW1lZGlhL244bi1lbmdhZ2UuZ2l0IiwiYXV0aG9yTmFtZSI6Inl1eWluZ19wZWkiLCJjaGVja3N1bSI6InNoYTUxMi0xdzRmREd5L1YzemtHQlhyVkxab291VTl4cUdnTFIray9vZTVlcUp3VUVkcjd1cU95S1c5aGlXUW1xQTJoc3RhMEowNDNlNDFhSnRLWGg5c25rczNxUT09IiwiZGVzY3JpcHRpb24iOiJSZWNlaXZlIFNNUyBtZXNzYWdlcyB2aWEgU2luY2ggRW5nYWdlIHdlYmhvb2siLCJkaXNwbGF5TmFtZSI6IlNpbmNoIEVuZ2FnZSBUcmlnZ2VyIiwibmFtZSI6IkBzaW5jaC1lbmdhZ2UvbjhuLW5vZGVzLXNpbmNoLWVuZ2FnZS5zaW5jaEVuZ2FnZVRyaWdnZXIiLCJudW1iZXJPZlN0YXJzIjoxLCJudW1iZXJPZkRvd25sb2FkcyI6MTAsInBhY2thZ2VOYW1lIjoiQHNpbmNoLWVuZ2FnZS9uOG4tbm9kZXMtc2luY2gtZW5nYWdlIiwibnBtVmVyc2lvbiI6IjEuMC4wLWFscGhhLjE2IiwiaXNPZmZpY2lhbE5vZGUiOnRydWUsImlzUHVibGlzaGVkIjp0cnVlLCJjb21wYW55TmFtZSI6bnVsbCwibm9kZVZlcnNpb25zIjpbeyJjaGVja3N1bSI6InNoYTUxMi0xdzRmREd5L1YzemtHQlhyVkxab291VTl4cUdnTFIray9vZTVlcUp3VUVkcjd1cU95S1c5aGlXUW1xQTJoc3RhMEowNDNlNDFhSnRLWGg5c25rczNxUT09IiwibnBtVmVyc2lvbiI6IjEuMC4wLWFscGhhLjE2In1dLCJhaU5vZGVTZGtWZXJzaW9uIjpudWxsfX0seyJpZCI6NzY1LCJhdHRyaWJ1dGVzIjp7Im5vZGVEZXNjcmlwdGlvbiI6eyJuYW1lIjoiQHNpbmNoLWVuZ2FnZS9uOG4tbm9kZXMtcHJldmlldy1zaW5jaC1lbmdhZ2Uuc2luY2hFbmdhZ2UiLCJjb2RleCI6e30sImdyb3VwIjpbIm91dHB1dCJdLCJpbnB1dHMiOlsibWFpbiJdLCJpY29uVXJsIjoiaHR0cHM6Ly9uOG5pb3N0b3JhZ2VhY2NvdW50LmJsb2IuY29yZS53aW5kb3dzLm5ldC9uOG5pby1zdHJhcGktYmxvYnMtc3RhZ2UvYXNzZXRzL1NpbmNoX0VuZ2FnZV80MWY0YjMyNjAwLnN2ZyIsIm91dHB1dHMiOlsibWFpbiJdLCJ2ZXJzaW9uIjoxLCJkZWZhdWx0cyI6eyJuYW1lIjoiU2luY2ggRW5nYWdlIn0sInN1YnRpdGxlIjoiPXt7JHBhcmFtZXRlcltcInJlc291cmNlXCJdLnRvVXBwZXJDYXNlKCkgKyBcIjogXCIgKyAkcGFyYW1ldGVyW1wib3BlcmF0aW9uXCJdLmNoYXJBdCgwKS50b1VwcGVyQ2FzZSgpICsgJHBhcmFtZXRlcltcIm9wZXJhdGlvblwiXS5zbGljZSgxKX19IiwicHJvcGVydGllcyI6W3sibmFtZSI6InJlc291cmNlIiwidHlwZSI6Im9wdGlvbnMiLCJkZWZhdWx0Ijoic21zIiwib3B0aW9ucyI6W3sibmFtZSI6IkJsYWNrbGlzdCIsInZhbHVlIjoiYmxhY2tsaXN0IiwiZGVzY3JpcHRpb24iOiJNYW5hZ2Ugb3B0LW91dCBibGFja2xpc3QgZm9yIHBob25lIG51bWJlcnMifSx7Im5hbWUiOiJTTVMiLCJ2YWx1ZSI6InNtcyIsImRlc2NyaXB0aW9uIjoiU2VuZCBhbmQgbWFuYWdlIFNNUyBtZXNzYWdlcyJ9XSwiZGlzcGxheU5hbWUiOiJSZXNvdXJjZSIsIm5vRGF0YUV4cHJlc3Npb24iOnRydWV9LHsibmFtZSI6Im9wZXJhdGlvbiIsInR5cGUiOiJvcHRpb25zIiwiZGVmYXVsdCI6InNlbmQiLCJvcHRpb25zIjpbeyJuYW1lIjoiU2VuZCIsInZhbHVlIjoic2VuZCIsImFjdGlvbiI6IlNlbmQgYW4gU01TIiwiZGVzY3JpcHRpb24iOiJTZW5kIGFuIFNNUyBtZXNzYWdlIn1dLCJkaXNwbGF5TmFtZSI6Ik9wZXJhdGlvbiIsImRpc3BsYXlPcHRpb25zIjp7InNob3ciOnsicmVzb3VyY2UiOlsic21zIl19fSwibm9EYXRhRXhwcmVzc2lvbiI6dHJ1ZX0seyJuYW1lIjoib3BlcmF0aW9uIiwidHlwZSI6Im9wdGlvbnMiLCJkZWZhdWx0IjoiYWRkIiwib3B0aW9ucyI6W3sibmFtZSI6IkFkZCIsInZhbHVlIjoiYWRkIiwiYWN0aW9uIjoiQWRkIHRvIGJsYWNrbGlzdCIsImRlc2NyaXB0aW9uIjoiQWRkIHBob25lIG51bWJlcihzKSB0byBibGFja2xpc3QifV0sImRpc3BsYXlOYW1lIjoiT3BlcmF0aW9uIiwiZGlzcGxheU9wdGlvbnMiOnsic2hvdyI6eyJyZXNvdXJjZSI6WyJibGFja2xpc3QiXX19LCJub0RhdGFFeHByZXNzaW9uIjp0cnVlfV0sImRlc2NyaXB0aW9uIjoiU2VuZCBTTVMgYW5kIG1hbmFnZSBjb21tdW5pY2F0aW9ucyB2aWEgU2luY2ggRW5nYWdlIiwiZGlzcGxheU5hbWUiOiJTaW5jaCBFbmdhZ2UiLCJvcmlnaW5hbE5hbWUiOiJAc2luY2gtZW5nYWdlL244bi1ub2Rlcy1zaW5jaC1lbmdhZ2Uuc2luY2hFbmdhZ2UifSwiY3JlYXRlZEF0IjoiMjAyNi0wNC0wOFQwNzozMzoyNy45ODhaIiwidXBkYXRlZEF0IjoiMjAyNi0wNC0wOFQwNzozMzoyNy45ODhaIiwiYXV0aG9yR2l0aHViVXJsIjoiaHR0cHM6Ly9naXRodWIuY29tL21lc3NhZ2VtZWRpYS9uOG4tZW5nYWdlLmdpdCIsImF1dGhvck5hbWUiOiJ5dXlpbmdfcGVpIiwiY2hlY2tzdW0iOiJzaGE1MTItMXc0ZkRHeS9WM3prR0JYclZMWm9vdVU5eHFHZ0xSK2svb2U1ZXFKd1VFZHI3dXFPeUtXOWhpV1FtcUEyaHN0YTBKMDQzZTQxYUp0S1hoOXNua3MzcVE9PSIsImRlc2NyaXB0aW9uIjoiU2VuZCBTTVMgYW5kIG1hbmFnZSBjb21tdW5pY2F0aW9ucyB2aWEgU2luY2ggRW5nYWdlIiwiZGlzcGxheU5hbWUiOiJTaW5jaCBFbmdhZ2UiLCJuYW1lIjoiQHNpbmNoLWVuZ2FnZS9uOG4tbm9kZXMtc2luY2gtZW5nYWdlLnNpbmNoRW5nYWdlIiwibnVtYmVyT2ZTdGFycyI6MSwibnVtYmVyT2ZEb3dubG9hZHMiOjEwLCJwYWNrYWdlTmFtZSI6IkBzaW5jaC1lbmdhZ2UvbjhuLW5vZGVzLXNpbmNoLWVuZ2FnZSIsIm5wbVZlcnNpb24iOiIxLjAuMC1hbHBoYS4xNiIsImlzT2ZmaWNpYWxOb2RlIjp0cnVlLCJpc1B1Ymxpc2hlZCI6dHJ1ZSwiY29tcGFueU5hbWUiOm51bGwsIm5vZGVWZXJzaW9ucyI6W3siY2hlY2tzdW0iOiJzaGE1MTItMXc0ZkRHeS9WM3prR0JYclZMWm9vdVU5eHFHZ0xSK2svb2U1ZXFKd1VFZHI3dXFPeUtXOWhpV1FtcUEyaHN0YTBKMDQzZTQxYUp0S1hoOXNua3MzcVE9PSIsIm5wbVZlcnNpb24iOiIxLjAuMC1hbHBoYS4xNiJ9XSwiYWlOb2RlU2RrVmVyc2lvbiI6bnVsbH19LHsiaWQiOjE0NSwiYXR0cmlidXRlcyI6eyJub2RlRGVzY3JpcHRpb24iOnsibmFtZSI6Im44bi1ub2Rlcy1wcmV2aWV3LXBkZnZlY3Rvci5wZGZWZWN0b3IiLCJjb2RleCI6e30sImdyb3VwIjpbInRyYW5zZm9ybSJdLCJpbnB1dHMiOlsibWFpbiJdLCJpY29uVXJsIjoiaHR0cHM6Ly9uOG5pb3N0b3JhZ2VhY2NvdW50LmJsb2IuY29yZS53aW5kb3dzLm5ldC9uOG5pby1zdHJhcGktYmxvYnMtc3RhZ2UvYXNzZXRzL1BERl9WZWN0b3JfY2Q5MTE5NWFmNi5zdmciLCJvdXRwdXRzIjpbIm1haW4iXSwidmVyc2lvbiI6MiwiZGVmYXVsdHMiOnsibmFtZSI6IlBERiBWZWN0b3IifSwic3VidGl0bGUiOiI9e3skcGFyYW1ldGVyW1wib3BlcmF0aW9uXCJdICsgXCI6IFwiICsgJHBhcmFtZXRlcltcInJlc291cmNlXCJdfX0iLCJwcm9wZXJ0aWVzIjpbeyJuYW1lIjoicmVzb3VyY2UiLCJ0eXBlIjoib3B0aW9ucyIsImRlZmF1bHQiOiJkb2N1bWVudCIsIm9wdGlvbnMiOlt7Im5hbWUiOiJBY2FkZW1pYyIsInZhbHVlIjoiYWNhZGVtaWMifSx7Im5hbWUiOiJCYW5rIFN0YXRlbWVudCIsInZhbHVlIjoiYmFua1N0YXRlbWVudCJ9LHsibmFtZSI6IkRvY3VtZW50IiwidmFsdWUiOiJkb2N1bWVudCJ9LHsibmFtZSI6IklkZW50aXR5IERvY3VtZW50IiwidmFsdWUiOiJpZGVudGl0eSJ9LHsibmFtZSI6Ikludm9pY2UiLCJ2YWx1ZSI6Imludm9pY2UifV0sImRpc3BsYXlOYW1lIjoiUmVzb3VyY2UiLCJub0RhdGFFeHByZXNzaW9uIjp0cnVlfSx7Im5hbWUiOiJvcGVyYXRpb24iLCJ0eXBlIjoib3B0aW9ucyIsImRlZmF1bHQiOiJwYXJzZSIsIm9wdGlvbnMiOlt7Im5hbWUiOiJQYXJzZSIsInZhbHVlIjoicGFyc2UiLCJhY3Rpb24iOiJQYXJzZSBhIGRvY3VtZW50IiwiZGVzY3JpcHRpb24iOiJFeHRyYWN0IHRleHQgYW5kIHBhZ2UgY291bnQgZnJvbSBhIGRvY3VtZW50In0seyJuYW1lIjoiQXNrIiwidmFsdWUiOiJhc2siLCJhY3Rpb24iOiJBc2sgYWJvdXQgYSBkb2N1bWVudCIsImRlc2NyaXB0aW9uIjoiQXNrIGEgcXVlc3Rpb24gYWJvdXQgYSBkb2N1bWVudCBhbmQgZ2V0IGFuIEFJIGFuc3dlciJ9LHsibmFtZSI6IkV4dHJhY3QiLCJ2YWx1ZSI6ImV4dHJhY3QiLCJhY3Rpb24iOiJFeHRyYWN0IGZyb20gYSBkb2N1bWVudCIsImRlc2NyaXB0aW9uIjoiRXh0cmFjdCBzdHJ1Y3R1cmVkIGRhdGEgZnJvbSBhIGRvY3VtZW50IHVzaW5nIEpTT04gU2NoZW1hIn1dLCJkaXNwbGF5TmFtZSI6Ik9wZXJhdGlvbiIsImRpc3BsYXlPcHRpb25zIjp7InNob3ciOnsicmVzb3VyY2UiOlsiZG9jdW1lbnQiXX19LCJub0RhdGFFeHByZXNzaW9uIjp0cnVlfSx7Im5hbWUiOiJvcGVyYXRpb24iLCJ0eXBlIjoib3B0aW9ucyIsImRlZmF1bHQiOiJwYXJzZSIsIm9wdGlvbnMiOlt7Im5hbWUiOiJQYXJzZSIsInZhbHVlIjoicGFyc2UiLCJhY3Rpb24iOiJQYXJzZSBhIGlkZW50aXR5IGRvY3VtZW50IiwiZGVzY3JpcHRpb24iOiJFeHRyYWN0IHRleHQgYW5kIHBhZ2UgY291bnQgZnJvbSBhIGlkZW50aXR5IGRvY3VtZW50In0seyJuYW1lIjoiQXNrIiwidmFsdWUiOiJhc2siLCJhY3Rpb24iOiJBc2sgYWJvdXQgYSBpZGVudGl0eSBkb2N1bWVudCIsImRlc2NyaXB0aW9uIjoiQXNrIGEgcXVlc3Rpb24gYWJvdXQgYSBpZGVudGl0eSBkb2N1bWVudCBhbmQgZ2V0IGFuIEFJIGFuc3dlciJ9LHsibmFtZSI6IkV4dHJhY3QiLCJ2YWx1ZSI6ImV4dHJhY3QiLCJhY3Rpb24iOiJFeHRyYWN0IGZyb20gYSBpZGVudGl0eSBkb2N1bWVudCIsImRlc2NyaXB0aW9uIjoiRXh0cmFjdCBzdHJ1Y3R1cmVkIGRhdGEgZnJvbSBhIGlkZW50aXR5IGRvY3VtZW50IHVzaW5nIEpTT04gU2NoZW1hIn1dLCJkaXNwbGF5TmFtZSI6Ik9wZXJhdGlvbiIsImRpc3BsYXlPcHRpb25zIjp7InNob3ciOnsicmVzb3VyY2UiOlsiaWRlbnRpdHkiXX19LCJub0RhdGFFeHByZXNzaW9uIjp0cnVlfSx7Im5hbWUiOiJvcGVyYXRpb24iLCJ0eXBlIjoib3B0aW9ucyIsImRlZmF1bHQiOiJwYXJzZSIsIm9wdGlvbnMiOlt7Im5hbWUiOiJQYXJzZSIsInZhbHVlIjoicGFyc2UiLCJhY3Rpb24iOiJQYXJzZSBhIGludm9pY2UiLCJkZXNjcmlwdGlvbiI6IkV4dHJhY3QgdGV4dCBhbmQgcGFnZSBjb3VudCBmcm9tIGEgaW52b2ljZSJ9LHsibmFtZSI6IkFzayIsInZhbHVlIjoiYXNrIiwiYWN0aW9uIjoiQXNrIGFib3V0IGEgaW52b2ljZSIsImRlc2NyaXB0aW9uIjoiQXNrIGEgcXVlc3Rpb24gYWJvdXQgYSBpbnZvaWNlIGFuZCBnZXQgYW4gQUkgYW5zd2VyIn0seyJuYW1lIjoiRXh0cmFjdCIsInZhbHVlIjoiZXh0cmFjdCIsImFjdGlvbiI6IkV4dHJhY3QgZnJvbSBhIGludm9pY2UiLCJkZXNjcmlwdGlvbiI6IkV4dHJhY3Qgc3RydWN0dXJlZCBkYXRhIGZyb20gYSBpbnZvaWNlIHVzaW5nIEpTT04gU2NoZW1hIn1dLCJkaXNwbGF5TmFtZSI6Ik9wZXJhdGlvbiIsImRpc3BsYXlPcHRpb25zIjp7InNob3ciOnsicmVzb3VyY2UiOlsiaW52b2ljZSJdfX0sIm5vRGF0YUV4cHJlc3Npb24iOnRydWV9LHsibmFtZSI6Im9wZXJhdGlvbiIsInR5cGUiOiJvcHRpb25zIiwiZGVmYXVsdCI6InBhcnNlIiwib3B0aW9ucyI6W3sibmFtZSI6IlBhcnNlIiwidmFsdWUiOiJwYXJzZSIsImFjdGlvbiI6IlBhcnNlIGEgYmFuayBzdGF0ZW1lbnQiLCJkZXNjcmlwdGlvbiI6IkV4dHJhY3QgdGV4dCBhbmQgcGFnZSBjb3VudCBmcm9tIGEgYmFuayBzdGF0ZW1lbnQifSx7Im5hbWUiOiJBc2siLCJ2YWx1ZSI6ImFzayIsImFjdGlvbiI6IkFzayBhYm91dCBhIGJhbmsgc3RhdGVtZW50IiwiZGVzY3JpcHRpb24iOiJBc2sgYSBxdWVzdGlvbiBhYm91dCBhIGJhbmsgc3RhdGVtZW50IGFuZCBnZXQgYW4gQUkgYW5zd2VyIn0seyJuYW1lIjoiRXh0cmFjdCIsInZhbHVlIjoiZXh0cmFjdCIsImFjdGlvbiI6IkV4dHJhY3QgZnJvbSBhIGJhbmsgc3RhdGVtZW50IiwiZGVzY3JpcHRpb24iOiJFeHRyYWN0IHN0cnVjdHVyZWQgZGF0YSBmcm9tIGEgYmFuayBzdGF0ZW1lbnQgdXNpbmcgSlNPTiBTY2hlbWEifV0sImRpc3BsYXlOYW1lIjoiT3BlcmF0aW9uIiwiZGlzcGxheU9wdGlvbnMiOnsic2hvdyI6eyJyZXNvdXJjZSI6WyJiYW5rU3RhdGVtZW50Il19fSwibm9EYXRhRXhwcmVzc2lvbiI6dHJ1ZX0seyJuYW1lIjoib3BlcmF0aW9uIiwidHlwZSI6Im9wdGlvbnMiLCJkZWZhdWx0Ijoic2VhcmNoIiwib3B0aW9ucyI6W3sibmFtZSI6IlNlYXJjaCIsInZhbHVlIjoic2VhcmNoIiwiYWN0aW9uIjoiU2VhcmNoIGFjYWRlbWljIHBhcGVycyIsImRlc2NyaXB0aW9uIjoiU2VhcmNoIGZvciBhY2FkZW1pYyBwYXBlcnMgYWNyb3NzIG11bHRpcGxlIGRhdGFiYXNlcyJ9LHsibmFtZSI6IkZldGNoIiwidmFsdWUiOiJmZXRjaCIsImFjdGlvbiI6IkZldGNoIHBhcGVycyBieSBJRCIsImRlc2NyaXB0aW9uIjoiRmV0Y2ggc3BlY2lmaWMgcGFwZXJzIGJ5IERPSSwgUHViTWVkIElELCBBclhpdiBJRCwgZXRjIn0seyJuYW1lIjoiRmluZCBDaXRhdGlvbnMiLCJ2YWx1ZSI6ImZpbmRDaXRhdGlvbnMiLCJhY3Rpb24iOiJGaW5kIGNpdGF0aW9ucyBmb3IgdGV4dCIsImRlc2NyaXB0aW9uIjoiRmluZCByZWxldmFudCBhY2FkZW1pYyBjaXRhdGlvbnMgZm9yIGEgcGFyYWdyYXBoIG9mIHRleHQifV0sImRpc3BsYXlOYW1lIjoiT3BlcmF0aW9uIiwiZGlzcGxheU9wdGlvbnMiOnsic2hvdyI6eyJyZXNvdXJjZSI6WyJhY2FkZW1pYyJdfX0sIm5vRGF0YUV4cHJlc3Npb24iOnRydWV9XSwiZGVzY3JpcHRpb24iOiJDb252ZXJ0IFBERnMsIFdvcmQsIEV4Y2VsIGRvY3VtZW50cywgYW5kIGltYWdlcyB0byBjbGVhbiBtYXJrZG93biwgZXh0cmFjdCBzdHJ1Y3R1cmVkIGRhdGEgd2l0aCBBSSwgcHJvY2VzcyBpbnZvaWNlcyB3aXRoIHNwZWNpYWxpemVkIHBhcnNpbmcsIGFuZCBzZWFyY2ggbWlsbGlvbnMgb2YgYWNhZGVtaWMgcGFwZXJzIGFjcm9zcyBQdWJNZWQsIEFyWGl2LCBHb29nbGUgU2Nob2xhciwgYW5kIG1vcmUuIiwiZGlzcGxheU5hbWUiOiJQREYgVmVjdG9yIiwib3JpZ2luYWxOYW1lIjoibjhuLW5vZGVzLXBkZnZlY3Rvci5wZGZWZWN0b3IiLCJ1c2FibGVBc1Rvb2wiOnRydWV9LCJjcmVhdGVkQXQiOiIyMDI1LTA4LTEzVDA5OjIwOjM1LjE2NloiLCJ1cGRhdGVkQXQiOiIyMDI2LTA0LTA4VDA3OjMzOjI5LjcyNVoiLCJhdXRob3JHaXRodWJVcmwiOiJodHRwczovL2dpdGh1Yi5jb20vcGh1Y3RtOTcvIiwiYXV0aG9yTmFtZSI6InBodWN0bTk3IiwiY2hlY2tzdW0iOiJzaGE1MTItZG1hejc4TmsxZU55MEt6MUpGVzFqcms4ckRqeEtwREZVTDhCa0hGVEdmNG1GK29XK05NVmxhNFF1RWoxaWRHSm50YnNkRzc4bmdMYTBObDBTWGhLSGc9PSIsImRlc2NyaXB0aW9uIjoiQ29udmVydCBQREZzLCBXb3JkLCBFeGNlbCBkb2N1bWVudHMsIGFuZCBpbWFnZXMgdG8gY2xlYW4gbWFya2Rvd24sIGV4dHJhY3Qgc3RydWN0dXJlZCBkYXRhIHdpdGggQUksIHByb2Nlc3MgaW52b2ljZXMgd2l0aCBzcGVjaWFsaXplZCBwYXJzaW5nLCBhbmQgc2VhcmNoIG1pbGxpb25zIG9mIGFjYWRlbWljIHBhcGVycyBhY3Jvc3MgUHViTWVkLCBBclhpdiwgR29vZ2xlIFNjaG9sYXIsIGFuZCBtb3JlLiIsImRpc3BsYXlOYW1lIjoiUERGIFZlY3RvciIsIm5hbWUiOiJuOG4tbm9kZXMtcGRmdmVjdG9yLnBkZlZlY3RvciIsIm51bWJlck9mU3RhcnMiOjMsIm51bWJlck9mRG93bmxvYWRzIjoxMDAwMiwicGFja2FnZU5hbWUiOiJuOG4tbm9kZXMtcGRmdmVjdG9yIiwibnBtVmVyc2lvbiI6IjAuOC40IiwiaXNPZmZpY2lhbE5vZGUiOnRydWUsImlzUHVibGlzaGVkIjp0cnVlLCJjb21wYW55TmFtZSI6IlBERiBWZWN0b3IiLCJub2RlVmVyc2lvbnMiOlt7ImNoZWNrc3VtIjoic2hhNTEyLThUUWxzYmlKNThNY3dacFExYlMvSW1qR2w5d2xDTGMwU1hiK3AraFJYVTN2Tlh6VG5JOGxGYnNoS013bStTL01UbGFUTGF6cWtmay92MjhjbHlrRGxRPT0iLCJucG1WZXJzaW9uIjoiMC40LjAifSx7ImNoZWNrc3VtIjoic2hhNTEyLVNwT0xBbjRKdHVMQkZHNlAvTVJJU1F6Y1Rha2h4c2w0eGJpK1JhcFFTMCtHRzVwTWFOVDRBUVh5Y0Job3NHOXdaWjNwN1FNQmJtMHNPSm1OcitaNHJnPT0iLCJucG1WZXJzaW9uIjoiMC42LjAifSx7ImNoZWNrc3VtIjoic2hhNTEyLUpGd3NaUVNGem9HSHFFdk1uaXdWTTFBVGtTQnJWRXdnUU9LaFNNRDNKQTFZeFBDRG5RdVlGR0RxTUhsaGw2amZmc25YOGZjeS9WdDJjeGxnd1V3dXV3PT0iLCJucG1WZXJzaW9uIjoiMC44LjEifSx7ImNoZWNrc3VtIjoic2hhNTEyLXg1enplb0xHMk1oR2kyb280UEhka0pxK1gyT3FwaFJPdlRGd1ZuTUhCdW5TdnFSN0dYTzhDMkU0aVFsUjNlS3dRZkE2OXpqeHYxeUFsTVJGR0ZWUGh3PT0iLCJucG1WZXJzaW9uIjoiMC44LjIifSx7ImNoZWNrc3VtIjoic2hhNTEyLWlWNTdJOWRNeHV0eWJDL3luN3ROeERTOWlINW05YlQ1cUwyNXZtMzRVU2JRS3VZRmp0NEdoY0VCSE50RVhHd3p3Ym93VXpweGtvV0lHZzdQdzBwOUdnPT0iLCJucG1WZXJzaW9uIjoiMC44LjMifSx7ImNoZWNrc3VtIjoic2hhNTEyLWRtYXo3OE5rMWVOeTBLejFKRlcxanJrOHJEanhLcERGVUw4QmtIRlRHZjRtRitvVytOTVZsYTRRdUVqMWlkR0pudGJzZEc3OG5nTGEwTmwwU1hoS0hnPT0iLCJucG1WZXJzaW9uIjoiMC44LjQifV0sImFpTm9kZVNka1ZlcnNpb24iOm51bGx9fSx7ImlkIjo2OTMsImF0dHJpYnV0ZXMiOnsibm9kZURlc2NyaXB0aW9uIjp7Im5hbWUiOiJAYWxwaGFpbnNpZGVyaW5jL244bi1ub2Rlcy1wcmV2aWV3LWFscGhhaW5zaWRlci5hbHBoYUluc2lkZXIiLCJjb2RleCI6e30sImdyb3VwIjpbInRyaWdnZXIiXSwiaW5wdXRzIjpbXSwiaWNvblVybCI6Imh0dHBzOi8vbjhuaW9zdG9yYWdlYWNjb3VudC5ibG9iLmNvcmUud2luZG93cy5uZXQvbjhuaW8tc3RyYXBpLWJsb2JzLXN0YWdlL2Fzc2V0cy9BbHBoYV9JbnNpZGVyX2JiM2MxOWFmODEuc3ZnIiwib3V0cHV0cyI6WyJtYWluIl0sInZlcnNpb24iOjEsImRlZmF1bHRzIjp7Im5hbWUiOiJBbHBoYUluc2lkZXIifSwic3VidGl0bGUiOiI9e3skcGFyYW1ldGVyW1wib3BlcmF0aW9uXCJdICsgXCI6IFwiICsgJHBhcmFtZXRlcltcInJlc291cmNlXCJdfX0iLCJwcm9wZXJ0aWVzIjpbeyJuYW1lIjoicmVzb3VyY2UiLCJ0eXBlIjoib3B0aW9ucyIsImRlZmF1bHQiOiJ3ZWJzb2NrZXRzIiwib3B0aW9ucyI6W3sibmFtZSI6IldlYnNvY2tldHMiLCJ2YWx1ZSI6IndlYnNvY2tldHMifV0sImRpc3BsYXlOYW1lIjoiUmVzb3VyY2UiLCJub0RhdGFFeHByZXNzaW9uIjp0cnVlfSx7Im5hbWUiOiJvcGVyYXRpb24iLCJ0eXBlIjoib3B0aW9ucyIsImRlZmF1bHQiOiJzdWJzY3JpYmUiLCJvcHRpb25zIjpbeyJuYW1lIjoiU3Vic2NyaWJlIiwidmFsdWUiOiJzdWJzY3JpYmUiLCJhY3Rpb24iOiJTdWJzY3JpYmUgdG8gd2Vic29ja2V0IGNoYW5uZWxzIiwiZGVzY3JpcHRpb24iOiJTdWJzY3JpYmUgdG8gcmVhbC10aW1lIHdlYnNvY2tldCBldmVudHMgZnJvbSBBbHBoYUluc2lkZXIifV0sImRpc3BsYXlOYW1lIjoiT3BlcmF0aW9uIiwiZGlzcGxheU9wdGlvbnMiOnsic2hvdyI6eyJyZXNvdXJjZSI6WyJ3ZWJzb2NrZXRzIl19fSwibm9EYXRhRXhwcmVzc2lvbiI6dHJ1ZX1dLCJkZXNjcmlwdGlvbiI6IlJlYWwtdGltZSBzdG9jayAmIGNyeXB0byBkYXRhLCBhdXRvbWF0ZWQgdHJhZGluZywgbGl2ZSB0cmFkZSBhbGVydHMsIGJyb2tlciBjb25uZWN0aW9ucy4iLCJkaXNwbGF5TmFtZSI6IkFscGhhSW5zaWRlciIsIm9yaWdpbmFsTmFtZSI6IkBhbHBoYWluc2lkZXJpbmMvbjhuLW5vZGVzLWFscGhhaW5zaWRlci5hbHBoYUluc2lkZXIifSwiY3JlYXRlZEF0IjoiMjAyNi0wMy0yNFQxNDoxOToyNi42NjBaIiwidXBkYXRlZEF0IjoiMjAyNi0wNC0wOFQwNzo0MzoyOC44MDhaIiwiYXV0aG9yR2l0aHViVXJsIjoiaHR0cHM6Ly9naXRodWIuY29tL0FscGhhSW5zaWRlci9uOG4tbm9kZXMtYWxwaGFpbnNpZGVyLmdpdCIsImF1dGhvck5hbWUiOiJhbHBoYWluc2lkZXIiLCJjaGVja3N1bSI6InNoYTUxMi1ZdmFNUDI1Uk00cGU3OCs5M28wOXJycWpTNXIrQXFiekFwZVhCZDFwd0pmSUhjZXlvd3dwalhVd2V5S1ZQQ1pNTVBjQUd0blFDdHZtdFRaN21vMmlhQT09IiwiZGVzY3JpcHRpb24iOiJSZWFsLXRpbWUgc3RvY2sgJiBjcnlwdG8gZGF0YSwgYXV0b21hdGVkIHRyYWRpbmcsIGxpdmUgdHJhZGUgYWxlcnRzLCBicm9rZXIgY29ubmVjdGlvbnMuIiwiZGlzcGxheU5hbWUiOiJBbHBoYUluc2lkZXIiLCJuYW1lIjoiQGFscGhhaW5zaWRlcmluYy9uOG4tbm9kZXMtYWxwaGFpbnNpZGVyLmFscGhhSW5zaWRlciIsIm51bWJlck9mU3RhcnMiOjAsIm51bWJlck9mRG93bmxvYWRzIjoxNTcsInBhY2thZ2VOYW1lIjoiQGFscGhhaW5zaWRlcmluYy9uOG4tbm9kZXMtYWxwaGFpbnNpZGVyIiwibnBtVmVyc2lvbiI6IjEuNC40IiwiaXNPZmZpY2lhbE5vZGUiOnRydWUsImlzUHVibGlzaGVkIjp0cnVlLCJjb21wYW55TmFtZSI6bnVsbCwibm9kZVZlcnNpb25zIjpbeyJjaGVja3N1bSI6InNoYTUxMi1qbjdBbTkyVFJ5T0VXaEg2UFBjWFl2NDdrREVROGhDQWxBeXpLaHROaWdkejY0LzRoRFQ2UTV3TUVkamtxR3I4cGYwSUtQcmQvYlFaNWc0a01hOXM1Zz09IiwibnBtVmVyc2lvbiI6IjEuNC4zIn0seyJjaGVja3N1bSI6InNoYTUxMi1ZdmFNUDI1Uk00cGU3OCs5M28wOXJycWpTNXIrQXFiekFwZVhCZDFwd0pmSUhjZXlvd3dwalhVd2V5S1ZQQ1pNTVBjQUd0blFDdHZtdFRaN21vMmlhQT09IiwibnBtVmVyc2lvbiI6IjEuNC40In1dLCJhaU5vZGVTZGtWZXJzaW9uIjpudWxsfX0seyJpZCI6NDQwLCJhdHRyaWJ1dGVzIjp7Im5vZGVEZXNjcmlwdGlvbiI6eyJuYW1lIjoiQGN1c3RvbS1qcy9uOG4tbm9kZXMtcHJldmlldy1wZGYtdG9vbGtpdC12Mi5wZGZUb29sa2l0IiwiY29kZXgiOnt9LCJncm91cCI6WyJ0cmFuc2Zvcm0iXSwiaW5wdXRzIjpbIm1haW4iXSwiaWNvblVybCI6Imh0dHBzOi8vbjhuaW9zdG9yYWdlYWNjb3VudC5ibG9iLmNvcmUud2luZG93cy5uZXQvbjhuaW8tc3RyYXBpLWJsb2JzLXN0YWdlL2Fzc2V0cy9DdXN0b21fSlNfUERGX2FuZF9GaWxlX1Rvb2xraXRfNjZkODc1ZTY0OS5zdmciLCJvdXRwdXRzIjpbIm1haW4iXSwidmVyc2lvbiI6MSwiZGVmYXVsdHMiOnsibmFtZSI6IlBERiBUb29sa2l0In0sInN1YnRpdGxlIjoiIiwicHJvcGVydGllcyI6W3sibmFtZSI6InJlc291cmNlIiwidHlwZSI6Im9wdGlvbnMiLCJkZWZhdWx0IjoiY29udmVydCIsIm9wdGlvbnMiOlt7Im5hbWUiOiJDb252ZXJ0IiwidmFsdWUiOiJjb252ZXJ0In0seyJuYW1lIjoiUERGIiwidmFsdWUiOiJwZGYifSx7Im5hbWUiOiJXZWIiLCJ2YWx1ZSI6IndlYiJ9LHsibmFtZSI6IkRhdGEiLCJ2YWx1ZSI6ImRhdGEifSx7Im5hbWUiOiJIVE1MIEhvc3RpbmciLCJ2YWx1ZSI6InBhZ2UifV0sImRpc3BsYXlOYW1lIjoiUmVzb3VyY2UiLCJub0RhdGFFeHByZXNzaW9uIjp0cnVlfSx7Im5hbWUiOiJvcGVyYXRpb24iLCJ0eXBlIjoib3B0aW9ucyIsImRlZmF1bHQiOiJwZGZUb1BuZyIsIm9wdGlvbnMiOlt7Im5hbWUiOiJQREYgdG8gUE5HIiwidmFsdWUiOiJwZGZUb1BuZyIsImFjdGlvbiI6IkNvbnZlcnQgUERGIHRvIFBORyJ9LHsibmFtZSI6IlBERiB0byBUZXh0IiwidmFsdWUiOiJwZGZUb1RleHQiLCJhY3Rpb24iOiJDb252ZXJ0IFBERiB0byBUZXh0In0seyJuYW1lIjoiSFRNTCB0byBET0NYIiwidmFsdWUiOiJodG1sVG9Eb2N4IiwiYWN0aW9uIjoiQ29udmVydCBIVE1MIHRvIERPQ1gifSx7Im5hbWUiOiJIVE1MIHRvIFBERiIsInZhbHVlIjoiaHRtbFRvUGRmIiwiYWN0aW9uIjoiQ29udmVydCBIVE1MIHRvIFBERiJ9LHsibmFtZSI6IkpTT04gdG8gVE9PTiIsInZhbHVlIjoianNvblRvVG9vbiIsImFjdGlvbiI6IkNvbnZlcnQgSlNPTiB0byBUT09OIn0seyJuYW1lIjoiVE9PTiB0byBKU09OIiwidmFsdWUiOiJ0b29uVG9Kc29uIiwiYWN0aW9uIjoiQ29udmVydCBUT09OIHRvIEpTT04ifSx7Im5hbWUiOiJNYXJrZG93biB0byBIVE1MIiwidmFsdWUiOiJtYXJrZG93blRvSHRtbCIsImFjdGlvbiI6IkNvbnZlcnQgTWFya2Rvd24gdG8gSFRNTCJ9XSwiZGlzcGxheU5hbWUiOiJPcGVyYXRpb24iLCJkaXNwbGF5T3B0aW9ucyI6eyJzaG93Ijp7InJlc291cmNlIjpbImNvbnZlcnQiXX19LCJub0RhdGFFeHByZXNzaW9uIjp0cnVlfSx7Im5hbWUiOiJvcGVyYXRpb24iLCJ0eXBlIjoib3B0aW9ucyIsImRlZmF1bHQiOiJjb21wcmVzcyIsIm9wdGlvbnMiOlt7Im5hbWUiOiJDb21wcmVzcyIsInZhbHVlIjoiY29tcHJlc3MiLCJhY3Rpb24iOiJDb21wcmVzcyBQREYifSx7Im5hbWUiOiJNZXJnZSIsInZhbHVlIjoibWVyZ2UiLCJhY3Rpb24iOiJNZXJnZSBQREZzIn0seyJuYW1lIjoiRXh0cmFjdCBQYWdlcyIsInZhbHVlIjoiZXh0cmFjdFBhZ2VzIiwiYWN0aW9uIjoiRXh0cmFjdCBQYWdlcyBmcm9tIFBERiJ9LHsibmFtZSI6IkdldCBGb3JtIEZpZWxkcyIsInZhbHVlIjoiZ2V0Rm9ybUZpZWxkcyIsImFjdGlvbiI6IkdldCBQREYgRm9ybSBGaWVsZHMifSx7Im5hbWUiOiJGaWxsIEZvcm0iLCJ2YWx1ZSI6ImZpbGxGb3JtIiwiYWN0aW9uIjoiRmlsbCBQREYgRm9ybSJ9LHsibmFtZSI6IkdlbmVyYXRlIEludm9pY2UiLCJ2YWx1ZSI6ImdlbmVyYXRlSW52b2ljZSIsImFjdGlvbiI6IkdlbmVyYXRlIEludm9pY2UgUERGIn1dLCJkaXNwbGF5TmFtZSI6Ik9wZXJhdGlvbiIsImRpc3BsYXlPcHRpb25zIjp7InNob3ciOnsicmVzb3VyY2UiOlsicGRmIl19fSwibm9EYXRhRXhwcmVzc2lvbiI6dHJ1ZX0seyJuYW1lIjoib3BlcmF0aW9uIiwidHlwZSI6Im9wdGlvbnMiLCJkZWZhdWx0Ijoic2NyYXBlIiwib3B0aW9ucyI6W3sibmFtZSI6IlNjcmFwZSIsInZhbHVlIjoic2NyYXBlIiwiYWN0aW9uIjoiU2NyYXBlIFdlYnNpdGUifSx7Im5hbWUiOiJTY3JlZW5zaG90IiwidmFsdWUiOiJzY3JlZW5zaG90IiwiYWN0aW9uIjoiVGFrZSBTY3JlZW5zaG90In0seyJuYW1lIjoiU1NMIENoZWNrIiwidmFsdWUiOiJzc2xDaGVjayIsImFjdGlvbiI6IkNoZWNrIFNTTCJ9XSwiZGlzcGxheU5hbWUiOiJPcGVyYXRpb24iLCJkaXNwbGF5T3B0aW9ucyI6eyJzaG93Ijp7InJlc291cmNlIjpbIndlYiJdfX0sIm5vRGF0YUV4cHJlc3Npb24iOnRydWV9LHsibmFtZSI6Im9wZXJhdGlvbiIsInR5cGUiOiJvcHRpb25zIiwiZGVmYXVsdCI6Impzb25TZWxlY3QiLCJvcHRpb25zIjpbeyJuYW1lIjoiSlNPTiBTZWxlY3QiLCJ2YWx1ZSI6Impzb25TZWxlY3QiLCJhY3Rpb24iOiJTZWxlY3QgSlNPTiBEYXRhIn0seyJuYW1lIjoiUmVnZXgiLCJ2YWx1ZSI6InJlZ2V4IiwiYWN0aW9uIjoiUmVnZXggVG9vbCJ9XSwiZGlzcGxheU5hbWUiOiJPcGVyYXRpb24iLCJkaXNwbGF5T3B0aW9ucyI6eyJzaG93Ijp7InJlc291cmNlIjpbImRhdGEiXX19LCJub0RhdGFFeHByZXNzaW9uIjp0cnVlfSx7Im5hbWUiOiJvcGVyYXRpb24iLCJ0eXBlIjoib3B0aW9ucyIsImRlZmF1bHQiOiJ1cGxvYWQiLCJvcHRpb25zIjpbeyJuYW1lIjoiR2V0IEhUTUwgUGFnZXMiLCJ2YWx1ZSI6ImdldEFsbCIsImFjdGlvbiI6IkdldCBIVE1MIFBhZ2VzIn0seyJuYW1lIjoiSG9zdCBIVE1MIFBhZ2UiLCJ2YWx1ZSI6InVwbG9hZCIsImFjdGlvbiI6IlVwbG9hZCBuZXcgSFRNTCBQYWdlIn0seyJuYW1lIjoiVXBkYXRlIEhUTUwgUGFnZSIsInZhbHVlIjoidXBkYXRlIiwiYWN0aW9uIjoiVXBkYXRlIGV4aXN0aW5nIEhUTUwgUGFnZSJ9LHsibmFtZSI6IlVwc2VydCBIVE1MIFBhZ2UiLCJ2YWx1ZSI6InVwc2VydCIsImFjdGlvbiI6IlVwc2VydCBIVE1MIFBhZ2UifV0sImRpc3BsYXlOYW1lIjoiT3BlcmF0aW9uIiwiZGlzcGxheU9wdGlvbnMiOnsic2hvdyI6eyJyZXNvdXJjZSI6WyJwYWdlIl19fSwibm9EYXRhRXhwcmVzc2lvbiI6dHJ1ZX1dLCJkZXNjcmlwdGlvbiI6IkFsbC1pbi1vbmUgdG9vbGtpdCBmb3IgUERGLCBIVE1MLCBKU09OLCBhbmQgZmlsZSBjb252ZXJzaW9ucy4iLCJkaXNwbGF5TmFtZSI6IkN1c3RvbUpTIChQREYgJiBGaWxlIFRvb2xraXQpIiwib3JpZ2luYWxOYW1lIjoiQGN1c3RvbS1qcy9uOG4tbm9kZXMtcGRmLXRvb2xraXQtdjIucGRmVG9vbGtpdCJ9LCJjcmVhdGVkQXQiOiIyMDI2LTAyLTA2VDE2OjIxOjQ0LjQyMVoiLCJ1cGRhdGVkQXQiOiIyMDI2LTA0LTA4VDA3OjA3OjU0Ljg2MFoiLCJhdXRob3JHaXRodWJVcmwiOiJodHRwczovL2dpdGh1Yi5jb20vY3VzdG9tanMvbjhuLW5vZGVzLXBkZi10b29sa2l0LXYyLmdpdCIsImF1dGhvck5hbWUiOiJoZW5yaWtsaXBwa2UiLCJjaGVja3N1bSI6InNoYTUxMi1lUmYyMHRiUXZaOWZUaERtYTFuVzVVZVRqOW1VV2lGKzJibnNwN0lRNk1ubXJXMFlZUFNZdU9VWGZab3Q0d2NEcThDcUtUZ3VMd2J4QU54aTJBczNVZz09IiwiZGVzY3JpcHRpb24iOiJBbGwtaW4tb25lIHRvb2xraXQgZm9yIFBERiwgSFRNTCwgSlNPTiwgYW5kIGZpbGUgY29udmVyc2lvbnMuIiwiZGlzcGxheU5hbWUiOiJDdXN0b21KUyAoUERGICYgRmlsZSBUb29sa2l0KSIsIm5hbWUiOiJAY3VzdG9tLWpzL244bi1ub2Rlcy1wZGYtdG9vbGtpdC12Mi5wZGZUb29sa2l0IiwibnVtYmVyT2ZTdGFycyI6MCwibnVtYmVyT2ZEb3dubG9hZHMiOjQxMiwicGFja2FnZU5hbWUiOiJAY3VzdG9tLWpzL244bi1ub2Rlcy1wZGYtdG9vbGtpdC12MiIsIm5wbVZlcnNpb24iOiIwLjkuMCIsImlzT2ZmaWNpYWxOb2RlIjp0cnVlLCJpc1B1Ymxpc2hlZCI6dHJ1ZSwiY29tcGFueU5hbWUiOiJIZW5yaWsgTGlwcGtlIiwibm9kZVZlcnNpb25zIjpbeyJjaGVja3N1bSI6InNoYTUxMi14L1Q1WTVMMENpUjArQWR2UTJxWGF1NGlaeFh0R2l4U0dNQk43UE9VWEZQOUVkNlpTWjI4UlNBblJsWlNTSzRvK0YxWnhGclZCdE4ycmFmNE42RlJTUT09IiwibnBtVmVyc2lvbiI6IjAuNS4wIn0seyJjaGVja3N1bSI6InNoYTUxMi1xblpZUjJlTU5sUWM5cXAwN1NxcUVmbzVRaXE4Ui95bk5Vc0pNTDZ0Z2ViTGIwK0oyZmpwUHQ0NnYyTW9YWjk3Smk5ZUZwUXNoYXZsVGFWU1puZ1FHZz09IiwibnBtVmVyc2lvbiI6IjAuNy4wIn0seyJjaGVja3N1bSI6InNoYTUxMi1ySnpuTUs3Uk5LQzJSZjRhdXFoZEdzOG5kWGlXcXRDZjhxNm5zTDhMams5ZUxLSENjSHpORUw1UHZoTHgrcmJ3MTc0NFJRUTIyeXovRHROeEhlT3Jtdz09IiwibnBtVmVyc2lvbiI6IjAuOC4wIn0seyJjaGVja3N1bSI6InNoYTUxMi1lUmYyMHRiUXZaOWZUaERtYTFuVzVVZVRqOW1VV2lGKzJibnNwN0lRNk1ubXJXMFlZUFNZdU9VWGZab3Q0d2NEcThDcUtUZ3VMd2J4QU54aTJBczNVZz09IiwibnBtVmVyc2lvbiI6IjAuOS4wIn1dLCJhaU5vZGVTZGtWZXJzaW9uIjpudWxsfX0seyJpZCI6NjA2LCJhdHRyaWJ1dGVzIjp7Im5vZGVEZXNjcmlwdGlvbiI6eyJuYW1lIjoibjhuLW5vZGVzLXByZXZpZXcta2xpY2t0aXBwLmtsaWNrdGlwcFRyaWdnZXIiLCJjb2RleCI6e30sImdyb3VwIjpbInRyaWdnZXIiXSwiaW5wdXRzIjpbXSwiaWNvblVybCI6Imh0dHBzOi8vbjhuaW9zdG9yYWdlYWNjb3VudC5ibG9iLmNvcmUud2luZG93cy5uZXQvbjhuaW8tc3RyYXBpLWJsb2JzLXN0YWdlL2Fzc2V0cy9LbGlja19UaXBwX1RyaWdnZXJfNmM2NTg3NTBhNy5zdmciLCJvdXRwdXRzIjpbIm1haW4iXSwidmVyc2lvbiI6MSwiZGVmYXVsdHMiOnsibmFtZSI6IktsaWNrVGlwcCBUcmlnZ2VyIn0sInN1YnRpdGxlIjoiIiwicHJvcGVydGllcyI6W10sImRlc2NyaXB0aW9uIjoiVHJpZ2dlcnMgd2hlbiBhIHdlYmhvb2sgZXZlbnQgb2NjdXJzIGluIEtsaWNrVGlwcCwgc3VjaCBhcyBhIHRhZyBiZWluZyBhZGRlZCwgYW4gZW1haWwgYmVpbmcgb3BlbmVkIG9yIHNlbnQsIGEgbGluayBjbGlja2VkLCBhbiBTTVMgc2VudCwgYW5kIG1vcmUuIiwiZGlzcGxheU5hbWUiOiJLbGlja1RpcHAgVHJpZ2dlciIsIm9yaWdpbmFsTmFtZSI6Im44bi1ub2Rlcy1rbGlja3RpcHAua2xpY2t0aXBwVHJpZ2dlciJ9LCJjcmVhdGVkQXQiOiIyMDI2LTAzLTE3VDE2OjQ0OjMzLjMxOFoiLCJ1cGRhdGVkQXQiOiIyMDI2LTA0LTA4VDA3OjA4OjE0Ljg2MFoiLCJhdXRob3JHaXRodWJVcmwiOiJodHRwczovL2dpdGh1Yi5jb20va2xpY2t0aXBwL244bi1jb21tdW5pdHktbm9kZS1rbGlja3RpcHAuZ2l0IiwiYXV0aG9yTmFtZSI6Im1jaHVkZXNub3YiLCJjaGVja3N1bSI6InNoYTUxMi1IS0NOaXNLVXVvbEFIeUI1VkdiU0FUU0VsRE1zK04zTFB5OFluNG5HdWxlMWVpakJjSDBPQ3VGbEQ5RXREaXpWZ3dpa2t3WVZDUVhvZDdjS1pKeElUQT09IiwiZGVzY3JpcHRpb24iOiJUcmlnZ2VycyB3aGVuIGEgd2ViaG9vayBldmVudCBvY2N1cnMgaW4gS2xpY2tUaXBwLCBzdWNoIGFzIGEgdGFnIGJlaW5nIGFkZGVkLCBhbiBlbWFpbCBiZWluZyBvcGVuZWQgb3Igc2VudCwgYSBsaW5rIGNsaWNrZWQsIGFuIFNNUyBzZW50LCBhbmQgbW9yZS4iLCJkaXNwbGF5TmFtZSI6IktsaWNrVGlwcCBUcmlnZ2VyIiwibmFtZSI6Im44bi1ub2Rlcy1rbGlja3RpcHAua2xpY2t0aXBwVHJpZ2dlciIsIm51bWJlck9mU3RhcnMiOjAsIm51bWJlck9mRG93bmxvYWRzIjoyOTgsInBhY2thZ2VOYW1lIjoibjhuLW5vZGVzLWtsaWNrdGlwcCIsIm5wbVZlcnNpb24iOiIxLjAuMzkiLCJpc09mZmljaWFsTm9kZSI6ZmFsc2UsImlzUHVibGlzaGVkIjp0cnVlLCJjb21wYW55TmFtZSI6IktsaWNrLVRpcHAiLCJub2RlVmVyc2lvbnMiOlt7ImNoZWNrc3VtIjoic2hhNTEyLWFCNzFmNURnMkM3NllBUyt5ZnVwN0NqWGtrVDNzTlZSTWVwZFlOU3RWbkRqQ1lFSXh5V2x4aWI3QVlaZGFCZUx4dW8wa2E5ZU1BaDY5UEUrRmkxUURnPT0iLCJucG1WZXJzaW9uIjoiMS4wLjM2In0seyJjaGVja3N1bSI6InNoYTUxMi1sT2JTalNwTHpZd3pBaVJDK0d6TlpCaU1tVXZCd0VqWHFDNmd6WE0ycHF4QW5WWHdHWStzTUxEcnBHazB2ZndGWUxYbFBrNTlVRUloUE1uajdUOEhmZz09IiwibnBtVmVyc2lvbiI6IjEuMC4zOCJ9LHsiY2hlY2tzdW0iOiJzaGE1MTItSEtDTmlzS1V1b2xBSHlCNVZHYlNBVFNFbERNcytOM0xQeThZbjRuR3VsZTFlaWpCY0gwT0N1RmxEOUV0RGl6Vmd3aWtrd1lWQ1FYb2Q3Y0taSnhJVEE9PSIsIm5wbVZlcnNpb24iOiIxLjAuMzkifV0sImFpTm9kZVNka1ZlcnNpb24iOm51bGx9fSx7ImlkIjo4NywiYXR0cmlidXRlcyI6eyJub2RlRGVzY3JpcHRpb24iOnsibmFtZSI6Im44bi1ub2Rlcy1wcmV2aWV3LWZlYXRoZXJsZXNzLmZlYXRoZXJsZXNzIiwiY29kZXgiOnt9LCJncm91cCI6WyJ0cmFuc2Zvcm0iXSwiaW5wdXRzIjoiPXt7W1wibWFpblwiXX19IiwiaWNvblVybCI6Imh0dHBzOi8vbjhuaW9zdG9yYWdlYWNjb3VudC5ibG9iLmNvcmUud2luZG93cy5uZXQvbjhuaW8tc3RyYXBpLWJsb2JzLXN0YWdlL2Fzc2V0cy9GZWF0aGVybGVzc18zMmY0NmE5ZTlhLnN2ZyIsIm91dHB1dHMiOiI9e3tbXCJtYWluXCJdfX0iLCJ2ZXJzaW9uIjoxLCJkZWZhdWx0cyI6eyJuYW1lIjoiRmVhdGhlcmxlc3MifSwic3VidGl0bGUiOiI9e3skcGFyYW1ldGVyW1wib3BlcmF0aW9uXCJdfX0iLCJwcm9wZXJ0aWVzIjpbeyJuYW1lIjoib3BlcmF0aW9uIiwidHlwZSI6Im9wdGlvbnMiLCJkZWZhdWx0IjoiY2hhdCIsIm9wdGlvbnMiOlt7Im5hbWUiOiJDaGF0IiwidmFsdWUiOiJjaGF0IiwiYWN0aW9uIjoiU2VuZCBhIGNoYXQgbWVzc2FnZSIsImRlc2NyaXB0aW9uIjoiU2VuZCBhIGNoYXQgbWVzc2FnZSJ9XSwiZGlzcGxheU5hbWUiOiJPcGVyYXRpb24iLCJub0RhdGFFeHByZXNzaW9uIjp0cnVlfV0sImRlc2NyaXB0aW9uIjoiSW50ZXJhY3Qgd2l0aCBGZWF0aGVybGVzcyBBUEkiLCJkaXNwbGF5TmFtZSI6IkZlYXRoZXJsZXNzIiwib3JpZ2luYWxOYW1lIjoibjhuLW5vZGVzLWZlYXRoZXJsZXNzLmZlYXRoZXJsZXNzIiwidXNhYmxlQXNUb29sIjp0cnVlfSwiY3JlYXRlZEF0IjoiMjAyNS0wNy0xNFQxNTo0NzowNC4yOTRaIiwidXBkYXRlZEF0IjoiMjAyNi0wNC0wOFQwNzowODoxOS41MDVaIiwiYXV0aG9yR2l0aHViVXJsIjoiaHR0cHM6Ly9naXRodWIuY29tL2ZlYXRoZXJsZXNzYWkvIiwiYXV0aG9yTmFtZSI6ImRhcmludmVyaGVpamtlIiwiY2hlY2tzdW0iOiJzaGE1MTItS0xyTmZHOVF5bkViYkhpZDRjSThsYlpGdS8wZk1oRGRWTnE5R2QvTzNVUUJKMW1JVm9mdko5TDZmTWxWdk8vS0Y3N1dlZzNMMng2MVE0LzlwajFRK3c9PSIsImRlc2NyaXB0aW9uIjoiSW50ZXJhY3Qgd2l0aCBGZWF0aGVybGVzcyBBUEkiLCJkaXNwbGF5TmFtZSI6IkZlYXRoZXJsZXNzIiwibmFtZSI6Im44bi1ub2Rlcy1mZWF0aGVybGVzcy5mZWF0aGVybGVzcyIsIm51bWJlck9mU3RhcnMiOjAsIm51bWJlck9mRG93bmxvYWRzIjozMywicGFja2FnZU5hbWUiOiJuOG4tbm9kZXMtZmVhdGhlcmxlc3MiLCJucG1WZXJzaW9uIjoiMC4xLjYiLCJpc09mZmljaWFsTm9kZSI6dHJ1ZSwiaXNQdWJsaXNoZWQiOnRydWUsImNvbXBhbnlOYW1lIjoiRmVhdGhlcmxlc3MgQUkiLCJub2RlVmVyc2lvbnMiOlt7ImNoZWNrc3VtIjoic2hhNTEyLUtMck5mRzlReW5FYmJIaWQ0Y0k4bGJaRnUvMGZNaERkVk5xOUdkL08zVVFCSjFtSVZvZnZKOUw2Zk1sVnZPL0tGNzdXZWczTDJ4NjFRNC85cGoxUSt3PT0iLCJucG1WZXJzaW9uIjoiMC4xLjYifV0sImFpTm9kZVNka1ZlcnNpb24iOm51bGx9fSx7ImlkIjoyNjEsImF0dHJpYnV0ZXMiOnsibm9kZURlc2NyaXB0aW9uIjp7Im5hbWUiOiJuOG4tbm9kZXMtcHJldmlldy1tZWV0Z2Vlay5tZWV0R2VlayIsImNvZGV4Ijp7fSwiZ3JvdXAiOlsidHJhbnNmb3JtIl0sImlucHV0cyI6WyJtYWluIl0sImljb25VcmwiOiJodHRwczovL244bmlvc3RvcmFnZWFjY291bnQuYmxvYi5jb3JlLndpbmRvd3MubmV0L244bmlvLXN0cmFwaS1ibG9icy1zdGFnZS9hc3NldHMvTWVldF9HZWVrXzE3ZDgxOWVhMWMuc3ZnIiwib3V0cHV0cyI6WyJtYWluIl0sInZlcnNpb24iOjEsImRlZmF1bHRzIjp7Im5hbWUiOiJNZWV0R2VlayJ9LCJzdWJ0aXRsZSI6Ij17eyRwYXJhbWV0ZXJbXCJvcGVyYXRpb25cIl0gKyBcIjogXCIgKyAkcGFyYW1ldGVyW1wicmVzb3VyY2VcIl19fSIsInByb3BlcnRpZXMiOlt7Im5hbWUiOiJyZXNvdXJjZSIsInR5cGUiOiJvcHRpb25zIiwiZGVmYXVsdCI6Im1lZXRpbmciLCJvcHRpb25zIjpbeyJuYW1lIjoiTWVldGluZyIsInZhbHVlIjoibWVldGluZyJ9LHsibmFtZSI6IlJlY29yZGluZyIsInZhbHVlIjoicmVjb3JkaW5nIn0seyJuYW1lIjoiSGlnaGxpZ2h0IiwidmFsdWUiOiJoaWdobGlnaHQifSx7Im5hbWUiOiJUZWFtIiwidmFsdWUiOiJ0ZWFtIn0seyJuYW1lIjoiVHJhbnNjcmlwdCIsInZhbHVlIjoidHJhbnNjcmlwdCJ9XSwiZGlzcGxheU5hbWUiOiJSZXNvdXJjZSIsIm5vRGF0YUV4cHJlc3Npb24iOnRydWV9LHsibmFtZSI6Im9wZXJhdGlvbiIsInR5cGUiOiJvcHRpb25zIiwiZGVmYXVsdCI6ImdldE1hbnlIaWdobGlnaHRzIiwib3B0aW9ucyI6W3sibmFtZSI6IkdldCBNYW55IiwidmFsdWUiOiJnZXRNYW55SGlnaGxpZ2h0cyIsImFjdGlvbiI6IkdldCBtYW55IGhpZ2hsaWdodHMiLCJkZXNjcmlwdGlvbiI6IkdldCBsaXN0IG9mIGhpZ2hsaWdodHMgZm9yIGEgbWVldGluZyJ9XSwiZGlzcGxheU5hbWUiOiJPcGVyYXRpb24iLCJkaXNwbGF5T3B0aW9ucyI6eyJzaG93Ijp7InJlc291cmNlIjpbImhpZ2hsaWdodCJdfX0sIm5vRGF0YUV4cHJlc3Npb24iOnRydWV9LHsibmFtZSI6Im9wZXJhdGlvbiIsInR5cGUiOiJvcHRpb25zIiwiZGVmYXVsdCI6ImdldE1hbnlNZWV0aW5ncyIsIm9wdGlvbnMiOlt7Im5hbWUiOiJHZXQgTWFueSIsInZhbHVlIjoiZ2V0TWFueU1lZXRpbmdzIiwiYWN0aW9uIjoiR2V0cyBtYW55IG1lZXRpbmdzIiwiZGVzY3JpcHRpb24iOiJHZXQgbGlzdCBvZiBtZWV0aW5ncyJ9LHsibmFtZSI6IkdldCBNZWV0aW5nIERldGFpbHMiLCJ2YWx1ZSI6ImdldE1lZXRpbmciLCJhY3Rpb24iOiJHZXRzIGEgbWVldGluZyBieSBJRCIsImRlc2NyaXB0aW9uIjoiR2V0IGEgbWVldGluZyBieSBJRCJ9LHsibmFtZSI6IkdldCBNZWV0aW5nIFN1bW1hcnkiLCJ2YWx1ZSI6ImdldE1lZXRpbmdTdW1tYXJ5IiwiYWN0aW9uIjoiR2V0cyBtZWV0aW5nIHN1bW1hcnkgYnkgSUQiLCJkZXNjcmlwdGlvbiI6IkdldCBtZWV0aW5nIHN1bW1hcnkgYnkgSUQifV0sImRpc3BsYXlOYW1lIjoiT3BlcmF0aW9uIiwiZGlzcGxheU9wdGlvbnMiOnsic2hvdyI6eyJyZXNvdXJjZSI6WyJtZWV0aW5nIl19fSwibm9EYXRhRXhwcmVzc2lvbiI6dHJ1ZX0seyJuYW1lIjoib3BlcmF0aW9uIiwidHlwZSI6Im9wdGlvbnMiLCJkZWZhdWx0IjoidXBsb2FkUmVjb3JkaW5nIiwib3B0aW9ucyI6W3sibmFtZSI6IlVwbG9hZCIsInZhbHVlIjoidXBsb2FkUmVjb3JkaW5nIiwiYWN0aW9uIjoiVXBsb2FkIHJlY29yZGluZyIsImRlc2NyaXB0aW9uIjoiVXBsb2FkIGEgcmVjb3JkaW5nIGZvciBhbmFseXNpcyJ9XSwiZGlzcGxheU5hbWUiOiJPcGVyYXRpb24iLCJkaXNwbGF5T3B0aW9ucyI6eyJzaG93Ijp7InJlc291cmNlIjpbInJlY29yZGluZyJdfX0sIm5vRGF0YUV4cHJlc3Npb24iOnRydWV9LHsibmFtZSI6Im9wZXJhdGlvbiIsInR5cGUiOiJvcHRpb25zIiwiZGVmYXVsdCI6ImdldE1hbnlUZWFtcyIsIm9wdGlvbnMiOlt7Im5hbWUiOiJHZXQgTWFueSIsInZhbHVlIjoiZ2V0TWFueVRlYW1zIiwiYWN0aW9uIjoiR2V0IG1hbnkgdGVhbXMiLCJkZXNjcmlwdGlvbiI6IkdldCBsaXN0IG9mIHRlYW1zIn0seyJuYW1lIjoiR2V0IFRlYW0gTWVldGluZ3MiLCJ2YWx1ZSI6ImdldFRlYW1NZWV0aW5ncyIsImFjdGlvbiI6IkdldHMgdGVhbSBtZWV0aW5ncyJ9XSwiZGlzcGxheU5hbWUiOiJPcGVyYXRpb24iLCJkaXNwbGF5T3B0aW9ucyI6eyJzaG93Ijp7InJlc291cmNlIjpbInRlYW0iXX19LCJub0RhdGFFeHByZXNzaW9uIjp0cnVlfSx7Im5hbWUiOiJvcGVyYXRpb24iLCJ0eXBlIjoib3B0aW9ucyIsImRlZmF1bHQiOiJnZXRNYW55VHJhbnNjcmlwdHMiLCJvcHRpb25zIjpbeyJuYW1lIjoiR2V0IE1hbnkiLCJ2YWx1ZSI6ImdldE1hbnlUcmFuc2NyaXB0cyIsImFjdGlvbiI6IkdldCBtYW55IHRyYW5zY3JpcHRzIiwiZGVzY3JpcHRpb24iOiJHZXQgbGlzdCBvZiB0cmFuc2NyaXB0cyBmb3IgYSBtZWV0aW5nIn1dLCJkaXNwbGF5TmFtZSI6Ik9wZXJhdGlvbiIsImRpc3BsYXlPcHRpb25zIjp7InNob3ciOnsicmVzb3VyY2UiOlsidHJhbnNjcmlwdCJdfX0sIm5vRGF0YUV4cHJlc3Npb24iOnRydWV9XSwiZGVzY3JpcHRpb24iOiJJbnRlcmFjdCB3aXRoIE1lZXRHZWVrIEFQSSIsImRpc3BsYXlOYW1lIjoiTWVldEdlZWsiLCJvcmlnaW5hbE5hbWUiOiJuOG4tbm9kZXMtbWVldGdlZWsubWVldEdlZWsifSwiY3JlYXRlZEF0IjoiMjAyNS0xMC0yNFQxNjoyMDo1Ni42MTdaIiwidXBkYXRlZEF0IjoiMjAyNi0wNC0wOFQwNzowODoyNy44ODFaIiwiYXV0aG9yR2l0aHViVXJsIjoiaHR0cHM6Ly9naXRodWIuY29tL21lZXRnZWVrYWkvbWVldGdlZWthaS1uOG4tbm9kZS5naXQiLCJhdXRob3JOYW1lIjoibWVldGdlZWsiLCJjaGVja3N1bSI6InNoYTUxMi0rMEJRWkdZeXVwQjByeFY4Tm42VitZcytBS1NlcFNsbWRPdDlWSTk5bGFoVlV6OHlwTHN6Y0NYN3BQV2dKMHloYWdmdVV5ck5SVStmMHpKTUpTcXRlUT09IiwiZGVzY3JpcHRpb24iOiJJbnRlcmFjdCB3aXRoIE1lZXRHZWVrIEFQSSIsImRpc3BsYXlOYW1lIjoiTWVldEdlZWsiLCJuYW1lIjoibjhuLW5vZGVzLW1lZXRnZWVrLm1lZXRHZWVrIiwibnVtYmVyT2ZTdGFycyI6NSwibnVtYmVyT2ZEb3dubG9hZHMiOjEwMCwicGFja2FnZU5hbWUiOiJuOG4tbm9kZXMtbWVldGdlZWsiLCJucG1WZXJzaW9uIjoiMC4xLjYiLCJpc09mZmljaWFsTm9kZSI6dHJ1ZSwiaXNQdWJsaXNoZWQiOnRydWUsImNvbXBhbnlOYW1lIjoiTWFrZWl0ZnV0dXJlIiwibm9kZVZlcnNpb25zIjpbeyJjaGVja3N1bSI6InNoYTUxMi0rMEJRWkdZeXVwQjByeFY4Tm42VitZcytBS1NlcFNsbWRPdDlWSTk5bGFoVlV6OHlwTHN6Y0NYN3BQV2dKMHloYWdmdVV5ck5SVStmMHpKTUpTcXRlUT09IiwibnBtVmVyc2lvbiI6IjAuMS42In1dLCJhaU5vZGVTZGtWZXJzaW9uIjpudWxsfX0seyJpZCI6MTE2LCJhdHRyaWJ1dGVzIjp7Im5vZGVEZXNjcmlwdGlvbiI6eyJuYW1lIjoibjhuLW5vZGVzLXByZXZpZXctb2N0YWdvbi5vY3RhZ29uQWdlbnRzIiwiY29kZXgiOnt9LCJncm91cCI6WyJpbnB1dCJdLCJpbnB1dHMiOlsibWFpbiJdLCJpY29uVXJsIjoiaHR0cHM6Ly9uOG5pb3N0b3JhZ2VhY2NvdW50LmJsb2IuY29yZS53aW5kb3dzLm5ldC9uOG5pby1zdHJhcGktYmxvYnMtc3RhZ2UvYXNzZXRzL09jdGFnb25fODYwZGI4YzdjOS5zdmciLCJvdXRwdXRzIjpbIm1haW4iXSwidmVyc2lvbiI6MSwiZGVmYXVsdHMiOnsibmFtZSI6Ik9jdGFnb24ifSwic3VidGl0bGUiOiI9e3skcGFyYW1ldGVyW1wiYWdlbnRcIl19fSIsInByb3BlcnRpZXMiOltdLCJkZXNjcmlwdGlvbiI6IkZpbmFuY2lhbCBBSSBhZ2VudHMiLCJkaXNwbGF5TmFtZSI6Ik9jdGFnb24iLCJvcmlnaW5hbE5hbWUiOiJuOG4tbm9kZXMtb2N0YWdvbi5vY3RhZ29uQWdlbnRzIiwidXNhYmxlQXNUb29sIjp0cnVlfSwiY3JlYXRlZEF0IjoiMjAyNS0wNy0yM1QxMDozMDo1Ni4xODRaIiwidXBkYXRlZEF0IjoiMjAyNi0wNC0wOFQwNzowODoyMC4yMDNaIiwiYXV0aG9yR2l0aHViVXJsIjoiaHR0cHM6Ly9naXRodWIuY29tL09jdGFnb25BSS8iLCJhdXRob3JOYW1lIjoib2N0YWdvbmFpIiwiY2hlY2tzdW0iOiJzaGE1MTItZEpuZUFLRE5lT3BNeU9vM1B3Z2JuWU9IMHZkRjNTWjEvcWt4R2Q4dHFublJXbHYxVXNwVHJJZUNBV1Juc210ZktwWUxRejd4bmUyVndpWDBxSDBCc0E9PSIsImRlc2NyaXB0aW9uIjoiRmluYW5jaWFsIEFJIGFnZW50cyIsImRpc3BsYXlOYW1lIjoiT2N0YWdvbiIsIm5hbWUiOiJuOG4tbm9kZXMtb2N0YWdvbi5vY3RhZ29uQWdlbnRzIiwibnVtYmVyT2ZTdGFycyI6MCwibnVtYmVyT2ZEb3dubG9hZHMiOjE1OCwicGFja2FnZU5hbWUiOiJuOG4tbm9kZXMtb2N0YWdvbiIsIm5wbVZlcnNpb24iOiIxLjAuOCIsImlzT2ZmaWNpYWxOb2RlIjp0cnVlLCJpc1B1Ymxpc2hlZCI6dHJ1ZSwiY29tcGFueU5hbWUiOiJPY3RhZ29uIiwibm9kZVZlcnNpb25zIjpbeyJjaGVja3N1bSI6InNoYTUxMi1kSm5lQUtETmVPcE15T28zUHdnYm5ZT0gwdmRGM1NaMS9xa3hHZDh0cW5uUldsdjFVc3BUckllQ0FXUm5zbXRmS3BZTFF6N3huZTJWd2lYMHFIMEJzQT09IiwibnBtVmVyc2lvbiI6IjEuMC44In1dLCJhaU5vZGVTZGtWZXJzaW9uIjpudWxsfX0seyJpZCI6MTY2LCJhdHRyaWJ1dGVzIjp7Im5vZGVEZXNjcmlwdGlvbiI6eyJuYW1lIjoibjhuLW5vZGVzLXByZXZpZXctZGFsaWwtYWkuZGFsaWxBaSIsImNvZGV4Ijp7fSwiZ3JvdXAiOlsib3V0cHV0Il0sImlucHV0cyI6WyJtYWluIl0sImljb25VcmwiOiJodHRwczovL244bmlvc3RvcmFnZWFjY291bnQuYmxvYi5jb3JlLndpbmRvd3MubmV0L244bmlvLXN0cmFwaS1ibG9icy1zdGFnZS9hc3NldHMvRGFsaWxfQUlfYzczNzVmZGQ3Ni5zdmciLCJvdXRwdXRzIjpbIm1haW4iXSwidmVyc2lvbiI6MSwiZGVmYXVsdHMiOnsibmFtZSI6IkRhbGlsIEFJIn0sInN1YnRpdGxlIjoiPXt7JHBhcmFtZXRlcltcIm9wZXJhdGlvblwiXSArIFwiOiBcIiArICRwYXJhbWV0ZXJbXCJyZXNvdXJjZVwiXX19IiwicHJvcGVydGllcyI6W3sibmFtZSI6InJlc291cmNlIiwidHlwZSI6Im9wdGlvbnMiLCJkZWZhdWx0IjoicGVvcGxlIiwib3B0aW9ucyI6W3sibmFtZSI6IkNvbXBhbnkiLCJ2YWx1ZSI6ImNvbXBhbnkifSx7Im5hbWUiOiJOb3RlIiwidmFsdWUiOiJub3RlIn0seyJuYW1lIjoiTm90ZSBSZWxhdGlvbiIsInZhbHVlIjoibm90ZVRhcmdldCJ9LHsibmFtZSI6Ik9wcG9ydHVuaXR5IiwidmFsdWUiOiJvcHBvcnR1bml0eSJ9LHsibmFtZSI6IlBlcnNvbiIsInZhbHVlIjoicGVvcGxlIn0seyJuYW1lIjoiUGlwZWxpbmUiLCJ2YWx1ZSI6InBpcGVsaW5lIn0seyJuYW1lIjoiVGFzayIsInZhbHVlIjoidGFzayJ9LHsibmFtZSI6IlRhc2sgUmVsYXRpb24iLCJ2YWx1ZSI6InRhc2tUYXJnZXQifV0sImRpc3BsYXlOYW1lIjoiUmVzb3VyY2UiLCJub0RhdGFFeHByZXNzaW9uIjp0cnVlfSx7Im5hbWUiOiJvcGVyYXRpb24iLCJ0eXBlIjoib3B0aW9ucyIsImRlZmF1bHQiOiJjcmVhdGUiLCJvcHRpb25zIjpbeyJuYW1lIjoiQ3JlYXRlIiwidmFsdWUiOiJjcmVhdGUiLCJhY3Rpb24iOiJDcmVhdGUgYSBwZXJzb24iLCJkZXNjcmlwdGlvbiI6IkNyZWF0ZSBhIG5ldyBwZXJzb24ifSx7Im5hbWUiOiJEZWxldGUiLCJ2YWx1ZSI6ImRlbGV0ZSIsImFjdGlvbiI6IkRlbGV0ZSBhIHBlcnNvbiIsImRlc2NyaXB0aW9uIjoiRGVsZXRlIGEgcGVyc29uIn0seyJuYW1lIjoiR2V0IiwidmFsdWUiOiJnZXQiLCJhY3Rpb24iOiJHZXQgYSBwZXJzb24iLCJkZXNjcmlwdGlvbiI6IkdldCBhIHBlcnNvbiJ9LHsibmFtZSI6IkdldCBNYW55IiwidmFsdWUiOiJnZXRBbGwiLCJhY3Rpb24iOiJHZXQgbWFueSBwZW9wbGUiLCJkZXNjcmlwdGlvbiI6IkdldCBtYW55IHBlb3BsZSJ9LHsibmFtZSI6IlNlYXJjaCIsInZhbHVlIjoic2VhcmNoIiwiYWN0aW9uIjoiU2VhcmNoIGZvciBwZW9wbGUiLCJkZXNjcmlwdGlvbiI6IlNlYXJjaCBmb3IgcGVvcGxlIGJ5IG5hbWUgb3IgZW1haWwifSx7Im5hbWUiOiJVcGRhdGUiLCJ2YWx1ZSI6InVwZGF0ZSIsImFjdGlvbiI6IlVwZGF0ZSBhIHBlcnNvbiIsImRlc2NyaXB0aW9uIjoiVXBkYXRlIGEgcGVyc29uIn1dLCJkaXNwbGF5TmFtZSI6Ik9wZXJhdGlvbiIsImRpc3BsYXlPcHRpb25zIjp7InNob3ciOnsicmVzb3VyY2UiOlsicGVvcGxlIl19fSwibm9EYXRhRXhwcmVzc2lvbiI6dHJ1ZX0seyJuYW1lIjoib3BlcmF0aW9uIiwidHlwZSI6Im9wdGlvbnMiLCJkZWZhdWx0IjoiY3JlYXRlIiwib3B0aW9ucyI6W3sibmFtZSI6IkNyZWF0ZSIsInZhbHVlIjoiY3JlYXRlIiwiYWN0aW9uIjoiQ3JlYXRlIGEgY29tcGFueSIsImRlc2NyaXB0aW9uIjoiQ3JlYXRlIGEgbmV3IGNvbXBhbnkifSx7Im5hbWUiOiJEZWxldGUiLCJ2YWx1ZSI6ImRlbGV0ZSIsImFjdGlvbiI6IkRlbGV0ZSBhIGNvbXBhbnkiLCJkZXNjcmlwdGlvbiI6IkRlbGV0ZSBhIGNvbXBhbnkifSx7Im5hbWUiOiJHZXQiLCJ2YWx1ZSI6ImdldCIsImFjdGlvbiI6IkdldCBhIGNvbXBhbnkiLCJkZXNjcmlwdGlvbiI6IkdldCBhIGNvbXBhbnkifSx7Im5hbWUiOiJHZXQgTWFueSIsInZhbHVlIjoiZ2V0QWxsIiwiYWN0aW9uIjoiR2V0IG1hbnkgY29tcGFuaWVzIiwiZGVzY3JpcHRpb24iOiJHZXQgbWFueSBjb21wYW5pZXMifSx7Im5hbWUiOiJTZWFyY2giLCJ2YWx1ZSI6InNlYXJjaCIsImFjdGlvbiI6IlNlYXJjaCBmb3IgY29tcGFuaWVzIiwiZGVzY3JpcHRpb24iOiJTZWFyY2ggZm9yIGNvbXBhbmllcyBieSBuYW1lIn0seyJuYW1lIjoiVXBkYXRlIiwidmFsdWUiOiJ1cGRhdGUiLCJhY3Rpb24iOiJVcGRhdGUgYSBjb21wYW55IiwiZGVzY3JpcHRpb24iOiJVcGRhdGUgYSBjb21wYW55In1dLCJkaXNwbGF5TmFtZSI6Ik9wZXJhdGlvbiIsImRpc3BsYXlPcHRpb25zIjp7InNob3ciOnsicmVzb3VyY2UiOlsiY29tcGFueSJdfX0sIm5vRGF0YUV4cHJlc3Npb24iOnRydWV9LHsibmFtZSI6Im9wZXJhdGlvbiIsInR5cGUiOiJvcHRpb25zIiwiZGVmYXVsdCI6ImNyZWF0ZSIsIm9wdGlvbnMiOlt7Im5hbWUiOiJDcmVhdGUiLCJ2YWx1ZSI6ImNyZWF0ZSIsImFjdGlvbiI6IkNyZWF0ZSBhIG5vdGUiLCJkZXNjcmlwdGlvbiI6IkNyZWF0ZSBhIG5ldyBub3RlIn0seyJuYW1lIjoiRGVsZXRlIiwidmFsdWUiOiJkZWxldGUiLCJhY3Rpb24iOiJEZWxldGUgYSBub3RlIiwiZGVzY3JpcHRpb24iOiJEZWxldGUgYSBub3RlIn0seyJuYW1lIjoiR2V0IiwidmFsdWUiOiJnZXQiLCJhY3Rpb24iOiJHZXQgYSBub3RlIiwiZGVzY3JpcHRpb24iOiJHZXQgYSBub3RlIn0seyJuYW1lIjoiR2V0IE1hbnkiLCJ2YWx1ZSI6ImdldEFsbCIsImFjdGlvbiI6IkdldCBtYW55IG5vdGVzIiwiZGVzY3JpcHRpb24iOiJHZXQgbWFueSBub3RlcyJ9LHsibmFtZSI6IlNlYXJjaCIsInZhbHVlIjoic2VhcmNoIiwiYWN0aW9uIjoiU2VhcmNoIGZvciBub3RlcyIsImRlc2NyaXB0aW9uIjoiU2VhcmNoIGZvciBub3RlcyBieSB0aXRsZSJ9LHsibmFtZSI6IlVwZGF0ZSIsInZhbHVlIjoidXBkYXRlIiwiYWN0aW9uIjoiVXBkYXRlIGEgbm90ZSIsImRlc2NyaXB0aW9uIjoiVXBkYXRlIGEgbm90ZSJ9XSwiZGlzcGxheU5hbWUiOiJPcGVyYXRpb24iLCJkaXNwbGF5T3B0aW9ucyI6eyJzaG93Ijp7InJlc291cmNlIjpbIm5vdGUiXX19LCJub0RhdGFFeHByZXNzaW9uIjp0cnVlfSx7Im5hbWUiOiJvcGVyYXRpb24iLCJ0eXBlIjoib3B0aW9ucyIsImRlZmF1bHQiOiJjcmVhdGUiLCJvcHRpb25zIjpbeyJuYW1lIjoiQ3JlYXRlIiwidmFsdWUiOiJjcmVhdGUiLCJhY3Rpb24iOiJDcmVhdGUgYSBub3RlIHJlbGF0aW9uIiwiZGVzY3JpcHRpb24iOiJDcmVhdGUgYSBuZXcgbm90ZSByZWxhdGlvbiJ9LHsibmFtZSI6IkRlbGV0ZSIsInZhbHVlIjoiZGVsZXRlIiwiYWN0aW9uIjoiRGVsZXRlIGEgbm90ZSByZWxhdGlvbiIsImRlc2NyaXB0aW9uIjoiRGVsZXRlIGEgbm90ZSByZWxhdGlvbiJ9LHsibmFtZSI6IkdldCIsInZhbHVlIjoiZ2V0IiwiYWN0aW9uIjoiR2V0IGEgbm90ZSByZWxhdGlvbiIsImRlc2NyaXB0aW9uIjoiR2V0IGEgbm90ZSByZWxhdGlvbiJ9LHsibmFtZSI6IkdldCBNYW55IiwidmFsdWUiOiJnZXRBbGwiLCJhY3Rpb24iOiJHZXQgbWFueSBub3RlIHJlbGF0aW9ucyIsImRlc2NyaXB0aW9uIjoiR2V0IG1hbnkgbm90ZSByZWxhdGlvbnMifSx7Im5hbWUiOiJVcGRhdGUiLCJ2YWx1ZSI6InVwZGF0ZSIsImFjdGlvbiI6IlVwZGF0ZSBhIG5vdGUgcmVsYXRpb24iLCJkZXNjcmlwdGlvbiI6IlVwZGF0ZSBhIG5vdGUgcmVsYXRpb24ifV0sImRpc3BsYXlOYW1lIjoiT3BlcmF0aW9uIiwiZGlzcGxheU9wdGlvbnMiOnsic2hvdyI6eyJyZXNvdXJjZSI6WyJub3RlVGFyZ2V0Il19fSwibm9EYXRhRXhwcmVzc2lvbiI6dHJ1ZX0seyJuYW1lIjoib3BlcmF0aW9uIiwidHlwZSI6Im9wdGlvbnMiLCJkZWZhdWx0IjoiY3JlYXRlIiwib3B0aW9ucyI6W3sibmFtZSI6IkNyZWF0ZSIsInZhbHVlIjoiY3JlYXRlIiwiYWN0aW9uIjoiQ3JlYXRlIGEgdGFzayIsImRlc2NyaXB0aW9uIjoiQ3JlYXRlIGEgbmV3IHRhc2sifSx7Im5hbWUiOiJEZWxldGUiLCJ2YWx1ZSI6ImRlbGV0ZSIsImFjdGlvbiI6IkRlbGV0ZSBhIHRhc2siLCJkZXNjcmlwdGlvbiI6IkRlbGV0ZSBhIHRhc2sifSx7Im5hbWUiOiJHZXQiLCJ2YWx1ZSI6ImdldCIsImFjdGlvbiI6IkdldCBhIHRhc2siLCJkZXNjcmlwdGlvbiI6IkdldCBhIHRhc2sifSx7Im5hbWUiOiJHZXQgTWFueSIsInZhbHVlIjoiZ2V0QWxsIiwiYWN0aW9uIjoiR2V0IG1hbnkgdGFza3MiLCJkZXNjcmlwdGlvbiI6IkdldCBtYW55IHRhc2tzIn0seyJuYW1lIjoiU2VhcmNoIiwidmFsdWUiOiJzZWFyY2giLCJhY3Rpb24iOiJTZWFyY2ggZm9yIHRhc2tzIiwiZGVzY3JpcHRpb24iOiJTZWFyY2ggZm9yIHRhc2tzIGJ5IHRpdGxlIn0seyJuYW1lIjoiVXBkYXRlIiwidmFsdWUiOiJ1cGRhdGUiLCJhY3Rpb24iOiJVcGRhdGUgYSB0YXNrIiwiZGVzY3JpcHRpb24iOiJVcGRhdGUgYSB0YXNrIn1dLCJkaXNwbGF5TmFtZSI6Ik9wZXJhdGlvbiIsImRpc3BsYXlPcHRpb25zIjp7InNob3ciOnsicmVzb3VyY2UiOlsidGFzayJdfX0sIm5vRGF0YUV4cHJlc3Npb24iOnRydWV9LHsibmFtZSI6Im9wZXJhdGlvbiIsInR5cGUiOiJvcHRpb25zIiwiZGVmYXVsdCI6ImNyZWF0ZSIsIm9wdGlvbnMiOlt7Im5hbWUiOiJDcmVhdGUiLCJ2YWx1ZSI6ImNyZWF0ZSIsImFjdGlvbiI6IkNyZWF0ZSBhIHRhc2sgcmVsYXRpb24iLCJkZXNjcmlwdGlvbiI6IkNyZWF0ZSBhIG5ldyB0YXNrIHJlbGF0aW9uIn0seyJuYW1lIjoiRGVsZXRlIiwidmFsdWUiOiJkZWxldGUiLCJhY3Rpb24iOiJEZWxldGUgYSB0YXNrIHJlbGF0aW9uIiwiZGVzY3JpcHRpb24iOiJEZWxldGUgYSB0YXNrIHJlbGF0aW9uIn0seyJuYW1lIjoiR2V0IiwidmFsdWUiOiJnZXQiLCJhY3Rpb24iOiJHZXQgYSB0YXNrIHJlbGF0aW9uIiwiZGVzY3JpcHRpb24iOiJHZXQgYSB0YXNrIHJlbGF0aW9uIn0seyJuYW1lIjoiR2V0IE1hbnkiLCJ2YWx1ZSI6ImdldEFsbCIsImFjdGlvbiI6IkdldCBtYW55IHRhc2sgcmVsYXRpb25zIiwiZGVzY3JpcHRpb24iOiJHZXQgbWFueSB0YXNrIHJlbGF0aW9ucyJ9LHsibmFtZSI6IlVwZGF0ZSIsInZhbHVlIjoidXBkYXRlIiwiYWN0aW9uIjoiVXBkYXRlIGEgdGFzayByZWxhdGlvbiIsImRlc2NyaXB0aW9uIjoiVXBkYXRlIGEgdGFzayByZWxhdGlvbiJ9XSwiZGlzcGxheU5hbWUiOiJPcGVyYXRpb24iLCJkaXNwbGF5T3B0aW9ucyI6eyJzaG93Ijp7InJlc291cmNlIjpbInRhc2tUYXJnZXQiXX19LCJub0RhdGFFeHByZXNzaW9uIjp0cnVlfSx7Im5hbWUiOiJvcGVyYXRpb24iLCJ0eXBlIjoib3B0aW9ucyIsImRlZmF1bHQiOiJjcmVhdGUiLCJvcHRpb25zIjpbeyJuYW1lIjoiQ3JlYXRlIiwidmFsdWUiOiJjcmVhdGUiLCJhY3Rpb24iOiJDcmVhdGUgYSBwaXBlbGluZSByZWNvcmQiLCJkZXNjcmlwdGlvbiI6IkNyZWF0ZSBhIG5ldyBwaXBlbGluZSByZWNvcmQifSx7Im5hbWUiOiJEZWxldGUiLCJ2YWx1ZSI6ImRlbGV0ZSIsImFjdGlvbiI6IkRlbGV0ZSBhIHBpcGVsaW5lIHJlY29yZCIsImRlc2NyaXB0aW9uIjoiRGVsZXRlIGEgcGlwZWxpbmUgcmVjb3JkIn0seyJuYW1lIjoiR2V0IiwidmFsdWUiOiJnZXQiLCJhY3Rpb24iOiJHZXQgYSBwaXBlbGluZSByZWNvcmQiLCJkZXNjcmlwdGlvbiI6IkdldCBhIHBpcGVsaW5lIHJlY29yZCJ9LHsibmFtZSI6IkdldCBNYW55IiwidmFsdWUiOiJnZXRBbGwiLCJhY3Rpb24iOiJHZXQgbWFueSBwaXBlbGluZSByZWNvcmRzIiwiZGVzY3JpcHRpb24iOiJHZXQgbWFueSBwaXBlbGluZSByZWNvcmRzIn0seyJuYW1lIjoiU2VhcmNoIiwidmFsdWUiOiJzZWFyY2giLCJhY3Rpb24iOiJTZWFyY2ggZm9yIHBpcGVsaW5lIHJlY29yZHMiLCJkZXNjcmlwdGlvbiI6IlNlYXJjaCBmb3IgcGlwZWxpbmUgcmVjb3JkcyBieSBuYW1lIn0seyJuYW1lIjoiVXBkYXRlIiwidmFsdWUiOiJ1cGRhdGUiLCJhY3Rpb24iOiJVcGRhdGUgYSBwaXBlbGluZSByZWNvcmQiLCJkZXNjcmlwdGlvbiI6IlVwZGF0ZSBhIHBpcGVsaW5lIHJlY29yZCJ9XSwiZGlzcGxheU5hbWUiOiJPcGVyYXRpb24iLCJkaXNwbGF5T3B0aW9ucyI6eyJzaG93Ijp7InJlc291cmNlIjpbInBpcGVsaW5lIl19fSwibm9EYXRhRXhwcmVzc2lvbiI6dHJ1ZX0seyJuYW1lIjoib3BlcmF0aW9uIiwidHlwZSI6Im9wdGlvbnMiLCJkZWZhdWx0IjoiY3JlYXRlIiwib3B0aW9ucyI6W3sibmFtZSI6IkNyZWF0ZSIsInZhbHVlIjoiY3JlYXRlIiwiYWN0aW9uIjoiQ3JlYXRlIGFuIG9wcG9ydHVuaXR5IiwiZGVzY3JpcHRpb24iOiJDcmVhdGUgYSBuZXcgb3Bwb3J0dW5pdHkifSx7Im5hbWUiOiJEZWxldGUiLCJ2YWx1ZSI6ImRlbGV0ZSIsImFjdGlvbiI6IkRlbGV0ZSBhbiBvcHBvcnR1bml0eSIsImRlc2NyaXB0aW9uIjoiRGVsZXRlIGFuIG9wcG9ydHVuaXR5In0seyJuYW1lIjoiR2V0IiwidmFsdWUiOiJnZXQiLCJhY3Rpb24iOiJHZXQgYW4gb3Bwb3J0dW5pdHkiLCJkZXNjcmlwdGlvbiI6IkdldCBhbiBvcHBvcnR1bml0eSJ9LHsibmFtZSI6IkdldCBNYW55IiwidmFsdWUiOiJnZXRBbGwiLCJhY3Rpb24iOiJHZXQgbWFueSBvcHBvcnR1bml0aWVzIiwiZGVzY3JpcHRpb24iOiJHZXQgbWFueSBvcHBvcnR1bml0aWVzIn0seyJuYW1lIjoiU2VhcmNoIiwidmFsdWUiOiJzZWFyY2giLCJhY3Rpb24iOiJTZWFyY2ggZm9yIG9wcG9ydHVuaXRpZXMiLCJkZXNjcmlwdGlvbiI6IlNlYXJjaCBmb3Igb3Bwb3J0dW5pdGllcyBieSBuYW1lIn0seyJuYW1lIjoiVXBkYXRlIiwidmFsdWUiOiJ1cGRhdGUiLCJhY3Rpb24iOiJVcGRhdGUgYW4gb3Bwb3J0dW5pdHkiLCJkZXNjcmlwdGlvbiI6IlVwZGF0ZSBhbiBvcHBvcnR1bml0eSJ9XSwiZGlzcGxheU5hbWUiOiJPcGVyYXRpb24iLCJkaXNwbGF5T3B0aW9ucyI6eyJzaG93Ijp7InJlc291cmNlIjpbIm9wcG9ydHVuaXR5Il19fSwibm9EYXRhRXhwcmVzc2lvbiI6dHJ1ZX1dLCJkZXNjcmlwdGlvbiI6IkNvbnN1bWUgRGFsaWwgQUkgQVBJIiwiZGlzcGxheU5hbWUiOiJEYWxpbCBBSSIsIm9yaWdpbmFsTmFtZSI6Im44bi1ub2Rlcy1kYWxpbC1haS5kYWxpbEFpIn0sImNyZWF0ZWRBdCI6IjIwMjUtMDgtMjZUMTQ6NTM6NDEuMTUyWiIsInVwZGF0ZWRBdCI6IjIwMjYtMDQtMDhUMDc6MDg6MjAuNjcxWiIsImF1dGhvckdpdGh1YlVybCI6Imh0dHBzOi8vZ2l0aHViLmNvbS9kYWxpbC1haS8iLCJhdXRob3JOYW1lIjoiZGFsaWwtYWkiLCJjaGVja3N1bSI6InNoYTUxMi03Z0plQWxKVW1tY2NkR0MrMjNQb0NDNTJURVhiNk5zUHA2RHhJR2gxRXZqUUd4c1F3WG1kY3ZieHlKMlpLQnF0cFl0N1lsWFBScDg0c094NndmV1didz09IiwiZGVzY3JpcHRpb24iOiJDb25zdW1lIERhbGlsIEFJIEFQSSIsImRpc3BsYXlOYW1lIjoiRGFsaWwgQUkiLCJuYW1lIjoibjhuLW5vZGVzLWRhbGlsLWFpLmRhbGlsQWkiLCJudW1iZXJPZlN0YXJzIjowLCJudW1iZXJPZkRvd25sb2FkcyI6MTA0LCJwYWNrYWdlTmFtZSI6Im44bi1ub2Rlcy1kYWxpbC1haSIsIm5wbVZlcnNpb24iOiIwLjIuMSIsImlzT2ZmaWNpYWxOb2RlIjp0cnVlLCJpc1B1Ymxpc2hlZCI6dHJ1ZSwiY29tcGFueU5hbWUiOiJEYWxpbEFJIiwibm9kZVZlcnNpb25zIjpbeyJjaGVja3N1bSI6InNoYTUxMi1lRnU4N0ptMzJaTFZuVE5TbkJnRDFvY2hwV3RCelk1SWozeTNMeFQyRy9sVEtUMENteHBNeUlvdEl4bmNSbFd3ajNOTkpodWxkdzJ6NXpjakQ5UHVOdz09IiwibnBtVmVyc2lvbiI6IjAuMi4wIn0seyJjaGVja3N1bSI6InNoYTUxMi03Z0plQWxKVW1tY2NkR0MrMjNQb0NDNTJURVhiNk5zUHA2RHhJR2gxRXZqUUd4c1F3WG1kY3ZieHlKMlpLQnF0cFl0N1lsWFBScDg0c094NndmV1didz09IiwibnBtVmVyc2lvbiI6IjAuMi4xIn1dLCJhaU5vZGVTZGtWZXJzaW9uIjpudWxsfX0seyJpZCI6MjA0LCJhdHRyaWJ1dGVzIjp7Im5vZGVEZXNjcmlwdGlvbiI6eyJuYW1lIjoibjhuLW5vZGVzLXByZXZpZXctYXV0aGVudGljYS5hdXRoZW50aWNhIiwiY29kZXgiOnt9LCJncm91cCI6WyJ0cmFuc2Zvcm0iXSwiaW5wdXRzIjpbIm1haW4iXSwiaWNvblVybCI6Imh0dHBzOi8vbjhuaW9zdG9yYWdlYWNjb3VudC5ibG9iLmNvcmUud2luZG93cy5uZXQvbjhuaW8tc3RyYXBpLWJsb2JzLXN0YWdlL2Fzc2V0cy9BdXRoZW50aWNhX2RhMWM5NmE0N2Yuc3ZnIiwib3V0cHV0cyI6WyJtYWluIl0sInZlcnNpb24iOjEsImRlZmF1bHRzIjp7Im5hbWUiOiJBdXRoZW50aWNhIn0sInN1YnRpdGxlIjoiIiwicHJvcGVydGllcyI6W3sibmFtZSI6InJlc291cmNlIiwidHlwZSI6Im9wdGlvbnMiLCJkZWZhdWx0Ijoib3RwIiwib3B0aW9ucyI6W3sibmFtZSI6IkFjY291bnQiLCJ2YWx1ZSI6ImFjY291bnQifSx7Im5hbWUiOiJPVFAiLCJ2YWx1ZSI6Im90cCJ9XSwiZGlzcGxheU5hbWUiOiJSZXNvdXJjZSIsIm5vRGF0YUV4cHJlc3Npb24iOnRydWV9LHsibmFtZSI6Im9wZXJhdGlvbiIsInR5cGUiOiJvcHRpb25zIiwiZGVmYXVsdCI6InNlbmQiLCJvcHRpb25zIjpbeyJuYW1lIjoiU2VuZCIsInZhbHVlIjoic2VuZCIsImFjdGlvbiI6IlNlbmQgYW4gT1RQIiwiZGVzY3JpcHRpb24iOiJTZW5kIGFuIE9UUCJ9LHsibmFtZSI6IlZlcmlmeSIsInZhbHVlIjoidmVyaWZ5IiwiYWN0aW9uIjoiVmVyaWZ5IGFuIE9UUCIsImRlc2NyaXB0aW9uIjoiVmVyaWZ5IGFuIE9UUCJ9XSwiZGlzcGxheU5hbWUiOiJPcGVyYXRpb24iLCJkaXNwbGF5T3B0aW9ucyI6eyJzaG93Ijp7InJlc291cmNlIjpbIm90cCJdfX0sIm5vRGF0YUV4cHJlc3Npb24iOnRydWV9LHsibmFtZSI6Im9wZXJhdGlvbiIsInR5cGUiOiJvcHRpb25zIiwiZGVmYXVsdCI6ImdldEJhbGFuY2UiLCJvcHRpb25zIjpbeyJuYW1lIjoiR2V0IEJhbGFuY2UiLCJ2YWx1ZSI6ImdldEJhbGFuY2UiLCJhY3Rpb24iOiJHZXQgYmFsYW5jZSJ9XSwiZGlzcGxheU5hbWUiOiJPcGVyYXRpb24iLCJkaXNwbGF5T3B0aW9ucyI6eyJzaG93Ijp7InJlc291cmNlIjpbImFjY291bnQiXX19LCJub0RhdGFFeHByZXNzaW9uIjp0cnVlfV0sImRlc2NyaXB0aW9uIjoiT1RQIGFuZCBhY2NvdW50IGJhbGFuY2UgdmlhIEF1dGhlbnRpY2EiLCJkaXNwbGF5TmFtZSI6IkF1dGhlbnRpY2EiLCJvcmlnaW5hbE5hbWUiOiJuOG4tbm9kZXMtYXV0aGVudGljYS5hdXRoZW50aWNhIn0sImNyZWF0ZWRBdCI6IjIwMjUtMDktMjRUMTU6MjA6MTQuMDA3WiIsInVwZGF0ZWRBdCI6IjIwMjYtMDQtMDhUMDc6MDg6MjguMTQ0WiIsImF1dGhvckdpdGh1YlVybCI6Imh0dHBzOi8vZ2l0aHViLmNvbS9BdXRoZW50aWNhU0EvbjhuLW5vZGUtYXV0aGVudGljYS5naXQiLCJhdXRob3JOYW1lIjoiYXV0aGVudGljYXNhIiwiY2hlY2tzdW0iOiJzaGE1MTItSkFyRk42dnNCRHkyWWsyK3ZUM2ZjMW5QajNxNXRaRmF3YlhwTUxsVWJKK01WbDNEUS9wOFkyMlhSTnNra2FPUlA3RWlwUTN1RjhFUWx1V3B3VXQ1a1E9PSIsImRlc2NyaXB0aW9uIjoiT1RQIGFuZCBhY2NvdW50IGJhbGFuY2UgdmlhIEF1dGhlbnRpY2EiLCJkaXNwbGF5TmFtZSI6IkF1dGhlbnRpY2EiLCJuYW1lIjoibjhuLW5vZGVzLWF1dGhlbnRpY2EuYXV0aGVudGljYSIsIm51bWJlck9mU3RhcnMiOjAsIm51bWJlck9mRG93bmxvYWRzIjo4LCJwYWNrYWdlTmFtZSI6Im44bi1ub2Rlcy1hdXRoZW50aWNhIiwibnBtVmVyc2lvbiI6IjAuMS4zIiwiaXNPZmZpY2lhbE5vZGUiOnRydWUsImlzUHVibGlzaGVkIjp0cnVlLCJjb21wYW55TmFtZSI6IkF1dGhlbnRpY2EiLCJub2RlVmVyc2lvbnMiOlt7ImNoZWNrc3VtIjoic2hhNTEyLUpBckZONnZzQkR5MllrMit2VDNmYzFuUGozcTV0WkZhd2JYcE1MbFViSitNVmwzRFEvcDhZMjJYUk5za2thT1JQN0VpcFEzdUY4RVFsdVdwd1V0NWtRPT0iLCJucG1WZXJzaW9uIjoiMC4xLjMifV0sImFpTm9kZVNka1ZlcnNpb24iOm51bGx9fSx7ImlkIjo3MCwiYXR0cmlidXRlcyI6eyJub2RlRGVzY3JpcHRpb24iOnsibmFtZSI6Im44bi1ub2Rlcy1wcmV2aWV3LXBhcnNldXIucGFyc2V1ciIsImNvZGV4Ijp7InJlc291cmNlcyI6eyJwcmltYXJ5RG9jdW1lbnRhdGlvbiI6W3sidXJsIjoiaHR0cHM6Ly9wYXJzZXVyLmNvbS8ifV19LCJjYXRlZ29yaWVzIjpbIkRldmVsb3BtZW50IiwiRGV2ZWxvcGVyIFRvb2xzIl19LCJncm91cCI6WyJpbnB1dCJdLCJpbnB1dHMiOlsibWFpbiJdLCJpY29uVXJsIjoiaHR0cHM6Ly9uOG5pb3N0b3JhZ2VhY2NvdW50LmJsb2IuY29yZS53aW5kb3dzLm5ldC9uOG5pby1zdHJhcGktYmxvYnMtc3RhZ2UvYXNzZXRzL1BhcnNldXJfNzE0YTEyYzFiNS5zdmciLCJvdXRwdXRzIjpbIm1haW4iXSwidmVyc2lvbiI6MSwiZGVmYXVsdHMiOnsibmFtZSI6IlBhcnNldXIifSwic3VidGl0bGUiOiI9e3sgJHBhcmFtZXRlcltcIm9wZXJhdGlvblwiXSArIFwiOiBcIiArICRwYXJhbWV0ZXJbXCJyZXNvdXJjZVwiXSB9fSIsInByb3BlcnRpZXMiOlt7Im5hbWUiOiJvcGVyYXRpb24iLCJ0eXBlIjoib3B0aW9ucyIsImRlZmF1bHQiOiJ1cGxvYWRGaWxlIiwib3B0aW9ucyI6W3sibmFtZSI6IlVwbG9hZCBGaWxlIiwidmFsdWUiOiJ1cGxvYWRGaWxlIiwiYWN0aW9uIjoiVXBsb2FkIGEgZmlsZSB0byBhIG1haWxib3giLCJkZXNjcmlwdGlvbiI6IlVwbG9hZCBhIGZpbGUgdG8gYSBtYWlsYm94In0seyJuYW1lIjoiVXBsb2FkIFRleHQiLCJ2YWx1ZSI6InVwbG9hZFRleHQiLCJhY3Rpb24iOiJVcGxvYWQgYSB0ZXh0IGh0bWwgZG9jdW1lbnQgdG8gYSBtYWlsYm94IiwiZGVzY3JpcHRpb24iOiJVcGxvYWQgYSB0ZXh0L0hUTUwgZG9jdW1lbnQgdG8gYSBtYWlsYm94In0seyJuYW1lIjoiQ3VzdG9tIEFQSSBDYWxsIiwidmFsdWUiOiJfX0NVU1RPTV9BUElfQ0FMTF9fIn1dLCJkaXNwbGF5TmFtZSI6Ik9wZXJhdGlvbiIsIm5vRGF0YUV4cHJlc3Npb24iOnRydWV9XSwiZGVzY3JpcHRpb24iOiJJbnRlcmFjdCB3aXRoIFBhcnNldXIgdG8gdXBsb2FkIHRleHQgb3IgZmlsZXMiLCJkaXNwbGF5TmFtZSI6IlBhcnNldXIiLCJvcmlnaW5hbE5hbWUiOiJuOG4tbm9kZXMtcGFyc2V1ci5wYXJzZXVyIn0sImNyZWF0ZWRBdCI6IjIwMjUtMDYtMTlUMTY6Mjk6MDEuMjg1WiIsInVwZGF0ZWRBdCI6IjIwMjYtMDMtMjFUMDk6MDk6MjYuOTY3WiIsImF1dGhvckdpdGh1YlVybCI6Imh0dHBzOi8vZ2l0aHViLmNvbS9wYXJzZXVyL3BhcnNldXItbjhuLW5vZGUuZ2l0IiwiYXV0aG9yTmFtZSI6InBhcnNldXIiLCJjaGVja3N1bSI6InNoYTUxMi1namE4WmJoR0dOenBTNEQ1TkV5Wm41Y2preHpud0g4TVl2QkpzVWNuZHcyR1d2VUtzUmNGcTdIRGFET1ZreHhocnJyNHpVdTU4dmZBZVluYXpuVVlCUT09IiwiZGVzY3JpcHRpb24iOiJJbnRlcmFjdCB3aXRoIFBhcnNldXIgdG8gdXBsb2FkIHRleHQgb3IgZmlsZXMiLCJkaXNwbGF5TmFtZSI6IlBhcnNldXIiLCJuYW1lIjoibjhuLW5vZGVzLXBhcnNldXIucGFyc2V1ciIsIm51bWJlck9mU3RhcnMiOjEsIm51bWJlck9mRG93bmxvYWRzIjoxOCwicGFja2FnZU5hbWUiOiJuOG4tbm9kZXMtcGFyc2V1ciIsIm5wbVZlcnNpb24iOiIwLjAuNCIsImlzT2ZmaWNpYWxOb2RlIjp0cnVlLCJpc1B1Ymxpc2hlZCI6dHJ1ZSwiY29tcGFueU5hbWUiOiJQYXJzZXVyLmNvbSIsIm5vZGVWZXJzaW9ucyI6W3siY2hlY2tzdW0iOiJzaGE1MTItZ2phOFpiaEdHTnpwUzRENU5FeVpuNWNqa3h6bndIOE1ZdkJKc1VjbmR3MkdXdlVLc1JjRnE3SERhRE9Wa3h4aHJycjR6VXU1OHZmQWVZbmF6blVZQlE9PSIsIm5wbVZlcnNpb24iOiIwLjAuNCJ9XSwiYWlOb2RlU2RrVmVyc2lvbiI6bnVsbH19LHsiaWQiOjEyMiwiYXR0cmlidXRlcyI6eyJub2RlRGVzY3JpcHRpb24iOnsibmFtZSI6Im44bi1ub2Rlcy1wcmV2aWV3LXppZ3BvbGwuemlncG9sbFRyaWdnZXIiLCJjb2RleCI6e30sImdyb3VwIjpbInRyaWdnZXIiXSwiaW5wdXRzIjpbXSwiaWNvblVybCI6Imh0dHBzOi8vbjhuaW9zdG9yYWdlYWNjb3VudC5ibG9iLmNvcmUud2luZG93cy5uZXQvbjhuaW8tc3RyYXBpLWJsb2JzLXN0YWdlL2Fzc2V0cy9aaWdwb2xsX1RyaWdnZXJfYWEwY2I1MTVhZC5zdmciLCJvdXRwdXRzIjpbIm1haW4iXSwidmVyc2lvbiI6MSwiZGVmYXVsdHMiOnsibmFtZSI6IlppZ3BvbGwifSwic3VidGl0bGUiOiIiLCJwcm9wZXJ0aWVzIjpbXSwiZGVzY3JpcHRpb24iOiJUcmlnZ2VycyB3aGVuIGEgc3BlY2lmaWMgWmlncG9sbCBzdXJ2ZXkgaXMgY29tcGxldGVkIiwiZGlzcGxheU5hbWUiOiJaaWdwb2xsIFRyaWdnZXIiLCJvcmlnaW5hbE5hbWUiOiJuOG4tbm9kZXMtemlncG9sbC56aWdwb2xsVHJpZ2dlciJ9LCJjcmVhdGVkQXQiOiIyMDI1LTA3LTI0VDIyOjMxOjU1LjcyOVoiLCJ1cGRhdGVkQXQiOiIyMDI2LTA0LTA4VDA3OjA4OjE5LjczOVoiLCJhdXRob3JHaXRodWJVcmwiOiJodHRwczovL2dpdGh1Yi5jb20vSmFzb25aaWdlbGJhdW0vIiwiYXV0aG9yTmFtZSI6InppZ3BvbGwiLCJjaGVja3N1bSI6InNoYTUxMi1OQkljTER3SXFYaUxFZDR0L3JCQUMxdEhvUnpZYVRIckRMcTZ3dU9XTHZOZ2d5WlorZlYrRFVpNXlhM3ZGYzYybXFVQlJQNC9uRWRibk9yek5Kam5Xdz09IiwiZGVzY3JpcHRpb24iOiJUcmlnZ2VycyB3aGVuIGEgc3BlY2lmaWMgWmlncG9sbCBzdXJ2ZXkgaXMgY29tcGxldGVkIiwiZGlzcGxheU5hbWUiOiJaaWdwb2xsIFRyaWdnZXIiLCJuYW1lIjoibjhuLW5vZGVzLXppZ3BvbGwuemlncG9sbFRyaWdnZXIiLCJudW1iZXJPZlN0YXJzIjowLCJudW1iZXJPZkRvd25sb2FkcyI6MTk1LCJwYWNrYWdlTmFtZSI6Im44bi1ub2Rlcy16aWdwb2xsIiwibnBtVmVyc2lvbiI6IjAuMS45IiwiaXNPZmZpY2lhbE5vZGUiOnRydWUsImlzUHVibGlzaGVkIjp0cnVlLCJjb21wYW55TmFtZSI6IlppZ3BvbGwiLCJub2RlVmVyc2lvbnMiOlt7ImNoZWNrc3VtIjoic2hhNTEyLU5CSWNMRHdJcVhpTEVkNHQvckJBQzF0SG9SellhVEhyRExxNnd1T1dMdk5nZ3laWitmVitEVWk1eWEzdkZjNjJtcVVCUlA0L25FZGJuT3J6Tkpqbld3PT0iLCJucG1WZXJzaW9uIjoiMC4xLjkifV0sImFpTm9kZVNka1ZlcnNpb24iOm51bGx9fSx7ImlkIjoyMTksImF0dHJpYnV0ZXMiOnsibm9kZURlc2NyaXB0aW9uIjp7Im5hbWUiOiJAbnZvaXAvbjhuLW5vZGVzLXByZXZpZXctbnZvaXAubnZvaXAiLCJjb2RleCI6e30sImdyb3VwIjpbInRyYW5zZm9ybSJdLCJpbnB1dHMiOlsibWFpbiJdLCJpY29uVXJsIjoidW5kZWZpbmVkIiwib3V0cHV0cyI6WyJtYWluIl0sInZlcnNpb24iOjEsImRlZmF1bHRzIjp7Im5hbWUiOiJOdm9pcCJ9LCJzdWJ0aXRsZSI6IiIsInByb3BlcnRpZXMiOlt7Im5hbWUiOiJyZXNvdXJjZSIsInR5cGUiOiJvcHRpb25zIiwiZGVmYXVsdCI6InNtcyIsIm9wdGlvbnMiOlt7Im5hbWUiOiJTTVMiLCJ2YWx1ZSI6InNtcyIsImRlc2NyaXB0aW9uIjoiU01TIGFjdGlvbnMifSx7Im5hbWUiOiJXaGF0c0FwcCIsInZhbHVlIjoid2hhdHNhcHAiLCJkZXNjcmlwdGlvbiI6IldoYXRzQXBwIGFjdGlvbnMifSx7Im5hbWUiOiJDYWxsIiwidmFsdWUiOiJjYWxsIiwiZGVzY3JpcHRpb24iOiJDYWxsIGFjdGlvbnMifV0sImRpc3BsYXlOYW1lIjoiUmVzb3VyY2UiLCJub0RhdGFFeHByZXNzaW9uIjp0cnVlfSx7Im5hbWUiOiJvcGVyYXRpb24iLCJ0eXBlIjoib3B0aW9ucyIsImRlZmF1bHQiOiJtYWtlQ2FsbCIsIm9wdGlvbnMiOlt7Im5hbWUiOiJNYWtlIENhbGwiLCJ2YWx1ZSI6Im1ha2VDYWxsIiwiYWN0aW9uIjoiTWFrZSBhIHBob25lIGNhbGwiLCJkZXNjcmlwdGlvbiI6Ik1ha2UgYW4gb3V0Ym91bmQgY2FsbCB1c2luZyBOdm9pcCJ9LHsibmFtZSI6IlNlbmQgSW50ZXJhY3RpdmUgVm9pY2UgQnJvYWRjYXN0IiwidmFsdWUiOiJzZW5kVm9pY2VCbGFzdEludGVyYWN0aXZlIiwiYWN0aW9uIjoiU2VuZCBpbnRlcmFjdGl2ZSB2b2ljZSBicm9hZGNhc3QiLCJkZXNjcmlwdGlvbiI6IlNlbmQgYW4gYXV0b21hdGVkIHZvaWNlIG1lc3NhZ2Ugd2l0aCB0aGUgYWJpbGl0eSB0byByZWNlaXZlIERUTUYgaW5wdXQifSx7Im5hbWUiOiJTZW5kIFZvaWNlIEJyb2FkY2FzdCIsInZhbHVlIjoic2VuZFZvaWNlQmxhc3QiLCJhY3Rpb24iOiJTZW5kIHZvaWNlIGJyb2FkY2FzdCIsImRlc2NyaXB0aW9uIjoiU2VuZCBhbiBhdXRvbWF0ZWQgdm9pY2UgbWVzc2FnZSBkZWxpdmVyZWQgYXMgYXVkaW8gZmlsZSBvciBUVFMifV0sImRpc3BsYXlOYW1lIjoiT3BlcmF0aW9uIiwiZGlzcGxheU9wdGlvbnMiOnsic2hvdyI6eyJyZXNvdXJjZSI6WyJjYWxsIl19fSwibm9EYXRhRXhwcmVzc2lvbiI6dHJ1ZX0seyJuYW1lIjoib3BlcmF0aW9uIiwidHlwZSI6Im9wdGlvbnMiLCJkZWZhdWx0Ijoic2VuZFNtcyIsIm9wdGlvbnMiOlt7Im5hbWUiOiJTZW5kIFNNUyIsInZhbHVlIjoic2VuZFNtcyIsImFjdGlvbiI6IlNlbmQgU01TIiwiZGVzY3JpcHRpb24iOiJTZW5kIGEgY3VzdG9taXplZCBTTVMgbWVzc2FnZSB0byBhIGN1c3RvbWVyIn0seyJuYW1lIjoiU2VuZCBTTVMgKFRlbXBsYXRlKSIsInZhbHVlIjoic2VuZFRlbXBsYXRlU21zIiwiYWN0aW9uIjoiU2VuZCB0ZW1wbGF0ZSBTTVMiLCJkZXNjcmlwdGlvbiI6IlNlbmQgYW4gU01TIHVzaW5nIGEgcHJlZGVmaW5lZCB0ZW1wbGF0ZSJ9XSwiZGlzcGxheU5hbWUiOiJPcGVyYXRpb24iLCJkaXNwbGF5T3B0aW9ucyI6eyJzaG93Ijp7InJlc291cmNlIjpbInNtcyJdfX0sIm5vRGF0YUV4cHJlc3Npb24iOnRydWV9LHsibmFtZSI6Im9wZXJhdGlvbiIsInR5cGUiOiJvcHRpb25zIiwiZGVmYXVsdCI6InNlbmRXaGF0c2FwcCIsIm9wdGlvbnMiOlt7Im5hbWUiOiJTZW5kIFdoYXRzQXBwIChXaXRoIEhTTSkiLCJ2YWx1ZSI6InNlbmRXaGF0c2FwcCIsImFjdGlvbiI6IlNlbmQgd2hhdHNhcHAgbWVzc2FnZSIsImRlc2NyaXB0aW9uIjoiU2VuZCBXaGF0c0FwcCB0ZW1wbGF0ZSBtZXNzYWdlcyB1c2luZyBOdm9pcCBmb3IgYXV0b21hdGVkIGNvbW11bmljYXRpb24ifV0sImRpc3BsYXlOYW1lIjoiT3BlcmF0aW9uIiwiZGlzcGxheU9wdGlvbnMiOnsic2hvdyI6eyJyZXNvdXJjZSI6WyJ3aGF0c2FwcCJdfX0sIm5vRGF0YUV4cHJlc3Npb24iOnRydWV9XSwiZGVzY3JpcHRpb24iOiJNYWtlIGNhbGxzLCBzZW5kIFdoYXRzQXBwIGFuZCBTTVMuIiwiZGlzcGxheU5hbWUiOiJOdm9pcCIsIm9yaWdpbmFsTmFtZSI6IkBudm9pcC9uOG4tbm9kZXMtbnZvaXAubnZvaXAifSwiY3JlYXRlZEF0IjoiMjAyNS0wOS0zMFQwOToyMjoyMS43OTZaIiwidXBkYXRlZEF0IjoiMjAyNi0wNC0wOFQwNzowODoyNC4yMTFaIiwiYXV0aG9yR2l0aHViVXJsIjoiaHR0cHM6Ly9naXRodWIuY29tL052b2lwL252b2lwLW44bi5naXQiLCJhdXRob3JOYW1lIjoibHVjYXNuYXZlcyIsImNoZWNrc3VtIjoic2hhNTEyLXR1QVNsT0kvbjJLRE9XTi8yZUY4NnBkRk40OEVMa0dGK1VzSEZjdVBDZU9FZmwxVGdCd2czVU42Sk9oc2dzTkRPZWtXUVgwZEZQbTJHc0xuS2dRekdBPT0iLCJkZXNjcmlwdGlvbiI6Ik1ha2UgY2FsbHMsIHNlbmQgV2hhdHNBcHAgYW5kIFNNUy4iLCJkaXNwbGF5TmFtZSI6Ik52b2lwIiwibmFtZSI6IkBudm9pcC9uOG4tbm9kZXMtbnZvaXAubnZvaXAiLCJudW1iZXJPZlN0YXJzIjowLCJudW1iZXJPZkRvd25sb2FkcyI6MTE1LCJwYWNrYWdlTmFtZSI6IkBudm9pcC9uOG4tbm9kZXMtbnZvaXAiLCJucG1WZXJzaW9uIjoiMC4xLjExIiwiaXNPZmZpY2lhbE5vZGUiOnRydWUsImlzUHVibGlzaGVkIjp0cnVlLCJjb21wYW55TmFtZSI6Ik52b2lwIiwibm9kZVZlcnNpb25zIjpbeyJjaGVja3N1bSI6InNoYTUxMi1RKzNYdm0wYUtsQUIwMVh2TU5HMllFYk0yM3pTZklmSVlKZERvWlQweFRKSkN4dWlTV1VCcjB1djNoTkR5OHhjL2RLbTUwdDBWcFZtWXRnK256VTVkZz09IiwibnBtVmVyc2lvbiI6IjAuMS42In0seyJjaGVja3N1bSI6InNoYTUxMi1COUhpdkt2aHNDc1l1bktiOEVjcVNZeUR6bkJ2aGw3M0hSZEszZWhvbGFQdUFEZmV6Qmc0SVN0S3ZKV3hHb205UVlJYnZ1Szc1SW5WYStpNE5KZGlIZz09IiwibnBtVmVyc2lvbiI6IjAuMS45In0seyJjaGVja3N1bSI6InNoYTUxMi1VdmJNZko2YVJDcGI5cHJnQlVkOGRxakdVNU14N3hmRlJVTDgvU01ZMkdTV1BicFdya1RtaXhpU1lVKzU2TzB1UjZZd2Q1RklRVWQ2ZUhKUW0xdVNkZz09IiwibnBtVmVyc2lvbiI6IjAuMS4xMCJ9LHsiY2hlY2tzdW0iOiJzaGE1MTItdHVBU2xPSS9uMktET1dOLzJlRjg2cGRGTjQ4RUxrR0YrVXNIRmN1UENlT0VmbDFUZ0J3ZzNVTjZKT2hzZ3NORE9la1dRWDBkRlBtMkdzTG5LZ1F6R0E9PSIsIm5wbVZlcnNpb24iOiIwLjEuMTEifV0sImFpTm9kZVNka1ZlcnNpb24iOm51bGx9fSx7ImlkIjo3NywiYXR0cmlidXRlcyI6eyJub2RlRGVzY3JpcHRpb24iOnsibmFtZSI6Im44bi1ub2Rlcy1wcmV2aWV3LXZlbGF0aXIudmVsYXRpciIsImNvZGV4Ijp7fSwiZ3JvdXAiOlsidHJhbnNmb3JtIl0sImlucHV0cyI6WyJtYWluIl0sImljb25VcmwiOiJodHRwczovL244bmlvc3RvcmFnZWFjY291bnQuYmxvYi5jb3JlLndpbmRvd3MubmV0L244bmlvLXN0cmFwaS1ibG9icy1zdGFnZS9hc3NldHMvVmVsYXRpcl83Yzg5YTFhYTEyLnN2ZyIsIm91dHB1dHMiOlsibWFpbiIsIm1haW4iLCJtYWluIl0sInZlcnNpb24iOjEsImRlZmF1bHRzIjp7Im5hbWUiOiJWZWxhdGlyIn0sInN1YnRpdGxlIjoiIiwicHJvcGVydGllcyI6W10sImRlc2NyaXB0aW9uIjoiSHVtYW4gYXBwcm92YWwgZ2F0ZSB3aXRoIGRlY2lzaW9uIHJvdXRpbmcgLSByb3V0ZXMgd29ya2Zsb3cgYmFzZWQgb24gYXBwcm92YWwgZGVjaXNpb24iLCJkaXNwbGF5TmFtZSI6IlZlbGF0aXIiLCJvcmlnaW5hbE5hbWUiOiJuOG4tbm9kZXMtdmVsYXRpci52ZWxhdGlyIn0sImNyZWF0ZWRBdCI6IjIwMjUtMDYtMzBUMTQ6NTc6MDguMjYzWiIsInVwZGF0ZWRBdCI6IjIwMjYtMDQtMDhUMDc6MDg6MTguOTI4WiIsImF1dGhvckdpdGh1YlVybCI6Imh0dHBzOi8vZ2l0aHViLmNvbS92ZWxhdGlyLyIsImF1dGhvck5hbWUiOiJ2ZWxhdGlyIiwiY2hlY2tzdW0iOiJzaGE1MTItSFZKY0VTM0RicVFxN1EwOEFZZVRQQnh0b1NaYytxb0t5VE8rWHV0RjhJMEsrMm5aaEI3a1pOWS9uSWwwcUs4d2J5c1BQRXhWU1BSOSthdGVnTCtJU0E9PSIsImRlc2NyaXB0aW9uIjoiSHVtYW4gYXBwcm92YWwgZ2F0ZSB3aXRoIGRlY2lzaW9uIHJvdXRpbmcgLSByb3V0ZXMgd29ya2Zsb3cgYmFzZWQgb24gYXBwcm92YWwgZGVjaXNpb24iLCJkaXNwbGF5TmFtZSI6IlZlbGF0aXIiLCJuYW1lIjoibjhuLW5vZGVzLXZlbGF0aXIudmVsYXRpciIsIm51bWJlck9mU3RhcnMiOjEsIm51bWJlck9mRG93bmxvYWRzIjozNCwicGFja2FnZU5hbWUiOiJuOG4tbm9kZXMtdmVsYXRpciIsIm5wbVZlcnNpb24iOiIyLjAuMSIsImlzT2ZmaWNpYWxOb2RlIjp0cnVlLCJpc1B1Ymxpc2hlZCI6dHJ1ZSwiY29tcGFueU5hbWUiOiJWZWxhdGlyIiwibm9kZVZlcnNpb25zIjpbeyJjaGVja3N1bSI6InNoYTUxMi1LUUdib1FNUExmQUIxYlJnSy9TNkxRNnpmalBYa0lXejhBanhIVGRZRUdUT01NL0dOMGdDNEVSSVRjUGp4U1JvRTM5UkxYWXBKYXVjMFhSaFNETk9TZz09IiwibnBtVmVyc2lvbiI6IjAuMS4wIn0seyJjaGVja3N1bSI6InNoYTUxMi1xOUFLTXNpZEc5WHFqcjQ0NTRubkdJVUJGZlZWUDJibWhVdzdFR2VNZHlScU5LeWZzMlZOTUcxYlZwTTEzR0piUWx3ZEdjOHV1UWsxQkVEeXVGRU5YQT09IiwibnBtVmVyc2lvbiI6IjEuMC4wIn0seyJjaGVja3N1bSI6InNoYTUxMi1IVkpjRVMzRGJxUXE3UTA4QVllVFBCeHRvU1pjK3FvS3lUTytYdXRGOEkwSysyblpoQjdrWk5ZL25JbDBxSzh3YnlzUFBFeFZTUFI5K2F0ZWdMK0lTQT09IiwibnBtVmVyc2lvbiI6IjIuMC4xIn1dLCJhaU5vZGVTZGtWZXJzaW9uIjpudWxsfX0seyJpZCI6MTI5LCJhdHRyaWJ1dGVzIjp7Im5vZGVEZXNjcmlwdGlvbiI6eyJuYW1lIjoibjhuLW5vZGVzLXByZXZpZXctdW5kZXJzdGFuZHRlY2hjaGF0LnVuZGVyc3RhbmRUZWNoQ2hhdCIsImNvZGV4Ijp7fSwiZ3JvdXAiOlsidHJhbnNmb3JtIl0sImlucHV0cyI6WyJtYWluIl0sImljb25VcmwiOiJodHRwczovL244bmlvc3RvcmFnZWFjY291bnQuYmxvYi5jb3JlLndpbmRvd3MubmV0L244bmlvLXN0cmFwaS1ibG9icy1zdGFnZS9hc3NldHMvVW5kZXJzdGFuZF9UZWNoX0NoYXRfOGNlYjE4NzI2Zi5zdmciLCJvdXRwdXRzIjpbIm1haW4iXSwidmVyc2lvbiI6MSwiZGVmYXVsdHMiOnsibmFtZSI6IlVuZGVyc3RhbmQgVGVjaCBDaGF0In0sInN1YnRpdGxlIjoiIiwicHJvcGVydGllcyI6W3sibmFtZSI6InJlc291cmNlIiwidHlwZSI6Im9wdGlvbnMiLCJkZWZhdWx0IjoiY2hhdCIsIm9wdGlvbnMiOlt7Im5hbWUiOiJDaGF0IiwidmFsdWUiOiJjaGF0In1dLCJkaXNwbGF5TmFtZSI6IlJlc291cmNlIiwibm9EYXRhRXhwcmVzc2lvbiI6dHJ1ZX0seyJuYW1lIjoib3BlcmF0aW9uIiwidHlwZSI6Im9wdGlvbnMiLCJkZWZhdWx0Ijoic2VuZE1lc3NhZ2UiLCJvcHRpb25zIjpbeyJuYW1lIjoiU2VuZCBNZXNzYWdlIiwidmFsdWUiOiJzZW5kTWVzc2FnZSIsImFjdGlvbiI6IlNlbmQgbWVzc2FnZSBhIGNoYXQiLCJkZXNjcmlwdGlvbiI6IlNlbmQgYSBtZXNzYWdlIHRvIHRoZSBjaGF0IG1vZGVsIn1dLCJkaXNwbGF5TmFtZSI6Ik9wZXJhdGlvbiIsImRpc3BsYXlPcHRpb25zIjp7InNob3ciOnsicmVzb3VyY2UiOlsiY2hhdCJdfX0sIm5vRGF0YUV4cHJlc3Npb24iOnRydWV9XSwiZGVzY3JpcHRpb24iOiJDaGF0IHdpdGggYSBtb2RlbCBpbiBVbmRlcnN0YW5kVGVjaCIsImRpc3BsYXlOYW1lIjoiVW5kZXJzdGFuZCBUZWNoIENoYXQiLCJvcmlnaW5hbE5hbWUiOiJuOG4tbm9kZXMtdW5kZXJzdGFuZHRlY2hjaGF0LnVuZGVyc3RhbmRUZWNoQ2hhdCJ9LCJjcmVhdGVkQXQiOiIyMDI1LTA3LTI4VDE2OjMyOjE2LjEyMloiLCJ1cGRhdGVkQXQiOiIyMDI2LTA0LTA4VDA3OjA4OjE2LjQ0M1oiLCJhdXRob3JHaXRodWJVcmwiOiJodHRwczovL2dpdGh1Yi5jb20vTGF2YXhNYXN0ZXIvbjhuLW5vZGVzLXN0YXJ0ZXIuZ2l0IiwiYXV0aG9yTmFtZSI6InVuZGVyc3RhbmR0ZWNoIiwiY2hlY2tzdW0iOiJzaGE1MTItcXVKVnRTL0RTbVF0ZEtuVXVUOXUycUNMaFZnR2hKcHdHL1NMaE9jUkp4akhhaGtyeG84a2lTOTZtcWJVZVo5LzZSc0pkaUFCZFJVbmgvY09XRzd6NkE9PSIsImRlc2NyaXB0aW9uIjoiQ2hhdCB3aXRoIGEgbW9kZWwgaW4gVW5kZXJzdGFuZFRlY2giLCJkaXNwbGF5TmFtZSI6IlVuZGVyc3RhbmQgVGVjaCBDaGF0IiwibmFtZSI6Im44bi1ub2Rlcy11bmRlcnN0YW5kdGVjaGNoYXQudW5kZXJzdGFuZFRlY2hDaGF0IiwibnVtYmVyT2ZTdGFycyI6MCwibnVtYmVyT2ZEb3dubG9hZHMiOjIsInBhY2thZ2VOYW1lIjoibjhuLW5vZGVzLXVuZGVyc3RhbmR0ZWNoY2hhdCIsIm5wbVZlcnNpb24iOiIwLjEuNSIsImlzT2ZmaWNpYWxOb2RlIjp0cnVlLCJpc1B1Ymxpc2hlZCI6dHJ1ZSwiY29tcGFueU5hbWUiOiJVbmRlcnN0YW5kIFRlY2giLCJub2RlVmVyc2lvbnMiOlt7ImNoZWNrc3VtIjoic2hhNTEyLXF1SlZ0Uy9EU21RdGRLblV1VDl1MnFDTGhWZ0doSnB3Ry9TTGhPY1JKeGpIYWhrcnhvOGtpUzk2bXFiVWVaOS82UnNKZGlBQmRSVW5oL2NPV0c3ejZBPT0iLCJucG1WZXJzaW9uIjoiMC4xLjUifV0sImFpTm9kZVNka1ZlcnNpb24iOm51bGx9fSx7ImlkIjoxMjUsImF0dHJpYnV0ZXMiOnsibm9kZURlc2NyaXB0aW9uIjp7Im5hbWUiOiJuOG4tbm9kZXMtcHJldmlldy1wdXNoaW5hdG9yLnB1c2hpbmF0b3IiLCJjb2RleCI6e30sImdyb3VwIjpbIm91dHB1dCJdLCJpbnB1dHMiOlsibWFpbiJdLCJpY29uVXJsIjoiaHR0cHM6Ly9uOG5pb3N0b3JhZ2VhY2NvdW50LmJsb2IuY29yZS53aW5kb3dzLm5ldC9uOG5pby1zdHJhcGktYmxvYnMtc3RhZ2UvYXNzZXRzL1B1c2hpbmF0b3JfMjIzZjc3ZDk0MS5zdmciLCJvdXRwdXRzIjpbIm1haW4iXSwidmVyc2lvbiI6MSwiZGVmYXVsdHMiOnsibmFtZSI6IlB1c2hpbmF0b3IifSwic3VidGl0bGUiOiIiLCJwcm9wZXJ0aWVzIjpbeyJuYW1lIjoib3BlcmF0aW9uIiwidHlwZSI6Im9wdGlvbnMiLCJkZWZhdWx0Ijoic2VuZF9ub3RpZmljYXRpb24iLCJvcHRpb25zIjpbeyJuYW1lIjoiU2VuZCBOb3RpZmljYXRpb24iLCJ2YWx1ZSI6InNlbmRfbm90aWZpY2F0aW9uIiwiYWN0aW9uIjoiU2VuZCBhIHB1c2ggbm90aWZpY2F0aW9uIn1dLCJkaXNwbGF5TmFtZSI6Ik9wZXJhdGlvbiIsIm5vRGF0YUV4cHJlc3Npb24iOnRydWV9XSwiZGVzY3JpcHRpb24iOiJTZW5kIG5vdGlmaWNhdGlvbnMgdXNpbmcgUHVzaGluYXRvciIsImRpc3BsYXlOYW1lIjoiUHVzaGluYXRvciIsIm9yaWdpbmFsTmFtZSI6Im44bi1ub2Rlcy1wdXNoaW5hdG9yLnB1c2hpbmF0b3IifSwiY3JlYXRlZEF0IjoiMjAyNS0wNy0yNVQwNzozMDowMS4yNjdaIiwidXBkYXRlZEF0IjoiMjAyNi0wNC0wOFQwNzowODoxOC44MjZaIiwiYXV0aG9yR2l0aHViVXJsIjoiaHR0cHM6Ly9naXRodWIuY29tL2FwcHJpY29zL3B1c2hpbmF0b3ItbjhuLmdpdCIsImF1dGhvck5hbWUiOiJtYWtzdGFtb2lhbiIsImNoZWNrc3VtIjoic2hhNTEyLWR4NTJiV2JRci9QNHJRZ1JuSmVwUE1yWDBNdnlsOVgrcUhnUXpObmFTVC9WR2cyOVA3MVhWeDJmMktEc01EK3RadzZVVTE2Z2VpdVZjcVJzMndOT21RPT0iLCJkZXNjcmlwdGlvbiI6IlNlbmQgbm90aWZpY2F0aW9ucyB1c2luZyBQdXNoaW5hdG9yIiwiZGlzcGxheU5hbWUiOiJQdXNoaW5hdG9yIiwibmFtZSI6Im44bi1ub2Rlcy1wdXNoaW5hdG9yLnB1c2hpbmF0b3IiLCJudW1iZXJPZlN0YXJzIjowLCJudW1iZXJPZkRvd25sb2FkcyI6MzI2OCwicGFja2FnZU5hbWUiOiJuOG4tbm9kZXMtcHVzaGluYXRvciIsIm5wbVZlcnNpb24iOiIwLjEuNCIsImlzT2ZmaWNpYWxOb2RlIjp0cnVlLCJpc1B1Ymxpc2hlZCI6dHJ1ZSwiY29tcGFueU5hbWUiOiJQdXNoaW5hdG9yIiwibm9kZVZlcnNpb25zIjpbeyJjaGVja3N1bSI6InNoYTUxMi1qUkhTYWpBWjNaMjA1UDg3U1pjSTZ2WHdHbHUvOWNqWVZlQy8zRnk3WWRwTFMvS2RneWZvbnpxQ25WanljNUw4NVBtNURCenJmbWEzY3A1VmJkNTRVQT09IiwibnBtVmVyc2lvbiI6IjAuMS4zIn0seyJjaGVja3N1bSI6InNoYTUxMi1keDUyYldiUXIvUDRyUWdSbkplcFBNclgwTXZ5bDlYK3FIZ1F6Tm5hU1QvVkdnMjlQNzFYVngyZjJLRHNNRCt0Wnc2VVUxNmdlaXVWY3FSczJ3Tk9tUT09IiwibnBtVmVyc2lvbiI6IjAuMS40In1dLCJhaU5vZGVTZGtWZXJzaW9uIjpudWxsfX0seyJpZCI6MzQsImF0dHJpYnV0ZXMiOnsibm9kZURlc2NyaXB0aW9uIjp7Im5hbWUiOiJAdGF2aWx5L244bi1ub2Rlcy1wcmV2aWV3LXRhdmlseS50YXZpbHkiLCJjb2RleCI6e30sImdyb3VwIjpbInRyYW5zZm9ybSJdLCJpbnB1dHMiOlsibWFpbiJdLCJpY29uVXJsIjoiaHR0cHM6Ly9uOG5pb3N0b3JhZ2VhY2NvdW50LmJsb2IuY29yZS53aW5kb3dzLm5ldC9uOG5pby1zdHJhcGktYmxvYnMtc3RhZ2UvYXNzZXRzL1RhdmlseV8wYTRlOGNkMTlkLnN2ZyIsIm91dHB1dHMiOiI9e3tbJ21haW4nXX19IiwidmVyc2lvbiI6MSwiZGVmYXVsdHMiOnsibmFtZSI6IlRhdmlseSJ9LCJzdWJ0aXRsZSI6Ij17eyRwYXJhbWV0ZXJbXCJvcGVyYXRpb25cIl0gKyBcIjogXCIgKyAkcGFyYW1ldGVyW1wicmVzb3VyY2VcIl19fSIsInByb3BlcnRpZXMiOlt7Im5hbWUiOiJyZXNvdXJjZSIsInR5cGUiOiJvcHRpb25zIiwiZGVmYXVsdCI6InNlYXJjaCIsIm9wdGlvbnMiOlt7Im5hbWUiOiJDcmF3bCIsInZhbHVlIjoiY3Jhd2wifSx7Im5hbWUiOiJFeHRyYWN0IiwidmFsdWUiOiJleHRyYWN0In0seyJuYW1lIjoiTWFwIiwidmFsdWUiOiJtYXAifSx7Im5hbWUiOiJSZXNlYXJjaCIsInZhbHVlIjoicmVzZWFyY2gifSx7Im5hbWUiOiJTZWFyY2giLCJ2YWx1ZSI6InNlYXJjaCJ9XSwiZGlzcGxheU5hbWUiOiJSZXNvdXJjZSIsIm5vRGF0YUV4cHJlc3Npb24iOnRydWV9LHsibmFtZSI6Im9wZXJhdGlvbiIsInR5cGUiOiJvcHRpb25zIiwiZGVmYXVsdCI6InVybHMiLCJvcHRpb25zIjpbeyJuYW1lIjoiVVJMcyIsInZhbHVlIjoidXJscyIsImFjdGlvbiI6IkV4dHJhY3QiLCJkZXNjcmlwdGlvbiI6IkV4dHJhY3QgcmF3IGNvbnRlbnQgZnJvbSBVUkxzIn1dLCJkaXNwbGF5TmFtZSI6Ik9wZXJhdGlvbiIsImRpc3BsYXlPcHRpb25zIjp7InNob3ciOnsicmVzb3VyY2UiOlsiZXh0cmFjdCJdfX0sIm5vRGF0YUV4cHJlc3Npb24iOnRydWV9LHsibmFtZSI6Im9wZXJhdGlvbiIsInR5cGUiOiJvcHRpb25zIiwiZGVmYXVsdCI6InF1ZXJ5Iiwib3B0aW9ucyI6W3sibmFtZSI6IlF1ZXJ5IiwidmFsdWUiOiJxdWVyeSIsImFjdGlvbiI6IlNlYXJjaCIsImRlc2NyaXB0aW9uIjoiU2VhcmNoIHF1ZXJ5In1dLCJkaXNwbGF5TmFtZSI6Ik9wZXJhdGlvbiIsImRpc3BsYXlPcHRpb25zIjp7InNob3ciOnsicmVzb3VyY2UiOlsic2VhcmNoIl19fSwibm9EYXRhRXhwcmVzc2lvbiI6dHJ1ZX0seyJuYW1lIjoib3BlcmF0aW9uIiwidHlwZSI6Im9wdGlvbnMiLCJkZWZhdWx0IjoidXJsIiwib3B0aW9ucyI6W3sibmFtZSI6IlVSTCIsInZhbHVlIjoidXJsIiwiYWN0aW9uIjoiQ3Jhd2wiLCJkZXNjcmlwdGlvbiI6IlRoZSByb290IFVSTCB0byBiZWdpbiB0aGUgY3Jhd2wifV0sImRpc3BsYXlOYW1lIjoiT3BlcmF0aW9uIiwiZGlzcGxheU9wdGlvbnMiOnsic2hvdyI6eyJyZXNvdXJjZSI6WyJjcmF3bCJdfX0sIm5vRGF0YUV4cHJlc3Npb24iOnRydWV9LHsibmFtZSI6Im9wZXJhdGlvbiIsInR5cGUiOiJvcHRpb25zIiwiZGVmYXVsdCI6InVybCIsIm9wdGlvbnMiOlt7Im5hbWUiOiJVUkwiLCJ2YWx1ZSI6InVybCIsImFjdGlvbiI6Ik1hcCIsImRlc2NyaXB0aW9uIjoiRGlzY292ZXIgYWxsIGludGVybmFsIGxpbmtzIHN0YXJ0aW5nIGZyb20gYSBiYXNlIFVSTCJ9XSwiZGlzcGxheU5hbWUiOiJPcGVyYXRpb24iLCJkaXNwbGF5T3B0aW9ucyI6eyJzaG93Ijp7InJlc291cmNlIjpbIm1hcCJdfX0sIm5vRGF0YUV4cHJlc3Npb24iOnRydWV9LHsibmFtZSI6Im9wZXJhdGlvbiIsInR5cGUiOiJvcHRpb25zIiwiZGVmYXVsdCI6ImNyZWF0ZSIsIm9wdGlvbnMiOlt7Im5hbWUiOiJDcmVhdGUgUmVzZWFyY2ggVGFzayIsInZhbHVlIjoiY3JlYXRlIiwiYWN0aW9uIjoiQ3JlYXRlIHJlc2VhcmNoIHRhc2siLCJkZXNjcmlwdGlvbiI6IkluaXRpYXRlIGEgY29tcHJlaGVuc2l2ZSByZXNlYXJjaCB0YXNrIG9uIGEgZ2l2ZW4gdG9waWMifSx7Im5hbWUiOiJHZXQgUmVzZWFyY2ggU3RhdHVzIiwidmFsdWUiOiJzdGF0dXMiLCJhY3Rpb24iOiJHZXQgcmVzZWFyY2ggc3RhdHVzIiwiZGVzY3JpcHRpb24iOiJSZXRyaWV2ZSB0aGUgc3RhdHVzIGFuZCByZXN1bHRzIG9mIGEgcmVzZWFyY2ggdGFzayJ9XSwiZGlzcGxheU5hbWUiOiJPcGVyYXRpb24iLCJkaXNwbGF5T3B0aW9ucyI6eyJzaG93Ijp7InJlc291cmNlIjpbInJlc2VhcmNoIl19fSwibm9EYXRhRXhwcmVzc2lvbiI6dHJ1ZX1dLCJkZXNjcmlwdGlvbiI6IlRhdmlseSBBUEkiLCJkaXNwbGF5TmFtZSI6IlRhdmlseSIsIm9yaWdpbmFsTmFtZSI6IkB0YXZpbHkvbjhuLW5vZGVzLXRhdmlseS50YXZpbHkiLCJ1c2FibGVBc1Rvb2wiOnRydWV9LCJjcmVhdGVkQXQiOiIyMDI1LTA1LTIyVDEwOjE2OjU0LjI2OVoiLCJ1cGRhdGVkQXQiOiIyMDI2LTA0LTA4VDA3OjA4OjE1LjUxMFoiLCJhdXRob3JHaXRodWJVcmwiOiJodHRwczovL2dpdGh1Yi5jb20vdGF2aWx5LWFpL3RhdmlseS1uOG4tbm9kZS5naXQiLCJhdXRob3JOYW1lIjoia29uc3RhbnRpbnR6dCIsImNoZWNrc3VtIjoic2hhNTEyLU5BRG9jUVJZakhSUUlQbXZMbGRBZ011NWFxdUp1Y1BQbUZDTXc0YTBvVGtWWGtVQ0xzNkZXeFpGTlROSkU2SVVKblMyaUtsRnkrNDlVYTBVY21GKzR3PT0iLCJkZXNjcmlwdGlvbiI6IlRhdmlseSBBUEkiLCJkaXNwbGF5TmFtZSI6IlRhdmlseSIsIm5hbWUiOiJAdGF2aWx5L244bi1ub2Rlcy10YXZpbHkudGF2aWx5IiwibnVtYmVyT2ZTdGFycyI6MTcsIm51bWJlck9mRG93bmxvYWRzIjo2MTI2NiwicGFja2FnZU5hbWUiOiJAdGF2aWx5L244bi1ub2Rlcy10YXZpbHkiLCJucG1WZXJzaW9uIjoiMC41LjEiLCJpc09mZmljaWFsTm9kZSI6dHJ1ZSwiaXNQdWJsaXNoZWQiOnRydWUsImNvbXBhbnlOYW1lIjoiVGF2aWx5Iiwibm9kZVZlcnNpb25zIjpbeyJjaGVja3N1bSI6InNoYTUxMi0rU0NsajNxaHpjckYvaFNWV20rWi9iSXRLWXhIZ0xwR3YwOVJkK0VpRHpTcHI1dmRnMnR1YlpvOU1OYkVjY3NiOW1GcWpaaU1hMHJtWWErMCtiWUZZdz09IiwibnBtVmVyc2lvbiI6IjAuMS4xNSJ9LHsiY2hlY2tzdW0iOiJzaGE1MTItMW9kRUpnM25sUHBPSzJlY3VkZk1keS9Nbk1WT2xIcHgwdkdTTHUrRFhobE04MllMZ1JMcTBCbytDTlFlckNmdU4rRFg2cklMT213bmE1MmhMMFlwdWc9PSIsIm5wbVZlcnNpb24iOiIwLjIuMSJ9LHsiY2hlY2tzdW0iOiJzaGE1MTItRk5kVjY2U0QzdXY2V2JHWFpQTFlOTkw3eWgwd0Nwc3JIQkx5TFVjU3lyWGsrcHppSzRjMElUWjV0UzMyRDZQWjF0RUU0V01TU0lONU5mQUJPczQ5N0E9PSIsIm5wbVZlcnNpb24iOiIwLjIuMiJ9LHsiY2hlY2tzdW0iOiJzaGE1MTItS0JXdjFScEk0RnJhWjliRjhKcWk2YjVBQzZYeUJHYndOanY3YkhXWWZhYXl4SHJ2VHVMa2NnOE9PdnJHYXJsdXFMYlB2N1kxV21RVUcwQk41VTRhRGc9PSIsIm5wbVZlcnNpb24iOiIwLjIuMyJ9LHsiY2hlY2tzdW0iOiJzaGE1MTItQ0huTWEyeFNNS01xbzA4cFViYUE5ZTNUbFIyOGlJS0FtRmgvcnJNSUErSGM4Z0xYL2UwU2VCeW4vK0hwSmJLMlkxNm5zQmdOYVc1eWJya2pUaUVDcFE9PSIsIm5wbVZlcnNpb24iOiIwLjIuNCJ9LHsiY2hlY2tzdW0iOiJzaGE1MTItZUpMUWpuRzd5Wkhha2h6V3Z6UFYwVjRqbWNXNFdlMDE5akNFNzh1VzVKR3A3WlI5djNjOU5ITXRmK2lRbGpuQ1V6Y3lmVUo1OVFNUlpLV28yTmpXZFE9PSIsIm5wbVZlcnNpb24iOiIwLjIuNSJ9LHsiY2hlY2tzdW0iOiJzaGE1MTItSGlDZ205ekpOL1RQYjBtNWV3cWVpcUxwNlNrcENFOFVreUJJbTZzbkh2M1lGVFFtOThWS0pOQndLdXBCajVEVU1TODE3aDJFOTV2R0VQSnNzREVPTXc9PSIsIm5wbVZlcnNpb24iOiIwLjIuNiJ9LHsiY2hlY2tzdW0iOiJzaGE1MTItdkprUTY1cG12NGVKTEg0YldXZ3VBYlZuUG5lVXFsbjYzeGUzZG1VcDlKd05oOFB6SVhmeVQ4aXl4eXg4Z2pPZHJTVWdZQjVmbnRlSU9sd013b0xkVFE9PSIsIm5wbVZlcnNpb24iOiIwLjQuMCJ9LHsiY2hlY2tzdW0iOiJzaGE1MTItbzBzNzJOQnRDOTY1U2t3RWJ5TG55ZGFhMGJzbFA1dC93S3FmdVNOdVBGd3J6L1FSYUdMY0syNHhLVmw4d0RrUzJXb0hFTXU1ajZNVjJmMlVxMTRrWnc9PSIsIm5wbVZlcnNpb24iOiIwLjUuMCJ9LHsiY2hlY2tzdW0iOiJzaGE1MTItTkFEb2NRUllqSFJRSVBtdkxsZEFnTXU1YXF1SnVjUFBtRkNNdzRhMG9Ua1ZYa1VDTHM2Rld4WkZOVE5KRTZJVUpuUzJpS2xGeSs0OVVhMFVjbUYrNHc9PSIsIm5wbVZlcnNpb24iOiIwLjUuMSJ9XSwiYWlOb2RlU2RrVmVyc2lvbiI6bnVsbH19XSwibWV0YSI6eyJwYWdpbmF0aW9uIjp7InBhZ2UiOjIyLCJwYWdlU2l6ZSI6MjUsInBhZ2VDb3VudCI6MjUsInRvdGFsIjo2MDl9fX0="
+		}
+	},
+	"id": "1776069601644-api-staging.n8n.io-GET-_api_community_nodes-3b5c9f29.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}
