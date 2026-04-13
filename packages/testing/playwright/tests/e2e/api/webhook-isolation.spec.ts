@@ -1,5 +1,7 @@
 import { test, expect } from '../../../fixtures/base';
 
+test.use({ capability: { env: { TEST_ISOLATION: 'webhook-isolation' } } });
+
 test.describe(
 	'Webhook Origin Isolation',
 	{

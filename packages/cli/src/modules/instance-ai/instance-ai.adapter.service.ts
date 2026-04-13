@@ -1127,6 +1127,16 @@ export class InstanceAiAdapterService {
 			return table.projectId;
 		};
 
+		// Like resolveProjectIdForTable but also returns the table name for artifact display
+		const resolveTableMeta = async (scopes: Scope[], dataTableId: string) => {
+			const allowed = await userHasScopes(user, scopes, false, { dataTableId });
+			if (!allowed) {
+				throw new Error(`Data table "${dataTableId}" not found`);
+			}
+			const table = await dataTableRepository.findOneByOrFail({ id: dataTableId });
+			return { projectId: table.projectId, tableName: table.name };
+		};
+
 		return {
 			async list(options) {
 				const projectId = await resolveProjectId(['dataTable:listProject'], options?.projectId);
@@ -1217,38 +1227,62 @@ export class InstanceAiAdapterService {
 
 			async insertRows(dataTableId, rows) {
 				assertNotReadOnly();
-				const projectId = await resolveProjectIdForTable(['dataTable:writeRow'], dataTableId);
+				const { projectId, tableName } = await resolveTableMeta(
+					['dataTable:writeRow'],
+					dataTableId,
+				);
 				const result = await dataTableService.insertRows(
 					dataTableId,
 					projectId,
 					rows as DataTableRows,
 					'count',
 				);
-				return { insertedCount: typeof result === 'number' ? result : rows.length };
+				return {
+					insertedCount: typeof result === 'number' ? result : rows.length,
+					dataTableId,
+					tableName,
+					projectId,
+				};
 			},
 
 			async updateRows(dataTableId, filter, data) {
 				assertNotReadOnly();
-				const projectId = await resolveProjectIdForTable(['dataTable:writeRow'], dataTableId);
+				const { projectId, tableName } = await resolveTableMeta(
+					['dataTable:writeRow'],
+					dataTableId,
+				);
 				const result = await dataTableService.updateRows(
 					dataTableId,
 					projectId,
 					{ filter: filter as DataTableFilter, data: data as DataTableRow },
 					true,
 				);
-				return { updatedCount: Array.isArray(result) ? result.length : 0 };
+				return {
+					updatedCount: Array.isArray(result) ? result.length : 0,
+					dataTableId,
+					tableName,
+					projectId,
+				};
 			},
 
 			async deleteRows(dataTableId, filter) {
 				assertNotReadOnly();
-				const projectId = await resolveProjectIdForTable(['dataTable:writeRow'], dataTableId);
+				const { projectId, tableName } = await resolveTableMeta(
+					['dataTable:writeRow'],
+					dataTableId,
+				);
 				const result = await dataTableService.deleteRows(
 					dataTableId,
 					projectId,
 					{ filter: filter as DataTableFilter },
 					true,
 				);
-				return { deletedCount: Array.isArray(result) ? result.length : 0 };
+				return {
+					deletedCount: Array.isArray(result) ? result.length : 0,
+					dataTableId,
+					tableName,
+					projectId,
+				};
 			},
 		};
 	}

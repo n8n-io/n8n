@@ -370,14 +370,14 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 							/>
 							<N8nButton
 								v-if="!(textInputValues[chunk.item.toolCall.confirmation.requestId] ?? '').trim()"
-								size="small"
+								size="medium"
 								variant="outline"
 								@click="handleTextSkip(chunk.item.toolCall.confirmation)"
 							>
 								{{ i18n.baseText('instanceAi.askUser.skip') }}
 							</N8nButton>
 							<N8nButton
-								size="small"
+								size="medium"
 								variant="solid"
 								:disabled="
 									!(textInputValues[chunk.item.toolCall.confirmation.requestId] ?? '').trim()
@@ -424,7 +424,7 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 						</N8nText>
 						<N8nButton
 							data-test-id="instance-ai-panel-confirm-approve-all"
-							size="small"
+							size="medium"
 							variant="subtle"
 							@click="handleApproveAll(chunk.items)"
 						>
@@ -464,7 +464,7 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 								<ConfirmationFooter>
 									<N8nButton
 										data-test-id="instance-ai-panel-confirm-deny"
-										size="small"
+										size="medium"
 										variant="outline"
 										@click="handleConfirm(item, false)"
 									>
@@ -477,7 +477,7 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 												: 'solid'
 										"
 										data-test-id="instance-ai-panel-confirm-approve"
-										size="small"
+										size="medium"
 										@click="handleConfirm(item, true)"
 									>
 										{{ i18n.baseText('instanceAi.confirmation.approve') }}
@@ -501,6 +501,7 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 .root {
 	border: var(--border);
 	border-radius: var(--radius--lg);
+	background-color: var(--color--background--light-3);
 }
 
 .items {
@@ -548,7 +549,7 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 }
 
 .textCard {
-	background-color: transparent;
+	background-color: var(--color--background--light-3);
 }
 </style>
 
