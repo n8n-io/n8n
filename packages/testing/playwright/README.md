@@ -45,7 +45,30 @@ pnpm test:chaos									# Runs the chaos tests
 # Development
 pnpm test:all --grep "workflow"           # Pattern match, can run across all test types E2E/cli-workflow/performance
 pnpm test:local --ui            # To enable UI debugging and test running mode
+
+# Isolated local run: random port, throwaway DB, runs @capability:* too
+pnpm test:local:isolated tests/e2e/credentials/crud.spec.ts
 ```
+
+### `test:local:isolated` — local run with full isolation
+
+`pnpm test:local:isolated` is a generalized version of `test:local` that
+boots n8n on a random free port, gives it a throwaway `N8N_USER_FOLDER`
+under the OS temp dir (so your `~/.n8n/database.sqlite` is never touched),
+and includes `@capability:*` / `@licensed` / `@db:reset` tests that the
+default `test:local` filters out. Multiple invocations can run in parallel
+without colliding.
+
+Pass extra n8n env via the existing `N8N_TEST_ENV` convention. See
+[`tests/e2e/instance-ai/README.md`](./tests/e2e/instance-ai/README.md) for a
+worked example (running instance-ai tests against the real Anthropic API).
+
+The two underlying env-var levers — usable independently of the script:
+
+| Env var | Effect |
+|---------|--------|
+| `PLAYWRIGHT_ALLOW_CONTAINER_ONLY=true` | Disables `grepInvert` so `@capability:*`, `@mode:*`, `@licensed`, and `@db:reset` tests are picked up by the local `e2e` project. The fixtures consumed by those tests must detect the missing container and either skip or fall back. |
+| `PLAYWRIGHT_SKIP_WEBSERVER=true` | Stops Playwright from launching its own n8n via the `webServer` config. Use when a wrapper script (like `scripts/run-local-isolated.mjs`) already manages n8n with custom env vars. |
 
 ## Test Tags
 ```typescript
