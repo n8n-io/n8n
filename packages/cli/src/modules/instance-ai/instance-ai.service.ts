@@ -1087,16 +1087,17 @@ export class InstanceAiService {
 		if (this.aiService.isProxyEnabled()) {
 			const client = await this.aiService.getClient();
 			proxyBaseUrl = client.getApiProxyBaseUrl();
-			tokenManager = new ProxyTokenManager(async () => {
+			const manager = new ProxyTokenManager(async () => {
 				return await client.getBuilderApiProxyToken({ id: user.id }, { userMessageId: nanoid() });
 			});
+			tokenManager = manager;
 			searchProxyConfig = {
 				apiUrl: proxyBaseUrl + '/brave-search',
-				getAuthHeaders: async () => await tokenManager!.getAuthHeaders(),
+				getAuthHeaders: async () => await manager.getAuthHeaders(),
 			};
 			tracingProxyConfig = {
 				apiUrl: proxyBaseUrl + '/langsmith',
-				getAuthHeaders: async () => await tokenManager!.getAuthHeaders(),
+				getAuthHeaders: async () => await manager.getAuthHeaders(),
 			};
 		}
 
