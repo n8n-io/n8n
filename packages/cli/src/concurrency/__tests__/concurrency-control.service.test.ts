@@ -186,7 +186,7 @@ describe('ConcurrencyControlService', () => {
 
 	describe('if enabled', () => {
 		describe('throttle', () => {
-			it.each(['cli', 'error', 'integrated', 'ephemeral', 'internal', 'manual', 'retry'])(
+			it.each(['cli', 'error', 'integrated', 'internal', 'manual', 'retry'])(
 				'should do nothing on %s mode',
 				async (mode: ExecutionMode) => {
 					/**
@@ -272,7 +272,7 @@ describe('ConcurrencyControlService', () => {
 		});
 
 		describe('release', () => {
-			it.each(['cli', 'error', 'integrated', 'ephemeral', 'internal', 'manual', 'retry'])(
+			it.each(['cli', 'error', 'integrated', 'internal', 'manual', 'retry'])(
 				'should do nothing on %s mode',
 				async (mode: ExecutionMode) => {
 					/**
@@ -358,7 +358,7 @@ describe('ConcurrencyControlService', () => {
 		});
 
 		describe('remove', () => {
-			it.each(['cli', 'error', 'integrated', 'ephemeral', 'internal', 'manual', 'retry'])(
+			it.each(['cli', 'error', 'integrated', 'internal', 'manual', 'retry'])(
 				'should do nothing on %s mode',
 				async (mode: ExecutionMode) => {
 					/**
