@@ -47,7 +47,10 @@ export function registerAllEvalTests() {
 				.trim();
 
 			test(`${label} / ${scenario.name} @instance-ai-workflow-eval`, async ({ evalClient }) => {
-				const cacheKey = createHash('sha256').update(testCase.prompt).digest('hex').slice(0, 12);
+				const repeatIdx = test.info().repeatEachIndex;
+				const repeatSuffix = `rep${repeatIdx}`;
+				const promptHash = createHash('sha256').update(testCase.prompt).digest('hex').slice(0, 12);
+				const cacheKey = `${promptHash}_${repeatSuffix}`;
 
 				const build = await getOrBuild(cacheKey, () =>
 					buildWorkflow({
