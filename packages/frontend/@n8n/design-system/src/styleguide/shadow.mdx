@@ -1,7 +1,5 @@
 import { Meta, Source } from '@storybook/addon-docs/blocks';
 
-import PrimitivesShadowTable from './components/PrimitivesShadowTable.vue';
-
 <Meta title="Styleguide/Shadow" />
 
 # Shadows
@@ -12,7 +10,15 @@ Shadows can be applied using the `shadow-*` primitive. Variants range from `xs` 
 
 Below is a table showcasing the different shadow variants available in the design system.
 
-<PrimitivesShadowTable />
+| Step | Value | Description |
+| --- | --- | --- |
+| outline | `var(--shadow--outline)` | Used for focus outlines and similar effects. |
+| 2xs | `var(--shadow--2xs)` | Used for very subtle shadows, such as small elements. |
+| xs | `var(--shadow--xs)` | Used for slightly subtle shadows, such as on buttons or cards. |
+| sm | `var(--shadow--sm)` | Used for standard shadows, such as on popovers or selects. |
+| md | `var(--shadow--md)` | Used for more prominent shadows, such as floating elements. |
+| lg | `var(--shadow--lg)` | Used for larger shadows. |
+| xl | `var(--shadow--xl)` | Used for elevated elements, such as dialogs. |
 
 ## Example
 

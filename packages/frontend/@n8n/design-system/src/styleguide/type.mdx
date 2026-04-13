@@ -1,7 +1,5 @@
 import { Meta, Typeset } from '@storybook/addon-docs/blocks';
 
-import PrimitivesTypeTable from './components/PrimitivesTypeTable.vue';
-
 <Meta title="Styleguide/Type" />
 
 export const typography = {
@@ -80,4 +78,14 @@ export const SampleText = 'The quick brown fox jumps over the lazy dog.';
 When rendering text inside the app, use `<Heading />` or `<Text />` and stick to the style and size set.
 Both of them share the same size and weight options.
 
-<PrimitivesTypeTable />
+| Step | Size | Letter spacing | Line height |
+| --- | --- | --- | --- |
+| 4xs | `var(--font-size--4xs)` | `var(--letter-spacing--wide)` | `var(--line-height--xs)` |
+| 3xs | `var(--font-size--3xs)` | `var(--letter-spacing--normal)` | `var(--line-height--sm)` |
+| 2xs | `var(--font-size--2xs)` | `var(--letter-spacing--normal)` | `var(--line-height--md)` |
+| xs | `var(--font-size--xs)` | `var(--letter-spacing--normal)` | `var(--line-height--md)` |
+| sm | `var(--font-size--sm)` | `var(--letter-spacing--normal)` | `var(--line-height--lg)` |
+| md | `var(--font-size--md)` | `var(--letter-spacing--normal)` | `var(--line-height--lg)` |
+| lg | `var(--font-size--lg)` | `var(--letter-spacing--tight)` | `var(--line-height--xl)` |
+| xl | `var(--font-size--xl)` | `var(--letter-spacing--tighter)` | `var(--line-height--xl)` |
+| 2xl | `var(--font-size--2xl)` | `var(--letter-spacing--tightest)` | `var(--line-height--xl)` |
