@@ -15,6 +15,15 @@ export interface CustomToolEntry {
 	descriptor: ToolDescriptor;
 }
 
+export interface AgentPublishedVersion {
+	schema: unknown | null;
+	model: string | null;
+	provider: string | null;
+	credentialId: string | null;
+	publishedAt: string;
+	publishedById: string | null;
+}
+
 export type Agent = {
 	id: string;
 	name: string;
@@ -27,4 +36,5 @@ export type Agent = {
 	createdAt: string;
 	updatedAt: string;
 	tools: Record<string, CustomToolEntry>;
+	publishedVersion: AgentPublishedVersion | null;
 };
