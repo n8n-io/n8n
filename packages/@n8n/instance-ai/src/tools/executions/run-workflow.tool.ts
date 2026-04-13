@@ -155,7 +155,7 @@ export function createRunWorkflowTool(context: InstanceAiContext) {
 				return {
 					executionId: '',
 					status: evalResult.execution.success ? ('success' as const) : ('error' as const),
-					data: evalResult.execution.nodeResults as Record<string, unknown>,
+					data: evalResult.execution.nodeResults,
 					error:
 						evalResult.execution.errors.length > 0
 							? evalResult.execution.errors.join('; ')
