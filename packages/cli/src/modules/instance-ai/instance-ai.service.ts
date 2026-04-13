@@ -1824,6 +1824,7 @@ export class InstanceAiService {
 							agent as StreamableAgent,
 							streamInput,
 							{
+								maxSteps: 60,
 								abortSignal: signal,
 								memory: {
 									resource: user.id,
@@ -1847,6 +1848,7 @@ export class InstanceAiService {
 						agent as StreamableAgent,
 						streamInput,
 						{
+							maxSteps: 60,
 							abortSignal: signal,
 							memory: {
 								resource: user.id,
