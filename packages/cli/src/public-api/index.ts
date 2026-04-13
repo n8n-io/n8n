@@ -31,8 +31,9 @@ function createLazySwaggerMiddleware(
 			const globalConfig = Container.get(GlobalConfig);
 			const n8nPath = globalConfig.path;
 
-			const { default: YAML } = await import('yamljs');
-			const swaggerDocument = YAML.load(openApiSpecPath) as JsonObject;
+			const YAML = await import('yaml');
+			const spec = await fs.readFile(openApiSpecPath, 'utf-8');
+			const swaggerDocument = YAML.parse(spec) as JsonObject;
 			// add the server depending on the config so the user can interact with the API
 			// from the Swagger UI
 			swaggerDocument.server = [

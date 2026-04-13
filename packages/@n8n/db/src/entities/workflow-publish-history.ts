@@ -22,8 +22,9 @@ export class WorkflowPublishHistory extends WithCreatedAt {
 	@Column({ type: 'varchar' })
 	workflowId: string;
 
-	@Column({ type: 'varchar' })
-	versionId: string;
+	// Null if the referenced version was already pruned
+	@Column({ type: 'varchar', nullable: true })
+	versionId: string | null;
 
 	// Note that we only track "permanent" deactivations
 	// We don't explicitly track the deactivations of a previous active version

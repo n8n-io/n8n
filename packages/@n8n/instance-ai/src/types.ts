@@ -5,6 +5,7 @@ import type { Workspace } from '@mastra/core/workspace';
 import type { Memory } from '@mastra/memory';
 import type {
 	TaskList,
+	InstanceAiAttachment,
 	InstanceAiPermissions,
 	McpTool,
 	McpToolCallRequest,
@@ -433,65 +434,6 @@ export interface InstanceAiWebResearchService {
 	): Promise<FetchedPage>;
 }
 
-// ── Filesystem data shapes ───────────────────────────────────────────────────
-
-export interface FileEntry {
-	path: string;
-	type: 'file' | 'directory';
-	sizeBytes?: number;
-}
-
-export interface FileContent {
-	path: string;
-	content: string;
-	truncated: boolean;
-	totalLines: number;
-}
-
-export interface FileSearchMatch {
-	path: string;
-	lineNumber: number;
-	line: string;
-}
-
-export interface FileSearchResult {
-	query: string;
-	matches: FileSearchMatch[];
-	truncated: boolean;
-	totalMatches: number;
-}
-
-// ── Filesystem service ──────────────────────────────────────────────────────
-
-export interface InstanceAiFilesystemService {
-	listFiles(
-		dirPath: string,
-		opts?: {
-			pattern?: string;
-			maxResults?: number;
-			type?: 'file' | 'directory' | 'all';
-			recursive?: boolean;
-		},
-	): Promise<FileEntry[]>;
-
-	readFile(
-		filePath: string,
-		opts?: { maxLines?: number; startLine?: number },
-	): Promise<FileContent>;
-
-	searchFiles(
-		dirPath: string,
-		opts: {
-			query: string;
-			filePattern?: string;
-			ignoreCase?: boolean;
-			maxResults?: number;
-		},
-	): Promise<FileSearchResult>;
-
-	getFileTree(dirPath: string, opts?: { maxDepth?: number; exclude?: string[] }): Promise<string>;
-}
-
 // ── Filesystem MCP server ────────────────────────────────────────────────────
 
 /**
@@ -563,10 +505,9 @@ export interface InstanceAiContext {
 	nodeService: InstanceAiNodeService;
 	dataTableService: InstanceAiDataTableService;
 	webResearchService?: InstanceAiWebResearchService;
-	filesystemService?: InstanceAiFilesystemService;
 	workspaceService?: InstanceAiWorkspaceService;
 	/**
-	 * Connected remote MCP server (e.g. computer-use daemon). When set, dynamic tools are created from its advertised capabilities. Takes precedence over `filesystemService`.
+	 * Connected remote MCP server (e.g. computer-use daemon). When set, dynamic tools are created from its advertised capabilities.
 	 */
 	localMcpServer?: LocalMcpServer;
 	/** Connection state of the local gateway — drives system prompt guidance. */
@@ -582,6 +523,11 @@ export interface InstanceAiContext {
 	domainAccessTracker?: DomainAccessTracker;
 	/** Current run ID — used for transient (allow_once) domain approvals. */
 	runId?: string;
+	/**
+	 * Attachments from the current user message. Runtime-only — not persisted.
+	 * Used to register `parse-file` and supply data to the parser.
+	 */
+	currentUserAttachments?: InstanceAiAttachment[];
 }
 
 // ── Task storage ─────────────────────────────────────────────────────────────

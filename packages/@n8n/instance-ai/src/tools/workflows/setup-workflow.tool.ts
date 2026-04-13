@@ -8,13 +8,7 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { setupSuspendSchema, setupResumeSchema } from './setup-workflow.schema';
-import {
-	analyzeWorkflow,
-	applyNodeCredentials,
-	applyNodeParameters,
-	applyNodeChanges,
-	buildCompletedReport,
-} from './setup-workflow.service';
+import { analyzeWorkflow, applyNodeChanges, buildCompletedReport } from './setup-workflow.service';
 import type { InstanceAiContext } from '../../types';
 
 export const setupWorkflowInputSchema = z.object({
@@ -127,23 +121,13 @@ export function createSetupWorkflowTool(context: InstanceAiContext) {
 			if (resumeData.action === 'test-trigger' && resumeData.testTriggerNode) {
 				preTestSnapshot ??= await context.workflowService.getAsWorkflowJSON(input.workflowId);
 
-				const applyFailures: Array<{ nodeName: string; error: string }> = [];
-				if (resumeData.credentials) {
-					const credResult = await applyNodeCredentials(
-						context,
-						input.workflowId,
-						resumeData.credentials,
-					);
-					applyFailures.push(...credResult.failed);
-				}
-				if (resumeData.nodeParameters) {
-					const paramResult = await applyNodeParameters(
-						context,
-						input.workflowId,
-						resumeData.nodeParameters,
-					);
-					applyFailures.push(...paramResult.failed);
-				}
+				const preTestApply = await applyNodeChanges(
+					context,
+					input.workflowId,
+					resumeData.credentials,
+					resumeData.nodeParameters,
+				);
+				const applyFailures = preTestApply.failed;
 
 				if (applyFailures.length > 0) {
 					return {

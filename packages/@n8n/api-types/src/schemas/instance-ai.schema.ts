@@ -545,27 +545,23 @@ export type InstanceAiFilesystemResponse = z.infer<typeof instanceAiFilesystemRe
 // ---------------------------------------------------------------------------
 
 const instanceAiAttachmentSchema = z.object({
-	data: z.string(),
-	mimeType: z.string(),
-	fileName: z.string(),
+	data: z.string().max(700_000), // ~512 KB decoded + base64 overhead
+	mimeType: z.string().max(100),
+	fileName: z.string().max(300),
 });
 
 export type InstanceAiAttachment = z.infer<typeof instanceAiAttachmentSchema>;
 
 export class InstanceAiSendMessageRequest extends Z.class({
-	message: z.string().min(1),
+	message: z.string().default(''),
 	researchMode: z.boolean().optional(),
-	attachments: z.array(instanceAiAttachmentSchema).optional(),
+	attachments: z.array(instanceAiAttachmentSchema).max(10).optional(),
 	timeZone: TimeZoneSchema,
 	pushRef: z.string().optional(),
 }) {}
 
 export class InstanceAiCorrectTaskRequest extends Z.class({
 	message: z.string().min(1),
-}) {}
-
-export class InstanceAiUpdateMemoryRequest extends Z.class({
-	content: z.string(),
 }) {}
 
 export class InstanceAiEnsureThreadRequest extends Z.class({
@@ -773,11 +769,6 @@ export interface InstanceAiThreadMessagesResponse {
 	threadId: string;
 }
 
-export interface InstanceAiThreadContextResponse {
-	threadId: string;
-	workingMemory: string | null;
-}
-
 // ---------------------------------------------------------------------------
 // Rich messages response (session-restored view with agent trees)
 // ---------------------------------------------------------------------------
@@ -911,6 +902,7 @@ export interface InstanceAiAdminSettingsResponse {
 	n8nSandboxCredentialId: string | null;
 	searchCredentialId: string | null;
 	localGatewayDisabled: boolean;
+	optinModalDismissed: boolean;
 }
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
@@ -930,6 +922,7 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	n8nSandboxCredentialId: z.string().nullable().optional(),
 	searchCredentialId: z.string().nullable().optional(),
 	localGatewayDisabled: z.boolean().optional(),
+	optinModalDismissed: z.boolean().optional(),
 }) {}
 
 // ---------------------------------------------------------------------------

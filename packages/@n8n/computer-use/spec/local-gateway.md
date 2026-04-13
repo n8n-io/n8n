@@ -122,35 +122,57 @@ session modes are supported:
 
 ## Connection Flow
 
-### 1. Capability Preview & Configuration
+### 1. Silent startup
 
-Before the Local Gateway initiates a connection to the n8n instance, the user
-is shown a list of capabilities that the local machine supports. Capabilities
-that are not available on the machine (e.g. computer control on a headless
-server) are indicated as unavailable.
+The app starts silently. If no settings file exists, one is created
+automatically using the **Recommended** template (`filesystemDir` left empty).
+No prompts are shown.
 
-The user can enable or disable each capability individually. This gives the
-user explicit control over what the AI is permitted to do on their machine
-for this connection.
+### 2. Connect command
 
-The user must confirm the capability selection before the connection proceeds.
+The user starts the daemon with their n8n instance URL:
 
-### 2. Establishing a Connection
+```
+npx @n8n/computer-use <instance-url>
+```
 
-After the user confirms, the Local Gateway connects to the n8n instance and
-registers the selected capabilities. The AI Agent is immediately aware of
-which tools are available and can use them in subsequent conversations.
+The start command is displayed inside n8n AI. Only connections from the
+specified URL are accepted; requests from any other origin are silently refused.
 
-### 3. Active Connection
+### 3. Confirmation prompt
+
+The app shows a single confirmation prompt displaying:
+
+- The URL being connected to
+- The current permission table (one row per tool group)
+- The working directory
+
+The user is offered three choices: **Yes**, **Edit permissions / directory**,
+or **No**.
+
+### 4. Optional edit
+
+If the user chooses **Edit**, they can adjust per-group permission modes and/or
+the working directory for this session. These edits are **session-local** — they
+are not written back to the settings file.
+
+### 5. Session established
+
+The session is established with the confirmed settings. The AI is immediately
+aware of which tools are available and can use them in subsequent conversations.
+
+### 6. Active connection
 
 While connected:
 
 - The user can see that their Local Gateway is active.
 - The AI can invoke any of the registered capabilities as needed during a
   conversation.
+- Session rules (`allowForSession`) accumulate in memory for the duration of
+  the connection.
 - The connection persists across page reloads.
 
-### 4. Disconnection
+### 7. Disconnection
 
 The user can explicitly disconnect the Local Gateway at any time. After
 disconnection, the AI no longer has access to any local capabilities. If the
@@ -279,53 +301,23 @@ only when the session ends.
 
 ---
 
-## Startup Configuration
+## Default Configuration
 
-### Permission Setup
+On first run the settings file is created silently at
+`~/.n8n-gateway/settings.json` using the **Recommended** template
+(`filesystemDir` left empty). No user interaction is required.
 
-Before the gateway connects, the user must configure the permission mode for
-each tool group. The gateway will not start unless at least one tool group is
-enabled (`Ask` or `Allow`).
+On subsequent runs the stored permissions and directory are loaded as
+**defaults** for the next connection confirmation prompt. The user can override
+them at connect time for the current session — these overrides are
+**not** written back to the settings file.
 
-**CLI** — An interactive prompt lists each tool group with its current mode.
-If a valid configuration already exists the user can confirm it with `y` or
-edit individual modes before proceeding.
-
-**Native application** — The user sees an equivalent configuration UI.
-
-### Filesystem Root Directory
-
-When any filesystem tool group (Filesystem Access or Filesystem Write Access)
-is enabled, the user must specify a root directory. The AI can only access
-paths within this directory — all operations on paths outside are rejected.
-This applies to both read and write operations.
-
-### Configuration Templates
-
-To simplify first-time setup, three templates are available. When no
-configuration file exists the user selects a template before editing
-individual modes.
-
-| Template | Filesystem Access | Filesystem Write Access | Shell Execution | Computer Control | Browser Automation |
-|---|---|---|---|---|---|
-| **Recommended** (default) | Allow | Ask | Deny | Deny | Ask |
-| **Yolo** | Allow | Allow | Allow | Allow | Allow |
-| **Custom** | User-defined | User-defined | User-defined | User-defined | User-defined |
-
-Regardless of template, the filesystem root directory must always be provided
-when any filesystem capability is enabled.
-
-### Configuration File
-
-The gateway configuration is stored in a file managed by the Local Gateway
-application. Whether the configuration persists across restarts depends on
-whether the process has OS-level write access to that file — this is
-independent of the permission model for tools. If write access is unavailable
-the configuration is active only for the lifetime of the current process.
+The settings file is only updated when the user chooses **Always allow** or
+**Always deny** for a resource-level rule during an active session. Tool group
+permission modes and the working directory are not persisted at connect time.
 
 The configuration file stores:
 
-- Permission mode per tool group
-- Filesystem root directory (required when any filesystem capability is
-  enabled)
+- Permission mode per tool group (used as defaults for the next connect prompt)
+- Filesystem root directory (used as default for the next connect prompt)
 - Permanently stored resource-level rules (`always allow` / `always deny`)

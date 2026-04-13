@@ -30,7 +30,7 @@ export class TokenExchangeModule implements ModuleInterface {
 		const { TrustedKeyService } = await import('./services/trusted-key.service');
 		await Container.get(TrustedKeyService).initialize();
 
-		await import('./token-exchange.controller');
+		await import('./controllers/token-exchange.controller');
 		await import('./controllers/embed-auth.controller');
 
 		const { JtiCleanupService } = await import('./services/jti-cleanup.service');
