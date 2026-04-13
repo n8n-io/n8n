@@ -341,12 +341,12 @@ describe('Resource Access Control Matrix Tests', () => {
 				expect(response.body.data).toBeDefined();
 			});
 
-			test('POST /credentials should return 400', async () => {
+			test('POST /credentials should return 403', async () => {
 				const credentialPayload = randomCredentialPayload();
 				await testUserAgent
 					.post('/credentials')
 					.send({ ...credentialPayload, projectId: teamProject.id })
-					.expect(400);
+					.expect(403);
 			});
 
 			test('PATCH /credentials/:id should return 403', async () => {

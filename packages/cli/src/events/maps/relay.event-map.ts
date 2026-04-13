@@ -126,6 +126,8 @@ export type RelayEventMap = {
 		executionId: string;
 		data: IWorkflowExecutionDataProcess /* main process */ | IWorkflowBase /* worker */;
 		mode: WorkflowExecuteMode;
+		projectId?: string;
+		projectName?: string;
 	};
 
 	'workflow-post-execute': {
@@ -133,6 +135,8 @@ export type RelayEventMap = {
 		userId?: string;
 		workflow: IWorkflowBase;
 		runData?: IRun;
+		projectId?: string;
+		projectName?: string;
 	};
 
 	'workflow-sharing-updated': {

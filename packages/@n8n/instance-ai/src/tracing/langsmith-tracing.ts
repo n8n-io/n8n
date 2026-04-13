@@ -743,10 +743,13 @@ function createTraceContext(
 	traceKind: InstanceAiTraceContext['traceKind'],
 	rootRun: InstanceAiTraceRun,
 	actorRun: InstanceAiTraceRun,
-	proxyHeaders?: Record<string, string>,
+	getProxyHeaders?: () => Promise<Record<string, string>>,
 ): InstanceAiTraceContext {
-	const withProxy = async <T>(fn: () => Promise<T>): Promise<T> =>
-		proxyHeaders ? await proxyHeaderStore.run(proxyHeaders, fn) : await fn();
+	const withProxy = async <T>(fn: () => Promise<T>): Promise<T> => {
+		if (!getProxyHeaders) return await fn();
+		const headers = await getProxyHeaders();
+		return await proxyHeaderStore.run(headers, fn);
+	};
 
 	const startChildRun = async (
 		parentRun: InstanceAiTraceRun,
@@ -1048,12 +1051,13 @@ export async function createInstanceAiTraceContext(
 			'message_turn',
 			messageRun,
 			orchestratorRun,
-			options.proxyConfig?.headers,
+			options.proxyConfig?.getAuthHeaders,
 		);
 	};
 
 	if (options.proxyConfig) {
-		return await proxyHeaderStore.run(options.proxyConfig.headers, createTraceRuns);
+		const headers = await options.proxyConfig.getAuthHeaders();
+		return await proxyHeaderStore.run(headers, createTraceRuns);
 	}
 	return await createTraceRuns();
 }
@@ -1077,12 +1081,13 @@ export async function continueInstanceAiTraceContext(
 			'message_turn',
 			existingContext.rootRun,
 			orchestratorRun,
-			options.proxyConfig?.headers,
+			options.proxyConfig?.getAuthHeaders,
 		);
 	};
 
 	if (options.proxyConfig) {
-		return await proxyHeaderStore.run(options.proxyConfig.headers, createContinuation);
+		const headers = await options.proxyConfig.getAuthHeaders();
+		return await proxyHeaderStore.run(headers, createContinuation);
 	}
 	return await createContinuation();
 }
@@ -1128,12 +1133,13 @@ export async function createDetachedSubAgentTraceContext(
 			'detached_subagent',
 			rootRun,
 			rootRun,
-			options.proxyConfig?.headers,
+			options.proxyConfig?.getAuthHeaders,
 		);
 	};
 
 	if (options.proxyConfig) {
-		return await proxyHeaderStore.run(options.proxyConfig.headers, createDetachedRuns);
+		const headers = await options.proxyConfig.getAuthHeaders();
+		return await proxyHeaderStore.run(headers, createDetachedRuns);
 	}
 	return await createDetachedRuns();
 }

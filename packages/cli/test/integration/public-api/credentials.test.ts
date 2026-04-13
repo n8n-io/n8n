@@ -108,6 +108,79 @@ describe('POST /credentials', () => {
 		}
 	});
 
+	test('should create credential in a team project when projectId is provided', async () => {
+		const teamProject = await createTeamProject('project', member);
+		const payload = {
+			name: 'test credential in project',
+			type: 'githubApi',
+			data: {
+				accessToken: 'abcdefghijklmnopqrstuvwxyz',
+				user: 'test',
+				server: 'testServer',
+			},
+		};
+
+		const response = await authMemberAgent.post('/credentials').send({
+			...payload,
+			projectId: teamProject.id,
+		});
+
+		expect(response.statusCode).toBe(200);
+
+		const { id, name } = response.body;
+		expect(name).toBe(payload.name);
+
+		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
+			relations: { credentials: true },
+			where: {
+				credentialsId: id,
+				projectId: teamProject.id,
+			},
+		});
+
+		expect(sharedCredential.role).toEqual('credential:owner');
+		expect(sharedCredential.credentials.name).toBe(payload.name);
+	});
+
+	test('should return 404 when projectId does not exist', async () => {
+		const payload = {
+			name: 'test credential',
+			type: 'githubApi',
+			data: {
+				accessToken: 'abcdefghijklmnopqrstuvwxyz',
+				user: 'test',
+				server: 'testServer',
+			},
+		};
+
+		const response = await authMemberAgent.post('/credentials').send({
+			...payload,
+			projectId: 'non-existing-id',
+		});
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 403 when user has no access to the project', async () => {
+		const teamProject = await createTeamProject('project', owner);
+		const payload = {
+			name: 'test credential',
+			type: 'githubApi',
+			data: {
+				accessToken: 'abcdefghijklmnopqrstuvwxyz',
+				user: 'test',
+				server: 'testServer',
+			},
+		};
+
+		const response = await authMemberAgent.post('/credentials').send({
+			...payload,
+			projectId: teamProject.id,
+		});
+
+		expect(response.statusCode).toBe(403);
+	});
+
 	test('should create credential with isResolvable set to true', async () => {
 		const payload = {
 			name: 'test credential',
@@ -175,6 +248,25 @@ describe('POST /credentials', () => {
 
 		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
 		expect(credential.isResolvable).toBe(false);
+	});
+
+	test('should return 400 for external secret reference without projectId when permissions are missing', async () => {
+		const payload = {
+			name: 'test credential',
+			type: 'githubApi',
+			data: {
+				accessToken: '={{ $secrets.myApiKey }}',
+				user: 'test',
+				server: 'testServer',
+			},
+		};
+
+		const response = await authMemberAgent.post('/credentials').send(payload);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe(
+			'Lacking permissions to reference external secrets in credentials',
+		);
 	});
 });
 
