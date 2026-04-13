@@ -69,9 +69,9 @@
 	--color--danger--tint-4: var(--color-danger-tint-2, var(--color--red-50));
 
 	// Text
-	--color--text--shade-1: var(--color-text-dark, var(--color--neutral-850));
-	--color--text: var(--color-text-base, var(--color--neutral-600));
-	--color--text--tint-1: var(--color-text-light, var(--color--neutral-400));
+	--color--text--shade-1: var(--color-text-dark, var(--color--neutral-900));
+	--color--text: var(--color-text-base, var(--color--neutral-700));
+	--color--text--tint-1: var(--color-text-light, var(--color--neutral-500));
 	--color--text--tint-2: var(--color-text-lighter, var(--color--neutral-200));
 	--color--text--tint-3: var(--color-text-xlight, var(--color--neutral-white));
 	--color--text--danger: var(--color-text-danger, var(--color--red-600));
@@ -118,9 +118,9 @@
 @mixin theme-dark-legacy {
 	--color--danger: var(--color--red-400);
 
-	--color--text--shade-1: var(--color--neutral-125);
-	--color--text: var(--color--neutral-250);
-	--color--text--tint-1: var(--color--neutral-300);
+	--color--text--shade-1: var(--color--neutral-white);
+	--color--text: var(--color--neutral-200);
+	--color--text--tint-1: var(--color--neutral-400);
 	--color--text--tint-2: var(--color--neutral-600);
 	--color--text--tint-3: var(--color--neutral-800);
 	--color--text--danger: var(--color--red-400);
@@ -138,28 +138,9 @@
 	--color--background--light-2: var(--color--neutral-950);
 	--color--background--light-3: var(--color--neutral-900);
 
-	--shadow: 0 2px 4px var(--color--black-alpha-300), 0 0 6px var(--color--black-alpha-200);
-	--shadow--dark: 0 2px 4px var(--color--black-alpha-300), 0 0 6px var(--color--black-alpha-300);
-	--shadow--light: 0 2px 12px 0 var(--color--black-alpha-300);
-
-	--shadow--xs: 0 1px 2px var(--color--black-alpha-100), 0 0 0 1px var(--color--black-alpha-200);
-	--shadow--sm:
-		0 1px 2px var(--color--black-alpha-100), 0 4px 4px -2px var(--color--black-alpha-100),
-		0 0 0 1px var(--color--black-alpha-200);
-	--shadow--md:
-		0 4px 6px -1px var(--color--black-alpha-100), 0 2px 4px -2px var(--color--black-alpha-100),
-		0 0 0 1px var(--color--black-alpha-200);
-	--shadow--lg:
-		0 10px 15px -3px var(--color--black-alpha-100), 0 4px 6px -4px var(--color--black-alpha-100),
-		0 0 0 1px var(--color--black-alpha-200);
-	--shadow--xl:
-		0 20px 25px -5px var(--color--black-alpha-100), 0 8px 10px -6px var(--color--black-alpha-100),
-		0 0 0 1px var(--color--black-alpha-200);
-
-	--shadow--xs--inset: var(--shadow--xs), inset 0 0 0 1px var(--color--black-alpha-100);
-	--shadow--sm--inset: var(--shadow--sm), inset 0 0 0 1px var(--color--black-alpha-100);
-	--shadow--md--inset: var(--shadow--md), inset 0 0 0 1px var(--color--black-alpha-100);
-	--shadow--lg--inset: var(--shadow--lg), inset 0 0 0 1px var(--color--black-alpha-100);
-	--shadow--xl--inset: var(--shadow--xl), inset 0 0 0 1px var(--color--black-alpha-100);
+	--border: var(
+		--border-base,
+		var(--border-width) var(--border-style) var(--color--white-alpha-100)
+	);
 }
 /* stylelint-enable @n8n/css-var-naming */

@@ -299,8 +299,8 @@
 
 	/* box-shadow: var(--shadow--xs), inset var(--shadow--outline); */
 	--shadow--outline: 0 0 0 1px var(--shadow-color);
-	--shadow--2xs: 0 1px 2px -1px var(--shadow-color);
-	--shadow--xs: 0 1px 3px 0 var(--shadow-color), 0 1px 2px -1px var(--shadow-color);
+	--shadow--2xs: 0 1px var(--shadow-color);
+	--shadow--xs: 0 1px 3px -1px var(--shadow-color);
 	--shadow--sm: 0 4px 6px -1px var(--shadow-color), 0 2px 4px -2px var(--shadow-color);
 	--shadow--md: 0 10px 15px -3px var(--shadow-color), 0 4px 6px -4px var(--shadow-color);
 	--shadow--xl: 0 20px 25px -5px var(--shadow-color), 0 8px 10px -6px var(--shadow-color);
