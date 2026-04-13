@@ -7,12 +7,6 @@
  */
 
 import {
-	EXPRESSION_REFERENCE,
-	ADDITIONAL_FUNCTIONS,
-	WORKFLOW_RULES,
-	WORKFLOW_SDK_PATTERNS,
-} from '@n8n/workflow-sdk/prompts/sdk-reference';
-import {
 	IF_NODE_GUIDE,
 	SWITCH_NODE_GUIDE,
 	SET_NODE_GUIDE,
@@ -21,6 +15,12 @@ import {
 	EMBEDDING_NODES_GUIDE,
 	RESOURCE_LOCATOR_GUIDE,
 } from '@n8n/workflow-sdk/prompts/node-guidance/parameter-guides';
+import {
+	EXPRESSION_REFERENCE,
+	ADDITIONAL_FUNCTIONS,
+	WORKFLOW_RULES,
+	WORKFLOW_SDK_PATTERNS,
+} from '@n8n/workflow-sdk/prompts/sdk-reference';
 
 // ── Shared SDK reference sections ────────────────────────────────────────────
 
