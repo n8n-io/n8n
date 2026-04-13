@@ -350,6 +350,7 @@ const eventRelay = useEventRelay({
 	workflowExecutions: executionTracking.workflowExecutions,
 	activeWorkflowId: preview.activeWorkflowId,
 	getBufferedEvents: executionTracking.getBufferedEvents,
+	clearEventLog: executionTracking.clearEventLog,
 	relay: (event) => workflowPreviewRef.value?.relayPushEvent(event),
 });
 

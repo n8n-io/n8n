@@ -20,19 +20,16 @@ import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
-import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
-import { createAgent } from '@/features/agents/composables/useAgentApi';
+import { NEW_AGENT_VIEW } from '@/features/agents/constants';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 
 import { N8nButton, N8nHeading, N8nText, N8nTooltip } from '@n8n/design-system';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useRootStore } from '@n8n/stores/useRootStore';
 
 const route = useRoute();
 const router = useRouter();
-const rootStore = useRootStore();
 const i18n = useI18n();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
@@ -361,12 +358,8 @@ const actions: Record<ActionTypes, (projectId: string) => void> = {
 		uiStore.openModalWithData({ name: VARIABLE_MODAL_KEY, data: { mode: 'new' } });
 		telemetry.track('User clicked header add variable button');
 	},
-	[ACTION_TYPES.AGENT]: async (projectId: string) => {
-		const agent = await createAgent(rootStore.restApiContext, projectId, 'New Agent');
-		void router.push({
-			name: AGENT_BUILDER_VIEW,
-			params: { projectId, agentId: agent.id },
-		});
+	[ACTION_TYPES.AGENT]: () => {
+		void router.push({ name: NEW_AGENT_VIEW });
 	},
 } as const;
 

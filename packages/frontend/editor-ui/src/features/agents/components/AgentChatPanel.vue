@@ -1,20 +1,33 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue';
-import { N8nIcon, N8nMarkdown, N8nPromptInput } from '@n8n/design-system';
+import { ref, reactive, computed, onMounted, nextTick, useTemplateRef } from 'vue';
+import { N8nIcon, N8nIconButton, N8nInput, N8nText } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useI18n } from '@n8n/i18n';
 import { getBuilderMessages, clearBuilderMessages } from '../composables/useAgentApi';
+import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
+import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
 
-const props = defineProps<{
-	visible: boolean;
-	projectId: string;
-	agentId: string;
-}>();
+const props = withDefaults(
+	defineProps<{
+		visible?: boolean;
+		projectId: string;
+		agentId: string;
+		mode?: 'panel' | 'inline';
+		initialMessage?: string;
+	}>(),
+	{
+		visible: true,
+		mode: 'panel',
+	},
+);
 
 const emit = defineEmits<{
-	close: [];
+	codeUpdated: [];
+	codeDelta: [delta: string];
 	configUpdated: [];
 }>();
 
+const locale = useI18n();
 const rootStore = useRootStore();
 
 interface ChatMessage {
@@ -23,18 +36,38 @@ interface ChatMessage {
 	content: string;
 	thinking?: string;
 	toolCalls?: Array<{ tool: string; input?: unknown; output?: unknown }>;
+	status?: 'streaming' | 'success' | 'error';
 }
 
-const activeTab = ref<'test' | 'builder'>('test');
-const testMessages = ref<ChatMessage[]>([]);
+const activeTab = ref<'test' | 'builder'>(props.mode === 'inline' ? 'builder' : 'test');
+const messages = ref<ChatMessage[]>([]);
 const builderMessages = ref<ChatMessage[]>([]);
 const inputText = ref('');
 const isStreaming = ref(false);
+const abortController = ref<AbortController | null>(null);
 const builderHistoryLoaded = ref(false);
+const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
+const inputRef = useTemplateRef<InstanceType<typeof N8nInput>>('inputRef');
 
-const messages = computed(() =>
-	activeTab.value === 'test' ? testMessages.value : builderMessages.value,
+const currentMessages = computed(() =>
+	activeTab.value === 'builder' ? builderMessages.value : messages.value,
 );
+
+const messagingState = computed<'idle' | 'waitingFirstChunk' | 'receiving'>(() => {
+	if (!isStreaming.value) return 'idle';
+	const msgs = currentMessages.value;
+	const lastMsg = msgs[msgs.length - 1];
+	if (!lastMsg || lastMsg.role === 'user') return 'waitingFirstChunk';
+	return 'receiving';
+});
+
+function scrollToBottom() {
+	void nextTick(() => {
+		if (scrollRef.value) {
+			scrollRef.value.scrollTop = scrollRef.value.scrollHeight;
+		}
+	});
+}
 
 /** Convert persisted agent messages into the frontend ChatMessage format. */
 function convertDbMessages(dbMessages: unknown[]): ChatMessage[] {
@@ -52,7 +85,6 @@ function convertDbMessages(dbMessages: unknown[]): ChatMessage[] {
 			}>;
 		};
 		if (!msg.role || !Array.isArray(msg.content)) continue;
-		// Only show user and assistant messages
 		if (msg.role !== 'user' && msg.role !== 'assistant') continue;
 
 		let text = '';
@@ -120,40 +152,64 @@ function onSubmit() {
 	void sendMessage();
 }
 
+function onKeydown(e: KeyboardEvent) {
+	if (e.key === 'Enter' && !e.shiftKey) {
+		e.preventDefault();
+		onSubmit();
+	}
+}
+
 async function sendMessage() {
 	const text = inputText.value.trim();
 	if (!text || isStreaming.value) return;
 
-	const targetMessages = activeTab.value === 'test' ? testMessages : builderMessages;
+	const targetMessages = activeTab.value === 'builder' ? builderMessages : messages;
 	targetMessages.value.push({
 		id: crypto.randomUUID(),
 		role: 'user',
 		content: text,
+		status: 'success',
 	});
 	inputText.value = '';
+	scrollToBottom();
 
-	if (activeTab.value === 'builder') {
-		await streamFromEndpoint('build', text, builderMessages);
-	} else {
-		await streamFromEndpoint('chat', text, testMessages);
-	}
+	const endpoint = activeTab.value === 'builder' ? 'build' : 'chat';
+	await streamFromEndpoint(endpoint, text);
 }
 
-async function streamFromEndpoint(
-	endpoint: 'build' | 'chat',
-	message: string,
-	targetMessages: typeof testMessages,
-) {
+function sendMessageFromOutside(message: string) {
+	inputText.value = message;
+	void sendMessage();
+}
+
+function stopGenerating() {
+	abortController.value?.abort();
+}
+
+defineExpose({ sendMessageFromOutside });
+
+onMounted(() => {
+	if (props.initialMessage) {
+		sendMessageFromOutside(props.initialMessage);
+	}
+});
+
+async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string) {
 	isStreaming.value = true;
 	let builderMutated = false;
+	const targetMessages = endpoint === 'build' ? builderMessages : messages;
 	const assistantMsg = reactive<ChatMessage>({
 		id: crypto.randomUUID(),
 		role: 'assistant',
 		content: '',
 		thinking: '',
 		toolCalls: [],
+		status: 'streaming',
 	});
 	let msgAdded = false;
+
+	const controller = new AbortController();
+	abortController.value = controller;
 
 	try {
 		const { baseUrl } = rootStore.restApiContext;
@@ -167,10 +223,12 @@ async function streamFromEndpoint(
 			},
 			credentials: 'include',
 			body: JSON.stringify({ message }),
+			signal: controller.signal,
 		});
 
 		if (!response.ok || !response.body) {
 			assistantMsg.content = `Error: ${response.statusText || 'Failed to reach agent'}`;
+			assistantMsg.status = 'error';
 			targetMessages.value.push(assistantMsg);
 			return;
 		}
@@ -204,17 +262,27 @@ async function streamFromEndpoint(
 					if (!msgAdded) {
 						targetMessages.value.push(assistantMsg);
 						msgAdded = true;
+						scrollToBottom();
 					}
 				};
 
 				if (typeof data.text === 'string') {
 					ensureMsg();
 					assistantMsg.content += data.text;
+					scrollToBottom();
 				}
 
 				if (typeof data.thinking === 'string') {
 					ensureMsg();
 					assistantMsg.thinking = (assistantMsg.thinking ?? '') + data.thinking;
+				}
+
+				if (typeof data.codeDelta === 'string') {
+					emit('codeDelta', data.codeDelta);
+				}
+
+				if (typeof data.code === 'string') {
+					emit('codeUpdated');
 				}
 
 				if (data.configUpdated !== undefined || data.toolUpdated !== undefined) {
@@ -248,16 +316,26 @@ async function streamFromEndpoint(
 				if (typeof data.error === 'string') {
 					ensureMsg();
 					assistantMsg.content += `\n\nError: ${data.error}`;
+					assistantMsg.status = 'error';
 				}
 			}
 		}
+
+		assistantMsg.status = 'success';
 	} catch (e) {
-		if (!msgAdded) {
-			targetMessages.value.push(assistantMsg);
+		if (e instanceof DOMException && e.name === 'AbortError') {
+			assistantMsg.status = 'success';
+		} else {
+			if (!msgAdded) {
+				targetMessages.value.push(assistantMsg);
+			}
+			assistantMsg.content = `Error: ${e instanceof Error ? e.message : 'Unknown error'}`;
+			assistantMsg.status = 'error';
 		}
-		assistantMsg.content = `Error: ${e instanceof Error ? e.message : 'Unknown error'}`;
 	} finally {
+		abortController.value = null;
 		isStreaming.value = false;
+		scrollToBottom();
 		// Emit a final refresh after the builder stream completes to ensure the
 		// latest config is shown even if no individual tool events fired it.
 		if (endpoint === 'build' && builderMutated) {
@@ -268,8 +346,9 @@ async function streamFromEndpoint(
 </script>
 
 <template>
-	<aside v-if="visible" :class="$style.panel">
-		<div :class="$style.header">
+	<aside v-if="visible" :class="[mode === 'inline' ? $style.inlinePanel : $style.panel]">
+		<!-- Tabs header (only shown in panel mode) -->
+		<div v-if="mode === 'panel'" :class="$style.header">
 			<div :class="$style.tabs">
 				<button
 					:class="[$style.tabBtn, activeTab === 'test' && $style.tabBtnActive]"
@@ -296,95 +375,155 @@ async function streamFromEndpoint(
 				>
 					<N8nIcon icon="trash-2" :size="14" />
 				</button>
-				<button :class="$style.closeBtn" data-testid="chat-close-button" @click="emit('close')">
-					<N8nIcon icon="x" :size="16" />
-				</button>
 			</div>
 		</div>
 
-		<div :class="$style.messages">
-			<div v-if="messages.length === 0 && !isStreaming" :class="$style.emptyState">
+		<!-- Messages -->
+		<div ref="scrollRef" :class="$style.messages">
+			<div v-if="currentMessages.length === 0 && !isStreaming" :class="$style.emptyState">
 				<N8nIcon icon="message-square" :size="32" />
-				<p :class="$style.emptyTitle">
-					{{ activeTab === 'test' ? 'Test your agent' : 'Build with AI' }}
-				</p>
-				<p :class="$style.emptySubtitle">
-					{{
-						activeTab === 'test'
-							? 'Send a message to test your agent'
-							: 'Describe what you want and the builder will write the code'
-					}}
-				</p>
+				<N8nText tag="p" bold>Test your agent</N8nText>
+				<N8nText size="small" color="text-light"> Send a message to start a conversation </N8nText>
 			</div>
-			<div v-else :class="$style.messageList">
+			<template v-else>
 				<div
-					v-for="msg in messages"
+					v-for="msg in currentMessages"
 					:key="msg.id"
-					:class="[
-						$style.message,
-						msg.role === 'user' ? $style.messageUser : $style.messageAssistant,
-					]"
+					:class="[$style.message, msg.role === 'user' ? $style.user : $style.assistant]"
 				>
-					<!-- Thinking block -->
-					<details v-if="msg.thinking" :class="$style.thinkingBlock">
-						<summary :class="$style.thinkingSummary">Thinking...</summary>
-						<pre :class="$style.thinkingContent">{{ msg.thinking }}</pre>
-					</details>
-
-					<!-- Tool calls -->
-					<div v-if="msg.toolCalls?.length" :class="$style.toolCalls">
-						<div v-for="(tc, i) in msg.toolCalls" :key="i" :class="$style.toolCall">
-							<span :class="$style.toolName">{{ tc.tool }}</span>
-							<span v-if="tc.output !== undefined" :class="$style.toolStatus">✓</span>
-							<span v-else :class="$style.toolStatusPending">⋯</span>
-						</div>
+					<!-- Avatar -->
+					<div :class="$style.avatar">
+						<N8nIcon v-if="msg.role === 'user'" icon="user" width="20" height="20" />
+						<N8nIcon v-else icon="robot" width="20" height="20" />
 					</div>
 
-					<!-- Message content -->
-					<N8nMarkdown
-						v-if="msg.role === 'assistant' && msg.content"
-						:content="msg.content"
-						:class="$style.markdownContent"
-					/>
-					<div v-else-if="msg.role === 'user'" :class="$style.userContent">{{ msg.content }}</div>
+					<!-- Content -->
+					<div :class="$style.content">
+						<!-- Thinking -->
+						<details v-if="msg.thinking" :class="$style.thinkingBlock">
+							<summary :class="$style.thinkingSummary">
+								<N8nIcon icon="brain" :size="12" />
+								Thinking...
+							</summary>
+							<div :class="$style.thinkingContent">{{ msg.thinking }}</div>
+						</details>
+
+						<!-- Tool calls -->
+						<div v-if="msg.toolCalls?.length" :class="$style.toolCalls">
+							<div v-for="(tc, i) in msg.toolCalls" :key="i" :class="$style.toolCall">
+								<N8nIcon icon="wrench" :size="12" />
+								<span :class="$style.toolName">{{ tc.tool }}</span>
+								<N8nIcon
+									v-if="tc.output !== undefined"
+									icon="check"
+									:size="12"
+									:class="$style.toolDone"
+								/>
+								<ChatTypingIndicator v-else />
+							</div>
+						</div>
+
+						<!-- User message -->
+						<div v-if="msg.role === 'user'" :class="[$style.chatMessage, $style.chatMessageUser]">
+							{{ msg.content }}
+						</div>
+
+						<!-- Assistant message -->
+						<div
+							v-else-if="msg.content"
+							:class="[$style.chatMessage, { [$style.chatMessageError]: msg.status === 'error' }]"
+						>
+							<div :class="$style.markdownContent">
+								<ChatMarkdownChunk
+									:source="{ type: 'text', content: msg.content }"
+									@open-artifact="() => {}"
+								/>
+							</div>
+						</div>
+
+						<!-- Typing indicator for assistant still streaming with no content -->
+						<ChatTypingIndicator
+							v-if="
+								msg.role === 'assistant' &&
+								msg.status === 'streaming' &&
+								!msg.content &&
+								!msg.toolCalls?.length
+							"
+							:class="$style.typingIndicator"
+						/>
+					</div>
 				</div>
 
-				<!-- Loading indicator -->
-				<div
-					v-if="
-						isStreaming && messages.length > 0 && messages[messages.length - 1]?.role === 'user'
-					"
-					:class="$style.loadingIndicator"
-				>
-					<span :class="$style.dot" />
-					<span :class="[$style.dot, $style.dot2]" />
-					<span :class="[$style.dot, $style.dot3]" />
+				<!-- Waiting for first chunk indicator -->
+				<div v-if="messagingState === 'waitingFirstChunk'" :class="$style.message">
+					<div :class="$style.avatar">
+						<N8nIcon icon="robot" width="20" height="20" />
+					</div>
+					<div :class="$style.content">
+						<ChatTypingIndicator :class="$style.typingIndicator" />
+					</div>
 				</div>
-			</div>
+			</template>
 		</div>
 
+		<!-- Input -->
 		<div :class="$style.inputArea">
-			<N8nPromptInput
-				v-model="inputText"
-				:placeholder="activeTab === 'builder' ? 'Ask the builder...' : 'Type a message...'"
-				:streaming="isStreaming"
-				:disabled="isStreaming"
-				refocus-after-send
-				data-testid="chat-input"
-				@submit="onSubmit"
-			/>
+			<form :class="$style.prompt" @submit.prevent="onSubmit">
+				<N8nInput
+					ref="inputRef"
+					:model-value="inputText"
+					type="textarea"
+					placeholder="Type a message..."
+					autocomplete="off"
+					:autosize="{ minRows: 1, maxRows: 6 }"
+					autofocus
+					:disabled="isStreaming"
+					data-testid="chat-input"
+					@update:model-value="inputText = $event"
+					@keydown="onKeydown"
+				/>
+				<div :class="$style.promptFooter">
+					<div />
+					<div :class="$style.promptActions">
+						<N8nIconButton
+							v-if="messagingState !== 'receiving'"
+							type="submit"
+							:disabled="isStreaming || !inputText.trim()"
+							:title="locale.baseText('chatHub.chat.prompt.button.send')"
+							:loading="messagingState === 'waitingFirstChunk'"
+							icon="arrow-up"
+							icon-size="large"
+							@click.stop
+						/>
+						<N8nIconButton
+							v-else
+							native-type="button"
+							:title="locale.baseText('chatHub.chat.prompt.button.stopGenerating')"
+							icon="square"
+							icon-size="large"
+							@click.stop="stopGenerating"
+						/>
+					</div>
+				</div>
+			</form>
 		</div>
 	</aside>
 </template>
 
-<style module>
+<style lang="scss" module>
 .panel {
 	width: 400px;
 	min-width: 400px;
-	background-color: var(--color--foreground--tint-2);
 	border-left: var(--border-width) var(--border-style) var(--color--foreground);
 	display: flex;
 	flex-direction: column;
+}
+
+.inlinePanel {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
 }
 
 .header {
@@ -448,27 +587,14 @@ async function streamFromEndpoint(
 	color: var(--color--danger);
 }
 
-.closeBtn {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	border: none;
-	background: none;
-	cursor: pointer;
-	color: var(--color--text--tint-2);
-	padding: var(--spacing--4xs);
-	border-radius: var(--radius);
-}
-
-.closeBtn:hover {
-	background-color: var(--color--foreground--tint-1);
-	color: var(--color--text);
-}
-
+/* Messages area — matches ChatHub layout */
 .messages {
 	flex: 1;
 	overflow-y: auto;
-	padding: var(--spacing--sm);
+	padding: var(--spacing--lg) var(--spacing--xl);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--lg);
 }
 
 .emptyState {
@@ -481,107 +607,71 @@ async function streamFromEndpoint(
 	color: var(--color--text--tint-2);
 }
 
-.emptyTitle {
-	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--bold);
+/* Message layout — mirrors ChatMessage.vue styles */
+.message {
+	position: relative;
+	padding-left: 40px;
+}
+
+.avatar {
+	position: absolute;
+	left: 0;
+	top: 0;
+	display: grid;
+	place-items: center;
+	width: 28px;
+	height: 28px;
+	border-radius: 50%;
+	background: var(--color--background);
 	color: var(--color--text--tint-1);
-	margin: 0;
 }
 
-.emptySubtitle {
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-2);
-	margin: 0;
-	text-align: center;
-}
-
-.messageList {
+.content {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
+	align-items: stretch;
 }
 
-.message {
-	padding: var(--spacing--2xs) var(--spacing--xs);
-	border-radius: var(--radius--lg);
-	font-size: var(--font-size--sm);
-	font-family: var(--font-family);
+.chatMessage {
+	overflow-wrap: break-word;
+	font-size: var(--font-size--md);
 	line-height: var(--line-height--xl);
-	max-width: 90%;
-	word-break: break-word;
 }
 
-.messageUser {
-	align-self: flex-end;
-	background-color: var(--color--primary);
-	color: var(--color--foreground--tint-2);
-}
-
-.messageAssistant {
-	align-self: flex-start;
-	background-color: var(--color--foreground--tint-1);
-	color: var(--color--text);
+.chatMessageUser {
+	padding: var(--spacing--2xs) var(--spacing--sm);
+	border-radius: var(--radius--xl);
+	background-color: var(--color--background);
+	white-space: pre-wrap;
+	width: fit-content;
 	max-width: 100%;
 }
 
-.userContent {
-	font-size: var(--font-size--sm);
-	line-height: var(--line-height--xl);
-	font-family: var(--font-family);
-	white-space: pre-wrap;
+.chatMessageError {
+	padding: var(--spacing--xs) var(--spacing--sm);
+	border-radius: var(--radius--lg);
+	background-color: var(--color--danger--tint-4);
+	border: var(--border-width) var(--border-style) var(--color--danger--tint-3);
+	color: var(--color--danger);
 }
 
 .markdownContent {
-	font-size: var(--font-size--sm);
+	color: var(--color--text--shade-1);
+	font-size: var(--font-size--md);
 	line-height: var(--line-height--xl);
-	font-family: var(--font-family);
+
+	> *:last-child > *:last-child {
+		margin-bottom: 0;
+	}
+
+	> *:first-child > *:first-child {
+		margin-top: 0;
+	}
 }
 
-.markdownContent :global(p) {
-	margin: 0 0 var(--spacing--3xs);
-}
-
-.markdownContent :global(p:last-child) {
-	margin-bottom: 0;
-}
-
-.markdownContent :global(pre) {
-	background-color: var(--color--foreground);
-	padding: var(--spacing--3xs) var(--spacing--2xs);
-	border-radius: var(--radius);
-	overflow-x: auto;
-	font-size: var(--font-size--2xs);
-	margin: var(--spacing--3xs) 0;
-}
-
-.markdownContent :global(code) {
-	font-size: var(--font-size--2xs);
-	background-color: var(--color--foreground);
-	padding: 1px var(--spacing--5xs);
-	border-radius: var(--radius--sm);
-}
-
-.markdownContent :global(pre code) {
-	background: none;
-	padding: 0;
-}
-
-.markdownContent :global(h1),
-.markdownContent :global(h2),
-.markdownContent :global(h3) {
-	font-size: var(--font-size--xs);
-	font-weight: var(--font-weight--bold);
-	margin: var(--spacing--3xs) 0;
-}
-
-.markdownContent :global(ul),
-.markdownContent :global(ol) {
-	padding-left: var(--spacing--sm);
-	margin: var(--spacing--3xs) 0;
-}
-
+/* Thinking block */
 .thinkingBlock {
-	margin-bottom: var(--spacing--4xs);
+	margin-bottom: var(--spacing--2xs);
 	font-size: var(--font-size--2xs);
 }
 
@@ -589,6 +679,9 @@ async function streamFromEndpoint(
 	cursor: pointer;
 	color: var(--color--text--tint-2);
 	font-style: italic;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 }
 
 .thinkingContent {
@@ -601,74 +694,96 @@ async function streamFromEndpoint(
 	overflow-y: auto;
 }
 
+/* Tool calls */
 .toolCalls {
 	display: flex;
-	flex-wrap: wrap;
+	flex-direction: column;
 	gap: var(--spacing--4xs);
-	margin-bottom: var(--spacing--4xs);
+	margin-bottom: var(--spacing--2xs);
 }
 
 .toolCall {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--spacing--5xs);
-	font-size: var(--font-size--3xs);
-	background-color: var(--color--foreground);
-	padding: var(--spacing--5xs) var(--spacing--3xs);
-	border-radius: var(--radius--sm);
+	gap: var(--spacing--4xs);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	background-color: var(--color--foreground--tint-2);
+	border-radius: var(--radius);
+	width: fit-content;
 }
 
 .toolName {
-	color: var(--color--text--tint-1);
 	font-family: monospace;
 }
 
-.toolStatus {
+.toolDone {
 	color: var(--color--success);
 }
 
-.toolStatusPending {
-	color: var(--color--text--tint-2);
+.typingIndicator {
+	margin-top: var(--spacing--xs);
 }
 
-.loadingIndicator {
-	display: flex;
-	gap: var(--spacing--4xs);
-	padding: var(--spacing--2xs) 0;
-	align-items: center;
-}
-
-.dot {
-	width: var(--spacing--3xs);
-	height: var(--spacing--3xs);
-	border-radius: 50%;
-	background-color: var(--color--text--tint-2);
-	animation: dotPulse 1.4s infinite ease-in-out both;
-}
-
-.dot2 {
-	animation-delay: 0.16s;
-}
-
-.dot3 {
-	animation-delay: 0.32s;
-}
-
-@keyframes dotPulse {
-	0%,
-	80%,
-	100% {
-		transform: scale(0.6);
-		opacity: 0.4;
-	}
-	40% {
-		transform: scale(1);
-		opacity: 1;
-	}
-}
-
+/* Input area — matches ChatPromptFull layout */
 .inputArea {
-	padding: var(--spacing--2xs) var(--spacing--sm);
+	padding: var(--spacing--sm);
 	border-top: var(--border-width) var(--border-style) var(--color--foreground);
+}
+
+.prompt {
+	width: 100%;
+	position: relative;
+	display: flex;
+	flex-direction: column;
+
+	& textarea {
+		font-size: var(--font-size--md);
+		line-height: 1.5em;
+		padding: var(--spacing--sm);
+		padding-bottom: var(--spacing--3xl);
+		color: var(--color--text--shade-1);
+		box-shadow: 0 10px 24px 0 var(--color--black-alpha-100);
+		border-radius: var(--radius--xl);
+
+		&::placeholder {
+			color: var(--color--text--tint-1);
+		}
+	}
+
+	:global(.n8n-input__wrapper) {
+		--input--radius: var(--radius--xl);
+	}
+}
+
+.promptFooter {
+	position: absolute;
+	bottom: 1px;
+	left: 1px;
+	width: calc(100% - 2px);
+	z-index: 10;
+	background: var(--color--background--light-2);
+	border-radius: var(--radius--xl);
+	padding: var(--spacing--sm);
+	display: flex;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+	pointer-events: none;
+
+	& > * {
+		pointer-events: auto;
+	}
+}
+
+.promptActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+
+	& button path {
+		stroke-width: 2.5;
+	}
 }
 </style>

@@ -1,6 +1,6 @@
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
-import type { AgentSchema, AgentResource, AgentJsonConfig } from '../types';
+import type { AgentResource, AgentJsonConfig } from '../types';
 
 export const listAgents = async (
 	context: IRestApiContext,
@@ -108,33 +108,6 @@ export const listAllAgents = async (
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2?all=true`,
-	);
-};
-
-export const getAgentSchema = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-): Promise<AgentSchema> => {
-	return await makeRestApiRequest<AgentSchema>(
-		context,
-		'GET',
-		`/projects/${projectId}/agents/v2/${agentId}/schema`,
-	);
-};
-
-export const patchAgentSchema = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-	schema: AgentSchema,
-	updatedAt: string,
-): Promise<{ code: string; schema: AgentSchema; updatedAt: string }> => {
-	return await makeRestApiRequest<{ code: string; schema: AgentSchema; updatedAt: string }>(
-		context,
-		'PATCH',
-		`/projects/${projectId}/agents/v2/${agentId}/schema`,
-		{ schema, updatedAt },
 	);
 };
 
