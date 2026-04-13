@@ -124,6 +124,9 @@ export class AgentExecutionService {
 		if (params.hitlStatus) {
 			metadata.push({ key: 'hitlStatus', value: params.hitlStatus });
 		}
+		if (record.workingMemory) {
+			metadata.push({ key: 'workingMemory', value: record.workingMemory });
+		}
 
 		await this.executionMetadataRepository.insert(metadata.map((m) => ({ ...m, executionId })));
 

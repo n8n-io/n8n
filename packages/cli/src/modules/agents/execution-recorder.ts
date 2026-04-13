@@ -26,6 +26,7 @@ export interface MessageRecord {
 	startTime: number;
 	duration: number;
 	error: string | null;
+	workingMemory: string | null;
 }
 
 export class ExecutionRecorder {
@@ -44,6 +45,8 @@ export class ExecutionRecorder {
 	private _suspended = false;
 
 	private error: string | null = null;
+
+	private workingMemory: string | null = null;
 
 	private readonly startTime = Date.now();
 
@@ -72,6 +75,9 @@ export class ExecutionRecorder {
 			case 'tool-call-suspended':
 				this._suspended = true;
 				break;
+			case 'working-memory-update':
+				this.workingMemory = chunk.content;
+				break;
 			case 'error': {
 				const errMsg = chunk.error instanceof Error ? chunk.error.message : String(chunk.error);
 				this.error = errMsg;
@@ -97,6 +103,7 @@ export class ExecutionRecorder {
 			startTime: this.startTime,
 			duration: Date.now() - this.startTime,
 			error: this.error,
+			workingMemory: this.workingMemory,
 		};
 	}
 

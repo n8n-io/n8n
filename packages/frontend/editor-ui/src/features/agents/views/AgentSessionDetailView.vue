@@ -4,6 +4,7 @@ import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import { AGENT_SESSIONS_LIST_VIEW } from '@/features/agents/constants';
 import type { ThreadExecution } from '@/features/agents/composables/useAgentThreadsApi';
 import type { ExecutionThread } from '@/features/agents/composables/useAgentThreadsApi';
+import RichInteractionCard from '@/features/agents/components/RichInteractionCard.vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
@@ -69,6 +70,21 @@ const selectedToolCalls = computed(() => {
 	} catch {
 		return [];
 	}
+});
+
+const BUILT_IN_TOOLS = new Set(['rich_interaction']);
+
+const builtInToolCalls = computed(() =>
+	selectedToolCalls.value.filter((tc) => BUILT_IN_TOOLS.has(tc.name)),
+);
+
+const userToolCalls = computed(() =>
+	selectedToolCalls.value.filter((tc) => !BUILT_IN_TOOLS.has(tc.name)),
+);
+
+const selectedWorkingMemory = computed(() => {
+	if (!selectedExecution.value) return null;
+	return getMetadata(selectedExecution.value, 'workingMemory') ?? null;
 });
 
 function truncate(text: string, max: number): string {
@@ -210,12 +226,46 @@ function goBack() {
 						</div>
 					</div>
 
-					<!-- Tool calls -->
-					<div v-if="selectedToolCalls.length > 0" :class="$style.detailSection">
+					<!-- Working Memory -->
+					<div v-if="selectedWorkingMemory" :class="$style.detailSection">
 						<div :class="$style.sectionLabel">
-							{{ i18n.baseText('agentSessions.detail.toolCalls') }} ({{ selectedToolCalls.length }})
+							<N8nIcon icon="brain" :class="$style.sectionIcon" />
+							{{ i18n.baseText('agentSessions.detail.workingMemory') }}
 						</div>
-						<div v-for="(tc, idx) in selectedToolCalls" :key="idx" :class="$style.toolCallCard">
+						<div :class="$style.workingMemoryContent">
+							{{ selectedWorkingMemory }}
+						</div>
+					</div>
+
+					<!-- Built-in tool calls (e.g. rich_interaction) -->
+					<div v-if="builtInToolCalls.length > 0" :class="$style.detailSection">
+						<div :class="$style.sectionLabel">
+							<N8nIcon icon="wand-sparkles" :class="$style.sectionIcon" />
+							{{ i18n.baseText('agentSessions.detail.builtInTools') }}
+							({{ builtInToolCalls.length }})
+						</div>
+						<div
+							v-for="(tc, idx) in builtInToolCalls"
+							:key="'bi-' + idx"
+							:class="$style.toolCallCard"
+						>
+							<div :class="$style.toolCallName">{{ tc.name }}</div>
+							<RichInteractionCard
+								v-if="tc.name === 'rich_interaction'"
+								:input="tc.input"
+								:output="tc.output"
+							/>
+						</div>
+					</div>
+
+					<!-- User tool calls -->
+					<div v-if="userToolCalls.length > 0" :class="$style.detailSection">
+						<div :class="$style.sectionLabel">
+							<N8nIcon icon="wrench" :class="$style.sectionIcon" />
+							{{ i18n.baseText('agentSessions.detail.userTools') }}
+							({{ userToolCalls.length }})
+						</div>
+						<div v-for="(tc, idx) in userToolCalls" :key="'ut-' + idx" :class="$style.toolCallCard">
 							<div :class="$style.toolCallName">{{ tc.name }}</div>
 							<details v-if="tc.input !== undefined" :class="$style.toolCallDetails">
 								<summary :class="$style.toolCallLabel">
@@ -392,6 +442,22 @@ function goBack() {
 	letter-spacing: 0.5px;
 	color: var(--color--text--tint-2);
 	margin-bottom: var(--spacing--3xs);
+	display: flex;
+	align-items: center;
+}
+
+.sectionIcon {
+	margin-right: var(--spacing--4xs);
+}
+
+.workingMemoryContent {
+	background-color: var(--color--foreground--tint-1);
+	padding: var(--spacing--2xs);
+	border-radius: var(--radius);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text);
+	white-space: pre-wrap;
+	border-left: 2px solid var(--color--success);
 }
 
 .tokenCards {

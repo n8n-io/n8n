@@ -163,6 +163,7 @@ export class WorkingMemoryStreamFilter {
 				this.pendingText = this.pendingText.slice(closeIdx + CLOSE_TAG.length);
 				this.state = 'normal';
 				const content = this.buffer.replace(/^\n/, '').replace(/\n$/, '');
+				await this.writer.write({ type: 'working-memory-update', content });
 				this.persist(content).catch((error: unknown) => {
 					logger.warn('Failed to persist working memory', { error });
 				});
