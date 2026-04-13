@@ -631,7 +631,8 @@ export function parseWorkflowCodeToBuilder(code: string): WorkflowBuilder {
 
 	try {
 		// Use AST interpreter instead of new Function() for security
-		return interpretSDKCode(executableCode, sdkFunctions) as WorkflowBuilder;
+		const result = interpretSDKCode(executableCode, sdkFunctions);
+		return asWorkflowBuilder(result);
 	} catch (error) {
 		if (error instanceof SecurityError) {
 			throw new SyntaxError(
@@ -650,4 +651,34 @@ export function parseWorkflowCodeToBuilder(code: string): WorkflowBuilder {
 		}
 		throw error;
 	}
+}
+
+/**
+ * Coerce an interpreter result into a WorkflowBuilder.
+ *
+ * - If the result is already a WorkflowBuilder (produced by the SDK `workflow()` function), return it directly.
+ * - If the result is a plain object that looks like WorkflowJSON (has a `nodes` array), convert it via `workflow.fromJSON()`.
+ * - Otherwise, throw with a descriptive error.
+ */
+function asWorkflowBuilder(result: unknown): WorkflowBuilder {
+	if (
+		typeof result === 'object' &&
+		result !== null &&
+		typeof (result as WorkflowBuilder).regenerateNodeIds === 'function'
+	) {
+		return result as WorkflowBuilder;
+	}
+
+	if (
+		typeof result === 'object' &&
+		result !== null &&
+		Array.isArray((result as Record<string, unknown>).nodes)
+	) {
+		return workflowFn.fromJSON(result as WorkflowJSON);
+	}
+
+	throw new SyntaxError(
+		'Code must export a workflow built with the workflow() SDK function, ' +
+			'or a valid workflow JSON object with a "nodes" array.',
+	);
 }
