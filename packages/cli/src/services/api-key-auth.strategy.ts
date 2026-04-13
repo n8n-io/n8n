@@ -21,6 +21,16 @@ export class ApiKeyAuthStrategy implements AuthStrategy {
 
 		if (typeof providedApiKey !== 'string' || !providedApiKey) return null;
 
+		// Abstain from non-API-key JWTs so other strategies (e.g. ScopedJwtStrategy) can handle them.
+		// Legacy keys (PREFIX_LEGACY_API_KEY prefix) are never JWTs — skip the decode for them.
+		// A null decode means the string is not a structurally valid JWT — reject authentication.
+		if (!providedApiKey.startsWith(PREFIX_LEGACY_API_KEY)) {
+			const decoded = this.jwtService.decode<{ iss?: string }>(providedApiKey);
+			// Note: JwtService.decode casts its return as T, but jwt.decode() can still return null at runtime.
+			if (decoded === null) return false;
+			if (decoded.iss !== API_KEY_ISSUER) return null;
+		}
+
 		const apiKeyRecord = await this.apiKeyRepository.findOne({
 			where: { apiKey: providedApiKey, audience: API_KEY_AUDIENCE },
 			relations: { user: { role: true } },
@@ -43,7 +53,11 @@ export class ApiKeyAuthStrategy implements AuthStrategy {
 		}
 
 		req.user = apiKeyRecord.user;
-		req.tokenGrant = { scopes: apiKeyRecord.scopes ?? [] };
+		req.tokenGrant = {
+			scopes: apiKeyRecord.user.role.scopes.map((s) => s.slug),
+			subject: apiKeyRecord.user,
+			apiKeyScopes: apiKeyRecord.scopes ?? [],
+		};
 
 		return true;
 	}

@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 import { NodeSearchEngine } from './nodes/node-search-engine';
+import { AI_CONNECTION_TYPES } from './nodes/node-search-engine.types';
 import { categoryList, suggestedNodesData } from './nodes/suggested-nodes-data';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
@@ -26,11 +27,9 @@ const searchAction = z.object({
 		.optional()
 		.describe('Search query to match against node names, display names, aliases, and descriptions'),
 	connectionType: z
-		.string()
+		.enum(AI_CONNECTION_TYPES)
 		.optional()
-		.describe(
-			'AI connection type to search for sub-nodes (e.g., "ai_languageModel", "ai_memory", "ai_tool", "ai_embedding", "ai_vectorStore")',
-		),
+		.describe('Filter results by AI sub-node connection type.'),
 	limit: z
 		.number()
 		.optional()

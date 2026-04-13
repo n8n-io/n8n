@@ -206,6 +206,7 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 		workflowExecutions: executionTracking.workflowExecutions,
 		activeWorkflowId: preview.activeWorkflowId,
 		getBufferedEvents: executionTracking.getBufferedEvents,
+		clearEventLog: executionTracking.clearEventLog,
 		relay: (event) => relayedEvents.push(event),
 	});
 

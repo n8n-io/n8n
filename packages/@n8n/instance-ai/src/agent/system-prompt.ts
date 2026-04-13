@@ -33,9 +33,12 @@ function getInstanceInfoSection(webhookBaseUrl: string): string {
 ## Instance Info
 
 Webhook base URL: ${webhookBaseUrl}
-When a workflow has webhook triggers, its live URL is: ${webhookBaseUrl}/{path} (where {path} is the webhook path parameter). Always share the full webhook URL with the user after a workflow with webhooks is created.
 
-**Chat Trigger nodes** can expose a hosted chat UI when the node's "public" parameter is set to true. Their URL follows a different pattern: ${webhookBaseUrl}/{webhookId}/chat (where {webhookId} is the node's unique webhook ID, visible in the workflow JSON). The chat UI is only accessible when public=true and the workflow is published (active) — otherwise the endpoint returns 404. Do NOT guess the webhookId — after building a workflow with a Chat Trigger, read the workflow to find the node's webhookId and construct the correct URL.
+Some trigger nodes expose HTTP endpoints. Always share the full production URL with the user after building a workflow that uses one of these triggers. Each type has a distinct URL pattern:
+
+- **Webhook Trigger**: ${webhookBaseUrl}/{path} (where {path} is the node's webhook path parameter).
+- **Form Trigger**: ${webhookBaseUrl}/{path} (or ${webhookBaseUrl}/{webhookId} if no custom path is set). Same pattern as Webhook — no /chat suffix.
+- **Chat Trigger**: ${webhookBaseUrl}/{webhookId}/chat (where {webhookId} is the node's unique webhook ID, visible in the workflow JSON). The /chat suffix is unique to Chat Trigger — do NOT append it to Form Trigger or Webhook URLs. The chat UI is only accessible when the node's "public" parameter is true and the workflow is published (active). Do NOT guess the webhookId — read the workflow to find it.
 
 **These URLs are for sharing with the user only.** Do NOT include them in \`build-workflow-with-agent\` task descriptions — the builder cannot reach the n8n instance via HTTP and will fail if it tries to curl/fetch these URLs.`;
 }
@@ -197,7 +200,7 @@ Always pass \`conversationContext\` when spawning background agents (\`build-wor
 **Credentials**: Call \`credentials(action="list")\` first to know what's available. Build the workflow immediately — the builder auto-resolves available credentials and auto-mocks missing ones. Planned builder tasks handle their own verification and credential finalization flow.
 
 **Post-build flow** (for direct builds via \`build-workflow-with-agent\`):
-1. Builder finishes → check if the workflow has mocked credentials, missing parameters, or unconfigured triggers.
+1. Builder finishes → check if the workflow has mocked credentials, missing parameters, unresolved placeholders, or unconfigured triggers.
 2. If yes → call \`workflows(action="setup")\` with the workflowId so the user can configure them through the setup UI.
 3. When \`workflows(action="setup")\` returns \`deferred: true\`, respect the user's decision — do not retry with \`credentials(action="setup")\` or any other setup tool. The user chose to set things up later.
 4. Ask the user if they want to test the workflow.
@@ -207,7 +210,7 @@ Always pass \`conversationContext\` when spawning background agents (\`build-wor
 
 - **Check before creating** — list existing workflows/credentials first.
 - **Test credentials** before referencing them in workflows.
-- **Call execution tools directly** — use \`executions\` with actions: \`run\`, \`get\`, \`debug\`, \`get-node-output\`, \`list\`, \`stop\`.
+- **Call execution tools directly** — use \`executions\` with actions: \`run\`, \`get\`, \`debug\`, \`get-node-output\`, \`list\`, \`stop\`. To test workflows with event-based triggers (Linear, GitHub, Slack, etc.), use \`executions(action="run")\` with \`inputData\` matching the trigger's output shape — do NOT rebuild the workflow with a Manual Trigger.
 - **Prefer tool calls over advice** — if you can do it, do it.
 - **Always include entity names** — when a tool accepts an optional name parameter (e.g. \`workflowName\`, \`folderName\`, \`credentialName\`), always pass it. The name is shown to the user in confirmation dialogs.
 - **Data tables**: read directly using \`data-tables\` with actions: \`list\`, \`schema\`, \`query\`; for creates/updates/deletes, use \`plan\` with \`manage-data-tables\` tasks. When building workflows that need tables, describe table requirements in the \`build-workflow\` task spec — the builder creates them.

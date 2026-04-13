@@ -66,6 +66,7 @@ import {
 } from '@n8n/instance-ai';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
+import type * as Undici from 'undici';
 
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { AiService } from '@/services/ai.service';
@@ -82,7 +83,9 @@ import type { TypeORMWorkflowsStorage } from './storage/typeorm-workflows-storag
 import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
 import { InstanceAiCompactionService } from './compaction.service';
+import { ProxyTokenManager } from './proxy-token-manager';
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
+import { TraceReplayState } from './trace-replay-state';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
@@ -94,6 +97,27 @@ function createInertAbortSignal(): AbortSignal {
 
 const ORCHESTRATOR_AGENT_ID = 'agent-001';
 const MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD = 5;
+
+/**
+ * When HTTP_PROXY / HTTPS_PROXY is set (e.g. in e2e tests with MockServer),
+ * return a fetch function that routes requests through the proxy. Node.js's
+ * globalThis.fetch does not respect these env vars, so AI SDK providers would
+ * bypass the proxy without this.
+ */
+function getProxyFetch(): typeof globalThis.fetch | undefined {
+	const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
+	if (!proxyUrl) return undefined;
+
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	const { ProxyAgent } = require('undici') as typeof Undici;
+	const dispatcher = new ProxyAgent(proxyUrl);
+	return (async (url: string | URL | Request, init?: RequestInit) =>
+		await globalThis.fetch(url, {
+			...init,
+			// @ts-expect-error dispatcher is a valid undici option for Node.js fetch
+			dispatcher,
+		})) as typeof globalThis.fetch;
+}
 
 interface MessageTraceFinalization {
 	status: 'completed' | 'cancelled' | 'error';
@@ -124,7 +148,12 @@ export class InstanceAiService {
 	/** Trace contexts keyed by the n8n run ID that started the orchestration turn. */
 	private readonly traceContextsByRunId = new Map<
 		string,
-		{ threadId: string; messageGroupId?: string; tracing: InstanceAiTraceContext }
+		{
+			threadId: string;
+			messageGroupId?: string;
+			tracing: InstanceAiTraceContext;
+			traceSlug?: string;
+		}
 	>();
 	/** Active sandboxes keyed by thread ID — persisted across messages within a conversation. */
 	private readonly sandboxes = new Map<
@@ -152,6 +181,9 @@ export class InstanceAiService {
 
 	/** In-memory guard to prevent double credit counting within the same process. */
 	private readonly creditedThreads = new Set<string>();
+
+	/** Test-only trace replay state (slugs, events, shared TraceIndex/IdRemapper). */
+	private readonly traceReplay = new TraceReplayState();
 
 	/** Default IANA timezone for the instance (from GENERIC_TIMEZONE env var). */
 	private readonly defaultTimeZone: string;
@@ -372,34 +404,59 @@ export class InstanceAiService {
 	 * `createOpenAICompatible`, which sends requests to `/chat/completions`.
 	 * The proxy may forward to Vertex AI, which only supports the native Anthropic
 	 * Messages API (`/v1/messages`), not the OpenAI-compatible endpoint.
+	 *
+	 * Auth headers are injected via a custom `fetch` wrapper so that each
+	 * request gets a fresh-or-cached token from the ProxyTokenManager,
+	 * avoiding 401s on long-running agent turns.
 	 */
-	private async resolveModel(user: User): Promise<ModelConfig> {
-		if (this.aiService.isProxyEnabled()) {
-			const { client, headers } = await this.getProxyAuth(user);
-			const modelName = await this.settingsService.resolveModelName(user);
-			const { createAnthropic } = await import('@ai-sdk/anthropic');
-			const provider = createAnthropic({
-				baseURL: client.getApiProxyBaseUrl() + '/anthropic/v1',
-				apiKey: 'proxy-managed',
-				headers,
-			});
-			return provider(modelName);
-		}
-		return await this.settingsService.resolveModelConfig(user);
+	private async resolveProxyModel(
+		user: User,
+		proxyBaseUrl: string,
+		tokenManager: ProxyTokenManager,
+	): Promise<ModelConfig> {
+		const modelName = await this.settingsService.resolveModelName(user);
+		const { createAnthropic } = await import('@ai-sdk/anthropic');
+		const provider = createAnthropic({
+			baseURL: proxyBaseUrl + '/anthropic/v1',
+			apiKey: 'proxy-managed',
+			fetch: async (input, init) => {
+				const headers = new Headers(init?.headers);
+				const auth = await tokenManager.getAuthHeaders();
+				for (const [k, v] of Object.entries(auth)) {
+					headers.set(k, v);
+				}
+				return await globalThis.fetch(input, { ...init, headers });
+			},
+		});
+		return provider(modelName);
 	}
 
-	/** Build search proxy config when proxy is enabled. */
-	private async resolveSearchProxyConfig(user: User): Promise<ServiceProxyConfig | undefined> {
-		if (!this.aiService.isProxyEnabled()) return undefined;
-		const { client, headers } = await this.getProxyAuth(user);
-		return { apiUrl: client.getApiProxyBaseUrl() + '/brave-search', headers };
-	}
+	/**
+	 * When HTTP_PROXY is set (e.g. e2e tests with MockServer), build the model
+	 * with a proxy-aware fetch so the AI SDK routes through the proxy. Mastra's
+	 * ModelRouter doesn't pass `fetch` to providers, so we must do it here.
+	 * Returns undefined if no HTTP_PROXY is set or the model isn't anthropic.
+	 */
+	private async resolveHttpProxyModel(user: User): Promise<ModelConfig | undefined> {
+		const proxyFetch = getProxyFetch();
+		if (!proxyFetch) return undefined;
 
-	/** Build tracing proxy config when proxy is enabled. */
-	private async resolveTracingProxyConfig(user: User): Promise<ServiceProxyConfig | undefined> {
-		if (!this.aiService.isProxyEnabled()) return undefined;
-		const { client, headers } = await this.getProxyAuth(user);
-		return { apiUrl: client.getApiProxyBaseUrl() + '/langsmith', headers };
+		const config = await this.settingsService.resolveModelConfig(user);
+		const modelId = typeof config === 'string' ? config : 'id' in config ? config.id : null;
+		if (!modelId) return undefined;
+
+		const [provider, ...rest] = modelId.split('/');
+		const modelName = rest.join('/');
+		const apiKey = typeof config === 'object' && 'apiKey' in config ? config.apiKey : undefined;
+		const baseURL = typeof config === 'object' && 'url' in config ? config.url : undefined;
+		if (provider !== 'anthropic') return undefined;
+
+		const { createAnthropic } = await import('@ai-sdk/anthropic');
+		return createAnthropic({
+			apiKey,
+			baseURL: baseURL || undefined,
+			fetch: proxyFetch,
+		})(modelName);
 	}
 
 	/**
@@ -483,11 +540,20 @@ export class InstanceAiService {
 		tracing: InstanceAiTraceContext,
 		messageGroupId?: string,
 	): void {
-		this.traceContextsByRunId.set(runId, { threadId, messageGroupId, tracing });
+		this.traceContextsByRunId.set(runId, {
+			threadId,
+			messageGroupId,
+			tracing,
+			traceSlug: this.traceReplay.getActiveSlug(),
+		});
 	}
 
 	private getTraceContext(runId: string): InstanceAiTraceContext | undefined {
 		return this.traceContextsByRunId.get(runId)?.tracing;
+	}
+
+	private async configureTraceReplayMode(tracing: InstanceAiTraceContext): Promise<void> {
+		await this.traceReplay.configureReplayMode(tracing);
 	}
 
 	private async finalizeMessageTraceRoot(
@@ -558,6 +624,14 @@ export class InstanceAiService {
 		for (const [runId, entry] of this.traceContextsByRunId) {
 			if (entry.threadId === threadId) {
 				releaseTraceClient(entry.tracing.rootRun.traceId);
+				// Preserve recorded trace events in the slug-scoped store
+				// so the test fixture teardown can still retrieve them via GET.
+				if (entry.tracing.traceWriter && entry.traceSlug) {
+					this.traceReplay.preserveWriterEvents(
+						entry.traceSlug,
+						entry.tracing.traceWriter.getEvents(),
+					);
+				}
 				this.traceContextsByRunId.delete(runId);
 			}
 		}
@@ -809,7 +883,34 @@ export class InstanceAiService {
 		}
 	}
 
+	/** Cancel all background tasks across all threads. Test-only. */
+	cancelAllBackgroundTasks(): number {
+		const cancelled = this.backgroundTasks.cancelAll();
+		for (const task of cancelled) {
+			void this.finalizeBackgroundTaskTracing(task, 'cancelled');
+		}
+		return cancelled.length;
+	}
+
 	// ── Gateway lifecycle (delegated to LocalGatewayRegistry) ───────────────
+
+	// ── Test-only trace replay API ───────────────────────────────────────────
+
+	loadTraceEvents(slug: string, events: unknown[]): void {
+		this.traceReplay.loadEvents(slug, events);
+	}
+
+	getTraceEvents(slug: string): unknown[] {
+		return this.traceReplay.getEventsWithWriterFallback(slug, this.traceContextsByRunId.values());
+	}
+
+	activateTraceSlug(slug: string): void {
+		this.traceReplay.activateSlug(slug);
+	}
+
+	clearTraceEvents(slug: string): void {
+		this.traceReplay.clearEvents(slug);
+	}
 
 	getUserIdForApiKey(key: string): string | undefined {
 		return this.gatewayRegistry.getUserIdForApiKey(key);
@@ -1080,9 +1181,32 @@ export class InstanceAiService {
 	) {
 		const localGatewayDisabled = this.settingsService.isLocalGatewayDisabled();
 		const userGateway = this.gatewayRegistry.findGateway(user.id);
-		// Each resolve*() call fetches a separate proxy token for audit tracking (see getProxyAuth)
-		const searchProxyConfig = await this.resolveSearchProxyConfig(user);
-		const tracingProxyConfig = await this.resolveTracingProxyConfig(user);
+
+		// When the proxy is enabled, create a single ProxyTokenManager and
+		// AiAssistantClient that are shared across model, search, and tracing
+		// configs.  The token manager caches the JWT and refreshes it
+		// transparently before it expires.
+		let searchProxyConfig: ServiceProxyConfig | undefined;
+		let tracingProxyConfig: ServiceProxyConfig | undefined;
+		let tokenManager: ProxyTokenManager | undefined;
+		let proxyBaseUrl: string | undefined;
+		if (this.aiService.isProxyEnabled()) {
+			const client = await this.aiService.getClient();
+			proxyBaseUrl = client.getApiProxyBaseUrl();
+			const manager = new ProxyTokenManager(async () => {
+				return await client.getBuilderApiProxyToken({ id: user.id }, { userMessageId: nanoid() });
+			});
+			tokenManager = manager;
+			searchProxyConfig = {
+				apiUrl: proxyBaseUrl + '/brave-search',
+				getAuthHeaders: async () => await manager.getAuthHeaders(),
+			};
+			tracingProxyConfig = {
+				apiUrl: proxyBaseUrl + '/langsmith',
+				getAuthHeaders: async () => await manager.getAuthHeaders(),
+			};
+		}
+
 		const context = this.adapterService.createContext(user, {
 			searchProxyConfig,
 			pushRef,
@@ -1117,7 +1241,11 @@ export class InstanceAiService {
 			};
 		}
 
-		const modelId = await this.resolveModel(user); // separate proxy token — see getProxyAuth
+		const modelId =
+			proxyBaseUrl && tokenManager
+				? await this.resolveProxyModel(user, proxyBaseUrl, tokenManager)
+				: ((await this.resolveHttpProxyModel(user)) ??
+					(await this.settingsService.resolveModelConfig(user)));
 		const memory = createMemory(this.createMemoryConfig());
 		await this.ensureThreadExists(memory, threadId, user.id);
 
@@ -1501,7 +1629,15 @@ export class InstanceAiService {
 				proxyConfig: orchestrationContext.tracingProxyConfig,
 			});
 
+			// When trace replay is enabled but LangSmith isn't configured,
+			// create a minimal context that only supports replay/record wrapping.
+			if (!tracing && process.env.E2E_TESTS === 'true') {
+				const { createTraceReplayOnlyContext } = await import('@n8n/instance-ai');
+				tracing = createTraceReplayOnlyContext();
+			}
+
 			if (tracing) {
+				await this.configureTraceReplayMode(tracing);
 				orchestrationContext.tracing = tracing;
 				this.runState.attachTracing(threadId, tracing);
 				this.storeTraceContext(runId, threadId, tracing, messageGroupId);
@@ -1681,30 +1817,6 @@ export class InstanceAiService {
 				}
 				throw error;
 			}
-
-			// Pre-save the user message so it survives page refresh during HITL.
-			// Mastra's workflow pipeline defers message persistence to stream
-			// completion, so memory.recall() returns nothing for the current turn
-			// while the stream is suspended.
-			await memory.saveMessages({
-				messages: [
-					{
-						id: `user-${messageId}`,
-						threadId,
-						resourceId: user.id,
-						role: 'user' as const,
-						type: 'text',
-						createdAt: new Date(),
-						content:
-							typeof streamInput === 'string'
-								? { format: 2, parts: [{ type: 'text' as const, text: message }] }
-								: {
-										format: 2,
-										parts: [{ type: 'text' as const, text: message }],
-									},
-					},
-				],
-			});
 
 			const result = tracing
 				? await tracing.withRunTree(tracing.actorRun, async () => {

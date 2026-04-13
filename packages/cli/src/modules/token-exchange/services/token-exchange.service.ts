@@ -15,14 +15,17 @@ import type {
 	TokenExchangeRequest,
 } from '../token-exchange.schemas';
 import { ExternalTokenClaimsSchema } from '../token-exchange.schemas';
-import type { IssuedJwtPayload, IssuedTokenResult } from '../token-exchange.types';
+import {
+	TOKEN_EXCHANGE_ISSUER,
+	type IssuedJwtPayload,
+	type IssuedTokenResult,
+} from '../token-exchange.types';
 import { IdentityResolutionService } from './identity-resolution.service';
 import { JtiStoreService } from './jti-store.service';
 import { TrustedKeyService } from './trusted-key.service';
 
 const MAX_TOKEN_LIFETIME_SECONDS = 60;
 const MIN_REMAINING_LIFETIME_SECONDS = 5;
-const ISSUER = 'n8n';
 
 @Service()
 export class TokenExchangeService {
@@ -164,7 +167,7 @@ export class TokenExchangeService {
 		const resources = request.resource?.split(' ').filter(Boolean);
 
 		const payload: IssuedJwtPayload = {
-			iss: ISSUER,
+			iss: TOKEN_EXCHANGE_ISSUER,
 			sub: subject.id,
 			...(actor && { act: { sub: actor.id } }),
 			...(request.scope && { scope: request.scope }),

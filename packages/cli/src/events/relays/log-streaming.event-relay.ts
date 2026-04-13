@@ -221,7 +221,13 @@ export class LogStreamingEventRelay extends EventRelay {
 		});
 	}
 
-	private workflowPreExecute({ data, executionId, mode }: RelayEventMap['workflow-pre-execute']) {
+	private workflowPreExecute({
+		data,
+		executionId,
+		mode,
+		projectId,
+		projectName,
+	}: RelayEventMap['workflow-pre-execute']) {
 		const payload =
 			'executionData' in data
 				? {
@@ -231,6 +237,8 @@ export class LogStreamingEventRelay extends EventRelay {
 						isManual: data.executionMode === 'manual',
 						mode,
 						workflowName: data.workflowData.name,
+						projectId: data.projectId ?? projectId,
+						projectName: data.projectName ?? projectName,
 					}
 				: {
 						executionId,
@@ -239,6 +247,8 @@ export class LogStreamingEventRelay extends EventRelay {
 						isManual: false,
 						mode,
 						workflowName: (data as IWorkflowBase).name,
+						projectId,
+						projectName,
 					};
 
 		void this.eventBus.sendWorkflowEvent({
@@ -248,7 +258,7 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	private workflowPostExecute(event: RelayEventMap['workflow-post-execute']) {
-		const { runData, workflow, executionId, ...rest } = event;
+		const { runData, workflow, executionId, projectId, projectName, ...rest } = event;
 
 		const payload = {
 			...rest,
@@ -258,6 +268,8 @@ export class LogStreamingEventRelay extends EventRelay {
 			mode: runData?.mode,
 			workflowId: workflow.id,
 			workflowName: workflow.name,
+			projectId,
+			projectName,
 		};
 
 		if (payload.success) {
