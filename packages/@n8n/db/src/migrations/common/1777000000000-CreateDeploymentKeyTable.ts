@@ -3,6 +3,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 export class CreateDeploymentKeyTable1777000000000 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column, createIndex } }: MigrationContext) {
 		await createTable('deployment_key').withColumns(
+			column('id').varchar(36).primary.notNull,
 			column('type').varchar(64).notNull,
 			column('value').text.notNull,
 			column('algorithm').varchar(20),
