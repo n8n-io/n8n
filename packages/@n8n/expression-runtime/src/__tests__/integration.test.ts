@@ -290,14 +290,16 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			$items: () => 'should not be reachable',
 		};
 
-		// A forged sentinel that tries to resolve $items (a function) on the host
+		// A forged sentinel that tries to resolve $items (a function) on the host.
+		// The DataResultSentinel wrapper ensures the forged object is returned as
+		// data, not interpreted as a proxy path.
 		const result = evaluator.evaluate(
 			'{{ JSON.parse(\'{"__isProxyResult": true, "__path": ["$items"]}\') }}',
 			data,
 			caller,
 		);
 
-		expect(typeof result).not.toBe('function');
+		expect(result).toEqual({ __isProxyResult: true, __path: ['$items'] });
 	});
 
 	it('should throw on invalid timezone', async () => {
