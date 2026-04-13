@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, computed, reactive } from 'vue';
+import { ref, computed, reactive, toRaw } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
@@ -15,6 +15,7 @@ import {
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { createGatewayLink, getGatewayStatus } from './instanceAi.api';
 import type {
+	FrontendModuleSettings,
 	InstanceAiAdminSettingsResponse,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesResponse,
@@ -62,6 +63,22 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		return Object.keys(draft).length > 0 || Object.keys(preferencesDraft).length > 0;
 	});
 
+	function syncInstanceAiFlagIntoGlobalModuleSettings(
+		adminRes: InstanceAiAdminSettingsResponse,
+	): void {
+		const ms = settingsStore.moduleSettings;
+		const prev = ms['instance-ai'];
+		const merged: NonNullable<FrontendModuleSettings['instance-ai']> = {
+			enabled: adminRes.enabled,
+			localGatewayDisabled: prev?.localGatewayDisabled ?? false,
+			proxyEnabled: prev?.proxyEnabled ?? false,
+			optinModalDismissed: adminRes.optinModalDismissed,
+		};
+		settingsStore.moduleSettings = {
+			...ms,
+			'instance-ai': merged,
+		};
+	}
 	const canManage = computed(() =>
 		hasPermission(['rbac'], { rbac: { scope: 'instanceAi:manage' } }),
 	);
@@ -107,7 +124,9 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 
 			const [adminResult, prefsResult] = await Promise.allSettled([
 				hasAdminChanges
-					? updateSettings(rootStore.restApiContext, draft)
+					? updateSettings(rootStore.restApiContext, {
+							...toRaw(draft),
+						} as InstanceAiAdminSettingsUpdateRequest)
 					: Promise.resolve(settings.value),
 				hasPreferenceChanges
 					? updatePreferences(rootStore.restApiContext, preferencesDraft)
@@ -125,6 +144,41 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			}
 
 			clearDraft();
+			toast.showMessage({ title: 'Settings saved', type: 'success' });
+			if (hasAdminChanges) {
+				await settingsStore.getModuleSettings();
+				const adminSaved =
+					adminResult.status === 'fulfilled' && adminResult.value ? adminResult.value : null;
+				if (adminSaved) {
+					syncInstanceAiFlagIntoGlobalModuleSettings(adminSaved);
+				}
+			}
+		} catch {
+			toast.showError(new Error('Failed to save settings'), 'Settings error');
+		} finally {
+			isSaving.value = false;
+		}
+	}
+
+	async function persistOptinModalDismissed(): Promise<void> {
+		try {
+			const result = await updateSettings(rootStore.restApiContext, {
+				optinModalDismissed: true,
+			});
+			settings.value = result;
+			syncInstanceAiFlagIntoGlobalModuleSettings(result);
+		} catch (error) {}
+	}
+
+	/** Persists only the Instance AI on/off flag (does not send other admin draft fields). */
+	async function persistEnabled(value: boolean): Promise<void> {
+		isSaving.value = true;
+		try {
+			const result = await updateSettings(rootStore.restApiContext, { enabled: value });
+			settings.value = result;
+			delete draft.enabled;
+			await settingsStore.getModuleSettings();
+			syncInstanceAiFlagIntoGlobalModuleSettings(result);
 			toast.showMessage({ title: 'Settings saved', type: 'success' });
 		} catch {
 			toast.showError(new Error('Failed to save settings'), 'Settings error');
@@ -339,6 +393,8 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		isDirty,
 		fetch,
 		save,
+		persistEnabled,
+		persistOptinModalDismissed,
 		setField,
 		setPreferenceField,
 		setPermission,

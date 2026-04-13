@@ -112,13 +112,14 @@ export class NodeSearchEngine {
 	}
 
 	/**
-	 * Search nodes by name, display name, or description.
-	 * Always returns the latest version of a node.
-	 * @param query - The search query string
-	 * @param limit - Maximum number of results to return
-	 * @returns Array of matching nodes sorted by relevance
+	 * Fuzzy-search a list of nodes by query, handling multi-word queries by
+	 * splitting into individual terms and merging results. Falls back to
+	 * direct type-name / display-name matching for nodes the fuzzy search missed.
 	 */
-	searchByName(query: string, limit: number = 20): NodeSearchResult[] {
+	private fuzzySearchNodes(
+		query: string,
+		candidates: SearchableNodeType[],
+	): Array<{ item: SearchableNodeType; score: number }> {
 		const queryLower = query.toLowerCase().trim();
 		const queryTerms = queryLower.split(/\s+/).filter((t) => t.length > 1);
 		const isMultiWord = queryTerms.length > 1;
@@ -130,14 +131,9 @@ export class NodeSearchEngine {
 		let searchResults: ScoredNode[];
 
 		if (isMultiWord) {
-			// Per-term fuzzy search — each term searched independently, best score wins
 			const scoreMap = new Map<string, ScoredNode>();
 			for (const term of queryTerms) {
-				const termResults = sublimeSearch<SearchableNodeType>(
-					term,
-					this.nodeTypes,
-					NODE_SEARCH_KEYS,
-				);
+				const termResults = sublimeSearch<SearchableNodeType>(term, candidates, NODE_SEARCH_KEYS);
 				for (const r of termResults) {
 					const existing = scoreMap.get(r.item.name);
 					if (!existing || r.score > existing.score) {
@@ -147,20 +143,18 @@ export class NodeSearchEngine {
 			}
 			searchResults = [...scoreMap.values()];
 		} else {
-			searchResults = sublimeSearch<SearchableNodeType>(query, this.nodeTypes, NODE_SEARCH_KEYS);
+			searchResults = sublimeSearch<SearchableNodeType>(query, candidates, NODE_SEARCH_KEYS);
 		}
 
 		const fuzzyResultNames = new Set(searchResults.map((r) => r.item.name));
 
 		// Direct type name / display name match — catches nodes fuzzy search missed
-		const typeNameMatches = this.nodeTypes
+		const typeNameMatches = candidates
 			.filter((node) => {
 				if (fuzzyResultNames.has(node.name)) return false;
 				const typeName = getTypeName(node.name).toLowerCase();
 				const displayName = node.displayName.toLowerCase();
-				// Exact full-query match
 				if (typeName === queryLower || displayName === queryLower) return true;
-				// Any individual term matches type name or display name
 				return queryTerms.some(
 					(term) =>
 						typeName === term ||
@@ -191,15 +185,20 @@ export class NodeSearchEngine {
 			return b.score - a.score;
 		});
 
-		// Apply limit and map to result format
-		return allResults.slice(0, limit).map(
-			({
-				item,
-				score,
-			}: {
-				item: SearchableNodeType;
-				score: number;
-			}): NodeSearchResult => {
+		return allResults;
+	}
+
+	/**
+	 * Search nodes by name, display name, or description.
+	 * Always returns the latest version of a node.
+	 * @param query - The search query string
+	 * @param limit - Maximum number of results to return
+	 * @returns Array of matching nodes sorted by relevance
+	 */
+	searchByName(query: string, limit: number = 20): NodeSearchResult[] {
+		return this.fuzzySearchNodes(query, this.nodeTypes)
+			.slice(0, limit)
+			.map(({ item, score }): NodeSearchResult => {
 				const subnodeRequirements = extractSubnodeRequirements(item.builderHint?.inputs);
 				return {
 					name: item.name,
@@ -212,8 +211,7 @@ export class NodeSearchEngine {
 					...(item.builderHint?.message && { builderHintMessage: item.builderHint.message }),
 					...(subnodeRequirements.length > 0 && { subnodeRequirements }),
 				};
-			},
-		);
+			});
 	}
 
 	/**
@@ -262,32 +260,30 @@ export class NodeSearchEngine {
 				});
 		}
 
-		// Apply name filter using sublimeSearch
+		// Apply name filter using the same multi-word-aware fuzzy search as searchByName
 		const nodeTypesOnly = nodesWithConnectionType.map((result) => result.nodeType);
-		const nameFilteredResults = sublimeSearch(nameFilter, nodeTypesOnly, NODE_SEARCH_KEYS);
+		const nameFilteredResults = this.fuzzySearchNodes(nameFilter, nodeTypesOnly);
 
 		// Combine connection score with name score
-		return nameFilteredResults
-			.slice(0, limit)
-			.map(({ item, score: nameScore }: { item: SearchableNodeType; score: number }) => {
-				const connectionResult = nodesWithConnectionType.find(
-					(result) => result.nodeType.name === item.name,
-				);
-				const connectionScore = connectionResult?.connectionScore ?? 0;
-				const subnodeRequirements = extractSubnodeRequirements(item.builderHint?.inputs);
+		return nameFilteredResults.slice(0, limit).map(({ item, score: nameScore }) => {
+			const connectionResult = nodesWithConnectionType.find(
+				(result) => result.nodeType.name === item.name,
+			);
+			const connectionScore = connectionResult?.connectionScore ?? 0;
+			const subnodeRequirements = extractSubnodeRequirements(item.builderHint?.inputs);
 
-				return {
-					name: item.name,
-					version: getLatestVersion(item.version),
-					displayName: item.displayName,
-					description: item.description ?? 'No description available',
-					inputs: item.inputs,
-					outputs: item.outputs,
-					score: connectionScore + nameScore,
-					...(item.builderHint?.message && { builderHintMessage: item.builderHint.message }),
-					...(subnodeRequirements.length > 0 && { subnodeRequirements }),
-				};
-			});
+			return {
+				name: item.name,
+				version: getLatestVersion(item.version),
+				displayName: item.displayName,
+				description: item.description ?? 'No description available',
+				inputs: item.inputs,
+				outputs: item.outputs,
+				score: connectionScore + nameScore,
+				...(item.builderHint?.message && { builderHintMessage: item.builderHint.message }),
+				...(subnodeRequirements.length > 0 && { subnodeRequirements }),
+			};
+		});
 	}
 
 	/**
