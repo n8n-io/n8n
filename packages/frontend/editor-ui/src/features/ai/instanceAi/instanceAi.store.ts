@@ -2,7 +2,6 @@ import { defineStore } from 'pinia';
 import { ref, computed, triggerRef } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { ResponseError } from '@n8n/rest-api-client';
@@ -10,6 +9,7 @@ import {
 	instanceAiEventSchema,
 	isSafeObjectKey,
 	UNLIMITED_CREDITS,
+	type InstanceAiConfirmation,
 	type InstanceAiConfirmResponse,
 } from '@n8n/api-types';
 import {
@@ -29,6 +29,7 @@ import {
 	fetchThreadStatus as fetchThreadStatusApi,
 	deleteThread as deleteThreadApi,
 	renameThread as renameThreadApi,
+	updateThreadMetadata as updateThreadMetadataApi,
 } from './instanceAi.memory.api';
 import { handleEvent as reduceEvent, rebuildRunStateFromTree } from './instanceAi.reducer';
 import { useResourceRegistry } from './useResourceRegistry';
@@ -46,10 +47,12 @@ import type {
 } from '@n8n/api-types';
 
 export interface PendingConfirmationItem {
-	toolCall: InstanceAiToolCallState;
+	toolCall: InstanceAiToolCallState & { confirmation: InstanceAiConfirmation };
 	agentNode: InstanceAiAgentNode;
 	messageId: string;
 }
+
+type HistoricalHydrationStatus = 'applied' | 'stale' | 'skipped';
 
 /** Walk an agent tree, collecting tool calls that have an active (pending) confirmation. */
 function collectPendingConfirmations(
@@ -68,7 +71,11 @@ function collectPendingConfirmations(
 			// Plan review renders inline in the timeline, not in the confirmation panel
 			tc.confirmation.inputType !== 'plan-review'
 		) {
-			out.push({ toolCall: tc, agentNode: node, messageId });
+			out.push({
+				toolCall: tc as InstanceAiToolCallState & { confirmation: InstanceAiConfirmation },
+				agentNode: node,
+				messageId,
+			});
 		}
 	}
 	for (const child of node.children) {
@@ -115,7 +122,6 @@ let sseGeneration = 0;
 
 export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const rootStore = useRootStore();
-	const settingsStore = useSettingsStore();
 	const instanceAiSettingsStore = useInstanceAiSettingsStore();
 	const toast = useToast();
 	const telemetry = useTelemetry();
@@ -129,6 +135,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const activeRunId = ref<string | null>(null);
 	const messages = ref<InstanceAiMessage[]>([]);
 	const latestTasks = ref<TaskList | null>(null);
+	const hydratingThreadId = ref<string | null>(null);
+	const pendingMessageCount = ref(0);
 	const debugEvents = ref<Array<{ timestamp: string; event: InstanceAiEvent }>>([]);
 	const debugMode = ref(false);
 	const researchMode = ref(localStorage.getItem('instanceAi.researchMode') === 'true');
@@ -140,21 +148,17 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const creditsClaimed = ref<number | undefined>(undefined);
 	const resolvedConfirmationIds = ref<Map<string, 'approved' | 'denied' | 'deferred'>>(new Map());
 	const MAX_DEBUG_EVENTS = 1000;
+	let hydrationRequestSequence = 0;
+	let activeHydrationRequestToken: number | null = null;
 
 	// --- Computed ---
 	const isStreaming = computed(() => activeRunId.value !== null);
+	const isSendingMessage = computed(() => pendingMessageCount.value > 0);
 	const hasMessages = computed(() => messages.value.length > 0);
-	const isLocalGatewayEnabled = computed(
-		() => settingsStore.moduleSettings?.['instance-ai']?.localGateway === true,
-	);
+	const isHydratingThread = computed(() => hydratingThreadId.value === currentThreadId.value);
 	const isGatewayConnected = computed(() => instanceAiSettingsStore.isGatewayConnected);
 	const gatewayDirectory = computed(() => instanceAiSettingsStore.gatewayDirectory);
-	const localGatewayFallbackDirectory = computed(
-		() => settingsStore.moduleSettings?.['instance-ai']?.localGatewayFallbackDirectory ?? null,
-	);
-	const activeDirectory = computed(
-		() => gatewayDirectory.value ?? localGatewayFallbackDirectory.value,
-	);
+	const activeDirectory = computed(() => gatewayDirectory.value);
 
 	// Resource registry — maps known resource names to their types & IDs
 	const workflowsListStore = useWorkflowsListStore();
@@ -381,38 +385,55 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				msg = messages.value.find((m) => m.runId === data.runId);
 			}
 
-			if (msg) {
-				msg.agentTree = data.agentTree;
-				msg.runId = data.runId;
-				msg.messageGroupId = groupId;
-				latestTasks.value = findLatestTasksFromMessages(messages.value);
-				const isOrchestratorLive = data.status === 'active' || data.status === 'suspended';
-				// For background-only groups, the orchestrator already finished.
-				// Set isStreaming = false so InstanceAiMessage.vue's hasActiveBackgroundTasks
-				// computed correctly detects active children and shows the indicator.
-				msg.isStreaming = isOrchestratorLive;
-				// Only the active/suspended orchestrator run should claim activeRunId.
-				// Background-only groups update their message but don't override the
-				// global active run, which controls input state and cancel buttons.
-				if (isOrchestratorLive) {
-					activeRunId.value = data.runId;
-				}
-
-				// Rebuild normalized run state keyed by groupId
-				runStateByGroupId[groupId] = rebuiltRunState;
-
-				// Restore runId → groupId mappings for ALL runs in the group.
-				// This ensures late events from older follow-up runs still route
-				// to this message after reconnect.
-				if (data.runIds) {
-					for (const rid of data.runIds) {
-						if (!isSafeObjectKey(rid)) continue;
-						groupIdByRunId[rid] = groupId;
-					}
-				}
-				// Always register the current runId
-				groupIdByRunId[data.runId] = groupId;
+			if (!msg) {
+				messages.value.push({
+					id: groupId,
+					runId: data.runId,
+					messageGroupId: groupId,
+					runIds: data.runIds,
+					role: 'assistant',
+					createdAt: new Date().toISOString(),
+					content: data.agentTree.textContent,
+					reasoning: data.agentTree.reasoning,
+					isStreaming: false,
+					agentTree: data.agentTree,
+				});
+				msg = messages.value[messages.value.length - 1];
 			}
+
+			msg.agentTree = data.agentTree;
+			msg.runId = data.runId;
+			msg.messageGroupId = groupId;
+			msg.runIds = data.runIds;
+			msg.content = data.agentTree.textContent;
+			msg.reasoning = data.agentTree.reasoning;
+			latestTasks.value = findLatestTasksFromMessages(messages.value);
+			const isOrchestratorLive = data.status === 'active' || data.status === 'suspended';
+			// For background-only groups, the orchestrator already finished.
+			// Set isStreaming = false so InstanceAiMessage.vue's hasActiveBackgroundTasks
+			// computed correctly detects active children and shows the indicator.
+			msg.isStreaming = isOrchestratorLive;
+			// Only the active/suspended orchestrator run should claim activeRunId.
+			// Background-only groups update their message but don't override the
+			// global active run, which controls input state and cancel buttons.
+			if (isOrchestratorLive) {
+				activeRunId.value = data.runId;
+			}
+
+			// Rebuild normalized run state keyed by groupId
+			runStateByGroupId[groupId] = rebuiltRunState;
+
+			// Restore runId → groupId mappings for ALL runs in the group.
+			// This ensures late events from older follow-up runs still route
+			// to this message after reconnect.
+			if (data.runIds) {
+				for (const rid of data.runIds) {
+					if (!isSafeObjectKey(rid)) continue;
+					groupIdByRunId[rid] = groupId;
+				}
+			}
+			// Always register the current runId
+			groupIdByRunId[data.runId] = groupId;
 		} catch {
 			// Malformed run-sync — skip
 		}
@@ -445,7 +466,9 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 
 		eventSource.onmessage = (ev: MessageEvent) => {
 			// Guard: discard events from stale connections or wrong threads
-			if (gen !== sseGeneration || capturedThreadId !== currentThreadId.value) return;
+			if (gen !== sseGeneration || capturedThreadId !== currentThreadId.value) {
+				return;
+			}
 			onSSEMessage(ev);
 		};
 
@@ -475,10 +498,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		sseState.value = 'disconnected';
 	}
 
-	function switchThread(threadId: string): void {
-		// 1. Close current SSE connection
-		closeSSE();
-		// 2. Clear store state
+	function resetThreadRuntimeState(nextHydratingThreadId: string | null): void {
+		hydratingThreadId.value = nextHydratingThreadId;
 		messages.value = [];
 		latestTasks.value = null;
 		activeRunId.value = null;
@@ -487,13 +508,27 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		resolvedConfirmationIds.value = new Map();
 		runStateByGroupId = {};
 		groupIdByRunId = {};
+		activeHydrationRequestToken = null;
+	}
+
+	function switchThread(threadId: string): void {
+		// 1. Close current SSE connection
+		closeSSE();
+		// 2. Clear store state
+		resetThreadRuntimeState(threadId);
 		// 3. Switch thread
 		currentThreadId.value = threadId;
 		// 4. Load rich historical messages first, then connect SSE after.
 		//    loadHistoricalMessages sets the SSE cursor (nextEventId) so SSE
 		//    only receives events that arrived AFTER the historical snapshot.
+		const hydrationRequestToken = ++hydrationRequestSequence;
+		activeHydrationRequestToken = hydrationRequestToken;
 		delete lastEventIdByThread.value[threadId];
-		void loadHistoricalMessages(threadId).then(() => {
+		void loadHistoricalMessages(threadId, hydrationRequestToken).then((hydrationStatus) => {
+			if (hydrationStatus !== 'stale' && activeHydrationRequestToken === hydrationRequestToken) {
+				activeHydrationRequestToken = null;
+			}
+			if (hydrationStatus !== 'applied') return;
 			void loadThreadStatus(threadId);
 			connectSSE(threadId);
 		});
@@ -504,14 +539,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	function newThread(): string {
 		const newThreadId = uuidv4();
 		closeSSE();
-		messages.value = [];
-		latestTasks.value = null;
-		activeRunId.value = null;
-		debugEvents.value = [];
-		resetFeedback();
-		resolvedConfirmationIds.value = new Map();
-		runStateByGroupId = {};
-		groupIdByRunId = {};
+		resetThreadRuntimeState(null);
 		currentThreadId.value = newThreadId;
 
 		threads.value.unshift({
@@ -554,14 +582,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				// No threads left — create a new one
 				const freshId = uuidv4();
 				closeSSE();
-				messages.value = [];
-				latestTasks.value = null;
-				activeRunId.value = null;
-				debugEvents.value = [];
-				resetFeedback();
-				resolvedConfirmationIds.value = new Map();
-				runStateByGroupId = {};
-				groupIdByRunId = {};
+				resetThreadRuntimeState(null);
 				currentThreadId.value = freshId;
 				threads.value.push({
 					id: freshId,
@@ -589,6 +610,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				id: t.id,
 				title: t.title || NEW_CONVERSATION_TITLE,
 				createdAt: t.createdAt,
+				metadata: t.metadata ?? undefined,
 			}));
 			threads.value = [...localOnly, ...serverThreads];
 		} catch {
@@ -616,11 +638,23 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		});
 	}
 
-	async function loadHistoricalMessages(threadId: string): Promise<void> {
+	async function loadHistoricalMessages(
+		threadId: string,
+		hydrationRequestToken?: number,
+	): Promise<HistoricalHydrationStatus> {
+		hydratingThreadId.value = threadId;
+		const effectiveHydrationRequestToken = hydrationRequestToken ?? ++hydrationRequestSequence;
+		if (hydrationRequestToken === undefined) {
+			activeHydrationRequestToken = effectiveHydrationRequestToken;
+		}
+		const isCurrentHydrationRequest = () =>
+			activeHydrationRequestToken === effectiveHydrationRequestToken;
+
 		try {
 			const result = await fetchThreadMessagesApi(rootStore.restApiContext, threadId, 100);
+			if (!isCurrentHydrationRequest()) return 'stale';
 			// Only hydrate if we're still on the same thread and SSE hasn't delivered messages
-			if (currentThreadId.value !== threadId || messages.value.length > 0) return;
+			if (currentThreadId.value !== threadId || messages.value.length > 0) return 'skipped';
 			// Backend now returns InstanceAiMessage[] directly — no conversion needed
 			if (result.messages.length > 0) {
 				messages.value = result.messages;
@@ -653,8 +687,14 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			if (result.nextEventId !== null && result.nextEventId !== undefined) {
 				lastEventIdByThread.value[threadId] = result.nextEventId - 1;
 			}
+			return 'applied';
 		} catch {
 			// Silently ignore — messages will appear if SSE delivers them
+			return isCurrentHydrationRequest() ? 'applied' : 'stale';
+		} finally {
+			if (isCurrentHydrationRequest() && hydratingThreadId.value === threadId) {
+				hydratingThreadId.value = null;
+			}
 		}
 	}
 
@@ -689,15 +729,16 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	): Promise<void> {
 		// Clear amend context on new message
 		amendContext.value = null;
+		pendingMessageCount.value += 1;
 
-		try {
-			await syncThread(currentThreadId.value);
-		} catch {
-			toast.showError(new Error('Failed to start a new thread. Try again.'), 'Send failed');
-			return;
+		// Ensure SSE is connected before sending. Vue's Suspense boundary can
+		// unmount → remount InstanceAiView during layout transitions, which closes
+		// the SSE connection via onUnmounted. If the user sends a message before
+		// the remounted component's async connectSSE() fires, the response events
+		// would be lost. Re-establish the connection here as a safety net.
+		if (sseState.value === 'disconnected') {
+			connectSSE();
 		}
-
-		// 1. Add user message optimistically
 		const userMessage: InstanceAiMessage = {
 			id: uuidv4(),
 			role: 'user',
@@ -708,6 +749,26 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			attachments: attachments && attachments.length > 0 ? attachments : undefined,
 		};
 		messages.value.push(userMessage);
+
+		try {
+			await syncThread(currentThreadId.value);
+		} catch {
+			const idx = messages.value.indexOf(userMessage);
+			if (idx !== -1) {
+				messages.value.splice(idx, 1);
+			}
+			toast.showError(new Error('Failed to start a new thread. Try again.'), 'Send failed');
+			pendingMessageCount.value = Math.max(0, pendingMessageCount.value - 1);
+			return;
+		}
+
+		const isFirstMessage = messages.value.filter((m) => m.role === 'user').length === 1;
+		const sentProps = {
+			thread_id: currentThreadId.value,
+			instance_id: rootStore.instanceId,
+			is_first_message: isFirstMessage,
+		};
+		telemetry.track('User sent builder message', sentProps);
 
 		// 2. POST to backend — returns { runId }
 		// Thread title is generated by Mastra asynchronously after the agent responds.
@@ -739,6 +800,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			if (idx !== -1) {
 				messages.value.splice(idx, 1);
 			}
+		} finally {
+			pendingMessageCount.value = Math.max(0, pendingMessageCount.value - 1);
 		}
 	}
 
@@ -928,6 +991,25 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
+	function getThreadMetadata(threadId: string): Record<string, unknown> | undefined {
+		return threads.value.find((t) => t.id === threadId)?.metadata;
+	}
+
+	async function updateThreadMetadata(
+		threadId: string,
+		metadata: Record<string, unknown>,
+	): Promise<void> {
+		// Optimistic update
+		const thread = threads.value.find((t) => t.id === threadId);
+		if (thread) {
+			thread.metadata = { ...thread.metadata, ...metadata };
+		}
+
+		if (persistedThreadIds.has(threadId)) {
+			await updateThreadMetadataApi(rootStore.restApiContext, threadId, metadata);
+		}
+	}
+
 	return {
 		// State
 		currentThreadId,
@@ -946,11 +1028,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		resolvedConfirmationIds,
 		// Computed
 		isStreaming,
+		isSendingMessage,
 		hasMessages,
-		isLocalGatewayEnabled,
+		isHydratingThread,
 		isGatewayConnected,
 		gatewayDirectory,
-		localGatewayFallbackDirectory,
 		activeDirectory,
 		contextualSuggestion,
 		currentTasks,
@@ -964,6 +1046,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		newThread,
 		deleteThread,
 		renameThread,
+		getThreadMetadata,
+		updateThreadMetadata,
 		switchThread,
 		loadThreads,
 		loadHistoricalMessages,

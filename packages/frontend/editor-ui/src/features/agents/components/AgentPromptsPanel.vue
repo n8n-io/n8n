@@ -2,17 +2,17 @@
 import { ref, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { N8nText } from '@n8n/design-system';
-import type { AgentSchema } from '../types';
+import type { AgentJsonConfig } from '../types';
 import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants/durations';
 import AgentMiniEditor from './AgentMiniEditor.vue';
 
-const props = defineProps<{ schema: AgentSchema | null }>();
-const emit = defineEmits<{ 'update:schema': [changes: Partial<AgentSchema>] }>();
+const props = defineProps<{ config: AgentJsonConfig | null }>();
+const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
 
-const promptText = ref(props.schema?.instructions ?? '');
+const promptText = ref(props.config?.instructions ?? '');
 
 watch(
-	() => props.schema?.instructions,
+	() => props.config?.instructions,
 	(newInstructions) => {
 		promptText.value = newInstructions ?? '';
 	},
@@ -20,7 +20,7 @@ watch(
 );
 
 const emitUpdate = useDebounceFn(() => {
-	emit('update:schema', { instructions: promptText.value });
+	emit('update:config', { instructions: promptText.value });
 }, getDebounceTime(DEBOUNCE_TIME.API.HEAVY_OPERATION));
 
 function onInput(value: string) {

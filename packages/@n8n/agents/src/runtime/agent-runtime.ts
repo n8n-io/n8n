@@ -1,6 +1,5 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import { generateText, streamText, Output } from 'ai';
-import type AjvType from 'ajv';
 import type { z } from 'zod';
 import { zodToJsonSchema, type JsonSchema7Type } from 'zod-to-json-schema';
 
@@ -73,6 +72,7 @@ import type {
 	Message,
 } from '../types/sdk/message';
 import type { JSONObject, JSONValue } from '../types/utils/json';
+import { parseWithSchema } from '../utils/parse';
 import { isZodSchema } from '../utils/zod';
 
 const logger = createFilteredLogger();
@@ -115,18 +115,6 @@ export interface AgentRuntimeConfig {
 }
 
 const MAX_LOOP_ITERATIONS = 20;
-
-let ajvInstance: InstanceType<typeof AjvType> | undefined;
-
-/** Return the shared Ajv instance, initializing it on first call. */
-function getAjv(): InstanceType<typeof AjvType> {
-	if (!ajvInstance) {
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		const { default: Ajv } = require('ajv') as { default: typeof AjvType };
-		ajvInstance = new Ajv({ strict: false });
-	}
-	return ajvInstance;
-}
 
 const EMPTY_MESSAGE_LIST: SerializedMessageList = {
 	messages: [],
@@ -321,9 +309,9 @@ export class AgentRuntime {
 
 		let resumeData: unknown = data;
 		if (tool.resumeSchema) {
-			const parseResult = await tool.resumeSchema.safeParseAsync(data);
+			const parseResult = await parseWithSchema(tool.resumeSchema, data);
 			if (!parseResult.success) {
-				throw new Error(`Invalid resume payload: ${parseResult.error.message}`);
+				throw new Error(`Invalid resume payload: ${parseResult.error}`);
 			}
 			resumeData = parseResult.data as JSONValue;
 		}
@@ -1618,21 +1606,11 @@ export class AgentRuntime {
 		}
 
 		if (builtTool.inputSchema) {
-			if (isZodSchema(builtTool.inputSchema)) {
-				const result = await builtTool.inputSchema.safeParseAsync(toolInput);
-				if (!result.success) {
-					return makeToolError(new Error(`Invalid tool input: ${result.error.message}`));
-				}
-				toolInput = result.data as JSONValue;
-			} else {
-				const ajv = getAjv();
-				const validate = ajv.compile(builtTool.inputSchema);
-				const valid = validate(toolInput);
-				if (!valid) {
-					const message = ajv.errorsText(validate.errors);
-					return makeToolError(new Error(`Invalid tool input: ${message}`));
-				}
+			const result = await parseWithSchema(builtTool.inputSchema, toolInput);
+			if (!result.success) {
+				return makeToolError(new Error(`Invalid tool input: ${result.error}`));
 			}
+			toolInput = result.data as JSONValue;
 		}
 
 		let toolResult: unknown;
@@ -1644,9 +1622,9 @@ export class AgentRuntime {
 
 		if (isSuspendedToolResult(toolResult)) {
 			if (builtTool?.suspendSchema) {
-				const parseResult = await builtTool.suspendSchema.safeParseAsync(toolResult.payload);
+				const parseResult = await parseWithSchema(builtTool.suspendSchema, toolResult.payload);
 				if (!parseResult.success) {
-					return makeToolError(new Error(`Invalid suspend payload: ${parseResult.error.message}`));
+					return makeToolError(new Error(`Invalid suspend payload: ${parseResult.error}`));
 				}
 				toolResult.payload = parseResult.data as JSONValue;
 			}
@@ -1654,7 +1632,12 @@ export class AgentRuntime {
 				const error = new Error(`Tool ${toolName} has no resume schema`);
 				return makeToolError(error);
 			}
-			const resumeSchema = zodToJsonSchema(builtTool.resumeSchema);
+			const resumeSchema = isZodSchema(builtTool.resumeSchema)
+				? zodToJsonSchema(builtTool.resumeSchema)
+				: builtTool.resumeSchema;
+			if (!resumeSchema) {
+				return makeToolError(new Error('Invalid resume schema'));
+			}
 			return { outcome: 'suspended', payload: toolResult.payload, resumeSchema };
 		}
 

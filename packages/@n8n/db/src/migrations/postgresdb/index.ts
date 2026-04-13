@@ -158,9 +158,14 @@ import { AddRestoreFieldsToWorkflowBuilderSession1774280963551 } from '../common
 import { CreateInstanceVersionHistoryTable1774854660000 } from '../common/1774854660000-CreateInstanceVersionHistoryTable';
 import { CreateInstanceAiTables1775000000000 } from '../common/1775000000000-CreateInstanceAiTables';
 import { CreateTokenExchangeJtiTable1775116241000 } from '../common/1775116241000-CreateTokenExchangeJtiTable';
+import { ChangeWorkflowPublishHistoryVersionIdToSetNull1775740765000 } from '../common/1775740765000-ChangeWorkflowPublishHistoryVersionIdToSetNull';
 import { CreateAgentTables1776000000000 } from '../common/1776000000000-CreateAgentTables';
-import { CreateExecutionThreads1777000000000 } from '../common/1777000000000-CreateExecutionThreads';
-import { AddSessionColumnsToExecutionThreads1778000000000 } from '../common/1778000000000-AddSessionColumnsToExecutionThreads';
+import { CreateTrustedKeyTables1776000000000 } from '../common/1776000000000-CreateTrustedKeyTables';
+import { CreateAgentMemoryTables1777000000000 } from '../common/1777000000000-CreateAgentMemoryTables';
+import { AddToolsColumnToAgents1778000000000 } from '../common/1778000000000-AddToolsColumnToAgents';
+import { DropAgentCodeColumn1779000000000 } from '../common/1779000000000-DropAgentCodeColumn';
+import { CreateExecutionThreads1780000000000 } from '../common/1780000000000-CreateExecutionThreads';
+import { AddSessionColumnsToExecutionThreads1781000000000 } from '../common/1781000000000-AddSessionColumnsToExecutionThreads';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -324,7 +329,12 @@ export const postgresMigrations: Migration[] = [
 	CreateInstanceVersionHistoryTable1774854660000,
 	CreateInstanceAiTables1775000000000,
 	CreateTokenExchangeJtiTable1775116241000,
+	ChangeWorkflowPublishHistoryVersionIdToSetNull1775740765000,
 	CreateAgentTables1776000000000,
-	CreateExecutionThreads1777000000000,
-	AddSessionColumnsToExecutionThreads1778000000000,
+	CreateTrustedKeyTables1776000000000,
+	CreateAgentMemoryTables1777000000000,
+	AddToolsColumnToAgents1778000000000,
+	DropAgentCodeColumn1779000000000,
+	CreateExecutionThreads1780000000000,
+	AddSessionColumnsToExecutionThreads1781000000000,
 ];

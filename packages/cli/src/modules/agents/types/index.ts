@@ -1,8 +1,3 @@
-export {
-	WorkflowTool,
-	type WorkflowToolOptions,
-	type WorkflowToolDescriptor,
-} from './workflow-tool';
 export type {
 	InlineComponent,
 	FormComponent,

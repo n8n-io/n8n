@@ -158,6 +158,8 @@ export {
 	type ValidationResult,
 	type ValidationOptions,
 	type ValidationErrorCode,
+	validateNodeConfig,
+	type SchemaValidationResult,
 } from './validation';
 
 // Code generation
@@ -191,6 +193,13 @@ export {
 	normalizePinData,
 	type IsTriggerNodeFn,
 } from './pin-data-utils';
+
+// Display options matching
+export {
+	matchesDisplayOptions,
+	type DisplayOptions,
+	type DisplayOptionsContext,
+} from './validation/display-options';
 
 // Node type constants
 export {

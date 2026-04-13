@@ -61,6 +61,7 @@ export type {
 export type {
 	Thread,
 	BuiltMemory,
+	MemoryDescriptor,
 	SemanticRecallConfig,
 	MemoryConfig,
 	CheckpointStore,

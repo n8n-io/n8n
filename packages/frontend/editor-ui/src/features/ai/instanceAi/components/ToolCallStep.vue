@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import type { InstanceAiToolCallState } from '@n8n/api-types';
 import { N8nCallout, N8nIcon } from '@n8n/design-system';
-import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import { getToolIcon, useToolLabel } from '../toolLabels';
 import DataSection from './DataSection.vue';
 import TimelineStepButton from './TimelineStepButton.vue';
@@ -59,7 +60,7 @@ function getDisplayLabel(tc: InstanceAiToolCallState): string {
 				{{ props.label ?? getDisplayLabel(props.toolCall) }}
 			</TimelineStepButton>
 		</CollapsibleTrigger>
-		<CollapsibleContent>
+		<AnimatedCollapsibleContent>
 			<DataSection v-if="props.toolCall.args">
 				<ToolResultJson :value="props.toolCall.args" />
 			</DataSection>
@@ -69,6 +70,6 @@ function getDisplayLabel(tc: InstanceAiToolCallState): string {
 			<N8nCallout v-if="props.toolCall.error !== undefined" theme="danger">
 				{{ props.toolCall.error }}
 			</N8nCallout>
-		</CollapsibleContent>
+		</AnimatedCollapsibleContent>
 	</CollapsibleRoot>
 </template>

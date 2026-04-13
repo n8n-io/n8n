@@ -43,7 +43,7 @@ describe('get-best-practices tool', () => {
 		expect(result.message).toContain('retrieved successfully');
 	});
 
-	it('should return helpful message for valid technique without guide', async () => {
+	it('should return no-documentation message for disabled technique', async () => {
 		const result = (await tool.execute!(
 			{ technique: 'data_analysis' },
 			{} as never,

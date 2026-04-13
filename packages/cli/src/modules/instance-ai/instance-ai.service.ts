@@ -1,5 +1,6 @@
 import {
 	UNLIMITED_CREDITS,
+	applyBranchReadOnlyOverrides,
 	type InstanceAiAttachment,
 	type InstanceAiEvent,
 	type InstanceAiThreadStatusResponse,
@@ -28,11 +29,15 @@ import {
 	createDomainAccessTracker,
 	BackgroundTaskManager,
 	buildAgentTreeFromEvents,
+	classifyAttachments,
+	buildAttachmentManifest,
+	isStructuredAttachment,
 	enrichMessageWithBackgroundTasks,
 	MastraTaskStorage,
 	PlannedTaskCoordinator,
 	PlannedTaskStorage,
 	applyPlannedTaskPermissions,
+	releaseTraceClient,
 	resumeAgentRun,
 	RunStateRegistry,
 	startBuildWorkflowAgentTask,
@@ -62,11 +67,13 @@ import {
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { AiService } from '@/services/ai.service';
 import { Push } from '@/push';
+import { Telemetry } from '@/telemetry';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import type { LocalGateway } from './filesystem';
-import { LocalGatewayRegistry, LocalFilesystemProvider } from './filesystem';
+import { LocalGatewayRegistry } from './filesystem';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
 import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
@@ -75,6 +82,7 @@ import type { TypeORMWorkflowsStorage } from './storage/typeorm-workflows-storag
 import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
 import { InstanceAiCompactionService } from './compaction.service';
+import { ProxyTokenManager } from './proxy-token-manager';
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 
 function getErrorMessage(error: unknown): string {
@@ -128,9 +136,6 @@ export class InstanceAiService {
 		}
 	>();
 
-	/** Singleton local filesystem provider — created lazily when filesystem config is enabled. */
-	private localFsProvider?: LocalFilesystemProvider;
-
 	/** Per-user Local Gateway connections. Handles pairing tokens, session keys, and tool dispatch. */
 	private readonly gatewayRegistry = new LocalGatewayRegistry();
 
@@ -139,6 +144,9 @@ export class InstanceAiService {
 
 	/** Tracks the iframe pushRef per thread for live execution push events. */
 	private readonly threadPushRef = new Map<string, string>();
+
+	/** Per-thread promise chain that serializes schedulePlannedTasks calls. */
+	private readonly schedulerLocks = new Map<string, Promise<void>>();
 
 	/** Periodic sweep that auto-rejects timed-out HITL confirmations. */
 	private confirmationTimeoutInterval?: NodeJS.Timeout;
@@ -165,6 +173,8 @@ export class InstanceAiService {
 		private readonly urlService: UrlService,
 		private readonly dbSnapshotStorage: DbSnapshotStorage,
 		private readonly dbIterationLogStorage: DbIterationLogStorage,
+		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
+		private readonly telemetry: Telemetry,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.instanceAiConfig = globalConfig.instanceAi;
@@ -303,15 +313,6 @@ export class InstanceAiService {
 		return new BuilderSandboxFactory(config);
 	}
 
-	/** Lazily create the local filesystem provider (singleton). */
-	private getLocalFsProvider(): LocalFilesystemProvider {
-		if (!this.localFsProvider) {
-			const basePath = this.instanceAiConfig.filesystemPath || undefined;
-			this.localFsProvider = new LocalFilesystemProvider(basePath);
-		}
-		return this.localFsProvider;
-	}
-
 	/** Get or create a sandbox + workspace for a thread. Returns undefined when sandbox is disabled. */
 	private async getOrCreateWorkspace(threadId: string, user: User) {
 		const existing = this.sandboxes.get(threadId);
@@ -372,34 +373,31 @@ export class InstanceAiService {
 	 * `createOpenAICompatible`, which sends requests to `/chat/completions`.
 	 * The proxy may forward to Vertex AI, which only supports the native Anthropic
 	 * Messages API (`/v1/messages`), not the OpenAI-compatible endpoint.
+	 *
+	 * Auth headers are injected via a custom `fetch` wrapper so that each
+	 * request gets a fresh-or-cached token from the ProxyTokenManager,
+	 * avoiding 401s on long-running agent turns.
 	 */
-	private async resolveModel(user: User): Promise<ModelConfig> {
-		if (this.aiService.isProxyEnabled()) {
-			const { client, headers } = await this.getProxyAuth(user);
-			const modelName = await this.settingsService.resolveModelName(user);
-			const { createAnthropic } = await import('@ai-sdk/anthropic');
-			const provider = createAnthropic({
-				baseURL: client.getApiProxyBaseUrl() + '/anthropic/v1',
-				apiKey: 'proxy-managed',
-				headers,
-			});
-			return provider(modelName);
-		}
-		return await this.settingsService.resolveModelConfig(user);
-	}
-
-	/** Build search proxy config when proxy is enabled. */
-	private async resolveSearchProxyConfig(user: User): Promise<ServiceProxyConfig | undefined> {
-		if (!this.aiService.isProxyEnabled()) return undefined;
-		const { client, headers } = await this.getProxyAuth(user);
-		return { apiUrl: client.getApiProxyBaseUrl() + '/brave-search', headers };
-	}
-
-	/** Build tracing proxy config when proxy is enabled. */
-	private async resolveTracingProxyConfig(user: User): Promise<ServiceProxyConfig | undefined> {
-		if (!this.aiService.isProxyEnabled()) return undefined;
-		const { client, headers } = await this.getProxyAuth(user);
-		return { apiUrl: client.getApiProxyBaseUrl() + '/langsmith', headers };
+	private async resolveProxyModel(
+		user: User,
+		proxyBaseUrl: string,
+		tokenManager: ProxyTokenManager,
+	): Promise<ModelConfig> {
+		const modelName = await this.settingsService.resolveModelName(user);
+		const { createAnthropic } = await import('@ai-sdk/anthropic');
+		const provider = createAnthropic({
+			baseURL: proxyBaseUrl + '/anthropic/v1',
+			apiKey: 'proxy-managed',
+			fetch: async (input, init) => {
+				const headers = new Headers(init?.headers);
+				const auth = await tokenManager.getAuthHeaders();
+				for (const [k, v] of Object.entries(auth)) {
+					headers.set(k, v);
+				}
+				return await globalThis.fetch(input, { ...init, headers });
+			},
+		});
+		return provider(modelName);
 	}
 
 	/**
@@ -469,17 +467,6 @@ export class InstanceAiService {
 		return this.settingsService.isAgentEnabled() && !!this.instanceAiConfig.model;
 	}
 
-	/** Local filesystem is only available when an explicit base path is configured. */
-	isLocalFilesystemAvailable(): boolean {
-		return !!this.instanceAiConfig.filesystemPath?.trim();
-	}
-
-	/** Return the configured filesystem root directory, or null if not configured. */
-	getLocalFilesystemDirectory(): string | null {
-		const basePath = this.instanceAiConfig.filesystemPath?.trim();
-		return basePath || null;
-	}
-
 	hasActiveRun(threadId: string): boolean {
 		return this.runState.hasLiveRun(threadId);
 	}
@@ -536,6 +523,8 @@ export class InstanceAiService {
 				threadId: tracing.rootRun.metadata?.thread_id,
 				error: getErrorMessage(error),
 			});
+		} finally {
+			releaseTraceClient(tracing.rootRun.traceId);
 		}
 	}
 
@@ -566,6 +555,7 @@ export class InstanceAiService {
 	private deleteTraceContextsForThread(threadId: string): void {
 		for (const [runId, entry] of this.traceContextsByRunId) {
 			if (entry.threadId === threadId) {
+				releaseTraceClient(entry.tracing.rootRun.traceId);
 				this.traceContextsByRunId.delete(runId);
 			}
 		}
@@ -601,6 +591,8 @@ export class InstanceAiService {
 				traceRunId: traceContext.rootRun.id,
 				error: getErrorMessage(error),
 			});
+		} finally {
+			releaseTraceClient(traceContext.rootRun.traceId);
 		}
 	}
 
@@ -732,6 +724,13 @@ export class InstanceAiService {
 				agentId: task.agentId,
 				payload: { role: task.role, result: '', error: 'Cancelled by user' },
 			});
+			void this.saveAgentTreeSnapshot(
+				threadId,
+				task.runId,
+				this.dbSnapshotStorage,
+				true,
+				task.messageGroupId,
+			);
 			if (user) {
 				void this.handlePlannedTaskSettlement(user, task, 'cancelled');
 			}
@@ -755,6 +754,9 @@ export class InstanceAiService {
 				agentId: ORCHESTRATOR_AGENT_ID,
 				payload: { status: 'cancelled', reason: 'user_cancelled' },
 			});
+			// Persist the snapshot so the run-finish event (which clears
+			// in-flight tool calls) is reflected in the stored tree.
+			void this.saveAgentTreeSnapshot(threadId, suspended.runId, this.dbSnapshotStorage, true);
 			if (suspended.mastraRunId) {
 				void this.cleanupMastraSnapshots(suspended.mastraRunId);
 			}
@@ -787,6 +789,17 @@ export class InstanceAiService {
 			agentId: task.agentId,
 			payload: { role: task.role, result: '', error: 'Cancelled by user' },
 		});
+
+		// Persist the updated agent tree so cancelled status survives page reload.
+		// The onSettled callback in executeTask is skipped for aborted tasks,
+		// so we must save the snapshot explicitly here.
+		void this.saveAgentTreeSnapshot(
+			threadId,
+			task.runId,
+			this.dbSnapshotStorage,
+			true,
+			task.messageGroupId,
+		);
 
 		const user = this.runState.getThreadUser(threadId);
 		if (user) {
@@ -898,6 +911,7 @@ export class InstanceAiService {
 		});
 
 		this.creditedThreads.delete(threadId);
+		this.schedulerLocks.delete(threadId);
 		this.domainAccessTrackersByThread.delete(threadId);
 		this.threadPushRef.delete(threadId);
 		this.deleteTraceContextsForThread(threadId);
@@ -1064,22 +1078,45 @@ export class InstanceAiService {
 	) {
 		const localGatewayDisabled = this.settingsService.isLocalGatewayDisabled();
 		const userGateway = this.gatewayRegistry.findGateway(user.id);
-		const localFilesystemService =
-			!localGatewayDisabled && !userGateway?.isConnected && this.isLocalFilesystemAvailable()
-				? this.getLocalFsProvider()
-				: undefined;
-		// Each resolve*() call fetches a separate proxy token for audit tracking (see getProxyAuth)
-		const searchProxyConfig = await this.resolveSearchProxyConfig(user);
-		const tracingProxyConfig = await this.resolveTracingProxyConfig(user);
+
+		// When the proxy is enabled, create a single ProxyTokenManager and
+		// AiAssistantClient that are shared across model, search, and tracing
+		// configs.  The token manager caches the JWT and refreshes it
+		// transparently before it expires.
+		let searchProxyConfig: ServiceProxyConfig | undefined;
+		let tracingProxyConfig: ServiceProxyConfig | undefined;
+		let tokenManager: ProxyTokenManager | undefined;
+		let proxyBaseUrl: string | undefined;
+		if (this.aiService.isProxyEnabled()) {
+			const client = await this.aiService.getClient();
+			proxyBaseUrl = client.getApiProxyBaseUrl();
+			const manager = new ProxyTokenManager(async () => {
+				return await client.getBuilderApiProxyToken({ id: user.id }, { userMessageId: nanoid() });
+			});
+			tokenManager = manager;
+			searchProxyConfig = {
+				apiUrl: proxyBaseUrl + '/brave-search',
+				getAuthHeaders: async () => await manager.getAuthHeaders(),
+			};
+			tracingProxyConfig = {
+				apiUrl: proxyBaseUrl + '/langsmith',
+				getAuthHeaders: async () => await manager.getAuthHeaders(),
+			};
+		}
+
 		const context = this.adapterService.createContext(user, {
-			filesystemService: localFilesystemService,
 			searchProxyConfig,
 			pushRef,
+			threadId,
 		});
 		if (!localGatewayDisabled && userGateway?.isConnected) {
 			context.localMcpServer = userGateway;
 		}
 		context.permissions = this.settingsService.getPermissions();
+		if (this.sourceControlPreferencesService.getPreferences().branchReadOnly) {
+			context.permissions = applyBranchReadOnlyOverrides(context.permissions);
+			context.branchReadOnly = true;
+		}
 
 		let domainTracker = this.domainAccessTrackersByThread.get(threadId);
 		if (!domainTracker) {
@@ -1101,7 +1138,10 @@ export class InstanceAiService {
 			};
 		}
 
-		const modelId = await this.resolveModel(user); // separate proxy token — see getProxyAuth
+		const modelId =
+			proxyBaseUrl && tokenManager
+				? await this.resolveProxyModel(user, proxyBaseUrl, tokenManager)
+				: await this.settingsService.resolveModelConfig(user);
 		const memory = createMemory(this.createMemoryConfig());
 		await this.ensureThreadExists(memory, threadId, user.id);
 
@@ -1150,6 +1190,14 @@ export class InstanceAiService {
 						userId: user.id,
 						createdAt: Date.now(),
 					});
+
+					// Inline HITL (planner questions / plan approval / sub-agent asks)
+					// keeps the orchestrator run active, so the normal suspended/completed
+					// snapshot paths do not execute. Queue a snapshot after the current
+					// confirmation-request event is published to preserve refresh recovery.
+					queueMicrotask(() => {
+						void this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
+					});
 				});
 			},
 			cancelBackgroundTask: async (taskId) => this.cancelBackgroundTask(threadId, taskId),
@@ -1166,6 +1214,7 @@ export class InstanceAiService {
 			nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
 			domainContext: context,
 			tracingProxyConfig,
+			memory,
 		};
 
 		return {
@@ -1301,6 +1350,11 @@ export class InstanceAiService {
 		researchMode: boolean | undefined,
 		messageGroupId?: string,
 	): Promise<string> {
+		if (this.runState.hasLiveRun(threadId)) {
+			this.logger.warn('Skipping internal follow-up: active run exists', { threadId });
+			return '';
+		}
+
 		const { runId, abortController } = this.runState.startRun({
 			threadId,
 			user,
@@ -1323,6 +1377,14 @@ export class InstanceAiService {
 	}
 
 	private async schedulePlannedTasks(user: User, threadId: string): Promise<void> {
+		const prev = this.schedulerLocks.get(threadId) ?? Promise.resolve();
+		// eslint-disable-next-line @typescript-eslint/promise-function-async
+		const current = prev.then(() => this.doSchedulePlannedTasks(user, threadId)).catch(() => {});
+		this.schedulerLocks.set(threadId, current);
+		await current;
+	}
+
+	private async doSchedulePlannedTasks(user: User, threadId: string): Promise<void> {
 		const { plannedTaskService } = await this.createPlannedTaskState();
 		const graph = await plannedTaskService.getGraph(threadId);
 		if (!graph) return;
@@ -1375,7 +1437,7 @@ export class InstanceAiService {
 			await this.dispatchPlannedTask(task, environment.orchestrationContext);
 		}
 
-		await this.schedulePlannedTasks(user, threadId);
+		await this.doSchedulePlannedTasks(user, threadId);
 	}
 
 	private async executeRun(
@@ -1430,6 +1492,14 @@ export class InstanceAiService {
 					messageGroupId,
 					executionPushRef,
 				);
+			// Make the current user message available to sub-agents (e.g. planner)
+			// since memory.recall() only returns previously-saved messages.
+			orchestrationContext.currentUserMessage = message;
+
+			// Thread attachments into the domain context so parse-file can access them
+			if (attachments && attachments.length > 0) {
+				context.currentUserAttachments = attachments;
+			}
 			const memoryConfig = this.createMemoryConfig();
 			const traceInput = {
 				message,
@@ -1566,34 +1636,64 @@ export class InstanceAiService {
 				const enrichedMessage = await this.buildMessageWithRunningTasks(threadId, message);
 
 				// Compose runtime input: conversation summary → background tasks → user message
-				const fullMessage = conversationSummary
+				let fullMessage = conversationSummary
 					? `${conversationSummary}\n\n${enrichedMessage}`
 					: enrichedMessage;
 
-				// Build multimodal message when attachments are present
-				streamInput =
-					attachments && attachments.length > 0
-						? [
-								{
-									role: 'user' as const,
-									content: [
-										{ type: 'text' as const, text: fullMessage },
-										...attachments.map((a) => ({
-											type: 'file' as const,
-											data: a.data,
-											mimeType: a.mimeType,
-										})),
-									],
-								},
-							]
-						: fullMessage;
+				// Classify attachments: structured (csv/tsv/json) go through parse-file,
+				// non-structured keep the existing multimodal file path.
+				if (attachments && attachments.length > 0) {
+					const classified = classifyAttachments(attachments);
+					const nonStructured = attachments.filter((a) => !isStructuredAttachment(a));
+					const hasParseable = classified.some((c: { parseable: boolean }) => c.parseable);
+
+					// Build compact manifest for structured attachments
+					const manifest = buildAttachmentManifest(classified);
+
+					// For attachment-only messages, synthesize a stub
+					if (!message && hasParseable) {
+						fullMessage = conversationSummary
+							? `${conversationSummary}\n\nThe user attached file(s) without a message. Inspect the first parseable attachment with parse-file and provide a concise summary.\n\n${manifest}`
+							: `The user attached file(s) without a message. Inspect the first parseable attachment with parse-file and provide a concise summary.\n\n${manifest}`;
+					} else {
+						fullMessage = `${fullMessage}\n\n${manifest}`;
+					}
+
+					// Only include non-structured attachments as raw multimodal content
+					if (nonStructured.length > 0) {
+						streamInput = [
+							{
+								role: 'user' as const,
+								content: [
+									{ type: 'text' as const, text: fullMessage },
+									...nonStructured.map((a) => ({
+										type: 'file' as const,
+										data: a.data,
+										mimeType: a.mimeType,
+									})),
+								],
+							},
+						];
+					} else {
+						streamInput = fullMessage;
+					}
+				} else {
+					streamInput = fullMessage;
+				}
 
 				if (promptBuildRun && tracing) {
+					// Redact raw attachment data from trace output — log metadata only
+					const traceOutput =
+						typeof streamInput === 'string'
+							? { fullMessage: streamInput }
+							: {
+									fullMessage,
+									attachmentCount: attachments?.length ?? 0,
+									nonStructuredAttachmentCount:
+										attachments?.filter((a) => !isStructuredAttachment(a)).length ?? 0,
+								};
 					await tracing.finishRun(promptBuildRun, {
-						outputs: {
-							fullMessage,
-							streamInput,
-						},
+						outputs: traceOutput,
 						metadata: { final_status: 'completed' },
 					});
 				}
@@ -1671,7 +1771,19 @@ export class InstanceAiService {
 						tracing,
 					});
 				}
+
+				// Track intermediate message (text streamed before suspension)
+				const intermediateText = await (result.text ?? Promise.resolve(''));
+				if (intermediateText) {
+					this.telemetry.track('Builder sent message', {
+						thread_id: threadId,
+						message: intermediateText,
+						is_intermediate: true,
+					});
+				}
+
 				if (result.confirmationEvent) {
+					this.trackConfirmationRequest(threadId, result.confirmationEvent);
 					this.eventBus.publish(threadId, result.confirmationEvent);
 				}
 
@@ -1703,6 +1815,13 @@ export class InstanceAiService {
 			// Count credits on first completed run per thread
 			if (result.status === 'completed') {
 				await this.countCreditsIfFirst(user, threadId, runId);
+				this.telemetry.track('Builder sent message', {
+					thread_id: threadId,
+					message: outputText,
+				});
+				this.telemetry.track('Builder satisfied user intent', {
+					thread_id: threadId,
+				});
 			}
 		} catch (error) {
 			if (signal.aborted) {
@@ -1906,9 +2025,25 @@ export class InstanceAiService {
 						tracing: opts.tracing,
 					});
 				}
+
+				// Track intermediate message (text streamed before suspension)
+				const intermediateText = await (result.text ?? Promise.resolve(''));
+				if (intermediateText) {
+					this.telemetry.track('Builder sent message', {
+						thread_id: opts.threadId,
+						message: intermediateText,
+						is_intermediate: true,
+					});
+				}
+
 				if (result.confirmationEvent) {
+					this.trackConfirmationRequest(opts.threadId, result.confirmationEvent);
 					this.eventBus.publish(opts.threadId, result.confirmationEvent);
 				}
+
+				// Persist the refreshed agent tree so repeated HITL waits
+				// survive page refresh after a resume as well.
+				await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
 
 				return;
 			}
@@ -1925,6 +2060,16 @@ export class InstanceAiService {
 				metadata: { completion_source: 'orchestrator' },
 			};
 			await this.finalizeRun(opts.threadId, opts.runId, result.status, opts.snapshotStorage);
+
+			if (result.status === 'completed') {
+				this.telemetry.track('Builder sent message', {
+					thread_id: opts.threadId,
+					message: outputText,
+				});
+				this.telemetry.track('Builder satisfied user intent', {
+					thread_id: opts.threadId,
+				});
+			}
 		} catch (error) {
 			if (opts.signal.aborted) {
 				await this.finalizeRunTracing(opts.runId, opts.tracing, {
@@ -2100,6 +2245,43 @@ export class InstanceAiService {
 					`[Running task — ${task.role}]: taskId=${task.taskId}`,
 			},
 		);
+	}
+
+	private trackConfirmationRequest(
+		threadId: string,
+		confirmationEvent: { payload: Record<string, unknown> },
+	): void {
+		const payload = confirmationEvent.payload;
+		const inputThreadId = nanoid();
+		payload.inputThreadId = inputThreadId;
+
+		const inputType = payload.inputType as string | undefined;
+		let type: string;
+		if (inputType) {
+			type = inputType;
+		} else if (Array.isArray(payload.setupRequests) && payload.setupRequests.length > 0) {
+			type = 'setup';
+		} else if (Array.isArray(payload.credentialRequests) && payload.credentialRequests.length > 0) {
+			type = 'credential-setup';
+		} else {
+			type = 'approval';
+		}
+
+		let numSteps = 1;
+		if (Array.isArray(payload.questions)) {
+			numSteps = payload.questions.length;
+		} else if (Array.isArray(payload.setupRequests)) {
+			numSteps = payload.setupRequests.length;
+		} else if (Array.isArray(payload.credentialRequests)) {
+			numSteps = payload.credentialRequests.length;
+		}
+
+		this.telemetry.track('Builder asked for input', {
+			thread_id: threadId,
+			input_thread_id: inputThreadId,
+			type,
+			num_steps: numSteps,
+		});
 	}
 
 	private publishRunFinish(

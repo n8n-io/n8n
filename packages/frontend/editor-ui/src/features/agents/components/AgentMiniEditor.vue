@@ -27,6 +27,7 @@ const emit = defineEmits<{ 'update:modelValue': [value: string] }>();
 
 const container = ref<HTMLDivElement>();
 let view: EditorView | null = null;
+let isProgrammaticUpdate = false;
 
 function buildExtensions() {
 	const langExtensions = props.language === 'typescript' ? [javascript({ typescript: true })] : [];
@@ -46,7 +47,7 @@ function buildExtensions() {
 		...(!props.readonly
 			? [
 					EditorView.updateListener.of((update) => {
-						if (update.docChanged) {
+						if (update.docChanged && !isProgrammaticUpdate) {
 							emit('update:modelValue', update.state.doc.toString());
 						}
 					}),
@@ -72,9 +73,9 @@ watch(
 		if (!view) return;
 		const current = view.state.doc.toString();
 		if (current !== newVal) {
-			view.dispatch({
-				changes: { from: 0, to: current.length, insert: newVal },
-			});
+			isProgrammaticUpdate = true;
+			view.dispatch({ changes: { from: 0, to: current.length, insert: newVal } });
+			isProgrammaticUpdate = false;
 		}
 	},
 );

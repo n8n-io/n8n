@@ -72,6 +72,7 @@ export const instanceAiAgentKindSchema = z.enum([
 	'researcher',
 	'delegate',
 	'browser-setup',
+	'planner',
 ]);
 export type InstanceAiAgentKind = z.infer<typeof instanceAiAgentKindSchema>;
 
@@ -258,6 +259,18 @@ export const taskListSchema = z.object({
 
 export type TaskList = z.infer<typeof taskListSchema>;
 
+export const plannedTaskArgSchema = z.object({
+	id: z.string(),
+	title: z.string(),
+	kind: z.string(),
+	spec: z.string(),
+	deps: z.array(z.string()),
+	tools: z.array(z.string()).optional(),
+	workflowId: z.string().optional(),
+});
+
+export type PlannedTaskArg = z.infer<typeof plannedTaskArgSchema>;
+
 // ── Gateway resource confirmation (instance permission mode) ─────────────────
 
 /** Protocol prefix used by the daemon to signal a resource-access confirmation is required. */
@@ -279,6 +292,10 @@ export type GatewayConfirmationRequiredPayload = z.infer<
 
 export const confirmationRequestPayloadSchema = z.object({
 	requestId: z.string(),
+	inputThreadId: z
+		.string()
+		.optional()
+		.describe('Unique ID linking input-related telemetry events in a confirmation session'),
 	toolCallId: z.string().describe('Correlates to the tool-call that needs approval'),
 	toolName: z.string(),
 	args: z.record(z.unknown()),
@@ -314,6 +331,10 @@ export const confirmationRequestPayloadSchema = z.object({
 	tasks: taskListSchema
 		.optional()
 		.describe('Task checklist for plan review (inputType=plan-review)'),
+	planItems: z
+		.array(plannedTaskArgSchema)
+		.optional()
+		.describe('Full planned task details for plan review (title, kind, spec, deps)'),
 	domainAccess: domainAccessMetaSchema
 		.optional()
 		.describe('When present, renders domain-access approval UI instead of generic confirm'),
@@ -434,6 +455,7 @@ export const instanceAiFilesystemResponseSchema = z.object({
 
 export const tasksUpdatePayloadSchema = z.object({
 	tasks: taskListSchema,
+	planItems: z.array(plannedTaskArgSchema).optional(),
 });
 
 export const threadTitleUpdatedPayloadSchema = z.object({
@@ -444,7 +466,13 @@ export const threadTitleUpdatedPayloadSchema = z.object({
 // Event schema (Zod discriminated union — single source of truth)
 // ---------------------------------------------------------------------------
 
-const eventBase = { runId: z.string(), agentId: z.string(), userId: z.string().optional() };
+const eventBase = {
+	runId: z.string(),
+	agentId: z.string(),
+	userId: z.string().optional(),
+	/** Anthropic API response ID (msg_01...) — groups events from the same LLM response. */
+	responseId: z.string().optional(),
+};
 
 export const instanceAiEventSchema = z.discriminatedUnion('type', [
 	z.object({ type: z.literal('run-start'), ...eventBase, payload: runStartPayloadSchema }),
@@ -523,27 +551,23 @@ export type InstanceAiFilesystemResponse = z.infer<typeof instanceAiFilesystemRe
 // ---------------------------------------------------------------------------
 
 const instanceAiAttachmentSchema = z.object({
-	data: z.string(),
-	mimeType: z.string(),
-	fileName: z.string(),
+	data: z.string().max(700_000), // ~512 KB decoded + base64 overhead
+	mimeType: z.string().max(100),
+	fileName: z.string().max(300),
 });
 
 export type InstanceAiAttachment = z.infer<typeof instanceAiAttachmentSchema>;
 
 export class InstanceAiSendMessageRequest extends Z.class({
-	message: z.string().min(1),
+	message: z.string().default(''),
 	researchMode: z.boolean().optional(),
-	attachments: z.array(instanceAiAttachmentSchema).optional(),
+	attachments: z.array(instanceAiAttachmentSchema).max(10).optional(),
 	timeZone: TimeZoneSchema,
 	pushRef: z.string().optional(),
 }) {}
 
 export class InstanceAiCorrectTaskRequest extends Z.class({
 	message: z.string().min(1),
-}) {}
-
-export class InstanceAiUpdateMemoryRequest extends Z.class({
-	content: z.string(),
 }) {}
 
 export class InstanceAiEnsureThreadRequest extends Z.class({
@@ -596,6 +620,30 @@ export interface InstanceAiConfirmResponse {
 // Frontend store types (shared so both sides agree on structure)
 // ---------------------------------------------------------------------------
 
+export interface InstanceAiConfirmation {
+	requestId: string;
+	inputThreadId?: string;
+	severity: InstanceAiConfirmationSeverity;
+	message: string;
+	credentialRequests?: InstanceAiCredentialRequest[];
+	projectId?: string;
+	inputType?: 'approval' | 'text' | 'questions' | 'plan-review' | 'resource-decision';
+	domainAccess?: DomainAccessMeta;
+	credentialFlow?: InstanceAiCredentialFlow;
+	setupRequests?: InstanceAiWorkflowSetupNode[];
+	workflowId?: string;
+	planItems?: PlannedTaskArg[];
+	questions?: Array<{
+		id: string;
+		question: string;
+		type: 'single' | 'multi' | 'text';
+		options?: string[];
+	}>;
+	introMessage?: string;
+	tasks?: TaskList;
+	resourceDecision?: GatewayConfirmationRequiredPayload;
+}
+
 export interface InstanceAiToolCallState {
 	toolCallId: string;
 	toolName: string;
@@ -603,37 +651,24 @@ export interface InstanceAiToolCallState {
 	result?: unknown;
 	error?: string;
 	isLoading: boolean;
-	renderHint?: 'tasks' | 'delegate' | 'builder' | 'data-table' | 'researcher' | 'default';
-	confirmation?: {
-		requestId: string;
-		severity: InstanceAiConfirmationSeverity;
-		message: string;
-		credentialRequests?: InstanceAiCredentialRequest[];
-		projectId?: string;
-		inputType?: 'approval' | 'text' | 'questions' | 'plan-review' | 'resource-decision';
-		domainAccess?: DomainAccessMeta;
-		credentialFlow?: InstanceAiCredentialFlow;
-		setupRequests?: InstanceAiWorkflowSetupNode[];
-		workflowId?: string;
-		questions?: Array<{
-			id: string;
-			question: string;
-			type: 'single' | 'multi' | 'text';
-			options?: string[];
-		}>;
-		introMessage?: string;
-		tasks?: TaskList;
-		resourceDecision?: GatewayConfirmationRequiredPayload;
-	};
+	renderHint?:
+		| 'tasks'
+		| 'delegate'
+		| 'builder'
+		| 'data-table'
+		| 'researcher'
+		| 'planner'
+		| 'default';
+	confirmation?: InstanceAiConfirmation;
 	confirmationStatus?: 'pending' | 'approved' | 'denied';
 	startedAt?: string;
 	completedAt?: string;
 }
 
 export type InstanceAiTimelineEntry =
-	| { type: 'text'; content: string }
-	| { type: 'tool-call'; toolCallId: string }
-	| { type: 'child'; agentId: string };
+	| { type: 'text'; content: string; responseId?: string }
+	| { type: 'tool-call'; toolCallId: string; responseId?: string }
+	| { type: 'child'; agentId: string; responseId?: string };
 
 export interface InstanceAiAgentNode {
 	agentId: string;
@@ -662,6 +697,8 @@ export interface InstanceAiAgentNode {
 	timeline: InstanceAiTimelineEntry[];
 	/** Latest task list — updated by tasks-update events. */
 	tasks?: TaskList;
+	/** Full planned task details — updated progressively by plan-with-agent via tasks-update. */
+	planItems?: PlannedTaskArg[];
 	result?: string;
 	error?: string;
 	errorDetails?: {
@@ -691,6 +728,7 @@ export interface InstanceAiThreadSummary {
 	id: string;
 	title: string;
 	createdAt: string;
+	metadata?: Record<string, unknown>;
 }
 
 export type InstanceAiSSEConnectionState =
@@ -735,11 +773,6 @@ export interface InstanceAiStoredMessage {
 export interface InstanceAiThreadMessagesResponse {
 	messages: InstanceAiStoredMessage[];
 	threadId: string;
-}
-
-export interface InstanceAiThreadContextResponse {
-	threadId: string;
-	workingMemory: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -829,6 +862,31 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	restoreWorkflowVersion: 'require_approval',
 };
 
+/** Permission keys that remain active when branchReadOnly is enabled.
+ *  When changing this set, also update the read-only section in
+ *  `packages/@n8n/instance-ai/src/agent/system-prompt.ts` (`getReadOnlySection`). */
+const BRANCH_READ_ONLY_SAFE_PERMISSIONS: ReadonlySet<keyof InstanceAiPermissions> = new Set([
+	'readFilesystem',
+	'fetchUrl',
+	'publishWorkflow',
+	'deleteCredential',
+	'restoreWorkflowVersion',
+]);
+
+/** Returns a copy of permissions with all write operations set to 'blocked',
+ *  except for the safelisted ones that are allowed on read-only instances. */
+export function applyBranchReadOnlyOverrides(
+	permissions: InstanceAiPermissions,
+): InstanceAiPermissions {
+	const overridden = { ...permissions };
+	for (const key of Object.keys(overridden) as Array<keyof InstanceAiPermissions>) {
+		if (!BRANCH_READ_ONLY_SAFE_PERMISSIONS.has(key)) {
+			overridden[key] = 'blocked';
+		}
+	}
+	return overridden;
+}
+
 // ---------------------------------------------------------------------------
 // Admin settings — instance-scoped, admin-only
 // ---------------------------------------------------------------------------
@@ -850,6 +908,7 @@ export interface InstanceAiAdminSettingsResponse {
 	n8nSandboxCredentialId: string | null;
 	searchCredentialId: string | null;
 	localGatewayDisabled: boolean;
+	optinModalDismissed: boolean;
 }
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
@@ -869,6 +928,7 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	n8nSandboxCredentialId: z.string().nullable().optional(),
 	searchCredentialId: z.string().nullable().optional(),
 	localGatewayDisabled: z.boolean().optional(),
+	optinModalDismissed: z.boolean().optional(),
 }) {}
 
 // ---------------------------------------------------------------------------
@@ -902,6 +962,7 @@ const DATA_TABLE_RENDER_HINT_TOOLS = new Set([
 	'agent-data-table-manager',
 ]);
 const RESEARCH_RENDER_HINT_TOOLS = new Set(['research-with-agent']);
+const PLANNER_RENDER_HINT_TOOLS = new Set(['plan']);
 
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
 	if (toolName === 'update-tasks') return 'tasks';
@@ -909,6 +970,7 @@ export function getRenderHint(toolName: string): InstanceAiToolCallState['render
 	if (BUILDER_RENDER_HINT_TOOLS.has(toolName)) return 'builder';
 	if (DATA_TABLE_RENDER_HINT_TOOLS.has(toolName)) return 'data-table';
 	if (RESEARCH_RENDER_HINT_TOOLS.has(toolName)) return 'researcher';
+	if (PLANNER_RENDER_HINT_TOOLS.has(toolName)) return 'planner';
 	return 'default';
 }
 

@@ -2,7 +2,8 @@
 import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
 import { N8nButton, N8nIcon, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import { computed } from 'vue';
 import { getToolIcon, useToolLabel } from '../toolLabels';
 import ButtonLike from './ButtonLike.vue';
@@ -18,6 +19,9 @@ const i18n = useI18n();
 const { getToolLabel, getToggleLabel, getHideLabel } = useToolLabel();
 
 const CODE_BLOCK_PATTERN = /```/;
+
+/** Tool calls that are internal and should not be shown in the step timeline. */
+const HIDDEN_TOOLS = new Set(['updateWorkingMemory']);
 
 interface TimelineStep {
 	type: 'tool-call' | 'text' | 'done';
@@ -73,7 +77,7 @@ const steps = computed((): TimelineStep[] => {
 			});
 		} else if (entry.type === 'tool-call') {
 			const tc = toolCallsById.value[entry.toolCallId];
-			if (!tc) continue;
+			if (!tc || HIDDEN_TOOLS.has(tc.toolName)) continue;
 			result.push({
 				type: 'tool-call',
 				icon: tc.isLoading ? 'spinner' : getToolIcon(tc.toolName),
@@ -127,11 +131,11 @@ const steps = computed((): TimelineStep[] => {
 							<template v-else>{{ step.label }}</template>
 						</N8nButton>
 					</CollapsibleTrigger>
-					<CollapsibleContent :class="$style.toggleContent">
+					<AnimatedCollapsibleContent :class="$style.toggleContent">
 						<DataSection>
 							<InstanceAiMarkdown :content="step.textContent!" />
 						</DataSection>
-					</CollapsibleContent>
+					</AnimatedCollapsibleContent>
 				</CollapsibleRoot>
 				<ButtonLike v-else>
 					<N8nIcon :icon="step.icon" size="small" />

@@ -105,8 +105,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		const chatExecution = runData.mode === 'chat';
 
 		if (chatExecution) {
-			// Chat workflows are short lived and deleted immediately after execution, so we skip statistics for them.
-			// They are also not counted towards execution limits.
+			// Chat workflows are short lived and not counted towards execution limits.
 			return;
 		}
 

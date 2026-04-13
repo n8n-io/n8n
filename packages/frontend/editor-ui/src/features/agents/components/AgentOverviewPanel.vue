@@ -9,10 +9,10 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { listAgentCredentials } from '../composables/useAgentApi';
 import { useModelCatalog } from '../composables/useModelCatalog';
 import type { ModelInfo } from '../composables/useAgentApi';
-import type { AgentSchema, ThinkingSchema } from '../types';
+import type { AgentJsonConfig } from '../types';
 
-const props = defineProps<{ schema: AgentSchema | null }>();
-const emit = defineEmits<{ 'update:schema': [changes: Partial<AgentSchema>] }>();
+const props = defineProps<{ config: AgentJsonConfig | null }>();
+const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
 
 const route = useRoute();
 const rootStore = useRootStore();
@@ -20,7 +20,7 @@ const rootStore = useRootStore();
 const projectId = computed(() => route.params.projectId as string);
 const agentId = computed(() => route.params.agentId as string);
 
-// Provider capabilities — defines which thinking options are available per provider
+// Provider capabilities
 interface ProviderCapabilities {
 	thinking: false | 'budgetTokens' | 'reasoningEffort';
 }
@@ -53,83 +53,96 @@ const PROVIDERS = [
 
 const REASONING_EFFORT_OPTIONS = ['low', 'medium', 'high'] as const;
 
-// Local state — kept in sync with props.schema
-const description = ref(props.schema?.description ?? '');
-const provider = ref(props.schema?.model.provider ?? '');
-const modelName = ref(props.schema?.model.name ?? '');
-const credential = ref(props.schema?.credential ?? '');
-const thinkingEnabled = ref(props.schema?.config.thinking !== null);
-const budgetTokens = ref(props.schema?.config.thinking?.budgetTokens ?? 1024);
-const reasoningEffort = ref(props.schema?.config.thinking?.reasoningEffort ?? 'medium');
-const toolCallConcurrency = ref(props.schema?.config.toolCallConcurrency ?? 1);
-const requireToolApproval = ref(props.schema?.config.requireToolApproval ?? false);
+/** Parse model value → [provider, modelName].
+ *  Handles both string format ("provider/model-name") and object format
+ *  ({ provider, name }) since the backend may return either depending on
+ *  how the agent was created. */
+function parseModel(
+	raw: string | { provider: string | null; name: string | null } | undefined,
+): [string, string] {
+	if (!raw) return ['', ''];
+	if (typeof raw === 'object') {
+		return [raw.provider ?? '', raw.name ?? ''];
+	}
+	const slashIdx = raw.indexOf('/');
+	if (slashIdx === -1) return ['', raw];
+	return [raw.slice(0, slashIdx), raw.slice(slashIdx + 1)];
+}
+
+const [initProvider, initModel] = parseModel(props.config?.model);
+
+const description = ref(props.config?.description ?? '');
+const provider = ref(initProvider);
+const modelName = ref(initModel);
+const credential = ref(props.config?.credential ?? '');
+const thinkingEnabled = ref(props.config?.config?.thinking !== undefined);
+const budgetTokens = ref(props.config?.config?.thinking?.budgetTokens ?? 1024);
+const reasoningEffort = ref(props.config?.config?.thinking?.reasoningEffort ?? 'medium');
+const toolCallConcurrency = ref(props.config?.config?.toolCallConcurrency ?? 1);
+const requireToolApproval = ref(props.config?.config?.requireToolApproval ?? false);
 
 const credentials = ref<Array<{ id: string; name: string; type: string }>>([]);
 const credentialsLoading = ref(false);
 const { ensureLoaded: ensureCatalogLoaded, getModelsForProvider } = useModelCatalog();
-const availableModels = computed<ModelInfo[]>(() => getModelsForProvider(currentProvider.value));
+const availableModels = computed<ModelInfo[]>(() => getModelsForProvider(provider.value));
 
-const currentProvider = computed(() => provider.value || '');
-const capabilities = computed(
-	() => PROVIDER_CAPABILITIES[currentProvider.value] ?? { thinking: false },
-);
-const isModelRaw = computed(() => !!props.schema?.model.raw);
+const capabilities = computed(() => PROVIDER_CAPABILITIES[provider.value] ?? { thinking: false });
 
-// Sync local state when schema prop changes externally
+// Sync local state when config prop changes externally
 watch(
-	() => props.schema,
-	(schema) => {
-		if (!schema) return;
-		description.value = schema.description ?? '';
-		provider.value = schema.model.provider ?? '';
-		modelName.value = schema.model.name ?? '';
-		credential.value = schema.credential ?? '';
-		thinkingEnabled.value = schema.config.thinking !== null;
-		budgetTokens.value = schema.config.thinking?.budgetTokens ?? 1024;
-		reasoningEffort.value = schema.config.thinking?.reasoningEffort ?? 'medium';
-		toolCallConcurrency.value = schema.config.toolCallConcurrency ?? 1;
-		requireToolApproval.value = schema.config.requireToolApproval ?? false;
+	() => props.config,
+	(config) => {
+		if (!config) return;
+		description.value = config.description ?? '';
+		const [p, m] = parseModel(config.model);
+		provider.value = p;
+		modelName.value = m;
+		credential.value = config.credential ?? '';
+		thinkingEnabled.value = config.config?.thinking !== undefined;
+		budgetTokens.value = config.config?.thinking?.budgetTokens ?? 1024;
+		reasoningEffort.value = config.config?.thinking?.reasoningEffort ?? 'medium';
+		toolCallConcurrency.value = config.config?.toolCallConcurrency ?? 1;
+		requireToolApproval.value = config.config?.requireToolApproval ?? false;
 	},
-	{ deep: true, immediate: true },
+	{ deep: true },
 );
 
-// Debounced emitters for text fields
 const emitDescription = useDebounceFn((value: string) => {
-	emit('update:schema', { description: value });
-}, 1000);
+	emit('update:config', { description: value || undefined });
+}, 800);
 
-const emitModel = useDebounceFn((value: string) => {
-	emit('update:schema', {
-		model: { provider: provider.value || '', name: value },
-	});
-}, 1000);
+const emitModel = useDebounceFn(() => {
+	const modelStr = provider.value ? `${provider.value}/${modelName.value}` : modelName.value;
+	emit('update:config', { model: modelStr });
+}, 600);
 
-// Immediate emitters for dropdowns / toggles
 function onProviderChange(value: string) {
 	provider.value = value;
-	emit('update:schema', {
-		model: { provider: value, name: modelName.value || '' },
-	});
+	// Reset model when provider changes
+	modelName.value = '';
+	emit('update:config', { model: value + '/' });
 }
 
 function onModelSelect(value: string) {
 	modelName.value = value;
-	emit('update:schema', {
-		model: { provider: provider.value || '', name: value },
-	});
+	emit('update:config', { model: `${provider.value}/${value}` });
+}
+
+function onModelInput(value: string) {
+	modelName.value = value;
+	void emitModel();
 }
 
 function onCredentialChange(value: string) {
 	credential.value = value;
-	emit('update:schema', { credential: value });
+	emit('update:config', { credential: value });
 }
 
 function onThinkingToggle(value: boolean) {
 	thinkingEnabled.value = value;
 	if (!value) {
-		emit('update:schema', {
-			config: { ...props.schema?.config, thinking: null } as AgentSchema['config'],
-		});
+		const { thinking: _removed, ...rest } = props.config?.config ?? {};
+		emit('update:config', { config: rest });
 		return;
 	}
 	emitThinkingConfig();
@@ -138,15 +151,11 @@ function onThinkingToggle(value: boolean) {
 function emitThinkingConfig() {
 	const cap = capabilities.value.thinking;
 	if (!cap) return;
-	const thinking: ThinkingSchema = {
-		provider: currentProvider.value === 'anthropic' ? 'anthropic' : 'openai',
-	};
-	if (cap === 'budgetTokens') {
-		thinking.budgetTokens = budgetTokens.value;
-	} else {
-		thinking.reasoningEffort = reasoningEffort.value;
-	}
-	emit('update:schema', { config: { ...props.schema?.config, thinking } as AgentSchema['config'] });
+	const thinking =
+		cap === 'budgetTokens'
+			? { provider: 'anthropic' as const, budgetTokens: budgetTokens.value }
+			: { provider: 'openai' as const, reasoningEffort: reasoningEffort.value };
+	emit('update:config', { config: { ...props.config?.config, thinking } });
 }
 
 function onBudgetTokensChange(value: number) {
@@ -161,15 +170,15 @@ function onReasoningEffortChange(value: string) {
 
 function onToolCallConcurrencyChange(value: number) {
 	toolCallConcurrency.value = value;
-	emit('update:schema', {
-		config: { ...props.schema?.config, toolCallConcurrency: value } as AgentSchema['config'],
+	emit('update:config', {
+		config: { ...props.config?.config, toolCallConcurrency: value },
 	});
 }
 
 function onRequireToolApprovalChange(value: boolean) {
 	requireToolApproval.value = value;
-	emit('update:schema', {
-		config: { ...props.schema?.config, requireToolApproval: value } as AgentSchema['config'],
+	emit('update:config', {
+		config: { ...props.config?.config, requireToolApproval: value },
 	});
 }
 
@@ -200,7 +209,7 @@ onMounted(() => {
 <template>
 	<div :class="$style.panel">
 		<N8nText tag="h3" bold>Overview</N8nText>
-		<N8nText size="small" color="text-light">Agent configuration derived from code</N8nText>
+		<N8nText size="small" color="text-light">Model, credential, and agent settings</N8nText>
 
 		<!-- Description -->
 		<div :class="$style.field">
@@ -238,11 +247,8 @@ onMounted(() => {
 				<label :class="$style.label">
 					<N8nText size="small" bold>Model</N8nText>
 				</label>
-				<N8nText v-if="isModelRaw" size="small" color="text-light">
-					Model configured via object — edit in code
-				</N8nText>
 				<N8nSelect
-					v-else-if="availableModels.length > 0"
+					v-if="availableModels.length > 0"
 					v-model="modelName"
 					filterable
 					placeholder="Select model..."
@@ -257,7 +263,7 @@ onMounted(() => {
 					v-model="modelName"
 					placeholder="e.g. claude-3-7-sonnet-latest"
 					data-testid="agent-model-input"
-					@update:model-value="emitModel"
+					@update:model-value="onModelInput"
 				/>
 			</div>
 		</div>
@@ -295,7 +301,7 @@ onMounted(() => {
 			/>
 		</div>
 
-		<!-- Budget tokens (Anthropic) — shown when thinking enabled -->
+		<!-- Budget tokens (Anthropic) -->
 		<div
 			v-if="capabilities.thinking === 'budgetTokens' && thinkingEnabled"
 			:class="$style.toggleRow"
@@ -310,7 +316,7 @@ onMounted(() => {
 			/>
 		</div>
 
-		<!-- Reasoning effort (OpenAI) — shown when thinking enabled -->
+		<!-- Reasoning effort (OpenAI) -->
 		<div
 			v-if="capabilities.thinking === 'reasoningEffort' && thinkingEnabled"
 			:class="$style.toggleRow"
@@ -339,6 +345,7 @@ onMounted(() => {
 				type="number"
 				:value="toolCallConcurrency"
 				min="1"
+				max="20"
 				:class="$style.inlineNumberInput"
 				data-testid="agent-tool-concurrency-input"
 				@change="onToolCallConcurrencyChange(Number(($event.target as HTMLInputElement).value))"
