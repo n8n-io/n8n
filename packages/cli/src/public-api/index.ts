@@ -75,6 +75,30 @@ function createLazyValidatorMiddleware(
 				const { middleware: openApiValidatorMiddleware } = await import(
 					'express-openapi-validator'
 				);
+
+				const authenticate = async (req: AuthenticatedRequest) => {
+					const authenticated = await Container.get(AuthStrategyRegistry).authenticate(req);
+
+					if (authenticated) {
+						Container.get(LastActiveAtService)
+							.updateLastActiveIfStale(req.user.id)
+							.catch((error: unknown) => {
+								Container.get(Logger).error('Failed to update last active timestamp', {
+									error,
+								});
+							});
+						Container.get(EventService).emit('public-api-invoked', {
+							userId: req.user.id,
+							path: req.path,
+							method: req.method,
+							apiVersion: version,
+							userAgent: req.headers['user-agent'],
+						});
+					}
+
+					return authenticated;
+				};
+
 				const router = express.Router();
 				router.use(
 					openApiValidatorMiddleware({
@@ -111,28 +135,8 @@ function createLazyValidatorMiddleware(
 						},
 						validateSecurity: {
 							handlers: {
-								ApiKeyAuth: async (req: AuthenticatedRequest) => {
-									const authenticated = await Container.get(AuthStrategyRegistry).authenticate(req);
-
-									if (authenticated) {
-										Container.get(LastActiveAtService)
-											.updateLastActiveIfStale(req.user.id)
-											.catch((error: unknown) => {
-												Container.get(Logger).error('Failed to update last active timestamp', {
-													error,
-												});
-											});
-										Container.get(EventService).emit('public-api-invoked', {
-											userId: req.user.id,
-											path: req.path,
-											method: req.method,
-											apiVersion: version,
-											userAgent: req.headers['user-agent'],
-										});
-									}
-
-									return authenticated;
-								},
+								ApiKeyAuth: authenticate,
+								BearerAuth: authenticate,
 							},
 						},
 					}),
