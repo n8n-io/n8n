@@ -9,6 +9,7 @@ import type {
 	ThreadExecution,
 } from '@/features/agents/composables/useAgentThreadsApi';
 import RichInteractionCard from '@/features/agents/components/RichInteractionCard.vue';
+import ToolResultJson from '@/features/ai/instanceAi/components/ToolResultJson.vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
@@ -447,17 +448,13 @@ function selectItem(idx: number) {
 								<div :class="$style.detailSectionLabel">
 									{{ i18n.baseText('agentSessions.timeline.input') }}
 								</div>
-								<pre :class="$style.json">{{
-									JSON.stringify(selectedItem.toolCall.input, null, 2)
-								}}</pre>
+								<ToolResultJson :value="selectedItem.toolCall.input" />
 							</div>
 							<div :class="$style.detailSection">
 								<div :class="$style.detailSectionLabel">
 									{{ i18n.baseText('agentSessions.timeline.output') }}
 								</div>
-								<pre :class="$style.json">{{
-									JSON.stringify(selectedItem.toolCall.output, null, 2)
-								}}</pre>
+								<ToolResultJson :value="selectedItem.toolCall.output" />
 							</div>
 						</template>
 					</template>
@@ -511,7 +508,7 @@ function selectItem(idx: number) {
 	align-items: center;
 	gap: var(--spacing--3xs);
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	color: var(--color--text);
 }
 
 .backButton {
@@ -540,7 +537,7 @@ function selectItem(idx: number) {
 }
 
 .statSep {
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 }
 
 .panels {
@@ -590,7 +587,7 @@ function selectItem(idx: number) {
 
 .triggerTimestamp {
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	margin-left: auto;
 }
 
@@ -681,7 +678,7 @@ function selectItem(idx: number) {
 .badge {
 	font-size: var(--font-size--3xs);
 	font-weight: var(--font-weight--bold);
-	padding: 1px var(--spacing--3xs);
+	padding: var(--spacing--4xs) var(--spacing--2xs);
 	border-radius: var(--radius--lg);
 	white-space: nowrap;
 }
@@ -744,7 +741,7 @@ function selectItem(idx: number) {
 
 .detailLabel {
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 }
 
 .detailValue {
@@ -789,7 +786,7 @@ function selectItem(idx: number) {
 	align-items: center;
 	justify-content: center;
 	height: 100%;
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	font-size: var(--font-size--sm);
 }
 
