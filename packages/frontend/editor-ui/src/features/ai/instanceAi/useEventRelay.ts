@@ -34,7 +34,6 @@ export function useEventRelay({
 	// Track previous status per workflow to detect running → finished transitions
 	// and relay the executionFinished event (which clears the iframe's executing node queue).
 	const prevStatus = new Map<string, string>();
-	let prevLogLength = 0;
 
 	watch(
 		() => workflowExecutions.value,
@@ -48,13 +47,11 @@ export function useEventRelay({
 			prevStatus.set(wfId, entry.status);
 
 			if (entry.status === 'running') {
-				const logLength = entry.eventLog.length;
-				if (logLength > prevLogLength) {
-					prevLogLength = logLength;
-					relay(entry.eventLog[logLength - 1]);
+				const log = entry.eventLog;
+				if (log.length > 0) {
+					relay(log[log.length - 1]);
 				}
 			} else if (prev === 'running') {
-				prevLogLength = 0;
 				// Transition from running → success/error: relay a synthetic executionFinished
 				// so the iframe clears its executing node queue.
 				relay({
