@@ -874,7 +874,7 @@ const nodeHints = computed<NodeHint[]>(() => {
 					node: node.value,
 					nodeType: nodeType.value,
 					nodeOutputData,
-					getNodeByName: props.workflowObject.getNode,
+					getNodeByName: (name) => props.workflowObject.getNode(name),
 					connections: props.workflowObject.connectionsBySourceNode,
 					hasNodeRun: hasNodeRun.value,
 					hasMultipleInputItems,
