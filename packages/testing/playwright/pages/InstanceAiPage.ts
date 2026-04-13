@@ -158,7 +158,7 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	getPreviewNdvOutputPanel(): Locator {
-		return this.getPreviewIframe().locator('[data-test-id="ndv-output-panel"]');
+		return this.getPreviewIframe().locator('[data-test-id="output-panel"]');
 	}
 
 	getPreviewCloseButton(): Locator {
