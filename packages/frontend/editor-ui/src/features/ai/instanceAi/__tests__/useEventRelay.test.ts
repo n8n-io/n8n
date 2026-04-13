@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach, type Mock } from 'vitest';
-import { ref, shallowRef, triggerRef, computed, nextTick, type Ref, type ShallowRef } from 'vue';
+import { ref, computed, nextTick, type Ref } from 'vue';
 import type { PushMessage } from '@n8n/api-types';
 import { useEventRelay } from '../useEventRelay';
 import type { WorkflowExecutionState } from '../useExecutionPushEvents';
@@ -50,13 +50,13 @@ function createExecState(
 
 describe('useEventRelay', () => {
 	let relay: Mock;
-	let workflowExecutions: ShallowRef<Map<string, WorkflowExecutionState>>;
+	let workflowExecutions: Ref<Map<string, WorkflowExecutionState>>;
 	let activeWorkflowId: Ref<string | null>;
 	let bufferedEventsStore: Map<string, PushMessage[]>;
 
 	function setup(overrides?: { activeWfId?: string | null }) {
 		relay = vi.fn();
-		workflowExecutions = shallowRef(new Map<string, WorkflowExecutionState>());
+		workflowExecutions = ref(new Map<string, WorkflowExecutionState>());
 		activeWorkflowId = ref(overrides?.activeWfId ?? null);
 		bufferedEventsStore = new Map<string, PushMessage[]>();
 
@@ -66,12 +66,6 @@ describe('useEventRelay', () => {
 			getBufferedEvents: (wfId: string) => bufferedEventsStore.get(wfId) ?? [],
 			relay,
 		});
-	}
-
-	/** Update the executions map and trigger the watch. */
-	function setExecutions(entries: [string, WorkflowExecutionState][]) {
-		workflowExecutions.value = new Map(entries);
-		triggerRef(workflowExecutions);
 	}
 
 	beforeEach(() => {
@@ -120,7 +114,7 @@ describe('useEventRelay', () => {
 			setup({ activeWfId: 'wf-1' });
 
 			const nodeEvent = nodeExecuteBeforeEvent('exec-1', 'Node1');
-			setExecutions([
+			workflowExecutions.value = new Map([
 				['wf-1', createExecState('wf-1', 'exec-1', 'running', [nodeEvent])],
 			]);
 			await nextTick();
@@ -132,7 +126,7 @@ describe('useEventRelay', () => {
 		test('does not forward when execution is finished', async () => {
 			setup({ activeWfId: 'wf-1' });
 
-			setExecutions([
+			workflowExecutions.value = new Map([
 				['wf-1', createExecState('wf-1', 'exec-1', 'success', [])],
 			]);
 			await nextTick();
@@ -144,7 +138,7 @@ describe('useEventRelay', () => {
 			setup({ activeWfId: 'wf-2' });
 
 			const nodeEvent = nodeExecuteBeforeEvent('exec-1', 'Node1');
-			setExecutions([
+			workflowExecutions.value = new Map([
 				['wf-1', createExecState('wf-1', 'exec-1', 'running', [nodeEvent])],
 			]);
 			await nextTick();
@@ -156,7 +150,7 @@ describe('useEventRelay', () => {
 			setup({ activeWfId: null });
 
 			const nodeEvent = nodeExecuteBeforeEvent('exec-1', 'Node1');
-			setExecutions([
+			workflowExecutions.value = new Map([
 				['wf-1', createExecState('wf-1', 'exec-1', 'running', [nodeEvent])],
 			]);
 			await nextTick();
@@ -168,13 +162,13 @@ describe('useEventRelay', () => {
 			setup({ activeWfId: 'wf-1' });
 
 			const event1 = nodeExecuteBeforeEvent('exec-1', 'Node1');
-			setExecutions([
+			workflowExecutions.value = new Map([
 				['wf-1', createExecState('wf-1', 'exec-1', 'running', [event1])],
 			]);
 			await nextTick();
 
 			const event2 = nodeExecuteAfterEvent('exec-1', 'Node1');
-			setExecutions([
+			workflowExecutions.value = new Map([
 				['wf-1', createExecState('wf-1', 'exec-1', 'running', [event1, event2])],
 			]);
 			await nextTick();
@@ -189,14 +183,14 @@ describe('useEventRelay', () => {
 
 			// Start running
 			const nodeEvent = nodeExecuteBeforeEvent('exec-1', 'Node1');
-			setExecutions([
+			workflowExecutions.value = new Map([
 				['wf-1', createExecState('wf-1', 'exec-1', 'running', [nodeEvent])],
 			]);
 			await nextTick();
 			expect(relay).toHaveBeenCalledTimes(1);
 
 			// Transition to success (eventLog cleared, as useExecutionPushEvents does)
-			setExecutions([
+			workflowExecutions.value = new Map([
 				['wf-1', createExecState('wf-1', 'exec-1', 'success', [])],
 			]);
 			await nextTick();
@@ -211,7 +205,7 @@ describe('useEventRelay', () => {
 		test('relays executionFinished on running → error transition', async () => {
 			setup({ activeWfId: 'wf-1' });
 
-			setExecutions([
+			workflowExecutions.value = new Map([
 				[
 					'wf-1',
 					createExecState('wf-1', 'exec-1', 'running', [nodeExecuteBeforeEvent('exec-1', 'N1')]),
@@ -219,7 +213,7 @@ describe('useEventRelay', () => {
 			]);
 			await nextTick();
 
-			setExecutions([
+			workflowExecutions.value = new Map([
 				['wf-1', createExecState('wf-1', 'exec-1', 'error', [])],
 			]);
 			await nextTick();

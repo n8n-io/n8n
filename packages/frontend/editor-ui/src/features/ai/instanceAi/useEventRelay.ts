@@ -36,7 +36,7 @@ export function useEventRelay({
 	const prevStatus = new Map<string, string>();
 
 	watch(
-		workflowExecutions,
+		() => workflowExecutions.value,
 		(executions) => {
 			const wfId = activeWorkflowId.value;
 			if (!wfId) return;
