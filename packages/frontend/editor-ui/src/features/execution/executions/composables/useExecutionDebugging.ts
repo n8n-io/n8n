@@ -50,7 +50,6 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 
 	const applyExecutionData = async (executionId: string): Promise<void> => {
 		const execution = await workflowsStore.getExecution(executionId);
-		const workflowObject = workflowsStore.workflowObject;
 		const workflowNodes = workflowDocumentStore.value?.getNodes() ?? [];
 
 		if (!execution?.data?.resultData) {
@@ -100,7 +99,7 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 			} else {
 				await router.push({
 					name: VIEWS.EXECUTION_PREVIEW,
-					params: { name: workflowObject.id, executionId },
+					params: { name: workflowDocumentStore.value?.workflowId, executionId },
 				});
 				return;
 			}
@@ -112,7 +111,7 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 
 		// Pin data of all nodes which do not have a parent node
 		const pinnableNodes = workflowNodes.filter(
-			(node: INodeUi) => !workflowObject.getParentNodes(node.name).length,
+			(node: INodeUi) => !workflowDocumentStore.value?.getParentNodes(node.name).length,
 		);
 
 		let pinnings = 0;

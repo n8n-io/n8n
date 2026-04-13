@@ -41,6 +41,7 @@ vi.mock('@/app/stores/workflowDocument.store', async () => {
 describe('useNodeHelpers()', () => {
 	beforeAll(() => {
 		setActivePinia(createTestingPinia());
+		mockedStore(useWorkflowsStore).workflowId = 'workflow-id';
 	});
 
 	afterEach(() => {
@@ -71,13 +72,6 @@ describe('useNodeHelpers()', () => {
 				parameters: {},
 			};
 
-			const mockWorkflow = mock<Workflow>({
-				id: 'workflow-id',
-				getNode: () => node,
-			});
-
-			mockedStore(useWorkflowsStore).workflowId = 'workflow-id';
-			mockedStore(useWorkflowsStore).workflowObject = mockWorkflow;
 			vi.mocked(useWorkflowDocumentStore).mockReturnValueOnce({
 				usedCredentials: mockDocumentStoreUsedCredentials,
 				allNodes: [],
@@ -108,11 +102,6 @@ describe('useNodeHelpers()', () => {
 				parameters: {},
 			};
 
-			const mockWorkflow = mock<Workflow>({
-				getNode: () => node,
-			});
-
-			mockedStore(useWorkflowsStore).workflowObject = mockWorkflow;
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
 			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(false);
 			mockedStore(useNodeTypesStore).isToolNode = vi.fn().mockReturnValue(false);
@@ -135,11 +124,6 @@ describe('useNodeHelpers()', () => {
 				parameters: {},
 			};
 
-			const mockWorkflow = mock<Workflow>({
-				getNode: () => node,
-			});
-
-			mockedStore(useWorkflowsStore).workflowObject = mockWorkflow;
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
 			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(false);
 			mockedStore(useNodeTypesStore).isToolNode = vi.fn().mockReturnValue(false);
@@ -162,11 +146,6 @@ describe('useNodeHelpers()', () => {
 				parameters: {},
 			};
 
-			const mockWorkflow = mock<Workflow>({
-				getNode: () => triggerNode,
-			});
-
-			mockedStore(useWorkflowsStore).workflowObject = mockWorkflow;
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
 			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(true);
 			mockedStore(useNodeTypesStore).isToolNode = vi.fn().mockReturnValue(false);
@@ -189,11 +168,6 @@ describe('useNodeHelpers()', () => {
 				parameters: {},
 			};
 
-			const mockWorkflow = mock<Workflow>({
-				getNode: () => toolNode,
-			});
-
-			mockedStore(useWorkflowsStore).workflowObject = mockWorkflow;
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
 			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(false);
 			mockedStore(useNodeTypesStore).isToolNode = vi.fn().mockReturnValue(true);
@@ -216,11 +190,6 @@ describe('useNodeHelpers()', () => {
 				parameters: {},
 			};
 
-			const mockWorkflow = mock<Workflow>({
-				getNode: () => node,
-			});
-
-			mockedStore(useWorkflowsStore).workflowObject = mockWorkflow;
 			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue({});
 			mockedStore(useNodeTypesStore).isTriggerNode = vi.fn().mockReturnValue(false);
 			mockedStore(useNodeTypesStore).isToolNode = vi.fn().mockReturnValue(false);
@@ -246,7 +215,6 @@ describe('useNodeHelpers()', () => {
 			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
 				[EnterpriseEditionFeature.Sharing]: false,
 			});
-			mockedStore(useWorkflowsStore).workflowId = 'test-workflow';
 			Object.assign(mockDocumentStoreUsedCredentials, {
 				[credentialWithoutAccess.id]: credentialWithoutAccess,
 			});
@@ -291,7 +259,6 @@ describe('useNodeHelpers()', () => {
 			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
 				[EnterpriseEditionFeature.Sharing]: true,
 			});
-			mockedStore(useWorkflowsStore).workflowId = 'test-workflow';
 			Object.assign(mockDocumentStoreUsedCredentials, {
 				[credentialWithAccess1.id]: credentialWithAccess1,
 				[credentialWithAccess2.id]: credentialWithAccess2,
@@ -330,7 +297,6 @@ describe('useNodeHelpers()', () => {
 			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
 				[EnterpriseEditionFeature.Sharing]: true,
 			});
-			mockedStore(useWorkflowsStore).workflowId = 'test-workflow';
 			Object.assign(mockDocumentStoreUsedCredentials, {
 				[credentialWithAccess.id]: credentialWithAccess,
 				[credentialWithoutAccess.id]: credentialWithoutAccess,
