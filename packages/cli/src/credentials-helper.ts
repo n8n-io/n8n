@@ -447,6 +447,12 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedData.oauthTokenData = decryptedDataOriginal.oauthTokenData;
 		}
 
+		// The JWE private key is auto-generated and stored as a hidden password field.
+		// It may get stripped by getNodeParameters, so restore it from the original data.
+		if (decryptedData.jwePrivateKey === undefined && decryptedDataOriginal.jwePrivateKey) {
+			decryptedData.jwePrivateKey = decryptedDataOriginal.jwePrivateKey;
+		}
+
 		if (
 			decryptedData.allowedHttpRequestDomains === undefined &&
 			decryptedDataOriginal.allowedHttpRequestDomains !== undefined

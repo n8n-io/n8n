@@ -203,5 +203,79 @@ export class OAuth2Api implements ICredentialType {
 				'HTTP status code that indicates the token has expired. Some APIs return 403 instead of 401.',
 			doNotInherit: true,
 		},
+		{
+			displayName: 'JWE Token Decryption',
+			name: 'jweEnabled',
+			type: 'boolean',
+			default: false,
+			description:
+				'Whether to decrypt JWE-encrypted tokens returned by the provider (OIDC Core §10.2)',
+			doNotInherit: true,
+		},
+		{
+			displayName: 'Key Encryption Algorithm',
+			name: 'jweAlgorithm',
+			type: 'options',
+			displayOptions: {
+				show: {
+					jweEnabled: [true],
+				},
+			},
+			options: [
+				{ name: 'RSA-OAEP', value: 'RSA-OAEP' },
+				{ name: 'RSA-OAEP-256', value: 'RSA-OAEP-256' },
+				{ name: 'ECDH-ES', value: 'ECDH-ES' },
+				{ name: 'ECDH-ES+A128KW', value: 'ECDH-ES+A128KW' },
+				{ name: 'ECDH-ES+A256KW', value: 'ECDH-ES+A256KW' },
+			],
+			default: 'RSA-OAEP',
+			description: 'Algorithm used by the provider to encrypt the key',
+		},
+		{
+			displayName: 'Content Encryption Algorithm',
+			name: 'jweEncryption',
+			type: 'options',
+			displayOptions: {
+				show: {
+					jweEnabled: [true],
+				},
+			},
+			options: [
+				{ name: 'A128GCM', value: 'A128GCM' },
+				{ name: 'A256GCM', value: 'A256GCM' },
+				{ name: 'A128CBC-HS256', value: 'A128CBC-HS256' },
+				{ name: 'A256CBC-HS512', value: 'A256CBC-HS512' },
+			],
+			default: 'A256GCM',
+			description: 'Algorithm used by the provider to encrypt the token content',
+		},
+		{
+			displayName: 'JWE Private Key',
+			name: 'jwePrivateKey',
+			type: 'hidden',
+			typeOptions: {
+				password: true,
+			},
+			default: '',
+			noDataExpression: true,
+		},
+		{
+			displayName: 'JWE Public Key',
+			name: 'jwePublicKey',
+			type: 'string',
+			// eslint-disable-next-line n8n-nodes-base/cred-class-field-type-options-password-missing
+			typeOptions: {
+				readOnly: true,
+			},
+			displayOptions: {
+				show: {
+					jweEnabled: [true],
+				},
+			},
+			default: '',
+			noDataExpression: true,
+			description:
+				'Auto-generated public key in JWK format. Register this with your OIDC provider so it can encrypt tokens for n8n.',
+		},
 	];
 }

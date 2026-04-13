@@ -2017,6 +2017,123 @@ describe('CredentialsService', () => {
 				await service.prepareUpdateData(ownerUser, payload, existingCredential);
 			});
 		});
+
+		describe('JWE key generation', () => {
+			beforeEach(() => {
+				jest.spyOn(service, 'decrypt').mockReturnValue({});
+				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+				credentialsRepository.create.mockImplementation((data) => ({ ...data }) as any);
+			});
+
+			it('should generate JWE key pair when jweEnabled is true and no keys exist', async () => {
+				const payload = {
+					name: 'Test OAuth2',
+					type: 'oAuth2Api',
+					data: {
+						jweEnabled: true,
+						jweAlgorithm: 'RSA-OAEP',
+						clientId: 'test-client',
+					},
+				};
+				const existingCredential = mockExistingCredential({ data: {} });
+
+				const result = await service.prepareUpdateData(ownerUser, payload, existingCredential);
+				const resultData = result.data as unknown as Record<string, unknown>;
+
+				expect(resultData.jwePrivateKey).toBeDefined();
+				expect(resultData.jwePublicKey).toBeDefined();
+
+				const privateJwk = JSON.parse(resultData.jwePrivateKey as string);
+				const publicJwk = JSON.parse(resultData.jwePublicKey as string);
+				expect(privateJwk.alg).toBe('RSA-OAEP');
+				expect(publicJwk.alg).toBe('RSA-OAEP');
+				expect(privateJwk.d).toBeDefined();
+				expect(publicJwk.d).toBeUndefined();
+			});
+
+			it('should not regenerate keys when jwePrivateKey already exists in payload', async () => {
+				const existingPrivateKey = '{"kty":"RSA","alg":"RSA-OAEP","d":"existing"}';
+				const payload = {
+					name: 'Test OAuth2',
+					type: 'oAuth2Api',
+					data: {
+						jweEnabled: true,
+						jweAlgorithm: 'RSA-OAEP',
+						jwePrivateKey: existingPrivateKey,
+						clientId: 'test-client',
+					},
+				};
+				const existingCredential = mockExistingCredential({ data: {} });
+
+				const result = await service.prepareUpdateData(ownerUser, payload, existingCredential);
+				const resultData = result.data as unknown as Record<string, unknown>;
+
+				expect(resultData.jwePrivateKey).toBe(existingPrivateKey);
+			});
+
+			it('should not regenerate keys when jwePrivateKey exists in stored credential but not in payload', async () => {
+				const storedPrivateKey = '{"kty":"RSA","alg":"RSA-OAEP","d":"stored-key"}';
+				jest.spyOn(service, 'decrypt').mockReturnValue({
+					jwePrivateKey: storedPrivateKey,
+					jwePublicKey: '{"kty":"RSA","alg":"RSA-OAEP"}',
+				});
+
+				const payload = {
+					name: 'Test OAuth2',
+					type: 'oAuth2Api',
+					data: {
+						jweEnabled: true,
+						jweAlgorithm: 'RSA-OAEP',
+						clientId: 'test-client',
+						// jwePrivateKey NOT sent from UI (hidden password field)
+					},
+				};
+				const existingCredential = mockExistingCredential({ data: {} });
+
+				const result = await service.prepareUpdateData(ownerUser, payload, existingCredential);
+				const resultData = result.data as unknown as Record<string, unknown>;
+
+				// Should preserve the existing key, not generate a new one
+				expect(resultData.jwePrivateKey).toBe(storedPrivateKey);
+			});
+
+			it('should not generate keys when jweEnabled is false', async () => {
+				const payload = {
+					name: 'Test OAuth2',
+					type: 'oAuth2Api',
+					data: {
+						jweEnabled: false,
+						clientId: 'test-client',
+					},
+				};
+				const existingCredential = mockExistingCredential({ data: {} });
+
+				const result = await service.prepareUpdateData(ownerUser, payload, existingCredential);
+				const resultData = result.data as unknown as Record<string, unknown>;
+
+				expect(resultData.jwePrivateKey).toBeUndefined();
+				expect(resultData.jwePublicKey).toBeUndefined();
+			});
+
+			it('should default to RSA-OAEP when jweAlgorithm is not specified', async () => {
+				const payload = {
+					name: 'Test OAuth2',
+					type: 'oAuth2Api',
+					data: {
+						jweEnabled: true,
+						clientId: 'test-client',
+					},
+				};
+				const existingCredential = mockExistingCredential({ data: {} });
+
+				const result = await service.prepareUpdateData(ownerUser, payload, existingCredential);
+				const resultData = result.data as unknown as Record<string, unknown>;
+
+				expect(resultData.jwePrivateKey).toBeDefined();
+				const privateJwk = JSON.parse(resultData.jwePrivateKey as string);
+				expect(privateJwk.alg).toBe('RSA-OAEP');
+			});
+		});
 	});
 
 	describe('checkCredentialData', () => {

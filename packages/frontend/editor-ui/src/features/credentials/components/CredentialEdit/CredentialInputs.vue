@@ -49,6 +49,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 				:node-values="credentialDataValues"
 				:documentation-url="documentationUrl"
 				:show-validation-warnings="showValidationWarnings"
+				:is-read-only="parameter.typeOptions?.readOnly === true"
 				:label="{ size: 'medium' }"
 				event-source="credentials"
 				@update="valueChanged"

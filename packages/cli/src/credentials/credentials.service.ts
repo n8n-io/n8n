@@ -55,6 +55,7 @@ import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { getAllKeyPaths } from '@/utils';
 
+import { generateJweKeyPair } from '@/controllers/oauth/jwe.utils';
 import { CredentialsFinderService } from './credentials-finder.service';
 import {
 	validateAccessToReferencedSecretProviders,
@@ -589,6 +590,13 @@ export class CredentialsService {
 			mergedData.data = this.unredact(mergedData.data, decryptedData);
 		}
 
+		// Generate JWE key pair if JWE was just enabled and no keys exist yet.
+		// Check decryptedData too, since jwePrivateKey may not be sent from the
+		// frontend (hidden field) but still exists in the stored credential.
+		if (mergedData.data) {
+			await this.generateJweKeysIfNeeded(mergedData.data, decryptedData);
+		}
+
 		// This saves us a merge but requires some type casting. These
 		// types are compatible for this case.
 		const updateData = this.credentialsRepository.create(mergedData as ICredentialsDb);
@@ -600,6 +608,11 @@ export class CredentialsService {
 		if (decryptedData.oauthTokenData) {
 			// @ts-ignore
 			updateData.data.oauthTokenData = decryptedData.oauthTokenData;
+		}
+
+		if (decryptedData.jwePrivateKey) {
+			// @ts-ignore
+			updateData.data.jwePrivateKey = decryptedData.jwePrivateKey;
 		}
 
 		this.validateOAuthCredentialUrls(
@@ -1113,6 +1126,10 @@ export class CredentialsService {
 				'create',
 			);
 		}
+
+		// Generate JWE key pair if JWE is enabled on this credential
+		await this.generateJweKeysIfNeeded(opts.data as ICredentialDataDecryptedObject);
+
 		const encryptedCredential = this.createEncryptedData({
 			id: null,
 			name: opts.name,
@@ -1148,5 +1165,32 @@ export class CredentialsService {
 		const scopes = await this.getCredentialScopes(user, credential.id);
 
 		return { ...credential, scopes };
+	}
+
+	/**
+	 * Generates a JWE key pair if JWE is enabled on the credential and keys
+	 * have not been generated yet. Mutates the data object in place.
+	 */
+	private async generateJweKeysIfNeeded(
+		data: ICredentialDataDecryptedObject,
+		existingData?: ICredentialDataDecryptedObject,
+	): Promise<void> {
+		if (!data.jweEnabled) {
+			return;
+		}
+
+		// Keys may already exist in the stored credential even if not present
+		// in the incoming data (hidden password fields are not sent by the UI)
+		if (data.jwePrivateKey || existingData?.jwePrivateKey) {
+			return;
+		}
+
+		const algorithm = (data.jweAlgorithm as string) || 'RSA-OAEP';
+		const encryption = (data.jweEncryption as string) || 'A256GCM';
+		const { privateKey, publicKey } = await generateJweKeyPair(algorithm);
+		data.jwePrivateKey = privateKey;
+		data.jwePublicKey = publicKey;
+		data.jweAlgorithm = algorithm;
+		data.jweEncryption = encryption;
 	}
 }

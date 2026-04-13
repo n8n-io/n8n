@@ -19,7 +19,9 @@ import ParameterOptions from './ParameterOptions.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { storeToRefs } from 'pinia';
 
-import { N8nInputLabel, N8nLink, N8nText } from '@n8n/design-system';
+import { N8nIconButton, N8nInputLabel, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
+import { useClipboard } from '@/app/composables/useClipboard';
+import { useToast } from '@/app/composables/useToast';
 
 const LazyFixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollection/FixedCollectionParameter.vue'),
@@ -33,6 +35,7 @@ type Props = {
 	documentationUrl?: string;
 	eventSource?: string;
 	label?: IParameterLabel;
+	isReadOnly?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -55,6 +58,8 @@ const workflowsStore = useWorkflowsStore();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
+const clipboard = useClipboard();
+const toast = useToast();
 
 const { activeCredentialType } = storeToRefs(uiStore);
 
@@ -143,6 +148,14 @@ function optionSelected(command: string) {
 	eventBus.value.emit('optionSelected', command);
 }
 
+function copyValue() {
+	void clipboard.copy(String(props.value ?? ''));
+	toast.showMessage({
+		title: i18n.baseText('generic.copiedToClipboard'),
+		type: 'success',
+	});
+}
+
 function valueChanged(parameterData: IUpdateInformation) {
 	let name = parameterData.name;
 	// for fixed collection, we need to keep the full path
@@ -182,7 +195,11 @@ defineExpose({
 			:size="label.size"
 		>
 			<template #options>
+				<N8nTooltip v-if="isReadOnly" :content="i18n.baseText('generic.copy')">
+					<N8nIconButton icon="copy" type="tertiary" size="mini" @click="copyValue" />
+				</N8nTooltip>
 				<ParameterOptions
+					v-else
 					:parameter="parameter"
 					:value="value"
 					:is-read-only="false"
@@ -204,6 +221,7 @@ defineExpose({
 				:documentation-url="documentationUrl"
 				:error-highlight="showRequiredErrors"
 				:is-for-credential="true"
+				:is-read-only="isReadOnly"
 				:event-source="eventSource"
 				:hint="!showRequiredErrors && hint ? hint : ''"
 				:event-bus="eventBus"

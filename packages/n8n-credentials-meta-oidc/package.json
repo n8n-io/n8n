@@ -1,0 +1,31 @@
+{
+	"name": "n8n-credentials-meta-oidc",
+	"version": "0.1.0",
+	"description": "n8n credential type for Meta's OIDC provider with JWE-encrypted nested JWT support and intern_oauth_token claim extraction",
+	"license": "SEE LICENSE IN LICENSE.md",
+	"author": {
+		"name": "n8n",
+		"email": "hello@n8n.io"
+	},
+	"main": "dist/credentials/MetaOidcOAuth2Api.credentials.js",
+	"scripts": {
+		"build": "tsc && cp -r src/icons dist/icons",
+		"dev": "tsc --watch",
+		"typecheck": "tsc --noEmit"
+	},
+	"files": [
+		"dist"
+	],
+	"n8n": {
+		"credentials": [
+			"dist/credentials/MetaOidcOAuth2Api.credentials.js"
+		]
+	},
+	"devDependencies": {
+		"n8n-workflow": "workspace:*",
+		"typescript": "^5.7.0"
+	},
+	"peerDependencies": {
+		"n8n-workflow": ">=1.0.0"
+	}
+}

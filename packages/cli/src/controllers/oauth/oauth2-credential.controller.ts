@@ -12,6 +12,7 @@ import { OauthService, OauthVersion, skipAuthOnOAuthCallback } from '@/oauth/oau
 import { Logger } from '@n8n/backend-common';
 import { ExternalHooks } from '@/external-hooks';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { decryptJweTokenData } from './jwe.utils';
 
 @RestController('/oauth2-credential')
 export class OAuth2CredentialController {
@@ -83,6 +84,9 @@ export class OAuth2CredentialController {
 			if (Object.keys(req.query).length > 2) {
 				set(oauthToken.data, 'callbackQueryString', omit(req.query, 'state', 'code'));
 			}
+
+			// Decrypt JWE-encrypted token fields if JWE is enabled on this credential
+			await decryptJweTokenData(oauthToken.data, oauthCredentials);
 
 			// Only overwrite supplied data as some providers do for example just return the
 			// refresh_token on the very first request and not on subsequent ones.

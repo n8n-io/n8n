@@ -1026,6 +1026,24 @@ export async function requestOAuth2(
 		oauthTokenData = data;
 	}
 
+	// Support preAuthentication for custom OAuth2 credential types.
+	// This enables credentials extending oAuth2Api to transform token data
+	// (e.g., extracting specific claims from decrypted JWE/JWT tokens).
+	// We pass credentialsExpired=true to force the call past the expirable-property
+	// guard, since OAuth2 credentials need token transformation on every request.
+	const preAuthData = await additionalData.credentialsHelper.preAuthentication(
+		{ helpers: this.helpers },
+		credentials as unknown as ICredentialDataDecryptedObject,
+		credentialsType,
+		node,
+		true,
+	);
+	if (preAuthData) {
+		Object.assign(credentials, preAuthData);
+		// Re-read oauthTokenData in case preAuthentication modified it
+		oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData;
+	}
+
 	const accessToken =
 		get(oauthTokenData, oAuth2Options?.property as string) || oauthTokenData.accessToken;
 	const refreshToken = oauthTokenData.refreshToken;

@@ -343,11 +343,13 @@ const defaultCredentialTypeName = computed(() => {
 	return defaultName ?? '';
 });
 
+const isNewCredential = computed(() => props.mode === 'new' && !credentialId.value);
+
 const showSaveButton = computed(() => {
 	if (isQuickConnectMode.value) return false;
 	const hasPermission = credentialPermissions.value.create ?? credentialPermissions.value.update;
 	if (!hasPermission) return false;
-	if (isOAuthType.value && !isOAuthConnected.value) return false;
+	if (isOAuthType.value && !isOAuthConnected.value && !hasUnsavedChanges.value) return false;
 	return true;
 });
 
@@ -357,8 +359,6 @@ const homeProject = computed(() => {
 	const { currentProject, personalProject } = projectsStore;
 	return currentProject ?? personalProject;
 });
-
-const isNewCredential = computed(() => props.mode === 'new' && !credentialId.value);
 
 function setCredentialPropertyDefaults() {
 	if (credentialType.value) {
@@ -797,12 +797,13 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 
 	isSaving.value = true;
 
-	// Save only the none default data
+	// Include default values so that fields like grantType survive a round-trip
+	// (displayOptions on other fields depend on them being present after reload)
 	assert(credentialType.value);
 	const data = NodeHelpers.getNodeParameters(
 		credentialType.value.properties,
 		credentialData.value as INodeParameters,
-		false,
+		true,
 		false,
 		null,
 		null,
@@ -854,7 +855,10 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	isSaving.value = false;
 	if (credential) {
 		credentialId.value = credential.id;
-		currentCredential.value = credential;
+
+		// Re-fetch credential data from backend to pick up any server-generated fields
+		await loadCurrentCredential(credential.id);
+		hasUnsavedChanges.value = false;
 
 		if (isCredentialTestable.value) {
 			isTesting.value = true;

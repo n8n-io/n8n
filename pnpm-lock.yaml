@@ -2133,6 +2133,9 @@ importers:
       isbot:
         specifier: 3.6.13
         version: 3.6.13
+      jose:
+        specifier: 6.2.2
+        version: 6.2.2
       json-diff:
         specifier: 1.0.6
         version: 1.0.6
@@ -3448,6 +3451,15 @@ importers:
       z-vue-scan:
         specifier: ^0.0.35
         version: 0.0.35(patch_hash=bbd573be7e456224f369aafb4d66374523c4847964a4655a6a1654fd40e8b0f8)(vue@3.5.26(typescript@5.9.2))
+
+  packages/n8n-credentials-meta-oidc:
+    devDependencies:
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../workflow
+      typescript:
+        specifier: 5.9.2
+        version: 5.9.2
 
   packages/node-dev:
     dependencies:
@@ -14257,11 +14269,8 @@ packages:
   jose@4.15.9:
     resolution: {integrity: sha512-1vUQX+IdDMVPj4k8kOxgUqlcK518yluMuGZwqlr44FS1ppZB/5GWh4rZG89erpOBOJjU/OBsnCVFfapsRz6nEA==}
 
-  jose@6.0.11:
-    resolution: {integrity: sha512-QxG7EaliDARm1O1S8BGakqncGT9s25bKL1WSf6/oa17Tkqwi8D2ZNglqCF+DsYF88/rV66Q/Q2mFAy697E1DUg==}
-
-  jose@6.1.3:
-    resolution: {integrity: sha512-0TpaTfihd4QMNwrz/ob2Bp7X04yuxJkjRGi4aKmOqwhov54i6u79oCv7T+C7lo70MKH6BesI3vscD1yb/yzKXQ==}
+  jose@6.2.2:
+    resolution: {integrity: sha512-d7kPDd34KO/YnzaDOlikGpOurfF0ByC2sEV4cANCtdqLlTfBlw2p14O/5d/zv40gJPbIQxfES3nSx1/oYNyuZQ==}
 
   js-base64@3.7.2:
     resolution: {integrity: sha512-NnRs6dsyqUXejqk/yv2aiXlAvOs56sLkX6nUdeaNezI5LFFLlsZjOThmwnrcwh5ZZRwZlCMnVAY3CvhIhoVEKQ==}
@@ -19039,8 +19048,8 @@ packages:
   vue-component-type-helpers@2.2.12:
     resolution: {integrity: sha512-YbGqHZ5/eW4SnkPNR44mKVc6ZKQoRs/Rux1sxC6rdwXb4qpbOSYfDr9DsTHolOTGmIKgM9j141mZbBeg05R1pw==}
 
-  vue-component-type-helpers@3.2.5:
-    resolution: {integrity: sha512-tkvNr+bU8+xD/onAThIe7CHFvOJ/BO6XCOrxMzeytJq40nTfpGDJuVjyCM8ccGZKfAbGk2YfuZyDMXM56qheZQ==}
+  vue-component-type-helpers@3.2.6:
+    resolution: {integrity: sha512-O02tnvIfOQVmnvoWwuSydwRoHjZVt8UEBR+2p4rT35p8GAy5VTlWP8o5qXfJR/GWCN0nVZoYWsVUvx2jwgdBmQ==}
 
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
@@ -24206,7 +24215,7 @@ snapshots:
       express: 5.2.1
       express-rate-limit: 8.2.2(express@5.2.1)
       hono: 4.12.7
-      jose: 6.1.3
+      jose: 6.2.2
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.0(patch_hash=651e785d0b7bbf5be9210e1e895c39a16dc3ce8a5a3843b4819565fb6e175b90)
       raw-body: 3.0.0
@@ -26607,7 +26616,7 @@ snapshots:
       storybook: 10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10)
       type-fest: 2.19.0
       vue: 3.5.26(typescript@5.9.2)
-      vue-component-type-helpers: 3.2.5
+      vue-component-type-helpers: 3.2.6
 
   '@stylistic/eslint-plugin@5.0.0(eslint@9.29.0(jiti@2.6.1))':
     dependencies:
@@ -33382,9 +33391,7 @@ snapshots:
 
   jose@4.15.9: {}
 
-  jose@6.0.11: {}
-
-  jose@6.1.3: {}
+  jose@6.2.2: {}
 
   js-base64@3.7.2(patch_hash=bb02fdf69495c7b0768791b60ab6e1a002053b8decd19a174f5755691e5c9500): {}
 
@@ -35367,7 +35374,7 @@ snapshots:
 
   openid-client@6.5.0:
     dependencies:
-      jose: 6.0.11
+      jose: 6.2.2
       oauth4webapi: 3.5.1
 
   option@0.2.4: {}
@@ -39113,7 +39120,7 @@ snapshots:
 
   vue-component-type-helpers@2.2.12: {}
 
-  vue-component-type-helpers@3.2.5: {}
+  vue-component-type-helpers@3.2.6: {}
 
   vue-demi@0.14.10(vue@3.5.26(typescript@5.9.2)):
     dependencies:
