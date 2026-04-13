@@ -112,7 +112,9 @@ const cannotSaveOidcSettings = computed(() => {
 	);
 });
 
-async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false) {
+async function onOidcSettingsSave(
+	provisioningChangesConfirmed: boolean = false,
+): Promise<boolean> {
 	if (
 		!provisioningChangesConfirmed &&
 		shouldPromptUserToConfirmUserRoleProvisioningChange({
@@ -121,7 +123,7 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 		})
 	) {
 		showUserRoleProvisioningDialog.value = true;
-		return;
+		return false;
 	}
 
 	const isLoginEnabledChanged = ssoStore.oidcConfig?.loginEnabled !== ssoStore.isOidcLoginEnabled;
@@ -143,7 +145,7 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 				),
 			},
 		);
-		if (confirmAction !== MODAL_CONFIRM) return;
+		if (confirmAction !== MODAL_CONFIRM) return false;
 	}
 
 	const acrArray = authenticationContextClassReference.value
@@ -179,9 +181,10 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 			title: i18n.baseText('settings.sso.settings.save.success'),
 			type: 'success',
 		});
+		return true;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.sso.settings.save.error_oidc'));
-		return;
+		return false;
 	} finally {
 		await getOidcConfig();
 		savingForm.value = false;

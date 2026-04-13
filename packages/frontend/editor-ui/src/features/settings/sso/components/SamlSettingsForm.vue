@@ -197,7 +197,7 @@ const prompTestSamlConnectionBeforeActivating = async () => {
 	return promptOpeningTestConnectionPage;
 };
 
-const onSave = async (provisioningChangesConfirmed: boolean = false) => {
+const onSave = async (provisioningChangesConfirmed: boolean = false): Promise<boolean> => {
 	try {
 		savingForm.value = true;
 		validateSamlInput();
@@ -208,7 +208,7 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 		if (isDisablingSamlLogin) {
 			const confirmDisablingSaml = await promptConfirmDisablingSamlLogin();
 			if (confirmDisablingSaml !== MODAL_CONFIRM) {
-				return;
+				return false;
 			}
 		}
 
@@ -220,7 +220,7 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 			})
 		) {
 			showUserRoleProvisioningDialog.value = true;
-			return;
+			return false;
 		}
 		showUserRoleProvisioningDialog.value = false;
 
@@ -237,7 +237,7 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 
 			const confirmTest = await prompTestSamlConnectionBeforeActivating();
 			if (confirmTest !== MODAL_CONFIRM) {
-				return;
+				return false;
 			}
 		}
 
@@ -261,9 +261,10 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 			title: i18n.baseText('settings.sso.settings.save.success'),
 			type: 'success',
 		});
+		return true;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.sso.settings.save.error'));
-		return;
+		return false;
 	} finally {
 		savingForm.value = false;
 	}
