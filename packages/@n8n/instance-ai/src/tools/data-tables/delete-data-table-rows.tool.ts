@@ -37,6 +37,9 @@ export function createDeleteDataTableRowsTool(context: InstanceAiContext) {
 		outputSchema: z.object({
 			success: z.boolean(),
 			deletedCount: z.number().optional(),
+			dataTableId: z.string().optional(),
+			tableName: z.string().optional(),
+			projectId: z.string().optional(),
 			denied: z.boolean().optional(),
 			reason: z.string().optional(),
 		}),
@@ -84,7 +87,13 @@ export function createDeleteDataTableRowsTool(context: InstanceAiContext) {
 
 			// State 3: Approved or always_allow — execute
 			const result = await context.dataTableService.deleteRows(input.dataTableId, input.filter);
-			return { success: true, deletedCount: result.deletedCount };
+			return {
+				success: true,
+				deletedCount: result.deletedCount,
+				dataTableId: result.dataTableId,
+				tableName: result.tableName,
+				projectId: result.projectId,
+			};
 		},
 	});
 }
