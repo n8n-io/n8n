@@ -4,8 +4,6 @@ import type { WorkflowExecutionState } from './useExecutionPushEvents';
 
 interface UseEventRelayOptions {
 	workflowExecutions: Ref<Map<string, WorkflowExecutionState>>;
-	/** Monotonic counter bumped on every mutation to workflowExecutions. */
-	version: Ref<number>;
 	activeWorkflowId: ComputedRef<string | null>;
 	getBufferedEvents: (wfId: string) => PushMessage[];
 	relay: (event: PushMessage) => void;
@@ -13,7 +11,6 @@ interface UseEventRelayOptions {
 
 export function useEventRelay({
 	workflowExecutions,
-	version,
 	activeWorkflowId,
 	getBufferedEvents,
 	relay,
@@ -39,9 +36,8 @@ export function useEventRelay({
 	const prevStatus = new Map<string, string>();
 
 	watch(
-		version,
-		() => {
-			const executions = workflowExecutions.value;
+		workflowExecutions,
+		(executions) => {
 			const wfId = activeWorkflowId.value;
 			if (!wfId) return;
 			const entry = executions.get(wfId);

@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { shallowRef, triggerRef } from 'vue';
 import type { PushMessage } from '@n8n/api-types';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 
@@ -20,9 +20,7 @@ const EXECUTION_EVENT_TYPES = new Set([
 ]);
 
 export function useExecutionPushEvents() {
-	const workflowExecutions = ref(new Map<string, WorkflowExecutionState>());
-	/** Monotonic counter bumped on every mutation so watchers detect changes. */
-	const version = ref(0);
+	const workflowExecutions = shallowRef(new Map<string, WorkflowExecutionState>());
 	const executionToWorkflow = new Map<string, string>();
 
 	const pushStore = usePushConnectionStore();
@@ -41,7 +39,7 @@ export function useExecutionPushEvents() {
 				status: 'running',
 				eventLog: [event],
 			});
-			version.value++;
+			triggerRef(workflowExecutions);
 			return;
 		}
 
@@ -52,7 +50,7 @@ export function useExecutionPushEvents() {
 
 			entry.status = status === 'success' ? 'success' : 'error';
 			entry.eventLog = [];
-			version.value++;
+			triggerRef(workflowExecutions);
 
 			executionToWorkflow.delete(executionId);
 			return;
@@ -67,7 +65,7 @@ export function useExecutionPushEvents() {
 		if (!entry || entry.executionId !== executionId) return;
 
 		entry.eventLog.push(event);
-		version.value++;
+		triggerRef(workflowExecutions);
 	}
 
 	const removeListener = pushStore.addEventListener(handlePushEvent);
@@ -91,8 +89,6 @@ export function useExecutionPushEvents() {
 
 	return {
 		workflowExecutions,
-		/** Bumped on every mutation — watch this to detect changes. */
-		version,
 		getStatus,
 		getBufferedEvents,
 		clearAll,

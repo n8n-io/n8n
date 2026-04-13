@@ -204,7 +204,6 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 
 	const eventRelay = useEventRelay({
 		workflowExecutions: executionTracking.workflowExecutions,
-		version: executionTracking.version,
 		activeWorkflowId: preview.activeWorkflowId,
 		getBufferedEvents: executionTracking.getBufferedEvents,
 		relay: (event) => relayedEvents.push(event),

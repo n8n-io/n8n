@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach, type Mock } from 'vitest';
-import { ref, computed, nextTick, type Ref } from 'vue';
+import { ref, shallowRef, triggerRef, computed, nextTick, type Ref, type ShallowRef } from 'vue';
 import type { PushMessage } from '@n8n/api-types';
 import { useEventRelay } from '../useEventRelay';
 import type { WorkflowExecutionState } from '../useExecutionPushEvents';
@@ -50,31 +50,28 @@ function createExecState(
 
 describe('useEventRelay', () => {
 	let relay: Mock;
-	let workflowExecutions: Ref<Map<string, WorkflowExecutionState>>;
-	let version: Ref<number>;
+	let workflowExecutions: ShallowRef<Map<string, WorkflowExecutionState>>;
 	let activeWorkflowId: Ref<string | null>;
 	let bufferedEventsStore: Map<string, PushMessage[]>;
 
 	function setup(overrides?: { activeWfId?: string | null }) {
 		relay = vi.fn();
-		workflowExecutions = ref(new Map<string, WorkflowExecutionState>());
-		version = ref(0);
+		workflowExecutions = shallowRef(new Map<string, WorkflowExecutionState>());
 		activeWorkflowId = ref(overrides?.activeWfId ?? null);
 		bufferedEventsStore = new Map<string, PushMessage[]>();
 
 		return useEventRelay({
 			workflowExecutions,
-			version,
 			activeWorkflowId: computed(() => activeWorkflowId.value),
 			getBufferedEvents: (wfId: string) => bufferedEventsStore.get(wfId) ?? [],
 			relay,
 		});
 	}
 
-	/** Update the executions map and bump version so the watch fires. */
+	/** Update the executions map and trigger the watch. */
 	function setExecutions(entries: [string, WorkflowExecutionState][]) {
 		workflowExecutions.value = new Map(entries);
-		version.value++;
+		triggerRef(workflowExecutions);
 	}
 
 	beforeEach(() => {
