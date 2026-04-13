@@ -15,47 +15,45 @@ const SafeReferenceError = createSafeErrorSubclass(ReferenceError);
 const SafeURIError = createSafeErrorSubclass(URIError);
 
 // ============================================================================
-// Reset Function for Data Proxies
+// Build Context Function
 // ============================================================================
 
-function fetchPrimitive(key: string): unknown {
-	try {
-		return globalThis.__getValueAtPath.applySync(null, [[key]], {
-			arguments: { copy: true },
-			result: { copy: true },
-		});
-	} catch {
-		return undefined;
-	}
-}
-
 /**
- * Reset workflow data proxies before each evaluation.
+ * Build a fresh, closure-scoped evaluation context.
  *
- * This function is called from the bridge before executing each expression
- * to clear proxy caches and initialize fresh workflow data references.
+ * This function creates a context object that contains everything needed to
+ * evaluate an expression, without touching any global mutable state
+ * (except luxon's Settings.defaultZone which is process-wide).
  *
- * Pattern:
- * 1. Create lazy proxies for complex properties ($json, $binary, etc.)
- * 2. Fetch primitives directly ($runIndex, $itemIndex)
- * 3. Create function wrappers for callable properties ($items, etc.)
- * 4. Expose all properties to globalThis for expression access
+ * The returned object is used as tournament's `this` context in the
+ * evalClosureSync wrapper.
  *
- * Called from bridge: context.evalSync('resetDataProxies()')
+ * @param getValueAtPath - ivm.Reference for fetching values by path
+ * @param getArrayElement - ivm.Reference for fetching array elements
+ * @param callFunctionAtPath - ivm.Reference for calling functions by path
+ * @param timezone - Optional IANA timezone string
+ * @returns A context object with all workflow data, proxies, and builtins
  */
-export function resetDataProxies(timezone?: string): void {
+export function buildContext(
+	getValueAtPath: any,
+	getArrayElement: any,
+	callFunctionAtPath: any,
+	timezone?: string,
+): Record<string, unknown> {
 	if (timezone && !IANAZone.isValidZone(timezone)) {
 		throw new Error(`Invalid timezone: "${timezone}"`);
 	}
 	Settings.defaultZone = timezone ?? 'system';
 
-	// Clear existing __data object
-	globalThis.__data = {};
+	const ctx: Record<string, unknown> = {};
 
-	// __sanitize must be on __data because PrototypeSanitizer generates:
-	// obj[this.__sanitize(expr)] where 'this' is __data (via .call(__data) wrapping)
+	// Callback bundle passed to createDeepLazyProxy so proxies don't touch globalThis
+	const callbacks = { getValueAtPath, getArrayElement, callFunctionAtPath };
+
+	// __sanitize must be on the context because PrototypeSanitizer generates:
+	// obj[this.__sanitize(expr)] where 'this' is the context (via .call(ctx) wrapping)
 	// Use a non-writable property descriptor so override attempts throw instead of silently succeeding.
-	Object.defineProperty(globalThis.__data, '__sanitize', {
+	Object.defineProperty(ctx, '__sanitize', {
 		get: () => __sanitize,
 		set: () => {
 			throw new ExpressionError('Cannot override "__sanitize" due to security concerns');
@@ -64,29 +62,23 @@ export function resetDataProxies(timezone?: string): void {
 		configurable: false,
 	});
 
-	// Verify callbacks are available
-	// Note: ivm.Reference may not be typeof 'function', check for existence
-	if (!globalThis.__getValueAtPath) {
-		throw new Error('__getValueAtPath callback not registered');
-	}
-
 	// -------------------------------------------------------------------------
 	// Create lazy proxies for complex workflow properties
 	// -------------------------------------------------------------------------
 
-	globalThis.__data.$json = createDeepLazyProxy(['$json']);
-	globalThis.__data.$binary = createDeepLazyProxy(['$binary']);
-	globalThis.__data.$input = createDeepLazyProxy(['$input']);
-	globalThis.__data.$node = createDeepLazyProxy(['$node']);
-	globalThis.__data.$parameter = createDeepLazyProxy(['$parameter']);
-	globalThis.__data.$workflow = createDeepLazyProxy(['$workflow']);
-	globalThis.__data.$prevNode = createDeepLazyProxy(['$prevNode']);
-	globalThis.__data.$data = createDeepLazyProxy(['$data']);
-	globalThis.__data.$env = createDeepLazyProxy(['$env']);
-	globalThis.__data.process = createDeepLazyProxy(['process']);
-	globalThis.__data.$execution = createDeepLazyProxy(['$execution']);
-	globalThis.__data.$vars = createDeepLazyProxy(['$vars']);
-	globalThis.__data.$secrets = createDeepLazyProxy(['$secrets']);
+	ctx.$json = createDeepLazyProxy(['$json'], undefined, callbacks);
+	ctx.$binary = createDeepLazyProxy(['$binary'], undefined, callbacks);
+	ctx.$input = createDeepLazyProxy(['$input'], undefined, callbacks);
+	ctx.$node = createDeepLazyProxy(['$node'], undefined, callbacks);
+	ctx.$parameter = createDeepLazyProxy(['$parameter'], undefined, callbacks);
+	ctx.$workflow = createDeepLazyProxy(['$workflow'], undefined, callbacks);
+	ctx.$prevNode = createDeepLazyProxy(['$prevNode'], undefined, callbacks);
+	ctx.$data = createDeepLazyProxy(['$data'], undefined, callbacks);
+	ctx.$env = createDeepLazyProxy(['$env'], undefined, callbacks);
+	ctx.process = createDeepLazyProxy(['process'], undefined, callbacks);
+	ctx.$execution = createDeepLazyProxy(['$execution'], undefined, callbacks);
+	ctx.$vars = createDeepLazyProxy(['$vars'], undefined, callbacks);
+	ctx.$secrets = createDeepLazyProxy(['$secrets'], undefined, callbacks);
 
 	// -------------------------------------------------------------------------
 	// Create DateTime values inside the isolate (not lazy-loaded from host,
@@ -95,115 +87,107 @@ export function resetDataProxies(timezone?: string): void {
 	// already set via Settings.defaultZone above.
 	// -------------------------------------------------------------------------
 
-	globalThis.__data.$now = DateTime.now();
-	globalThis.__data.$today = DateTime.now().set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
+	ctx.$now = DateTime.now();
+	ctx.$today = DateTime.now().set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
 
 	// -------------------------------------------------------------------------
 	// Fetch primitives directly (no lazy loading needed for simple values)
 	// -------------------------------------------------------------------------
 
-	globalThis.__data.$runIndex = fetchPrimitive('$runIndex');
-	globalThis.__data.$itemIndex = fetchPrimitive('$itemIndex');
-	globalThis.__data.$executionId = fetchPrimitive('$executionId');
-	globalThis.__data.$resumeWebhookUrl = fetchPrimitive('$resumeWebhookUrl');
-	globalThis.__data.$webhookId = fetchPrimitive('$webhookId');
-	globalThis.__data.$nodeId = fetchPrimitive('$nodeId');
-	globalThis.__data.$nodeVersion = fetchPrimitive('$nodeVersion');
+	function fetchPrimitive(key: string): unknown {
+		try {
+			return getValueAtPath.applySync(null, [[key]], {
+				arguments: { copy: true },
+				result: { copy: true },
+			});
+		} catch {
+			return undefined;
+		}
+	}
+
+	ctx.$runIndex = fetchPrimitive('$runIndex');
+	ctx.$itemIndex = fetchPrimitive('$itemIndex');
+	ctx.$executionId = fetchPrimitive('$executionId');
+	ctx.$resumeWebhookUrl = fetchPrimitive('$resumeWebhookUrl');
+	ctx.$webhookId = fetchPrimitive('$webhookId');
+	ctx.$nodeId = fetchPrimitive('$nodeId');
+	ctx.$nodeVersion = fetchPrimitive('$nodeVersion');
 
 	// -------------------------------------------------------------------------
-	// Expose workflow data to globalThis for expression access
-	// -------------------------------------------------------------------------
-
-	globalThis.$json = globalThis.__data.$json;
-	globalThis.$binary = globalThis.__data.$binary;
-	globalThis.$input = globalThis.__data.$input;
-	globalThis.$node = globalThis.__data.$node;
-	globalThis.$parameter = globalThis.__data.$parameter;
-	globalThis.$workflow = globalThis.__data.$workflow;
-	globalThis.$prevNode = globalThis.__data.$prevNode;
-	globalThis.$runIndex = globalThis.__data.$runIndex as number | undefined;
-	globalThis.$itemIndex = globalThis.__data.$itemIndex as number | undefined;
-	globalThis.$data = globalThis.__data.$data;
-	globalThis.$env = globalThis.__data.$env;
-	globalThis.$now = globalThis.__data.$now as DateTime;
-	globalThis.$today = globalThis.__data.$today as DateTime;
-	globalThis.$execution = globalThis.__data.$execution;
-	globalThis.$vars = globalThis.__data.$vars;
-	globalThis.$secrets = globalThis.__data.$secrets;
-	globalThis.$executionId = globalThis.__data.$executionId as string | undefined;
-	globalThis.$resumeWebhookUrl = globalThis.__data.$resumeWebhookUrl as string | undefined;
-	globalThis.$webhookId = globalThis.__data.$webhookId as string | undefined;
-	globalThis.$nodeId = globalThis.__data.$nodeId as string | undefined;
-	globalThis.$nodeVersion = globalThis.__data.$nodeVersion as number | undefined;
-
 	// Expose standalone functions (min, max, average, numberList, zip, $ifEmpty, etc.)
-	Object.assign(globalThis.__data, extendedFunctions);
+	// -------------------------------------------------------------------------
+
+	Object.assign(ctx, extendedFunctions);
 
 	// -------------------------------------------------------------------------
 	// Handle function properties (check if value is function metadata)
 	// -------------------------------------------------------------------------
 
-	// Check if $items exists and is a function
-	if (globalThis.__callFunctionAtPath) {
+	// Probe a host-side property: if it is a function, create an isolate
+	// wrapper that forwards calls via callFunctionAtPath; otherwise copy
+	// the value as-is.
+	function exposeHostFunction(name: string): void {
+		if (!callFunctionAtPath) return;
 		try {
-			const itemsValue = globalThis.__getValueAtPath.applySync(null, [['$items']], {
+			const value = getValueAtPath.applySync(null, [[name]], {
 				arguments: { copy: true },
 				result: { copy: true },
 			});
 
-			// If it's function metadata, create wrapper
-			if (itemsValue && typeof itemsValue === 'object' && itemsValue.__isFunction) {
-				globalThis.$items = function (...args: unknown[]) {
-					const result = globalThis.__callFunctionAtPath.applySync(null, [['$items'], ...args], {
+			if (value && typeof value === 'object' && value.__isFunction) {
+				ctx[name] = function (...args: unknown[]) {
+					const result = callFunctionAtPath.applySync(null, [[name], ...args], {
 						arguments: { copy: true },
 						result: { copy: true },
 					});
 					throwIfErrorSentinel(result);
 					return result;
 				};
-				globalThis.__data.$items = globalThis.$items;
 			} else {
-				// Not a function - set to undefined or the value itself
-				globalThis.$items = itemsValue;
-				globalThis.__data.$items = itemsValue;
+				ctx[name] = value;
 			}
-		} catch (error) {
-			// Property doesn't exist
-			globalThis.$items = undefined;
-			globalThis.__data.$items = undefined;
+		} catch {
+			ctx[name] = undefined;
 		}
 	}
 
+	exposeHostFunction('$items');
+	exposeHostFunction('$fromAI');
+	exposeHostFunction('$fromai');
+	exposeHostFunction('$fromAi');
+
 	// -------------------------------------------------------------------------
-	// Expose globals on __data so tournament's "x in this ? this.x : global.x"
-	// pattern resolves them correctly (tournament checks __data before global)
+	// Expose globals on ctx so tournament's "x in this ? this.x : global.x"
+	// pattern resolves them correctly (tournament checks ctx before global)
 	// -------------------------------------------------------------------------
 
-	globalThis.__data.DateTime = globalThis.DateTime;
-	globalThis.__data.Duration = globalThis.Duration;
-	globalThis.__data.Interval = globalThis.Interval;
+	ctx.DateTime = globalThis.DateTime;
+	ctx.Duration = globalThis.Duration;
+	ctx.Interval = globalThis.Interval;
 
-	// Expose extend/extendOptional on __data so tournament's "x in this ? this.x : global.x"
-	// pattern resolves them correctly when the VM checks __data first
-	globalThis.__data.extend = extend;
-	globalThis.__data.extendOptional = extendOptional;
+	// Expose extend/extendOptional on ctx so tournament's "x in this ? this.x : global.x"
+	// pattern resolves them correctly when the VM checks ctx first
+	ctx.extend = extend;
+	ctx.extendOptional = extendOptional;
 
-	// Wire builtins so tournament's VariablePolyfill resolves them from __data
-	initializeBuiltins(globalThis.__data as Record<string, unknown>);
+	// Wire builtins so tournament's VariablePolyfill resolves them from ctx
+	initializeBuiltins(ctx);
 
 	// $item(itemIndex) returns a sub-proxy for the specified item (legacy syntax)
-	globalThis.__data.$item = function (itemIndex: number) {
+	ctx.$item = function (itemIndex: number) {
 		const indexStr = String(itemIndex);
 		return {
-			$json: createDeepLazyProxy(['$item', indexStr, '$json']),
-			$binary: createDeepLazyProxy(['$item', indexStr, '$binary']),
+			$json: createDeepLazyProxy(['$item', indexStr, '$json'], undefined, callbacks),
+			$binary: createDeepLazyProxy(['$item', indexStr, '$binary'], undefined, callbacks),
 		};
 	};
 
-	globalThis.$ = function (nodeName: string) {
-		return createDeepLazyProxy(['$', nodeName]);
+	// $() function for accessing other nodes
+	ctx.$ = function (nodeName: string) {
+		return createDeepLazyProxy(['$', nodeName], undefined, callbacks);
 	};
-	globalThis.__data.$ = globalThis.$;
+
+	return ctx;
 }
 
 // Matches initializeGlobalContext() lines 262-318 in packages/workflow/src/expression.ts
@@ -246,10 +230,10 @@ const DENYLISTED_GLOBALS = [
 ] as const;
 
 /**
- * Wire builtins onto __data so tournament's VariablePolyfill resolves them.
+ * Wire builtins onto a context object so tournament's VariablePolyfill resolves them.
  *
  * Tournament transforms `Object` → `("Object" in this ? this : window).Object`.
- * `this` = __data. Without these entries on __data, builtins fall through to
+ * `this` = ctx. Without these entries on ctx, builtins fall through to
  * `window` which doesn't exist in the isolate, causing a ReferenceError.
  *
  * Mirrors Expression.initializeGlobalContext() in packages/workflow/src/expression.ts.
