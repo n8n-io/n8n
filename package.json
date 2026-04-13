@@ -141,7 +141,6 @@
       "undici@6": "^6.24.0",
       "undici@7": "^7.24.0",
       "tar": "^7.5.11",
-      "hono": "4.12.7",
       "ajv@6": "6.14.0",
       "ajv@7": "8.18.0",
       "ajv@8": "8.18.0",
@@ -154,7 +153,6 @@
       "word-wrap@<=1.2.4": "1.2.4",
       "minimatch@<=5.1.8": "5.1.8",
       "minimatch@10": "10.2.3",
-      "@hono/node-server": "1.19.10",
       "express-rate-limit": "8.2.2",
       "underscore": "1.13.8",
       "fast-xml-parser": "5.5.7",
@@ -165,7 +163,10 @@
       "picomatch@2": "2.3.2",
       "picomatch@4": "4.0.4",
       "brace-expansion@5": "5.0.5",
-      "avsc": "5.7.9"
+      "avsc": "5.7.9",
+      "@hono/node-server": "1.19.13",
+      "hono": "4.12.12",
+      "yaml@<=2.8.3": "2.8.3"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
