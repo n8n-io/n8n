@@ -53,9 +53,17 @@ const PROVIDERS = [
 
 const REASONING_EFFORT_OPTIONS = ['low', 'medium', 'high'] as const;
 
-/** Parse "provider/model-name" → [provider, modelName]. */
-function parseModel(raw: string | undefined): [string, string] {
+/** Parse model value → [provider, modelName].
+ *  Handles both string format ("provider/model-name") and object format
+ *  ({ provider, name }) since the backend may return either depending on
+ *  how the agent was created. */
+function parseModel(
+	raw: string | { provider: string | null; name: string | null } | undefined,
+): [string, string] {
 	if (!raw) return ['', ''];
+	if (typeof raw === 'object') {
+		return [raw.provider ?? '', raw.name ?? ''];
+	}
 	const slashIdx = raw.indexOf('/');
 	if (slashIdx === -1) return ['', raw];
 	return [raw.slice(0, slashIdx), raw.slice(slashIdx + 1)];

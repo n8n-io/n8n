@@ -202,6 +202,30 @@ export const updateAgentConfig = async (
 	);
 };
 
+export const getBuilderMessages = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<unknown[]> => {
+	return await makeRestApiRequest<unknown[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/build/messages`,
+	);
+};
+
+export const clearBuilderMessages = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/projects/${projectId}/agents/v2/${agentId}/build/messages`,
+	);
+};
+
 export const deleteCustomTool = async (
 	context: IRestApiContext,
 	projectId: string,

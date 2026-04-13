@@ -50,12 +50,20 @@ export async function buildFromJson(
 ): Promise<Agent> {
 	const agent = new Agent(config.name);
 
-	// Model: "provider/model-name" format
-	const slashIdx = config.model.indexOf('/');
-	if (slashIdx !== -1) {
-		agent.model(config.model.slice(0, slashIdx), config.model.slice(slashIdx + 1));
+	// Model: supports both "provider/model-name" string format and
+	// { provider, name } object format (from AgentSchema)
+	const modelValue = config.model as string | { provider?: string | null; name?: string | null };
+	if (typeof modelValue === 'object' && modelValue !== null) {
+		const provider = modelValue.provider ?? '';
+		const name = modelValue.name ?? '';
+		agent.model(provider ? `${provider}/${name}` : name);
 	} else {
-		agent.model(config.model);
+		const slashIdx = modelValue.indexOf('/');
+		if (slashIdx !== -1) {
+			agent.model(modelValue.slice(0, slashIdx), modelValue.slice(slashIdx + 1));
+		} else {
+			agent.model(modelValue);
+		}
 	}
 
 	agent.credential(config.credential);

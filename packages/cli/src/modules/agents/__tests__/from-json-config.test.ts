@@ -161,7 +161,7 @@ describe('buildFromJson()', () => {
 					type: 'node',
 					name: 'my_node_tool',
 					description: 'A node tool',
-					node: { nodeType: 'n8n-nodes-base.httpRequest', nodeTypeVersion: 1 },
+					node: { nodeType: 'n8n-nodes-base.httpRequest', nodeTypeVersion: 1, nodeParameters: {} },
 					inputSchema: { type: 'object' as const },
 					requireApproval: true,
 				},

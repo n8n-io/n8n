@@ -1,4 +1,4 @@
-import { Agent } from '@n8n/agents';
+import { Agent, Memory } from '@n8n/agents';
 import type { CredentialListItem, CredentialProvider, StreamChunk } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
@@ -7,6 +7,12 @@ import type { AgentJsonConfig } from '../json-config/agent-json-config';
 import { buildBuilderPrompt } from './agents-builder-prompts';
 import { AgentsBuilderToolsService } from './agents-builder-tools.service';
 import { AgentsService } from '../agents.service';
+import { N8nMemory } from '../integrations/n8n-memory';
+
+/** Derive a stable thread ID for the builder chat of a given agent. */
+function builderThreadId(agentId: string): string {
+	return `builder:${agentId}`;
+}
 
 @Service()
 export class AgentsBuilderService {
@@ -14,7 +20,28 @@ export class AgentsBuilderService {
 		private readonly logger: Logger,
 		private readonly agentsService: AgentsService,
 		private readonly agentsBuilderToolsService: AgentsBuilderToolsService,
+		private readonly n8nMemory: N8nMemory,
 	) {}
+
+	/**
+	 * Return persisted builder chat messages for an agent.
+	 */
+	async getBuilderMessages(agentId: string) {
+		const threadId = builderThreadId(agentId);
+		return await this.n8nMemory.getMessages(threadId);
+	}
+
+	/**
+	 * Clear persisted builder chat messages for an agent.
+	 */
+	async clearBuilderMessages(agentId: string) {
+		const threadId = builderThreadId(agentId);
+		const messages = await this.n8nMemory.getMessages(threadId);
+		if (messages.length > 0) {
+			await this.n8nMemory.deleteMessages(messages.map((m) => m.id));
+		}
+		await this.n8nMemory.deleteThread(threadId);
+	}
 
 	async *buildAgent(
 		agentId: string,
@@ -67,11 +94,14 @@ export class AgentsBuilderService {
 
 		const tools = this.agentsBuilderToolsService.getTools(agentId, projectId, credentialProvider);
 
+		const builderMemory = new Memory().storage(this.n8nMemory).lastMessages(40);
+
 		const builder = new Agent('agent-builder')
 			.model(builderModel)
 			.credential(builderCredential.name)
 			.credentialProvider(credentialProvider)
-			.instructions(instructions);
+			.instructions(instructions)
+			.memory(builderMemory);
 
 		for (const tool of [...tools.json, ...tools.shared]) {
 			builder.tool(tool);
@@ -79,7 +109,11 @@ export class AgentsBuilderService {
 
 		this.logger.debug('Starting builder agent stream', { agentId, projectId });
 
-		const resultStream = await builder.stream(message);
+		const threadId = builderThreadId(agentId);
+		const resourceId = _userId ?? agentId;
+		const resultStream = await builder.stream(message, {
+			persistence: { threadId, resourceId },
+		});
 		const reader = resultStream.stream.getReader();
 
 		try {

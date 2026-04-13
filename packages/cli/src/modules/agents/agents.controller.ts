@@ -231,6 +231,23 @@ export class AgentsController {
 		res.end();
 	}
 
+	@Get('/:agentId/build/messages')
+	async getBuilderMessages(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
+		const { projectId, agentId } = req.params;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		return await this.agentsBuilderService.getBuilderMessages(agentId);
+	}
+
+	@Delete('/:agentId/build/messages')
+	async clearBuilderMessages(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
+		const { projectId, agentId } = req.params;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		await this.agentsBuilderService.clearBuilderMessages(agentId);
+		return { ok: true };
+	}
+
 	@Post('/:agentId/build', { usesTemplates: true })
 	async build(
 		req: AuthenticatedRequest<{ projectId: string }>,
