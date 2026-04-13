@@ -8,8 +8,16 @@ import { Service } from '@n8n/di';
 import { WorkflowRepository } from '@n8n/db';
 import { z } from 'zod';
 
+import {
+	validateNodeConfig,
+	setSchemaBaseDirs,
+	type SchemaValidationResult,
+} from '@n8n/workflow-sdk';
+
 import { AgentsService } from './agents.service';
 import { AgentSecureRuntime } from './agent-secure-runtime';
+
+import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
 
 let cachedSdkTypes: string | undefined;
 
@@ -97,7 +105,7 @@ export class AgentsBuilderService {
 		const currentCode = agent.code ?? '';
 		const sdkTypes = await getSdkTypeDeclarations();
 
-		// Tool: typecheck — validates code compiles
+		// Tool: typecheck — validates code compiles and node configs are valid
 		const typecheckTool = new Tool('typecheck')
 			.description(
 				'Compile and validate TypeScript agent code. Returns { ok: true } if the code compiles and produces a valid agent, or { ok: false, error: string } with the error message.',
@@ -109,7 +117,9 @@ export class AgentsBuilderService {
 			)
 			.handler(async ({ code }: { code: string }) => {
 				try {
-					await this.secureRuntime.describeSecurely(code);
+					const schema = await this.secureRuntime.describeSecurely(code);
+					const nodeToolError = this.validateNodeToolConfigs(schema.tools);
+					if (nodeToolError) return { ok: false, error: nodeToolError };
 					return { ok: true, error: null };
 				} catch (e) {
 					return { ok: false, error: e instanceof Error ? e.message : String(e) };
@@ -216,7 +226,7 @@ export class AgentsBuilderService {
 				builderModel = 'anthropic/claude-sonnet-4-5';
 				break;
 		}
-
+		// TODO: add tools to fetch node definitions and resolve node tools, update system prompt
 		const builder = new Agent('agent-builder')
 			.model(builderModel)
 			.credential(builderCredential.name)
@@ -242,7 +252,7 @@ ${currentCode}
 
 ## Code rules
 
-- Always import from '@n8n/agents', '@n8n/agents-utils' (for WorkflowTool), and 'zod' — these are the only available modules
+- Always import from '@n8n/agents', '@n8n/agents-utils' (for WorkflowTool, N8nMemory, ToolFromNode), and 'zod' — these are the only available modules
 - The code MUST export the agent as the default export: \`export default agent;\`
 - Do NOT call .build() on tools or agents — the engine handles that automatically
 - Every agent MUST have .credential() — it will not compile without one
@@ -392,38 +402,23 @@ const agent = new Agent('my-agent')
 
 Agents can have conversation memory configured using the \`Memory\` builder class.
 
-**In-process memory (default, lost on restart):**
+**ALWAYS add \`N8nMemory\` as the default memory storage.** \`N8nMemory\` persists conversation history in the n8n database — it survives server restarts and is the recommended storage for all agents. Import it from \`@n8n/agents-utils\`.
+
+**Default (use this unless the user asks for something else):**
 \`\`\`typescript
 import { Agent, Memory } from '@n8n/agents';
+import { N8nMemory } from '@n8n/agents-utils';
 
 const agent = new Agent('my-agent')
   .model('anthropic/claude-sonnet-4-5')
   .credential('anthropic')
-  .memory(new Memory().lastMessages(50))
-  .instructions('You are a helpful assistant.');
-\`\`\`
-
-**Persistent memory with SQLite:**
-\`\`\`typescript
-import { Agent, Memory, SqliteMemory } from '@n8n/agents';
-
-const agent = new Agent('my-agent')
-  .model('anthropic/claude-sonnet-4-5')
-  .credential('anthropic')
-  .memory(
-    new Memory()
-      .storage(new SqliteMemory('./memory.db'))
-      .lastMessages(50)
-      .semanticRecall({ topK: 5, embedder: 'openai/text-embedding-3-small' })
-  )
+  .memory(new Memory().storage(new N8nMemory()).lastMessages(20))
   .instructions('You are a helpful assistant.');
 \`\`\`
 
 **Memory builder methods:**
-- \`.lastMessages(N)\` — how many recent messages to include in context (default: 10)
-- \`.storage('memory')\` — in-process storage (default)
-- \`.storage(new SqliteMemory(path))\` or \`.storage(new PostgresMemory(url))\` — persistent storage
-- \`.semanticRecall({ topK, embedder })\` — RAG-based recall (requires persistent storage)
+- \`.storage(new N8nMemory())\` — **default** persistent storage backed by the n8n database (recommended)
+- \`.lastMessages(N)\` — how many recent messages to include in context (default: 10; use 20 as a sensible default)
 - \`.freeform(template)\` — free-form working memory with markdown template
 - \`.structured(zodSchema)\` — structured working memory with Zod schema
 
@@ -435,13 +430,16 @@ const agent = new Agent('my-agent')
 // ❌ WRONG — strings are NOT valid
 .memory('memory')
 
-// ✅ CORRECT — always use the Memory builder class
-.memory(new Memory().lastMessages(50))
+// ❌ WRONG — omitting .storage() means memory is lost on restart
+.memory(new Memory().lastMessages(20))
+
+// ✅ CORRECT — always use N8nMemory as the storage backend
+.memory(new Memory().storage(new N8nMemory()).lastMessages(20))
 \`\`\`
 
 **Rules:**
 - Always use \`new Memory()\` — never pass a plain object
-- \`.semanticRecall()\` only works with persistent storage (SqliteMemory/PostgresMemory), NOT in-process memory
+- Always use \`.storage(new N8nMemory())\` — it is the n8n-native persistent backend and requires no configuration
 - \`.freeform()\` and \`.structured()\` are mutually exclusive
 
 ## Important
@@ -451,7 +449,7 @@ const agent = new Agent('my-agent')
 - Tool handlers are async functions that receive the validated input object
 - Tool .input() and .output() use Zod schemas
 - Agent .instructions() sets the system prompt
-- The only imports available at runtime are '@n8n/agents', '@n8n/agents-utils', and 'zod'
+- The only imports available at runtime are '@n8n/agents', '@n8n/agents-utils' (WorkflowTool, N8nMemory, ToolFromNode), and 'zod'
 - Do NOT import anything else — it will fail at runtime`,
 			)
 			.tool(typecheckTool)
@@ -473,5 +471,48 @@ const agent = new Agent('my-agent')
 		} finally {
 			reader.releaseLock();
 		}
+	}
+
+	/**
+	 * Validate the node configurations for any ToolFromNode tools in an agent schema.
+	 *
+	 * The sandbox only has a mock node() function, so validateNodeConfig() must run
+	 * on the host where the real Zod schemas are available.
+	 *
+	 * @returns A formatted error string if any node config is invalid, or null if all pass.
+	 */
+	private validateNodeToolConfigs(
+		tools: Array<{ name: string; metadata: Record<string, unknown> | null }>,
+	): string | null {
+		const nodeTools = tools.filter((t) => t.metadata?.nodeTool === true);
+		if (nodeTools.length === 0) return null;
+
+		const dirs = resolveBuiltinNodeDefinitionDirs();
+		if (dirs.length > 0) setSchemaBaseDirs(dirs);
+
+		const errors: string[] = [];
+
+		for (const tool of nodeTools) {
+			const meta = tool.metadata as Record<string, unknown>;
+			const nodeType = meta.nodeType as string;
+			const nodeTypeVersion = meta.nodeTypeVersion as number;
+			const nodeParameters = (meta.nodeParameters ?? {}) as Record<string, unknown>;
+
+			const result: SchemaValidationResult = validateNodeConfig(
+				nodeType,
+				nodeTypeVersion,
+				{ parameters: nodeParameters },
+				{ isToolNode: true },
+			);
+
+			if (!result.valid) {
+				const messages = result.errors
+					.map((e: { path: string; message: string }) => e.message)
+					.join('; ');
+				errors.push(`ToolFromNode "${tool.name}" (${nodeType}@${nodeTypeVersion}): ${messages}`);
+			}
+		}
+
+		return errors.length > 0 ? errors.join('\n') : null;
 	}
 }

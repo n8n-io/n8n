@@ -1,5 +1,7 @@
 import type { JSONSchema7 } from 'json-schema';
 
+import type { JSONObject } from '../utils/json';
+
 export interface AgentSchema {
 	model: {
 		provider: string | null;
@@ -66,20 +68,29 @@ export interface ProviderToolSchema {
 	source: string; // full expression source, e.g. "providerTools.anthropicWebSearch({ maxUses: 5 })"
 }
 
-export interface MemorySchema {
+export interface MemorySchema<TParams extends JSONObject = JSONObject> {
+	// TODO: Remove, once MemorySchema is expressive enough to represent all memory types as configs
 	source: string | null; // full Memory builder chain source for lossless regeneration
-	// Parsed fields for UI display/editing
-	storage: 'memory' | 'custom';
+	// Backend descriptor — from BuiltMemory.describe()
+	name: string; // e.g. 'n8n' | 'sqlite' | 'postgres' | 'memory'
+	constructorName: string; // constructor name of the memory backend, e.g. 'SqliteMemory', 'PostgresMemory'
+	connectionParams: TParams | null; // serializable, params
 	lastMessages: number | null;
 	semanticRecall: {
 		topK: number;
+		scope: 'thread' | 'resource' | null;
 		messageRange: { before: number; after: number } | null;
 		embedder: string | null;
 	} | null;
 	workingMemory: {
 		type: 'structured' | 'freeform';
+		scope: 'resource' | 'thread';
 		schema?: JSONSchema7;
 		template?: string;
+	} | null;
+	titleGeneration: {
+		model?: string;
+		instructions?: string;
 	} | null;
 }
 

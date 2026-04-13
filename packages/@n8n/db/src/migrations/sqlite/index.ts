@@ -155,9 +155,10 @@ import { CreateTokenExchangeJtiTable1775116241000 } from '../common/177511624100
 import { ChangeWorkflowPublishHistoryVersionIdToSetNull1775740765000 } from '../common/1775740765000-ChangeWorkflowPublishHistoryVersionIdToSetNull';
 import { CreateAgentTables1776000000000 } from '../common/1776000000000-CreateAgentTables';
 import { CreateTrustedKeyTables1776000000000 } from '../common/1776000000000-CreateTrustedKeyTables';
+import { CreateAgentMemoryTables1777000000000 } from '../common/1777000000000-CreateAgentMemoryTables';
 import type { Migration } from '../migration-types';
 
-const sqliteMigrations: Migration[] = [
+export const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
 	WebhookModel1592445003908,
 	CreateIndexStoppedAt1594825041918,
@@ -315,6 +316,5 @@ const sqliteMigrations: Migration[] = [
 	ChangeWorkflowPublishHistoryVersionIdToSetNull1775740765000,
 	CreateAgentTables1776000000000,
 	CreateTrustedKeyTables1776000000000,
+	CreateAgentMemoryTables1777000000000,
 ];
-
-export { sqliteMigrations };

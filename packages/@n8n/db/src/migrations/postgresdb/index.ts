@@ -161,6 +161,7 @@ import { CreateTokenExchangeJtiTable1775116241000 } from '../common/177511624100
 import { ChangeWorkflowPublishHistoryVersionIdToSetNull1775740765000 } from '../common/1775740765000-ChangeWorkflowPublishHistoryVersionIdToSetNull';
 import { CreateAgentTables1776000000000 } from '../common/1776000000000-CreateAgentTables';
 import { CreateTrustedKeyTables1776000000000 } from '../common/1776000000000-CreateTrustedKeyTables';
+import { CreateAgentMemoryTables1777000000000 } from '../common/1777000000000-CreateAgentMemoryTables';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -327,4 +328,5 @@ export const postgresMigrations: Migration[] = [
 	ChangeWorkflowPublishHistoryVersionIdToSetNull1775740765000,
 	CreateAgentTables1776000000000,
 	CreateTrustedKeyTables1776000000000,
+	CreateAgentMemoryTables1777000000000,
 ];
