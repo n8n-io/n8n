@@ -39,11 +39,12 @@ interface ChatMessage {
 	status?: 'streaming' | 'success' | 'error';
 }
 
-const activeTab = ref<'test' | 'builder'>('test');
+const activeTab = ref<'test' | 'builder'>(props.mode === 'inline' ? 'builder' : 'test');
 const messages = ref<ChatMessage[]>([]);
 const builderMessages = ref<ChatMessage[]>([]);
 const inputText = ref('');
 const isStreaming = ref(false);
+const abortController = ref<AbortController | null>(null);
 const builderHistoryLoaded = ref(false);
 const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
 const inputRef = useTemplateRef<InstanceType<typeof N8nInput>>('inputRef');
@@ -181,6 +182,10 @@ function sendMessageFromOutside(message: string) {
 	void sendMessage();
 }
 
+function stopGenerating() {
+	abortController.value?.abort();
+}
+
 defineExpose({ sendMessageFromOutside });
 
 onMounted(() => {
@@ -203,6 +208,9 @@ async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string) {
 	});
 	let msgAdded = false;
 
+	const controller = new AbortController();
+	abortController.value = controller;
+
 	try {
 		const { baseUrl } = rootStore.restApiContext;
 		const browserId = localStorage.getItem('n8n-browserId') ?? '';
@@ -215,6 +223,7 @@ async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string) {
 			},
 			credentials: 'include',
 			body: JSON.stringify({ message }),
+			signal: controller.signal,
 		});
 
 		if (!response.ok || !response.body) {
@@ -314,12 +323,17 @@ async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string) {
 
 		assistantMsg.status = 'success';
 	} catch (e) {
-		if (!msgAdded) {
-			targetMessages.value.push(assistantMsg);
+		if (e instanceof DOMException && e.name === 'AbortError') {
+			assistantMsg.status = 'success';
+		} else {
+			if (!msgAdded) {
+				targetMessages.value.push(assistantMsg);
+			}
+			assistantMsg.content = `Error: ${e instanceof Error ? e.message : 'Unknown error'}`;
+			assistantMsg.status = 'error';
 		}
-		assistantMsg.content = `Error: ${e instanceof Error ? e.message : 'Unknown error'}`;
-		assistantMsg.status = 'error';
 	} finally {
+		abortController.value = null;
 		isStreaming.value = false;
 		scrollToBottom();
 		// Emit a final refresh after the builder stream completes to ensure the
@@ -487,7 +501,7 @@ async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string) {
 							:title="locale.baseText('chatHub.chat.prompt.button.stopGenerating')"
 							icon="square"
 							icon-size="large"
-							@click.stop
+							@click.stop="stopGenerating"
 						/>
 					</div>
 				</div>
@@ -728,10 +742,10 @@ async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string) {
 		font-size: var(--font-size--md);
 		line-height: 1.5em;
 		padding: var(--spacing--sm);
-		padding-bottom: 64px;
+		padding-bottom: var(--spacing--3xl);
 		color: var(--color--text--shade-1);
-		box-shadow: 0 10px 24px 0 #00000010;
-		border-radius: 16px;
+		box-shadow: 0 10px 24px 0 var(--color--black-alpha-100);
+		border-radius: var(--radius--xl);
 
 		&::placeholder {
 			color: var(--color--text--tint-1);
@@ -739,7 +753,7 @@ async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string) {
 	}
 
 	:global(.n8n-input__wrapper) {
-		--input--radius: 16px;
+		--input--radius: var(--radius--xl);
 	}
 }
 
@@ -750,7 +764,7 @@ async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string) {
 	width: calc(100% - 2px);
 	z-index: 10;
 	background: var(--color--background--light-2);
-	border-radius: 16px;
+	border-radius: var(--radius--xl);
 	padding: var(--spacing--sm);
 	display: flex;
 	align-items: flex-end;
