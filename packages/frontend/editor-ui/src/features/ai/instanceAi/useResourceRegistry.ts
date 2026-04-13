@@ -43,6 +43,9 @@ const ARTIFACT_TOOLS = new Set([
 	'setup-credentials',
 	'create-data-table',
 	'data-table-agent',
+	'insert-data-table-rows',
+	'update-data-table-rows',
+	'delete-data-table-rows',
 ]);
 
 function extractFromToolCall(tc: InstanceAiToolCallState, map: Map<string, ResourceEntry>): void {
@@ -106,6 +109,27 @@ function extractFromToolCall(tc: InstanceAiToolCallState, map: Map<string, Resou
 	// Singular data table (e.g. create-data-table result)
 	if (result.table && typeof result.table === 'object') {
 		registerResource(map, 'data-table', result.table as Record<string, unknown>);
+	}
+
+	// Data table mutation results (insert/update/delete-data-table-rows)
+	// These return { dataTableId, projectId } without a nested table object.
+	// Merge projectId into existing registry entry or create a minimal one.
+	if (typeof result.dataTableId === 'string' && typeof result.projectId === 'string') {
+		const existingEntry = [...map.values()].find(
+			(e) => e.type === 'data-table' && e.id === result.dataTableId,
+		);
+		if (existingEntry) {
+			existingEntry.projectId = result.projectId as string;
+		} else {
+			const tableName =
+				typeof result.tableName === 'string' ? result.tableName : (result.dataTableId as string);
+			map.set(tableName.toLowerCase(), {
+				type: 'data-table',
+				id: result.dataTableId as string,
+				name: tableName,
+				projectId: result.projectId as string,
+			});
+		}
 	}
 }
 

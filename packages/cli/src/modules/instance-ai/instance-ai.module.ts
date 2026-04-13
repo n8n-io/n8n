@@ -40,10 +40,12 @@ export class InstanceAiModule implements ModuleInterface {
 		const settingsService = Container.get(InstanceAiSettingsService);
 		const enabled = service.isEnabled();
 		const localGatewayDisabled = settingsService.isLocalGatewayDisabled();
+		const optinModalDismissed = settingsService.getAdminSettings().optinModalDismissed;
 		return {
 			enabled,
 			localGatewayDisabled,
 			proxyEnabled: service.isProxyEnabled(),
+			optinModalDismissed,
 		};
 	}
 
