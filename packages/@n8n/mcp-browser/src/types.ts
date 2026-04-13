@@ -93,7 +93,7 @@ export interface NavigateResult {
 
 export interface SnapshotResult {
 	tree: string;
-	refCount: number;
+	diffType: 'no-change' | 'diff' | 'full';
 }
 
 export interface ConsoleEntry {

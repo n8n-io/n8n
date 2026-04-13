@@ -71,7 +71,7 @@ export function createMockAdapter() {
 		dialog: jest.fn().mockResolvedValue('alert'),
 
 		// Inspection
-		snapshot: jest.fn().mockResolvedValue({ tree: '', refCount: 0 }),
+		snapshot: jest.fn().mockResolvedValue({ tree: '', diffType: 'full' }),
 		screenshot: jest.fn().mockResolvedValue('base64imagedata'),
 		getContent: jest.fn().mockResolvedValue({
 			html: '<html><body><p>Hello world</p></body></html>',

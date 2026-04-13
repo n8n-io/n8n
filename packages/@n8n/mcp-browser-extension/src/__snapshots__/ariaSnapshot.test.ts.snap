@@ -1,0 +1,101 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`buildSnapshot > deduplicates identical selectors in refs map with >> nth= 1`] = `
+"- button "OK" [ref=btn1]
+- button "OK" [ref=btn2]"
+`;
+
+exports[`buildSnapshot > excludes headings in interactive-only mode (default) 1`] = `"- button "Click me" [ref=btn1]"`;
+
+exports[`buildSnapshot > falls back to id attr as ref when no test-ID attr present 1`] = `"- button "Save" [ref=btn1]"`;
+
+exports[`buildSnapshot > falls back to role+name ref when no stable attr 1`] = `"- button "Save" [ref=btn1]"`;
+
+exports[`buildSnapshot > hoists button out of generic wrapper 1`] = `"- button "Save" [ref=btn1]"`;
+
+exports[`buildSnapshot > includes headings in full mode 1`] = `
+"- heading "Page Title"
+- button "Click me" [ref=btn1]"
+`;
+
+exports[`buildSnapshot > includes interactive button and context navigation 1`] = `
+"- navigation [ref=nav1]
+  - link "Home" [ref=lnk1]
+- main [ref=mai1]
+  - button "Submit" [ref=btn1]"
+`;
+
+exports[`buildSnapshot > includes label text in label context 1`] = `
+"- labeltext
+  - text: "Email"
+  - textbox "Email" [ref=txt1]"
+`;
+
+exports[`buildSnapshot > produces expected inline snapshot 1`] = `
+"- navigation [ref=nav1]
+  - link "Home" [ref=lnk1]"
+`;
+
+exports[`buildSnapshot > promotes contenteditable generic div to textbox 1`] = `"- textbox [ref=txt1]"`;
+
+exports[`buildSnapshot > renders form with mixed interactive elements and attributes 1`] = `
+"- form "Sign up" [ref=for1]
+  - textbox "Email" [ref=txt1]
+  - checkbox "Terms" [checked] [ref=chk1]
+  - radio "Plan: Free" [checked] [ref=rdo1]
+  - button "Register" [disabled] [ref=btn1]"
+`;
+
+exports[`buildSnapshot > renders full page with headings, levels, and nested content 1`] = `
+"- banner [ref=ban1]
+  - link "Logo" [ref=lnk1]
+- main [ref=mai1]
+  - heading "Dashboard" [level=1]
+  - region "Stats" [ref=reg1]
+    - heading "Users" [level=3]
+    - button "Refresh" [ref=btn1]
+  - heading "Recent" [level=2]"
+`;
+
+exports[`buildSnapshot > renders link with href attribute and nested content 1`] = `
+"- navigation [ref=nav1]
+  - link "Home" [href=/] [ref=lnk1]
+  - link "Settings" [href=/settings] [ref=lnk2]"
+`;
+
+exports[`buildSnapshot > renders navigation with expanded/collapsed menus and selected tab 1`] = `
+"- navigation "Main" [ref=nav1]
+  - tab "Dashboard" [selected] [ref=tab1]
+  - tab "Settings" [ref=tab2]
+  - menuitem "File" [expanded] [ref=mnu2]
+    - menuitem "New" [ref=mnu1]"
+`;
+
+exports[`buildSnapshot > scopes snapshot to scopeNodeId subtree 1`] = `
+"- main [ref=mai1]
+  - button "Main Button" [ref=btn1]"
+`;
+
+exports[`buildSnapshot > uses data-testid attr as ref (highest priority) 1`] = `"- button "Save" [ref=btn1]"`;
+
+exports[`renderSnapshot > renders all attribute types 1`] = `
+"- form "Settings"
+  - checkbox "Enable" [checked=mixed] [ref=chk-enable]
+  - button "Save" [disabled] [ref=btn-save]
+  - combobox "Theme" [expanded] [ref=cmb-theme]
+  - heading "Options" [level=3]
+  - button "Bold" [pressed] [ref=btn-bold]
+  - button "Italic" [pressed=mixed] [ref=btn-italic]
+  - tab "General" [selected] [ref=tab-general]"
+`;
+
+exports[`renderSnapshot > renders nested tree with correct indentation 1`] = `
+"- navigation
+  - link "Home""
+`;
+
+exports[`renderSnapshot > renders props and children together 1`] = `
+"- combobox "Country" [expanded] [placeholder=Select...] [ref=cmb-country]
+  - option "USA" [selected] [ref=opt-usa]
+  - option "UK" [ref=opt-uk]"
+`;

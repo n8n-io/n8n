@@ -83,8 +83,24 @@ class MockWebSocket {
 	closeCode?: number;
 	closeReason?: string;
 
+	private sendWaiters: Array<(data: string) => void> = [];
+
 	send(data: string): void {
 		this.sent.push(data);
+		// Resolve any pending waitForSent() promises
+		const waiter = this.sendWaiters.shift();
+		waiter?.(data);
+	}
+
+	/**
+	 * Returns a promise that resolves with the next message sent via this
+	 * WebSocket. Use instead of `tick()` to deterministically wait for async
+	 * command handlers (like getSnapshot) to complete.
+	 */
+	waitForSent(): Promise<string> {
+		return new Promise((resolve) => {
+			this.sendWaiters.push(resolve);
+		});
 	}
 
 	close(code?: number, reason?: string): void {
@@ -877,6 +893,228 @@ describe('RelayConnection', () => {
 			await tick();
 
 			expect(ws.closeReason).toBe('extension_disconnected');
+		});
+	});
+
+	describe('getSnapshot / resolveRef', () => {
+		/**
+		 * Sets up chrome.debugger.sendCommand to return a minimal AX tree with one
+		 * button when Accessibility.getFullAXTree is called, and empty responses for
+		 * DOM.enable / Accessibility.enable / attribute fetches.
+		 */
+		function setupSnapshotMocks(): void {
+			chrome.debugger.sendCommand.mockImplementation(
+				async (_debuggee: { tabId: number }, method: string, _params?: object) => {
+					await Promise.resolve();
+					switch (method) {
+						case 'Target.getTargetInfo':
+							return { targetInfo: { targetId: targetIdForTab(_debuggee.tabId) } };
+						case 'Accessibility.getFullAXTree':
+							return {
+								nodes: [
+									{
+										nodeId: '1',
+										role: { type: 'role', value: 'rootwebarea' },
+										childIds: ['2'],
+										ignored: false,
+									},
+									{
+										nodeId: '2',
+										role: { type: 'role', value: 'button' },
+										name: { type: 'string', value: 'Save' },
+										childIds: [],
+										backendDOMNodeId: 10,
+										ignored: false,
+									},
+								],
+							};
+						case 'DOM.pushNodesByBackendIdsToFrontend':
+							return { nodeIds: [100] };
+						case 'DOM.getAttributes':
+							return { attributes: [] };
+						default:
+							return {};
+					}
+				},
+			);
+		}
+
+		it('should return snapshot text on getSnapshot', async () => {
+			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(42)]);
+			await relay.registerSelectedTabs([42]);
+			const tabId = relay.getControlledIds()[0].targetId;
+			ws.sent.length = 0;
+			setupSnapshotMocks();
+
+			ws.onmessage?.({
+				data: JSON.stringify({ id: 1, method: 'getSnapshot', params: { id: tabId } }),
+			});
+			await ws.waitForSent();
+
+			expect(parseSent(ws)).toEqual(
+				expect.objectContaining({
+					result: expect.objectContaining({
+						snapshot: expect.stringContaining('Save'),
+						diffType: 'full', // first call → no previous
+					}),
+				}),
+			);
+		});
+
+		it('should return no-change diffType when snapshot is called twice without DOM changes', async () => {
+			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(42)]);
+			await relay.registerSelectedTabs([42]);
+			const tabId = relay.getControlledIds()[0].targetId;
+			setupSnapshotMocks();
+
+			// First call
+			ws.onmessage?.({
+				data: JSON.stringify({ id: 1, method: 'getSnapshot', params: { id: tabId } }),
+			});
+			await ws.waitForSent();
+			ws.sent.length = 0;
+
+			// Second call with same tree
+			ws.onmessage?.({
+				data: JSON.stringify({ id: 2, method: 'getSnapshot', params: { id: tabId } }),
+			});
+			await ws.waitForSent();
+
+			expect(parseSent(ws)).toEqual(
+				expect.objectContaining({
+					result: expect.objectContaining({ diffType: 'no-change' }),
+				}),
+			);
+		});
+
+		it('resolveRef should error when called before any getSnapshot (no cache entry)', async () => {
+			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(42)]);
+			await relay.registerSelectedTabs([42]);
+			const tabId = relay.getControlledIds()[0].targetId;
+			ws.sent.length = 0;
+
+			ws.onmessage?.({
+				data: JSON.stringify({
+					id: 1,
+					method: 'resolveRef',
+					params: { id: tabId, ref: 'btn1' },
+				}),
+			});
+			await ws.waitForSent();
+
+			expect(parseSent(ws)).toEqual(
+				expect.objectContaining({ error: expect.stringContaining('Stale ref') }),
+			);
+		});
+
+		it('resolveRef should return selector after getSnapshot populates the cache', async () => {
+			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(42)]);
+			await relay.registerSelectedTabs([42]);
+			const tabId = relay.getControlledIds()[0].targetId;
+			setupSnapshotMocks();
+
+			// Populate cache via getSnapshot
+			ws.onmessage?.({
+				data: JSON.stringify({ id: 1, method: 'getSnapshot', params: { id: tabId } }),
+			});
+			await ws.waitForSent();
+			ws.sent.length = 0;
+
+			// resolveRef for the button — ref is role+name slug since no stable attr
+			ws.onmessage?.({
+				data: JSON.stringify({
+					id: 2,
+					method: 'resolveRef',
+					params: { id: tabId, ref: 'btn1' },
+				}),
+			});
+			await ws.waitForSent();
+
+			expect(parseSent(ws)).toEqual(
+				expect.objectContaining({
+					result: expect.objectContaining({ selector: expect.any(String) }),
+				}),
+			);
+		});
+
+		it('getSnapshot should error when scopeSelector matches no DOM element', async () => {
+			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(42)]);
+			await relay.registerSelectedTabs([42]);
+			const tabId = relay.getControlledIds()[0].targetId;
+
+			chrome.debugger.sendCommand.mockImplementation(
+				async (_debuggee: { tabId: number }, method: string, _params?: object) => {
+					await Promise.resolve();
+					switch (method) {
+						case 'Target.getTargetInfo':
+							return { targetInfo: { targetId: targetIdForTab(_debuggee.tabId) } };
+						case 'Accessibility.getFullAXTree':
+							return { nodes: [] };
+						case 'DOM.getDocument':
+							return { root: { nodeId: 1 } };
+						case 'DOM.querySelector':
+							return { nodeId: 0 }; // CDP returns 0 when selector matches nothing
+						default:
+							return {};
+					}
+				},
+			);
+			ws.sent.length = 0;
+
+			ws.onmessage?.({
+				data: JSON.stringify({
+					id: 1,
+					method: 'getSnapshot',
+					params: { id: tabId, scopeSelector: '#nonexistent' },
+				}),
+			});
+			await ws.waitForSent();
+
+			expect(parseSent(ws)).toEqual(
+				expect.objectContaining({ error: expect.stringContaining('#nonexistent') }),
+			);
+		});
+
+		it('getSnapshot should error when scopeSelector matches a DOM element with no AX node', async () => {
+			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(42)]);
+			await relay.registerSelectedTabs([42]);
+			const tabId = relay.getControlledIds()[0].targetId;
+
+			chrome.debugger.sendCommand.mockImplementation(
+				async (_debuggee: { tabId: number }, method: string, _params?: object) => {
+					await Promise.resolve();
+					switch (method) {
+						case 'Target.getTargetInfo':
+							return { targetInfo: { targetId: targetIdForTab(_debuggee.tabId) } };
+						case 'Accessibility.getFullAXTree':
+							return { nodes: [] }; // empty AX tree — no node can match backendNodeId 999
+						case 'DOM.getDocument':
+							return { root: { nodeId: 1 } };
+						case 'DOM.querySelector':
+							return { nodeId: 99 };
+						case 'DOM.describeNode':
+							return { node: { backendNodeId: 999 } }; // no AX node has this backendDOMNodeId
+						default:
+							return {};
+					}
+				},
+			);
+			ws.sent.length = 0;
+
+			ws.onmessage?.({
+				data: JSON.stringify({
+					id: 1,
+					method: 'getSnapshot',
+					params: { id: tabId, scopeSelector: '[aria-hidden="true"]' },
+				}),
+			});
+			await ws.waitForSent();
+
+			expect(parseSent(ws)).toEqual(
+				expect.objectContaining({
+					error: expect.stringContaining('no accessibility node'),
+				}),
+			);
 		});
 	});
 });

@@ -199,7 +199,10 @@ describe('createNavigationTools', () => {
 
 	describe('response enrichment', () => {
 		it('injects snapshot when adapter returns it', async () => {
-			mockConnection.adapter.snapshot.mockResolvedValue({ tree: '- heading "Test"', refCount: 1 });
+			mockConnection.adapter.snapshot.mockResolvedValue({
+				tree: '- heading "Test"',
+				diffType: 'full',
+			});
 
 			const tool = findTool(tools, 'browser_navigate');
 			const result = await tool.execute({ url: 'http://example.com' }, TOOL_CONTEXT);

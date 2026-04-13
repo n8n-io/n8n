@@ -78,8 +78,7 @@ const {
 
 <style scoped lang="scss">
 .container {
-	max-width: 500px;
-	width: 100%;
+	width: 420px;
 	margin: 0 auto;
 	padding: var(--spacing--xl);
 	background: var(--background--surface);

@@ -57,7 +57,10 @@ describe('createTabTools', () => {
 			});
 
 			it('includes snapshot of the new page in response envelope', async () => {
-				mockConnection.adapter.snapshot.mockResolvedValue({ tree: '<snapshot-tree>', refCount: 5 });
+				mockConnection.adapter.snapshot.mockResolvedValue({
+					tree: '<snapshot-tree>',
+					diffType: 'full',
+				});
 
 				const result = await getTool().execute({ url: 'http://example.com' }, TOOL_CONTEXT);
 				const data = structuredOf(result);
