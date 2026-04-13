@@ -1,6 +1,8 @@
 <script lang="ts" setup>
 import { computed, useCssModule } from 'vue';
 
+import type { TextStep } from '../../types/text';
+
 const SIZES = ['2xlarge', 'xlarge', 'large', 'medium', 'small'] as const;
 const COLORS = [
 	'primary',
@@ -16,6 +18,7 @@ interface HeadingProps {
 	tag?: string;
 	bold?: boolean;
 	size?: (typeof SIZES)[number];
+	step?: TextStep;
 	color?: (typeof COLORS)[number];
 	align?: (typeof ALIGN)[number];
 }
@@ -37,7 +40,11 @@ const classes = computed(() => {
 		applied.push(props.color);
 	}
 
-	applied.push(`size-${props.size}`);
+	if (props.step) {
+		applied.push(`step-${props.step}`);
+	} else {
+		applied.push(`size-${props.size}`);
+	}
 	applied.push(props.bold ? 'bold' : 'regular');
 
 	return applied.map((c) => $style[c]);
@@ -82,6 +89,60 @@ const classes = computed(() => {
 .size-small {
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--md);
+}
+
+.step-1 {
+	font-size: var(--font-size--4xs);
+	line-height: var(--line-height--xs);
+	letter-spacing: var(--letter-spacing--normal);
+}
+
+.step-2 {
+	font-size: var(--font-size--3xs);
+	line-height: var(--line-height--sm);
+	letter-spacing: var(--letter-spacing--normal);
+}
+
+.step-3 {
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--md);
+	letter-spacing: var(--letter-spacing--normal);
+}
+
+.step-4 {
+	font-size: var(--font-size--xs);
+	line-height: var(--line-height--md);
+	letter-spacing: var(--letter-spacing--normal);
+}
+
+.step-5 {
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--lg);
+	letter-spacing: var(--letter-spacing--normal);
+}
+
+.step-6 {
+	font-size: var(--font-size--md);
+	line-height: var(--line-height--lg);
+	letter-spacing: var(--letter-spacing--normal);
+}
+
+.step-7 {
+	font-size: var(--font-size--lg);
+	line-height: var(--line-height--xl);
+	letter-spacing: var(--letter-spacing--normal);
+}
+
+.step-8 {
+	font-size: var(--font-size--xl);
+	line-height: var(--line-height--xl);
+	letter-spacing: var(--letter-spacing--normal);
+}
+
+.step-9 {
+	font-size: var(--font-size--2xl);
+	line-height: var(--line-height--xl);
+	letter-spacing: var(--letter-spacing--tight);
 }
 
 .primary {

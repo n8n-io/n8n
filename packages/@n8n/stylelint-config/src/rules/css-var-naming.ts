@@ -63,6 +63,7 @@ const PROPERTY_VOCABULARY = new Set([
 	'bottom',
 	'left',
 	'right',
+	'letter-spacing',
 ]);
 
 // Properties that can be used as standalone single-group variables (without a value)
@@ -78,6 +79,7 @@ const STANDALONE_PROPERTIES = new Set([
 	'icon-color',
 	'text-color',
 	'shadow-color',
+	'letter-spacing',
 ]);
 
 const STATES = new Set([
