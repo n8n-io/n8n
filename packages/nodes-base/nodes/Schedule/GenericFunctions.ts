@@ -24,8 +24,48 @@ export function validateInterval(node: INode, itemIndex: number, interval: Sched
 		errorMessage = 'Days must be in range 1-31';
 	}
 
-	if (interval.field === 'months' && interval.monthsInterval < 1) {
-		errorMessage = 'Months must be larger than 0';
+	if (interval.field === 'weeks') {
+		if (interval.weeksInterval < 1) {
+			errorMessage = 'Weeks must be larger than 0';
+		} else if (interval.triggerAtDay && interval.triggerAtDay.some((day) => day < 0 || day > 6)) {
+			errorMessage = 'Days must be in range 0-6';
+		}
+	}
+
+	if (interval.field === 'months') {
+		if (interval.monthsInterval < 1) {
+			errorMessage = 'Months must be larger than 0';
+		} else if (
+			interval.triggerAtDayOfMonth !== undefined &&
+			(interval.triggerAtDayOfMonth < 1 || interval.triggerAtDayOfMonth > 31)
+		) {
+			errorMessage = 'Day of month must be in range 1-31';
+		}
+	}
+
+	if (interval.field === 'days' || interval.field === 'weeks' || interval.field === 'months') {
+		if (
+			'triggerAtHour' in interval &&
+			interval.triggerAtHour !== undefined &&
+			(interval.triggerAtHour < 0 || interval.triggerAtHour > 23)
+		) {
+			errorMessage = 'Hour must be in range 0-23';
+		}
+	}
+
+	if (
+		interval.field === 'hours' ||
+		interval.field === 'days' ||
+		interval.field === 'weeks' ||
+		interval.field === 'months'
+	) {
+		if (
+			'triggerAtMinute' in interval &&
+			interval.triggerAtMinute !== undefined &&
+			(interval.triggerAtMinute < 0 || interval.triggerAtMinute > 59)
+		) {
+			errorMessage = 'Minute must be in range 0-59';
+		}
 	}
 
 	if (errorMessage) {
@@ -44,7 +84,7 @@ export function recurrenceCheck(
 	if (!recurrence.activated) return true;
 
 	const intervalSize = recurrence.intervalSize;
-	if (!intervalSize) return false;
+	if (!intervalSize || intervalSize < 0) return false;
 
 	const index = recurrence.index;
 	const typeInterval = recurrence.typeInterval;
@@ -53,29 +93,67 @@ export function recurrenceCheck(
 	const momentTz = moment.tz(timezone);
 	if (typeInterval === 'hours') {
 		const hour = momentTz.hour();
-		if (lastExecution === undefined || hour === (intervalSize + lastExecution) % 24) {
+		if (lastExecution === undefined) {
+			recurrenceRules[index] = hour;
+			return true;
+		}
+		let diff = hour - lastExecution;
+		if (diff < 0) {
+			diff += 24;
+		}
+		if (diff >= intervalSize) {
 			recurrenceRules[index] = hour;
 			return true;
 		}
 	} else if (typeInterval === 'days') {
 		const dayOfYear = momentTz.dayOfYear();
-		if (lastExecution === undefined || dayOfYear === (intervalSize + lastExecution) % 365) {
+		if (lastExecution === undefined) {
+			recurrenceRules[index] = dayOfYear;
+			return true;
+		}
+		let diff = dayOfYear - lastExecution;
+		if (diff < 0) {
+			// We wrapped around the year
+			const previousYear = momentTz.year() - 1;
+			const daysInYear = momentTz.clone().year(previousYear).isLeapYear() ? 366 : 365;
+			diff += daysInYear;
+		}
+		if (diff >= intervalSize) {
 			recurrenceRules[index] = dayOfYear;
 			return true;
 		}
 	} else if (typeInterval === 'weeks') {
-		const week = momentTz.week();
-		if (
-			lastExecution === undefined || // First time executing this rule
-			week === (intervalSize + lastExecution) % 52 || // not first time, but minimum interval has passed
-			week === lastExecution // Trigger on multiple days in the same week
-		) {
+		const week = momentTz.isoWeek();
+		if (lastExecution === undefined) {
 			recurrenceRules[index] = week;
+			return true;
+		}
+		let diff = week - lastExecution;
+		if (diff < 0) {
+			const previousYear = momentTz.isoWeekYear() - 1;
+			diff += momentTz.clone().isoWeekYear(previousYear).isoWeeksInYear();
+		}
+
+		if (diff >= intervalSize) {
+			recurrenceRules[index] = week;
+			return true;
+		}
+
+		// Allow triggering on multiple days in the same week only if interval is > 1
+		if (intervalSize > 1 && week === lastExecution) {
 			return true;
 		}
 	} else if (typeInterval === 'months') {
 		const month = momentTz.month();
-		if (lastExecution === undefined || month === (intervalSize + lastExecution) % 12) {
+		if (lastExecution === undefined) {
+			recurrenceRules[index] = month;
+			return true;
+		}
+		let diff = month - lastExecution;
+		if (diff < 0) {
+			diff += 12;
+		}
+		if (diff >= intervalSize) {
 			recurrenceRules[index] = month;
 			return true;
 		}
@@ -103,7 +181,7 @@ export const toCronExpression = (interval: ScheduleInterval): CronExpression => 
 		return `${randomSecond} ${minute} ${hour} * * ${daysOfWeek}` as CronExpression;
 	}
 
-	const dayOfMonth = interval.triggerAtDayOfMonth ?? randomInt(0, 31);
+	const dayOfMonth = interval.triggerAtDayOfMonth ?? randomInt(1, 32);
 	return `${randomSecond} ${minute} ${hour} ${dayOfMonth} */${interval.monthsInterval} *`;
 };
 
