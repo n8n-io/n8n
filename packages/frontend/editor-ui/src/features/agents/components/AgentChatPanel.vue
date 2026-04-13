@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import { N8nIcon, N8nMarkdown, N8nPromptInput } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { getBuilderMessages, clearBuilderMessages } from '../composables/useAgentApi';
 
 const props = defineProps<{
 	visible: boolean;
@@ -11,8 +12,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	close: [];
-	codeUpdated: [];
-	codeDelta: [delta: string];
+	configUpdated: [];
 }>();
 
 const rootStore = useRootStore();
@@ -30,10 +30,91 @@ const testMessages = ref<ChatMessage[]>([]);
 const builderMessages = ref<ChatMessage[]>([]);
 const inputText = ref('');
 const isStreaming = ref(false);
+const builderHistoryLoaded = ref(false);
 
 const messages = computed(() =>
 	activeTab.value === 'test' ? testMessages.value : builderMessages.value,
 );
+
+/** Convert persisted agent messages into the frontend ChatMessage format. */
+function convertDbMessages(dbMessages: unknown[]): ChatMessage[] {
+	const result: ChatMessage[] = [];
+	for (const raw of dbMessages) {
+		const msg = raw as {
+			id?: string;
+			role?: string;
+			content?: Array<{
+				type: string;
+				text?: string;
+				toolName?: string;
+				input?: unknown;
+				result?: unknown;
+			}>;
+		};
+		if (!msg.role || !Array.isArray(msg.content)) continue;
+		// Only show user and assistant messages
+		if (msg.role !== 'user' && msg.role !== 'assistant') continue;
+
+		let text = '';
+		let thinking = '';
+		const toolCalls: Array<{ tool: string; input?: unknown; output?: unknown }> = [];
+
+		for (const part of msg.content) {
+			if (part.type === 'text' && part.text) {
+				text += part.text;
+			} else if (part.type === 'reasoning' && part.text) {
+				thinking += part.text;
+			} else if (part.type === 'tool-call' && part.toolName) {
+				toolCalls.push({ tool: part.toolName, input: part.input });
+			} else if (part.type === 'tool-result' && part.toolName) {
+				const existing = toolCalls.find((t) => t.tool === part.toolName && t.output === undefined);
+				if (existing) {
+					existing.output = part.result;
+				}
+			}
+		}
+
+		result.push({
+			id: msg.id ?? crypto.randomUUID(),
+			role: msg.role as 'user' | 'assistant',
+			content: text,
+			thinking: thinking || undefined,
+			toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+		});
+	}
+	return result;
+}
+
+async function loadBuilderHistory() {
+	if (builderHistoryLoaded.value) return;
+	try {
+		const dbMessages = await getBuilderMessages(
+			rootStore.restApiContext,
+			props.projectId,
+			props.agentId,
+		);
+		if (dbMessages.length > 0) {
+			builderMessages.value = convertDbMessages(dbMessages);
+		}
+	} catch {
+		// Silently ignore — just start with empty chat
+	} finally {
+		builderHistoryLoaded.value = true;
+	}
+}
+
+async function onClearBuilderMessages() {
+	try {
+		await clearBuilderMessages(rootStore.restApiContext, props.projectId, props.agentId);
+		builderMessages.value = [];
+	} catch {
+		// ignore
+	}
+}
+
+onMounted(() => {
+	void loadBuilderHistory();
+});
 
 function onSubmit() {
 	void sendMessage();
@@ -64,6 +145,7 @@ async function streamFromEndpoint(
 	targetMessages: typeof testMessages,
 ) {
 	isStreaming.value = true;
+	let builderMutated = false;
 	const assistantMsg = reactive<ChatMessage>({
 		id: crypto.randomUUID(),
 		role: 'assistant',
@@ -135,12 +217,9 @@ async function streamFromEndpoint(
 					assistantMsg.thinking = (assistantMsg.thinking ?? '') + data.thinking;
 				}
 
-				if (typeof data.codeDelta === 'string') {
-					emit('codeDelta', data.codeDelta);
-				}
-
-				if (typeof data.code === 'string') {
-					emit('codeUpdated');
+				if (data.configUpdated !== undefined || data.toolUpdated !== undefined) {
+					builderMutated = true;
+					emit('configUpdated');
 				}
 
 				if (data.toolCall && typeof data.toolCall === 'object') {
@@ -179,6 +258,11 @@ async function streamFromEndpoint(
 		assistantMsg.content = `Error: ${e instanceof Error ? e.message : 'Unknown error'}`;
 	} finally {
 		isStreaming.value = false;
+		// Emit a final refresh after the builder stream completes to ensure the
+		// latest config is shown even if no individual tool events fired it.
+		if (endpoint === 'build' && builderMutated) {
+			emit('configUpdated');
+		}
 	}
 }
 </script>
@@ -202,9 +286,20 @@ async function streamFromEndpoint(
 					Builder
 				</button>
 			</div>
-			<button :class="$style.closeBtn" data-testid="chat-close-button" @click="emit('close')">
-				<N8nIcon icon="x" :size="16" />
-			</button>
+			<div :class="$style.headerActions">
+				<button
+					v-if="activeTab === 'builder' && builderMessages.length > 0"
+					:class="$style.clearBtn"
+					title="Clear builder history"
+					data-testid="chat-clear-builder"
+					@click="onClearBuilderMessages"
+				>
+					<N8nIcon icon="trash-2" :size="14" />
+				</button>
+				<button :class="$style.closeBtn" data-testid="chat-close-button" @click="emit('close')">
+					<N8nIcon icon="x" :size="16" />
+				</button>
+			</div>
 		</div>
 
 		<div :class="$style.messages">
@@ -328,6 +423,29 @@ async function streamFromEndpoint(
 
 .tabBtnActive:hover {
 	background-color: var(--color--primary--tint-2);
+}
+
+.headerActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+
+.clearBtn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: none;
+	background: none;
+	cursor: pointer;
+	color: var(--color--text--tint-2);
+	padding: var(--spacing--4xs);
+	border-radius: var(--radius);
+}
+
+.clearBtn:hover {
+	background-color: var(--color--foreground--tint-1);
+	color: var(--color--danger);
 }
 
 .closeBtn {

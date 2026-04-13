@@ -166,7 +166,11 @@ export class WorkflowBuilderToolsService {
 			try {
 				const packageJsonPath = require.resolve(`${packageId}/package.json`);
 				const distDir = path.dirname(packageJsonPath);
-				const nodeDefsDir = path.join(distDir, 'dist', 'node-definitions');
+				let nodeDefsDir = path.join(distDir, 'dist', 'node-definitions');
+				const separator = process.platform === 'win32' ? '\\' : '/';
+				if (!nodeDefsDir.endsWith(separator)) {
+					nodeDefsDir += separator;
+				}
 				await fs.access(nodeDefsDir);
 				dirs.push(nodeDefsDir);
 			} catch (error) {

@@ -1,5 +1,7 @@
 import type { BaseResource } from '@/Interface';
-import type { Agent } from './agent.types';
+import type { Agent, ToolDescriptor, CustomToolEntry } from './agent.types';
+
+export type { ToolDescriptor, CustomToolEntry };
 
 /**
  * Agent resource type definition.
@@ -114,4 +116,53 @@ export interface ThinkingSchema {
 	provider: 'anthropic' | 'openai';
 	budgetTokens?: number;
 	reasoningEffort?: string;
+}
+
+export interface NodeToolConfig {
+	nodeType: string;
+	nodeTypeVersion: number;
+	nodeParameters?: Record<string, unknown>;
+	credentials?: Record<string, { id: string; name: string }>;
+}
+
+export interface AgentJsonToolRef {
+	type: 'custom' | 'workflow' | 'node';
+	id?: string;
+	workflow?: string;
+	name?: string;
+	description?: string;
+	node?: NodeToolConfig;
+	inputSchema?: Record<string, unknown>;
+	requireApproval?: boolean;
+}
+
+export interface AgentJsonConfig {
+	name: string;
+	description?: string;
+	model: string;
+	credential: string;
+	instructions: string;
+	memory?: {
+		enabled: boolean;
+		storage: 'n8n' | 'sqlite' | 'postgres';
+		connection?: Record<string, unknown>;
+		lastMessages?: number;
+		semanticRecall?: {
+			topK: number;
+			scope?: 'thread' | 'resource';
+			messageRange?: { before: number; after: number };
+			embedder?: string;
+		};
+	};
+	tools?: AgentJsonToolRef[];
+	providerTools?: Record<string, Record<string, unknown>>;
+	config?: {
+		thinking?: {
+			provider: 'anthropic' | 'openai';
+			budgetTokens?: number;
+			reasoningEffort?: string;
+		};
+		toolCallConcurrency?: number;
+		requireToolApproval?: boolean;
+	};
 }

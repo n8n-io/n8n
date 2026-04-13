@@ -333,7 +333,7 @@ describe('ComponentMapper', () => {
 			expect(mockActions).toHaveBeenCalled();
 		});
 
-		it('should map radio_select components', async () => {
+		it('should map radio_select components wrapped in Actions', async () => {
 			const payload = {
 				components: [
 					{
@@ -355,6 +355,7 @@ describe('ComponentMapper', () => {
 					]),
 				}),
 			);
+			expect(mockActions).toHaveBeenCalled();
 		});
 
 		it('should map fields components', async () => {
