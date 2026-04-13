@@ -124,8 +124,8 @@ The system tracks file hashes. If you edit the code and then call run-workflow o
 
 ### Verification
 
-- If submit-workflow returned mocked credentials, call \`verify-built-workflow\` with the workflowId, **useLlmMockExecution=true**, and a \`successCriteria\` string describing what the workflow should accomplish (derive from your task). If you have a workItemId, pass it too. This runs the workflow with LLM-generated fake API responses — no real credentials needed. The tool returns a structured verdict with pass/fail, reasoning, and failure category.
-- Otherwise call run-workflow to test (skip for trigger-only workflows)
+- Call \`run-workflow\` with the workflowId and **useLlmMockExecution=true** plus a \`successCriteria\` string describing what the workflow should accomplish (derive from your task). This runs the workflow with LLM-generated fake API responses — no real credentials needed. The tool returns a structured verdict with pass/fail, reasoning, and failure category.
+- If the workflow has real credentials and no mocked ones, you can call run-workflow without the mock flag to test with real APIs instead (skip for trigger-only workflows).
 - If the verdict says pass=false, read the reasoning and failureCategory to understand what went wrong. Fix the issue, re-submit, and retry once.
 - If the same failure repeats after a fix, stop and explain the block
 

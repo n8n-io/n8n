@@ -26,6 +26,27 @@ export const runWorkflowInputSchema = z.object({
 		.max(MAX_TIMEOUT_MS)
 		.optional()
 		.describe('Max wait time in milliseconds (default 300000, max 600000)'),
+	useLlmMockExecution: z
+		.boolean()
+		.optional()
+		.describe(
+			'When true, execute with LLM-generated mock HTTP responses instead of real API calls. ' +
+				'No real credentials needed. Use this to test workflow logic without external services. ' +
+				'When combined with successCriteria, an automated judge evaluates the result.',
+		),
+	successCriteria: z
+		.string()
+		.optional()
+		.describe(
+			'Success criteria for the automated judge. Only used with useLlmMockExecution=true. ' +
+				'Describe what the workflow should accomplish.',
+		),
+	persistMockData: z
+		.boolean()
+		.optional()
+		.describe(
+			'When true and useLlmMockExecution=true, persist mocked outputs as pin data on the workflow for instant re-runs.',
+		),
 });
 
 export const runWorkflowResumeSchema = z.object({
@@ -47,6 +68,16 @@ export function createRunWorkflowTool(context: InstanceAiContext) {
 			finishedAt: z.string().optional(),
 			denied: z.boolean().optional(),
 			reason: z.string().optional(),
+			/** Judge verdict — present when useLlmMockExecution + successCriteria were provided */
+			verdict: z
+				.object({
+					pass: z.boolean(),
+					reasoning: z.string(),
+					failureCategory: z.string().optional(),
+					rootCause: z.string().optional(),
+				})
+				.optional(),
+			pinDataPersisted: z.boolean().optional(),
 		}),
 		suspendSchema: z.object({
 			requestId: z.string(),
@@ -97,6 +128,41 @@ export function createRunWorkflowTool(context: InstanceAiContext) {
 			}
 
 			// Approved or always_allow — execute
+			if (input.useLlmMockExecution) {
+				const evalFn = context.executionService.executeAndEvaluate;
+				if (!evalFn) {
+					return {
+						executionId: '',
+						status: 'error' as const,
+						error: 'LLM mock execution not available on this instance.',
+					};
+				}
+
+				const evalResult = await evalFn(input.workflowId, {
+					successCriteria: input.successCriteria,
+					persistMockData: input.persistMockData,
+				});
+
+				return {
+					executionId: '',
+					status: evalResult.execution.success ? ('success' as const) : ('error' as const),
+					data: evalResult.execution.nodeResults as Record<string, unknown>,
+					error:
+						evalResult.execution.errors.length > 0
+							? evalResult.execution.errors.join('; ')
+							: undefined,
+					verdict: evalResult.verification
+						? {
+								pass: evalResult.verification.pass,
+								reasoning: evalResult.verification.reasoning,
+								failureCategory: evalResult.verification.failureCategory,
+								rootCause: evalResult.verification.rootCause,
+							}
+						: undefined,
+					pinDataPersisted: evalResult.pinDataPersisted,
+				};
+			}
+
 			return await context.executionService.run(input.workflowId, input.inputData, {
 				timeout: input.timeout,
 			});
