@@ -60,6 +60,7 @@ export { default as N8nOption } from './N8nOption';
 export { default as N8nSectionHeader } from './N8nSectionHeader';
 export { default as N8nSelectableList } from './N8nSelectableList';
 export { default as N8nPreviewTag } from './PreviewTag/PreviewTag.vue';
+export { default as N8nActionPill } from './N8nActionPill/ActionPill.vue';
 export { default as N8nPopover } from './N8nPopover';
 export { default as N8nPopoverReka } from './N8nPopover'; // Alias for backwards compatibility
 export { default as N8nPromptInput } from './N8nPromptInput';

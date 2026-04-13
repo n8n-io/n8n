@@ -1,5 +1,6 @@
 import { useRouter } from 'vue-router';
 import { useUserHelpers } from './useUserHelpers';
+import { useAiGateway } from './useAiGateway';
 import { computed } from 'vue';
 import type { IMenuItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -8,8 +9,6 @@ import { useUIStore } from '../stores/ui.store';
 import { useSettingsStore } from '../stores/settings.store';
 import { hasPermission } from '../utils/rbac/permissions';
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
-import { usePostHog } from '../stores/posthog.store';
-import { AI_GATEWAY_EXPERIMENT } from '../constants/experiments';
 
 export function useSettingsItems() {
 	const router = useRouter();
@@ -17,7 +16,7 @@ export function useSettingsItems() {
 	const uiStore = useUIStore();
 	const settingsStore = useSettingsStore();
 	const { canUserAccessRouteByName } = useUserHelpers(router);
-	const postHogStore = usePostHog();
+	const { creditsRemaining } = useAiGateway();
 
 	const settingsItems = computed<IMenuItem[]>(() => {
 		const menuItems: IMenuItem[] = [
@@ -55,15 +54,19 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.AI_SETTINGS } },
 			},
 			{
-				id: 'settings-n8n-gateway',
-				icon: 'network',
-				label: i18n.baseText('settings.n8nGateway'),
+				id: 'settings-n8n-connect',
+				icon: 'plug-zap',
+				label: i18n.baseText('settings.n8nConnect'),
 				position: 'top',
 				available:
-					postHogStore.getVariant(AI_GATEWAY_EXPERIMENT.name) === AI_GATEWAY_EXPERIMENT.variant &&
-					settingsStore.isAiGatewayEnabled &&
-					canUserAccessRouteByName(VIEWS.AI_GATEWAY_SETTINGS),
+					settingsStore.isAiGatewayEnabled && canUserAccessRouteByName(VIEWS.AI_GATEWAY_SETTINGS),
 				route: { to: { name: VIEWS.AI_GATEWAY_SETTINGS } },
+				creditsTag:
+					creditsRemaining.value !== undefined
+						? i18n.baseText('aiGateway.credentialMode.creditsShort', {
+								interpolate: { count: String(creditsRemaining.value) },
+							})
+						: undefined,
 			},
 			{
 				id: 'settings-project-roles',

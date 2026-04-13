@@ -5,14 +5,16 @@ import { mock } from 'jest-mock-extended';
 import { ErrorReporter } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { AuthError } from '@/errors/response-errors/auth.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import type { AuthlessRequest } from '@/requests';
 
-import { TokenExchangeConfig } from '../token-exchange.config';
+import { TokenExchangeConfig } from '../../token-exchange.config';
 import { TokenExchangeController } from '../token-exchange.controller';
-import { TOKEN_EXCHANGE_GRANT_TYPE } from '../token-exchange.schemas';
-import { TokenExchangeService } from '../token-exchange.service';
-import type { IssuedTokenResult } from '../token-exchange.types';
+import { TOKEN_EXCHANGE_GRANT_TYPE } from '../../token-exchange.schemas';
+import { TokenExchangeService } from '../../services/token-exchange.service';
+import type { IssuedTokenResult } from '../../token-exchange.types';
 
 describe('TokenExchangeController', () => {
 	mockInstance(ErrorReporter);
@@ -129,6 +131,7 @@ describe('TokenExchangeController', () => {
 				accessToken: 'eyJhbGciOiJIUzI1NiJ9.issued.token',
 				expiresIn: 900,
 				subject: 'user-123',
+				subjectUserId: 'user-id-123',
 				issuer: 'https://idp.example.com',
 				actor: undefined,
 			};
@@ -188,11 +191,39 @@ describe('TokenExchangeController', () => {
 				subject_token: 'some-subject-token',
 			};
 
-			test('returns 500 server_error when service throws', async () => {
+			test('returns 400 invalid_grant when service throws AuthError', async () => {
 				req.body = validBody;
 				jest
 					.mocked(tokenExchangeService.exchange)
-					.mockRejectedValue(new UnexpectedError('Token exchange not yet implemented'));
+					.mockRejectedValue(new AuthError('Token verification failed'));
+
+				await controller.exchangeToken(req, res);
+
+				expect(res.status).toHaveBeenCalledWith(400);
+				expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'invalid_grant' }));
+				expect(errorReporter.error).not.toHaveBeenCalled();
+			});
+
+			test('returns 400 invalid_request when service throws BadRequestError', async () => {
+				req.body = validBody;
+				jest
+					.mocked(tokenExchangeService.exchange)
+					.mockRejectedValue(new BadRequestError('Invalid token format'));
+
+				await controller.exchangeToken(req, res);
+
+				expect(res.status).toHaveBeenCalledWith(400);
+				expect(res.json).toHaveBeenCalledWith(
+					expect.objectContaining({ error: 'invalid_request' }),
+				);
+				expect(errorReporter.error).not.toHaveBeenCalled();
+			});
+
+			test('returns 500 server_error when service throws unexpected error', async () => {
+				req.body = validBody;
+				jest
+					.mocked(tokenExchangeService.exchange)
+					.mockRejectedValue(new UnexpectedError('Something broke'));
 
 				await controller.exchangeToken(req, res);
 
@@ -200,11 +231,11 @@ describe('TokenExchangeController', () => {
 				expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'server_error' }));
 			});
 
-			test('emits token-exchange-failed event when service throws', async () => {
+			test('emits failure reason from AuthError in token-exchange-failed event', async () => {
 				req.body = validBody;
 				jest
 					.mocked(tokenExchangeService.exchange)
-					.mockRejectedValue(new UnexpectedError('Token exchange not yet implemented'));
+					.mockRejectedValue(new AuthError('Token has already been used'));
 
 				await controller.exchangeToken(req, res);
 
@@ -212,14 +243,15 @@ describe('TokenExchangeController', () => {
 					'token-exchange-failed',
 					expect.objectContaining({
 						subject: '',
+						failureReason: 'Token has already been used',
 						grantType: TOKEN_EXCHANGE_GRANT_TYPE,
 						clientIp: '127.0.0.1',
 					}),
 				);
 			});
 
-			test('reports error to ErrorReporter when service throws', async () => {
-				const error = new UnexpectedError('Token exchange not yet implemented');
+			test('reports only unexpected errors to ErrorReporter', async () => {
+				const error = new UnexpectedError('Something broke');
 				req.body = validBody;
 				jest.mocked(tokenExchangeService.exchange).mockRejectedValue(error);
 

@@ -6,7 +6,7 @@ import { ResponseError } from '@/errors/response-errors/abstract/response.error'
 import { CommunityPackagesLifecycleService } from '@/modules/community-packages/community-packages.lifecycle.service';
 
 import { mapToCommunityPackage, mapToCommunityPackageList } from './community-packages.mapper';
-import { apiKeyHasScope } from '../../shared/middlewares/global.middleware';
+import { publicApiScope } from '../../shared/middlewares/global.middleware';
 
 function sendResponseError(res: express.Response, error: ResponseError): express.Response {
 	return res.status(error.httpStatusCode).json({ message: error.message });
@@ -14,7 +14,7 @@ function sendResponseError(res: express.Response, error: ResponseError): express
 
 export = {
 	installPackage: [
-		apiKeyHasScope('communityPackage:install'),
+		publicApiScope('communityPackage:install'),
 		async (
 			req: AuthenticatedRequest<
 				Record<string, never>,
@@ -42,7 +42,7 @@ export = {
 	],
 
 	getInstalledPackages: [
-		apiKeyHasScope('communityPackage:list'),
+		publicApiScope('communityPackage:list'),
 		async (
 			_req: AuthenticatedRequest<Record<string, never>>,
 			res: express.Response,
@@ -54,7 +54,7 @@ export = {
 	],
 
 	updatePackage: [
-		apiKeyHasScope('communityPackage:update'),
+		publicApiScope('communityPackage:update'),
 		async (
 			req: AuthenticatedRequest<{ name: string }, Record<string, never>, { version?: string }>,
 			res: express.Response,
@@ -81,7 +81,7 @@ export = {
 	],
 
 	uninstallPackage: [
-		apiKeyHasScope('communityPackage:uninstall'),
+		publicApiScope('communityPackage:uninstall'),
 		async (
 			req: AuthenticatedRequest<{ name: string }>,
 			res: express.Response,
