@@ -28,8 +28,6 @@
     "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
-    "@testing-library/jest-dom": "catalog:frontend",
-    "@testing-library/user-event": "catalog:frontend",
     "@testing-library/vue": "catalog:frontend",
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vue/tsconfig": "catalog:frontend",
