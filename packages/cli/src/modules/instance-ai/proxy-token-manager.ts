@@ -1,4 +1,4 @@
-const DEFAULT_TTL_MS = 10 * 60 * 1000; // 10 min — fallback if JWT has no exp
+import { UnexpectedError } from 'n8n-workflow';
 
 interface CachedToken {
 	accessToken: string;
@@ -81,8 +81,8 @@ export class ProxyTokenManager {
 		const result = await this.fetchToken();
 		const now = Date.now();
 		const exp = getJwtExpiry(result.accessToken);
-		const expiresAt = exp ? exp * 1000 : now + DEFAULT_TTL_MS;
-		const ttl = expiresAt - now;
+		if (!exp) throw new UnexpectedError('Proxy token JWT is missing the exp claim');
+		const ttl = exp * 1000 - now;
 		this.cached = {
 			...result,
 			refreshAfter: now + ttl * this.refreshThreshold,

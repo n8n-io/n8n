@@ -84,7 +84,7 @@ describe('ProxyTokenManager', () => {
 		expect(fetchToken).toHaveBeenCalledTimes(2);
 	});
 
-	it('should fall back to default TTL when JWT has no exp', async () => {
+	it('should throw when JWT has no exp claim', async () => {
 		const header = Buffer.from(JSON.stringify({ alg: 'HS256' })).toString('base64url');
 		const payload = Buffer.from(JSON.stringify({ sub: 'no-exp' })).toString('base64url');
 		const noExpJwt = `${header}.${payload}.fake-sig`;
@@ -92,16 +92,7 @@ describe('ProxyTokenManager', () => {
 		const fetchToken = jest.fn().mockResolvedValue({ accessToken: noExpJwt, tokenType: 'Bearer' });
 		const mgr = new ProxyTokenManager(fetchToken, THRESHOLD);
 
-		await mgr.getAuthHeaders();
-		// At 50% of default 10 min — should still be cached
-		jest.advanceTimersByTime(5 * 60 * 1000);
-		await mgr.getAuthHeaders();
-		expect(fetchToken).toHaveBeenCalledTimes(1);
-
-		// At 85% of default 10 min — should refresh
-		jest.advanceTimersByTime(3.5 * 60 * 1000);
-		await mgr.getAuthHeaders();
-		expect(fetchToken).toHaveBeenCalledTimes(2);
+		await expect(mgr.getAuthHeaders()).rejects.toThrow('Proxy token JWT is missing the exp claim');
 	});
 
 	it('should deduplicate concurrent refresh calls (single-flight)', async () => {
