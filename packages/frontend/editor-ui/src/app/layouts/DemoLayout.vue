@@ -10,9 +10,19 @@ import { useWorkflowInitialization } from '@/app/composables/useWorkflowInitiali
 import { usePostMessageHandler } from '@/app/composables/usePostMessageHandler';
 import { usePushConnection } from '@/app/composables/usePushConnection/usePushConnection';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { randomString } from 'n8n-workflow';
 
 const route = useRoute();
 const canExecute = computed(() => route.query.canExecute === 'true');
+
+// The iframe shares sessionStorage with the parent page (same origin), so both
+// get the same pushRef by default. This causes the backend to replace one
+// push connection with the other. Generate a unique pushRef for this iframe
+// so it can have its own independent push connection.
+if (window !== window.parent) {
+	useRootStore().setPushRef(randomString(10).toLowerCase());
+}
 
 const workflowState = useWorkflowState();
 provide(WorkflowStateKey, workflowState);
@@ -38,9 +48,14 @@ const { setup: setupPostMessages, cleanup: cleanupPostMessages } = usePostMessag
 const pushConnection = usePushConnection({ router: useRouter(), workflowState });
 const pushConnectionStore = usePushConnectionStore();
 
-// Set activeExecutionId to null (not undefined) eagerly so the iframe accepts
-// incoming execution push events relayed from the parent via postMessage.
-workflowState.setActiveExecutionId(null);
+// When canExecute is disabled (read-only preview), set activeExecutionId to null
+// so the iframe accepts incoming execution push events relayed from the parent
+// via postMessage. When canExecute is enabled, leave it as undefined so the run
+// button is not disabled — the normal execution flow will set it to null when
+// the user actually starts an execution.
+if (!canExecute.value) {
+	workflowState.setActiveExecutionId(null);
+}
 
 onBeforeMount(() => {
 	setupPostMessages();
