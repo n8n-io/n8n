@@ -21,7 +21,7 @@ export class LmChatMinimax implements INodeType {
 		displayName: 'MiniMax Chat Model',
 
 		name: 'lmChatMinimax',
-		icon: { light: 'file:minimax.svg', dark: 'file:minimax.dark.svg' },
+		icon: 'file:minimax.svg',
 		group: ['transform'],
 		version: [1],
 		description: 'For advanced usage with an AI chain',
