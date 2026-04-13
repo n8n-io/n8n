@@ -705,7 +705,7 @@ describe('createInstanceAiTraceContext', () => {
 			input: { message: 'proxy test' },
 			proxyConfig: {
 				apiUrl: 'https://proxy.example.com/langsmith',
-				headers: { Authorization: 'Bearer proxy-token' },
+				getAuthHeaders: async () => ({ Authorization: 'Bearer proxy-token' }),
 			},
 		});
 
@@ -723,7 +723,7 @@ describe('createInstanceAiTraceContext', () => {
 			input: { message: 'client test' },
 			proxyConfig: {
 				apiUrl: 'https://proxy.example.com/langsmith',
-				headers: { Authorization: 'Bearer proxy-token' },
+				getAuthHeaders: async () => ({ Authorization: 'Bearer proxy-token' }),
 			},
 		});
 
@@ -764,7 +764,7 @@ describe('createInstanceAiTraceContext', () => {
 			input: { message: 'disabled test' },
 			proxyConfig: {
 				apiUrl: 'https://proxy.example.com/langsmith',
-				headers: { Authorization: 'Bearer proxy-token' },
+				getAuthHeaders: async () => ({ Authorization: 'Bearer proxy-token' }),
 			},
 		});
 

@@ -30,13 +30,6 @@ const traceParentOverrideStorage = new AsyncLocalStorage<{ current: RunTree | nu
 // Authorization header without any shared mutable state.
 const proxyHeaderStore = new AsyncLocalStorage<Record<string, string>>();
 
-/** Resolve proxy headers that may be a static object or an async function. */
-async function resolveProxyHeaders(
-	headers: Record<string, string> | (() => Promise<Record<string, string>>),
-): Promise<Record<string, string>> {
-	return typeof headers === 'function' ? await headers() : headers;
-}
-
 // Module-level map associating traceIds with proxy clients so that
 // hydrateRunTree() (which reconstructs RunTree from serialized state)
 // can use the correct proxy client for its HTTP calls.
@@ -750,12 +743,12 @@ function createTraceContext(
 	traceKind: InstanceAiTraceContext['traceKind'],
 	rootRun: InstanceAiTraceRun,
 	actorRun: InstanceAiTraceRun,
-	proxyHeaders?: Record<string, string> | (() => Promise<Record<string, string>>),
+	getProxyHeaders?: () => Promise<Record<string, string>>,
 ): InstanceAiTraceContext {
 	const withProxy = async <T>(fn: () => Promise<T>): Promise<T> => {
-		if (!proxyHeaders) return await fn();
-		const resolved = typeof proxyHeaders === 'function' ? await proxyHeaders() : proxyHeaders;
-		return await proxyHeaderStore.run(resolved, fn);
+		if (!getProxyHeaders) return await fn();
+		const headers = await getProxyHeaders();
+		return await proxyHeaderStore.run(headers, fn);
 	};
 
 	const startChildRun = async (
@@ -1058,13 +1051,13 @@ export async function createInstanceAiTraceContext(
 			'message_turn',
 			messageRun,
 			orchestratorRun,
-			options.proxyConfig?.headers,
+			options.proxyConfig?.getAuthHeaders,
 		);
 	};
 
 	if (options.proxyConfig) {
-		const resolved = await resolveProxyHeaders(options.proxyConfig.headers);
-		return await proxyHeaderStore.run(resolved, createTraceRuns);
+		const headers = await options.proxyConfig.getAuthHeaders();
+		return await proxyHeaderStore.run(headers, createTraceRuns);
 	}
 	return await createTraceRuns();
 }
@@ -1088,13 +1081,13 @@ export async function continueInstanceAiTraceContext(
 			'message_turn',
 			existingContext.rootRun,
 			orchestratorRun,
-			options.proxyConfig?.headers,
+			options.proxyConfig?.getAuthHeaders,
 		);
 	};
 
 	if (options.proxyConfig) {
-		const resolved = await resolveProxyHeaders(options.proxyConfig.headers);
-		return await proxyHeaderStore.run(resolved, createContinuation);
+		const headers = await options.proxyConfig.getAuthHeaders();
+		return await proxyHeaderStore.run(headers, createContinuation);
 	}
 	return await createContinuation();
 }
@@ -1140,13 +1133,13 @@ export async function createDetachedSubAgentTraceContext(
 			'detached_subagent',
 			rootRun,
 			rootRun,
-			options.proxyConfig?.headers,
+			options.proxyConfig?.getAuthHeaders,
 		);
 	};
 
 	if (options.proxyConfig) {
-		const resolved = await resolveProxyHeaders(options.proxyConfig.headers);
-		return await proxyHeaderStore.run(resolved, createDetachedRuns);
+		const headers = await options.proxyConfig.getAuthHeaders();
+		return await proxyHeaderStore.run(headers, createDetachedRuns);
 	}
 	return await createDetachedRuns();
 }

@@ -1092,11 +1092,11 @@ export class InstanceAiService {
 			});
 			searchProxyConfig = {
 				apiUrl: proxyBaseUrl + '/brave-search',
-				headers: async () => await tokenManager!.getAuthHeaders(),
+				getAuthHeaders: async () => await tokenManager!.getAuthHeaders(),
 			};
 			tracingProxyConfig = {
 				apiUrl: proxyBaseUrl + '/langsmith',
-				headers: async () => await tokenManager!.getAuthHeaders(),
+				getAuthHeaders: async () => await tokenManager!.getAuthHeaders(),
 			};
 		}
 

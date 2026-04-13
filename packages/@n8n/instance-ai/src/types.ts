@@ -649,13 +649,12 @@ export interface ServiceProxyConfig {
 	/** Proxy endpoint, e.g. '{baseUrl}/langsmith' or '{baseUrl}/brave-search' */
 	apiUrl: string;
 	/**
-	 * Auth headers to include in proxied requests.
+	 * Returns fresh auth headers for proxied requests.
 	 *
-	 * Can be a static object or a function that returns fresh headers on each
-	 * call.  The function form allows transparent token refresh during
-	 * long-running agent turns so that short-lived proxy tokens do not expire.
+	 * Called on each outbound request so that short-lived proxy tokens are
+	 * transparently refreshed during long-running agent turns.
 	 */
-	headers: Record<string, string> | (() => Promise<Record<string, string>>);
+	getAuthHeaders: () => Promise<Record<string, string>>;
 }
 
 // ── LangSmith tracing ────────────────────────────────────────────────────────
