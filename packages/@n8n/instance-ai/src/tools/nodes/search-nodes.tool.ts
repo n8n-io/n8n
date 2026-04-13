@@ -2,6 +2,7 @@ import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 
 import { NodeSearchEngine } from './node-search-engine';
+import { AI_CONNECTION_TYPES } from './node-search-engine.types';
 import type { InstanceAiContext } from '../../types';
 
 export const searchNodesInputSchema = z.object({
@@ -10,18 +11,9 @@ export const searchNodesInputSchema = z.object({
 		.optional()
 		.describe('Search query to match against node names, display names, aliases, and descriptions'),
 	connectionType: z
-		.string()
+		.enum(AI_CONNECTION_TYPES)
 		.optional()
-		.describe(
-			'Filter results by AI connection type. Use this when you need sub-nodes for an AI Agent: ' +
-				'"ai_tool" for tool nodes the agent can call (e.g., Google Calendar Tool, Slack Tool), ' +
-				'"ai_languageModel" for LLM providers, "ai_memory" for memory backends, ' +
-				'"ai_embedding" for embedding models, "ai_vectorStore" for vector stores. ' +
-				'IMPORTANT: Many regular nodes (Google Calendar, Slack, Gmail, etc.) have auto-generated ' +
-				'tool variants (e.g., "Google Calendar Tool") that only appear when filtering by "ai_tool". ' +
-				'A plain name search may not surface these tool nodes because other results push them out. ' +
-				'Always use connectionType="ai_tool" combined with a query when looking for tools to attach to an AI Agent.',
-		),
+		.describe('Filter results by AI sub-node connection type.'),
 	limit: z
 		.number()
 		.optional()
@@ -38,11 +30,9 @@ export function createSearchNodesTool(context: InstanceAiContext) {
 			'input/output connection types, and available resource/operation discriminators. ' +
 			'Use this to discover which nodes to use when building workflows. ' +
 			'When a node has discriminators, use them with get-node-type-definition to get the exact schema. ' +
-			'IMPORTANT: Use short, specific queries — search by service name (e.g., "Gmail", "Airtable", "Slack") ' +
+			'Use short, specific queries — search by service name (e.g., "Gmail", "Airtable", "Slack") ' +
 			'not by action descriptions. Never prefix queries with "n8n". ' +
-			'When building AI Agent workflows, use connectionType="ai_tool" with a query to find tool nodes ' +
-			'(e.g., "Google Calendar Tool", "Slack Tool") — these are auto-generated tool variants of regular nodes ' +
-			'that a plain name search may miss.',
+			'For AI Agent workflows, set connectionType="ai_tool" to find tool variants of regular nodes.',
 		inputSchema: searchNodesInputSchema,
 		outputSchema: z.object({
 			results: z.array(

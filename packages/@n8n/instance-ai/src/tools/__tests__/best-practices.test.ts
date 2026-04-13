@@ -30,7 +30,7 @@ describe('best-practices', () => {
 		});
 
 		it('should return documentation for all techniques that have it', () => {
-			const disabled = new Set([
+			const disabled = new Set<string>([
 				WorkflowTechnique.DATA_ANALYSIS,
 				WorkflowTechnique.ENRICHMENT,
 				WorkflowTechnique.KNOWLEDGE_BASE,
