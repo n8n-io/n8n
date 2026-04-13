@@ -33,7 +33,9 @@ export function isProxyResultSentinel(value: unknown): value is ProxyResultSenti
 	return (
 		typeof value === 'object' &&
 		value !== null &&
-		(value as Record<string, unknown>).__isProxyResult === true
+		(value as Record<string, unknown>).__isProxyResult === true &&
+		Array.isArray((value as Record<string, unknown>).__path) &&
+		((value as Record<string, unknown>).__path as unknown[]).every((s) => typeof s === 'string')
 	);
 }
 
