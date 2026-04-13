@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { truncate } from '@n8n/utils';
 import { useToast } from '@/app/composables/useToast';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
@@ -53,7 +54,11 @@ const threadId = computed(() => route.params.threadId as string);
 const thread = ref<ExecutionThread | null>(null);
 const executions = ref<ThreadExecution[]>([]);
 const loading = ref(true);
-const selectedItem = ref<TimelineItem | null>(null);
+const selectedIndex = ref<number | null>(null);
+
+const selectedItem = computed<TimelineItem | null>(() =>
+	selectedIndex.value !== null ? (timelineItems.value[selectedIndex.value] ?? null) : null,
+);
 
 onMounted(async () => {
 	try {
@@ -203,7 +208,8 @@ function toolDuration(tc: ToolCallEvent): string {
 
 const sessionTitle = computed(() => {
 	if (!thread.value) return '';
-	return thread.value.title ?? `Session ${thread.value.sessionNumber}`;
+	const title = thread.value.title ?? `Session ${thread.value.sessionNumber}`;
+	return truncate(title, 64);
 });
 
 const triggerSource = computed(() => {
@@ -218,6 +224,10 @@ const triggerLabel = computed(() => {
 	if (!source) return '';
 	const name = source.charAt(0).toUpperCase() + source.slice(1);
 	return `Trigger \u2192 ${name}`;
+});
+
+const triggerIcon = computed(() => {
+	return triggerSource.value === 'slack' ? 'slack' : 'bolt-filled';
 });
 
 function escapeHtml(text: string): string {
@@ -238,8 +248,8 @@ function goBack() {
 	});
 }
 
-function selectItem(item: TimelineItem) {
-	selectedItem.value = selectedItem.value === item ? null : item;
+function selectItem(idx: number) {
+	selectedIndex.value = selectedIndex.value === idx ? null : idx;
 }
 </script>
 
@@ -251,7 +261,6 @@ function selectItem(item: TimelineItem) {
 				<button :class="$style.backButton" @click="goBack">
 					<N8nIcon icon="arrow-left" />
 				</button>
-				<span v-if="thread" :class="$style.agentName">{{ thread.agentName }}</span>
 				<span :class="$style.sessionTitle">{{ sessionTitle }}</span>
 			</div>
 			<div v-if="thread" :class="$style.topBarRight">
@@ -276,7 +285,7 @@ function selectItem(item: TimelineItem) {
 					<div v-if="triggerSource" :class="$style.triggerRow">
 						<div :class="$style.triggerCorner" />
 						<div :class="$style.triggerLabel">
-							<N8nIcon icon="bolt-filled" :class="$style.triggerIcon" />
+							<N8nIcon :icon="triggerIcon" :class="$style.triggerIcon" />
 							{{ triggerLabel }}
 						</div>
 						<span :class="$style.triggerTimestamp">
@@ -284,124 +293,127 @@ function selectItem(item: TimelineItem) {
 						</span>
 					</div>
 					<div :class="$style.timeline">
-					<div
-						v-for="(item, idx) in timelineItems"
-						:key="idx"
-						:class="[$style.card, selectedItem === item && $style.cardSelected]"
-						@click="selectItem(item)"
-					>
-						<!-- User message -->
-						<template v-if="item.kind === 'user'">
-							<div :class="$style.cardHeader">
+						<div
+							v-for="(item, idx) in timelineItems"
+							:key="idx"
+							:class="[$style.card, selectedIndex === idx && $style.cardSelected]"
+							@click="selectItem(idx)"
+						>
+							<!-- User message -->
+							<template v-if="item.kind === 'user'">
 								<span :class="$style.cardLabel">
 									{{ i18n.baseText('agentSessions.timeline.user') }}
 								</span>
-							</div>
-							<!-- eslint-disable vue/no-v-html -->
-							<div :class="$style.cardBody" v-html="highlightAgentName(item.content!)" />
-							<!-- eslint-enable vue/no-v-html -->
-						</template>
+								<!-- eslint-disable vue/no-v-html -->
+								<div :class="$style.cardBody" v-html="highlightAgentName(item.content!)" />
+								<!-- eslint-enable vue/no-v-html -->
+							</template>
 
-						<!-- Assistant text -->
-						<template v-else-if="item.kind === 'text'">
-							<div :class="$style.cardHeader">
+							<!-- Assistant text -->
+							<template v-else-if="item.kind === 'text'">
 								<span :class="$style.cardLabel">
 									{{ thread?.agentName ?? i18n.baseText('agentSessions.timeline.assistant') }}
 								</span>
-							</div>
-							<div :class="$style.cardBody">{{ item.content }}</div>
-						</template>
+								<div :class="$style.cardBody">{{ item.content }}</div>
+							</template>
 
-						<!-- Tool call -->
-						<template v-else-if="item.kind === 'tool-call' && item.toolCall">
-							<div :class="$style.cardHeader">
-								<span :class="$style.cardLabel">
-									<N8nIcon icon="wrench" :class="$style.cardIcon" />
-									{{ i18n.baseText('agentSessions.timeline.tool') }} &rarr; {{ item.toolCall.name }}
-								</span>
-								<span
-									:class="[
-										$style.badge,
-										item.toolCall.success ? $style.badgeSuccess : $style.badgeError,
-									]"
-								>
-									{{
-										item.toolCall.success
-											? i18n.baseText('agentSessions.timeline.success')
-											: i18n.baseText('agentSessions.timeline.error')
-									}}
-								</span>
-							</div>
-							<div v-if="toolDuration(item.toolCall)" :class="$style.cardMeta">
-								{{ toolDuration(item.toolCall) }}
-							</div>
-						</template>
+							<!-- Tool call -->
+							<template v-else-if="item.kind === 'tool-call' && item.toolCall">
+								<div :class="$style.cardHeader">
+									<span :class="$style.cardLabel">
+										<N8nIcon icon="wrench" :class="$style.cardIcon" />
+										{{ i18n.baseText('agentSessions.timeline.tool') }} &rarr;
+										{{ item.toolCall.name }}
+									</span>
+									<span
+										:class="[
+											$style.badge,
+											item.toolCall.success ? $style.badgeSuccess : $style.badgeError,
+										]"
+									>
+										{{
+											item.toolCall.success
+												? i18n.baseText('agentSessions.timeline.success')
+												: i18n.baseText('agentSessions.timeline.error')
+										}}
+									</span>
+								</div>
+							</template>
 
-						<!-- Working memory -->
-						<template v-else-if="item.kind === 'working-memory'">
-							<div :class="$style.cardHeader">
+							<!-- Working memory -->
+							<template v-else-if="item.kind === 'working-memory'">
 								<span :class="$style.cardLabel">
 									<N8nIcon icon="brain" :class="$style.cardIcon" />
 									{{ i18n.baseText('agentSessions.timeline.memory') }}
 								</span>
-							</div>
-							<div :class="$style.cardBody">
-								{{ (item.content ?? '').slice(0, 100)
-								}}{{ (item.content ?? '').length > 100 ? '...' : '' }}
-							</div>
-						</template>
+							</template>
 
-						<!-- Suspension -->
-						<template v-else-if="item.kind === 'suspension'">
-							<div :class="$style.cardHeader">
+							<!-- Suspension -->
+							<template v-else-if="item.kind === 'suspension'">
 								<span :class="$style.cardLabel">
 									{{ i18n.baseText('agentSessions.timeline.suspension') }}
 								</span>
-							</div>
-						</template>
-
-						<div v-if="item.timestamp" :class="$style.cardTimestamp">
-							{{ formatTimestamp(item.timestamp) }}
+							</template>
 						</div>
 					</div>
-				</div>
 				</template>
 			</div>
 
 			<!-- Detail panel -->
 			<div :class="$style.detailPanel">
-				<template v-if="selectedItem?.kind === 'tool-call' && selectedItem.toolCall">
+				<template v-if="selectedItem">
+					<!-- Header -->
 					<div :class="$style.detailHeader">
 						<span>
-							{{ i18n.baseText('agentSessions.timeline.tool') }} &rarr;
-							{{ selectedItem.toolCall.name }}
+							<template v-if="selectedItem.kind === 'tool-call' && selectedItem.toolCall">
+								<N8nIcon icon="wrench" :class="$style.cardIcon" />
+								{{ i18n.baseText('agentSessions.timeline.tool') }} &rarr;
+								{{ selectedItem.toolCall.name }}
+							</template>
+							<template v-else-if="selectedItem.kind === 'working-memory'">
+								<N8nIcon icon="brain" :class="$style.cardIcon" />
+								{{ i18n.baseText('agentSessions.timeline.memory') }}
+							</template>
+							<template v-else-if="selectedItem.kind === 'user'">
+								{{ i18n.baseText('agentSessions.timeline.user') }}
+							</template>
+							<template v-else-if="selectedItem.kind === 'text'">
+								{{ thread?.agentName ?? i18n.baseText('agentSessions.timeline.assistant') }}
+							</template>
+							<template v-else>
+								{{ i18n.baseText('agentSessions.timeline.suspension') }}
+							</template>
 						</span>
-						<button :class="$style.closeButton" @click="selectedItem = null">
+						<button :class="$style.closeButton" @click="selectedIndex = null">
 							<N8nIcon icon="x" />
 						</button>
 					</div>
+
+					<!-- Info rows (timestamp, duration, status for tools) -->
 					<div :class="$style.detailInfo">
-						<div :class="$style.detailRow">
-							<span :class="$style.detailLabel">{{
-								i18n.baseText('agentSessions.timeline.id')
-							}}</span>
-							<span :class="$style.detailValue">{{ selectedItem.toolCall.toolCallId }}</span>
-						</div>
-						<div :class="$style.detailRow">
+						<div v-if="selectedItem.timestamp" :class="$style.detailRow">
 							<span :class="$style.detailLabel">{{
 								i18n.baseText('agentSessions.timeline.created')
 							}}</span>
-							<span :class="$style.detailValue">{{
-								formatTimestamp(selectedItem.toolCall.startTime)
-							}}</span>
+							<span :class="$style.detailValue">{{ formatTimestamp(selectedItem.timestamp) }}</span>
 						</div>
-						<div :class="$style.detailRow">
+						<div
+							v-if="
+								selectedItem.kind === 'tool-call' &&
+								selectedItem.toolCall &&
+								toolDuration(selectedItem.toolCall)
+							"
+							:class="$style.detailRow"
+						>
 							<span :class="$style.detailLabel">{{
 								i18n.baseText('agentSessions.timeline.duration')
 							}}</span>
 							<span :class="$style.detailValue">{{ toolDuration(selectedItem.toolCall) }}</span>
 						</div>
-						<div :class="$style.detailRow">
+						<div
+							v-if="selectedItem.kind === 'tool-call' && selectedItem.toolCall"
+							:class="$style.detailRow"
+						>
 							<span :class="$style.detailLabel">{{
 								i18n.baseText('agentSessions.timeline.status')
 							}}</span>
@@ -420,66 +432,45 @@ function selectItem(item: TimelineItem) {
 						</div>
 					</div>
 
-					<!-- Rich interaction visual or raw JSON -->
-					<template v-if="selectedItem.toolCall.name === 'rich_interaction'">
+					<!-- Content -->
+					<template v-if="selectedItem.kind === 'tool-call' && selectedItem.toolCall">
+						<template v-if="selectedItem.toolCall.name === 'rich_interaction'">
+							<div :class="$style.detailSection">
+								<RichInteractionCard
+									:input="selectedItem.toolCall.input"
+									:output="selectedItem.toolCall.output"
+								/>
+							</div>
+						</template>
+						<template v-else>
+							<div :class="$style.detailSection">
+								<div :class="$style.detailSectionLabel">
+									{{ i18n.baseText('agentSessions.timeline.input') }}
+								</div>
+								<pre :class="$style.json">{{
+									JSON.stringify(selectedItem.toolCall.input, null, 2)
+								}}</pre>
+							</div>
+							<div :class="$style.detailSection">
+								<div :class="$style.detailSectionLabel">
+									{{ i18n.baseText('agentSessions.timeline.output') }}
+								</div>
+								<pre :class="$style.json">{{
+									JSON.stringify(selectedItem.toolCall.output, null, 2)
+								}}</pre>
+							</div>
+						</template>
+					</template>
+					<template v-else-if="selectedItem.kind === 'working-memory'">
 						<div :class="$style.detailSection">
-							<RichInteractionCard
-								:input="selectedItem.toolCall.input"
-								:output="selectedItem.toolCall.output"
-							/>
+							<pre :class="$style.json">{{ selectedItem.content }}</pre>
 						</div>
 					</template>
-					<template v-else>
+					<template v-else-if="selectedItem.kind === 'user' || selectedItem.kind === 'text'">
 						<div :class="$style.detailSection">
-							<div :class="$style.detailSectionLabel">
-								{{ i18n.baseText('agentSessions.timeline.input') }}
-							</div>
-							<pre :class="$style.json">{{
-								JSON.stringify(selectedItem.toolCall.input, null, 2)
-							}}</pre>
-						</div>
-						<div :class="$style.detailSection">
-							<div :class="$style.detailSectionLabel">
-								{{ i18n.baseText('agentSessions.timeline.output') }}
-							</div>
-							<pre :class="$style.json">{{
-								JSON.stringify(selectedItem.toolCall.output, null, 2)
-							}}</pre>
+							<div :class="$style.messageContent">{{ selectedItem.content }}</div>
 						</div>
 					</template>
-				</template>
-
-				<template v-else-if="selectedItem?.kind === 'working-memory'">
-					<div :class="$style.detailHeader">
-						<span>
-							<N8nIcon icon="brain" :class="$style.cardIcon" />
-							{{ i18n.baseText('agentSessions.timeline.memory') }}
-						</span>
-						<button :class="$style.closeButton" @click="selectedItem = null">
-							<N8nIcon icon="x" />
-						</button>
-					</div>
-					<div :class="$style.detailSection">
-						<pre :class="$style.json">{{ selectedItem.content }}</pre>
-					</div>
-				</template>
-
-				<template v-else-if="selectedItem?.kind === 'user' || selectedItem?.kind === 'text'">
-					<div :class="$style.detailHeader">
-						<span>
-							{{
-								selectedItem.kind === 'user'
-									? i18n.baseText('agentSessions.timeline.user')
-									: (thread?.agentName ?? i18n.baseText('agentSessions.timeline.assistant'))
-							}}
-						</span>
-						<button :class="$style.closeButton" @click="selectedItem = null">
-							<N8nIcon icon="x" />
-						</button>
-					</div>
-					<div :class="$style.detailSection">
-						<div :class="$style.messageContent">{{ selectedItem.content }}</div>
-					</div>
 				</template>
 
 				<div v-else :class="$style.emptyDetail">
@@ -538,15 +529,10 @@ function selectItem(item: TimelineItem) {
 	}
 }
 
-.agentName {
+.sessionTitle {
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--bold);
 	color: var(--color--text);
-}
-
-.sessionTitle {
-	font-size: var(--font-size--sm);
-	color: var(--color--text--tint-1);
 }
 
 .stat {
@@ -573,11 +559,8 @@ function selectItem(item: TimelineItem) {
 .triggerRow {
 	display: flex;
 	align-items: flex-start;
-	// Left border of corner must align with the timeline ::after line (left: 33px on .timeline).
-	// padding-left positions the content start; the corner border-left draws at this edge.
-	padding-left: 33px;
+	padding-left: var(--spacing--sm);
 	position: relative;
-	margin-bottom: 0;
 }
 
 .triggerCorner {
@@ -587,7 +570,7 @@ function selectItem(item: TimelineItem) {
 	border-top: 2px solid var(--color--foreground--shade-1);
 	border-radius: var(--radius--lg) 0 0 0;
 	flex-shrink: 0;
-	margin-top: 8px;
+	margin-top: 7px;
 }
 
 .triggerLabel {
@@ -621,7 +604,7 @@ function selectItem(item: TimelineItem) {
 	&::after {
 		content: '';
 		position: absolute;
-		left: 33px;
+		left: var(--spacing--sm);
 		top: 0;
 		bottom: 0;
 		width: 2px;
@@ -645,11 +628,15 @@ function selectItem(item: TimelineItem) {
 	&:hover {
 		background-color: var(--color--foreground--tint-2);
 	}
+
+	&.cardSelected {
+		border-color: var(--color--warning);
+		background-color: var(--color--foreground--tint-2);
+	}
 }
 
 .cardSelected {
-	border-color: var(--color--primary);
-	background-color: var(--color--foreground--tint-2);
+	// keep class for template binding
 }
 
 .cardHeader {

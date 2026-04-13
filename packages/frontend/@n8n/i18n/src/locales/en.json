@@ -1302,6 +1302,7 @@
 	"executionsList.viewMode.agents": "Agents",
 	"agentSessions.session": "Session",
 	"agentSessions.agentName": "Agent",
+	"agentSessions.sessionName": "Session",
 	"agentSessions.lastMessage": "Last Message",
 	"agentSessions.tokenUsage": "Token Usage",
 	"agentSessions.empty": "No agent sessions",

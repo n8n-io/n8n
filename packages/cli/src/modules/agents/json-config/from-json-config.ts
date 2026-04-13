@@ -195,5 +195,7 @@ async function applyMemoryFromConfig(
 		memory.semanticRecall(memoryConfig.semanticRecall);
 	}
 
+	memory.titleGeneration(true);
+
 	agent.memory(memory);
 }

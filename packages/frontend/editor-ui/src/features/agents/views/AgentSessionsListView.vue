@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { truncate } from '@n8n/utils';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
@@ -103,7 +104,7 @@ async function loadMore() {
 			<N8nTableBase>
 				<thead>
 					<tr>
-						<th>{{ i18n.baseText('agentSessions.agentName') }}</th>
+						<th>{{ i18n.baseText('agentSessions.sessionName') }}</th>
 						<th>{{ i18n.baseText('agentSessions.status') }}</th>
 						<th>{{ i18n.baseText('agentSessions.lastMessage') }}</th>
 						<th>{{ i18n.baseText('agentSessions.duration') }}</th>
@@ -120,7 +121,7 @@ async function loadMore() {
 						data-test-id="agent-session-list-item"
 						@click="onRowClick(thread.id)"
 					>
-						<td>{{ thread.agentName }}</td>
+						<td>{{ truncate(thread.title ?? `Session ${thread.sessionNumber}`, 32) }}</td>
 						<td>
 							<span :class="$style.statusCell">
 								<N8nIcon icon="status-completed" color="success" />
