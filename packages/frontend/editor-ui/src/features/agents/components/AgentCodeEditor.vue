@@ -281,7 +281,7 @@ onBeforeUnmount(() => {
 
 .badge {
 	font-size: var(--font-size--3xs);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	background-color: var(--color--foreground--tint-1);
 	padding: var(--spacing--5xs) var(--spacing--3xs);
 	border-radius: var(--radius--sm);

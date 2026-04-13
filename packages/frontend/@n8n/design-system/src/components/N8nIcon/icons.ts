@@ -160,6 +160,7 @@ import IconLucideMaximize from '~icons/lucide/maximize';
 import IconLucideMaximize2 from '~icons/lucide/maximize-2';
 import IconLucideMenu from '~icons/lucide/menu';
 import IconLucideMessageCircle from '~icons/lucide/message-circle';
+import IconLucideMessageCirclePlus from '~icons/lucide/message-circle-plus';
 import IconLucideMessageSquare from '~icons/lucide/message-square';
 import IconLucideMessageSquarePlus from '~icons/lucide/message-square-plus';
 import IconLucideMessagesSquare from '~icons/lucide/messages-square';
@@ -628,6 +629,7 @@ export const updatedIconSet = {
 	'message-circle': IconLucideMessageCircle,
 	'message-square': IconLucideMessageSquare,
 	'message-square-plus': IconLucideMessageSquarePlus,
+	'message-circle-plus': IconLucideMessageCirclePlus,
 	'messages-square': IconLucideMessagesSquare,
 	mic: IconLucideMic,
 	milestone: IconLucideMilestone,
