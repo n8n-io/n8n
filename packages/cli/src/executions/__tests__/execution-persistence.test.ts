@@ -215,22 +215,21 @@ describe('ExecutionPersistence', () => {
 		const target = { workflowId: 'wf-1', executionId: 'exec-1', storedAt: 'db' as const };
 
 		it('should soft-delete with backdated `deletedAt` when pruning is enabled', async () => {
+			jest.useFakeTimers();
+			const now = Date.now();
+
 			executionsConfig.pruneData = true;
 			executionsConfig.pruneDataHardDeleteBuffer = 1;
 			const executionPersistence = createPersistenceService('db');
 
 			await executionPersistence.deleteInFlightExecution(target);
-			const after = Date.now();
 
 			expect(executionRepository.update).toHaveBeenCalledWith('exec-1', {
-				deletedAt: expect.any(Date),
+				deletedAt: new Date(now - 3600_000),
 			});
-
-			const { deletedAt } = executionRepository.update.mock.calls[0][1] as { deletedAt: Date };
-			// deletedAt should be backdated by ~1 hour (the buffer)
-			// Use `after` to tolerate clock progression between before/after snapshots
-			expect(deletedAt.getTime()).toBeLessThanOrEqual(after - 3600_000);
 			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
+
+			jest.useRealTimers();
 		});
 
 		it('should hard-delete immediately when pruning is disabled', async () => {

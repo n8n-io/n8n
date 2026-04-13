@@ -20,6 +20,7 @@ import type { DomainAccessTracker } from './domain-access/domain-access-tracker'
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
 import type { IterationLog } from './storage/iteration-log';
+import type { IdRemapper, TraceIndex, TraceWriter } from './tracing/trace-replay';
 import type {
 	VerificationResult,
 	WorkflowBuildOutcome,
@@ -371,13 +372,16 @@ export interface InstanceAiDataTableService {
 	insertRows(
 		dataTableId: string,
 		rows: Array<Record<string, unknown>>,
-	): Promise<{ insertedCount: number }>;
+	): Promise<{ insertedCount: number; dataTableId: string; tableName: string; projectId: string }>;
 	updateRows(
 		dataTableId: string,
 		filter: DataTableFilterInput,
 		data: Record<string, unknown>,
-	): Promise<{ updatedCount: number }>;
-	deleteRows(dataTableId: string, filter: DataTableFilterInput): Promise<{ deletedCount: number }>;
+	): Promise<{ updatedCount: number; dataTableId: string; tableName: string; projectId: string }>;
+	deleteRows(
+		dataTableId: string,
+		filter: DataTableFilterInput,
+	): Promise<{ deletedCount: number; dataTableId: string; tableName: string; projectId: string }>;
 }
 
 // ── Web Research ────────────────────────────────────────────────────────────
@@ -654,8 +658,13 @@ export type ModelConfig =
 export interface ServiceProxyConfig {
 	/** Proxy endpoint, e.g. '{baseUrl}/langsmith' or '{baseUrl}/brave-search' */
 	apiUrl: string;
-	/** Auth headers to include in proxied requests */
-	headers: Record<string, string>;
+	/**
+	 * Returns fresh auth headers for proxied requests.
+	 *
+	 * Called on each outbound request so that short-lived proxy tokens are
+	 * transparently refreshed during long-running agent turns.
+	 */
+	getAuthHeaders: () => Promise<Record<string, string>>;
 }
 
 // ── LangSmith tracing ────────────────────────────────────────────────────────
@@ -699,6 +708,8 @@ export interface InstanceAiToolTraceOptions {
 	metadata?: Record<string, unknown>;
 }
 
+export type TraceReplayMode = 'record' | 'replay' | 'off';
+
 export interface InstanceAiTraceContext {
 	projectName: string;
 	traceKind: 'message_turn' | 'detached_subagent';
@@ -721,6 +732,14 @@ export interface InstanceAiTraceContext {
 	) => Promise<void>;
 	toHeaders: (run: InstanceAiTraceRun) => Record<string, string>;
 	wrapTools: (tools: ToolsInput, options?: InstanceAiToolTraceOptions) => ToolsInput;
+	/** Trace replay mode: 'record' captures tool I/O, 'replay' remaps IDs, 'off' disables. */
+	replayMode: TraceReplayMode;
+	/** Shared ID remapper instance — available in 'replay' mode. */
+	idRemapper?: IdRemapper;
+	/** Trace index for cursor-based replay — available in 'replay' mode. */
+	traceIndex?: TraceIndex;
+	/** Trace writer for recording — available in 'record' mode. */
+	traceWriter?: TraceWriter;
 }
 
 // ── Background task spawning ─────────────────────────────────────────────────
@@ -835,6 +854,9 @@ export interface OrchestrationContext {
 	workflowTaskService?: WorkflowTaskService;
 	/** When set, LangSmith traces are routed through the AI service proxy. */
 	tracingProxyConfig?: ServiceProxyConfig;
+	/** Summaries of currently running background tasks in this thread.
+	 *  Used to give sub-agents thread-state awareness (what else is happening). */
+	getRunningTaskSummaries?: () => Array<{ taskId: string; role: string; goal?: string }>;
 }
 
 // ── Agent factory options ────────────────────────────────────────────────────

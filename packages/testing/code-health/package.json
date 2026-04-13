@@ -32,6 +32,6 @@
 		"tsx": "catalog:",
 		"typescript": "catalog:",
 		"vitest": "catalog:",
-		"yaml": "^2.4.0"
+		"yaml": "catalog:"
 	}
 }

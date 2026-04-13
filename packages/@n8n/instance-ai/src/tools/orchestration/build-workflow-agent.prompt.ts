@@ -7,127 +7,53 @@
  */
 
 import {
+	IF_NODE_GUIDE,
+	SWITCH_NODE_GUIDE,
+	SET_NODE_GUIDE,
+	HTTP_REQUEST_GUIDE,
+	TOOL_NODES_GUIDE,
+	EMBEDDING_NODES_GUIDE,
+	RESOURCE_LOCATOR_GUIDE,
+} from '@n8n/workflow-sdk/prompts/node-guidance/parameter-guides';
+import {
+	AI_TOOL_PATTERNS,
+	CONNECTION_CHANGING_PARAMETERS,
+	BASELINE_FLOW_CONTROL,
+} from '@n8n/workflow-sdk/prompts/node-selection';
+import {
 	EXPRESSION_REFERENCE,
 	ADDITIONAL_FUNCTIONS,
 	WORKFLOW_RULES,
 	WORKFLOW_SDK_PATTERNS,
-} from '../../workflow-builder';
+} from '@n8n/workflow-sdk/prompts/sdk-reference';
+
+// ── Shared placeholder guidance (single source of truth) ────────────────────
+
+// prettier-ignore
+const PLACEHOLDER_RULE =
+	"**Do NOT use `placeholder()` for discoverable resources** (spreadsheet IDs, calendar IDs, channel IDs, folder IDs) — resolve real IDs via `explore-node-resources` or create them via setup workflows. For **user-provided values** that cannot be discovered or created (email recipients, phone numbers, custom URLs, notification targets), use `placeholder('descriptive hint')` so the setup wizard prompts the user after the build. Never hardcode fake values like `user@example.com`.";
+
+// prettier-ignore
+const PLACEHOLDER_ESCALATION =
+	'When the user says "send me", "email me", "notify me", or similar and you don\'t know their specific address, use `placeholder(\'Your email address\')` for the recipient field rather than hardcoding a fake address like `user@example.com`. The setup wizard will collect this from the user after the build.';
 
 // ── Shared SDK reference sections ────────────────────────────────────────────
 
-const SDK_RULES_AND_PATTERNS = `## SDK Code Rules
+const SDK_CODE_RULES = `## SDK Code Rules
 
 - Do NOT specify node positions — they are auto-calculated by the layout engine.
 - For credentials, see the credential rules in your specific workflow process section below.
-- **Do NOT use \`placeholder()\`** — always resolve real resource IDs via \`explore-node-resources\` or create resources via setup workflows. If a resource truly cannot be created (external system), use a descriptive string comment like \`'NEEDS: Slack channel #engineering'\` and explain in your summary.
+- ${PLACEHOLDER_RULE}
 - Use \`expr('{{ $json.field }}')\` for n8n expressions. Variables MUST be inside \`{{ }}\`.
 - Do NOT use \`as const\` assertions — the workflow parser only supports JavaScript syntax, not TypeScript-only features. Just use plain string literals.
 - Use string values directly for discriminator fields like \`resource\` and \`operation\` (e.g., \`resource: 'message'\` not \`resource: 'message' as const\`).
 - When editing a pre-loaded workflow, **remove \`position\` arrays** from node configs — they are auto-calculated.
 - **No em-dash (\`—\`) or other special Unicode characters in node names or string values.** Use plain hyphen (\`-\`) instead. The SDK parser cannot handle em-dashes.
-- **IF node combinator** must be \`'and'\` or \`'or'\` (not \`'any'\` or \`'all'\`).
+- **IF node combinator** must be \`'and'\` or \`'or'\` (not \`'any'\` or \`'all'\`).`;
 
-${WORKFLOW_RULES}
-
-## SDK Patterns Reference
-
-${WORKFLOW_SDK_PATTERNS}
-
-## Expression Reference
-
-${EXPRESSION_REFERENCE}
-
-## Additional Functions
-
-${ADDITIONAL_FUNCTIONS}
-
-## Critical Patterns (Common Mistakes)
+const BUILDER_SPECIFIC_PATTERNS = `## Critical Patterns (Common Mistakes)
 
 **Pay attention to @builderHint annotations in search results and type definitions** — these provide critical guidance on how to correctly configure node parameters. Write them out as notes when reviewing — they prevent common configuration mistakes.
-
-### IF / Switch / Filter — conditions configuration (FREQUENT MISTAKE)
-
-These nodes share a \`conditions\` parameter with a strict required structure. **Missing or incomplete \`conditions\` causes a runtime crash.** This is one of the most common builder mistakes.
-
-**Required structure for every \`conditions\` object (IF, Switch rules, Filter):**
-\`\`\`javascript
-conditions: {
-  options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' },  // REQUIRED — omitting this crashes the node
-  conditions: [{ leftValue: ..., operator: { type: ..., operation: ... }, rightValue: ... }],
-  combinator: 'and'  // or 'or'
-}
-\`\`\`
-**All three fields (\`options\`, \`conditions\`, \`combinator\`) must be present.** The \`options\` object is not optional — it controls case sensitivity and type validation at runtime. Without it, the node throws "Cannot read properties of undefined (reading 'caseSensitive')".
-
-#### IF node example
-\`\`\`javascript
-const checkScore = ifElse({
-  version: 2.2,
-  config: {
-    name: 'High Score?',
-    parameters: {
-      conditions: {
-        options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' },
-        conditions: [{
-          leftValue: '={{ $json.score }}',
-          operator: { type: 'number', operation: 'gte' },
-          rightValue: 70
-        }],
-        combinator: 'and'
-      }
-    }
-  }
-});
-
-// Both branches converge on sendEmail — include the full chain in EACH branch
-export default workflow('id', 'name')
-  .add(startTrigger)
-  .to(checkScore
-    .onTrue(highScoreAction.to(sendEmail))
-    .onFalse(lowScoreAction.to(sendEmail)));
-\`\`\`
-WRONG: \`.output(0).to()\` — this does NOT work for IF branching.
-WRONG: \`.to(checkScore.onTrue(A)).add(sharedNode).to(B)\` — don't try fan-in with .add() after ifElse. Include the full chain (including shared downstream nodes) in each branch.
-
-#### Switch node example
-**The inner key MUST be \`values\` (not \`rules\`).** Using \`rules.rules\` crashes with "Could not find property option".
-\`\`\`javascript
-const router = switchCase({
-  version: 3.2,
-  config: {
-    name: 'Route by Type',
-    parameters: {
-      rules: {
-        values: [  // MUST be "values", NOT "rules"
-          {
-            outputKey: 'email',
-            conditions: {
-              options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' },
-              conditions: [{ leftValue: '={{ $json.type }}', operator: { type: 'string', operation: 'equals' }, rightValue: 'email' }],
-              combinator: 'and'
-            }
-          },
-          {
-            outputKey: 'slack',
-            conditions: {
-              options: { caseSensitive: true, leftValue: '', typeValidation: 'strict' },
-              conditions: [{ leftValue: '={{ $json.type }}', operator: { type: 'string', operation: 'equals' }, rightValue: 'slack' }],
-              combinator: 'and'
-            }
-          },
-        ]
-      }
-    }
-  }
-});
-
-export default workflow('id', 'name')
-  .add(startTrigger)
-  .to(router
-    .onCase('email', sendEmail)
-    .onCase('slack', sendSlack)
-    .onDefault(logUnknown));
-\`\`\`
 
 ### Self-check: conditional nodes and routing
 
@@ -230,46 +156,6 @@ const storeData = node({
 - Row IDs are auto-generated by Data Tables. Do NOT create a custom \`id\` column and do NOT seed an \`id\` value on insert.
 - To fetch many rows, use \`operation: 'get'\` with \`returnAll: true\`. Do NOT invent \`getAll\`.
 - When filtering rows for update/delete, it is valid to match on the built-in row \`id\`, but that is not part of the user-defined table schema.
-
-### Set Node (Edit Fields)
-\`\`\`javascript
-const setFields = node({
-  type: 'n8n-nodes-base.set',
-  version: 3.4,
-  config: {
-    name: 'Prepare Data',
-    parameters: {
-      assignments: {
-        assignments: [
-          { id: '1', name: 'fullName', value: '={{ $json.firstName + " " + $json.lastName }}', type: 'string' },
-          { id: '2', name: 'email', value: '={{ $json.email }}', type: 'string' }
-        ]
-      },
-      options: {}
-    }
-  }
-});
-\`\`\`
-
-### HTTP Request — Credential Authentication
-When using HTTP Request with a predefined API credential (SerpAPI, Notion, etc.):
-\`\`\`javascript
-// CORRECT — use predefinedCredentialType for API-specific credentials
-const apiCall = node({
-  type: 'n8n-nodes-base.httpRequest',
-  version: 4.2,
-  config: {
-    name: 'API Call',
-    parameters: {
-      url: 'https://serpapi.com/search.json',
-      authentication: 'predefinedCredentialType',
-      nodeCredentialType: 'serpApi', // matches credential type from list-credentials
-    },
-    credentials: { serpApi: { id: 'credId', name: 'SerpAPI account' } }
-  }
-});
-\`\`\`
-**Rule**: If \`list-credentials\` returns a credential with a specific type (e.g., \`serpApi\`, \`notionApi\`), use \`predefinedCredentialType\` with \`nodeCredentialType\` matching that type. Before using \`genericCredentialType\` with ANY generic auth type (\`httpHeaderAuth\`, \`httpBearerAuth\`, \`httpQueryAuth\`, \`httpBasicAuth\`, \`httpCustomAuth\`), call \`search-credential-types\` with the service name to check if a dedicated credential type exists. Only use \`genericCredentialType\` for truly custom/unknown APIs where no predefined credential type exists. When generic auth is truly needed, prefer \`httpBearerAuth\` (single "Bearer Token" field) over \`httpHeaderAuth\` (requires knowing the header name and format). Also prefer dedicated n8n nodes (e.g., \`n8n-nodes-base.linear\`) over HTTP Request when they exist — use \`search-nodes\` to check.
 
 ### Google Sheets — Column Mapping
 The \`columns\` parameter requires a schema object, never a string:
@@ -522,7 +408,35 @@ documentId: 'YOUR_SPREADSHEET_ID',  // Not an RLC object
 // WRONG — expr() wrapper
 documentId: expr('{{ "spreadsheetId" }}'),  // RLC fields don't use expressions
 \`\`\`
-Always use the IDs from \`explore-node-resources\` results inside the RLC \`value\` field.`;
+Always use the IDs from \`explore-node-resources\` results inside the RLC \`value\` field.
+
+### AI Tool Connection Patterns
+${AI_TOOL_PATTERNS}
+
+### Connection-Changing Parameters
+${CONNECTION_CHANGING_PARAMETERS}
+
+### Baseline Flow Control Nodes
+${BASELINE_FLOW_CONTROL}`;
+
+// ── Composed SDK rules from shared + local sources ───────────────────────────
+
+const SDK_RULES_AND_PATTERNS = [
+	SDK_CODE_RULES,
+	WORKFLOW_RULES,
+	'## SDK Patterns Reference\n\n' + WORKFLOW_SDK_PATTERNS,
+	'## Expression Reference\n\n' + EXPRESSION_REFERENCE,
+	'## Additional Functions\n\n' + ADDITIONAL_FUNCTIONS,
+	'## Node-Specific Configuration Guides',
+	IF_NODE_GUIDE.content,
+	SWITCH_NODE_GUIDE.content,
+	SET_NODE_GUIDE.content,
+	HTTP_REQUEST_GUIDE.content,
+	TOOL_NODES_GUIDE.content,
+	EMBEDDING_NODES_GUIDE.content,
+	RESOURCE_LOCATOR_GUIDE.content,
+	BUILDER_SPECIFIC_PATTERNS,
+].join('\n\n');
 
 // ── Original tool-based builder prompt ───────────────────────────────────────
 
@@ -541,6 +455,7 @@ When called with failure details for an existing workflow, start from the pre-lo
 ## Escalation
 - If you are stuck or need information only a human can provide (e.g., a chat ID, API key, external resource name), use the \`ask-user\` tool to ask a clear question.
 - Do NOT retry the same failing approach more than twice — ask the user instead.
+- ${PLACEHOLDER_ESCALATION}
 
 ## Mandatory Process
 1. **Research**: If the workflow fits a known category (notification, chatbot, scheduling, data_transformation, etc.), call \`get-suggested-nodes\` first for curated recommendations. Then use \`search-nodes\` for service-specific nodes (use short service names: "Gmail", "Slack", not "send email SMTP"). The results include \`discriminators\` (available resources and operations) for nodes that need them. Then call \`get-node-type-definition\` with the appropriate resource/operation to get the TypeScript schema with exact parameter names and types. **Pay attention to @builderHint annotations** in search results and type definitions — they prevent common configuration mistakes.
@@ -677,6 +592,7 @@ Supported input types: \`string\`, \`number\`, \`boolean\`, \`array\`, \`object\
    - Sub-workflows with \`executeWorkflowTrigger\` can be tested immediately via \`run-workflow\` without publishing. However, they must be **published** via \`publish-workflow\` before the parent workflow can call them in production (trigger-based) executions.
 2. Run the chunk: \`run-workflow\` with \`inputData\` matching the trigger schema.
    - **Webhook workflows**: \`inputData\` IS the request body — do NOT wrap it in \`{ body: ... }\`. The system automatically places \`inputData\` into \`{ headers, query, body: inputData }\`. So to test a webhook expecting \`{ title: "Hello" }\`, pass \`inputData: { title: "Hello" }\`. Inside the workflow, the data arrives at \`$json.body.title\`.
+   - **Event-based triggers** (e.g. Linear Trigger, GitHub Trigger, Slack Trigger): pass \`inputData\` matching what the trigger would normally emit. The system injects it as the trigger node's output — e.g. \`inputData: { action: "create", data: { id: "123", title: "Test issue" } }\` for a Linear Trigger. No need to rebuild the workflow with a Manual Trigger.
 3. If it fails, use \`debug-execution\` to investigate, fix, and re-submit.
 
 ### Step 3: Compose chunks in the main workflow
@@ -726,7 +642,7 @@ Replace \`CHUNK_WORKFLOW_ID\` with the actual ID returned by \`submit-workflow\`
 
 ## Setup Workflows (Create Missing Resources)
 
-**NEVER use \`placeholder()\` or hardcoded placeholder strings like "YOUR_SPREADSHEET_ID".** If a resource doesn't exist, create it.
+${PLACEHOLDER_RULE}
 
 When \`explore-node-resources\` returns no results for a required resource:
 
@@ -743,6 +659,7 @@ When called with failure details for an existing workflow, start from the pre-lo
 ## Escalation
 - If you are stuck or need information only a human can provide (e.g., a chat ID, API key, external resource name), use the \`ask-user\` tool to ask a clear question.
 - Do NOT retry the same failing approach more than twice — ask the user instead.
+- ${PLACEHOLDER_ESCALATION}
 
 ## Sandbox Isolation
 
@@ -809,7 +726,7 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
 4. **Resolve real resource IDs**: Check the node schemas from step 3 for parameters with \`searchListMethod\` or \`loadOptionsMethod\`. For EACH one, call \`explore-node-resources\` with the node type, method name, and the matching credential from step 1 to discover real resource IDs.
    - **This is mandatory for: calendars, spreadsheets, channels, folders, models, databases, and any other list-based parameter.** Do NOT assume values like "primary", "default", or "General" — always look up the real ID.
    - Example: Google Calendar's \`calendar\` parameter uses \`searchListMethod: getCalendars\`. Call \`explore-node-resources\` with \`methodName: "getCalendars"\` to get the actual calendar ID (e.g., "user@example.com"), not "primary".
-   - **NEVER use \`placeholder()\` or fake IDs.** If a resource doesn't exist, build a setup workflow to create it (see "Setup Workflows" section).
+   - **Never use \`placeholder()\` or fake IDs for discoverable resources.** Create them via a setup workflow instead (see "Setup Workflows" section). For user-provided values, follow the placeholder rules in "SDK Code Rules".
    - If the resource can't be created via n8n (e.g., Slack channels), explain clearly in your summary what the user needs to set up.
 
 5. **Write workflow code** to \`${workspaceRoot}/src/workflow.ts\`.

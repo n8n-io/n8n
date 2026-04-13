@@ -27,8 +27,8 @@ import {
 } from './tracing-utils';
 import { createVerifyBuiltWorkflowTool } from './verify-built-workflow.tool';
 import { registerWithMastra } from '../../agent/register-with-mastra';
+import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
-import { formatPreviousAttempts } from '../../storage/iteration-log';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import {
 	buildAgentTraceInputs,
@@ -94,12 +94,13 @@ function buildOutcome(
 		taskId,
 		workflowId: attempt.workflowId,
 		submitted: true,
-		triggerType: detectTriggerType(attempt),
+		triggerType: attempt.hasUnresolvedPlaceholders ? 'trigger_only' : detectTriggerType(attempt),
 		needsUserInput: false,
 		mockedNodeNames: attempt.mockedNodeNames,
 		mockedCredentialTypes: attempt.mockedCredentialTypes,
 		mockedCredentialsByNode: attempt.mockedCredentialsByNode,
 		verificationPinData: attempt.verificationPinData,
+		hasUnresolvedPlaceholders: attempt.hasUnresolvedPlaceholders,
 		summary: finalText,
 	};
 }
@@ -125,7 +126,7 @@ The system tracks file hashes. If you edit the code and then call run-workflow o
 ### Verification
 
 - If submit-workflow returned mocked credentials, call verify-built-workflow with the workItemId
-- Otherwise call run-workflow to test (skip for trigger-only workflows)
+- Otherwise call run-workflow to test (skip for trigger-only workflows). For event-based triggers (Linear, GitHub, Slack, etc.), pass \`inputData\` with sample data matching the trigger's expected output shape — the system injects it as the trigger node's output.
 - If verification fails, call debug-execution, fix the code, re-submit, and retry once
 - If the same failure signature repeats, stop and explain the block
 
@@ -273,33 +274,30 @@ export async function startBuildWorkflowAgentTask(
 
 	const { workflowId } = input;
 
-	let iterationContext = '';
-	if (context.iterationLog) {
-		const taskKey = `build:${workflowId ?? 'new'}`;
-		try {
-			const entries = await context.iterationLog.getForTask(context.threadId, taskKey);
-			iterationContext = formatPreviousAttempts(entries);
-		} catch {
-			// Non-fatal — iteration log is best-effort
-		}
-	}
-
-	const conversationCtx = input.conversationContext
-		? `\n\n[CONVERSATION CONTEXT: ${input.conversationContext}]`
-		: '';
-
-	let briefing: string;
-	if (useSandbox) {
-		if (workflowId) {
-			briefing = `${input.task}${conversationCtx}\n\n[CONTEXT: Modifying existing workflow ${workflowId}. The current code is pre-loaded in ~/workspace/src/workflow.ts — read it first, then edit. Use workflowId "${workflowId}" when calling submit-workflow.]\n\n[WORK ITEM ID: ${workItemId}]\n\n${DETACHED_BUILDER_REQUIREMENTS}${iterationContext ? `\n\n${iterationContext}` : ''}`;
-		} else {
-			briefing = `${input.task}${conversationCtx}\n\n[WORK ITEM ID: ${workItemId}]\n\n${DETACHED_BUILDER_REQUIREMENTS}${iterationContext ? `\n\n${iterationContext}` : ''}`;
-		}
+	// Build additional context based on sandbox mode and existing workflow
+	let additionalContext = '';
+	if (useSandbox && workflowId) {
+		additionalContext = `[CONTEXT: Modifying existing workflow ${workflowId}. The current code is pre-loaded in ~/workspace/src/workflow.ts — read it first, then edit. Use workflowId "${workflowId}" when calling submit-workflow.]\n\n[WORK ITEM ID: ${workItemId}]`;
+	} else if (useSandbox) {
+		additionalContext = `[WORK ITEM ID: ${workItemId}]`;
 	} else if (workflowId) {
-		briefing = `${input.task}${conversationCtx}\n\n[CONTEXT: Modifying existing workflow ${workflowId}. Use workflowId "${workflowId}" when calling build-workflow.]${iterationContext ? `\n\n${iterationContext}` : ''}`;
-	} else {
-		briefing = `${input.task}${conversationCtx}${iterationContext ? `\n\n${iterationContext}` : ''}`;
+		additionalContext = `[CONTEXT: Modifying existing workflow ${workflowId}. Use workflowId "${workflowId}" when calling build-workflow.]`;
 	}
+
+	const briefing = await buildSubAgentBriefing({
+		task: input.task,
+		conversationContext: input.conversationContext,
+		additionalContext: additionalContext || undefined,
+		requirements: useSandbox ? DETACHED_BUILDER_REQUIREMENTS : undefined,
+		iteration: context.iterationLog
+			? {
+					log: context.iterationLog,
+					threadId: context.threadId,
+					taskKey: `build:${workflowId ?? 'new'}`,
+				}
+			: undefined,
+		runningTasks: context.getRunningTaskSummaries?.(),
+	});
 	const traceContext = await createDetachedSubAgentTracing(context, {
 		agentId: subAgentId,
 		role: 'workflow-builder',

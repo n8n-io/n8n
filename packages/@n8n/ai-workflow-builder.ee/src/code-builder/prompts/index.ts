@@ -8,13 +8,13 @@
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import type { IRunExecutionData, NodeExecutionSchema } from 'n8n-workflow';
-
 import {
 	EXPRESSION_REFERENCE,
 	ADDITIONAL_FUNCTIONS,
 	WORKFLOW_RULES,
-} from '../../shared/code-builder-and-mcp-prompt-constants';
+} from '@n8n/workflow-sdk/prompts/sdk-reference';
+import type { IRunExecutionData, NodeExecutionSchema } from 'n8n-workflow';
+
 import type { PlanOutput } from '../../types/planning';
 import { formatPlanAsText } from '../../utils/plan-helpers';
 import type { ExpressionValue } from '../../workflow-builder-agent';

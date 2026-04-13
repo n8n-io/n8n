@@ -1,7 +1,8 @@
 import type { Stats } from 'node:fs';
 import * as fs from 'node:fs/promises';
 
-import { resolveSafePath } from './fs-utils';
+import { buildFilesystemResource, resolveSafePath } from './fs-utils';
+import * as config from '../../config';
 
 jest.mock('node:fs/promises');
 
@@ -133,5 +134,66 @@ describe('resolveSafePath', () => {
 		]);
 
 		await expect(resolveSafePath(BASE, 'test/bam/bum')).rejects.toThrow('escapes');
+	});
+
+	it('throws when a symlink resolves to the protected settings directory', async () => {
+		// Use the settings directory's parent as base so the resolved path is within bounds
+		const settingsDir = config.getSettingsDir();
+		const parentDir = settingsDir.replace(/\/[^/]+$/, '');
+		const sneakyLink = `${parentDir}/sneaky-link`;
+		// Identity realpath by default; only the symlink diverges
+		(fs.realpath as jest.Mock).mockImplementation(async (p: string) => {
+			if (p === sneakyLink) return await Promise.resolve(settingsDir);
+			return await Promise.resolve(p);
+		});
+
+		await expect(resolveSafePath(parentDir, 'sneaky-link/settings.json')).rejects.toThrow(
+			'Access denied',
+		);
+	});
+});
+
+describe('buildFilesystemResource — settings self-protection', () => {
+	const settingsDir = config.getSettingsDir();
+	const settingsFile = config.getSettingsFilePath();
+
+	beforeEach(() => {
+		jest.resetAllMocks();
+		// Base dir is the settings directory's parent (so the path is reachable)
+		const parentDir = settingsDir.replace(/\/[^/]+$/, '');
+		(fs.realpath as jest.Mock).mockImplementation(async (p: string) => {
+			if (p === parentDir) return await Promise.resolve(parentDir);
+			throw enoent();
+		});
+	});
+
+	it('throws for filesystemWrite targeting the settings file', async () => {
+		const parentDir = settingsDir.replace(/\/[^/]+$/, '');
+		const relPath = settingsFile.replace(parentDir + '/', '');
+		await expect(
+			buildFilesystemResource(parentDir, relPath, 'filesystemWrite', 'Write settings'),
+		).rejects.toThrow('Access denied');
+	});
+
+	it('throws for filesystemRead targeting the settings file', async () => {
+		const parentDir = settingsDir.replace(/\/[^/]+$/, '');
+		const relPath = settingsFile.replace(parentDir + '/', '');
+		await expect(
+			buildFilesystemResource(parentDir, relPath, 'filesystemRead', 'Read settings'),
+		).rejects.toThrow('Access denied');
+	});
+
+	it('does not throw for unrelated paths', async () => {
+		(fs.realpath as jest.Mock).mockImplementation(async (p: string) => {
+			if (p === BASE) return await Promise.resolve(BASE);
+			throw enoent();
+		});
+		const result = await buildFilesystemResource(
+			BASE,
+			'src/index.ts',
+			'filesystemWrite',
+			'Write file',
+		);
+		expect(result.resource).toBe('/base/src/index.ts');
 	});
 });

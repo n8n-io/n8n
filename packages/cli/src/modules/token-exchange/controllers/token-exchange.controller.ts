@@ -14,6 +14,8 @@ import { TokenExchangeService } from '../services/token-exchange.service';
 import { TokenExchangeConfig } from '../token-exchange.config';
 import { TOKEN_EXCHANGE_GRANT_TYPE, TokenExchangeRequestSchema } from '../token-exchange.schemas';
 
+const configService = Container.get(TokenExchangeConfig);
+
 @RestController('/auth/oauth')
 export class TokenExchangeController {
 	private readonly config = Container.get(TokenExchangeConfig);
@@ -31,7 +33,10 @@ export class TokenExchangeController {
 	 */
 	@Post('/token', {
 		skipAuth: true,
-		ipRateLimit: { limit: 20, windowMs: 1 * Time.minutes.toMilliseconds },
+		ipRateLimit: {
+			limit: configService.rateLimitTokenExchange,
+			windowMs: 1 * Time.minutes.toMilliseconds,
+		},
 	})
 	async exchangeToken(req: AuthlessRequest, res: Response): Promise<void> {
 		if (!this.config.enabled) {

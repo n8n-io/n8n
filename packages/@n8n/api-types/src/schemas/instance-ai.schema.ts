@@ -466,7 +466,13 @@ export const threadTitleUpdatedPayloadSchema = z.object({
 // Event schema (Zod discriminated union — single source of truth)
 // ---------------------------------------------------------------------------
 
-const eventBase = { runId: z.string(), agentId: z.string(), userId: z.string().optional() };
+const eventBase = {
+	runId: z.string(),
+	agentId: z.string(),
+	userId: z.string().optional(),
+	/** Anthropic API response ID (msg_01...) — groups events from the same LLM response. */
+	responseId: z.string().optional(),
+};
 
 export const instanceAiEventSchema = z.discriminatedUnion('type', [
 	z.object({ type: z.literal('run-start'), ...eventBase, payload: runStartPayloadSchema }),
@@ -660,9 +666,9 @@ export interface InstanceAiToolCallState {
 }
 
 export type InstanceAiTimelineEntry =
-	| { type: 'text'; content: string }
-	| { type: 'tool-call'; toolCallId: string }
-	| { type: 'child'; agentId: string };
+	| { type: 'text'; content: string; responseId?: string }
+	| { type: 'tool-call'; toolCallId: string; responseId?: string }
+	| { type: 'child'; agentId: string; responseId?: string };
 
 export interface InstanceAiAgentNode {
 	agentId: string;
@@ -902,6 +908,7 @@ export interface InstanceAiAdminSettingsResponse {
 	n8nSandboxCredentialId: string | null;
 	searchCredentialId: string | null;
 	localGatewayDisabled: boolean;
+	optinModalDismissed: boolean;
 }
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
@@ -921,6 +928,7 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	n8nSandboxCredentialId: z.string().nullable().optional(),
 	searchCredentialId: z.string().nullable().optional(),
 	localGatewayDisabled: z.boolean().optional(),
+	optinModalDismissed: z.boolean().optional(),
 }) {}
 
 // ---------------------------------------------------------------------------

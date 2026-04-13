@@ -250,7 +250,12 @@ function registerAuthenticationHooks() {
 		});
 
 		RBACStore.setGlobalScopes(user.globalScopes ?? []);
-		telemetry.identify(rootStore.instanceId, user.id, rootStore.versionCli);
+		telemetry.identify({
+			instanceId: rootStore.instanceId,
+			versionCli: rootStore.versionCli,
+			userId: user.id,
+			userRole: user.role,
+		});
 		postHogStore.init(user.featureFlags);
 		npsSurveyStore.setupNpsSurveyOnLogin(user.id, user.settings);
 		void settingsStore.getModuleSettings();
