@@ -73,7 +73,8 @@ const {
 	formValue: userRoleProvisioning,
 	isUserRoleProvisioningChanged,
 	saveProvisioningConfig,
-	shouldPromptUserToConfirmUserRoleProvisioningChange,
+	roleAssignmentTransition,
+	revertRoleAssignment,
 } = useUserRoleProvisioningForm(SupportedProtocols.SAML);
 
 async function loadSamlConfig() {
@@ -212,13 +213,7 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 			}
 		}
 
-		if (
-			!provisioningChangesConfirmed &&
-			shouldPromptUserToConfirmUserRoleProvisioningChange({
-				currentLoginEnabled: !!ssoStore.isSamlLoginEnabled,
-				loginEnabledFormValue: samlLoginEnabled.value,
-			})
-		) {
+		if (!provisioningChangesConfirmed && roleAssignmentTransition.value !== 'none') {
 			showUserRoleProvisioningDialog.value = true;
 			return;
 		}
@@ -405,10 +400,14 @@ onMounted(async () => {
 			/>
 			<ConfirmProvisioningDialog
 				v-model="showUserRoleProvisioningDialog"
-				:new-provisioning-setting="userRoleProvisioning"
+				:transition-type="roleAssignmentTransition"
+				:show-project-roles-csv="roleAssignment === 'instance_and_project'"
 				auth-protocol="saml"
 				@confirm-provisioning="onSave(true)"
-				@cancel="showUserRoleProvisioningDialog = false"
+				@cancel="
+					revertRoleAssignment();
+					showUserRoleProvisioningDialog = false;
+				"
 			/>
 		</div>
 

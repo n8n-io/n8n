@@ -11,6 +11,8 @@ import { type SupportedProtocolType } from '../../sso.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
+export type RoleAssignmentTransitionType = 'none' | 'backup' | 'switchToManual';
+
 type DropdownValues = {
 	roleAssignment: RoleAssignmentSetting;
 	mappingMethod: RoleMappingMethodSetting;
@@ -140,23 +142,24 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 		);
 	};
 
-	const shouldPromptUserToConfirmUserRoleProvisioningChange = ({
-		currentLoginEnabled,
-		loginEnabledFormValue,
-	}: {
-		currentLoginEnabled: boolean;
-		loginEnabledFormValue: boolean;
-	}) => {
-		const isLoginEnabledChanged = currentLoginEnabled !== loginEnabledFormValue;
-		const isEnablingSsoLogin = isLoginEnabledChanged && !currentLoginEnabled;
-		const isDisablingSsoLogin = isLoginEnabledChanged && currentLoginEnabled;
-		const isEnablingSsoAlongSideProvisioning = isEnablingSsoLogin && formValue.value !== 'disabled';
-		const isChangingProvisioningSettingWhileLoginWasAlreadyEnabled =
-			isUserRoleProvisioningChanged.value && currentLoginEnabled && !isDisablingSsoLogin;
+	const roleAssignmentTransition = computed<RoleAssignmentTransitionType>(() => {
+		const stored = getDropdownValuesFromConfig(provisioningStore.provisioningConfig);
+		if (
+			stored.roleAssignment === roleAssignment.value &&
+			stored.mappingMethod === mappingMethod.value
+		) {
+			return 'none';
+		}
+		if (roleAssignment.value === 'manual') {
+			return 'switchToManual';
+		}
+		return 'backup';
+	});
 
-		return (
-			isEnablingSsoAlongSideProvisioning || isChangingProvisioningSettingWhileLoginWasAlreadyEnabled
-		);
+	const revertRoleAssignment = () => {
+		const stored = getDropdownValuesFromConfig(provisioningStore.provisioningConfig);
+		roleAssignment.value = stored.roleAssignment;
+		mappingMethod.value = stored.mappingMethod;
 	};
 
 	const initFormValue = () => {
@@ -184,6 +187,7 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 		formValue,
 		isUserRoleProvisioningChanged,
 		saveProvisioningConfig,
-		shouldPromptUserToConfirmUserRoleProvisioningChange,
+		roleAssignmentTransition,
+		revertRoleAssignment,
 	};
 }
