@@ -12,6 +12,21 @@ export interface RecordedToolCall {
 	output: unknown;
 }
 
+export type TimelineEvent =
+	| { type: 'text'; content: string; timestamp: number }
+	| {
+			type: 'tool-call';
+			name: string;
+			toolCallId: string;
+			input: unknown;
+			output: unknown;
+			startTime: number;
+			endTime: number;
+			success: boolean;
+	  }
+	| { type: 'working-memory'; content: string; timestamp: number }
+	| { type: 'suspension'; toolName: string; toolCallId: string; timestamp: number };
+
 /**
  * Collects execution data from agent stream chunks.
  * Used to build an execution record after a message cycle completes.
@@ -23,6 +38,7 @@ export interface MessageRecord {
 	usage: RecordedUsage | null;
 	totalCost: number | null;
 	toolCalls: RecordedToolCall[];
+	timeline: TimelineEvent[];
 	startTime: number;
 	duration: number;
 	error: string | null;
@@ -31,6 +47,9 @@ export interface MessageRecord {
 
 export class ExecutionRecorder {
 	private textParts: string[] = [];
+
+	/** Text buffer for the current segment (flushed to timeline on boundaries). */
+	private textBuffer: string[] = [];
 
 	private model: string | null = null;
 
@@ -41,6 +60,8 @@ export class ExecutionRecorder {
 	private totalCost: number | null = null;
 
 	private toolCalls: RecordedToolCall[] = [];
+
+	private timeline: TimelineEvent[] = [];
 
 	private _suspended = false;
 
@@ -55,11 +76,13 @@ export class ExecutionRecorder {
 		switch (chunk.type) {
 			case 'text-delta':
 				this.textParts.push(chunk.delta);
+				this.textBuffer.push(chunk.delta);
 				break;
 			case 'message':
-				this.extractToolCalls(chunk.message as AgentMessage);
+				this.processMessage(chunk.message as AgentMessage);
 				break;
 			case 'finish':
+				this.flushTextBuffer();
 				this.finishReason = chunk.finishReason;
 				if (chunk.usage) {
 					this.usage = {
@@ -69,14 +92,26 @@ export class ExecutionRecorder {
 					};
 				}
 				this.model = chunk.model ?? null;
-				// Cost lives in usage.cost for single-agent runs, totalCost only for sub-agent scenarios
 				this.totalCost = chunk.totalCost ?? chunk.usage?.cost ?? null;
 				break;
 			case 'tool-call-suspended':
+				this.flushTextBuffer();
 				this._suspended = true;
+				this.timeline.push({
+					type: 'suspension',
+					toolName: chunk.toolName ?? '',
+					toolCallId: chunk.toolCallId ?? '',
+					timestamp: Date.now(),
+				});
 				break;
 			case 'working-memory-update':
+				this.flushTextBuffer();
 				this.workingMemory = chunk.content;
+				this.timeline.push({
+					type: 'working-memory',
+					content: chunk.content,
+					timestamp: Date.now(),
+				});
 				break;
 			case 'error': {
 				const errMsg = chunk.error instanceof Error ? chunk.error.message : String(chunk.error);
@@ -93,6 +128,7 @@ export class ExecutionRecorder {
 
 	/** Build the final message record after the stream has ended. */
 	getMessageRecord(): MessageRecord {
+		this.flushTextBuffer();
 		return {
 			assistantResponse: this.textParts.join(''),
 			model: this.model,
@@ -100,6 +136,7 @@ export class ExecutionRecorder {
 			usage: this.usage,
 			totalCost: this.totalCost,
 			toolCalls: this.toolCalls,
+			timeline: this.timeline,
 			startTime: this.startTime,
 			duration: Date.now() - this.startTime,
 			error: this.error,
@@ -107,33 +144,73 @@ export class ExecutionRecorder {
 		};
 	}
 
+	/** Flush accumulated text into a timeline event. */
+	private flushTextBuffer(): void {
+		if (this.textBuffer.length === 0) return;
+		const content = this.textBuffer.join('');
+		if (content.trim()) {
+			this.timeline.push({ type: 'text', content, timestamp: Date.now() });
+		}
+		this.textBuffer = [];
+	}
+
 	/**
-	 * Extract tool-call and tool-result content parts from agent messages.
-	 * Pairs them by toolName into RecordedToolCall entries.
+	 * Process a message chunk containing tool-call or tool-result content parts.
+	 * Maintains both the flat toolCalls array (backward compat) and the ordered timeline.
 	 */
-	private extractToolCalls(message: AgentMessage): void {
+	private processMessage(message: AgentMessage): void {
 		if (!('content' in message) || !Array.isArray(message.content)) return;
 
 		for (const part of message.content) {
 			if (part.type === 'tool-call' && 'toolName' in part) {
-				this.toolCalls.push({
-					name: part.toolName as string,
-					input: 'input' in part ? part.input : undefined,
-					output: undefined,
+				this.flushTextBuffer();
+
+				const name = part.toolName as string;
+				const input = 'input' in part ? part.input : undefined;
+				const toolCallId = 'toolCallId' in part ? String(part.toolCallId) : '';
+
+				// Flat array (backward compat)
+				this.toolCalls.push({ name, input, output: undefined });
+
+				// Timeline event
+				this.timeline.push({
+					type: 'tool-call',
+					name,
+					toolCallId,
+					input,
+					output: undefined as unknown,
+					startTime: Date.now(),
+					endTime: 0,
+					success: true,
 				});
 			} else if (part.type === 'tool-result' && 'toolName' in part) {
-				// Match to the last tool call with the same name that has no output yet
-				const pending = [...this.toolCalls]
+				const name = part.toolName as string;
+				const output = 'result' in part ? part.result : undefined;
+				const toolCallId = 'toolCallId' in part ? String(part.toolCallId) : '';
+
+				// Flat array (backward compat)
+				const pendingFlat = [...this.toolCalls]
 					.reverse()
-					.find((tc) => tc.name === (part.toolName as string) && tc.output === undefined);
-				if (pending) {
-					pending.output = 'result' in part ? part.result : undefined;
+					.find((tc) => tc.name === name && tc.output === undefined);
+				if (pendingFlat) {
+					pendingFlat.output = output;
 				} else {
-					this.toolCalls.push({
-						name: part.toolName as string,
-						input: undefined,
-						output: 'result' in part ? part.result : undefined,
-					});
+					this.toolCalls.push({ name, input: undefined, output });
+				}
+
+				// Timeline — match by toolCallId first, then by name
+				const pendingTimeline = [...this.timeline]
+					.reverse()
+					.find(
+						(e): e is TimelineEvent & { type: 'tool-call' } =>
+							e.type === 'tool-call' &&
+							(toolCallId ? e.toolCallId === toolCallId : e.name === name) &&
+							e.endTime === 0,
+					);
+				if (pendingTimeline) {
+					pendingTimeline.output = output;
+					pendingTimeline.endTime = Date.now();
+					pendingTimeline.success = true;
 				}
 			}
 		}

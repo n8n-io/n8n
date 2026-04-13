@@ -7,6 +7,7 @@ export interface ExecutionThread {
 	agentName: string;
 	projectId: string;
 	sessionNumber: number;
+	title: string | null;
 	totalPromptTokens: number;
 	totalCompletionTokens: number;
 	totalCost: number;

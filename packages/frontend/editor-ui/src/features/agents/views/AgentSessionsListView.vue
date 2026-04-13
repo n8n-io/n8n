@@ -58,11 +58,7 @@ const deleteActions = [
 function onRowClick(threadId: string) {
 	void router.push({
 		name: AGENT_SESSION_DETAIL_VIEW,
-		params: {
-			projectId: projectId.value,
-			agentId: agentId.value,
-			threadId,
-		},
+		params: { projectId: projectId.value, agentId: agentId.value, threadId },
 	});
 }
 

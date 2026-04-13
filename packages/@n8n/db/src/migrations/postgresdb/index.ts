@@ -165,7 +165,6 @@ import { CreateAgentMemoryTables1777000000000 } from '../common/1777000000000-Cr
 import { AddToolsColumnToAgents1778000000000 } from '../common/1778000000000-AddToolsColumnToAgents';
 import { DropAgentCodeColumn1779000000000 } from '../common/1779000000000-DropAgentCodeColumn';
 import { CreateExecutionThreads1780000000000 } from '../common/1780000000000-CreateExecutionThreads';
-import { AddSessionColumnsToExecutionThreads1781000000000 } from '../common/1781000000000-AddSessionColumnsToExecutionThreads';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -336,5 +335,4 @@ export const postgresMigrations: Migration[] = [
 	AddToolsColumnToAgents1778000000000,
 	DropAgentCodeColumn1779000000000,
 	CreateExecutionThreads1780000000000,
-	AddSessionColumnsToExecutionThreads1781000000000,
 ];

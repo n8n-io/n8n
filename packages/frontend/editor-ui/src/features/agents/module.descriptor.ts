@@ -13,8 +13,8 @@ const AgentView = async () => await import('@/features/agents/views/AgentView.vu
 const AgentBuilderView = async () => await import('@/features/agents/views/AgentBuilderView.vue');
 const AgentSessionsListView = async () =>
 	await import('@/features/agents/views/AgentSessionsListView.vue');
-const AgentSessionDetailView = async () =>
-	await import('@/features/agents/views/AgentSessionDetailView.vue');
+const AgentSessionTimelineView = async () =>
+	await import('@/features/agents/views/AgentSessionTimelineView.vue');
 
 export const AgentsModule: FrontendModuleDescription = {
 	id: 'agents',
@@ -62,7 +62,7 @@ export const AgentsModule: FrontendModuleDescription = {
 				{
 					name: AGENT_SESSION_DETAIL_VIEW,
 					path: 'sessions/:threadId',
-					component: AgentSessionDetailView,
+					component: AgentSessionTimelineView,
 				},
 			],
 		},

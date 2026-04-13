@@ -10,6 +10,7 @@ import { stringify } from 'flatted';
 import { createEmptyRunExecutionData } from 'n8n-workflow';
 
 import type { MessageRecord } from './execution-recorder';
+import { N8nMemory } from './integrations/n8n-memory';
 import { ExecutionThreadRepository } from './repositories/execution-thread.repository';
 
 export interface RecordMessageParams {
@@ -31,6 +32,7 @@ export class AgentExecutionService {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly executionMetadataRepository: ExecutionMetadataRepository,
 		private readonly executionThreadRepository: ExecutionThreadRepository,
+		private readonly n8nMemory: N8nMemory,
 	) {}
 
 	/**
@@ -46,7 +48,7 @@ export class AgentExecutionService {
 		const { threadId, agentId, agentName, projectId, record } = params;
 
 		// Ensure the thread exists and bump its updatedAt
-		const { created } = await this.executionThreadRepository.findOrCreate(
+		const { thread, created } = await this.executionThreadRepository.findOrCreate(
 			threadId,
 			agentId,
 			agentName,
@@ -54,6 +56,10 @@ export class AgentExecutionService {
 		);
 		if (!created) {
 			await this.executionThreadRepository.bumpUpdatedAt(threadId);
+			// Sync title from the SDK memory thread if we don't have one yet
+			if (!thread.title) {
+				await this.syncTitleFromMemory(threadId);
+			}
 		}
 
 		const status = record.error ? 'error' : 'success';
@@ -117,6 +123,9 @@ export class AgentExecutionService {
 		}
 		if (record.toolCalls.length > 0) {
 			metadata.push({ key: 'toolCalls', value: JSON.stringify(record.toolCalls) });
+		}
+		if (record.timeline.length > 0) {
+			metadata.push({ key: 'timeline', value: JSON.stringify(record.timeline) });
 		}
 		if (record.error) {
 			metadata.push({ key: 'error', value: record.error });
@@ -185,6 +194,22 @@ export class AgentExecutionService {
 					backfill.map((m) => ({ ...m, executionId: exec.id })),
 				);
 			}
+		}
+	}
+
+	/**
+	 * Try to read the title from the SDK memory thread and sync it to our execution thread.
+	 * The SDK's titleGeneration runs fire-and-forget after the first message,
+	 * so the title is typically available by the second message.
+	 */
+	private async syncTitleFromMemory(threadId: string): Promise<void> {
+		try {
+			const memoryThread = await this.n8nMemory.getThread(threadId);
+			if (memoryThread?.title) {
+				await this.executionThreadRepository.update(threadId, { title: memoryThread.title });
+			}
+		} catch {
+			// Memory thread may not exist (agent without memory configured) — ignore
 		}
 	}
 

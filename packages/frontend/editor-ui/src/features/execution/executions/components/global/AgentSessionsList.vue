@@ -86,11 +86,7 @@ function formatDuration(ms: number): string {
 function onRowClick(thread: { id: string; agentId: string }) {
 	void router.push({
 		name: AGENT_SESSION_DETAIL_VIEW,
-		params: {
-			projectId: projectId.value,
-			agentId: thread.agentId,
-			threadId: thread.id,
-		},
+		params: { projectId: projectId.value, agentId: thread.agentId, threadId: thread.id },
 	});
 }
 
