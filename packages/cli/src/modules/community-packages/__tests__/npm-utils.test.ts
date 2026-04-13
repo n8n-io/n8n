@@ -225,6 +225,53 @@ describe('executeNpmCommand', () => {
 		});
 	});
 
+	describe('auth token redaction in errors', () => {
+		it('should redact auth tokens from error messages when authToken is set', async () => {
+			const errorWithToken = new Error(
+				'Command failed: npm install --registry=https://r.example.com --//r.example.com/:_authToken=super-secret-value',
+			);
+			mockAsyncExec.mockRejectedValue(errorWithToken);
+
+			await expect(
+				executeNpmCommand(['install'], {
+					registry: 'https://r.example.com',
+					authToken: 'super-secret-value',
+				}),
+			).rejects.toThrow('Failed to execute npm command');
+
+			expect(errorWithToken.message).not.toContain('super-secret-value');
+			expect(errorWithToken.message).toContain('_authToken=*****');
+		});
+
+		it('should redact auth tokens from re-thrown errors when doNotHandleError is true', async () => {
+			const errorWithToken = new Error(
+				'Command failed: npm view pkg --//r.example.com/:_authToken=leak-me',
+			);
+			mockAsyncExec.mockRejectedValue(errorWithToken);
+
+			try {
+				await executeNpmCommand(['view', 'pkg'], {
+					registry: 'https://r.example.com',
+					authToken: 'leak-me',
+					doNotHandleError: true,
+				});
+				fail('Should have thrown');
+			} catch (error) {
+				expect((error as Error).message).not.toContain('leak-me');
+				expect((error as Error).message).toContain('_authToken=*****');
+			}
+		});
+
+		it('should not modify error messages when no authToken is set', async () => {
+			const originalMessage = 'Command failed: npm install some-package';
+			mockAsyncExec.mockRejectedValue(new Error(originalMessage));
+
+			await expect(executeNpmCommand(['install', 'some-package'])).rejects.toThrow(
+				'Failed to execute npm command',
+			);
+		});
+	});
+
 	describe('command arguments', () => {
 		it('should pass all arguments to npm command', async () => {
 			mockAsyncExec.mockResolvedValue({
@@ -261,6 +308,26 @@ describe('executeNpmCommand', () => {
 					'pkg@1.0.0',
 					'--registry=https://registry.example.com',
 					'--//registry.example.com/:_authToken=my-token',
+				],
+				undefined,
+			);
+		});
+
+		it('should preserve registry pathname in authToken arg for path-based registries', async () => {
+			mockAsyncExec.mockResolvedValue({ stdout: '', stderr: '' });
+
+			await executeNpmCommand(['install', 'pkg@1.0.0'], {
+				registry: 'https://gitlab.example.com/api/v4/packages/npm/',
+				authToken: 'my-token',
+			});
+
+			expect(mockAsyncExec).toHaveBeenCalledWith(
+				'npm',
+				[
+					'install',
+					'pkg@1.0.0',
+					'--registry=https://gitlab.example.com/api/v4/packages/npm',
+					'--//gitlab.example.com/api/v4/packages/npm/:_authToken=my-token',
 				],
 				undefined,
 			);

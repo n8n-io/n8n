@@ -62,6 +62,16 @@ function matchesErrorPattern(message: string, patterns: readonly string[]): bool
 	return patterns.some((pattern) => message.includes(pattern));
 }
 
+function redactAuthTokens(text: string): string {
+	return text.replace(/_authToken=\S+/g, '_authToken=*****');
+}
+
+function registryAuthKey(registryUrl: string): string {
+	const url = new URL(registryUrl);
+	const pathname = url.pathname.replace(/\/+$/, '');
+	return `${url.host}${pathname}`;
+}
+
 /**
  * Executes an npm command with proper error handling.
  * @param args - Array of npm command arguments
@@ -79,16 +89,23 @@ export async function executeNpmCommand(
 	if (registry) {
 		const sanitized = sanitizeRegistryUrl(registry);
 		registryArgs.push(`--registry=${sanitized}`);
-		if (authToken) registryArgs.push(`--//${new URL(sanitized).host}/:_authToken=${authToken}`);
+		if (authToken) registryArgs.push(`--//${registryAuthKey(sanitized)}/:_authToken=${authToken}`);
 	}
 
 	const fullArgs = [...args, ...registryArgs];
-	LoggerProxy.debug('Executing npm command', { args: fullArgs, cwd });
+	LoggerProxy.debug('Executing npm command', {
+		args: fullArgs.map((a) => (a.includes('_authToken=') ? a.replace(/=.+$/, '=*****') : a)),
+		cwd,
+	});
 
 	try {
 		const { stdout } = await asyncExecFile('npm', fullArgs, cwd ? { cwd } : undefined);
 		return typeof stdout === 'string' ? stdout : stdout.toString();
 	} catch (error) {
+		if (authToken && error instanceof Error) {
+			error.message = redactAuthTokens(error.message);
+		}
+
 		if (doNotHandleError) {
 			throw error;
 		}
@@ -145,7 +162,10 @@ export async function executeNpmRequest<T = unknown>(
 	const authHeaders = authToken ? { ['Authorization']: `Bearer ${authToken}` } : {};
 	const headers = { ...extraHeaders, ...authHeaders };
 
-	LoggerProxy.debug('Executing npm registry request', { url, headers, timeout });
+	const redactedHeaders = authToken
+		? { ...headers, Authorization: 'Bearer *****' }
+		: { ...headers };
+	LoggerProxy.debug('Executing npm registry request', { url, headers: redactedHeaders, timeout });
 
 	try {
 		const { data } = await axios.get<T>(url, {
