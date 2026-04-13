@@ -197,6 +197,32 @@ export class AgentsController {
 		return { success: true };
 	}
 
+	@Post('/:agentId/publish')
+	async publish(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	) {
+		const published = await this.agentsService.publishAgent(
+			agentId,
+			req.params.projectId,
+			req.user.id,
+		);
+
+		const agent = await this.agentsService.findById(agentId, req.params.projectId);
+		return { ...agent, publishedVersion: published };
+	}
+
+	@Post('/:agentId/unpublish')
+	async unpublish(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	) {
+		await this.agentsService.unpublishAgent(agentId, req.params.projectId);
+		return { success: true };
+	}
+
 	@Post('/:agentId/chat', { usesTemplates: true })
 	async chat(
 		req: AuthenticatedRequest<{ projectId: string }>,

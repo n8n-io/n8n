@@ -18,6 +18,7 @@ import {
 import { Container, Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { OperationalError, UserError } from 'n8n-workflow';
+
 import { ActiveExecutions } from '@/active-executions';
 import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -46,6 +47,8 @@ import {
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
 import { AgentRepository } from './repositories/agent.repository';
+import { AgentPublishedVersion } from './entities/agent-published-version.entity';
+import { AgentPublishedVersionRepository } from './repositories/agent-published-version.repository';
 
 export interface ExecuteAgentData {
 	response: string;
@@ -96,6 +99,7 @@ export class AgentsService {
 		private readonly secureRuntime: AgentSecureRuntime,
 		private readonly ephemeralNodeExecutor: EphemeralNodeExecutor,
 		private readonly n8nMemory: N8nMemory,
+		private readonly agentPublishedVersionRepository: AgentPublishedVersionRepository,
 	) {}
 
 	async create(projectId: string, name: string): Promise<Agent> {
@@ -172,6 +176,41 @@ export class AgentsService {
 			where: { projectId: In(projectIds) },
 			order: { updatedAt: 'DESC' },
 		});
+	}
+
+	async publishAgent(
+		agentId: string,
+		projectId: string,
+		userId: string,
+	): Promise<AgentPublishedVersion> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agent) {
+			throw new NotFoundError(`Agent "${agentId}" not found`);
+		}
+
+		const published = await this.agentPublishedVersionRepository.savePublishedVersion({
+			agentId: agent.id,
+			schema: agent.schema,
+			model: agent.model,
+			provider: agent.provider,
+			credentialId: agent.credentialId,
+			publishedById: userId,
+		});
+
+		this.logger.debug('Published SDK agent', { agentId, projectId, userId });
+
+		return published;
+	}
+
+	async unpublishAgent(agentId: string, projectId: string): Promise<void> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agent) {
+			throw new NotFoundError(`Agent "${agentId}" not found`);
+		}
+
+		await this.agentPublishedVersionRepository.deleteByAgentId(agentId);
+
+		this.logger.debug('Unpublished SDK agent', { agentId, projectId });
 	}
 
 	async delete(agentId: string, projectId: string): Promise<boolean> {

@@ -11,6 +11,11 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentsService } = await import('./agents.service');
 		Container.get(AgentsService);
 
+		const { AgentPublishedVersionRepository } = await import(
+			'./repositories/agent-published-version.repository'
+		);
+		Container.get(AgentPublishedVersionRepository);
+
 		// Register the sandboxed runtime service (lazy — the V8 isolate is only
 		// created on first use, so this import has negligible startup cost).
 		const { AgentSecureRuntime } = await import('./runtime/agent-secure-runtime');
@@ -39,8 +44,16 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentResourceEntity } = await import('./entities/agent-resource.entity');
 		const { AgentThreadEntity } = await import('./entities/agent-thread.entity');
 		const { AgentMessageEntity } = await import('./entities/agent-message.entity');
+		const { AgentPublishedVersion } = await import('./entities/agent-published-version.entity');
 
-		return [Agent, AgentCheckpoint, AgentResourceEntity, AgentThreadEntity, AgentMessageEntity];
+		return [
+			Agent,
+			AgentCheckpoint,
+			AgentResourceEntity,
+			AgentThreadEntity,
+			AgentMessageEntity,
+			AgentPublishedVersion,
+		];
 	}
 
 	async context() {
