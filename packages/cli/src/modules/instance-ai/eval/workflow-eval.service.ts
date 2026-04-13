@@ -106,6 +106,7 @@ export class WorkflowEvalService {
 		// Fetch the workflow JSON for the judge to inspect structure/connections
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:read',
+			'workflow:execute',
 		]);
 
 		if (!workflow) {
