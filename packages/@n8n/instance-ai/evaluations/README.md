@@ -9,11 +9,14 @@ Tests whether workflows built by Instance AI actually work by executing them wit
 ```bash
 # From repo root, with n8n running via pnpm dev:ai
 
-# Run all test cases (4 workers)
+# Run all test cases
 dotenvx run -f .env.local -- pnpm --filter=n8n-playwright test:instance-ai-workflow-evals:local
 
 # Run a single test case
 dotenvx run -f .env.local -- pnpm --filter=n8n-playwright test:instance-ai-workflow-evals:local -- --grep "contact-form"
+
+# Control parallelism (default uses Playwright's worker count)
+dotenvx run -f .env.local -- pnpm --filter=n8n-playwright test:instance-ai-workflow-evals:local -- --workers=4
 ```
 
 Results are printed to the console via a custom reporter and written to `eval-results.json`.
