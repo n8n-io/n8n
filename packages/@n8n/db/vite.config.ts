@@ -3,5 +3,5 @@ import { createVitestConfigWithDecorators } from '@n8n/vitest-config/node-decora
 
 export default mergeConfig(
 	defineConfig({}),
-	createVitestConfigWithDecorators({ exclude: ['dist/**'] }),
+	createVitestConfigWithDecorators({ exclude: ['node_modules/**'] }),
 );
