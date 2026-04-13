@@ -151,6 +151,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'user-password-reset-request-click': (event) => this.userPasswordResetRequestClick(event),
 			'history-compacted': (event) => this.historyCompacted(event),
 			'instance-policies-updated': (event) => this.instancePoliciesUpdated(event),
+			'execution-data-revealed': (event) => this.executionDataRevealed(event),
 		});
 	}
 
@@ -775,6 +776,12 @@ export class TelemetryEventRelay extends EventRelay {
 			credentialResolverId = settingsChanged.credentialResolverId.to;
 		}
 
+		let redactionPolicy: JsonValue | undefined = undefined;
+
+		if (settingsChanged?.redactionPolicy) {
+			redactionPolicy = settingsChanged.redactionPolicy.to;
+		}
+
 		const identityExtractorChanged = this.detectIdentityExtractorChanges(
 			previousWorkflow,
 			workflow,
@@ -796,6 +803,7 @@ export class TelemetryEventRelay extends EventRelay {
 			ai_builder_assisted: aiBuilderAssisted ?? false,
 			credential_resolver_id: credentialResolverId,
 			identity_extractor_changed: identityExtractorChanged,
+			redaction_policy: redactionPolicy,
 		});
 	}
 
@@ -1579,6 +1587,20 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('User updated instance policies', {
 			user_id: user.id,
 			[settingName]: value,
+		});
+	}
+
+	private executionDataRevealed({
+		user,
+		executionId,
+		workflowId,
+		redactionPolicy,
+	}: RelayEventMap['execution-data-revealed']) {
+		this.telemetry.track('User confirmed reveal data', {
+			user_id: user.id,
+			execution_id: executionId,
+			workflow_id: workflowId,
+			redaction_policy: redactionPolicy,
 		});
 	}
 
