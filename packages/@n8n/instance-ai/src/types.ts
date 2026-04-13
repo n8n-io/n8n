@@ -5,6 +5,7 @@ import type { Workspace } from '@mastra/core/workspace';
 import type { Memory } from '@mastra/memory';
 import type {
 	TaskList,
+	InstanceAiAttachment,
 	InstanceAiPermissions,
 	McpTool,
 	McpToolCallRequest,
@@ -522,6 +523,11 @@ export interface InstanceAiContext {
 	domainAccessTracker?: DomainAccessTracker;
 	/** Current run ID — used for transient (allow_once) domain approvals. */
 	runId?: string;
+	/**
+	 * Attachments from the current user message. Runtime-only — not persisted.
+	 * Used to register `parse-file` and supply data to the parser.
+	 */
+	currentUserAttachments?: InstanceAiAttachment[];
 }
 
 // ── Task storage ─────────────────────────────────────────────────────────────

@@ -5366,6 +5366,7 @@
 	"instanceAi.tools.list-files": "Listing files",
 	"instanceAi.tools.read-file": "Reading file",
 	"instanceAi.tools.search-files": "Searching files",
+	"instanceAi.tools.parse-file": "Parsing file",
 	"instanceAi.tools.mastra_workspace_read_file": "Reading file",
 	"instanceAi.tools.mastra_workspace_write_file": "Writing file",
 	"instanceAi.tools.mastra_workspace_edit_file": "Editing file",
