@@ -88,6 +88,8 @@ export class OidcInstanceSettingsLoader {
 			return 'skipped';
 		}
 
+		this.logger.info('N8N_SSO_MANAGED_BY_ENV is enabled — applying OIDC SSO env vars');
+
 		const result = ssoEnvSchema.safeParse(this.instanceSettingsLoaderConfig);
 
 		if (!result.success) {
