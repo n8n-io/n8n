@@ -31,10 +31,10 @@ import {
 	withTraceRun,
 } from './tracing-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
+import { MAX_STEPS } from '../../constants/max-steps';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
-import { MAX_STEPS } from '../../constants/max-steps';
 import type { OrchestrationContext } from '../../types';
 
 /** Number of recent thread messages to include as planner context. */

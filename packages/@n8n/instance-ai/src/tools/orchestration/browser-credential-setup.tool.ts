@@ -13,6 +13,7 @@ import {
 	withTraceRun,
 } from './tracing-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
+import { MAX_STEPS } from '../../constants/max-steps';
 import {
 	createLlmStepTraceHooks,
 	executeResumableStream,
@@ -23,7 +24,6 @@ import {
 	mergeTraceRunInputs,
 	withTraceParentContext,
 } from '../../tracing/langsmith-tracing';
-import { MAX_STEPS } from '../../constants/max-steps';
 import type { OrchestrationContext } from '../../types';
 import { createToolsFromLocalMcpServer } from '../filesystem/create-tools-from-mcp-server';
 import { createAskUserTool } from '../shared/ask-user.tool';

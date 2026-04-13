@@ -20,6 +20,7 @@ import {
 } from './tracing-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
+import { MAX_STEPS } from '../../constants/max-steps';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import {
@@ -28,7 +29,6 @@ import {
 	mergeTraceRunInputs,
 	withTraceParentContext,
 } from '../../tracing/langsmith-tracing';
-import { MAX_STEPS } from '../../constants/max-steps';
 import type { OrchestrationContext } from '../../types';
 
 export interface StartResearchAgentInput {
