@@ -139,7 +139,7 @@ describe('EmbedAuthController', () => {
 			const req = mock<AuthlessRequest>({ browserId: 'browser-id-123' });
 			const res = mock<Response>();
 			const query = new EmbedLoginQueryDto({ token: 'subject-token', redirectTo: '/workflow/123' });
-			tokenExchangeService.embedLogin.mockResolvedValue(mockUser);
+			tokenExchangeService.embedLogin.mockResolvedValue(embedLoginResult);
 
 			await controller.getLogin(req, res, query);
 
@@ -150,7 +150,7 @@ describe('EmbedAuthController', () => {
 			const req = mock<AuthlessRequest>({ browserId: 'browser-id-456' });
 			const res = mock<Response>();
 			const body = new EmbedLoginBodyDto({ token: 'subject-token', redirectTo: '/credentials' });
-			tokenExchangeService.embedLogin.mockResolvedValue(mockUser);
+			tokenExchangeService.embedLogin.mockResolvedValue(embedLoginResult);
 
 			await controller.postLogin(req, res, body);
 
@@ -163,7 +163,7 @@ describe('EmbedAuthController', () => {
 				const req = mock<AuthlessRequest>({ browserId: 'browser-id-123' });
 				const res = mock<Response>();
 				const query = new EmbedLoginQueryDto({ token: 'subject-token', redirectTo: maliciousUrl });
-				tokenExchangeService.embedLogin.mockResolvedValue(mockUser);
+				tokenExchangeService.embedLogin.mockResolvedValue(embedLoginResult);
 
 				await controller.getLogin(req, res, query);
 
@@ -175,7 +175,7 @@ describe('EmbedAuthController', () => {
 			const req = mock<AuthlessRequest>({ browserId: 'browser-id-123' });
 			const res = mock<Response>();
 			const query = new EmbedLoginQueryDto({ token: 'subject-token', redirectTo: '' });
-			tokenExchangeService.embedLogin.mockResolvedValue(mockUser);
+			tokenExchangeService.embedLogin.mockResolvedValue(embedLoginResult);
 
 			await controller.getLogin(req, res, query);
 
