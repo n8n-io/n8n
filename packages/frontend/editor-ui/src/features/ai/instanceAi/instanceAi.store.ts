@@ -2,7 +2,6 @@ import { defineStore } from 'pinia';
 import { ref, computed, triggerRef } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { ResponseError } from '@n8n/rest-api-client';
@@ -121,7 +120,6 @@ let sseGeneration = 0;
 
 export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const rootStore = useRootStore();
-	const settingsStore = useSettingsStore();
 	const instanceAiSettingsStore = useInstanceAiSettingsStore();
 	const toast = useToast();
 	const telemetry = useTelemetry();
@@ -150,17 +148,9 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	// --- Computed ---
 	const isStreaming = computed(() => activeRunId.value !== null);
 	const hasMessages = computed(() => messages.value.length > 0);
-	const isLocalGatewayEnabled = computed(
-		() => settingsStore.moduleSettings?.['instance-ai']?.localGateway === true,
-	);
 	const isGatewayConnected = computed(() => instanceAiSettingsStore.isGatewayConnected);
 	const gatewayDirectory = computed(() => instanceAiSettingsStore.gatewayDirectory);
-	const localGatewayFallbackDirectory = computed(
-		() => settingsStore.moduleSettings?.['instance-ai']?.localGatewayFallbackDirectory ?? null,
-	);
-	const activeDirectory = computed(
-		() => gatewayDirectory.value ?? localGatewayFallbackDirectory.value,
-	);
+	const activeDirectory = computed(() => gatewayDirectory.value);
 
 	// Resource registry — maps known resource names to their types & IDs
 	const workflowsListStore = useWorkflowsListStore();
@@ -1009,10 +999,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		// Computed
 		isStreaming,
 		hasMessages,
-		isLocalGatewayEnabled,
 		isGatewayConnected,
 		gatewayDirectory,
-		localGatewayFallbackDirectory,
 		activeDirectory,
 		contextualSuggestion,
 		currentTasks,

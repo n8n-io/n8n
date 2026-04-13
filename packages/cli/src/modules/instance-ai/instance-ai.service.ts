@@ -29,6 +29,9 @@ import {
 	createDomainAccessTracker,
 	BackgroundTaskManager,
 	buildAgentTreeFromEvents,
+	classifyAttachments,
+	buildAttachmentManifest,
+	isStructuredAttachment,
 	enrichMessageWithBackgroundTasks,
 	MastraTaskStorage,
 	PlannedTaskCoordinator,
@@ -70,7 +73,7 @@ import { Push } from '@/push';
 import { Telemetry } from '@/telemetry';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import type { LocalGateway } from './filesystem';
-import { LocalGatewayRegistry, LocalFilesystemProvider } from './filesystem';
+import { LocalGatewayRegistry } from './filesystem';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
 import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
@@ -131,9 +134,6 @@ export class InstanceAiService {
 			workspace: ReturnType<typeof createWorkspace>;
 		}
 	>();
-
-	/** Singleton local filesystem provider — created lazily when filesystem config is enabled. */
-	private localFsProvider?: LocalFilesystemProvider;
 
 	/** Per-user Local Gateway connections. Handles pairing tokens, session keys, and tool dispatch. */
 	private readonly gatewayRegistry = new LocalGatewayRegistry();
@@ -312,15 +312,6 @@ export class InstanceAiService {
 		return new BuilderSandboxFactory(config);
 	}
 
-	/** Lazily create the local filesystem provider (singleton). */
-	private getLocalFsProvider(): LocalFilesystemProvider {
-		if (!this.localFsProvider) {
-			const basePath = this.instanceAiConfig.filesystemPath || undefined;
-			this.localFsProvider = new LocalFilesystemProvider(basePath);
-		}
-		return this.localFsProvider;
-	}
-
 	/** Get or create a sandbox + workspace for a thread. Returns undefined when sandbox is disabled. */
 	private async getOrCreateWorkspace(threadId: string, user: User) {
 		const existing = this.sandboxes.get(threadId);
@@ -476,17 +467,6 @@ export class InstanceAiService {
 
 	isEnabled(): boolean {
 		return this.settingsService.isAgentEnabled() && !!this.instanceAiConfig.model;
-	}
-
-	/** Local filesystem is only available when an explicit base path is configured. */
-	isLocalFilesystemAvailable(): boolean {
-		return !!this.instanceAiConfig.filesystemPath?.trim();
-	}
-
-	/** Return the configured filesystem root directory, or null if not configured. */
-	getLocalFilesystemDirectory(): string | null {
-		const basePath = this.instanceAiConfig.filesystemPath?.trim();
-		return basePath || null;
 	}
 
 	hasActiveRun(threadId: string): boolean {
@@ -1100,15 +1080,10 @@ export class InstanceAiService {
 	) {
 		const localGatewayDisabled = this.settingsService.isLocalGatewayDisabled();
 		const userGateway = this.gatewayRegistry.findGateway(user.id);
-		const localFilesystemService =
-			!localGatewayDisabled && !userGateway?.isConnected && this.isLocalFilesystemAvailable()
-				? this.getLocalFsProvider()
-				: undefined;
 		// Each resolve*() call fetches a separate proxy token for audit tracking (see getProxyAuth)
 		const searchProxyConfig = await this.resolveSearchProxyConfig(user);
 		const tracingProxyConfig = await this.resolveTracingProxyConfig(user);
 		const context = this.adapterService.createContext(user, {
-			filesystemService: localFilesystemService,
 			searchProxyConfig,
 			pushRef,
 			threadId,
@@ -1496,6 +1471,11 @@ export class InstanceAiService {
 			// Make the current user message available to sub-agents (e.g. planner)
 			// since memory.recall() only returns previously-saved messages.
 			orchestrationContext.currentUserMessage = message;
+
+			// Thread attachments into the domain context so parse-file can access them
+			if (attachments && attachments.length > 0) {
+				context.currentUserAttachments = attachments;
+			}
 			const memoryConfig = this.createMemoryConfig();
 			const traceInput = {
 				message,
@@ -1632,34 +1612,64 @@ export class InstanceAiService {
 				const enrichedMessage = await this.buildMessageWithRunningTasks(threadId, message);
 
 				// Compose runtime input: conversation summary → background tasks → user message
-				const fullMessage = conversationSummary
+				let fullMessage = conversationSummary
 					? `${conversationSummary}\n\n${enrichedMessage}`
 					: enrichedMessage;
 
-				// Build multimodal message when attachments are present
-				streamInput =
-					attachments && attachments.length > 0
-						? [
-								{
-									role: 'user' as const,
-									content: [
-										{ type: 'text' as const, text: fullMessage },
-										...attachments.map((a) => ({
-											type: 'file' as const,
-											data: a.data,
-											mimeType: a.mimeType,
-										})),
-									],
-								},
-							]
-						: fullMessage;
+				// Classify attachments: structured (csv/tsv/json) go through parse-file,
+				// non-structured keep the existing multimodal file path.
+				if (attachments && attachments.length > 0) {
+					const classified = classifyAttachments(attachments);
+					const nonStructured = attachments.filter((a) => !isStructuredAttachment(a));
+					const hasParseable = classified.some((c: { parseable: boolean }) => c.parseable);
+
+					// Build compact manifest for structured attachments
+					const manifest = buildAttachmentManifest(classified);
+
+					// For attachment-only messages, synthesize a stub
+					if (!message && hasParseable) {
+						fullMessage = conversationSummary
+							? `${conversationSummary}\n\nThe user attached file(s) without a message. Inspect the first parseable attachment with parse-file and provide a concise summary.\n\n${manifest}`
+							: `The user attached file(s) without a message. Inspect the first parseable attachment with parse-file and provide a concise summary.\n\n${manifest}`;
+					} else {
+						fullMessage = `${fullMessage}\n\n${manifest}`;
+					}
+
+					// Only include non-structured attachments as raw multimodal content
+					if (nonStructured.length > 0) {
+						streamInput = [
+							{
+								role: 'user' as const,
+								content: [
+									{ type: 'text' as const, text: fullMessage },
+									...nonStructured.map((a) => ({
+										type: 'file' as const,
+										data: a.data,
+										mimeType: a.mimeType,
+									})),
+								],
+							},
+						];
+					} else {
+						streamInput = fullMessage;
+					}
+				} else {
+					streamInput = fullMessage;
+				}
 
 				if (promptBuildRun && tracing) {
+					// Redact raw attachment data from trace output — log metadata only
+					const traceOutput =
+						typeof streamInput === 'string'
+							? { fullMessage: streamInput }
+							: {
+									fullMessage,
+									attachmentCount: attachments?.length ?? 0,
+									nonStructuredAttachmentCount:
+										attachments?.filter((a) => !isStructuredAttachment(a)).length ?? 0,
+								};
 					await tracing.finishRun(promptBuildRun, {
-						outputs: {
-							fullMessage,
-							streamInput,
-						},
+						outputs: traceOutput,
 						metadata: { final_status: 'completed' },
 					});
 				}

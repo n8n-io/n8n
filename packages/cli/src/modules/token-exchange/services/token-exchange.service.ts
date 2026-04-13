@@ -1,18 +1,28 @@
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { JwtService } from '@/services/jwt.service';
 
-import type { ExternalTokenClaims, ResolvedTrustedKey } from '../token-exchange.schemas';
+import { TokenExchangeConfig } from '../token-exchange.config';
+import type {
+	ExternalTokenClaims,
+	ResolvedTrustedKey,
+	TokenExchangeRequest,
+} from '../token-exchange.schemas';
 import { ExternalTokenClaimsSchema } from '../token-exchange.schemas';
+import type { IssuedJwtPayload, IssuedTokenResult } from '../token-exchange.types';
 import { IdentityResolutionService } from './identity-resolution.service';
 import { JtiStoreService } from './jti-store.service';
 import { TrustedKeyService } from './trusted-key.service';
 
 const MAX_TOKEN_LIFETIME_SECONDS = 60;
+const MIN_REMAINING_LIFETIME_SECONDS = 5;
+const ISSUER = 'n8n';
 
 @Service()
 export class TokenExchangeService {
@@ -23,6 +33,8 @@ export class TokenExchangeService {
 		private readonly trustedKeyStore: TrustedKeyService,
 		private readonly jtiStore: JtiStoreService,
 		private readonly identityResolutionService: IdentityResolutionService,
+		private readonly config: TokenExchangeConfig,
+		private readonly jwtService: JwtService,
 	) {
 		this.logger = logger.scoped('token-exchange');
 	}
@@ -73,6 +85,8 @@ export class TokenExchangeService {
 				algorithms: resolvedKey.algorithms as jwt.Algorithm[],
 				issuer: resolvedKey.issuer,
 				audience: resolvedKey.expectedAudience,
+				ignoreExpiration: false,
+				ignoreNotBefore: false,
 			});
 			if (typeof result === 'string' || !('iat' in result)) {
 				throw new AuthError('Unexpected token format');
@@ -102,13 +116,74 @@ export class TokenExchangeService {
 		return { claims, resolvedKey };
 	}
 
-	async embedLogin(subjectToken: string): Promise<User> {
+	async embedLogin(
+		subjectToken: string,
+	): Promise<{ user: User; subject: string; issuer: string; kid: string }> {
 		const { claims, resolvedKey } = await this.verifyToken(subjectToken, {
 			maxLifetimeSeconds: MAX_TOKEN_LIFETIME_SECONDS,
 		});
-		return await this.identityResolutionService.resolve(claims, resolvedKey.allowedRoles, {
+		const user = await this.identityResolutionService.resolve(claims, resolvedKey.allowedRoles, {
 			kid: resolvedKey.kid,
 			issuer: resolvedKey.issuer,
 		});
+		return { user, subject: claims.sub, issuer: resolvedKey.issuer, kid: resolvedKey.kid };
+	}
+
+	async exchange(request: TokenExchangeRequest): Promise<IssuedTokenResult> {
+		const subjectClaims = await this.verifyToken(request.subject_token);
+		const actorClaims = request.actor_token
+			? await this.verifyToken(request.actor_token)
+			: undefined;
+
+		const actor = actorClaims
+			? await this.identityResolutionService.resolve(
+					actorClaims.claims,
+					actorClaims.resolvedKey.allowedRoles,
+					actorClaims.resolvedKey,
+				)
+			: undefined;
+		const subject = await this.identityResolutionService.resolve(
+			subjectClaims.claims,
+			subjectClaims.resolvedKey.allowedRoles,
+			subjectClaims.resolvedKey,
+		);
+
+		const now = Math.floor(Date.now() / 1000);
+
+		const maxTtl = this.config.maxTokenTtl;
+		const exp = Math.min(
+			subjectClaims.claims.exp,
+			actorClaims?.claims.exp ?? Infinity,
+			now + maxTtl,
+		);
+
+		if (exp <= now + MIN_REMAINING_LIFETIME_SECONDS) {
+			throw new AuthError('Subject token too close to expiry to issue a new token');
+		}
+
+		const resources = request.resource?.split(' ').filter(Boolean);
+
+		const payload: IssuedJwtPayload = {
+			iss: ISSUER,
+			sub: subject.id,
+			...(actor && { act: { sub: actor.id } }),
+			...(request.scope && { scope: request.scope }),
+			...(resources?.length && { resource: resources }),
+			iat: now,
+			exp,
+			jti: randomUUID(),
+		};
+
+		const accessToken = this.jwtService.sign(payload);
+
+		return {
+			accessToken,
+			expiresIn: exp - now,
+			subjectUserId: subject.id,
+			subject: subjectClaims.claims.sub,
+			issuer: subjectClaims.claims.iss,
+			actor: actorClaims?.claims.sub,
+			actorUserId: actor?.id,
+		};
 	}
 }
