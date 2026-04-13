@@ -69,12 +69,6 @@ function emptySettings(): PersistentSettings {
 // ---------------------------------------------------------------------------
 
 export class SettingsStore {
-	/** Permissions merged from persistent settings + startup overrides — single source of truth. */
-	private effectivePermissions: Partial<Record<ToolGroup, PermissionMode>>;
-
-	/** Session-level allow rules: cleared on disconnect. */
-	private sessionAllows: Map<ToolGroup, Set<string>> = new Map();
-
 	// Write queue state
 	private writeTimer: ReturnType<typeof setTimeout> | null = null;
 	private inFlightPromise: Promise<void> | null = null;
@@ -83,71 +77,66 @@ export class SettingsStore {
 
 	private constructor(
 		private persistent: PersistentSettings,
-		startupOverrides: Partial<Record<ToolGroup, PermissionMode>>,
 		private readonly filePath: string,
-	) {
-		// Merge once at init — startup overrides shadow persistent permissions.
-		this.effectivePermissions = { ...persistent.permissions, ...startupOverrides };
-	}
+	) {}
 
 	// ---------------------------------------------------------------------------
 	// Factory
 	// ---------------------------------------------------------------------------
 
-	static async create(config: GatewayConfig): Promise<SettingsStore> {
+	static async create(): Promise<SettingsStore> {
 		const filePath = getSettingsFilePath();
 		const persistent = await loadFromFile(filePath);
-		const store = new SettingsStore(persistent, config.permissions, filePath);
-		store.validateHasActiveGroup();
-		return store;
+		return new SettingsStore(persistent, filePath);
 	}
 
 	// ---------------------------------------------------------------------------
-	// Permission check
+	// Session defaults
 	// ---------------------------------------------------------------------------
 
 	/**
-	 * Return the effective permission mode for a tool group.
-	 * Enforces the spec constraint: filesystemRead=deny forces filesystemWrite=deny.
+	 * Merge file permissions with CLI/ENV overrides to produce the defaults
+	 * for a new GatewaySession.
+	 *
+	 * Priority: CLI/ENV overrides > persistent file permissions > TOOL_GROUP_DEFINITIONS defaults
+	 * Dir: config.filesystem.dir (if explicitly set) > persistent filesystemDir > process.cwd()
 	 */
-	getGroupMode(toolGroup: ToolGroup): PermissionMode {
-		if (
-			toolGroup === 'filesystemWrite' &&
-			(this.effectivePermissions['filesystemRead'] ?? 'ask') === 'deny'
-		) {
-			return 'deny';
-		}
-		return this.effectivePermissions[toolGroup] ?? 'ask';
+	getDefaults(config: GatewayConfig): {
+		permissions: Record<ToolGroup, PermissionMode>;
+		dir: string;
+	} {
+		const permissions = Object.fromEntries(
+			(Object.keys(TOOL_GROUP_DEFINITIONS) as ToolGroup[]).map((g) => [
+				g,
+				config.permissions[g] ??
+					this.persistent.permissions[g] ??
+					TOOL_GROUP_DEFINITIONS[g].default,
+			]),
+		) as Record<ToolGroup, PermissionMode>;
+
+		const configDirIsDefault = config.filesystem.dir === process.cwd();
+		const storedDir = this.persistent.filesystemDir;
+		const dir =
+			(!configDirIsDefault ? config.filesystem.dir : null) ??
+			(storedDir !== '' ? storedDir : null) ??
+			process.cwd();
+
+		return { permissions, dir };
 	}
 
-	/**
-	 * Check the effective permission for a resource.
-	 * Evaluation order:
-	 *  1. Persistent deny list  → 'deny'  (takes absolute priority even in Allow mode)
-	 *  2. Persistent allow list → 'allow'
-	 *  3. Session allow set     → 'allow'
-	 *  4. Effective group mode  → via getGroupMode() (includes cross-group constraints)
-	 */
-	check(toolGroup: ToolGroup, resource: string): PermissionMode {
+	// ---------------------------------------------------------------------------
+	// Resource permissions
+	// ---------------------------------------------------------------------------
+
+	/** Read persistent resource rules for a tool group — used by GatewaySession.check(). */
+	getResourcePermissions(toolGroup: ToolGroup): { allow: string[]; deny: string[] } {
 		const rp = this.persistent.resourcePermissions[toolGroup];
-		if (rp?.deny.includes(resource)) return 'deny';
-		if (rp?.allow.includes(resource)) return 'allow';
-		if (this.hasSessionAllow(toolGroup, resource)) return 'allow';
-		return this.getGroupMode(toolGroup);
+		return { allow: rp?.allow ?? [], deny: rp?.deny ?? [] };
 	}
 
 	// ---------------------------------------------------------------------------
 	// Mutation methods
 	// ---------------------------------------------------------------------------
-
-	allowForSession(toolGroup: ToolGroup, resource: string): void {
-		let set = this.sessionAllows.get(toolGroup);
-		if (!set) {
-			set = new Set();
-			this.sessionAllows.set(toolGroup, set);
-		}
-		set.add(resource);
-	}
 
 	alwaysAllow(toolGroup: ToolGroup, resource: string): void {
 		const rp = this.getOrInitResourcePermissions(toolGroup);
@@ -165,11 +154,7 @@ export class SettingsStore {
 		}
 	}
 
-	clearSessionRules(): void {
-		this.sessionAllows.clear();
-	}
-
-	/** Force immediate write — must be called on daemon shutdown. */
+	/** Force immediate write — must be called on shutdown. */
 	async flush(): Promise<void> {
 		this.cancelDebounce();
 		if (this.inFlightPromise) await this.inFlightPromise;
@@ -180,29 +165,17 @@ export class SettingsStore {
 	// Private helpers
 	// ---------------------------------------------------------------------------
 
-	/** Throws if every tool group is set to Deny — at least one must be Ask or Allow to start. */
-	private validateHasActiveGroup(): void {
-		const allDeny = (Object.keys(TOOL_GROUP_DEFINITIONS) as ToolGroup[]).every(
-			(g) => this.getGroupMode(g) === 'deny',
-		);
-		if (allDeny) {
-			throw new Error(
-				'All tool groups are set to Deny — at least one must be Ask or Allow to start the gateway',
-			);
-		}
-	}
-
-	private hasSessionAllow(toolGroup: ToolGroup, resource: string): boolean {
-		return this.sessionAllows.get(toolGroup)?.has(resource) ?? false;
-	}
-
 	private getOrInitResourcePermissions(toolGroup: ToolGroup): ResourcePermissions {
-		let rp = this.persistent.resourcePermissions[toolGroup];
-		if (!rp) {
-			rp = { allow: [], deny: [] };
-			this.persistent.resourcePermissions[toolGroup] = rp;
+		const existing = this.persistent.resourcePermissions[toolGroup];
+		if (existing) {
+			// Normalise: zod schema marks allow/deny as optional; ensure they exist.
+			existing.allow ??= [];
+			existing.deny ??= [];
+			return existing as ResourcePermissions;
 		}
-		return rp;
+		const fresh: ResourcePermissions = { allow: [], deny: [] };
+		this.persistent.resourcePermissions[toolGroup] = fresh;
+		return fresh;
 	}
 
 	private scheduleWrite(): void {
@@ -259,7 +232,7 @@ export class SettingsStore {
 		}
 	}
 
-	private async persist(): Promise<void> {
+	async persist(): Promise<void> {
 		const dir = path.dirname(this.filePath);
 		await fs.mkdir(dir, { recursive: true, mode: 0o700 });
 		await fs.writeFile(this.filePath, JSON.stringify(this.persistent, null, 2), {

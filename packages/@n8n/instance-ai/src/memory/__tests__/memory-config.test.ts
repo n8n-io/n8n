@@ -8,9 +8,7 @@ jest.mock('@mastra/memory', () => ({
 	},
 }));
 
-// eslint-disable-next-line import-x/first
 import type { InstanceAiMemoryConfig } from '../../types';
-// eslint-disable-next-line import-x/first
 import { createMemory } from '../memory-config';
 
 interface MemoryArgs {
@@ -19,7 +17,7 @@ interface MemoryArgs {
 		lastMessages: number;
 		semanticRecall: false | { topK: number };
 		generateTitle: boolean;
-		workingMemory: { enabled: boolean; template: string };
+		workingMemory: { enabled: boolean; template?: string };
 	};
 	embedder?: string;
 }

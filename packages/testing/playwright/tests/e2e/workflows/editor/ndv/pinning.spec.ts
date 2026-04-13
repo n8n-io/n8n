@@ -87,7 +87,7 @@ test.describe(
 
 				await n8n.canvas.addNode(NODES.EDIT_FIELDS);
 
-				await expect(n8n.ndv.getContainer()).toBeVisible();
+				await expect(n8n.ndv.container).toBeVisible();
 
 				await expect(n8n.ndv.getEditPinnedDataButton()).toBeVisible();
 				await expect(n8n.ndv.outputPanel.getPinDataButton()).toBeHidden();
@@ -119,7 +119,7 @@ test.describe(
 
 				await n8n.canvas.addNode(NODES.EDIT_FIELDS);
 
-				await expect(n8n.ndv.getContainer()).toBeVisible();
+				await expect(n8n.ndv.container).toBeVisible();
 				await expect(n8n.ndv.getEditPinnedDataButton()).toBeVisible();
 				await expect(n8n.ndv.outputPanel.getPinDataButton()).toBeHidden();
 
@@ -139,7 +139,7 @@ test.describe(
 
 				await n8n.canvas.addNode(NODES.EDIT_FIELDS);
 
-				await expect(n8n.ndv.getContainer()).toBeVisible();
+				await expect(n8n.ndv.container).toBeVisible();
 				await expect(n8n.ndv.getEditPinnedDataButton()).toBeVisible();
 				await expect(n8n.ndv.outputPanel.getPinDataButton()).toBeHidden();
 

@@ -49,7 +49,14 @@ let cachedMastraStorageKey = '';
 // Tools that are always loaded into the orchestrator's context (no search required).
 // These are used in nearly every conversation per system prompt analysis.
 // All other tools are deferred behind ToolSearchProcessor for on-demand discovery.
-const ALWAYS_LOADED_TOOLS = new Set(['plan', 'delegate', 'ask-user', 'web-search', 'fetch-url']);
+const ALWAYS_LOADED_TOOLS = new Set([
+	'plan',
+	'create-tasks',
+	'delegate',
+	'ask-user',
+	'web-search',
+	'fetch-url',
+]);
 
 function getOrCreateToolSearchProcessor(tools: ToolsInput): ToolSearchProcessor {
 	// Deferred tools capture per-run closures via the orchestration context.
@@ -210,12 +217,13 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	const systemPrompt = getSystemPrompt({
 		researchMode: orchestrationContext?.researchMode,
 		webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
-		filesystemAccess: !!(context.localMcpServer ?? context.filesystemService),
+		filesystemAccess: (context.localMcpServer?.getToolsByCategory('filesystem').length ?? 0) > 0,
 		localGateway: context.localGatewayStatus,
 		toolSearchEnabled: hasDeferrableTools,
 		licenseHints: context.licenseHints,
 		timeZone: options.timeZone,
 		browserAvailable: browserToolNames.size > 0,
+		branchReadOnly: context.branchReadOnly,
 	});
 
 	const agent = new Agent({
