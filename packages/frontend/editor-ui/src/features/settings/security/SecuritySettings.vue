@@ -178,7 +178,7 @@ const sharingCountText = computed(() => {
 
 		<N8nNotice
 			v-if="isManagedByEnv"
-			class="mb-lg"
+			class="mb-l"
 			:content="i18n.baseText('settings.security.managedByEnv')"
 			data-test-id="security-managed-by-env-notice"
 		/>
