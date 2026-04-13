@@ -142,6 +142,12 @@ describe('parseContentDisposition', () => {
 			description: 'should handle encoded filenames',
 		},
 		{
+			input: 'attachment; filename="my_scan_144dpi_75%.pdf"',
+			expected: { type: 'attachment', filename: 'my_scan_144dpi_75%.pdf' },
+			description:
+				'should handle filenames with literal "%" not part of a valid percent-encoding sequence',
+		},
+		{
 			input: 'attachment; size=123; filename="test.txt"; creation-date="Thu, 1 Jan 2020"',
 			expected: { type: 'attachment', filename: 'test.txt' },
 			description: 'should handle multiple parameters',
