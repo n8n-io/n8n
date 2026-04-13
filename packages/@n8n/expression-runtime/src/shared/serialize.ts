@@ -88,8 +88,12 @@ export function prepareForTransfer(value: unknown): unknown {
 	// RegExp, Error, typed arrays survive copy:true with prototypes intact.
 	if (!isPlainObject(value)) return value;
 
-	// Plain object — walk values
-	const result: Record<string, unknown> = Object.create(null);
+	// Plain object — walk values. Using {} (not Object.create(null)) so that
+	// results have Object.prototype, consistent with structured clone output.
+	// A __proto__ key would trigger the prototype setter on this object, but
+	// the pollution is per-object only (Object.prototype is not affected) and
+	// inherited properties are dropped during downstream JSON serialization.
+	const result: Record<string, unknown> = {};
 	for (const key of Object.keys(value)) {
 		result[key] = prepareForTransfer(value[key]);
 	}

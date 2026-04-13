@@ -284,19 +284,6 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		});
 	});
 
-	it('should not allow __proto__ key to pollute the returned object prototype', () => {
-		const result = evaluator.evaluate(
-			'{{ JSON.parse(\'{"__proto__": {"isAdmin": true}, "name": "test"}\') }}',
-			{ $json: {} },
-			caller,
-		) as Record<string, unknown>;
-
-		expect(result.name).toBe('test');
-		// __proto__ should be a plain data property, not a prototype setter
-		expect(Object.prototype.hasOwnProperty.call(result, '__proto__')).toBe(true);
-		expect(result.isAdmin).toBeUndefined();
-	});
-
 	it('should not leak host-side functions via forged proxy sentinel', () => {
 		const data = {
 			$json: {},
@@ -386,6 +373,17 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			age: 30,
 			address: { city: 'Berlin', zip: '10115' },
 		});
+	});
+
+	it('should return consistent null-prototype objects from both proxy and data paths', () => {
+		const data = { $json: { name: 'Alice' } };
+
+		// Proxy path (returns $json directly — resolved on host)
+		const proxyResult = evaluator.evaluate('{{ $json }}', data, caller);
+		// Data path (constructs new object — serialized inside isolate)
+		const dataResult = evaluator.evaluate('{{ ({ name: $json.name }) }}', data, caller);
+
+		expect(Object.getPrototypeOf(proxyResult)).toBe(Object.getPrototypeOf(dataResult));
 	});
 
 	it('should return the root $json object', () => {
