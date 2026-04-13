@@ -706,6 +706,56 @@ export type RelayEventMap = {
 		userId: string;
 	};
 
+	// #endregion
+
+	// #region Role Mapping
+
+	'expression-mapping-roles-resolved': {
+		userId: string;
+		userEmail: string;
+		provider: 'oidc' | 'saml' | 'ldap';
+		instanceRole: {
+			role: string;
+			previousRole: string;
+			changed: boolean;
+			matchedRuleId: string | null;
+			expression: string | null;
+			isFallback: boolean;
+		};
+		projectRoles: Array<{
+			projectId: string;
+			role: string;
+			previousRole: string | null;
+			changed: boolean;
+			matchedRuleId: string;
+			expression: string;
+		}>;
+		removedProjectIds: string[];
+	};
+
+	'role-mapping-rule-created': {
+		user: UserLike;
+		ruleId: string;
+		ruleType: 'instance' | 'project';
+		expression: string;
+		role: string;
+	};
+
+	'role-mapping-rule-updated': {
+		user: UserLike;
+		ruleId: string;
+		ruleType: 'instance' | 'project';
+		patchedFields: string[];
+	};
+
+	'role-mapping-rule-deleted': {
+		user: UserLike;
+		ruleId: string;
+		ruleType: 'instance' | 'project';
+	};
+
+	// #endregion
+
 	// #region Token exchange
 
 	'token-exchange-succeeded': {

@@ -838,6 +838,9 @@ export interface OrchestrationContext {
 	workflowTaskService?: WorkflowTaskService;
 	/** When set, LangSmith traces are routed through the AI service proxy. */
 	tracingProxyConfig?: ServiceProxyConfig;
+	/** Summaries of currently running background tasks in this thread.
+	 *  Used to give sub-agents thread-state awareness (what else is happening). */
+	getRunningTaskSummaries?: () => Array<{ taskId: string; role: string; goal?: string }>;
 }
 
 // ── Agent factory options ────────────────────────────────────────────────────

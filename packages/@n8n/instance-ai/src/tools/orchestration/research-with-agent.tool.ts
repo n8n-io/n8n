@@ -19,6 +19,7 @@ import {
 	withTraceContextActor,
 } from './tracing-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
+import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import {
@@ -85,12 +86,12 @@ export async function startResearchAgentTask(
 		},
 	});
 
-	const conversationCtx = input.conversationContext
-		? `\n\n[CONVERSATION CONTEXT: ${input.conversationContext}]`
-		: '';
-	const briefing = input.constraints
-		? `${input.goal}${conversationCtx}\n\nConstraints: ${input.constraints}`
-		: `${input.goal}${conversationCtx}`;
+	const briefing = await buildSubAgentBriefing({
+		task: input.goal,
+		conversationContext: input.conversationContext,
+		additionalContext: input.constraints ? `Constraints: ${input.constraints}` : undefined,
+		runningTasks: context.getRunningTaskSummaries?.(),
+	});
 	const traceContext = await createDetachedSubAgentTracing(context, {
 		agentId: subAgentId,
 		role: 'web-researcher',
