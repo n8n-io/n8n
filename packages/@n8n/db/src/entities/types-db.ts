@@ -420,6 +420,7 @@ export type AuthenticationInformation = {
  */
 export interface TokenGrant {
 	scopes: string[];
+	apiKeyScopes?: string[];
 	actor?: User;
 	subject: User;
 }

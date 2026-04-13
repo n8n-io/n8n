@@ -54,8 +54,9 @@ export class ApiKeyAuthStrategy implements AuthStrategy {
 
 		req.user = apiKeyRecord.user;
 		req.tokenGrant = {
-			scopes: apiKeyRecord.scopes ?? [],
+			scopes: apiKeyRecord.user.role.scopes.map((s) => s.slug),
 			subject: apiKeyRecord.user,
+			apiKeyScopes: apiKeyRecord.scopes ?? [],
 		};
 
 		return true;

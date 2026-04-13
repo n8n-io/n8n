@@ -36,8 +36,12 @@ describe('publicApiScope', () => {
 		expect(res.json).toHaveBeenCalledWith({ message: 'Forbidden' });
 	});
 
-	it('calls next() when the required scope is present in tokenGrant.scopes', async () => {
-		const grant: TokenGrant = { scopes: ['workflow:read'], subject: mock<User>() };
+	it('calls next() when the required scope is present in tokenGrant.apiKeyScopes', async () => {
+		const grant: TokenGrant = {
+			scopes: [],
+			apiKeyScopes: ['workflow:read'],
+			subject: mock<User>(),
+		};
 		await middlewares.publicApiScope('workflow:read' as ApiKeyScope)(
 			buildReq(grant) as any,
 			res,
@@ -46,8 +50,12 @@ describe('publicApiScope', () => {
 		expect(next).toHaveBeenCalled();
 	});
 
-	it('returns 403 when the required scope is not in tokenGrant.scopes', async () => {
-		const grant: TokenGrant = { scopes: ['workflow:read'], subject: mock<User>() };
+	it('returns 403 when the required scope is not in tokenGrant.apiKeyScopes', async () => {
+		const grant: TokenGrant = {
+			scopes: ['workflow:create'],
+			apiKeyScopes: ['workflow:read'],
+			subject: mock<User>(),
+		};
 		await middlewares.publicApiScope('workflow:create' as ApiKeyScope)(
 			buildReq(grant) as any,
 			res,
@@ -58,8 +66,24 @@ describe('publicApiScope', () => {
 		expect(res.json).toHaveBeenCalledWith({ message: 'Forbidden' });
 	});
 
-	it('returns 403 when tokenGrant.scopes is empty', async () => {
-		const grant: TokenGrant = { scopes: [], subject: mock<User>() };
+	it('returns 403 when tokenGrant.apiKeyScopes is empty', async () => {
+		const grant: TokenGrant = {
+			scopes: ['workflow:read'],
+			apiKeyScopes: [],
+			subject: mock<User>(),
+		};
+		await middlewares.publicApiScope('workflow:read' as ApiKeyScope)(
+			buildReq(grant) as any,
+			res,
+			next,
+		);
+		expect(next).not.toHaveBeenCalled();
+		expect(res.status).toHaveBeenCalledWith(403);
+		expect(res.json).toHaveBeenCalledWith({ message: 'Forbidden' });
+	});
+
+	it('returns 403 when apiKeyScopes is absent even if scopes contains the required scope', async () => {
+		const grant: TokenGrant = { scopes: ['workflow:read'], subject: mock<User>() };
 		await middlewares.publicApiScope('workflow:read' as ApiKeyScope)(
 			buildReq(grant) as any,
 			res,

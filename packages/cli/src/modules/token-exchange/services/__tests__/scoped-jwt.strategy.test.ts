@@ -1,6 +1,6 @@
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import type { UserRepository } from '@n8n/db';
-import type { Scope as ScopeType } from '@n8n/permissions';
+import { ALL_API_KEY_SCOPES, type Scope as ScopeType } from '@n8n/permissions';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
@@ -170,6 +170,7 @@ describe('ScopedJwtStrategy', () => {
 			expect(req.tokenGrant?.subject).toBe(subject);
 			expect(req.tokenGrant?.actor).toBeUndefined();
 			expect(req.tokenGrant?.scopes).toEqual(['workflow:read', 'workflow:create']);
+			expect(req.tokenGrant?.apiKeyScopes).toEqual(Array.from(ALL_API_KEY_SCOPES));
 		});
 
 		it('sets req.user to actor and uses actor scopes when act claim is present', async () => {
@@ -185,6 +186,7 @@ describe('ScopedJwtStrategy', () => {
 			expect(req.tokenGrant?.subject).toBe(subject);
 			expect(req.tokenGrant?.actor).toBe(actor);
 			expect(req.tokenGrant?.scopes).toEqual(['credential:read', 'credential:create']);
+			expect(req.tokenGrant?.apiKeyScopes).toEqual(Array.from(ALL_API_KEY_SCOPES));
 		});
 
 		it('uses subject scopes when act is present but actor not found', async () => {
@@ -197,7 +199,21 @@ describe('ScopedJwtStrategy', () => {
 			await strategy.authenticate(req);
 
 			expect(req.tokenGrant?.scopes).toEqual(['workflow:read']);
+			expect(req.tokenGrant?.apiKeyScopes).toEqual(Array.from(ALL_API_KEY_SCOPES));
 			expect(req.user).toBe(subject);
+		});
+
+		it('sets apiKeyScopes to all API key scopes regardless of actor presence', async () => {
+			const subject = makeUser('subject-id', ['workflow:read']);
+			const actor = makeUser('actor-id', ['credential:read']);
+			userRepository.findOne.mockResolvedValueOnce(subject).mockResolvedValueOnce(actor);
+
+			const token = makeTokenExchangeJwt({ sub: 'subject-id', act: { sub: 'actor-id' } });
+			const req = makeBearerReq(token);
+
+			await strategy.authenticate(req);
+
+			expect(req.tokenGrant?.apiKeyScopes).toEqual(Array.from(ALL_API_KEY_SCOPES));
 		});
 	});
 });

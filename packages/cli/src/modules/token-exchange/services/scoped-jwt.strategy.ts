@@ -6,6 +6,7 @@ import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import type { AuthStrategy } from '@/services/auth-strategy.types';
 import { JwtService } from '@/services/jwt.service';
 
+import { ALL_API_KEY_SCOPES } from '@n8n/permissions';
 import { TOKEN_EXCHANGE_ISSUER, type IssuedJwtPayload } from '../token-exchange.types';
 
 const BEARER_PREFIX = 'Bearer ';
@@ -61,6 +62,7 @@ export class ScopedJwtStrategy implements AuthStrategy {
 		// 7. Scopes come from the acting user's role (role.scopes is eager: true)
 		req.tokenGrant = {
 			scopes: actingUser.role.scopes.map((s) => s.slug),
+			apiKeyScopes: Array.from(ALL_API_KEY_SCOPES),
 			subject,
 			...(actor && { actor }),
 		};

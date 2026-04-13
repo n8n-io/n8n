@@ -90,7 +90,7 @@ describe('ApiKeyAuthStrategy', () => {
 		expect(req.user.role.slug).toBeDefined();
 	});
 
-	it('should set req.tokenGrant with the scopes of the authenticated API key', async () => {
+	it('should set req.tokenGrant with the scopes of the authenticated user role', async () => {
 		const owner = await createOwnerWithApiKey();
 		const [{ apiKey }] = owner.apiKeys;
 		const req = mockReqWith(apiKey, '/test', 'GET');
@@ -99,6 +99,30 @@ describe('ApiKeyAuthStrategy', () => {
 
 		expect(req.tokenGrant).toBeDefined();
 		expect(Array.isArray(req.tokenGrant?.scopes)).toBe(true);
+	});
+
+	it('should set req.tokenGrant.apiKeyScopes from the scopes stored on the API key', async () => {
+		const owner = await createOwnerWithApiKey({ scopes: ['workflow:read', 'workflow:list'] });
+		const [{ apiKey }] = owner.apiKeys;
+		const req = mockReqWith(apiKey, '/test', 'GET');
+
+		await strategy.authenticate(req);
+
+		expect(req.tokenGrant?.apiKeyScopes).toEqual(['workflow:read', 'workflow:list']);
+	});
+
+	it('should set req.tokenGrant.apiKeyScopes independently from role scopes', async () => {
+		const owner = await createOwnerWithApiKey({ scopes: ['workflow:read'] });
+		const [{ apiKey }] = owner.apiKeys;
+		const req = mockReqWith(apiKey, '/test', 'GET');
+
+		await strategy.authenticate(req);
+
+		// role scopes come from the user's role — unaffected by the API key scopes restriction
+		expect(Array.isArray(req.tokenGrant?.scopes)).toBe(true);
+		expect(req.tokenGrant?.scopes.length).toBeGreaterThan(1);
+		// apiKeyScopes reflects what was stored on the key
+		expect(req.tokenGrant?.apiKeyScopes).toEqual(['workflow:read']);
 	});
 
 	it('should return false if expired JWT is used', async () => {
