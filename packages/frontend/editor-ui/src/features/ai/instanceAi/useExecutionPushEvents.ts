@@ -21,6 +21,8 @@ const EXECUTION_EVENT_TYPES = new Set([
 
 export function useExecutionPushEvents() {
 	const workflowExecutions = ref(new Map<string, WorkflowExecutionState>());
+	/** Monotonic counter bumped on every mutation so watchers detect changes. */
+	const version = ref(0);
 	const executionToWorkflow = new Map<string, string>();
 
 	const pushStore = usePushConnectionStore();
@@ -28,33 +30,29 @@ export function useExecutionPushEvents() {
 	function handlePushEvent(event: PushMessage) {
 		if (!EXECUTION_EVENT_TYPES.has(event.type)) return;
 
+		const map = workflowExecutions.value;
+
 		if (event.type === 'executionStarted') {
 			const { executionId, workflowId } = event.data;
 			executionToWorkflow.set(executionId, workflowId);
-			const next = new Map(workflowExecutions.value);
-			next.set(workflowId, {
+			map.set(workflowId, {
 				executionId,
 				workflowId,
 				status: 'running',
 				eventLog: [event],
 			});
-			workflowExecutions.value = next;
-
+			version.value++;
 			return;
 		}
 
 		if (event.type === 'executionFinished') {
 			const { executionId, workflowId, status } = event.data;
-			const entry = workflowExecutions.value.get(workflowId);
+			const entry = map.get(workflowId);
 			if (!entry || entry.executionId !== executionId) return;
 
-			const next = new Map(workflowExecutions.value);
-			next.set(workflowId, {
-				...entry,
-				status: status === 'success' ? 'success' : 'error',
-				eventLog: [],
-			});
-			workflowExecutions.value = next;
+			entry.status = status === 'success' ? 'success' : 'error';
+			entry.eventLog = [];
+			version.value++;
 
 			executionToWorkflow.delete(executionId);
 			return;
@@ -65,15 +63,11 @@ export function useExecutionPushEvents() {
 		const workflowId = executionToWorkflow.get(executionId);
 		if (!workflowId) return;
 
-		const entry = workflowExecutions.value.get(workflowId);
+		const entry = map.get(workflowId);
 		if (!entry || entry.executionId !== executionId) return;
 
-		const next = new Map(workflowExecutions.value);
-		next.set(workflowId, {
-			...entry,
-			eventLog: [...entry.eventLog, event],
-		});
-		workflowExecutions.value = next;
+		entry.eventLog.push(event);
+		version.value++;
 	}
 
 	const removeListener = pushStore.addEventListener(handlePushEvent);
@@ -97,6 +91,8 @@ export function useExecutionPushEvents() {
 
 	return {
 		workflowExecutions,
+		/** Bumped on every mutation — watch this to detect changes. */
+		version,
 		getStatus,
 		getBufferedEvents,
 		clearAll,

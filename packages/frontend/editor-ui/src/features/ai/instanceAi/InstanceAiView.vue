@@ -344,6 +344,7 @@ const workflowPreviewRef =
 
 const eventRelay = useEventRelay({
 	workflowExecutions: executionTracking.workflowExecutions,
+	version: executionTracking.version,
 	activeWorkflowId: preview.activeWorkflowId,
 	getBufferedEvents: executionTracking.getBufferedEvents,
 	relay: (event) => workflowPreviewRef.value?.relayPushEvent(event),
