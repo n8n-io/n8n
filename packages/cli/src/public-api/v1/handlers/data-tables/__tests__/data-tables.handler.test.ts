@@ -121,31 +121,6 @@ describe('DataTable Handler', () => {
 		});
 	});
 
-	describe('updateDataTable', () => {
-		it('should rename only when name is provided', async () => {
-			const req = {
-				params: { dataTableId },
-				body: { name: 'renamed-table' },
-				user: makeUser(),
-			} as unknown as DataTableRequest.Update;
-			mockDataTableRepository.findOne
-				.mockResolvedValueOnce({ id: dataTableId, project: { id: projectId } } as never)
-				.mockResolvedValueOnce({
-					id: dataTableId,
-					name: 'renamed-table',
-					columns: [],
-					project: { id: projectId },
-				} as never);
-			mockDataTableService.updateDataTable.mockResolvedValue(true as never);
-
-			await mainHandler.updateDataTable[2](req, mockResponse as Response);
-
-			expect(mockDataTableService.updateDataTable).toHaveBeenCalledWith(dataTableId, projectId, {
-				name: 'renamed-table',
-			});
-		});
-	});
-
 	describe('getDataTableRows', () => {
 		it('should retrieve rows successfully', async () => {
 			// Arrange

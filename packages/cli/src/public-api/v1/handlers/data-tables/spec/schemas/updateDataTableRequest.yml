@@ -1,10 +1,9 @@
 type: object
-description: Rename the data table. The new name must be unique within its project.
-required:
-  - name
 properties:
   name:
     type: string
     description: New name for the data table
     minLength: 1
     maxLength: 128
+required:
+  - name

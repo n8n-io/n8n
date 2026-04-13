@@ -28,7 +28,7 @@ patch:
   tags:
     - DataTable
   summary: Update a data table
-  description: Rename the data table (name must be unique within its project). Cross-project moves are not supported via this endpoint.
+  description: Update a data table's name.
   operationId: update-data-table
   parameters:
     - $ref: '../schemas/parameters/dataTableId.yml'
@@ -38,11 +38,8 @@ patch:
       application/json:
         schema:
           $ref: '../schemas/updateDataTableRequest.yml'
-        examples:
-          renameOnly:
-            summary: Rename
-            value:
-              name: 'updated-customers'
+        example:
+          name: 'updated-customers'
   responses:
     '200':
       description: Data table updated successfully
@@ -54,8 +51,6 @@ patch:
       $ref: '../../../../shared/spec/responses/badRequest.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
-    '403':
-      $ref: '../../../../shared/spec/responses/forbidden.yml'
     '404':
       $ref: '../../../../shared/spec/responses/notFound.yml'
     '409':

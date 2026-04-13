@@ -1,7 +1,7 @@
 import {
 	PublicApiListDataTableQueryDto,
 	PublicApiCreateDataTableDto,
-	PublicApiUpdateDataTableDto,
+	UpdateDataTableDto,
 	type DataTableListFilter,
 } from '@n8n/api-types';
 import { ProjectRepository, ProjectRelationRepository } from '@n8n/db';
@@ -227,21 +227,19 @@ export = {
 			try {
 				const { dataTableId } = req.params;
 
-				const payload = PublicApiUpdateDataTableDto.safeParse(req.body);
+				const payload = UpdateDataTableDto.safeParse(req.body);
 				if (!payload.success) {
 					return res.status(400).json({
 						message: payload.error.errors[0]?.message || 'Invalid request body',
 					});
 				}
 
-				const fromProjectId = await getProjectIdForDataTable(dataTableId);
+				const projectId = await getProjectIdForDataTable(dataTableId);
 
-				await Container.get(DataTableService).updateDataTable(dataTableId, fromProjectId, {
-					name: payload.data.name,
-				});
+				await Container.get(DataTableService).updateDataTable(dataTableId, projectId, payload.data);
 
 				const result = await Container.get(DataTableRepository).findOne({
-					where: { id: dataTableId, project: { id: fromProjectId } },
+					where: { id: dataTableId, project: { id: projectId } },
 					relations: ['project', 'columns'],
 				});
 

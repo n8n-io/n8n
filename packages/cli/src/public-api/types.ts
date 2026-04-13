@@ -3,7 +3,7 @@ import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workfl
 import type {
 	AddDataTableRowsDto,
 	PublicApiCreateDataTableDto,
-	PublicApiUpdateDataTableDto,
+	UpdateDataTableDto,
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
 } from '@n8n/api-types';
@@ -261,7 +261,7 @@ export declare namespace DataTableRequest {
 
 	type Get = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
 
-	type Update = AuthenticatedRequest<{ dataTableId: string }, {}, PublicApiUpdateDataTableDto, {}>;
+	type Update = AuthenticatedRequest<{ dataTableId: string }, {}, UpdateDataTableDto, {}>;
 
 	type Delete = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
 
