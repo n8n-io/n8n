@@ -39,6 +39,7 @@
     "@n8n/workflow-sdk": "workspace:*",
     "linkedom": "^0.18.9",
     "luxon": "catalog:",
+    "csv-parse": "5.5.0",
     "nanoid": "catalog:",
     "p-limit": "^3.1.0",
     "pdf-parse": "^1.1.1",

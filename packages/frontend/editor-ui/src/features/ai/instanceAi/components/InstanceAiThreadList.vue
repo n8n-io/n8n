@@ -222,7 +222,7 @@ function handleThreadAction(action: string, threadId: string) {
 .threadList {
 	flex: 1;
 	overflow-y: auto;
-	padding: var(--spacing--4xs);
+	padding: var(--spacing--2xs);
 }
 
 .group {
@@ -242,6 +242,7 @@ function handleThreadAction(action: string, threadId: string) {
 .threadItem {
 	display: flex;
 	align-items: center;
+	height: 32px;
 	border-radius: var(--radius);
 	transition: background-color 0.1s ease;
 
@@ -262,7 +263,8 @@ function handleThreadAction(action: string, threadId: string) {
 	gap: var(--spacing--3xs);
 	flex: 1;
 	min-width: 0;
-	padding: var(--spacing--2xs) var(--spacing--xs);
+	height: 100%;
+	padding: 0 var(--spacing--xs);
 	color: var(--color--text) !important;
 	text-decoration: none !important;
 	outline: none;
@@ -282,7 +284,7 @@ function handleThreadAction(action: string, threadId: string) {
 }
 
 .threadLinkActive {
-	background-color: var(--color--background--light-1);
+	// Active background handled by .threadItem.active
 }
 
 .threadIcon {

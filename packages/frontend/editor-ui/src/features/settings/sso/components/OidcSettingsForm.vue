@@ -32,6 +32,8 @@ const clientSecret = ref('');
 const showUserRoleProvisioningDialog = ref(false);
 
 const {
+	roleAssignment,
+	mappingMethod,
 	formValue: userRoleProvisioning,
 	isUserRoleProvisioningChanged,
 	saveProvisioningConfig,
@@ -173,6 +175,10 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 		clientSecret.value = newConfig.clientSecret;
 
 		sendTrackingEvent(newConfig);
+		toast.showMessage({
+			title: i18n.baseText('settings.sso.settings.save.success'),
+			type: 'success',
+		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.sso.settings.save.error_oidc'));
 		return;
@@ -221,7 +227,7 @@ onMounted(async () => {
 </script>
 <template>
 	<div>
-		<div :class="$style.card">
+		<div :class="[$style.card, $style.firstCard]">
 			<slot name="protocol-select" />
 			<div :class="$style.group">
 				<label>Redirect URL</label>
@@ -287,11 +293,16 @@ onMounted(async () => {
 			</div>
 		</div>
 		<div :class="$style.card">
-			<UserRoleProvisioningDropdown v-model="userRoleProvisioning" auth-protocol="oidc" />
+			<UserRoleProvisioningDropdown
+				v-model:role-assignment="roleAssignment"
+				v-model:mapping-method="mappingMethod"
+				v-model:legacy-value="userRoleProvisioning"
+				auth-protocol="oidc"
+			/>
 			<RoleMappingRuleEditor
-				v-if="userRoleProvisioning === 'expression_based'"
+				v-if="mappingMethod === 'rules_in_n8n'"
 				ref="roleMappingRuleEditorRef"
-				@remove-mapping="userRoleProvisioning = 'disabled'"
+				:show-project-rules="roleAssignment === 'instance_and_project'"
 			/>
 			<ConfirmProvisioningDialog
 				v-model="showUserRoleProvisioningDialog"
@@ -316,7 +327,7 @@ onMounted(async () => {
 			</div>
 		</div>
 		<div :class="$style.card">
-			<div :class="$style.settingsItem" style="border-bottom: none">
+			<div :class="[$style.settingsItem, $style.settingsItemNoBorder]">
 				<div :class="$style.settingsItemLabel">
 					<label>Single sign-on (SSO)</label>
 					<small>Allow users to sign in through your identity provider</small>
@@ -324,6 +335,7 @@ onMounted(async () => {
 				<div :class="$style.settingsItemControl">
 					<N8nSelect
 						:model-value="ssoStore.isOidcLoginEnabled ? 'enabled' : 'disabled'"
+						size="medium"
 						data-test-id="sso-oidc-toggle"
 						@update:model-value="ssoStore.isOidcLoginEnabled = $event === 'enabled'"
 					>

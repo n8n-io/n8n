@@ -1,5 +1,5 @@
 import { setActivePinia, createPinia } from 'pinia';
-import { describe, test, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, test, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
 import { fetchThreadMessages, fetchThreadStatus } from '../instanceAi.memory.api';
 import { ensureThread, postMessage, postConfirmation } from '../instanceAi.api';
 import { useInstanceAiStore } from '../instanceAi.store';
@@ -61,6 +61,15 @@ vi.mock('../instanceAi.memory.api', () => ({
 	deleteThread: vi.fn().mockResolvedValue(undefined),
 	renameThread: vi.fn().mockResolvedValue({ thread: {} }),
 }));
+
+const localStorageStub = {
+	getItem: vi.fn(() => 'false'),
+	setItem: vi.fn(),
+	removeItem: vi.fn(),
+	clear: vi.fn(),
+};
+
+const originalLocalStorage = globalThis.localStorage;
 
 // Mock EventSource globally
 let capturedOnMessage: ((ev: MessageEvent) => void) | null = null;
@@ -135,6 +144,21 @@ const mockFetchThreadStatus = vi.mocked(fetchThreadStatus);
 const mockEnsureThread = vi.mocked(ensureThread);
 const mockPostMessage = vi.mocked(postMessage);
 const mockPostConfirmation = vi.mocked(postConfirmation);
+
+beforeAll(() => {
+	vi.stubGlobal('localStorage', localStorageStub);
+});
+
+afterAll(() => {
+	if (typeof originalLocalStorage === 'undefined') {
+		Reflect.deleteProperty(globalThis, 'localStorage');
+	} else {
+		Object.defineProperty(globalThis, 'localStorage', {
+			configurable: true,
+			value: originalLocalStorage,
+		});
+	}
+});
 
 describe('useInstanceAiStore - onSSEMessage', () => {
 	let store: ReturnType<typeof useInstanceAiStore>;
@@ -332,6 +356,316 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 		expect(store.messages[0].agentTree?.agentId).toBe('fresh-root');
 	});
 
+	test('switchThread clears thread-scoped runtime state before historical messages resolve', async () => {
+		const seededThreadId = store.currentThreadId;
+
+		let resolveFetchThreadMessages:
+			| ((value: Awaited<ReturnType<typeof fetchThreadMessages>>) => void)
+			| undefined;
+
+		mockFetchThreadMessages.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveFetchThreadMessages = resolve;
+			}),
+		);
+
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'run-start',
+				runId: 'run-seeded',
+				agentId: 'agent-root',
+				payload: { messageId: 'msg-1', messageGroupId: 'mg-seeded' },
+			}),
+		);
+		store.submitFeedback('resp-1', { rating: 'up' });
+		store.resolveConfirmation('request-1', 'approved');
+
+		expect(store.currentThreadId).toBe(seededThreadId);
+		expect(store.messages).toHaveLength(1);
+		expect(store.activeRunId).toBe('run-seeded');
+		expect(store.debugEvents).toHaveLength(1);
+		expect(store.feedbackByResponseId).toEqual({ 'resp-1': { rating: 'up' } });
+		expect(store.resolvedConfirmationIds.size).toBe(1);
+
+		store.switchThread('thread-2');
+
+		expect(store.currentThreadId).toBe('thread-2');
+		expect(store.isHydratingThread).toBe(true);
+		expect(store.messages).toEqual([]);
+		expect(store.activeRunId).toBeNull();
+		expect(store.debugEvents).toEqual([]);
+		expect(store.feedbackByResponseId).toEqual({});
+		expect(store.resolvedConfirmationIds.size).toBe(0);
+
+		resolveFetchThreadMessages?.({
+			threadId: 'thread-2',
+			messages: [],
+			nextEventId: 0,
+		});
+
+		await vi.waitFor(() => {
+			expect(store.isHydratingThread).toBe(false);
+		});
+	});
+
+	test('switchThread ignores stale historical hydration completion from a previously requested thread', async () => {
+		let resolveThreadA:
+			| ((value: Awaited<ReturnType<typeof fetchThreadMessages>>) => void)
+			| undefined;
+		let resolveThreadB:
+			| ((value: Awaited<ReturnType<typeof fetchThreadMessages>>) => void)
+			| undefined;
+
+		mockFetchThreadMessages
+			.mockReturnValueOnce(
+				new Promise((resolve) => {
+					resolveThreadA = resolve;
+				}),
+			)
+			.mockReturnValueOnce(
+				new Promise((resolve) => {
+					resolveThreadB = resolve;
+				}),
+			);
+
+		const sseBeforeSwitches = capturedInstance;
+
+		store.switchThread('thread-a');
+		store.switchThread('thread-b');
+
+		expect(store.currentThreadId).toBe('thread-b');
+		expect(store.isHydratingThread).toBe(true);
+
+		resolveThreadA?.({
+			threadId: 'thread-a',
+			messages: [],
+			nextEventId: 0,
+		});
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		expect(store.currentThreadId).toBe('thread-b');
+		expect(store.sseState).toBe('disconnected');
+		expect(mockFetchThreadStatus).not.toHaveBeenCalledWith(expect.anything(), 'thread-a');
+		expect(capturedInstance).toBe(sseBeforeSwitches);
+
+		resolveThreadB?.({
+			threadId: 'thread-b',
+			messages: [],
+			nextEventId: 0,
+		});
+
+		await vi.waitFor(() => {
+			expect(mockFetchThreadStatus).toHaveBeenCalledWith(
+				expect.objectContaining({ baseUrl: 'http://localhost:5678/api' }),
+				'thread-b',
+			);
+		});
+		await vi.waitFor(() => {
+			expect(capturedInstance).not.toBe(sseBeforeSwitches);
+		});
+	});
+
+	test('switchThread ignores stale A hydration in an A -> B -> A sequence', async () => {
+		let resolveFirstA:
+			| ((value: Awaited<ReturnType<typeof fetchThreadMessages>>) => void)
+			| undefined;
+		let resolveB: ((value: Awaited<ReturnType<typeof fetchThreadMessages>>) => void) | undefined;
+		let resolveSecondA:
+			| ((value: Awaited<ReturnType<typeof fetchThreadMessages>>) => void)
+			| undefined;
+
+		mockFetchThreadMessages
+			.mockReturnValueOnce(
+				new Promise((resolve) => {
+					resolveFirstA = resolve;
+				}),
+			)
+			.mockReturnValueOnce(
+				new Promise((resolve) => {
+					resolveB = resolve;
+				}),
+			)
+			.mockReturnValueOnce(
+				new Promise((resolve) => {
+					resolveSecondA = resolve;
+				}),
+			);
+
+		const sseBeforeSwitches = capturedInstance;
+
+		store.switchThread('thread-a');
+		store.switchThread('thread-b');
+		store.switchThread('thread-a');
+
+		expect(store.currentThreadId).toBe('thread-a');
+		expect(store.isHydratingThread).toBe(true);
+		expect(store.messages).toEqual([]);
+
+		resolveFirstA?.({
+			threadId: 'thread-a',
+			messages: [
+				{
+					id: 'msg-stale-a',
+					runId: 'run-stale-a',
+					messageGroupId: 'mg-stale-a',
+					role: 'assistant',
+					createdAt: new Date().toISOString(),
+					content: 'stale',
+					reasoning: '',
+					isStreaming: false,
+					agentTree: {
+						agentId: 'agent-root',
+						role: 'orchestrator',
+						status: 'completed',
+						textContent: 'stale',
+						reasoning: '',
+						toolCalls: [],
+						children: [],
+						timeline: [],
+					},
+				},
+			],
+			nextEventId: 11,
+		});
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		expect(store.currentThreadId).toBe('thread-a');
+		expect(store.isHydratingThread).toBe(true);
+		expect(store.messages).toEqual([]);
+		expect(store.lastEventIdByThread['thread-a']).toBeUndefined();
+		expect(mockFetchThreadStatus).not.toHaveBeenCalledWith(expect.anything(), 'thread-a');
+		expect(store.sseState).toBe('disconnected');
+		expect(capturedInstance).toBe(sseBeforeSwitches);
+
+		resolveB?.({
+			threadId: 'thread-b',
+			messages: [],
+			nextEventId: 0,
+		});
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		expect(store.currentThreadId).toBe('thread-a');
+		expect(store.isHydratingThread).toBe(true);
+		expect(store.messages).toEqual([]);
+		expect(store.lastEventIdByThread['thread-a']).toBeUndefined();
+		expect(capturedInstance).toBe(sseBeforeSwitches);
+
+		resolveSecondA?.({
+			threadId: 'thread-a',
+			messages: [
+				{
+					id: 'msg-fresh-a',
+					runId: 'run-fresh-a',
+					messageGroupId: 'mg-fresh-a',
+					role: 'assistant',
+					createdAt: new Date().toISOString(),
+					content: 'fresh',
+					reasoning: '',
+					isStreaming: false,
+					agentTree: {
+						agentId: 'agent-root',
+						role: 'orchestrator',
+						status: 'completed',
+						textContent: 'fresh',
+						reasoning: '',
+						toolCalls: [],
+						children: [],
+						timeline: [],
+					},
+				},
+			],
+			nextEventId: 31,
+		});
+
+		await vi.waitFor(() => {
+			expect(store.isHydratingThread).toBe(false);
+		});
+		expect(store.messages).toHaveLength(1);
+		expect(store.messages[0].id).toBe('msg-fresh-a');
+		expect(store.lastEventIdByThread['thread-a']).toBe(30);
+		await vi.waitFor(() => {
+			expect(mockFetchThreadStatus).toHaveBeenCalledWith(
+				expect.objectContaining({ baseUrl: 'http://localhost:5678/api' }),
+				'thread-a',
+			);
+		});
+		await vi.waitFor(() => {
+			expect(capturedInstance).not.toBe(sseBeforeSwitches);
+		});
+	});
+
+	test('loadHistoricalMessages reports stale when a later direct hydration request supersedes it', async () => {
+		let resolveThreadA:
+			| ((value: Awaited<ReturnType<typeof fetchThreadMessages>>) => void)
+			| undefined;
+		let resolveThreadB:
+			| ((value: Awaited<ReturnType<typeof fetchThreadMessages>>) => void)
+			| undefined;
+
+		mockFetchThreadMessages
+			.mockReturnValueOnce(
+				new Promise((resolve) => {
+					resolveThreadA = resolve;
+				}),
+			)
+			.mockReturnValueOnce(
+				new Promise((resolve) => {
+					resolveThreadB = resolve;
+				}),
+			);
+
+		store.currentThreadId = 'thread-a';
+		const staleHydration = store.loadHistoricalMessages('thread-a');
+
+		store.currentThreadId = 'thread-b';
+		const currentHydration = store.loadHistoricalMessages('thread-b');
+
+		resolveThreadA?.({
+			threadId: 'thread-a',
+			messages: [],
+			nextEventId: 11,
+		});
+		await expect(staleHydration).resolves.toBe('stale');
+		expect(store.lastEventIdByThread['thread-a']).toBeUndefined();
+
+		resolveThreadB?.({
+			threadId: 'thread-b',
+			messages: [],
+			nextEventId: 21,
+		});
+		await expect(currentHydration).resolves.toBe('applied');
+		expect(store.lastEventIdByThread['thread-b']).toBe(20);
+	});
+
+	test('loadHistoricalMessages returns skipped when current thread already has messages', async () => {
+		store.messages = [
+			{
+				id: 'existing-user-message',
+				role: 'user',
+				createdAt: new Date().toISOString(),
+				content: 'already hydrated',
+				reasoning: '',
+				isStreaming: false,
+			},
+		];
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: store.currentThreadId,
+			messages: [],
+			nextEventId: 10,
+		});
+
+		await expect(store.loadHistoricalMessages(store.currentThreadId)).resolves.toBe('skipped');
+		expect(store.messages).toHaveLength(1);
+		expect(store.lastEventIdByThread[store.currentThreadId]).toBeUndefined();
+	});
+
+	test('loadHistoricalMessages returns applied on fetch failure when hydration request is current', async () => {
+		mockFetchThreadMessages.mockRejectedValueOnce(new Error('fetch failed'));
+
+		await expect(store.loadHistoricalMessages(store.currentThreadId)).resolves.toBe('applied');
+		expect(store.isHydratingThread).toBe(false);
+	});
+
 	test('loadHistoricalMessages skips unsafe routing identifiers when rebuilding state', async () => {
 		mockFetchThreadMessages.mockResolvedValueOnce({
 			threadId: store.currentThreadId,
@@ -434,6 +768,44 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 		expect(mockPostMessage).toHaveBeenCalledTimes(2);
 	});
 
+	test('sendMessage enqueues the optimistic user message before a new thread finishes syncing', async () => {
+		let resolveEnsureThread:
+			| ((value: Awaited<ReturnType<typeof ensureThread>>) => void)
+			| undefined;
+
+		mockEnsureThread.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveEnsureThread = resolve;
+			}),
+		);
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+
+		const sendPromise = store.sendMessage('first');
+
+		expect(store.messages).toHaveLength(1);
+		expect(store.messages[0]).toMatchObject({
+			role: 'user',
+			content: 'first',
+			isStreaming: false,
+		});
+		expect(mockPostMessage).not.toHaveBeenCalled();
+
+		resolveEnsureThread?.({
+			thread: {
+				id: store.currentThreadId,
+				title: '',
+				resourceId: 'user-1',
+				createdAt: '2026-01-01T00:00:00.000Z',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+			},
+			created: true,
+		});
+
+		await sendPromise;
+
+		expect(mockPostMessage).toHaveBeenCalledTimes(1);
+	});
+
 	test('sendMessage forwards pushRef to postMessage', async () => {
 		mockEnsureThread.mockResolvedValueOnce({
 			thread: {
@@ -502,6 +874,34 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 		// sendMessage should have re-opened an EventSource before posting
 		expect(capturedInstance).not.toBeNull();
 		expect(mockPostMessage).toHaveBeenCalled();
+	});
+
+	test('sendMessage rolls back optimistic message when thread sync fails and resets sending state', async () => {
+		let rejectEnsureThread: ((reason?: unknown) => void) | undefined;
+
+		mockEnsureThread.mockReturnValueOnce(
+			new Promise((_resolve, reject) => {
+				rejectEnsureThread = reject;
+			}),
+		);
+
+		const sendPromise = store.sendMessage('first');
+
+		expect(store.isSendingMessage).toBe(true);
+		expect(store.messages).toHaveLength(1);
+		expect(store.messages[0]).toMatchObject({
+			role: 'user',
+			content: 'first',
+			isStreaming: false,
+		});
+		expect(mockPostMessage).not.toHaveBeenCalled();
+
+		rejectEnsureThread?.(new Error('sync failed'));
+		await sendPromise;
+
+		expect(mockPostMessage).not.toHaveBeenCalled();
+		expect(store.messages).toHaveLength(0);
+		expect(store.isSendingMessage).toBe(false);
 	});
 });
 

@@ -1,5 +1,5 @@
 import type { AuthenticatedRequest } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import { ApiKeyRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { TokenExpiredError } from 'jsonwebtoken';
 
@@ -12,7 +12,7 @@ const API_KEY_HEADER = 'x-n8n-api-key';
 @Service()
 export class ApiKeyAuthStrategy implements AuthStrategy {
 	constructor(
-		private readonly userRepository: UserRepository,
+		private readonly apiKeyRepository: ApiKeyRepository,
 		private readonly jwtService: JwtService,
 	) {}
 
@@ -21,19 +21,24 @@ export class ApiKeyAuthStrategy implements AuthStrategy {
 
 		if (typeof providedApiKey !== 'string' || !providedApiKey) return null;
 
-		const user = await this.userRepository.findOne({
-			where: {
-				apiKeys: {
-					apiKey: providedApiKey,
-					audience: API_KEY_AUDIENCE,
-				},
-			},
-			relations: ['role'],
+		// Abstain from non-API-key JWTs so other strategies (e.g. ScopedJwtStrategy) can handle them.
+		// Legacy keys (PREFIX_LEGACY_API_KEY prefix) are never JWTs — skip the decode for them.
+		// A null decode means the string is not a structurally valid JWT — reject authentication.
+		if (!providedApiKey.startsWith(PREFIX_LEGACY_API_KEY)) {
+			const decoded = this.jwtService.decode<{ iss?: string }>(providedApiKey);
+			// Note: JwtService.decode casts its return as T, but jwt.decode() can still return null at runtime.
+			if (decoded === null) return false;
+			if (decoded.iss !== API_KEY_ISSUER) return null;
+		}
+
+		const apiKeyRecord = await this.apiKeyRepository.findOne({
+			where: { apiKey: providedApiKey, audience: API_KEY_AUDIENCE },
+			relations: { user: { role: true } },
 		});
 
-		if (!user) return false;
+		if (!apiKeyRecord?.user) return false;
 
-		if (user.disabled) return false;
+		if (apiKeyRecord.user.disabled) return false;
 
 		if (!providedApiKey.startsWith(PREFIX_LEGACY_API_KEY)) {
 			try {
@@ -47,7 +52,12 @@ export class ApiKeyAuthStrategy implements AuthStrategy {
 			}
 		}
 
-		req.user = user;
+		req.user = apiKeyRecord.user;
+		req.tokenGrant = {
+			scopes: apiKeyRecord.user.role.scopes.map((s) => s.slug),
+			subject: apiKeyRecord.user,
+			apiKeyScopes: apiKeyRecord.scopes ?? [],
+		};
 
 		return true;
 	}
