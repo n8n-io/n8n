@@ -56,13 +56,6 @@ const borderRows = [
 	},
 	{ token: '--border-color--info', description: 'Borders for informational states.' },
 ];
-
-const shadowRows = [
-	{
-		token: '--command-bar--shadow',
-		description: 'Strong elevation shadow for popovers and overlays.',
-	},
-];
 </script>
 
 <template>
@@ -79,10 +72,6 @@ const shadowRows = [
 			<h3 :class="$style.heading">Border</h3>
 			<BasicTable :columns="columns" :rows="borderRows" row-key="token" />
 		</section>
-		<section :class="$style.group">
-			<h3 :class="$style.heading">Shadow</h3>
-			<BasicTable :columns="columns" :rows="shadowRows" row-key="token" />
-		</section>
 	</div>
 </template>
 
@@ -91,17 +80,14 @@ const shadowRows = [
 	display: grid;
 	gap: var(--spacing--m);
 	margin-top: var(--spacing--2xs);
+
+	table {
+		margin-top: var(--spacing--2xs);
+	}
 }
 
 .group {
 	display: grid;
 	gap: var(--spacing--2xs);
-}
-
-.heading {
-	margin: 0;
-	/* font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--medium);
-	color: var(--text-color--subtle); */
 }
 </style>

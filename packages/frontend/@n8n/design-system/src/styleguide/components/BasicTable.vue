@@ -61,6 +61,7 @@ const formatCell = (value: BasicTableValue): string => {
 	width: 100%;
 	border-collapse: collapse;
 	font-size: var(--font-size--2xs);
+	margin-block: var(--spacing--2xl);
 
 	th,
 	td {

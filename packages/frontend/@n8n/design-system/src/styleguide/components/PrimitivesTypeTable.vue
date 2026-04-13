@@ -67,10 +67,6 @@ const typeScaleRows = [
 </script>
 
 <template>
-	<div class="sb-unstyled">
-		<p :class="$style.inter">Inter AaBbCc1234567890!@{}[]</p>
-		<p :class="$style.mono">CommitMono AaBbCc1234567890!@{}[]</p>
-	</div>
 	<BasicTable :columns="typeScaleColumns" :rows="typeScaleRows" row-key="step" />
 </template>
 

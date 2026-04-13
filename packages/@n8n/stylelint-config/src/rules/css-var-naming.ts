@@ -103,6 +103,8 @@ const MODES = new Set(['light', 'dark', 'hc', 'rtl', 'print']);
 
 const MEDIA = new Set(['sm', 'md', 'lg', 'xl', '2xl']);
 
+const N8N_BYPASS_PREFIX = '--n8n--';
+
 // Ignore issues related to these namespaces
 const DISABLE_CHECK_FOR_NAMESPACES = new Set(['reka', 'ag', 'chat']);
 
@@ -162,6 +164,10 @@ function shouldValidateFile(filePath: string | undefined) {
 }
 
 function shouldSkip(variable: string) {
+	if (variable.startsWith(N8N_BYPASS_PREFIX)) {
+		return true;
+	}
+
 	// Split into groups first (drop first empty element from leading --)
 	const parts = variable.slice(2).split('-');
 	if (DISABLE_CHECK_FOR_NAMESPACES.has(parts[0])) {
