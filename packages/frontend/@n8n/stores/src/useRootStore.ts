@@ -35,17 +35,11 @@ export type RootStoreState = {
 };
 
 export const useRootStore = defineStore(STORES.ROOT, () => {
-	// Generate or retrieve client ID from sessionStorage
-	const getClientId = (): string => {
-		const storageKey = 'n8n-client-id';
-		const existingId = sessionStorage.getItem(storageKey);
-		if (existingId) {
-			return existingId;
-		}
-		const newId = randomString(10).toLowerCase();
-		sessionStorage.setItem(storageKey, newId);
-		return newId;
-	};
+	// Generate a unique client ID per tab. Must NOT be cached in sessionStorage
+	// because duplicating a browser tab copies sessionStorage, causing two tabs
+	// to share the same pushRef. The server enforces one connection per pushRef,
+	// so a shared ID triggers an infinite WebSocket disconnect/reconnect loop.
+	const getClientId = (): string => randomString(10).toLowerCase();
 
 	const state = ref<RootStoreState>({
 		baseUrl: VUE_APP_URL_BASE_API ?? window.BASE_PATH,
