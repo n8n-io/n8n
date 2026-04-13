@@ -328,14 +328,14 @@ export class ProxyServer {
 				options?.pathOrRequestDefinition,
 			);
 
-			if (recordedExpectations.length === 0) {
-				return;
-			}
-
 			const targetDir = join(this.expectationsDir, folderName);
 
 			if (options?.clearDir) {
 				await fs.rm(targetDir, { recursive: true, force: true });
+			}
+
+			if (recordedExpectations.length === 0) {
+				return;
 			}
 
 			await fs.mkdir(targetDir, { recursive: true });
