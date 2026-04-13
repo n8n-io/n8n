@@ -4,8 +4,8 @@ import { simpleGit } from 'simple-git';
 import type { SimpleGit } from 'simple-git';
 
 import { SourceControlGitService } from '../source-control-git.service.ee';
-import type { SourceControlPreferences } from '../types/source-control-preferences';
 import type { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
+import type { SourceControlPreferences } from '../types/source-control-preferences';
 
 const MOCK_BRANCHES = {
 	all: ['origin/master', 'origin/feature/branch'],
@@ -77,6 +77,28 @@ describe('SourceControlGitService', () => {
 			});
 		});
 
+		describe('when fetch fails during remote tracking setup', () => {
+			it('should log warning and not throw', async () => {
+				const mockLogger = mock<any>();
+				const gitService = new SourceControlGitService(mockLogger, mock(), mock());
+				const prefs = mock<SourceControlPreferences>({ branchName: 'main' });
+				const user = mock<User>();
+				const git = mock<SimpleGit>();
+				gitService.git = git;
+				jest.spyOn(gitService, 'setGitCommand').mockResolvedValue();
+
+				const fetchError = new Error('Authentication failed for HTTPS remote');
+				jest.spyOn(gitService, 'fetch').mockRejectedValue(fetchError);
+
+				await gitService.initRepository(prefs, user);
+
+				expect(mockLogger.warn).toHaveBeenCalledWith(
+					'Failed to fetch during remote tracking setup',
+					{ error: fetchError },
+				);
+			});
+		});
+
 		describe('repository URL authorization', () => {
 			it('should set repositoryUrl URL for SSH connection type', async () => {
 				const mockPreferencesService = mock<SourceControlPreferencesService>();
@@ -132,18 +154,18 @@ describe('SourceControlGitService', () => {
 				expect(addRemoteSpy).toHaveBeenCalledWith('origin', originUrl);
 			});
 
-			it('should throw error when HTTPS connection type is specified but no credentials found', async () => {
+			it('should log warning and not throw when HTTPS credentials are invalid during fetch', async () => {
 				const mockPreferencesService = mock<SourceControlPreferencesService>();
-				const errorMessage = 'Error';
+				const mockLogger = mock<any>();
 				mockPreferencesService.getDecryptedHttpsCredentials.mockRejectedValue(
-					new Error(errorMessage),
+					new Error('Authentication failed'),
 				);
 				mockPreferencesService.getPreferences.mockReturnValue({
 					connectionType: 'https',
 					repositoryUrl: 'https://github.com/user/repo.git',
 				} as never);
 
-				const gitService = new SourceControlGitService(mock(), mock(), mockPreferencesService);
+				const gitService = new SourceControlGitService(mockLogger, mock(), mockPreferencesService);
 				const prefs = mock<SourceControlPreferences>({
 					repositoryUrl: 'https://github.com/user/repo.git',
 					connectionType: 'https',
@@ -153,7 +175,12 @@ describe('SourceControlGitService', () => {
 				const git = mock<SimpleGit>();
 				gitService.git = git;
 
-				await expect(gitService.initRepository(prefs, user)).rejects.toThrow(errorMessage);
+				await gitService.initRepository(prefs, user);
+
+				expect(mockLogger.warn).toHaveBeenCalledWith(
+					'Failed to fetch during remote tracking setup',
+					expect.objectContaining({ error: expect.any(Error) }),
+				);
 				expect(mockPreferencesService.getDecryptedHttpsCredentials).toHaveBeenCalled();
 			});
 		});

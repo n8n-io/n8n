@@ -274,7 +274,12 @@ export class SourceControlGitService {
 	private async trackRemoteIfReady(targetBranch: string) {
 		if (!this.git) return;
 
-		await this.fetch();
+		try {
+			await this.fetch();
+		} catch (error) {
+			this.logger.warn('Failed to fetch during remote tracking setup', { error });
+			return; // Don't fail initialization, let sanityCheck handle errors
+		}
 
 		const { currentBranch, branches: remoteBranches } = await this.getBranches();
 
