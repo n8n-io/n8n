@@ -52,6 +52,15 @@ vi.mock('@/features/agents/composables/useAgentApi', () => ({
 		{ id: 'agent-1', name: 'SEO Auditor' },
 		{ id: 'agent-2', name: 'Inbox Sorter' },
 	]),
+	deleteAgent: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({
+		confirm: vi.fn(),
+		alert: vi.fn(),
+		prompt: vi.fn(),
+	}),
 }));
 
 vi.mock('@/app/composables/useTelemetry', () => ({

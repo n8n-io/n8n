@@ -1,17 +1,20 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { useRoute, useRouter } from 'vue-router';
-import { N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nActionDropdown, N8nIcon, N8nText } from '@n8n/design-system';
 import type { IconOrEmoji } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { getAgent, updateAgent } from '../composables/useAgentApi';
+import { getAgent, updateAgent, deleteAgent } from '../composables/useAgentApi';
 import type { AgentResource } from '../types';
+import { AGENTS_LIST_VIEW } from '../constants';
 import { useAgentSchema } from '../composables/useAgentSchema';
 import type { AgentSchema } from '../types';
+import { useMessage } from '@/app/composables/useMessage';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
 import AgentHomeContent from '../components/AgentHomeContent.vue';
@@ -23,11 +26,12 @@ const locale = useI18n();
 const rootStore = useRootStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
+const message = useMessage();
 
 const projectId = computed(
 	() => (route.params.projectId as string) ?? projectsStore.personalProject?.id ?? '',
 );
-const agentId = route.params.agentId as string;
+const agentId = computed(() => route.params.agentId as string);
 
 // UI state
 const chatActive = ref(false);
@@ -62,7 +66,7 @@ watch(
 );
 
 async function fetchAgent() {
-	const data = await getAgent(rootStore.restApiContext, projectId.value, agentId);
+	const data = await getAgent(rootStore.restApiContext, projectId.value, agentId.value);
 	agent.value = data;
 	updatedAt.value = data.updatedAt;
 	skipNextWatch = true;
@@ -73,12 +77,12 @@ async function fetchAgent() {
 
 const autoSave = useDebounceFn(async () => {
 	if (!agent.value) return;
-	const updated = await updateAgent(rootStore.restApiContext, projectId.value, agentId, {
+	const updated = await updateAgent(rootStore.restApiContext, projectId.value, agentId.value, {
 		code: code.value,
 	});
 	if (updated) {
 		updatedAt.value = updated.updatedAt;
-		await fetchSchema(projectId.value, agentId);
+		await fetchSchema(projectId.value, agentId.value);
 	}
 }, 1000);
 
@@ -116,27 +120,31 @@ function onCodeUpdated() {
 }
 
 async function updateName(name: string) {
-	const updated = await updateAgent(rootStore.restApiContext, projectId.value, agentId, { name });
+	const updated = await updateAgent(rootStore.restApiContext, projectId.value, agentId.value, {
+		name,
+	});
 	if (updated) {
 		agent.value = updated;
 		agentName.value = updated.name;
+		updatedAt.value = updated.updatedAt;
 	}
 }
 
 async function updateDescription(description: string) {
-	const updated = await updateAgent(rootStore.restApiContext, projectId.value, agentId, {
+	const updated = await updateAgent(rootStore.restApiContext, projectId.value, agentId.value, {
 		description,
 	} as Record<string, unknown>);
 	if (updated) {
 		agent.value = updated;
 		agentDescription.value = updated.description ?? null;
+		updatedAt.value = updated.updatedAt;
 	}
 }
 
-function startChat(message: string) {
-	initialPrompt.value = message;
+function startChat(msg: string) {
+	initialPrompt.value = msg;
 	chatActive.value = true;
-	telemetry.track('User started agent chat', { agent_id: agentId });
+	telemetry.track('User started agent chat', { agent_id: agentId.value });
 }
 
 function onSchemaFieldUpdate(updates: Partial<AgentSchema>) {
@@ -150,14 +158,19 @@ function onSchemaFieldUpdate(updates: Partial<AgentSchema>) {
 
 async function saveSchema() {
 	if (!localSchema.value) return;
-	const result = await updateSchema(projectId.value, agentId, localSchema.value, updatedAt.value);
+	const result = await updateSchema(
+		projectId.value,
+		agentId.value,
+		localSchema.value,
+		updatedAt.value,
+	);
 	if (result) {
 		skipNextWatch = true;
 		code.value = result.code;
 		updatedAt.value = result.updatedAt;
 		originalSchemaJson.value = JSON.stringify(localSchema.value);
 		isDirty.value = false;
-		telemetry.track('User saved agent settings', { agent_id: agentId });
+		telemetry.track('User saved agent settings', { agent_id: agentId.value });
 	}
 }
 
@@ -165,7 +178,7 @@ function cancelSchema() {
 	if (schema.value) {
 		localSchema.value = deepCopy(schema.value);
 		isDirty.value = false;
-		telemetry.track('User cancelled agent settings', { agent_id: agentId });
+		telemetry.track('User cancelled agent settings', { agent_id: agentId.value });
 	}
 }
 
@@ -173,15 +186,44 @@ function onCodeUpdate(newCode: string) {
 	code.value = newCode;
 }
 
-onMounted(async () => {
+const headerActions = [{ id: 'delete', label: 'Delete agent' }];
+
+async function onHeaderAction(action: string) {
+	if (action === 'delete') {
+		const confirmed = await message.confirm(
+			`Are you sure you want to delete "${agentName.value}"?`,
+			'Delete agent',
+			{ confirmButtonText: 'Delete', cancelButtonText: 'Cancel', type: 'warning' },
+		);
+		if (confirmed !== MODAL_CONFIRM) return;
+		await deleteAgent(rootStore.restApiContext, projectId.value, agentId.value);
+		void router.push({ name: AGENTS_LIST_VIEW, params: { projectId: projectId.value } });
+	}
+}
+
+async function initialize() {
+	// Nulling agent first ensures any in-flight autoSave bails out early
+	agent.value = null;
+	chatActive.value = false;
+	agentIcon.value = { type: 'icon', value: 'robot' };
+	initialPrompt.value = undefined;
+	localSchema.value = null;
+	originalSchemaJson.value = '';
+	isDirty.value = false;
+	isCodeStreaming = false;
+	codeStreamBuffer = '';
+
 	await fetchAgent();
-	await fetchSchema(projectId.value, agentId);
+	await fetchSchema(projectId.value, agentId.value);
+
 	const prompt = route.query.prompt as string | undefined;
 	if (prompt) {
 		void router.replace({ query: { ...route.query, prompt: undefined } });
 		startChat(prompt);
 	}
-});
+}
+
+watch(agentId, initialize, { immediate: true });
 </script>
 
 <template>
@@ -211,6 +253,12 @@ onMounted(async () => {
 					>
 						<N8nIcon icon="panel-right" :size="16" />
 					</button>
+					<N8nActionDropdown
+						:items="headerActions"
+						activator-icon="ellipsis-vertical"
+						data-testid="agent-header-actions"
+						@select="onHeaderAction"
+					/>
 				</div>
 			</div>
 			<div :class="$style.mainBody">

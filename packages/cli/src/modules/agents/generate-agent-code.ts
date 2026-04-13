@@ -81,19 +81,20 @@ function storageExpression(memory: MemorySchema): {
 	expr: string | null;
 	constructorName: string;
 } {
-	const constructorParams = memory.connectionParams ? serializeParam(memory.connectionParams) : '';
-	const result: {
-		expr: string | null;
-		constructorName: string;
-	} = {
-		expr: `new ${memory.constructorName}(${constructorParams})`,
-		constructorName: memory.constructorName,
-	};
-	if (memory.name === 'memory') {
-		// in-process memory by default, don't need to construct it
-		result.expr = null;
+	// Treat missing name as 'memory' (in-process default) — happens when memory is first
+	// added via the UI before a describe round-trip has populated the structured fields.
+	if (!memory.name || memory.name === 'memory') {
+		return { expr: null, constructorName: 'Memory' };
 	}
-	return result;
+	const importSpec = MemoryImportMap[memory.name];
+	const constructorName =
+		memory.constructorName ??
+		(importSpec && importSpec !== 'no-import' ? importSpec.importName : memory.name);
+	const constructorParams = memory.connectionParams ? serializeParam(memory.connectionParams) : '';
+	return {
+		expr: `new ${constructorName}(${constructorParams})`,
+		constructorName,
+	};
 }
 
 /** Build the full `.memory(new Memory()...)` chain from the memory schema. */
@@ -150,10 +151,10 @@ function buildMemoryChain(memory: MemorySchema): {
 		}
 	}
 
-	if (memory.titleGeneration !== null) {
-		const tg = memory.titleGeneration as { model?: string; instructions?: string } | null;
-		const hasProps = tg && (tg.model !== undefined || tg.instructions !== undefined);
-		if (hasProps && tg) {
+	if (memory.titleGeneration !== null && memory.titleGeneration !== undefined) {
+		const tg = memory.titleGeneration as { model?: string; instructions?: string };
+		const hasProps = tg.model !== undefined || tg.instructions !== undefined;
+		if (hasProps) {
 			const props: string[] = [];
 			if (tg.model) props.push(`model: '${escapeSingleQuote(tg.model)}'`);
 			if (tg.instructions)
@@ -242,6 +243,11 @@ function guardrailPart(g: GuardrailSchema): string {
 }
 
 function memoryPart(memory: MemorySchema): string {
+	// Use source for lossless regeneration when available (matches @n8n/agents behaviour).
+	// source is null when memory is first added via the UI — fall through to buildMemoryChain.
+	if (memory.source) {
+		return `.memory(${memory.source})`;
+	}
 	const mc = buildMemoryChain(memory);
 	return `.memory(${mc.chain})`;
 }

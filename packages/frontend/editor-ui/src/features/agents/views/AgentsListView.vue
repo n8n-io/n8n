@@ -12,11 +12,14 @@ import { useProjectPages } from '@/features/collaboration/projects/composables/u
 import { listAgents, deleteAgent } from '../composables/useAgentApi';
 import type { AgentResource } from '../types';
 import { AGENT_BUILDER_VIEW } from '../constants';
+import { useMessage } from '@/app/composables/useMessage';
+import { MODAL_CONFIRM } from '@/app/constants';
 
 const route = useRoute();
 const router = useRouter();
 const rootStore = useRootStore();
 const projectsStore = useProjectsStore();
+const message = useMessage();
 const insightsStore = useInsightsStore();
 const projectPages = useProjectPages();
 
@@ -56,6 +59,12 @@ function onSelectAgent(agentId: string) {
 
 async function onCardAction(action: string, agent: AgentResource) {
 	if (action === 'delete') {
+		const confirmed = await message.confirm(
+			`Are you sure you want to delete "${agent.name}"?`,
+			'Delete agent',
+			{ confirmButtonText: 'Delete', cancelButtonText: 'Cancel', type: 'warning' },
+		);
+		if (confirmed !== MODAL_CONFIRM) return;
 		await deleteAgent(rootStore.restApiContext, projectId.value, agent.id);
 		allAgents.value = allAgents.value.filter((a) => a.id !== agent.id);
 	}
@@ -128,6 +137,7 @@ onMounted(fetchAgents);
 					<div :class="$style.cardActions" @click.stop>
 						<N8nActionDropdown
 							:items="cardActions"
+							activator-icon="ellipsis-vertical"
 							data-testid="agent-card-actions"
 							@select="onCardAction($event, data)"
 						/>

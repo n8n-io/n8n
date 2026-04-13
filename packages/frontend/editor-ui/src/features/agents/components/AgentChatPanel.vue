@@ -533,7 +533,7 @@ async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string) {
 		font-size: var(--font-size--md);
 		line-height: 1.5em;
 		padding: var(--spacing--sm);
-		padding-bottom: 52px;
+		padding-bottom: 64px;
 		color: var(--color--text--shade-1);
 		box-shadow: 0 10px 24px 0 #00000010;
 		border-radius: 16px;

@@ -15,11 +15,20 @@ import type { ProjectListItem } from '../projects.types';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { AGENT_BUILDER_VIEW, NEW_AGENT_VIEW } from '@/features/agents/constants';
-import { listAllAgents } from '@/features/agents/composables/useAgentApi';
+import { listAllAgents, deleteAgent } from '@/features/agents/composables/useAgentApi';
 
-import { BetaTag, N8nMenuItem, N8nPopover, N8nText, N8nButton } from '@n8n/design-system';
+import {
+	BetaTag,
+	N8nActionDropdown,
+	N8nMenuItem,
+	N8nPopover,
+	N8nText,
+	N8nButton,
+} from '@n8n/design-system';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useMessage } from '@/app/composables/useMessage';
+import { MODAL_CONFIRM } from '@/app/constants';
 
 type Props = {
 	collapsed: boolean;
@@ -38,6 +47,7 @@ const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 const rootStore = useRootStore();
 const telemetry = useTelemetry();
+const message = useMessage();
 
 const displayProjects = computed(() => globalEntityCreation.displayProjects.value);
 const isFoldersFeatureEnabled = computed(() => settingsStore.isFoldersFeatureEnabled);
@@ -94,6 +104,8 @@ const newAgentItem = computed<IMenuItem>(() => ({
 	route: { to: { name: NEW_AGENT_VIEW } },
 }));
 
+const agentActions = [{ id: 'delete', label: 'Delete' }];
+
 async function fetchAgents() {
 	if (!isAgentsAvailable.value) return;
 	const personalProjectId = projectsStore.personalProject?.id;
@@ -102,6 +114,20 @@ async function fetchAgents() {
 		agentsList.value = await listAllAgents(rootStore.restApiContext, personalProjectId);
 	} catch {
 		agentsList.value = [];
+	}
+}
+
+async function onAgentAction(action: string, agent: { id: string; name: string }) {
+	if (action === 'delete') {
+		const confirmed = await message.confirm(
+			`Are you sure you want to delete "${agent.name}"?`,
+			'Delete agent',
+			{ confirmButtonText: 'Delete', cancelButtonText: 'Cancel', type: 'warning' },
+		);
+		if (confirmed !== MODAL_CONFIRM) return;
+		const personalProjectId = projectsStore.personalProject?.id ?? '';
+		await deleteAgent(rootStore.restApiContext, personalProjectId, agent.id);
+		agentsList.value = agentsList.value.filter((a) => a.id !== agent.id);
 	}
 }
 
@@ -265,19 +291,26 @@ onBeforeUnmount(() => {
 			</N8nPopover>
 			<div :class="$style.agentItems">
 				<N8nMenuItem
-					v-for="agent in agentsList"
-					:key="agent.id"
-					:item="getAgentMenuItem(agent)"
-					:compact="false"
-					:active="activeAgentId === agent.id"
-					data-test-id="agent-menu-item"
-				/>
-				<N8nMenuItem
 					:item="newAgentItem"
 					:compact="false"
 					:active="false"
 					data-test-id="new-agent-menu-item"
 				/>
+				<div v-for="agent in agentsList" :key="agent.id" :class="$style.agentItem">
+					<N8nMenuItem
+						:item="getAgentMenuItem(agent)"
+						:compact="false"
+						:active="activeAgentId === agent.id"
+						data-test-id="agent-menu-item"
+					/>
+					<div :class="$style.agentItemActions" @click.stop>
+						<N8nActionDropdown
+							:items="agentActions"
+							activator-icon="ellipsis-vertical"
+							@select="onAgentAction($event, agent)"
+						/>
+					</div>
+				</div>
 			</div>
 		</template>
 		<N8nText
@@ -383,6 +416,25 @@ onBeforeUnmount(() => {
 
 .agentItems {
 	padding: var(--spacing--4xs) var(--spacing--3xs);
+}
+
+.agentItem {
+	position: relative;
+
+	.agentItemActions {
+		position: absolute;
+		right: var(--spacing--3xs);
+		top: 50%;
+		transform: translateY(-50%);
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	&:hover .agentItemActions,
+	&:focus-within .agentItemActions {
+		opacity: 1;
+		pointer-events: auto;
+	}
 }
 
 .coachmark {

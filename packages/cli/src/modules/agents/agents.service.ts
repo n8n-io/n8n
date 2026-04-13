@@ -305,30 +305,20 @@ export class AgentsService {
 		const { generateAgentCode } = await import('./generate-agent-code');
 		const code = await generateAgentCode(schema, entity.name);
 
-		// Invalidate caches
+		// Describe the generated code BEFORE touching the DB. If this throws the entity
+		// is untouched — the previous schema and code remain intact (no data loss).
 		this.clearRuntimes(agentId);
 		this.schemaCache.delete(agentId);
-		entity.code = code;
-		entity.schema = null;
+		const describedSchema = await this.secureRuntime.describeSecurely(code);
+		this.schemaCache.set(agentId, describedSchema);
 
-		// Describe the generated code securely to get a validated schema
-		try {
-			const describedSchema = await this.secureRuntime.describeSecurely(code);
-			entity.schema = describedSchema;
-			this.schemaCache.set(agentId, describedSchema);
-		} catch {
-			entity.schema = null;
-		}
+		entity.code = code;
+		entity.schema = describedSchema;
 
 		const saved = await this.agentRepository.save(entity);
 
-		const freshSchema = this.schemaCache.get(agentId);
-		if (!freshSchema) {
-			throw new Error('Schema not available after describing generated code');
-		}
-		freshSchema.description = entity.description;
-
-		return { code, schema: freshSchema, updatedAt: saved.updatedAt.toISOString() };
+		describedSchema.description = entity.description;
+		return { code, schema: describedSchema, updatedAt: saved.updatedAt.toISOString() };
 	}
 
 	private getMemoryRegistry(): Record<string, agents.MemoryFactory> {
