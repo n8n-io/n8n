@@ -134,7 +134,7 @@ const legacyOptions: Array<{ label: string; value: UserRoleProvisioningSetting }
 					<N8nSelect
 						v-model="roleAssignment"
 						size="medium"
-						:disabled="!canManage"
+						:disabled="disabled || !canManage"
 						data-test-id="role-assignment-select"
 					>
 						<N8nOption
@@ -161,7 +161,7 @@ const legacyOptions: Array<{ label: string; value: UserRoleProvisioningSetting }
 					<N8nSelect
 						v-model="mappingMethod"
 						size="medium"
-						:disabled="!canManage"
+						:disabled="disabled || !canManage"
 						data-test-id="role-mapping-method-select"
 					>
 						<N8nOption

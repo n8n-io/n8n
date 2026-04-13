@@ -230,9 +230,6 @@ onMounted(async () => {
 </script>
 <template>
 	<div>
-		<N8nCallout v-if="isOverrideActive" theme="info" :class="$style.group">
-			{{ i18n.baseText('settings.sso.settings.oidc.overrideBanner') }}
-		</N8nCallout>
 		<div :class="[$style.card, $style.firstCard]">
 			<slot name="protocol-select" />
 			<div :class="$style.group">
