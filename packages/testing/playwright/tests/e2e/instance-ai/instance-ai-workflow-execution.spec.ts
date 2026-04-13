@@ -27,37 +27,24 @@ test.describe(
 		});
 
 		test('should execute workflow from run button and show success indicators', async ({ n8n }) => {
-			const wsInfo: string[] = [];
-			n8n.page.on('websocket', (ws) => {
-				wsInfo.push(ws.url());
-				ws.on('framereceived', (f) => {
-					const p = typeof f.payload === 'string' ? f.payload : '';
-					if (p.includes('execution')) wsInfo.push(`RECV:${p.slice(0, 150)}`);
-				});
-			});
-
 			await n8n.navigate.toInstanceAi();
+
 			await n8n.instanceAi.sendMessage(
 				'Build a simple workflow with a manual trigger connected to a set node called "full execution test"',
 			);
+
+			// Wait for preview to show canvas nodes
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
 				timeout: 120_000,
 			});
 
-			// Log WebSocket connections to see pushRefs
-			const pushRefs = wsInfo.filter((u) => u.includes('pushRef'));
-			console.log('=== WS pushRefs ===', JSON.stringify(pushRefs));
-
+			// Click the run workflow button
 			await n8n.instanceAi.getPreviewRunWorkflowButton().click();
 
-			try {
-				await expect(n8n.instanceAi.getPreviewSuccessIndicators().first()).toBeVisible({
-					timeout: 30_000,
-				});
-			} catch {
-				console.log('=== WS after ===', JSON.stringify(wsInfo.slice(-20)));
-				throw new Error('Execution did not complete');
-			}
+			// Nodes should show success indicators after execution completes
+			await expect(n8n.instanceAi.getPreviewSuccessIndicators().first()).toBeVisible({
+				timeout: 30_000,
+			});
 		});
 
 		test('should execute individual node from node toolbar', async ({ n8n }) => {
