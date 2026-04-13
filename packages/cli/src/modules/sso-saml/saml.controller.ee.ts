@@ -231,5 +231,4 @@ export class SamlController {
 			throw new AuthError('SAML redirect failed, please check your SAML configuration.');
 		}
 	}
-
 }

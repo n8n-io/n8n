@@ -157,20 +157,19 @@ describe('EmbedAuthController', () => {
 			expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/credentials');
 		});
 
-		it.each([
-			['https://evil.com/phishing'],
-			['//evil.com/phishing'],
-			['javascript:alert(1)'],
-		])('should reject external redirect %s and default to /', async (maliciousUrl) => {
-			const req = mock<AuthlessRequest>({ browserId: 'browser-id-123' });
-			const res = mock<Response>();
-			const query = new EmbedLoginQueryDto({ token: 'subject-token', redirectTo: maliciousUrl });
-			tokenExchangeService.embedLogin.mockResolvedValue(mockUser);
+		it.each([['https://evil.com/phishing'], ['//evil.com/phishing'], ['javascript:alert(1)']])(
+			'should reject external redirect %s and default to /',
+			async (maliciousUrl) => {
+				const req = mock<AuthlessRequest>({ browserId: 'browser-id-123' });
+				const res = mock<Response>();
+				const query = new EmbedLoginQueryDto({ token: 'subject-token', redirectTo: maliciousUrl });
+				tokenExchangeService.embedLogin.mockResolvedValue(mockUser);
 
-			await controller.getLogin(req, res, query);
+				await controller.getLogin(req, res, query);
 
-			expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/');
-		});
+				expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/');
+			},
+		);
 
 		it('should default to / when redirect is empty', async () => {
 			const req = mock<AuthlessRequest>({ browserId: 'browser-id-123' });
