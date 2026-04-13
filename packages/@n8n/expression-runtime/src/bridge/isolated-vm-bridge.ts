@@ -409,6 +409,11 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 *    are the callback references — no global mutable state
 	 * 3. buildContext() inside the isolate creates a fresh evaluation context
 	 *    from the closure-scoped references
+	 * 4. __prepareForTransfer wraps the result in a sentinel:
+	 *    - ProxyResultSentinel (lazy proxy → path only, resolved on host)
+	 *    - DataResultSentinel (non-proxy → serialized value)
+	 *    - ErrorSentinel (from the catch block)
+	 * 5. Host unwraps the sentinel and returns the resolved value
 	 *
 	 * Each call gets its own closure, so nested and concurrent evaluations
 	 * cannot interfere with each other.
@@ -473,9 +478,8 @@ try {
 
 			this.logger.debug('[IsolatedVmBridge] Expression executed successfully');
 
-			// Step 7: Unwrap the transfer sentinel.
-			// __prepareForTransfer always wraps results so that user code
-			// cannot forge a ProxyResultSentinel.
+			// Unwrap the transfer sentinel. __prepareForTransfer always wraps
+			// results so that user code cannot forge a ProxyResultSentinel.
 			if (isProxyResultSentinel(result)) {
 				const resolved = resolvePathInData(data, result.__path);
 				return prepareForTransfer(resolved);
