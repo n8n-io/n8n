@@ -6,6 +6,7 @@ import { mock } from 'jest-mock-extended';
 import type { WorkflowExecute as ActualWorkflowExecute, InstanceSettings } from 'n8n-core';
 import { ExternalSecretsProxy } from 'n8n-core';
 import { mockInstance } from 'n8n-core/test/utils';
+import * as n8nWorkflow from 'n8n-workflow';
 import {
 	type IPinData,
 	type ITaskData,
@@ -87,6 +88,85 @@ describe('JobProcessor', () => {
 		const result = await jobProcessor.processJob(mock<Job>());
 
 		expect(result).toEqual({ success: false });
+	});
+
+	it('should retry loading execution data when the initial lookup misses', async () => {
+		const sleepSpy = jest.spyOn(n8nWorkflow, 'sleep').mockResolvedValue();
+		sleepSpy.mockClear();
+		const executionRepository = mock<ExecutionRepository>();
+		executionRepository.findSingleExecution
+			.mockResolvedValueOnce(undefined)
+			.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					mode: 'manual',
+					workflowData: { id: 'workflow-id', nodes: [] },
+					data: mock<IRunExecutionData>({
+						executionData: undefined,
+						resultData: { runData: {} },
+					}),
+				}),
+			)
+			.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					status: 'success',
+					startedAt: new Date(),
+					stoppedAt: new Date(),
+					data: mock<IRunExecutionData>({
+						resultData: { runData: {} },
+					}),
+				}),
+			);
+
+		const jobProcessor = new JobProcessor(
+			logger,
+			executionRepository,
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			executionsConfig,
+			mock(),
+		);
+
+		await jobProcessor.processJob(
+			mock<Job>({
+				id: 'job-id',
+				data: { executionId: 'execution-id', loadStaticData: false },
+			}),
+		);
+
+		expect(executionRepository.findSingleExecution).toHaveBeenCalledTimes(3);
+		expect(sleepSpy).toHaveBeenCalledTimes(1);
+		expect(sleepSpy).toHaveBeenCalledWith(100);
+	});
+
+	it('should throw when execution data is still missing after retries', async () => {
+		const sleepSpy = jest.spyOn(n8nWorkflow, 'sleep').mockResolvedValue();
+		sleepSpy.mockClear();
+		const executionRepository = mock<ExecutionRepository>();
+		executionRepository.findSingleExecution.mockResolvedValue(undefined);
+		const jobProcessor = new JobProcessor(
+			logger,
+			executionRepository,
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			executionsConfig,
+			mock(),
+		);
+
+		await expect(
+			jobProcessor.processJob(
+				mock<Job>({
+					id: 'job-id',
+					data: { executionId: 'execution-id', loadStaticData: false },
+				}),
+			),
+		).rejects.toThrow('Worker failed to find data for execution execution-id (job job-id)');
+
+		expect(executionRepository.findSingleExecution).toHaveBeenCalledTimes(5);
+		expect(sleepSpy).toHaveBeenCalledTimes(4);
 	});
 
 	it.each(['manual', 'evaluation'] satisfies WorkflowExecuteMode[])(
