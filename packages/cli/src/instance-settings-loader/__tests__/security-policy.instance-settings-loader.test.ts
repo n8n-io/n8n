@@ -39,7 +39,7 @@ describe('SecurityPolicyInstanceSettingsLoader', () => {
 	});
 
 	describe('when N8N_SECURITY_POLICY_MANAGED_BY_ENV is false', () => {
-		it('should skip when no security env vars deviate from defaults', async () => {
+		it('should skip when securityPolicyManagedByEnv is false', async () => {
 			const loader = createLoader();
 
 			const result = await loader.run();
@@ -47,43 +47,39 @@ describe('SecurityPolicyInstanceSettingsLoader', () => {
 			expect(result).toBe('skipped');
 			expect(mfaService.enforceMFA).not.toHaveBeenCalled();
 			expect(securitySettingsService.setPersonalSpaceSetting).not.toHaveBeenCalled();
-			expect(logger.warn).not.toHaveBeenCalled();
+			expect(logger.debug).toHaveBeenCalledWith(
+				expect.stringContaining('not managed by environment variables'),
+			);
 		});
 
-		it('should skip and warn when mfaEnforcedEnabled is true', async () => {
+		it('should skip without applying when mfaEnforcedEnabled is true', async () => {
 			const loader = createLoader({ mfaEnforcedEnabled: true });
 
 			const result = await loader.run();
 
 			expect(result).toBe('skipped');
 			expect(mfaService.enforceMFA).not.toHaveBeenCalled();
-			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('N8N_SECURITY_POLICY_MANAGED_BY_ENV is not enabled'),
-			);
+			expect(securitySettingsService.setPersonalSpaceSetting).not.toHaveBeenCalled();
 		});
 
-		it('should skip and warn when personalSpacePublishingEnabled is false', async () => {
+		it('should skip without applying when personalSpacePublishingEnabled is false', async () => {
 			const loader = createLoader({ personalSpacePublishingEnabled: false });
 
 			const result = await loader.run();
 
 			expect(result).toBe('skipped');
+			expect(mfaService.enforceMFA).not.toHaveBeenCalled();
 			expect(securitySettingsService.setPersonalSpaceSetting).not.toHaveBeenCalled();
-			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('N8N_SECURITY_POLICY_MANAGED_BY_ENV is not enabled'),
-			);
 		});
 
-		it('should skip and warn when personalSpaceSharingEnabled is false', async () => {
+		it('should skip without applying when personalSpaceSharingEnabled is false', async () => {
 			const loader = createLoader({ personalSpaceSharingEnabled: false });
 
 			const result = await loader.run();
 
 			expect(result).toBe('skipped');
+			expect(mfaService.enforceMFA).not.toHaveBeenCalled();
 			expect(securitySettingsService.setPersonalSpaceSetting).not.toHaveBeenCalled();
-			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('N8N_SECURITY_POLICY_MANAGED_BY_ENV is not enabled'),
-			);
 		});
 	});
 
