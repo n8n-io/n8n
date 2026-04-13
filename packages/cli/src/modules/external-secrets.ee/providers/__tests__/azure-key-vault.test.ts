@@ -1,6 +1,7 @@
 import { SecretClient } from '@azure/keyvault-secrets';
 import type { KeyVaultSecret } from '@azure/keyvault-secrets';
 import { mock } from 'jest-mock-extended';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { AzureKeyVault } from '../azure-key-vault/azure-key-vault';
 import type { AzureKeyVaultContext } from '../azure-key-vault/types';
@@ -167,7 +168,19 @@ describe('AzureKeyVault', () => {
 			throw new Error('Key Vault unavailable');
 		});
 
-		await expect(azureKeyVault.update()).rejects.toThrow('Key Vault unavailable');
+		let thrown: unknown;
+		try {
+			await azureKeyVault.update();
+		} catch (error: unknown) {
+			thrown = error;
+		}
+
+		expect(thrown).toBeDefined();
+		expect(thrown).toBeInstanceOf(UnexpectedError);
+		if (thrown instanceof UnexpectedError) {
+			expect(thrown.message).toBe('Could not read any secrets from Azure Key Vault');
+			expect(thrown.cause).toEqual(expect.objectContaining({ message: 'Key Vault unavailable' }));
+		}
 		expect(azureKeyVault.getSecret('only-secret')).toBe('cached-value');
 	});
 });

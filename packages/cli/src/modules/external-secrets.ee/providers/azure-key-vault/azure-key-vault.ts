@@ -1,7 +1,7 @@
 import type { SecretClient } from '@azure/keyvault-secrets';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import { ensureError, type INodeProperties } from 'n8n-workflow';
+import { ensureError, type INodeProperties, UnexpectedError } from 'n8n-workflow';
 
 import type { AzureKeyVaultContext } from './types';
 import { DOCS_HELP_NOTICE } from '../../constants';
@@ -131,7 +131,9 @@ export class AzureKeyVault extends SecretsProvider {
 		}
 
 		if (secretNames.length > 0 && Object.keys(updated).length === 0 && readErrors.length > 0) {
-			throw readErrors[0];
+			throw new UnexpectedError('Could not read any secrets from Azure Key Vault', {
+				cause: readErrors[0],
+			});
 		}
 
 		this.cachedSecrets = updated;
