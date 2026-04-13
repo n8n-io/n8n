@@ -10,7 +10,7 @@ export default {
 			control: {
 				type: 'select',
 			},
-			options: [undefined, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+			options: [undefined, '4xs', '3xs', '2xs', 'xs', 'sm', 'md', 'lg', 'xl', '2xl'],
 		},
 		size: {
 			control: {
