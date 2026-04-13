@@ -15,6 +15,7 @@ import {
 	mkdirSync,
 	readFileSync,
 	readdirSync,
+	renameSync,
 	statSync,
 	unlinkSync,
 	writeFileSync,
@@ -22,7 +23,7 @@ import {
 import { tmpdir } from 'os';
 import { join } from 'path';
 
-const LOCK_TIMEOUT_MS = 5 * 60 * 1000; // 5 min — if a lock is older, assume the builder crashed
+const LOCK_TIMEOUT_MS = 10 * 60 * 1000; // 10 min — must exceed the max build time (~4 min) with margin
 const POLL_INTERVAL_MS = 1000;
 
 // Stable cache dir shared across all workers in this Playwright run.
@@ -51,7 +52,12 @@ function readResult(testCaseName: string): BuildResult | undefined {
 }
 
 function writeResult(testCaseName: string, result: BuildResult): void {
-	writeFileSync(resultPath(testCaseName), JSON.stringify(result));
+	// Write to temp file then rename for atomicity — prevents readers from
+	// observing a partially written JSON file.
+	const target = resultPath(testCaseName);
+	const tmp = `${target}.tmp.${process.pid}`;
+	writeFileSync(tmp, JSON.stringify(result));
+	renameSync(tmp, target);
 }
 
 function acquireLock(testCaseName: string): boolean {

@@ -130,24 +130,6 @@ export function getProjects(): Project[] {
 			},
 		);
 	} else {
-		// Instance AI workflow evals — always fullyParallel since all workers
-		// share one n8n instance (local dev or CI container started externally).
-		projects.push(
-			{
-				name: 'instance-ai-workflow-evals',
-				testDir: './tests/e2e/instance-ai-workflow-evals',
-				testMatch: '*.spec.ts',
-				fullyParallel: true,
-				timeout: 600_000,
-				retries: 0,
-				teardown: 'instance-ai-workflow-evals-cleanup',
-			},
-			{
-				name: 'instance-ai-workflow-evals-cleanup',
-				testDir: './tests/e2e/instance-ai-workflow-evals',
-				testMatch: 'cleanup.ts',
-			},
-		);
 		for (const { name, config } of CONTAINER_CONFIGS) {
 			projects.push(
 				{

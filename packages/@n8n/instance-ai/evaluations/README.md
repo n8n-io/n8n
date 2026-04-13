@@ -81,7 +81,7 @@ Each test run:
 1. **Build** — sends the test case prompt to Instance AI, which builds a workflow
 2. **Phase 1** — analyzes the workflow and generates consistent mock data hints (one Sonnet call per scenario)
 3. **Phase 2** — executes the workflow with all HTTP requests intercepted. Each request goes to an LLM that generates a realistic API response using the node's configuration and API documentation from Context7
-4. **Verify** — an LLM evaluates whether the scenario's success criteria were met, categorizes any failure as `builder_issue`, `mock_issue`, `legitimate_failure`, or `verification_gap`
+4. **Verify** — an LLM evaluates whether the scenario's success criteria were met and categorizes any failure by root cause (see Failure categories below)
 
 ### What gets mocked
 
@@ -140,8 +140,7 @@ When a scenario fails, the verifier categorizes the root cause:
 - **mock_issue** — the LLM mock returned incorrect data (e.g., `_evalMockError`, wrong response shape)
 - **framework_issue** — Phase 1 failed (empty trigger content), cascading errors from the eval framework itself
 - **verification_failure** — the LLM verifier couldn't produce a valid result
-- **build_failure** — Instance AI failed to build the workflow (timeout, agent error)
-- **timeout** — scenario execution exceeded the timeout
+- **build_failure** — Instance AI failed to build the workflow or a scenario timed out
 
 ## Architecture
 

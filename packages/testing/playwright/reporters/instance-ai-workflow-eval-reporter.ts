@@ -117,12 +117,13 @@ class InstanceAiWorkflowEvalReporter implements Reporter {
 			const name = titleMatch[2].trim();
 			const errorText = result.errors.map((e) => e.message ?? '').join('; ');
 
-			// Detect build failures vs other errors
 			const isBuildFailure =
-				!entry.built || errorText.includes('build failed') || errorText.includes('timed out');
-			const isTimeout = errorText.includes('timed out') || errorText.includes('TimeoutError');
+				!entry.built ||
+				errorText.includes('build failed') ||
+				errorText.includes('timed out') ||
+				errorText.includes('TimeoutError');
 
-			const failureCategory = isBuildFailure ? 'build_failure' : isTimeout ? 'timeout' : undefined;
+			const failureCategory = isBuildFailure ? 'build_failure' : undefined;
 
 			const reason =
 				result.status === 'skipped'

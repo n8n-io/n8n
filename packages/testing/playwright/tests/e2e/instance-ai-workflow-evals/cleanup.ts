@@ -32,6 +32,20 @@ async function cleanupEvalWorkflows(): Promise<void> {
 
 	console.log(`Cleaning up ${builds.length} eval workflow(s)...`);
 
+	// Get personal project ID for data table cleanup
+	let projectId: string | undefined;
+	try {
+		const meRes = await fetch(`${backendUrl}/rest/me`, {
+			headers: { cookie },
+		});
+		if (meRes.ok) {
+			const me = (await meRes.json()) as { data: { personalProjectId?: string } };
+			projectId = me.data.personalProjectId;
+		}
+	} catch {
+		// Best-effort
+	}
+
 	for (const { build } of builds) {
 		for (const id of build.createdWorkflowIds) {
 			try {
@@ -45,6 +59,19 @@ async function cleanupEvalWorkflows(): Promise<void> {
 				});
 			} catch {
 				// Best-effort
+			}
+		}
+
+		if (projectId) {
+			for (const dtId of build.createdDataTableIds) {
+				try {
+					await fetch(`${backendUrl}/rest/projects/${projectId}/data-tables/${dtId}`, {
+						method: 'DELETE',
+						headers: { 'Content-Type': 'application/json', cookie },
+					});
+				} catch {
+					// Best-effort
+				}
 			}
 		}
 	}
