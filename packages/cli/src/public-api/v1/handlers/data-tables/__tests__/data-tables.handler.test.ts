@@ -11,7 +11,7 @@ import * as middlewares from '@/public-api/v1/shared/middlewares/global.middlewa
 
 // Mock middleware before requiring handler
 const mockMiddleware = jest.fn(async (_req, _res, next) => next()) as any;
-jest.spyOn(middlewares, 'apiKeyHasScope').mockReturnValue(mockMiddleware);
+jest.spyOn(middlewares, 'publicApiScope').mockReturnValue(mockMiddleware);
 jest.spyOn(middlewares, 'projectScope').mockReturnValue(mockMiddleware);
 jest.spyOn(middlewares, 'validCursor').mockReturnValue(mockMiddleware);
 

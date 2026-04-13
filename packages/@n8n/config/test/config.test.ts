@@ -281,7 +281,6 @@ describe('GlobalConfig', () => {
 			sandboxTimeout: 300000,
 			braveSearchApiKey: '',
 			searxngUrl: '',
-			filesystemPath: '',
 			gatewayApiKey: '',
 			threadTtlDays: 90,
 			snapshotPruneInterval: 3_600_000,
@@ -504,6 +503,10 @@ describe('GlobalConfig', () => {
 			ownerFirstName: 'Instance',
 			ownerLastName: 'Owner',
 			ownerPasswordHash: '',
+			securityPolicyManagedByEnv: false,
+			mfaEnforcedEnabled: false,
+			personalSpacePublishingEnabled: true,
+			personalSpaceSharingEnabled: true,
 		},
 	} satisfies GlobalConfigShape;
 

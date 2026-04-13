@@ -125,7 +125,7 @@ defineExpose({ relayPushEvent });
 
 		<!-- Loading overlay (shown during initial load or when no workflow yet) -->
 		<div v-if="isLoading && !workflow" :class="$style.centerState">
-			<N8nIcon icon="spinner" color="primary" size="xxlarge" spin />
+			<N8nIcon icon="loader-circle" :size="80" spin />
 		</div>
 	</div>
 </template>

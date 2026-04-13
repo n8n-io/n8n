@@ -130,14 +130,15 @@ describe('useExecutionPushEvents', () => {
 			expect(getStatus('wf-1')).toBe('error');
 		});
 
-		test('clears eventLog on finish', () => {
+		test('preserves eventLog on finish so relay can drain it', () => {
 			const { getBufferedEvents } = useExecutionPushEvents();
 
 			simulatePushEvent(executionStartedEvent('exec-1', 'wf-1'));
 			simulatePushEvent(nodeExecuteBeforeEvent('exec-1', 'Node1'));
 			simulatePushEvent(executionFinishedEvent('exec-1', 'wf-1', 'success'));
 
-			expect(getBufferedEvents('wf-1')).toHaveLength(0);
+			// eventLog is preserved — the relay clears it via clearEventLog() after processing
+			expect(getBufferedEvents('wf-1')).toHaveLength(2);
 		});
 	});
 
@@ -179,6 +180,66 @@ describe('useExecutionPushEvents', () => {
 			// Node event should be in wf-2's buffer, not wf-1's
 			expect(getBufferedEvents('wf-1')).toHaveLength(1); // only executionStarted
 			expect(getBufferedEvents('wf-2')).toHaveLength(2); // executionStarted + nodeExecuteBefore
+		});
+	});
+
+	describe('clearEventLog', () => {
+		test('clears the event log for a specific workflow', () => {
+			const { getBufferedEvents, clearEventLog } = useExecutionPushEvents();
+
+			simulatePushEvent(executionStartedEvent('exec-1', 'wf-1'));
+			simulatePushEvent(nodeExecuteBeforeEvent('exec-1', 'Node1'));
+			expect(getBufferedEvents('wf-1')).toHaveLength(2);
+
+			clearEventLog('wf-1');
+
+			expect(getBufferedEvents('wf-1')).toHaveLength(0);
+		});
+
+		test('does not affect other workflows', () => {
+			const { getBufferedEvents, clearEventLog } = useExecutionPushEvents();
+
+			simulatePushEvent(executionStartedEvent('exec-1', 'wf-1'));
+			simulatePushEvent(executionStartedEvent('exec-2', 'wf-2'));
+			simulatePushEvent(nodeExecuteBeforeEvent('exec-1', 'Node1'));
+
+			clearEventLog('wf-1');
+
+			expect(getBufferedEvents('wf-1')).toHaveLength(0);
+			expect(getBufferedEvents('wf-2')).toHaveLength(1);
+		});
+
+		test('is a no-op for unknown workflow', () => {
+			const { clearEventLog, getBufferedEvents } = useExecutionPushEvents();
+
+			clearEventLog('unknown-wf');
+
+			expect(getBufferedEvents('unknown-wf')).toEqual([]);
+		});
+
+		test('is a no-op when event log is already empty', () => {
+			const { clearEventLog, workflowExecutions } = useExecutionPushEvents();
+
+			simulatePushEvent(executionStartedEvent('exec-1', 'wf-1'));
+			const refBefore = workflowExecutions.value;
+
+			clearEventLog('wf-1'); // has 1 event — clears it
+			clearEventLog('wf-1'); // already empty — should be no-op
+			const refAfter = workflowExecutions.value;
+
+			// Second call should not have created a new Map reference
+			expect(refAfter).not.toBe(refBefore); // first call did change
+		});
+
+		test('preserves other entry fields (status, executionId)', () => {
+			const { getStatus, clearEventLog } = useExecutionPushEvents();
+
+			simulatePushEvent(executionStartedEvent('exec-1', 'wf-1'));
+			simulatePushEvent(nodeExecuteBeforeEvent('exec-1', 'Node1'));
+
+			clearEventLog('wf-1');
+
+			expect(getStatus('wf-1')).toBe('running');
 		});
 	});
 

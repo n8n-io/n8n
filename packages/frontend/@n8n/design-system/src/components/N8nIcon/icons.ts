@@ -35,6 +35,7 @@ import Toolbox from './custom/toolbox.svg';
 import Triangle from './custom/triangle.svg';
 import VectorSquare from './custom/vector-square.svg';
 import Webhook from './custom/webhook.svg';
+import type { NodeIconName } from './node-icons';
 
 import IconLucideAlignRight from '~icons/lucide/align-right';
 import IconLucideArchive from '~icons/lucide/archive';
@@ -150,6 +151,7 @@ import IconLucideLightbulb from '~icons/lucide/lightbulb';
 import IconLucideLink from '~icons/lucide/link';
 import IconLucideList from '~icons/lucide/list';
 import IconLucideListChecks from '~icons/lucide/list-checks';
+import IconLucideLoaderCircle from '~icons/lucide/loader-circle';
 import IconLucideLoader2 from '~icons/lucide/loader2';
 import IconLucideLock from '~icons/lucide/lock';
 import IconLucideLogIn from '~icons/lucide/log-in';
@@ -181,6 +183,7 @@ import IconLucidePencilOff from '~icons/lucide/pencil-off';
 import IconLucidePin from '~icons/lucide/pin';
 import IconLucidePlay from '~icons/lucide/play';
 import IconLucidePlug from '~icons/lucide/plug';
+import IconLucidePlugZap from '~icons/lucide/plug-zap';
 import IconLucidePlus from '~icons/lucide/plus';
 import IconLucidePocketKnife from '~icons/lucide/pocket-knife';
 import IconLucidePower from '~icons/lucide/power';
@@ -403,6 +406,7 @@ export const deprecatedIconSet = {
 	play: IconLucidePlay,
 	'play-circle': IconLucideCirclePlay,
 	plug: IconLucidePlug,
+	'plug-zap': IconLucidePlugZap,
 	plus: IconLucidePlus,
 	'plus-circle': IconLucideCirclePlus,
 	'plus-square': IconLucideSquarePlus,
@@ -644,6 +648,7 @@ export const updatedIconSet = {
 	pin: IconLucidePin,
 	play: IconLucidePlay,
 	plug: IconLucidePlug,
+	'plug-zap': IconLucidePlugZap,
 	plus: IconLucidePlus,
 	'pocket-knife': IconLucidePocketKnife,
 	power: IconLucidePower,
@@ -711,14 +716,25 @@ export const updatedIconSet = {
 	'zoom-in': IconLucideZoomIn,
 	'zoom-out': IconLucideZoomOut,
 	loader: IconLucideLoader2,
+	'loader-circle': IconLucideLoaderCircle,
 	'quick-connect': IconLucideFlame,
 } as const;
 
 export type IconName = keyof typeof updatedIconSet; // only new icon names should be used moving forward
 
+export { type NodeIconName } from './node-icons';
+
+const NODE_ICON_PREFIX = 'node:';
+
+export function isNodeIcon(iconName?: string): iconName is NodeIconName {
+	return typeof iconName === 'string' && iconName.startsWith(NODE_ICON_PREFIX);
+}
+
 export function isSupportedIconName(iconName?: string): iconName is IconName {
-	// support both deprecated and updated icon names
 	return (
-		typeof iconName === 'string' && (iconName in updatedIconSet || iconName in deprecatedIconSet)
+		typeof iconName === 'string' &&
+		(iconName in updatedIconSet ||
+			iconName in deprecatedIconSet ||
+			iconName.startsWith(NODE_ICON_PREFIX))
 	);
 }
