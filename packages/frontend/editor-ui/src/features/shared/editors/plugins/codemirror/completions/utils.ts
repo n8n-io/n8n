@@ -17,6 +17,10 @@ import type { SyntaxNode, Tree } from '@lezer/common';
 import type { DocMetadata } from 'n8n-workflow';
 import { escapeMappingString } from '@/app/utils/mappingUtils';
 import type { TargetNodeParameterContext } from '@/Interface';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 /**
  * Split user input into base (to resolve) and tail (to filter).
@@ -236,16 +240,19 @@ export const isSplitInBatchesAbsent = () =>
 	!useWorkflowsStore().workflow.nodes.some((node) => node.type === SPLIT_IN_BATCHES_NODE_TYPE);
 
 export function autocompletableNodeNames(targetNodeParameterContext?: TargetNodeParameterContext) {
+	const workflowsStore = useWorkflowsStore();
 	const activeNode =
 		targetNodeParameterContext === undefined
 			? useNDVStore().activeNode
-			: useWorkflowsStore().getNodeByName(targetNodeParameterContext.nodeName);
+			: workflowsStore.getNodeByName(targetNodeParameterContext.nodeName);
 
 	if (!activeNode) return [];
 
 	const activeNodeName = activeNode.name;
 
-	const workflowObject = useWorkflowsStore().workflowObject;
+	const workflowObject = useWorkflowDocumentStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
 	const nonMainChildren = workflowObject.getChildNodes(activeNodeName, 'ALL_NON_MAIN');
 
 	// This is a tool node, look for the nearest node with main connections
@@ -257,7 +264,10 @@ export function autocompletableNodeNames(targetNodeParameterContext?: TargetNode
 }
 
 export function getPreviousNodes(nodeName: string) {
-	const workflowObject = useWorkflowsStore().workflowObject;
+	const workflowsStore = useWorkflowsStore();
+	const workflowObject = useWorkflowDocumentStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
 	return workflowObject
 		.getParentNodesByDepth(nodeName)
 		.map((node) => node.name)

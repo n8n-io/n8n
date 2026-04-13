@@ -5,6 +5,7 @@ import type { Workflow } from 'n8n-workflow';
  * Will be removed when workflowsStore.workflowObject migration is complete.
  */
 export interface WorkflowObjectAccessors {
+	id: Workflow['id'];
 	connectionsBySourceNode: Workflow['connectionsByDestinationNode'];
 	expression: Workflow['expression'];
 	pinData?: Workflow['pinData'];

@@ -225,6 +225,7 @@ export function convertToWorkflowAccessors(
 	workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>,
 ): WorkflowObjectAccessors {
 	return {
+		id: workflowDocumentStore.workflowId,
 		connectionsBySourceNode: workflowDocumentStore.connectionsBySourceNode,
 		pinData: workflowDocumentStore.pinData as IPinData,
 		expression: workflowDocumentStore.getExpressionHandler(),
