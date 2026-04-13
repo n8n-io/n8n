@@ -133,9 +133,15 @@ const headerActions = [{ id: 'delete', label: locale.baseText('agents.builder.de
 async function onHeaderAction(action: string) {
 	if (action === 'delete') {
 		const confirmed = await message.confirm(
-			locale.baseText('agents.builder.deleteConfirmMessage', { interpolate: { name: agentName.value } }),
+			locale.baseText('agents.builder.deleteConfirmMessage', {
+				interpolate: { name: agentName.value },
+			}),
 			locale.baseText('agents.builder.deleteAgent'),
-			{ confirmButtonText: locale.baseText('agents.builder.deleteConfirmButton'), cancelButtonText: locale.baseText('agents.builder.deleteCancelButton'), type: 'warning' },
+			{
+				confirmButtonText: locale.baseText('agents.builder.deleteConfirmButton'),
+				cancelButtonText: locale.baseText('agents.builder.deleteCancelButton'),
+				type: 'warning',
+			},
 		);
 		if (confirmed !== MODAL_CONFIRM) return;
 		await deleteAgent(rootStore.restApiContext, projectId.value, agentId.value);
@@ -201,7 +207,11 @@ onBeforeUnmount(() => {
 						data-testid="save-config-btn"
 						@click="saveConfig"
 					>
-						{{ saving ? locale.baseText('agents.builder.saving') : locale.baseText('agents.builder.save') }}
+						{{
+							saving
+								? locale.baseText('agents.builder.saving')
+								: locale.baseText('agents.builder.save')
+						}}
 					</N8nButton>
 					<N8nActionDropdown
 						:items="headerActions"
