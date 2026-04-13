@@ -4339,6 +4339,7 @@
 	"settings.ldap.section.synchronization.title": "Synchronization",
 	"settings.security": "Security & policies",
 	"settings.security.description": "Manage workspace security requirements. Enforce two-factor authentication and control personal space actions like publishing workflows and sharing resources.",
+	"settings.security.managedByEnv": "These security settings are configured via environment variables and cannot be changed here.",
 	"settings.security.personalSpace.title": "Personal Space",
 	"settings.security.personalSpace.publishing.title": "Workflow publishing",
 	"settings.security.personalSpace.publishing.description": "Publishing workflows in personal space. Changing the setting doesn't unpublish existing workflows.",
