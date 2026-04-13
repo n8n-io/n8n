@@ -60,7 +60,7 @@ describe('ScopedJwtStrategy (integration)', () => {
 	});
 
 	it('returns false when subject user does not exist in DB', async () => {
-		const token = makeScopedJwt('non-existent-id');
+		const token = makeScopedJwt('422b72e6-2df2-47c9-8082-f8393b088fde');
 		expect(await strategy.authenticate(makeBearerReq(token))).toBe(false);
 	});
 
@@ -107,7 +107,7 @@ describe('ScopedJwtStrategy (integration)', () => {
 
 	it('continues without actor and uses subject scopes when actor ID is not in DB', async () => {
 		const subject = await createOwner();
-		const token = makeScopedJwt(subject.id, 'non-existent-actor');
+		const token = makeScopedJwt(subject.id, 'b4439ae8-4c33-4aac-9bc0-ff1891b03e13');
 		const req = makeBearerReq(token);
 
 		expect(await strategy.authenticate(req)).toBe(true);
