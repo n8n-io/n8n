@@ -17,6 +17,7 @@ export type { DomainAccessTracker } from './domain-access';
 export {
 	createInstanceAiTraceContext,
 	continueInstanceAiTraceContext,
+	releaseTraceClient,
 	withCurrentTraceSpan,
 } from './tracing/langsmith-tracing';
 export { createInstanceAgent } from './agent/instance-agent';
@@ -168,11 +169,6 @@ export type {
 	WebSearchResult,
 	WebSearchResponse,
 	InstanceAiWebResearchService,
-	InstanceAiFilesystemService,
-	FileEntry,
-	FileContent,
-	FileSearchMatch,
-	FileSearchResult,
 	InstanceAiWorkspaceService,
 	ProjectSummary,
 	FolderSummary,
@@ -182,3 +178,12 @@ export type { StartedWorkflowBuildTask } from './tools/orchestration/build-workf
 export type { StartedBackgroundAgentTask } from './tools/orchestration/data-table-agent.tool';
 export type { DetachedDelegateTaskResult } from './tools/orchestration/delegate.tool';
 export type { StartedResearchAgentTask } from './tools/orchestration/research-with-agent.tool';
+export {
+	classifyAttachments,
+	buildAttachmentManifest,
+	isStructuredAttachment,
+} from './parsers/structured-file-parser';
+export type {
+	ClassifiedAttachment,
+	ParseableFormat,
+} from './parsers/structured-file-parser';

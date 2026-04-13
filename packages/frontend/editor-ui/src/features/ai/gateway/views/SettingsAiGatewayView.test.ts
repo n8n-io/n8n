@@ -4,12 +4,16 @@ import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import SettingsAiGatewayView from './SettingsAiGatewayView.vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
+import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
 
 const mockGetGatewayUsage = vi.fn();
+const mockGetGatewayCredits = vi.fn();
 
 vi.mock('@/features/ai/assistant/assistant.api', () => ({
 	getGatewayConfig: vi.fn(),
-	getGatewayCredits: vi.fn(),
+	getGatewayCredits: (...args: unknown[]) => mockGetGatewayCredits(...args),
 	getGatewayUsage: (...args: unknown[]) => mockGetGatewayUsage(...args),
 }));
 
@@ -49,6 +53,45 @@ describe('SettingsAiGatewayView', () => {
 		vi.clearAllMocks();
 		setActivePinia(createPinia());
 		mockGetGatewayUsage.mockResolvedValue({ entries: [], total: 0 });
+		mockGetGatewayCredits.mockResolvedValue({ creditsRemaining: 42, creditsQuota: 100 });
+	});
+
+	describe('credits card', () => {
+		it('should display creditsRemaining after fetching', async () => {
+			renderComponent();
+
+			await waitFor(() => expect(screen.getByTestId('settings-ai-gateway')).toBeInTheDocument());
+			const store = useAiGatewayStore();
+			await waitFor(() => expect(store.creditsRemaining).toBe(42));
+			expect(screen.getByText('42 credits')).toBeInTheDocument();
+		});
+
+		it('should not render the credits number before data loads', () => {
+			mockGetGatewayCredits.mockReturnValue(new Promise(() => {})); // never resolves
+			renderComponent();
+
+			expect(screen.queryByTestId('ai-gateway-topup-button')).not.toBeNull(); // button present
+			// number not yet visible (creditsRemaining undefined)
+			expect(screen.queryByText('42')).not.toBeInTheDocument();
+		});
+
+		it('should open top-up modal when "Top up credits" button is clicked', async () => {
+			renderComponent();
+
+			await waitFor(() =>
+				expect(screen.getByTestId('ai-gateway-topup-button')).toBeInTheDocument(),
+			);
+
+			const uiStore = useUIStore();
+			vi.spyOn(uiStore, 'openModalWithData');
+
+			await userEvent.click(screen.getByTestId('ai-gateway-topup-button'));
+
+			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+				name: AI_GATEWAY_TOP_UP_MODAL_KEY,
+				data: {},
+			});
+		});
 	});
 
 	describe('on mount', () => {
@@ -98,7 +141,7 @@ describe('SettingsAiGatewayView', () => {
 		it('should re-fetch from offset=0 when refresh is clicked', async () => {
 			mockGetGatewayUsage.mockResolvedValue({ entries: MOCK_ENTRIES, total: 100 });
 			renderComponent();
-			await waitFor(() => expect(mockGetGatewayUsage).toHaveBeenCalledOnce());
+			await waitFor(() => expect(screen.getByText('gemini-pro')).toBeInTheDocument());
 
 			mockGetGatewayUsage.mockClear();
 			await userEvent.click(screen.getByRole('button', { name: /refresh/i }));

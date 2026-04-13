@@ -1,9 +1,14 @@
 <script lang="ts" setup>
-import type { InstanceAiAgentNode, InstanceAiToolCallState, TaskList } from '@n8n/api-types';
+import type {
+	InstanceAiAgentNode,
+	InstanceAiTimelineEntry,
+	InstanceAiToolCallState,
+	TaskList,
+} from '@n8n/api-types';
 import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
-import { extractArtifacts, type ArtifactInfo } from '../agentTimeline.utils';
+import { extractArtifacts, HIDDEN_TOOLS, type ArtifactInfo } from '../agentTimeline.utils';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useInstanceAiStore } from '../instanceAi.store';
@@ -77,18 +82,20 @@ const props = withDefaults(
 	defineProps<{
 		agentNode: InstanceAiAgentNode;
 		compact?: boolean;
+		/** When provided, renders only these entries instead of the full timeline. */
+		visibleEntries?: InstanceAiTimelineEntry[];
 	}>(),
 	{
 		compact: false,
+		visibleEntries: undefined,
 	},
 );
+
+const timelineEntries = computed(() => props.visibleEntries ?? props.agentNode.timeline);
 
 defineSlots<{
 	'after-tool-call'?: (props: { toolCall: InstanceAiToolCallState }) => unknown;
 }>();
-
-/** Tool calls that are internal bookkeeping and should not be shown to the user. */
-const HIDDEN_TOOLS = new Set(['updateWorkingMemory']);
 
 /** Index tool calls by ID for O(1) lookup and proper reactivity tracking. */
 const toolCallsById = computed(() => {
@@ -167,7 +174,7 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 
 <template>
 	<div :class="$style.timeline">
-		<template v-for="(entry, idx) in props.agentNode.timeline" :key="idx">
+		<template v-for="(entry, idx) in timelineEntries" :key="idx">
 			<!-- Text segment -->
 			<N8nText v-if="entry.type === 'text'" size="large" :compact="props.compact">
 				<InstanceAiMarkdown :content="entry.content" />
@@ -258,16 +265,18 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 					"
 				/>
 
-				<!-- Artifact cards for completed subagents (one per workflow/data-table) -->
-				<ArtifactCard
-					v-for="artifact in extractArtifacts(childrenById[entry.agentId])"
-					:key="artifact.resourceId"
-					:type="artifact.type"
-					:name="resolveArtifactName(artifact)"
-					:resource-id="artifact.resourceId"
-					:project-id="artifact.projectId"
-					:metadata="formatArtifactMetadata(artifact)"
-				/>
+				<!-- Artifact cards for completed subagents (skip when inside grouped view) -->
+				<template v-if="!props.visibleEntries">
+					<ArtifactCard
+						v-for="artifact in extractArtifacts(childrenById[entry.agentId])"
+						:key="artifact.resourceId"
+						:type="artifact.type"
+						:name="resolveArtifactName(artifact)"
+						:resource-id="artifact.resourceId"
+						:project-id="artifact.projectId"
+						:metadata="formatArtifactMetadata(artifact)"
+					/>
+				</template>
 			</template>
 		</template>
 	</div>

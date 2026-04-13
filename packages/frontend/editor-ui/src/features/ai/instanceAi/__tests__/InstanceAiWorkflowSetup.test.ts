@@ -351,6 +351,219 @@ describe('InstanceAiWorkflowSetup', () => {
 		});
 	});
 
+	describe('credential group selection propagation', () => {
+		it('creates per-node cards when nodes share credential type but have param issues', async () => {
+			// Two nodes sharing the same credential type with param issues -> per-node cards (escalated)
+			const nodeName1 = 'Slack Node 1';
+			const nodeName2 = 'Slack Node 2';
+			const requests = [
+				makeSetupNodeWithCredentials(
+					'slackApi',
+					[
+						{ id: 'cred-1', name: 'Slack Cred' },
+						{ id: 'cred-2', name: 'Slack Cred 2' },
+					],
+					{
+						node: {
+							id: 'node-1',
+							name: nodeName1,
+							type: 'n8n-nodes-base.slack',
+							typeVersion: 1,
+							parameters: {},
+							position: [0, 0],
+						},
+						parameterIssues: { channel: ['Parameter "channel" is required'] },
+					},
+				),
+				makeSetupNodeWithCredentials(
+					'slackApi',
+					[
+						{ id: 'cred-1', name: 'Slack Cred' },
+						{ id: 'cred-2', name: 'Slack Cred 2' },
+					],
+					{
+						node: {
+							id: 'node-2',
+							name: nodeName2,
+							type: 'n8n-nodes-base.slack',
+							typeVersion: 1,
+							parameters: {},
+							position: [100, 0],
+						},
+						parameterIssues: { text: ['Parameter "text" is required'] },
+					},
+				),
+			];
+
+			const { getByText } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					setupRequests: requests,
+					workflowId: 'wf-1',
+					message: 'Set up workflow',
+				},
+			});
+
+			// Should create 2 per-node cards (escalated due to param issues)
+			expect(getByText('1 of 2')).toBeTruthy();
+		});
+
+		it('clicking Later with no credential selected defers the setup', async () => {
+			const confirmSpy = vi.spyOn(store, 'confirmAction').mockResolvedValue(true);
+			vi.spyOn(store, 'resolveConfirmation');
+
+			const requests = [
+				makeSetupNodeWithCredentials('slackApi', [
+					{ id: 'cred-1', name: 'Slack Cred' },
+					{ id: 'cred-2', name: 'Slack Cred 2' },
+				]),
+			];
+
+			const { getByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					setupRequests: requests,
+					workflowId: 'wf-1',
+					message: 'Set up workflow',
+				},
+			});
+
+			// Click Later — no credential is selected, so this defers
+			await userEvent.click(getByTestId('instance-ai-workflow-setup-later'));
+
+			// Should defer since there's only 1 card and no selection
+			expect(confirmSpy).toHaveBeenCalledWith('req-1', false);
+		});
+	});
+
+	describe('credential testing', () => {
+		it('renders card for auto-applied testable credential type', () => {
+			const credentialsStore = useCredentialsStore();
+			// @ts-expect-error Known pinia issue when spying on store getters
+			vi.spyOn(credentialsStore, 'getCredentialTypeByName', 'get').mockReturnValue(() => ({
+				name: 'slackApi',
+				displayName: 'Slack API',
+				test: { request: { url: '/test' } },
+			}));
+
+			const requests = [
+				makeSetupNodeWithCredentials('slackApi', [{ id: 'cred-1', name: 'Slack Cred' }], {
+					isAutoApplied: true,
+				}),
+			];
+
+			const { getByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					setupRequests: requests,
+					workflowId: 'wf-1',
+					message: 'Set up workflow',
+				},
+			});
+
+			// The card should render with the auto-applied credential
+			expect(getByTestId('instance-ai-workflow-setup-card')).toBeTruthy();
+		});
+
+		it('backend-tested credential remains complete when selection unchanged', () => {
+			const requests = [
+				makeSetupNodeWithCredentials('headerAuth', [{ id: 'cred-1', name: 'Header Auth' }], {
+					isAutoApplied: true,
+					credentialTestResult: { success: true },
+					node: {
+						id: 'node-1',
+						name: 'HTTP Node',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 1,
+						parameters: {},
+						position: [0, 0],
+						credentials: { headerAuth: { id: 'cred-1', name: 'Header Auth' } },
+					},
+				}),
+			];
+
+			const { getByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					setupRequests: requests,
+					workflowId: 'wf-1',
+					message: 'Set up workflow',
+				},
+			});
+
+			// Card with backend-tested credential and unchanged selection should show complete
+			expect(getByTestId('instance-ai-workflow-setup-step-check')).toBeTruthy();
+		});
+	});
+
+	describe('NDV parameter fallback', () => {
+		it('includes store node parameters in apply payload when not in local paramValues', async () => {
+			const workflowsStore = useWorkflowsStore();
+			const nodeName = 'My Slack Node';
+			const storeNode = {
+				id: 'node-1',
+				name: nodeName,
+				type: 'n8n-nodes-base.slack',
+				typeVersion: 1,
+				parameters: { channel: '#general' },
+				position: [0, 0],
+			};
+			workflowsStore.getNodeByName = vi.fn().mockImplementation((name: string) => {
+				if (name === nodeName) return storeNode;
+				return undefined;
+			});
+
+			const confirmSpy = vi.spyOn(store, 'confirmAction').mockResolvedValue(true);
+			vi.spyOn(store, 'findToolCallByRequestId').mockReturnValue({
+				toolCallId: 'tc-1',
+				toolName: 'test',
+				args: {},
+				isLoading: false,
+				result: { success: true, partial: false, updatedNodes: [] },
+			});
+
+			const requests = [
+				makeSetupNodeWithCredentials('slackApi', [{ id: 'cred-1', name: 'Slack Cred' }], {
+					node: {
+						id: 'node-1',
+						name: nodeName,
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 1,
+						parameters: {},
+						position: [0, 0],
+					},
+					parameterIssues: { channel: ['Parameter "channel" is required'] },
+				}),
+			];
+
+			const { getByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					setupRequests: requests,
+					workflowId: 'wf-1',
+					message: 'Set up workflow',
+				},
+			});
+
+			// Click apply — the channel value should come from the store node
+			await userEvent.click(getByTestId('instance-ai-workflow-setup-apply-button'));
+
+			expect(confirmSpy).toHaveBeenCalledWith(
+				'req-1',
+				true,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				expect.objectContaining({
+					action: 'apply',
+					nodeParameters: { [nodeName]: { channel: '#general' } },
+				}),
+			);
+		});
+	});
+
 	describe('confirm mode', () => {
 		it('shows confirm card when all items are pre-resolved', () => {
 			const requests = [

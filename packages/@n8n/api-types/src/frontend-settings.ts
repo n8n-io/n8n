@@ -278,10 +278,9 @@ export type FrontendModuleSettings = {
 	 */
 	'instance-ai'?: {
 		enabled: boolean;
-		localGateway: boolean;
 		localGatewayDisabled: boolean;
-		localGatewayFallbackDirectory: string | null;
 		proxyEnabled: boolean;
+		optinModalDismissed: boolean;
 	};
 
 	/**

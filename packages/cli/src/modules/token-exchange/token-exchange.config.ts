@@ -6,6 +6,10 @@ export class TokenExchangeConfig {
 	@Env('N8N_TOKEN_EXCHANGE_ENABLED')
 	enabled: boolean = false;
 
+	/** Whether the embed login endpoint (GET/POST /auth/embed) is enabled. */
+	@Env('N8N_EMBED_LOGIN_ENABLED')
+	embedEnabled: boolean = false;
+
 	/** Maximum lifetime in seconds for an issued token. */
 	@Env('N8N_TOKEN_EXCHANGE_MAX_TOKEN_TTL')
 	maxTokenTtl: number = 900;

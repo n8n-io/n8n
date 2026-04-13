@@ -64,7 +64,7 @@ export function createAddPlanItemTool(
 		description:
 			'Add a single plan item (data table, workflow, research, or delegate task). ' +
 			'Call once per item as you design it — each call makes the item visible to the user immediately. ' +
-			'Emit data tables FIRST, then workflows that depend on them. ' +
+			'Emit data tables FIRST. Add workflow items only if the request requires automation. ' +
 			'Set summary and assumptions on your first call.',
 		inputSchema: addPlanItemInputSchema,
 		outputSchema: z.object({ result: z.string() }),

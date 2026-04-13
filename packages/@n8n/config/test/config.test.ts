@@ -281,7 +281,6 @@ describe('GlobalConfig', () => {
 			sandboxTimeout: 300000,
 			braveSearchApiKey: '',
 			searxngUrl: '',
-			filesystemPath: '',
 			gatewayApiKey: '',
 			threadTtlDays: 90,
 			snapshotPruneInterval: 3_600_000,
