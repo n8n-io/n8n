@@ -70,6 +70,30 @@ describe('list-credentials tool', () => {
 			expect(result.total).toBe(1);
 		});
 
+		it('enriches credentials with accountIdentifier when getAccountContext is available', async () => {
+			const context = createMockContext();
+			const credentials = [
+				makeCredential({ id: 'cred-1', name: 'Gmail OAuth' }),
+				makeCredential({ id: 'cred-2', name: 'Slack API', type: 'slackApi' }),
+			];
+			(context.credentialService.list as jest.Mock).mockResolvedValue(credentials);
+			context.credentialService.getAccountContext = jest
+				.fn()
+				.mockResolvedValueOnce({ accountIdentifier: 'user@gmail.com' })
+				.mockResolvedValueOnce({ accountIdentifier: undefined });
+
+			const tool = createListCredentialsTool(context);
+			const result = (await tool.execute!({}, {} as never)) as {
+				credentials: Array<{ id: string; name: string; type: string; accountIdentifier?: string }>;
+				total: number;
+			};
+
+			expect(result.credentials).toHaveLength(2);
+			expect(result.credentials[0].accountIdentifier).toBe('user@gmail.com');
+			expect(result.credentials[1].accountIdentifier).toBeUndefined();
+			expect(result.total).toBe(2);
+		});
+
 		it('passes type filter to the list call', async () => {
 			const context = createMockContext();
 			(context.credentialService.list as jest.Mock).mockResolvedValue([]);

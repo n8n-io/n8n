@@ -15,6 +15,7 @@ import type {
 	InstanceAiToolCallState,
 	InstanceAiTimelineEntry,
 	InstanceAiTargetResource,
+	PlannedTaskArg,
 	TaskList,
 } from './instance-ai.schema';
 
@@ -39,6 +40,7 @@ export interface AgentNode {
 	textContent: string;
 	reasoning: string;
 	tasks?: TaskList;
+	planItems?: PlannedTaskArg[];
 	result?: string;
 	error?: string;
 }
@@ -135,13 +137,17 @@ function ensureChildren(state: AgentRunState, agentId: string): string[] {
 	return children;
 }
 
-/** Append text to timeline — merges consecutive text entries. */
-function appendTimelineText(timeline: InstanceAiTimelineEntry[], text: string): void {
+/** Append text to timeline — merges consecutive text entries within the same responseId. */
+function appendTimelineText(
+	timeline: InstanceAiTimelineEntry[],
+	text: string,
+	responseId?: string,
+): void {
 	const last = timeline.at(-1);
-	if (last?.type === 'text') {
+	if (last?.type === 'text' && last.responseId === responseId) {
 		last.content += text;
 	} else {
-		timeline.push({ type: 'text', content: text });
+		timeline.push({ type: 'text', content: text, ...(responseId ? { responseId } : {}) });
 	}
 }
 
@@ -196,7 +202,11 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
 				agent.textContent += event.payload.text;
-				appendTimelineText(ensureTimeline(state, event.agentId), event.payload.text);
+				appendTimelineText(
+					ensureTimeline(state, event.agentId),
+					event.payload.text,
+					event.responseId,
+				);
 			}
 			break;
 		}
@@ -226,6 +236,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				ensureTimeline(state, event.agentId).push({
 					type: 'tool-call',
 					toolCallId: event.payload.toolCallId,
+					...(event.responseId ? { responseId: event.responseId } : {}),
 				});
 			}
 			break;
@@ -276,9 +287,14 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				ensureChildren(state, event.agentId); // init empty
 				ensureTimeline(state, event.agentId); // init empty
 				ensureToolCallIds(state, event.agentId); // init empty
-				ensureTimeline(state, event.payload.parentId).push({
+				const parentTimeline = ensureTimeline(state, event.payload.parentId);
+				// Inherit responseId from the parent's last entry when not set on the event
+				// (agent-spawned events are emitted from tool code, not the stream executor).
+				const inheritedResponseId = event.responseId ?? parentTimeline.at(-1)?.responseId;
+				parentTimeline.push({
 					type: 'child',
 					agentId: event.agentId,
+					...(inheritedResponseId ? { responseId: inheritedResponseId } : {}),
 				});
 			}
 			break;
@@ -291,6 +307,18 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				agent.result = event.payload.result;
 				agent.error = event.payload.error;
 			}
+			// A completed/errored agent can't have tool calls still in-flight.
+			// Clear isLoading so persisted snapshots don't show stale confirmations.
+			if (!isSafeObjectKey(event.agentId)) break;
+			const agentToolCallIds = state.toolCallIdsByAgentId[event.agentId];
+			if (agentToolCallIds) {
+				for (const tcId of agentToolCallIds) {
+					const tc = state.toolCallsById[tcId];
+					if (tc?.isLoading) {
+						tc.isLoading = false;
+					}
+				}
+			}
 			break;
 		}
 
@@ -300,6 +328,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			if (tc) {
 				tc.confirmation = {
 					requestId: event.payload.requestId,
+					inputThreadId: event.payload.inputThreadId,
 					severity: event.payload.severity,
 					message: event.payload.message,
 					credentialRequests: event.payload.credentialRequests,
@@ -309,6 +338,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					credentialFlow: event.payload.credentialFlow,
 					setupRequests: event.payload.setupRequests,
 					workflowId: event.payload.workflowId,
+					planItems: event.payload.planItems,
 					questions: event.payload.questions,
 					introMessage: event.payload.introMessage,
 					tasks: event.payload.tasks,
@@ -322,6 +352,9 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
 				agent.tasks = event.payload.tasks;
+				if (event.payload.planItems) {
+					agent.planItems = event.payload.planItems;
+				}
 			}
 			break;
 		}
@@ -339,13 +372,13 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
 				agent.textContent += errorText;
-				appendTimelineText(ensureTimeline(state, event.agentId), errorText);
+				appendTimelineText(ensureTimeline(state, event.agentId), errorText, event.responseId);
 			} else {
 				// Fall back to root agent
 				const root = state.agentsById[state.rootAgentId];
 				if (root) {
 					root.textContent += errorText;
-					appendTimelineText(ensureTimeline(state, state.rootAgentId), errorText);
+					appendTimelineText(ensureTimeline(state, state.rootAgentId), errorText, event.responseId);
 				}
 			}
 			break;
@@ -358,6 +391,15 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const root = state.agentsById[state.rootAgentId];
 			if (root) {
 				root.status = state.status;
+			}
+			// A terminated run can't have tool calls still in-flight.
+			// Clear isLoading so persisted snapshots don't show stale confirmations.
+			if (state.status === 'cancelled' || state.status === 'error') {
+				for (const tc of Object.values(state.toolCallsById)) {
+					if (tc.isLoading) {
+						tc.isLoading = false;
+					}
+				}
 			}
 			break;
 		}
@@ -437,6 +479,7 @@ function buildNodeRecursive(state: AgentRunState, agentId: string): InstanceAiAg
 		children,
 		timeline: [...timeline],
 		tasks: agent?.tasks,
+		planItems: agent?.planItems,
 		result: agent?.result,
 		error: agent?.error,
 	};

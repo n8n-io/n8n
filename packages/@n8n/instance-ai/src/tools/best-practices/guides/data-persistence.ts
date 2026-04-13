@@ -190,5 +190,16 @@ Data Tables and other storage nodes return 0 items when:
 - A filter/lookup query matches nothing
 
 This silently breaks the downstream chain — all nodes after the empty result are skipped. Always set \`alwaysOutputData: true\` on data-fetching nodes (operation: 'get') when downstream nodes depend on their output.
+
+## Standalone Data Table Operations
+
+Data tables are not only storage for workflows — they can also be managed as standalone resources:
+
+- **Table creation and schema design**: Create tables with specific columns for data organization, even without an associated workflow.
+- **Seed data**: Populate tables with initial or sample data as a standalone operation.
+- **Schema management**: Add, rename, or remove columns on existing tables.
+- **Data cleanup**: Delete rows or entire tables that are no longer needed.
+
+When the user's request is purely about table CRUD (creating tables, inserting rows, modifying schemas, deleting tables) with no automation triggers or schedules, these should be handled as direct data table operations — not wrapped in a workflow.
 `;
 }

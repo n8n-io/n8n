@@ -1,9 +1,7 @@
 <script lang="ts" setup>
 import { getWorkflow as fetchWorkflowApi } from '@/app/api/workflows';
-import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import { useWizardNavigation } from '@/features/ai/shared/composables/useWizardNavigation';
@@ -13,39 +11,27 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useExpressionResolveCtx } from '@/features/workflows/canvas/experimental/composables/useExpressionResolveCtx';
-import type {
-	INodeUi,
-	INodeUpdatePropertiesInformation,
-	IUpdateInformation,
-	IWorkflowDb,
-} from '@/Interface';
-import type {
-	InstanceAiCredentialFlow,
-	InstanceAiToolCallState,
-	InstanceAiWorkflowSetupNode,
-} from '@n8n/api-types';
+import type { INodeUi, IWorkflowDb } from '@/Interface';
+import type { InstanceAiCredentialFlow, InstanceAiWorkflowSetupNode } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { NodeHelpers, isResourceLocatorValue, type INodeProperties } from 'n8n-workflow';
-import { computed, onMounted, onUnmounted, provide, ref, watch } from 'vue';
+import { computed, defineComponent, onMounted, onUnmounted, provide, ref, toRef, watch } from 'vue';
 import { useInstanceAiStore } from '../instanceAi.store';
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-interface SetupCard {
-	id: string;
-	credentialType?: string;
-	nodes: InstanceAiWorkflowSetupNode[];
-	isTrigger: boolean;
-	isFirstTrigger: boolean;
-	isTestable: boolean;
-	credentialTestResult?: { success: boolean; message?: string };
-	isAutoApplied: boolean;
-	hasParamIssues: boolean;
-}
+import {
+	credGroupKey,
+	isTriggerOnly as isTriggerOnlyUtil,
+	shouldUseCredentialIcon,
+	toNodeUi,
+	type SetupCard,
+} from '../instanceAiWorkflowSetup.utils';
+import { useCredentialTesting } from '../composables/useCredentialTesting';
+import { useCredentialGroupSelection } from '../composables/useCredentialGroupSelection';
+import { useSetupCards } from '../composables/useSetupCards';
+import { useSetupCardParameters } from '../composables/useSetupCardParameters';
+import { useSetupActions } from '../composables/useSetupActions';
+import { getNodeParametersIssues } from '@/features/setupPanel/setupPanel.utils';
+import ConfirmationFooter from './ConfirmationFooter.vue';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -63,134 +49,144 @@ const props = defineProps<{
 const i18n = useI18n();
 const store = useInstanceAiStore();
 const credentialsStore = useCredentialsStore();
-const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
-const nodeHelpers = useNodeHelpers();
 const rootStore = useRootStore();
 const ndvStore = useNDVStore();
 
 // ---------------------------------------------------------------------------
-// Constants
+// Composable wiring — order matters for dependencies
 // ---------------------------------------------------------------------------
 
-const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
-const HTTP_REQUEST_TOOL_NODE_TYPE = 'n8n-nodes-base.httpRequestTool';
+// Step 1: Credential testing — takes getCardCredentialId as a function reference.
+// At call time (runtime), getCardCredentialId will be available from step 2.
+const {
+	isCredentialTypeTestable,
+	testCredentialInBackground,
+	getEffectiveCredTestResult,
+	getCredTestIcon,
+} = useCredentialTesting((card: SetupCard) => getCardCredentialId(card));
 
-const NESTED_PARAM_TYPES = new Set([
-	'collection',
-	'fixedCollection',
-	'resourceMapper',
-	'filter',
-	'assignmentCollection',
-]);
+// Step 2: Credential group selection
+const {
+	credGroupSelections,
+	activeCredentialTarget,
+	initCredGroupSelections: _initCredGroupSelections,
+	getCardCredentialId,
+	isFirstCardInCredGroup,
+	setCredentialForGroup,
+	clearCredentialForGroup,
+	cardHasExistingCredentials,
+	openNewCredentialForSection,
+} = useCredentialGroupSelection(
+	computed(() => cards.value),
+	testCredentialInBackground,
+	props.projectId,
+);
 
-// ---------------------------------------------------------------------------
-// Card grouping — preserves backend position order, merges same-credential nodes
-// ---------------------------------------------------------------------------
+// Step 3: Setup cards — owns card computation, display grouping, completion
+const {
+	trackedParamNames,
+	cards,
+	displayCards,
+	cardHasParamWork,
+	isCardComplete,
+	isDisplayCardComplete,
+	anyCardComplete,
+	allPreResolved,
+	getGroupPrimaryTriggerCard,
+} = useSetupCards(toRef(props, 'setupRequests'), getCardCredentialId, isCredentialTypeTestable);
 
-function credGroupKey(req: InstanceAiWorkflowSetupNode): string {
-	const credType = req.credentialType!;
-	const isHttpRequest =
-		req.node.type === HTTP_REQUEST_NODE_TYPE || req.node.type === HTTP_REQUEST_TOOL_NODE_TYPE;
-	if (isHttpRequest) {
-		const url = String(req.node.parameters.url ?? '');
-		// Expression URLs can't be grouped — each node gets its own card
-		if (url.startsWith('=')) {
-			return `${credType}:http:expr:${req.node.name}`;
-		}
-		return `${credType}:http:${url}`;
-	}
-	return credType;
-}
+// Now that cards are available, init credential group selections
+_initCredGroupSelections();
 
-const cards = computed((): SetupCard[] => {
-	// Pre-scan: if ANY node in a credential group has param issues,
-	// the entire group is escalated to per-node mode (matches upstream).
-	const escalatedCredTypes = new Set<string>();
-	for (const req of props.setupRequests) {
-		if (req.credentialType && req.parameterIssues && Object.keys(req.parameterIssues).length > 0) {
-			escalatedCredTypes.add(credGroupKey(req));
-		}
-	}
+// Step 4: Parameter handling
+const {
+	paramValues: _paramValues,
+	getCardSimpleParameters,
+	getCardNestedParameterCount,
+	onParameterValueChanged,
+	buildNodeParameters,
+} = useSetupCardParameters(cards, trackedParamNames, cardHasParamWork);
 
-	const ordered: SetupCard[] = [];
-	const credCardByKey = new Map<string, SetupCard>();
-
-	for (const req of props.setupRequests) {
-		const hasParamIssues =
-			req.parameterIssues !== undefined && Object.keys(req.parameterIssues).length > 0;
-
-		if (req.credentialType) {
-			const key = credGroupKey(req);
-
-			// If any node in this credential group has param issues,
-			// every node in the group gets its own per-node card
-			if (escalatedCredTypes.has(key)) {
-				ordered.push({
-					id: `node-${req.node.id}`,
-					credentialType: req.credentialType,
-					nodes: [req],
-					isTrigger: req.isTrigger,
-					isFirstTrigger: req.isFirstTrigger ?? false,
-					isTestable: req.isTestable ?? false,
-					credentialTestResult: req.credentialTestResult,
-					isAutoApplied: req.isAutoApplied ?? false,
-					hasParamIssues,
-				});
-			} else {
-				const existing = credCardByKey.get(key);
-				if (existing) {
-					existing.nodes.push(req);
-					if (req.isTrigger) existing.isTrigger = true;
-					if (req.isFirstTrigger) existing.isFirstTrigger = true;
-					if (req.isTestable) existing.isTestable = true;
-					if (req.isAutoApplied) existing.isAutoApplied = true;
-					if (req.credentialTestResult && !existing.credentialTestResult) {
-						existing.credentialTestResult = req.credentialTestResult;
-					}
-				} else {
-					const card: SetupCard = {
-						id: `cred-${key}`,
-						credentialType: req.credentialType,
-						nodes: [req],
-						isTrigger: req.isTrigger,
-						isFirstTrigger: req.isFirstTrigger ?? false,
-						isTestable: req.isTestable ?? false,
-						credentialTestResult: req.credentialTestResult,
-						isAutoApplied: req.isAutoApplied ?? false,
-						hasParamIssues: false,
-					};
-					credCardByKey.set(key, card);
-					ordered.push(card);
-				}
-			}
-		} else if (req.isTrigger || hasParamIssues) {
-			ordered.push({
-				id: hasParamIssues ? `param-${req.node.id}` : `trigger-${req.node.id}`,
-				nodes: [req],
-				isTrigger: req.isTrigger,
-				isFirstTrigger: req.isFirstTrigger ?? false,
-				isTestable: req.isTestable ?? false,
-				isAutoApplied: false,
-				hasParamIssues,
-			});
-		}
-	}
-
-	return ordered;
-});
+// Step 5: State + showFullWizard (needed by actions and template)
+const isStoreReady = ref(false);
+const showFullWizard = ref(false);
 
 // ---------------------------------------------------------------------------
 // Wizard navigation
 // ---------------------------------------------------------------------------
 
-const totalSteps = computed(() => cards.value.length);
+const totalSteps = computed(() => displayCards.value.length);
 const { currentStepIndex, isPrevDisabled, isNextDisabled, goToNext, goToPrev, goToStep } =
 	useWizardNavigation({ totalSteps });
 
-const currentCard = computed(() => cards.value[currentStepIndex.value]);
+const currentDisplayCard = computed(() => displayCards.value[currentStepIndex.value]);
+const currentCard = computed(() => {
+	const dc = currentDisplayCard.value;
+	if (!dc) return undefined;
+	if (dc.type === 'single') return dc.card;
+	return dc.group.parentCard ?? dc.group.subnodeCards[0];
+});
 const showArrows = computed(() => totalSteps.value > 1);
+
+// ---------------------------------------------------------------------------
+// Build per-node credential mapping from card-scoped selections
+// ---------------------------------------------------------------------------
+
+function buildNodeCredentials(): Record<string, Record<string, string>> {
+	const result: Record<string, Record<string, string>> = {};
+	for (const card of cards.value) {
+		if (!card.credentialType) continue;
+		const selectedId = getCardCredentialId(card);
+		if (!selectedId) continue;
+
+		const testResult = getEffectiveCredTestResult(card);
+		if (testResult !== undefined && !testResult.success) continue;
+
+		for (const req of card.nodes) {
+			if (!result[req.node.name]) {
+				result[req.node.name] = {};
+			}
+			result[req.node.name][card.credentialType] = selectedId;
+		}
+	}
+	return result;
+}
+
+// Step 6: Actions — apply, later, test-trigger
+const {
+	isSubmitted,
+	isDeferred,
+	isPartial,
+	isApplying,
+	applyError,
+	handleApply,
+	handleLater,
+	handleTestTrigger,
+	onCredentialSelected,
+} = useSetupActions({
+	requestId: toRef(props, 'requestId'),
+	store,
+	cards,
+	currentDisplayCard,
+	displayCards,
+	buildNodeCredentials,
+	buildNodeParameters,
+	isCardComplete,
+	anyCardComplete,
+	allPreResolved,
+	showFullWizard,
+	setCredentialForGroup,
+	clearCredentialForGroup,
+	goToNext,
+	isNextDisabled,
+	credGroupKey,
+	setupRequests: toRef(props, 'setupRequests'),
+	onApplySuccess: () => {
+		previousWorkflow = null;
+	},
+});
 
 // ---------------------------------------------------------------------------
 // Expression context for ParameterInputList
@@ -204,6 +200,17 @@ const currentCardNode = computed<INodeUi | null>(() => {
 const expressionResolveCtx = useExpressionResolveCtx(currentCardNode);
 provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 
+// Per-section expression context provider for grouped cards
+const ExpressionContextProvider = defineComponent({
+	props: { nodeName: { type: String, required: true } },
+	setup(providerProps, { slots }) {
+		const node = computed(() => workflowsStore.getNodeByName(providerProps.nodeName) ?? null);
+		const ctx = useExpressionResolveCtx(node);
+		provide(ExpressionLocalResolveContextSymbol, ctx);
+		return () => slots.default?.();
+	},
+});
+
 // ---------------------------------------------------------------------------
 // Workflow store loading — needed so ParameterInputList can resolve nodes
 // ---------------------------------------------------------------------------
@@ -211,55 +218,8 @@ provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 let previousWorkflow: IWorkflowDb | null = null;
 
 // ---------------------------------------------------------------------------
-// Parameter computation from node type definitions
+// Trigger test result + disabled helpers
 // ---------------------------------------------------------------------------
-
-const isNestedParam = (p: INodeProperties) =>
-	NESTED_PARAM_TYPES.has(p.type) || p.typeOptions?.multipleValues === true;
-
-function getCardParameters(card: SetupCard): INodeProperties[] {
-	if (!card.hasParamIssues) return [];
-	const req = card.nodes[0];
-	const nodeType = nodeTypesStore.getNodeType(req.node.type, req.node.typeVersion);
-	if (!nodeType?.properties) return [];
-
-	const issueParamNames = Object.keys(req.parameterIssues ?? {});
-	const node = workflowsStore.getNodeByName(req.node.name);
-	if (!node) return [];
-
-	return nodeType.properties.filter(
-		(prop) =>
-			issueParamNames.includes(prop.name) &&
-			NodeHelpers.displayParameter(node.parameters, prop, node, nodeType),
-	);
-}
-
-function getCardSimpleParameters(card: SetupCard): INodeProperties[] {
-	return getCardParameters(card).filter((p) => !isNestedParam(p));
-}
-
-function getCardNestedParameterCount(card: SetupCard): number {
-	return getCardParameters(card).filter(isNestedParam).length;
-}
-
-function openNdv(card: SetupCard): void {
-	ndvStore.setActiveNodeName(card.nodes[0].node.name, 'other');
-}
-
-// ---------------------------------------------------------------------------
-// State — selections keyed by CARD ID (not credential type)
-// ---------------------------------------------------------------------------
-
-const isSubmitted = ref(false);
-const isDeferred = ref(false);
-const isPartial = ref(false);
-const isApplying = ref(false);
-const isStoreReady = ref(false);
-const applyError = ref<string | null>(null);
-const showFullWizard = ref(false);
-const selections = ref<Record<string, string | null>>({});
-const paramValues = ref<Record<string, Record<string, unknown>>>({});
-const credTestOverrides = ref<Record<string, { success: boolean; message?: string } | null>>({});
 
 const triggerTestResults = computed(() => {
 	const results: Record<string, InstanceAiWorkflowSetupNode['triggerTestResult']> = {};
@@ -271,116 +231,6 @@ const triggerTestResults = computed(() => {
 	return results;
 });
 
-// ---------------------------------------------------------------------------
-// Auto-credential selection — keyed by card ID
-// ---------------------------------------------------------------------------
-
-function initSelections() {
-	for (const card of cards.value) {
-		if (!card.credentialType) continue;
-		if (selections.value[card.id] !== undefined) continue;
-
-		const credType = card.credentialType;
-
-		// 1. Pre-fill from any node in the group that already has this credential assigned
-		const nodeWithCred = card.nodes.find((req) => req.node.credentials?.[credType]?.id);
-		if (nodeWithCred) {
-			selections.value[card.id] = nodeWithCred.node.credentials![credType].id;
-			continue;
-		}
-
-		// 2. Auto-select if exactly one credential available (check first node's list)
-		const firstReq = card.nodes[0];
-		if (firstReq.existingCredentials?.length === 1) {
-			selections.value[card.id] = firstReq.existingCredentials[0].id;
-		} else if (card.isAutoApplied && firstReq.existingCredentials?.length) {
-			// 3. Auto-selected by backend (most recent)
-			selections.value[card.id] = firstReq.existingCredentials[0].id;
-		} else {
-			selections.value[card.id] = null;
-		}
-	}
-}
-initSelections();
-
-/** Check if a parameter value is meaningfully set (not empty, null, or an empty resource locator). */
-function isParamValueSet(val: unknown): boolean {
-	if (val === undefined || val === null || val === '') return false;
-	if (isResourceLocatorValue(val)) {
-		return val.value !== '' && val.value !== null && val.value !== undefined;
-	}
-	return true;
-}
-
-/** Seed parameter values from existing node parameters for cards with param issues. */
-function initParamValues() {
-	for (const card of cards.value) {
-		if (!card.hasParamIssues) continue;
-		const req = card.nodes[0];
-		const nodeName = req.node.name;
-		if (paramValues.value[nodeName]) continue;
-
-		const issueParamNames = Object.keys(req.parameterIssues ?? {});
-		const nodeParams = req.node.parameters;
-		const seeded: Record<string, unknown> = {};
-		for (const paramName of issueParamNames) {
-			const existing = nodeParams[paramName];
-			if (isParamValueSet(existing)) {
-				seeded[paramName] = existing;
-			}
-		}
-		if (Object.keys(seeded).length > 0) {
-			paramValues.value[nodeName] = seeded;
-		}
-	}
-}
-initParamValues();
-
-// ---------------------------------------------------------------------------
-// Parameter helpers
-// ---------------------------------------------------------------------------
-
-/** Set a parameter value. */
-function setParamValue(nodeName: string, paramName: string, value: unknown): void {
-	if (!paramValues.value[nodeName]) {
-		paramValues.value[nodeName] = {};
-	}
-	paramValues.value[nodeName][paramName] = value;
-}
-
-/** Bridge ParameterInputList events to both local paramValues AND the workflow store node. */
-function onParameterValueChanged(card: SetupCard, parameterData: IUpdateInformation): void {
-	const nodeName = card.nodes[0].node.name;
-	const paramName = parameterData.name.replace(/^parameters\./, '');
-
-	// 1. Update local paramValues (used by buildNodeParameters on Apply)
-	setParamValue(nodeName, paramName, parameterData.value);
-
-	// 2. Update workflow store node (needed for ParameterInputList reactivity,
-	//    dependent param resolution, and loadOptions calls)
-	const canvasNode = workflowsStore.getNodeByName(nodeName);
-	if (canvasNode) {
-		canvasNode.parameters = { ...canvasNode.parameters, [paramName]: parameterData.value };
-	}
-}
-
-// ---------------------------------------------------------------------------
-// Credential test result helpers
-// ---------------------------------------------------------------------------
-
-function getEffectiveCredTestResult(
-	card: SetupCard,
-): { success: boolean; message?: string } | undefined | null {
-	if (card.id in credTestOverrides.value) {
-		return credTestOverrides.value[card.id];
-	}
-	return card.credentialTestResult;
-}
-
-// ---------------------------------------------------------------------------
-// Trigger test result helper
-// ---------------------------------------------------------------------------
-
 function getTriggerResult(
 	card: SetupCard,
 ): InstanceAiWorkflowSetupNode['triggerTestResult'] | undefined {
@@ -388,69 +238,24 @@ function getTriggerResult(
 	return triggerNode ? triggerTestResults.value[triggerNode.node.name] : undefined;
 }
 
-// ---------------------------------------------------------------------------
-// Trigger test button disabled logic
-// ---------------------------------------------------------------------------
-
 function isTriggerTestDisabled(card: SetupCard): boolean {
-	// Disabled if credential not selected
-	if (card.credentialType && selections.value[card.id] === null) return true;
-	// Disabled if credential test failed
+	if (card.credentialType && !getCardCredentialId(card)) return true;
 	const testResult = getEffectiveCredTestResult(card);
-	if (testResult !== undefined && testResult !== null && !testResult.success) return true;
-	// Disabled if parameter issues not resolved
-	if (card.hasParamIssues) {
-		const params = getCardParameters(card);
-		const nodeName = card.nodes[0].node.name;
-		for (const param of params) {
-			const val = paramValues.value[nodeName]?.[param.name];
-			if (!isParamValueSet(val)) return true;
+	if (testResult !== undefined && !testResult.success) return true;
+	if (cardHasParamWork(card)) {
+		for (const req of card.nodes) {
+			const storeNode = workflowsStore.getNodeByName(req.node.name);
+			if (storeNode) {
+				const liveIssues = getNodeParametersIssues(nodeTypesStore, storeNode);
+				if (Object.keys(liveIssues).length > 0) return true;
+			}
 		}
 	}
 	return false;
 }
 
 // ---------------------------------------------------------------------------
-// Completion — first-trigger-only logic
-// ---------------------------------------------------------------------------
-
-function isCardComplete(card: SetupCard): boolean {
-	if (card.credentialType) {
-		const selectedId = selections.value[card.id];
-		if (!selectedId) return false;
-		const testResult = getEffectiveCredTestResult(card);
-		// null = user changed credential, test cleared — not blocking
-		// { success: false } = test failed — blocking
-		if (testResult !== undefined && testResult !== null && !testResult.success) return false;
-	}
-
-	// Parameter issues check
-	if (card.hasParamIssues) {
-		const params = getCardParameters(card);
-		const nodeName = card.nodes[0].node.name;
-		for (const param of params) {
-			const val = paramValues.value[nodeName]?.[param.name];
-			if (!isParamValueSet(val)) return false;
-		}
-	}
-
-	// Trigger check — only the first trigger requires successful execution
-	if (card.isTestable && card.isTrigger && card.isFirstTrigger) {
-		const triggerNode = card.nodes.find((n) => n.isTrigger);
-		const result = triggerNode ? triggerTestResults.value[triggerNode.node.name] : undefined;
-		if (!result || result.status !== 'success') return false;
-	}
-
-	return true;
-}
-
-const anyCardComplete = computed(() => cards.value.some((c) => isCardComplete(c)));
-
-const allPreResolved = computed(() => props.setupRequests.every((r) => !r.needsAction));
-
-// ---------------------------------------------------------------------------
 // Auto-advance: only when a card transitions from incomplete -> complete
-// (not when navigating to an already-complete card)
 // ---------------------------------------------------------------------------
 
 const userNavigated = ref(false);
@@ -466,16 +271,14 @@ function wrappedGoToPrev() {
 }
 
 watch(
-	() => currentCard.value && isCardComplete(currentCard.value),
+	() => currentDisplayCard.value && isDisplayCardComplete(currentDisplayCard.value),
 	(complete, prevComplete) => {
-		// Only auto-advance on a false->true transition (credential was just selected)
-		// Skip if user just navigated to a card that was already complete
 		if (!complete || prevComplete || userNavigated.value) {
 			userNavigated.value = false;
 			return;
 		}
-		const nextIncomplete = cards.value.findIndex(
-			(c, idx) => idx > currentStepIndex.value && !isCardComplete(c),
+		const nextIncomplete = displayCards.value.findIndex(
+			(dc, idx) => idx > currentStepIndex.value && !isDisplayCardComplete(dc),
 		);
 		if (nextIncomplete >= 0) {
 			goToStep(nextIncomplete);
@@ -483,47 +286,57 @@ watch(
 	},
 );
 
-// Clear selection when a credential is deleted from the store
+// ---------------------------------------------------------------------------
+// Credential store listeners
+// ---------------------------------------------------------------------------
+
 const stopDeleteListener = credentialsStore.$onAction(({ name, after, args }) => {
 	if (name !== 'deleteCredential') return;
 	after(() => {
 		const deletedId = (args[0] as { id: string }).id;
-		for (const [cardId, selectedId] of Object.entries(selections.value)) {
-			if (selectedId === deletedId) {
-				selections.value[cardId] = null;
+		for (const [key, selectedId] of Object.entries(credGroupSelections.value)) {
+			if (selectedId !== deletedId) continue;
+			const groupCard = cards.value.find(
+				(c) => c.credentialType && c.nodes[0] && credGroupKey(c.nodes[0]) === key,
+			);
+			if (groupCard?.credentialType) {
+				clearCredentialForGroup(key, groupCard.credentialType);
+			} else {
+				credGroupSelections.value[key] = null;
 			}
 		}
 	});
 });
 
-// Listen for credential creation to auto-select newly created credentials
-// when using the setup button path (no NodeCredentials dropdown rendered)
 const stopCreateListener = credentialsStore.$onAction(({ name, after }) => {
 	if (name !== 'createNewCredential') return;
 	after((newCred) => {
 		if (!newCred || typeof newCred !== 'object' || !('id' in newCred)) return;
-		const card = currentCard.value;
-		if (!card?.credentialType) return;
 		const cred = newCred as { id: string; type: string };
-		if (cred.type === card.credentialType) {
-			selections.value[card.id] = cred.id;
+
+		if (activeCredentialTarget.value && cred.type === activeCredentialTarget.value.credentialType) {
+			setCredentialForGroup(
+				activeCredentialTarget.value.groupKey,
+				activeCredentialTarget.value.credentialType,
+				cred.id,
+			);
+			activeCredentialTarget.value = null;
+			return;
 		}
+
+		const dc = currentDisplayCard.value;
+		if (dc?.type === 'single' && dc.card.credentialType === cred.type) {
+			const key = dc.card.nodes[0] ? credGroupKey(dc.card.nodes[0]) : dc.card.credentialType;
+			setCredentialForGroup(key, cred.type, cred.id);
+		}
+
+		activeCredentialTarget.value = null;
 	});
 });
 
-function cardHasExistingCredentials(card: SetupCard): boolean {
-	if (!card.credentialType) return false;
-	const firstReq = card.nodes[0];
-	return (
-		(firstReq?.existingCredentials?.length ?? 0) > 0 ||
-		(credentialsStore.getUsableCredentialByType(card.credentialType)?.length ?? 0) > 0
-	);
-}
-
-function openNewCredentialForCard(card: SetupCard) {
-	if (!card.credentialType) return;
-	uiStore.openNewCredential(card.credentialType, false, false, props.projectId);
-}
+// ---------------------------------------------------------------------------
+// Lifecycle
+// ---------------------------------------------------------------------------
 
 onUnmounted(() => {
 	stopDeleteListener();
@@ -534,7 +347,6 @@ onUnmounted(() => {
 });
 
 onMounted(async () => {
-	// Deduplicate node type infos for fetching
 	const nodeInfos = props.setupRequests
 		.map((req) => ({ name: req.node.type, version: req.node.typeVersion }))
 		.filter(
@@ -542,8 +354,6 @@ onMounted(async () => {
 				arr.findIndex((x) => x.name === info.name && x.version === info.version) === i,
 		);
 
-	// Ensure stores are populated: credentials, credential types, node types,
-	// and the workflow itself (so ParameterInputList can access nodes).
 	try {
 		await Promise.all([
 			credentialsStore.fetchAllCredentials(),
@@ -554,9 +364,6 @@ onMounted(async () => {
 		console.warn('Failed to preload credentials/node types for Instance AI workflow setup', error);
 	}
 
-	// Load the AI-created workflow into workflowsStore so ParameterInputList
-	// can access nodes, connections, and the workflow ID for resource locator
-	// API calls. Save and restore previous state on unmount.
 	try {
 		const workflowData = await fetchWorkflowApi(rootStore.restApiContext, props.workflowId);
 		previousWorkflow = { ...workflowsStore.workflow };
@@ -567,14 +374,28 @@ onMounted(async () => {
 
 	isStoreReady.value = true;
 
-	const firstIncomplete = cards.value.findIndex((c) => !isCardComplete(c));
+	const testedIds = new Set<string>();
+	for (const card of cards.value) {
+		if (!card.credentialType) continue;
+		const selectedId = getCardCredentialId(card);
+		if (!selectedId || testedIds.has(selectedId)) continue;
+		testedIds.add(selectedId);
+		const cred =
+			card.nodes[0].existingCredentials?.find((c) => c.id === selectedId) ??
+			credentialsStore.getCredentialById(selectedId);
+		if (cred) {
+			void testCredentialInBackground(selectedId, cred.name, card.credentialType);
+		}
+	}
+
+	const firstIncomplete = displayCards.value.findIndex((dc) => !isDisplayCardComplete(dc));
 	if (firstIncomplete > 0) {
 		goToStep(firstIncomplete);
 	}
 });
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Template helpers
 // ---------------------------------------------------------------------------
 
 function getDisplayName(credentialType: string): string {
@@ -590,21 +411,9 @@ function getCardTitle(card: SetupCard): string {
 	return 'Setup';
 }
 
-function toNodeUi(setupNode: InstanceAiWorkflowSetupNode): INodeUi {
-	return {
-		id: setupNode.node.id,
-		name: setupNode.node.name,
-		type: setupNode.node.type,
-		typeVersion: setupNode.node.typeVersion,
-		position: setupNode.node.position,
-		parameters: setupNode.node.parameters as INodeUi['parameters'],
-		credentials: setupNode.node.credentials as INodeUi['credentials'],
-	} as INodeUi;
-}
-
 function cardNodeUi(card: SetupCard): INodeUi {
 	const node = toNodeUi(card.nodes[0]);
-	const selectedId = card.credentialType ? selections.value[card.id] : undefined;
+	const selectedId = card.credentialType ? getCardCredentialId(card) : undefined;
 	if (selectedId && card.credentialType) {
 		const cred =
 			card.nodes[0].existingCredentials?.find((c) => c.id === selectedId) ??
@@ -619,14 +428,16 @@ function cardNodeUi(card: SetupCard): INodeUi {
 	return node;
 }
 
-/** True when this card only has a trigger (no credentials and no param issues) */
 function isTriggerOnly(card: SetupCard): boolean {
-	return card.isTrigger && !card.credentialType && !card.hasParamIssues;
+	return isTriggerOnlyUtil(card, cardHasParamWork);
 }
 
-/** Use credential icon when it's a credential card */
 function useCredentialIcon(card: SetupCard): boolean {
-	return !!card.credentialType && !isTriggerOnly(card);
+	return shouldUseCredentialIcon(card, cardHasParamWork);
+}
+
+function openNdv(card: SetupCard): void {
+	ndvStore.setActiveNodeName(card.nodes[0].node.name, 'other');
 }
 
 const nodeNames = computed(() => {
@@ -636,343 +447,6 @@ const nodeNames = computed(() => {
 });
 
 const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
-
-function getCredTestIcon(card: SetupCard): 'spinner' | 'check' | 'triangle-alert' | null {
-	if (!card.credentialType) return null;
-	const selectedId = selections.value[card.id];
-	if (!selectedId) return null;
-
-	const testResult = getEffectiveCredTestResult(card);
-	if (testResult === null) return null; // User changed credential, no test result
-	if (card.isAutoApplied && testResult === undefined) return 'spinner';
-	if (testResult?.success) return 'check';
-	if (testResult !== undefined && !testResult.success) return 'triangle-alert';
-	return null;
-}
-
-// ---------------------------------------------------------------------------
-// Build per-node credential mapping from card-scoped selections
-// ---------------------------------------------------------------------------
-
-function buildNodeCredentials(): Record<string, Record<string, string>> {
-	const result: Record<string, Record<string, string>> = {};
-	for (const card of cards.value) {
-		if (!card.credentialType) continue;
-		const selectedId = selections.value[card.id];
-		if (!selectedId) continue;
-
-		// Skip cards where the credential test explicitly failed
-		const testResult = getEffectiveCredTestResult(card);
-		if (testResult !== undefined && testResult !== null && !testResult.success) continue;
-
-		for (const req of card.nodes) {
-			if (!result[req.node.name]) {
-				result[req.node.name] = {};
-			}
-			result[req.node.name][card.credentialType] = selectedId;
-		}
-	}
-	return result;
-}
-
-/** Build nodeParameters from paramValues + store node (for NDV-edited params). */
-function buildNodeParameters(): Record<string, Record<string, unknown>> | undefined {
-	const result: Record<string, Record<string, unknown>> = {};
-	let hasValues = false;
-
-	for (const card of cards.value) {
-		if (!card.hasParamIssues) continue;
-		const nodeName = card.nodes[0].node.name;
-		const issueParamNames = Object.keys(card.nodes[0].parameterIssues ?? {});
-
-		const merged: Record<string, unknown> = {};
-		for (const paramName of issueParamNames) {
-			// Only include values that were pre-filled by AI (seeded via initParamValues)
-			// or explicitly edited by the user (set via onParameterValueChanged)
-			const val = paramValues.value[nodeName]?.[paramName];
-			if (isParamValueSet(val)) {
-				merged[paramName] = val;
-				hasValues = true;
-			}
-		}
-		if (Object.keys(merged).length > 0) {
-			result[nodeName] = merged;
-		}
-	}
-	return hasValues ? result : undefined;
-}
-
-// ---------------------------------------------------------------------------
-// Event handlers
-// ---------------------------------------------------------------------------
-
-function onCredentialSelected(card: SetupCard, updateInfo: INodeUpdatePropertiesInformation) {
-	if (!card.credentialType) return;
-	const credentialData = updateInfo.properties.credentials?.[card.credentialType];
-	const credentialId = typeof credentialData === 'string' ? undefined : credentialData?.id;
-
-	if (credentialId) {
-		selections.value[card.id] = credentialId;
-	} else {
-		selections.value[card.id] = null;
-	}
-	// Clear stale backend test result — this credential hasn't been tested
-	credTestOverrides.value[card.id] = null;
-
-	// Sync credential to workflow store node — needed so ResourceLocator
-	// component sends the correct credential in loadOptions API calls
-	if (credentialId && card.credentialType) {
-		for (const req of card.nodes) {
-			const storeNode = workflowsStore.getNodeByName(req.node.name);
-			if (storeNode) {
-				const cred =
-					req.existingCredentials?.find((c) => c.id === credentialId) ??
-					credentialsStore.getCredentialById(credentialId);
-				if (cred) {
-					storeNode.credentials = {
-						...storeNode.credentials,
-						[card.credentialType]: { id: cred.id, name: cred.name },
-					};
-				}
-			}
-		}
-	}
-}
-
-async function handleTestTrigger(nodeName: string) {
-	const nodeCredentials = buildNodeCredentials();
-	const nodeParameters = buildNodeParameters();
-
-	applyError.value = null;
-
-	const postSuccess = await store.confirmAction(
-		props.requestId,
-		true,
-		undefined,
-		undefined,
-		undefined,
-		undefined,
-		undefined,
-		{
-			action: 'test-trigger',
-			testTriggerNode: nodeName,
-			nodeCredentials,
-			nodeParameters,
-		},
-	);
-
-	if (!postSuccess) {
-		applyError.value = 'Failed to send trigger test request. Try again.';
-		return;
-	}
-
-	// Do NOT resolve the confirmation here. Two things can happen next:
-	// 1. Happy path: the backend re-suspends with a NEW confirmation-request
-	//    (new requestId). The new request appears in pendingConfirmations and
-	//    replaces this card naturally. The OLD request gets resolved when the
-	//    SSE confirmation-request event is processed (tool-call gets a new
-	//    confirmation, clearing the old one).
-	// 2. Failure path: the tool returns an error (e.g. credential apply failed
-	//    before execution). The tool-result arrives via SSE. We watch for it
-	//    and show the error inline so the user can fix and retry.
-	const { promise, cancel } = waitForToolResult(props.requestId);
-	cancelApplyWait = cancel;
-	const toolResult = await promise;
-	cancelApplyWait = null;
-
-	// If we got a tool result, it means the tool finished WITHOUT re-suspending
-	// (i.e. the failure path). Show the error.
-	if (toolResult) {
-		const error = toolResult.error as string | undefined;
-		applyError.value = error ?? 'Trigger test failed';
-	}
-	// If toolResult is null (timeout), the re-suspension likely already happened
-	// and a new confirmation-request replaced this component. Nothing to do.
-}
-
-/**
- * Apply the server's authoritative updatedNodes to the canvas.
- * Uses the backend result rather than local data to ensure the canvas
- * reflects the actual persisted state.
- */
-function applyServerResultToCanvas(toolResult: Record<string, unknown>) {
-	const updatedNodes = toolResult.updatedNodes as
-		| Array<{
-				id: string;
-				name?: string;
-				type: string;
-				typeVersion: number;
-				position: [number, number];
-				parameters?: Record<string, unknown>;
-				credentials?: Record<string, { id?: string; name: string }>;
-		  }>
-		| undefined;
-
-	if (!updatedNodes) return;
-
-	for (const serverNode of updatedNodes) {
-		const canvasNode = workflowsStore.getNodeByName(serverNode.name ?? '');
-		if (!canvasNode) continue;
-
-		if (serverNode.credentials) {
-			canvasNode.credentials = serverNode.credentials as INodeUi['credentials'];
-		}
-		if (serverNode.parameters) {
-			canvasNode.parameters = serverNode.parameters as INodeUi['parameters'];
-		}
-
-		if (serverNode.name) {
-			nodeHelpers.updateNodeParameterIssuesByName(serverNode.name);
-			nodeHelpers.updateNodeCredentialIssuesByName(serverNode.name);
-		}
-	}
-}
-
-/** Watch for the tool-result SSE event and resolve when it arrives. */
-function waitForToolResult(
-	requestId: string,
-	timeoutMs = 60_000,
-): { promise: Promise<Record<string, unknown> | null>; cancel: () => void } {
-	let stopWatch: (() => void) | null = null;
-	let timeoutId: ReturnType<typeof setTimeout> | null = null;
-
-	const promise = new Promise<Record<string, unknown> | null>((resolve) => {
-		// Check if already available
-		const existing = store.findToolCallByRequestId(requestId);
-		if (existing?.result !== undefined) {
-			resolve(existing.result as Record<string, unknown>);
-			return;
-		}
-
-		// Watch for the tool call result to appear
-		stopWatch = watch(
-			() => {
-				const tc: InstanceAiToolCallState | undefined = store.findToolCallByRequestId(requestId);
-				return tc?.result;
-			},
-			(result) => {
-				if (result !== undefined) {
-					cleanup();
-					resolve(result as Record<string, unknown>);
-				}
-			},
-		);
-
-		timeoutId = setTimeout(() => {
-			cleanup();
-			resolve(null);
-		}, timeoutMs);
-	});
-
-	function cleanup() {
-		if (stopWatch) {
-			stopWatch();
-			stopWatch = null;
-		}
-		if (timeoutId) {
-			clearTimeout(timeoutId);
-			timeoutId = null;
-		}
-	}
-
-	return { promise, cancel: cleanup };
-}
-
-let cancelApplyWait: (() => void) | null = null;
-
-onUnmounted(() => {
-	cancelApplyWait?.();
-});
-
-async function handleApply() {
-	const nodeCredentials = buildNodeCredentials();
-	const nodeParameters = buildNodeParameters();
-
-	isApplying.value = true;
-	applyError.value = null;
-
-	const postSuccess = await store.confirmAction(
-		props.requestId,
-		true,
-		undefined,
-		undefined,
-		undefined,
-		undefined,
-		undefined,
-		{
-			action: 'apply',
-			nodeCredentials,
-			nodeParameters,
-		},
-	);
-
-	if (!postSuccess) {
-		isApplying.value = false;
-		applyError.value = 'Failed to send confirmation. Try again.';
-		return;
-	}
-
-	// Wait for the actual tool result via SSE before updating the canvas.
-	// IMPORTANT: resolveConfirmation() must happen AFTER we consume the result,
-	// because resolving removes the item from pendingConfirmations, which unmounts
-	// this component and cancels the watcher.
-	const { promise, cancel } = waitForToolResult(props.requestId);
-	cancelApplyWait = cancel;
-	const toolResult = await promise;
-	cancelApplyWait = null;
-
-	isApplying.value = false;
-
-	if (toolResult && (toolResult.success as boolean)) {
-		applyServerResultToCanvas(toolResult);
-		isSubmitted.value = true;
-		isPartial.value = (toolResult.partial as boolean) ?? false;
-		// Resolve only on success — this unmounts the component
-		store.resolveConfirmation(props.requestId, 'approved');
-	} else if (toolResult) {
-		// Backend returned an error — keep the UI mounted so the user can retry
-		applyError.value = (toolResult.error as string) ?? 'Apply failed';
-	} else {
-		// Timeout — keep the UI mounted so the user can retry.
-		// We do NOT fall back to local mutation or mark as submitted,
-		// because the backend state is unknown.
-		applyError.value = 'Apply timed out — please try again.';
-	}
-}
-
-async function handleLater() {
-	// In wizard mode: skip current card and advance to the next one.
-	// The skipped card will have no selection, so buildNodeCredentials()
-	// naturally excludes it from the apply payload.
-	if (!allPreResolved.value || showFullWizard.value) {
-		if (currentCard.value) {
-			selections.value[currentCard.value.id] = null;
-		}
-
-		if (!isNextDisabled.value) {
-			goToNext();
-			return;
-		}
-
-		// Last step: if any card has been completed, auto-apply the partial set
-		if (anyCardComplete.value) {
-			void handleApply();
-			return;
-		}
-	}
-
-	// No cards completed at all (or confirm mode) — defer the whole setup
-	isSubmitted.value = true;
-	isDeferred.value = true;
-
-	const success = await store.confirmAction(props.requestId, false);
-	if (success) {
-		store.resolveConfirmation(props.requestId, 'deferred');
-	} else {
-		isSubmitted.value = false;
-		isDeferred.value = false;
-	}
-}
 </script>
 
 <template>
@@ -1010,7 +484,7 @@ async function handleLater() {
 						</li>
 					</ul>
 				</div>
-				<footer :class="$style.footer">
+				<ConfirmationFooter layout="row-between">
 					<div :class="$style.footerNav">
 						<N8nLink
 							data-test-id="instance-ai-workflow-setup-review-details"
@@ -1025,26 +499,27 @@ async function handleLater() {
 					<div :class="$style.footerActions">
 						<N8nButton
 							variant="outline"
-							size="small"
+							size="medium"
 							:class="$style.actionButton"
 							:label="i18n.baseText('instanceAi.workflowSetup.later')"
 							data-test-id="instance-ai-workflow-setup-later"
 							@click="handleLater"
 						/>
 						<N8nButton
-							size="small"
+							size="medium"
 							:class="$style.actionButton"
 							:label="i18n.baseText('instanceAi.credential.continueButton')"
 							data-test-id="instance-ai-workflow-setup-apply-button"
 							@click="handleApply"
 						/>
 					</div>
-				</footer>
+				</ConfirmationFooter>
 			</div>
+			<!-- Single display card -->
 			<div
-				v-else-if="currentCard"
+				v-else-if="currentDisplayCard?.type === 'single' && currentCard"
 				data-test-id="instance-ai-workflow-setup-card"
-				:class="[$style.card, { [$style.completed]: isCardComplete(currentCard) }]"
+				:class="$style.card"
 			>
 				<!-- Header -->
 				<header :class="$style.header">
@@ -1093,7 +568,7 @@ async function handleLater() {
 				<!-- Content -->
 				<div v-if="!isTriggerOnly(currentCard)" :class="$style.content">
 					<div
-						v-if="currentCard.credentialType && isStoreReady"
+						v-if="currentCard.credentialType && isStoreReady && isFirstCardInCredGroup(currentCard)"
 						:class="$style.credentialContainer"
 					>
 						<NodeCredentials
@@ -1129,13 +604,20 @@ async function handleLater() {
 							v-else
 							:label="i18n.baseText('instanceAi.credential.setupButton')"
 							data-test-id="instance-ai-workflow-setup-credential-button"
-							@click="openNewCredentialForCard(currentCard)"
+							@click="
+								openNewCredentialForSection(
+									currentCard.credentialType!,
+									currentCard.nodes[0]
+										? credGroupKey(currentCard.nodes[0])
+										: currentCard.credentialType!,
+								)
+							"
 						/>
 					</div>
 
 					<!-- Parameter editing via ParameterInputList -->
 					<ParameterInputList
-						v-if="currentCard.hasParamIssues && getCardSimpleParameters(currentCard).length > 0"
+						v-if="cardHasParamWork(currentCard) && getCardSimpleParameters(currentCard).length > 0"
 						:parameters="getCardSimpleParameters(currentCard)"
 						:node-values="{ parameters: currentCardNode?.parameters ?? {} }"
 						:node="currentCardNode ?? undefined"
@@ -1148,7 +630,7 @@ async function handleLater() {
 
 					<!-- Link to configure complex parameters in NDV -->
 					<N8nLink
-						v-if="currentCard.hasParamIssues && getCardNestedParameterCount(currentCard) > 0"
+						v-if="cardHasParamWork(currentCard) && getCardNestedParameterCount(currentCard) > 0"
 						data-test-id="instance-ai-workflow-setup-configure-link"
 						:underline="true"
 						theme="text"
@@ -1186,7 +668,245 @@ async function handleLater() {
 				</div>
 
 				<!-- Footer -->
-				<footer :class="$style.footer">
+				<ConfirmationFooter layout="row-between">
+					<div :class="$style.footerNav">
+						<N8nButton
+							v-if="showArrows"
+							variant="ghost"
+							size="xsmall"
+							icon-only
+							:disabled="isPrevDisabled"
+							data-test-id="instance-ai-workflow-setup-prev"
+							aria-label="Previous step"
+							@click="wrappedGoToPrev"
+						>
+							<N8nIcon icon="chevron-left" size="xsmall" />
+						</N8nButton>
+						<N8nText size="small" color="text-light">
+							{{ currentStepIndex + 1 }} of {{ totalSteps }}
+						</N8nText>
+						<N8nButton
+							v-if="showArrows"
+							variant="ghost"
+							size="xsmall"
+							icon-only
+							:disabled="isNextDisabled"
+							data-test-id="instance-ai-workflow-setup-next"
+							aria-label="Next step"
+							@click="wrappedGoToNext"
+						>
+							<N8nIcon icon="chevron-right" size="xsmall" />
+						</N8nButton>
+					</div>
+
+					<div :class="$style.footerActions">
+						<N8nButton
+							variant="outline"
+							size="medium"
+							:class="$style.actionButton"
+							:label="i18n.baseText('instanceAi.workflowSetup.later')"
+							data-test-id="instance-ai-workflow-setup-later"
+							@click="handleLater"
+						/>
+
+						<N8nButton
+							v-if="currentCard.isTestable && currentCard.isTrigger && currentCard.isFirstTrigger"
+							size="medium"
+							:class="$style.actionButton"
+							:label="i18n.baseText('instanceAi.workflowSetup.testTrigger')"
+							:disabled="isTriggerTestDisabled(currentCard)"
+							data-test-id="instance-ai-workflow-setup-test-trigger"
+							@click="handleTestTrigger(currentCard.nodes.find((n) => n.isTrigger)!.node.name)"
+						/>
+
+						<N8nButton
+							size="medium"
+							:class="$style.actionButton"
+							:disabled="!anyCardComplete"
+							:label="i18n.baseText('instanceAi.credential.continueButton')"
+							data-test-id="instance-ai-workflow-setup-apply-button"
+							@click="handleApply"
+						/>
+					</div>
+				</ConfirmationFooter>
+			</div>
+
+			<!-- Grouped display card -->
+			<div
+				v-else-if="currentDisplayCard?.type === 'group'"
+				data-test-id="instance-ai-workflow-setup-card"
+				:class="[$style.card, { [$style.completed]: isDisplayCardComplete(currentDisplayCard) }]"
+			>
+				<!-- Group header: parent node name + completion -->
+				<header :class="$style.header">
+					<N8nIcon icon="robot" size="small" />
+					<N8nText :class="$style.title" size="medium" color="text-dark" bold>
+						{{ currentDisplayCard.group.parentNode.name }}
+					</N8nText>
+
+					<N8nText
+						v-if="isDisplayCardComplete(currentDisplayCard)"
+						data-test-id="instance-ai-workflow-setup-step-check"
+						:class="$style.completeLabel"
+						size="medium"
+						color="success"
+					>
+						<N8nIcon icon="check" size="large" />
+						{{ i18n.baseText('generic.complete') }}
+					</N8nText>
+				</header>
+
+				<!-- Parent section (if parent has credentials/params) -->
+				<template v-if="currentDisplayCard.group.parentCard">
+					<ExpressionContextProvider :node-name="currentDisplayCard.group.parentNode.name">
+						<div :class="$style.content">
+							<div
+								v-if="
+									currentDisplayCard.group.parentCard.credentialType &&
+									isStoreReady &&
+									isFirstCardInCredGroup(currentDisplayCard.group.parentCard)
+								"
+								:class="$style.credentialContainer"
+							>
+								<NodeCredentials
+									v-if="cardHasExistingCredentials(currentDisplayCard.group.parentCard)"
+									:node="cardNodeUi(currentDisplayCard.group.parentCard)"
+									:override-cred-type="currentDisplayCard.group.parentCard.credentialType"
+									:project-id="projectId"
+									standalone
+									hide-issues
+									@credential-selected="
+										onCredentialSelected(currentDisplayCard.group.parentCard, $event)
+									"
+								/>
+								<N8nButton
+									v-else
+									:label="i18n.baseText('instanceAi.credential.setupButton')"
+									@click="
+										openNewCredentialForSection(
+											currentDisplayCard.group.parentCard.credentialType!,
+											currentDisplayCard.group.parentCard.nodes[0]
+												? credGroupKey(currentDisplayCard.group.parentCard.nodes[0])
+												: currentDisplayCard.group.parentCard.credentialType!,
+										)
+									"
+								/>
+							</div>
+
+							<ParameterInputList
+								v-if="
+									cardHasParamWork(currentDisplayCard.group.parentCard) &&
+									getCardSimpleParameters(currentDisplayCard.group.parentCard).length > 0
+								"
+								:parameters="getCardSimpleParameters(currentDisplayCard.group.parentCard)"
+								:node-values="{
+									parameters:
+										workflowsStore.getNodeByName(currentDisplayCard.group.parentNode.name)
+											?.parameters ?? {},
+								}"
+								:node="
+									workflowsStore.getNodeByName(currentDisplayCard.group.parentNode.name) ??
+									undefined
+								"
+								:hide-delete="true"
+								:remove-first-parameter-margin="true"
+								path="parameters"
+								:options-overrides="{
+									hideExpressionSelector: true,
+									hideFocusPanelButton: true,
+								}"
+								@value-changed="
+									onParameterValueChanged(currentDisplayCard.group.parentCard, $event)
+								"
+							/>
+						</div>
+					</ExpressionContextProvider>
+				</template>
+
+				<!-- Subnode sections -->
+				<div v-for="subnodeCard in currentDisplayCard.group.subnodeCards" :key="subnodeCard.id">
+					<ExpressionContextProvider :node-name="subnodeCard.nodes[0].node.name">
+						<div :class="$style.content">
+							<N8nText size="small" color="text-light" bold>
+								{{ subnodeCard.nodes[0].node.name }}
+							</N8nText>
+
+							<div
+								v-if="
+									subnodeCard.credentialType && isStoreReady && isFirstCardInCredGroup(subnodeCard)
+								"
+								:class="$style.credentialContainer"
+							>
+								<NodeCredentials
+									v-if="cardHasExistingCredentials(subnodeCard)"
+									:node="cardNodeUi(subnodeCard)"
+									:override-cred-type="subnodeCard.credentialType"
+									:project-id="projectId"
+									standalone
+									hide-issues
+									@credential-selected="onCredentialSelected(subnodeCard, $event)"
+								/>
+								<N8nButton
+									v-else
+									:label="i18n.baseText('instanceAi.credential.setupButton')"
+									@click="
+										openNewCredentialForSection(
+											subnodeCard.credentialType!,
+											subnodeCard.nodes[0]
+												? credGroupKey(subnodeCard.nodes[0])
+												: subnodeCard.credentialType!,
+										)
+									"
+								/>
+							</div>
+
+							<ParameterInputList
+								v-if="
+									cardHasParamWork(subnodeCard) && getCardSimpleParameters(subnodeCard).length > 0
+								"
+								:parameters="getCardSimpleParameters(subnodeCard)"
+								:node-values="{
+									parameters:
+										workflowsStore.getNodeByName(subnodeCard.nodes[0].node.name)?.parameters ?? {},
+								}"
+								:node="workflowsStore.getNodeByName(subnodeCard.nodes[0].node.name) ?? undefined"
+								:hide-delete="true"
+								:remove-first-parameter-margin="true"
+								path="parameters"
+								:options-overrides="{
+									hideExpressionSelector: true,
+									hideFocusPanelButton: true,
+								}"
+								@value-changed="onParameterValueChanged(subnodeCard, $event)"
+							/>
+						</div>
+					</ExpressionContextProvider>
+				</div>
+
+				<!-- Listening callout for webhook triggers in grouped cards -->
+				<div
+					v-if="
+						getGroupPrimaryTriggerCard(currentDisplayCard.group)?.isTrigger &&
+						getGroupPrimaryTriggerCard(currentDisplayCard.group)?.isFirstTrigger &&
+						getTriggerResult(getGroupPrimaryTriggerCard(currentDisplayCard.group)!)?.status ===
+							'listening'
+					"
+					:class="$style.listeningCallout"
+				>
+					<N8nIcon icon="spinner" color="primary" spin size="small" :class="$style.loading" />
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('instanceAi.workflowSetup.triggerListening') }}
+					</N8nText>
+				</div>
+
+				<!-- Error banner -->
+				<div v-if="applyError" :class="$style.errorBanner">
+					<N8nIcon icon="triangle-alert" size="small" :class="$style.error" />
+					<N8nText size="small" color="text-dark">{{ applyError }}</N8nText>
+				</div>
+
+				<!-- Footer -->
+				<ConfirmationFooter layout="row-between">
 					<div :class="$style.footerNav">
 						<N8nButton
 							v-if="showArrows"
@@ -1228,13 +948,24 @@ async function handleLater() {
 						/>
 
 						<N8nButton
-							v-if="currentCard.isTestable && currentCard.isTrigger && currentCard.isFirstTrigger"
+							v-if="
+								getGroupPrimaryTriggerCard(currentDisplayCard.group)?.isTestable &&
+								getGroupPrimaryTriggerCard(currentDisplayCard.group)?.isTrigger
+							"
 							size="small"
 							:class="$style.actionButton"
 							:label="i18n.baseText('instanceAi.workflowSetup.testTrigger')"
-							:disabled="isTriggerTestDisabled(currentCard)"
+							:disabled="
+								isTriggerTestDisabled(getGroupPrimaryTriggerCard(currentDisplayCard.group)!)
+							"
 							data-test-id="instance-ai-workflow-setup-test-trigger"
-							@click="handleTestTrigger(currentCard.nodes.find((n) => n.isTrigger)!.node.name)"
+							@click="
+								handleTestTrigger(
+									getGroupPrimaryTriggerCard(currentDisplayCard.group)!.nodes.find(
+										(n) => n.isTrigger,
+									)!.node.name,
+								)
+							"
 						/>
 
 						<N8nButton
@@ -1246,7 +977,7 @@ async function handleLater() {
 							@click="handleApply"
 						/>
 					</div>
-				</footer>
+				</ConfirmationFooter>
 			</div>
 		</template>
 
@@ -1281,10 +1012,7 @@ async function handleLater() {
 	padding: 0;
 	border: var(--border);
 	border-radius: var(--radius);
-
-	&.completed {
-		border-color: var(--color--success);
-	}
+	background-color: var(--color--background--light-3);
 }
 
 .confirmCard {
@@ -1294,8 +1022,8 @@ async function handleLater() {
 	gap: var(--spacing--sm);
 	padding: 0;
 	border: var(--border);
-	border-color: var(--color--success);
 	border-radius: var(--radius);
+	background-color: var(--color--background--light-3);
 }
 
 .confirmSummary {
@@ -1369,14 +1097,6 @@ async function handleLater() {
 	background: var(--color--danger--tint-4);
 	border-radius: var(--radius);
 	margin: 0 var(--spacing--sm);
-}
-
-.footer {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--xs);
-	border-top: var(--border);
-	padding: var(--spacing--xs) var(--spacing--sm);
 }
 
 .footerNav {

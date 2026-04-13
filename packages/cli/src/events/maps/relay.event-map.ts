@@ -718,6 +718,7 @@ export type RelayEventMap = {
 	'embed-login': {
 		subject: string;
 		issuer: string;
+		kid: string;
 		clientIp: string;
 	};
 

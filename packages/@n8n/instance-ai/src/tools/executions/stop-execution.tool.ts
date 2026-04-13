@@ -17,6 +17,10 @@ export function createStopExecutionTool(context: InstanceAiContext) {
 			message: z.string(),
 		}),
 		execute: async (inputData: z.infer<typeof stopExecutionInputSchema>) => {
+			if (context.permissions?.runWorkflow === 'blocked') {
+				return { success: false, message: 'Action blocked by admin' };
+			}
+
 			return await context.executionService.stop(inputData.executionId);
 		},
 	});

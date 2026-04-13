@@ -1,10 +1,12 @@
 import { i18n } from '@n8n/i18n';
 import type { FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
-import { hasPermission } from '@/app/utils/rbac/permissions';
+import { INSTANCE_AI_OPTIN_MODAL_KEY } from '@/app/constants/modals';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_SETTINGS_VIEW } from './constants';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const InstanceAiView = async () => await import('./InstanceAiView.vue');
 const SettingsInstanceAiView = async () => await import('./views/SettingsInstanceAiView.vue');
+const InstanceAiOptinModal = async () => await import('./components/InstanceAiOptinModal.vue');
 
 export const InstanceAiModule: FrontendModuleDescription = {
 	id: 'instance-ai',
@@ -39,7 +41,7 @@ export const InstanceAiModule: FrontendModuleDescription = {
 				middleware: ['authenticated', 'rbac', 'custom'],
 				middlewareOptions: {
 					rbac: {
-						scope: 'instanceAi:manage',
+						scope: 'instanceAi:message',
 					},
 				},
 				telemetry: {
@@ -53,7 +55,7 @@ export const InstanceAiModule: FrontendModuleDescription = {
 		project: [],
 	},
 	resources: [],
-	modals: [],
+	modals: [{ key: INSTANCE_AI_OPTIN_MODAL_KEY, component: InstanceAiOptinModal }],
 	settingsPages: [
 		{
 			id: 'settings-instance-ai',
@@ -62,7 +64,7 @@ export const InstanceAiModule: FrontendModuleDescription = {
 			position: 'top',
 			route: { to: { name: INSTANCE_AI_SETTINGS_VIEW } },
 			get available() {
-				return hasPermission(['rbac'], { rbac: { scope: 'instanceAi:manage' } });
+				return hasPermission(['rbac'], { rbac: { scope: 'instanceAi:message' } });
 			},
 		},
 	],

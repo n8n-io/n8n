@@ -2,10 +2,19 @@ import { z } from 'zod';
 
 jest.mock('@n8n/instance-ai', () => ({
 	createMemory: jest.fn(),
-	WORKING_MEMORY_TEMPLATE: '',
 	workflowLoopStateSchema: z.string(),
 	attemptRecordSchema: z.object({}),
 	workflowBuildOutcomeSchema: z.string(),
+	buildAgentTreeFromEvents: jest.fn(() => ({
+		agentId: 'agent-root',
+		role: 'orchestrator',
+		status: 'active',
+		textContent: '',
+		reasoning: '',
+		toolCalls: [],
+		children: [],
+		timeline: [],
+	})),
 }));
 
 jest.mock('../eval/execution.service', () => ({
@@ -16,7 +25,6 @@ import type {
 	InstanceAiSendMessageRequest,
 	InstanceAiCorrectTaskRequest,
 	InstanceAiConfirmRequestDto,
-	InstanceAiUpdateMemoryRequest,
 	InstanceAiEnsureThreadRequest,
 	InstanceAiThreadMessagesQuery,
 	InstanceAiUserPreferencesUpdateRequest,
@@ -92,6 +100,7 @@ describe('InstanceAiController', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		settingsService.isInstanceAiEnabled.mockReturnValue(true);
 	});
 
 	describe('chat', () => {
@@ -174,6 +183,85 @@ describe('InstanceAiController', () => {
 	describe('events', () => {
 		it('should require instanceAi:message scope', () => {
 			expect(scopeOf('events')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
+		});
+
+		it('should bootstrap run-sync from the richer persisted snapshot when live events are incomplete', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			eventBus.getEventsAfter.mockReturnValue([]);
+			instanceAiService.getThreadStatus.mockReturnValue({
+				hasActiveRun: true,
+				isSuspended: false,
+				backgroundTasks: [],
+			} as never);
+			instanceAiService.getMessageGroupId.mockReturnValue('mg-1');
+			instanceAiService.getRunIdsForMessageGroup.mockReturnValue(['run-1']);
+			eventBus.getEventsForRuns.mockReturnValue([
+				{
+					type: 'run-start',
+					runId: 'run-1',
+					agentId: 'agent-root',
+					payload: { messageId: 'msg-1', messageGroupId: 'mg-1' },
+				},
+			] as never);
+			memoryService.getLatestRunSnapshot.mockResolvedValue({
+				runId: 'run-1',
+				messageGroupId: 'mg-1',
+				runIds: ['run-1'],
+				tree: {
+					agentId: 'agent-root',
+					role: 'orchestrator',
+					status: 'active',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [],
+					children: [
+						{
+							agentId: 'agent-planner-1',
+							role: 'planner',
+							status: 'active',
+							textContent: '',
+							reasoning: '',
+							toolCalls: [],
+							children: [],
+							timeline: [],
+							planItems: [
+								{
+									id: 'task-1',
+									title: 'Build workflow',
+									kind: 'build-workflow',
+									spec: 'Create the workflow',
+									deps: [],
+								},
+							],
+						},
+					],
+					timeline: [{ type: 'child', agentId: 'agent-planner-1' }],
+				},
+			});
+
+			const sseRes = mock<Response & { flush?: () => void }>({
+				setHeader: jest.fn(),
+				flushHeaders: jest.fn(),
+				write: jest.fn(),
+				end: jest.fn(),
+				flush: jest.fn(),
+			});
+			eventBus.subscribe.mockReturnValue(jest.fn());
+
+			const sseReq = mock<AuthenticatedRequest>({
+				user: { id: USER_ID },
+				headers: {},
+				once: jest.fn(),
+			});
+
+			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
+
+			const runSyncFrame = (sseRes.write as jest.Mock).mock.calls
+				.map(([frame]) => String(frame))
+				.find((frame) => frame.startsWith('event: run-sync'));
+
+			expect(runSyncFrame).toContain('"agent-planner-1"');
+			expect(runSyncFrame).toContain('"planItems"');
 		});
 
 		it('should close SSE stream when thread ownership changes after pre-creation subscribe', async () => {
@@ -455,63 +543,6 @@ describe('InstanceAiController', () => {
 		});
 	});
 
-	describe('getMemory', () => {
-		it('should require instanceAi:message scope', () => {
-			expect(scopeOf('getMemory')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
-		});
-
-		it('should throw ForbiddenError for other user thread', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
-
-			await expect(controller.getMemory(req, res, THREAD_ID)).rejects.toThrow(ForbiddenError);
-		});
-
-		it('should allow new threads', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
-			memoryService.getWorkingMemory.mockResolvedValue({ content: '', template: '' });
-
-			await expect(controller.getMemory(req, res, THREAD_ID)).resolves.toBeDefined();
-		});
-	});
-
-	describe('updateMemory', () => {
-		it('should require instanceAi:message scope', () => {
-			expect(scopeOf('updateMemory')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
-		});
-
-		it('should update working memory', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			const payload = mock<InstanceAiUpdateMemoryRequest>({ content: 'new memory' });
-
-			const result = await controller.updateMemory(req, res, THREAD_ID, payload);
-
-			expect(result).toEqual({ ok: true });
-			expect(memoryService.updateWorkingMemory).toHaveBeenCalledWith(
-				USER_ID,
-				THREAD_ID,
-				'new memory',
-			);
-		});
-
-		it('should throw ForbiddenError for other user thread', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
-			const payload = mock<InstanceAiUpdateMemoryRequest>({ content: 'new memory' });
-
-			await expect(controller.updateMemory(req, res, THREAD_ID, payload)).rejects.toThrow(
-				ForbiddenError,
-			);
-		});
-
-		it('should allow new threads', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
-			const payload = mock<InstanceAiUpdateMemoryRequest>({ content: 'new memory' });
-
-			const result = await controller.updateMemory(req, res, THREAD_ID, payload);
-
-			expect(result).toEqual({ ok: true });
-		});
-	});
-
 	describe('listThreads', () => {
 		it('should require instanceAi:message scope', () => {
 			expect(scopeOf('listThreads')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
@@ -583,13 +614,16 @@ describe('InstanceAiController', () => {
 		it('should rename thread', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 			const threadObj = mock<InstanceAiThreadInfo>();
-			memoryService.renameThread.mockResolvedValue(threadObj);
+			memoryService.updateThread.mockResolvedValue(threadObj);
 			const payload = mock<InstanceAiRenameThreadRequestDto>({ title: 'New Title' });
 
 			const result = await controller.renameThread(req, res, THREAD_ID, payload);
 
 			expect(result).toEqual({ thread: threadObj });
-			expect(memoryService.renameThread).toHaveBeenCalledWith(THREAD_ID, 'New Title');
+			expect(memoryService.updateThread).toHaveBeenCalledWith(
+				THREAD_ID,
+				expect.objectContaining({ title: 'New Title' }),
+			);
 		});
 	});
 
@@ -646,33 +680,6 @@ describe('InstanceAiController', () => {
 				scope: 'instanceAi:message',
 				globalOnly: true,
 			});
-		});
-	});
-
-	describe('getThreadContext', () => {
-		it('should require instanceAi:message scope', () => {
-			expect(scopeOf('getThreadContext')).toEqual({
-				scope: 'instanceAi:message',
-				globalOnly: true,
-			});
-		});
-
-		it('should throw ForbiddenError for other user thread', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
-
-			await expect(controller.getThreadContext(req, res, THREAD_ID)).rejects.toThrow(
-				ForbiddenError,
-			);
-		});
-
-		it('should allow new threads', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
-			memoryService.getThreadContext.mockResolvedValue({
-				threadId: THREAD_ID,
-				workingMemory: null,
-			});
-
-			await expect(controller.getThreadContext(req, res, THREAD_ID)).resolves.toBeDefined();
 		});
 	});
 

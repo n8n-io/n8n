@@ -1,10 +1,15 @@
 <script lang="ts" setup>
-import { N8nActionDropdown, N8nButton, N8nIconButton } from '@n8n/design-system';
+import { N8nButton, N8nText } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useInstanceAiStore } from '../instanceAi.store';
+import ConfirmationFooter from './ConfirmationFooter.vue';
+import ConfirmationPreview from './ConfirmationPreview.vue';
+import SplitButton from './SplitButton.vue';
 
 const props = defineProps<{
 	requestId: string;
@@ -14,6 +19,8 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const telemetry = useTelemetry();
+const rootStore = useRootStore();
 const store = useInstanceAiStore();
 
 interface OptionEntry {
@@ -68,6 +75,17 @@ const otherOptions = computed<OptionEntry[]>(() =>
 );
 
 async function confirm(decision: string) {
+	const tc = store.findToolCallByRequestId(props.requestId);
+	const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
+	const eventProps = {
+		thread_id: store.currentThreadId,
+		input_thread_id: inputThreadId,
+		instance_id: rootStore.instanceId,
+		type: 'resource-decision',
+		provided_inputs: [{ label: props.resource, options: props.options, option_chosen: decision }],
+		skipped_inputs: [],
+	};
+	telemetry.track('User finished providing input', eventProps);
 	await store.confirmResourceDecision(props.requestId, decision);
 }
 </script>
@@ -75,103 +93,53 @@ async function confirm(decision: string) {
 <template>
 	<div :class="$style.root">
 		<div :class="$style.body">
-			<div :class="$style.message">
+			<N8nText tag="div" size="medium" bold>
 				{{
 					i18n.baseText('instanceAi.gatewayConfirmation.prompt', {
 						interpolate: { resources: props.resource },
 					})
 				}}
-			</div>
-			<div :class="$style.preview">{{ props.description }}</div>
+			</N8nText>
+			<ConfirmationPreview>{{ props.description }}</ConfirmationPreview>
 		</div>
 
-		<div :class="$style.actions">
+		<ConfirmationFooter>
 			<!-- Unknown options not in the standard set -->
 			<N8nButton
 				v-for="opt in otherOptions"
 				:key="opt.decision"
 				variant="outline"
-				size="small"
+				size="medium"
 				:label="opt.label"
 				@click="confirm(opt.decision)"
 			/>
 
 			<!-- Deny side -->
 			<template v-if="denyPrimary">
-				<div v-if="denyDropdownItems.length" :class="$style.splitButton">
-					<N8nButton
-						variant="outline"
-						size="small"
-						:label="denyPrimary.label"
-						:class="$style.splitButtonMain"
-						data-test-id="gateway-decision-deny"
-						@click="confirm(denyPrimary.decision)"
-					/>
-					<N8nActionDropdown
-						:items="denyDropdownItems"
-						:class="$style.splitButtonDropdown"
-						placement="bottom-start"
-						@select="confirm"
-					>
-						<template #activator>
-							<N8nIconButton
-								variant="outline"
-								icon="chevron-down"
-								:class="$style.splitButtonCaret"
-								aria-label="More deny options"
-								size="small"
-							/>
-						</template>
-					</N8nActionDropdown>
-				</div>
-				<N8nButton
-					v-else
+				<SplitButton
 					variant="outline"
-					size="small"
 					:label="denyPrimary.label"
+					:items="denyDropdownItems"
 					data-test-id="gateway-decision-deny"
+					caret-aria-label="More deny options"
 					@click="confirm(denyPrimary.decision)"
+					@select="confirm"
 				/>
 			</template>
 
 			<!-- Approve side -->
 			<template v-if="approvePrimary">
-				<div v-if="approveDropdownItems.length" :class="$style.splitButton">
-					<N8nButton
-						variant="solid"
-						size="small"
-						:label="approvePrimary.label"
-						:class="$style.splitButtonMain"
-						data-test-id="gateway-decision-approve"
-						@click="confirm(approvePrimary.decision)"
-					/>
-					<N8nActionDropdown
-						:items="approveDropdownItems"
-						:class="$style.splitButtonDropdown"
-						placement="bottom-start"
-						@select="confirm"
-					>
-						<template #activator>
-							<N8nIconButton
-								variant="solid"
-								icon="chevron-down"
-								:class="$style.splitButtonCaret"
-								aria-label="More approve options"
-								size="small"
-							/>
-						</template>
-					</N8nActionDropdown>
-				</div>
-				<N8nButton
-					v-else
+				<SplitButton
 					variant="solid"
-					size="small"
 					:label="approvePrimary.label"
+					:items="approveDropdownItems"
 					data-test-id="gateway-decision-approve"
+					caret-aria-label="More approve options"
 					@click="confirm(approvePrimary.decision)"
+					@select="confirm"
 				/>
 			</template>
-		</div>
+		</ConfirmationFooter>
 	</div>
 </template>
 
@@ -179,57 +147,13 @@ async function confirm(decision: string) {
 .root {
 	border: var(--border);
 	border-radius: var(--radius--lg);
+	background-color: var(--color--background--light-3);
 }
 
 .body {
-	padding: var(--spacing--sm);
+	padding: var(--spacing--sm) var(--spacing--sm) 0;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--3xs);
-}
-
-.message {
-	font-size: var(--font-size--2xs);
-	color: var(--color--text);
-	font-weight: var(--font-weight--medium);
-}
-
-.preview {
-	font-family: monospace;
-	font-size: var(--font-size--3xs);
-	color: var(--color--text--tint-1);
-	word-break: break-all;
-	padding: var(--spacing--2xs);
-	background: var(--color--background);
-	border-radius: var(--radius);
-	border: var(--border);
-}
-
-.actions {
-	display: flex;
 	gap: var(--spacing--2xs);
-	justify-content: flex-end;
-	border-top: var(--border);
-	padding: var(--spacing--xs) var(--spacing--sm);
-}
-
-.splitButton {
-	display: flex;
-	position: relative;
-}
-
-.splitButtonMain {
-	border-top-right-radius: 0;
-	border-bottom-right-radius: 0;
-}
-
-.splitButtonDropdown {
-	display: flex;
-}
-
-.splitButtonCaret {
-	border-top-left-radius: 0;
-	border-bottom-left-radius: 0;
-	border-left: 1px solid var(--color--foreground--tint-2);
 }
 </style>
