@@ -4,6 +4,31 @@ export interface WorkflowLoopGuidanceOptions {
 	workItemId?: string;
 }
 
+const CHECKLIST_DONE_NEEDS_SETUP =
+	'\n\nUpdate the build checklist via `update-tasks` with these items (use specific credential/trigger names when known): ' +
+	'{ id: "build", description: "Build workflow", status: "done" }, ' +
+	'{ id: "setup", description: "Set up credentials & triggers", status: "todo" }, ' +
+	'{ id: "test", description: "Test workflow after setup", status: "todo" }, ' +
+	'{ id: "publish", description: "Publish when ready", status: "todo" }.';
+
+const CHECKLIST_DONE_VERIFIED =
+	'\n\nUpdate the build checklist via `update-tasks`: ' +
+	'{ id: "build", description: "Build workflow", status: "done" }, ' +
+	'{ id: "test", description: "Workflow tested", status: "done" }, ' +
+	'{ id: "publish", description: "Publish when ready", status: "todo" }.';
+
+const CHECKLIST_VERIFY =
+	'\n\nUpdate the build checklist via `update-tasks`: ' +
+	'{ id: "build", description: "Build workflow", status: "done" }, ' +
+	'{ id: "test", description: "Test workflow after build", status: "in_progress" }, ' +
+	'{ id: "publish", description: "Publish when ready", status: "todo" }.';
+
+const CHECKLIST_BLOCKED =
+	'\n\nUpdate the build checklist via `update-tasks`: ' +
+	'{ id: "build", description: "Build workflow", status: "done" }, ' +
+	'{ id: "test", description: "Test workflow", status: "failed" }, ' +
+	'{ id: "publish", description: "Publish when ready", status: "todo" }.';
+
 export function formatWorkflowLoopGuidance(
 	action: WorkflowLoopAction,
 	options: WorkflowLoopGuidanceOptions = {},
@@ -15,10 +40,14 @@ export function formatWorkflowLoopGuidance(
 					'Workflow verified successfully with temporary mock data. ' +
 					`Call \`setup-workflow\` with workflowId "${action.workflowId ?? 'unknown'}" ` +
 					'to let the user configure credentials, parameters, and triggers through the setup UI. ' +
-					'Do not call `setup-credentials` or `apply-workflow-credentials` — `setup-workflow` handles everything.'
+					'Do not call `setup-credentials` or `apply-workflow-credentials` — `setup-workflow` handles everything.' +
+					CHECKLIST_DONE_NEEDS_SETUP
 				);
 			}
-			return `Workflow verified successfully. Report completion to the user.${action.workflowId ? ` Workflow ID: ${action.workflowId}` : ''}`;
+			return (
+				`Workflow verified successfully. Report completion to the user.${action.workflowId ? ` Workflow ID: ${action.workflowId}` : ''}` +
+				CHECKLIST_DONE_VERIFIED
+			);
 		}
 		case 'verify':
 			return (
@@ -26,10 +55,14 @@ export function formatWorkflowLoopGuidance(
 				`If the build had mocked credentials, use \`verify-built-workflow\` with workItemId "${options.workItemId ?? 'unknown'}". ` +
 				'Otherwise use `run-workflow`. ' +
 				'If it fails, use `debug-execution` to diagnose. ' +
-				`Then call \`report-verification-verdict\` with workItemId "${options.workItemId ?? 'unknown'}" and your findings.`
+				`Then call \`report-verification-verdict\` with workItemId "${options.workItemId ?? 'unknown'}" and your findings.` +
+				CHECKLIST_VERIFY
 			);
 		case 'blocked':
-			return `BUILD BLOCKED: ${action.reason}. Explain this to the user and ask how to proceed.`;
+			return (
+				`BUILD BLOCKED: ${action.reason}. Explain this to the user and ask how to proceed.` +
+				CHECKLIST_BLOCKED
+			);
 		case 'rebuild':
 			return (
 				`REBUILD NEEDED: The workflow at ${action.workflowId} needs structural repair. ` +

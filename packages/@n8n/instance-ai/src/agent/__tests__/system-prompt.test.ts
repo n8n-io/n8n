@@ -1,6 +1,24 @@
 import { getSystemPrompt } from '../system-prompt';
 
 describe('getSystemPrompt', () => {
+	describe('workflow checklist ownership', () => {
+		it('uses update-tasks as the single source of truth for direct builds', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('`update-tasks` is the single source of truth');
+			expect(prompt).toContain(
+				'{ id: "build", description: "Build workflow", status: "in_progress" }',
+			);
+			expect(prompt).toContain(
+				'{ id: "test", description: "Test workflow after build", status: "todo" }',
+			);
+			expect(prompt).toContain(
+				'{ id: "publish", description: "Publish when ready", status: "todo" }',
+			);
+			expect(prompt).not.toContain('emitted automatically when the build starts');
+		});
+	});
+
 	describe('license hints', () => {
 		it('includes License Limitations section when hints are provided', () => {
 			const prompt = getSystemPrompt({

@@ -437,11 +437,53 @@ export async function startBuildWorkflowAgentTask(
 							});
 						});
 
-						const finalText = await hitlResult.text;
+						let finalText = await hitlResult.text;
 
-						const mainWorkflowAttempt = submitAttempts.get(mainWorkflowPath);
-						const currentMainWorkflow = await readFileViaSandbox(workspace, mainWorkflowPath);
-						const currentMainWorkflowHash = hashContent(currentMainWorkflow);
+						let mainWorkflowAttempt = submitAttempts.get(mainWorkflowPath);
+						let currentMainWorkflow = await readFileViaSandbox(workspace, mainWorkflowPath);
+						let currentMainWorkflowHash = hashContent(currentMainWorkflow);
+
+						// Nudge: if the builder wrote code but never submitted, give it
+						// one continuation turn to finish. Only when the file exists and
+						// no submit was attempted (not a real error).
+						if (!mainWorkflowAttempt && currentMainWorkflow) {
+							const nudgeResult = await withTraceParentContext(traceParent, async () => {
+								const nudgeHooks = createLlmStepTraceHooks(traceParent);
+								const nudgeStream = await subAgent.stream(
+									'You wrote code to /src/workflow.ts but stopped without calling submit-workflow. Call submit-workflow now to save and validate the workflow.',
+									{
+										maxSteps: BUILDER_MAX_STEPS,
+										abortSignal: signal,
+										providerOptions: {
+											anthropic: { cacheControl: { type: 'ephemeral' } },
+										},
+										...(nudgeHooks?.executionOptions ?? {}),
+									},
+								);
+								return await consumeStreamWithHitl({
+									agent: subAgent,
+									stream: nudgeStream as {
+										runId?: string;
+										fullStream: AsyncIterable<unknown>;
+										text: Promise<string>;
+									},
+									runId: context.runId,
+									agentId: subAgentId,
+									eventBus: context.eventBus,
+									logger: context.logger,
+									threadId: context.threadId,
+									abortSignal: signal,
+									waitForConfirmation: context.waitForConfirmation,
+									drainCorrections,
+									waitForCorrection,
+									llmStepTraceHooks: nudgeHooks,
+								});
+							});
+							finalText = await nudgeResult.text;
+							mainWorkflowAttempt = submitAttempts.get(mainWorkflowPath);
+							currentMainWorkflow = await readFileViaSandbox(workspace, mainWorkflowPath);
+							currentMainWorkflowHash = hashContent(currentMainWorkflow);
+						}
 
 						if (!mainWorkflowAttempt) {
 							const text = 'Error: workflow builder finished without submitting /src/workflow.ts.';

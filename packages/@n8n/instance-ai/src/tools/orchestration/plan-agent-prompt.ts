@@ -75,4 +75,5 @@ ${NATIVE_NODE_PREFERENCE}
 - **\`data-table\` kind supports any table operation.** For creation, include \`columns\`. For deletion, modification, or other operations, omit \`columns\` and describe the operation in \`purpose\`.
 - **Include seed data instructions in the \`purpose\` field.** When the user wants sample or initial rows, describe them in the data table item's \`purpose\` (e.g. "Seed with 3 rows: ..."). The data-table agent handles insertion.
 - **Each item's \`purpose\` must only describe what THAT item does.** Do not reference actions handled by other plan items. Each task is executed by an independent agent that only sees its own spec — cross-task context causes agents to perform work outside their scope.
-- Never fabricate node names — if unsure whether a node exists, search first.`;
+- Never fabricate node names — if unsure whether a node exists, search first.
+- **Testing is mandatory.** Every \`build-workflow\` item includes implicit verification. After plan completion, the orchestrator handles setup, testing, and publishing for each built workflow. Do NOT add separate test or publish items to the plan — the builder agent self-verifies, and the orchestrator manages the remaining steps post-plan.`;
