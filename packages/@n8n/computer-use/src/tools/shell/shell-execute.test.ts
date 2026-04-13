@@ -2,6 +2,7 @@ import { SandboxManager } from '@anthropic-ai/sandbox-runtime';
 import { spawn } from 'child_process';
 import { EventEmitter } from 'events';
 
+import { getSettingsDir } from '../../config';
 import { textOf } from '../test-utils';
 import type { AffectedResource } from '../types';
 import { buildShellResource } from './build-shell-resource';
@@ -100,6 +101,7 @@ describe('shell_execute tool', () => {
 		expect(parsed.stdout).toBe('hello\n');
 		expect(parsed.stderr).toBe('');
 		expect(parsed.exitCode).toBe(0);
+		expect(result.isError).toBeUndefined();
 	});
 
 	it('captures stderr and exits with code 1', async () => {
@@ -127,6 +129,7 @@ describe('shell_execute tool', () => {
 
 		expect(parsed.stderr).toBe('command not found\n');
 		expect(parsed.exitCode).toBe(1);
+		expect(result.isError).toBe(true);
 	});
 
 	it('captures both stdout and stderr', async () => {
@@ -299,6 +302,31 @@ describe('shell_execute tool', () => {
 			expect(executable).toBe('sandboxed-ls');
 			expect(spawnOptions).toMatchObject({ shell: true });
 		});
+
+		it('includes settings dir in sandbox denyWrite and denyRead on darwin', async () => {
+			Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true });
+			mockSandboxManager.wrapWithSandbox.mockResolvedValue('sandboxed-ls');
+
+			const child = makeMockChild();
+			mockSpawn.mockReturnValue(child as unknown as ReturnType<typeof spawn>);
+
+			const resultPromise = shellExecuteTool.execute(
+				{ command: 'ls', timeout: 5000 },
+				DUMMY_CONTEXT,
+			);
+
+			await flushMicrotasks(5);
+
+			const closeHandler = getCloseHandler(child.on);
+			closeHandler?.(0);
+			await resultPromise;
+
+			const initCall = mockSandboxManager.initialize.mock.calls[0][0] as {
+				filesystem: { denyWrite: string[]; denyRead: string[] };
+			};
+			expect(initCall.filesystem.denyWrite).toContain(getSettingsDir());
+			expect(initCall.filesystem.denyRead).toContain(getSettingsDir());
+		});
 	});
 
 	describe('result JSON structure', () => {
@@ -349,6 +377,11 @@ describe('shell_execute tool', () => {
 			const parsed = JSON.parse(textOf(result)) as { exitCode: number };
 
 			expect(parsed.exitCode).toBe(exitCode);
+			if (exitCode === 0) {
+				expect(result.isError).toBeUndefined();
+			} else {
+				expect(result.isError).toBe(true);
+			}
 		});
 	});
 });
