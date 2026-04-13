@@ -52,7 +52,6 @@ import {
 	createWorkflowDocumentId,
 	convertToWorkflowAccessors,
 } from '@/app/stores/workflowDocument.store';
-import type { WorkflowObjectAccessors } from '../types';
 
 declare namespace HttpRequestNode {
 	namespace V2 {
