@@ -1630,7 +1630,7 @@ export class InstanceAiService {
 
 			// When trace replay is enabled but LangSmith isn't configured,
 			// create a minimal context that only supports replay/record wrapping.
-			if (!tracing && process.env.N8N_INSTANCE_AI_TRACE_REPLAY) {
+			if (!tracing && process.env.E2E_TESTS === 'true') {
 				const { createTraceReplayOnlyContext } = await import('@n8n/instance-ai');
 				tracing = createTraceReplayOnlyContext();
 			}

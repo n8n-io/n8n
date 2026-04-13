@@ -49,7 +49,6 @@ export const instanceAiTestConfig = {
 			N8N_INSTANCE_AI_MODEL: 'anthropic/claude-sonnet-4-6',
 			N8N_INSTANCE_AI_MODEL_API_KEY: ANTHROPIC_API_KEY,
 			N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED: 'true',
-			N8N_INSTANCE_AI_TRACE_REPLAY: 'true',
 		},
 	},
 } as const;

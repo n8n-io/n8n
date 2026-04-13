@@ -246,7 +246,7 @@ LLM request bodies are replaced during recording with an 80-character substring 
 
 ### Test-Only Endpoints
 
-Enabled by `N8N_INSTANCE_AI_TRACE_REPLAY=true`:
+Enabled by `E2E_TESTS=true` (set automatically by the Playwright fixture base):
 
 | Endpoint | Purpose |
 |----------|---------|

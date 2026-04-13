@@ -1128,7 +1128,7 @@ function recordWrapTools(
 
 /**
  * Creates a minimal InstanceAiTraceContext that only supports trace replay/record
- * wrapping — no LangSmith integration. Used when N8N_INSTANCE_AI_TRACE_REPLAY is
+ * wrapping — no LangSmith integration. Used when E2E_TESTS is
  * set but LangSmith isn't configured.
  */
 export function createTraceReplayOnlyContext(): InstanceAiTraceContext {

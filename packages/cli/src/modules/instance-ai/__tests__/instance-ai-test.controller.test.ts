@@ -28,7 +28,7 @@ describe('InstanceAiTestController', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		process.env = { ...originalEnv, N8N_INSTANCE_AI_TRACE_REPLAY: 'true' };
+		process.env = { ...originalEnv, E2E_TESTS: 'true' };
 	});
 
 	afterAll(() => {
@@ -58,7 +58,14 @@ describe('InstanceAiTestController', () => {
 		});
 
 		it('should throw ForbiddenError when trace replay is not enabled', () => {
-			delete process.env.N8N_INSTANCE_AI_TRACE_REPLAY;
+			delete process.env.E2E_TESTS;
+			const req = mock<Request>({ body: { slug: 'test' } });
+
+			expect(() => controller.loadToolTrace(req)).toThrow(ForbiddenError);
+		});
+
+		it('should throw ForbiddenError in production even when E2E_TESTS is set', () => {
+			process.env.NODE_ENV = 'production';
 			const req = mock<Request>({ body: { slug: 'test' } });
 
 			expect(() => controller.loadToolTrace(req)).toThrow(ForbiddenError);
@@ -78,7 +85,7 @@ describe('InstanceAiTestController', () => {
 		});
 
 		it('should throw ForbiddenError when trace replay is not enabled', () => {
-			delete process.env.N8N_INSTANCE_AI_TRACE_REPLAY;
+			delete process.env.E2E_TESTS;
 			const req = mock<Request>();
 
 			expect(() => controller.getToolTrace(req, 'my-test')).toThrow(ForbiddenError);
@@ -96,7 +103,7 @@ describe('InstanceAiTestController', () => {
 		});
 
 		it('should throw ForbiddenError when trace replay is not enabled', () => {
-			delete process.env.N8N_INSTANCE_AI_TRACE_REPLAY;
+			delete process.env.E2E_TESTS;
 			const req = mock<Request>();
 
 			expect(() => controller.clearToolTrace(req, 'my-test')).toThrow(ForbiddenError);
@@ -114,7 +121,7 @@ describe('InstanceAiTestController', () => {
 		});
 
 		it('should throw ForbiddenError when trace replay is not enabled', () => {
-			delete process.env.N8N_INSTANCE_AI_TRACE_REPLAY;
+			delete process.env.E2E_TESTS;
 
 			expect(() => controller.drainBackgroundTasks()).toThrow(ForbiddenError);
 		});

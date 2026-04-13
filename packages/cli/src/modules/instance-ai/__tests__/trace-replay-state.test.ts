@@ -189,7 +189,7 @@ describe('TraceReplayState', () => {
 
 	describe('configureReplayMode', () => {
 		it('should do nothing when env var is not set', async () => {
-			delete process.env.N8N_INSTANCE_AI_TRACE_REPLAY;
+			delete process.env.E2E_TESTS;
 			const state = new TraceReplayState();
 			const tracing = {} as Record<string, unknown>;
 
@@ -199,7 +199,7 @@ describe('TraceReplayState', () => {
 		});
 
 		it('should set replay mode when events are loaded', async () => {
-			process.env.N8N_INSTANCE_AI_TRACE_REPLAY = 'true';
+			process.env.E2E_TESTS = 'true';
 			const state = new TraceReplayState();
 			state.loadEvents('test', [{ kind: 'header' }, { kind: 'tool-call' }]);
 			const tracing = {} as Record<string, unknown>;
@@ -212,7 +212,7 @@ describe('TraceReplayState', () => {
 		});
 
 		it('should set record mode when no events are loaded', async () => {
-			process.env.N8N_INSTANCE_AI_TRACE_REPLAY = 'true';
+			process.env.E2E_TESTS = 'true';
 			const state = new TraceReplayState();
 			state.activateSlug('test');
 			const tracing = {} as Record<string, unknown>;
@@ -224,7 +224,7 @@ describe('TraceReplayState', () => {
 		});
 
 		it('should reuse shared TraceIndex/IdRemapper for same slug', async () => {
-			process.env.N8N_INSTANCE_AI_TRACE_REPLAY = 'true';
+			process.env.E2E_TESTS = 'true';
 			const state = new TraceReplayState();
 			state.loadEvents('test', [{ kind: 'header' }]);
 
@@ -239,7 +239,7 @@ describe('TraceReplayState', () => {
 		});
 
 		it('should clear shared state when slug changes via clearEvents', async () => {
-			process.env.N8N_INSTANCE_AI_TRACE_REPLAY = 'true';
+			process.env.E2E_TESTS = 'true';
 			const state = new TraceReplayState();
 			state.loadEvents('test-a', [{ kind: 'header' }]);
 

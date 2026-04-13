@@ -7,7 +7,7 @@ import { InstanceAiService } from './instance-ai.service';
 
 /**
  * Test-only endpoints for trace replay in Instance AI e2e tests.
- * Only registered when N8N_INSTANCE_AI_TRACE_REPLAY is set.
+ * Only registered when E2E_TESTS is set.
  */
 @RestController('/instance-ai')
 export class InstanceAiTestController {
@@ -46,7 +46,7 @@ export class InstanceAiTestController {
 	}
 
 	private assertTraceReplayEnabled(): void {
-		if (!process.env.N8N_INSTANCE_AI_TRACE_REPLAY) {
+		if (process.env.E2E_TESTS !== 'true' || process.env.NODE_ENV === 'production') {
 			throw new ForbiddenError('Trace replay is not enabled');
 		}
 	}

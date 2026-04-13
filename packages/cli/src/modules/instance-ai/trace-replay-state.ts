@@ -6,7 +6,7 @@ import type { InstanceAiTraceContext } from '@n8n/instance-ai';
  * TraceIndex/IdRemapper instances that are reused across runs
  * within the same test.
  *
- * Only active when N8N_INSTANCE_AI_TRACE_REPLAY env var is set.
+ * Only active when E2E_TESTS env var is set.
  */
 export class TraceReplayState {
 	/** In-memory store for tool trace events keyed by test slug. */
@@ -86,7 +86,7 @@ export class TraceReplayState {
 	 * In record mode, creates a new TraceWriter.
 	 */
 	async configureReplayMode(tracing: InstanceAiTraceContext): Promise<void> {
-		if (!process.env.N8N_INSTANCE_AI_TRACE_REPLAY) {
+		if (process.env.E2E_TESTS !== 'true') {
 			return;
 		}
 

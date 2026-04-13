@@ -20,7 +20,7 @@ export class InstanceAiModule implements ModuleInterface {
 		await Container.get(InstanceAiSettingsService).loadFromDb();
 		await import('./instance-ai.controller');
 
-		if (process.env.N8N_INSTANCE_AI_TRACE_REPLAY) {
+		if (process.env.E2E_TESTS === 'true' && process.env.NODE_ENV !== 'production') {
 			await import('./instance-ai-test.controller');
 		}
 
