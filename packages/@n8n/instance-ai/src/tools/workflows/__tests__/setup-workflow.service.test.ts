@@ -125,6 +125,132 @@ describe('buildSetupRequests', () => {
 		expect(result[0].existingCredentials).toEqual([{ id: 'cred-1', name: 'My Slack' }]);
 	});
 
+	it('falls back to node description credentials when getNodeCredentialTypes returns empty', async () => {
+		// Simulate production: getNodeCredentialTypes is available but returns []
+		// (e.g. node lookup miss in the adapter). The fallback should still detect
+		// credentials from the node description.
+		(context.nodeService as unknown as Record<string, unknown>).getNodeCredentialTypes = jest
+			.fn()
+			.mockResolvedValue([]);
+		(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+
+		const node = makeNode();
+		const result = await buildSetupRequests(context, node);
+
+		expect(result).toHaveLength(1);
+		expect(result[0].credentialType).toBe('slackApi');
+		expect(result[0].needsAction).toBe(true);
+	});
+
+	it('falls back to node description credentials when getNodeCredentialTypes throws', async () => {
+		(context.nodeService as unknown as Record<string, unknown>).getNodeCredentialTypes = jest
+			.fn()
+			.mockRejectedValue(new Error('Node lookup failed'));
+		(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+
+		const node = makeNode();
+		const result = await buildSetupRequests(context, node);
+
+		expect(result).toHaveLength(1);
+		expect(result[0].credentialType).toBe('slackApi');
+		expect(result[0].needsAction).toBe(true);
+	});
+
+	it('excludes credentials whose displayOptions do not match current parameters', async () => {
+		(context.nodeService as unknown as Record<string, unknown>).getNodeCredentialTypes = jest
+			.fn()
+			.mockResolvedValue([]);
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [
+				{ name: 'httpSslAuth', displayOptions: { show: { provideSslCertificates: [true] } } },
+			],
+		});
+		(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+
+		const node = makeNode({ type: 'n8n-nodes-base.httpRequest', typeVersion: 4.4 });
+		const result = await buildSetupRequests(context, node);
+
+		// displayOptions require provideSslCertificates=true, but it's not set
+		expect(result.find((r) => r.credentialType === 'httpSslAuth')).toBeUndefined();
+	});
+
+	it('includes credentials whose displayOptions match current parameters', async () => {
+		(context.nodeService as unknown as Record<string, unknown>).getNodeCredentialTypes = jest
+			.fn()
+			.mockResolvedValue([]);
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [
+				{ name: 'httpSslAuth', displayOptions: { show: { provideSslCertificates: [true] } } },
+			],
+		});
+		(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+
+		const node = makeNode({
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.4,
+			parameters: { provideSslCertificates: true },
+		});
+		const result = await buildSetupRequests(context, node);
+
+		expect(result.find((r) => r.credentialType === 'httpSslAuth')).toBeDefined();
+	});
+
+	it('resolves dynamic credential from genericAuthType parameter', async () => {
+		(context.nodeService as unknown as Record<string, unknown>).getNodeCredentialTypes = jest
+			.fn()
+			.mockResolvedValue([]);
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [
+				{ name: 'httpSslAuth', displayOptions: { show: { provideSslCertificates: [true] } } },
+			],
+		});
+		(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+
+		const node = makeNode({
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.4,
+			parameters: {
+				authentication: 'genericCredentialType',
+				genericAuthType: 'httpQueryAuth',
+				url: 'https://api.example.com',
+			},
+		});
+		const result = await buildSetupRequests(context, node);
+
+		expect(result).toHaveLength(1);
+		expect(result[0].credentialType).toBe('httpQueryAuth');
+		expect(result[0].needsAction).toBe(true);
+	});
+
+	it('resolves dynamic credential from predefinedCredentialType parameter', async () => {
+		(context.nodeService as unknown as Record<string, unknown>).getNodeCredentialTypes = jest
+			.fn()
+			.mockResolvedValue([]);
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [],
+		});
+		(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+
+		const node = makeNode({
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.4,
+			parameters: {
+				authentication: 'predefinedCredentialType',
+				nodeCredentialType: 'openWeatherMapApi',
+				url: 'https://api.openweathermap.org',
+			},
+		});
+		const result = await buildSetupRequests(context, node);
+
+		expect(result).toHaveLength(1);
+		expect(result[0].credentialType).toBe('openWeatherMapApi');
+		expect(result[0].needsAction).toBe(true);
+	});
+
 	it('sets needsAction=true when no credential is set', async () => {
 		(context.credentialService.list as jest.Mock).mockResolvedValue([
 			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },

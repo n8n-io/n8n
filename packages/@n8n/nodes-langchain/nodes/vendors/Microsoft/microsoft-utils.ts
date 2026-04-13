@@ -28,7 +28,6 @@ import {
 import { type Activity, ActivityTypes } from '@microsoft/agents-activity';
 import { v4 as uuid } from 'uuid';
 import { invokeAgent } from './langchain-utils';
-
 import {
 	McpToolServerConfigurationService,
 	defaultToolingConfigurationProvider,
@@ -37,7 +36,12 @@ import {
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StructuredToolkit } from 'n8n-core';
 import { connectMcpClient, getAllTools } from '../../mcp/shared/utils';
-import { createCallTool, mcpToolToDynamicTool } from '../../mcp/McpClientTool/utils';
+import {
+	buildMcpToolName,
+	createCallTool,
+	mcpToolToDynamicTool,
+} from '../../mcp/McpClientTool/utils';
+export { buildMcpToolName };
 
 export type MicrosoftAgent365Credentials = {
 	clientId: string;
@@ -127,17 +131,6 @@ export const microsoftMcpServers: INodePropertyOptions[] = [
 ];
 
 const MS_TENANT_ID_HEADER = 'x-ms-tenant-id';
-const MAX_MCP_TOOL_NAME_LENGTH = 64;
-
-export function buildMcpToolName(serverName: string, toolName: string): string {
-	const sanitizedServerName = serverName.replace(/[^a-zA-Z0-9]/g, '_');
-	const fullName = `${sanitizedServerName}_${toolName}`;
-	if (fullName.length <= MAX_MCP_TOOL_NAME_LENGTH) {
-		return fullName;
-	}
-	const maxPrefixLen = MAX_MCP_TOOL_NAME_LENGTH - toolName.length - 1;
-	return maxPrefixLen > 0 ? `${sanitizedServerName.slice(0, maxPrefixLen)}_${toolName}` : toolName;
-}
 
 function isMicrosoftObservabilityEnabled(): boolean {
 	return (

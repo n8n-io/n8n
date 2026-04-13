@@ -1,6 +1,5 @@
-import { toDbMessage } from '../sdk/message';
-import type { BuiltMemory, Thread } from '../types';
-import type { AgentDbMessage, AgentMessage } from '../types/sdk/message';
+import type { BuiltMemory, MemoryDescriptor, Thread } from '../types';
+import type { AgentDbMessage } from '../types/sdk/message';
 
 interface StoredMessage {
 	message: AgentDbMessage;
@@ -73,7 +72,7 @@ export class InMemoryMemory implements BuiltMemory {
 			stored = stored.filter((s) => s.createdAt.getTime() < cutoff);
 		}
 		if (opts?.limit) stored = stored.slice(-opts.limit);
-		return stored.map((s) => s.message);
+		return stored.map((s) => ({ ...s.message, createdAt: s.createdAt }));
 	}
 
 	/**
@@ -84,12 +83,11 @@ export class InMemoryMemory implements BuiltMemory {
 	async saveMessages(args: {
 		threadId: string;
 		resourceId?: string;
-		messages: AgentMessage[];
+		messages: AgentDbMessage[];
 	}): Promise<void> {
 		const existing = this.messagesByThread.get(args.threadId) ?? [];
-		const now = new Date();
 		for (const msg of args.messages) {
-			existing.push({ message: toDbMessage(msg), createdAt: now });
+			existing.push({ message: msg, createdAt: msg.createdAt });
 		}
 		this.messagesByThread.set(args.threadId, existing);
 	}
@@ -104,6 +102,10 @@ export class InMemoryMemory implements BuiltMemory {
 			);
 		}
 	}
+
+	describe(): MemoryDescriptor {
+		return { name: 'memory', constructorName: this.constructor.name, connectionParams: {} };
+	}
 }
 
 /**
@@ -115,7 +117,7 @@ export async function saveMessagesToThread(
 	memory: BuiltMemory,
 	threadId: string,
 	resourceId: string,
-	messages: AgentMessage[],
+	messages: AgentDbMessage[],
 ): Promise<void> {
 	await memory.saveThread({ id: threadId, resourceId });
 	await memory.saveMessages({ threadId, resourceId, messages });

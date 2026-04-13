@@ -1,16 +1,16 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import { generateText, streamText, Output } from 'ai';
-import Ajv from 'ajv';
 import type { z } from 'zod';
 import { zodToJsonSchema, type JsonSchema7Type } from 'zod-to-json-schema';
 
 import { computeCost, getModelCost, type ModelCost } from '../sdk/catalog';
-import { isLlmMessage, toDbMessage } from '../sdk/message';
+import { isLlmMessage } from '../sdk/message';
 import type {
 	AgentRunState,
 	AnthropicThinkingConfig,
 	BuiltMemory,
 	BuiltProviderTool,
+	BuiltTelemetry,
 	BuiltTool,
 	CheckpointStore,
 	FinishReason,
@@ -23,12 +23,11 @@ import type {
 	SerializableAgentState,
 	StreamChunk,
 	StreamResult,
+	SubAgentUsage,
 	ThinkingConfig,
 	TitleGenerationConfig,
 	TokenUsage,
 	XaiThinkingConfig,
-	SubAgentUsage,
-	BuiltTelemetry,
 } from '../types';
 import { AgentEventBus } from './event-bus';
 import { createFilteredLogger } from './logger';
@@ -36,7 +35,7 @@ import { saveMessagesToThread } from './memory-store';
 import { AgentMessageList, type SerializedMessageList } from './message-list';
 import { fromAiFinishReason, fromAiMessages } from './messages';
 import { createEmbeddingModel, createModel } from './model-factory';
-import { RunStateManager, generateRunId } from './run-state';
+import { generateRunId, RunStateManager } from './run-state';
 import {
 	accumulateUsage,
 	applySubAgentUsage,
@@ -50,21 +49,21 @@ import { convertChunk } from './stream';
 import { stripOrphanedToolMessages } from './strip-orphaned-tool-messages';
 import { generateThreadTitle } from './title-generation';
 import {
-	isAgentToolResult,
-	isSuspendedToolResult,
 	buildToolMap,
 	executeTool,
-	toAiSdkTools,
+	isAgentToolResult,
+	isSuspendedToolResult,
 	toAiSdkProviderTools,
+	toAiSdkTools,
 } from './tool-adapter';
 import { parseWorkingMemory, WorkingMemoryStreamFilter } from './working-memory';
 import { AgentEvent } from '../types/runtime/event';
 import type {
-	ModelConfig,
+	AgentPersistenceOptions,
 	ExecutionOptions,
+	ModelConfig,
 	PersistedExecutionOptions,
 	ToolResultEntry,
-	AgentPersistenceOptions,
 } from '../types/sdk/agent';
 import type {
 	AgentDbMessage,
@@ -73,6 +72,7 @@ import type {
 	Message,
 } from '../types/sdk/message';
 import type { JSONObject, JSONValue } from '../types/utils/json';
+import { parseWithSchema } from '../utils/parse';
 import { isZodSchema } from '../utils/zod';
 
 const logger = createFilteredLogger();
@@ -116,8 +116,6 @@ export interface AgentRuntimeConfig {
 
 const MAX_LOOP_ITERATIONS = 20;
 
-const ajv = new Ajv({ strict: false });
-
 const EMPTY_MESSAGE_LIST: SerializedMessageList = {
 	messages: [],
 	historyIds: [],
@@ -140,11 +138,11 @@ type ToolCallOutcome =
 			outcome: 'success';
 			toolEntry: ToolResultEntry;
 			subAgentUsage?: SubAgentUsage[];
-			customMessage?: AgentDbMessage;
-			message: AgentDbMessage;
+			customMessage?: AgentMessage;
+			message: AgentMessage;
 	  }
 	| { outcome: 'suspended'; payload: unknown; resumeSchema: JsonSchema7Type }
-	| { outcome: 'error'; error: unknown; message: AgentDbMessage }
+	| { outcome: 'error'; error: unknown; message: AgentMessage }
 	| { outcome: 'noop' }; // tool call shouldn't be saved or logged anywhere, usually means that if was executed by AI SDK
 
 /** A tool call that completed successfully. */
@@ -154,8 +152,8 @@ interface ToolCallSuccess {
 	input: JSONValue;
 	toolEntry: ToolResultEntry;
 	subAgentUsage?: SubAgentUsage[];
-	customMessage?: AgentDbMessage;
-	message: AgentDbMessage;
+	customMessage?: AgentMessage;
+	message: AgentMessage;
 }
 
 /** Info about a tool call that suspended (before persistence — no runId yet). */
@@ -174,7 +172,7 @@ interface ToolCallError {
 	toolName: string;
 	input: JSONValue;
 	error: unknown;
-	message: AgentDbMessage;
+	message: AgentMessage;
 }
 
 /** Result of executing a batch of tool calls (before persistence). */
@@ -311,9 +309,9 @@ export class AgentRuntime {
 
 		let resumeData: unknown = data;
 		if (tool.resumeSchema) {
-			const parseResult = await tool.resumeSchema.safeParseAsync(data);
+			const parseResult = await parseWithSchema(tool.resumeSchema, data);
 			if (!parseResult.success) {
-				throw new Error(`Invalid resume payload: ${parseResult.error.message}`);
+				throw new Error(`Invalid resume payload: ${parseResult.error}`);
 			}
 			resumeData = parseResult.data as JSONValue;
 		}
@@ -395,7 +393,7 @@ export class AgentRuntime {
 	 * prepends it at every LLM call site.
 	 */
 	private async buildMessageList(
-		input: AgentDbMessage[],
+		input: AgentMessage[],
 		options?: RunOptions,
 	): Promise<AgentMessageList> {
 		const list = new AgentMessageList();
@@ -405,7 +403,7 @@ export class AgentRuntime {
 				limit: this.config.lastMessages ?? 10,
 			});
 			if (memMessages.length > 0) {
-				list.addHistory(stripOrphanedToolMessages(memMessages.map(toDbMessage)));
+				list.addHistory(stripOrphanedToolMessages(memMessages));
 			}
 		}
 
@@ -432,7 +430,7 @@ export class AgentRuntime {
 	 */
 	private async performSemanticRecall(
 		list: AgentMessageList,
-		input: AgentDbMessage[],
+		input: AgentMessage[],
 		threadId: string,
 		resourceId?: string,
 	): Promise<void> {
@@ -447,7 +445,7 @@ export class AgentRuntime {
 
 		if (!userText) return;
 
-		let recalled: AgentMessage[] = [];
+		let recalled: AgentDbMessage[] = [];
 
 		if (this.config.memory.queryEmbeddings && this.config.semanticRecall.embedder) {
 			// Tier 3: runtime embeds the query, backend does vector search
@@ -480,7 +478,7 @@ export class AgentRuntime {
 					);
 				} else {
 					recalled = allMsgs.filter((m) => {
-						const id = 'id' in m && typeof m.id === 'string' ? m.id : undefined;
+						const id = m.id;
 						return id !== undefined && hitIds.has(id);
 					});
 				}
@@ -501,12 +499,10 @@ export class AgentRuntime {
 		const { historyIds } = list.serialize();
 		const historyIdSet = new Set(historyIds);
 
-		const newRecalled = recalled
-			.filter((m) => {
-				const id = 'id' in m && typeof m.id === 'string' ? m.id : undefined;
-				return !id || !historyIdSet.has(id);
-			})
-			.map(toDbMessage);
+		const newRecalled = recalled.filter((m) => {
+			const id = m.id;
+			return !id || !historyIdSet.has(id);
+		});
 
 		if (newRecalled.length > 0) {
 			list.addHistory(newRecalled);
@@ -515,10 +511,10 @@ export class AgentRuntime {
 
 	/** Expand hit IDs by messageRange (before/after) within the ordered message list. */
 	private expandMessageRange(
-		allMsgs: AgentMessage[],
+		allMsgs: AgentDbMessage[],
 		hitIds: Set<string>,
 		range: { before: number; after: number },
-	): AgentMessage[] {
+	): AgentDbMessage[] {
 		const expandedIds = new Set<string>();
 		for (const msg of allMsgs) {
 			const id = 'id' in msg && typeof msg.id === 'string' ? msg.id : undefined;
@@ -1610,20 +1606,11 @@ export class AgentRuntime {
 		}
 
 		if (builtTool.inputSchema) {
-			if (isZodSchema(builtTool.inputSchema)) {
-				const result = await builtTool.inputSchema.safeParseAsync(toolInput);
-				if (!result.success) {
-					return makeToolError(new Error(`Invalid tool input: ${result.error.message}`));
-				}
-				toolInput = result.data as JSONValue;
-			} else {
-				const validate = ajv.compile(builtTool.inputSchema);
-				const valid = validate(toolInput);
-				if (!valid) {
-					const message = ajv.errorsText(validate.errors);
-					return makeToolError(new Error(`Invalid tool input: ${message}`));
-				}
+			const result = await parseWithSchema(builtTool.inputSchema, toolInput);
+			if (!result.success) {
+				return makeToolError(new Error(`Invalid tool input: ${result.error}`));
 			}
+			toolInput = result.data as JSONValue;
 		}
 
 		let toolResult: unknown;
@@ -1635,9 +1622,9 @@ export class AgentRuntime {
 
 		if (isSuspendedToolResult(toolResult)) {
 			if (builtTool?.suspendSchema) {
-				const parseResult = await builtTool.suspendSchema.safeParseAsync(toolResult.payload);
+				const parseResult = await parseWithSchema(builtTool.suspendSchema, toolResult.payload);
 				if (!parseResult.success) {
-					return makeToolError(new Error(`Invalid suspend payload: ${parseResult.error.message}`));
+					return makeToolError(new Error(`Invalid suspend payload: ${parseResult.error}`));
 				}
 				toolResult.payload = parseResult.data as JSONValue;
 			}
@@ -1645,7 +1632,12 @@ export class AgentRuntime {
 				const error = new Error(`Tool ${toolName} has no resume schema`);
 				return makeToolError(error);
 			}
-			const resumeSchema = zodToJsonSchema(builtTool.resumeSchema);
+			const resumeSchema = isZodSchema(builtTool.resumeSchema)
+				? zodToJsonSchema(builtTool.resumeSchema)
+				: builtTool.resumeSchema;
+			if (!resumeSchema) {
+				return makeToolError(new Error('Invalid resume schema'));
+			}
 			return { outcome: 'suspended', payload: toolResult.payload, resumeSchema };
 		}
 
@@ -1673,10 +1665,8 @@ export class AgentRuntime {
 		const toolResultMsg = makeToolResultMessage(toolCallId, toolName, modelResult);
 		list.addResponse([toolResultMsg]);
 
-		const customToolMessage = builtTool?.toMessage?.(actualResult);
-		let customMessage: AgentDbMessage | undefined;
-		if (customToolMessage) {
-			customMessage = toDbMessage(customToolMessage);
+		const customMessage = builtTool?.toMessage?.(actualResult);
+		if (customMessage) {
 			list.addResponse([customMessage]);
 		}
 
@@ -1750,7 +1740,7 @@ export class AgentRuntime {
 	}
 
 	/** Emit a TurnEnd event when an assistant message is present in `newMessages`. */
-	private emitTurnEnd(newMessages: AgentDbMessage[], toolResults: ContentToolResult[]): void {
+	private emitTurnEnd(newMessages: AgentMessage[], toolResults: ContentToolResult[]): void {
 		const assistantMsg = newMessages.find((m) => 'role' in m && m.role === 'assistant');
 		if (assistantMsg) {
 			this.eventBus.emit({ type: AgentEvent.TurnEnd, message: assistantMsg, toolResults });

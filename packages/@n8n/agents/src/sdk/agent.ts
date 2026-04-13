@@ -6,10 +6,9 @@ import { fromSchema, type FromSchemaOptions } from './from-schema';
 import type { McpClient } from './mcp-client';
 import { Memory } from './memory';
 import { Telemetry } from './telemetry';
-import { Tool, wrapToolForApproval, APPROVAL_WRAPPED } from './tool';
+import { Tool, wrapToolForApproval } from './tool';
 import { AgentRuntime } from '../runtime/agent-runtime';
 import { AgentEventBus } from '../runtime/event-bus';
-import { InMemoryMemory } from '../runtime/memory-store';
 import { createAgentToolResult } from '../runtime/tool-adapter';
 import type {
 	AgentEvent,
@@ -205,7 +204,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return this;
 	}
 
-	/** @internal Read the declared tools */
+	/** Read the declared tools. Lists only tools added via tool() */
 	get declaredTools(): BuiltTool[] {
 		return this.tools;
 	}
@@ -550,7 +549,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 		// --- Tools ---
 		const toolSchemas: ToolSchema[] = this.tools.map((tool) => {
-			const wrappedForApproval = APPROVAL_WRAPPED in tool && Boolean(tool[APPROVAL_WRAPPED]);
 			return {
 				name: tool.name,
 				description: tool.description,
@@ -563,7 +561,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				suspendSchemaSource: null,
 				resumeSchemaSource: null,
 				toMessageSource: null,
-				requireApproval: wrappedForApproval,
+				requireApproval: tool.withDefaultApproval ?? false,
 				needsApprovalFnSource: null,
 				providerOptions: tool.providerOptions ?? null,
 				// Display fields — JSON Schema for UI rendering
@@ -571,8 +569,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				outputSchema: zodToJsonSchema(tool.outputSchema),
 				// UI badge indicators — for approval-wrapped tools, hasSuspend/hasResume
 				// reflect the approval mechanism, not user-declared suspend/resume
-				hasSuspend: !wrappedForApproval && Boolean(tool.suspendSchema),
-				hasResume: !wrappedForApproval && Boolean(tool.resumeSchema),
+				hasSuspend: Boolean(tool.suspendSchema),
+				hasResume: Boolean(tool.resumeSchema),
 				hasToMessage: Boolean(tool.toMessage),
 			};
 		});
@@ -631,6 +629,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			if (mc.semanticRecall) {
 				semanticRecall = {
 					topK: mc.semanticRecall.topK,
+					scope: mc.semanticRecall.scope ?? null,
 					messageRange: mc.semanticRecall.messageRange
 						? {
 								before: mc.semanticRecall.messageRange.before,
@@ -645,6 +644,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			if (mc.workingMemory) {
 				workingMemory = {
 					type: mc.workingMemory.structured ? 'structured' : 'freeform',
+					scope: mc.workingMemory.scope,
 					...(mc.workingMemory.schema
 						? { schema: zodToJsonSchema(mc.workingMemory.schema) ?? undefined }
 						: {}),
@@ -652,14 +652,34 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				};
 			}
 
+			let titleGeneration: MemorySchema['titleGeneration'] = null;
+			if (mc.titleGeneration) {
+				let modelStr: string | undefined;
+				if (mc.titleGeneration.model !== undefined) {
+					if (typeof mc.titleGeneration.model === 'string') {
+						modelStr = mc.titleGeneration.model;
+					} else if ('id' in mc.titleGeneration.model) {
+						modelStr = mc.titleGeneration.model.id;
+					}
+				}
+				titleGeneration = {
+					...(modelStr !== undefined && { model: modelStr }),
+					...(mc.titleGeneration.instructions !== undefined && {
+						instructions: mc.titleGeneration.instructions,
+					}),
+				};
+			}
+
+			const memoryDescriptor = mc.memory.describe();
 			memory = {
-				// TODO: each BuiltMemory should have describe() method to return a config showing connection params and other metadata
-				// this config must have enough information to rebuild the memory instance
 				source: null,
-				storage: mc.memory instanceof InMemoryMemory ? 'memory' : 'custom',
+				name: memoryDescriptor.name,
+				constructorName: memoryDescriptor.constructorName,
+				connectionParams: memoryDescriptor.connectionParams,
 				lastMessages: mc.lastMessages ?? null,
 				semanticRecall,
 				workingMemory,
+				titleGeneration,
 			};
 		}
 
@@ -675,6 +695,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		}));
 
 		// --- Structured output ---
+		// TODO: define structured output schema handling better
 		const structuredOutput = {
 			enabled: Boolean(this.outputSchema),
 			schemaSource: null as string | null,

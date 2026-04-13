@@ -2,13 +2,13 @@ import type { AgentMessage, AgentSchema, StreamChunk } from '@n8n/agents';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Param, Patch, Post, RestController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
-import { z } from 'zod';
 
 import {
 	AgentChatMessageDto,
 	AgentIntegrationDto,
 	CreateAgentDto,
 	UpdateAgentDto,
+	UpdateAgentSchemaDto,
 } from './agents.dto';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -22,29 +22,6 @@ import { ChatIntegrationService } from './integrations/chat-integration.service'
 import { AgentRepository } from './repositories/agent.repository';
 
 type FlushableResponse = Response & { flush?: () => void };
-
-const updateSchemaBody = z.object({
-	schema: z.object({
-		model: z.object({
-			provider: z.string().nullable(),
-			name: z.string().nullable(),
-			raw: z.string().optional(),
-		}),
-		credential: z.string().nullable(),
-		instructions: z.string().nullable(),
-		description: z.string().nullable(),
-		tools: z.array(z.record(z.unknown())),
-		providerTools: z.array(z.record(z.unknown())),
-		memory: z.record(z.unknown()).nullable(),
-		evaluations: z.array(z.record(z.unknown())),
-		guardrails: z.array(z.record(z.unknown())),
-		mcp: z.array(z.record(z.unknown())).nullable(),
-		telemetry: z.record(z.unknown()).nullable(),
-		checkpoint: z.enum(['memory']).nullable(),
-		config: z.record(z.unknown()),
-	}),
-	updatedAt: z.string(),
-});
 
 /**
  * Extract SSE-sendable events from AgentMessage content parts.
@@ -126,9 +103,13 @@ export class AgentsController {
 	}
 
 	@Patch('/:agentId/schema')
-	async patchSchema(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
+	async patchSchema(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+		_res: Response,
+		@Body payload: UpdateAgentSchemaDto,
+	) {
 		const { projectId, agentId } = req.params;
-		const { schema, updatedAt } = updateSchemaBody.parse(req.body);
+		const { schema, updatedAt } = payload;
 		const credentialProvider = new AgentsCredentialProvider(
 			this.credentialsService,
 			this.credentialsFinderService,
@@ -459,9 +440,18 @@ export class AgentsController {
 			}
 		}
 
+		const sanitizedHeaders: Record<string, string> = {};
+		for (const [key, value] of Object.entries(req.headers)) {
+			if (typeof value === 'string') {
+				sanitizedHeaders[key] = value;
+			} else if (Array.isArray(value)) {
+				sanitizedHeaders[key] = value.join(', ');
+			}
+		}
+
 		const webRequest = new globalThis.Request(url, {
 			method: req.method,
-			headers: req.headers as Record<string, string>,
+			headers: sanitizedHeaders,
 			body: requestBody,
 		});
 
@@ -469,7 +459,14 @@ export class AgentsController {
 		// We hold references to keep them alive for the lifetime of the process.
 		const backgroundTasks: Array<Promise<unknown>> = [];
 		const waitUntil = (task: Promise<unknown>) => {
-			backgroundTasks.push(task.catch(() => undefined));
+			backgroundTasks.push(
+				task.catch((error: unknown) => {
+					console.warn(
+						'[AgentsController] Background task failed:',
+						error instanceof Error ? error.message : String(error),
+					);
+				}),
+			);
 		};
 
 		const webResponse = await webhookHandler(webRequest, { waitUntil });

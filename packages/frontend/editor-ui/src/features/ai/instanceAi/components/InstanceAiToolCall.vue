@@ -1,13 +1,14 @@
 <script lang="ts" setup>
-import { ref, computed } from 'vue';
-import { CollapsibleRoot, CollapsibleTrigger, CollapsibleContent } from 'reka-ui';
+import type { InstanceAiToolCallState } from '@n8n/api-types';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiToolCallState } from '@n8n/api-types';
+import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
+import { computed, ref } from 'vue';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { useToolLabel } from '../toolLabels';
-import ToolResultRenderer from './ToolResultRenderer.vue';
 import ToolResultJson from './ToolResultJson.vue';
+import ToolResultRenderer from './ToolResultRenderer.vue';
 
 const props = defineProps<{
 	toolCall: InstanceAiToolCallState;
@@ -58,6 +59,7 @@ const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null =>
 				<N8nIcon
 					v-if="props.toolCall.isLoading"
 					icon="spinner"
+					color="primary"
 					:class="$style.spinner"
 					spin
 					size="small"
@@ -73,7 +75,7 @@ const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null =>
 			</div>
 			<N8nIcon :icon="isOpen ? 'chevron-up' : 'chevron-down'" size="small" />
 		</CollapsibleTrigger>
-		<CollapsibleContent :class="$style.content">
+		<AnimatedCollapsibleContent :class="$style.content">
 			<div :class="$style.section">
 				<div :class="$style.sectionLabel">{{ i18n.baseText('instanceAi.toolCall.input') }}</div>
 				<ToolResultJson :value="props.toolCall.args" />
@@ -95,7 +97,7 @@ const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null =>
 					{{ i18n.baseText('instanceAi.toolCall.running') }}
 				</div>
 			</div>
-		</CollapsibleContent>
+		</AnimatedCollapsibleContent>
 
 		<!-- Compact pending indicator — full confirmation UI is in the top-level panel -->
 		<div v-if="showConfirmation" :class="$style.pendingIndicator">

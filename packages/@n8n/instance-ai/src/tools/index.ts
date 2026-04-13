@@ -1,4 +1,6 @@
+import { isStructuredAttachment } from '../parsers/structured-file-parser';
 import type { InstanceAiContext, OrchestrationContext } from '../types';
+import { createParseFileTool } from './attachments/parse-file.tool';
 import { createGetBestPracticesTool } from './best-practices/get-best-practices.tool';
 import { createDeleteCredentialTool } from './credentials/delete-credential.tool';
 import { createGetCredentialTool } from './credentials/get-credential.tool';
@@ -24,10 +26,6 @@ import { createListExecutionsTool } from './executions/list-executions.tool';
 import { createRunWorkflowTool } from './executions/run-workflow.tool';
 import { createStopExecutionTool } from './executions/stop-execution.tool';
 import { createToolsFromLocalMcpServer } from './filesystem/create-tools-from-mcp-server';
-import { createGetFileTreeTool } from './filesystem/get-file-tree.tool';
-import { createListFilesTool } from './filesystem/list-files.tool';
-import { createReadFileTool } from './filesystem/read-file.tool';
-import { createSearchFilesTool } from './filesystem/search-files.tool';
 import { createExploreNodeResourcesTool } from './nodes/explore-node-resources.tool';
 import { createGetNodeDescriptionTool } from './nodes/get-node-description.tool';
 import { createGetNodeTypeDefinitionTool } from './nodes/get-node-type-definition.tool';
@@ -39,6 +37,7 @@ import { createBuildWorkflowAgentTool } from './orchestration/build-workflow-age
 import { createCancelBackgroundTaskTool } from './orchestration/cancel-background-task.tool';
 import { createCorrectBackgroundTaskTool } from './orchestration/correct-background-task.tool';
 import { createDelegateTool } from './orchestration/delegate.tool';
+import { createPlanWithAgentTool } from './orchestration/plan-with-agent.tool';
 import { createPlanTool } from './orchestration/plan.tool';
 import { createReportVerificationVerdictTool } from './orchestration/report-verification-verdict.tool';
 import { createUpdateTasksTool } from './orchestration/update-tasks.tool';
@@ -145,16 +144,10 @@ export function createAllTools(context: InstanceAiContext) {
 						: {}),
 				}
 			: {}),
-		...(context.localMcpServer
-			? createToolsFromLocalMcpServer(context.localMcpServer)
-			: context.filesystemService
-				? {
-						'list-files': createListFilesTool(context),
-						'read-file': createReadFileTool(context),
-						'search-files': createSearchFilesTool(context),
-						'get-file-tree': createGetFileTreeTool(context),
-					}
-				: {}),
+		...(context.localMcpServer ? createToolsFromLocalMcpServer(context.localMcpServer) : {}),
+		...(context.currentUserAttachments?.some(isStructuredAttachment)
+			? { 'parse-file': createParseFileTool(context) }
+			: {}),
 	};
 }
 
@@ -164,7 +157,8 @@ export function createAllTools(context: InstanceAiContext) {
  */
 export function createOrchestrationTools(context: OrchestrationContext) {
 	return {
-		plan: createPlanTool(context),
+		'create-tasks': createPlanTool(context),
+		plan: createPlanWithAgentTool(context),
 		'update-tasks': createUpdateTasksTool(context),
 		delegate: createDelegateTool(context),
 		'build-workflow-with-agent': createBuildWorkflowAgentTool(context),

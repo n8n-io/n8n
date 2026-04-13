@@ -26,8 +26,9 @@ export interface InterruptibleToolContext<S = unknown, R = unknown> {
 export interface BuiltTool {
 	readonly name: string;
 	readonly description: string;
-	readonly suspendSchema?: ZodType;
-	readonly resumeSchema?: ZodType;
+	readonly suspendSchema?: ZodType | JSONSchema7;
+	readonly resumeSchema?: ZodType | JSONSchema7;
+	readonly withDefaultApproval?: boolean;
 	readonly toMessage?: (output: unknown) => AgentMessage | undefined;
 	/**
 	 * Transform the handler output before sending it to the LLM as a tool result.
@@ -43,7 +44,7 @@ export interface BuiltTool {
 	 * (MCP tools). Use `isZodSchema()` to distinguish between the two at runtime.
 	 */
 	readonly inputSchema?: ZodType | JSONSchema7;
-	readonly outputSchema?: ZodType;
+	readonly outputSchema?: ZodType | JSONSchema7;
 	/** True for tools sourced from an MCP server. */
 	readonly mcpTool?: boolean;
 	/** Name of the MCP server this tool belongs to. Set when mcpTool is true. */
