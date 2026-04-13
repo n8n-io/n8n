@@ -94,8 +94,9 @@ const activeTabId = computed(() => {
 const instanceAi = computed<IMenuItem>(() => ({
 	id: 'instance-ai',
 	icon: 'sparkles',
-	label: 'Instance AI',
+	label: locale.baseText('projects.menu.instanceAi'),
 	route: { to: { name: INSTANCE_AI_VIEW } },
+	beta: true,
 }));
 
 const chat = computed<IMenuItem>(() => ({
