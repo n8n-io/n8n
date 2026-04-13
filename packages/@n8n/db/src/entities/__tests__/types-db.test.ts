@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'vitest';
 import { isAuthProviderType } from '../types-db';
 
 describe('types-db', () => {

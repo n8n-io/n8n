@@ -1,14 +1,16 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { In, LessThan, And, Not, type SelectQueryBuilder } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { IExecutionResponse } from 'entities/types-db';
 
 import { ExecutionEntity } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { ExecutionRepository } from '../execution.repository';
+import { Mocked } from 'vitest';
 
 const GREATER_THAN_MAX_UPDATE_THRESHOLD = 901;
 
@@ -20,7 +22,7 @@ describe('ExecutionRepository', () => {
 	const executionRepository = Container.get(ExecutionRepository);
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('getExecutionsForPublicApi', () => {
@@ -382,7 +384,7 @@ describe('ExecutionRepository', () => {
 				},
 			} as unknown;
 
-			const updateSpy = jest.spyOn(executionRepository, 'updateExistingExecution');
+			const updateSpy = vi.spyOn(executionRepository, 'updateExistingExecution');
 
 			const result = await executionRepository.stopDuringRun(mockExecution as IExecutionResponse);
 
@@ -413,7 +415,7 @@ describe('ExecutionRepository', () => {
 		const globalConfig = Container.get(GlobalConfig);
 		const originalDbType = globalConfig.database.type;
 
-		let queryBuilder: jest.Mocked<SelectQueryBuilder<ExecutionEntity>>;
+		let queryBuilder: Mocked<SelectQueryBuilder<ExecutionEntity>>;
 
 		beforeEach(() => {
 			queryBuilder = mock<SelectQueryBuilder<ExecutionEntity>>();
@@ -422,7 +424,7 @@ describe('ExecutionRepository', () => {
 			queryBuilder.andWhere.mockReturnThis();
 			queryBuilder.orderBy.mockReturnThis();
 			queryBuilder.getMany.mockResolvedValue([]);
-			jest.spyOn(executionRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
+			vi.spyOn(executionRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
 		});
 
 		afterEach(() => {

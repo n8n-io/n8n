@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'vitest';
 import { buildWorkflowsByNodesQuery } from '../build-workflows-by-nodes-query';
 
 describe('WorkflowRepository', () => {

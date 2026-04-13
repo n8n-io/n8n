@@ -1,3 +1,4 @@
+import { describe, expect, it, test } from 'vitest';
 import { AuthIdentity } from '../auth-identity';
 import { type Role } from '../role';
 import { User } from '../user';

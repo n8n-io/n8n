@@ -1,4 +1,5 @@
-import { mock } from 'jest-mock-extended';
+import { describe, expect, test } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { TestCaseExecution } from '../../entities';
 import { getTestRunFinalResult } from '../get-final-test-result';

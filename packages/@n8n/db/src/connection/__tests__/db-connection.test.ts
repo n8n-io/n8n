@@ -2,9 +2,9 @@
 import type { Logger } from '@n8n/backend-common';
 import type { DatabaseConfig } from '@n8n/config';
 import { DataSource, type DataSourceOptions } from '@n8n/typeorm';
-import { mock, mockDeep } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import { DbConnectionTimeoutError } from 'n8n-workflow';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import * as migrationHelper from '../../migrations/migration-helpers';
 import type { Migration } from '../../migrations/migration-types';
@@ -12,11 +12,14 @@ import { DbConnection } from '../db-connection';
 import type { DbConnectionOptions } from '../db-connection-options';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-jest.mock('@n8n/typeorm', () => ({
-	// eslint-disable-next-line @typescript-eslint/naming-convention
-	DataSource: jest.fn(),
-	...jest.requireActual('@n8n/typeorm'),
-}));
+vi.mock('@n8n/typeorm', async () => {
+	const actual = await vi.importActual<typeof import('@n8n/typeorm')>('@n8n/typeorm');
+	return {
+		...actual,
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		DataSource: vi.fn(),
+	};
+});
 
 describe('DbConnection', () => {
 	let dbConnection: DbConnection;
@@ -37,10 +40,10 @@ describe('DbConnection', () => {
 	};
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		connectionOptions.getOptions.mockReturnValue(postgresOptions);
-		(DataSource as jest.Mock) = jest.fn().mockImplementation(() => dataSource);
+		vi.mocked(DataSource).mockImplementation(() => dataSource);
 
 		dbConnection = new DbConnection(errorReporter, connectionOptions, databaseConfig, logger);
 	});
@@ -89,7 +92,9 @@ describe('DbConnection', () => {
 		it('should wrap migrations and run them', async () => {
 			dataSource.runMigrations.mockResolvedValue([]);
 
-			const wrapMigrationSpy = jest.spyOn(migrationHelper, 'wrapMigration').mockImplementation();
+			const wrapMigrationSpy = vi
+				.spyOn(migrationHelper, 'wrapMigration')
+				.mockImplementation(() => {});
 
 			expect(dataSource.runMigrations).not.toHaveBeenCalled();
 			expect(dbConnection.connectionState.migrated).toBe(false);
@@ -104,7 +109,7 @@ describe('DbConnection', () => {
 
 	describe('close', () => {
 		it('should clear the ping timer', async () => {
-			const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
+			const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
 			// @ts-expect-error private property
 			dbConnection.pingTimer = setTimeout(() => {}, 1000);
 
@@ -167,7 +172,7 @@ describe('DbConnection', () => {
 			// eslint-disable-next-line @typescript-eslint/naming-convention
 			dataSource.query.mockResolvedValue([{ '1': 1 }]);
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const scheduleNextPingSpy = jest.spyOn(dbConnection as any, 'scheduleNextPing');
+			const scheduleNextPingSpy = vi.spyOn(dbConnection as any, 'scheduleNextPing');
 
 			// @ts-expect-error private property
 			await dbConnection.ping();
@@ -186,7 +191,7 @@ describe('DbConnection', () => {
 		});
 
 		it('should execute ping on schedule', () => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 			try {
 				// ARRANGE
 				dbConnection = new DbConnection(
@@ -199,15 +204,15 @@ describe('DbConnection', () => {
 				);
 
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const pingSpy = jest.spyOn(dbConnection as any, 'ping');
+				const pingSpy = vi.spyOn(dbConnection as any, 'ping');
 
 				// @ts-expect-error private property
 				dbConnection.scheduleNextPing();
-				jest.advanceTimersByTime(1000);
+				vi.advanceTimersByTime(1000);
 
 				expect(pingSpy).toHaveBeenCalled();
 			} finally {
-				jest.useRealTimers();
+				vi.useRealTimers();
 			}
 		});
 	});

@@ -1,6 +1,7 @@
 import { Container } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { SharedWorkflow } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
@@ -10,10 +11,10 @@ describe('SharedWorkflowRepository', () => {
 	mockEntityManager(SharedWorkflow);
 	const sharedWorkflowRepository = Container.get(SharedWorkflowRepository);
 
-	let queryBuilder: jest.Mocked<SelectQueryBuilder<SharedWorkflow>>;
+	let queryBuilder: Mocked<SelectQueryBuilder<SharedWorkflow>>;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		queryBuilder = mock<SelectQueryBuilder<SharedWorkflow>>();
 		queryBuilder.where.mockReturnThis();
@@ -21,7 +22,7 @@ describe('SharedWorkflowRepository', () => {
 		queryBuilder.innerJoin.mockReturnThis();
 		queryBuilder.select.mockReturnThis();
 
-		jest.spyOn(sharedWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
+		vi.spyOn(sharedWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
 	});
 
 	describe('getSharedPersonalWorkflowsCount', () => {

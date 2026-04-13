@@ -1,3 +1,4 @@
+import { test } from 'vitest';
 export const separate = <T>(array: T[], test: (element: T) => boolean) => {
 	const pass: T[] = [];
 	const fail: T[] = [];

@@ -1,6 +1,7 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DatabaseConfig } from '@n8n/config';
 import type { DataSource } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { ClockRepository } from '../clock.repository';
 
@@ -15,7 +16,7 @@ describe('ClockRepository', () => {
 	});
 
 	afterEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	describe('getDbTime()', () => {

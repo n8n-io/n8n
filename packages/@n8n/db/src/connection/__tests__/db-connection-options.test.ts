@@ -1,7 +1,7 @@
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig, InstanceSettingsConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
 import path from 'path';
+import { mock } from 'vitest-mock-extended';
 
 import { postgresMigrations } from '../../migrations/postgresdb';
 import { sqliteMigrations } from '../../migrations/sqlite';
@@ -24,7 +24,7 @@ describe('DbConnectionOptions', () => {
 		moduleRegistry,
 	);
 
-	beforeEach(() => jest.resetAllMocks());
+	beforeEach(() => vi.resetAllMocks());
 
 	const commonOptions = {
 		entityPrefix: 'test_prefix_',

@@ -1,3 +1,4 @@
+import { describe, expect, test } from 'vitest';
 import { validate } from 'class-validator';
 
 import { NoXss } from '../no-xss.validator';

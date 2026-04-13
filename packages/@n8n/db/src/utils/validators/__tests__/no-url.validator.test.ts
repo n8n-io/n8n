@@ -1,3 +1,4 @@
+import { describe, expect, test } from 'vitest';
 import { validate } from 'class-validator';
 
 import { NoUrl } from '../no-url.validator';
