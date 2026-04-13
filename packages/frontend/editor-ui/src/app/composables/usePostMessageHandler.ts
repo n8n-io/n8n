@@ -94,9 +94,13 @@ export function usePostMessageHandler({
 		await importWorkflowExact(json);
 
 		// importWorkflowExact → resetWorkspace resets activeExecutionId to undefined,
-		// which causes the iframe to reject push execution events. Re-set to null so
-		// the iframe stays receptive to incoming execution push events.
-		if (window !== window.parent) {
+		// which causes the iframe to reject push execution events relayed from the
+		// parent. Re-set to null so the iframe stays receptive — but only when
+		// canExecute is disabled. When canExecute is enabled, leave it as undefined
+		// so the run button isn't disabled (isWorkflowRunning treats null as
+		// "execution starting"). The user-triggered execution flow will handle
+		// activeExecutionId itself.
+		if (window !== window.parent && route.query.canExecute !== 'true') {
 			workflowState.setActiveExecutionId(null);
 		}
 
