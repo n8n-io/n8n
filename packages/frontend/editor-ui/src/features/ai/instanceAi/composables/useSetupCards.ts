@@ -1,6 +1,7 @@
 import type { Ref } from 'vue';
 import { computed, ref, watch } from 'vue';
 import type { InstanceAiWorkflowSetupNode } from '@n8n/api-types';
+import { hasPlaceholderDeep } from '@n8n/utils';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -12,18 +13,6 @@ import {
 	type SetupCard,
 	type SetupCardGroup,
 } from '../instanceAiWorkflowSetup.utils';
-
-/** Recursively check if an object contains any placeholder sentinel strings. */
-function hasPlaceholderInParams(value: unknown): boolean {
-	if (typeof value === 'string') {
-		return value.startsWith('<__PLACEHOLDER_VALUE__') && value.endsWith('__>');
-	}
-	if (Array.isArray(value)) return value.some(hasPlaceholderInParams);
-	if (value !== null && typeof value === 'object') {
-		return Object.values(value as Record<string, unknown>).some(hasPlaceholderInParams);
-	}
-	return false;
-}
 
 export function useSetupCards(
 	setupRequests: Ref<InstanceAiWorkflowSetupNode[]>,
@@ -322,7 +311,7 @@ export function useSetupCards(
 					const liveIssues = getNodeParametersIssues(nodeTypesStore, storeNode);
 					if (Object.keys(liveIssues).length > 0) return false;
 					// Also check for remaining placeholder values in node parameters
-					if (hasPlaceholderInParams(storeNode.parameters)) return false;
+					if (hasPlaceholderDeep(storeNode.parameters)) return false;
 				}
 			}
 		}

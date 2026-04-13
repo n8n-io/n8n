@@ -1,4 +1,5 @@
 import type { InstanceAiWorkflowSetupNode } from '@n8n/api-types';
+import { isPlaceholderString } from '@n8n/utils';
 import type { INodeProperties } from 'n8n-workflow';
 import { isResourceLocatorValue } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
@@ -63,11 +64,6 @@ export function credGroupKey(req: InstanceAiWorkflowSetupNode): string {
 		return `${credType}:http:${url}`;
 	}
 	return credType;
-}
-
-/** Check if a string is a placeholder sentinel value (format: <__PLACEHOLDER_VALUE__hint__>). */
-function isPlaceholderString(val: unknown): boolean {
-	return typeof val === 'string' && val.startsWith('<__PLACEHOLDER_VALUE__') && val.endsWith('__>');
 }
 
 /** Check if a parameter value is meaningfully set (not empty, null, placeholder, or an empty resource locator). */

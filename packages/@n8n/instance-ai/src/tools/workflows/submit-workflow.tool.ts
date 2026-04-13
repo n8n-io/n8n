@@ -8,6 +8,7 @@
 
 import { createTool } from '@mastra/core/tools';
 import type { Workspace } from '@mastra/core/workspace';
+import { hasPlaceholderDeep } from '@n8n/utils';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { validateWorkflow, layoutWorkflowJSON } from '@n8n/workflow-sdk';
 import { createHash, randomUUID } from 'node:crypto';
@@ -45,23 +46,6 @@ function hashContent(content: string | null): string {
 	return createHash('sha256')
 		.update(content ?? '', 'utf8')
 		.digest('hex');
-}
-
-/** Check if a string is a placeholder sentinel value (format: <__PLACEHOLDER_VALUE__hint__>). */
-function isPlaceholderString(value: unknown): boolean {
-	return (
-		typeof value === 'string' && value.startsWith('<__PLACEHOLDER_VALUE__') && value.endsWith('__>')
-	);
-}
-
-/** Recursively check if a value contains any placeholder strings. */
-function hasPlaceholderDeep(value: unknown): boolean {
-	if (typeof value === 'string') return isPlaceholderString(value);
-	if (Array.isArray(value)) return value.some(hasPlaceholderDeep);
-	if (value !== null && typeof value === 'object') {
-		return Object.values(value as Record<string, unknown>).some(hasPlaceholderDeep);
-	}
-	return false;
 }
 
 /** Node types that require a webhookId for proper webhook path registration. */

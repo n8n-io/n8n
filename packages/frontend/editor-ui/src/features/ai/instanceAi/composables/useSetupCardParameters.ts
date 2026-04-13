@@ -1,5 +1,6 @@
 import type { ComputedRef, Ref } from 'vue';
 import { ref } from 'vue';
+import { isPlaceholderString } from '@n8n/utils';
 import { NodeHelpers, type INodeProperties } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -8,8 +9,7 @@ import { isNestedParam, isParamValueSet, type SetupCard } from '../instanceAiWor
 
 /** Check if the original node parameter value was a placeholder sentinel. */
 function isOriginalValuePlaceholder(req: SetupCard['nodes'][0], paramName: string): boolean {
-	const val = req.node.parameters[paramName];
-	return typeof val === 'string' && val.startsWith('<__PLACEHOLDER_VALUE__') && val.endsWith('__>');
+	return isPlaceholderString(req.node.parameters[paramName]);
 }
 
 export function useSetupCardParameters(
