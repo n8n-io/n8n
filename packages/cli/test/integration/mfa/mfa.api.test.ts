@@ -420,15 +420,17 @@ describe('Enforce MFA', () => {
 		const instanceSettingsLoaderConfig = Container.get(InstanceSettingsLoaderConfig);
 		instanceSettingsLoaderConfig.securityPolicyManagedByEnv = true;
 
-		owner.mfaEnabled = true;
-		await testServer
-			.authAgentFor(owner)
-			.post('/mfa/enforce-mfa')
-			.send({ enforce: true })
-			.expect(403);
-		owner.mfaEnabled = false;
-
-		instanceSettingsLoaderConfig.securityPolicyManagedByEnv = false;
+		try {
+			owner.mfaEnabled = true;
+			await testServer
+				.authAgentFor(owner)
+				.post('/mfa/enforce-mfa')
+				.send({ enforce: true })
+				.expect(403);
+		} finally {
+			owner.mfaEnabled = false;
+			instanceSettingsLoaderConfig.securityPolicyManagedByEnv = false;
+		}
 	});
 
 	test('Enforce MFA for the instance', async () => {
