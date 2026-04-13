@@ -979,9 +979,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			status,
 			finished,
 			workflowId,
-			mode,
-			excludeModes,
-			retryOf,
 			startedBefore,
 			startedAfter,
 			metadata,
@@ -1036,11 +1033,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		if (status) qb.andWhere('execution.status IN (:...status)', { status });
 		if (finished) qb.andWhere({ finished });
 		if (workflowId) qb.andWhere({ workflowId });
-		if (mode) qb.andWhere({ mode });
-		if (retryOf) qb.andWhere({ retryOf });
-		if (excludeModes?.length) {
-			qb.andWhere('execution.mode NOT IN (:...excludeModes)', { excludeModes });
-		}
 		if (startedBefore) qb.andWhere({ startedAt: lessThanOrEqual(startedBefore) });
 		if (startedAfter) qb.andWhere({ startedAt: moreThanOrEqual(startedAfter) });
 
