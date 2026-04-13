@@ -1,39 +1,25 @@
-import { createEvalAgent, extractText } from '../../src/utils/eval-agents';
+import { z } from 'zod';
+
+import { createEvalAgent } from '../../src/utils/eval-agents';
 import type { WorkflowResponse } from '../clients/n8n-client';
 import { MOCK_EXECUTION_VERIFY_PROMPT } from '../system-prompts/mock-execution-verify';
 import type { ChecklistItem, ChecklistResult } from '../types';
 
 // ---------------------------------------------------------------------------
-// JSON parsing helpers
+// Structured output schema
 // ---------------------------------------------------------------------------
 
-function parseJsonArray(text: string): unknown[] {
-	// Try fenced code block first
-	const fenceMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
-	const jsonStr = fenceMatch ? fenceMatch[1].trim() : text.trim();
-
-	try {
-		const parsed: unknown = JSON.parse(jsonStr);
-		if (Array.isArray(parsed)) return parsed;
-	} catch {
-		// Try extracting array from anywhere in the text
-		const arrayMatch = jsonStr.match(/\[[\s\S]*\]/);
-		if (arrayMatch) {
-			try {
-				const parsed: unknown = JSON.parse(arrayMatch[0]);
-				if (Array.isArray(parsed)) return parsed;
-			} catch {
-				// fall through
-			}
-		}
-	}
-
-	// Log failure for debugging — this causes "No verification result"
-	console.warn(
-		`[verifier] Failed to parse JSON array from LLM response (${text.length} chars). First 500 chars: ${text.slice(0, 500)}`,
-	);
-	return [];
-}
+const checklistResultSchema = z.object({
+	results: z.array(
+		z.object({
+			id: z.number(),
+			pass: z.boolean(),
+			reasoning: z.string(),
+			failureCategory: z.string().optional(),
+			rootCause: z.string().optional(),
+		}),
+	),
+});
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -61,34 +47,34 @@ Verify each checklist item against the artifact above.`;
 		const agent = createEvalAgent('eval-checklist-verifier', {
 			instructions: MOCK_EXECUTION_VERIFY_PROMPT,
 			cache: true,
-		});
+		}).structuredOutput(checklistResultSchema);
 
-		const result = await agent.generate(userMessage, {
-			providerOptions: { anthropic: { maxTokens: 16_384 } },
-		});
-
-		const content = extractText(result);
-
-		const rawResults = parseJsonArray(content);
+		const result = await agent.generate(userMessage);
 
 		const validIds = new Set(llmItems.map((i) => i.id));
-		for (const raw of rawResults) {
-			const entry = raw as Record<string, unknown>;
-			if (
-				typeof entry.id === 'number' &&
-				typeof entry.pass === 'boolean' &&
-				validIds.has(entry.id)
-			) {
-				results.push({
-					id: entry.id,
-					pass: entry.pass,
-					reasoning: typeof entry.reasoning === 'string' ? entry.reasoning : '',
-					strategy: 'llm',
-					failureCategory:
-						typeof entry.failureCategory === 'string' ? entry.failureCategory : undefined,
-					rootCause: typeof entry.rootCause === 'string' ? entry.rootCause : undefined,
-				});
+		const parsed = result.structuredOutput as z.infer<typeof checklistResultSchema> | undefined;
+
+		if (parsed?.results) {
+			for (const entry of parsed.results) {
+				if (
+					typeof entry.id === 'number' &&
+					typeof entry.pass === 'boolean' &&
+					validIds.has(entry.id)
+				) {
+					results.push({
+						id: entry.id,
+						pass: entry.pass,
+						reasoning: entry.reasoning ?? '',
+						strategy: 'llm',
+						failureCategory: entry.failureCategory,
+						rootCause: entry.rootCause,
+					});
+				}
 			}
+		} else {
+			console.warn(
+				'[verifier] structuredOutput returned null — LLM did not produce parseable results',
+			);
 		}
 	}
 

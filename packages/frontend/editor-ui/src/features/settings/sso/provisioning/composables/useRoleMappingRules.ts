@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type {
 	RoleMappingRuleResponse,
 	RoleMappingRuleType,
@@ -31,6 +31,16 @@ export function useRoleMappingRules() {
 	const fallbackInstanceRole = ref<string>('global:member');
 	const isLoading = ref(false);
 	const isDirty = ref(false);
+
+	let serverRuleIds = new Set<string>();
+
+	let fallbackInitialized = false;
+	watch(fallbackInstanceRole, () => {
+		if (fallbackInitialized) {
+			isDirty.value = true;
+		}
+		fallbackInitialized = true;
+	});
 
 	function getRulesRef(type: RoleMappingRuleType) {
 		return type === 'instance' ? instanceRules : projectRules;
@@ -77,19 +87,16 @@ export function useRoleMappingRules() {
 		const movedRule = rules.value[fromIndex];
 		if (!movedRule) return;
 
-		// Optimistic local update
 		const [moved] = rules.value.splice(fromIndex, 1);
 		rules.value.splice(toIndex, 0, moved);
 		rules.value.forEach((r, i) => {
 			r.order = i;
 		});
 
-		// Persist via API — if the rule has been saved (not a local-only rule)
 		if (!movedRule.id.startsWith('local-')) {
 			try {
 				await api.moveRule(movedRule.id, toIndex);
 			} catch {
-				// Rollback on error — reload from server
 				await loadRules();
 				return;
 			}
@@ -103,6 +110,7 @@ export function useRoleMappingRules() {
 			const allRules = await api.listRules();
 			instanceRules.value = allRules.filter((r) => r.type === 'instance');
 			projectRules.value = allRules.filter((r) => r.type === 'project');
+			serverRuleIds = new Set(allRules.map((r) => r.id));
 			isDirty.value = false;
 		} finally {
 			isLoading.value = false;
@@ -112,7 +120,27 @@ export function useRoleMappingRules() {
 	async function save() {
 		isLoading.value = true;
 		try {
-			isDirty.value = false;
+			const allLocalRules = [...instanceRules.value, ...projectRules.value];
+			const localRuleIds = new Set(allLocalRules.map((r) => r.id));
+			const rulePayload = (r: RoleMappingRuleResponse) => ({
+				expression: r.expression,
+				role: r.role,
+				type: r.type,
+				order: r.order,
+				projectIds: r.projectIds,
+			});
+
+			await Promise.all([
+				...[...serverRuleIds]
+					.filter((id) => !localRuleIds.has(id))
+					.map(async (id) => await api.deleteRule(id)),
+				...allLocalRules.map(async (rule): Promise<void> => {
+					if (rule.id.startsWith('local-')) await api.createRule(rulePayload(rule));
+					else if (serverRuleIds.has(rule.id)) await api.updateRule(rule.id, rulePayload(rule));
+				}),
+			]);
+
+			await loadRules();
 		} finally {
 			isLoading.value = false;
 		}

@@ -30,7 +30,7 @@ import {
 } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
 
-const DATA_TABLE_MAX_STEPS = 15;
+const DATA_TABLE_MAX_STEPS = 35;
 
 const DATA_TABLE_TOOL_NAMES = [
 	'list-data-tables',
@@ -44,6 +44,7 @@ const DATA_TABLE_TOOL_NAMES = [
 	'insert-data-table-rows',
 	'update-data-table-rows',
 	'delete-data-table-rows',
+	'parse-file',
 ];
 
 export interface StartDataTableAgentInput {

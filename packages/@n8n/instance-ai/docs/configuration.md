@@ -32,7 +32,7 @@ All Instance AI configuration is done via environment variables.
 | `N8N_INSTANCE_AI_GATEWAY_API_KEY` | string | `''` | Static API key for the filesystem gateway. Used by the `@n8n/computer-use` daemon to authenticate SSE and HTTP POST requests. When empty, the dynamic pairing token flow is used instead. |
 
 Filesystem access requires the `@n8n/computer-use` gateway daemon. The user
-runs `npx @n8n/computer-use serve` on their machine to connect.
+runs `npx @n8n/computer-use https://<your-n8n-instance>` on their machine to connect.
 
 See `docs/filesystem-access.md` for the full architecture, gateway protocol spec,
 and security model.
