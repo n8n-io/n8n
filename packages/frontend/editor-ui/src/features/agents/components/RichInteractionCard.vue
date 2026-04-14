@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from 'vue';
+
 interface SelectOption {
 	label: string;
 	value: string;
@@ -46,8 +48,6 @@ const parsed = computed(() => {
 	const out = (props.output ?? {}) as RichOutput;
 	return { input: inp, output: out };
 });
-
-import { computed } from 'vue';
 </script>
 
 <template>
