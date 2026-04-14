@@ -108,7 +108,7 @@ function formatDate(dateStr: string): string {
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
 				<div
-					v-if="agent.activeVersionId !== null"
+					v-if="agent.activeVersionId !== null && agent.activeVersionId === agent.versionId"
 					:class="$style.publishIndicator"
 					data-testid="agent-published-indicator"
 				>
