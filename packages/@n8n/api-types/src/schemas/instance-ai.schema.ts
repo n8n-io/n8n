@@ -466,7 +466,13 @@ export const threadTitleUpdatedPayloadSchema = z.object({
 // Event schema (Zod discriminated union — single source of truth)
 // ---------------------------------------------------------------------------
 
-const eventBase = { runId: z.string(), agentId: z.string(), userId: z.string().optional() };
+const eventBase = {
+	runId: z.string(),
+	agentId: z.string(),
+	userId: z.string().optional(),
+	/** Anthropic API response ID (msg_01...) — groups events from the same LLM response. */
+	responseId: z.string().optional(),
+};
 
 export const instanceAiEventSchema = z.discriminatedUnion('type', [
 	z.object({ type: z.literal('run-start'), ...eventBase, payload: runStartPayloadSchema }),
@@ -545,27 +551,23 @@ export type InstanceAiFilesystemResponse = z.infer<typeof instanceAiFilesystemRe
 // ---------------------------------------------------------------------------
 
 const instanceAiAttachmentSchema = z.object({
-	data: z.string(),
-	mimeType: z.string(),
-	fileName: z.string(),
+	data: z.string().max(700_000), // ~512 KB decoded + base64 overhead
+	mimeType: z.string().max(100),
+	fileName: z.string().max(300),
 });
 
 export type InstanceAiAttachment = z.infer<typeof instanceAiAttachmentSchema>;
 
 export class InstanceAiSendMessageRequest extends Z.class({
-	message: z.string().min(1),
+	message: z.string().default(''),
 	researchMode: z.boolean().optional(),
-	attachments: z.array(instanceAiAttachmentSchema).optional(),
+	attachments: z.array(instanceAiAttachmentSchema).max(10).optional(),
 	timeZone: TimeZoneSchema,
 	pushRef: z.string().optional(),
 }) {}
 
 export class InstanceAiCorrectTaskRequest extends Z.class({
 	message: z.string().min(1),
-}) {}
-
-export class InstanceAiUpdateMemoryRequest extends Z.class({
-	content: z.string(),
 }) {}
 
 export class InstanceAiEnsureThreadRequest extends Z.class({
@@ -664,9 +666,9 @@ export interface InstanceAiToolCallState {
 }
 
 export type InstanceAiTimelineEntry =
-	| { type: 'text'; content: string }
-	| { type: 'tool-call'; toolCallId: string }
-	| { type: 'child'; agentId: string };
+	| { type: 'text'; content: string; responseId?: string }
+	| { type: 'tool-call'; toolCallId: string; responseId?: string }
+	| { type: 'child'; agentId: string; responseId?: string };
 
 export interface InstanceAiAgentNode {
 	agentId: string;
@@ -771,11 +773,6 @@ export interface InstanceAiStoredMessage {
 export interface InstanceAiThreadMessagesResponse {
 	messages: InstanceAiStoredMessage[];
 	threadId: string;
-}
-
-export interface InstanceAiThreadContextResponse {
-	threadId: string;
-	workingMemory: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -911,6 +908,7 @@ export interface InstanceAiAdminSettingsResponse {
 	n8nSandboxCredentialId: string | null;
 	searchCredentialId: string | null;
 	localGatewayDisabled: boolean;
+	optinModalDismissed: boolean;
 }
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
@@ -930,6 +928,7 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	n8nSandboxCredentialId: z.string().nullable().optional(),
 	searchCredentialId: z.string().nullable().optional(),
 	localGatewayDisabled: z.boolean().optional(),
+	optinModalDismissed: z.boolean().optional(),
 }) {}
 
 // ---------------------------------------------------------------------------

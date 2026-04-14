@@ -241,13 +241,10 @@ export function createListWorkflowsTool(context: InstanceAiContext) {
 
 ### Memory usage
 
-The memory system has distinct scopes with different lifecycles. Mixing them
-causes subtle bugs: storing a plan in working memory leaks it across
-conversations, writing observations from a sub-agent corrupts the
-orchestrator's context, manually summarizing tool results fights with the
-Observer doing the same thing.
+The memory system is thread-scoped. Writing observations from a sub-agent
+corrupts the orchestrator's context, and manually summarizing tool results
+fights with the Observer doing the same thing.
 
-- Working memory is for user-scoped knowledge — not operational state
 - Never read/write memory from sub-agents — they're stateless by design
 - Let observational memory handle compression — don't manually summarize
 

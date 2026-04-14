@@ -12,6 +12,9 @@ import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 import { useTelemetryInitializer } from '@/app/composables/useTelemetryInitializer';
 import { useWorkflowDiffRouting } from '@/app/composables/useWorkflowDiffRouting';
 import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@/app/constants';
+import { INSTANCE_AI_OPTIN_MODAL_KEY } from '@/app/constants/modals';
+import { canManageInstanceAi } from '@/features/ai/instanceAi/instanceAiPermissions';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import LoadingView from '@/app/views/LoadingView.vue';
@@ -30,6 +33,7 @@ const route = useRoute();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const ndvStore = useNDVStore();
+const uiStore = useUIStore();
 const { setAppZIndexes } = useStyles();
 const { toastBottomOffset, toastRightOffset, askAiFloatingButtonBottomOffset } =
 	useFloatingUiOffsets();
@@ -69,6 +73,26 @@ watch(route, (r) => {
 		(matchedRoute) => matchedRoute.components?.footer !== undefined,
 	);
 });
+
+// Assistant AI opt-in modal: admins only, until dismissed
+watch(
+	() => {
+		const moduleLoaded = settingsStore.moduleSettings['instance-ai'] !== undefined;
+		return (
+			moduleLoaded &&
+			settingsStore.isModuleActive('instance-ai') &&
+			route.meta.layout !== 'auth' &&
+			!settingsStore.moduleSettings['instance-ai']?.optinModalDismissed &&
+			canManageInstanceAi()
+		);
+	},
+	(shouldShow) => {
+		if (shouldShow) {
+			uiStore.openModal(INSTANCE_AI_OPTIN_MODAL_KEY);
+		}
+	},
+	{ once: true },
+);
 
 watch(
 	defaultLocale,

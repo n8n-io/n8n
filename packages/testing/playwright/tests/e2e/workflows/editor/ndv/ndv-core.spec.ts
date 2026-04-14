@@ -21,9 +21,9 @@ test.describe(
 			await n8n.canvas.addNode('Manual Trigger');
 			const canvasNodes = n8n.canvas.getCanvasNodes();
 			await canvasNodes.first().dblclick();
-			await expect(n8n.ndv.getContainer()).toBeVisible();
+			await expect(n8n.ndv.container).toBeVisible();
 			await n8n.ndv.clickBackToCanvasButton();
-			await expect(n8n.ndv.getContainer()).toBeHidden();
+			await expect(n8n.ndv.container).toBeHidden();
 		});
 
 		test('should show input panel when node is not connected', async ({ n8n }) => {
@@ -32,7 +32,7 @@ test.describe(
 			await n8n.canvas.addNode('Edit Fields (Set)', { closeNDV: true });
 			const canvasNodes = n8n.canvas.getCanvasNodes();
 			await canvasNodes.last().dblclick();
-			await expect(n8n.ndv.getContainer()).toBeVisible();
+			await expect(n8n.ndv.container).toBeVisible();
 			await expect(n8n.ndv.inputPanel.get()).toContainText('No input connected');
 		});
 
@@ -49,12 +49,12 @@ test.describe(
 			await expect(n8n.ndv.inputPanel.get()).toContainText('start');
 
 			await n8n.ndv.clickBackToCanvasButton();
-			await expect(n8n.ndv.getContainer()).toBeHidden();
+			await expect(n8n.ndv.container).toBeHidden();
 		});
 
 		test('should show correct validation state for resource locator params', async ({ n8n }) => {
 			await n8n.canvas.addNode('Typeform Trigger', { closeNDV: false });
-			await expect(n8n.ndv.getContainer()).toBeVisible();
+			await expect(n8n.ndv.container).toBeVisible();
 
 			await n8n.ndv.clickBackToCanvasButton();
 
@@ -65,7 +65,7 @@ test.describe(
 		test('should show validation errors only after blur or re-opening of NDV', async ({ n8n }) => {
 			await n8n.canvas.addNode('Manual Trigger');
 			await n8n.canvas.addNode('Airtable', { closeNDV: false, action: 'Search records' });
-			await expect(n8n.ndv.getContainer()).toBeVisible();
+			await expect(n8n.ndv.container).toBeVisible();
 
 			await expect(n8n.canvas.getNodeIssuesByName('Airtable')).toBeHidden();
 
@@ -118,7 +118,7 @@ test.describe(
 
 			await n8n.ndv.getParameterInputField('path').clear();
 
-			const webhookUrlsContainer = n8n.ndv.getContainer().getByText('Webhook URLs').locator('..');
+			const webhookUrlsContainer = n8n.ndv.container.getByText('Webhook URLs').locator('..');
 			const urlText = await webhookUrlsContainer.textContent();
 			const uuidRegex = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 			expect(urlText).toMatch(uuidRegex);
@@ -175,7 +175,7 @@ test.describe(
 			await n8n.canvas.addNode('Manual Trigger');
 			await n8n.canvas.addNode('Code', { action: 'Code in JavaScript', closeNDV: false });
 
-			const codeEditor = n8n.ndv.getParameterInput('jsCode').locator('.cm-content');
+			const codeEditor = n8n.ndv.getCodeEditor();
 			await codeEditor.click();
 			await n8n.page.keyboard.press('ControlOrMeta+a');
 			await n8n.page.keyboard.press('Delete');
@@ -206,9 +206,7 @@ test.describe(
 
 			await n8n.ndv.closeCodeEditorDialog();
 
-			await expect(n8n.ndv.getParameterInput('jsCode').locator('.cm-content')).toContainText(
-				'foo()',
-			);
+			await expect(n8n.ndv.getCodeEditor()).toContainText('foo()');
 		});
 
 		test.describe('Complex Edge Cases', () => {

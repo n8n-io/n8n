@@ -403,6 +403,40 @@ describe('Request Helper Functions', () => {
 			expect(axiosOptions.data).toBeInstanceOf(FormData);
 		});
 
+		test('should handle FormData from a different module copy (duck-typing)', async () => {
+			// Simulate a FormData created by a different copy of the form-data package.
+			// instanceof FormData would return false, but duck-type check should pass.
+			const realFormData = new FormData();
+			realFormData.append('key', 'value');
+
+			// Create a wrapper that breaks instanceof but preserves the interface
+			const foreignFormData: Record<string, unknown> = Object.create(null);
+			for (const prop of Object.getOwnPropertyNames(Object.getPrototypeOf(realFormData))) {
+				const value = (realFormData as unknown as Record<string, unknown>)[prop];
+				if (typeof value === 'function') {
+					foreignFormData[prop] = value.bind(realFormData);
+				}
+			}
+			for (const prop of Object.getOwnPropertyNames(realFormData)) {
+				foreignFormData[prop] = (realFormData as unknown as Record<string, unknown>)[prop];
+			}
+
+			// Verify it's NOT an instanceof FormData
+			expect(foreignFormData instanceof FormData).toBe(false);
+
+			const axiosOptions = await parseRequestObject({
+				url: 'https://example.com',
+				formData: foreignFormData as unknown as FormData,
+				headers: {
+					'content-type': 'multipart/form-data',
+				},
+			});
+
+			expect(axiosOptions.headers).toMatchObject({
+				'content-type': expect.stringMatching(/^multipart\/form-data; boundary=/),
+			});
+		});
+
 		test('should not use Host header for SNI', async () => {
 			const axiosOptions = await parseRequestObject({
 				url: 'https://example.de/foo/bar',

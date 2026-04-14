@@ -6,6 +6,8 @@ import { useToast } from '@/app/composables/useToast';
 import { useRouter } from 'vue-router';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 import { waitFor } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
+import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
 
 vi.mock('@/app/composables/useToast');
 vi.mock('vue-router');
@@ -147,6 +149,50 @@ describe('DataTableDetailsView', () => {
 
 			expect(container.querySelector('data-table-breadcrumbs-stub')).not.toBeInTheDocument();
 			expect(container.querySelector('data-table-table-stub')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('Source control pull', () => {
+		it('should re-fetch data table details when source control pull event fires', async () => {
+			const pinia = createTestingPinia({ stubActions: false });
+			const dataTableStore = useDataTableStore();
+			vi.spyOn(dataTableStore, 'fetchOrFindDataTable').mockResolvedValue(DEFAULT_DATA_TABLE);
+			vi.spyOn(dataTableStore, 'fetchDataTableDetails').mockResolvedValue({
+				...DEFAULT_DATA_TABLE,
+				name: 'Updated Name',
+			});
+
+			renderComponent({ pinia });
+
+			// Wait for onMounted to fully complete (including event handler registration)
+			await flushPromises();
+
+			sourceControlEventBus.emit('pull', undefined);
+
+			await waitFor(() => {
+				expect(dataTableStore.fetchDataTableDetails).toHaveBeenCalledWith('ds1', 'proj1');
+			});
+		});
+
+		it('should show error when source control pull re-fetch returns null', async () => {
+			const pinia = createTestingPinia({ stubActions: false });
+			const dataTableStore = useDataTableStore();
+			vi.spyOn(dataTableStore, 'fetchOrFindDataTable').mockResolvedValue(DEFAULT_DATA_TABLE);
+			vi.spyOn(dataTableStore, 'fetchDataTableDetails').mockResolvedValue(null);
+
+			renderComponent({ pinia });
+
+			// Wait for onMounted to fully complete (including event handler registration)
+			await flushPromises();
+
+			// Reset so we can track calls triggered only by the pull event
+			mockToast.showError.mockClear();
+
+			sourceControlEventBus.emit('pull', undefined);
+
+			await waitFor(() => {
+				expect(mockToast.showError).toHaveBeenCalled();
+			});
 		});
 	});
 
