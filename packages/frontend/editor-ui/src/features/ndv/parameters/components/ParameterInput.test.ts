@@ -112,10 +112,12 @@ vi.mock('@/features/ai/assistant/builder.store', () => {
 });
 
 const mockIsPlaceholderValue = vi.fn();
+const mockExtractPlaceholderLabels = vi.fn().mockReturnValue([]);
 
 vi.mock('@/features/ai/assistant/composables/useBuilderTodos', () => {
 	return {
 		isPlaceholderValue: (value: unknown) => mockIsPlaceholderValue(value),
+		extractPlaceholderLabels: (value: unknown) => mockExtractPlaceholderLabels(value),
 	};
 });
 
