@@ -1,29 +1,23 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { N8nActionDropdown, N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nActionDropdown, N8nIcon, N8nText } from '@n8n/design-system';
 import type { IconOrEmoji } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
-import {
-	getAgent,
-	updateAgent,
-	deleteAgent,
-	publishAgent,
-	unpublishAgent,
-} from '../composables/useAgentApi';
+import { getAgent, updateAgent, deleteAgent } from '../composables/useAgentApi';
 import type { AgentResource, AgentJsonConfig } from '../types';
 import { AGENTS_LIST_VIEW } from '../constants';
 import { useAgentConfig } from '../composables/useAgentConfig';
 import { agentsEventBus } from '../agents.eventBus';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
 import AgentHomeContent from '../components/AgentHomeContent.vue';
+import AgentPublishButton from '../components/AgentPublishButton.vue';
 import AgentSettingsSidebar from '../components/AgentSettingsSidebar.vue';
 
 const route = useRoute();
@@ -33,7 +27,6 @@ const rootStore = useRootStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 const message = useMessage();
-const { showMessage, showError } = useToast();
 
 const projectId = computed(
 	() => (route.params.projectId as string) ?? projectsStore.personalProject?.id ?? '',
@@ -177,36 +170,12 @@ async function onHeaderAction(action: string) {
 	}
 }
 
-async function onPublishClick() {
-	if (publishing.value) return;
-	publishing.value = true;
-	try {
-		const updated = await publishAgent(rootStore.restApiContext, projectId.value, agentId.value);
-		agent.value = updated;
-		showMessage({ title: 'Agent published', type: 'success' });
-	} catch (error) {
-		showError(error, 'Failed to publish agent');
-	} finally {
-		publishing.value = false;
-	}
+function onPublished(updated: AgentResource) {
+	agent.value = updated;
 }
 
-async function onDropdownSelect(action: string) {
-	if (action === 'unpublish') {
-		if (publishing.value) return;
-		publishing.value = true;
-		try {
-			await unpublishAgent(rootStore.restApiContext, projectId.value, agentId.value);
-			if (agent.value) {
-				agent.value = { ...agent.value, publishedVersion: null };
-			}
-			showMessage({ title: 'Agent unpublished', type: 'success' });
-		} catch (error) {
-			showError(error, 'Failed to unpublish agent');
-		} finally {
-			publishing.value = false;
-		}
-	}
+function onUnpublished(updated: AgentResource) {
+	agent.value = updated;
 }
 
 async function initialize() {
@@ -244,45 +213,13 @@ watch(agentId, initialize, { immediate: true });
 					}}</N8nText>
 				</div>
 				<div :class="$style.mainHeaderRight">
-					<!-- Publish button -->
-					<template v-if="!isPublished">
-						<N8nButton
-							type="secondary"
-							size="small"
-							:loading="publishing"
-							data-testid="publish-agent-button"
-							@click="onPublishClick"
-						>
-							Publish
-						</N8nButton>
-					</template>
-					<template v-else-if="hasUnpublishedChanges">
-						<N8nButton
-							type="secondary"
-							size="small"
-							:loading="publishing"
-							data-testid="republish-agent-button"
-							@click="onPublishClick"
-						>
-							Republish
-						</N8nButton>
-						<N8nActionDropdown
-							:items="unpublishActions"
-							data-testid="agent-publish-dropdown"
-							@select="onDropdownSelect"
-						/>
-					</template>
-					<template v-else>
-						<span :class="$style.publishedBadge" data-testid="agent-published-badge"
-							>Published</span
-						>
-						<N8nActionDropdown
-							:items="unpublishActions"
-							data-testid="agent-publish-dropdown"
-							@select="onDropdownSelect"
-						/>
-					</template>
-					<!-- End publish button -->
+					<AgentPublishButton
+						:agent="agent"
+						:project-id="projectId"
+						:agent-id="agentId"
+						@published="onPublished"
+						@unpublished="onUnpublished"
+					/>
 					<button
 						v-if="chatActive"
 						:class="$style.toggleBtn"
@@ -419,14 +356,5 @@ watch(agentId, initialize, { immediate: true });
 .toggleBtnActive {
 	color: var(--color--text);
 	background-color: var(--color--foreground--tint-1);
-}
-
-.publishedBadge {
-	font-size: var(--font-size--xs);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--success);
-	padding: var(--spacing--5xs) var(--spacing--3xs);
-	border: var(--border-width) var(--border-style) var(--color--success);
-	border-radius: var(--radius);
 }
 </style>

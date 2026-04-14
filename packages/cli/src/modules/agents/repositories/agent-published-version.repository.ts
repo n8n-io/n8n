@@ -14,6 +14,11 @@ export class AgentPublishedVersionRepository extends Repository<AgentPublishedVe
 		return await this.findOneBy({ agentId });
 	}
 
+	/**
+	 * Creates or updates the published version snapshot for an agent.
+	 * The row uses agentId as its PK (one-to-one), so saving with the same
+	 * agentId updates the existing snapshot in place.
+	 */
 	async savePublishedVersion(data: {
 		agentId: string;
 		schema: AgentJsonConfig | null;
@@ -22,15 +27,11 @@ export class AgentPublishedVersionRepository extends Repository<AgentPublishedVe
 		credentialId: string | null;
 		publishedById: string | null;
 	}): Promise<AgentPublishedVersion> {
-		const entity = this.create({
-			agentId: data.agentId,
-			schema: data.schema,
-			model: data.model,
-			provider: data.provider,
-			credentialId: data.credentialId,
-			publishedById: data.publishedById,
-			publishedAt: new Date(),
-		});
+		const existing = await this.findByAgentId(data.agentId);
+
+		const entity = existing
+			? Object.assign(existing, { ...data, publishedAt: new Date() })
+			: this.create({ ...data, publishedAt: new Date() });
 
 		return await this.save(entity);
 	}

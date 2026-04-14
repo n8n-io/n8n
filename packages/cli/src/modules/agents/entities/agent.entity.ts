@@ -28,7 +28,7 @@ export class Agent extends WithTimestampsAndStringId {
 
 	@Column({ type: 'varchar', nullable: true })
 	model: string | null;
-	// TODO: add schema versioning
+
 	@JsonColumn({ nullable: true, default: null })
 	schema: AgentJsonConfig | null;
 
@@ -46,6 +46,21 @@ export class Agent extends WithTimestampsAndStringId {
 			descriptor: ToolDescriptor;
 		}
 	>;
+
+	/**
+	 * UUID that changes on every config save, mirroring how WorkflowEntity.versionId works.
+	 * Used together with activeVersionId to detect unpublished changes without a JSON diff:
+	 *   hasUnpublishedChanges = versionId !== activeVersionId
+	 */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	versionId: string | null;
+
+	/**
+	 * Set to the agent's versionId at publish time; null when never published or after unpublish.
+	 * Mirrors WorkflowEntity.activeVersionId.
+	 */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	activeVersionId: string | null;
 
 	@OneToOne('AgentPublishedVersion', 'agent', { nullable: true })
 	publishedVersion?: Relation<AgentPublishedVersion> | null;

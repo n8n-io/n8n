@@ -15,6 +15,7 @@ import {
 	UserRepository,
 	WorkflowRepository,
 } from '@n8n/db';
+import { v4 as uuid } from 'uuid';
 import { Container, Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { OperationalError, UserError } from 'n8n-workflow';
@@ -114,6 +115,7 @@ export class AgentsService {
 			name,
 			projectId,
 			schema: defaultConfig,
+			versionId: uuid(),
 		});
 
 		const saved = await this.agentRepository.save(agent);
@@ -186,17 +188,13 @@ export class AgentsService {
 		});
 	}
 
-	async publishAgent(
-		agentId: string,
-		projectId: string,
-		userId: string,
-	): Promise<AgentPublishedVersion> {
+	async publishAgent(agentId: string, projectId: string, userId: string): Promise<Agent> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
 
-		const published = await this.agentPublishedVersionRepository.savePublishedVersion({
+		agent.publishedVersion = await this.agentPublishedVersionRepository.savePublishedVersion({
 			agentId: agent.id,
 			schema: agent.schema,
 			model: agent.model,
@@ -205,12 +203,16 @@ export class AgentsService {
 			publishedById: userId,
 		});
 
+		// Stamp the current versionId as published — frontend compares these to detect changes.
+		agent.activeVersionId = agent.versionId;
+		await this.agentRepository.save(agent);
+
 		this.logger.debug('Published SDK agent', { agentId, projectId, userId });
 
-		return published;
+		return agent;
 	}
 
-	async unpublishAgent(agentId: string, projectId: string): Promise<void> {
+	async unpublishAgent(agentId: string, projectId: string): Promise<Agent> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
@@ -218,7 +220,12 @@ export class AgentsService {
 
 		await this.agentPublishedVersionRepository.deleteByAgentId(agentId);
 
+		agent.publishedVersion = null;
+		agent.activeVersionId = null;
+		await this.agentRepository.save(agent);
+
 		this.logger.debug('Unpublished SDK agent', { agentId, projectId });
+		return agent;
 	}
 
 	async delete(agentId: string, projectId: string): Promise<boolean> {
@@ -616,6 +623,8 @@ export class AgentsService {
 		entity.schema = result.config;
 		entity.name = result.config.name;
 		entity.description = result.config.description ?? null;
+		// Bump versionId so frontend can detect unpublished changes via versionId !== activeVersionId.
+		entity.versionId = uuid();
 
 		// Remove tool entries that are no longer referenced in the config
 		const referencedIds = new Set(

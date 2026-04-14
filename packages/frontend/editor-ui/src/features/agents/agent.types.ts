@@ -35,6 +35,8 @@ export type Agent = {
 	isCompiled: boolean;
 	createdAt: string;
 	updatedAt: string;
+	versionId: string | null;
+	activeVersionId: string | null;
 	tools: Record<string, CustomToolEntry>;
 	publishedVersion: AgentPublishedVersion | null;
 };

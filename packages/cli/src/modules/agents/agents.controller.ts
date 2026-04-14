@@ -203,14 +203,7 @@ export class AgentsController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 	) {
-		const published = await this.agentsService.publishAgent(
-			agentId,
-			req.params.projectId,
-			req.user.id,
-		);
-
-		const agent = await this.agentsService.findById(agentId, req.params.projectId);
-		return { ...agent, publishedVersion: published };
+		return await this.agentsService.publishAgent(agentId, req.params.projectId, req.user.id);
 	}
 
 	@Post('/:agentId/unpublish')
@@ -219,8 +212,7 @@ export class AgentsController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 	) {
-		await this.agentsService.unpublishAgent(agentId, req.params.projectId);
-		return { success: true };
+		return await this.agentsService.unpublishAgent(agentId, req.params.projectId);
 	}
 
 	@Post('/:agentId/chat', { usesTemplates: true })

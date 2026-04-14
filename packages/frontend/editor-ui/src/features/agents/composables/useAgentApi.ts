@@ -153,8 +153,8 @@ export const unpublishAgent = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-): Promise<void> => {
-	await makeRestApiRequest(
+): Promise<AgentResource> => {
+	return await makeRestApiRequest<AgentResource>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/unpublish`,
