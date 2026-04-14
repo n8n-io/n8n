@@ -269,4 +269,74 @@ describe('sanitizeMcpToolSchemas', () => {
 			expect(resultSchema.safeParse({ data: { key: null } }).success).toBe(false);
 		});
 	});
+
+	describe('discriminated union description consistency', () => {
+		/**
+		 * Extracts field descriptions from all variants of a discriminated union.
+		 * Returns a map of field name → Set of unique descriptions found.
+		 */
+		function extractDescriptionsByField(
+			union: z.ZodDiscriminatedUnion<string, Array<z.ZodObject<z.ZodRawShape>>>,
+		): Map<string, Set<string>> {
+			const descriptionsByField = new Map<string, Set<string>>();
+			const discriminator = union.discriminator;
+			const variants = [...union.options.values()] as Array<z.ZodObject<z.ZodRawShape>>;
+
+			for (const variant of variants) {
+				for (const [key, value] of Object.entries(variant.shape)) {
+					if (key === discriminator) continue;
+					const desc = value.description;
+					if (!desc) continue;
+
+					if (!descriptionsByField.has(key)) {
+						descriptionsByField.set(key, new Set());
+					}
+					descriptionsByField.get(key)!.add(desc);
+				}
+			}
+
+			return descriptionsByField;
+		}
+
+		it('should not have fields with conflicting descriptions across variants', () => {
+			// Simulates what sanitizeZodType does: first-come-first-served for descriptions.
+			// If two variants define the same field with different descriptions, only the
+			// first survives — the model sees a wrong description for the other action(s).
+			const union = z.discriminatedUnion('action', [
+				z.object({
+					action: z.literal('create'),
+					name: z.string().describe('Table name'),
+				}),
+				z.object({
+					action: z.literal('rename'),
+					name: z.string().describe('Column name'),
+				}),
+			]);
+
+			const descriptionsByField = extractDescriptionsByField(union);
+			const conflicts = [...descriptionsByField.entries()].filter(([, descs]) => descs.size > 1);
+
+			// This test intentionally has a conflict to verify the detection logic works
+			expect(conflicts).toHaveLength(1);
+			expect(conflicts[0][0]).toBe('name');
+		});
+
+		it('should allow identical descriptions across variants', () => {
+			const union = z.discriminatedUnion('action', [
+				z.object({
+					action: z.literal('get'),
+					id: z.string().describe('Resource ID'),
+				}),
+				z.object({
+					action: z.literal('delete'),
+					id: z.string().describe('Resource ID'),
+				}),
+			]);
+
+			const descriptionsByField = extractDescriptionsByField(union);
+			const conflicts = [...descriptionsByField.entries()].filter(([, descs]) => descs.size > 1);
+
+			expect(conflicts).toHaveLength(0);
+		});
+	});
 });
