@@ -53,6 +53,7 @@ describe('ActiveWorkflowManager', () => {
 			mock(),
 			mock(),
 			mock(),
+			mock(),
 		);
 	});
 
@@ -320,6 +321,7 @@ describe('ActiveWorkflowManager', () => {
 				mock(),
 				mock(),
 				eventService,
+				mock(),
 				mock(),
 			);
 		});

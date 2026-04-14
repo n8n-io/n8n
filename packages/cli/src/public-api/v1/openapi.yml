@@ -140,6 +140,11 @@ components:
       type: apiKey
       in: header
       name: X-N8N-API-KEY
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
 
 security:
   - ApiKeyAuth: []
+  - BearerAuth: []

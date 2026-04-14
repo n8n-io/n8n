@@ -5,7 +5,6 @@ jest.mock('@mastra/core/agent', () => {
 	return { Agent: MockAgent };
 });
 
-// eslint-disable-next-line import-x/first
 import { truncateToTitle } from '../title-utils';
 
 describe('truncateToTitle', () => {

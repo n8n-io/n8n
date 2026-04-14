@@ -24,6 +24,7 @@ import {
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	WORKFLOW_EXTRACTION_NAME_MODAL_KEY,
 	LOCAL_STORAGE_THEME,
+	LOCAL_STORAGE_SIDEBAR_WIDTH,
 	WHATS_NEW_MODAL_KEY,
 	WORKFLOW_DIFF_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
@@ -40,6 +41,7 @@ import {
 	CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
 	AI_BUILDER_DIFF_MODAL_KEY,
 	INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY,
+	AI_GATEWAY_TOP_UP_MODAL_KEY,
 } from '@/app/constants';
 import {
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -173,6 +175,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
 				AI_BUILDER_DIFF_MODAL_KEY,
 				INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY,
+				AI_GATEWAY_TOP_UP_MODAL_KEY,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
 		[DELETE_USER_MODAL_KEY]: {
@@ -284,6 +287,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			write: (v) => String(v),
 		},
 	});
+	const sidebarWidth = useLocalStorage(LOCAL_STORAGE_SIDEBAR_WIDTH, 200);
 	const currentView = ref<string>('');
 	const stateIsDirty = ref<boolean>(false);
 	// This tracks only structural changes without metadata (name or tags)
@@ -745,6 +749,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		nodeViewInitialized,
 		addFirstStepOnLoad,
 		sidebarMenuCollapsed,
+		sidebarWidth,
 		theme: computed(() => theme.value),
 		modalsById,
 		currentView,

@@ -8,7 +8,7 @@ import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { License } from '@/license';
 import { AiGatewayService } from '@/services/ai-gateway.service';
-import type { Project, User } from '@n8n/db';
+import type { Project, User, UserRepository } from '@n8n/db';
 import type { OwnershipService } from '@/services/ownership.service';
 
 const BASE_URL = 'http://gateway.test';
@@ -33,6 +33,7 @@ function makeService({
 	baseUrl = BASE_URL as string | null,
 	isAiGatewayLicensed = true,
 	ownershipService = mock<OwnershipService>(),
+	userRepository = mock<UserRepository>({ findOneBy: jest.fn().mockResolvedValue(null) }),
 } = {}) {
 	const globalConfig = {
 		aiAssistant: { baseUrl: baseUrl ?? undefined },
@@ -51,6 +52,7 @@ function makeService({
 		licenseState,
 		instanceSettings,
 		ownershipService,
+		userRepository,
 	);
 }
 
@@ -190,6 +192,60 @@ describe('AiGatewayService', () => {
 					body: JSON.stringify({ licenseCert: LICENSE_CERT }),
 				}),
 			);
+		});
+
+		it('includes userEmail and userName in token body when user exists', async () => {
+			const userRepository = mock<UserRepository>({
+				findOneBy: jest
+					.fn()
+					.mockResolvedValue(
+						mock<User>({ email: 'alice@example.com', firstName: 'Alice', lastName: 'Smith' }),
+					),
+			});
+			mockConfigThenToken(fetchMock);
+			const service = makeService({ userRepository });
+
+			await service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID });
+
+			expect(fetchMock).toHaveBeenNthCalledWith(
+				2,
+				`${BASE_URL}/v1/gateway/credentials`,
+				expect.objectContaining({
+					body: JSON.stringify({
+						licenseCert: LICENSE_CERT,
+						userEmail: 'alice@example.com',
+						userName: 'Alice Smith',
+					}),
+				}),
+			);
+		});
+
+		it('omits userName from token body when user has no first or last name', async () => {
+			const userRepository = mock<UserRepository>({
+				findOneBy: jest
+					.fn()
+					.mockResolvedValue(
+						mock<User>({ email: 'alice@example.com', firstName: '', lastName: '' }),
+					),
+			});
+			mockConfigThenToken(fetchMock);
+			const service = makeService({ userRepository });
+
+			await service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID });
+
+			const body = JSON.parse(fetchMock.mock.calls[1][1].body as string);
+			expect(body.userEmail).toBe('alice@example.com');
+			expect(body.userName).toBeUndefined();
+		});
+
+		it('omits userEmail and userName from token body when user is not found', async () => {
+			mockConfigThenToken(fetchMock);
+			const service = makeService(); // userRepository returns null by default
+
+			await service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID });
+
+			const body = JSON.parse(fetchMock.mock.calls[1][1].body as string);
+			expect(body).toEqual({ licenseCert: LICENSE_CERT });
 		});
 
 		it('caches config and token — second call makes no additional fetches', async () => {

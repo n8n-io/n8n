@@ -45,17 +45,27 @@ type BlueprintItem =
 
 /** Format a data table schema as a compact string for builder context. */
 export function formatTableSchema(dt: BlueprintDataTableItem): string {
+	if (!dt.columns || dt.columns.length === 0) return `Table '${dt.name}'`;
 	const cols = dt.columns.map((c) => `${c.name} (${c.type})`).join(', ');
 	return `Table '${dt.name}': ${cols}`;
 }
 
 function dataTableItemToTask(dt: BlueprintDataTableItem): PlannedTaskInput {
-	const columnList = dt.columns.map((c) => `${c.name} (${c.type})`).join(', ');
+	if (dt.columns && dt.columns.length > 0) {
+		const columnList = dt.columns.map((c) => `${c.name} (${c.type})`).join(', ');
+		return {
+			id: dt.id,
+			title: `Create '${dt.name}' data table`,
+			kind: 'manage-data-tables',
+			spec: `Create a data table named '${dt.name}'. Purpose: ${dt.purpose}\nColumns: ${columnList}`,
+			deps: dt.dependsOn,
+		};
+	}
 	return {
 		id: dt.id,
-		title: `Create '${dt.name}' data table`,
+		title: dt.name,
 		kind: 'manage-data-tables',
-		spec: `Create a data table named '${dt.name}'. Purpose: ${dt.purpose}\nColumns: ${columnList}`,
+		spec: dt.purpose,
 		deps: dt.dependsOn,
 	};
 }

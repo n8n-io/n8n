@@ -23,6 +23,9 @@ importers:
       glob:
         specifier: 13.0.6
         version: 13.0.6
+      minimatch:
+        specifier: 10.2.4
+        version: 10.2.4
       semver:
         specifier: 7.7.4
         version: 7.7.4
