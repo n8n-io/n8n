@@ -208,7 +208,8 @@ jobs:
     needs: install-and-build
     if: >-
       needs.install-and-build.outputs.instance_ai_workflow_eval == 'true' &&
-      github.repository == 'n8n-io/n8n'
+      github.repository == 'n8n-io/n8n' &&
+      (github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork)
     uses: ./.github/workflows/test-evals-instance-ai.yml
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
