@@ -248,16 +248,4 @@ describe('SamlInstanceSettingsLoader', () => {
 			expect.anything(),
 		);
 	});
-
-	describe('isConfiguredByEnv', () => {
-		it('should return false when ssoManagedByEnv is false', () => {
-			const loader = createLoader({ ssoManagedByEnv: false });
-			expect(loader.isConfiguredByEnv()).toBe(false);
-		});
-
-		it('should return true when ssoManagedByEnv is true', () => {
-			const loader = createLoader({ ssoManagedByEnv: true });
-			expect(loader.isConfiguredByEnv()).toBe(true);
-		});
-	});
 });

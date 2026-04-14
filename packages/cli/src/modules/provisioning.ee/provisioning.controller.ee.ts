@@ -1,12 +1,12 @@
+import { LicenseState } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, GlobalScope, Patch, RestController } from '@n8n/decorators';
-import { LicenseState } from '@n8n/backend-common';
+import { Response } from 'express';
 
 import { OidcInstanceSettingsLoader } from '@/instance-settings-loader/loaders/oidc.instance-settings-loader';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { ProvisioningService } from './provisioning.service.ee';
-import { Response } from 'express';
 
 @RestController('/sso/provisioning')
 export class ProvisioningController {

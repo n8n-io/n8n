@@ -131,10 +131,6 @@ export class SamlInstanceSettingsLoader {
 		this.logger = this.logger.scoped('instance-settings-loader');
 	}
 
-	isConfiguredByEnv(): boolean {
-		return this.instanceSettingsLoaderConfig.ssoManagedByEnv;
-	}
-
 	async run(): Promise<'created' | 'skipped'> {
 		if (!this.instanceSettingsLoaderConfig.ssoManagedByEnv) return 'skipped';
 
