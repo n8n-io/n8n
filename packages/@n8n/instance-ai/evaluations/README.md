@@ -4,36 +4,24 @@ Tests whether workflows built by Instance AI actually work by executing them wit
 
 ## Running evals
 
-### Playwright (primary — used in CI)
+### CLI
 
 ```bash
-# From repo root, with n8n running via pnpm dev:ai
+# From packages/@n8n/instance-ai/, with n8n running via pnpm dev:ai
 
 # Run all test cases
-dotenvx run -f .env.local -- pnpm --filter=n8n-playwright test:instance-ai-workflow-evals:local
+dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --verbose
 
 # Run a single test case
-dotenvx run -f .env.local -- pnpm --filter=n8n-playwright test:instance-ai-workflow-evals:local -- --grep "contact-form"
+dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --filter contact-form --verbose
 
-# Control parallelism (default uses Playwright's worker count)
-dotenvx run -f .env.local -- pnpm --filter=n8n-playwright test:instance-ai-workflow-evals:local -- --workers=4
+# Keep built workflows for inspection
+dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --filter contact-form --keep-workflows --verbose
 ```
 
-Results are printed to the console via a custom reporter and written to `eval-results.json`.
+Results are printed to the console and written to `eval-results.json`.
 
-### CLI (alternative — quick local iteration)
-
-```bash
-# From packages/@n8n/instance-ai/
-dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai workflows --verbose
-
-# Single test case
-dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai workflows --filter contact-form --verbose
-```
-
-Generates an HTML report in `.data/workflow-eval-report.html`.
-
-### Docker (local without pnpm dev:ai)
+### Docker (without pnpm dev:ai)
 
 ```bash
 # Build the Docker image
@@ -48,20 +36,15 @@ docker run -d --name n8n-eval \
   -p 5678:5678 \
   n8nio/n8n:local
 
-# Reset DB and create user
-curl -X POST http://localhost:5678/rest/e2e/reset \
-  -H "Content-Type: application/json" \
-  -d '{"owner":{"email":"admin@n8n.io","password":"password","firstName":"Eval","lastName":"Owner"},"admin":{"email":"admin2@n8n.io","password":"password","firstName":"Admin","lastName":"User"},"members":[],"chat":{"email":"chat@n8n.io","password":"password","firstName":"Chat","lastName":"User"}}'
-
 # Run evals against it
-pnpm --filter=n8n-playwright test:instance-ai-workflow-evals:local
+pnpm eval:instance-ai --base-url http://localhost:5678 --verbose
 ```
 
 ### CI
 
-Evals run automatically on PRs that change Instance AI code (path-filtered). The CI workflow starts a single Docker container and runs tests against it — same as local mode. See `.github/workflows/test-evals-instance-ai.yml`.
+Evals run automatically on PRs that change Instance AI code (path-filtered). The CI workflow starts a single Docker container and runs the CLI against it. See `.github/workflows/test-evals-instance-ai.yml`.
 
-The eval job is **non-blocking** — it doesn't prevent PR merges. Results are uploaded as artifacts and visible in the GitHub Actions step summary.
+The eval job is **non-blocking**. Results are posted as a PR comment and uploaded as artifacts.
 
 ### Environment variables
 
@@ -69,9 +52,9 @@ Set these in `.env.local`:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `N8N_INSTANCE_AI_MODEL_API_KEY` | Yes | Anthropic API key — shared with the Instance AI agent and used for Phase 1 hints, Phase 2 mock generation, and verification |
-| `N8N_EVAL_EMAIL` | Yes | n8n login email for the eval runner |
-| `N8N_EVAL_PASSWORD` | Yes | n8n login password |
+| `N8N_INSTANCE_AI_MODEL_API_KEY` | Yes | Anthropic API key for the Instance AI agent, mock generation, and verification |
+| `N8N_EVAL_EMAIL` | No | n8n login email (defaults to E2E test owner) |
+| `N8N_EVAL_PASSWORD` | No | n8n login password (defaults to E2E test owner) |
 | `CONTEXT7_API_KEY` | No | Context7 API key for higher rate limits on API doc lookups. Free tier is 1,000 req/month |
 
 ## How it works
@@ -112,8 +95,6 @@ Test cases live in `evaluations/data/workflows/*.json`:
 }
 ```
 
-Adding a scenario to the JSON automatically creates a new Playwright test — no spec file changes needed.
-
 ### Writing good test cases
 
 **Prompt tips:**
@@ -146,7 +127,7 @@ When a scenario fails, the verifier categorizes the root cause:
 
 ```
 evaluations/
-├── index.ts              # Public API (used by Playwright specs + CLI)
+├── index.ts              # Public API
 ├── cli/                  # CLI entry point and args parsing
 ├── clients/              # n8n REST + SSE clients
 ├── checklist/            # LLM verification with retry
@@ -154,17 +135,7 @@ evaluations/
 ├── data/workflows/       # Test case JSON files
 ├── harness/              # Runner: buildWorkflow, executeScenario, cleanupBuild
 ├── outcome/              # SSE event parsing, workflow discovery
-├── report/               # HTML report generator (CLI only)
 └── system-prompts/       # LLM prompts for verification
-
-packages/testing/playwright/
-├── tests/e2e/instance-ai-workflow-evals/
-│   ├── fixtures.ts       # EvalClient, container/local mode
-│   ├── eval-spec-helper.ts  # Test generation from JSON
-│   ├── build-cache.ts    # Cross-worker build coordination
-│   └── *.spec.ts         # One per test case (3 lines each)
-└── reporters/
-    └── instance-ai-workflow-eval-reporter.ts  # Console + JSON + GitHub summary
 
 packages/cli/src/modules/instance-ai/eval/
 ├── execution.service.ts  # Phase 1 + Phase 2 orchestration

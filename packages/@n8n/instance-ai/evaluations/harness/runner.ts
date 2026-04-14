@@ -56,8 +56,8 @@ interface WorkflowTestCaseConfig {
 
 /**
  * All-in-one test case runner: build workflow + run all scenarios + cleanup.
- * Used by the standalone CLI. Playwright specs use the split API instead
- * (buildWorkflow + executeScenario + cleanupBuild).
+ * Used by the CLI. The split API (buildWorkflow + executeScenario + cleanupBuild)
+ * is available for custom orchestration (e.g. LangSmith evaluate).
  */
 export async function runWorkflowTestCase(
 	config: WorkflowTestCaseConfig,

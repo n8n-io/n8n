@@ -118,22 +118,6 @@ export function getProjects(): Project[] {
 			fullyParallel: true,
 			use: { baseURL: getFrontendUrl() },
 		});
-		projects.push(
-			{
-				name: 'instance-ai-workflow-evals',
-				testDir: './tests/instance-ai-workflow-evals',
-				testMatch: '*.spec.ts',
-				fullyParallel: true,
-				timeout: 600_000,
-				retries: 0,
-				teardown: 'instance-ai-workflow-evals-cleanup',
-			},
-			{
-				name: 'instance-ai-workflow-evals-cleanup',
-				testDir: './tests/instance-ai-workflow-evals',
-				testMatch: 'cleanup.ts',
-			},
-		);
 	} else {
 		for (const { name, config } of CONTAINER_CONFIGS) {
 			projects.push(

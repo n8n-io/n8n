@@ -1,8 +1,8 @@
 // ---------------------------------------------------------------------------
 // Public API for the instance-ai workflow evaluation framework
 //
-// This module exports the domain logic used by both the standalone CLI
-// (evaluations/cli/) and Playwright specs for CI integration.
+// This module exports the domain logic used by the CLI (evaluations/cli/)
+// and available for custom orchestration (e.g. LangSmith evaluate).
 // ---------------------------------------------------------------------------
 
 // -- Client & Auth --
@@ -19,7 +19,7 @@ export type { SeedResult } from './credentials/seeder';
 // -- Runner (all-in-one) --
 export { runWorkflowTestCase, runWithConcurrency } from './harness/runner';
 
-// -- Runner (split: build once, run scenarios independently) --
+// -- Runner (split API: build once, run scenarios independently) --
 export { buildWorkflow, executeScenario, cleanupBuild } from './harness/runner';
 export type { BuildResult, BuildWorkflowConfig } from './harness/runner';
 
