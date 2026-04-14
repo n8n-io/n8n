@@ -20,6 +20,7 @@ import {
 } from './tracing-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
+import { MAX_STEPS } from '../../constants/max-steps';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import {
@@ -29,8 +30,6 @@ import {
 	withTraceParentContext,
 } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
-
-const RESEARCH_MAX_STEPS = 25;
 
 export interface StartResearchAgentInput {
 	goal: string;
@@ -52,15 +51,12 @@ export async function startResearchAgentTask(
 	input: StartResearchAgentInput,
 ): Promise<StartedResearchAgentTask> {
 	const researchTools: ToolsInput = {};
-	const toolNames = ['web-search', 'fetch-url'];
-	for (const name of toolNames) {
-		if (name in context.domainTools) {
-			researchTools[name] = context.domainTools[name];
-		}
+	if ('research' in context.domainTools) {
+		researchTools.research = context.domainTools.research;
 	}
 
-	if (!researchTools['web-search']) {
-		return { result: 'Error: web-search tool not available.', taskId: '', agentId: '' };
+	if (Object.keys(researchTools).length === 0) {
+		return { result: 'Error: research tool not available.', taskId: '', agentId: '' };
 	}
 
 	if (!context.spawnBackgroundTask) {
@@ -143,7 +139,7 @@ export async function startResearchAgentTask(
 				return await withTraceParentContext(traceParent, async () => {
 					const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
 					const stream = await subAgent.stream(briefing, {
-						maxSteps: RESEARCH_MAX_STEPS,
+						maxSteps: MAX_STEPS.RESEARCH,
 						abortSignal: signal,
 						providerOptions: {
 							anthropic: { cacheControl: { type: 'ephemeral' } },

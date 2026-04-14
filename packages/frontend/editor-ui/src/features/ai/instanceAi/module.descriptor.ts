@@ -63,6 +63,7 @@ export const InstanceAiModule: FrontendModuleDescription = {
 			label: i18n.baseText('settings.n8nAgent'),
 			position: 'top',
 			route: { to: { name: INSTANCE_AI_SETTINGS_VIEW } },
+			preview: true,
 			get available() {
 				return hasPermission(['rbac'], { rbac: { scope: 'instanceAi:message' } });
 			},
