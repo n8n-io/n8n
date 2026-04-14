@@ -690,6 +690,10 @@ export class RelayConnection {
 			chrome.debugger.sendCommand(debuggee, 'Accessibility.enable'),
 		]);
 
+		// Request the DOM document — getFullAXTree fails without it
+		log.debug(`getSnapshot: requesting DOM document for tab ${id}`);
+		await chrome.debugger.sendCommand(debuggee, 'DOM.getDocument', { depth: 0 });
+
 		// Fetch full AX tree (one round-trip)
 		const { nodes: axNodes } = (await chrome.debugger.sendCommand(
 			debuggee,

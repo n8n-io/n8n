@@ -1,63 +1,9 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import type { Protocol } from 'devtools-protocol';
 
-import { buildSnapshot, computeSnapshotDiff, renderSnapshot, type TreeNode } from './ariaSnapshot';
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-const roleVal = (value: string): Protocol.Accessibility.AXValue => ({ type: 'role', value });
-const nameVal = (value: string): Protocol.Accessibility.AXValue => ({ type: 'string', value });
-
-/** No-op fetchAttributes — returns empty attrs (no test-ID, no id) */
-const noAttrs = async (_id: number): Promise<string[]> => await Promise.resolve([]);
-
-/** Build a fetchAttributes mock that returns given attrs for given backendNodeIds */
-function attrsMock(map: Record<number, string[]>): (id: number) => Promise<string[]> {
-	return async (id: number) => await Promise.resolve(map[id] ?? []);
-}
-
-const boolProp = (
-	name: string,
-	value: boolean | string = true,
-): Protocol.Accessibility.AXProperty => ({
-	name: name as Protocol.Accessibility.AXPropertyName,
-	value: { type: typeof value === 'string' ? 'string' : 'tristate', value },
-});
-
-const intProp = (name: string, value: number): Protocol.Accessibility.AXProperty => ({
-	name: name as Protocol.Accessibility.AXPropertyName,
-	value: { type: 'integer', value },
-});
-
-function axNode(
-	nodeId: string,
-	role: string,
-	opts: {
-		name?: string;
-		childIds?: string[];
-		backendDOMNodeId?: number;
-		ignored?: boolean;
-		parentId?: string;
-		properties?: Protocol.Accessibility.AXProperty[];
-	} = {},
-): Protocol.Accessibility.AXNode {
-	return {
-		nodeId,
-		role: roleVal(role),
-		name: opts.name !== undefined ? nameVal(opts.name) : undefined,
-		childIds: opts.childIds ?? [],
-		backendDOMNodeId: opts.backendDOMNodeId,
-		ignored: opts.ignored ?? false,
-		parentId: opts.parentId,
-		properties: opts.properties,
-	};
-}
-
-// ---------------------------------------------------------------------------
-// Snapshot building tests
-// ---------------------------------------------------------------------------
+import { buildSnapshot } from './build';
+import { renderSnapshot } from './print';
+import { attrsMock, axNode, boolProp, flattenNodes, intProp, noAttrs } from './testHelpers';
 
 describe('buildSnapshot', () => {
 	it('returns empty nodes for empty axNodes', async () => {
@@ -319,8 +265,6 @@ describe('buildSnapshot', () => {
 	});
 
 	it('truncates structural nodes beyond maxDepth', async () => {
-		// currentDepth: main=0, section=1, list=2, listitem=2(check triggers at list level)
-		// list hits maxDepth=2, so list+listitem are dropped; button is interactive so it surfaces
 		const axNodes: Protocol.Accessibility.AXNode[] = [
 			axNode('1', 'rootwebarea', { childIds: ['2'] }),
 			axNode('2', 'main', { childIds: ['3'], backendDOMNodeId: 10 }),
@@ -340,7 +284,6 @@ describe('buildSnapshot', () => {
 	});
 
 	it('always includes interactive elements regardless of depth', async () => {
-		// A deeply nested button should always appear even at maxDepth=1
 		const axNodes: Protocol.Accessibility.AXNode[] = [
 			axNode('1', 'rootwebarea', { childIds: ['2'] }),
 			axNode('2', 'main', { childIds: ['3'], backendDOMNodeId: 10 }),
@@ -496,6 +439,48 @@ describe('buildSnapshot', () => {
 		const result = await buildSnapshot({ axNodes, fetchAttributes: noAttrs });
 		const text = renderSnapshot(result.nodes);
 		expect(text).toBe('- button "Go" [ref=btn1]');
+	});
+
+	it('renders [checked=false] for unchecked checkbox (distinct from no checked attr)', async () => {
+		const axNodes: Protocol.Accessibility.AXNode[] = [
+			axNode('1', 'rootwebarea', { childIds: ['2'] }),
+			axNode('2', 'checkbox', {
+				name: 'Agree',
+				backendDOMNodeId: 10,
+				properties: [boolProp('checked', false)],
+			}),
+		];
+		const result = await buildSnapshot({ axNodes, fetchAttributes: noAttrs });
+		const text = renderSnapshot(result.nodes);
+		expect(text).toBe('- checkbox "Agree" [checked=false] [ref=chk1]');
+	});
+
+	it('renders [expanded=false] for collapsed element (distinct from no expanded attr)', async () => {
+		const axNodes: Protocol.Accessibility.AXNode[] = [
+			axNode('1', 'rootwebarea', { childIds: ['2'] }),
+			axNode('2', 'combobox', {
+				name: 'Country',
+				backendDOMNodeId: 10,
+				properties: [boolProp('expanded', false)],
+			}),
+		];
+		const result = await buildSnapshot({ axNodes, fetchAttributes: noAttrs });
+		const text = renderSnapshot(result.nodes);
+		expect(text).toBe('- combobox "Country" [expanded=false] [ref=cmb1]');
+	});
+
+	it('renders [pressed=false] for unpressed toggle button (distinct from no pressed attr)', async () => {
+		const axNodes: Protocol.Accessibility.AXNode[] = [
+			axNode('1', 'rootwebarea', { childIds: ['2'] }),
+			axNode('2', 'button', {
+				name: 'Bold',
+				backendDOMNodeId: 10,
+				properties: [boolProp('pressed', false)],
+			}),
+		];
+		const result = await buildSnapshot({ axNodes, fetchAttributes: noAttrs });
+		const text = renderSnapshot(result.nodes);
+		expect(text).toBe('- button "Bold" [pressed=false] [ref=btn1]');
 	});
 
 	// -----------------------------------------------------------------------
@@ -671,244 +656,3 @@ describe('buildSnapshot', () => {
 		expect(text).toContain('Shallow Button');
 	});
 });
-
-// ---------------------------------------------------------------------------
-// computeSnapshotDiff tests
-// ---------------------------------------------------------------------------
-
-describe('computeSnapshotDiff', () => {
-	function makeTree(nodes: Array<{ role: string; name: string; ref?: string }>): TreeNode[] {
-		return nodes.map(({ role, name, ref }) => ({ role, name, ref, children: [] }));
-	}
-
-	/** Build a large tree where diff will be shorter than full content */
-	function makeLargeTree(count: number, prefix = 'Item'): TreeNode[] {
-		return Array.from({ length: count }, (_, i) => ({
-			role: 'button',
-			name: `${prefix} ${i + 1}`,
-			ref: `btn-${prefix.toLowerCase()}-${i + 1}`,
-			children: [],
-		}));
-	}
-
-	it('returns full on empty previous (first call)', () => {
-		const next = makeTree([{ role: 'button', name: 'Save', ref: 'btn-save' }]);
-		const result = computeSnapshotDiff([], next);
-		expect(result.diffType).toBe('full');
-		expect(result.content).toBe('- button "Save" [ref=btn-save]');
-	});
-
-	it('returns no-change for identical trees', () => {
-		const nodes = makeTree([{ role: 'button', name: 'Save', ref: 'btn-save' }]);
-		const result = computeSnapshotDiff(nodes, [...nodes.map((n) => ({ ...n }))]);
-		expect(result.diffType).toBe('no-change');
-		expect(result.content).toBe('');
-	});
-
-	it('returns full when all content changed', () => {
-		const prev = makeTree([
-			{ role: 'button', name: 'A', ref: 'btn-a' },
-			{ role: 'button', name: 'B', ref: 'btn-b' },
-			{ role: 'button', name: 'C', ref: 'btn-c' },
-		]);
-		const next = makeTree([
-			{ role: 'button', name: 'X', ref: 'btn-x' },
-			{ role: 'button', name: 'Y', ref: 'btn-y' },
-			{ role: 'button', name: 'Z', ref: 'btn-z' },
-		]);
-		const result = computeSnapshotDiff(prev, next);
-		expect(result.diffType).toBe('full');
-	});
-
-	it('returns unified diff with +/- lines for small change in large tree', () => {
-		const prev = makeLargeTree(30);
-		const next = makeLargeTree(30);
-		next[15] = { role: 'button', name: 'MODIFIED', ref: 'btn-modified', children: [] };
-
-		const result = computeSnapshotDiff(prev, next);
-		expect(result.diffType).toBe('diff');
-		expect(result.content).toContain('--- snapshot (previous)');
-		expect(result.content).toContain('+++ snapshot (current)');
-		expect(result.content).toContain('@@');
-		expect(result.content).toContain('-- button "Item 16" [ref=btn-item-16]');
-		expect(result.content).toContain('+- button "MODIFIED" [ref=btn-modified]');
-	});
-
-	it('includes context lines around changes', () => {
-		const prev = makeLargeTree(30);
-		const next = makeLargeTree(30);
-		next[15] = { role: 'button', name: 'CHANGED', ref: 'btn-changed', children: [] };
-
-		const result = computeSnapshotDiff(prev, next);
-		expect(result.diffType).toBe('diff');
-		// Context lines (3 lines before/after the change)
-		expect(result.content).toContain(' - button "Item 14"');
-		expect(result.content).toContain(' - button "Item 15"');
-		expect(result.content).toContain(' - button "Item 17"');
-		expect(result.content).toContain(' - button "Item 18"');
-	});
-
-	it('shows added node as + line', () => {
-		const prev = makeLargeTree(20);
-		const next = [
-			...makeLargeTree(20),
-			{ role: 'button', name: 'New', ref: 'btn-new', children: [] as TreeNode[] },
-		];
-
-		const result = computeSnapshotDiff(prev, next);
-		expect(result.diffType).toBe('diff');
-		expect(result.content).toContain('+- button "New" [ref=btn-new]');
-	});
-
-	it('shows removed node as - line', () => {
-		const prev = [
-			...makeLargeTree(20),
-			{ role: 'button', name: 'Old', ref: 'btn-old', children: [] as TreeNode[] },
-		];
-		const next = makeLargeTree(20);
-
-		const result = computeSnapshotDiff(prev, next);
-		expect(result.diffType).toBe('diff');
-		expect(result.content).toContain('-- button "Old" [ref=btn-old]');
-	});
-
-	it('shows nested change with tree context', () => {
-		const prev: TreeNode[] = [
-			{
-				role: 'navigation',
-				name: 'Main',
-				children: [
-					{ role: 'link', name: 'Home', ref: 'lnk-home', children: [] },
-					{ role: 'link', name: 'About', ref: 'lnk-about', children: [] },
-				],
-			},
-			...makeLargeTree(20),
-		];
-		const next: TreeNode[] = [
-			{
-				role: 'navigation',
-				name: 'Main',
-				children: [
-					{ role: 'link', name: 'Home', ref: 'lnk-home', children: [] },
-					{ role: 'link', name: 'About us', ref: 'lnk-about-us', children: [] },
-				],
-			},
-			...makeLargeTree(20),
-		];
-
-		const result = computeSnapshotDiff(prev, next);
-		expect(result.diffType).toBe('diff');
-		expect(result.content).toContain('-  - link "About" [ref=lnk-about]');
-		expect(result.content).toContain('+  - link "About us" [ref=lnk-about-us]');
-		// Parent context preserved
-		expect(result.content).toContain(' - navigation "Main"');
-	});
-});
-
-// ---------------------------------------------------------------------------
-// renderSnapshot tests
-// ---------------------------------------------------------------------------
-
-describe('renderSnapshot', () => {
-	it('renders nested tree with correct indentation', () => {
-		const nodes: TreeNode[] = [
-			{
-				role: 'navigation',
-				name: '',
-				children: [
-					{
-						role: 'link',
-						name: 'Home',
-						children: [],
-					},
-				],
-			},
-		];
-
-		expect(renderSnapshot(nodes)).toMatchSnapshot();
-	});
-
-	it('renders attributes in correct order before ref', () => {
-		const nodes: TreeNode[] = [
-			{
-				role: 'checkbox',
-				name: 'Accept',
-				checked: true,
-				disabled: true,
-				ref: 'chk-accept',
-				children: [],
-			},
-		];
-		expect(renderSnapshot(nodes)).toBe('- checkbox "Accept" [checked] [disabled] [ref=chk-accept]');
-	});
-
-	it('renders all attribute types', () => {
-		const nodes: TreeNode[] = [
-			{
-				role: 'form',
-				name: 'Settings',
-				children: [
-					{ role: 'checkbox', name: 'Enable', checked: 'mixed', ref: 'chk-enable', children: [] },
-					{ role: 'button', name: 'Save', disabled: true, ref: 'btn-save', children: [] },
-					{ role: 'combobox', name: 'Theme', expanded: true, ref: 'cmb-theme', children: [] },
-					{ role: 'heading', name: 'Options', level: 3, children: [] },
-					{ role: 'button', name: 'Bold', pressed: true, ref: 'btn-bold', children: [] },
-					{ role: 'button', name: 'Italic', pressed: 'mixed', ref: 'btn-italic', children: [] },
-					{ role: 'tab', name: 'General', selected: true, ref: 'tab-general', children: [] },
-				],
-			},
-		];
-		expect(renderSnapshot(nodes)).toMatchSnapshot();
-	});
-
-	it('renders value as inline text after colon', () => {
-		const nodes: TreeNode[] = [
-			{
-				role: 'textbox',
-				name: 'Email',
-				ref: 'txt-email',
-				value: 'user@test.com',
-				children: [],
-			},
-		];
-		expect(renderSnapshot(nodes)).toBe('- textbox "Email" [ref=txt-email]: user@test.com');
-	});
-
-	it('renders props as attributes', () => {
-		const nodes: TreeNode[] = [
-			{
-				role: 'link',
-				name: 'About',
-				ref: 'lnk-about',
-				props: { href: '/about' },
-				children: [],
-			},
-		];
-		expect(renderSnapshot(nodes)).toBe('- link "About" [href=/about] [ref=lnk-about]');
-	});
-
-	it('renders props and children together', () => {
-		const nodes: TreeNode[] = [
-			{
-				role: 'combobox',
-				name: 'Country',
-				ref: 'cmb-country',
-				expanded: true,
-				props: { placeholder: 'Select...' },
-				children: [
-					{ role: 'option', name: 'USA', selected: true, ref: 'opt-usa', children: [] },
-					{ role: 'option', name: 'UK', ref: 'opt-uk', children: [] },
-				],
-			},
-		];
-		expect(renderSnapshot(nodes)).toMatchSnapshot();
-	});
-});
-
-// ---------------------------------------------------------------------------
-// Utility
-// ---------------------------------------------------------------------------
-
-function flattenNodes(nodes: TreeNode[]): TreeNode[] {
-	return nodes.flatMap((n) => [n, ...flattenNodes(n.children)]);
-}

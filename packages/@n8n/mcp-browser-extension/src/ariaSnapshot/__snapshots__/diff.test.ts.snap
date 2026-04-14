@@ -1,0 +1,199 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`computeSnapshotDiff > detects attribute-only changes (checkbox toggled) 1`] = `
+"--- snapshot (previous)
++++ snapshot (current)
+@@ -13,7 +13,7 @@
+ - button "Item 13" [ref=btn-item-13]
+ - button "Item 14" [ref=btn-item-14]
+ - button "Item 15" [ref=btn-item-15]
+-- checkbox "Accept terms" [ref=chk1]
++- checkbox "Accept terms" [checked] [ref=chk1]
+ - button "Other 1" [ref=btn-other-1]
+ - button "Other 2" [ref=btn-other-2]
+ - button "Other 3" [ref=btn-other-3]"
+`;
+
+exports[`computeSnapshotDiff > detects children added to a nested parent 1`] = `
+"--- snapshot (previous)
++++ snapshot (current)
+@@ -1,5 +1,6 @@
+ - navigation "Sidebar" [ref=nav1]
+   - link "Home" [ref=lnk1]
++  - link "Dashboard" [ref=lnk-new]
+   - link "Settings" [ref=lnk2]
+ - button "Item 1" [ref=btn-item-1]
+ - button "Item 2" [ref=btn-item-2]"
+`;
+
+exports[`computeSnapshotDiff > detects children removed from a nested parent 1`] = `
+"--- snapshot (previous)
++++ snapshot (current)
+@@ -1,7 +1,6 @@
+ - form "Login"
+   - textbox "Username" [ref=txt1]
+   - textbox "Password" [ref=txt2]
+-  - checkbox "Remember me" [ref=chk1]
+   - button "Submit" [ref=btn1]
+ - button "Item 1" [ref=btn-item-1]
+ - button "Item 2" [ref=btn-item-2]"
+`;
+
+exports[`computeSnapshotDiff > detects combobox opening (expanded false→true with new children) 1`] = `
+"--- snapshot (previous)
++++ snapshot (current)
+@@ -8,7 +8,10 @@
+ - button "Item 8" [ref=btn-item-8]
+ - button "Item 9" [ref=btn-item-9]
+ - button "Item 10" [ref=btn-item-10]
+-- combobox "Country" [expanded=false] [ref=cmb1]
++- combobox "Country" [expanded] [ref=cmb1]
++  - option "United States" [ref=opt1]
++  - option "United Kingdom" [ref=opt2]
++  - option "Germany" [ref=opt3]
+ - button "Other 1" [ref=btn-other-1]
+ - button "Other 2" [ref=btn-other-2]
+ - button "Other 3" [ref=btn-other-3]"
+`;
+
+exports[`computeSnapshotDiff > detects deeply nested structural changes 1`] = `
+"--- snapshot (previous)
++++ snapshot (current)
+@@ -4,7 +4,9 @@
+       - listitem
+         - link "Item 1" [ref=lnk1]
+       - listitem
+-        - link "Item 2" [ref=lnk2]
++        - link "Item 2 (updated)" [ref=lnk2]
++      - listitem
++        - link "Item 3" [ref=lnk3]
+ - button "Item 1" [ref=btn-item-1]
+ - button "Item 2" [ref=btn-item-2]
+ - button "Item 3" [ref=btn-item-3]"
+`;
+
+exports[`computeSnapshotDiff > detects reordered nodes as removals and additions 1`] = `
+"--- snapshot (previous)
++++ snapshot (current)
+@@ -1,7 +1,7 @@
+ - navigation "Tabs"
++  - tab "Third" [ref=tab3]
+   - tab "First" [ref=tab1]
+   - tab "Second" [ref=tab2]
+-  - tab "Third" [ref=tab3]
+ - button "Item 1" [ref=btn-item-1]
+ - button "Item 2" [ref=btn-item-2]
+ - button "Item 3" [ref=btn-item-3]"
+`;
+
+exports[`computeSnapshotDiff > detects textbox value changes 1`] = `
+"--- snapshot (previous)
++++ snapshot (current)
+@@ -8,7 +8,7 @@
+ - button "Item 8" [ref=btn-item-8]
+ - button "Item 9" [ref=btn-item-9]
+ - button "Item 10" [ref=btn-item-10]
+-- textbox "Email" [ref=txt1]: old@test.com
++- textbox "Email" [ref=txt1]: new@test.com
+ - button "Other 1" [ref=btn-other-1]
+ - button "Other 2" [ref=btn-other-2]
+ - button "Other 3" [ref=btn-other-3]"
+`;
+
+exports[`computeSnapshotDiff > handles complete subtree replacement 1`] = `
+"--- snapshot (previous)
++++ snapshot (current)
+@@ -1,7 +1,7 @@
+ - main
+-  - section "Old Section"
+-    - button "Old Button 1" [ref=btn1]
+-    - button "Old Button 2" [ref=btn2]
++  - form "New Form"
++    - textbox "Name" [ref=txt1]
++    - button "Save" [ref=btn-save]
+ - button "Item 1" [ref=btn-item-1]
+ - button "Item 2" [ref=btn-item-2]
+ - button "Item 3" [ref=btn-item-3]"
+`;
+
+exports[`computeSnapshotDiff > handles multiple attribute changes on same node 1`] = `
+"--- snapshot (previous)
++++ snapshot (current)
+@@ -13,7 +13,7 @@
+ - button "Item 13" [ref=btn-item-13]
+ - button "Item 14" [ref=btn-item-14]
+ - button "Item 15" [ref=btn-item-15]
+-- button "Submit" [disabled] [ref=btn-submit]
++- button "Submit" [pressed] [ref=btn-submit]
+ - button "Other 1" [ref=btn-other-1]
+ - button "Other 2" [ref=btn-other-2]
+ - button "Other 3" [ref=btn-other-3]"
+`;
+
+exports[`computeSnapshotDiff > handles prop changes on links (href updated) 1`] = `
+"--- snapshot (previous)
++++ snapshot (current)
+@@ -8,7 +8,7 @@
+ - button "Item 8" [ref=btn-item-8]
+ - button "Item 9" [ref=btn-item-9]
+ - button "Item 10" [ref=btn-item-10]
+-- link "Profile" [href=/user/123] [ref=lnk1]
++- link "Profile" [href=/user/456] [ref=lnk1]
+ - button "Other 1" [ref=btn-other-1]
+ - button "Other 2" [ref=btn-other-2]
+ - button "Other 3" [ref=btn-other-3]"
+`;
+
+exports[`computeSnapshotDiff > handles simultaneous additions and removals 1`] = `
+"--- snapshot (previous)
++++ snapshot (current)
+@@ -1,4 +1,4 @@
+-- button "Delete" [ref=btn-del]
++- button "Create" [ref=btn-create]
+ - button "Item 1" [ref=btn-item-1]
+ - button "Item 2" [ref=btn-item-2]
+ - button "Item 3" [ref=btn-item-3]
+@@ -24,4 +24,4 @@
+ - button "Item 23" [ref=btn-item-23]
+ - button "Item 24" [ref=btn-item-24]
+ - button "Item 25" [ref=btn-item-25]
+-- button "Old Action" [ref=btn-old]
+\\ No newline at end of file
++- button "New Action" [ref=btn-new]
+\\ No newline at end of file"
+`;
+
+exports[`computeSnapshotDiff > produces multiple hunks for changes in distant locations 1`] = `
+"--- snapshot (previous)
++++ snapshot (current)
+@@ -1,6 +1,6 @@
+ - button "Item 1" [ref=btn-item-1]
+ - button "Item 2" [ref=btn-item-2]
+-- button "Item 3" [ref=btn-item-3]
++- button "Changed Near Start" [ref=btn-start]
+ - button "Item 4" [ref=btn-item-4]
+ - button "Item 5" [ref=btn-item-5]
+ - button "Item 6" [ref=btn-item-6]
+@@ -25,6 +25,6 @@
+ - button "Item 25" [ref=btn-item-25]
+ - button "Item 26" [ref=btn-item-26]
+ - button "Item 27" [ref=btn-item-27]
+-- button "Item 28" [ref=btn-item-28]
++- button "Changed Near End" [ref=btn-end]
+ - button "Item 29" [ref=btn-item-29]
+ - button "Item 30" [ref=btn-item-30]
+\\ No newline at end of file"
+`;
+
+exports[`computeSnapshotDiff > returns full when diff string is longer than full content 1`] = `
+"- button "Changed 0" [ref=btn-c0]
+- button "Item 2" [ref=btn-item-2]
+- button "Changed 2" [ref=btn-c2]
+- button "Item 4" [ref=btn-item-4]
+- button "Changed 4" [ref=btn-c4]
+- button "Item 6" [ref=btn-item-6]
+- button "Changed 6" [ref=btn-c6]
+- button "Item 8" [ref=btn-item-8]
+- button "Changed 8" [ref=btn-c8]
+- button "Item 10" [ref=btn-item-10]"
+`;

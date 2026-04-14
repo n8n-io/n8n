@@ -1,17 +1,14 @@
 /**
- * Pure accessibility snapshot pipeline for the Chrome extension.
+ * Snapshot tree builder — the "compiler front-end" of the snapshot pipeline.
  *
- * No browser APIs, no Node.js APIs — inputs are plain CDP data objects so this
- * module can be unit-tested on Node.js without a browser.
- *
- * Flow:
- *   buildSnapshot(axNodes, fetchAttributes) → { nodes, refs }
- *   renderSnapshot(nodes)                   → YAML-like text (on demand)
- *   computeSnapshotDiff(prev, next)         → { diffType, content }
+ * Takes raw CDP accessibility nodes and produces a filtered TreeNode[] AST
+ * with stable refs for interactive elements and semantic containers.
  */
 
-import { structuredPatch } from 'diff';
 import type { Protocol } from 'devtools-protocol';
+
+import type { AriaProps, SnapshotInput, SnapshotOutput, TreeNode } from './types';
+import { escapeAttr } from './types';
 
 // ---------------------------------------------------------------------------
 // Role sets
@@ -93,65 +90,7 @@ const ROLE_ABBREVIATIONS: Record<string, string> = {
 	treeitem: 'tri',
 };
 
-function abbreviateRole(role: string): string {
-	return ROLE_ABBREVIATIONS[role] ?? role.slice(0, 3);
-}
-
-// ---------------------------------------------------------------------------
-// Public types
-// ---------------------------------------------------------------------------
-
-export interface SnapshotInput {
-	axNodes: Protocol.Accessibility.AXNode[];
-	/**
-	 * Called lazily during tree traversal for nodes that need DOM attributes:
-	 * - interactive nodes: to build stable locators + refs
-	 * - generic/group nodes: to detect contenteditable → promote to textbox
-	 * Returns raw interleaved [name, value, ...] pairs (DOM.getAttributes format).
-	 * In tests: provide a simple mock returning a pre-set array.
-	 */
-	fetchAttributes: (backendNodeId: number) => Promise<string[]>;
-	/**
-	 * 'interactive' (default): compact snapshot with refs on interactive elements and
-	 * semantic containers. 'full': all page content including headings and text.
-	 */
-	type?: 'interactive' | 'full';
-	/** Max nesting depth for structural elements. Interactive elements always shown. Default: 6 */
-	maxDepth?: number;
-	/** AX nodeId of the subtree root to scope the snapshot to */
-	scopeNodeId?: string;
-}
-
-export interface AriaProps {
-	checked?: boolean | 'mixed';
-	disabled?: boolean;
-	expanded?: boolean;
-	level?: number;
-	pressed?: boolean | 'mixed';
-	selected?: boolean;
-}
-
-export interface TreeNode extends AriaProps {
-	role: string;
-	name: string;
-	/** Stable ref string — set on interactive nodes and semantic containers */
-	ref?: string;
-	backendNodeId?: number;
-	/** Extra indent offset (for ignored-node children) */
-	indentOffset?: number;
-	/** Current value for input elements (textbox, textarea, etc.) */
-	value?: string;
-	/** Extra properties rendered as /key: value children (url, placeholder) */
-	props?: Record<string, string>;
-	children: TreeNode[];
-}
-
-export interface SnapshotOutput {
-	/** Structured tree — used for diff and on-demand rendering; cached per tab */
-	nodes: TreeNode[];
-	/** ref → CSS selector, cached per tab — never sent over WebSocket in bulk */
-	refs: Map<string, string>;
-}
+const INPUT_VALUE_ROLES = new Set(['textbox', 'searchbox', 'combobox', 'spinbutton']);
 
 // ---------------------------------------------------------------------------
 // Internal types
@@ -188,7 +127,7 @@ class RefRegistry {
 }
 
 // ---------------------------------------------------------------------------
-// buildSnapshot
+// buildSnapshot — public entry point
 // ---------------------------------------------------------------------------
 
 export async function buildSnapshot(input: SnapshotInput): Promise<SnapshotOutput> {
@@ -242,113 +181,7 @@ export async function buildSnapshot(input: SnapshotInput): Promise<SnapshotOutpu
 }
 
 // ---------------------------------------------------------------------------
-// renderSnapshot — called on demand (only for diffType: 'full')
-// ---------------------------------------------------------------------------
-
-export function renderSnapshot(nodes: TreeNode[], indent = 0): string {
-	return nodes
-		.map((node) => {
-			const nodeIndent = indent + (node.indentOffset ?? 0);
-			const prefix = '  '.repeat(nodeIndent);
-			let line: string;
-			if (node.role === 'text') {
-				line = `${prefix}- text: "${escapeAttr(node.name)}"`;
-			} else {
-				const namePart = node.name ? ` "${escapeAttr(node.name)}"` : '';
-				let attrPart = '';
-				if (node.checked === true) attrPart += ' [checked]';
-				else if (node.checked === 'mixed') attrPart += ' [checked=mixed]';
-				if (node.disabled) attrPart += ' [disabled]';
-				if (node.expanded) attrPart += ' [expanded]';
-				if (node.level) attrPart += ` [level=${node.level}]`;
-				if (node.pressed === true) attrPart += ' [pressed]';
-				else if (node.pressed === 'mixed') attrPart += ' [pressed=mixed]';
-				if (node.selected) attrPart += ' [selected]';
-				let propsPart = '';
-				if (node.props) {
-					for (const [key, val] of Object.entries(node.props)) {
-						propsPart += ` [${key}=${escapeAttr(val)}]`;
-					}
-				}
-				const refPart = node.ref ? ` [ref=${node.ref}]` : '';
-				line = `${prefix}- ${node.role}${namePart}${attrPart}${propsPart}${refPart}`;
-			}
-
-			// Value renders as inline text (like Playwright): `- textbox "Email" [ref=...]: user@test.com`
-			if (node.value) {
-				line += `: ${node.value}`;
-			}
-
-			const hasChildren = node.children.length > 0;
-
-			if (hasChildren) {
-				return `${line}\n${renderSnapshot(node.children, nodeIndent + 1)}`;
-			}
-			return line;
-		})
-		.join('\n');
-}
-
-// ---------------------------------------------------------------------------
-// computeSnapshotDiff
-// ---------------------------------------------------------------------------
-
-export interface DiffResult {
-	diffType: 'no-change' | 'diff' | 'full';
-	content: string;
-}
-
-export function computeSnapshotDiff(
-	previous: TreeNode[],
-	next: TreeNode[],
-	threshold = 0.5,
-): DiffResult {
-	const nextText = renderSnapshot(next);
-
-	if (previous.length === 0) {
-		return { diffType: 'full', content: nextText };
-	}
-
-	const prevText = renderSnapshot(previous);
-
-	if (prevText === nextText) {
-		return { diffType: 'no-change', content: '' };
-	}
-
-	const patch = structuredPatch('snapshot', 'snapshot', prevText, nextText, 'previous', 'current', {
-		context: 3,
-	});
-
-	let addedLines = 0;
-	let removedLines = 0;
-	for (const hunk of patch.hunks) {
-		for (const line of hunk.lines) {
-			if (line.startsWith('+')) addedLines++;
-			else if (line.startsWith('-')) removedLines++;
-		}
-	}
-
-	const oldLineCount = prevText.split('\n').length;
-	const newLineCount = nextText.split('\n').length;
-	const maxLines = Math.max(oldLineCount, newLineCount, 1);
-	const changeRatio = Math.min(Math.max(addedLines, removedLines) / maxLines, 1);
-
-	const diffLines: string[] = ['--- snapshot (previous)', '+++ snapshot (current)'];
-	for (const hunk of patch.hunks) {
-		diffLines.push(`@@ -${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines} @@`);
-		diffLines.push(...hunk.lines);
-	}
-	const diffString = diffLines.join('\n');
-
-	if (changeRatio >= threshold || diffString.length >= nextText.length) {
-		return { diffType: 'full', content: nextText };
-	}
-
-	return { diffType: 'diff', content: diffString };
-}
-
-// ---------------------------------------------------------------------------
-// Internal — raw tree building (pure, AX data only)
+// Raw tree building (pure, AX data only)
 // ---------------------------------------------------------------------------
 
 function findRootNodeId(axNodes: Protocol.Accessibility.AXNode[]): string | undefined {
@@ -411,7 +244,7 @@ function buildRawTree(
 }
 
 // ---------------------------------------------------------------------------
-// Internal — filter tree (async, fetches attrs lazily)
+// Filter tree (async, fetches attrs lazily)
 // ---------------------------------------------------------------------------
 
 interface FilterOptions {
@@ -576,7 +409,6 @@ async function filterNode(options: FilterOptions): Promise<FilterResult> {
 	}
 
 	// Carry input value for textbox/searchbox/combobox/spinbutton (not checkbox/radio)
-	const INPUT_VALUE_ROLES = new Set(['textbox', 'searchbox', 'combobox', 'spinbutton']);
 	const nodeValue =
 		INPUT_VALUE_ROLES.has(role) && node.value && node.value !== nameToUse ? node.value : undefined;
 
@@ -603,7 +435,7 @@ async function filterNode(options: FilterOptions): Promise<FilterResult> {
 }
 
 // ---------------------------------------------------------------------------
-// Internal — locator building
+// Locator building
 // ---------------------------------------------------------------------------
 
 interface LocatorResult {
@@ -640,7 +472,7 @@ function buildLocator({
 }
 
 // ---------------------------------------------------------------------------
-// Internal — nth deduplication
+// Nth deduplication
 // ---------------------------------------------------------------------------
 
 function applyNthDedup(refs: Map<string, string>): void {
@@ -663,20 +495,24 @@ function applyNthDedup(refs: Map<string, string>): void {
 }
 
 // ---------------------------------------------------------------------------
-// Internal — small utilities
+// Small utilities
 // ---------------------------------------------------------------------------
 
+function abbreviateRole(role: string): string {
+	return ROLE_ABBREVIATIONS[role] ?? role.slice(0, 3);
+}
+
 function getRole(node: Protocol.Accessibility.AXNode): string {
-	const val = node.role?.value;
+	const val = node.role?.value as unknown;
 	return typeof val === 'string' ? val.toLowerCase() : '';
 }
 
 function getAxString(value?: Protocol.Accessibility.AXValue): string {
 	if (!value) return '';
-	const raw = value.value;
+	const raw = value.value as unknown;
 	if (typeof raw === 'string') return raw.trim();
 	if (raw === null || raw === undefined) return '';
-	return String(raw).trim();
+	return String(raw as string | number | boolean).trim();
 }
 
 function toAttrMap(attrs: string[]): Map<string, string> {
@@ -701,10 +537,6 @@ function isSubstringOfAny(str: string, set: Set<string>): boolean {
 		if (s.includes(str) || str.includes(s)) return true;
 	}
 	return false;
-}
-
-function escapeAttr(val: string): string {
-	return val.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
 function shiftIndent(nodes: TreeNode[], offset: number): TreeNode[] {

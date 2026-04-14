@@ -77,25 +77,3 @@ exports[`buildSnapshot > scopes snapshot to scopeNodeId subtree 1`] = `
 `;
 
 exports[`buildSnapshot > uses data-testid attr as ref (highest priority) 1`] = `"- button "Save" [ref=btn1]"`;
-
-exports[`renderSnapshot > renders all attribute types 1`] = `
-"- form "Settings"
-  - checkbox "Enable" [checked=mixed] [ref=chk-enable]
-  - button "Save" [disabled] [ref=btn-save]
-  - combobox "Theme" [expanded] [ref=cmb-theme]
-  - heading "Options" [level=3]
-  - button "Bold" [pressed] [ref=btn-bold]
-  - button "Italic" [pressed=mixed] [ref=btn-italic]
-  - tab "General" [selected] [ref=tab-general]"
-`;
-
-exports[`renderSnapshot > renders nested tree with correct indentation 1`] = `
-"- navigation
-  - link "Home""
-`;
-
-exports[`renderSnapshot > renders props and children together 1`] = `
-"- combobox "Country" [expanded] [placeholder=Select...] [ref=cmb-country]
-  - option "USA" [selected] [ref=opt-usa]
-  - option "UK" [ref=opt-uk]"
-`;

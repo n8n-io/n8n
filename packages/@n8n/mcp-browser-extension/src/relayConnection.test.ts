@@ -97,8 +97,8 @@ class MockWebSocket {
 	 * WebSocket. Use instead of `tick()` to deterministically wait for async
 	 * command handlers (like getSnapshot) to complete.
 	 */
-	waitForSent(): Promise<string> {
-		return new Promise((resolve) => {
+	async waitForSent(): Promise<string> {
+		return await new Promise((resolve) => {
 			this.sendWaiters.push(resolve);
 		});
 	}
