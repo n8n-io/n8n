@@ -14,7 +14,7 @@ import { resolveNodeWebhookIds } from '@/workflow-helpers';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
-import { getMcpWorkflow } from '../workflow-validation.utils';
+import { getMcpWorkflow, getSdkReferenceHint } from '../workflow-validation.utils';
 
 const inputSchema = {
 	workflowId: z.string().describe('The ID of the workflow to update'),
@@ -55,6 +55,12 @@ const outputSchema = {
 		.optional()
 		.describe(
 			'Additional notes about the workflow update, such as any nodes that were skipped during credential auto-assignment.',
+		),
+	hint: z
+		.string()
+		.optional()
+		.describe(
+			'Actionable hint for recovering from the error. When present, follow the suggested action before retrying.',
 		),
 } satisfies z.ZodRawShape;
 
@@ -204,7 +210,8 @@ export const createUpdateWorkflowTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			const output = { error: errorMessage };
+			const hint = getSdkReferenceHint(error);
+			const output = { error: errorMessage, ...(hint ? { hint } : {}) };
 
 			return {
 				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
