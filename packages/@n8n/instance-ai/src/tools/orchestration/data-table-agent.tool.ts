@@ -20,6 +20,8 @@ import {
 	withTraceContextActor,
 } from './tracing-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
+import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
+import { MAX_STEPS } from '../../constants/max-steps';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import {
@@ -29,8 +31,6 @@ import {
 	withTraceParentContext,
 } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
-
-const DATA_TABLE_MAX_STEPS = 35;
 
 const DATA_TABLE_TOOL_NAMES = [
 	'list-data-tables',
@@ -146,16 +146,17 @@ export async function startDataTableAgentTask(
 
 				registerWithMastra(subAgentId, subAgent, context.storage);
 
-				const conversationCtx = input.conversationContext
-					? `\n\n[CONVERSATION CONTEXT: ${input.conversationContext}]`
-					: '';
-				const briefing = `${input.task}${conversationCtx}`;
+				const briefing = await buildSubAgentBriefing({
+					task: input.task,
+					conversationContext: input.conversationContext,
+					runningTasks: context.getRunningTaskSummaries?.(),
+				});
 
 				const traceParent = getTraceParentRun();
 				return await withTraceParentContext(traceParent, async () => {
 					const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
 					const stream = await subAgent.stream(briefing, {
-						maxSteps: DATA_TABLE_MAX_STEPS,
+						maxSteps: MAX_STEPS.DATA_TABLE,
 						abortSignal: signal,
 						providerOptions: {
 							anthropic: { cacheControl: { type: 'ephemeral' } },

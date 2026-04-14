@@ -20,6 +20,7 @@ import { OptionsSortedAlphabeticallyRule } from './options-sorted-alphabetically
 import { PackageNameConventionRule } from './package-name-convention.js';
 import { RequireContinueOnFailRule } from './require-continue-on-fail.js';
 import { RequireNodeApiErrorRule } from './require-node-api-error.js';
+import { RequireNodeDescriptionFieldsRule } from './require-node-description-fields.js';
 import { ResourceOperationPatternRule } from './resource-operation-pattern.js';
 
 export const rules = {
@@ -44,4 +45,5 @@ export const rules = {
 	'missing-paired-item': MissingPairedItemRule,
 	'require-continue-on-fail': RequireContinueOnFailRule,
 	'require-node-api-error': RequireNodeApiErrorRule,
+	'require-node-description-fields': RequireNodeDescriptionFieldsRule,
 } satisfies Record<string, AnyRuleModule>;

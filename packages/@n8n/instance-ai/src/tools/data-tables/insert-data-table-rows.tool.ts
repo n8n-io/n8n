@@ -27,6 +27,9 @@ export function createInsertDataTableRowsTool(context: InstanceAiContext) {
 		inputSchema: insertDataTableRowsInputSchema,
 		outputSchema: z.object({
 			insertedCount: z.number().optional(),
+			dataTableId: z.string().optional(),
+			tableName: z.string().optional(),
+			projectId: z.string().optional(),
 			denied: z.boolean().optional(),
 			reason: z.string().optional(),
 		}),

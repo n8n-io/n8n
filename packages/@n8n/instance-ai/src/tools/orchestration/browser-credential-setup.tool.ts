@@ -13,6 +13,7 @@ import {
 	withTraceRun,
 } from './tracing-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
+import { MAX_STEPS } from '../../constants/max-steps';
 import {
 	createLlmStepTraceHooks,
 	executeResumableStream,
@@ -28,8 +29,6 @@ import { createToolsFromLocalMcpServer } from '../filesystem/create-tools-from-m
 import { createAskUserTool } from '../shared/ask-user.tool';
 import { createFetchUrlTool } from '../web-research/fetch-url.tool';
 import { createWebSearchTool } from '../web-research/web-search.tool';
-
-const BROWSER_AGENT_MAX_STEPS = 300;
 
 type BrowserToolSource = 'gateway' | 'chrome-devtools-mcp';
 
@@ -430,7 +429,7 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 						// Stream the sub-agent
 						const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
 						const stream = await subAgent.stream(briefing, {
-							maxSteps: BROWSER_AGENT_MAX_STEPS,
+							maxSteps: MAX_STEPS.BROWSER,
 							abortSignal: context.abortSignal,
 							providerOptions: {
 								anthropic: { cacheControl: { type: 'ephemeral' } },
@@ -485,7 +484,7 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 								const nudge = await subAgent.stream(
 									'You stopped without confirming with the user. Call pause-for-user NOW to ask the user if they have the credential values (Client ID, Client Secret, API Key, etc.) copied and ready to paste into n8n.',
 									{
-										maxSteps: BROWSER_AGENT_MAX_STEPS,
+										maxSteps: MAX_STEPS.BROWSER,
 										abortSignal: context.abortSignal,
 										providerOptions: {
 											anthropic: { cacheControl: { type: 'ephemeral' } },
