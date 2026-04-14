@@ -76,7 +76,7 @@ describe('InstanceAiView', () => {
 		const pushStore = mockedStore(usePushConnectionStore);
 
 		store.currentThreadId = 'thread-1';
-		store.loadThreads.mockResolvedValue(undefined);
+		store.loadThreads.mockResolvedValue(true);
 		store.fetchCredits.mockResolvedValue(undefined);
 		store.loadHistoricalMessages.mockResolvedValue('applied');
 		store.connectSSE.mockResolvedValue(undefined);
