@@ -139,6 +139,7 @@ export const useSSOStore = defineStore('sso', () => {
 	const getOidcConfig = async () => {
 		const config = await ssoApi.getOidcConfig(rootStore.restApiContext);
 		oidcConfig.value = config;
+		oidc.value.loginEnabled = config.loginEnabled;
 		return config;
 	};
 
