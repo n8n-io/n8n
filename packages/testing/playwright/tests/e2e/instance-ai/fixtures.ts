@@ -62,7 +62,14 @@ export const test = base.extend<InstanceAiFixtures>({
 	},
 
 	instanceAiProxySetup: [
-		async ({ services, backendUrl }, use, testInfo) => {
+		async ({ n8nContainer, backendUrl }, use, testInfo) => {
+			// Local-build mode (no Docker container) — skip all proxy setup.
+			// LLM calls go straight to Anthropic, no recording or replay.
+			if (!n8nContainer) {
+				await use(undefined);
+				return;
+			}
+			const services = n8nContainer.services;
 			const testSlug = slugify(testInfo.title);
 			const folder = `instance-ai/${testSlug}`;
 
