@@ -19,8 +19,9 @@ test.describe(
 
 			// The timeline should show a subagent activity summary (e.g., "1 subagents")
 			// This appears when the agent delegates work to sub-agents for workflow building
-			const subagentButton = n8n.page.getByRole('button', { name: /subagent/i });
-			await expect(subagentButton).toBeVisible({ timeout: 30_000 });
+			await expect(n8n.instanceAi.getSubagentSummaries().first()).toBeVisible({
+				timeout: 30_000,
+			});
 		});
 
 		test('should expand subagent details when clicking summary', async ({ n8n }) => {
@@ -33,7 +34,7 @@ test.describe(
 			await n8n.instanceAi.waitForResponseComplete();
 
 			// Click the subagent summary button to expand the tool call timeline
-			const subagentButton = n8n.page.getByRole('button', { name: /subagent/i });
+			const subagentButton = n8n.instanceAi.getSubagentSummaries().first();
 			await expect(subagentButton).toBeVisible({ timeout: 30_000 });
 			await subagentButton.click();
 

@@ -16,13 +16,16 @@ test.describe(
 				'Build a simple workflow with a manual trigger and a set node called "approval test" and run it',
 			);
 
+			await expect(n8n.instanceAi.getConfirmationPanel()).toBeVisible({ timeout: 120_000 });
 			await expect(n8n.instanceAi.getConfirmApproveButton()).toBeVisible({ timeout: 120_000 });
 			await n8n.instanceAi.getConfirmApproveButton().click();
 
-			// After approval, execution should proceed
-			await expect(n8n.instanceAi.getAssistantMessages().first()).toBeVisible({
-				timeout: 120_000,
-			});
+			// Confirmation panel should disappear after approval
+			await expect(n8n.instanceAi.getConfirmationPanel()).toBeHidden({ timeout: 30_000 });
+
+			// After approval, execution should proceed and produce a workflow artifact
+			await n8n.instanceAi.waitForResponseComplete();
+			await expect(n8n.instanceAi.getArtifactCards().first()).toBeVisible({ timeout: 60_000 });
 		});
 
 		test('should show approval panel and deny workflow execution', async ({ n8n }) => {
@@ -32,13 +35,16 @@ test.describe(
 				'Build a simple workflow with a manual trigger and a set node called "deny test" and run it',
 			);
 
+			await expect(n8n.instanceAi.getConfirmationPanel()).toBeVisible({ timeout: 120_000 });
 			await expect(n8n.instanceAi.getConfirmDenyButton()).toBeVisible({ timeout: 120_000 });
 			await n8n.instanceAi.getConfirmDenyButton().click();
 
-			// After denial, the assistant should acknowledge
-			await expect(n8n.instanceAi.getAssistantMessages().first()).toBeVisible({
-				timeout: 120_000,
-			});
+			// Confirmation panel should disappear after denial
+			await expect(n8n.instanceAi.getConfirmationPanel()).toBeHidden({ timeout: 30_000 });
+
+			// After denial, the assistant should acknowledge with a response
+			await n8n.instanceAi.waitForResponseComplete();
+			await expect(n8n.instanceAi.getAssistantMessages().first()).not.toHaveText('');
 		});
 	},
 );

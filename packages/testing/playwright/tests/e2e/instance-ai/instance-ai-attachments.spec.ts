@@ -30,9 +30,10 @@ test.describe(
 			// Send a message with the attachment
 			await n8n.instanceAi.sendMessage('What does this screenshot show?');
 
-			// Should receive a response acknowledging the attachment
+			// Should receive a non-empty response acknowledging the attachment
 			await n8n.instanceAi.waitForResponseComplete();
-			await expect(n8n.instanceAi.getAssistantMessages().first()).toBeVisible();
+			await expect(n8n.instanceAi.getUserMessages().first()).toBeVisible();
+			await expect(n8n.instanceAi.getAssistantMessages().first()).not.toHaveText('');
 		});
 	},
 );

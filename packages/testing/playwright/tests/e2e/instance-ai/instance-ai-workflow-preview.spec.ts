@@ -19,6 +19,10 @@ test.describe(
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
 				timeout: 120_000,
 			});
+
+			// Should contain at least trigger + requested node
+			const nodeCount = await n8n.instanceAi.getPreviewCanvasNodes().count();
+			expect(nodeCount).toBeGreaterThanOrEqual(2);
 		});
 
 		test('should display canvas nodes in preview iframe', async ({ n8n }) => {
@@ -33,6 +37,10 @@ test.describe(
 				timeout: 120_000,
 			});
 			await expect(n8n.instanceAi.getPreviewCanvasNodes()).not.toHaveCount(0);
+
+			// Artifact card should also be visible alongside the preview
+			await n8n.instanceAi.waitForResponseComplete();
+			await expect(n8n.instanceAi.getArtifactCards().first()).toBeVisible({ timeout: 30_000 });
 		});
 
 		test('should close preview panel via close button', async ({ n8n }) => {
@@ -47,7 +55,8 @@ test.describe(
 				timeout: 120_000,
 			});
 
-			// Close the preview
+			// Close button should be visible, then click to close
+			await expect(n8n.instanceAi.getPreviewCloseButton()).toBeVisible({ timeout: 5_000 });
 			await n8n.instanceAi.getPreviewCloseButton().click();
 
 			// Preview iframe should no longer be visible

@@ -15,10 +15,11 @@ test.describe(
 				'Build a simple workflow with a manual trigger and a set node called "artifact card test"',
 			);
 
-			await n8n.instanceAi.waitForAssistantResponse(120_000);
+			await n8n.instanceAi.waitForResponseComplete();
 
 			// Artifact cards (N8nCard) should appear in the timeline after build
-			await expect(n8n.instanceAi.getArtifactCards().first()).toBeVisible({ timeout: 30_000 });
+			await expect(n8n.instanceAi.getArtifactCards()).not.toHaveCount(0, { timeout: 30_000 });
+			await expect(n8n.instanceAi.getAssistantMessages().first()).not.toHaveText('');
 		});
 	},
 );

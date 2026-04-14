@@ -20,8 +20,9 @@ test.describe(
 			// Click new thread button
 			await n8n.instanceAi.sidebar.getNewThreadButton().click();
 
-			// Should show empty input in the new thread
+			// Should show empty input in the new thread with no messages
 			await expect(n8n.instanceAi.getChatInput()).toBeVisible({ timeout: 10_000 });
+			await expect(n8n.instanceAi.getUserMessages()).toHaveCount(0);
 
 			// Thread count should increase
 			await expect(n8n.instanceAi.sidebar.getThreadItems()).toHaveCount(threadCountBefore + 1, {
@@ -43,8 +44,13 @@ test.describe(
 			await n8n.instanceAi.sendMessage('Message in second thread');
 			await n8n.instanceAi.waitForResponseComplete();
 
+			const threadCountBefore = await n8n.instanceAi.sidebar.getThreadItems().count();
+
 			// Switch back to first thread by its title (LLM-generated from recording)
 			await n8n.instanceAi.sidebar.getThreadByTitle('First Thread Message').click();
+
+			// Switching should not change thread count
+			await expect(n8n.instanceAi.sidebar.getThreadItems()).toHaveCount(threadCountBefore);
 
 			// Should show the first thread's user message (messages load async)
 			await expect(n8n.instanceAi.getUserMessages().first()).toContainText(

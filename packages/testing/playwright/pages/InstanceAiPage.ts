@@ -125,6 +125,14 @@ export class InstanceAiPage extends BasePage {
 		return this.page.getByTestId('instance-ai-message-rating');
 	}
 
+	getThumbsUpButton(): Locator {
+		return this.page.getByTestId('message-thumbs-up-button');
+	}
+
+	getThumbsDownButton(): Locator {
+		return this.page.getByTestId('message-thumbs-down-button');
+	}
+
 	getFeedbackSuccess(): Locator {
 		return this.page.getByTestId('instance-ai-feedback-success');
 	}
@@ -183,6 +191,14 @@ export class InstanceAiPage extends BasePage {
 
 	getArtifactsPanelRows(): Locator {
 		return this.page.getByTestId('instance-ai-artifact-row');
+	}
+
+	// ── Subagent Summaries ───────────────────────────────────────────
+
+	getSubagentSummaries(): Locator {
+		return this.getAssistantMessages()
+			.locator('button')
+			.filter({ hasText: /subagent/i });
 	}
 
 	// ── Timeline Details ──────────────────────────────────────────────

@@ -15,15 +15,14 @@ test.describe(
 			await n8n.instanceAi.waitForResponseComplete();
 
 			// Rating controls should appear after the assistant responds
-			const ratingContainer = n8n.instanceAi.getMessageRating();
-			await expect(ratingContainer.first()).toBeVisible({ timeout: 10_000 });
+			await expect(n8n.instanceAi.getMessageRating().first()).toBeVisible({ timeout: 10_000 });
 
-			// Click the first rating button (thumbs up)
-			const ratingButton = ratingContainer.first().getByRole('button').first();
-			await ratingButton.click();
+			// Click thumbs up
+			await n8n.instanceAi.getThumbsUpButton().first().click();
 
-			// Feedback success indicator should appear
+			// Feedback success indicator should appear and rating buttons should be removed
 			await expect(n8n.instanceAi.getFeedbackSuccess().first()).toBeVisible({ timeout: 10_000 });
+			await expect(n8n.instanceAi.getMessageRating()).toHaveCount(0);
 		});
 	},
 );

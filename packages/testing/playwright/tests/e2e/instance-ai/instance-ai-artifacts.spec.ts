@@ -47,6 +47,7 @@ test.describe(
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
 				timeout: 30_000,
 			});
+			await expect(n8n.instanceAi.getPreviewCanvasNodes()).not.toHaveCount(0);
 		});
 	},
 );
