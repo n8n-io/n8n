@@ -327,6 +327,7 @@ function submitMessage() {
 	flex: 1;
 	min-width: 0;
 	font-size: var(--font-size--sm);
+	line-height: var(--line-height--xl);
 	color: var(--color--text--tint-1);
 	overflow: hidden;
 	text-overflow: ellipsis;
