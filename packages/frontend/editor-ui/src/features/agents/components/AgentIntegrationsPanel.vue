@@ -263,6 +263,7 @@ onMounted(async () => {
 								type="tertiary"
 								size="small"
 								icon="pen"
+								aria-label="Edit credential"
 								data-testid="slack-edit-credential"
 								@click="onEditCredential"
 							/>

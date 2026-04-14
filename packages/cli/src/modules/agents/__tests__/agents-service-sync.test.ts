@@ -16,7 +16,6 @@ import { AgentsService } from '../agents.service';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-import type { NullableJsonColumn } from '@n8n/db';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentJsonConfig } from '../json-config/agent-json-config';
 import type { N8nMemory } from '../integrations/n8n-memory';
@@ -94,7 +93,7 @@ describe('AgentsService — updateName / updateDescription schema sync', () => {
 		});
 
 		it('handles agent with null schema', async () => {
-			const agent = makeAgent({ schema: null as unknown as NullableJsonColumn<AgentJsonConfig> });
+			const agent = makeAgent({ schema: null } as unknown as Partial<Agent>);
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
 			const result = await service.updateName('agent-1', 'project-1', 'New Name');
@@ -136,7 +135,7 @@ describe('AgentsService — updateName / updateDescription schema sync', () => {
 		});
 
 		it('handles agent with null schema', async () => {
-			const agent = makeAgent({ schema: null as unknown as NullableJsonColumn<AgentJsonConfig> });
+			const agent = makeAgent({ schema: null } as unknown as Partial<Agent>);
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
 			const result = await service.updateDescription('agent-1', 'project-1', 'New desc');

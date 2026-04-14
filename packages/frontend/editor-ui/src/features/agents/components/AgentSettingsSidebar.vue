@@ -147,6 +147,7 @@ watch(
 			expandedSections.value.code = true;
 		}
 	},
+	{ immediate: true },
 );
 
 // --- Resizable width ---

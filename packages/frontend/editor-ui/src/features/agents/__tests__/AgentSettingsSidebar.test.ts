@@ -228,6 +228,11 @@ describe('AgentSettingsSidebar', () => {
 		expect(wrapper.find('[data-testid="code-editor-stub"]').exists()).toBe(true);
 	});
 
+	it('auto-expands Code section when mounted with building already true', async () => {
+		const wrapper = await renderComponent({ building: true });
+		expect(wrapper.find('[data-testid="code-editor-stub"]').exists()).toBe(true);
+	});
+
 	it('expands Triggers section to show integrations panel', async () => {
 		const wrapper = await renderComponent();
 		expect(wrapper.find('[data-testid="integrations-panel-stub"]').exists()).toBe(false);

@@ -82,6 +82,8 @@ async function updateName(name: string) {
 		// Keep config name in sync so it persists on next config save
 		if (localConfig.value) {
 			localConfig.value.name = updated.name;
+			// Update the dirty-state baseline so the rename alone doesn't mark config as dirty
+			originalConfigJson.value = JSON.stringify(localConfig.value);
 		}
 		agentsEventBus.emit('agentUpdated');
 	}
@@ -98,23 +100,34 @@ async function updateDescription(description: string) {
 	}
 }
 
+let buildAbortController: AbortController | null = null;
+
 async function buildFromPrompt(msg: string) {
 	if (isBuilding.value) return;
 
+	// Capture IDs at call time so in-flight callbacks never act on a stale agent
+	const capturedProjectId = projectId.value;
+	const capturedAgentId = agentId.value;
+
+	buildAbortController?.abort();
+	const abortController = new AbortController();
+	buildAbortController = abortController;
+
 	isBuilding.value = true;
 	settingsVisible.value = true;
-	telemetry.track('User started agent build', { agent_id: agentId.value });
+	telemetry.track('User started agent build', { agent_id: capturedAgentId });
 
 	try {
 		const { baseUrl } = rootStore.restApiContext;
 		const browserId = localStorage.getItem('n8n-browserId') ?? '';
-		const url = `${baseUrl}/projects/${projectId.value}/agents/v2/${agentId.value}/build`;
+		const url = `${baseUrl}/projects/${capturedProjectId}/agents/v2/${capturedAgentId}/build`;
 
 		const response = await fetch(url, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json', 'browser-id': browserId },
 			credentials: 'include',
 			body: JSON.stringify({ message: msg }),
+			signal: abortController.signal,
 		});
 
 		if (!response.ok || !response.body) return;
@@ -124,6 +137,7 @@ async function buildFromPrompt(msg: string) {
 		let buffer = '';
 
 		while (true) {
+			if (abortController.signal.aborted) break;
 			const { done, value } = await reader.read();
 			if (done) break;
 
@@ -136,7 +150,8 @@ async function buildFromPrompt(msg: string) {
 				try {
 					const data = JSON.parse(line.slice(6)) as Record<string, unknown>;
 					if (data.configUpdated !== undefined || data.toolUpdated !== undefined) {
-						await onConfigUpdated();
+						if (abortController.signal.aborted) break;
+						await onConfigUpdated(capturedProjectId, capturedAgentId);
 					}
 				} catch {
 					// skip malformed JSON
@@ -145,8 +160,16 @@ async function buildFromPrompt(msg: string) {
 		}
 
 		// Final refresh after stream ends
-		await onConfigUpdated();
+		if (!abortController.signal.aborted) {
+			await onConfigUpdated(capturedProjectId, capturedAgentId);
+		}
+	} catch (e) {
+		if (e instanceof DOMException && e.name === 'AbortError') return;
+		throw e;
 	} finally {
+		if (buildAbortController === abortController) {
+			buildAbortController = null;
+		}
 		isBuilding.value = false;
 	}
 }
@@ -173,8 +196,12 @@ function cancelConfig() {
 	}
 }
 
-async function onConfigUpdated() {
-	await Promise.all([fetchAgent(), fetchConfig(projectId.value, agentId.value)]);
+async function onConfigUpdated(forProjectId?: string, forAgentId?: string) {
+	const pid = forProjectId ?? projectId.value;
+	const aid = forAgentId ?? agentId.value;
+	// Skip if the agent is no longer the one being viewed (stale callback)
+	if (pid !== projectId.value || aid !== agentId.value) return;
+	await Promise.all([fetchAgent(), fetchConfig(pid, aid)]);
 	isDirty.value = false;
 }
 
@@ -194,6 +221,8 @@ async function onHeaderAction(action: string) {
 }
 
 async function initialize() {
+	buildAbortController?.abort();
+	buildAbortController = null;
 	agent.value = null;
 	chatActive.value = false;
 	isBuilding.value = false;
