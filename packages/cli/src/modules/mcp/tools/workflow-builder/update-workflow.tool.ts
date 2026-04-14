@@ -3,6 +3,7 @@ import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { getSdkReferenceHint } from '../workflow-validation.utils';
 import { CODE_BUILDER_VALIDATE_TOOL, MCP_UPDATE_WORKFLOW_TOOL } from './constants';
 import { autoPopulateNodeCredentials, stripNullCredentialStubs } from './credentials-auto-assign';
 
@@ -204,7 +205,8 @@ export const createUpdateWorkflowTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			const output = { error: errorMessage };
+			const hint = getSdkReferenceHint(error);
+			const output = { error: errorMessage, ...(hint ? { hint } : {}) };
 
 			return {
 				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],

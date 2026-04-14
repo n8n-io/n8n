@@ -5,6 +5,7 @@ import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from '
 import { autoPopulateNodeCredentials, stripNullCredentialStubs } from './credentials-auto-assign';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { getSdkReferenceHint } from '../workflow-validation.utils';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { NodeTypes } from '@/node-types';
@@ -209,7 +210,8 @@ export const createCreateWorkflowFromCodeTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			const output = { error: errorMessage };
+			const hint = getSdkReferenceHint(error);
+			const output = { error: errorMessage, ...(hint ? { hint } : {}) };
 
 			return {
 				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],

@@ -3,6 +3,7 @@ import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { getSdkReferenceHint } from '../workflow-validation.utils';
 
 import type { Telemetry } from '@/telemetry';
 
@@ -104,9 +105,12 @@ export const createValidateWorkflowCodeTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
+			const hint = getSdkReferenceHint(error);
+
 			const output = {
 				valid: false,
 				errors: [errorMessage],
+				...(hint ? { hint } : {}),
 			};
 
 			return {
