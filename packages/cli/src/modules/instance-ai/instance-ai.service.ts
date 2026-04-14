@@ -17,6 +17,7 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UrlService } from '@/services/url.service';
 import {
+	MAX_STEPS,
 	createInstanceAgent,
 	createAllTools,
 	createMemory,
@@ -1824,6 +1825,7 @@ export class InstanceAiService {
 							agent as StreamableAgent,
 							streamInput,
 							{
+								maxSteps: MAX_STEPS.ORCHESTRATOR,
 								abortSignal: signal,
 								memory: {
 									resource: user.id,
@@ -1847,6 +1849,7 @@ export class InstanceAiService {
 						agent as StreamableAgent,
 						streamInput,
 						{
+							maxSteps: MAX_STEPS.ORCHESTRATOR,
 							abortSignal: signal,
 							memory: {
 								resource: user.id,
