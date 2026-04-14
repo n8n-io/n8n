@@ -33,28 +33,28 @@ test.describe(
 		test('should switch between threads', async ({ n8n }) => {
 			await n8n.navigate.toInstanceAi();
 
-			// Create first thread with a unique message
-			await n8n.instanceAi.sendMessage('Message in first thread');
+			// Create first thread with a distinctive message (avoid collision with other tests)
+			await n8n.instanceAi.sendMessage('Alpha channel switching test');
 			await n8n.instanceAi.waitForResponseComplete();
 
 			// Create second thread
 			await n8n.instanceAi.sidebar.getNewThreadButton().click();
 			await expect(n8n.instanceAi.getChatInput()).toBeVisible({ timeout: 10_000 });
 
-			await n8n.instanceAi.sendMessage('Message in second thread');
+			await n8n.instanceAi.sendMessage('Beta channel switching test');
 			await n8n.instanceAi.waitForResponseComplete();
 
 			const threadCountBefore = await n8n.instanceAi.sidebar.getThreadItems().count();
 
 			// Switch back to first thread by its title (LLM-generated from recording)
-			await n8n.instanceAi.sidebar.getThreadByTitle('First Thread Message').click();
+			await n8n.instanceAi.sidebar.getThreadByTitle('Alpha Channel').click();
 
 			// Switching should not change thread count
 			await expect(n8n.instanceAi.sidebar.getThreadItems()).toHaveCount(threadCountBefore);
 
 			// Should show the first thread's user message (messages load async)
 			await expect(n8n.instanceAi.getUserMessages().first()).toContainText(
-				'Message in first thread',
+				'Alpha channel switching test',
 				{ timeout: 30_000 },
 			);
 		});

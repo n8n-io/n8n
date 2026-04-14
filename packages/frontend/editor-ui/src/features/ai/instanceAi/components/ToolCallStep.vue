@@ -38,38 +38,43 @@ function getDisplayLabel(tc: InstanceAiToolCallState): string {
 </script>
 
 <template>
-	<CollapsibleRoot v-slot="{ open: isOpen }" data-test-id="instance-ai-tool-call-step">
-		<CollapsibleTrigger as-child>
-			<TimelineStepButton>
-				<template #icon="{ isHovered }">
-					<template v-if="isHovered">
-						<N8nIcon v-if="!isOpen" icon="plus" size="small" />
-						<N8nIcon v-else icon="minus" size="small" />
+	<div data-test-id="instance-ai-tool-call-step">
+		<CollapsibleRoot v-slot="{ open: isOpen }">
+			<CollapsibleTrigger as-child>
+				<TimelineStepButton>
+					<template #icon="{ isHovered }">
+						<template v-if="isHovered">
+							<N8nIcon v-if="!isOpen" icon="plus" size="small" />
+							<N8nIcon v-else icon="minus" size="small" />
+						</template>
+						<template v-else>
+							<N8nIcon
+								v-if="props.toolCall.isLoading"
+								icon="spinner"
+								color="primary"
+								size="small"
+								spin
+							/>
+							<N8nIcon v-else :icon="getToolIcon(props.toolCall.toolName)" size="small" />
+						</template>
 					</template>
-					<template v-else>
-						<N8nIcon
-							v-if="props.toolCall.isLoading"
-							icon="spinner"
-							color="primary"
-							size="small"
-							spin
-						/>
-						<N8nIcon v-else :icon="getToolIcon(props.toolCall.toolName)" size="small" />
-					</template>
-				</template>
-				{{ props.label ?? getDisplayLabel(props.toolCall) }}
-			</TimelineStepButton>
-		</CollapsibleTrigger>
-		<AnimatedCollapsibleContent>
-			<DataSection v-if="props.toolCall.args">
-				<ToolResultJson :value="props.toolCall.args" />
-			</DataSection>
-			<DataSection v-if="props.toolCall.result !== undefined">
-				<ToolResultRenderer :result="props.toolCall.result" :tool-name="props.toolCall.toolName" />
-			</DataSection>
-			<N8nCallout v-if="props.toolCall.error !== undefined" theme="danger">
-				{{ props.toolCall.error }}
-			</N8nCallout>
-		</AnimatedCollapsibleContent>
-	</CollapsibleRoot>
+					{{ props.label ?? getDisplayLabel(props.toolCall) }}
+				</TimelineStepButton>
+			</CollapsibleTrigger>
+			<AnimatedCollapsibleContent>
+				<DataSection v-if="props.toolCall.args">
+					<ToolResultJson :value="props.toolCall.args" />
+				</DataSection>
+				<DataSection v-if="props.toolCall.result !== undefined">
+					<ToolResultRenderer
+						:result="props.toolCall.result"
+						:tool-name="props.toolCall.toolName"
+					/>
+				</DataSection>
+				<N8nCallout v-if="props.toolCall.error !== undefined" theme="danger">
+					{{ props.toolCall.error }}
+				</N8nCallout>
+			</AnimatedCollapsibleContent>
+		</CollapsibleRoot>
+	</div>
 </template>

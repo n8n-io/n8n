@@ -1,0 +1,87 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"type": "STRING",
+			"string": "[{\"type\":\"text\",\"text\":\"Generate a concise title (max 60 chars) summarizing what",
+			"subString": true
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-envoy-upstream-service-time": ["2775"],
+			"vary": ["Accept-Encoding"],
+			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
+			"set-cookie": [
+				"_cfuvid=WIJaHpVzFr5aKUb_vly1kMKZeGlcdud5G3PJ664NFrg-1776163344.9719608-1.0.1.1-RL_CGEaJ6HNvwhf7oDwNUutUve2fFishD0nzPIV3LpA; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com"
+			],
+			"server-timing": ["x-originResponse;dur=2777"],
+			"request-id": ["req_011Ca3XMnQKjLBJMgHz62gan"],
+			"cf-cache-status": ["DYNAMIC"],
+			"anthropic-ratelimit-tokens-reset": ["2026-04-14T10:42:25Z"],
+			"anthropic-ratelimit-tokens-remaining": ["27000000"],
+			"anthropic-ratelimit-tokens-limit": ["27000000"],
+			"anthropic-ratelimit-requests-reset": ["2026-04-14T10:42:25Z"],
+			"anthropic-ratelimit-requests-remaining": ["19998"],
+			"anthropic-ratelimit-requests-limit": ["20000"],
+			"anthropic-ratelimit-output-tokens-reset": ["2026-04-14T10:42:27Z"],
+			"anthropic-ratelimit-output-tokens-remaining": ["4500000"],
+			"anthropic-ratelimit-output-tokens-limit": ["4500000"],
+			"anthropic-ratelimit-input-tokens-reset": ["2026-04-14T10:42:25Z"],
+			"anthropic-ratelimit-input-tokens-remaining": ["22500000"],
+			"anthropic-ratelimit-input-tokens-limit": ["22500000"],
+			"X-Robots-Tag": ["none"],
+			"Server": ["cloudflare"],
+			"Date": ["Tue, 14 Apr 2026 10:42:27 GMT"],
+			"Content-Type": ["application/json"],
+			"Content-Security-Policy": ["default-src 'none'; frame-ancestors 'none'"],
+			"CF-RAY": ["9ec21a8a1f48e50e-TXL"]
+		},
+		"cookies": {
+			"_cfuvid": "WIJaHpVzFr5aKUb_vly1kMKZeGlcdud5G3PJ664NFrg-1776163344.9719608-1.0.1.1-RL_CGEaJ6HNvwhf7oDwNUutUve2fFishD0nzPIV3LpA"
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-6",
+				"id": "msg_014hgr38Tsk6zJoxWzNU8ieV",
+				"type": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"type": "text",
+						"text": "The screenshot shows a **single red pixel** (1×1 pixel image).\n\nIt's a minimal PNG file containing just one pixel with a red color value. This is often used as a **placeholder image** or for **testing purposes** (e.g., tracking pixels, testing image upload/display functionality)."
+					}
+				],
+				"stop_reason": "end_turn",
+				"stop_sequence": null,
+				"stop_details": null,
+				"usage": {
+					"input_tokens": 226,
+					"cache_creation_input_tokens": 0,
+					"cache_read_input_tokens": 0,
+					"cache_creation": {
+						"ephemeral_5m_input_tokens": 0,
+						"ephemeral_1h_input_tokens": 0
+					},
+					"output_tokens": 68,
+					"service_tier": "standard",
+					"inference_geo": "global"
+				}
+			},
+			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC02IiwiaWQiOiJtc2dfMDE0aGdyMzhUc2s2ekpveFd6TlU4aWVWIiwidHlwZSI6Im1lc3NhZ2UiLCJyb2xlIjoiYXNzaXN0YW50IiwiY29udGVudCI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoiVGhlIHNjcmVlbnNob3Qgc2hvd3MgYSAqKnNpbmdsZSByZWQgcGl4ZWwqKiAoMcOXMSBwaXhlbCBpbWFnZSkuXG5cbkl0J3MgYSBtaW5pbWFsIFBORyBmaWxlIGNvbnRhaW5pbmcganVzdCBvbmUgcGl4ZWwgd2l0aCBhIHJlZCBjb2xvciB2YWx1ZS4gVGhpcyBpcyBvZnRlbiB1c2VkIGFzIGEgKipwbGFjZWhvbGRlciBpbWFnZSoqIG9yIGZvciAqKnRlc3RpbmcgcHVycG9zZXMqKiAoZS5nLiwgdHJhY2tpbmcgcGl4ZWxzLCB0ZXN0aW5nIGltYWdlIHVwbG9hZC9kaXNwbGF5IGZ1bmN0aW9uYWxpdHkpLiJ9XSwic3RvcF9yZWFzb24iOiJlbmRfdHVybiIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInN0b3BfZGV0YWlscyI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoyMjYsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjAsImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjAsImVwaGVtZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9rZW5zIjo2OCwic2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoiZ2xvYmFsIn19"
+		}
+	},
+	"id": "1776163349631-unknown-host-POST-_v1_messages-18622610.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}

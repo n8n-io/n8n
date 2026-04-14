@@ -1,0 +1,87 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"type": "STRING",
+			"string": "[{\"type\":\"text\",\"text\":\"Generate a concise title (max 60 chars) summarizing what",
+			"subString": true
+		}
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-envoy-upstream-service-time": ["1144"],
+			"vary": ["Accept-Encoding"],
+			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
+			"set-cookie": [
+				"_cfuvid=ZzX3BpfdNmWhfQXiVGgUZVO3vrDf8GmRMRcX5s1xuB8-1776163366.5722601-1.0.1.1-cjrNAVMQ_2xmk3TrPzD2sXaDAGbw4xXIOXVqrmgUrHU; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com"
+			],
+			"server-timing": ["x-originResponse;dur=1146"],
+			"request-id": ["req_011Ca3XPNaQy3gArP2BrXYT3"],
+			"cf-cache-status": ["DYNAMIC"],
+			"anthropic-ratelimit-tokens-reset": ["2026-04-14T10:42:47Z"],
+			"anthropic-ratelimit-tokens-remaining": ["27000000"],
+			"anthropic-ratelimit-tokens-limit": ["27000000"],
+			"anthropic-ratelimit-requests-reset": ["2026-04-14T10:42:46Z"],
+			"anthropic-ratelimit-requests-remaining": ["19998"],
+			"anthropic-ratelimit-requests-limit": ["20000"],
+			"anthropic-ratelimit-output-tokens-reset": ["2026-04-14T10:42:47Z"],
+			"anthropic-ratelimit-output-tokens-remaining": ["4500000"],
+			"anthropic-ratelimit-output-tokens-limit": ["4500000"],
+			"anthropic-ratelimit-input-tokens-reset": ["2026-04-14T10:42:47Z"],
+			"anthropic-ratelimit-input-tokens-remaining": ["22500000"],
+			"anthropic-ratelimit-input-tokens-limit": ["22500000"],
+			"X-Robots-Tag": ["none"],
+			"Server": ["cloudflare"],
+			"Date": ["Tue, 14 Apr 2026 10:42:47 GMT"],
+			"Content-Type": ["application/json"],
+			"Content-Security-Policy": ["default-src 'none'; frame-ancestors 'none'"],
+			"CF-RAY": ["9ec21b111a84ca63-TXL"]
+		},
+		"cookies": {
+			"_cfuvid": "ZzX3BpfdNmWhfQXiVGgUZVO3vrDf8GmRMRcX5s1xuB8-1776163366.5722601-1.0.1.1-cjrNAVMQ_2xmk3TrPzD2sXaDAGbw4xXIOXVqrmgUrHU"
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-6",
+				"id": "msg_01GxikCFGJQabUKkR2Mehq9n",
+				"type": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"type": "text",
+						"text": "Hello! 👋 How are you doing today?"
+					}
+				],
+				"stop_reason": "end_turn",
+				"stop_sequence": null,
+				"stop_details": null,
+				"usage": {
+					"input_tokens": 110,
+					"cache_creation_input_tokens": 0,
+					"cache_read_input_tokens": 0,
+					"cache_creation": {
+						"ephemeral_5m_input_tokens": 0,
+						"ephemeral_1h_input_tokens": 0
+					},
+					"output_tokens": 15,
+					"service_tier": "standard",
+					"inference_geo": "global"
+				}
+			},
+			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC02IiwiaWQiOiJtc2dfMDFHeGlrQ0ZHSlFhYlVLa1IyTWVocTluIiwidHlwZSI6Im1lc3NhZ2UiLCJyb2xlIjoiYXNzaXN0YW50IiwiY29udGVudCI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoiSGVsbG8hIPCfkYsgSG93IGFyZSB5b3UgZG9pbmcgdG9kYXk/In1dLCJzdG9wX3JlYXNvbiI6ImVuZF90dXJuIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjExMCwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjE1LCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5jZV9nZW8iOiJnbG9iYWwifX0="
+		}
+	},
+	"id": "1776163371408-unknown-host-POST-_v1_messages-18622610.json",
+	"priority": 0,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"unlimited": true
+	}
+}
