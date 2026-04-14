@@ -281,7 +281,13 @@ async function handleContinue() {
 
 	const success = await store.confirmAction(props.requestId, true, undefined, credentials);
 	if (success) {
-		store.resolveConfirmation(props.requestId, 'approved');
+		if (store.isConfirmationGone(props.requestId)) {
+			// Run was swept/cancelled — show deferred state instead of approved
+			isDeferred.value = true;
+			store.resolveConfirmation(props.requestId, 'deferred');
+		} else {
+			store.resolveConfirmation(props.requestId, 'approved');
+		}
 	} else {
 		isSubmitted.value = false;
 	}

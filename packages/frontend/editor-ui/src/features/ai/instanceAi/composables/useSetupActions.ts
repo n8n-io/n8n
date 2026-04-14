@@ -188,6 +188,16 @@ export function useSetupActions(deps: {
 			return;
 		}
 
+		// If the run was already cancelled/expired (e.g. 404 returned as success),
+		// don't wait for a tool result that will never arrive — gracefully dismiss.
+		if (deps.store.isConfirmationGone(deps.requestId.value)) {
+			isApplying.value = false;
+			isSubmitted.value = true;
+			isDeferred.value = true;
+			deps.store.resolveConfirmation(deps.requestId.value, 'deferred');
+			return;
+		}
+
 		const { promise, cancel } = waitForToolResult(deps.requestId.value);
 		cancelApplyWait = cancel;
 		const toolResult = await promise;
@@ -232,6 +242,14 @@ export function useSetupActions(deps: {
 
 		if (!postSuccess) {
 			applyError.value = 'Failed to send trigger test request. Try again.';
+			return;
+		}
+
+		// If the run was already cancelled/expired, don't wait for a tool result.
+		if (deps.store.isConfirmationGone(deps.requestId.value)) {
+			isSubmitted.value = true;
+			isDeferred.value = true;
+			deps.store.resolveConfirmation(deps.requestId.value, 'deferred');
 			return;
 		}
 

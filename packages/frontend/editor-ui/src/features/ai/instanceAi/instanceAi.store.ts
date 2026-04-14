@@ -294,6 +294,12 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return undefined;
 	}
 
+	/** Check whether the run behind a confirmation has already been cancelled or completed. */
+	function isConfirmationGone(requestId: string): boolean {
+		const tc = findToolCallByRequestId(requestId);
+		return !tc || !tc.isLoading;
+	}
+
 	// --- Event reducer (delegated to pure module) ---
 
 	// --- SSE lifecycle ---
@@ -866,7 +872,12 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				resourceDecision,
 			);
 			return true;
-		} catch {
+		} catch (error) {
+			if (error instanceof ResponseError && error.httpStatusCode === 404) {
+				// The run was already swept/cancelled — treat as handled so callers
+				// proceed with their cleanup path instead of getting stuck.
+				return true;
+			}
 			toast.showError(new Error('Failed to send confirmation. Try again.'), 'Confirmation failed');
 			return false;
 		}
@@ -1061,6 +1072,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		confirmResourceDecision,
 		resolveConfirmation,
 		findToolCallByRequestId,
+		isConfirmationGone,
 		copyFullTrace,
 		submitFeedback,
 		fetchCredits,
