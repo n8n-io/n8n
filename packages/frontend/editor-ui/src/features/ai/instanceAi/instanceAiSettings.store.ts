@@ -57,6 +57,9 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const isProxyEnabled = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.proxyEnabled === true,
 	);
+	const isCloudManaged = computed(
+		() => settingsStore.moduleSettings?.['instance-ai']?.cloudManaged === true,
+	);
 
 	const isDirty = computed(() => {
 		if (!settings.value && !preferences.value) return false;
@@ -73,6 +76,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			localGatewayDisabled: prev?.localGatewayDisabled ?? false,
 			proxyEnabled: prev?.proxyEnabled ?? false,
 			optinModalDismissed: adminRes.optinModalDismissed,
+			cloudManaged: prev?.cloudManaged ?? false,
 		};
 		settingsStore.moduleSettings = {
 			...ms,
@@ -411,6 +415,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		activeDirectory,
 		isLocalGatewayDisabled,
 		isProxyEnabled,
+		isCloudManaged,
 		pollGatewayStatus,
 		stopGatewayPolling,
 		startDaemonProbing,

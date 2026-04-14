@@ -16,6 +16,11 @@ const isLocalGatewayDisabled = computed(() => {
 	return store.preferences?.localGatewayDisabled ?? false;
 });
 
+function handleUserToggle(value: boolean | string | number) {
+	store.setPreferenceField('localGatewayDisabled', !value);
+	void store.save();
+}
+
 const copied = ref(false);
 const displayCommand = computed(() => store.setupCommand ?? 'npx @n8n/computer-use');
 
@@ -104,7 +109,7 @@ onMounted(() => {
 			<ElSwitch
 				:model-value="!isLocalGatewayDisabled"
 				:disabled="store.isLocalGatewayDisabled"
-				@update:model-value="store.setPreferenceField('localGatewayDisabled', !$event)"
+				@update:model-value="handleUserToggle"
 			/>
 		</div>
 
