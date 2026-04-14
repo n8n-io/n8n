@@ -9,6 +9,7 @@ import { useCanvasPreview } from '../useCanvasPreview';
 import type { ResourceEntry } from '../useResourceRegistry';
 import type { WorkflowExecutionState } from '../useExecutionPushEvents';
 import type { IWorkflowDb } from '@/Interface';
+import { getLatestCanvasPreviewResults } from '../canvasPreview.utils';
 
 const mockWorkflowsById: Record<string, Partial<IWorkflowDb>> = {};
 vi.mock('@/app/stores/workflowsList.store', () => ({
@@ -147,6 +148,56 @@ describe('useCanvasPreview', () => {
 		for (const key of Object.keys(mockWorkflowsById)) {
 			delete mockWorkflowsById[key];
 		}
+	});
+
+	describe('getLatestCanvasPreviewResults', () => {
+		test('collects latest preview-relevant results in one traversal', () => {
+			const node = makeAgentNode({
+				toolCalls: [
+					makeToolCall({
+						toolCallId: 'tc-old-build',
+						toolName: 'build-workflow',
+						result: { success: true, workflowId: 'wf-old' },
+					}),
+					makeToolCall({
+						toolCallId: 'tc-setup',
+						toolName: 'setup-workflow',
+						args: { workflowId: 'wf-setup' },
+						result: { success: true },
+					}),
+					makeToolCall({
+						toolCallId: 'tc-run',
+						toolName: 'run-workflow',
+						args: { workflowId: 'wf-run' },
+						result: { executionId: 'exec-1' },
+					}),
+					makeToolCall({
+						toolCallId: 'tc-create-table',
+						toolName: 'create-data-table',
+						result: { table: { id: 'dt-1' } },
+					}),
+					makeToolCall({
+						toolCallId: 'tc-delete-table',
+						toolName: 'delete-data-table',
+						args: { dataTableId: 'dt-deleted' },
+						result: { success: true },
+					}),
+					makeToolCall({
+						toolCallId: 'tc-new-build',
+						toolName: 'build-workflow',
+						result: { success: true, workflowId: 'wf-new' },
+					}),
+				],
+			});
+
+			expect(getLatestCanvasPreviewResults(node)).toEqual({
+				build: { workflowId: 'wf-new', toolCallId: 'tc-new-build' },
+				setup: { workflowId: 'wf-setup', toolCallId: 'tc-setup' },
+				execution: { executionId: 'exec-1', workflowId: 'wf-run' },
+				dataTable: { dataTableId: 'dt-1', toolCallId: 'tc-create-table' },
+				deletedDataTableId: 'dt-deleted',
+			});
+		});
 	});
 
 	describe('allArtifactTabs', () => {

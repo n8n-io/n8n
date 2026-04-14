@@ -3,11 +3,7 @@ import { useDebounceFn } from '@vueuse/core';
 import type { RouteLocationNormalizedLoadedGeneric } from 'vue-router';
 import type { IconName } from '@n8n/design-system';
 import {
-	getLatestBuildResult,
-	getLatestWorkflowSetupResult,
-	getLatestExecutionId,
-	getLatestDataTableResult,
-	getLatestDeletedDataTableId,
+	getLatestCanvasPreviewResults,
 	getExecutionResultsByWorkflow,
 	type ExecutionResult,
 } from './canvasPreview.utils';
@@ -238,15 +234,29 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 
 	const workflowRefreshKey = ref(0);
 
-	const latestBuildResult = computed(() => {
+	const latestPreviewResults = computed(() => {
 		for (let i = store.messages.length - 1; i >= 0; i--) {
 			const msg = store.messages[i];
 			if (msg.agentTree) {
-				const result = getLatestBuildResult(msg.agentTree);
-				if (result) return result;
+				const results = getLatestCanvasPreviewResults(msg.agentTree);
+				if (
+					results.build ||
+					results.setup ||
+					results.execution ||
+					results.dataTable ||
+					results.deletedDataTableId
+				) {
+					return results;
+				}
 			}
 		}
-		return null;
+		return {
+			build: null,
+			setup: null,
+			execution: null,
+			dataTable: null,
+			deletedDataTableId: null,
+		};
 	});
 
 	// Watch the toolCallId — it changes even when the same workflow is rebuilt.
@@ -256,11 +266,12 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 	//   - Thread switch with canvas open: restore canvas with new thread's workflow
 	//   - Thread switch with canvas closed: stay closed
 	watch(
-		() => latestBuildResult.value?.toolCallId,
+		() => latestPreviewResults.value.build?.toolCallId,
 		(toolCallId) => {
-			if (!toolCallId || !latestBuildResult.value) return;
+			const build = latestPreviewResults.value.build;
+			if (!toolCallId || !build) return;
 
-			const targetId = latestBuildResult.value.workflowId;
+			const targetId = build.workflowId;
 
 			if (
 				!isPreviewVisible.value &&
@@ -290,23 +301,13 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 	// These tools modify the workflow (credentials, parameters) but aren't detected
 	// by getLatestBuildResult. Refresh the preview so the iframe shows the latest state.
 
-	const latestSetupResult = computed(() => {
-		for (let i = store.messages.length - 1; i >= 0; i--) {
-			const msg = store.messages[i];
-			if (msg.agentTree) {
-				const result = getLatestWorkflowSetupResult(msg.agentTree);
-				if (result) return result;
-			}
-		}
-		return null;
-	});
-
 	watch(
-		() => latestSetupResult.value?.toolCallId,
+		() => latestPreviewResults.value.setup?.toolCallId,
 		(toolCallId) => {
-			if (!toolCallId || !latestSetupResult.value) return;
+			const setup = latestPreviewResults.value.setup;
+			if (!toolCallId || !setup) return;
 
-			const targetId = latestSetupResult.value.workflowId;
+			const targetId = setup.workflowId;
 
 			// Only refresh if the setup targeted the currently active workflow tab
 			if (activeTabId.value === targetId) {
@@ -317,21 +318,10 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 
 	// --- Auto-show execution after run-workflow completes ---
 
-	const latestExecution = computed(() => {
-		for (let i = store.messages.length - 1; i >= 0; i--) {
-			const msg = store.messages[i];
-			if (msg.agentTree) {
-				const result = getLatestExecutionId(msg.agentTree);
-				if (result) return result;
-			}
-		}
-		return null;
-	});
-
 	watch(
-		() => latestExecution.value?.executionId,
+		() => latestPreviewResults.value.execution?.executionId,
 		() => {
-			const exec = latestExecution.value;
+			const exec = latestPreviewResults.value.execution;
 			if (!exec) return;
 
 			if (!isPreviewVisible.value && !store.isStreaming && !userSentMessage.value) return;
@@ -346,23 +336,13 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 
 	// --- Auto-open data table preview when AI creates/modifies a data table ---
 
-	const latestDataTableResult = computed(() => {
-		for (let i = store.messages.length - 1; i >= 0; i--) {
-			const msg = store.messages[i];
-			if (msg.agentTree) {
-				const result = getLatestDataTableResult(msg.agentTree);
-				if (result) return result;
-			}
-		}
-		return null;
-	});
-
 	watch(
-		() => latestDataTableResult.value?.toolCallId,
+		() => latestPreviewResults.value.dataTable?.toolCallId,
 		(toolCallId) => {
-			if (!toolCallId || !latestDataTableResult.value) return;
+			const dataTable = latestPreviewResults.value.dataTable;
+			if (!toolCallId || !dataTable) return;
 
-			const targetId = latestDataTableResult.value.dataTableId;
+			const targetId = dataTable.dataTableId;
 
 			if (
 				!isPreviewVisible.value &&
@@ -381,24 +361,15 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 	);
 
 	// --- Close data table preview if the active table is deleted ---
-
-	const latestDeletedDataTableId = computed(() => {
-		for (let i = store.messages.length - 1; i >= 0; i--) {
-			const msg = store.messages[i];
-			if (msg.agentTree) {
-				const id = getLatestDeletedDataTableId(msg.agentTree);
-				if (id) return id;
+	watch(
+		() => latestPreviewResults.value.deletedDataTableId,
+		(deletedId) => {
+			if (deletedId && deletedId === activeTabId.value) {
+				const remaining = allArtifactTabs.value.filter((t) => t.id !== deletedId);
+				activeTabId.value = remaining.length > 0 ? remaining[0].id : null;
 			}
-		}
-		return null;
-	});
-
-	watch(latestDeletedDataTableId, (deletedId) => {
-		if (deletedId && deletedId === activeTabId.value) {
-			const remaining = allArtifactTabs.value.filter((t) => t.id !== deletedId);
-			activeTabId.value = remaining.length > 0 ? remaining[0].id : null;
-		}
-	});
+		},
+	);
 
 	return {
 		activeTabId,

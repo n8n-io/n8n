@@ -25,6 +25,115 @@ export interface DataTableResult {
 	toolCallId: string;
 }
 
+export interface CanvasPreviewLatestResults {
+	build: BuildResult | null;
+	setup: WorkflowSetupResult | null;
+	execution: LatestExecution | null;
+	dataTable: DataTableResult | null;
+	deletedDataTableId: string | null;
+}
+
+const EMPTY_LATEST_RESULTS: CanvasPreviewLatestResults = {
+	build: null,
+	setup: null,
+	execution: null,
+	dataTable: null,
+	deletedDataTableId: null,
+};
+
+function hasAllLatestResults(results: CanvasPreviewLatestResults): boolean {
+	return Boolean(
+		results.build &&
+			results.setup &&
+			results.execution &&
+			results.dataTable &&
+			results.deletedDataTableId,
+	);
+}
+
+function getToolCallResult(toolCall: InstanceAiAgentNode['toolCalls'][number]):
+	| {
+			result: Record<string, unknown>;
+			args: Record<string, unknown> | undefined;
+	  }
+	| undefined {
+	if (toolCall.isLoading || !toolCall.result || typeof toolCall.result !== 'object')
+		return undefined;
+
+	return {
+		result: toolCall.result as Record<string, unknown>,
+		args:
+			toolCall.args && typeof toolCall.args === 'object'
+				? (toolCall.args as Record<string, unknown>)
+				: undefined,
+	};
+}
+
+function maybeCollectBuildResult(
+	toolName: string,
+	toolCallId: string,
+	result: Record<string, unknown>,
+): BuildResult | null {
+	if (
+		(toolName === 'build-workflow' || toolName === 'submit-workflow') &&
+		result.success === true &&
+		typeof result.workflowId === 'string'
+	) {
+		return { workflowId: result.workflowId, toolCallId };
+	}
+
+	return null;
+}
+
+function maybeCollectSetupResult(
+	toolName: string,
+	toolCallId: string,
+	result: Record<string, unknown>,
+	args: Record<string, unknown> | undefined,
+): WorkflowSetupResult | null {
+	if (
+		WORKFLOW_SETUP_TOOLS.has(toolName) &&
+		result.success === true &&
+		typeof args?.workflowId === 'string'
+	) {
+		return { workflowId: args.workflowId, toolCallId };
+	}
+
+	return null;
+}
+
+function maybeCollectExecutionResult(
+	toolName: string,
+	result: Record<string, unknown>,
+	args: Record<string, unknown> | undefined,
+): LatestExecution | null {
+	if (
+		toolName === 'run-workflow' &&
+		typeof result.executionId === 'string' &&
+		typeof args?.workflowId === 'string'
+	) {
+		return { executionId: result.executionId, workflowId: args.workflowId };
+	}
+
+	return null;
+}
+
+function maybeCollectDeletedDataTableId(
+	toolName: string,
+	result: Record<string, unknown>,
+	args: Record<string, unknown> | undefined,
+): string | null {
+	if (
+		toolName === 'delete-data-table' &&
+		result.success === true &&
+		typeof args?.dataTableId === 'string'
+	) {
+		return args.dataTableId;
+	}
+
+	return null;
+}
+
 /**
  * Walks an agent tree depth-first (most recent last) and returns the workflowId
  * and toolCallId from the latest successful build-workflow / submit-workflow tool result.
@@ -210,6 +319,47 @@ export function getLatestDataTableResult(node: InstanceAiAgentNode): DataTableRe
 		}
 	}
 	return undefined;
+}
+
+export function getLatestCanvasPreviewResults(
+	node: InstanceAiAgentNode,
+	results: CanvasPreviewLatestResults = structuredClone(EMPTY_LATEST_RESULTS),
+): CanvasPreviewLatestResults {
+	if (hasAllLatestResults(results)) {
+		return results;
+	}
+
+	for (let i = node.children.length - 1; i >= 0; i--) {
+		getLatestCanvasPreviewResults(node.children[i], results);
+		if (hasAllLatestResults(results)) {
+			return results;
+		}
+	}
+
+	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
+		const tc = node.toolCalls[i];
+		const toolCallData = getToolCallResult(tc);
+		if (!toolCallData) continue;
+
+		const { result, args } = toolCallData;
+
+		results.build ??= maybeCollectBuildResult(tc.toolName, tc.toolCallId, result);
+		results.setup ??= maybeCollectSetupResult(tc.toolName, tc.toolCallId, result, args);
+		results.execution ??= maybeCollectExecutionResult(tc.toolName, result, args);
+
+		if (!results.dataTable && DATA_TABLE_TOOL_NAMES.has(tc.toolName)) {
+			const dataTableId = extractDataTableId(tc.toolName, result, args);
+			results.dataTable = dataTableId ? { dataTableId, toolCallId: tc.toolCallId } : null;
+		}
+
+		results.deletedDataTableId ??= maybeCollectDeletedDataTableId(tc.toolName, result, args);
+
+		if (hasAllLatestResults(results)) {
+			return results;
+		}
+	}
+
+	return results;
 }
 
 /**
