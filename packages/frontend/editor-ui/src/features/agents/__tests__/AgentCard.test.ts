@@ -140,10 +140,10 @@ describe('AgentCard', () => {
 		expect(wrapper.find('[data-testid="agent-published-indicator"]').exists()).toBe(false);
 	});
 
-	it('hides published badge when there are unpublished changes', async () => {
+	it('shows published badge when published with newer draft changes', async () => {
 		const agent = createAgent({ versionId: 'v2', activeVersionId: 'v1', publishedVersion });
 		const wrapper = await renderComponent({ agent });
-		expect(wrapper.find('[data-testid="agent-published-indicator"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-published-indicator"]').exists()).toBe(true);
 	});
 
 	// Context menu actions
@@ -161,11 +161,11 @@ describe('AgentCard', () => {
 		expect(wrapper.find('[data-action="publish"]').exists()).toBe(false);
 	});
 
-	it('shows Publish action when there are unpublished changes', async () => {
+	it('shows Unpublish action when published with newer draft changes', async () => {
 		const agent = createAgent({ versionId: 'v2', activeVersionId: 'v1', publishedVersion });
 		const wrapper = await renderComponent({ agent });
-		expect(wrapper.find('[data-action="publish"]').exists()).toBe(true);
-		expect(wrapper.find('[data-action="unpublish"]').exists()).toBe(false);
+		expect(wrapper.find('[data-action="unpublish"]').exists()).toBe(true);
+		expect(wrapper.find('[data-action="publish"]').exists()).toBe(false);
 	});
 
 	it('always shows Delete action', async () => {

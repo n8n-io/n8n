@@ -184,9 +184,11 @@ onBeforeRouteLeave(async (_to, _from, next) => {
 
 	if (response === MODAL_CONFIRM) {
 		try {
+			// Flush any pending debounced edits so the snapshot captures the latest config.
+			await saveConfig();
 			await publishAgent(rootStore.restApiContext, projectId.value, agentId.value);
 		} catch {
-			return; // publish failed — stay on page
+			return; // save or publish failed — stay on page
 		}
 		next();
 	} else if (response === MODAL_CANCEL) {

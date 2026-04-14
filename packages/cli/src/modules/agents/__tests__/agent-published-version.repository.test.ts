@@ -46,35 +46,43 @@ describe('AgentPublishedVersionRepository', () => {
 			publishedById: 'user-1',
 		};
 
-		it('creates a new entity when no existing record is found', async () => {
-			const newEntity = mock<AgentPublishedVersion>();
-			const savedEntity = mock<AgentPublishedVersion>();
-			jest.spyOn(repository, 'findByAgentId').mockResolvedValue(null);
-			jest.spyOn(repository, 'create').mockReturnValue(newEntity);
-			jest.spyOn(repository, 'save').mockResolvedValue(savedEntity);
+		it('writes the snapshot atomically via upsert keyed by agentId', async () => {
+			const saved = mock<AgentPublishedVersion>();
+			jest
+				.spyOn(repository, 'upsert')
+				.mockResolvedValue({ identifiers: [], generatedMaps: [], raw: [] });
+			jest.spyOn(repository, 'findOneByOrFail').mockResolvedValue(saved);
 
 			const result = await repository.savePublishedVersion(payload);
 
-			expect(repository.create).toHaveBeenCalledWith(
+			expect(repository.upsert).toHaveBeenCalledWith(
 				expect.objectContaining({ ...payload, publishedAt: expect.any(Date) }),
+				['agentId'],
 			);
-			expect(repository.save).toHaveBeenCalledWith(newEntity);
-			expect(result).toBe(savedEntity);
+			expect(repository.findOneByOrFail).toHaveBeenCalledWith({ agentId: payload.agentId });
+			expect(result).toBe(saved);
 		});
 
-		it('updates the existing entity when a record already exists', async () => {
-			const existing = mock<AgentPublishedVersion>({ agentId: 'agent-1' });
-			const savedEntity = mock<AgentPublishedVersion>();
-			jest.spyOn(repository, 'findByAgentId').mockResolvedValue(existing);
-			jest.spyOn(repository, 'create');
-			jest.spyOn(repository, 'save').mockResolvedValue(savedEntity);
+		it('uses the transaction-scoped repository when trx is provided', async () => {
+			const saved = mock<AgentPublishedVersion>();
+			const trxRepo = {
+				upsert: jest.fn().mockResolvedValue({ identifiers: [], generatedMaps: [], raw: [] }),
+				findOneByOrFail: jest.fn().mockResolvedValue(saved),
+			};
+			const mockTrx = { getRepository: jest.fn().mockReturnValue(trxRepo) };
 
-			const result = await repository.savePublishedVersion(payload);
+			jest.spyOn(repository, 'upsert');
 
-			// The existing entity is mutated via Object.assign (no new entity created)
-			expect(repository.create).not.toHaveBeenCalled();
-			expect(repository.save).toHaveBeenCalledTimes(1);
-			expect(result).toBe(savedEntity);
+			const result = await repository.savePublishedVersion(payload, mockTrx as never);
+
+			// Uses the trx-scoped repo, not `this`
+			expect(repository.upsert).not.toHaveBeenCalled();
+			expect(trxRepo.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({ ...payload, publishedAt: expect.any(Date) }),
+				['agentId'],
+			);
+			expect(trxRepo.findOneByOrFail).toHaveBeenCalledWith({ agentId: payload.agentId });
+			expect(result).toBe(saved);
 		});
 	});
 

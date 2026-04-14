@@ -26,8 +26,7 @@ const message = useMessage();
 const { showMessage } = useToast();
 
 function getActions() {
-	const isPublished =
-		props.agent.activeVersionId !== null && props.agent.activeVersionId === props.agent.versionId;
+	const isPublished = props.agent.activeVersionId !== null;
 	return [
 		isPublished
 			? { id: 'unpublish', label: locale.baseText('agents.list.actions.unpublish') }
@@ -109,7 +108,7 @@ function formatDate(dateStr: string): string {
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
 				<div
-					v-if="agent.activeVersionId !== null && agent.activeVersionId === agent.versionId"
+					v-if="agent.activeVersionId !== null"
 					:class="$style.publishIndicator"
 					data-testid="agent-published-indicator"
 				>

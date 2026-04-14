@@ -194,18 +194,23 @@ export class AgentsService {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
 
-		agent.publishedVersion = await this.agentPublishedVersionRepository.savePublishedVersion({
-			agentId: agent.id,
-			schema: agent.schema,
-			model: agent.model,
-			provider: agent.provider,
-			credentialId: agent.credentialId,
-			publishedById: userId,
-		});
+		await this.agentRepository.manager.transaction(async (trx) => {
+			agent.publishedVersion = await this.agentPublishedVersionRepository.savePublishedVersion(
+				{
+					agentId: agent.id,
+					schema: agent.schema,
+					model: agent.model,
+					provider: agent.provider,
+					credentialId: agent.credentialId,
+					publishedById: userId,
+				},
+				trx,
+			);
 
-		// Stamp the current versionId as published — frontend compares these to detect changes.
-		agent.activeVersionId = agent.versionId;
-		await this.agentRepository.save(agent);
+			// Stamp the current versionId as published — frontend compares these to detect changes.
+			agent.activeVersionId = agent.versionId;
+			await trx.save(agent);
+		});
 
 		this.logger.debug('Published SDK agent', { agentId, projectId, userId });
 
@@ -218,11 +223,12 @@ export class AgentsService {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
 
-		await this.agentPublishedVersionRepository.deleteByAgentId(agentId);
-
-		agent.publishedVersion = null;
-		agent.activeVersionId = null;
-		await this.agentRepository.save(agent);
+		await this.agentRepository.manager.transaction(async (trx) => {
+			await trx.delete(AgentPublishedVersion, { agentId });
+			agent.publishedVersion = null;
+			agent.activeVersionId = null;
+			await trx.save(agent);
+		});
 
 		this.logger.debug('Unpublished SDK agent', { agentId, projectId });
 		return agent;
