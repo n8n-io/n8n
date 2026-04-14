@@ -4392,6 +4392,7 @@
 	"settings.sso.settings.oidc.prompt.consent": "Consent (Ask the user to consent)",
 	"settings.sso.settings.oidc.prompt.select_account": "Select Account (Allow the user to select an account)",
 	"settings.sso.settings.oidc.prompt.create": "Create (Ask the OP to show the registration page first)",
+	"settings.sso.settings.oidc.overrideBanner": "OIDC connection is configured via environment variables. To modify, update the environment variables and restart n8n.",
 	"settings.sso.settings.userRoleProvisioning.label": "User role provisioning",
 	"settings.sso.settings.userRoleProvisioning.help": "Manage instance and project roles from your SSO provider.",
 	"settings.sso.settings.userRoleProvisioning.help.linkText": "Link to docs",

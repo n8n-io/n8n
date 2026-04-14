@@ -225,7 +225,7 @@ onMounted(async () => {
 						{{ formatTokens(item.outputTokens) }}
 					</template>
 					<template #[`item.cost`]="{ item }">
-						{{ `$${Number(item.cost).toFixed(2)}` }}
+						{{ `$${Number(item.cost).toFixed(4)}` }}
 					</template>
 				</N8nDataTableServer>
 
