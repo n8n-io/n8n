@@ -562,6 +562,12 @@ export class AgentsService {
 			throw new OperationalError('Agent not found or not accessible.');
 		}
 
+		if (!agentEntity.activeVersionId) {
+			throw new OperationalError(
+				'Agent is not published. Publish the agent before using it in a workflow.',
+			);
+		}
+
 		const credentialProvider = new AgentsCredentialProvider(
 			Container.get(CredentialsService),
 			projectId,
