@@ -13,6 +13,7 @@ import type { CustomToolEntry } from '../agent.types';
 import { CHATHUB_TO_CATALOG, CATALOG_TO_CHATHUB } from '../provider-mapping';
 import AgentToolsPanel from './AgentToolsPanel.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
+import AgentIntegrationsPanel from './AgentIntegrationsPanel.vue';
 import AgentCodeEditor from './AgentCodeEditor.vue';
 
 const locale = useI18n();
@@ -22,8 +23,12 @@ const chatStore = useChatStore();
 const props = defineProps<{
 	config: AgentJsonConfig | null;
 	agentTools: Record<string, CustomToolEntry>;
+	projectId: string;
+	agentId: string;
+	agentName: string;
 	updatedAt: string;
 	isDirty: boolean;
+	building?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -134,6 +139,17 @@ function toggleSection(section: string) {
 	expandedSections.value[section] = !expandedSections.value[section];
 }
 
+// Auto-expand code section when building starts
+watch(
+	() => props.building,
+	(building) => {
+		if (building) {
+			expandedSections.value.code = true;
+		}
+	},
+	{ immediate: true },
+);
+
 // --- Resizable width ---
 const sidebarWidth = ref(480);
 const MIN_WIDTH = 360;
@@ -242,9 +258,11 @@ function onResizeStart(event: MouseEvent) {
 					</span>
 				</button>
 				<div v-if="expandedSections.triggers" :class="$style.sectionContent">
-					<N8nText size="small" color="text-light">
-						{{ locale.baseText('agents.settings.triggers.placeholder') }}
-					</N8nText>
+					<AgentIntegrationsPanel
+						:project-id="projectId"
+						:agent-id="agentId"
+						:agent-name="agentName"
+					/>
 				</div>
 			</div>
 
@@ -302,6 +320,7 @@ function onResizeStart(event: MouseEvent) {
 						<N8nText tag="span" bold size="small">{{
 							locale.baseText('agents.settings.code')
 						}}</N8nText>
+						<N8nIcon v-if="building" icon="spinner" :size="14" spin />
 					</div>
 				</button>
 				<div v-if="expandedSections.code" :class="$style.codeSection">
@@ -397,7 +416,6 @@ function onResizeStart(event: MouseEvent) {
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--sm);
-	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
 }
 
 .modelSection {
@@ -413,7 +431,7 @@ function onResizeStart(event: MouseEvent) {
 }
 
 .section {
-	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
+	border-top: var(--border-width) var(--border-style) var(--color--foreground);
 }
 
 .sectionHeader {

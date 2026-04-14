@@ -35,6 +35,7 @@ const agentId = computed(() => route.params.agentId as string);
 // UI state
 const chatActive = ref(false);
 const settingsVisible = ref(true);
+const isBuilding = ref(false);
 const agentName = ref('');
 const agentDescription = ref<string | null>(null);
 const agentIcon = ref<IconOrEmoji>({ type: 'icon', value: 'robot' });
@@ -78,6 +79,12 @@ async function updateName(name: string) {
 		agent.value = updated;
 		agentName.value = updated.name;
 		updatedAt.value = updated.updatedAt;
+		// Keep config name in sync so it persists on next config save
+		if (localConfig.value) {
+			localConfig.value.name = updated.name;
+			// Update the dirty-state baseline so the rename alone doesn't mark config as dirty
+			originalConfigJson.value = JSON.stringify(localConfig.value);
+		}
 		agentsEventBus.emit('agentUpdated');
 	}
 }
@@ -93,10 +100,78 @@ async function updateDescription(description: string) {
 	}
 }
 
-function startChat(msg: string) {
-	initialPrompt.value = msg;
-	chatActive.value = true;
-	telemetry.track('User started agent chat', { agent_id: agentId.value });
+let buildAbortController: AbortController | null = null;
+
+async function buildFromPrompt(msg: string) {
+	if (isBuilding.value) return;
+
+	// Capture IDs at call time so in-flight callbacks never act on a stale agent
+	const capturedProjectId = projectId.value;
+	const capturedAgentId = agentId.value;
+
+	buildAbortController?.abort();
+	const abortController = new AbortController();
+	buildAbortController = abortController;
+
+	isBuilding.value = true;
+	settingsVisible.value = true;
+	telemetry.track('User started agent build', { agent_id: capturedAgentId });
+
+	try {
+		const { baseUrl } = rootStore.restApiContext;
+		const browserId = localStorage.getItem('n8n-browserId') ?? '';
+		const url = `${baseUrl}/projects/${capturedProjectId}/agents/v2/${capturedAgentId}/build`;
+
+		const response = await fetch(url, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', 'browser-id': browserId },
+			credentials: 'include',
+			body: JSON.stringify({ message: msg }),
+			signal: abortController.signal,
+		});
+
+		if (!response.ok || !response.body) return;
+
+		const reader = response.body.getReader();
+		const decoder = new TextDecoder();
+		let buffer = '';
+
+		while (true) {
+			if (abortController.signal.aborted) break;
+			const { done, value } = await reader.read();
+			if (done) break;
+
+			buffer += decoder.decode(value, { stream: true });
+			const lines = buffer.split('\n');
+			buffer = lines.pop() ?? '';
+
+			for (const line of lines) {
+				if (!line.startsWith('data: ')) continue;
+				try {
+					const data = JSON.parse(line.slice(6)) as Record<string, unknown>;
+					if (data.configUpdated !== undefined || data.toolUpdated !== undefined) {
+						if (abortController.signal.aborted) break;
+						await onConfigUpdated(capturedProjectId, capturedAgentId);
+					}
+				} catch {
+					// skip malformed JSON
+				}
+			}
+		}
+
+		// Final refresh after stream ends
+		if (!abortController.signal.aborted) {
+			await onConfigUpdated(capturedProjectId, capturedAgentId);
+		}
+	} catch (e) {
+		if (e instanceof DOMException && e.name === 'AbortError') return;
+		throw e;
+	} finally {
+		if (buildAbortController === abortController) {
+			buildAbortController = null;
+		}
+		isBuilding.value = false;
+	}
 }
 
 function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
@@ -121,8 +196,12 @@ function cancelConfig() {
 	}
 }
 
-async function onConfigUpdated() {
-	await Promise.all([fetchAgent(), fetchConfig(projectId.value, agentId.value)]);
+async function onConfigUpdated(forProjectId?: string, forAgentId?: string) {
+	const pid = forProjectId ?? projectId.value;
+	const aid = forAgentId ?? agentId.value;
+	// Skip if the agent is no longer the one being viewed (stale callback)
+	if (pid !== projectId.value || aid !== agentId.value) return;
+	await Promise.all([fetchAgent(), fetchConfig(pid, aid)]);
 	isDirty.value = false;
 }
 
@@ -142,8 +221,11 @@ async function onHeaderAction(action: string) {
 }
 
 async function initialize() {
+	buildAbortController?.abort();
+	buildAbortController = null;
 	agent.value = null;
 	chatActive.value = false;
+	isBuilding.value = false;
 	agentIcon.value = { type: 'icon', value: 'robot' };
 	initialPrompt.value = undefined;
 	localConfig.value = null;
@@ -156,7 +238,7 @@ async function initialize() {
 	const prompt = route.query.prompt as string | undefined;
 	if (prompt) {
 		void router.replace({ query: { ...route.query, prompt: undefined } });
-		startChat(prompt);
+		void buildFromPrompt(prompt);
 	}
 }
 
@@ -206,7 +288,7 @@ watch(agentId, initialize, { immediate: true });
 					:agent-icon="agentIcon"
 					:project-id="projectId"
 					:agent-id="agentId"
-					@send-message="startChat"
+					@send-message="buildFromPrompt"
 					@update:name="updateName"
 					@update:description="updateDescription"
 					@update:icon="agentIcon = $event"
@@ -227,8 +309,12 @@ watch(agentId, initialize, { immediate: true });
 			v-if="settingsVisible"
 			:config="localConfig"
 			:agent-tools="agent?.tools ?? {}"
+			:project-id="projectId"
+			:agent-id="agentId"
+			:agent-name="agentName"
 			:updated-at="updatedAt"
 			:is-dirty="isDirty"
+			:building="isBuilding"
 			@update:config="onConfigFieldUpdate"
 			@save="saveConfig"
 			@cancel="cancelConfig"

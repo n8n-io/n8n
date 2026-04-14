@@ -39,7 +39,7 @@ interface ChatMessage {
 	status?: 'streaming' | 'success' | 'error';
 }
 
-const activeTab = ref<'test' | 'builder'>(props.mode === 'inline' ? 'builder' : 'test');
+const activeTab = ref<'test' | 'builder'>('test');
 const messages = ref<ChatMessage[]>([]);
 const builderMessages = ref<ChatMessage[]>([]);
 const inputText = ref('');

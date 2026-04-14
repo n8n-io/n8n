@@ -116,4 +116,28 @@ describe('AgentHomeContent', () => {
 		const wrapper = await renderComponent();
 		expect(wrapper.find('[data-testid="icon-picker-stub"]').exists()).toBe(true);
 	});
+
+	it('emits send-message when submitMessage is called with text', async () => {
+		const wrapper = await renderComponent();
+		const vm = wrapper.vm as unknown as { inputText: string; submitMessage: () => void };
+		vm.inputText = 'Build me an SEO agent';
+		vm.submitMessage();
+		expect(wrapper.emitted('send-message')?.[0]).toEqual(['Build me an SEO agent']);
+	});
+
+	it('does not emit send-message when input is empty', async () => {
+		const wrapper = await renderComponent();
+		const vm = wrapper.vm as unknown as { inputText: string; submitMessage: () => void };
+		vm.inputText = '   ';
+		vm.submitMessage();
+		expect(wrapper.emitted('send-message')).toBeUndefined();
+	});
+
+	it('clears input after submitting message', async () => {
+		const wrapper = await renderComponent();
+		const vm = wrapper.vm as unknown as { inputText: string; submitMessage: () => void };
+		vm.inputText = 'Hello';
+		vm.submitMessage();
+		expect(vm.inputText).toBe('');
+	});
 });
