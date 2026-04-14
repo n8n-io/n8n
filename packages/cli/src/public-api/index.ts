@@ -80,6 +80,8 @@ function createLazyValidatorMiddleware(
 					const authenticated = await Container.get(AuthStrategyRegistry).authenticate(req);
 
 					if (authenticated) {
+						req.apiSource = req.headers['user-agent'] === 'n8n-cli' ? 'n8n-cli' : 'api';
+
 						Container.get(LastActiveAtService)
 							.updateLastActiveIfStale(req.user.id)
 							.catch((error: unknown) => {
