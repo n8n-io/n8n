@@ -94,12 +94,13 @@ function buildOutcome(
 		taskId,
 		workflowId: attempt.workflowId,
 		submitted: true,
-		triggerType: detectTriggerType(attempt),
+		triggerType: attempt.hasUnresolvedPlaceholders ? 'trigger_only' : detectTriggerType(attempt),
 		needsUserInput: false,
 		mockedNodeNames: attempt.mockedNodeNames,
 		mockedCredentialTypes: attempt.mockedCredentialTypes,
 		mockedCredentialsByNode: attempt.mockedCredentialsByNode,
 		verificationPinData: attempt.verificationPinData,
+		hasUnresolvedPlaceholders: attempt.hasUnresolvedPlaceholders,
 		summary: finalText,
 	};
 }
