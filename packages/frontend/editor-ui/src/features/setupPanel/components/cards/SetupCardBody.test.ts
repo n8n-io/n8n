@@ -7,6 +7,7 @@ import SetupCardBody from './SetupCardBody.vue';
 import type { NodeSetupState } from '@/features/setupPanel/setupPanel.types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { INodeUi } from '@/Interface';
+import { jsonParse } from 'n8n-workflow';
 
 vi.mock('@/features/ndv/parameters/components/ParameterInputList.vue', () => ({
 	default: {
@@ -74,7 +75,7 @@ const createState = (overrides: Partial<NodeSetupState> = {}): NodeSetupState =>
 
 function getHiddenIssues(container: Element): string[] {
 	const el = container.querySelector('[data-test-id="parameter-input-list"]');
-	return JSON.parse(el?.getAttribute('data-hidden-issues') ?? '[]') as string[];
+	return jsonParse<string[]>(el?.getAttribute('data-hidden-issues') ?? '[]', { fallbackValue: [] });
 }
 
 describe('SetupCardBody', () => {
