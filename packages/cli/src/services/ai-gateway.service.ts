@@ -18,9 +18,9 @@ interface GatewayTokenResponse {
 	expiresIn: number;
 }
 
-interface GatewayCreditsResponse {
-	creditsQuota: number;
-	creditsRemaining: number;
+interface GatewayWalletResponse {
+	budget: number;
+	balance: number;
 }
 
 @Service()
@@ -152,31 +152,31 @@ export class AiGatewayService {
 	}
 
 	/**
-	 * Returns the current credits quota and remaining credits for the given user.
+	 * Returns the current wallet (budget and remaining balance) for the given user.
 	 */
-	async getCreditsRemaining(userId: string): Promise<GatewayCreditsResponse> {
+	async getWallet(userId: string): Promise<GatewayWalletResponse> {
 		const baseUrl = this.requireBaseUrl();
 
 		const jwt = await this.getOrFetchToken(userId);
 		if (!jwt) {
 			throw new UserError('Failed to obtain a valid AI Gateway token.');
 		}
-		const response = await fetch(`${baseUrl}/v1/gateway/credits`, {
+		const response = await fetch(`${baseUrl}/v1/gateway/wallet`, {
 			method: 'GET',
 			headers: { Authorization: `Bearer ${jwt}` },
 		});
 
 		if (!response.ok) {
-			throw new UserError(`Failed to fetch AI Gateway credits: HTTP ${response.status}`);
+			throw new UserError(`Failed to fetch AI Gateway wallet: HTTP ${response.status}`);
 		}
 
-		return this.parseCreditsResponse(await response.json());
+		return this.parseWalletResponse(await response.json());
 	}
 
-	private parseCreditsResponse(data: unknown): GatewayCreditsResponse {
-		const d = data as GatewayCreditsResponse;
-		if (typeof d.creditsQuota !== 'number' || typeof d.creditsRemaining !== 'number') {
-			throw new UserError('AI Gateway returned an invalid credits response.');
+	private parseWalletResponse(data: unknown): GatewayWalletResponse {
+		const d = data as GatewayWalletResponse;
+		if (typeof d.budget !== 'number' || typeof d.balance !== 'number') {
+			throw new UserError('AI Gateway returned an invalid wallet response.');
 		}
 		return d;
 	}

@@ -10,7 +10,7 @@ export function formatWorkflowLoopGuidance(
 ): string {
 	switch (action.type) {
 		case 'done': {
-			if (action.mockedCredentialTypes?.length) {
+			if (action.mockedCredentialTypes?.length || action.hasUnresolvedPlaceholders) {
 				return (
 					'Workflow verified successfully with temporary mock data. ' +
 					`Call \`setup-workflow\` with workflowId "${action.workflowId ?? 'unknown'}" ` +

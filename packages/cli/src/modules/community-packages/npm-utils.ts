@@ -1,6 +1,7 @@
 import { NPM_COMMAND_TOKENS, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import axios from 'axios';
 import { jsonParse, UnexpectedError, LoggerProxy } from 'n8n-workflow';
+import { valid } from 'semver';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
@@ -248,8 +249,12 @@ export async function checkIfVersionExistsOrThrow(
 
 			// npm resolves dist-tags (e.g. "latest") to an actual version string,
 			// so any non-empty return value means the tag/version is resolvable.
-			const versionInfo = jsonParse<string>(stdout);
-			if (versionInfo) {
+			const resolvedVersion = jsonParse<string>(stdout);
+			const isResolvedSemver =
+				typeof resolvedVersion === 'string' && valid(resolvedVersion) !== null;
+			const isExactSemver = valid(version) !== null;
+
+			if (isResolvedSemver && (!isExactSemver || resolvedVersion)) {
 				return true;
 			}
 

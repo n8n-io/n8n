@@ -34,6 +34,13 @@ import { checkIfVersionExistsOrThrow, executeNpmCommand, verifyIntegrity } from 
 
 const asyncExecFile = promisify(execFile);
 
+const NPM_DIST_TAG_PATTERN = /^[a-z][a-z0-9-._]*$/;
+
+/** Returns true if the string is a valid semver version OR a valid npm dist-tag (e.g. 'beta', 'next'). */
+export function isValidVersionSpecifier(version: string): boolean {
+	return valid(version) !== null || NPM_DIST_TAG_PATTERN.test(version);
+}
+
 const DEFAULT_REGISTRY = 'https://registry.npmjs.org';
 
 const { PACKAGE_NAME_NOT_PROVIDED } = RESPONSE_ERROR_MESSAGES;
@@ -126,7 +133,7 @@ export class CommunityPackagesService {
 			? packageNameWithoutScope.split('@')[1]
 			: undefined;
 
-		if (version && !valid(version)) {
+		if (version && !isValidVersionSpecifier(version)) {
 			throw new UnexpectedError(`Invalid version: ${version}`);
 		}
 

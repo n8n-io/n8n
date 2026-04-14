@@ -52,7 +52,7 @@ describe('AiGatewayTopUpModal.vue', () => {
 
 	it('shows the coming-soon content', () => {
 		renderModal();
-		expect(screen.getByText('Credit top up is coming soon')).toBeInTheDocument();
+		expect(screen.getByText('Top up is coming soon')).toBeInTheDocument();
 	});
 
 	it('does not render any buy UI or footer buttons', () => {

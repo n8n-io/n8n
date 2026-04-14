@@ -503,6 +503,18 @@ describe('GlobalConfig', () => {
 			ownerFirstName: 'Instance',
 			ownerLastName: 'Owner',
 			ownerPasswordHash: '',
+			ssoManagedByEnv: false,
+			oidcClientId: '',
+			oidcClientSecret: '',
+			oidcDiscoveryEndpoint: '',
+			oidcLoginEnabled: false,
+			oidcPrompt: 'select_account',
+			oidcAcrValues: '',
+			ssoUserRoleProvisioning: 'disabled',
+			securityPolicyManagedByEnv: false,
+			mfaEnforcedEnabled: false,
+			personalSpacePublishingEnabled: true,
+			personalSpaceSharingEnabled: true,
 		},
 	} satisfies GlobalConfigShape;
 

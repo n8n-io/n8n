@@ -32,15 +32,10 @@ import pick from 'lodash/pick';
 import { FileLocation, BinaryDataService } from 'n8n-core';
 
 import type { INode, INodes, IWorkflowSettings, JsonValue, IConnections } from 'n8n-workflow';
-import {
-	NodeApiError,
-	PROJECT_ROOT,
-	Workflow,
-	assert,
-	calculateWorkflowChecksum,
-} from 'n8n-workflow';
+import { PROJECT_ROOT, Workflow, assert, calculateWorkflowChecksum } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import { getErrorDescription, getErrorNodeId } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 
@@ -48,6 +43,7 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { WorkflowActivationBadRequestError } from '@/errors/response-errors/workflow-activation-bad-request.error';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { EventService } from '@/events/event.service';
@@ -555,11 +551,13 @@ export class WorkflowService {
 			workflow.activeVersionId = rollbackPayload.activeVersionId;
 			workflow.activeVersion = rollbackPayload.activeVersion;
 
-			const message =
-				error instanceof NodeApiError
-					? (error.description ?? error.message)
-					: (error as Error).message;
-			throw new BadRequestError(message);
+			const message = (error as Error).message;
+			const description = getErrorDescription(error);
+
+			throw new WorkflowActivationBadRequestError(message, {
+				nodeId: getErrorNodeId(error),
+				description,
+			});
 		} finally {
 			if (didPublish) {
 				assert(workflow.activeVersionId !== null);

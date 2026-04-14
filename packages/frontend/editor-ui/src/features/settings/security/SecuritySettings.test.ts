@@ -43,6 +43,7 @@ describe('SecuritySettings', () => {
 		publishedPersonalWorkflowsCount: 14,
 		sharedPersonalWorkflowsCount: 12,
 		sharedPersonalCredentialsCount: 5,
+		managedByEnv: false,
 	};
 
 	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
@@ -368,6 +369,60 @@ describe('SecuritySettings', () => {
 		await waitFor(() => {
 			expect(queryByTestId('security-personal-space-sharing-toggle')).toBeInTheDocument();
 			expect(queryByTestId('security-personal-space-publishing-toggle')).toBeInTheDocument();
+		});
+	});
+
+	describe('when managed by environment variables', () => {
+		beforeEach(() => {
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				managedByEnv: true,
+			});
+		});
+
+		it('should show env-managed notice banner', async () => {
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-managed-by-env-notice')).toBeInTheDocument();
+			});
+		});
+
+		it('should not show env-managed notice when managedByEnv is false', async () => {
+			getSecuritySettings.mockResolvedValue(defaultSettings);
+			const { queryByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(queryByTestId('security-personal-space-sharing-toggle')).toBeInTheDocument();
+			});
+
+			expect(queryByTestId('security-managed-by-env-notice')).not.toBeInTheDocument();
+		});
+
+		it('should disable all toggles when managed by env', async () => {
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-personal-space-sharing-toggle')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('enable-force-mfa')).toHaveClass('is-disabled');
+			expect(getByTestId('security-personal-space-sharing-toggle')).toHaveClass('is-disabled');
+			expect(getByTestId('security-personal-space-publishing-toggle')).toHaveClass('is-disabled');
+		});
+
+		it('should not call update APIs when clicking disabled toggles', async () => {
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-personal-space-sharing-toggle')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByTestId('security-personal-space-sharing-toggle'));
+			await userEvent.click(getByTestId('enable-force-mfa'));
+
+			expect(updateSecuritySettings).not.toHaveBeenCalled();
+			expect(usersStore.updateEnforceMfa).not.toHaveBeenCalled();
 		});
 	});
 

@@ -88,6 +88,7 @@ export const defaultSettings: FrontendSettings = {
 	saveManualExecutions: false,
 	saveExecutionProgress: false,
 	sso: {
+		managedByEnv: false,
 		ldap: { loginEnabled: false, loginLabel: '' },
 		saml: { loginEnabled: false, loginLabel: '' },
 		oidc: { loginEnabled: false, loginUrl: '', callbackUrl: '' },
