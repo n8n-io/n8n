@@ -7,7 +7,7 @@ Extra information specific to the `@n8n/db` package.
 Migration files are named `{TIMESTAMP}-{DescriptiveName}.ts`. The timestamp
 must be the **exact** Unix millisecond timestamp at the time of creation — do
 not round or fabricate a value. Use `Date.now()` in a Node REPL or
-`date +%s000` in a shell to generate it.
+`date +%s%3N` in a shell (GNU `date`) to generate it.
 
 ## Migration DSL
 
