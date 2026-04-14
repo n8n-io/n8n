@@ -51,8 +51,13 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const gatewayToolCategories = ref<ToolCategory[]>([]);
 	const isGatewayConnected = computed(() => gatewayConnected.value);
 	const activeDirectory = computed(() => gatewayDirectory.value);
+	const isInstanceAiDisabled = computed(
+		() => settingsStore.moduleSettings?.['instance-ai']?.enabled !== true,
+	);
 	const isLocalGatewayDisabled = computed(
-		() => settingsStore.moduleSettings?.['instance-ai']?.localGatewayDisabled === true,
+		() =>
+			settingsStore.moduleSettings?.['instance-ai']?.localGatewayDisabled === true ||
+			preferences.value?.localGatewayDisabled === true,
 	);
 	const isProxyEnabled = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.proxyEnabled === true,
@@ -381,7 +386,15 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	}
 
 	async function refreshModuleSettings(): Promise<void> {
-		await settingsStore.getModuleSettings();
+		const promises: Promise<unknown>[] = [settingsStore.getModuleSettings()];
+		if (!preferences.value) {
+			promises.push(
+				fetchPreferences(rootStore.restApiContext).then((p) => {
+					preferences.value = p;
+				}),
+			);
+		}
+		await Promise.all(promises);
 	}
 
 	return {
@@ -413,6 +426,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		gatewayHostIdentifier,
 		gatewayToolCategories,
 		activeDirectory,
+		isInstanceAiDisabled,
 		isLocalGatewayDisabled,
 		isProxyEnabled,
 		isCloudManaged,
