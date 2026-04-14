@@ -5,6 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import type { PushMessage } from '@n8n/api-types';
 import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { IWorkflowDb } from '@/Interface';
 
 const props = withDefaults(
@@ -23,6 +24,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const workflowsListStore = useWorkflowsListStore();
+const workflowsStore = useWorkflowsStore();
 const previewRef = useTemplateRef<InstanceType<typeof WorkflowPreview>>('previewComponent');
 
 const workflow = ref<IWorkflowDb | null>(null);
@@ -93,11 +95,66 @@ watch(
 	{ immediate: true },
 );
 
+// --- Execution completion polling ---
+// The execute_workflow tool returns immediately (fire-and-forget). When the
+// preview loads the execution it may still be running or waiting (e.g. Wait
+// node). Poll until the execution finishes so the iframe can reload with the
+// final node statuses.
+const POLL_INTERVAL_MS = 1_500;
+const MAX_POLLS = 40; // ~60 s total
+let pollTimer: ReturnType<typeof setTimeout> | null = null;
+
+function stopPolling() {
+	if (pollTimer !== null) {
+		clearTimeout(pollTimer);
+		pollTimer = null;
+	}
+}
+
+async function pollExecutionUntilDone(executionId: string, attempt = 0) {
+	if (attempt >= MAX_POLLS || executionId !== props.executionId) return;
+
+	try {
+		const execution = await workflowsStore.fetchExecutionDataById(executionId);
+		if (executionId !== props.executionId) return; // stale
+
+		const isFinished = execution?.finished === true;
+		if (isFinished) {
+			// Tell the iframe to re-load the now-complete execution data
+			const preview = previewRef.value as
+				| { reloadExecution?: () => void; iframeRef?: HTMLIFrameElement | null }
+				| undefined;
+			preview?.reloadExecution?.();
+			return;
+		}
+	} catch {
+		// Execution might not be ready yet — retry
+	}
+
+	pollTimer = setTimeout(() => {
+		void pollExecutionUntilDone(executionId, attempt + 1);
+	}, POLL_INTERVAL_MS);
+}
+
+watch(
+	() => props.executionId,
+	(execId) => {
+		stopPolling();
+		if (execId) {
+			// Start polling after a short initial delay to give the execution time
+			pollTimer = setTimeout(() => {
+				void pollExecutionUntilDone(execId);
+			}, POLL_INTERVAL_MS);
+		}
+	},
+);
+
 // Listen for iframe ready signal
 window.addEventListener('message', handleIframeMessage);
 
 onBeforeUnmount(() => {
 	window.removeEventListener('message', handleIframeMessage);
+	stopPolling();
 });
 
 defineExpose({ relayPushEvent });

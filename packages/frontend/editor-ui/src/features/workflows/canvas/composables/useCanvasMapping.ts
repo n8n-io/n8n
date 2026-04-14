@@ -359,18 +359,27 @@ export function useCanvasMapping({
 		}, {}),
 	);
 
-	const nodeExecutionStatusById = computed(() =>
-		nodes.value.reduce<Record<string, ExecutionStatus>>((acc, node) => {
+	const nodeExecutionStatusById = computed(() => {
+		// When the overall execution completed successfully, a Wait node's
+		// 'waiting' status is stale — the wait was fulfilled. Promote it to
+		// 'success' so the canvas shows a green checkmark instead of a
+		// lingering waiting state.
+		const overallStatus = workflowsStore.getWorkflowExecution?.status;
+
+		return nodes.value.reduce<Record<string, ExecutionStatus>>((acc, node) => {
 			const tasks = workflowsStore.getWorkflowRunData?.[node.name] ?? [];
 
 			let lastExecutionStatus = tasks.at(-1)?.executionStatus;
 			if (tasks.length > 1 && lastExecutionStatus === 'canceled') {
 				lastExecutionStatus = tasks.at(-2)?.executionStatus;
 			}
+			if (lastExecutionStatus === 'waiting' && overallStatus === 'success') {
+				lastExecutionStatus = 'success';
+			}
 			acc[node.id] = lastExecutionStatus ?? 'new';
 			return acc;
-		}, {}),
-	);
+		}, {});
+	});
 
 	const nodeExecutionRunDataById = computed(() =>
 		nodes.value.reduce<Record<string, ITaskData[] | null>>((acc, node) => {
