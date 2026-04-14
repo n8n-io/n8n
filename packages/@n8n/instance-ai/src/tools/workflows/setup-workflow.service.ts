@@ -114,27 +114,22 @@ export async function buildSetupRequests(
 	}
 
 	// Fallback: if dynamic detection returned nothing, check the node description's
-	// static credentials list and already-assigned credentials on the node.
-	// This catches cases where getNodeCredentialTypes fails silently (e.g. node
-	// lookup miss) or isn't available.
-	if (credentialTypes.length === 0) {
-		const nodeCredTypes = node.credentials ? Object.keys(node.credentials) : [];
-		if (nodeCredTypes.length > 0) {
-			credentialTypes = nodeCredTypes;
-		} else if (nodeDesc?.credentials) {
-			// Only include credentials whose displayOptions match the current parameters.
-			// Mirrors the evaluation in instance-ai.adapter.service.ts getNodeCredentialTypes().
-			credentialTypes = nodeDesc.credentials
-				.filter((c: { name?: string; displayOptions?: unknown }) => {
-					if (!c.displayOptions) return true;
-					return matchesDisplayOptions(
-						{ parameters, nodeVersion: typeVersion },
-						c.displayOptions as DisplayOptions,
-					);
-				})
-				.map((c: { name?: string }) => c.name)
-				.filter((n): n is string => n !== undefined);
-		}
+	// static credentials list with displayOptions filtering. This catches cases where
+	// getNodeCredentialTypes fails silently (e.g. node lookup miss) or isn't available.
+	// We intentionally do NOT fall back to node.credentials here — stale credential
+	// entries (e.g. httpHeaderAuth left over from an earlier builder revision when
+	// authentication was later changed to 'none') must not generate setup requests.
+	if (credentialTypes.length === 0 && nodeDesc?.credentials) {
+		credentialTypes = nodeDesc.credentials
+			.filter((c: { name?: string; displayOptions?: unknown }) => {
+				if (!c.displayOptions) return true;
+				return matchesDisplayOptions(
+					{ parameters, nodeVersion: typeVersion },
+					c.displayOptions as DisplayOptions,
+				);
+			})
+			.map((c: { name?: string }) => c.name)
+			.filter((n): n is string => n !== undefined);
 	}
 
 	// Dynamic credential resolution for nodes that use genericCredentialType

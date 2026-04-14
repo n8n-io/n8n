@@ -1689,7 +1689,7 @@ export class InstanceAiAdapterService {
 				return filteredIssues;
 			},
 
-			getNodeCredentialTypes: async (nodeType, typeVersion, parameters, existingCredentials) => {
+			getNodeCredentialTypes: async (nodeType, typeVersion, parameters, _existingCredentials) => {
 				const nodes = await getNodes();
 				const desc = findNodeByVersion(nodes, nodeType, typeVersion);
 				if (!desc) return [];
@@ -1765,13 +1765,6 @@ export class InstanceAiAdapterService {
 					parameters.nodeCredentialType
 				) {
 					credentialTypes.add(parameters.nodeCredentialType as string);
-				}
-
-				// 4. Already-assigned credentials
-				if (existingCredentials) {
-					for (const credType of Object.keys(existingCredentials)) {
-						credentialTypes.add(credType);
-					}
 				}
 
 				return Array.from(credentialTypes);

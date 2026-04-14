@@ -356,6 +356,102 @@ describe('buildSetupRequests', () => {
 		// list should only be called once due to caching
 		expect(context.credentialService.list).toHaveBeenCalledTimes(1);
 	});
+
+	it('does not generate credential request for HTTP Request with auth=none and stale node.credentials', async () => {
+		(context.nodeService as unknown as Record<string, unknown>).getNodeCredentialTypes = jest
+			.fn()
+			.mockResolvedValue([]);
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [
+				{
+					name: 'httpHeaderAuth',
+					displayOptions: { show: { authentication: ['genericCredentialType'] } },
+				},
+			],
+		});
+		(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+
+		const node = makeNode({
+			name: 'HTTP Request',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.4,
+			parameters: { authentication: 'none', url: 'https://api.example.com' },
+			credentials: { httpHeaderAuth: { id: 'old-cred', name: 'Stale Header Auth' } },
+		});
+		const result = await buildSetupRequests(context, node);
+
+		expect(result.find((r) => r.credentialType === 'httpHeaderAuth')).toBeUndefined();
+	});
+
+	it('fallback: displayOptions filtering takes priority over stale node.credentials', async () => {
+		// Remove getNodeCredentialTypes to force fallback path
+		delete (context.nodeService as unknown as Record<string, unknown>).getNodeCredentialTypes;
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [
+				{
+					name: 'httpHeaderAuth',
+					displayOptions: { show: { authentication: ['genericCredentialType'] } },
+				},
+			],
+		});
+		(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+
+		const node = makeNode({
+			name: 'HTTP Request',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.4,
+			parameters: { authentication: 'none', url: 'https://api.example.com' },
+			credentials: { httpHeaderAuth: { id: 'old-cred', name: 'Stale Header Auth' } },
+		});
+		const result = await buildSetupRequests(context, node);
+
+		expect(result.find((r) => r.credentialType === 'httpHeaderAuth')).toBeUndefined();
+	});
+
+	it('fallback: node with assigned credentials matching description is still detected', async () => {
+		(context.nodeService as unknown as Record<string, unknown>).getNodeCredentialTypes = jest
+			.fn()
+			.mockResolvedValue([]);
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [{ name: 'slackApi' }],
+		});
+		(context.credentialService.list as jest.Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+
+		const node = makeNode({
+			credentials: { slackApi: { id: 'cred-1', name: 'My Slack' } },
+		});
+		const result = await buildSetupRequests(context, node);
+
+		expect(result.find((r) => r.credentialType === 'slackApi')).toBeDefined();
+	});
+
+	it('fallback: node.credentials with types not in description are excluded', async () => {
+		// Remove getNodeCredentialTypes to force fallback path
+		delete (context.nodeService as unknown as Record<string, unknown>).getNodeCredentialTypes;
+		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
+			group: [],
+			credentials: [{ name: 'slackApi' }],
+		});
+		(context.credentialService.list as jest.Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+
+		const node = makeNode({
+			credentials: {
+				slackApi: { id: 'cred-1', name: 'My Slack' },
+				httpHeaderAuth: { id: 'stale', name: 'Stale Auth' },
+			},
+		});
+		const result = await buildSetupRequests(context, node);
+
+		expect(result.find((r) => r.credentialType === 'slackApi')).toBeDefined();
+		expect(result.find((r) => r.credentialType === 'httpHeaderAuth')).toBeUndefined();
+	});
 });
 
 // ---------------------------------------------------------------------------
