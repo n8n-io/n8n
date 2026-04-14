@@ -7,7 +7,7 @@ import type { IWorkflowTemplate } from '@n8n/rest-api-client/api/templates';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
-import { N8nLoading, N8nSpinner } from '@n8n/design-system';
+import { N8nLoading, N8nIcon } from '@n8n/design-system';
 const props = withDefaults(
 	defineProps<{
 		loading?: boolean;
@@ -21,6 +21,7 @@ const props = withDefaults(
 		hideNodeIssues?: boolean;
 		focusOnLoad?: boolean;
 		hideControls?: boolean;
+		suppressNotifications?: boolean;
 	}>(),
 	{
 		loading: false,
@@ -34,6 +35,7 @@ const props = withDefaults(
 		hideNodeIssues: false,
 		focusOnLoad: true,
 		hideControls: false,
+		suppressNotifications: false,
 	},
 );
 
@@ -85,16 +87,15 @@ const loadWorkflow = () => {
 				workflow: props.workflow,
 				canOpenNDV: props.canOpenNDV,
 				hideNodeIssues: props.hideNodeIssues,
+				suppressNotifications: props.suppressNotifications,
 				projectId: projectsStore.currentProjectId,
 			}),
 			'*',
 		);
 	} catch (error) {
-		toast.showError(
-			error,
-			i18n.baseText('workflowPreview.showError.previewError.title'),
-			i18n.baseText('workflowPreview.showError.previewError.message'),
-		);
+		toast.showError(error, i18n.baseText('workflowPreview.showError.previewError.title'), {
+			message: i18n.baseText('workflowPreview.showError.previewError.message'),
+		});
 	}
 };
 
@@ -125,11 +126,9 @@ const loadExecution = () => {
 			);
 		}
 	} catch (error) {
-		toast.showError(
-			error,
-			i18n.baseText('workflowPreview.showError.previewError.title'),
-			i18n.baseText('workflowPreview.executionMode.showError.previewError.message'),
-		);
+		toast.showError(error, i18n.baseText('workflowPreview.showError.previewError.title'), {
+			message: i18n.baseText('workflowPreview.executionMode.showError.previewError.message'),
+		});
 	}
 };
 
@@ -233,6 +232,8 @@ watch(
 		}
 	},
 );
+
+defineExpose({ iframeRef });
 </script>
 
 <template>
@@ -241,7 +242,7 @@ watch(
 			<N8nLoading :loading="!showPreview" :rows="1" variant="image" />
 		</div>
 		<div v-else-if="loaderType === 'spinner' && !showPreview" :class="$style.spinner">
-			<N8nSpinner type="dots" />
+			<N8nIcon icon="spinner" color="primary" size="xxlarge" spin />
 		</div>
 		<iframe
 			ref="iframeRef"

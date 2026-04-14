@@ -13,6 +13,7 @@ import {
 	type IWorkflowDataProxyAdditionalKeys,
 	isExpression,
 } from 'n8n-workflow';
+import { isNodeIcon } from '@n8n/design-system';
 import { getThemedValue } from './nodeTypesUtils';
 
 type NodeIconSourceIcon = { type: 'icon'; name: string; color?: string };
@@ -65,7 +66,7 @@ const resolveIconExpression = (
 		}
 
 		const [prefix] = result.split(':');
-		if (prefix !== 'file' && prefix !== 'icon') {
+		if (prefix !== 'file' && prefix !== 'icon' && prefix !== 'node') {
 			return null;
 		}
 
@@ -182,8 +183,25 @@ export function getNodeIconSource(
 			return undefined;
 		}
 
-		return createNamedIconSource(iconName, fullNodeType);
+		// For node icons (node:*), pass the full icon string including prefix
+		// For other icon types (fa:*, icon:*), pass just the icon name
+		const resolvedIconName = type === 'node' ? icon : iconName;
+		return createNamedIconSource(resolvedIconName, fullNodeType);
 	}
 
 	return undefined;
+}
+
+export type NodeIconContext = 'canvas' | 'configuration' | 'nodeList' | 'ndvHeader';
+
+export const NODE_ICON_SIZES = {
+	canvas: { new: 48, old: 40 },
+	configuration: { new: 36, old: 30 },
+	nodeList: { new: 24, old: 20 },
+	ndvHeader: { new: 24, old: 20 },
+} as const;
+
+export function getNodeIconSize(context: NodeIconContext, iconName?: string): number {
+	const sizes = NODE_ICON_SIZES[context];
+	return isNodeIcon(iconName) ? sizes.new : sizes.old;
 }

@@ -89,8 +89,9 @@ const connectedNodes = computed<Record<string, NodeConfig[]>>(() => {
 
 			// Get input-index-specific connections using the per-type index
 			const nodeConnections =
-				workflowObject.value.connectionsByDestinationNode[props.rootNode.name]?.[connection.type] ??
-				[];
+				workflowDocumentStore?.value?.connectionsByDestinationNode[props.rootNode.name]?.[
+					connection.type
+				] ?? [];
 			const inputConnections = nodeConnections[typeIndex] ?? [];
 			const nodeNames = inputConnections.map((conn) => conn.node);
 			const nodes = getINodesFromNames(nodeNames);

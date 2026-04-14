@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
-import { defineComponent, h } from 'vue';
+import { defineComponent, h, computed } from 'vue';
 
 // Type for Vue component instance with setup state
 interface VueComponentInstance {
@@ -144,7 +144,6 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { flushPromises } from '@vue/test-utils';
 import { fireEvent } from '@testing-library/vue';
-import { computed } from 'vue';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 import { faker } from '@faker-js/faker';
@@ -161,7 +160,6 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { AutoSaveState } from '@/app/constants';
-import { usePostHog } from '@/app/stores/posthog.store';
 
 const nodeViewEventBusEmitMock = vi.hoisted(() => vi.fn());
 vi.mock('@/app/event-bus', () => ({
@@ -1721,81 +1719,6 @@ describe('AskAssistantBuild', () => {
 
 			// Banner should NOT be shown since streaming hasn't started in this session
 			expect(queryByTestId('notification-permission-banner')).not.toBeInTheDocument();
-		});
-	});
-
-	describe('review changes button', () => {
-		it('showReviewChanges is false when feature flag is disabled', () => {
-			const posthogStore = mockedStore(usePostHog);
-			posthogStore.isFeatureEnabled = vi.fn().mockReturnValue(false);
-			builderStore.streaming = false;
-			builderStore.latestRevertVersion = { id: 'v1', createdAt: '2024-01-01' };
-
-			const { container } = renderComponent();
-			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
-			expect(vm?.setupState?.showReviewChanges).toBe(false);
-		});
-
-		it('showReviewChanges is false when streaming is true', () => {
-			const posthogStore = mockedStore(usePostHog);
-			posthogStore.isFeatureEnabled = vi.fn().mockReturnValue(true);
-			builderStore.streaming = true;
-			builderStore.latestRevertVersion = { id: 'v1', createdAt: '2024-01-01' };
-
-			const { container } = renderComponent();
-			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
-			expect(vm?.setupState?.showReviewChanges).toBe(false);
-		});
-
-		it('showReviewChanges is false when no latestRevertVersion exists', () => {
-			const posthogStore = mockedStore(usePostHog);
-			posthogStore.isFeatureEnabled = vi.fn().mockReturnValue(true);
-			builderStore.streaming = false;
-			builderStore.latestRevertVersion = null;
-
-			const { container } = renderComponent();
-			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
-			expect(vm?.setupState?.showReviewChanges).toBe(false);
-		});
-
-		it('showReviewChanges is false when editedNodesCount is 0', async () => {
-			const posthogStore = mockedStore(usePostHog);
-			posthogStore.isFeatureEnabled = vi.fn().mockReturnValue(true);
-			builderStore.streaming = false;
-			builderStore.latestRevertVersion = { id: 'v1', createdAt: '2024-01-01' };
-			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-
-			const { container } = renderComponent();
-			await flushPromises();
-			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
-			expect(vm?.setupState?.showReviewChanges).toBe(false);
-		});
-
-		it('showReviewChanges is true when feature flag is enabled, not streaming, latestRevertVersion exists, and nodes were edited', async () => {
-			const posthogStore = mockedStore(usePostHog);
-			posthogStore.isFeatureEnabled = vi.fn().mockReturnValue(true);
-			builderStore.streaming = false;
-			builderStore.latestRevertVersion = { id: 'v1', createdAt: '2024-01-01' };
-			workflowsStore.$patch({
-				workflow: {
-					nodes: [
-						{
-							id: 'node1',
-							name: 'Start',
-							type: 'n8n-nodes-base.manualTrigger',
-							position: [0, 0],
-							typeVersion: 1,
-							parameters: {},
-						} as INodeUi,
-					],
-					connections: {},
-				},
-			});
-
-			const { container } = renderComponent();
-			await flushPromises();
-			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
-			expect(vm?.setupState?.showReviewChanges).toBe(true);
 		});
 	});
 });
