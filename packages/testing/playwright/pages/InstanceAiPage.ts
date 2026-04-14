@@ -65,6 +65,10 @@ export class InstanceAiPage extends BasePage {
 		return this.page.getByTestId('instance-ai-tool-call');
 	}
 
+	getToolCallSteps(): Locator {
+		return this.page.getByTestId('instance-ai-tool-call-step');
+	}
+
 	// ── Confirmations ─────────────────────────────────────────────────
 
 	getConfirmationPanel(): Locator {
