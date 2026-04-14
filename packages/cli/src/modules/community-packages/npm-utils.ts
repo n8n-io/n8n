@@ -89,6 +89,7 @@ async function resolveWindowsDefaultNpmCliPath(nodeDirectory: string): Promise<s
 		}
 	}
 
+	console.log('default path failed');
 	return undefined;
 }
 
@@ -96,6 +97,7 @@ async function resolveWindowsPrefixNpmCliPath(nodeDirectory: string): Promise<st
 	const npmPrefixScriptPath = join(nodeDirectory, WINDOWS_NPM_PREFIX_SCRIPT_RELATIVE_PATH);
 	console.log('trying npm-prefix', npmPrefixScriptPath);
 	if (!(await pathExists(npmPrefixScriptPath))) {
+		console.log('npm-prefix does not exist');
 		return undefined;
 	}
 
@@ -103,6 +105,7 @@ async function resolveWindowsPrefixNpmCliPath(nodeDirectory: string): Promise<st
 		const { stdout } = await asyncExecFile(process.execPath, [npmPrefixScriptPath]);
 		const globalPrefix = stdoutToString(stdout, true);
 		if (!globalPrefix) {
+			console.log('globalPrefix does not exist');
 			return undefined;
 		}
 
@@ -112,6 +115,8 @@ async function resolveWindowsPrefixNpmCliPath(nodeDirectory: string): Promise<st
 			console.log('using global prefix npm-cli path');
 			return globalPrefixNpmCliPath;
 		}
+
+		console.log('global prefix failed');
 	} catch (error) {
 		console.log('npm-prefix fallback failed', error);
 	}
@@ -121,22 +126,22 @@ async function resolveWindowsPrefixNpmCliPath(nodeDirectory: string): Promise<st
 
 async function resolveWindowsNpmCliPath(): Promise<string> {
 	if (cachedWindowsNpmCliPath) {
-		console.log('cached');
+		console.log('cached', cachedWindowsNpmCliPath);
 		return cachedWindowsNpmCliPath;
 	}
 
 	const nodeDirectory = dirname(process.execPath);
 	console.log('nodeDirectory', nodeDirectory);
-	const defaultNpmCliPath = await resolveWindowsDefaultNpmCliPath(nodeDirectory);
-
 	const prefixNpmCliPath = await resolveWindowsPrefixNpmCliPath(nodeDirectory);
 	if (prefixNpmCliPath) {
+		console.log('using prefix npm-cli path', prefixNpmCliPath);
 		cachedWindowsNpmCliPath = prefixNpmCliPath;
 		return cachedWindowsNpmCliPath;
 	}
 
+	const defaultNpmCliPath = await resolveWindowsDefaultNpmCliPath(nodeDirectory);
 	if (defaultNpmCliPath) {
-		console.log('using default npm-cli path');
+		console.log('using default npm-cli path', defaultNpmCliPath);
 		cachedWindowsNpmCliPath = defaultNpmCliPath;
 		return cachedWindowsNpmCliPath;
 	}
