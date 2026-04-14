@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 
+import { isFileType } from '../utils/index.js';
 import { createRule } from '../utils/rule-creator.js';
 
 const ALLOWED_ERROR_CLASSES = new Set(['NodeApiError', 'NodeOperationError']);
@@ -45,6 +46,10 @@ export const RequireNodeApiErrorRule = createRule({
 	},
 	defaultOptions: [],
 	create(context) {
+		if (isFileType(context.filename, '.credentials.ts')) {
+			return {};
+		}
+
 		return {
 			ThrowStatement(node) {
 				if (!isInsideCatchClause(node)) return;

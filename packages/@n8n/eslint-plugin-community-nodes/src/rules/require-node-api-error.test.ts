@@ -74,6 +74,16 @@ try {
 	console.error(error);
 }`,
 		},
+		{
+			name: 'bare re-throw in credential file (skipped)',
+			filename: '/path/to/MyCredential.credentials.ts',
+			code: `
+try {
+	await apiRequest();
+} catch (error) {
+	throw error;
+}`,
+		},
 	],
 	invalid: [
 		{
