@@ -103,7 +103,7 @@
       "@mistralai/mistralai": "^1.10.0",
       "@n8n/typeorm>@sentry/node": "catalog:sentry",
       "@types/node": "^20.17.50",
-      "axios": "1.13.5",
+      "axios": "1.15.0",
       "chokidar": "4.0.3",
       "esbuild": "^0.25.0",
       "expr-eval@2.0.2": "npm:expr-eval-fork@3.0.0",
