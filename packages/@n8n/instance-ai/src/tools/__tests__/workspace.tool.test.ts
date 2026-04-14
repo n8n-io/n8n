@@ -190,28 +190,21 @@ describe('workspace tool', () => {
 	});
 
 	describe('folder actions', () => {
-		it('should include folder actions when listFolders is present', () => {
+		it('should accept folder actions when listFolders is present', async () => {
 			const context = createMockContext();
-			context.workspaceService!.listFolders = jest.fn();
+			const folders = [{ id: 'f1', name: 'Test Folder', parentFolderId: null }];
+			context.workspaceService!.listFolders = jest.fn().mockResolvedValue(folders);
 			context.workspaceService!.createFolder = jest.fn();
 			context.workspaceService!.deleteFolder = jest.fn();
 			context.workspaceService!.moveWorkflowToFolder = jest.fn();
 
 			const tool = createWorkspaceTool(context);
+			const result = await tool.execute!(
+				{ action: 'list-folders', projectId: 'p1' } as never,
+				{} as never,
+			);
 
-			expect(tool.description).toContain('create-folder');
-			expect(tool.description).toContain('delete-folder');
-			expect(tool.description).toContain('list-folders');
-			expect(tool.description).toContain('move-workflow-to-folder');
-		});
-
-		it('should not include folder actions when listFolders is absent', () => {
-			const context = createMockContext();
-
-			const tool = createWorkspaceTool(context);
-
-			expect(tool.description).not.toContain('create-folder');
-			expect(tool.description).not.toContain('delete-folder');
+			expect(result).toEqual({ folders });
 		});
 	});
 

@@ -52,42 +52,29 @@ describe('data-tables tool', () => {
 	// ── Surface filtering ──────────────────────────────────────────────────
 
 	describe('surface filtering', () => {
-		it('should only include list, schema, and query actions for orchestrator surface', () => {
+		it('should support read-only actions on orchestrator surface', async () => {
 			const context = createMockContext();
+			const tables = [{ id: 'dt-1', name: 'Users', columns: [] }];
+			context.dataTableService.list = jest.fn().mockResolvedValue(tables);
 			const tool = createDataTablesTool(context, 'orchestrator');
 
-			expect(tool.description).toContain('list');
-			expect(tool.description).toContain('schema');
-			expect(tool.description).toContain('query');
-			expect(tool.description).not.toContain('create');
-			expect(tool.description).not.toContain('delete');
-			expect(tool.description).not.toContain('add-column');
-			expect(tool.description).not.toContain('insert-rows');
+			const result = await tool.execute!({ action: 'list', projectId: 'p1' } as never, {} as never);
+
+			expect(result).toEqual({ tables });
 		});
 
-		it('should include all actions for full surface', () => {
+		it('should have a concise description for full surface', () => {
 			const context = createMockContext();
 			const tool = createDataTablesTool(context, 'full');
 
-			expect(tool.description).toContain('list');
-			expect(tool.description).toContain('schema');
-			expect(tool.description).toContain('query');
-			expect(tool.description).toContain('create');
-			expect(tool.description).toContain('delete');
-			expect(tool.description).toContain('add-column');
-			expect(tool.description).toContain('delete-column');
-			expect(tool.description).toContain('rename-column');
-			expect(tool.description).toContain('insert-rows');
-			expect(tool.description).toContain('update-rows');
-			expect(tool.description).toContain('delete-rows');
+			expect(tool.description).toContain('data tables');
 		});
 
 		it('should default to full surface when not specified', () => {
 			const context = createMockContext();
 			const tool = createDataTablesTool(context);
 
-			expect(tool.description).toContain('create');
-			expect(tool.description).toContain('delete');
+			expect(tool.description).toContain('data tables');
 		});
 	});
 

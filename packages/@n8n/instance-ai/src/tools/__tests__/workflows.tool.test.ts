@@ -84,53 +84,59 @@ describe('workflows tool', () => {
 	});
 
 	describe('surface filtering', () => {
-		it('should exclude get-as-code from orchestrator surface', () => {
-			const context = createMockContext();
-			const tool = createWorkflowsTool(context, 'orchestrator');
-
-			expect(tool.description).not.toContain('get-as-code');
-		});
-
-		it('should include get-as-code in full surface', () => {
+		it('should support get-as-code on full surface', async () => {
 			const context = createMockContext();
 			const tool = createWorkflowsTool(context, 'full');
 
-			expect(tool.description).toContain('get-as-code');
+			const result = await tool.execute!(
+				{ action: 'get-as-code', workflowId: 'w1' } as never,
+				{} as never,
+			);
+
+			expect(result).toEqual({
+				workflowId: 'w1',
+				name: 'Test WF',
+				code: '// generated code',
+			});
 		});
 	});
 
 	describe('version actions', () => {
-		it('should include version actions when listVersions exists', () => {
+		it('should support version actions when listVersions exists', async () => {
 			const context = createMockContext();
-			context.workflowService.listVersions = jest.fn();
+			const versions = [{ id: 'v1', versionId: 1 }];
+			context.workflowService.listVersions = jest.fn().mockResolvedValue(versions);
 			context.workflowService.getVersion = jest.fn();
 			context.workflowService.restoreVersion = jest.fn();
 
 			const tool = createWorkflowsTool(context, 'full');
+			const result = await tool.execute!(
+				{ action: 'list-versions', workflowId: 'w1' } as never,
+				{} as never,
+			);
 
-			expect(tool.description).toContain('list-versions');
-			expect(tool.description).toContain('get-version');
-			expect(tool.description).toContain('restore-version');
+			expect(result).toEqual({ versions });
 		});
 
-		it('should include update-version when updateVersion exists', () => {
+		it('should support update-version when updateVersion exists', async () => {
 			const context = createMockContext();
 			context.workflowService.listVersions = jest.fn();
 			context.workflowService.getVersion = jest.fn();
 			context.workflowService.restoreVersion = jest.fn();
-			context.workflowService.updateVersion = jest.fn();
+			context.workflowService.updateVersion = jest.fn().mockResolvedValue({ success: true });
 
 			const tool = createWorkflowsTool(context, 'full');
+			const result = await tool.execute!(
+				{
+					action: 'update-version',
+					workflowId: 'w1',
+					versionId: '1',
+					name: 'v1',
+				} as never,
+				{} as never,
+			);
 
-			expect(tool.description).toContain('update-version');
-		});
-
-		it('should not include version actions when listVersions is absent', () => {
-			const context = createMockContext();
-			const tool = createWorkflowsTool(context, 'full');
-
-			expect(tool.description).not.toContain('list-versions');
-			expect(tool.description).not.toContain('update-version');
+			expect(result).toEqual({ success: true });
 		});
 	});
 

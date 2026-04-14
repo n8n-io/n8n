@@ -96,16 +96,11 @@ describe('nodes tool', () => {
 	});
 
 	describe('full surface', () => {
-		it('should expose all 6 actions in description', () => {
+		it('should have a concise description', () => {
 			const context = createMockContext();
 			const tool = createNodesTool(context, 'full');
 
-			expect(tool.description).toContain('list');
-			expect(tool.description).toContain('search');
-			expect(tool.description).toContain('describe');
-			expect(tool.description).toContain('type-definition');
-			expect(tool.description).toContain('suggested');
-			expect(tool.description).toContain('explore-resources');
+			expect(tool.description).toContain('node types');
 		});
 	});
 
