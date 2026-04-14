@@ -65,6 +65,12 @@ const outputSchema = {
 		.describe(
 			'Additional notes about the workflow creation, such as any nodes that were skipped during credential auto-assignment.',
 		),
+	hint: z
+		.string()
+		.optional()
+		.describe(
+			'Actionable hint for recovering from the error. When present, follow the suggested action before retrying.',
+		),
 } satisfies z.ZodRawShape;
 
 /**

@@ -35,6 +35,12 @@ const outputSchema = {
 		.optional()
 		.describe('Validation warnings (if any)'),
 	errors: z.array(z.string()).optional().describe('Validation errors (if invalid)'),
+	hint: z
+		.string()
+		.optional()
+		.describe(
+			'Actionable hint for recovering from the error. When present, follow the suggested action before retrying.',
+		),
 } satisfies z.ZodRawShape;
 
 /**
