@@ -44,7 +44,6 @@ import type { Scope } from '@n8n/permissions';
 import type { Request, Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -716,8 +715,9 @@ describe('InstanceAiController', () => {
 			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
 			instanceAiService.consumePairingToken.mockReturnValue(null);
 			const gatewayReq = makeGatewayReq('session-key', { rootPath: '/home/user' });
+			const payload = { rootPath: '/home/user', tools: [], toolCategories: [] };
 
-			const result = controller.gatewayInit(gatewayReq);
+			const result = controller.gatewayInit(gatewayReq, res, payload);
 
 			expect(result).toEqual({ ok: true });
 			expect(instanceAiService.initGateway).toHaveBeenCalledWith(
@@ -743,7 +743,11 @@ describe('InstanceAiController', () => {
 			instanceAiService.consumePairingToken.mockReturnValue('new-session-key');
 			const gatewayReq = makeGatewayReq('pairing-token', { rootPath: '/tmp' });
 
-			const result = controller.gatewayInit(gatewayReq);
+			const result = controller.gatewayInit(gatewayReq, res, {
+				rootPath: '/tmp',
+				tools: [],
+				toolCategories: [],
+			});
 
 			expect(result).toEqual({ ok: true, sessionKey: 'new-session-key' });
 		});
@@ -752,7 +756,11 @@ describe('InstanceAiController', () => {
 			instanceAiService.consumePairingToken.mockReturnValue(null);
 			const gatewayReq = makeGatewayReq('static-key', { rootPath: '/tmp' });
 
-			const result = controller.gatewayInit(gatewayReq);
+			const result = controller.gatewayInit(gatewayReq, res, {
+				rootPath: '/tmp',
+				tools: [],
+				toolCategories: [],
+			});
 
 			expect(result).toEqual({ ok: true });
 			expect(instanceAiService.initGateway).toHaveBeenCalledWith('env-gateway', expect.anything());
@@ -761,21 +769,26 @@ describe('InstanceAiController', () => {
 		it('should throw ForbiddenError with missing API key', () => {
 			const gatewayReq = makeGatewayReq(undefined, { rootPath: '/tmp' });
 
-			expect(() => controller.gatewayInit(gatewayReq)).toThrow(ForbiddenError);
+			expect(() =>
+				controller.gatewayInit(gatewayReq, res, {
+					rootPath: '/tmp',
+					tools: [],
+					toolCategories: [],
+				}),
+			).toThrow(ForbiddenError);
 		});
 
 		it('should throw ForbiddenError with invalid API key', () => {
 			instanceAiService.getUserIdForApiKey.mockReturnValue(undefined);
 			const gatewayReq = makeGatewayReq('wrong-key', { rootPath: '/tmp' });
 
-			expect(() => controller.gatewayInit(gatewayReq)).toThrow(ForbiddenError);
-		});
-
-		it('should throw BadRequestError when body fails schema validation', () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
-			const gatewayReq = makeGatewayReq('session-key', { unexpected: 123 });
-
-			expect(() => controller.gatewayInit(gatewayReq)).toThrow(BadRequestError);
+			expect(() =>
+				controller.gatewayInit(gatewayReq, res, {
+					rootPath: '/tmp',
+					tools: [],
+					toolCategories: [],
+				}),
+			).toThrow(ForbiddenError);
 		});
 	});
 
@@ -798,7 +811,9 @@ describe('InstanceAiController', () => {
 			instanceAiService.resolveGatewayRequest.mockReturnValue(true);
 			const gatewayReq = makeGatewayReq('session-key', { result: { content: [] } });
 
-			const result = controller.gatewayResponse(gatewayReq, res, 'req-1');
+			const result = controller.gatewayResponse(gatewayReq, res, 'req-1', {
+				result: { content: [] },
+			});
 
 			expect(result).toEqual({ ok: true });
 			expect(instanceAiService.resolveGatewayRequest).toHaveBeenCalledWith(
@@ -814,14 +829,9 @@ describe('InstanceAiController', () => {
 			instanceAiService.resolveGatewayRequest.mockReturnValue(false);
 			const gatewayReq = makeGatewayReq('session-key', { result: { content: [] } });
 
-			expect(() => controller.gatewayResponse(gatewayReq, res, 'req-1')).toThrow(NotFoundError);
-		});
-
-		it('should throw BadRequestError when body fails schema validation', () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
-			const gatewayReq = makeGatewayReq('session-key', { result: 'not-an-object' });
-
-			expect(() => controller.gatewayResponse(gatewayReq, res, 'req-1')).toThrow(BadRequestError);
+			expect(() =>
+				controller.gatewayResponse(gatewayReq, res, 'req-1', { result: { content: [] } }),
+			).toThrow(NotFoundError);
 		});
 	});
 
@@ -870,7 +880,7 @@ describe('InstanceAiController', () => {
 				body: { result: { content: [] } },
 			} as unknown as Request;
 
-			controller.gatewayResponse(gatewayReq, res, 'req-1');
+			controller.gatewayResponse(gatewayReq, res, 'req-1', { result: { content: [] } });
 
 			// validateGatewayApiKey receives 'key1' (the first element)
 			expect(instanceAiService.getUserIdForApiKey).toHaveBeenCalledWith('key1');

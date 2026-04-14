@@ -1,7 +1,7 @@
 import {
 	InstanceAiConfirmRequestDto,
-	instanceAiGatewayCapabilitiesSchema,
-	instanceAiFilesystemResponseSchema,
+	InstanceAiGatewayCapabilitiesDto,
+	InstanceAiFilesystemResponseDto,
 	InstanceAiRenameThreadRequestDto,
 	InstanceAiSendMessageRequest,
 	InstanceAiEventsQuery,
@@ -574,6 +574,7 @@ export class InstanceAiController {
 	@Post('/gateway/create-link')
 	@GlobalScope('instanceAi:gateway')
 	async createGatewayLink(req: AuthenticatedRequest) {
+		this.assertGatewayEnabled(req.user.id);
 		const token = this.instanceAiService.generatePairingToken(req.user.id);
 		const baseUrl = this.instanceBaseUrl.replace(/\/$/, '');
 		const command = `npx @n8n/computer-use ${baseUrl} ${token}`;
@@ -583,6 +584,7 @@ export class InstanceAiController {
 	@Get('/gateway/events', { usesTemplates: true, skipAuth: true })
 	async gatewayEvents(req: Request, res: FlushableResponse) {
 		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
+		this.assertGatewayEnabled(userId);
 
 		(res as unknown as { compress: boolean }).compress = false;
 		res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
@@ -625,24 +627,21 @@ export class InstanceAiController {
 	}
 
 	@Post('/gateway/init', { skipAuth: true })
-	gatewayInit(req: Request) {
+	gatewayInit(req: Request, _res: Response, @Body payload: InstanceAiGatewayCapabilitiesDto) {
 		const key = this.getGatewayKeyHeader(req);
 		const userId = this.validateGatewayApiKey(key);
+		this.assertGatewayEnabled(userId);
 
-		const parsed = instanceAiGatewayCapabilitiesSchema.safeParse(req.body);
-		if (!parsed.success) {
-			throw new BadRequestError(parsed.error.message);
-		}
-		this.instanceAiService.initGateway(userId, parsed.data);
+		this.instanceAiService.initGateway(userId, payload);
 
 		this.push.sendToUsers(
 			{
 				type: 'instanceAiGatewayStateChanged',
 				data: {
 					connected: true,
-					directory: parsed.data.rootPath,
-					hostIdentifier: parsed.data.hostIdentifier ?? null,
-					toolCategories: parsed.data.toolCategories ?? [],
+					directory: payload.rootPath,
+					hostIdentifier: payload.hostIdentifier ?? null,
+					toolCategories: payload.toolCategories ?? [],
 				},
 			},
 			[userId],
@@ -674,18 +673,19 @@ export class InstanceAiController {
 	}
 
 	@Post('/gateway/response/:requestId', { skipAuth: true })
-	gatewayResponse(req: Request, _res: Response, @Param('requestId') requestId: string) {
+	gatewayResponse(
+		req: Request,
+		_res: Response,
+		@Param('requestId') requestId: string,
+		@Body payload: InstanceAiFilesystemResponseDto,
+	) {
 		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
 
-		const parsed = instanceAiFilesystemResponseSchema.safeParse(req.body);
-		if (!parsed.success) {
-			throw new BadRequestError(parsed.error.message);
-		}
 		const resolved = this.instanceAiService.resolveGatewayRequest(
 			userId,
 			requestId,
-			parsed.data.result,
-			parsed.data.error,
+			payload.result,
+			payload.error,
 		);
 		if (!resolved) {
 			throw new NotFoundError('Gateway request not found or already resolved');
@@ -696,6 +696,7 @@ export class InstanceAiController {
 	@Get('/gateway/status')
 	@GlobalScope('instanceAi:gateway')
 	async gatewayStatus(req: AuthenticatedRequest) {
+		this.assertGatewayEnabled(req.user.id);
 		return this.instanceAiService.getGatewayStatus(req.user.id);
 	}
 
@@ -716,6 +717,13 @@ export class InstanceAiController {
 		}
 		if (!options?.allowNew && ownership === 'not_found') {
 			throw new NotFoundError('Thread not found');
+		}
+	}
+
+	/** Throw if the local gateway is disabled globally or for this user. */
+	private assertGatewayEnabled(userId: string): void {
+		if (this.settingsService.isLocalGatewayDisabledForUser(userId)) {
+			throw new ForbiddenError('Local gateway is disabled');
 		}
 	}
 

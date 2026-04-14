@@ -439,6 +439,13 @@ export const instanceAiGatewayCapabilitiesSchema = z.object({
 });
 export type InstanceAiGatewayCapabilities = z.infer<typeof instanceAiGatewayCapabilitiesSchema>;
 
+export class InstanceAiGatewayCapabilitiesDto extends Z.class({
+	rootPath: z.string(),
+	tools: z.array(mcpToolSchema).default([]),
+	hostIdentifier: z.string().optional(),
+	toolCategories: z.array(toolCategorySchema).default([]),
+}) {}
+
 // ---------------------------------------------------------------------------
 // Filesystem bridge payloads (browser ↔ server round-trip)
 // ---------------------------------------------------------------------------
@@ -452,6 +459,11 @@ export const instanceAiFilesystemResponseSchema = z.object({
 	result: mcpToolCallResultSchema.optional(),
 	error: z.string().optional(),
 });
+
+export class InstanceAiFilesystemResponseDto extends Z.class({
+	result: mcpToolCallResultSchema.optional(),
+	error: z.string().optional(),
+}) {}
 
 export const tasksUpdatePayloadSchema = z.object({
 	tasks: taskListSchema,
