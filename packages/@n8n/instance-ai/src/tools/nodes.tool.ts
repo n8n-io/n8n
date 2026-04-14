@@ -17,7 +17,7 @@ const listAction = z.object({
 	query: z
 		.string()
 		.optional()
-		.describe('Filter nodes by name or description (e.g. "slack", "http")'),
+		.describe('Search query to filter by name or description (e.g. "slack", "http")'),
 });
 
 const searchAction = z.object({
@@ -25,7 +25,7 @@ const searchAction = z.object({
 	query: z
 		.string()
 		.optional()
-		.describe('Search query to match against node names, display names, aliases, and descriptions'),
+		.describe('Search query to filter by name or description (e.g. "slack", "http")'),
 	connectionType: z
 		.enum(AI_CONNECTION_TYPES)
 		.optional()
@@ -39,7 +39,7 @@ const searchAction = z.object({
 
 const describeAction = z.object({
 	action: z.literal('describe').describe('Get detailed description of a node type'),
-	nodeType: z.string().describe('Node type identifier (e.g. "n8n-nodes-base.httpRequest")'),
+	nodeType: z.string().describe('Node type ID (e.g. "n8n-nodes-base.httpRequest")'),
 });
 
 const nodeRequestSchema = z.union([

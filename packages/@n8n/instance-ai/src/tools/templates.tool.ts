@@ -42,7 +42,7 @@ const searchParametersAction = z.object({
 		.min(1)
 		.max(10)
 		.optional()
-		.describe('Number of templates to search (default: 5, max: 10)'),
+		.describe('Number of templates to return (default: 5, max: 10)'),
 	nodeType: z
 		.string()
 		.optional()

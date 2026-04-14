@@ -22,28 +22,22 @@ import {
 const listAction = z.object({
 	action: z.literal('list').describe('List workflows accessible to the current user'),
 	query: z.string().optional().describe('Filter workflows by name'),
-	limit: z
-		.number()
-		.int()
-		.positive()
-		.max(100)
-		.optional()
-		.describe('Max results to return (default 50)'),
+	limit: z.number().int().positive().max(100).optional().describe('Max results to return'),
 });
 
 const getAction = z.object({
 	action: z.literal('get').describe('Get full details of a specific workflow'),
-	workflowId: z.string().describe('The ID of the workflow to retrieve'),
+	workflowId: z.string().describe('ID of the workflow'),
 });
 
 const getAsCodeAction = z.object({
 	action: z.literal('get-as-code').describe('Convert an existing workflow to TypeScript SDK code'),
-	workflowId: z.string().describe('The ID of the workflow to convert to SDK code'),
+	workflowId: z.string().describe('ID of the workflow'),
 });
 
 const deleteAction = z.object({
 	action: z.literal('delete').describe('Archive a workflow by ID (soft delete)'),
-	workflowId: z.string().describe('ID of the workflow to archive'),
+	workflowId: z.string().describe('ID of the workflow'),
 	workflowName: z.string().optional().describe('Name of the workflow (for confirmation message)'),
 });
 
@@ -51,7 +45,7 @@ const setupAction = z.object({
 	action: z
 		.literal('setup')
 		.describe('Open the workflow setup UI for credential and parameter configuration'),
-	workflowId: z.string().describe('ID of the workflow to set up'),
+	workflowId: z.string().describe('ID of the workflow'),
 	projectId: z.string().optional().describe('Project ID to scope credential creation to'),
 });
 
@@ -59,10 +53,7 @@ const publishBaseAction = z.object({
 	action: z.literal('publish').describe('Publish a workflow version to production'),
 	workflowId: z.string().describe('ID of the workflow'),
 	workflowName: z.string().optional().describe('Name of the workflow (for confirmation message)'),
-	versionId: z
-		.string()
-		.optional()
-		.describe('Specific version to publish (omit to publish the latest draft)'),
+	versionId: z.string().optional().describe('Version ID (omit to publish latest draft)'),
 });
 
 const publishExtendedAction = publishBaseAction.extend({
@@ -78,33 +69,27 @@ const publishExtendedAction = publishBaseAction.extend({
 
 const unpublishAction = z.object({
 	action: z.literal('unpublish').describe('Unpublish a workflow — stop it from running'),
-	workflowId: z.string().describe('ID of the workflow to unpublish'),
+	workflowId: z.string().describe('ID of the workflow'),
 	workflowName: z.string().optional().describe('Name of the workflow (for confirmation message)'),
 });
 
 const listVersionsAction = z.object({
 	action: z.literal('list-versions').describe('List version history for a workflow'),
 	workflowId: z.string().describe('ID of the workflow'),
-	limit: z
-		.number()
-		.int()
-		.positive()
-		.max(100)
-		.optional()
-		.describe('Max results to return (default 20)'),
+	limit: z.number().int().positive().max(100).optional().describe('Max results to return'),
 	skip: z.number().int().min(0).optional().describe('Number of results to skip (default 0)'),
 });
 
 const getVersionAction = z.object({
 	action: z.literal('get-version').describe('Get full details of a specific workflow version'),
 	workflowId: z.string().describe('ID of the workflow'),
-	versionId: z.string().describe('ID of the version to retrieve'),
+	versionId: z.string().describe('Version ID'),
 });
 
 const restoreVersionAction = z.object({
 	action: z.literal('restore-version').describe('Restore a workflow to a previous version'),
 	workflowId: z.string().describe('ID of the workflow'),
-	versionId: z.string().describe('ID of the version to restore'),
+	versionId: z.string().describe('Version ID'),
 });
 
 const updateVersionAction = z.object({
@@ -112,7 +97,7 @@ const updateVersionAction = z.object({
 		.literal('update-version')
 		.describe('Update the name or description of a workflow version'),
 	workflowId: z.string().describe('ID of the workflow'),
-	versionId: z.string().describe('ID of the version to update'),
+	versionId: z.string().describe('Version ID'),
 	name: z.string().nullable().optional().describe('New name for the version (null to clear)'),
 	description: z
 		.string()

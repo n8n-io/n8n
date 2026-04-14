@@ -42,13 +42,13 @@ const cleanupTestExecutionsAction = z.object({
 
 const listFoldersAction = z.object({
 	action: z.literal('list-folders').describe('List folders in a project'),
-	projectId: z.string().describe('ID of the project to list folders in'),
+	projectId: z.string().describe('Project ID'),
 });
 
 const createFolderAction = z.object({
 	action: z.literal('create-folder').describe('Create a new folder in a project'),
 	name: z.string().describe('Name for the new folder'),
-	projectId: z.string().describe('ID of the project to create the folder in'),
+	projectId: z.string().describe('Project ID'),
 	parentFolderId: z
 		.string()
 		.optional()
@@ -57,9 +57,9 @@ const createFolderAction = z.object({
 
 const deleteFolderAction = z.object({
 	action: z.literal('delete-folder').describe('Delete a folder from a project'),
-	folderId: z.string().describe('ID of the folder to delete'),
-	folderName: z.string().optional().describe('Name of the folder (for confirmation message)'),
-	projectId: z.string().describe('ID of the project the folder belongs to'),
+	folderId: z.string().describe('Folder ID'),
+	folderName: z.string().optional().describe('Folder name (for confirmation message)'),
+	projectId: z.string().describe('Project ID'),
 	transferToFolderId: z
 		.string()
 		.optional()
@@ -76,11 +76,8 @@ const moveWorkflowToFolderAction = z.object({
 	action: z.literal('move-workflow-to-folder').describe('Move a workflow into a folder'),
 	workflowId: z.string().describe('ID of the workflow to move'),
 	workflowName: z.string().optional().describe('Name of the workflow (for confirmation message)'),
-	folderId: z.string().describe('ID of the destination folder'),
-	folderName: z
-		.string()
-		.optional()
-		.describe('Name of the destination folder (for confirmation message)'),
+	folderId: z.string().describe('Folder ID'),
+	folderName: z.string().optional().describe('Folder name (for confirmation message)'),
 });
 
 // ── Suspend / resume schemas ────────────────────────────────────────────────

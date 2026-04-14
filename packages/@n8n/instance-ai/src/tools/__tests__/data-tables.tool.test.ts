@@ -443,7 +443,7 @@ describe('data-tables tool', () => {
 		const addColumnInput = {
 			action: 'add-column' as const,
 			dataTableId: 'dt-1',
-			name: 'age',
+			columnName: 'age',
 			type: 'number' as const,
 		};
 

@@ -19,12 +19,12 @@ const updateChecklistAction = z.object({
 
 const cancelTaskAction = z.object({
 	action: z.literal('cancel-task').describe('Cancel a running background task by its task ID'),
-	taskId: z.string().describe('The task ID to cancel (e.g. build-XXXXXXXX)'),
+	taskId: z.string().describe('Task ID (e.g. build-XXXXXXXX)'),
 });
 
 const correctTaskAction = z.object({
 	action: z.literal('correct-task').describe('Send a correction to a running background task'),
-	taskId: z.string().describe('The task ID to send the correction to (e.g. build-XXXXXXXX)'),
+	taskId: z.string().describe('Task ID (e.g. build-XXXXXXXX)'),
 	correction: z
 		.string()
 		.describe("The correction message from the user (e.g. 'use the Projects database')"),

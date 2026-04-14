@@ -17,7 +17,7 @@ const MAX_TIMEOUT_MS = 600_000;
 
 const listAction = z.object({
 	action: z.literal('list').describe('List recent workflow executions'),
-	workflowId: z.string().optional().describe('Filter by workflow ID'),
+	workflowId: z.string().optional().describe('Workflow ID'),
 	status: z
 		.string()
 		.optional()
@@ -33,12 +33,12 @@ const listAction = z.object({
 
 const getAction = z.object({
 	action: z.literal('get').describe('Get execution status without blocking (poll running ones)'),
-	executionId: z.string().describe('ID of the execution to check'),
+	executionId: z.string().describe('Execution ID'),
 });
 
 const runAction = z.object({
 	action: z.literal('run').describe('Execute a workflow and wait for completion'),
-	workflowId: z.string().describe('ID of the workflow to execute'),
+	workflowId: z.string().describe('Workflow ID'),
 	workflowName: z.string().optional().describe('Name of the workflow (for confirmation message)'),
 	inputData: z
 		.record(z.unknown())
@@ -61,14 +61,14 @@ const runAction = z.object({
 
 const debugAction = z.object({
 	action: z.literal('debug').describe('Analyze a failed execution with structured diagnostics'),
-	executionId: z.string().describe('ID of the failed execution to debug'),
+	executionId: z.string().describe('Execution ID'),
 });
 
 const getNodeOutputAction = z.object({
 	action: z
 		.literal('get-node-output')
 		.describe('Retrieve raw output of a specific node from an execution'),
-	executionId: z.string().describe('ID of the execution'),
+	executionId: z.string().describe('Execution ID'),
 	nodeName: z.string().describe('Name of the node whose output to retrieve'),
 	startIndex: z.number().int().min(0).optional().describe('Item index to start from (default 0)'),
 	maxItems: z
@@ -82,7 +82,7 @@ const getNodeOutputAction = z.object({
 
 const stopAction = z.object({
 	action: z.literal('stop').describe('Cancel a running workflow execution'),
-	executionId: z.string().describe('ID of the execution to cancel'),
+	executionId: z.string().describe('Execution ID'),
 });
 
 const inputSchema = sanitizeInputSchema(

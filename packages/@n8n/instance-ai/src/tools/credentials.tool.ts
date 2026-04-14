@@ -49,12 +49,12 @@ const listAction = z.object({
 
 const getAction = z.object({
 	action: z.literal('get').describe('Get credential metadata by ID'),
-	credentialId: z.string().describe('ID of the credential'),
+	credentialId: z.string().describe('Credential ID'),
 });
 
 const deleteAction = z.object({
 	action: z.literal('delete').describe('Permanently delete a credential by ID'),
-	credentialId: z.string().describe('ID of the credential to delete'),
+	credentialId: z.string().describe('Credential ID'),
 	credentialName: z
 		.string()
 		.optional()
@@ -106,7 +106,7 @@ const testAction = z.object({
 	action: z
 		.literal('test')
 		.describe('Test whether a credential is valid and can connect to its service'),
-	credentialId: z.string().describe('ID of the credential to test'),
+	credentialId: z.string().describe('Credential ID'),
 });
 
 const inputSchema = sanitizeInputSchema(

@@ -82,7 +82,7 @@ const schemaAction = z.object({
 const queryAction = z.object({
 	action: z.literal('query').describe('Query rows from a data table with optional filtering'),
 	dataTableId: z.string().describe('ID of the data table'),
-	filter: filterSchema.optional().describe('Row filter conditions'),
+	filter: filterSchema.optional().describe('Row filter conditions (optional)'),
 	limit: z
 		.number()
 		.int()
@@ -119,7 +119,7 @@ const deleteAction = z.object({
 const addColumnAction = z.object({
 	action: z.literal('add-column').describe('Add a new column to an existing data table'),
 	dataTableId: z.string().describe('ID of the data table'),
-	name: z.string().describe('Column name (alphanumeric + underscores)'),
+	columnName: z.string().describe('Column name (alphanumeric + underscores)'),
 	type: columnTypeSchema.describe('Column data type'),
 });
 
@@ -149,14 +149,18 @@ const insertRowsAction = z.object({
 const updateRowsAction = z.object({
 	action: z.literal('update-rows').describe('Update rows matching a filter in a data table'),
 	dataTableId: z.string().describe('ID of the data table'),
-	filter: filterSchema.describe('Which rows to update'),
+	filter: filterSchema.describe('Row filter conditions'),
 	data: z.record(z.unknown()).describe('Column values to set on matching rows'),
 });
 
 const deleteRowsAction = z.object({
-	action: z.literal('delete-rows').describe('Delete rows matching a filter from a data table'),
+	action: z
+		.literal('delete-rows')
+		.describe(
+			'Delete rows matching a filter from a data table. At least one filter condition is required.',
+		),
 	dataTableId: z.string().describe('ID of the data table'),
-	filter: filterSchemaWithMinOne.describe('Which rows to delete (required)'),
+	filter: filterSchemaWithMinOne.describe('Row filter conditions'),
 });
 
 const readOnlyActions = [listAction, schemaAction, queryAction] as const;
@@ -325,7 +329,7 @@ async function handleAddColumn(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Add column "${input.name}" (${input.type}) to data table "${input.dataTableId}"?`,
+			message: `Add column "${input.columnName}" (${input.type}) to data table "${input.dataTableId}"?`,
 			severity: 'warning' as const,
 		});
 		return {};
@@ -338,7 +342,7 @@ async function handleAddColumn(
 
 	// State 3: Approved or always_allow — execute
 	const column = await context.dataTableService.addColumn(input.dataTableId, {
-		name: input.name,
+		name: input.columnName,
 		type: input.type,
 	});
 	return { column };
