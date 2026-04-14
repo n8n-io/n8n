@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { N8nActionBox, N8nActionDropdown, N8nCard, N8nText } from '@n8n/design-system';
+import { N8nActionBox } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
@@ -9,17 +10,17 @@ import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vu
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
-import { listAgents, deleteAgent } from '../composables/useAgentApi';
+import { listAgents } from '../composables/useAgentApi';
 import type { AgentResource } from '../types';
 import { AGENT_BUILDER_VIEW } from '../constants';
-import { useMessage } from '@/app/composables/useMessage';
-import { MODAL_CONFIRM } from '@/app/constants';
+import AgentCard from '../components/AgentCard.vue';
+
+const locale = useI18n();
 
 const route = useRoute();
 const router = useRouter();
 const rootStore = useRootStore();
 const projectsStore = useProjectsStore();
-const message = useMessage();
 const insightsStore = useInsightsStore();
 const projectPages = useProjectPages();
 
@@ -39,8 +40,6 @@ const sortFns = {
 	nameDesc: (a: AgentResource, b: AgentResource) => b.name.localeCompare(a.name),
 };
 
-const cardActions = [{ id: 'delete', label: 'Delete' }];
-
 async function fetchAgents() {
 	loading.value = true;
 	try {
@@ -57,25 +56,16 @@ function onSelectAgent(agentId: string) {
 	});
 }
 
-async function onCardAction(action: string, agent: AgentResource) {
-	if (action === 'delete') {
-		const confirmed = await message.confirm(
-			`Are you sure you want to delete "${agent.name}"?`,
-			'Delete agent',
-			{ confirmButtonText: 'Delete', cancelButtonText: 'Cancel', type: 'warning' },
-		);
-		if (confirmed !== MODAL_CONFIRM) return;
-		await deleteAgent(rootStore.restApiContext, projectId.value, agent.id);
-		allAgents.value = allAgents.value.filter((a) => a.id !== agent.id);
-	}
+function onAgentPublished(updated: AgentResource) {
+	allAgents.value = allAgents.value.map((a) => (a.id === updated.id ? updated : a));
 }
 
-function formatDate(dateStr: string): string {
-	return new Date(dateStr).toLocaleDateString(undefined, {
-		month: 'short',
-		day: 'numeric',
-		year: 'numeric',
-	});
+function onAgentUnpublished(updated: AgentResource) {
+	allAgents.value = allAgents.value.map((a) => (a.id === updated.id ? updated : a));
+}
+
+function onAgentDeleted(agentId: string) {
+	allAgents.value = allAgents.value.filter((a) => a.id !== agentId);
 }
 
 onMounted(fetchAgents);
@@ -108,81 +98,20 @@ onMounted(fetchAgents);
 
 		<template #empty>
 			<N8nActionBox
-				heading="No agents yet"
-				description="Create your first agent to get started building with the n8n agents SDK. Use the button in the top right to create one."
+				:heading="locale.baseText('agents.list.empty.heading')"
+				:description="locale.baseText('agents.list.empty.description')"
 			/>
 		</template>
 
 		<template #default="{ data }">
-			<N8nCard
-				:class="$style.card"
-				hoverable
-				data-testid="agent-card"
-				@click="onSelectAgent(data.id)"
-			>
-				<template #header>
-					<div :class="$style.cardHeader">
-						<N8nText tag="h2" bold :class="$style.cardName">{{ data.name }}</N8nText>
-					</div>
-				</template>
-				<div :class="$style.cardDescription">
-					<N8nText size="small" color="text-light">
-						{{ data.description || 'No description' }}
-					</N8nText>
-					<N8nText size="small" color="text-light">
-						Updated {{ formatDate(data.updatedAt) }}
-					</N8nText>
-				</div>
-				<template #append>
-					<div :class="$style.cardActions" @click.stop>
-						<N8nActionDropdown
-							:items="cardActions"
-							activator-icon="ellipsis-vertical"
-							data-testid="agent-card-actions"
-							@select="onCardAction($event, data)"
-						/>
-					</div>
-				</template>
-			</N8nCard>
+			<AgentCard
+				:agent="data"
+				:project-id="projectId"
+				@select="onSelectAgent"
+				@published="onAgentPublished"
+				@unpublished="onAgentUnpublished"
+				@deleted="onAgentDeleted"
+			/>
 		</template>
 	</ResourcesListLayout>
 </template>
-
-<style module>
-.card {
-	cursor: pointer;
-	padding: 0;
-	align-items: stretch;
-	transition: box-shadow var(--duration--base) var(--easing--ease-out);
-	margin-bottom: var(--spacing--2xs);
-}
-
-.card:hover {
-	box-shadow: var(--shadow--card-hover);
-}
-
-.cardHeader {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--sm) 0 0 var(--spacing--sm);
-}
-
-.cardName {
-	font-size: var(--font-size--sm);
-}
-
-.cardDescription {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: 0 0 var(--spacing--sm) var(--spacing--sm);
-	min-height: var(--spacing--xl);
-}
-
-.cardActions {
-	display: flex;
-	align-items: center;
-	padding: 0 var(--spacing--sm) 0 0;
-}
-</style>

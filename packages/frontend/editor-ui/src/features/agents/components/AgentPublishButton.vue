@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { N8nActionDropdown, N8nButton, N8nIconButton } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
+import { useMessage } from '@/app/composables/useMessage';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { publishAgent, unpublishAgent } from '../composables/useAgentApi';
 import type { AgentResource } from '../types';
 
@@ -18,7 +21,9 @@ const emit = defineEmits<{
 }>();
 
 const rootStore = useRootStore();
+const locale = useI18n();
 const { showMessage, showError } = useToast();
+const message = useMessage();
 
 const publishing = ref(false);
 
@@ -33,12 +38,22 @@ const publishState = computed((): AgentPublishState => {
 const buttonConfig = computed(() => {
 	switch (publishState.value) {
 		case 'not-published':
-			return { text: 'Publish', enabled: true, showIndicator: false, indicatorClass: '' };
+			return {
+				text: locale.baseText('agents.publish.button.publish'),
+				enabled: true,
+				showIndicator: false,
+				indicatorClass: '',
+			};
 		case 'published-with-changes':
-			return { text: 'Publish', enabled: true, showIndicator: true, indicatorClass: 'changes' };
+			return {
+				text: locale.baseText('agents.publish.button.publish'),
+				enabled: true,
+				showIndicator: true,
+				indicatorClass: 'changes',
+			};
 		case 'published-no-changes':
 			return {
-				text: 'Published',
+				text: locale.baseText('agents.publish.button.published'),
 				enabled: false,
 				showIndicator: true,
 				indicatorClass: 'published',
@@ -49,12 +64,12 @@ const buttonConfig = computed(() => {
 const dropdownActions = computed(() => [
 	{
 		id: 'publish',
-		label: 'Publish',
+		label: locale.baseText('agents.publish.dropdown.publish'),
 		disabled: !buttonConfig.value.enabled || publishing.value,
 	},
 	{
 		id: 'unpublish',
-		label: 'Unpublish',
+		label: locale.baseText('agents.publish.dropdown.unpublish'),
 		disabled: !props.agent?.publishedVersion || publishing.value,
 		divided: true,
 	},
@@ -66,9 +81,9 @@ async function onPublishClick() {
 	try {
 		const updated = await publishAgent(rootStore.restApiContext, props.projectId, props.agentId);
 		emit('published', updated);
-		showMessage({ title: 'Agent published', type: 'success' });
+		showMessage({ title: locale.baseText('agents.publish.toast.published'), type: 'success' });
 	} catch (error) {
-		showError(error, 'Failed to publish agent');
+		showError(error, locale.baseText('agents.publish.error.publish'));
 	} finally {
 		publishing.value = false;
 	}
@@ -81,13 +96,23 @@ async function onDropdownSelect(action: string) {
 	}
 	if (action !== 'unpublish') return;
 	if (publishing.value) return;
+	const confirmed = await message.confirm(
+		locale.baseText('agents.unpublish.modal.description'),
+		locale.baseText('agents.unpublish.modal.title'),
+		{
+			confirmButtonText: locale.baseText('agents.unpublish.modal.button.unpublish'),
+			cancelButtonText: locale.baseText('generic.cancel'),
+			type: 'warning',
+		},
+	);
+	if (confirmed !== MODAL_CONFIRM) return;
 	publishing.value = true;
 	try {
 		const updated = await unpublishAgent(rootStore.restApiContext, props.projectId, props.agentId);
 		emit('unpublished', updated);
-		showMessage({ title: 'Agent unpublished', type: 'success' });
+		showMessage({ title: locale.baseText('agents.publish.toast.unpublished'), type: 'success' });
 	} catch (error) {
-		showError(error, 'Failed to unpublish agent');
+		showError(error, locale.baseText('agents.publish.error.unpublish'));
 	} finally {
 		publishing.value = false;
 	}
@@ -129,7 +154,7 @@ async function onDropdownSelect(action: string) {
 					:class="$style.groupButtonRight"
 					variant="subtle"
 					icon="chevron-down"
-					aria-label="More publish actions"
+					:aria-label="locale.baseText('agents.publish.dropdown.ariaLabel')"
 					data-testid="agent-publish-dropdown-trigger"
 				/>
 			</template>
